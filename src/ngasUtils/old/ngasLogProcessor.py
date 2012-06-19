@@ -1,6 +1,3 @@
-
-
-#
 #    ALMA - Atacama Large Millimiter Array
 #    (c) European Southern Observatory, 2002
 #    Copyright by ESO (in the framework of the ALMA collaboration),
@@ -35,7 +32,7 @@ Tool to analyze the NG/AMS Log File and to generate statistics from this.
 """
 
 
-import sys, os, time, exceptions, commands, re, types
+import sys, os, time, exceptions, commands, re, types, pylab, numpy
 from mx import DateTime
 
 _TYPES = ['[ERROR]','[INFO]','[NOTICE]','[ALERT]','[WARNING]']
@@ -69,16 +66,17 @@ class LogEntry():
                 self.parseLog(log=logString.strip())
             self.Trace = TraceEntry(self.Trace)
         except Exception,e:
-            msg = "ERROR: Unable to parse logString: %s" % e
-            raise msg
+            msg = "ERROR: Unable to parse logString: %s\n%s" % (e,logString.strip())
+            raise exceptions.Exception, msg
     
     def parseLog(self, log=''):
         rexp = re.compile('[\[\]]')
         (logTime, logType, logMsg, logTrace) = rexp.split(log,3)
         if logType not in self.LogTypes:
-            raise "unknown log type %s" % logType
+            raise exceptions.Exception, "unknown log type %s" % logType
 #        lT = DateTime.ISO.ParseDateTime(logTime.strip())
-        return (logTime.strip(), logType.strip(), logMsg.strip(), logTrace.strip()[:-1])
+        return (DateTime.DateTimeFrom(logTime.strip()), logType.strip(), logMsg.strip(), \
+                logTrace.strip()[:-1])
 
 
     def getLogType(self):
@@ -100,7 +98,6 @@ class LogEntry():
         return (lambda x:eval(filter))(self.Trace)
 
 
-    
 class ThreadEntry(dict):
     """
     Class representing all messages of a single thread
@@ -111,8 +108,10 @@ class ThreadEntry(dict):
         elif log and log.Trace.Thread:
             name = log.Trace.Thread
             entries = [log]
-            self.update({'request':request, 'start': None, 'end': None, 'duration':None, \
-                           'entries':entries})
+            self.update({'request':request, 'start': None, 'end': None, 
+			'duration':None,
+                        'entries':entries,
+			'client':None})
             self.name = self.keys()[0]
             self.request = self['request']
             self.start = self['start']
@@ -121,7 +120,7 @@ class ThreadEntry(dict):
             self.entries = self['entries']
         elif name:
             self.update({'request':request, 'duration':None, \
-                           'entries':entries})
+                           'entries':entries, 'client':None})
             self.name = self.keys()[0]
             self.request = self['request']
             self.start = self['start']
@@ -140,8 +139,8 @@ class ThreadEntry(dict):
         if len(self.entries) == 0:
              self['duration'] = None
         else:
-            et = DateTime.ISO.ParseDateTime(self.entries[-1].Time)
-            st = DateTime.ISO.ParseDateTime(self.entries[0].Time)
+            et = self.entries[-1].Time
+            st = self.entries[0].Time
             self['start'] = st
             self['end'] = et
             self['duration'] = et - st
@@ -185,6 +184,9 @@ def buildLogDict(logList):
         key = logEntry.Trace.Thread 
         if key and (key not in threads):
             threadDict.update({key:ThreadEntry(logEntry)})
+	    if logEntry.Msg.startswith('Handling HTTP request:'):
+                threadDict[key]['client'] = \
+                      logEntry.Msg.split(':')[1].split("'")[1]
             threads.append(key)
         elif key:
             threadDict[key].appendEntry(logEntry)
@@ -270,22 +272,59 @@ def getArchiveStartFromFile(fnm, command='ARCHIVE'):
     logs = output.split('\n')
     return logs
 
+def getSizeTimeRate(logarr):
+    """
+    Extract the size,rate and time from an array of ARCHIVE log entries
+    related to a single ARCHIVE request.
+    """
+    saveLine = filter(lambda x:x.find('Saved data in file') > -1,logarr)[0]
+    splitLine = saveLine.split()
+    (size, time, rate) = (float(splitLine[-8]), float(splitLine[-6]), float(splitLine[-3]))
+    tend = DateTime.DateTimeFrom(splitLine[0]) # end transfer
+    saveLine = filter(lambda x:x.find('Saving data in file') > -1,logarr)[0]
+    tstart = DateTime.DateTimeFrom(saveLine.split()[0]) # start of transfer
+    
+    return (size, time, rate, tstart, tend)
 
-def getArchiveThreads(fnm, dict=0):
+
+def getArchiveThreadsFromFile(fnm, dict=1, command='ARCHIVE', verbose=0, nthreads=0):
     """
     """
     tlogs = []
-    alogs = getArchiveStartFromFile(fnm)
+    archStats = {}
+    alogs = getArchiveStartFromFile(fnm, command=command)
     atd = buildLogDict(alogs)
     atk = atd.keys()
+    if verbose: print "Number of threads found: %d" % len(atk)
+    ii =0
     for key in atk:
-        tlogs.extend(getThreadFromFile(fnm,key))
+        ii += 1
+        if verbose and float(ii/100) == ii/100.: print ii
+        tlog = getThreadFromFile(fnm,key)
+        archStats.update({key:getSizeTimeRate(tlog)})
+        tlogs.extend(tlog)
     if dict:
         tdict = buildLogDict(tlogs)
-        return tdict
+        return tdict, archStats
     else:
         return tlogs
                 
+
+def getLogList(fnm, logType="INFO"):
+    """
+    Function uses grep command on a LogFile (fnm) to find
+    the <logType> logs.
+    
+    Input:
+        fnm:    string, file name of the log-file
+    Output:
+        logs:    list of strings
+    """
+    cmd = "grep %s %s" % (logType, fnm)
+    output = _executeSysCmd(cmd)
+    logs = output.split('\n')
+    return logs
+
 
 def getErrorsFromFile(fnm):
     """
@@ -348,6 +387,13 @@ def test():
 
 if __name__ == "__main__":
     """
+    The stuff below is just an example of the usage of the classes and functions
+    in this file. It is best to call it in the following way:
+    
+    python -i ngasLogProcessor.py LogFile.nglog
+    
+    Like this it is possible to access all the variables and functions
+    afterwards from the command line.
     """
     if len(sys.argv) == 1:
         print "Usage: ngamsLogProcessor <LogFile> [<type>]"
@@ -356,144 +402,96 @@ if __name__ == "__main__":
         fnm = sys.argv[1]
 
     if len(sys.argv) == 3:
-        req = getLogList(fnm,type=sys.argv[2])
+        req = getLogList(fnm,logType=sys.argv[2])
         for r in req:
             print r
         sys.exit()
     
-    infos = getLogList(fnm,type="info")
-    entr = getLogEntries(infos,'with mime-type: ngas/fits')
-    diffs = getTimeDiffs(infos,'with mime-type: ngas/fits',\
-                         'POST,ARCHIVE,ngas/archive-push')
-    kk = diffs.keys()
-    kk.sort()
+    adict = getArchiveThreadsFromFile(fnm, dict=1, command='QARCHIVE')
+    astart = numpy.array(map(lambda x:adict[0][x].start,adict[1].keys()))
+    ind = numpy.argsort(astart)
+    astart.sort()
+    aend = numpy.array(map(lambda x:adict[0][x].end,adict[1].keys()))
+    aend = aend[ind]
+    tstart = numpy.array(map(lambda x:adict[1][x][-2],adict[1].keys()))
+    tstart = tstart[ind]
+    tend = numpy.array(map(lambda x:adict[1][x][-1],adict[1].keys()))
+    tend = tend[ind]
+    bytes = numpy.array(map(lambda x:adict[1][x][0],adict[1].keys()))
+    bytes = bytes[ind]
+    std = numpy.array(map(lambda x:adict[1][x][2],adict[1].keys())).std()/1024**2
 
-    #
-    # get additional information from log-file
-    #
-    # disks used:
-    (stat,main_disks) = commands.getstatusoutput(\
-        """grep "Saving data in file" """ + fnm + \
-        """| awk -F"/" '{print "/"$2"/"$3}' | sort | uniq""")
-    main_disks = main_disks.split("\n")
-    if len(main_disks) == 1:
-        main_disks = main_disks[0]
+    print "SUMMARY:"
+    print "--------"
+    print "Number of archive requests: %d" % len(adict[0])
+    print "Total elapsed time: %9.2f seconds" % (aend.max()-astart.min()).seconds
+    print "Total volume: %5.2f GB" % (bytes.sum()/1024**3)
+    print "Overall rate: %5.2f +/- %3.2f MB/s" % \
+    (bytes.sum()/1024**2/(aend.max()-astart.min()).seconds, std)
 
-    # output from ngamsFitsPlugIn
-    #
-    #  old search entry
-    #    search = """Data returned from plug-in: ngamsFitsPlugIn:"""
-    #
-    search = """Data returned from"""
-    lplug = getLogEntries(infos,search)
-    if len(lplug) == 0:
-        print "[WARNING] No FITS archive requests found in file: " + fnm
-        print "bailing out..."
-        sys.exit()
-    tot_ratio = 0.
-    max_orig = 0.
-    llogs = []
-    for entry in lplug:
-        edict = {}
-        plist = entry[2][len(search)-1:]
-        for e in plist.split(","):
-            ee = e.split(':')
-            edict.update({ee[0].strip():ee[1].strip()})
-        llogs.append(edict)
-        (comp,orig) = (float(edict['File Size']),\
-                       float(edict['Uncompressed File Size']))
-        if max_orig <  orig/1024./1024.:
-            max_orig = orig/1024./1024.
-        tot_ratio = tot_ratio + float(orig)/comp
-
-    mean_ratio = tot_ratio/len(lplug)    
-        
-    #
-    # Now produce the output
-    #        
-    print "Status of main archive disk(s) used:"
-    if type(main_disks) == type([]):
-        for disk in main_disks:
-            (stat,df) = commands.getstatusoutput('df ' + disk)
-            print disk + ":"
-            (head,df) = df.split("\n")
-            (dev,tot,used,ava,perc,mntpt) = df.split()
-            (dev,tot,used,ava,perc,mntpt) = df.split()
-            print "There is still space for %5.1f files" % \
-                  (float(ava)/(max_orig*1024./mean_ratio))
-            print "maximum file size:\t%7.2f MB" % max_orig
-            print "mean compression ratio:\t%3.2f" % mean_ratio
-            print ""
-    else:
-        (stat,df) = commands.getstatusoutput('df ' + main_disks)
-        print main_disks + ":"
-        (head,df) = df.split("\n")
-        (dev,tot,used,ava,perc,mntpt) = df.split()
-        print "There is still space for %5.1f files" % \
-              (float(ava)/(max_orig*1024./mean_ratio))
-        print "maximum file size:\t%7.2f MB" % max_orig
-        print "mean compression ratio:\t%3.2f" % mean_ratio
-        print ""
-        
-    j = 0
-    tot_time = 0
-    last_end = 0.
-    idle = 0.
-    tot_idle = 0.
-    min_idle = 86400.
-    max_idle = 0.
-    min_archive = 86400.
-    max_archive = 0.
-    tot_through = 0.
-    min_through = 1000.
-    max_through = 0.
-    if len(lplug) != len(kk):
-        print "Throughput statistics not available..."
-        print len(lplug),len(kk)
-        stat = 0
-    else:
-        stat = 1
-    for i in kk:
-        if stat:
-            # plug = eval(lplug[j])
-            through = float(llogs[j]['File Size'])/(float(diffs[i].seconds) \
-                                             * 1024. * 1024.) 
-            tot_through = tot_through + through
-            if min_through > through:
-                min_through = through
-            if max_through < through:
-                max_through = through
-        if min_archive > diffs[i].seconds:
-            min_archive = diffs[i].seconds
-        if max_archive < diffs[i].seconds:
-            max_archive = diffs[i].seconds
-        if j > 0:
-            idle = (i * 86400.) - last_end
-            if min_idle >= idle:
-                min_idle = idle
-        if max_idle < idle:
-            max_idle = idle
-        tot_time = tot_time + diffs[i].seconds
-        tot_idle = tot_idle + idle
-        last_end = (i * 86400.) + diffs[i].seconds
-        j=j+1
-
-    errors = getLogList(fnm,type="error")
-    alerts = getLogList(fnm,type="alert")
-    warnings = getLogList(fnm,type="warning")
-    print ""
-    print "Number of FITS ARCHIVE requests: ",len(diffs)
-    print "Mean/Min./Max elapsed ARCHIVE time: %5.2f/%5.2f/%5.2f s" % \
-          ((tot_time/j),min_archive,max_archive)
-    print "Mean/Min./Max idle time between ARCHIVE: %5.2f/%5.2f/%5.2f s" % \
-          ((tot_idle/j),min_idle,max_idle)
-    if stat:
-        print  "Mean/Min./Max throughput:  %5.2f/%5.2f/%5.2f MB/s" % \
-              ((tot_through/j),min_through,max_through)
-    print ""
-    print "Number of ALERT entries: ",len(alerts)
-    print "Number of ERROR entries: ",len(errors)
-    print "Number of WARNING entries: ",len(warnings)
+    adur = (aend-astart).astype(float)
+    
+    tdur = (tend-tstart).astype(float)
+    rate = bytes/1024**2/adur
 
     
-# EOF
+    step = 6
+    bins = len(range(0,len(astart),step))
+    dt = astart[1:] - astart[:-1]
+    dt = adur
+    md = pylab.zeros([bins])  # array for median request interval
+    mt = pylab.zeros([bins])  # array for median total time
+    smt = pylab.zeros([bins,2]) # standard deviation of mt elements
+    fd = pylab.zeros([bins])  # array for frequency of requests
+    mrr = pylab.zeros([bins]) # array for median transfer rate
+    ff = pylab.zeros([bins]) # multi-dim array holding various values
+    ft = pylab.zeros([bins]) # array holding timestamp of midpoint of interval
+    dur = pylab.zeros([bins]) # array holding archive durations
+    err = pylab.zeros([bins])
+    mtr = pylab.zeros([bins]) # array holding total rate
+    rr = bytes/(aend-astart).astype(float)/1024**2
+    di = map(lambda x,y:float(x-astart.min())+y/2.,astart,(aend-astart).astype(float))
+    di.sort()
+
+
+    for ii in range(0,len(astart),step):
+       li = ii+step-1
+       md[ii/step] = (pylab.median(dt[ii:li]))
+       if li > len(dt): li = len(dt)-1
+       if li != ii:
+           tmpdur = (aend[ii:li].max()-astart[ii:li].min())
+           dur[ii/step]=tmpdur+0.0001
+           err[ii/step]=(tmpdur+0.0001)/2.
+           fd[ii/step]=((li-ii)/(dur[ii/step]))
+           ft[ii/step]=(astart[ii]+dur[ii/step]/(2.*86400)-astart[0])
+#           ff[ii/step]=([(li-ii),astart[ii],aend[li],fd[-1],adur[-1]])
+           mrr[ii/step]=(sum(rr[ii:li])/dur[ii/step])
+           mtr[ii/step]=(sum(bytes[ii:li])/dur[ii/step]/1024**2)
+       else:
+           fd[ii/step]=(0)
+           mrr[ii/step]=(rr[li])
+       mt[ii/step]=(pylab.median(adur[ii:li]))
+#       smt[0][ii/step]=((min(mt[-1],pylab.std(dur[-1])/2)))
+#       smt[1][ii/step]=(pylab.std(dur[-1])/2)
+
+
+    pylab.subplot(2,1,1)
+    pylab.errorbar(ft,mtr,xerr=err,fmt='b.')
+    pylab.plot([0,di[-1]+20],[mtr.mean(),mtr.mean()], 'r-')
+    pylab.errorbar([di[-1]+15], [mtr.mean()], yerr=mtr.std(), fmt='r.')
+    pylab.xlim(xmin=-0.01, xmax=di[-1]+20)
+    pylab.xlabel('Time since %s [s]' % (astart[0]))
+    pylab.ylabel('Accumulated transfer speed [MB/s]')
+
+    pylab.subplot(2,1,2)
+    pylab.errorbar(tstart-tstart.min(), rate, \
+          xerr=[pylab.zeros(len(tstart)),tdur], fmt='b.')
+    pylab.errorbar(astart-astart.min(), rate-0.005, 
+          xerr=[pylab.zeros(len(astart)),adur], fmt='r.')
+    pylab.xlabel('Time since %s [s]' % (astart[0]))
+    pylab.ylabel('Transfer rate (single file) [MB/s]')
+    pylab.xlim(xmin=-0.01,xmax=di[-1]+20)
+    
+#    logfnm = fnm + '.png'
+#    pylab.savefig(logfnm, dpi=200)
+    

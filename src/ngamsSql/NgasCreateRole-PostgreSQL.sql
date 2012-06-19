@@ -1,0 +1,9 @@
+CREATE ROLE ngas LOGIN PASSWORD 'ngas$dba';
+
+CREATE TABLESPACE ngas OWNER ngas LOCATION '/Users/chen/proj/mwa/testNGAS/NGAS/pgtbspace';
+CREATE DATABASE ngas OWNER ngas TABLESPACE ngas;
+
+GRANT ALL PRIVILEGES ON DATABASE ngas TO ngas;
+CREATE SCHEMA ngas AUTHORIZATION ngas;
+
+
