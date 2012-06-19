@@ -1,0 +1,575 @@
+
+===============================================
+minitage.recipe.cmmi
+===============================================
+
+Abstract
+-----------------
+
+    - The cmmi recipe use abusivly or -rpath to save you from settings LD_LIBRARY_PATH at run time.
+    - If you are inside a minitage environment, all the dependencies of your minibuild are put in the environment.
+      That mean that CFLAGS, LDFLAGS, PKG_CONFIG_PATH, and so on are updated to reference your minibuild's dependencies.
+    - minitage.recipe.cmmi is a replacment fo ``zc.recipe.cmmi``.
+    - It intends to do the *configure && make && make install* dance with hooks where you can do (in python) specific stuff at each stage of the build cursus.
+    - With this recipe, if the destination directory exists, we only remove it
+      when we can sucessfully install something, unless that we never touch to it,
+      or it is a bug.
+    - LOOK ALSO AT THE *SHARED VARIABLES* AS ALL THE MINITAGE RECIPES SHARE A LOT OF VARIABLES
+
+Specific options
+-----------------
+Please look for options at : http://pypi.python.org/pypi/minitage.recipe.common#options-shared-by-all-the-recipes
+   
+* make-targets(-UNAME)
+    default to all and install, make targets to run
+* inner-dir: change to inner directory before doing anything.
+* prefix: where to install (defaults to options:location)
+  Be warn that the content of the destination will be wiped before unless you
+  set 'install-in-place'
+* install-in-place: install over a previous installation instead of removing
+  the older install replacing it with the new 'makeinstall result'::
+
+    install-in-place=True
+
+* build-dir(-UNAME)
+    inner directory to execute the build dance [see cmmi recipe for documentation]
+* configure-options(-UNAME)
+    Os specific options to give to configure
+    uname can be either linux2|freebsd6|freebsd7|darwin|leopard|snowleopard (darwin for both leopard)
+    Its the result of sys.platform.lower() [see cmmi recipe for documentation]
+* configure(-UNAME)
+    * specific OS configure script to use (darwin, leopard, snowleopard, linux, freebsd, freebsd(6,7,8)
+      configure script to use (default to ./configure)
+* prefix-separator [see cmmi recipe for documentation]
+    prefix separator to use between --prefix and location (default to =)
+* prefix-options [see cmmi recipe for documentation]
+    what to put for the "prefix" expression, default to --prefix$PREFIX_SEPARATOR$LOCATION
+* autogen
+    autogen script to use if any [optionnal]
+* configure-options(-UNAME)
+    options to feed configure with [see cmmi recipe for documentation]
+* configure-options(-UNAME)-replace
+    - overide options for a specific OS
+* extra_options
+    appendended to configure-options  [see cmmi recipe for documentation]
+* mingw  
+    For windows/cygwin use only
+    Set this variable (mingw=true for example) to use mingw compiler
+    Default will search for a mingw installation in /minitageprefix/mingw
+* mingw-path
+    Alternative path for mingw installation
+* noconfigure(-UNAME)
+    do not run ./configure
+* nomake(-UNAME)
+    do not run make
+* noinstall(-UNAME)
+    do not run make install
+* make-options(-UNAME)
+    options to prepent betwenn make and the target (eg MAKE 
+* make-install-append-options(-UNAME)
+    if set, instead of prepending option before target, we will append them at install time
+* make-install-options(-UNAME)
+    options to append after the install targets (eg make install DESDIR=foo)
+* hooks
+
+  A hook is in the form /path/to/hook:CALLABLE::
+
+        myhook=${buildout:directory}/toto.py:foo
+
+  Where we have toto.py::
+
+        def foo(options, buildout):
+            return 'Hourray'
+
+  The complete possible hooks list:
+
+    * pre-unpack-hook
+        hook executed before the unpack dance
+    * post-unpack-hook
+        hook executed after the unpack dance
+    * post-unpack-hook
+        hook executed after the unpack dance
+    * pre-configure-hook
+        hook executed before the configure is run
+    * pre-make-hook
+        hook executed before the first make target is run
+    * post-build-hook
+        hook executed after the build make targets are done
+    * pending-make-install
+        hook executed after the make and before the make install is done.
+    * post-make-hook
+        hook executed after the make install is done
+
+
+Detailled documentation
+-------------------------
+
+Let's create a buildout configuration file.
+
+    >>> rmdir(tempdir)
+    >>> mkdir(tempdir)
+    >>> cd(tempdir)
+    >>> a = [mkdir(d) for d in ('eggs', 'develop-eggs', 'bin', 'src')]
+    >>> install_develop_eggs(['minitage.recipe.cmmi'])
+    >>> install_eggs_from_pathes(['zc.buildout'], sys.path)
+    >>> touch('buildout.cfg')
+    >>> sh('buildout -o bootstrap')
+    buildout -o bootstrap...
+
+This first buildout is classical, trying to build some url.
+
+    >>> touch('buildout.cfg',
+    ... data="""
+    ... [buildout]
+    ... download-cache=${buildout:directory}
+    ... parts =
+    ...     part
+    ... [part]
+    ... recipe=minitage.recipe.cmmi
+    ... """)
+    >>> sh('bin/buildout install part')
+    bin/buildout install part...
+    <BLANKLINE>
+    While:
+      Installing part.
+    <BLANKLINE>
+    A...
+    MinimergeError: URL was not set!
+    <BLANKLINE>
+
+Oups, we forgot the url, we will make a basic distribution package to test our stuff
+Running the buildout with the url bit.
+
+    >>> if not os.path.exists('foo'):
+    ...     mkdir('foo')
+    ... else:
+    ...     rmdir(foo)
+    ...     mkdir('foo')
+    >>> touch('foo/configure', data ="""echo configure $@\n""")
+    >>> sh('chmod +x foo/configure')
+    c...
+    >>> touch('foo/Makefile',
+    ... data = """
+    ... all:
+    ... \t@echo all
+    ...
+    ... install:
+    ... \t@echo install
+    ...
+    ... """)
+    >>> sh('tar cfz  foo.tgz foo')
+    tar cfz  ...
+    <BLANKLINE>
+    >>> data = """
+    ... [buildout]
+    ... download-cache=${buildout:directory}
+    ... parts =
+    ...     part
+    ... [part]
+    ... recipe=minitage.recipe.cmmi
+    ... url = file://${buildout:directory}/foo.tgz
+    ... """
+    >>> touch('buildout.cfg', data=data)
+    >>> sh('bin/buildout -o install part')
+    bin/buildout -o install part...
+    Installing part.
+    minitage.recipe: Download archive
+    minitage.recipe: Downloading file:///tmp/buildout.test/foo.tgz in /tmp/buildout.test/minitage/foo.tgz
+    minitage.recipe: Unpacking in /tmp/buildout.test/__minitage__part__tmp.
+    minitage.recipe: Guessing compilation directory
+    minitage.recipe: Setting path
+    minitage.recipe: Setting pkgconfigpath
+    minitage.recipe: Setting compilation flags
+    minitage.recipe: Setting path
+    minitage.recipe: Running /tmp/buildout.test/__minitage__part__tmp/foo/configure --prefix=/tmp/buildout.test/parts/part
+    configure --prefix=/tmp/buildout.test/parts/part
+    minitage.recipe: Running make
+    all
+    minitage.recipe: Running make  install
+    install
+    minitage.recipe: Completed install...
+
+General usage
+++++++++++++++++++++++
+This first buildout does nothing except print us the hooks calls. We have desactivated the configure and make dance!.
+
+    >>> data = """
+    ... [buildout]
+    ... download-cache=${buildout:directory}
+    ... parts =
+    ...     part
+    ... [part]
+    ... recipe=minitage.recipe.cmmi
+    ... url = file://${buildout:directory}/foo.tgz
+    ... noconfigure=true
+    ... noinstall = true
+    ... nomake = true
+    ... """
+    >>> touch('buildout.cfg', data=data)
+    >>> sh('bin/buildout -o install part')
+    bin/buildout -o install part...
+    Installing part.
+    minitage.recipe: Download archive
+    minitage.recipe: Unpacking in /tmp/buildout.test/__minitage__part__tmp.
+    minitage.recipe: Guessing compilation directory
+    minitage.recipe: Setting path
+    minitage.recipe: Setting pkgconfigpath
+    minitage.recipe: Setting compilation flags
+    minitage.recipe: Setting path
+    minitage.recipe: Completed install...
+
+Applying patches
+++++++++++++++++++++
+This second one aimes to show us the patch capababilities.
+
+    >>> sh('cp foo/Makefile foo/Makefile.old')
+    cp foo/Makefile foo/Makefile.old
+    >>> sh('echo >> foo/Makefile')
+    echo >> foo/Makefile
+    >>> sh('diff -u foo/Makefile.old foo/Makefile > patch')
+    diff -u foo/Makefile.old foo/Makefile > patch
+    >>> data = """
+    ... [buildout]
+    ... download-cache=${buildout:directory}
+    ... parts =
+    ...     part
+    ... [part]
+    ... recipe=minitage.recipe.cmmi
+    ... url = file://${buildout:directory}/foo.tgz
+    ... patches = ${buildout:directory}/patch
+    ... noconfigure=true
+    ... noinstall = true
+    ... nomake = true
+    ... """
+    >>> touch('buildout.cfg', data=data)
+    >>> sh('bin/buildout -o install part')
+    bin/buildout -o install part...
+    minitage.recipe: Running patch -t -Np0 < /tmp/buildout.test/minitage/patch_d96115b00b41e282469f73708c68bdaf/patch
+    can't find file to patch at input line 3
+    Perhaps you used the wrong -p or --strip option?
+    The text leading up to this was:
+    --------------------------
+    |--- foo/Makefile.old ...
+    |+++ foo/Makefile  ...
+    --------------------------
+    No file to patch.  Skipping patch.
+    1 out of 1 hunk ignored
+    <BLANKLINE>
+    While:
+      Installing part.
+    <BLANKLINE>
+    An internal error occured due to a bug in either zc.buildout or in a...
+    SystemError: ('Failed', 'patch -t -Np0 < /tmp/buildout.test/minitage/patch_d96115b00b41e282469f73708c68bdaf/patch')
+    <BLANKLINE>
+
+
+The patch level is wrong !
+
+    >>> data = """
+    ... [buildout]
+    ... download-cache=${buildout:directory}
+    ... parts =
+    ...     part
+    ... [part]
+    ... recipe=minitage.recipe.cmmi
+    ... url = file://${buildout:directory}/foo.tgz
+    ... patches = ${buildout:directory}/patch
+    ... patch-options = -p1
+    ... noconfigure=true
+    ... noinstall = true
+    ... nomake = true
+    ... """
+    >>> touch('buildout.cfg', data=data)
+    >>> sh('bin/buildout -o install part')
+    bin/buildout -o install part...
+    minitage.recipe: Running patch -t -p1 < /tmp/buildout.test/minitage/patch...
+    patching file Makefile
+    minitage.recipe: Completed install...
+
+
+Using hooks
+++++++++++++++
+But now that we have some sort of messy packages, can we not intercale some python to code to arrange things upside down ?
+We have hooks to achieve that. A hook is a python callable which takes at least the options part and the buildout.
+
+    >>> data = """
+    ... [buildout]
+    ... download-cache=${buildout:directory}
+    ... parts =
+    ...     part
+    ... [part]
+    ... recipe=minitage.recipe.cmmi
+    ... url = file://${buildout:directory}/foo.tgz
+    ... pre-unpack-hook    = ${buildout:directory}/hooks.py:pre_unpack_hook
+    ... post-unpack-hook   = ${buildout:directory}/hooks.py:post_unpack_hook
+    ... pre-configure-hook = ${buildout:directory}/hooks.py:pre_configure_hook
+    ... pre-make-hook      = ${buildout:directory}/hooks.py:pre_make_hook
+    ... post-build-hook    = ${buildout:directory}/hooks.py:post_build_hook
+    ... post-make-hook     = ${buildout:directory}/hooks.py:post_make_hook
+    ... """
+    >>> touch('hooks.py', data="""
+    ... def  pre_unpack_hook    (o, b, hook='pre_unpack_hook'):
+    ...     print "%s in %s target %s" % (hook, b['buildout']['directory'], o['location'])
+    ... def  post_unpack_hook   (o, b, hook='post_unpack_hook'):
+    ...     print "%s in %s target %s" % (hook, b['buildout']['directory'], o['location'])
+    ... def  pre_configure_hook (o, b, hook='pre_configure_hook'):
+    ...     print "%s in %s target %s" % (hook, b['buildout']['directory'], o['location'])
+    ... def  pre_make_hook      (o, b, hook='pre_make_hook'):
+    ...     print "%s in %s target %s" % (hook, b['buildout']['directory'], o['location'])
+    ... def  post_build_hook    (o, b, hook='post_build_hook'):
+    ...     print "%s in %s target %s" % (hook, b['buildout']['directory'], o['location'])
+    ... def  post_make_hook     (o, b, hook='post_make_hook'):
+    ...     print "%s in %s target %s" % (hook, b['buildout']['directory'], o['location'])
+    ... """)
+    >>> touch('buildout.cfg', data=data)
+    >>> sh('bin/buildout -o install part')
+    ... bin/buildout -o install part...
+    bin/buildout -o install part...
+    minitage.recipe: Download archive
+    minitage.recipe: Executing pre-unpack-hook
+    pre_unpack_hook in /tmp/buildout.test target /tmp/buildout.test/parts/part...
+    minitage.recipe: Setting path
+    minitage.recipe: Executing post-unpack-hook
+    post_unpack_hook in /tmp/buildout.test target /tmp/buildout.test/parts/part
+    minitage.recipe: Executing pre-configure-hook
+    pre_configure_hook in /tmp/buildout.test target /tmp/buildout.test/parts/part
+    minitage.recipe: Running /tmp/buildout.test/__minitage__part__tmp/foo/configure --prefix=/tmp/buildout.test/parts/part
+    configure --prefix=/tmp/buildout.test/parts/part
+    minitage.recipe: Executing pre-make-hook
+    pre_make_hook in /tmp/buildout.test target /tmp/buildout.test/parts/part
+    minitage.recipe: Running make
+    all
+    minitage.recipe: Executing post-build-hook
+    post_build_hook in /tmp/buildout.test target /tmp/buildout.test/parts/part
+    minitage.recipe: Running make  install
+    install
+    minitage.recipe: Executing post-make-hook
+    post_make_hook in /tmp/buildout.test target /tmp/buildout.test/parts/part
+    minitage.recipe: Completed install...
+
+
+MD5 check
++++++++++++++
+Can we check md5, of course!
+As we have already the foo package in our download cache, we try to download something else.
+
+    >>> shutil.copy2('foo.tgz', 'bar.tgz')
+    >>> data = """
+    ... [buildout]
+    ... download-cache=${buildout:directory}
+    ... parts =
+    ...     part
+    ... [part]
+    ... recipe=minitage.recipe.cmmi
+    ... md5sum = b4d
+    ... url = file://${buildout:directory}/bar.tgz
+    ... """
+    >>> touch('buildout.cfg', data=data)
+    >>> sh('bin/buildout -o install part')
+    bin/buildout -o install part
+    Uninstalling part.
+    Unused options for buildout: 'download-directory'.
+    Installing part.
+    minitage.recipe: Download archive
+    minitage.recipe: Downloading file:///tmp/buildout.test/bar.tgz in /tmp/buildout.test/minitage/bar.tgz
+    <BLANKLINE>
+    While:
+      Installing part.
+    <BLANKLINE>
+    A...
+    MinimergeError: Failed download for file:///tmp/buildout.test/bar.tgz:      MD5SUM mismatch for /tmp/buildout.test/minitage/bar.tgz: Good:b4d != Bad:...
+    <BLANKLINE>
+
+Controlling configure
+++++++++++++++++++++++++++++++
+Giving configure options the two possible ways.
+
+    >>> data = """
+    ... [buildout]
+    ... download-cache=${buildout:directory}
+    ... parts =
+    ...     part
+    ... [part]
+    ... recipe=minitage.recipe.cmmi
+    ... url = file://${buildout:directory}/bar.tgz
+    ... configure-options = foo
+    ... extra_options = bar
+    ... """
+    >>> touch('buildout.cfg', data=data)
+    >>> sh('bin/buildout -o install part')
+    bin/buildout -o install part...
+    minitage.recipe: Running /tmp/buildout.test/__minitage__part__tmp/foo/configure --prefix=/tmp/buildout.test/parts/part foo bar
+    configure --prefix=/tmp/buildout.test/parts/part foo bar ...
+
+Use OS Specific rules
++++++++++++++++++++++++++
+Giving os specific rules.
+
+    >>> data = """
+    ... [buildout]
+    ... download-cache=${buildout:directory}
+    ... parts =
+    ...     part
+    ... [part]
+    ... recipe=minitage.recipe.cmmi
+    ... url = file://${buildout:directory}/foo.tgz
+    ... configure-options-linux = linuxoptions
+    ... """
+    >>> touch('buildout.cfg', data=data)
+    >>> sh('bin/buildout -o install part')
+    b...
+    minitage.recipe: Running /tmp/buildout.test/__minitage__part__tmp/foo/configure --prefix=/tmp/buildout.test/parts/part    linuxoptions...
+
+Or, in the same manner, you can specify OS specific patches: (darwin, linux, freebsd6, freebsd7). sys.platform is your friend :) ('linux', for all linuxes).
+
+    >>> data = """
+    ... [buildout]
+    ... download-cache=${buildout:directory}
+    ... parts =
+    ...     part
+    ... [part]
+    ... recipe=minitage.recipe.cmmi
+    ... patch-options = -p1
+    ... url = file://${buildout:directory}/foo.tgz
+    ... """
+    >>> data += '%s-patches =${buildout:directory}/patch' % uname
+    >>> touch('buildout.cfg', data=data)
+    >>> sh('bin/buildout -o install part')
+    b...
+    minitage.recipe: Running patch -t -p1 < /tmp/buildout.test/minitage/patch...
+
+
+Using underlying minitage environment
+++++++++++++++++++++++++++++++++++++++++++++
+If you are in a minitage, all your minibuild dependencies come automaticly in the env, no need to do the following code :)
+As you can have CFLAGS and so on added to your env., you can specify manual things too, the underlying code is the same.
+The goal is to proove that all is preprended as we would have think.
+We will use some hook to print the relevant parts.
+
+    >>> data = """
+    ... [buildout]
+    ... download-cache=${buildout:directory}
+    ... parts =
+    ...     part
+    ... [part]
+    ... recipe=minitage.recipe.cmmi
+    ... url = file://${buildout:directory}/foo.tgz
+    ... pre-make-hook    = ${buildout:directory}/hooks.py:pre_unpack_hook
+    ... includes-dirs = /foo/include
+    ... rpath = /someruntimespath/lib
+    ... library-dirs = /bar/lib
+    ... pkgconfigpath = /lib/pkgconfig/
+    ... noconfigure = true
+    ... nomake = true
+    ... noinstall = true
+    ... """
+    >>> touch('hooks.py', data="""
+    ... import os
+    ... def  pre_unpack_hook(o, b):
+    ...     flags = [(a, os.environ.get(a, 'not_set')) for a in ('CFLAGS', 'LDFLAGS', 'PKG_CONFIG_PATH', 'LD_RUN_PATH',)]
+    ...     for flag in flags:
+    ...         print flag
+    ... """)
+    >>> touch('buildout.cfg', data=data)
+    >>> sh('bin/buildout -o install part')
+    b...
+    minitage.recipe: Executing pre-make-hook
+    ('CFLAGS', '-I/foo/include')
+    ('LDFLAGS', '-L/bar/lib -Wl,-rpath -Wl,/bar/lib -L/tmp/buildout.test/parts/part/lib -Wl,-rpath -Wl,/tmp/buildout.test/parts/part/lib')
+    ('PKG_CONFIG_PATH', '/lib/pkgconfig/...')
+    ('LD_RUN_PATH', '/someruntimespath/lib:/tmp/buildout.test/parts/part/lib')...
+
+
+Playing with the environment
+++++++++++++++++++++++++++++++++
+You can play also with the environment directly in two ways.
+
+    * Precising a buildout part
+
+        >>> data = """
+        ... [buildout]
+        ... download-cache=${buildout:directory}
+        ... parts =
+        ...     part
+        ... [foo]
+        ... CFLAGS=bar
+        ... [part]
+        ... recipe=minitage.recipe.cmmi
+        ... url = file://${buildout:directory}/foo.tgz
+        ... pre-make-hook    = ${buildout:directory}/hooks.py:pre_unpack_hook
+        ... environment = foo
+        ... noconfigure = true
+        ... nomake = true
+        ... noinstall = true
+        ... """
+        >>> touch('buildout.cfg', data=data)
+        >>> sh('bin/buildout -o install part')
+        bi...
+        ('CFLAGS', 'bar')...
+
+    * Entering an option formed by key=value pair
+
+        >>> data = """
+        ... [buildout]
+        ... download-cache=${buildout:directory}
+        ... parts =
+        ...     part
+        ... [part]
+        ... recipe=minitage.recipe.cmmi
+        ... url = file://${buildout:directory}/foo.tgz
+        ... pre-make-hook    = ${buildout:directory}/hooks.py:pre_unpack_hook
+        ... noconfigure = true
+        ... nomake = true
+        ... noinstall = true
+        ... environment=
+        ...     CFLAGS=myvalue
+        ... """
+        >>> touch('buildout.cfg', data=data)
+        >>> sh('bin/buildout -o install part')
+         bin/buildout -o install part...
+         minitage.recipe: Executing pre-make-hook
+         ('CFLAGS', 'myvalue')...
+
+Autogen can be your friend
++++++++++++++++++++++++++++++
+It is possible to autogenerate the configure files.
+
+        >>> data = """
+        ... [buildout]
+        ... download-cache=${buildout:directory}
+        ... parts =
+        ...     part
+        ... [part]
+        ... recipe=minitage.recipe.cmmi
+        ... url = file://${buildout:directory}/foo.tgz
+        ... noconfigure = true
+        ... nomake = true
+        ... noinstall = true
+        ... autogen = configure
+        ... """
+        >>> touch('buildout.cfg', data=data)
+        >>> sh('bin/buildout -o install part')
+        bin/buildout -o install part...
+        minitage.recipe: Auto generating configure files
+        minitage.recipe: Running /tmp/buildout.test/__minitage__part__tmp/foo/configure
+        configure...
+
+shared builds
+++++++++++++++++++++
+Handling shared mode as a backward compatibility with zc.recipe.cmmi.
+
+    >>> data = """
+    ... [buildout]
+    ... download-cache=${buildout:directory}
+    ... parts =
+    ...     part
+    ... [part]
+    ... recipe=minitage.recipe.cmmi
+    ... url = file://${buildout:directory}/foo.tgz
+    ... shared = true
+    ... """
+    >>> touch('buildout.cfg', data=data)
+    >>> sh('bin/buildout -o install part')
+    bin/buildout -o install part...
+    minitage.recipe: Running /tmp/buildout.test/__minitage__part__tmp/foo/configure --prefix=/tmp/buildout.test/minitage/cmmi/...
+

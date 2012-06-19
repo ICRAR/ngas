@@ -1,0 +1,8 @@
+#!/usr/local/bin/bash
+
+export PYTHONPATH=/home/jknudstr/dev
+export LD_LIBRARY_PATH=/opsw/util/sybase/lib
+
+/opsw/util/python/bin/python /home/jknudstr/dev/ngasUtils/src/ngasCheckMissingFiles.py /home/jknudstr/dev/ngasUtils/src/ngasExemptFileList 
+
+# --- oOo ---

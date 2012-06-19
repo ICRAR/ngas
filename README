@@ -1,0 +1,81 @@
+########################################################################
+# 
+# NGAS Buildout
+#
+# By Frank Yi TAN (francis.tine@gmail.com)
+# Under supervision of Prof. Andreas Wicenec
+# Sponsored by iVEC & ICRAR
+#
+# build V0.9 - alpha 1
+#
+# Caution: This version is for developers only. 
+#	   It is not ready for users yet.
+#	   See known issues for detail.
+########################################################################
+
+-----------------------------
+Installation Instructions
+-----------------------------
+1. Pre-requisites 
+Before installation, please make sure the following packages are installed. You can use apt-get to install them.
+*	gcc
+*	python2.6-dev
+*	virtualenv-2.6
+*	Berkeley-db
+*	autoconf
+*	libtool
+*	sendmail
+*       java-devel
+*       gdbm-devel
+*       sqlite-devel
+*       readline-devel
+*       zlib-devel
+
+2. Installation Procedure
+* Extract ngas_buildout.tar.gz or checkout from a repository 
+	$tar -xvf ngas_buildout.tar.gz
+or
+	$svn checkout <url>
+* Set up the virtual environment (sandbox) for ngas_buildout
+	$virtualenv-2.6 --no-site-packages ngas_buildout
+	$cd ngas_buildout
+	$bin/easy_install zc.buildout
+	$bin/buildout init
+* Bootstrap buildout
+	$bin/python2.6 bootstrap.py
+* Activate the sandbox
+        $source bin/activate
+* Build
+     Before running buildout please make sure that the first line is actually referring to bin/python2.6 directly
+	$bin/buildout
+* extract NGAS.tar, for example, in $HOME directory and set the paths for it in cfg/NgamsCfg.SQLite.mini.xml configuration file
+  (essentially you have to replace all occurances of /home/frank with your $HOME)
+
+3. How to run the programs
+* to start NGAS Server (e.g. using Sqlite, verbose mode 4)
+	$NGAS_Server -cfg cfg/NgamsCfg.SQLite.mini.xml -autoOnline -v 4
+* to start NGAS C Client (e.g. Archive command)
+	$ngamsCClient -host localhost -port 7777 -cmd ARCHIVE -fileUri ~/NGAS/log/LogFile.nglog -mimeType application/octet-stream
+if localhost doesn't work, try the name you gave to your computer, or try 127.0.1.1
+It should report as follows:
+----------------------------------------------------------------------------------------------
+Host:           icrar-dirp01
+Port:           7777
+Command:        ARCHIVE
+
+Date:           2010-12-10T16:58:40.759
+Error Code:     0
+Host ID:        icrar-dirp01
+Message:        Successfully handled Archive Push Request for data file with URI: LogFile.nglog
+Status:         SUCCESS
+State:          ONLINE
+Sub-State:      IDLE
+NG/AMS Version: v4.1-ALMA/2010-04-14T08:00:00
+----------------------------------------------------------------------------------------------
+* to run system test
+	$cd /.../installation/directory/src/ngamsTest/
+	$NGASTests -cfg ../../cfg/NgamsCfg.SQLite.mini.xml -NotifEmail <your.preferred@email.here>
+
+4. Known Issues
+* location of reference files are defined pointing to the previous build location. This may affect the some of the system tests including ngamsArchiveCmdTest, ngamsCClientTest, ngamsCloneCmdTest, ngamsDbSnapShotTest, ngamsIdleSuspensionTest, ngamsPClientTest etc.
+* pcfitsio is imported in /.../src/ngamsTest/ngamsTestLib.py as a python module, yet the new system hasn't build pcfitsio as an egg that can be imported within the program. This may result errors in system tests.

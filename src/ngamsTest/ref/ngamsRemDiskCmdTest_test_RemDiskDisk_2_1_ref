@@ -1,0 +1,6 @@
+Status:
+Status:                             FAILURE
+Message:                            NGAMS_WA_FILE_COPIES:4046:WARNING: One or more files requested to be deleted are not available in at least 3 independent copies within this NGAS system. Cannot remove item: tmp-ngamsTest-NGAS-FitsStorage1-Main-1/None/None
+State:                              ONLINE
+SubState:                           IDLE
+

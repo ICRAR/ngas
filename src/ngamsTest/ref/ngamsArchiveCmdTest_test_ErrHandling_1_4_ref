@@ -1,0 +1,6 @@
+Status:
+Status:                             FAILURE
+Message:                            NGAMS_ER_UNKNOWN_MIME_TYPE1:4014:ERROR: Could not determine mime-type for data file with URI: UnknownMimeType.stif. Check NG/AMS Configuration.
+State:                              ONLINE
+SubState:                           IDLE
+

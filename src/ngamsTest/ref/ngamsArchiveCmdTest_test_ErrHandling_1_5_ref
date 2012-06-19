@@ -1,0 +1,6 @@
+Status:
+Status:                             FAILURE
+Message:                            NGAMS_ER_CMD_EXEC:4036:ERROR: Problem(s) encountered executing command: ARCHIVE. Error: Missing parameter: filename
+State:                              ONLINE
+SubState:                           IDLE
+

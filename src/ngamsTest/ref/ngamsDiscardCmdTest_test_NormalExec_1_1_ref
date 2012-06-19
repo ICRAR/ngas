@@ -1,0 +1,6 @@
+Status:
+Status:                             SUCCESS
+Message:                            NGAMS_INFO_DISCARD_GRANTED:4065:INFO: File discard request granted. File: Disk ID: tmp-ngamsTest-NGAS-FitsStorage1-Main-1/File ID: TEST.2001-05-08T15:25:00.123/File Version: 1. NGAS Node ___LOCAL_HOST___:8888.
+State:                              ONLINE
+SubState:                           IDLE
+

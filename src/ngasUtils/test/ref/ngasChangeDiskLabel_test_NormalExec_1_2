@@ -1,0 +1,24 @@
+
+DISK LABEL CHANGE REPORT:
+
+Changed Disk Label from M-000002 to test_NormalExec_1-M-000002 - new disk status:
+
+DiskStatus:
+DiskId:                             tmp-ngamsTest-NGAS-FitsStorage2-Main-3
+Archive:                            ESO-ARCHIVE
+Type:                               TEST-TYPE
+Manufacturer:                       TEST-MANUFACTURER
+LogicalName:                        test_NormalExec_1-M-000002
+HostId:                             localhost
+SlotId:                             3
+Mounted:                            1
+MountPoint:                         /tmp/ngamsTest/NGAS/FitsStorage2-Main-3
+NumberOfFiles:                      0
+BytesStored:                        0
+Completed:                          0
+Checksum:                           
+TotalDiskWriteTime:                 0.0
+LastCheck:                          
+
+
+

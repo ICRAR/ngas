@@ -1,0 +1,22 @@
+
+DISK RETIREMENT STATUS REPORT - tmp-ngamsTest-NGAS-FitsStorage1-Main-1:
+
+Information for disk/files concerned.
+
+NGAS Host:  localhost
+Disk ID:    tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+
+Disk ID                          File ID                          File Version
+-------------------------------- -------------------------------- ------------
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1 TEST.2001-05-08T15:25:00.123     1           
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1 TEST.2001-05-08T15:25:00.123     2           
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1 TEST.2001-05-08T15:25:00.123     3           
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1 TEST.2001-05-08T15:25:00.123     4           
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1 TEST.2001-05-08T15:25:00.123     5           
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1 TEST.2001-05-08T15:25:00.123     6           
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1 TEST.2001-05-08T15:25:00.123     7           
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1 TEST.2001-05-08T15:25:00.123     8           
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1 TEST.2001-05-08T15:25:00.123     9           
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1 TEST.2001-05-08T15:25:00.123     10          
+------------------------------------------------------------------------------
+

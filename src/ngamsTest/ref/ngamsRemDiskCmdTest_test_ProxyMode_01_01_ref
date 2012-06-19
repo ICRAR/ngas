@@ -1,0 +1,6 @@
+Status:
+Status:                             FAILURE
+Message:                            Disk referred to by Disk ID: tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1 seems not to be mounted in this unit: ___LOCAL_HOST___ -- rejecting REMDISK Command
+State:                              ONLINE
+SubState:                           IDLE
+

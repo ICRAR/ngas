@@ -1,0 +1,85 @@
+#
+#    ALMA - Atacama Large Millimiter Array
+#    (c) European Southern Observatory, 2002
+#    Copyright by ESO (in the framework of the ALMA collaboration),
+#    All rights reserved
+#
+#    This library is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU Lesser General Public
+#    License as published by the Free Software Foundation; either
+#    version 2.1 of the License, or (at your option) any later version.
+#
+#    This library is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#    Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public
+#    License along with this library; if not, write to the Free Software
+#    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+#    MA 02111-1307  USA
+#
+
+#******************************************************************************
+#
+# "@(#) $Id: ngamsStatusCmd.doc,v 1.1 2004/03/30 09:11:32 ngasmgr Exp $"
+#
+# Who       When        What
+# --------  ----------  -------------------------------------------------------
+# jknudstr  22/04/2003  Created
+#
+
+# Documentation for the STATUS Command.
+
+STATUS - Command to query status of the system or components of it.
+
+Parameters:
+
+No Parameters:
+  Get basic status (State/Sub-State) of the contacted NGAS Node.
+
+db_time:
+  Get the current value of the DB I/O timer, measuring the time spent for
+  DB queries.
+
+db_time_reset:
+  Reset the DB I/O timer; see parameter db_time.
+
+configuration_file: 
+  Get the name of the configuration file/DB configuration in use by the
+  server.
+
+disk_id=(Disk ID): 
+  Get information about disk from the NGAS DB.
+
+dump_object_info=(Target Filename):
+  Dump information about all objects instantiated in the  server.
+
+file_access=(File ID)[&file_version=(Version)][&disk_id=(Disk ID)]:
+  Check if the file referenced by its File ID possibly together with
+  Disk ID/File Version is accessible by the server.
+
+file_id=(File ID)[&file_version=(Version)]: 
+  Get information about a specific file from the NGAS DB.
+
+file_list:
+  Get information about files hosted on the contacted system. Is returned as
+  an NGAS File List XML document. See also parameter from_ingestion_date.
+
+flush_log:
+  Flush the internal log buffer so that all entries are written in the
+  log files associated to the server.
+
+from_ingestion_date:
+  Used together with the file_list parameter to delimit the number of files
+  concered by the status request. I.e., only files ingested after the given
+  time, will be considered. Should be given as an ISO8601 time stamp.
+
+host_id=(Host ID):
+  Get basic status (State/Sub-State) of the referenced NGAS Node. The 
+  contacted node will act as proxy for the referenced node.
+
+request_id=(Request ID)[&host_id=(Host ID)]:
+  Query status about a given Request referred to by the request ID.
+
+# EOF

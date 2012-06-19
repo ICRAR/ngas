@@ -1,0 +1,8 @@
+setup.cfg
+setup.py
+nonPyInstaller.egg-info/PKG-INFO
+nonPyInstaller.egg-info/SOURCES.txt
+nonPyInstaller.egg-info/dependency_links.txt
+nonPyInstaller.egg-info/entry_points.txt
+nonPyInstaller.egg-info/top_level.txt
+nonPyInstaller.egg-info/zip-safe

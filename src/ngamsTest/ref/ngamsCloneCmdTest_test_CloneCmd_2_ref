@@ -1,0 +1,33 @@
+Content-type: text/plain
+Content-disposition: attachment; filename=CloneStatusReport-tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+
+CLONE STATUS REPORT:
+
+==Summary:
+
+Disk ID:                    tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+File ID:                    -----
+File Version:               -----
+Total Number of Files:      10
+Number of Cloned Files:     10
+Number of Failed Files:     0
+
+==File List:
+
+Source File                                                            Target File                                                            Status 
+---------------------------------------------------------------------- ---------------------------------------------------------------------- -------
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/1  tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/1  SUCCESS
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/10 tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/10 SUCCESS
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/2  tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/2  SUCCESS
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/3  tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/3  SUCCESS
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/4  tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/4  SUCCESS
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/5  tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/5  SUCCESS
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/6  tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/6  SUCCESS
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/7  tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/7  SUCCESS
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/8  tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/8  SUCCESS
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/9  tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/9  SUCCESS
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+
+==END
+
+

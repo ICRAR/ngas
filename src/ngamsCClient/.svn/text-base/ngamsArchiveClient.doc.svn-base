@@ -1,0 +1,268 @@
+
+NAME
+ngamsArchiveClient - Archive Client for the NGAS Archive System
+
+SYNOPSIS
+ngamsArchiveClient -host <Host> -port <Port> | -servers '<Host>:<Port>,...'
+                   -rootDir <Dir> [-mimeType <Mime-type>]
+                   [-archivePar '<Par>=<Val>']
+                   [-auth <Access Key>] [-pollTime <Poll Period>]
+                   [-checksum <Plug-In>] [-cleanUpTimeOut <Timeout>]
+                   [-streams <No>] [-logLevel <Level>] [-logRotate <Time>]
+                   [-logHistory <Days>] [-archiveLog]
+                   [-v <Level] [-license] [-version]
+
+DESCRIPTION
+The NG/AMS Archive Client is a simple application, which can be used to
+archive files into a remote NGAS Archive System in a safe and reliable 
+manner. 
+
+Since the communication with NGAS takes place via HTTP, it is fairly easy 
+to set up such an archiving scenario, also if the data provider is located 
+at a geographically different location than the NGAS Archive. It must of 
+course be possible to build up an HTTP connection (TCP/IP socket connection) 
+between the two nodes involved.
+
+Archive Queue:
+The archive client is running as a small daemon, which is polling an input
+directory for files to be archived according to the polling time specified
+with the command line parameter '-pollTime'. Files to be archived are copied
+to this 'Archive Queue Directory'. The location of this is:
+
+  <Root Dir>/NGAMS_ARCHIVE_CLIENT/queue
+
+It is also possible to create a link from the original file to the queue
+directory if it is not desirable to copy the file.
+
+NOTE: IF FILES ARE COPIED INTO THE QUEUE DIRECTORY THIS SHOULD BE DONE BY
+CREATING THE FILE UNDER A TEMPORARY NAME (STARTING WITH DOT) AND THEN 
+RENAMING IT WHEN IT HAS BEEN COPIED OVER COMPLETELY.
+
+If a file cannot be archived, e.g. if it is not possible to connect to the
+remote NGAS System, the archive client will retry periodically to archive it
+with the given poll time until it succeeds.
+
+Archived Files:
+When a file in the Archive Queue Directory has been archived, it is moved 
+to the 'Archived Files Directory'. The path of this is:
+
+  <Root Dir>/NGAMS_ARCHIVE_CLIENT/archived
+
+The archived files will be kept in this directory until the timeout
+specified by the command line parameter '-cleanUpTimeout <Timeout>' (timeout
+in seconds) expires for the file.
+
+For each file archived, a file containing the status of the Archive Request 
+from the remote NGAS System is created. This is named:
+ 
+  <Timestamp>___<Filename>___STATUS.xml
+
+The <Filename> is the name of the archived file as it was found in the Archive
+Queue Directory. The request status file contains the XML status document sent
+back by the remote NG/AMS Server. Before removing any file from the Archived 
+Files Directory, the archive client contacts the remote NG/AMS Server and 
+checks that the file is available in the NGAS Archive using the NG/AMS
+'CHECKFILE' command. This query is based on the information about the file
+contained in the XML status document.
+
+Bad Files:
+If files are rejected by the remote NG/AMS Server, if they are inconsistent,
+these files are classified as 'Bad Files' and are moved to the Bad Files
+Directory. The location of this is: 
+
+  <Root Dir>/NGAMS_ARCHIVE_CLIENT/bad
+
+The server will not try to clean up files in the Bad Files Directory. This
+must be done by the operators of the NG/AMS Archive Client. Also in 
+connection with Bad Files, the XML status from the remote NGAS System will 
+be stored into a file in the Bad Files Directory with a name of the format:
+
+  <Timestamp>___<Filename>___STATUS.xml
+
+By studying the error message in the XML status document, it is possible
+to get an indication of the problem encountered for each file.
+
+Logging:
+If a Log Level higher than 0 is specified, the NG/AMS Archive Client will log
+information about the actions carried out into the log file:
+
+  <Root Dir>/NGAMS_ARCHIVE_CLIENT/log/ngamsArchiveClient.log
+
+The log file is rotated according to the timestamp given in connection
+with the parameter '-logRotate <Time>'. The time given is the absolute time 
+in seconds since midnight for when the log rotation should be done. The
+rotated log files are kept for a certain amount of days given by the command
+line parameter '-logHistory <Days>'. Log files are only rotated once every 24
+hours. Rotated log files older than the specified number of days, are deleted.
+The name of the rotated log files is of the form:
+
+  <Root Dir>/NGAMS_ARCHIVE_CLIENT/log/LOG-ROTATE_<Time>_ngamsArchiveClient.log
+
+It is possible to archive the rotated log files into the remote NGAS Archive.
+This is done by means of the parameter '-archiveLog'. After rotating a log
+file, the NG/AMS Archive Client will archive the log file as it was a normal
+file to be archived. The rotated and archived log file will get an entry in
+the Archived Files Directory (a link to the original, rotated log file).
+
+Checksum Checking:
+It is possible to make the tool calculate a checksum of the files to be
+archived before transferring them across to the NGAS Archive. This is done
+using the '-checksum' command line parameter. Together with this parameter
+a Checksum Plug-In must be specified. This is a small tool that can be 
+executed on the shell, giving the file to be archived as input parameter.
+In case of success, the generated checksum must be written on stdout. In case
+of errors, the tool exits with 1 and a message with the following format is 
+written on stderr:
+
+  ERROR: <Error Message>
+
+Together with the NG/AMS Archive Client, a Checksum Plug-In is delivered.
+This is named 'ngamsCrc32'. It calculates the CRC-32 checksum of the file.
+This Checksum Plug-In is compatible with the CRC-32 Checksum Plug-In 
+used internally by NG/AMS ('ngamsGenCrc32').
+
+Configuration/Installation:
+The NG/AMS Archive Client does not require much configuration. The steps to
+carry out to install this application are:
+
+1. Compile the NG/AMS Archive Client if delivered in the form of source files:
+
+  % cd ngams/ngamsCClient
+  % make clean all
+
+2. Install the NG/AMS Archive Client ('ngamsArchiveClient') in a directory 
+where it can be executed as a shell command. Probably set up the OS init 
+scripts to launch the archive client automatically when the machine boots up.
+Also install the Checksum Plug-In ('ngamsCrc32') if the checksum checking
+feature is used.
+
+3. Determine a proper location for the NG/AMS Archive Client Root Directory.
+This should be big enough to hold the amount of data that might be buffered
+here at any time. This directory must be writable for the archive client.
+Note, the NG/AMS Archive Client will create the needed directory structure
+automatically, the first time it is started up. This structure is:
+
+  <Root Dir>/NGAMS_ARCHIVE_CLIENT/archived
+                                 /bad
+                                 /log
+                                 /queue
+
+4. Determine proper values for the other input parameters (Archive Queue
+Polling Time, Checksum Check, Archived Files Directory Clean Up Timeout, 
+number of possible parallel streams, log conditions).
+
+5. Launch the NG/AMS Archive Client (possibly by rebooting the host).
+
+6. Set up the data provider applications to deliver the files in the
+Archive Queue Directory according to the requirements given above.
+
+7. Check the log output. In case of problem it is possible to temporarily 
+start the server with a higher Log Level to get more information about the 
+problem.
+
+
+The command line parameters are:
+
+-host <Host>               Host ID (or IP address) of the remote NG/AMS
+                           Server.
+
+-port <Port>               Port number used by the NG/AMS Server to serve
+                           client requests.
+
+-servers ...               Comma separated list of server nodes + ports.
+
+-rootDir <Dir>             Root directory under which the NG/AMS Archive
+                           Client will create the Archive Queue, Archived
+                           Files, Bad Files and Log Files Directories.
+
+-mimeType <Mime-type>      Mime-type to submit with the archive request.
+                           Note, all data will be archived with this type.
+
+-archivePar '<Par>=<Val>'  With this option it is possible to transfer 
+                           parameter/value sets, which will be submitted
+                           with the ARCHIVE Command sent to the remote NGAS
+                           system. An example is:
+
+                             ... -archivePar 'no_versioning=0'
+
+-auth <Access Key>         Access code needed to have a request authorized
+                           in case authorization is used on the server side.
+                           The responsibles of the server side must provide
+                           the access code.
+
+-pollTime <Poll Period>    Time in seconds (floating point) with which the 
+                           NG/AMS Archive Client should poll the Archive 
+                           Queue. Default value is 30.0s.
+
+-checksum <Plug-In>        If specified, a checksum (CRC-32) will be generated 
+                           and will be added in the HTTP headers of the
+                           Archive Request sent to the remote NGAS System.
+                           This is used at the server side to verify that the
+                           file has been transferred correctly. The Checksum
+                           Plug-In specified, must be a utility that can be
+                           executed on the command line. See description above.
+
+-cleanUpTimeOut <Timeout>  Period of time (given in seconds) in which the
+                           successfully archived files in the Archived File 
+                           Directory should be kept. Default value is 7 days
+                           (604800s).
+
+-streams <No>              Number of parallel streams allowed. It will make 
+                           sense to allow two streams to make it possible to 
+                           process data on the server side, while the next
+                           file is being transferred. Default is 1 stream. If
+                           more is specified, the Archive Requests will be
+                           scheduled such that the next Archive Request is 
+                           scheduled at the average time to handle an Archive 
+                           Request divided by the number of streams allowed.
+
+-v <Level>                 Verbose output. Default no output is given. A level
+                           in the range from 0 to 5 can be specified to produce
+                           more (or less) output. Default Verbose Logging is
+                           disabled.
+
+-logLevel <Level>          Level with which to log into the Log File. If not
+                           given, a level of 3 is the default value.
+
+-logRotate <Time>          Absolute time in seconds since midnight, when the
+                           log file should be rotated on a daily basis.
+                           Default value is 12:00 (43200s).
+
+-logHistory <Days>         The number of days that rotated log files should 
+                           be kept before they are deleted. Default value
+                           is 30 days. 
+
+-archiveLog                Archive the log file into the NGAS system specified.
+                           This requires that the NGAS Archive is configured
+                           to handle the log files produced by the NG/AMS
+                           Archive Client.
+
+AUTHOR
+The NG/AMS Archive Client is developed and maintained within the framework
+of the NGAS Project.
+
+REPORTING BUGS/PROBLEMS
+Report bugs to ngast@eso.org.
+
+CAUTIONS
+Normally no human manipulation of the files in the Archived Files Directory
+or Log Files Directory should be necessary. Files in these directories are
+handled automatically by the NG/AMS Archive Client.
+
+Files in the Bad Files Directory must be handled manually. If it is
+tried to archive a larger amount of Bad Files, this directory may be filled
+with these files leading to saturation of the file system/partition hosting
+the Root Directory of the NG/AMS Archive Client. Check therefore on a regular
+basis the contents of the Bad Files Directory.
+
+Note, if the server side has Back-Log Buffering enabled, it is necessary
+to delete archived files by hand. Before doing this, it should be checked
+if the given file has been archived. It is recomendable to disable 
+Back-Log Buffering on the server side for this reason.
+
+
+COPYRIGHT
+(c) NGAS Project - http://www.eso.org/projects/ngas
+
+SEE ALSO
+ngamsCClient, NG/AMS C-API

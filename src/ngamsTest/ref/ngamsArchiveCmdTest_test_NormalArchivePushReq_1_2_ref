@@ -1,0 +1,20 @@
+Status:
+Status:                             
+Message:                            Disk status file
+State:                              
+SubState:                           
+DiskStatus:
+DiskId:                             tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+Archive:                            ESO-ARCHIVE
+Type:                               TEST-TYPE
+Manufacturer:                       TEST-MANUFACTURER
+LogicalName:                        FITS-M-000001
+SlotId:                             
+Mounted:                            -1
+MountPoint:                         
+NumberOfFiles:                      1
+BytesStored:                        53546
+Completed:                          1
+Checksum:                           
+LastCheck:                          
+

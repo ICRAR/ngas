@@ -1,0 +1,2 @@
+# Example crontab - please adjust (0 17)
+0 17 * * * /home/ngasmgr/bin/ngasHandleNgamsLogFile.py -host w2p2nbu -port 7777 -l /home/ngasmgr/ngams/log/LogFile.nglog -wd /home/ngasmgr/ngams/log/ngasHandleNgamsLogFile

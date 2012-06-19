@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE NgamsCfg SYSTEM "ngamsCfg.dtd">
+
+<!-- 
+  E.S.O.
+
+  Who        When        What
+  ********   **********  ***************************************************
+  jknudstr   2007-03-16  Created
+  **************************************************************************
+  Configuration file specifying Sybase (DEVSRV/ngas/ngastst2) as DB.
+  -->
+
+<NgamsCfg>
+
+  <Db AutoRecover="1"
+      Interface="ngamsSybase" 
+      Name="ngastst2" 
+      Password="bmdhc19wdw==" 
+      Server="DEVSRV" 
+      Snapshot="1" 
+      User="ngas"
+      Verify="1"/>
+
+</NgamsCfg>

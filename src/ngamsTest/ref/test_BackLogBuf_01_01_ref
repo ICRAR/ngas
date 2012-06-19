@@ -1,0 +1,6 @@
+Status:
+Status:                             FAILURE
+Message:                            NGAMS_ER_ARCHIVE_PUSH_REQ:4011:ERROR: Problem occurred handling Archive Push Request! URI: SmallFile.fits. Error: NGAMS_WA_BUF_DATA:4022:WARNING: Problems occurred while handling file with URI: SmallFile.fits. Data will be Back-Log Buffered, and attempted archived at a later stage. Previous error message: NGAMS_ER_DAPI:4001:ERROR: NGAMS_ER_DB_COM:2002:ERROR: Problems communicating with the DB: TEST EXCEPTION..
+State:                              ONLINE
+SubState:                           IDLE
+

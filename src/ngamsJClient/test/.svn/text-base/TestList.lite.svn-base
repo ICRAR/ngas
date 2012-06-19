@@ -1,0 +1,3 @@
+PROLOGUE echo ""
+testscript
+EPILOGUE echo ""

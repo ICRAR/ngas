@@ -1,0 +1,7 @@
+Status:
+HostId:                             %s:8001
+Status:                             SUCCESS
+Message:                            Successfully handled command STATUS
+State:                              ONLINE
+SubState:                           IDLE
+

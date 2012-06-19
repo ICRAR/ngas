@@ -1,0 +1,18 @@
+"""
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE NgamsCfg SYSTEM "ngamsCfg.dtd">
+
+<NgamsCfg>
+
+  <SubscriptionDef Id="SubscriptionDef-OFF" 
+                   AutoUnsubscribe="1" 
+                   BackLogExpTime="28T00:00:00" 
+                   Enable="0" 
+                   SuspensionTime="0T00:03:00">
+  </SubscriptionDef>
+
+</NgamsCfg>
+
+"""
+
+# ---oOo---

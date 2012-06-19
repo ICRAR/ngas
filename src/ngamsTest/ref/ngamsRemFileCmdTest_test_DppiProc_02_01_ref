@@ -1,0 +1,38 @@
+SIMPLE  =                    T          / Standard FITS format ****             
+BITPIX  =                    8          / Bits per pixel                        
+NAXIS   =                    2          / Number of dimensions                  
+NAXIS1  =                  256          / Pixels per row                        
+NAXIS2  =                  256          / Pixels per col                        
+BSCALE  =                  1.0          / pixel value scale factor              
+BZERO   =                  0.0          / pixel value offset                    
+ECLIPSE =                    1          / File Processed with Eclipse           
+ARCFILE = 'TEST.2001-05-08T15:25:00.123' / ARCFILE                              
+DATAMIN =            87.000000          / Minimum pixel value                   
+DATAMAX =           160.000000          / Maximum pixel value                   
+DATAMEAN=           123.048477          / Mean Pixel Value                      
+DATARMS =             8.981074          / RMS of Pixel Values                   
+DATAMED =           123.000000          / Median Pixel Value                    
+CHECKSUM= '3ZTNAZSN3ZSNAZSN'            / ASCII 1's complement checksum         
+COMMENT FTU-1.44/2001-06-09T14:24:45/                                           
+HISTORY processed by eclipse version 3.6.1                                      
+HISTORY FTU-1.44/2001-06-09/ADD: DATAMIN                                        
+HISTORY FTU-1.44/2001-06-09/ADD: DATAMAX                                        
+HISTORY FTU-1.44/2001-06-09/ADD: DATAMEAN                                       
+HISTORY FTU-1.44/2001-06-09/ADD: DATARMS                                        
+HISTORY FTU-1.44/2001-06-09/ADD: DATAMED                                        
+END                                                                             
+
+
+Configuration Parameters:
+TAG=test_DppiProc_02
+TARGET=BUFFER
+
+Parameters Transferred:
+file_id=TEST.2001-05-08T15:25:00.123
+initiator=RETRIEVE
+processing=ngamsTestDppi1
+test_case=test_DppiProc_02
+test_suite=ngamsRetrieveCmdTest
+time_out=-1
+
+EOF

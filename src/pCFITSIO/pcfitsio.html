@@ -1,0 +1,289 @@
+<html>
+<body>
+<h1>pCFITSIO 0.99.9</h1>
+
+	The following document contains the list of <a href="http://heasarc.gsfc.nasa.gov/docs/software/fitsio/fitsio.html">CFITSIO</A> 
+	functions that are available to Python with the help of the module pCFITSIO. The pCFITSIO module was generated using 
+	<a href="http://www.swig.org/">SWIG </A>. In general, functions which in the original C functions changed one or more 
+	arguments return these in a python list. Data images (binary data) is returned as a 
+	<a href="http://www.stsci.edu/resources/software_hardware/numarray">numarray</A> Python Array.<p>
+pCFITSIO was successfuly compiled and used on Solaris 2.5.1, Linux Red Hat 5.x and 6.x, MacOSX 10.3.x and OpenStep 4.2.<p>
+
+<h2>CFITSIO Helper functions</h2>
+<li><b>
+fits_get_version()</b><BR>
+Returns the version of the CFITSIO module 
+<li><b>
+fits_get_errstatus(input)</b><BR>
+Returns the text description corresponding to the given CFITSIO error 
+<li><b>
+fits_write_errmsg(err_message)</b><BR>
+Write the given error message into the CFITSIO error stack 
+<li><b>
+fits_read_errmsg()</b><BR>
+Returns a list containg the latest integer error and the corresponding text message from the CFITSIO error stack 
+<li><b>
+fits_clear_errmsg()</b><BR>
+Clears the CFITSIO error message stack 
+
+<h2>File Access Functions</h2>
+
+<li><b>fits_open_file(filename,mode)</b><br>
+        Returns a FITSfile pointer to an existing FITS file Set mode = 0
+        for READONLY Set mode = 1 for READWRITE 
+
+<li><b>fits_reopen_file(fptr)</b><br>
+        Returns a new FITSfile pointer to an already opened FITS file 
+
+<li><b>fits_create_file(filename)</b><br>
+        Initializes a new FITS file with name filename and returns a FITSfile
+        pointer No header nor extension is created 
+
+<li><b>fits_create_template(filename,template)</b><br>
+        Returns a new FITSfile pointer after creating a new FITS file using
+        a template FITS file 
+
+<li><b>fits_close_file(fptr)</b><br>
+        Close an already opened FITS file pointed to by the given FITSfile
+        pointer 
+
+<li><b>fits_delete_file(fptr)</b><br>
+        Deletes the FITS file pointed to by the given FITSfile pointer 
+
+<li><b>fits_file_name(fptr)</b><br>
+        Returns the name of the FITS file pointed to by the given FITSfile
+        pointer 
+
+<li><b>fits_file_mode(fptr)</b><br>
+        Returns the access mode of the FITS file pointed to by the given
+        FITSfile pointer = 0 for READONLY = 1 for READWRITE 
+
+
+<h2>FITS Header Functions</h2>
+
+<li><b>fits_get_hdrspace(fptr)</b><br>
+        Returns a PyList containing the number of existing keywords and
+        the number of free cards in the current FITS extension 
+
+<li><b>fits_get_hdrpos(fptr)</b><br>
+        Returns a PyList containing the total number of records in the header, and the current position.
+
+<li><b>fits_get_hdu_num(fptr)</b><br>
+        Returns the number of extension in this FITS file 
+
+<li><b>fits_get_hdu_type(fptr)</b><br>
+        Returns the type of the current extension. Numbering scheme in CFITSIO manual.
+
+<li><b>fits_get_hduaddr(fptr)</b><br>
+        Returns a PyList containing the beginning address and the ending
+        address of the current extenstion's header, and the total size of
+        this FITS file. 
+
+<li><b>fits_movabs_hdu(fptr,hdunum)</b><br>
+        Moves to a given (absolute number) extension in the FITS file In
+        this case, the first extension is numbered 1 
+
+<li><b>fits_movrel_hdu(fptr,hdumov)</b><br>
+        Moves to a given (relatively to current position) extension in the
+        FITS file i.e. +1 moves 1 forward, -2 moves backward 2 
+
+<li><b>fits_movnam_hdu(fptr,exttype,hduname,hduvers)</b><br>
+        Moves to the given (by name) extension 
+
+<li><b>fits_get_num_hdus(fptr)</b><br>
+        Returns the number of extensions in the FITS file 
+
+<li><b>fits_create_hdu(fptr)</b><br>
+	Creates a new HDU at the end of the current FITS file.
+
+<li><b>fits_delete_hdu(fptr)</b><br>
+        Deletes the current extension from the FITS file. Returns the type
+        of the new current extension (which remains).
+
+<li><b>fits_copy_hdu(infptr,outfptr,morekeys)</b><br>
+        Copy the current extension associated with infptr to the end of
+        the file associated with outfptr Space for a number of additional
+        keys can be reserved by setting morekeys to a non-zero value 
+
+
+<h2>FITS Keyword Functions</h2>
+
+<li><b>fits_read_keyword(fptr,keyname)</b><br>
+        Returns a PyList containing the (text) value and the comment field.
+
+<li><b>fits_read_key_log(fptr,keyname)</b><br>
+        Reads a logical valued keyword. Returns a PyList containing 0 or 1 (false/true) and the comment field.
+
+<li><b>fits_read_key_dbl(fptr,keyname)</b><br>
+        Reads a double valued keyword. Returns a PyList containing the value and the comment field.
+
+<li><b>fits_read_key_lng(fptr,keyname)</b><br>
+        Reads a long valued keyword. Returns a PyList containing the value and the comment field.
+
+<li><b>fits_movabs_key(fptr,nrec)</b><br>
+        Move to the absolute nrec card in the current extension's header
+        
+<li><b>fits_movrel_key(fptr,nrec)</b><br>
+        Move to the nrec card in the current extension's header relatively
+        to the current position in that header 
+
+<li><b>fits_update_key(fptr,keyname,value,comment)</b><br>
+	Replace an existing keyword's value and comment with the ones passed to the function.
+
+<li><b>fits_update_key_null(fptr,keyname,comm)</b><br>
+        Replace an existing keyword's value with a null string and replaces the comment field with the one passed to the functions.
+
+<li><b>fits_write_comment(fptr,comment)</b><br>
+        Writes a COMMENT card in the current extension's header.
+
+<li><b>fits_write_history(fptr,hist)</b><br>
+        Writes a HISTORY card in the current extension's header 
+
+<li><b>fits_write_date(fptr)</b><br>
+        Writes/updates a DATE card with the current date and time (UTC) in
+        the current extension's header 
+
+<li><b>fits_write_record(fptr,card)</b><br>
+        Writes a complete card (80 characters) into the current extension's header.
+
+<li><b>fits_write_key_unit(fptr,keyname,unit)</b><br>
+        Writes/updates the units in [] for the given key. This uses the CFITSIO Units convention.
+
+<li><b>fits_read_record(fptr,nrec)</b><br>
+        Reads and returns the nth record (entire 80 characters) of the current extension's header.
+
+<li><b>fits_read_card(fptr,keyname)</b><br>
+        Reads and return the record (entire 80 characters) corresponding to the given key.
+
+<li><b>fits_read_key_unit(fptr,keyname)</b><br>
+        Returns the units of the given key. Follows CFITSIO Units convention.
+
+<li><b>fits_write_key(fptr,keyname,value,comment)</b><br>
+        Adds a new key to the current extension's header The given value
+        is assigned to the key. Integer, double, and string casting is done
+        automatically. Also writes the given comment which can be an empty
+        string 
+
+<li><b>fits_update_card(fptr,keyname,card)</b><br>
+        Replaces the record corresponding to the given keyword by the given record string (80 characters). No checking is done. 
+
+<li><b>fits_modify_name(fptr,oldname,newname)</b><br>
+        Modifies the name of a key to a new name.
+
+<li><b>fits_modify_comment(fptr,keyname,comment)</b><br>
+        Modifies the comment of the given key.
+
+<li><b>fits_modify_key_null(fptr,keyname,comment)</b><br>
+        Assigns the NULL/comment pair to the given key 
+
+<li><b>fits_modify_key_str(fptr,keyname,value,comment)</b><br>
+        Replaces the value/comment pair of the given key with the given
+        string/comment pair 
+
+<li><b>fits_modify_key_log(fptr,keyname,value,comment)</b><br>
+        Replaces the value/comment pair of the given key with the given
+        boolean/comment pair 
+
+<li><b>fits_modify_key_lng(fptr,keyname,value,comment)</b><br>
+        Replaces the value/comment pair of the given key with the given
+        long/comment pair 
+
+<li><b>fits_delete_key(fptr,keyname)</b><br>
+        Deletes the given key (by name) from the current extension's header
+        
+<li><b>fits_delete_record(fptr,keypos)</b><br>
+        Deletes the given key (by position) from the current extension's
+        header 
+
+<li><b>fits_read_keys_lng(fptr,keyname,nstart,nmax)</b><br>
+        Reads up to nmax long values from keys that have the form keyname### where ### is a sequential integer number.
+
+<li><b>fits_read_keys_dbl(fptr,keyname,nstart,nmax)</b><br>
+        Reads up to nmax double values from keys that have the form keyname### where ### is a sequential integer number.
+
+<li><b>fits_read_keys_str(fptr,keyname,nstart,nmax)</b><br>
+        Reads up to nmax string values from keys that have the form keyname### where ### is a sequential integer number.
+
+<h2>FITS Image functions:</h2>
+
+<li><b>fits_create_img(fptr,bitpix,naxes)</b><br>
+        Creates (appends to file ) an image extension, using the given bitpix
+        value, and naxis values contained in the array naxes. The data values are left empty but the space is allocated.
+
+<li><b>fits_write_img(fptr,firstelem,nelem,array)</b><br>
+        Writes nelements elements from array into the current image extension 
+
+<li><b>fits_resize_img(fptr,bitpix,naxes)</b><br>
+	Updates the size of the data extension and the values of the BITPIX, and NAXES keywords.
+
+<li><b>fits_read_img(fptr,firstelem,nelements,nulval)</b><br>
+        Reads nelements, starting at position firstelem, from the current
+        image extension. Substitute the given nulval value for any null
+        values in the image. Returns an array containing the flattened image
+        as first element, and the number of null value in the second element
+        
+<li><b>fits_write_imghdr(fptr,bitpix,naxes)</b><br>
+        Writes the BITPIX, and NAXES keywords in the current extension's
+        header 
+
+<li><b>fits_read_img_coord(fptr,type)</b><br>
+        Reads ans returns the image coordinate system. Set type to the appropriate string (See CFITSIO manual).
+
+<h2>FITS Table Functions:</h2>
+
+<li><b>fits_get_num_cols(fptr)</b><br>
+	Returns the number of columns in a table extension.
+
+<li><b>fits_get_num_rows(fptr)</b><br>
+	Returns the number of rows in a table extension.
+
+<li><b>fits_read_col(fptr,colnum,firstrow,firstelem,nelements,nulval)</b><br>
+	Returns the content of the column colnum. Starts at firstrow, and returns nelements. If the table is a binary vector table, firstelem defines the starting pixel within the cell (See CFITSIO manual). It is ingnored otherwise. 
+
+<li><b>fits_get_colnum(fptr,caseseen,templt)</b><br>
+	Returns the table column number of the column whose name matches an input template name. Set caseseen=0 for case insensitive, 1 for case sensitive.
+
+<li><b>fits_get_colname(fptr,casesen,templt)</b><br>
+        Returns the table column name of the column whose name matches an input template name. Set caseseen=0 for case insensitive, 1 for case sensitive
+
+<li><b>fits_get_coltype(fptr,colnum)</b><br>
+        Returns the type of the column colnum.
+
+<li><b>fits_write_col(fptr,colnum,firstrow,firstelem,array)</b><br>
+        Writes a column into a table extension usng data from array.
+
+<li><b>fits_insert_rows(fptr,firstrow,nrows)</b><br>
+        Inserts nrows starting at firstrow.
+
+<li><b>fits_delete_rows(fptr,firstrow,nrows)</b><br>
+        Deletes nrows starting at firstrow.
+
+<li><b>fits_delete_rowlist(fptr,rownum)</b><br>
+        Deletes a number of columns based on the input list rownum.
+
+<li><b>fits_delete_col(fptr,numcol)</b><br>
+        Deletes column numcol.
+
+<li><b>fits_copy_col(infptr,outfptr,incol,outcol,create_col)</b><br>
+        Copies the column incol from one fits table infptr to column outcol in the fits table outcol. create_col=1 inserts a new column.
+
+<li><b>fits_insert_col(fptr,numcol,ttype,tform)</b><br>
+        Inserts a new column of type ttype and form tform into the current table extension.
+<p>
+<hr>For comments, bug reports, etc.. please send email to
+    <address><a href="mailto:npirzkal@mac.com">Nor Pirzkal</a></address>
+<i>Disclaimer:
+ 
+<p>THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF
+USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.</p>
+</body>
+</html>
+
+
+
+

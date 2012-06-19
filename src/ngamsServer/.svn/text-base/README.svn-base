@@ -1,0 +1,55 @@
+
+
+             #     #  #####        #    #    #     #  #####
+             ##    # #     #      #    # #   ##   ## #     #
+             # #   # #           #    #   #  # # # # #
+             #  #  # #  ####    #    #     # #  #  #  #####
+             #   # # #     #   #     ####### #     #       #
+             #    ## #     #  #      #     # #     # #     #
+             #     #  #####  #       #     # #     #  #####
+
+                 ALMA - Atacama Large Millimiter Array
+                (c) European Southern Observatory, 2002
+       Copyright by ESO (in the framework of the ALMA collaboration),
+                          All rights reserved
+
+
+
+OVERVIEW:
+The NG/AMS Server Sub-Module (ngamsServer) contains the classes and
+functions used to build up the NG/AMS Server class (ngamsServer).
+
+The main class of the module is the ngamsServer, which implements the
+services of the NG/AMS Server. The NG/AMS Server is a dedicated HTTP
+server. It can handle simultaneous HTTP requests in separate threads.
+
+
+To divide the code into manageable blocks, a separate source files has
+been made for each command. These have names of the form:
+
+  ngams<Command>Cmd.py
+
+- e.g.:
+
+  ngamsOnlineCmd.py
+
+Functions shared by several commands are contained in source files
+with names of the form: 
+
+  ngams<Context>Utils.py
+
+- e.g.:
+
+  ngamsSrvUtils.py
+
+
+For more information about each class and function provided by this
+module, check the specific documentation for each source file.
+
+
+ADDITIONAL INFORMATION:
+Send comments/questions concerning the NG/AMS Package and NGAS to the
+NGAS Team:
+
+				ngast@eso.org
+

@@ -1,0 +1,6 @@
+Status:
+Status:                             FAILURE
+Message:                            NGAMS_ER_DISCARD_NOT_FOUND:4063:ERROR: File scheduled to be discarded not found: /tmp/ngamsTest/NonExisting. NGAS Node: ___LOCAL_HOST___:8888.
+State:                              ONLINE
+SubState:                           IDLE
+

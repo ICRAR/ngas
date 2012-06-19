@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE NgamsCfg SYSTEM "ngamsCfg.dtd">
+
+<!-- 
+  E.S.O.
+
+  Who        When        What
+  ********   **********  ***************************************************
+  jknudstr   08.03.2007  Created
+  **************************************************************************
+  Configuration file specifying Oracle as DB connection (archive1/alma1).
+  -->
+
+
+<NgamsCfg>
+
+  <Db Interface="ngamsOracle" 
+      Name="alma1" 
+      Password="bmdhcyRkYmE=\n" 
+      Server="archive1" 
+      Snapshot="1" 
+      User="ngastest1"/>
+
+</NgamsCfg>

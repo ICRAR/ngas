@@ -1,0 +1,26 @@
+Request Properties Object:
+HTTP Method:                        POST
+Cmd:                                ARCHIVE
+MimeType:                           image/x-fits
+Size:                               69120
+Wait:                               1
+FileUri:                            SmallFile.fits
+SafeFileUri:                        SmallFile.fits
+HttpParsDic:                        {'attachment': '', 'no_versioning': '0', 'time_out': '60.0'}
+HttpParNames:                       ['attachment', 'no_versioning', 'time_out']
+SentReply:                          0
+BytesReceived:                      69120
+IoTime:                             0
+TargDiskInfo:                       None
+ReadFd:                             None
+WriteFd:                            None
+NoReplication:                      0
+RequestId:                          11
+CompletionPercent:                  None
+ExpectedCount:                      None
+ActualCount:                        None
+EstTotalTime:                       None
+RemainingTime:                      None
+LastRequestStatUpdate:              None
+Authorization:                      None
+

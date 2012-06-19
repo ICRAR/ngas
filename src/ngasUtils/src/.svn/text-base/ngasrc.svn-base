@@ -1,0 +1,23 @@
+
+                       #     #  #####     #     #####
+                       ##    # #     #   # #   #     #
+                       # #   # #        #   #  #
+                       #  #  # #  #### #     #  #####
+                       #   # # #     # #######       #
+                       #    ## #     # #     # #     #
+                       #     #  #####  #     #  #####
+   
+# Template .ngasrc file used by the NGAS Utilities. The environment for
+# executing the utilities is defined by the various parameters.
+
+AccessCode=Zm5hYw==
+DbServer=ESOECF_DIRECT
+DbUser=ngas
+DbPassword=bmdhc19wdw==
+DbName=ngas
+SmtpHost=smtphost.hq.eso.org
+EmailNotification=ngasgop@eso.org,jknudstr@eso.org
+NgasHost=$HOSTNAME
+NgasPort=7777
+
+# EOF

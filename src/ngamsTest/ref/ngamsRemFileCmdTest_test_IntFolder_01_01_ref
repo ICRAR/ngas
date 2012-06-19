@@ -1,0 +1,49 @@
+
+Checksum:                           
+Checksum:                           
+Checksum:                           
+ChecksumPlugIn:                     
+ChecksumPlugIn:                     
+ChecksumPlugIn:                     
+Comment:                            Info about folder: /tmp/ngamsTest/NGAS/FitsStorage1-Main-1
+Compression:                        
+Compression:                        
+Compression:                        
+DiskId:                             
+DiskId:                             
+DiskId:                             
+FileId:                             
+FileId:                             
+FileId:                             
+FileList:
+FileName:                           /tmp/ngamsTest/NGAS/FitsStorage1-Main-1/NgasDiskInfo
+FileName:                           /tmp/ngamsTest/NGAS/FitsStorage1-Main-1/saf
+FileName:                           /tmp/ngamsTest/NGAS/FitsStorage1-Main-1/staging
+FileStatus:
+FileStatus:
+FileStatus:
+FileStatus:                         
+FileStatus:                         
+FileStatus:                         
+FileVersion:                        -1
+FileVersion:                        -1
+FileVersion:                        -1
+Format:                             
+Format:                             
+Format:                             
+Id:                                 DIR-INFO
+Ignore:                             
+Ignore:                             
+Ignore:                             
+Message:                            Successfully handled RETRIEVE Command
+Permissions:                        -rw-r--r--
+Permissions:                        drwxr-xr-x
+Permissions:                        drwxrwxr-x
+State:                              ONLINE
+Status:
+Status:                             SUCCESS
+Status:                             SUCCESS
+SubState:                           IDLE
+Tag:                                
+Tag:                                
+Tag:                                

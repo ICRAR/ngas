@@ -1,0 +1,7 @@
+Status:
+HostId:                             %s:8000
+Status:                             SUCCESS
+Message:                            NGAMS_INFO_FILE_AVAIL:4029:INFO: File with File ID: TEST.2001-05-08T15:25:00.123/Version: 2, is available on NGAS Host with Host ID: %s:8001.
+State:                              ONLINE
+SubState:                           IDLE
+

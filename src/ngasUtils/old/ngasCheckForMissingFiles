@@ -1,0 +1,4 @@
+LD_LIBRARY_PATH=/vlt/FEB2000/gnu/lib:/opt/SUNWmotif/lib:/usr/openwin/lib:/usr/server/arc/lib:/usr/server/X11/lib:/apps/X11/lib:/opsw/util/sybase/lib/
+export LD_LIBRARY_PATH
+
+/opsw/util/python2.1/bin/python ./ngasCheckMissingFiles.py ./ngasExemptFileList

@@ -1,0 +1,38 @@
+Return-Path: <jknudstr@eso.org>
+Received: from serapis.hq.eso.org (serapis.hq.eso.org [134.171.7.10])
+	by mercury.hq.eso.org (8.12.10+Sun/8.12.10) with ESMTP id j646OTwo028741
+	for <ngast@eso.org>; Mon, 4 Jul 2005 08:24:29 +0200 (MEST)
+Received: from jewel12.hq.eso.org (jewel1.hq.eso.org [134.171.16.121])
+	by serapis.hq.eso.org (8.11.7+Sun/8.11.7) with ESMTP id j646OPE07061
+	for <ngast@eso.org>; Mon, 4 Jul 2005 08:24:25 +0200 (MEST)
+Date: Mon, 4 Jul 2005 08:24:25 +0200 (MEST)
+From: ngas@eso.org
+Message-Id: <200507040624.j646OPE07061@serapis.hq.eso.org>
+Subject: NGAS-jewel12-7777: DATA CHECK REPORT
+X-Virus-Scanned: by amavisd-new
+
+Notification Message:
+
+DATA CHECKING REPORT:
+
+Date                 2005-07-04T06:19:18.037
+NGAS Host ID         jewel12
+Start Time           2005-07-04T05:08:16.777
+Total Time (s)       4261.260
+Total Time (hours)   1.184
+Rate (MB/s)          44.624
+Files Checked        45815
+Data Checked (MB)    190147.20435
+Inconsistencies      36894
+----------------------------------------------------------------------------------------------------------------------------------
+INCONSISTENT FILES FOUND:
+
+Problem Description                                          File ID                          Version   Slot ID:Disk ID
+----------------------------------------------------------------------------------------------------------------------------------
+ERROR: File in DB missing on disk                            TEST.2001-05-08T15:25:00.123     2         1:tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+ERROR: File in DB missing on disk                            TEST.2001-05-08T15:25:00.123     3         2:tmp-ngamsTest-NGAS-FitsStorage1-Rep-2
+ERROR: File in DB missing on disk                            TEST.2001-05-08T15:25:00.123     8         2:tmp-ngamsTest-NGAS-FitsStorage1-Rep-2
+----------------------------------------------------------------------------------------------------------------------------------
+
+
+Note: This is an automatically generated message

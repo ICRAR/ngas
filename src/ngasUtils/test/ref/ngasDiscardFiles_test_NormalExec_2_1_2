@@ -1,0 +1,18 @@
+
+FILE DISCARD REPORT:
+Host: localhost
+
+=Rejected File Discard Requests:
+
+tmp-ngamsTest-NGAS-FitsStorage1-Rep-2 TEST.2001-05-08T15:25:00.123 3: NGAMS_ER_DISCARD_NOT_FOUND:4063:ERROR: File scheduled to be discarded not found: Disk ID: tmp-ngamsTest-NGAS-FitsStorage1-Rep-2/File ID: TEST.2001-05-08T15:25:00.123/File Version: 3. NGAS Node: localhost:8888.
+
+
+=Accepted Discard File Requests:
+
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1 TEST.2001-05-08T15:25:00.123 2: NGAMS_INFO_DISCARD_GRANTED:4065:INFO: File discard request granted. File: Disk ID: tmp-ngamsTest-NGAS-FitsStorage1-Main-1/File ID: TEST.2001-05-08T15:25:00.123/File Version: 2. NGAS Node localhost:8888.
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1 TEST.2001-05-08T15:25:00.123 5: NGAMS_INFO_DISCARD_GRANTED:4065:INFO: File discard request granted. File: Disk ID: tmp-ngamsTest-NGAS-FitsStorage1-Main-1/File ID: TEST.2001-05-08T15:25:00.123/File Version: 5. NGAS Node localhost:8888.
+tmp-ngamsTest-NGAS-FitsStorage1-Rep-2 TEST.2001-05-08T15:25:00.123 5: NGAMS_INFO_DISCARD_GRANTED:4065:INFO: File discard request granted. File: Disk ID: tmp-ngamsTest-NGAS-FitsStorage1-Rep-2/File ID: TEST.2001-05-08T15:25:00.123/File Version: 5. NGAS Node localhost:8888.
+tmp-ngamsTest-NGAS-FitsStorage1-Rep-2 TEST.2001-05-08T15:25:00.123 8: NGAMS_INFO_DISCARD_GRANTED:4065:INFO: File discard request granted. File: Disk ID: tmp-ngamsTest-NGAS-FitsStorage1-Rep-2/File ID: TEST.2001-05-08T15:25:00.123/File Version: 8. NGAS Node localhost:8888.
+
+# EOF
+

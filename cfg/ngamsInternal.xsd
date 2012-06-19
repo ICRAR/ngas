@@ -1,0 +1,1034 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  E.S.O.
+  
+  Who        When        What
+  ********   **********  ***************************************************
+  jknudstr   04.04.2001  Created
+  **************************************************************************
+  The ngamsInternal.dtd defines various common elements to be used
+  in the NG/AMS XML documents.
+-->
+<!--
+  The Server Element defines properties for the individual
+  installation of NG/AMS. 
+  
+  Attributes:
+  ArchiveName:            Name of the archive - e.g. ESO-VLT.
+  
+  PortNo:                 Port number to use for the NG/AMS HTTP server.
+  
+  SwVersion:	            If defined, NG/AMS will compare the value of
+  this attribute with the version ID of NG/AMS.
+  If these are not completely identical an error
+  is reported and the NG/AMS Server will perform
+  an exit. If the SwVersion is not specified
+  (set to ""), this check is not done.
+  
+  BlockSize:              Block size applied when receiving and
+  sending data via HTTP (bytes).
+  
+  Simulation:             Simulation system "1" otherwise "0".
+  
+  MaxSimReqs:             Maximum number of simultaneous requests that
+  the server should be capable of handling.
+  If more are received, these will be rejected.
+  
+  MountRootDirectory:     Base directory used as root directory when
+  mounting the disks.
+  
+  ProxyMode:              If a server which is contacted with a Retrieve
+  Request, finds a file to be retrieved, on 
+  another NGAS Host, it will act as proxy and
+  send back the file to the requestor if possible.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+  <xs:element name="Server">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.Server"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.Server">
+    <xs:attribute name="Id"/>
+    <xs:attribute name="ArchiveName" use="required"/>
+    <xs:attribute name="PortNo" use="required"/>
+    <xs:attribute name="SwVersion" default=""/>
+    <xs:attribute name="BlockSize" use="required"/>
+    <xs:attribute name="Simulation" default="0">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="MaxSimReqs" use="required"/>
+    <xs:attribute name="RootDirectory" use="required"/>
+    <xs:attribute name="ProxyMode">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:attributeGroup>
+  <!--
+    The SystemPlugIns element contains the properties for executing the
+    System Plug-Ins.
+    
+    Attributes:
+      OnlinePlugIn:           Plug-In utility invoked by NG/AMS when
+    			  going Online to prepare the system and to
+    			  obtain the information about the current
+    			  disk configuration and status of the disks.
+    
+      OnlinePlugInPars:       Input parameters to the Online Plug-In.
+    
+      OfflinePlugIn:          Plug-In invoked by NG/AMS when going Offline
+    			  to prepare the system for standby mode.
+    
+      OfflinePlugInPars:      Input parameters to the Online Plug-In.
+    
+      LabelPrinterPlugIn:     Plug-in used to control the connected label
+    			  printer.
+      LabelPrinterPlugInPars: Input parameters for the label printer. 
+    
+      DiskSyncPlugIn:         Plug-in invoked by NG/AMS to ensure that a
+    			  data file archived is sync'ed to disk before
+    			  updating the information about it in the DB.
+      DiskSyncPlugInPars:     Parameters for the Disk Synchronization Plug-In.
+  -->
+  <xs:element name="SystemPlugIns">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.SystemPlugIns"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.SystemPlugIns">
+    <xs:attribute name="Id"/>
+    <xs:attribute name="OnlinePlugIn" use="required"/>
+    <xs:attribute name="OnlinePlugInPars" use="required"/>
+    <xs:attribute name="OfflinePlugIn" use="required"/>
+    <xs:attribute name="OfflinePlugInPars" use="required"/>
+    <xs:attribute name="LabelPrinterPlugIn"/>
+    <xs:attribute name="LabelPrinterPlugInPars"/>
+    <xs:attribute name="DiskSyncPlugIn" use="required"/>
+    <xs:attribute name="DiskSyncPlugInPars" use="required"/>
+  </xs:attributeGroup>
+  <!--
+    The Permissions Element contains definition of the permission
+    settings for the system.
+    
+      AllowArchiveReq:        Allow clients to issue Archive Requests
+    			  to the system (0|1).
+    
+      AllowRetrieveReq:       Allow clients to retrieve data from this
+    			  NG/AMS installation (0|1).
+    
+      AllowProcessingReq:     Allow clients to perform processing requests
+    			  on this NG/AMS installation (0|1).
+    
+      AllowRemoveReq:         Allow clients to carry out REMFILE and REMDISK
+    			  commands (0|1).
+  -->
+  <xs:element name="Permissions">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.Permissions"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.Permissions">
+    <xs:attribute name="Id"/>
+    <xs:attribute name="AllowArchiveReq" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="AllowRetrieveReq" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="AllowProcessingReq" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="AllowRemoveReq" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:attributeGroup>
+  <!--
+    The JanitorThread Element defines the settings for the Janitor Thread.
+    
+    Attributes:
+      SuspensionTime:         Period of time the Janitor Thread is suspended
+                              after each iteration. Should be given as
+                              '<days>T<hours>:<minutes>:<seconds>'.
+    
+      MinSpaceSysDirMb:       The minimum free amount of disk space for the
+                              various NG/AMS System Directories (e.g. the 
+                              Processing Directory). 
+  -->
+  <xs:element name="JanitorThread">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.JanitorThread"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.JanitorThread">
+    <xs:attribute name="Id"/>
+    <xs:attribute name="SuspensionTime" use="required"/>
+    <xs:attribute name="MinSpaceSysDirMb" use="required"/>
+  </xs:attributeGroup>
+  <!--
+    The ArchiveHandling Element contains definition of parameters for the
+    archive handling.
+    
+    Attributes:
+      ArchiveUnits:           Comma separated list of arhive hosts,
+                              which can be contacted to handle Archive Requests.
+    
+      PathPrefix:             A prefix which will be used when building up the
+                              target filename. Could e.g. be used as to build
+                              a filename like:
+    
+                              <mount point>/<PathPrefix>/<add. path>/<filename>
+    
+                              - but it is up to the Data Handling Plug-In
+                              to use it in a way appropriate for the context.
+    
+      Replication:            Indicates if file replication should be 
+                              carried out by this NG/AMS (0|1).
+    
+      BackLogBuffering:       Enable/disable Back-Log Data Buffering (0|1).
+    
+      BackLogBufferDirectory: Directory that will host the "back-log" directory
+                              where data files are buffered for later handling.
+    
+      MinFreeSpaceWarning:    Indicates the free disk space limit before issuing
+                              an Warning Log Message (MB).
+    
+      FreeSpaceDiskChangeMb:  Indicates the free disk space limit before 
+                              changing disk (MB).
+  -->
+  <xs:element name="ArchiveHandling">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.ArchiveHandling"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.ArchiveHandling">
+    <xs:attribute name="Id"/>
+    <xs:attribute name="ArchiveUnits"/>
+    <xs:attribute name="PathPrefix" use="required"/>
+    <xs:attribute name="Replication">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="BackLogBuffering">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="BackLogBufferDirectory"/>
+    <xs:attribute name="MinFreeSpaceWarningMb" use="required"/>
+    <xs:attribute name="FreeSpaceDiskChangeMb" use="required"/>
+  </xs:attributeGroup>
+  <!--
+    The Db Element defines properties for the interaction with the NGAS DB.
+    
+    Attributes:
+      Server:            Name of DB server.
+    
+      Name:              Name of the DB to use.
+    
+      User:              The DB user name to connect as.
+    
+      Password:          The password for the DB user.
+    
+      Snapshot:          Attribute to switch on/off the DB Snapshot Feature.
+    
+      Interface:         Specifies an NG/AMS DB Interface Plug-In to use
+                         for the DB communication.
+    
+      Verify:            Verify when retrieving file info that the expected
+                         number of files were dumped.
+    
+      AutoRecover:       Try to auto recover if the actual number of files
+                         dumped differs from the expected number.
+  -->
+  <xs:element name="Db">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.Db"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.Db">
+    <xs:attribute name="Id"/>
+    <xs:attribute name="AutoRecover" default="0">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="Server" use="required"/>
+    <xs:attribute name="Name" use="required"/>
+    <xs:attribute name="User" use="required"/>
+    <xs:attribute name="Password" use="required"/>
+    <xs:attribute name="Parameters"/>
+    <xs:attribute name="MultipleConnections">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="Snapshot" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="Interface"/>
+    <xs:attribute name="Verify" default="1">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:attributeGroup>
+  <!--
+    The MimeTypes Element contains a mapping between the mime-types used
+    by NG/AMS and the extension names of the data files.
+    
+    The element MimeTypeMap contains the mapping between each mime-type
+    and the corresponding extension.
+    
+    Attributes:
+      MimeType:      Mime-type, e.g. "ngas/fits".
+    
+      Extension:     Extension of data file, e.g. "fits" (without
+                     leading dot).
+  -->
+  <xs:element name="MimeTypes">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="MimeTypeMap"/>
+      </xs:sequence>
+      <xs:attributeGroup ref="attlist.MimeTypes"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.MimeTypes">
+    <xs:attribute name="Id"/>
+  </xs:attributeGroup>
+  <xs:element name="MimeTypeMap">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.MimeTypeMap"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.MimeTypeMap">
+    <xs:attribute name="MimeType" use="required"/>
+    <xs:attribute name="Extension" use="required"/>
+  </xs:attributeGroup>
+  <!--
+    The StorageSets Element contains the definition of the various
+    Storage Sets defined.
+  -->
+  <xs:element name="StorageSets">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="StorageSet"/>
+      </xs:sequence>
+      <xs:attributeGroup ref="attlist.StorageSets"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.StorageSets">
+    <xs:attribute name="Id"/>
+  </xs:attributeGroup>
+  <!--
+    The StorageSet Element defines properties for each 'storage unit', 
+    consisting of two disks (Main Disk and Replication Disk).
+    
+    Attributes:
+      StorageSetId:       ID used to refer to this particular 
+                          storage unit (string).
+    
+      DiskLabel:          Name of label prefix to put on the
+                          disk. Optional (string).
+    
+      MainDiskSlotId:     Slot ID for Main Disk (string).
+    
+      RepDiskSlotId:      Slot ID for Replication Disk (string).
+    
+      Mutex:              Indicates if mutual exclusion access should be 
+                          enforced to the disks. If this is enabled, only 
+                          one data reception session will write data to
+                          that slot (disk), and not simultaneous as otherwise 
+                          done if several files for the same disk is received 
+                          at the same time. 1 = mutual exclusion (integer).
+    
+      Synchronize:        The synchronize flag is used to indicate if the two 
+                          disks of a set should be considerd as locked
+                          together so that when one is completed also
+                          the other is marked as completed although it
+                          may not be (integer/0|1).
+  -->
+  <xs:element name="StorageSet">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.StorageSet"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.StorageSet">
+    <xs:attribute name="Id"/>
+    <xs:attribute name="StorageSetId" use="required"/>
+    <xs:attribute name="DiskLabel" default=""/>
+    <xs:attribute name="MainDiskSlotId" use="required"/>
+    <xs:attribute name="RepDiskSlotId"/>
+    <xs:attribute name="Mutex" default="0">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="Synchronize" default="1">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:attributeGroup>
+  <!--
+    The DataCheckThread Element defines properties for the file handling.
+    
+    Attributes:
+     ChecksumPlugIn:        DCPI - Data Checksum Plug-In, which generates the
+    			checksum of a data file.
+    
+     ChecksumPlugInPars:    Input parameters to the DCPI.
+    
+     Active:                Enable/disable Data Check Service (1 = activate).
+    
+     ForceNotif:            If set to 1, an Notification Message will always
+    			be sent out when a checking cycle has finished,
+    			also if no descrepancies were encountered.
+    
+     MaxProcs:              Specify the maximum number of parallel sub-processes
+    			are allowed to carry out the data checking.
+    
+     Scan:                  If set to 1, only a scan of the data holding is
+    			carried out. This means that it is checked if the
+    			files are accessible and if their size are OK.
+    			The checksum is not calculated however.
+    
+     Prio:                  Priority of Data Check Thread (1 = highest priority).
+    			with this parameter it is possible to adjust the
+    			amount of CPU power the Data Check Thread should 
+    			consume. The higher the number, the lesser CPU
+    			the check will consume. At the same time, it
+    			will take more time to carry out the check of
+    			the data holding.
+    
+     MinCycle:              Indicates the minimum allowed time for carrying out
+    			one check cycle (ddThh:mm:ss). If this is specified
+    			e.g. to 24 hours, and one check cycle would only
+    			take 11 hours, the check would be suspended for
+    			13 hours before running again.
+    
+     DiskSeq:               Used to indicate if disks should be checked
+    			sequentially (ordered according to the Slot
+    			ID), or randomly (SEQUENTIAL|RANDOM).
+    
+     FileSeq:               Used to indicate if files on a disk should be checked
+    			sequentially (ordered according to the ingestion
+    			date), or randomly (SEQUENTIAL|RANDOM).
+    
+     LogSummary:            If set to 1, a summary log info will be generated
+    			each time a complete check of the data holding
+    			of one NGAS Host has been carried out.
+  -->
+  <xs:element name="DataCheckThread">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.DataCheckThread"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.DataCheckThread">
+    <xs:attribute name="Id"/>
+    <xs:attribute name="ChecksumPlugIn" use="required"/>
+    <xs:attribute name="ChecksumPlugInPars" use="required"/>
+    <xs:attribute name="Active" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="ForceNotif" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="MaxProcs" use="required"/>
+    <xs:attribute name="Scan" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="Prio" use="required"/>
+    <xs:attribute name="MinCycle" use="required"/>
+    <xs:attribute name="DiskSeq" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="SEQUENTIAL"/>
+          <xs:enumeration value="RANDOM"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="FileSeq" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="SEQUENTIAL"/>
+          <xs:enumeration value="RANDOM"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="LogSummary" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:attributeGroup>
+  <!-- The Streams Element contains the definition of the various streams -->
+  <xs:element name="Streams">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="Stream"/>
+      </xs:sequence>
+      <xs:attributeGroup ref="attlist.Streams"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.Streams">
+    <xs:attribute name="Id"/>
+  </xs:attributeGroup>
+  <!--
+    The Stream Element defines properties for the handling of data
+    streams into the NGAS System.
+    
+    The StorageSetRef contains an attribute with a reference to a StorageSet.
+    
+    Attributes:
+    MimeType:      Mime-type identifying this type of data.
+    
+    PlugIn:        A plug-in command that will be executed to 1) Check the
+                   consistency of the data file of the given mime-type, 
+                   2) Generate the necessary information for the NGAS DB.
+    
+    PlugInPars:    Parameters which will be transferred to the plug-in
+                   function.
+  -->
+  <xs:element name="Stream">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="StorageSetRef"/>
+      </xs:sequence>
+      <xs:attributeGroup ref="attlist.Stream"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.Stream">
+    <xs:attribute name="MimeType" use="required"/>
+    <xs:attribute name="PlugIn" use="required"/>
+    <xs:attribute name="PlugInPars"/>
+  </xs:attributeGroup>
+  <xs:element name="StorageSetRef">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.StorageSetRef"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.StorageSetRef">
+    <xs:attribute name="StorageSetId" use="required"/>
+  </xs:attributeGroup>
+  <!--
+    The Processing Element defines the set of DPPIs that are available
+    for a specific NGAS Host.
+    
+    The element contains a number of PlugIn Elements which each define
+    the properties of the DPPIs. In addition the PlugIn Element defines
+    which types of data can be handled.
+    
+    Attributes:
+      ProcessingDirectory:  Base directory in which temporary files
+                            will be stored during processing.
+  -->
+  <xs:element name="Processing">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="PlugIn"/>
+      </xs:sequence>
+      <xs:attributeGroup ref="attlist.Processing"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.Processing">
+    <xs:attribute name="Id"/>
+    <xs:attribute name="ProcessingDirectory"/>
+  </xs:attributeGroup>
+  <xs:element name="PlugIn">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="MimeType"/>
+      </xs:sequence>
+      <xs:attributeGroup ref="attlist.PlugIn"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.PlugIn">
+    <xs:attribute name="Name" use="required"/>
+    <xs:attribute name="PlugInPars"/>
+  </xs:attributeGroup>
+  <xs:element name="MimeType">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.MimeType"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.MimeType">
+    <xs:attribute name="Name" use="required"/>
+  </xs:attributeGroup>
+  <!--
+    The Register Element defines the of DRPIs needed for registering
+    various file types.
+  -->
+  <xs:element name="Register">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="PlugIn"/>
+      </xs:sequence>
+      <xs:attributeGroup ref="attlist.Register"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.Register">
+    <xs:attribute name="Id"/>
+  </xs:attributeGroup>
+  <!--
+    The Log Element defines properties for the logging performed by
+    the NG/AMS Server.
+    
+    Attributes:
+      SysLog:         Switch on UNIX syslog logging (0|1).
+    
+      SysLogPrefix:   Prefix (tag) written first in the syslog entries
+                      (in the data part).
+    
+      LocLogFile:     Indicates a name of a local log file. Should be
+                      complete path.
+    
+      LocalLogLevel:  Log level for producing logs into the local 
+                      log file. Must be in the interval from 0 to 5. 
+    
+      LogBufferSize:  Size of the internal log buffer (in terms of log
+                      entries). This indicates how many entries are buffered
+                      before the logs are purged out to the log file.
+    
+      LogRotateInt:   ISO8601 timestamp indicating how often the log file
+                      should be rotated. "01T00:00:00" means every day (24h).
+    
+      LogRotateCache: Indicates how many rotated log files should be kept.
+                      If set to 0 the log files will be deleted when the
+                      log file is regenerated. A value of 30 means that
+                      the past 30 log files are kept.
+  -->
+  <xs:element name="Log">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.Log"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.Log">
+    <xs:attribute name="Id"/>
+    <xs:attribute name="SysLog" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="SysLogPrefix" use="required"/>
+    <xs:attribute name="LocalLogFile" use="required"/>
+    <xs:attribute name="LocalLogLevel" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+          <xs:enumeration value="2"/>
+          <xs:enumeration value="3"/>
+          <xs:enumeration value="4"/>
+          <xs:enumeration value="5"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="LogBufferSize" use="required"/>
+    <xs:attribute name="LogRotateInt" use="required"/>
+    <xs:attribute name="LogRotateCache" use="required"/>
+  </xs:attributeGroup>
+  <!--
+    The Notification Element is used to define subscribers (e-mail
+    recipients) that will receive an e-mail when certain events
+    occur. For the moment the following events can trigger e-mails
+    to one or more recipients:
+    
+      o Alert Logs.
+      o Error Logs.
+      o Disk Running Full (Min. Free Disk Space).
+      o Disk Change (Disk Change Log).
+      o No more disk space.
+  -->
+  <xs:element name="Notification">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" ref="AlertNotification"/>
+        <xs:element minOccurs="0" ref="ErrorNotification"/>
+        <xs:element minOccurs="0" ref="DiskSpaceNotification"/>
+        <xs:element minOccurs="0" ref="DiskChangeNotification"/>
+        <xs:element minOccurs="0" ref="NoDiskSpaceNotification"/>
+        <xs:element minOccurs="0" ref="DataCheckNotification"/>
+      </xs:sequence>
+      <xs:attributeGroup ref="attlist.Notification"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.Notification">
+    <xs:attribute name="Id"/>
+    <xs:attribute name="SmtpHost" use="required"/>
+    <xs:attribute name="Sender" use="required"/>
+    <xs:attribute name="Active" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="MaxRetentionTime" use="required"/>
+    <xs:attribute name="MaxRetentionSize" use="required"/>
+  </xs:attributeGroup>
+  <xs:element name="EmailRecipient">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.EmailRecipient"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.EmailRecipient">
+    <xs:attribute name="Address" use="required"/>
+  </xs:attributeGroup>
+  <xs:element name="AlertNotification">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="EmailRecipient"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="ErrorNotification">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="EmailRecipient"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="DiskSpaceNotification">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="EmailRecipient"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="DiskChangeNotification">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="EmailRecipient"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="NoDiskSpaceNotification">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="EmailRecipient"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="DataCheckNotification">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="EmailRecipient"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <!--
+    The Host Suspension Element is used to define the conditions for
+    suspending an NGAS Host and for waking up a suspended NGAS Host.
+    
+    Attributes:
+        IdleSuspension:       Switches on/off host idle suspension (0 = Off,
+                              1 = 0n).
+    
+        IdleSuspensionTime:   The idle time that must elapse for an  NGAS
+                              system to suspending itself given in seconds.
+    
+        WakeUpServerHost:     Name of server that should be requested to
+                              wake up a suspended NGAS Host.
+    
+        SuspensionPlugIn:     Name of plug-in to be invoked to suspend the
+                              NGAS Host.
+    
+        SuspensionPlugInPars: Optional parameters to be transferred to the
+                              Suspension Plug-In.
+    
+        WakeUpPlugIn:         Name of plug-in to be invoked to wake-up a
+                              suspended NGAS Host.
+    
+        WakeUpPlugInPars:     Optional parameters to be transferred to
+                              the Wake-Up Plug-In.
+    
+        WakeUpCallTimeOut:    Time-out for waiting for an NGAS Host being
+                              woken up to wake up.
+  -->
+  <xs:element name="HostSuspension">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.HostSuspension"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.HostSuspension">
+    <xs:attribute name="Id"/>
+    <xs:attribute name="IdleSuspension" default="0">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="IdleSuspensionTime" default="0"/>
+    <xs:attribute name="WakeUpServerHost" default=""/>
+    <xs:attribute name="SuspensionPlugIn" default=""/>
+    <xs:attribute name="SuspensionPlugInPars" default=""/>
+    <xs:attribute name="WakeUpPlugIn" default=""/>
+    <xs:attribute name="WakeUpPlugInPars" default=""/>
+    <xs:attribute name="WakeUpCallTimeOut" default="0"/>
+  </xs:attributeGroup>
+  <!--
+    The SubscriptionDef Element is used to define the properties for
+    Data Subscription. It may contain a number of Subscription Elements
+    indicating to which server this NG/AMS should subscribe to.
+    
+    Attributes:
+        AutoUnsubscribe:    Indicates if the server should un-subscribe
+                            automatically when going Offline.
+    
+        SuspensionTime:     Time the thread should suspend itself between 
+                            attempting to deliver back-logged buffered
+                            files (ISO8601).
+    
+        BackLogExpTime:     Expiration time for entries in the
+                            Subscription Back-Log (string/ISO8601).
+  -->
+  <xs:element name="SubscriptionDef">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="Subscription"/>
+      </xs:sequence>
+      <xs:attributeGroup ref="attlist.SubscriptionDef"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.SubscriptionDef">
+    <xs:attribute name="Id"/>
+    <xs:attribute name="AutoUnsubscribe" default="1">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="SuspensionTime" use="required"/>
+    <xs:attribute name="BackLogExpTime" use="required"/>
+    <xs:attribute name="Enable" default="1">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:attributeGroup>
+  <!--
+    The Subscription Element defines a data subscription. It will trigger
+    the NG/AMS Server to subscribe itself to data from another NG/AMS Server.
+    
+    Attributes:
+        HostId:             Host ID of the Data Provider.
+    
+        PortNo:             Port number used by the Data Provider.
+    
+        Priority:           Priority requested for this Subscription.
+                            The lower the number the higher the priority.
+                            Default is 10. If other Subscribers subscribe
+                            with a higher priority then this client, they
+                            will be served faster.
+    
+        SubscriberUrl:      Subscriber URL, which is issued when subscribing.
+                            The Data Provider will use this URL when delivering
+                            the data to the Subscriber.
+    
+        FilterPlugIn:       A Filter Plug-In applied on the data files to
+                            decide whether to deliver a file to a Subscriber
+                            or not.
+    
+        FilterPlugInPars:   Parameters to issue to the Filter Plug-In.
+  -->
+  <xs:element name="Subscription">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.Subscription"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.Subscription">
+    <xs:attribute name="Id"/>
+    <xs:attribute name="HostId" use="required"/>
+    <xs:attribute name="PortNo" use="required"/>
+    <xs:attribute name="Priority" default="10"/>
+    <xs:attribute name="SubscriberUrl" use="required"/>
+    <xs:attribute name="FilterPlugIn"/>
+    <xs:attribute name="FilterPlugInPars"/>
+    <xs:attribute name="SubscriberId"/>
+  </xs:attributeGroup>
+  <!--
+    The Authorization Element defines the parameters for the
+    authentication scheme in use.
+    
+    Attributes:
+        Enable:             Swicth authentication on/off.
+  -->
+  <xs:element name="Authorization">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="User"/>
+      </xs:sequence>
+      <xs:attributeGroup ref="attlist.Authorization"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.Authorization">
+    <xs:attribute name="Id"/>
+    <xs:attribute name="Enable" default="1">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:attributeGroup>
+  <!--
+    The User Element defines the properties for a user, authorized to 
+    communicate with the system.
+    
+    Attributes:
+        Password:             Swicth authentication on/off.
+  -->
+  <xs:element name="User">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.User"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.User">
+    <xs:attribute name="Name" use="required"/>
+    <xs:attribute name="Password" use="required"/>
+  </xs:attributeGroup>
+
+
+  <xs:element name="Mirroring">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="MirroringSource"/>
+      </xs:sequence>
+      <xs:attributeGroup ref="attlist.MirroringDef"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.MirroringDef">
+    <xs:attribute name="Active" use="required"/>
+    <xs:attribute name="Threads" default="5"/>
+    <xs:attribute name="CleanUpTime" default="00:00:00,12:00:00"/>
+    <xs:attribute name="Report"/>
+    <xs:attribute name="ErrorRetryPeriod" default="30"/>
+    <xs:attribute name="ErrorRetryTimeout" default="600"/>
+  </xs:attributeGroup>
+
+  <!--
+  The MirroringSource Element defines a data subscription. It will trigger
+  the NG/AMS Server to subscribe itself to data from another NG/AMS Server.
+  
+  Attributes:
+  HostId:             Host ID of the Data Provider.
+  
+  PortNo:             Port number used by the Data Provider.
+  
+  Priority:           Priority requested for this Subscription.
+  The lower the number the higher the priority.
+  Default is 10. If other Subscribers subscribe
+  with a higher priority then this client, they
+  will be served faster.
+  
+  SubscriberUrl:      Subscriber URL, which is issued when subscribing.
+  The Data Provider will use this URL when delivering
+  the data to the Subscriber.
+  
+  FilterPlugIn:       A Filter Plug-In applied on the data files to
+  decide whether to deliver a file to a Subscriber
+  or not.
+  
+  FilterPlugInPars:   Parameters to issue to the Filter Plug-In.
+-->
+  <xs:element name="MirroringSource">
+    <xs:complexType>
+      <xs:attributeGroup ref="attlist.MirroringSourceDef"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="attlist.MirroringSourceDef">
+    <xs:attribute name="ServerList" use="required"/>
+    <xs:attribute name="Period" default="10"/>
+    <xs:attribute name="SyncType" default="INGESTION_DATE"/>
+    <xs:attribute name="CompleteSync" default="02:30:00,14:30:00"/>
+    <xs:attribute name="TargetNodes" use="required"/>
+  </xs:attributeGroup>
+
+</xs:schema>

@@ -1,0 +1,10 @@
+
+Status of request:
+
+Port:           8888
+Command:        RETRIEVE
+
+Error Code:     -103
+Message:        Invalid reply from data server
+Status:         FAILURE
+

@@ -1,0 +1,6 @@
+Status:
+Status:                             FAILURE
+Message:                            NGAMS_ER_UNAUTH_REQ:4100:ERROR: Unauthorized request received.
+State:                              ONLINE
+SubState:                           IDLE
+

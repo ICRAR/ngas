@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE NgamsCfg SYSTEM "ngamsCfg.dtd">
+
+<NgamsCfg>
+
+  <Authorization Id="Authorization-ON"
+                 Enable="1">
+    <User Name="ngas" 
+          Password="X05nYVNf"/>
+    <User Name="ngasmgr" 
+          Password="X05nYXNfTWdyXw=="/>
+    <User Name="ngasweb"
+          Password="X05nYXNfV2ViXw=="/>
+    <User Name="ngasext"
+          Password="X05nYXNfRXh0Xw=="/>
+  </Authorization>
+
+</NgamsCfg>

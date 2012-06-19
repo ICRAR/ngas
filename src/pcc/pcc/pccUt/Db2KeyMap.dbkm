@@ -1,0 +1,18 @@
+
+#DBKMAP.TABLE    "isaac_all"
+#DBKMAP.ATTRIB   "lst:LST"
+#DBKMAP.ATTRIB   "tpl_expno:TPL.EXPNO"
+#DBKMAP.ATTRIB   "ins_filt1_name:INS.FILT1.NAME"
+#DBKMAP.ATTRIB   "ins_lamp1_name:INS.LAMP1.NAME"
+
+DBKMAP.TABLE    "uves"
+DBKMAP.ATTRIB   "ins_temp1_mean:INS.TEMP1.MEAN"
+DBKMAP.ATTRIB   "det_win1_nx:DET.WIN1.NX"
+DBKMAP.ATTRIB   "tel_az:TEL.AZ"
+
+#DBKMAP.TABLE    "fors"
+#DBKMAP.ATTRIB   "ins_coll_name:INS.COLL.NAME"
+#DBKMAP.ATTRIB   "det_read_clock:DET.READ.CLOCK"
+#DBKMAP.ATTRIB   "dimm_fwhm_avg:DIMM.FWHM.AVG"
+
+# --- oOo ---

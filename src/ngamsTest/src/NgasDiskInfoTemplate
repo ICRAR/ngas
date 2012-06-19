@@ -1,0 +1,5 @@
+<?xml version="1.0" ?>
+<NgamsStatus>
+        <Status Date="%s" HostId="%s" Message="Disk status file" Version="%s"/>
+        <DiskStatus Archive="ESO-ARCHIVE" AvailableMb="%d" BytesStored="0" Checksum="" Completed="0" CompletionDate="" DiskId="%s" InstallationDate="%s" LogicalName="%s" Manufacturer="TEST-DISK" NumberOfFiles="0" TotalDiskWriteTime="0.0" Type="SIMULATED DISK"/>
+</NgamsStatus>

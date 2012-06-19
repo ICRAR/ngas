@@ -1,0 +1,7 @@
+Status:
+HostId:                             %s
+Status:                             SUCCESS
+Message:                            NGAMS_INFO_FILE_OK:4056:INFO: Checked file with File ID: TEST.2001-05-08T15:25:00.123/File Version: 1/Disk ID: tmp-ngamsTest-NGAS:8001-FitsStorage1-Rep-2/Slot ID: 2/ Host ID: %s - file found to be consistent.
+State:                              ONLINE
+SubState:                           IDLE
+

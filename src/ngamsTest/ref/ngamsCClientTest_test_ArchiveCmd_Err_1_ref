@@ -1,0 +1,10 @@
+
+Status of request:
+
+Port:           8888
+Command:        ARCHIVE
+
+Error Code:     -5
+Message:        Timeout encountered while communicating with server. Timeout: 5.000s
+Status:         FAILURE
+

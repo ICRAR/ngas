@@ -1,0 +1,29 @@
+=======================
+CHANGELOG
+=======================
+
+
+
+->UP
+--------
+
+    - add a 'make-install-append-options' to add after make install targets the 'make-options' buildout option.
+    - add a 'make-install-options' to add after make install targets
+    - add a debug stop flag
+    - add env file generation for debug
+    - add per os options
+    - fix develop link
+    - win32 fix
+
+1.37
+---------
+
+    - API FIX
+
+-> 1.36
+--------
+
+    - splitted out from minitage.recipe
+
+
+

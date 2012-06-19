@@ -1,0 +1,51 @@
+
+
+             #     #  #####        #    #    #     #  #####
+             ##    # #     #      #    # #   ##   ## #     #
+             # #   # #           #    #   #  # # # # #
+             #  #  # #  ####    #    #     # #  #  #  #####
+             #   # # #     #   #     ####### #     #       #
+             #    ## #     #  #      #     # #     # #     #
+             #     #  #####  #       #     # #     #  #####
+
+
+             Copyright (c) European Southern Observatory
+                         All rights reserved.
+
+
+
+OVERVIEW:
+The NG/AMS C-Client Sub-Module contains the following components:
+
+    o The NG/AMS C-API - ngams.h/ngamsCClientLib.c: 
+      This is used to build C applications communicating with the 
+      NG/AMS Server.
+
+    o The NG/AMS C-Client - ngamsCClient:
+      Client application that can be used to communicate with the
+      NG/AMS Server from the UNIX/Linux command line.
+
+    o The NG/AMS Archive Client - ngamsArchiveClient:
+      Small client application that can be executed as a daemon at the
+      location of data production and which act archive front-end
+      archive application to archive data into the NGAS Archive.
+
+Further information about these three components of the NG/AMS
+C-Client Sub-Module can be obtained by selecting the specific
+man-pages for:
+
+	  o NG/AMS C-API: ngams_h and ngamsCClientLib
+
+	  o NG/AMS C-Client: ngamsCClient
+
+	  o NG/AMS Archive Client: ngamsArchiveClient
+
+	  o NG/AMS CRC-32 Utility: ngamsCrc32
+
+
+ADDITIONAL INFORMATION:
+Send comments/questions concerning the NG/AMS Package and NGAS to the
+NGAS Team:
+
+				ngast@eso.org
+

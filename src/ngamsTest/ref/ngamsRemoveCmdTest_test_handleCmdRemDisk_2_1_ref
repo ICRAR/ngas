@@ -1,0 +1,20 @@
+Status:
+Status:                             SUCCESS
+Message:                            NGAMS_INFO_DEL_DISK:4036:INFO: Successfully deleted info for disk. Disk ID: tmp-ngams-FitsStorage1-Main-1.
+State:                              ONLINE
+SubState:                           IDLE
+DiskStatus:
+DiskId:                             tmp-ngams-FitsStorage1-Main-1
+Archive:                            ESO-ARCHIVE
+Type:                               TEST-TYPE
+Manufacturer:                       TEST-MANUFACTURER
+LogicalName:                        FITS-M-000001
+SlotId:                             1
+Mounted:                            1
+MountPoint:                         /tmp/ngams/FitsStorage1-Main-1
+NumberOfFiles:                      1
+BytesStored:                        53546
+Completed:                          0
+Checksum:                           
+LastCheck:                          
+

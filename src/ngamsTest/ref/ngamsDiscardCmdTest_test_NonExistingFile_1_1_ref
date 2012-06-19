@@ -1,0 +1,6 @@
+Status:
+Status:                             FAILURE
+Message:                            NGAMS_ER_DISCARD_NOT_FOUND:4063:ERROR: File scheduled to be discarded not found: Disk ID: tmp-ngamsTest-NGAS-FitsStorage1-Main-1/File ID: NonExistingFileId/File Version: 1. NGAS Node: ___LOCAL_HOST___:8888.
+State:                              ONLINE
+SubState:                           IDLE
+

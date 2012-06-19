@@ -1,0 +1,93 @@
+"""
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE NgamsCfg SYSTEM "ngamsCfg.dtd">
+
+<NgamsCfg Id="NgamsCfg-COMMON-V2_3">
+
+  <Header Context="NGAMS" 
+          Name="ngamsServer.xml" 
+          Release="1.0" 
+          Revision="@(#) $Id: NgamsCfg_COMMON.xml,v 1.1 2006/10/24 09:11:45 awicenec Exp $"
+          Source="jknudstr@eso.org" 
+          Type="NGAMS-COMMON-CONFIGURATION">
+    <Description/>
+  </Header>
+
+  <Server ArchiveName="ESO-ARCHIVE" 
+          BlockSize="65536"
+          MaxSimReqs="30" 
+          MountRootDirectory="/NGAS" 
+          PortNo="7777" 
+          ProxyMode="1"
+          Simulation="0"
+          SwVersion="v2.3/Beta1"/>
+
+  <JanitorThread SuspensionTime="0T00:03:00" 
+                 MinSpaceSysDirMb="5000"/>
+
+  <ArchiveHandling ArchiveUnits="" 
+                   BackLogBufferDirectory="/NGAS/ngams_staging"
+                   BackLogBuffering="1"
+                   FreeSpaceDiskChangeMb="200"
+                   MinFreeSpaceWarningMb="5000"
+                   PathPrefix="saf"
+                   Replication="1"/>
+
+  <MimeTypes>
+    <MimeTypeMap Extension="fits" MimeType="image/x-fits"/>
+    <MimeTypeMap Extension="nglog" MimeType="ngas/nglog"/>
+    <MimeTypeMap Extension="nglog.Z" MimeType="application/x-cnglog"/>
+    <MimeTypeMap Extension="log" MimeType="text/log-file"/>
+    <MimeTypeMap Extension="log.Z" MimeType="application/x-clog"/>
+    <MimeTypeMap Extension="paf" MimeType="text/paf"/>
+    <MimeTypeMap Extension="fits.gz" MimeType="application/x-gfits"/>
+    <MimeTypeMap Extension="fits.Z" MimeType="application/x-cfits"/>
+    <MimeTypeMap Extension="hfits" MimeType="application/x-hfits"/>
+    <MimeTypeMap Extension="hdr" MimeType="image/x-fitshdr"/>
+    <MimeTypeMap Extension="tar" MimeType="application/x-tar"/>
+  </MimeTypes>
+
+  <Processing ProcessingDirectory="/NGAS">
+    <PlugIn Name="ngamsEsoArchDppi" 
+            PlugInPars="">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+    <PlugIn Name="ngamsExtractFitsHdrDppi" 
+            PlugInPars="">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+    <PlugIn Name="ngasWfiPreview" 
+            PlugInPars="">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+  </Processing>
+
+  <Register>
+    <PlugIn Name="ngamsFitsRegPlugIn" 
+            PlugInPars="checksum_util=utilFitsChecksum,
+                        checksum_result=0/0000000000000000">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+  </Register>
+
+  <Log LocalLogFile="/NGAS/ngams_staging/log/LogFile.nglog" 
+       LocalLogLevel="3" 
+       LogBufferSize="10"
+       LogRotateCache="30" 
+       LogRotateInt="01T00:00:00" 
+       SysLog="1" 
+       SysLogPrefix="DFSLog"/>
+
+</NgamsCfg>
+
+"""
+
+# ---oOo---

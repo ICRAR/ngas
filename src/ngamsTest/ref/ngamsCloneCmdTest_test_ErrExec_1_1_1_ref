@@ -1,0 +1,6 @@
+Status:
+Status:                             FAILURE
+Message:                            NGAMS_ER_CLONE_REJECTED:4053:ERROR: The clone command was rejected. Reason: Insufficient space to carry out the CLONE Command. Approximate amount of disk space missing (mime-type: MB): application/x-cfits: 0.051 MB
+State:                              ONLINE
+SubState:                           IDLE
+

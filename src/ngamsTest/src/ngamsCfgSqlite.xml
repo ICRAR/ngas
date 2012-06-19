@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE NgamsCfg SYSTEM "ngamsCfg.dtd">
+
+<!-- 
+  E.S.O.
+
+  Who        When        What
+  ********   **********  ***************************************************
+  jknudstr   08.03.2007  Created
+  **************************************************************************
+  Configuration file specifying SQLite as DB connection.
+  -->
+
+<NgamsCfg>
+
+  <Db AutoRecover="1"
+      Interface="ngamsSqlite" 
+      Name="tmp/ngas.db"
+      Password="-" 
+      Server="-" 
+      Snapshot="1" 
+      User="-"
+      Verify="1"/>
+
+</NgamsCfg>

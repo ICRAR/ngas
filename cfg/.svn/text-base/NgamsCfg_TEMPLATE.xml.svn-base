@@ -1,0 +1,295 @@
+"""
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE NgamsCfg SYSTEM "ngamsCfg.dtd">
+
+<NgamsCfg Id="ngamsCfgALMA">
+
+  <Header Context="NGAMS" 
+          Name="ngamsServer.xml" 
+          Release="1.0" 
+          Revision="@(#) $Id: NgamsCfg_TEMPLATE.xml,v 1.1 2006/10/24 09:11:45 awicenec Exp $"
+          Source="awicenec@eso.org" 
+          Type="NGAMS-TEST-CONFIGURATION">
+    <Description/>
+  </Header>
+
+  <Server Id="Server-ALMA"
+          ArchiveName="ALMA-ARCHIVE" 
+          BlockSize="65536"
+          MaxSimReqs="30" 
+          MountRootDirectory="/NGAS" 
+          PortNo="7777" 
+          ProxyMode="1"
+          Simulation="0"
+          SwVersion="V3.0.2"/>
+
+  <JanitorThread Id="JanitorThread-Std"
+                 SuspensionTime="0T00:10:00" 
+                 MinSpaceSysDirMb="5000"/>
+
+  <ArchiveHandling Id="ArchiveHandling-Test"
+                   ArchiveUnits="almadev2" 
+                   BackLogBufferDirectory="/NGAS/ngams_staging"
+                   BackLogBuffering="0"
+                   FreeSpaceDiskChangeMb="200"
+                   MinFreeSpaceWarningMb="5000"
+                   PathPrefix="saf"
+                   Replication="0"/>
+
+  <Db Id="Db-TESTSRV-alma"
+      Interface="ngamsOracle" 
+      Name="alma2" 
+      Password="!provide encrypted password here!" 
+      Server="almadev2" 
+      Snapshot="1" 
+      User="ngas"/>
+
+  <SystemPlugIns Id="SystemPlugIns-Std"
+                 LabelPrinterPlugIn="ngamsBrotherPT9200DxPlugIn" 
+                 LabelPrinterPlugInPars="dev=/dev/ttyS0,font_file=/opsw/packages/ngams/ngamsData/ngamsBrotherPT9200DxFonts.fnt" 
+                 OfflinePlugIn="ngamsLinuxOfflinePlugIn" 
+                 OfflinePlugInPars="unmount=0,controllers=1" 
+                 OnlinePlugIn="ngamsLinuxOnlinePlugIn" 
+                 OnlinePlugInPars="uri=/usr/local/sbin/tw_cli,
+                                   module=3w-xxxx,old_format=0,dev_start_idx=b,controllers=1"
+                 DiskSyncPlugIn="ngams3wareDiskSyncPlugIn"
+                 DiskSyncPlugInPars="controllers=1/2"/>
+ 
+  <Permissions Id="Permissions-Test"
+               AllowArchiveReq="1" 
+               AllowProcessingReq="1" 
+               AllowRemoveReq="1" 
+               AllowRetrieveReq="1"/>
+
+  <MimeTypes Id="MimeTypes-Std">
+    <MimeTypeMap Extension="fits" MimeType="image/x-fits"/>
+    <MimeTypeMap Extension="nglog" MimeType="ngas/nglog"/>
+    <MimeTypeMap Extension="nglog.Z" MimeType="application/x-nglog"/>
+    <MimeTypeMap Extension="log" MimeType="text/log-file"/>
+    <MimeTypeMap Extension="log.Z" MimeType="application/x-clog"/>
+    <MimeTypeMap Extension="paf" MimeType="ngas/paf"/>
+    <MimeTypeMap Extension="fits.gz" MimeType="application/x-gfits"/>
+    <MimeTypeMap Extension="fits.Z" MimeType="application/x-cfits"/>
+    <MimeTypeMap Extension="hfits" MimeType="application/x-hfits"/>
+    <MimeTypeMap Extension="hdr" MimeType="image/x-fitshdr"/>
+    <MimeTypeMap Extension="tar" MimeType="application/x-tar"/>
+    <MimeTypeMap Extension="msg" MimeType="multialma/related"/>
+  </MimeTypes>
+
+  <StorageSets Id="StorageSets-SATA-8-Dbl">
+    <StorageSet DiskLabel="BULK"
+                MainDiskSlotId="2"
+                Mutex="0" 
+                StorageSetId="StorageSet1"/>
+    <StorageSet DiskLabel="BULK" 
+                MainDiskSlotId="5" 
+                Mutex="0" 
+                RepDiskSlotId="6" 
+                StorageSetId="StorageSet2" 
+                Synchronize="1"/>
+    <StorageSet MainDiskSlotId="7" 
+                Mutex="0" 
+                RepDiskSlotId="8" 
+                StorageSetId="StorageSet3" 
+                Synchronize="1"/>
+  </StorageSets>
+
+  <Streams Id="Streams-4-Dbl">
+    <Stream MimeType="image/x-fits" 
+            PlugIn="ngamsFitsPlugIn" 
+            PlugInPars="
+                        checksum_util=utilFitsChecksum,
+                        checksum_result=0/0000000000000000,
+                        frame_ingest_db_id=TEST_SRV">
+      <StorageSetRef StorageSetId="StorageSet1"/>
+      <StorageSetRef StorageSetId="StorageSet2"/>
+      <StorageSetRef StorageSetId="StorageSet3"/>
+    </Stream>
+    <Stream MimeType="cal/x-fits" PlugIn="ngamsCalibDapi" PlugInPars="">
+      <StorageSetRef StorageSetId="StorageSet1"/>
+      <StorageSetRef StorageSetId="StorageSet2"/>
+      <StorageSetRef StorageSetId="StorageSet3"/>
+    </Stream>
+    <Stream MimeType="cal/x-tfits" PlugIn="ngamsCalibDapi" PlugInPars="">
+      <StorageSetRef StorageSetId="StorageSet1"/>
+      <StorageSetRef StorageSetId="StorageSet2"/>
+      <StorageSetRef StorageSetId="StorageSet3"/>
+    </Stream>
+    <Stream MimeType="non/existing" PlugIn="ngamsNonExisting" PlugInPars="">
+      <StorageSetRef StorageSetId="StorageSet1"/>
+      <StorageSetRef StorageSetId="StorageSet2"/>
+      <StorageSetRef StorageSetId="StorageSet3"/>
+    </Stream>
+    <Stream MimeType="application/x-cfits"
+            PlugIn="ngamsFitsPlugIn" 
+            PlugInPars="compression=compress -f,
+                        checksum_util=utilFitsChecksum,
+                        checksum_result=0/0000000000000000">
+      <StorageSetRef StorageSetId="StorageSet1"/>
+      <StorageSetRef StorageSetId="StorageSet2"/>
+      <StorageSetRef StorageSetId="StorageSet3"/>
+    </Stream>
+    <Stream MimeType="application/x-gfits" 
+            PlugIn="ngamsFitsPlugIn" 
+            PlugInPars="compression=compress -f,
+                        checksum_util=utilFitsChecksum,
+                        checksum_result=0/0000000000000000">
+      <StorageSetRef StorageSetId="StorageSet1"/>
+      <StorageSetRef StorageSetId="StorageSet2"/>
+      <StorageSetRef StorageSetId="StorageSet3"/>
+    </Stream>
+    <Stream MimeType="ngas/nglog" 
+            PlugIn="ngamsNgLogPlugIn"
+            PlugInPars="">
+      <StorageSetRef StorageSetId="StorageSet1"/>
+      <StorageSetRef StorageSetId="StorageSet2"/>
+      <StorageSetRef StorageSetId="StorageSet3"/>
+    </Stream>
+    <Stream MimeType="text/log-file"
+            PlugIn="ngamsNgLogPlugIn"
+            PlugInPars="">
+      <StorageSetRef StorageSetId="StorageSet1"/>
+      <StorageSetRef StorageSetId="StorageSet2"/>
+      <StorageSetRef StorageSetId="StorageSet3"/>
+    </Stream>
+    <Stream MimeType="application/x-tar"
+            PlugIn="ngasTarBallPlugIn"
+            PlugInPars="">
+      <StorageSetRef StorageSetId="StorageSet1"/>
+      <StorageSetRef StorageSetId="StorageSet2"/>
+      <StorageSetRef StorageSetId="StorageSet3"/>
+    </Stream>
+    <Stream MimeType="multialma/related"
+            PlugIn="ngamsAlmaMultipart"
+            PlugInPars="">
+      <StorageSetRef StorageSetId="StorageSet1"/>
+      <StorageSetRef StorageSetId="StorageSet2"/>
+      <StorageSetRef StorageSetId="StorageSet3"/>
+    </Stream>
+  </Streams>
+
+  <Processing Id="Processing-Std"
+              ProcessingDirectory="/NGAS">
+    <PlugIn Name="ngamsEsoArchDppi" 
+            PlugInPars="">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+    <PlugIn Name="ngamsExtractFitsHdrDppi" 
+            PlugInPars="">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+    <PlugIn Name="ngasWfiPreview" 
+            PlugInPars="">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+  </Processing>
+
+  <Register Id="Register-Std">
+    <PlugIn Name="ngamsFitsRegPlugIn" 
+            PlugInPars="checksum_util=utilFitsChecksum,
+                        checksum_result=0/0000000000000000">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+  </Register>
+
+  <DataCheckThread Id="DataCheckThread-Test"
+                   Active="1" 
+                   ChecksumPlugIn="ngamsGenCrc32"  
+                   ChecksumPlugInPars="" 
+		   DiskSeq="SEQUENTIAL" 
+                   FileSeq="SEQUENTIAL" 
+                   ForceNotif="1" 
+                   LogSummary="1" 
+                   MaxProcs="4" 
+                   MinCycle="01T00:00:00" 
+                   Prio="0" 
+                   Scan="0"/>
+
+  <Log Id="Log-Test" 
+       LocalLogFile="/NGAS/ngams_staging/log/LogFile.nglog" 
+       LocalLogLevel="5" 
+       LogBufferSize="0"
+       LogRotateCache="30" 
+       LogRotateInt="01T00:00:00" 
+       SysLog="1" 
+       SysLogPrefix="DFSLog"/>
+
+  <Notification Id="Notification-Test"
+                Active="1" 
+                MaxRetentionSize="1" 
+                MaxRetentionTime="00T00:30:00" 
+                Sender="ngast@eso.org" 
+                SmtpHost="smtphost.hq.eso.org">
+    <AlertNotification>
+      <EmailRecipient Address="awicenec@eso.org"/>
+    </AlertNotification>
+    <ErrorNotification>
+      <EmailRecipient Address="awicenec@eso.org"/>
+    </ErrorNotification>
+    <DiskSpaceNotification>
+      <EmailRecipient Address="awicenec@eso.org"/>
+    </DiskSpaceNotification>
+    <DiskChangeNotification>
+      <EmailRecipient Address="awicenec@eso.org"/>
+    </DiskChangeNotification>
+    <NoDiskSpaceNotification>
+      <EmailRecipient Address="awicenec@eso.org"/>
+    </NoDiskSpaceNotification>
+    <DataCheckNotification>
+      <EmailRecipient Address="awicenec@eso.org"/>
+    </DataCheckNotification>
+  </Notification>
+
+  <HostSuspension Id="HostSuspension-Test" 
+                  IdleSuspension="0" 
+                  IdleSuspensionTime="60" 
+                  SuspensionPlugIn="ngamsSuspensionPlugIn" 
+                  SuspensionPlugInPars="--SuspensionPlugInPars--" 
+                  WakeUpCallTimeOut="200" 
+                  WakeUpPlugIn="ngamsWakeUpPlugIn" 
+                  WakeUpPlugInPars="eth0,eth1" 
+                  WakeUpServerHost="dmdarc1"/>
+
+  <SubscriptionDef Id="SubscriptionDef-Test" 
+                   AutoUnsubscribe="1" 
+                   BackLogExpTime="28T00:00:00" 
+                   Enable="0" 
+                   SuspensionTime="0T00:03:00">
+    <Subscription  HostId="HostId1"
+                   PortNo="1234"
+                   Priority="1"
+                   SubscriberUrl="http://test.url1"
+                   FilterPlugIn="FilterPlugIn1"
+                   FilterPlugInPars="1,2,3,4"/>
+    <Subscription  HostId="HostId2"
+                   PortNo="5678"
+                   Priority="2"
+                   SubscriberUrl="http://test.url2"
+                   FilterPlugIn="FilterPlugIn2"
+                   FilterPlugInPars="5,6,7,8"/>
+  </SubscriptionDef>
+
+
+  <Authorization Id="Authorization-Test"
+                 Enable="0">
+    <User Name="ngas" 
+          Password="bmdhcw=="/>
+    <User Name="ngasmgr" 
+          Password="bmdhc21ncg=="/>
+    <User Name="ngas-int"
+          Password="bmdhcy1pbnQ="/>
+  </Authorization>
+
+</NgamsCfg>
+
+"""
+
+# ---oOo---

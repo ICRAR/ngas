@@ -1,0 +1,6 @@
+Status:
+Status:                             FAILURE
+Message:                            NGAMS_ER_UNAVAIL_FILE:4019:ERROR: File with ID: TEST.2001-05-08T15:25:00.123/Version: 2 appears not to be available.
+State:                              ONLINE
+SubState:                           IDLE
+

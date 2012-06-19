@@ -1,0 +1,12 @@
+
+AccessCode=%s
+DbServer=%s
+DbUser=%s
+DbPassword=%s
+DbName=%s
+SmtpHost=%s
+EmailNotification=%s
+NgasHost=%s
+NgasPort=%s
+
+# EOF

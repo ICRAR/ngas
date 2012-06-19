@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE NgamsCfg SYSTEM "ngamsCfg.dtd">
+
+<!-- 
+  E.S.O.
+
+  Who        When        What
+  ********   **********  ***************************************************
+  jknudstr   2008-08-12  Created
+  **************************************************************************
+  Configuration file specifying a connection pool based connection,
+  connecting to a Sybase RDBMS.
+  -->
+
+<NgamsCfg>
+
+ <Db Interface="ngamsDbConPool" 
+     Name="ngastst2" 
+     Password="bmdhc19wdw=="
+     Server="DEVSRV" 
+     Snapshot="1" 
+     User="ngas"
+     Parameters="Driver=ngamsSybase,Connections=10"
+     MultipleConnections="1"/>
+
+</NgamsCfg>

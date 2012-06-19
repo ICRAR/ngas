@@ -1,0 +1,6 @@
+Status:
+Status:                             FAILURE
+Message:                            NGAMS_ER_IMPROPER_STATE:4015:ERROR: Command EXIT not allowed when in State/Sub-State: ONLINE/IDLE. Allowed State(s)/Sub-State(s) are: [OFFLINE]/[IDLE].
+State:                              ONLINE
+SubState:                           IDLE
+

@@ -1,0 +1,13 @@
+-----> Executing Retire Disk Procedure on disk with ID: tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+-----> Disk with ID: tmp-ngamsTest-NGAS-FitsStorage1-Main-1 has Logical Name: FITS-M-000001
+-----> Get list of files stored on disk: FITS-M-000001 ...
+-----> Got list of files stored on disk: FITS-M-000001
+-----> Insert files on Retired Disk into ngas_files_retired
+-----> Inserted files on Retired Disk into ngas_files_retired
+-----> Remove entry from disk from DB ...
+-----> Removed entry from disk from DB
+-----> Setting mount point of Retired Disk to 'RETIRED' ...
+-----> Set mount point of Retired Disk to 'RETIRED'
+-----> Generate DISK RETIREMENT STATUS REPORT ...
+-----> Generated DISK RETIREMENT STATUS REPORT
+-----> Finished Disk Retirement Procedure for disk: tmp-ngamsTest-NGAS-FitsStorage1-Main-1/FITS-M-000001

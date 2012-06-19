@@ -1,0 +1,21 @@
+Status:
+Status:                             
+Message:                            Successfully handled command STATUS
+State:                              
+SubState:                           
+DiskStatus:
+DiskId:                             tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+Archive:                            ESO-ARCHIVE
+Type:                               TEST-TYPE
+Manufacturer:                       TEST-MANUFACTURER
+LogicalName:                        FITS-M-000001
+SlotId:                             1
+Mounted:                            1
+MountPoint:                         /tmp/ngamsTest/NGAS/FitsStorage1-Main-1
+NumberOfFiles:                      0
+BytesStored:                        0
+Completed:                          0
+CompletionDate:                     
+Checksum:                           
+LastCheck:                          
+

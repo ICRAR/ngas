@@ -1,0 +1,5 @@
+<?xml version="1.0" ?>
+<!DOCTYPE NgamsStatus SYSTEM "http://localhost6.localdomain6:8888/RETRIEVE?internal=ngamsStatus.dtd">
+<NgamsStatus>
+  <Status CompletionTime="2011-02-02T14:25:14.858" Date="2011-02-02T14:25:14.862" HostId="dirp01" LastRequestStatUpdate="2011-02-02T14:25:14.858" Message="NGAMS_ER_UNAVAIL_FILE:4019:ERROR: File with ID: ISAAC.1999-04-11T05:03:21.035 appears not to be available." RequestId="12" RequestTime="2011-02-02T14:25:14.743" State="ONLINE" Status="FAILURE" SubState="IDLE" Version="v4.1-ALMA/2010-04-14T08:00:00"/>
+</NgamsStatus>

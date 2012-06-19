@@ -1,0 +1,9 @@
+zc.buildout
+minitage.core
+iniparse
+minitage.recipe.common
+
+[test]
+IPython
+zope.testing
+mocker

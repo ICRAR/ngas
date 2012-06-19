@@ -1,0 +1,1 @@
+NGAMS_ER_DB_COM:2002:ERROR: Problems communicating with the DB: Problem setting up DB connection: Layer: 6, Origin: 8 ct_connect(): directory service layer: internal directory control layer error: Requested server name not found.

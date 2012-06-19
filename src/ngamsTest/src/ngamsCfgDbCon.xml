@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE NgamsCfg SYSTEM "ngamsCfg.dtd">
+
+<!-- 
+  E.S.O.
+
+  Who        When        What
+  ********   **********  ***************************************************
+  jknudstr   04.04.2001  Created
+  **************************************************************************
+  This is a template/example NG/AMS Configuration defining only a DB 
+  connection. The rest of the configuration parameters must be loaded
+  from the DB
+
+  NOTE: This file is used as basis configuration file for many of the NG/AMS
+  Unit Tests. Be careful introducing changes and when done, execute
+  and update the Unit Tests if needed.
+  -->
+
+<NgamsCfg>
+
+  <Db Id="Db-DEVSRV-ngastst2"
+      AutoRecover="1"
+      Interface="ngamsSybase" 
+      Name="ngastst2" 
+      Password="bmdhc19wdw==" 
+      Server="DEVSRV" 
+      Snapshot="1" 
+      User="ngas"
+      Verify="1"/>
+
+</NgamsCfg>

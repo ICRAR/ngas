@@ -1,0 +1,14 @@
+"""
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE NgamsCfg SYSTEM "ngamsCfg.dtd">
+
+<NgamsCfg>
+
+  <Authorization Id="Authorization-OFF"
+                 Enable="0"/>
+
+</NgamsCfg>
+
+"""
+
+# ---oOo---

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE NgamsCfg SYSTEM "ngamsCfg.dtd">
+
+<NgamsCfg>
+
+  <DataCheckThread Id="DataCheckThread-OFF"
+                   Active="0" 
+                   ChecksumPlugIn="ngamsGenCrc32"  
+                   ChecksumPlugInPars="" 
+		   DiskSeq="SEQUENTIAL" 
+                   FileSeq="SEQUENTIAL" 
+                   ForceNotif="1" 
+                   LogSummary="1" 
+                   MaxProcs="4" 
+                   MinCycle="07T00:00:00" 
+                   Prio="1" 
+                   Scan="0"/>
+
+</NgamsCfg>

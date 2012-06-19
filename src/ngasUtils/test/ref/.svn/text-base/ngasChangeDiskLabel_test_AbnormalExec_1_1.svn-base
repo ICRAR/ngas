@@ -1,0 +1,13 @@
+Present Disk Label: M-000002
+
+Changing Disk Label for Disk with:
+ - Disk ID:        tmp-ngamsTest-NGAS-FitsStorage2-Main-3
+ - Disk Label:     M-000002
+ - New Disk Label: M-000005
+
+Changing Disk Label from M-000002 to M-000005 ...
+
+Problem encountered:
+
+Disk Label: M-000005 is already in use! -- bailing out
+

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE NgamsCfg SYSTEM "ngamsCfg.dtd">
+
+<NgamsCfg>
+
+  <Notification Id="Notification-TEST"
+                Active="1" 
+                MaxRetentionSize="1000" 
+                MaxRetentionTime="00T00:30:00" 
+                Sender="ngast@eso.org" 
+                SmtpHost="smtphost.hq.eso.org">
+    <AlertNotification>
+      <EmailRecipient Address="jknudstr@eso.org"/>
+    </AlertNotification>
+
+    <ErrorNotification>
+      <EmailRecipient Address="jknudstr@eso.org"/>
+    </ErrorNotification>
+
+    <DiskSpaceNotification>
+      <EmailRecipient Address="jknudstr@eso.org"/>
+    </DiskSpaceNotification>
+
+    <DiskChangeNotification>
+      <EmailRecipient Address="jknudstr@eso.org"/>
+    </DiskChangeNotification>
+
+    <NoDiskSpaceNotification>
+      <EmailRecipient Address="jknudstr@eso.org"/>
+    </NoDiskSpaceNotification>
+
+    <DataCheckNotification>
+      <EmailRecipient Address="jknudstr@eso.org"/>
+    </DataCheckNotification>
+  </Notification>
+
+</NgamsCfg>

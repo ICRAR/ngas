@@ -1,0 +1,13 @@
+README
+__init__.py
+ngamsPClient.doc
+ngamsPClient.py
+ngamsPClientEx.py
+setup.cfg
+setup.py
+ngamsPClient.egg-info/PKG-INFO
+ngamsPClient.egg-info/SOURCES.txt
+ngamsPClient.egg-info/dependency_links.txt
+ngamsPClient.egg-info/entry_points.txt
+ngamsPClient.egg-info/top_level.txt
+ngamsPClient.egg-info/zip-safe

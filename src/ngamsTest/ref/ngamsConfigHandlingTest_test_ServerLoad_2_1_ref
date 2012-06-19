@@ -1,0 +1,6 @@
+Status:
+Status:                             FAILURE
+Message:                            NGAMS_ER_ILL_REQ:4017:ERROR: This NG/AMS is not configured for accepting Archive Requests. Rejecting request!
+State:                              ONLINE
+SubState:                           IDLE
+

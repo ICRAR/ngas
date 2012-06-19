@@ -1,0 +1,6 @@
+Status:
+Status:                             FAILURE
+Message:                            DISCARD Command can only be executed locally!
+State:                              ONLINE
+SubState:                           IDLE
+

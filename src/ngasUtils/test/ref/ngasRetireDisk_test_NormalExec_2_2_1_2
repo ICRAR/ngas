@@ -1,0 +1,210 @@
+FileStatus:
+DiskId:                             tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+FileName:                           saf/2001-05-08/1/TEST.2001-05-08T15:25:00.123.fits.Z
+FileId:                             TEST.2001-05-08T15:25:00.123
+FileVersion:                        1
+Format:                             application/x-cfits
+FileSize:                           53546
+UncompressedFileSize:               69120
+Compression:                        compress -f
+Ignore:                             0
+Checksum:                           1246906309
+ChecksumPlugIn:                     ngamsGenCrc32
+FileStatus:                         00000000
+Tag:                                
+Permissions:                        
+Owner:                              
+Group:                              
+ModificationDate:                   
+AccessDate:                         
+
+
+FileStatus:
+DiskId:                             tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+FileName:                           saf/2001-05-08/2/TEST.2001-05-08T15:25:00.123.fits.Z
+FileId:                             TEST.2001-05-08T15:25:00.123
+FileVersion:                        2
+Format:                             application/x-cfits
+FileSize:                           53546
+UncompressedFileSize:               69120
+Compression:                        compress -f
+Ignore:                             0
+Checksum:                           1246906309
+ChecksumPlugIn:                     ngamsGenCrc32
+FileStatus:                         00000000
+Tag:                                
+Permissions:                        
+Owner:                              
+Group:                              
+ModificationDate:                   
+AccessDate:                         
+
+
+FileStatus:
+DiskId:                             tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+FileName:                           saf/2001-05-08/3/TEST.2001-05-08T15:25:00.123.fits.Z
+FileId:                             TEST.2001-05-08T15:25:00.123
+FileVersion:                        3
+Format:                             application/x-cfits
+FileSize:                           53546
+UncompressedFileSize:               69120
+Compression:                        compress -f
+Ignore:                             0
+Checksum:                           1246906309
+ChecksumPlugIn:                     ngamsGenCrc32
+FileStatus:                         00000000
+Tag:                                
+Permissions:                        
+Owner:                              
+Group:                              
+ModificationDate:                   
+AccessDate:                         
+
+
+FileStatus:
+DiskId:                             tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+FileName:                           saf/2001-05-08/4/TEST.2001-05-08T15:25:00.123.fits.Z
+FileId:                             TEST.2001-05-08T15:25:00.123
+FileVersion:                        4
+Format:                             application/x-cfits
+FileSize:                           53546
+UncompressedFileSize:               69120
+Compression:                        compress -f
+Ignore:                             0
+Checksum:                           1246906309
+ChecksumPlugIn:                     ngamsGenCrc32
+FileStatus:                         00000000
+Tag:                                
+Permissions:                        
+Owner:                              
+Group:                              
+ModificationDate:                   
+AccessDate:                         
+
+
+FileStatus:
+DiskId:                             tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+FileName:                           saf/2001-05-08/5/TEST.2001-05-08T15:25:00.123.fits.Z
+FileId:                             TEST.2001-05-08T15:25:00.123
+FileVersion:                        5
+Format:                             application/x-cfits
+FileSize:                           53546
+UncompressedFileSize:               69120
+Compression:                        compress -f
+Ignore:                             0
+Checksum:                           1246906309
+ChecksumPlugIn:                     ngamsGenCrc32
+FileStatus:                         00000000
+Tag:                                
+Permissions:                        
+Owner:                              
+Group:                              
+ModificationDate:                   
+AccessDate:                         
+
+
+FileStatus:
+DiskId:                             tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+FileName:                           saf/2001-05-08/6/TEST.2001-05-08T15:25:00.123.fits.Z
+FileId:                             TEST.2001-05-08T15:25:00.123
+FileVersion:                        6
+Format:                             application/x-cfits
+FileSize:                           53546
+UncompressedFileSize:               69120
+Compression:                        compress -f
+Ignore:                             0
+Checksum:                           1246906309
+ChecksumPlugIn:                     ngamsGenCrc32
+FileStatus:                         00000000
+Tag:                                
+Permissions:                        
+Owner:                              
+Group:                              
+ModificationDate:                   
+AccessDate:                         
+
+
+FileStatus:
+DiskId:                             tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+FileName:                           saf/2001-05-08/7/TEST.2001-05-08T15:25:00.123.fits.Z
+FileId:                             TEST.2001-05-08T15:25:00.123
+FileVersion:                        7
+Format:                             application/x-cfits
+FileSize:                           53546
+UncompressedFileSize:               69120
+Compression:                        compress -f
+Ignore:                             0
+Checksum:                           1246906309
+ChecksumPlugIn:                     ngamsGenCrc32
+FileStatus:                         00000000
+Tag:                                
+Permissions:                        
+Owner:                              
+Group:                              
+ModificationDate:                   
+AccessDate:                         
+
+
+FileStatus:
+DiskId:                             tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+FileName:                           saf/2001-05-08/8/TEST.2001-05-08T15:25:00.123.fits.Z
+FileId:                             TEST.2001-05-08T15:25:00.123
+FileVersion:                        8
+Format:                             application/x-cfits
+FileSize:                           53546
+UncompressedFileSize:               69120
+Compression:                        compress -f
+Ignore:                             0
+Checksum:                           1246906309
+ChecksumPlugIn:                     ngamsGenCrc32
+FileStatus:                         00000000
+Tag:                                
+Permissions:                        
+Owner:                              
+Group:                              
+ModificationDate:                   
+AccessDate:                         
+
+
+FileStatus:
+DiskId:                             tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+FileName:                           saf/2001-05-08/9/TEST.2001-05-08T15:25:00.123.fits.Z
+FileId:                             TEST.2001-05-08T15:25:00.123
+FileVersion:                        9
+Format:                             application/x-cfits
+FileSize:                           53546
+UncompressedFileSize:               69120
+Compression:                        compress -f
+Ignore:                             0
+Checksum:                           1246906309
+ChecksumPlugIn:                     ngamsGenCrc32
+FileStatus:                         00000000
+Tag:                                
+Permissions:                        
+Owner:                              
+Group:                              
+ModificationDate:                   
+AccessDate:                         
+
+
+FileStatus:
+DiskId:                             tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+FileName:                           saf/2001-05-08/10/TEST.2001-05-08T15:25:00.123.fits.Z
+FileId:                             TEST.2001-05-08T15:25:00.123
+FileVersion:                        10
+Format:                             application/x-cfits
+FileSize:                           53546
+UncompressedFileSize:               69120
+Compression:                        compress -f
+Ignore:                             0
+Checksum:                           1246906309
+ChecksumPlugIn:                     ngamsGenCrc32
+FileStatus:                         00000000
+Tag:                                
+Permissions:                        
+Owner:                              
+Group:                              
+ModificationDate:                   
+AccessDate:                         
+
+

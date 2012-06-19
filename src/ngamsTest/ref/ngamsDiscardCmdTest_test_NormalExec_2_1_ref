@@ -1,0 +1,6 @@
+Status:
+Status:                             SUCCESS
+Message:                            NGAMS_INFO_DISCARD_GRANTED:4065:INFO: File discard request granted. File: /tmp/ngamsTest/NGAS/FitsStorage3-Main-5/saf/SmallFile.fits. NGAS Node ___LOCAL_HOST___:8888.
+State:                              ONLINE
+SubState:                           IDLE
+

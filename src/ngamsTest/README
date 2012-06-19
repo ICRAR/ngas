@@ -1,0 +1,91 @@
+
+
+             #     #  #####        #    #    #     #  #####
+             ##    # #     #      #    # #   ##   ## #     #
+             # #   # #           #    #   #  # # # # #
+             #  #  # #  ####    #    #     # #  #  #  #####
+             #   # # #     #   #     ####### #     #       #
+             #    ## #     #  #      #     # #     # #     #
+             #     #  #####  #       #     # #     #  #####
+
+
+             Copyright (c) European Southern Observatory
+                         All rights reserved.
+
+
+INTRODUCTION:
+The ngamsTest sub-module contains the Unit Tests for the NG/AMS Package.
+
+The tests are organized such that there is one Test Suite per main feature. 
+E.g., there is one Test Suite for each command and a Test Suite for the
+NG/AMS C-API, Archive Client and Python API. In addition for the internal
+NG/AMS Server Threads like the Janitor Thread and the Data Consistency
+Checking Thread.
+
+
+TEST CODE STRUCTURE:
+The tests source code files are named as follows: 
+
+    ngams<Feature>Test.py
+
+- e.g.:
+
+    ngamsCloneCmdTest.py
+
+In the test source file there is a Test Suite Class named as the
+source file. Each Test Case in the Test Suite have a name of the form:
+
+    test_<Test Case>_<#>
+
+- e.g.:
+
+    def test_CloneCmd_1(self):
+        '''
+        Test Case: Normal execution of CLONE Command/clone one file.
+        '''
+        ...
+
+
+TEST TOOLS:
+To execute all tests, the following command can be used:
+
+    % python ngamsTest.py [-status] [-tests "<tst mod>,..."]
+
+
+To execute a specific Test Suite the following command can be invoked, e.g.:
+
+    % python <Test Source File> [-x] [-v <level>] 
+             [-logLevel <level> -logFile <file>] [-tests <test name>] 
+             [-noCleanUp]
+
+
+The command line parameters are:
+
+  -x:                    Provide extended information in case of errors.
+  
+  -v <Level>:            Generate Verbose Output.
+
+  -logLevel <Level>:     Set the Log Level to be used when logging in
+                         a Log File.
+
+  -logFile  <Log File>:  Log file.
+
+  -tests <Test Case>:    Execute a specific Test Case in the Test Suite.
+
+  -noCleanUp:            Leave temporary test output files.
+
+
+TEST ENVIRONMENT:
+The tests requires the availability of an NGAS DB (Sybase ASE). This
+is defined in the the NG/AMS Configuration file used for the tests.
+
+The tests do not need any real disks/HW but are running in simulation
+mode and creates a local NGAS Directory Structure in the directory "/NGAS".
+
+
+ADDITIONAL INFORMATION:
+Send comments/questions concerning the NG/AMS Package and NGAS to the
+NGAS Team:
+
+				ngast@eso.org
+

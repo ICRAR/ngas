@@ -1,0 +1,6 @@
+Status:
+Status:                             FAILURE
+Message:                            NGAMS_ER_CMD_SYNTAX:4035:ERROR: The combination of parameters given together with the command: DISCARD is illegal. Parameter(s): Correct syntax is: disk_id=ID&file_id=ID&file_version=VER or path=PATH[&host_id=ID].
+State:                              ONLINE
+SubState:                           IDLE
+

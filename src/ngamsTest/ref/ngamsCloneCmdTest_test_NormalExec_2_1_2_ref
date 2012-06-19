@@ -1,0 +1,25 @@
+Content-type: text/plain
+Content-disposition: attachment; filename=CloneStatusReport-TEST.2001-05-08T15:25:00.123-2
+
+CLONE STATUS REPORT:
+
+==Summary:
+
+Disk ID:                    -----
+File ID:                    TEST.2001-05-08T15:25:00.123
+File Version:               2
+Total Number of Files:      2
+Number of Cloned Files:     2
+Number of Failed Files:     0
+
+==File List:
+
+Source File                                                            Target File                                                            Status 
+---------------------------------------------------------------------- ---------------------------------------------------------------------- -------
+tmp-ngamsTest-NGAS-FitsStorage1-Main-1/TEST.2001-05-08T15:25:00.123/2  tmp-ngamsTest-NGAS-FitsStorage2-Main-3/TEST.2001-05-08T15:25:00.123/2  SUCCESS
+tmp-ngamsTest-NGAS-FitsStorage1-Rep-2/TEST.2001-05-08T15:25:00.123/2   tmp-ngamsTest-NGAS-FitsStorage3-Main-5/TEST.2001-05-08T15:25:00.123/2  SUCCESS
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+
+==END
+
+

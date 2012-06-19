@@ -1,0 +1,20 @@
+Status:
+Status:                             
+Message:                            Disk status file
+State:                              
+SubState:                           
+DiskStatus:
+DiskId:                             tmp-ngamsTest-NGAS-Data1-Rep-2
+Archive:                            ESO-ARCHIVE
+Type:                               SIMULATED DISK
+Manufacturer:                       TEST-DISK
+LogicalName:                        TEST-DISK-R-000001
+SlotId:                             
+Mounted:                            -1
+MountPoint:                         
+NumberOfFiles:                      0
+BytesStored:                        0
+Completed:                          0
+Checksum:                           
+LastCheck:                          
+

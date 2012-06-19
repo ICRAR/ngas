@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<NgamsCfg xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ngamsCfg.xsd" Id="ngamsCfgALMA">
+
+  <Header Context="NGAMS" Name="ngamsServer.xml" Release="1.0" Revision="@(#) $Id: NgamsCfg1.ORACLE.RAID5.subscriber.xml,v 1.1 2009/11/26 15:47:20 awicenec Exp $" Source="ngast@eso.org" Type="NGAMS-CONFIGURATION">
+    <Description>
+      Configuration used for the deployment NGAS servers. This configuration assumes
+      RAID volumes to be pre-mounted. There is no replication configured. The configuration
+      is compatible with the Oracle client configuration (tnsnames.ora) and connects to the
+      RAC cluster in failover mode.
+      *NOTES*: 
+               The RAID volumes have to be mounted on /NGAS/volume* at 
+                 boot time. NGAS does not do the mounting with this 
+                 configuration.
+               There is no mirroring or caching configured yet.
+               The DB pool is disabled.
+    </Description>
+  </Header>
+
+  <Server Id="Server-ALMA" ArchiveName="ALMA-ARCHIVE" BlockSize="65536" MaxSimReqs="30" RootDirectory="/NGAS" PortNo="7777" ProxyMode="1" Simulation="0" SwVersion=""/>
+
+  <JanitorThread Id="JanitorThread-Std" SuspensionTime="0T00:10:00" MinSpaceSysDirMb="5000"/>
+
+  <ArchiveHandling Id="ArchiveHandling" ArchiveUnits="ngas03" BackLogBufferDirectory="/NGAS/" BackLogBuffering="0" FreeSpaceDiskChangeMb="200" MinFreeSpaceWarningMb="5000" PathPrefix="afa" Replication="0"/>
+
+  <Db Interface="ngamsOracle" 
+    Password="bmdhcyRkYmE=\n" 
+    Snapshot="1" User="ngas" 
+    Server="RAC" 
+    Name="ALMAHA" 
+    Id="ALMA-RAC" 
+    Parameters="Driver=ngamsOracle,Connections=10" MultipleConnections="0"
+  />
+
+  <SystemPlugIns Id="SystemPlugIns-Std" LabelPrinterPlugIn="-" LabelPrinterPlugInPars="-" OfflinePlugIn="ngamsLinuxOfflinePlugIn" OfflinePlugInPars="unmount=0" OnlinePlugIn="ngamsGenericOnlinePlugIn" OnlinePlugInPars="" DiskSyncPlugIn="" DiskSyncPlugInPars=""/>
+
+  <Permissions Id="Permissions" AllowArchiveReq="1" AllowProcessingReq="1" AllowRemoveReq="1" AllowRetrieveReq="1"/>
+
+  <MimeTypes Id="MimeTypes-Std">
+    <MimeTypeMap Extension="fits" MimeType="image/x-fits"/>
+    <MimeTypeMap Extension="nglog" MimeType="ngas/nglog"/>
+    <MimeTypeMap Extension="nglog.Z" MimeType="application/x-nglog"/>
+    <MimeTypeMap Extension="log" MimeType="text/log-file"/>
+    <MimeTypeMap Extension="log.Z" MimeType="application/x-clog"/>
+    <MimeTypeMap Extension="paf" MimeType="ngas/paf"/>
+    <MimeTypeMap Extension="fits.gz" MimeType="application/x-gfits"/>
+    <MimeTypeMap Extension="fits.Z" MimeType="application/x-cfits"/>
+    <MimeTypeMap Extension="hfits" MimeType="application/x-hfits"/>
+    <MimeTypeMap Extension="hdr" MimeType="image/x-fitshdr"/>
+    <MimeTypeMap Extension="tar" MimeType="application/x-tar"/>
+    <MimeTypeMap Extension="msg" MimeType="multialma/related"/>
+  </MimeTypes>
+
+  <StorageSets>
+    <StorageSet DiskLabel="BULK" MainDiskSlotId="volume1" Mutex="0" StorageSetId="volume1" Synchronize="1"/>
+    <StorageSet DiskLabel="BULK" MainDiskSlotId="volume2" Mutex="0" StorageSetId="volume2" Synchronize="1"/>
+    <StorageSet DiskLabel="BULK" MainDiskSlotId="volume3" Mutex="0" StorageSetId="volume3" Synchronize="1"/>
+  </StorageSets>
+
+  <Streams>
+    <Stream MimeType="application/octet-stream" PlugIn="ngamsGenDapi" PlugInPars="">
+      <StorageSetRef StorageSetId="volume1"/>
+      <StorageSetRef StorageSetId="volume2"/>
+      <StorageSetRef StorageSetId="volume3"/>
+    </Stream>
+    <Stream MimeType="image/x-fits" PlugIn="ngamsFitsPlugIn" PlugInPars="compression=compress -f,
+                        checksum_util=utilFitsChecksum,
+                        checksum_result=0/0000000000000000,
+                        frame_ingest_db_id=TEST_SRV">
+      <StorageSetRef StorageSetId="volume1"/>
+      <StorageSetRef StorageSetId="volume2"/>
+      <StorageSetRef StorageSetId="volume3"/>
+    </Stream>
+    <Stream MimeType="cal/x-fits" PlugIn="ngamsCalibDapi" PlugInPars="">
+      <StorageSetRef StorageSetId="volume1"/>
+      <StorageSetRef StorageSetId="volume2"/>
+      <StorageSetRef StorageSetId="volume3"/>
+    </Stream>
+    <Stream MimeType="cal/x-tfits" PlugIn="ngamsCalibDapi" PlugInPars="">
+      <StorageSetRef StorageSetId="volume1"/>
+      <StorageSetRef StorageSetId="volume2"/>
+      <StorageSetRef StorageSetId="volume3"/>
+    </Stream>
+    <Stream MimeType="non/existing" PlugIn="ngamsNonExisting" PlugInPars="">
+      <StorageSetRef StorageSetId="volume1"/>
+      <StorageSetRef StorageSetId="volume2"/>
+      <StorageSetRef StorageSetId="volume3"/>
+    </Stream>
+    <Stream MimeType="application/x-cfits" PlugIn="ngamsFitsPlugIn" PlugInPars="compression=compress -f,
+                        checksum_util=utilFitsChecksum,
+                        checksum_result=0/0000000000000000">
+      <StorageSetRef StorageSetId="volume1"/>
+      <StorageSetRef StorageSetId="volume2"/>
+      <StorageSetRef StorageSetId="volume3"/>
+    </Stream>
+    <Stream MimeType="application/x-gfits" PlugIn="ngamsFitsPlugIn" PlugInPars="compression=compress -f,
+                        checksum_util=utilFitsChecksum,
+                        checksum_result=0/0000000000000000">
+      <StorageSetRef StorageSetId="volume1"/>
+      <StorageSetRef StorageSetId="volume2"/>
+      <StorageSetRef StorageSetId="volume3"/>
+    </Stream>
+    <Stream MimeType="ngas/nglog" PlugIn="ngamsNgLogPlugIn" PlugInPars="">
+      <StorageSetRef StorageSetId="volume1"/>
+      <StorageSetRef StorageSetId="volume2"/>
+      <StorageSetRef StorageSetId="volume3"/>
+    </Stream>
+    <Stream MimeType="text/log-file" PlugIn="ngamsNgLogPlugIn" PlugInPars="">
+      <StorageSetRef StorageSetId="volume1"/>
+      <StorageSetRef StorageSetId="volume2"/>
+      <StorageSetRef StorageSetId="volume3"/>
+    </Stream>
+    <Stream MimeType="application/x-tar" PlugIn="ngasTarBallPlugIn" PlugInPars="">
+      <StorageSetRef StorageSetId="volume1"/>
+      <StorageSetRef StorageSetId="volume2"/>
+      <StorageSetRef StorageSetId="volume3"/>
+    </Stream>
+    <Stream MimeType="multialma/related" PlugIn="ngamsSdmMultipart" PlugInPars="">
+      <StorageSetRef StorageSetId="volume1"/>
+      <StorageSetRef StorageSetId="volume2"/>
+      <StorageSetRef StorageSetId="volume3"/>
+    </Stream>
+    <Stream MimeType="multipart/related" PlugIn="ngamsSdmMultipart" PlugInPars="">
+      <StorageSetRef StorageSetId="volume1"/>
+      <StorageSetRef StorageSetId="volume2"/>
+      <StorageSetRef StorageSetId="volume3"/>
+    </Stream>
+  </Streams>
+
+  <Processing Id="Processing-Std" ProcessingDirectory="/NGAS">
+    <PlugIn Name="ngamsEsoArchDppi" PlugInPars="">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+    <PlugIn Name="ngamsExtractFitsHdrDppi" PlugInPars="">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+    <PlugIn Name="ngasWfiPreview" PlugInPars="">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+  </Processing>
+
+  <Register Id="Register-Std">
+    <PlugIn Name="ngamsFitsRegPlugIn" PlugInPars="checksum_util=utilFitsChecksum,
+                        checksum_result=0/0000000000000000">
+      <MimeType Name="image/x-fits"/>
+      <MimeType Name="application/x-gfits"/>
+      <MimeType Name="application/x-cfits"/>
+    </PlugIn>
+  </Register>
+
+  <DataCheckThread Id="DataCheckThread" Active="1" ChecksumPlugIn="ngamsGenCrc32" ChecksumPlugInPars="" DiskSeq="SEQUENTIAL" FileSeq="SEQUENTIAL" ForceNotif="1" LogSummary="1" MaxProcs="4" MinCycle="01T00:00:00" Prio="0" Scan="0"/>
+
+  <Log Id="Log" LocalLogFile="/NGAS/log/LogFile.nglog" LocalLogLevel="3" LogBufferSize="0" LogRotateCache="30" LogRotateInt="01T00:00:00" SysLog="0" SysLogPrefix="DFSLog"/>
+
+  <Notification Id="Notification" Active="1" MaxRetentionSize="1" MaxRetentionTime="00T00:30:00" Sender="ngast@hq.eso.org" SmtpHost="smtphost.hq.eso.org">
+    <AlertNotification>
+      <EmailRecipient Address="DEFINE@eso.org"/>
+    </AlertNotification>
+    <ErrorNotification>
+      <EmailRecipient Address="DEFINE@eso.org"/>
+    </ErrorNotification>
+    <DiskSpaceNotification>
+      <EmailRecipient Address="DEFINE@eso.org"/>
+    </DiskSpaceNotification>
+    <DiskChangeNotification>
+      <EmailRecipient Address="DEFINE@eso.org"/>
+    </DiskChangeNotification>
+    <NoDiskSpaceNotification>
+      <EmailRecipient Address="DEFINE@eso.org"/>
+    </NoDiskSpaceNotification>
+    <DataCheckNotification>
+      <EmailRecipient Address="DEFINE@eso.org"/>
+    </DataCheckNotification>
+  </Notification>
+
+  <HostSuspension Id="HostSuspension" IdleSuspension="0" IdleSuspensionTime="60" SuspensionPlugIn="ngamsSuspensionPlugIn" SuspensionPlugInPars="--SuspensionPlugInPars--" WakeUpCallTimeOut="200" WakeUpPlugIn="ngamsWakeUpPlugIn" WakeUpPlugInPars="eth0,eth1" WakeUpServerHost="arch01"/>
+
+  <SubscriptionDef Id="SubscriptionDef" AutoUnsubscribe="1" BackLogExpTime="1T00:00:00" Enable="1" SuspensionTime="0T00:01:00">
+    <Subscription SubscriberId="ngasfe01:7777-ngasbe01:7777" HostId="ngasfe01" PortNo="7777" Priority="5" SubscriberUrl="http://ngasbe01:7777/QARCHIVE"/>
+    <Subscription SubscriberId="ngasfe01:7778-ngasbe01:7777" HostId="ngasfe01" PortNo="7778" Priority="5" SubscriberUrl="http://ngasbe01:7777/QARCHIVE"/>
+    <Subscription SubscriberId="ngasfe04:7777-ngasbe01:7777" HostId="ngasfe04" PortNo="7777" Priority="5" SubscriberUrl="http://ngasbe01:7777/QARCHIVE"/>
+    <Subscription SubscriberId="ngasfe04:7778-ngasbe01:7777" HostId="ngasfe04" PortNo="7778" Priority="5" SubscriberUrl="http://ngasbe01:7777/QARCHIVE"/>
+  </SubscriptionDef>
+
+
+  <Authorization Id="Authorization" Enable="0">
+    <User Name="ngas" Password="bmdhcw=="/>
+    <User Name="ngasmgr" Password="bmdhc21ncg=="/>
+    <User Name="ngas-int" Password="bmdhcy1pbnQ="/>
+  </Authorization>
+
+</NgamsCfg>

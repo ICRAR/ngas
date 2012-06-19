@@ -1,0 +1,43 @@
+CONVERTED DB SNAPSHOT:
+
+FILE: TEST.2001-05-08T15:25:00.123_1
+disk_id          = tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+file_name        = saf/2001-05-08/1/TEST.2001-05-08T15:25:00.123.fits.Z
+file_id          = TEST.2001-05-08T15:25:00.123
+file_version     = 1
+format           = application/x-cfits
+file_size        = 53546
+uncompressed_file_size = 69120
+compression      = gzip
+ignore           = 0
+checksum         = 1246906309
+checksum_plugin  = ngamsGenCrc32
+file_status      = 00000000
+
+FILE: TEST.2001-05-08T15:25:00.123_2
+disk_id          = tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+file_name        = saf/2001-05-08/2/TEST.2001-05-08T15:25:00.123.fits.Z
+file_id          = TEST.2001-05-08T15:25:00.123
+file_version     = 2
+format           = application/x-cfits
+file_size        = 53546
+uncompressed_file_size = 69120
+compression      = gzip
+ignore           = 0
+checksum         = 1246906309
+checksum_plugin  = ngamsGenCrc32
+file_status      = 00000000
+
+FILE: TEST.2001-05-08T15:25:00.123_3
+disk_id          = tmp-ngamsTest-NGAS-FitsStorage1-Main-1
+file_name        = saf/2001-05-08/3/TEST.2001-05-08T15:25:00.123.fits.Z
+file_id          = TEST.2001-05-08T15:25:00.123
+file_version     = 3
+format           = application/x-cfits
+file_size        = 53546
+uncompressed_file_size = 69120
+compression      = gzip
+ignore           = 0
+checksum         = 1246906309
+checksum_plugin  = ngamsGenCrc32
+file_status      = 00000000

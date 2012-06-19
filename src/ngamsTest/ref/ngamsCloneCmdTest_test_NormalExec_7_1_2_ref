@@ -1,0 +1,28 @@
+Content-type: text/plain
+Content-disposition: attachment; filename=CloneStatusReport-tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1
+
+CLONE STATUS REPORT:
+
+==Summary:
+
+Disk ID:                    tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1
+File ID:                    -----
+File Version:               -----
+Total Number of Files:      5
+Number of Cloned Files:     5
+Number of Failed Files:     0
+
+==File List:
+
+Source File                                                            Target File                                                            Status 
+---------------------------------------------------------------------- ---------------------------------------------------------------------- -------
+tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/1 tmp-ngamsTest-NGAS:8000-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/1 SUCCESS
+tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/2 tmp-ngamsTest-NGAS:8000-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/2 SUCCESS
+tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/3 tmp-ngamsTest-NGAS:8000-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/3 SUCCESS
+tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/4 tmp-ngamsTest-NGAS:8000-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/4 SUCCESS
+tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/5 tmp-ngamsTest-NGAS:8000-FitsStorage1-Main-1/NCU.2003-11-11T11:11:11.111/5 SUCCESS
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+
+==END
+
+

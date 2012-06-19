@@ -1,0 +1,75 @@
+
+
+             #     #  #####        #    #    #     #  #####
+             ##    # #     #      #    # #   ##   ## #     #
+             # #   # #           #    #   #  # # # # #
+             #  #  # #  ####    #    #     # #  #  #  #####
+             #   # # #     #   #     ####### #     #       #
+             #    ## #     #  #      #     # #     # #     #
+             #     #  #####  #       #     # #     #  #####
+
+
+             Copyright (c) European Southern Observatory
+                         All rights reserved.
+
+
+
+OVERVIEW:
+A plug-in is a small piece of (Python) code, which is used to customize
+a generic software platform to specific contexts.
+
+The NG/AMS Plug-Ins Sub-Module contains implementations of the various
+kinds of NG/AMS Plug-Ins, which are used in operation for some of the
+NGAS Sites. In addition, these plug-in implementations serve as
+examples of how to implement plug-ins to customize an NG/AMS
+installation to a specific context.
+
+Common for all NG/AMS Plug-Ins is that the plug-in module must contain
+a function, which has the interface and behavior as defined for that type
+of plug-in. The Plug-In Function in the Plug-In Module must have the same
+name. I.e.:
+
+  - Plug-In Module:   MyXxxPlugIn.py
+  - Plug-In Function: def MyXxxPlugIn(<Plug-In Pars>)
+
+
+The NG/AMS Plug-In should be based on the functions contained in the
+ngams/ngamsLib/ngamsPlugInApi.py module. They will also use other classes 
+in ngams/ngamsLib however, like ngamsFileInfo and ngamsDiskInfo.
+
+
+The various NG/AMS Plug-Ins and the corresponding example implementation 
+delivered with the NG/AMS Package are:
+
+  - Checksum Plug-In:        ngamsGenCrc32.py
+
+  - Data Archiving Plug-In:  ngamsFitsPlugIn.py (& ngamsNgLogPlugIn.py)
+
+  - Data Processing Plug-In: ngamsEsoArchDppi.py (& ngamsExtractFitsHdrDppi.py)
+
+  - Filter Plug-In:          ngamsMimeTypeFilterPI.py
+
+  - Label Printer Plug-In:   ngamsBrotherPT9200DxPlugIn.py
+
+  - Online Plug-In:          ngamsLinuxOnlinePlugIn.py
+
+  - Offline Plug-In:         ngamsLinuxOfflinePlugIn.py
+
+  - Registration Plug-In:    ngamsFitsRegPlugIn.py
+
+  - Suspension Plug-In:      ngamsSuspensionPlugIn.py
+
+  - Wake-Up Plug-In:         ngamsWakeUpPlugIn.py
+
+
+Further information about each of these kinds of plug-ins consult the specific
+man-pages for each plug-in implementation. In the man-pages also the 
+interfaces of the various types of plug-ins can be seen.
+
+
+ADDITIONAL INFORMATION:
+Send comments/questions concerning the NG/AMS Package and NGAS to the
+NGAS Team:
+
+				ngast@eso.org
+

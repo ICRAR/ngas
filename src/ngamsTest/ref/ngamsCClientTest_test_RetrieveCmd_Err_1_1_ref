@@ -1,0 +1,10 @@
+
+Status of request:
+
+Port:           8888
+Command:        RETRIEVE
+
+Error Code:     -5
+Message:        Timeout encountered while communicating with server
+Status:         FAILURE
+
