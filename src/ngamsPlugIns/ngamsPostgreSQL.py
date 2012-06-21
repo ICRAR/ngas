@@ -162,11 +162,21 @@ class ngamsPostgreSQL:
             dum = cur.execute(str(query))
             #cur = self.__dbConn.query(query)       
         except Exception, e:
-            errMsg = "Leaving _execute() after exception and " +\
-                     ": %s" % str(e)
-            #info(4, errMsg)
-            error(errMsg)
-            return [[]]                
+            if ((str(e).find("Connection is not valid") != -1) or (str(e).find("no connection to the server") != -1) or (str(e).find("terminating connection") != -1) \
+                or (str(e).find("server closed the connection unexpectedly") != -1)):
+                time.sleep(2.0)
+                self.connect(self.__server, self.__db, self.__user, self.__password, self.__application, self.__parameters)
+                info(1,"Reconnected to DB - performing SQL query: " + query)
+                #res = self._execute(query)
+                #return res
+                dum = cur.execute(str(query)) #if exception again, it will be caught by the caller of this function
+            else:
+                #raise e
+                errMsg = "Leaving _execute() after exception and " +\
+                         ": %s" % str(e)
+                #info(4, errMsg)
+                error(errMsg)
+                return [[]]                
         
         """
         try:
@@ -266,7 +276,8 @@ class ngamsPostgreSQL:
 
             # Try to reconnect once if the connection is not available
             # - maybe it was lost.
-            if ((str(e).find("Connection is not valid") != -1)):
+            if ((str(e).find("Connection is not valid") != -1) or (str(e).find("no connection to the server") != -1) or (str(e).find("terminating connection") != -1) \
+                or (str(e).find("server closed the connection unexpectedly") != -1)):
                 time.sleep(2.0)
                 self.connect(self.__server, self.__db, self.__user,
                              self.__password)
