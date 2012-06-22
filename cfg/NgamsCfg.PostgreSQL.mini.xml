@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE NgamsCfg SYSTEM "ngamsCfg.dtd">
 
-<NgamsCfg Id="ngamsCfgALMA-VM">
+<NgamsCfg Id="ngamsCfgMWA-VM">
 
   <Header Context="NGAMS" 
           Name="ngamsServer.xml" 
@@ -22,8 +22,8 @@
     </Description>
   </Header>
 
-  <Server Id="Server-ALMA"
-          ArchiveName="ALMA-ARCHIVE-VM" 
+  <Server Id="Server-MWA"
+          ArchiveName="MWA-ARCHIVE-VM" 
           BlockSize="65536"
           MaxSimReqs="10" 
           RootDirectory="/home/chen/proj/mwa/testNGAS/NGAS" 
@@ -59,8 +59,8 @@
                  LabelPrinterPlugInPars="-" 
                  OfflinePlugIn="ngamsLinuxOfflinePlugIn" 
                  OfflinePlugInPars="unmount=0" 
-                 OnlinePlugIn="ngamsGenericOnlinePlugIn"
-                 OnlinePlugInPars=""
+                 OnlinePlugIn="ngamsMWAOnlinePlugIn"
+                 OnlinePlugInPars="regsvr_host=localhost, regsvr_port=7775, regsvr_path=/reg_svr"
                  DiskSyncPlugIn=""
                  DiskSyncPlugInPars=""/>
 
