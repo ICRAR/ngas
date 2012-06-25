@@ -57,7 +57,7 @@
   <SystemPlugIns Id="SystemPlugIns-Std"
                  LabelPrinterPlugIn="-" 
                  LabelPrinterPlugInPars="-" 
-                 OfflinePlugIn="ngamsLinuxOfflinePlugIn" 
+                 OfflinePlugIn="ngamsMWAOfflinePlugIn" 
                  OfflinePlugInPars="unmount=0" 
                  OnlinePlugIn="ngamsMWAOnlinePlugIn"
                  OnlinePlugInPars="regsvr_host=localhost, regsvr_port=7775, regsvr_path=/reg_svr"
