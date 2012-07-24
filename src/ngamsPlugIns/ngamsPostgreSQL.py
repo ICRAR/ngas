@@ -160,6 +160,7 @@ class ngamsPostgreSQL:
         info(4, "Executing query: |%s|" % query)
         try:
             dum = cur.execute(str(query))
+            self.__dbConn.commit()
             #cur = self.__dbConn.query(query)       
         except Exception, e:
             if ((str(e).find("Connection is not valid") != -1) or (str(e).find("no connection to the server") != -1) or (str(e).find("terminating connection") != -1) \
@@ -170,13 +171,15 @@ class ngamsPostgreSQL:
                 #res = self._execute(query)
                 #return res
                 dum = cur.execute(str(query)) #if exception again, it will be caught by the caller of this function
+                self.__dbConn.commit()
             else:
                 #raise e
                 errMsg = "Leaving _execute() after exception and " +\
                          ": %s" % str(e)
                 #info(4, errMsg)
                 error(errMsg)
-                return [[]]                
+                self.__dbConn.rollback()
+                return [[]]                            
         
         """
         try:
@@ -285,6 +288,7 @@ class ngamsPostgreSQL:
                 res = self._execute(query)
                 return res
             else:
+                self.__dbConn.rollback()
                 raise e
 
  
