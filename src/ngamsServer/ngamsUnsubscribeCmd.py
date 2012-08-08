@@ -88,13 +88,19 @@ def handleCmdUnsubscribe(srvObj,
     """
     T = TRACE()
     
-    if (reqPropsObj.hasHttpPar("url")):
-        url = reqPropsObj.getHttpPar("url")
+    # added by chen.wu@icrar.org
+    if (reqPropsObj.hasHttpPar("subscr_id")):
+        id = reqPropsObj.getHttpPar("subscr_id")
+        delSubscriber(srvObj, id)
+        ###########
     else:
-        errMsg = genLog("NGAMS_ER_CMD_SYNTAX",
-                        [NGAMS_SUBSCRIBE_CMD, "Missing parameter: url"])
-        raise Exception, errMsg
-    delSubscriber(srvObj, ngamsLib.getSubscriberId(url))
+        if (reqPropsObj.hasHttpPar("url")):
+            url = reqPropsObj.getHttpPar("url")
+        else:
+            errMsg = genLog("NGAMS_ER_CMD_SYNTAX",
+                            [NGAMS_SUBSCRIBE_CMD, "Missing parameter: url"])
+            raise Exception, errMsg
+        delSubscriber(srvObj, ngamsLib.getSubscriberId(url))
 
     srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,
                  "Handled UNSUBSCRIBE command")
