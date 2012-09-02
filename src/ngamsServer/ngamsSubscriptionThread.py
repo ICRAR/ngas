@@ -34,7 +34,7 @@ This module contains the code for the (Data) Subscription Thread, which is
 used to handle the delivery of data to Subscribers.
 """
 
-import thread, threading, time, commands, cPickle, types
+import thread, threading, time, commands, cPickle, types, math
 from ngams import *
 import ngamsDbm, ngamsDb, ngamsLib, ngamsStatus, ngamsHighLevelLib
 
@@ -750,17 +750,24 @@ def subscriptionThread(srvObj,
             deliveryThreads = []
             for subscrId in deliverReqDic.keys():
                 deliverReqDic[subscrId].sort(_compFct)
-
-                # Deliver the data - spawn off a Delivery Thread to do this job
-                # per Subscriber.
-                args = (srvObj, srvObj.getSubscriberDic()[subscrId],
-                        deliverReqDic[subscrId], None)
-                deliveryThrRef = threading.Thread(None, _deliveryThread,
-                                                  NGAMS_DELIVERY_THR+subscrId,
-                                                  args)
-                deliveryThrRef.setDaemon(0)
-                deliveryThrRef.start()
-                deliveryThreads.append(deliveryThrRef)
+                
+                # multi-threaded concurrent transfer, added by chen.wu@icrar.org
+                num_threads = float(srvObj.getSubscriberDic()[subscrId].getConcurrentThreads())
+                total_files = len(deliverReqDic[subscrId])
+                tt = math.ceil(total_files / num_threads)
+                chunk_size = int(tt)
+                list_of_chunks = [deliverReqDic[subscrId][i:i+chunk_size] for i in range(0, total_files, chunk_size)]
+                for jdx in range(len(list_of_chunks)):                    
+                    # Deliver the data - spawn off a Delivery Thread to do this job
+                    # per Subscriber.
+                    args = (srvObj, srvObj.getSubscriberDic()[subscrId],
+                            list_of_chunks[jdx], None) #deliverReqDic[subscrId], None)
+                    deliveryThrRef = threading.Thread(None, _deliveryThread,
+                                                      NGAMS_DELIVERY_THR+subscrId,
+                                                      args)
+                    deliveryThrRef.setDaemon(0)
+                    deliveryThrRef.start()
+                    deliveryThreads.append(deliveryThrRef)
 
             # Wait nicely until all files have been delivered. This is done
             # to prevent that another set of Data Deliveries are spawned off

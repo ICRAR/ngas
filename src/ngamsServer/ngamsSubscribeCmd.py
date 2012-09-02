@@ -104,6 +104,10 @@ def handleCmdSubscribe(srvObj,
                                                 srvObj.getCfg().getPortNo(),
                                                 priority, url, startDate,
                                                 filterPi, filterPiPars, subscrId=id)
+    # supports concurrent file transfer, added by chen.wu@icrar.org
+    if (reqPropsObj.hasHttpPar("concurrent_threads")):
+        concurthrds = reqPropsObj.getHttpPar("concurrent_threads")   
+        subscrObj.setConcurrentThreads(concurthrds)
 
     # If the Start Date given in before the Last Ingestion Date, we
     # reset the Last Ingestion Date

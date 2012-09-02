@@ -71,6 +71,8 @@ class ngamsSubscriber:
                setUrl(url).setId(url).setStartDate(startDate).\
                setFilterPi(filterPi).setFilterPiPars(filterPiPars).\
                setLastFileIngDate(lastFileIngDate)
+        
+        self.setConcurrentThreads(1) # by default only uses 1 thread for each subscriber
 
 
     def setHostId(self,
@@ -229,6 +231,14 @@ class ngamsSubscriber:
         Returns:    Subscription Start Date (string).
         """
         return self.__startDate
+    
+    def setConcurrentThreads(self, num_threads):
+        if (num_threads > 0):
+            self.__concurthrds = num_threads
+        return self
+    
+    def getConcurrentThreads(self):
+        return self.__concurthrds
 
 
     def setFilterPi(self,
