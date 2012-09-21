@@ -462,7 +462,7 @@ def _deliveryThread(srvObj,
 
     Returns:       Void.
     """
-    info(3,"Data Delivery Thread preparing to deliver files to Subscriber "+\
+    info(3,"Data Delivery Thread [" + str(thread.get_ident()) + "] preparing to deliver files to Subscriber "+\
          "with ID: " + subscrObj.getId() + " ...")
     
     # Calculate the suspension time for this thread based on the
@@ -489,7 +489,7 @@ def _deliveryThread(srvObj,
         # TODO: Note should not have no_versioning hardcoded in the
         # request send to the client/subscriber.
         contDisp += "; no_versioning=1"
-        info(3,"Delivering file: " + baseName + "/" +\
+        info(3,"Data Delivery Thread [" + str(thread.get_ident()) + "] Delivering file: " + baseName + "/" +\
              str(fileVersion) + " - to Subscriber with ID: " +\
              subscrObj.getId() + " ...")
         ex = ""
@@ -524,7 +524,7 @@ def _deliveryThread(srvObj,
             _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
         else:
             info(3,"File: " + baseName + "/" + str(fileVersion) +\
-                 " - delivered to Subscriber with ID: " + subscrObj.getId())
+                 " - delivered to Subscriber with ID: " + subscrObj.getId() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]")
             
             # Update the Subscriber Status to avoid that this file
             # gets delivered again.
