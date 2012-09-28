@@ -468,10 +468,13 @@ def _deliveryThread(srvObj,
     # Calculate the suspension time for this thread based on the
     # priority of this thread.
     suspTime = (0.005 * subscrObj.getPriority())
+    subscrbId = subscrObj.getId();
     
     # Loop over the files to deliver and deliver these to the Subscribers.
     stat = ngamsStatus.ngamsStatus()
     for fileInfo in fileInfoList:
+        if (not srvObj.getSubscriberDic().has_key(subscrbId)): #if unsubscribeCmd is called, then discard remaining files, and stop here
+            break       
         fileInfo = _convertFileInfo(fileInfo)
         
         # Allow to break this loop.
@@ -528,8 +531,19 @@ def _deliveryThread(srvObj,
             
             # Update the Subscriber Status to avoid that this file
             # gets delivered again.
-            srvObj.getDb().updateSubscrStatus(subscrObj.getId(),
-                                              fileIngDate)
+            
+            #The database update may fail, need to catch exception here 
+            # Otherwise remaining files in the fileInfoList will all be lost
+            # (chen.wu@icrar.org)
+            try:
+                srvObj.getDb().updateSubscrStatus(subscrObj.getId(),
+                                                  fileIngDate)
+            except Exception, e:
+                # continue with warning message. this means the database (i.e. last_ingestion_date) is not synchronised for this file, 
+                # but at least remaining files can be delivered continuously, the database may be back in sync when delivering remaining files 
+                errMsg = "Error occurred during update the ngas_subscriber table " +\
+                     "_devliveryThread [" + str(thread.get_ident()) + "] Exception: " + str(e)
+                alert(errMsg)
 
             # If the file is back-log buffered, we check if we can delete it.
             if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
