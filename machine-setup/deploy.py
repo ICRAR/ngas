@@ -6,6 +6,10 @@ fab test_deploy
 
 The tasks can be used individually and thus allow installations in very
 diverse situations.
+
+For a full deployment use the command
+
+fab --set postfix=False -f machine-setup/deploy.py test_deploy
 """
 import glob
 
@@ -32,6 +36,7 @@ NGAS_DIR = 'ngas'
 NGAS_DIR_ABS = '/home/%s/%s' % (USERNAME, NGAS_DIR)
 GITUSER = 'andreas'
 GITREPO = 'storage01.icrar.org:/mnt/raid6/gitrepos/ngas_buildout'
+env['postfix'] = False
 
 # PUBLIC_KEYS = os.path.expanduser('~/Documents/Keys')
 # WEB_HOST = 0
@@ -98,9 +103,12 @@ def create_instance(names, use_elastic_ip, public_ips):
     time.sleep(10)
 
     # Load the new instance data as the dns_name may have changed
+    host_names = []
     for i in range(number_instances):
         instances[i].update(True)
         puts('Current DNS name is {0} after associating the Elastic IP'.format(instances[i].dns_name))
+        host_names.append(str(instances[i].dns_name))
+
 
     # The instance is started, but not useable (yet)
     puts('Started the instance(s) now waiting for the SSH daemon to start.')
@@ -109,10 +117,6 @@ def create_instance(names, use_elastic_ip, public_ips):
         time.sleep(5)
     puts('.')
 
-    # we have to return an ASCII string
-    host_names = []
-    for i in range(number_instances):
-        host_names.append(str(instances[i].dns_name))
     return host_names
 
 
