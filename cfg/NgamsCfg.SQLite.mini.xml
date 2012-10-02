@@ -15,7 +15,7 @@
       configured.
       *NOTES*: The DB configuration has to be adjusted to the actual
                  situation. 
-               The volume has to be mounted on /home/frank/NGAS/volume1 at 
+               The volume has to be mounted on ./NGAS/volume1 at 
                  boot time. NGAS does not do the mounting with this 
                  configuration.
                There is no mirroring or caching configured yet.
@@ -26,7 +26,7 @@
           ArchiveName="ALMA-ARCHIVE-VM" 
           BlockSize="65536"
           MaxSimReqs="10" 
-          RootDirectory="/home/frank/NGAS" 
+          RootDirectory="./NGAS" 
           PortNo="7777" 
           ProxyMode="1"
           Simulation="0"
@@ -38,7 +38,7 @@
 
   <ArchiveHandling Id="ArchiveHandling"
                    ArchiveUnits="ngas03" 
-                   BackLogBufferDirectory="/home/frank/NGAS/"
+                   BackLogBufferDirectory="./NGAS/"
                    BackLogBuffering="0"
                    FreeSpaceDiskChangeMb="20"
                    MinFreeSpaceWarningMb="500"
@@ -46,9 +46,9 @@
                    Replication="0"/>
 
   <Db     Id="Db-Sqlite-Test" 
-  		  Server="localhost"
-  		  Interface="ngamsSqlite"
-          Name="/home/frank/NGAS/ngas.sqlite"
+    Server="localhost"
+    Interface="ngamsSqlite"
+          Name="./NGAS/ngas.sqlite"
           User="ngas"
           Password="bmdhcyRkYmE=\n"
           Snapshot="1"/>
@@ -185,7 +185,7 @@
   </Streams>
 
   <Processing Id="Processing-Std"
-              ProcessingDirectory="/home/frank/NGAS">
+              ProcessingDirectory="./NGAS">
     <PlugIn Name="ngamsEsoArchDppi" 
             PlugInPars="">
       <MimeType Name="image/x-fits"/>
@@ -220,7 +220,7 @@
                    Active="1" 
                    ChecksumPlugIn="ngamsGenCrc32"  
                    ChecksumPlugInPars="" 
-		   DiskSeq="SEQUENTIAL" 
+   DiskSeq="SEQUENTIAL" 
                    FileSeq="SEQUENTIAL" 
                    ForceNotif="1" 
                    LogSummary="1" 
@@ -230,7 +230,7 @@
                    Scan="0"/>
 
   <Log Id="Log" 
-       LocalLogFile="/home/frank/NGAS/log/LogFile.nglog" 
+       LocalLogFile="./NGAS/log/LogFile.nglog" 
        LocalLogLevel="3" 
        LogBufferSize="0"
        LogRotateCache="30" 

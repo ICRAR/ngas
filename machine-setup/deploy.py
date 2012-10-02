@@ -34,14 +34,25 @@ KEY_NAME = 'icrarkey2'
 SECURITY_GROUPS = ['default'] # Security group allows SSH
 NGAS_DIR = 'ngas'
 NGAS_DIR_ABS = '/home/%s/%s' % (USERNAME, NGAS_DIR)
-GITUSER = 'andreas'
-GITREPO = 'storage01.icrar.org:/mnt/raid6/gitrepos/ngas_buildout'
+env.GITUSER = 'andreas'
+env.GITREPO = 'storage01.icrar.org:/mnt/raid6/gitrepos/ngas'
 env['postfix'] = False
 
 # PUBLIC_KEYS = os.path.expanduser('~/Documents/Keys')
 # WEB_HOST = 0
 # UPLOAD_HOST = 1
 # DOWNLOAD_HOST = 2
+
+def set_env():
+    # set environment to default for EC2, if not specified otherwise.
+    if not env.user:
+        env.user = USERNAME
+    if not env.key_filename:
+        env.key_filename = AWS_KEY
+    if env.postfix:
+        env.postfix = to_boolean(env.postfix)
+    require('hosts', provided_by=[test_env])
+
 
 @task
 def create_instance(names, use_elastic_ip, public_ips):
@@ -170,8 +181,8 @@ def git_clone_tar():
     TODO: This does not work outside iVEC. The current implementation
     is thus using a tar-file, copied over from the calling machine.
     """
-    local('cd /tmp && git clone {0}@{1}'.format(GITUSER, GITREPO))
-    local('cd /tmp && tar -cjf ngas_buildout.tar.bz2 ngas_buildout')
+    local('cd /tmp && git clone {0}@{1}'.format(env.GITUSER, env.GITREPO))
+    local('cd /tmp && tar -cjf ngas.tar.bz2 ngas')
 
 
 @task
@@ -261,15 +272,18 @@ def ngas_buildout():
     Perform the full buildout and virtualenv config
     """
 
+    set_env()
 #    run('virtualenv-2.6 --no-site-packages {0}'.format(NGAS_DIR))
+    puts('before wget')
     run('wget https://raw.github.com/pypa/virtualenv/master/virtualenv.py')
+    puts('after wget')
     run('python2.7 virtualenv.py {0}'.format(NGAS_DIR))
 
     # First get the sources
     # 
     git_clone_tar()
-    put('/tmp/ngas_buildout.tar.bz2','/tmp/ngas_buildout.tar.bz2')
-    run('tar -xjf /tmp/ngas_buildout.tar.bz2')
+    put('/tmp/ngas.tar.bz2','/tmp/ngas.tar.bz2')
+    run('tar -xjf /tmp/ngas.tar.bz2')
 
     
     with cd(NGAS_DIR_ABS):
@@ -280,7 +294,6 @@ def ngas_buildout():
         virtualenv('pip install boto')
         virtualenv('python2.7 bootstrap.py')
         virtualenv('buildout')
-
 
 @task
 @serial
@@ -323,13 +336,7 @@ def test_deploy():
     ** MAIN TASK **: Deploy the full NGAS test environment. (Does not include the NGAS users at this point)
     """
     # set environment to default for EC2, if not specified otherwise.
-    if not env.user:
-        env.user = USERNAME
-    if not env.key_filename:
-        env.key_filename = AWS_KEY
-    if not env.postfix:
-        env.postfix = False
-    require('hosts', provided_by=[test_env])
+    set_env()
 
     test_env()
     system_install()

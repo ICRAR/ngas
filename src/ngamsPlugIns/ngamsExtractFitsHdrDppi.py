@@ -103,6 +103,8 @@ def ngasExtractFitsHdrDppi(srvObj,
     file. tsv=1 returns the headers in a tab separated format suitable for 
     direct ingest into the header repository.
     """
+    info(4,"Entering ngasExtractFitsHdrDppi() ...")
+
     T = TRACE()
 
     statusObj = ngamsDppiStatus.ngamsDppiStatus()
@@ -251,6 +253,8 @@ def ngasExtractFitsHdrDppi(srvObj,
     resObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_DATA, mimeType,
                                              result, resFilename, '')
     statusObj.addResult(resObj)
+
+    info(4,"Leaving ngasExtractFitsHdrDppi() ...")
 
     return statusObj
 
