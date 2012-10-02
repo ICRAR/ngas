@@ -787,7 +787,9 @@ class ngamsServer:
         Returns:   Reference to object itself.
         """
         T = TRACE()
-        
+        msg = "SubscriptionThread received trigger"
+        info(3, msg)
+
         self._subscriptionRunSync.set()
         return self
     

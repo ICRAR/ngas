@@ -109,22 +109,35 @@ _testMode = 0
 try:
     from sys import path
     pathTup = [__path__[0] + '/../plug-ins',
-               __path__[0] + '/ngamsCClient',
-               __path__[0] + '/ngamsData',
-               __path__[0] + '/ngamsLib',
-               __path__[0] + '/ngamsPClient',
-               __path__[0] + '/ngamsPlugIns',
-               __path__[0] + '/ngamsServer',
-               __path__[0] + '/ngamsTest']
+               __path__[0] + '/../../ngamsCClient',
+               __path__[0] + '/../../ngamsData',
+               __path__[0] + '/../../ngamsLib',
+               __path__[0] + '/../../ngamsPClient',
+               __path__[0] + '/../../ngamsPlugIns',
+               __path__[0] + '/../../ngamsServer',
+               __path__[0] + '/../../ngamsTest',
+               __path__[0] + '/../../pcc',
+               ]
     path.extend(pathTup)
     __path__.extend(pathTup)
 except Exception, e:
     print "ngams/__init__.py: Line 122"
     pass
 
-import os, string, re, syslog, traceback, threading, types, time, commands
+import pcc
+import PccLog
+import PccLogDef
+import PccUtString, PccUtTime
 import md5
-import pcc, PccUtString, PccLogDef, PccLog, PccUtTime
+import os
+import string
+import re
+import syslog
+import traceback
+import threading
+import types
+import time
+import commands
 
 
 # NG/AMS source directory
@@ -568,7 +581,10 @@ def getLocation(level = -3):
 
     Returns:  Location in the format: '<mod>:<method>:<ln no>' (string).
     """
-    stackInfo = traceback.extract_stack()[level]
+    stackInfo =traceback.extract_stack()
+    if len(stackInfo) < abs(level):
+        level = -len(stackInfo)
+    stackInfo = stackInfo[level]
     module = stackInfo[0].split("/")[-1]
     lineNo = stackInfo[1]
     method = stackInfo[2]

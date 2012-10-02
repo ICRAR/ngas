@@ -12,11 +12,13 @@
 Module providing class to handle mapping of FITS keywords into
 Sybase table columns and vice versa.
 """
-
-import sys, string, Sybase, exceptions
+from pcc.pccUt import PccUtUtils, PccUtString
+from pcc.pccLog.PccLog import info
+from pcc.pccKey import PccKey
+from pcc.pccPaf import PccPaf
+import string, exceptions
 
 from PccLog import *
-import PccPaf, PccKey, PccUtString, PccUtUtils
 
 
 class PccUtDb2KeyMap:
@@ -114,6 +116,11 @@ class PccUtDb2KeyMap:
             self.__dbPassword = PccUtUtils.getDbPwd("ESOECF", "www")
 
         # Connect to DB + select DB "observations".
+        try:
+            import Sybase
+        except ImportError:
+            return
+
         self.__db = Sybase.connect(self.__dbName, self.__dbUser,
                                    self.__dbPassword)
         self.__query("use " + dataBase)
@@ -246,7 +253,7 @@ class PccUtDb2KeyMap:
         print "NOTE: Not yet supported!"
 
 
-    def key2DbPaf(dbKeyMapPafObj,
+    def key2DbPaf(self,dbKeyMapPafObj,
                   pafFileName):
         """
         **NOT YET IMPLEMENTED!!**

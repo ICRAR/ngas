@@ -39,8 +39,6 @@ import pcc, PccLog, PccUtTime
 from   ngams import *
 import ngamsDbm
 
-from ngams import *
-
 
 # Global DB Semaphore to protect critical, global DB interaction.
 _globalDbSem = threading.Semaphore(1)
@@ -181,16 +179,6 @@ def getNgasHostsCols():
     Returns:   Reference to string listing all columns (string).
     """
     return _ngasHostsCols
-
-def getNgasHostsDef():
-    """
-    Returns reference to list defining mapping between columns and variables
-    defined to refer to each column.
-
-    Returns:   List with mapping between column name and associated variable
-               (list).
-    """
-    return _ngasHostsDef
 
 def getNgasHostsDef():
     """

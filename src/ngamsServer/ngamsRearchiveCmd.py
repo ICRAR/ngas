@@ -39,9 +39,10 @@ the file is pulled via a provided URL from the remote, host node.
 
 import time, base64
 
+from ngams import *
+
 import PccUtTime
 
-from ngams import *
 import ngamsDb, ngamsLib, ngamsStatus
 import ngamsHighLevelLib, ngamsDiskUtils, ngamsFileUtils
 import ngamsFileInfo, ngamsArchiveCmd

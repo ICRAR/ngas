@@ -503,15 +503,15 @@ def checkDiskAccessibility(mountPoint):
     Returns:       0: OK, -1: Failure accessing disk (integer)
     """
     testFile = os.path.normpath(mountPoint + "/NgamsTestFile")
-    info(5,"Testing disk accessibility - creating test file: " +\
+    info(4,"Testing disk accessibility - creating test file: " +\
          testFile + " ...")
     res = commands.getstatusoutput("touch " + testFile)
     commands.getstatusoutput("rm -f " + testFile)
     if (int(res[0]) != 0):
-        info(5,"Problem accessing disk with mount point: " + mountPoint)
+        info(4,"Problem accessing disk with mount point: " + mountPoint)
         return -1
     else:
-        info(5,"Successfully accessed disk with mount point: " + mountPoint)
+        info(4,"Successfully accessed disk with mount point: " + mountPoint)
         return 0
       
         
