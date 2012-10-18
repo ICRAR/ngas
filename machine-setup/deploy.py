@@ -34,8 +34,8 @@ KEY_NAME = 'icrarkey2'
 SECURITY_GROUPS = ['default'] # Security group allows SSH
 NGAS_DIR = 'ngas'
 NGAS_DIR_ABS = '/home/%s/%s' % (USERNAME, NGAS_DIR)
-env.GITUSER = 'andreas'
-env.GITREPO = 'storage01.icrar.org:/mnt/raid6/gitrepos/ngas'
+env.GITUSER = 'icrargit'
+env.GITREPO = '130.95.176.110:ngas'
 env['postfix'] = False
 
 # PUBLIC_KEYS = os.path.expanduser('~/Documents/Keys')
