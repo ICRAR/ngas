@@ -283,6 +283,7 @@ def ngas_buildout():
     # 
     git_clone_tar()
     put('/tmp/ngas.tar.bz2','/tmp/ngas.tar.bz2')
+    local('rm -rf /tmp/ngas*')  # cleanup
     run('tar -xjf /tmp/ngas.tar.bz2')
 
     
