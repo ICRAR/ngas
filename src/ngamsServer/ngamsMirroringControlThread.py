@@ -404,7 +404,7 @@ def startMirroringThreads(srvObj):
     T = TRACE()
 
     for thrNo in range(1, (srvObj.getCfg().getMirroringThreads() + 1)):
-        threadId = NGAMS_MIR_THR + "-" + str(thrNo)
+        threadId = NGAMS_MIR_CONTROL_THR + "-" + str(thrNo)
         args = (srvObj, None)
         info(4,"Starting Mirroring Thread: %s" % threadId)
         thrHandle = threading.Thread(None, mirroringThread, threadId, args)
