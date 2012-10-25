@@ -226,17 +226,17 @@ def compress(reqPropsObj,
         # Remember to update Staging Filename in the Request Properties Object.
         reqPropsObj.setStagingFilename(stFn)
         if (parDic["compression"].find("compress") != -1):
-            format = "application/x-cfits"
+            fmt = "application/x-cfits"
         elif (parDic["compression"].find("ngamsTileCompress") != -1):
-            format = "image/x-fits"
+            fmt = "image/x-fits"
         else:
-            format = "application/x-gfits"
+            fmt = "application/x-gfits"
         info(2,"File compressed. Time: %.3fs" % compressTimer.stop())
     else:
-        format = reqPropsObj.getMimeType()
+        fmt = reqPropsObj.getMimeType()
         
     archFileSize = ngamsPlugInApi.getFileSize(reqPropsObj.getStagingFilename())
-    return uncomprSize, archFileSize, format
+    return uncomprSize, archFileSize, fmt
 
 
 # DAPI function.
@@ -280,12 +280,12 @@ def ngamsMWAFitsPlugIn(srvObj,
                                             [comprExt])
 
     # If a compression application is specified, apply this.
-    uncomprSize, archFileSize, format = compress(reqPropsObj, parDic)
+    uncomprSize, archFileSize, fmt = compress(reqPropsObj, parDic)
 
     # Generate status + return.
     info(3,"DAPI finished processing of file - returning to main application")
     return ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(), relFilename,
-                                             dpId, fileVersion, format,
+                                             dpId, fileVersion, fmt,
                                              archFileSize, uncomprSize,
                                              parDic["compression"], relPath,
                                              diskInfo.getSlotId(), fileExists,
