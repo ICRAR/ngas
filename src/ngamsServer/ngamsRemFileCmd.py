@@ -124,6 +124,8 @@ def _remFile(srvObj,
     if (execute):
         fileListDbm.initKeyPtr()
         run = 1
+        # TODO: This should be changed to a single or a few DB transactions for all files
+        # and a bulk rm for the same number of files.
         while (run):
             key, fileInfo = fileListDbm.getNext()
             if (not key):
