@@ -10,6 +10,11 @@ diverse situations.
 For a full deployment use the command
 
 fab --set postfix=False -f machine-setup/deploy.py test_deploy
+
+For a local installation under a normal user without sudo access
+
+fab -u `whoami` -f machine-setup/deploy.py python_setup
+fab -u `whoami` -f machine-setup/deploy.py ngas_buildout
 """
 import glob
 
@@ -26,16 +31,19 @@ from fabric.operations import prompt
 from fabric.utils import puts, abort, fastprint
 
 USERNAME = 'ec2-user'
+if env.user: USERNAME = env.user  # preference if passed on command line
 AMI_ID = 'ami-aecd60c7'
 INSTANCE_TYPE = 't1.micro'
 INSTANCES_FILE = os.path.expanduser('~/.aws/aws_instances')
 AWS_KEY = os.path.expanduser('~/.ssh/icrarkey2.pem')
 KEY_NAME = 'icrarkey2'
 SECURITY_GROUPS = ['default'] # Security group allows SSH
-NGAS_DIR = 'ngas'
+NGAS_PYTHON_VERSION = '2.7'
+NGAS_PYTHON_URL = 'http://www.python.org/ftp/python/2.7.3/Python-2.7.3.tar.bz2'
+NGAS_DIR = 'ngas_rt' #NGAS runtime directory
 NGAS_DIR_ABS = '/home/%s/%s' % (USERNAME, NGAS_DIR)
 env.GITUSER = 'icrargit'
-env.GITREPO = '130.95.176.110:ngas'
+env.GITREPO = 'gitsrv.icrar.org:ngas'
 env['postfix'] = False
 
 # PUBLIC_KEYS = os.path.expanduser('~/Documents/Keys')
@@ -142,8 +150,51 @@ def to_boolean(choice, default=False):
     choice_lower = choice.lower()
     if choice_lower in valid:
         return valid[choice_lower]
-
     return default
+
+def check_command(command):
+    """
+    Check existence of command remotely
+    
+    INPUT:
+    command:  string
+    
+    OUTPUT:
+    Boolean
+    """
+    res = run('if command -v {0} &> /dev/null ;then command -v {0};else echo "";fi'.format(command))
+    return res
+
+
+def check_python():
+    """
+    Check for the existence of correct version of python
+    
+    INPUT:
+    None
+    
+    OUTPUT:
+    path to python binary    string, could be empty string
+    """
+    # Try whether there is already a local python installation for this user
+    ppath = check_command('{0}/../python/bin/python{1}'.format(NGAS_DIR_ABS, NGAS_PYTHON_VERSION))
+    if ppath:
+        return ppath
+    # Try python2.7 first
+    ppath = check_command('python{0}'.format(NGAS_PYTHON_VERSION))
+    if ppath:
+        return ppath
+    
+    # any python at all
+    elif check_command('python'):
+        res = run('python -V')
+        if res.find(NGAS_PYTHON_VERSION) >= 0:
+            return check_command(python)
+        else:
+            return ''
+    else:
+        return ''
+
 
 def copy_public_keys():
     """
@@ -267,33 +318,58 @@ def user_setup():
 
 
 @task
+def python_setup():
+    """
+    Ensure that there is the right version of python available
+    If not install it from scratch in user directory.
+    
+    INPUT:
+    None
+    
+    OUTPUT:
+    None
+    """
+    ppath = check_python()
+    if ppath:
+        puts('Python{0} seems to be available'.format(NGAS_PYTHON_VERSION))
+    else: # If no correct python is available install local python (no sudo required)
+        with cd('/tmp'):
+            run('wget -q {0}'.format(NGAS_PYTHON_URL))
+            base = os.path.basename(NGAS_PYTHON_URL)
+            pdir = os.path.splitext(os.path.splitext(base)[0])[0]
+            run('tar -xjf {0}'.format(base))
+        with cd('/tmp/{0}'.format(pdir)):
+            run('./configure --prefix {0}/../python;make;make install'.format(NGAS_DIR_ABS))
+            ppath = '{0}/../python/bin/python{1}'.format(NGAS_DIR_ABS,NGAS_PYTHON_VERSION)
+    env.PYTHON = ppath
+    # setup virtualenv with the detected or newly installed python
+    with cd('/tmp'):
+        run('wget -q https://raw.github.com/pypa/virtualenv/master/virtualenv.py')
+        run('{0} virtualenv.py {1}'.format(ppath, NGAS_DIR_ABS))
+    with cd(NGAS_DIR_ABS):
+        virtualenv('pip install zc.buildout')        
+        # make this installation self consistent
+        virtualenv('pip install fabric')
+        virtualenv('pip install boto')
+
+
+
+@task
 def ngas_buildout():
     """
     Perform the full buildout and virtualenv config
     """
-
     set_env()
-#    run('virtualenv-2.6 --no-site-packages {0}'.format(NGAS_DIR))
-    puts('before wget')
-    run('wget https://raw.github.com/pypa/virtualenv/master/virtualenv.py')
-    puts('after wget')
-    run('python2.7 virtualenv.py {0}'.format(NGAS_DIR))
-
     # First get the sources
     # 
     git_clone_tar()
     put('/tmp/ngas.tar.bz2','/tmp/ngas.tar.bz2')
-    local('rm -rf /tmp/ngas*')  # cleanup
+    local('rm -rf /tmp/ngas*')  # cleanup local git clone
     run('tar -xjf /tmp/ngas.tar.bz2')
-
     
     with cd(NGAS_DIR_ABS):
-        virtualenv('pip install zc.buildout')
-        
-        # make this installation self consistent
-        virtualenv('pip install fabric')
-        virtualenv('pip install boto')
-        virtualenv('python2.7 bootstrap.py')
+        # run bootstrap with correct python version (explicit)
+        virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
         virtualenv('buildout')
 
 @task
@@ -331,10 +407,20 @@ def test_env():
     }
 
 @task
+def user_deploy():
+    """
+    Deploy the system as a normal user without sudo access
+    """
+    python_setup()
+    ngas_buildout()
+
+
+@task
 @serial
 def test_deploy():
     """
-    ** MAIN TASK **: Deploy the full NGAS test environment. (Does not include the NGAS users at this point)
+    ** MAIN TASK **: Deploy the full NGAS EC2 test environment. 
+    (Does not include the NGAS users at this point)
     """
     # set environment to default for EC2, if not specified otherwise.
     set_env()
@@ -343,5 +429,6 @@ def test_deploy():
     system_install()
     if env.postfix:
         postfix_config()
+    python_setup()
     ngas_buildout()
 
