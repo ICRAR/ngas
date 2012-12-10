@@ -104,7 +104,7 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
     port = int(sport)
         
     # Perform the matching.
-    client = ngamsPClient.ngamsPClient(host, port)
+    client = ngamsPClient.ngamsPClient(host, port, timeOut = 15)
     
     try:
         rest = client.sendCmd(NGAMS_STATUS_CMD, 1, "", [["file_id", fileId]])

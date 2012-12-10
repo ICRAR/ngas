@@ -301,6 +301,7 @@ def getArchiveThreadsFromFile(fnm, dict=1, command='ARCHIVE', verbose=0, nthread
         ii += 1
         if verbose and float(ii/100) == ii/100.: print ii
         tlog = getThreadFromFile(fnm,key)
+        if len(filter(lambda x:x.find('Saved data in file') > -1,tlog)) == 0: continue #fix the index out_of_bound issue
         archStats.update({key:getSizeTimeRate(tlog)})
         tlogs.extend(tlog)
     if dict:

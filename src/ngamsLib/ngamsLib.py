@@ -655,6 +655,10 @@ def httpPostUrl(url,
     info(4,"HTTP Header: HTTP/1.0 " + str(reply) + " " + msg)
     for hdr in hdrs.keys():
         info(4,"HTTP Header: " + hdr + ": " + hdrs[hdr])
+        
+    if (http != None):
+        http.close()
+        del http    
 
     return [reply, msg, hdrs, data]
 

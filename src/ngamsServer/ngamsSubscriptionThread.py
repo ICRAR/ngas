@@ -164,7 +164,7 @@ def _addFileDeliveryDic(subscrId,
                         deliverReqDic):
     """
     Add a file in the delivery dictionary. If file already registered,
-    replace the existing entry if not a back-log buffered file, and the
+    replace the existing entry only if (1) the old entry is not a back-log buffered file, and (2) the
     new entry is back-log buffered
     
     subscrId:         Subscriber ID (string).
@@ -462,7 +462,7 @@ def _deliveryThread(srvObj,
 
     Returns:       Void.
     """
-    info(3,"Data Delivery Thread [" + str(thread.get_ident()) + "] preparing to deliver files to Subscriber "+\
+    info(3,"Data Delivery Thread [" + str(thread.get_ident()) + "] preparing to deliver " + str(len(fileInfoList)) + " files to Subscriber "+\
          "with ID: " + subscrObj.getId() + " ...")
     
     # Calculate the suspension time for this thread based on the
@@ -519,7 +519,7 @@ def _deliveryThread(srvObj,
             # was attempted re-posted).
             errMsg = "Error occurred while delivering file: " + baseName +\
                      "/" + str(fileVersion) +\
-                     " - to Subscriber with ID: " + subscrObj.getId() + "."
+                     " - to Subscriber with ID: " + subscrObj.getId() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]"
             if (ex != ""): errMsg += " Exception: " + ex + "."
             if (stat.getMessage() != ""):
                 errMsg += " Message: " + stat.getMessage()
@@ -791,6 +791,7 @@ def subscriptionThread(srvObj,
                     if (not deliveryThreads[idx].isAlive()):
                         # If a thread is no-longer active, we break the loop
                         # and start the checking all over again.
+                        info(3, "Removing the delivery Thread [" + str(deliveryThreads[idx].ident) + "]")
                         del deliveryThreads[idx]
                         break
                 time.sleep(1.0)
