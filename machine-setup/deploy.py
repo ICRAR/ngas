@@ -31,22 +31,24 @@ from fabric.operations import prompt
 from fabric.utils import puts, abort, fastprint
 
 USERNAME = 'ec2-user'
-if env.user: USERNAME = env.user  # preference if passed on command line
 AMI_ID = 'ami-aecd60c7'
 INSTANCE_TYPE = 't1.micro'
 INSTANCES_FILE = os.path.expanduser('~/.aws/aws_instances')
 AWS_KEY = os.path.expanduser('~/.ssh/icrarkey2.pem')
 KEY_NAME = 'icrarkey2'
-SECURITY_GROUPS = ['default'] # Security group allows SSH
+SECURITY_GROUPS = ['NGAS'] # Security group allows SSH
 NGAS_PYTHON_VERSION = '2.7'
 NGAS_PYTHON_URL = 'http://www.python.org/ftp/python/2.7.3/Python-2.7.3.tar.bz2'
 NGAS_DIR = 'ngas_rt' #NGAS runtime directory
 NGAS_DIR_ABS = '/home/%s/%s' % (USERNAME, NGAS_DIR)
+env.hosts = ['']
 env.GITUSER = 'icrargit'
 env.GITREPO = 'gitsrv.icrar.org:ngas'
-env['postfix'] = False
+env.instance_name = 'NGAS' #just the default name
+env['postfix'] = 'False'
+env['use_elastic_ip'] = 'False'
 
-# PUBLIC_KEYS = os.path.expanduser('~/Documents/Keys')
+PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 # WEB_HOST = 0
 # UPLOAD_HOST = 1
 # DOWNLOAD_HOST = 2
@@ -60,7 +62,8 @@ def set_env():
     if env.postfix:
         env.postfix = to_boolean(env.postfix)
     require('hosts', provided_by=[test_env])
-
+    puts('Environment: {0} {1} {2} {3} {4} {5}'.format(env.user, env.key_filename, env.hosts, 
+                                                   env.host_string, env.postfix, USERNAME))
 
 @task
 def create_instance(names, use_elastic_ip, public_ips):
@@ -202,7 +205,7 @@ def copy_public_keys():
     """
     env.list_of_users = []
     for file in glob.glob(PUBLIC_KEYS + '/*.pub'):
-        filename = os.path.basename(file)
+        filename = '.ssh/{0}'.format(os.path.basename(file))
         user, ext = os.path.splitext(filename)
         env.list_of_users.append(user)
         put(file, filename)
@@ -222,7 +225,16 @@ def git_pull():
     is thus using a tar-file, copied over from the calling machine.
     """
     with cd(NGAS_DIR_ABS):    
-        sudo('git pull', user=env.deploy_user)
+        sudo('git pull', user=env.user)
+
+def git_clone():
+    """
+    Clones the NGAS repository.
+    """
+    copy_public_keys()
+    with cd(NGAS_DIR_ABS):    
+        run('git clone {0}@{1}'.format(env.GITUSER, env.GITREPO))
+
 
 @task
 def git_clone_tar():
@@ -233,7 +245,8 @@ def git_clone_tar():
     is thus using a tar-file, copied over from the calling machine.
     """
     local('cd /tmp && git clone {0}@{1}'.format(env.GITUSER, env.GITREPO))
-    local('cd /tmp && tar -cjf ngas.tar.bz2 ngas')
+    local('cd /tmp && mv ngas {0}'.format(NGAS_DIR))
+    local('cd /tmp && tar -cjf {0}.tar.bz2 {0}'.format(NGAS_DIR))
 
 
 @task
@@ -243,6 +256,7 @@ def system_install():
     
     NOTE: Most of this requires sudo access on the machine(s)
     """
+    set_env()
     # Update the AMI completely
     sudo('yum --assumeyes --quiet update')
 
@@ -329,6 +343,7 @@ def python_setup():
     OUTPUT:
     None
     """
+    set_env()
     ppath = check_python()
     if ppath:
         puts('Python{0} seems to be available'.format(NGAS_PYTHON_VERSION))
@@ -363,14 +378,20 @@ def ngas_buildout():
     # First get the sources
     # 
     git_clone_tar()
-    put('/tmp/ngas.tar.bz2','/tmp/ngas.tar.bz2')
-    local('rm -rf /tmp/ngas*')  # cleanup local git clone
-    run('tar -xjf /tmp/ngas.tar.bz2')
+    tarfile = '/tmp/{0}.tar.bz2'.format(NGAS_DIR)
+    put(tarfile, tarfile)
+#    local('rm -rf {0}'.format(tarfile))  # cleanup local git clone
+    run('tar -xjf {0}'.format(tarfile))
+    
+    # git_clone()
     
     with cd(NGAS_DIR_ABS):
         # run bootstrap with correct python version (explicit)
+        run('rm bin/python') # avoid the 'busy' error message
         virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
         virtualenv('buildout')
+    run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
+
 
 @task
 @serial
@@ -399,6 +420,8 @@ def test_env():
     # Create the instance in AWS
     host_names = create_instance([env.instance_name], use_elastic_ip, [public_ip])
     env.hosts = host_names
+    if not env.host_string:
+        env.host_string = env.hosts[0]
     env.user = USERNAME
     env.key_filename = AWS_KEY
     env.roledefs = {
@@ -432,3 +455,12 @@ def test_deploy():
     python_setup()
     ngas_buildout()
 
+@task
+def start_server():
+    """
+    Start the installed NGAS server using the SQLite DB.
+    """
+    set_env()
+    with cd(NGAS_DIR_ABS):
+        run('{0}/bin/ngamsServer -cfg {0}/cfg/NgamsCfg.SQLite.mini.xml '.format(NGAS_DIR_ABS)+\
+                   '-force -autoOnline -v 2')
