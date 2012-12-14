@@ -10,6 +10,11 @@ diverse situations.
 For a full deployment use the command
 
 fab --set postfix=False -f machine-setup/deploy.py test_deploy
+
+For a local installation under a normal user without sudo access
+
+fab -u `whoami` -f machine-setup/deploy.py python_setup
+fab -u `whoami` -f machine-setup/deploy.py ngas_buildout
 """
 import glob
 
@@ -31,14 +36,19 @@ INSTANCE_TYPE = 't1.micro'
 INSTANCES_FILE = os.path.expanduser('~/.aws/aws_instances')
 AWS_KEY = os.path.expanduser('~/.ssh/icrarkey2.pem')
 KEY_NAME = 'icrarkey2'
-SECURITY_GROUPS = ['default'] # Security group allows SSH
-NGAS_DIR = 'ngas'
+SECURITY_GROUPS = ['NGAS'] # Security group allows SSH
+NGAS_PYTHON_VERSION = '2.7'
+NGAS_PYTHON_URL = 'http://www.python.org/ftp/python/2.7.3/Python-2.7.3.tar.bz2'
+NGAS_DIR = 'ngas_rt' #NGAS runtime directory
 NGAS_DIR_ABS = '/home/%s/%s' % (USERNAME, NGAS_DIR)
+env.hosts = ['']
 env.GITUSER = 'icrargit'
-env.GITREPO = '130.95.176.110:ngas'
-env['postfix'] = False
+env.GITREPO = 'gitsrv.icrar.org:ngas'
+env.instance_name = 'NGAS' #just the default name
+env['postfix'] = 'False'
+env['use_elastic_ip'] = 'False'
 
-# PUBLIC_KEYS = os.path.expanduser('~/Documents/Keys')
+PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 # WEB_HOST = 0
 # UPLOAD_HOST = 1
 # DOWNLOAD_HOST = 2
@@ -52,7 +62,8 @@ def set_env():
     if env.postfix:
         env.postfix = to_boolean(env.postfix)
     require('hosts', provided_by=[test_env])
-
+    puts('Environment: {0} {1} {2} {3} {4} {5}'.format(env.user, env.key_filename, env.hosts, 
+                                                   env.host_string, env.postfix, USERNAME))
 
 @task
 def create_instance(names, use_elastic_ip, public_ips):
@@ -142,8 +153,51 @@ def to_boolean(choice, default=False):
     choice_lower = choice.lower()
     if choice_lower in valid:
         return valid[choice_lower]
-
     return default
+
+def check_command(command):
+    """
+    Check existence of command remotely
+    
+    INPUT:
+    command:  string
+    
+    OUTPUT:
+    Boolean
+    """
+    res = run('if command -v {0} &> /dev/null ;then command -v {0};else echo "";fi'.format(command))
+    return res
+
+
+def check_python():
+    """
+    Check for the existence of correct version of python
+    
+    INPUT:
+    None
+    
+    OUTPUT:
+    path to python binary    string, could be empty string
+    """
+    # Try whether there is already a local python installation for this user
+    ppath = check_command('{0}/../python/bin/python{1}'.format(NGAS_DIR_ABS, NGAS_PYTHON_VERSION))
+    if ppath:
+        return ppath
+    # Try python2.7 first
+    ppath = check_command('python{0}'.format(NGAS_PYTHON_VERSION))
+    if ppath:
+        return ppath
+    
+    # any python at all
+    elif check_command('python'):
+        res = run('python -V')
+        if res.find(NGAS_PYTHON_VERSION) >= 0:
+            return check_command(python)
+        else:
+            return ''
+    else:
+        return ''
+
 
 def copy_public_keys():
     """
@@ -151,7 +205,7 @@ def copy_public_keys():
     """
     env.list_of_users = []
     for file in glob.glob(PUBLIC_KEYS + '/*.pub'):
-        filename = os.path.basename(file)
+        filename = '.ssh/{0}'.format(os.path.basename(file))
         user, ext = os.path.splitext(filename)
         env.list_of_users.append(user)
         put(file, filename)
@@ -171,7 +225,16 @@ def git_pull():
     is thus using a tar-file, copied over from the calling machine.
     """
     with cd(NGAS_DIR_ABS):    
-        sudo('git pull', user=env.deploy_user)
+        sudo('git pull', user=env.user)
+
+def git_clone():
+    """
+    Clones the NGAS repository.
+    """
+    copy_public_keys()
+    with cd(NGAS_DIR_ABS):    
+        run('git clone {0}@{1}'.format(env.GITUSER, env.GITREPO))
+
 
 @task
 def git_clone_tar():
@@ -182,7 +245,8 @@ def git_clone_tar():
     is thus using a tar-file, copied over from the calling machine.
     """
     local('cd /tmp && git clone {0}@{1}'.format(env.GITUSER, env.GITREPO))
-    local('cd /tmp && tar -cjf ngas.tar.bz2 ngas')
+    local('cd /tmp && mv ngas {0}'.format(NGAS_DIR))
+    local('cd /tmp && tar -cjf {0}.tar.bz2 {0}'.format(NGAS_DIR))
 
 
 @task
@@ -192,6 +256,7 @@ def system_install():
     
     NOTE: Most of this requires sudo access on the machine(s)
     """
+    set_env()
     # Update the AMI completely
     sudo('yum --assumeyes --quiet update')
 
@@ -267,34 +332,66 @@ def user_setup():
 
 
 @task
+def python_setup():
+    """
+    Ensure that there is the right version of python available
+    If not install it from scratch in user directory.
+    
+    INPUT:
+    None
+    
+    OUTPUT:
+    None
+    """
+    set_env()
+    ppath = check_python()
+    if ppath:
+        puts('Python{0} seems to be available'.format(NGAS_PYTHON_VERSION))
+    else: # If no correct python is available install local python (no sudo required)
+        with cd('/tmp'):
+            run('wget -q {0}'.format(NGAS_PYTHON_URL))
+            base = os.path.basename(NGAS_PYTHON_URL)
+            pdir = os.path.splitext(os.path.splitext(base)[0])[0]
+            run('tar -xjf {0}'.format(base))
+        with cd('/tmp/{0}'.format(pdir)):
+            run('./configure --prefix {0}/../python;make;make install'.format(NGAS_DIR_ABS))
+            ppath = '{0}/../python/bin/python{1}'.format(NGAS_DIR_ABS,NGAS_PYTHON_VERSION)
+    env.PYTHON = ppath
+    # setup virtualenv with the detected or newly installed python
+    with cd('/tmp'):
+        run('wget -q https://raw.github.com/pypa/virtualenv/master/virtualenv.py')
+        run('{0} virtualenv.py {1}'.format(ppath, NGAS_DIR_ABS))
+    with cd(NGAS_DIR_ABS):
+        virtualenv('pip install zc.buildout')        
+        # make this installation self consistent
+        virtualenv('pip install fabric')
+        virtualenv('pip install boto')
+
+
+
+@task
 def ngas_buildout():
     """
     Perform the full buildout and virtualenv config
     """
-
     set_env()
-#    run('virtualenv-2.6 --no-site-packages {0}'.format(NGAS_DIR))
-    puts('before wget')
-    run('wget https://raw.github.com/pypa/virtualenv/master/virtualenv.py')
-    puts('after wget')
-    run('python2.7 virtualenv.py {0}'.format(NGAS_DIR))
-
     # First get the sources
     # 
     git_clone_tar()
-    put('/tmp/ngas.tar.bz2','/tmp/ngas.tar.bz2')
-    local('rm -rf /tmp/ngas*')  # cleanup
-    run('tar -xjf /tmp/ngas.tar.bz2')
-
+    tarfile = '/tmp/{0}.tar.bz2'.format(NGAS_DIR)
+    put(tarfile, tarfile)
+#    local('rm -rf {0}'.format(tarfile))  # cleanup local git clone
+    run('tar -xjf {0}'.format(tarfile))
+    
+    # git_clone()
     
     with cd(NGAS_DIR_ABS):
-        virtualenv('pip install zc.buildout')
-        
-        # make this installation self consistent
-        virtualenv('pip install fabric')
-        virtualenv('pip install boto')
-        virtualenv('python2.7 bootstrap.py')
+        # run bootstrap with correct python version (explicit)
+        run('rm bin/python') # avoid the 'busy' error message
+        virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
         virtualenv('buildout')
+    run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
+
 
 @task
 @serial
@@ -323,6 +420,8 @@ def test_env():
     # Create the instance in AWS
     host_names = create_instance([env.instance_name], use_elastic_ip, [public_ip])
     env.hosts = host_names
+    if not env.host_string:
+        env.host_string = env.hosts[0]
     env.user = USERNAME
     env.key_filename = AWS_KEY
     env.roledefs = {
@@ -331,10 +430,20 @@ def test_env():
     }
 
 @task
+def user_deploy():
+    """
+    Deploy the system as a normal user without sudo access
+    """
+    python_setup()
+    ngas_buildout()
+
+
+@task
 @serial
 def test_deploy():
     """
-    ** MAIN TASK **: Deploy the full NGAS test environment. (Does not include the NGAS users at this point)
+    ** MAIN TASK **: Deploy the full NGAS EC2 test environment. 
+    (Does not include the NGAS users at this point)
     """
     # set environment to default for EC2, if not specified otherwise.
     set_env()
@@ -343,5 +452,15 @@ def test_deploy():
     system_install()
     if env.postfix:
         postfix_config()
+    python_setup()
     ngas_buildout()
 
+@task
+def start_server():
+    """
+    Start the installed NGAS server using the SQLite DB.
+    """
+    set_env()
+    with cd(NGAS_DIR_ABS):
+        run('{0}/bin/ngamsServer -cfg {0}/cfg/NgamsCfg.SQLite.mini.xml '.format(NGAS_DIR_ABS)+\
+                   '-force -autoOnline -v 2')
