@@ -259,13 +259,3 @@ def _startThread(srvObj, sessionId):
         
     
     return
-
-def _stopThread(srvObj, sessionId):
-    """
-    listId    uuid representing the file id list
-    
-    this will be called under either of the two conditions:
-    1. cancel command
-    2. NGAS server is shutting down
-    """
-    return
