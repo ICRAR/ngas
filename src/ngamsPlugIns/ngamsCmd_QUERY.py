@@ -123,13 +123,12 @@ def handleCmd(srvObj,
     query = None
     if (reqPropsObj.hasHttpPar("query")):
         query = reqPropsObj.getHttpPar("query")
-        if query.lower() in valid_queries.values():
+        if query.lower() in valid_queries.keys():
             query = valid_queries[query.lower()]
         else:
             msg = "Invalid query specified. Valid queries are: %s" %\
             valid_queries.keys()
-            
-        raise Exception, msg
+            raise Exception, msg
 
     out_format = None
     if (reqPropsObj.hasHttpPar("format")):
