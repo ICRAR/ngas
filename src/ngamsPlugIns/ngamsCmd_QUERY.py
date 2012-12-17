@@ -41,6 +41,10 @@ import ngamsLib, ngamsStatus, ngamsDbm
 CURSOR_IDX           = "__CURSOR_IDX__"
 NGAMS_PYTHON_LIST_MT = "application/python-list"
 
+valid_queries = {"files_list":"select * from ngas_files",
+                  "disks_list":"select * from ngas_disks", 
+                  "hosts_list":"select * from ngas_hosts"}
+
 
 def formatAsList(resultSet):
     """
@@ -119,9 +123,17 @@ def handleCmd(srvObj,
     query = None
     if (reqPropsObj.hasHttpPar("query")):
         query = reqPropsObj.getHttpPar("query")
-    format = None
+        if query.lower() in valid_queries.values():
+            query = valid_queries[query.lower()]
+        else:
+            msg = "Invalid query specified. Valid queries are: %s" %\
+            valid_queries.keys()
+            
+        raise Exception, msg
+
+    out_format = None
     if (reqPropsObj.hasHttpPar("format")):
-        format = reqPropsObj.getHttpPar("format")    
+        out_format = reqPropsObj.getHttpPar("format")    
     cursorId = None
     if (reqPropsObj.hasHttpPar("cursor_id")):
         cursorId = reqPropsObj.getHttpPar("cursor_id")
@@ -137,7 +149,7 @@ def handleCmd(srvObj,
         # TODO: Make possible to return an XML document
         # TODO: Potential problem with very large result sets.
         #       Implement streaming result directly.
-        if (format == "list"):
+        if (out_format == "list"):
             finalRes = formatAsList(res)
             mimeType = NGAMS_TEXT_MT
         else:
@@ -204,7 +216,7 @@ def handleCmd(srvObj,
         # TODO: In this case no reply is generated??
     else:
         msg = "Error illegal combination of parameters. Correct syntax is: " +\
-              "QUERY?query=<Query>[&format=<Format (list)>] or " +\
+              "QUERY?query=<Query>[&out_format=<Format (list)>] or " +\
               "QUERY?query=<Query>&cursor_id=<ID> followed by N calls to " +\
               "QUERY?cursor_id=<ID>&fetch=<Number of Elements>"
         raise Exception, msg
