@@ -8,7 +8,7 @@
 NGAS Command Plug-In, implementing asynchronous retrieval file list.
 """
 import cPickle as pickle
-import thread, threading, urllib
+import thread, threading, urllib, httplib
 import os
 
 from ngams import *
@@ -18,7 +18,7 @@ import ngamsMWAAsyncProtocol
 from ngamsMWAAsyncProtocol import *
 #import difflib
 
-asyncReqDic = {} #key - uuid, value - AsyncListRetrieveRequest
+asyncReqDic = {} #key - uuid, value - AsyncListRetrieveRequest (need to remember the original request in case of cancel/suspend/resume or server shutting down)
 threadDic = {} #key - uuid, value - the threadref
 threadRunDic = {} #key - uuid, value - 1/0, 1: run 0: stop
 ASYNC_DELIVERY_THR = "Asyn-delivery-thrd-"
@@ -58,7 +58,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         asyncReqDic[sessionId] = asyncListReqObj
         
         # 2. generate response (i.e. status reports)
-        res = genInstantResponse(srvObj, asyncListReqObj) # TODO - fill response value properly!
+        res = genInstantResponse(srvObj, asyncListReqObj)
         info(3,"response uuid : %s" % res.session_uuid)
         
         # 3. launch a thread to process the list
@@ -66,26 +66,205 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(res), NGAMS_TEXT_MT)
     else:
         # extract parameters
-        return
+        sessionId = None
+        if (reqPropsObj.hasHttpPar("uuid")):
+            sessionId = reqPropsObj.getHttpPar("uuid")
+        else:
+            msg = "No UUID in the GET request."
+            raise Exception, msg
+        if (reqPropsObj.hasHttpPar("cmd")):
+            cmd = reqPropsObj.getHttpPar("cmd")
+            if (cmd == "cancel"):
+                cancelHandler(srvObj, reqPropsObj, sessionId)
+            elif (cmd == "suspend"):
+                suspendHandler(srvObj, reqPropsObj, sessionId)
+            elif (cmd == "resume"):
+                resumeHandler(srvObj, reqPropsObj, sessionId)
+            elif (cmd == "status"):
+                statusHandler(srvObj, reqPropsObj, sessionId)
+            else:
+                msg = "Unknown command in the GET request."
+                raise Exception, msg
+        else:
+            msg = "No command (cancel|suspend|resume|status) in the GET request."
+            raise Exception, msg
     return    
     
 
 def cancelHandler(srvObj, reqPropsObj, sessionId):   
     pass 
 
+def suspendHandler(srvObj, reqPropsObj, sessionId):
+    pass
+
+def resumeHandler(srvObj, reqPropsObj, sessionId):
+    pass
+
+def statusHandler(srvObj, reqPropsObj, sessionId):
+    pass
 
 def _getPostContent(srvObj, reqPropsObj):
     """
     """
     remSize = reqPropsObj.getSize()
     #info(3,"Post Data size: %d" % remSize)
-    buf = reqPropsObj.getReadFd().read(remSize) #TODO - use proper read on loop here! given remSize is small, should be okay for now
+    buf = reqPropsObj.getReadFd().read(remSize) #TODO - use proper loop on read here! given remSize is small, should be okay for now
     sizeRead = len(buf)
     #info(3,"Read buf size: %d" % sizeRead)
     #info(3,"Read buf: %s" % buf)
     if (sizeRead == remSize):
         reqPropsObj.setBytesReceived(sizeRead)
     return buf
+
+def _httpPostUrl(url,
+                mimeType,
+                contDisp = "",
+                dataRef = "",
+                dataSource = "BUFFER",
+                dataTargFile = "",
+                blockSize = 65536,
+                suspTime = 0.0,
+                timeOut = None,
+                authHdrVal = "",
+                dataSize = -1):
+    """
+    Post the the data referenced on the given URL. This function is adapted from
+    ngamsLib.httpPostUrl, which does not support block-level suspension and cancelling for file transfer 
+
+    The data send back from the remote server + the HTTP header information
+    is return in a list with the following contents:
+
+      [<HTTP status code>, <HTTP status msg>, <HTTP headers (list)>, <data>]
+
+    url:          URL to where data is posted (string).
+    
+    mimeType:     Mime-type of message (string).
+
+    contDisp:     Content-disposition of the data (string).
+    
+    dataRef:      Data to post or name of file containing data to send
+                  (string).
+
+    dataSource:   Source where to pick up the data (string/BUFFER|FILE|FD).
+
+    dataTargFile: If a filename is specified with this parameter, the
+                  data received is stored into a file of that name (string).
+
+    blockSize:    Block size (in bytes) used when sending the data (integer).
+    
+    suspTime:     Time in seconds to suspend between each block (double).
+
+    timeOut:      Timeout in seconds to wait for replies from the server
+                  (double).
+
+    authHdrVal:   Authorization HTTP header value as it should be sent in
+                  the query (string).
+
+    dataSize:     Size of data to send if read from a socket (integer).
+                
+    Returns:      List with information from reply from contacted
+                  NG/AMS Server (reply, msg, hdrs, data) (list).
+    """
+    T = TRACE()
+
+    # Separate the URL from the command.
+    idx = (url[7:].find("/") + 7)
+    tmpUrl = url[7:idx]
+    cmd    = url[(idx + 1):]
+    http = httplib.HTTP(tmpUrl)
+    info(4,"Sending HTTP header ...")
+    info(4,"HTTP Header: %s: %s" % (NGAMS_HTTP_POST, cmd))
+    http.putrequest(NGAMS_HTTP_POST, cmd)
+    info(4,"HTTP Header: %s: %s" % ("Content-type", mimeType))
+    http.putheader("Content-type", mimeType)
+    if (contDisp != ""):
+        info(4,"HTTP Header: %s: %s" % ("Content-disposition", contDisp))
+        http.putheader("Content-disposition", contDisp)
+    if (authHdrVal):
+        if (authHdrVal[-1] == "\n"): authHdrVal = authHdrVal[:-1]
+        info(4,"HTTP Header: %s: %s" % ("Authorization", authHdrVal))
+        http.putheader("Authorization", authHdrVal)
+    if (dataSource == "FILE"):
+        dataSize = getFileSize(dataRef)
+    elif (dataSource == "BUFFER"):
+        dataSize = len(dataRef)
+
+    if (dataSize != -1):
+        info(4,"HTTP Header: %s: %s" % ("Content-length", str(dataSize)))
+        http.putheader("Content-length", str(dataSize))
+    info(4,"HTTP Header: %s: %s" % ("Host", getHostName()))
+    http.putheader("Host", getHostName())
+    http.endheaders()
+    info(4,"HTTP header sent")
+
+    # Send the data.
+    info(4,"Sending data ...")
+    if (dataSource == "FILE"):
+        fdIn = open(dataRef)
+        block = "-"
+        blockAccu = 0
+        while (block != ""):
+            block = fdIn.read(blockSize)
+            blockAccu += len(block)
+            http._conn.sock.sendall(block)
+            if (suspTime > 0.0): time.sleep(suspTime)
+        fdIn.close()
+    elif (dataSource == "FD"):
+        fdIn = dataRef
+        dataRead = 0
+        while (dataRead < dataSize):
+            if ((dataSize - dataRead) < blockSize):
+                rdSize = (dataSize - dataRead)
+            else:
+                rdSize = blockSize
+            block = fdIn.read(rdSize)
+            http._conn.sock.sendall(block)
+            dataRead += len(block)
+            if (suspTime > 0.0): time.sleep(suspTime)
+    else:
+        # dataSource == "BUFFER"
+        http.send(dataRef)
+    info(4,"Data sent")
+
+    # Receive + unpack reply.
+    info(4,"Waiting for reply ...")
+    ngamsLib._setSocketTimeout(timeOut, http)
+    reply, msg, hdrs = http.getreply()
+
+    if (hdrs == None):
+        errMsg = "Illegal/no response to HTTP request encountered!"
+        raise Exception, errMsg
+    
+    if (hdrs.has_key("content-length")):
+        dataSize = int(hdrs["content-length"])
+    else:
+        dataSize = 0
+    if (dataTargFile == ""):
+        ngamsLib._waitForResp(http.getfile(), timeOut)
+        data = http.getfile().read(dataSize)
+    else:
+        fd = None
+        try:
+            data = dataTargFile
+            fd = open(dataTargFile, "w")
+            ngamsLib._waitForResp(http.getfile(), timeOut)
+            fd.write(http.getfile().read(dataSize))
+            fd.close()
+        except Exception, e:
+            if (fd != None): fd.close()
+            raise e
+
+    # Dump HTTP headers if Verbose Level >= 4.
+    info(4,"HTTP Header: HTTP/1.0 " + str(reply) + " " + msg)
+    for hdr in hdrs.keys():
+        info(4,"HTTP Header: " + hdr + ": " + hdrs[hdr])
+        
+    if (http != None):
+        http.close()
+        del http    
+
+    return [reply, msg, hdrs, data]
+
 
 def _httpPost(srvObj, url, filename):
     """
@@ -100,7 +279,7 @@ def _httpPost(srvObj, url, filename):
     ex = ""
     try:
         reply, msg, hdrs, data = \
-        ngamsLib.httpPostUrl(url, fileMimeType,
+        _httpPostUrl(url, fileMimeType,
                                         contDisp, filename, "FILE",
                                         blockSize=\
                                         srvObj.getCfg().getBlockSize())
