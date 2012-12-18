@@ -67,6 +67,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     else:
         # extract parameters
         sessionId = None
+        resp = None
         if (reqPropsObj.hasHttpPar("uuid")):
             sessionId = reqPropsObj.getHttpPar("uuid")
         else:
@@ -75,21 +76,21 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         if (reqPropsObj.hasHttpPar("cmd")):
             cmd = reqPropsObj.getHttpPar("cmd")
             if (cmd == "cancel"):
-                cancelHandler(srvObj, reqPropsObj, sessionId)
+                resp = cancelHandler(srvObj, reqPropsObj, sessionId)
             elif (cmd == "suspend"):
-                suspendHandler(srvObj, reqPropsObj, sessionId)
+                resp = suspendHandler(srvObj, reqPropsObj, sessionId)
             elif (cmd == "resume"):
-                resumeHandler(srvObj, reqPropsObj, sessionId)
+                resp = resumeHandler(srvObj, reqPropsObj, sessionId)
             elif (cmd == "status"):
-                statusHandler(srvObj, reqPropsObj, sessionId)
+                resp = statusHandler(srvObj, reqPropsObj, sessionId)
             else:
-                msg = "Unknown command in the GET request."
+                msg = "Unknown command '%s' in the GET request." % cmd
                 raise Exception, msg
         else:
             msg = "No command (cancel|suspend|resume|status) in the GET request."
             raise Exception, msg
-    return    
-    
+        
+        srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(resp), NGAMS_TEXT_MT)   
 
 def cancelHandler(srvObj, reqPropsObj, sessionId):   
     pass 
