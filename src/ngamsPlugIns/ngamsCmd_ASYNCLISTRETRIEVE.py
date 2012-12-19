@@ -8,7 +8,7 @@
 NGAS Command Plug-In, implementing asynchronous retrieval file list.
 """
 import cPickle as pickle
-import thread, threading, urllib, httplib
+import thread, threading, urllib, httplib, time
 import os
 
 from ngams import *
@@ -19,10 +19,13 @@ from ngamsMWAAsyncProtocol import *
 #import difflib
 
 asyncReqDic = {} #key - uuid, value - AsyncListRetrieveRequest (need to remember the original request in case of cancel/suspend/resume or server shutting down)
+statusResDic = {} #key - uuid, value - AsyncListRetrieveStatusResponse
+nextFileDic = {} #key - uuid, value - next file_id to be delivered
 threadDic = {} #key - uuid, value - the threadref
 threadRunDic = {} #key - uuid, value - 1/0, 1: run 0: stop
 ASYNC_DELIVERY_THR = "Asyn-delivery-thrd-"
 fileMimeType = "application/octet-stream"
+THREAD_STOP_TIME_OUT = 8
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     httpMethod = reqPropsObj.getHttpMethod()
@@ -69,40 +72,105 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         sessionId = None
         resp = None
         if (reqPropsObj.hasHttpPar("uuid")):
-            sessionId = reqPropsObj.getHttpPar("uuid")
-        else:
-            msg = "No UUID in the GET request."
-            raise Exception, msg
-        if (reqPropsObj.hasHttpPar("cmd")):
-            cmd = reqPropsObj.getHttpPar("cmd")
-            if (cmd == "cancel"):
-                resp = cancelHandler(srvObj, reqPropsObj, sessionId)
-            elif (cmd == "suspend"):
-                resp = suspendHandler(srvObj, reqPropsObj, sessionId)
-            elif (cmd == "resume"):
-                resp = resumeHandler(srvObj, reqPropsObj, sessionId)
-            elif (cmd == "status"):
-                resp = statusHandler(srvObj, reqPropsObj, sessionId)
+            sessionId = reqPropsObj.getHttpPar("uuid")            
+            if (reqPropsObj.hasHttpPar("cmd")):
+                cmd = reqPropsObj.getHttpPar("cmd")
+                if (cmd == "cancel"):
+                    resp = cancelHandler(srvObj, reqPropsObj, sessionId)
+                elif (cmd == "suspend"):
+                    resp = suspendHandler(srvObj, reqPropsObj, sessionId)
+                elif (cmd == "resume"):
+                    resp = resumeHandler(srvObj, reqPropsObj, sessionId)
+                elif (cmd == "status"):
+                    resp = statusHandler(srvObj, reqPropsObj, sessionId)
+                else:
+                    resp = AsyncListRetrieveResponse(None, AsyncListRetrieveProtocolError.UNKNOWN_COMMAND_IN_REQUEST, [])
+                    #msg = "Unknown command '%s' in the GET request." % cmd
+                    #raise Exception, msg            else:
             else:
-                msg = "Unknown command '%s' in the GET request." % cmd
-                raise Exception, msg
+                resp = AsyncListRetrieveResponse(None, AsyncListRetrieveProtocolError.NO_COMMAND_IN_REQUEST, [])
+                #msg = "No command (cancel|suspend|resume|status) in the GET request."
+                #raise Exception, msg
         else:
-            msg = "No command (cancel|suspend|resume|status) in the GET request."
-            raise Exception, msg
+            resp = AsyncListRetrieveResponse(None, AsyncListRetrieveProtocolError.NO_UUID_IN_REQUEST, [])
+            #msg = "No UUID in the GET request."
+            #raise Exception, msg       
         
         srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(resp), NGAMS_TEXT_MT)   
 
-def cancelHandler(srvObj, reqPropsObj, sessionId):   
-    pass 
+def cancelHandler(srvObj, reqPropsObj, sessionId):       
+    resp = AsyncListRetrieveCancelResponse()
+    resp.session_uuid = sessionId;
+    resp.errorcode = AsyncListRetrieveProtocolError.OK
+    
+    if (not asyncReqDic.has_key(sessionId) or not threadDic.has_key(sessionId)):
+        resp.errorcode = AsyncListRetrieveProtocolError.INVALID_UUID
+    else:
+        re = _stopThread(sessionId)
+        resp.errorcode = re
+        
+    if (asyncReqDic.has_key(sessionId)):
+        v = asyncReqDic.pop(sessionId)
+        del v
+    if (threadDic.has_key(sessionId)):
+        t = threadDic.pop(sessionId)
+        if (not t.isAlive()):
+            del t
+    if (threadRunDic.has_key(sessionId)):
+        threadRunDic.pop(sessionId)
+
+    return resp
+    
 
 def suspendHandler(srvObj, reqPropsObj, sessionId):
-    pass
+    resp = AsyncListRetrieveSuspendResponse()
+    resp.session_uuid = sessionId;
+    resp.errorcode = AsyncListRetrieveProtocolError.OK
+    
+    if (not asyncReqDic.has_key(sessionId) or not threadDic.has_key(sessionId)):
+        resp.errorcode = AsyncListRetrieveProtocolError.INVALID_UUID
+    else:
+        re = _stopThread(sessionId)
+        resp.errorcode = re
+        if (nextFileDic.has_key(sessionId)):
+            resp.current_fileid = nextFileDic[sessionId]  # this is not accurate given the complex situation where the "next" file might be migrated to tape after sometime
+        else:
+            resp.current_fileid = None
+        
+    if (threadDic.has_key(sessionId)):
+        t = threadDic.pop(sessionId)
+        if (not t.isAlive()):
+            del t
+    if (threadRunDic.has_key(sessionId)):
+        threadRunDic.pop(sessionId)        
+    
+    return resp
 
 def resumeHandler(srvObj, reqPropsObj, sessionId):
-    pass
+    resp = AsyncListRetrieveResumeResponse()
+    resp.session_uuid = sessionId
+    resp.errorcode = AsyncListRetrieveProtocolError.OK
+    
+    if (not asyncReqDic.has_key(sessionId)):
+        resp.errorcode = AsyncListRetrieveProtocolError.INVALID_UUID
+    else:
+        if (nextFileDic.has_key(sessionId)):
+            resp.current_fileid = nextFileDic[sessionId]  # this is not accurate given the complex situation where the "next" file might be migrated to tape after sometime
+        else:
+            resp.current_fileid = None
+        _startThread(srvObj, sessionId)
+    
+    return resp    
 
 def statusHandler(srvObj, reqPropsObj, sessionId):
-    pass
+    res = None
+    if (statusResDic.has_key(sessionId)):
+        res = statusResDic[sessionId]
+    else:
+        res = AsyncListRetrieveStatusResponse()
+        res.errorcode = AsyncListRetrieveProtocolError.INVALID_UUID
+        res.session_uuid = sessionId
+    return res
 
 def _getPostContent(srvObj, reqPropsObj):
     """
@@ -127,7 +195,8 @@ def _httpPostUrl(url,
                 suspTime = 0.0,
                 timeOut = None,
                 authHdrVal = "",
-                dataSize = -1):
+                dataSize = -1,
+                session_uuid = ""):
     """
     Post the the data referenced on the given URL. This function is adapted from
     ngamsLib.httpPostUrl, which does not support block-level suspension and cancelling for file transfer 
@@ -205,6 +274,9 @@ def _httpPostUrl(url,
         block = "-"
         blockAccu = 0
         while (block != ""):
+            if (threadRunDic.has_key(session_uuid) and threadRunDic[session_uuid] == 0):
+                info(3, "Received cancel/suspend request, discard remaining blocks")
+                break
             block = fdIn.read(blockSize)
             blockAccu += len(block)
             http._conn.sock.sendall(block)
@@ -226,7 +298,12 @@ def _httpPostUrl(url,
         # dataSource == "BUFFER"
         http.send(dataRef)
     info(4,"Data sent")
-
+    if (threadRunDic.has_key(session_uuid) and threadRunDic[session_uuid] == 0):
+        info(3, "Received cancel/suspend request, close HTTP connection and return None values")
+        if (http != None):
+            http.close()
+            del http        
+        return [None, None, None, None]
     # Receive + unpack reply.
     info(4,"Waiting for reply ...")
     ngamsLib._setSocketTimeout(timeOut, http)
@@ -267,7 +344,7 @@ def _httpPostUrl(url,
     return [reply, msg, hdrs, data]
 
 
-def _httpPost(srvObj, url, filename):
+def _httpPost(srvObj, url, filename, sessionId):
     """
     return success 0 or failure 1
     """
@@ -283,7 +360,10 @@ def _httpPost(srvObj, url, filename):
         _httpPostUrl(url, fileMimeType,
                                         contDisp, filename, "FILE",
                                         blockSize=\
-                                        srvObj.getCfg().getBlockSize())
+                                        srvObj.getCfg().getBlockSize(), session_uuid = sessionId)
+        if (reply == None and msg == None and hdrs == None and data == None): # transfer cancelled/suspended
+            return 1 
+        
         if (data.strip() != ""):
             stat.clear().unpackXmlDoc(data)
         else:
@@ -308,6 +388,10 @@ def genInstantResponse(srvObj, asyncListReqObj):
     clientUrl = asyncListReqObj.url
     sessionId = asyncListReqObj.session_uuid
     res = AsyncListRetrieveResponse(sessionId, 0, [])
+    statuRes = AsyncListRetrieveStatusResponse()
+    statuRes.errorcode = AsyncListRetrieveProtocolError.OK
+    statuRes.session_uuid = sessionId
+    
     if (clientUrl is None or sessionId is None):
         res.errorcode = -1
         return res
@@ -328,7 +412,10 @@ def genInstantResponse(srvObj, asyncListReqObj):
             status = 0 #offline
         finfo = FileInfo(file_id, file_size, status)
         res.file_info.append(finfo)
+        statuRes.number_bytes_to_be_delivered += file_size
+        statuRes.number_files_to_be_delivered += 1
     del cursorObj
+    statusResDic[sessionId] = statuRes
     return res   
 
 def _deliveryThread(srvObj, asyncListReqObj):
@@ -377,18 +464,36 @@ def _deliveryThread(srvObj, asyncListReqObj):
         ngamsMWACortexTapeApi.stageFiles(filesOnTape) # TODO - this should be done in another thread very soon! then the thread synchronisation issues....
     
     allfiles = filesOnDisk + filesOnTape
+    statusRes = None
+    if (statusResDic.has_key(sessionId)):
+        statusRes = statusResDic[sessionId]
     
     for filename in allfiles:
-        ret = _httpPost(srvObj, clientUrl, filename)
-        if (ret == 0):
-            basename = os.path.basename(filename)
+        basename = os.path.basename(filename)
+        nextFileDic[sessionId] = basename
+        if (threadRunDic.has_key(sessionId) and threadRunDic[sessionId] == 0):
+            info(3, "transfer cancelled/suspended before transferring file '%s'" % basename)
+            break
+        ret = _httpPost(srvObj, clientUrl, filename, sessionId)
+        if (ret == 0):           
             #info(3, "Removing %s" % basename)
             asyncListReqObj.file_id.remove(basename) #once it is delivered successfully, it is removed from the list
-    #info(3, " * * * end the _deliveryThread")
-    
+            if (statusRes != None):
+                statusRes.number_files_delivered += 1
+                statusRes.number_files_to_be_delivered -= 1
+            #info(3, " * * * end the _deliveryThread")
+        elif (threadRunDic.has_key(sessionId) and threadRunDic[sessionId] == 0):
+            info(3, "transfer cancelled/suspended while transferring file '%s'" % basename)
+            break
     if (len(asyncListReqObj.file_id) == 0 and asyncReqDic.has_key(sessionId)):
         v = asyncReqDic.pop(sessionId)
         del v
+        threadDic.pop(sessionId) # cannot del threadRef itself, TODO - this should be moved to a monitoring thread
+        v = threadRunDic.pop(sessionId)
+        del v
+        
+    if (len(asyncListReqObj.file_id) == 0 and nextFileDic.has_key(sessionId)):
+        v = nextFileDic.pop(sessionId)
     
     thread.exit()
       
@@ -406,7 +511,7 @@ def stopAsyncQService():
     """
     return
 
-def _stopThread(srvObj, sessionId):
+def _stopThread(sessionId):
     """
     sessionId    uuid representing the file id list
     
@@ -415,6 +520,19 @@ def _stopThread(srvObj, sessionId):
     2. suspend Command
     3. NGAS server is being shutting down (called by stopAsyncQService)
     """
+    deliveryThrRef = threadDic[sessionId]
+    threadRunDic[sessionId] = 0 # don't care about the race condition for this flag
+    counter = 0
+    while (counter <= THREAD_STOP_TIME_OUT and deliveryThrRef.isAlive()):
+        time.sleep(1.0)
+        counter = counter + 1
+    
+    if (counter > THREAD_STOP_TIME_OUT and deliveryThrRef.isAlive()):
+        info(3, "thread stopping timeout for session %s" % sessionId)
+        return AsyncListRetrieveProtocolError.THREAD_STOP_TIMEOUT
+    else: 
+        info(3, "thread stopped successfully for session %s" % sessionId)
+        return AsyncListRetrieveProtocolError.OK
 
 
 def _startThread(srvObj, sessionId):
@@ -436,6 +554,6 @@ def _startThread(srvObj, sessionId):
     threadDic[sessionId] = deliveryThrRef
     deliveryThrRef.setDaemon(0)
     deliveryThrRef.start()
-        
+    threadRunDic[sessionId] = 1        
     
     return
