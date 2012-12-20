@@ -1,0 +1,73 @@
+NGAS Quick-Installation Guide
+=============================
+
+Installing NGAS is very simple and yet flexible. This quick-guide just covers
+the most standard installation on a stand-alone server. The installation routine
+covers a number of different scenarios, including test installations on the
+Amazon EC2 cloud and also the installation of several servers in parallel.
+It is also possible to install all the OS packages required for NGAS, but this
+is currently limited to RedHat and CentOS based installations and obviously 
+requires root access to the server.
+
+Pre-requisites:
+---------------
+In order to use the installation procedure you will need some version of python
+running on your machine. Recommended versions include the 2.6 and 2.7 series. 
+If you are an advanced python user, you may already have a virtual environment
+setup. If this is the case you can either just enable your default virtualenv, or
+create a new one for this installation. If you are even more advanced and have 
+the fabric and boto modules installed already, you have all that's required and
+can skip the rest of this section.
+
+0) look at the output of python -V:
+
+> python -V
+Python 2.7
+
+if it returns Python 2.6 or Python 2.7 or any version >= 2.6 <= 3.0 you are fine.
+
+1) check whether you've got virtualenv installed already:
+
+> which virtualenv
+/usr/bin/virtualenv
+
+If it is not installed you can execute the following:
+
+> wget -q https://raw.github.com/pypa/virtualenv/master/virtualenv.py
+> python virtualenv.py .v_ngasdeploy
+
+If virtualenv is installed create a virtual environment in a directory 
+of your choice, e.g.:
+
+> virtualenv -p python .v_ngasdeploy
+
+3) activate the virtual environment:
+
+> source .v_ngasdeploy/bin/activate
+
+4) install fabric and boto:
+
+> pip install fabric
+> pip install boto
+
+NOTE: This will install pip and boto into the virtualenv activated before and not
+clutter up anything else.
+
+5) In order to be able to execute the installation on a remote host you will need 
+to be able to connect to the target host without a password.
+That means that you have to register your ssh public-key on that host (copy into 
+~/.ssh/authorized-keys of the user on the target host. 
+
+
+Installation of NGAS:
+---------------------
+The installation of the NGAS software is using the fabric framework, allowing the
+whole provisioning of the server and the required setup steps locally or on 
+remote hosts. The deployment tasks and functions are all written in Python as well.
+All that's required at this point is to run the fab command:
+
+> fab --hosts=whatever.host --user=billythekid -f machine-setup/deploy.py user_deploy
+
+where you have to replace whatever.host and billythekid with the hostname and user 
+name on that host where you want to install the software. 
+
