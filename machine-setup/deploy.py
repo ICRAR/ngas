@@ -30,23 +30,22 @@ from fabric.decorators import task, serial
 from fabric.operations import prompt
 from fabric.utils import puts, abort, fastprint
 
+#Defaults
 USERNAME = 'ec2-user'
+POSTFIX = False
 AMI_ID = 'ami-aecd60c7'
+INSTANCE_NAME = 'NGAS'
 INSTANCE_TYPE = 't1.micro'
 INSTANCES_FILE = os.path.expanduser('~/.aws/aws_instances')
 AWS_KEY = os.path.expanduser('~/.ssh/icrarkey2.pem')
 KEY_NAME = 'icrarkey2'
+ELASTIC_IP = False
 SECURITY_GROUPS = ['NGAS'] # Security group allows SSH
 NGAS_PYTHON_VERSION = '2.7'
 NGAS_PYTHON_URL = 'http://www.python.org/ftp/python/2.7.3/Python-2.7.3.tar.bz2'
 NGAS_DIR = 'ngas_rt' #NGAS runtime directory
-NGAS_DIR_ABS = '/home/%s/%s' % (USERNAME, NGAS_DIR)
-env.hosts = ['']
-env.GITUSER = 'icrargit'
-env.GITREPO = 'gitsrv.icrar.org:ngas'
-env.instance_name = 'NGAS' #just the default name
-env['postfix'] = 'False'
-env['use_elastic_ip'] = 'False'
+GITUSER = 'icrargit'
+GITREPO = 'gitsrv.icrar.org:ngas'
 
 PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 # WEB_HOST = 0
@@ -54,16 +53,29 @@ PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 # DOWNLOAD_HOST = 2
 
 def set_env():
-    # set environment to default for EC2, if not specified otherwise.
+    # set environment to default for EC2, if not specified on command line.
+
+    puts(env)
+    if not env.has_key('GITUSER'):
+        env.GITUSER = GITUSER
+    if not env.has_key('GITREPO'):
+        env.GITREPO = GITREPO
+    if not env.has_key('instance_name'):
+        env.instance_name = INSTANCE_NAME
+    if not env.has_key('postfix'):
+        env.postfix = POSTFIX
+    if not env.has_key('use_elastic_ip'):
+        env.use_elastic_ip = ELASTIC_IP
     if not env.user:
         env.user = USERNAME
-    if not env.key_filename:
+    if not env.has_key('key_filename'):
         env.key_filename = AWS_KEY
-    if env.postfix:
-        env.postfix = to_boolean(env.postfix)
     require('hosts', provided_by=[test_env])
+    if not env.has_key('NGAS_DIR_ABS'):
+        env.NGAS_DIR_ABS = '{0}/{1}'.format(run('printenv HOME'), NGAS_DIR)
     puts('Environment: {0} {1} {2} {3} {4} {5}'.format(env.user, env.key_filename, env.hosts, 
-                                                   env.host_string, env.postfix, USERNAME))
+                                                   env.host_string, env.postfix, env.NGAS_DIR_ABS))
+
 
 @task
 def create_instance(names, use_elastic_ip, public_ips):
@@ -180,7 +192,7 @@ def check_python():
     path to python binary    string, could be empty string
     """
     # Try whether there is already a local python installation for this user
-    ppath = check_command('{0}/../python/bin/python{1}'.format(NGAS_DIR_ABS, NGAS_PYTHON_VERSION))
+    ppath = check_command('{0}/../python/bin/python{1}'.format(env.NGAS_DIR_ABS, NGAS_PYTHON_VERSION))
     if ppath:
         return ppath
     # Try python2.7 first
@@ -192,7 +204,7 @@ def check_python():
     elif check_command('python'):
         res = run('python -V')
         if res.find(NGAS_PYTHON_VERSION) >= 0:
-            return check_command(python)
+            return check_command('python')
         else:
             return ''
     else:
@@ -214,8 +226,8 @@ def virtualenv(command):
     """
     Just a helper function to execute commands in the virtualenv
     """
-    env.activate = 'source {0}/bin/activate'.format(NGAS_DIR_ABS)
-    with cd(NGAS_DIR_ABS):
+    env.activate = 'source {0}/bin/activate'.format(env.NGAS_DIR_ABS)
+    with cd(env.NGAS_DIR_ABS):
         run(env.activate + '&&' + command)
 
 def git_pull():
@@ -224,7 +236,7 @@ def git_pull():
     TODO: This does not work outside iVEC. The current implementation
     is thus using a tar-file, copied over from the calling machine.
     """
-    with cd(NGAS_DIR_ABS):    
+    with cd(env.NGAS_DIR_ABS):    
         sudo('git pull', user=env.user)
 
 def git_clone():
@@ -232,7 +244,7 @@ def git_clone():
     Clones the NGAS repository.
     """
     copy_public_keys()
-    with cd(NGAS_DIR_ABS):    
+    with cd(env.NGAS_DIR_ABS):    
         run('git clone {0}@{1}'.format(env.GITUSER, env.GITREPO))
 
 
@@ -354,14 +366,14 @@ def python_setup():
             pdir = os.path.splitext(os.path.splitext(base)[0])[0]
             run('tar -xjf {0}'.format(base))
         with cd('/tmp/{0}'.format(pdir)):
-            run('./configure --prefix {0}/../python;make;make install'.format(NGAS_DIR_ABS))
-            ppath = '{0}/../python/bin/python{1}'.format(NGAS_DIR_ABS,NGAS_PYTHON_VERSION)
+            run('./configure --prefix {0}/../python;make;make install'.format(env.NGAS_DIR_ABS))
+            ppath = '{0}/../python/bin/python{1}'.format(env.NGAS_DIR_ABS,NGAS_PYTHON_VERSION)
     env.PYTHON = ppath
     # setup virtualenv with the detected or newly installed python
     with cd('/tmp'):
         run('wget -q https://raw.github.com/pypa/virtualenv/master/virtualenv.py')
-        run('{0} virtualenv.py {1}'.format(ppath, NGAS_DIR_ABS))
-    with cd(NGAS_DIR_ABS):
+        run('{0} virtualenv.py {1}'.format(ppath, env.NGAS_DIR_ABS))
+    with cd(env.NGAS_DIR_ABS):
         virtualenv('pip install zc.buildout')        
         # make this installation self consistent
         virtualenv('pip install fabric')
@@ -385,7 +397,7 @@ def ngas_buildout():
     
     # git_clone()
     
-    with cd(NGAS_DIR_ABS):
+    with cd(env.NGAS_DIR_ABS):
         # run bootstrap with correct python version (explicit)
         run('rm bin/python') # avoid the 'busy' error message
         virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
@@ -461,6 +473,6 @@ def start_server():
     Start the installed NGAS server using the SQLite DB.
     """
     set_env()
-    with cd(NGAS_DIR_ABS):
-        run('{0}/bin/ngamsServer -cfg {0}/cfg/NgamsCfg.SQLite.mini.xml '.format(NGAS_DIR_ABS)+\
+    with cd(env.NGAS_DIR_ABS):
+        run('{0}/bin/ngamsServer -cfg {0}/cfg/NgamsCfg.SQLite.mini.xml '.format(env.NGAS_DIR_ABS)+\
                    '-force -autoOnline -v 2')
