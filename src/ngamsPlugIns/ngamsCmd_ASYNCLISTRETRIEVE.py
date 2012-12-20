@@ -118,6 +118,10 @@ def cancelHandler(srvObj, reqPropsObj, sessionId):
             del t
     if (threadRunDic.has_key(sessionId)):
         threadRunDic.pop(sessionId)
+    
+    if (statusResDic.has_key(sessionId)):
+        st = statusResDic.pop(sessionId)
+        del st
 
     return resp
     
@@ -438,7 +442,7 @@ def _deliveryThread(srvObj, asyncListReqObj):
     filesOnTape = []
     cursorObj = srvObj.getDb().getFileSummary1(None, [], asyncListReqObj.file_id, None, [], None, 0)
     fileInfoList = cursorObj.fetch(1000)
-    baseNameDic = {}
+    baseNameDic = {} # key - basename, value - file size
     for fileInfo in fileInfoList:
         # recheck the file status, this is necessary 
         # because, in addition to the initial request, this thread might be started under the "resume" command or when NGAS is started. 
@@ -451,7 +455,9 @@ def _deliveryThread(srvObj, asyncListReqObj):
             #info(3, "duplication detected %s" % basename)
             continue #get rid of multiple versions
         else:
-            baseNameDic[basename] = 1
+            file_size = fileInfo[ngamsDbCore.SUM1_FILE_SIZE]
+            baseNameDic[basename] = file_size
+            
         filename  = fileInfo[ngamsDbCore.SUM1_MT_PT] + "/" + fileInfo[ngamsDbCore.SUM1_FILENAME] #e.g. /home/chen/proj/mwa/testNGAS/NGAS2/volume1/afa/2012-10-26/2/110024_20120914132151_12.fits
         
         if (ngamsMWACortexTapeApi.isFileOnTape(filename) == 1):
@@ -481,19 +487,23 @@ def _deliveryThread(srvObj, asyncListReqObj):
             if (statusRes != None):
                 statusRes.number_files_delivered += 1
                 statusRes.number_files_to_be_delivered -= 1
+                statusRes.number_bytes_delivered += baseNameDic[basename]
+                statusRes.number_bytes_to_be_delivered -= baseNameDic[basename]
             #info(3, " * * * end the _deliveryThread")
         elif (threadRunDic.has_key(sessionId) and threadRunDic[sessionId] == 0):
             info(3, "transfer cancelled/suspended while transferring file '%s'" % basename)
             break
-    if (len(asyncListReqObj.file_id) == 0 and asyncReqDic.has_key(sessionId)):
-        v = asyncReqDic.pop(sessionId)
-        del v
-        threadDic.pop(sessionId) # cannot del threadRef itself, TODO - this should be moved to a monitoring thread
-        v = threadRunDic.pop(sessionId)
-        del v
-        
-    if (len(asyncListReqObj.file_id) == 0 and nextFileDic.has_key(sessionId)):
-        v = nextFileDic.pop(sessionId)
+    if (len(asyncListReqObj.file_id) == 0): # if delivery is completed
+        if (asyncReqDic.has_key(sessionId)):
+            v = asyncReqDic.pop(sessionId)
+            del v
+            threadDic.pop(sessionId) # cannot del threadRef itself, TODO - this should be moved to a monitoring thread
+            v = threadRunDic.pop(sessionId)            
+        if (nextFileDic.has_key(sessionId)):
+            v = nextFileDic.pop(sessionId)        
+        if (statusResDic.has_key(sessionId)):
+            st = statusResDic.pop(sessionId)
+            del st
     
     thread.exit()
       
