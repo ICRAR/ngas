@@ -1,61 +1,59 @@
-########################################################################
-# 
-# NGAS Buildout
-#
-# By Frank Yi TAN (francis.tine@gmail.com)
-# Under supervision of Prof. Andreas Wicenec
-# Sponsored by iVEC & ICRAR
-#
-# build V0.9 - alpha 1
-#
-# Caution: This version is for developers only. 
-#	   It is not ready for users yet.
-#	   See known issues for detail.
-########################################################################
+The Next Generation Archive System
+==================================
 
------------------------------
-Installation Instructions
------------------------------
-1. Pre-requisites 
-Before installation, please make sure the following packages are installed. You can use apt-get to install them.
-*	gcc
-*	python2.6-dev
-*	virtualenv-2.6
-*	Berkeley-db
-*	autoconf
-*	libtool
-*	sendmail
-*       java-devel
-*       gdbm-devel
-*       sqlite-devel
-*       readline-devel
-*       zlib-devel
+NOTE: This README file is not meant to describe the system in any detail. 
+Please refer to the Installation Guide (./INSTALL) and the User Manual 
+(./doc/VLT-MAN-19400-2739.pdf) for more details.
 
-2. Installation Procedure
-* Extract ngas_buildout.tar.gz or checkout from a repository 
-	$tar -xvf ngas_buildout.tar.gz
-or
-	$svn checkout <url>
-* Set up the virtual environment (sandbox) for ngas_buildout
-	$virtualenv-2.6 --no-site-packages ngas_buildout
-	$cd ngas_buildout
-	$bin/easy_install zc.buildout
-	$bin/buildout init
-* Bootstrap buildout
-	$bin/python2.6 bootstrap.py
-* Activate the sandbox
-        $source bin/activate
-* Build
-     Before running buildout please make sure that the first line is actually referring to bin/python2.6 directly
-	$bin/buildout
-* extract NGAS.tar, for example, in $HOME directory and set the paths for it in cfg/NgamsCfg.SQLite.mini.xml configuration file
-  (essentially you have to replace all occurances of /home/frank with your $HOME)
+NGAS is a very feature rich, archive handling and management system. 
+In its core it is a HTTP based object storage system. It can be deployed
+on single small servers, or in globally distributed clusters. It supports
+installation on many *IX flavors supporting Python. The implementation 
+is pure Python, but there are a few dependencies on C libraries as well
+and that may restrict the ability to install it on some of the more exotic
+platforms. Once installed, the NGAS server is intended to run as a daemon.
+It is possible to run more than one server on a single host and it is 
+possible to run many servers across hundreds of nodes as well as across
+various sites. The more advanced features allow mirroring of sites running
+independent NGAS clusters, but it is also possible to run multiple clusters
+against a central database. 
+
+The system has been originally developed and used extensively at the 
+European Southern Observatory to archive the data at the observatories in
+Chile and mirror the data to the headquarters in Germany. It has also been
+deployed at the NRAO in Socorro and Charlottesville and the Atacama Large
+Millimeter/Submillimeter Array (ALMA) is using the system to collect the data
+directly at the control site in the Chilean Andes and then distribute the data 
+to Santiago and further on to the ALMA regional centers in the US, Japan and
+Germany. NGAS is controlling millions of files all around the world and it
+is scaling very well. The version of NGAS delivered in this distribution is
+a branch of the original ALMA version. It had been further developed and 
+adopted to deal with the much higher data rate of the Murchison Widefield 
+Array (MWA) and quite some work went into the installation and automatic test
+features. 
+
+1. Installation
+Please refer to the INSTALL document in the same folder as this README file.
 
 3. How to run the programs
+The NGAS installation comes with a default minimal DB based on SQLite. This
+DB is installed by default and is also used for software testing. While 
+SQLite is perfectly fine for single host, single server installations, it
+is not possible to use it for situations where a whole cluster of servers
+need to connect to a central DB. This README just covers the minimal 
+configuration using SQLite.
+
+
+4. Post-Installation
+The following two commands can be used to just make sure that the whole
+installation is working fine.
+
 * to start NGAS Server (e.g. using Sqlite, verbose mode 4)
 	$NGAS_Server -cfg cfg/NgamsCfg.SQLite.mini.xml -autoOnline -v 4
 * to start NGAS C Client (e.g. Archive command)
 	$ngamsCClient -host localhost -port 7777 -cmd ARCHIVE -fileUri ~/NGAS/log/LogFile.nglog -mimeType application/octet-stream
+	
+	
 if localhost doesn't work, try the name you gave to your computer, or try 127.0.1.1
 It should report as follows:
 ----------------------------------------------------------------------------------------------
@@ -76,6 +74,10 @@ NG/AMS Version: v4.1-ALMA/2010-04-14T08:00:00
 	$cd /.../installation/directory/src/ngamsTest/
 	$NGASTests -cfg ../../cfg/NgamsCfg.SQLite.mini.xml -NotifEmail <your.preferred@email.here>
 
-4. Known Issues
-* location of reference files are defined pointing to the previous build location. This may affect the some of the system tests including ngamsArchiveCmdTest, ngamsCClientTest, ngamsCloneCmdTest, ngamsDbSnapShotTest, ngamsIdleSuspensionTest, ngamsPClientTest etc.
-* pcfitsio is imported in /.../src/ngamsTest/ngamsTestLib.py as a python module, yet the new system hasn't build pcfitsio as an egg that can be imported within the program. This may result errors in system tests.
+5. Known Issues
+* location of reference files are defined pointing to the previous build location. 
+This may affect the some of the system tests including ngamsArchiveCmdTest, ngamsCClientTest, 
+ngamsCloneCmdTest, ngamsDbSnapShotTest, ngamsIdleSuspensionTest, ngamsPClientTest etc.
+* pcfitsio is imported in /.../src/ngamsTest/ngamsTestLib.py as a python module, yet the 
+new system hasn't build pcfitsio as an egg that can be imported within the program. This 
+may result errors in system tests.
