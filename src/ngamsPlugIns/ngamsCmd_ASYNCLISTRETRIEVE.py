@@ -12,7 +12,7 @@ import thread, threading, urllib, httplib, time
 import os
 
 from ngams import *
-import ngamsDbCore, ngamsLib, ngamsStatus
+import ngamsDbCore, ngamsLib, ngamsStatus, ngamsPlugInApi
 import ngamsMWACortexTapeApi
 import ngamsMWAAsyncProtocol
 from ngamsMWAAsyncProtocol import *
@@ -71,7 +71,17 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         # extract parameters
         sessionId = None
         resp = None
-        if (reqPropsObj.hasHttpPar("uuid")):
+        
+        if (reqPropsObj.hasHttpPar("ngassystem")):
+            syscmd = reqPropsObj.getHttpPar("ngassystem")
+            if (syscmd == "start"):
+                resp = startAsyncQService(srvObj, reqPropsObj)
+            elif (syscmd == "stop"):
+                resp = stopAsyncQService(srvObj, reqPropsObj)
+            else:
+                resp = "Unknown system command '%s'." % syscmd
+                #raise Exception, msg
+        elif (reqPropsObj.hasHttpPar("uuid")):
             sessionId = reqPropsObj.getHttpPar("uuid")            
             if (reqPropsObj.hasHttpPar("cmd")):
                 cmd = reqPropsObj.getHttpPar("cmd")
@@ -154,7 +164,7 @@ def resumeHandler(srvObj, reqPropsObj, sessionId):
     resp = AsyncListRetrieveResumeResponse()
     resp.session_uuid = sessionId
     resp.errorcode = AsyncListRetrieveProtocolError.OK
-    
+    #info(3, "length of asyncReqDic = %d" % len(asyncReqDic.keys()))
     if (not asyncReqDic.has_key(sessionId)):
         resp.errorcode = AsyncListRetrieveProtocolError.INVALID_UUID
     else:
@@ -411,15 +421,20 @@ def genInstantResponse(srvObj, asyncListReqObj):
             baseNameDic[file_id] = 1
         file_size = f[ngamsDbCore.SUM1_FILE_SIZE]
         filename  = f[ngamsDbCore.SUM1_MT_PT] + "/" + f[ngamsDbCore.SUM1_FILENAME]
-        status = 1 #online
+        status = AsyncListRetrieveProtocolError.OK #online
         if (ngamsMWACortexTapeApi.isFileOnTape(filename) == 1):
-            status = 0 #offline
+            status = AsyncListRetrieveProtocolError.FILE_NOT_ONLINE #offline
         finfo = FileInfo(file_id, file_size, status)
         res.file_info.append(finfo)
         statuRes.number_bytes_to_be_delivered += file_size
         statuRes.number_files_to_be_delivered += 1
     del cursorObj
     statusResDic[sessionId] = statuRes
+    for ff in asyncListReqObj.file_id:
+        if (not baseNameDic.has_key(ff)):            
+            finfo = FileInfo(ff, 0, AsyncListRetrieveProtocolError.FILE_NOT_FOUND)
+            res.file_info.append(finfo)
+            
     return res   
 
 def _deliveryThread(srvObj, asyncListReqObj):
@@ -436,13 +451,21 @@ def _deliveryThread(srvObj, asyncListReqObj):
     #info(3, "* * * entering the _deliveryThread")
     clientUrl = asyncListReqObj.url
     sessionId = asyncListReqObj.session_uuid
+    #info(3, "clientUrl = %s, sessionId = %s" % (clientUrl, sessionId))
     if (clientUrl is None or sessionId is None):
         return
     filesOnDisk = []
     filesOnTape = []
+    #info(3, "file_id length = %d" % len(asyncListReqObj.file_id))
     cursorObj = srvObj.getDb().getFileSummary1(None, [], asyncListReqObj.file_id, None, [], None, 0)
     fileInfoList = cursorObj.fetch(1000)
+    #info(3, "fileIninfList length = %d" % len(fileInfoList))
     baseNameDic = {} # key - basename, value - file size
+    
+    statusRes = None
+    if (statusResDic.has_key(sessionId)):
+        statusRes = statusResDic[sessionId]
+        
     for fileInfo in fileInfoList:
         # recheck the file status, this is necessary 
         # because, in addition to the initial request, this thread might be started under the "resume" command or when NGAS is started. 
@@ -462,18 +485,25 @@ def _deliveryThread(srvObj, asyncListReqObj):
         
         if (ngamsMWACortexTapeApi.isFileOnTape(filename) == 1):
             filesOnTape.append(filename)
+            if (statusRes != None):
+                statusRes.number_files_to_be_staged += 1
+                statusRes.number_bytes_to_be_staged += file_size
         else:
             filesOnDisk.append(filename)        
     del cursorObj
     #info(3, " * * * middle of the _deliveryThread")
+    stageRet = 0
     if (len(filesOnTape) > 0):
-        ngamsMWACortexTapeApi.stageFiles(filesOnTape) # TODO - this should be done in another thread very soon! then the thread synchronisation issues....
+        stageRet = ngamsMWACortexTapeApi.stageFiles(filesOnTape) # TODO - this should be done in another thread very soon! then the thread synchronisation issues....
     
-    allfiles = filesOnDisk + filesOnTape
-    statusRes = None
-    if (statusResDic.has_key(sessionId)):
-        statusRes = statusResDic[sessionId]
+    if (statusRes != None):
+        statusRes.number_files_to_be_staged = 0 
+        statusRes.number_bytes_to_be_staged = 0
     
+    allfiles = filesOnDisk
+    if (stageRet != -1):
+        allfiles = filesOnDisk + filesOnTape  
+          
     for filename in allfiles:
         basename = os.path.basename(filename)
         nextFileDic[sessionId] = basename
@@ -493,6 +523,11 @@ def _deliveryThread(srvObj, asyncListReqObj):
         elif (threadRunDic.has_key(sessionId) and threadRunDic[sessionId] == 0):
             info(3, "transfer cancelled/suspended while transferring file '%s'" % basename)
             break
+    
+    for ff in asyncListReqObj.file_id:
+        if (not baseNameDic.has_key(ff)):            
+            asyncListReqObj.file_id.remove(ff) #remove files that cannot be found
+    
     if (len(asyncListReqObj.file_id) == 0): # if delivery is completed
         if (asyncReqDic.has_key(sessionId)):
             v = asyncReqDic.pop(sessionId)
@@ -507,19 +542,95 @@ def _deliveryThread(srvObj, asyncListReqObj):
     
     thread.exit()
       
-def startAsyncQService():
+def startAsyncQService(srvObj, reqPropsObj):
     """
     when the server is started, this is called to spawn threads that process persistent queues
     manages a thread pool
     get a thread running for each uncompleted persistent queue
     """
-    return
+    ngas_root_dir =  srvObj.getCfg().getRootDirectory()
+    #info(3, "Starting - root dir = %s" % ngas_root_dir)
+    
+    myDir = ngas_root_dir + "/AsyncQService" 
+    if (not os.path.exists(myDir)):
+        return "no directory is created, cannot start the service"
+    
+    saveFile = myDir + "/AsyncRetrieveListObj"
+    if (not os.path.exists(saveFile)):
+        return "no file is found, skip starting the service"   
+    
+    saveObj = None
+    try:
+        pkl_file = open(saveFile, 'rb')
+        saveObj = pickle.load(pkl_file)   
+        pkl_file.close() 
+    except Exception, e:
+        ex = str(e)
+        return ex
+    
+    if (saveObj == None or len(saveObj) != 3):
+        return "SaveObj is corrupted."
+    
+    for sessionId in saveObj[0].keys():
+        asyncReqDic[sessionId] = saveObj[0][sessionId]
 
-def stopAsyncQService():
+    for sessionId in saveObj[1].keys():
+        statusResDic[sessionId] = saveObj[1][sessionId]
+    
+    for sessionId in saveObj[2].keys():
+        nextFileDic[sessionId] = saveObj[2][sessionId]
+            
+    uuids = asyncReqDic.keys()
+    if (len(uuids) == 0):
+        return "len of uuid = 0"
+    
+    for sessionId in uuids:
+        #info(3, "sessionId = %s" % sessionId)
+        resp = resumeHandler(srvObj, reqPropsObj, sessionId)
+        #info(3, "resp when starting thread = %d" % resp.errorcode)
+    
+    return "ok, queue length = %d" % len(uuids)
+
+def stopAsyncQService(srvObj, reqPropsObj):
     """
     # when the server is shutdown, this is called to stop threads, and save uncompleted list back to database
     """
-    return
+    ngas_root_dir =  srvObj.getCfg().getRootDirectory()
+    myDir = ngas_root_dir + "/AsyncQService"
+    saveFile = myDir + "/AsyncRetrieveListObj"
+    
+    uuids = asyncReqDic.keys()
+    if (len(uuids) == 0):
+        if (os.path.exists(saveFile)):
+            cmd = "rm " + saveFile
+            ngamsPlugInApi.execCmd(cmd, -1)
+        return "ok after deleting the file"
+    
+    for sessionId in uuids:
+        suspendHandler(srvObj, reqPropsObj, sessionId)
+    
+    #info(3, "Stopping - root dir = %s" % ngas_root_dir)    
+     
+    if (not os.path.exists(myDir)):
+        os.makedirs(myDir)       
+    
+    """
+    asyncReqDic = {} #key - uuid, value - AsyncListRetrieveRequest (need to remember the original request in case of cancel/suspend/resume or server shutting down)
+    statusResDic = {} #key - uuid, value - AsyncListRetrieveStatusResponse
+    nextFileDic = {} #key - uuid, value - next file_id to be delivered
+    threadDic = {} #key - uuid, value - the threadref
+    threadRunDic = {} #key - uuid, value - 1/0, 1: run 0: stop
+    """
+    saveObj = [asyncReqDic, statusResDic, nextFileDic]
+    try:
+        output = open(saveFile, 'wb')
+        pickle.dump(saveObj, output)
+        output.close()
+    except Exception, e:
+        ex = str(e)
+        return ex
+    
+    return "ok"
 
 def _stopThread(sessionId):
     """

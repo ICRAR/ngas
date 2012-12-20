@@ -38,6 +38,10 @@ import ngamsPlugInApi
 import ngamsLinuxSystemPlugInApi, ngamsEscaladeUtils
 from ngamsGenericPlugInLib import notifyRegistrationService
 
+import urllib
+import cPickle as pickle
+import ngamsCmd_ASYNCLISTRETRIEVE
+
 
 def ngamsMWAOfflinePlugIn(srvObj,
                               reqPropsObj = None):
@@ -53,6 +57,19 @@ def ngamsMWAOfflinePlugIn(srvObj,
     """
     T = TRACE()
     notifyRegistrationService(srvObj, 'offline')
+    
+    #cmdMod = "ngamsCmd_ngamsCmd_ASYNCLISTRETRIEVE"
+    #srvObj.getDynCmdDic()[cmdMod] = 1
+    
+    #host = getHostName()
+    #port = srvObj.getCfg().getPortNo()
+    
+    #startAsyncRetrListUrl = "http://" + host + ":" + str(port) + "/ASYNCLISTRETRIEVE?ngassystem=start"
+    info(3, "Sending system stopping request ")
+    myRes = ngamsCmd_ASYNCLISTRETRIEVE.stopAsyncQService(srvObj, reqPropsObj)
+    #strRes = urllib.urlopen(startAsyncRetrListUrl).read()
+    #myRes = pickle.loads(strRes)
+    info(3, "Stopping async retrieve list result - %s" % myRes)
 
 if __name__ == '__main__':
     """

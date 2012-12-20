@@ -75,6 +75,8 @@ class AsyncListRetrieveStatusResponse:
     session_uuid = None
     number_files_delivered = 0
     number_files_to_be_delivered = 0
+    number_files_to_be_staged = 0
     number_bytes_delivered = 0
     number_bytes_to_be_delivered = 0
+    number_bytes_to_be_staged = 0
     errorcode = None

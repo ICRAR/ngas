@@ -10,13 +10,16 @@ import cPickle as pickle
 
 
 svrUrl = 'http://localhost:7778/ASYNCLISTRETRIEVE'
-file_id = ['8881_20120914160104_32.fits', '23_20120914165048_71.fits', '110026_20120914130904_12.fits', '25_20120914165052_71.fits']
+file_id = ['8879_20120914160100_32.fits', '8883_20120914160108_32.fits', '666_20120611061858_11_07.fits', '8890_20120914160121_32.fits', '8876_20120914160055_32.fits', \
+           '8878_20120914160058_32.fits', '110028_20120914132202_12.fits', '110030_20120914130914_12.fits', '91_20120914164909_71.fits']
 cancel_file_id = ['8881_20120914160104_32.fits', '23_20120914165048_71.fits', '110026_20120914130904_12.fits', '25_20120914165052_71.fits', '21_20120914165044_71.fits', \
                   '8880_20120914160102_32.fits', '8875_20120914160053_32.fits', '110023_20120914130857_12.fits', '23_20120914165048_71.fits', '110026_20120914130904_12.fits']
 pushUrl = 'http://localhost:7777/QARCHIVE'
 
+# note that the file '666_20120611061858_11_07.fits' does not exist on the server, this covers the test case where file could not be found
+
 def testStartRetrieve():
-    myReq = AsyncListRetrieveRequest(file_id, pushUrl)
+    myReq = AsyncListRetrieveRequest(file_id + cancel_file_id, pushUrl)
     strReq = pickle.dumps(myReq)
     strRes = urllib.urlopen(svrUrl, strReq).read()
     myRes = pickle.loads(strRes)
@@ -183,6 +186,49 @@ def testSuspendThenStatusThenResume():
     print("Resume errorcode = %d" % myRes.errorcode)
     print("Next file to be delivered = %s" % myRes.current_fileid)
     
+def testSystemCommand():
+    myReq = AsyncListRetrieveRequest(cancel_file_id, pushUrl)
+    strReq = pickle.dumps(myReq)
+    strRes = urllib.urlopen(svrUrl, strReq).read()
+    myRes = pickle.loads(strRes)
+    print("session_uuid = %s" % myRes.session_uuid)
+    print("errorcode = %d" % myRes.errorcode)
+    print("file_info length = %d" % len(myRes.file_info))
+    for fileinfo in myRes.file_info:
+        print("\tfile id: %s" % fileinfo.file_id)
+        print("\tfile size: %d" % fileinfo.filesize)
+        print("\tfile status: %d" % fileinfo.status)
+         
+    myReq = AsyncListRetrieveRequest(file_id, pushUrl)
+    strReq = pickle.dumps(myReq)
+    strRes = urllib.urlopen(svrUrl, strReq).read()
+    myRes = pickle.loads(strRes)
+    print("session_uuid = %s" % myRes.session_uuid)
+    print("errorcode = %d" % myRes.errorcode)
+    print("file_info length = %d" % len(myRes.file_info))
+    for fileinfo in myRes.file_info:
+        print("\tfile id: %s" % fileinfo.file_id)
+        print("\tfile size: %d" % fileinfo.filesize)
+        print("\tfile status: %d" % fileinfo.status)
+    
+    sysStopUrl = svrUrl + "?ngassystem=stop"
+        
+    print("Sleep for 5 seconds.")
+    time.sleep(5.0)
+    
+    print("Sending system stopping request")
+    strRes = urllib.urlopen(sysStopUrl).read()
+    myRes = pickle.loads(strRes)
+    print("stop result - %s" % myRes)
+    
+    print("Sleep for another 10 seconds. Waiting for a full stop")
+    time.sleep(10.0)
+    
+    sysStartUrl = svrUrl + "?ngassystem=start"
+    print("Sending system starting request")
+    strRes = urllib.urlopen(sysStartUrl).read()
+    myRes = pickle.loads(strRes)
+    print("start result - %s" % myRes)
     
 
 if __name__ == '__main__':
@@ -191,3 +237,4 @@ if __name__ == '__main__':
     #testSuspendThenResume()
     #testStatus()
     testSuspendThenStatusThenResume()
+    #testSystemCommand()
