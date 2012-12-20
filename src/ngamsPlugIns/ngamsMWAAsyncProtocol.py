@@ -6,6 +6,11 @@ class AsyncListRetrieveProtocolError:
     FILE_NOT_FOUND = 2
     FILE_NOT_ONLINE = 3
     GENERAL_ERROR = 4
+    THREAD_STOP_TIMEOUT = 5
+    INVALID_UUID = 6 # cannot find retrieval request or thread associated with this session_uuid
+    NO_UUID_IN_REQUEST = 7
+    NO_COMMAND_IN_REQUEST = 8
+    UNKNOWN_COMMAND_IN_REQUEST = 9
     
 class AsyncListRetrieveRequest:
     def __init__(self, file_id, url):
@@ -68,8 +73,10 @@ class AsyncListRetrieveStatusRequest:
     
 class AsyncListRetrieveStatusResponse:
     session_uuid = None
-    number_files_delivered = None
-    number_files_to_be_delivered = None
-    number_bytes_delivered = None
-    number_bytes_to_be_delivered = None
+    number_files_delivered = 0
+    number_files_to_be_delivered = 0
+    number_files_to_be_staged = 0
+    number_bytes_delivered = 0
+    number_bytes_to_be_delivered = 0
+    number_bytes_to_be_staged = 0
     errorcode = None

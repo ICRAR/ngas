@@ -51,12 +51,15 @@ mounted at boot time.
 """
 
 import os, glob
-
+import urllib
+import cPickle as pickle
 
 from   ngams import *
 import ngamsPlugInApi, ngamsPhysDiskInfo
 import ngamsServer
 from ngamsGenericPlugInLib import *
+
+import ngamsCmd_ASYNCLISTRETRIEVE
 
 
 def ngamsMWAOnlinePlugIn(srvObj,
@@ -131,6 +134,20 @@ def ngamsMWAOnlinePlugIn(srvObj,
                                        setDeviceName(devName)
 
     notifyRegistrationService(srvObj)
+    
+    cmdMod = "ngamsCmd_ASYNCLISTRETRIEVE"
+    srvObj.getDynCmdDic()[cmdMod] = 1
+    
+    #host = getHostName()
+    #port = srvObj.getCfg().getPortNo()
+    
+    #startAsyncRetrListUrl = "http://" + host + ":" + str(port) + "/ASYNCLISTRETRIEVE?ngassystem=start"
+    info(3, "Sending system starting request ")
+    myRes = ngamsCmd_ASYNCLISTRETRIEVE.startAsyncQService(srvObj, reqPropsObj)
+    #strRes = urllib.urlopen(startAsyncRetrListUrl).read()
+    #myRes = pickle.loads(strRes)
+    info(3, "Starting async retrieve list result - %s" % myRes)
+    
     return diskInfoDic
 
 
