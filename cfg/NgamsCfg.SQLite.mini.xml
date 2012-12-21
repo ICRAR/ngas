@@ -38,7 +38,7 @@
 
   <ArchiveHandling Id="ArchiveHandling"
                    ArchiveUnits="ngas03" 
-                   BackLogBufferDirectory="./NGAS/"
+                   BackLogBufferDirectory="NGAS/"
                    BackLogBuffering="0"
                    FreeSpaceDiskChangeMb="20"
                    MinFreeSpaceWarningMb="500"
