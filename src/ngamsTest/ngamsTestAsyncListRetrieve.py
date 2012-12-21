@@ -8,18 +8,26 @@ import urllib, time
 from ngamsMWAAsyncProtocol import *
 import cPickle as pickle
 
-
-svrUrl = 'http://localhost:7778/ASYNCLISTRETRIEVE'
+# this is for my own laptop
+#svrUrl = 'http://localhost:7778/ASYNCLISTRETRIEVE'
+ 
+# this is ngas server1 on arch1 that pushes files
+svrUrl = 'http://180.149.251.189:7779/ASYNCLISTRETRIEVE' 
 file_id = ['8879_20120914160100_32.fits', '8883_20120914160108_32.fits', '666_20120611061858_11_07.fits', '8890_20120914160121_32.fits', '8876_20120914160055_32.fits', \
            '8878_20120914160058_32.fits', '110028_20120914132202_12.fits', '110030_20120914130914_12.fits', '91_20120914164909_71.fits']
 cancel_file_id = ['8881_20120914160104_32.fits', '23_20120914165048_71.fits', '110026_20120914130904_12.fits', '25_20120914165052_71.fits', '21_20120914165044_71.fits', \
                   '8880_20120914160102_32.fits', '8875_20120914160053_32.fits', '110023_20120914130857_12.fits', '23_20120914165048_71.fits', '110026_20120914130904_12.fits']
-pushUrl = 'http://localhost:7777/QARCHIVE'
+ # this is for my own laptop
+# pushUrl = 'http://localhost:7777/QARCHIVE'
+
+# this is ngas server2 on arch1 that receives files, 
+# but you could change this receiving site to any HTTP servers (e.g. an python http server that receives POST running on your laptop)
+pushUrl = 'http://180.149.251.189:7780/QARCHIVE' 
 
 # note that the file '666_20120611061858_11_07.fits' does not exist on the server, this covers the test case where file could not be found
 
 def testStartRetrieve():
-    myReq = AsyncListRetrieveRequest(file_id + cancel_file_id, pushUrl)
+    myReq = AsyncListRetrieveRequest(file_id, pushUrl)
     strReq = pickle.dumps(myReq)
     strRes = urllib.urlopen(svrUrl, strReq).read()
     myRes = pickle.loads(strRes)
@@ -27,7 +35,7 @@ def testStartRetrieve():
     print("errorcode = %d" % myRes.errorcode)
     print("file_info length = %d" % len(myRes.file_info))
     for fileinfo in myRes.file_info:
-        print("\tfile id: %s" % fileinfo.file_id)
+        print("\n\tfile id: %s" % fileinfo.file_id)
         print("\tfile size: %d" % fileinfo.filesize)
         print("\tfile status: %d" % fileinfo.status)
 
@@ -124,9 +132,9 @@ def testStatus():
         return
     
     statusUrl = svrUrl + "?uuid=" + sessionId + "&cmd=status"
-    for x in range(0, 3):
-        print("\nSleep for 2 seconds.")
-        time.sleep(2.0)
+    for x in range(0, 4):
+        print("\nSleep for 1 seconds.")
+        time.sleep(1.0)
         print("Sending get status request for the %d time(s)" % (x + 1))        
         strRes = urllib.urlopen(statusUrl).read()
         myRes = pickle.loads(strRes)
@@ -137,7 +145,7 @@ def testStatus():
         print("\tbytes to be delivered = %d" % myRes.number_bytes_to_be_delivered)
 
 def testSuspendThenStatusThenResume():
-    myReq = AsyncListRetrieveRequest(cancel_file_id, pushUrl)
+    myReq = AsyncListRetrieveRequest(cancel_file_id + file_id, pushUrl)
     sessionId = myReq.session_uuid
     
     strReq = pickle.dumps(myReq)
@@ -150,8 +158,8 @@ def testSuspendThenStatusThenResume():
         print "session id is corrupted"
         return
     
-    print("Sleep for 5 seconds.")
-    time.sleep(5.0)
+    print("Sleep for 1 seconds.")
+    time.sleep(1.0)
     
     print("Sending suspend request.")
     suspendUrl = svrUrl + "?uuid=" + sessionId + "&cmd=suspend"
@@ -232,9 +240,9 @@ def testSystemCommand():
     
 
 if __name__ == '__main__':
-    #testStartRetrieve()
+    testStartRetrieve()
     #testCancelRetrieval()
     #testSuspendThenResume()
     #testStatus()
-    testSuspendThenStatusThenResume()
+    #testSuspendThenStatusThenResume()
     #testSystemCommand()
