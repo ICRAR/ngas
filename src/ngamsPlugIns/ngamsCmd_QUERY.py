@@ -1,7 +1,7 @@
 #
-#    ALMA - Atacama Large Millimiter Array
-#    (c) European Southern Observatory, 2002
-#    Copyright by ESO (in the framework of the ALMA collaboration),
+#    ICRAR - International Centre for Radio Astronomy Research
+#    (c) UWA - The University of Western Australia, 2012
+#    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
 #
 #    This library is free software; you can redistribute it and/or
@@ -37,6 +37,7 @@ import pydoc
 import pcc, PccUtTime
 from ngams import *
 import ngamsLib, ngamsStatus, ngamsDbm
+import markup
 
 CURSOR_IDX           = "__CURSOR_IDX__"
 NGAMS_PYTHON_LIST_MT = "application/python-list"
@@ -83,6 +84,35 @@ def formatAsList(resultSet):
         listBuf += formatStr % tuple(valList)
 
     return listBuf
+
+def formatAsHTML(resultSet):
+    """
+    Format the result as an HTML table
+    
+    resultSet:    (list) result returned from the SQL interface
+    
+    Returns:      (string) Result formatted as HTML
+    """
+    resultHTML = resultSet
+    title = "NGAS"
+    header = "Some information at the top, perhaps a menu."
+    footer = "Dynamic page created by NGAS server: {0}".format(time.strftime('%Y-%M-%dT%H:%m:%S'))
+    styles = ( 'layout.css', 'alt.css', 'images.css' )
+    
+    page = markup.page( )
+    page.init( css=styles, title=title, header=header, footer=footer )
+    page.br( )
+    
+    paragraphs = ( "This will be a paragraph.",
+                   "So as this, only slightly longer, but not much.",
+                   "Third absolutely boring paragraph." )
+    
+    page.p( paragraphs )
+        
+    page.a( "Click this.", class_='internal', href='index.html' )
+    page.img( width=60, height=80, alt='Fantastic!', src='fantastic.jpg' )
+    return resultHTML
+
 
 
 def genCursorDbmName(rootDir,

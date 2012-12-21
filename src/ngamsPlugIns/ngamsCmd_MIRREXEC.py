@@ -1,7 +1,7 @@
 #
-#    ALMA - Atacama Large Millimiter Array
+#    ICRAR - International Centre for Radio Astronomy Research
 #    (c) European Southern Observatory, 2009
-#    Copyright by ESO (in the framework of the ALMA collaboration),
+#    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
 #
 #    This library is free software; you can redistribute it and/or

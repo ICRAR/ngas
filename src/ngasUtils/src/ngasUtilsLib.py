@@ -1,8 +1,8 @@
 
 #
-#    ALMA - Atacama Large Millimiter Array
-#    (c) European Southern Observatory, 2002
-#    Copyright by ESO (in the framework of the ALMA collaboration),
+#    ICRAR - International Centre for Radio Astronomy Research
+#    (c) UWA - The University of Western Australia, 2012
+#    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
 #
 #    This library is free software; you can redistribute it and/or
