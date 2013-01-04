@@ -55,22 +55,22 @@ def set_env():
     # set environment to default for EC2, if not specified on command line.
 
     puts(env)
-    if not env.has_key('GITUSER'):
+    if not env.has_key('GITUSER') or not env.GITUSER:
         env.GITUSER = GITUSER
-    if not env.has_key('GITREPO'):
+    if not env.has_key('GITREPO') or not env.GITREPO:
         env.GITREPO = GITREPO
-    if not env.has_key('instance_name'):
+    if not env.has_key('instance_name') or not env.instance_name:
         env.instance_name = INSTANCE_NAME
-    if not env.has_key('postfix'):
+    if not env.has_key('postfix') or not env.postfix:
         env.postfix = POSTFIX
-    if not env.has_key('use_elastic_ip'):
+    if not env.has_key('use_elastic_ip') or not env.use_elastic_ip:
         env.use_elastic_ip = ELASTIC_IP
-    if not env.user:
+    if not env.user or not env.user:
         env.user = USERNAME
-    if not env.has_key('key_filename'):
+    if not env.has_key('key_filename') or not env.key_filename:
         env.key_filename = AWS_KEY
     require('hosts', provided_by=[test_env])
-    if not env.has_key('NGAS_DIR_ABS'):
+    if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
         env.NGAS_DIR_ABS = '{0}/{1}'.format(run('printenv HOME'), NGAS_DIR)
     puts('Environment: {0} {1} {2} {3} {4} {5}'.format(env.user, env.key_filename, env.hosts, 
                                                    env.host_string, env.postfix, env.NGAS_DIR_ABS))
@@ -388,7 +388,7 @@ def ngas_buildout():
     set_env()
     # First get the sources
     # 
-    # git_clone_tar()
+    git_clone_tar()
     tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
     put('/tmp/{0}'.format(tarfile), tarfile)
 #    local('rm -rf {0}'.format(tarfile))  # cleanup local git clone
@@ -456,10 +456,10 @@ def test_deploy():
     ** MAIN TASK **: Deploy the full NGAS EC2 test environment. 
     (Does not include the NGAS users at this point)
     """
-    # set environment to default for EC2, if not specified otherwise.
-    set_env()
 
     test_env()
+    # set environment to default for EC2, if not specified otherwise.
+    set_env()
     system_install()
     if env.postfix:
         postfix_config()
