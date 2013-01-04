@@ -1,6 +1,5 @@
 setup.cfg
 setup.py
-ngams/__init__.py
 ngams.egg-info/PKG-INFO
 ngams.egg-info/SOURCES.txt
 ngams.egg-info/dependency_links.txt
