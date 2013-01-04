@@ -257,7 +257,7 @@ def git_clone_tar():
     """
     local('cd /tmp && git clone {0}@{1}'.format(env.GITUSER, env.GITREPO))
     local('cd /tmp && mv ngas {0}'.format(NGAS_DIR))
-    local('cd /tmp && tar --exlude BIG_FILES -cjf {0}.tar.bz2 {0}'.format(NGAS_DIR))
+    local('cd /tmp && tar -cjf {0}.tar.bz2 --exlude BIG_FILES {0}'.format(NGAS_DIR))
 
 
 @task
