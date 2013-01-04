@@ -31,6 +31,49 @@
 # Dummy __init__.py file to make it possible to view the README
 # file of the ngamsLib sub-module using e.g. pydoc.
 
+__all__ = ["ngamsCacheEntry",
+"ngamsConfig",
+"ngamsConfigBase",
+"ngamsDapiStatus",
+"ngamsDb",
+"ngamsDbBase",
+"ngamsDbCore",
+"ngamsDbJoin",
+"ngamsDbm",
+"ngamsDbMirroring",
+"ngamsDbNgasCache",
+"ngamsDbNgasCfg",
+"ngamsDbNgasDisks",
+"ngamsDbNgasDisksHist",
+"ngamsDbNgasFiles",
+"ngamsDbNgasHosts",
+"ngamsDbNgasSubscribers",
+"ngamsDiskInfo",
+"ngamsDiskUtils",
+"ngamsDppiDef",
+"ngamsDppiStatus",
+"ngamsEvent",
+"ngamsFileInfo",
+"ngamsFileList",
+"ngamsFileSummary1",
+"ngamsHighLevelLib",
+"ngamsHostInfo",
+"ngamsLib",
+"ngamsMirroringRequest",
+"ngamsMirroringSource",
+"ngamsNotification",
+"ngamsPhysDiskInfo",
+"ngamsPlugInApi",
+"ngamsReqProps",
+"ngamsSmtpLib",
+"ngamsStatus",
+"ngamsStorageSet",
+"ngamsStream",
+"ngamsSubscriber",
+"ngamsThreadGroup",
+"ngamsXmlMgr",]
+
+
 import os, sys
 
 docFile = os.path.normpath(os.path.dirname(__file__) + "/README")

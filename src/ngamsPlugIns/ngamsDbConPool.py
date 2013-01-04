@@ -191,7 +191,7 @@ class ngamsDbConPool:
 	    exec "import " + self.__driver
             creStat = "%s.%s('%s', '%s', '%s', '%s', '%s', '%s')" %\
                       (self.__driver, self.__driver, self.__server, self.__db,
-		       self.__user, self.__password, "NG/AMS:" + getHostId(),
+		       self.__user, self.__password, "NG/AMS:" + getHostName(),
 		       self.__parameters)
             info(4, "Creating instance of DB Driver Interface/connecting ...")
             conObj = eval(creStat)

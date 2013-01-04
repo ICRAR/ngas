@@ -33,8 +33,7 @@
 Functions to handle the LABEL Command.
 """
 
-from ngams import *
-
+import threading
 
 # Semaphore to avoid that the server tries to access with several threads
 # simulating the label printer (maybe only needed for the Brother printer).

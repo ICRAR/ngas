@@ -635,6 +635,16 @@ class ngamsConfig:
         return getInt(par, self.getVal(par))
 
 
+    def getIpAddress(self):
+        """
+        Get socket port number.
+
+        Returns:   Reference to object itself.
+        """
+        par = "Server[1].IpAddress"
+        return self.getVal(par)
+
+
     def getSwVersion(self):
         """
         Get the SW Version.

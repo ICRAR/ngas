@@ -33,15 +33,52 @@
 import os, sys
 
 from ngams import *
+#execfile('src/ngams/ngams/__init__.py')
 
-docFile = os.path.normpath(NGAMS_SRC_DIR + "/ngamsServer/README")
+__all__ = ["ngamsArchiveCmd",
+"ngamsArchiveUtils",
+"ngamsAuthUtils",
+"ngamsCacheControlThread",
+"ngamsCacheDelCmd",
+"ngamsCacheServer",
+"ngamsCheckFileCmd",
+"ngamsCloneCmd",
+"ngamsCmdHandling",
+"ngamsConfigCmd",
+"ngamsDataCheckThread",
+"ngamsDiscardCmd",
+"ngamsExitCmd",
+"ngamsFileUtils",
+"ngamsHelpCmd",
+"ngamsInitCmd",
+"ngamsJanitorThread",
+"ngamsLabelCmd",
+"ngamsMirroringControlThread",
+"ngamsOfflineCmd",
+"ngamsOnlineCmd",
+"ngamsRearchiveCmd",
+"ngamsRegisterCmd",
+"ngamsRemDiskCmd",
+"ngamsRemFileCmd",
+"ngamsRemUtils",
+"ngamsRetrieveCmd",
+"ngamsServer",
+"ngamsSrvUtils",
+"ngamsStatusCmd",
+"ngamsSubscribeCmd",
+"ngamsSubscriptionThread",
+"ngamsUnsubscribeCmd",
+"ngamsUserServiceThread",
+]
+NGAMS_SRC_DIR = __path__[0]
+docFile = os.path.normpath(NGAMS_SRC_DIR + "/README")
 fo = open(docFile)
 __doc__ = fo.read()
 fo.close()
 
 # Create man-page for the NG/AMS Server.
-srcDocFile = os.path.normpath(NGAMS_SRC_DIR +"/ngamsServer/ngamsServer.doc")
-trgDocFile = os.path.normpath(NGAMS_SRC_DIR +"/ngamsServer/ngamsServer_doc.py")
+srcDocFile = os.path.normpath(NGAMS_SRC_DIR +"/ngamsServer.doc")
+trgDocFile = os.path.normpath(NGAMS_SRC_DIR +"/ngamsServer_doc.py")
 fo = open(srcDocFile)
 srcDoc = fo.read()
 fo.close()
@@ -49,4 +86,4 @@ fo = open(trgDocFile, "w")
 fo.write('"""\n' + srcDoc + '\n"""\n\n# EOF\n')
 fo.close()
 
-# EOF
+# EOF:

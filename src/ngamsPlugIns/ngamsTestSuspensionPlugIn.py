@@ -65,9 +65,9 @@ def ngamsTestSuspensionPlugIn(srvObj):
     info(3, "Polling DB until server marked as not being suspended ...")
     startTime = time.time()
     logFlush()
-    while (srvObj.getDb().getSrvSuspended(getHostId())): time.sleep(0.250)
+    while (srvObj.getDb().getSrvSuspended(getHostName())): time.sleep(0.250)
     info(3, "NGAS Node: %s woken up after %.3fs of suspension" %\
-         (getHostId(), (time.time() - startTime)))
+         (getHostName(), (time.time() - startTime)))
     logFlush()
 
 

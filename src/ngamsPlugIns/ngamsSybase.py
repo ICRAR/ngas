@@ -167,7 +167,7 @@ class ngamsSybase:
 
         # Set up DB connection.
         self.__dbDrv = Sybase.connect(server, user, password,delay_connect = 1)
-        self.__dbDrv.set_property(Sybase.CS_HOSTNAME, getHostId())
+        self.__dbDrv.set_property(Sybase.CS_HOSTNAME, getHostName())
         self.__dbDrv.set_property(Sybase.CS_APPNAME, application)
         self.__dbDrv.connect()
         self.__dbDrv.execute("use " + db)
@@ -340,7 +340,7 @@ class ngamsSybaseCursor:
         self.__dbDrv = None
         self.__dbDrv = Sybase.connect(server, user, password,
                                       delay_connect = 1)
-        self.__dbDrv.set_property(Sybase.CS_HOSTNAME, getHostId())
+        self.__dbDrv.set_property(Sybase.CS_HOSTNAME, getHostName())
         self.__dbDrv.set_property(Sybase.CS_APPNAME, application)
         self.__dbDrv.connect()
         self.__dbDrv.execute("use " + db)

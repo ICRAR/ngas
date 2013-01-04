@@ -422,9 +422,9 @@ def ngamsMount(srvObj,
     Returns:       Void.
     """
     # Get information about this host.
-    hostInfo = srvObj.getDb().getHostInfoFromHostIds([getHostId()])
+    hostInfo = srvObj.getDb().getHostInfoFromHostIds([getHostName()])
     if (len(hostInfo) != 1):
-        errMsg = "Problem querying information about host: " + getHostId() +\
+        errMsg = "Problem querying information about host: " + getHostName() +\
                  " from the NGAS DB."
         raise Exception, errMsg
     else:

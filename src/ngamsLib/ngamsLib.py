@@ -38,7 +38,7 @@ The functions in this module can be used in all the NG/AMS code.
 
 import os, string, threading, httplib, time, getpass, socket
 import urllib, urllib2, glob, re, select, cPickle
-import PccUtTime, PccUtUtils
+from pcc import PccUtTime, PccUtUtils
 from ngams import *
 import ngamsSmtpLib
 

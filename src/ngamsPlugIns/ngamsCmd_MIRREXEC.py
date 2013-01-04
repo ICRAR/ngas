@@ -136,7 +136,7 @@ def get_cluster_name(srvObj):
         cluster_name    string, name of the cluster corresponding to the input host_id
     """
     # Construct query
-    query = "select cluster_name from ngas_hosts where host_id='" + getHostId() + "'"
+    query = "select cluster_name from ngas_hosts where host_id='" + getHostName() + "'"
 
     # Execute query
     info(4, "Executing SQL query to get local cluster name: %s" % query)
@@ -160,7 +160,7 @@ def get_full_qualified_name(srvObj):
     """
 
     # Get hots_id, domain and port using ngamsLib functions
-    host_id = getHostId()
+    host_id = getHostName()
     domain = ngamsLib.getDomain()
     port = str(srvObj.getCfg().getPortNo())
     # Concatenate all elements to construct full qualified name

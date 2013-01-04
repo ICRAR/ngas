@@ -33,7 +33,7 @@
 Class to handle the information in connection with one entry in the NGAS Cache.
 """
 
-import PccUtTime
+from pcc import PccUtTime
 from   ngams import *
 import ngamsLib, ngamsFileSummary1
 

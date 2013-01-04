@@ -2,6 +2,7 @@ __init__.py
 setup.cfg
 setup.py
 maint/__init__.py
+maint/find_opsw.sh
 maint/ngasArchiveFileXTimes.py
 maint/ngasChangeDiskIdDbSnapshot.py
 maint/ngasCheckSystem.py
@@ -27,6 +28,7 @@ ngasUtils.egg-info/top_level.txt
 ngasUtils.egg-info/zip-safe
 old/ExecCheckMissingFiles
 old/crontab
+old/find_opsw.sh
 old/getMacAddr.py
 old/ngasCheckForMissingFiles
 old/ngasCheckMissingFiles.py
@@ -42,10 +44,12 @@ old/ngasHandleNgamsLogFile.py
 old/ngasLogProcessor.py
 old/ngasLogRequestor.py
 old/ngasMvSpuriousFiles.py
+sql/find_opsw.sh
 sql/ngasCreateNgasFilesRetired.sql
 src/.ngas
 src/Makefile
 src/__init__.py
+src/find_opsw.sh
 src/ngasArchiveClient.py
 src/ngasArchiveFileList.py
 src/ngasArchiveTool.py
@@ -66,7 +70,9 @@ src/ngasVerifyCloning.py
 src/ngasXSyncTool.py
 src/ngasrc
 src/scsiDeviceMapping.py
+src/testFileDeletion.py
 test/__init__.py
+test/find_opsw.sh
 test/ngasChangeDiskLabelTest.py
 test/ngasCheckFileCopiesTest.py
 test/ngasDiscardFilesTest.py

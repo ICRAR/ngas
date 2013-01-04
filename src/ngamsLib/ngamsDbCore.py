@@ -37,7 +37,7 @@ import os, sys, string, time, types, base64, random
 
 import pcc, PccLog, PccUtTime
 from   ngams import *
-import ngamsDbm
+import ngamsDbm, threading
 
 
 # Global DB Semaphore to protect critical, global DB interaction.
