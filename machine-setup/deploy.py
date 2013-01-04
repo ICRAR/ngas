@@ -398,7 +398,7 @@ def ngas_buildout():
     
     with cd(env.NGAS_DIR_ABS):
         # run bootstrap with correct python version (explicit)
-        run('rm bin/python') # avoid the 'busy' error message
+        run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
         virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
         virtualenv('buildout')
     run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
