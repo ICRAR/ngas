@@ -1,8 +1,0 @@
------> Executing Retire Disk Procedure on disk with ID: tmp-ngamsTest-NGAS-FitsStorage1-Main-1
------> Disk with ID: tmp-ngamsTest-NGAS-FitsStorage1-Main-1 has Logical Name: FITS-M-000001
------> NGAMS_WA_FILE_COPIES:4046:WARNING: One or more files requested to be deleted are not available in at least 3 independent copies within this NGAS system.
-
-Problem encountered:
-
-Cannot retire disk with ID: tmp-ngamsTest-NGAS-FitsStorage1-Main-1 - one or more files are not available in at least 3 copies! -- bailing out
-
