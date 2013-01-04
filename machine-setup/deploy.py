@@ -13,8 +13,7 @@ fab --set postfix=False -f machine-setup/deploy.py test_deploy
 
 For a local installation under a normal user without sudo access
 
-fab -u `whoami` -f machine-setup/deploy.py python_setup
-fab -u `whoami` -f machine-setup/deploy.py ngas_buildout
+fab -u `whoami` -H <IP address> -f machine-setup/deploy.py user_deploy
 """
 import glob
 
@@ -389,11 +388,11 @@ def ngas_buildout():
     set_env()
     # First get the sources
     # 
-    git_clone_tar()
-    tarfile = '/tmp/{0}.tar.bz2'.format(NGAS_DIR)
-    put(tarfile, tarfile)
+    # git_clone_tar()
+    tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
+    put('/tmp/{0}'.format(tarfile), tarfile)
 #    local('rm -rf {0}'.format(tarfile))  # cleanup local git clone
-    run('tar -xjf {0}'.format(tarfile))
+    run('tar -xjf {0} && rm {0}'.format(tarfile))
     
     # git_clone()
     
