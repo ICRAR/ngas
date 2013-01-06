@@ -932,17 +932,17 @@ def getHostName():
     """
     global NGAMS_HOST_IP
     if NGAMS_HOST_IP:
-	return NGAMS_HOST_IP
+        return NGAMS_HOST_IP
     ip = None
-    if sys.argv.index('-cfg') > -1:
-	cfgFile = sys.argv[sys.argv.index('-cfg') + 1]
-	from xml.dom import minidom
-	dom = minidom.parse(cfgFile)
-	srv = dom.getElementsByTagName('Server')
-	ip = srv[0].getAttribute('IpAddress')
+    if sys.argv.count('-cfg') > -1:
+        cfgFile = sys.argv[sys.argv.index('-cfg') + 1]
+    from xml.dom import minidom
+    dom = minidom.parse(cfgFile)
+    srv = dom.getElementsByTagName('Server')
+    ip = srv[0].getAttribute('IpAddress')
     if ip:
-	NGAMS_HOST_IP = str(ip) 
-	return str(ip)
+        NGAMS_HOST_IP = str(ip) 
+        return str(ip)
     else:
         hostName = os.uname()[1]
         if (hostName.split(".")[-1] == "local"):
