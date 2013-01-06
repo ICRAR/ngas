@@ -381,9 +381,9 @@ def python_setup():
 
 
 @task
-def ngas_buildout():
+def ngas_full_buildout():
     """
-    Perform the full buildout and virtualenv config
+    Perform the full install and buildout and virtualenv config
     """
     set_env()
     # First get the sources
@@ -400,6 +400,17 @@ def ngas_buildout():
         # run bootstrap with correct python version (explicit)
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
         virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
+        virtualenv('buildout')
+    run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
+
+@task
+def ngas_buildout():
+    """
+    Perform just the buildout and virtualenv config
+    """
+    set_env()
+    
+    with cd(env.NGAS_DIR_ABS):
         virtualenv('buildout')
     run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
 
