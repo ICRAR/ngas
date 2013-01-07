@@ -457,7 +457,7 @@ def user_deploy():
     Deploy the system as a normal user without sudo access
     """
     python_setup()
-    ngas_buildout()
+    ngas_full_buildout()
 
 
 @task
