@@ -125,7 +125,10 @@ except Exception, e:
     pass
 
 import pcc
+import PccLog
 import PccLogDef
+import PccUtString
+import PccUtTime
 import md5
 import os
 import sys
@@ -488,7 +491,7 @@ def setLogCond(sysLog,
     """
     # If any of the parameters are None - take the present value.
     if (sysLog == None):
-        if (pcc.PccLog.getSysLogLogLevel() == -1):
+        if (PccLog.getSysLogLogLevel() == -1):
             sysLog = 0
         else:
             sysLog = PccLog.getSysLogLogLevel()
