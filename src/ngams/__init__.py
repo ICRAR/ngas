@@ -124,7 +124,7 @@ except Exception, e:
     print "ngams/__init__.py: Line 122"
     pass
 
-from pcc import *
+import pcc
 import PccLogDef
 import md5
 import os
@@ -488,7 +488,7 @@ def setLogCond(sysLog,
     """
     # If any of the parameters are None - take the present value.
     if (sysLog == None):
-        if (PccLog.getSysLogLogLevel() == -1):
+        if (pcc.PccLog.getSysLogLogLevel() == -1):
             sysLog = 0
         else:
             sysLog = PccLog.getSysLogLogLevel()
@@ -934,11 +934,11 @@ def getHostName():
     if NGAMS_HOST_IP:
         return NGAMS_HOST_IP
     ip = None
-    if sys.argv.count('-cfg') > -1:
+    if sys.argv.count('-cfg') > 0:
         cfgFile = sys.argv[sys.argv.index('-cfg') + 1]
-    from xml.dom import minidom
-    dom = minidom.parse(cfgFile)
-    srv = dom.getElementsByTagName('Server')
+        from xml.dom import minidom
+        dom = minidom.parse(cfgFile)
+        srv = dom.getElementsByTagName('Server')
     ip = srv[0].getAttribute('IpAddress')
     if ip:
         NGAMS_HOST_IP = str(ip) 
