@@ -71,3 +71,7 @@ All that's required at this point is to run the fab command:
 where you have to replace whatever.host and billythekid with the hostname and user 
 name on that host where you want to install the software. 
 
+MAC specific installation notes:
+--------------------------------
+Please look up the special document in the doc folder.
+
