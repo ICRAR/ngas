@@ -939,7 +939,7 @@ def getHostName():
         from xml.dom import minidom
         dom = minidom.parse(cfgFile)
         srv = dom.getElementsByTagName('Server')
-    ip = srv[0].getAttribute('IpAddress')
+        ip = srv[0].getAttribute('IpAddress')
     if ip:
         NGAMS_HOST_IP = str(ip) 
         return str(ip)
