@@ -360,7 +360,7 @@ def python_setup():
         puts('Python{0} seems to be available'.format(NGAS_PYTHON_VERSION))
     else: # If no correct python is available install local python (no sudo required)
         with cd('/tmp'):
-            run('wget -q {0}'.format(NGAS_PYTHON_URL))
+            run('wget --no-check-certificate -q {0}'.format(NGAS_PYTHON_URL))
             base = os.path.basename(NGAS_PYTHON_URL)
             pdir = os.path.splitext(os.path.splitext(base)[0])[0]
             run('tar -xjf {0}'.format(base))
@@ -370,7 +370,7 @@ def python_setup():
     env.PYTHON = ppath
     # setup virtualenv with the detected or newly installed python
     with cd('/tmp'):
-        run('wget -q https://raw.github.com/pypa/virtualenv/master/virtualenv.py')
+        run('wget --no-check-certificate -q https://raw.github.com/pypa/virtualenv/master/virtualenv.py')
         run('{0} virtualenv.py {1}'.format(ppath, env.NGAS_DIR_ABS))
     with cd(env.NGAS_DIR_ABS):
         virtualenv('pip install zc.buildout')        
