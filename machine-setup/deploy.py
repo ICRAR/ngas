@@ -259,7 +259,16 @@ def git_clone_tar():
     local('cd /tmp && mv ngas {0}'.format(NGAS_DIR))
     local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES {0}'.format(NGAS_DIR))
 
-
+def processCentOSErrMsg(errmsg):
+    if (errmsg == None or len(errmsg) == 0):
+        return
+    if (errmsg == 'Error: Nothing to do'):
+        return
+    firstKey = errmsg.split()[0]
+    if (firstKey == 'Error:'):
+        abort(errmsg)
+    
+    
 @task
 def system_install():
     """
@@ -268,22 +277,53 @@ def system_install():
     NOTE: Most of this requires sudo access on the machine(s)
     """
     set_env()
-    # Update the AMI completely
-    sudo('yum --assumeyes --quiet update')
-
+   
     # Install required packages
-    sudo('yum --assumeyes --quiet install python27-devel')
-    sudo('yum --assumeyes --quiet install git')
-    sudo('yum --assumeyes --quiet install autoconf')
-    sudo('yum --assumeyes --quiet install libtool')
-    sudo('yum --assumeyes --quiet install zlib-devel')
-    sudo('yum --assumeyes --quiet install db4-devel')
-    sudo('yum --assumeyes --quiet install gdbm-devel')
-    sudo('yum --assumeyes --quiet install readline-devel')
-    sudo('yum --assumeyes --quiet install sqlite-devel')
-    sudo('yum --assumeyes --quiet install make')
-    sudo ('yum --assumeyes --quiet install java-1.6.0-openjdk-devel.x86_64')
-    sudo ('yum --assumeyes --quiet install postfix')
+    re = run('cat /etc/issue')
+    linux_flavor = 'CentOS'
+    if (len(re.split()) > 0):
+        linux_flavor = re.split()[0]
+    if (linux_flavor == 'CentOS'):
+         # Update the AMI completely
+        errmsg = sudo('yum --assumeyes --quiet update', combine_stderr=True, warn_only=True)
+        processCentOSErrMsg(errmsg)
+        
+        errmsg = sudo('yum --assumeyes --quiet install python27-devel', combine_stderr=True, warn_only=True)
+        processCentOSErrMsg(errmsg)
+        errmsg = sudo('yum --assumeyes --quiet install git', combine_stderr=True, warn_only=True)
+        processCentOSErrMsg(errmsg)
+        errmsg = sudo('yum --assumeyes --quiet install autoconf', combine_stderr=True, warn_only=True)
+        processCentOSErrMsg(errmsg)
+        errmsg = sudo('yum --assumeyes --quiet install libtool', combine_stderr=True, warn_only=True)
+        processCentOSErrMsg(errmsg)
+        errmsg = sudo('yum --assumeyes --quiet install zlib-devel', combine_stderr=True, warn_only=True)
+        processCentOSErrMsg(errmsg)
+        errmsg = sudo('yum --assumeyes --quiet install db4-devel', combine_stderr=True, warn_only=True)
+        processCentOSErrMsg(errmsg)
+        errmsg = sudo('yum --assumeyes --quiet install gdbm-devel', combine_stderr=True, warn_only=True)
+        processCentOSErrMsg(errmsg)
+        errmsg = sudo('yum --assumeyes --quiet install readline-devel', combine_stderr=True, warn_only=True)
+        processCentOSErrMsg(errmsg)
+        errmsg = sudo('yum --assumeyes --quiet install sqlite-devel', combine_stderr=True, warn_only=True)
+        processCentOSErrMsg(errmsg)
+        errmsg = sudo('yum --assumeyes --quiet install make', combine_stderr=True, warn_only=True)
+        processCentOSErrMsg(errmsg)
+        errmsg = sudo ('yum --assumeyes --quiet install java-1.6.0-openjdk-devel.x86_64', combine_stderr=True, warn_only=True)
+        processCentOSErrMsg(errmsg)
+        errmsg = sudo ('yum --assumeyes --quiet install postfix', combine_stderr=True, warn_only=True)
+        processCentOSErrMsg(errmsg)
+    elif (linux_flavor == 'Ubuntu'):
+        sudo ('apt-get -qq -y install zlib1g-dbg')
+        sudo ('apt-get -qq -y install libzlcore-dev')
+        sudo ('apt-get -qq -y install libdb4.7-dev')
+        sudo ('apt-get -qq -y install libgdbm-dev')  
+        sudo ('apt-get -qq -y install openjdk-6-jdk')
+        sudo ('apt-get -qq -y install libreadline-dev')
+        sudo ('apt-get -qq -y install sqlite3')
+        sudo ('apt-get -qq -y install libsqlite3-dev') 
+        sudo ('apt-get -qq -y install libdb5.1-dev')
+    else:
+        pass
 
 
 @task
