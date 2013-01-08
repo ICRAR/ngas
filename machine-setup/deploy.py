@@ -176,7 +176,14 @@ def check_command(command):
     OUTPUT:
     Boolean
     """
-    res = run('if command -v {0} &> /dev/null ;then command -v {0};else echo "";fi'.format(command))
+    res = run('if command -v {0} &> /dev/null ;then command -v {0};else echo ;fi'.format(command))
+    return res
+
+def check_dir(directory):
+    """
+    Check existence of remote directory
+    """
+    res = run('if [ -d {0} ]; then echo 1; else echo ; fi'.format(directory))
     return res
 
 
@@ -199,15 +206,16 @@ def check_python():
     if ppath:
         return ppath
     
-    # any python at all
-    elif check_command('python'):
-        res = run('python -V')
-        if res.find(NGAS_PYTHON_VERSION) >= 0:
-            return check_command('python')
-        else:
-            return ''
-    else:
-        return ''
+    # don't check for any other python, since we need to run
+    # all the stuff with a version number.
+#    elif check_command('python'):
+#        res = run('python -V')
+#        if res.find(NGAS_PYTHON_VERSION) >= 0:
+#            return check_command('python')
+#        else:
+#            return ''
+#    else:
+#        return ''
 
 
 def copy_public_keys():
@@ -398,7 +406,6 @@ def python_setup():
     None
     """
     set_env()
-    ppath = check_python()
     if ppath:
         puts('Python{0} seems to be available'.format(NGAS_PYTHON_VERSION))
     else: # If no correct python is available install local python (no sudo required)
@@ -411,10 +418,21 @@ def python_setup():
             run('./configure --prefix {0}/../python;make;make install'.format(env.NGAS_DIR_ABS))
             ppath = '{0}/../python/bin/python{1}'.format(env.NGAS_DIR_ABS,NGAS_PYTHON_VERSION)
     env.PYTHON = ppath
-    # setup virtualenv with the detected or newly installed python
+
+    
+@task
+def virtualenv_setup():
+    """
+    setup virtualenv with the detected or newly installed python
+    """
+    set_env()
+    print "CHECK_DIR: {0}".format(check_dir(env.NGAS_DIR_ABS))
+    if check_dir(env.NGAS_DIR_ABS):
+        abort('ngas_rt directory exists already')
+        
     with cd('/tmp'):
         run('wget --no-check-certificate -q https://raw.github.com/pypa/virtualenv/master/virtualenv.py')
-        run('{0} virtualenv.py {1}'.format(ppath, env.NGAS_DIR_ABS))
+        run('{0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
     with cd(env.NGAS_DIR_ABS):
         virtualenv('pip install zc.buildout')        
         # make this installation self consistent
@@ -499,7 +517,10 @@ def user_deploy():
     """
     Deploy the system as a normal user without sudo access
     """
-    python_setup()
+    ppath = check_python()
+    if not ppath:
+        python_setup()
+    virtualenv_setup()
     ngas_full_buildout()
 
 
@@ -517,7 +538,10 @@ def test_deploy():
     system_install()
     if env.postfix:
         postfix_config()
-    python_setup()
+    ppath = check_python()
+    if not ppath:
+        python_setup()
+    virtualenv_setup()
     ngas_full_buildout()
 
 @task
