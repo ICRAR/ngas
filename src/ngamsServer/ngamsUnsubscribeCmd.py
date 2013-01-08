@@ -36,7 +36,7 @@ UNSUBSCRIBE Command.
 
 import pcc, PccUtTime
 from ngams import *
-import ngamsLib, ngamsSubscriber
+import ngamsLib
 
 
 def delSubscriber(srvObj,
