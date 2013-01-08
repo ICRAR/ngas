@@ -280,11 +280,14 @@ def system_install():
    
     # Install required packages
     re = run('cat /etc/issue')
-    linux_flavor = 'CentOS'
-    if (len(re.split()) > 0):
-        linux_flavor = re.split()[0]
-    if (linux_flavor == 'CentOS'):
-         # Update the AMI completely
+    linux_flavor = re.split()
+    if (len(linux_flavor) > 0):
+        if linux_flavor[0] == 'CentOS':
+            linux_flavor = linux_flavor[0]
+        elif linux_flavor[0] == 'Amazon':
+            linux_flavor = ' '.join(linux_flavor[:2])
+    if (linux_flavor in ['CentOS','Amazon Linux']):
+         # Update the machine completely
         errmsg = sudo('yum --assumeyes --quiet update', combine_stderr=True, warn_only=True)
         processCentOSErrMsg(errmsg)
         
@@ -323,7 +326,7 @@ def system_install():
         sudo ('apt-get -qq -y install libsqlite3-dev') 
         sudo ('apt-get -qq -y install libdb5.1-dev')
     else:
-        pass
+        abort("Unknown linux flavor detected: {0}".format(re))
 
 
 @task
@@ -515,7 +518,7 @@ def test_deploy():
     if env.postfix:
         postfix_config()
     python_setup()
-    ngas_buildout()
+    ngas_full_buildout()
 
 @task
 def start_server():
