@@ -323,6 +323,8 @@ def system_install():
         processCentOSErrMsg(errmsg)
         errmsg = sudo ('yum --assumeyes --quiet install postfix', combine_stderr=True, warn_only=True)
         processCentOSErrMsg(errmsg)
+        errmsg = sudo ('yum --assumeyes --quiet install openssl-devel.x86_64', combine_stderr=True, warn_only=True)
+        processCentOSErrMsg(errmsg)
     elif (linux_flavor == 'Ubuntu'):
         sudo ('apt-get -qq -y install zlib1g-dbg')
         sudo ('apt-get -qq -y install libzlcore-dev')
