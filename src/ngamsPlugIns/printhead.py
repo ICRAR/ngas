@@ -174,7 +174,7 @@ class FitsHead:
     for more details just call the usage function or run the
     script without parameters.
     """
-    def __init__(self,file,skey='END',struct=0,show=0,check=0, verbose=0, mode=1):
+    def __init__(self,ffile,skey='END',struct=0,show=0,check=0, verbose=0, mode=1):
         """
         """
         self.verbose = int(verbose)
@@ -190,17 +190,17 @@ class FitsHead:
                                      # not contain data (.hdr file)
         self.KKeys = ['SIMPLE','EXTEND','NAXIS[0-9]{0,2}','BITPIX','XTENSION', 'END',]
         if skey != 'END': self.KKeys.append(skey)
-        if type(file) == types.StringType:
-            (self.fd, self.size) = self.openFile(file)
+        if type(ffile) == types.StringType:
+            (self.fd, self.size) = self.openFile(ffile)
             if self.size == -1: 
-                errMsg = "*** File %s does not exists ****" % file
+                errMsg = "*** File %s does not exists ****" % ffile
                 raise Exception, errMsg
-        elif type(file) == types.FileType:  # if fd != 0 we assume that a file object is passed
-            (self.fd, self.size) = (file, file.tell())
+        elif type(ffile) == types.FileType:  # if fd != 0 we assume that a file object is passed
+            (self.fd, self.size) = (ffile, ffile.tell())
             self.ID = self.fd.name
             self.name = self.fd.name
-        elif type(file).__name__ == 'StringI': # this is a cStringIO object
-            (self.fd, self.size) = (file, file.tell())
+        elif type(ffile).__name__ == 'StringI': # this is a cStringIO object
+            (self.fd, self.size) = (ffile, ffile.tell())
             self.ID = ""
             self.name = ""
         else:
@@ -397,25 +397,25 @@ class FitsHead:
             return data
 
 
-    def openFile(self,file):
+    def openFile(self,ffile):
         """
         Opens the file or a pipe if the file is compressed and returns
         a file-descriptor and the size of the file.
         """
-        flist = glob(file)        #try to find the file
+        flist = glob(ffile)        #try to find the file
         if len(flist) == 0:            # don't open new one if it does not exist
             return (-1,-1)
         else:
-            base = os.path.basename(file)
+            base = os.path.basename(ffile)
             ID, ext = os.path.splitext(base)
             if ext == '.Z' or ext == '.gz':
                 (fd,STDIN,STDOUT) = popen2.popen3('gunzip -qc ' + \
-                        file,0,2880)
+                        ffile,0,2880)
                 size = -2   # size is not available in a pipe, but this is not a problem
-                self.name = file
+                self.name = ffile
                 self.ID, ext = os.path.splitext(ID)
             else:
-                fd=open(file,'r')
+                fd=open(ffile,'r')
                 fd.seek(0,2)
                 size = fd.tell()
                 fd.seek(0,0)
@@ -563,7 +563,7 @@ class FitsHead:
 
 
 
-    def xmlHead(self, format='vo', outfile = '', pretty = 1, head=0):
+    def xmlHead(self, outform='vo', outfile = '', pretty = 1, head=0):
         """
         Method takes Extension and creates a list of XML strings or writes
         the XML strings to <outfile>. If <pretty> is 1 (default) then the
@@ -580,7 +580,7 @@ class FitsHead:
         indent = '   '
         XmlHead.append('<?xml version="1.0" encoding="ISO-8859-1"?>')
 
-        if format == 'vo':
+        if outform == 'vo':
 
             XmlHead.append('<VOTABLE version="1.1">')
             level = 1 * pretty
@@ -598,7 +598,7 @@ class FitsHead:
     
             level -=1
             XmlHead.append(level*indent + '</DESCRIPTION>')
-        elif format == 'xfits':
+        elif outform == 'xfits':
             level = 1 * pretty
             XmlHead.append('<?xml-stylesheet type="text/xml" href="XMLmenu.xsl"?>')
             XmlHead.append('<XFits>')
@@ -606,14 +606,14 @@ class FitsHead:
             XmlHead.append("<ERROR>Invalid format specified. Should be vo or xfits</ERROR>")
             return XmlHead
         for HD in heads:
-            if format == 'vo':
+            if outform == 'vo':
                 XmlHead.append(HD.VotableSerialize(level=level, indent=indent))
             else:
                 XmlHead.append(HD.XfitsSerialize(level=level, indent=indent))
                    
 # close the root element
 
-        if format == 'vo':
+        if outform == 'vo':
             XmlHead.append('\n</VOTABLE>')
         else:
             XmlHead.append('\n</XFits>')
@@ -2039,7 +2039,7 @@ def hdrExtract(name, xmlfl='', xtract=0, skey='END', show=0, struct=1, check=0, 
         elif xmlfl != '':
 #            print 'extracting header of file ',file,' to ',ofnm
             pH.parseFitsHead()
-            XmlHead = pH.xmlHead(format=xmlfl, head=show)
+            XmlHead = pH.xmlHead(outform=xmlfl, head=show)
             
             # if outfile is specified write the XML to it
 
@@ -2305,7 +2305,7 @@ if __name__ == '__main__':
                                       check=check, mode=mode)
                         pH.fd.close()
                         pH.parseFitsHead()
-                        XmlHead = pH.xmlHead(format=xmlfl, head=show)
+                        XmlHead = pH.xmlHead(outform=xmlfl, head=show)
                         for xml in XmlHead:
                             if type(xml) == type(''):
                                 print xml + "\n"
