@@ -146,7 +146,7 @@ _ngamsServer = None
 
 # NG/AMS source directory
 NGAMS_SRC_DIR = os.path.realpath(__path__[0] + '/..')
-print NGAMS_SRC_DIR
+
 #NGAMS_SRC_DIR = os.path.normpath(os.path.relpath('.') + "/../..")
 
 # Main PID of server
