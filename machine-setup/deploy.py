@@ -407,7 +407,14 @@ def python_setup():
     OUTPUT:
     None
     """
+    
     set_env()
+
+    try:
+        ppath
+    except NameError: # this happens if we run python_setup as an indivisual task without running the check_python task first
+        ppath = False
+    
     if ppath:
         puts('Python{0} seems to be available'.format(NGAS_PYTHON_VERSION))
     else: # If no correct python is available install local python (no sudo required)
