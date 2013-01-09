@@ -275,7 +275,7 @@ def install_apt(package):
     sudo('apt-get -qq -y install {0}'.format(package))
 
 
-def check_installed(package):
+def check_yum(package):
     """
     Check whether package is installed or not
     
@@ -290,7 +290,20 @@ def check_installed(package):
     else:
         print "NOT installed package {0}".format(package)
 
+
+def check_apt(package):
+    """
+    Check whether package is installed using APT
     
+    NOTE: This requires sudo access
+    """ 
+    # TODO   
+    with hide('stdout','running'):
+        res = sudo('dpkg -L | grep {0}'.format(package))
+    if res.find(package) > -1:
+        print "Installed package {0}".format(package)
+    else:
+        print "NOT installed package {0}".format(package)
 
 
 def copy_public_keys():
@@ -408,17 +421,10 @@ def system_check():
             linux_flavor = ' '.join(linux_flavor[:2])
     if (linux_flavor in ['CentOS','Amazon Linux']):
         for package in YUM_PACKAGES:
-            check_installed(package)
-#    elif (linux_flavor == 'Ubuntu'):
-#        sudo ('apt-get -qq -y install zlib1g-dbg')
-#        sudo ('apt-get -qq -y install libzlcore-dev')
-#        sudo ('apt-get -qq -y install libdb4.7-dev')
-#        sudo ('apt-get -qq -y install libgdbm-dev')  
-#        sudo ('apt-get -qq -y install openjdk-6-jdk')
-#        sudo ('apt-get -qq -y install libreadline-dev')
-#        sudo ('apt-get -qq -y install sqlite3')
-#        sudo ('apt-get -qq -y install libsqlite3-dev') 
-#        sudo ('apt-get -qq -y install libdb5.1-dev')
+            check_yum(package)
+    elif (linux_flavor == 'Ubuntu'):
+        for package in APT_PACKAGE:
+            check_apt(package)
     else:
         abort("Unknown linux flavor detected: {0}".format(re))
 
