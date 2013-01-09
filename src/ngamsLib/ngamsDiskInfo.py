@@ -272,10 +272,13 @@ class ngamsDiskInfo:
  
         Returns:     Reference to object itself.
         """
-	if (mountPoint):
-        	self.__mountPoint = trim(mountPoint, "\" ")
-	else:
-		self.__mountPoint = ""
+        if (mountPoint):
+            mntPt = trim(mountPoint, "\" ")
+            if mntPt[0] != '/':
+                mntPt = NGAMS_SRC_DIR + '/' + mntPt
+            self.__mountPoint = mntPt
+        else:
+            self.__mountPoint = ""
         return self
 
 
