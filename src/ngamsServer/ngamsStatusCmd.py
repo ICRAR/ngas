@@ -35,7 +35,7 @@ Function + code to handle the STATUS command.
 import time, sys, types, gzip, glob
 
 import pcc, PccUtTime
-from ngams import loadDoc
+from ngams import *
 import ngamsDbCore, ngamsDb, ngamsDbm, ngamsLib, ngamsStatus, ngamsDiskInfo
 import ngamsDppiStatus
 import ngamsFileInfo, ngamsHighLevelLib, ngamsFileUtils
