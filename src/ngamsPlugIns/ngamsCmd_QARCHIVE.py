@@ -71,7 +71,7 @@ def getTargetVolume(srvObj):
     T = TRACE()
 
     sqlQuery = GET_AVAIL_VOLS_QUERY % (ngamsDbCore.getNgasDisksCols(),
-                                       getHostName())
+                                       getHostId())
     res = srvObj.getDb().query(sqlQuery, ignoreEmptyRes=0)
     if (res == [[]]):
         return None
