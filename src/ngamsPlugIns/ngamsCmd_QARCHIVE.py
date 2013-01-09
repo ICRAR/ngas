@@ -53,7 +53,7 @@ import binascii
 #import pcc, PccUtTime
 import ngamsLib, ngamsDbCore, ngamsFileInfo
 import ngamsDiskInfo, ngamsHighLevelLib
-import ngamsCacheControlThread
+from ngamsServer import ngamsCacheControlThread
 
 
 GET_AVAIL_VOLS_QUERY = "SELECT %s FROM ngas_disks nd WHERE completed=0 AND " +\
