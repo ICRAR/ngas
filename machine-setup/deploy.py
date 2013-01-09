@@ -72,6 +72,8 @@ def set_env():
     require('hosts', provided_by=[test_env])
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
         env.NGAS_DIR_ABS = '{0}/{1}'.format(run('printenv HOME'), NGAS_DIR)
+    if not env.has_key('PYTHON'):
+        env.PYTHON = check_python()
     puts('Environment: {0} {1} {2} {3} {4} {5}'.format(env.user, env.key_filename, env.hosts, 
                                                    env.host_string, env.postfix, env.NGAS_DIR_ABS))
 
