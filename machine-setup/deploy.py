@@ -66,7 +66,7 @@ APT_PACKAGES = [
         'zlib1g-dbg',
         'libzlcore-dev',
         'libdb4.7-dev',
-        'apt-get -qq -y install libgdbm-dev',
+        'libgdbm-dev',
         'openjdk-6-jdk',
         'libreadline-dev',
         'sqlite3',
@@ -401,7 +401,7 @@ def system_install():
         
     elif (linux_flavor == 'Ubuntu'):
         for package in APT_PACKAGES:
-            apt_install(package)
+            install_apt(package)
     else:
         abort("Unknown linux flavor detected: {0}".format(re))
 
