@@ -72,6 +72,8 @@ def set_env():
     require('hosts', provided_by=[test_env])
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
         env.NGAS_DIR_ABS = '{0}/{1}'.format(run('printenv HOME'), NGAS_DIR)
+    if not env.has_key('PYTHON'):
+        env.PYTHON = check_python()
     puts('Environment: {0} {1} {2} {3} {4} {5}'.format(env.user, env.key_filename, env.hosts, 
                                                    env.host_string, env.postfix, env.NGAS_DIR_ABS))
 
@@ -187,6 +189,14 @@ def check_dir(directory):
     return res
 
 
+def check_path(path):
+    """
+    Check existence of remote path
+    """
+    res = run('if [ -e {0} ]; then echo 1; else echo ; fi'.format(path))
+    return res
+
+
 def check_python():
     """
     Check for the existence of correct version of python
@@ -264,9 +274,15 @@ def git_clone_tar():
     TODO: This does not work outside iVEC. The current implementation
     is thus using a tar-file, copied over from the calling machine.
     """
+    set_env()
     local('cd /tmp && git clone {0}@{1}'.format(env.GITUSER, env.GITREPO))
     local('cd /tmp && mv ngas {0}'.format(NGAS_DIR))
     local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES {0}'.format(NGAS_DIR))
+    tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
+    put('/tmp/{0}'.format(tarfile), tarfile)
+#    local('rm -rf {0}'.format(tarfile))  # cleanup local git clone
+    run('tar -xjf {0} && rm {0}'.format(tarfile))
+
 
 def processCentOSErrMsg(errmsg):
     if (errmsg == None or len(errmsg) == 0):
@@ -445,29 +461,6 @@ def virtualenv_setup():
 
 
 @task
-def ngas_full_buildout():
-    """
-    Perform the full install and buildout and virtualenv config
-    """
-    set_env()
-    # First get the sources
-    # 
-    git_clone_tar()
-    tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
-    put('/tmp/{0}'.format(tarfile), tarfile)
-#    local('rm -rf {0}'.format(tarfile))  # cleanup local git clone
-    run('tar -xjf {0} && rm {0}'.format(tarfile))
-    
-    # git_clone()
-    
-    with cd(env.NGAS_DIR_ABS):
-        # run bootstrap with correct python version (explicit)
-        run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
-        virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
-        virtualenv('buildout')
-    run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
-
-@task
 def ngas_buildout():
     """
     Perform just the buildout and virtualenv config
@@ -477,6 +470,25 @@ def ngas_buildout():
     with cd(env.NGAS_DIR_ABS):
         virtualenv('buildout')
     run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
+
+
+@task
+def ngas_full_buildout():
+    """
+    Perform the full install and buildout
+    """
+    set_env()
+    # First get the sources
+    # 
+    if not check_path('{0}/bootstrap.py'.format(env.NGAS_DIR_ABS)):
+        git_clone_tar()
+    
+    with cd(env.NGAS_DIR_ABS):
+        # run bootstrap with correct python version (explicit)
+        run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
+        virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
+
+    ngas_buildout()
 
 
 @task
