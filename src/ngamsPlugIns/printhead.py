@@ -174,7 +174,7 @@ class FitsHead:
     for more details just call the usage function or run the
     script without parameters.
     """
-    def __init__(self,ffile,skey='END',struct=0,show=0,check=0, verbose=0, mode=1):
+    def __init__(self,ffile,skey='END',struct=1,show=0,check=0, verbose=0, mode=1):
         """
         """
         self.verbose = int(verbose)
@@ -1008,6 +1008,17 @@ class HeadDict(dict):
         for hk in hkeys:
             node = node[hk]        
         return node
+
+
+    def getKeyValue(self,key=''):
+        """
+        Return node of HD dictionary for a certain keyword.
+        
+        INPUT:     string, keyword
+        OUTPUT:    value of key.
+        """
+        
+        return self.getNode(key=key)['Value']
 
 
     def getElementType(self,key=''):
