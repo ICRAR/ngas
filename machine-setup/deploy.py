@@ -22,7 +22,7 @@ import os
 import time
 
 from fabric.api import run, sudo, put, env, require, local, task
-from fabric.context_managers import cd
+from fabric.context_managers import cd, hide
 from fabric.contrib.console import confirm
 from fabric.contrib.files import append, sed, comment
 from fabric.decorators import task, serial
@@ -46,6 +46,35 @@ NGAS_DIR = 'ngas_rt' #NGAS runtime directory
 GITUSER = 'icrargit'
 GITREPO = 'gitsrv.icrar.org:ngas'
 
+YUM_PACKAGES = [
+   'python27-devel',
+   'git',
+   'autoconf',
+   'libtool',
+   'zlib-devel',
+   'db4-devel',
+   'gdbm-devel',
+   'readline-devel',
+   'sqlite-devel',
+   'make',
+   'java-1.6.0-openjdk-devel.x86_64',
+   'postfix',
+   'openssl-devel.x86_64',     
+]
+
+APT_PACKAGES = [
+        'zlib1g-dbg',
+        'libzlcore-dev',
+        'libdb4.7-dev',
+        'apt-get -qq -y install libgdbm-dev',
+        'openjdk-6-jdk',
+        'libreadline-dev',
+        'sqlite3',
+        'libsqlite3-dev',
+        'libdb5.1-dev',
+        ]
+
+
 PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 # WEB_HOST = 0
 # UPLOAD_HOST = 1
@@ -54,7 +83,7 @@ PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 def set_env():
     # set environment to default for EC2, if not specified on command line.
 
-    puts(env)
+    # puts(env)
     if not env.has_key('GITUSER') or not env.GITUSER:
         env.GITUSER = GITUSER
     if not env.has_key('GITREPO') or not env.GITREPO:
@@ -74,8 +103,8 @@ def set_env():
         env.NGAS_DIR_ABS = '{0}/{1}'.format(run('printenv HOME'), NGAS_DIR)
     if not env.has_key('PYTHON'):
         env.PYTHON = check_python()
-    puts('Environment: {0} {1} {2} {3} {4} {5}'.format(env.user, env.key_filename, env.hosts, 
-                                                   env.host_string, env.postfix, env.NGAS_DIR_ABS))
+    # puts('Environment: {0} {1} {2} {3} {4} {5}'.format(env.user, env.key_filename, env.hosts, 
+    #                                               env.host_string, env.postfix, env.NGAS_DIR_ABS))
 
 
 @task
@@ -228,6 +257,41 @@ def check_python():
 #    else:
 #        return ''
 
+def install_yum(package):
+    """
+    Install a package using YUM
+    """
+    errmsg = sudo('yum --assumeyes --quiet install {0}'.format(package),\
+                   combine_stderr=True, warn_only=True)
+    processCentOSErrMsg(errmsg)
+
+
+def install_apt(package):
+    """
+    Install a package using APT
+    
+    NOTE: This requires sudo access
+    """
+    sudo('apt-get -qq -y install {0}'.format(package))
+
+
+def check_installed(package):
+    """
+    Check whether package is installed or not
+    
+    NOTE: requires sudo access to machine
+    """
+    with hide('stdout','running'):
+        res = sudo('yum --assumeyes --quiet list {0} installed'.format(package), \
+             combine_stderr=True, warn_only=True)
+    #print res
+    if res.find(package) > 0:
+        print "Installed package {0}".format(package)
+    else:
+        print "NOT installed package {0}".format(package)
+
+    
+
 
 def copy_public_keys():
     """
@@ -315,43 +379,46 @@ def system_install():
          # Update the machine completely
         errmsg = sudo('yum --assumeyes --quiet update', combine_stderr=True, warn_only=True)
         processCentOSErrMsg(errmsg)
+        for package in YUM_PACKAGES:
+            install_yum(package)
         
-        errmsg = sudo('yum --assumeyes --quiet install python27-devel', combine_stderr=True, warn_only=True)
-        processCentOSErrMsg(errmsg)
-        errmsg = sudo('yum --assumeyes --quiet install git', combine_stderr=True, warn_only=True)
-        processCentOSErrMsg(errmsg)
-        errmsg = sudo('yum --assumeyes --quiet install autoconf', combine_stderr=True, warn_only=True)
-        processCentOSErrMsg(errmsg)
-        errmsg = sudo('yum --assumeyes --quiet install libtool', combine_stderr=True, warn_only=True)
-        processCentOSErrMsg(errmsg)
-        errmsg = sudo('yum --assumeyes --quiet install zlib-devel', combine_stderr=True, warn_only=True)
-        processCentOSErrMsg(errmsg)
-        errmsg = sudo('yum --assumeyes --quiet install db4-devel', combine_stderr=True, warn_only=True)
-        processCentOSErrMsg(errmsg)
-        errmsg = sudo('yum --assumeyes --quiet install gdbm-devel', combine_stderr=True, warn_only=True)
-        processCentOSErrMsg(errmsg)
-        errmsg = sudo('yum --assumeyes --quiet install readline-devel', combine_stderr=True, warn_only=True)
-        processCentOSErrMsg(errmsg)
-        errmsg = sudo('yum --assumeyes --quiet install sqlite-devel', combine_stderr=True, warn_only=True)
-        processCentOSErrMsg(errmsg)
-        errmsg = sudo('yum --assumeyes --quiet install make', combine_stderr=True, warn_only=True)
-        processCentOSErrMsg(errmsg)
-        errmsg = sudo ('yum --assumeyes --quiet install java-1.6.0-openjdk-devel.x86_64', combine_stderr=True, warn_only=True)
-        processCentOSErrMsg(errmsg)
-        errmsg = sudo ('yum --assumeyes --quiet install postfix', combine_stderr=True, warn_only=True)
-        processCentOSErrMsg(errmsg)
-        errmsg = sudo ('yum --assumeyes --quiet install openssl-devel.x86_64', combine_stderr=True, warn_only=True)
-        processCentOSErrMsg(errmsg)
     elif (linux_flavor == 'Ubuntu'):
-        sudo ('apt-get -qq -y install zlib1g-dbg')
-        sudo ('apt-get -qq -y install libzlcore-dev')
-        sudo ('apt-get -qq -y install libdb4.7-dev')
-        sudo ('apt-get -qq -y install libgdbm-dev')  
-        sudo ('apt-get -qq -y install openjdk-6-jdk')
-        sudo ('apt-get -qq -y install libreadline-dev')
-        sudo ('apt-get -qq -y install sqlite3')
-        sudo ('apt-get -qq -y install libsqlite3-dev') 
-        sudo ('apt-get -qq -y install libdb5.1-dev')
+        for package in APT_PACKAGES:
+            apt_install(package)
+    else:
+        abort("Unknown linux flavor detected: {0}".format(re))
+
+
+@task
+def system_check():
+    """
+    Check for existence of system level packages
+    
+    NOTE: This requires sudo access on the machine(s)
+    """
+    with hide('running','stderr','stdout'):
+        set_env()
+   
+        re = run('cat /etc/issue')
+    linux_flavor = re.split()
+    if (len(linux_flavor) > 0):
+        if linux_flavor[0] == 'CentOS':
+            linux_flavor = linux_flavor[0]
+        elif linux_flavor[0] == 'Amazon':
+            linux_flavor = ' '.join(linux_flavor[:2])
+    if (linux_flavor in ['CentOS','Amazon Linux']):
+        for package in YUM_PACKAGES:
+            check_installed(package)
+#    elif (linux_flavor == 'Ubuntu'):
+#        sudo ('apt-get -qq -y install zlib1g-dbg')
+#        sudo ('apt-get -qq -y install libzlcore-dev')
+#        sudo ('apt-get -qq -y install libdb4.7-dev')
+#        sudo ('apt-get -qq -y install libgdbm-dev')  
+#        sudo ('apt-get -qq -y install openjdk-6-jdk')
+#        sudo ('apt-get -qq -y install libreadline-dev')
+#        sudo ('apt-get -qq -y install sqlite3')
+#        sudo ('apt-get -qq -y install libsqlite3-dev') 
+#        sudo ('apt-get -qq -y install libdb5.1-dev')
     else:
         abort("Unknown linux flavor detected: {0}".format(re))
 
