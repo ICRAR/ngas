@@ -198,7 +198,8 @@ def check_python():
     path to python binary    string, could be empty string
     """
     # Try whether there is already a local python installation for this user
-    ppath = check_command('{0}/../python/bin/python{1}'.format(env.NGAS_DIR_ABS, NGAS_PYTHON_VERSION))
+    ppath = os.path.realpath(env.NGAS_DIR_ABS+'/../python')
+    ppath = check_command('{0}/bin/python{1}'.format(ppath, NGAS_PYTHON_VERSION))
     if ppath:
         return ppath
     # Try python2.7 first
@@ -410,22 +411,15 @@ def python_setup():
     
     set_env()
 
-    try:
-        ppath
-    except NameError: # this happens if we run python_setup as an indivisual task without running the check_python task first
-        ppath = False
-    
-    if ppath:
-        puts('Python{0} seems to be available'.format(NGAS_PYTHON_VERSION))
-    else: # If no correct python is available install local python (no sudo required)
-        with cd('/tmp'):
-            run('wget --no-check-certificate -q {0}'.format(NGAS_PYTHON_URL))
-            base = os.path.basename(NGAS_PYTHON_URL)
-            pdir = os.path.splitext(os.path.splitext(base)[0])[0]
-            run('tar -xjf {0}'.format(base))
-        with cd('/tmp/{0}'.format(pdir)):
-            run('./configure --prefix {0}/../python;make;make install'.format(env.NGAS_DIR_ABS))
-            ppath = '{0}/../python/bin/python{1}'.format(env.NGAS_DIR_ABS,NGAS_PYTHON_VERSION)
+    with cd('/tmp'):
+        run('wget --no-check-certificate -q {0}'.format(NGAS_PYTHON_URL))
+        base = os.path.basename(NGAS_PYTHON_URL)
+        pdir = os.path.splitext(os.path.splitext(base)[0])[0]
+        run('tar -xjf {0}'.format(base))
+    with cd('/tmp/{0}'.format(pdir)):
+        ppath = os.path.realpath(env.NGAS_DIR_ABS+'/../python')
+        run('./configure --prefix {0};make;make install'.format(ppath))
+        ppath = '{0}/bin/python{1}'.format(ppath,NGAS_PYTHON_VERSION)
     env.PYTHON = ppath
 
     
