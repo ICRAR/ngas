@@ -520,9 +520,12 @@ def user_deploy():
     """
     Deploy the system as a normal user without sudo access
     """
+    set_env()
     ppath = check_python()
     if not ppath:
         python_setup()
+    else:
+        env.PYTHON = ppath
     virtualenv_setup()
     ngas_full_buildout()
 
