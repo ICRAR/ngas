@@ -281,15 +281,17 @@ def check_yum(package):
     
     NOTE: requires sudo access to machine
     """
-    with hide('stdout','running'):
-        res = sudo('yum --assumeyes --quiet list {0} installed'.format(package), \
+    with hide('stdout','running','stderr'):
+        res = sudo('yum --assumeyes --quiet list installed {0}'.format(package), \
              combine_stderr=True, warn_only=True)
     #print res
     if res.find(package) > 0:
         print "Installed package {0}".format(package)
+        return True
     else:
         print "NOT installed package {0}".format(package)
-
+        return False
+    
 
 def check_apt(package):
     """
@@ -302,9 +304,11 @@ def check_apt(package):
         res = sudo('dpkg -L | grep {0}'.format(package))
     if res.find(package) > -1:
         print "Installed package {0}".format(package)
+        return True
     else:
         print "NOT installed package {0}".format(package)
-
+        return False
+    
 
 def copy_public_keys():
     """
@@ -419,14 +423,22 @@ def system_check():
             linux_flavor = linux_flavor[0]
         elif linux_flavor[0] == 'Amazon':
             linux_flavor = ' '.join(linux_flavor[:2])
+
+    summary = True
     if (linux_flavor in ['CentOS','Amazon Linux']):
         for package in YUM_PACKAGES:
-            check_yum(package)
+            if not check_yum(package):
+                summary = False
     elif (linux_flavor == 'Ubuntu'):
         for package in APT_PACKAGE:
-            check_apt(package)
+            if not check_apt(package):
+                summary = False
     else:
         abort("Unknown linux flavor detected: {0}".format(re))
+    if summary:
+        print "\n\nAll required packages are installed."
+    else:
+        print "\n\nAt least one package is missing!"
 
 
 @task
