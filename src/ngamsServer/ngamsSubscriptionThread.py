@@ -491,9 +491,9 @@ def _deliveryThread(srvObj,
         stat = ngamsStatus.ngamsStatus()
         fileInfoList = None
         try:
-            # block for 3 minutes if the queue is empty. 
-            # Otherwise, it might block forever for an empty (hopeless) queue without an opportunity to check if the unsubscribeCmd is called
-            fileInfoList = quChunks.get(timeout = 180) 
+            # block for up to 2 minutes if the queue is empty. 
+            # Otherwise, it might block forever for an empty (hopeless) queue without being given an opportunity to check if the unsubscribeCmd is called
+            fileInfoList = quChunks.get(timeout = 120) 
         except Exception, e:
             info(3, "Data delivery thread [" + str(thread.get_ident()) + "] block timeout")
         if (not srvObj.getSubscriberDic().has_key(subscrbId)): #if unsubscribeCmd is called, then terminate
