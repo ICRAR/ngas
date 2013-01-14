@@ -518,7 +518,7 @@ def python_setup():
         pdir = os.path.splitext(os.path.splitext(base)[0])[0]
         run('tar -xjf {0}'.format(base))
     with cd('/tmp/{0}'.format(pdir)):
-        ppath = os.path.realpath(env.NGAS_DIR_ABS+'/../python')
+        ppath = run('echo $PWD') + '/python'
         run('./configure --prefix {0};make;make install'.format(ppath))
         ppath = '{0}/bin/python{1}'.format(ppath,NGAS_PYTHON_VERSION)
     env.PYTHON = ppath
