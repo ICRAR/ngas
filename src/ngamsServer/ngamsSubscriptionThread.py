@@ -209,7 +209,8 @@ def _checkIfDeliverFile(srvObj,
                         subscrObj,
                         fileInfo,
                         deliverReqDic,
-                        deliveredStatus):
+                        deliveredStatus,
+                        explicitFileDelivery = False):
     """
     Analyze if a file should be delivered to a Subscriber.
 
@@ -250,7 +251,12 @@ def _checkIfDeliverFile(srvObj,
         
         ((lastDelivery != None) and
          (fileIngDate >= subscrObj.getStartDate()) and
-         (fileIngDate >= lastDelivery))
+         (fileIngDate >= lastDelivery)) or
+        
+        ((lastDelivery != None) and
+         (fileIngDate >= subscrObj.getStartDate()) and
+         explicitFileDelivery)
+        
         ):
         # If a Filter Plug-In is specified, apply it.
         plugIn = subscrObj.getFilterPi()
@@ -717,7 +723,7 @@ def subscriptionThread(srvObj,
                 for subscrId in srvObj.getSubscriberDic().keys():
                     subscrObj = srvObj.getSubscriberDic()[subscrId]
                     _checkIfDeliverFile(srvObj, subscrObj, tmpFileInfo,
-                                        deliverReqDic, deliveredStatus)
+                                        deliverReqDic, deliveredStatus, explicitFileDelivery = True)
 
             # Then check if for each of the Subscribers referenced explicitly
             # (new Subscribers) for each file Online on this system, if we
