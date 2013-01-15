@@ -242,6 +242,7 @@ def check_python():
     # Try python2.7 first
     ppath = check_command('python{0}'.format(NGAS_PYTHON_VERSION))
     if ppath:
+        env.PYTHON = ppath
         return ppath
     
     # don't check for any other python, since we need to run
@@ -527,6 +528,7 @@ def virtualenv_setup():
     setup virtualenv with the detected or newly installed python
     """
     set_env()
+    check_python()
     print "CHECK_DIR: {0}".format(check_dir(env.NGAS_DIR_ABS))
     if check_dir(env.NGAS_DIR_ABS):
         abort('ngas_rt directory exists already')
