@@ -35,7 +35,7 @@ implemented and NG/AMS configured to use it.
 from ngams import *
 #import os, string
 #from pcc.pccUt import PccUtTime
-import ngamsPlugInApi
+from ngamsLib import ngamsPlugInApi
 
 
 def getComprExt(comprMethod):
