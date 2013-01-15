@@ -100,9 +100,7 @@ def set_env():
         env.key_filename = AWS_KEY
     require('hosts', provided_by=[test_env])
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
-        env.NGAS_DIR_ABS = '{0}/{1}'.format(run('printenv HOME'), NGAS_DIR)
-    if not env.has_key('PYTHON'):
-        env.PYTHON = check_python()
+        env.NGAS_DIR_ABS = '{0}/{1}'.format(run('echo $PWD'), NGAS_DIR)
     # puts('Environment: {0} {1} {2} {3} {4} {5}'.format(env.user, env.key_filename, env.hosts, 
     #                                               env.host_string, env.postfix, env.NGAS_DIR_ABS))
 
@@ -509,7 +507,6 @@ def python_setup():
     OUTPUT:
     None
     """
-    
     set_env()
 
     with cd('/tmp'):
@@ -517,8 +514,8 @@ def python_setup():
         base = os.path.basename(NGAS_PYTHON_URL)
         pdir = os.path.splitext(os.path.splitext(base)[0])[0]
         run('tar -xjf {0}'.format(base))
+    ppath = run('echo $PWD') + '/python'
     with cd('/tmp/{0}'.format(pdir)):
-        ppath = run('echo $PWD') + '/python'
         run('./configure --prefix {0};make;make install'.format(ppath))
         ppath = '{0}/bin/python{1}'.format(ppath,NGAS_PYTHON_VERSION)
     env.PYTHON = ppath
