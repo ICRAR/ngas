@@ -599,6 +599,8 @@ class ngamsConfig:
         rootDir = self.getVal("Server[1].RootDirectory")
         if (not rootDir):
             raise Exception, "Server[1].RootDirectory not properly defined"
+        elif rootDir[0] != '/':
+            rootDir = os.environ['HOME'] + '/' + rootDir
         return rootDir
 
 
