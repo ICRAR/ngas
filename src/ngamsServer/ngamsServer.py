@@ -2277,12 +2277,7 @@ class ngamsServer:
         global _reqCallBack
         _reqCallBack = self.reqCallBack
 
-        tmpHostName = os.uname()[1]
-        info(3,"System host name: %s" % str(tmpHostName))
-        if (tmpHostName.split(".")[-1] == "local"):
-            hostName = "localhost"
-        else:
-            hostName = getHostName()
+        hostName = getHostName()
         portNo = self.getCfg().getPortNo()
         info(1,"Setting up NG/AMS HTTP Server (Host: " + getHostName() +\
              " - Port: " + str(portNo) + ") ...")
