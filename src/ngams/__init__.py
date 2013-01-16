@@ -1167,18 +1167,18 @@ def getDiskSpaceAvail(mountPoint,
             raise Exception, "Illegal path encountered: " +\
                   mountPoint + " - or path could not be created."
         # TODO: UNIX specific/make plug-in?
-	cmd = "df -k %s "
-	if os.uname()[0] == 'Darwin':
-	   cmd = "df -kP %s "
-        exitCode, stdOut = commands.getstatusoutput(cmd % mountPoint)
-        if (exitCode):
-            raise Exception, "Illegal path encountered: " +\
-                  mountPoint + " - or path could not be created."
-	cmd = str(cleanList(stdOut.replace("\n", " ").split(" "))[10]) + ".0"
-	info(5,'Executing command: {0}'.format(cmd))
-        diskSpace = eval(cmd)
-        # Update the disk space (cache) dictionary.
-        _diskSpaceDic[mountPoint] = (startTime, diskSpace)
+    cmd = "df -k %s "
+    if os.uname()[0] == 'Darwin':
+        cmd = "df -kP %s "
+    exitCode, stdOut = commands.getstatusoutput(cmd % mountPoint)
+    if (exitCode):
+        raise Exception, "Illegal path encountered: " +\
+            mountPoint + " - or path could not be created."
+    cmd = str(cleanList(stdOut.replace("\n", " ").split(" "))[10]) + ".0"
+    info(5,'Executing command: {0}'.format(cmd))
+    diskSpace = eval(cmd)
+    # Update the disk space (cache) dictionary.
+    _diskSpaceDic[mountPoint] = (startTime, diskSpace)
 
     # Scale etc. the disk space. 
     diskSpace = (diskSpace * _scale[format])
