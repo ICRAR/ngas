@@ -509,4 +509,3 @@ if __name__ == '__main__':
     #testStatus()
     #testSuspendThenStatusThenResume()
     #testSystemCommand()
->>>>>>> branch 'master' of icrargit@130.95.176.110:ngas

@@ -300,6 +300,9 @@ def _checkIfDeliverFile(srvObj,
     if (deliverFile):
         deliverReqDic = _addFileDeliveryDic(subscrObj.getId(), fileInfo,
                                             deliverReqDic)
+        #debug_chen
+        info(4, 'File %s is accepted to delivery list' % fileId)
+    
 
 
 def _compFct(fileInfo1,
@@ -479,8 +482,7 @@ def _deliveryThread(srvObj,
 
     Returns:       Void.
     """
-    info(3,"Data Delivery Thread [" + str(thread.get_ident()) + "] preparing to deliver " + str(len(fileInfoList)) + " files to Subscriber "+\
-         "with ID: " + subscrObj.getId() + " ...")
+    
     
     # Calculate the suspension time for this thread based on the
     # priority of this thread.
@@ -494,6 +496,7 @@ def _deliveryThread(srvObj,
             # block for up to 2 minutes if the queue is empty. 
             # Otherwise, it might block forever for an empty (hopeless) queue without being given an opportunity to check if the unsubscribeCmd is called
             fileInfoList = quChunks.get(timeout = 120) 
+            info(3,"Data Delivery Thread [" + str(thread.get_ident()) + "] preparing to deliver " + str(len(fileInfoList)) + " files to Subscriber: " + subscrObj.getId() + " ...")
         except Exception, e:
             info(3, "Data delivery thread [" + str(thread.get_ident()) + "] block timeout")
         if (not srvObj.getSubscriberDic().has_key(subscrbId)): #if unsubscribeCmd is called, then terminate
@@ -581,6 +584,7 @@ def _deliveryThread(srvObj,
                                           fileVersion, filename)
     
     # Stop this thread.
+    info(3, 'Delivery thread [' + str(thread.get_ident()) + '] is exiting.')
     thread.exit()
 
 
@@ -681,6 +685,8 @@ def subscriptionThread(srvObj,
             elif (fileRefs != []):
                 # fileRefDic: Dictionary indicating which versions for each
                 # file that are of interest.
+                # debug_chen
+                info(4, 'Count of fileRefs = %d' % len(fileRefs))
                 fileRefDic = {}
                 fileIds = {}   # To generate a list with all File IDs
                 for fileInfo in fileRefs:
@@ -816,14 +822,22 @@ def subscriptionThread(srvObj,
                 # multi-threaded concurrent transfer, added by chen.wu@icrar.org
                 num_threads = float(srvObj.getSubscriberDic()[subscrId].getConcurrentThreads())
                 total_files = len(deliverReqDic[subscrId])
-                tt = math.ceil(total_files / num_threads)
+                #debug_chen
+                info(4, 'Total %d files to deliver to %s' % (total_files, subscrId))
+                tt = math.ceil(float(total_files) / num_threads)
                 chunk_size = int(tt)
                 list_of_chunks = [deliverReqDic[subscrId][i:i+chunk_size] for i in range(0, total_files, chunk_size)]
+                #debug
+                info(4, 'chunk_size = %d, length of list_of_chunks = %d' % (chunk_size, len(list_of_chunks)))
                 quChunks = None
                 if queueDict.has_key(subscrId):
+                    #debug
+                    info(3, 'Use existing queue for %s' % subscrId)
                     quChunks = queueDict[subscrId]
                 else:
                     quChunks = Queue()
+                    queueDict[subscrId] = quChunks
+                    
                 for jdx in range(len(list_of_chunks)):  
                     quChunks.put(list_of_chunks[jdx])                  
                     # Deliver the data - spawn off a Delivery Thread to do this job
@@ -834,8 +848,7 @@ def subscriptionThread(srvObj,
                 if (deliveryThreadDic.has_key(subscrId)):
                     threads = deliveryThreadDic[subscrId]
                     cc = 0
-                    for tid in range(threads):
-                        thd = threads[tid]
+                    for thd in threads:
                         if (not thd.isAlive()):
                             cc += 1
                             
@@ -843,11 +856,13 @@ def subscriptionThread(srvObj,
                     #     then kill them all to prepare for the next life (if subscribeCmd is called again)
                     if (cc == len(threads)): 
                         pp = deliveryThreadDic.pop(subscrId)
+                        for p in pp:
+                            del p
                         del pp
                                         
                 if not deliveryThreadDic.has_key(subscrId):
                     deliveryThreads = []
-                    for tid in range(num_threads):
+                    for tid in range(int(num_threads)):
                         args = (srvObj, srvObj.getSubscriberDic()[subscrId], quChunks, None)
                         deliveryThrRef = threading.Thread(None, _deliveryThread,
                                                       NGAMS_DELIVERY_THR+subscrId,

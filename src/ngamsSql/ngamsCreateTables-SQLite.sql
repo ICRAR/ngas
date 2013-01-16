@@ -178,9 +178,6 @@ Create table ngas_subscribers
 
 create unique index subscr_id_idx on ngas_subscribers(subscr_id);
 
-create unique index host_id_srv_port_idx on ngas_subscribers(host_id, srv_port);
-
-
 drop table ngas_subscr_back_log;
 Create table ngas_subscr_back_log
 (

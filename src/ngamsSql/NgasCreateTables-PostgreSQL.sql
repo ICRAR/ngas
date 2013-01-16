@@ -1,16 +1,29 @@
 \o NgasCreateTables.log
 
+-- Ascertain to be connected as the NGAS user
+-- NGAS schema will be used by default if search_path has not been altered
+SET session AUTHORIZATION ngas;
+-- Define the tablespace to be used for object creation
 SET default_tablespace = ngas;
 
-drop table ngas_cfg cascade;
-drop table ngas_cfg_pars cascade;
-drop table ngas_disks cascade;
-drop table ngas_disks_hist cascade;
-drop table ngas_files cascade;
-drop table ngas_subscribers cascade;
-drop table ngas_subscr_back_log cascade;
-drop table ngas_hosts cascade;
+\qecho drop table ngas_cfg 
+drop table if exists ngas_cfg cascade;
+\qecho drop table ngas_cfg_pars
+drop table if exists ngas_cfg_pars cascade;
+\qecho drop table ngas_disks
+drop table if exists ngas_disks cascade;
+\qecho drop table ngas_disks_hist
+drop table if exists ngas_disks_hist cascade;
+\qecho drop table ngas_files
+drop table if exists ngas_files cascade;
+\qecho drop table ngas_subscribers
+drop table if exists ngas_subscribers cascade;
+\qecho drop table ngas_subscr_back_log
+drop table if exists ngas_subscr_back_log cascade;
+\qecho drop table ngas_hosts
+drop table if exists ngas_hosts cascade;
 
+\qecho create table ngas_cfg
 create table ngas_cfg
 (
 	cfg_name  		varchar(32)	not null,
@@ -19,6 +32,17 @@ create table ngas_cfg
 	constraint cfg_idx primary key(cfg_name)
 );
 
+\qecho create table ngas_cache
+(
+	disk_id			varchar(128)	not null,
+	file_id			varchar(64)	not null,
+	file_version		int		not null,
+	cache_time		numeric(6, 10) 	not null,
+	cache_delete		smallint	not null,		
+	constraint ngas_cache_idx     primary key(disk_id, file_id, file_version)
+);
+
+\qecho create table ngas_cfg_pars
 create table ngas_cfg_pars
 (
 	cfg_group_id	varchar(32)	not null,
@@ -27,8 +51,10 @@ create table ngas_cfg_pars
 	cfg_comment 	varchar(255)	null
 );
 
+\qecho create unique index cfg_group_idx
 create unique index cfg_group_idx on ngas_cfg_pars(cfg_group_id,cfg_par,cfg_val);
 
+\qecho create table ngas_disks
 create table ngas_disks
 (
 	disk_id			varchar(128)	not null,
@@ -53,6 +79,7 @@ create table ngas_disks
 	constraint disk_idx	primary key(disk_id)
 );
 
+\qecho create table ngas_disks_hist
 create table ngas_disks_hist
 (
 	disk_id			varchar(128)	not null,
@@ -63,9 +90,10 @@ create table ngas_disks_hist
 	hist_descr		varchar(4000)	null
 );
 
+\qecho create index ngas_disks_hist_disk_id
 create index ngas_disks_hist_disk_id on ngas_disks_hist(disk_id,hist_date,hist_origin);
 
-
+\qecho create table ngas_files
 create table ngas_files
 (
 	disk_id			varchar(128)	not null,
@@ -85,11 +113,11 @@ create table ngas_files
 	constraint file_idx	primary key(file_id,file_version,disk_id)
 );
 
-
+\qecho create table ngas_hosts
 create table ngas_hosts
 (
 	host_id 		varchar(32)	not null,
-	domain			varchar(30)	not null,
+	domain			varchar(60)	not null,
 	ip_address		varchar(20)	not null,
 	mac_address		varchar(20)	null,
 	n_slots			smallint	null,
@@ -118,9 +146,10 @@ create table ngas_hosts
 	srv_req_wake_up_time	varchar(23)	null
 ) ;
 
+\qecho create unique index host_idx
 create unique index host_idx on ngas_hosts(host_id,srv_port);
 
-
+\qecho create table ngas_subscribers
 create table ngas_subscribers
 (
 	host_id				varchar(32)	not null,
@@ -134,9 +163,11 @@ create table ngas_subscribers
 	last_file_ingestion_date	varchar(23)	null
 );
 
+\qecho create unique index subscr_id_idx
 create unique index subscr_id_idx on ngas_subscribers(subscr_id);
-create unique index host_id_srv_port_idx on ngas_subscribers(host_id, srv_port);
 
+
+\qecho create table ngas_subscr_back_log
 create table ngas_subscr_back_log
 (
 	host_id				varchar(32)	not null,
