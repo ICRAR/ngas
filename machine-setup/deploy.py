@@ -491,9 +491,9 @@ def user_setup():
         sudo('mkdir /home/{0}/.ssh'.format(user))
         sudo('chmod 700 /home/{0}/.ssh'.format(user))
         sudo('chown {0}:{0} /home/{0}/.ssh'.format(user))
-#        sudo('mv /home/ec2-user/{0}.pub /home/{0}/.ssh/authorized_keys'.format(user))
-#        sudo('chmod 700 /home/{0}/.ssh/authorized_keys'.format(user))
-#        sudo('chown {0}:{0} /home/{0}/.ssh/authorized_keys'.format(user))
+        sudo('mv /home/ec2-user/.ssh/authorized_keys /home/{0}/.ssh/authorized_keys'.format(user))
+        sudo('chmod 700 /home/{0}/.ssh/authorized_keys'.format(user))
+        sudo('chown {0}:{0} /home/{0}/.ssh/authorized_keys'.format(user))
 
 
 @task
