@@ -88,6 +88,7 @@
     <MimeTypeMap Extension="hdr" MimeType="image/x-fitshdr"/>
     <MimeTypeMap Extension="tar" MimeType="application/x-tar"/>
     <MimeTypeMap Extension="msg" MimeType="multialma/related"/>
+    <MimeTypeMap Extension="bin" MimeType="application/octet-stream"/>
   </MimeTypes>
 
   <StorageSets>
