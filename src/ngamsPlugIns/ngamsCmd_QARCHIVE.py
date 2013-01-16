@@ -314,7 +314,7 @@ def handleCmd(srvObj,
 
     # Get mime-type (try to guess if not provided as an HTTP parameter).
     info(3, "Get mime-type (try to guess if not provided as an HTTP parameter).")
-    if (reqPropsObj.getMimeType() == ""):
+    if (reqPropsObj.getMimeType() in ["", NGAMS_ARCH_REQ_MT]):
         mimeType = ngamsHighLevelLib.\
                    determineMimeType(srvObj.getCfg(), reqPropsObj.getFileUri())
         reqPropsObj.setMimeType(mimeType)
