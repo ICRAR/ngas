@@ -831,8 +831,8 @@ def subscriptionThread(srvObj,
                 info(4, 'chunk_size = %d, length of list_of_chunks = %d' % (chunk_size, len(list_of_chunks)))
                 quChunks = None
                 if queueDict.has_key(subscrId):
-                    #debug
-                    info(3, 'Use existing queue for %s' % subscrId)
+                    #debug_chen
+                    info(4, 'Use existing queue for %s' % subscrId)
                     quChunks = queueDict[subscrId]
                 else:
                     quChunks = Queue()

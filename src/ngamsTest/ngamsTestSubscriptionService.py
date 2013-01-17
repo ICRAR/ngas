@@ -7,6 +7,8 @@ Case 2. a client archives several files to ngas-A, then ngas-B subscribes with A
 import time, os, commands, threading, thread
 import ngamsPClient
 
+from pybarrier import *
+
 ngasA_host = '180.149.251.189'
 ngasA_port = 7785
 
@@ -37,7 +39,8 @@ def createTmpFiles(number = 10):
     base_name = str(time.mktime(time.gmtime())).split('.')[0]
     for num in range(number):
         fname = base_name + '-' + str(num)
-        cmd = 'dd if=/dev/zero of=%s/%s%s bs=65536 count=1600' % (tmpDir, fname, file_ext)
+        #cmd = 'dd if=/dev/zero of=%s/%s%s bs=65536 count=1600' % (tmpDir, fname, file_ext) #100MB per file
+        cmd = 'dd if=/dev/zero of=%s/%s%s bs=65536 count=320' % (tmpDir, fname, file_ext) #20 MB perfile
         status, output = commands.getstatusoutput(cmd)
         if (status):
             print output
@@ -70,8 +73,9 @@ def waitUntilFileDelivered(file_id, pclient, timeout = 0, wait_interval = 1):
         time.sleep(wait_interval)
         howlong += wait_interval
 
-def _archiveThread(pclient, fileUriList, interval, clientIdx):
+def _archiveThread(pclient, fileUriList, interval, clientIdx, my_bar):
     for fileUri in fileUriList:
+        my_bar.enter()
         print 'Archiving file %s' % fileUri 
         stat = pclient.pushFile(fileUri, mime_type, cmd = 'QARCHIVE')
         msg = stat.getMessage().split()[0]
@@ -115,6 +119,7 @@ def TestCase01(num_file_per_client, num_clients, interval = 4, base_name = None)
     
     num_files = num_file_per_client * num_clients
     if (base_name == None):
+        print 'Creating %d dummy files ...' % num_files
         base_name = createTmpFiles(num_files)
     
     file_list = []
@@ -126,8 +131,9 @@ def TestCase01(num_file_per_client, num_clients, interval = 4, base_name = None)
         file_list[num % num_clients].append(fileUri)
         
     deliveryThreads = []
+    my_barrier = barrier(num_clients)
     for clientIdx in range(num_clients):
-        args = (clientA, file_list[clientIdx], interval, clientIdx)
+        args = (clientA, file_list[clientIdx], interval, clientIdx, my_barrier)
         deliveryThrRef = threading.Thread(None, _archiveThread, 'ArchiveThrd' + str(clientIdx), args)
         deliveryThrRef.setDaemon(0)
         deliveryThrRef.start()
@@ -139,7 +145,6 @@ def TestCase01(num_file_per_client, num_clients, interval = 4, base_name = None)
     print 'Wait %d seconds so that all files are delivered to all subscribers' % (num_files * 3)
     time.sleep(num_files * 3) # assume each file needs 3 seconds to delivery (in parallel)
     
-    print ('\t\t\t *** Delivery report *** ')
     verifyCase(base_name, num_files, clientB, False)
     verifyCase(base_name, num_files, clientC, True)
     
@@ -216,7 +221,7 @@ def TestCase02(num_files, base_name = None):
     print 'After %d seconds, the last file \"%s\" is delivered to \"%s\"' % (howlong, lastfname, ngasC_url)
     
     time.sleep(3)
-    print ('\t\t\t *** Delivery report *** ')
+    
     verifyCase(base_name, num_files, clientB, False)
     verifyCase(base_name, num_files, clientC, True)
     
@@ -226,7 +231,8 @@ def TestCase02(num_files, base_name = None):
 def verifyCase(base_name, num_files, pclient, clean_on_complete = True):
     """
     """
-    print '\n Summary on server: %s:%d' % (pclient.getHost(), pclient.getPort())
+    print ('\n\t\t\t *** Delivery report *** ')
+    print '\nSummary on server: %s:%d' % (pclient.getHost(), pclient.getPort())
     good_list = []
     bad_list = []
     for num in range(num_files):
@@ -251,7 +257,7 @@ def verifyCase(base_name, num_files, pclient, clean_on_complete = True):
             print '%s\t\t%s' % (li[0], li[1])
     
     if (len(bad_list) > 0):
-        print '******  WARNING *******'
+        print '\n******  WARNING *******\n'
         print 'failed to deliver files'
         print '-----------------------'
         for fname in bad_list:
@@ -264,4 +270,4 @@ def verifyCase(base_name, num_files, pclient, clean_on_complete = True):
 if __name__ == '__main__':
     #TestCase02(16, base_name = '1358203679')
     #TestCase02(16)
-    TestCase01(3, 2)
+    TestCase01(50, 6, interval = 3)
