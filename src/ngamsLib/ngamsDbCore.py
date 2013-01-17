@@ -210,7 +210,8 @@ _ngasSubscribersDef = [["ns.host_id",                   _NGS + "HOST_ID"],
                        ["ns.subscr_start_date",         _NGS + "START"],
                        ["ns.subscr_filter_plugin",      _NGS + "FILT_PI"],
                        ["ns.subscr_filter_plugin_pars", _NGS + "FILT_PI_PARS"],
-                       ["ns.last_file_ingestion_date",  _NGS + "ING_DATE"]]
+                       ["ns.last_file_ingestion_date",  _NGS + "ING_DATE"],
+                       ["ns.concurrent_threads",  _NGS + "CONCURR_THRDS"]]
 _ngasSubscribersCols = ""
 _ngasSubscriberNameMap = {}
 idx = 0

@@ -130,7 +130,8 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                              startDate = "",
                              filterPlugIn = "",
                              filterPlugInPars = "",
-                             lastFileIngDate = ""):
+                             lastFileIngDate = "",
+                             concurrent_threads = 1):
         """
         The method writes the information in connection with a Subscriber
         in the NGAS DB. If an entry already exists for that disk, it is updated
@@ -193,6 +194,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                            "subscr_filter_plugin=" + filterPlugIn + ", " +\
                            "subscr_filter_plugin_pars="+filterPlugInPars+", "+\
                            "last_file_ingestion_date=" + lastFileIngDate+" " +\
+                           "concurrent_threads=" + str(concurrent_threads)+" " +\
                            "WHERE subscr_id='" + subscrId + "' AND " +\
                            "host_id='" + hostId + "' AND " +\
                            "srv_port=" + str(portNo)
@@ -203,12 +205,12 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                            " subscr_url, subscr_start_date," +\
                            " subscr_filter_plugin,"+\
                            " subscr_filter_plugin_pars," +\
-                           " last_file_ingestion_date) " +\
+                           " last_file_ingestion_date, concurrent_threads) " +\
                            " VALUES " +\
                            "('" + hostId + "', " + str(portNo) + ", " +\
                            str(priority) + ", '"+subscrId + "', '"+subscrUrl+\
                            "', " + startDate + ", " + filterPlugIn + ", " +\
-                           filterPlugInPars + ", " + lastFileIngDate + ")"
+                           filterPlugInPars + ", " + lastFileIngDate + ", " + str(concurrent_threads) + ")"
                 addedEntry = 1
             res = self.query(sqlQuery)
             self.triggerEvents()

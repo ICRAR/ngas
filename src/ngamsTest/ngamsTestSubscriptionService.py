@@ -3,6 +3,7 @@ Should cover several cases
 
 Case 1. ngas-B subscribes with ngas-A. Then multiple clients simultaneously archive files to ngas-A at the same time interval.
 Case 2. a client archives several files to ngas-A, then ngas-B subscribes with A from the past. After a while, ngas-C subscribe with A from the past.
+Case 3, a client subscribe with concurrent_threads = 2. Restart the NGAS server, the client then archive files to this NGAS server.
 """
 import time, os, commands, threading, thread
 import ngamsPClient
@@ -150,9 +151,35 @@ def TestCase01(num_file_per_client, num_clients, interval = 4, base_name = None)
     
     _unSubscribe(clientA, ngasB_url)
     _unSubscribe(clientA, ngasC_url)
-    
-    
 
+def _subscribeAwithB(concurrent_threads = 4):
+    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '%d' % concurrent_threads]])
+    msg = stat.getMessage()
+    if (msg != 'Handled SUBSCRIBE command'):
+        raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
+    else:
+        print msg
+    
+ 
+def TestCase03(num_files, base_name = None):
+    if (base_name == None):
+        print 'Creating %d dummy files ...' % num_files
+        base_name = createTmpFiles(num_files)
+    for num in range(num_files):
+        fileUri = '%s/%s-%s%s' % (tmpDir, base_name, str(num), file_ext)
+        print 'Archiving file %s' % fileUri 
+        stat = clientA.pushFile(fileUri, mime_type, cmd = 'QARCHIVE')
+        msg = stat.getMessage().split()[0]
+        if (msg != 'Successfully'):
+            raise Exception('Fail to archive \"%s\"' % fileUri)
+    lastfname = '%s-%d%s' % (base_name, num_files - 1, file_ext) # this might not be the last file for multi-threaded delivery, but approximately for now
+    howlong = waitUntilFileDelivered(lastfname, clientB)
+    print 'After %d seconds, the last file \"%s\" is delivered to \"%s\"' % (howlong, lastfname, ngasB_url)
+    
+    time.sleep(3)
+    verifyCase(base_name, num_files, clientB, True)
+    _unSubscribe(clientA, ngasB_url)
+    
 def TestCase02(num_files, base_name = None):
     # create tmp files to be quick archived
     need_archive = False
@@ -270,4 +297,5 @@ def verifyCase(base_name, num_files, pclient, clean_on_complete = True):
 if __name__ == '__main__':
     #TestCase02(16, base_name = '1358203679')
     #TestCase02(16)
-    TestCase01(50, 6, interval = 3)
+    #TestCase01(50, 6, interval = 3)
+    TestCase03(32)

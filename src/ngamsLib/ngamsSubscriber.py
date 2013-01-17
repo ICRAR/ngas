@@ -233,7 +233,12 @@ class ngamsSubscriber:
         return self.__startDate
     
     def setConcurrentThreads(self, num_threads):
-        if (num_threads > 0):
+        
+        #info(3, "Got num_threads = %" % num_threads)
+        if (num_threads == None or num_threads == ''):
+            return self
+        num_threads = int(num_threads)
+        if (num_threads > 0 and num_threads < 33):
             self.__concurthrds = num_threads
         return self
     
@@ -366,7 +371,8 @@ class ngamsSubscriber:
                setStartDate(sqlResult[5]).\
                setFilterPi(sqlResult[6]).\
                setFilterPiPars(sqlResult[7]).\
-               setLastFileIngDate(sqlResult[8])
+               setLastFileIngDate(sqlResult[8]).\
+               setConcurrentThreads(sqlResult[9])
         return self
 
 
@@ -418,7 +424,8 @@ class ngamsSubscriber:
                                              self.getStartDate(),
                                              self.getFilterPi(),
                                              self.getFilterPiPars(),
-                                             self.getLastFileIngDate())
+                                             self.getLastFileIngDate(),
+                                             self.getConcurrentThreads())
         return addedNewEntry
 
 
