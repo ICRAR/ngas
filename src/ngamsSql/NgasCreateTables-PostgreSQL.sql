@@ -160,7 +160,8 @@ create table ngas_subscribers
 	subscr_start_date		varchar(23)	null,
 	subscr_filter_plugin		varchar(64)	null,
 	subscr_filter_plugin_pars	varchar(128)	null,
-	last_file_ingestion_date	varchar(23)	null
+	last_file_ingestion_date	varchar(23)	null,
+	concurrent_threads    int             default 1
 );
 
 \qecho create unique index subscr_id_idx
