@@ -244,6 +244,14 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         """
         self.reqHandle()
 
+    def do_PUT(self):
+        """
+        Serve a PUT method request.
+
+        Returns:    Void.
+        """
+        self.reqHandle()
+
 
     def reqHandle(self):
         """
@@ -2313,7 +2321,18 @@ class ngamsServer:
         if (not pid): pid = os.getpid()
         try:
             notice("Killing NG/AMS Main Thread. PID: %d" % int(pid))
+            logFile = self.getCfg().getLocalLogFile()
+            logPath = os.path.dirname(logFile)
+            rotLogFile = "LOG-ROTATE-" +\
+                    PccUtTime.TimeStamp().getTimeStamp()+\
+                    ".nglog"
+            rotLogFile = os.path.normpath(logPath + "/" + rotLogFile)
+            PccLog.info(1, "Rotating log file: %s -> %s" %\
+                    (logFile, rotLogFile), getLocation())
             logFlush()
+            commands.getstatusoutput("mv " + logFile + " " +\
+                                                     rotLogFile)
+
             os.kill(int(pid), signal.SIGKILL)
         except Exception, e:
             error("Server encountered problem terminating: " + str(e))
