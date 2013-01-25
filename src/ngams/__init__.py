@@ -286,6 +286,7 @@ NGAMS_UNKNOWN_MT          = "unknown"
 # HTTP Methods, etc.
 NGAMS_HTTP_GET            = "GET"
 NGAMS_HTTP_POST           = "POST"
+NGAMS_HTTP_PUT            = "PUT"
 NGAMS_HTTP_FILE_URL       = "file:"
 NGAMS_HTTP_INT_AUTH_USER  = "ngas-int"
 
