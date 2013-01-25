@@ -70,7 +70,8 @@ def ngamsLinuxOnlinePlugIn(srvObj,
         # generated wrongly due to a mistake by IBM, which lead to a wrong
         # implementation of the generation of the Disk ID.
         if (not parDic.has_key("old_format")):
-            raise Exception, "Missing Online Plug-In Parameter: old_format=0|1"
+            oldFormat = 0
+            raise Warning, "Missing Online Plug-In Parameter: old_format=0|1"
         else:
             oldFormat = int(parDic["old_format"])
 
