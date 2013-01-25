@@ -491,9 +491,11 @@ def user_setup():
         sudo('mkdir /home/{0}/.ssh'.format(user))
         sudo('chmod 700 /home/{0}/.ssh'.format(user))
         sudo('chown {0}:{0} /home/{0}/.ssh'.format(user))
-        sudo('mv /home/ec2-user/.ssh/authorized_keys /home/{0}/.ssh/authorized_keys'.format(user))
+        sudo('cp /home/ec2-user/.ssh/authorized_keys /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chmod 700 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{0} /home/{0}/.ssh/authorized_keys'.format(user))
+    env.user = 'ngas'
+    env.NGAS_DIR_ABS = '/home/ngas/{0}'.format(NGAS_DIR)
 
 
 @task
@@ -640,6 +642,7 @@ def test_deploy():
     system_install()
     if env.postfix:
         postfix_config()
+    user_setup()
     ppath = check_python()
     if not ppath:
         python_setup()
