@@ -77,8 +77,19 @@ def ngamsBaseExitHandler(srvObj,
     srvObj.updateHostInfo("", None, 0, 0, 0, 0, 0, NGAMS_NOT_RUN_STATE)
 
     info(1,"NG/AMS Exit Handler finished cleaning up - terminating server ...")
+
     try:
+        logFile = srvObj.getCfg().getLocalLogFile()
+        logPath = os.path.dirname(logFile)
+        rotLogFile = "LOG-ROTATE-" +\
+                    PccUtTime.TimeStamp().getTimeStamp()+\
+                    ".nglog"
+        rotLogFile = os.path.normpath(logPath + "/" + rotLogFile)
+        PccLog.info(1, "Rotating log file: %s -> %s" %\
+                    (logFile, rotLogFile), getLocation())
         logFlush()
+        commands.getstatusoutput("mv " + logFile + " " +\
+                                                     rotLogFile)
     except:
         pass
     if (killServer):
