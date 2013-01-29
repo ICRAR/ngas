@@ -361,7 +361,7 @@ def git_clone_tar():
     local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES {0}'.format(NGAS_DIR))
     tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
     put('/tmp/{0}'.format(tarfile), tarfile)
-    local('rm -rf {0}'.format(tarfile))  # cleanup local git clone
+    local('rm -rf {0}'.format(NGAS_DIR))  # cleanup local git clone dir
     run('tar -xjf {0} && rm {0}'.format(tarfile))
 
 
@@ -705,7 +705,7 @@ def test_deploy():
     ngas_full_buildout()
     init_deploy()
 
-
+@task
 def uninstall():
     """
     Uninstall NGAS, NGAS users and init script.
