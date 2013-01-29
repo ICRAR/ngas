@@ -361,7 +361,7 @@ def git_clone_tar():
     local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES {0}'.format(NGAS_DIR))
     tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
     put('/tmp/{0}'.format(tarfile), tarfile)
-#    local('rm -rf {0}'.format(tarfile))  # cleanup local git clone
+    local('rm -rf {0}'.format(tarfile))  # cleanup local git clone
     run('tar -xjf {0} && rm {0}'.format(tarfile))
 
 
@@ -705,3 +705,16 @@ def test_deploy():
     ngas_full_buildout()
     init_deploy()
 
+
+def uninstall():
+    """
+    Uninstall NGAS, NGAS users and init script.
+    """
+    set_env()
+    if env.user in ['ec2-user', 'root']:
+        sudo('userdel -r ngas', warn_only=True)
+        sudo('userdel -r ngasmgr', warn_only=True)
+        sudo('rm /etc/ngamsServer.conf', warn_only=True)
+        sudo('rm /etc/init.d/ngamsServer', warn_only=True)
+    else:
+        run('rm -rf {0}'.format(env.NGAS_DIR_ABS))
