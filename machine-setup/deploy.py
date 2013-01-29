@@ -43,6 +43,7 @@ SECURITY_GROUPS = ['NGAS'] # Security group allows SSH
 NGAS_PYTHON_VERSION = '2.7'
 NGAS_PYTHON_URL = 'http://www.python.org/ftp/python/2.7.3/Python-2.7.3.tar.bz2'
 NGAS_DIR = 'ngas_rt' #NGAS runtime directory
+NGAS_DEF_CFG = 'NgamsCfg.SQLite.mini.xml'
 GITUSER = 'icrargit'
 GITREPO = 'gitsrv.icrar.org:ngas'
 
@@ -486,16 +487,18 @@ def user_setup():
     TODO: sort out the ssh keys
     """
 
+    if not env.user:
+        env.user = USERNAME # defaults to ec2-user
     for user in ['ngas','ngasmgr']:
-        sudo('useradd {0}'.format(user))
-        sudo('mkdir /home/{0}/.ssh'.format(user))
+        sudo('useradd {0}'.format(user), warn_only=True)
+        sudo('mkdir /home/{0}/.ssh'.format(user), warn_only=True)
         sudo('chmod 700 /home/{0}/.ssh'.format(user))
         sudo('chown {0}:{0} /home/{0}/.ssh'.format(user))
-        sudo('cp /home/ec2-user/.ssh/authorized_keys /home/{0}/.ssh/authorized_keys'.format(user))
+        sudo('cp /home/{0}/.ssh/authorized_keys /home/{1}/.ssh/authorized_keys'.format(USERNAME, user))
         sudo('chmod 700 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{0} /home/{0}/.ssh/authorized_keys'.format(user))
     env.user = 'ngas'
-    env.NGAS_DIR_ABS = '/home/ngas/{0}'.format(NGAS_DIR)
+    env.NGAS_DIR_ABS = '/home/{0}/{1}'.format(env.user, NGAS_DIR)
 
 
 @task
@@ -628,12 +631,64 @@ def user_deploy():
     ngas_full_buildout()
 
 
+
+@task
+def init_deploy():
+    """
+    Install the NGAS init script for an operational deployment
+    """
+
+    if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
+        env.NGAS_DIR_ABS = '{0}/{1}'.format('/home/ngas', NGAS_DIR)
+
+    sudo('cp {0}/src/ngamsStartup/ngamsServer.init.sh /etc/init.d/ngamsServer'.\
+         format(env.NGAS_DIR_ABS))
+    sudo('chmod a+x /etc/init.d/ngamsServer')
+    sudo('chkconfig --add /etc/init.d/ngamsServer')
+    with cd(env.NGAS_DIR_ABS):
+        sudo('ln -s {0}/cfg/{1} /etc/ngamsServer.conf'.format(\
+              env.NGAS_DIR_ABS, NGAS_DEF_CFG))
+
+
+
+@task
+@serial
+def operations_deploy():
+    """
+    ** MAIN TASK **: Deploy the full NGAS operational environment. 
+    In order to install NGAS on an operational host go to any host
+    where NGAS is already running or where you have git-cloned the
+    NGAS software and issue the command:
+    
+    fab -u <super-user> -H <host> -f machine_setup/deploy.py operations_deploy
+    
+    where <super-user> is a user on the target machine with root priviledges
+    and <host> is either the DNS resolvable name of the target machine or 
+    its IP address.
+    """
+
+    if not env.user:
+        env.user = 'root'
+    # set environment to default, if not specified otherwise.
+    set_env()
+    system_install()
+    if env.postfix:
+        postfix_config()
+    user_setup()
+    ppath = check_python()
+    if not ppath:
+        python_setup()
+    virtualenv_setup()
+    ngas_full_buildout()
+    init_deploy()
+
+
+
 @task
 @serial
 def test_deploy():
     """
     ** MAIN TASK **: Deploy the full NGAS EC2 test environment. 
-    (Does not include the NGAS users at this point)
     """
 
     test_env()
@@ -648,13 +703,5 @@ def test_deploy():
         python_setup()
     virtualenv_setup()
     ngas_full_buildout()
+    init_deploy()
 
-@task
-def start_server():
-    """
-    Start the installed NGAS server using the SQLite DB.
-    """
-    set_env()
-    with cd(env.NGAS_DIR_ABS):
-        run('{0}/bin/ngamsServer -cfg {0}/cfg/NgamsCfg.SQLite.mini.xml '.format(env.NGAS_DIR_ABS)+\
-                   '-force -autoOnline -v 2')
