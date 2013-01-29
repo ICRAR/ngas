@@ -361,7 +361,7 @@ def git_clone_tar():
     local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES {0}'.format(NGAS_DIR))
     tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
     put('/tmp/{0}'.format(tarfile), tarfile)
-    local('rm -rf {0}'.format(NGAS_DIR))  # cleanup local git clone dir
+    local('rm -rf /tmp/{0}'.format(NGAS_DIR))  # cleanup local git clone dir
     run('tar -xjf {0} && rm {0}'.format(tarfile))
 
 
