@@ -22,7 +22,7 @@ import os
 import time
 
 from fabric.api import run, sudo, put, env, require, local, task
-from fabric.context_managers import cd, hide
+from fabric.context_managers import cd, hide, settings
 from fabric.contrib.console import confirm
 from fabric.contrib.files import append, sed, comment
 from fabric.decorators import task, serial
@@ -497,8 +497,7 @@ def user_setup():
         sudo('cp /home/{0}/.ssh/authorized_keys /home/{1}/.ssh/authorized_keys'.format(USERNAME, user))
         sudo('chmod 700 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{0} /home/{0}/.ssh/authorized_keys'.format(user))
-    env.user = 'ngas'
-    env.NGAS_DIR_ABS = '/home/{0}/{1}'.format(env.user, NGAS_DIR)
+    env.NGAS_DIR_ABS = '/home/ngas/{0}'.format(NGAS_DIR)
 
 
 @task
@@ -646,7 +645,7 @@ def init_deploy():
     sudo('chmod a+x /etc/init.d/ngamsServer')
     sudo('chkconfig --add /etc/init.d/ngamsServer')
     with cd(env.NGAS_DIR_ABS):
-        sudo('ln -s {0}/cfg/{1} /etc/ngamsServer.conf'.format(\
+        sudo('ln -s {0}/cfg/{1} {0}/ngamsServer.conf'.format(\
               env.NGAS_DIR_ABS, NGAS_DEF_CFG))
 
 
@@ -675,11 +674,12 @@ def operations_deploy():
     if env.postfix:
         postfix_config()
     user_setup()
-    ppath = check_python()
-    if not ppath:
-        python_setup()
-    virtualenv_setup()
-    ngas_full_buildout()
+    with settings(user='ngas'):
+        ppath = check_python()
+        if not ppath:
+            python_setup()
+        virtualenv_setup()
+        ngas_full_buildout()
     init_deploy()
 
 
