@@ -645,7 +645,7 @@ def init_deploy():
     sudo('chmod a+x /etc/init.d/ngamsServer')
     sudo('chkconfig --add /etc/init.d/ngamsServer')
     with cd(env.NGAS_DIR_ABS):
-        sudo('ln -s {0}/cfg/{1} {0}/ngamsServer.conf'.format(\
+        sudo('ln -s {0}/cfg/{1} {0}/cfg/ngamsServer.conf'.format(\
               env.NGAS_DIR_ABS, NGAS_DEF_CFG))
 
 

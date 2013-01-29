@@ -17,8 +17,8 @@ case "$1" in
   start)
 #       echo -n "Starting ngamsServer: "
 
-#       daemon --user ngas "/home/ngas/ngas_rt/bin/ngamsServer -cfg /etc/ngamsServer.conf -autoOnline -force"
-        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsServer -cfg /etc/ngamsServer.conf -autoOnline -force -multiplesrvs&"
+#       daemon --user ngas "/home/ngas/ngas_rt/bin/ngamsServer -cfg /home/ngas/ngas_rt/cfg/ngamsServer.conf -autoOnline -force"
+        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsServer -cfg /home/ngas/ngas_rt/cfg/ngamsServer.conf -autoOnline -force -multiplesrvs&"
 
         echo "NG/AMS startup"
         [ $RETVAL -eq 0 ] && touch /var/lock/subsys/ngamsServer
