@@ -60,7 +60,8 @@ YUM_PACKAGES = [
    'make',
    'java-1.6.0-openjdk-devel.x86_64',
    'postfix',
-   'openssl-devel.x86_64',     
+   'openssl-devel.x86_64',
+   'wget.x86_64',     
 ]
 
 APT_PACKAGES = [
@@ -494,7 +495,7 @@ def user_setup():
         sudo('mkdir /home/{0}/.ssh'.format(user), warn_only=True)
         sudo('chmod 700 /home/{0}/.ssh'.format(user))
         sudo('chown {0}:{0} /home/{0}/.ssh'.format(user))
-        sudo('cp /home/{0}/.ssh/authorized_keys /home/{1}/.ssh/authorized_keys'.format(USERNAME, user))
+        sudo('cp /home/{0}/.ssh/authorized_keys /home/{1}/.ssh/authorized_keys'.format(env.user, user))
         sudo('chmod 700 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{0} /home/{0}/.ssh/authorized_keys'.format(user))
     env.NGAS_DIR_ABS = '/home/ngas/{0}'.format(NGAS_DIR)
