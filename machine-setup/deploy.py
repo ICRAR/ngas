@@ -494,7 +494,7 @@ def user_setup():
         sudo('useradd {0}'.format(user), warn_only=True)
         sudo('mkdir /home/{0}/.ssh'.format(user), warn_only=True)
         sudo('chmod 700 /home/{0}/.ssh'.format(user))
-        sudo('chown {0}:{0} /home/{0}/.ssh'.format(user))
+        sudo('chown -R {0}:{0} /home/{0}/.ssh'.format(user))
         sudo('cp /home/{0}/.ssh/authorized_keys /home/{1}/.ssh/authorized_keys'.format(env.user, user))
         sudo('chmod 700 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{0} /home/{0}/.ssh/authorized_keys'.format(user))
