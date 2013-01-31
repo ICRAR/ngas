@@ -699,11 +699,12 @@ def test_deploy():
     if env.postfix:
         postfix_config()
     user_setup()
-    ppath = check_python()
-    if not ppath:
-        python_setup()
-    virtualenv_setup()
-    ngas_full_buildout()
+    with settings(user='ngas'):
+        ppath = check_python()
+        if not ppath:
+            python_setup()
+        virtualenv_setup()
+        ngas_full_buildout()
     init_deploy()
 
 @task
