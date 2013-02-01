@@ -1,7 +1,7 @@
 #
-#    ICRAR - International Centre for Radio Astronomy Research
-#    (c) UWA - The University of Western Australia, 2012
-#    Copyright by UWA (in the framework of the ICRAR)
+#    ALMA - Atacama Large Millimiter Array
+#    (c) European Southern Observatory, 2002
+#    Copyright by ESO (in the framework of the ALMA collaboration),
 #    All rights reserved
 #
 #    This library is free software; you can redistribute it and/or
@@ -199,7 +199,7 @@ def saveFromHttpToFile(ngamsCfgObj,
         # Receive the data.
         buf = "-"
         rdSize = blockSize
-        slow = blockSize / (512 * 1024)  # limit for 'slow' transfers
+        slow = blockSize / (512 * 1024.)  # limit for 'slow' transfers
 #        sizeAccu = 0
         lastRecepTime = time.time()
         crc = 0   # initialize CRC value
@@ -208,7 +208,9 @@ def saveFromHttpToFile(ngamsCfgObj,
         wdtt = 0  # total write time
         nb = 0    # number of blocks
         srb = 0   # number of slow read blocks
+        scb = 0   # number of slow CRC calcs
         swb = 0   # number of slow write blocks
+        tot_size = 0 # total number of bytes
         while ((remSize > 0) and ((time.time() - lastRecepTime) < 30.0)):
             if (remSize < rdSize): rdSize = remSize
             rdt = time.time()
@@ -217,31 +219,33 @@ def saveFromHttpToFile(ngamsCfgObj,
             rdtt += rdt
             nb += 1
             sizeRead = len(buf)
-            info(5,"Read %d bytes from HTTP stream in %.3f s" % (sizeRead, rdt))
+#            info(5,"Read %d bytes from HTTP stream in %.3f s" % (sizeRead, rdt))
             if (sizeRead > 0):
                 cdt = time.time()
                 crc = binascii.crc32(buf, crc)
                 cdt = time.time() - cdt
                 cdtt += cdt
-                if cdt >= slow: srb += 1
-                info(5,"Calculated checksum from stream buffer in %.3f s" % cdt)
+                if cdt >= slow: scb += 1
+#                info(5,"Calculated checksum from stream buffer in %.3f s" % cdt)
 
             remSize -= sizeRead
-            reqPropsObj.setBytesReceived(reqPropsObj.getBytesReceived() +\
-                                         sizeRead)
+            tot_size += sizeRead
+#            reqPropsObj.setBytesReceived(reqPropsObj.getBytesReceived() +\
+#                                         sizeRead)
             if (sizeRead > 0):
                 wdt = time.time()
                 fdOut.write(buf)
                 wdt = time.time() - wdt
                 wdtt += wdt
                 if wdt >= slow: swb += 1
-                info(5,"Wrote %d bytes to file in %.3f s" % (sizeRead, wdt))
+#                info(5,"Wrote %d bytes to file in %.3f s" % (sizeRead, wdt))
                 lastRecepTime = time.time()
             else:
-                info(5,"Unsuccessful read attempt from HTTP stream! Sleeping 50 ms")
+                info(4,"Unsuccessful read attempt from HTTP stream! Sleeping 50 ms")
                 time.sleep(0.050)
 
         deltaTime = timer.stop()
+        reqPropsObj.setBytesReceived(tot_size)
         fdOut.close()
         info(4,"Transfer time: %.3f s; CRC time: %.3f s; write time %.3f s" % (rdtt, cdtt, wdtt))
         msg = "Saved data in file: %s. Bytes received: %d. Time: %.3f s. " +\
@@ -314,7 +318,7 @@ def handleCmd(srvObj,
 
     # Get mime-type (try to guess if not provided as an HTTP parameter).
     info(3, "Get mime-type (try to guess if not provided as an HTTP parameter).")
-    if (reqPropsObj.getMimeType() in ["", NGAMS_ARCH_REQ_MT]):
+    if (reqPropsObj.getMimeType() == ""):
         mimeType = ngamsHighLevelLib.\
                    determineMimeType(srvObj.getCfg(), reqPropsObj.getFileUri())
         reqPropsObj.setMimeType(mimeType)
