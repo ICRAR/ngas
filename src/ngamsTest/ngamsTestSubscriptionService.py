@@ -1,9 +1,9 @@
 """
 Should cover several cases
 
-Case 1. ngas-B subscribes with ngas-A. Then multiple clients simultaneously archive files to ngas-A at the same time interval.
-Case 2. a client archives several files to ngas-A, then ngas-B subscribes with A from the past. After a while, ngas-C subscribe with A from the past.
-Case 3, a client subscribe with concurrent_threads = 2. Restart the NGAS server, the client then archive files to this NGAS server.
+Case 1. Both ngas-B and ngas-C subscribe with ngas-A. Then multiple clients simultaneously archive files to ngas-A at the same time interval.
+Case 2. A client archives several files to ngas-A, then ngas-B subscribes with A from the past. After a while, ngas-C subscribe with A from the past.
+Case 3, A client subscribes with concurrent_threads = 2. Restart the NGAS server, the client then archive files to this NGAS server.
 """
 import time, os, commands, threading, thread
 import ngamsPClient
@@ -78,10 +78,17 @@ def _archiveThread(pclient, fileUriList, interval, clientIdx, my_bar):
     for fileUri in fileUriList:
         my_bar.enter()
         print 'Archiving file %s' % fileUri 
-        stat = pclient.pushFile(fileUri, mime_type, cmd = 'QARCHIVE')
+        stat = None
+        try:
+            stat = pclient.pushFile(fileUri, mime_type, cmd = 'QARCHIVE')
+        except Exception as e:
+            print "Exception '%s' occurred while archiving file %s" % (str(e), fileUri)
+            continue
         msg = stat.getMessage().split()[0]
         if (msg != 'Successfully'):
-            raise Exception('Fail to archive \"%s\"' % fileUri)
+            #raise Exception('Fail to archive \"%s\"' % fileUri)
+            print "Exception '%s' occurred while archiving file %s" % (stat.getMessage(), fileUri)
+            continue
         time.sleep(interval)
     
     print 'Thread [%d] exits' % clientIdx
@@ -123,6 +130,8 @@ def TestCase01(num_file_per_client, num_clients, interval = 4, base_name = None)
         print 'Creating %d dummy files ...' % num_files
         base_name = createTmpFiles(num_files)
     
+    last_fname = '%s-%s%s' % (base_name, num_files - 1, file_ext)
+    
     file_list = []
     for client in range(num_clients):
         file_list.append([])
@@ -143,8 +152,30 @@ def TestCase01(num_file_per_client, num_clients, interval = 4, base_name = None)
     print 'Wait until all archive threads are done'
     _waitUntilThreadsExit(deliveryThreads)
        
-    print 'Wait %d seconds so that all files are delivered to all subscribers' % (num_files * 3)
-    time.sleep(num_files * 3) # assume each file needs 3 seconds to delivery (in parallel)
+    #print 'Wait %d seconds so that all files are delivered to all subscribers' % (num_files * 3)
+    print "Wait until NGAS-B has received the last file"
+    try:
+        howlong = waitUntilFileDelivered(last_fname, clientB, timeout = num_files, wait_interval = 2)
+    except WaitTimeout as e:
+        print 'Timeout waiting for the last file \"%s\" to be delivered to \"%s\"' % (last_fname, ngasB_url)
+        _unSubscribe(clientA, ngasB_url)
+        _unSubscribe(clientA, ngasC_url)
+        return
+    else:
+        print 'After %d seconds, the last file \"%s\" is delivered to \"%s\"' % (howlong, last_fname, ngasB_url)
+    
+    print "Wait until NGAS-C has received the last file"
+    try:
+        howlong = waitUntilFileDelivered(last_fname, clientC, timeout = num_files, wait_interval = 1)
+    except WaitTimeout as e:
+        print 'Timeout waiting for the last file \"%s\" to be delivered to \"%s\"' % (last_fname, ngasC_url)
+        _unSubscribe(clientA, ngasB_url)
+        _unSubscribe(clientA, ngasC_url)
+        return
+    else:
+        print 'After %d seconds, the last file \"%s\" is delivered to \"%s\"' % (howlong, last_fname, ngasB_url)
+
+    #time.sleep(num_files * 3) # assume each file needs 3 seconds to delivery (in parallel)
     
     verifyCase(base_name, num_files, clientB, False)
     verifyCase(base_name, num_files, clientC, True)
@@ -162,6 +193,11 @@ def _subscribeAwithB(concurrent_threads = 4):
     
  
 def TestCase03(num_files, base_name = None):
+    print 'Subscribing A with B\'s url ...'
+    _subscribeAwithB()
+    tt = 'N'
+    while (tt != 'Y' and tt != 'y'):
+        tt = raw_input("Have you restarted NGAS server A? (Y/N)")
     if (base_name == None):
         print 'Creating %d dummy files ...' % num_files
         base_name = createTmpFiles(num_files)
@@ -297,5 +333,5 @@ def verifyCase(base_name, num_files, pclient, clean_on_complete = True):
 if __name__ == '__main__':
     #TestCase02(16, base_name = '1358203679')
     #TestCase02(16)
-    #TestCase01(50, 6, interval = 3)
-    TestCase03(32)
+    TestCase01(10, 6, interval = 3)
+    #TestCase03(32)
