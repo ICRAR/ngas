@@ -546,6 +546,7 @@ def virtualenv_setup():
         # make this installation self consistent
         virtualenv('pip install fabric')
         virtualenv('pip install boto')
+        virtualenv('pip install markup.py')
 
 
 
