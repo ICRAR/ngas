@@ -290,7 +290,8 @@ _sum2Def = [["nf.file_id",        "SUM2_FILE_ID"],
             ["nf.file_name",      "SUM2_FILENAME"],
             ["nf.file_version",   "SUM2_VERSION"],
             ["nf.ingestion_date", "SUM2_ING_DATE"],
-            ["nf.format",         "SUM2_MIME_TYPE"]]
+            ["nf.format",         "SUM2_MIME_TYPE"],
+            ["nd.disk_id",        "SUM2_DISK_ID"]]
 _sum2Cols = ""
 idx = 0
 for colDef in _sum2Def:

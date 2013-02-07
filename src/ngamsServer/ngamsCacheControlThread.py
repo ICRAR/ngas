@@ -453,25 +453,26 @@ def addEntryInCacheDbms(srvObj,
     T = TRACE()
 
     # Insert entry in the local DBMS (if not already there).
+    timeNow = time.time()
     if (not entryInCacheDbms(srvObj, diskId, fileId, fileVersion)):
         if (delete):
-            delete = 1
+            deleteFlag = 1
         else:
-            delete = 0
-        timeNow = time.time()
+            deleteFlag = 0       
         cacheEntryObjPickle = cPickle.dumps(cacheEntryObj)
         # Have to encode the pickled object to be able to write it in the
         # DB table.
         cacheEntryObjPickleEnc = base64.b32encode(cacheEntryObjPickle)
         sqlQuery = _ADD_ENTRY_IN_CACHE_DBMS %\
                    (diskId, fileId, int(fileVersion), filename, fileSize,
-                    delete, timeNow, timeNow, cacheEntryObjPickleEnc)
+                    deleteFlag, timeNow, timeNow, cacheEntryObjPickleEnc)
         queryCacheDbms(srvObj, sqlQuery)
 
     if (addInRdbms):
         # Insert entry in the remote DBMS.
         srvObj.getDb().insertCacheEntry(diskId, fileId, fileVersion, timeNow,
-                                        False)
+                                            delete)
+        
 
 
 _SET_FILENAME_CACHE_DBMS = "UPDATE ngas_cache SET filename = '%s' WHERE " +\
@@ -709,6 +710,13 @@ def checkNewFilesDbm(srvObj):
         fileInfo = getEntryNewFilesDbm(srvObj)
         if (not fileInfo): break
              
+        # Get cache delete flag first
+        if (len(fileInfo) > NGAMS_CACHE_CACHE_DEL and fileInfo[NGAMS_CACHE_CACHE_DEL] != None):
+            deleteFlag = fileInfo[NGAMS_CACHE_CACHE_DEL]
+        else:
+            deleteFlag = False
+        
+        
         # Get the rest of File Summary 1 info and create an ngamsCacheEntry
         # object.
         sqlFileInfo = srvObj.getDb().\
@@ -724,9 +732,9 @@ def checkNewFilesDbm(srvObj):
             error(msg)
 
         # Add the new entry.
-        info(3, "Adding new entry in Cache DBMS: %s/%s/%s" %\
+        info(3, "Adding new entry in Cache DBMS: %s/%s/%s/%s" %\
              (fileInfo[NGAMS_CACHE_DISK_ID], fileInfo[NGAMS_CACHE_FILE_ID],
-              fileInfo[NGAMS_CACHE_FILE_VER]))
+              fileInfo[NGAMS_CACHE_FILE_VER], deleteFlag))
         timeNow = time.time()
         cacheEntryObject = ngamsCacheEntry.ngamsCacheEntry().\
                            unpackSqlInfo(sqlFileInfo).\
@@ -738,6 +746,7 @@ def checkNewFilesDbm(srvObj):
                             cacheEntryObject.getFileVersion(),
                             cacheEntryObject.getFilename(),
                             cacheEntryObject.getFileSize(),
+                            delete = deleteFlag,
                             lastCheck = timeNow,
                             cacheTime = timeNow,
                             cacheEntryObj = cacheEntryObject)
@@ -799,6 +808,32 @@ def scheduleFileForDeletion(srvObj,
     sqlQuery = _SCHEDULE_DEL_TPL % (diskId, fileId, int(fileVersion))
     queryCacheDbms(srvObj, sqlQuery)
     srvObj.getDb().updateCacheEntry(diskId, fileId, fileVersion, 1)
+    
+    # update the newfilesdbm (bsddb)
+    fileKey = ngamsLib.genFileKey(diskId, fileId, fileVersion)
+    srvObj._cacheNewFilesDbmSem.acquire()
+    try:
+        fileInfo = srvObj._cacheNewFilesDbm.get(fileKey)
+        if fileInfo == None:
+            newFileInfo = (diskId, fileId, fileVersion, None, None, True)
+            #raise Exception, "Cannot find the fileKey when scheduling mark deletion - %s/%s" % (diskId, fileId)
+        else:
+            oldLen = len(fileInfo)
+            if (oldLen < NGAMS_CACHE_CACHE_DEL + 1):
+                newFileInfo = (NGAMS_CACHE_CACHE_DEL + 1) * [None]
+            else:
+                newFileInfo = oldLen * [None]
+                
+            for idx in range(oldLen):
+                newFileInfo[idx] = fileInfo[idx]
+            
+            newFileInfo[NGAMS_CACHE_CACHE_DEL] = True
+        srvObj._cacheNewFilesDbm.add(fileKey, newFileInfo)    
+        
+    except Exception, e:
+        alert(str(e))
+    finally:
+        srvObj._cacheNewFilesDbmSem.release()
     
 
 def createTmpDbm(srvObj,
