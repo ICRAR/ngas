@@ -546,7 +546,7 @@ def virtualenv_setup():
         # make this installation self consistent
         virtualenv('pip install fabric')
         virtualenv('pip install boto')
-        # virtualenv('pip install markup.py') 
+        virtualenv('pip install {0}/clib_tars/markup-1.9.tar.gz'.format(env.NGAS_DIR_ABS)) 
         # the package has not been updated on PyPI as of 2013-02-7
 
 
