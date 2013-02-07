@@ -103,15 +103,23 @@ def formatAsHTML(resultSet):
     page.init( css=styles, title=title, header=header, footer=footer )
     page.br( )
     
-    paragraphs = ( "This will be a paragraph.",
-                   "So as this, only slightly longer, but not much.",
-                   "Third absolutely boring paragraph." )
+    page.table(border="1")
+    page.thead()
+    page.th()
+    page.td()
+    page.td.close()
+    page.th.close()
+    page.thead.close()
+    page.tbody()
+    page.tr()
+    for row in resultSet:
+        for cell in row:
+            page.td(cell)
+        page.tr.close()
+    page.tbody.close()
+    page.table.close()
     
-    page.p( paragraphs )
-        
-    page.a( "Click this.", class_='internal', href='index.html' )
-    page.img( width=60, height=80, alt='Fantastic!', src='fantastic.jpg' )
-    return resultHTML
+    return page.__str__()
 
 
 
