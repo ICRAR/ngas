@@ -27,8 +27,8 @@
     </Description>
   </Header>
 
-  <Server Id="Server-ALMA"
-          ArchiveName="ALMA-ARCHIVE-VM" 
+  <Server Id="Server-MWA"
+          ArchiveName="MWA-ARCHIVE-VM" 
           BlockSize="65536"
           MaxSimReqs="10" 
           RootDirectory="NGAS" 
@@ -47,7 +47,7 @@
                    BackLogBuffering="0"
                    FreeSpaceDiskChangeMb="20"
                    MinFreeSpaceWarningMb="500"
-                   PathPrefix="afa"
+                   PathPrefix="MWAArchive"
                    Replication="0"/>
 
   <Db     Id="Db-Sqlite-Test" 
