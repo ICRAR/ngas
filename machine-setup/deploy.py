@@ -30,6 +30,8 @@ from fabric.operations import prompt
 from fabric.utils import puts, abort, fastprint
 
 #Defaults
+thisDir = os.path.dirname(os.path.realpath(__file__))
+
 USERNAME = 'ec2-user'
 POSTFIX = False
 AMI_ID = 'ami-aecd60c7'
@@ -546,7 +548,8 @@ def virtualenv_setup():
         # make this installation self consistent
         virtualenv('pip install fabric')
         virtualenv('pip install boto')
-        virtualenv('pip install {0}/clib_tars/markup-1.9.tar.gz'.format(env.NGAS_DIR_ABS)) 
+        put('{0}/../clib_tars/markup-1.9.tar.gz'.format(thisDir), '/tmp/markup-1.9.tar.gz')
+        virtualenv('pip install /tmp/markup-1.9.tar.gz'.format(env.NGAS_DIR_ABS)) 
         # the package has not been updated on PyPI as of 2013-02-7
 
 
@@ -650,7 +653,7 @@ def init_deploy(type='archive'):
         env.NGAS_DIR_ABS = '{0}/{1}'.format('/home/ngas', NGAS_DIR)
 
     sudo('cp {0}/src/ngamsStartup/{1} /etc/init.d/{2}'.\
-         format(env.NGAS_DIR_ABS), initFile, initName)
+         format(env.NGAS_DIR_ABS, initFile, initName))
     sudo('chmod a+x /etc/init.d/{0}'.format(initName))
     sudo('chkconfig --add /etc/init.d/{0}'.format(initName))
     with cd(env.NGAS_DIR_ABS):

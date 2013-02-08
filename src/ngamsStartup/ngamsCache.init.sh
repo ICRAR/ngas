@@ -20,7 +20,7 @@ case "$1" in
 #       echo -n "Starting ngamsServer: "
 
 #       daemon --user ngas "/home/ngas/ngas_rt/bin/ngamsServer -cfg /home/ngas/ngas_rt/cfg/ngamsServer.conf -autoOnline -force"
-        su - ngas -c "/home/ngas/ngas_rt/bin/python /home/ngas/ngas_rt/src/ngamsServer/ngamsCacheServer.py -cfg /home/ngas/NGAS_128T_Production/NgamsCfg.PostgreSQL.128T-Production.xml -autoOnline -force -multipleSrvs&" 2>&1>/dev/null
+        su - ngas -c "/home/ngas/ngas_rt/bin/python /home/ngas/ngas_rt/src/ngamsServer/ngamsCacheServer.py -cfg /home/ngas/ngas_rt/cfg/NgamsCfg.SQLite.cache.xml -autoOnline -force -multipleSrvs&" 2>&1>/dev/null
 
         echo "NG/AMS startup"
         [ $RETVAL -eq 0 ] && touch /var/lock/subsys/ngamsServer
