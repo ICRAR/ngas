@@ -635,27 +635,33 @@ def user_deploy():
 
 
 @task
-def init_deploy():
+def init_deploy(type='archive'):
     """
     Install the NGAS init script for an operational deployment
     """
-
+    if type == 'archive':
+        initFile = 'ngamsServer.init.sh'
+    elif type == 'cache':
+        initFile = 'ngamsCache.init.sh'
+        NGAS_DEF_CFG = 'NgamsCfg.SQLite.cache.xml'
+    initName = initFile.split('.')[0]
+    
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
         env.NGAS_DIR_ABS = '{0}/{1}'.format('/home/ngas', NGAS_DIR)
 
-    sudo('cp {0}/src/ngamsStartup/ngamsServer.init.sh /etc/init.d/ngamsServer'.\
-         format(env.NGAS_DIR_ABS))
-    sudo('chmod a+x /etc/init.d/ngamsServer')
-    sudo('chkconfig --add /etc/init.d/ngamsServer')
+    sudo('cp {0}/src/ngamsStartup/{1} /etc/init.d/{2}'.\
+         format(env.NGAS_DIR_ABS), initFile, initName)
+    sudo('chmod a+x /etc/init.d/{0}'.format(initName))
+    sudo('chkconfig --add /etc/init.d/{0}'.format(initName))
     with cd(env.NGAS_DIR_ABS):
-        sudo('ln -s {0}/cfg/{1} {0}/cfg/ngamsServer.conf'.format(\
-              env.NGAS_DIR_ABS, NGAS_DEF_CFG))
+        sudo('ln -s {0}/cfg/{1} {0}/cfg/{2}.conf'.format(\
+              env.NGAS_DIR_ABS, NGAS_DEF_CFG, initName))
 
 
 
 @task
 @serial
-def operations_deploy():
+def operations_deploy(system=True, user=True, type='archive'):
     """
     ** MAIN TASK **: Deploy the full NGAS operational environment. 
     In order to install NGAS on an operational host go to any host
@@ -667,23 +673,27 @@ def operations_deploy():
     where <super-user> is a user on the target machine with root priviledges
     and <host> is either the DNS resolvable name of the target machine or 
     its IP address.
+    
+    NOTE: The parameter can be passed from the command line by using
+    
+    fab -f deploy.py operations_deploy:type='cache'
     """
 
     if not env.user:
         env.user = 'root'
     # set environment to default, if not specified otherwise.
     set_env()
-    system_install()
+    if system: system_install()
     if env.postfix:
         postfix_config()
-    user_setup()
+    if user: user_setup()
     with settings(user='ngas'):
         ppath = check_python()
         if not ppath:
             python_setup()
         virtualenv_setup()
         ngas_full_buildout()
-    init_deploy()
+    init_deploy(type=type)
 
 
 
