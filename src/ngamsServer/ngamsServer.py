@@ -2169,6 +2169,7 @@ class ngamsServer:
             stat, out = commands.getstatusoutput("df " + dirInfo[0])
             if (stat == 0):
                 mtPt = out.split("\n")[1].split("%")[-1].strip()
+                #is SunOS, should be  mtPt = out.split(" ")[0].strip()
                 if (not self.__sysMtPtDic.has_key(mtPt)):
                     self.__sysMtPtDic[mtPt] = []
                 self.__sysMtPtDic[mtPt].append(dirInfo)

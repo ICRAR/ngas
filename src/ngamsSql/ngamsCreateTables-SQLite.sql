@@ -103,7 +103,7 @@ Create table ngas_hosts
   ip_address           varchar(20)    not null,
   mac_address          varchar(20)    null,
   n_slots              smallint       null,
-  cluster_name         varchar(16)    null,
+  cluster_name         varchar(32)    null,
   installation_date    varchar(23)    null,
   ngas_type            varchar(32)    null,
   srv_version          varchar(20)    null,
@@ -175,7 +175,7 @@ Create table ngas_subscribers
   subscr_filter_plugin      varchar(64)   null,
   subscr_filter_plugin_pars varchar(128)  null,
   last_file_ingestion_date  varchar(23)   null,
-  concurrent_threads		int			  null
+  concurrent_threads		int	default 1   null
 );
 
 create unique index subscr_id_idx on ngas_subscribers(subscr_id);

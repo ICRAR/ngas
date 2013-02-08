@@ -37,7 +37,7 @@ create table ngas_cfg
 	disk_id			varchar(128)	not null,
 	file_id			varchar(64)	not null,
 	file_version		int		not null,
-	cache_time		numeric(6, 10) 	not null,
+	cache_time		numeric(16, 6) 	not null,
 	cache_delete		smallint	not null,		
 	constraint ngas_cache_idx     primary key(disk_id, file_id, file_version)
 );
@@ -121,7 +121,7 @@ create table ngas_hosts
 	ip_address		varchar(20)	not null,
 	mac_address		varchar(20)	null,
 	n_slots			smallint	null,
-	cluster_name		varchar(16)	null,
+	cluster_name		varchar(32)	null,
 	installation_date	varchar(23)	null,
 	ngas_type               varchar(32)     null,
 	idate			varchar(23)	null,
