@@ -391,7 +391,7 @@ def system_install():
     re = run('cat /etc/issue')
     linux_flavor = re.split()
     if (len(linux_flavor) > 0):
-        if linux_flavor[0] == 'CentOS':
+        if linux_flavor[0] == 'CentOS' or linux_flavor[0] == 'Ubuntu':
             linux_flavor = linux_flavor[0]
         elif linux_flavor[0] == 'Amazon':
             linux_flavor = ' '.join(linux_flavor[:2])

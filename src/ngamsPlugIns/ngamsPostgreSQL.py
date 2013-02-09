@@ -42,7 +42,8 @@ the NG/AMS Cursor Object API definition.
 """
 
 import time, re
-import pgdb
+#import pgdb
+import psycopg2
 import pcc, PccUtTime
 from   ngams import *
 from   mx import DateTime
@@ -52,6 +53,11 @@ class ngamsPostgreSQL:
     """
     Class to handle the connection to the NGAS DB when PostgreSQL is used as DBMS.
     """
+    
+    CONN_ERROR = [
+        "Connection is not valid",
+        "no connection to the server"
+    ]
   
     def __init__(self,
                  server,
@@ -123,8 +129,10 @@ class ngamsPostgreSQL:
         # connect([dbname], [host], [port], [opt], [tty], [user], [passwd])
         
         #connect_string = 'host:database:user:password:opt:tty'
-        connect_string = server + ':' + db + ':' + user + ':' + password
-        self.__dbConn = pgdb.connect(connect_string)
+        #connect_string = server + ':' + db + ':' + user + ':' + password
+        #connect_string = 'database = "%s", host = "%s", user = "%s", password = "%s"' % (db, server, user, password)
+        #self.__dbConn = pgdb.connect(connect_string)
+        self.__dbConn = psycopg2.connect(database = db, host = server, user = user, password = password)
         #self.__dbConn = pg.connect(db, server, -1, None, None, user, password)
 
         # Store connection parameters.
@@ -163,8 +171,11 @@ class ngamsPostgreSQL:
             self.__dbConn.commit()
             #cur = self.__dbConn.query(query)       
         except Exception, e:
-            if ((str(e).find("Connection is not valid") != -1) or (str(e).find("no connection to the server") != -1) or (str(e).find("terminating connection") != -1) \
-                or (str(e).find("server closed the connection unexpectedly") != -1)):
+            if (isinstance(e, psycopg2.InterfaceError) or \
+                (str(e).find("Connection is not valid") != -1) or \
+                (str(e).find("no connection to the server") != -1) or \
+                (str(e).find("terminating connection") != -1) or \
+                (str(e).find("server closed the connection unexpectedly") != -1)):
                 time.sleep(2.0)
                 self.connect(self.__server, self.__db, self.__user, self.__password, self.__application, self.__parameters)
                 info(1,"Reconnected to DB - performing SQL query: " + query)
