@@ -33,6 +33,7 @@ create table ngas_cfg
 );
 
 \qecho create table ngas_cache
+create table ngas_cache
 (
 	disk_id			varchar(128)	not null,
 	file_id			varchar(64)	not null,
