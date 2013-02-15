@@ -103,7 +103,7 @@ Create table ngas.ngas_files
 	uncompressed_file_size	numeric(20, 0)	not null,
 	compression		varchar(32)	null,
 	ingestion_date		varchar(23)	not null,
-	fignore                 smallint        null,
+	file_ignore                 smallint        null,
 	checksum	        varchar(64)	null,
 	checksum_plugin         varchar(64)	null,
 	file_status             char(8)         default '00000000',
