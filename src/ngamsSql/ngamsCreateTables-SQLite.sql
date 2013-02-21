@@ -1,6 +1,4 @@
 
-
-
 drop table ngas_cache;
 Create table ngas_cache
 (
@@ -41,6 +39,7 @@ create table ngas_disks
   installation_date       varchar(23)    not null,
   type                    varchar(64)    not null,
   manufacturer            varchar(64)    null,
+  capacity_mb             numeric(20,0)  not null,
   logical_name            varchar(128)   not null,
   host_id                 varchar(32)    null,
   slot_id                 varchar(32)    null,

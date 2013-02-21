@@ -29,6 +29,8 @@
 # awicenec  2005-03-15  Created
 # jknudstr  2008-02-11  Removed usage of _queryRewrite(), not needed anymore.
 # cwu       2012-04-25  Copied from ngamsOracle to ngamsPostgreSQL
+# awicenec  2013-02-15  re-established _queyRewrite to cover change from 
+#                       ignore to file_ignore
 #
 
 """
@@ -148,7 +150,7 @@ class ngamsPostgreSQL:
         T = TRACE()
         self.__dbConn.close()  
         del(self.__dbConn)
-        return close
+        return self
 
 
     def _execute(self,
@@ -416,7 +418,7 @@ class ngamsPostgreSQLCursor:
         T = TRACE()
         
         # Query replace to catch DB specifics.
-        #query = self._queryRewrite(query)
+        query = self._queryRewrite(query)
         info(4, "Executing query: |%s|" % query)
         self.__cursorObj = self.__dbConn.cursor()     
         self.__cursorObj.execute(str(query))
@@ -469,9 +471,8 @@ class ngamsPostgreSQLCursor:
         Returns the modified query string.
         """
         T = TRACE()
-
         # The following block replaces the ignore column name (reserved word
-        # in mySQL) with file_ignore.
+        # in mySQL and SQLite) with file_ignore.
         regex1 = re.compile('ignore')
         pquery = regex1.sub('file_ignore',query)
 

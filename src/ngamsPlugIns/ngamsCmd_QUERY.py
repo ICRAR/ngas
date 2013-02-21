@@ -37,10 +37,14 @@ import pydoc
 import pcc, PccUtTime
 from ngams import *
 import ngamsLib, ngamsStatus, ngamsDbm
-import markup
+import cPickle, json
+
+# import markup TODO: This is for HTML formatting
 
 CURSOR_IDX           = "__CURSOR_IDX__"
 NGAMS_PYTHON_LIST_MT = "application/python-list"
+NGAMS_PYTHON_PICKLE_MT = "application/python-pickle"
+NGAMS_JSON_MT = "application/json"
 
 valid_queries = {"files_list":"select * from ngas_files",
                   "disks_list":"select * from ngas_disks", 
@@ -189,6 +193,12 @@ def handleCmd(srvObj,
         if (out_format == "list"):
             finalRes = formatAsList(res)
             mimeType = NGAMS_TEXT_MT
+        elif (out_format == "pickle"):
+            finalRes = cPickle.dumps(res)
+            mimeType = NGAMS_PYTHON_PICKLE_MT
+        elif (out_format == "json"):
+            finalRes = json.dumps(res)
+            mimeType = NGAMS_JSON_MT
         else:
             finalRes = str(res)
             mimeType = NGAMS_PYTHON_LIST_MT

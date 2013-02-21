@@ -564,6 +564,9 @@ def ngas_buildout():
     with cd(env.NGAS_DIR_ABS):
         virtualenv('buildout')
     run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
+    with cd('NGAS'):
+        run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
+            .format(env.NGAS_DIR_ABS))
 
 
 @task
@@ -580,7 +583,7 @@ def ngas_full_buildout():
     with cd(env.NGAS_DIR_ABS):
         # run bootstrap with correct python version (explicit)
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
-        virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
+        virtualenv('python{0} bootstrap.py -v 1.7.0'.format(NGAS_PYTHON_VERSION))
 
     ngas_buildout()
 

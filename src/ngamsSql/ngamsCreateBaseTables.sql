@@ -232,6 +232,7 @@ Create table ngas_disks
 	installation_date	datetime	not null,
 	type			varchar(64)	not null,
 	manufacturer		varchar(64)     null,
+	capacity_mb     numeric(20,0) not null,
 	logical_name		varchar(128)	not null,
 	host_id			varchar(32)	null,
 	slot_id			varchar(32)	null,
@@ -357,7 +358,7 @@ go
  *
  *  ingestion_date:           Date the file was ingested/archived.
  *
- *  ignore:                   Used to indicate that this file should be ignored
+ *  file_ignore:              Used to indicate that this file should be ignored
  *                            (1 = ignore). If set to one, this entry for this
  *                            file, will not be taken into account by NG/AMS
  *                            when files or information about files is queried.
@@ -403,7 +404,7 @@ Create table ngas_files
 	uncompressed_file_size	numeric(20, 0)	not null,
 	compression		varchar(32)	null,
 	ingestion_date		datetime	not null,
-	ignore                  tinyint         null,
+	file_ignore         tinyint         null,
 	checksum	        varchar(64)	null,
 	checksum_plugin         varchar(64)	null,
 	file_status             char(8)         default '00000000',
