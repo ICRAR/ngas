@@ -28,6 +28,19 @@ fileMimeType = "application/octet-stream"
 THREAD_STOP_TIME_OUT = 8
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
+    """
+    Handle the Asynchronously Retrieve Command.
+        
+    srvObj:         Reference to NG/AMS server class object (ngamsServer).
+    
+    reqPropsObj:    Request Property object to keep track of actions done
+                    during the request handling (ngamsReqProps).
+        
+    httpRef:        Reference to the HTTP request handler
+                    object (ngamsHttpRequestHandler).
+        
+    Returns:        Void.
+    """
     httpMethod = reqPropsObj.getHttpMethod()
     if (httpMethod == 'POST'):
         postContent = _getPostContent(srvObj, reqPropsObj)    
