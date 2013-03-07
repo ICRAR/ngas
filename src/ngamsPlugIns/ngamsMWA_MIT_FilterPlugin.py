@@ -36,6 +36,7 @@ Contains a Filter Plug-In used to filter out those files that
 from ngams import *
 import ngamsPlugInApi
 import ngamsPClient
+import ngamsMWACortexTapeApi
 
 def ngamsMWA_MIT_FilterPlugin(srvObj,
                           plugInPars,
@@ -65,6 +66,14 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
     projectId = ''
     
     try:
+        onTape = ngamsMWACortexTapeApi.isFileOnTape(filename)
+        if (onTape == 1 or onTape == -1):
+            # if the file is on Tape or query error, ignore it, otherwise Tape staging will block all other threads!!
+            info(3, 'File %s appears on Tape, cannot push to subscriber for now' % filename)
+            return 0 
+            #TODO need to do either of the following:
+            # 1. query the MWA database to get the project id, but this will throw the problem to the later _deliveryThread
+            # 2. put this filename into a server queue, later on push them all together in another process
         keyDic  = ngamsPlugInApi.getFitsKeys(filename, ["PROJID"])
         projectId = keyDic["PROJID"][0]
     except:

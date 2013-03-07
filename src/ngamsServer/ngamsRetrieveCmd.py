@@ -140,7 +140,8 @@ def genReplyRetrieve(srvObj,
         # TODO: Make possible to send back several results - use multipart
         # mime-type message -- for now only one result is sent back.
         resObj = statusObjList[0].getResultObject(0)
-
+        #info(3, "Getting block size for retrieval")
+        blockSize = srvObj.getCfg().getBlockSize()
         mimeType = resObj.getMimeType()
         dataSize = resObj.getDataSize()
         refFilename = resObj.getRefFilename()
@@ -166,7 +167,7 @@ def genReplyRetrieve(srvObj,
             dataSent = 0
             dataToSent = getFileSize(resObj.getDataRef())
             while (dataSent < dataToSent):
-                tmpData = fd.read(srvObj.getCfg().getBlockSize())
+                tmpData = fd.read(blockSize)
                 #os.write(httpRef.wfile.fileno(), tmpData)
                 httpRef.wfile._sock.sendall(tmpData)
                 dataSent += len(tmpData)
@@ -178,7 +179,7 @@ def genReplyRetrieve(srvObj,
             dataToSent = dataSize
             while (dataSent < dataToSent):
                 tmpData = resObj.getDataRef().\
-                          read(srvObj.getCfg().getBlockSize())
+                          read(blockSize)
                 #os.write(httpRef.wfile.fileno(), tmpData)
                 httpRef.wfile._sock.sendall(tmpData)
                 dataSent += len(tmpData)
