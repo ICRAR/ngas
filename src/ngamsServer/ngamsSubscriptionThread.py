@@ -599,7 +599,7 @@ def _deliveryThread(srvObj,
                 # was attempted re-posted).
                 errMsg = "Error occurred while delivering file: " + baseName +\
                          "/" + str(fileVersion) +\
-                         " - to Subscriber with ID: " + subscrObj.getId() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]"
+                         " - to Subscriber with ID/url: " + subscrObj.getId() + "/" + subscrObj.getUrl() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]"
                 if (ex != ""): errMsg += " Exception: " + ex + "."
                 if (stat.getMessage() != ""):
                     errMsg += " Message: " + stat.getMessage()

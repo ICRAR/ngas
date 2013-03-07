@@ -36,9 +36,50 @@ instead of saveFromHttpToFile, it saveFromHttpToAnotherHttp
 """
 
 from ngams import *
-import ngamsLib, ngamsStatus, ngamsHighLevelLib
+import ngamsLib, ngamsStatus, ngamsHighLevelLib, ngamsDiskInfo
 
 import httplib
+
+def processHttpReply(http, basename, url):
+    """
+    After file is sent, collect the ngams status from the remote server
+    parse error message, and log if necessary
+    
+    http:        the HTTP Client
+    
+    basename    Name of the file sent to the remote ngas server (used in the content disposition)
+    
+    url:        the url of the remote ngas server that receives the file
+    """
+    info(4,"Waiting for reply ...")
+    ngamsLib._setSocketTimeout(None, http)
+    reply, msg, hdrs = http.getreply()
+    if (hdrs == None):
+        errMsg = "Illegal/no response to HTTP request encountered!"
+        raise Exception, errMsg
+
+    if (hdrs.has_key("content-length")):
+        dataSize = int(hdrs["content-length"])
+    else:
+        dataSize = 0
+    
+    ngamsLib._waitForResp(http.getfile(), None)
+    data = http.getfile().read(dataSize)
+    
+    stat = ngamsStatus.ngamsStatus()
+    if (data.strip() != ""):
+        stat.clear().unpackXmlDoc(data)
+    else:
+        # TODO: For the moment assume success in case no
+        #       exception was thrown.
+        stat.clear().setStatus(NGAMS_SUCCESS)
+    
+    if ((reply != NGAMS_HTTP_SUCCESS) or
+                (stat.getStatus() == NGAMS_FAILURE)):
+        errMsg = 'Error occurred while proxy quick archive file %s to %s' % (basename, url)
+        if (stat.getMessage() != ""):
+            errMsg += " Message: " + stat.getMessage()
+        warning(errMsg)
 
 def buildHttpClient(url,
                     mimeType,
@@ -73,47 +114,7 @@ def buildHttpClient(url,
     
     return http
 
-def processHttpReply(http, basename, url):
-	"""
-	After file is sent, collect the ngams status from the remote server
-	parse error message, and log if necessary
-	
-	http:		the HTTP Client
-	
-	basename	Name of the file sent to the remote ngas server (used in the content disposition)
-	
-	url:		the url of the remote ngas server that receives the file
-	"""
-    # Receive + unpack reply.
-    info(4,"Waiting for reply ...")
-    ngamsLib._setSocketTimeout(None, http)
-    reply, msg, hdrs = http.getreply()
-    if (hdrs == None):
-        errMsg = "Illegal/no response to HTTP request encountered!"
-        raise Exception, errMsg
 
-    if (hdrs.has_key("content-length")):
-        dataSize = int(hdrs["content-length"])
-    else:
-        dataSize = 0
-    
-    ngamsLib._waitForResp(http.getfile(), None)
-    data = http.getfile().read(dataSize)
-    
-    stat = ngamsStatus.ngamsStatus()
-    if (data.strip() != ""):
-        stat.clear().unpackXmlDoc(data)
-    else:
-        # TODO: For the moment assume success in case no
-        #       exception was thrown.
-        stat.clear().setStatus(NGAMS_SUCCESS)
-    
-    if ((reply != NGAMS_HTTP_SUCCESS) or
-                (stat.getStatus() == NGAMS_FAILURE)):
-        errMsg = 'Error occurred while proxy quick archive file %s to %s' % (basename, url)
-    if (stat.getMessage() != ""):
-        errMsg += " Message: " + stat.getMessage()
-    warning(errMsg)
         
 
 def saveFromHttpToHttp(reqPropsObj,
@@ -137,7 +138,9 @@ def saveFromHttpToHttp(reqPropsObj,
     T = TRACE()
     
     mimeType = reqPropsObj.getMimeType()
-    nexturl = reqPropsObj.getHttpPar('nexturl')       
+    nexturl = reqPropsObj.getHttpPar('nexturl')   
+    #path = reqPropsObj.getHttpHdr('path')
+    #nexturl = path.split('=')[1]    
     contDisp = "attachment; filename=\"" + basename + "\""
     contDisp += "; no_versioning=1"
     
@@ -263,8 +266,9 @@ def handleCmd(srvObj,
         error(errMsg)
         raise Exception, errMsg
     
+    #path = reqPropsObj.getHttpHdr('path')
     if (not reqPropsObj.hasHttpPar('nexturl')):
-        errMsg = "Parameter 'nexturl' is missing"
+        errMsg = "Paremeter 'nexturl' is missing."
         error(errMsg)
         raise Exception, errMsg
     
@@ -297,6 +301,7 @@ def handleCmd(srvObj,
     msg = "Successfully handled Proxy (Quick) Archive Pull Request for data file " +\
           "with URI: " + reqPropsObj.getSafeFileUri()
     info(1, msg)
+    targDiskInfo = ngamsDiskInfo.ngamsDiskInfo()
     srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                        NGAMS_SUCCESS, msg, targDiskInfo)
     

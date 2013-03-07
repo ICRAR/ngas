@@ -185,7 +185,8 @@ class ngamsReqProps:
                 val = urllib.unquote(str(tmpVal))
                 info(4, "Found parameter: " + el[0] + " with value: " + val)
                 if (el[0] == "initiator"): self.setCmd(val)
-                if (httpMethod in [NGAMS_HTTP_GET, NGAMS_HTTP_PUT]):
+                if (httpMethod in [NGAMS_HTTP_GET, NGAMS_HTTP_PUT, NGAMS_HTTP_POST]): 
+                    # Subscription file delivery is always POST, but sometimes we want it behave like GET (e.g. proxy qrchive) to pass on parametres in url string.
                     if (el[0] == "filename"):
                         self.setFileUri(val)
                     elif (el[0] == "wait"):
