@@ -665,14 +665,14 @@ class ngamsDiskInfo:
                setAvailableMb(sqlResult[8]).\
                setBytesStored(sqlResult[9]).\
                setType(sqlResult[10]).\
-               setManufacturer(sqlResult[11]).\
-               setInstallationDate(sqlResult[12]).\
-               setChecksum(sqlResult[13]).\
-               setTotalDiskWriteTime(sqlResult[14]).\
-               setCompleted(sqlResult[15])
-        if (sqlResult[16]): self.setCompletionDate(sqlResult[16])
-        if (sqlResult[17]): self.setLastCheck(sqlResult[17])
-        if (sqlResult[18]): self.setLastHostId(sqlResult[18])
+               setManufacturer(sqlResult[12]).\
+               setInstallationDate(sqlResult[13]).\
+               setChecksum(sqlResult[14]).\
+               setTotalDiskWriteTime(sqlResult[15]).\
+               setCompleted(sqlResult[16])
+        if (sqlResult[17]): self.setCompletionDate(sqlResult[17])
+        if (sqlResult[18]): self.setLastCheck(sqlResult[18])
+        if (sqlResult[19]): self.setLastHostId(sqlResult[19])
         return self
 
 

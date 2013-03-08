@@ -58,27 +58,27 @@ create unique index cfg_group_idx on ngas_cfg_pars(cfg_group_id,cfg_par,cfg_val)
 \qecho create table ngas_disks
 create table ngas_disks
 (
-	disk_id			varchar(128)	not null,
-	archive			varchar(64)	not null,
+	disk_id				varchar(128)	not null,
+	archive				varchar(64)		not null,
 	installation_date	varchar(23)		not null,
-	type			varchar(64)	not null,
-	manufacturer	varchar(64)     null,
-	capacity_mb     numeric(20,0) not null,
-	logical_name	varchar(128)	not null,
-	host_id			varchar(32)	null,
-	slot_id			varchar(32)	null,
-	mounted			smallint		null,
-	mount_point		varchar(128)	null,
-	number_of_files		int		not null,
-	available_mb		int		not null,
+	type				varchar(64)		not null,
+	manufacturer		varchar(64)     null,
+	capacity_mb     	numeric(20,0) 	default 0,
+	logical_name		varchar(128)	not null,
+	host_id				varchar(32)		null,
+	slot_id				varchar(32)		null,
+	mounted				smallint		null,
+	mount_point			varchar(128)	null,
+	number_of_files		int				not null,
+	available_mb		int				not null,
 	bytes_stored		numeric(20, 0)	not null,
-	completed               smallint         not null,
-	completion_date         varchar(23)	null,
-	checksum		varchar(64)     null,
+	completed           smallint        not null,
+	completion_date     varchar(23)		null,
+	checksum			varchar(64)     null,
 	total_disk_write_time	real		null,
-	last_check		varchar(23)	null,
+	last_check			varchar(23)	null,
 	last_host_id		varchar(32)	null,
-	constraint disk_idx	primary key(disk_id)
+	constraint disk_idx		primary 	key(disk_id)
 );
 
 \qecho create table ngas_disks_hist
