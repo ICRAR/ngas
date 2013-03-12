@@ -142,7 +142,7 @@ if (os.path.exists("/opt/sybase/interfaces")):
 # DAEMON=yes
 # QUEUE=15m
 ###########################################################################
-fo = open("/etc/mail/sendmail.conf")
+fo = open("/etc/mail/sendmail.cf")
 lines = fo.readlines()
 fo.close()
 foundDaemonYes = 0
@@ -152,7 +152,7 @@ for line in lines:
             foundDaemonYes = 1
 if (not foundDaemonYes):
     raise Exception, "Mail configuration incorrect. Set parameter: " +\
-          "DAEMON=yes in /etc/mail/sendmail.conf"
+          "DAEMON=yes in /etc/mail/sendmail.cf"
 stat, out = commands.getstatusoutput("ps -efww|grep sendmail")
 psLines = out.split("\n")
 sendMailRunning = 0
