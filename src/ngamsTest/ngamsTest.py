@@ -41,8 +41,8 @@ where not tested.
 
 
 import os, sys, glob, getpass, time
-import cProfile
-#pstats
+import cProfile as profile
+import pstats
 import pcc, PccUtUtils, PccUtTime
 from ngams import *
 import ngamsLib, ngamsConfig, ngamsHighLevelLib
@@ -323,16 +323,16 @@ def genStatus():
     
 
 def correctUsage():
-     """
-     Print out correct usage of test program.
+    """
+    Print out correct usage of test program.
 
      Returns:   Void.
-     """
-     print "Input parameters for NG/AMS test program:\n"
-     print "> ngamsTest [-status] " +\
+    """
+    print "Input parameters for NG/AMS test program:\n"
+    print "> ngamsTest [-status] " +\
            "[-tests \"<mod>,...\"] [-skip \"<mod>[.<test case>],...\" " +\
            "-notifEmail \"<Email List>\" -cfg <Ref. Cfg. File>\n"
-     print ngamsCopyrightString()
+    print ngamsCopyrightString()
     
 
 def parseCommandLine(argv):
