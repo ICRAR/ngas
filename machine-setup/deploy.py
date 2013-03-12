@@ -568,6 +568,7 @@ def ngas_buildout():
         with settings(warn_only=True):
             run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
                 .format(env.NGAS_DIR_ABS))
+            run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template')
 
 
 @task
