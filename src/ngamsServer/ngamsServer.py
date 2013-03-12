@@ -2241,6 +2241,9 @@ class ngamsServer:
                             self.getCfg().getAllowRemoveReq(),
                             0, None)
 
+        # set the default socket timeout for all new sockets created
+        ngamsLib._setSocketTimeout(NGAMS_SOCK_TIMEOUT_DEF)
+
         # Start HTTP server.
         if (serve):
             info(1,"Initializing HTTP server ...")

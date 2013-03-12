@@ -502,13 +502,14 @@ def _setSocketTimeout(timeOut,
     try:
         # We don't accept a infinite timeout (=None/-1). 
         if ((timeOut == None) or (str(timeOut).strip() == "-1")):
-            locTimeout = 3600
+            locTimeout = NGAMS_SOCK_TIMEOUT_DEF
         else:
             locTimeout = int(float(timeOut) + 0.5)
-        info(5,"Setting socket timeout to: %ss" % str(timeOut))
         if (httpObj):
+            info(4,"Setting socket timeout to: %ss" % str(timeOut))
             httpObj._conn.sock.settimeout(locTimeout)
         else:
+            info(3,"Setting default socket timeout to: %ss" % str(timeOut))
             socket.setdefaulttimeout(locTimeout)
     except Exception, e:
         pass
@@ -572,6 +573,9 @@ def httpPostUrl(url,
     info(4,"Sending HTTP header ...")
     info(4,"HTTP Header: %s: %s" % (NGAMS_HTTP_POST, cmd))
     http.putrequest(NGAMS_HTTP_POST, cmd)
+    
+    # set the socket timeout for this socket only
+    _setSocketTimeout(timeOut,http)
     info(4,"HTTP Header: %s: %s" % ("Content-type", mimeType))
     http.putheader("Content-type", mimeType)
     if (contDisp != ""):
@@ -893,7 +897,9 @@ def httpGet(host,
     T = TRACE()
     
     if (not blockSize): blockSize = 65536
-    _setSocketTimeout(timeOut)
+#   Don't set timeout globally here. It is done in httpGetUrl for the connection
+#   and by default for the whole server in the ngamsServer.handleStartup
+#    _setSocketTimeout(timeOut)
 
     # Prepare URL + parameters.
     url = "http://" + host + ":" + str(port) + "/" + cmd
