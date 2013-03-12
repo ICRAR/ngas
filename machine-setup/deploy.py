@@ -565,8 +565,9 @@ def ngas_buildout():
         virtualenv('buildout')
     run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
     with cd('NGAS'):
-        run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
-            .format(env.NGAS_DIR_ABS))
+        with settings(warn_only=True):
+            run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
+                .format(env.NGAS_DIR_ABS))
 
 
 @task
