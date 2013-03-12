@@ -2137,7 +2137,7 @@ class ngamsServer:
             ngamsExitHandler(0, "", 0, 1, 0)
 
         # Store the PID of this process in a PID file.
-        info(4,"Creating PID file for this session ...")
+        info(4,"Creating PID file for this session: {0}".format(self.pidFile()))
         checkCreatePath(os.path.dirname(self.pidFile()))
         fo = open(self.pidFile(), "w")
         fo.write(str(os.getpid()))
@@ -2219,6 +2219,9 @@ class ngamsServer:
         # Create a mime-type to DAPI dictionary
         for stream in self.getCfg().getStreamList():
             self.getMimeTypeDic()[stream.getMimeType()] = stream.getPlugIn()
+        
+        # Throw this info again to have it in the log-file as well
+        info(3,"PID file for this session created: {0}".format(self.pidFile()))
  
         # If Auto Online is selected, bring the Server Online
         if (self.getAutoOnline()):
