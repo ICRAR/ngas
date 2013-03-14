@@ -355,7 +355,7 @@ def _handleFileListReply(srvObj,
             # Have the requested number of elements been extracted?
             if (maxElements):
                 if (elCount >= maxElements):
-                   break
+                    break
 
             # Get the next key (if there are more elements).
             key, fileInfo = tmpFileListDbm.getNext()
@@ -569,7 +569,7 @@ def handleCmdStatus(srvObj,
     elif (fileList):
         if (not fileListId):
             # It's a new STATUS?file_list request.
-             fileListId = _handleFileList(srvObj, reqPropsObj, httpRef)
+            fileListId = _handleFileList(srvObj, reqPropsObj, httpRef)
         # Send back data from the request.
         _handleFileListReply(srvObj, reqPropsObj, httpRef, fileListId,
                              maxElements)
