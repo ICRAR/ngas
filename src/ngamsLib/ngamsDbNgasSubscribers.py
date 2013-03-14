@@ -395,6 +395,24 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         except Exception, e:   
             raise e
 
+    def delSubscrBackLogEntries(self, hostId, portNo, subscrId):
+        """
+        Delete all entries to be delivered to a subscriber with subscrId
+        
+        hostId:        Host ID for NGAS host where Data Provider concerned
+                       is running (string).
+        portNo:        Port number used by Data Provider concerned (integer).
+        subscrId:      Subscriber ID (string).
+        
+        """
+        T = TRACE()
+        
+        sqlQuery = "DELETE FROM ngas_subscr_back_log WHERE subscr_id = '%s' AND host_id = '%s' AND srv_port = %d" % (subscrId, hostId, portNo)
+        try:
+            res = self.query(sqlQuery)
+            self.triggerEvents()
+        except Exception, e:
+            raise e
 
     def delSubscrBackLogEntry(self,
                               hostId,
@@ -470,7 +488,31 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         except Exception, e:   
             raise e
 
-
+    def getSubscrBackLogBySubscrId(self, subscrId):
+        """
+        Get all entries in the Susbscriber Back-log Table  
+        to be delivered to a specific subscriber
+        
+        subscrId    Subscriber Id
+        
+        Returns     List containing sublist with the following information:
+                    [[<file_id>, <file_version>], ...]
+        """
+        T = TRACE()
+        
+        # need to join ngas_file table to get the disk id!!!
+        sqlQuery = "SELECT a.file_id, a.file_version, b.disk_id FROM ngas_subscr_back_log a, ngas_files b " + \
+                    "WHERE a.subscr_id = '%s' AND a.file_id = b.file_id AND a.file_version = b.file_version" % subscrId
+        res = self.query(sqlQuery, ignoreEmptyRes=0)
+        if (res == [[]]):
+            return []
+        else:
+            procList = []
+            for fi in res[0]:
+                newItem = [fi[0]] + [fi[1]] + [fi[2]]
+                procList.append(newItem)
+            return procList
+        
     def getSubscrBackLog(self,
                          hostId,
                          portNo):

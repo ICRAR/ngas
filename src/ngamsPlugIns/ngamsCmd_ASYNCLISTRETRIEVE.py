@@ -5,7 +5,41 @@
 #
 
 """
-NGAS Command Plug-In, implementing asynchronous retrieval file list.
+NGAS Command Plug-In, implementing asynchronous retrieval file list. It supports the following basic features
+
+1. request an asynchlist retrieval
+2. cancel an existing asynclistretrieval 
+3. suspend an existing asynclistretrieval 
+4. resume an existing asynclistretrieval
+
+Main movitagtion is to deal with files offline (on Tapes), which often block and then timeout the requested HTTP session.
+
+This command also has a persistent queue containing files pending to be sent. 
+During ngamsServer shutdown, this queue will be updated and saved by an offlinePlugin(ngamsMWAOfflinePlugIn.py)
+During ngamsServer startup, this command's associated service (e.g. startAsyncQService) will be invoked by an onlinePlugin (e.g. ngamsMWAOnlinePlugIn.py).
+
+To use this command, a python client can run the following code to 
+have the server with url #serverUrl# to push a list of file #file_id_list# to another server with a url #pushUrl#
+
+    myReq = AsyncListRetrieveRequest(file_id_list, pushUrl) #construct the asynclistretrieverequest object
+    strReq = pickle.dumps(myReq) #pack it into a post message
+    strRes = urllib.urlopen(serverUrl, strReq).read() #send the message through post
+    myRes = pickle.loads(strRes) # unpack the result
+    
+    # print the reply, which shows error and return code, session id
+    print("session_uuid = %s" % myRes.session_uuid)
+    print("errorcode = %d" % myRes.errorcode)
+    print("file_info length = %d" % len(myRes.file_info))
+    
+    # print detailed file information on the server (serverUrl)
+    for fileinfo in myRes.file_info:
+        print("\tfile id: %s" % fileinfo.file_id)
+        print("\tfile size: %d" % fileinfo.filesize)
+        print("\tfile status: %d" % fileinfo.status)
+
+For detailed examples on how to write all other features, please read
+src/ngamsTest/ngamsTestAsyncListRetrieve.py
+
 """
 import cPickle as pickle
 import thread, threading, urllib, httplib, time
@@ -190,6 +224,9 @@ def resumeHandler(srvObj, reqPropsObj, sessionId):
     return resp    
 
 def statusHandler(srvObj, reqPropsObj, sessionId):
+    """
+    Handles the status handling
+    """
     res = None
     if (statusResDic.has_key(sessionId)):
         res = statusResDic[sessionId]
@@ -201,6 +238,7 @@ def statusHandler(srvObj, reqPropsObj, sessionId):
 
 def _getPostContent(srvObj, reqPropsObj):
     """
+    Get the actual asynchlist request content from the HTTP Post
     """
     remSize = reqPropsObj.getSize()
     #info(3,"Post Data size: %d" % remSize)
@@ -294,6 +332,8 @@ def _httpPostUrl(url,
     http.endheaders()
     info(4,"HTTP header sent")
 
+    ngamsLib._setSocketTimeout(timeOut, http)
+    
     # Send the data.
     info(4,"Sending data ...")
     if (dataSource == "FILE"):
@@ -333,7 +373,7 @@ def _httpPostUrl(url,
         return [None, None, None, None]
     # Receive + unpack reply.
     info(4,"Waiting for reply ...")
-    ngamsLib._setSocketTimeout(timeOut, http)
+    
     reply, msg, hdrs = http.getreply()
 
     if (hdrs == None):
@@ -373,7 +413,11 @@ def _httpPostUrl(url,
 
 def _httpPost(srvObj, url, filename, sessionId):
     """
+    A wrapper for _httpPostUrl
     return success 0 or failure 1
+    
+    filename     full path for the file to be sent
+    sessionId    session uuid 
     """
     #info(3, "xxxxxx ---- filename %s" % filename)
     stat = ngamsStatus.ngamsStatus()
@@ -412,6 +456,11 @@ def _httpPost(srvObj, url, filename, sessionId):
         return 0
     
 def genInstantResponse(srvObj, asyncListReqObj):
+    """
+    Generate instance response this is why the command is called "asynch" because
+    it instantly return to users and launch threads to handle the file retrieval behind the scene
+    Major motivation is to deal with files offline (i.e. on Tapes)
+    """
     clientUrl = asyncListReqObj.url
     sessionId = asyncListReqObj.session_uuid
     res = AsyncListRetrieveResponse(sessionId, 0, [])
