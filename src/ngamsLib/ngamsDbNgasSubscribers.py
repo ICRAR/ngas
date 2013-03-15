@@ -515,7 +515,8 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         
     def getSubscrBackLog(self,
                          hostId,
-                         portNo):
+                         portNo,
+                         selectDiskId = False):
         """
         Read all entries in the Subscriber Back-Log Table 'belonging'
         to a specific Data Provider, and return these in a list with sub-lists.
@@ -536,7 +537,12 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
         
-        sqlQuery = "SELECT subscr_id, subscr_url, file_id, file_name, " +\
+        if (selectDiskId):
+            sqlQuery = "SELECT a.subscr_id, a.subscr_url, a.file_id, a.file_name, a.file_version, a.ingestion_date, a.format, b.disk_id " +\
+                        "FROM ngas_subscr_back_log a, ngas_files b WHERE a.host_id = '"  + hostId + "' AND a.srv_port = " + str(portNo) +\
+                        " AND a.file_id = b.file_id AND a.file_version = b.file_version"
+        else:
+            sqlQuery = "SELECT subscr_id, subscr_url, file_id, file_name, " +\
                    "file_version, ingestion_date, format " +\
                    "FROM ngas_subscr_back_log WHERE " +\
                    "host_id='" + hostId + "' AND srv_port=" + str(portNo)
@@ -553,7 +559,9 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                 else:
                     ingDate = PccUtTime.TimeStamp().\
                               initFromSecsSinceEpoch(fi[5]).getTimeStamp()
-                newItem = list(fi[0:5]) + [ingDate] + [fi[6]]
+                newItem = list(fi[0:5]) + [ingDate] + [fi[6]] 
+                if (selectDiskId):
+                    newItem += [fi[7]]
                 procList.append(newItem)
             return procList
 

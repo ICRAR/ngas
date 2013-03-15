@@ -867,16 +867,20 @@ def subscriptionThread(srvObj,
                                         deliverReqDic, deliveredStatus, scheduledStatus, fileDeliveryCountDic, fileDeliveryCountDic_Sem)
 
             # Then finally check if there are back-logged files to deliver.
+            selectDiskId = srvObj.getCachingActive()
             subscrBackLog = srvObj.getDb().\
                             getSubscrBackLog(getHostId(),
-                                             srvObj.getCfg().getPortNo())
+                                             srvObj.getCfg().getPortNo(), selectDiskId)
             for backLogInfo in subscrBackLog:
                 subscrId = backLogInfo[0]
                 # Note, it is signalled by adding an extra element (at the end)
                 # with the value of the constant NGAMS_SUBSCR_BACK_LOG, that
                 # this file is a back-logged file. This is done to make the
                 # handling more efficient.
-                fileInfo = list(backLogInfo[2:]) + [None] + [NGAMS_SUBSCR_BACK_LOG]
+                if (selectDiskId):
+                    fileInfo = list(backLogInfo[2:]) + [NGAMS_SUBSCR_BACK_LOG]
+                else:
+                    fileInfo = list(backLogInfo[2:]) + [None] + [NGAMS_SUBSCR_BACK_LOG]
 
                 # If a Subscriber is no-longer subscribed, the back-logged
                 # entry is simply deleted.
