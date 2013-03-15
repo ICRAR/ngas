@@ -809,6 +809,15 @@ class ngamsServer:
         self._subscriptionRunSync.set()
         return self
     
+    def registerSubscriber(self, subscriberObj):
+        """
+        register a subscriber object to the server
+        set event to true initially, indicating it is NOT suspended
+        """
+        self._subscriberDic[subscriberObj.getId()] = subscriberObj
+        suspendSync = threading.Event()
+        suspendSync.set()
+        self._subscrSuspendDic[subscriberObj.getId()] = suspendSync
 
     def addSubscriptionInfo(self,
                             fileRefs = [],

@@ -106,9 +106,9 @@ def delSubscriber(srvObj,
     
     # remove all backlog entries associated with this subscriber
     try:
-        srvObj.getDb().delSubscrBackLogEntries(subscrId, getHostId(), srvObj.getCfg().getPortNo())
+        srvObj.getDb().delSubscrBackLogEntries(getHostId(), srvObj.getCfg().getPortNo(), subscrId)
     except Exception, e:
-        estr = " Error deleting entries from the subscr_back_log table for subscriber %s" % subscrId
+        estr = " Error deleting entries from the subscr_back_log table for subscriber %s, Exception: %s" % (subscrId, str(e))
         warning(estr)
         err += 1
         errMsg += estr

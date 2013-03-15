@@ -549,6 +549,8 @@ def _deliveryThread(srvObj,
         # Allow to break this loop in case server shutdown
         _checkStopDataDeliveryThread(srvObj)     
         srvObj._subscrSuspendDic[subscrbId].wait() # to check if it should suspend file delivery   
+        if (not srvObj.getSubscriberDic().has_key(subscrbId)): #in case just wake up, check if unsubscribeCmd is called, if so, exit
+            break
         fileInfo = None
         try:
             # block for up to 1 minute if the queue is empty. 
@@ -706,7 +708,7 @@ def subscriptionThread(srvObj,
     
     # key: subscriberId, value - a List of deliveryThreads for that subscriber
     deliveryThreadDic = srvObj._subscrDeliveryThreadDic  
-    deliverySuspendDic = srvObj._subscrSuspendDic
+    #deliverySuspendDic = srvObj._subscrSuspendDic
     
     # key: threadName (unique), value -  dummy 1
     # note that threads for the same subscriber will have different thread names now
@@ -954,16 +956,14 @@ def subscriptionThread(srvObj,
                     for tid in range(int(num_threads)):
                         args = (srvObj, srvObj.getSubscriberDic()[subscrId], quChunks, fileDeliveryCountDic, fileDeliveryCountDic_Sem, None)
                         thrdName = NGAMS_DELIVERY_THR + subscrId + str(tid)
+                        deliveryThreadRefDic[thrdName] = 1
                         deliveryThrRef = threading.Thread(None, _deliveryThread, thrdName, args)
                         deliveryThrRef.setDaemon(0)
                         deliveryThrRef.start()
-                        deliveryThreads.append(deliveryThrRef)  
-                        deliveryThreadRefDic[thrdName] = 1                      
+                        deliveryThreads.append(deliveryThrRef)                        
                         
                     deliveryThreadDic[subscrId] = deliveryThreads
-                    suspendSync = threading.Event()
-                    suspendSync.set()
-                    deliverySuspendDic[subscrId] = suspendSync
+                    
                         
                     
 

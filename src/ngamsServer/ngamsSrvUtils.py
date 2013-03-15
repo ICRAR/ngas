@@ -336,7 +336,8 @@ def handleOnline(srvObj,
         # Take only subscribers for this NG/AMS Server.
         if ((tmpSubscrObj.getHostId() == getHostId()) and
             (tmpSubscrObj.getPortNo() == srvObj.getCfg().getPortNo())):
-            srvObj.getSubscriberDic()[tmpSubscrObj.getId()] = tmpSubscrObj
+            #srvObj.getSubscriberDic()[tmpSubscrObj.getId()] = tmpSubscrObj
+            srvObj.registerSubscriber(tmpSubscrObj)
 
     try:
         # Get information about the disks of this system.

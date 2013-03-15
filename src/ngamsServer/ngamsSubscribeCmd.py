@@ -36,6 +36,7 @@ This module contains functions used in connection with the SUBSCRIBE Command.
 import pcc, PccUtTime
 from ngams import *
 import ngamsLib, ngamsSubscriber
+import threading
 
 
 def addSubscriber(srvObj,
@@ -53,7 +54,8 @@ def addSubscriber(srvObj,
     T = TRACE()
     
     subscrObj.write(srvObj.getDb())
-    srvObj.getSubscriberDic()[subscrObj.getId()] = subscrObj
+    #srvObj.getSubscriberDic()[subscrObj.getId()] = subscrObj
+    srvObj.registerSubscriber(subscrObj)
     info(2,"Sucessfully added Susbcriber with ID: " + subscrObj.getId())
 
  
