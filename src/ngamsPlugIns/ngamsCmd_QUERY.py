@@ -33,11 +33,9 @@
 Dynamic loadable command to query the DB associated with the NG/AMS instance.
 """
 
-import pydoc
-import pcc, PccUtTime
 from ngams import *
-import ngamsLib, ngamsStatus, ngamsDbm
-import cPickle, json
+import ngamsDbm
+import cPickle, json, decimal
 
 # import markup TODO: This is for HTML formatting
 
@@ -48,7 +46,19 @@ NGAMS_JSON_MT = "application/json"
 
 valid_queries = {"files_list":"select * from ngas_files",
                   "disks_list":"select * from ngas_disks", 
-                  "hosts_list":"select * from ngas_hosts"}
+                  "hosts_list":"select * from ngas_hosts",
+                  "files_like":"select * from ngas_files where file_id like '{0}'",
+                  "files_between":"select * from ngas_files where ingestion_date between '{0}' and '{1}'",
+                  "files_stats":"select count(*),sum(uncompressed_file_size)/1048576. as MB from ngas_files",
+                }
+
+def encode_decimal(obj):
+    """
+    Just a little helper function for JSON serialisation
+    """
+    if isinstance(obj, decimal.Decimal):
+        return float(obj)
+    raise TypeError(repr(obj) + " is not JSON serializable")
 
 
 def formatAsList(resultSet):
@@ -89,42 +99,43 @@ def formatAsList(resultSet):
 
     return listBuf
 
-def formatAsHTML(resultSet):
-    """
-    Format the result as an HTML table
-    
-    resultSet:    (list) result returned from the SQL interface
-    
-    Returns:      (string) Result formatted as HTML
-    """
-    resultHTML = resultSet
-    title = "NGAS"
-    header = "Some information at the top, perhaps a menu."
-    footer = "Dynamic page created by NGAS server: {0}".format(time.strftime('%Y-%M-%dT%H:%m:%S'))
-    styles = ( 'layout.css', 'alt.css', 'images.css' )
-    
-    page = markup.page( )
-    page.init( css=styles, title=title, header=header, footer=footer )
-    page.br( )
-    
-    page.table(border="1")
-    page.thead()
-    page.th()
-    page.td()
-    page.td.close()
-    page.th.close()
-    page.thead.close()
-    page.tbody()
-    page.tr()
-    for row in resultSet:
-        for cell in row:
-            page.td(cell)
-        page.tr.close()
-    page.tbody.close()
-    page.table.close()
-    
-    return page.__str__()
 
+# TODO: Add proper markup module
+#def formatAsHTML(resultSet):
+#    """
+#    Format the result as an HTML table
+#    
+#    resultSet:    (list) result returned from the SQL interface
+#    
+#    Returns:      (string) Result formatted as HTML
+#    """
+#    resultHTML = resultSet
+#    title = "NGAS"
+#    header = "Some information at the top, perhaps a menu."
+#    footer = "Dynamic page created by NGAS server: {0}".format(time.strftime('%Y-%M-%dT%H:%m:%S'))
+#    styles = ( 'layout.css', 'alt.css', 'images.css' )
+#    
+#    page = markup.page( )
+#    page.init( css=styles, title=title, header=header, footer=footer )
+#    page.br( )
+#    
+#    page.table(border="1")
+#    page.thead()
+#    page.th()
+#    page.td()
+#    page.td.close()
+#    page.th.close()
+#    page.thead.close()
+#    page.tbody()
+#    page.tr()
+#    for row in resultSet:
+#        for cell in row:
+#            page.td(cell)
+#        page.tr.close()
+#    page.tbody.close()
+#    page.table.close()
+#    
+#    return page.__str__()
 
 
 def genCursorDbmName(rootDir,
@@ -171,6 +182,23 @@ def handleCmd(srvObj,
             msg = "Invalid query specified. Valid queries are: %s" %\
             valid_queries.keys()
             raise Exception, msg
+        if reqPropsObj.getHttpPar("query") == 'files_like':
+            param = '%'
+            if (reqPropsObj.hasHttpPar("like")):
+                param = reqPropsObj.getHttpPar("like")
+            query = query.format(param)
+        if reqPropsObj.getHttpPar("query") == 'files_between':
+            param1 = param2 = ''
+            if (reqPropsObj.hasHttpPar("start")):
+                param1 = reqPropsObj.getHttpPar("start")
+            if (reqPropsObj.hasHttpPar("end")):
+                param2 = reqPropsObj.getHttpPar("end")
+            if param1 and param2:
+                query = query.format(param1, param2)
+            elif param1:
+                query = 'select * from ngas_files where ingestion_date >= "{0}"'.format(param1)
+            else:
+                query = valid_queries['files_list']
 
     out_format = None
     if (reqPropsObj.hasHttpPar("format")):
@@ -197,7 +225,7 @@ def handleCmd(srvObj,
             finalRes = cPickle.dumps(res)
             mimeType = NGAMS_PYTHON_PICKLE_MT
         elif (out_format == "json"):
-            finalRes = json.dumps(res)
+            finalRes = json.dumps(res, default=encode_decimal)
             mimeType = NGAMS_JSON_MT
         else:
             finalRes = str(res)
@@ -272,3 +300,4 @@ def handleCmd(srvObj,
 
 
 # EOF
+
