@@ -36,7 +36,7 @@ UNSUBSCRIBE Command.
 
 import pcc, PccUtTime
 from ngams import *
-import ngamsLib
+import ngamsLib, ngamsCacheControlThread
 
 
 def delSubscriber(srvObj,
@@ -53,21 +53,69 @@ def delSubscriber(srvObj,
     T = TRACE()
     
     err = 0
+    errMsg = ''
     try:
         srvObj.getDb().deleteSubscriber(subscrId)
     except Exception, e:
-        warning("Error deleting Subscriber information from the DB. " +\
-                "Subscriber ID: " + subscrId + ". Exception: " + str(e))
-        err = 1
+        estr = " Error deleting Subscriber information from the DB. " +\
+                "Subscriber ID: " + subscrId + ". Exception: " + str(e)
+        warning(estr)
+        err += 1
+        errMsg += estr
+    # remove all entries associated with this subscriber from in-memory dictionaries
     try:
         del srvObj.getSubscriberDic()[subscrId]
+        del srvObj._subscrScheduledStatus[subscrId]
+        del srvObj._subscrQueueDic[subscrId]
+        srvObj._subscrSuspendDic[subscrId].set() # resume all suspended deliveryThreads (if any) so they can know the subscriber is removed
+        del srvObj._subscrDeliveryThreadDic[subscrId] # this does not kill those deliveryThreads, but only the list container
     except Exception, e:
-        warning("Error deleting Subscriber information kept internally. " +\
-                "Subscriber ID: " + subscrId + ". Exception: " + str(e))
-        err = 1
-    if (not err):
+        estr = " Error deleting Subscriber information kept internally. " +\
+                "Subscriber ID: " + subscrId + ". Exception: " + str(e)
+        warning(estr)
+        err += 1
+        errMsg += estr
+    
+    # reduce the file reference count by 1 for all files that are back logged for this subscriber
+    if (srvObj.getCachingActive()):
+        errOld = err
+        filelist = srvObj.getDb().getSubscrBackLogBySubscrId(subscrId)
+        fileDeliveryCountDic = srvObj._subscrFileCountDic
+        fileDeliveryCountDic_Sem = srvObj._subscrFileCountDic_Sem
+        for fi in filelist:
+            fileId = fi[0]
+            fileVersion = fi[1]
+            fkey = fileId + "/" + str(fileVersion) 
+            fileDeliveryCountDic_Sem.acquire()
+            try:
+                if (fileDeliveryCountDic.has_key(fkey)):
+                    fileDeliveryCountDic[fkey]  -= 1
+                    if (fileDeliveryCountDic[fkey] == 0):
+                        del fileDeliveryCountDic[fkey]
+                        # mark deletion
+                        diskId = fi[2]
+                        sqlFileInfo = (diskId, fileId, fileVersion)
+                        ngamsCacheControlThread.scheduleFileForDeletion(srvObj, sqlFileInfo)
+            except Exception, e:
+                warning(" Error reducing the reference count by 1 for file: %s" % fileId)
+                err += 1
+            finally:
+                fileDeliveryCountDic_Sem.release()                        
+        if ((err - errOld) > 0):
+            errMsg += ' Error reducing file reference count for some files, check NGAS log to find out which files'
+    
+    # remove all backlog entries associated with this subscriber
+    try:
+        srvObj.getDb().delSubscrBackLogEntries(getHostId(), srvObj.getCfg().getPortNo(), subscrId)
+    except Exception, e:
+        estr = " Error deleting entries from the subscr_back_log table for subscriber %s, Exception: %s" % (subscrId, str(e))
+        warning(estr)
+        err += 1
+        errMsg += estr
+    if (not err):               
         info(2,"Subscriber with ID: " + subscrId +\
              " successfully unsubscribed")
+    return [err, errMsg]
 
 
 def handleCmdUnsubscribe(srvObj,
@@ -91,7 +139,7 @@ def handleCmdUnsubscribe(srvObj,
     # added by chen.wu@icrar.org
     if (reqPropsObj.hasHttpPar("subscr_id")):
         id = reqPropsObj.getHttpPar("subscr_id")
-        delSubscriber(srvObj, id)
+        err, errStr = delSubscriber(srvObj, id)
         ###########
     else:
         if (reqPropsObj.hasHttpPar("url")):
@@ -100,10 +148,14 @@ def handleCmdUnsubscribe(srvObj,
             errMsg = genLog("NGAMS_ER_CMD_SYNTAX",
                             [NGAMS_SUBSCRIBE_CMD, "Missing parameter: url"])
             raise Exception, errMsg
-        delSubscriber(srvObj, ngamsLib.getSubscriberId(url))
+        err, errStr = delSubscriber(srvObj, ngamsLib.getSubscriberId(url))
 
-    srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,
-                 "Handled UNSUBSCRIBE command")
+    if (not err):
+        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,
+                 "Successfully handled UNSUBSCRIBE command")
+    else:
+        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, #let HTTP returns OK so that curl can continue printing XML code
+                 'UNSUBSCRIBE command failed: ' + errStr)
 
 
 # EOF

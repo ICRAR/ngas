@@ -2,26 +2,36 @@
 Should cover several cases
 
 Case 1. Both ngas-B and ngas-C subscribe with ngas-A. Then multiple clients simultaneously archive files to ngas-A at the same time interval.
+
 Case 2. A client archives several files to ngas-A, then ngas-B subscribes with A from the past. After a while, ngas-C subscribe with A from the past.
+
 Case 3, A client subscribes with concurrent_threads = 2. Restart the NGAS server, the client then archive files to this NGAS server.
+
+Case 4. Running ngas-A in the cache mode. Both ngas-B and ngas-C subscribe with ngas-A. But ngas-C is shut down. 
+        Then multiple clients simultaneously archive files to ngas-A at the same time interval. Observe how many files left in A's ngas_files table
+        Then start ngas-C but unsubscribe C soon after ngas-C is restarted. Observe how many files left in A's ngas_files table
+        
+Case 5. Running ngas-A in the cache mode. Both ngas-B and ngas-C subscribe with ngas-A. But ngas-C is shut down. 
+        Then multiple clients simultaneously archive files to ngas-A at the same time interval. Observe how many file left in A's ngas_files table
+        Then start ngas-C. Wait until all ngas-B got all the files, then unsubscribe C. Observe how many files left in A's ngas_files table
 """
 import time, os, commands, threading, thread
 import ngamsPClient
 
 from pybarrier import *
 
-ngasA_host = '180.149.251.189'
-ngasA_port = 7785
+ngasA_host = '127.0.0.1'
+ngasA_port = 7777
 
-ngasB_host = '180.149.251.189'
-ngasB_port = 7786
+ngasB_host = '127.0.0.1'
+ngasB_port = 7778
 ngasB_url = 'http://%s:%d/QARCHIVE' % (ngasB_host, ngasB_port)
 
-ngasC_host = '180.149.251.189'
-ngasC_port = 7787
+ngasC_host = '127.0.0.1'
+ngasC_port = 7779
 ngasC_url = 'http://%s:%d/QARCHIVE' % (ngasC_host, ngasC_port)
 
-tmpDir = '/mnt/r5/test/testNGASSub'
+tmpDir = '/tmp/testNGASSub'
 mime_type = 'application/octet-stream'
 
 file_ext = '.data'
@@ -104,22 +114,37 @@ def _waitUntilThreadsExit(threads):
                 num -= 1
         time.sleep(1)
 
-def _unSubscribe(pclient, url):
-    stat = pclient.sendCmd('UNSUBSCRIBE', pars = [["url", url]])
+def _unSubscribe(pclient, subscrId):
+    stat = pclient.sendCmd('UNSUBSCRIBE', pars = [["subscr_id", subscrId]])
     msg = stat.getMessage()
-    if (msg != 'Handled UNSUBSCRIBE command'):
-        print 'Error when removing the existing subscriber: \"%s\"' % url
+    if (msg != 'Successfully handled UNSUBSCRIBE command'):
+        print 'Error when removing the existing subscriber: \"%s\". Exception: %s' % (subscrId, msg)
+        
+def TestCase04(num_file_per_client, num_clients, interval = 4, base_name = None):
+    TestCase01(num_file_per_client, num_clients, interval, base_name, False, True, False)
+    
+def TestCase05(num_file_per_client, num_clients, interval = 4, base_name = None):
+    TestCase01(num_file_per_client, num_clients, interval, base_name, False, True, True)
 
-def TestCase01(num_file_per_client, num_clients, interval = 4, base_name = None):
+def TestCase01(num_file_per_client, num_clients, interval = 4, base_name = None, 
+               wait_for_C_files = True, 
+               wait_for_C_restart = False,
+               wait_for_C_files_after_restart = True):
+    
+    if (not wait_for_C_files):
+        tt = 'N'
+        while (tt != 'Y' and tt != 'y'):
+            tt = raw_input("Have you shut down NGAS server C? (Y/N)")
+            
     if (num_file_per_client < 1):
         raise Exception("each client at least archives one file!")
     
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '2']])
+    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
     
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasC_url], ['concurrent_threads', '2']])
+    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasC_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-C'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasC_url, msg))
@@ -158,33 +183,60 @@ def TestCase01(num_file_per_client, num_clients, interval = 4, base_name = None)
         howlong = waitUntilFileDelivered(last_fname, clientB, timeout = num_files, wait_interval = 2)
     except WaitTimeout as e:
         print 'Timeout waiting for the last file \"%s\" to be delivered to \"%s\"' % (last_fname, ngasB_url)
-        _unSubscribe(clientA, ngasB_url)
-        _unSubscribe(clientA, ngasC_url)
+        _unSubscribe(clientA, 'A-to-B')
+        _unSubscribe(clientA, 'A-to-C')
         return
     else:
         print 'After %d seconds, the last file \"%s\" is delivered to \"%s\"' % (howlong, last_fname, ngasB_url)
     
-    print "Wait until NGAS-C has received the last file"
-    try:
-        howlong = waitUntilFileDelivered(last_fname, clientC, timeout = num_files, wait_interval = 1)
-    except WaitTimeout as e:
-        print 'Timeout waiting for the last file \"%s\" to be delivered to \"%s\"' % (last_fname, ngasC_url)
-        _unSubscribe(clientA, ngasB_url)
-        _unSubscribe(clientA, ngasC_url)
-        return
-    else:
-        print 'After %d seconds, the last file \"%s\" is delivered to \"%s\"' % (howlong, last_fname, ngasB_url)
+    if (wait_for_C_files):
+        print "Wait until NGAS-C has received the last file"
+        try:
+            howlong = waitUntilFileDelivered(last_fname, clientC, timeout = num_files, wait_interval = 1)
+        except WaitTimeout as e:
+            print 'Timeout waiting for the last file \"%s\" to be delivered to \"%s\"' % (last_fname, ngasC_url)
+            _unSubscribe(clientA, 'A-to-B')
+            _unSubscribe(clientA, 'A-to-C')
+            return
+        else:
+            print 'After %d seconds, the last file \"%s\" is delivered to \"%s\"' % (howlong, last_fname, ngasC_url)
 
     #time.sleep(num_files * 3) # assume each file needs 3 seconds to delivery (in parallel)
     
     verifyCase(base_name, num_files, clientB, False)
-    verifyCase(base_name, num_files, clientC, True)
     
-    _unSubscribe(clientA, ngasB_url)
-    _unSubscribe(clientA, ngasC_url)
+    if (wait_for_C_files):
+        verifyCase(base_name, num_files, clientC, True)
+        _unSubscribe(clientA, 'A-to-C')
+    
+    _unSubscribe(clientA, 'A-to-B')
+    
+    if (wait_for_C_restart):
+        tt = 'N'
+        while (tt != 'Y' and tt != 'y'):
+            tt = raw_input("Have you started NGAS server C? (Y/N)")
+        
+        if (wait_for_C_files_after_restart):
+            stat = clientA.sendCmd('TRIGGERSUBSCRIPTION')
+            msg = stat.getMessage()
+            #if (msg != 'Command TRIGGERSUBSCRIPTION executed successfully'):
+                #raise Exception('Fail to trigger subscription')
+            print msg 
+            print "Wait until NGAS-C has received the last file"
+            try:
+                howlong = waitUntilFileDelivered(last_fname, clientC, timeout = num_files * 2, wait_interval = 1)
+            except WaitTimeout as e:
+                print 'Timeout waiting for the last file \"%s\" to be delivered to \"%s\"' % (last_fname, ngasC_url)
+                _unSubscribe(clientA, 'A-to-B')
+                _unSubscribe(clientA, 'A-to-C')
+                return
+            else:
+                print 'After %d seconds, the last file \"%s\" is delivered to \"%s\"' % (howlong, last_fname, ngasC_url)
+    
+        _unSubscribe(clientA, 'A-to-C')
 
 def _subscribeAwithB(concurrent_threads = 4):
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '%d' % concurrent_threads]])
+    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '%d' % concurrent_threads], ['subscr_id', 'A-to-B'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
@@ -214,7 +266,7 @@ def TestCase03(num_files, base_name = None):
     
     time.sleep(3)
     verifyCase(base_name, num_files, clientB, True)
-    _unSubscribe(clientA, ngasB_url)
+    _unSubscribe(clientA, 'A-to-B')
     
 def TestCase02(num_files, base_name = None):
     # create tmp files to be quick archived
@@ -247,7 +299,7 @@ def TestCase02(num_files, base_name = None):
     doc = stat.dumpBuf()
     # this is highly fragile, but show work for now
     ingestion_date = doc.split('\n')[36].split('                      ')[1]        
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['start_date', ingestion_date], ['concurrent_threads', '2']])
+    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['start_date', ingestion_date], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
@@ -260,7 +312,7 @@ def TestCase02(num_files, base_name = None):
     else:
         print 'After %d seconds, the first file \"%s\" is delivered to \"%s\"' % (howlong, fname, ngasB_url)
     
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasC_url], ['start_date', ingestion_date], ['concurrent_threads', '2']])
+    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasC_url], ['start_date', ingestion_date], ['concurrent_threads', '2'], ['subscr_id', 'A-to-C'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\"' % ngasC_url)
@@ -288,8 +340,8 @@ def TestCase02(num_files, base_name = None):
     verifyCase(base_name, num_files, clientB, False)
     verifyCase(base_name, num_files, clientC, True)
     
-    _unSubscribe(clientA, ngasB_url)
-    _unSubscribe(clientA, ngasC_url)
+    _unSubscribe(clientA, 'A-to-B')
+    _unSubscribe(clientA, 'A-to-C')
 
 def verifyCase(base_name, num_files, pclient, clean_on_complete = True):
     """
@@ -333,5 +385,7 @@ def verifyCase(base_name, num_files, pclient, clean_on_complete = True):
 if __name__ == '__main__':
     #TestCase02(16, base_name = '1358203679')
     #TestCase02(16)
-    TestCase01(10, 6, interval = 3)
-    #TestCase03(32)
+    #TestCase01(10, 3, interval = 3)
+    TestCase04(10, 3, interval = 3)
+    #TestCase05(10, 3, interval = 3)
+    #TestCase03(16)

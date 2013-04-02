@@ -52,7 +52,7 @@ def processHttpReply(http, basename, url):
     url:        the url of the remote ngas server that receives the file
     """
     info(4,"Waiting for reply ...")
-    ngamsLib._setSocketTimeout(None, http)
+    # ngamsLib._setSocketTimeout(None, http)
     reply, msg, hdrs = http.getreply()
     if (hdrs == None):
         errMsg = "Illegal/no response to HTTP request encountered!"
@@ -111,6 +111,11 @@ def buildHttpClient(url,
     http.putheader("Host", getHostName())
     http.endheaders()
     info(4,"HTTP header sent")
+    
+    # Since we are using the default timeout set in the __init__.py in the ngams module
+    # no need to set it here anymore
+    # but just to ensure this is set (incase someone else set it)
+    ngamsLib._setSocketTimeout(None, http)
     
     return http
 
@@ -187,13 +192,16 @@ def saveFromHttpToHttp(reqPropsObj,
         srb = 0   # number of slow read blocks
         swb = 0   # number of slow write blocks
         tot_size = 0 # total number of bytes
+        nfailread = 0
         while ((remSize > 0) and ((time.time() - lastRecepTime) < 30.0)):
             if (remSize < rdSize): rdSize = remSize
             rdt = time.time()
             buf = reqPropsObj.getReadFd().read(rdSize)
             rdt = time.time() - rdt
+            if (rdt > slow):
+                srb += 1
             rdtt += rdt
-            nb += 1
+            
             sizeRead = len(buf)
             remSize -= sizeRead
             tot_size += sizeRead
@@ -205,9 +213,11 @@ def saveFromHttpToHttp(reqPropsObj,
                 wdtt += wdt
                 if wdt >= slow: swb += 1
 #                info(5,"Wrote %d bytes to file in %.3f s" % (sizeRead, wdt))
-                lastRecepTime = time.time()
+                nb += 1
+                lastRecepTime = time.time()                
             else:
                 info(4,"Unsuccessful read attempt from HTTP stream! Sleeping 50 ms")
+                nfailread += 1
                 time.sleep(0.050)
 
         deltaTime = timer.stop()
@@ -223,11 +233,14 @@ def saveFromHttpToHttp(reqPropsObj,
         # Raise a special info message if the transfer speed to disk or over network was
         # slower than 512 kB/s
         if srb > 0:
-            warning("Number of slow network reads during this transfer: %d. \
-            Consider checking the network!" % srb)
+            warning("Number of slow network reads during this transfer: %d out of %d blocks. \
+            Consider checking the upstream network link!" % (srb, nb))
         if swb > 0:
-            warning("Number of slow network sends during this transfer: %d. \
-            Consider checking your disks!" % swb)
+            warning("Number of slow network sends during this transfer: %d out of %d blocks. \
+            Consider checking your downstream network link!" % (swb, nb))
+        if nfailread > 0:
+            warning("Number of failed reads during this transfer: %d out of %d blocks. \
+            Consider checking your upstream network!" % (nfailread, nb))
         # Raise exception if less byes were received as expected.
         if (sizeKnown and (remSize > 0)):
             msg = genLog("NGAMS_ER_ARCH_RECV",

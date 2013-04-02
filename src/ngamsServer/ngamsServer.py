@@ -344,6 +344,14 @@ class ngamsServer:
         self._subscriptionStopSyncConf= threading.Event()
         self._deliveryStopSync        = threading.Event()
         self._subscrBackLogCount      = 0
+        self._subscrScheduledStatus   = {}
+        self._subscrQueueDic          = {}
+        self._subscrDeliveryThreadDic = {}
+        self._subscrDeliveryThreadDicRef = {}
+        self._subscrSuspendDic        = {}
+        self._subscrFileCountDic      = {}
+        self._subscrFileCountDic_Sem  = threading.Semaphore(1)
+        
         # List to keep track off to which Data Providers an NG/AMS
         # Server is subscribed.
         self._subscriptionStatusList  = []
@@ -801,6 +809,15 @@ class ngamsServer:
         self._subscriptionRunSync.set()
         return self
     
+    def registerSubscriber(self, subscriberObj):
+        """
+        register a subscriber object to the server
+        set event to true initially, indicating it is NOT suspended
+        """
+        self._subscriberDic[subscriberObj.getId()] = subscriberObj
+        suspendSync = threading.Event()
+        suspendSync.set()
+        self._subscrSuspendDic[subscriberObj.getId()] = suspendSync
 
     def addSubscriptionInfo(self,
                             fileRefs = [],
