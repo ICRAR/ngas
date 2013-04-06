@@ -37,6 +37,7 @@ from ngams import *
 import ngamsPlugInApi
 import ngamsPClient
 import ngamsMWACortexTapeApi
+import pccFits.PccSimpleFitsReader as fitsapi
 
 def ngamsMWA_MIT_FilterPlugin(srvObj,
                           plugInPars,
@@ -74,8 +75,11 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
             #TODO need to do either of the following:
             # 1. query the MWA database to get the project id, but this will throw the problem to the later _deliveryThread
             # 2. put this filename into a server queue, later on push them all together in another process
-        keyDic  = ngamsPlugInApi.getFitsKeys(filename, ["PROJID"])
-        projectId = keyDic["PROJID"][0]
+        #keyDic  = ngamsPlugInApi.getFitsKeys(filename, ["PROJID"])
+        #projectId = keyDic["PROJID"][0]
+        fh = fitsapi.getFitsHdrs(filename)
+        projectId = fh[0]['PROJID'][0][1]
+        
     except:
         err = "Did not find keyword PROJID in FITS file or PROJID illegal"
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
@@ -83,7 +87,7 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
         #raise Exception, errMsg
         #so still possible to deliver if the file is not there yet
     
-    if (projectId == 'C105' or projectId == 'C106'):
+    if (projectId == "'C105'" or projectId == "'C106'"):
         return 0
     
      # Parse plug-in parameters.

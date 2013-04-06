@@ -193,7 +193,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                            "subscr_start_date=" + startDate + ", " +\
                            "subscr_filter_plugin=" + filterPlugIn + ", " +\
                            "subscr_filter_plugin_pars="+filterPlugInPars+", "+\
-                           "last_file_ingestion_date=" + lastFileIngDate+" " +\
+                           "last_file_ingestion_date=" + lastFileIngDate+", " +\
                            "concurrent_threads=" + str(concurrent_threads)+" " +\
                            "WHERE subscr_id='" + subscrId + "' AND " +\
                            "host_id='" + hostId + "' AND " +\

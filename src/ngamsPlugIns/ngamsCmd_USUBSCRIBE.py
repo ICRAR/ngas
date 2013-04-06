@@ -80,14 +80,14 @@ def handleCmd(srvObj,
     err = 0
     if (not reqPropsObj.hasHttpPar("subscr_id")):
         srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, #let HTTP returns OK so that curl can continue printing XML code
-                 'UNSUBSCRIBE command failed: \'subscr_id\' is not specified')
+                 'USUBSCRIBE command failed: \'subscr_id\' is not specified')
         return
     
     subscrId = reqPropsObj.getHttpPar("subscr_id")
     if (not srvObj.getSubscriberDic().has_key(subscrId)):
         if (not reqPropsObj.hasHttpPar("subscr_id")):
             srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, #let HTTP returns OK so that curl can continue printing XML code
-                 "UNSUBSCRIBE command failed: Cannot find subscriber '%s'" % subscrId)
+                 "USUBSCRIBE command failed: Cannot find subscriber '%s'" % subscrId)
         return
     
     if (reqPropsObj.hasHttpPar("suspend")):
@@ -135,7 +135,7 @@ def handleCmd(srvObj,
         subscriber.setFilterPiPars(pipars)
     
     if (reqPropsObj.hasHttpPar("concurrent_threads")):
-        ccthrds = reqPropsObj.getHttpPar("concurrent_threads")
+        ccthrds = int(reqPropsObj.getHttpPar("concurrent_threads"))
         origthrds = subscriber.getConcurrentThreads()
         if (ccthrds != origthrds):
             subscriber.setConcurrentThreads(ccthrds)
