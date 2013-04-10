@@ -33,10 +33,10 @@
 This module contains functions used in connection with the
 UNSUBSCRIBE Command.
 """
-
+import Queue
 import pcc, PccUtTime
 from ngams import *
-import ngamsLib, ngamsCacheControlThread
+import ngamsLib, ngamsCacheControlThread, ngamsSubscriptionThread
 
 
 def delSubscriber(srvObj,
@@ -63,16 +63,68 @@ def delSubscriber(srvObj,
         err += 1
         errMsg += estr
     # remove all entries associated with this subscriber from in-memory dictionaries
-    try:
+    
+    numThreads = 0  
+    if (srvObj.getSubscriberDic().has_key(subscrId)):
+        subscriber = srvObj.getSubscriberDic()[subscrId]
+        numThreads = subscriber.getConcurrentThreads()
         del srvObj.getSubscriberDic()[subscrId]
+    else:
+        estr = " Cannot find Subscriber with an ID '%s' kept internally. " % subscrId 
+        err += 1
+        errMsg += estr
+        
+    if (srvObj._subscrScheduledStatus.has_key(subscrId)):
         del srvObj._subscrScheduledStatus[subscrId]
-        del srvObj._subscrQueueDic[subscrId]
+    else:
+        estr = " Cannot find scheduled status for the subscriber '%s' kept internally. " % subscrId 
+        err += 1
+        errMsg += estr
+    
+    if (srvObj._subscrSuspendDic.has_key(subscrId)):
         srvObj._subscrSuspendDic[subscrId].set() # resume all suspended deliveryThreads (if any) so they can know the subscriber is removed
         del srvObj._subscrDeliveryThreadDic[subscrId] # this does not kill those deliveryThreads, but only the list container
-    except Exception, e:
-        estr = " Error deleting Subscriber information kept internally. " +\
-                "Subscriber ID: " + subscrId + ". Exception: " + str(e)
-        warning(estr)
+    else:
+        estr = " Cannot find delivery threads for the subscriber '%s' kept internally. " % subscrId 
+        err += 1
+        errMsg += estr
+    
+    deliveryThreadRefDic = srvObj._subscrDeliveryThreadDicRef
+    deliveryFileDic = srvObj._subscrDeliveryFileDic
+    for tid in range(int(numThreads)):    
+        thrdName = NGAMS_DELIVERY_THR + subscrId + str(tid)
+        if (deliveryThreadRefDic.has_key(thrdName)):
+            del deliveryThreadRefDic[thrdName]
+        if (deliveryFileDic.has_key(thrdName)):
+            del deliveryFileDic[thrdName]
+    
+    fileDeliveryCountDic = srvObj._subscrFileCountDic
+    fileDeliveryCountDic_Sem = srvObj._subscrFileCountDic_Sem
+    
+    # reduce the file reference count by 1 for all files that are in the queue to be delivered
+    # and in the meantime, clear the queue before deleting it
+    if (srvObj._subscrQueueDic.has_key(subscrId)):
+        if (srvObj.getCachingActive()):
+            errOld = err
+            qu = srvObj._subscrQueueDic[subscrId]
+            
+            while (1):
+                fileinfo = None
+                try:
+                    fileinfo = qu.get_nowait()
+                except Queue.Empty, e:
+                    break
+                if (fileinfo is None):
+                    break
+                #fileInfo = ngamsSubscriptionThread._convertFileInfo(fileinfo)
+                fileId = fileinfo[ngamsSubscriptionThread.FILE_ID]
+                fileVersion = fileinfo[ngamsSubscriptionThread.FILE_VER]
+                err += _reduceRefCount(fileDeliveryCountDic, fileDeliveryCountDic_Sem, fileId, fileVersion)
+            if ((err - errOld) > 0):
+                errMsg += ' Error reducing file reference count for some files in the queue, check NGAS log to find out which files'        
+        del srvObj._subscrQueueDic[subscrId]
+    else:
+        estr = " Cannot find delivery queue for the subscriber '%s' kept internally. " % subscrId 
         err += 1
         errMsg += estr
     
@@ -80,29 +132,12 @@ def delSubscriber(srvObj,
     if (srvObj.getCachingActive()):
         errOld = err
         filelist = srvObj.getDb().getSubscrBackLogBySubscrId(subscrId)
-        fileDeliveryCountDic = srvObj._subscrFileCountDic
-        fileDeliveryCountDic_Sem = srvObj._subscrFileCountDic_Sem
         for fi in filelist:
             fileId = fi[0]
             fileVersion = fi[1]
-            fkey = fileId + "/" + str(fileVersion) 
-            fileDeliveryCountDic_Sem.acquire()
-            try:
-                if (fileDeliveryCountDic.has_key(fkey)):
-                    fileDeliveryCountDic[fkey]  -= 1
-                    if (fileDeliveryCountDic[fkey] == 0):
-                        del fileDeliveryCountDic[fkey]
-                        # mark deletion
-                        diskId = fi[2]
-                        sqlFileInfo = (diskId, fileId, fileVersion)
-                        ngamsCacheControlThread.scheduleFileForDeletion(srvObj, sqlFileInfo)
-            except Exception, e:
-                warning(" Error reducing the reference count by 1 for file: %s" % fileId)
-                err += 1
-            finally:
-                fileDeliveryCountDic_Sem.release()                        
+            err += _reduceRefCount(fileDeliveryCountDic, fileDeliveryCountDic_Sem, fileId, fileVersion)
         if ((err - errOld) > 0):
-            errMsg += ' Error reducing file reference count for some files, check NGAS log to find out which files'
+            errMsg += ' Error reducing file reference count for some files in the backlog, check NGAS log to find out which files'
     
     # remove all backlog entries associated with this subscriber
     try:
@@ -117,6 +152,30 @@ def delSubscriber(srvObj,
              " successfully unsubscribed")
     return [err, errMsg]
 
+def _reduceRefCount(fileDeliveryCountDic, fileDeliveryCountDic_Sem, fileId, fileVersion):
+    """
+    Reduce the reference count for files that have been scheduled for delivery
+    
+    return: 0 success, 1 failed
+    """
+    fkey = fileId + "/" + str(fileVersion) 
+    fileDeliveryCountDic_Sem.acquire()
+    try:
+        if (fileDeliveryCountDic.has_key(fkey)):
+            fileDeliveryCountDic[fkey]  -= 1
+            if (fileDeliveryCountDic[fkey] == 0):
+                del fileDeliveryCountDic[fkey]
+                # mark deletion -- should not mark deletion. The ONLY POSSIBLE place to mark deletion is when a file is successfully delivered
+                # diskId = fi[2]
+                # sqlFileInfo = (diskId, fileId, fileVersion)
+                # ngamsCacheControlThread.scheduleFileForDeletion(srvObj, sqlFileInfo)
+    except Exception, e:
+        warning(" Error reducing the reference count by 1 for file: %s, Exception: %s" % (fileId, str(e)))
+        return 1
+    finally:
+        fileDeliveryCountDic_Sem.release()
+    return 0
+    
 
 def handleCmdUnsubscribe(srvObj,
                          reqPropsObj,

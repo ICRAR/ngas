@@ -348,6 +348,7 @@ class ngamsServer:
         self._subscrQueueDic          = {}
         self._subscrDeliveryThreadDic = {}
         self._subscrDeliveryThreadDicRef = {}
+        self._subscrDeliveryFileDic   = {}
         self._subscrSuspendDic        = {}
         self._subscrFileCountDic      = {}
         self._subscrFileCountDic_Sem  = threading.Semaphore(1)

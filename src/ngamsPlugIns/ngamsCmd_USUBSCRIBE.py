@@ -91,7 +91,7 @@ def handleCmd(srvObj,
         return
     
     if (reqPropsObj.hasHttpPar("suspend")):
-        suspend = reqPropsObj.getHttpPar("suspend")
+        suspend = int(reqPropsObj.getHttpPar("suspend"))
         suspend_processed = 0
         # could use locks, but the race condition should not really matter here if only one request of suspend is issued at a time (by a system admin?)
         if (suspend == 1 and srvObj._subscrSuspendDic[subscrId].is_set()): # suspend condition met
@@ -113,15 +113,16 @@ def handleCmd(srvObj,
     subscriber = srvObj.getSubscriberDic()[subscrId]
     
     if (reqPropsObj.hasHttpPar("priority")):
-        priority = reqPropsObj.getHttpPar("priority")
+        priority = int(reqPropsObj.getHttpPar("priority"))
         subscriber.setPriority(priority)
     
     if (reqPropsObj.hasHttpPar("url")):
-        priority = reqPropsObj.getHttpPar("url")
-        subscriber.setUrl(priority)
+        url = reqPropsObj.getHttpPar("url")
+        subscriber.setUrl(url)
+        # TODO - update the back-log db entries to use this new url!!
+        # update ngas_subscr_back_log set subscr_url = '%s' where subscr_id = '%s' % (url, subscrId)
     
     if (reqPropsObj.hasHttpPar("start_date")):
-        priority = reqPropsObj.getHttpPar("start_date")
         tmpStartDate = reqPropsObj.getHttpPar("start_date")
         if (tmpStartDate.strip() != ""): startDate = tmpStartDate.strip()
         subscriber.setStartDate(startDate)
@@ -136,7 +137,7 @@ def handleCmd(srvObj,
     
     if (reqPropsObj.hasHttpPar("concurrent_threads")):
         ccthrds = int(reqPropsObj.getHttpPar("concurrent_threads"))
-        origthrds = subscriber.getConcurrentThreads()
+        origthrds = int(subscriber.getConcurrentThreads())
         if (ccthrds != origthrds):
             subscriber.setConcurrentThreads(ccthrds)
             try:
@@ -154,6 +155,6 @@ def handleCmd(srvObj,
         err += 1
         errMsg += msg        
     if (err):
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, "UNSUBSCRIBE command failed. Exception: %s" % errMsg)
+        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, "USUBSCRIBE command failed. Exception: %s" % errMsg)
     else:
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, "UNSUBSCRIBE command succeeded")
+        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, "USUBSCRIBE command succeeded")

@@ -148,10 +148,42 @@ def ngamsMWAOnlinePlugIn(srvObj,
     #myRes = pickle.loads(strRes)
     info(3, "Starting async retrieve list result - %s" % myRes)
     
+    _restoreSubscriptionInfoFromDisk(srvObj)
+    
     return diskInfoDic
 
-
-
+def _restoreSubscriptionInfoFromDisk(srvObj):
+    ngas_root_dir =  srvObj.getCfg().getRootDirectory()
+    myDir = ngas_root_dir + "/SubscriptionInfo" 
+    if (not os.path.exists(myDir)):
+        return
+    saveFile = myDir + "/SubscriptionInfoObj"
+    if (not os.path.exists(saveFile)):
+        return
+    
+    info(3, 'Restoring subscription info from disks ...')
+    saveObj = None
+    try:
+        pkl_file = open(saveFile, 'rb')
+        saveObj = pickle.load(pkl_file)   
+        pkl_file.close() 
+    except Exception, e:
+        ex = str(e)
+        alert('Fail to restore subscription info from disks, Exception: %s' % ex)
+    
+    if (saveObj == None or len(saveObj) == 0):
+        return
+    
+    info(3, 'Appending subscription info to info list kept internally ...')
+    try:  
+        srvObj._subscriptionSem.acquire()
+        srvObj._subscriptionFileList += saveObj  
+        cmd = "rm " + saveFile
+        ngamsPlugInApi.execCmd(cmd, -1)    
+    except Exception, e:
+        alert('Fail to append filelist to subscription info list, Exception: %s' % str(e))
+    finally:
+        srvObj._subscriptionSem.release()
 
 if __name__ == '__main__':
     """

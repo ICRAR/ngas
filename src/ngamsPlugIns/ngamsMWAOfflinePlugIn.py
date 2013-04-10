@@ -35,13 +35,57 @@ Module that contains a generic Offline Plug-In for NGAS.
 
 from   ngams import *
 import ngamsPlugInApi
-import ngamsLinuxSystemPlugInApi, ngamsEscaladeUtils
+import ngamsLinuxSystemPlugInApi, ngamsEscaladeUtils, ngamsSubscriptionThread
 from ngamsGenericPlugInLib import notifyRegistrationService
 
-import urllib
+import urllib, os
 import cPickle as pickle
 import ngamsCmd_ASYNCLISTRETRIEVE
 
+def _saveSubscriptionInfoToDisk(srvObj):
+    """
+    Before ngas server is shutdown, write files from to-be-delivered-list to disks
+    otherwise, this information will be lost when server is restarted again
+    """
+    # get the files currently being transferred but not yet completed
+    # save them in the subscriptionInfo so that they can be resumed when server starts up
+    li = []
+    idx_fileId = ngamsSubscriptionThread.FILE_ID
+    idx_filever = ngamsSubscriptionThread.FILE_VER
+    for k, fileInfo in srvObj._subscrDeliveryFileDic.items():
+        if (fileInfo == None):
+            continue
+        fileInfo = ngamsSubscriptionThread._convertFileInfo(fileInfo)
+        li += [(fileInfo[idx_fileId], fileInfo[idx_filever])]
+        info(3, '%s is added to the subscriptionInfoList' % fileInfo[idx_fileId])
+    
+    # also add to files that have not yet been in the queue
+    srvObj._subscriptionSem.acquire()
+    srvObj._subscriptionFileList += li
+    if (len(srvObj._subscriptionFileList) == 0):
+        srvObj._subscriptionSem.release()
+        info(3, "**** subscription list is empty!!")
+        return
+    
+    info(3, "Saving subscription info to disks ...")
+    ngas_root_dir =  srvObj.getCfg().getRootDirectory()
+    myDir = ngas_root_dir + "/SubscriptionInfo"
+    saveFile = myDir + "/SubscriptionInfoObj"
+    
+    try:
+        if (os.path.exists(saveFile)):
+            cmd = "rm " + saveFile
+            ngamsPlugInApi.execCmd(cmd, -1)
+        if (not os.path.exists(myDir)):
+            os.makedirs(myDir)
+        output = open(saveFile, 'wb')
+        pickle.dump(srvObj._subscriptionFileList, output)
+        output.close()
+    except Exception, e:
+        ex = str(e)
+        alert('Fail to save subscription info to disks, Exception: %s' % ex)
+    finally:
+        srvObj._subscriptionSem.release()
 
 def ngamsMWAOfflinePlugIn(srvObj,
                               reqPropsObj = None):
@@ -65,11 +109,13 @@ def ngamsMWAOfflinePlugIn(srvObj,
     #port = srvObj.getCfg().getPortNo()
     
     #startAsyncRetrListUrl = "http://" + host + ":" + str(port) + "/ASYNCLISTRETRIEVE?ngassystem=start"
-    info(3, "Sending system stopping request ")
+    #info(3, "Sending system stopping request ")
     myRes = ngamsCmd_ASYNCLISTRETRIEVE.stopAsyncQService(srvObj, reqPropsObj)
     #strRes = urllib.urlopen(startAsyncRetrListUrl).read()
     #myRes = pickle.loads(strRes)
     info(3, "Stopping async retrieve list result - %s" % myRes)
+    
+    _saveSubscriptionInfoToDisk(srvObj)
 
 if __name__ == '__main__':
     """

@@ -449,7 +449,7 @@ def handleCmd(srvObj,
     
      # Trigger Subscription Thread. This is a special version for MWA, in which we simply swapped MIRRARCHIVE and QARCHIVE
      # chen.wu@icrar.org
-    msg = "triggering SubscriptionThread"
+    msg = "triggering SubscriptionThread for file %s" % resDapi.getFileId()
     info(3, msg)
     srvObj.addSubscriptionInfo([(resDapi.getFileId(),
                                  resDapi.getFileVersion())], [])

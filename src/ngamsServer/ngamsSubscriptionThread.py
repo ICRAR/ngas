@@ -34,8 +34,8 @@ This module contains the code for the (Data) Subscription Thread, which is
 used to handle the delivery of data to Subscribers.
 """
 
-import thread, threading, time, commands, cPickle, types, math
-from Queue import Queue
+import thread, threading, time, commands, cPickle, types, math, sys, traceback
+from Queue import Queue, Empty
 
 from ngams import *
 import ngamsDbm, ngamsDb, ngamsLib, ngamsStatus, ngamsHighLevelLib, ngamsCacheControlThread
@@ -88,6 +88,7 @@ def stopSubscriptionThread(srvObj):
     srvObj._subscriptionStopSyncConf.wait(10)
     srvObj._subscriptionStopSync.clear()
     srvObj._subscriptionThread = None
+    _backupQueueToBacklog(srvObj) # this should always occur after srvObj._deliveryStopSync.set() is called
     info(3,"Subscription Thread stopped")
 
 
@@ -107,7 +108,7 @@ def _checkStopSubscriptionThread(srvObj):
         raise Exception, "_STOP_SUBSCRIPTION_THREAD_"
 
 
-def _checkStopDataDeliveryThread(srvObj):
+def _checkStopDataDeliveryThread(srvObj, subscrbId):
     """
     Function used by the Data Delivery Threads to check if they should
     stop execution.
@@ -118,7 +119,9 @@ def _checkStopDataDeliveryThread(srvObj):
     """
     deliveryThreadRefDic = srvObj._subscrDeliveryThreadDicRef
     tname = threading.current_thread().name
-    if (srvObj._deliveryStopSync.isSet() or (not deliveryThreadRefDic.has_key(tname))):
+    if (srvObj._deliveryStopSync.isSet() or # server is about to shutdown
+        (not deliveryThreadRefDic.has_key(tname)) or # this thread's reference has been removed by the USUBSCRIBE command, see ngamsPlugIns/ngamsCmd_USUBSCRIBE.changeNumThreads()
+        (not srvObj.getSubscriberDic().has_key(subscrbId))): # the UNSUBSCRIBE command is issued
         info(2,"Stopping Data Delivery Thread ... %s" % tname)
         raise Exception, "_STOP_DELIVERY_THREAD_%s" % tname
 
@@ -507,10 +510,39 @@ def _markDeletion(srvObj,
     """
     sqlFileInfo = (diskId, fileId, fileVersion)
     ngamsCacheControlThread.scheduleFileForDeletion(srvObj, sqlFileInfo)
-
+    
+def _backupQueueToBacklog(srvObj):
+    """
+    When NGAS server is shutdown, pending files in the queue for each subscriber need to be kept in the backlog 
+    so that their delivery can be resumed when server is restarted
+    
+    This is necessary because the current three triggering mechanism - (explicit file ref, explicit subscribers, backlog) - 
+    cannot trigger "resuming" delivering these "in-queue and delivery-pending" files after the server is restarted, when all queues are cleared to empty.
+    """
+    info(3, 'Started - backing up pending files from delivery queue to back logs ......')
+    queueDict = srvObj._subscrQueueDic
+    subscrbDict =srvObj.getSubscriberDic()
+    for subscrbId, qu in queueDict.items():
+        if (subscrbDict.has_key(subscrbId)):
+            subscrObj = subscrbDict[subscrbId]
+        else:
+            alert('Cannot find the file queue for subscriber %s during backing up' % subscrbId)
+            break
+        while (1):
+            fileInfo = None
+            try:
+                fileInfo = qu.get_nowait()
+            except Empty, e:
+                break
+            if (fileInfo is None):
+                break
+            fileInfo = _convertFileInfo(fileInfo)
+            _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
+            info(3, 'File %s for subscriber %s is backed up to backlog' % (fileInfo[FILE_ID], subscrbId))
+    info(3, 'Completed - backing up pending files from delivery queue to back logs')
+    
 def _deliveryThread(srvObj,
                     subscrObj,
-                    #fileInfoList,
                     quChunks,
                     fileDeliveryCountDic,
                     fileDeliveryCountDic_Sem,
@@ -544,124 +576,128 @@ def _deliveryThread(srvObj,
     # priority of this subscriber.
     suspenTime = (0.005 * (subscrObj.getPriority() - 1)) # so that the top priority (level 1) does not suspend at all
     subscrbId = subscrObj.getId();
+    tname = threading.current_thread().name
     
-    while(1): # the delivery is always running unless either unsubscribeCmd is called or server is shutting down
-        # Allow to break this loop in case server shutdown
-        _checkStopDataDeliveryThread(srvObj)     
-        srvObj._subscrSuspendDic[subscrbId].wait() # to check if it should suspend file delivery   
-        if (not srvObj.getSubscriberDic().has_key(subscrbId)): #in case just wake up, check if unsubscribeCmd is called, if so, exit
-            break
-        fileInfo = None
+    while (1): # the delivery is always running unless either unsubscribeCmd is called, or server is shutting down, or it is kicked out by the USUBSCRIBE command
         try:
-            # block for up to 1 minute if the queue is empty. 
-            # Timeout allows it to check if the unsubscribeCmd is called
-            fileInfo = quChunks.get(timeout = 60) 
-            # info(3,"Data Delivery Thread [" + str(thread.get_ident()) + "] preparing to deliver " + str(len(fileInfoList)) + " files to Subscriber: " + subscrObj.getId() + " ...")
-        except Exception, e:
-            info(4, "Data delivery thread [" + str(thread.get_ident()) + "] block timeout")
-        
-        if (not srvObj.getSubscriberDic().has_key(subscrbId)): #if unsubscribeCmd is called, then terminate
-            break
-        
-        if (fileInfo == None):
-            continue
-              
-        fileInfo = _convertFileInfo(fileInfo)
-        # Prepare info and POST the file.
-        fileId         = fileInfo[FILE_ID]
-        filename       = fileInfo[FILE_NM]
-        fileVersion    = fileInfo[FILE_VER]
-        fileIngDate    = fileInfo[FILE_DATE]
-        fileMimeType   = fileInfo[FILE_MIME]
-        fileBackLogged = fileInfo[FILE_BL]
-        baseName = os.path.basename(filename)
-        contDisp = "attachment; filename=\"" + baseName + "\""
-        # TODO: Note should not have no_versioning hardcoded in the
-        # request send to the client/subscriber.
-        contDisp += "; no_versioning=1"
-        info(3,"Thread [" + str(thread.get_ident()) + "] Delivering file: " + baseName + "/" +\
-             str(fileVersion) + " - to Subscriber with ID: " +\
-             subscrObj.getId() + " ...")
-        ex = ""
-        stat = ngamsStatus.ngamsStatus()
-        try:
-            reply, msg, hdrs, data = \
-                   ngamsLib.httpPostUrl(subscrObj.getUrl(), fileMimeType,
-                                        contDisp, filename, "FILE",
-                                        blockSize=\
-                                        srvObj.getCfg().getBlockSize(),
-                                        suspTime = suspenTime)
-            if (data.strip() != ""):
-                stat.clear().unpackXmlDoc(data)
-            else:
-                # TODO: For the moment assume success in case no
-                #       exception was thrown.
-                stat.clear().setStatus(NGAMS_SUCCESS)
-        except Exception, e:
-            ex = str(e)
-            if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and ex.find('Errno 2] No such file or directory') > -1):
-                warning('File %s is no longer available, remove it from the subscr_back_log table' %  filename)
-                filename = os.path.normpath(filename)
-                _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,
-                                      fileVersion, filename)
-                continue
-        if ((ex != "") or (reply != NGAMS_HTTP_SUCCESS) or
-            (stat.getStatus() == NGAMS_FAILURE)):
-            # If an error occurred during data delivery, we should not update
-            # the Subscription Status table for this Subscriber, but should
-            # instead make an entry in the Subscription Back-Log Table
-            # (if the file is not an already back log buffered file, which
-            # was attempted re-posted).                
-            errMsg = "Error occurred while delivering file: " + baseName +\
-                     "/" + str(fileVersion) +\
-                     " - to Subscriber with ID/url: " + subscrObj.getId() + "/" + subscrObj.getUrl() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]"
-            if (ex != ""): errMsg += " Exception: " + ex + "."
-            if (stat.getMessage() != ""):
-                errMsg += " Message: " + stat.getMessage()
-            warning(errMsg)
-            _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
-        else:
-            if (srvObj.getCachingActive()):                   
-                fkey = fileId + "/" + str(fileVersion)
-                fileDeliveryCountDic_Sem.acquire()
-                try:
-                    if (fileDeliveryCountDic.has_key(fkey)):
-                        fileDeliveryCountDic[fkey] -= 1
-                        if (fileDeliveryCountDic[fkey] == 0):    
-                            _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
-                            ff = fileDeliveryCountDic.pop(fkey)
-                            del ff
-                    else:
-                        alert("Fail to find %s/%d in the fileDeliveryCountDic" % (fileId, fileVersion))
-                finally:
-                    fileDeliveryCountDic_Sem.release()
-            info(3,"File: " + baseName + "/" + str(fileVersion) +\
-                 " - delivered to Subscriber with ID: " + subscrObj.getId() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]")
-            
-            # Update the Subscriber Status to avoid that this file
-            # gets delivered again.
-            
-            # need to catch db exception here 
-            # Otherwise the thread will exit
-            # (chen.wu@icrar.org)
+            _checkStopDataDeliveryThread(srvObj, subscrbId)     
+            srvObj._subscrSuspendDic[subscrbId].wait() # to check if it should suspend file delivery   
+            _checkStopDataDeliveryThread(srvObj, subscrbId)
+            fileInfo = None
             try:
-                srvObj.getDb().updateSubscrStatus(subscrObj.getId(), fileIngDate)
+                # block for up to 1 minute if the queue is empty. 
+                # Timeout allows it to check if the delivery thread should stop
+                fileInfo = quChunks.get(timeout = 60)   
+                srvObj._subscrDeliveryFileDic[tname] = fileInfo # once it is dequeued, it is no longer safe, so need to record it in case server shut down.
+            except Empty, e:
+                info(4, "Data delivery thread [" + str(thread.get_ident()) + "] block timeout")
+            
+            _checkStopDataDeliveryThread(srvObj, subscrbId)
+ 
+            if (fileInfo == None):
+                continue                 
+            fileInfo = _convertFileInfo(fileInfo)       
+            # Prepare info and POST the file.
+            fileId         = fileInfo[FILE_ID]
+            filename       = fileInfo[FILE_NM]
+            fileVersion    = fileInfo[FILE_VER]
+            fileIngDate    = fileInfo[FILE_DATE]
+            fileMimeType   = fileInfo[FILE_MIME]
+            fileBackLogged = fileInfo[FILE_BL]
+            baseName = os.path.basename(filename)
+            contDisp = "attachment; filename=\"" + baseName + "\""
+            # TODO: Note should not have no_versioning hardcoded in the
+            # request send to the client/subscriber.
+            contDisp += "; no_versioning=1"
+            info(3,"Thread [" + str(thread.get_ident()) + "] Delivering file: " + baseName + "/" +\
+                 str(fileVersion) + " - to Subscriber with ID: " +\
+                 subscrObj.getId() + " ...")
+            ex = ""
+            stat = ngamsStatus.ngamsStatus()        
+            try:
+                reply, msg, hdrs, data = \
+                       ngamsLib.httpPostUrl(subscrObj.getUrl(), fileMimeType,
+                                            contDisp, filename, "FILE",
+                                            blockSize=\
+                                            srvObj.getCfg().getBlockSize(),
+                                            suspTime = suspenTime)
+                if (data.strip() != ""):
+                    stat.clear().unpackXmlDoc(data)
+                else:
+                    # TODO: For the moment assume success in case no
+                    #       exception was thrown.
+                    stat.clear().setStatus(NGAMS_SUCCESS)
             except Exception, e:
-                # continue with warning message. this means the database (i.e. last_ingestion_date) is not synchronised for this file, 
-                # but at least remaining files can be delivered continuously, the database may be back in sync when delivering remaining files 
-                errMsg = "Error occurred during update the ngas_subscriber table " +\
-                     "_devliveryThread [" + str(thread.get_ident()) + "] Exception: " + str(e)
-                alert(errMsg)
-
-            # If the file is back-log buffered, we check if we can delete it.
-            if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
-                filename = os.path.normpath(filename)
-                _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,
-                                      fileVersion, filename)
+                ex = str(e)
+                if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and ex.find('Errno 2] No such file or directory') > -1):
+                    warning('File %s is no longer available, remove it from the subscr_back_log table' %  filename)
+                    filename = os.path.normpath(filename)
+                    _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,
+                                          fileVersion, filename)
+                    continue
+            if ((ex != "") or (reply != NGAMS_HTTP_SUCCESS) or
+                (stat.getStatus() == NGAMS_FAILURE)):
+                # If an error occurred during data delivery, we should not update
+                # the Subscription Status table for this Subscriber, but should
+                # instead make an entry in the Subscription Back-Log Table
+                # (if the file is not an already back log buffered file, which
+                # was attempted re-posted).                
+                errMsg = "Error occurred while delivering file: " + baseName +\
+                         "/" + str(fileVersion) +\
+                         " - to Subscriber with ID/url: " + subscrObj.getId() + "/" + subscrObj.getUrl() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]"
+                if (ex != ""): errMsg += " Exception: " + ex + "."
+                if (stat.getMessage() != ""):
+                    errMsg += " Message: " + stat.getMessage()
+                warning(errMsg)
+                _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
+            else:
+                if (srvObj.getCachingActive()):                   
+                    fkey = fileId + "/" + str(fileVersion)
+                    fileDeliveryCountDic_Sem.acquire()
+                    try:
+                        if (fileDeliveryCountDic.has_key(fkey)):
+                            fileDeliveryCountDic[fkey] -= 1
+                            if (fileDeliveryCountDic[fkey] == 0):    
+                                _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
+                                ff = fileDeliveryCountDic.pop(fkey)
+                                del ff
+                        else:
+                            if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
+                                # it is possible that backlogged files cannot find an entry in the reference count dic - 
+                                # e.g. when the server is restarted, refcount dic is empty. Later on, back-logged files are queued for delivery. 
+                                # but they did not create entries in refcount dic when they are queued
+                                _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
+                            else:
+                                alert("Fail to find %s/%d in the fileDeliveryCountDic" % (fileId, fileVersion))
+                    finally:
+                        fileDeliveryCountDic_Sem.release()
+                info(3,"File: " + baseName + "/" + str(fileVersion) +\
+                     " - delivered to Subscriber with ID: " + subscrObj.getId() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]")
+                
+                # Update the Subscriber Status to avoid that this file
+                # gets delivered again.
+                try:
+                    srvObj.getDb().updateSubscrStatus(subscrObj.getId(), fileIngDate)
+                except Exception, e:
+                    # continue with warning message. this means the database (i.e. last_ingestion_date) is not synchronised for this file, 
+                    # but at least remaining files can be delivered continuously, the database may be back in sync when delivering remaining files 
+                    errMsg = "Error occurred during update the ngas_subscriber table " +\
+                         "_devliveryThread [" + str(thread.get_ident()) + "] Exception: " + str(e)
+                    alert(errMsg)
     
-    # Stop this thread.
-    info(3, 'Delivery thread [' + str(thread.get_ident()) + '] is exiting.')
-    thread.exit()
+                # If the file is back-log buffered, we check if we can delete it.
+                if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
+                    filename = os.path.normpath(filename)
+                    _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,
+                                          fileVersion, filename)
+            srvObj._subscrDeliveryFileDic[tname] = None
+        except Exception, be:
+            if (str(be).find("_STOP_DELIVERY_THREAD_") != -1): 
+                # Stop delivery thread.
+                info(3, 'Delivery thread [' + str(thread.get_ident()) + '] is exiting.')
+                thread.exit()
+            errMsg = "Error occurred during file delivery: " + str(be)
+            alert(errMsg)
 
 
 def _fileKey(fileId,
@@ -711,8 +747,12 @@ def subscriptionThread(srvObj,
     #deliverySuspendDic = srvObj._subscrSuspendDic
     
     # key: threadName (unique), value -  dummy 1
-    # note that threads for the same subscriber will have different thread names now
+    # Threads for the same subscriber will have different thread names
     deliveryThreadRefDic = srvObj._subscrDeliveryThreadDicRef
+    
+    # key: threadName (unique), value -  None or FileInfo (the current file that is being transferred)
+    # Threads for the same subscriber will have different thread names 
+    deliveryFileDic = srvObj._subscrDeliveryFileDic
     
     # key: file_id, value - the number of pending deliveries, should be > 0, 
     # decreases by 1 upon a successful delivery
@@ -911,16 +951,6 @@ def subscriptionThread(srvObj,
                 
                 # multi-threaded concurrent transfer, added by chen.wu@icrar.org
                 num_threads = float(srvObj.getSubscriberDic()[subscrId].getConcurrentThreads())
-                """
-                total_files = len(deliverReqDic[subscrId])
-                #debug_chen
-                info(4, 'Total %d files to deliver to %s' % (total_files, subscrId))
-                tt = math.ceil(float(total_files) / num_threads)
-                chunk_size = int(tt)
-                list_of_chunks = [deliverReqDic[subscrId][i:i+chunk_size] for i in range(0, total_files, chunk_size)]
-                #debug
-                info(4, 'chunk_size = %d, length of list_of_chunks = %d' % (chunk_size, len(list_of_chunks)))
-                """
                 if queueDict.has_key(subscrId):
                     #debug_chen
                     #info(4, 'Use existing queue for %s' % subscrId)
@@ -928,62 +958,24 @@ def subscriptionThread(srvObj,
                 else:
                     quChunks = Queue()
                     queueDict[subscrId] = quChunks
-                    
-                #for jdx in range(len(list_of_chunks)):  
-                    #quChunks.put(list_of_chunks[jdx])
+ 
                 allFiles = deliverReqDic[subscrId]                 
                 for jdx in range(len(allFiles)):
                     quChunks.put(allFiles[jdx])   
-                    # Deliver the data - spawn off a Delivery Thread to do this job
-                    # per Subscriber.
-                    #args = (srvObj, srvObj.getSubscriberDic()[subscrId],
-                            #list_of_chunks[jdx], None) #deliverReqDic[subscrId], None)
-                    
-                """
-                if (deliveryThreadDic.has_key(subscrId)):
-                    threads = deliveryThreadDic[subscrId]
-                    cc = 0
-                    for thd in threads:
-                        if (not thd.isAlive()):
-                            cc += 1
-                            
-                    # if all deliveryThreads are terminated (i.e. unsubscribeCmd was called), 
-                    #     then kill them all to prepare for the next life (if subscribeCmd is called again)
-                    if (cc == len(threads)): 
-                        pp = deliveryThreadDic.pop(subscrId)
-                        for p in pp:
-                            del p
-                        del pp
-                """                        
+                    # Deliver the data - spawn off a Delivery Thread to do this job                    
                 if not deliveryThreadDic.has_key(subscrId):
                     deliveryThreads = []
                     for tid in range(int(num_threads)):
                         args = (srvObj, srvObj.getSubscriberDic()[subscrId], quChunks, fileDeliveryCountDic, fileDeliveryCountDic_Sem, None)
                         thrdName = NGAMS_DELIVERY_THR + subscrId + str(tid)
                         deliveryThreadRefDic[thrdName] = 1
+                        deliveryFileDic[thrdName] = None
                         deliveryThrRef = threading.Thread(None, _deliveryThread, thrdName, args)
                         deliveryThrRef.setDaemon(0)
                         deliveryThrRef.start()
                         deliveryThreads.append(deliveryThrRef)                        
                         
                     deliveryThreadDic[subscrId] = deliveryThreads
-                    
-                        
-                    
-
-            # Wait nicely until all files have been delivered. This is done
-            # to prevent that another set of Data Deliveries are spawned off
-            # before this is finished; this might create conflicts.
-            
-#            while (len(deliveryThreads)):
-#                for idx in range(len(deliveryThreads)):
-#                    if (not deliveryThreads[idx].isAlive()):
-#                        # If a thread is no-longer active, we break the loop
-#                        # and start the checking all over again.
-#                        info(3, "Removing the delivery Thread [" + str(deliveryThreads[idx].ident) + "]")
-#                        del deliveryThreads[idx]
-#                        break
-#                time.sleep(1.0)
         except Exception, e:
             try:
                 del fileDicDbm
@@ -993,7 +985,6 @@ def subscriptionThread(srvObj,
             if (str(e).find("_STOP_SUBSCRIPTION_THREAD_") != -1): thread.exit()
             errMsg = "Error occurred during execution of the Data " +\
                      "Subscription Thread. Exception: " + str(e)
-            alert(errMsg)
-                    
+            alert(errMsg)                    
 
 # EOF
