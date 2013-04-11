@@ -415,6 +415,11 @@ def handleCmd(srvObj,
                setCreationDate(creDate)
     fileInfo.write(srvObj.getDb())
   
+    # the following is not needed anymore since scheduleDelete will add
+    # an cache entry if it was not there. Tested on several cases, all okay.
+    # In fact, having the following code will have data racing issue
+    # in the CacheControlThread
+    """
     # Inform the caching service about the new file.
     info(3, "Inform the caching service about the new file.")
     if (srvObj.getCachingActive()):
@@ -423,7 +428,8 @@ def handleCmd(srvObj,
         fileVersion = file_version
         filename    = resDapi.getRelFilename()
         ngamsCacheControlThread.addEntryNewFilesDbm(srvObj, diskId, fileId,
-                                                    fileVersion, filename)
+                                                   fileVersion, filename)
+    """
 
     # Update disk info in NGAS Disks.
     info(3, "Update disk info in NGAS Disks.")

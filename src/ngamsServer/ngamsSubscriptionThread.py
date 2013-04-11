@@ -34,7 +34,7 @@ This module contains the code for the (Data) Subscription Thread, which is
 used to handle the delivery of data to Subscribers.
 """
 
-import thread, threading, time, commands, cPickle, types, math, sys, traceback
+import thread, threading, time, commands, cPickle, types, math, sys, traceback, os
 from Queue import Queue, Empty
 
 from ngams import *
@@ -144,6 +144,7 @@ def _waitForScheduling(srvObj):
     # new data is available.
     if (srvObj.getSubcrBackLogCount()):
         suspTime = isoTime2Secs(srvObj.getCfg().getSubscrSuspTime())
+        info(3, 'Subscription thread will suspend %s seconds before re-trying delivering back-logged files' % str(suspTime))
         srvObj._subscriptionRunSync.wait(suspTime)
     else:
         srvObj._subscriptionRunSync.wait()
@@ -406,14 +407,14 @@ def _genSubscrBackLogFile(srvObj,
     Returns:       Void.
     """
     # If in ngamsDbBase.SUM2 format, convert to the internal format.
-    locFileInfo = _convertFileInfo(fileInfo)
+    locFileInfo = _convertFileInfo(fileInfo)        
+
+    # If file was already back-logged, nothing is done.
+    if (locFileInfo[FILE_BL] == NGAMS_SUBSCR_BACK_LOG): return
     
     # Increase the Subscription Back-Log Counter to indicate to the Data
     # Subscription Thread that it should only suspend itself temporarily.
     srvObj.incSubcrBackLogCount()
-
-    # If file was already back-logged, nothing is done.
-    if (locFileInfo[FILE_BL] == NGAMS_SUBSCR_BACK_LOG): return
 
     # NOTE: The actions carried out by this function are critical and need
     #       to be semaphore protected (Back-Log Operations Semaphore).
@@ -570,11 +571,8 @@ def _deliveryThread(srvObj,
     dummy:         Needed by the thread handling ... 
 
     Returns:       Void.
-    """    
+    """        
     
-    # Calculate the suspension time for this thread based on the
-    # priority of this subscriber.
-    suspenTime = (0.005 * (subscrObj.getPriority() - 1)) # so that the top priority (level 1) does not suspend at all
     subscrbId = subscrObj.getId();
     tname = threading.current_thread().name
     
@@ -585,15 +583,13 @@ def _deliveryThread(srvObj,
             _checkStopDataDeliveryThread(srvObj, subscrbId)
             fileInfo = None
             try:
-                # block for up to 1 minute if the queue is empty. 
-                # Timeout allows it to check if the delivery thread should stop
+                # block for up to 1 minute if the queue is empty.                 
                 fileInfo = quChunks.get(timeout = 60)   
                 srvObj._subscrDeliveryFileDic[tname] = fileInfo # once it is dequeued, it is no longer safe, so need to record it in case server shut down.
             except Empty, e:
                 info(4, "Data delivery thread [" + str(thread.get_ident()) + "] block timeout")
+                _checkStopDataDeliveryThread(srvObj, subscrbId) # Timeout allows it to check if the delivery thread should stop
             
-            _checkStopDataDeliveryThread(srvObj, subscrbId)
- 
             if (fileInfo == None):
                 continue                 
             fileInfo = _convertFileInfo(fileInfo)       
@@ -604,6 +600,10 @@ def _deliveryThread(srvObj,
             fileIngDate    = fileInfo[FILE_DATE]
             fileMimeType   = fileInfo[FILE_MIME]
             fileBackLogged = fileInfo[FILE_BL]
+            if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not os.path.isfile(filename))): # in case back-logged files are enqueued more than once
+                alert('File %s is no longer available' %  filename)
+                _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename) # this is only useful if this file is removed by an agent outside of NGAS
+                continue
             baseName = os.path.basename(filename)
             contDisp = "attachment; filename=\"" + baseName + "\""
             # TODO: Note should not have no_versioning hardcoded in the
@@ -613,7 +613,10 @@ def _deliveryThread(srvObj,
                  str(fileVersion) + " - to Subscriber with ID: " +\
                  subscrObj.getId() + " ...")
             ex = ""
-            stat = ngamsStatus.ngamsStatus()        
+            stat = ngamsStatus.ngamsStatus()       
+            # Calculate the suspension time for this thread based on the priority of this subscriber. 
+            # Dynamically calculated for each file so that the priority can be changed on the fly (no re-subscribe or server restart is needed)
+            suspenTime = (0.005 * (subscrObj.getPriority() - 1)) # so that the top priority (level 1) does not suspend at all 
             try:
                 reply, msg, hdrs, data = \
                        ngamsLib.httpPostUrl(subscrObj.getUrl(), fileMimeType,
@@ -629,12 +632,12 @@ def _deliveryThread(srvObj,
                     stat.clear().setStatus(NGAMS_SUCCESS)
             except Exception, e:
                 ex = str(e)
-                if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and ex.find('Errno 2] No such file or directory') > -1):
-                    warning('File %s is no longer available, remove it from the subscr_back_log table' %  filename)
-                    filename = os.path.normpath(filename)
-                    _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,
-                                          fileVersion, filename)
-                    continue
+                #if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and ex.find('Errno 2] No such file or directory') > -1):
+                    #warning('File %s is no longer available, remove it from the subscr_back_log table' %  filename)
+                    #filename = os.path.normpath(filename)
+                    #_delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,
+                    #                      fileVersion, filename)
+                    #continue
             if ((ex != "") or (reply != NGAMS_HTTP_SUCCESS) or
                 (stat.getStatus() == NGAMS_FAILURE)):
                 # If an error occurred during data delivery, we should not update
@@ -687,7 +690,7 @@ def _deliveryThread(srvObj,
     
                 # If the file is back-log buffered, we check if we can delete it.
                 if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
-                    filename = os.path.normpath(filename)
+                    srvObj.decSubcrBackLogCount()
                     _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,
                                           fileVersion, filename)
             srvObj._subscrDeliveryFileDic[tname] = None
@@ -765,7 +768,7 @@ def subscriptionThread(srvObj,
         try:
             fileRefs, subscrObjs = _waitForScheduling(srvObj)
             _checkStopSubscriptionThread(srvObj)
-            srvObj.resetSubcrBackLogCount()
+            #srvObj.resetSubcrBackLogCount()
 
             # If there are no Subscribers - don't do anything.
             if ((len(srvObj.getSubscriberDic()) == 0) and (subscrObjs == [])):

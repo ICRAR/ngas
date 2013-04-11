@@ -35,7 +35,7 @@ to manage the contents in the cache archive when running the NG/AMS Server
 as a cache archive.
 """
 
-import os, sys, time, thread, threading, random, copy, base64, cPickle
+import os, sys, time, thread, threading, random, copy, base64, cPickle, traceback
 try:
     from pysqlite2 import dbapi2 as sqlite
 except:
@@ -806,7 +806,7 @@ def scheduleFileForDeletion(srvObj,
           "NGAS Cache Archive"
     info(2, msg % (diskId, fileId, str(fileVersion)))
     sqlQuery = _SCHEDULE_DEL_TPL % (diskId, fileId, int(fileVersion))
-    queryCacheDbms(srvObj, sqlQuery)
+    queryCacheDbms(srvObj, sqlQuery) # this may fail as the records are not in the local RDBMS in yet
     srvObj.getDb().updateCacheEntry(diskId, fileId, fileVersion, 1)
     
     # update the newfilesdbm (bsddb)
@@ -1509,6 +1509,7 @@ def cacheControlThread(srvObj,
             errMsg = "Error occurred during execution of the Cache " +\
                      "Control Thread. Exception: " + str(e)
             alert(errMsg)
+            alert(3, traceback.format_exc(limit = None))
             # We make a small wait here to avoid that the process tries
             # too often to carry out the tasks that failed.
             time.sleep(5.0)

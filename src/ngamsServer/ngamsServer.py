@@ -352,6 +352,7 @@ class ngamsServer:
         self._subscrSuspendDic        = {}
         self._subscrFileCountDic      = {}
         self._subscrFileCountDic_Sem  = threading.Semaphore(1)
+        self._subscrBackLogCount_Sem  = threading.Semaphore(1)
         
         # List to keep track off to which Data Providers an NG/AMS
         # Server is subscribed.
@@ -863,19 +864,40 @@ class ngamsServer:
         return self
 
     
+    def decSubcrBackLogCount(self):
+        """
+        Decrease the Subscription Back-Log Counter.
+
+        Returns:  Current value of the Subscription Back-Log Counter (integer).
+        
+        This is thread safe
+        """
+        self._subscrBackLogCount_Sem.acquire()
+        try:
+            self._subscrBackLogCount -= 1
+        finally:
+            self._subscrBackLogCount_Sem.release()
+        return self._subscrBackLogCount
+    
     def incSubcrBackLogCount(self):
         """
         Increase the Subscription Back-Log Counter.
 
         Returns:  Current value of the Subscription Back-Log Counter (integer).
+        
+        This is thread safe
         """
-        self._subscrBackLogCount += 1
+        self._subscrBackLogCount_Sem.acquire()
+        try:
+            self._subscrBackLogCount += 1
+        finally:
+            self._subscrBackLogCount_Sem.release()
         return self._subscrBackLogCount
     
 
     def resetSubcrBackLogCount(self):
         """
-        Increase the Subscription Back-Log Counter.
+        Reset the Subscription Back-Log Counter.
 
         Returns:    Reference to object itself.
         """

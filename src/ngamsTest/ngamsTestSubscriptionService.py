@@ -16,7 +16,7 @@ Case 5. Running ngas-A in the cache mode. Both ngas-B and ngas-C subscribe with 
         Then start ngas-C. Wait until all ngas-B got all the files, then unsubscribe C. Observe how many files left in A's ngas_files table
         
 Case 6. Running ngas-A in the cache mode. ngas-B subscribes with ngas-A. Then multiple clients simultaneously archive files to ngas-A. During this time, 
-        A is shut down manually. Then A is restarted again. After while, observe how many files get delivered to ngas-B, and how many files left in ngas-A
+        A is shut down manually. Then A is restarted again. After while, verify how many files get delivered to ngas-B, and how many files left in ngas-A (should be zero)
         
 Case 7. Running ngas-A in the cache mode. ngas-B subscribes with ngas-A. Then multiple clients simultaneously archive files to ngas-A. During this time,
         B is first shut down manually. Then after while,  ngas-A is shut down manually. Restart ngas-B, and then restart ngas-A, which should resume delivering
@@ -28,13 +28,15 @@ Case 8. ngas-B subscribes with ngas-A. Then multiple clients simultaneously arch
         
 Case 9. ngas-B subscribes with ngas-A. Then multiple clients simultaneously archive files to ngas-A. After delivery starts, shut down ngas-B. When all failed deliveries
         are back logged, issue usubscribe command to change the url of the subscription so that files will now be delivered to ngas-C. now trigger subscription so that
-        back logged files should be delivered to ngas-C. Finally, observe how many files get to ngas-C.
+        back logged files should be delivered to ngas-C. Finally, verify how many files get to ngas-C.
 
-Case 10. ngas-B subscribes with ngas-A. Then multiple clients simultaneously archive files to ngas-A. After delivery starts, issue usubscribe command the change the
-        concurrent_threads to 6, after a while, change the concurrent_threads to 1. In the end, observe how many files get to ngas-B.
+Case 10. ngas-B subscribes with ngas-A. Then multiple clients simultaneously archive files to ngas-A. After delivery starts, issue usubscribe command to change the
+        concurrent_threads to 6, after a while, change the concurrent_threads to 1. In the end, verify how many files get to ngas-B by the original single thread, and 
+        how many by one of the 6 threads
         
-Case 11. ngas-B subscribes with ngas-A. Then multiple clients simultaneously archive files to ngas-A. After delivery starts, issue usubscribe command the change the
-        priority to 10, after a while, change the priority back to 1. In the end, observe how many files get to ngas-B.
+Case 11. ngas-B subscribes with ngas-A. Then multiple clients simultaneously archive files to ngas-A. After delivery starts, issue usubscribe command to change the
+        priority to 10, after a while, change the priority back to 1. In the end, verify how many files get to ngas-B, and verify throughtput difference under different 
+        priorities.
 """
 import time, os, commands, threading, thread
 import ngamsPClient
@@ -149,6 +151,160 @@ def TestCase05(num_file_per_client, num_clients, interval = 4, base_name = None)
     
 def TestCase07(num_file_per_client, num_clients, interval = 1, base_name = None):
     TestCase06(num_file_per_client, num_clients, interval, base_name, True)
+    
+def TestCase11(num_file_per_client, num_clients, interval = 2, base_name = None):
+    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
+    msg = stat.getMessage()
+    if (msg != 'Handled SUBSCRIBE command'):
+        raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
+    
+    num_files = num_file_per_client * num_clients
+    if (base_name == None):
+        print 'Creating %d dummy files ...' % num_files
+        base_name = createTmpFiles(num_files)
+    
+    file_list = []
+    for client in range(num_clients):
+        file_list.append([])
+        
+    for num in range(num_files):
+        fileUri = '%s/%s-%s%s' % (tmpDir, base_name, str(num), file_ext)
+        file_list[num % num_clients].append(fileUri)
+        
+    deliveryThreads = []
+    my_barrier = barrier(num_clients)
+    for clientIdx in range(num_clients):
+        args = (clientA, file_list[clientIdx], interval, clientIdx, my_barrier)
+        deliveryThrRef = threading.Thread(None, _archiveThread, 'ArchiveThrd' + str(clientIdx), args)
+        deliveryThrRef.setDaemon(0)
+        deliveryThrRef.start()
+        deliveryThreads.append(deliveryThrRef)
+    
+    tt = 'N'
+    while (tt != 'Y' and tt != 'y'):
+        tt = raw_input("\nShall we change the priority from 1 to 10 now?(Y/N)\n")
+    stat = clientA.sendCmd('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['priority', 10]])
+    msg = stat.getMessage()
+    print msg
+    
+    tt = 'N'
+    while (tt != 'Y' and tt != 'y'):
+        tt = raw_input("\nShall we change the priority from 10 back to 1 now?(Y/N)\n")
+    stat = clientA.sendCmd('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['priority', 1]])
+    msg = stat.getMessage()
+    print msg
+    
+    print 'Wait until all archive threads are done'
+    _waitUntilThreadsExit(deliveryThreads)
+    
+    tt = 'N'
+    while (tt != 'Y' and tt != 'y'):
+        tt = raw_input("\nShall we verify ngas-B now ?(Y/N)")
+    verifyCase(base_name, num_files, clientB, True)
+    _unSubscribe(clientA, 'A-to-B')
+    
+def TestCase10(num_file_per_client, num_clients, interval = 2, base_name = None):
+    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '1'], ['subscr_id', 'A-to-B'], ['priority', 1]])
+    msg = stat.getMessage()
+    if (msg != 'Handled SUBSCRIBE command'):
+        raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
+    
+    num_files = num_file_per_client * num_clients
+    if (base_name == None):
+        print 'Creating %d dummy files ...' % num_files
+        base_name = createTmpFiles(num_files)
+    
+    file_list = []
+    for client in range(num_clients):
+        file_list.append([])
+        
+    for num in range(num_files):
+        fileUri = '%s/%s-%s%s' % (tmpDir, base_name, str(num), file_ext)
+        file_list[num % num_clients].append(fileUri)
+        
+    deliveryThreads = []
+    my_barrier = barrier(num_clients)
+    for clientIdx in range(num_clients):
+        args = (clientA, file_list[clientIdx], interval, clientIdx, my_barrier)
+        deliveryThrRef = threading.Thread(None, _archiveThread, 'ArchiveThrd' + str(clientIdx), args)
+        deliveryThrRef.setDaemon(0)
+        deliveryThrRef.start()
+        deliveryThreads.append(deliveryThrRef)
+    
+    tt = 'N'
+    while (tt != 'Y' and tt != 'y'):
+        tt = raw_input("\nShall we change concurrent_threads to 3 now?(Y/N)\n")
+    stat = clientA.sendCmd('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['concurrent_threads', '3']])
+    msg = stat.getMessage()
+    print msg
+    
+    tt = 'N'
+    while (tt != 'Y' and tt != 'y'):
+        tt = raw_input("\nShall we change concurrent_threads back to 1 now?(Y/N)\n")
+    stat = clientA.sendCmd('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['concurrent_threads', '1']])
+    msg = stat.getMessage()
+    print msg
+    
+    print 'Wait until all archive threads are done'
+    _waitUntilThreadsExit(deliveryThreads)
+    
+    tt = 'N'
+    while (tt != 'Y' and tt != 'y'):
+        tt = raw_input("\nShall we verify ngas-B now ?(Y/N)")
+    verifyCase(base_name, num_files, clientB, True)
+    _unSubscribe(clientA, 'A-to-B')
+    
+def TestCase09(num_file_per_client, num_clients, interval = 2, base_name = None):
+    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
+    msg = stat.getMessage()
+    if (msg != 'Handled SUBSCRIBE command'):
+        raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
+    
+    num_files = num_file_per_client * num_clients
+    if (base_name == None):
+        print 'Creating %d dummy files ...' % num_files
+        base_name = createTmpFiles(num_files)
+    
+    #first_fname = '%s-%s%s' % (base_name, str(0), file_ext)
+    #last_fname = '%s-%s%s' % (base_name, num_files - 1, file_ext)
+    
+    file_list = []
+    for client in range(num_clients):
+        file_list.append([])
+        
+    for num in range(num_files):
+        fileUri = '%s/%s-%s%s' % (tmpDir, base_name, str(num), file_ext)
+        file_list[num % num_clients].append(fileUri)
+        
+    deliveryThreads = []
+    my_barrier = barrier(num_clients)
+    for clientIdx in range(num_clients):
+        args = (clientA, file_list[clientIdx], interval, clientIdx, my_barrier)
+        deliveryThrRef = threading.Thread(None, _archiveThread, 'ArchiveThrd' + str(clientIdx), args)
+        deliveryThrRef.setDaemon(0)
+        deliveryThrRef.start()
+        deliveryThreads.append(deliveryThrRef)
+       
+    tt = 'N'
+    while (tt != 'Y' and tt != 'y'):
+        tt = raw_input("Have you shut down ngas-B yet? (Y/N)")
+
+    tt = 'N'
+    while (tt != 'Y' and tt != 'y'):
+        tt = raw_input("Shall we change subscriber url to ngas-C's url now?(Y/N)")
+    stat = clientA.sendCmd('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['url', ngasC_url]])
+    msg = stat.getMessage()
+    print msg
+    
+    print 'Wait until all archive threads are done'
+    _waitUntilThreadsExit(deliveryThreads)
+    
+    tt = 'N'
+    while (tt != 'Y' and tt != 'y'):
+        tt = raw_input("Shall we start to verify ngas-B and ngas-C now?(Y/N)")
+    verifyCase(base_name, num_files, clientB, False)
+    verifyCase(base_name, num_files, clientC, True)
+    _unSubscribe(clientA, 'A-to-B')
 
 def TestCase08(num_file_per_client, num_clients, interval = 2, base_name = None, suspendFirst = True):
     stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
@@ -574,4 +730,7 @@ if __name__ == '__main__':
     #TestCase03(16)
     #TestCase06(8, 3)
     #TestCase07(8, 3)
-    TestCase08(8, 3, suspendFirst = False)
+    #TestCase08(8, 3, suspendFirst = False)
+    TestCase09(8, 3)
+    #TestCase10(8,3)
+    #TestCase11(7,3)

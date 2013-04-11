@@ -51,12 +51,12 @@ def changeNumThreads(srvObj, subscrId, oldNum, newNum):
         
         for tid in range(int(num_threads)):
             args = (srvObj, srvObj.getSubscriberDic()[subscrId], quChunks, srvObj._subscrFileCountDic, srvObj._subscrFileCountDic_Sem, None)
-            thrdName = NGAMS_DELIVERY_THR + subscrId + str(oldNum - 1 + tid)
+            thrdName = NGAMS_DELIVERY_THR + subscrId + str(oldNum + tid)
             deliveryThrRef = threading.Thread(None, ngamsSubscriptionThread._deliveryThread, thrdName, args)
-            deliveryThrRef.setDaemon(0)
-            deliveryThrRef.start()
-            deliveryThreadList.append(deliveryThrRef)  
+            deliveryThrRef.setDaemon(0)              
             deliveryThreadRefDic[thrdName] = 1
+            deliveryThrRef.start()
+            deliveryThreadList.append(deliveryThrRef)
     
 
 def handleCmd(srvObj,
