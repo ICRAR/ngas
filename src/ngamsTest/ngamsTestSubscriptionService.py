@@ -517,6 +517,7 @@ def TestCase01(num_file_per_client, num_clients, interval = 4, base_name = None,
     _waitUntilThreadsExit(deliveryThreads)
        
     #print 'Wait %d seconds so that all files are delivered to all subscribers' % (num_files * 3)
+    """
     print "Wait until NGAS-B has received the last file"
     try:
         howlong = waitUntilFileDelivered(last_fname, clientB, timeout = num_files, wait_interval = 2)
@@ -541,7 +542,11 @@ def TestCase01(num_file_per_client, num_clients, interval = 4, base_name = None,
             print 'After %d seconds, the last file \"%s\" is delivered to \"%s\"' % (howlong, last_fname, ngasC_url)
 
     #time.sleep(num_files * 3) # assume each file needs 3 seconds to delivery (in parallel)
-    
+    """
+    tt = 'N'
+    while (tt != 'Y' and tt != 'y'):
+        tt = raw_input("\nAre we ready to verify both ngas-B and ngas-C?(Y/N)\n")
+        
     verifyCase(base_name, num_files, clientB, False)
     
     if (wait_for_C_files):

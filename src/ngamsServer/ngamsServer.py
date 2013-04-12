@@ -352,6 +352,8 @@ class ngamsServer:
         self._subscrSuspendDic        = {}
         self._subscrFileCountDic      = {}
         self._subscrFileCountDic_Sem  = threading.Semaphore(1)
+        self._subscrBlScheduledDic    = {}
+        self._subscrBlScheduledDic_Sem = threading.Semaphore(1)
         self._subscrBackLogCount_Sem  = threading.Semaphore(1)
         
         # List to keep track off to which Data Providers an NG/AMS

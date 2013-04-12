@@ -142,7 +142,7 @@ def _waitForScheduling(srvObj):
     # If there are no pending deliveries in the Subscription Back-Log,
     # we suspend until the thread is woken up by another thread, e.g. when
     # new data is available.
-    if (srvObj.getSubcrBackLogCount()):
+    if (srvObj.getSubcrBackLogCount() > 0):
         suspTime = isoTime2Secs(srvObj.getCfg().getSubscrSuspTime())
         info(3, 'Subscription thread will suspend %s seconds before re-trying delivering back-logged files' % str(suspTime))
         srvObj._subscriptionRunSync.wait(suspTime)
@@ -191,13 +191,14 @@ def _addFileDeliveryDic(subscrId,
     Returns:          Void.
     """
     fileInfo            = _convertFileInfo(fileInfo)
+    fileId              = fileInfo[FILE_ID]
     filename            = fileInfo[FILE_NM]
     fileVersion         = fileInfo[FILE_VER]
     fileBackLogBuffered = fileInfo[FILE_BL]
     replaceWithBL = 0
-    if (deliverReqDic.has_key(subscrId)):
-        add = 1
-        # Check if the file is already registered for that Subscriber.
+    add = 1
+    if (deliverReqDic.has_key(subscrId)):                              
+        #First, Check if the file is already registered for that Subscriber.
         for idx in range(len(deliverReqDic[subscrId])):
             tstFileInfo            = deliverReqDic[subscrId][idx]
             tstFilename            = tstFileInfo[FILE_NM]
@@ -213,7 +214,29 @@ def _addFileDeliveryDic(subscrId,
                     add = 0
                     replaceWithBL = 1
                     break
-        if (add): deliverReqDic[subscrId].append(fileInfo)
+        
+        #Second, Check if the file is a back-logged file that has been previously registered             
+        
+        if (fileBackLogBuffered == NGAMS_SUBSCR_BACK_LOG):
+            if (not srvObj._subscrBlScheduledDic.has_key(subscrId)):
+                srvObj._subscrBlScheduledDic[subscrId] = {}
+            myDic = srvObj._subscrBlScheduledDic[subscrId]
+            srvObj._subscrBlScheduledDic_Sem.acquire()
+            k = _fileKey(fileId, fileVersion) 
+            try:
+                if (myDic.has_key(k)):
+                    add = 0 # if this is an old entry, definitely do not add it
+                    info(3, "Ditch file %s from the list" % fileId)
+                else:
+                    # if this is a new entry, maybe it will be added unless the first check set 'add' to 0. 
+                    # But must occupy the dic key space
+                    myDic[k] = None 
+            finally:
+                srvObj._subscrBlScheduledDic_Sem.release()        
+        
+        if (add): 
+            deliverReqDic[subscrId].append(fileInfo)
+            
     else:
         # It was a new entry, create new list for this Subscriber.
         deliverReqDic[subscrId] = [fileInfo]
@@ -237,7 +260,11 @@ def _addFileDeliveryDic(subscrId,
                 fileDeliveryCountDic[fkey] = 1
         finally:
             fileDeliveryCountDic_Sem.release()
-        
+    
+    if (add):
+        return fileId
+    else:
+        return 0    
 
 def _checkIfDeliverFile(srvObj,
                         subscrObj,
@@ -510,7 +537,7 @@ def _markDeletion(srvObj,
     
     """
     sqlFileInfo = (diskId, fileId, fileVersion)
-    ngamsCacheControlThread.scheduleFileForDeletion(srvObj, sqlFileInfo)
+    ngamsCacheControlThread.requestFileForDeletion(srvObj, sqlFileInfo)
     
 def _backupQueueToBacklog(srvObj):
     """
@@ -600,9 +627,9 @@ def _deliveryThread(srvObj,
             fileIngDate    = fileInfo[FILE_DATE]
             fileMimeType   = fileInfo[FILE_MIME]
             fileBackLogged = fileInfo[FILE_BL]
-            if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not os.path.isfile(filename))): # in case back-logged files are enqueued more than once
+            if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not os.path.isfile(filename))):# if this file is removed by an agent outside of NGAS (e.g. Cortex volunteer cleanup)
                 alert('File %s is no longer available' %  filename)
-                _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename) # this is only useful if this file is removed by an agent outside of NGAS
+                _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename) 
                 continue
             baseName = os.path.basename(filename)
             contDisp = "attachment; filename=\"" + baseName + "\""
@@ -693,6 +720,19 @@ def _deliveryThread(srvObj,
                     srvObj.decSubcrBackLogCount()
                     _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,
                                           fileVersion, filename)
+                    
+            if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
+                # remove bl record from the dict
+                if (srvObj._subscrBlScheduledDic.has_key(subscrbId)):
+                    myDic = srvObj._subscrBlScheduledDic[subscrbId]
+                    k = _fileKey(fileId, fileVersion)
+                    srvObj._subscrBlScheduledDic_Sem.acquire()                    
+                    try:
+                        if (myDic.has_key(k)):
+                            del myDic[k]
+                    finally:
+                        srvObj._subscrBlScheduledDic_Sem.release()
+                    
             srvObj._subscrDeliveryFileDic[tname] = None
         except Exception, be:
             if (str(be).find("_STOP_DELIVERY_THREAD_") != -1): 
@@ -739,7 +779,6 @@ def subscriptionThread(srvObj,
     # possibly not delivered yet)
     # this will be used across multiple iterations in the subscriptionThread
     # key subscriberId, value - date string
-    # TODO - remember to remove an entry of this dict when the UNSUBSCRIBE command is issued
     scheduledStatus = srvObj._subscrScheduledStatus  
     
     # key: subscriberId, value - a FIFO file queue, which is a list of fileInfo chunks, each chunk has a number of fileInfos
@@ -925,6 +964,8 @@ def subscriptionThread(srvObj,
                 else:
                     fileInfo = list(backLogInfo[2:]) + [None] + [NGAMS_SUBSCR_BACK_LOG]
 
+                # this is not needed, this has been done when the subscriber is removed (e.g. unsubscribe command)
+                """
                 # If a Subscriber is no-longer subscribed, the back-logged
                 # entry is simply deleted.
                 if (not srvObj.getSubscriberDic().has_key(subscrId)):
@@ -933,8 +974,17 @@ def subscriptionThread(srvObj,
                     fileVersion = fileInfo[FILE_VER]
                     _delFromSubscrBackLog(srvObj, subscrId, fileId,
                                           fileVersion, fileId)
-                else:
-                    _addFileDeliveryDic(subscrId, fileInfo, deliverReqDic, fileDeliveryCountDic, fileDeliveryCountDic_Sem, srvObj)
+                    k = _fileKey(fileId, fileVersion)
+                    blScheduledDic_Sem.acquire()
+                    try:
+                        if (blScheduledDic_Sem.has_key(k)):
+                            del blScheduledDic[k]
+                    finally:
+                        blScheduledDic_Sem.release()
+                """
+                re = _addFileDeliveryDic(subscrId, fileInfo, deliverReqDic, fileDeliveryCountDic, fileDeliveryCountDic_Sem, srvObj)
+                if (re):#and srvObj.getSubcrBackLogCount()
+                    info(3, "Add file %s to the list" % re)
 
             # Sort the files listed in the Delivery Dictionary for each
             # Subscriber so that files are sorted according to Ingestion Date.
@@ -962,7 +1012,9 @@ def subscriptionThread(srvObj,
                     quChunks = Queue()
                     queueDict[subscrId] = quChunks
  
-                allFiles = deliverReqDic[subscrId]                 
+                allFiles = deliverReqDic[subscrId]         
+                if (srvObj.getSubcrBackLogCount() > 0):
+                    info(3, 'Put %d new files in the queue for subscriber %s' %(len(allFiles), subscrId))        
                 for jdx in range(len(allFiles)):
                     quChunks.put(allFiles[jdx])   
                     # Deliver the data - spawn off a Delivery Thread to do this job                    

@@ -35,7 +35,8 @@ to manage the contents in the cache archive when running the NG/AMS Server
 as a cache archive.
 """
 
-import os, sys, time, thread, threading, random, copy, base64, cPickle, traceback
+import os, sys, time, thread, threading, random, copy, base64, cPickle
+from Queue import Queue, Empty
 try:
     from pysqlite2 import dbapi2 as sqlite
 except:
@@ -48,6 +49,8 @@ import ngamsDbCore, ngamsLib, ngamsFileInfo, ngamsStatus, ngamsHighLevelLib
 import ngamsDbm, ngamsDiskInfo
 import ngamsCacheEntry, ngamsThreadGroup
 
+# An internal queue contains files that have been explicitly requested to be removed  
+explicitDelQueue = Queue()
 
 def _STOP_(srvObj,
            msg):
@@ -453,26 +456,25 @@ def addEntryInCacheDbms(srvObj,
     T = TRACE()
 
     # Insert entry in the local DBMS (if not already there).
-    timeNow = time.time()
     if (not entryInCacheDbms(srvObj, diskId, fileId, fileVersion)):
         if (delete):
-            deleteFlag = 1
+            delete = 1
         else:
-            deleteFlag = 0       
+            delete = 0
+        timeNow = time.time()
         cacheEntryObjPickle = cPickle.dumps(cacheEntryObj)
         # Have to encode the pickled object to be able to write it in the
         # DB table.
         cacheEntryObjPickleEnc = base64.b32encode(cacheEntryObjPickle)
         sqlQuery = _ADD_ENTRY_IN_CACHE_DBMS %\
                    (diskId, fileId, int(fileVersion), filename, fileSize,
-                    deleteFlag, timeNow, timeNow, cacheEntryObjPickleEnc)
+                    delete, timeNow, timeNow, cacheEntryObjPickleEnc)
         queryCacheDbms(srvObj, sqlQuery)
 
     if (addInRdbms):
         # Insert entry in the remote DBMS.
         srvObj.getDb().insertCacheEntry(diskId, fileId, fileVersion, timeNow,
-                                            delete)
-        
+                                        False)
 
 
 _SET_FILENAME_CACHE_DBMS = "UPDATE ngas_cache SET filename = '%s' WHERE " +\
@@ -606,8 +608,8 @@ def initCacheArchive(srvObj):
 
     Returns:    Void.
     """
-    T = TRACE()
-
+    T = TRACE()        
+    
     # Create/open the Cache Contents DBM.
     # Note: This DBMS is kept between sessions for efficiency reasons.
     createCacheDbms(srvObj)
@@ -710,13 +712,6 @@ def checkNewFilesDbm(srvObj):
         fileInfo = getEntryNewFilesDbm(srvObj)
         if (not fileInfo): break
              
-        # Get cache delete flag first
-        if (len(fileInfo) > NGAMS_CACHE_CACHE_DEL and fileInfo[NGAMS_CACHE_CACHE_DEL] != None):
-            deleteFlag = fileInfo[NGAMS_CACHE_CACHE_DEL]
-        else:
-            deleteFlag = False
-        
-        
         # Get the rest of File Summary 1 info and create an ngamsCacheEntry
         # object.
         sqlFileInfo = srvObj.getDb().\
@@ -732,9 +727,9 @@ def checkNewFilesDbm(srvObj):
             error(msg)
 
         # Add the new entry.
-        info(3, "Adding new entry in Cache DBMS: %s/%s/%s/%s" %\
+        info(3, "Adding new entry in Cache DBMS: %s/%s/%s" %\
              (fileInfo[NGAMS_CACHE_DISK_ID], fileInfo[NGAMS_CACHE_FILE_ID],
-              fileInfo[NGAMS_CACHE_FILE_VER], deleteFlag))
+              fileInfo[NGAMS_CACHE_FILE_VER]))
         timeNow = time.time()
         cacheEntryObject = ngamsCacheEntry.ngamsCacheEntry().\
                            unpackSqlInfo(sqlFileInfo).\
@@ -746,7 +741,6 @@ def checkNewFilesDbm(srvObj):
                             cacheEntryObject.getFileVersion(),
                             cacheEntryObject.getFilename(),
                             cacheEntryObject.getFileSize(),
-                            delete = deleteFlag,
                             lastCheck = timeNow,
                             cacheTime = timeNow,
                             cacheEntryObj = cacheEntryObject)
@@ -785,6 +779,23 @@ def markFileChecked(srvObj,
 _SCHEDULE_DEL_TPL = "UPDATE ngas_cache SET cache_delete = 1 WHERE " +\
                     "disk_id = '%s' AND file_id = '%s' AND file_version = %d"
 
+def requestFileForDeletion(srvObj, sqlFileInfo):
+    """
+    Explicitly request a file for deletion from the cache.
+    This function is always called from outside of the CacheControllerThread
+
+    srvObj:       Reference to server object (ngamsServer).
+
+    sqlFileInfo:  Information for one file as queried from the NGAS Cache
+                  Table (list).
+
+    Returns:      Void.
+    """
+    #T = TRACE()
+    explicitDelQueue.put(sqlFileInfo) # this is thread safe
+    
+    
+
 def scheduleFileForDeletion(srvObj,
                             sqlFileInfo):
     """
@@ -806,34 +817,8 @@ def scheduleFileForDeletion(srvObj,
           "NGAS Cache Archive"
     info(2, msg % (diskId, fileId, str(fileVersion)))
     sqlQuery = _SCHEDULE_DEL_TPL % (diskId, fileId, int(fileVersion))
-    queryCacheDbms(srvObj, sqlQuery) # this may fail as the records are not in the local RDBMS in yet
+    queryCacheDbms(srvObj, sqlQuery)
     srvObj.getDb().updateCacheEntry(diskId, fileId, fileVersion, 1)
-    
-    # update the newfilesdbm (bsddb)
-    fileKey = ngamsLib.genFileKey(diskId, fileId, fileVersion)
-    srvObj._cacheNewFilesDbmSem.acquire()
-    try:
-        fileInfo = srvObj._cacheNewFilesDbm.get(fileKey)
-        if fileInfo == None:
-            newFileInfo = (diskId, fileId, fileVersion, None, None, True)
-            #raise Exception, "Cannot find the fileKey when scheduling mark deletion - %s/%s" % (diskId, fileId)
-        else:
-            oldLen = len(fileInfo)
-            if (oldLen < NGAMS_CACHE_CACHE_DEL + 1):
-                newFileInfo = (NGAMS_CACHE_CACHE_DEL + 1) * [None]
-            else:
-                newFileInfo = oldLen * [None]
-                
-            for idx in range(oldLen):
-                newFileInfo[idx] = fileInfo[idx]
-            
-            newFileInfo[NGAMS_CACHE_CACHE_DEL] = True
-        srvObj._cacheNewFilesDbm.add(fileKey, newFileInfo)    
-        
-    except Exception, e:
-        alert(str(e))
-    finally:
-        srvObj._cacheNewFilesDbmSem.release()
     
 
 def createTmpDbm(srvObj,
@@ -1004,6 +989,8 @@ def checkCacheContents(srvObj):
     #
     # The rules are applies in the following sequence:
     #
+    # 0. Check the files in the explicitDel queue
+    #
     # 1. Check if the files has been in the cache for more than the
     #    specified, maximum time.
     #
@@ -1022,7 +1009,19 @@ def checkCacheContents(srvObj):
     # 5. Execute the Cache Control Plug-In (if specified in the
     #    configuration).
 
-    # 1. Evalute if there are files residing in the cache for more than
+    # 0. Go through the explicitDel queue to remove files
+    while (1):
+        sqlFileInfo = None
+        try:
+            sqlFileInfo = explicitDelQueue.get_nowait()
+        except Empty, e:
+            break
+        if (sqlFileInfo is None):
+            continue
+        scheduleFileForDeletion(srvObj, sqlFileInfo)
+        markFileChecked(srvObj, sqlFileInfo)
+
+    # 1. Evaluate if there are files residing in the cache for more than
     #    the specified amount of time.
     if (srvObj.getCfg().getVal("Caching[1].MaxTime")):
         info(4, "Applying criteria: Expired files ...")
@@ -1509,7 +1508,6 @@ def cacheControlThread(srvObj,
             errMsg = "Error occurred during execution of the Cache " +\
                      "Control Thread. Exception: " + str(e)
             alert(errMsg)
-            alert(3, traceback.format_exc(limit = None))
             # We make a small wait here to avoid that the process tries
             # too often to carry out the tasks that failed.
             time.sleep(5.0)
