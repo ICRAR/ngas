@@ -197,8 +197,8 @@ def _addFileDeliveryDic(subscrId,
     fileBackLogBuffered = fileInfo[FILE_BL]
     replaceWithBL = 0
     add = 1
-    if (deliverReqDic.has_key(subscrId)):                              
-        #First, Check if the file is already registered for that Subscriber.
+    #First, Check if the file is already registered for that Subscriber.
+    if (deliverReqDic.has_key(subscrId)):
         for idx in range(len(deliverReqDic[subscrId])):
             tstFileInfo            = deliverReqDic[subscrId][idx]
             tstFilename            = tstFileInfo[FILE_NM]
@@ -214,32 +214,30 @@ def _addFileDeliveryDic(subscrId,
                     add = 0
                     replaceWithBL = 1
                     break
-        
-        #Second, Check if the file is a back-logged file that has been previously registered             
-        
-        if (fileBackLogBuffered == NGAMS_SUBSCR_BACK_LOG):
-            if (not srvObj._subscrBlScheduledDic.has_key(subscrId)):
-                srvObj._subscrBlScheduledDic[subscrId] = {}
-            myDic = srvObj._subscrBlScheduledDic[subscrId]
-            srvObj._subscrBlScheduledDic_Sem.acquire()
-            k = _fileKey(fileId, fileVersion) 
-            try:
-                if (myDic.has_key(k)):
-                    add = 0 # if this is an old entry, definitely do not add it
-                    info(3, "Ditch file %s from the list" % fileId)
-                else:
-                    # if this is a new entry, maybe it will be added unless the first check set 'add' to 0. 
-                    # But must occupy the dic key space
-                    myDic[k] = None 
-            finally:
-                srvObj._subscrBlScheduledDic_Sem.release()        
-        
-        if (add): 
+    
+    #Second, Check if the file is a back-logged file that has been previously registered                 
+    if (fileBackLogBuffered == NGAMS_SUBSCR_BACK_LOG):
+        if (not srvObj._subscrBlScheduledDic.has_key(subscrId)):
+            srvObj._subscrBlScheduledDic[subscrId] = {}
+        #myDic = srvObj._subscrBlScheduledDic[subscrId]
+        #srvObj._subscrBlScheduledDic_Sem.acquire()
+        k = _fileKey(fileId, fileVersion) 
+        #try:
+        if (srvObj._subscrBlScheduledDic[subscrId].has_key(k)):
+            add = 0 # if this is an old entry, definitely do not add it
+            #info(3, "Ditch file %s from the list" % fileId)
+        else:
+            # if this is a new entry, maybe it will be added unless the first check set 'add' to 0. 
+            # But must occupy the dic key space
+            srvObj._subscrBlScheduledDic[subscrId][k] = 1 
+        #finally:
+            #srvObj._subscrBlScheduledDic_Sem.release()  
+    if (add):
+        if (deliverReqDic.has_key(subscrId)):
             deliverReqDic[subscrId].append(fileInfo)
-            
-    else:
-        # It was a new entry, create new list for this Subscriber.
-        deliverReqDic[subscrId] = [fileInfo]
+        else:
+            # It was a new entry, create new list for this Subscriber.
+            deliverReqDic[subscrId] = [fileInfo]
     
     if (srvObj.getCachingActive() and (fileBackLogBuffered != NGAMS_SUBSCR_BACK_LOG or replaceWithBL)):
         # if the server is running in a cache mode, 
@@ -442,6 +440,8 @@ def _genSubscrBackLogFile(srvObj,
     # Increase the Subscription Back-Log Counter to indicate to the Data
     # Subscription Thread that it should only suspend itself temporarily.
     srvObj.incSubcrBackLogCount()
+    
+    info(3, 'Generating backlog db entry for file %s' % locFileInfo[FILE_ID])
 
     # NOTE: The actions carried out by this function are critical and need
     #       to be semaphore protected (Back-Log Operations Semaphore).
@@ -680,6 +680,18 @@ def _deliveryThread(srvObj,
                     errMsg += " Message: " + stat.getMessage()
                 warning(errMsg)
                 _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
+                if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
+                    # remove bl record from the dict
+                    if (srvObj._subscrBlScheduledDic.has_key(subscrbId)):
+                        #myDic = srvObj._subscrBlScheduledDic[subscrbId]
+                        k = _fileKey(fileId, fileVersion)
+                        srvObj._subscrBlScheduledDic_Sem.acquire()                    
+                        try:
+                            if (srvObj._subscrBlScheduledDic[subscrbId].has_key(k)):
+                                #info(3, 'Removing file from dic when delivery failed: %s' % fileId)
+                                del srvObj._subscrBlScheduledDic[subscrbId][k]
+                        finally:
+                            srvObj._subscrBlScheduledDic_Sem.release()
             else:
                 if (srvObj.getCachingActive()):                   
                     fkey = fileId + "/" + str(fileVersion)
@@ -718,20 +730,19 @@ def _deliveryThread(srvObj,
                 # If the file is back-log buffered, we check if we can delete it.
                 if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
                     srvObj.decSubcrBackLogCount()
-                    _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,
+                    srvObj._subscrBlScheduledDic_Sem.acquire()
+                    try: # the following block must be atomic
+                        _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,
                                           fileVersion, filename)
-                    
-            if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
-                # remove bl record from the dict
-                if (srvObj._subscrBlScheduledDic.has_key(subscrbId)):
-                    myDic = srvObj._subscrBlScheduledDic[subscrbId]
-                    k = _fileKey(fileId, fileVersion)
-                    srvObj._subscrBlScheduledDic_Sem.acquire()                    
-                    try:
-                        if (myDic.has_key(k)):
-                            del myDic[k]
+                        #info(3, 'Deleting backlog entry for file: %s' % fileId)
+                        if (srvObj._subscrBlScheduledDic.has_key(subscrbId)):
+                            #myDic = srvObj._subscrBlScheduledDic[subscrbId]
+                            k = _fileKey(fileId, fileVersion)
+                            if (srvObj._subscrBlScheduledDic[subscrbId].has_key(k)):
+                                #info(3, 'Removing file from dic: %s' % fileId)
+                                del srvObj._subscrBlScheduledDic[subscrbId][k]
                     finally:
-                        srvObj._subscrBlScheduledDic_Sem.release()
+                        srvObj._subscrBlScheduledDic_Sem.release()                    
                     
             srvObj._subscrDeliveryFileDic[tname] = None
         except Exception, be:
@@ -950,42 +961,46 @@ def subscriptionThread(srvObj,
 
             # Then finally check if there are back-logged files to deliver.
             selectDiskId = srvObj.getCachingActive()
-            subscrBackLog = srvObj.getDb().\
-                            getSubscrBackLog(getHostId(),
-                                             srvObj.getCfg().getPortNo(), selectDiskId)
-            for backLogInfo in subscrBackLog:
-                subscrId = backLogInfo[0]
-                # Note, it is signalled by adding an extra element (at the end)
-                # with the value of the constant NGAMS_SUBSCR_BACK_LOG, that
-                # this file is a back-logged file. This is done to make the
-                # handling more efficient.
-                if (selectDiskId):
-                    fileInfo = list(backLogInfo[2:]) + [NGAMS_SUBSCR_BACK_LOG]
-                else:
-                    fileInfo = list(backLogInfo[2:]) + [None] + [NGAMS_SUBSCR_BACK_LOG]
-
-                # this is not needed, this has been done when the subscriber is removed (e.g. unsubscribe command)
-                """
-                # If a Subscriber is no-longer subscribed, the back-logged
-                # entry is simply deleted.
-                if (not srvObj.getSubscriberDic().has_key(subscrId)):
-                    fileId      = fileInfo[FILE_ID]
-                    filename    = fileInfo[FILE_NM]
-                    fileVersion = fileInfo[FILE_VER]
-                    _delFromSubscrBackLog(srvObj, subscrId, fileId,
-                                          fileVersion, fileId)
-                    k = _fileKey(fileId, fileVersion)
-                    blScheduledDic_Sem.acquire()
-                    try:
-                        if (blScheduledDic_Sem.has_key(k)):
-                            del blScheduledDic[k]
-                    finally:
-                        blScheduledDic_Sem.release()
-                """
-                re = _addFileDeliveryDic(subscrId, fileInfo, deliverReqDic, fileDeliveryCountDic, fileDeliveryCountDic_Sem, srvObj)
-                if (re):#and srvObj.getSubcrBackLogCount()
-                    info(3, "Add file %s to the list" % re)
-
+            srvObj._subscrBlScheduledDic_Sem.acquire()
+            try:
+                subscrBackLog = srvObj.getDb().\
+                                getSubscrBackLog(getHostId(),
+                                                 srvObj.getCfg().getPortNo(), selectDiskId)
+                for backLogInfo in subscrBackLog:
+                    subscrId = backLogInfo[0]
+                    # Note, it is signalled by adding an extra element (at the end)
+                    # with the value of the constant NGAMS_SUBSCR_BACK_LOG, that
+                    # this file is a back-logged file. This is done to make the
+                    # handling more efficient.
+                    if (selectDiskId):
+                        fileInfo = list(backLogInfo[2:]) + [NGAMS_SUBSCR_BACK_LOG]
+                    else:
+                        fileInfo = list(backLogInfo[2:]) + [None] + [NGAMS_SUBSCR_BACK_LOG]
+    
+                    # this is not needed, this has been done when the subscriber is removed (e.g. unsubscribe command)
+                    """
+                    # If a Subscriber is no-longer subscribed, the back-logged
+                    # entry is simply deleted.
+                    if (not srvObj.getSubscriberDic().has_key(subscrId)):
+                        fileId      = fileInfo[FILE_ID]
+                        filename    = fileInfo[FILE_NM]
+                        fileVersion = fileInfo[FILE_VER]
+                        _delFromSubscrBackLog(srvObj, subscrId, fileId,
+                                              fileVersion, fileId)
+                        k = _fileKey(fileId, fileVersion)
+                        blScheduledDic_Sem.acquire()
+                        try:
+                            if (blScheduledDic_Sem.has_key(k)):
+                                del blScheduledDic[k]
+                        finally:
+                            blScheduledDic_Sem.release()
+                    """
+                    re = _addFileDeliveryDic(subscrId, fileInfo, deliverReqDic, fileDeliveryCountDic, fileDeliveryCountDic_Sem, srvObj)
+                    #if (re):#and srvObj.getSubcrBackLogCount()
+                        #info(3, "Add file %s to the list" % re)
+            finally:
+                srvObj._subscrBlScheduledDic_Sem.release()
+                
             # Sort the files listed in the Delivery Dictionary for each
             # Subscriber so that files are sorted according to Ingestion Date.
             # This is done in order to prevent that a file with a more recent
