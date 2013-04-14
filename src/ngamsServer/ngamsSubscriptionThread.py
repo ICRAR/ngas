@@ -219,19 +219,13 @@ def _addFileDeliveryDic(subscrId,
     if (fileBackLogBuffered == NGAMS_SUBSCR_BACK_LOG):
         if (not srvObj._subscrBlScheduledDic.has_key(subscrId)):
             srvObj._subscrBlScheduledDic[subscrId] = {}
-        #myDic = srvObj._subscrBlScheduledDic[subscrId]
-        #srvObj._subscrBlScheduledDic_Sem.acquire()
         k = _fileKey(fileId, fileVersion) 
-        #try:
         if (srvObj._subscrBlScheduledDic[subscrId].has_key(k)):
-            add = 0 # if this is an old entry, definitely do not add it
-            #info(3, "Ditch file %s from the list" % fileId)
+            add = 0 # if this is an old entry, do not add again
         else:
             # if this is a new entry, maybe it will be added unless the first check set 'add' to 0. 
-            # But must occupy the dic key space
-            srvObj._subscrBlScheduledDic[subscrId][k] = 1 
-        #finally:
-            #srvObj._subscrBlScheduledDic_Sem.release()  
+            # Must occupy the dic key space
+            srvObj._subscrBlScheduledDic[subscrId][k] = None 
     if (add):
         if (deliverReqDic.has_key(subscrId)):
             deliverReqDic[subscrId].append(fileInfo)
@@ -239,7 +233,8 @@ def _addFileDeliveryDic(subscrId,
             # It was a new entry, create new list for this Subscriber.
             deliverReqDic[subscrId] = [fileInfo]
     
-    if (srvObj.getCachingActive() and (fileBackLogBuffered != NGAMS_SUBSCR_BACK_LOG or replaceWithBL)):
+    if (srvObj.getCachingActive() and 
+        (fileBackLogBuffered != NGAMS_SUBSCR_BACK_LOG or replaceWithBL)):
         # if the server is running in a cache mode, 
         #   then  prepare for marking deletion - increase by 1 the reference count to this file
         #   but do not bother if it is a backlogged file, since it has its own deletion mechanism 
@@ -247,7 +242,6 @@ def _addFileDeliveryDic(subscrId,
         fileDeliveryCountDic_Sem.acquire()
         try:
             if (fileDeliveryCountDic.has_key(fkey)):
-                # Self-increasing might have data racing problem! see http://effbot.org/pyfaq/what-kinds-of-global-value-mutation-are-thread-safe.htm
                 if (fileBackLogBuffered != NGAMS_SUBSCR_BACK_LOG):
                     fileDeliveryCountDic[fkey]  += 1
                 elif (replaceWithBL):
@@ -257,12 +251,7 @@ def _addFileDeliveryDic(subscrId,
             else:
                 fileDeliveryCountDic[fkey] = 1
         finally:
-            fileDeliveryCountDic_Sem.release()
-    
-    if (add):
-        return fileId
-    else:
-        return 0    
+            fileDeliveryCountDic_Sem.release() 
 
 def _checkIfDeliverFile(srvObj,
                         subscrObj,
@@ -441,7 +430,7 @@ def _genSubscrBackLogFile(srvObj,
     # Subscription Thread that it should only suspend itself temporarily.
     srvObj.incSubcrBackLogCount()
     
-    info(3, 'Generating backlog db entry for file %s' % locFileInfo[FILE_ID])
+    #info(3, 'Generating backlog db entry for file %s' % locFileInfo[FILE_ID])
 
     # NOTE: The actions carried out by this function are critical and need
     #       to be semaphore protected (Back-Log Operations Semaphore).
@@ -659,12 +648,6 @@ def _deliveryThread(srvObj,
                     stat.clear().setStatus(NGAMS_SUCCESS)
             except Exception, e:
                 ex = str(e)
-                #if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and ex.find('Errno 2] No such file or directory') > -1):
-                    #warning('File %s is no longer available, remove it from the subscr_back_log table' %  filename)
-                    #filename = os.path.normpath(filename)
-                    #_delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,
-                    #                      fileVersion, filename)
-                    #continue
             if ((ex != "") or (reply != NGAMS_HTTP_SUCCESS) or
                 (stat.getStatus() == NGAMS_FAILURE)):
                 # If an error occurred during data delivery, we should not update
@@ -683,12 +666,10 @@ def _deliveryThread(srvObj,
                 if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
                     # remove bl record from the dict
                     if (srvObj._subscrBlScheduledDic.has_key(subscrbId)):
-                        #myDic = srvObj._subscrBlScheduledDic[subscrbId]
                         k = _fileKey(fileId, fileVersion)
                         srvObj._subscrBlScheduledDic_Sem.acquire()                    
                         try:
                             if (srvObj._subscrBlScheduledDic[subscrbId].has_key(k)):
-                                #info(3, 'Removing file from dic when delivery failed: %s' % fileId)
                                 del srvObj._subscrBlScheduledDic[subscrbId][k]
                         finally:
                             srvObj._subscrBlScheduledDic_Sem.release()
@@ -722,7 +703,7 @@ def _deliveryThread(srvObj,
                     srvObj.getDb().updateSubscrStatus(subscrObj.getId(), fileIngDate)
                 except Exception, e:
                     # continue with warning message. this means the database (i.e. last_ingestion_date) is not synchronised for this file, 
-                    # but at least remaining files can be delivered continuously, the database may be back in sync when delivering remaining files 
+                    # but at least remaining files can be delivered continuously, the database may be back in sync upon delivering remaining files 
                     errMsg = "Error occurred during update the ngas_subscriber table " +\
                          "_devliveryThread [" + str(thread.get_ident()) + "] Exception: " + str(e)
                     alert(errMsg)
@@ -734,12 +715,9 @@ def _deliveryThread(srvObj,
                     try: # the following block must be atomic
                         _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,
                                           fileVersion, filename)
-                        #info(3, 'Deleting backlog entry for file: %s' % fileId)
                         if (srvObj._subscrBlScheduledDic.has_key(subscrbId)):
-                            #myDic = srvObj._subscrBlScheduledDic[subscrbId]
                             k = _fileKey(fileId, fileVersion)
                             if (srvObj._subscrBlScheduledDic[subscrbId].has_key(k)):
-                                #info(3, 'Removing file from dic: %s' % fileId)
                                 del srvObj._subscrBlScheduledDic[subscrbId][k]
                     finally:
                         srvObj._subscrBlScheduledDic_Sem.release()                    
@@ -977,27 +955,7 @@ def subscriptionThread(srvObj,
                     else:
                         fileInfo = list(backLogInfo[2:]) + [None] + [NGAMS_SUBSCR_BACK_LOG]
     
-                    # this is not needed, this has been done when the subscriber is removed (e.g. unsubscribe command)
-                    """
-                    # If a Subscriber is no-longer subscribed, the back-logged
-                    # entry is simply deleted.
-                    if (not srvObj.getSubscriberDic().has_key(subscrId)):
-                        fileId      = fileInfo[FILE_ID]
-                        filename    = fileInfo[FILE_NM]
-                        fileVersion = fileInfo[FILE_VER]
-                        _delFromSubscrBackLog(srvObj, subscrId, fileId,
-                                              fileVersion, fileId)
-                        k = _fileKey(fileId, fileVersion)
-                        blScheduledDic_Sem.acquire()
-                        try:
-                            if (blScheduledDic_Sem.has_key(k)):
-                                del blScheduledDic[k]
-                        finally:
-                            blScheduledDic_Sem.release()
-                    """
-                    re = _addFileDeliveryDic(subscrId, fileInfo, deliverReqDic, fileDeliveryCountDic, fileDeliveryCountDic_Sem, srvObj)
-                    #if (re):#and srvObj.getSubcrBackLogCount()
-                        #info(3, "Add file %s to the list" % re)
+                    _addFileDeliveryDic(subscrId, fileInfo, deliverReqDic, fileDeliveryCountDic, fileDeliveryCountDic_Sem, srvObj)
             finally:
                 srvObj._subscrBlScheduledDic_Sem.release()
                 

@@ -127,11 +127,32 @@ def delSubscriber(srvObj,
         estr = " Cannot find delivery queue for the subscriber '%s' kept internally. " % subscrId 
         err += 1
         errMsg += estr
+        
+    filelist = srvObj.getDb().getSubscrBackLogBySubscrId(subscrId)
+    
+    # Mark back-logged files that have been in the queue (but not yet dequeued)
+    if (srvObj._subscrBlScheduledDic.has_key(subscrId)):
+        errOld = err
+        myDic = srvObj._subscrBlScheduledDic[subscrId]
+        srvObj._subscrBlScheduledDic_Sem.acquire()
+        try:
+            for fi in filelist:
+                fileId = fi[0]
+                fileVersion = fi[1]
+                k = ngamsSubscriptionThread._fileKey(fileId, fileVersion)
+                if (myDic.has_key(k)):
+                    del myDic[k]
+        except Exception, e:
+            estr = " Error marking back-logged files that have been in the queue for subscriber %s, Exception: %s" % (subscrId, str(e))
+            warning(estr)
+            err += 1
+            errMsg += estr
+        finally:
+            srvObj._subscrBlScheduledDic_Sem.release()    
     
     # reduce the file reference count by 1 for all files that are back logged for this subscriber
     if (srvObj.getCachingActive()):
         errOld = err
-        filelist = srvObj.getDb().getSubscrBackLogBySubscrId(subscrId)
         for fi in filelist:
             fileId = fi[0]
             fileVersion = fi[1]
