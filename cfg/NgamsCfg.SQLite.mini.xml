@@ -309,5 +309,8 @@
     <User Name="ngas-int"
           Password="bmdhcy1pbnQ="/>
   </Authorization>
+  
+  <DataMoverOnly FromHostIds="127.0.0.1:7778, 127.0.0.1:7779" 
+  				 SuspensionTime="0T00:00:30"/>
 
 </NgamsCfg>

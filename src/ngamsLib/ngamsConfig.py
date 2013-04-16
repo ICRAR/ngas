@@ -1155,7 +1155,19 @@ class ngamsConfig:
         Returns:     Path Prefix (string).
         """
         return self.getVal("ArchiveHandling[1].PathPrefix")
+    
+    def getDataMoverSuspenstionTime(self):
+        """
+        Return the Data Mover (Subscription) Thread Suspension Time.
 
+        Returns:         Suspension time (string/ISO 8601).
+        """
+        return self.getVal("DataMoverOnly[1].SuspensionTime")
+
+    def getDataMoverHostIds(self):
+        """
+        """
+        return self.getVal("DataMoverOnly[1].FromHostIds")
 
     def getChecksumPlugIn(self):
         """
@@ -2030,7 +2042,7 @@ class ngamsConfig:
         Returns:    Value of caching period (integer).
         """
         try:
-            return int(self.getVal("Caching[1].Period"))
+            return isoTime2Secs(self.getVal("Caching[1].Period"))
         except:
             return 0
 

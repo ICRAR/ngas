@@ -119,13 +119,18 @@ def handleCmd(srvObj,
     if (reqPropsObj.hasHttpPar("url")):
         url = reqPropsObj.getHttpPar("url")
         subscriber.setUrl(url)
-        # TODO - update the back-log db entries to use this new url!!
-        # update ngas_subscr_back_log set subscr_url = '%s' where subscr_id = '%s' % (url, subscrId)
     
     if (reqPropsObj.hasHttpPar("start_date")):
         tmpStartDate = reqPropsObj.getHttpPar("start_date")
         if (tmpStartDate.strip() != ""): startDate = tmpStartDate.strip()
-        subscriber.setStartDate(startDate)
+        if (startDate):
+            subscriber.setStartDate(startDate)
+            lastIngDate = subscriber.getLastFileIngDate()
+            if (startDate < lastIngDate and lastIngDate):
+                subscriber.setLastFileIngDate(None) # prepare for re-delivering files that have been previously delivered  
+            if (srvObj._subscrScheduledStatus.has_key(subscrId)):
+                if (startDate < srvObj._subscrScheduledStatus[subscrId] and srvObj._subscrScheduledStatus[subscrId]):
+                    srvObj._subscrScheduledStatus[subscrId] = None # enables trigger re-delivering files that have been previously delivered         
     
     if (reqPropsObj.hasHttpPar("filter_plug_in")):
         filterPi = reqPropsObj.getHttpPar("filter_plug_in")

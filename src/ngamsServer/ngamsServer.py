@@ -414,6 +414,7 @@ class ngamsServer:
         self._cacheCtrlPiDelDbm         = None 
         self._cacheCtrlPiFilesDbm       = None
         self._cacheCtrlPiThreadGr       = None
+        self._dataMoverOnly             = False
 
  
     def getLogFilename(self):
@@ -456,6 +457,15 @@ class ngamsServer:
         T = TRACE()
 
         return self._cacheArchive
+    
+    def getDataMoverOnlyActive(self):
+        """
+        Return the value of the Data Mover Only Flag.
+
+        Returns:  State of the Data Mover Only Flag (boolean).
+        """
+        T = TRACE()
+        return self._dataMoverOnly     
     
 
     def getReqDbName(self):

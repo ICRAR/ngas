@@ -144,8 +144,14 @@ def _waitForScheduling(srvObj):
     # new data is available.
     if (srvObj.getSubcrBackLogCount() > 0):
         suspTime = isoTime2Secs(srvObj.getCfg().getSubscrSuspTime())
-        info(3, 'Subscription thread will suspend %s seconds before re-trying delivering back-logged files' % str(suspTime))
+        #debug_chen
+        #info(3, 'Subscription thread will suspend %s seconds before re-trying delivering back-logged files' % str(suspTime))
         srvObj._subscriptionRunSync.wait(suspTime)
+    elif (srvObj.getDataMoverOnlyActive()):       
+        tmout = isoTime2Secs(srvObj.getCfg().getDataMoverSuspenstionTime()) # in general, tmout > suspTime
+        #debug_chen
+        #info(3, 'Data mover thread will suspend %s seconds before re-trying querying the db to get new files' % str(tmout))
+        srvObj._subscriptionRunSync.wait(tmout)
     else:
         srvObj._subscriptionRunSync.wait()
     
@@ -154,18 +160,20 @@ def _waitForScheduling(srvObj):
     try:
         srvObj._subscriptionSem.acquire()
         srvObj._subscriptionRunSync.clear()
+        if (srvObj.getDataMoverOnlyActive()):
+            return ([], [])
         filenames = srvObj._subscriptionFileList
         srvObj._subscriptionFileList = []
         subscrObjs = srvObj._subscriptionSubscrList
         srvObj._subscriptionSubscrList = []
-        srvObj._subscriptionSem.release()
         return (filenames, subscrObjs)
     except Exception, e:
-        srvObj._subscriptionSem.release()
         errMsg = "Error occurred in ngamsSubscriptionThread." +\
                   "_waitForScheduling(). Exception: " + str(e)
         alert(errMsg)
         return ([], [])
+    finally:
+        srvObj._subscriptionSem.release()
 
 
 def _addFileDeliveryDic(subscrId,
@@ -591,6 +599,8 @@ def _deliveryThread(srvObj,
     
     subscrbId = subscrObj.getId();
     tname = threading.current_thread().name
+    remindMainThread = True # whether to notify the subscriptionThread when the queue is empty in order to bypass static suspension time
+    firstThread = (threading.current_thread().name == NGAMS_DELIVERY_THR + subscrbId + '0')
     
     while (1): # the delivery is always running unless either unsubscribeCmd is called, or server is shutting down, or it is kicked out by the USUBSCRIBE command
         try:
@@ -598,16 +608,24 @@ def _deliveryThread(srvObj,
             srvObj._subscrSuspendDic[subscrbId].wait() # to check if it should suspend file delivery   
             _checkStopDataDeliveryThread(srvObj, subscrbId)
             fileInfo = None
-            try:
-                # block for up to 1 minute if the queue is empty.                 
+            
+            # block for up to 1 minute if the queue is empty. 
+            try:                                
                 fileInfo = quChunks.get(timeout = 60)   
                 srvObj._subscrDeliveryFileDic[tname] = fileInfo # once it is dequeued, it is no longer safe, so need to record it in case server shut down.
             except Empty, e:
                 info(4, "Data delivery thread [" + str(thread.get_ident()) + "] block timeout")
                 _checkStopDataDeliveryThread(srvObj, subscrbId) # Timeout allows it to check if the delivery thread should stop
+                # if delivery thread is to continue, trigger the subscriptionThread to get more files in
+                if (srvObj.getDataMoverOnlyActive() and remindMainThread and firstThread):                    
+                    # But only the first thread does this to avoid repeated notifications
+                    srvObj.triggerSubscriptionThread()
+                    remindMainThread = False # only notify once within each "empty session"
             
             if (fileInfo == None):
-                continue                 
+                continue   
+            if (srvObj.getDataMoverOnlyActive() and firstThread):
+                remindMainThread = True             
             fileInfo = _convertFileInfo(fileInfo)       
             # Prepare info and POST the file.
             fileId         = fileInfo[FILE_ID]
@@ -759,6 +777,16 @@ def subscriptionThread(srvObj,
     Returns:     Void.
     """
     info(3,"Data Subscription Thread initializing ...")
+    dataMoverOnly = srvObj.getDataMoverOnlyActive()
+    if (dataMoverOnly):
+        dm_hosts = srvObj.getCfg().getDataMoverHostIds()
+        if (dm_hosts == None):
+            raise Exception, "No data mover hosts are available!"
+        else:    
+            dm_hosts = map(lambda x: x.strip(), dm_hosts.split(','))
+            if (len(dm_hosts) < 1):
+                raise Exception, "Invalid data mover hosts configuration!"
+        
     fileDicDbm = None
     fileDicDbmName = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),
                                                       NGAMS_SUBSCRIPTION_THR +\
@@ -826,7 +854,42 @@ def subscriptionThread(srvObj,
             # query information about all files available on this host.
             rmFile(fileDicDbmName + "*")
             fileDicDbm = ngamsDbm.ngamsDbm(fileDicDbmName, writePerm=1)
-            if (subscrObjs != []):
+            if (dataMoverOnly and srvObj.getSubcrBackLogCount() <= 0): # this ensures back-logged files to be sent before new files are brought in
+                # data mover purposefully only supports exact one subscriber. 
+                # To support multiple subscribers, run multiple data mover servers
+                subscrId = srvObj.getSubscriberDic().keys()[0] 
+                #debug_chen
+                #info(3, 'Data mover subscriId = %s' % subscrId)
+                subscrObj = srvObj.getSubscriberDic()[subscrId]
+                start_date = None
+                if (scheduledStatus.has_key(subscrId)):
+                    if (scheduledStatus[subscrId]):
+                        start_date = scheduledStatus[subscrId]
+                elif (subscrObj.getLastFileIngDate()):
+                    start_date = subscrObj.getLastFileIngDate()
+                elif (subscrObj.getStartDate()):
+                    start_date = subscrObj.getStartDate()
+                
+                #debug_chen
+                #info(3, 'Data mover start_date = %s' % start_date)    
+                count = 0
+                for host in dm_hosts:         
+                    cursorObj = srvObj.getDb().getFileSummary2(hostId = host, ing_date = start_date)
+                    while (1):
+                        fileList = cursorObj.fetch(100)
+                        if (fileList == []): break
+                        for fileInfo in fileList:
+                            fileInfo = _convertFileInfo(fileInfo)
+                            fileDicDbm.add(_fileKey(fileInfo[FILE_ID], fileInfo[FILE_VER]), fileInfo)
+                            count += 1
+                        _checkStopSubscriptionThread(srvObj)
+                        time.sleep(0.1)
+                    del cursorObj
+                if (count == 0):
+                    #debug_chen
+                    #info(3, 'No files meet the data mover condition')
+                    continue
+            elif (subscrObjs != []):
                 cursorObj = srvObj.getDb().getFileSummary2(getHostId())
                 while (1):
                     fileList = cursorObj.fetch(100)
@@ -937,6 +1000,13 @@ def subscriptionThread(srvObj,
                     _checkIfDeliverFile(srvObj, subscrObj, fileInfo,
                                         deliverReqDic, deliveredStatus, scheduledStatus, fileDeliveryCountDic, fileDeliveryCountDic_Sem)
 
+            # Third, if datamover, add those files
+            if (dataMoverOnly):
+                for fileKey in fileDicDbm.keys():
+                    fileInfo = fileDicDbm.get(fileKey)
+                    _checkIfDeliverFile(srvObj, subscrObj, fileInfo,
+                                        deliverReqDic, deliveredStatus, scheduledStatus, fileDeliveryCountDic, fileDeliveryCountDic_Sem)
+            
             # Then finally check if there are back-logged files to deliver.
             selectDiskId = srvObj.getCachingActive()
             srvObj._subscrBlScheduledDic_Sem.acquire()
@@ -1013,6 +1083,8 @@ def subscriptionThread(srvObj,
             if (str(e).find("_STOP_SUBSCRIPTION_THREAD_") != -1): thread.exit()
             errMsg = "Error occurred during execution of the Data " +\
                      "Subscription Thread. Exception: " + str(e)
-            alert(errMsg)                    
+            alert(errMsg)    
+            em = traceback.format_exc()    
+            alert(em)             
 
 # EOF

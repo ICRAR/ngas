@@ -337,6 +337,8 @@ def handleOnline(srvObj,
         if ((tmpSubscrObj.getHostId() == getHostId()) and
             (tmpSubscrObj.getPortNo() == srvObj.getCfg().getPortNo())):
             #srvObj.getSubscriberDic()[tmpSubscrObj.getId()] = tmpSubscrObj
+            if (srvObj.getDataMoverOnlyActive() and len(srvObj.getSubscriberDic()) > 0):
+                break #only load one subscriber under the data mover mode
             srvObj.registerSubscriber(tmpSubscrObj)
 
     try:
