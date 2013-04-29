@@ -50,6 +50,7 @@ valid_queries = {"files_list":"select * from ngas_files",
                   "files_like":"select * from ngas_files where file_id like '{0}'",
                   "files_between":"select * from ngas_files where ingestion_date between '{0}' and '{1}'",
                   "files_stats":"select count(*),sum(uncompressed_file_size)/1048576. as MB from ngas_files",
+                  "files_list_recent":"select file_id, file_name, file_size, ingestion_date from ngas_files order by ingestion_date desc limit 300",
                 }
 
 def encode_decimal(obj):
