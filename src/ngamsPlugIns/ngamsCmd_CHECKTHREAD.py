@@ -28,7 +28,7 @@
 #
 
 """
-Check how many current threads are running, and their names
+Check how many current threads are running, and print their names
 
 """
 import threading
@@ -36,7 +36,7 @@ from ngams import *
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
-    Handle the trigger subscription Command.
+    Find out which threads are still dangling
         
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
     
@@ -48,16 +48,29 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         
     Returns:        Void.
     """
-    #srvObj.triggerSubscriptionThread()
-    #lc = srvObj.getSubcrBackLogCount()
     re = ''
     n = 0
+    delete = 0
+    if (reqPropsObj.hasHttpPar("delete") and 
+        1 == int(reqPropsObj.getHttpPar("delete")) and
+        reqPropsObj.hasHttpPar("threadname")):        
+        delete = 1
+        threadname = int(reqPropsObj.getHttpPar("threadname"))
+        
     for thrObj in threading.enumerate():
         try:
             if (thrObj.isAlive()): 
-                re += str(thrObj) + '\n'
+                if (delete):
+                    th = thrObj.getName().split('-')[0]
+                    if (th == 'Thread'):
+                        id = thrObj.getName().split('-')[1]
+                        id = int(id)
+                        if (id <= threadname):
+                            thrObj._Thread__stop()
+                            continue
+                re += thrObj.getName() + '\n'
                 n += 1
         except Exception, e:
             re += str(e)
     
-    srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'In total ' + str(n) + ' threads: ' + re + '\n', NGAMS_TEXT_MT)
+    srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'In total ' + str(n) + ' threads\n: ' + re + '\n', NGAMS_TEXT_MT)
