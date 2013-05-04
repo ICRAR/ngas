@@ -600,69 +600,72 @@ def httpPostUrl(url,
 
     # Send the data.
     info(4,"Sending data ...")
-    if (dataSource == "FILE"):
-        fdIn = open(dataRef)
-        block = "-"
-        blockAccu = 0
-        while (block != ""):
-            block = fdIn.read(blockSize)
-            blockAccu += len(block)
-            http._conn.sock.sendall(block)
-            if (suspTime > 0.0): time.sleep(suspTime)
-        fdIn.close()
-    elif (dataSource == "FD"):
-        fdIn = dataRef
-        dataRead = 0
-        while (dataRead < dataSize):
-            if ((dataSize - dataRead) < blockSize):
-                rdSize = (dataSize - dataRead)
-            else:
-                rdSize = blockSize
-            block = fdIn.read(rdSize)
-            http._conn.sock.sendall(block)
-            dataRead += len(block)
-            if (suspTime > 0.0): time.sleep(suspTime)
-    else:
-        # dataSource == "BUFFER"
-        http.send(dataRef)
-    info(4,"Data sent")
-
-    # Receive + unpack reply.
-    info(4,"Waiting for reply ...")
-    _setSocketTimeout(timeOut, http)
-    reply, msg, hdrs = http.getreply()
-
-    if (hdrs == None):
-        errMsg = "Illegal/no response to HTTP request encountered!"
-        raise Exception, errMsg
+    try:        
+        if (dataSource == "FILE"):
+            fdIn = open(dataRef)
+            block = "-"
+            blockAccu = 0
+            while (block != ""):
+                block = fdIn.read(blockSize)
+                blockAccu += len(block)
+                http._conn.sock.sendall(block)
+                if (suspTime > 0.0): time.sleep(suspTime)
+            fdIn.close()
+        elif (dataSource == "FD"):
+            fdIn = dataRef
+            dataRead = 0
+            while (dataRead < dataSize):
+                if ((dataSize - dataRead) < blockSize):
+                    rdSize = (dataSize - dataRead)
+                else:
+                    rdSize = blockSize
+                block = fdIn.read(rdSize)
+                http._conn.sock.sendall(block)
+                dataRead += len(block)
+                if (suspTime > 0.0): time.sleep(suspTime)
+        else:
+            # dataSource == "BUFFER"
+            http.send(dataRef)
+        info(4,"Data sent")
     
-    if (hdrs.has_key("content-length")):
-        dataSize = int(hdrs["content-length"])
-    else:
-        dataSize = 0
-    if (dataTargFile == ""):
-        _waitForResp(http.getfile(), timeOut)
-        data = http.getfile().read(dataSize)
-    else:
-        fd = None
-        try:
-            data = dataTargFile
-            fd = open(dataTargFile, "w")
-            _waitForResp(http.getfile(), timeOut)
-            fd.write(http.getfile().read(dataSize))
-            fd.close()
-        except Exception, e:
-            if (fd != None): fd.close()
-            raise e
-
-    # Dump HTTP headers if Verbose Level >= 4.
-    info(4,"HTTP Header: HTTP/1.0 " + str(reply) + " " + msg)
-    for hdr in hdrs.keys():
-        info(4,"HTTP Header: " + hdr + ": " + hdrs[hdr])
+        # Receive + unpack reply.
+        info(4,"Waiting for reply ...")
+        _setSocketTimeout(timeOut, http)
+        reply, msg, hdrs = http.getreply()
+    
+        if (hdrs == None):
+            errMsg = "Illegal/no response to HTTP request encountered!"
+            raise Exception, errMsg
         
-    if (http != None):
-        http.close()
-        del http    
+        if (hdrs.has_key("content-length")):
+            dataSize = int(hdrs["content-length"])
+        else:
+            dataSize = 0
+        if (dataTargFile == ""):
+            _waitForResp(http.getfile(), timeOut)
+            data = http.getfile().read(dataSize)
+        else:
+            fd = None
+            try:
+                data = dataTargFile
+                fd = open(dataTargFile, "w")
+                _waitForResp(http.getfile(), timeOut)
+                fd.write(http.getfile().read(dataSize))
+                fd.close()
+            except Exception, e:
+                if (fd != None): fd.close()
+                raise e
+    
+        # Dump HTTP headers if Verbose Level >= 4.
+        info(4,"HTTP Header: HTTP/1.0 " + str(reply) + " " + msg)
+        for hdr in hdrs.keys():
+            info(4,"HTTP Header: " + hdr + ": " + hdrs[hdr])
+    finally:    
+        if (http != None):
+            try:
+                http.close() # this may fail?
+            finally:
+                del http    
 
     return [reply, msg, hdrs, data]
 
