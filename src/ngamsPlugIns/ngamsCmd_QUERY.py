@@ -61,6 +61,27 @@ def encode_decimal(obj):
         return float(obj)
     raise TypeError(repr(obj) + " is not JSON serializable")
 
+def createJsonObj(resultSet, queryKey):
+    """
+    Format the query result as an object that is json friendly, 
+
+    resultSet:      Result returned from the SQL interface (list).
+
+    Returns:  i.e. a list of dic, each of which is a record (List[{fieldname, fieldvalue}]
+    """
+    jsobj = {}
+    listResult = []
+    for res in resultSet[0]:
+        col = 1
+        record = {}
+        for subRes in res:
+            colName = 'col' + str(col)
+            colVal = str(subRes)
+            record[colName] = colVal
+            col += 1
+        listResult.append(record)
+    jsobj[queryKey] = listResult
+    return jsobj
 
 def formatAsList(resultSet):
     """
@@ -177,12 +198,14 @@ def handleCmd(srvObj,
     query = None
     if (reqPropsObj.hasHttpPar("query")):
         query = reqPropsObj.getHttpPar("query")
+        qkey = query
         if query.lower() in valid_queries.keys():
             query = valid_queries[query.lower()]
         else:
             msg = "Invalid query specified. Valid queries are: %s" %\
             valid_queries.keys()
             raise Exception, msg
+        
         if reqPropsObj.getHttpPar("query") == 'files_like':
             param = '%'
             if (reqPropsObj.hasHttpPar("like")):
@@ -226,7 +249,8 @@ def handleCmd(srvObj,
             finalRes = cPickle.dumps(res)
             mimeType = NGAMS_PYTHON_PICKLE_MT
         elif (out_format == "json"):
-            finalRes = json.dumps(res, default=encode_decimal)
+            jsobj = createJsonObj(res, qkey)
+            finalRes = json.dumps(jsobj, default=encode_decimal)
             mimeType = NGAMS_JSON_MT
         else:
             finalRes = str(res)
