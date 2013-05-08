@@ -54,6 +54,7 @@ class ngamsPostgreSQL:
     """
     Class to handle the connection to the NGAS DB when PostgreSQL is used as DBMS.
     """
+    
   
     def __init__(self,
                  server,
@@ -77,6 +78,9 @@ class ngamsPostgreSQL:
 
         parameters:      Parameters for the connection object (string).
         """
+        self.__conn_lost_msg = ["connection has been closed", "invalid connection", # the first two messages are returned from pgdb.py
+                           "connection is not valid", "no connection to the server",
+                           "terminating connection", "server closed the connection unexpectedly"]
         try:
             self.__dbModVer = pg.version
         except:
@@ -165,8 +169,14 @@ class ngamsPostgreSQL:
             self.__dbConn.commit()
             #cur = self.__dbConn.query(query)       
         except Exception, e:
-            if ((str(e).find("Connection is not valid") != -1) or (str(e).find("no connection to the server") != -1) or (str(e).find("terminating connection") != -1) \
-                or (str(e).find("server closed the connection unexpectedly") != -1)):
+            ex = str(e).lower()
+            conn_lost = 0
+            for conn_err in self.__conn_lost_msg:
+                if (ex.find(conn_err)):
+                    conn_lost = 1
+                    break
+            if (conn_lost):
+                info(1, "Connection is stale, sleeping 2 seconds before trying to reconnect")
                 time.sleep(2.0)
                 self.connect(self.__server, self.__db, self.__user, self.__password, self.__application, self.__parameters)
                 info(1,"Reconnected to DB - performing SQL query: " + query)
@@ -176,11 +186,11 @@ class ngamsPostgreSQL:
                 self.__dbConn.commit()
             else:
                 #raise e
-                errMsg = "Leaving _execute() after exception and " +\
-                         ": %s" % str(e)
+                errMsg = "PostgreSQL DB Exception: '%s' after executing [ %s ]" % (str(e), str(query))
                 #info(4, errMsg)
                 error(errMsg)
-                self.__dbConn.rollback()
+                if ("can't commit" != ex):
+                    self.__dbConn.rollback()
                 return [[]]                            
         
         """
@@ -281,8 +291,13 @@ class ngamsPostgreSQL:
 
             # Try to reconnect once if the connection is not available
             # - maybe it was lost.
-            if ((str(e).find("Connection is not valid") != -1) or (str(e).find("no connection to the server") != -1) or (str(e).find("terminating connection") != -1) \
-                or (str(e).find("server closed the connection unexpectedly") != -1)):
+            ex = str(e).lower()
+            conn_lost = 0
+            for conn_err in self.__conn_lost_msg:
+                if (ex.find(conn_err)):
+                    conn_lost = 1
+                    break
+            if (conn_lost):
                 time.sleep(2.0)
                 self.connect(self.__server, self.__db, self.__user,
                              self.__password)
@@ -290,7 +305,8 @@ class ngamsPostgreSQL:
                 res = self._execute(query)
                 return res
             else:
-                self.__dbConn.rollback()
+                if ("can't commit" != ex):
+                    self.__dbConn.rollback()
                 raise e
 
  
