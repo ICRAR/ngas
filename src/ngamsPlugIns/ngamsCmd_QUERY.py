@@ -83,18 +83,22 @@ def createJsonObj(resultSet, queryKey):
     jsobj[queryKey] = listResult
     return jsobj
 
-def formatAsList(resultSet):
+def formatAsList(resultSet, header = None):
     """
     Format the query result as a list.
 
     resultSet:      Result returned from the SQL interface (list).
+    header:         column names in the correct order (tuple)
 
     Returns:  Result formatted as a list (string).
     """
     # Go through the results, find the longest result per column and use
     # that as basis for the column.
     formatStrDic = {}
-    for res in resultSet[0]:
+    reList = resultSet[0]
+    if (header):
+        reList = [header] + reList
+    for res in reList:
         col = 0
         for subRes in res:
             if (not formatStrDic.has_key(col)): formatStrDic[col] = 0
@@ -105,15 +109,22 @@ def formatAsList(resultSet):
     # Build up format string.
     formatStr = ""
     col = 0
+    if (header):
+        headers = ()
     while (True):
         if (not formatStrDic.has_key(col)): break
         formatStr += "%%-%ds" % (formatStrDic[col] + 3)
+        if (header):
+            headers += ('-' * formatStrDic[col],)
         col += 1
     formatStr += "\n"
 
     # Now, generate the list.
     listBuf = ""
-    for res in resultSet[0]:
+    
+    if (header):
+        reList = [headers] + [header] + [headers] + reList[1:]
+    for res in reList:
         valList = []
         for subRes in res:
             valList.append(str(subRes))
