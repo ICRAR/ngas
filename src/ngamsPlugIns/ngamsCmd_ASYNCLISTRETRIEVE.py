@@ -12,7 +12,7 @@ NGAS Command Plug-In, implementing asynchronous retrieval file list. It supports
 3. suspend an existing asynclistretrieval 
 4. resume an existing asynclistretrieval
 
-Main movitagtion is to deal with files offline (on Tapes), which often block and then timeout the requested HTTP session.
+Main motivation is to deal with files offline (on Tapes), which often block and then timeout the requested HTTP session.
 
 This command also has a persistent queue containing files pending to be sent. 
 During ngamsServer shutdown, this queue will be updated and saved by an offlinePlugin(ngamsMWAOfflinePlugIn.py)
