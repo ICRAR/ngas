@@ -47,7 +47,7 @@ from ngams import *
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
-    Handle the trigger subscription Command.
+    Handle the trigger subscription Command. 
         
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
     
@@ -59,5 +59,15 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         
     Returns:        Void.
     """
-    srvObj.triggerSubscriptionThread()
+    if (reqPropsObj.hasHttpPar("subscr_id")):
+        subscrId = reqPropsObj.getHttpPar("subscr_id")  # re-trigger an existing subscriber, this is useful after unexpected server restart (and no backlog either)
+        if (not srvObj.getSubscriberDic().has_key(subscrId)):
+            srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, #let HTTP returns OK so that curl can continue printing XML code
+                 "TRIGGERSUBSCRIPTION command failed: Cannot find subscriber '%s'" % subscrId)
+            return
+        else:
+            subscriber = srvObj.getSubscriberDic()[subscrId]
+            srvObj.addSubscriptionInfo([], [subscriber]).triggerSubscriptionThread()
+    else:
+        srvObj.triggerSubscriptionThread() # this will only trigger the backlog files
     srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'Command TRIGGERSUBSCRIPTION executed successfully.\n', NGAMS_TEXT_MT)
