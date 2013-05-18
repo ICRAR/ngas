@@ -85,8 +85,7 @@ def handleCmd(srvObj,
     
     subscrId = reqPropsObj.getHttpPar("subscr_id")
     if (not srvObj.getSubscriberDic().has_key(subscrId)):
-        if (not reqPropsObj.hasHttpPar("subscr_id")):
-            srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, #let HTTP returns OK so that curl can continue printing XML code
+        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, #let HTTP returns OK so that curl can continue printing XML code
                  "USUBSCRIBE command failed: Cannot find subscriber '%s'" % subscrId)
         return
     
