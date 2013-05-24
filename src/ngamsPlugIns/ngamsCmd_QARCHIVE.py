@@ -336,6 +336,10 @@ def handleCmd(srvObj,
     # Determine the target volume, ignoring the stream concept.
     info(3, "Determine the target volume, ignoring the stream concept.")
     targDiskInfo = getTargetVolume(srvObj)
+    if (targDiskInfo == None):
+        errMsg = "No disk volumes are available for ingesting any files."
+        error(errMsg)
+        raise Exception, errMsg
     reqPropsObj.setTargDiskInfo(targDiskInfo)
         
     # Generate staging filename.
