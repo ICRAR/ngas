@@ -27,7 +27,7 @@
 # cwu      20/May/2013  Created
 
 """
-This module provides basic object interfaces of NGAS job, task and other related entities
+This module provides an MapReduce framework for running NGAS jobs, task and other related entities
 A particular job type (i.e. RTS) should implement these interfaces
 """
 
@@ -52,10 +52,7 @@ class MapReduceTask:
     2. As a consequence of 1, each task is often assigned files belong to the same reducer key
     
     So in a sense, this is a file-level MapReduce framework rather than an algorithmic one
-    """
-    
-    
-    
+    """            
     def __init__(self, Id):
         """
         Constructor
@@ -65,6 +62,7 @@ class MapReduceTask:
         Id:    the task id (String)
         """
         self.__mapList = [] # a list of MRTask, composite design pattern
+        self.__mapDic = {} # key - mrTaskId, val - mrTask. findMRTaskById
         self.__reducer = None
         if (None == Id or '' == Id):
             errStr = 'Invalid task id: %s' % Id
@@ -128,6 +126,10 @@ class MapReduceTask:
     def addMapper(self, mpT):
         if (mpT):
             self.__mapList.append(mpT)
+            self.__mapDic[mpT.getId()] = mpT
+    
+    def getMapper(self, taskId):
+        return self.__mapDic[taskId]
     
     def setReducer(self, rdT):
         if (rdT):
@@ -139,12 +141,11 @@ class MapReduceTask:
     def map(self, mapInput = None):
         """
         Dummy implementation: data flow through without augmentation
-        """
-        
+        """        
         if (mapInput):
             return mapInput
-        else:
-            print '\n%s is mapped with an input none **** \n' % (self.getId())            
+        #else:
+            #print '\n%s is mapped with an input none **** \n' % (self.getId())            
     
     def combine(self, mapOutput):
         """
