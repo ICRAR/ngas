@@ -19,12 +19,10 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
-#******************************************************************************
 #
-# Who       When        What
-# --------  ----------  -------------------------------------------------------
-# cwu      20/May/2013  Created
+# Who                   When             What
+# -----------------   ----------      ------------
+# chen.wu@icrar.org  20/May/2013        Created
 
 """
 This module provides an MapReduce framework for running NGAS jobs, task and other related entities
@@ -120,7 +118,6 @@ class MapReduceTask:
         """
         Execute the map reduce tasks on this and all children MRTasks
         """
-        # get count
         return self.__map()
     
     def addMapper(self, mpT):
@@ -191,12 +188,12 @@ class TestMRLeafTask(TestMRTask):
 def buildTestMRTask():
     """
     This is for testing the MapReduce framework in NGAS
-    It sums over a list of float points by building a two-level
+    It sums over a list of float points by building a three-level
     MRTask tree
     """
     # build the highest (outer) level of the tree first
     mrtk0 = TestMRTask('mrtk0')
-    num_mid = 4
+    num_mid = 3
     for j in range(num_mid):
         mrtk1 = TestMRTask('mrtk1_%s' % str(j))
         mrtk0.addMapper(mrtk1)        
@@ -208,8 +205,8 @@ def buildTestMRTask():
         rt1 = TestMRTask('mrtk1_%s_reduce' % str(j))
         mrtk1.setReducer(rt1)
                     
-    rt0 = TestMRTask('mrtk0_reduce')
-    mrtk0.setReducer(rt0)
+    #rt0 = TestMRTask('mrtk0_reduce')
+    mrtk0.setReducer(mrtk0) # set reducer to itself
     
     result = mrtk0.start()
     print 'Final result = %s' % str(result)

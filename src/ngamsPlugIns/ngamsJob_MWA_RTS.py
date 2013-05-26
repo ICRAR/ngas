@@ -61,20 +61,20 @@ class RTSJob(MapReduceTask):
             raise Exception, errMsg
         
         num_obs = len(rtsParam.obsList)
+        # TODO - Get the file ids using functions in ngamsJobLib.py
         fileIds = []
         for j in range(num_obs):
             obsTask = ObsTask(rtsParam.obsList[j], rtsParam)
             self.addMapper(obsTask)
             
             for k in range(rtsParam.num_subband):
-                # TODO - Get the file ids using functions in ngamsJobLib.py
-                # fileIds = []
                 corrTask = CorrTask(str(k + 1), fileIds, rtsParam)
                 obsTask.addMapper(corrTask)
             
             obsTask.setReducer(obsTask) # set reducer to the obstask itself
         
         self.setReducer(self) # set reducer to the jobtask itself
+        
     def combine(self, mapOutput):
         """
         TODO - this should be thread safe
