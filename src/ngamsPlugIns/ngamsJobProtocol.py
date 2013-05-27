@@ -31,6 +31,9 @@ A particular job type (i.e. RTS) should implement these interfaces
 
 import threading
 
+STATUS_NOT_STARTED = 0
+STATUS_RUNNING = 1
+STATUS_COMPLETE = 2
 
 class MapReduceTask:
     """
@@ -51,7 +54,7 @@ class MapReduceTask:
     
     So in a sense, this is a file-level MapReduce framework rather than an algorithmic one
     """            
-    def __init__(self, Id):
+    def __init__(self, Id, appParams = None):
         """
         Constructor
         
@@ -66,6 +69,8 @@ class MapReduceTask:
             errStr = 'Invalid task id: %s' % Id
             raise Exception, errStr
         self.__id = Id 
+        self.__status = STATUS_NOT_STARTED # not running
+        self.setReducer()
     
     def _mapTaskThread(self, mrTask):        
         out = mrTask.__map()
@@ -75,7 +80,8 @@ class MapReduceTask:
     def __map(self):
         """
         TODO - fault tolerance (e.g. some tasks may fail)
-        """               
+        """  
+        self.__status = STATUS_RUNNING             
         if (len(self.__mapList) > 0):
             if (self.__reducer == None):
                 errStr = 'Reducer missing for the MRtask %s, which has at least one child mapper.' % str(self.getId())
@@ -94,7 +100,7 @@ class MapReduceTask:
             return self.__reducer.__reduce()
         else:
             # no children MRTasks at this level
-            # Thus no reducer either, so return to the upper level
+            # Thus no reducer either, so return to the upper level            
             return self.map()
     
     def __combine(self, mapOutput):
@@ -109,7 +115,9 @@ class MapReduceTask:
         """
         system reduce task called internally
         """
-        return self.reduce()
+        re = self.reduce()
+        self.__status = STATUS_COMPLETE
+        return re
     
     def getId(self):
         return self.__id
@@ -128,9 +136,11 @@ class MapReduceTask:
     def getMapper(self, taskId):
         return self.__mapDic[taskId]
     
-    def setReducer(self, rdT):
+    def setReducer(self, rdT = None):
         if (rdT):
             self.__reducer = rdT
+        else:
+            self.__reducer = self
     
     def getReducer(self):
         return self.__reducer
@@ -203,10 +213,10 @@ def buildTestMRTask():
             mrtk1.addMapper(mrtk2)
         
         rt1 = TestMRTask('mrtk1_%s_reduce' % str(j))
-        mrtk1.setReducer(rt1)
+        mrtk1.setReducer(rt1) # this could be omitted
                     
     #rt0 = TestMRTask('mrtk0_reduce')
-    mrtk0.setReducer(mrtk0) # set reducer to itself
+    mrtk0.setReducer(mrtk0) # set reducer to itself, but this could be omitted
     
     result = mrtk0.start()
     print 'Final result = %s' % str(result)
