@@ -32,18 +32,36 @@ metadata query, data movement, and HTTP-based communication
 during job task execution and scheduling
 """
 
+import os, threading, urllib
 import psycopg2
+import cPickle as pickle
 
-db_name = 'mwa'
-db_user = 'mwa'
-db_passwd = 'Qm93VGll\n'
-db_host = 'ngas01.ivec.org'
-g_db_conn = None
+from Queue import Queue, Empty
+from ngamsMWAAsyncProtocol import *
+
+g_db_conn = None # MWA metadata database connection
+f_db_conn = None # Fornax NGAS database connection
+
+io_ex_ip = {'io1':'202.8.39.136', 'io2':'202.8.39.137'}  # the two Copy Nodes external ip
+ST_INTVL_STAGE = 5 # interval in seconds between staging file checks
+ST_BATCH_SIZE = 5 # minimum number of files in each stage request
+ST_RETRY_LIM = 3 # number of times min_number can be used, if exceeds, stage files anyway
+ST_CORTEX_URL = 'http://cortex.ivec.org:7777'
+ST_FORNAX_PUSH_URL = io_ex_ip['io1']
+
+stage_queue = Queue()
+stage_dic = {} # key - fileId, value - a list of CorrTasks
+stage_sem = threading.Semaphore(1)
 
 def getMWADBConn():
     global g_db_conn
     if (g_db_conn and (not g_db_conn.closed)):
         return g_db_conn
+    
+    db_name = 'mwa'
+    db_user = 'mwa'
+    db_passwd = 'Qm93VGll\n'
+    db_host = 'ngas01.ivec.org'    
     try:        
         g_db_conn = psycopg2.connect(database = db_name, user= db_user, 
                             password = db_passwd.decode('base64'), 
@@ -52,6 +70,34 @@ def getMWADBConn():
     except Exception, e:
         errStr = 'Cannot create MWA DB Connection: %s' % str(e)
         raise Exception, errStr
+
+def getFornaxDBConn():
+    global f_db_conn    
+    if (f_db_conn and (not f_db_conn.closed)):
+        return f_db_conn
+    
+    fdb_name = 'ngas'
+    fdb_user = 'ngas'
+    fdb_passwd = 'bmdhcyRkYmE=\n'
+    #fdb_host = 'fornaxspare'
+    fdb_host = 'localhost'   
+    try:
+        f_db_conn = psycopg2.connect(database = fdb_name, user= fdb_user, 
+                            password = fdb_passwd.decode('base64'), 
+                            host = fdb_host)
+        return f_db_conn
+    except Exception, e:
+        errStr = 'Cannot create Fornax DB Connection: %s' % str(e)
+        raise Exception, errStr
+
+def executeQuery(conn, sqlQuery):
+    try:
+        cur = conn.cursor()
+        cur.execute(sqlQuery)
+        return cur.fetchall()
+    finally:
+        if (cur):
+            del cur
 
 def getFileIdsByObsNum(obs_num):
     """
@@ -65,13 +111,7 @@ def getFileIdsByObsNum(obs_num):
     """
     sqlQuery = "SELECT filename FROM data_files WHERE observation_num = '%s' ORDER BY SUBSTRING(filename, 27);" % str(obs_num)
     conn = getMWADBConn()
-    try:
-        cur = conn.cursor()
-        cur.execute(sqlQuery)
-        res = cur.fetchall()
-    finally:
-        if (cur):
-            del cur   
+    res = executeQuery(conn, sqlQuery)
     retDic = {}
     for re in res:
         fileId = re[0]
@@ -98,35 +138,100 @@ class FileLocation:
         svrUrl:      host/ip and port
         filePath:    local path on the Fornax compute node with svrUrl
         """
-        self.__svrUrl = svrUrl
-        self.__filePath = filePath
+        self._svrUrl = svrUrl
+        self._filePath = filePath
 
-def getFileLocation(fileId):
+def getFileLocations(fileId):
     """
-    Return: an instance of FileLocation
+    Given a file id
+    Return: a list of FileLocation's in the cluster
     """
-    pass
+    if (not fileId or len(fileId) == 0):
+        return None
+    conn = getFornaxDBConn()
+    # hardcoded based on PostGreSQL and 
+    # assumes multipleSrv options is turned on when launching these ngas servers
+    sqlQuery = "SELECT a.host_id, a.mount_point || '/' || b.file_name FROM " +\
+               "ngas_disks a, ngas_files b where a.disk_id = b.disk_id AND b.file_id = '%s'" % fileId
+    res = executeQuery(conn, sqlQuery)
+    ret = []
+    for re in res:
+        path_file = os.path.split(re[1])
+        if (len(path_file) < 1):
+            continue
+        floc = FileLocation(re[0], path_file[0])
+        ret.append(floc)
+    
+    return ret
 
-def stageFile(fileIds, corrTask):
+def testGetFileLocations():
+    ret = getFileLocations('1365971011-6.data')
+    print 'server_url = %s, file_path = %s' % (ret[0]._svrUrl, ret[0]._filePath)
+
+
+def stageFile(fileId, corrTask):
     """
-    fileIds:    a list of fileIds that needs to be staged from Cortex
+    fileIds:    file that needs to be staged from Cortex
     corrTask:   the CorrTask instance that invokes this function
                 this corrTask will be used for calling back 
     """
-    pass
+    stage_sem.acquire()
+    try:
+        if (stage_dic.has_key(fileId)):
+            # this file has been requested for staging (but not yet staged)
+            list = stage_dic[fileId]
+            list.append(corrTask)
+        else:
+            stage_dic[fileId] = [corrTask]
+            stage_queue.put(fileId)
+    finally:
+        stage_sem.release()
+
+def scheduleForStaging(num_repeats = 0):
+    print 'Scheduling staging...'
+    if (len(stage_dic.keys()) < ST_BATCH_SIZE and num_repeats < ST_RETRY_LIM):
+        return 1
+    list = []
+    while (1):
+        fileId = None
+        try:
+            fileId = stage_queue.get_nowait()
+            list.append(fileId)
+        except Empty, e:
+            break
+    
+    myReq = AsyncListRetrieveRequest(list, ST_FORNAX_PUSH_URL)
+    strReq = pickle.dumps(myReq)
+    strRes = urllib.urlopen(ST_CORTEX_URL, strReq).read()
+    myRes = pickle.loads(strRes)
+    
+    # TODO - handle exceptions (error code later)   
+    return 0    
+    
 
 def fileIngested(fileId):
     """
+    This function is called by the Web server to notify
+    jobs which are waiting for this file to be ingested
+    
     fileId:    The file that has just been ingested in Fornax
     """
     # to notify all CorrTasks that are waiting for this file
+    # reset the "Event" so CorrTasks can all continue
     pass
 
+
+def closeConn(conn):
+    if (conn):
+        if (not conn.closed):
+            conn.close()
+        del conn
 
 
 if __name__=="__main__":
     testGetFileIds()
-    if (not g_db_conn.closed):
-        g_db_conn.close()
-        del g_db_conn
+    testGetFileLocations()
+    closeConn(g_db_conn)
+    closeConn(f_db_conn)
+    
     
