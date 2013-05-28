@@ -51,6 +51,11 @@ import ngamsArchiveUtils, ngamsSrvUtils, ngamsCmdHandling
 import ngamsNotification, ngamsAuthUtils
 
 
+import tornado.ioloop
+import tornado.httpserver
+import tornado.web
+
+
 # Pointing to the HTTP request callback.
 _reqCallBack = None
 
@@ -122,93 +127,118 @@ class ngamsSimpleRequest:
 # class ngamsHttpServer(SocketServer.ForkingMixIn,
 #                      SocketServer.TCPServer,
 #                      BaseHTTPServer.HTTPServer):
-class ngamsHttpServer(SocketServer.ThreadingMixIn,
-                      SocketServer.TCPServer,
-                      BaseHTTPServer.HTTPServer):
-    """  
-    Class that provides the multithreaded HTTP server functionality.
+#class ngamsHttpServer(SocketServer.ThreadingMixIn,
+#                      SocketServer.TCPServer,
+#                      BaseHTTPServer.HTTPServer):
+#    """  
+#    Class that provides the multithreaded HTTP server functionality.
+#    """
+#    allow_reuse_address = 1
+#
+#    
+#    def process_request(self,
+#                        request,
+#                        client_address):
+#        """
+#        Start a new thread to process the request.
+#        """
+#        # Check the number of requests being handled. It is checked already
+#        # here to avoid starting another thread.
+#        noOfAliveThr = 0
+#        for thrObj in threading.enumerate():
+#            try:
+#                if (thrObj.isAlive()): noOfAliveThr += 1
+#            except Exception, e:
+#                pass
+#        if (_ngamsServer):
+#            if ((noOfAliveThr - 4) >= _ngamsServer.getCfg().getMaxSimReqs()):
+#                try:
+#                   errMsg = genLog("NGAMS_ER_MAX_REQ_EXCEEDED",
+#                                [_ngamsServer.getCfg().getMaxSimReqs()])
+#                   error(errMsg)
+#                   httpRef = ngamsSimpleRequest(request, client_address)
+#                   tmpReqPropsObj = ngamsReqProps.ngamsReqProps()
+#                   _ngamsServer.reply(tmpReqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
+#                                   NGAMS_FAILURE, errMsg)
+#                except IOError:
+#                   errMsg = "Maximum number of requests exceeded and I/O ERROR encountered! Trying to continue...."
+#                   error(errMsg)
+#                return
+#
+#        # Create a new thread to handle the request.
+#        t = threading.Thread(target = self.finish_request,
+#                             args = (request, client_address))
+#        t.start()
+#
+#
+#
+#
+#    def handle_request(self):
+#        """
+#        Handle a request.
+#        """
+#        T = TRACE(5)
+#        
+#        try:
+#            request, client_address = self.get_request()
+#        except socket.error:
+#            info(5,"handle_request() - socket.error")
+#            return
+#        if self.verify_request(request, client_address):
+#            try:
+#                self.process_request(request, client_address)
+#            except:
+#                self.handle_error(request, client_address)
+#                self.close_request(request)
+
+
+class ngamsHttpServer():
     """
-    allow_reuse_address = 1
+    NEW implementation using the tornado async server.
+    """
+    def __init__(self, (host, port), handlerClass):
+        #http_server = tornado.httpserver.HTTPServer(self.handle_request)
+        #http_server.listen(port, host)
+        self.handler = handlerClass
 
-    
-    def process_request(self,
-                        request,
-                        client_address):
-        """
-        Start a new thread to process the request.
-        """
-        # Check the number of requests being handled. It is checked already
-        # here to avoid starting another thread.
-        noOfAliveThr = 0
-        for thrObj in threading.enumerate():
-            try:
-                if (thrObj.isAlive()): noOfAliveThr += 1
-            except Exception, e:
-                pass
-        if (_ngamsServer):
-            if ((noOfAliveThr - 4) >= _ngamsServer.getCfg().getMaxSimReqs()):
-                try:
-                   errMsg = genLog("NGAMS_ER_MAX_REQ_EXCEEDED",
-                                [_ngamsServer.getCfg().getMaxSimReqs()])
-                   error(errMsg)
-                   httpRef = ngamsSimpleRequest(request, client_address)
-                   tmpReqPropsObj = ngamsReqProps.ngamsReqProps()
-                   _ngamsServer.reply(tmpReqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                                   NGAMS_FAILURE, errMsg)
-                except IOError:
-                   errMsg = "Maximum number of requests exceeded and I/O ERROR encountered! Trying to continue...."
-                   error(errMsg)
-                return
+        self.application = tornado.web.Application(
+                        [(r"/.*", self.handler,)], no_keep_alive=True)
+        self.application.listen(port, host)
+        tornado.ioloop.IOLoop.instance().start()
 
-        # Create a new thread to handle the request.
-        t = threading.Thread(target = self.finish_request,
-                             args = (request, client_address))
-        t.start()
+    def handle_request(self, request):
+        self.handler(request)
+        message = "You requested %s\n" % request.uri
+        request.write("HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n%s" % (
+                 len(message), message))
+        request.finish()
 
 
-    def handle_request(self):
-        """
-        Handle a request.
-        """
-        T = TRACE(5)
-        
-        try:
-            request, client_address = self.get_request()
-        except socket.error:
-            info(5,"handle_request() - socket.error")
-            return
-        if self.verify_request(request, client_address):
-            try:
-                self.process_request(request, client_address)
-            except:
-                self.handle_error(request, client_address)
-                self.close_request(request)
-
-
-class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+# class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class ngamsHttpRequestHandler(tornado.web.RequestHandler):
     """
     Class used to handle an HTTP request.
     """
 
-    def finish(self):
-        """
-        Finish the handling of the HTTP request.
-        
-        Returns:    Void.
-        """
-        try:
-            self.rfile.close()
-        except:
-            pass
-        try:
-            self.wfile.flush()
-            self.wfile.close()
-        except:
-            pass    
-        try:
-            logFlush()
-        except:
-            pass
+#    def finish(self):
+#        """
+#        Finish the handling of the HTTP request.
+#        
+#        Returns:    Void.
+#        """
+#        try:
+#            self.rfile.close()
+#        except:
+#            pass
+#        try:
+#            self.wfile.flush()
+#            self.wfile.close()
+#        except:
+#            pass    
+#        try:
+#            logFlush()
+#        except:
+#            pass
 
 
     def log_request(self,
@@ -225,7 +255,10 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         Returns:    Void.
         """
         pass
-
+    
+#    @tornado.web.asynchronous
+    def get(self):
+        self.reqHandle()
 
     def do_GET(self):
         """
@@ -260,16 +293,20 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         Returns:    Void.
         """
         global _reqCallBack
+        self.send_header = self.set_header
         if (_reqCallBack != None):
-            path = trim(self.path, "?/ ")
+            path = trim(self.request.uri, "?/ ")
             try:
-                _reqCallBack(self, self.client_address, self.command, path,
-                             self.request_version, self.headers,
+                self.rfile = self.request.connection.stream
+                self.wfile = self.rfile
+                self.client_address = self.request.remote_ip
+                _reqCallBack(self, self.client_address, self.request.uri, path,
+                             self.request.version, self.request.headers,
                              self.wfile, self.rfile)
             except Exception, e:
                 error(str(e))
                 sysLogInfo(1,str(e))
-                thread.exit()
+                #thread.exit()
         else:
             status = ngamsStatus.ngamsStatus()
             status.\
@@ -279,6 +316,9 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                      setMessage("NG/AMS Server not properly functioning! " +\
                                 "No HTTP request callback!")
             self.send_error(NGAMS_HTTP_BAD_REQ, status.genXmlDoc())
+        
+#        self.flush()
+        self.request.finish()
             
 
 class ngamsServer:
@@ -1543,6 +1583,8 @@ class ngamsServer:
             # Expires: Mon, 17 Sep 2001 09:21:38 GMT
             info(4,"Sending header: Expires: " + httpTimeStamp)
             httpRef.send_header("Expires", httpTimeStamp)
+            info(4,"Sending header: Connection: close ")
+            httpRef.send_header("Connection", 'close')        
 
             if (dataRef == None):
                 dataSize = 0
@@ -1594,7 +1636,7 @@ class ngamsServer:
                 info(4,"Sending header: Content-length/2: "+str(contentLength))
                 httpRef.send_header("Content-length", contentLength)
             
-            httpRef.wfile.flush()
+            # httpRef.flush()
 
             #################################################################
             # Due to synchronization problems/socket communication problems
