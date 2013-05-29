@@ -48,7 +48,7 @@ To deploy (install) them:
 """
 import time, threading, signal
 
-from bottle import route, run
+from bottle import route, run, request
 
 import ngamsJobMWALib
 
@@ -59,6 +59,14 @@ web_host = 'macbook46.icrar.org' # or 'localhost'
 @route('/hello')
 def hello():
     return getHello()
+
+@route('/ingest')
+def ingest():
+    fileId = request.query.get('file_id')
+    if (fileId == None):
+        return 'No file id is provided'
+    else:
+        return 'File %s is just ingested' % fileId
 
 def getHello():
     return "Hello World 001"

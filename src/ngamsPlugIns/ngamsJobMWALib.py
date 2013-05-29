@@ -36,7 +36,7 @@ import os, threading, urllib
 import psycopg2
 import cPickle as pickle
 
-from Queue import Queue, Empty
+#from Queue import Queue, Empty
 from ngamsMWAAsyncProtocol import *
 
 g_db_conn = None # MWA metadata database connection
@@ -49,7 +49,7 @@ ST_RETRY_LIM = 3 # number of times min_number can be used, if exceeds, stage fil
 ST_CORTEX_URL = 'http://cortex.ivec.org:7777'
 ST_FORNAX_PUSH_URL = io_ex_ip['io1']
 
-stage_queue = Queue()
+stage_queue = []
 stage_dic = {} # key - fileId, value - a list of CorrTasks
 stage_sem = threading.Semaphore(1)
 
@@ -168,30 +168,37 @@ def testGetFileLocations():
     ret = getFileLocations('1365971011-6.data')
     print 'server_url = %s, file_path = %s' % (ret[0]._svrUrl, ret[0]._filePath)
 
-
-def stageFile(fileId, corrTask):
+def stageFile(fileIds, corrTask):
     """
-    fileIds:    file that needs to be staged from Cortex
+    fileIds:    a list of files that need to be staged from Cortex
     corrTask:   the CorrTask instance that invokes this function
                 this corrTask will be used for calling back 
     """
+    # global stage_dic, stage_queue, stage_sem # only access global var, so no need to declare it
     stage_sem.acquire()
     try:
-        if (stage_dic.has_key(fileId)):
-            # this file has been requested for staging (but not yet staged)
-            list = stage_dic[fileId]
-            list.append(corrTask)
-        else:
-            stage_dic[fileId] = [corrTask]
-            stage_queue.put(fileId)
+        for fileId in fileIds:
+            if (stage_dic.has_key(fileId)):
+                # this file has already been requested for staging (but not yet staged)
+                list = stage_dic[fileId]
+                list.append(corrTask)
+            else:
+                stage_dic[fileId] = [corrTask]
+                stage_queue.append(fileId)
     finally:
         stage_sem.release()
 
 def scheduleForStaging(num_repeats = 0):
     print 'Scheduling staging...'
-    if (len(stage_dic.keys()) < ST_BATCH_SIZE and num_repeats < ST_RETRY_LIM):
+    global stage_queue # since we are changing it, need to declare as global
+    
+    if (len(stage_queue) == 0):
+        return 0
+    
+    if (len(stage_queue) < ST_BATCH_SIZE and num_repeats < ST_RETRY_LIM):
         return 1
-    list = []
+    #list = []
+    """
     while (1):
         fileId = None
         try:
@@ -199,8 +206,14 @@ def scheduleForStaging(num_repeats = 0):
             list.append(fileId)
         except Empty, e:
             break
+    """
     
-    myReq = AsyncListRetrieveRequest(list, ST_FORNAX_PUSH_URL)
+    
+    stage_sem.acquire()
+    filelist = list(stage_queue)
+    stage_queue = []
+    stage_sem.release()
+    myReq = AsyncListRetrieveRequest(filelist, ST_FORNAX_PUSH_URL)
     strReq = pickle.dumps(myReq)
     strRes = urllib.urlopen(ST_CORTEX_URL, strReq).read()
     myRes = pickle.loads(strRes)
@@ -218,7 +231,16 @@ def fileIngested(fileId):
     """
     # to notify all CorrTasks that are waiting for this file
     # reset the "Event" so CorrTasks can all continue
-    pass
+    stage_sem.acquire()
+    try:
+        if (stage_dic.has_key(fileId)):
+            corrList = stage_dic.pop(fileId)
+        else: 
+            return
+    finally:
+        stage_sem.release()
+    for corr in corrList:
+        corr.fileIngested(fileId)
 
 
 def closeConn(conn):

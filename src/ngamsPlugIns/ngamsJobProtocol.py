@@ -122,6 +122,9 @@ class MapReduceTask:
     def getId(self):
         return self.__id
     
+    def getStatus(self):
+        return self.__status
+    
     def start(self):
         """
         Execute the map reduce tasks on this and all children MRTasks

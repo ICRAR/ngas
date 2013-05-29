@@ -173,22 +173,51 @@ class CorrTask(MapReduceTask):
         MapReduceTask.__init__(self, str(corrId))
         self.__fileIds = fileIds
         self.__rtsParam = rtsParam
+        self._progress = -1
+        self._fileIngEvent = threading.Event()
+        self._timeOut4FileIng = 60 * 15 # maximum wait for 15 min
+        self._numIngested = len(fileIds) # at start, assume all files are ingested
+        self._numIngSem = threading.Semaphore()
     
     def map(self, mapInput = None):
         """
-        1. Check each file's location
-        2. Stage file from Cortex if necessary
-        3. Run RTS executable and archive images back to an NGAS server
-        Part 3 is running on remote servers
-        Both Part 2 and 3 are asynchronously invoked
+        Actual work for Correlator's file processing
         """
-        #TODO - deal with timeout!
-        dprint('Correlator %s is mapped' % self.getId())
-        
-        # construct correlator result from the HTTP response
-        # and return that result
         cre = CorrTaskResult(self.getId(), self.__fileIds, debug_url)
+        if (self.__fileIds == None or len(self.__fileIds) == 0):
+            cre._errcode = 1
+            cre._errmsg = 'No correlator files in the input'
+            return cre # should raise exception here
+        #TODO - deal with timeout!
+        dprint('Correlator %s is being mapped' % self.getId())
+        self._progress = 0
         
+        # 1. Check the first file's location
+        try:
+            fileLoc = ngamsJobMWALib.getFileLocations(self.__fileIds[0])           
+        except Exception, e:
+            cre._errmsg = "Fail to get location for file '%s': %s" % (self.__fileIds[0], str(e))
+            cre._errcode = 2
+            return cre
+        
+        # 2. Stage all files from Cortex if the first file's location is None
+        if (len(fileLoc) == 0):
+            self._numIngested = 0 # to indicate no files have been ingested
+            ngamsJobMWALib.stageFile(self.__fileIds, self)
+        else:
+            self._fileIngEvent.set() # let it through
+        
+        # block if / while files are being ingested
+        self._fileIngEvent.wait(self._timeOut4FileIng)
+        
+        if (self._numIngested < self._numIngested):
+            #TODO need to print which files are timed out
+            cre._errmsg = "Timeout when waiting for file ingestion. Ingested %d out of %d." % (self._numIngested, len(self.__fileIds))
+            cre._errcode = 3
+            return cre
+        
+        # 3. Run RTS executable and archive images back to an NGAS server
+        #    This is running on remote servers, which should be asynchronously invoked                
         """
         # this is for test
         if (self.getId() == '11' or self.getId() == '23'):
@@ -197,6 +226,13 @@ class CorrTask(MapReduceTask):
                 cre._errmsg = 'Files not found!'
         """
         return cre 
+    
+    def fileIngested(self, fileId):
+        self._numIngSem.acquire()
+        self._numIngested += 1
+        self._numIngSem.release()
+        if (self._numIngested == len(self.__fileIds)):
+            self._fileIngEvent.set()        
 
 class CorrTaskResult:
     """
