@@ -34,6 +34,9 @@ import threading
 STATUS_NOT_STARTED = 0
 STATUS_RUNNING = 1
 STATUS_COMPLETE = 2
+STATUS_EXCEPTION = 3
+
+statusDic = {STATUS_NOT_STARTED:'Wait_for_start', STATUS_RUNNING:'Running', STATUS_COMPLETE:'Completed', STATUS_EXCEPTION:'Error'}
 
 class MapReduceTask:
     """
@@ -118,6 +121,35 @@ class MapReduceTask:
         re = self.reduce()
         self.__status = STATUS_COMPLETE
         return re
+    
+    def getMoreJSONAttr(self):
+        """
+        Get extra JSON key-val pair for this Task
+        Return: a dictionary     
+        """
+        pass
+    
+    def toJSONObj(self):
+        """
+        Iteratively convert to JSON object of this job,
+        which represents taskId and execution info (e.g. RUNNING, COMPLETED, etc.)
+        sub-class can reveal more application-specific attributes by implementing 
+        function self.getMoreJSONAttr()
+        """
+        jsobj = {}
+        jsobj['name'] = self.getId() + '-' + statusDic[self.getStatus()]
+        jsobj['status'] = self.getStatus()
+        moredic = self.getMoreJSONAttr()
+        if (moredic):
+            jsobj = dict(jsobj.items() + moredic.items())
+        if (len(self.__mapList) > 0):
+            #jsob['children'] = []
+            children = []
+            for mrTask in self.__mapList:
+                child = mrTask.toJSONObj()
+                children.append(child) 
+            jsobj['children'] = children
+        return jsobj
     
     def getId(self):
         return self.__id

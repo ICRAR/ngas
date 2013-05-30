@@ -208,7 +208,6 @@ def scheduleForStaging(num_repeats = 0):
             break
     """
     
-    
     stage_sem.acquire()
     filelist = list(stage_queue)
     stage_queue = []

@@ -78,6 +78,8 @@ class RTSJob(MapReduceTask):
             self.addMapper(obsTask)
             
             fileIds = ngamsJobMWALib.getFileIdsByObsNum(obs_num)
+            if (len(fileIds.keys()) == 0):
+                raise Exception('Obs number %s does not appear to be valid. We require exact observation numbers rather than GPS ranges.' % obs_num)
             for k in range(rtsParam.num_subband):
                 if (fileIds.has_key(k + 1)): # it is possible that some correlators were not on
                     corrTask = CorrTask(str(k + 1), fileIds[k + 1], rtsParam)
@@ -232,7 +234,19 @@ class CorrTask(MapReduceTask):
         self._numIngested += 1
         self._numIngSem.release()
         if (self._numIngested == len(self.__fileIds)):
-            self._fileIngEvent.set()        
+            self._fileIngEvent.set()
+    
+    """
+    def getMoreJSONAttr(self):
+        moredic = {}
+        name = self.getId()
+        
+        for fileId in self.__fileIds:
+            name += ',' + fileId[26:]
+        
+        moredic['name'] = name  
+        return moredic 
+    """ 
 
 class CorrTaskResult:
     """
@@ -314,7 +328,7 @@ class ObsTaskResult:
             for subtuple in self.bad_list:
                 re += '\t subbandId: %d, vis files failed: %s\n' % (subtuple[0], subtuple[1])
         
-        return re + '\n'
+        return re + '\n'   
         
 
 class JobResult:
