@@ -157,6 +157,9 @@ class MapReduceTask:
     def getStatus(self):
         return self.__status
     
+    def setStatus(self, status):
+        self.__status = status
+    
     def start(self):
         """
         Execute the map reduce tasks on this and all children MRTasks

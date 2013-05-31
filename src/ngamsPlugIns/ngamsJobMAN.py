@@ -56,7 +56,8 @@ from ngamsJob_MWA_RTS import *
 
 staging_run = 1
 DEBUG = True
-web_host = 'macbook46.icrar.org' # or 'localhost'
+#web_host = 'macbook46.icrar.org' # or 'localhost'
+web_host = 'localhost'
 jobDic = {} # key - jobId, val - job obj
 
 def invalidParam(param):

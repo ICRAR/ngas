@@ -44,6 +44,11 @@ import ngamsJobMWALib
 DEBUG = 0
 debug_url = 'http://192.168.1.1:7777'
 
+FSTATUS_NOT_STARTED = 0 # white
+FSTATUS_STAGING = 1 # green
+FSTATUS_ONLINE = 2 # blue
+FSTATUS_OFFLINE = 3 # red
+
 def dprint(s):
     if (DEBUG):
         print s
@@ -178,8 +183,10 @@ class CorrTask(MapReduceTask):
         self._progress = -1
         self._fileIngEvent = threading.Event()
         self._timeOut4FileIng = 60 * 15 # maximum wait for 15 min
-        self._numIngested = len(fileIds) # at start, assume all files are ingested
+        self._numIngested = 0 # at start, assume all files are ingested
         self._numIngSem = threading.Semaphore()
+        self._taskExeHost = '' # this will become the NextURL for PARCHIVE during file staging from Cortex/other hosts (if any)
+        self._fileLocDict = {} # key - fileId, value - FileLocation (may not be the final one)
     
     def map(self, mapInput = None):
         """
@@ -189,36 +196,59 @@ class CorrTask(MapReduceTask):
         if (self.__fileIds == None or len(self.__fileIds) == 0):
             cre._errcode = 1
             cre._errmsg = 'No correlator files in the input'
+            self.setStatus(STATUS_EXCEPTION)
             return cre # should raise exception here
         #TODO - deal with timeout!
         dprint('Correlator %s is being mapped' % self.getId())
         self._progress = 0
         
-        # 1. Check the first file's location
+        # 1 Check all files' locations
         try:
-            fileLoc = ngamsJobMWALib.getFileLocations(self.__fileIds[0])           
+            self._fileLocDict = ngamsJobMWALib.getFileListLocations(self.__fileIds)
         except Exception, e:
-            cre._errmsg = "Fail to get location for file '%s': %s" % (self.__fileIds[0], str(e))
-            cre._errcode = 2
+            cre._errcode = 4
+            cre._errmsg = 'Fail to get locations for file list %s: %s' % (str(self.__fileIds), str(e))
+            self.setStatus(STATUS_EXCEPTION)
             return cre
         
-        # 2. Stage all files from Cortex if the first file's location is None
-        if (len(fileLoc) == 0):
-            self._numIngested = 0 # to indicate no files have been ingested
-            ngamsJobMWALib.stageFile(self.__fileIds, self)
+        self._numIngested = len(self._fileLocDict.keys())
+        if (self._numIngested > 0):
+            self._taskExeHost = self._fileLocDict.values()[0]
         else:
-            self._fileIngEvent.set() # let it through
+            self._taskExeHost = ngamsJobMWALib.getNextOnlineHostUrl()        
         
-        # block if / while files are being ingested
+        # 2. Check whether files, which are not on the host, are inside the cluster
+        for fid in self.__fileIds:
+            if (not self._fileLocDict.has_key(fid)):                
+                try:
+                    fileLoc = ngamsJobMWALib.getFileLocations(fid)           
+                except Exception, e:
+                    cre._errmsg = "Fail to get location for file '%s': %s" % (self.__fileIds[0], str(e))
+                    cre._errcode = 2
+                    # most likely a DB error                
+                if (len(fileLoc) == 0 or cre._errcode == 2):
+                    # not in the cluster/or some db error , stage from outside
+                    ngamsJobMWALib.stageFile(self.__fileIds, self, self._taskExeHost)
+                else:
+                    # record its actual location inside the cluster
+                    self._fileLocDict[fid] = fileLoc[0] # get the first location
+                    # stage from inside the cluster
+                    ngamsJobMWALib.stageFile(self.__fileIds, self, self._taskExeHost, fileLoc[0])
+                    
+        if (self._numIngested == len(self.__fileIds)): # all files are there
+            self._fileIngEvent.set() # so do not block
+        
+        # 3. block if / while files are being ingested
         self._fileIngEvent.wait(self._timeOut4FileIng)
-        
-        if (self._numIngested < self._numIngested):
+   
+        if (self._numIngested < len(self.__fileIds)):
             #TODO need to print which files are timed out
             cre._errmsg = "Timeout when waiting for file ingestion. Ingested %d out of %d." % (self._numIngested, len(self.__fileIds))
             cre._errcode = 3
+            self.setStatus(STATUS_EXCEPTION)
             return cre
         
-        # 3. Run RTS executable and archive images back to an NGAS server
+        # 4. Run RTS executable and archive images back to an NGAS server
         #    This is running on remote servers, which should be asynchronously invoked                
         """
         # this is for test
@@ -229,13 +259,46 @@ class CorrTask(MapReduceTask):
         """
         return cre 
     
-    def fileIngested(self, fileId):
+    def fileIngested(self, fileId, filePath):
         self._numIngSem.acquire()
         self._numIngested += 1
         self._numIngSem.release()
+        floc = ngamsJobMWALib.FileLocation(self._taskExeHost, filePath, fileId)
+        self._fileLocDict[fileId] = floc
         if (self._numIngested == len(self.__fileIds)):
             self._fileIngEvent.set()
     
+    def toJSONObj(self):
+        """
+        Override the default impl
+        to jsonise file ids
+        """
+        
+        jsobj = {}
+        jsobj['name'] = self.getId() + '-' + statusDic[self.getStatus()]
+        jsobj['status'] = self.getStatus()
+        #moredic = self.getMoreJSONAttr()
+        if (self.__fileIds == None or len(self.__fileIds) == 0):
+            return jsobj
+        children = []
+        for fileId in self.__fileIds:
+            fjsobj = {}
+            if (self._fileLocDict.has_key(fileId)):
+                floc = self._fileLocDict[fileId]._svrUrl
+                if (floc == self._taskExeHost):
+                    fjsobj['status'] = FSTATUS_ONLINE
+                else:
+                    fjsobj['status'] = FSTATUS_STAGING
+            else:
+                floc = 'Offline'
+                fjsobj['status'] = FSTATUS_OFFLINE # 1 online, 0 offline
+            fjsobj['name'] = '%s:%s' % (fileId, floc)
+            
+            children.append(fjsobj)
+        jsobj['children'] = children
+        return jsobj
+        
+        
     """
     def getMoreJSONAttr(self):
         moredic = {}
