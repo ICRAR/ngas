@@ -43,12 +43,12 @@ from ngamsMWAAsyncProtocol import *
 g_db_conn = None # MWA metadata database connection
 f_db_conn = None # Fornax NGAS database connection
 
-io_ex_ip = {'io1':'202.8.39.136', 'io2':'202.8.39.137'}  # the two Copy Nodes external ip
+io_ex_ip = {'io1':'202.8.39.136:7777', 'io2':'202.8.39.137:7777'}  # the two Copy Nodes external ip
 ST_INTVL_STAGE = 5 # interval in seconds between staging file checks
 ST_BATCH_SIZE = 5 # minimum number of files in each stage request
 ST_RETRY_LIM = 3 # number of times min_number can be used, if exceeds, stage files anyway
 ST_CORTEX_URL = 'http://cortex.ivec.org:7777'
-ST_FORNAX_PUSH_URL = io_ex_ip['io1']
+ST_FORNAX_PUSH_HOST = io_ex_ip['io1']
 
 stage_queue = []
 stage_dic = {} # key - fileId, value - a list of CorrTasks
@@ -175,7 +175,7 @@ def testGetFileLocations():
     ret = getFileLocations('1053182656_20130521144711_gpubox08_03.fits')
     print 'server_url = %s, file_path = %s' % (ret[0]._svrUrl, ret[0]._filePath)
 
-def getFileListLocations(fileIds):
+def getBestHost(fileIds):
     """
     This function tries to find out which host is most ideal to run a task 
     if that task requires all files in fileIds to reside on that host
@@ -244,7 +244,7 @@ def testGetFileListLocations():
     #                             fdb_host = '192.102.251.250'
     fileList = ['1049201112_20130405124558_gpubox16_01.fits', '1049201112_20130405124559_gpubox23_01.fits', 
                 '1053182656_20130521144710_gpubox03_03.fits', '1028104360__gpubox01.rts.mwa128t.org.vis', '1053182656_20130521144711_gpubox06_03.fits']
-    ret = getFileListLocations(fileList)
+    ret = getBestHost(fileList)
     for (fid, floc) in ret.items():
         print 'file_id = %s, host = %s, path = %s' % (fid, floc._svrUrl, floc._filePath)
 
@@ -260,6 +260,7 @@ def getNextOnlineHostUrl():
 def testGetNextOnlineHostUrl():
     print getNextOnlineHostUrl()
 
+"""
 class StageRequest():
     def __init__(self, fileId, corrTask, toHost, frmHost = None):
         self._fileId = fileId
@@ -269,43 +270,98 @@ class StageRequest():
             self._frmHost = frmHost
     
     def merge(self, thatSR):
-        """
-        Merge two StateRequests if they both ask for the same file from the same EXTERNAL location
-        Return:    1 - merge did occur, the new SR is self
-                   0 - merge condition did not meet
-        """
-        if (thatSR._fileId == self._fileId and self._frmHost == None and thatSR._frmHost == None):
+       
+     #    Merge two StateRequests if they both ask for the same file from the same EXTERNAL location
+     #   Return:    1 - merge did occur, the newly merged SR is self
+      #             0 - merge condition did not meet
+       
+        if (self._frmHost != thatSR._frmHost or thatSR._fileId != self._fileId):
+            return 0
+        if (self._frmHost == None): # both external staging
             self._corrTasks += thatSR._corrTasks
             return 1
-        else:
-            return 0
-
+        else: # both internal staging
+            if (self._toHost == thatSR._toHost):
+                self._corrTasks += thatSR._corrTasks
+                return 1
+            else:
+                return 0
+"""
+        
 def stageFile(fileIds, corrTask, toHost, frmHost = None):
     """
-    fileIds:    a list of files that need to be staged from Cortex
+    fileIds:    a list of files that need to be staged from external archive
     corrTask:   the CorrTask instance that invokes this function
                 this corrTask will be used for calling back
-    frmUrl:     location from where file is staged. If none, from a well-known outside host, i.e. Cortex
-    toUrl:      location to where file is staged
-    """
-    
+    frmHost:    host that file is staged from. If none, from a well-known outside host, i.e. Cortex
+    toHost:      host that file is staged to
+    """      
+    staged_by_others = 0
     stage_sem.acquire()
     try:
         for fileId in fileIds:
-            sr = StageRequest(fileId, corrTask, toHost, frmHost)
-            if (stage_dic.has_key(fileId)):
-                # this file has already been requested for staging (but not yet staged)
-                list = stage_dic[fileId]
+            #sr = StageRequest(fileId, corrTask, toHost, frmHost)
+            skey = '%s:%s' % (fileId, toHost)
+            if (stage_dic.has_key(skey)):
+                # this file has already been requested for staging to the same host (could be by another job)
+                list = stage_dic[skey]
                 list.append(corrTask)
+                staged_by_others += 1
             else:
-                stage_dic[fileId] = [corrTask]
-                stage_queue.append(fileId)
+                stage_dic[skey] = [corrTask]
+                #stage_queue.append(fileId)
     finally:
         stage_sem.release()
+    
+    if (staged_by_others == len(fileIds)): # the whole list has already been requested to stage by others
+        return 0
+    
+    if (frmHost):
+        toUrl = getPushURL(toHost)
+    else:
+        toUrl = getPushURL(toHost, getClusterGateway())
+        
+    myReq = AsyncListRetrieveRequest(fileIds, toUrl)
+    try:
+        strReq = pickle.dumps(myReq)
+        strRes = urllib.urlopen(getExternalArchiveURL(), strReq).read()
+        myRes = pickle.loads(strRes)
+        return myRes.errorcode
+    except Exception, err:
+        # log err
+        return 500
+    
+        
+def getExternalArchiveURL(fileId):
+    """
+    Obtain the url of the external archive, which
+    could be different based on the fileId. (e.g. EOR data all from Cortex, GEG from ICRAR, etc.)
+    This function behaves like a URI resolution service
+    """
+    # just a dummy implementation for now
+    return ST_CORTEX_URL
+
+def getClusterGateway():
+    #TODO - use configuration file    
+    return ST_FORNAX_PUSH_HOST
+
+def getPushURL(hostId, gateway = None):
+    """
+    Construct the push url based on the hostId in the cluster
+    
+    hostId:    the host (e.g. 192.168.1.1:7777) that will receive the file
+    
+    gateway:   1 - (Default) his host is behind a gateway (firewall), 0 - otherwise
+    """
+    if (gateway):
+        return 'http://%s/PARCHIVE?nexturl=http://%s/QARCHIVE' % (gateway, hostId)
+    else:
+        return 'http://%s/QARCHIVE' % hostId
+    
 
 def scheduleForStaging(num_repeats = 0):
     print 'Scheduling staging...'
-    global stage_queue # since we are changing it, need to declare as global
+    global stage_queue # since we will update it, need to declare as global
     
     if (len(stage_queue) == 0):
         return 0
@@ -327,7 +383,7 @@ def scheduleForStaging(num_repeats = 0):
     filelist = list(stage_queue)
     stage_queue = []
     stage_sem.release()
-    myReq = AsyncListRetrieveRequest(filelist, ST_FORNAX_PUSH_URL)
+    myReq = AsyncListRetrieveRequest(filelist, ST_FORNAX_PUSH_HOST)
     strReq = pickle.dumps(myReq)
     strRes = urllib.urlopen(ST_CORTEX_URL, strReq).read()
     myRes = pickle.loads(strRes)
@@ -335,20 +391,22 @@ def scheduleForStaging(num_repeats = 0):
     # TODO - handle exceptions (error code later)   
     return 0        
 
-def fileIngested(fileId, filePath):
+def fileIngested(fileId, filePath, toHost):
     """
     This function is called by the Web server to notify
     jobs which are waiting for this file to be ingested
     
     fileId:      The file that has just been ingested in Fornax
     filePath:    The local file path on that machine
+    toHost:      The host that has just ingested this file
     """
     # to notify all CorrTasks that are waiting for this file
     # reset the "Event" so CorrTasks can all continue
+    skey = '%s:%s' % (fileId, toHost)
     stage_sem.acquire()
     try:
-        if (stage_dic.has_key(fileId)):
-            corrList = stage_dic.pop(fileId)
+        if (stage_dic.has_key(skey)):
+            corrList = stage_dic.pop(skey)
         else: 
             return
     finally:

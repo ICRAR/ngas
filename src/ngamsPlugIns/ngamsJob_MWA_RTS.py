@@ -203,11 +203,12 @@ class CorrTask(MapReduceTask):
         self._progress = 0
         
         # 1 Check all files' locations
+        # TODO - what if the best host is down? 
         try:
-            self._fileLocDict = ngamsJobMWALib.getFileListLocations(self.__fileIds)
+            self._fileLocDict = ngamsJobMWALib.getBestHost(self.__fileIds)
         except Exception, e:
             cre._errcode = 4
-            cre._errmsg = 'Fail to get locations for file list %s: %s' % (str(self.__fileIds), str(e))
+            cre._errmsg = 'Fail to get the best host for file list %s: %s' % (str(self.__fileIds), str(e))
             self.setStatus(STATUS_EXCEPTION)
             return cre
         
@@ -217,23 +218,40 @@ class CorrTask(MapReduceTask):
         else:
             self._taskExeHost = ngamsJobMWALib.getNextOnlineHostUrl()        
         
-        # 2. Check whether files, which are not on the host, are inside the cluster
+        # 2. For those files that are not on the best host, check if they are inside the cluster
+        #    If so, stage them from an cluster node, otherwise, stage them from the external archive
+        frmExtList = []
         for fid in self.__fileIds:
             if (not self._fileLocDict.has_key(fid)):                
                 try:
                     fileLoc = ngamsJobMWALib.getFileLocations(fid)           
                 except Exception, e:
-                    cre._errmsg = "Fail to get location for file '%s': %s" % (self.__fileIds[0], str(e))
+                    cre._errmsg = "Fail to get location for file '%s': %s" % (fid, str(e))
                     cre._errcode = 2
                     # most likely a DB error                
                 if (len(fileLoc) == 0 or cre._errcode == 2):
                     # not in the cluster/or some db error , stage from outside
-                    ngamsJobMWALib.stageFile(self.__fileIds, self, self._taskExeHost)
+                    frmExtList.append(fid)
                 else:
-                    # record its actual location inside the cluster
-                    self._fileLocDict[fid] = fileLoc[0] # get the first location
-                    # stage from inside the cluster
-                    ngamsJobMWALib.stageFile(self.__fileIds, self, self._taskExeHost, fileLoc[0])
+                    stageerr = 0
+                    for i in range(len(fileLoc)):
+                        # record its actual location inside the cluster
+                        self._fileLocDict[fid] = fileLoc[i] # get the host
+                        # stage from that host within the cluster
+                        stageerr = ngamsJobMWALib.stageFile([fid], self, self._taskExeHost, fileLoc[0])
+                        if (0 == stageerr):
+                            break
+                    if (stageerr):
+                        # if all cluster nodes failed, try the external archive
+                        frmExtList.append(fid)
+                    
+        if (len(frmExtList) > 0):
+            stageerr = ngamsJobMWALib.stageFile(frmExtList, self, self._taskExeHost)
+            if (stageerr):
+                cre._errmsg = "Fail to stage files %s from the external archive to %s. Stage errorcode = %d" % (frmExtList, self._taskExeHost, stageerr)
+                cre._errcode = 5
+                self.setStatus(STATUS_EXCEPTION)
+                return cre
                     
         if (self._numIngested == len(self.__fileIds)): # all files are there
             self._fileIngEvent.set() # so do not block

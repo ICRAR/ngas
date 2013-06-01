@@ -55,7 +55,7 @@ class MapReduceTask:
     
     2. As a consequence of 1, each task is often assigned files belong to the same reducer key
     
-    So in a sense, this is a file-level MapReduce framework rather than an algorithmic one
+    So in a sense, this is a file-level static MapReduce framework rather than a data-level dynamic one
     """            
     def __init__(self, Id, appParams = None):
         """
