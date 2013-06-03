@@ -39,30 +39,32 @@ import cPickle as pickle
 
 #from Queue import Queue, Empty
 from ngamsMWAAsyncProtocol import *
+import ngamsJobMAN
 
 g_db_conn = None # MWA metadata database connection
 f_db_conn = None # Fornax NGAS database connection
 
 io_ex_ip = {'io1':'202.8.39.136:7777', 'io2':'202.8.39.137:7777'}  # the two Copy Nodes external ip
-ST_INTVL_STAGE = 5 # interval in seconds between staging file checks
-ST_BATCH_SIZE = 5 # minimum number of files in each stage request
-ST_RETRY_LIM = 3 # number of times min_number can be used, if exceeds, stage files anyway
-ST_CORTEX_URL = 'http://cortex.ivec.org:7777'
-ST_FORNAX_PUSH_HOST = io_ex_ip['io1']
 
 stage_queue = []
 stage_dic = {} # key - fileId, value - a list of CorrTasks
 stage_sem = threading.Semaphore(1)
+
+#ST_INTVL_STAGE = 5 # interval in seconds between staging file checks
+#ST_BATCH_SIZE = 5 # minimum number of files in each stage request
+#ST_RETRY_LIM = 3 # number of times min_number can be used, if exceeds, stage files anyway
 
 def getMWADBConn():
     global g_db_conn
     if (g_db_conn and (not g_db_conn.closed)):
         return g_db_conn
     
-    db_name = 'mwa'
-    db_user = 'mwa'
-    db_passwd = 'Qm93VGll\n'
-    db_host = 'ngas01.ivec.org'    
+    config = ngamsJobMAN.getConfig()
+    confSec = 'MWA DB'
+    db_name = config.get(confSec, 'db')
+    db_user = config.get(confSec, 'user')
+    db_passwd = config.get(confSec, 'password')
+    db_host = config.get(confSec, 'host')
     try:        
         g_db_conn = psycopg2.connect(database = db_name, user = db_user, 
                             password = db_passwd.decode('base64'), 
@@ -77,12 +79,12 @@ def getFornaxDBConn():
     if (f_db_conn and (not f_db_conn.closed)):
         return f_db_conn
     
-    fdb_name = 'ngas'
-    fdb_user = 'ngas'
-    fdb_passwd = 'bmdhcyRkYmE=\n'
-    #fdb_host = 'fornaxspare'
-    #fdb_host = 'localhost'   
-    fdb_host = '192.102.251.250' #cortex testing
+    config = ngamsJobMAN.getConfig()
+    confSec = 'NGAS DB'
+    fdb_name = config.get(confSec, 'db')
+    fdb_user = config.get(confSec, 'user')
+    fdb_passwd = config.get(confSec, 'password')
+    fdb_host = config.get(confSec, 'host')
     try:
         f_db_conn = psycopg2.connect(database = fdb_name, user= fdb_user, 
                             password = fdb_passwd.decode('base64'), 
@@ -133,15 +135,15 @@ class FileLocation:
     A class representing the location information on NGAS servers
     Each Correlator has a at least one FileLocation 
     """
-    def __init__(self, svrUrl, filePath, fileId = None):
+    def __init__(self, svrHost, filePath, fileId = None):
         """
         Constructor
         
-        svrUrl:      host/ip and port
+        svrHost:      host/ip and port
         filePath:    local path on the Fornax compute node with svrUrl
         fileId:      the id of this file whose location is being queried
         """
-        self._svrUrl = svrUrl
+        self._svrUrl = svrHost
         self._filePath = filePath
         if (fileId):
             self._fileId = fileId
@@ -162,18 +164,22 @@ def getFileLocations(fileId):
     res = executeQuery(conn, sqlQuery)
     ret = []
     for re in res:
-        path_file = os.path.split(re[1])
-        if (len(path_file) < 1):
-            continue
-        floc = FileLocation(re[0], path_file[0], fileId)
+        #path_file = os.path.split(re[1])
+        #if (len(path_file) < 1):
+            #continue
+        floc = FileLocation(re[0], re[1], fileId)
         ret.append(floc)
     
     return ret
 
 def testGetFileLocations():
     #ret = getFileLocations('1365971011-6.data')
-    ret = getFileLocations('1053182656_20130521144711_gpubox08_03.fits')
-    print 'server_url = %s, file_path = %s' % (ret[0]._svrUrl, ret[0]._filePath)
+    file = '1053182656_20130521144711_gpubox08_03.fits'
+    ret = getFileLocations(file)
+    if (ret and len(ret) > 0):
+        print 'server_url = %s, file_path = %s' % (ret[0]._svrUrl, ret[0]._filePath)
+    else:
+        print 'Could not find locations for file %s' % file
 
 def getBestHost(fileIds):
     """
@@ -203,13 +209,17 @@ def getBestHost(fileIds):
                "AND a.host_id = c.host_id AND c.srv_state = 'ONLINE'"
     
     res = executeQuery(conn, sqlQuery)
+    
+    if (len(res) == 0):
+        return {}
+    
     dictHosts = {} # key - host_id, # value - a list of FileLocations 
         
     for re in res:
-        path_file = os.path.split(re[1])
-        if (len(path_file) < 1):
-            continue
-        floc = FileLocation(re[0], path_file[0], re[2])
+        #path_file = os.path.split(re[1])
+        #if (len(path_file) < 1):
+            #continue
+        floc = FileLocation(re[0], re[1], re[2]) # the path also includes the filename
         if (dictHosts.has_key(re[0])):
             dictHosts[re[0]].append(floc)
         else:
@@ -239,7 +249,7 @@ def getBestHost(fileIds):
     
     return candidateList[max_index]
     
-def testGetFileListLocations():
+def testGetBestHost():
     # this test data works when 
     #                             fdb_host = '192.102.251.250'
     fileList = ['1049201112_20130405124558_gpubox16_01.fits', '1049201112_20130405124559_gpubox23_01.fits', 
@@ -248,7 +258,7 @@ def testGetFileListLocations():
     for (fid, floc) in ret.items():
         print 'file_id = %s, host = %s, path = %s' % (fid, floc._svrUrl, floc._filePath)
 
-def getNextOnlineHostUrl():
+def getNextOnlineHost():
     """
     Return:    host:port (string, e.g. 192.168.1.1:7777)
     """
@@ -258,7 +268,7 @@ def getNextOnlineHostUrl():
     return choice(res)[0]
 
 def testGetNextOnlineHostUrl():
-    print getNextOnlineHostUrl()
+    print getNextOnlineHost()
 
 """
 class StageRequest():
@@ -297,11 +307,12 @@ def stageFile(fileIds, corrTask, toHost, frmHost = None):
     toHost:      host that file is staged to
     """      
     staged_by_others = 0
+    deliverFileIds = [] # true file ids that will be staged
     stage_sem.acquire()
     try:
         for fileId in fileIds:
             #sr = StageRequest(fileId, corrTask, toHost, frmHost)
-            skey = '%s:%s' % (fileId, toHost)
+            skey = '%s___%s' % (fileId, toHost)
             if (stage_dic.has_key(skey)):
                 # this file has already been requested for staging to the same host (could be by another job)
                 list = stage_dic[skey]
@@ -309,11 +320,12 @@ def stageFile(fileIds, corrTask, toHost, frmHost = None):
                 staged_by_others += 1
             else:
                 stage_dic[skey] = [corrTask]
+                deliverFileIds.append(fileId)
                 #stage_queue.append(fileId)
     finally:
         stage_sem.release()
     
-    if (staged_by_others == len(fileIds)): # the whole list has already been requested to stage by others
+    if (0 == len(deliverFileIds)): # the whole list has already been requested to stage by others
         return 0
     
     if (frmHost):
@@ -321,7 +333,7 @@ def stageFile(fileIds, corrTask, toHost, frmHost = None):
     else:
         toUrl = getPushURL(toHost, getClusterGateway())
         
-    myReq = AsyncListRetrieveRequest(fileIds, toUrl)
+    myReq = AsyncListRetrieveRequest(deliverFileIds, toUrl)
     try:
         strReq = pickle.dumps(myReq)
         strRes = urllib.urlopen(getExternalArchiveURL(), strReq).read()
@@ -338,12 +350,13 @@ def getExternalArchiveURL(fileId):
     could be different based on the fileId. (e.g. EOR data all from Cortex, GEG from ICRAR, etc.)
     This function behaves like a URI resolution service
     """
-    # just a dummy implementation for now
-    return ST_CORTEX_URL
+    # just a dummy implementation for now:
+    config = ngamsJobMAN.getConfig()    
+    return 'http://%s' % config.get('Archive Servers', 'LTA')
 
 def getClusterGateway():
-    #TODO - use configuration file    
-    return ST_FORNAX_PUSH_HOST
+    config = ngamsJobMAN.getConfig()
+    return config.get('Archive Servers', 'ClusterGateway')
 
 def getPushURL(hostId, gateway = None):
     """
@@ -354,12 +367,16 @@ def getPushURL(hostId, gateway = None):
     gateway:   1 - (Default) his host is behind a gateway (firewall), 0 - otherwise
     """
     if (gateway):
-        return 'http://%s/PARCHIVE?nexturl=http://%s/QARCHIVE' % (gateway, hostId)
+        return 'http://%s/PARCHIVE?nexturl=http://%s/QAPLUS' % (gateway, hostId)
     else:
-        return 'http://%s/QARCHIVE' % hostId
+        return 'http://%s/QAPLUS' % hostId
     
 
+"""
 def scheduleForStaging(num_repeats = 0):
+    \"""
+    This method is no longer useful
+    \"""
     print 'Scheduling staging...'
     global stage_queue # since we will update it, need to declare as global
     
@@ -369,7 +386,7 @@ def scheduleForStaging(num_repeats = 0):
     if (len(stage_queue) < ST_BATCH_SIZE and num_repeats < ST_RETRY_LIM):
         return 1
     #list = []
-    """
+    \"""
     while (1):
         fileId = None
         try:
@@ -377,7 +394,7 @@ def scheduleForStaging(num_repeats = 0):
             list.append(fileId)
         except Empty, e:
             break
-    """
+    \"""
     
     stage_sem.acquire()
     filelist = list(stage_queue)
@@ -389,7 +406,8 @@ def scheduleForStaging(num_repeats = 0):
     myRes = pickle.loads(strRes)
     
     # TODO - handle exceptions (error code later)   
-    return 0        
+    return 0  
+"""      
 
 def fileIngested(fileId, filePath, toHost):
     """
@@ -402,12 +420,13 @@ def fileIngested(fileId, filePath, toHost):
     """
     # to notify all CorrTasks that are waiting for this file
     # reset the "Event" so CorrTasks can all continue
-    skey = '%s:%s' % (fileId, toHost)
+    skey = '%s___%s' % (fileId, toHost)
     stage_sem.acquire()
     try:
         if (stage_dic.has_key(skey)):
             corrList = stage_dic.pop(skey)
         else: 
+            print 'File Ingested, but cannot find key %s' % skey
             return
     finally:
         stage_sem.release()
@@ -423,10 +442,10 @@ def closeConn(conn):
 
 
 if __name__=="__main__":
-    #testGetFileIds()
-    #testGetFileLocations()
-    #testGetFileListLocations()
-    testGetNextOnlineHostUrl()
+    testGetFileIds()
+    testGetFileLocations()
+    testGetBestHost()
+    #testGetNextOnlineHostUrl()
     closeConn(g_db_conn)
     closeConn(f_db_conn)
     

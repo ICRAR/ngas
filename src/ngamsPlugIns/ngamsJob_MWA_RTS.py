@@ -202,8 +202,7 @@ class CorrTask(MapReduceTask):
         dprint('Correlator %s is being mapped' % self.getId())
         self._progress = 0
         
-        # 1 Check all files' locations
-        # TODO - what if the best host is down? 
+        # 1 Check all files' locations        
         try:
             self._fileLocDict = ngamsJobMWALib.getBestHost(self.__fileIds)
         except Exception, e:
@@ -216,7 +215,7 @@ class CorrTask(MapReduceTask):
         if (self._numIngested > 0):
             self._taskExeHost = self._fileLocDict.values()[0]
         else:
-            self._taskExeHost = ngamsJobMWALib.getNextOnlineHostUrl()        
+            self._taskExeHost = ngamsJobMWALib.getNextOnlineHost()        
         
         # 2. For those files that are not on the best host, check if they are inside the cluster
         #    If so, stage them from an cluster node, otherwise, stage them from the external archive
@@ -267,6 +266,7 @@ class CorrTask(MapReduceTask):
             return cre
         
         # 4. Run RTS executable and archive images back to an NGAS server
+        # TODO - what if the best host is down? 
         #    This is running on remote servers, which should be asynchronously invoked                
         """
         # this is for test

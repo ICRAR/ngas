@@ -46,18 +46,16 @@ To deploy (install) them:
 3. pip install Paste
 
 """
-import time, threading, signal, json, decimal
+import os, ConfigParser, time, threading, signal, json, decimal
 from datetime import datetime
+from optparse import OptionParser
 
 from bottle import route, run, request, get, post, static_file, template
 
 import ngamsJobMWALib
 from ngamsJob_MWA_RTS import *
 
-staging_run = 1
-DEBUG = True
-#web_host = 'macbook46.icrar.org' # or 'localhost'
-web_host = 'localhost'
+#staging_run = 1
 jobDic = {} # key - jobId, val - job obj
 
 def invalidParam(param):
@@ -73,11 +71,13 @@ def hello():
 @route('/ingest')
 def ingest():
     fileId = request.query.get('file_id')
+    filePath = request.query.get('file_path')
+    toHost = request.query.get('to_host')
     if (fileId == None):
         return 'No file id is provided'
     else:
-        ngamsJobMWALib.fileIngested(fileId)
-        return 'File %s is just ingested' % fileId
+        ngamsJobMWALib.fileIngested(fileId, filePath, toHost)
+        return 'File %s is just ingested at %s on %s' % (fileId, filePath, toHost)
 
 #TODO - use template soon!
 @get('/job/submit')
@@ -161,7 +161,9 @@ def getHello():
 def _jobThread(mrTaskJob):
     mrTaskJob.start()
 
+"""
 def _scheduleStageThread(dummy):
+    
     retries = 0
     while (staging_run):
         ret = ngamsJobMWALib.scheduleForStaging(retries)
@@ -170,6 +172,7 @@ def _scheduleStageThread(dummy):
         else:
             retries = 0
         time.sleep(ngamsJobMWALib.ST_INTVL_STAGE)
+
 
 def startStagingThread():
     #signal.signal(signal.SIGTERM, exitHandler)
@@ -185,5 +188,41 @@ def exitHandler(signalNo, stackFrame):
     print 'Received terminating signal, shutting down the server'
 
 startStagingThread()
-run(host = web_host, server = 'paste', port = 7778, debug = DEBUG)
+"""
+gconfig = None
+def getConfig():
+    """
+    Maitain a singleton for configuration
+    """
+    global gconfig
+    if (gconfig):
+        return gconfig
+    parser = OptionParser()
+    parser.add_option("-c", "--cfg", dest = "config_fname", help = "The path to the configuration file (Mandatory)")
+    (options, args) = parser.parse_args()
+    if (None == options.config_fname):
+        parser.print_help()
+        return None
+    if (not os.path.isfile(options.config_fname)):
+        print '\nCannot access configuration file %s' % options.config_fname
+        return None
+    
+    config = ConfigParser.ConfigParser()
+    config.readfp(open(options.config_fname))
+    
+    gconfig = config
+    return config
+
+def main():
+    config = getConfig()
+    if (not config):
+        exit(1)
+    # start the web server supported by bottle and paste
+    run(host = config.get('Web Server', 'IpAddress'), 
+        server = 'paste', 
+        port = config.getint('Web Server', 'Port'), 
+        debug = config.getboolean('Web Server', 'Debug'))
+
+if __name__ == "__main__":
+    main()
 
