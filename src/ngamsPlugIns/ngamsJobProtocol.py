@@ -94,7 +94,7 @@ class MapReduceTask:
                 #parallelise this in a separate thread
                 args = (mrTask,)
                 mrthrd = threading.Thread(None, self._mapTaskThread, 'MRThrd_' + str(self.getId()), args)
-                mrthrd.setDaemon(0)                
+                mrthrd.setDaemon(1) # will terminate if the server is to shutdown                
                 mrthrd.start()
                 mrThreads.append(mrthrd)
                 

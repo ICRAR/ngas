@@ -126,7 +126,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             elif (syscmd == "stop"):
                 resp = stopAsyncQService(srvObj, reqPropsObj)
             else:
-                resp = "Unknown system command '%s'." % syscmd
+                resp = "Unknown system V1 command '%s'." % syscmd
                 #raise Exception, msg
         elif (reqPropsObj.hasHttpPar("uuid")):
             sessionId = reqPropsObj.getHttpPar("uuid")            
@@ -427,11 +427,16 @@ def _httpPost(srvObj, url, filename, sessionId):
     info(3,"Async Delivery Thread [" + str(thread.get_ident()) + "] Delivering file: " + baseName + " - to: " + url + " ...")
     ex = ""
     try:
+        """
         reply, msg, hdrs, data = \
+        #TODO - the fileMimeType should be queried from the database
+        
         _httpPostUrl(url, fileMimeType,
                                         contDisp, filename, "FILE",
                                         blockSize=\
                                         srvObj.getCfg().getBlockSize(), session_uuid = sessionId)
+        """
+        reply, msg, hdrs, data = ngamsLib.httpPostUrl(url, fileMimeType, contDisp, filename, "FILE", blockSize=srvObj.getCfg().getBlockSize())
         if (reply == None and msg == None and hdrs == None and data == None): # transfer cancelled/suspended
             return 1 
         

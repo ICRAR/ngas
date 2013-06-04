@@ -123,8 +123,16 @@ def submit_job_post():
         return 'Failed to submit your job due to Exception: %s' % str(e)
     
     jobDic[jobId] = job
-    return 'Job %s has been submitted. <a href="/job/status?job_id=%s">View its status (JSON) </a>. Or <a href="/job/monitor?job_id=%s">Monitor its progress</a>' % (jobId, jobId, jobId)
-
+    # launch thread to execute the job
+    args = (job,)
+    thrd = threading.Thread(None, _jobThread, 'MR_THRD_%s' % jobId, args) 
+    thrd.setDaemon(1) # it will exit immediately should the server down
+    thrd.start()
+    return 'Job %s has been submitted. <br><ul>'  % jobId +\
+        '<li> <a href="/job/monitor?job_id=%s">Monitor its progress</a></li>' % jobId +\
+        '<li> <a href="/job/result?job_id=%s">Check its result</a></li></ul>' % jobId
+        #'<a href="/job/status?job_id=%s">View its status (JSON). </a> <br>' % jobId +\
+        
 def encode_decimal(obj):
     """
     Just a little helper function for JSON serialisation
@@ -150,6 +158,22 @@ def monitorJob():
     if (invalidParam(jobId) or (not jobDic.has_key(jobId))):
         return 'Please provide an valid job_id as the parameter'
     return template('ngamsJobMonitor.html', job_id = jobId) 
+
+@get('/job/result')
+def getJobResult():
+    """
+    Retrieve the job result
+    """
+    jobId = request.query.get('job_id')
+    if (invalidParam(jobId) or (not jobDic.has_key(jobId))):
+        return 'Please provide an valid job_id as the parameter'
+    mrJob = jobDic[jobId]
+    sta = mrJob.getStatus()
+    if (sta == STATUS_RUNNING or sta == STATUS_NOT_STARTED):
+        return 'Job is still running or not yet started. Check the result later.'
+    if (sta == STATUS_EXCEPTION and mrJob.getFinalJobResult() == None):
+        return 'Job encountered exception, result is not available'
+    return str(mrJob.getFinalJobResult())
 
 @route('/static/<filepath:path>')
 def server_static(filepath):

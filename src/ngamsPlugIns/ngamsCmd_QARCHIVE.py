@@ -295,7 +295,7 @@ def handleCmd(srvObj,
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
         
-    Returns:        Void.
+    Returns:        (fileId, filePath) tuple.
     """
     T = TRACE()
 
@@ -460,7 +460,7 @@ def handleCmd(srvObj,
     srvObj.triggerSubscriptionThread()
 
 
-    return
+    return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()))
 
 # EOF
 

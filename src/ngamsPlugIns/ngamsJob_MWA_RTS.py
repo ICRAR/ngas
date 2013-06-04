@@ -113,7 +113,14 @@ class RTSJob(MapReduceTask):
                 break
             jobRe.merge(obsTaskRe)
         
+        self.setFinalJobResult(jobRe)
         return str(jobRe)
+    
+    def setFinalJobResult(self, jobRe):
+        self._jobRe = jobRe
+        
+    def getFinalJobResult(self):
+        return self._jobRe
 
 class ObsTask(MapReduceTask):
     """
@@ -209,13 +216,21 @@ class CorrTask(MapReduceTask):
             cre._errcode = 4
             cre._errmsg = 'Fail to get the best host for file list %s: %s' % (str(self.__fileIds), str(e))
             self.setStatus(STATUS_EXCEPTION)
+            dprint(cre._errmsg)
             return cre
         
         self._numIngested = len(self._fileLocDict.keys())
         if (self._numIngested > 0):
             self._taskExeHost = self._fileLocDict.values()[0]
         else:
-            self._taskExeHost = ngamsJobMWALib.getNextOnlineHost()        
+            self._taskExeHost = ngamsJobMWALib.getNextOnlineHost()
+        
+        if (not self._taskExeHost):
+            cre._errcode = 7
+            cre._errmsg = 'There are no online NGAS servers available'   
+            self.setStatus(STATUS_EXCEPTION)
+            dprint(cre._errmsg)
+            return cre     
         
         # 2. For those files that are not on the best host, check if they are inside the cluster
         #    If so, stage them from an cluster node, otherwise, stage them from the external archive
@@ -227,6 +242,7 @@ class CorrTask(MapReduceTask):
                 except Exception, e:
                     cre._errmsg = "Fail to get location for file '%s': %s" % (fid, str(e))
                     cre._errcode = 2
+                    dprint(cre._errmsg)
                     # most likely a DB error                
                 if (len(fileLoc) == 0 or cre._errcode == 2):
                     # not in the cluster/or some db error , stage from outside
@@ -250,6 +266,7 @@ class CorrTask(MapReduceTask):
                 cre._errmsg = "Fail to stage files %s from the external archive to %s. Stage errorcode = %d" % (frmExtList, self._taskExeHost, stageerr)
                 cre._errcode = 5
                 self.setStatus(STATUS_EXCEPTION)
+                dprint(cre._errmsg)
                 return cre
                     
         if (self._numIngested == len(self.__fileIds)): # all files are there
@@ -263,6 +280,7 @@ class CorrTask(MapReduceTask):
             cre._errmsg = "Timeout when waiting for file ingestion. Ingested %d out of %d." % (self._numIngested, len(self.__fileIds))
             cre._errcode = 3
             self.setStatus(STATUS_EXCEPTION)
+            dprint(cre._errmsg)
             return cre
         
         # 4. Run RTS executable and archive images back to an NGAS server
@@ -346,7 +364,7 @@ class CorrTaskResult:
         self._fileIds = fileIds
         # imgUrl will be used by the ObsTask reducer, which 
         # sends a job to imgUrl to aggregate all correlator zip files into one zip file
-        self.__imgUrl = imgUrl # e.g. 192.168.1.1:7777/RETRIEVE?file_id=job001_obs002_gpubox02.zip
+        self._imgUrl = imgUrl # e.g. 192.168.1.1:7777/RETRIEVE?file_id=job001_obs002_gpubox02.zip
         self._errcode = 0
         self._errmsg = ''
 

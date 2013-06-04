@@ -32,7 +32,7 @@ metadata query, data movement, and HTTP-based communication
 during job task execution and scheduling
 """
 
-import os, threading, urllib
+import os, threading, urllib, traceback
 from random import choice
 import psycopg2
 import cPickle as pickle
@@ -66,9 +66,14 @@ def getMWADBConn():
     db_passwd = config.get(confSec, 'password')
     db_host = config.get(confSec, 'host')
     try:        
+        """
         g_db_conn = psycopg2.connect(database = db_name, user = db_user, 
                             password = db_passwd.decode('base64'), 
                             host = db_host)
+        """
+        g_db_conn = psycopg2.connect(database = 'mwa', user = 'mwa', 
+                            password = 'Qm93VGll\n'.decode('base64'), 
+                            host = 'ngas01.ivec.org')
         return g_db_conn 
     except Exception, e:
         errStr = 'Cannot create MWA DB Connection: %s' % str(e)
@@ -263,8 +268,10 @@ def getNextOnlineHost():
     Return:    host:port (string, e.g. 192.168.1.1:7777)
     """
     conn = getFornaxDBConn()
-    sqlQuery = "select host_id from ngas_hosts where srv_state = 'ONLINE'"
+    sqlQuery = "select host_id from ngas_hosts where srv_state = 'ONLINE' AND host_id <> '%s'" % getClusterGateway()
     res = executeQuery(conn, sqlQuery)
+    if (len(res) == 0):
+        return None
     return choice(res)[0]
 
 def testGetNextOnlineHostUrl():
@@ -336,15 +343,16 @@ def stageFile(fileIds, corrTask, toHost, frmHost = None):
     myReq = AsyncListRetrieveRequest(deliverFileIds, toUrl)
     try:
         strReq = pickle.dumps(myReq)
-        strRes = urllib.urlopen(getExternalArchiveURL(), strReq).read()
+        strRes = urllib.urlopen('%s/ASYNCLISTRETRIEVE' % getExternalArchiveURL(), strReq).read()
         myRes = pickle.loads(strRes)
         return myRes.errorcode
     except Exception, err:
         # log err
+        print(str(err) + traceback.format_exc())
         return 500
     
         
-def getExternalArchiveURL(fileId):
+def getExternalArchiveURL(fileId = None):
     """
     Obtain the url of the external archive, which
     could be different based on the fileId. (e.g. EOR data all from Cortex, GEG from ICRAR, etc.)
