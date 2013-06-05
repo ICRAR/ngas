@@ -145,7 +145,7 @@ def _waitForScheduling(srvObj):
     if (srvObj.getSubcrBackLogCount() > 0):
         suspTime = isoTime2Secs(srvObj.getCfg().getSubscrSuspTime())
         #debug_chen
-        #info(3, 'Subscription thread will suspend %s seconds before re-trying delivering back-logged files' % str(suspTime))
+        info(3, 'Subscription thread will suspend %s seconds before re-trying delivering back-logged files' % str(suspTime))
         srvObj._subscriptionRunSync.wait(suspTime)
     elif (srvObj.getDataMoverOnlyActive()):       
         tmout = isoTime2Secs(srvObj.getCfg().getDataMoverSuspenstionTime()) # in general, tmout > suspTime
@@ -854,6 +854,9 @@ def subscriptionThread(srvObj,
             # query information about all files available on this host.
             rmFile(fileDicDbmName + "*")
             fileDicDbm = ngamsDbm.ngamsDbm(fileDicDbmName, writePerm=1)
+            # TODO - handle the abnormal shutdown situation, i.e. 
+            # for each subscriber, find out the LastFileIngDate, and query db with: ingestion_date > 'LastFileIngDate'
+            # if (not dataMoverOnly and abnormalShutdown): abnormalShutdown = False then: blah blah
             if (dataMoverOnly and srvObj.getSubcrBackLogCount() <= 0): # this ensures back-logged files to be sent before new files are brought in
                 # data mover purposefully only supports exact one subscriber. 
                 # To support multiple subscribers, run multiple data mover servers
@@ -874,7 +877,7 @@ def subscriptionThread(srvObj,
                 #info(3, 'Data mover start_date = %s' % start_date)    
                 count = 0
                 for host in dm_hosts:         
-                    cursorObj = srvObj.getDb().getFileSummary2(hostId = host, ing_date = start_date)
+                    cursorObj = srvObj.getDb().getFileSummary2(hostId = host, ing_date = start_date) # need to add file_version == 1 condition!!
                     while (1):
                         fileList = cursorObj.fetch(100)
                         if (fileList == []): break
@@ -979,7 +982,7 @@ def subscriptionThread(srvObj,
                 else:
                     errMsg = "File Scheduled for delivery to Subscribers " +\
                              "(File ID: " + fileId + "/File Version: " +\
-                             fileVersion + ") not registered in the NGAS DB"
+                             str(fileVersion) + ") not registered in the NGAS DB"
                     warning(errMsg)
                     continue
 
