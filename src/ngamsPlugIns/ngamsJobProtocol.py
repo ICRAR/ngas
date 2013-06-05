@@ -104,7 +104,10 @@ class MapReduceTask:
         else:
             # no children MRTasks at this level
             # Thus no reducer either, so return to the upper level            
-            return self.map()
+            obj = self.map()
+            if (self.__status == STATUS_RUNNING):
+                self.__status = STATUS_COMPLETE
+            return obj
     
     def __combine(self, mapOutput):
         """

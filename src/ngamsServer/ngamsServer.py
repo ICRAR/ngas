@@ -906,6 +906,16 @@ class ngamsServer:
             self._subscrBackLogCount_Sem.release()
         return self._subscrBackLogCount
     
+    def presetSubcrBackLogCount(self, num):
+        """
+        Preset the Subscription Back-Log Counter
+        during system start-up
+        
+        num    :    The number of back-log entries
+        Returns:    Reference to object itself.
+        """
+        self._subscrBackLogCount = num
+        return self
 
     def resetSubcrBackLogCount(self):
         """
@@ -1444,6 +1454,7 @@ class ngamsServer:
             reqPropsObj.getReadFd().close()
             if (getDebug()): traceback.print_exc(file = sys.stdout)
             errMsg = str(e)
+            #error(errMsg + '\n' + traceback.format_exc())
             error(errMsg)
             self.setSubState(NGAMS_IDLE_SUBSTATE)
             if (not reqPropsObj.getSentReply()):
@@ -2220,8 +2231,11 @@ class ngamsServer:
             dirName = os.path.dirname(dirInfo[1])
             stat, out = commands.getstatusoutput("df " + dirInfo[0])
             if (stat == 0):
-                mtPt = out.split("\n")[1].split("%")[-1].strip()
-                #is SunOS, should be  mtPt = out.split(" ")[0].strip()
+                SunOS = 0
+                if (SunOS):
+                    mtPt = out.split(" ")[0].strip()
+                else:
+                    mtPt = out.split("\n")[1].split("%")[-1].strip()
                 if (not self.__sysMtPtDic.has_key(mtPt)):
                     self.__sysMtPtDic[mtPt] = []
                 self.__sysMtPtDic[mtPt].append(dirInfo)

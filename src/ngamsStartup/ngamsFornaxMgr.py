@@ -32,7 +32,7 @@ Launch and manage NGAS instances on the Fornax GPU Cluster
 The work was supported by iVEC through the use of advanced computing resources
 located at iVEC@UWA.
 """
-import commands, os, sys
+import commands, os, sys, random, threading
 import psycopg2
 
 import ngamsCmd_QUERY
@@ -156,6 +156,30 @@ def startServer(overwriteCfg = False, overwriteDisks = False):
     cmd = '%s %s -cfg %s -autoOnline -force -multipleSrvs' % (python_exec, ngas_cache_server,cfgFile)
     #2>&1>/dev/null
     execCmd(cmd)
+
+def _sshStartServerThread(serverId):
+    """
+    serverId:    server identifier(int)
+    """
+    if (serverId > 10):
+        nodename = 'f0%s' % str(serverId)
+    else:
+        nodename = 'f00%s' % str(serverId)
+    
+    cmd = 'ssh %s "/scratch/astronomy556/MWA/ngas_rt/bin/python /scratch/astronomy556/MWA/ngas_rt/src/ngamsStartup/ngamsFornaxMgr.py"' % nodename
+    execCmd(cmd)
+
+def sshStartServers(num = 24):
+    """
+    Use SSH to start NGAS server
+    """
+    serverList = random.sample(range(1, 97), num)
+    for sid in serverList:
+        args = (sid,)
+        thrd = threading.Thread(None, _sshStartServerThread, 'NGAS_%d' % sid, args) 
+        thrd.setDaemon(1) # it will exit immediately should the command exit
+        thrd.start()
+        
     
 def monitorServers(status = 'online', printRes = True):
     """
@@ -252,6 +276,11 @@ if __name__ == '__main__':
                 monitorServers(status = sys.argv[2])
             else:
                 monitorServers()
+        elif ('ssh' == action):
+            if (leng > 2):
+                sshStartServers(num = int(sys.argv[2]))
+            else:
+                sshStartServers()
         else:
             print 'usage: %s ngamsFornaxMgr.py [start[1|0 [1|0]] | stop [server1:port, server2:port] | monitor [online|offline|down]]' % python_exec
         

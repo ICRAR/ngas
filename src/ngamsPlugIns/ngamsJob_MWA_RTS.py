@@ -189,7 +189,7 @@ class CorrTask(MapReduceTask):
         self.__rtsParam = rtsParam
         self._progress = -1
         self._fileIngEvent = threading.Event()
-        self._timeOut4FileIng = 60 * 15 # maximum wait for 15 min
+        self._timeOut4FileIng = 60 * 30 # maximum wait for 30 min during file staging
         self._numIngested = 0 # at start, assume all files are ingested
         self._numIngSem = threading.Semaphore()
         self._taskExeHost = '' # this will become the NextURL for PARCHIVE during file staging from Cortex/other hosts (if any)
@@ -221,7 +221,7 @@ class CorrTask(MapReduceTask):
         
         self._numIngested = len(self._fileLocDict.keys())
         if (self._numIngested > 0):
-            self._taskExeHost = self._fileLocDict.values()[0]
+            self._taskExeHost = self._fileLocDict.values()[0]._svrHost
         else:
             self._taskExeHost = ngamsJobMWALib.getNextOnlineHost()
         
@@ -320,7 +320,7 @@ class CorrTask(MapReduceTask):
         for fileId in self.__fileIds:
             fjsobj = {}
             if (self._fileLocDict.has_key(fileId)):
-                floc = self._fileLocDict[fileId]._svrUrl
+                floc = self._fileLocDict[fileId]._svrHost
                 if (floc == self._taskExeHost):
                     fjsobj['status'] = FSTATUS_ONLINE
                 else:

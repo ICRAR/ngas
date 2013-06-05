@@ -152,6 +152,8 @@ def saveFromHttpToHttp(reqPropsObj,
     info(2,"Transferring data to : " + nexturl + " ...")
     timer = PccUtTime.Timer()
     
+    http = None
+    
     try:
         # Distinguish between Archive Pull and Push Request. By Archive
         # Pull we may simply read the file descriptor until it returns "".

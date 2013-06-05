@@ -148,7 +148,7 @@ class FileLocation:
         filePath:    local path on the Fornax compute node with svrUrl
         fileId:      the id of this file whose location is being queried
         """
-        self._svrUrl = svrHost
+        self._svrHost = svrHost
         self._filePath = filePath
         if (fileId):
             self._fileId = fileId
@@ -182,7 +182,7 @@ def testGetFileLocations():
     file = '1053182656_20130521144711_gpubox08_03.fits'
     ret = getFileLocations(file)
     if (ret and len(ret) > 0):
-        print 'server_url = %s, file_path = %s' % (ret[0]._svrUrl, ret[0]._filePath)
+        print 'server_url = %s, file_path = %s' % (ret[0]._svrHost, ret[0]._filePath)
     else:
         print 'Could not find locations for file %s' % file
 
@@ -261,7 +261,7 @@ def testGetBestHost():
                 '1053182656_20130521144710_gpubox03_03.fits', '1028104360__gpubox01.rts.mwa128t.org.vis', '1053182656_20130521144711_gpubox06_03.fits']
     ret = getBestHost(fileList)
     for (fid, floc) in ret.items():
-        print 'file_id = %s, host = %s, path = %s' % (fid, floc._svrUrl, floc._filePath)
+        print 'file_id = %s, host = %s, path = %s' % (fid, floc._svrHost, floc._filePath)
 
 def getNextOnlineHost():
     """
@@ -304,6 +304,13 @@ class StageRequest():
             else:
                 return 0
 """
+
+def stageFailed(fileId, toHost):
+    """
+    notfiy failed staging file and its destination
+    so that following requests will have a chance to retry
+    """
+    pass
         
 def stageFile(fileIds, corrTask, toHost, frmHost = None):
     """
