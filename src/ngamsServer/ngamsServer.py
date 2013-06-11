@@ -191,6 +191,10 @@ class ngamsSimpleRequest:
 #                self.handle_error(request, client_address)
 #                self.close_request(request)
 
+class defaultHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.write("You've requested the default page\n")
+
 
 class ngamsHttpServer():
     """
@@ -202,7 +206,9 @@ class ngamsHttpServer():
         self.handler = handlerClass
 
         self.application = tornado.web.Application(
-                        [(r"/.*", self.handler,)], no_keep_alive=True)
+                        [(r"/", self.handler),
+			 (r"/\w*", self.handler),], 
+			no_keep_alive=True)
         self.application.listen(port, host)
         tornado.ioloop.IOLoop.instance().start()
 
@@ -220,25 +226,18 @@ class ngamsHttpRequestHandler(tornado.web.RequestHandler):
     Class used to handle an HTTP request.
     """
 
-#    def finish(self):
-#        """
-#        Finish the handling of the HTTP request.
-#        
-#        Returns:    Void.
-#        """
-#        try:
-#            self.rfile.close()
-#        except:
-#            pass
-#        try:
-#            self.wfile.flush()
-#            self.wfile.close()
-#        except:
-#            pass    
-#        try:
-#            logFlush()
-#        except:
-#            pass
+    def finish(self):
+        """
+        Finish the handling of the HTTP request.
+        
+        Returns:    Void.
+        """
+        try:
+	    self.clear()
+	    self.flush()
+	except:
+	    pass
+	return
 
 
     def log_request(self,
@@ -259,6 +258,9 @@ class ngamsHttpRequestHandler(tornado.web.RequestHandler):
 #    @tornado.web.asynchronous
     def get(self):
         self.reqHandle()
+
+    def post(self):
+	self.reqHandle()
 
     def do_GET(self):
         """
@@ -293,14 +295,16 @@ class ngamsHttpRequestHandler(tornado.web.RequestHandler):
         Returns:    Void.
         """
         global _reqCallBack
+        self.request.uri = self.request.uri[1:]
         self.send_header = self.set_header
         if (_reqCallBack != None):
-            path = trim(self.request.uri, "?/ ")
+            path = trim(self.request.path[1:], "?/ ")
             try:
                 self.rfile = self.request.connection.stream
                 self.wfile = self.rfile
                 self.client_address = self.request.remote_ip
-                _reqCallBack(self, self.client_address, self.request.uri, path,
+                _reqCallBack(self, self.client_address, self.request.method, 
+		self.request.uri,
                              self.request.version, self.request.headers,
                              self.wfile, self.rfile)
             except Exception, e:
@@ -317,8 +321,8 @@ class ngamsHttpRequestHandler(tornado.web.RequestHandler):
                                 "No HTTP request callback!")
             self.send_error(NGAMS_HTTP_BAD_REQ, status.genXmlDoc())
         
-#        self.flush()
-        self.request.finish()
+        self.flush()
+#        self.request.finish()
             
 
 class ngamsServer:
@@ -2023,6 +2027,7 @@ class ngamsServer:
         self.parseInputPars(argv)
         info(1,"NG/AMS Server version: " + getNgamsVersion())
         info(1,"Python version: " + re.sub("\n", "", sys.version))
+	info(4,"Command line paramters: %s" % sys.argv)
 
         # Make global reference to this instance of the NG/AMS Server.
         global _ngamsServer
