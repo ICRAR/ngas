@@ -41,6 +41,7 @@ import ngamsExitCmd, ngamsHelpCmd, ngamsInitCmd, ngamsLabelCmd, ngamsOfflineCmd
 import ngamsOnlineCmd, ngamsRearchiveCmd, ngamsRegisterCmd, ngamsRemDiskCmd
 import ngamsRemFileCmd, ngamsRetrieveCmd, ngamsStatusCmd, ngamsSubscribeCmd
 import ngamsUnsubscribeCmd
+import imp, importlib
 
 
 def cmdHandler(srvObj,
@@ -118,10 +119,12 @@ def cmdHandler(srvObj,
                 if (int(reqPropsObj.getHttpPar("reload")) == 1):
                     reloadMod = 1
             info(2,"Loading dynamic command module: %s" % cmdMod)
+#            cmdMod = importlib.import_module(cmdMod,)
             exec "import %s" % cmdMod
             srvObj.getDynCmdDic()[cmdMod] = 1
             if (reloadMod):
                 info(2,"Reloading dynamic command module: %s" % cmdMod)
+#                cmdMod = reload(cmdMod)
                 reloadCmd = "reload(%s)" % cmdMod
                 stat = eval(reloadCmd)
                 info(4,"Status of reloading command module: %s" % str(stat))
