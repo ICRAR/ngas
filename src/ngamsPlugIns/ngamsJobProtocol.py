@@ -57,7 +57,7 @@ class MapReduceTask:
     
     So in a sense, this is a file-level static MapReduce framework rather than a data-level dynamic one
     """            
-    def __init__(self, Id, appParams = None):
+    def __init__(self, Id, parent = None):
         """
         Constructor
         
@@ -74,6 +74,10 @@ class MapReduceTask:
         self.__id = Id 
         self.__status = STATUS_NOT_STARTED # not running
         self.setReducer()
+        if (parent):
+            self._parent = parent
+        else:
+            self._parent = None
     
     def _mapTaskThread(self, mrTask):        
         out = mrTask.__map()
@@ -122,7 +126,11 @@ class MapReduceTask:
         system reduce task called internally
         """
         re = self.reduce()
-        self.__status = STATUS_COMPLETE
+        self.setStatus(STATUS_COMPLETE)
+        for mrTask in self.__mapList:
+            if (mrTask.getStatus() == STATUS_EXCEPTION):
+                self.setStatus(STATUS_EXCEPTION)
+                break
         return re
     
     def getMoreJSONAttr(self):
@@ -208,6 +216,12 @@ class MapReduceTask:
         Please implement this
         """
         pass
+    
+    def getParent(self):
+        """
+        Get the parent task of this MRTask
+        """
+        return self._parent
 
 class TestMRTask(MapReduceTask):    
     def __init__(self, id):
@@ -261,6 +275,108 @@ def buildTestMRTask():
     
     result = mrtk0.start()
     print 'Final result = %s' % str(result)
+
+class MRLocalTask():
+    """
+    This is a generic interface
+    of task running on each compute node
+    
+    Sub-class of this class will be marshaled
+    to be sent across network 
+    
+    To ensure security, server task manager should
+    only accept sub-classes that are also on servers
+    """
+    def __init__(self, taskId):
+        """
+        Constructor
+        taskId:    must be unique (string)
+        """
+        self._taskId = taskId
+    
+    def execute(self):
+        """
+        Task manager calls this function to
+        execute the task. 
+        
+        Return:    MRLocalTaskResult
+        """
+        pass        
+
+class MRLocalTaskResult():
+    """
+    This class contains result of running
+    MRLocalTask
+    """
+    
+    def __init__(self, taskId, errCode, infoMsg, resultAsFile = False):
+        """
+        Constructor
+        
+        taskId:         unique (string)
+        
+        errCode:        errCode 0 - Success, [1 , 255] - some sort of error (integer)   
+           
+        infoMsg:        If True == resultAsFile
+                        infoMsg should be the local filesystem path to a file;
+                        Otherwise, it is the execution result 
+                        If errCode != 0, then it is the error message
+                        (any)
+                        
+        resultAsFile:   Whether or not the result should be
+                        provided as a separate file for reducers to
+                        retrieve. "False" (by default) means
+                        the result is directly available in infoMsg.
+                        If set to True, infoMsg should be the local 
+                        filesystem path to a file. It is up to the 
+                        framework implementation to turn the 
+                        filesystem path into a url, which involves
+                        archiving the file into the local HTTP
+                        server (e.g. NGAS)
+                        (boolean)
+        """
+        self._taskId = taskId
+        self._errCode = errCode
+        self._infoMsg = infoMsg
+        self._resultAsFile = resultAsFile
+        self._resultUrl = None
+    
+    def isResultAsFile(self):
+        """                
+        Return    True or False
+        """
+        return self._resultAsFile
+    
+    def setResultURL(self, resultUrl):
+        """
+        This function allows MRFramework to 
+        set the url to retrieve the file as 
+        part of the result returned from
+        self.execute()
+        """
+        self._resultUrl = resultUrl
+        
+    def getResultURL(self):
+        """
+        This function allows Reducers to obtain
+        the url of the result file, which can then 
+        be retrieved for reducing work
+        """
+        return self._resultUrl
+    
+    def getInfo(self):
+        return self._infoMsg
+
+    def getErrCode(self):
+        return self._errCode
+    
+    def setInfo(self, infoMsg):
+        self._infoMsg = infoMsg
+    
+    def setErrCode(self, errCode):
+        self._errCode = errCode
+       
+    
 
 class MRTaskFactory:
     

@@ -49,6 +49,8 @@ To deploy (install) them:
 import os, ConfigParser, time, threading, signal, json, decimal
 from datetime import datetime
 from optparse import OptionParser
+from urlparse import urlparse
+import cPickle as pickle
 
 from bottle import route, run, request, get, post, static_file, template
 
@@ -73,11 +75,20 @@ def ingest():
     fileId = request.query.get('file_id')
     filePath = request.query.get('file_path')
     toHost = request.query.get('to_host')
+    ingestRate = request.query.get('ingest_rate')
     if (fileId == None):
         return 'No file id is provided'
     else:
-        ngamsJobMWALib.fileIngested(fileId, filePath, toHost)
+        ngamsJobMWALib.fileIngested(fileId, filePath, toHost, ingestRate)
         return 'File %s is just ingested at %s on %s' % (fileId, filePath, toHost)
+
+@route('/report/hostdown')
+def reportHostError():
+    fileId = request.query.get('file_id')
+    nexturl = request.query.get('nexturl')
+    if (nexturl and fileId):
+        o = urlparse(nexturl)
+        ngamsJobMWALib.reportHostDown(fileId, '%s:%d' % (o.hostname, o.port))
 
 #TODO - use template soon!
 @get('/job/submit')
@@ -132,6 +143,24 @@ def submit_job_post():
         '<li> <a href="/job/monitor?job_id=%s">Monitor its progress</a></li>' % jobId +\
         '<li> <a href="/job/result?job_id=%s">Check its result</a></li></ul>' % jobId
         #'<a href="/job/status?job_id=%s">View its status (JSON). </a> <br>' % jobId +\
+
+@post('/localtask/result')
+def reportLocalTask():
+    """
+    Report the result of LocalTask to JobMAN
+    """ 
+    try:
+        localTaskResult = pickle.loads(request.body.read())
+    except Exception, err:
+        return 'Invalid MRLocalTask pickle content: %s' % str(err)
+    taskId = localTaskResult._taskId
+    if (localTaskResult.getErrCode()):
+        return 'Task %s has an error: %s' % (taskId, localTaskResult.getInfo())
+    else:
+        if (localTaskResult.isResultAsFile()):
+            return 'Got local task result for taskId: %s, url = %s' % (taskId, localTaskResult.getResultURL())
+        else:
+            return 'Got local task result for taskId: %s, info = %s' % (taskId, localTaskResult.getInfo())
         
 def encode_decimal(obj):
     """
