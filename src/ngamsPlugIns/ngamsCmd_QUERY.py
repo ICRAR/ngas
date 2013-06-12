@@ -34,7 +34,7 @@ Dynamic loadable command to query the DB associated with the NG/AMS instance.
 """
 
 from ngams import *
-import ngamsDbm
+import ngamsDbm, ngamsDbCore
 import cPickle, json, decimal
 
 # import markup TODO: This is for HTML formatting
@@ -43,6 +43,9 @@ CURSOR_IDX           = "__CURSOR_IDX__"
 NGAMS_PYTHON_LIST_MT = "application/python-list"
 NGAMS_PYTHON_PICKLE_MT = "application/python-pickle"
 NGAMS_JSON_MT = "application/json"
+NGAMS_FILES_COLS = map(lambda x:x[1],ngamsDbCore._ngasFilesDef)
+NGAMS_DISKS_COLS = map(lambda x:x[1],ngamsDbCore._ngasDisksDef)
+
 
 valid_queries = {"files_list":"select * from ngas_files",
                   "disks_list":"select * from ngas_disks", 
@@ -50,6 +53,7 @@ valid_queries = {"files_list":"select * from ngas_files",
                   "files_like":"select * from ngas_files where file_id like '{0}'",
                   "files_between":"select * from ngas_files where ingestion_date between '{0}' and '{1}'",
                   "files_stats":"select count(*),sum(uncompressed_file_size)/1048576. as MB from ngas_files",
+                  "files_list_recent":"select file_id, file_name, file_size, ingestion_date from ngas_files order by ingestion_date desc limit 300",
                 }
 
 def encode_decimal(obj):
@@ -60,19 +64,44 @@ def encode_decimal(obj):
         return float(obj)
     raise TypeError(repr(obj) + " is not JSON serializable")
 
+def createJsonObj(resultSet, queryKey):
+    """
+    Format the query result as an object that is json friendly, 
 
-def formatAsList(resultSet):
+    resultSet:      Result returned from the SQL interface (list).
+
+    Returns:  i.e. a list of dic, each of which is a record (List[{fieldname, fieldvalue}]
+    """
+    jsobj = {}
+    listResult = []
+    for res in resultSet[0]:
+        col = 1
+        record = {}
+        for subRes in res:
+            colName = 'col' + str(col)
+            colVal = str(subRes)
+            record[colName] = colVal
+            col += 1
+        listResult.append(record)
+    jsobj[queryKey] = listResult
+    return jsobj
+
+def formatAsList(resultSet, header = None):
     """
     Format the query result as a list.
 
     resultSet:      Result returned from the SQL interface (list).
+    header:         column names in the correct order (tuple)
 
     Returns:  Result formatted as a list (string).
     """
     # Go through the results, find the longest result per column and use
     # that as basis for the column.
     formatStrDic = {}
-    for res in resultSet[0]:
+    reList = resultSet[0]
+    if (header):
+        reList = [header] + reList
+    for res in reList:
         col = 0
         for subRes in res:
             if (not formatStrDic.has_key(col)): formatStrDic[col] = 0
@@ -83,15 +112,22 @@ def formatAsList(resultSet):
     # Build up format string.
     formatStr = ""
     col = 0
+    if (header):
+        headers = ()
     while (True):
         if (not formatStrDic.has_key(col)): break
         formatStr += "%%-%ds" % (formatStrDic[col] + 3)
+        if (header):
+            headers += ('-' * formatStrDic[col],)
         col += 1
     formatStr += "\n"
 
     # Now, generate the list.
     listBuf = ""
-    for res in resultSet[0]:
+    
+    if (header):
+        reList = [headers] + [header] + [headers] + reList[1:]
+    for res in reList:
         valList = []
         for subRes in res:
             valList.append(str(subRes))
@@ -176,12 +212,14 @@ def handleCmd(srvObj,
     query = None
     if (reqPropsObj.hasHttpPar("query")):
         query = reqPropsObj.getHttpPar("query")
+        qkey = query
         if query.lower() in valid_queries.keys():
             query = valid_queries[query.lower()]
         else:
             msg = "Invalid query specified. Valid queries are: %s" %\
             valid_queries.keys()
             raise Exception, msg
+        
         if reqPropsObj.getHttpPar("query") == 'files_like':
             param = '%'
             if (reqPropsObj.hasHttpPar("like")):
@@ -219,13 +257,20 @@ def handleCmd(srvObj,
         # TODO: Potential problem with very large result sets.
         #       Implement streaming result directly.
         if (out_format == "list"):
-            finalRes = formatAsList(res)
+            if query.find('ngas_files') >=0:
+                header = NGAMS_FILES_COLS
+            elif query.find('ngas_disks') >= 0:
+                header = NGAMS_DISKS_COLS
+            else:
+                header = None
+            finalRes = formatAsList(res, header=header)
             mimeType = NGAMS_TEXT_MT
         elif (out_format == "pickle"):
             finalRes = cPickle.dumps(res)
             mimeType = NGAMS_PYTHON_PICKLE_MT
         elif (out_format == "json"):
-            finalRes = json.dumps(res, default=encode_decimal)
+            jsobj = createJsonObj(res, qkey)
+            finalRes = json.dumps(jsobj, default=encode_decimal)
             mimeType = NGAMS_JSON_MT
         else:
             finalRes = str(res)
@@ -300,4 +345,3 @@ def handleCmd(srvObj,
 
 
 # EOF
-
