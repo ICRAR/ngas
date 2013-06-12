@@ -250,9 +250,9 @@ def saveFromHttpToFile(ngamsCfgObj,
         info(4,"Transfer time: %.3f s; CRC time: %.3f s; write time %.3f s" % (rdtt, cdtt, wdtt))
         msg = "Saved data in file: %s. Bytes received: %d. Time: %.3f s. " +\
               "Rate: %.2f Bytes/s"
+        ingestRate = (float(reqPropsObj.getBytesReceived()) / deltaTime)
         info(2,msg % (trgFilename, int(reqPropsObj.getBytesReceived()),
-                      deltaTime, (float(reqPropsObj.getBytesReceived()) /
-                                  deltaTime)))
+                      deltaTime, ingestRate))
         # Raise a special info message if the transfer speed to disk or over network was
         # slower than 512 kB/s
         if srb > 0:
@@ -272,7 +272,7 @@ def saveFromHttpToFile(ngamsCfgObj,
         if (mutexDiskAccess):
             ngamsHighLevelLib.releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
 
-        return [deltaTime,crc]
+        return [deltaTime,crc,ingestRate]
     except Exception, e:
         fdOut.close()
         # Release disk resouce.
@@ -460,7 +460,7 @@ def handleCmd(srvObj,
     srvObj.triggerSubscriptionThread()
 
 
-    return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()))
+    return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()), stagingInfo[2])
 
 # EOF
 
