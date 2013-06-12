@@ -38,7 +38,7 @@ instead of saveFromHttpToFile, it saveFromHttpToAnotherHttp
 from ngams import *
 import ngamsLib, ngamsStatus, ngamsHighLevelLib, ngamsDiskInfo
 
-import httplib
+import httplib, urllib2
 
 def processHttpReply(http, basename, url):
     """
@@ -143,7 +143,11 @@ def saveFromHttpToHttp(reqPropsObj,
     T = TRACE()
     
     mimeType = reqPropsObj.getMimeType()
-    nexturl = reqPropsObj.getHttpPar('nexturl')   
+    nexturl = reqPropsObj.getHttpPar('nexturl') 
+    if (reqPropsObj.hasHttpPar('reporturl')):
+        rpurl = reqPropsObj.getHttpPar('reporturl') 
+    else:
+        rpurl = None 
     #path = reqPropsObj.getHttpHdr('path')
     #nexturl = path.split('=')[1]    
     contDisp = "attachment; filename=\"" + basename + "\""
@@ -251,7 +255,20 @@ def saveFromHttpToHttp(reqPropsObj,
             raise Exception, msg
         
         processHttpReply(http, basename, nexturl)
- 
+    except Exception, err:
+        if (str(err).find('Connection refused') > -1):
+            # The host on the nexturl is probably down            
+            error("Fail to connect to the nexturl '%s': %s" % (nexturl, str(err)))
+            # report this incident if the reporturl is available
+            if (rpurl):
+                info(3, 'Reporing this error to %s' % rpurl)
+                urlreq = '%s?errorurl=%s&file_id=%s' % (rpurl, nexturl, basename)
+                try:
+                    urllib2.urlopen(urlreq)
+                except Exception, errin:
+                    error("Cannot report the error of nexturl '%s' to reporturl '%s' either: %s" % (nexturl, rpurl, str(errin)))
+        else:
+            raise err
     finally:
         if (http != None):
             #http.close()

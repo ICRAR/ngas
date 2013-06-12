@@ -32,8 +32,8 @@ metadata query, data movement, and HTTP-based communication
 during job task execution and scheduling
 """
 
-import os, threading, urllib, traceback
-from random import choice
+import os, threading, urllib, traceback, commands
+from random import choice, shuffle
 import psycopg2
 import cPickle as pickle
 
@@ -53,6 +53,26 @@ stage_sem = threading.Semaphore(1)
 #ST_INTVL_STAGE = 5 # interval in seconds between staging file checks
 #ST_BATCH_SIZE = 5 # minimum number of files in each stage request
 #ST_RETRY_LIM = 3 # number of times min_number can be used, if exceeds, stage files anyway
+
+def execCmd(cmd, failonerror = True):
+    re = commands.getstatusoutput(cmd)
+    if (failonerror and re[0] != 0):
+        raise Exception('Fail to execute command: "%s". Exception: %s' % (cmd, re[1]))
+    return re
+
+def pingHost(url, timeout = 5):
+    """
+    To check if a host is successfully running
+    
+    Return:
+    0        Success
+    1        Failure
+    """
+    cmd = 'curl %s --connect-timeout %d' % (url, timeout)
+    try:
+        return execCmd(cmd)[0]
+    except Exception, err:
+        return 1
 
 def getMWADBConn():
     global g_db_conn
@@ -150,6 +170,7 @@ class FileLocation:
         """
         self._svrHost = svrHost
         self._filePath = filePath
+        self._ingestRate = 0
         if (fileId):
             self._fileId = fileId
 
@@ -241,18 +262,22 @@ def getBestHost(fileIds):
                 dictFileIds[fl._fileId] = fl
         candidateList.append(dictFileIds)
     
-    max_index = 0
-    max_count = 0
-    cur_index = 0
-    # find the Dict that has most key-value pairs
-    for cand in candidateList:
-        cur_count = len(cand.keys())
-        if (cur_count > max_count):
-            max_count = cur_count 
-            max_index = cur_index
-        cur_index += 1
-    
-    return candidateList[max_index]
+    candidateList.sort(key=_sortFunc)
+    cc = -1
+    for candict in candidateList:
+        cc += 1
+        if (len(candict.keys()) == 0):
+            break
+        else:
+            canHost = candict.values()[0]._svrHost
+            if (pingHost(canHost)):
+                continue
+            else:
+                break
+    return candidateList[cc]
+
+def _sortFunc(dic):
+    return -1 * len(dic.keys())
     
 def testGetBestHost():
     # this test data works when 
@@ -272,7 +297,11 @@ def getNextOnlineHost():
     res = executeQuery(conn, sqlQuery)
     if (len(res) == 0):
         return None
-    return choice(res)[0]
+    shuffle(res)    
+    for host in res:
+        if (not pingHost(host[0])):
+            return host[0]    
+    return None
 
 def testGetNextOnlineHostUrl():
     print getNextOnlineHost()
@@ -305,13 +334,6 @@ class StageRequest():
                 return 0
 """
 
-def stageFailed(fileId, toHost):
-    """
-    notfiy failed staging file and its destination
-    so that following requests will have a chance to retry
-    """
-    pass
-        
 def stageFile(fileIds, corrTask, toHost, frmHost = None):
     """
     fileIds:    a list of files that need to be staged from external archive
@@ -424,7 +446,7 @@ def scheduleForStaging(num_repeats = 0):
     return 0  
 """      
 
-def fileIngested(fileId, filePath, toHost):
+def fileIngested(fileId, filePath, toHost, ingestRate):
     """
     This function is called by the Web server to notify
     jobs which are waiting for this file to be ingested
@@ -446,8 +468,29 @@ def fileIngested(fileId, filePath, toHost):
     finally:
         stage_sem.release()
     for corr in corrList:
-        corr.fileIngested(fileId, filePath)
+        corr.fileIngested(fileId, filePath, ingestRate)
 
+def reportHostDown(fileId, toHost):
+    """
+    notfiy failed staging file and its destination
+    due to down host
+    so that following requests will have a chance to retry
+    other hosts
+    """
+
+    skey = '%s___%s' % (fileId, toHost)
+    stage_sem.acquire()
+    try:
+        if (stage_dic.has_key(skey)):
+            corrList = stage_dic.pop(skey) # stop others from using this key-entry
+            # but what about other files on this host?
+        else: 
+            print 'Report host down, but cannot find key %s' % skey
+            return
+    finally:
+        stage_sem.release()
+    for corr in corrList:
+        corr.reportHostDown(fileId, toHost)
 
 def closeConn(conn):
     if (conn):
@@ -457,10 +500,12 @@ def closeConn(conn):
 
 
 if __name__=="__main__":
-    testGetFileIds()
-    testGetFileLocations()
-    testGetBestHost()
-    #testGetNextOnlineHostUrl()
+    #testGetFileIds()
+    #testGetFileLocations()
+    #testGetBestHost()
+    testGetNextOnlineHostUrl()
+    #print pingHost('http://cortex.ivec.org:7799/STATUS')
+    #print pingHost('http://fornax-io1.ivec.org:7777/STATUS')
     closeConn(g_db_conn)
     closeConn(f_db_conn)
     

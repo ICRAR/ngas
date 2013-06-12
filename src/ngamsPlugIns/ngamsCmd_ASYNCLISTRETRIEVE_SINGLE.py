@@ -1,23 +1,4 @@
-#
-#    ICRAR - International Centre for Radio Astronomy Research
-#    Copyright by UWA (in the framework of the ICRAR)
-#    All rights reserved
-#
-#    This library is free software; you can redistribute it and/or
-#    modify it under the terms of the GNU Lesser General Public
-#    License as published by the Free Software Foundation; either
-#    version 2.1 of the License, or (at your option) any later version.
-#
-#    This library is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-#    Lesser General Public License for more details.
-#
-#    You should have received a copy of the GNU Lesser General Public
-#    License along with this library; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-#    MA 02111-1307  USA
-
+#******************************************************************************
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      11/12/2012  Created
@@ -61,7 +42,7 @@ src/ngamsTest/ngamsTestAsyncListRetrieve.py
 
 """
 import cPickle as pickle
-import thread, threading, urllib, httplib, time
+import thread, threading, urllib, httplib, time, traceback
 import os
 
 from ngams import *
@@ -69,6 +50,8 @@ import ngamsDbCore, ngamsLib, ngamsStatus, ngamsPlugInApi
 import ngamsMWACortexTapeApi
 import ngamsMWAAsyncProtocol
 from ngamsMWAAsyncProtocol import *
+from urlparse import urlparse
+from Queue import Queue, Empty
 #import difflib
 
 asyncReqDic = {} #key - uuid, value - AsyncListRetrieveRequest (need to remember the original request in case of cancel/suspend/resume or server shutting down)
@@ -79,6 +62,83 @@ threadRunDic = {} #key - uuid, value - 1/0, 1: run 0: stop
 ASYNC_DELIVERY_THR = "Asyn-delivery-thrd-"
 fileMimeType = "application/octet-stream"
 THREAD_STOP_TIME_OUT = 8
+pushQDic = {} #key - host name to be pushed, a queue contains files to be pushed
+pushQSem = threading.Semaphore()
+
+def createPushThread(srvObj, url):
+    """
+    To ensure each host has exactly on file delivery thread
+    Although a host may generate multiple urls
+    
+    url:    url to be pushed
+    """
+    o = urlparse(url)
+    pushQSem.acquire()
+    try:
+        if (pushQDic.has_key(o.hostname)):
+            return
+        pushQueue = Queue()
+        pushQDic[o.hostname] = pushQueue
+        args = (srvObj, o.hostname)
+        thrd = threading.Thread(None, _pushThread, 'PUSH_THRD_%s' % o.hostname, args) 
+        thrd.setDaemon(0) 
+        thrd.start()
+    finally:
+        pushQSem.release()
+
+def enPushQueue(srvObj, filename, asyncListReqObj, baseNameDic):
+    o = urlparse(asyncListReqObj.url)
+    hostname = o.hostname
+    if (not pushQDic.has_key(hostname)):
+        return
+    pushQueue = pushQDic[hostname]
+    
+    fileInfo = (asyncListReqObj, filename, baseNameDic)
+    pushQueue.put(fileInfo)
+    
+def _pushThread(srvObj, hostname):
+    if (not pushQDic.has_key(hostname)):
+        return
+    pushQueue = pushQDic[hostname]
+    while (pushQDic.has_key(hostname)): # in case push is cancelled
+        try:
+            fileInfo = pushQueue.get(timeout = 60 * 15)
+        except Empty, e:
+            if (pushQDic.has_key(hostname)):
+                del pushQDic[hostname]
+            break
+        if (fileInfo):
+            asyncListReqObj = fileInfo[0]
+            sessionId = asyncListReqObj.session_uuid
+            ret = _httpPost(srvObj, asyncListReqObj.url, fileInfo[1])
+            #ret = _httpPost(srvObj, clientUrl, filename, sessionId)
+            if (ret == 0):           
+                basename = os.path.basename(fileInfo[1])
+                #info(3, "Removing %s" % basename)
+                
+                if (statusResDic.has_key(sessionId)):
+                    statusRes = statusResDic[sessionId]
+                baseNameDic = fileInfo[2]
+                asyncListReqObj.file_id.remove(basename) #once it is delivered successfully, it is removed from the list
+                if (statusRes != None):
+                    statusRes.number_files_delivered += 1
+                    statusRes.number_files_to_be_delivered -= 1
+                    statusRes.number_bytes_delivered += baseNameDic[basename]
+                    statusRes.number_bytes_to_be_delivered -= baseNameDic[basename]
+                if (len(asyncListReqObj.file_id) == 0): # if delivery is completed
+                    if (asyncReqDic.has_key(sessionId)):
+                        v = asyncReqDic.pop(sessionId)
+                        del v
+                        threadDic.pop(sessionId) # cannot del threadRef itself, TODO - this should be moved to a monitoring thread
+                        v = threadRunDic.pop(sessionId)            
+                    if (nextFileDic.has_key(sessionId)):
+                        v = nextFileDic.pop(sessionId)        
+                    if (statusResDic.has_key(sessionId)):
+                        st = statusResDic.pop(sessionId)
+                        del st
+        #if (threadRunDic.has_key(sessionId) and threadRunDic[sessionId] == 0):
+            #info(3, "transfer cancelled/suspended while transferring file '%s'" % basename)
+            #break
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -119,6 +179,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             asyncListReqObj = pickle.loads(postContent)
         """
         info(3,"push url: %s" % asyncListReqObj.url)
+        createPushThread(srvObj, asyncListReqObj.url)
         filelist = list(set(asyncListReqObj.file_id)) #remove duplicates
         asyncListReqObj.file_id = filelist
         
@@ -145,7 +206,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             elif (syscmd == "stop"):
                 resp = stopAsyncQService(srvObj, reqPropsObj)
             else:
-                resp = "Unknown system command '%s'." % syscmd
+                resp = "Unknown system V2 command '%s'." % syscmd
                 #raise Exception, msg
         elif (reqPropsObj.hasHttpPar("uuid")):
             sessionId = reqPropsObj.getHttpPar("uuid")            
@@ -430,7 +491,7 @@ def _httpPostUrl(url,
     return [reply, msg, hdrs, data]
 
 
-def _httpPost(srvObj, url, filename, sessionId):
+def _httpPost(srvObj, url, filename, sessionId = None):
     """
     A wrapper for _httpPostUrl
     return success 0 or failure 1
@@ -446,11 +507,16 @@ def _httpPost(srvObj, url, filename, sessionId):
     info(3,"Async Delivery Thread [" + str(thread.get_ident()) + "] Delivering file: " + baseName + " - to: " + url + " ...")
     ex = ""
     try:
+        """
         reply, msg, hdrs, data = \
+        #TODO - the fileMimeType should be queried from the database
+        
         _httpPostUrl(url, fileMimeType,
                                         contDisp, filename, "FILE",
                                         blockSize=\
                                         srvObj.getCfg().getBlockSize(), session_uuid = sessionId)
+        """
+        reply, msg, hdrs, data = ngamsLib.httpPostUrl(url, fileMimeType, contDisp, filename, "FILE", blockSize=srvObj.getCfg().getBlockSize())
         if (reply == None and msg == None and hdrs == None and data == None): # transfer cancelled/suspended
             return 1 
         
@@ -467,7 +533,7 @@ def _httpPost(srvObj, url, filename, sessionId):
         if (ex != ""): errMsg += " Exception: " + ex + "."
         if (stat.getMessage() != ""):
             errMsg += " Message: " + stat.getMessage()
-        warning(errMsg)
+        warning(errMsg + '\n' + traceback.format_exc())
         return 1
     else:
         info(3,"File: " + baseName +\
@@ -584,13 +650,28 @@ def _deliveryThread(srvObj, asyncListReqObj):
     allfiles = filesOnDisk
     if (stageRet != -1):
         allfiles = filesOnDisk + filesOnTape  
-          
+        
+    #remove files that cannot be found
+    for ff in asyncListReqObj.file_id:
+        if (not baseNameDic.has_key(ff)):            
+            asyncListReqObj.file_id.remove(ff)
+                  
     for filename in allfiles:
         basename = os.path.basename(filename)
         nextFileDic[sessionId] = basename
         if (threadRunDic.has_key(sessionId) and threadRunDic[sessionId] == 0):
             info(3, "transfer cancelled/suspended before transferring file '%s'" % basename)
             break
+        
+        enPushQueue(srvObj, filename, asyncListReqObj, baseNameDic)
+        # the following code is for parallel stream (i.e. for each async request, there is a delivery thread)
+        # this may cause performance issue if a client issues a lot of async requests. In the new scheme,
+        # a single host is allocated one thread no matter how many requests are issued to sent files to that host
+        # this is re-implemented in function _pushThread(), createPushThread(), and enPushQueue()
+        # if a host would like to have concurrent transfer streams to improve transfer rate, then we need to
+        # add multiple threads to that host, i.e. call _pushThread multiple times. However, this is not yet implemented
+        # as of 5-June-2013 (chen.wu@icrar.org)
+        """
         ret = _httpPost(srvObj, clientUrl, filename, sessionId)
         if (ret == 0):           
             #info(3, "Removing %s" % basename)
@@ -604,11 +685,9 @@ def _deliveryThread(srvObj, asyncListReqObj):
         elif (threadRunDic.has_key(sessionId) and threadRunDic[sessionId] == 0):
             info(3, "transfer cancelled/suspended while transferring file '%s'" % basename)
             break
+        """
     
-    for ff in asyncListReqObj.file_id:
-        if (not baseNameDic.has_key(ff)):            
-            asyncListReqObj.file_id.remove(ff) #remove files that cannot be found
-    
+    """
     if (len(asyncListReqObj.file_id) == 0): # if delivery is completed
         if (asyncReqDic.has_key(sessionId)):
             v = asyncReqDic.pop(sessionId)
@@ -620,7 +699,7 @@ def _deliveryThread(srvObj, asyncListReqObj):
         if (statusResDic.has_key(sessionId)):
             st = statusResDic.pop(sessionId)
             del st
-    
+    """
     thread.exit()
       
 def startAsyncQService(srvObj, reqPropsObj):
