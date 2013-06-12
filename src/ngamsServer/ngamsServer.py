@@ -233,11 +233,11 @@ class ngamsHttpRequestHandler(tornado.web.RequestHandler):
         Returns:    Void.
         """
         try:
-	    self.clear()
-	    self.flush()
-	except:
-	    pass
-	return
+            self.clear()
+            self.flush()
+        except:
+            pass
+        return
 
 
     def log_request(self,
@@ -257,10 +257,23 @@ class ngamsHttpRequestHandler(tornado.web.RequestHandler):
     
 #    @tornado.web.asynchronous
     def get(self):
+        """
+        This is the get method required by the tornado server
+        """
         self.reqHandle()
 
     def post(self):
-	self.reqHandle()
+        """
+        This is the post method required by the tornado server
+        """
+        self.reqHandle()
+
+    def put(self):
+        """
+        This is the put method required by the tornado server
+        """
+        self.reqHandle()
+
 
     def do_GET(self):
         """
@@ -2027,7 +2040,7 @@ class ngamsServer:
         self.parseInputPars(argv)
         info(1,"NG/AMS Server version: " + getNgamsVersion())
         info(1,"Python version: " + re.sub("\n", "", sys.version))
-	info(4,"Command line paramters: %s" % sys.argv)
+        info(4,"Command line paramters: %s" % sys.argv)
 
         # Make global reference to this instance of the NG/AMS Server.
         global _ngamsServer
