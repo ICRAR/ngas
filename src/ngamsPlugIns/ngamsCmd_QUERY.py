@@ -257,12 +257,16 @@ def handleCmd(srvObj,
         # TODO: Potential problem with very large result sets.
         #       Implement streaming result directly.
         if (out_format == "list"):
-            if query.find('ngas_files') >=0:
-                header = NGAMS_FILES_COLS
-            elif query.find('ngas_disks') >= 0:
-                header = NGAMS_DISKS_COLS
-            else:
-                header = None
+            header = None
+            if reqPropsObj.getHttpPar("query") not in ['files_stats', 'files_list_recent']:
+                if query.find('ngas_files') >=0:
+                    header = NGAMS_FILES_COLS
+                elif query.find('ngas_disks') >= 0:
+                    header = NGAMS_DISKS_COLS
+            elif reqPropsObj.getHttpPar("query") == 'files_stats':
+                header = ['Number of files', 'Total volume [MB]']
+            elif reqPropsObj.getHttpPar("query") == 'files_list_recent':
+                header = ['file_id', 'file_name', 'file_size', 'ingestion_date']
             finalRes = formatAsList(res, header=header)
             mimeType = NGAMS_TEXT_MT
         elif (out_format == "pickle"):
