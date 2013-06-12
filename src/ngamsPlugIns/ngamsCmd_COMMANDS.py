@@ -20,15 +20,6 @@
 #    MA 02111-1307  USA
 #
 
-#******************************************************************************
-#
-# "@(#) $Id: ngamsCmd_QUERY.py,v 1.6 2008/08/19 20:51:50 jknudstr Exp $"
-#
-# Who       When        What
-# --------  ----------  -------------------------------------------------------
-# jknudstr  15/07/2006  Created
-#
-
 """
 Dynamic loadable command to query the commands available with the NG/AMS instance.
 
@@ -109,7 +100,7 @@ def handleCmd(srvObj,
     commands = map(lambda x:x.split('.')[0].split('_')[1], commands)
 
     srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                                '\n'.join(commands), 0, NGAMS_PYTHON_LIST_MT)
+                                '\n'.join(commands)+'\n', 0, NGAMS_PYTHON_LIST_MT)
 
     return
 
