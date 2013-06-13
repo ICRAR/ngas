@@ -268,6 +268,13 @@ def handleCmd(srvObj,
             elif reqPropsObj.getHttpPar("query") == 'files_list_recent':
                 header = ['file_id', 'file_name', 'file_size', 'ingestion_date']
             finalRes = formatAsList(res, header=header)
+            if query.find('ngas_files') >=0:
+                header = NGAMS_FILES_COLS
+            elif query.find('ngas_disks') >= 0:
+                header = NGAMS_DISKS_COLS
+            else:
+                header = None
+            finalRes = formatAsList(res, header=header)
             mimeType = NGAMS_TEXT_MT
         elif (out_format == "pickle"):
             finalRes = cPickle.dumps(res)
