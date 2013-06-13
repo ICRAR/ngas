@@ -1,4 +1,27 @@
 #!/usr/bin/python
+#
+#    ICRAR - International Centre for Radio Astronomy Research
+#    (c) UWA - The University of Western Australia, 2012
+#    Copyright by UWA (in the framework of the ICRAR)
+#    All rights reserved
+#
+#    This library is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU Lesser General Public
+#    License as published by the Free Software Foundation; either
+#    version 2.1 of the License, or (at your option) any later version.
+#
+#    This library is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#    Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public
+#    License along with this library; if not, write to the Free Software
+#    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+#    MA 02111-1307  USA
+#
+# NOTE: Based on code from Robert Filipovich 
+# https://bitbucket.org/dnetman99/gpstrackerpi/src
 
 import sys, os, atexit, time
 from signal import SIGTERM 
@@ -61,11 +84,15 @@ class Daemon:
         file(self.pidfile, 'w+').write("%s\n" % pid)
     
     def delpid(self):
+        """
+        Remove the PID file.
+        """
         os.remove(self.pidfile)
 
     def start(self):
         """
-        Start the daemon
+        Start the daemon. Uses the pidfile to check whether the
+        service is already running.
         """
         print "Starting process "
         # Check for a pidfile to see if the daemon already runs
@@ -84,14 +111,22 @@ class Daemon:
         # Start the daemon
         self.daemonize()
         self.run()
+
         
     def defaultCfunc(self):
-        return True
+        """
+        Default checking function just returns False.
+        """
+        return False
     
 
     def stop(self, cfunc=defaultCfunc, **kwargs):
         """
         Stop the daemon
+        
+        This version allows to specify a callback function which
+        is used to check whether the process is already terminated. This
+        avoids sending the SIGTERM several times.
         """
         # Get the pid from the pidfile
         try:
@@ -106,7 +141,8 @@ class Daemon:
             sys.stderr.write(message % self.pidfile)
             return  # not an error in a restart
 
-        # Try killing the daemon process    
+        # Try killing the daemon process
+        # Displays a dot for every second it takes    
         try:
             print "Waiting for process to terminate",
             while 1:

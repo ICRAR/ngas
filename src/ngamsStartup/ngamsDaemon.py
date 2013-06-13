@@ -1,4 +1,25 @@
 #!/usr/bin/env python
+#
+#    ICRAR - International Centre for Radio Astronomy Research
+#    (c) UWA - The University of Western Australia, 2012
+#    Copyright by UWA (in the framework of the ICRAR)
+#    All rights reserved
+#
+#    This library is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU Lesser General Public
+#    License as published by the Free Software Foundation; either
+#    version 2.1 of the License, or (at your option) any later version.
+#
+#    This library is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#    Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public
+#    License along with this library; if not, write to the Free Software
+#    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+#    MA 02111-1307  USA
+#
 
 from ngamsServer import *
 from logger import ngaslog
@@ -19,21 +40,29 @@ else:
     PIDFILE = '%s/var/run/ngamsDaemon.pid' % HOME
 
 class MyDaemon(Daemon):
-        def run(self):
-            ngaslog('INFO', "Inside run...")
-            ARGS_BCK = sys.argv
-            try:
-                ARGS_BCK = sys.argv
-                sys.argv = NGAMS_ARGS
-                nserver = ngamsServer()
-                nserver.init(NGAMS_ARGS)
-                main()
-                sys.argv = ARGS_BCK
-            except Exception as e:
-                raise e
+    """
+    This class inherits from the main Daemon class
+    and overrides the run method for NGAMS.
+    """
+    def run(self):
+        ngaslog('INFO', "Inside run...")
+        ARGS_BCK = sys.argv
+        try:
+            ARGS_BCK = sys.argv       # store original arguments
+            sys.argv = NGAMS_ARGS     # put the NGAMS_ARGS instead
+            nserver = ngamsServer()   # instantiate server
+            nserver.init(NGAMS_ARGS)  # initialize server
+            main()                    # start NGAMS
+            sys.argv = ARGS_BCK
+        except Exception as e:
+            raise e
 
 def checkNgasPidFile(dum):
     """
+    Check for existence of NGAS internal PID file.
+    This function is used during shutdown to make
+    sure that the server terminated cleanly, in which
+    case the PID file is removed.
     """
     with open(PIDFILE, 'r') as f:
         ipid = f.readline().strip()
