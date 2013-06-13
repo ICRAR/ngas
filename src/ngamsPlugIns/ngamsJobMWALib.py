@@ -50,6 +50,8 @@ stage_queue = []
 stage_dic = {} # key - fileId, value - a list of CorrTasks
 stage_sem = threading.Semaphore(1)
 
+LT_dic = {} # key - taskId, value - corrTask
+
 #ST_INTVL_STAGE = 5 # interval in seconds between staging file checks
 #ST_BATCH_SIZE = 5 # minimum number of files in each stage request
 #ST_RETRY_LIM = 3 # number of times min_number can be used, if exceeds, stage files anyway
@@ -169,7 +171,7 @@ class FileLocation:
         fileId:      the id of this file whose location is being queried
         """
         self._svrHost = svrHost
-        self._filePath = filePath
+        self._filePath = filePath # this includes file name as well
         self._ingestRate = 0
         if (fileId):
             self._fileId = fileId
@@ -372,7 +374,7 @@ def stageFile(fileIds, corrTask, toHost, frmHost = None):
     myReq = AsyncListRetrieveRequest(deliverFileIds, toUrl)
     try:
         strReq = pickle.dumps(myReq)
-        strRes = urllib.urlopen('%s/ASYNCLISTRETRIEVE' % getExternalArchiveURL(), strReq).read()
+        strRes = urllib.urlopen('%s/ASYNCLISTRETRIEVE_SINGLE' % getExternalArchiveURL(), strReq).read()
         myRes = pickle.loads(strRes)
         return myRes.errorcode
     except Exception, err:
@@ -469,6 +471,17 @@ def fileIngested(fileId, filePath, toHost, ingestRate):
         stage_sem.release()
     for corr in corrList:
         corr.fileIngested(fileId, filePath, ingestRate)
+
+def registerLocalTask(taskId, corrTask):
+    LT_dic[taskId] = corrTask
+
+def localTaskCompleted(localTaskResult):
+    taskId = localTaskResult._taskId
+    if LT_dic.has_key(taskId):
+        corrTask = LT_dic.pop(taskId)
+        corrTask.localTaskCompleted(localTaskResult)
+    else:
+        print 'Local task %d completed, but cannot find its CorrelatorTask. Possibly this task has been launched twice due to some timeout issue' % taskId
 
 def reportHostDown(fileId, toHost):
     """

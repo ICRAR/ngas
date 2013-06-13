@@ -35,8 +35,9 @@ to have another pipeline (e.g. CASA for VLA), write your own based on the generi
 framework in ngamsJobProtocol.py
 """
 
-import threading, commands, time
+import threading, commands, time, urllib2
 from Queue import Queue, Empty
+import cPickle as pickle
 
 from ngamsJobProtocol import *
 import ngamsJobMWALib
@@ -153,16 +154,24 @@ class ObsTask(MapReduceTask):
         """
         dprint('Observation %s is reduced' % self.getId())
         obsTaskRe = ObsTaskResult(self.getId())
-        
+        #1.  decide an exeHost to do the local reduction task
         while (1):
             corrTaskRe = None
             try:
                 corrTaskRe = self.__corrRespQ.get_nowait()
+                if (corrTaskRe._errcode == 0):
+                    imgurl = corrTaskRe._imgUrl
+                    
+                    # 2. download the file from imgurl to where?
+                    
+                else:
+                    pass
+                    # simply ignore this part
             except Empty, e:
                 break
             obsTaskRe.merge(corrTaskRe)
         
-        # TODO - do the real reduction work (i.e. combine all images from correlators into a single one)
+        # 3. - do the real reduction work (i.e. combine all images from correlators into a single one)
         obsTaskRe.setImgUrl(debug_url)
         return obsTaskRe
         
@@ -188,13 +197,17 @@ class CorrTask(MapReduceTask):
         self.__fileIds = fileIds
         self.__rtsParam = rtsParam
         self._progress = -1
-        self._fileIngEvent = threading.Event()
+        self._fileIngEvent = threading.Event() # file ingestion event
+        self._ltComltEvent = threading.Event() # local task complete event
         self._timeOut4FileIng = 60 * 30 # maximum wait for 30 min during file staging
+        self._timeOut4LT = 3600 # maximum wait for an hour during RTS local task execution
         self._numIngested = 0 # at start, assume all files are ingested
         self._numIngSem = threading.Semaphore()
         self._hostErrSem = threading.Semaphore()
         self._taskExeHost = '' # this will become the NextURL for PARCHIVE during file staging from Cortex/other hosts (if any)
         self._fileLocDict = {} # key - fileId, value - FileLocation (may not be the final one)
+        self._localTaskResult = None
+        self._failedLTExec = 0 # the number of failed local task executions
     
     def _stageFiles(self, cre):
         """
@@ -272,7 +285,7 @@ class CorrTask(MapReduceTask):
         """
         Actual work for Correlator's file processing
         """
-        cre = CorrTaskResult(self.getId(), self.__fileIds, debug_url)
+        cre = CorrTaskResult(self.getId(), self.__fileIds)
         if (self.__fileIds == None or len(self.__fileIds) == 0):
             cre._errcode = 1
             cre._errmsg = 'No correlator files in the input'
@@ -286,31 +299,96 @@ class CorrTask(MapReduceTask):
             self._progress = 1
             cre = self._stageFiles(cre)
             if (cre._errcode):
-                return cre
+                #return cre
+                break
             # block if / while files are being ingested
             self._fileIngEvent.wait(self._timeOut4FileIng)
+            
+            if (self._progress == 0):
+                # host was down (i.e. the function reportHostDown was called)
+                print 'The task host %d was down, retry another host ...' % self._taskExeHost
+                self._taskExeHost = None
+                self._fileIngEvent.clear()
+                continue
    
-        if (self._numIngested < len(self.__fileIds)):
-            #TODO need to print which files are timed out
-            cre._errmsg = "Timeout when waiting for file ingestion. Ingested %d out of %d." % (self._numIngested, len(self.__fileIds))
-            cre._errcode = 3
-            self.setStatus(STATUS_EXCEPTION)
-            dprint(cre._errmsg)
-            return cre
+            if (self._numIngested < len(self.__fileIds)):
+                #TODO need to print which files are timed out
+                cre._errmsg = "Timeout when waiting for file ingestion. Ingested %d out of %d." % (self._numIngested, len(self.__fileIds))
+                cre._errcode = 3
+                self.setStatus(STATUS_EXCEPTION)
+                dprint(cre._errmsg)
+                # this could be caused by the entire network issue so no point to retry
+                #return cre
+                break
+            
+            self._progress = 2
+            # create local task and send them to remote servers
+            #  1. construct the local TaskId (jobId__obsNum__corrId)
+            taskId = '%s__%s__%s' % (self.getParent().getParent().getId(), self.getParent().getId(), self.getId())
+            #  2. construct the file list
+            fileLocList = []
+            for flocs in self._fileLocDict.values():
+                fileLocList.append(flocs._filePath)
+            
+            corrLT = CorrLocalTask(taskId, fileLocList, self.__rtsParam)
+            
+            # 3. submit the local task to a remote host to run
+            # but register itself to receive task complete event first
+            
+            strLT = pickle.dumps(corrLT)
+            try:
+                strRes = urllib2.urlopen('http://%s/RUNTASK' % self._taskExeHost, data = strLT, timeout = 15).read()
+                dprint('Submit localtask, acknowledgement received: %s'     % strRes)
+            except urllib2.URLError, urlerr:
+                if (str(urlerr).find('Connection refused') > -1): # the host is down
+                    #TODO - make it a log!
+                    print 'The original host %s is down, changing to another host and re-staging all files...' % self._taskExeHost
+                    self._progress = 0
+                    self._taskExeHost = None
+                    self._fileIngEvent.clear()
+                    continue # the current host is down, change to another host, and redo file staging
+                else:
+                    errmsg = 'Fail to schedule correlator task on %s: %s' % (self._taskExeHost, str(urlerr))
+                    cre._errmsg = errmsg
+                    cre._errcode = 6
+                    self.setStatus(STATUS_EXCEPTION)
+                    dprint(cre._errmsg)
+                    #return cre
+                    break
         
-        # create local task and send them to remote servers
-        #  1. construct the local TaskId (jobId__obsNum__corrId)
-        taskId = '%s__%s__%s' % (self.getParent().getParent().getId(), self.getParent().getId(), self.getId())
-        #  2. construct the file list
-        
-                     
-        """
-        # this is for test
-        if (self.getId() == '11' or self.getId() == '23'):
-            if (self.__fileIds[0].split('_')[0] == '1053182656'):
-                cre._errcode = 12
-                cre._errmsg = 'Files not found!'
-        """
+            # 4. Waiting for the result
+            self._progress = 3
+            self._ltComltEvent.wait(self._timeOut4LT)
+            if (not self._localTaskResult):
+                # timeout, consider re-run the task on another node
+                self._failedLTExec += 1
+                if (self._failedLTExec < 4): # maximum attempts 3 times
+                    errmsg = 'Timeout when waiting for the local task to complete on node %s' % self._taskExeHost
+                    cre._errmsg = errmsg
+                    cre._errcode = 7
+                    self.setStatus(STATUS_EXCEPTION)
+                    dprint(cre._errmsg)
+                    #return cre
+                    break
+                else:
+                    print 'The local task %s on node %s has timed out, try another host' % (taskId, self._taskExeHost)
+                    self._progress = 0
+                    self._taskExeHost = None
+                    self._fileIngEvent.clear()
+                    self._ltComltEvent.clear()
+                    continue
+            
+            # 5. analyse the result value
+            if (self._localTaskResult.getErrCode()):
+                errmsg = 'Correlator local task returned error: %d - %s' % (self._localTaskResult.getErrCode(), self._localTaskResult.getInfo())
+                cre._errcode = 8
+                self.setStatus(STATUS_EXCEPTION)
+                dprint(cre._errmsg)
+                break
+            else:
+                cre._errcode = 0
+                cre._imgUrl = self._localTaskResult.getResultURL()
+                             
         return cre 
     
     def fileIngested(self, fileId, filePath, ingestRate):
@@ -322,6 +400,10 @@ class CorrTask(MapReduceTask):
         self._fileLocDict[fileId] = floc
         if (self._numIngested == len(self.__fileIds)):
             self._fileIngEvent.set()
+    
+    def localTaskCompleted(self, localTaskResult):
+        self._ltComltEvent.set()
+        self._localTaskResult = localTaskResult
     
     def reportHostDown(self, fileId, errorHost):
         """
@@ -340,8 +422,7 @@ class CorrTask(MapReduceTask):
             self._progress == 1): # and make sure it is currently staging some files
             
             self._progress = 0
-            self._taskExeHost = None
-            self._fileIngEvent.set()
+            self._fileIngEvent.set() # wake up in case it is still waiting
             
         self._hostErrSem.release()
     

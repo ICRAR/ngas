@@ -161,6 +161,7 @@ def reportLocalTask():
             return 'Got local task result for taskId: %s, url = %s' % (taskId, localTaskResult.getResultURL())
         else:
             return 'Got local task result for taskId: %s, info = %s' % (taskId, localTaskResult.getInfo())
+    ngamsJobMWALib.localTaskCompleted(localTaskResult)
         
 def encode_decimal(obj):
     """
