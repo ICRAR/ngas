@@ -148,16 +148,16 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
         if (_ngamsServer):
             if ((noOfAliveThr - 4) >= _ngamsServer.getCfg().getMaxSimReqs()):
                 try:
-                   errMsg = genLog("NGAMS_ER_MAX_REQ_EXCEEDED",
+                    errMsg = genLog("NGAMS_ER_MAX_REQ_EXCEEDED",
                                 [_ngamsServer.getCfg().getMaxSimReqs()])
-                   error(errMsg)
-                   httpRef = ngamsSimpleRequest(request, client_address)
-                   tmpReqPropsObj = ngamsReqProps.ngamsReqProps()
-                   _ngamsServer.reply(tmpReqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
+                    error(errMsg)
+                    httpRef = ngamsSimpleRequest(request, client_address)
+                    tmpReqPropsObj = ngamsReqProps.ngamsReqProps()
+                    _ngamsServer.reply(tmpReqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                                    NGAMS_FAILURE, errMsg)
                 except IOError:
-                   errMsg = "Maximum number of requests exceeded and I/O ERROR encountered! Trying to continue...."
-                   error(errMsg)
+                    errMsg = "Maximum number of requests exceeded and I/O ERROR encountered! Trying to continue...."
+                    error(errMsg)
                 return
 
         # Create a new thread to handle the request.
@@ -2634,5 +2634,5 @@ def main():
 
 if __name__ == '__main__':
     main()
-	    
+        
 # EOF

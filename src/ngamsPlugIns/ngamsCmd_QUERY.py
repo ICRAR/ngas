@@ -34,7 +34,7 @@ Dynamic loadable command to query the DB associated with the NG/AMS instance.
 """
 
 from ngams import *
-import ngamsDbm
+import ngamsDbm, ngamsDbCore
 import cPickle, json, decimal
 
 # import markup TODO: This is for HTML formatting
@@ -43,6 +43,9 @@ CURSOR_IDX           = "__CURSOR_IDX__"
 NGAMS_PYTHON_LIST_MT = "application/python-list"
 NGAMS_PYTHON_PICKLE_MT = "application/python-pickle"
 NGAMS_JSON_MT = "application/json"
+NGAMS_FILES_COLS = map(lambda x:x[1],ngamsDbCore._ngasFilesDef)
+NGAMS_DISKS_COLS = map(lambda x:x[1],ngamsDbCore._ngasDisksDef)
+
 
 valid_queries = {"files_list":"select * from ngas_files",
                   "disks_list":"select * from ngas_disks", 
@@ -254,7 +257,24 @@ def handleCmd(srvObj,
         # TODO: Potential problem with very large result sets.
         #       Implement streaming result directly.
         if (out_format == "list"):
-            finalRes = formatAsList(res)
+            header = None
+            if reqPropsObj.getHttpPar("query") not in ['files_stats', 'files_list_recent']:
+                if query.find('ngas_files') >=0:
+                    header = NGAMS_FILES_COLS
+                elif query.find('ngas_disks') >= 0:
+                    header = NGAMS_DISKS_COLS
+            elif reqPropsObj.getHttpPar("query") == 'files_stats':
+                header = ['Number of files', 'Total volume [MB]']
+            elif reqPropsObj.getHttpPar("query") == 'files_list_recent':
+                header = ['file_id', 'file_name', 'file_size', 'ingestion_date']
+            finalRes = formatAsList(res, header=header)
+            if query.find('ngas_files') >=0:
+                header = NGAMS_FILES_COLS
+            elif query.find('ngas_disks') >= 0:
+                header = NGAMS_DISKS_COLS
+            else:
+                header = None
+            finalRes = formatAsList(res, header=header)
             mimeType = NGAMS_TEXT_MT
         elif (out_format == "pickle"):
             finalRes = cPickle.dumps(res)
@@ -336,4 +356,3 @@ def handleCmd(srvObj,
 
 
 # EOF
-
