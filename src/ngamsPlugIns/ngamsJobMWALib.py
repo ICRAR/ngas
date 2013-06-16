@@ -301,7 +301,7 @@ def getNextOnlineHost():
         return None
     shuffle(res)    
     for host in res:
-        if (not pingHost(host[0])):
+        if (not pingHost('http://%s/STATUS' % host[0])):
             return host[0]    
     return None
 
@@ -472,14 +472,18 @@ def fileIngested(fileId, filePath, toHost, ingestRate):
     for corr in corrList:
         corr.fileIngested(fileId, filePath, ingestRate)
 
-def registerLocalTask(taskId, corrTask):
-    LT_dic[taskId] = corrTask
+def registerLocalTask(taskId, mrTask):
+    LT_dic[taskId] = mrTask
 
 def localTaskCompleted(localTaskResult):
+    """
+    Could be Corr but what about Obs?
+    """
     taskId = localTaskResult._taskId
     if LT_dic.has_key(taskId):
         corrTask = LT_dic.pop(taskId)
         corrTask.localTaskCompleted(localTaskResult)
+        print 'Notify task with a localTaskResult for taskId %s' % taskId
     else:
         print 'Local task %d completed, but cannot find its CorrelatorTask. Possibly this task has been launched twice due to some timeout issue' % taskId
 

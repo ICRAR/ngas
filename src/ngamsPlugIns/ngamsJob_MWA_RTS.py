@@ -35,9 +35,10 @@ to have another pipeline (e.g. CASA for VLA), write your own based on the generi
 framework in ngamsJobProtocol.py
 """
 
-import threading, commands, time, urllib2
+import os, threading, commands, time, urllib2
 from Queue import Queue, Empty
 import cPickle as pickle
+from urlparse import urlparse
 
 from ngamsJobProtocol import *
 import ngamsJobMWALib
@@ -139,6 +140,11 @@ class ObsTask(MapReduceTask):
         self.__completedCorrTasks = 0
         self.__rtsParam = rtsParam
         self.__corrRespQ = Queue()
+        self._taskExeHost = ''
+        self._ltComltEvent = threading.Event() # local task complete event
+        self._localTaskResult = None
+        self._timeOut4LT = 60 * 10 # 10 min
+        self._progress = -1
     
     def combine(self, mapOutput):
         """
@@ -154,26 +160,126 @@ class ObsTask(MapReduceTask):
         """
         dprint('Observation %s is reduced' % self.getId())
         obsTaskRe = ObsTaskResult(self.getId())
-        #1.  decide an exeHost to do the local reduction task
+        timeout_retry = 0
+        
+        imgurlList = []
         while (1):
             corrTaskRe = None
             try:
                 corrTaskRe = self.__corrRespQ.get_nowait()
                 if (corrTaskRe._errcode == 0):
                     imgurl = corrTaskRe._imgUrl
-                    
-                    # 2. download the file from imgurl to where?
-                    
+                    imgurlList.append(imgurl)                                       
                 else:
                     pass
-                    # simply ignore this part
             except Empty, e:
                 break
             obsTaskRe.merge(corrTaskRe)
         
-        # 3. - do the real reduction work (i.e. combine all images from correlators into a single one)
-        obsTaskRe.setImgUrl(debug_url)
+        if (len(imgurlList) < 1):
+            errmsg = 'Fail to find any image urls from correlators'
+            obsTaskRe._errmsg = errmsg
+            obsTaskRe._errcode = 4
+            self.setStatus(STATUS_EXCEPTION)
+            dprint(obsTaskRe._errmsg)
+            return obsTaskRe
+        
+        # 1. decide an exeHost to do the local reduction task    
+        self._progress = 0
+        while (self._progress == 0):    
+            self._progress = 1
+            host = None        
+            
+            # TODO
+            # for loop the imgurllist until find one that is online
+            # if cannot find, just get random one that is online
+            urlError = 0
+            for imgurl in imgurlList:
+                try:
+                    host = urlparse(imgurl)
+                    if (not host):
+                        urlError = 1
+                        continue
+                        #obsTaskRe._errcode = 1 
+                        #obsTaskRe._errmsg = 'Image url is not valid %s' % imgurl
+                    else:
+                        ret = ngamsJobMWALib.pingHost('http://%s:%d/STATUS' % (host.hostname, host.port))
+                        if (ret):
+                            urlError = 1
+                            continue
+                        else:
+                            urlError = 0
+                            break
+                except Exception, err:                                       
+                    urlError = 1
+                    continue
+            
+            if (urlError):
+                #try another random site
+                host = ngamsJobMWALib.getNextOnlineHost()
+                if (host):
+                    self._taskExeHost = host
+                else:
+                    obsTaskRe._errcode = 1
+                    obsTaskRe._errmsg = 'Failed to find any host to execute local job'
+                    self.setStatus(STATUS_EXCEPTION)
+                    break
+            else:    
+                self._taskExeHost = '%s:%d' % (host.hostname, host.port)
+            
+            #  2. construct the local TaskId (jobId__obsNum)
+            taskId = '%s__%s' % (self.getParent().getId(), self.getId())
+            obsLT = ObsLocalTask(taskId, imgurlList, self.__rtsParam)
+            
+            # 3. register the local task
+            ngamsJobMWALib.registerLocalTask(taskId, self)
+            
+            # 4. - do the real reduction work (i.e. combine all images from correlators into a single one) at a remote node
+            strLT = pickle.dumps(obsLT)
+            try:
+                strRes = urllib2.urlopen('http://%s/RUNTASK' % self._taskExeHost, data = strLT, timeout = 15).read()
+                dprint('Submit local task, acknowledgement received: %s'     % strRes)
+            except urllib2.URLError, urlerr:
+                if (str(urlerr).find('Connection refused') > -1): # the host is down
+                    #TODO - make it a log!
+                    print 'The original host %s is down, changing to another host to download all image files...' % self._taskExeHost
+                    self._progress = 0
+                    self._taskExeHost = None
+                    continue # the current host is down, change to another host, and redo file staging
+                else:
+                    errmsg = 'Fail to schedule obs reduction task on %s: %s' % (self._taskExeHost, str(urlerr))
+                    obsTaskRe._errmsg = errmsg
+                    obsTaskRe._errcode = 2
+                    self.setStatus(STATUS_EXCEPTION)
+                    dprint(obsTaskRe._errmsg)
+                    break       
+            
+            # 5. - wait until result comes back
+            self._ltComltEvent.wait(self._timeOut4LT)
+            if (not self._localTaskResult):
+                timeout_retry += 1
+                if (timeout_retry > 3):
+                    errmsg = 'Timeout when running obs reduction task on %s' % (self._taskExeHost)
+                    obsTaskRe._errmsg = errmsg
+                    obsTaskRe._errcode = 3
+                    self.setStatus(STATUS_EXCEPTION)
+                    dprint(obsTaskRe._errmsg)
+                    break
+                else:
+                    print 'The local task %s on node %s has timed out, try another host' % (taskId, self._taskExeHost)
+                    self._progress = 0
+                    self._taskExeHost = None
+                    self._ltComltEvent.clear()
+                    continue
+            else:
+                obsTaskRe._errcode = 0
+                obsTaskRe.setImgUrl(self._localTaskResult.getResultURL())
+        
         return obsTaskRe
+    
+    def localTaskCompleted(self, localTaskResult):
+        self._localTaskResult = localTaskResult
+        self._ltComltEvent.set()
         
 
 class CorrTask(MapReduceTask):
@@ -334,7 +440,7 @@ class CorrTask(MapReduceTask):
             
             # 3. submit the local task to a remote host to run
             # but register itself to receive task complete event first
-            
+            ngamsJobMWALib.registerLocalTask(taskId, self)
             strLT = pickle.dumps(corrLT)
             try:
                 strRes = urllib2.urlopen('http://%s/RUNTASK' % self._taskExeHost, data = strLT, timeout = 15).read()
@@ -362,7 +468,7 @@ class CorrTask(MapReduceTask):
             if (not self._localTaskResult):
                 # timeout, consider re-run the task on another node
                 self._failedLTExec += 1
-                if (self._failedLTExec < 4): # maximum attempts 3 times
+                if (self._failedLTExec > 3): # maximum attempts 3 times
                     errmsg = 'Timeout when waiting for the local task to complete on node %s' % self._taskExeHost
                     cre._errmsg = errmsg
                     cre._errcode = 7
@@ -458,6 +564,8 @@ class CorrTask(MapReduceTask):
             if (self._fileLocDict.has_key(fileId)):
                 floc = self._fileLocDict[fileId]._svrHost
                 ingR = self._fileLocDict[fileId]._ingestRate
+                if (not ingR):
+                    ingR = 0
                 if (floc == self._taskExeHost):
                     fjsobj['status'] = FSTATUS_ONLINE
                 else:
@@ -466,7 +574,8 @@ class CorrTask(MapReduceTask):
             else:
                 floc = 'Offline'
                 fjsobj['status'] = FSTATUS_OFFLINE # 1 online, 0 offline
-            fjsobj['name'] = '%s@%s-%.0fMB/s' % (fileId, floc, (ingR / 1024 ** 2)) # convert to MB/s
+                ingR = 0
+            fjsobj['name'] = '%s@%s-%.0fMB/s' % (fileId, floc, (ingR / 1024.0 ** 2)) # convert to MB/s
             
             children.append(fjsobj)
         jsobj['children'] = children
@@ -516,6 +625,8 @@ class ObsTaskResult:
         self._imgUrl = None
         self.good_list = [] # a list of tuples (subbandId, fileIds separated by comma)
         self.bad_list = [] # a list of tuples (subbandId, errMsg)
+        self._errcode = 0
+        self._errmsg = ''
     
     def merge(self, corrTaskResult):
         """
@@ -531,15 +642,15 @@ class ObsTaskResult:
             self.bad_list.append(re)
             self.bad_list.sort()
         else:
-            fileList = corrTaskResult._fileIds
-            nf = len(fileList)
-            if (nf < 1):
-                return
-            fids = fileList[0]
-            if (nf > 1):
-                for fileId in fileList[1:]:
-                    fids += ',%s' % fileId
-            re = (corrTaskResult._subbandId, fids)
+            #fileList = corrTaskResult._fileIds
+            #nf = len(fileList)
+            #if (nf < 1):
+            #    return
+            #fids = fileList[0]
+            #if (nf > 1):
+            #    for fileId in fileList[1:]:
+            #        fids += ',%s' % fileId
+            re = (corrTaskResult._subbandId, corrTaskResult._imgUrl) # at least print out successful img urls
             self.good_list.append(re)
             self.good_list.sort()                    
     
@@ -556,14 +667,14 @@ class ObsTaskResult:
         
         if (fl):
             re = '# of successful subbands:\t\t%d\n' % sl # no image url available for incomplete observations
-        else:
-            re = '# of completed subbands: \t\t%d, image_url = %s\n.' % (tt, self._imgUrl)
-        for subtuple in self.good_list:
-            re += '\t subbandId: %d, vis files: %s\n' % (subtuple[0], subtuple[1])
-        if (fl):
+            for subtuple in self.good_list:
+                re += '\t subbandId: %d, image urls (for this sub-band only): %s\n' % (subtuple[0], subtuple[1])
             re += '# of failed subbands:\t\t%d\n' % fl
             for subtuple in self.bad_list:
                 re += '\t subbandId: %d, vis files failed: %s\n' % (subtuple[0], subtuple[1])
+        else:
+            re = 'image_url = %s (accessible from within Fornax) \n # of completed subbands: \t\t%d\n\n' % (self._imgUrl, tt)
+        
         
         return re + '\n'   
         
@@ -607,7 +718,12 @@ class JobResult:
                 re += 'Observation - %s\n%s\n' % (obsRT._obsNum, '-' * len('Observation - ' + obsRT._obsNum))
                 re += str(obsRT)
         
-        return re
+        re = re.replace('\t', '&nbsp;&nbsp;&nbsp;&nbsp;')
+        re = re.replace('\n', '<br/>')
+        #header = '<html><head><style>p.ex1{font:12px arial,sans-serif;}</style></head><body><p class="ex1">'
+        #tail = '</p></body></html>'
+        return re 
+        #'%s%s%s' % (header, re, tail)
     
     def toJSON(self):
         pass
@@ -631,10 +747,15 @@ class RTSJobParam:
         self.fine_channel = 40 # KHz
         self.num_subband = 24 # should be the same as coarse channel
         self.tile = '128T'
+        
+        self.mwa_path = '/scratch/astronomy556/MWA'
         #RTS template prefix (optional, string)
-        self.rts_tplpf = '/scratch/astronomy556/MWA/RTS/utils/templates/RTS_template_'
+        self.rts_tplpf = '%s/RTS/utils/templates/RTS_template_' % self.mwa_path
         #RTS template suffix
         self.rts_tplsf = '.in'
+        self.ngas_src = '%s/ngas_rt' % self.mwa_path
+        self.ngas_processing_path = '/tmp/NGAS_MWA/processing'
+        
         
         #RTS template names for this processing (optional, string - comma separated aliases, e.g.
         #drift,regrid,snapshots, default = 'regrid'). Each name will be concatenated with 
@@ -662,6 +783,78 @@ class DummyLocalTask(MRLocalTask):
         ret = MRLocalTaskResult(self._taskId, 0, 'everything is fine')
         time.sleep(10) #simulate work
         return ret
+
+class ObsLocalTask(MRLocalTask):
+    
+    def __init__(self, taskId, imgurl_list, params):
+        """
+        Constructor
+        
+        taksId        uniquely identify this ObsLocalTask (string)
+        imgurl_list   a list of img urls (List) 
+        params        RTSJobParam
+        """
+        MRLocalTask.__init__(self, taskId)
+        self._imgurl_list = imgurl_list
+        self._params = params
+    
+    def execute(self):
+        """
+        Task manager calls this function to
+        execute the task.
+        
+        Return:    MRLocalTaskResult
+        """
+        # create the working directory
+        ids = self._taskId.split('__')
+        job_id = ids[0]
+        obs_num = int(ids[1])
+        work_dir = '%s/%s/%s/%d' % (self._params.ngas_processing_path, self._taskId, job_id, obs_num)
+        if (os.path.exists(work_dir)):
+            cmd = 'rm -rf %s' % work_dir
+            ret = self._runBashCmd(cmd)
+            if (ret):
+                return ret
+        cmd = 'mkdir -p %s' % work_dir
+        ret = self._runBashCmd(cmd)
+        if (ret):
+            return ret
+        
+        # cd working directory and download images
+        os.chdir(work_dir)
+        for imgurl in self._imgurl_list:
+            cmd = 'wget -O tmp.tar.gz %s' % imgurl
+            self._runBashCmd(cmd, False)
+            cmd = 'tar -xzf tmp.tar.gz'
+            self._runBashCmd(cmd, False)
+        
+        cmd = 'rm tmp.tar.gz'
+        self._runBashCmd(cmd, False)
+        
+        # go to the upper level directory, and pack all image files together
+        upp_dir = '%s/%s' % (self._params.ngas_processing_path, self._taskId)
+        os.chdir(upp_dir)
+        cmd = 'tar -czf %s.tar.gz %s/' % (self._taskId, job_id)
+        ret = self._runBashCmd(cmd)
+        if (ret):
+            return ret
+        
+        # record the image path so that cmd_RUNTASK can use it to archive it on the 
+        # same host
+        complete_img_path = '%s/%s.tar.gz' % (upp_dir, self._taskId)
+        ret = MRLocalTaskResult(self._taskId, 0, complete_img_path, True)
+        return ret
+    
+    def _runBashCmd(self, cmd, failonerr = True):
+        re = commands.getstatusoutput(cmd)
+        if (failonerr and re[0]):
+            ret = MRLocalTaskResult(self._taskId, re[0], 'Fail to %s due to %s' % (cmd, re[1]))
+            return ret
+        else:
+            return None
+        
+        
+        # wget -O file_id imgurl
     
 class CorrLocalTask(MRLocalTask):
     
@@ -669,7 +862,7 @@ class CorrLocalTask(MRLocalTask):
         """
         Constructor
         
-        taskId      uniquely identify this CorrLocalTask
+        taskId      uniquely identify this CorrLocalTask (string)
         filelist    a list of file path (List)
         params      RTSJobParam  
         """
@@ -717,12 +910,6 @@ class CorrLocalTask(MRLocalTask):
             for file in filelist[1:]:
                 re += ',%s' % file
         return re
-
-class ObsLocalTask(MRLocalTask):
-    """
-    Reduce all correlators' output into a single observation's output
-    """
-    pass
 
 class RTSJobLocalTask(MRLocalTask):
     """

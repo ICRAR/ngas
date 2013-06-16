@@ -59,6 +59,7 @@ from ngamsJob_MWA_RTS import *
 
 #staging_run = 1
 jobDic = {} # key - jobId, val - job obj
+predef_tpls = ['drift','FnxA','gencal','regrid','simplecal','stokes','usecal']
 
 def invalidParam(param):
     if (None == param or len(str(param)) == 0):
@@ -93,29 +94,63 @@ def reportHostError():
 #TODO - use template soon!
 @get('/job/submit')
 def submit_job_get():
-    return '''<form method="POST" action="/job/submit">
-                Your name: <input name="name" type="text" /> <br/>
-                Job  type: <select name="type">
-                <option value="MWA_RTS" selected>MWA RTS</option>
-                <option value="MWA_CASA">MWA CASA</option>
-                </select> <br/>
-                Observation numbers (comma separated) <br/>
-                <textarea name="observations" rows="4" cols="50">1052803816,1053182656,1052749752</textarea><br/>
-                <input type="submit" />
-              </form>'''
+    return template('ngamsJobMAN_submit.html')
+
+def _responseMsg(msg):
+    """
+    show the msg as a response HTML page
+    """
+    return template('ngamsJobMAN_response.html', ret_msg = msg)    
 
 @post('/job/submit')
 def submit_job_post():
     name = request.forms.get('name')
     if invalidParam(name):
-        return 'Invalid user name'
+        return _responseMsg('Invalid user name')
+    
     observations = request.forms.get('observations')
     if invalidParam(observations):
-        return 'Invalid observation numbers'
+        return _responseMsg('Invalid observation numbers')
     jtype = request.forms.get('type')
     if ('MWA_RTS' != jtype):
-        return 'Sorry we currently only accept MWA RTS jobs, %s jobs will be supported soon' % jtype
+        return _responseMsg('Sorry we currently only accept MWA RTS jobs, %s jobs will be supported soon' % jtype)
     
+    params = RTSJobParam()
+    if ('GPU' == request.forms.get('processor')):
+        params.use_gpu = True
+    else:
+        params.use_gpu = False
+    
+    use_mytpl =  int(request.forms.get('use_mytpl'))
+    all_tpls = ''    
+    if (not use_mytpl):
+        for i in range(len(predef_tpls)):
+            tt = request.forms.get('template_%d' % i)
+            if (tt):
+                all_tpls += ',%s' % tt            
+        if (len(all_tpls) < 1):
+            return _responseMsg('No templates are selected.')
+        else:
+            params.rts_tpl_name = all_tpls[1:] #remove the first comma
+    else:
+        tmp_prefix = request.forms.get('tpl_prefix')
+        tpl_path = os.path.dirname(tmp_prefix)
+        if (not os.path.exists(tpl_path)):
+            return _responseMsg('It appears that template path %s does not exist on Fornax.' % tpl_path)
+        tpl_suffix = request.forms.get('tpl_suffix')
+        if (not tpl_suffix):
+            tpl_suffix = ''
+        tpl_files = request.forms.get('tpl_name')
+        if invalidParam(tpl_files):
+            return _responseMsg('Please specify template name')
+        for tpl_file in tpl_files.split(','):
+            tpl_full_file = '%s%s%s' % (tmp_prefix, tpl_file, tpl_suffix)
+            if (not os.path.exists(tpl_full_file)):
+                return _responseMsg('Template file %s does not exist on Fornax' % tpl_full_file)
+        params.rts_tpl_name = tpl_files
+        params.rts_tplpf = tmp_prefix
+        params.rts_tplsf = tpl_suffix
+        
     obsNums = observations.split(',')
     
     dt = datetime.now()
@@ -124,14 +159,14 @@ def submit_job_post():
     job = None
     try:        
         if (jtype == 'MWA_RTS'):
-            params = RTSJobParam()
+            
             params.obsList = obsNums
             job = RTSJob(jobId, params)
         
         if (job == None):
             raise Exception ('Cannot initialise the job.')
     except Exception, e:
-        return 'Failed to submit your job due to Exception: %s' % str(e)
+        return _responseMsg('Failed to submit your job due to Exception: %s' % str(e))
     
     jobDic[jobId] = job
     # launch thread to execute the job
@@ -139,10 +174,11 @@ def submit_job_post():
     thrd = threading.Thread(None, _jobThread, 'MR_THRD_%s' % jobId, args) 
     thrd.setDaemon(1) # it will exit immediately should the server down
     thrd.start()
-    return 'Job %s has been submitted. <br><ul>'  % jobId +\
-        '<li> <a href="/job/monitor?job_id=%s">Monitor its progress</a></li>' % jobId +\
-        '<li> <a href="/job/result?job_id=%s">Check its result</a></li></ul>' % jobId
+    return _responseMsg('Job %s has been submitted. <br/><ul>'  % jobId +\
+        '<li> <a href="/job/monitor?job_id=%s">Monitor job progress</a></li>' % jobId +\
+        '<li> <a href="/job/result?job_id=%s">Check job result</a></li></ul>' % jobId)
         #'<a href="/job/status?job_id=%s">View its status (JSON). </a> <br>' % jobId +\
+    #"""
 
 @post('/localtask/result')
 def reportLocalTask():
@@ -152,16 +188,25 @@ def reportLocalTask():
     try:
         localTaskResult = pickle.loads(request.body.read())
     except Exception, err:
-        return 'Invalid MRLocalTask pickle content: %s' % str(err)
+        msg = 'Invalid MRLocalTask pickle content: %s' % str(err)
+        print msg
+        return msg
     taskId = localTaskResult._taskId
     if (localTaskResult.getErrCode()):
-        return 'Task %s has an error: %s' % (taskId, localTaskResult.getInfo())
+        msg = 'Task %s has an error: %s' % (taskId, localTaskResult.getInfo())
+        print msg
+        return msg
     else:
         if (localTaskResult.isResultAsFile()):
-            return 'Got local task result for taskId: %s, url = %s' % (taskId, localTaskResult.getResultURL())
+            msg = 'Got local task result for taskId: %s, url = %s' % (taskId, localTaskResult.getResultURL())
+            print msg
+            #return msg
         else:
-            return 'Got local task result for taskId: %s, info = %s' % (taskId, localTaskResult.getInfo())
-    ngamsJobMWALib.localTaskCompleted(localTaskResult)
+            msg = 'Got local task result for taskId: %s, info = %s' % (taskId, localTaskResult.getInfo())
+            print msg
+            #return msg
+        ngamsJobMWALib.localTaskCompleted(localTaskResult)
+        return msg
         
 def encode_decimal(obj):
     """
@@ -186,8 +231,14 @@ def monitorJob():
     """
     jobId = request.query.get('job_id')
     if (invalidParam(jobId) or (not jobDic.has_key(jobId))):
-        return 'Please provide an valid job_id as the parameter'
+        return _responseMsg('Please provide an valid job_id as the parameter')
     return template('ngamsJobMonitor.html', job_id = jobId) 
+
+@get('/job/testmonitor')
+def testmonitorjob():
+    """
+    """
+    return template('ngamsJobMonitor.html', job_id = '001')
 
 @get('/job/result')
 def getJobResult():
@@ -196,14 +247,39 @@ def getJobResult():
     """
     jobId = request.query.get('job_id')
     if (invalidParam(jobId) or (not jobDic.has_key(jobId))):
-        return 'Please provide an valid job_id as the parameter'
+        return _responseMsg('Please provide an valid job_id as the parameter')
     mrJob = jobDic[jobId]
     sta = mrJob.getStatus()
     if (sta == STATUS_RUNNING or sta == STATUS_NOT_STARTED):
-        return 'Job is still running or not yet started. Check the result later.'
+        return _responseMsg('Job is still running or not yet started. Check the result later.')
     if (sta == STATUS_EXCEPTION and mrJob.getFinalJobResult() == None):
-        return 'Job encountered exception, result is not available'
-    return str(mrJob.getFinalJobResult())
+        return _responseMsg('Job encountered exceptions, result is not available')
+    return _responseMsg(str(mrJob.getFinalJobResult()))
+
+@get('/job/list')
+def listJobs():
+    """
+    Show a list of jobs (running and completed) whose references
+    reside in memory. Do not yet support job persistency
+    """
+    #job0 = ('001', 'Running', '35min')
+    #job1 = ('002', 'Complete', '30min')
+    #job2 = ('003', 'Complete', '3min')
+    #job3 = ('004', 'Suspended', '44min')
+    #job4 = ('005', 'Running', '1hour')
+    jobList = []
+    #jobList.append(job0)
+    #jobList.append(job1)
+    #jobList.append(job2)
+    #jobList.append(job3)
+    #jobList.append(job4)
+    for job in jobDic.values():
+        jobList.append((job.getId(), job.getStatusString(), job.getWallTime()))
+    jobList.sort(key = _jobSortFunc, reverse = True) # most recent first
+    return template('ngamsJobMAN_listjob.html', jobList = jobList)
+ 
+def _jobSortFunc(job):   
+    return job.getId().split('_')[1]
 
 @route('/static/<filepath:path>')
 def server_static(filepath):
