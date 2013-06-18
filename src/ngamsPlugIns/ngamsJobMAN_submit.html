@@ -1,0 +1,34 @@
+<html>
+<head>
+<style>
+%include ngamsJobMAN.css
+</style>
+</head>
+<body>
+%include ngamsJobMAN_Nav.html
+<form method="POST" action="/job/submit">
+	My name: <input name="name" type="text" /> (will become part of the jobId)<br/><br/>
+	Job  type: <select name="type">
+	<option value="MWA_RTS" selected>MWA RTS</option>
+	</select> <br/><br/>
+	Exact observation numbers <br/>(comma separated, e.g. 1052803816,1053182656,1052749752) <br/>
+	<textarea name="observations" rows="4" cols="50"></textarea><br/><br/>
+	Select the following parameter templates: <br/>
+	<input type="checkbox" name="template_0" value="drift">drift
+	<input type="checkbox" name="template_1" value="FnxA">FnxA
+	<input type="checkbox" name="template_2" value="gencal">gencal
+	<input type="checkbox" name="template_3" value="regrid">regrid
+	<input type="checkbox" name="template_4" value="simplecal">simplecal
+	<input type="checkbox" name="template_5" value="stokes">stokes
+	<input type="checkbox" name="template_6" value="usecal">usecal <br/><br/>
+	Choose computing resource: <br/>
+	<input type="radio" name="processor" value="GPU" checked>GPU Accelerated<br/>
+	<input type="radio" name="processor" value="CPU">CPU Only<br/><br/>
+	Use my own templates on Fornax: <input type="radio" name="use_mytpl" value="0" checked>No
+	<input type="radio" name="use_mytpl" value="1">Yes<br/>
+	Template prefix: <input name="tpl_prefix" type="text" value="/scratch/astronomy556/MWA/RTS/utils/templates/RTS_template_" size="70"/> <br/>
+	Template suffix: <input name="tpl_suffix" type="text" value=".in"/> <br/>
+	Template names:  <input name="tpl_name" type="text" value="regrid"/> (comma separated) <br/>
+	<br/><input type="submit" />
+</form>
+</body></html>

@@ -29,7 +29,7 @@ This module provides an MapReduce framework for running NGAS jobs, task and othe
 A particular job type (i.e. RTS) should implement these interfaces
 """
 
-import threading
+import threading, datetime
 
 STATUS_NOT_STARTED = 0
 STATUS_RUNNING = 1
@@ -68,11 +68,14 @@ class MapReduceTask:
         self.__mapList = [] # a list of MRTask, composite design pattern
         self.__mapDic = {} # key - mrTaskId, val - mrTask. findMRTaskById
         self.__reducer = None
+        self._starttime = None
+        self._endtime = None
         if (None == Id or '' == Id):
             errStr = 'Invalid task id: %s' % Id
             raise Exception, errStr
         self.__id = Id 
-        self.__status = STATUS_NOT_STARTED # not running
+        #self.__status = STATUS_NOT_STARTED # not running
+        self.setStatus(STATUS_NOT_STARTED)
         self.setReducer()
         if (parent):
             self._parent = parent
@@ -88,7 +91,9 @@ class MapReduceTask:
         """
         TODO - fault tolerance (e.g. some tasks may fail)
         """  
-        self.__status = STATUS_RUNNING             
+        #self.__status = STATUS_RUNNING  
+        self.setStatus(STATUS_RUNNING)
+                   
         if (len(self.__mapList) > 0):
             if (self.__reducer == None):
                 errStr = 'Reducer missing for the MRtask %s, which has at least one child mapper.' % str(self.getId())
@@ -110,7 +115,7 @@ class MapReduceTask:
             # Thus no reducer either, so return to the upper level            
             obj = self.map()
             if (self.__status == STATUS_RUNNING):
-                self.__status = STATUS_COMPLETE
+                self.setStatus(STATUS_COMPLETE)
             return obj
     
     def __combine(self, mapOutput):
@@ -170,6 +175,23 @@ class MapReduceTask:
     
     def setStatus(self, status):
         self.__status = status
+        if (status == STATUS_RUNNING):
+            self._starttime = datetime.datetime.now().replace(microsecond=0)
+        elif (status == STATUS_COMPLETE or status == STATUS_EXCEPTION):
+            self._endtime = datetime.datetime.now().replace(microsecond=0)
+    
+    def getWallTime(self):
+        if (self.getStatus() < STATUS_RUNNING):
+            return '0:00:00'
+        if (self.getStatus() == STATUS_RUNNING):
+            endtime = datetime.datetime.now().replace(microsecond=0)
+        else:
+            endtime = self._endtime
+        
+        return str(endtime - self._starttime)
+    
+    def getStatusString(self):
+        return statusDic[self.getStatus()]
     
     def start(self):
         """
