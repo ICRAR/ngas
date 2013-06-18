@@ -22,7 +22,8 @@
 """
 Module to create throughput statistics plots.
 """
-import psycopg2, pylab, argparse
+
+import pylab, argparse
 import sys, datetime
 from calendar import monthrange
 import getpass
@@ -96,20 +97,30 @@ class throughputPlot():
 
         SIDE EFFECTS: popultes required arrays for plotting
         """
-        try:
-            t=dbpass
-        except NameError:
-            dbpass = getpass.getpass('%s DB password: ' % self.db)
-
-        dbconn=psycopg2.connect(database="ngas", user="ngas",password=dbpass,host=self.DB[self.db])
+        if self.db in self.DB.keys():
+            import psycopg2 as dbdrv
+            hsql="""select count(file_id), sum(uncompressed_file_size)/
+            (date_part('epoch', to_timestamp(max(ingestion_date),'YYYY-MM-DD"T"HH24:MI:SS.MS')- to_timestamp(min(ingestion_date),'YYYY-MM-DD"T"HH24:MI:SS.MS')) + 10.)/(1024^2) as average, 
+            max(ingestion_date) as last , min(ingestion_date) as first , sum(uncompressed_file_size)/1024^4 as volume from ngas_files where ingestion_date between {0} and {1}"""
+            try:
+                t=dbpass
+            except NameError:
+                dbpass = getpass.getpass('%s DB password: ' % self.db)
+            dbconn=dbdrv.connect(database="ngas", user="ngas",password=dbpass,host=self.DB[self.db])
+        else:
+            import sqlite3 as dbdrv
+            hsql="""select count(file_id),
+            sum(uncompressed_file_size)/(strftime('%s',max(ingestion_date))-strftime('%s',min(ingestion_date)))/1024./1024. as average, 
+            max(ingestion_date) as last , min(ingestion_date) as first , sum(uncompressed_file_size)/1024/1024/1024./1024. as volume from ngas_files where ingestion_date between {0} and {1}"""
+            dbconn = dbdrv.connect(self.db)
         cur = dbconn.cursor()
-        hsql="""select count(file_id), sum(uncompressed_file_size)/(date_part('epoch', to_timestamp(max(ingestion_date),'YYYY-MM-DD"T"HH24:MI:SS.MS')- to_timestamp(min(ingestion_date),'YYYY-MM-DD"T"HH24:MI:SS.MS')) + 10.)/(1024^2) as average, max(ingestion_date) as last , min(ingestion_date) as first , sum(uncompressed_file_size)/1024^4 as volume from ngas_files where ingestion_date between {0} and {1}"""
         res = []
         for ii in range(1,self.loop+1):
             ssql = hsql.format(self.fdate % (self.date, (ii-1)), self.fdate % (self.date,ii))
             cur.execute(ssql)
             r = cur.fetchall()
             res.append(r)
+            self.ssql = ssql
         res = pylab.array(res)
         x = res[:,:,1].reshape(len(res))
         x[pylab.where(x < -1)]=0
@@ -144,14 +155,14 @@ class throughputPlot():
         ax1.set_xlabel(self.mode[1])
         ax1.set_ylabel('MB/s')
         ax1.set_xlim([0,self.loop+0.5])
-        ax1.bar(pylab.where(self.x>=0)[0]+0.1,self.x)
+        ax1.bar(pylab.where(self.x>=0)[0]+1.1,self.x)
         ax1.xaxis.axes.set_autoscalex_on(False)
         ax1.plot([0,self.loop],[pylab.median(self.x),pylab.median(self.x)])
         ax1.plot([0,self.loop],[pylab.mean(self.x),pylab.mean(self.x)])
 
         ax2 = ax1.twinx()
         ax2.xaxis.axes.set_autoscalex_on(False)
-        ax2.plot(pylab.where(self.n>=0)[0]+0.5,self.n,'r-', marker='o')
+        ax2.plot(pylab.where(self.n>=0)[0]+1.5,self.n,'r-', marker='o')
 
         for tl in ax2.get_yticklabels():
             tl.set_color('r')
