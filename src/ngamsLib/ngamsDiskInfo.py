@@ -203,10 +203,10 @@ class ngamsDiskInfo:
  
         Returns:   Reference to object itself.
         """
-	if (id):
-        	self.__hostId = str(trim(id, "\" "))
-	else:
-		self.__hostId = ""
+        if (id):
+            self.__hostId = str(trim(id, "\" "))
+        else:
+            self.__hostId = ""
         return self
 
 

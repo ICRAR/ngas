@@ -585,7 +585,7 @@ def ngas_full_buildout():
     with cd(env.NGAS_DIR_ABS):
         # run bootstrap with correct python version (explicit)
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
-        virtualenv('python{0} bootstrap.py -v 1.7.0'.format(NGAS_PYTHON_VERSION))
+        virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
 
     ngas_buildout()
 
@@ -649,6 +649,7 @@ def init_deploy(type='archive'):
     """
     if type == 'archive':
         initFile = 'ngamsServer.init.sh'
+        NGAS_DEF_CFG = 'NgamsCfg.SQLite.mini.xml'
     elif type == 'cache':
         initFile = 'ngamsCache.init.sh'
         NGAS_DEF_CFG = 'NgamsCfg.SQLite.cache.xml'
