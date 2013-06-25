@@ -36,12 +36,12 @@ THIS_BRANCH = 'Tornado' # Used to switch to the Tronado branch
 USERNAME = 'ec2-user'
 POSTFIX = False
 AMI_ID = 'ami-aecd60c7'
-INSTANCE_NAME = 'NGAS'
+INSTANCE_NAME = 'NGAS_tornado'
 INSTANCE_TYPE = 't1.micro'
 INSTANCES_FILE = os.path.expanduser('~/.aws/aws_instances')
 AWS_KEY = os.path.expanduser('~/.ssh/icrar_ngas.pem')
 KEY_NAME = 'icrar_ngas'
-ELASTIC_IP = False
+ELASTIC_IP = 'False'
 SECURITY_GROUPS = ['NGAS'] # Security group allows SSH
 NGAS_PYTHON_VERSION = '2.7'
 NGAS_PYTHON_URL = 'http://www.python.org/ftp/python/2.7.5/Python-2.7.5.tar.bz2'
@@ -570,7 +570,7 @@ def ngas_buildout():
         with settings(warn_only=True):
             run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
                 .format(env.NGAS_DIR_ABS))
-            run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template')
+            run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template'.format(NGAS_DIR_ABS))
 
 
 @task
