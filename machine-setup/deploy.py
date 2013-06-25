@@ -601,6 +601,8 @@ def test_env():
 
     Allow the user to select if a Elastic IP address is to be used
     """
+    env.instance_name = INSTANCE_NAME
+    env.use_elastic_ip = ELASTIC_IP
     if 'use_elastic_ip' in env:
         use_elastic_ip = to_boolean(env.use_elastic_ip)
     else:
