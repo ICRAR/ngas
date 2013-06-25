@@ -61,6 +61,20 @@ def execCmd(cmd, failonerror = True):
 def replaceTextInFile(fr, to, file):
     cmd = 'sed -i s/%s/%s/g %s' % (fr, to, file)
     execCmd(cmd)
+
+def pingHost(url, timeout = 5):
+    """
+    To check if a host is successfully running
+    
+    Return:
+    0        Success
+    1        Failure
+    """
+    cmd = 'curl %s --connect-timeout %d' % (url, timeout)
+    try:
+        return execCmd(cmd)[0]
+    except Exception, err:
+        return 1
     
 def isHeadNode():
     """
@@ -141,6 +155,19 @@ def createDiskVolumes(overwrite = False, num_volume = 1):
         execCmd(cmd)
         cmd = '%s %s --path=%s --silent' % (python_exec, ngas_vol_tool, vol_path) 
         execCmd(cmd)
+
+def cleanTaskQueue():
+    """
+    Run on a host to kill all pending RTS jobs.
+    """
+    cmd = 'ps xa|grep rts_node'
+    re = execCmd(cmd)
+    lines = re[1].split('\n')
+    for line in lines:
+        if (line.find('grep rts_node')):
+            continue
+        cmd = 'kill -9 %s' % line.split()[0]
+        execCmd(cmd)
     
 def startServer(overwriteCfg = False, overwriteDisks = False):
     """
@@ -153,6 +180,7 @@ def startServer(overwriteCfg = False, overwriteDisks = False):
     if (not io_ex_ip.has_key(getNGASNodeName())): # for copy/proxy archive nodes, do not create local disks
         createDiskVolumes(overwrite = overwriteDisks)
     
+    cleanTaskQueue()
     cmd = '%s %s -cfg %s -autoOnline -force -multipleSrvs' % (python_exec, ngas_cache_server,cfgFile)
     #2>&1>/dev/null
     execCmd(cmd)
@@ -190,6 +218,7 @@ def monitorServers(status = 'online', printRes = True):
         print 'Unknown monitor status: %s, valid status are: %s' % (status, host_status.keys())
         return
     sqlQuery = "select host_id, srv_state, installation_date from ngas_hosts where srv_state = '%s'" % host_status[status]
+    sqlUpdate = "update ngas_hosts set srv_state = 'NOT-RUNNING' where host_id = '%s'"
     conn = psycopg2.connect(database = 'ngas', user='ngas', 
                             password = 'bmdhcyRkYmE=\n'.decode('base64'), 
                             host = db_host)    
@@ -197,13 +226,33 @@ def monitorServers(status = 'online', printRes = True):
         cur = conn.cursor()         
         cur.execute(sqlQuery)
         res = cur.fetchall()    
+        
+        if ('online' == status):
+            needToRefresh = 0
+            for ho in res:
+                if (pingHost('http://%s/STATUS' % ho[0])):
+                    print 'Host %s is not reachable' % ho[0]
+                    needToRefresh = 1
+                    cur_1 = None
+                    try:
+                        cur_1 = conn.cursor()
+                        cur_1.execute(sqlUpdate % ho[0])
+                        conn.commit()
+                    finally:
+                        if (cur_1):
+                            del cur_1
+            if (needToRefresh):
+                cur.execute(sqlQuery)
+                res = cur.fetchall()
+        
         header = ()
         for i in range(len(cur.description)):
             header += (cur.description[i].name,)
+            
     finally:
         if (cur):
             del cur
-        if (conn):
+        if (conn):            
             del conn
     if (printRes):
         print ngamsCmd_QUERY.formatAsList([res], header)
@@ -245,6 +294,8 @@ def stopServers(serverList = None):
     
     for host_id in serverList.split(','):
         try:
+            if (host_id.split(':')[0] == io_ex_ip['io1'] or host_id.split(':')[0] == io_ex_ip['io2']):
+                continue
             stopSingleServer(host_id.strip())
         except Exception, e:
             print 'Fail to shut down server %s, Exception: %s' % (host_id, str(e))
@@ -282,5 +333,5 @@ if __name__ == '__main__':
             else:
                 sshStartServers()
         else:
-            print 'usage: %s ngamsFornaxMgr.py [start[1|0 [1|0]] | stop [server1:port, server2:port] | monitor [online|offline|down]]' % python_exec
+            print 'usage: %s ngamsFornaxMgr.py [start[1|0 [1|0]] | stop [server1:port, server2:port] | monitor [online|offline|down]] | ssh' % python_exec
         

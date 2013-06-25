@@ -29,4 +29,7 @@ body
 		padding: 1em 8px;
 		color: #fff;
 		background-color: #069;
-		margin: 0; }		
+		margin: 0; }	
+		
+	/* For showing the error message */
+	pre {background-color: #eee; border: 1px solid #ddd; padding: 5px;}	

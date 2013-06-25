@@ -32,10 +32,12 @@ metadata query, data movement, and HTTP-based communication
 during job task execution and scheduling
 """
 
-import os, threading, urllib, traceback, commands
+import os, threading, urllib, traceback, commands, logging, time
 from random import choice, shuffle
 import psycopg2
 import cPickle as pickle
+from cPickle import UnpicklingError
+import logging
 
 #from Queue import Queue, Empty
 from ngamsMWAAsyncProtocol import *
@@ -43,6 +45,7 @@ import ngamsJobMAN
 
 g_db_conn = None # MWA metadata database connection
 f_db_conn = None # Fornax NGAS database connection
+l_db_conn = None # LTA NGAS database connection
 
 io_ex_ip = {'io1':'202.8.39.136:7777', 'io2':'202.8.39.137:7777'}  # the two Copy Nodes external ip
 
@@ -51,10 +54,15 @@ stage_dic = {} # key - fileId, value - a list of CorrTasks
 stage_sem = threading.Semaphore(1)
 
 LT_dic = {} # key - taskId, value - corrTask
+LT_dic_sem = threading.Semaphore(1)
+#blackHostList = []
+#blackList_sem = threading.Semaphore(1)
 
 #ST_INTVL_STAGE = 5 # interval in seconds between staging file checks
 #ST_BATCH_SIZE = 5 # minimum number of files in each stage request
 #ST_RETRY_LIM = 3 # number of times min_number can be used, if exceeds, stage files anyway
+
+logger = logging.getLogger(__name__)
 
 def execCmd(cmd, failonerror = True):
     re = commands.getstatusoutput(cmd)
@@ -75,6 +83,20 @@ def pingHost(url, timeout = 5):
         return execCmd(cmd)[0]
     except Exception, err:
         return 1
+"""
+def addToBlackHostList(host):
+    blackList_sem.acquire()
+    found = 0
+    try:
+        for blackhost in blackHostList:
+            if (host == blackhost):
+                found = 1
+                break
+        if (not found):
+            blackHostList.append(host)
+    finally:
+        blackList_sem.release()
+"""
 
 def getMWADBConn():
     global g_db_conn
@@ -121,6 +143,26 @@ def getFornaxDBConn():
         errStr = 'Cannot create Fornax DB Connection: %s' % str(e)
         raise Exception, errStr
 
+def getLTADBConn():
+    global l_db_conn
+    if (l_db_conn and (not l_db_conn.closed)):
+        return l_db_conn
+    
+    config = ngamsJobMAN.getConfig()
+    confSec = 'LTA DB'
+    ldb_name = config.get(confSec, 'db')
+    ldb_user = config.get(confSec, 'user')
+    ldb_passwd = config.get(confSec, 'password')
+    ldb_host = config.get(confSec, 'host')
+    try:
+        l_db_conn = psycopg2.connect(database = ldb_name, user= ldb_user, 
+                            password = ldb_passwd.decode('base64'), 
+                            host = ldb_host)
+        return l_db_conn
+    except Exception, e:
+        errStr = 'Cannot create LTA DB Connection: %s' % str(e)
+        raise Exception, errStr
+
 def executeQuery(conn, sqlQuery):
     try:
         cur = conn.cursor()
@@ -152,7 +194,65 @@ def getFileIdsByObsNum(obs_num):
         else:
             retDic[corrId] = [fileId]
     return retDic
-            
+
+def isValidObsNum(obs_num):
+    """
+    """
+    sqlQuery = "select count(*) from mwa_setting where starttime = %s" % obs_num
+    conn = getMWADBConn()
+    res = executeQuery(conn, sqlQuery)
+    count = int(res[0][0])
+    if (count):
+        return True
+    else:
+        return False
+
+def testIsValidObsNum():
+    obs1 = '1055478504'
+    obs2 = '1055695336'
+    
+    if (isValidObsNum(obs1)):
+        print 'Yes, obs %s is valid' % obs1
+    else:
+        print 'No, obs %s is not valid' % obs1
+    
+    if (isValidObsNum(obs2)):
+        print 'Yes, obs %s is valid' % obs2
+    else:
+        print 'No, obs %s is not valid' % obs2
+
+def hasAllFilesInLTA(obs_num):
+    """
+    Check if ALL files associated with this observation
+    have been archived in the Long-Term Archive (LTA)
+    """
+    sqlQuery = "SELECT COUNT(file_id) FROM ngas_files WHERE file_id LIKE '%s_%%'" % obs_num
+    conn = getLTADBConn()
+    res = executeQuery(conn, sqlQuery)
+    count = int(res[0][0])
+    if (count):
+        sqlQuery = "SELECT COUNT(filename) FROM data_files WHERE observation_num = '%s'" % obs_num
+        conn = getMWADBConn()
+        res = executeQuery(conn, sqlQuery)
+        count1 = int(res[0][0])
+        return (count == count1)
+    else:
+        return False
+    
+def testHasFilesInLTA():
+    obs1 = '1055478504'
+    obs2 = '1055695336'
+    
+    if (hasAllFilesInLTA(obs1)):
+        print 'Yes, obs %s is in LTA' % obs1
+    else:
+        print 'No, obs %s is not in LTA' % obs1
+    
+    if (hasAllFilesInLTA(obs2)):
+        print 'Yes, obs %s is in LTA' % obs2
+    else:
+        print 'No, obs %s is not in LTA' % obs2
+    
 def testGetFileIds():
     print getFileIdsByObsNum('1052803816')[22][0]
     #print getFileIdsByObsNum('1052803816')[19][1] # this will raise key error
@@ -195,6 +295,8 @@ def getFileLocations(fileId):
         #path_file = os.path.split(re[1])
         #if (len(path_file) < 1):
             #continue
+        if (pingHost('http://%s/STATUS' % re[0])):
+            continue
         floc = FileLocation(re[0], re[1], fileId)
         ret.append(floc)
     
@@ -209,7 +311,7 @@ def testGetFileLocations():
     else:
         print 'Could not find locations for file %s' % file
 
-def getBestHost(fileIds):
+def getBestHost(fileIds, blackList = None):
     """
     This function tries to find out which host is most ideal to run a task 
     if that task requires all files in fileIds to reside on that host
@@ -235,6 +337,20 @@ def getBestHost(fileIds):
     sqlQuery = "SELECT a.host_id, a.mount_point || '/' || b.file_name, b.file_id FROM " +\
                "ngas_disks a, ngas_files b, ngas_hosts c where a.disk_id = b.disk_id AND b.file_id in (%s) " % file_list +\
                "AND a.host_id = c.host_id AND c.srv_state = 'ONLINE'"
+    
+    """
+    blackList_sem.acquire()
+    try:
+        if (len(blackHostList)):
+            for hh in blackHostList:
+                sqlQuery += " AND a.host_id <> '%s'" % hh
+    finally:
+        blackList_sem.release
+    """
+    
+    if (blackList and len(blackList)):
+        for hh in blackList:
+            sqlQuery += " AND a.host_id <> '%s'" % hh
     
     res = executeQuery(conn, sqlQuery)
     
@@ -266,17 +382,23 @@ def getBestHost(fileIds):
     
     candidateList.sort(key=_sortFunc)
     cc = -1
+    found = 0
     for candict in candidateList:
         cc += 1
         if (len(candict.keys()) == 0):
             break
         else:
             canHost = candict.values()[0]._svrHost
-            if (pingHost(canHost)):
+            if (pingHost('http://%s/STATUS' % canHost)):
+                #print 'Ping %s was not successful' % canHost
                 continue
             else:
+                found = 1
                 break
-    return candidateList[cc]
+    if (found):
+        return candidateList[cc]
+    else:
+        return {}
 
 def _sortFunc(dic):
     return -1 * len(dic.keys())
@@ -284,18 +406,38 @@ def _sortFunc(dic):
 def testGetBestHost():
     # this test data works when 
     #                             fdb_host = '192.102.251.250'
+    """
     fileList = ['1049201112_20130405124558_gpubox16_01.fits', '1049201112_20130405124559_gpubox23_01.fits', 
                 '1053182656_20130521144710_gpubox03_03.fits', '1028104360__gpubox01.rts.mwa128t.org.vis', '1053182656_20130521144711_gpubox06_03.fits']
+                """
+    fileList = ['1054900032_20130610114655_gpubox02_00.fits', '1054900032_20130610114759_gpubox02_01.fits']
     ret = getBestHost(fileList)
     for (fid, floc) in ret.items():
         print 'file_id = %s, host = %s, path = %s' % (fid, floc._svrHost, floc._filePath)
 
-def getNextOnlineHost():
+def getNextOnlineHost(blackList = None):
     """
     Return:    host:port (string, e.g. 192.168.1.1:7777)
     """
     conn = getFornaxDBConn()
-    sqlQuery = "select host_id from ngas_hosts where srv_state = 'ONLINE' AND host_id <> '%s'" % getClusterGateway()
+    sqlQuery = "select host_id from ngas_hosts where srv_state = 'ONLINE'"
+    gateways = getClusterGateway().split(',')
+    for gw in gateways:
+        sqlQuery += " AND host_id <> '%s'" % gw
+    
+    """
+    blackList_sem.acquire()
+    try:
+        if (len(blackHostList)):
+            for hh in blackHostList:
+                sqlQuery += " AND host_id <> '%s'" % hh
+    finally:
+        blackList_sem.release
+    """
+    if (blackList and len(blackList)):
+        for hh in blackList:
+            sqlQuery += " AND host_id <> '%s'" % hh
+    
     res = executeQuery(conn, sqlQuery)
     if (len(res) == 0):
         return None
@@ -372,14 +514,40 @@ def stageFile(fileIds, corrTask, toHost, frmHost = None):
         toUrl = getPushURL(toHost, getClusterGateway())
         
     myReq = AsyncListRetrieveRequest(deliverFileIds, toUrl)
+    if (frmHost):
+        myReq.one_host = 1 #only ASYNCLISTRETRIEVE uses this option
     try:
         strReq = pickle.dumps(myReq)
-        strRes = urllib.urlopen('%s/ASYNCLISTRETRIEVE_SINGLE' % getExternalArchiveURL(), strReq).read()
-        myRes = pickle.loads(strRes)
-        return myRes.errorcode
+        if (frmHost):
+            stageUrl = 'http://%s/ASYNCLISTRETRIEVE' % frmHost
+        else:
+            stageUrl = '%s/ASYNCLISTRETRIEVE_SINGLE' % getExternalArchiveURL()
+        myRes = None
+        retry = 0
+        max_retry = 5
+        while (retry < max_retry):
+            strRes = urllib.urlopen(stageUrl, strReq).read()
+            try:
+                myRes = pickle.loads(strRes)
+                break
+            except UnpicklingError, uerr:
+                if (strRes.find("NGAMS_ER_MAX_REQ_EXCEEDED")):
+                    retry += 1
+                    myRes = None
+                    logger.info('Archive server is too busy to stage files, wait for 15 seconds......')
+                    time.sleep(15)
+                    continue
+                else:
+                    logger.error('Staging response error %s: %s' % (str(uerr), strRes))
+                    return 502
+        if (myRes):
+            return myRes.errorcode
+        else:
+            logger.error('Response is None when staging files')
+            return 501
     except Exception, err:
         # log err
-        print(str(err) + traceback.format_exc())
+        logger.error((str(err) + traceback.format_exc()))
         return 500
     
         
@@ -403,13 +571,23 @@ def getPushURL(hostId, gateway = None):
     
     hostId:    the host (e.g. 192.168.1.1:7777) that will receive the file
     
-    gateway:   1 - (Default) his host is behind a gateway (firewall), 0 - otherwise
+    gateway:   a list of gateway hosts separated by comma
+               The sequence of this list is from target to source
+               e.g. if the dataflow is like:  source --> A --> B --> C --> target
+               then, the gateway list should be ordered as: C,B,A
     """
     if (gateway):
-        return 'http://%s/PARCHIVE?nexturl=http://%s/QAPLUS' % (gateway, hostId)
+        gateways = gateway.split(',')
+        gurl = 'http://%s/QAPLUS' % hostId
+        for gw in gateways:
+            gurl = 'http://%s/PARCHIVE?nexturl=%s' % (gw, urllib.quote(gurl))
+        #return 'http://%s/PARCHIVE?nexturl=http://%s/QAPLUS' % (gateway, hostId)
+        return gurl
     else:
         return 'http://%s/QAPLUS' % hostId
-    
+
+def testGetPushURL():
+    print getPushURL('192.168.222.7:7777', getClusterGateway())   
 
 """
 def scheduleForStaging(num_repeats = 0):
@@ -465,7 +643,7 @@ def fileIngested(fileId, filePath, toHost, ingestRate):
         if (stage_dic.has_key(skey)):
             corrList = stage_dic.pop(skey)
         else: 
-            print 'File Ingested, but cannot find key %s' % skey
+            logger.warning('File Ingested, but cannot find key %s' % skey)
             return
     finally:
         stage_sem.release()
@@ -473,19 +651,45 @@ def fileIngested(fileId, filePath, toHost, ingestRate):
         corr.fileIngested(fileId, filePath, ingestRate)
 
 def registerLocalTask(taskId, mrTask):
+    #LT_dic_sem.acquire()
+    #try:
     LT_dic[taskId] = mrTask
+    #finally:
+        #LT_dic_sem.release()
 
 def localTaskCompleted(localTaskResult):
     """
     Could be Corr but what about Obs?
     """
     taskId = localTaskResult._taskId
+    loginfo = ''
+    #LT_dic_sem.acquire()
+    #try:
     if LT_dic.has_key(taskId):
         corrTask = LT_dic.pop(taskId)
         corrTask.localTaskCompleted(localTaskResult)
-        print 'Notify task with a localTaskResult for taskId %s' % taskId
+        loginfo = 'Notify task with a localTaskResult for taskId %s' % taskId            
     else:
-        print 'Local task %d completed, but cannot find its CorrelatorTask. Possibly this task has been launched twice due to some timeout issue' % taskId
+        loginfo = 'Local task %s completed, but cannot find its CorrelatorTask.' % taskId
+    #finally:
+        #LT_dic_sem.release()
+    logger.info(loginfo)
+
+def localTaskDequeued(taskId):
+    """
+    Notify that this local task just dequeued and is about to start running now
+    """
+    loginfo = ''
+    #LT_dic_sem.acquire()
+    #try:
+    if LT_dic.has_key(taskId):
+        LT_dic[taskId].localTaskDequeued(taskId)
+        loginfo = 'Notify task dequeue for taskId %s' % taskId
+    else:
+        loginfo = 'Local task %s dequeued, but cannot find its CorrelatorTask.' % taskId
+    #finally:
+        #LT_dic_sem.release()
+    logger.info(loginfo)  
 
 def reportHostDown(fileId, toHost):
     """
@@ -502,7 +706,7 @@ def reportHostDown(fileId, toHost):
             corrList = stage_dic.pop(skey) # stop others from using this key-entry
             # but what about other files on this host?
         else: 
-            print 'Report host down, but cannot find key %s' % skey
+            logger.warning('Report host down, but cannot find key %s' % skey)
             return
     finally:
         stage_sem.release()
@@ -519,10 +723,13 @@ def closeConn(conn):
 if __name__=="__main__":
     #testGetFileIds()
     #testGetFileLocations()
-    #testGetBestHost()
-    testGetNextOnlineHostUrl()
+    testGetBestHost()
+    #testGetNextOnlineHostUrl()
     #print pingHost('http://cortex.ivec.org:7799/STATUS')
     #print pingHost('http://fornax-io1.ivec.org:7777/STATUS')
+    #testGetPushURL()
+    #testHasFilesInLTA()
+    #testIsValidObsNum()
     closeConn(g_db_conn)
     closeConn(f_db_conn)
     

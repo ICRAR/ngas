@@ -8,6 +8,7 @@
 
 # Source function library.
 . /etc/rc.d/init.d/functions
+# on Ubuntu, these functions can be located at: /lib/lsb/init-functions
 
 RETVAL=0
 NGAMS_PID_FILE="/home/ngas/ngas_rt/NGAS/.NGAS-"${HOSTNAME}"-7777"

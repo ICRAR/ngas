@@ -46,11 +46,13 @@ To deploy (install) them:
 3. pip install Paste
 
 """
-import os, ConfigParser, time, threading, signal, json, decimal
-from datetime import datetime
+import os, ConfigParser, time, threading, signal, json, decimal, traceback
+#from datetime import datetime
+import datetime
 from optparse import OptionParser
 from urlparse import urlparse
 import cPickle as pickle
+import logging
 
 from bottle import route, run, request, get, post, static_file, template
 
@@ -60,6 +62,8 @@ from ngamsJob_MWA_RTS import *
 #staging_run = 1
 jobDic = {} # key - jobId, val - job obj
 predef_tpls = ['drift','FnxA','gencal','regrid','simplecal','stokes','usecal']
+
+logger = logging.getLogger(__name__)
 
 def invalidParam(param):
     if (None == param or len(str(param)) == 0):
@@ -80,8 +84,14 @@ def ingest():
     if (fileId == None):
         return 'No file id is provided'
     else:
-        ngamsJobMWALib.fileIngested(fileId, filePath, toHost, ingestRate)
-        return 'File %s is just ingested at %s on %s' % (fileId, filePath, toHost)
+        try:
+            ngamsJobMWALib.fileIngested(fileId, filePath, toHost, ingestRate)
+            msg = 'File %s is just ingested at %s on %s with a rate %s' % (fileId, filePath, toHost, ingestRate)
+            logger.info(msg)
+            return msg
+        except Exception, err:
+            logger.error(traceback.format_exc())
+            return 'Exception (%s) when doing - File %s is just ingested at %s on %s' % (str(err), fileId, filePath, toHost)
 
 @route('/report/hostdown')
 def reportHostError():
@@ -89,12 +99,20 @@ def reportHostError():
     nexturl = request.query.get('nexturl')
     if (nexturl and fileId):
         o = urlparse(nexturl)
-        ngamsJobMWALib.reportHostDown(fileId, '%s:%d' % (o.hostname, o.port))
+        try:
+            ngamsJobMWALib.reportHostDown(fileId, '%s:%d' % (o.hostname, o.port))
+        except Exception, err:
+            logger.error(traceback.format_exc())
+        finally:
+            return 'Thanks for letting me know that %s:%d is down' % (o.hostname, o.port)
 
-#TODO - use template soon!
 @get('/job/submit')
 def submit_job_get():
     return template('ngamsJobMAN_submit.html')
+
+@get('/rts/docs')
+def showDocs():
+    return template('ngamsJobMAN_docs.html')
 
 def _responseMsg(msg):
     """
@@ -150,10 +168,36 @@ def submit_job_post():
         params.rts_tpl_name = tpl_files
         params.rts_tplpf = tmp_prefix
         params.rts_tplsf = tpl_suffix
+    
+    lttimeout = request.forms.get('LT_timeout')
+    if invalidParam(lttimeout):
+        return _responseMsg('invalid Task execution timeout')
+    try:
+        params.LT_timeout = int(lttimeout)
+    except Exception, err:
+        return _responseMsg('invalid Task execution timeout')
+    
+    fitimeout = request.forms.get('FI_timeout')
+    if invalidParam(fitimeout):
+        return _responseMsg('invalid File ingestion timeout')
+    try:
+        params.FI_timeout = int(fitimeout)
+    except Exception, err:
+        return _responseMsg('invalid File ingestion timeout')
         
     obsNums = observations.split(',')
+    try:
+        for obsNum in obsNums:
+            if (not ngamsJobMWALib.isValidObsNum(obsNum)):
+                return _responseMsg('Observation %s does not appear to be valid.' % obsNum)
+        for obsNum in obsNums:
+            if (not ngamsJobMWALib.hasAllFilesInLTA(obsNum)):
+                return _responseMsg('Observation %s does not have ALL files archived on Cortex yet.' % obsNum)
+    except Exception, err:
+        logger.error(traceback.format_exc())
+        return _responseMsg('Fail to validate observation numbers, Exception: %s' % str(err))
     
-    dt = datetime.now()
+    dt = datetime.datetime.now()
     jobId = name + '_' + dt.strftime('%Y%m%dT%H%M%S') + '.' + str(dt.microsecond / 1000)
     
     job = None
@@ -189,24 +233,43 @@ def reportLocalTask():
         localTaskResult = pickle.loads(request.body.read())
     except Exception, err:
         msg = 'Invalid MRLocalTask pickle content: %s' % str(err)
-        print msg
+        logger.error(msg)
         return msg
     taskId = localTaskResult._taskId
     if (localTaskResult.getErrCode()):
         msg = 'Task %s has an error: %s' % (taskId, localTaskResult.getInfo())
-        print msg
-        return msg
+        logger.error(msg)
     else:
         if (localTaskResult.isResultAsFile()):
             msg = 'Got local task result for taskId: %s, url = %s' % (taskId, localTaskResult.getResultURL())
-            print msg
-            #return msg
+            logger.info(msg)
         else:
             msg = 'Got local task result for taskId: %s, info = %s' % (taskId, localTaskResult.getInfo())
-            print msg
-            #return msg
+            logger.info(msg)
+    try:
         ngamsJobMWALib.localTaskCompleted(localTaskResult)
-        return msg
+    except Exception, err:
+        logger.error(traceback.format_exc())
+    finally:
+        if (msg):
+            return msg
+        else:
+            return 'locatask result report with some exceptions'
+
+@get('/localtask/dequeue')
+def dequeueLocalTask():
+    """
+    Report to JobMAN that this task is just dequeued and starts running
+    """
+    taskId = request.query.get('task_id')
+    if (invalidParam(taskId)):
+        return 'Invalid task id'
+    try:
+        ngamsJobMWALib.localTaskDequeued(taskId)
+        return 'OK'
+    except Exception, err:
+        logger.error(traceback.format_exc())
+        return 'Fail to notify jobman of task dequeue'   
         
 def encode_decimal(obj):
     """
@@ -274,12 +337,17 @@ def listJobs():
     #jobList.append(job3)
     #jobList.append(job4)
     for job in jobDic.values():
-        jobList.append((job.getId(), job.getStatusString(), job.getWallTime()))
+        obs_nums = str(job.getParams().obsList).replace("'", "").replace('[', '').replace(']', '')
+        tpl_names = job.getParams().rts_tpl_name
+        file_timeout = str(job.getParams().FI_timeout)
+        task_timeout = str(job.getParams().LT_timeout)
+        
+        jobList.append((job.getId(), job.getStatusString(), job.getWallTime(), obs_nums, tpl_names, file_timeout, task_timeout))
     jobList.sort(key = _jobSortFunc, reverse = True) # most recent first
     return template('ngamsJobMAN_listjob.html', jobList = jobList)
  
 def _jobSortFunc(job):   
-    return job.getId().split('_')[1]
+    return job[0].split('_')[1]
 
 @route('/static/<filepath:path>')
 def server_static(filepath):
@@ -334,7 +402,7 @@ def getConfig():
         parser.print_help()
         return None
     if (not os.path.isfile(options.config_fname)):
-        print '\nCannot access configuration file %s' % options.config_fname
+        logger.warning('\nCannot access configuration file %s' % options.config_fname)
         return None
     
     config = ConfigParser.ConfigParser()
@@ -344,14 +412,22 @@ def getConfig():
     return config
 
 def main():
+    #FORMAT = "%(asctime)-15s %(message)s"
+    FORMAT = "%(asctime)-15s - %(name)s - %(levelname)s - %(message)s"
+    logging.basicConfig(filename='/tmp/NGAS_MWA/log/ngamsJobMAN.log', level=logging.DEBUG, format = FORMAT)
+    logger.info('ngamsJobMAN Started.......')
+    
     config = getConfig()
     if (not config):
         exit(1)
+    
     # start the web server supported by bottle and paste
     run(host = config.get('Web Server', 'IpAddress'), 
         server = 'paste', 
         port = config.getint('Web Server', 'Port'), 
         debug = config.getboolean('Web Server', 'Debug'))
+    
+    logger.info('ngamsJobMAN Shutdown.......')
 
 if __name__ == "__main__":
     main()
