@@ -649,6 +649,7 @@ def init_deploy(type='archive'):
     """
     if type == 'archive':
         initFile = 'ngamsServer.init.sh'
+        NGAS_DEF_CFG = 'NgamsCfg.SQLite.mini.xml'
     elif type == 'cache':
         initFile = 'ngamsCache.init.sh'
         NGAS_DEF_CFG = 'NgamsCfg.SQLite.cache.xml'
