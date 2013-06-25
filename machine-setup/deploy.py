@@ -32,6 +32,7 @@ from fabric.utils import puts, abort, fastprint
 #Defaults
 thisDir = os.path.dirname(os.path.realpath(__file__))
 
+THIS_BRANCH = 'Tornado' # Used to switch to the Tronado branch
 USERNAME = 'ec2-user'
 POSTFIX = False
 AMI_ID = 'ami-aecd60c7'
@@ -366,6 +367,7 @@ def git_clone_tar():
     put('/tmp/{0}'.format(tarfile), tarfile)
     local('rm -rf /tmp/{0}'.format(NGAS_DIR))  # cleanup local git clone dir
     run('tar -xjf {0} && rm {0}'.format(tarfile))
+    run('cd {0} && git checkout {1}'.format(NGAS_DIR, THIS_BRANCH))
 
 
 def processCentOSErrMsg(errmsg):
