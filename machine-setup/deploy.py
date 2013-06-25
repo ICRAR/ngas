@@ -745,3 +745,13 @@ def uninstall():
         sudo('rm /etc/init.d/ngamsServer', warn_only=True)
     else:
         run('rm -rf {0}'.format(env.NGAS_DIR_ABS))
+
+
+@task
+def test_user(uuser='ngas'):
+    """
+    Test the with settings command
+    """
+    with settings(user=uuser):
+        print env.user
+        sudo('sudo -u {0} -i echo $USER'.format(env.user))
