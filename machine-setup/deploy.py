@@ -674,7 +674,7 @@ def init_deploy(type='archive'):
 
 @task
 @serial
-def operations_deploy(system=True, user=True, type='archive'):
+def operations_deploy(system_install=True, user_install=True, type='archive'):
     """
     ** MAIN TASK **: Deploy the full NGAS operational environment. 
     In order to install NGAS on an operational host go to any host
@@ -696,10 +696,10 @@ def operations_deploy(system=True, user=True, type='archive'):
         env.user = 'root'
     # set environment to default, if not specified otherwise.
     set_env()
-    if system: system_install()
+    if system_install: system_install()
     if env.postfix:
         postfix_config()
-    if user: user_setup()
+    if user_install: user_setup()
     with settings(user='ngas'):
         ppath = check_python()
         if not ppath:
