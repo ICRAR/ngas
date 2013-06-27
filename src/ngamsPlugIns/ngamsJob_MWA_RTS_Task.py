@@ -157,7 +157,7 @@ def main():
     for file in fileList:
         base_name = os.path.basename(file)
         cmd = 'ln -s %s %s' % (file, base_name)
-        execCmd(cmd, False) #don't care if this failed
+        execCmd(cmd) #don't care if this failed
     
     # create the template list file
     if (opts.tpl_pf):
@@ -239,6 +239,9 @@ def main():
         execCmd(cmd)
         
         #move all produced image fits files to the template dir
+        if (not os.path.exists(temp_alias[i])):
+            cmd = 'mkdir %s' % temp_alias[i]
+            execCmd(cmd)
         moveAllImgFiles(temp_alias[i])
         #cmd = 'mv %s*.fits %s/' % (obstimebase_line.split('=')[1].split('.')[0], temp_alias[i])
         #execCmd(cmd)

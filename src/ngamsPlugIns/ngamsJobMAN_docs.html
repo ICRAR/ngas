@@ -1,0 +1,63 @@
+<html>
+<head>
+<style>
+%include ngamsJobMAN.css
+</style>
+</head>
+<body>
+%include ngamsJobMAN_Nav.html
+
+<ul><li>..</li></ul>
+<ul id="help">
+	<li>Submit a Job
+		<ol>
+		<li>Basic concepts</li>
+		In NGAS JobMAN, each job contains a list of tasks, each of which contains a list of sub-tasks, and so on. <br/>
+		In the context of RTS, each job contains a number of observations, each observation is with a number of correlators (i.e. sub-task), each correlator owns a list of files processed on a separated Fornax node.
+		<p>
+		<li>Observation numbers</li>
+		This is not a GPS range, so please put the exact observation numbers separated by comma
+		<p>
+		<li>Template</li>
+		You can either use pre-defined template or define your own template.<br/>
+		For your own template, just ensure the template file (template_prefix + template_name + template_suffix) is read accessible for other users (e.g. NGAS) on Fornax
+		<p>
+		<li>File ingestion timeout</li>
+		It is important to set the timeout based on your estimates. Since the bottleneck is still data transfer: either from Cortex to Fornax (this is a  major issue which we will need to file a ticket to iVEC) <br/>
+		or from Tape to Disk Cache. It probably makes sense to allow more timeout for file ingestion if the observations has 100 files. But if these files are already on Fornax as a result of previous job executions, file ingestion<br/>
+		will then be very fast. You are able to view the transfer bandwidth for each offline file when you Check A Job&rsquo;s Progress.<br/>
+		It is also good idea to submit jobs just to get files moved from Cortex to Fornax for future jobs. The next version of JobMAN will allow users to submit staging jobs just for data prefetching purposes.
+		<p>
+		<li>Task execution timeout</li>
+		Depending on the tempalte, some tasks can be time-consuming. If you set a time-out for a job, NGAS JobMAN will reschedule tasks to another host automatically if the timeout is reached.<br/>
+		This will be repeated for maximum three times, if still timed out, an exception &ldquo;time out&ldquo; will be recorded.
+		</ol>
+	</li>
+	<p>
+	<li>List all jobs
+		<ol>
+		<li>Check progress</li>
+		You can check a job's progress anytime. The progress is reported as a tree-structure, root is the jobId, the second level contains all observations, and the third level has correlators and their files under each observation <br/>
+		Currently, the tree does not support auto-refresh, so to get an updated view, please refresh the page using your browser. </br>
+		Files of the same correlator will be executed on a chosen Fornax compute node based on the principle of &ldquo;data locality&rdquo;. Each task will accesss data in the order of: local disks &rarr; other Fornax nodes in the NGAS_Cluster &rarr; Cortex.<br/>
+		Each task has currently four states - <font color="grey">Wait_for_start</font>, <font color="green">Running</font>, <font color="blue">Completed</font>, and <font color="red">Error</font>. <br/>
+		Each file of a correlator has three states - <font color="green">Staging </font>, <font color="blue">Online</font>, <font color="red">Offline (at Cortex)</font>
+		<p>
+		<li>Check result</li>
+		Only if a job is completed are you able to check its result.
+		<br/>
+		If a job is successfully completed, the result is a URL, from which you can download (e.g. wget) the final aggregated image files.<br/>
+		But in this version, you have to log-on to Fornax to download it since it is hosted inside the Fornax compute networks. In the next version, you should be able to download it from anywhere.<br/>
+		<br/>
+		If a job is partially successful (i.e. some correlators files are done, some are not due to various reasons such as network timeout, servers down). 
+		<br/>You can still download those successful ones. The reasons why others failed will be shown. In the next version, all successful ones will also be aggregated for more convenient retrieval.
+		</ol>
+	</li>
+	<p>
+	<li>System overview
+	<img alt="" src="/static/ngasjobman_mwarts_overview.jpg">
+	</li>
+</ul>
+</div>
+
+</body></html>

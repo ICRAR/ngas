@@ -105,8 +105,9 @@ table tr:hover td{
 %include ngamsJobMAN_Nav.html
 % count = 1
 <table cellspacing='0'> <!-- cellspacing='0' is important, must stay -->
-<tr><th>Job Id</th><th>Status</th><th>Wall Time</th><th>Progress</th><th>Result</th></tr><!-- Table Header -->
-<!-- a tuple with 3 elements, 0-jobId, 1-status, 2-wall-time-->
+<tr><th>Job Id</th><th>Status</th><th>Wall Time</th><th>Observations</th><th>Templates</th>
+<th>File timeout</th><th>Task timeout</th><th>Progress</th><th>Result</th></tr><!-- Table Header -->
+<!-- a tuple with 3 elements, 0-jobId, 1-status, 2-wall-time, 3-obsNum, 4-template, 5-filetimeout, 6-tasktimeoue-->
 %for job in jobList:
 %if (count % 2):
 		<tr>
@@ -115,7 +116,9 @@ table tr:hover td{
 %end
 %count += 1	
 	
-	<td>{{job[0]}}</td><td>{{job[1]}}</td><td>{{job[2]}}</td><td><a href="/job/monitor?job_id={{job[0]}}">Check</a></td><td><a href="/job/result?job_id={{job[0]}}">Check</a></td>
+	<td>{{job[0]}}</td><td>{{job[1]}}</td><td>{{job[2]}}</td><td>{{job[3]}}</td><td>{{job[4]}}</td><td>{{job[5]}}</td><td>{{job[6]}}</td>
+	<td><a href="/job/monitor?job_id={{job[0]}}">Check</a></td>
+	<td><a href="/job/result?job_id={{job[0]}}">Check</a></td>
 	</tr>
 %end
 </table>

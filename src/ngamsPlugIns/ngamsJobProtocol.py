@@ -36,7 +36,7 @@ STATUS_RUNNING = 1
 STATUS_COMPLETE = 2
 STATUS_EXCEPTION = 3
 
-statusDic = {STATUS_NOT_STARTED:'Wait_for_start', STATUS_RUNNING:'Running', STATUS_COMPLETE:'Completed', STATUS_EXCEPTION:'Error'}
+statusDic = {STATUS_NOT_STARTED:'Queueing', STATUS_RUNNING:'Running', STATUS_COMPLETE:'Completed', STATUS_EXCEPTION:'Error'}
 
 class MapReduceTask:
     """

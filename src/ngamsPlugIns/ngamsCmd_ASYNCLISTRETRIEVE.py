@@ -538,7 +538,10 @@ def _deliveryThread(srvObj, asyncListReqObj):
     filesOnDisk = []
     filesOnTape = []
     #info(3, "file_id length = %d" % len(asyncListReqObj.file_id))
-    cursorObj = srvObj.getDb().getFileSummary1(None, [], asyncListReqObj.file_id, None, [], None, 0)
+    fileHost = None
+    if (asyncListReqObj.one_host):
+        fileHost = getHostId()
+    cursorObj = srvObj.getDb().getFileSummary1(fileHost, [], asyncListReqObj.file_id, None, [], None, 0)
     fileInfoList = cursorObj.fetch(1000)
     #info(3, "fileIninfList length = %d" % len(fileInfoList))
     baseNameDic = {} # key - basename, value - file size
