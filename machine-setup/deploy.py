@@ -63,7 +63,7 @@ YUM_PACKAGES = [
    'java-1.6.0-openjdk-devel.x86_64',
    'postfix',
    'openssl-devel.x86_64',
-   'wget.x86_64',     
+   'wget.x86_64',
 ]
 
 APT_PACKAGES = [
@@ -104,9 +104,19 @@ def set_env():
         env.key_filename = AWS_KEY
     require('hosts', provided_by=[test_env])
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
-        env.NGAS_DIR_ABS = '{0}/{1}'.format(run('echo $PWD'), NGAS_DIR)
-    # puts('Environment: {0} {1} {2} {3} {4} {5}'.format(env.user, env.key_filename, env.hosts, 
-    #                                               env.host_string, env.postfix, env.NGAS_DIR_ABS))
+        HOME = run("echo $HOME")
+        env.NGAS_DIR_ABS = '{0}/{1}'.format(HOME, NGAS_DIR)
+#    puts("""Environment:
+#            USER:              {0};
+#            Key file:          {1};
+#            hosts:             {2};
+#            host_string:       {3};
+#            postfix:           {4};
+#            NGAS_DIR_ABS:      {5}
+#            NGAS_DIR:          {6}""".\
+#            format(env.user, env.key_filename, env.hosts,
+#                   env.host_string, env.postfix, env.NGAS_DIR_ABS,
+#                   NGAS_DIR))
 
 
 @task
@@ -202,10 +212,10 @@ def to_boolean(choice, default=False):
 def check_command(command):
     """
     Check existence of command remotely
-    
+
     INPUT:
     command:  string
-    
+
     OUTPUT:
     Boolean
     """
@@ -231,10 +241,10 @@ def check_path(path):
 def check_python():
     """
     Check for the existence of correct version of python
-    
+
     INPUT:
     None
-    
+
     OUTPUT:
     path to python binary    string, could be empty string
     """
@@ -248,7 +258,7 @@ def check_python():
     if ppath:
         env.PYTHON = ppath
         return ppath
-    
+
     # don't check for any other python, since we need to run
     # all the stuff with a version number.
 #    elif check_command('python'):
@@ -272,7 +282,7 @@ def install_yum(package):
 def install_apt(package):
     """
     Install a package using APT
-    
+
     NOTE: This requires sudo access
     """
     sudo('apt-get -qq -y install {0}'.format(package))
@@ -281,7 +291,7 @@ def install_apt(package):
 def check_yum(package):
     """
     Check whether package is installed or not
-    
+
     NOTE: requires sudo access to machine
     """
     with hide('stdout','running','stderr'):
@@ -294,15 +304,15 @@ def check_yum(package):
     else:
         print "NOT installed package {0}".format(package)
         return False
-    
+
 
 def check_apt(package):
     """
     Check whether package is installed using APT
-    
+
     NOTE: This requires sudo access
-    """ 
-    # TODO   
+    """
+    # TODO
     with hide('stdout','running'):
         res = sudo('dpkg -L | grep {0}'.format(package))
     if res.find(package) > -1:
@@ -311,7 +321,7 @@ def check_apt(package):
     else:
         print "NOT installed package {0}".format(package)
         return False
-    
+
 
 def copy_public_keys():
     """
@@ -338,7 +348,7 @@ def git_pull():
     TODO: This does not work outside iVEC. The current implementation
     is thus using a tar-file, copied over from the calling machine.
     """
-    with cd(env.NGAS_DIR_ABS):    
+    with cd(env.NGAS_DIR_ABS):
         sudo('git pull', user=env.user)
 
 def git_clone():
@@ -346,7 +356,7 @@ def git_clone():
     Clones the NGAS repository.
     """
     copy_public_keys()
-    with cd(env.NGAS_DIR_ABS):    
+    with cd(env.NGAS_DIR_ABS):
         run('git clone {0}@{1}'.format(env.GITUSER, env.GITREPO))
 
 
@@ -376,17 +386,17 @@ def processCentOSErrMsg(errmsg):
     firstKey = errmsg.split()[0]
     if (firstKey == 'Error:'):
         abort(errmsg)
-    
-    
+
+
 @task
 def system_install():
     """
     Perform the system installation part.
-    
+
     NOTE: Most of this requires sudo access on the machine(s)
     """
     set_env()
-   
+
     # Install required packages
     re = run('cat /etc/issue')
     linux_flavor = re.split()
@@ -401,7 +411,7 @@ def system_install():
         processCentOSErrMsg(errmsg)
         for package in YUM_PACKAGES:
             install_yum(package)
-        
+
     elif (linux_flavor == 'Ubuntu'):
         for package in APT_PACKAGES:
             install_apt(package)
@@ -413,12 +423,12 @@ def system_install():
 def system_check():
     """
     Check for existence of system level packages
-    
+
     NOTE: This requires sudo access on the machine(s)
     """
     with hide('running','stderr','stdout'):
         set_env()
-   
+
         re = run('cat /etc/issue')
     linux_flavor = re.split()
     if (len(linux_flavor) > 0):
@@ -450,7 +460,7 @@ def postfix_config():
     Setup the e-mail system for the NGAS
     notifications. It requires access to an SMTP server.
     """
-    
+
     if 'gmail_account' not in env:
         prompt('GMail Account:', 'gmail_account')
     if 'gmail_password' not in env:
@@ -486,7 +496,7 @@ default_destination_concurrency_limit = 1" >> /etc/postfix/main.cf''')
 def user_setup():
     """
     setup ngas users.
-    
+
     TODO: sort out the ssh keys
     """
 
@@ -508,10 +518,10 @@ def python_setup():
     """
     Ensure that there is the right version of python available
     If not install it from scratch in user directory.
-    
+
     INPUT:
     None
-    
+
     OUTPUT:
     None
     """
@@ -528,7 +538,7 @@ def python_setup():
         ppath = '{0}/bin/python{1}'.format(ppath,NGAS_PYTHON_VERSION)
     env.PYTHON = ppath
 
-    
+
 @task
 def virtualenv_setup():
     """
@@ -539,17 +549,17 @@ def virtualenv_setup():
     print "CHECK_DIR: {0}".format(check_dir(env.NGAS_DIR_ABS))
     if check_dir(env.NGAS_DIR_ABS):
         abort('ngas_rt directory exists already')
-        
+
     with cd('/tmp'):
         run('wget --no-check-certificate -q https://raw.github.com/pypa/virtualenv/master/virtualenv.py')
         run('{0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
     with cd(env.NGAS_DIR_ABS):
-        virtualenv('pip install zc.buildout')        
+        virtualenv('pip install zc.buildout')
         # make this installation self consistent
         virtualenv('pip install fabric')
         virtualenv('pip install boto')
         put('{0}/../clib_tars/markup-1.9.tar.gz'.format(thisDir), '/tmp/markup-1.9.tar.gz')
-        virtualenv('pip install /tmp/markup-1.9.tar.gz'.format(env.NGAS_DIR_ABS)) 
+        virtualenv('pip install /tmp/markup-1.9.tar.gz'.format(env.NGAS_DIR_ABS))
         # the package has not been updated on PyPI as of 2013-02-7
 
 
@@ -560,7 +570,7 @@ def ngas_buildout():
     Perform just the buildout and virtualenv config
     """
     set_env()
-    
+
     with cd(env.NGAS_DIR_ABS):
         virtualenv('buildout')
     run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
@@ -568,7 +578,7 @@ def ngas_buildout():
         with settings(warn_only=True):
             run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
                 .format(env.NGAS_DIR_ABS))
-            run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template')
+            run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template'.format(env.NGAS_DIR_ABS))
 
 
 @task
@@ -578,10 +588,10 @@ def ngas_full_buildout():
     """
     set_env()
     # First get the sources
-    # 
+    #
     if not check_path('{0}/bootstrap.py'.format(env.NGAS_DIR_ABS)):
         git_clone_tar()
-    
+
     with cd(env.NGAS_DIR_ABS):
         # run bootstrap with correct python version (explicit)
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
@@ -654,7 +664,7 @@ def init_deploy(type='archive'):
         initFile = 'ngamsCache.init.sh'
         NGAS_DEF_CFG = 'NgamsCfg.SQLite.cache.xml'
     initName = initFile.split('.')[0]
-    
+
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
         env.NGAS_DIR_ABS = '{0}/{1}'.format('/home/ngas', NGAS_DIR)
 
@@ -672,19 +682,19 @@ def init_deploy(type='archive'):
 @serial
 def operations_deploy(system=True, user=True, type='archive'):
     """
-    ** MAIN TASK **: Deploy the full NGAS operational environment. 
+    ** MAIN TASK **: Deploy the full NGAS operational environment.
     In order to install NGAS on an operational host go to any host
     where NGAS is already running or where you have git-cloned the
     NGAS software and issue the command:
-    
+
     fab -u <super-user> -H <host> -f machine_setup/deploy.py operations_deploy
-    
+
     where <super-user> is a user on the target machine with root priviledges
-    and <host> is either the DNS resolvable name of the target machine or 
+    and <host> is either the DNS resolvable name of the target machine or
     its IP address.
-    
+
     NOTE: The parameter can be passed from the command line by using
-    
+
     fab -f deploy.py operations_deploy:type='cache'
     """
 
@@ -710,7 +720,7 @@ def operations_deploy(system=True, user=True, type='archive'):
 @serial
 def test_deploy():
     """
-    ** MAIN TASK **: Deploy the full NGAS EC2 test environment. 
+    ** MAIN TASK **: Deploy the full NGAS EC2 test environment.
     """
 
     test_env()

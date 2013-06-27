@@ -33,7 +33,7 @@
 Contains definition of class for handling a DBM DB (BSDDB).
 """
 
-# TODO: Stop using bsddb. Use only gdbm (i.e. remove ngamsDbm and rename
+# TODO: Stop using bsddb. Use only dbm (i.e. remove ngamsDbm and rename
 #       ngamsDbm2 to ngamsDbm).
 
 import sys, os, cPickle, random
@@ -42,7 +42,7 @@ try:
     import bsddb
 except:
     import bsddb3 as bsddb
-import gdbm
+import dbm
 
 from ngams import *
 
@@ -59,9 +59,9 @@ class ngamsDbm:
                  autoSync = 100):
         """
         Constructor method.
-        
+
         dbmName:           Name of the DBM DB file (string).
-        
+
         cleanUpOnDestr:    If set to 1, the DBM file will be removed on
                            object destruction (integer/0|1).
 
@@ -119,7 +119,7 @@ class ngamsDbm:
         Returns:   DBM filename (string).
         """
         return self.__dbmName
-    
+
 
     def cleanUp(self):
         """
@@ -128,7 +128,7 @@ class ngamsDbm:
         Returns:   Reference to object itself.
         """
         T = TRACE()
-        
+
         if (self.__dbmObj): self.__dbmObj.sync()
         rmFile(self.__dbmName)
         return self
@@ -145,7 +145,7 @@ class ngamsDbm:
         Returns:  Reference to object itself.
         """
         T = TRACE(5)
-        
+
         newVal = (cPickle.loads(self.__dbmObj[NGAMS_FILE_DB_COUNTER]) + val)
         self.__dbmObj[NGAMS_FILE_DB_COUNTER] = cPickle.dumps(newVal, 1)
         return self
@@ -168,7 +168,7 @@ class ngamsDbm:
         Returns:   Reference to object itself.
         """
         T = TRACE(5)
-        
+
         try:
             self.__sem.acquire()
             dbVal = cPickle.dumps(object, 1)
@@ -202,7 +202,7 @@ class ngamsDbm:
         Returns:   Reference to object itself.
         """
         T = TRACE(5)
-        
+
         newKey = str(self.getCount() + 1)
         return self.add(newKey, object, sync)
 
@@ -218,7 +218,7 @@ class ngamsDbm:
         Returns:   Reference to object itself.
         """
         T = TRACE(5)
-        
+
         try:
             self.__sem.acquire()
             del self.__dbmObj[key]
@@ -238,13 +238,13 @@ class ngamsDbm:
         Returns:   List with the keys in the DBM (list).
         """
         T = TRACE(5)
-        
+
         keyList = self.__dbmObj.keys()
         for idx in range((len(keyList) - 1), -1, -1):
             if (keyList[idx].find("__") == 0): del keyList[idx]
         return keyList
-        
-        
+
+
     def hasKey(self,
                key):
         """
@@ -255,7 +255,7 @@ class ngamsDbm:
         Returns:  1 = key in DB otherwise 0 is returned (integer/0|1).
         """
         T = TRACE(5)
-        
+
         try:
             self.__sem.acquire()
             hasKey = self.__dbmObj.has_key(key)
@@ -263,8 +263,8 @@ class ngamsDbm:
             return hasKey
         except Exception, e:
             self.__sem.release()
-            raise e       
-        
+            raise e
+
 
     def sync(self):
         """
@@ -273,7 +273,7 @@ class ngamsDbm:
         Returns:    Reference to object itself.
         """
         T = TRACE(5)
-        
+
         try:
             self.__sem.acquire()
             self.__dbmObj.sync()
@@ -281,8 +281,8 @@ class ngamsDbm:
             return self
         except Exception, e:
             self.__sem.release()
-            raise e       
-        
+            raise e
+
 
     def get(self,
             key,
@@ -295,7 +295,7 @@ class ngamsDbm:
         Returns:   Element or None if not available (<Object>).
         """
         T = TRACE(5)
-        
+
         if (self.__dbmObj.has_key(key)):
             return cPickle.loads(self.__dbmObj[key])
         else:
@@ -310,10 +310,10 @@ class ngamsDbm:
         Returns:   Reference to object itself.
         """
         T = TRACE(5)
-        
+
         self.__keyPtr = None
         return self
-        
+
 
     def getNext(self,
                 pop = 0):
@@ -329,7 +329,7 @@ class ngamsDbm:
         Returns:    Tuple with key + value (unpickled) (tuple).
         """
         T = TRACE(5)
-        
+
         try:
             self.__sem.acquire()
             if (self.__keyPtr):
@@ -345,7 +345,7 @@ class ngamsDbm:
                     while (str(self.__keyPtr).find("__") == 0):
                         self.__keyPtr, dbVal = self.__dbmObj.next()
                 except Exception, e:
-                    self.__keyPtr, dbVal = (None, None)   
+                    self.__keyPtr, dbVal = (None, None)
             if (self.__keyPtr and pop):
                 del self.__dbmObj[self.__keyPtr]
                 self._incrDbCount(-1)
@@ -373,14 +373,14 @@ class ngamsDbm:
         Returns:  Tuple with key + value (unpickled) (tuple).
         """
         T = TRACE(5)
-        
+
         try:
-            self.__sem.acquire()       
+            self.__sem.acquire()
             keys = self.__dbmObj.keys()
             idx = int((random.random() * (len(keys) - 1)) + 0.5)
             key = keys[idx]
             del keys
-            
+
             key, val = self.__dbmObj[key]
             val = cPickle.loads(val)
             if (pop):
@@ -396,7 +396,7 @@ class ngamsDbm:
             self.__sem.release()
             raise e
 
-        
+
     def getCount(self):
         """
         Return the number of elements stored in the DBM.
@@ -410,12 +410,12 @@ class ngamsDbm:
         """
         jagonzal: This method is needed in order to avoid looping strategies
                   based on next() that is prone to corrupt the hash table object
-                  when used at the end of the table. In fact a DB_NOTFOUND 
-                  exception is raised in that case, and our conclusion is that 
+                  when used at the end of the table. In fact a DB_NOTFOUND
+                  exception is raised in that case, and our conclusion is that
                   it is not handled properly in either Berkeley API layer or the
-                  bsddb Python extension. 
+                  bsddb Python extension.
 
-        Return an iterator over the dictionary's (key, value) pairs.          
+        Return an iterator over the dictionary's (key, value) pairs.
 
         Returns:  An iterator over the dictionary's (key, value) pairs.
         """
@@ -435,9 +435,9 @@ class ngamsDbm2:
                  autoSync = 100):
         """
         Constructor method.
-        
+
         dbmName:           Name of the DBM DB file (string).
-        
+
         cleanUpOnDestr:    If set to 1, the DBM file will be removed on
                            object destruction (integer/0|1).
 
@@ -448,8 +448,8 @@ class ngamsDbm2:
         """
         T = TRACE()
 
-        self.__dbmExt = "gdbm"
-        
+        self.__dbmExt = "dbm"
+
         # Add proper extension if not already added.
         tmpName, tmpExt = os.path.splitext(dbmName)
         if (tmpExt != "." + self.__dbmExt): dbmName += "." + self.__dbmExt
@@ -472,7 +472,7 @@ class ngamsDbm2:
             info(4,"DBM file: %s being opened for reading ..." % dbmName)
             perm = "r"
         info(4,"Opening/creating DBM: " + dbmName)
-        self.__dbmObj = gdbm.open(dbmName, perm)
+        self.__dbmObj = dbm.open(dbmName, perm)
         if (perm == "c"):
             self.__dbmObj[NGAMS_FILE_DB_COUNTER] = cPickle.dumps(0, 1)
             self.__dbmObj.sync()
@@ -485,7 +485,7 @@ class ngamsDbm2:
         Destructor method cleaning up.
         """
         T = TRACE()
-        
+
         if (self.__dbmObj): self.__dbmObj.sync()
         if (self.__cleanUpOnDestr): rmFile(self.__dbmName)
 
@@ -506,7 +506,7 @@ class ngamsDbm2:
         Returns:   DBM filename.
         """
         return self.__dbmName
-    
+
 
     def cleanUp(self):
         """
@@ -515,7 +515,7 @@ class ngamsDbm2:
         Returns:   Reference to object itself.
         """
         T = TRACE()
-        
+
         if (self.__dbmObj): self.__dbmObj.sync()
         rmFile(self.__dbmName)
         return self
@@ -532,7 +532,7 @@ class ngamsDbm2:
         Returns:  Reference to object itself.
         """
         T = TRACE(5)
-        
+
         newVal = (cPickle.loads(self.__dbmObj[NGAMS_FILE_DB_COUNTER]) + val)
         self.__dbmObj[NGAMS_FILE_DB_COUNTER] = cPickle.dumps(newVal, 1)
         return self
@@ -555,7 +555,7 @@ class ngamsDbm2:
         Returns:   Reference to object itself.
         """
         T = TRACE(5)
-        
+
         try:
             self.__sem.acquire()
             dbVal = cPickle.dumps(object, 1)
@@ -589,7 +589,7 @@ class ngamsDbm2:
         Returns:   Reference to object itself.
         """
         T = TRACE(5)
-        
+
         newKey = str(self.getCount() + 1)
         return self.add(newKey, object, sync)
 
@@ -605,7 +605,7 @@ class ngamsDbm2:
         Returns:   Reference to object itself.
         """
         T = TRACE(5)
-        
+
         try:
             self.__sem.acquire()
             del self.__dbmObj[key]
@@ -625,13 +625,13 @@ class ngamsDbm2:
         Returns:   List with the keys in the DBM (list).
         """
         T = TRACE(5)
-        
+
         keyList = self.__dbmObj.keys()
         for idx in range((len(keyList) - 1), -1, -1):
             if (keyList[idx].find("__") == 0): del keyList[idx]
         return keyList
-        
-        
+
+
     def hasKey(self,
                key):
         """
@@ -642,7 +642,7 @@ class ngamsDbm2:
         Returns:  1 = key in DB otherwise 0 is returned (integer/0|1).
         """
         T = TRACE(5)
-        
+
         try:
             self.__sem.acquire()
             hasKey = self.__dbmObj.has_key(key)
@@ -650,8 +650,8 @@ class ngamsDbm2:
             return hasKey
         except Exception, e:
             self.__sem.release()
-            raise e       
-        
+            raise e
+
 
     def sync(self):
         """
@@ -660,7 +660,7 @@ class ngamsDbm2:
         Returns:    Reference to object itself.
         """
         T = TRACE(5)
-        
+
         try:
             self.__sem.acquire()
             self.__dbmObj.sync()
@@ -668,8 +668,8 @@ class ngamsDbm2:
             return self
         except Exception, e:
             self.__sem.release()
-            raise e       
-        
+            raise e
+
 
     def get(self,
             key,
@@ -682,7 +682,7 @@ class ngamsDbm2:
         Returns:   Element or None if not available (<Object>).
         """
         T = TRACE(5)
-        
+
         if (self.__dbmObj.has_key(key)):
             return cPickle.loads(self.__dbmObj[key])
         else:
@@ -697,10 +697,10 @@ class ngamsDbm2:
         Returns:   Reference to object itself.
         """
         T = TRACE(5)
-        
+
         self.__keyPtr = None
         return self
-        
+
 
     def getNext(self,
                 pop = 0):
@@ -716,7 +716,7 @@ class ngamsDbm2:
         Returns:    Tuple with key + value (unpickled) (tuple).
         """
         T = TRACE(5)
-        
+
         try:
             self.__sem.acquire()
             if (self.__keyPtr):
@@ -737,7 +737,7 @@ class ngamsDbm2:
                         if (self.__keyPtr):
                             dbVal = self.__dbmObj[self.__keyPtr]
                 except Exception, e:
-                    self.__keyPtr, dbVal = (None, None)   
+                    self.__keyPtr, dbVal = (None, None)
             if (self.__keyPtr and pop):
                 del self.__dbmObj[self.__keyPtr]
                 self._incrDbCount(-1)
@@ -770,12 +770,12 @@ class ngamsDbm2:
         #       just get the number of elements in the DBM and pick out a
         #       random of these.
         try:
-            self.__sem.acquire()       
+            self.__sem.acquire()
             keys = self.__dbmObj.keys()
             idx = int((random.random() * (len(keys) - 1)) + 0.5)
             key = keys[idx]
             del keys
-            
+
             key, val = self.__dbmObj[key]
             val = cPickle.loads(val)
             if (pop):
@@ -791,7 +791,7 @@ class ngamsDbm2:
             self.__sem.release()
             raise e
 
-        
+
     def getCount(self):
         """
         Return the number of elements stored in the DBM.
@@ -808,7 +808,7 @@ if __name__ == '__main__':
     Main function invoking the function to dump the contents of a DBM.
     """
     import Sybase
-    
+
     if (len(sys.argv) != 2):
         print "\nCorrect usage:\n\n" +\
               "> python ngamsDbm <DBM File>\n\n"
@@ -829,6 +829,6 @@ if __name__ == '__main__':
         print str(contents)
         print 80 * "-"
     print 80 * "=" + "\n"
-    
+
 
 # EOF
