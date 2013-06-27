@@ -4,63 +4,33 @@ These notes reflect the installation I've performed on my Mac Book Pro Mid 2010 
 
 The installation was performed on 2013-01-06.
 
-1) The initial fabric command used to perform the installation of NGAS:
 
-fab -H 192.168.1.10 -f machine-setup/deploy.py user_deploy
-
-This fails during the installation of sqlite3, because minitage.recipe.common 1.8.3 does not support Mountain Lion.
-The error message was:
-
-Traceback (most recent call last):
-  File "/Users/awicenec/ngas_rt/lib/python2.7/site-packages/zc/buildout/buildout.py", line 1852, in main
-    getattr(buildout, command)(args)
-  File "/Users/awicenec/ngas_rt/lib/python2.7/site-packages/zc/buildout/buildout.py", line 618, in install
-    installed_files = self[part]._call(recipe.install)
-  File "/Users/awicenec/ngas_rt/lib/python2.7/site-packages/zc/buildout/buildout.py", line 1327, in _call
-    return f()
-  File "/Users/awicenec/ngas_rt/eggs/minitage.recipe.cmmi-1.56-py2.7.egg/minitage/recipe/cmmi/cmmi.py", line 236, in install
-    self._set_compilation_flags()
-  File "/Users/awicenec/ngas_rt/eggs/minitage.recipe.common-1.83-py2.7.egg/minitage/recipe/common/common.py", line 1044, in _set_compilation_flags
-    os.environ['MACOSX_DEPLOYMENT_TARGET'] = self.osx_target
-  File "/Users/awicenec/ngas_rt/lib/python2.7/os.py", line 471, in __setitem__
-    putenv(key, item)
-TypeError: must be string, not None
-
-I've patched the file common.py to recognize version 12 of Mac OSX and ran the buildout again:
-
-The Line
-            if kv.startswith('11.'):
-
-changed to
-
-            if kv.startswith('11.') or kv.startswith('12.'):
-
-
-2) NOTE: From here onwards I ran the buildout directly from the already installed ngas_rt directory rather than through
-the fabric. This requires that the virtualenv is enabled by running:
+1) NOTE: Run the fix below directly from the already installed ngas_rt directory rather than through
+the fabric. This requires that the ngas_rt virtualenv is enabled by running:
 
 source ~/ngas_rt/bin/activate
 
-The second buildout fails, because it can't find the BSD database include files and library. I've downloaded the DB (5.3.21)
-and configured the installation to point to the ngas_rt root directory (--prefix=~/ngas_rt). The compilation went through without
+The buildout fails, because it can't find the BSD database include files and library. I've downloaded the DB (5.3.21)
+and configured the installation to point to the ngas_rt root directory (--prefix=~/ngas_rt). The compilation goes through without
 problems. However the buildout still reports:
-
+====
 Can't find a local Berkeley DB installation.
 (suggestion: try the --berkeley-db=/path/to/bsddb option)
+====
 
-This is due to the non-standard installation location of BSD DB. Thus I ran
+This is due to the non-standard installation location of BSD DB. Thus run
 
-pip install bsddb3
+$ pip install bsddb3
 
 in order to get a build directory of the module and then ran
 
-python2.7 setup.py --berkeley-db=~/ngas_rt build
+$ python2.7 setup.py --berkeley-db=~/ngas_rt build
 
 and
 
-python2.7 setup.py --berkeley-db=~/ngas_rt install
+$ python2.7 setup.py --berkeley-db=~/ngas_rt install
 
-and the I ran buildout again. This time it was successful and I ended up in a working NGAS installation.
+and then run buildout again.
 
 
 
