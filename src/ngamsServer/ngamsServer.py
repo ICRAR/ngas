@@ -36,7 +36,7 @@ This module contains the class ngamsServer that provides the
 services for the NG/AMS Server.
 """
 
-import os, sys, re, string, threading, time, glob, cPickle, base64, types
+import os, sys, re, threading, time, glob, cPickle, base64, types
 import thread, traceback
 import SocketServer, BaseHTTPServer, socket, signal
 
@@ -59,7 +59,7 @@ _reqCallBack = None
 # server instance e.g. from the NG/AMS Exit Handler.
 _ngamsServer = None
 
-   
+
 def ngamsExitHandler(signalNo,
                      frameObject = "",
                      killServer = 1,
@@ -79,8 +79,8 @@ def ngamsExitHandler(signalNo,
 
     delPidFile:   Flag indicating if NG/AMS PID file should be deleted or
                   not (integer/0|1).
-                 
-    Returns:      Void. 
+
+    Returns:      Void.
     """
     global _ngamsServer
     ngamsSrvUtils.ngamsBaseExitHandler(_ngamsServer, signalNo, killServer,
@@ -105,13 +105,13 @@ class ngamsSimpleRequest:
         self.rfile = self.connection.makefile('rb', self.rbufsize)
         self.wfile = self.wfile = self.connection.makefile('wb', self.wbufsize)
 
-    
+
     def send_header(self,
                     keyword,
                     value):
         """
         Send an HTTP header.
-        
+
         keyword:    HTTP header keyword (string).
 
         value:      Value for the HTTP header keyword (string).
@@ -125,12 +125,12 @@ class ngamsSimpleRequest:
 class ngamsHttpServer(SocketServer.ThreadingMixIn,
                       SocketServer.TCPServer,
                       BaseHTTPServer.HTTPServer):
-    """  
+    """
     Class that provides the multithreaded HTTP server functionality.
     """
     allow_reuse_address = 1
 
-    
+
     def process_request(self,
                         request,
                         client_address):
@@ -171,7 +171,7 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
         Handle a request.
         """
         T = TRACE(5)
-        
+
         try:
             request, client_address = self.get_request()
         except socket.error:
@@ -193,7 +193,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def finish(self):
         """
         Finish the handling of the HTTP request.
-        
+
         Returns:    Void.
         """
         try:
@@ -204,7 +204,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.wfile.flush()
             self.wfile.close()
         except:
-            pass    
+            pass
         try:
             logFlush()
         except:
@@ -235,7 +235,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         """
         self.reqHandle()
 
-  
+
     def do_POST(self):
         """
         Serve a POST method request.
@@ -256,7 +256,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def reqHandle(self):
         """
         Basic, generic request handler to handle an incoming HTTP request.
-        
+
         Returns:    Void.
         """
         global _reqCallBack
@@ -279,13 +279,13 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                      setMessage("NG/AMS Server not properly functioning! " +\
                                 "No HTTP request callback!")
             self.send_error(NGAMS_HTTP_BAD_REQ, status.genXmlDoc())
-            
+
 
 class ngamsServer:
     """
     Class providing the functionality of the NG/AMS Server.
     """
-    
+
     def __init__(self):
         """
         Constructor method.
@@ -355,7 +355,7 @@ class ngamsServer:
         self._subscrBlScheduledDic    = {}
         self._subscrBlScheduledDic_Sem = threading.Semaphore(1)
         self._subscrBackLogCount_Sem  = threading.Semaphore(1)
-        
+
         # List to keep track off to which Data Providers an NG/AMS
         # Server is subscribed.
         self._subscriptionStatusList  = []
@@ -378,7 +378,7 @@ class ngamsServer:
         # - Source Archive Info DBM.
         self._srcArchInfoDbm = None
         self._srcArchInfoDbmSem = threading.Semaphore(1)
-       
+
         # Handling of User Service Plug-In.
         self._userServicePlugIn       = None
         self._userServiceRunSync      = threading.Event()
@@ -394,7 +394,7 @@ class ngamsServer:
         self.__lastReqStartTime         = 0.0
         self.__lastReqEndTime           = 0.0
         self.__nextDataCheckTime        = 0
-        
+
         # Dictionary to keep track of the various requests being handled.
         self.__requestDbm               = None
         self.__requestDbmSem            = threading.Semaphore(1)
@@ -411,12 +411,12 @@ class ngamsServer:
         self._cacheNewFilesDbm          = None
         self._cacheNewFilesDbmSem       = threading.Semaphore(1)
         self._cacheCtrlPiDbm            = None
-        self._cacheCtrlPiDelDbm         = None 
+        self._cacheCtrlPiDelDbm         = None
         self._cacheCtrlPiFilesDbm       = None
         self._cacheCtrlPiThreadGr       = None
         self._dataMoverOnly             = False
 
- 
+
     def getLogFilename(self):
         """
         Return the filename of the Local Log File.
@@ -457,7 +457,7 @@ class ngamsServer:
         T = TRACE()
 
         return self._cacheArchive
-    
+
     def getDataMoverOnlyActive(self):
         """
         Return the value of the Data Mover Only Flag.
@@ -465,8 +465,8 @@ class ngamsServer:
         Returns:  State of the Data Mover Only Flag (boolean).
         """
         T = TRACE()
-        return self._dataMoverOnly     
-    
+        return self._dataMoverOnly
+
 
     def getReqDbName(self):
         """
@@ -491,7 +491,7 @@ class ngamsServer:
         Returns:         Request ID (integer).
         """
         T = TRACE()
-        
+
         try:
             self.__requestDbmSem.acquire()
             self.__requestId += 1
@@ -517,7 +517,7 @@ class ngamsServer:
         Returns:     Reference to object itself.
         """
         T = TRACE()
-        
+
         try:
             self.__requestDbmSem.acquire()
             reqId = reqPropsObj.getRequestId()
@@ -537,7 +537,7 @@ class ngamsServer:
 
         Returns:    List with Request IDs (list).
         """
-        return self.__requestDbm.keys() 
+        return self.__requestDbm.keys()
 
 
     def getRequest(self,
@@ -562,14 +562,14 @@ class ngamsServer:
         except Exception, e:
             self.__requestDbmSem.release()
             raise e
-        
+
 
     def delRequest(self,
                    requestId):
         """
         Delete the Request Properties Object associated to the given
         Request ID.
-        
+
         requestId:     ID allocated to the request (string).
 
         Returns:       Reference to object itself.
@@ -589,7 +589,7 @@ class ngamsServer:
     def takeStateSem(self):
         """
         Acquire the State Semaphore to request for permission to change it.
-        
+
         Returns:    Void.
         """
         self.__stateSem.acquire()
@@ -598,7 +598,7 @@ class ngamsServer:
     def relStateSem(self):
         """
         Release the State Semaphore acquired with takeStateSem().
-        
+
         Returns:    Void.
         """
         self.__stateSem.release()
@@ -607,7 +607,7 @@ class ngamsServer:
     def takeSubStateSem(self):
         """
         Acquire the Sub-State Semaphore to request for permission to change it.
-        
+
         Returns:    Void.
         """
         self.__subStateSem.acquire()
@@ -616,7 +616,7 @@ class ngamsServer:
     def relSubStateSem(self):
         """
         Release the Sub-State Semaphore acquired with takeStateSem().
-        
+
         Returns:    Void.
         """
         self.__subStateSem.release()
@@ -631,7 +631,7 @@ class ngamsServer:
         state:      State of NG/AMS (see ngams) (string).
 
         updateDb:   Update the state in the DB (boolean).
-        
+
         Returns:    Reference to object itself.
         """
         self.__state = state
@@ -643,7 +643,7 @@ class ngamsServer:
     def getState(self):
         """
         Get the NG/AMS State.
-        
+
         Returns:    State of NG/AMS (string).
         """
         return self.__state
@@ -655,7 +655,7 @@ class ngamsServer:
         Set the Sub-State of NG/AMS.
 
         subState:   Sub-State of NG/AMS (see ngams) (string).
-        
+
         Returns:    Reference to object itself.
         """
         # TODO: Change the handling of the Sub-State: Use
@@ -677,7 +677,7 @@ class ngamsServer:
     def getSubState(self):
         """
         Get the Sub-State of NG/AMS.
-        
+
         Returns:    Sub-State of NG/AMS (string).
         """
         return self.__subState
@@ -699,25 +699,25 @@ class ngamsServer:
 
         action:            Action for which the state change is
                            needed (string).
-        
+
         allowedStates:     Tuple containing allowed States for
                            executing the action (tuple).
-        
+
         allowedSubStates:  Tuple containing allowed Sub-States for
                            executing the action (tuple).
-        
+
         newState:          If specified this will become the new State
                            of NG/AMS if state conditions allows this (string).
-        
+
         newSubState:       If specified this will become the new Sub-State
                            of NG/AMS if state conditions allows this (string).
 
         updateDb:          Update the state in the DB (boolean).
-        
+
         Returns:           Void.
         """
         T = TRACE()
-        
+
         self.takeStateSem()
         if ((ngamsLib.searchList(allowedStates, self.getState()) == -1) or
             (ngamsLib.searchList(allowedSubStates, self.getSubState()) == -1)):
@@ -726,7 +726,7 @@ class ngamsServer:
             errMsg = genLog("NGAMS_ER_IMPROPER_STATE", errMsg)
             self.relStateSem()
             error(errMsg)
-            raise Exception, errMsg  
+            raise Exception, errMsg
 
         if (newState != ""): self.setState(newState, updateDb)
         if (newSubState != ""): self.setSubState(newSubState)
@@ -822,7 +822,7 @@ class ngamsServer:
 
         self._subscriptionRunSync.set()
         return self
-    
+
     def registerSubscriber(self, subscriberObj):
         """
         register a subscriber object to the server
@@ -860,7 +860,7 @@ class ngamsServer:
         Returns:      Reference to object itself.
         """
         T = TRACE()
-        
+
         try:
             startTime = time.time()
             self._subscriptionSem.acquire()
@@ -875,13 +875,13 @@ class ngamsServer:
             raise Exception, errMsg
         return self
 
-    
+
     def decSubcrBackLogCount(self):
         """
         Decrease the Subscription Back-Log Counter.
 
         Returns:  Current value of the Subscription Back-Log Counter (integer).
-        
+
         This is thread safe
         """
         self._subscrBackLogCount_Sem.acquire()
@@ -890,13 +890,13 @@ class ngamsServer:
         finally:
             self._subscrBackLogCount_Sem.release()
         return self._subscrBackLogCount
-    
+
     def incSubcrBackLogCount(self):
         """
         Increase the Subscription Back-Log Counter.
 
         Returns:  Current value of the Subscription Back-Log Counter (integer).
-        
+
         This is thread safe
         """
         self._subscrBackLogCount_Sem.acquire()
@@ -905,12 +905,12 @@ class ngamsServer:
         finally:
             self._subscrBackLogCount_Sem.release()
         return self._subscrBackLogCount
-    
+
     def presetSubcrBackLogCount(self, num):
         """
         Preset the Subscription Back-Log Counter
         during system start-up
-        
+
         num    :    The number of back-log entries
         Returns:    Reference to object itself.
         """
@@ -930,7 +930,7 @@ class ngamsServer:
     def getSubcrBackLogCount(self):
         """
         Get the value of the Subscription Back-Log Counter.
-        
+
         Returns:  Current value of the Subscription Back-Log Counter (integer).
         """
         return self._subscrBackLogCount
@@ -941,7 +941,7 @@ class ngamsServer:
         Return reference to the Subscription Status List. This list contains
         the reference to the various Data Providers to which a server has
         subscribed.
-    
+
         Returns:     Reference to Subscription Status List (list).
         """
         return self._subscriptionStatusList
@@ -951,7 +951,7 @@ class ngamsServer:
         """
         Reset the Subscription Status List. This list contains the reference
         to the various Data Providers to which a server has subscribed.
-    
+
         Returns:     Reference to object itself.
         """
         self._subscriptionStatusList = []
@@ -1008,7 +1008,7 @@ class ngamsServer:
             self.__mirControlTrigger.wait()
         self.__mirControlTrigger.clear()
         return self
-    
+
 
     def setCacheControlThreadRunning(self,
                                      running):
@@ -1076,7 +1076,7 @@ class ngamsServer:
         """
         return self.__lastReqStartTime
 
-    
+
     def setLastReqEndTime(self):
         """
         Register end time for handling of last request.
@@ -1220,7 +1220,7 @@ class ngamsServer:
         Set the reference to the configuration object.
 
         ngamsCfgObj:  Instance of the configuration object (ngamsConfig)
-        
+
         Returns:      Reference to object itself.
         """
         self.__ngamsCfgObj = ngamsCfgObj
@@ -1230,12 +1230,12 @@ class ngamsServer:
     def getCfg(self):
         """
         Return reference to object containing the NG/AMS Configuration.
-        
+
         Returns:    Reference to NG/AMS Configuration (ngamsConfig).
         """
         return self.__ngamsCfgObj
 
-    
+
     def getSrvListDic(self):
         """
         Return reference to the Server List Dictionary.
@@ -1243,7 +1243,7 @@ class ngamsServer:
         Returns:    Reference to Server List Dictionary (dictionary).
         """
         return self.__srvListDic
-    
+
 
     def setDiskDic(self,
                    diskDic):
@@ -1335,19 +1335,19 @@ class ngamsServer:
         without doing anything.
 
         version:             NG/AMS version (string).
-        
+
         portNo:              Port number (integer).
-        
+
         allowArchiveReq:     Allow Archive Requests Flag (integer/0|1).
-        
+
         allowRetrieveReq:    Allow Retrieve Requests Flag (integer/0|1).
-        
+
         allowProcessingReq:  Allow Processing Requests Flag (integer/0|1).
 
         allowRemoveReq:      Allow Remove Requests Flag (integer/0|1).
-        
+
         dataChecking:        Data Checking Active Flag (integer/0|1).
-        
+
         state:               State of NG/AMS Server (string).
 
         updateDb:            Update the state in the DB if True (boolean).
@@ -1355,7 +1355,7 @@ class ngamsServer:
         Returns:             Reference to object itself.
         """
         T = TRACE(5)
-        
+
         if (self.getDb() == None): return self
 
         if (version != None): self.getHostInfoObj().setSrvVersion(version)
@@ -1381,7 +1381,7 @@ class ngamsServer:
                    (dictionary/ngamsSubscriber).
         """
         return self._subscriberDic
-    
+
 
     def reqCallBack(self,
                     httpRef,
@@ -1397,20 +1397,20 @@ class ngamsServer:
 
         httpRef:         Reference to the HTTP request handler
                          object (ngamsHttpRequestHandler).
-         
+
         clientAddress:   Address of client (string).
-         
+
         method:          HTTP method (string).
-        
+
         path:            Path of HTTP request (URL) (string).
-        
+
         requestVersion:  HTTP version (string).
-        
+
         headers:         HTTP headers (dictionary).
-        
+
         writeFd:         File object used to write data back to
                          client (file object).
-        
+
         readFd:          File object used to read data from
                          client (file object).
 
@@ -1441,7 +1441,7 @@ class ngamsServer:
             reqPropsObj.setCompletionTime(1)
             self.updateRequestDb(reqPropsObj)
             self.setLastReqEndTime()
-            
+
             # Flush read socket if needed.
             if (reqPropsObj.getBytesReceived() < reqPropsObj.getSize()):
                 #info(4,"Closing HTTP read socket ...")
@@ -1472,21 +1472,21 @@ class ngamsServer:
                           headers):
         """
         Handle the HTTP request.
-        
+
         reqPropsObj:     Request Property object to keep track of actions done
                          during the request handling (ngamsReqProps).
 
         httpRef:         Reference to the HTTP request handler
                          object (ngamsHttpRequestHandler).
-         
+
         clientAddress:   Address of client (string).
-         
+
         method:          HTTP method (string).
-        
+
         path:            Path of HTTP request (URL) (string).
-        
+
         requestVersion:  HTTP version (string).
-        
+
         headers:         HTTP headers (dictionary).
 
         Returns:         Void.
@@ -1535,19 +1535,19 @@ class ngamsServer:
                      closeWrFo = 0):
         """
         Generate a standard HTTP reply.
-        
+
         reqPropsObj:   Request Property object to keep track of actions done
                        during the request handling (ngamsReqProps).
-        
+
         httpRef:       Reference to the HTTP request handler
-                       object (ngamsHttpRequestHandler).       
-        
+                       object (ngamsHttpRequestHandler).
+
         code:          HTTP status code (integer)
-        
+
         dataRef:       Data to send with the HTTP reply (string).
 
         dataInFile:    Data stored in a file (integer).
-        
+
         contentType:   Content type (mime-type) of the data (string).
 
         contentLength: Length of the message. The actually message should
@@ -1560,7 +1560,7 @@ class ngamsServer:
 
         closeWrFo:     If set to 1, the HTTP write file object will be closed
                        by the function (integer/0|1).
-        
+
         Returns:       Void.
         """
         T = TRACE()
@@ -1576,7 +1576,7 @@ class ngamsServer:
                           responses[code][0]
             else:
                 message = ""
-                
+
             protocol = BaseHTTPServer.BaseHTTPRequestHandler.protocol_version
             httpRef.wfile.write("%s %s %s\r\n" % (protocol, str(code),message))
             srvInfo = "NGAMS/" + getNgamsVersion()
@@ -1584,7 +1584,7 @@ class ngamsServer:
             httpRef.send_header("Server", srvInfo)
             httpTimeStamp = ngamsLib.httpTimeStamp()
             info(4,"Sending header: Date: " + httpTimeStamp)
-            httpRef.send_header("Date", httpTimeStamp)        
+            httpRef.send_header("Date", httpTimeStamp)
             # Expires HTTP reponse header field, e.g.:
             # Expires: Mon, 17 Sep 2001 09:21:38 GMT
             info(4,"Sending header: Expires: " + httpTimeStamp)
@@ -1639,7 +1639,7 @@ class ngamsServer:
             elif (contentLength != 0):
                 info(4,"Sending header: Content-length/2: "+str(contentLength))
                 httpRef.send_header("Content-length", contentLength)
-            
+
             httpRef.wfile.flush()
 
             #################################################################
@@ -1664,7 +1664,7 @@ class ngamsServer:
                     info(4,"Sender and receiver running on the same host: Sleeping 0.1 s")
                     time.sleep(0.100)
             #################################################################
-                
+
             if (closeWrFo): httpRef.wfile.close()
             reqPropsObj.setSentReply(1)
         except Exception, e:
@@ -1674,7 +1674,7 @@ class ngamsServer:
             error(errMsg)
         info(4,"Generated HTTP reply to: " + str(httpRef.client_address))
 
-  
+
     def httpReply(self,
                   reqPropsObj,
                   httpRef,
@@ -1684,29 +1684,29 @@ class ngamsServer:
                   addHttpHdrs = []):
         """
         Generate standard HTTP reply.
-        
+
         reqPropsObj:   Request Property object to keep track of
                        actions done during the request handling
                        (ngamsReqProps).
-        
+
         httpRef:       Reference to the HTTP request handler
-                       object (ngamsHttpRequestHandler).       
-        
+                       object (ngamsHttpRequestHandler).
+
         code:          HTTP status code (integer)
-        
+
         msg:           Message to send as data with the HTTP reply (string).
-        
+
         contentType:   Content type (mime-type) of the msg (string).
 
         addHttpHdrs:   List containing sub-lists with additional
                        HTTP headers to send. Format is:
 
                          [[<HTTP hdr>, <val>, ...]         (list)
-        
+
         Returns:       Void.
         """
         T = TRACE()
-        
+
         if (reqPropsObj.getSentReply()):
             info(3,"Reply already sent for this request")
             return
@@ -1724,12 +1724,12 @@ class ngamsServer:
         """
         Generate an HTTP Redirection Reply and send this back to the
         requestor.
-        
+
         reqPropsObj:   Request Property object to keep track of actions done
                        during the request handling (ngamsReqProps).
 
         httpRef:       Reference to the HTTP request handler
-                       object (ngamsHttpRequestHandler).  
+                       object (ngamsHttpRequestHandler).
 
         redirHost:     NGAS host to which to redirect the request (string).
 
@@ -1739,7 +1739,7 @@ class ngamsServer:
         Returns:       Void.
         """
         T = TRACE()
-        
+
         pars = ""
         for par in reqPropsObj.getHttpParNames():
             if (par != "initiator"):
@@ -1766,17 +1766,17 @@ class ngamsServer:
         from the remotely, contacted NGAS node. If the host to contact for
         handling the request is different that the actual target host, the
         proper contact host (e.g. cluster main node) is resolved internally.
- 
+
         reqPropsObj:    Request Property object to keep track of actions done
                         during the request handling (ngamsReqProps).
 
         httpRefOrg:     Reference to the HTTP request handler object for
                         the request received from the originator
                         (ngamsHttpRequestHandler).
-                    
+
         forwardHost:    Host ID to where the request should be forwarded
                         (string).
-        
+
         forwardPort:    Port number of the NG/AMS Server on the remote
                         host (integer).
 
@@ -1802,7 +1802,7 @@ class ngamsServer:
         else:
             contactHost = forwardHost
             contactAddr = forwardHost
-            contactPort = forwardPort 
+            contactPort = forwardPort
         pars = []
         for par in reqPropsObj.getHttpParNames():
             if (par != "initiator"):
@@ -1854,7 +1854,7 @@ class ngamsServer:
                                                     fileName=fn,
                                                     dataSize=contLen,
                                                     timeOut=reqTimeOut)
-            
+
             # If auto-reply is selected, the reply from the remote server
             # is send back to the originator of the request.
             if (autoReply):
@@ -1886,9 +1886,9 @@ class ngamsServer:
         Generate an NG/AMS status object with the basic fields set.
 
         status:   Status: OK/FAILURE (string).
-        
+
         msg:      Message for status (string).
-        
+
         Returns:  Status object (ngamsStatus).
         """
         return ngamsStatus.ngamsStatus().\
@@ -1911,25 +1911,25 @@ class ngamsServer:
         reqPropsObj:   Request Property object to keep track of
                        actions done during the request handling
                        (ngamsReqProps).
-        
+
         httpRef:       Reference to the HTTP request handler
-                       object (ngamsHttpRequestHandler).       
-        
+                       object (ngamsHttpRequestHandler).
+
         code:          HTTP status code (integer)
 
         status:        Status: OK/FAILURE (string).
-        
+
         msg:           Message for status (string).
 
         addHttpHdrs:   List containing sub-lists with additional
                        HTTP headers to send. Format is:
 
                          [[<HTTP hdr>, <val>, ...]         (list)
-        
+
         Returns:       Void.
         """
         T = TRACE()
-        
+
         if (reqPropsObj.getSentReply()):
             info(3,"Reply already sent for this request")
             return
@@ -1956,10 +1956,10 @@ class ngamsServer:
 
         reqPropsObj:   Request Property object to keep track of actions done
                        during the request handling (ngamsReqProps).
-        
+
         httpRef:       Reference to the HTTP request handler
-                       object (ngamsHttpRequestHandler).       
-        
+                       object (ngamsHttpRequestHandler).
+
         code:          HTTP status code (integer)
 
         status:        Status: OK/FAILURE (string).
@@ -1970,7 +1970,7 @@ class ngamsServer:
                        where file were stored (Main Disk) (ngamsDiskInfo).
         """
         T = TRACE()
-        
+
         statusObj = self.genStatus(status, msg).addDiskStatus(diskInfoObj).\
                     setReqStatFromReqPropsObj(reqPropsObj)
         xmlStat = statusObj.genXmlDoc(0, 1, 1)
@@ -1979,7 +1979,7 @@ class ngamsServer:
                                    NGAMS_XML_STATUS_DTD)
         self.httpReply(reqPropsObj, httpRef, code, xmlStat, NGAMS_XML_MT)
 
-                
+
     def checkDiskSpaceSat(self,
                           minDiskSpaceMb = None):
         """
@@ -2006,7 +2006,7 @@ class ngamsServer:
                 errMsg = genLog("NGAMS_AL_DISK_SPACE_SAT",
                                 [minDiskSpaceMb, dirErrMsg])
                 raise Exception, errMsg
-        
+
 
     def init(self,
              argv,
@@ -2015,11 +2015,11 @@ class ngamsServer:
         Initialize the NG/AMS Server.
 
         argv:       Tuple containing the command line parameters to
-                    the server (tuple). 
+                    the server (tuple).
 
         serve:      If set to 1, the server will start serving on the
                     given HTTP port (integer/0|1).
-                    
+
         Returns:    Reference to object itself.
         """
         # Parse input parameters, set up signal handlers, connect to DB,
@@ -2037,7 +2037,7 @@ class ngamsServer:
         signal.signal(signal.SIGTERM, ngamsExitHandler)
         info(4,"Setting up signal handler for SIGINT ...")
         signal.signal(signal.SIGINT, ngamsExitHandler)
-        
+
         if (getDebug()):
             self.handleStartUp(serve)
         else:
@@ -2123,13 +2123,13 @@ class ngamsServer:
                                                       self.getDb())
         ngasTmpDir = ngamsHighLevelLib.getNgasTmpDir(self.getCfg())
         self.__ngasDb.setDbTmpDir(ngasTmpDir)
-    
+
         # Check the configuration.
         self.getCfg()._check()
 
         info(1,"Successfully loaded NG/AMS Configuration")
         return self
-        
+
 
     def handleStartUp(self,
                       serve = 1):
@@ -2140,9 +2140,9 @@ class ngamsServer:
 
         serve:      If set to 1, the server will start serving on the
                     given HTTP port (integer/0|1).
-        
+
         Returns:    Void.
-        """       
+        """
         # Remember to set the time for the last request initially to the
         # start-up time to avoid that the host is suspended immediately.
         self.setLastReqEndTime()
@@ -2173,7 +2173,7 @@ class ngamsServer:
 
         # Should be possible to execute several servers on one node.
         self.__hostInfo.setHostId(getHostId())
-        
+
         # Log some essential information.
         allowArchiveReq    = self.getCfg().getAllowArchiveReq()
         allowRetrieveReq   = self.getCfg().getAllowRetrieveReq()
@@ -2189,7 +2189,7 @@ class ngamsServer:
                                 setSrvProcess(allowProcessingReq).\
                                 setSrvRemove(allowRemoveReq).\
                                 setSrvDataChecking(0)
- 
+
         # Check if there is already a PID file.
         info(5,"Check if NG/AMS PID file is existing ...")
         if (not self.getForce() and os.path.exists(self.pidFile())):
@@ -2253,7 +2253,7 @@ class ngamsServer:
         if ((self.__locLogFile != "") and (self.getCfg().getLocalLogFile())):
             self.__locLogFile = self.getCfg().getLocalLogFile()
         if (self.__sysLog == -1):
-            self.__sysLog = self.getCfg().getSysLog() 
+            self.__sysLog = self.getCfg().getSysLog()
         if (self.__sysLogPrefix == NGAMS_DEF_LOG_PREFIX):
             self.__sysLogPrefix = self.getCfg().getSysLogPrefix()
         try:
@@ -2285,10 +2285,10 @@ class ngamsServer:
         # Create a mime-type to DAPI dictionary
         for stream in self.getCfg().getStreamList():
             self.getMimeTypeDic()[stream.getMimeType()] = stream.getPlugIn()
-        
+
         # Throw this info again to have it in the log-file as well
         info(3,"PID file for this session created: {0}".format(self.pidFile()))
- 
+
         # If Auto Online is selected, bring the Server Online
         if (self.getAutoOnline()):
             info(2,"Auto Online requested - server going to Online State ...")
@@ -2332,10 +2332,10 @@ class ngamsServer:
                       wakeUpTime):
         """
         Request a Wake-Up Call via the DB.
-        
+
         wakeUpHostId:  Name of host where the NG/AMS Server requested for
                        the Wake-Up Call is running (string).
-        
+
         wakeUpTime:    Absolute time for being woken up (seconds since
                        epoch) (integer).
 
@@ -2362,7 +2362,7 @@ class ngamsServer:
         portNo = self.getCfg().getPortNo()
         info(1,"Setting up NG/AMS HTTP Server (Host: " + getHostName() +\
              " - Port: " + str(portNo) + ") ...")
-        self.__httpDaemon = ngamsHttpServer((hostName, portNo), 
+        self.__httpDaemon = ngamsHttpServer((hostName, portNo),
                                             ngamsHttpRequestHandler)
         info(1,"NG/AMS HTTP Server ready (Host: " + getHostName() +\
              " - Port: " + str(portNo) + ")")
@@ -2376,7 +2376,7 @@ class ngamsServer:
 
         delPidFile:  Flag indicating if NG/AMS PID file should be deleted or
                      not (integer/0|1).
-                     
+
         Returns:     Void.
         """
         msg = genLog("NGAMS_INFO_TERM_SRV", [getNgamsVersion(), getHostName(),
@@ -2419,9 +2419,9 @@ class ngamsServer:
         Increment and check index for command line parameters.
 
         idx:       Present index to increment (integer).
-        
+
         argv:      Tuple containing command line arguments (tuple).
-        
+
         Returns:   Increment index.
         """
         idx = idx + 1
@@ -2432,7 +2432,7 @@ class ngamsServer:
     def correctUsage(self):
         """
         Print out correct usage message.
-        
+
         Returns:    Void.
         """
         fo = open(ngamsGetSrcDir() + "/ngamsServer/ngamsServer.doc")
@@ -2575,7 +2575,7 @@ class ngamsServer:
         Returns:   Void.
         """
         pass
-    
+
     def test_AfterDapiInvocation(self):
         """
         Test method invoked in NG/AMS Server immediately after having invoked
@@ -2634,5 +2634,5 @@ def main():
 
 if __name__ == '__main__':
     main()
-        
+
 # EOF

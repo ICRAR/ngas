@@ -24,22 +24,23 @@ Module to create throughput statistics plots.
 """
 
 import pylab, argparse
+from pylab import median, mean, where
 import sys, datetime
 from calendar import monthrange
 import getpass
 
 class throughputPlot():
     """
-    Class encapsulates the DB query and preparation of the ingest 
+    Class encapsulates the DB query and preparation of the ingest
     statistics of the main ICRAR or the MIT NGAS DB. Depending on
     the input date format the statistics will be done daily for a
     whole month or hourly for one day.
     """
     def __init__(self, args):
-        
+
         self.DB = {'ICRAR':'192.102.251.250', 'MIT':'eor-02.mit.edu'}
         self.mode = []
-        self.x = []
+        self.y = []
         self.n = []
         self.tvol = 0
         self.fdate = ""
@@ -87,7 +88,7 @@ class throughputPlot():
                 sys.exit()
         self.dt = dt
         return
-        
+
     def queryDb(self):
         """
         Execute the DB queries for a month or 24 hours depending on self.mode.
@@ -100,8 +101,11 @@ class throughputPlot():
         if self.db in self.DB.keys():
             import psycopg2 as dbdrv
             hsql="""select count(file_id), sum(uncompressed_file_size)/
-            (date_part('epoch', to_timestamp(max(ingestion_date),'YYYY-MM-DD"T"HH24:MI:SS.MS')- to_timestamp(min(ingestion_date),'YYYY-MM-DD"T"HH24:MI:SS.MS')) + 10.)/(1024^2) as average, 
-            max(ingestion_date) as last , min(ingestion_date) as first , sum(uncompressed_file_size)/1024^4 as volume from ngas_files where ingestion_date between {0} and {1}"""
+            (date_part('epoch', to_timestamp(max(ingestion_date),'YYYY-MM-DD"T"HH24:MI:SS.MS')-
+            to_timestamp(min(ingestion_date),'YYYY-MM-DD"T"HH24:MI:SS.MS')) + 10.)/(1024^2) as average,
+            max(ingestion_date) as last , min(ingestion_date) as first ,
+            sum(uncompressed_file_size)/1024^4 as volume from
+            ngas_files where ingestion_date between {0} and {1}"""
             try:
                 t=dbpass
             except NameError:
@@ -110,8 +114,11 @@ class throughputPlot():
         else:
             import sqlite3 as dbdrv
             hsql="""select count(file_id),
-            sum(uncompressed_file_size)/(strftime('%s',max(ingestion_date))-strftime('%s',min(ingestion_date)))/1024./1024. as average, 
-            max(ingestion_date) as last , min(ingestion_date) as first , sum(uncompressed_file_size)/1024/1024/1024./1024. as volume from ngas_files where ingestion_date between {0} and {1}"""
+            sum(uncompressed_file_size)/(strftime('%s',max(ingestion_date))-
+            strftime('%s',min(ingestion_date)))/1024./1024. as average,
+            max(ingestion_date) as last , min(ingestion_date) as first ,
+            sum(uncompressed_file_size)/1024/1024/1024./1024. as volume
+            from ngas_files where ingestion_date between {0} and {1}"""
             dbconn = dbdrv.connect(self.db)
         cur = dbconn.cursor()
         res = []
@@ -122,13 +129,13 @@ class throughputPlot():
             res.append(r)
             self.ssql = ssql
         res = pylab.array(res)
-        x = res[:,:,1].reshape(len(res))
-        x[pylab.where(x < -1)]=0
+        y = res[:,:,1].reshape(len(res))
+        y[where(y < -1)]=0
 
         n = res[:,:,0].reshape(len(res))
-        n[pylab.where(n < -1)]=0
+        n[where(n < -1)]=0
 
-        self.x = pylab.float16(x)
+        self.y = pylab.float16(y)
         self.n = pylab.float16(n)
         vol = pylab.float16(res[:,:,4])
         self.tvol = vol[vol>0].sum()
@@ -154,15 +161,26 @@ class throughputPlot():
         ax1 = fig.add_subplot(111)
         ax1.set_xlabel(self.mode[1])
         ax1.set_ylabel('MB/s')
-        ax1.set_xlim([1,self.loop+1.5])
-        ax1.bar(pylab.where(self.x>=0)[0]+1.1,self.x)
+        ax1.set_xlim([0,self.loop+0.5])
+        ax1.bar(where(self.y>=0)[0]+0.1,self.y)
         ax1.xaxis.axes.set_autoscalex_on(False)
-        ax1.plot([1,self.loop+1.5],[pylab.median(self.x),pylab.median(self.x)])
-        ax1.plot([1,self.loop+1.5],[pylab.mean(self.x),pylab.mean(self.x)])
+        ax1.plot([0,self.loop+0.5],[median(self.y[where(self.y > 0)]),
+                                    median(self.y[where(self.y > 0)])])
+        ax1.plot([0,self.loop+0.5],[mean(self.y[where(self.y > 0)]),
+                                    mean(self.y[where(self.y > 0)])])
+
+        pylab.text(0.02,0.95,'Median: %5.2f MB/s'
+                   % median(self.y[where(self.y > 0)]),
+                   transform = ax1.transAxes,ha='left', va='bottom', color='b',
+                   fontsize=10)
+        pylab.text(0.02,0.95,'Mean: %5.2f MB/s'
+                   % mean(self.y[where(self.y > 0)]),
+                   transform = ax1.transAxes,ha='left', va='top', color='g',
+                   fontsize=10)
 
         ax2 = ax1.twinx()
         ax2.xaxis.axes.set_autoscalex_on(False)
-        ax2.plot(pylab.where(self.n>=0)[0]+1.5,self.n,'r-', marker='o')
+        ax2.plot(where(self.n>=0)[0]+0.5,self.n,'r-', marker='o')
 
         for tl in ax2.get_yticklabels():
             tl.set_color('r')
