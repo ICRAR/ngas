@@ -69,6 +69,10 @@ def startSubscriptionThread(srvObj):
                                                   NGAMS_SUBSCRIPTION_THR, args)
     srvObj._subscriptionThread.setDaemon(0)
     srvObj._subscriptionThread.start()
+    
+    if (srvObj._deliveryStopSync.isSet()):
+        srvObj._deliveryStopSync.clear() #revoke the shutdown (offline) setting
+        
     info(3,"Subscription Thread started")
 
 
