@@ -59,7 +59,8 @@ def handleCmd(srvObj,
     (fileId, filePath, ingestRate) = ngamsCmd_QARCHIVE.handleCmd(srvObj, reqPropsObj, httpRef)
     jobManHost = srvObj.getCfg().getNGASJobMANHost()
     try:
-        urllib2.urlopen('http://%s/ingest?file_id=%s&file_path=%s&to_host=%s&ingest_rate=%.2f' % (jobManHost, fileId, filePath, getHostId(), ingestRate))
+        reply = urllib2.urlopen('http://%s/ingest?file_id=%s&file_path=%s&to_host=%s&ingest_rate=%.2f' % (jobManHost, fileId, filePath, getHostId(), ingestRate), timeout = 15).read()
+        info('Reply from sending file %s ingestion event to server %s - %s' % (fileId, jobManHost, reply))
     except Exception, err:
         error('Fail to send file ingestion event to server %s, Exception: %s' %(jobManHost, str(err)))
     

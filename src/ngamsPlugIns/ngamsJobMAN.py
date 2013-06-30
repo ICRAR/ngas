@@ -75,6 +75,23 @@ def invalidParam(param):
 def hello():
     return getHello()
 
+@route('/failtodeliverfile')
+def failToDeliver():
+    fileId = request.query.get('file_id')
+    toUrl = request.query.get('to_url')
+    errMsg = request.query.get('err_msg')
+    if (fileId == None):
+        return 'No file id is provided'
+    else:
+        try:
+            ngamsJobMWALib.fileFailToDeliver(fileId, toUrl, errMsg)
+            msg = 'File %s fail to be delivered to %s: %s' % (fileId, toUrl, errMsg)
+            logger.info(msg)
+            return msg
+        except Exception, err:
+            logger.error(traceback.format_exc())
+            return 'Exception (%s) when doing - File %s failed to be deliverred on %s' % (str(err), fileId, toHost)
+
 @route('/ingest')
 def ingest():
     fileId = request.query.get('file_id')

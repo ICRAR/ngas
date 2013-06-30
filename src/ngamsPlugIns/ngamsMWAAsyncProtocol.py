@@ -20,6 +20,8 @@ class AsyncListRetrieveRequest:
         self.file_id = file_id
         # URL of client HTTP server  
         self.url = url
+        # Whether use files on one host only or all hosts in the cluster
+        one_host = 0
       
 class FileInfo:
     def __init__(self, file_id, filesize, status):

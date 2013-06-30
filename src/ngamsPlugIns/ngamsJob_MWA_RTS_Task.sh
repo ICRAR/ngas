@@ -22,7 +22,7 @@ source /scratch/astronomy556/MWA/bin/activate
 
 # Point to the right NGAS database 
 # this could be skipped if we have a correct 'mwa.conf' at home directory
-change_db.py curtin
+# change_db.py curtin
 
 # invoke RTS with all existing paramters untouched
 python /scratch/astronomy556/MWA/ngas_rt/src/ngamsPlugIns/ngamsJob_MWA_RTS_Task.py $@

@@ -61,7 +61,7 @@ src/ngamsTest/ngamsTestAsyncListRetrieve.py
 
 """
 import cPickle as pickle
-import thread, threading, urllib, httplib, time
+import thread, threading, urllib2, httplib, time
 import os
 
 from ngams import *
@@ -468,6 +468,16 @@ def _httpPost(srvObj, url, filename, sessionId):
         if (stat.getMessage() != ""):
             errMsg += " Message: " + stat.getMessage()
         warning(errMsg)
+        jobManHost = srvObj.getCfg().getNGASJobMANHost()
+        if (jobManHost):
+            try:
+                if (not ex):
+                    ex = ''
+                rereply = urllib2.urlopen('http://%s/failtodeliverfile?file_id=%s&to_url=%s&err_msg=%s' % (jobManHost, baseName, urllib2.quote(url), urllib2.quote(ex)), timeout = 15).read()
+                info('Reply from sending file %s failtodeliver event to server %s - %s' % (baseName, jobManHost, rereply))
+            except Exception, err:
+                error('Fail to send fail-to-deliver event to server %s, Exception: %s' %(jobManHost, str(err)))
+        
         return 1
     else:
         info(3,"File: " + baseName +\

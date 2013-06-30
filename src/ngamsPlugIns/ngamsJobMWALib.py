@@ -33,7 +33,8 @@ during job task execution and scheduling
 """
 
 import os, threading, urllib, traceback, commands, logging, time
-from random import choice, shuffle
+from random import choice, shuffle, randint
+from urlparse import urlparse
 import psycopg2
 import cPickle as pickle
 from cPickle import UnpicklingError
@@ -226,7 +227,7 @@ def hasAllFilesInLTA(obs_num):
     Check if ALL files associated with this observation
     have been archived in the Long-Term Archive (LTA)
     """
-    sqlQuery = "SELECT COUNT(file_id) FROM ngas_files WHERE file_id LIKE '%s_%%'" % obs_num
+    sqlQuery = "SELECT COUNT(file_id) FROM ngas_files WHERE file_id LIKE '%s_%%' AND file_version = 1" % obs_num
     conn = getLTADBConn()
     res = executeQuery(conn, sqlQuery)
     count = int(res[0][0])
@@ -535,7 +536,7 @@ def stageFile(fileIds, corrTask, toHost, frmHost = None):
                     retry += 1
                     myRes = None
                     logger.info('Archive server is too busy to stage files, wait for 15 seconds......')
-                    time.sleep(15)
+                    time.sleep(randint(9,16)) # sleep for random seconds so that not all threads retry at the same time...
                     continue
                 else:
                     logger.error('Staging response error %s: %s' % (str(uerr), strRes))
@@ -625,6 +626,36 @@ def scheduleForStaging(num_repeats = 0):
     # TODO - handle exceptions (error code later)   
     return 0  
 """      
+
+def fileFailToDeliver(fileId, toUrl, errMsg):
+    targetHost = urlparse(toUrl)
+    toHost = '%s:%d' % (targetHost.hostname(), targetHost.port())
+    LTA = False
+    gateways = getClusterGateway()
+    for gw in gateways:
+        if (toHost == gw):
+            LTA = True
+            break
+    if (LTA):
+        try:
+            toHost = toUrl.split('nexturl')[-1].split('//')[1].split('%')[0]
+        except Exception, err:
+            logger.error('Fail to notify failToDeliver event to CorrTask, Exception: %s' % str(err))
+            return
+        
+    skey = '%s___%s' % (fileId, toHost)
+    stage_sem.acquire()
+    try:
+        if (stage_dic.has_key(skey)):
+            corrList = stage_dic.pop(skey)
+        else: 
+            logger.warning('File Ingested, but cannot find key %s' % skey)
+            return
+    finally:
+        stage_sem.release()
+    for corr in corrList:
+        corr.fileFailToDeliver(fileId, LTA, toHost, errMsg)
+        
 
 def fileIngested(fileId, filePath, toHost, ingestRate):
     """
@@ -723,11 +754,11 @@ def closeConn(conn):
 if __name__=="__main__":
     #testGetFileIds()
     #testGetFileLocations()
-    testGetBestHost()
+    #testGetBestHost()
     #testGetNextOnlineHostUrl()
     #print pingHost('http://cortex.ivec.org:7799/STATUS')
     #print pingHost('http://fornax-io1.ivec.org:7777/STATUS')
-    #testGetPushURL()
+    testGetPushURL()
     #testHasFilesInLTA()
     #testIsValidObsNum()
     closeConn(g_db_conn)

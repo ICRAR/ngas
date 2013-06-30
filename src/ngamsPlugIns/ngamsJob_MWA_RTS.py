@@ -35,7 +35,7 @@ to have another pipeline (e.g. CASA for VLA), write your own based on the generi
 framework in ngamsJobProtocol.py
 """
 
-import os, threading, commands, time, urllib2, logging
+import os, threading, commands, time, urllib2, logging, shlex, subprocess, signal
 from Queue import Queue, Empty
 import cPickle as pickle
 from urlparse import urlparse
@@ -183,8 +183,9 @@ class ObsTask(MapReduceTask):
         self._ltComltEvent = threading.Event() # local task complete event
         self._ltDequeueEvent = threading.Event() # local task dequeue event
         self._localTaskResult = None
-        self._timeOut4LT = 60 * 10 # 10 min
+        self._timeOut4LT = rtsParam.LT_timeout
         self._progress = -1
+        self._blackHostList = {}
     
     def combine(self, mapOutput):
         """
@@ -240,9 +241,10 @@ class ObsTask(MapReduceTask):
                     if (not host):
                         urlError = 1
                         continue
-                        #obsTaskRe._errcode = 1 
-                        #obsTaskRe._errmsg = 'Image url is not valid %s' % imgurl
                     else:
+                        if (self._blackHostList.has_key('%s:%d' %(host.hostname, host.port))):
+                            urlError = 1
+                            continue
                         ret = ngamsJobMWALib.pingHost('http://%s:%d/STATUS' % (host.hostname, host.port))
                         if (ret):
                             urlError = 1
@@ -286,6 +288,7 @@ class ObsTask(MapReduceTask):
                     self._progress = 0
                     self._taskExeHost = None
                     self._localTaskResult = None
+                    self._blackHostList[self._taskExeHost] = 1
                     continue # the current host is down, change to another host, and redo file staging
                 else:
                     errmsg = 'Fail to schedule obs reduction task on %s: %s' % (self._taskExeHost, str(urlerr))
@@ -317,6 +320,7 @@ class ObsTask(MapReduceTask):
                     self._taskExeHost = None
                     self._ltComltEvent.clear()
                     self._localTaskResult = None
+                    self._blackHostList[self._taskExeHost] = 1
                     continue
             else:
                 obsTaskRe._errcode = 0
@@ -367,6 +371,7 @@ class CorrTask(MapReduceTask):
         self._localTaskResult = None
         self._failedLTExec = 0 # the number of failed local task executions
         self._blackList = []
+        self._failedFileDelivery = []
     
     def _stageFiles(self, cre):
         """
@@ -419,7 +424,7 @@ class CorrTask(MapReduceTask):
                         # record its actual location inside the cluster
                         self._fileLocDict[fid] = fileLoc[i] # get the host
                         # stage from that host within the cluster
-                        stageerr = ngamsJobMWALib.stageFile([fid], self, self._taskExeHost, fileLoc[0]._svrHost)
+                        stageerr = ngamsJobMWALib.stageFile([fid], self, self._taskExeHost, frmHost = fileLoc[0]._svrHost)
                         if (0 == stageerr):
                             break
                     if (stageerr):
@@ -427,6 +432,7 @@ class CorrTask(MapReduceTask):
                         frmExtList.append(fid)
                     
         if (len(frmExtList) > 0):
+            logger.debug('Staging files %s from Cortex' % str(frmExtList))
             stageerr = ngamsJobMWALib.stageFile(frmExtList, self, self._taskExeHost)
             if (stageerr):
                 cre._errmsg = "Fail to stage files %s from the external archive to %s. Stage errorcode = %d" % (frmExtList, self._taskExeHost, stageerr)
@@ -455,6 +461,7 @@ class CorrTask(MapReduceTask):
         #TODO - deal with timeout!
         dprint('Correlator %s is being mapped' % self.getId())
         self._progress = 0     
+        taskId = '%s__%s__%s' % (self.getParent().getParent().getId(), self.getParent().getId(), self.getId())
                 
         while (self._progress == 0):
             self._progress = 1
@@ -484,9 +491,17 @@ class CorrTask(MapReduceTask):
                 self._fileIngEvent.clear()
                 continue
             """
+            if (len(self._failedFileDelivery)):
+                cre._errcode = 9
+                self.setStatus(STATUS_EXCEPTION)
+                logger.error(cre._errmsg)
+                cre._errmsg = ''
+                for ff in self._failedFileDelivery:
+                    #LTA file failure
+                    cre._errmsg += "\nFail to stage file %s from Long-Term Archive. Exception: %s." % (ff[0], ff[1])                    
+                break
             
-            if (self._numIngested < len(self.__fileIds)):
-                
+            if (self._numIngested < len(self.__fileIds)):             
                 cre._errmsg = "Timeout when waiting for file ingestion. Ingested %d out of %d." % (self._numIngested, len(self.__fileIds))
                 cre._errcode = 3
                 self.setStatus(STATUS_EXCEPTION)
@@ -498,7 +513,7 @@ class CorrTask(MapReduceTask):
             self._progress = 2
             # create local task and send them to remote servers
             #  1. construct the local TaskId (jobId__obsNum__corrId)
-            taskId = '%s__%s__%s' % (self.getParent().getParent().getId(), self.getParent().getId(), self.getId())
+            
             #  2. construct the file list
             fileLocList = []
             for flocs in self._fileLocDict.values():
@@ -608,16 +623,44 @@ class CorrTask(MapReduceTask):
                 cre._errcode = 0
                 cre._imgUrl = self._localTaskResult.getResultURL()
                 #TODO - cancel any pending local tasks since the final result is obtained
-                if (len(self._blackList)):
-                    for failHost in self._blackList:
-                        if (failHost != self._taskExeHost):
-                            try:
-                                logger.debug('Before calling taskcancel on correlator %s' % self.getId())
-                                strRes = urllib2.urlopen('http://%s/RUNTASK?action=cancel&task_id=%s' % (failHost, taskId), timeout = 15).read()
-                                logger.debug('Submit task cancel request, acknowledgement received: %s' % strRes)
-                            except urllib2.URLError, urlerr:
-                                logger.error('Fail to submit task cancel request for task: %s, Exception: %s', (taskId, str(urlerr)))
+        
+        self.cleanTasks(taskId)
         return cre 
+    
+    def cleanTasks(self, taskId):
+        """
+        stop all potentially running tasks on all involved hosts 
+        """
+        if (self._taskExeHost and (not (self._taskExeHost in self._blackList))):
+            self._blackList.append(self._taskExeHost)
+        if (len(self._blackList)):
+            for failHost in self._blackList:
+                try:
+                    logger.debug('Before calling taskcancel on correlator %s' % self.getId())
+                    strRes = urllib2.urlopen('http://%s/RUNTASK?action=cancel&task_id=%s' % (failHost, taskId), timeout = 15).read()
+                    logger.debug('Submit task cancel request, acknowledgement received: %s' % strRes)
+                except urllib2.URLError, urlerr:
+                    logger.error('Fail to submit task cancel request for task: %s, Exception: %s', (taskId, str(urlerr)))
+    
+    
+    def fileFailToDeliver(self, fileId, isLTA, errHost, errMsg):
+        """
+        If failure from the internal cluster, stage again from the LTA
+        otherwise, notify the waiting thread, finish the current CorrTask
+        """
+        if (isLTA):
+            # if failure comes from LTA, no hope, report error and return
+            self._failedFileDelivery.append((fileId, errMsg))
+            self._fileIngEvent.set()
+        else:
+            # staging from the cluster failed, so stage it again from the LTA
+            logger.info('File %s fail to be staged from internal cluster to %s, stage it from LTA now' % (fileId, errHost))
+            stageerr = ngamsJobMWALib.stageFile([fileId], self, self._taskExeHost)
+            # do not record this issue if re-staging went okay
+            if (stageerr):
+                logger.error('But, again, fail to stage the file %s from the LTA' % fileId)
+                self._failedFileDelivery.append((fileId, errMsg))
+                self._fileIngEvent.set()
     
     def fileIngested(self, fileId, filePath, ingestRate):
         logger.info('Obs %s corr %s received file %s' % (self.getParent().getId(), self.getId(), fileId))
@@ -800,16 +843,19 @@ class ObsTaskResult:
         fl = len(self.bad_list)
         tt = sl + fl
         
-        if (fl):
-            re = '# of successful subbands:\t\t%d\n' % sl # no image url available for incomplete observations
+        re = ''
+        
+        if (self._imgUrl):
+            re += 'image_url = %s (accessible from within Fornax) \n %d successful subbands out of %d.\t\t\n\n' % (self._imgUrl, sl, tt)
+
+        if (sl):
+            re += 'Details of %d successful subbands:\t\t\n' % sl 
             for subtuple in self.good_list:
                 re += '\t subbandId: %d, image urls (for this sub-band only): %s\n' % (subtuple[0], subtuple[1])
-            re += '# of failed subbands:\t\t%d\n' % fl
+        if (fl):           
+            re += 'Details of %d failed subbands:\t\t\n' % fl
             for subtuple in self.bad_list:
                 re += '\t subbandId: %d, vis files failed: %s\n' % (subtuple[0], subtuple[1])
-        else:
-            re = 'image_url = %s (accessible from within Fornax) \n # of completed subbands: \t\t%d\n\n' % (self._imgUrl, tt)
-        
         
         return re + '\n'   
         
@@ -1006,8 +1052,24 @@ class CorrLocalTask(MRLocalTask):
         MRLocalTask.__init__(self, taskId)
         self._filelist = filelist
         self._params = params
-        
+        self._subproc = None # the running sub-process
     
+    def stop(self):
+        """
+        Terminate the current running sub-process
+        
+        Return    0-Success, -1 - process does not exist, 1 - termination error
+        """
+        if (self._subproc):
+            try:
+                os.killpg(self._subproc.pid, signal.SIGTERM)
+                return 0
+            except Exception, oserr:
+                #logger.error('Fail to kill process %d: %s' % (self._subproc.pid, str(oserr)))
+                return 1
+        else:
+            return -1
+           
     def execute(self):
         """
         Task manager calls this function to
@@ -1017,11 +1079,27 @@ class CorrLocalTask(MRLocalTask):
         """
         #TODO - this cmd should be a member of the RTSJobParam class
         #       which is read from the configuration file
+        cmd = 'bash /scratch/astronomy556/MWA/ngas_rt/src/ngamsPlugIns/ngamsJob_MWA_RTS_Task.sh '
+        cmd += self.paramsToArgs()
+        args = shlex.split(cmd)
+        try:
+            self._subproc = subprocess.Popen(args, stdout=subprocess.PIPE, preexec_fn=os.setsid)
+            output = self._subproc.communicate()[0] # this will block until either task done or task killed
+            retval = self._subproc.returncode
+            ret = MRLocalTaskResult(self._taskId, retval, output, True)
+            return ret
+        except Exception, err:
+            #logger.error('Fail to launch RTS Task %s: %s' % (self._taskId, str(err)))
+            ret = MRLocalTaskResult(self._taskId, -128, str(err), True)
+            return ret
+        
+        """
         cmd = '/scratch/astronomy556/MWA/ngas_rt/src/ngamsPlugIns/ngamsJob_MWA_RTS_Task.sh'
         args = self.paramsToArgs()
         re = commands.getstatusoutput('%s %s' % (cmd, args))
         ret = MRLocalTaskResult(self._taskId, re[0], re[1], True)
         return ret
+        """
     
     def paramsToArgs(self):
         """

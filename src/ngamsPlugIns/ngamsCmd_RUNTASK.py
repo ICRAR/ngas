@@ -50,6 +50,7 @@ ngas_port = int(ngas_hostId.split(':')[1])
 ngas_client = ngamsPClient.ngamsPClient(ngas_host, ngas_port)
 mime_type = 'application/octet-stream'
 cancelDict = {} #key - taskId that has been cancelled, value - 1 (place holder)
+g_mrLocalTask = None # the current running task
 
 def _getPostContent(srvObj, reqPropsObj):
     """
@@ -68,29 +69,33 @@ def _getPostContent(srvObj, reqPropsObj):
 def _queScanThread(jobManHost):
     svrUrl = 'http://%s/localtask/result' % jobManHost
     dqUrl = 'http://%s/localtask/dequeue?task_id=' % jobManHost
+    global g_mrLocalTask
     while (1):
-        mrLocalTask = queTasks.get()
+        g_mrLocalTask = queTasks.get()
         # skip tasks that have been cancelled
-        if (cancelDict.has_key(mrLocalTask._taskId)):
+        if (cancelDict.has_key(g_mrLocalTask._taskId)):
             continue
         
         # before executing the task, inform JobMAN that 
         # this task is just dequeued and about to start...
         try:
-            strRes = urllib2.urlopen(dqUrl + mrLocalTask._taskId, timeout = 15).read() #HTTP Post
+            strRes = urllib2.urlopen(dqUrl + g_mrLocalTask._taskId, timeout = 15).read() #HTTP Post
             #info(3, "Got result from JobMAN: '%s'" % strRes)
         except urllib2.URLError, urlerr:
-            error(3, 'Fail to send dequeue event to JobMAN: %s' % str(urlerr))
+            error('Fail to send dequeue event to JobMAN: %s' % str(urlerr))
         
         # execute the task
-        localTaskResult = mrLocalTask.execute()
+        localTaskResult = g_mrLocalTask.execute()
         
         # archive the file locally if required
         if (localTaskResult.getErrCode() == 0 and 
             localTaskResult.isResultAsFile()):
             fpath = localTaskResult.getInfo()
-            if (os.path.exists(fpath)):
-                _archiveFileLocal(fpath, localTaskResult)
+            #if (os.path.exists(fpath)):
+            fpath = fpath.strip('\n') #get rid of the trailing '\n' produced by the python "print" statement in the localTask
+            _archiveFileLocal(fpath, localTaskResult)
+            #else:
+                #warning('Cannot locate the image local path - %s' % fpath)
                 
         #send result back to the JobMAN
         strReq = pickle.dumps(localTaskResult)
@@ -99,7 +104,7 @@ def _queScanThread(jobManHost):
             strRes = urllib2.urlopen(svrUrl, data = strReq, timeout = 15).read() #HTTP Post
             info(3, "Got result from JobMAN: '%s'" % strRes)
         except urllib2.URLError, urlerr:
-            error(3, 'Fail to send local result to JobMAN: %s' % str(urlerr))
+            error('Fail to send local result to JobMAN: %s' % str(urlerr))
 
 def _archiveFileLocal(fpath, localTaskResult):
     try:
@@ -158,12 +163,14 @@ def handleCmd(srvObj,
                 if (reqPropsObj.hasHttpPar('task_id')):
                     taskId = reqPropsObj.getHttpPar('task_id')
                     cancelDict[taskId] = 1
+                    if (g_mrLocalTask and taskId == g_mrLocalTask._taskId):
+                        g_mrLocalTask.stop()
                 else:
                     errMsg = 'task_id is missing'                   
             else:
                 errMsg = 'Unknown RUNTASK command action %s' % action_req
         else:
-            errMsg = 'RUNTASK command needs action for GET request'
+            errMsg = 'RUNTASK command needs action for GET request\n'
         
         srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, errMsg, NGAMS_TEXT_MT)
     else:

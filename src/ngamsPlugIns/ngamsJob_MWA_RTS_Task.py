@@ -44,7 +44,7 @@ import commands, os, fnmatch
 from optparse import OptionParser
 
 mwa_path = '/scratch/astronomy556/MWA'
-ngas_path = '/tmp/NGAS_MWA/processing'
+ngas_path = '/tmp/rts_processing'
 ngas_src = '/scratch/astronomy556/MWA/ngas_rt'
 ngas_cclient = '%s/bin/ngamsCClient' % ngas_src
 _START_128T = 1046304456 # hard-coded knowledge
