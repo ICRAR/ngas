@@ -169,12 +169,14 @@ class throughputPlot():
         ax1.plot([0,self.loop+0.5],[mean(self.y[where(self.y > 0)]),
                                     mean(self.y[where(self.y > 0)])])
 
-        pylab.text(0.99,median(self.y[where(self.y > 0)])/ax1.axis()[3],'Median: %5.2f MB/s'
+        pylab.text(0.02,0.95,'Median: %5.2f MB/s'
                    % median(self.y[where(self.y > 0)]),
-                   transform = ax1.transAxes,ha='right', va='bottom', color='b')
-        pylab.text(0.99,mean(self.y[where(self.y > 0)])/ax1.axis()[3],'Mean: %5.2f MB/s'
+                   transform = ax1.transAxes,ha='left', va='bottom', color='b',
+                   fontsize=10)
+        pylab.text(0.02,0.95,'Mean: %5.2f MB/s'
                    % mean(self.y[where(self.y > 0)]),
-                   transform = ax1.transAxes,ha='right', va='top', color='g')
+                   transform = ax1.transAxes,ha='left', va='top', color='g',
+                   fontsize=10)
 
         ax2 = ax1.twinx()
         ax2.xaxis.axes.set_autoscalex_on(False)
