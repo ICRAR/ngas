@@ -436,11 +436,7 @@ def _genSubscrBackLogFile(srvObj,
     locFileInfo = _convertFileInfo(fileInfo)        
 
     # If file was already back-logged, nothing is done.
-    if (locFileInfo[FILE_BL] == NGAMS_SUBSCR_BACK_LOG): return
-    
-    # Increase the Subscription Back-Log Counter to indicate to the Data
-    # Subscription Thread that it should only suspend itself temporarily.
-    srvObj.incSubcrBackLogCount()
+    if (locFileInfo[FILE_BL] == NGAMS_SUBSCR_BACK_LOG): return        
     
     #info(3, 'Generating backlog db entry for file %s' % locFileInfo[FILE_ID])
 
@@ -476,6 +472,9 @@ def _genSubscrBackLogFile(srvObj,
                                              fileIngDate,
                                              fileMimeType)
 
+        # Increase the Subscription Back-Log Counter to indicate to the Data
+        # Subscription Thread that it should only suspend itself temporarily.
+        srvObj.incSubcrBackLogCount()        
         srvObj._backLogAreaSem.release()
     except Exception, e:
         srvObj._backLogAreaSem.release()
@@ -507,13 +506,14 @@ def _delFromSubscrBackLog(srvObj,
     """
     # NOTE: The actions carried out by this function are critical and need
     #       to be semaphore protected (Back-Log Operations Semaphore).
+    
     srvObj._backLogAreaSem.acquire()
     try:
+        srvObj.decSubcrBackLogCount()
         # Delete the entry from the DB for that file/Subscriber.
         srvObj.getDb().delSubscrBackLogEntry(getHostId(),
                                              srvObj.getCfg().getPortNo(),
-                                             subscrId, fileId, fileVersion)
-        
+                                             subscrId, fileId, fileVersion)        
         # If there are no other Subscribers interested in this file, we
         # delete the file.
         # subscrIds = srvObj.getDb().getSubscrsOfBackLogFile(fileId, fileVersion)
@@ -732,7 +732,6 @@ def _deliveryThread(srvObj,
     
                 # If the file is back-log buffered, we check if we can delete it.
                 if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
-                    srvObj.decSubcrBackLogCount()
                     srvObj._subscrBlScheduledDic_Sem.acquire()
                     try: # the following block must be atomic
                         _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,

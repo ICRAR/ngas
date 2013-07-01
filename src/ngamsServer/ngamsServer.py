@@ -882,13 +882,13 @@ class ngamsServer:
 
         Returns:  Current value of the Subscription Back-Log Counter (integer).
 
-        This is thread safe
+        This is NOT thread safe
         """
-        self._subscrBackLogCount_Sem.acquire()
-        try:
-            self._subscrBackLogCount -= 1
-        finally:
-            self._subscrBackLogCount_Sem.release()
+        #self._subscrBackLogCount_Sem.acquire()
+        #try:
+        self._subscrBackLogCount -= 1
+        #finally:
+        #    self._subscrBackLogCount_Sem.release()
         return self._subscrBackLogCount
 
     def incSubcrBackLogCount(self):
@@ -897,13 +897,13 @@ class ngamsServer:
 
         Returns:  Current value of the Subscription Back-Log Counter (integer).
 
-        This is thread safe
+        This is NOT thread safe
         """
-        self._subscrBackLogCount_Sem.acquire()
-        try:
-            self._subscrBackLogCount += 1
-        finally:
-            self._subscrBackLogCount_Sem.release()
+        #self._subscrBackLogCount_Sem.acquire()
+        #try:
+        self._subscrBackLogCount += 1
+        #finally:
+        #self._subscrBackLogCount_Sem.release()
         return self._subscrBackLogCount
 
     def presetSubcrBackLogCount(self, num):
