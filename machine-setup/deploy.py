@@ -369,7 +369,7 @@ def git_clone_tar():
     is thus using a tar-file, copied over from the calling machine.
     """
     set_env()
-    local('cd /tmp && git clone {0}@{1}'.format(env.GITUSER, env.GITREPO))
+    local('cd /tmp && git clone {0}@{1} container'.format(env.GITUSER, env.GITREPO))
     local('cd /tmp && mv ngas {0}'.format(NGAS_DIR))
     local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES {0}'.format(NGAS_DIR))
     tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
