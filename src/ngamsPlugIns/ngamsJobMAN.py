@@ -202,7 +202,7 @@ def submit_job_post():
     except Exception, err:
         return _responseMsg('invalid File ingestion timeout')
         
-    obsNums = observations.split(',')
+    obsNums = observations.replace(' ', '').split(',')
     try:
         for obsNum in obsNums:
             if (not ngamsJobMWALib.isValidObsNum(obsNum)):
@@ -216,22 +216,10 @@ def submit_job_post():
     
     dt = datetime.datetime.now()
     jobId = name + '_' + dt.strftime('%Y%m%dT%H%M%S') + '.' + str(dt.microsecond / 1000)
+    params.obsList = obsNums
     
-    job = None
-    try:        
-        if (jtype == 'MWA_RTS'):
-            
-            params.obsList = obsNums
-            job = RTSJob(jobId, params)
-        
-        if (job == None):
-            raise Exception ('Cannot initialise the job.')
-    except Exception, e:
-        return _responseMsg('Failed to submit your job due to Exception: %s' % str(e))
-    
-    jobDic[jobId] = job
-    # launch thread to execute the job
-    args = (job,)
+    # launch thread to create and execute the job
+    args = (jobId, params, jobDic)
     thrd = threading.Thread(None, _jobThread, 'MR_THRD_%s' % jobId, args) 
     thrd.setDaemon(1) # it will exit immediately should the server down
     thrd.start()
@@ -330,7 +318,7 @@ def getJobResult():
         return _responseMsg('Please provide an valid job_id as the parameter')
     mrJob = jobDic[jobId]
     sta = mrJob.getStatus()
-    if (sta == STATUS_RUNNING or sta == STATUS_NOT_STARTED):
+    if (sta < STATUS_COMPLETE):
         return _responseMsg('Job is still running or not yet started. Check the result later.')
     if (sta == STATUS_EXCEPTION and mrJob.getFinalJobResult() == None):
         return _responseMsg('Job encountered exceptions, result is not available')
@@ -373,8 +361,19 @@ def server_static(filepath):
 def getHello():
     return "Hello World 001"
 
-def _jobThread(mrTaskJob):
-    mrTaskJob.start()
+def _jobThread(jobId, params, myjobDic):   
+    job = RTSJob(jobId, params)
+    myjobDic[jobId] = job
+    if (job):
+        try:
+            job.buildRTSTasks()
+            job.start()
+        except Exception, err:
+            job.setStatus(STATUS_EXCEPTION)
+            job.setFinalJobResult('Fail to start the Job %s, Exception: %s' % (jobId, str(err)))
+            logger.error(traceback.format_exc())
+    else:
+        logger.error('Cannot initialise the job %s' % jobId)   
 
 """
 def _scheduleStageThread(dummy):

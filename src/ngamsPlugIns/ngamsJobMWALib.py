@@ -296,7 +296,9 @@ def getFileLocations(fileId):
         #path_file = os.path.split(re[1])
         #if (len(path_file) < 1):
             #continue
-        if (pingHost('http://%s/STATUS' % re[0])):
+        #if (pingHost('http://%s/STATUS' % re[0])):
+            #continue
+        if (not _isFileOnHost(re[0], fileId)):
             continue
         floc = FileLocation(re[0], re[1], fileId)
         ret.append(floc)
@@ -361,9 +363,9 @@ def getBestHost(fileIds, blackList = None):
     dictHosts = {} # key - host_id, # value - a list of FileLocations 
         
     for re in res:
-        #path_file = os.path.split(re[1])
-        #if (len(path_file) < 1):
-            #continue
+        if (not _isFileOnHost(re[0], re[2])):
+            continue
+
         floc = FileLocation(re[0], re[1], re[2]) # the path also includes the filename
         if (dictHosts.has_key(re[0])):
             dictHosts[re[0]].append(floc)
@@ -401,8 +403,31 @@ def getBestHost(fileIds, blackList = None):
     else:
         return {}
 
+def _isFileOnHost(hostId, fileId):
+    reFileStatus = commands.getstatusoutput('curl http://%s/STATUS?file_access=%s --connect-timeout 5' % (hostId, fileId))
+    print reFileStatus[1].find('Status="FAILURE"')
+    if (reFileStatus[0] or reFileStatus[1].find('Status="FAILURE"') > -1):
+        return 0
+    else:
+        return 1
+
 def _sortFunc(dic):
     return -1 * len(dic.keys())
+
+def testIsFileOnHost():
+    hostId = 'cortex.ivec.org:7777'
+    fileId1 = '1053182656_20130521144502_gpubox01_01.fits'
+    fileId2 = '1053182656_20130521144502_gpubox08_02.fits'
+    
+    if (_isFileOnHost(hostId, fileId1)):
+        print 'File %s is on host %s' % (fileId1, hostId)
+    else:
+        print 'File %s is NOT on host %s' % (fileId1, hostId)
+        
+    if (_isFileOnHost(hostId, fileId2)):
+        print 'File %s is on host %s' % (fileId2, hostId)
+    else:
+        print 'File %s is NOT on host %s' % (fileId2, hostId)
     
 def testGetBestHost():
     # this test data works when 
@@ -758,7 +783,8 @@ if __name__=="__main__":
     #testGetNextOnlineHostUrl()
     #print pingHost('http://cortex.ivec.org:7799/STATUS')
     #print pingHost('http://fornax-io1.ivec.org:7777/STATUS')
-    testGetPushURL()
+    #testGetPushURL()
+    testIsFileOnHost()
     #testHasFilesInLTA()
     #testIsValidObsNum()
     closeConn(g_db_conn)
