@@ -106,7 +106,7 @@ def mergeRefCfg(targCfg):
                  ["User", refCfgObj.getDbUser()],
                  ["Verify", refCfgObj.getDbVerify()],
                  ["Parameters", refCfgObj.getDbParameters()],
-                 ["MultipleConnections", 
+                 ["MultipleConnections",
                      refCfgObj.getVal("Db[1].MultipleConnections")]]
     for dbPar in dbParList:
         par = dbParFormat % dbPar[0]
@@ -142,44 +142,47 @@ if (os.path.exists("/opt/sybase/interfaces")):
 # DAEMON=yes
 # QUEUE=15m
 ###########################################################################
-fo = open("/etc/mail/sendmail.cf")
-lines = fo.readlines()
-fo.close()
-foundDaemonYes = 0
-for line in lines:
-    if (line.find("DAEMON") != -1):
-#        if (line.find("yes") != -1):
-            foundDaemonYes = 1
-if (not foundDaemonYes):
-    raise Exception, "Mail configuration incorrect. Set parameter: " +\
-          "DAEMON=yes in /etc/mail/sendmail.cf"
-stat, out = commands.getstatusoutput("ps -efww|grep sendmail")
-psLines = out.split("\n")
-sendMailRunning = 0
-for psLine in psLines:
-    if ((psLine.find("sendmail") != -1) and
-        (psLine.find("ps -efww|grep sendmail") == -1)):
-        sendMailRunning = 1
-        break
-if (not sendMailRunning):
-    errMsg = "Start local SMTP server as root " +\
-             "(# /etc/init.d/sendmail start)"
-    print errMsg
-    raise Exception, errMsg
-# Check that no entry is defined for ngasmgr in /etc/aliases.
-fo = open("/etc/aliases")
-etcAliases = fo.readlines()
-fo.close()
-for line in etcAliases:
-    line = line.strip()
-    if (len(line)):
-        if ((line[0] != "#") and (line.find("ngasmgr:") != -1)):
-            errMsg = "Remove entry for ngasmgr in /etc/aliases (%s) and " +\
-                     "run newaliases as root before running the tests. " +\
-                     "Afterwards remember to restore the original settings!"
-            errMsg = errMsg % line
-            print line
-            raise Exception, errMsg
+if (os.path.exists("/etc/mail/sendmail.cf")):
+    fo = open("/etc/mail/sendmail.cf")
+    lines = fo.readlines()
+    fo.close()
+    foundDaemonYes = 0
+    for line in lines:
+        if (line.find("DAEMON") != -1):
+    #        if (line.find("yes") != -1):
+                foundDaemonYes = 1
+    if (not foundDaemonYes):
+        raise Exception, "Mail configuration incorrect. Set parameter: " + \
+              "DAEMON=yes in /etc/mail/sendmail.cf"
+    stat, out = commands.getstatusoutput("ps -efww|grep sendmail")
+    psLines = out.split("\n")
+    sendMailRunning = 0
+    for psLine in psLines:
+        if ((psLine.find("sendmail") != -1) and
+            (psLine.find("ps -efww|grep sendmail") == -1)):
+            sendMailRunning = 1
+            break
+    if (not sendMailRunning):
+        errMsg = "Start local SMTP server as root " + \
+                 "(# /etc/init.d/sendmail start)"
+        print errMsg
+        raise Exception, errMsg
+
+if (os.path.exists("/etc/aliases")):
+    # Check that no entry is defined for ngasmgr in /etc/aliases.
+    fo = open("/etc/aliases")
+    etcAliases = fo.readlines()
+    fo.close()
+    for line in etcAliases:
+        line = line.strip()
+        if (len(line)):
+            if ((line[0] != "#") and (line.find("ngasmgr:") != -1)):
+                errMsg = "Remove entry for ngasmgr in /etc/aliases (%s) and " + \
+                         "run newaliases as root before running the tests. " + \
+                         "Afterwards remember to restore the original settings!"
+                errMsg = errMsg % line
+                print line
+                raise Exception, errMsg
 ###########################################################################
 
 ###########################################################################
@@ -211,7 +214,7 @@ def execCmd(cmd,
     (stdout/stderr).
 
     cmd:       Shell command to execute (string).
-    
+
     raiseEx:   If set to 1 an exception will be raised in case of error
                (integer/0|1).
 
@@ -239,7 +242,7 @@ def getNmu():
     Return the name of the Main Node for the simulated cluster.
     """
     return "%s:8000" % getHostName()
-    
+
 
 def getNcu11():
     """
@@ -257,23 +260,23 @@ def cleanUp(cfgFile,
     (ngas_disks, ngas_files) and to delete files and directories on the disk.
 
     cfgFile:   Cfg. file to use (string).
-    
+
     delDirs:   If set to 1, the NG/AMS directories are deleted (integer/0|1).
-    
+
     clearDb:   If set to 1, the NG/AMS tables are deleted (integer/0|1).
 
     Returns:   Void or tuple with cfg. object and DB object
                (void | tuple/(ngamsConfig, ngamsDb)).
     """
     T = TRACE(3)
-    
+
     tmpCfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
 
     # Delete NG/AMS directories if requested.
     if (delDirs):
         info(3,"Deleting NG/AMS directories ...")
         delNgamsDirs(tmpCfgObj)
-        
+
     # Clear DB if requested.
     if (clearDb):
         info(3,"Clearing NGAS DB ...")
@@ -282,7 +285,7 @@ def cleanUp(cfgFile,
                    ngamsDb(tmpCfgObj.getDbServer(), tmpCfgObj.getDbName(),
                            tmpCfgObj.getDbUser(), tmpCfgObj.getDbPassword(),
                            interface = tmpCfgObj.getDbInterface(),
-                           parameters = tmpCfgObj.getDbParameters(), 
+                           parameters = tmpCfgObj.getDbParameters(),
                            multipleConnections = multCons)
         delNgasTbls(tmpDbObj)
         del tmpDbObj
@@ -303,9 +306,9 @@ def waitReqCompl(clientObj,
 
     clientObj:      Instance of NG/AMS P-Client Class to be used to contact
                     the remote NG/AMS Server (ngamsPClient).
-    
+
     requestId:      ID of request (string).
-    
+
     TimeOut:        Timeout to apply, waiting for the remote NG/AMS Server
                     to finish the processing of the request (integer).
 
@@ -354,7 +357,7 @@ def waitTillSuspended(testObj,
     testObj:     Reference to test case object (ngamsTestSuite).
 
     dbConObj:    DB connection object (ngamsDb).
-    
+
     node:        NGAS ID for node (string).
 
     timeOut:     Time-out in seconds to wait for the node to suspend itself
@@ -463,12 +466,12 @@ def cmpFiles(refFile,
     identical, an empty string, '', is returned.
 
     refFile:     Name of reference file (string).
-    
+
     testFile:    Name of new file (string).
 
     sort:        Sort the contents of the file (line-wise) before comparing
                  (integer/0|1).
-    
+
     Returns:     Difference between the two files (string).
     """
     if (sort):
@@ -492,11 +495,11 @@ def pollForFile(pattern,
     There is only polled during the specified timeout.
 
     pattern:        File pattern to poll for (string/UNIX filename mactching).
-    
+
     expNoOfCopies:  Desired number of copies to match the pattern (integer).
-    
+
     timeOut:        Timeout in seconds to wait (float).
-    
+
     errMsg:         Error message to raise with exception if the conditions
                     where not fulfilled. If not provided, a generic error
                     message is generated (string|None).
@@ -527,9 +530,9 @@ def genErrMsg(msg,
     and the name of the Ref. and Tmp. Files involved in the test.
 
     msg:       Message (string).
-    
+
     refFile:   Name of Ref. File (string).
-    
+
     tmpFile:   Name of Tmp. File (string).
 
     Returns:   Buffer with message (string).
@@ -551,9 +554,9 @@ def genErrMsgVals(msg,
     Reference Value and Temporary (Actual Value) involved in the test.
 
     msg:       Message (string).
-    
+
     refVal:    Reference Value (string).
-    
+
     actVal:    Temporary Value (string).
 
     Returns:   Buffer with message (string).
@@ -581,7 +584,7 @@ def copyFile(srcFile,
     srcFile:         Source file to copy (string).
 
     trgFile:         Target file (string).
- 
+
     Returns:         Void.
     """
     shutil.copy(srcFile, trgFile)
@@ -617,7 +620,7 @@ def saveInFile(filename,
 
     filename:   Target filename. If specified as None, a temporary filename
                 int ngamsTest/tmp is generated (string).
-    
+
     buf:        Buffer, which contents to store in the file (string).
 
     Returns:    Name of file in which the data was stored (string).
@@ -658,7 +661,7 @@ def delNgasTbls(dbObj):
     for diskId in diskIdList:
         diskHistQuery += " OR hist_descr LIKE '%%%s%%'" % diskId
     dbObj.query(diskHistQuery)
-    
+
     dbObj.query("DELETE FROM ngas_files WHERE disk_id LIKE " +\
                 "'tmp-ngamsTest-NGAS%' OR " +\
                 "file_id='TEST.2001-05-08T15:25:00.123'")
@@ -667,7 +670,7 @@ def delNgasTbls(dbObj):
     dbObj.query("DELETE FROM ngas_subscribers")      # TODO: Check if refine.
     dbObj.query("DELETE FROM ngas_cfg_pars")         # TODO: Refine.
     dbObj.query("DELETE FROM ngas_cfg")              # TODO: Refine.
-    
+
 
 def delNgamsDirs(cfgObj):
     """
@@ -685,17 +688,17 @@ def delNgamsDirs(cfgObj):
 
         info(3,"Removing directory: " + cfgObj.getRootDirectory())
         os.system("rm -rf " + cfgObj.getRootDirectory())
-        
+
         backLogDir = os.path.normpath(cfgObj.getBackLogBufferDirectory() +\
                                       "/" + NGAMS_BACK_LOG_TMP_PREFIX)
         info(3,"Removing directory: " + backLogDir)
         os.system("rm -rf " + backLogDir)
-        
+
         globBadDir = os.path.normpath(cfgObj.getRootDirectory() +\
                                       "/" + NGAMS_BAD_FILES_DIR)
         info(3,"Removing directory: " + globBadDir)
         os.system("rm -rf " + globBadDir)
-        
+
         procDir = os.path.normpath(cfgObj.getProcessingDirectory() +\
                                    "/" + NGAMS_PROC_DIR)
         info(3,"Removing directory: " + procDir)
@@ -720,11 +723,11 @@ def checkHostEntry(dbObj,
     create it.
 
     dbObj:               DB connection object (ngamsDb).
-    
+
     dbHostId:            DB Host ID in to check for (string).
 
     domain:              Domain name of NGAS Node (string).
-    
+
     ipAddress:           IP address of the node (string|None).
 
     clusterName:         Cluster name of NGAS Node (string).
@@ -754,7 +757,7 @@ def checkHostEntry(dbObj,
                     "cluster_name='%s', srv_suspended=0 WHERE host_id='%s'"
         sqlQuery = sqlFormat % (domain, ipAddress, clusterName, dbHostId)
     dbObj.query(sqlQuery)
-        
+
 
 def sendPclCmd(host = getHostName(),
                port = 8888,
@@ -765,7 +768,7 @@ def sendPclCmd(host = getHostName(),
     number and return this to the caller.
 
     host:          Host ID where externally running server is located (string).
-    
+
     port:          Port number used by externally running server (integer).
 
     auth:          Authorization Code (string).
@@ -776,7 +779,7 @@ def sendPclCmd(host = getHostName(),
     """
     return ngamsPClient.ngamsPClient(host, port).setAuthorization(auth).\
            setTimeOut(timeOut)
-    
+
 
 def sendExtCmd(host,
                port,
@@ -791,20 +794,20 @@ def sendExtCmd(host,
     of the ngamsStatus object or the ngamsStatus object.
 
     host:          Host ID where externally running server is located (string).
-    
+
     port:          Port number used by externally running server (integer).
-    
+
     cmd:           Command to issue (string).
-    
+
     pars:          List containing sub-lists with parameters and their
                    values: [[<Par>, <Val>], [<Par>, <Val>], ...]    (list).
-    
+
     genStatFile:   If set to 1 a status file containing a filtered ASCII
                    dump of the ngamsStatus object is generated and the name
-                   of this returned (integer/0|1). 
+                   of this returned (integer/0|1).
 
     filterTags:    Additional line contents to filter out (list).
- 
+
     Returns:       Filename of file containing filtered ASCII dump of status
                    or ngamsStatus object (string|ngamsStatus).
     """
@@ -841,7 +844,7 @@ def filterDbStatus1(statBuf,
     statBufLines = statBuf.split("\n")
     filteredBuf = ""
     for line in statBufLines:
-        if ((line.find("Date:") == 0) or (line.find("Version:") == 0) or 
+        if ((line.find("Date:") == 0) or (line.find("Version:") == 0) or
             (line.find("InstallationDate:") == 0) or
             (line.find("HostId:") == 0) or (line.find("AvailableMb:") == 0) or
             (line.find("TotalDiskWriteTime:") == 0) or
@@ -914,13 +917,13 @@ def filterOutLines(buf,
     """
     Remove the lines containing the tags given in the input parameter.
 
-    buf:            String buffer to be filtered (string). 
+    buf:            String buffer to be filtered (string).
 
     discardTags:    List of tags. Lines containing the given tag will
                     be removed (list/string).
 
     matchStart:     Match from start of line (integer/0|1).
-                    
+
     Returns:        Filtered string buffer (string).
     """
     lines = buf.split("\n")
@@ -1004,7 +1007,7 @@ def runTest(argv):
     Returns:  Void.
     """
     setLogCond(0, "", 0, "", -1)
-    testModuleName = argv[0].split(".")[0]    
+    testModuleName = argv[0].split(".")[0]
     tests = []
     silentExit = 0
     verboseLevel = -1
@@ -1055,7 +1058,7 @@ def runTest(argv):
     skipDic = {}
     if (skip):
         for testCase in skip.split(","): skipDic[testCase.strip()] = 1
-   
+
     # Execute the test.
     exec "import " + testModuleName
     if (tests == []):
@@ -1097,14 +1100,14 @@ def writeFitsKey(filename,
     Write or update a FITS keyword in the given FITS file.
 
     filename:     FITS file to update (string).
-    
+
     key:          FITS keyword (string).
-    
+
     value:        Value of keyword (string).
-    
+
     comment:      Comment of keyword card (string).
 
-    Returns:      Void. 
+    Returns:      Void.
     """
     fo = pcfitsio.fits_open_file(filename, 1)
     pcfitsio.fits_update_key(fo, key, value, comment)
@@ -1135,7 +1138,7 @@ def prepCfg(cfgFile,
 
     cfgFile:    Configuration file used as base for generating the new
                 configuration (string).
-    
+
     parList:    List of parameters/values to change. The format is:
 
                   [[<Par>, <Val>], ...]                           (list).
@@ -1168,7 +1171,7 @@ def incArcfile(filename,
     Increment the time stamp of the ARCFILE keyword with the given step.
 
     filename:    Name of FITS file (string).
-    
+
     step:        Step in seconds (float).
 
     Returns:     Void.
@@ -1264,7 +1267,7 @@ class ngamsTestSuite(unittest.TestCase):
         pid:        PID of external server process (integer).
 
         pidFile:    NG/AMS PID file (string).
-        
+
         port:       HTTP socket port number used by external server (integer).
 
         mtRtDir:    Mount root directory used by the server (string).
@@ -1296,9 +1299,9 @@ class ngamsTestSuite(unittest.TestCase):
         portNo:        Port number to use by server (integer).
 
         delDirs:       Delete NG/AMS dirs before executing (integer/0|1).
-        
+
         clearDb:       Clear the DB (integer/0|1).
- 
+
         autoOnline:    Bring server to Online automatically (integer/0|1).
 
         cfgFile:       Configuration file to use when executing the
@@ -1308,10 +1311,10 @@ class ngamsTestSuite(unittest.TestCase):
                        be running on the node (integer/0|1).
 
         domain:        Domain for server (string).
-        
+
         ipAddress:     IP address for the host where the server is
                        running (string).
-        
+
         clusterName:   Name of cluster to which this node belongs (string).
 
         cfgProps:      With this parameter it is possible to set specific
@@ -1335,12 +1338,12 @@ class ngamsTestSuite(unittest.TestCase):
                        directory (string).
 
         test:          Run server in Test Mode (0|1/integer).
-        
+
         Returns:       Tuple with configuration object and DB object
                        (tuple/(ngamsConfig, ngamsDb)).
         """
         T = TRACE(3)
-        
+
         verbose = getVerboseLevel()
 
         # Handle DB connection in Reference Configuration File.
@@ -1357,7 +1360,7 @@ class ngamsTestSuite(unittest.TestCase):
                                   refCfgObj.getDbUser(),
                                   refCfgObj.getDbPassword(),
                                   interface = refCfgObj.getDbInterface(),
-                                  parameters = refCfgObj.getDbParameters(), 
+                                  parameters = refCfgObj.getDbParameters(),
                                   multipleConnections = multCons)
             logFlush()
             cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, dbObj)
@@ -1389,7 +1392,7 @@ class ngamsTestSuite(unittest.TestCase):
                 info(1,"Creating SQLite DB file")
                 os.system("cp %s %s" % (sqliteDbTpl, sqliteDb))
             tmpCfgObj.storeVal("NgamsCfg.Db[1].Name", sqliteDb)
-        info(3,"Ref DB Name: %s" % refCfgObj.getDbName())    
+        info(3,"Ref DB Name: %s" % refCfgObj.getDbName())
         # Take over the DB parameters from the reference.
         # mergeRefCfg(tmpCfgObj)
         tmpCfgFile = saveInFile(None, tmpCfgObj.genXmlDoc(0))
@@ -1417,7 +1420,7 @@ class ngamsTestSuite(unittest.TestCase):
         dbObj = ngamsDb.ngamsDb(cfgObj.getDbServer(), cfgObj.getDbName(),
                                 cfgObj.getDbUser(), cfgObj.getDbPassword(),
                                 interface = tmpCfgObj.getDbInterface(),
-                                parameters = cfgObj.getDbParameters(), 
+                                parameters = cfgObj.getDbParameters(),
                                 multipleConnections = multCons)
         checkHostEntry(dbObj, hostName, domain, ipAddress, clusterName)
 
@@ -1604,7 +1607,7 @@ class ngamsTestSuite(unittest.TestCase):
         refValue:    Reference value (all types).
 
         tstValue:    Value to be tested (all types).
-       
+
         msg:         Message to give out in connection with error
                      message (string).
 
@@ -1614,7 +1617,7 @@ class ngamsTestSuite(unittest.TestCase):
               "Test Value: %s"
         msg = msg % (str(refValue), str(tstValue))
         self.failUnless(refValue == tstValue, msg)
-    
+
 
     def checkFilesEq(self,
                      refFile,
@@ -1624,16 +1627,16 @@ class ngamsTestSuite(unittest.TestCase):
         """
         Check if two files are identical. Give out the given message if
         they are not.
-        
+
         refFile:    Reference file (string).
-        
+
         tmpFile:    Temporary file to be checked (string).
-        
+
         msg:        Error message to give out in case of differences (string).
 
         sort:       Sort the contents of the file before comparing
                     (integer/0|1).
-        
+
         Returns:    Void.
         """
         self.failUnless("" == cmpFiles(refFile, tmpFile, sort),
@@ -1649,7 +1652,7 @@ class ngamsTestSuite(unittest.TestCase):
         If not all tags are found an exception is raised.
 
         statBuf:    Buffer to check for the appearance of the tags (string).
-        
+
         tags:       List of tags (list/string).
 
         showBuf:    Print out the contents of the buffer (integer/0|1).
@@ -1668,7 +1671,7 @@ class ngamsTestSuite(unittest.TestCase):
                           "be shown>|"
             info(1,"Error encountered: %s" % errMsg.replace("\n", " | "))
             self.fail(errMsg)
-            
+
 
     def prepCluster(self,
                     comCfgFile,
@@ -1683,7 +1686,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         comCfgFile:    Name of configuration to use for setting up the
                        simulated cluster (string).
-        
+
         serverList:    List containing sub-lists with information about
                        each server. This must be formatted as follows:
 
@@ -1702,7 +1705,7 @@ class ngamsTestSuite(unittest.TestCase):
                        following contents:
 
                          [<ngamsConfig object>, <ngamsDb object>]
-                         
+
                                                                  (dictionary).
         """
         # Delete all NGAS Mount Root Directories.
@@ -1720,10 +1723,10 @@ class ngamsTestSuite(unittest.TestCase):
                 cfgParList = srvInfo[4]
             else:
                 cfgParList = []
-            
+
             tmpCfg = ngamsConfig.ngamsConfig().load(comCfgFile)
             mergeRefCfg(tmpCfg)
-            
+
             # Set port number in configuration and allocate a mount root
             # directory + other directories + generate new, temporary
             # configuration file based on this information.
@@ -1747,7 +1750,7 @@ class ngamsTestSuite(unittest.TestCase):
                             "BackLogBufferDirectory", mtRtDir)
             tmpCfg.storeVal("NgamsCfg.Processing[1].ProcessingDirectory",
                             mtRtDir)
-            tmpCfg.storeVal("NgamsCfg.Log[1].LocalLogFile", 
+            tmpCfg.storeVal("NgamsCfg.Log[1].LocalLogFile",
                             os.path.normpath(mtRtDir + "/log/LogFile.nglog"))
             # Set special values if so specified.
             for cfgPar in cfgParList: tmpCfg.storeVal(cfgPar[0], cfgPar[1])
@@ -1762,7 +1765,7 @@ class ngamsTestSuite(unittest.TestCase):
                                      tmpCfg.getDbUser(),
                                      tmpCfg.getDbPassword(),
                                      interface = tmpCfg.getDbInterface(),
-                                     parameters = tmpCfg.getDbParameters(), 
+                                     parameters = tmpCfg.getDbParameters(),
                                      multipleConnections = multCons)
             checkHostEntry(tmpDbObj, srvDbHostId, domain, ipAddress,
                            clusterName)
@@ -1772,7 +1775,7 @@ class ngamsTestSuite(unittest.TestCase):
             srvCfgObj, srvDbObj = self.prepExtSrv(portNo,
                                                   delDirs = cleanUp,
                                                   clearDb = cleanUp,
-                                                  autoOnline = 1, 
+                                                  autoOnline = 1,
                                                   cfgFile = tmpCfgFile,
                                                   multipleSrvs = multSrvs,
                                                   domain = domain,
@@ -1799,7 +1802,7 @@ class ngamsTestSuite(unittest.TestCase):
 
           <NGAS Root Mt Pt>/Data-Main|Rep-<Slot ID>
 
-        
+
         diskCfg:     Dictionary containing a reference to each slot that
                      List containing dictionaries defining the disk
                      configuration. The contents of this is:
@@ -1826,7 +1829,7 @@ class ngamsTestSuite(unittest.TestCase):
         dbObj  = ngamsDb.ngamsDb(cfgObj.getDbServer(), cfgObj.getDbName(),
                                  cfgObj.getDbUser(), cfgObj.getDbPassword(),
                                  interface = cfgObj.getDbInterface(),
-                                 parameters = cfgObj.getDbParameters(), 
+                                 parameters = cfgObj.getDbParameters(),
                                  multipleConnections = multCons)
         stoSetIdx = 0
         xmlKeyPat = "NgamsCfg.StorageSets[1].StorageSet[%d]."
@@ -1948,7 +1951,7 @@ class ngamsTestSuite(unittest.TestCase):
         Compare two components of an SQL query or query result.
 
         query:          Query component (string).
-        
+
         refQuery:       Reference query component (string).
 
         Returns:        Void.
@@ -2014,7 +2017,7 @@ class ngamsTestSuite(unittest.TestCase):
             idx1 += 1
             idx2 += 1
 
-    
+
     def checkQueryPlanLogFile(self,
                               logFile,
                               threadId,
@@ -2027,7 +2030,7 @@ class ngamsTestSuite(unittest.TestCase):
                        (string).
 
         threadId:      ID of thread for which the query plan should be checked
-                       (string). 
+                       (string).
 
         refQueryPlan:  Reference query plan (string).
 
@@ -2060,7 +2063,7 @@ class ngamsTestSuite(unittest.TestCase):
         saveInFile(tmpQueryPlan2, queryPlan)
         self.checkQueryPlan(tmpQueryPlan2, refQueryPlan)
 
-    
+
 class ngamsTextTestResult(unittest._TextTestResult):
     """
     Class to produce text test output.
@@ -2075,9 +2078,9 @@ class ngamsTextTestResult(unittest._TextTestResult):
 
         stream:       Stream on which to write the report, e.g. sys.stderr
                       (stream object).
-                  
+
         descriptions: ?
-        
+
         verbosity:    ?
         """
         unittest._TextTestResult.__init__(self,stream, descriptions, verbosity)
@@ -2087,7 +2090,7 @@ class ngamsTextTestRunner(unittest.TextTestRunner):
     """
     Test report generator class for the NG/AMS Unit Test.
     """
-    
+
     def __init__(self,
                  stream = sys.stderr,
                  descriptions = 1,
