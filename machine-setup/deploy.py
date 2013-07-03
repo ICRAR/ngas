@@ -69,7 +69,7 @@ YUM_PACKAGES = [
 APT_PACKAGES = [
         'zlib1g-dbg',
         'libzlcore-dev',
-        'libdb4.7-dev',
+        'libdb4.8-dev',
         'libgdbm-dev',
         'openjdk-6-jdk',
         'libreadline-dev',
