@@ -38,8 +38,8 @@ The functions in this module can be used in all the NG/AMS code.
 
 import os, string, threading, httplib, time, getpass, socket
 import urllib, urllib2, glob, re, select, cPickle
-from pcc import PccUtTime, PccUtUtils
 from ngams import *
+import PccUtTime
 import ngamsSmtpLib
 
 
@@ -74,7 +74,7 @@ def isArchivePull(fileUri):
     Returns:    1 = Archive Pull Request, 0 otherwise (integer).
     """
     T = TRACE()
-    
+
     info(4, "isArchivePull() - File URI is: " + fileUri + " ...")
     if ((string.find(fileUri, "http:") != -1) or
         (string.find(fileUri, "ftp:") != -1) or
@@ -165,15 +165,15 @@ def flushHttpCh(fd,
     Flush the data on an HTTP channel.
 
     fd:          File descriptor to the open HTTP channel (file object).
-    
+
     blockSize:   Block size to apply when reading the data (integer).
-    
+
     complSize:   Size of the data (integer).
 
     Returns:     Void.
     """
     T = TRACE()
-    
+
     remSize = complSize
     while (remSize > 0):
         rdSize = blockSize
@@ -190,10 +190,10 @@ def getCompleteHostName():
     """
     try:
         #return socket.gethostbyname_ex(getHostName())[0]
-        return socket.getfqdn()          
+        return socket.getfqdn()
     except Exception, e:
         return getHostName()
-        
+
 
 def getDomain():
     """
@@ -209,7 +209,7 @@ def getDomain():
         domain = ""
         for name in els[1:]: domain += "%s." % name
         return domain[:-1]
-    
+
 
 def getNgamsUser():
     """
@@ -218,7 +218,7 @@ def getNgamsUser():
     Returns:   User name for NG/AMS user (string).
     """
     return getpass.getuser()
-    
+
 
 def elInList(list,
              el):
@@ -263,7 +263,7 @@ def int2LogTF(value):
     Convert an integer value to T or F:
 
       1 -> T, 0 -> F, != 0, 1 -> -
-      
+
     Returns:    Converted logical value (string).
     """
     if (value == 1):
@@ -272,7 +272,7 @@ def int2LogTF(value):
         return "F"
     else:
         return "-"
-            
+
 
 def int2LogYN(value):
     """
@@ -350,7 +350,7 @@ def fileWritable(filename):
 def httpTimeStamp():
     """
     Generate a time stamp in the 'HTTP format', e.g.:
-    
+
         'Mon, 17 Sep 2001 09:21:38 GMT'
 
     Returns:  Timestamp (string).
@@ -375,9 +375,9 @@ def _waitForResp(fd,
     thrown.
 
     fo:           File descriptor or File Object (integer/File Object).
-    
+
     timeOut:      Timeout in seconds (double).
-    
+
     Returns:      Void.
     """
     return
@@ -400,7 +400,7 @@ def _httpHandleResp(fileObj,
 
     fileObj:          File object returned from urllib2.urlopen()
                       (file object).
-    
+
     dataTargFile:     Target file in which the possible data returned
                       will be stored (string)
 
@@ -414,13 +414,13 @@ def _httpHandleResp(fileObj,
                       it is possible to receive the data in the HTTP
                       response. I.e., the data is not received by the
                       function (integer/0|1).
-    
+
     Returns:          List with information from reply from contacted
                       NG/AMS Server (reply, msg, hdrs, data|File Object)
                       (list).
     """
     T = TRACE()
-    
+
     # Handle the response + data.
     code   = NGAMS_HTTP_SUCCESS
     msg    = "OK"
@@ -500,7 +500,7 @@ def _setSocketTimeout(timeOut,
     # TODO: This is not a proper solution! Should be possible to set
     #       time-out per socket connection.
     try:
-        # We don't accept a infinite timeout (=None/-1). 
+        # We don't accept a infinite timeout (=None/-1).
         if ((timeOut == None) or (str(timeOut).strip() == "-1")):
             locTimeout = NGAMS_SOCK_TIMEOUT_DEF
         else:
@@ -535,11 +535,11 @@ def httpPostUrl(url,
       [<HTTP status code>, <HTTP status msg>, <HTTP headers (list)>, <data>]
 
     url:          URL to where data is posted (string).
-    
+
     mimeType:     Mime-type of message (string).
 
     contDisp:     Content-disposition of the data (string).
-    
+
     dataRef:      Data to post or name of file containing data to send
                   (string).
 
@@ -549,7 +549,7 @@ def httpPostUrl(url,
                   data received is stored into a file of that name (string).
 
     blockSize:    Block size (in bytes) used when sending the data (integer).
-    
+
     suspTime:     Time in seconds to suspend between each block (double).
 
     timeOut:      Timeout in seconds to wait for replies from the server
@@ -559,7 +559,7 @@ def httpPostUrl(url,
                   the query (string).
 
     dataSize:     Size of data to send if read from a socket (integer).
-                
+
     Returns:      List with information from reply from contacted
                   NG/AMS Server (reply, msg, hdrs, data) (list).
     """
@@ -573,7 +573,7 @@ def httpPostUrl(url,
     info(4,"Sending HTTP header ...")
     info(4,"HTTP Header: %s: %s" % (NGAMS_HTTP_POST, cmd))
     http.putrequest(NGAMS_HTTP_POST, cmd)
-    
+
     # set the socket timeout for this socket only
     _setSocketTimeout(timeOut,http)
     info(4,"HTTP Header: %s: %s" % ("Content-type", mimeType))
@@ -600,7 +600,7 @@ def httpPostUrl(url,
 
     # Send the data.
     info(4,"Sending data ...")
-    try:        
+    try:
         if (dataSource == "FILE"):
             fdIn = open(dataRef)
             block = "-"
@@ -627,16 +627,16 @@ def httpPostUrl(url,
             # dataSource == "BUFFER"
             http.send(dataRef)
         info(4,"Data sent")
-    
+
         # Receive + unpack reply.
         info(4,"Waiting for reply ...")
         _setSocketTimeout(timeOut, http)
         reply, msg, hdrs = http.getreply()
-    
+
         if (hdrs == None):
             errMsg = "Illegal/no response to HTTP request encountered!"
             raise Exception, errMsg
-        
+
         if (hdrs.has_key("content-length")):
             dataSize = int(hdrs["content-length"])
         else:
@@ -655,17 +655,17 @@ def httpPostUrl(url,
             except Exception, e:
                 if (fd != None): fd.close()
                 raise e
-    
+
         # Dump HTTP headers if Verbose Level >= 4.
         info(4,"HTTP Header: HTTP/1.0 " + str(reply) + " " + msg)
         for hdr in hdrs.keys():
             info(4,"HTTP Header: " + hdr + ": " + hdrs[hdr])
-    finally:    
+    finally:
         if (http != None):
             try:
                 http.close() # this may fail?
             finally:
-                del http    
+                del http
 
     return [reply, msg, hdrs, data]
 
@@ -692,13 +692,13 @@ def httpPost(host,
       [<HTTP status code>, <HTTP status msg>, <HTTP headers (list)>, <data>]
 
     host:         Host where remote NG/AMS Server is running (string).
-    
+
     port:         Port number used by remote NG/AMS Server (integer).
-    
+
     cmd:          NG/AMS command to send (string).
-    
+
     mimeType:     Mime-type of message (string).
-    
+
     dataRef:      Data to send to remote NG/AMS Server or name of
                   file containing data to send (string).
 
@@ -708,7 +708,7 @@ def httpPost(host,
                   Format is:
 
                     [[<par 1>, <val par 1>], ...]
-                   
+
                   These are send as 'Content-disposition' in the HTTP
                   command (list).
 
@@ -724,7 +724,7 @@ def httpPost(host,
     fileName:     Filename if data sent within the request (string).
 
     dataSize:     Size of data to send if read from a socket (integer).
- 
+
     Returns:      List with information from reply from contacted
                   NG/AMS Server (reply, msg, hdrs, data) (list).
     """
@@ -738,7 +738,7 @@ def httpPost(host,
         else:
             contDisp += parInfo[0] + '="'+urllib.quote(str(parInfo[1])) + '"; '
     if (contDisp != ""): contDisp = contDisp[0:-1]
-    
+
     info(4,"Sending: " + cmd + " using HTTP POST with mime-type: " +\
          mimeType + " to NG/AMS Server with host/port: " + host +\
          "/" + str(port))
@@ -753,7 +753,7 @@ def httpPost(host,
         raise Exception, errMsg
 
 
-def httpGetUrl(url, 
+def httpGetUrl(url,
                dataTargFile = "",
                blockSize = 65536,
                timeOut = None,
@@ -811,7 +811,7 @@ def httpGetUrl(url,
         # Send additional HTTP headers, if any.
         for addHdr in additionalHdrs:
             reqObj.add_header(addHdr[0], addHdr[1])
-        
+
         _setSocketTimeout(timeOut)
         # TODO: Consider to invoke ngamsLib.ngasPingHost() to avoid blocking.
         fileObj = urllib2.urlopen(reqObj)
@@ -831,7 +831,7 @@ def httpGetUrl(url,
     # Handle response.
     code, msg, hdrs, data = _httpHandleResp(fileObj, dataTargFile, blockSize,
                                             timeOut, returnFileObj)
-    
+
     return (code, msg, hdrs, data)
 
 
@@ -856,18 +856,18 @@ def httpGet(host,
       [<HTTP status code>, <HTTP status msg>, <HTTP headers (list)>, <data>]
 
     host:             Host where remote NG/AMS Server is running (string).
-    
+
     port:             Port number used by remote NG/AMS Server (integer).
-    
+
     cmd:              NG/AMS command to send (string).
 
     wait:             Wait for the command to finish execution (integer).
-    
+
     pars:             List of sub-lists containing parameters + values.
                       Format is:
 
                         [[<par 1>, <val par 1>], ...]
-                   
+
                       These are send as 'Content-disposition' in the HTTP
                       command (list).
 
@@ -898,7 +898,7 @@ def httpGet(host,
                       NG/AMS Server (list).
     """
     T = TRACE()
-    
+
     if (not blockSize): blockSize = 65536
 #   Don't set timeout globally here. It is done in httpGetUrl for the connection
 #   and by default for the whole server in the ngamsServer.handleStartup
@@ -922,7 +922,7 @@ def httpGet(host,
     code, msg, hdrs, data = httpGetUrl((url + "?" + parsEnc), dataTargFile,
                                        blockSize, timeOut, returnFileObj,
                                        authHdrVal, additionalHdrs)
-    
+
     return (code, msg, hdrs, data)
 
 
@@ -936,7 +936,7 @@ def quoteUrlField(field):
     Returns:  Encoded field (string).
     """
     T = TRACE()
-    
+
     field = str(field)
     if ((field.find("http:") != -1) or (field.find("file:") != -1)):
         idx = 5
@@ -1020,7 +1020,7 @@ def parseRawPlugInPars(rawPars):
                      parDic[par])
             except:
                 errMsg = genLog("NGAMS_ER_PLUGIN_PAR", [rawPars])
-                raise Exception, errMsg 
+                raise Exception, errMsg
     info(5,"Generated parameter dictionary: " + str(parDic))
     return parDic
 
@@ -1141,7 +1141,7 @@ def getInternalFile(filename,
         errMsg = "Error occurred while accessing resource: " +\
                  filename + ". Exception: " + str(e)
         error(errMsg)
-        raise Exception, errMsg 
+        raise Exception, errMsg
 
 
 def detMimeType(mimeTypeMaps,
@@ -1152,7 +1152,7 @@ def detMimeType(mimeTypeMaps,
     NG/AMS Configuration and the filename (extension) of the file.
 
     mimeTypeMaps:  See ngamsConfig.getMimeTypeMappings() (list).
-    
+
     filename:      Filename (string).
 
     noException:   If the function should not throw an exception
@@ -1162,7 +1162,7 @@ def detMimeType(mimeTypeMaps,
     Returns:       Mime-type (string).
     """
     T = TRACE()
-    
+
     # Check if the extension as ".<ext>" is found in the filename as
     # the last part of the filename.
     info(4, "Determining mime-type for file with URI: %s ..." % filename)
@@ -1209,7 +1209,7 @@ def fileRemovable(filename):
     Returns:      Indication if file can be removed or not (integer/0|1|2).
     """
     T = TRACE(5)
-    
+
     # We simply carry out a temporary move of the file.
     tmpFilename = filename + "_tmp"
     try:
@@ -1262,9 +1262,9 @@ def genFileKey(diskId,
     Generate a unique key identifying a file.
 
     diskId:         Disk ID (string).
-    
+
     fileId:         File ID (string).
-    
+
     fileVersion:    File Version (integer).
 
     Returns:        File key (string).
@@ -1333,7 +1333,7 @@ def logicalStrListSort(strList):
     # Build up dictionary with padded (sortable) keys.
     dic = {}
     for el in strList:
-        key = (maxLen - len(el)) * " " + el 
+        key = (maxLen - len(el)) * " " + el
         dic[key] = el
 
     # Now sort the sortable keys and create a new list.
