@@ -35,7 +35,7 @@ to have another pipeline (e.g. CASA for VLA), write your own based on the generi
 framework in ngamsJobProtocol.py
 """
 
-import os, threading, commands, time, urllib2, logging, shlex, subprocess, signal
+import os, threading, commands, time, urllib2, logging, shlex, subprocess, signal, traceback
 from Queue import Queue, Empty
 import cPickle as pickle
 from urlparse import urlparse
@@ -46,10 +46,10 @@ import ngamsJobMWALib
 DEBUG = 1
 debug_url = 'http://192.168.1.1:7777'
 
-FSTATUS_NOT_STARTED = 0 # white
-FSTATUS_STAGING = 1 # green
-FSTATUS_ONLINE = 2 # blue
-FSTATUS_OFFLINE = 3 # red
+FSTATUS_NOT_STARTED = STATUS_NOT_STARTED # white
+FSTATUS_STAGING = STATUS_RUNNING # green
+FSTATUS_ONLINE = STATUS_COMPLETE # blue
+FSTATUS_OFFLINE = STATUS_EXCEPTION # red
 
 logger = logging.getLogger(__name__)
 
@@ -73,32 +73,31 @@ class RTSJob(MapReduceTask):
         self.__completedObsTasks = 0
         self.__hostAllocDict = {} # key: hostId that has been allocated, value: place_holder (e.g. CorrId)
         self.__obsRespQ = Queue()
-        self._rtsParam = rtsParam
-        self.__buildRTSTasks(rtsParam)
-        
+        self._rtsParam = rtsParam    
+        #self.__buildRTSTasks(rtsParam)       
     
-    def __buildRTSTasks(self, rtsParam):
-        if (rtsParam.obsList == None or len(rtsParam.obsList) == 0):
+    def buildRTSTasks(self):
+        if (self._rtsParam.obsList == None or len(self._rtsParam.obsList) == 0):
             errMsg = 'No observation numbers found in this RTS Job'
             raise Exception, errMsg
         
-        num_obs = len(rtsParam.obsList)
+        num_obs = len(self._rtsParam.obsList)
         
         for j in range(num_obs):
-            obs_num = rtsParam.obsList[j]
-            obsTask = ObsTask(obs_num, rtsParam, self)
+            obs_num = self._rtsParam.obsList[j]
+            obsTask = ObsTask(obs_num, self._rtsParam, self)
             self.addMapper(obsTask)
             
             fileIds = ngamsJobMWALib.getFileIdsByObsNum(obs_num)
             if (len(fileIds.keys()) == 0):
                 raise Exception('Obs number %s does not appear to be valid. We require exact observation numbers rather than GPS ranges.' % obs_num)
-            for k in range(rtsParam.num_subband):
+            for k in range(self._rtsParam.num_subband):
                 if (fileIds.has_key(k + 1)): # it is possible that some correlators were not on
                     exeHost, fileLocaDic = self._allocateHost(fileIds[k + 1])
                     if (not exeHost):
                         errMsg = 'There are no online NGAS servers available'
                         raise Exception, errMsg
-                    corrTask = CorrTask(str(k + 1), fileIds[k + 1], rtsParam, obsTask, exeHost, fileLocDict = fileLocaDic)
+                    corrTask = CorrTask(str(k + 1), fileIds[k + 1], self._rtsParam, obsTask, exeHost, fileLocDict = fileLocaDic)
                     obsTask.addMapper(corrTask)  
                     if (self.__hostAllocDict.has_key(exeHost)):    
                         self.__hostAllocDict[exeHost] += 1
@@ -299,7 +298,7 @@ class ObsTask(MapReduceTask):
                     break       
             
             self._progress = 4.5
-            self.setStatus(STATUS_NOT_STARTED)
+            self.setStatus(STATUS_QUEUEING)
             self._ltDequeueEvent.wait() # no timeout            
             
             # 5. - wait until result comes back
@@ -335,7 +334,7 @@ class ObsTask(MapReduceTask):
     
     def localTaskDequeued(self, taskId):
         self._ltDequeueEvent.set()
-        
+    
 
 class CorrTask(MapReduceTask):
     """
@@ -424,7 +423,7 @@ class CorrTask(MapReduceTask):
                         # record its actual location inside the cluster
                         self._fileLocDict[fid] = fileLoc[i] # get the host
                         # stage from that host within the cluster
-                        stageerr = ngamsJobMWALib.stageFile([fid], self, self._taskExeHost, frmHost = fileLoc[0]._svrHost)
+                        stageerr = ngamsJobMWALib.stageFile([fid], self, self._taskExeHost, fileLoc[0]._svrHost)
                         if (0 == stageerr):
                             break
                     if (stageerr):
@@ -459,12 +458,13 @@ class CorrTask(MapReduceTask):
             self.setStatus(STATUS_EXCEPTION)
             return cre # should raise exception here
         #TODO - deal with timeout!
-        dprint('Correlator %s is being mapped' % self.getId())
+        logger.debug('Correlator %s is being mapped' % self.getId())
         self._progress = 0     
         taskId = '%s__%s__%s' % (self.getParent().getParent().getId(), self.getParent().getId(), self.getId())
                 
         while (self._progress == 0):
             self._progress = 1
+            self.setStatus(STATUS_STAGING)
             cre = self._stageFiles(cre)
             if (cre._errcode):
                 #return cre
@@ -549,7 +549,7 @@ class CorrTask(MapReduceTask):
                 
             # 3.5 Waiting for the task dequeue
             self._progress = 2.5
-            self.setStatus(STATUS_NOT_STARTED)
+            self.setStatus(STATUS_QUEUEING)
             self._ltDequeueEvent.wait(timeout = self._timeOut4LT * 3) # dequeue timeout is 3 times of the task timeout
             if (not self._ltDequeueEvent.isSet()):
                 #queue timeout, need to change to another host
@@ -727,6 +727,7 @@ class CorrTask(MapReduceTask):
         
         jsobj = {}
         jsobj['name'] = self.getId() + '-' + self.getHostNameFromHostId(self._taskExeHost) + '-' + statusDic[self.getStatus()]
+        jsobj['walltime'] = self.getWallTime()
         jsobj['status'] = self.getStatus()
         #moredic = self.getMoreJSONAttr()
         if (self.__fileIds == None or len(self.__fileIds) == 0):
@@ -734,6 +735,7 @@ class CorrTask(MapReduceTask):
         children = []
         for fileId in self.__fileIds:
             fjsobj = {}
+            fjsobj['walltime'] = '' #TODO - add in the future
             if (self._fileLocDict.has_key(fileId)):
                 floc = self._fileLocDict[fileId]._svrHost
                 ingR = self._fileLocDict[fileId]._ingestRate
@@ -1006,25 +1008,25 @@ class ObsLocalTask(MRLocalTask):
         # cd working directory and download images
         os.chdir(work_dir)
         for imgurl in self._imgurl_list:
-            cmd = 'wget -O tmp.tar.gz %s' % imgurl
+            cmd = 'wget -O tmp.tar %s' % imgurl
             self._runBashCmd(cmd, False)
-            cmd = 'tar -xzf tmp.tar.gz'
+            cmd = 'tar -xf tmp.tar'
             self._runBashCmd(cmd, False)
         
-        cmd = 'rm tmp.tar.gz'
+        cmd = 'rm tmp.tar'
         self._runBashCmd(cmd, False)
         
         # go to the upper level directory, and pack all image files together
         upp_dir = '%s/%s' % (self._params.ngas_processing_path, self._taskId)
         os.chdir(upp_dir)
-        cmd = 'tar -czf %s.tar.gz %s/' % (self._taskId, job_id)
+        cmd = 'tar -cf %s.tar %s/' % (self._taskId, job_id)
         ret = self._runBashCmd(cmd)
         if (ret):
             return ret
         
         # record the image path so that cmd_RUNTASK can use it to archive it on the 
         # same host
-        complete_img_path = '%s/%s.tar.gz' % (upp_dir, self._taskId)
+        complete_img_path = '%s/%s.tar' % (upp_dir, self._taskId)
         ret = MRLocalTaskResult(self._taskId, 0, complete_img_path, True)
         return ret
     

@@ -44,7 +44,7 @@ io_ex_ip = {'io1':'202.8.39.136', 'io2':'202.8.39.137'}  # the two Copy Nodes ex
 io_ipovib = {'io1':'192.168.212.5', 'io2':'192.168.212.6'} 
 ngas_src_root = '/scratch/astronomy556/MWA/ngas_rt'
 ngas_vol_tool = ngas_src_root + '/src/ngasUtils/src/ngasPrepareVolumeNoRoot.py'
-ngas_cache_server = ngas_src_root + '/src/ngamsServer/ngamsCacheServer.py'
+ngas_cache_server = ngas_src_root + '/src/ngamsServer/ngamsServer.py'
 ngas_pclient = ngas_src_root + '/bin/ngamsPClient'
 ngas_runtime_root = '/tmp/NGAS_MWA'
 python_exec = ngas_src_root + '/bin/python'
@@ -230,6 +230,7 @@ def monitorServers(status = 'online', printRes = True):
         if ('online' == status):
             needToRefresh = 0
             for ho in res:
+                print 'Ping host %s ...' % ho[0]
                 if (pingHost('http://%s/STATUS' % ho[0])):
                     print 'Host %s is not reachable' % ho[0]
                     needToRefresh = 1
