@@ -49,7 +49,7 @@ handling the archival and retrieval of data, and to manage the
 disk configuration of the system.
 
 The complete functionality is implemented as a set of Python classes
-that can be used in other contexts. 
+that can be used in other contexts.
 
 Also provided are functions used to built the so-called Data Handling
 Plug-In Utilities which are used to handle the various types of data
@@ -85,7 +85,7 @@ Source Code File Hierarchy:
   o ngamsDb, ngamsLib, ngamsUrlLib
   o ngamsConfig
   o ngamsFileInfo, ngamsHostInfo
-  o ngamsDiskInfo, ngamsDapiStatus, ngamsDppiStatus, ngamsFileList, 
+  o ngamsDiskInfo, ngamsDapiStatus, ngamsDppiStatus, ngamsFileList,
     ngamsPhysDiskInfo
   o ngamsReqProps, ngamsStatus
   o ngamsHighLevelLib
@@ -124,7 +124,6 @@ except Exception, e:
     print "ngams/__init__.py: Line 122"
     pass
 
-import pcc
 import PccLog
 import PccLogDef
 import PccUtString
@@ -155,7 +154,7 @@ NGAMS_HOST_IP = None
 
 # Semaphore + counter to ensure unique, temporary filenames.
 _uniqueNumberSem   = threading.Semaphore(1)
-_uniqueNumberCount = 0 
+_uniqueNumberCount = 0
 
 
 def ngamsGetSrcDir():
@@ -173,7 +172,7 @@ def getSrvPid():
     """
     Get the main PID of the Python interpreter, in which the NG/AMS Server
     or another application based on the NG/AMS library, is running.
-    
+
     Returns:    Main PID of server (integer).
     """
     global NGAMS_SRV_PID
@@ -477,18 +476,18 @@ def setLogCond(sysLog,
     Set the global log conditions to be used by NG/AMS.
 
     sysLog:         Switch logging in UNIX syslgo on/off (1/0) (integer).
-    
+
     sysLogPrefix:   Prefix (tag) to be used in syslog entries (string).
-    
+
     locLogLevel:    Level applied for logging into local log file (integer).
-    
+
     locLogFile:     Name of local log file (string).
-    
+
     verboseLevel:   Level to apply to logs written on stdout (integer).
 
     Note: If any of the input parameters are None, the present value will
     be maintained.
- 
+
     Returns:        Void.
     """
     # If any of the parameters are None - take the present value.
@@ -524,7 +523,7 @@ def getVerboseLevel():
     """
     return PccLog.getVerboseLevel()
 
-    
+
 def getLogLevel():
     """
     Get the Log Level.
@@ -544,7 +543,7 @@ def getMaxLogLevel():
         return PccLog.getLogLevel()
     else:
         return PccLog.getVerboseLevel()
-    
+
 
 def genLog(logId,
            parList = []):
@@ -645,16 +644,16 @@ def relLogSem():
     """
     global _logSem
     _logSem.release()
-   
+
 
 def info(level,
          msg):
     """
     Generate an Information Log entry in the log targets.
     This is not written to UNIX syslog.
-    
+
     level:    Level indicator for this log entry.
-    
+
     msg:      Message to log (string).
 
     Returns:  Void.
@@ -735,7 +734,7 @@ def sysLogInfo(level,
     Generate a log entry in the UNIX syslog.
 
     msg:      Message to log (string).
-    
+
     location: Optional location specifier (string).
 
     Returns:  Void.
@@ -764,7 +763,7 @@ def notice(msg):
     except Exception, e:
         relLogSem()
 
-    
+
 def warning(msg):
     """
     Log a Warning Log into the specified log targets.
@@ -781,7 +780,7 @@ def warning(msg):
     except Exception, e:
         relLogSem()
 
-    
+
 def error(msg):
     """
     Log an Error Log into the specified log targets.
@@ -797,7 +796,7 @@ def error(msg):
         relLogSem()
     except Exception, e:
         relLogSem()
-    
+
 
 def alert(msg):
     """
@@ -831,7 +830,7 @@ def setDebug(debug):
 def getDebug():
     """
     Return Global Debug Flag.
-    
+
     Returns:  Debug flag. 1 = debug mode (integer).
     """
     global _debug
@@ -946,7 +945,7 @@ def getHostName():
         srv = dom.getElementsByTagName('Server')
         ip = srv[0].getAttribute('IpAddress')
     if ip:
-        NGAMS_HOST_IP = str(ip) 
+        NGAMS_HOST_IP = str(ip)
         return str(ip)
     else:
         hostName = os.uname()[1]
@@ -1005,11 +1004,11 @@ def ignoreValue(ignoreEmptyField,
     Evaluate the value of a field and indicate whether to ignore it or not.
 
     Internal function.
-    
-    ignoreEmptyField:     If set to 1 indicates that the field should be 
+
+    ignoreEmptyField:     If set to 1 indicates that the field should be
                           ignored if it is an empty string (integer/0|1).
-                          
-    fieldValue:           Value of field (string). 
+
+    fieldValue:           Value of field (string).
 
     Returns:              1 if field should be ignored, otherwise 0
                           (integer/0|1).
@@ -1182,7 +1181,7 @@ def getDiskSpaceAvail(mountPoint,
     # Update the disk space (cache) dictionary.
     _diskSpaceDic[mountPoint] = (startTime, diskSpace)
 
-    # Scale etc. the disk space. 
+    # Scale etc. the disk space.
     diskSpace = (diskSpace * _scale[format])
 
     if (not float): diskSpace = int(diskSpace + 0.5)
@@ -1199,16 +1198,16 @@ def checkAvailDiskSpace(filename,
     """
     Check if there is enough space to store the file. If there is not
     enough space, an exception is raised.
-    
+
     filename:   Filename - complete path (string).
-    
+
     fileSize:   Filesize in bytes (integer).
 
     Returns:    Void.
     """
     path = os.path.dirname(filename)
     info(4,"Checking for disk space availability for path: " + path +\
-         " - Needed size: " + str(fileSize) + " ...")    
+         " - Needed size: " + str(fileSize) + " ...")
     if ((fileSize / 1024**2) > getDiskSpaceAvail(path, smart=True)):
         errMsg = genLog("NGAMS_ER_NO_DISK_SPACE", [filename, fileSize])
         error(errMsg)
@@ -1240,8 +1239,8 @@ def checkCreatePath(path):
     except Exception, e:
         _pathHandleSem.release()
         raise e
-    
- 
+
+
 def rmFile(filename):
     """
     Remove the file referenced.
@@ -1260,9 +1259,9 @@ def mvFile(srcFilename,
     Move a file from the source filename to the specified target filename.
 
     srcFilename:  Source filename (string).
-    
+
     trgFilename:  Target filename (string).
-    
+
     Returns:      Time in took to move file (s) (float).
     """
     info(4,"Moving file: " + srcFilename + " to filename: " + trgFilename)
@@ -1292,9 +1291,9 @@ def cpFile(srcFilename,
     Copy a file from the source filename to the specified target filename.
 
     srcFilename:  Source filename (string).
-    
+
     trgFilename:  Target filename (string).
-    
+
     Returns:      Time in took to move file (s) (float).
     """
     info(4,"Copying file: " + srcFilename + " to filename: " + trgFilename)
@@ -1334,7 +1333,7 @@ def compressFile(srcFilename,
     Returns:       Name of resulting file (string).
     """
     T = TRACE()
-    
+
     compressCmd = "gzip -f %s" % srcFilename
     stat, out = commands.getstatusoutput(compressCmd)
     if (stat != 0):
@@ -1361,7 +1360,7 @@ def decompressFile(srcFilename,
     Returns:       Name of resulting file (string).
     """
     T = TRACE()
-    
+
     decompressCmd = "gunzip -f %s" % srcFilename
     stat, out = commands.getstatusoutput(decompressCmd)
     if (stat != 0):
@@ -1417,7 +1416,7 @@ def checkIfIso8601(timestamp):
     Check if value is properly formatted according to ISO 8601.
 
     timestamp:    Timestamp to check (string).
- 
+
     Returns:      True if ISO 8601 timestamp, otherwise False (boolean).
     """
     try:
@@ -1444,7 +1443,7 @@ def getAsciiTime(timeSinceEpoch = time.time(),
     Returns:          ASCII time stamp (string).
     """
     T = TRACE()
-    
+
     timeStamp = cleanList(str(time.asctime(time.gmtime(timeSinceEpoch))).\
                           split(" "))[3]
     if (precision > 0):
@@ -1453,11 +1452,11 @@ def getAsciiTime(timeSinceEpoch = time.time(),
         timeStamp += decimals
     return timeStamp
 
-    
+
 # TODO: Consider to extend iso8601ToSecs() to handle this case.
 def isoTime2Secs(isoTime):
     """
-    Converts a semi ISO 8601 style time stamp like: 
+    Converts a semi ISO 8601 style time stamp like:
 
         '[<days>T]<hours>:<minutes>:<seconds>[.<decimal seconds>]'
 
@@ -1468,7 +1467,7 @@ def isoTime2Secs(isoTime):
     Returns:    Corresponding time in seconds (float).
     """
     T = TRACE()
-    
+
     if (isoTime.find("T") != -1):
         datePart, timePart = isoTime.split("T")
         days = datePart
@@ -1514,10 +1513,10 @@ def iso8601ToSecs(isoTimeStamp):
         if (ms): secs += "." + str(ms)
     except Exception, e:
         msg = "Illegal ISO 8601 time-stamp: %s" % isoTimeStamp
-        raise Exception, msg 
+        raise Exception, msg
     return float(secs)
 
-    
+
 def padString(strBuf,
               reqLen,
               prependChr):
@@ -1527,9 +1526,9 @@ def padString(strBuf,
     will be '000012'.
 
     strBuf:         String buffer to check/change (string).
-    
+
     reqLen:         Desired lenght of string (integer).
-    
+
     prependChr:     Character to prepend (string/length=1).
 
     Returns:        Resulting string with the characters prepended (string).
@@ -1564,13 +1563,13 @@ def setTestMode():
     """
     Switch on the Test Mode Flag. When set, special conditions are applied
     during execution of SW/server.
-    
+
     Returns:   Void.
     """
     global _testMode
     _testMode = 1
-        
-    
+
+
 def getTestMode():
     """
     Return the value of the Test Mode Flag. When set to 1, the server will not
