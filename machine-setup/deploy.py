@@ -32,6 +32,7 @@ from fabric.utils import puts, abort, fastprint
 #Defaults
 thisDir = os.path.dirname(os.path.realpath(__file__))
 
+BRANCH = 'container'    # this is controlling which branch is used in git clone
 USERNAME = 'ec2-user'
 POSTFIX = False
 AMI_ID = 'ami-aecd60c7'
@@ -369,8 +370,8 @@ def git_clone_tar():
     is thus using a tar-file, copied over from the calling machine.
     """
     set_env()
-    local('cd /tmp && git clone {0}@{1} container'.format(env.GITUSER, env.GITREPO))
-    local('cd /tmp && mv ngas {0}'.format(NGAS_DIR))
+    local('cd /tmp && git clone {0}@{1} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
+    local('cd /tmp && mv {0} {1}'.format(BRANCH, NGAS_DIR))
     local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES {0}'.format(NGAS_DIR))
     tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
     put('/tmp/{0}'.format(tarfile), tarfile)
