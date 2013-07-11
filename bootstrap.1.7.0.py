@@ -18,11 +18,7 @@ The script accepts buildout command-line options, so you can
 use the -c option to specify an alternate configuration file.
 """
 
-import os
-import shutil
-import sys
-import tempfile
-
+import os, shutil, sys, tempfile
 from optparse import OptionParser
 
 tmpeggs = tempfile.mkdtemp()
@@ -35,8 +31,8 @@ Bootstraps a buildout-based project.
 Simply run this script in a directory containing a buildout.cfg, using the
 Python that you want bin/buildout to use.
 
-Note that by using --find-links to point to local resources, you can keep 
-this script from going over the network.
+Note that by using --setup-source and --download-base to point to
+local resources, you can keep this script from going over the network.
 '''
 
 parser = OptionParser(usage=usage)
@@ -52,21 +48,23 @@ parser.add_option("-t", "--accept-buildout-test-releases",
                         "bootstrap and buildout will get the newest releases "
                         "even if they are alphas or betas."))
 parser.add_option("-c", "--config-file",
-                  help=("Specify the path to the buildout configuration "
-                        "file to be used."))
+                   help=("Specify the path to the buildout configuration "
+                         "file to be used."))
 parser.add_option("-f", "--find-links",
-                  help=("Specify a URL to search for buildout releases"))
+                   help=("Specify a URL to search for buildout releases"))
 
 
 options, args = parser.parse_args()
 
 ######################################################################
-# load/install setuptools
+# load/install distribute
 
 to_reload = False
 try:
-    import pkg_resources
-    import setuptools
+    import pkg_resources, setuptools
+    if not hasattr(pkg_resources, '_distribute'):
+        to_reload = True
+        raise ImportError
 except ImportError:
     ez = {}
 
@@ -75,10 +73,8 @@ except ImportError:
     except ImportError:
         from urllib2 import urlopen
 
-    # XXX use a more permanent ez_setup.py URL when available.
-    exec(urlopen('https://bitbucket.org/pypa/setuptools/raw/0.7.2/ez_setup.py'
-                ).read(), ez)
-    setup_args = dict(to_dir=tmpeggs, download_delay=0)
+    exec(urlopen('http://python-distribute.org/distribute_setup.py').read(), ez)
+    setup_args = dict(to_dir=tmpeggs, download_delay=0, no_fake=True)
     ez['use_setuptools'](**setup_args)
 
     if to_reload:
@@ -93,7 +89,7 @@ except ImportError:
 ######################################################################
 # Install buildout
 
-ws = pkg_resources.working_set
+ws  = pkg_resources.working_set
 
 cmd = [sys.executable, '-c',
        'from setuptools.command.easy_install import main; main()',
@@ -108,8 +104,8 @@ find_links = os.environ.get(
 if find_links:
     cmd.extend(['-f', find_links])
 
-setuptools_path = ws.find(
-    pkg_resources.Requirement.parse('setuptools')).location
+distribute_path = ws.find(
+    pkg_resources.Requirement.parse('distribute')).location
 
 requirement = 'zc.buildout'
 version = options.version
@@ -117,14 +113,13 @@ if version is None and not options.accept_buildout_test_releases:
     # Figure out the most recent final version of zc.buildout.
     import setuptools.package_index
     _final_parts = '*final-', '*final'
-
     def _final_version(parsed_version):
         for part in parsed_version:
             if (part[:1] == '*') and (part not in _final_parts):
                 return False
         return True
     index = setuptools.package_index.PackageIndex(
-        search_path=[setuptools_path])
+        search_path=[distribute_path])
     if find_links:
         index.add_find_links((find_links,))
     req = pkg_resources.Requirement.parse(requirement)
@@ -147,7 +142,7 @@ if version:
 cmd.append(requirement)
 
 import subprocess
-if subprocess.call(cmd, env=dict(os.environ, PYTHONPATH=setuptools_path)) != 0:
+if subprocess.call(cmd, env=dict(os.environ, PYTHONPATH=distribute_path)) != 0:
     raise Exception(
         "Failed to execute command:\n%s",
         repr(cmd)[1:-1])
