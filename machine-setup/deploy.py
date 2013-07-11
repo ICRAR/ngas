@@ -739,6 +739,23 @@ def test_deploy():
         ngas_full_buildout()
     init_deploy()
 
+
+@task
+def install():
+    """
+    Install NGAS users and NGAS software on existing machine.
+    Note: Requires root permissions!
+    """
+    user_setup()
+    with settings(user='ngas'):
+        ppath = check_python()
+        if not ppath:
+            python_setup()
+        virtualenv_setup()
+        ngas_full_buildout()
+    init_deploy()
+
+
 @task
 def uninstall():
     """
