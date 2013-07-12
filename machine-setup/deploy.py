@@ -79,6 +79,23 @@ APT_PACKAGES = [
         'libdb5.1-dev',
         ]
 
+ZYPPER_PACKAGES = [
+   'git',
+   'autoconf',
+   'libtool',
+   'zlib-devel',
+   'db43-devel',
+   'gdbm-devel',
+   'readline-devel',
+   'sqlite-devel',
+   'make',
+   'java-1_7_0-ibm-devel',
+   'postfix',
+   'openssl-devel',
+   'wget',
+]
+
+
 
 PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 # WEB_HOST = 0
@@ -287,6 +304,14 @@ def install_apt(package):
     NOTE: This requires sudo access
     """
     sudo('apt-get -qq -y install {0}'.format(package))
+
+def install_zypper(package):
+    """
+    Install a package using zypper (Pawsey SLES)
+
+    NOTE: This requires sudo access
+    """
+    sudo('zypper install {0} -y'.format(package))
 
 
 def check_yum(package):
@@ -650,7 +675,6 @@ def user_deploy():
         env.PYTHON = ppath
     virtualenv_setup()
     ngas_full_buildout()
-
 
 
 @task
