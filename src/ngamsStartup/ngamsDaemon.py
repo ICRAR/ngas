@@ -82,29 +82,35 @@ def checkNgasPidFile(dum):
             return True
     return False
 
+def main(args=sys.argv):
+    """
+    Entry point function
+    """
+    daemon = MyDaemon(PIDFILE,)
+
+    if len(sys.argv) == 2:
+            if 'start' == sys.argv[1]:
+                    ngaslog('INFO', 'NGAMS Server Started')
+                    daemon.start()
+            elif 'stop' == sys.argv[1]:
+                    ngaslog('INFO', 'NGAMS Server Stopped')
+                    daemon.stop(cfunc=checkNgasPidFile)
+            elif 'restart' == sys.argv[1]:
+                    ngaslog('INFO', 'NGAMS Server Restarting')
+                    daemon.restart(cfunc=checkNgasPidFile)
+            elif 'status' == sys.argv[1]:
+                    ngaslog('INFO', 'Sending STATUS command')
+                    print "Not implemented yet!"
+                    pass
+            else:
+                    print "Unknown command"
+                    print "usage: %s start|stop|restart|status" % sys.argv[0]
+                    sys.exit(2)
+            sys.exit(0)
+    else:
+            print "usage: %s start|stop|restart|status" % sys.argv[0]
+            sys.exit(2)
+
 if __name__ == "__main__":
+    main()
 
-        daemon = MyDaemon(PIDFILE,)
-
-        if len(sys.argv) == 2:
-                if 'start' == sys.argv[1]:
-                        ngaslog('INFO', 'NGAMS Server Started')
-                        daemon.start()
-                elif 'stop' == sys.argv[1]:
-                        ngaslog('INFO', 'NGAMS Server Stopped')
-                        daemon.stop(cfunc=checkNgasPidFile)
-                elif 'restart' == sys.argv[1]:
-                        ngaslog('INFO', 'NGAMS Server Restarting')
-                        daemon.restart(cfunc=checkNgasPidFile)
-                elif 'status' == sys.argv[1]:
-                        ngaslog('INFO', 'Sending STATUS command')
-                        print "Not implemented yet!"
-                        pass
-                else:
-                        print "Unknown command"
-                        print "usage: %s start|stop|restart|status" % sys.argv[0]
-                        sys.exit(2)
-                sys.exit(0)
-        else:
-                print "usage: %s start|stop|restart|status" % sys.argv[0]
-                sys.exit(2)
