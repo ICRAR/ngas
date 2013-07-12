@@ -21,6 +21,7 @@
 #    MA 02111-1307  USA
 #
 
+import os
 from ngamsServer import *
 from logger import ngaslog
 from daemon import Daemon
@@ -37,7 +38,13 @@ else:
 #                  '-multiplsrv',
                   '-v', '0',
          ]
-    PIDFILE = '%s/var/run/ngamsDaemon.pid' % HOME
+PIDFILE = '%s/var/run/ngamsDaemon.pid' % HOME
+try:
+    os.makedirs('{0}/var/run'.format(HOME))
+    os.makedirs('{0}/var/log'.formate(HOME))
+except OSError:
+    pass
+
 
 class MyDaemon(Daemon):
     """
@@ -55,6 +62,7 @@ class MyDaemon(Daemon):
             main()                    # start NGAMS
             sys.argv = ARGS_BCK
         except Exception as e:
+            ngaslog(str(e))
             raise e
 
 def checkNgasPidFile(dum):
@@ -76,7 +84,7 @@ def checkNgasPidFile(dum):
 
 if __name__ == "__main__":
 
-        daemon = MyDaemon(PIDFILE,) 
+        daemon = MyDaemon(PIDFILE,)
 
         if len(sys.argv) == 2:
                 if 'start' == sys.argv[1]:
