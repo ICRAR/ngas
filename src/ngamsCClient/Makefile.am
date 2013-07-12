@@ -3,7 +3,7 @@ DISTCLEANFILES = *~
 
 INCLUDES = -I$(top_srcdir)/incl $(INTROOT_INCLUDES) $(CFITSIO_INCLUDES) $(SYBASE_INCLUDES)
 
-LDADD = libngams.la -lz -lpthread -ldb $(SYSTEM_LIBS)
+LDADD = libngams.la -lz -lpthread -ldb -ldb-4.5 $(SYSTEM_LIBS)
 
 bin_PROGRAMS =  ngamsCClient ngamsCClientX ngamsArchiveClient ngamsCrc32
 
