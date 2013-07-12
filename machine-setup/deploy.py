@@ -86,7 +86,7 @@ ZYPPER_PACKAGES = [
    'autoconf',
    'libtool',
    'zlib-devel',
-   'db43-devel',
+   'libdb45-devel',
    'gdbm-devel',
    'readline-devel',
    'sqlite-devel',
