@@ -81,6 +81,8 @@ APT_PACKAGES = [
 
 ZYPPER_PACKAGES = [
    'git',
+   'gcc',
+   'automake',
    'autoconf',
    'libtool',
    'zlib-devel',
