@@ -21,7 +21,7 @@
 #    MA 02111-1307  USA
 #
 
-import os
+import os, subprocess
 from ngamsServer import *
 from logger import ngaslog
 from daemon import Daemon
@@ -35,13 +35,16 @@ else:
                   '-cfg', '%s/ngas_rt/cfg/NgamsCfg.SQLite.mini.xml' % HOME,
                   '-force',
                   '-autoOnline',
-#                  '-multiplsrv',
+                  '-multiplesrvs',
                   '-v', '0',
          ]
+
+
+
 PIDFILE = '%s/var/run/ngamsDaemon.pid' % HOME
 try:
     os.makedirs('{0}/var/run'.format(HOME))
-    os.makedirs('{0}/var/log'.formate(HOME))
+    os.makedirs('{0}/var/log'.format(HOME))
 except OSError:
     pass
 
@@ -64,6 +67,15 @@ class MyDaemon(Daemon):
         except Exception as e:
             ngaslog(str(e))
             raise e
+
+    def status(self):
+        """
+        Send a STATUS command to server
+        """
+        CMD = "{0}/ngas_rt/bin/ngamsPClient -port 7777 -host $HOSTNAME -cmd STATUS".\
+             format(HOME)
+        subprocess.call(SCMD,shell=True)
+
 
 def checkNgasPidFile(dum):
     """
