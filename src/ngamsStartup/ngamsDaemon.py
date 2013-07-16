@@ -62,17 +62,16 @@ class MyDaemon(Daemon):
             sys.argv = NGAMS_ARGS     # put the NGAMS_ARGS instead
             nserver = ngamsServer()   # instantiate server
             nserver.init(NGAMS_ARGS)  # initialize server
-            main()                    # start NGAMS
             sys.argv = ARGS_BCK
         except Exception as e:
-            ngaslog(str(e))
+            ngaslog('INFO', str(e))
             raise e
 
     def status(self):
         """
         Send a STATUS command to server
         """
-        CMD = "{0}/ngas_rt/bin/ngamsPClient -port 7777 -host $HOSTNAME -cmd STATUS".\
+        SCMD = "{0}/ngas_rt/bin/ngamsPClient -port 7777 -host $HOSTNAME -cmd STATUS".\
              format(HOME)
         subprocess.call(SCMD,shell=True)
 
