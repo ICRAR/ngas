@@ -591,6 +591,21 @@ def virtualenv_setup():
         # the package has not been updated on PyPI as of 2013-02-7
 
 
+@task
+def ngas_db_setup():
+    """
+    generate the SQLite DB from the schema file
+    """
+    set_env()
+    with settings(warn_only=True):
+        with hide('warnings', 'running', 'stdout'):
+            with cd('NGAS'):
+
+                run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
+                    .format(env.NGAS_DIR_ABS))
+            # make sure that the TEST DB template is up-to-date as well
+                run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template'.format(env.NGAS_DIR_ABS))
+
 
 @task
 def ngas_buildout():
@@ -602,11 +617,9 @@ def ngas_buildout():
     with cd(env.NGAS_DIR_ABS):
         virtualenv('buildout')
     run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
-    with cd('NGAS'):
-        with settings(warn_only=True):
-            run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
-                .format(env.NGAS_DIR_ABS))
-            run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template'.format(env.NGAS_DIR_ABS))
+    ngas_db_setup()
+    # make sure the virtualenv is active when logging in
+    run('echo "source {0}/bin/activate" >> .bash_profile'.format(env.NGAS_DIR_ABS))
 
 
 @task
