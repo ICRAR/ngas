@@ -902,7 +902,6 @@ class ngamsPClient:
         # Invoke the proper operation.
         if (not getDebug()):
             try:
-                info(3,'Command found: {0}'.format(cmd))
                 if (parArray):
                     return self.sendCmdGen(self.getHost(), self.getPort(),
                                            cmd, wait, outputFile, parArray)
