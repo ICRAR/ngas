@@ -77,18 +77,13 @@ class throughputPlot():
             # Just a year given: switch to weekly mode
             try:
                 dt = datetime.datetime.strptime(args.date,'%Y')
+                self.start_date = dt
                 self.mode = ['Weekly', 'Week']
                 mr = monthrange(dt.year, dt.month)
                 self.fdate = "'%04-%dT00:00:00.000'"
                 self.loop = 53 # cover the whole year
                 self.drange =[]
-                for ii in range(self.loop):
-                    delt=datetime.timedelta(days=(7-dt.weekday()))
-                    de=dt+delt
-                    if de.year > dt.year:
-                        de=datetime.datetime.strptime('{0}-12-31'.format(dt.year),'%Y-%m-%d')
-                    self.drange.append([dt.strftime("'%Y-%m-%dT00:00:00.000'"),de.strftime("'%Y-%m-%dT00:00:00.000'")])
-                    dt=de
+                _construct_drange(self)
 
             except ValueError:
                 raise
@@ -117,6 +112,21 @@ class throughputPlot():
                 sys.exit()
         self.dt = dt
         return
+
+
+def _construct_drange(self):
+    """
+    Helper method to construct the date range for the Weekly mode.
+    """
+    dt = self.start_date # initialise the loop
+    for ii in range(self.loop):
+        delt=datetime.timedelta(days=(7-dt.weekday()))
+        de=dt+delt
+        if de.year > dt.year:
+            de=datetime.datetime.strptime('{0}-12-31'.format(dt.year),'%Y-%m-%d')
+        self.drange.append([dt.strftime("'%Y-%m-%dT00:00:00.000'"),de.strftime("'%Y-%m-%dT00:00:00.000'")])
+        dt=de
+
 
     def queryDb(self):
         """
@@ -171,6 +181,7 @@ class throughputPlot():
         self.n = pylab.float16(n)
         vol = pylab.float16(res[:,:,4])
         self.tvol = vol[vol>0].sum()
+        self.tfils = n[n>0].sum()
         self.res=res
         dbconn.close()
         del(dbconn)
@@ -225,7 +236,8 @@ class throughputPlot():
             fig.canvas.set_window_title('%s: %s' % (self.db,self.date))
             ax2.set_title('%s %s transfer rate: %s' % (self.db, self.mode[0], self.date))
 
-        pylab.text(0.99,0.95,'Total: %5.2f TB' % self.tvol,transform = ax1.transAxes,ha='right')
+        pylab.text(0.99,0.95,'Total: %5.2f TB' % self.tvol,transform = ax1.transAxes,ha='right', va='bottom')
+        pylab.text(0.99,0.95,'Total # files: %8d' % self.tfils,transform = ax1.transAxes,ha='right', va='top')
         fig.show()
 
 
