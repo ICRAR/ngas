@@ -61,7 +61,8 @@ class throughputPlot():
         myparser.add_argument('date', metavar='date', type=str,
                    help='a date to gather the statistics for.' +\
                         'Examples: 2013-06-10 will produce hourly stats for that day.'+
-                        '          2013-06 will produce daily stats for June 2013')
+                        '          2013-06 will produce daily stats for June 2013'+
+                        '          2013 will produce weekly stats for the whole of 2013')
 
         myparser.add_argument('--db', dest='db', type=str,
                    default='ICRAR',
