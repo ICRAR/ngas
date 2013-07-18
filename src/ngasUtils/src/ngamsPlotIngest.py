@@ -71,13 +71,41 @@ class throughputPlot():
         args = myparser.parse_args(iargs)
         self.date = args.date
         self.db = args.db
-        try:
-            dt = datetime.datetime.strptime(args.date,'%Y-%m')
-            self.mode = ['Daily', 'Day']
-            mr = monthrange(dt.year, dt.month)
-            self.fdate = "'%s-%02dT24:00:00.000'"
-            self.loop = mr[1]
-        except ValueError:
+        dc = self.date.count('-')
+        if dc == 0:
+            # Just a year given: switch to weekly mode
+            try:
+                dt = datetime.datetime.strptime(args.date,'%Y')
+                self.mode = ['Weekly', 'Week']
+                mr = monthrange(dt.year, dt.month)
+                self.fdate = "'%04-%dT00:00:00.000'"
+                self.loop = 53 # cover the whole year
+                self.drange =[]
+                for ii in range(self.loop):
+                    delt=datetime.timedelta(days=(7-dt.weekday()))
+                    de=dt+delt
+                    if de.year > dt.year:
+                        de=datetime.datetime.strptime('{0}-12-31'.format(dt.year),'%Y-%m-%d')
+                    self.drange.append([dt.strftime("'%Y-%m-%dT00:00:00.000'"),de.strftime("'%Y-%m-%dT00:00:00.000'")])
+                    dt=de
+
+            except ValueError:
+                raise
+                sys.exit()
+
+        if dc == 1:
+            # Year and month given: switch to daily mode
+            try:
+                dt = datetime.datetime.strptime(args.date,'%Y-%m')
+                self.mode = ['Daily', 'Day']
+                mr = monthrange(dt.year, dt.month)
+                self.fdate = "'%s-%02dT24:00:00.000'"
+                self.loop = mr[1]
+            except ValueError:
+                raise
+                sys.exit()
+        elif dc == 2:
+            # Year, month, day given: switch to hourly mode
             try:
                 dt = datetime.datetime.strptime(args.date,'%Y-%m-%d')
                 self.mode = ['Hourly','Hour']
@@ -123,7 +151,10 @@ class throughputPlot():
         cur = dbconn.cursor()
         res = []
         for ii in range(1,self.loop+1):
-            ssql = hsql.format(self.fdate % (self.date, (ii-1)), self.fdate % (self.date,ii))
+            if self.mode[0] != 'Weekly':
+                ssql = hsql.format(self.fdate % (self.date, (ii-1)), self.fdate % (self.date,ii))
+            else:
+                ssql = hsql.format(self.drange[ii-1][0], self.drange[ii-1][1])
             cur.execute(ssql)
             r = cur.fetchall()
             res.append(r)
@@ -187,11 +218,11 @@ class throughputPlot():
         ax2.set_ylabel('Number of files',{'color':'r'})
 
         if self.mode[1] == 'Day':
-            fig.canvas.set_window_title('%s: %s' % (self.db,self.dt.strftime('%B %Y')))
-            ax2.set_title('%s %s transfer rate: %s' % (self.db, self.mode[0], self.dt.strftime('%B %Y')))
+            fig.canvas.set_window_title('%s: %s' % (self.db,self.date))
+            ax2.set_title('%s %s transfer rate: %s' % (self.db, self.mode[0], self.date))
         else:
-            fig.canvas.set_window_title('%s: %s' % (self.db,self.dt.strftime('%d %B %Y')))
-            ax2.set_title('%s %s transfer rate: %s' % (self.db, self.mode[0], self.dt.strftime('%d %B %Y')))
+            fig.canvas.set_window_title('%s: %s' % (self.db,self.date))
+            ax2.set_title('%s %s transfer rate: %s' % (self.db, self.mode[0], self.date))
 
         pylab.text(0.99,0.95,'Total: %5.2f TB' % self.tvol,transform = ax1.transAxes,ha='right')
         fig.show()
