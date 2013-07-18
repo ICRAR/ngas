@@ -203,6 +203,7 @@ class ngamsPClient:
 
         Returns:       NG/AMS Status object (ngamsStatus).
         """
+        T = TRACE()
         baseName = os.path.basename(fileUri)
         info(1,"Archiving file with URI: " + baseName)
         locPars = []
@@ -732,6 +733,7 @@ class ngamsPClient:
 
         Returns:  Void.
         """
+        T = TRACE()
         # Command line parameters.
         cmd              = ""
         diskId           = ""
@@ -772,6 +774,10 @@ class ngamsPClient:
                 if (par == "-auth"):
                     idx = idx + 1
                     self.setAuthorization(argv[idx])
+                elif (par == "-v"):
+                    idx = idx + 1
+                    verboseLevel = int(argv[idx])
+                    setLogCond(0, "", 0, "", verboseLevel)
                 elif (par == "-cfg"):
                     fileId = "--CFG--"
                 elif (par == "-host"):
@@ -863,10 +869,6 @@ class ngamsPClient:
                 elif (par == "-timeout"):
                     idx = idx + 1
                     self.setTimeOut(argv[idx])
-                elif (par == "-v"):
-                    idx = idx + 1
-                    verboseLevel = int(argv[idx])
-                    setLogCond(0, "", 0, "", verboseLevel)
                 elif (par == "-val"):
                     idx = idx + 1
                     parArray[parArrayIdx][1] = argv[idx]
@@ -886,11 +888,13 @@ class ngamsPClient:
                 _exit(exitValue)
             idx = idx + 1
 
+        self.verbosity = verboseLevel
+
         # Check input parameters.
         if ((servers == "") and (self.getHost() == "")):
             self.setHost(os.environ["HOSTNAME"])
         if (((self.getHost() == "") or (self.getPort() == -1)) and
-            (servers == "") or (legalCmd(cmd) == 0)):
+            (servers == "")):
             errMsg = self.correctUsageBuf()
             raise Exception, errMsg
         if (servers != ""): self.parseSrvList(servers)
@@ -898,10 +902,13 @@ class ngamsPClient:
         # Invoke the proper operation.
         if (not getDebug()):
             try:
+                info(3,'Command found: {0}'.format(cmd))
                 if (parArray):
                     return self.sendCmdGen(self.getHost(), self.getPort(),
                                            cmd, wait, outputFile, parArray)
                 elif (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
+                    info(3,'Command found: {0}'.format(cmd))
+
                     return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd)
                 elif (cmd == NGAMS_CACHEDEL_CMD):
                     parArray.append(["disk_id", diskId])
@@ -951,8 +958,9 @@ class ngamsPClient:
                 self.setStatus(0)
                 print "Error executing command:", e
         else:
+            info(3,'Command found: {0}'.format(cmd))
             if (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
-                return self.archive(fileUri, mimeType, wait, noVersioning)
+                return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd)
             elif (cmd == NGAMS_CACHEDEL_CMD):
                 parArray.append("disk_id", diskId)
                 parArray.append("file_id", fileId)
@@ -1204,31 +1212,60 @@ def handleCmdLinePars(argv,
 
     Returns:  Void.
     """
-    print('in handleCmdLinePars')
     ngamsClient = ngamsPClient()
     try:
         ngamsStat = ngamsClient.handleCmd(argv)
+        if ngamsClient.verbosity > 0 :
+            pprintStatus(ngamsClient, ngamsStat)
     except Exception, e:
-        print('cant be here')
         print str(e)
         _exit(1)
     if (ngamsClient.getStatus()):
         fo.write(ngamsStat.genXml(0, 1, 1, 1).toprettyxml('  ', '\n')[0:-1])
+        print ngamsStat.getStatus()
     if (ngamsStat == None):
-        print('cant be here 2')
         _exit(1)
     elif (ngamsStat.getStatus() == NGAMS_FAILURE):
-        print('cant be here 3')
         _exit(1)
     else:
-        print('handleCmdLinePars is finishing')
         _exit(0)
 
+def pprintStatus(client, stat):
+    """
+    Pretty print the return status document
+
+    Input:
+       stat:   an ngamsStatus document
+    """
+    message = """
+Status of request:
+Host:           {0}
+Port:           {1}
+Status:         {2}
+
+Request Time:   {3}
+Host ID:        {4}
+Message:        {5}
+Status:         {6}
+State:          {7}
+Sub-State:      {8}
+NG/AMS Version: {9}
+    """
+    print message.format(
+                         client.getHost(),
+                         client.getPort(),
+                         client.getStatus(),
+                         stat.getRequestTimeIso(),
+                         stat.getHostId(),
+                         stat.getMessage(),
+                         stat.getStatus(),
+                         stat.getState(),
+                         stat.getSubState(),
+                         stat.getVersion(),
+                         )
 
 def main():
-	print('now in main')
-	handleCmdLinePars(sys.argv)
-	print('main is finishing')
+    handleCmdLinePars(sys.argv)
 
 if __name__ == '__main__':
     """

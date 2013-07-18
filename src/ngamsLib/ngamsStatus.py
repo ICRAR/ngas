@@ -51,7 +51,7 @@ def _time2SecsSinceEpoch(timeStamp):
     timeStamp:    Time stamp as string, float or integer, in seconds since
                   epoch, or ISO 8601 time stamp (string|float|integer).
 
-    Returns:      Seconds since epoch (float).  
+    Returns:      Seconds since epoch (float).
     """
     if (isinstance(timeStamp, types.StringType)):
         if (timeStamp.find(":") != -1):
@@ -67,19 +67,19 @@ def _time2Secs(timeStamp):
     timeStamp:    Time stamp as string, float or integer, in seconds,
                   or ISO 8601 time stamp (string|float|integer).
 
-    Returns:      Seconds (float).  
+    Returns:      Seconds (float).
     """
     if (isinstance(timeStamp, types.StringType)):
         if (timeStamp.find(":") != -1):
             timeStamp = isoTime2Secs(timeStamp)
     return float(timeStamp)
 
-    
+
 class ngamsStatus:
     """
     Class to handle the NG/AMS Status Report.
     """
-    
+
     def __init__(self):
         """
         Constructor method.
@@ -116,7 +116,7 @@ class ngamsStatus:
         self.__lastRequestStatUpdate = None
         self.__completionTime        = None
 
-        # NG/AMS Configuration Status information. 
+        # NG/AMS Configuration Status information.
         self.__ngamsCfg       = ngamsConfig.ngamsConfig()
 
         # Status about disks and files.
@@ -126,7 +126,7 @@ class ngamsStatus:
         self.__fileListList   = []
 
         return self
-    
+
 
     def setDate(self,
                 date):
@@ -134,7 +134,7 @@ class ngamsStatus:
         Set the date for generating the status report.
 
         date:      ISO 8601 Date for generating status (string).
-        
+
         Returns:   Reference to object itself.
         """
         self.__date = str(date)
@@ -144,7 +144,7 @@ class ngamsStatus:
     def getDate(self):
         """
         Get the date for generating the status report.
-        
+
         Returns:   Date for generating status report (string).
         """
         return self.__date
@@ -156,7 +156,7 @@ class ngamsStatus:
         Set the version of the NG/AMS generating the status report.
 
         version:   Version of the NG/AMS generating the status (string).
-        
+
         Returns:   Reference to object itself.
         """
         self.__version = str(version)
@@ -166,8 +166,8 @@ class ngamsStatus:
     def getVersion(self):
         """
         Get the version of the NG/AMS generating the status report.
-        
-        Returns:   Version of the NG/AMS generating the status (string). 
+
+        Returns:   Version of the NG/AMS generating the status (string).
         """
         return self.__version
 
@@ -178,7 +178,7 @@ class ngamsStatus:
         Set the host ID for the application generating the report.
 
         id:        Host ID (string).
-        
+
         Returns:   Reference to object itself.
         """
         self.__hostId = str(id)
@@ -188,17 +188,17 @@ class ngamsStatus:
     def getHostId(self):
         """
         Get the host ID for the application generating the report.
-        
+
         Returns:   Host ID (string).
         """
         return self.__hostId
 
-    
+
     def setStatus(self,
                   status):
         """
         Set the status of the request to NG/AMS.
-        
+
         Returns:   Reference to object itself.
         """
         self.__status = str(status)
@@ -208,19 +208,19 @@ class ngamsStatus:
     def getStatus(self):
         """
         Get the status of the request to NG/AMS.
-        
+
         Returns:  Status of request to NG/AMS (string).
         """
         return self.__status
 
- 
+
     def setMessage(self,
                    msg):
         """
         Set the message in connection with the status report.
 
         msg:       Message in connection with status report (string).
-        
+
         Returns:   Reference to object itself.
         """
         self.__message = str(msg).strip()
@@ -230,7 +230,7 @@ class ngamsStatus:
     def getMessage(self):
         """
         Get the message in connection with the status report.
-        
+
         Returns:   Message in connection with status report (string).
         """
         return self.__message
@@ -242,7 +242,7 @@ class ngamsStatus:
         Set the State of NG/AMS.
 
         state:     State of NG/AMS (string).
-        
+
         Returns:   Reference to object itself.
         """
         self.__state = str(state)
@@ -252,7 +252,7 @@ class ngamsStatus:
     def getState(self):
         """
         Get the State of NG/AMS.
-        
+
         Returns:   State of NG/AMS (string).
         """
         return self.__state
@@ -264,7 +264,7 @@ class ngamsStatus:
         Set the Sub-State of NG/AMS.
 
         subState:    Sub-State of NG/AMS (string).
-        
+
         Returns:     Reference to object itself.
         """
         self.__subState = str(subState)
@@ -274,10 +274,10 @@ class ngamsStatus:
     def getSubState(self):
         """
         Get the Sub-State of NG/AMS.
-        
+
         Returns:   Sub-State of NG/AMS (string).
         """
-        return self.__subState 
+        return self.__subState
 
 
     def setRequestId(self,
@@ -316,7 +316,7 @@ class ngamsStatus:
         else:
             self.__requestTime = None
         return self
-    
+
 
     def getRequestTime(self):
         """
@@ -358,7 +358,7 @@ class ngamsStatus:
         """
         Get the degree of completion of the request (in percen).
 
-        Returns:        Degree of completion in percent (float). 
+        Returns:        Degree of completion in percent (float).
         """
         return self.__completionPercent
 
@@ -366,7 +366,7 @@ class ngamsStatus:
     def setExpectedCount(self,
                          expCount):
         """
-        Set the expected number of iterations to be carried out. Could 
+        Set the expected number of iterations to be carried out. Could
         e.g. be the number of files to handle.
 
         expCount:    Expected number of iterations (integer).
@@ -382,7 +382,7 @@ class ngamsStatus:
 
     def getExpectedCount(self):
         """
-        Return the expected number of iterations to be carried out. Could 
+        Return the expected number of iterations to be carried out. Could
         e.g. be the number of files to handle.
 
         Returns:  Expected number of iterations (integer).
@@ -396,21 +396,21 @@ class ngamsStatus:
         Set the actual number of iterations completed.
 
         actCount:    Current number of iterations done (integer).
-        
+
         Returns:     Reference to object itself.
         """
         if (actCount != None):
             self.__actualCount = int(actCount)
         else:
             self.__actualCount = None
-        return self 
-        
-        
+        return self
+
+
     def getActualCount(self):
         """
         Return the number of iterations carried out.
 
-        Returns:    Current number of iterations done (integer). 
+        Returns:    Current number of iterations done (integer).
         """
         return self.__actualCount
 
@@ -451,7 +451,7 @@ class ngamsStatus:
         """
         if (self.__estTotalTime == None): return ""
         return getAsciiTime(self.__estTotalTime)
-        
+
 
     def setRemainingTime(self,
                          remainingTime):
@@ -460,7 +460,7 @@ class ngamsStatus:
 
         remainingTime:    The remaining time in seconds (integer).
 
-        Returns:          Current number of iterations done (integer). 
+        Returns:          Current number of iterations done (integer).
         """
         if ((remainingTime != None) and (remainingTime != "")):
             self.__remainingTime = int(_time2Secs(remainingTime))
@@ -501,7 +501,7 @@ class ngamsStatus:
         else:
             self.__lastRequestStatUpdate = None
         return self
-        
+
 
     def getLastRequestStatUpdate(self):
         """
@@ -543,7 +543,7 @@ class ngamsStatus:
         else:
             self.__completionTime = None
         return self
-    
+
 
     def getCompletionTime(self):
         """
@@ -619,7 +619,7 @@ class ngamsStatus:
         Add a log object containing a log entry to the status report.
 
         logObj:    Log object (PccLogObj).
-        
+
         Returns:   Reference to object itself.
         """
         self.__logList.append(logObj)
@@ -629,7 +629,7 @@ class ngamsStatus:
     def getLogList(self):
         """
         Get list of log objects.
-        
+
         Returns:   Tuple containing log objects ([PccLogObj, ...]).
         """
         return self.__logList
@@ -641,7 +641,7 @@ class ngamsStatus:
         Add a disk info object in the status report.
 
         diskStatusObj:  Disk status object (ngamsDiskInfo).
-        
+
         Returns:        Reference to object itself.
         """
         self.__diskStatusList.append(diskStatusObj)
@@ -651,7 +651,7 @@ class ngamsStatus:
     def getDiskStatusList(self):
         """
         Get tuple of disk info objects.
-        
+
         Returns:  Tuple with disk info objects ([ngamsDiskInfo, ...]).
         """
         return self.__diskStatusList
@@ -663,7 +663,7 @@ class ngamsStatus:
         Add a File List Object in the status report.
 
         fileListObj:    File List object (ngamsFileList).
-        
+
         Returns:        Reference to object itself.
         """
         self.__fileListList.append(fileListObj)
@@ -673,7 +673,7 @@ class ngamsStatus:
     def getFileListList(self):
         """
         Get tuple of File List Objects.
-        
+
         Returns:  Tuple with File List Objects ([ngamsFileList, ...]).
         """
         return self.__fileListList
@@ -691,7 +691,7 @@ class ngamsStatus:
         """
         self.__ngamsCfg = ngamsCfgObj
         return self
-        
+
 
     def load(self,
              filename,
@@ -708,7 +708,7 @@ class ngamsStatus:
 
         getStatus:          Extract also the status information from the
                             XML document (0|1/integer).
-                            
+
         Returns:            Reference to object itself.
         """
         try:
@@ -738,13 +738,14 @@ class ngamsStatus:
 
         ignoreVarDiskPars:  Ignore the variable part of the disk status:
                             Host ID, Slot ID, Mounted, Mount
-                            Point (integer/0|1).           
-        
+                            Point (integer/0|1).
+
         Returns:            Reference to object itself.
         """
+        T = TRACE()
         dom = xml.dom.minidom.parseString(doc)
         ngamsStatusEl = ngamsGetChildNodes(dom, NGAMS_XML_STATUS_ROOT_EL)[0]
-        
+
         # Get the information from the Status Element.
         nodeList = dom.getElementsByTagName("Status")
         self.setDate(getAttribValue(nodeList[0], "Date"))
@@ -798,10 +799,10 @@ class ngamsStatus:
             fileListObj = ngamsFileList.ngamsFileList()
             self.addFileList(fileListObj)
             fileListObj.unpackFromDomNode(fileListNode)
-            
-            
+
+
         dom.unlink()
-        
+
         return self
 
 
@@ -852,20 +853,20 @@ class ngamsStatus:
         Generate an XML Node which contains the status report (root node).
 
         genCfgStatus:      1 = generate configuration status (integer).
-        
+
         genDiskStatus:     1 = generate disk status (integer).
-        
+
         genFileStatus:     1 = generate file status (integer).
 
         genStatesStatus:   1 = generate State/Sub-State (integer).
-        
+
         genLimDiskStatus:  1 = generate only a limited (generic) set
                            of disk status (integer).
 
         Returns:           XML document (xml.dom.minidom.Document).
         """
         T = TRACE(5)
-        
+
         ngamsStatusEl = xml.dom.minidom.Document().\
                         createElement(NGAMS_XML_STATUS_ROOT_EL)
 
@@ -923,9 +924,9 @@ class ngamsStatus:
 
         doc = xml.dom.minidom.Document()
         doc.appendChild(ngamsStatusEl)
-            
+
         return doc
-    
+
 
     def dumpBuf(self,
                 dumpCfg = 0,
@@ -940,7 +941,7 @@ class ngamsStatus:
 
         ignoreUndefFields:     Don't take fields, which have a length of 0
                                (integer/0|1).
-                               
+
         Returns:               Buffer with status information (string).
         """
         T = TRACE()
@@ -958,7 +959,7 @@ class ngamsStatus:
             buf += format % ("ActualCount:", str(self.getActualCount()))
         if (self.getExpectedCount()):
             buf += format % ("ExpectedCount:", str(self.getExpectedCount()))
-        
+
         # Dump NG/AMS Configuration.
         # TODO: Implement!
 
@@ -971,8 +972,8 @@ class ngamsStatus:
              buf += fileList.dumpBuf(ignoreUndefFields)
 
         return buf
-        
-    
+
+
 if __name__ == '__main__':
     """
     Main function.
