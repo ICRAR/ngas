@@ -59,7 +59,7 @@ def _exit(exitCode):
     Returns:   Void.
     """
     if (not getTestMode()): sys.exit(exitCode)
-    
+
 
 class ngamsPClient:
     """
@@ -68,7 +68,7 @@ class ngamsPClient:
 
     Invoke the utility without input parameters to get a man page.
     """
-    
+
     def __init__(self,
                  host = "",
                  port = -1,
@@ -79,7 +79,7 @@ class ngamsPClient:
         self.setHost(host).setPort(port).setStatus(0).setTimeOut(timeOut)
         self.setAuthorization(None)
         self.__servers = []
-        
+
 
     def setHost(self,
                 host):
@@ -129,7 +129,7 @@ class ngamsPClient:
                   status):
         """
         Set the Display Status Flag.
-        
+
         status:     If 1, status will be displayed (on stdout) (integer).
 
         Returns:    Reference to object itself.
@@ -146,7 +146,7 @@ class ngamsPClient:
         """
         return self.__status
 
- 
+
     def setTimeOut(self,
                    timeOut):
         """
@@ -171,13 +171,14 @@ class ngamsPClient:
         """
         return self.__timeOut
 
-   
+
     def archive(self,
                 fileUri,
                 mimeType = "",
                 wait = 1,
                 noVersioning = 0,
-                pars = []):
+                pars = [],
+                cmd = NGAMS_ARCHIVE_CMD):
         """
         Send an Archive Request to the associated NG/AMS Server asking to
         have the file specified by the URI archived. This can either
@@ -188,12 +189,12 @@ class ngamsPClient:
         mimeType:      Mime-type of the data. Must be given if it is not
                        possible to determine the mime-type of the data
                        file to be archived from its filename (string).
-        
+
         wait:          If set to 0 there will not be waited for termination of
                        the command handling (integer).
 
         noVersioning:  If set to 1 no new version number is
-                       generated (integer).       
+                       generated (integer).
 
         pars:          Extra parameters to submit with the request. Must be
                        in the format:
@@ -210,13 +211,13 @@ class ngamsPClient:
             locPars += [["filename", fileUri],
                         ["no_versioning", str(noVersioning)]]
             if (mimeType != ""): locPars.append(["mime_type", mimeType])
-            res = self.sendCmd(NGAMS_ARCHIVE_CMD, wait, "", locPars)
+            res = self.sendCmd(cmd, wait, "", locPars)
         else:
-            res = self.pushFile(fileUri, mimeType, wait, noVersioning, locPars)
+            res = self.pushFile(fileUri, mimeType, wait, noVersioning, locPars, cmd=cmd)
         info(1,"Archive request for file: " + baseName + " issued.")
         return res
-    
-   
+
+
     def reArchive(self,
                   fileUri,
                   fileInfoXml,
@@ -231,7 +232,7 @@ class ngamsPClient:
 
         fileInfoXml:   NG/AMS XML File Information for the source file used
                        as reference (string/XML).
-        
+
         wait:          If set to 0 there will not be waited for termination of
                        the command handling (integer).
 
@@ -262,7 +263,7 @@ class ngamsPClient:
             raise Exception, msg
         info(1,"Re-archive request of file: " + baseName + " issued.")
         return res
-    
+
 
     def clone(self,
               fileId,
@@ -274,10 +275,10 @@ class ngamsPClient:
         Send an CLONE command to the NG/AMS Server associated to the object.
 
         fileId:        ID of file to clone (string).
-        
+
         diskId:        ID of disk where file(s) to be cloned are
                        stored (string).
-        
+
         fileVersion:   Version of file (integer).
 
         targetDiskId:  ID of disk where the files cloned should be stored
@@ -285,7 +286,7 @@ class ngamsPClient:
 
         wait:          If set to 0 there will not be waited for termination of
                        the command handling (integer/0|1).
-                   
+
         Returns:       NG/AMS Status object (ngamsStatus).
         """
         pars = []
@@ -303,7 +304,7 @@ class ngamsPClient:
 
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_EXIT_CMD)  
+        return self.sendCmd(NGAMS_EXIT_CMD)
 
 
     def init(self):
@@ -312,7 +313,7 @@ class ngamsPClient:
 
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_INIT_CMD)  
+        return self.sendCmd(NGAMS_INIT_CMD)
 
 
     def label(self,
@@ -324,7 +325,7 @@ class ngamsPClient:
         slotId:    Slot ID for which to generate the label (string).
 
         hostId:    Host ID where the disk is installed (string).
-        
+
         Returns:   NG/AMS Status object (ngamsStatus).
         """
         return self.sendCmd(NGAMS_LABEL_CMD, 0, "", [["slot_id", slotId],
@@ -358,7 +359,7 @@ class ngamsPClient:
 
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_OFFLINE_CMD, wait, "", [["force", ""]])  
+        return self.sendCmd(NGAMS_OFFLINE_CMD, wait, "", [["force", ""]])
 
 
     def remDisk(self,
@@ -422,7 +423,7 @@ class ngamsPClient:
         Returns:   NG/AMS Status object (ngamsStatus).
         """
         return self.sendCmd(NGAMS_REGISTER_CMD, wait, "",
-                            [["path", path], ["wait", str(wait)]])  
+                            [["path", path], ["wait", str(wait)]])
 
 
     def retrieve2File(self,
@@ -442,7 +443,7 @@ class ngamsPClient:
         fileId:          NG/AMS File ID of file to retrieve (string).
 
         fileVersion:     Specific version of the file to retrieve (integer)
-        
+
         targetFile:      Name of file or directory where to store the file
                          retrieved. If "" is specified, the file will be
                          stored in the current working directory under the
@@ -455,13 +456,13 @@ class ngamsPClient:
                          format of these is usually:
 
                            par1=val1,par2=val2,...
- 
+
                          - but it is up to the DPPI to interpret
                          these (string).
 
         internal:        Used to indicate name of an internal file to
                          retrieve (string).
-       
+
         hostId:          Host ID of host where to pick up internal file
                          (string).
 
@@ -495,7 +496,7 @@ class ngamsPClient:
         Returns:     NG/AMS Status object (ngamsStatus).
         """
         T = TRACE()
-        
+
         stat = self.sendCmd(NGAMS_STATUS_CMD)
         return stat
 
@@ -514,14 +515,14 @@ class ngamsPClient:
 
         priority:           Priority of the Data Subscriber. A low number
                             means high priority (integer/[0; 10], (10)).
-        
+
         startDate:          Lower limit in time for considering data files
                             for delivery (string/ISO 8601).
-        
+
         filterPlugIn:       Optional Filter Plug-In to invoke on the
                             individual data file to determine whether to
                             deliver it to a Subscriber or not (string).
-        
+
         filterPlugInPars:   Optional Filter Plug-In parameters. Should be
                             given on the format: '<par>=<val>,<par>=<val>,...'
                             (string).
@@ -572,7 +573,7 @@ class ngamsPClient:
         For a description of the parameters, see ngams.ngamsLib.httpPost().
         """
         T = TRACE()
-        
+
         # If a list of servers has been specified, use this list.
         if (len(self.__servers) > 0):
             serverList = self.__servers
@@ -580,7 +581,7 @@ class ngamsPClient:
             serverList = [(host, port)]
         # For now we try the serves in random order.
         random.shuffle(serverList)
-        
+
         # Very simple algorithm, should maybe be refined.
         success = 0
         errors = ""
@@ -618,13 +619,13 @@ class ngamsPClient:
                  cmd = NGAMS_ARCHIVE_CMD):
         """
         Handle an Archive Push Request.
-        
+
         fileUri:       URI of file to archive (string).
 
         mimeType:      Mime-type of the data. Must be given if it is not
                        possible to determine the mime-type of the data
                        file to be archived from its filename (string).
-       
+
         wait:          If 0 don't wait for request handling to finish
                        (integer).
 
@@ -638,7 +639,7 @@ class ngamsPClient:
 
         cmd:           Command to issue with the request if different from
                        a normal ARCHIVE Command (string).
-                  
+
         Returns:       NG/AMS Status Object (ngamsStatus).
         """
         if (mimeType):
@@ -657,14 +658,14 @@ class ngamsPClient:
         for par in pars: httpPars.append(pars)
         httpPars += [["attachment; filename", os.path.basename(fileUri)],
                      ["wait", str(wait)], ["no_versioning", str(noVersioning)],
-                     ["time_out", timeout]]               
+                     ["time_out", timeout]]
         reply, msg, hdrs, data =\
                    self._httpPost(self.getHost(), self.getPort(), cmd, mt,
                                   fileUri, dataSource = "FILE",
                                   pars = httpPars,
                                   timeOut = self.getTimeOut(),
                                   authHdrVal = authVal)
-        
+
         return ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
 
 
@@ -708,7 +709,7 @@ class ngamsPClient:
         Returns:     Reference to object itself.
         """
         T = TRACE()
-        
+
         self._servers = []
         try:
             for serverInfo in servers.split(","):
@@ -850,7 +851,7 @@ class ngamsPClient:
                     processingPars = argv[idx]
                 elif (par == "-servers"):
                     idx = idx + 1
-                    servers = argv[idx]                    
+                    servers = argv[idx]
                 elif (par == "-slotid"):
                     idx = idx + 1
                     slotId = argv[idx]
@@ -893,15 +894,15 @@ class ngamsPClient:
             errMsg = self.correctUsageBuf()
             raise Exception, errMsg
         if (servers != ""): self.parseSrvList(servers)
-        
+
         # Invoke the proper operation.
         if (not getDebug()):
             try:
                 if (parArray):
                     return self.sendCmdGen(self.getHost(), self.getPort(),
                                            cmd, wait, outputFile, parArray)
-                elif (cmd == NGAMS_ARCHIVE_CMD):
-                    return self.archive(fileUri, mimeType, wait, noVersioning)
+                elif (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
+                    return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd)
                 elif (cmd == NGAMS_CACHEDEL_CMD):
                     parArray.append(["disk_id", diskId])
                     parArray.append(["file_id", fileId])
@@ -950,7 +951,7 @@ class ngamsPClient:
                 self.setStatus(0)
                 print "Error executing command:", e
         else:
-            if (cmd == NGAMS_ARCHIVE_CMD):
+            if (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
                 return self.archive(fileUri, mimeType, wait, noVersioning)
             elif (cmd == NGAMS_CACHEDEL_CMD):
                 parArray.append("disk_id", diskId)
@@ -989,7 +990,7 @@ class ngamsPClient:
             else:
                 errMsg = self.correctUsageBuf()
                 raise Exception, errMsg
-            
+
 
     def _httpGet(self,
                  host,
@@ -1009,7 +1010,7 @@ class ngamsPClient:
         For a description of the parameters, see ngams.ngamsLib.httpGet().
         """
         T = TRACE()
-        
+
         # If a list of servers has been specified, use this list.
         if (len(self.__servers) > 0):
             serverList = self.__servers
@@ -1046,7 +1047,7 @@ class ngamsPClient:
         else:
             raise Exception, "Error communicating to specified server(s). " +\
                   "(HTTP Get Request) Errors: %s" % errors
-        
+
 
     def sendCmdGen(self,
                    host,
@@ -1062,16 +1063,16 @@ class ngamsPClient:
         host:             Host where NG/AMS Server is running (string).
 
         port:             Port number used by NG/AMS Server (integer).
-        
+
         cmd:              NG/AMS command (string).
 
         wait:             If set to 0, the NG/AMS Server will generate an
                           immediate reply, i.e.m before possibly terminating
                           handling the request (integer).
-        
+
         outputFile:       File in which to write data returned by HTTP
                           request (string).
-         
+
         pars:             Tuple of parameter/values pairs:
 
                             [[<par>, <val>], [<par>, <val>], ...]
@@ -1089,7 +1090,7 @@ class ngamsPClient:
             authHdrVal = "Basic %s" % self.getAuthorization()
         else:
             authHdrVal = ""
-            
+
         if (self.getTimeOut()):
             timeout = self.getTimeOut()
         else:
@@ -1152,22 +1153,22 @@ class ngamsPClient:
                 pars = []):
         """
         Send a command to the NG/AMS Server and receive the reply.
-        
+
         cmd:         NG/AMS command (string).
 
         wait:        If set to 0, the NG/AMS Server will generate an
                      immediate reply, i.e.m before possibly terminating
                      handling the request (integer).
-        
+
         outputFile:  File in which to write data returned by HTTP
                      request (string).
-         
+
         pars:        Tuple of parameter/values pairs:
 
                        [[<par>, <val>], [<par>, <val>], ...]
 
                      These are send as 'Content-disposition' in the HTTP
-                     command (list).  
+                     command (list).
 
         Returns:     NG/AMS Status Object (ngamsStatus).
         """
@@ -1191,7 +1192,7 @@ class ngamsPClient:
         fo = open(docFile)
         buf += fo.read()
         return buf
-        
+
 
 def handleCmdLinePars(argv,
                       fo = sys.stdout):
@@ -1218,12 +1219,12 @@ def handleCmdLinePars(argv,
         _exit(1)
     elif (ngamsStat.getStatus() == NGAMS_FAILURE):
         print('cant be here 3')
-        _exit(1)    
+        _exit(1)
     else:
         print('handleCmdLinePars is finishing')
         _exit(0)
-    
-    
+
+
 def main():
 	print('now in main')
 	handleCmdLinePars(sys.argv)
