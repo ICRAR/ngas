@@ -1,4 +1,3 @@
-
 drop table ngas_cache;
 Create table ngas_cache
 (
