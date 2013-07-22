@@ -100,7 +100,7 @@ create table ngas_containers
   container_id        varchar(36) not null,
   container_name      varchar(255) not null,
   ingestion_date      varchar(23) not null,
-  container_size      numeric(20 not null,
+  container_size      numeric(20) not null,
   constraint container_idx primary key(container_id)
 );
 
@@ -151,7 +151,7 @@ Create table ngas_mirroring_queue
   message               varchar(2000)   null,
   last_activity_time    varchar(23)     not null,
   scheduling_time       varchar(23)     not null,
-  constraint ngas_mirroring_queue_idx primary key(file_id, file_version) 
+  constraint ngas_mirroring_queue_idx primary key(file_id, file_version)
 );
 
 
@@ -168,7 +168,7 @@ Create table ngas_mirroring_hist
   message               varchar(2000)   null,
   last_activity_time    varchar(23)     not null,
   scheduling_time       varchar(23)     not null,
-  constraint ngas_mirroring_hist_idx primary key(file_id, file_version) 
+  constraint ngas_mirroring_hist_idx primary key(file_id, file_version)
 );
 
 
@@ -197,7 +197,7 @@ Create table ngas_subscr_back_log
   subscr_id      varchar(255)  not null,
   subscr_url     varchar(255)  not null,
   file_id        varchar(64)   not null,
-  file_name      varchar(255)  not null, 
+  file_name      varchar(255)  not null,
   file_version   int           not null,
   ingestion_date varchar(23)   not null,
   format         varchar(32)   not null
