@@ -358,7 +358,7 @@ def git_clone():
     """
     copy_public_keys()
     with cd(env.NGAS_DIR_ABS):
-        run('git clone {0}@{1}'.format(env.GITUSER, env.GITREPO))
+        run('git clone {0}@{1} -b {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
 
 
 @task
@@ -370,7 +370,7 @@ def git_clone_tar():
     is thus using a tar-file, copied over from the calling machine.
     """
     set_env()
-    local('cd /tmp && git clone {0}@{1} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
+    local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
     local('cd /tmp && mv {0} {1}'.format(BRANCH, NGAS_DIR))
     local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES {0}'.format(NGAS_DIR))
     tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
