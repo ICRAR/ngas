@@ -730,6 +730,46 @@ def httpPost(host,
     """
     T = TRACE()
 
+    if os.path.isdir(dataRef):
+        from random import randint
+        # Create the enclosing (outer) message
+        deliminater = '===============' + str(randint(10**9,(10**10)-1)) + '=='
+        EOF = '--' + deliminater + '\n'
+        EOC = EOF[:-1] + '--'
+        subject = 'Contents of directory %s' % os.path.abspath(dataRef)
+        mainHeader = ('Content-Type: multipart/mixed; boundary="' + deliminater + '"\n'
+            'MIME-Version: 1.0\nSubject: '+ subject)
+        fw = open('mimemessage', 'w')
+        fw.write(mainHeader)
+
+        for filename in os.listdir(dataRef):
+            fw.write('\n\n' + EOF)
+            path = os.path.join(dataRef, filename)
+            if not os.path.isfile(path):
+                continue
+
+            fileHeader = ('Content-Type: application/octet-stream\nMIME-Version: 1.0\n'
+                            'Content-Disposition: attachment; filename="' + filename + '"\r\n\n')
+            fw.write(fileHeader)
+
+            fr = open(path, 'rb')
+            
+            msg = '-1'
+            while (msg != ''):
+                    msg = fr.read(2**16)
+                    if(msg != ''):
+                            fw.write(msg)
+            
+            fr.close()
+        fw.write('\n\n' + EOC)
+        fw.close()
+        dataRef = os.getcwd() + '/mimemessage'
+        fileName = 'mimemessage'
+        if pars[0][0] == 'attachment; filename': pars[0][0] = 'attachment'
+        dataSize = os.path.getsize(dataRef)
+        mimeType = 'application/octet-stream'
+
+
     contDisp = ""
     for parInfo in pars:
         if (parInfo[0] == "attachment"):
@@ -738,7 +778,7 @@ def httpPost(host,
         else:
             contDisp += parInfo[0] + '="'+urllib.quote(str(parInfo[1])) + '"; '
     if (contDisp != ""): contDisp = contDisp[0:-1]
-    
+        
     info(4,"Sending: " + cmd + " using HTTP POST with mime-type: " +\
          mimeType + " to NG/AMS Server with host/port: " + host +\
          "/" + str(port))

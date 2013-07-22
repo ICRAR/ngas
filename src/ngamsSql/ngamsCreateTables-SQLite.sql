@@ -90,9 +90,20 @@ create table ngas_files
   checksum_plugin        varchar(64)    null,
   file_status            char(8)        default '00000000',
   creation_date          varchar(23)    null,
+  container_id           varchar(36)    null,
+  ingestion_rate         int            null,
   constraint file_idx primary key(file_id,file_version,disk_id)
 );
 
+drop table ngas_containers;
+create table ngas_containers
+(
+  container_id        varchar(36) not null,
+  container_name      varchar(255) not null,
+  ingestion_date      varchar(23) not null,
+  container_size      numeric(20 not null,
+  constraint container_idx primary key(container_id)
+);
 
 drop table ngas_hosts;
 Create table ngas_hosts
