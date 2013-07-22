@@ -434,7 +434,8 @@ class ngamsPClient:
                       processing = "",
                       processingPars = "",
                       internal = 0,
-                      hostId = ""):
+                      hostId = "",
+                      cmd = NGAMS_RETRIEVE_CMD):
         """
         Request a file from the NG/AMS Server associated to the object.
         The file will be stored under the name given by the 'targetFile'
@@ -479,14 +480,17 @@ class ngamsPClient:
         elif (fileId == "--NG--LOG--"):
             pars = [["ng_log", ""]]
         else:
-            pars = [["file_id", fileId]]
+            if cmd == NGAMS_RETRIEVE_CMD:
+                pars = [["file_id", fileId]]
+            elif cmd == 'CRETRIEVE':
+                pars = [["container_id", fileId]]
         if (hostId): pars.append(["host_id", hostId])
         if (fileVersion != -1): pars.append(["file_version", str(fileVersion)])
         if (processing != ""):
             pars.append(["processing", processing])
             if (processingPars != ""):
                 pars.append(["processingPars", processingPars])
-        return self.sendCmd(NGAMS_RETRIEVE_CMD, 0, targetFile, pars)
+        return self.sendCmd(cmd, 0, targetFile, pars)
 
 
     def status(self):
@@ -939,10 +943,10 @@ class ngamsPClient:
                     return self.remDisk(diskId, execute)
                 elif (cmd == NGAMS_REMFILE_CMD):
                     return self.remFile(diskId, fileId, fileVersion, execute)
-                elif (cmd == NGAMS_RETRIEVE_CMD):
+                elif (cmd in ['CRETRIEVE', NGAMS_RETRIEVE_CMD]):
                     return self.retrieve2File(fileId, fileVersion, outputFile,
                                               processing, processingPars,
-                                              internal, hostId)
+                                              internal, hostId, cmd=cmd)
                 elif (cmd == NGAMS_STATUS_CMD):
                     return self.status()
                 elif (cmd == NGAMS_SUBSCRIBE_CMD):
@@ -990,8 +994,8 @@ class ngamsPClient:
                 return self.remDisk(diskId, execute)
             elif (cmd == NGAMS_REMFILE_CMD):
                 return self.remFile(diskId, fileId, fileVersion, execute)
-            elif (cmd == NGAMS_RETRIEVE_CMD):
-                return self.retrieve2File(fileId, outputFile)
+            elif (cmd in ['CRETRIEVE', NGAMS_RETRIEVE_CMD]):
+                return self.retrieve2File(fileId, outputFile, cmd=cmd)
             elif (cmd == NGAMS_STATUS_CMD):
                 return self.status()
             else:
