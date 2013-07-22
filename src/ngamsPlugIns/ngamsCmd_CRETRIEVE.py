@@ -39,11 +39,11 @@ def performProcessing(srvObj,
     """
     Carry out the processing requested.
 
-    srvObj:       Reference to NG/AMS server class object (ngamsServer).   
-    
+    srvObj:       Reference to NG/AMS server class object (ngamsServer).
+
     reqPropsObj:  Request Property object to keep track of actions done
                   during the request handling (ngamsReqProps).
-        
+
     filename:     File to be processed (string).
 
     mimeType:     Mime-type of file (string).
@@ -52,7 +52,7 @@ def performProcessing(srvObj,
                   (list/ngamsDppiStatus objects).
     """
     T = TRACE()
-    
+
     statusObjList = []
 
     # Carry out the processing specified. If no processing is
@@ -63,7 +63,7 @@ def performProcessing(srvObj,
         # is supported by this NG/AMS.
         if (not srvObj.getCfg().hasDppiDef(dppi)):
             errMsg = genLog("NGAMS_ER_ILL_DPPI", [dppi])
-            raise Exception, errMsg        
+            raise Exception, errMsg
         # Invoke the DPPI.
         exec "import " + dppi
         info(2,"Invoking DPPI: " + dppi + " to process file: " + filename)
@@ -97,7 +97,7 @@ def cleanUpAfterProc(statusObjList):
                 info(3,"Cleaning up processing directory: " +\
                      resObj.getProcDir() + " after completed processing")
                 ngamsPlugInApi.execCmd("rm -rf " + resObj.getProcDir())
-    
+
 
 def genReplyRetrieve(srvObj,
                      reqPropsObj,
@@ -110,11 +110,11 @@ def genReplyRetrieve(srvObj,
     processing areas may be cleaned up.
 
     srvObj:          Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:     Request Property object to keep track of
                      actions done during the request handling
                      (ngamsReqProps).
-        
+
     httpRef:         Reference to the HTTP request handler
                      object (ngamsHttpRequestHandler).
 
@@ -133,25 +133,44 @@ def genReplyRetrieve(srvObj,
         # TODO: Make possible to send back several results - use multipart
         # mime-type message -- for now only one result is sent back.
         resObjList = []
-        
-        for obj in statusObjList:
-            resObjList.append(obj[0].getResultObject(0))
-        
-        #info(3, "Getting block size for retrieval")
-        blockSize = srvObj.getCfg().getBlockSize()
+        headerDict = {}
+        dataSize = -1
 
         from random import randint
 
         deliminater = '===============' + str(randint(10**9,(10**10)-1)) + '=='
-
         EOF = '--' + deliminater
         EOC = EOF + '--'
 
-        header = ('MIME-Version: 1.0\nContent-Type: ' +
-                    'multipart/mixed; boundary="' + deliminater + '"\n')
-        info(4, "Sending mimeHeader:  " + header)
+        info(4, "Number of objects in container: {0}".format(len(statusObjList)))
+        for obj in statusObjList:
+            resObjList.append(obj[0].getResultObject(0))
+            mimeType = resObjList[-1].getMimeType()
+            mimeLen = len(mimeType) + len('Mime-Type: ')
+            refFilename = resObjList[-1].getRefFilename()
+            contDisp = 'attachment; filename="{0}/{1}"'.format(
+                                container_name, refFilename)
+            contDispLen = len(contDisp) + len('Content-Type: ')
+            headerDict.update({'Content-Type':mimeType,
+                               'Content-disposition':contDisp})
+            dataSize += resObjList[-1].getDataSize()
+            dataSize += (mimeLen + contDispLen + len(EOF) + 3)
 
-        httpRef.wfile.write(header)
+        dataSize += (len(EOC) + 1)
+        #info(3, "Getting block size for retrieval")
+        blockSize = srvObj.getCfg().getBlockSize()
+
+
+        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, None, 0,
+                            'multipart/mixed; boundary="{0}"'.format(deliminater),
+                            dataSize)
+
+
+#        header = ('MIME-Version: 1.0\nContent-Type: ' +
+#                    'multipart/mixed; boundary="' + deliminater + '"\n')
+#        info(4, "Sending mimeHeader:  " + header)
+
+#        httpRef.wfile.write(header)
 
         for resObj in resObjList:
             #Send deliminater to reference end of section
@@ -159,16 +178,12 @@ def genReplyRetrieve(srvObj,
             httpRef.wfile.write('\n' + EOF + '\n')
 
             #Get file information
-            mimeType = resObj.getMimeType()
             dataSize = resObj.getDataSize()
-            refFilename = resObj.getRefFilename()
-            info(4, "Sending header: Content-Type: " + mimeType)
-            httpRef.send_header('Content-Type', mimeType)
-            contDisp = "attachment; filename=\"" + container_name + "/" + refFilename[:-4] + "\""
-            info(4,"Sending header: Content-disposition: " + contDisp)
-            httpRef.send_header('Content-disposition', contDisp)
+            for hk in headerDict.keys():
+                info(4, "Sending header: {0}: {1}".format(hk, headerDict[hk]))
+                httpRef.send_header(hk, headerDict[hk])
             httpRef.wfile.write("\n")
-            
+
             # Send back data from the memory buffer, from the result file, or
             # from HTTP socket connection.
             if (resObj.getObjDataType() == NGAMS_PROC_DATA):
@@ -221,49 +236,49 @@ def _handleRemoteIntFile(srvObj,
     Retrieve the remote, internal file and send it back to the requestor.
 
     srvObj:        Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:   Request Property object to keep track of actions done
                    during the request handling (ngamsReqProps).
-    
+
     httpRef:       Reference to the HTTP request handler object
                    (ngamsHttpRequestHandler).
 
     Returns:       Void.
     """
     T = TRACE()
-    
+
     forwardHost = reqPropsObj.getHttpPar("host_id")
     forwardPort = srvObj.getDb().getPortNoFromHostId(forwardHost)
     httpStatCode, httpStatMsg, httpHdrs, data =\
                   srvObj.forwardRequest(reqPropsObj, httpRef, forwardHost,
                                         forwardPort, autoReply = 1)
 
-    
+
 def _handleCmdCRetrieve(srvObj,
                        reqPropsObj,
                        httpRef):
     """
     Carry out the action of a CRETRIEVE command.
-    
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-     
+
     reqPropsObj:    Request Property object to keep track of
                     actions done during the request handling
                     (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
-    
+
     # Get query information.
     if (reqPropsObj.hasHttpPar("ng_log")):
         if (reqPropsObj.hasHttpPar("host_id")):
             if (reqPropsObj.getHttpPar("host_id") != getHostId()):
                 _handleRemoteIntFile(srvObj, reqPropsObj, httpRef)
-                return 
+                return
 
         # If there is a Local Log File, send it back.
         locLogFile = srvObj.getCfg().getLocalLogFile()
@@ -280,7 +295,7 @@ def _handleCmdCRetrieve(srvObj,
         if (reqPropsObj.hasHttpPar("host_id")):
             if (reqPropsObj.getHttpPar("host_id") != getHostId()):
                 _handleRemoteIntFile(srvObj, reqPropsObj, httpRef)
-                return 
+                return
 
         # Send back the file.
         srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
@@ -339,7 +354,7 @@ def _handleCmdCRetrieve(srvObj,
                              setFileSize(statInfo[6])
                 fileListObj.addFileInfoObj(tmpFileObj)
             statObj = srvObj.genStatus(NGAMS_SUCCESS, "Successfully handled " +
-                                       "RETRIEVE Command").\
+                                       "CRETRIEVE Command").\
                                        addFileList(fileListObj)
             xmlStat = ngamsHighLevelLib.\
                       addDocTypeXmlDoc(srvObj, statObj.genXmlDoc(0, 0, 1),
@@ -348,7 +363,7 @@ def _handleCmdCRetrieve(srvObj,
             srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                                 xmlStat, 0, NGAMS_XML_MT, len(xmlStat), [], 1)
             return
-    
+
         # Check that it is not tried to retrieve a data file in this way.
         # This is done by checking if the file is located in one of the
         # storage areas. Certain files like NgasDiskInfo, DB Snapshot Files,
@@ -373,7 +388,7 @@ def _handleCmdCRetrieve(srvObj,
                                 "RETRIEVE command + a combination of " +\
                                 "File ID, File Version and Disk ID"])
                 raise Exception, errMsg
-        
+
         # OK, get the file and send it back.
         if ((complFilename.find(".xml") != -1) or
             (complFilename.find(".dtd") != -1) or
@@ -399,7 +414,7 @@ def _handleCmdCRetrieve(srvObj,
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Retrieve"])
         error(errMsg)
         raise Exception, errMsg
-   
+
     # At least container_id or container_name must be specified
     #if not an internal file has been requested.
     issueRetCmdErr = 0
@@ -407,26 +422,24 @@ def _handleCmdCRetrieve(srvObj,
     containerName, containerId = "", ""
     if (not reqPropsObj.hasHttpPar("container_id")):
         issueRetCmdErr = 1
-    else:
-        if (reqPropsObj.getHttpPar("container_id").strip() == ""):
+    elif (reqPropsObj.getHttpPar("container_id").strip() == ""):
             issueRetCmdErr = 1
-	else:
-		containerId = reqPropsObj.getHttpPar("container_id")
-		hasId = 1
+    else:
+        containerId = reqPropsObj.getHttpPar("container_id")
+        hasId = 1
     if(not hasId):
         if (not reqPropsObj.hasHttpPar("container_name")):
             issueRetCmdErr = 1
-        else:
-	    if (reqPropsObj.getHttpPar("container_name").strip() == ""):
+        elif (reqPropsObj.getHttpPar("container_name").strip() == ""):
                 issueRetCmdErr = 1
-	    else:
-            	containerName = reqPropsObj.getHttpPar("container_name")
-            	issueRetCmdErr = 0
+        else:
+                containerName = reqPropsObj.getHttpPar("container_name")
+                issueRetCmdErr = 0
     if (issueRetCmdErr):
         errMsg = genLog("NGAMS_ER_RETRIEVE_CMD")
         error(errMsg)
         raise Exception, errMsg
-    
+
     info(4,"Handling request for file with CID: " + containerId)
     fileVer = -1
     if (reqPropsObj.hasHttpPar("file_version")):
@@ -436,10 +449,10 @@ def _handleCmdCRetrieve(srvObj,
         diskId = reqPropsObj.getHttpPar("disk_id")
     hostId = ""
     if (reqPropsObj.hasHttpPar("host_id")):
-        hostId = reqPropsObj.getHttpPar("host_id")    
+        hostId = reqPropsObj.getHttpPar("host_id")
     domain = ""
     if (reqPropsObj.hasHttpPar("domain")):
-        domain = reqPropsObj.getHttpPar("domain")    
+        domain = reqPropsObj.getHttpPar("domain")
     quickLocation = False
     if (reqPropsObj.hasHttpPar("quick_location")):
         quickLocation = int(reqPropsObj.getHttpPar("quick_location"))
@@ -448,29 +461,29 @@ def _handleCmdCRetrieve(srvObj,
     # (and best?) suitable file which is online and located on a node in the
     # same domain as the contacted node.
     ipAddress = None
-    if (quickLocation):
-        location, host, ipAddress, port, mountPoint, filename,\
-                  fileVersion, mimeType =\
-                  ngamsFileUtils.quickFileLocate(srvObj, reqPropsObj, fileId,
-                                                 hostId, domain, diskId,
-                                                 fileVer)
+#    if (quickLocation):
+#        location, host, ipAddress, port, mountPoint, filename,\
+#                  fileVersion, mimeType =\
+#                  ngamsFileUtils.quickFileLocate(srvObj, reqPropsObj, fileId,
+#                                                 hostId, domain, diskId,
+#                                                 fileVer)
     if(not containerName):
-	    SQL = ("SELECT container_name FROM ngas_containers nc" +
-			   " WHERE nc.container_id='" + containerId + "'")
-	    cursor = srvObj.getDb().query(SQL)
-	    containerName = cursor[0][0][0]
+        SQL = ("SELECT container_name FROM ngas_containers nc" +
+               " WHERE nc.container_id='" + containerId + "'")
+        cursor = srvObj.getDb().query(SQL)
+        containerName = cursor[0][0][0]
 
     if(not containerId):
-	    SQL = ("SELECT container_id FROM ngas_containers nc" +
-			   " WHERE nc.container_name='" + containerName + "'")
-	    cursor = srvObj.getDb().query(SQL)
-	    info(4, "#################cursor: " + str(cursor))
-	    if (cursor != [[]]):
-                containerId = cursor[0][0][0]
-	    else:
-		errMsg = genLog("NGAMS_ER_RETRIEVE_CMD")
-        	error(errMsg)
-	        raise Exception, errMsg
+        SQL = ("SELECT container_id FROM ngas_containers nc" +
+               " WHERE nc.container_name='" + containerName + "'")
+        cursor = srvObj.getDb().query(SQL)
+        info(4, "#################cursor: " + str(cursor))
+        if (cursor != [[]]):
+            containerId = cursor[0][0][0]
+        else:
+            errMsg = genLog("NGAMS_ER_RETRIEVE_CMD")
+            error(errMsg)
+            raise Exception, errMsg
 
     SQL = ("SELECT " + ngamsDbCore.getNgasFilesCols() +
                    " FROM ngas_files nf WHERE nf.container_id='" + containerId + "'")
@@ -493,7 +506,7 @@ def _handleCmdCRetrieve(srvObj,
         # TODO:
         if (not ipAddress):
             pass
-            
+
         if (location == NGAMS_HOST_LOCAL):
             # Get the file and send back the contents from this NGAS host.
             srcFilename = os.path.normpath(mountPoint + "/" + filename)
@@ -525,7 +538,7 @@ def _handleCmdCRetrieve(srvObj,
                                            authHdrVal = authHdr)
             httpHdrDic = ngamsLib.httpMsgObj2Dic(httpHdrs)
             dataSize = int(httpHdrDic["content-length"])
-            
+
             # Check that the Retrieve Request was successful.
             try:
                 tmpStatObj = ngamsStatus.ngamsStatus().\
@@ -537,10 +550,10 @@ def _handleCmdCRetrieve(srvObj,
             if (tmpStatObj):
                 if (tmpStatObj.getStatus() == NGAMS_FAILURE):
                     raise Exception, tmpStatObj.getMessage()
-            
+
             tmpPars = ngamsLib.parseHttpHdr(httpHdrDic["content-disposition"])
             dataFilename = tmpPars["filename"]
-            
+
             # Generate fake ngamsDppiStatus object.
             resultObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_STREAM,
                                                         mimeType, data,
@@ -555,27 +568,27 @@ def _handleCmdCRetrieve(srvObj,
 
     # Send back reply with the result(s) queried and possibly processed.
     genReplyRetrieve(srvObj, reqPropsObj, httpRef, procResultList, containerName)
-    
+
 
 def handleCmd(srvObj,
                       reqPropsObj,
                       httpRef):
     """
     Handle a RETRIEVE command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of
                     actions done during the request handling
                     (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
-    
+
     # If an internal file is retrieved we allow to handle the request also
     # when the system is Offline (for trouble-shooting purposes).
     if ((not reqPropsObj.hasHttpPar("internal")) and
@@ -597,6 +610,6 @@ def handleCmd(srvObj,
         srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
     except Exception, e:
         raise Exception, e
-  
+
 
 # EOF
