@@ -543,7 +543,7 @@ def httpPostUrl(url,
     dataRef:      Data to post or name of file containing data to send
                   (string).
 
-    dataSource:   Source where to pick up the data (string/BUFFER|FILE|FD).
+    dataSource:   Source where to pick up the data (string/BUFFER|FILE|FD|FILESLIST).
 
     dataTargFile: If a filename is specified with this parameter, the
                   data received is stored into a file of that name (string).
@@ -611,6 +611,33 @@ def httpPostUrl(url,
                 http._conn.sock.sendall(block)
                 if (suspTime > 0.0): time.sleep(suspTime)
             fdIn.close()
+        elif (dataSource == "FILESLIST"):
+            mainHeader = dataRef[0]
+            deliminater = mainHeader[41:68]
+            EOF = '--' + deliminater + '\n'
+            EOC = EOF[:-1] + '--'
+            http._conn.sock.sendall(mainHeader)
+            for aFile in dataRef[1:]:
+                path = aFile[0]
+                mimetype = aFile[2]
+                filename = path.rsplit('/', 1)[1]
+                data = EOF
+                fileHeader = ('Content-Type: ' + mimetype + '\n'
+                              'Content-Disposition: attachment; '
+                              'filename="' + filename + '"\r\n\n')
+                data += fileHeader
+                http._conn.sock.sendall(data)
+                fdIn = open(path)
+                block = "-"
+                blockAccu = 0
+                while (block != ""):
+                    block = fdIn.read(blockSize)
+                    blockAccu += len(block)
+                    http._conn.sock.sendall(block)
+                    if (suspTime > 0.0): time.sleep(suspTime)
+                info(4, "Closing file: '{0}' after sending.".format(path))
+                fdIn.close()
+            http._conn.sock.sendall(EOC)
         elif (dataSource == "FD"):
             fdIn = dataRef
             dataRead = 0
@@ -738,38 +765,33 @@ def httpPost(host,
         EOC = EOF[:-1] + '--'
         subject = 'Contents of directory %s' % os.path.abspath(dataRef)
         mainHeader = ('Content-Type: multipart/mixed; boundary="' + deliminater + '"\n'
-            'MIME-Version: 1.0\nSubject: '+ subject)
-        fw = open('mimemessage', 'w')
-        fw.write(mainHeader)
-
+            'Subject: '+ subject + '\n')
+        filesList = [mainHeader]
+        dataSize = 0
+        dataSize += len(mainHeader)
         for filename in os.listdir(dataRef):
-            fw.write('\n\n' + EOF)
             path = os.path.join(dataRef, filename)
             if not os.path.isfile(path):
                 continue
+            size = os.path.getsize(path)
+            mimetype = 'application/octet-stream'
+            fileHeader = ('Content-Type: ' + mimetype + '\n'
+                              'Content-Disposition: attachment; '
+                              'filename="' + filename + '"\r\n\n')
+            dataSize += size
+            dataSize += (len(fileHeader) + len(EOF))
+            filesList.append([path, size, mimetype])
 
-            fileHeader = ('Content-Type: application/octet-stream\nMIME-Version: 1.0\n'
-                            'Content-Disposition: attachment; filename="' + filename + '"\r\n\n')
-            fw.write(fileHeader)
+        dataSize += (len(EOC))
 
-            fr = open(path, 'rb')
+        dataRef = filesList
+        dataSource = 'FILESLIST'
+        info(4, 'filesList: {0}'.format(filesList))
             
-            msg = '-1'
-            while (msg != ''):
-                    msg = fr.read(2**16)
-                    if(msg != ''):
-                            fw.write(msg)
-            
-            fr.close()
-        fw.write('\n\n' + EOC)
-        fw.close()
-        dataRef = os.getcwd() + '/mimemessage'
         fileName = 'mimemessage'
         if pars[0][0] == 'attachment; filename': pars[0][0] = 'attachment'
-        dataSize = os.path.getsize(dataRef)
         mimeType = 'application/octet-stream'
-
-
+        
     contDisp = ""
     for parInfo in pars:
         if (parInfo[0] == "attachment"):
