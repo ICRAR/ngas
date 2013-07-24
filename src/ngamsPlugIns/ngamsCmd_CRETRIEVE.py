@@ -141,6 +141,7 @@ def genReplyRetrieve(srvObj,
         deliminater = '===============' + str(randint(10**9,(10**10)-1)) + '=='
         EOF = '--' + deliminater
         EOC = EOF + '--'
+        headerList = []
 
         info(4, "Number of objects in container: {0}".format(len(statusObjList)))
         for obj in statusObjList:
@@ -153,32 +154,40 @@ def genReplyRetrieve(srvObj,
             contDispLen = len(contDisp) + len('Content-Type: ')
             headerDict.update({'Content-Type':mimeType,
                                'Content-disposition':contDisp})
+            headerList.append(headerDict.copy())
             dataSize += resObjList[-1].getDataSize()
-            dataSize += (mimeLen + contDispLen + len(EOF) + 3)
+            dataSize += (mimeLen + contDispLen + len(EOF) + 2)
 
         dataSize += (len(EOC) + 1)
         #info(3, "Getting block size for retrieval")
         blockSize = srvObj.getCfg().getBlockSize()
 
+        header = ('\nMIME-Version: 1.0\nContent-Type: ' +
+                    'multipart/mixed; boundary="' + deliminater + '"\n')
+
+        dataSize += len(header)
+
 
         srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, None, 0,
                             'multipart/mixed; boundary="{0}"'.format(deliminater),
-                            dataSize)
+                            dataSize, [["Content-Rtype", "Container"]])
 
 
-#        header = ('MIME-Version: 1.0\nContent-Type: ' +
-#                    'multipart/mixed; boundary="' + deliminater + '"\n')
-#        info(4, "Sending mimeHeader:  " + header)
+        
+        info(4, "Sending mainHeader:  " + header)
 
-#        httpRef.wfile.write(header)
+        httpRef.wfile.write(header)
 
+        ii = 0
         for resObj in resObjList:
             #Send deliminater to reference end of section
             info(4, "Sending deliminater: " + EOF)
-            httpRef.wfile.write('\n' + EOF + '\n')
+            httpRef.wfile.write(EOF + '\n')
 
             #Get file information
             dataSize = resObj.getDataSize()
+            headerDict = headerList[ii]
+            ii += 1
             for hk in headerDict.keys():
                 info(4, "Sending header: {0}: {1}".format(hk, headerDict[hk]))
                 httpRef.send_header(hk, headerDict[hk])
@@ -613,3 +622,4 @@ def handleCmd(srvObj,
 
 
 # EOF
+

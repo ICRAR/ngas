@@ -435,6 +435,7 @@ class ngamsPClient:
                       processingPars = "",
                       internal = 0,
                       hostId = "",
+                      containerName = None,
                       cmd = NGAMS_RETRIEVE_CMD):
         """
         Request a file from the NG/AMS Server associated to the object.
@@ -468,8 +469,15 @@ class ngamsPClient:
         hostId:          Host ID of host where to pick up internal file
                          (string).
 
+        containerName:   Name of a container to retrieve
+                         (string).
+
+        cmd:             The actual command to send.
+                         (string).
+
         Returns:         NG/AMS Status object (ngamsStatus).
         """
+        T = TRACE()
         # If the target file is not specified, we give the
         # current working directory as target.
         if (targetFile == ""): targetFile = os.path.abspath(os.curdir)
@@ -480,10 +488,13 @@ class ngamsPClient:
         elif (fileId == "--NG--LOG--"):
             pars = [["ng_log", ""]]
         else:
+            info(4, '{0}, {1}, {2}'.format(cmd, fileId, containerName))
             if cmd == NGAMS_RETRIEVE_CMD:
                 pars = [["file_id", fileId]]
-            elif cmd == 'CRETRIEVE':
+            elif cmd == 'CRETRIEVE' and fileId:
                 pars = [["container_id", fileId]]
+            elif cmd == 'CRETRIEVE' and containerName:
+                pars = [["container_name", containerName]]
         if (hostId): pars.append(["host_id", hostId])
         if (fileVersion != -1): pars.append(["file_version", str(fileVersion)])
         if (processing != ""):
@@ -766,6 +777,8 @@ class ngamsPClient:
         url              = ""
         parArray         = []
         parArrayIdx      = -1
+        containerId      = ""
+        containerName    = ""
 
         # Control variables.
         parLen           = len(argv)
@@ -803,6 +816,12 @@ class ngamsPClient:
                 elif (par == "-fileid"):
                     idx = idx + 1
                     fileId = argv[idx]
+                elif (par == "-containerid"):
+                    idx = idx + 1
+                    containerId = argv[idx]
+                elif (par == "-containername"):
+                    idx = idx + 1
+                    containerName = argv[idx]
                 elif (par == "-fileinfoxml"):
                     idx = idx + 1
                     fileInfoXml = argv[idx]
@@ -906,11 +925,11 @@ class ngamsPClient:
         # Invoke the proper operation.
         if (not getDebug()):
             try:
+                info(3,'Command found: {0}'.format(cmd))
                 if (parArray):
                     return self.sendCmdGen(self.getHost(), self.getPort(),
                                            cmd, wait, outputFile, parArray)
                 elif (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
-                    info(3,'Command found: {0}'.format(cmd))
 
                     return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd)
                 elif (cmd == NGAMS_CACHEDEL_CMD):
@@ -943,10 +962,24 @@ class ngamsPClient:
                     return self.remDisk(diskId, execute)
                 elif (cmd == NGAMS_REMFILE_CMD):
                     return self.remFile(diskId, fileId, fileVersion, execute)
-                elif (cmd in ['CRETRIEVE', NGAMS_RETRIEVE_CMD]):
+                elif (cmd == NGAMS_RETRIEVE_CMD):
                     return self.retrieve2File(fileId, fileVersion, outputFile,
                                               processing, processingPars,
                                               internal, hostId, cmd=cmd)
+                elif (cmd == 'CRETRIEVE'):
+                    info(4, '{0}, {1}, {2}'.format(cmd, containerId, containerName))
+                    if (not containerId and not containerName):
+                        msg = "Must specify parameter -containerId or -containerName for " +\
+                            "a CRETRIEVE Command"
+                        raise Exception, msg
+                    elif containerId:
+                        return self.retrieve2File(containerId, fileVersion, outputFile,
+                                              processing, processingPars,
+                                              internal, hostId, cmd=cmd)
+                    elif containerName:
+                        return self.retrieve2File(None, fileVersion, outputFile,
+                                              processing, processingPars,
+                                              internal, hostId, containerName=containerName, cmd=cmd)
                 elif (cmd == NGAMS_STATUS_CMD):
                     return self.status()
                 elif (cmd == NGAMS_SUBSCRIBE_CMD):
@@ -994,8 +1027,18 @@ class ngamsPClient:
                 return self.remDisk(diskId, execute)
             elif (cmd == NGAMS_REMFILE_CMD):
                 return self.remFile(diskId, fileId, fileVersion, execute)
-            elif (cmd in ['CRETRIEVE', NGAMS_RETRIEVE_CMD]):
+            elif (cmd == NGAMS_RETRIEVE_CMD):
                 return self.retrieve2File(fileId, outputFile, cmd=cmd)
+            elif (cmd == 'CRETRIEVE'):
+                info(4, '{0}, {1}, {2}'.format(cmd, containerId, containerName))
+                if (not containerId and not containerName):
+                    msg = "Must specify parameter -containerId or -containerName for " +\
+                          "a CRETRIEVE Command"
+                    raise Exception, msg
+                elif containerId:
+                    return self.retrieve2File(containerId, outputFile, cmd=cmd)
+                elif containerName:
+                    return self.retrieve2File(None, outputFile, containerName=containerName, cmd=cmd)
             elif (cmd == NGAMS_STATUS_CMD):
                 return self.status()
             else:
@@ -1218,7 +1261,7 @@ def handleCmdLinePars(argv,
     ngamsClient = ngamsPClient()
     try:
         ngamsStat = ngamsClient.handleCmd(argv)
-        if ngamsClient.verbosity > 0 :
+        if ngamsClient.verbosity > 0  and ngamsStat:
             pprintStatus(ngamsClient, ngamsStat)
     except Exception, e:
         print str(e)
@@ -1278,3 +1321,5 @@ if __name__ == '__main__':
     main()
 
 # EOF
+
+ 
