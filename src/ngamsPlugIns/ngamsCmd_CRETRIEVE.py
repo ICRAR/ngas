@@ -156,11 +156,14 @@ def genReplyRetrieve(srvObj,
                                'Content-disposition':contDisp})
             headerList.append(headerDict.copy())
             dataSize += resObjList[-1].getDataSize()
-            dataSize += (mimeLen + contDispLen + len(EOF) + 2)
+            relHeader = 'Content-Type: {0}\r\nContent-disposition: attachment; filename="{1}/{2}"\r\n\n'.format(
+                                mimeType, container_name, refFilename)
+            dataSize += len(relHeader) + len(EOF) + 1
 
-        dataSize += (len(EOC) + 1)
+        dataSize += len(EOC) + 1
         #info(3, "Getting block size for retrieval")
         blockSize = srvObj.getCfg().getBlockSize()
+
 
         header = ('\nMIME-Version: 1.0\nContent-Type: ' +
                     'multipart/mixed; boundary="' + deliminater + '"\n')
