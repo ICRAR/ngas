@@ -201,12 +201,9 @@ def genReplyRetrieve(srvObj,
             httpRef.wfile.write("\n")
 
         ii = 0
-        info(4, "I don't know where this will break.")
         for resObj in resObjList:
-            info(4, "This should run at least once")
             if(container_name):
                 #Send deliminater to reference end of section
-                info(4, "Sending deliminater: " + EOF)
                 httpRef.wfile.write(EOF + '\n')
 
                 #Get file information
@@ -547,7 +544,6 @@ def _handleCmdRetrieve(srvObj,
             SQL = ("SELECT container_name FROM ngas_containers nc" +
                    " WHERE nc.container_id='" + containerId + "'")
             cursor = srvObj.getDb().query(SQL)
-            info(4, "cursor: {0}".format(cursor))
             containerName = cursor[0][0][0]
 
         if(not containerId):

@@ -302,7 +302,6 @@ def saveFromHttpToFile(ngamsCfgObj,
 
         return [deltaTime,fileDataList,ingestRate, container_name]
     except Exception, e:
-        info(4, 'Exception is breaking it')
         #fdOut.close()
         # Release disk resouce.
         if (mutexDiskAccess):
@@ -468,21 +467,6 @@ def handleCmd(srvObj,
         info(3, "Creating db entry")
         ts = PccUtTime.TimeStamp().getTimeStamp()
         creDate = getFileCreationTime(resDapi.getCompleteFilename())
-##        fileInfo = ngamsFileInfo.ngamsFileInfo().\
-##                   setDiskId(resDapi.getDiskId()).\
-##                   setFilename(resDapi.getRelFilename()).\
-##                   setFileId(resDapi.getFileId()).\
-##                   setFileVersion(file_version).\
-##                   setFormat(resDapi.getFormat()).\
-##                   setFileSize(resDapi.getFileSize()).\
-##                   setUncompressedFileSize(resDapi.getUncomprSize()).\
-##                   setCompression(resDapi.getCompression()).\
-##                   setIngestionDate(ts).\
-##                   setChecksum(checksum).setChecksumPlugIn(checksumPlugIn).\
-##                   setFileStatus(NGAMS_FILE_STATUS_OK).\
-##                   setCreationDate(creDate).\
-##                   setContainerId(containerId)
-##        fileInfo.write(srvObj.getDb())
         ignore = 0
         creDate = timeRef2Iso8601(creDate)
         sqlQuery = "INSERT INTO ngas_files " +\
