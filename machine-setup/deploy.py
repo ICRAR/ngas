@@ -552,8 +552,9 @@ def virtualenv_setup():
         abort('ngas_rt directory exists already')
 
     with cd('/tmp'):
-        run('wget --no-check-certificate -q https://raw.github.com/pypa/virtualenv/master/virtualenv.py')
-        run('{0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
+        run('wget --no-check-certificate -q https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.10.tar.gz')
+        run('tar -xvzf virtualenv-1.10.tar.gz')
+        run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
     with cd(env.NGAS_DIR_ABS):
         virtualenv('pip install zc.buildout')
         # make this installation self consistent
