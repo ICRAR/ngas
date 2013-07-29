@@ -55,6 +55,8 @@ def _locateArchiveFile(srvObj,
     used simply to encapsulate the complete processing to be able to clean up.
     """
     T = TRACE()
+
+    myError = "File not found"
     
     format = "_locateArchiveFile() - Disk ID: %s - File ID: " +\
              "%s - File Version: %d ..."
@@ -76,8 +78,9 @@ def _locateArchiveFile(srvObj,
         if (fileVersion > 0): tmpFileRef += "/Version: " + str(fileVersion)
         if (diskId): tmpFileRef += "/Disk ID: " + diskId
         if (hostId): tmpFileRef += "/Host ID: " + hostId
-        errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [tmpFileRef])
-        raise Exception, errMsg
+##        errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [tmpFileRef])
+##        raise Exception, errMsg
+        return myError
 
     # We now sort the file information sub-lists in the file list.
     # The priori is as follows:
@@ -174,8 +177,9 @@ def _locateArchiveFile(srvObj,
             fileRef = fileId + "/V" + str(fileVersion)
         else:
             fileRef = fileId
-        errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [fileRef])
-        raise Exception, errMsg
+##        errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [fileRef])
+##        raise Exception, errMsg
+        return myError
 
     # We generate a list with the Disk IDs (which we need later).
     # Generate a dictionary with Disk Info Objects.
@@ -280,8 +284,9 @@ def _locateArchiveFile(srvObj,
 
     # If no file was found we raise an exception.
     if (not foundFile):
-        errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [fileId])
-        raise Exception, errMsg
+##        errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [fileId])
+##        raise Exception, errMsg
+        return myError
 
     # The file was found, get the info necessary for the acquiring the file.
     ipAddress = hostDic[host].getIpAddress()
@@ -355,6 +360,8 @@ def locateArchiveFile(srvObj,
         res = _locateArchiveFile(srvObj, fileId, fileVersion, diskId, hostId,
                                  reqPropsObj, fileDbmName)
         rmFile(fileDbmName + "*")
+        if (res == "File not found"):
+            res = ['','','','','','',fileId,'','']
         return res
     except Exception, e:
         rmFile(fileDbmName + "*")

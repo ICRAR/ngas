@@ -436,6 +436,7 @@ class ngamsPClient:
                       internal = 0,
                       hostId = "",
                       containerName = None,
+                      containerId = None,
                       cmd = NGAMS_RETRIEVE_CMD):
         """
         Request a file from the NG/AMS Server associated to the object.
@@ -487,10 +488,13 @@ class ngamsPClient:
             pars = [["cfg", ""]]
         elif (fileId == "--NG--LOG--"):
             pars = [["ng_log", ""]]
-        else:
-            info(4, '{0}, {1}, {2}'.format(cmd, fileId, containerName))
+        else:                
+            info(4, '{0}, {1}, {2}'.format(cmd, fileId, containerId, containerName))
             if cmd == NGAMS_RETRIEVE_CMD:
-                pars = [["file_id", fileId]]
+                pars = []
+                if fileId: pars.append(["file_id", fileId])
+                if containerId: pars.append(["container_id", containerId])
+                if containerName: pars.append(["container_name", containerName])
             elif cmd == 'CRETRIEVE' and fileId:
                 pars = [["container_id", fileId]]
             elif cmd == 'CRETRIEVE' and containerName:
@@ -965,7 +969,8 @@ class ngamsPClient:
                 elif (cmd == NGAMS_RETRIEVE_CMD):
                     return self.retrieve2File(fileId, fileVersion, outputFile,
                                               processing, processingPars,
-                                              internal, hostId, cmd=cmd)
+                                              internal, hostId, containerName=containerName,
+                                              containerId=containerId, cmd=cmd)
                 elif (cmd == 'CRETRIEVE'):
                     info(4, '{0}, {1}, {2}'.format(cmd, containerId, containerName))
                     if (not containerId and not containerName):
@@ -1261,7 +1266,7 @@ def handleCmdLinePars(argv,
     ngamsClient = ngamsPClient()
     try:
         ngamsStat = ngamsClient.handleCmd(argv)
-        if ngamsClient.verbosity > 0 and ngamsStat:
+        if ngamsClient.verbosity > 0  and ngamsStat:
             pprintStatus(ngamsClient, ngamsStat)
     except Exception, e:
         print str(e)
@@ -1321,3 +1326,5 @@ if __name__ == '__main__':
     main()
 
 # EOF
+
+ 

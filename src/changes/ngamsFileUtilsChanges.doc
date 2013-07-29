@@ -1,0 +1,7 @@
+﻿Changes to ngamsFileUtils.py:
+
+Modifications to _locateArchiveFile:
+Returns a warning rather than raising an error if file is not found. This allows the given fileId to be potentially used as a containerId rather than just exiting the command.
+
+Modifications to locateArchiveFile:
+If _locateArchiveFile has returned a warning then function returns an overwritten list/array specifying this as well as the provided fileId.

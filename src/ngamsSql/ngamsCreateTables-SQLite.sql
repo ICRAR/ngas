@@ -100,7 +100,7 @@ create table ngas_containers
   container_id        varchar(36) not null,
   container_name      varchar(255) not null,
   ingestion_date      varchar(23) not null,
-  container_size      numeric(20) not null,
+  container_size      numeric(20, 0) not null,
   constraint container_idx primary key(container_id)
 );
 

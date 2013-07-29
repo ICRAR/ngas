@@ -443,6 +443,73 @@ def _httpHandleResp(fileObj,
     elif (returnFileObj):
         _waitForResp(fileObj, timeOut)
         data = fileObj
+    elif(hdrDic.has_key("content-rtype")):
+
+        dataRecv = 0
+
+        #Get deliminater and remove remaining header
+        buf = fileObj.readline()
+        dataRecv += len(buf)
+        buf = fileObj.readline()
+        deliminater = buf[-29:-2]
+        EOF = '--' + deliminater
+        EOC = EOF + '--'
+        dataRecv += len(buf)
+        buf = fileObj.readline()
+        dataRecv += len(buf)
+        buf = fileObj.readline()
+        dataRecv += len(buf)
+
+        lastRecepTime = time.time()
+        #Begin reading the content and store to respective files
+        safeRead = True
+        newFile = True
+        lastChars = ''
+        reqSize = blockSize
+        while (dataRecv < dataSize and ((time.time() - lastRecepTime) < 30.0)):
+            if ((dataSize - dataRecv) < blockSize):
+                    reqSize = (dataSize - dataRecv)
+
+            if(safeRead):
+                buf = fileObj.read(reqSize)
+                dataRecv += len(buf)
+                buf = lastChars + buf
+            if newFile:
+                start = buf.find('filename="') + 10
+                end = buf.find('"\r\n\n', start)
+                filename = buf[start:end]
+##                if saveDir[-1] != '/': saveDir += '/'
+##                if saveDir: filename = saveDir + filename
+                directory = filename.split('/', 1)[0]
+                try:
+                    os.mkdir(directory)
+                except OSError as e:
+                    import errno
+                    # Ignore directory exists error
+                    if e.errno != errno.EEXIST:
+                        raise
+                fdOut = open(filename, 'w')
+                newFile = False
+                buf = buf[end+4:]
+            bufSplit = buf.split(EOF, 1)
+            lastChars = ''
+            if (bufSplit[0] != ''):
+                lastChars = bufSplit[0][-30:]
+                fdOut.write(bufSplit[0][:-30])
+                lastRecepTime = time.time()
+            if len(bufSplit) > 1:
+                fdOut.write(lastChars[:-1])#Don't write extra newline char
+                fdOut.close()
+                info(4, "Closing '{0}' after writing".format(filename))
+                buf = bufSplit[1]
+                newFile = True
+                safeRead = False
+                if (not dataRecv < dataSize): dataSize = dataRecv + 1
+            else:
+                safeRead = True
+            if buf[:2] == '--':
+                dataSize = dataRecv
+        data = directory
     else:
         fd = None
 
@@ -543,7 +610,7 @@ def httpPostUrl(url,
     dataRef:      Data to post or name of file containing data to send
                   (string).
 
-    dataSource:   Source where to pick up the data (string/BUFFER|FILE|FD).
+    dataSource:   Source where to pick up the data (string/BUFFER|FILE|FD|FILESLIST).
 
     dataTargFile: If a filename is specified with this parameter, the
                   data received is stored into a file of that name (string).
@@ -611,6 +678,33 @@ def httpPostUrl(url,
                 http._conn.sock.sendall(block)
                 if (suspTime > 0.0): time.sleep(suspTime)
             fdIn.close()
+        elif (dataSource == "FILESLIST"):
+            mainHeader = dataRef[0]
+            deliminater = mainHeader[41:68]
+            EOF = '--' + deliminater + '\n'
+            EOC = EOF[:-1] + '--'
+            http._conn.sock.sendall(mainHeader)
+            for aFile in dataRef[1:]:
+                path = aFile[0]
+                mimetype = aFile[2]
+                filename = path.rsplit('/', 1)[1]
+                data = EOF
+                fileHeader = ('Content-Type: ' + mimetype + '\n'
+                              'Content-Disposition: attachment; '
+                              'filename="' + filename + '"\r\n\n')
+                data += fileHeader
+                http._conn.sock.sendall(data)
+                fdIn = open(path)
+                block = "-"
+                blockAccu = 0
+                while (block != ""):
+                    block = fdIn.read(blockSize)
+                    blockAccu += len(block)
+                    http._conn.sock.sendall(block)
+                    if (suspTime > 0.0): time.sleep(suspTime)
+                info(4, "Closing file: '{0}' after sending.".format(path))
+                fdIn.close()
+            http._conn.sock.sendall(EOC)
         elif (dataSource == "FD"):
             fdIn = dataRef
             dataRead = 0
@@ -738,38 +832,32 @@ def httpPost(host,
         EOC = EOF[:-1] + '--'
         subject = 'Contents of directory %s' % os.path.abspath(dataRef)
         mainHeader = ('Content-Type: multipart/mixed; boundary="' + deliminater + '"\n'
-            'MIME-Version: 1.0\nSubject: '+ subject)
-        fw = open('mimemessage', 'w')
-        fw.write(mainHeader)
-
+            'Subject: '+ subject + '\n')
+        filesList = [mainHeader]
+        dataSize = 0
+        dataSize += len(mainHeader)
         for filename in os.listdir(dataRef):
-            fw.write('\n\n' + EOF)
             path = os.path.join(dataRef, filename)
             if not os.path.isfile(path):
                 continue
+            size = os.path.getsize(path)
+            mimetype = 'application/octet-stream'
+            fileHeader = ('Content-Type: ' + mimetype + '\n'
+                              'Content-Disposition: attachment; '
+                              'filename="' + filename + '"\r\n\n')
+            dataSize += size
+            dataSize += (len(fileHeader) + len(EOF))
+            filesList.append([path, size, mimetype])
 
-            fileHeader = ('Content-Type: application/octet-stream\nMIME-Version: 1.0\n'
-                            'Content-Disposition: attachment; filename="' + filename + '"\r\n\n')
-            fw.write(fileHeader)
+        dataSize += (len(EOC))
 
-            fr = open(path, 'rb')
+        dataRef = filesList
+        dataSource = 'FILESLIST'
             
-            msg = '-1'
-            while (msg != ''):
-                    msg = fr.read(2**16)
-                    if(msg != ''):
-                            fw.write(msg)
-            
-            fr.close()
-        fw.write('\n\n' + EOC)
-        fw.close()
-        dataRef = os.getcwd() + '/mimemessage'
         fileName = 'mimemessage'
         if pars[0][0] == 'attachment; filename': pars[0][0] = 'attachment'
-        dataSize = os.path.getsize(dataRef)
         mimeType = 'application/octet-stream'
-
-
+        
     contDisp = ""
     for parInfo in pars:
         if (parInfo[0] == "attachment"):
