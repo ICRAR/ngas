@@ -43,7 +43,7 @@ src/ngamsTest/ngamsTestAsyncListRetrieve.py
 """
 import cPickle as pickle
 import thread, threading, urllib, httplib, time, traceback
-import os
+import os, socket
 
 from ngams import *
 import ngamsDbCore, ngamsLib, ngamsStatus, ngamsPlugInApi
@@ -65,7 +65,7 @@ THREAD_STOP_TIME_OUT = 8
 pushQDic = {} #key - host name to be pushed, a queue contains files to be pushed
 pushQSem = threading.Semaphore()
 
-def createPushThread(srvObj, url):
+def createPushThread(srvObj, url, numPT = 1):
     """
     To ensure each host has exactly on file delivery thread
     Although a host may generate multiple urls
@@ -80,16 +80,20 @@ def createPushThread(srvObj, url):
         pushQueue = Queue()
         pushQDic[o.hostname] = pushQueue
         args = (srvObj, o.hostname)
-        thrd = threading.Thread(None, _pushThread, 'PUSH_THRD_%s' % o.hostname, args) 
-        thrd.setDaemon(0) 
-        thrd.start()
+        for i in range(numPT):
+            thrd = threading.Thread(None, _pushThread, 'PUSH_THRD%d_%s' % (i, o.hostname), args) 
+            thrd.setDaemon(0) 
+            thrd.start()
     finally:
         pushQSem.release()
 
 def enPushQueue(srvObj, filename, asyncListReqObj, baseNameDic):
+   
     o = urlparse(asyncListReqObj.url)
     hostname = o.hostname
+    info(3, 'Pushing file %s in the queue for host %s' % hostname)
     if (not pushQDic.has_key(hostname)):
+        warning('Cannot find hostname %s in the pushQDic' % hostname)
         return
     pushQueue = pushQDic[hostname]
     
@@ -179,7 +183,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             asyncListReqObj = pickle.loads(postContent)
         """
         info(3,"push url: %s" % asyncListReqObj.url)
-        createPushThread(srvObj, asyncListReqObj.url)
+        createPushThread(srvObj, asyncListReqObj.url, numPT = 6)
         filelist = list(set(asyncListReqObj.file_id)) #remove duplicates
         asyncListReqObj.file_id = filelist
         
@@ -420,10 +424,13 @@ def _httpPostUrl(url,
         fdIn = open(dataRef)
         block = "-"
         blockAccu = 0
+        http._conn.sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 87380) # to fit Fornax
         while (block != ""):
+            """
             if (threadRunDic.has_key(session_uuid) and threadRunDic[session_uuid] == 0):
                 info(3, "Received cancel/suspend request, discard remaining blocks")
                 break
+            """
             block = fdIn.read(blockSize)
             blockAccu += len(block)
             http._conn.sock.sendall(block)
@@ -507,16 +514,16 @@ def _httpPost(srvObj, url, filename, sessionId = None):
     info(3,"Async Delivery Thread [" + str(thread.get_ident()) + "] Delivering file: " + baseName + " - to: " + url + " ...")
     ex = ""
     try:
-        """
-        reply, msg, hdrs, data = \
+        
+        
         #TODO - the fileMimeType should be queried from the database
         
-        _httpPostUrl(url, fileMimeType,
+        reply, msg, hdrs, data = _httpPostUrl(url, fileMimeType,
                                         contDisp, filename, "FILE",
                                         blockSize=\
                                         srvObj.getCfg().getBlockSize(), session_uuid = sessionId)
-        """
-        reply, msg, hdrs, data = ngamsLib.httpPostUrl(url, fileMimeType, contDisp, filename, "FILE", blockSize=srvObj.getCfg().getBlockSize())
+        
+        #reply, msg, hdrs, data = ngamsLib.httpPostUrl(url, fileMimeType, contDisp, filename, "FILE", blockSize=srvObj.getCfg().getBlockSize())
         if (reply == None and msg == None and hdrs == None and data == None): # transfer cancelled/suspended
             return 1 
         
