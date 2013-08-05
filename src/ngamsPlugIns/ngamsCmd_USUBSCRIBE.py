@@ -37,6 +37,8 @@ def changeNumThreads(srvObj, subscrId, oldNum, newNum):
     # key: threadName (unique), value - dummy 0
     deliveryThreadRefDic = srvObj._subscrDeliveryThreadDicRef
     # key: subscriberId, value - a List of deliveryThreads for that subscriber
+    if (not srvObj._subscrDeliveryThreadDic.has_key(subscrId)): # threads have not started yet
+        return
     deliveryThreadList = srvObj._subscrDeliveryThreadDic[subscrId]
     
     if (oldNum > newNum):
@@ -47,6 +49,8 @@ def changeNumThreads(srvObj, subscrId, oldNum, newNum):
                 del deliveryThreadList[tid]
     elif (oldNum < newNum):        
         num_threads = newNum - oldNum
+        if (not srvObj._subscrQueueDic.has_key(subscrId)):
+            raise Exception('Cannot find the file queue associated with subscriber %s' % subscrId)
         quChunks = srvObj._subscrQueueDic[subscrId]
         
         for tid in range(int(num_threads)):
