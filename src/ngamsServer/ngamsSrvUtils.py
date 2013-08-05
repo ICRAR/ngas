@@ -330,6 +330,12 @@ def handleOnline(srvObj,
     # Get possible Subscribers from the DB.
     subscrList = srvObj.getDb().getSubscriberInfo("", getHostId(),
                                                   srvObj.getCfg().getPortNo())
+    num_bl =  srvObj.getDb().getSubscrBackLogCount(getHostId(), srvObj.getCfg().getPortNo())
+    #debug_chen
+    if (num_bl > 0):
+        info(3, 'Preset the backlog count to %d' % num_bl)
+        srvObj.presetSubcrBackLogCount(num_bl)
+    
     for subscrInfo in subscrList:
         tmpSubscrObj = ngamsSubscriber.ngamsSubscriber().\
                        unpackSqlResult(subscrInfo)
