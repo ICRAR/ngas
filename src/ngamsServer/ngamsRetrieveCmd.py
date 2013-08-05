@@ -34,6 +34,7 @@ Function + code to handle the RETRIEVE Command.
 """
 
 import socket, re, glob, commands
+from socket import *
 from   ngams import *
 import PccUtTime
 import ngamsDb, ngamsLib, ngamsHighLevelLib
@@ -153,6 +154,13 @@ def genReplyRetrieve(srvObj,
         info(4,"Sending header: Content-disposition: " + contDisp)
         httpRef.send_header('Content-disposition', contDisp)
         httpRef.wfile.write("\n")
+        
+        if (reqPropsObj.hasHttpPar("send_buffer")):
+            try:
+                sendBufSize = int(reqPropsObj.getHttpPar("send_buffer"))
+                httpRef.wfile._sock.setsockopt(SOL_SOCKET,SO_SNDBUF,sendBufSize)
+            except Exception, ee:
+                warning('Fail to reset the send_buffer size: %s' % str(ee))
 
         # Send back data from the memory buffer, from the result file, or
         # from HTTP socket connection.
