@@ -217,6 +217,7 @@ def saveFromHttpToFile(ngamsCfgObj,
             buf = reqPropsObj.getReadFd().read(rdSize)
             rdt = time.time() - rdt
             rdtt += rdt
+            if rdt >= slow: rdt += 1
             nb += 1
             sizeRead = len(buf)
 #            info(5,"Read %d bytes from HTTP stream in %.3f s" % (sizeRead, rdt))
