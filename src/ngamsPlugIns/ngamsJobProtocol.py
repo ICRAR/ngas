@@ -39,8 +39,16 @@ STATUS_RUNNING = 4
 STATUS_COMPLETE = 5
 STATUS_EXCEPTION = 6
 
+ERROR_LT_UNEXPECTED = 117
+ERROR_LT_FILEMISSING = 116
+ERROR_LT_FAILCREATEDIR = 118
+ERROR_ST_LTADOWN = 501
+ERROR_ST_GENERIC = 500
+ERROR_ST_HOSTDOWN = 502
+ERROR_ST_NONRESP = 503
+ERROR_ST_SERVER = 504
 
-statusDic = {STATUS_NOT_STARTED:'PreStart', STATUS_RUNNING:'Running', 
+statusDic = {STATUS_NOT_STARTED:'Starting', STATUS_RUNNING:'Running', 
              STATUS_COMPLETE:'Completed', STATUS_EXCEPTION:'Error', 
              STATUS_STAGING:'Staging', STATUS_QUEUEING:'Queueing', STATUS_STARTED:'Started'}
 
@@ -218,6 +226,46 @@ class MapReduceTask:
         Execute the map reduce tasks on this and all children MRTasks
         """
         return self.__map()
+    
+    def async_start(self):
+        """
+        Start the task asynchronously
+        This is a bottom-up execution approach, starting from the leave nodes
+        and walk up the tree in an even-driven manner
+        """
+        # do a little bit work and return immediately, then wait for further events
+        
+        # 1. Look up NGAS db, figure out if staging is needed. If so, send data staging requests then return
+        # 2. When the "data_ready" event is received, send local task to the exeHost then return
+        # 3. When the "task_complete" event is received, analyse the result, 
+        #    then forwards the "task_complete" event together with results to the parent, then return
+        # 4. When the "timeout" event is received, analyse the timeout details, 
+        #    either form the result or re-start from 1. then return
+        pass
+    
+    def async_stagefiles(self):
+        """
+        Find which files need to be staged from LTA (Cortex)
+        For files to be staged from the Cluster, they are requested inside this function
+        
+        Return:     a list of files that need to be staged from LTA
+        """
+        pass
+    
+    def async_fileFailToDeliver(self, fileId, isLTA, errHost, errMsg):
+        pass
+    
+    def async_fileIngested(self, fileId, filePath, ingestRate):
+        pass
+    
+    def async_localTaskCompleted(self, localTaskResult):
+        pass
+    
+    def async_localTaskDequeued(self, taskId):
+        pass
+    
+    def async_reportHostDown(self, fileId, errorHost):
+        pass
     
     def addMapper(self, mpT):
         if (mpT):

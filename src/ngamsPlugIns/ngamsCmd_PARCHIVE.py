@@ -124,7 +124,8 @@ def buildHttpClient(url,
 
 def saveFromHttpToHttp(reqPropsObj,
                        basename,
-                       blockSize):
+                       blockSize,
+                       reportHost = None):
     """
     Save the data available on an HTTP channel into the given file.
     
@@ -260,6 +261,7 @@ def saveFromHttpToHttp(reqPropsObj,
             # The host on the nexturl is probably down            
             error("Fail to connect to the nexturl '%s': %s" % (nexturl, str(err)))
             # report this incident if the reporturl is available
+            
             if (rpurl):
                 info(3, 'Reporing this error to %s' % rpurl)
                 urlreq = '%s?errorurl=%s&file_id=%s' % (rpurl, nexturl, basename)
@@ -267,6 +269,14 @@ def saveFromHttpToHttp(reqPropsObj,
                     urllib2.urlopen(urlreq)
                 except Exception, errin:
                     error("Cannot report the error of nexturl '%s' to reporturl '%s' either: %s" % (nexturl, rpurl, str(errin)))
+            
+            if (reportHost):
+                try:
+                    rereply = urllib2.urlopen('http://%s/report/hostdown?file_id=%s&next_url=%s' % (reportHost, basename, urllib2.quote(nexturl)), timeout = 15).read()
+                    info('Reply from sending file %s host-down event to server %s - %s' % (basename, reportHost, rereply))
+                except Exception, s1err:
+                    error('Fail to send host-down event to server %s, Exception: %s' %(reportHost, str(s1err)))
+            
         else:
             raise err
     finally:
@@ -326,7 +336,11 @@ def handleCmd(srvObj,
         baseName = os.path.basename(reqPropsObj.getFileUri())
     
     blockSize = srvObj.getCfg().getBlockSize()
-    saveFromHttpToHttp(reqPropsObj, baseName, blockSize)
+    jobManHost = srvObj.getCfg().getNGASJobMANHost()
+    if (jobManHost):
+        saveFromHttpToHttp(reqPropsObj, baseName, blockSize, reportHost = jobManHost)
+    else:
+        saveFromHttpToHttp(reqPropsObj, baseName, blockSize)
     
     # Request after-math ...
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)

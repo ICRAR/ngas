@@ -1168,6 +1168,11 @@ class ngamsConfig:
         """
         """
         return self.getVal("DataMoverOnly[1].FromHostIds")
+    
+    def getNGASJobMANHost(self):
+        """
+        """
+        return self.getVal("NGASJobMAN[1].host")
 
     def getChecksumPlugIn(self):
         """
