@@ -153,7 +153,7 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
                     error(errMsg)
                     httpRef = ngamsSimpleRequest(request, client_address)
                     tmpReqPropsObj = ngamsReqProps.ngamsReqProps()
-                    _ngamsServer.reply(tmpReqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
+                    _ngamsServer.reply(tmpReqPropsObj, httpRef, NGAMS_HTTP_SERVICE_NA,
                                    NGAMS_FAILURE, errMsg)
                 except IOError:
                     errMsg = "Maximum number of requests exceeded and I/O ERROR encountered! Trying to continue...."
