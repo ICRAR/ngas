@@ -72,7 +72,7 @@ class MyDaemon(Daemon):
         """
         Send a STATUS command to server
         """
-        SCMD = "{0}/ngas_rt/bin/ngamsPClient -port 7777 -host $HOSTNAME -cmd STATUS".\
+        SCMD = "{0}/ngas_rt/bin/ngamsPClient -port 7777 -host $HOSTNAME -cmd STATUS -v 1".\
              format(HOME)
         subprocess.call(SCMD,shell=True)
 
@@ -102,18 +102,17 @@ def main(args=sys.argv):
 
     if len(sys.argv) == 2:
             if 'start' == sys.argv[1]:
-                    ngaslog('INFO', 'NGAMS Server Started')
+                    ngaslog('INFO', 'NGAMS Server Starting')
                     daemon.start()
             elif 'stop' == sys.argv[1]:
-                    ngaslog('INFO', 'NGAMS Server Stopped')
+                    ngaslog('INFO', 'NGAMS Server Stopping')
                     daemon.stop(cfunc=checkNgasPidFile)
             elif 'restart' == sys.argv[1]:
                     ngaslog('INFO', 'NGAMS Server Restarting')
                     daemon.restart(cfunc=checkNgasPidFile)
             elif 'status' == sys.argv[1]:
                     ngaslog('INFO', 'Sending STATUS command')
-                    print "Not implemented yet!"
-                    pass
+                    daemon.status()
             else:
                     print "Unknown command"
                     print "usage: %s start|stop|restart|status" % sys.argv[0]
