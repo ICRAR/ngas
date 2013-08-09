@@ -32,7 +32,7 @@ from fabric.utils import puts, abort, fastprint
 #Defaults
 thisDir = os.path.dirname(os.path.realpath(__file__))
 
-BRANCH = 'container'    # this is controlling which branch is used in git clone
+BRANCH = 'master'    # this is controlling which branch is used in git clone
 USERNAME = 'ec2-user'
 POSTFIX = False
 AMI_ID = 'ami-aecd60c7'
