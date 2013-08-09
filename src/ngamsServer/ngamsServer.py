@@ -2150,6 +2150,32 @@ class ngamsServer:
         # Load NG/AMS Configuration (from XML Document/DB).
         self.loadCfg()
 
+        # Set up final logging conditions.
+        if (self.__locLogLevel == -1):
+            self.__locLogLevel = self.getCfg().getLocalLogLevel()
+        if ((self.__locLogFile != "") and (self.getCfg().getLocalLogFile())):
+            self.__locLogFile = self.getCfg().getLocalLogFile()
+        if (self.__sysLog == -1):
+            self.__sysLog = self.getCfg().getSysLog()
+        if (self.__sysLogPrefix == NGAMS_DEF_LOG_PREFIX):
+            self.__sysLogPrefix = self.getCfg().getSysLogPrefix()
+        try:
+            setLogCond(self.__sysLog, self.__sysLogPrefix, self.__locLogLevel,
+                       self.__locLogFile, self.__verboseLevel)
+            msg = "Logging properties for NGAS Node: %s " +\
+                  "defined as: Sys Log: %s " +\
+                  "- Sys Log Prefix: %s  - Local Log File: %s " +\
+                  "- Local Log Level: %s - Verbose Level: %s"
+            info(1, msg % (getHostId(), str(self.__sysLog),
+                           self.__sysLogPrefix, self.__locLogFile,
+                           str(self.__locLogLevel), str(self.__verboseLevel)))
+        except Exception, e:
+            errMsg = genLog("NGAMS_ER_INIT_LOG", [self.__locLogFile, str(e)])
+            error(errMsg)
+            ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
+                                     "PROBLEM SETTING UP LOGGING", errMsg)
+            raise Exception, errMsg
+
         # Check if there is an entry for this node in the ngas_hosts
         # table, if not create it.
         if (self.getMultipleSrvs()): setSrvPort(self.getCfg().getPortNo())
@@ -2247,31 +2273,6 @@ class ngamsServer:
                                               writePerm = 1)
         info(4,"Checked/created NG/AMS Request Info DB")
 
-        # Set up final logging conditions.
-        if (self.__locLogLevel == -1):
-            self.__locLogLevel = self.getCfg().getLocalLogLevel()
-        if ((self.__locLogFile != "") and (self.getCfg().getLocalLogFile())):
-            self.__locLogFile = self.getCfg().getLocalLogFile()
-        if (self.__sysLog == -1):
-            self.__sysLog = self.getCfg().getSysLog()
-        if (self.__sysLogPrefix == NGAMS_DEF_LOG_PREFIX):
-            self.__sysLogPrefix = self.getCfg().getSysLogPrefix()
-        try:
-            setLogCond(self.__sysLog, self.__sysLogPrefix, self.__locLogLevel,
-                       self.__locLogFile, self.__verboseLevel)
-            msg = "Logging properties for NGAS Node: %s " +\
-                  "defined as: Sys Log: %s " +\
-                  "- Sys Log Prefix: %s  - Local Log File: %s " +\
-                  "- Local Log Level: %s - Verbose Level: %s"
-            info(1, msg % (getHostId(), str(self.__sysLog),
-                           self.__sysLogPrefix, self.__locLogFile,
-                           str(self.__locLogLevel), str(self.__verboseLevel)))
-        except Exception, e:
-            errMsg = genLog("NGAMS_ER_INIT_LOG", [self.__locLogFile, str(e)])
-            error(errMsg)
-            ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
-                                     "PROBLEM SETTING UP LOGGING", errMsg)
-            raise Exception, errMsg
         if (self.getCfg().getLogBufferSize() != -1):
             setLogCache(self.getCfg().getLogBufferSize())
 
