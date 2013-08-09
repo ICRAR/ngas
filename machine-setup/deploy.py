@@ -653,6 +653,7 @@ def user_deploy():
         env.PYTHON = ppath
     virtualenv_setup()
     ngas_full_buildout()
+    print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 
 
@@ -717,6 +718,7 @@ def operations_deploy(system_install=True, user_install=True, type='archive'):
         virtualenv_setup()
         ngas_full_buildout()
     init_deploy(type=type)
+    print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 
 
@@ -741,6 +743,7 @@ def test_deploy():
         virtualenv_setup()
         ngas_full_buildout()
     init_deploy()
+    print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 
 @task
