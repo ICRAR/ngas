@@ -58,6 +58,7 @@ class MyDaemon(Daemon):
         ngaslog('INFO', "Inside run...")
         ARGS_BCK = sys.argv
         try:
+            ngaslog('INFO', 'Initializing server: {}'.format(' '.join(NGAMS_ARGS)))
             ARGS_BCK = sys.argv       # store original arguments
             sys.argv = NGAMS_ARGS     # put the NGAMS_ARGS instead
             nserver = ngamsServer()   # instantiate server
