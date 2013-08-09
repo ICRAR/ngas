@@ -36,7 +36,7 @@ BRANCH = 'container'    # this is controlling which branch is used in git clone
 USERNAME = 'ec2-user'
 POSTFIX = False
 AMI_ID = 'ami-aecd60c7'
-INSTANCE_NAME = 'NGAS'
+INSTANCE_NAME = 'NGAS_{0}'.format(BRANCH)
 INSTANCE_TYPE = 't1.micro'
 INSTANCES_FILE = os.path.expanduser('~/.aws/aws_instances')
 AWS_KEY = os.path.expanduser('~/.ssh/icrar_ngas.pem')
@@ -653,6 +653,7 @@ def user_deploy():
         env.PYTHON = ppath
     virtualenv_setup()
     ngas_full_buildout()
+    print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 
 
@@ -717,6 +718,7 @@ def operations_deploy(system_install=True, user_install=True, type='archive'):
         virtualenv_setup()
         ngas_full_buildout()
     init_deploy(type=type)
+    print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 
 
@@ -741,6 +743,7 @@ def test_deploy():
         virtualenv_setup()
         ngas_full_buildout()
     init_deploy()
+    print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 
 @task
