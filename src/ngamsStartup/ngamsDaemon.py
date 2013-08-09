@@ -36,7 +36,7 @@ else:
                   '-force',
                   '-autoOnline',
                   '-multiplesrvs',
-                  '-v', '0',
+                  '-v', '3',
          ]
 
 
@@ -58,11 +58,11 @@ class MyDaemon(Daemon):
         ngaslog('INFO', "Inside run...")
         ARGS_BCK = sys.argv
         try:
-            ngaslog('INFO', 'Initializing server: {}'.format(' '.join(NGAMS_ARGS)))
             ARGS_BCK = sys.argv       # store original arguments
             sys.argv = NGAMS_ARGS     # put the NGAMS_ARGS instead
             nserver = ngamsServer()   # instantiate server
-            nserver.init(NGAMS_ARGS)  # initialize server
+            ngaslog('INFO', 'Initializing server: {}'.format(' '.join(NGAMS_ARGS)))
+            nserver.init(NGAMS_ARGS, extlogger=ngaslog)  # initialize server
             sys.argv = ARGS_BCK
         except Exception as e:
             ngaslog('INFO', str(e))
