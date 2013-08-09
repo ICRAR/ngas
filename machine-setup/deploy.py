@@ -32,7 +32,7 @@ from fabric.utils import puts, abort, fastprint
 #Defaults
 thisDir = os.path.dirname(os.path.realpath(__file__))
 
-BRANCH = 'ngas'    # this is controlling which branch is used in git clone
+BRANCH = 'container'    # this is controlling which branch is used in git clone
 USERNAME = 'ec2-user'
 POSTFIX = False
 AMI_ID = 'ami-aecd60c7'
@@ -41,7 +41,7 @@ INSTANCE_TYPE = 't1.micro'
 INSTANCES_FILE = os.path.expanduser('~/.aws/aws_instances')
 AWS_KEY = os.path.expanduser('~/.ssh/icrar_ngas.pem')
 KEY_NAME = 'icrar_ngas'
-ELASTIC_IP = False
+ELASTIC_IP = 'False'
 SECURITY_GROUPS = ['NGAS'] # Security group allows SSH
 NGAS_PYTHON_VERSION = '2.7'
 NGAS_PYTHON_URL = 'http://www.python.org/ftp/python/2.7.5/Python-2.7.5.tar.bz2'
@@ -70,7 +70,7 @@ YUM_PACKAGES = [
 APT_PACKAGES = [
         'zlib1g-dbg',
         'libzlcore-dev',
-        'libdb4.7-dev',
+        'libdb4.8-dev',
         'libgdbm-dev',
         'openjdk-6-jdk',
         'libreadline-dev',
@@ -78,25 +78,6 @@ APT_PACKAGES = [
         'libsqlite3-dev',
         'libdb5.1-dev',
         ]
-
-ZYPPER_PACKAGES = [
-   'git',
-   'gcc',
-   'automake',
-   'autoconf',
-   'libtool',
-   'zlib-devel',
-   'libdb45-devel',
-   'gdbm-devel',
-   'readline-devel',
-   'sqlite-devel',
-   'make',
-   'java-1_7_0-ibm-devel',
-   'postfix',
-   'openssl-devel',
-   'wget',
-]
-
 
 
 PUBLIC_KEYS = os.path.expanduser('~/.ssh')
@@ -307,14 +288,6 @@ def install_apt(package):
     """
     sudo('apt-get -qq -y install {0}'.format(package))
 
-def install_zypper(package):
-    """
-    Install a package using zypper (Pawsey SLES)
-
-    NOTE: This requires sudo access
-    """
-    sudo('zypper install {0} -y'.format(package))
-
 
 def check_yum(package):
     """
@@ -385,7 +358,7 @@ def git_clone():
     """
     copy_public_keys()
     with cd(env.NGAS_DIR_ABS):
-        run('git clone {0}@{1}'.format(env.GITUSER, env.GITREPO))
+        run('git clone {0}@{1} -b {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
 
 
 @task
@@ -397,7 +370,7 @@ def git_clone_tar():
     is thus using a tar-file, copied over from the calling machine.
     """
     set_env()
-    local('cd /tmp && git clone {0}@{1} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
+    local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
     local('cd /tmp && mv {0} {1}'.format(BRANCH, NGAS_DIR))
     local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES {0}'.format(NGAS_DIR))
     tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
@@ -579,8 +552,9 @@ def virtualenv_setup():
         abort('ngas_rt directory exists already')
 
     with cd('/tmp'):
-        run('wget --no-check-certificate -q https://raw.github.com/pypa/virtualenv/master/virtualenv.py')
-        run('{0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
+        run('wget --no-check-certificate -q https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.10.tar.gz')
+        run('tar -xvzf virtualenv-1.10.tar.gz')
+        run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
     with cd(env.NGAS_DIR_ABS):
         virtualenv('pip install zc.buildout')
         # make this installation self consistent
@@ -590,21 +564,6 @@ def virtualenv_setup():
         virtualenv('pip install /tmp/markup-1.9.tar.gz'.format(env.NGAS_DIR_ABS))
         # the package has not been updated on PyPI as of 2013-02-7
 
-
-@task
-def ngas_db_setup():
-    """
-    generate the SQLite DB from the schema file
-    """
-    set_env()
-    with settings(warn_only=True):
-        with hide('warnings', 'running', 'stdout'):
-            with cd('NGAS'):
-
-                run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
-                    .format(env.NGAS_DIR_ABS))
-            # make sure that the TEST DB template is up-to-date as well
-                run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template'.format(env.NGAS_DIR_ABS))
 
 
 @task
@@ -617,9 +576,11 @@ def ngas_buildout():
     with cd(env.NGAS_DIR_ABS):
         virtualenv('buildout')
     run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
-    ngas_db_setup()
-    # make sure the virtualenv is active when logging in
-    run('echo "source {0}/bin/activate" >> .bash_profile'.format(env.NGAS_DIR_ABS))
+    with cd('NGAS'):
+        with settings(warn_only=True):
+            run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
+                .format(env.NGAS_DIR_ABS))
+            run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template'.format(env.NGAS_DIR_ABS))
 
 
 @task
@@ -650,6 +611,8 @@ def test_env():
 
     Allow the user to select if a Elastic IP address is to be used
     """
+    env.instance_name = INSTANCE_NAME
+    env.use_elastic_ip = ELASTIC_IP
     if 'use_elastic_ip' in env:
         use_elastic_ip = to_boolean(env.use_elastic_ip)
     else:
@@ -692,6 +655,7 @@ def user_deploy():
     ngas_full_buildout()
 
 
+
 @task
 def init_deploy(type='archive'):
     """
@@ -720,7 +684,7 @@ def init_deploy(type='archive'):
 
 @task
 @serial
-def operations_deploy(system=True, user=True, type='archive'):
+def operations_deploy(system_install=True, user_install=True, type='archive'):
     """
     ** MAIN TASK **: Deploy the full NGAS operational environment.
     In order to install NGAS on an operational host go to any host
@@ -742,10 +706,10 @@ def operations_deploy(system=True, user=True, type='archive'):
         env.user = 'root'
     # set environment to default, if not specified otherwise.
     set_env()
-    if system: system_install()
+    if system_install: system_install()
     if env.postfix:
         postfix_config()
-    if user: user_setup()
+    if user_install: user_setup()
     with settings(user='ngas'):
         ppath = check_python()
         if not ppath:
