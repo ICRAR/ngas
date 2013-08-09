@@ -54,7 +54,7 @@ from urlparse import urlparse
 import cPickle as pickle
 import logging
 
-from bottle import route, run, request, get, post, static_file, template
+from bottle import route, run, request, get, post, static_file, template, redirect
 
 import ngamsJobMWALib
 from ngamsJob_MWA_RTS import *
@@ -90,7 +90,7 @@ def failToDeliver():
             return msg
         except Exception, err:
             logger.error(traceback.format_exc())
-            return 'Exception (%s) when doing - File %s failed to be deliverred on %s' % (str(err), fileId, toHost)
+            return 'Exception (%s) when doing - File %s failed to be deliverred on %s' % (str(err), fileId, toUrl)
 
 @route('/ingest')
 def ingest():
@@ -123,6 +123,10 @@ def reportHostError():
         finally:
             return 'Thanks for letting me know that %s:%d is down' % (o.hostname, o.port)
 
+@route('/')
+def redictToSubmit():
+    redirect('/job/submit')
+
 @get('/job/submit')
 def submit_job_get():
     return template('ngamsJobMAN_submit.html')
@@ -142,6 +146,7 @@ def submit_job_post():
     name = request.forms.get('name')
     if invalidParam(name):
         return _responseMsg('Invalid user name')
+    name = name.strip()
     
     observations = request.forms.get('observations')
     if invalidParam(observations):
@@ -168,14 +173,14 @@ def submit_job_post():
         else:
             params.rts_tpl_name = all_tpls[1:] #remove the first comma
     else:
-        tmp_prefix = request.forms.get('tpl_prefix')
+        tmp_prefix = request.forms.get('tpl_prefix').strip()
         tpl_path = os.path.dirname(tmp_prefix)
         if (not os.path.exists(tpl_path)):
             return _responseMsg('It appears that template path %s does not exist on Fornax.' % tpl_path)
-        tpl_suffix = request.forms.get('tpl_suffix')
+        tpl_suffix = request.forms.get('tpl_suffix').strip()
         if (not tpl_suffix):
             tpl_suffix = ''
-        tpl_files = request.forms.get('tpl_name')
+        tpl_files = request.forms.get('tpl_name').strip()
         if invalidParam(tpl_files):
             return _responseMsg('Please specify template name')
         for tpl_file in tpl_files.split(','):

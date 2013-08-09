@@ -154,7 +154,7 @@ def _waitForScheduling(srvObj):
     elif (srvObj.getDataMoverOnlyActive()):       
         tmout = isoTime2Secs(srvObj.getCfg().getDataMoverSuspenstionTime()) # in general, tmout > suspTime
         #debug_chen
-        #info(3, 'Data mover thread will suspend %s seconds before re-trying querying the db to get new files' % str(tmout))
+        info(3, 'Data mover thread will suspend %s seconds before re-trying querying the db to get new files' % str(tmout))
         srvObj._subscriptionRunSync.wait(tmout)
     else:
         srvObj._subscriptionRunSync.wait()
@@ -871,13 +871,13 @@ def subscriptionThread(srvObj,
                 if (scheduledStatus.has_key(subscrId)):
                     if (scheduledStatus[subscrId]):
                         start_date = scheduledStatus[subscrId]
-                elif (subscrObj.getLastFileIngDate()):
+                elif (subscrObj.getLastFileIngDate() and '1970-01-01' != subscrObj.getLastFileIngDate().split('T')[0]):
                     start_date = subscrObj.getLastFileIngDate()
                 elif (subscrObj.getStartDate()):
                     start_date = subscrObj.getStartDate()
                 
                 #debug_chen
-                #info(3, 'Data mover start_date = %s' % start_date)    
+                info(3, 'Data mover start_date = %s\n' % start_date)    
                 count = 0
                 for host in dm_hosts:         
                     cursorObj = srvObj.getDb().getFileSummary2(hostId = host, ing_date = start_date) # need to add file_version == 1 condition!!
@@ -893,8 +893,10 @@ def subscriptionThread(srvObj,
                     del cursorObj
                 if (count == 0):
                     #debug_chen
-                    #info(3, 'No files meet the data mover condition')
+                    info(3, 'No files meet the data mover condition')
                     continue
+                else:
+                    info(3, 'Data mover will examine %d files for delivery' % count)
             elif (subscrObjs != []):
                 cursorObj = srvObj.getDb().getFileSummary2(getHostId())
                 while (1):
@@ -1008,6 +1010,7 @@ def subscriptionThread(srvObj,
 
             # Third, if datamover, add those files
             if (dataMoverOnly):
+                info(3, 'Checking data mover files')
                 for fileKey in fileDicDbm.keys():
                     fileInfo = fileDicDbm.get(fileKey)
                     _checkIfDeliverFile(srvObj, subscrObj, fileInfo,

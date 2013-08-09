@@ -512,7 +512,27 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                 newItem = [fi[0]] + [fi[1]] + [fi[2]]
                 procList.append(newItem)
             return procList
+    
+    def getSubscrBackLogCount(self, hostId, portNo):
+        """
+        Read the number of entries in the Subscriber Back-Log Table 'belonging'
+        to a specific Data Provider/Mover
+
+        hostId:      Host ID of Data Provider (string).
         
+        portNo:      Port number used by Data Provider (integer).
+        
+        Returns:     The number of records (integer)
+        """
+        sqlQuery = "SELECT COUNT(*) FROM ngas_subscr_back_log WHERE host_id = '%s' AND srv_port = %d" % (hostId, portNo)
+        res = self.query(sqlQuery, ignoreEmptyRes=0) #impossible to return an empty record unless other exceptions
+        if (res == [[]]):
+            return 0
+        else:
+            #info(3, '\n\n ****** Backlog count returned %s with a type %s \n\n' % (res[0][0][0], str(type(res[0][0][0]))))
+            return int(res[0][0][0])    
+
+            
     def getSubscrBackLog(self,
                          hostId,
                          portNo,

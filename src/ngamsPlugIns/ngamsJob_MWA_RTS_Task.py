@@ -66,6 +66,8 @@ added_lines128T = ['ChannelBandwidth=0.04', 'ArrayNumberOfStations=128',
                'NumberOfChannels=32']
 added_lines32T = ['ChannelBandwidth=0.01', 'ArrayNumberOfStations=32',
                'NumberOfChannels=1536']
+
+ERROR_LT_FILEMISSING = 116
 """
 -- add the following ---
 UseCorrelatorInput=1
@@ -164,7 +166,7 @@ def main():
     
     if (not validFiles):
         print('No visibility files are there to be processed')
-        exit(116)
+        exit(ERROR_FILEMISSING)
     
     # create the template list file
     if (opts.tpl_pf):
@@ -209,9 +211,9 @@ def main():
         # 1. change the BaseFilename for all input files
     cmd = 'sed -i s/ngas_run_band_/*gpubox*/g ngas_run_rts_*.in'
     execCmd(cmd)
-        # 2. add correct subbandId
-    cmd = 'sed -i s/SubBandIDs=/SubBandIDs=%d/g ngas_run_rts_*.in' % (corrId)
-    execCmd(cmd)
+        # 2. add correct subbandId (This has been done in latest generate_RTS_in.py, so no need to do again otherwise create double digits)
+    #cmd = 'sed -i s/SubBandIDs=/SubBandIDs=%d/g ngas_run_rts_*.in' % (corrId)
+    #execCmd(cmd)
         # 3. compute the ObservationTimeBase
     cmd = 'timeconvert.py --gps=%d' % obs_num
     re = execCmd(cmd)

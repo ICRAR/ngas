@@ -434,10 +434,13 @@ class CorrTask(MapReduceTask):
             logger.debug('Staging files %s from Cortex' % str(frmExtList))
             stageerr = ngamsJobMWALib.stageFile(frmExtList, self, self._taskExeHost)
             if (stageerr):
-                cre._errmsg = "Fail to stage files %s from the external archive to %s. Stage errorcode = %d" % (frmExtList, self._taskExeHost, stageerr)
-                cre._errcode = 5
+                if (ERROR_ST_LTADOWN == stageerr):
+                    cre._errmsg = "Fail to stage files because Cortex is down!"
+                else:
+                    cre._errmsg = "Fail to stage files %s from the external archive to %s. Stage errorcode = %d" % (frmExtList, self._taskExeHost, stageerr)
+                cre._errcode = stageerr
                 self.setStatus(STATUS_EXCEPTION)
-                dprint(cre._errmsg)
+                logger.error(cre._errmsg)
                 return cre
         
         if (self._numIngested == len(self.__fileIds)): # all files are there
@@ -507,7 +510,9 @@ class CorrTask(MapReduceTask):
                 self.setStatus(STATUS_EXCEPTION)
                 logger.error(cre._errmsg)
                 # this could be caused by the entire network issue so no point to retry
-                #return cre
+                for fid in self.__fileIds:
+                    if (not self._fileLocDict.has_key(fid)):
+                        ngamsJobMWALib.fileIngestTimeout(fid, self._taskExeHost, self)
                 break
             
             self._progress = 2
@@ -637,7 +642,7 @@ class CorrTask(MapReduceTask):
             for failHost in self._blackList:
                 try:
                     logger.debug('Before calling taskcancel on correlator %s' % self.getId())
-                    strRes = urllib2.urlopen('http://%s/RUNTASK?action=cancel&task_id=%s' % (failHost, taskId), timeout = 15).read()
+                    strRes = urllib2.urlopen('http://%s/RUNTASK?action=cancel&task_id=%s' % (failHost, urllib2.quote(taskId)), timeout = 15).read()
                     logger.debug('Submit task cancel request, acknowledgement received: %s' % strRes)
                 except urllib2.URLError, urlerr:
                     logger.error('Fail to submit task cancel request for task: %s, Exception: %s', (taskId, str(urlerr)))
@@ -983,6 +988,9 @@ class ObsLocalTask(MRLocalTask):
         self._imgurl_list = imgurl_list
         self._params = params
     
+    def stop(self):
+        return (0, '')
+    
     def execute(self):
         """
         Task manager calls this function to
@@ -1006,6 +1014,10 @@ class ObsLocalTask(MRLocalTask):
             return ret
         
         # cd working directory and download images
+        if (not os.path.exists(work_dir)):
+            ret = MRLocalTaskResult(self._taskId, ERROR_LT_FAILCREATEDIR, 'Fail to create directory %s' % work_dir, True)
+            return ret
+        
         os.chdir(work_dir)
         for imgurl in self._imgurl_list:
             cmd = 'wget -O tmp.tar %s' % imgurl
@@ -1065,12 +1077,12 @@ class CorrLocalTask(MRLocalTask):
         if (self._subproc):
             try:
                 os.killpg(self._subproc.pid, signal.SIGTERM)
-                return 0
+                return (0, '')
             except Exception, oserr:
                 #logger.error('Fail to kill process %d: %s' % (self._subproc.pid, str(oserr)))
-                return 1
+                return (1, str(oserr))
         else:
-            return -1
+            return (-1, 'process %s does not exist' % self._subproc.pid)
            
     def execute(self):
         """

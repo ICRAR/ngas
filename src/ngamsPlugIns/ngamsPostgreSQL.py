@@ -129,7 +129,9 @@ class ngamsPostgreSQL:
         # connect([dbname], [host], [port], [opt], [tty], [user], [passwd])
         
         #connect_string = 'host:database:user:password:opt:tty'
-        connect_string = server + ':' + db + ':' + user + ':' + password
+        opt = ''
+        tty = ''
+        connect_string = server + ':' + db + ':' + user + ':' + password + ':' + opt + ':' + tty
         self.__dbConn = pgdb.connect(connect_string)
         #self.__dbConn = pg.connect(db, server, -1, None, None, user, password)
 

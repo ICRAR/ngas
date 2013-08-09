@@ -295,6 +295,7 @@ NGAMS_HTTP_REDIRECT       = 303
 NGAMS_HTTP_BAD_REQ        = 400
 NGAMS_HTTP_UNAUTH         = 401
 NGAMS_HTTP_UNAUTH_STR     = "Unauthorized"
+NGAMS_HTTP_SERVICE_NA     = 503 # service is not available
 
 # Request Processing Data Types.
 NGAMS_PROC_DATA           = "DATA"
