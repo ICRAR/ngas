@@ -35,6 +35,7 @@ This module facilitates running the NG/AMS Server in 'caching mode'.
 """
 
 import sys
+import pcc
 
 from   ngams import *
 import ngamsServer

@@ -33,6 +33,7 @@ This module facilitates running the NG/AMS Server in 'DataMover mode'.
 """
 
 import sys
+import pcc
 
 from   ngams import *
 import ngamsServer
