@@ -15,7 +15,7 @@
       configured.
       *NOTES*: The DB configuration has to be adjusted to the actual
                  situation.
-               The volume has to be mounted on ./NGAS/volume1 at
+               The volume has to be mounted on /home/ngas/NGAS/volume1 at
                  boot time. NGAS does not do the mounting with this
                  configuration.
                There is no mirroring or caching configured yet.
@@ -31,7 +31,7 @@
           ArchiveName="MWA-ARCHIVE-VM"
           BlockSize="65536"
           MaxSimReqs="10"
-          RootDirectory="NGAS"
+          RootDirectory="/home/ngas/NGAS"
           PortNo="7777"
           ProxyMode="1"
           Simulation="0"
@@ -43,7 +43,7 @@
 
   <ArchiveHandling Id="ArchiveHandling"
                    ArchiveUnits="ngas03"
-                   BackLogBufferDirectory="NGAS/"
+                   BackLogBufferDirectory="/home/ngas/NGAS/"
                    BackLogBuffering="0"
                    FreeSpaceDiskChangeMb="20"
                    MinFreeSpaceWarningMb="500"
@@ -53,7 +53,7 @@
   <Db     Id="Db-Sqlite-Test"
     Server="localhost"
     Interface="ngamsSqlite"
-          Name="./NGAS/ngas.sqlite"
+          Name="/home/ngas/NGAS/ngas.sqlite"
           User="ngas"
           Password="bmdhcyRkYmE=\n"
           Snapshot="1"/>
@@ -191,7 +191,7 @@
   </Streams>
 
   <Processing Id="Processing-Std"
-              ProcessingDirectory="./NGAS">
+              ProcessingDirectory="/home/ngas/NGAS">
     <PlugIn Name="ngamsEsoArchDppi"
             PlugInPars="">
       <MimeType Name="image/x-fits"/>
@@ -236,7 +236,7 @@
                    Scan="0"/>
 
   <Log Id="Log"
-       LocalLogFile="./NGAS/log/LogFile.nglog"
+       LocalLogFile="/home/ngas/NGAS/log/LogFile.nglog"
        LocalLogLevel="3"
        LogBufferSize="0"
        LogRotateCache="30"

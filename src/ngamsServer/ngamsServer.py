@@ -2037,7 +2037,7 @@ class ngamsServer:
 
     def init(self,
              argv,
-             serve = 1):
+             serve = 1, extlogger = None):
         """
         Initialize the NG/AMS Server.
 
@@ -2049,11 +2049,13 @@ class ngamsServer:
 
         Returns:    Reference to object itself.
         """
+        if extlogger: extlogger("INFO", "Inside init()")
         # Parse input parameters, set up signal handlers, connect to DB,
         # load NGAMS configuration, start NG/AMS HTTP server.
-        self.parseInputPars(argv)
+        self.parseInputPars(argv, extlogger = extlogger)
         info(1,"NG/AMS Server version: " + getNgamsVersion())
         info(1,"Python version: " + re.sub("\n", "", sys.version))
+        if extlogger: extlogger("INFO", "NG/AMS Server version: " + getNgamsVersion())
 
         # Make global reference to this instance of the NG/AMS Server.
         global _ngamsServer
@@ -2070,8 +2072,12 @@ class ngamsServer:
         else:
             try:
                 self.handleStartUp(serve)
+                if extlogger:
+                    extlogger("INFO", "Successfully returned from handleStartup")
             except Exception, e:
                 errMsg = genLog("NGAMS_ER_INIT_SERVER", [str(e)])
+                if extlogger:
+                    extlogger("INFO", errMsg)
                 error(errMsg)
                 ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
                                          "PROBLEMS INITIALIZING NG/AMS SERVER",
@@ -2176,6 +2182,31 @@ class ngamsServer:
 
         # Load NG/AMS Configuration (from XML Document/DB).
         self.loadCfg()
+        # Set up final logging conditions.
+        if (self.__locLogLevel == -1):
+            self.__locLogLevel = self.getCfg().getLocalLogLevel()
+        if ((self.__locLogFile != "") and (self.getCfg().getLocalLogFile())):
+            self.__locLogFile = self.getCfg().getLocalLogFile()
+        if (self.__sysLog == -1):
+            self.__sysLog = self.getCfg().getSysLog()
+        if (self.__sysLogPrefix == NGAMS_DEF_LOG_PREFIX):
+            self.__sysLogPrefix = self.getCfg().getSysLogPrefix()
+        try:
+            setLogCond(self.__sysLog, self.__sysLogPrefix, self.__locLogLevel,
+                       self.__locLogFile, self.__verboseLevel)
+            msg = "Logging properties for NGAS Node: %s " +\
+                  "defined as: Sys Log: %s " +\
+                  "- Sys Log Prefix: %s  - Local Log File: %s " +\
+                  "- Local Log Level: %s - Verbose Level: %s"
+            info(1, msg % (getHostId(), str(self.__sysLog),
+                           self.__sysLogPrefix, self.__locLogFile,
+                           str(self.__locLogLevel), str(self.__verboseLevel)))
+        except Exception, e:
+            errMsg = genLog("NGAMS_ER_INIT_LOG", [self.__locLogFile, str(e)])
+            error(errMsg)
+            ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
+                                     "PROBLEM SETTING UP LOGGING", errMsg)
+            raise Exception, errMsg
 
         # Check if there is an entry for this node in the ngas_hosts
         # table, if not create it.
@@ -2274,31 +2305,6 @@ class ngamsServer:
                                               writePerm = 1)
         info(4,"Checked/created NG/AMS Request Info DB")
 
-        # Set up final logging conditions.
-        if (self.__locLogLevel == -1):
-            self.__locLogLevel = self.getCfg().getLocalLogLevel()
-        if ((self.__locLogFile != "") and (self.getCfg().getLocalLogFile())):
-            self.__locLogFile = self.getCfg().getLocalLogFile()
-        if (self.__sysLog == -1):
-            self.__sysLog = self.getCfg().getSysLog()
-        if (self.__sysLogPrefix == NGAMS_DEF_LOG_PREFIX):
-            self.__sysLogPrefix = self.getCfg().getSysLogPrefix()
-        try:
-            setLogCond(self.__sysLog, self.__sysLogPrefix, self.__locLogLevel,
-                       self.__locLogFile, self.__verboseLevel)
-            msg = "Logging properties for NGAS Node: %s " +\
-                  "defined as: Sys Log: %s " +\
-                  "- Sys Log Prefix: %s  - Local Log File: %s " +\
-                  "- Local Log Level: %s - Verbose Level: %s"
-            info(1, msg % (getHostId(), str(self.__sysLog),
-                           self.__sysLogPrefix, self.__locLogFile,
-                           str(self.__locLogLevel), str(self.__verboseLevel)))
-        except Exception, e:
-            errMsg = genLog("NGAMS_ER_INIT_LOG", [self.__locLogFile, str(e)])
-            error(errMsg)
-            ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
-                                     "PROBLEM SETTING UP LOGGING", errMsg)
-            raise Exception, errMsg
         if (self.getCfg().getLogBufferSize() != -1):
             setLogCache(self.getCfg().getLogBufferSize())
 
@@ -2471,7 +2477,7 @@ class ngamsServer:
 
 
     def parseInputPars(self,
-                       argv):
+                       argv, extlogger = None):
         """
         Parse input parameters.
 
@@ -2479,6 +2485,8 @@ class ngamsServer:
 
         Returns:
         """
+        if extlogger: extlogger("INFO", "Entering parseInputPars")
+        if extlogger: extlogger("INFO", "Arguments: {0}".format(' '.join(argv)))
         setLogCache(10)
         exitValue = 1
         silentExit = 0
@@ -2555,13 +2563,22 @@ class ngamsServer:
                 else:
                     self.correctUsage()
                     silentExit = 1
+                    if extlogger: extlogger("INFO", "ngamsServer call incomplete")
                     sys.exit(1)
                 idx = idx + 1
+                if extlogger: extlogger("INFO", "Parser parsed {0}".format(par))
+                logFlush()
             except Exception, e:
-                if (str(e) == "0"): sys.exit(0)
+                if (str(e) == "0"):
+                    if extlogger: extlogger("INFO",\
+                         "Problem encountered parsing command line ")
+                    logFlush()
+                    sys.exit(0)
                 if (str(1) != "1"):
-                    print "Problem encountered parsing command line " +\
-                          "parameters: "+ str(e)
+                    if extlogger: extlogger("INFO",\
+                       "Problem encountered parsing command line " +\
+                          "parameters: "+ str(e))
+                    info(1,str(e))
                 if (not silentExit): self.correctUsage()
                 sys.exit(exitValue)
 
@@ -2569,6 +2586,7 @@ class ngamsServer:
         if (self.getCfgFilename() == ""):
             self.correctUsage()
             sys.exit(1)
+        if extlogger: extlogger("INFO","Leaving parseInputPars")
 
     ########################################################################
     # The following methods are used for the NG/AMS Unit Tests.
