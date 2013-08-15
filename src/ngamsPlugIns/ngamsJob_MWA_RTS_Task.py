@@ -59,7 +59,7 @@ num_subband = 24 # should be the same as coarse channel
 tiles = '128T'
 use_gpu = 1
 added_lines = ['UseCorrelatorInput=1', 'UsePacketInput=0', 'UseThreadedVI=0',
-               'CorrelatorPort=65535', 'ArrayFile=array_file.txt',
+               'ArrayFile=array_file.txt',
                'ArrayPositionLat=-26.70331940',
                'ArrayPositionLong=116.67081524']
 added_lines128T = ['ChannelBandwidth=0.04', 'ArrayNumberOfStations=128',
@@ -73,7 +73,7 @@ ERROR_LT_FILEMISSING = 116
 UseCorrelatorInput=1
 UsePacketInput=0
 UseThreadedVI=0
-CorrelatorPort=65535
+# CorrelatorPort=65535  # this was removed (see Mitch's email on 8 Aug 2013)
 ArrayFile=array_file.txt
 ChannelBandwidth=0.04
 ArrayNumberOfStations=128

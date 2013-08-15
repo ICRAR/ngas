@@ -390,7 +390,7 @@ def processCentOSErrMsg(errmsg):
 
 
 @task
-def system_install():
+def system_install_f():
     """
     Perform the system installation part.
 
@@ -707,7 +707,7 @@ def operations_deploy(system_install=True, user_install=True, type='archive'):
         env.user = 'root'
     # set environment to default, if not specified otherwise.
     set_env()
-    if system_install: system_install()
+    if system_install: system_install_f()
     if env.postfix:
         postfix_config()
     if user_install: user_setup()
