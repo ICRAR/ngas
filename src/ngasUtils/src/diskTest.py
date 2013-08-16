@@ -19,15 +19,16 @@ llflag = 0              # default use normal I/O
 
 def usage():
     """
-    This class contains methods to perform performance tests of
-    block devices, e.g. hard disks.
+    This code contains methods to perform performance tests of
+    block devices, e.g. hard disks. It also allows using files rather
+    than devices directly.
 
     Synopsis: diskTest.py [-d device] [-s skip] [-t testcount] [-i iosize]
                           [-b blocksize] [-c {b|z}] [-m] [-w] [-l] [-h]
 
                   long arguments are allowed as well, e.g. --device
 
-          [d]evice:    string, e.g. /dev/hdb1
+          [d]evice:    string, e.g. /dev/hdb1, can also be a file
           [s]kip:      integer [0 GB], e.g. 5
           [t]estcount: integer [1], number of consecutive tests [1]
           [b]locksize: integer [1024 bytes], number of bytes in single
@@ -45,11 +46,21 @@ def usage():
           NOTE: All byte values are forced to be an integer multiple
                  of 4.
 
-        Author:  A. Wicenec [ESO]
+          Typical usage:
+          python ~/diskTest.py -d /mymnt/testio -b 262144 -w -m -c z -t 5 -l
+
+          This performs a write test on the file /mymnt/testio using a
+          256kB block size, the internal Python implementation of dd,
+          performs a CRC checksum calculation on the stream using the zlib
+          based CRC algorithm, repeats the test 5 times and uses low-level
+          I/O.
+
+    Author:  A. Wicenec [ESO, ICRAR]
     Date:    29-May-2002
     Version 1.0
     Version 2.0    20-Jun-2002: writeTest included
-    CVS Version: $Id: diskTest.py,v 1.2 2006/12/01 14:09:08 awicenec Exp $
+    Version 3.1    16-Aug-2013: various additions, CRC and stats writing.
+                   also added plotting function.
     """
     import pydoc
     print pydoc.help('diskTest.usage')
