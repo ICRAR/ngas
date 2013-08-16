@@ -396,7 +396,17 @@ if __name__ == '__main__':
 
 DEFAULT_FNM = 'bspeed.pkl'
 
-def speedPlot(ifile=DEFAULT_FNM, timefl=0):
+def speedPlot(ifile=DEFAULT_FNM, timefl=1):
+    """
+    Produce a plot from the output produced by the internal Python
+    dd implementation of diskTest.
+
+    INPUT:
+    ifile:    string, file name of the pickle file as produced by
+              diskTest (default: bspeed.pkl)
+    timefl:   [0|1]: flag, if set the plot will use time on the x-axis
+              else it will use block numbers.
+    """
     import pylab  # This requires pylab for the plotting...
     f = open(ifile)
     p=pickle.Unpickler(f)
