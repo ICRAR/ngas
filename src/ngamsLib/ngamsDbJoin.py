@@ -132,7 +132,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                         fileIds = [],
                         diskId = None,
                         ignore = None,
-                        ing_date = None):
+                        ing_date = None,
+                        max_num_records = None):
         """
         Return summary information about files. An NG/AMS DB Cursor Object
         is created, which can be used to query the information sequentially.
@@ -158,6 +159,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         ignore:            If set to 0 or 1, this value of ignore will be
                            queried for. If set to None, ignore is not
                            considered (None|0|1).
+        
+        max_num_records:   The maximum number of returned records (if presented) (int)
 
         Returns:           Cursor object (<NG/AMS DB Cursor Object API>).
         """
@@ -173,6 +176,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             sqlQuery += " AND nf.file_id IN (" + str(fileIds)[1:-1] + ")"
         if (ing_date): sqlQuery += " AND nf.ingestion_date > '" + ing_date + "'"
         sqlQuery += " ORDER BY nf.ingestion_date"
+        if (max_num_records): sqlQuery += " LIMIT %d" % max_num_records
 
         # Create a cursor and perform the query.
         curObj = self.dbCursor(sqlQuery)
