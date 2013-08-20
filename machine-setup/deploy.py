@@ -678,7 +678,7 @@ def init_deploy(type='archive'):
     sudo('chmod a+x /etc/init.d/{0}'.format(initName))
     sudo('chkconfig --add /etc/init.d/{0}'.format(initName))
     with cd(env.NGAS_DIR_ABS):
-        sudo('ln -s {0}/cfg/{1} {0}/cfg/{2}.conf'.format(\
+        sudo('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}.conf'.format(\
               env.NGAS_DIR_ABS, NGAS_DEF_CFG, initName))
 
 
