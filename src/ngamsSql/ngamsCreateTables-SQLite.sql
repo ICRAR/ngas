@@ -105,6 +105,7 @@ Create table ngas_hosts
   cluster_name         varchar(32)    null,
   installation_date    varchar(23)    null,
   ngas_type            varchar(32)    null,
+  idate			       varchar(23)	  null,
   srv_version          varchar(20)    null,
   srv_port             int            null,
   srv_archive          smallint       null,
@@ -141,7 +142,7 @@ Create table ngas_mirroring_queue
   message               varchar(2000)   null,
   last_activity_time    varchar(23)     not null,
   scheduling_time       varchar(23)     not null,
-  constraint ngas_mirroring_queue_idx primary key(file_id, file_version) 
+  constraint ngas_mirroring_queue_idx primary key(file_id, file_version)
 );
 
 
@@ -158,7 +159,7 @@ Create table ngas_mirroring_hist
   message               varchar(2000)   null,
   last_activity_time    varchar(23)     not null,
   scheduling_time       varchar(23)     not null,
-  constraint ngas_mirroring_hist_idx primary key(file_id, file_version) 
+  constraint ngas_mirroring_hist_idx primary key(file_id, file_version)
 );
 
 
@@ -187,7 +188,7 @@ Create table ngas_subscr_back_log
   subscr_id      varchar(255)  not null,
   subscr_url     varchar(255)  not null,
   file_id        varchar(64)   not null,
-  file_name      varchar(255)  not null, 
+  file_name      varchar(255)  not null,
   file_version   int           not null,
   ingestion_date varchar(23)   not null,
   format         varchar(32)   not null
