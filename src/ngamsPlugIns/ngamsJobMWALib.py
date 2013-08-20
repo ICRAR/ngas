@@ -50,6 +50,7 @@ f_db_conn = None # Fornax NGAS database connection
 l_db_conn = None # LTA NGAS database connection
 
 io_ex_ip = {'io1':'202.8.39.136:7777', 'io2':'202.8.39.137:7777'}  # the two Copy Nodes external ip
+gpubox_str = 'gpubox'
 
 stage_queue = []
 stage_dic = {} # key - fileId, value - a list of CorrTasks
@@ -174,6 +175,13 @@ def executeQuery(conn, sqlQuery):
         if (cur):
             del cur
 
+def getCorrIdFromFileId(fileId):
+    pos = fileId.find(gpubox_str)
+    if (pos < 0):
+        return None
+    ll = len(gpubox_str)
+    return int(fileId[pos + len(ll) : pos + len(ll) + 2])
+
 def getFileIdsByObsNum(obs_num):
     """
     Query the mwa database to get a list of files
@@ -190,7 +198,10 @@ def getFileIdsByObsNum(obs_num):
     retDic = {}
     for re in res:
         fileId = re[0]
-        corrId = int(fileId.split('_')[2][-2:])
+        #corrId = int(fileId.split('_')[2][-2:])
+        corrId = getCorrIdFromFileId(fileId)
+        if (not corrId):
+            raise Exception('file id %s is invalid' % fileId)
         if (retDic.has_key(corrId)):
             retDic[corrId].append(fileId)
         else:

@@ -375,7 +375,7 @@ def _jobThread(jobId, params, myjobDic):
             job.start()
         except Exception, err:
             job.setStatus(STATUS_EXCEPTION)
-            job.setFinalJobResult('Fail to start the Job %s, Exception: %s' % (jobId, str(err)))
+            job.setFinalJobResult('Fail to start the Job %s, Exception: %s' % (jobId, str(traceback.format_exc())))
             logger.error(traceback.format_exc())
     else:
         logger.error('Cannot initialise the job %s' % jobId)   
