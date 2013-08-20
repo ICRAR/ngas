@@ -328,33 +328,7 @@ def _checkIfDeliverFile(srvObj,
          explicitFileDelivery)
         
         ):
-        # If a Filter Plug-In is specified, apply it.
-        plugIn = subscrObj.getFilterPi()
-        if (plugIn != ""):
-            # Apply Filter Plug-In
-            plugInPars = subscrObj.getFilterPiPars()
-            exec "import " + plugIn
-            info(3,"Invoking FPI: " + plugIn + " on file " +\
-                 "(version/ID): " + fileId + "/" + str(fileVersion) +\
-                 ". Subscriber: " + subscrObj.getId())
-            fpiRes = eval(plugIn + "." + plugIn +\
-                          "(srvObj, plugInPars, filename, fileId, " +\
-                          "fileVersion)")
-            if (fpiRes):
-                info(4,"File (version/ID): " + fileId + "/" +\
-                     str(fileVersion) + " accepted by the FPI: " + plugIn +\
-                     " for Subscriber: " +  subscrObj.getId())
-                deliverFile = 1
-            else:
-                info(4,"File (version/ID): " + fileId + "/" +\
-                     str(fileVersion) + " not accepted by the FPI: " +\
-                     plugIn + " for Subscriber: " +  subscrObj.getId())
-        else:
-            # If no file is specified, we always take the file.
-            info(4,"No FPI specified, file (version/ID): " + fileId + "/" +\
-                 str(fileVersion) + " selected for Subscriber: " +
-                 subscrObj.getId())
-            deliverFile = 1
+        deliverFile = 1
 
     # Register the file if we should deliver this file to the Subscriber.
     if (deliverFile):
@@ -570,6 +544,39 @@ def _backupQueueToBacklog(srvObj):
             info(3, 'File %s for subscriber %s is backed up to backlog' % (fileInfo[FILE_ID], subscrbId))
     info(3, 'Completed - backing up pending files from delivery queue to back logs')
     
+
+def _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion):
+    deliverFile = 0
+    # If a Filter Plug-In is specified, apply it.
+    plugIn = subscrObj.getFilterPi()
+    if (plugIn != ""):
+        # Apply Filter Plug-In
+        plugInPars = subscrObj.getFilterPiPars()
+        exec "import " + plugIn
+        info(3,"Invoking FPI: " + plugIn + " on file " +\
+             "(version/ID): " + fileId + "/" + str(fileVersion) +\
+             ". Subscriber: " + subscrObj.getId())
+        fpiRes = eval(plugIn + "." + plugIn +\
+                      "(srvObj, plugInPars, filename, fileId, " +\
+                      "fileVersion)")
+        if (fpiRes):
+            info(4,"File (version/ID): " + fileId + "/" +\
+                 str(fileVersion) + " accepted by the FPI: " + plugIn +\
+                 " for Subscriber: " +  subscrObj.getId())
+            deliverFile = 1
+        else:
+            info(4,"File (version/ID): " + fileId + "/" +\
+                 str(fileVersion) + " not accepted by the FPI: " +\
+                 plugIn + " for Subscriber: " +  subscrObj.getId())
+    else:
+        # If no file is specified, we always take the file.
+        info(4,"No FPI specified, file (version/ID): " + fileId + "/" +\
+             str(fileVersion) + " selected for Subscriber: " +
+             subscrObj.getId())
+        deliverFile = 1
+    
+    return deliverFile
+    
 def _deliveryThread(srvObj,
                     subscrObj,
                     quChunks,
@@ -638,6 +645,8 @@ def _deliveryThread(srvObj,
             fileIngDate    = fileInfo[FILE_DATE]
             fileMimeType   = fileInfo[FILE_MIME]
             fileBackLogged = fileInfo[FILE_BL]
+            if (not _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion)):
+                continue
             if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not os.path.isfile(filename))):# if this file is removed by an agent outside of NGAS (e.g. Cortex volunteer cleanup)
                 alert('File %s is no longer available' %  filename)
                 _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename) 
@@ -860,43 +869,41 @@ def subscriptionThread(srvObj,
             # TODO - handle the abnormal shutdown situation, i.e. 
             # for each subscriber, find out the LastFileIngDate, and query db with: ingestion_date > 'LastFileIngDate'
             # if (not dataMoverOnly and abnormalShutdown): abnormalShutdown = False then: blah blah
-            if (dataMoverOnly and srvObj.getSubcrBackLogCount() <= 0): # this ensures back-logged files to be sent before new files are brought in
-                # data mover purposefully only supports exact one subscriber. 
-                # To support multiple subscribers, run multiple data mover servers
-                subscrId = srvObj.getSubscriberDic().keys()[0] 
-                #debug_chen
-                #info(3, 'Data mover subscriId = %s' % subscrId)
-                subscrObj = srvObj.getSubscriberDic()[subscrId]
-                start_date = None
-                if (scheduledStatus.has_key(subscrId)):
-                    if (scheduledStatus[subscrId]):
-                        start_date = scheduledStatus[subscrId]
-                elif (subscrObj.getLastFileIngDate() and '1970-01-01' != subscrObj.getLastFileIngDate().split('T')[0]):
-                    start_date = subscrObj.getLastFileIngDate()
-                elif (subscrObj.getStartDate()):
-                    start_date = subscrObj.getStartDate()
-                
-                #debug_chen
-                info(3, 'Data mover start_date = %s\n' % start_date)    
-                count = 0
-                for host in dm_hosts:         
-                    cursorObj = srvObj.getDb().getFileSummary2(hostId = host, ing_date = start_date) # need to add file_version == 1 condition!!
-                    while (1):
-                        fileList = cursorObj.fetch(100)
-                        if (fileList == []): break
-                        for fileInfo in fileList:
-                            fileInfo = _convertFileInfo(fileInfo)
-                            fileDicDbm.add(_fileKey(fileInfo[FILE_ID], fileInfo[FILE_VER]), fileInfo)
-                            count += 1
-                        _checkStopSubscriptionThread(srvObj)
-                        time.sleep(0.1)
-                    del cursorObj
-                if (count == 0):
+            # if (dataMoverOnly and srvObj.getSubcrBackLogCount() <= 0): # this ensures back-logged files to be sent before new files are brought in
+            if (dataMoverOnly): # we need to support multiple data movers and priority on the single NGAS server, so the "backlog first" policy is cancelled                
+                #subscrId = srvObj.getSubscriberDic().keys()[0] 
+                for subscrId in srvObj.getSubscriberDic().keys():
                     #debug_chen
-                    info(3, 'No files meet the data mover condition')
-                    continue
-                else:
-                    info(3, 'Data mover will examine %d files for delivery' % count)
+                    #info(3, 'Data mover subscriId = %s' % subscrId)
+                    subscrObj = srvObj.getSubscriberDic()[subscrId]
+                    start_date = None
+                    if (scheduledStatus.has_key(subscrId)):
+                        if (scheduledStatus[subscrId]):
+                            start_date = scheduledStatus[subscrId]
+                    elif (subscrObj.getLastFileIngDate() and '1970-01-01' != subscrObj.getLastFileIngDate().split('T')[0]):
+                        start_date = subscrObj.getLastFileIngDate()
+                    elif (subscrObj.getStartDate()):
+                        start_date = subscrObj.getStartDate()
+                    
+                    #debug_chen
+                    info(3, 'Data mover %s start_date = %s\n' % (subscrId, start_date))    
+                    count = 0
+                    for host in dm_hosts:         
+                        cursorObj = srvObj.getDb().getFileSummary2(hostId = host, ing_date = start_date, max_num_records = 500) # need to add file_version == 1 condition!!
+                        while (1):
+                            fileList = cursorObj.fetch(100)
+                            if (fileList == []): break
+                            for fileInfo in fileList:
+                                fileInfo = _convertFileInfo(fileInfo)
+                                fileDicDbm.add(_fileKey(fileInfo[FILE_ID], fileInfo[FILE_VER]), fileInfo)
+                                count += 1
+                            _checkStopSubscriptionThread(srvObj)
+                            time.sleep(0.1)
+                        del cursorObj
+                    if (count == 0):
+                        info(3, 'No new files for data mover %s' % subscrId)
+                    else:
+                        info(3, 'Data mover %s will examine %d files for delivery' % (subscrId, count))
             elif (subscrObjs != []):
                 cursorObj = srvObj.getDb().getFileSummary2(getHostId())
                 while (1):
@@ -1010,11 +1017,13 @@ def subscriptionThread(srvObj,
 
             # Third, if datamover, add those files
             if (dataMoverOnly):
-                info(3, 'Checking data mover files')
-                for fileKey in fileDicDbm.keys():
-                    fileInfo = fileDicDbm.get(fileKey)
-                    _checkIfDeliverFile(srvObj, subscrObj, fileInfo,
-                                        deliverReqDic, deliveredStatus, scheduledStatus, fileDeliveryCountDic, fileDeliveryCountDic_Sem)
+                for subscrId in srvObj.getSubscriberDic().keys():
+                    subscrObj = srvObj.getSubscriberDic()[subscrId]
+                    info(3, 'Checking files for data mover %s' % subscrObj)
+                    for fileKey in fileDicDbm.keys():
+                        fileInfo = fileDicDbm.get(fileKey)
+                        _checkIfDeliverFile(srvObj, subscrObj, fileInfo,
+                                            deliverReqDic, deliveredStatus, scheduledStatus, fileDeliveryCountDic, fileDeliveryCountDic_Sem)
             
             # Then finally check if there are back-logged files to deliver.
             selectDiskId = srvObj.getCachingActive()
@@ -1055,6 +1064,8 @@ def subscriptionThread(srvObj,
                 scheduledStatus[subscrId] = lastScheduleDate
                 
                 # multi-threaded concurrent transfer, added by chen.wu@icrar.org
+                if (not srvObj.getSubscriberDic().has_key(subscrId)): # this is possible since back log files can still use old subscriber names
+                    continue
                 num_threads = float(srvObj.getSubscriberDic()[subscrId].getConcurrentThreads())
                 if queueDict.has_key(subscrId):
                     #debug_chen
