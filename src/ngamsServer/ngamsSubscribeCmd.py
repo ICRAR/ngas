@@ -77,10 +77,12 @@ def handleCmdSubscribe(srvObj,
     """
     T = TRACE()
     
+    """
     if (srvObj.getDataMoverOnlyActive() and len(srvObj.getSubscriberDic()) > 0):
         srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
                  "Data Mover NGAS server can have only one subscriber. Use command USUBSCRIBE to update an existing subscriber.")
         return
+    """
     priority      = 10
     url           = ""
     startDate     = PccUtTime.TimeStamp().getTimeStamp()

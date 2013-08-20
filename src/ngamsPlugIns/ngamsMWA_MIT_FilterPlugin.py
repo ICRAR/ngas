@@ -43,7 +43,9 @@ import psycopg2 # used to connect to MWA M&C database
 
 g_db_conn = None # MWA metadata database connection
 
-eor_list = ["'G0001'", "'G0004'", "'G0009'", "'G0008'", "'G0010'"] # EOR scientists are only interested in these projects
+#eor_list = ["'G0001'", "'G0004'", "'G0009'", "'G0008'", "'G0010'"] # EOR scientists are only interested in these projects
+eor_list = [] # this has become a parameter of the plug-in
+proj_separator = '___'
 
 def getMWADBConn():
     global g_db_conn
@@ -103,6 +105,7 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
     """
     match = 0
     projectId = ''
+    onTape = 0
     
     try:
         onTape = ngamsMWACortexTapeApi.isFileOnTape(filename)
@@ -114,7 +117,7 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
                 alert('Cannot get project id from MWA DB for file %s' % fileId)
                 return 0
             else:
-                projectId = "'%s'" % projId # to be consistent with FITS header keywords
+                projectId = "'%s'" % projId # add single quote to be consistent with FITS header keywords 
             #TODO need to do either of the following:
             # 1. query the MWA database to get the project id, but this will throw the problem to the later _deliveryThread
             # 2. put this filename into a server queue, later on push them all together in another process
@@ -135,10 +138,7 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
     if (projectId == "'C105'" or projectId == "'C106'"):
         return 0
     """
-    
-    if (not (projectId in eor_list)):
-        return 0
-    
+  
      # Parse plug-in parameters.
     parDic = []
     pars = ""
@@ -148,15 +148,25 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
         if (reqPropsObj.hasHttpPar("plug_in_pars")):
             pars = reqPropsObj.getHttpPar("plug_in_pars")
     parDic = ngamsPlugInApi.parseRawPlugInPars(pars)
-    if (not parDic.has_key("remote_host") or not parDic.has_key("remote_port")):
+    if (not parDic.has_key("remote_host") or 
+        not parDic.has_key("remote_port") or
+        not parDic.has_key("project_id")):
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Missing Plug-In Parameter: " +\
-                 "remote_host and/or remote_port"
+                 "remote_host / remote_port / project_id"
         #raise Exception, errMsg
         alert(errMsg)
-        return 1 # matched as if the filter does not exist
+        return 1 # matched as if the filter did not exist
     
     host = parDic["remote_host"]
     sport = parDic["remote_port"]
+    proj_ids = parDic["project_id"]
+    
+    if (proj_ids and len(proj_ids)):
+        for proj_id in proj_ids.split(proj_separator):
+            eor_list.append("'%s'" % proj_id)
+        
+        if (not (projectId in eor_list)):
+            return 0
     
     if (not sport.isdigit()):
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Invalid port number: " + sport
@@ -177,12 +187,18 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
         return 1 # matched as if the filter does not exist
     
     
-    info(5, "filter return status = " + rest.getStatus())
+    #info(5, "filter return status = " + rest.getStatus())
     
     if (rest.getStatus().find(NGAMS_FAILURE) != -1):
         match = 1
     
-    info(4, "filter match = " + str(match))    
+    #info(4, "filter match = " + str(match))    
+    if (1 == onTape and 1 == match):
+        info(3, "File " + filename + " is currently on tapes, staging it for delivery...")
+        cmd = "stage -w " + filename
+        t = ngamsPlugInApi.execCmd(cmd, -1) #stage it back to disk cache
+        info(3, "File " + filename + " staging completed for delivery.")
+    
     return match    
 
 
