@@ -73,7 +73,6 @@ class ngamsSubscriber:
                setLastFileIngDate(lastFileIngDate)
         
         self.setConcurrentThreads(1) # by default only uses 1 thread for each subscriber
-        self.setDelayCacheDel(0) # by default, mark cache deletion upon file is delivered (if it is a cache server)
 
 
     def setHostId(self,

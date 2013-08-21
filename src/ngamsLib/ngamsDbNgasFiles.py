@@ -293,6 +293,32 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         else:
             return -1
     
+    def getFileStatus(self, 
+                      fileId,
+                      fileVersion,
+                      diskId):
+        """
+        Get the file_status string (bit) value in the ngas_files table.
+
+        fileId:        ID of file (string).
+        
+        fileVersion:   Version of file (integer).
+
+        diskId:        Disk ID for disk where file is stored (string).
+        
+        Returns:       File Status (8 bits) (string).
+
+        """
+        T = TRACE()
+        sqlQuery = "SELECT file_status FROM ngas_files WHERE file_id = '%s' AND disk_id = '%s' AND file_version = %d" % (fileId, diskId, fileVersion)
+        res = self.query(sqlQuery, ignoreEmptyRes=0)
+        if (len(res[0])):
+            if (res[0][0][0] == None):
+                return '00000000'
+            else:
+                return res[0][0][0]
+        else:
+            return '00000000'
         
     def setFileStatus(self,
                       fileId,
