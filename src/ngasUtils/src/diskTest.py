@@ -275,50 +275,50 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0)
             out.close()
             return status
         print "Writing {0} blocks to {1}".format(count, ofil)
-    if crcfl:
-        crctime = 0.0
-        bsize = blocksize/1024.**2
-        tsize = bsize * count
-        sti = time.time()
-        for ii in range(count):
-            stt = time.time()
-            if ifil != '/dev/zero':
-                block=inputf.read(blocksize)
-            if crcfl:
-                stc = time.time()
-                crc = crc32(block, crc)
-                crct = time.time() - stc
-                cspeed.append((bsize/(crct), stc))
-                crctime += crct
-            else:
-                cspeed.append((-1,time.time()))
-            stb = time.time()
+        if crcfl:
+            crctime = 0.0
+            bsize = blocksize/1024.**2
+            tsize = bsize * count
+            sti = time.time()
+            for ii in range(count):
+                stt = time.time()
+                if ifil != '/dev/zero':
+                    block=inputf.read(blocksize)
+                if crcfl:
+                    stc = time.time()
+                    crc = crc32(block, crc)
+                    crct = time.time() - stc
+                    cspeed.append((bsize/(crct), stc))
+                    crctime += crct
+                else:
+                    cspeed.append((-1,time.time()))
+                stb = time.time()
+                if llflag:
+                    os.write(fd, block)
+                else:
+                    out.write(block)
+                tend = time.time()
+                bspeed.append((bsize/(tend - stb), stb))
+                tspeed.append((bsize/(tend - stt), stt))
+            print "Internal throughput: %6.2f MB/s" % \
+                  (tsize/(time.time()-sti))
+            fst = time.time()
+            if ifil != '/dev/zero': inputf.close()
             if llflag:
-                os.write(fd, block)
+                os.fsync(fd)
+                os.close(fd)
             else:
-                out.write(block)
-            tend = time.time()
-            bspeed.append((bsize/(tend - stb), stb))
-            tspeed.append((bsize/(tend - stt), stt))
-        print "Internal throughput: %6.2f MB/s" % \
-              (tsize/(time.time()-sti))
-        fst = time.time()
-        if ifil != '/dev/zero': inputf.close()
-        if llflag:
-            os.fsync(fd)
-            os.close(fd)
-        else:
-            # out.flush()
-            out.close()
-        print "File closing time: %5.2f s" % (time.time()-fst)
-    if (crcfl):
-        print "CRC throughput: %6.2f MB/s (%5.2f s)" % \
-                (tsize/crctime, crctime)
-        return (bspeed,cspeed, tspeed)
+                # out.flush()
+                out.close()
+            print "File closing time: %5.2f s" % (time.time()-fst)
+            if (crcfl):
+                print "CRC throughput: %6.2f MB/s (%5.2f s)" % \
+                        (tsize/crctime, crctime)
+                return (bspeed,cspeed, tspeed)
     else: # do just plain nothing if no output file is specified
 
         for ii in range(count):
-            block=inputf.read(blocksize)
+            block = inputf.read(blocksize)
 
         inputf.close()
         status = 0

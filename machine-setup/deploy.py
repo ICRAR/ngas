@@ -733,7 +733,7 @@ def test_deploy():
     test_env()
     # set environment to default for EC2, if not specified otherwise.
     set_env()
-    system_install()
+    system_install_f()
     if env.postfix:
         postfix_config()
     user_setup()

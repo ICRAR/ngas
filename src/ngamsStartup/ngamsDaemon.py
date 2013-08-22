@@ -32,7 +32,7 @@ else:
     HOME = os.environ['HOME']
     NGAMS_ARGS = [
                   '%s/ngas_rt/bin/ngamsServer' % HOME,
-                  '-cfg', '%s/ngas_rt/cfg/NgamsCfg.SQLite.mini.xml' % HOME,
+                  '-cfg', '%s/NGAS/cfg/ngamsServer.conf' % HOME,
                   '-force',
                   '-autoOnline',
                   '-multiplesrvs',
