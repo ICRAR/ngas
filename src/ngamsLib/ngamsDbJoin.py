@@ -133,7 +133,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                         diskId = None,
                         ignore = None,
                         ing_date = None,
-                        max_num_records = None):
+                        max_num_records = None,
+                        upto_ing_date = None):
         """
         Return summary information about files. An NG/AMS DB Cursor Object
         is created, which can be used to query the information sequentially.
@@ -175,6 +176,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         if (fileIds != []):
             sqlQuery += " AND nf.file_id IN (" + str(fileIds)[1:-1] + ")"
         if (ing_date): sqlQuery += " AND nf.ingestion_date > '" + ing_date + "'"
+        if (upto_ing_date): sqlQuery += " AND nf.ingestion_date < '" + upto_ing_date + "'"
         sqlQuery += " ORDER BY nf.ingestion_date"
         if (max_num_records): sqlQuery += " LIMIT %d" % max_num_records
 

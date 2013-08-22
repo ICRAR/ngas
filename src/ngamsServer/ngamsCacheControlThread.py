@@ -474,12 +474,12 @@ def addEntryInCacheDbms(srvObj,
     T = TRACE()
 
     # Insert entry in the local DBMS (if not already there).
+    timeNow = time.time()
     if (not entryInCacheDbms(srvObj, diskId, fileId, fileVersion)):
         if (delete):
             delete = 1
         else:
             delete = 0
-        timeNow = time.time()
         cacheEntryObjPickle = cPickle.dumps(cacheEntryObj)
         # Have to encode the pickled object to be able to write it in the
         # DB table.
