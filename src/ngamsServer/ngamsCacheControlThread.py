@@ -1135,6 +1135,12 @@ def checkCacheContents(srvObj):
             cacheSum = 0
         else:
             cacheSum = int(cacheSum)
+        
+        msg = "Current size of cache: %.3f GB, " +\
+                  "Maximum cache size: %.3f GB"
+        info(3, msg % ((float(cacheSum) / 1e9),
+                           (float(maxCacheSize) / 1e9)))
+        
         if (cacheSum > maxCacheSize):
             msg = "Current size of cache: %.6f MB exceeding specified " +\
                   "threshold: %.6f MB"
