@@ -65,6 +65,7 @@ YUM_PACKAGES = [
    'postfix',
    'openssl-devel.x86_64',
    'wget.x86_64',
+   'postgresql-devel.x86_64',
 ]
 
 APT_PACKAGES = [
@@ -77,6 +78,7 @@ APT_PACKAGES = [
         'sqlite3',
         'libsqlite3-dev',
         'libdb5.1-dev',
+        'postgresql-client',
         ]
 
 
