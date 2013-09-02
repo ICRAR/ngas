@@ -81,6 +81,7 @@ typedef enum {
     ngamsCMD_LABEL,
     ngamsCMD_ONLINE,
     ngamsCMD_OFFLINE,
+    ngamsCMD_PARCHIVE,
     ngamsCMD_QARCHIVE,
     ngamsCMD_REGISTER,
     ngamsCMD_REMDISK,
@@ -99,6 +100,7 @@ typedef enum {
 #define ngamsCMD_LABEL_STR        "LABEL"
 #define ngamsCMD_ONLINE_STR       "ONLINE"
 #define ngamsCMD_OFFLINE_STR      "OFFLINE"
+#define ngamsCMD_PARCHIVE_STR	  "PARCHIVE"
 #define ngamsCMD_QARCHIVE_STR     "QARCHIVE"
 #define ngamsCMD_REGISTER_STR     "REGISTER"
 #define ngamsCMD_REMDISK_STR      "REMDISK"
@@ -107,6 +109,7 @@ typedef enum {
 #define ngamsCMD_STATUS_STR       "STATUS"
 #define ngamsCMD_SUBSCRIBE_STR    "SUBSCRIBE"
 #define ngamsCMD_UNSUBSCRIBE_STR  "UNSUBSCRIBE"
+
 
 
 /* Return status
@@ -273,6 +276,10 @@ ngamsSTAT ngamsQArchive(const char*      host,
 		       const int        noVersioning,
                        const int        wait,
                        ngamsSTATUS*     status);
+
+ngamsSTAT ngamsPArchive(const char* host, const int port, const float timeoutSecs, const char* fileUri, const char* mimeType, const int noVersioning,
+		const int wait, const char* nexturl, ngamsSTATUS* status);
+
 
 ngamsSTAT ngamsArchiveFromMem(const char*   host,
 			      const int     port,

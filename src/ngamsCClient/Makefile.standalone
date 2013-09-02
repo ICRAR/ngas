@@ -39,7 +39,7 @@ ifneq ($(INSTROOT),)
 	PREFIX=$(INSTROOT)
 else
 	#PREFIX=/opsw/packages
-	echo "please specify prefix installation directory"
+	#echo "please specify prefix installation directory"
 endif
 ifneq ($(INTROOT),)
 	PREFIX=$(INTROOT)
@@ -56,7 +56,7 @@ INCDIR=$(PREFIX)/include
 CC = gcc
 
 # Compile flags
-CDEBUGFLAGS = -ansi -Wall -fPIC -g -DDEBUG -O -ansi
+CDEBUGFLAGS = -std=c99 -Wall -fPIC -g -DDEBUG -O
 #-Bstatic
 #-O -Wmissing-prototypes -Wall -ansi -pedantic
 
