@@ -28,6 +28,9 @@
 
 """
 This module pushes important Cortex files to Pawsey in a semi-automated fashion
+usage:
+
+nohup python ngamsMWA_Pawsey_PushFiles.py -s 146.118.84.64 -p 7777 -m cortex.ivec.org:7781 > ~/MWA_HSM/test/pushfile.log &
 """
 from optparse import OptionParser
 
@@ -288,7 +291,7 @@ def main():
             print "Something wrong while sending async retrieve request for obsNum %s, %s" % (obsNum, str(uerr))
             continue
         markAsncSentStatus(obsNum)
-        waitForNextObs(obsNum, statusUrl, sessionId, 600) # maximum wait time 10 min, then go for the next observation
+        waitForNextObs(obsNum, statusUrl, sessionId, 900) # maximum wait time 15 min, then go for the next observation
 
 if __name__ == "__main__":
     main()
