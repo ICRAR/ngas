@@ -29,6 +29,19 @@ import sys, datetime
 from calendar import monthrange
 import getpass
 
+def _construct_drange(self):
+    """
+    Helper method to construct the date range for the Weekly mode.
+    """
+    dt = self.start_date # initialise the loop
+    for ii in range(self.loop):
+        delt=datetime.timedelta(days=(7-dt.weekday()))
+        de=dt+delt
+        if de.year > dt.year:
+            de=datetime.datetime.strptime('{0}-12-31'.format(dt.year),'%Y-%m-%d')
+        self.drange.append([dt.strftime("'%Y-%m-%dT00:00:00.000'"),de.strftime("'%Y-%m-%dT00:00:00.000'")])
+        dt=de
+
 class throughputPlot():
     """
     Class encapsulates the DB query and preparation of the ingest
@@ -38,7 +51,7 @@ class throughputPlot():
     """
     def __init__(self, args):
 
-        self.DB = {'ICRAR':'192.102.251.250', 'MIT':'eor-02.mit.edu'}
+        self.DB = {'ICRAR':'146.118.87.250', 'MIT':'eor-02.mit.edu'}
         self.mode = []
         self.y = []
         self.n = []
@@ -114,20 +127,6 @@ class throughputPlot():
         return
 
 
-def _construct_drange(self):
-    """
-    Helper method to construct the date range for the Weekly mode.
-    """
-    dt = self.start_date # initialise the loop
-    for ii in range(self.loop):
-        delt=datetime.timedelta(days=(7-dt.weekday()))
-        de=dt+delt
-        if de.year > dt.year:
-            de=datetime.datetime.strptime('{0}-12-31'.format(dt.year),'%Y-%m-%d')
-        self.drange.append([dt.strftime("'%Y-%m-%dT00:00:00.000'"),de.strftime("'%Y-%m-%dT00:00:00.000'")])
-        dt=de
-
-
     def queryDb(self):
         """
         Execute the DB queries for a month or 24 hours depending on self.mode.
@@ -149,7 +148,7 @@ def _construct_drange(self):
                 t=dbpass
             except NameError:
                 dbpass = getpass.getpass('%s DB password: ' % self.db)
-            dbconn=dbdrv.connect(database="ngas", user="ngas",password=dbpass,host=self.DB[self.db])
+            dbconn=dbdrv.connect(database="ngas", user="ngas_ro",password=dbpass,host=self.DB[self.db])
         else:
             import sqlite3 as dbdrv
             hsql="""select count(file_id),
