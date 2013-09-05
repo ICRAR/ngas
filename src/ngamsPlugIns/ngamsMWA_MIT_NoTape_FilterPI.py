@@ -40,47 +40,13 @@ import ngamsPClient
 import ngamsMWACortexTapeApi
 import pccFits.PccSimpleFitsReader as fitsapi
 
-import psycopg2 # used to connect to MWA M&C database
-
 g_db_conn = None # MWA metadata database connection
 
 #eor_list = ["'G0001'", "'G0004'", "'G0009'", "'G0008'", "'G0010'"] # EOR scientists are only interested in these projects
 eor_list = [] # this has become a parameter of the plug-in
 proj_separator = '___'
 
-def getMWADBConn():
-    global g_db_conn
-    if (g_db_conn and (not g_db_conn.closed)):
-        return g_db_conn
-    try:        
-        g_db_conn = psycopg2.connect(database = 'mwa', user = 'mwa', 
-                            password = 'Qm93VGll\n'.decode('base64'), 
-                            host = 'ngas01.ivec.org')
-        return g_db_conn 
-    except Exception, e:
-        errStr = 'Cannot create MWA DB Connection: %s' % str(e)
-        raise Exception, errStr
-
-def executeQuery(conn, sqlQuery):
-    try:
-        cur = conn.cursor()
-        cur.execute(sqlQuery)
-        return cur.fetchall()
-    finally:
-        if (cur):
-            del cur
-            
-def getProjectIdFromMWADB(fileId):
-    conn = getMWADBConn()
-    sqlQuery = "SELECT projectid FROM mwa_setting WHERE starttime = %s" % (fileId.split('_')[0])
-    res = executeQuery(conn, sqlQuery)
-    
-    for re in res:
-        return re[0]
-    
-    return None
-
-def ngamsMWA_MIT_FilterPlugin(srvObj,
+def ngamsMWA_MIT_NoTape_FilterPI(srvObj,
                           plugInPars,
                           filename,
                           fileId,
@@ -108,25 +74,9 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
     projectId = ''
     onTape = 0
     
-    try:
-        onTape = ngamsMWACortexTapeApi.isFileOnTape(filename)
-        if (onTape == 1 or onTape == -1):
-            # if the file is on Tape or query error, ignore it, otherwise Tape staging will block all other threads!!
-            info(3, 'File %s appears on Tape, connect to MWA DB to check' % filename)
-            projId = getProjectIdFromMWADB(fileId)
-            if (not projId):
-                alert('Cannot get project id from MWA DB for file %s' % fileId)
-                return 0
-            else:
-                projectId = "'%s'" % projId # add single quote to be consistent with FITS header keywords 
-            #TODO need to do either of the following:
-            # 1. query the MWA database to get the project id, but this will throw the problem to the later _deliveryThread
-            # 2. put this filename into a server queue, later on push them all together in another process
-        #keyDic  = ngamsPlugInApi.getFitsKeys(filename, ["PROJID"])
-        #projectId = keyDic["PROJID"][0]
-        else:
-            fh = fitsapi.getFitsHdrs(filename)
-            projectId = fh[0]['PROJID'][0][1]
+    try:        
+        fh = fitsapi.getFitsHdrs(filename)
+        projectId = fh[0]['PROJID'][0][1]
         
     except:
         err = "Did not find keyword PROJID in FITS file or PROJID illegal"
@@ -194,11 +144,6 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
         match = 1
     
     #info(4, "filter match = " + str(match))    
-    if (1 == onTape and 1 == match):
-        info(3, "File " + filename + " is currently on tapes, staging it for delivery...")
-        cmd = "stage -w " + filename
-        t = ngamsPlugInApi.execCmd(cmd, -1) #stage it back to disk cache
-        info(3, "File " + filename + " staging completed for delivery.")
     
     return match    
 

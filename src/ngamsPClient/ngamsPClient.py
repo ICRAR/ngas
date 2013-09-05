@@ -656,7 +656,7 @@ class ngamsPClient:
         else:
             timeout = "-1"
         httpPars = []
-        for par in pars: httpPars.append(pars)
+        for par in pars: httpPars.append(par)
         httpPars += [["attachment; filename", os.path.basename(fileUri)],
                      ["wait", str(wait)], ["no_versioning", str(noVersioning)],
                      ["time_out", timeout]]

@@ -18,6 +18,7 @@
                            ARCHIVE:       Archive a file.
                            CARCHIVE:      Archive a directory.
                            QARCHIVE:      Quick Archive a file.
+                           PARCHIVE:      Archive a file via a Proxy NGAS
                            CACHEDEL:      Schedule a file for deletion in an
                                           NGAS Cache Archive.
                            CLONE:         Clone a file or a set of file.
@@ -162,6 +163,9 @@
 
 -url <URL>:              URL. Used for the SUBSCRIBE command to indicate
                          to where NG/AMS should deliver data subscribed for.
+                         
+-nexturl <URL>:          Used with the PARCHIVE command to specify the next
+                         destination where the file will be archived
 
 
 The parameter combinations valid for each command are:
@@ -219,4 +223,4 @@ SUBSCRIBE:               [-url <URL> [-priority <Prio>]
 UNSUBSCRIBE:             [-url <URL>] | [<Generic Par Array>]
 
 
-(c) ALMA - NGAS Project - http://www.eso.org/projects/ngas
+(c) ALMA - NGAS Project - http://www.eso.org/projects/ngas - Enhanced at ICRAR for the MWA GLEAM project

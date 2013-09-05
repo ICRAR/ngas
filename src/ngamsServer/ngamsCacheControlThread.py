@@ -474,12 +474,12 @@ def addEntryInCacheDbms(srvObj,
     T = TRACE()
 
     # Insert entry in the local DBMS (if not already there).
+    timeNow = time.time()
     if (not entryInCacheDbms(srvObj, diskId, fileId, fileVersion)):
         if (delete):
             delete = 1
         else:
             delete = 0
-        timeNow = time.time()
         cacheEntryObjPickle = cPickle.dumps(cacheEntryObj)
         # Have to encode the pickled object to be able to write it in the
         # DB table.
@@ -1135,6 +1135,12 @@ def checkCacheContents(srvObj):
             cacheSum = 0
         else:
             cacheSum = int(cacheSum)
+        
+        msg = "Current size of cache: %.3f GB, " +\
+                  "Maximum cache size: %.3f GB"
+        info(3, msg % ((float(cacheSum) / 1e9),
+                           (float(maxCacheSize) / 1e9)))
+        
         if (cacheSum > maxCacheSize):
             msg = "Current size of cache: %.6f MB exceeding specified " +\
                   "threshold: %.6f MB"

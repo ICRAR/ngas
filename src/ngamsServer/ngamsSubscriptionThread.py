@@ -92,7 +92,7 @@ def stopSubscriptionThread(srvObj):
     srvObj._subscriptionStopSyncConf.wait(10)
     srvObj._subscriptionStopSync.clear()
     srvObj._subscriptionThread = None
-    _backupQueueToBacklog(srvObj) # this should always occur after srvObj._deliveryStopSync.set() is called
+    #_backupQueueToBacklog(srvObj) # this is too time-consuming. No need any more, since the thread will trigger all subscribers when it is just started
     info(3,"Subscription Thread stopped")
 
 
@@ -830,6 +830,9 @@ def subscriptionThread(srvObj,
     fileDeliveryCountDic = srvObj._subscrFileCountDic
     fileDeliveryCountDic_Sem = srvObj._subscrFileCountDic_Sem
     
+    # trigger all subscribers, so it can go ahead checking files when the server/subscriptionThread is just started
+    srvObj.addSubscriptionInfo([], srvObj.getSubscriberDic().values()).triggerSubscriptionThread()
+    
     while (1):
         # Incapsulate this whole block to avoid that the thread dies in
         # case a problem occurs, like e.g. a problem with the DB connection.
@@ -905,7 +908,19 @@ def subscriptionThread(srvObj,
                     else:
                         info(3, 'Data mover %s will examine %d files for delivery' % (subscrId, count))
             elif (subscrObjs != []):
-                cursorObj = srvObj.getDb().getFileSummary2(getHostId())
+                min_date = None # the "earliest" last_ingestion_date or start_date amongst all explicitly referenced subscribers.
+                # The min_date is used to exclude files that have been delivered (<= min_date) during previous NGAS sessions
+                for subscriber in subscrObjs:
+                    myMinDate = subscriber.getStartDate()
+                    
+                    myIngDate = subscriber.getLastFileIngDate()                                                            
+                    if (myIngDate and '1970-01-01' != myIngDate.split('T')[0]):
+                        myMinDate = myIngDate                        
+                        
+                    if (not min_date or min_date > myMinDate):
+                        min_date = myMinDate                    
+                            
+                cursorObj = srvObj.getDb().getFileSummary2(getHostId(), ing_date = min_date)
                 while (1):
                     fileList = cursorObj.fetch(100)
                     if (fileList == []): break

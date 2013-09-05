@@ -813,6 +813,56 @@ ngamsSTAT ngamsQArchive(const char* host, const int port, const float timeoutSec
 	return stat;
 }
 
+/**
+ ngamsSTAT ngamsPArchive(const char*         host,
+ const int           port,
+ const float         timeoutSecs,
+ const char*         fileUri,
+ const char*         mimeType,
+ const int           noVersioning,
+ const int           wait,
+ ngamsSTATUS*        status)
+ Quick Archive a file into the NGAS Archive.
+
+ fileUri:      Reference name for the file to archive.
+
+ mimeType:     The mime-type of the file to archive. In some cases
+ it is not possible for NG/AMS to determine the mime-type
+ of a data file to be archived, e.g. when the file being is
+ archived is RETRIEVEd from another NGAS Host. For efficiency
+ it is thus better to indicate the mime-type to enable
+ NG/AMS to store the file directly on the target disk.
+ If not use this can be put to "".
+
+ noVersioning: If set to 1 no new File Version will be generated for
+ the file being archived even though a file with that
+ File ID was already existing.
+
+ Returns:      Execution status (ngamsSTAT_SUCCESS|ngamsSTAT_FAILURE).
+ */
+ngamsSTAT ngamsPArchive(const char* host, const int port, const float timeoutSecs, const char* fileUri, const char* mimeType, const int noVersioning,
+		const int wait, const char* nexturl, ngamsSTATUS* status) {
+	int stat;
+	ngamsMED_BUF tmpBuf;
+	ngamsPAR_ARRAY parArray;
+
+	ngamsLogDebug("Entering ngamsQArchive() ...");
+	ngamsResetParArray(&parArray);
+	sprintf(tmpBuf, "%d", noVersioning);
+	ngamsAddParAndVal(&parArray, "no_versioning", tmpBuf);
+	sprintf(tmpBuf, "%d", wait);
+	ngamsAddParAndVal(&parArray, "wait", tmpBuf);
+	if (timeoutSecs != -1)
+		sprintf(tmpBuf, "%d", (int)(timeoutSecs + 0.5));
+	else
+		sprintf(tmpBuf, "-1");
+	ngamsAddParAndVal(&parArray, "time_out", tmpBuf);
+	ngamsAddParAndVal(&parArray, "nexturl", nexturl);
+	stat = ngamsGenSendData(host, port, ngamsCMD_PARCHIVE, timeoutSecs, fileUri, mimeType, &parArray, status);
+	ngamsLogDebug("Leaving ngamsQArchive()");
+	return stat;
+}
+
 
 
 /**
@@ -3748,6 +3798,8 @@ ngamsSTAT ngamsCmd2No(const ngamsSMALL_BUF cmdStr, ngamsCMD* cmdCode) {
 		*cmdCode = ngamsCMD_QARCHIVE;
 	else if (strcmp(cmdStr, ngamsCMD_CHECKFILE_STR) == 0)
 		*cmdCode = ngamsCMD_CHECKFILE;
+	else if (strcmp(cmdStr, ngamsCMD_PARCHIVE_STR) == 0)
+		*cmdCode = ngamsCMD_PARCHIVE;
 	else if (strcmp(cmdStr, ngamsCMD_CLONE_STR) == 0)
 		*cmdCode = ngamsCMD_CLONE;
 	else if (strcmp(cmdStr, ngamsCMD_DISCARD_STR) == 0)
@@ -3801,6 +3853,9 @@ ngamsSTAT ngamsCmd2Str(const ngamsCMD cmdCode, ngamsSMALL_BUF cmdStr) {
 			break;
 		case ngamsCMD_QARCHIVE:
 			strcpy(cmdStr, ngamsCMD_QARCHIVE_STR);
+			break;
+		case ngamsCMD_PARCHIVE:
+			strcpy(cmdStr, ngamsCMD_PARCHIVE_STR);
 			break;
 		case ngamsCMD_CHECKFILE:
 			strcpy(cmdStr, ngamsCMD_CHECKFILE_STR);
