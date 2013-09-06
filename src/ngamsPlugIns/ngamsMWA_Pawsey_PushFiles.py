@@ -47,12 +47,15 @@ import ngamsPClient
 import ngamsMWACortexTapeApi
 
 from ngamsMWAAsyncProtocol import *
+import logging
 
 mime_type = 'application/octet-stream'
 proxy_archive = 'storage01.icrar.org:7777'
 
 g_db_conn = None # MWA metadata database connection
 l_db_conn = None
+
+logger = logging.getLogger(__name__)
 
 def getMWADBConn():
     global g_db_conn
@@ -109,7 +112,12 @@ def getFileIdsByObsNum(obs_num):
     Return:         file_list
     """
     sqlQuery = "SELECT filename FROM data_files WHERE observation_num = '%s' ORDER BY SUBSTRING(filename, 27);" % str(obs_num)
-    mwa_conn = getMWADBConn()
+    try:
+        mwa_conn = getMWADBConn()
+    except Exception, eee:
+        logger.error("MWA database connection error: %s" % str(eee))
+        exit(1)
+        
     res = executeQuery(mwa_conn, sqlQuery)
     
     retList = []
@@ -118,12 +126,20 @@ def getFileIdsByObsNum(obs_num):
         retList.append(fileId)
     return retList
 
-def getUnprocessedObs():
+def getUnprocessedObs(isGleam = False):
     """
     Get all observation numbers that have not been processed (to be delivered
     """
-    sqlQuery = "SELECT obs_id FROM ngas_migration WHERE async_sent = 0 ORDER BY obs_id DESC"
-    lta_conn = getLTADBConn()
+    if (isGleam):
+        sqlQuery = "SELECT DISTINCT(substring(file_id, 0, 11)) myfield from ngas_files, ngas_gleam where ngas_files.file_version = 1 and substring(ngas_files.file_id, 0, 11) = ngas_gleam.obs_id and ngas_files.disk_id <> '01f54315bb54e7a5901f04fcae8168fc' and ngas_files.disk_id <> '1a1b0dcc261ed79a471035a0e3211fde' and ngas_gleam.async_sent = 0 order by myfield"
+    else:
+        sqlQuery = "SELECT obs_id FROM ngas_migration WHERE async_sent = 0 ORDER BY obs_id DESC"
+    try:
+        lta_conn = getLTADBConn()
+    except Exception, eee:
+        logger.error("NGAS database connection error: %s" % str(eee))
+        exit(1)
+        
     res = executeQuery(lta_conn, sqlQuery)
     
     retList = []
@@ -132,20 +148,37 @@ def getUnprocessedObs():
         retList.append(obsId)
     return retList
 
-def markObsDeliveredStatus(obsId, status = 1):
+def hasFilesInCortex(obsNum):
+    """
+    
+    """
+    sqlQuery = "SELECT COUNT(*) FROM ngas_files where file_id like '%s%%'" % obsNum
+    lta_conn = getLTADBConn()
+    res = executeQuery(lta_conn, sqlQuery)
+    
+    for re in res:
+        return int(re[0])
+
+def markObsDeliveredStatus(obsId, status = 1, isGleam = False):
     """
     mark an observation as delivered
     """
-    sqlQuery = "UPDATE ngas_migration SET delivered = %d WHERE obs_id = '%s'" % (status, obsId)
+    tblname = 'ngas_migration'
+    if (isGleam):
+        tblname = 'ngas_gleam'
+    sqlQuery = "UPDATE %s SET delivered = %d WHERE obs_id = '%s'" % (tblname, status, obsId)
     lta_conn = getLTADBConn()
     updateQuery(lta_conn, sqlQuery)
     
-def markAsncSentStatus(obsId, status = 1):
+def markAsncSentStatus(obsId, status = 1, isGleam = False):
     """
     mark an observation as "async retrieve request sent"
     
     """
-    sqlQuery = "UPDATE ngas_migration SET async_sent = %d WHERE obs_id = '%s'" % (status, obsId)
+    tblname = 'ngas_migration'
+    if (isGleam):
+        tblname = 'ngas_gleam'
+    sqlQuery = "UPDATE %s SET async_sent = %d WHERE obs_id = '%s'" % (tblname, status, obsId)
     lta_conn = getLTADBConn()
     updateQuery(lta_conn, sqlQuery)
 
@@ -177,8 +210,7 @@ def parseOptions():
     #parser.add_option("-u", "--pushurl", dest = "push_url", help = "the url to which we push files")
     parser.add_option("-s", "--host", dest = "push_host", help = "the host that will receive the file")
     parser.add_option("-p", "--port", dest = "port", help = "the port of this host")
-    parser.add_option("-m", "--dm", dest = "data_mover", help = "the url of the data mover")
-    
+    parser.add_option("-m", "--dm", dest = "data_mover", help = "the url of the data mover")    
 
     (options, args) = parser.parse_args()
     if (None == options.push_host or None == options.port or None == options.data_mover):
@@ -193,7 +225,7 @@ def hasPawseyGotIt(client, fileId):
     except Exception, e:
         errMsg = "Error occurred during checking remote file status " +\
                      "Exception: " + str(e)
-        print(errMsg)
+        logger.error(errMsg)
         return 0 # matched as if the filter does not exist
     
     if (rest.getStatus().find(NGAMS_FAILURE) != -1):
@@ -222,7 +254,7 @@ def getPushURL(hostId, gateway = None):
     else:
         return 'http://%s/QARCHIVE' % hostId
 
-def waitForNextObs(obsNum, statusUrl, sessionId, maxWaitTime, checkInterval = 60):
+def waitForNextObs(obsNum, statusUrl, sessionId, maxWaitTime, checkInterval = 60, isgleam = False):
     max_time = 0
     while (max_time <= maxWaitTime):
         time.sleep(checkInterval)
@@ -233,24 +265,33 @@ def waitForNextObs(obsNum, statusUrl, sessionId, maxWaitTime, checkInterval = 60
             myRes = pickle.loads(strRes)
             if (0 == myRes.number_files_to_be_delivered):
                 # modify database
-                markObsDeliveredStatus(obsNum)
+                markObsDeliveredStatus(obsNum, isGleam = isgleam)
                 break
             elif (myRes.errorcode):
-                markObsDeliveredStatus(obsNum, -1)
+                markObsDeliveredStatus(obsNum, -1, isGleam = isgleam)
                 break
         except (UnpicklingError, socket.timeout) as uerr:
-            print "Something wrong while getting status for obsNum %s, %s" % (obsNum, str(uerr))
+            logger.error("Something wrong while getting status for obsNum %s, %s" % (obsNum, str(uerr)))
             continue
         
 
 def main():
+    gleam = False
+    FORMAT = "%(asctime)-15s - %(name)s - %(levelname)s - %(message)s"
+    logname = '/home/chenwu/MWA_HSM/test/push_migration_ngas.log'
+    if (gleam):
+        logname = '/home/chenwu/MWA_HSM/test/push_gleam_ngas.log'
+    logging.basicConfig(filename=logname, level=logging.DEBUG, format = FORMAT)
+    logger.info('Migration Started.......')
+    
     opts = parseOptions()
     if (not opts):
         exit(1)
     #pushUrl = opts.push_url
-    obsList = getUnprocessedObs() #opts.obs_list.split(',')
+    obsList = getUnprocessedObs(isGleam = gleam) #opts.obs_list.split(',')
     host = opts.push_host
     port = int(opts.port)
+    
     
     client = ngamsPClient.ngamsPClient(host, port, timeOut = NGAMS_SOCK_TIMEOUT_DEF)
     
@@ -259,39 +300,48 @@ def main():
     statusUrl = 'http://%s/ASYNCLISTRETRIEVE?cmd=status&uuid=' % opts.data_mover
     
     for obsNum in obsList:
-        print "Checking observation: %s" % obsNum
+        logger.info("First check if files at Cortex at all")
+        if (not hasFilesInCortex(obsNum)):
+            markAsncSentStatus(obsNum, isGleam = gleam)
+            continue
+        logger.info("Checking observation: %s" % obsNum)
         files = getFileIdsByObsNum(obsNum)
         deliverFileIds = []
         for fileId in files:
             # first check if MIT has it or not
             if (not hasPawseyGotIt(client, fileId)):
                 deliverFileIds.append(fileId)
+                logger.debug('Add file %s for obsNum: %s' % (fileId, obsNum))
             else:
-                print "\tFile %s is already at Pawsey. Skip it." % fileId
-            
+                logger.info("\tFile %s is already at Pawsey. Skip it." % fileId)
+        
+        if (len(deliverFileIds) == 0):
+            logger.info('All files for obsnum %s have already in Pawsey. Move to the next observation' % obsNum)
+            markAsncSentStatus(obsNum, isGleam = gleam)
+            continue  
         myReq = AsyncListRetrieveRequest(deliverFileIds, toUrl)
         strReq = pickle.dumps(myReq)
         sessionId = None
         try:
-            print "Sending async retrieve request to the data mover %s" % opts.data_mover
+            logger.info("Sending async retrieve request to the data mover %s" % opts.data_mover)
             strRes = urllib2.urlopen(stageUrl, data = strReq, timeout = NGAMS_SOCK_TIMEOUT_DEF).read() 
             myRes = pickle.loads(strRes)
             if (myRes):
                 errCode = myRes.errorcode
                 if (errCode):
-                    print 'Fail to send async retrieve for obs %s, errorCode = %d' % (obsNum, errCode)
+                    logger.error('Fail to send async retrieve for obs %s, errorCode = %d' % (obsNum, errCode))
                     continue
                 else:
                     sessionId = myRes.session_uuid
-                    print 'session uuid = %s' % sessionId
+                    logger.info('session uuid = %s' % sessionId)
             else:
-                print 'Response is None when async staging files for obsNum %s' % obsNum
+                logger.error('Response is None when async staging files for obsNum %s' % obsNum)
                 continue
         except (UnpicklingError, socket.timeout) as uerr:
-            print "Something wrong while sending async retrieve request for obsNum %s, %s" % (obsNum, str(uerr))
+            logger.error("Something wrong while sending async retrieve request for obsNum %s, %s" % (obsNum, str(uerr)))
             continue
-        markAsncSentStatus(obsNum)
-        waitForNextObs(obsNum, statusUrl, sessionId, 900) # maximum wait time 15 min, then go for the next observation
+        markAsncSentStatus(obsNum, isGleam = gleam)
+        waitForNextObs(obsNum, statusUrl, sessionId, 600, isgleam = gleam) # maximum wait time 10 min, then go for the next observation
 
 if __name__ == "__main__":
     main()
