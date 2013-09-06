@@ -731,6 +731,7 @@ def _deliveryThread(srvObj,
                 # Update the Subscriber Status to avoid that this file
                 # gets delivered again.
                 try:
+                    subscrObj.setLastFileIngDate(fileIngDate)
                     srvObj.getDb().updateSubscrStatus(subscrObj.getId(), fileIngDate)
                 except Exception, e:
                     # continue with warning message. this means the database (i.e. last_ingestion_date) is not synchronised for this file, 
@@ -1034,7 +1035,7 @@ def subscriptionThread(srvObj,
             if (dataMoverOnly):
                 for subscrId in srvObj.getSubscriberDic().keys():
                     subscrObj = srvObj.getSubscriberDic()[subscrId]
-                    info(3, 'Checking files for data mover %s' % subscrObj)
+                    info(3, 'Checking files for data mover %s' % subscrId)
                     for fileKey in fileDicDbm.keys():
                         fileInfo = fileDicDbm.get(fileKey)
                         _checkIfDeliverFile(srvObj, subscrObj, fileInfo,
