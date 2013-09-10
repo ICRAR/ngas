@@ -40,17 +40,21 @@ import pcc
 from   ngams import *
 import ngamsServer
 
-
-if __name__ == '__main__':
-    """
-    Main function instatiating the NG/AMS Server Class and starting the server.
-    """
+def main():
+    "Wrapper as an entry-point"
     T = TRACE()
 
     ngamsSrv = ngamsServer.ngamsServer()
     ngamsSrv._cacheArchive = True
     ngamsSrv._serverName   = "ngamsCacheServer"
     ngamsSrv.init(sys.argv)
+
+
+if __name__ == '__main__':
+    """
+    Main function instatiating the NG/AMS Server Class and starting the server.
+    """
+    main()
 
 
 # EOF
