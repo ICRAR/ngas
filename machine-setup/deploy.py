@@ -642,8 +642,21 @@ def test_env():
         'ngas' : host_names,
     }
 
+def initName(type='archive'):
+    """
+    Helper function to set the name of the link to the config file.
+    """
+    if type == 'archive':
+        initFile = 'ngamsServer.init.sh'
+        NGAS_DEF_CFG = 'NgamsCfg.SQLite.mini.xml'
+    elif type == 'cache':
+        initFile = 'ngamsCache.init.sh'
+        NGAS_DEF_CFG = 'NgamsCfg.SQLite.cache.xml'
+    return initFile.split('.')[0]
+
+
 @task
-def user_deploy():
+def user_deploy(type='archive'):
     """
     Deploy the system as a normal user without sudo access
     """
@@ -656,8 +669,8 @@ def user_deploy():
     virtualenv_setup()
     ngas_full_buildout()
     with cd(env.NGAS_DIR_ABS):
-        sudo('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}.conf'.format(\
-              env.NGAS_DIR_ABS, NGAS_DEF_CFG, initName))
+        run('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}.conf'.format(\
+              env.NGAS_DIR_ABS, NGAS_DEF_CFG, initName(type=type)))
     print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 
@@ -666,24 +679,18 @@ def init_deploy(type='archive'):
     """
     Install the NGAS init script for an operational deployment
     """
-    if type == 'archive':
-        initFile = 'ngamsServer.init.sh'
-        NGAS_DEF_CFG = 'NgamsCfg.SQLite.mini.xml'
-    elif type == 'cache':
-        initFile = 'ngamsCache.init.sh'
-        NGAS_DEF_CFG = 'NgamsCfg.SQLite.cache.xml'
-    initName = initFile.split('.')[0]
+    confName = initName(type=type)
 
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
         env.NGAS_DIR_ABS = '{0}/{1}'.format('/home/ngas', NGAS_DIR)
 
     sudo('cp {0}/src/ngamsStartup/{1} /etc/init.d/{2}'.\
-         format(env.NGAS_DIR_ABS, initFile, initName))
-    sudo('chmod a+x /etc/init.d/{0}'.format(initName))
-    sudo('chkconfig --add /etc/init.d/{0}'.format(initName))
+         format(env.NGAS_DIR_ABS, initFile, confName))
+    sudo('chmod a+x /etc/init.d/{0}'.format(confName))
+    sudo('chkconfig --add /etc/init.d/{0}'.format(confName))
     with cd(env.NGAS_DIR_ABS):
         sudo('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}.conf'.format(\
-              env.NGAS_DIR_ABS, NGAS_DEF_CFG, initName))
+              env.NGAS_DIR_ABS, NGAS_DEF_CFG, confName))
 
 
 @task
