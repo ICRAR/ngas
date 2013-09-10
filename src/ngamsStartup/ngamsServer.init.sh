@@ -18,8 +18,7 @@ case "$1" in
   start)
 #       echo -n "Starting ngamsServer: "
 
-#       daemon --user ngas "/home/ngas/ngas_rt/bin/ngamsServer -cfg /home/ngas/ngas_rt/cfg/ngamsServer.conf -autoOnline -force"
-        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsServer -cfg /home/ngas/ngas_rt/cfg/ngamsServer.conf -autoOnline -force -multiplesrvs&"
+        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsDaemon start"
 
         echo "NG/AMS startup"
         [ $RETVAL -eq 0 ] && touch /var/lock/subsys/ngamsServer
@@ -27,8 +26,8 @@ case "$1" in
         ;;
   stop)
 #       echo -n "Stopping ngamsServer: "
-        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsPClient -port 7777 -host $HOSTNAME -status -cmd OFFLINE -force" 1>/dev/null 2>&1
-        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsPClient -port 7777 -host $HOSTNAME -status -cmd EXIT" 1>/dev/null 2>&1
+#        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsDaemon stop" 1>/dev/null 2>&1
+        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsDaemon stop"
         if [[ -e ${NGAMS_PID_FILE} ]]
         then
           NGAMS_PID=$(cat ${NGAMS_PID_FILE})
@@ -42,7 +41,7 @@ case "$1" in
         ;;
   status)
         echo "Status ngamsServer: "
-        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsPClient -port 7777 -host $HOSTNAME -status -cmd STATUS"
+        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsDaemon status"
         RETVAL=$?
         ;;
   restart)
