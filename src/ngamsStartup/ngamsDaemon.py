@@ -100,15 +100,23 @@ def main(args=sys.argv):
     """
     daemon = MyDaemon(PIDFILE,)
 
+    if sys.argv[0] == 'ngamsCacheDaemon': #check how we are called
+        infoStr = 'NGAMS Cache Server'
+        progrStr = 'ngamsCacheServer'
+        NGAMS_ARGS[0] = '%s/ngas_rt/bin/ngamsCacheServer' % HOME
+    else:
+        progrStr = 'ngamsServer'
+        infoStr = 'NGAMS Server'
+
     if len(sys.argv) == 2:
             if 'start' == sys.argv[1]:
-                    ngaslog('INFO', 'NGAMS Server Starting')
+                    ngaslog('INFO', '{0} Starting'.format(infoStr))
                     daemon.start()
             elif 'stop' == sys.argv[1]:
-                    ngaslog('INFO', 'NGAMS Server Stopping')
+                    ngaslog('INFO', '{0} Stopping'.format(infoStr))
                     daemon.stop(cfunc=checkNgasPidFile)
             elif 'restart' == sys.argv[1]:
-                    ngaslog('INFO', 'NGAMS Server Restarting')
+                    ngaslog('INFO', '{0} Restarting'.format(infoStr))
                     daemon.restart(cfunc=checkNgasPidFile)
             elif 'status' == sys.argv[1]:
                     ngaslog('INFO', 'Sending STATUS command')
