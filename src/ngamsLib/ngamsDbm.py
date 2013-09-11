@@ -40,16 +40,22 @@ import sys, os, cPickle, random
 
 from ngams import *
 
+try:
+    import bsddb
+except:
+    try:
+        import bsddb3 as bsddb
+    except:
+        warning('No BSDDB module found! BSDDB based functionality will not work')
+        raise
+
+try:
+    import dbm
+except:
+    warning('dbm module no available! ngamsDbm2 based utilities will not work')
+
 
 class ngamsDbm:
-    try:
-        import bsddb
-    except:
-        try:
-            import bsddb3 as bsddb
-        except:
-            warning('No BSDDB module found! BSDDB based functionality will not work')
-            raise
     """
     Class implementing interface to DBM DB.
     """
@@ -429,11 +435,6 @@ class ngamsDbm2:
     """
     Class implementing interface to DBM DB.
     """
-
-    try:
-        import dbm
-    except:
-        warning('dbm module no available! ngamsDbm2 based utilities will not work')
 
     def __init__(self,
                  dbmName,
