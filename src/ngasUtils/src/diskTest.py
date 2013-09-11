@@ -64,7 +64,7 @@ def usage():
                        one test, i.e. iosize/blocksize IOs will be
                        carried out before calculating statistics.
           [m]ethod:    flag, if set a python implementation of dd
-                       will be used (only for readTest)
+                       will be used.
           [w]rite:     flag, if set writeTest is performed.
           [l]owio:     flag, if set during write test low level I/O
                        will be used.
