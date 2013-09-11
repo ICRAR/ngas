@@ -577,6 +577,7 @@ def ngas_buildout():
 
     with cd(env.NGAS_DIR_ABS):
         virtualenv('buildout')
+        run('ln -s {0}/bin/ngamsDaemon {0}/bin/ngamsCacheDaemon'.format(NGAS_DIR_ABS))
     run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
     with cd('NGAS'):
         with settings(warn_only=True):
