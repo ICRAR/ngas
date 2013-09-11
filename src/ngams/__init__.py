@@ -117,6 +117,8 @@ try:
                __path__[0] + '/../ngamsServer',
                __path__[0] + '/../ngamsTest',
                __path__[0] + '/../pcc',
+               __path__[0] + '/../pcc/pccLog',
+               __path__[0] + '/../pcc/pccUt',
                ]
     path.extend(pathTup)
     __path__.extend(pathTup)
