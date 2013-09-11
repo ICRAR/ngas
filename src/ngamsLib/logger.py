@@ -28,12 +28,16 @@ try:
     hdlr = logging.FileHandler('/var/log/ngasdaemonlogger.log')
 except IOError as e:
     try:
-        # fallback to home directory
-        os.makedirs('%s/var/log' % os.environ['HOME'])
+        # fallback to NGAMS_ROOT or home directory
+        if os.environ.has_key('NGAMS_ROOT'):
+            os.makedirs('%s/var/log' % os.environ['NGAMS_ROOT'])
+        else:
+            os.environ['NGAMS_ROOT'] = '%s/NGAS' % os.environ['HOME']
+            os.makedirs('%s/var/log' % os.environ['NGAMS_ROOT'])
     except OSError:
         pass
-    hdlr = logging.FileHandler('%s/var/log/ngasdaemonlogger.log' % 
-                               os.environ['HOME'])
+    hdlr = logging.FileHandler('%s/var/log/ngasdaemonlogger.log' %
+                               os.environ['NGAMS_ROOT'])
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
@@ -42,7 +46,7 @@ logger.setLevel(logging.INFO)
 class ngaslog:
     """
     Just a simple logging class for the startup daemon.
-    """        
+    """
     def __init__(self, logtype, message):
             self.logtype = logtype
             self.logmessage = message

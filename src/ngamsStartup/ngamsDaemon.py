@@ -26,13 +26,19 @@ from ngamsServer import *
 from logger import ngaslog
 from daemon import Daemon
 
+HOME = os.environ['HOME']
+if os.environ.has_key('NGAMS_ROOT'):
+    NGAMS_ROOT = os.environ['NGAMS_ROOT']
+else:
+    NGAMS_ROOT = '{0}/NGAS'.format(HOME)
+    os.environ['NGAMS_ROOT'] = NGAMS_ROOT
+
 if os.environ.has_key('NGAMS_ARGS'):
     NGAMS_ARGS = os.environ['NGAMS_ARGS']
 else:
-    HOME = os.environ['HOME']
     NGAMS_ARGS = [
                   '%s/ngas_rt/bin/ngamsServer' % HOME,
-                  '-cfg', '%s/NGAS/cfg/ngamsServer.conf' % HOME,
+                  '-cfg', '%s/cfg/ngamsServer.conf' % NGAMS_ROOT,
                   '-force',
                   '-autoOnline',
                   '-multiplesrvs',
@@ -41,10 +47,10 @@ else:
 
 
 
-PIDFILE = '%s/var/run/ngamsDaemon.pid' % HOME
+PIDFILE = '%s/var/run/ngamsDaemon.pid' % NGAMS_ROOT
 try:
-    os.makedirs('{0}/var/run'.format(HOME))
-    os.makedirs('{0}/var/log'.format(HOME))
+    os.makedirs('{0}/var/run'.format(NGAMS_ROOT))
+    os.makedirs('{0}/var/log'.format(NGAMS_ROOT))
 except OSError:
     pass
 
@@ -86,7 +92,7 @@ def checkNgasPidFile(dum):
     """
     with open(PIDFILE, 'r') as f:
         ipid = f.readline().strip()
-    pidfils = glob.glob('%s/NGAS/.NGAS-*' % HOME)
+    pidfils = glob.glob('%s/.NGAS-*' % NGAMS_ROOT)
     for fil in pidfils:
         with open(fil, 'r') as f:
             pid = f.readline().strip()

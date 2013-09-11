@@ -14,11 +14,23 @@ RETVAL=0
 NGAMS_PID_FILE="/home/ngas/ngas_rt/NGAS/.NGAS-"${HOSTNAME}"-7777"
 
 # See how we were called.
+case "$0" in
+  *ngamsServer)
+        NGAMS_DAEMON="ngamsDaemon"
+        ;;
+  *ngamsCacheServer)
+        NGAMS_DAEMON="ngamsCacheDaemon"
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|status|restart}"
+        exit 1
+esac
+
 case "$1" in
   start)
 #       echo -n "Starting ngamsServer: "
 
-        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsDaemon start"
+        su - ngas -c "/home/ngas/ngas_rt/bin/$NGAMS_DAEMON start"
 
         echo "NG/AMS startup"
         [ $RETVAL -eq 0 ] && touch /var/lock/subsys/ngamsServer
@@ -27,7 +39,7 @@ case "$1" in
   stop)
 #       echo -n "Stopping ngamsServer: "
 #        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsDaemon stop" 1>/dev/null 2>&1
-        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsDaemon stop"
+        su - ngas -c "/home/ngas/ngas_rt/bin/$NGAMS_DAEMON stop"
         if [[ -e ${NGAMS_PID_FILE} ]]
         then
           NGAMS_PID=$(cat ${NGAMS_PID_FILE})
@@ -41,7 +53,7 @@ case "$1" in
         ;;
   status)
         echo "Status ngamsServer: "
-        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsDaemon status"
+        su - ngas -c "/home/ngas/ngas_rt/bin/$NGAMS_DAEMON status"
         RETVAL=$?
         ;;
   restart)
