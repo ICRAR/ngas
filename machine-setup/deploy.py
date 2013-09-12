@@ -21,13 +21,33 @@ import boto
 import os
 import time
 
-from fabric.api import run, sudo, put, env, require, local, task
+from fabric.api import put, env, require, local, task
+from fabric.api import run as frun
+from fabric.api import sudo as fsudo
 from fabric.context_managers import cd, hide, settings
 from fabric.contrib.console import confirm
 from fabric.contrib.files import append, sed, comment
 from fabric.decorators import task, serial
 from fabric.operations import prompt
 from fabric.utils import puts, abort, fastprint
+
+FILTER = 'The cray-mpich2 module is now deprecated and will be removed in a future release.\r\r\nPlease use the cray-mpich module.'
+
+def run(*args, **kwargs):
+    with hide('stderr','stdout'):
+        res = frun(*args, **kwargs)
+    res = res.replace(FILTER,'')
+    res = res.replace('\n','')
+    res = res.replace('\r','')
+    return res
+
+def sudo(*args, **kwargs):
+    with hide('stderr','stdout'):
+        res = fsudo(*args, **kwargs)
+    res = res.replace(FILTER, '')
+    res = res.replace('\n','')
+    res = res.replace('\r','')
+    return res
 
 #Defaults
 thisDir = os.path.dirname(os.path.realpath(__file__))
@@ -229,7 +249,7 @@ def check_dir(directory):
     """
     Check existence of remote directory
     """
-    res = run('if [ -d {0} ]; then echo 1; else echo ; fi'.format(directory))
+    res = run("""if [ -d {0} ]; then echo 1; else echo ; fi""".format(directory))
     return res
 
 
@@ -252,7 +272,7 @@ def check_python():
     path to python binary    string, could be empty string
     """
     # Try whether there is already a local python installation for this user
-    ppath = os.path.realpath(env.NGAS_DIR_ABS+'/../python')
+    ppath = env.NGAS_DIR_ABS+'/../python'
     ppath = check_command('{0}/bin/python{1}'.format(ppath, NGAS_PYTHON_VERSION))
     if ppath:
         return ppath
@@ -577,7 +597,6 @@ def ngas_buildout():
 
     with cd(env.NGAS_DIR_ABS):
         virtualenv('buildout')
-        run('ln -s {0}/bin/ngamsDaemon {0}/bin/ngamsCacheDaemon'.format(NGAS_DIR_ABS))
     run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
     with cd('NGAS'):
         with settings(warn_only=True):
@@ -650,10 +669,12 @@ def initName(type='archive'):
     if type == 'archive':
         initFile = 'ngamsServer.init.sh'
         NGAS_DEF_CFG = 'NgamsCfg.SQLite.mini.xml'
+        NGAS_LINK_CFG = 'ngamsServer.conf'
     elif type == 'cache':
         initFile = 'ngamsCache.init.sh'
         NGAS_DEF_CFG = 'NgamsCfg.SQLite.cache.xml'
-    return initFile.split('.')[0]
+        NGAS_LINK_CFG = 'ngamsCacheServer.conf'
+    return (initFile, initFile.split('.')[0], NGAS_DEF_CFG, NGAS_LINK_CFG)
 
 
 @task
@@ -670,8 +691,8 @@ def user_deploy(type='archive'):
     virtualenv_setup()
     ngas_full_buildout()
     with cd(env.NGAS_DIR_ABS):
-        run('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}.conf'.format(\
-              env.NGAS_DIR_ABS, NGAS_DEF_CFG, initName(type=type)))
+        run('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
+              env.NGAS_DIR_ABS, initName(type=tye)[2], initName(type=type)[3]))
     print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 
@@ -680,18 +701,18 @@ def init_deploy(type='archive'):
     """
     Install the NGAS init script for an operational deployment
     """
-    confName = initName(type=type)
+    (initFile, initLink, cfg, lcfg) = initName(type=type)
 
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
         env.NGAS_DIR_ABS = '{0}/{1}'.format('/home/ngas', NGAS_DIR)
 
     sudo('cp {0}/src/ngamsStartup/{1} /etc/init.d/{2}'.\
-         format(env.NGAS_DIR_ABS, initFile, confName))
-    sudo('chmod a+x /etc/init.d/{0}'.format(confName))
-    sudo('chkconfig --add /etc/init.d/{0}'.format(confName))
+         format(env.NGAS_DIR_ABS, initFile, initLink))
+    sudo('chmod a+x /etc/init.d/{0}'.format(initLink))
+    sudo('chkconfig --add /etc/init.d/{0}'.format(initLink))
     with cd(env.NGAS_DIR_ABS):
-        sudo('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}.conf'.format(\
-              env.NGAS_DIR_ABS, NGAS_DEF_CFG, confName))
+        sudo('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
+              env.NGAS_DIR_ABS, cfg, lcfg))
 
 
 @task
