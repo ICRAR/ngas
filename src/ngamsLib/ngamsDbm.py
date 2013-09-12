@@ -33,8 +33,7 @@
 Contains definition of class for handling a DBM DB (BSDDB).
 """
 
-# TODO: Stop using bsddb. Use only dbm (i.e. remove ngamsDbm and rename
-#       ngamsDbm2 to ngamsDbm).
+# TODO: Stop using dbm. Use only bsddb and remove ngamsDbm2
 
 import sys, os, cPickle, random
 
