@@ -394,8 +394,8 @@ def git_clone_tar():
     set_env()
     local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
     local('cd /tmp && mv {0} {1}'.format(BRANCH, NGAS_DIR))
-    local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES {0} \
-    --exclude additional_tars --exclude .git'.format(NGAS_DIR))
+    local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES \
+    --exclude additional_tars --exclude .git {0}'.format(NGAS_DIR))
     tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
     put('/tmp/{0}'.format(tarfile), tarfile)
     local('rm -rf /tmp/{0}'.format(NGAS_DIR))  # cleanup local git clone dir
@@ -575,14 +575,21 @@ def virtualenv_setup():
         abort('ngas_rt directory exists already')
 
     with cd('/tmp'):
-        run('cp {0}/clib_tars/virtualenv-1.10.tar.gz .'.format(env.NGAS_DIR_ABS))
+        put('{0}/../clib_tars/virtualenv-1.10.tar.gz'.format(thisDir), 'virtualenv-1.10.tar.gz')
         run('tar -xvzf virtualenv-1.10.tar.gz')
         run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
+        put('{0}/../clib_tars/zc.buildout-2.2.1.tar.gz'.format(thisDir), '.')
+        put('{0}/../clib_tars/Fabric-1.7.0.tar.gz'.format(thisDir), '.')
+        put('{0}/../clib_tars/boto-2.13.0.tar.gz'.format(thisDir), '.')
+        put('{0}/../clib_tars/paramiko-1.11.0.tar.gz'.format(thisDir), '.')
+        put('{0}/../clib_tars/pycrypto-2.6.tar.gz'.format(thisDir), '.')
     with cd(env.NGAS_DIR_ABS):
-        virtualenv('pip install clib_tars/zc.buildout-2.2.1.tar.gz')
+        virtualenv('pip install /tmp/zc.buildout-2.2.1.tar.gz')
+        virtualenv('pip install /tmp/paramiko-1.11.0.tar.gz')
+        virtualenv('pip install /tmp/pycrypto-2.6.tar.gz')
         # make this installation self consistent
-        virtualenv('pip install clib_tars/Fabric-1.7.0.tar.gz')
-        virtualenv('pip install clib_tars/boto-2.13.0.tar.gz')
+        virtualenv('pip install /tmp/Fabric-1.7.0.tar.gz')
+        virtualenv('pip install /tmp/boto-2.13.0.tar.gz')
         put('{0}/../clib_tars/markup-1.9.tar.gz'.format(thisDir), '/tmp/markup-1.9.tar.gz')
         virtualenv('pip install /tmp/markup-1.9.tar.gz'.format(env.NGAS_DIR_ABS))
         # the package has not been updated on PyPI as of 2013-02-7
@@ -601,7 +608,7 @@ def ngas_buildout(standalone=0):
 
     with cd(env.NGAS_DIR_ABS):
         if (standalone):
-            put('{0}/clib_tars/eggs.tar.gz'.format(thisDir), '{0}.eggs.tar.gz'.format(env.NGAS_DIR_ABS))
+            put('{0}/../clib_tars/eggs.tar.gz'.format(thisDir), '{0}.eggs.tar.gz'.format(env.NGAS_DIR_ABS))
             run('tar -xvzf eggs.tar.gz')
         virtualenv('buildout')
     run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
