@@ -688,6 +688,9 @@ def initName(type='archive'):
 def user_deploy(type='archive', standalone=0):
     """
     Deploy the system as a normal user without sudo access
+    NOTE: The parameter can be passed from the command line by using
+
+    fab -f deploy.py user_deploy:type='cache'
     """
     set_env()
     ppath = check_python()
