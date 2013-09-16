@@ -394,7 +394,8 @@ def git_clone_tar():
     set_env()
     local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
     local('cd /tmp && mv {0} {1}'.format(BRANCH, NGAS_DIR))
-    local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES {0}'.format(NGAS_DIR))
+    local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES {0} \
+    --exclude additional_tars --exclude .git'.format(NGAS_DIR))
     tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
     put('/tmp/{0}'.format(tarfile), tarfile)
     local('rm -rf /tmp/{0}'.format(NGAS_DIR))  # cleanup local git clone dir
@@ -574,14 +575,14 @@ def virtualenv_setup():
         abort('ngas_rt directory exists already')
 
     with cd('/tmp'):
-        run('wget --no-check-certificate -q https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.10.tar.gz')
+        run('cp {0}/clib_tars/virtualenv-1.10.tar.gz .'.format(env.NGAS_DIR_ABS))
         run('tar -xvzf virtualenv-1.10.tar.gz')
         run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
     with cd(env.NGAS_DIR_ABS):
-        virtualenv('pip install zc.buildout')
+        virtualenv('pip install clib_tars/zc.buildout-2.2.1.tar.gz')
         # make this installation self consistent
-        virtualenv('pip install fabric')
-        virtualenv('pip install boto')
+        virtualenv('pip install clib_tars/Fabric-1.7.0.tar.gz')
+        virtualenv('pip install clib_tars/boto-2.13.0.tar.gz')
         put('{0}/../clib_tars/markup-1.9.tar.gz'.format(thisDir), '/tmp/markup-1.9.tar.gz')
         virtualenv('pip install /tmp/markup-1.9.tar.gz'.format(env.NGAS_DIR_ABS))
         # the package has not been updated on PyPI as of 2013-02-7
@@ -589,13 +590,19 @@ def virtualenv_setup():
 
 
 @task
-def ngas_buildout():
+def ngas_buildout(standalone=0):
     """
     Perform just the buildout and virtualenv config
+
+    if standalone is not 0 then the eggs from the additional_tars
+    will be installed to avoid accessing the internet.
     """
     set_env()
 
     with cd(env.NGAS_DIR_ABS):
+        if (standalone):
+            put('{0}/clib_tars/eggs.tar.gz'.format(thisDir), '{0}.eggs.tar.gz'.format(env.NGAS_DIR_ABS))
+            run('tar -xvzf eggs.tar.gz')
         virtualenv('buildout')
     run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
     with cd('NGAS'):
