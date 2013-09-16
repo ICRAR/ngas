@@ -613,7 +613,7 @@ def ngas_buildout(standalone=0):
 
 
 @task
-def ngas_full_buildout():
+def ngas_full_buildout(standalone=0):
     """
     Perform the full install and buildout
     """
@@ -628,7 +628,7 @@ def ngas_full_buildout():
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
         virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
 
-    ngas_buildout()
+    ngas_buildout(standalone=standalone)
 
 
 @task
@@ -685,7 +685,7 @@ def initName(type='archive'):
 
 
 @task
-def user_deploy(type='archive'):
+def user_deploy(type='archive', standalone=0):
     """
     Deploy the system as a normal user without sudo access
     """
@@ -696,7 +696,7 @@ def user_deploy(type='archive'):
     else:
         env.PYTHON = ppath
     virtualenv_setup()
-    ngas_full_buildout()
+    ngas_full_buildout(standalone=standalone)
     with cd(env.NGAS_DIR_ABS):
         run('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
               env.NGAS_DIR_ABS, initName(type=tye)[2], initName(type=type)[3]))
