@@ -402,6 +402,35 @@ def git_clone_tar():
     run('tar -xjf {0} && rm {0}'.format(tarfile))
 
 
+@task
+def ngas_minimal_tar():
+    """
+    This function packs the minimal required parts of the NGAS source tree
+    into a tar file and copies it to the remote site.
+    """
+    set_env()
+    parts = ['src',
+             'cfg',
+             'NGAS',
+             'COPYRIGHT',
+             'README',
+             'INSTALL',
+             'LICENSE',
+             'VERSION',
+             'bootstrap.py',
+             'buildout.cfg',
+             'doc',
+             'hooks',
+             'machine_setup',
+             'setup.py',
+             ]
+    excludes = ['.git',
+                ]
+    exclude = ' --exclude ' + ' --exclude '.join(excludes)
+    local('cd {0}/../.. && tar {1} -czf /tmp/ngas_src.tar.gz ngas'.format(thisDir, exclude))
+    put('/tmp/ngas_src.tar.gz','/tmp/ngas.tar.gz')
+    run('cd {0} && tar --strip-components 1 -xzf /tmp/ngas.tar.gz'.format(env.NGAS_DIR_ABS))
+
 def processCentOSErrMsg(errmsg):
     if (errmsg == None or len(errmsg) == 0):
         return
@@ -578,21 +607,6 @@ def virtualenv_setup():
         put('{0}/../clib_tars/virtualenv-1.10.tar.gz'.format(thisDir), 'virtualenv-1.10.tar.gz')
         run('tar -xvzf virtualenv-1.10.tar.gz')
         run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
-        put('{0}/../clib_tars/zc.buildout-2.2.1.tar.gz'.format(thisDir), '.')
-        put('{0}/../clib_tars/Fabric-1.7.0.tar.gz'.format(thisDir), '.')
-        put('{0}/../clib_tars/boto-2.13.0.tar.gz'.format(thisDir), '.')
-        put('{0}/../clib_tars/paramiko-1.11.0.tar.gz'.format(thisDir), '.')
-        put('{0}/../clib_tars/pycrypto-2.6.tar.gz'.format(thisDir), '.')
-    with cd(env.NGAS_DIR_ABS):
-        virtualenv('pip install /tmp/zc.buildout-2.2.1.tar.gz')
-        virtualenv('pip install /tmp/paramiko-1.11.0.tar.gz')
-        virtualenv('pip install /tmp/pycrypto-2.6.tar.gz')
-        # make this installation self consistent
-        virtualenv('pip install /tmp/Fabric-1.7.0.tar.gz')
-        virtualenv('pip install /tmp/boto-2.13.0.tar.gz')
-        put('{0}/../clib_tars/markup-1.9.tar.gz'.format(thisDir), '/tmp/markup-1.9.tar.gz')
-        virtualenv('pip install /tmp/markup-1.9.tar.gz'.format(env.NGAS_DIR_ABS))
-        # the package has not been updated on PyPI as of 2013-02-7
 
 
 
@@ -608,9 +622,11 @@ def ngas_buildout(standalone=0):
 
     with cd(env.NGAS_DIR_ABS):
         if (standalone):
-            put('{0}/../clib_tars/eggs.tar.gz'.format(thisDir), '{0}.eggs.tar.gz'.format(env.NGAS_DIR_ABS))
+            put('{0}/../additional_tars/eggs.tar.gz'.format(thisDir), '{0}/eggs.tar.gz'.format(env.NGAS_DIR_ABS))
             run('tar -xvzf eggs.tar.gz')
-        virtualenv('buildout')
+            virtualenv('buildout -Nvo')
+        else:
+            virtualenv('buildout')
     run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
     with cd('NGAS'):
         with settings(warn_only=True):
@@ -627,10 +643,23 @@ def ngas_full_buildout(standalone=0):
     set_env()
     # First get the sources
     #
-    if not check_path('{0}/bootstrap.py'.format(env.NGAS_DIR_ABS)):
+    if (standalone):
+        ngas_minimal_tar()
+    elif not check_path('{0}/bootstrap.py'.format(env.NGAS_DIR_ABS)):
         git_clone_tar()
 
     with cd(env.NGAS_DIR_ABS):
+        virtualenv('pip install clib_tars/zc.buildout-2.2.1.tar.gz')
+        virtualenv('pip install clib_tars/pycrypto-2.6.tar.gz')
+        virtualenv('pip install clib_tars/paramiko-1.11.0.tar.gz')
+        # make this installation self consistent
+        virtualenv('pip install clib_tars/Fabric-1.7.0.tar.gz')
+        virtualenv('pip install clib_tars/boto-2.13.0.tar.gz')
+        virtualenv('pip install clib_tars/markup-1.9.tar.gz')
+        virtualenv('pip install additional_tars/egenix-mx-base-3.2.6.tar.gz')
+        #The following will only work if the Berkeley DB had been installed already
+        virtualenv('pip install additional_tars/bsddb3-6.0.0.tar.gz')
+
         # run bootstrap with correct python version (explicit)
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
         virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
@@ -709,7 +738,7 @@ def user_deploy(type='archive', standalone=0):
     ngas_full_buildout(standalone=standalone)
     with cd(env.NGAS_DIR_ABS):
         run('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
-              env.NGAS_DIR_ABS, initName(type=tye)[2], initName(type=type)[3]))
+              env.NGAS_DIR_ABS, initName(type=type)[2], initName(type=type)[3]))
     print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 
