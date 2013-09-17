@@ -34,16 +34,14 @@ from fabric.utils import puts, abort, fastprint
 FILTER = 'The cray-mpich2 module is now deprecated and will be removed in a future release.\r\r\nPlease use the cray-mpich module.'
 
 def run(*args, **kwargs):
-    with hide('stderr','stdout'):
-        res = frun(*args, **kwargs)
+    res = frun(*args, **kwargs)
     res = res.replace(FILTER,'')
     res = res.replace('\n','')
     res = res.replace('\r','')
     return res
 
 def sudo(*args, **kwargs):
-    with hide('stderr','stdout'):
-        res = fsudo(*args, **kwargs)
+    res = fsudo(*args, **kwargs)
     res = res.replace(FILTER, '')
     res = res.replace('\n','')
     res = res.replace('\r','')
