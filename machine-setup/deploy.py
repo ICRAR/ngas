@@ -113,16 +113,10 @@ def set_env():
         env.GITUSER = GITUSER
     if not env.has_key('GITREPO') or not env.GITREPO:
         env.GITREPO = GITREPO
-    if not env.has_key('instance_name') or not env.instance_name:
-        env.instance_name = INSTANCE_NAME
     if not env.has_key('postfix') or not env.postfix:
         env.postfix = POSTFIX
-    if not env.has_key('use_elastic_ip') or not env.use_elastic_ip:
-        env.use_elastic_ip = ELASTIC_IP
     if not env.user or not env.user:
         env.user = USERNAME
-    if not env.has_key('key_filename') or not env.key_filename:
-        env.key_filename = AWS_KEY
     require('hosts', provided_by=[test_env])
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
         HOME = run("echo $HOME")
@@ -674,6 +668,12 @@ def test_env():
 
     Allow the user to select if a Elastic IP address is to be used
     """
+    if not env.has_key('instance_name') or not env.instance_name:
+        env.instance_name = INSTANCE_NAME
+    if not env.has_key('use_elastic_ip') or not env.use_elastic_ip:
+        env.use_elastic_ip = ELASTIC_IP
+    if not env.has_key('key_filename') or not env.key_filename:
+        env.key_filename = AWS_KEY
     env.instance_name = INSTANCE_NAME
     env.use_elastic_ip = ELASTIC_IP
     if 'use_elastic_ip' in env:
