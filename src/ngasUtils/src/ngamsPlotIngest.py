@@ -31,7 +31,10 @@ The best way to call it is like this:
 
 replace <date> with the date you want to producde the stats. The db keyword
 is optional and defaults to ICRAR. The routine will ask for the DB password
-of the ngas_ro user.
+of the ngas_ro user. For more information on the input parameters run the
+script like
+%run ngamsPlotIngest -h
+
 """
 
 import pylab, argparse
@@ -191,7 +194,7 @@ class throughputPlot():
         self.n = pylab.float16(n)
         vol = pylab.float16(res[:,:,4])
         self.tvol = pylab.float64(vol)[vol>0].sum()
-        self.tfils = pylab.float32(n)[n>0].sum()
+        self.tfils = pylab.int32(n)[n>0].sum()
         self.res=res
         dbconn.close()
         del(dbconn)
