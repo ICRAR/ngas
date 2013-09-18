@@ -21,6 +21,17 @@
 #
 """
 Module to create throughput statistics plots.
+
+The best way to call it is like this:
+
+1) Start ipython --pylab
+2) On the ipython prompt enter:
+
+%run ngamsPlotIngest <date> [--db=MIT]
+
+replace <date> with the date you want to producde the stats. The db keyword
+is optional and defaults to ICRAR. The routine will ask for the DB password
+of the ngas_ro user.
 """
 
 import pylab, argparse
@@ -179,8 +190,8 @@ class throughputPlot():
         self.y = pylab.float16(y)
         self.n = pylab.float16(n)
         vol = pylab.float16(res[:,:,4])
-        self.tvol = vol[vol>0].sum()
-        self.tfils = n[n>0].sum()
+        self.tvol = pylab.float64(vol)[vol>0].sum()
+        self.tfils = pylab.float32(n)[n>0].sum()
         self.res=res
         dbconn.close()
         del(dbconn)
