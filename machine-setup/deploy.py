@@ -95,7 +95,6 @@ APT_PACKAGES = [
         'libreadline-dev',
         'sqlite3',
         'libsqlite3-dev',
-        'libdb5.1-dev',
         'postgresql-client',
         ]
 
