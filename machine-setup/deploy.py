@@ -87,6 +87,8 @@ YUM_PACKAGES = [
 ]
 
 APT_PACKAGES = [
+        'libtool',
+        'autoconf',
         'zlib1g-dbg',
         'libzlcore-dev',
         'libdb4.8-dev',
@@ -95,7 +97,6 @@ APT_PACKAGES = [
         'libreadline-dev',
         'sqlite3',
         'libsqlite3-dev',
-        'libdb5.1-dev',
         'postgresql-client',
         ]
 
@@ -446,7 +447,8 @@ def system_install_f():
     re = run('cat /etc/issue')
     linux_flavor = re.split()
     if (len(linux_flavor) > 0):
-        if linux_flavor[0] == 'CentOS' or linux_flavor[0] == 'Ubuntu':
+        if linux_flavor[0] == 'CentOS' or linux_flavor[0] == 'Ubuntu' \
+           or linux_flavor[0] == 'Debian':
             linux_flavor = linux_flavor[0]
         elif linux_flavor[0] == 'Amazon':
             linux_flavor = ' '.join(linux_flavor[:2])
@@ -457,7 +459,7 @@ def system_install_f():
         for package in YUM_PACKAGES:
             install_yum(package)
 
-    elif (linux_flavor == 'Ubuntu'):
+    elif (linux_flavor in ['Ubuntu', 'Debian']):
         for package in APT_PACKAGES:
             install_apt(package)
     else:
@@ -548,12 +550,12 @@ def user_setup():
     if not env.user:
         env.user = USERNAME # defaults to ec2-user
     for user in ['ngas','ngasmgr']:
-        sudo('useradd {0}'.format(user), warn_only=True)
+        sudo('useradd -m -s /bin/bash {0}'.format(user), warn_only=True)
         sudo('mkdir /home/{0}/.ssh'.format(user), warn_only=True)
         sudo('chmod 700 /home/{0}/.ssh'.format(user))
         sudo('chown -R {0}:{0} /home/{0}/.ssh'.format(user))
         sudo('cp /home/{0}/.ssh/authorized_keys /home/{1}/.ssh/authorized_keys'.format(env.user, user))
-        sudo('chmod 700 /home/{0}/.ssh/authorized_keys'.format(user))
+        sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{0} /home/{0}/.ssh/authorized_keys'.format(user))
     env.NGAS_DIR_ABS = '/home/ngas/{0}'.format(NGAS_DIR)
 
@@ -753,15 +755,16 @@ def init_deploy(type='archive'):
     sudo('cp {0}/src/ngamsStartup/{1} /etc/init.d/{2}'.\
          format(env.NGAS_DIR_ABS, initFile, initLink))
     sudo('chmod a+x /etc/init.d/{0}'.format(initLink))
-    sudo('chkconfig --add /etc/init.d/{0}'.format(initLink))
     with cd(env.NGAS_DIR_ABS):
         sudo('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
               env.NGAS_DIR_ABS, cfg, lcfg))
 
+    sudo('chkconfig --add /etc/init.d/{0}'.format(initLink))
+
 
 @task
 @serial
-def operations_deploy(system_install=True, user_install=True, type='archive'):
+def operations_deploy(system_install=True, user_install=True, type='archive', standalone=0):
     """
     ** MAIN TASK **: Deploy the full NGAS operational environment.
     In order to install NGAS on an operational host go to any host
@@ -792,7 +795,7 @@ def operations_deploy(system_install=True, user_install=True, type='archive'):
         if not ppath:
             python_setup()
         virtualenv_setup()
-        ngas_full_buildout()
+        ngas_full_buildout(standalone=standalone)
     init_deploy(type=type)
     print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
@@ -844,10 +847,9 @@ def uninstall():
     Uninstall NGAS, NGAS users and init script.
     """
     set_env()
-    if env.user in ['ec2-user', 'root']:
-        sudo('userdel -r ngas', warn_only=True)
-        sudo('userdel -r ngasmgr', warn_only=True)
-        sudo('rm /etc/ngamsServer.conf', warn_only=True)
-        sudo('rm /etc/init.d/ngamsServer', warn_only=True)
-    else:
-        run('rm -rf {0}'.format(env.NGAS_DIR_ABS))
+    sudo('userdel -r ngas', warn_only=True)
+    sudo('userdel -r ngasmgr', warn_only=True)
+    sudo('rm /etc/ngamsServer.conf', warn_only=True)
+    sudo('rm /etc/init.d/ngamsServer', warn_only=True)
+    run('rm -rf {0}'.format(env.NGAS_DIR_ABS), warn_only=True)
+
