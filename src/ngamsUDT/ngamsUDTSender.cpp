@@ -5,6 +5,10 @@
 #include <sstream>
 #include <cstring>
 #include <sys/statvfs.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <inttypes.h>
 
 #include "udt.h"
 
@@ -85,35 +89,60 @@ int sendSizeInfo(UDTSOCKET fhandle, int64_t size) {
 }
 
 int main(int argc, char* argv[]) {
-	if (argc != 7) {
-	     cout << "usage: ngamsUDTSender server_ip server_port file_name file_path mime_type file_size" << endl;
+
+	if (argc != 5 && argc != 6) {
+	     cout << "usage: ngamsUDTSender server_ip server_port mime_type file_name <file_size>" << endl;
 	     return -1;
 	}
 
-	UDTSOCKET fhandle = getUDTSocket(argv);
+	string file = string(argv[4]);
+	string mime = string(argv[3]);
+	string param = mime + udt_param_delimit + file;
+	int64_t filesize = 0;
 
-	string param = string(argv[3]);
-	for (int i = 4; i < argc - 1; i++) {
-		param += (udt_param_delimit + string(argv[i]));
+	// size passed in
+	if (argc == 6) {
+		param += udt_param_delimit + string(argv[4]);
+		char * endptr = NULL;
+		filesize = strtoimax(argv[4], &endptr, 10);
 	}
-	struct statvfs sbuf;
-	if (statvfs(argv[4], &sbuf) < 0) {
+	else {
+		struct stat filestatus;
+		if (stat(file.c_str(), &filestatus ) < 0) {
+			cout << "Error getting filesize" << endl;
+			return -1;
+		}
+		ostringstream convert;
+		convert << filestatus.st_size;
+		param += udt_param_delimit + convert.str();
+		filesize = filestatus.st_size;
+	}
+
+	/*string param = string(argv[3]);
+	for (int i = 3; i < argc - 1; i++) {
+		param += (udt_param_delimit + string(argv[i]));
+	}*/
+
+	/*struct statvfs sbuf;
+	if (statvfs(argv[3], &sbuf) < 0) {
 		//if failed to get the size from the system, then use the command line argument
 		param += (udt_param_delimit + string(argv[argc - 1]));
 	} else {
 		ostringstream convert;
 		convert << sbuf.f_bsize;
 		param += (udt_param_delimit + convert.str());
-	}
+	}*/
 
+	UDTSOCKET fhandle = getUDTSocket(argv);
 
 	/* Sending metadata first*/
 	sendStringInfo(fhandle, param.c_str());
-	cout << argv[3] << endl;
-	fstream ifs(argv[3], ios::in | ios::binary);
-	int64_t size = (int64_t) atol(argv[6]);
+	fstream ifs(file.c_str(), ios::in | ios::binary);
+	int64_t size = filesize;
 	int64_t offset = 0;
 	int status = UDT::sendfile(fhandle, ifs, offset, size);
+	UDT::close(fhandle);
+	ifs.close();
 	checkUDTError(status, true, "send file");
 
 	return 0;

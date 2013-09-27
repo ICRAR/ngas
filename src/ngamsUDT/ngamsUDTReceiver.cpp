@@ -168,7 +168,7 @@ void* recvFile(void* usocket)
 	}
 
 	// error in the protocol
-	if (tokens.size() != 4) {
+	if (tokens.size() != 3) {
 		cout << "tokens: mismatch in tokens" << endl;
 		// close connection and return
 		UDT::close(fhandle);
@@ -176,8 +176,8 @@ void* recvFile(void* usocket)
 	}
 
 	char *endptr;
-	string filename = tokens[1] + tokens[0];
-	int64_t filesize = strtoimax(tokens[3].c_str(), &endptr, 10);
+	string filename = "/tmp/" + tokens[1];
+	int64_t filesize = strtoimax(tokens[2].c_str(), &endptr, 10);
 
 	cout << "Filename: " << filename << endl;
 	cout << "Filesize: " << filesize << endl;
