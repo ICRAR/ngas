@@ -91,7 +91,7 @@ int sendSizeInfo(UDTSOCKET fhandle, int64_t size) {
 int main(int argc, char* argv[]) {
 
 	if (argc != 5 && argc != 6) {
-	     cout << "usage: ngamsUDTSender server_ip server_port mime_type file_name <file_size>" << endl;
+	     cout << "usage: ngamsUDTSender server_ip server_port mime_type file_name [file_size]" << endl;
 	     return -1;
 	}
 
@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
 	if (argc == 6) {
 		param += udt_param_delimit + string(argv[4]);
 		char * endptr = NULL;
-		filesize = strtoimax(argv[4], &endptr, 10);
+		filesize = strtoimax(argv[5], &endptr, 10);
 	}
 	else {
 		struct stat filestatus;
@@ -117,21 +117,6 @@ int main(int argc, char* argv[]) {
 		param += udt_param_delimit + convert.str();
 		filesize = filestatus.st_size;
 	}
-
-	/*string param = string(argv[3]);
-	for (int i = 3; i < argc - 1; i++) {
-		param += (udt_param_delimit + string(argv[i]));
-	}*/
-
-	/*struct statvfs sbuf;
-	if (statvfs(argv[3], &sbuf) < 0) {
-		//if failed to get the size from the system, then use the command line argument
-		param += (udt_param_delimit + string(argv[argc - 1]));
-	} else {
-		ostringstream convert;
-		convert << sbuf.f_bsize;
-		param += (udt_param_delimit + convert.str());
-	}*/
 
 	UDTSOCKET fhandle = getUDTSocket(argv);
 

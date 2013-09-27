@@ -15,12 +15,6 @@ using namespace std;
 // prototype
 void* recvFile(void*);
 
-struct file_metadata {
-    string file_name; //base name
-    string file_path; //full path (including the base name)
-    string mime_type; //e.g. application/octet-stream
-    int64_t file_size;
-};
 
 /*int createSocket(const char* host, const int port) {
 	int sockFd = 0, stat;
@@ -205,7 +199,7 @@ int main(int argc, char *argv[])
 	//usage: sendfile [server_port]
 	if ((2 < argc) || ((2 == argc) && (0 == atoi(argv[1]))))
 	{
-		cout << "usage: sendfile [server_port]" << endl;
+		cout << "usage: ngamsUDTReceiver [server_port] [file dump path]" << endl;
 		return -1;
 	}
 
