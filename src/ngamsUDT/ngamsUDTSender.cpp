@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <inttypes.h>
+#include <libgen.h>
 
 #include "udt.h"
 
@@ -97,7 +98,7 @@ int main(int argc, char* argv[]) {
 
 	string file = string(argv[4]);
 	string mime = string(argv[3]);
-	string param = mime + udt_param_delimit + file;
+	string param = mime + udt_param_delimit + basename(argv[4]);
 	int64_t filesize = 0;
 
 	// size passed in
@@ -105,8 +106,7 @@ int main(int argc, char* argv[]) {
 		param += udt_param_delimit + string(argv[4]);
 		char * endptr = NULL;
 		filesize = strtoimax(argv[5], &endptr, 10);
-	}
-	else {
+	} else {
 		struct stat filestatus;
 		if (stat(file.c_str(), &filestatus ) < 0) {
 			cout << "Error getting filesize" << endl;
