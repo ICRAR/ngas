@@ -89,6 +89,20 @@ int sendSizeInfo(UDTSOCKET fhandle, int64_t size) {
 	return 0;
 }
 
+void buildHTTPHeader(char* header, const char* mimeType, const char* file_name, int64_t filesize) {
+	const char* ngamsUSER_AGENT = "NG/AMS UDT-Client";
+	char contentDisp[16384];
+	char authHdr[512];
+	*authHdr = '\0';
+	const char* path = "QARCHIVE";
+	sprintf(contentDisp, "attachment; filename=\"%s\"; no_versioning=1", file_name);
+	sprintf(header, "POST /%.256s HTTP/1.0\015\012"
+			"User-agent: %s\015\012"
+			"Content-type: %s\015\012"
+			"Content-length: %llu\015\012"
+			"Content-disposition: %s%s\015\012\012", path, ngamsUSER_AGENT, mimeType, filesize, contentDisp, authHdr);
+}
+
 int main(int argc, char* argv[]) {
 
 	if (argc != 5 && argc != 6) {
@@ -121,11 +135,12 @@ int main(int argc, char* argv[]) {
 	UDTSOCKET fhandle = getUDTSocket(argv);
 
 	/* Sending metadata first*/
-	sendStringInfo(fhandle, param.c_str());
+	char header[65536];
+	buildHTTPHeader(header, mime.c_str(), file.c_str(), filesize);
+	sendStringInfo(fhandle, header);
 	fstream ifs(file.c_str(), ios::in | ios::binary);
-	int64_t size = filesize;
 	int64_t offset = 0;
-	int status = UDT::sendfile(fhandle, ifs, offset, size);
+	int status = UDT::sendfile(fhandle, ifs, offset, filesize);
 	UDT::close(fhandle);
 	ifs.close();
 	checkUDTError(status, true, "send file");
