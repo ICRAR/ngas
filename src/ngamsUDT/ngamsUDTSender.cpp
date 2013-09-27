@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
 
 	string param = string(argv[3]);
 	for (int i = 4; i < argc; i++) {
-		param += (udt_param_delimit + argv[i]);
+		param += (udt_param_delimit + string(argv[i]));
 	}
 
 	/* Sending metadata first*/
