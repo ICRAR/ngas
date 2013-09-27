@@ -2,7 +2,10 @@
 #include <netdb.h>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <cstring>
+#include <sys/statvfs.h>
+
 #include "udt.h"
 
 using namespace std;
@@ -61,9 +64,13 @@ int sendStringInfo(UDTSOCKET fhandle, const char* str) {
 	int status = UDT::send(fhandle, (char*)&len, sizeof(int), 0);
 	checkUDTError(status, true, "send string length info");
 
-	status = UDT::send(fhandle, str, len, 0);
-	checkUDTError(status, true, "send string info");
-
+	int ssize = 0;
+	int ss;
+	while (ssize < len) {
+		ss = UDT::send(fhandle, str + ssize, len - ssize, 0);
+		checkUDTError(ss, true, "send string info");
+		ssize += ss;
+	}
 	return 0;
 }
 
@@ -86,9 +93,19 @@ int main(int argc, char* argv[]) {
 	UDTSOCKET fhandle = getUDTSocket(argv);
 
 	string param = string(argv[3]);
-	for (int i = 4; i < argc; i++) {
+	for (int i = 4; i < argc - 1; i++) {
 		param += (udt_param_delimit + string(argv[i]));
 	}
+	struct statvfs sbuf;
+	if (statvfs(argv[4], &sbuf) < 0) {
+		//if failed to get the size from the system, then use the command line argument
+		param += (udt_param_delimit + string(argv[argc - 1]));
+	} else {
+		ostringstream convert;
+		convert << sbuf.f_bsize;
+		param += (udt_param_delimit + convert.str());
+	}
+
 
 	/* Sending metadata first*/
 	sendStringInfo(fhandle, param.c_str());
