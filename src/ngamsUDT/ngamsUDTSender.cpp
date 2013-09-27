@@ -45,7 +45,6 @@ UDTSOCKET getUDTSocket(char* argv[]) {
 
 	UDTSOCKET fhandle = UDT::socket(hints.ai_family, hints.ai_socktype, hints.ai_protocol);
 
-
 	int snd_buf = 640000;
 	int rcv_buf = 640000;
 	UDT::setsockopt(fhandle, 0, UDP_SNDBUF, &snd_buf, sizeof(int));
@@ -66,8 +65,8 @@ UDTSOCKET getUDTSocket(char* argv[]) {
 int sendStringInfo(UDTSOCKET fhandle, const char* str) {
 	int len = strlen(str);
 
-	int status = UDT::send(fhandle, (char*)&len, sizeof(int), 0);
-	checkUDTError(status, true, "send string length info");
+	/*int status = UDT::send(fhandle, (char*)&len, sizeof(int), 0);
+	checkUDTError(status, true, "send string length info");*/
 
 	int ssize = 0;
 	int ss;
@@ -134,16 +133,23 @@ int main(int argc, char* argv[]) {
 
 	UDTSOCKET fhandle = getUDTSocket(argv);
 
-	/* Sending metadata first*/
+	// Sending metadata first
 	char header[65536];
 	buildHTTPHeader(header, mime.c_str(), file.c_str(), filesize);
 	sendStringInfo(fhandle, header);
+
 	fstream ifs(file.c_str(), ios::in | ios::binary);
 	int64_t offset = 0;
 	int status = UDT::sendfile(fhandle, ifs, offset, filesize);
-	UDT::close(fhandle);
 	ifs.close();
 	checkUDTError(status, true, "send file");
+
+	char c;
+	// get header Note: this is just a placeholder for now
+	UDT::recv(fhandle, &c, 1, 0);
+
+
+	UDT::close(fhandle);
 
 	return 0;
 }

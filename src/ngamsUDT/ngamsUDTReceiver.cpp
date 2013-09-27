@@ -7,32 +7,46 @@
 #include <inttypes.h>
 #include <cstdlib>
 #include <netdb.h>
+#include <map>
+#include <algorithm>
+#include <errno.h>
 
 #include "udt.h"
+
+#define BUFFSIZE 64000
+#define MAXLINE 16000
 
 using namespace std;
 
 // prototype
 void* recvFile(void*);
 
+int connect(const char* host, const int port) {
 
-/*int createSocket(const char* host, const int port) {
-	int sockFd = 0, stat;
 	struct hostent* hostRef;
 	struct sockaddr_in servAddr;
 
-	h_errno = 0;
-	if ((hostRef = gethostbyname(host)) == NULL) {
+	if ((hostRef = gethostbyname(host)) == NULL)
 		return -1;
-	}
 
 	memset((char *)&servAddr, 0, sizeof(servAddr));
 	memcpy(&servAddr.sin_addr, hostRef->h_addr_list[0], hostRef->h_length);
 	servAddr.sin_family = AF_INET;
 	servAddr.sin_port = htons(port);
 
-	return socket(PF_INET, SOCK_STREAM, 0);
-}*/
+	int fd = socket(PF_INET, SOCK_STREAM, 0);
+	if (fd < 0)
+		return -1;
+
+	int ret = connect(fd, (struct sockaddr*)&servAddr, sizeof(struct sockaddr_in));
+	if (ret < 0) {
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
 
 int startUDTServer(const string& service)
 {
@@ -100,14 +114,30 @@ int startUDTServer(const string& service)
 	return 0;
 }
 
+int reliableTCPWrite(int fd, const char* buf, int len) {
+	int towrite = len;
+	int written = 0;
+	int ret = 0;
 
-int reliableUDTRecv(UDTSOCKET u, char* buf, int len, int flags) {
+	while (written < towrite) {
+		ret = write(fd, buf+written, towrite);
+		if (ret <= 0)
+			return ret;
+
+		written += ret;
+		towrite -= ret;
+	}
+
+	return len;
+}
+
+int reliableUDTRecv(int u, char* buf, int len) {
 	int read = 0;
 	int toread = len;
 	int ret = 0;
 
 	while (read < toread) {
-		ret = UDT::recv(u, buf+read, toread, flags);
+		ret = UDT::recv(u, buf+read, toread, 0);
 		if (ret == UDT::ERROR)
 			return UDT::ERROR;
 
@@ -118,78 +148,255 @@ int reliableUDTRecv(UDTSOCKET u, char* buf, int len, int flags) {
 	return len;
 }
 
+int reliableTCPRecv(int u, char* buf, int len) {
+	int read = 0;
+	int toread = len;
+	int ret = 0;
+
+	while (read < toread) {
+		ret = recv(u, buf+read, toread, 0);
+		if (ret <= 0)
+			return ret;
+
+		read += ret;
+		toread -= ret;
+	}
+
+	return len;
+}
+
+int readline(int fd, string& line, unsigned int maxlen, int (*recvfunc)(int, char*, int)) {
+	char c;
+	int rc;
+
+	line.clear();
+
+	while (true) {
+		rc = recvfunc(fd, &c, 1);
+		if (rc <= 0)
+			return -1;
+
+		if (c =='\n')
+			return line.size();
+
+		line += c;
+
+		if (line.size() == maxlen)
+			return maxlen;
+	}
+}
+
+typedef struct HTTPHeader {
+   string status;
+   map<string, string> vals;
+} HTTPHeader;
+
+
+int HTTPHeaderToString(const HTTPHeader* hdr, string& str) {
+	str.clear();
+	str.append(hdr->status);
+	str.append("\015\012");
+
+	map<string, string>::const_iterator iter;
+	for (iter = (hdr->vals).begin(); iter != (hdr->vals).end(); iter++) {
+		str.append(iter->first);
+		str.append(":");
+		str.append(iter->second);
+		str.append("\015\012");
+	}
+
+	str.append("\015\012");
+
+	return 0;
+}
+
+
+int readHTTPHeader(int fd, HTTPHeader* hdr, int (*recvfunc)(int, char*, int)) {
+
+	string line;
+	bool first = true;
+
+	int read = 0;
+	while (true) {
+		read = readline(fd, line, MAXLINE, recvfunc);
+		if (read == MAXLINE) {
+			cout << "max line reached" << endl;
+			return -1;
+		}
+
+		// the end of http header
+		if (line.size() == 0) {
+			cout << "end of header" << endl;
+			return 0;
+		}
+
+		if (first) {
+			hdr->status = line;
+			cout << hdr->status << endl;
+			first = false;
+		}
+		else {
+			//split string into key:value
+			size_t found = line.find(":");
+			if (found != std::string::npos) {
+				string key = line.substr(0, found);
+				string value = line.substr(found+1, line.size());
+				if (key.size() > 0) {
+					// convert key to lowercase
+					transform(key.begin(), key.end(), key.begin(), ::tolower);
+					// store key:value pair in a collection map
+					hdr->vals[key] = value;
+					cout << key << " " << value << endl;
+				}
+			}
+		} //end else
+	} //end while
+
+	return 0;
+}
+
+
+int redirectUDT(UDTSOCKET u, const string& ngasHost, int ngasPort, const string& header, int64_t filesize)
+{
+	int fd = 0;
+
+	// connect to an NGAS instance
+	fd = connect(ngasHost.c_str(), ngasPort);
+	if (fd < 0) {
+		cout << "error connecting to " << ngasHost << endl;
+		return -1;
+	}
+
+	cout << "connected to " << ngasHost << endl;
+
+	// write NGAS HTTP header
+	if (reliableTCPWrite(fd, header.c_str(), header.size()) < 0) {
+		cout << "error sending header to " << ngasHost << endl;
+		close(fd);
+		return -1;
+	}
+
+	cout << "header send to " << ngasHost << endl;
+
+	char buf[BUFFSIZE];
+	int64_t filetoread = filesize;
+	int64_t fileread = 0;
+	int read = 0;
+
+	// stream file to NGAS
+	while (fileread < filetoread) {
+		// read from UDT
+		read = UDT::recv(u, buf, BUFFSIZE, 0);
+		if (read == UDT::ERROR) {
+			cout << "UDT::recv error" << endl;
+			close(fd);
+			return -1;
+		}
+
+		// write to NGAS
+		if (reliableTCPWrite(fd, buf, read) < 0) {
+			cout << "write to ngas error" << endl;
+			close(fd);
+			return -1;
+		}
+
+		fileread += read;
+		//cout << fileread << endl;
+	}
+
+	cout << "file read " << fileread << endl;
+
+	// read the NGAS response header
+	HTTPHeader hdr;
+	int ret = readHTTPHeader(fd, &hdr, reliableTCPRecv);
+	if (ret < 0) {
+	   cout << "Invalid HTTP header" << endl;
+	   close(fd);
+	   return -1;
+	}
+
+	// get the payload from the HTTP header
+	string content("content-length");
+	if (hdr.vals.find(content) == hdr.vals.end()) {
+	   cout << "content-length in HTTP header does not exist" << endl;
+	   close(fd);
+	   return -1;
+	}
+
+	char * endptr;
+	// convert filesize from string to int64
+	int64_t contentsize = strtoumax(hdr.vals[content].c_str(), &endptr, 10);
+	if (contentsize == 0 || errno == ERANGE) {
+	 cout << "error parsing content-length" << endl;
+	 close(fd);
+	 return -1;
+	}
+
+	// must return this to client
+	char* bufpayload = new char[contentsize];
+	ret = reliableTCPRecv(fd, bufpayload, contentsize);
+	if (ret <= 0) {
+		delete[] bufpayload;
+		close(fd);
+		return -1;
+	}
+
+	cout << string(bufpayload) << endl;
+
+	delete[] bufpayload;
+	// close socket to ngas
+	close(fd);
+
+	return 0;
+}
+
 
 void* recvFile(void* usocket)
 {
    UDTSOCKET fhandle = *(UDTSOCKET*)usocket;
    delete (UDTSOCKET*)usocket;
 
-   // aquiring file name information from client
-   char metadata[16000];
-   int len;
-
-   memset(metadata, 0, sizeof(metadata));
-
-   // read packet header
-   if (UDT::ERROR == reliableUDTRecv(fhandle, (char*)&len, sizeof(int), 0)) {
-      cout << "recv: " << UDT::getlasterror().getErrorMessage() << endl;
-      return 0;
-   }
-
-   if (len > (int)sizeof(metadata)) {
-	   // close connection and return
+   // read in the HTTP header from client
+   HTTPHeader hdr;
+   int ret = readHTTPHeader(fhandle, &hdr, reliableUDTRecv);
+   if (ret < 0) {
+	   cout << "Invalid HTTP header" << endl;
 	   UDT::close(fhandle);
-	   return 0;
+	   return NULL;
    }
 
-   // read metadata
-   if (UDT::ERROR == reliableUDTRecv(fhandle, metadata, len, 0)) {
-      cout << "recv: " << UDT::getlasterror().getErrorMessage() << endl;
-      return 0;
+   // get the file size from the HTTP header
+   string content("content-length");
+   if (hdr.vals.find(content) == hdr.vals.end()) {
+	   cout << "content-length in HTTP header does not exist" << endl;
+	   UDT::close(fhandle);
+	   return NULL;
    }
 
-	// file_name&file_path&mime_type&file_size
-	vector<string> tokens;
-	char *p = strtok(metadata, "&");
-	if (p != NULL)
-	   tokens.push_back(string(p));
-
-	while(p != NULL) {
-	   cout << "Token: " << p << endl;
-	   p = strtok(NULL, "&");
-	   if (p != NULL)
-		   tokens.push_back(string(p));
-	}
-
-	// error in the protocol
-	if (tokens.size() != 3) {
-		cout << "tokens: mismatch in tokens" << endl;
-		// close connection and return
+   char * endptr;
+   // convert filesize from string to int64
+   int64_t filesize = strtoumax(hdr.vals[content].c_str(), &endptr, 10);
+   if (filesize == 0 || errno == ERANGE) {
+		cout << "error parsing content-length" << endl;
 		UDT::close(fhandle);
-		return 0;
-	}
+		return NULL;
+   }
+   cout << "filesize: " << filesize << endl;
 
-	char *endptr;
-	string filename = "/tmp/" + tokens[1];
-	int64_t filesize = strtoimax(tokens[2].c_str(), &endptr, 10);
+   // http struct convert to string
+   string header;
+   HTTPHeaderToString(&hdr, header);
 
-	cout << "Filename: " << filename << endl;
-	cout << "Filesize: " << filesize << endl;
+   cout << header << endl;
+   ret = redirectUDT(fhandle, "store02.icrar.org", 7778, header, filesize);
 
-	// receive the file
-	fstream ofs(filename.c_str(), ios::out | ios::binary | ios::trunc);
-	int64_t offset = 0;
-	int64_t recvsize = 0;
+   // Place holder, send the header back to client from ngas
+   char c = 1;
+   UDT::send(fhandle, &c, 1, 0);
 
-	if (UDT::ERROR == (recvsize = UDT::recvfile(fhandle, ofs, offset, filesize))) {
-	  cout << "recvfile: " << UDT::getlasterror().getErrorMessage() << endl;
-	  return 0;
-	}
+   UDT::close(fhandle);
 
-	UDT::close(fhandle);
-	ofs.close();
-
-	return 0;
+   return 0;
 }
 
 
