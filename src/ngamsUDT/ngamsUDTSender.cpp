@@ -37,6 +37,12 @@ UDTSOCKET getUDTSocket(char* argv[]) {
 
 	UDTSOCKET fhandle = UDT::socket(hints.ai_family, hints.ai_socktype, hints.ai_protocol);
 
+
+	int snd_buf = 640000;
+	int rcv_buf = 640000;
+	UDT::setsockopt(fhandle, 0, UDP_SNDBUF, &snd_buf, sizeof(int));
+	UDT::setsockopt(fhandle, 0, UDP_RCVBUF, &rcv_buf, sizeof(int));
+
 	if (0 != getaddrinfo(argv[1], argv[2], &hints, &peer))
 	{
 	  cout << "incorrect server/peer address. " << argv[1] << ":" << argv[2] << endl;
@@ -86,8 +92,8 @@ int main(int argc, char* argv[]) {
 
 	/* Sending metadata first*/
 	sendStringInfo(fhandle, param.c_str());
-
-	fstream ifs(argv[4], ios::in | ios::binary);
+	cout << argv[3] << endl;
+	fstream ifs(argv[3], ios::in | ios::binary);
 	int64_t size = (int64_t) atol(argv[6]);
 	int64_t offset = 0;
 	int status = UDT::sendfile(fhandle, ifs, offset, size);

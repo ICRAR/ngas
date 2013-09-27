@@ -60,10 +60,8 @@ int startUDTServer(const string& service)
 
 	UDTSOCKET serv = UDT::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 
-	int snd_buf = 64000;
-	int rcv_buf = 64000;
-	UDT::setsockopt(serv, 0, UDT_SNDBUF, &snd_buf, sizeof(int));
-	UDT::setsockopt(serv, 0, UDT_RCVBUF, &rcv_buf, sizeof(int));
+	int snd_buf = 640000;
+	int rcv_buf = 640000;
 	UDT::setsockopt(serv, 0, UDP_SNDBUF, &snd_buf, sizeof(int));
 	UDT::setsockopt(serv, 0, UDP_RCVBUF, &rcv_buf, sizeof(int));
 
@@ -163,7 +161,7 @@ void* recvFile(void* usocket)
 	   tokens.push_back(string(p));
 
 	while(p != NULL) {
-	   printf("%s\n", p);
+	   cout << "Token: " << p << endl;
 	   p = strtok(NULL, "&");
 	   if (p != NULL)
 		   tokens.push_back(string(p));
@@ -171,14 +169,18 @@ void* recvFile(void* usocket)
 
 	// error in the protocol
 	if (tokens.size() != 4) {
+		cout << "tokens: mismatch in tokens" << endl;
 		// close connection and return
 		UDT::close(fhandle);
 		return 0;
 	}
 
 	char *endptr;
-	string filename = tokens[0];
+	string filename = tokens[1] + tokens[0];
 	int64_t filesize = strtoimax(tokens[3].c_str(), &endptr, 10);
+
+	cout << "Filename: " << filename << endl;
+	cout << "Filesize: " << filesize << endl;
 
 	// receive the file
 	fstream ofs(filename.c_str(), ios::out | ios::binary | ios::trunc);
