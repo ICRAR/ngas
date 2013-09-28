@@ -45,9 +45,9 @@ all: $(APP)
 %.o: %.cpp
 	$(C++) $(CCFLAGS) $< -c
 
-ngamsUDTSender: ngamsUDTSender.o
+ngamsUDTSender: ngamsUDTSender.o ngamsUDTUtils.o
 	$(C++) $^ -o $@ $(LDFLAGS)
-ngamsUDTReceiver: ngamsUDTReceiver.o
+ngamsUDTReceiver: ngamsUDTReceiver.o ngamsUDTUtils.o
 	$(C++) $^ -o $@ $(LDFLAGS)
 ngamsUDTReceiver_Test: ngamsUDTReceiver_Test.o
 	$(C++) $^ -o $@ $(LDFLAGS)

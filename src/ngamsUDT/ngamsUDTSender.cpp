@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <libgen.h>
-
+#include "ngamsUDTUtils.h"
 #include "udt.h"
 
 using namespace std;
@@ -142,12 +142,25 @@ int main(int argc, char* argv[]) {
 	int64_t offset = 0;
 	int status = UDT::sendfile(fhandle, ifs, offset, filesize);
 	ifs.close();
+
 	checkUDTError(status, true, "send file");
 
-	char c;
-	// get header Note: this is just a placeholder for now
-	UDT::recv(fhandle, &c, 1, 0);
+	HTTPHeader respHdr;
+	HTTPPayload respPay;
 
+	// read http response from UDT recv
+	status = readHTTPPacket(fhandle, &respHdr, &respPay, reliableUDTRecv);
+	if (status == 0) {
+		// print out response
+		cout << string(respPay.buff) << endl;
+		delete[] respPay.buff;
+		respPay.buff = NULL;
+	}
+	else {
+		cout << "error getting response" << endl;
+		UDT::close(fhandle);
+		exit(-1);
+	}
 
 	UDT::close(fhandle);
 
