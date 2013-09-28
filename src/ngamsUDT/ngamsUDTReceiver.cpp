@@ -200,10 +200,12 @@ void* recvFile(void* usocket)
 	if (ret < 0) {
 		close(fd);
 		UDT::close(fhandle);
+		delete[] respPay.buff;
 		cout << "failed to write http response to UDT client" << endl;
 		return NULL;
 	}
 
+	delete[] respPay.buff;
 	// clean up and close
 	close(fd);
 	UDT::close(fhandle);
