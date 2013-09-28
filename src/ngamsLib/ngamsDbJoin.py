@@ -56,7 +56,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                         fileStatus = [NGAMS_FILE_STATUS_OK],
                         lowLimIngestDate = None,
                         order = 1):
-       
+
         """
         Return summary information about files. The information is returned
         in a list containing again sub-lists with contents as defined
@@ -91,10 +91,10 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         Returns:           Cursor object (<NG/AMS DB Cursor Object API>).
         """
         T = TRACE(5)
-        
+
         sqlQuery = self.\
                    buildFileSummary1Query(hostId, diskIds, fileIds,
-                                          ignore, fileStatus, 
+                                          ignore, fileStatus,
                                           lowLimIngestDate,
                                           order) %\
                                           ngamsDbCore.getNgasSummary1Cols()
@@ -109,11 +109,11 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                                   fileVersion):
         """
         Same as getFileSummary1() but for a single (specific) file.
-        
+
         Returns:   List with information from query (list).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT %s FROM ngas_disks nd, ngas_files nf " +\
                    "WHERE nd.disk_id=nf.disk_id AND " +\
                    "nd.disk_id='%s' AND nf.file_id='%s' AND " +\
@@ -162,7 +162,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         Returns:           Cursor object (<NG/AMS DB Cursor Object API>).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT " + ngamsDbCore.getNgasSummary2Cols() + " " +\
                    "FROM ngas_disks nd, ngas_files nf " +\
                    "WHERE nd.disk_id=nf.disk_id "
@@ -176,10 +176,10 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         # Create a cursor and perform the query.
         curObj = self.dbCursor(sqlQuery)
-        
+
         return curObj
 
-        
+
     def getFileSummary3(self,
                         fileId,
                         hostId = None,
@@ -265,7 +265,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         Returns:           Cursor object (<NG/AMS DB Cursor Object API>).
         """
         T = TRACE(5)
-        
+
         fileStatusList = [NGAMS_FILE_STATUS_OK, NGAMS_FILE_CHK_ACTIVE]
         sqlQuery = "SELECT " + ngamsDbCore.getNgasSummary1Cols() + " " +\
                    "FROM ngas_disks nd, ngas_files nf " +\
@@ -275,13 +275,13 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         if (hostId): sqlQuery += " AND nd.host_id='" + hostId + "'"
         if (diskId): sqlQuery += " AND nd.disk_id='" + diskId + "'"
-        if (fileId): sqlQuery += " AND nf.file_id='" + fileId + "'" 
+        if (fileId): sqlQuery += " AND nf.file_id='" + fileId + "'"
         if (fileVersion):
-            sqlQuery += " AND nf.file_version=" + str(fileVersion) 
-        
+            sqlQuery += " AND nf.file_version=" + str(fileVersion)
+
         # Create a cursor and perform the query.
         curObj = self.dbCursor(sqlQuery)
-        
+
         return curObj
 
 
@@ -295,7 +295,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         Set the checksum value in the ngas_files table.
 
         fileId:          ID of file (string).
-        
+
         fileVersion:     Version of file (integer).
 
         diskId:          ID of disk where file is stored (string).
@@ -329,7 +329,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
             self.triggerEvents()
             return self
-        except Exception, e:   
+        except Exception, e:
             raise e
 
 
@@ -350,7 +350,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         Returns:   Number of files query would return (integer).
         """
         T = TRACE()
-        
+
         sqlQuery = self.buildFileSummary1Query(hostId, diskIds, fileIds,
                                                ignore, fileStatus,
                                                lowLimIngestDate,
@@ -379,11 +379,11 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         For a description of the input parameters, check the man-page of
         ngamsDbBase.getFileSummary1().
-        
+
         Returns:    SQL query for a File Summary 1 Query (string).
         """
         T = TRACE(5)
-        
+
         sqlQuery = "SELECT %s FROM ngas_disks nd, " +\
                    "ngas_files nf " +\
                    "WHERE nd.disk_id=nf.disk_id"
@@ -422,7 +422,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         by its File ID. A list is returned with the following elements:
 
           [<Disk ID>, <Filename>, <File ID>, <File Version>, <Format>,
-           <File Size>, <Uncompressed File Size>, <Compression>, 
+           <File Size>, <Uncompressed File Size>, <Compression>,
            <Ingestion Date>, <Ignore>, <Checksum>, <Checksum Plug-In>,
            <File Status>, <Creation Date>]
 
@@ -444,7 +444,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                           no file(s) was found (list).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT " + ngamsDbCore.getNgasFilesCols() + " " +\
                    "FROM ngas_files nf, ngas_disks nd WHERE " +\
                    "nf.file_id='" + fileId + "' AND " +\
@@ -477,7 +477,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
           o All files are considered, also files which are Offline.
 
  	  o Files marked to be ignored are ignored.
-            
+
           o Latest version - first priority.
 
         It is possible to indicate if files marked as being 'bad' in the
@@ -490,7 +490,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         The format of each sub-result is:
 
           [<see getFileInfoFromFileIdHostId()>, <host ID>, <mnt pt>]
-        
+
 
         fileId:          File ID for file to be retrieved (string).
 
@@ -514,12 +514,12 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         order:           If set to 0, the list of matching file information
                          will not be order according to the file version
                          (integer/0|1).
-                         
+
         Returns:         Cursor object or list with results
                          (<NG/AMS DB Cursor Object API>|list).
         """
         T = TRACE()
-        
+
         try:
             int(fileVersion)
         except:
@@ -570,7 +570,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         See ngamsDbJoin.dumpFileInfo().
         """
         T = TRACE()
-        
+
         if (not fileInfoDbmName):
             fileInfoDbmName = "/tmp/" +\
                               ngamsLib.genUniqueFilename("FILE_INFO_DB")
@@ -659,7 +659,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         diskId:          ID of disk where file is residing. If specified
                          to '' (empty string) the Disk ID is not taken
                          into account (string).
-                         
+
         ignore:          If set to 0 or 1, this value of ignore will be
                          queried for. If set to None, ignore is not
                          considered (None|0|1).
@@ -751,7 +751,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                         (string).
         """
         T = TRACE()
-    
+
         # Create a temporay File Info DBM.
         if (not fileInfoDbmName):
             fileInfoDbmName = "/tmp/" +\
@@ -759,7 +759,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         # Build query, create cursor.
         sqlQuery = self.\
-                   buildFileSummary1Query(getHostId(), ignore=0, 
+                   buildFileSummary1Query(getHostId(), ignore=0,
                                           lowLimIngestDate=lowLimIngestDate,
                                           order=0)
         sqlQuery = sqlQuery % ngamsDbCore.getNgasFilesCols()
@@ -813,7 +813,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                         (string).
         """
         T = TRACE()
-    
+
         # Try first to get the expected number of files, which will be returned
         expNoOfFiles = -1
         if (self.getDbVerify()):
@@ -850,7 +850,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                 errMsg = "Problem dumping file info! Expected number of "+\
                          "files: %d, actual number of files: %d"
                 errMsg = errMsg % (expNoOfFiles, fileCount)
-                warning(errMsg)            
+                warning(errMsg)
 
             # Try to Auto Recover if requested.
             if ((self.getDbVerify() and self.getDbAutoRecover()) and
@@ -905,7 +905,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         Return:          Number of files stored on the disk (integer).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT count(file_id) from ngas_files nf"
 
         # Build up the query, take only Online/Suspended files into
@@ -926,7 +926,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                         "WHERE (nd.host_id=nh.host_id) OR " +\
                         "((nd.last_host_id=nh.host_id) AND " +\
                         "(nh.srv_suspended=1)))"
-            
+
         # Now, do the query.
         res = self.query(sqlQuery, ignoreEmptyRes=0)
         if (len(res[0]) == 1):
@@ -937,7 +937,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         else:
             return 0
 
- 
+
     def dumpFileInfoCluster(self,
                             clusterName,
                             fileInfoDbmName = None,
@@ -951,7 +951,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         as bad or to be ignored.
 
         clusterName:       Name of cluster to consider (string).
-        
+
         fileInfoDbmName:   Base name of the DBM in which the file info will be
                            stored. If not given, a name will be generated
                            automatically (string).
@@ -977,7 +977,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            the files (string).
         """
         T = TRACE()
-    
+
         # Create a temporay File Info DBM.
         if (not fileInfoDbmName):
             fileInfoDbmName = "/tmp/" +\
@@ -1021,7 +1021,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                             fileInfoDbm.add(countKey,
                                             (fileInfoDbm.get(countKey) + 1))
                         fileInfoDbm.add(fileKey, fileInfo)
-                    
+
                     fileCount += 1
             del curObj
             fileInfoDbm.sync()
@@ -1035,7 +1035,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         return fileInfoDbmName
 
-   
+
     def writeFileEntry(self,
                        diskId,
                        filename,
@@ -1051,6 +1051,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                        checksumPlugIn,
                        fileStatus,
                        creationDate,
+                       containerId = None,
+                       ingestionRate = -1,
                        genSnapshot = 1,
                        updateDiskInfo = 0):
         """
@@ -1070,7 +1072,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         Returns:         Void.
         """
         T = TRACE(5)
-        
+
         try:
             # Check if the entry already exists. If yes update it, otherwise
             # insert a new element.
@@ -1097,6 +1099,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "checksum_plugin='" + checksumPlugIn + "', " +\
                            "file_status='" + fileStatus + "', " +\
                            "creation_date='" + creDate + "' " +\
+                           "container_id='" + containerId + "' " +\
+                           "ingestion_rate='" + ingestionRate + "' " +\
                            "WHERE file_id='" + fileId + "' AND " +\
                            "disk_id='" + diskId + "'"
                 if (int(fileVersion) != -1):
@@ -1108,7 +1112,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "format, file_size, " +\
                            "uncompressed_file_size, compression, " +\
                            "ingestion_date, ignore, checksum, " +\
-                           "checksum_plugin, file_status, creation_date) "+\
+                           "checksum_plugin, file_status, creation_date, " +\
+                           "container_id, ingestion_rate) "+\
                            "VALUES " +\
                            "('" + diskId + "', " +\
                            "'" + filename + "', " +\
@@ -1123,7 +1128,10 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "'" + checksum + "', " +\
                            "'" + checksumPlugIn + "', " +\
                            "'" + fileStatus + "', " +\
-                           "'" + creDate + "')"
+                           "'" + creDate + "', " +\
+                           "'" + containerId + "', " +\
+                           "'" + ingestionRate + "', " +\
+                           "')"
                 dbOperation = NGAMS_DB_CH_FILE_INSERT
 
             # Perform the main query.
@@ -1152,7 +1160,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                 del tmpFileObj
 
             self.triggerEvents([diskId, None])
-        except Exception, e:   
+        except Exception, e:
             raise e
 
 
@@ -1232,5 +1240,5 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                    "host_id = '%s') ORDER BY cache_time"
         curObj = self.dbCursor(sqlQuery)
         return curObj
-    
+
 # EOF
