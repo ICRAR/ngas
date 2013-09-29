@@ -124,7 +124,7 @@ void* recvFile(void* usocket)
    HTTPHeader reqHdr;
    int ret = readHTTPHeader(fhandle, &reqHdr, reliableUDTRecv);
    if (ret < 0) {
-	   cout << "Invalid HTTP header" << endl;
+	   cout << "invalid HTTP header" << endl;
 	   UDT::close(fhandle);
 	   return NULL;
    }

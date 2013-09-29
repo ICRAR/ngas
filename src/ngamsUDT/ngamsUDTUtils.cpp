@@ -26,7 +26,7 @@ int readline(int fd, string& line, unsigned int maxlen, int (*recvfunc)(int, cha
 
 	while (true) {
 		rc = recvfunc(fd, &c, 1);
-		if (rc <= 0)
+		if (rc < 0)
 			return -1;
 
 		if (c =='\n')
@@ -43,17 +43,17 @@ int readline(int fd, string& line, unsigned int maxlen, int (*recvfunc)(int, cha
 int HTTPHeaderToString(const HTTPHeader* hdr, string& str) {
 	str.clear();
 	str.append(hdr->status);
-	str.append("\015\012");
+	str.append("\r\n");
 
 	map<string, string>::const_iterator iter;
 	for (iter = (hdr->vals).begin(); iter != (hdr->vals).end(); iter++) {
 		str.append(iter->first);
 		str.append(":");
 		str.append(iter->second);
-		str.append("\015\012");
+		str.append("\r\n");
 	}
 
-	str.append("\015\012");
+	str.append("\r\n");
 
 	return 0;
 }
@@ -67,14 +67,19 @@ int readHTTPHeader(int fd, HTTPHeader* hdr, int (*recvfunc)(int, char*, int)) {
 	int read = 0;
 	while (true) {
 		read = readline(fd, line, MAXLINE, recvfunc);
+		if (read < 0) {
+			//cout << "readline error" << endl;
+			return -1;
+		}
+
 		if (read == MAXLINE) {
-			cout << "max line reached" << endl;
+			//cout << "max line reached" << endl;
 			return -1;
 		}
 
 		// Check if max number of HTTP lines reached
 		if (hdr->vals.size() >= MAXELEMENTS) {
-			cout << "max number of http elements reached" << endl;
+			//cout << "max number of http elements reached" << endl;
 			return -1;
 		}
 
@@ -85,8 +90,8 @@ int readHTTPHeader(int fd, HTTPHeader* hdr, int (*recvfunc)(int, char*, int)) {
 		}
 
 		// end of line but there is a single carridge return
-		// http header ends with an empty line i.e /r/n
-		if (line.size() == 1 and line[0] == '\015') {
+		// http header ends with an empty line i.e \r\n
+		if (line.size() == 1 and line[0] == '\r') {
 			//cout << "end of header" << endl;
 			return 0;
 		}
@@ -98,6 +103,12 @@ int readHTTPHeader(int fd, HTTPHeader* hdr, int (*recvfunc)(int, char*, int)) {
 			first = false;
 		}
 		else {
+			// strip carridge return from end of string if it exists
+			if (line[line.size()-1] == '\r') {
+				//cout << "carridge return found at end of string" << endl;
+				line = line.substr(0, line.size()-1);
+			}
+
 			//split string into key:value
 			size_t found = line.find(":");
 			if (found != std::string::npos) {
@@ -210,7 +221,7 @@ int reliableTCPWrite(int fd, const char* buf, int len) {
 	while (written < towrite) {
 		ret = write(fd, buf+written, towrite);
 		if (ret <= 0)
-			return ret;
+			return -1;
 
 		written += ret;
 		towrite -= ret;
@@ -226,8 +237,9 @@ int reliableUDTWrite(int u, const char* buf, int len) {
 
 	while (written < towrite) {
 		ret = UDT::send(u, buf+written, towrite, 0);
+		// UDT::ERROR == -1
 		if (ret == UDT::ERROR)
-			return UDT::ERROR;
+			return -1;
 
 		written += ret;
 		towrite -= ret;
@@ -245,7 +257,7 @@ int reliableUDTRecv(int u, char* buf, int len) {
 	while (read < toread) {
 		ret = UDT::recv(u, buf+read, toread, 0);
 		if (ret == UDT::ERROR)
-			return UDT::ERROR;
+			return -1;
 
 		read += ret;
 		toread -= ret;
@@ -262,7 +274,7 @@ int reliableTCPRecv(int u, char* buf, int len) {
 	while (read < toread) {
 		ret = recv(u, buf+read, toread, 0);
 		if (ret <= 0)
-			return ret;
+			return -1;
 
 		read += ret;
 		toread -= ret;
