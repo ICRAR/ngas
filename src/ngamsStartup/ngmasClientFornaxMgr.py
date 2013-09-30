@@ -116,6 +116,11 @@ def getMyNGASHost():
     listSrvs = comm.bcast(listSrvs, root = 0)
     
     return listSrvs[rank % len(listSrvs)]
+
+def main():
+    """
+    """
+    launchSimulator('12345', data_rate = 32)
     
     
 
