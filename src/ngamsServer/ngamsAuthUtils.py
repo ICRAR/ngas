@@ -68,6 +68,30 @@ def genUnAuthResponse(srvObj,
                  NGAMS_FAILURE, genLog("NGAMS_ER_UNAUTH_REQ"),
                  [["WWW-Authenticate", authRealm]])
 
+def cmdPermitted(srvObj, reqPropsObj, reqUser):
+    """
+    to check if the requested command is allowed
+    for the reqUser
+    
+    srvObj:        Reference to NG/AMS Server class instance (ngamsServer).
+    reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
+    reqUser:       authenticated user (string)
+    
+    Returns:       Boolean (True or False)
+    
+    """
+    commands = srvObj.getCfg().getAuthUserCommands(reqUser)
+    if (not commands):
+        return False
+    elif ('*' == commands):
+        return True
+    
+    cmd = reqPropsObj.getCmd().strip()
+    if (cmd in commands.split(',')):
+        return True
+    else:
+        return False
+    
 
 def authorize(srvObj,
               reqPropsObj,
@@ -123,12 +147,13 @@ def authorize(srvObj,
         # Check if this user is defined and if the password matches.
         errMsg = ""
         if (not decPassword):
-            errMsg = "Unknown user specified - rejecting request"
+            errMsg = "Unknown user specified - rejecting request. "
         elif (reqPwd != decPassword):
-            errMsg = "Wrong password for user: " + reqUser
-
+            errMsg = "Wrong password for user: '%s'. " % reqUser
+        elif (not cmdPermitted(srvObj, reqPropsObj, reqUser)):
+            errMsg = "Command '%s' is not allowed for user '%s'. " % (reqPropsObj.getCmd(), reqUser)
         if (errMsg):
-            errMsg = genLog("NGAMS_ER_UNAUTH_REQ") + " Command: %s" %\
+            errMsg += genLog("NGAMS_ER_UNAUTH_REQ") + " Command: %s" %\
                      reqPropsObj.getCmd()
             warning(errMsg)
             

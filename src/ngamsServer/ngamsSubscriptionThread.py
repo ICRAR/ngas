@@ -664,13 +664,20 @@ def _deliveryThread(srvObj,
             # Calculate the suspension time for this thread based on the priority of this subscriber. 
             # Dynamically calculated for each file so that the priority can be changed on the fly (no re-subscribe or server restart is needed)
             suspenTime = (0.005 * (subscrObj.getPriority() - 1)) # so that the top priority (level 1) does not suspend at all 
+            
+            # If the target does not turn on the authentication (or even not an NGAS), this still works
+            # as long as there is a user named "ngas-int" in the configuration file for the current server
+            # But if the target is an NGAS server and the authentication is on, the target must have set a user named "ngas-int"
+            authHdr = srvObj.getCfg().getAuthHttpHdrVal(user = NGAMS_HTTP_INT_AUTH_USER)
+            
             try:
                 reply, msg, hdrs, data = \
                        ngamsLib.httpPostUrl(subscrObj.getUrl(), fileMimeType,
                                             contDisp, filename, "FILE",
                                             blockSize=\
                                             srvObj.getCfg().getBlockSize(),
-                                            suspTime = suspenTime)
+                                            suspTime = suspenTime,
+                                            authHdrVal = authHdr)
                 if (data.strip() != ""):
                     stat.clear().unpackXmlDoc(data)
                 else:

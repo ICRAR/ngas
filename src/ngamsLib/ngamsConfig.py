@@ -242,6 +242,9 @@ class ngamsConfig:
 
         # User IDs for HTTP authentication.
         self.__authUserDic             = {}
+        
+        # key user name, value: allowed user commands separated by comma
+        self.__authUserCommandsDic     = {}
 
         # Mirroring sources.
         self.__mirSrcObjList           = []
@@ -503,8 +506,11 @@ class ngamsConfig:
             info(3, "Unpacking Authorization Element ...")
             fm = "Authorization[1].User[%d].%s"
             for idx in range(1, (len(authObj.getSubElList()) + 1)):
-                self.addAuthUser(self.getVal(fm % (idx, "Name")),
+                userName = self.getVal(fm % (idx, "Name"))
+                self.addAuthUser(userName,
                                  self.getVal(fm % (idx, "Password")))
+                self.addAuthUserCommands(userName, 
+                                 self.getVal(fm % (idx, "Commands")))
 
         # Unpack information in Mirroring Element.
         srcArchIdDic = {}
@@ -1896,6 +1902,21 @@ class ngamsConfig:
         """
         self.__authUserDic[user] = password
         return self
+    
+    def addAuthUserCommands(self, user, commands):
+        """
+        Add a user in the object.
+
+        user:         User name (string).
+
+        commands:     comma separated commands (string). e.g. RETRIEVE,STATUS,QARCHIVE
+                      a "*" means all commands
+
+        Returns:      Reference to object itself.
+        """
+        if (commands):
+            self.__authUserCommandsDic[user] = commands.upper()
+        return self
 
 
     def hasAuthUser(self,
@@ -1926,6 +1947,19 @@ class ngamsConfig:
             return None
         else:
             return self.__authUserDic[user]
+    
+    def getAuthUserCommands(self, user):
+        """
+        Returns the info (password) for a user.
+
+        user:      User name (string).
+
+        Returns:   Password or None (string).
+        """
+        if (not self.__authUserCommandsDic.has_key(user)):
+            return None
+        else:
+            return self.__authUserCommandsDic[user]
 
 
     def getAuthHttpHdrVal(self,

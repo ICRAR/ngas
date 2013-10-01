@@ -38,7 +38,7 @@ Case 11. ngas-B subscribes with ngas-A. Then multiple clients simultaneously arc
         priority to 10, after a while, change the priority back to 1. In the end, verify how many files get to ngas-B, and verify throughtput difference under different 
         priorities.
 """
-import time, os, commands, threading, thread
+import time, os, commands, threading, thread, base64
 import ngamsPClient
 
 from pybarrier import *
@@ -60,7 +60,9 @@ mime_type = 'application/octet-stream'
 file_ext = '.data'
 
 clientA = ngamsPClient.ngamsPClient(ngasA_host, ngasA_port)
+clientA.setAuthorization(base64.encodestring('ngasmgr:ngasmgr'))
 clientB = ngamsPClient.ngamsPClient(ngasB_host, ngasB_port)
+clientB.setAuthorization(base64.encodestring('ngasmgr:ngasmgr'))
 clientC = ngamsPClient.ngamsPClient(ngasC_host, ngasC_port)
 
 class WaitTimeout(Exception):
