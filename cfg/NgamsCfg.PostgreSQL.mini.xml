@@ -294,7 +294,7 @@
   </SubscriptionDef>
   
   <Authorization Id="Authorization"
-                 Enable="1">
+                 Enable="0">
     <User Name="ngas" 
           Password="bmdhcw=="
           Commands="STATUS,RETRIEVE"/>
