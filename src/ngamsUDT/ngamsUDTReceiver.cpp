@@ -93,8 +93,9 @@ int redirectUDT(UDTSOCKET u, int fd, int64_t filesize)
 		// read from UDT
 		read = UDT::recv(u, buf, BUFFSIZE, 0);
 		if (read == UDT::ERROR) {
-			cout << "UDT::recv error" << endl;
+			cout << "UDT::recv error: " << read << ". " << UDT::getlasterror().getErrorMessage() << endl;
 			//close(fd);
+			cout << fileread << " bytes out of " << filetoread << " bytes have been received." << endl;
 			return -1;
 		}
 

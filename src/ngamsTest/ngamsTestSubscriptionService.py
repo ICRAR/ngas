@@ -60,9 +60,9 @@ mime_type = 'application/octet-stream'
 file_ext = '.data'
 
 clientA = ngamsPClient.ngamsPClient(ngasA_host, ngasA_port)
-clientA.setAuthorization(base64.encodestring('ngasmgr:ngasmgr'))
+clientA.setAuthorization(base64.encodestring('ngasmgr:ngas$dba'))
 clientB = ngamsPClient.ngamsPClient(ngasB_host, ngasB_port)
-clientB.setAuthorization(base64.encodestring('ngasmgr:ngasmgr'))
+clientB.setAuthorization(base64.encodestring('ngasmgr:ngas$dba'))
 clientC = ngamsPClient.ngamsPClient(ngasC_host, ngasC_port)
 
 class WaitTimeout(Exception):
