@@ -153,7 +153,8 @@ void* recvFile(void* usocket)
 
    cout << reqHdrStr << endl;
 
-	string ngasHost("store02.icrar.org");
+	//string ngasHost("store02.icrar.org");
+    string ngasHost("127.0.0.1");
 	int ngasPort = 7778;
 
 	cout << "connecting to " << ngasHost << endl;

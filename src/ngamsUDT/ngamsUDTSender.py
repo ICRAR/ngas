@@ -31,7 +31,7 @@
 """
 Python-based UDT sender based on PyUDT
 """
-import os, base64, urlparse
+import os, base64, urlparse, traceback
 import socket as socklib
 import udt4 
 
@@ -139,9 +139,9 @@ def getAuthHttpHdrVal(user, pwd):
         authHdrVal = "Basic " + base64.encodestring(user + ":" + pwd)
         return authHdrVal
 
-def buildHTTPHeader(path, mime_type, file_name, file_size, authHdrVal):
+def buildHTTPHeader(path, mime_type, file_size, authHdrVal, contentDisp):
     auth_hdr = "\015\012Authorization: %s" % authHdrVal
-    contentDisp = "attachment; filename=\"%s\"; no_versioning=1" % file_name
+    
     ngamsUSER_AGENT = "NG/AMS UDT-PClient"
     
     header_format = "POST %s HTTP/1.0\015\012" +\
@@ -255,7 +255,7 @@ def readHTTPHeader(udtsocket, hdr):
         # end of line but there is a single carridge return
         # http header ends with an empty line i.e \r\n
         if (line_len == 1 and line[0] == '\r'):
-            print "end of header" 
+            #print "end of header" 
             return 0
 
         # read the status http header
@@ -327,37 +327,37 @@ def main():
     if not socket:
         print('failed to create socket')
         return 1    
-    file = '/home/chen/Downloads/128T_05.fits'
+    #file = '/home/chen/Downloads/128T_05.fits'
     #file = '/home/chen/Downloads/zzz.fits'
     #file = '/home/chen/Downloads/boost_1_47_0.tar'
-    #file = '/home/chen/Documents/10.1.1.137.1762.pdf'
+    file = '/home/chen/Documents/10.1.1.137.1762.pdf'
     if (not os.path.exists(file)):
         print ('Failed to locate file %s' % file)
         return 2
     
-    auth_hrd_val = getAuthHttpHdrVal('ngasmgr', 'ngasmgr') # this is to simulate the config function used by ngamsSusbscriptionThread
-    httpHdr = buildHTTPHeader('/QARCHIVE', 'application/octet-stream', os.path.basename(file), os.path.getsize(file), auth_hrd_val)
-    ret = reliableUDTSend(socket, httpHdr)
-    if (-1 == ret):
-        print "Failed to send HTTP header \n%s" % httpHdr
-        return 3
-    else:
-        print "Successfully sent the HTTP header\n %s" % httpHdr
-    send_file(socket, file)
-    
-    respHdr = HTTPHeader()
-    respPay = HTTPPayload()
-    status = readHTTPPacket(socket, respHdr, respPay);
-    if (status == 0):
-        print "HTTP Header status = %s" % respHdr.status
-        for key in respHdr.vals.keys():
-            print '%s = %s' % (key, respHdr.vals[key])
-        print respPay.buff
-    else:
-        print "error getting response"
-    
-    #print "Sleep 10 seconds for now"
-    #time.sleep(10)
+    auth_hrd_val = getAuthHttpHdrVal('ngasmgr', 'ngas$dba') # this is to simulate the config function used by ngamsSusbscriptionThread
+    url = 'houdt://127.0.0.1:9000/QARCHIVE'
+    fileMimeType = 'application/octet-stream'
+    basename = os.path.basename(file)
+    contDisp = "attachment; filename=\"%s\"; no_versioning=1" % basename
+    try:
+        reply, msg, hdrs, data = \
+               httpPostUrl(url, fileMimeType,
+                                    contDisp, file, "FILE",
+                                    blockSize=\
+                                    65536,
+                                    suspTime = 0,
+                                    authHdrVal = auth_hrd_val)
+        
+        if (data):
+            print "\nhttp return code = %d, payload: \n%s\n" % (reply, data)
+            
+    except Exception, err:
+        ex = str(err)
+        if ((ex != "") or (reply != 200)):
+            print "Error %s occurred while delivering file: %s" % (ex, basename)
+            print traceback.format_exc()
+
     udt4.close(socket)    
     
 def httpPostUrl(url,
@@ -375,7 +375,7 @@ def httpPostUrl(url,
     This funciton is the UDT version of the same function 
     in src/ngamsLib/ngmasLib.py
     
-    Eventually, these two functions will be merged in the 22nd Century
+    Eventually, these two functions will be merged in the near future, i.e. in the year 2030~2032
     
     Post the the data referenced on the given URL.
 
@@ -419,19 +419,20 @@ def httpPostUrl(url,
     # Separate the URL from the command.
     # an example of url: - houdt://eor-08.mit.edu:7790/QARCHIVE
     #HoUDT - HTTP Over UDT
-    if (dataSource.upper() != "FILE"):
+    if (dataSource.upper().strip() != "FILE"):
         raise Exception('currently only support send files via HTTP Over UDT (socket)')
     
     urlres = urlparse.urlparse(url)
-    host = urlres.hostname()
-    port = urlres.port()
+    host = urlres.hostname
+    port = urlres.port
     path = urlparse.urlparse(url).path # e.g. /QARCHIVE
     socket = create_socket(host, port, blockSize, timeOut)
     if not socket:
         raise Exception('failed to create the udt socket')    
     
     try:
-        httpHdr = buildHTTPHeader(path, mimeType, os.path.basename(dataRef), os.path.getsize(dataRef), authHdrVal)
+        httpHdr = buildHTTPHeader(path, mimeType, os.path.getsize(dataRef), authHdrVal, contDisp)
+        print '\n\n%s' % httpHdr
         #info(4,"Sending HTTP header ...")
         ret = reliableUDTSend(socket, httpHdr)
         if (-1 == ret):
@@ -449,7 +450,7 @@ def httpPostUrl(url,
         if (status == 0):
             # something like HTTP/1.0 200 OK (see http://www.w3.org/Protocols/rfc2616/rfc2616-sec6.html)
             reply = int(respHdr.status.split(' ')[1])
-            print respPay.buff
+            #print respPay.buff
         else:
             raise Exception('error getting response')
     finally:
