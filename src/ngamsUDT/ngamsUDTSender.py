@@ -4,25 +4,24 @@
 #    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
 #
-#    This library is free software; you can redistribute it and/or
+#    This library is free software you can redistribute it and/or
 #    modify it under the terms of the GNU Lesser General Public
-#    License as published by the Free Software Foundation; either
+#    License as published by the Free Software Foundation either
 #    version 2.1 of the License, or (at your option) any later version.
 #
 #    This library is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    but WITHOUT ANY WARRANTY without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 #    Lesser General Public License for more details.
 #
 #    You should have received a copy of the GNU Lesser General Public
-#    License along with this library; if not, write to the Free Software
+#    License along with this library if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
 
 #******************************************************************************
 #
-# "@(#) $Id: ngamsLib.py,v 1.13 2008/08/19 20:51:50 jknudstr Exp $"
 #
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
@@ -32,11 +31,15 @@
 """
 Python-based UDT sender based on PyUDT
 """
-import time, os, base64, urllib2
+import os, base64, urlparse
 import socket as socklib
 import udt4 
 
-print('__load__client')
+MAX_LINE_LEN = 16384
+MAXELEMENTS = 100
+NGAMS_SOCK_TIMEOUT_DEF = 3600
+
+g_udt_started = False
 
 settings = {
         'host'  :   '127.0.0.1',
@@ -44,7 +47,14 @@ settings = {
         }
 
 
-def create_socket(host, port):
+def create_socket(host, port, blockSize = 65536, timeout = NGAMS_SOCK_TIMEOUT_DEF):
+    
+    global g_udt_started
+    
+    if (not g_udt_started):
+        udt4.startup()
+        g_udt_started = True 
+    
     print('create_client(%s, %s)' % (host, port))
 
 
@@ -54,9 +64,16 @@ def create_socket(host, port):
     
     #
     # set sock options 
-    #
-    opts = [ (udt4.UDP_SNDBUF, 64000),
-             (udt4.UDP_RCVBUF, 64000)
+    # 
+    if (not timeout or timeout < 0):
+        loc_timeout = NGAMS_SOCK_TIMEOUT_DEF  
+    else:
+        loc_timeout = timeout
+        
+    opts = [ (udt4.UDP_SNDBUF, blockSize),
+             (udt4.UDP_RCVBUF, blockSize),
+             (udt4.UDT_SNDTIMEO, loc_timeout),
+             (udt4.UDT_RCVTIMEO, loc_timeout)
              ]
     
     for opt in opts:
@@ -80,7 +97,7 @@ def create_socket(host, port):
     except Exception as err:
         print('Exception: %s' % err)
         return 0
-   
+    
     return socket
 
 
@@ -104,8 +121,10 @@ def send_file(udtsocket, file_path):
             ret = reliableUDTSend(udtsocket, block)
             if (ret < 0):
                 print "Error in sending UDT data: %s" % udt4.getlasterror().getErrorMessage()
+                return -1
     
     fdIn.close()
+    return 0
 
 
 def getAuthHttpHdrVal(user, pwd):
@@ -125,7 +144,7 @@ def buildHTTPHeader(path, mime_type, file_name, file_size, authHdrVal):
     contentDisp = "attachment; filename=\"%s\"; no_versioning=1" % file_name
     ngamsUSER_AGENT = "NG/AMS UDT-PClient"
     
-    header_format = "POST /%s HTTP/1.0\015\012" +\
+    header_format = "POST %s HTTP/1.0\015\012" +\
              "User-agent: %s\015\012" +\
              "Content-length: %d\015\012" +\
              "Content-type: %s\015\012" +\
@@ -140,7 +159,7 @@ def reliableUDTSend(udtsocket, buf):
     ret = 0
     while (tosend):
         ret = udt4.send(udtsocket, buf[sent:], tosend)
-        if (not ret):
+        if (ret <= 0):
             return -1
         
         sent += ret
@@ -150,10 +169,160 @@ def reliableUDTSend(udtsocket, buf):
         print "reliable UDT send failed. Sent %d bytes out of %d bytes" % (sent, len(buf))
     return sent
 
-def main():
-    udt4.startup() 
+def reliableUDTRecv(udtsocket, buff_len):
+    """
+    udtsocket     UDT Socket
+    buff_len      int
+    Return        buffer read (String)
+    """
+    buf_list = [] 
+    read = 0
+    toread = buff_len
+    ret = 0
+
+    while (read < toread):
+        tmp_buff = udt4.recv(udtsocket, toread)
+        if (not tmp_buff):
+            return -1
+        buf_list.append(tmp_buff)
+        ret = len(tmp_buff)
+        read += ret
+        toread -= ret
     
-    #time.sleep(1) # just to wait for server
+    return ''.join(buf_list)
+
+class HTTPHeader:
+    
+    def __init__(self):
+        self.status = 0
+        self.vals = {}
+        
+    def getVal(self, key):
+        if (self.vals.has_key(key)):
+            return self.vals[key]
+        else:
+            return None
+    
+    def putVal(self, key, val):
+        self.vals[key] = val
+        
+class HTTPPayload:
+    
+    def __init__(self):
+        self.payloadsize = 0
+        self.buff = None
+
+def readLine(udtsocket):
+
+    line = []
+    while (1):
+        c = reliableUDTRecv(udtsocket, 1)
+        if (not c):
+            return None
+
+        if (c =='\n'):
+            return ''.join(line)
+
+        line.append(c)
+
+        if (len(line) == MAX_LINE_LEN):
+            return ''.join(line)
+        
+def readHTTPHeader(udtsocket, hdr): 
+
+    first = True
+    while (1):
+        line = readLine(udtsocket)
+        line_len = len(line)
+        if (not line):
+            print "readline error" 
+            return -1
+
+        if (line_len == MAX_LINE_LEN):
+            print "max line reached" 
+            return -1
+
+        # Check if max number of HTTP lines reached
+        if (len(hdr.vals) >= MAXELEMENTS):
+            print "max number of http elements reached" 
+            return -1
+
+        # the end of http header
+        if (line_len == 0):
+            #print "end of header" 
+            return 0
+
+        # end of line but there is a single carridge return
+        # http header ends with an empty line i.e \r\n
+        if (line_len == 1 and line[0] == '\r'):
+            print "end of header" 
+            return 0
+
+        # read the status http header
+        if (first):
+            hdr.status = line
+            print hdr.status 
+            first = False
+        else:
+            # strip carridge return from end of string if it exists
+            if (line[line_len - 1] == '\r'):
+                #print "carridge return found at end of string" 
+                line = line[0:line_len - 1]
+
+            #split string into key:value
+            found = line.find(":")
+            if (found != -1):
+                key_val = line.split(":")
+                key = key_val[0]
+                value = key_val[1]
+                if (len(key) > 0):
+                    # convert key to lowercase
+                    # store key:value pair in a collection map
+                    hdr.putVal(key.lower(), value)
+                    # cout << key << " " << value 
+        #end else
+    #end while
+
+    return 0
+
+def readHTTPPacket(udtsocket, hdr, payload):
+    # read the NGAS response header
+    ret = readHTTPHeader(udtsocket, hdr)
+    if (ret < 0):
+        print "invalid HTTP header" 
+        return -1
+    
+
+    # get the payload size from the HTTP header
+    content = "content-length"
+    if (not hdr.getVal(content)):
+        print "content-length in HTTP header does not exist"
+        return -1
+    
+
+    # convert filesize from string to int64
+    contentsize = long(hdr.getVal(content)) 
+    if (contentsize == 0):
+        print "error parsing content-length"
+        return -1
+    
+
+    payload.payloadsize = contentsize
+    payload.buff = reliableUDTRecv(udtsocket, contentsize)
+    if (not payload.buff):
+        print "error reading http payload"
+        payload.buff = None
+        return -1
+
+    return 0
+
+
+def main():
+    
+    """
+    This function is for testing only 
+    """   
+    
     socket = create_socket(settings['host'], settings['port'])
     if not socket:
         print('failed to create socket')
@@ -167,7 +336,7 @@ def main():
         return 2
     
     auth_hrd_val = getAuthHttpHdrVal('ngasmgr', 'ngasmgr') # this is to simulate the config function used by ngamsSusbscriptionThread
-    httpHdr = buildHTTPHeader('QARCHIVE', 'application/octet-stream', os.path.basename(file), os.stat(file).st_size, auth_hrd_val)
+    httpHdr = buildHTTPHeader('/QARCHIVE', 'application/octet-stream', os.path.basename(file), os.path.getsize(file), auth_hrd_val)
     ret = reliableUDTSend(socket, httpHdr)
     if (-1 == ret):
         print "Failed to send HTTP header \n%s" % httpHdr
@@ -175,9 +344,120 @@ def main():
     else:
         print "Successfully sent the HTTP header\n %s" % httpHdr
     send_file(socket, file)
-    print "Sleep 10 seconds for now"
-    time.sleep(10);
-    udt4.close(socket)
+    
+    respHdr = HTTPHeader()
+    respPay = HTTPPayload()
+    status = readHTTPPacket(socket, respHdr, respPay);
+    if (status == 0):
+        print "HTTP Header status = %s" % respHdr.status
+        for key in respHdr.vals.keys():
+            print '%s = %s' % (key, respHdr.vals[key])
+        print respPay.buff
+    else:
+        print "error getting response"
+    
+    #print "Sleep 10 seconds for now"
+    #time.sleep(10)
+    udt4.close(socket)    
+    
+def httpPostUrl(url,
+                mimeType,
+                contDisp = "",
+                dataRef = "",
+                dataSource = "BUFFER",
+                dataTargFile = "",
+                blockSize = 65536,
+                suspTime = 0.0,
+                timeOut = None,
+                authHdrVal = "",
+                dataSize = -1):
+    """
+    This funciton is the UDT version of the same function 
+    in src/ngamsLib/ngmasLib.py
+    
+    Eventually, these two functions will be merged in the 22nd Century
+    
+    Post the the data referenced on the given URL.
+
+    The data send back from the remote server + the HTTP header information
+    is return in a list with the following contents:
+
+      [<HTTP status code>, <HTTP status msg>, <HTTP headers (list)>, <data>]
+
+    url:          URL to where data is posted (string).
+
+    mimeType:     Mime-type of message (string).
+
+    contDisp:     Content-disposition of the data (string).
+
+    dataRef:      Data to post or name of file containing data to send
+                  (string).
+
+    dataSource:   Source where to pick up the data (string/BUFFER|FILE|FD).
+
+    dataTargFile: If a filename is specified with this parameter, the
+                  data received is stored into a file of that name (string).
+
+    blockSize:    Block size (in bytes) used when sending the data (integer).
+
+    suspTime:     Time in seconds to suspend between each block (double).
+
+    timeOut:      Timeout in seconds to wait for replies from the server
+                  (double).
+
+    authHdrVal:   Authorization HTTP header value as it should be sent in
+                  the query (string).
+
+    dataSize:     Size of data to send if read from a socket (integer).
+
+    Returns:      List with information from reply from contacted
+                  NG/AMS Server (reply, msg, hdrs, data) (list).
+    """
+    
+    #from ngams import *
+    
+    # Separate the URL from the command.
+    # an example of url: - houdt://eor-08.mit.edu:7790/QARCHIVE
+    #HoUDT - HTTP Over UDT
+    if (dataSource.upper() != "FILE"):
+        raise Exception('currently only support send files via HTTP Over UDT (socket)')
+    
+    urlres = urlparse.urlparse(url)
+    host = urlres.hostname()
+    port = urlres.port()
+    path = urlparse.urlparse(url).path # e.g. /QARCHIVE
+    socket = create_socket(host, port, blockSize, timeOut)
+    if not socket:
+        raise Exception('failed to create the udt socket')    
+    
+    try:
+        httpHdr = buildHTTPHeader(path, mimeType, os.path.basename(dataRef), os.path.getsize(dataRef), authHdrVal)
+        #info(4,"Sending HTTP header ...")
+        ret = reliableUDTSend(socket, httpHdr)
+        if (-1 == ret):
+            raise Exception('failed to send HTTP header')
+        #info(4,"HTTP header sent")   
+        #info(4,"Sending data ...")
+        ret = send_file(socket, dataRef)
+        if (-1 == ret):
+            raise Exception('failed to send the file')
+        
+        respHdr = HTTPHeader()
+        respPay = HTTPPayload()
+        status = readHTTPPacket(socket, respHdr, respPay);
+        #reply = respHdr.getVal(key)
+        if (status == 0):
+            # something like HTTP/1.0 200 OK (see http://www.w3.org/Protocols/rfc2616/rfc2616-sec6.html)
+            reply = int(respHdr.status.split(' ')[1])
+            print respPay.buff
+        else:
+            raise Exception('error getting response')
+    finally:
+        if (socket):
+            udt4.close(socket)
+            del socket
+    
+    return [reply, None, None, respPay.buff]
 
 if __name__ == '__main__':
     main()
