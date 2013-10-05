@@ -2,6 +2,7 @@
 #define __NGAMSUDTUTILS_H__
 
 #include <map>
+#include "udt.h"
 
 using namespace std;
 
@@ -14,6 +15,12 @@ typedef struct HTTPHeader {
 typedef struct HTTPPayload {
 	int64_t payloadsize;
 	char* buff;
+};
+
+typedef struct SockeThrdArgs {
+	string ngas_host;
+	int ngas_port;
+	UDTSOCKET fhandle;
 };
 
 // connect to a remote tcp socket

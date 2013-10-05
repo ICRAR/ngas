@@ -13,7 +13,7 @@ using namespace std;
 // prototype
 void* recvFile(void*);
 
-int startUDTServer(const string& service)
+int startUDTServer(const string& ngas_host, const int ngas_port, const string& service)
 {
 	// use this function to initialize the UDT library
 	UDT::startup();
@@ -67,7 +67,12 @@ int startUDTServer(const string& service)
 		cout << "new connection: " << clienthost << ":" << clientservice << endl;
 
 		pthread_t filethread;
-		pthread_create(&filethread, NULL, recvFile, new UDTSOCKET(fhandle));
+		SockeThrdArgs sta;
+		sta.ngas_host = ngas_host;
+		sta.ngas_port = ngas_port;
+		sta.fhandle = fhandle;
+		//pthread_create(&filethread, NULL, recvFile, new UDTSOCKET(fhandle));
+		pthread_create(&filethread, NULL, recvFile, &sta);
 		pthread_detach(filethread);
 	}
 
@@ -116,10 +121,13 @@ int redirectUDT(UDTSOCKET u, int fd, int64_t filesize)
 }
 
 
-void* recvFile(void* usocket)
+void* recvFile(void* sta)
 {
-   UDTSOCKET fhandle = *(UDTSOCKET*)usocket;
-   delete (UDTSOCKET*)usocket;
+   //UDTSOCKET fhandle = *(UDTSOCKET*)usocket;
+   //delete (UDTSOCKET*)usocket;
+   string ngasHost = ((SockeThrdArgs*) sta) -> ngas_host;
+   int ngasPort = ((SockeThrdArgs*) sta) -> ngas_port;
+   UDTSOCKET fhandle =  ((SockeThrdArgs*) sta) -> fhandle;
 
    // read in the HTTP header from UDT client
    HTTPHeader reqHdr;
@@ -154,8 +162,8 @@ void* recvFile(void* usocket)
    cout << reqHdrStr << endl;
 
 	//string ngasHost("store02.icrar.org");
-    string ngasHost("127.0.0.1");
-	int ngasPort = 7778;
+    //string ngasHost("127.0.0.1");
+	//int ngasPort = 7778;
 
 	cout << "connecting to " << ngasHost << endl;
 
@@ -219,17 +227,20 @@ void* recvFile(void* usocket)
 int main(int argc, char *argv[])
 {
 	//usage: sendfile [server_port]
-	if ((2 < argc) || ((2 == argc) && (0 == atoi(argv[1]))))
+	if ((argc <3) || (4 < argc) || ((4 == argc) && (0 == atoi(argv[3]))))
 	{
-		cout << "usage: ngamsUDTReceiver [server_port]" << endl;
+		cout << "usage: ngamsUDTReceiver <ngas_host> <ngas_port> [udt_server_port]" << endl;
 		return -1;
 	}
 
-	string service("9000");
-	if (2 == argc)
-		service = argv[1];
+	string ngas_host = argv[1];
+	int ngas_port = atoi(argv[2]);
 
-	startUDTServer(service);
+	string service("9000");
+	if (4 == argc)
+		service = argv[3];
+
+	startUDTServer(ngas_host, ngas_port, service);
 
 	return 0;
 }

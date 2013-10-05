@@ -31,7 +31,7 @@
 """
 Python-based UDT sender based on PyUDT
 """
-import os, base64, urlparse, traceback
+import sys, os, base64, urlparse, traceback
 import socket as socklib
 import udt4 
 
@@ -323,20 +323,19 @@ def main():
     This function is for testing only 
     """   
     
-    socket = create_socket(settings['host'], settings['port'])
-    if not socket:
-        print('failed to create socket')
-        return 1    
-    #file = '/home/chen/Downloads/128T_05.fits'
-    #file = '/home/chen/Downloads/zzz.fits'
-    #file = '/home/chen/Downloads/boost_1_47_0.tar'
-    file = '/home/chen/Documents/10.1.1.137.1762.pdf'
+    if len(sys.argv) != 3:
+        print "Usage: python ngamsUDTSender.py <file_full_path> <url>"
+        print "Example: python ngamsUDTSender.py ~/Documents/10.1.1.137.1762.pdf houdt://127.0.0.1:9000/QARCHIVE"
+        exit(1)
+    
+    file = sys.argv[1].lower()
+
     if (not os.path.exists(file)):
         print ('Failed to locate file %s' % file)
         return 2
     
     auth_hrd_val = getAuthHttpHdrVal('ngasmgr', 'ngas$dba') # this is to simulate the config function used by ngamsSusbscriptionThread
-    url = 'houdt://127.0.0.1:9000/QARCHIVE'
+    url = sys.argv[2]
     fileMimeType = 'application/octet-stream'
     basename = os.path.basename(file)
     contDisp = "attachment; filename=\"%s\"; no_versioning=1" % basename
@@ -357,8 +356,6 @@ def main():
         if ((ex != "") or (reply != 200)):
             print "Error %s occurred while delivering file: %s" % (ex, basename)
             print traceback.format_exc()
-
-    udt4.close(socket)    
     
 def httpPostUrl(url,
                 mimeType,
@@ -423,6 +420,8 @@ def httpPostUrl(url,
         raise Exception('currently only support send files via HTTP Over UDT (socket)')
     
     urlres = urlparse.urlparse(url)
+    if (urlres.scheme.lower() != 'houdt'):
+        raise Exception('The protocol scheme %s is not supported by UDT-based HTTP' % urlres.scheme)
     host = urlres.hostname
     port = urlres.port
     path = urlparse.urlparse(url).path # e.g. /QARCHIVE
