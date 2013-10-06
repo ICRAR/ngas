@@ -132,16 +132,22 @@ int writeHTTPPacket(int fd, const HTTPHeader* hdr, const HTTPPayload* payload, i
 {
 	string hdrStr;
 	HTTPHeaderToString(hdr, hdrStr);
+	cout << pthread_self() << " " << fd << " Sending response header back " << endl;
 
 	// write header
 	int ret = writefunc(fd, hdrStr.c_str(), hdrStr.size());
-	if (ret <= 0)
+	if (ret == -1) {
+		cout << pthread_self() << " " << fd << " Failed to send response header back" << endl;
 		return -1;
+	}
 
 	// write payload
+	cout << pthread_self() << " " << fd << " Sending response payload back: " << endl;
 	ret = writefunc(fd, payload->buff, payload->payloadsize);
-	if (ret <= 0)
+	if (ret == -1) {
+		cout << pthread_self() << " " << fd << "Failed to send response payload back" << endl;
 		return -1;
+	}
 
 	return 0;
 }
@@ -218,7 +224,7 @@ int reliableTCPWrite(int fd, const char* buf, int len) {
 	int written = 0;
 	int ret = 0;
 
-	while (written < towrite) {
+	while (towrite > 0) {
 		ret = write(fd, buf+written, towrite);
 		if (ret <= 0)
 			return -1;
@@ -235,17 +241,19 @@ int reliableUDTWrite(int u, const char* buf, int len) {
 	int written = 0;
 	int ret = 0;
 
-	while (written < towrite) {
+	while (towrite > 0) {
 		ret = UDT::send(u, buf+written, towrite, 0);
-		// UDT::ERROR == -1
-		if (ret == UDT::ERROR)
+		if (ret == UDT::ERROR) {
+			cout << pthread_self() << " " << u << " UDT failed to write (length = " << towrite << "):\n-----\n"
+				 << buf + written << "\n----\n" << UDT::getlasterror_code() << endl;
 			return -1;
+		}
 
 		written += ret;
 		towrite -= ret;
-	}
 
-	return len;
+	}
+	return written;
 
 }
 
@@ -254,7 +262,7 @@ int reliableUDTRecv(int u, char* buf, int len) {
 	int toread = len;
 	int ret = 0;
 
-	while (read < toread) {
+	while (toread > 0) {
 		ret = UDT::recv(u, buf+read, toread, 0);
 		if (ret == UDT::ERROR)
 			return -1;
@@ -263,7 +271,7 @@ int reliableUDTRecv(int u, char* buf, int len) {
 		toread -= ret;
 	}
 
-	return len;
+	return read;
 }
 
 int reliableTCPRecv(int u, char* buf, int len) {
@@ -271,7 +279,7 @@ int reliableTCPRecv(int u, char* buf, int len) {
 	int toread = len;
 	int ret = 0;
 
-	while (read < toread) {
+	while (toread > 0) {
 		ret = recv(u, buf+read, toread, 0);
 		if (ret <= 0)
 			return -1;

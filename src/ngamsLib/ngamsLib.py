@@ -36,11 +36,11 @@ NG/AMS implementation.
 The functions in this module can be used in all the NG/AMS code.
 """
 
-import os, string, threading, httplib, time, getpass, socket
+import os, string, threading, httplib, time, getpass, socket, urlparse
 import urllib, urllib2, glob, re, select, cPickle
 from ngams import *
 import PccUtTime
-import ngamsSmtpLib
+import ngamsSmtpLib, ngamsUDTSender
 
 
 def hidePassword(fileUri):
@@ -564,6 +564,10 @@ def httpPostUrl(url,
                   NG/AMS Server (reply, msg, hdrs, data) (list).
     """
     T = TRACE()
+    
+    urlres = urlparse.urlparse(url)
+    if (urlres.scheme.lower() == 'houdt'):
+        return ngamsUDTSender.httpPostUrl(url, mimeType, contDisp, dataRef, dataSource, dataTargFile, blockSize, suspTime, timeOut, authHdrVal, dataSize)
 
     # Separate the URL from the command.
     idx = (url[7:].find("/") + 7)

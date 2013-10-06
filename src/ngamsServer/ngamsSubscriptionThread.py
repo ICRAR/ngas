@@ -685,7 +685,7 @@ def _deliveryThread(srvObj,
                     #       exception was thrown.
                     stat.clear().setStatus(NGAMS_SUCCESS)
             except Exception, e:
-                ex = str(e)
+                ex = str(e) + traceback.format_exc() 
             if ((ex != "") or (reply != NGAMS_HTTP_SUCCESS) or
                 (stat.getStatus() == NGAMS_FAILURE)):
                 # If an error occurred during data delivery, we should not update

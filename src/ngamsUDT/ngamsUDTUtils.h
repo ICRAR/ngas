@@ -20,7 +20,7 @@ typedef struct HTTPPayload {
 typedef struct SockeThrdArgs {
 	string ngas_host;
 	int ngas_port;
-	UDTSOCKET fhandle;
+	UDTSOCKET* udt_sock;
 };
 
 // connect to a remote tcp socket

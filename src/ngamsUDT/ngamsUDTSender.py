@@ -31,7 +31,7 @@
 """
 Python-based UDT sender based on PyUDT
 """
-import sys, os, base64, urlparse, traceback
+import sys, os, base64, urlparse, traceback, threading
 import socket as socklib
 import udt4 
 
@@ -40,6 +40,7 @@ MAXELEMENTS = 100
 NGAMS_SOCK_TIMEOUT_DEF = 3600
 
 g_udt_started = False
+udt_start_lock = threading.Semaphore(1)
 
 settings = {
         'host'  :   '127.0.0.1',
@@ -50,10 +51,15 @@ settings = {
 def create_socket(host, port, blockSize = 65536, timeout = NGAMS_SOCK_TIMEOUT_DEF):
     
     global g_udt_started
+    global udt_start_lock
     
-    if (not g_udt_started):
-        udt4.startup()
-        g_udt_started = True 
+    udt_start_lock.acquire()
+    try:
+        if (not g_udt_started):
+            udt4.startup()
+            g_udt_started = True 
+    finally:
+        udt_start_lock.release()
     
     print('create_client(%s, %s)' % (host, port))
 
@@ -62,6 +68,8 @@ def create_socket(host, port, blockSize = 65536, timeout = NGAMS_SOCK_TIMEOUT_DE
             socklib.AF_INET, socklib.SOCK_STREAM, socklib.AI_PASSIVE
             ) 
     
+    #print "UDT_SNDTIMEO = %d" % udt4.getsockopt(socket, udt4.UDT_SNDTIMEO)
+    #print "UDT_RCVTIMEO = %d" % udt4.getsockopt(socket, udt4.UDT_RCVTIMEO)
     #
     # set sock options 
     # 
@@ -72,41 +80,41 @@ def create_socket(host, port, blockSize = 65536, timeout = NGAMS_SOCK_TIMEOUT_DE
         
     opts = [ (udt4.UDP_SNDBUF, blockSize),
              (udt4.UDP_RCVBUF, blockSize),
-             (udt4.UDT_SNDTIMEO, loc_timeout),
-             (udt4.UDT_RCVTIMEO, loc_timeout)
+             (udt4.UDT_SNDTIMEO, loc_timeout)
              ]
     
     for opt in opts:
         udt4.setsockopt(socket, opt[0], opt[1]) 
-#    print "UDP_SNDBUF = %d" % udt4.getsockopt(socket, udt4.UDP_SNDBUF)
-#    print "UDP_RCVBUF = %d" % udt4.getsockopt(socket, udt4.UDP_RCVBUF)
+    #print "UDT_SNDTIMEO = %d" % udt4.getsockopt(socket, udt4.UDT_SNDTIMEO)
+    #print "UDT_RCVTIMEO = %d" % udt4.getsockopt(socket, udt4.UDT_RCVTIMEO)
 #    
 #    
 #    udt4.setsockopt(socket, udt4.UDP_SNDBUF,640000)
 #    udt4.setsockopt(socket, udt4.UDP_RCVBUF,640000)
 #    
-    print "UDP_SNDBUF = %d" % udt4.getsockopt(socket, udt4.UDP_SNDBUF)
-    print "UDP_RCVBUF = %d" % udt4.getsockopt(socket, udt4.UDP_RCVBUF)
+    #print "UDP_SNDBUF = %d" % udt4.getsockopt(socket, udt4.UDP_SNDBUF)
+    #print "UDP_RCVBUF = %d" % udt4.getsockopt(socket, udt4.UDP_RCVBUF)
     
 #    udt4.setsockopt(socket, udt4.UDT_SNDBUF,64)
 #    udt4.setsockopt(socket, udt4.UDT_RCVBUF,64)
    
-    print('connecting client')
+    #print('connecting client')
     try:
         udt4.connect(socket, host, port)
     except Exception as err:
-        print('Exception: %s' % err)
-        return 0
+        #print('Exception: %s' % err)
+        raise err
     
+    #print "%s ---------" % str(socket.UDTSOCKET)
     return socket
 
 
 def send_file(udtsocket, file_path):
-    print('send_file...')
+    #print('send_file...')
         
     fdIn = open(file_path, 'r')
     fsize = os.stat(file_path).st_size
-    print "File size = %d" % fsize
+    #print "File size = %d" % fsize
     #udt4.sendfile(udtsocket, f, 0, fsize) # this does not work
     blockSize = udt4.getsockopt(udtsocket, udt4.UDP_SNDBUF)
     block = "-"
@@ -180,8 +188,14 @@ def reliableUDTRecv(udtsocket, buff_len):
     toread = buff_len
     ret = 0
 
-    while (read < toread):
-        tmp_buff = udt4.recv(udtsocket, toread)
+    while (toread):
+        tmp_buff = None
+        try:
+            tmp_buff = udt4.recv(udtsocket, toread)
+        except Exception, eee:
+            print "%s Exception in reading data from UDT socket" % str(udtsocket.UDTSOCKET)
+            raise eee
+            
         if (not tmp_buff):
             return -1
         buf_list.append(tmp_buff)
@@ -431,20 +445,26 @@ def httpPostUrl(url,
     
     try:
         httpHdr = buildHTTPHeader(path, mimeType, os.path.getsize(dataRef), authHdrVal, contDisp)
-        print '\n\n%s' % httpHdr
+        #print '\n\n%s' % httpHdr
         #info(4,"Sending HTTP header ...")
+        print "%s Sending HTTP header" % str(socket.UDTSOCKET)
         ret = reliableUDTSend(socket, httpHdr)
         if (-1 == ret):
             raise Exception('failed to send HTTP header')
+        print "%s HTTP header sent" % str(socket.UDTSOCKET)
         #info(4,"HTTP header sent")   
         #info(4,"Sending data ...")
+        print "%s Sending HTTP data" % str(socket.UDTSOCKET)
         ret = send_file(socket, dataRef)
+        print "%s HTTP data sent" % str(socket.UDTSOCKET)
         if (-1 == ret):
             raise Exception('failed to send the file')
         
         respHdr = HTTPHeader()
         respPay = HTTPPayload()
+        print "%s Reading HTTP header from UDT" % str(socket.UDTSOCKET)
         status = readHTTPPacket(socket, respHdr, respPay);
+        print "%s HTTP header from UDT read" % str(socket.UDTSOCKET)
         #reply = respHdr.getVal(key)
         if (status == 0):
             # something like HTTP/1.0 200 OK (see http://www.w3.org/Protocols/rfc2616/rfc2616-sec6.html)

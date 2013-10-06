@@ -3,6 +3,7 @@
 #include <iostream>
 #include <errno.h>
 
+
 #include "ngamsUDTUtils.h"
 #include "udt.h"
 
@@ -32,6 +33,7 @@ int startUDTServer(const string& ngas_host, const int ngas_port, const string& s
 	}
 
 	UDTSOCKET serv = UDT::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	cout << "server listen socket " <<  serv << endl;
 
 	int snd_buf = 640000;
 	int rcv_buf = 640000;
@@ -47,11 +49,14 @@ int startUDTServer(const string& ngas_host, const int ngas_port, const string& s
 
 	cout << "server is ready at port: " << service << endl;
 
-	UDT::listen(serv, 10);
+	UDT::listen(serv, 100);
 
 	sockaddr_storage clientaddr;
 	int addrlen = sizeof(clientaddr);
 	UDTSOCKET fhandle;
+	SockeThrdArgs sta;
+	sta.ngas_host = ngas_host;
+	sta.ngas_port = ngas_port;
 
 	while (true)
 	{
@@ -64,13 +69,11 @@ int startUDTServer(const string& ngas_host, const int ngas_port, const string& s
 		char clienthost[NI_MAXHOST];
 		char clientservice[NI_MAXSERV];
 		getnameinfo((sockaddr *)&clientaddr, addrlen, clienthost, sizeof(clienthost), clientservice, sizeof(clientservice), NI_NUMERICHOST|NI_NUMERICSERV);
-		cout << "new connection: " << clienthost << ":" << clientservice << endl;
+		cout << "new connection: " << fhandle << " " << clienthost << ":" << clientservice << endl;
 
 		pthread_t filethread;
-		SockeThrdArgs sta;
-		sta.ngas_host = ngas_host;
-		sta.ngas_port = ngas_port;
-		sta.fhandle = fhandle;
+
+		sta.udt_sock = new UDTSOCKET(fhandle);
 		//pthread_create(&filethread, NULL, recvFile, new UDTSOCKET(fhandle));
 		pthread_create(&filethread, NULL, recvFile, &sta);
 		pthread_detach(filethread);
@@ -115,19 +118,18 @@ int redirectUDT(UDTSOCKET u, int fd, int64_t filesize)
 		//cout << fileread << endl;
 	}
 
-	cout << "UDT data read and transmitted to NGAS: " << fileread << endl;
+	cout << pthread_self() << " " << u << " UDT data read and transmitted to NGAS: " << fileread << endl;
 
 	return 0;
 }
 
 
-void* recvFile(void* sta)
+void* recvFile(void* sta_ptr)
 {
-   //UDTSOCKET fhandle = *(UDTSOCKET*)usocket;
-   //delete (UDTSOCKET*)usocket;
-   string ngasHost = ((SockeThrdArgs*) sta) -> ngas_host;
-   int ngasPort = ((SockeThrdArgs*) sta) -> ngas_port;
-   UDTSOCKET fhandle =  ((SockeThrdArgs*) sta) -> fhandle;
+   UDTSOCKET fhandle = *((UDTSOCKET*)((SockeThrdArgs*) sta_ptr)->udt_sock);
+   delete ((SockeThrdArgs*) sta_ptr)->udt_sock;
+   string ngasHost = ((SockeThrdArgs*) sta_ptr) -> ngas_host;
+   int ngasPort = ((SockeThrdArgs*) sta_ptr) -> ngas_port;
 
    // read in the HTTP header from UDT client
    HTTPHeader reqHdr;
@@ -159,13 +161,13 @@ void* recvFile(void* sta)
    string reqHdrStr;
    HTTPHeaderToString(&reqHdr, reqHdrStr);
 
-   cout << reqHdrStr << endl;
+   //cout << reqHdrStr << endl;
 
 	//string ngasHost("store02.icrar.org");
     //string ngasHost("127.0.0.1");
 	//int ngasPort = 7778;
 
-	cout << "connecting to " << ngasHost << endl;
+	cout << pthread_self() << " " << fhandle << " connecting to " << ngasHost << endl;
 
    	// connect to an NGAS instance
    	int fd = connect(ngasHost.c_str(), ngasPort);
@@ -175,7 +177,7 @@ void* recvFile(void* sta)
    		return NULL;
    	}
 
-   	cout << "connected to " << ngasHost << endl;
+   	cout << pthread_self() << " " << fhandle << " connected to " << ngasHost << endl;
 
    	// write http header to NGAS
    	if (reliableTCPWrite(fd, reqHdrStr.c_str(), reqHdrStr.size()) < 0) {
@@ -208,10 +210,11 @@ void* recvFile(void* sta)
 	// send http response to UDT client
 	ret = writeHTTPPacket(fhandle, &respHdr, &respPay, reliableUDTWrite);
 	if (ret < 0) {
+		cout << pthread_self() << " " << fhandle << " failed to write http response to UDT client. Error code " <<
+				UDT::getlasterror_code() << ", Error: " << UDT::getlasterror().getErrorMessage() << endl;
 		close(fd);
 		UDT::close(fhandle);
 		delete[] respPay.buff;
-		cout << "failed to write http response to UDT client" << endl;
 		return NULL;
 	}
 
