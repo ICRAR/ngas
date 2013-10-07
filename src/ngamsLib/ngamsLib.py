@@ -40,7 +40,7 @@ import os, string, threading, httplib, time, getpass, socket, urlparse
 import urllib, urllib2, glob, re, select, cPickle
 from ngams import *
 import PccUtTime
-import ngamsSmtpLib, ngamsUDTSender
+import ngamsSmtpLib
 
 
 def hidePassword(fileUri):
@@ -567,6 +567,7 @@ def httpPostUrl(url,
     
     urlres = urlparse.urlparse(url)
     if (urlres.scheme.lower() == 'houdt'):
+        import ngamsUDTSender
         return ngamsUDTSender.httpPostUrl(url, mimeType, contDisp, dataRef, dataSource, dataTargFile, blockSize, suspTime, timeOut, authHdrVal, dataSize)
 
     # Separate the URL from the command.

@@ -760,6 +760,8 @@ def init_deploy(type='archive'):
               env.NGAS_DIR_ABS, cfg, lcfg))
 
     sudo('chkconfig --add /etc/init.d/{0}'.format(initLink))
+    # on ubuntu, this should be
+    # sudo('chkconfig --add {0}'.format(initLink))
 
 
 @task
