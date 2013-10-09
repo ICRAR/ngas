@@ -21,9 +21,7 @@ import boto
 import os
 import time
 
-from fabric.api import put, env, require, local, task
-from fabric.api import run as frun
-from fabric.api import sudo as fsudo
+from fabric.api import run, sudo, put, env, require, local, task
 from fabric.context_managers import cd, hide, settings
 from fabric.contrib.console import confirm
 from fabric.contrib.files import append, sed, comment
@@ -31,35 +29,19 @@ from fabric.decorators import task, serial
 from fabric.operations import prompt
 from fabric.utils import puts, abort, fastprint
 
-FILTER = 'The cray-mpich2 module is now deprecated and will be removed in a future release.\r\r\nPlease use the cray-mpich module.'
-
-def run(*args, **kwargs):
-    res = frun(*args, **kwargs)
-    res = res.replace(FILTER,'')
-    res = res.replace('\n','')
-    res = res.replace('\r','')
-    return res
-
-def sudo(*args, **kwargs):
-    res = fsudo(*args, **kwargs)
-    res = res.replace(FILTER, '')
-    res = res.replace('\n','')
-    res = res.replace('\r','')
-    return res
-
 #Defaults
 thisDir = os.path.dirname(os.path.realpath(__file__))
 
-BRANCH = 'master'    # this is controlling which branch is used in git clone
+BRANCH = 'ngas'    # this is controlling which branch is used in git clone
 USERNAME = 'ec2-user'
 POSTFIX = False
 AMI_ID = 'ami-aecd60c7'
-INSTANCE_NAME = 'NGAS_{0}'.format(BRANCH)
+INSTANCE_NAME = 'NGAS'
 INSTANCE_TYPE = 't1.micro'
 INSTANCES_FILE = os.path.expanduser('~/.aws/aws_instances')
 AWS_KEY = os.path.expanduser('~/.ssh/icrar_ngas.pem')
 KEY_NAME = 'icrar_ngas'
-ELASTIC_IP = 'False'
+ELASTIC_IP = False
 SECURITY_GROUPS = ['NGAS'] # Security group allows SSH
 NGAS_PYTHON_VERSION = '2.7'
 NGAS_PYTHON_URL = 'http://www.python.org/ftp/python/2.7.5/Python-2.7.5.tar.bz2'
@@ -83,22 +65,38 @@ YUM_PACKAGES = [
    'postfix',
    'openssl-devel.x86_64',
    'wget.x86_64',
-   'postgresql-devel.x86_64',
 ]
 
 APT_PACKAGES = [
-        'libtool',
-        'autoconf',
         'zlib1g-dbg',
         'libzlcore-dev',
-        'libdb4.8-dev',
+        'libdb4.7-dev',
         'libgdbm-dev',
         'openjdk-6-jdk',
         'libreadline-dev',
         'sqlite3',
         'libsqlite3-dev',
-        'postgresql-client',
+        'libdb5.1-dev',
         ]
+
+ZYPPER_PACKAGES = [
+   'git',
+   'gcc',
+   'automake',
+   'autoconf',
+   'libtool',
+   'zlib-devel',
+   'libdb45-devel',
+   'gdbm-devel',
+   'readline-devel',
+   'sqlite-devel',
+   'make',
+   'java-1_7_0-ibm-devel',
+   'postfix',
+   'openssl-devel',
+   'wget',
+]
+
 
 
 PUBLIC_KEYS = os.path.expanduser('~/.ssh')
@@ -114,10 +112,16 @@ def set_env():
         env.GITUSER = GITUSER
     if not env.has_key('GITREPO') or not env.GITREPO:
         env.GITREPO = GITREPO
+    if not env.has_key('instance_name') or not env.instance_name:
+        env.instance_name = INSTANCE_NAME
     if not env.has_key('postfix') or not env.postfix:
         env.postfix = POSTFIX
+    if not env.has_key('use_elastic_ip') or not env.use_elastic_ip:
+        env.use_elastic_ip = ELASTIC_IP
     if not env.user or not env.user:
         env.user = USERNAME
+    if not env.has_key('key_filename') or not env.key_filename:
+        env.key_filename = AWS_KEY
     require('hosts', provided_by=[test_env])
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
         HOME = run("echo $HOME")
@@ -242,7 +246,7 @@ def check_dir(directory):
     """
     Check existence of remote directory
     """
-    res = run("""if [ -d {0} ]; then echo 1; else echo ; fi""".format(directory))
+    res = run('if [ -d {0} ]; then echo 1; else echo ; fi'.format(directory))
     return res
 
 
@@ -265,7 +269,7 @@ def check_python():
     path to python binary    string, could be empty string
     """
     # Try whether there is already a local python installation for this user
-    ppath = env.NGAS_DIR_ABS+'/../python'
+    ppath = os.path.realpath(env.NGAS_DIR_ABS+'/../python')
     ppath = check_command('{0}/bin/python{1}'.format(ppath, NGAS_PYTHON_VERSION))
     if ppath:
         return ppath
@@ -302,6 +306,14 @@ def install_apt(package):
     NOTE: This requires sudo access
     """
     sudo('apt-get -qq -y install {0}'.format(package))
+
+def install_zypper(package):
+    """
+    Install a package using zypper (Pawsey SLES)
+
+    NOTE: This requires sudo access
+    """
+    sudo('zypper install {0} -y'.format(package))
 
 
 def check_yum(package):
@@ -373,7 +385,7 @@ def git_clone():
     """
     copy_public_keys()
     with cd(env.NGAS_DIR_ABS):
-        run('git clone {0}@{1} -b {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
+        run('git clone {0}@{1}'.format(env.GITUSER, env.GITREPO))
 
 
 @task
@@ -385,44 +397,14 @@ def git_clone_tar():
     is thus using a tar-file, copied over from the calling machine.
     """
     set_env()
-    local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
+    local('cd /tmp && git clone {0}@{1} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
     local('cd /tmp && mv {0} {1}'.format(BRANCH, NGAS_DIR))
-    local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES \
-    --exclude additional_tars --exclude .git {0}'.format(NGAS_DIR))
+    local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES {0}'.format(NGAS_DIR))
     tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
     put('/tmp/{0}'.format(tarfile), tarfile)
     local('rm -rf /tmp/{0}'.format(NGAS_DIR))  # cleanup local git clone dir
     run('tar -xjf {0} && rm {0}'.format(tarfile))
 
-
-@task
-def ngas_minimal_tar():
-    """
-    This function packs the minimal required parts of the NGAS source tree
-    into a tar file and copies it to the remote site.
-    """
-    set_env()
-    parts = ['src',
-             'cfg',
-             'NGAS',
-             'COPYRIGHT',
-             'README',
-             'INSTALL',
-             'LICENSE',
-             'VERSION',
-             'bootstrap.py',
-             'buildout.cfg',
-             'doc',
-             'hooks',
-             'machine_setup',
-             'setup.py',
-             ]
-    excludes = ['.git',
-                ]
-    exclude = ' --exclude ' + ' --exclude '.join(excludes)
-    local('cd {0}/../.. && tar {1} -czf /tmp/ngas_src.tar.gz ngas'.format(thisDir, exclude))
-    put('/tmp/ngas_src.tar.gz','/tmp/ngas.tar.gz')
-    run('cd {0} && tar --strip-components 1 -xzf /tmp/ngas.tar.gz'.format(env.NGAS_DIR_ABS))
 
 def processCentOSErrMsg(errmsg):
     if (errmsg == None or len(errmsg) == 0):
@@ -435,7 +417,7 @@ def processCentOSErrMsg(errmsg):
 
 
 @task
-def system_install_f():
+def system_install():
     """
     Perform the system installation part.
 
@@ -447,8 +429,7 @@ def system_install_f():
     re = run('cat /etc/issue')
     linux_flavor = re.split()
     if (len(linux_flavor) > 0):
-        if linux_flavor[0] == 'CentOS' or linux_flavor[0] == 'Ubuntu' \
-           or linux_flavor[0] == 'Debian':
+        if linux_flavor[0] == 'CentOS' or linux_flavor[0] == 'Ubuntu':
             linux_flavor = linux_flavor[0]
         elif linux_flavor[0] == 'Amazon':
             linux_flavor = ' '.join(linux_flavor[:2])
@@ -459,7 +440,7 @@ def system_install_f():
         for package in YUM_PACKAGES:
             install_yum(package)
 
-    elif (linux_flavor in ['Ubuntu', 'Debian']):
+    elif (linux_flavor == 'Ubuntu'):
         for package in APT_PACKAGES:
             install_apt(package)
     else:
@@ -550,12 +531,12 @@ def user_setup():
     if not env.user:
         env.user = USERNAME # defaults to ec2-user
     for user in ['ngas','ngasmgr']:
-        sudo('useradd -m -s /bin/bash {0}'.format(user), warn_only=True)
+        sudo('useradd {0}'.format(user), warn_only=True)
         sudo('mkdir /home/{0}/.ssh'.format(user), warn_only=True)
         sudo('chmod 700 /home/{0}/.ssh'.format(user))
         sudo('chown -R {0}:{0} /home/{0}/.ssh'.format(user))
         sudo('cp /home/{0}/.ssh/authorized_keys /home/{1}/.ssh/authorized_keys'.format(env.user, user))
-        sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
+        sudo('chmod 700 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{0} /home/{0}/.ssh/authorized_keys'.format(user))
     env.NGAS_DIR_ABS = '/home/ngas/{0}'.format(NGAS_DIR)
 
@@ -597,68 +578,67 @@ def virtualenv_setup():
     if check_dir(env.NGAS_DIR_ABS):
         abort('ngas_rt directory exists already')
 
-    with cd('/tmp'):
-        put('{0}/../clib_tars/virtualenv-1.10.tar.gz'.format(thisDir), 'virtualenv-1.10.tar.gz')
-        run('tar -xvzf virtualenv-1.10.tar.gz')
-        run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
-
+    with cd('/home/ngas'):
+        #run('wget --no-check-certificate -q https://raw.github.com/pypa/virtualenv/master/virtualenv.py')
+        run('{0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
+    with cd(env.NGAS_DIR_ABS):
+        virtualenv('pip install zc.buildout')
+        # make this installation self consistent
+        virtualenv('pip install fabric')
+        virtualenv('pip install boto')
+        put('{0}/../clib_tars/markup-1.9.tar.gz'.format(thisDir), '/tmp/markup-1.9.tar.gz')
+        virtualenv('pip install /tmp/markup-1.9.tar.gz'.format(env.NGAS_DIR_ABS))
+        # the package has not been updated on PyPI as of 2013-02-7
 
 
 @task
-def ngas_buildout(standalone=0):
+def ngas_db_setup():
+    """
+    generate the SQLite DB from the schema file
+    """
+    set_env()
+    with settings(warn_only=True):
+        with hide('warnings', 'running', 'stdout'):
+            with cd('NGAS'):
+
+                run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
+                    .format(env.NGAS_DIR_ABS))
+            # make sure that the TEST DB template is up-to-date as well
+                run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template'.format(env.NGAS_DIR_ABS))
+
+
+@task
+def ngas_buildout():
     """
     Perform just the buildout and virtualenv config
-
-    if standalone is not 0 then the eggs from the additional_tars
-    will be installed to avoid accessing the internet.
     """
     set_env()
 
     with cd(env.NGAS_DIR_ABS):
-        if (standalone):
-            put('{0}/../additional_tars/eggs.tar.gz'.format(thisDir), '{0}/eggs.tar.gz'.format(env.NGAS_DIR_ABS))
-            run('tar -xvzf eggs.tar.gz')
-            virtualenv('buildout -Nvo')
-        else:
-            virtualenv('buildout')
+        virtualenv('buildout')
     run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
-    with cd('NGAS'):
-        with settings(warn_only=True):
-            run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
-                .format(env.NGAS_DIR_ABS))
-            run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template'.format(env.NGAS_DIR_ABS))
+    ngas_db_setup()
+    # make sure the virtualenv is active when logging in
+    run('echo "source {0}/bin/activate" >> .bash_profile'.format(env.NGAS_DIR_ABS))
 
 
 @task
-def ngas_full_buildout(standalone=0):
+def ngas_full_buildout():
     """
     Perform the full install and buildout
     """
     set_env()
     # First get the sources
     #
-    if (standalone):
-        ngas_minimal_tar()
-    elif not check_path('{0}/bootstrap.py'.format(env.NGAS_DIR_ABS)):
+    if not check_path('{0}/bootstrap.py'.format(env.NGAS_DIR_ABS)):
         git_clone_tar()
 
     with cd(env.NGAS_DIR_ABS):
-        virtualenv('pip install clib_tars/zc.buildout-2.2.1.tar.gz')
-        virtualenv('pip install clib_tars/pycrypto-2.6.tar.gz')
-        virtualenv('pip install clib_tars/paramiko-1.11.0.tar.gz')
-        # make this installation self consistent
-        virtualenv('pip install clib_tars/Fabric-1.7.0.tar.gz')
-        virtualenv('pip install clib_tars/boto-2.13.0.tar.gz')
-        virtualenv('pip install clib_tars/markup-1.9.tar.gz')
-        virtualenv('pip install additional_tars/egenix-mx-base-3.2.6.tar.gz')
-        #The following will only work if the Berkeley DB had been installed already
-        virtualenv('pip install additional_tars/bsddb3-6.0.0.tar.gz')
-
         # run bootstrap with correct python version (explicit)
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
         virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
 
-    ngas_buildout(standalone=standalone)
+    ngas_buildout()
 
 
 @task
@@ -670,14 +650,6 @@ def test_env():
 
     Allow the user to select if a Elastic IP address is to be used
     """
-    if not env.has_key('instance_name') or not env.instance_name:
-        env.instance_name = INSTANCE_NAME
-    if not env.has_key('use_elastic_ip') or not env.use_elastic_ip:
-        env.use_elastic_ip = ELASTIC_IP
-    if not env.has_key('key_filename') or not env.key_filename:
-        env.key_filename = AWS_KEY
-    env.instance_name = INSTANCE_NAME
-    env.use_elastic_ip = ELASTIC_IP
     if 'use_elastic_ip' in env:
         use_elastic_ip = to_boolean(env.use_elastic_ip)
     else:
@@ -705,28 +677,10 @@ def test_env():
         'ngas' : host_names,
     }
 
-def initName(type='archive'):
-    """
-    Helper function to set the name of the link to the config file.
-    """
-    if type == 'archive':
-        initFile = 'ngamsServer.init.sh'
-        NGAS_DEF_CFG = 'NgamsCfg.SQLite.mini.xml'
-        NGAS_LINK_CFG = 'ngamsServer.conf'
-    elif type == 'cache':
-        initFile = 'ngamsCache.init.sh'
-        NGAS_DEF_CFG = 'NgamsCfg.SQLite.cache.xml'
-        NGAS_LINK_CFG = 'ngamsCacheServer.conf'
-    return (initFile, initFile.split('.')[0], NGAS_DEF_CFG, NGAS_LINK_CFG)
-
-
 @task
-def user_deploy(type='archive', standalone=0):
+def user_deploy():
     """
     Deploy the system as a normal user without sudo access
-    NOTE: The parameter can be passed from the command line by using
-
-    fab -f deploy.py user_deploy:type='cache'
     """
     set_env()
     ppath = check_python()
@@ -735,11 +689,7 @@ def user_deploy(type='archive', standalone=0):
     else:
         env.PYTHON = ppath
     virtualenv_setup()
-    ngas_full_buildout(standalone=standalone)
-    with cd(env.NGAS_DIR_ABS):
-        run('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
-              env.NGAS_DIR_ABS, initName(type=type)[2], initName(type=type)[3]))
-    print "\n\n******** INSTALLATION COMPLETED!********\n\n"
+    ngas_full_buildout()
 
 
 @task
@@ -747,26 +697,30 @@ def init_deploy(type='archive'):
     """
     Install the NGAS init script for an operational deployment
     """
-    (initFile, initLink, cfg, lcfg) = initName(type=type)
+    if type == 'archive':
+        initFile = 'ngamsServer.init.sh'
+        NGAS_DEF_CFG = 'NgamsCfg.PostgreSQL.mwa02.xml'
+    elif type == 'cache':
+        initFile = 'ngamsCache.init.sh'
+        NGAS_DEF_CFG = 'NgamsCfg.SQLite.cache.xml'
+    initName = initFile.split('.')[0]
 
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
         env.NGAS_DIR_ABS = '{0}/{1}'.format('/home/ngas', NGAS_DIR)
 
     sudo('cp {0}/src/ngamsStartup/{1} /etc/init.d/{2}'.\
-         format(env.NGAS_DIR_ABS, initFile, initLink))
-    sudo('chmod a+x /etc/init.d/{0}'.format(initLink))
+         format(env.NGAS_DIR_ABS, initFile, initName))
+    sudo('chmod a+x /etc/init.d/{0}'.format(initName))
+    sudo('chkconfig --add /etc/init.d/{0}'.format(initName))
     with cd(env.NGAS_DIR_ABS):
-        sudo('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
-              env.NGAS_DIR_ABS, cfg, lcfg))
+        sudo('ln -s {0}/cfg/{1} {0}/cfg/{2}.conf'.format(\
+              env.NGAS_DIR_ABS, NGAS_DEF_CFG, initName))
 
-    sudo('chkconfig --add /etc/init.d/{0}'.format(initLink))
-    # on ubuntu, this should be
-    # sudo('chkconfig --add {0}'.format(initLink))
 
 
 @task
 @serial
-def operations_deploy(system_install=True, user_install=True, type='archive', standalone=0):
+def operations_deploy(system=True, user=True, type='archive'):
     """
     ** MAIN TASK **: Deploy the full NGAS operational environment.
     In order to install NGAS on an operational host go to any host
@@ -788,18 +742,17 @@ def operations_deploy(system_install=True, user_install=True, type='archive', st
         env.user = 'root'
     # set environment to default, if not specified otherwise.
     set_env()
-    if system_install: system_install_f()
+    if system: system_install()
     if env.postfix:
         postfix_config()
-    if user_install: user_setup()
+    if user: user_setup()
     with settings(user='ngas'):
         ppath = check_python()
         if not ppath:
             python_setup()
         virtualenv_setup()
-        ngas_full_buildout(standalone=standalone)
+        ngas_full_buildout()
     init_deploy(type=type)
-    print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 
 
@@ -813,7 +766,7 @@ def test_deploy():
     test_env()
     # set environment to default for EC2, if not specified otherwise.
     set_env()
-    system_install_f()
+    system_install()
     if env.postfix:
         postfix_config()
     user_setup()
@@ -824,7 +777,6 @@ def test_deploy():
         virtualenv_setup()
         ngas_full_buildout()
     init_deploy()
-    print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 
 @task
@@ -849,9 +801,10 @@ def uninstall():
     Uninstall NGAS, NGAS users and init script.
     """
     set_env()
-    sudo('userdel -r ngas', warn_only=True)
-    sudo('userdel -r ngasmgr', warn_only=True)
-    sudo('rm /etc/ngamsServer.conf', warn_only=True)
-    sudo('rm /etc/init.d/ngamsServer', warn_only=True)
-    run('rm -rf {0}'.format(env.NGAS_DIR_ABS), warn_only=True)
-
+    if env.user in ['ec2-user', 'root']:
+        sudo('userdel -r ngas', warn_only=True)
+        sudo('userdel -r ngasmgr', warn_only=True)
+        sudo('rm /etc/ngamsServer.conf', warn_only=True)
+        sudo('rm /etc/init.d/ngamsServer', warn_only=True)
+    else:
+        run('rm -rf {0}'.format(env.NGAS_DIR_ABS))

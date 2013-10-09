@@ -292,16 +292,18 @@
                    FilterPlugIn="FilterPlugIn2"
                    FilterPlugInPars="5,6,7,8"/>
   </SubscriptionDef>
-
-
+  
   <Authorization Id="Authorization"
                  Enable="0">
     <User Name="ngas" 
-          Password="bmdhcw=="/>
+          Password="bmdhcw=="
+          Commands="STATUS,RETRIEVE"/>
     <User Name="ngasmgr" 
-          Password="bmdhc21ncg=="/>
+          Password="bmdhc21ncg=="
+          Commands="*"/>
     <User Name="ngas-int"
-          Password="bmdhcy1pbnQ="/>
+          Password="bmdhcy1pbnQ="
+          Commands="STATUS,QARCHIVE,ARCHIVE,RETRIEVE"/>
   </Authorization>
   
   <DataMoverOnly FromHostIds="127.0.0.1:7778" 

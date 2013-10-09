@@ -32,6 +32,10 @@ from ngams import *
 import ngamsPlugInApi
 import ngamsPClient
 
+import os
+
+file_ext = ['.fits', '.png']
+
 def ngamsGLEAM_VUW_FilterPI(srvObj,
                           plugInPars,
                           filename,
@@ -57,7 +61,8 @@ def ngamsGLEAM_VUW_FilterPI(srvObj,
                    conditions (integer/0|1).
     """
     match = 0
-    if (len(fileId) >= 5 and fileId[-5:].lower() == '.fits'): # only send FITS files, no measurement sets
+    fn, fext = os.path.splitext(fileId)
+    if (fext.lower() in file_ext): # only send FITS files, no measurement sets
         parDic = []
         pars = ""
         if ((plugInPars != "") and (plugInPars != None)):

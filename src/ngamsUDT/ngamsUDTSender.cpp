@@ -89,10 +89,11 @@ int sendSizeInfo(UDTSOCKET fhandle, int64_t size) {
 }
 
 void buildHTTPHeader(char* header, const char* mimeType, const char* file_name, int64_t filesize) {
-	const char* ngamsUSER_AGENT = "NG/AMS UDT-Client";
+	const char* ngamsUSER_AGENT = "NG/AMS UDT-CClient";
 	char contentDisp[16384];
 	char authHdr[512];
-	*authHdr = '\0';
+	sprintf(authHdr, "\015\012Authorization: Basic bmdhc21ncjpuZ2FzbWdy");
+	//*authHdr = '\0';
 	const char* path = "QARCHIVE";
 	sprintf(contentDisp, "attachment; filename=\"%s\"; no_versioning=1", file_name);
 	sprintf(header, "POST /%.256s HTTP/1.0\015\012"
@@ -135,7 +136,7 @@ int main(int argc, char* argv[]) {
 
 	// Sending metadata first
 	char header[65536];
-	buildHTTPHeader(header, mime.c_str(), file.c_str(), filesize);
+	buildHTTPHeader(header, mime.c_str(), basename(argv[4]), filesize);
 	sendStringInfo(fhandle, header);
 
 	fstream ifs(file.c_str(), ios::in | ios::binary);

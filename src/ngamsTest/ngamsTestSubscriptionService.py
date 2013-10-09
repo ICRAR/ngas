@@ -38,7 +38,7 @@ Case 11. ngas-B subscribes with ngas-A. Then multiple clients simultaneously arc
         priority to 10, after a while, change the priority back to 1. In the end, verify how many files get to ngas-B, and verify throughtput difference under different 
         priorities.
 """
-import time, os, commands, threading, thread
+import time, os, commands, threading, thread, base64
 import ngamsPClient
 
 from pybarrier import *
@@ -47,8 +47,10 @@ ngasA_host = '127.0.0.1'
 ngasA_port = 7777
 
 ngasB_host = '127.0.0.1'
-ngasB_port = 7778
-ngasB_url = 'http://%s:%d/QARCHIVE' % (ngasB_host, ngasB_port)
+#ngasB_port = 7778
+ngasB_port = 9000
+#ngasB_url = 'http://%s:%d/QARCHIVE' % (ngasB_host, ngasB_port)
+ngasB_url = 'houdt://%s:%d/QARCHIVE' % (ngasB_host, ngasB_port)
 
 ngasC_host = '127.0.0.1'
 ngasC_port = 7779
@@ -60,7 +62,9 @@ mime_type = 'application/octet-stream'
 file_ext = '.data'
 
 clientA = ngamsPClient.ngamsPClient(ngasA_host, ngasA_port)
+clientA.setAuthorization(base64.encodestring('ngasmgr:ngas$dba'))
 clientB = ngamsPClient.ngamsPClient(ngasB_host, ngasB_port)
+clientB.setAuthorization(base64.encodestring('ngasmgr:ngas$dba'))
 clientC = ngamsPClient.ngamsPClient(ngasC_host, ngasC_port)
 
 class WaitTimeout(Exception):
@@ -736,6 +740,6 @@ if __name__ == '__main__':
     #TestCase06(8, 3)
     #TestCase07(8, 3)
     #TestCase08(8, 3, suspendFirst = False)
-    TestCase09(8, 3)
+    TestCase09(6, 3)
     #TestCase10(8,3)
     #TestCase11(7,3)

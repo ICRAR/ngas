@@ -3,6 +3,7 @@
 #include <iostream>
 #include <errno.h>
 
+
 #include "ngamsUDTUtils.h"
 #include "udt.h"
 
@@ -13,7 +14,7 @@ using namespace std;
 // prototype
 void* recvFile(void*);
 
-int startUDTServer(const string& service)
+int startUDTServer(const string& ngas_host, const int ngas_port, const string& service)
 {
 	// use this function to initialize the UDT library
 	UDT::startup();
@@ -32,6 +33,7 @@ int startUDTServer(const string& service)
 	}
 
 	UDTSOCKET serv = UDT::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	cout << "server listen socket " <<  serv << endl;
 
 	int snd_buf = 640000;
 	int rcv_buf = 640000;
@@ -47,11 +49,14 @@ int startUDTServer(const string& service)
 
 	cout << "server is ready at port: " << service << endl;
 
-	UDT::listen(serv, 10);
+	UDT::listen(serv, 100);
 
 	sockaddr_storage clientaddr;
 	int addrlen = sizeof(clientaddr);
 	UDTSOCKET fhandle;
+	SockeThrdArgs sta;
+	sta.ngas_host = ngas_host;
+	sta.ngas_port = ngas_port;
 
 	while (true)
 	{
@@ -64,10 +69,13 @@ int startUDTServer(const string& service)
 		char clienthost[NI_MAXHOST];
 		char clientservice[NI_MAXSERV];
 		getnameinfo((sockaddr *)&clientaddr, addrlen, clienthost, sizeof(clienthost), clientservice, sizeof(clientservice), NI_NUMERICHOST|NI_NUMERICSERV);
-		cout << "new connection: " << clienthost << ":" << clientservice << endl;
+		cout << "new connection: " << fhandle << " " << clienthost << ":" << clientservice << endl;
 
 		pthread_t filethread;
-		pthread_create(&filethread, NULL, recvFile, new UDTSOCKET(fhandle));
+
+		sta.udt_sock = new UDTSOCKET(fhandle);
+		//pthread_create(&filethread, NULL, recvFile, new UDTSOCKET(fhandle));
+		pthread_create(&filethread, NULL, recvFile, &sta);
 		pthread_detach(filethread);
 	}
 
@@ -93,8 +101,9 @@ int redirectUDT(UDTSOCKET u, int fd, int64_t filesize)
 		// read from UDT
 		read = UDT::recv(u, buf, BUFFSIZE, 0);
 		if (read == UDT::ERROR) {
-			cout << "UDT::recv error" << endl;
+			cout << "UDT::recv error: " << read << ". " << UDT::getlasterror().getErrorMessage() << endl;
 			//close(fd);
+			cout << fileread << " bytes out of " << filetoread << " bytes have been received." << endl;
 			return -1;
 		}
 
@@ -109,22 +118,24 @@ int redirectUDT(UDTSOCKET u, int fd, int64_t filesize)
 		//cout << fileread << endl;
 	}
 
-	cout << "UDT data read and transmitted to NGAS: " << fileread << endl;
+	cout << pthread_self() << " " << u << " UDT data read and transmitted to NGAS: " << fileread << endl;
 
 	return 0;
 }
 
 
-void* recvFile(void* usocket)
+void* recvFile(void* sta_ptr)
 {
-   UDTSOCKET fhandle = *(UDTSOCKET*)usocket;
-   delete (UDTSOCKET*)usocket;
+   UDTSOCKET fhandle = *((UDTSOCKET*)((SockeThrdArgs*) sta_ptr)->udt_sock);
+   delete ((SockeThrdArgs*) sta_ptr)->udt_sock;
+   string ngasHost = ((SockeThrdArgs*) sta_ptr) -> ngas_host;
+   int ngasPort = ((SockeThrdArgs*) sta_ptr) -> ngas_port;
 
    // read in the HTTP header from UDT client
    HTTPHeader reqHdr;
    int ret = readHTTPHeader(fhandle, &reqHdr, reliableUDTRecv);
    if (ret < 0) {
-	   cout << "Invalid HTTP header" << endl;
+	   cout << "invalid HTTP header" << endl;
 	   UDT::close(fhandle);
 	   return NULL;
    }
@@ -150,12 +161,13 @@ void* recvFile(void* usocket)
    string reqHdrStr;
    HTTPHeaderToString(&reqHdr, reqHdrStr);
 
-   cout << reqHdrStr << endl;
+   //cout << reqHdrStr << endl;
 
-	string ngasHost("store02.icrar.org");
-	int ngasPort = 7778;
+	//string ngasHost("store02.icrar.org");
+    //string ngasHost("127.0.0.1");
+	//int ngasPort = 7778;
 
-	cout << "connecting to " << ngasHost << endl;
+	cout << pthread_self() << " " << fhandle << " connecting to " << ngasHost << endl;
 
    	// connect to an NGAS instance
    	int fd = connect(ngasHost.c_str(), ngasPort);
@@ -165,7 +177,7 @@ void* recvFile(void* usocket)
    		return NULL;
    	}
 
-   	cout << "connected to " << ngasHost << endl;
+   	cout << pthread_self() << " " << fhandle << " connected to " << ngasHost << endl;
 
    	// write http header to NGAS
    	if (reliableTCPWrite(fd, reqHdrStr.c_str(), reqHdrStr.size()) < 0) {
@@ -198,12 +210,15 @@ void* recvFile(void* usocket)
 	// send http response to UDT client
 	ret = writeHTTPPacket(fhandle, &respHdr, &respPay, reliableUDTWrite);
 	if (ret < 0) {
+		cout << pthread_self() << " " << fhandle << " failed to write http response to UDT client. Error code " <<
+				UDT::getlasterror_code() << ", Error: " << UDT::getlasterror().getErrorMessage() << endl;
 		close(fd);
 		UDT::close(fhandle);
-		cout << "failed to write http response to UDT client" << endl;
+		delete[] respPay.buff;
 		return NULL;
 	}
 
+	delete[] respPay.buff;
 	// clean up and close
 	close(fd);
 	UDT::close(fhandle);
@@ -215,17 +230,20 @@ void* recvFile(void* usocket)
 int main(int argc, char *argv[])
 {
 	//usage: sendfile [server_port]
-	if ((2 < argc) || ((2 == argc) && (0 == atoi(argv[1]))))
+	if ((argc <3) || (4 < argc) || ((4 == argc) && (0 == atoi(argv[3]))))
 	{
-		cout << "usage: ngamsUDTReceiver [server_port]" << endl;
+		cout << "usage: ngamsUDTReceiver <ngas_host> <ngas_port> [udt_server_port]" << endl;
 		return -1;
 	}
 
-	string service("9000");
-	if (2 == argc)
-		service = argv[1];
+	string ngas_host = argv[1];
+	int ngas_port = atoi(argv[2]);
 
-	startUDTServer(service);
+	string service("9000");
+	if (4 == argc)
+		service = argv[3];
+
+	startUDTServer(ngas_host, ngas_port, service);
 
 	return 0;
 }
