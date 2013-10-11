@@ -194,11 +194,11 @@ class throughputPlot():
         self.n = pylab.float16(n)
         vol = pylab.float16(res[:,:,4])
         self.tvol = pylab.float64(vol)[vol>0].sum()
-        self.tfils = pylab.int32(n)[n>0].sum()
+        self.tfils = pylab.int32(self.n.sum())
         self.res=res
         dbconn.close()
         del(dbconn)
-
+        print self.tfils, pylab.int32(self.n.sum())
         return
 
 
