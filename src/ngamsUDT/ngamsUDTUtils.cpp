@@ -11,6 +11,11 @@
 #include <iostream>
 #include <inttypes.h>
 #include <errno.h>
+#include <cctype>
+#include <algorithm>
+#include <functional>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "ngamsUDTUtils.h"
 #include "udt.h"

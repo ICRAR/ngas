@@ -68,6 +68,8 @@ def create_socket(host, port, blockSize = 65536, timeout = NGAMS_SOCK_TIMEOUT_DE
             socklib.AF_INET, socklib.SOCK_STREAM, socklib.AI_PASSIVE
             ) 
     
+    
+    
     #print "UDT_SNDTIMEO = %d" % udt4.getsockopt(socket, udt4.UDT_SNDTIMEO)
     #print "UDT_RCVTIMEO = %d" % udt4.getsockopt(socket, udt4.UDT_RCVTIMEO)
     #
@@ -97,13 +99,16 @@ def create_socket(host, port, blockSize = 65536, timeout = NGAMS_SOCK_TIMEOUT_DE
     
 #    udt4.setsockopt(socket, udt4.UDT_SNDBUF,64)
 #    udt4.setsockopt(socket, udt4.UDT_RCVBUF,64)
+    localhost = '146.118.84.66'
+    udt4.bind(socket, localhost, port)
    
     #print('connecting client')
-    try:
-        udt4.connect(socket, host, port)
-    except Exception as err:
-        #print('Exception: %s' % err)
-        raise err
+    udt4.connect(socket, host, port)
+#    try:
+#        udt4.connect(socket, host, port)
+#    except Exception as err:
+#        #print('Exception: %s' % err)
+#        raise err
     
     #print "%s ---------" % str(socket.UDTSOCKET)
     return socket
@@ -342,13 +347,14 @@ def main():
         print "Example: python ngamsUDTSender.py ~/Documents/10.1.1.137.1762.pdf houdt://127.0.0.1:9000/QARCHIVE"
         exit(1)
     
-    file = sys.argv[1].lower()
+    file = sys.argv[1]
 
     if (not os.path.exists(file)):
         print ('Failed to locate file %s' % file)
         return 2
     
-    auth_hrd_val = getAuthHttpHdrVal('ngasmgr', 'ngas$dba') # this is to simulate the config function used by ngamsSusbscriptionThread
+    #auth_hrd_val = getAuthHttpHdrVal('ngasmgr', 'ngas$dba') # this is to simulate the config function used by ngamsSusbscriptionThread
+    auth_hrd_val = getAuthHttpHdrVal('ngasmgr', 'ngasmgr') # this is to simulate the config function used by ngamsSusbscriptionThread
     url = sys.argv[2]
     fileMimeType = 'application/octet-stream'
     basename = os.path.basename(file)

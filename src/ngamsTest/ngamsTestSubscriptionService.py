@@ -37,6 +37,8 @@ Case 10. ngas-B subscribes with ngas-A. Then multiple clients simultaneously arc
 Case 11. ngas-B subscribes with ngas-A. Then multiple clients simultaneously archive files to ngas-A. After delivery starts, issue usubscribe command to change the
         priority to 10, after a while, change the priority back to 1. In the end, verify how many files get to ngas-B, and verify throughtput difference under different 
         priorities.
+
+Case 12. Running ngas-A in the standard mode. Running ngas-B in the data mover mode
 """
 import time, os, commands, threading, thread, base64
 import ngamsPClient
