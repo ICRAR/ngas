@@ -388,7 +388,7 @@ def git_clone_tar():
     local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
     local('cd /tmp && mv {0} {1}'.format(BRANCH, NGAS_DIR))
     local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES \
-    --exclude additional_tars --exclude .git {0}'.format(NGAS_DIR))
+    --exclude .git {0}'.format(NGAS_DIR))
     tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
     put('/tmp/{0}'.format(tarfile), tarfile)
     local('rm -rf /tmp/{0}'.format(NGAS_DIR))  # cleanup local git clone dir
