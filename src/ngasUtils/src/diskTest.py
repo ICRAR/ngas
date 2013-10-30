@@ -44,6 +44,10 @@ old = 0
 crcfl = ''              # default is no crc
 llflag = 0              # default use normal I/O
 session_id = None       # For write to HTTP only, default is None
+data_rate = None        # default there is no data rate limit for HTTP write
+NGAMS_HTTP_SUCCESS = 200
+NGAMS_HTTP_POST = 'POST'
+one_mb = 1024. ** 2
 
 def usage():
     """
@@ -72,6 +76,9 @@ def usage():
           [l]owio:     flag, if set during write test low level I/O
                        will be used.
           s[e]ssion:   string, session id for this HTTP write test
+          data[r]ate:  the data rate for HTTP write test. This parameter 
+                       is turned on only when the device is a URL (HTTP 
+                       write test)
 
           NOTE: All byte values are forced to be an integer multiple
                  of 4.
@@ -164,7 +171,7 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None):
     cspeed = []
     tspeed = []
     nodeId = socket.gethostname()
-    NGAMS_HTTP_POST = 'POST'
+    
     locTimeout = 3600
     mimeType = 'application/octet-stream'
     user = 'ngasmgr'
@@ -338,6 +345,7 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
     cspeed = []
     tspeed = []
     crc = 0
+    sleepTime = None
     if ifil != '/dev/zero':
         try:
             inputf = open(ifil)
@@ -357,6 +365,8 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
             if (httpobj):
                 global crcfl
                 crcfl = '' # http does not need to do crc at the client side
+                if (data_rate):
+                    sleepTime = blocksize / (data_rate * one_mb)
             else:
                 if llflag:
                     fd = os.open(ofil, os.O_CREAT | os.O_WRONLY)# | os.O_NONBLOCK)
@@ -369,7 +379,7 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
             return status
         print "Writing {0} blocks to {1}".format(count, ofil)
         crctime = 0.0
-        bsize = blocksize/1024.**2
+        bsize = blocksize/one_mb
         tsize = bsize * count
         sti = time.time()
         for ii in range(count):
@@ -393,8 +403,12 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
                 else:
                     out.write(block)
             tend = time.time()
+            one_block_time = tend - stt
+            if (sleepTime and sleepTime > one_block_time):
+                time.sleep(sleepTime - one_block_time)
             bspeed.append((bsize/(tend - stb), stb))
-            tspeed.append((bsize/(tend - stt), stt))
+            #tspeed.append((bsize/(tend - stt), stt))
+            tspeed.append((bsize/one_block_time, stt))
         print "Internal throughput: %6.2f MB/s" % \
               (tsize/(time.time()-sti))
         fst = time.time()
@@ -406,7 +420,7 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
                 errMsg = "Illegal/no response to HTTP request encountered!"
                 raise Exception, errMsg
             # we do not check msg or data for simplicity
-            NGAMS_HTTP_SUCCESS  = 200
+            
             if (reply != NGAMS_HTTP_SUCCESS):
                 raise Exception("Error in HTTP response %d" % reply)
             # we do not close http or its internal socket inside this function
@@ -435,7 +449,7 @@ if __name__ == '__main__':
 
     import getopt
 
-    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:c:lomwh",\
+    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:c:e:r:lomwh",\
            ["device","skip","testcount","iosize","blocksize",\
             "write","old","method","help","lowio"])
 
@@ -468,6 +482,8 @@ if __name__ == '__main__':
                 from zlib import crc32
         if o in ("-e", "--session"):
             session_id = v
+        if o in ("-r", "--datarate"):
+            data_rate = int(v)
         if o in ("-h","--help"):
             usage()
 
