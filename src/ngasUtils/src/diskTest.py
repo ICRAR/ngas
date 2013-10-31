@@ -48,6 +48,7 @@ data_rate = None        # default there is no data rate limit for HTTP write
 NGAMS_HTTP_SUCCESS = 200
 NGAMS_HTTP_POST = 'POST'
 one_mb = 1024. ** 2
+DEFAULT_FNM = 'bspeed.pkl'
 
 def usage():
     """
@@ -449,9 +450,9 @@ if __name__ == '__main__':
 
     import getopt
 
-    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:c:e:r:lomwh",\
+    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:c:e:r:f:lomwh",\
            ["device","skip","testcount","iosize","blocksize",\
-            "write","old","method","help","lowio"])
+            "write","old","method","help","lowio", "session", "datarate", "file"])
 
     for o,v in opts:
         if o in ("-d","--device"):
@@ -484,6 +485,8 @@ if __name__ == '__main__':
             session_id = v
         if o in ("-r", "--datarate"):
             data_rate = int(v)
+        if o in ("-f", "--file"):
+            DEFAULT_FNM = v
         if o in ("-h","--help"):
             usage()
 
@@ -541,14 +544,14 @@ if __name__ == '__main__':
     else:
         sys.exit()
     if bspeed:
-        fo = open('bspeed.pkl','w')
+        fo = open(DEFAULT_FNM,'w')
         p = pickle.Pickler(fo)
         p.dump(bspeed)
         del(p)
         fo.close()
 
 
-DEFAULT_FNM = 'bspeed.pkl'
+
 
 def speedPlot(ifile=DEFAULT_FNM, timefl=1):
     """
