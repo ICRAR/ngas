@@ -460,6 +460,7 @@ def system_install_f():
             install_yum(package)
 
     elif (linux_flavor in ['Ubuntu', 'Debian']):
+        errmsg = sudo('apt-get -qq -y update', combine_stderr=True, warn_only=True)
         for package in APT_PACKAGES:
             install_apt(package)
     else:
