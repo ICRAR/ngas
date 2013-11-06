@@ -28,7 +28,8 @@
 
 import time, pickle
 import commands
-import sys,re, os
+import sys,re, os, socket, traceback, datetime
+import base64
 
 Test = 'read'           # default test is readTest
 skip = 0        # default skip [GB]
@@ -42,6 +43,12 @@ bspeed = None
 old = 0
 crcfl = ''              # default is no crc
 llflag = 0              # default use normal I/O
+session_id = None       # For write to HTTP only, default is None
+data_rate = None        # default there is no data rate limit for HTTP write
+NGAMS_HTTP_SUCCESS = 200
+NGAMS_HTTP_POST = 'POST'
+one_mb = 1024. ** 2
+DEFAULT_FNM = 'bspeed.pkl'
 
 def usage():
     """
@@ -54,7 +61,8 @@ def usage():
 
                   long arguments are allowed as well, e.g. --device
 
-          [d]evice:    string, e.g. /dev/hdb1, can also be a file
+          [d]evice:    string, e.g. /dev/hdb1, can also be a file or 
+                       a url (for http disk write)
           [s]kip:      integer [0 GB], e.g. 5
           [t]estcount: integer [1], number of consecutive tests [1]
           [b]locksize: integer [1024 bytes], number of bytes in single
@@ -68,6 +76,10 @@ def usage():
           [w]rite:     flag, if set writeTest is performed.
           [l]owio:     flag, if set during write test low level I/O
                        will be used.
+          s[e]ssion:   string, session id for this HTTP write test
+          data[r]ate:  the data rate for HTTP write test. This parameter 
+                       is turned on only when the device is a URL (HTTP 
+                       write test)
 
           NOTE: All byte values are forced to be an integer multiple
                  of 4.
@@ -137,6 +149,91 @@ def readTest(dev,skip,testcount,iosize,blocksize):
 
         skip =skip + iocount
         return status
+    
+def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None):
+    """
+    This is actually running the HTTP-based remote write test.
+    It will read blocks of zeroes from /dev/zero and
+    and send these blocks to the server as a single file
+
+    Input:
+         dev:            String, url to which data is sent
+         sessionId:      String, this will be used to form the prefix of the file name:
+                         sessionId_nodeId_count.dat
+         testcount:      integer, number of tests
+         iosize:         integer, number of bytes/test
+         blocksize:      integer, number of bytes/write
+          
+    """
+    blocksize = long(blocksize)/4 * 4   # blocksize multiple of 4
+    iosize = long(iosize)/4 * 4   # blocksize multiple of 4
+    iocount = iosize/blocksize
+    bspeed = []
+    cspeed = []
+    tspeed = []
+    nodeId = socket.gethostname()
+    
+    locTimeout = 3600
+    mimeType = 'application/octet-stream'
+    user = 'ngasmgr'
+    pwd = 'ngas$dba' # this should be passed in
+    authHdrVal = "Basic " + base64.encodestring(user + ":" + pwd)
+    if (authHdrVal[-1] == "\n"): authHdrVal = authHdrVal[:-1]
+    
+    if (not sessionId):# if no sessionId, file names from different nodes will have different prefix
+        dt = datetime.datetime.now()
+        sessionId = dt.strftime('%Y%m%dT%H%M%S') 
+        
+    import httplib
+    
+    for ii in range(testcount):
+        st=time.time()       
+        fname = '%s_%s_%s.dat' % (sessionId, nodeId, str(ii))
+        contDisp = "attachment; filename=\"%s\"; no_versioning=1" % fname
+        # make HTTP headers
+        url = dev
+        idx = (url[7:].find("/") + 7) # Separate the URL from the command.
+        tmpUrl = url[7:idx]
+        cmd    = url[(idx + 1):]
+        
+        http = httplib.HTTP(tmpUrl)        
+        try:
+            #print "Sending HTTP header ..."
+            http.putrequest(NGAMS_HTTP_POST, cmd)
+            
+            http.putheader("Content-type", mimeType)
+            http.putheader("Content-disposition", contDisp)
+            http.putheader("Content-length", str(iosize))
+            print "Content-length = %s" % str(iosize)
+            http.putheader("Authorization", authHdrVal)
+            http.putheader("Host", nodeId)
+            http.endheaders()
+            # send payload
+            http._conn.sock.settimeout(locTimeout)
+            st=time.time()
+            status = myDD('/dev/zero', dev, \
+                           long(skip)*blocksize,blocksize,\
+                           iocount, httpobj = http)
+        except Exception, e:
+            ex = str(e) + traceback.format_exc()
+            print ex
+            raise e
+        finally:
+            if (http):
+                try:
+                    http.close() # this may fail?
+                finally:
+                    del http
+        
+        elapsed = time.time()-st
+        print 'Throughput: %3.2f MB/s (%5.2f s)' % \
+              (iosize/elapsed/1024./1024., elapsed)
+        bspeed += status[0]
+        cspeed += status[1]
+        tspeed += status[2]           
+        status = (bspeed, cspeed, tspeed)
+
+    return status
 
 def writeTestDD(dev,skip,testcount,iosize,blocksize):
     """
@@ -242,13 +339,14 @@ def writeTest(dev,skip,testcount,iosize,blocksize):
 
 
 
-def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0):
+def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0, httpobj=None):
     """
     """
     bspeed = []
     cspeed = []
     tspeed = []
     crc = 0
+    sleepTime = None
     if ifil != '/dev/zero':
         try:
             inputf = open(ifil)
@@ -262,28 +360,34 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0)
             return status
     else:
         block = str(bytearray(blocksize))
-
+        
     if ofil != '/dev/null':
         try:
-            if llflag:
-                fd = os.open(ofil, os.O_CREAT | os.O_WRONLY)# | os.O_NONBLOCK)
+            if (httpobj):
+                global crcfl
+                crcfl = '' # http does not need to do crc at the client side
+                if (data_rate):
+                    sleepTime = blocksize / (data_rate * one_mb)
             else:
-                out = open(ofil,'w')
-                out.seek(seek)
+                if llflag:
+                    fd = os.open(ofil, os.O_CREAT | os.O_WRONLY)# | os.O_NONBLOCK)
+                else:
+                    out = open(ofil,'w')
+                    out.seek(seek)
         except:
             status = 255
             out.close()
             return status
         print "Writing {0} blocks to {1}".format(count, ofil)
         crctime = 0.0
-        bsize = blocksize/1024.**2
+        bsize = blocksize/one_mb
         tsize = bsize * count
         sti = time.time()
         for ii in range(count):
             stt = time.time()
             if ifil != '/dev/zero':
                 block=inputf.read(blocksize)
-            if crcfl:
+            if crcfl: 
                 stc = time.time()
                 crc = crc32(block, crc)
                 crct = time.time() - stc
@@ -292,23 +396,42 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0)
             else:
                 cspeed.append((-1,time.time()))
             stb = time.time()
-            if llflag:
-                os.write(fd, block)
+            if (httpobj):
+                httpobj._conn.sock.sendall(block)
             else:
-                out.write(block)
+                if llflag:
+                    os.write(fd, block)
+                else:
+                    out.write(block)
             tend = time.time()
+            one_block_time = tend - stt
+            if (sleepTime and sleepTime > one_block_time):
+                time.sleep(sleepTime - one_block_time)
             bspeed.append((bsize/(tend - stb), stb))
-            tspeed.append((bsize/(tend - stt), stt))
+            #tspeed.append((bsize/(tend - stt), stt))
+            tspeed.append((bsize/one_block_time, stt))
         print "Internal throughput: %6.2f MB/s" % \
               (tsize/(time.time()-sti))
         fst = time.time()
         if ifil != '/dev/zero': inputf.close()
-        if llflag:
-            os.fsync(fd)
-            os.close(fd)
+        if (httpobj):
+            # get HTTP response
+            reply, msg, hdrs = httpobj.getreply()
+            if (hdrs == None):
+                errMsg = "Illegal/no response to HTTP request encountered!"
+                raise Exception, errMsg
+            # we do not check msg or data for simplicity
+            
+            if (reply != NGAMS_HTTP_SUCCESS):
+                raise Exception("Error in HTTP response %d" % reply)
+            # we do not close http or its internal socket inside this function
         else:
-            # out.flush()
-            out.close()
+            if llflag:
+                os.fsync(fd)
+                os.close(fd)
+            else:
+                # out.flush()
+                out.close()
         print "File closing time: %5.2f s" % (time.time()-fst)
         if (crcfl):
             print "CRC throughput: %6.2f MB/s (%5.2f s)" % \
@@ -327,9 +450,9 @@ if __name__ == '__main__':
 
     import getopt
 
-    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:c:lomwh",\
+    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:c:e:r:f:lomwh",\
            ["device","skip","testcount","iosize","blocksize",\
-            "write","old","method","help","lowio"])
+            "write","old","method","help","lowio", "session", "datarate", "file"])
 
     for o,v in opts:
         if o in ("-d","--device"):
@@ -358,6 +481,12 @@ if __name__ == '__main__':
                 from binascii import crc32
             else:
                 from zlib import crc32
+        if o in ("-e", "--session"):
+            session_id = v
+        if o in ("-r", "--datarate"):
+            data_rate = int(v)
+        if o in ("-f", "--file"):
+            DEFAULT_FNM = v
         if o in ("-h","--help"):
             usage()
 
@@ -366,7 +495,10 @@ if __name__ == '__main__':
     if Test == 'read':
         readTest(dev,skip,testcount,iosize,blocksize)
     elif Test == 'write':
-        if dev[0:4] == '/dev':
+        if dev[0:4].lower() == 'http':
+            print "To test writing to a remote NGAS disk"
+            bspeed = writeTestHTTP(dev, skip, testcount, iosize, blocksize)
+        elif dev[0:4] == '/dev':
 
             # All the rest here just to make sure that there
             # is no dummy out there doing something wrong on
@@ -412,14 +544,14 @@ if __name__ == '__main__':
     else:
         sys.exit()
     if bspeed:
-        fo = open('bspeed.pkl','w')
+        fo = open(DEFAULT_FNM,'w')
         p = pickle.Pickler(fo)
         p.dump(bspeed)
         del(p)
         fo.close()
 
 
-DEFAULT_FNM = 'bspeed.pkl'
+
 
 def speedPlot(ifile=DEFAULT_FNM, timefl=1):
     """

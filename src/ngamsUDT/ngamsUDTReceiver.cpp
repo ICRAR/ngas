@@ -2,7 +2,9 @@
 #include <netdb.h>
 #include <iostream>
 #include <errno.h>
-
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 
 #include "ngamsUDTUtils.h"
 #include "udt.h"

@@ -35,7 +35,7 @@ used to handle the delivery of data to Subscribers.
 """
 
 import thread, threading, time, commands, cPickle, types, math, sys, traceback, os
-from Queue import Queue, Empty
+from Queue import Queue, Empty, PriorityQueue
 
 from ngams import *
 import ngamsDbm, ngamsDb, ngamsLib, ngamsStatus, ngamsHighLevelLib, ngamsCacheControlThread
@@ -340,7 +340,7 @@ def _checkIfDeliverFile(srvObj,
 
 
 def _compFct(fileInfo1,
-             fileInfo2):
+             fileInfo2, sortField):
     """
     Sorter function to sort the elements in the file info list as returned by
     ngamsDb.getFileSummary2() (according to the File Ingestion Date).
@@ -354,12 +354,18 @@ def _compFct(fileInfo1,
     """
     fileInfo1 = _convertFileInfo(fileInfo1)
     fileInfo2 = _convertFileInfo(fileInfo2)
-    if (fileInfo1[FILE_DATE] < fileInfo2[FILE_DATE]):
+    if (fileInfo1[sortField] < fileInfo2[sortField]):
         return -1
-    elif (fileInfo1[FILE_DATE] == fileInfo2[FILE_DATE]):
+    elif (fileInfo1[sortField] == fileInfo2[sortField]):
         return 0
     else:
         return 1
+
+def _compFctIngDate(fileInfo1, fileInfo2):
+    return _compFct(fileInfo1, fileInfo2, FILE_DATE)
+
+def _compFctFileId(fileInfo1, fileInfo2):
+    return _compFct(fileInfo1, fileInfo2, FILE_ID)
 
 
 def _convertFileInfo(fileInfo):
@@ -629,7 +635,7 @@ def _deliveryThread(srvObj,
                 _checkStopDataDeliveryThread(srvObj, subscrbId) # Timeout allows it to check if the delivery thread should stop
                 # if delivery thread is to continue, trigger the subscriptionThread to get more files in
                 if (srvObj.getDataMoverOnlyActive() and remindMainThread and firstThread):                    
-                    # But only the first thread does this to avoid repeated notifications
+                    # But only the first thread does this to avoid repeated notifications, but what if the first thread is busy (i.e. sending a file)
                     srvObj.triggerSubscriptionThread()
                     remindMainThread = False # only notify once within each "empty session"
             
@@ -880,8 +886,8 @@ def subscriptionThread(srvObj,
             # TODO - handle the abnormal shutdown situation, i.e. 
             # for each subscriber, find out the LastFileIngDate, and query db with: ingestion_date > 'LastFileIngDate'
             # if (not dataMoverOnly and abnormalShutdown): abnormalShutdown = False then: blah blah
-            # if (dataMoverOnly and srvObj.getSubcrBackLogCount() <= 0): # this ensures back-logged files to be sent before new files are brought in
-            if (dataMoverOnly): # we need to support multiple data movers and priority on the single NGAS server, so the "backlog first" policy is cancelled                
+            if (dataMoverOnly and srvObj.getSubcrBackLogCount() <= 0): # this ensures back-logged files to be sent before new files are brought in
+            # if (dataMoverOnly): # we need to support multiple data movers and priority on the single NGAS server, so the "backlog first" policy is cancelled                
                 #subscrId = srvObj.getSubscriberDic().keys()[0] 
                 for subscrId in srvObj.getSubscriberDic().keys():
                     #debug_chen
@@ -899,7 +905,8 @@ def subscriptionThread(srvObj,
                     #debug_chen
                     info(3, 'Data mover %s start_date = %s\n' % (subscrId, start_date))    
                     count = 0
-                    for host in dm_hosts:         
+                    for host in dm_hosts:  
+                        info(3, 'Checking host %s for data mover %s' % (host, subscrId))       
                         cursorObj = srvObj.getDb().getFileSummary2(hostId = host, ing_date = start_date, max_num_records = 500) # need to add file_version == 1 condition!!
                         while (1):
                             fileList = cursorObj.fetch(100)
@@ -1031,15 +1038,14 @@ def subscriptionThread(srvObj,
             # Then check if for each of the Subscribers referenced explicitly
             # (new Subscribers) for each file Online on this system, if we
             # should deliver data to these.
-            for subscrObj in subscrObjs:
-                # Loop over each file and check if it should be delivered.
-                for fileKey in fileDicDbm.keys():
-                    fileInfo = fileDicDbm.get(fileKey)
-                    _checkIfDeliverFile(srvObj, subscrObj, fileInfo,
-                                        deliverReqDic, deliveredStatus, scheduledStatus, fileDeliveryCountDic, fileDeliveryCountDic_Sem)
-
-            # Third, if datamover, add those files
-            if (dataMoverOnly):
+            if (not dataMoverOnly):
+                for subscrObj in subscrObjs:
+                    # Loop over each file and check if it should be delivered.
+                    for fileKey in fileDicDbm.keys():
+                        fileInfo = fileDicDbm.get(fileKey)
+                        _checkIfDeliverFile(srvObj, subscrObj, fileInfo,
+                                            deliverReqDic, deliveredStatus, scheduledStatus, fileDeliveryCountDic, fileDeliveryCountDic_Sem)         
+            else:  # Third, if datamover, add those files
                 for subscrId in srvObj.getSubscriberDic().keys():
                     subscrObj = srvObj.getSubscriberDic()[subscrId]
                     info(3, 'Checking files for data mover %s' % subscrId)
@@ -1081,10 +1087,16 @@ def subscriptionThread(srvObj,
             # receive data.        
             
             for subscrId in deliverReqDic.keys():
-                deliverReqDic[subscrId].sort(_compFct)
+                deliverReqDic[subscrId].sort(_compFctIngDate)
                 #get the ingest_date of the last file in the queue (list)
                 lastScheduleDate = _convertFileInfo(deliverReqDic[subscrId][-1])[FILE_DATE]
                 scheduledStatus[subscrId] = lastScheduleDate
+                
+                """
+                This is not used since Priority Queue will sort the list 
+                if (dataMoverOnly):# 
+                    deliverReqDic[subscrId].sort(_compFctFileId) 
+                """
                 
                 # multi-threaded concurrent transfer, added by chen.wu@icrar.org
                 if (not srvObj.getSubscriberDic().has_key(subscrId)): # this is possible since back log files can still use old subscriber names
@@ -1095,7 +1107,10 @@ def subscriptionThread(srvObj,
                     #info(4, 'Use existing queue for %s' % subscrId)
                     quChunks = queueDict[subscrId]
                 else:
-                    quChunks = Queue()
+                    if (dataMoverOnly): # for data movers, file ids (which is the first field of the fileInfo) close to one another are sent in sequence
+                        quChunks = PriorityQueue()
+                    else:
+                        quChunks = Queue()
                     queueDict[subscrId] = quChunks
  
                 allFiles = deliverReqDic[subscrId]         
