@@ -72,6 +72,102 @@ All that's required at this point is to run the fab command:
 where you have to replace whatever.host and billythekid with the hostname and user
 name on that host where you want to install the software.
 
+
+Support for specific installation situations:
+---------------------------------------------
+If you are running as user root (for a sudo user see below) you can use the command:
+
+$ fab -f machine_setup/deploy.py operations_deploy:standalone=1
+
+or
+
+$ fab -f machine-setup/deploy.py operations_deploy
+
+depending on whether you do have access to the internet or not, respectively. This is all what's required really….
+
+To start and stop the server you can then use either the ngamsDaemon if you are logged in as ngas.
+
+~/ngas_rt/bin/ngamsDaemon start
+
+If you are logged in as root you can also use
+
+/etc/init.d/ngamsServer start
+
+the init script is actually using the ngamsDaemon as well, thus those two things are really equivalent.
+
+
+
+If you want to install the server under a different, existing user, you can run the installation of the
+required system packages independently from the rest:
+
+suppose <auth_user> is a user with full sudo access on the <target-machine>. Then you can run
+
+fab -u <auth-user> -H<target-machine> -f ~/machine-setup/deploy.py system_install_f
+
+and then install the NGAS software to another <target_user> like:
+
+fab -u <target_user> -H <target-machine> -f machine-setup/deploy.py user_deploy:standalone=1
+
+Note that all this can be done using a third machine and user where you have unpacked the tar
+and which has access to the network where the <target-machine> is.
+
+Note that it is NOT recommended to perform either the installation nor the actual running of the system
+as root anywhere and this should really be avoided. The NGAS software does not require root or
+even sudo permissions anywhere and the installation only requires it for resolving those few system
+dependencies and all this can easily be done through sudo.
+
+
+More options:
+-------------
+
+The installation routine is very modular and flexible. The above description is only scratching
+the surface. To get a flavor you can change to the directory where you have unpacked the tar file
+and issue the command:
+
+$ fab -f machine-setup/deploy.py --list
+
+This will produce the following output:
+===
+
+Fabric file for installing NGAS servers
+
+Test deployment on EC2 is simple as it only runs on one server
+fab test_deploy
+
+The tasks can be used individually and thus allow installations in very
+diverse situations.
+
+For a full deployment use the command
+
+fab --set postfix=False -f machine-setup/deploy.py test_deploy
+
+For a local installation under a normal user without sudo access
+
+fab -u `whoami` -H <IP address> -f machine-setup/deploy.py user_deploy
+
+Available commands:
+
+    create_instance     Create the EC2 instance
+    git_clone_tar       Clones the repository into /tmp and packs it into a tar file
+    init_deploy         Install the NGAS init script for an operational deployment
+    install             Install NGAS users and NGAS software on existing machine.
+    ngas_buildout       Perform just the buildout and virtualenv config
+    ngas_full_buildout  Perform the full install and buildout
+    ngas_minimal_tar    This function packs the minimal required parts of the NGAS source tree
+    operations_deploy   ** MAIN TASK **: Deploy the full NGAS operational environment.
+    postfix_config      Setup the e-mail system for the NGAS
+    python_setup        Ensure that there is the right version of python available
+    system_check        Check for existence of system level packages
+    system_install_f    Perform the system installation part.
+    test_deploy         ** MAIN TASK **: Deploy the full NGAS EC2 test environment.
+    test_env            Configure the test environment on EC2
+    uninstall           Uninstall NGAS, NGAS users and init script.
+    user_deploy         Deploy the system as a normal user without sudo access
+    user_setup          setup ngas users.
+    virtualenv_setup    setup virtualenv with the detected or newly installed python
+
+===
+
 MAC OSX specific installation notes:
 ------------------------------------
 Please look up the special document in the doc folder.
