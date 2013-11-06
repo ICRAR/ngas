@@ -53,7 +53,8 @@ thisDir = os.path.dirname(os.path.realpath(__file__))
 BRANCH = 'master'    # this is controlling which branch is used in git clone
 USERNAME = 'ec2-user'
 POSTFIX = False
-AMI_ID = 'ami-aecd60c7'
+AMI_IDs = {'CentOS':'ami-aecd60c7', 'SLES':'ami-e8084981'}
+AMI_ID = AMI_IDs['CentOS']
 INSTANCE_NAME = 'NGAS_{0}'.format(BRANCH)
 INSTANCE_TYPE = 't1.micro'
 INSTANCES_FILE = os.path.expanduser('~/.aws/aws_instances')
@@ -100,6 +101,26 @@ APT_PACKAGES = [
         'postgresql-client',
         ]
 
+SLES_PACKAGES = [
+                 'git',
+                 'automake',
+                 'autoconf',
+                 'libtool',
+                 'zlib',
+                 'zlib-devel',
+                 'gdbm-devel',
+                 'readline-devel',
+                 'sqlite3-devel',
+                 'make',
+                 'postfix',
+                 'openssl-devel',
+                 'wget',
+                 'java-1_7_0-ibm-devel',
+                 'libdb-4_5',
+                 'libdb-4_5-devel',
+                 'gcc',
+                 ]
+
 
 PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 # WEB_HOST = 0
@@ -122,6 +143,7 @@ def set_env():
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
         HOME = run("echo $HOME")
         env.NGAS_DIR_ABS = '{0}/{1}'.format(HOME, NGAS_DIR)
+    get_linux_flavor()
 #    puts("""Environment:
 #            USER:              {0};
 #            Key file:          {1};
@@ -295,6 +317,15 @@ def install_yum(package):
     processCentOSErrMsg(errmsg)
 
 
+def install_zypper(package):
+    """
+    Install a package using zypper (SLES)
+    """
+    sudo('zypper --non-interactive install {0}'.format(package),\
+                   combine_stderr=True, warn_only=True)
+
+
+
 def install_apt(package):
     """
     Install a package using APT
@@ -433,6 +464,25 @@ def processCentOSErrMsg(errmsg):
     if (firstKey == 'Error:'):
         abort(errmsg)
 
+@task
+def get_linux_flavor():
+    """
+    Obtain and set the env variable linux_flavor
+    """
+    re = run('cat /etc/issue')
+    linux_flavor = re.split()
+    if (len(linux_flavor) > 0):
+        if linux_flavor[0] == 'CentOS' or linux_flavor[0] == 'Ubuntu' \
+           or linux_flavor[0] == 'Debian':
+            linux_flavor = linux_flavor[0]
+        elif linux_flavor[0] == 'Amazon':
+            linux_flavor = ' '.join(linux_flavor[:2])
+        elif linux_flavor[2] == 'SUSE':
+            linux_flavor = linux_flavor[2]
+
+    print "Remote machine running %s" % linux_flavor
+    env.linux_flavor = linux_flavor
+    return linux_flavor
 
 @task
 def system_install_f():
@@ -444,14 +494,7 @@ def system_install_f():
     set_env()
 
     # Install required packages
-    re = run('cat /etc/issue')
-    linux_flavor = re.split()
-    if (len(linux_flavor) > 0):
-        if linux_flavor[0] == 'CentOS' or linux_flavor[0] == 'Ubuntu' \
-           or linux_flavor[0] == 'Debian':
-            linux_flavor = linux_flavor[0]
-        elif linux_flavor[0] == 'Amazon':
-            linux_flavor = ' '.join(linux_flavor[:2])
+    linux_flavor = get_linux_flavor()
     if (linux_flavor in ['CentOS','Amazon Linux']):
          # Update the machine completely
         errmsg = sudo('yum --assumeyes --quiet update', combine_stderr=True, warn_only=True)
@@ -463,6 +506,10 @@ def system_install_f():
         errmsg = sudo('apt-get -qq -y update', combine_stderr=True, warn_only=True)
         for package in APT_PACKAGES:
             install_apt(package)
+    elif linux_flavor == 'SUSE':
+        errmsg = sudo('zypper -n -q patch', combine_stderr=True, warn_only=True)
+        for package in SLES_PACKAGES:
+            install_zypper(package)
     else:
         abort("Unknown linux flavor detected: {0}".format(re))
 
@@ -550,14 +597,16 @@ def user_setup():
 
     if not env.user:
         env.user = USERNAME # defaults to ec2-user
+    group = 'ngas'
+    sudo('groupadd ngas')
     for user in ['ngas','ngasmgr']:
         sudo('useradd -m -s /bin/bash {0}'.format(user), warn_only=True)
         sudo('mkdir /home/{0}/.ssh'.format(user), warn_only=True)
         sudo('chmod 700 /home/{0}/.ssh'.format(user))
-        sudo('chown -R {0}:{0} /home/{0}/.ssh'.format(user))
-        sudo('cp /home/{0}/.ssh/authorized_keys /home/{1}/.ssh/authorized_keys'.format(env.user, user))
+        sudo('chown -R {0}:{1} /home/{0}/.ssh'.format(user,group))
+        sudo('cp ~/.ssh/authorized_keys /home/{1}/.ssh/authorized_keys'.format(env.user, user))
         sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
-        sudo('chown {0}:{0} /home/{0}/.ssh/authorized_keys'.format(user))
+        sudo('chown {0}:{1} /home/{0}/.ssh/authorized_keys'.format(user, group))
     env.NGAS_DIR_ABS = '/home/ngas/{0}'.format(NGAS_DIR)
 
 

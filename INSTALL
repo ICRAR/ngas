@@ -6,8 +6,8 @@ the most standard installation on a stand-alone server. The installation routine
 covers a number of different scenarios, including test installations on the
 Amazon EC2 cloud and also the installation of several servers in parallel.
 It is also possible to install all the OS packages required for NGAS, but this
-is currently limited to RedHat and CentOS based installations and obviously
-requires root access to the server.
+is currently limited to RedHat, CentOS, Ubuntu and Debian based installations
+and obviously requires root access to the server.
 
 Pre-requisites:
 ---------------
