@@ -703,6 +703,7 @@ def ngas_full_buildout(standalone=0):
         virtualenv('pip install additional_tars/egenix-mx-base-3.2.6.tar.gz')
         #The following will only work if the Berkeley DB had been installed already
         virtualenv('pip install additional_tars/bsddb3-6.0.0.tar.gz')
+        virtualenv('pip install additional_tars/bottle-0.11.6.tar.gz')
 
         # run bootstrap with correct python version (explicit)
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
