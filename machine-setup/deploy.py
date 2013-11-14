@@ -121,6 +121,18 @@ SLES_PACKAGES = [
                  'gcc',
                  ]
 
+PYTHON_PACKAGES = [
+        'zc.buildout',
+        'pycrypto',
+        'paramiko',
+        'Fabric',
+        'boto',
+        'markup',
+        'egenix-mx-base',
+        'bsddb3',
+        'bottle',
+        ]
+
 
 PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 # WEB_HOST = 0
@@ -803,13 +815,13 @@ def init_deploy(type='archive'):
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
         env.NGAS_DIR_ABS = '{0}/{1}'.format('/home/ngas', NGAS_DIR)
 
-    sudo('cp {0}/src/ngamsStartup/{1} /etc/init.d/{2}'.\
-         format(env.NGAS_DIR_ABS, initFile, initLink))
-    sudo('chmod a+x /etc/init.d/{0}'.format(initLink))
     with cd(env.NGAS_DIR_ABS):
         sudo('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
               env.NGAS_DIR_ABS, cfg, lcfg))
 
+    sudo('cp {0}/src/ngamsStartup/{1} /etc/init.d/{2}'.\
+         format(env.NGAS_DIR_ABS, initFile, initLink))
+    sudo('chmod a+x /etc/init.d/{0}'.format(initLink))
     sudo('chkconfig --add /etc/init.d/{0}'.format(initLink))
     # on ubuntu, this should be
     # sudo('chkconfig --add {0}'.format(initLink))
