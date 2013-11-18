@@ -652,6 +652,9 @@ def _deliveryThread(srvObj,
             fileMimeType   = fileInfo[FILE_MIME]
             fileBackLogged = fileInfo[FILE_BL]
             if (not _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion)):
+                if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
+                    info(3, 'Removing backlog file %s that is no longer needed to be de_livered' % fileId)
+                    _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename)
                 continue
             if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not os.path.isfile(filename))):# if this file is removed by an agent outside of NGAS (e.g. Cortex volunteer cleanup)
                 alert('File %s is no longer available' %  filename)
