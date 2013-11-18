@@ -50,6 +50,7 @@ uses a standard double fork on Unix to fully daemonize the application.
 Assuming that you are logged in as the user where the software had been
 deployed you can start the server like this:
 
+source ~/ngas_rt/bin/activate
 ~/ngas_rt/bin/ngamsDaemon start
 
 4. Post-Installation
