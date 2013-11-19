@@ -36,20 +36,45 @@ int checkUDTError(int status, bool exitOnError, const char* contextMsg) {
 UDTSOCKET getUDTSocket(char* argv[]) {
 	UDT::startup(); // use this function to initialize the UDT library
 
-	struct addrinfo hints, *peer;
+	struct addrinfo hints, *peer, *res;
 
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_flags = AI_PASSIVE;
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 
-	UDTSOCKET fhandle = UDT::socket(hints.ai_family, hints.ai_socktype, hints.ai_protocol);
+	// DP: Must bind port to local socket. In this case NULL is any local interface on PORT 7790
+   string service("7790");
+   if (0 != getaddrinfo(NULL, service.c_str(), &hints, &res))
+   {
+	  cout << "illegal port number or port is busy.\n" << endl;
+	  return 0;
+   }
+
+	//UDTSOCKET fhandle = UDT::socket(hints.ai_family, hints.ai_socktype, hints.ai_protocol);
+	// DP: Create socket!
+	UDTSOCKET fhandle = UDT::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+
+	// check for errors!
+   if (UDT::ERROR == fhandle)
+   {
+	cout << "socket: " << UDT::getlasterror().getErrorMessage() << endl;
+		return 0;
+   }
 
 	int snd_buf = 640000;
 	int rcv_buf = 640000;
 	UDT::setsockopt(fhandle, 0, UDP_SNDBUF, &snd_buf, sizeof(int));
 	UDT::setsockopt(fhandle, 0, UDP_RCVBUF, &rcv_buf, sizeof(int));
 
+	// DP: Now you must BIND the socket to the port from the getaddrinfo hints!
+   if (UDT::ERROR == UDT::bind(fhandle, res->ai_addr, res->ai_addrlen))
+   {
+	  cout << "bind: " << UDT::getlasterror().getErrorMessage() << endl;
+	  return 0;
+   }
+
+   // DP: This is setting up the remote side to connect to!
 	if (0 != getaddrinfo(argv[1], argv[2], &hints, &peer))
 	{
 	  cout << "incorrect server/peer address. " << argv[1] << ":" << argv[2] << endl;

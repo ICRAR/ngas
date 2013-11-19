@@ -174,7 +174,7 @@ class ngamsPostgreSQL:
             ex = str(e).lower()
             conn_lost = 0
             for conn_err in self.__conn_lost_msg:
-                if (ex.find(conn_err)):
+                if (ex.find(conn_err) > -1):
                     conn_lost = 1
                     break
             if (conn_lost):
