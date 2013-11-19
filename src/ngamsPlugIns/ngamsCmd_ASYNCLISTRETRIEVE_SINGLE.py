@@ -88,10 +88,10 @@ def createPushThread(srvObj, url, numPT = 1):
         pushQSem.release()
 
 def enPushQueue(srvObj, filename, asyncListReqObj, baseNameDic):
-   
+    info(3, 'Get signal to pushi file %s, url = %s' % (filename, str(asyncListReqObj.url)))
     o = urlparse(asyncListReqObj.url)
     hostname = o.hostname
-    info(3, 'Pushing file %s in the queue for host %s' % hostname)
+    info(3, 'Pushing file %s in the queue for host %s' % (filename, hostname))
     if (not pushQDic.has_key(hostname)):
         warning('Cannot find hostname %s in the pushQDic' % hostname)
         return
@@ -662,14 +662,15 @@ def _deliveryThread(srvObj, asyncListReqObj):
     for ff in asyncListReqObj.file_id:
         if (not baseNameDic.has_key(ff)):            
             asyncListReqObj.file_id.remove(ff)
-                  
+    
+    info(3, '** Length of allFiles = %d' % (len(allfiles)))              
     for filename in allfiles:
         basename = os.path.basename(filename)
         nextFileDic[sessionId] = basename
         if (threadRunDic.has_key(sessionId) and threadRunDic[sessionId] == 0):
             info(3, "transfer cancelled/suspended before transferring file '%s'" % basename)
             break
-        
+        info(3, 'Preparing to push file %s to the queue' % filename)
         enPushQueue(srvObj, filename, asyncListReqObj, baseNameDic)
         # the following code is for parallel stream (i.e. for each async request, there is a delivery thread)
         # this may cause performance issue if a client issues a lot of async requests. In the new scheme,
