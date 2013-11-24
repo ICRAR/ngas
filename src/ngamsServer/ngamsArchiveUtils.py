@@ -75,7 +75,7 @@ def updateFileInfoDb(srvObj,
     try:
         ngamsFileUtils.syncCachesCheckFiles(srvObj,
                                             [piStat.getCompleteFilename()])
-    except Exception, e: 
+    except Exception, e:
         errMsg = "Severe error occurred! Cannot update information in " +\
                  "NGAS DB (ngas_files table) about file with File ID: " +\
                  piStat.getFileId() + " and File Version: " +\
@@ -115,7 +115,7 @@ def replicateFile(dbConObj,
     dbConObj:         DB connection object (ngamsDb).
 
     ngamsCfgObj:      NG/AMS ConfigurationObject (ngamsConfig).
-     
+
     piStat:           Status returned by Data Archiving Plug-In
                       (ngamsDapiStatus).
 
@@ -124,7 +124,7 @@ def replicateFile(dbConObj,
                       Main Disk (ngamsDapiStatus).
     """
     T = TRACE()
-    
+
     if (ngamsCfgObj.getAssocSlotId(piStat.getSlotId()) == ""):
         info(3,"No Replication Disk is configured for the Main Disk in Slot "+\
              "with ID: " + piStat.getSlotId() + " - no replication performed")
@@ -201,11 +201,11 @@ def issueDiskSpaceWarning(dbConObj,
     ngamsCfgObj:   NG/AMS Configuration object (ngamsConfig).
 
     diskId:        Disk ID (string).
-    
+
     Returns:       Void.
     """
     T = TRACE()
-    
+
     global _diskSpaceWarningDic
     if (_diskSpaceWarningDic.has_key(diskId) == 0):
         _diskSpaceWarningDic[diskId] = 0
@@ -230,23 +230,23 @@ def checkDiskSpace(srvObj,
     """
     Check the amount of disk space on the disk with the given ID. Both the
     Main Disk and the Replication Disk are taken into account.
-        
+
     If this amount is below the threshold for changing disk from the
     configuration file (Monitor.FreeSpaceDiskChangeMb), the disk will be
     marked as 'completed'.
 
     srvObj:         Reference to instance of the NG/AMS Server class
                     (ngamsServer).
-    
+
     mainDiskId:     Disk ID for disk to check (string).
-        
+
     Returns:        Void.
     """
     info(4,"Checking disk space for disk with ID: " + mainDiskId + " ...")
 
     # Get info Main Disk
     mainDiskInfo = ngamsDiskInfo.ngamsDiskInfo()
-    mainDiskInfo.read(srvObj.getDb(), mainDiskId)   
+    mainDiskInfo.read(srvObj.getDb(), mainDiskId)
     availSpaceMbMain = getDiskSpaceAvail(mainDiskInfo.getMountPoint(),
                                          smart=False)
 
@@ -356,7 +356,7 @@ def postFileRecepHandling(srvObj,
                     (ngamsServer).
 
     reqPropsObj:    NG/AMS Request Properties Object (ngamsReqProps).
-    
+
     resultPlugIn:   Result returned from DAPI (ngamsDapiStatus).
 
     Returns:        Disk info object containing the information about
@@ -400,7 +400,7 @@ def postFileRecepHandling(srvObj,
         msg = genLog("NGAMS_NOTICE_FILE_REINGESTED",
                      [reqPropsObj.getSafeFileUri()])
         notice(msg)
-        
+
     # Now handle the Replication Disk - if there is a corresponding Replication
     # Disk for the Main Disk and if not replication was disabled by the DAPI.
     if (srvObj.getCfg().getReplication()):
@@ -435,7 +435,7 @@ def postFileRecepHandling(srvObj,
     # files to deliver to the new Subscriber.
     srvObj.addSubscriptionInfo([(resultPlugIn.getFileId(),
                                  resultPlugIn.getFileVersion())], [])
-        
+
     info(4,"Handled file with URI: " + reqPropsObj.getSafeFileUri() +\
          " successfully")
     return mainDiskInfo
@@ -450,7 +450,7 @@ def archiveFromFile(srvObj,
     Archive a file directly from a file as source.
 
     srvObj:          Reference to NG/AMS Server Object (ngamsServer).
-    
+
     filename:        Name of file to archive (string).
 
     noReplication:   Flag to enable/disable replication (integer).
@@ -471,7 +471,7 @@ def archiveFromFile(srvObj,
         if (mimeType == None):
             mimeType = ngamsHighLevelLib.determineMimeType(srvObj.getCfg(),
                                                            filename)
-        archiveTimer = PccUtTime.Timer()    
+        archiveTimer = PccUtTime.Timer()
 
         # Prepare dummy ngamsReqProps object (if an object was not given).
         if (not reqPropsObj):
@@ -498,8 +498,8 @@ def archiveFromFile(srvObj,
                                          NGAMS_NOTIF_NO_DISKS,
                                          "NO DISKS AVAILABLE", errMsg)
                 raise Exception, errMsg
-        
-        # Set the log cache to 1 during the handling of the file.        
+
+        # Set the log cache to 1 during the handling of the file.
         setLogCache(1)
         plugIn = srvObj.getMimeTypeDic()[mimeType]
         info(2,"Invoking DAPI: " + plugIn + " to handle file: " + filename)
@@ -557,9 +557,9 @@ def backLogBufferFiles(srvObj,
     in the Back-Log Buffer.
 
     srvObj:           Reference to NG/AMS server class object (ngamsServer).
-    
+
     stagingFile:      Name of Staging File (string).
-    
+
     reqPropsFile:     Name of Request Properties File (string).
 
     Returns:          Void.
@@ -569,7 +569,7 @@ def backLogBufferFiles(srvObj,
     try:
         # We can back-log buffer the two files.
         tmpMsg = "Back-Log Buffering Staging File: %s. " +\
-                 "Corresponding Request Properties file: %s ..." 
+                 "Corresponding Request Properties file: %s ..."
         info(2, tmpMsg % (stagingFile, reqPropsFile))
         backLogDir = srvObj.getCfg().getBackLogDir()
         backLogBufFile = os.path.normpath("%s/%s" %\
@@ -584,7 +584,7 @@ def backLogBufferFiles(srvObj,
                                (backLogDir, NGAMS_BACK_LOG_TMP_PREFIX,
                                 os.path.basename(reqPropsFile))
         # Have to change the name of the Staging File in the Req. Prop.
-        # Object = name of Back-Log Buffering File. 
+        # Object = name of Back-Log Buffering File.
         fo = open(reqPropsFile, "r")
         tmpReqPropObj = cPickle.load(fo).setStagingFilename(backLogBufFile)
         fo.close()
@@ -610,7 +610,7 @@ def checkBackLogBuffer(srvObj):
     and to archive this if there is.
 
     srvObj:         Reference to NG/AMS Server object (ngamsServer).
- 
+
     Returns:        Void.
     """
     info(5,"Checking if data available in Back-Log Buffer Directory ...")
@@ -669,13 +669,13 @@ def cleanUpStagingArea(srvObj,
 
     reqPropsObj:           Request Property object to keep track of actions
                            done during the request handling (ngamsReqProps).
-    
+
     tmpStagingFilename:    Temporary Staging File (string).
-    
+
     stagingFilename:       Staging File (string).
-    
+
     tmpReqPropsFilename:   Temporary Request Properties File (string).
-    
+
     reqPropsFilename:      Request Properties File (string).
 
     Returns:               Void.
@@ -702,10 +702,10 @@ def dataHandler(srvObj,
 
     reqPropsObj:   Request Property object to keep track of actions done
                    during the request handling (ngamsReqProps).
-        
+
     httpRef:       Reference to the HTTP request handler
-                   object (ngamsHttpRequestHandler).        
-        
+                   object (ngamsHttpRequestHandler).
+
     Returns:       Disk info object with status for Main Disk
                    where data file was stored (ngamsDiskInfo).
     """
@@ -713,7 +713,7 @@ def dataHandler(srvObj,
 
     sysLogInfo(1, genLog("NGAMS_INFO_ARCHIVING_FILE",
                          [reqPropsObj.getFileUri()]))
-        
+
     baseName = os.path.basename(reqPropsObj.getFileUri())
     mimeType = reqPropsObj.getMimeType()
     archiveTimer = PccUtTime.Timer()
@@ -723,7 +723,7 @@ def dataHandler(srvObj,
     tmpStagingFilename = stagingFilename = tmpReqPropsFilename =\
                          reqPropsFilename = None
     try:
-        # Set the log cache to 1 during the handling of the file.        
+        # Set the log cache to 1 during the handling of the file.
         setLogCache(1)
 
         # Generate target filename. Remember to set this in the Request Object.
@@ -734,11 +734,11 @@ def dataHandler(srvObj,
                                          reqSpace=reqPropsObj.getSize())
             reqPropsObj.setTargDiskInfo(trgDiskInfo)
         except Exception, e:
-             errMsg = str(e) + ". Attempting to archive file: " +\
+            errMsg = str(e) + ". Attempting to archive file: " +\
                       reqPropsObj.getSafeFileUri()
-             ngamsNotification.notify(srvObj.getCfg(), NGAMS_NOTIF_NO_DISKS,
+            ngamsNotification.notify(srvObj.getCfg(), NGAMS_NOTIF_NO_DISKS,
                                       "NO DISKS AVAILABLE", errMsg)
-             raise Exception, errMsg
+            raise Exception, errMsg
 
         # Generate Staging Filename + Temp Staging File + save data in this
         # file. Also Org. Staging Filename is created, Processing Staging
@@ -873,9 +873,9 @@ def findTargetNode(dbConObj,
     If no nodes are available, an exception is raised (NGAMS_AL_NO_STO_SETS).
 
     dbConObj:          DB connection object (ngamsDb).
-    
+
     ngamsCfgObj:       Instance of NG/AMS Configuration Class (ngamsConfig).
-    
+
     mimeType:          Mime-type of file (string).
 
     Returns:           Tuple with
@@ -885,7 +885,7 @@ def findTargetNode(dbConObj,
                          - Port number
                          - ngamsDiskInfo object if this was found during the
                            processing
-                         
+
                                   (tuple/string,integer,None|ngamsDiskInfo).
 
 
@@ -896,7 +896,7 @@ def findTargetNode(dbConObj,
     - If several NAUs available:
       - Get list of nodes.
       - Node selection loop:
-        - Select node (Policy: RANDOM(*)).    
+        - Select node (Policy: RANDOM(*)).
         - If no more nodes: Raise exception (NO STORAGE SETS).
         - Local node or remote node:
           - Local:
@@ -912,11 +912,11 @@ def findTargetNode(dbConObj,
     *:  Should be possible to have other schemes:
           - FIFO: Finish disks ASAP.
           - MULTIPLEX: Go systematically through the list of nodes.
-          
+
     **: Should support also HTTP Redirection, now only Proxy Mode is supported.
     """
     T = TRACE()
-    
+
     tmpNodeList = ngamsCfgObj.getStreamFromMimeType(mimeType).getHostIdList()
     nodeList = []
     for node in tmpNodeList: nodeList.append(node)
@@ -1009,6 +1009,6 @@ def findTargetNode(dbConObj,
         raise Exception, errMsg
 
     return (nodeInfo, targNode, targPort, targDiskObj)
-  
+
 
 # EOF

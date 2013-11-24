@@ -610,9 +610,10 @@ def user_setup():
     if not env.user:
         env.user = USERNAME # defaults to ec2-user
     group = 'ngas'
-    sudo('groupadd ngas')
+    sudo('groupadd ngas', warn_only=True)
     for user in ['ngas','ngasmgr']:
         sudo('useradd -m -s /bin/bash {0}'.format(user), warn_only=True)
+        sudo('useradd -G {0} {0}'.format(user, group))
         sudo('mkdir /home/{0}/.ssh'.format(user), warn_only=True)
         sudo('chmod 700 /home/{0}/.ssh'.format(user))
         sudo('chown -R {0}:{1} /home/{0}/.ssh'.format(user,group))

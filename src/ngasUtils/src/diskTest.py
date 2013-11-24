@@ -28,7 +28,7 @@
 
 import time, pickle
 import commands
-import sys,re, os, socket, traceback, datetime
+import sys,re, os, socket, traceback, datetime, mmap
 import base64
 
 Test = 'read'           # default test is readTest
@@ -61,7 +61,7 @@ def usage():
 
                   long arguments are allowed as well, e.g. --device
 
-          [d]evice:    string, e.g. /dev/hdb1, can also be a file or 
+          [d]evice:    string, e.g. /dev/hdb1, can also be a file or
                        a url (for http disk write)
           [s]kip:      integer [0 GB], e.g. 5
           [t]estcount: integer [1], number of consecutive tests [1]
@@ -77,8 +77,8 @@ def usage():
           [l]owio:     flag, if set during write test low level I/O
                        will be used.
           s[e]ssion:   string, session id for this HTTP write test
-          data[r]ate:  the data rate for HTTP write test. This parameter 
-                       is turned on only when the device is a URL (HTTP 
+          data[r]ate:  the data rate for HTTP write test. This parameter
+                       is turned on only when the device is a URL (HTTP
                        write test)
 
           NOTE: All byte values are forced to be an integer multiple
@@ -149,7 +149,7 @@ def readTest(dev,skip,testcount,iosize,blocksize):
 
         skip =skip + iocount
         return status
-    
+
 def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None):
     """
     This is actually running the HTTP-based remote write test.
@@ -163,7 +163,7 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None):
          testcount:      integer, number of tests
          iosize:         integer, number of bytes/test
          blocksize:      integer, number of bytes/write
-          
+
     """
     blocksize = long(blocksize)/4 * 4   # blocksize multiple of 4
     iosize = long(iosize)/4 * 4   # blocksize multiple of 4
@@ -172,22 +172,22 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None):
     cspeed = []
     tspeed = []
     nodeId = socket.gethostname()
-    
+
     locTimeout = 3600
     mimeType = 'application/octet-stream'
     user = 'ngasmgr'
     pwd = 'ngas$dba' # this should be passed in
     authHdrVal = "Basic " + base64.encodestring(user + ":" + pwd)
     if (authHdrVal[-1] == "\n"): authHdrVal = authHdrVal[:-1]
-    
+
     if (not sessionId):# if no sessionId, file names from different nodes will have different prefix
         dt = datetime.datetime.now()
-        sessionId = dt.strftime('%Y%m%dT%H%M%S') 
-        
+        sessionId = dt.strftime('%Y%m%dT%H%M%S')
+
     import httplib
-    
+
     for ii in range(testcount):
-        st=time.time()       
+        st=time.time()
         fname = '%s_%s_%s.dat' % (sessionId, nodeId, str(ii))
         contDisp = "attachment; filename=\"%s\"; no_versioning=1" % fname
         # make HTTP headers
@@ -195,12 +195,12 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None):
         idx = (url[7:].find("/") + 7) # Separate the URL from the command.
         tmpUrl = url[7:idx]
         cmd    = url[(idx + 1):]
-        
-        http = httplib.HTTP(tmpUrl)        
+
+        http = httplib.HTTP(tmpUrl)
         try:
             #print "Sending HTTP header ..."
             http.putrequest(NGAMS_HTTP_POST, cmd)
-            
+
             http.putheader("Content-type", mimeType)
             http.putheader("Content-disposition", contDisp)
             http.putheader("Content-length", str(iosize))
@@ -224,13 +224,13 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None):
                     http.close() # this may fail?
                 finally:
                     del http
-        
+
         elapsed = time.time()-st
         print 'Throughput: %3.2f MB/s (%5.2f s)' % \
               (iosize/elapsed/1024./1024., elapsed)
         bspeed += status[0]
         cspeed += status[1]
-        tspeed += status[2]           
+        tspeed += status[2]
         status = (bspeed, cspeed, tspeed)
 
     return status
@@ -360,7 +360,7 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
             return status
     else:
         block = str(bytearray(blocksize))
-        
+
     if ofil != '/dev/null':
         try:
             if (httpobj):
@@ -370,7 +370,12 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
                     sleepTime = blocksize / (data_rate * one_mb)
             else:
                 if llflag:
-                    fd = os.open(ofil, os.O_CREAT | os.O_WRONLY)# | os.O_NONBLOCK)
+                    fd = os.open(ofil, os.O_CREAT | os.O_TRUNC | os.O_WRONLY)# | os.O_NONBLOCK)
+                elif dioflag:
+                    if os.__dict__.has_key('O_DIRECT'):
+                        fd = os.open('file', os.O_CREAT | os.O_TRUNC | os.O_DIRECT  | os.O_RDWR)
+                    else:
+                        fd = os.open('file', os.O_CREAT | os.O_TRUNC | os.O_SYNC  | os.O_WRONLY)
                 else:
                     out = open(ofil,'w')
                     out.seek(seek)
@@ -382,15 +387,20 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
         crctime = 0.0
         bsize = blocksize/one_mb
         tsize = bsize * count
+        if dioflag:
+            m = mmap.mmap(-1, blocksize)
+            m.write(block)
+
         sti = time.time()
         for ii in range(count):
             stt = time.time()
             if ifil != '/dev/zero':
                 block=inputf.read(blocksize)
-            if crcfl: 
+            if crcfl:
                 stc = time.time()
                 crc = crc32(block, crc)
                 crct = time.time() - stc
+                if crct == 0: crct = 10**-6
                 cspeed.append((bsize/(crct), stc))
                 crctime += crct
             else:
@@ -400,6 +410,8 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
                 httpobj._conn.sock.sendall(block)
             else:
                 if llflag:
+                    os.write(fd, block)
+                elif dioflag:
                     os.write(fd, block)
                 else:
                     out.write(block)
@@ -421,12 +433,12 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
                 errMsg = "Illegal/no response to HTTP request encountered!"
                 raise Exception, errMsg
             # we do not check msg or data for simplicity
-            
+
             if (reply != NGAMS_HTTP_SUCCESS):
                 raise Exception("Error in HTTP response %d" % reply)
             # we do not close http or its internal socket inside this function
         else:
-            if llflag:
+            if llflag or dioflag:
                 os.fsync(fd)
                 os.close(fd)
             else:
@@ -452,7 +464,8 @@ if __name__ == '__main__':
 
     opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:c:e:r:f:lomwh",\
            ["device","skip","testcount","iosize","blocksize",\
-            "write","old","method","help","lowio", "session", "datarate", "file"])
+            "write","old","method","help","lowio", "session", "datarate",
+            "dio", "file"])
 
     for o,v in opts:
         if o in ("-d","--device"):
@@ -473,6 +486,8 @@ if __name__ == '__main__':
             Test = 'write'
         if o in ("-l", "--lowio"):
             llflag = 1
+        if o in ("--dio"):
+            dioflag = 1
         if o in ("-c","--crcfl"):
             crcfl = v
             if crcfl not in ['b', 'z']:
@@ -587,4 +602,3 @@ def speedPlot(ifile=DEFAULT_FNM, timefl=1):
         pylab.plot(tspeed[:,0], 'g+')
 
     pylab.title(os.path.basename(ifile))
-
