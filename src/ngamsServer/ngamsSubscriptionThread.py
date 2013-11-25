@@ -157,10 +157,11 @@ def _waitForScheduling(srvObj):
         info(3, 'Data mover thread will suspend %s seconds before re-trying querying the db to get new files' % str(tmout))
         srvObj._subscriptionRunSync.wait(tmout)
     else:
+        info(3,"Data Subscription Thread is going to sleep ...")
         srvObj._subscriptionRunSync.wait()
     
     _checkStopSubscriptionThread(srvObj)
-    info(4,"Data Subscription Thread received wake-up signal ...")
+    info(3,"Data Subscription Thread received wake-up signal ...")
     try:
         srvObj._subscriptionSem.acquire()
         srvObj._subscriptionRunSync.clear()
@@ -210,22 +211,22 @@ def _addFileDeliveryDic(subscrId,
     replaceWithBL = 0
     add = 1
     #First, Check if the file is already registered for that Subscriber.
-    if (deliverReqDic.has_key(subscrId)):
-        for idx in range(len(deliverReqDic[subscrId])):
+    if (fileBackLogBuffered == NGAMS_SUBSCR_BACK_LOG and deliverReqDic.has_key(subscrId)):
+        for idx in range(len(deliverReqDic[subscrId])): #TODO - this for loop should be a hashtable lookup!!
             tstFileInfo            = deliverReqDic[subscrId][idx]
             tstFilename            = tstFileInfo[FILE_NM]
             tstFileVersion         = tstFileInfo[FILE_VER]
             tstFileBackLogBuffered = tstFileInfo[FILE_BL]
             if ((tstFilename == filename) and
-                (tstFileVersion == fileVersion)):
-                if ((fileBackLogBuffered == NGAMS_SUBSCR_BACK_LOG) and
-                    (tstFileBackLogBuffered != NGAMS_SUBSCR_BACK_LOG)):
-                    # The new entry is back-log buffered, the old not,
-                    # replace the old entry.
-                    deliverReqDic[subscrId][idx] = fileInfo
-                    add = 0
-                    replaceWithBL = 1
-                    break
+                (tstFileVersion == fileVersion) and
+                tstFileBackLogBuffered != NGAMS_SUBSCR_BACK_LOG):
+                
+                # The new entry is back-log buffered, the old not,
+                # replace the old entry.
+                deliverReqDic[subscrId][idx] = fileInfo
+                add = 0
+                replaceWithBL = 1
+                break
     
     #Second, Check if the file is a back-logged file that has been previously registered                 
     if (fileBackLogBuffered == NGAMS_SUBSCR_BACK_LOG):
@@ -332,7 +333,7 @@ def _checkIfDeliverFile(srvObj,
 
     # Register the file if we should deliver this file to the Subscriber.
     if (deliverFile):
-        deliverReqDic = _addFileDeliveryDic(subscrObj.getId(), fileInfo,
+        _addFileDeliveryDic(subscrObj.getId(), fileInfo,
                                             deliverReqDic, fileDeliveryCountDic, fileDeliveryCountDic_Sem, srvObj)
         #debug_chen
         info(4, 'File %s is accepted to delivery list' % fileId)
@@ -939,6 +940,7 @@ def subscriptionThread(srvObj,
                         min_date = myMinDate                    
                             
                 cursorObj = srvObj.getDb().getFileSummary2(getHostId(), ing_date = min_date)
+                info(3, 'Fetching files ingested after %s' % min_date)
                 while (1):
                     fileList = cursorObj.fetch(100)
                     if (fileList == []): break
