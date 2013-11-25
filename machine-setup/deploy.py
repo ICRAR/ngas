@@ -739,8 +739,8 @@ def ngas_full_buildout(standalone=0, type='archive'):
 
         run('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
               env.NGAS_DIR_ABS, initName(type=type)[2], initName(type=type)[3]))
-        nda = '/'+'\/'.join(env.NGAS_DIR_ABS.split('/')[1:-1])+'/NGAS'
-        run('sed -i s/RootDirectory="\/home\/ngas\/NGAS"/RootDirectory="{0}" cfg/NgamsCfg.SQLite.mini.xml'.format(nda))
+        nda = '\/'+'\/'.join(env.NGAS_DIR_ABS.split('/')[1:-1])+'\/NGAS'
+        run("""sed -i 's/RootDirectory="\/home\/ngas\/NGAS"/RootDirectory="{0}"/' cfg/NgamsCfg.SQLite.mini.xml""".format(nda))
 
     ngas_buildout(standalone=standalone)
     print "\n\n******** NGAS_FULL_BUILDOUT COMPLETED!********\n\n"
@@ -822,6 +822,13 @@ def user_deploy(type='archive', standalone=0):
         env.PYTHON = ppath
     virtualenv_setup()
     ngas_full_buildout(standalone=standalone, type=type)
+
+    # put the activation of the virtualenv into the login profile of the user
+    if not check_path('.bash_profile_orig'):
+        run('cp .bash_profile .bash_profile_orig')
+    else:
+        run('cp .bash_profile_orig .bash_profile')
+    run('echo "source {0}/bin/activate\n" >> .bash_profile'.format(env.NGAS_DIR_ABS))
     print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 
