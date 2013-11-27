@@ -1128,10 +1128,21 @@ def janitorThread(srvObj,
             # => Check for retained Email Notification Messages to send out.
             ngamsNotification.checkNotifRetBuf(srvObj.getCfg())
 
-            # => Check if its time to carry out a rotation of the log file.
+            # => Check there are any unsaved log files from a shutdown and archive them.
             logFile = srvObj.getCfg().getLocalLogFile()
             logPath = os.path.dirname(logFile)
             if (os.path.exists(srvObj.getCfg().getLocalLogFile())):
+                unsavedLogFiles = glob.glob(logPath + '/*.unsaved')
+                if (len(unsavedLogFiles) > 0):
+                    info(3,"Archiving unsaved log-files ...")
+                    for ulogFile in unsavedLogFiles:
+                        ologFile = '.'.join(ulogFile.split('.')[:-1])
+                        os.rename(ulogFile, ologFile)
+                        ngamsArchiveUtils.archiveFromFile(srvObj, ologFile, 0,
+                        'ngas/nglog', None)
+
+            # => Check if its time to carry out a rotation of the log file.
+
                 info(4,"Checking if a Local Log File rotate is due ...")
                 logFo = None
                 try:

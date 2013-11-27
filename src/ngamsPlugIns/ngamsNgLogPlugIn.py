@@ -97,7 +97,7 @@ def ngamsNgLogPlugIn(srvObj,
             errMsg = "ngamsNgLogPlugIn: Problems during archiving! " +\
                      "Compressing the file failed"
             raise Exception, errMsg
-        stagingFilename = stagingFilename + ".nglog.gz"
+        stagingFilename = stagingFilename + ".gz"
         # Remember to update the Temporary Filename in the Request
         # Properties Object.
         reqPropsObj.setStagingFilename(stagingFilename)
@@ -123,12 +123,13 @@ def ngamsNgLogPlugIn(srvObj,
 
         # Generate status.
         info(4,"Generating status ...")
-        format = ngamsPlugInApi.determineMimeType(srvObj.getCfg(),
+        fformat = ngamsPlugInApi.determineMimeType(srvObj.getCfg(),
                                                   stagingFilename)
+        info(4,"Determining file size ...")
         fileSize = ngamsPlugInApi.getFileSize(stagingFilename)
         return ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(),
                                                  relFilename,
-                                                 fileId, fileVersion, format,
+                                                 fileId, fileVersion, fformat,
                                                  fileSize, uncomprSize,
                                                  compression, relPath,
                                                  diskInfo.getSlotId(),
