@@ -1542,11 +1542,16 @@ class ngamsServer:
 
         # Request authorized - handle the command
         ngamsCmdHandling.cmdHandler(self, reqPropsObj, httpRef)
-        info(2,"Total time for handling request: (" +\
+        msg = "Total time for handling request: (" +\
              reqPropsObj.getHttpMethod() + "," + reqPropsObj.getCmd() + "," +\
              reqPropsObj.getMimeType() + "," +\
              reqPropsObj.getFileUri() + "): " +\
-             str(int(1000.0 * reqTimer.stop()) / 1000.0) + "s")
+             str(int(1000.0 * reqTimer.stop()) / 1000.0) + "s"
+        if reqPropsObj.getIoTime() > 0:
+            msg += "; Transfer rate:" +\
+            str(reqPropsObj.getBytesReceived()/reqPropsObj.getIoTime()/1024./1024.) +\
+            "MB/s"
+        info(2, msg)
         logFlush()
 
 
