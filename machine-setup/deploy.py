@@ -62,6 +62,7 @@ AWS_KEY = os.path.expanduser('~/.ssh/icrar_ngas.pem')
 KEY_NAME = 'icrar_ngas'
 ELASTIC_IP = 'False'
 SECURITY_GROUPS = ['NGAS'] # Security group allows SSH
+NGAS_USERS = ['ngas','ngasmgr']
 NGAS_PYTHON_VERSION = '2.7'
 NGAS_PYTHON_URL = 'http://www.python.org/ftp/python/2.7.5/Python-2.7.5.tar.bz2'
 NGAS_DIR = 'ngas_rt' #NGAS runtime directory
@@ -149,24 +150,31 @@ def set_env():
         env.GITREPO = GITREPO
     if not env.has_key('postfix') or not env.postfix:
         env.postfix = POSTFIX
-    if not env.user or not env.user:
+    if not env.has_key('user') or not env.user:
         env.user = USERNAME
+    if not env.has_key('NGAS_USERS') or not env.NGAS_USERS:
+        env.NGAS_USERS = NGAS_USERS
     require('hosts', provided_by=[test_env])
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
-        HOME = run("echo $HOME")
-        env.NGAS_DIR_ABS = '{0}/{1}'.format(HOME, NGAS_DIR)
+        home = run("echo $HOME")
+        env.NGAS_DIR_ABS = '{0}/{1}'.format(home, NGAS_DIR)
+        env.NGAS_DIR = NGAS_DIR
+    else:
+        env.NGAS_DIR = env.NGAS_DIR_ABS.split('/')[-1]
     get_linux_flavor()
-#    puts("""Environment:
-#            USER:              {0};
-#            Key file:          {1};
-#            hosts:             {2};
-#            host_string:       {3};
-#            postfix:           {4};
-#            NGAS_DIR_ABS:      {5}
-#            NGAS_DIR:          {6}""".\
-#            format(env.user, env.key_filename, env.hosts,
-#                   env.host_string, env.postfix, env.NGAS_DIR_ABS,
-#                   NGAS_DIR))
+    puts("""Environment:
+            USER:              {0};
+            Key file:          {1};
+            hosts:             {2};
+            host_string:       {3};
+            postfix:           {4};
+            NGAS_DIR_ABS:      {5};
+            NGAS_DIR:          {6};
+            NGAS_USERS:        {7};
+            """.\
+            format(env.user, env.key_filename, env.hosts,
+                   env.host_string, env.postfix, env.NGAS_DIR_ABS,
+                   env.NGAS_DIR, env.NGAS_USERS))
 
 
 @task
@@ -420,7 +428,7 @@ def git_clone():
 
 
 @task
-def git_clone_tar():
+def git_clone_tar(standalone=0):
     """
     Clones the repository into /tmp and packs it into a tar file
 
@@ -429,13 +437,18 @@ def git_clone_tar():
     """
     set_env()
     local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
-    local('cd /tmp && mv {0} {1}'.format(BRANCH, NGAS_DIR))
-    local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES \
-    --exclude .git {0}'.format(NGAS_DIR))
-    tarfile = '{0}.tar.bz2'.format(NGAS_DIR)
-    put('/tmp/{0}'.format(tarfile), tarfile)
-    local('rm -rf /tmp/{0}'.format(NGAS_DIR))  # cleanup local git clone dir
-    run('tar -xjf {0} && rm {0}'.format(tarfile))
+    local('cd /tmp && mv {0} {1}'.format(BRANCH, env.NGAS_DIR))
+    if standalone:
+        local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES \
+            --exclude .git {0}'.format(env.NGAS_DIR))
+    else:
+        local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES \
+            --exclude .git --exclude eggs.tar.gz {0}'.format(env.NGAS_DIR))
+    tarfile = '{0}.tar.bz2'.format(env.NGAS_DIR)
+    put('/tmp/{0}'.format(tarfile), '{1}/../{0}'.format(tarfile, env.NGAS_DIR_ABS))
+    local('rm -rf /tmp/{0}'.format(env.NGAS_DIR))  # cleanup local git clone dir
+    with cd(env.NGAS_DIR_ABS+'/..'):
+        run('tar -xjf {0} && rm {0}'.format(tarfile))
 
 
 @task
@@ -607,20 +620,20 @@ def user_setup():
     TODO: sort out the ssh keys
     """
 
+    set_env()
     if not env.user:
         env.user = USERNAME # defaults to ec2-user
     group = 'ngas'
     sudo('groupadd ngas', warn_only=True)
-    for user in ['ngas','ngasmgr']:
-        sudo('useradd -m -s /bin/bash {0}'.format(user), warn_only=True)
-        sudo('useradd -G {0} {0}'.format(user, group))
+    for user in env.NGAS_USERS:
+        sudo('useradd -g {0} -m -s /bin/bash {1}'.format(group, user), warn_only=True)
         sudo('mkdir /home/{0}/.ssh'.format(user), warn_only=True)
         sudo('chmod 700 /home/{0}/.ssh'.format(user))
         sudo('chown -R {0}:{1} /home/{0}/.ssh'.format(user,group))
-        sudo('cp ~/.ssh/authorized_keys /home/{1}/.ssh/authorized_keys'.format(env.user, user))
+        home = run('echo $HOME')
+        sudo('cp {0}/.ssh/authorized_keys /home/{1}/.ssh/authorized_keys'.format(home, user))
         sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{1} /home/{0}/.ssh/authorized_keys'.format(user, group))
-    env.NGAS_DIR_ABS = '/home/ngas/{0}'.format(NGAS_DIR)
 
 
 @task
@@ -642,7 +655,7 @@ def python_setup():
         base = os.path.basename(NGAS_PYTHON_URL)
         pdir = os.path.splitext(os.path.splitext(base)[0])[0]
         run('tar -xjf {0}'.format(base))
-    ppath = run('echo $PWD') + '/python'
+    ppath = env.NGAS_DIR_ABS + '/../python'
     with cd('/tmp/{0}'.format(pdir)):
         run('./configure --prefix {0};make;make install'.format(ppath))
         ppath = '{0}/bin/python{1}'.format(ppath,NGAS_PYTHON_VERSION)
@@ -662,7 +675,7 @@ def virtualenv_setup():
 
     with cd('/tmp'):
         put('{0}/../clib_tars/virtualenv-1.10.tar.gz'.format(thisDir), 'virtualenv-1.10.tar.gz')
-        run('tar -xvzf virtualenv-1.10.tar.gz')
+        run('tar -xzf virtualenv-1.10.tar.gz')
         run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
 
 
@@ -680,20 +693,22 @@ def ngas_buildout(standalone=0):
     with cd(env.NGAS_DIR_ABS):
         if (standalone):
             put('{0}/../additional_tars/eggs.tar.gz'.format(thisDir), '{0}/eggs.tar.gz'.format(env.NGAS_DIR_ABS))
-            run('tar -xvzf eggs.tar.gz')
+            run('tar -xzf eggs.tar.gz')
             virtualenv('buildout -Nvo')
         else:
             virtualenv('buildout')
-    run('ln -s {0}/NGAS NGAS'.format(NGAS_DIR))
-    with cd('NGAS'):
-        with settings(warn_only=True):
-            run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
-                .format(env.NGAS_DIR_ABS))
-            run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template'.format(env.NGAS_DIR_ABS))
+        run('ln -s $PWD/NGAS ../NGAS')
+        with cd('../NGAS'):
+            with settings(warn_only=True):
+                run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
+                    .format(env.NGAS_DIR_ABS))
+                run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template'.format(env.NGAS_DIR_ABS))
+
+    print "\n\n******** NGAS_BUILDOUT COMPLETED!********\n\n"
 
 
 @task
-def ngas_full_buildout(standalone=0):
+def ngas_full_buildout(standalone=0, type='archive'):
     """
     Perform the full install and buildout
     """
@@ -703,7 +718,7 @@ def ngas_full_buildout(standalone=0):
     if (standalone):
         ngas_minimal_tar()
     elif not check_path('{0}/bootstrap.py'.format(env.NGAS_DIR_ABS)):
-        git_clone_tar()
+        git_clone_tar(standalone=standalone)
 
     with cd(env.NGAS_DIR_ABS):
         virtualenv('pip install clib_tars/zc.buildout-2.2.1.tar.gz')
@@ -722,7 +737,14 @@ def ngas_full_buildout(standalone=0):
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
         virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
 
+        run('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
+              env.NGAS_DIR_ABS, initName(type=type)[2], initName(type=type)[3]))
+        nda = '\/'+'\/'.join(env.NGAS_DIR_ABS.split('/')[1:-1])+'\/NGAS'
+        run("""sed -i 's/RootDirectory="\/home\/ngas\/NGAS"/RootDirectory="{0}"/' cfg/NgamsCfg.SQLite.mini.xml""".format(nda))
+
     ngas_buildout(standalone=standalone)
+    print "\n\n******** NGAS_FULL_BUILDOUT COMPLETED!********\n\n"
+
 
 
 @task
@@ -799,10 +821,14 @@ def user_deploy(type='archive', standalone=0):
     else:
         env.PYTHON = ppath
     virtualenv_setup()
-    ngas_full_buildout(standalone=standalone)
-    with cd(env.NGAS_DIR_ABS):
-        run('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
-              env.NGAS_DIR_ABS, initName(type=type)[2], initName(type=type)[3]))
+    ngas_full_buildout(standalone=standalone, type=type)
+
+    # put the activation of the virtualenv into the login profile of the user
+    if not check_path('.bash_profile_orig'):
+        run('cp .bash_profile .bash_profile_orig')
+    else:
+        run('cp .bash_profile_orig .bash_profile')
+    run('echo "source {0}/bin/activate\n" >> .bash_profile'.format(env.NGAS_DIR_ABS))
     print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 
@@ -813,8 +839,7 @@ def init_deploy(type='archive'):
     """
     (initFile, initLink, cfg, lcfg) = initName(type=type)
 
-    if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
-        env.NGAS_DIR_ABS = '{0}/{1}'.format('/home/ngas', NGAS_DIR)
+    set_env()
 
     with cd(env.NGAS_DIR_ABS):
         sudo('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
@@ -915,7 +940,9 @@ def uninstall():
     set_env()
     sudo('userdel -r ngas', warn_only=True)
     sudo('userdel -r ngasmgr', warn_only=True)
+    sudo('groupdel ngas', warn_only=True)
     sudo('rm /etc/ngamsServer.conf', warn_only=True)
     sudo('rm /etc/init.d/ngamsServer', warn_only=True)
-    run('rm -rf {0}'.format(env.NGAS_DIR_ABS), warn_only=True)
+    sudo('rm -rf {0}'.format(env.NGAS_DIR_ABS), warn_only=True)
+    print "\n\n******** UNINSTALL COMPLETED!********\n\n"
 
