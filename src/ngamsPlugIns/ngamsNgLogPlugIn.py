@@ -97,7 +97,7 @@ def ngamsNgLogPlugIn(srvObj,
             errMsg = "ngamsNgLogPlugIn: Problems during archiving! " +\
                      "Compressing the file failed"
             raise Exception, errMsg
-        stagingFilename = stagingFilename + ".gz"
+        stagingFilename = stagingFilename + ".nglog.gz"
         # Remember to update the Temporary Filename in the Request
         # Properties Object.
         reqPropsObj.setStagingFilename(stagingFilename)
