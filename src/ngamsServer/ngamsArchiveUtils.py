@@ -467,6 +467,7 @@ def archiveFromFile(srvObj,
     else:
         info(3,"No Request Properties Object given - creating one")
         reqPropsObjLoc = ngamsReqProps.ngamsReqProps()
+    stagingFile = filename
     try:
         if (mimeType == None):
             mimeType = ngamsHighLevelLib.determineMimeType(srvObj.getCfg(),
@@ -491,9 +492,13 @@ def archiveFromFile(srvObj,
                                              mimeType, 0,
                                              reqSpace=reqPropsObjLoc.getSize())
                 reqPropsObjLoc.setTargDiskInfo(trgDiskInfo)
+                # copy the file to the staging area of the target disk
+                stagingFile = trgDiskInfo.getMountPoint()+ '/staging/' + os.path.basename(filename)
+                cpFile(filename, stagingFile)
+                reqPropsObjLoc.setStagingFilename(stagingFile)
             except Exception, e:
-                errMsg = str(e) + ". Attempting to archive back-log " +\
-                         "buffered file: " + filename
+                errMsg = str(e) + ". Attempting to archive local file: " +\
+                         filename
                 ngamsNotification.notify(srvObj.getCfg(),
                                          NGAMS_NOTIF_NO_DISKS,
                                          "NO DISKS AVAILABLE", errMsg)
@@ -502,7 +507,7 @@ def archiveFromFile(srvObj,
         # Set the log cache to 1 during the handling of the file.
         setLogCache(1)
         plugIn = srvObj.getMimeTypeDic()[mimeType]
-        info(2,"Invoking DAPI: " + plugIn + " to handle file: " + filename)
+        info(2,"Invoking DAPI: " + plugIn + " to handle file: " + stagingFile)
         exec "import " + plugIn
         resMain = eval(plugIn + "." + plugIn + "(srvObj, reqPropsObjLoc)")
         # Move the file to final destination.
@@ -516,14 +521,14 @@ def archiveFromFile(srvObj,
         # Buffering the file, we have to log an error.
         if (ngamsHighLevelLib.performBackLogBuffering(srvObj.getCfg(),
                                                       reqPropsObjLoc, e)):
-            notice("Tried to archive Back-Log Buffered file: " + filename +\
+            notice("Tried to archive local file: " + filename +\
                    ". Attempt failed with following error: " + str(e) +\
-                   ". Keeping file in Back-Log Buffer.")
+                   ". Keeping original file.")
             return NGAMS_FAILURE
         else:
-            error("Tried to archive Back-Log Buffered file: " + filename +\
+            error("Tried to archive local file: " + filename +\
                   ". Attempt failed with following error: " + str(e) + ".")
-            notice("Moving Back-Log Buffered file: " +\
+            notice("Moving local file: " +\
                    filename + " to Bad Files Directory -- cannot be handled.")
             ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename,
                                               filename)
@@ -536,12 +541,12 @@ def archiveFromFile(srvObj,
 
     # If the file was handled successfully, we remove it from the
     # Back-Log Buffer Directory.
-    info(2,"Successfully archived Back-Log Buffered file: " + filename +\
-         ". Removing file.")
-    rmFile(filename)
-    rmFile(filename + "." + NGAMS_PICKLE_FILE_EXT)
+    info(2,"Successfully archived local file: " + filename +\
+         ". Removing original file.")
+    rmFile(stagingFile)
+    rmFile(stagingFile + "." + NGAMS_PICKLE_FILE_EXT)
 
-    info(2,"Archived Back-Log Buffered file: " + filename + ". Time (s): " +\
+    info(2,"Archived local file: " + filename + ". Time (s): " +\
          str(archiveTimer.stop()))
     return NGAMS_SUCCESS
 

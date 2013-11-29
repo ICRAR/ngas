@@ -509,25 +509,25 @@ class ngamsServer:
     def recoveryRequestDb(self, err):
         """
         If the bsddb needs recover, i.e. err is something like
-         (-30974, 'DB_RUNRECOVERY: Fatal error, run database recovery -- PANIC: fatal region error detected; run recovery') 
-         
+         (-30974, 'DB_RUNRECOVERY: Fatal error, run database recovery -- PANIC: fatal region error detected; run recovery')
+
         then remove and recreate the request bsddb
-        
+
         err:    the error message (string)
         return: 0 - the error is not about recovery
                 1 - the error is about recovery, which succeeded
                -1 - the error is about recovery, which failed
         """
         T = TRACE()
-        
+
         if (err.find('DB_RUNRECOVERY') > -1):
             reqDbmName = self.getReqDbName()
             rmFile(reqDbmName + "*")
-            info(4,"Recover (Check/create) NG/AMS Request Info DB ...")            
+            info(4,"Recover (Check/create) NG/AMS Request Info DB ...")
             self.__requestDbm = ngamsDbm.ngamsDbm(reqDbmName, cleanUpOnDestr = 0,
                                                   writePerm = 1)
             info(4,"Recovered (Checked/created) NG/AMS Request Info DB")
-            return 1            
+            return 1
         else:
             return 0
 
@@ -1542,11 +1542,16 @@ class ngamsServer:
 
         # Request authorized - handle the command
         ngamsCmdHandling.cmdHandler(self, reqPropsObj, httpRef)
-        info(2,"Total time for handling request: (" +\
+        msg = "Total time for handling request: (" +\
              reqPropsObj.getHttpMethod() + "," + reqPropsObj.getCmd() + "," +\
              reqPropsObj.getMimeType() + "," +\
              reqPropsObj.getFileUri() + "): " +\
-             str(int(1000.0 * reqTimer.stop()) / 1000.0) + "s")
+             str(int(1000.0 * reqTimer.stop()) / 1000.0) + "s"
+        if reqPropsObj.getIoTime() > 0:
+            msg += "; Transfer rate:" +\
+            str(reqPropsObj.getBytesReceived()/reqPropsObj.getIoTime()/1024./1024.) +\
+            "MB/s"
+        info(2, msg)
         logFlush()
 
 
@@ -2084,6 +2089,18 @@ class ngamsServer:
                                          errMsg, [], 1)
                 self.killServer()
 
+        logFile = self.getCfg().getLocalLogFile()
+        logPath = os.path.dirname(logFile)
+        unsavedLogFiles = glob.glob(logPath + '/*.unsaved')
+        if (len(unsavedLogFiles) > 0):
+            info(3,"Archiving unsaved log-files ...")
+            for logFile in unsavedLogFiles:
+                ngamsArchiveUtils.archiveFromFile(self, logFile, 0,
+                        'ngas/nglog', None)
+                os.rename(logFile, '.'.join(logFile.split('.')[:-1]))
+
+
+
         return self
 
 
@@ -2431,9 +2448,9 @@ class ngamsServer:
             logPath = os.path.dirname(logFile)
             rotLogFile = "LOG-ROTATE-" +\
                     PccUtTime.TimeStamp().getTimeStamp()+\
-                    ".nglog"
+                    ".nglog.unsaved"
             rotLogFile = os.path.normpath(logPath + "/" + rotLogFile)
-            PccLog.info(1, "Rotating log file: %s -> %s" %\
+            PccLog.info(1, "Closing log file: %s -> %s" %\
                     (logFile, rotLogFile), getLocation())
             logFlush()
             commands.getstatusoutput("mv " + logFile + " " +\
