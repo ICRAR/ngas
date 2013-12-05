@@ -651,15 +651,18 @@ def _deliveryThread(srvObj,
             fileVersion    = fileInfo[FILE_VER]
             fileIngDate    = fileInfo[FILE_DATE]
             fileMimeType   = fileInfo[FILE_MIME]
-            fileBackLogged = fileInfo[FILE_BL]
+            fileBackLogged = fileInfo[FILE_BL]   
+            if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not os.path.isfile(filename))):# check if this file is removed by an agent outside of NGAS (e.g. Cortex volunteer cleanup)
+                diskId = fileInfo[FILE_DISK_ID]
+                mtPt = srvObj.getDb().getMtPtFromDiskId(diskId)
+                if (os.path.exists(mtPt)): # the mount point is still there, but not the file, which means the file was removed by external agents
+                    alert('File %s is no longer available, removing it from the backlog' %  filename)
+                    _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename) 
+                continue
             if (not _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion)):
                 if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
                     info(3, 'Removing backlog file %s that is no longer needed to be de_livered' % fileId)
                     _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename)
-                continue
-            if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not os.path.isfile(filename))):# if this file is removed by an agent outside of NGAS (e.g. Cortex volunteer cleanup)
-                alert('File %s is no longer available' %  filename)
-                _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename) 
                 continue
             baseName = os.path.basename(filename)
             contDisp = "attachment; filename=\"" + baseName + "\""
@@ -890,7 +893,7 @@ def subscriptionThread(srvObj,
             # TODO - handle the abnormal shutdown situation, i.e. 
             # for each subscriber, find out the LastFileIngDate, and query db with: ingestion_date > 'LastFileIngDate'
             # if (not dataMoverOnly and abnormalShutdown): abnormalShutdown = False then: blah blah
-            if (dataMoverOnly and srvObj.getSubcrBackLogCount() <= 0): # this ensures back-logged files to be sent before new files are brought in
+            if (dataMoverOnly and srvObj.getSubcrBackLogCount() <= 1000): # do not bring in too many new files if back-logged files are piling up
             # if (dataMoverOnly): # we need to support multiple data movers and priority on the single NGAS server, so the "backlog first" policy is cancelled                
                 #subscrId = srvObj.getSubscriberDic().keys()[0] 
                 for subscrId in srvObj.getSubscriberDic().keys():

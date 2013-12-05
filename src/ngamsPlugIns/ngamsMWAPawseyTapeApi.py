@@ -242,8 +242,8 @@ if __name__ == '__main__':
                   help="Do not check CRC after staging")
     
     parser.add_option("-r", "--random_order",
-                  action="store_false", dest="order_by_date", default = True,
-                  help="Randomly order the file to be staged")
+                  action="store_false", dest="order_by_name", default = True,
+                  help="Randomly order the file to be staged. By default, files are alphabetically ordered by names")
     
     parser.add_option("-t", "--nofitshdr",
                   action="store_false", dest="kp_fits_hdr", default = True,
@@ -256,7 +256,7 @@ if __name__ == '__main__':
     
     filepaths = options.filepaths # separated by comma
     num_per_path = options.num_per_path # number of files per path
-    order_by_date = options.order_by_date
+    order_by_name = options.order_by_name
     check_crc = options.check_crc
     
     final_file_list = []
@@ -264,10 +264,11 @@ if __name__ == '__main__':
     for filepath in dirs:
         if (not os.path.exists(filepath)):
             continue
-        if (order_by_date):
-            listfiles = sorted_ls(filepath)
-        else:
-            listfiles = os.listdir(filepath)
+        
+        listfiles = os.listdir(filepath)
+        if (not order_by_name):
+            import random
+            random.shuffle(listfiles)
     
         if (len(listfiles) < num_per_path):
             end = len(listfiles)
