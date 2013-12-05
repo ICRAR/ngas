@@ -43,6 +43,8 @@ bspeed = None
 old = 0
 crcfl = ''              # default is no crc
 llflag = 0              # default use normal I/O
+asyncfl = 0
+dioflag = 0
 session_id = None       # For write to HTTP only, default is None
 data_rate = None        # default there is no data rate limit for HTTP write
 NGAMS_HTTP_SUCCESS = 200
@@ -370,7 +372,10 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
                     sleepTime = blocksize / (data_rate * one_mb)
             else:
                 if llflag:
-                    fd = os.open(ofil, os.O_CREAT | os.O_TRUNC | os.O_WRONLY)# | os.O_NONBLOCK)
+                    if asyncfl:
+                        fd = os.open(ofil, os.O_CREAT | os.O_TRUNC | os.O_WRONLY | os.O_ASYNC)
+                    else:
+                        fd = os.open(ofil, os.O_CREAT | os.O_TRUNC | os.O_WRONLY)
                 elif dioflag:
                     if os.__dict__.has_key('O_DIRECT'):
                         fd = os.open('file', os.O_CREAT | os.O_TRUNC | os.O_DIRECT  | os.O_RDWR)
@@ -462,10 +467,10 @@ if __name__ == '__main__':
 
     import getopt
 
-    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:c:e:r:f:lomwh",\
+    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:c:e:r:f:l:omwh",\
            ["device","skip","testcount","iosize","blocksize",\
             "write","old","method","help","lowio", "session", "datarate",
-            "dio", "file"])
+            "file"])
 
     for o,v in opts:
         if o in ("-d","--device"):
@@ -486,8 +491,10 @@ if __name__ == '__main__':
             Test = 'write'
         if o in ("-l", "--lowio"):
             llflag = 1
-        if o in ("--dio"):
-            dioflag = 1
+            if v == 'direct':
+                dioflag = 1
+            elif v == 'async':
+                asyncfl = 1
         if o in ("-c","--crcfl"):
             crcfl = v
             if crcfl not in ['b', 'z']:
