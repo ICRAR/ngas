@@ -76,8 +76,9 @@ def usage():
           [m]ethod:    flag, if set a python implementation of dd
                        will be used.
           [w]rite:     flag, if set writeTest is performed.
-          [l]owio:     flag, if set during write test low level I/O
-                       will be used.
+          [l]owio:     [direct, async], this will switch to lower level I/O
+                       using either the O_DIRECT or the O_ASYNC flag when opening
+                       the file.
           s[e]ssion:   string, session id for this HTTP write test
           data[r]ate:  the data rate for HTTP write test. This parameter
                        is turned on only when the device is a URL (HTTP
@@ -89,11 +90,25 @@ def usage():
           Typical usage:
           python ~/diskTest.py -d /mymnt/testio -b 262144 -w -m -c z -t 5 -l
 
-          This performs a write test on the file /mymnt/testio using a
+          This performs 5 consecutive write tests on files /mymnt/testio* using a
           256kB block size, the internal Python implementation of dd,
           performs a CRC checksum calculation on the stream using the zlib
           based CRC algorithm, repeats the test 5 times and uses low-level
           I/O.
+
+          Plotting: The myDD write test is producing a fairly concise timing
+          profile of the whole I/O and processing performance. The result will
+          be stored in a file called bspeed.pkl. Since usually the platform where
+          the tests are executed are servers or machines without window servers
+          the plotting functionality is split off into a stand-alone function.
+          Typically you would need to copy the bspeed.pkl file to a desktop
+          machine. There is an additional dependency on the python pylab module
+          to do the actual plotting. The best way to do this is to change to the
+          directory where the bspeed.pkl file is located and launch
+
+          ipython --pylab
+          >>> import diskTest
+          >>> speedPlot()
 
     Author:  A. Wicenec [ESO, ICRAR]
     Date:    29-May-2002
