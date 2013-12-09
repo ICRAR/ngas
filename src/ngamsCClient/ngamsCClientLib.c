@@ -799,8 +799,14 @@ ngamsSTAT ngamsQArchive(const char* host, const int port, const float timeoutSec
 
 	ngamsLogDebug("Entering ngamsQArchive() ...");
 	ngamsResetParArray(&parArray);
-	sprintf(tmpBuf, "%d", noVersioning);
-	ngamsAddParAndVal(&parArray, "no_versioning", tmpBuf);
+	int versioning = 1;
+	if (noVersioning) {
+		versioning = 0;
+	}
+	//sprintf(tmpBuf, "%d", noVersioning);
+	sprintf(tmpBuf, "%d", versioning);
+	//ngamsAddParAndVal(&parArray, "no_versioning", tmpBuf);
+	ngamsAddParAndVal(&parArray, "versioning", tmpBuf);
 	sprintf(tmpBuf, "%d", wait);
 	ngamsAddParAndVal(&parArray, "wait", tmpBuf);
 	if (timeoutSecs != -1)
