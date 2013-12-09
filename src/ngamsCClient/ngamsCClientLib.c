@@ -799,14 +799,19 @@ ngamsSTAT ngamsQArchive(const char* host, const int port, const float timeoutSec
 
 	ngamsLogDebug("Entering ngamsQArchive() ...");
 	ngamsResetParArray(&parArray);
+	/**
+	 * We decided not to support this non_version business,
+	 * which will create inconsistency on the server side if a single server has multiple disk volumes
+	 *
 	int versioning = 1;
 	if (noVersioning) {
 		versioning = 0;
 	}
-	//sprintf(tmpBuf, "%d", noVersioning);
-	sprintf(tmpBuf, "%d", versioning);
-	//ngamsAddParAndVal(&parArray, "no_versioning", tmpBuf);
-	ngamsAddParAndVal(&parArray, "versioning", tmpBuf);
+	*/
+	sprintf(tmpBuf, "%d", noVersioning);
+	//sprintf(tmpBuf, "%d", versioning);
+	ngamsAddParAndVal(&parArray, "no_versioning", tmpBuf);
+	//ngamsAddParAndVal(&parArray, "versioning", tmpBuf);
 	sprintf(tmpBuf, "%d", wait);
 	ngamsAddParAndVal(&parArray, "wait", tmpBuf);
 	if (timeoutSecs != -1)
