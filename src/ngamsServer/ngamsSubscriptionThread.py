@@ -34,11 +34,12 @@ This module contains the code for the (Data) Subscription Thread, which is
 used to handle the delivery of data to Subscribers.
 """
 
-import thread, threading, time, commands, cPickle, types, math, sys, traceback, os
+import thread, threading, time, commands, cPickle, types, math, sys, traceback, os, base64
 from Queue import Queue, Empty, PriorityQueue
 
 from ngams import *
 import ngamsDbm, ngamsDb, ngamsLib, ngamsStatus, ngamsHighLevelLib, ngamsCacheControlThread
+import ngamsFileInfo
 
 # TODO:
 # - Should not hardcode no_versioning=1.
@@ -652,8 +653,8 @@ def _deliveryThread(srvObj,
             fileIngDate    = fileInfo[FILE_DATE]
             fileMimeType   = fileInfo[FILE_MIME]
             fileBackLogged = fileInfo[FILE_BL]   
+            diskId = fileInfo[FILE_DISK_ID]
             if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not os.path.isfile(filename))):# check if this file is removed by an agent outside of NGAS (e.g. Cortex volunteer cleanup)
-                diskId = fileInfo[FILE_DISK_ID]
                 mtPt = srvObj.getDb().getMtPtFromDiskId(diskId)
                 if (os.path.exists(mtPt)): # the mount point is still there, but not the file, which means the file was removed by external agents
                     alert('File %s is no longer available, removing it from the backlog' %  filename)
@@ -682,7 +683,13 @@ def _deliveryThread(srvObj,
             # as long as there is a user named "ngas-int" in the configuration file for the current server
             # But if the target is an NGAS server and the authentication is on, the target must have set a user named "ngas-int"
             authHdr = srvObj.getCfg().getAuthHttpHdrVal(user = NGAMS_HTTP_INT_AUTH_USER)
-            
+            fileInfoObjHdr = None
+            if (subscrObj.getUrl().upper().endswith('/' + NGAMS_REARCHIVE_CMD)):
+                try:
+                    fileInfoObj = ngamsFileInfo.ngamsFileInfo().read(srvObj.getDb(), fileId, fileVersion, diskId)
+                    fileInfoObjHdr = base64.b64encode(fileInfoObj.genXml().toxml())
+                except Exception, e12:
+                    warning('%s - Fail to obtain fileInfo from DB: fileId/version/diskId - %s / %d / %s' % (str(e12), fileId, fileVersion, diskId))
             try:
                 reply, msg, hdrs, data = \
                        ngamsLib.httpPostUrl(subscrObj.getUrl(), fileMimeType,
@@ -690,7 +697,8 @@ def _deliveryThread(srvObj,
                                             blockSize=\
                                             srvObj.getCfg().getBlockSize(),
                                             suspTime = suspenTime,
-                                            authHdrVal = authHdr)
+                                            authHdrVal = authHdr,
+                                            fileInfoHdr = fileInfoObjHdr)
                 if (data.strip() != ""):
                     stat.clear().unpackXmlDoc(data)
                 else:

@@ -525,7 +525,8 @@ def httpPostUrl(url,
                 suspTime = 0.0,
                 timeOut = None,
                 authHdrVal = "",
-                dataSize = -1):
+                dataSize = -1,
+                fileInfoHdr = None):
     """
     Post the the data referenced on the given URL.
 
@@ -559,6 +560,8 @@ def httpPostUrl(url,
                   the query (string).
 
     dataSize:     Size of data to send if read from a socket (integer).
+    
+    fileInfoHdr:  File info serialised as an XML doc for command REARCHIVE (string)
 
     Returns:      List with information from reply from contacted
                   NG/AMS Server (reply, msg, hdrs, data) (list).
@@ -590,6 +593,8 @@ def httpPostUrl(url,
         if (authHdrVal[-1] == "\n"): authHdrVal = authHdrVal[:-1]
         info(4,"HTTP Header: %s: %s" % ("Authorization", authHdrVal))
         http.putheader("Authorization", authHdrVal)
+    if (fileInfoHdr):
+        http.putheader(NGAMS_HTTP_HDR_FILE_INFO, fileInfoHdr)
     if (dataSource == "FILE"):
         dataSize = getFileSize(dataRef)
     elif (dataSource == "BUFFER"):

@@ -391,7 +391,7 @@ def handleCmd(srvObj,
     # Get crc info
     info(3, "Get checksum info")
     crc = stagingInfo[1]
-    checksumPlugIn = "StreamCrc32"
+    checksumPlugIn = "ngamsGenCrc32"
     checksum = str(crc)
     info(3, "Invoked Checksum Plug-In: " + checksumPlugIn +\
             " to handle file: " + resDapi.getCompleteFilename() +\
