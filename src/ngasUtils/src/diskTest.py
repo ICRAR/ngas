@@ -29,7 +29,7 @@
 import time, pickle
 import commands
 import sys,re, os, socket, traceback, datetime, mmap
-import base64
+import base64, glob
 
 Test = 'read'           # default test is readTest
 skip = 0        # default skip [GB]
@@ -88,10 +88,10 @@ def usage():
                  of 4.
 
           Typical usage:
-          python ~/diskTest.py -d /mymnt/testio -b 262144 -w -m -c z -t 5 -l
+          python ~/diskTest.py -d /mymnt/testio -b 262144 -w -m -c z -t 5 -l async
 
-          This performs 5 consecutive write tests on files /mymnt/testio* using a
-          256kB block size, the internal Python implementation of dd,
+          This performs 5 consecutive write tests on files /mymnt/testio* using
+          a 256kB block size, the internal Python implementation of dd,
           performs a CRC checksum calculation on the stream using the zlib
           based CRC algorithm, repeats the test 5 times and uses low-level
           I/O.
@@ -478,6 +478,14 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
         status = 0
         return status
 
+def cleanup(fnm):
+    """
+    Remove the files produced during the write test
+    """
+    fils = glob.glob(fnm+'*')
+    dum = map(lambda x:os.remove(x), fils)
+    return dum
+
 if __name__ == '__main__':
 
     import getopt
@@ -578,6 +586,7 @@ if __name__ == '__main__':
             else:
                 bspeed = writeTest(dev,skip,testcount,iosize,\
                         blocksize)
+            cleanup(dev)
     else:
         sys.exit()
     if bspeed:
