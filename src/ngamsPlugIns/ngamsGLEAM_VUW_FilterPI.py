@@ -92,16 +92,39 @@ def ngamsGLEAM_VUW_FilterPI(srvObj,
         # Perform the matching.
         client = ngamsPClient.ngamsPClient(host, port, timeOut = NGAMS_SOCK_TIMEOUT_DEF)        
         try:
-            rest = client.sendCmd(NGAMS_STATUS_CMD, 1, "", [["file_id", fileId]])
+            if (fileVersion == -1):
+                fileVersion = 1
+            rest = client.sendCmd(NGAMS_STATUS_CMD, 1, "", [["file_id", fileId], ["file_version", fileVersion]])
+            # since the queue will be sorted based on ingestion date, this will ensure the versions are sent by order:
+            # e.g. version1, version2, version3, otherwise, this method will have disordered versions sent
+            if (rest.getStatus().find(NGAMS_FAILURE) != -1):
+                return 1 # matched since file id does not exist
+            
+            #if the same file id (with the latest version) is there already, check CRC
+            """
+            xmlnode = rest.genXml(genDiskStatus = 1, genFileStatus = 1)
+            tgtCrc = xmlnode.getElementsByTagName('FileStatus')[0].attributes['Checksum'].value
+            cursorObj = srvObj.getDb().getFileInfoList('', fileId, fileVersion)
+            fileList = cursorObj.fetch(1)
+            srcCrc = None
+            for fileInfo in fileList:
+                srcCrc = fileInfo[10]
+            if (cursorObj):
+                del cursorObj
+            
+            if (srcCrc and tgtCrc): 
+                if (srcCrc != tgtCrc):
+                    match = 1
+            else:
+                match = 1 # if no CRC information can be found, send the file regardless
+            """
+            
         except Exception, e:
             errMsg = "Error occurred during checking remote file status " +\
                          "ngamsGLEAM_VUW_FilterPI. Exception: " + str(e)
             alert(errMsg)
             return 1 # matched as if the filter does not exist
-        
         #info(5, "filter return status = " + rest.getStatus())
-        if (rest.getStatus().find(NGAMS_FAILURE) != -1):
-            match = 1
         #info(4, "filter match = " + str(match))    
     
-    return match    
+    return match  
