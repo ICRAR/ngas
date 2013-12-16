@@ -156,7 +156,7 @@ def set_env():
         env.NGAS_USERS = NGAS_USERS
     require('hosts', provided_by=[test_env])
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
-        home = run("echo $HOME")
+        home = run("echo ~{0}".format(NGAS_USERS[0]))
         env.NGAS_DIR_ABS = '{0}/{1}'.format(home, NGAS_DIR)
         env.NGAS_DIR = NGAS_DIR
     else:
