@@ -34,7 +34,7 @@ else:
     os.environ['NGAMS_ROOT'] = NGAMS_ROOT
 
 if os.environ.has_key('NGAMS_ARGS'):
-    NGAMS_ARGS = os.environ['NGAMS_ARGS']
+    NGAMS_ARGS = os.environ['NGAMS_ARGS'].split() # convert from command line (string) to a list
 else:
     NGAMS_ARGS = [
                   '%s/ngas_rt/bin/ngamsServer' % HOME,
