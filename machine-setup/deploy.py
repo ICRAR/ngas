@@ -154,13 +154,17 @@ def set_env():
         env.user = USERNAME
     if not env.has_key('NGAS_USERS') or not env.NGAS_USERS:
         env.NGAS_USERS = NGAS_USERS
+    elif type(env.NGAS_USERS) == type(''): # if its just a string
+        env.NGAS_USERS = [env.NGAS_USERS] # change the type
     require('hosts', provided_by=[test_env])
     if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
-        home = run("echo $HOME")
+        home = run("echo ~{0}".format(NGAS_USERS[0]))
         env.NGAS_DIR_ABS = '{0}/{1}'.format(home, NGAS_DIR)
         env.NGAS_DIR = NGAS_DIR
     else:
         env.NGAS_DIR = env.NGAS_DIR_ABS.split('/')[-1]
+    if not env.has_key('force') or not env.force:
+        env.force = 0
     get_linux_flavor()
     puts("""Environment:
             USER:              {0};
@@ -670,7 +674,7 @@ def virtualenv_setup():
     set_env()
     check_python()
     print "CHECK_DIR: {0}".format(check_dir(env.NGAS_DIR_ABS))
-    if check_dir(env.NGAS_DIR_ABS):
+    if check_dir(env.NGAS_DIR_ABS) and not env.force:
         abort('ngas_rt directory exists already')
 
     with cd('/tmp'):
