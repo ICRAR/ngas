@@ -64,7 +64,7 @@ ELASTIC_IP = 'False'
 SECURITY_GROUPS = ['NGAS'] # Security group allows SSH
 NGAS_USERS = ['ngas','ngasmgr']
 NGAS_PYTHON_VERSION = '2.7'
-NGAS_PYTHON_URL = 'http://www.python.org/ftp/python/2.7.5/Python-2.7.5.tar.bz2'
+NGAS_PYTHON_URL = 'http://www.python.org/ftp/python/2.7.6/Python-2.7.6.tgz'
 NGAS_DIR = 'ngas_rt' #NGAS runtime directory
 NGAS_DEF_CFG = 'NgamsCfg.SQLite.mini.xml'
 GITUSER = 'icrargit'
@@ -120,6 +120,7 @@ SLES_PACKAGES = [
                  'libdb-4_5',
                  'libdb-4_5-devel',
                  'gcc',
+                 'postgresql-devel',
                  ]
 
 PYTHON_PACKAGES = [
@@ -155,11 +156,16 @@ def set_env():
     if not env.has_key('NGAS_USERS') or not env.NGAS_USERS:
         env.NGAS_USERS = NGAS_USERS
     elif type(env.NGAS_USERS) == type(''): # if its just a string
+        print "NGAS_USERS preset to {0}".format(env.NGAS_USERS)
         env.NGAS_USERS = [env.NGAS_USERS] # change the type
+    if not env.has_key('src_dir') or not env.src_dir:
+        env.src_dir = ''
     require('hosts', provided_by=[test_env])
-    if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
+    if not env.has_key('PREFIX') or not env.PREFIX:
         home = run("echo ~{0}".format(NGAS_USERS[0]))
-        env.NGAS_DIR_ABS = '{0}/{1}'.format(home, NGAS_DIR)
+        env.PREFIX = home
+    if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
+        env.NGAS_DIR_ABS = '{0}/{1}'.format(env.PREFIX, NGAS_DIR)
         env.NGAS_DIR = NGAS_DIR
     else:
         env.NGAS_DIR = env.NGAS_DIR_ABS.split('/')[-1]
@@ -440,16 +446,25 @@ def git_clone_tar(standalone=0):
     is thus using a tar-file, copied over from the calling machine.
     """
     set_env()
-    local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
-    local('cd /tmp && mv {0} {1}'.format(BRANCH, env.NGAS_DIR))
-    if standalone:
-        local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES \
-            --exclude .git {0}'.format(env.NGAS_DIR))
+    if not env.src_dir:
+        local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
+        local('cd /tmp && mv {0} {1}'.format(BRANCH, env.NGAS_DIR))
+        tar_dir = '/tmp'
     else:
-        local('cd /tmp && tar -cjf {0}.tar.bz2 --exclude BIG_FILES \
-            --exclude .git --exclude eggs.tar.gz {0}'.format(env.NGAS_DIR))
+        tar_dir = '{0}/..'.format(env.src_dir)
+        local('cd {0} && mv {1} {2}'.format(tar_dir, os.path.basename(env.src_dir), env.NGAS_DIR))
+        tdir = tar_dir.split('/')[1:-2]
+        print tdir
+        tdir = '/' + '/'.join(tdir)
+        tar_dir = tdir+'/'+env.NGAS_DIR
+    if standalone:
+        local('cd {0}/.. && tar -cjf {1}.tar.bz2 --exclude BIG_FILES \
+            --exclude .git {1}'.format(tar_dir, env.NGAS_DIR))
+    else:
+        local('cd {0}/.. && tar -cjf {1}.tar.bz2 --exclude BIG_FILES \
+            --exclude .git --exclude eggs.tar.gz {1}'.format(tar_dir, env.NGAS_DIR))
     tarfile = '{0}.tar.bz2'.format(env.NGAS_DIR)
-    put('/tmp/{0}'.format(tarfile), '{1}/../{0}'.format(tarfile, env.NGAS_DIR_ABS))
+    put('{0}/../{1}'.format(tar_dir,tarfile), '{1}/../{0}'.format(tarfile, env.NGAS_DIR_ABS))
     local('rm -rf /tmp/{0}'.format(env.NGAS_DIR))  # cleanup local git clone dir
     with cd(env.NGAS_DIR_ABS+'/..'):
         run('tar -xjf {0} && rm {0}'.format(tarfile))
@@ -498,16 +513,19 @@ def get_linux_flavor():
     """
     Obtain and set the env variable linux_flavor
     """
-    re = run('cat /etc/issue')
-    linux_flavor = re.split()
-    if (len(linux_flavor) > 0):
-        if linux_flavor[0] == 'CentOS' or linux_flavor[0] == 'Ubuntu' \
-           or linux_flavor[0] == 'Debian':
-            linux_flavor = linux_flavor[0]
-        elif linux_flavor[0] == 'Amazon':
-            linux_flavor = ' '.join(linux_flavor[:2])
-        elif linux_flavor[2] == 'SUSE':
-            linux_flavor = linux_flavor[2]
+    if (check_path('/etc/issue')):
+        re = run('cat /etc/issue')
+        linux_flavor = re.split()
+        if (len(linux_flavor) > 0):
+            if linux_flavor[0] == 'CentOS' or linux_flavor[0] == 'Ubuntu' \
+               or linux_flavor[0] == 'Debian':
+                linux_flavor = linux_flavor[0]
+            elif linux_flavor[0] == 'Amazon':
+                linux_flavor = ' '.join(linux_flavor[:2])
+            elif linux_flavor[2] == 'SUSE':
+                linux_flavor = linux_flavor[2]
+    else:
+        linux_flavor = run('uname -s')
 
     print "Remote machine running %s" % linux_flavor
     env.linux_flavor = linux_flavor
@@ -658,7 +676,7 @@ def python_setup():
         run('wget --no-check-certificate -q {0}'.format(NGAS_PYTHON_URL))
         base = os.path.basename(NGAS_PYTHON_URL)
         pdir = os.path.splitext(os.path.splitext(base)[0])[0]
-        run('tar -xjf {0}'.format(base))
+        run('tar -xzf {0}'.format(base))
     ppath = env.NGAS_DIR_ABS + '/../python'
     with cd('/tmp/{0}'.format(pdir)):
         run('./configure --prefix {0};make;make install'.format(ppath))
@@ -673,7 +691,7 @@ def virtualenv_setup():
     """
     set_env()
     check_python()
-    print "CHECK_DIR: {0}".format(check_dir(env.NGAS_DIR_ABS))
+    print "CHECK_DIR: {0}".format(check_dir(env.PREFIX))
     if check_dir(env.NGAS_DIR_ABS) and not env.force:
         abort('ngas_rt directory exists already')
 
