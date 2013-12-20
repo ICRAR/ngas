@@ -600,14 +600,14 @@ class ngamsConfig:
         """
         Get NGAS Root Directory.
 
-        NOTE: THE NGAMS_ROOT environment variable overrides the one in the
+        NOTE: THE NGAMS_PREFIX environment variable overrides the one in the
         Config-file.
 
         Returns:  NGAS Root Directory (string).
         """
         rootDir = self.getVal("NgamsCfg.Server[1].RootDirectory")
-        if os.environ.has_key('NGAMS_ROOT'):
-            rootDir = os.environ['NGAMS_ROOT']
+        if os.environ.has_key('NGAMS_PREFIX'):
+            rootDir = os.environ['NGAMS_PREFIX']
         if (not rootDir):
             raise Exception, "Server[1].RootDirectory not properly defined"
         if rootDir[0] != '/':
