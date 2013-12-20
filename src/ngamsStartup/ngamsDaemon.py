@@ -27,18 +27,18 @@ from logger import ngaslog
 from daemon import Daemon
 
 HOME = os.environ['HOME']
-if os.environ.has_key('NGAMS_ROOT'):
-    NGAMS_ROOT = os.environ['NGAMS_ROOT']
+if os.environ.has_key('NGAMS_PREFIX'):
+    NGAMS_PREFIX = os.environ['NGAMS_PREFIX']
 else:
-    NGAMS_ROOT = '{0}/NGAS'.format(HOME)
-    os.environ['NGAMS_ROOT'] = NGAMS_ROOT
+    NGAMS_PREFIX = '{0}'.format(HOME)
+    os.environ['NGAMS_PREFIX'] = NGAMS_PREFIX
 
 if os.environ.has_key('NGAMS_ARGS'):
     NGAMS_ARGS = os.environ['NGAMS_ARGS'].split() # convert from command line (string) to a list
 else:
     NGAMS_ARGS = [
-                  '%s/ngas_rt/bin/ngamsServer' % HOME,
-                  '-cfg', '%s/cfg/ngamsServer.conf' % NGAMS_ROOT,
+                  '%s/NGAS/ngas_rt/bin/ngamsServer' % NGAMS_PREFIX,
+                  '-cfg', '%s/cfg/ngamsServer.conf' % NGAMS_PREFIX,
                   '-force',
                   '-autoOnline',
                   '-multiplesrvs',
@@ -47,10 +47,10 @@ else:
 
 
 
-PIDFILE = '%s/var/run/ngamsDaemon.pid' % NGAMS_ROOT
+PIDFILE = '%s/var/run/ngamsDaemon.pid' % NGAMS_PREFIX
 try:
-    os.makedirs('{0}/var/run'.format(NGAMS_ROOT))
-    os.makedirs('{0}/var/log'.format(NGAMS_ROOT))
+    os.makedirs('{0}/var/run'.format(NGAMS_PREFIX))
+    os.makedirs('{0}/var/log'.format(NGAMS_PREFIX))
 except OSError:
     pass
 
@@ -92,7 +92,7 @@ def checkNgasPidFile(dum):
     """
     with open(PIDFILE, 'r') as f:
         ipid = f.readline().strip()
-    pidfils = glob.glob('%s/.NGAS-*' % NGAMS_ROOT)
+    pidfils = glob.glob('%s/.NGAS-*' % NGAMS_PREFIX)
     for fil in pidfils:
         with open(fil, 'r') as f:
             pid = f.readline().strip()
