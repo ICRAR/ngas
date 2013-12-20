@@ -242,7 +242,7 @@ class ngamsConfig:
 
         # User IDs for HTTP authentication.
         self.__authUserDic             = {}
-        
+
         # key user name, value: allowed user commands separated by comma
         self.__authUserCommandsDic     = {}
 
@@ -509,7 +509,7 @@ class ngamsConfig:
                 userName = self.getVal(fm % (idx, "Name"))
                 self.addAuthUser(userName,
                                  self.getVal(fm % (idx, "Password")))
-                self.addAuthUserCommands(userName, 
+                self.addAuthUserCommands(userName,
                                  self.getVal(fm % (idx, "Commands")))
 
         # Unpack information in Mirroring Element.
@@ -600,6 +600,9 @@ class ngamsConfig:
         """
         Get NGAS Root Directory.
 
+        NOTE: THE NGAMS_ROOT environment variable overrides the one in the
+        Config-file.
+
         Returns:  NGAS Root Directory (string).
         """
         rootDir = self.getVal("NgamsCfg.Server[1].RootDirectory")
@@ -611,6 +614,8 @@ class ngamsConfig:
             rootDir = os.environ['HOME'] + '/' + rootDir
         if rootDir[-1] == '/':
             rootDir = rootDir[:-1]
+        if rootDir.split('/')[-1] != 'NGAS':
+            rootDir += '/NGAS'
         os.environ['NGAMS_ROOT'] = rootDir
         self.storeVal('NgamsCfg.Server[1].RootDirectory', rootDir, None)
         return rootDir
@@ -1902,7 +1907,7 @@ class ngamsConfig:
         """
         self.__authUserDic[user] = password
         return self
-    
+
     def addAuthUserCommands(self, user, commands):
         """
         Add a user in the object.
@@ -1947,7 +1952,7 @@ class ngamsConfig:
             return None
         else:
             return self.__authUserDic[user]
-    
+
     def getAuthUserCommands(self, user):
         """
         Returns the info (password) for a user.
