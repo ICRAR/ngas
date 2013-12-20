@@ -51,6 +51,7 @@ valid_queries = {"files_list":"select * from ngas_files",
                   "disks_list":"select * from ngas_disks", 
                   "hosts_list":"select * from ngas_hosts",
                   "files_like":"select * from ngas_files where file_id like '{0}'",
+                  "files_location":"select a.host_id, a.mount_point || '/' || b.file_name as file_full_path, b.file_version, b.ingestion_date from ngas_disks a, ngas_files b where a.disk_id = b.disk_id and b.file_id like '{0}' order by b.file_id",
                   "files_between":"select * from ngas_files where ingestion_date between '{0}' and '{1}'",
                   "files_stats":"select count(*),sum(uncompressed_file_size)/1048576. as MB from ngas_files",
                   "files_list_recent":"select file_id, file_name, file_size, ingestion_date from ngas_files order by ingestion_date desc limit 300",
@@ -220,7 +221,7 @@ def handleCmd(srvObj,
             valid_queries.keys()
             raise Exception, msg
         
-        if reqPropsObj.getHttpPar("query") == 'files_like':
+        if reqPropsObj.getHttpPar("query") == 'files_like' or reqPropsObj.getHttpPar("query") == 'files_location':
             param = '%'
             if (reqPropsObj.hasHttpPar("like")):
                 param = reqPropsObj.getHttpPar("like")
@@ -258,7 +259,7 @@ def handleCmd(srvObj,
         #       Implement streaming result directly.
         if (out_format == "list"):
             header = None
-            if reqPropsObj.getHttpPar("query") not in ['files_stats', 'files_list_recent']:
+            if reqPropsObj.getHttpPar("query") not in ['files_stats', 'files_list_recent', 'files_location']:
                 if query.find('ngas_files') >=0:
                     header = NGAMS_FILES_COLS
                 elif query.find('ngas_disks') >= 0:
@@ -267,6 +268,8 @@ def handleCmd(srvObj,
                 header = ['Number of files', 'Total volume [MB]']
             elif reqPropsObj.getHttpPar("query") == 'files_list_recent':
                 header = ['file_id', 'file_name', 'file_size', 'ingestion_date']
+            elif reqPropsObj.getHttpPar("query") == 'files_location':
+                header = ['host_id', 'file_full_path', 'file_version', 'ingestion_date']
             finalRes = formatAsList(res, header=header)
             """
             if query.find('ngas_files') >=0:
