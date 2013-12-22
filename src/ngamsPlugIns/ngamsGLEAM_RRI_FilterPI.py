@@ -61,7 +61,7 @@ def _shouldSend(fileId):
         return True
 
 def _isLatestVer(srvObj, fileId, fileVersion):
-    res = srvObj.getDb().query(QUERY_MAX_VER)
+    res = srvObj.getDb().query(QUERY_MAX_VER % fileId)
     if (res == [[]]):
         return True
     else:

@@ -50,6 +50,7 @@ num_done = 0
 def _purgeThread(srvObj, reqPropsObj, httpRef):
     global is_purgeThrd_running, total_todo, num_done
     is_purgeThrd_running = True
+    work_dir = srvObj.getCfg().getRootDirectory() + '/tmp/'
     try:  
         resDel = srvObj.getDb().query(QUERY_PREV_VER)
         if (resDel == [[]]):
@@ -59,7 +60,7 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
             total_todo = len(fileDelList)
             for fileDelInfo in fileDelList:
                 try:
-                    ngamsDiscardCmd._discardFile(srvObj, fileDelInfo[0], fileDelInfo[1], int(fileDelInfo[2]), execute = 1)
+                    ngamsDiscardCmd._discardFile(srvObj, fileDelInfo[0], fileDelInfo[1], int(fileDelInfo[2]), execute = 1, tmpFilePat = work_dir)
                     num_done += 1
                 except Exception, e1:
                     if (str(e1).find('DISCARD Command can only be executed locally') > -1):

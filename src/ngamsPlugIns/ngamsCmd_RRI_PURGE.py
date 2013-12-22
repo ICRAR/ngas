@@ -78,7 +78,10 @@ def _shouldRetain(fileId):
 def _purgeThread(srvObj, reqPropsObj, httpRef):
     global is_purgeThrd_running, total_todo, num_done
     is_purgeThrd_running = True
+    work_dir = srvObj.getCfg().getRootDirectory() + '/tmp/'
     try:  
+        info(3, "host_id = %s" % getHostId())
+        info(3, "Executing query: %s" % QUERY_ALL_FILES)
         resDel = srvObj.getDb().query(QUERY_ALL_FILES)
         if (resDel == [[]]):
             raise Exception('Could not find any files to discard / retain')
@@ -89,7 +92,7 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
                 try:
                     if (_shouldRetain(fileDelInfo[1])):
                         continue
-                    ngamsDiscardCmd._discardFile(srvObj, fileDelInfo[0], fileDelInfo[1], int(fileDelInfo[2]), execute = 1)
+                    ngamsDiscardCmd._discardFile(srvObj, fileDelInfo[0], fileDelInfo[1], int(fileDelInfo[2]), execute = 1, tmpFilePat = work_dir)
                     num_done += 1
                 except Exception, e1:
                     if (str(e1).find('DISCARD Command can only be executed locally') > -1):
