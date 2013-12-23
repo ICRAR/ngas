@@ -25,20 +25,25 @@ import os, subprocess
 from ngamsServer import *
 from logger import ngaslog
 from daemon import Daemon
+from ngamsConfig import ngamsConfig
 
 HOME = os.environ['HOME']
-if os.environ.has_key('NGAMS_PREFIX'):
-    NGAMS_PREFIX = os.environ['NGAMS_PREFIX']
+if os.environ.has_key('NGAS_PREFIX'):
+    NGAS_PREFIX = os.environ['NGAS_PREFIX']
 else:
-    NGAMS_PREFIX = '{0}'.format(HOME)
-    os.environ['NGAMS_PREFIX'] = NGAMS_PREFIX
+    NGAS_PREFIX = '{0}'.format(HOME)
+    os.environ['NGAS_PREFIX'] = NGAS_PREFIX
 
+CFG = '%s/NGAS/cfg/ngamsServer.conf' % NGAS_PREFIX
+cfgObj = ngamsConfig()
+cfgObj.load(CFG)
+PORT = cfgObj.getPortNo()
 if os.environ.has_key('NGAMS_ARGS'):
     NGAMS_ARGS = os.environ['NGAMS_ARGS'].split() # convert from command line (string) to a list
 else:
     NGAMS_ARGS = [
-                  '%s/NGAS/ngas_rt/bin/ngamsServer' % NGAMS_PREFIX,
-                  '-cfg', '%s/cfg/ngamsServer.conf' % NGAMS_PREFIX,
+                  '%s/ngas_rt/bin/ngamsServer' % NGAS_PREFIX,
+                  '-cfg', CFG,
                   '-force',
                   '-autoOnline',
                   '-multiplesrvs',
@@ -47,10 +52,10 @@ else:
 
 
 
-PIDFILE = '%s/var/run/ngamsDaemon.pid' % NGAMS_PREFIX
+PIDFILE = '%s/NGAS/var/run/ngamsDaemon.pid' % NGAS_PREFIX
 try:
-    os.makedirs('{0}/var/run'.format(NGAMS_PREFIX))
-    os.makedirs('{0}/var/log'.format(NGAMS_PREFIX))
+    os.makedirs('{0}/NGAS/var/run'.format(NGAS_PREFIX))
+    os.makedirs('{0}/NGAS/var/log'.format(NGAS_PREFIX))
 except OSError:
     pass
 
@@ -78,8 +83,8 @@ class MyDaemon(Daemon):
         """
         Send a STATUS command to server
         """
-        SCMD = "{0}/ngas_rt/bin/ngamsPClient -port 7777 -host $HOSTNAME -cmd STATUS -v 1".\
-             format(HOME)
+        SCMD = "{0}/ngas_rt/bin/ngamsPClient -port {1} -host $HOSTNAME -cmd STATUS -v 1".\
+             format(HOME, PORT)
         subprocess.call(SCMD,shell=True)
 
 
@@ -92,7 +97,7 @@ def checkNgasPidFile(dum):
     """
     with open(PIDFILE, 'r') as f:
         ipid = f.readline().strip()
-    pidfils = glob.glob('%s/.NGAS-*' % NGAMS_PREFIX)
+    pidfils = glob.glob('%s/NGAS/.NGAS-*' % NGAS_PREFIX)
     for fil in pidfils:
         with open(fil, 'r') as f:
             pid = f.readline().strip()
@@ -109,7 +114,7 @@ def main(args=sys.argv):
     if sys.argv[0] == 'ngamsCacheDaemon': #check how we are called
         infoStr = 'NGAMS Cache Server'
         progrStr = 'ngamsCacheServer'
-        NGAMS_ARGS[0] = '%s/ngas_rt/bin/ngamsCacheServer' % HOME
+        NGAMS_ARGS[0] = '%s/ngas_rt/bin/ngamsCacheServer' % NGAS_PREFIX
     else:
         progrStr = 'ngamsServer'
         infoStr = 'NGAMS Server'
