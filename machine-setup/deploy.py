@@ -27,6 +27,7 @@ from fabric.api import sudo as fsudo
 from fabric.context_managers import cd, hide, settings
 from fabric.contrib.console import confirm
 from fabric.contrib.files import append, sed, comment
+from fabric.contrib.project import rsync_project
 from fabric.decorators import task, serial
 from fabric.operations import prompt
 from fabric.utils import puts, abort, fastprint
@@ -172,6 +173,11 @@ def set_env():
         env.NGAS_DIR = env.NGAS_DIR_ABS.split('/')[-1]
     if not env.has_key('force') or not env.force:
         env.force = 0
+    if not env.has_key('ami_name') or not env.ami_name:
+        env.ami_name = 'CentOS'
+    env.AMI_ID = AMI_IDs[env.ami_name]
+    if env.ami_name == 'SLES':
+        env.user = 'root'
     get_linux_flavor()
     puts("""Environment:
             USER:              {0};
@@ -214,7 +220,9 @@ def create_instance(names, use_elastic_ip, public_ips):
             if not conn.disassociate_address(public_ip=public_ip):
                 abort('Could not disassociate the IP {0}'.format(public_ip))
 
-    reservations = conn.run_instances(AMI_ID, instance_type=INSTANCE_TYPE, key_name=KEY_NAME, security_groups=SECURITY_GROUPS, min_count=number_instances, max_count=number_instances)
+    reservations = conn.run_instances(env.AMI_ID, instance_type=INSTANCE_TYPE, \
+                                    key_name=KEY_NAME, security_groups=SECURITY_GROUPS,\
+                                    min_count=number_instances, max_count=number_instances)
     instances = reservations.instances
     # Sleep so Amazon recognizes the new instance
     for i in range(4):
@@ -321,6 +329,7 @@ def check_python():
     ppath = env.NGAS_DIR_ABS+'/../python'
     ppath = check_command('{0}/bin/python{1}'.format(ppath, NGAS_PYTHON_VERSION))
     if ppath:
+        env.PYTHON = ppath
         return ppath
     # Try python2.7 first
     ppath = check_command('python{0}'.format(NGAS_PYTHON_VERSION))
@@ -676,13 +685,14 @@ def python_setup():
     with cd('/tmp'):
         run('wget --no-check-certificate -q {0}'.format(NGAS_PYTHON_URL))
         base = os.path.basename(NGAS_PYTHON_URL)
-        pdir = os.path.splitext(os.path.splitext(base)[0])[0]
+        pdir = os.path.splitext(base)[0]
         run('tar -xzf {0}'.format(base))
     ppath = env.NGAS_DIR_ABS + '/../python'
     with cd('/tmp/{0}'.format(pdir)):
         run('./configure --prefix {0};make;make install'.format(ppath))
         ppath = '{0}/bin/python{1}'.format(ppath,NGAS_PYTHON_VERSION)
     env.PYTHON = ppath
+    print "\n\n******** PYTHON INSTALLATION COMPLETED!********\n\n"
 
 
 @task
@@ -692,14 +702,15 @@ def virtualenv_setup():
     """
     set_env()
     check_python()
-    print "CHECK_DIR: {0}".format(check_dir(env.PREFIX))
-    if check_dir(env.NGAS_DIR_ABS) and not env.force:
+    print "CHECK_DIR: {0}".format(env.NGAS_DIR_ABS+'/src')
+    if check_dir(env.NGAS_DIR_ABS+'/src') and not env.force:
         abort('ngas_rt directory exists already')
 
     with cd('/tmp'):
         put('{0}/../clib_tars/virtualenv-1.10.tar.gz'.format(thisDir), 'virtualenv-1.10.tar.gz')
         run('tar -xzf virtualenv-1.10.tar.gz')
         run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
+    print "\n\n******** VIRTUALENV SETUP COMPLETED!********\n\n"
 
 
 
@@ -766,6 +777,15 @@ def ngas_full_buildout(standalone=0, typ='archive'):
         virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
 
     ngas_buildout(standalone=standalone, typ=typ)
+
+    # put the activation of the virtualenv into the login profile of the user
+    if not check_path('.bash_profile_orig'):
+        run('cp .bash_profile .bash_profile_orig')
+    else:
+        run('cp .bash_profile_orig .bash_profile')
+    run('export NGAS_PREFIX={0}'.format(env.PREFIX))
+    run('echo "source {0}/bin/activate\n" >> .bash_profile'.format(env.NGAS_DIR_ABS))
+
     print "\n\n******** NGAS_FULL_BUILDOUT COMPLETED!********\n\n"
 
 
@@ -785,6 +805,9 @@ def test_env():
         env.use_elastic_ip = ELASTIC_IP
     if not env.has_key('key_filename') or not env.key_filename:
         env.key_filename = AWS_KEY
+    if not env.has_key('ami_name') or not env.ami_name:
+        env.ami_name = 'CentOS'
+    env.AMI_ID = AMI_IDs[env.ami_name]
     env.instance_name = INSTANCE_NAME
     env.use_elastic_ip = ELASTIC_IP
     if 'use_elastic_ip' in env:
@@ -808,11 +831,17 @@ def test_env():
     if not env.host_string:
         env.host_string = env.hosts[0]
     env.user = USERNAME
+    if env.ami_name == 'SLES':
+        env.user = 'root'
+
     env.key_filename = AWS_KEY
     env.roledefs = {
         'ngasmgr' : host_names,
         'ngas' : host_names,
     }
+    print "\n\n******** EC2 ENVIRONMENT SETUP!********\n\n"
+
+
 
 def initName(typ='archive'):
     """
@@ -846,12 +875,6 @@ def user_deploy(typ='archive', standalone=0):
     virtualenv_setup()
     ngas_full_buildout(standalone=standalone, typ=typ)
 
-    # put the activation of the virtualenv into the login profile of the user
-    if not check_path('.bash_profile_orig'):
-        run('cp .bash_profile .bash_profile_orig')
-    else:
-        run('cp .bash_profile_orig .bash_profile')
-    run('echo "source {0}/bin/activate\n" >> .bash_profile'.format(env.NGAS_DIR_ABS))
     print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 
@@ -870,6 +893,7 @@ def init_deploy(typ='archive'):
     sudo('chkconfig --add /etc/init.d/{0}'.format(initLink))
     # on ubuntu, this should be
     # sudo('chkconfig --add {0}'.format(initLink))
+    print "\n\n******** CONFIGURED INIT SCRIPTS!********\n\n"
 
 
 @task
@@ -901,6 +925,7 @@ def operations_deploy(system_install=True, user_install=True, typ='archive', sta
         postfix_config()
     if user_install: user_setup()
     install()
+    print "\n\n******** OPERATIONS_DEPLOY COMPLETED!********\n\n"
 
 
 @task
@@ -946,11 +971,46 @@ def uninstall():
     Uninstall NGAS, NGAS users and init script.
     """
     set_env()
-    sudo('userdel -r ngas', warn_only=True)
     sudo('userdel -r ngasmgr', warn_only=True)
+    sudo('userdel -r ngas', warn_only=True)
     sudo('groupdel ngas', warn_only=True)
     sudo('rm /etc/ngamsServer.conf', warn_only=True)
     sudo('rm /etc/init.d/ngamsServer', warn_only=True)
-    sudo('rm -rf {0}'.format(env.NGAS_DIR_ABS), warn_only=True)
+    sudo('rm -rf {0}'.format(env.PREFIX), warn_only=True)
     print "\n\n******** UNINSTALL COMPLETED!********\n\n"
+
+@task
+def upgrade():
+    """
+    Upgrade the NGAS software on a target host using rsync.
+
+    NOTE: This does NOT perform a new buildout, i.e. all the binaries and libraries are untouched.
+
+    use --set src_dir=your/local/directory
+    to point to the top-level NGAS soruce tree directory.
+    """
+    # use the PREFIX from the command line or try to set it from
+    # the remote environment. If both fails bail-out.
+    if not env.has_key('PREFIX') or not env.PREFIX:
+        env.PREFIX = run('echo $NGAS_PREFIX')
+    if not env.PREFIX:
+        print 'Unable to identify location of NGAS installation!'
+        print 'Please set the environment variable NGAS_PREFIX in .bash_profile.'
+        print 'of the user running NGAS on the remote host.'
+        abort('\n\n******** UPGRADE ABORTED!********\n\n')
+    if not env.has_key('src_dir') or not env.src_dir:
+        print 'Please specify the local source directory of the NGAS sortware'
+        print 'on the command line using --set src_dir=your/local/directory'
+        abort('\n\n******** UPGRADE ABORTED!********\n\n')
+    else: # check whether the source directory setting is likely to be correct
+        res = local('grep "The Next Generation Archive System" {0}/README'.format(env.src_dir), \
+                    capture=True)
+        if not res:
+            abort('src_dir does not point to a valid NGAS source directory!!')
+    set_env()
+    run('ngamsDaemon stop')
+    rsync_project(local_dir=env.src_dir+'/src', remote_dir=env.NGAS_DIR_ABS+'/src', exclude=".git")
+    #git_clone_tar()
+    run('ngamsDaemon start')
+    print "\n\n******** UPGRADE COMPLETED!********\n\n"
 
