@@ -2492,7 +2492,8 @@ def usage():
     buf = "Usage is:\n\n" +\
           "% python ngamsConfig.py -cfg <XML Cfg. Document> " +\
           "[-dumpXml] [-dumpXmlDic] [-save <Targ XML Doc>] [-storeDb] " +\
-          "[-dumpDb <DB ID>] [-dbCon <DB Server>/<DB Name>/<User>/<Pwd>]\n\n"
+          "[-dumpDb <DB ID>] [-dbCon <DB Server>/<DB Name>/<User>/<Pwd>] " +\
+          "-method MethodToCall\n\n"
     return buf
 
 
@@ -2506,8 +2507,10 @@ if __name__ == '__main__':
     dumpXml = 0
     dumpXmlDic = 0
     storeDb = 0
+    silent = mlist = 0
     dbCon = ""
     dumpDb = ""
+    method = ""
     idx = 1
     while idx < len(sys.argv):
         par = sys.argv[idx].upper()
@@ -2529,6 +2532,15 @@ if __name__ == '__main__':
         elif (par == "-DUMPDB"):
             idx += 1
             dumpDb = sys.argv[idx].strip()
+        elif (par == "-METHOD"):
+            idx += 1
+            method = 'get' + sys.argv[idx].strip()
+        elif (par == "-SILENT"):
+            silent = 1
+            idx += 1
+        elif (par == "-LISTMETHODS"):
+            mlist = 1
+            idx += 1
         idx += 1
 
     if (((cfg == "") and (not dumpDb)) or
@@ -2539,9 +2551,9 @@ if __name__ == '__main__':
     # Load the configuration file + parse input parameters
     cfgObj = ngamsConfig()
     if (cfg):
-        print "Loading configuration: " + cfg
+        if not silent: print "Loading configuration: " + cfg
         cfgObj.load(cfg)
-        print "Configuration: " + cfg + " loaded!"
+        if not silent: print "Configuration: " + cfg + " loaded!"
     if (storeDb or dumpDb):
         try:
             dbSrv, db, user, pwd = dbCon.split("/")
@@ -2568,6 +2580,11 @@ if __name__ == '__main__':
         print cfgObj.dumpXmlDic()
     elif (save):
         cfgObj.save(save)
-
+    elif (method):
+        if hasattr(cfgObj, method):
+            print getattr(cfgObj, method)()
+    elif (mlist):
+        for i in dir(cfgObj):
+            if i[0:3] == 'get': print i[3:]
 
 # EOF
