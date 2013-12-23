@@ -2493,7 +2493,7 @@ def usage():
           "% python ngamsConfig.py -cfg <XML Cfg. Document> " +\
           "[-dumpXml] [-dumpXmlDic] [-save <Targ XML Doc>] [-storeDb] " +\
           "[-dumpDb <DB ID>] [-dbCon <DB Server>/<DB Name>/<User>/<Pwd>] " +\
-          "-method MethodToCall\n\n"
+          "[-method MethodToCall] [-listMethods]\n\n"
     return buf
 
 
