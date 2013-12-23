@@ -38,6 +38,28 @@ file_ext = ['.fits', '.png']
 
 QUERY_MAX_VER = "SELECT MAX(file_version) FROM ngas_files WHERE file_id = '%s'"
 
+def _shouldSend(fileId):
+    try:
+        tokens = fileId.split('_')
+        if (len(tokens) != 5):
+            return False
+        if (tokens[2] == 'XX' or tokens[2] == 'YY'):
+            if (tokens[3] == 'r0.0' and tokens[4] == 'v1.0.fits'):
+                freqs = tokens[1].split('-')
+                bandwidth = (int(freqs[1][:-3]) - int(freqs[0]) + 1)
+                if (bandwidth > 31 and bandwidth < 34):
+                    return True
+                else:
+                    return False
+            else:
+                return False
+        else:
+            return False
+    except Exception, e2:
+        errMsg = '_shouldRetain in rri purge thread failed: Exception %s' % str(e2)
+        error(errMsg)
+        return True
+
 def _isLatestVer(srvObj, fileId, fileVersion):
     res = srvObj.getDb().query(QUERY_MAX_VER % fileId)
     if (res == [[]]):
@@ -46,7 +68,7 @@ def _isLatestVer(srvObj, fileId, fileVersion):
         max_ver = int(res[0][0][0])
         return (fileVersion == max_ver)
 
-def ngamsGLEAM_VUW_FilterPI(srvObj,
+def ngamsGLEAM_RRI_FilterPI(srvObj,
                           plugInPars,
                           filename,
                           fileId,
@@ -72,7 +94,9 @@ def ngamsGLEAM_VUW_FilterPI(srvObj,
     """
     match = 0
     fn, fext = os.path.splitext(fileId)
-    if (fext.lower() in file_ext and _isLatestVer(srvObj, fileId, fileVersion)): # only send FITS files, no measurement sets, only send the (known) latest version 
+    if (fext.lower() in file_ext and # only send FITS files, no measurement sets
+        _shouldSend(fileId) and # # only send files satisfying certain string pattern criteria
+        _isLatestVer(srvObj, fileId, fileVersion)): # only send the (known) latest version 
         parDic = []
         pars = ""
         if ((plugInPars != "") and (plugInPars != None)):
@@ -109,26 +133,7 @@ def ngamsGLEAM_VUW_FilterPI(srvObj,
             # e.g. version1, version2, version3, otherwise, this method will have disordered versions sent
             if (rest.getStatus().find(NGAMS_FAILURE) != -1):
                 return 1 # matched since file id does not exist
-            
-            #if the same file id (with the latest version) is there already, check CRC
-            """
-            xmlnode = rest.genXml(genDiskStatus = 1, genFileStatus = 1)
-            tgtCrc = xmlnode.getElementsByTagName('FileStatus')[0].attributes['Checksum'].value
-            cursorObj = srvObj.getDb().getFileInfoList('', fileId, fileVersion)
-            fileList = cursorObj.fetch(1)
-            srcCrc = None
-            for fileInfo in fileList:
-                srcCrc = fileInfo[10]
-            if (cursorObj):
-                del cursorObj
-            
-            if (srcCrc and tgtCrc): 
-                if (srcCrc != tgtCrc):
-                    match = 1
-            else:
-                match = 1 # if no CRC information can be found, send the file regardless
-            """
-            
+                        
         except Exception, e:
             errMsg = "Error occurred during checking remote file status " +\
                          "ngamsGLEAM_VUW_FilterPI. Exception: " + str(e)
