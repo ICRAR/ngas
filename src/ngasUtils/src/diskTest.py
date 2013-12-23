@@ -43,7 +43,8 @@ bspeed = None
 old = 0
 crcfl = ''              # default is no crc
 llflag = 0              # default use normal I/O
-asyncfl = 0
+asyncflag = 0
+syncflag = 0
 dioflag = 0
 session_id = None       # For write to HTTP only, default is None
 data_rate = None        # default there is no data rate limit for HTTP write
@@ -387,15 +388,15 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
                     sleepTime = blocksize / (data_rate * one_mb)
             else:
                 if llflag:
-                    if asyncfl:
+                    if asyncflag == 1 and dioflag == 0:
                         fd = os.open(ofil, os.O_CREAT | os.O_TRUNC | os.O_WRONLY | os.O_ASYNC)
-                    else:
+                    elif asyncflag == 0 and dioflag == 0:
                         fd = os.open(ofil, os.O_CREAT | os.O_TRUNC | os.O_WRONLY)
-                elif dioflag:
-                    if os.__dict__.has_key('O_DIRECT'):
-                        fd = os.open('file', os.O_CREAT | os.O_TRUNC | os.O_DIRECT  | os.O_RDWR)
-                    else:
-                        fd = os.open('file', os.O_CREAT | os.O_TRUNC | os.O_SYNC  | os.O_WRONLY)
+                    if dioflag == 1:
+                        if os.__dict__.has_key('O_DIRECT'):
+                            fd = os.open(ofil, os.O_CREAT | os.O_TRUNC | os.O_DIRECT  | os.O_WRONLY)
+                    elif syncflag == 1:
+                        fd = os.open(ofil, os.O_CREAT | os.O_TRUNC | os.O_SYNC  | os.O_WRONLY)
                 else:
                     out = open(ofil,'w')
                     out.seek(seek)
@@ -410,6 +411,7 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
         if dioflag:
             m = mmap.mmap(-1, blocksize)
             m.write(block)
+            block = m
 
         sti = time.time()
         for ii in range(count):
@@ -517,7 +519,9 @@ if __name__ == '__main__':
             if v == 'direct':
                 dioflag = 1
             elif v == 'async':
-                asyncfl = 1
+                asyncflag = 1
+            elif v == 'sync':
+                syncflag = 1
         if o in ("-c","--crcfl"):
             crcfl = v
             if crcfl not in ['b', 'z']:
