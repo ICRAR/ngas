@@ -982,7 +982,7 @@ def uninstall():
 @task
 def upgrade():
     """
-    Upgrade the NGAS software on a target host.
+    Upgrade the NGAS software on a target host using rsync.
 
     NOTE: This does NOT perform a new buildout, i.e. all the binaries and libraries are untouched.
 
