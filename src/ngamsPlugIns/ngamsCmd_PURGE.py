@@ -42,6 +42,11 @@ QUERY_PREV_VER = "SELECT a.disk_id, a.file_id, a.file_version FROM ngas_files a,
                  "ngas_disks b "+\
                  "WHERE a.file_id = c.file_id AND a.file_version < c.max_ver AND a.disk_id = b.disk_id AND b.host_id = '%s'" % getHostId()
 
+QUERY_LATER_VER = "SELECT a.disk_id, a.file_id, a.file_version FROM ngas_files a, "+\
+                 "(SELECT file_id, MIN(file_version) AS min_ver FROM ngas_files, ngas_disks WHERE ngas_files.disk_id = ngas_disks.disk_id AND ngas_disks.host_id = '%s' GROUP BY file_id) c, " % getHostId() +\
+                 "ngas_disks b "+\
+                 "WHERE a.file_id = c.file_id AND a.file_version > c.min_ver AND a.disk_id = b.disk_id AND b.host_id = '%s'" % getHostId()
+
 purgeThrd = None
 is_purgeThrd_running = False
 total_todo = 0
@@ -52,7 +57,10 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
     is_purgeThrd_running = True
     work_dir = srvObj.getCfg().getRootDirectory() + '/tmp/'
     try:  
-        resDel = srvObj.getDb().query(QUERY_PREV_VER)
+        if (reqPropsObj.hasHttpPar("keep_earliest")): # early could be 1, or 2,...
+            resDel = srvObj.getDb().query(QUERY_LATER_VER) # grab all later versions to remove
+        else: # by default, keep latest
+            resDel = srvObj.getDb().query(QUERY_PREV_VER) # grab all previous versions to remove
         if (resDel == [[]]):
             raise Exception('Could not find any files to discard / retain')
         else:
