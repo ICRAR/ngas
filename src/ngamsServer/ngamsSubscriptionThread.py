@@ -577,7 +577,7 @@ def _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion)
                  str(fileVersion) + " not accepted by the FPI: " +\
                  plugIn + " for Subscriber: " +  subscrObj.getId())
     else:
-        # If no file is specified, we always take the file.
+        # If no filter is specified, we always take the file.
         info(4,"No FPI specified, file (version/ID): " + fileId + "/" +\
              str(fileVersion) + " selected for Subscriber: " +
              subscrObj.getId())
@@ -920,19 +920,19 @@ def subscriptionThread(srvObj,
                     #debug_chen
                     info(3, 'Data mover %s start_date = %s\n' % (subscrId, start_date))    
                     count = 0
-                    for host in dm_hosts:  
-                        info(3, 'Checking host %s for data mover %s' % (host, subscrId))       
-                        cursorObj = srvObj.getDb().getFileSummary2(hostId = host, ing_date = start_date, max_num_records = 500) # need to add file_version == 1 condition!!
-                        while (1):
-                            fileList = cursorObj.fetch(100)
-                            if (fileList == []): break
-                            for fileInfo in fileList:
-                                fileInfo = _convertFileInfo(fileInfo)
-                                fileDicDbm.add(_fileKey(fileInfo[FILE_ID], fileInfo[FILE_VER]), fileInfo)
-                                count += 1
-                            _checkStopSubscriptionThread(srvObj)
-                            time.sleep(0.1)
-                        del cursorObj
+                    #for host in dm_hosts:  
+                    info(3, 'Checking hosts %s for data mover %s' % (dm_hosts, subscrId))       
+                    cursorObj = srvObj.getDb().getFileSummary2(hostId = dm_hosts, ing_date = start_date, max_num_records = 1000) # need to add file_version == 1 condition!!
+                    while (1):
+                        fileList = cursorObj.fetch(100)
+                        if (fileList == []): break
+                        for fileInfo in fileList:
+                            fileInfo = _convertFileInfo(fileInfo)
+                            fileDicDbm.add(_fileKey(fileInfo[FILE_ID], fileInfo[FILE_VER]), fileInfo)
+                            count += 1
+                        _checkStopSubscriptionThread(srvObj)
+                        time.sleep(0.1)
+                    del cursorObj
                     if (count == 0):
                         info(3, 'No new files for data mover %s' % subscrId)
                     else:
@@ -1106,7 +1106,8 @@ def subscriptionThread(srvObj,
                 deliverReqDic[subscrId].sort(_compFctIngDate)
                 #get the ingest_date of the last file in the queue (list)
                 lastScheduleDate = _convertFileInfo(deliverReqDic[subscrId][-1])[FILE_DATE]
-                scheduledStatus[subscrId] = lastScheduleDate
+                scheduledStatus[subscrId] = lastScheduleDate #TODO - this is wrong if there are two hosts combing into the single list
+                #need to get the earliest of the last ingestion date
                 
                 """
                 This is not used since Priority Queue will sort the list 
@@ -1120,7 +1121,7 @@ def subscriptionThread(srvObj,
                 num_threads = float(srvObj.getSubscriberDic()[subscrId].getConcurrentThreads())
                 if queueDict.has_key(subscrId):
                     #debug_chen
-                    #info(4, 'Use existing queue for %s' % subscrId)
+                    info(3, 'Use existing queue for %s' % subscrId)
                     quChunks = queueDict[subscrId]
                 else:
                     if (dataMoverOnly): # for data movers, file ids (which is the first field of the fileInfo) close to one another are sent in sequence
@@ -1130,11 +1131,12 @@ def subscriptionThread(srvObj,
                     queueDict[subscrId] = quChunks
  
                 allFiles = deliverReqDic[subscrId]         
-                if (srvObj.getSubcrBackLogCount() > 0):
-                    info(3, 'Put %d new files in the queue for subscriber %s' %(len(allFiles), subscrId))        
+                #if (srvObj.getSubcrBackLogCount() > 0):
+                info(3, 'Put %d new files in the queue for subscriber %s' %(len(allFiles), subscrId))        
                 for jdx in range(len(allFiles)):
                     quChunks.put(allFiles[jdx])   
                     # Deliver the data - spawn off a Delivery Thread to do this job                    
+                info(4, 'Number of elements in Queue %s: %d' % (subscrId, quChunks.qsize()))
                 if not deliveryThreadDic.has_key(subscrId):
                     deliveryThreads = []
                     for tid in range(int(num_threads)):
