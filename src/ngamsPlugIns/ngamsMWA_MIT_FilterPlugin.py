@@ -34,7 +34,7 @@ Contains a Filter Plug-In used to filter out those files that
 """
 
 from ngams import *
-import os
+import os, threading
 import ngamsPlugInApi
 import ngamsPClient
 import ngamsMWACortexTapeApi
@@ -191,6 +191,11 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
     #info(5, "filter return status = " + rest.getStatus())
     
     if (rest.getStatus().find(NGAMS_FAILURE) != -1):
+        tname = threading.current_thread().name
+        beingSent = srvObj._subscrDeliveryFileDic.values()
+        for fi in beingSent:
+            if (srvObj._subscrDeliveryFileDic[tname] != fi and fi[0] == fileId and fi[2] == fileVersion):
+                return 0 # this file is currently being sent, so do not send it again
         match = 1
     
     #info(4, "filter match = " + str(match))    
