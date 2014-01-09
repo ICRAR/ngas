@@ -654,6 +654,10 @@ def _deliveryThread(srvObj,
             fileMimeType   = fileInfo[FILE_MIME]
             fileBackLogged = fileInfo[FILE_BL]   
             diskId = fileInfo[FILE_DISK_ID]
+            if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not diskId)):
+                alert('File %s has invalid diskid, removing it from the backlog' %  filename)
+                _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename)
+                continue
             if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not os.path.isfile(filename))):# check if this file is removed by an agent outside of NGAS (e.g. Cortex volunteer cleanup)
                 mtPt = srvObj.getDb().getMtPtFromDiskId(diskId)
                 if (os.path.exists(mtPt)): # the mount point is still there, but not the file, which means the file was removed by external agents
@@ -684,7 +688,7 @@ def _deliveryThread(srvObj,
             # But if the target is an NGAS server and the authentication is on, the target must have set a user named "ngas-int"
             authHdr = srvObj.getCfg().getAuthHttpHdrVal(user = NGAMS_HTTP_INT_AUTH_USER)
             fileInfoObjHdr = None
-            if (subscrObj.getUrl().upper().endswith('/' + NGAMS_REARCHIVE_CMD)):
+            if (subscrObj.getUrl().upper().endswith('/' + NGAMS_REARCHIVE_CMD) and diskId):
                 try:
                     fileInfoObj = ngamsFileInfo.ngamsFileInfo().read(srvObj.getDb(), fileId, fileVersion, diskId)
                     fileInfoObjHdr = base64.b64encode(fileInfoObj.genXml().toxml())
@@ -787,7 +791,7 @@ def _deliveryThread(srvObj,
                 # Stop delivery thread.
                 info(3, 'Delivery thread [' + str(thread.get_ident()) + '] is exiting.')
                 thread.exit()
-            errMsg = "Error occurred during file delivery: " + str(be)
+            errMsg = "Error occurred during file delivery: " + str(be) + ': ' + traceback.format_exc()
             alert(errMsg)
 
 
