@@ -129,11 +129,13 @@ def handleCmd(srvObj,
         if (startDate):
             subscriber.setStartDate(startDate)
             lastIngDate = subscriber.getLastFileIngDate()
-            if (startDate < lastIngDate and lastIngDate):
-                subscriber.setLastFileIngDate(None) # prepare for re-delivering files that have been previously delivered  
+            #if (startDate < lastIngDate and lastIngDate): # prepare for re-delivering files that have been previously delivered
+            if (lastIngDate): # either re-check past files or skip unchecked files
+                subscriber.setLastFileIngDate(None)   
             if (srvObj._subscrScheduledStatus.has_key(subscrId)):
-                if (startDate < srvObj._subscrScheduledStatus[subscrId] and srvObj._subscrScheduledStatus[subscrId]):
-                    srvObj._subscrScheduledStatus[subscrId] = None # enables trigger re-delivering files that have been previously delivered         
+                #if (startDate < srvObj._subscrScheduledStatus[subscrId] and srvObj._subscrScheduledStatus[subscrId]): # enables trigger re-delivering files that have been previously delivered
+                if (srvObj._subscrScheduledStatus[subscrId]):# either re-check past files or skip unchecked files
+                    srvObj._subscrScheduledStatus[subscrId] = None          
     
     if (reqPropsObj.hasHttpPar("filter_plug_in")):
         filterPi = reqPropsObj.getHttpPar("filter_plug_in")

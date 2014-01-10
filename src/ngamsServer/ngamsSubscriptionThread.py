@@ -654,6 +654,10 @@ def _deliveryThread(srvObj,
             fileMimeType   = fileInfo[FILE_MIME]
             fileBackLogged = fileInfo[FILE_BL]   
             diskId = fileInfo[FILE_DISK_ID]
+            if (fileIngDate < subscrObj.getStartDate()):
+                # subscr_start_date is changed (through USUBSCRIBE command) in order to skip unchechked files
+                alert('File %s skipped, ingestion date %s < %s' %  (fileId, fileIngDate, subscrObj.getStartDate()))
+                continue
             if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not diskId)):
                 alert('File %s has invalid diskid, removing it from the backlog' %  filename)
                 _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename)
