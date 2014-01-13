@@ -28,8 +28,25 @@
 #
 
 """
-Retain only the last version of the file(s), and purge all of its/their previous versions 
+Retain the latest (or earliest) version of files on this host, and purge all previous (or subsequent) versions 
 Does not support multiple threads
+
+Two important parameters:
+
+keep_earliest    flag parameter (no value), if present, the command will keep earliest version (thus purging all later versions)
+                 By default, this command keeps only the latest version (thus purging all previous versions)
+
+pv_on_any_hosts  flag parameter (no value), this flag is only read if the flag keep_earliest is present (actually this should be changed)
+                 if present, the command will consider all previous versions on all hosts within the NGAS cluster
+                 Otherwise (default), the command only consider previous versions on the current host
+                 
+                 For example, if a file has the first version on ngas_host_001, and a second version on ngas_host_002.
+                 
+                 Now if we issue a purge command to ngas_host_002 
+                 Without pv_on_any_hosts by default, (e.g. http://ngas_host_002:7777/PURGE?keep_earliest)
+                                                 the command will not remove the second version on ngas_host_002
+                 With pv_on_any_hosts, (e.g. http://ngas_host_002:7777/PURGE?keep_earliest&pv_on_any_hosts) 
+                                                 the command will remove the second version on ngas_host_002
 
 """
 import threading, datetime
@@ -47,6 +64,12 @@ QUERY_LATER_VER = "SELECT a.disk_id, a.file_id, a.file_version FROM ngas_files a
                  "ngas_disks b "+\
                  "WHERE a.file_id = c.file_id AND a.file_version > c.min_ver AND a.disk_id = b.disk_id AND b.host_id = '%s'" % getHostId()
 
+# the previous versions can be On any (valid) hosts
+QUERY_LATER_VER_POAH = "SELECT a.disk_id, a.file_id, a.file_version FROM ngas_files a, "+\
+                 "(SELECT file_id, MIN(file_version) AS min_ver FROM ngas_files, ngas_disks WHERE ngas_files.disk_id = ngas_disks.disk_id AND ngas_disks.host_id <> '' GROUP BY file_id) c, " +\
+                 "ngas_disks b "+\
+                 "WHERE a.file_id = c.file_id AND a.file_version > c.min_ver AND a.disk_id = b.disk_id AND b.host_id = '%s'" % getHostId()
+
 purgeThrd = None
 is_purgeThrd_running = False
 total_todo = 0
@@ -58,7 +81,10 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
     work_dir = srvObj.getCfg().getRootDirectory() + '/tmp/'
     try:  
         if (reqPropsObj.hasHttpPar("keep_earliest")): # early could be 1, or 2,...
-            resDel = srvObj.getDb().query(QUERY_LATER_VER) # grab all later versions to remove
+            if (reqPropsObj.hasHttpPar("pv_on_any_hosts")):
+                resDel = srvObj.getDb().query(QUERY_LATER_VER_POAH) # grab all later versions on this host to remove
+            else:
+                resDel = srvObj.getDb().query(QUERY_LATER_VER) # grab all later versions on this host to remove
         else: # by default, keep latest
             resDel = srvObj.getDb().query(QUERY_PREV_VER) # grab all previous versions to remove
         if (resDel == [[]]):
