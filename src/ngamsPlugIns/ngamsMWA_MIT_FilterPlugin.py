@@ -191,11 +191,14 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
     #info(5, "filter return status = " + rest.getStatus())
     
     if (rest.getStatus().find(NGAMS_FAILURE) != -1):
+        info(3, 'file %s is not at MIT, checking if other threads are sending it' % fileId)
         tname = threading.current_thread().name
         beingSent = srvObj._subscrDeliveryFileDic.values()
         for fi in beingSent:
             if (srvObj._subscrDeliveryFileDic[tname] != fi and fi[0] == fileId and fi[2] == fileVersion):
+                info(3, 'file %s is being sent by another thead, so do not send it in this thread' % fileId)
                 return 0 # this file is currently being sent, so do not send it again
+        info(3, 'file %s will be sent' % fileId)
         match = 1
     
     #info(4, "filter match = " + str(match))    
