@@ -41,6 +41,12 @@ import ngamsMWACortexTapeApi
 import pccFits.PccSimpleFitsReader as fitsapi
 
 import psycopg2 # used to connect to MWA M&C database
+from psycopg2.pool import ThreadedConnectionPool
+
+# maximum connection = 5
+g_db_pool = ThreadedConnectionPool(1, 5, database = 'mwa', user = 'mwa', 
+                            password = 'Qm93VGll\n'.decode('base64'), 
+                            host = 'ngas01.ivec.org')
 
 g_db_conn = None # MWA metadata database connection
 
@@ -49,6 +55,11 @@ eor_list = [] # this has become a parameter of the plug-in
 proj_separator = '___'
 
 def getMWADBConn():
+    if (g_db_pool):
+        return g_db_pool.getconn()
+    else:
+        raise Exception('connection pool is None when get conn')
+    """
     global g_db_conn
     if (g_db_conn and (not g_db_conn.closed)):
         return g_db_conn
@@ -60,6 +71,12 @@ def getMWADBConn():
     except Exception, e:
         errStr = 'Cannot create MWA DB Connection: %s' % str(e)
         raise Exception, errStr
+    """
+def putMWADBConn(conn):
+    if (g_db_pool):
+        g_db_pool.putconn(conn)
+    else:
+        raise Exception('connection pool is None when put conn')
 
 def executeQuery(conn, sqlQuery):
     try:
@@ -69,6 +86,7 @@ def executeQuery(conn, sqlQuery):
     finally:
         if (cur):
             del cur
+        putMWADBConn(conn)
             
 def getProjectIdFromMWADB(fileId):
     conn = getMWADBConn()
@@ -118,6 +136,9 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
                 alert('Cannot get project id from MWA DB for file %s' % fileId)
                 return 0
             else:
+                if (projId == ''):
+                    alert('Project id in MWA DB for file %s is empty!' % fileId)
+                    raise Exception('Incorrect projectId')
                 projectId = "'%s'" % projId # add single quote to be consistent with FITS header keywords 
             #TODO need to do either of the following:
             # 1. query the MWA database to get the project id, but this will throw the problem to the later _deliveryThread
