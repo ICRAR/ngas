@@ -166,10 +166,10 @@ def _waitForScheduling(srvObj):
     try:
         srvObj._subscriptionSem.acquire()
         srvObj._subscriptionRunSync.clear()
-        if (srvObj.getDataMoverOnlyActive()):
-            return ([], [])
         filenames = srvObj._subscriptionFileList
         srvObj._subscriptionFileList = []
+        if (srvObj.getDataMoverOnlyActive()):
+            return (filenames, [])
         subscrObjs = srvObj._subscriptionSubscrList
         srvObj._subscriptionSubscrList = []
         return (filenames, subscrObjs)
@@ -654,7 +654,7 @@ def _deliveryThread(srvObj,
             fileMimeType   = fileInfo[FILE_MIME]
             fileBackLogged = fileInfo[FILE_BL]   
             diskId = fileInfo[FILE_DISK_ID]
-            if (fileIngDate < subscrObj.getStartDate()):
+            if (fileIngDate < subscrObj.getStartDate() and fileBackLogged != NGAMS_SUBSCR_BACK_LOG): #but backlog files will be sent regardless
                 # subscr_start_date is changed (through USUBSCRIBE command) in order to skip unchechked files
                 alert('File %s skipped, ingestion date %s < %s' %  (fileId, fileIngDate, subscrObj.getStartDate()))
                 continue
@@ -945,7 +945,7 @@ def subscriptionThread(srvObj,
                         info(3, 'No new files for data mover %s' % subscrId)
                     else:
                         info(3, 'Data mover %s will examine %d files for delivery' % (subscrId, count))
-            elif (subscrObjs != []):
+            if (subscrObjs != []):
                 min_date = None # the "earliest" last_ingestion_date or start_date amongst all explicitly referenced subscribers.
                 # The min_date is used to exclude files that have been delivered (<= min_date) during previous NGAS sessions
                 for subscriber in subscrObjs:
@@ -971,7 +971,7 @@ def subscriptionThread(srvObj,
                     _checkStopSubscriptionThread(srvObj)
                     time.sleep(0.1)
                 del cursorObj
-            elif (fileRefs != []):
+            elif (fileRefs != []): # this is still possible even for data mover (due to recovered subscriptionList during server start)
                 # fileRefDic: Dictionary indicating which versions for each
                 # file that are of interest.
                 # debug_chen
