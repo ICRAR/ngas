@@ -65,7 +65,7 @@ class throughputPlot():
     """
     def __init__(self, args):
 
-        self.DB = {'ICRAR':'146.118.87.250', 'MIT':'eor-02.mit.edu'}
+        self.DB = {'ICRAR':'146.118.87.250', 'MIT':'ngas.mit.edu'}
         self.mode = []
         self.y = []
         self.n = []
