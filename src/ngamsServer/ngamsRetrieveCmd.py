@@ -210,11 +210,14 @@ def genReplyRetrieve(srvObj,
             fd = open(resObj.getDataRef())
             dataSent = 0
             dataToSent = getFileSize(resObj.getDataRef())
+            st = time.time()
             while (dataSent < dataToSent):
                 tmpData = fd.read(blockSize)
                 #os.write(httpRef.wfile.fileno(), tmpData)
                 httpRef.wfile._sock.sendall(tmpData)
                 dataSent += len(tmpData)
+            howlong = time.time() - st
+            info(3, "Retrieval transfer rate = %.0f Bytes/s for file %s" % (dataSent / howlong, refFilename))
         else:
             # NGAMS_PROC_STREAM - read the data from the File Object in
             # blocks and send it directly to the requestor.
