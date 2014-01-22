@@ -166,10 +166,10 @@ def _waitForScheduling(srvObj):
     try:
         srvObj._subscriptionSem.acquire()
         srvObj._subscriptionRunSync.clear()
-        if (srvObj.getDataMoverOnlyActive()):
-            return ([], [])
         filenames = srvObj._subscriptionFileList
         srvObj._subscriptionFileList = []
+        if (srvObj.getDataMoverOnlyActive()):
+            return (filenames, [])
         subscrObjs = srvObj._subscriptionSubscrList
         srvObj._subscriptionSubscrList = []
         return (filenames, subscrObjs)
@@ -577,7 +577,7 @@ def _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion)
                  str(fileVersion) + " not accepted by the FPI: " +\
                  plugIn + " for Subscriber: " +  subscrObj.getId())
     else:
-        # If no file is specified, we always take the file.
+        # If no filter is specified, we always take the file.
         info(4,"No FPI specified, file (version/ID): " + fileId + "/" +\
              str(fileVersion) + " selected for Subscriber: " +
              subscrObj.getId())
@@ -654,6 +654,14 @@ def _deliveryThread(srvObj,
             fileMimeType   = fileInfo[FILE_MIME]
             fileBackLogged = fileInfo[FILE_BL]   
             diskId = fileInfo[FILE_DISK_ID]
+            if (fileIngDate < subscrObj.getStartDate() and fileBackLogged != NGAMS_SUBSCR_BACK_LOG): #but backlog files will be sent regardless
+                # subscr_start_date is changed (through USUBSCRIBE command) in order to skip unchechked files
+                alert('File %s skipped, ingestion date %s < %s' %  (fileId, fileIngDate, subscrObj.getStartDate()))
+                continue
+            if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not diskId)):
+                alert('File %s has invalid diskid, removing it from the backlog' %  filename)
+                _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename)
+                continue
             if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not os.path.isfile(filename))):# check if this file is removed by an agent outside of NGAS (e.g. Cortex volunteer cleanup)
                 mtPt = srvObj.getDb().getMtPtFromDiskId(diskId)
                 if (os.path.exists(mtPt)): # the mount point is still there, but not the file, which means the file was removed by external agents
@@ -684,7 +692,7 @@ def _deliveryThread(srvObj,
             # But if the target is an NGAS server and the authentication is on, the target must have set a user named "ngas-int"
             authHdr = srvObj.getCfg().getAuthHttpHdrVal(user = NGAMS_HTTP_INT_AUTH_USER)
             fileInfoObjHdr = None
-            if (subscrObj.getUrl().upper().endswith('/' + NGAMS_REARCHIVE_CMD)):
+            if (subscrObj.getUrl().upper().endswith('/' + NGAMS_REARCHIVE_CMD) and diskId):
                 try:
                     fileInfoObj = ngamsFileInfo.ngamsFileInfo().read(srvObj.getDb(), fileId, fileVersion, diskId)
                     fileInfoObjHdr = base64.b64encode(fileInfoObj.genXml().toxml())
@@ -787,7 +795,7 @@ def _deliveryThread(srvObj,
                 # Stop delivery thread.
                 info(3, 'Delivery thread [' + str(thread.get_ident()) + '] is exiting.')
                 thread.exit()
-            errMsg = "Error occurred during file delivery: " + str(be)
+            errMsg = "Error occurred during file delivery: " + str(be) + ': ' + traceback.format_exc()
             alert(errMsg)
 
 
@@ -920,24 +928,24 @@ def subscriptionThread(srvObj,
                     #debug_chen
                     info(3, 'Data mover %s start_date = %s\n' % (subscrId, start_date))    
                     count = 0
-                    for host in dm_hosts:  
-                        info(3, 'Checking host %s for data mover %s' % (host, subscrId))       
-                        cursorObj = srvObj.getDb().getFileSummary2(hostId = host, ing_date = start_date, max_num_records = 500) # need to add file_version == 1 condition!!
-                        while (1):
-                            fileList = cursorObj.fetch(100)
-                            if (fileList == []): break
-                            for fileInfo in fileList:
-                                fileInfo = _convertFileInfo(fileInfo)
-                                fileDicDbm.add(_fileKey(fileInfo[FILE_ID], fileInfo[FILE_VER]), fileInfo)
-                                count += 1
-                            _checkStopSubscriptionThread(srvObj)
-                            time.sleep(0.1)
-                        del cursorObj
+                    #for host in dm_hosts:  
+                    info(3, 'Checking hosts %s for data mover %s' % (dm_hosts, subscrId))       
+                    cursorObj = srvObj.getDb().getFileSummary2(hostId = dm_hosts, ing_date = start_date, max_num_records = 1000) # need to add file_version == 1 condition!!
+                    while (1):
+                        fileList = cursorObj.fetch(100)
+                        if (fileList == []): break
+                        for fileInfo in fileList:
+                            fileInfo = _convertFileInfo(fileInfo)
+                            fileDicDbm.add(_fileKey(fileInfo[FILE_ID], fileInfo[FILE_VER]), fileInfo)
+                            count += 1
+                        _checkStopSubscriptionThread(srvObj)
+                        time.sleep(0.1)
+                    del cursorObj
                     if (count == 0):
                         info(3, 'No new files for data mover %s' % subscrId)
                     else:
                         info(3, 'Data mover %s will examine %d files for delivery' % (subscrId, count))
-            elif (subscrObjs != []):
+            if (subscrObjs != []):
                 min_date = None # the "earliest" last_ingestion_date or start_date amongst all explicitly referenced subscribers.
                 # The min_date is used to exclude files that have been delivered (<= min_date) during previous NGAS sessions
                 for subscriber in subscrObjs:
@@ -963,7 +971,7 @@ def subscriptionThread(srvObj,
                     _checkStopSubscriptionThread(srvObj)
                     time.sleep(0.1)
                 del cursorObj
-            elif (fileRefs != []):
+            elif (fileRefs != []): # this is still possible even for data mover (due to recovered subscriptionList during server start)
                 # fileRefDic: Dictionary indicating which versions for each
                 # file that are of interest.
                 # debug_chen
@@ -1106,7 +1114,8 @@ def subscriptionThread(srvObj,
                 deliverReqDic[subscrId].sort(_compFctIngDate)
                 #get the ingest_date of the last file in the queue (list)
                 lastScheduleDate = _convertFileInfo(deliverReqDic[subscrId][-1])[FILE_DATE]
-                scheduledStatus[subscrId] = lastScheduleDate
+                scheduledStatus[subscrId] = lastScheduleDate #TODO - this is wrong if there are two hosts combing into the single list
+                #need to get the earliest of the last ingestion date
                 
                 """
                 This is not used since Priority Queue will sort the list 
@@ -1120,7 +1129,7 @@ def subscriptionThread(srvObj,
                 num_threads = float(srvObj.getSubscriberDic()[subscrId].getConcurrentThreads())
                 if queueDict.has_key(subscrId):
                     #debug_chen
-                    #info(4, 'Use existing queue for %s' % subscrId)
+                    info(3, 'Use existing queue for %s' % subscrId)
                     quChunks = queueDict[subscrId]
                 else:
                     if (dataMoverOnly): # for data movers, file ids (which is the first field of the fileInfo) close to one another are sent in sequence
@@ -1130,11 +1139,12 @@ def subscriptionThread(srvObj,
                     queueDict[subscrId] = quChunks
  
                 allFiles = deliverReqDic[subscrId]         
-                if (srvObj.getSubcrBackLogCount() > 0):
-                    info(3, 'Put %d new files in the queue for subscriber %s' %(len(allFiles), subscrId))        
+                #if (srvObj.getSubcrBackLogCount() > 0):
+                info(3, 'Put %d new files in the queue for subscriber %s' %(len(allFiles), subscrId))        
                 for jdx in range(len(allFiles)):
                     quChunks.put(allFiles[jdx])   
                     # Deliver the data - spawn off a Delivery Thread to do this job                    
+                info(4, 'Number of elements in Queue %s: %d' % (subscrId, quChunks.qsize()))
                 if not deliveryThreadDic.has_key(subscrId):
                     deliveryThreads = []
                     for tid in range(int(num_threads)):

@@ -148,7 +148,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         hostId:            Name of NGAS host on which the files reside. If
                            None is specified, the host is not taken into
-                           account (string).
+                           account (string or a list of string).
 
         fileIds:           List of file IDs for which to query information.
                            If not specified, all files of the referenced
@@ -171,7 +171,18 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                    "FROM ngas_disks nd, ngas_files nf " +\
                    "WHERE nd.disk_id=nf.disk_id "
         if (ignore != None): sqlQuery += "AND nf.ignore=%d" % int(ignore)
-        if (hostId): sqlQuery += " AND nd.host_id='" + hostId + "'"
+        if (hostId): 
+            if (type(hostId) is list):
+                sqlQuery += " AND ("
+                cc = 0
+                for ho in hostId:
+                    if (cc > 0):
+                        sqlQuery += " OR "
+                    sqlQuery += "nd.host_id='" + ho + "'"
+                    cc += 1
+                sqlQuery += ") "
+            else: #assume it is string
+                sqlQuery += " AND nd.host_id='" + hostId + "'"
         if (diskId): sqlQuery += " AND nf.disk_id='" + diskId + "'"
         if (fileIds != []):
             sqlQuery += " AND nf.file_id IN (" + str(fileIds)[1:-1] + ")"
