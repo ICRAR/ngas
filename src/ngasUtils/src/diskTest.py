@@ -410,6 +410,7 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
         if dioflag:
             m = mmap.mmap(-1, blocksize)
             m.write(block)
+            block = m
 
         sti = time.time()
         for ii in range(count):
