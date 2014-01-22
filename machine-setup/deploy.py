@@ -159,14 +159,17 @@ def set_env():
     elif type(env.NGAS_USERS) == type(''): # if its just a string
         print "NGAS_USERS preset to {0}".format(env.NGAS_USERS)
         env.NGAS_USERS = [env.NGAS_USERS] # change the type
-    if not env.has_key('HOME') or not env.HOME:
+    if not env.has_key('HOME') or env.HOME[0] == '~' or not env.HOME:
         env.HOME = run("echo ~{0}".format(NGAS_USERS[0]))
     if not env.has_key('src_dir') or not env.src_dir:
         env.src_dir = ''
     require('hosts', provided_by=[test_env])
-    if not env.has_key('PREFIX') or not env.PREFIX:
+    if not env.has_key('HOME') or env.HOME[0] == '~' or not env.HOME:
+        env.HOME = run("echo ~{0}".format(NGAS_USERS[0]))
+    if not env.has_key('PREFIX') or env.PREFIX[0] == '~' or not env.PREFIX:
         env.PREFIX = env.HOME
-    if not env.has_key('NGAS_DIR_ABS') or not env.NGAS_DIR_ABS:
+    if not env.has_key('NGAS_DIR_ABS') or env.NGAS_DIR_ABS[0] == '~' \
+    or not env.NGAS_DIR_ABS:
         env.NGAS_DIR_ABS = '{0}/{1}'.format(env.PREFIX, NGAS_DIR)
         env.NGAS_DIR = NGAS_DIR
     else:
@@ -185,13 +188,14 @@ def set_env():
             hosts:             {2};
             host_string:       {3};
             postfix:           {4};
+            HOME:              {8};
             NGAS_DIR_ABS:      {5};
             NGAS_DIR:          {6};
             NGAS_USERS:        {7};
             """.\
             format(env.user, env.key_filename, env.hosts,
                    env.host_string, env.postfix, env.NGAS_DIR_ABS,
-                   env.NGAS_DIR, env.NGAS_USERS))
+                   env.NGAS_DIR, env.NGAS_USERS, env.HOME))
 
 
 @task
@@ -477,7 +481,7 @@ def git_clone_tar(standalone=0):
     put('{0}/../{1}'.format(tar_dir,tarfile), '{1}/../{0}'.format(tarfile, env.NGAS_DIR_ABS))
     local('rm -rf /tmp/{0}'.format(env.NGAS_DIR))  # cleanup local git clone dir
     with cd(env.NGAS_DIR_ABS+'/..'):
-        run('tar -xjf {0} && rm {0}'.format(tarfile))
+        run('tar -xjf {0} && cp {0} /tmp'.format(tarfile))
 
 
 @task
