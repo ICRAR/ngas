@@ -1872,6 +1872,36 @@ class ngamsConfig:
         Returns:    Subscriber List (list/ngamsSubscriber).
         """
         return self.__subscriptionsDic
+    
+    def getFileStagingEnable(self):
+        """
+        Return if the file staging flag is set to Enabled / Disable
+        
+        Returns:    1 = enabled, 0 = disabled (integer/0|1)
+        """
+        par = "FileStagingDef[1].Enable"
+        strVal = self.getVal(par)
+        if (not strVal):
+            return 0
+        return getInt(par, strVal)
+    
+    def getFileStagingPlugIn(self):
+        """
+        Return the name of the FileStagingPlugIn,
+        which takes file online if it is offline.
+        
+        The plugin must contain these two functions:
+        
+        def isFileOffline(filename)
+            PAR: filename: string
+            RETURN: 1 - yes, 0 - no, -1 - error
+            
+        def stageFiles(filenameList)
+            PAR: filenameList: List of file names (string)
+            RETURN:   the number of files staged. -1, if any errors
+        """
+        par = "FileStagingDef[1].PlugIn"
+        return self.getVal(par)
 
 
     def getAuthorize(self):

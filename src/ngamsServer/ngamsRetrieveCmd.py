@@ -33,7 +33,7 @@
 Function + code to handle the RETRIEVE Command.
 """
 
-import socket, re, glob, commands
+import socket, re, glob, commands, time
 from socket import *
 from   ngams import *
 import PccUtTime
@@ -42,6 +42,42 @@ import ngamsDb, ngamsPlugInApi, ngamsFileInfo, ngamsDiskInfo, ngamsFileList
 import ngamsDppiStatus, ngamsStatus, ngamsDiskUtils
 import ngamsSrvUtils, ngamsFileUtils, ngamsReqProps
 
+def performStaging(srvObj, filename):
+    """
+    if the staging plugin is set, then perform staging 
+    using the registered staging plugin 
+    if the file is offline (i.e. on Tape)
+    
+    srvObj:       Reference to NG/AMS server class object (ngamsServer).
+    
+    filename:     File to be processed (string).
+    
+    """
+    if (srvObj.getCfg().getFileStagingEnable() != 1):
+        return 
+    fspi = srvObj.getCfg().getFileStagingPlugIn()
+    if (not fspi):
+        return
+    
+    exec "import " + fspi
+    info(2,"Invoking FSPI.isFileOffline: " + fspi + " to check file: " + filename)
+    offline = eval(fspi + ".isFileOffline(filename)")
+    if (offline == 1): 
+        info(2,"Invoking FSPI.stageFiles: " + fspi + " to stage file: " + filename)
+        st = time.time()
+        num = eval(fspi + ".stageFiles([filename])")
+        if (num == 0):
+            errMsg = 'File %s is offline, but NGAS failed to stage it online' % filename
+            error(errMsg)
+            raise Exception(errMsg)
+        else:
+            howlong = time.time() - st
+            fileSize = getFileSize(filename)
+            info(3, 'Staging rate = %.0f Bytes/s for file %s' % (fileSize / howlong, filename))
+    elif (offline == -1): 
+        errMsg = 'Fail to query the offline status for file %s' % filename
+        error(errMsg) # but still continue go ahead without raising Exceptions
+    
 
 def performProcessing(srvObj,
                       reqPropsObj,
@@ -174,11 +210,14 @@ def genReplyRetrieve(srvObj,
             fd = open(resObj.getDataRef())
             dataSent = 0
             dataToSent = getFileSize(resObj.getDataRef())
+            st = time.time()
             while (dataSent < dataToSent):
                 tmpData = fd.read(blockSize)
                 #os.write(httpRef.wfile.fileno(), tmpData)
                 httpRef.wfile._sock.sendall(tmpData)
                 dataSent += len(tmpData)
+            howlong = time.time() - st
+            info(3, "Retrieval transfer rate = %.0f Bytes/s for file %s" % (dataSent / howlong, refFilename))
         else:
             # NGAMS_PROC_STREAM - read the data from the File Object in
             # blocks and send it directly to the requestor.
@@ -445,6 +484,10 @@ def _handleCmdRetrieve(srvObj,
     if (location == NGAMS_HOST_LOCAL):
         # Get the file and send back the contents from this NGAS host.
         srcFilename = os.path.normpath(mountPoint + "/" + filename)
+        
+        # Perform the possible file staging
+        performStaging(srvObj, srcFilename)
+        
         # Perform the possible processing requested.
         procResult = performProcessing(srvObj,reqPropsObj,srcFilename,mimeType)
     elif (((location == NGAMS_HOST_CLUSTER) or \
