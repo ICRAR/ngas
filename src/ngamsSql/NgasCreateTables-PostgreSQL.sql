@@ -184,4 +184,25 @@ create table ngas_subscr_back_log
 	format              varchar(32)	not null
 );
 
+-- status -2 - scheduled, -1 - being delivered, 0 - delivered, 1 - failed, > 1 - # of errors
+\qecho create table ngas_subscr_queue
+create table ngas_subscr_queue
+(
+	subscr_id			varchar(255)	not null,
+	file_id				varchar(64)		not null,
+	file_version    	int             default 1,
+	disk_id				varchar(128)	not null,
+	file_name      		varchar(255)  	not null,
+	ingestion_date	    varchar(23)    	not null,
+	format              varchar(32)		not null,
+	status				int				default -2, 
+	status_date      	varchar(23)    	not null,
+	comment             varchar(255)	null,
+	constraint subscr_queue_idx	primary key(subscr_id,file_id,file_version,disk_id)
+);
+
+\qecho create index subscr_queue_subscr_id_idx
+create index subscr_queue_subscr_id_idx on ngas_subscr_queue(subscr_id);
+
+
 \o

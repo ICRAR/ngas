@@ -49,12 +49,12 @@ ngasA_host = '127.0.0.1'
 ngasA_port = 7777
 
 ngasB_host = '127.0.0.1'
-#ngasB_port = 7778
-ngasB_port = 9000
-#ngasB_url = 'http://%s:%d/QARCHIVE' % (ngasB_host, ngasB_port)
-ngasB_url = 'houdt://%s:%d/QARCHIVE' % (ngasB_host, ngasB_port)
+ngasB_port = 7778
+#ngasB_port = 9000
+ngasB_url = 'http://%s:%d/QARCHIVE' % (ngasB_host, ngasB_port)
+#ngasB_url = 'houdt://%s:%d/QARCHIVE' % (ngasB_host, ngasB_port)
 
-ngasC_host = '127.0.0.1'
+ngasC_host = 'macbook46.icrar.org'
 ngasC_port = 7779
 ngasC_url = 'http://%s:%d/QARCHIVE' % (ngasC_host, ngasC_port)
 
@@ -735,13 +735,13 @@ def verifyCase(base_name, num_files, pclient, clean_on_complete = True):
 if __name__ == '__main__':
     #TestCase02(16, base_name = '1358203679')
     #TestCase02(16)
-    #TestCase01(10, 3, interval = 3)
+    TestCase01(10, 2, interval = 3)
     #TestCase04(10, 3, interval = 3)
     #TestCase05(10, 3, interval = 3)
     #TestCase03(16)
     #TestCase06(8, 3)
     #TestCase07(8, 3)
     #TestCase08(8, 3, suspendFirst = False)
-    TestCase09(6, 3)
+    #TestCase09(6, 3)
     #TestCase10(8,3)
     #TestCase11(7,3)

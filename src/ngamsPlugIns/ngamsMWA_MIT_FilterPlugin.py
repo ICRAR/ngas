@@ -37,7 +37,8 @@ from ngams import *
 import os, threading
 import ngamsPlugInApi
 import ngamsPClient
-import ngamsMWACortexTapeApi
+#import ngamsMWACortexTapeApi
+import ngamsSubscriptionThread
 import pccFits.PccSimpleFitsReader as fitsapi
 
 import psycopg2 # used to connect to MWA M&C database
@@ -53,6 +54,7 @@ g_db_conn = None # MWA metadata database connection
 #eor_list = ["'G0001'", "'G0004'", "'G0009'", "'G0008'", "'G0010'"] # EOR scientists are only interested in these projects
 eor_list = [] # this has become a parameter of the plug-in
 proj_separator = '___'
+
 
 def getMWADBConn():
     if (g_db_pool):
@@ -103,7 +105,8 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
                           filename,
                           fileId,
                           fileVersion = -1,
-                          reqPropsObj = None):
+                          reqPropsObj = None,
+                          checkMode = ngamsSubscriptionThread.FPI_MODE_BOTH):
     
     """
     srvObj:        Reference to NG/AMS Server Object (ngamsServer).
@@ -122,47 +125,6 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
     Returns:       0 if the file does not match, 1 if it matches the
                    conditions (integer/0|1).
     """
-    match = 0
-    projectId = ''
-    onTape = 0
-    
-    try:
-        onTape = ngamsMWACortexTapeApi.isFileOnTape(filename)
-        if (onTape == 1 or onTape == -1):
-            # if the file is on Tape or query error, ignore it, otherwise Tape staging will block all other threads!!
-            info(3, 'File %s appears on Tape, connect to MWA DB to check' % filename)
-            projId = getProjectIdFromMWADB(fileId)
-            if (not projId):
-                alert('Cannot get project id from MWA DB for file %s' % fileId)
-                return 0
-            else:
-                if (projId == ''):
-                    alert('Project id in MWA DB for file %s is empty!' % fileId)
-                    raise Exception('Incorrect projectId')
-                projectId = "'%s'" % projId # add single quote to be consistent with FITS header keywords 
-            #TODO need to do either of the following:
-            # 1. query the MWA database to get the project id, but this will throw the problem to the later _deliveryThread
-            # 2. put this filename into a server queue, later on push them all together in another process
-        #keyDic  = ngamsPlugInApi.getFitsKeys(filename, ["PROJID"])
-        #projectId = keyDic["PROJID"][0]
-        else:
-            fh = fitsapi.getFitsHdrs(filename)
-            projectId = fh[0]['PROJID'][0][1]
-        
-    except:
-        err = "Did not find keyword PROJID in FITS file or PROJID illegal"
-        errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
-                                                   "ngamsMWA_MIT_FilterPlugIn", err])
-        #raise Exception, errMsg
-        #so still possible to deliver if the file is not there yet
-    
-    """
-    if (projectId == "'C105'" or projectId == "'C106'"):
-        return 0
-    """
-  
-     # Parse plug-in parameters.
-    parDic = []
     pars = ""
     if ((plugInPars != "") and (plugInPars != None)):
         pars = plugInPars
@@ -175,61 +137,91 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
         not parDic.has_key("project_id")):
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Missing Plug-In Parameter: " +\
                  "remote_host / remote_port / project_id"
-        #raise Exception, errMsg
         alert(errMsg)
-        return 1 # matched as if the filter did not exist
-    
-    host = parDic["remote_host"]
-    sport = parDic["remote_port"]
+        return 0 
+        
     proj_ids = parDic["project_id"]
+    match = 0
     
-    if (proj_ids and len(proj_ids)):
-        for proj_id in proj_ids.split(proj_separator):
-            eor_list.append("'%s'" % proj_id)
+    fspi = srvObj.getCfg().getFileStagingPlugIn()
+    if (not fspi):
+        offline = -1
+    else:
+        exec "import " + fspi
+        info(2,"Invoking FSPI.isFileOffline: " + fspi + " to check file: " + filename)
+        offline = eval(fspi + ".isFileOffline(filename)")  
+    
+    if (checkMode == ngamsSubscriptionThread.FPI_MODE_BOTH or 
+        checkMode == ngamsSubscriptionThread.FPI_MODE_METADATA_ONLY):    
+        try:    
+            if (offline == 1 or offline == -1):
+                # if the file is on Tape or query error, query db instead, otherwise implicit tape staging will block all other threads!!
+                info(3, 'File %s appears on Tape, connect to MWA DB to check' % filename)
+                projId = getProjectIdFromMWADB(fileId)
+                if (not projId or projId == ''):
+                    alert('Cannot get project id from MWA DB for file %s' % fileId)
+                    return 0
+                projectId = "'%s'" % projId # add single quote to be consistent with FITS header keywords 
+            else:
+                fh = fitsapi.getFitsHdrs(filename)
+                projectId = fh[0]['PROJID'][0][1]
+        except:
+            err = "Did not find keyword PROJID in FITS file or PROJID illegal"
+            errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
+                                                       "ngamsMWA_MIT_FilterPlugIn", err])
+        if (proj_ids and len(proj_ids)):
+            for proj_id in proj_ids.split(proj_separator):
+                eor_list.append("'%s'" % proj_id)
+            
+            if (not (projectId in eor_list)):
+                return 0
+            elif (checkMode == ngamsSubscriptionThread.FPI_MODE_METADATA_ONLY):
+                return 1
+    
+    if (checkMode == ngamsSubscriptionThread.FPI_MODE_BOTH or
+        checkMode == ngamsSubscriptionThread.FPI_MODE_DATA_ONLY):
+        host = parDic["remote_host"]
+        sport = parDic["remote_port"]  
+        if (not sport.isdigit()):
+            errMsg = "ngamsMWACheckRemoteFilterPlugin: Invalid port number: " + sport
+            alert(errMsg)
+            return 1 # matched as if the filter does not exist
         
-        if (not (projectId in eor_list)):
-            return 0
-    
-    if (not sport.isdigit()):
-        errMsg = "ngamsMWACheckRemoteFilterPlugin: Invalid port number: " + sport
-        alert(errMsg)
-        return 1 # matched as if the filter does not exist
-    
-    port = int(sport)
+        port = int(sport)
+            
+        # Perform the remote checking see if the file has been sent.
+        client = ngamsPClient.ngamsPClient(host, port, timeOut = NGAMS_SOCK_TIMEOUT_DEF)
+        queryError = 0
+        try:
+            rest = client.sendCmd(NGAMS_STATUS_CMD, 1, "", [["file_id", fileId]])
+        except Exception, e:
+            errMsg = "Error occurred during checking remote file status " +\
+                         "ngamsMWACheckRemoteFilterPlugin. Exception: " + str(e)
+            alert(errMsg)
+            match = 1 # matched as if the filter does not exist  
+            queryError = 1          
+        #info(5, "filter return status = " + rest.getStatus())
+        if (queryError == 0 and rest.getStatus().find(NGAMS_FAILURE) != -1):
+            #info(4, 'file %s is not at MIT, checking if other threads are sending it' % fileId)
+            tname = threading.current_thread().name
+            beingSent = srvObj._subscrDeliveryFileDic.values()
+            for fi in beingSent:
+                if (srvObj._subscrDeliveryFileDic[tname] != fi and fi[0] == fileId and fi[2] == fileVersion):
+                    #info(4, 'file %s is being sent by another thead, so do not send it in this thread' % fileId)
+                    return 0 # this file is currently being sent, so do not send it again
+            info(3, 'file %s will be sent' % fileId)
+            match = 1       
+        #info(4, "filter match = " + str(match))    
+        if (1 == offline and 1 == match and fspi):
+            info(3, "File " + filename + " is offline, staging for delivery...")
+            num = eval(fspi + ".stageFiles([filename])")
+            if (num == 0):
+                errMsg = 'File %s is offline, errors occurred when staging online for delivery' % filename
+                error(errMsg)
+                raise Exception(errMsg)
+            info(3, "File " + filename + " staging completed for delivery.")
         
-    # Perform the matching.
-    client = ngamsPClient.ngamsPClient(host, port, timeOut = NGAMS_SOCK_TIMEOUT_DEF)
-    
-    try:
-        rest = client.sendCmd(NGAMS_STATUS_CMD, 1, "", [["file_id", fileId]])
-    except Exception, e:
-        errMsg = "Error occurred during checking remote file status " +\
-                     "ngamsMWACheckRemoteFilterPlugin. Exception: " + str(e)
-        alert(errMsg)
-        return 1 # matched as if the filter does not exist
-    
-    
-    #info(5, "filter return status = " + rest.getStatus())
-    
-    if (rest.getStatus().find(NGAMS_FAILURE) != -1):
-        info(3, 'file %s is not at MIT, checking if other threads are sending it' % fileId)
-        tname = threading.current_thread().name
-        beingSent = srvObj._subscrDeliveryFileDic.values()
-        for fi in beingSent:
-            if (srvObj._subscrDeliveryFileDic[tname] != fi and fi[0] == fileId and fi[2] == fileVersion):
-                info(3, 'file %s is being sent by another thead, so do not send it in this thread' % fileId)
-                return 0 # this file is currently being sent, so do not send it again
-        info(3, 'file %s will be sent' % fileId)
-        match = 1
-    
-    #info(4, "filter match = " + str(match))    
-    if (1 == onTape and 1 == match):
-        info(3, "File " + filename + " is currently on tapes, staging it for delivery...")
-        cmd = "stage -w " + filename
-        t = ngamsPlugInApi.execCmd(cmd, -1) #stage it back to disk cache
-        info(3, "File " + filename + " staging completed for delivery.")
-    
-    return match    
+        return match    
 
 
 # EOF

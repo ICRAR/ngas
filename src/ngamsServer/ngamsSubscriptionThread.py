@@ -55,6 +55,10 @@ FILE_MIME = 4
 FILE_DISK_ID   = 5
 FILE_BL   = 6
 
+FPI_MODE_METADATA_ONLY = 1 # only check meta-data related conditions (e.g. project id), a preliminary filtering
+FPI_MODE_DATA_ONLY = 2 # only check data related conditions (e.g. if data has been sent, if it is offline, etc.)
+FPI_MODE_BOTH = 3 # check both
+
 def startSubscriptionThread(srvObj):
     """
     Start the Data Subscription Thread.
@@ -334,8 +338,10 @@ def _checkIfDeliverFile(srvObj,
 
     # Register the file if we should deliver this file to the Subscriber.
     if (deliverFile):
-        _addFileDeliveryDic(subscrObj.getId(), fileInfo,
-                                            deliverReqDic, fileDeliveryCountDic, fileDeliveryCountDic_Sem, srvObj)
+        filterMatched = _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion, fpiMode = FPI_MODE_METADATA_ONLY)
+        if (filterMatched):
+            _addFileDeliveryDic(subscrObj.getId(), fileInfo,
+                                                deliverReqDic, fileDeliveryCountDic, fileDeliveryCountDic_Sem, srvObj)
         #debug_chen
         info(4, 'File %s is accepted to delivery list' % fileId)
     
@@ -553,7 +559,7 @@ def _backupQueueToBacklog(srvObj):
     info(3, 'Completed - backing up pending files from delivery queue to back logs')
     
 
-def _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion):
+def _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion, fpiMode = FPI_MODE_BOTH):
     deliverFile = 0
     # If a Filter Plug-In is specified, apply it.
     plugIn = subscrObj.getFilterPi()
@@ -566,7 +572,7 @@ def _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion)
              ". Subscriber: " + subscrObj.getId())
         fpiRes = eval(plugIn + "." + plugIn +\
                       "(srvObj, plugInPars, filename, fileId, " +\
-                      "fileVersion)")
+                      "fileVersion, checkMode = fpiMode)")
         if (fpiRes):
             info(4,"File (version/ID): " + fileId + "/" +\
                  str(fileVersion) + " accepted by the FPI: " + plugIn +\
@@ -668,7 +674,7 @@ def _deliveryThread(srvObj,
                     alert('File %s is no longer available, removing it from the backlog' %  filename)
                     _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename) 
                 continue
-            if (not _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion)):
+            if (not _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion, fpiMode = FPI_MODE_DATA_ONLY)):
                 if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
                     info(3, 'Removing backlog file %s that is no longer needed to be de_livered' % fileId)
                     _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename)
@@ -698,6 +704,8 @@ def _deliveryThread(srvObj,
                     fileInfoObjHdr = base64.b64encode(fileInfoObj.genXml().toxml())
                 except Exception, e12:
                     warning('%s - Fail to obtain fileInfo from DB: fileId/version/diskId - %s / %d / %s' % (str(e12), fileId, fileVersion, diskId))
+            updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, -1)
+            st = time.time()
             try:
                 reply, msg, hdrs, data = \
                        ngamsLib.httpPostUrl(subscrObj.getUrl(), fileMimeType,
@@ -714,7 +722,8 @@ def _deliveryThread(srvObj,
                     #       exception was thrown.
                     stat.clear().setStatus(NGAMS_SUCCESS)
             except Exception, e:
-                ex = str(e) + traceback.format_exc() 
+                ex = str(e)
+                trace_msg = traceback.format_exc() 
             if ((ex != "") or (reply != NGAMS_HTTP_SUCCESS) or
                 (stat.getStatus() == NGAMS_FAILURE)):
                 # If an error occurred during data delivery, we should not update
@@ -725,11 +734,12 @@ def _deliveryThread(srvObj,
                 errMsg = "Error occurred while delivering file: " + baseName +\
                          "/" + str(fileVersion) +\
                          " - to Subscriber with ID/url: " + subscrObj.getId() + "/" + subscrObj.getUrl() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]"
-                if (ex != ""): errMsg += " Exception: " + ex + "."
+                if (ex != ""): errMsg += " Exception: " + ex + trace_msg + "."
                 if (stat.getMessage() != ""):
                     errMsg += " Message: " + stat.getMessage()
-                warning(errMsg)
                 _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
+                updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 1, ex + stat.getMessage())
+                warning(errMsg)
                 if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
                     # remove bl record from the dict
                     if (srvObj._subscrBlScheduledDic.has_key(subscrbId)):
@@ -741,6 +751,12 @@ def _deliveryThread(srvObj,
                         finally:
                             srvObj._subscrBlScheduledDic_Sem.release()
             else:
+                howlong = time.time() - st
+                fileSize = getFileSize(filename)
+                transfer_rate = '%.0f Bytes/s' % (fileSize / howlong)
+                updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 0, transfer_rate)
+                info(3,"File: " + baseName + "/" + str(fileVersion) +\
+                     " - delivered to Subscriber with ID: " + subscrObj.getId() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]")
                 if (srvObj.getCachingActive()):                   
                     fkey = fileId + "/" + str(fileVersion)
                     fileDeliveryCountDic_Sem.acquire()
@@ -761,8 +777,7 @@ def _deliveryThread(srvObj,
                                 alert("Fail to find %s/%d in the fileDeliveryCountDic" % (fileId, fileVersion))
                     finally:
                         fileDeliveryCountDic_Sem.release()
-                info(3,"File: " + baseName + "/" + str(fileVersion) +\
-                     " - delivered to Subscriber with ID: " + subscrObj.getId() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]")
+               
                 
                 # Update the Subscriber Status to avoid that this file
                 # gets delivered again.
@@ -811,6 +826,76 @@ def _fileKey(fileId,
     Returns:       File identifier (string).
     """
     return fileId + "___" + str(fileVersion)
+
+def buildSubscrQueue(srvObj, subscrId, dataMoverOnly = False):
+    """
+    initialise the subscription queue and
+    load records from the persistent ngas_subscr_queue
+    into the cache queue
+    
+    This is to sync cache queue with the persistent queue
+    
+    Returns:    the subscriber (cache) queue
+    """
+    if (dataMoverOnly): # for data movers, file ids (which is the first field of the fileInfo) close to one another are sent in sequence
+        quChunks = PriorityQueue()
+    else:
+        quChunks = Queue()
+    #grab those files that have not been delivered but have been scheduled from the persistent queue
+    files = srvObj.getDb().getSubscrQueue(subscrId, status = -2) 
+    for locFileInfo in files:
+        locFileInfo.append(None) # see function _convertFileInfo(fileInfo)
+        quChunks.put(locFileInfo) # load them into the cache queue
+    
+    return quChunks
+
+
+def updateSubscrQueueStatus(srvObj, subscrId, fileId, fileVersion, diskId, status, comment = None):
+    ts = PccUtTime.TimeStamp().getTimeStamp()
+    if (comment and len(comment) > 255):
+        comment = comment[0:255]
+    try:
+        if (status > 0 and comment):
+            ffif = getSubscrQueueStatus(srvObj, subscrId, fileId, fileVersion, diskId)
+            if (ffif):
+                sta = ffif[0]
+                cmt = ffif[1]
+                if (cmt == comment and sta > 0): # the same error / failure msg
+                    srvObj.getDb().updateSubscrQueueEntry(subscrId, fileId, fileVersion, diskId, sta + 1, ts) #increase # of failures by one
+                else:
+                    srvObj.getDb().updateSubscrQueueEntry(subscrId, fileId, fileVersion, diskId, status, ts, comment)
+        else:
+            srvObj.getDb().updateSubscrQueueEntry(subscrId, fileId, fileVersion, diskId, status, ts, comment)
+    except Exception, eee:
+        error("Fail to update persistent queue: %s" % str(eee))
+
+def getSubscrQueueStatus(srvObj, subscrId, fileId, fileVersion, diskId):
+    """
+    Return both status and comment
+    """
+    return srvObj.getDb().getSubscrQueueStatus(subscrId, fileId, fileVersion, diskId)
+
+def addToSubscrQueue(srvObj, subscrId, fileInfo, quChunks):
+    """
+    Insert into the persistent subscription queue,
+    if successful, then add to the cache subscription queue
+    
+    fileInfo    file information (List) that has already been converted (see _convertFileInfo(fileInfo))
+    """
+    fileInfo = _convertFileInfo(fileInfo)       
+    fileId         = fileInfo[FILE_ID]
+    filename       = fileInfo[FILE_NM]
+    fileVersion    = fileInfo[FILE_VER]
+    fileIngDate    = fileInfo[FILE_DATE]
+    fileMimeType   = fileInfo[FILE_MIME]
+    diskId = fileInfo[FILE_DISK_ID]
+    try:
+        ts = PccUtTime.TimeStamp().getTimeStamp()
+        srvObj.getDb().addSubscrQueueEntry(subscrId, fileId, fileVersion, diskId, filename, fileIngDate, fileMimeType, -2, ts)
+        quChunks.put(fileInfo)
+    except Exception, ee:
+        # most likely error - key duplication, that will prevent cache queue from adding this entry, which is correct
+        error('Subscriber %s failed to add to the persistent subscription queue file %s due to %s' % (subscrId, filename, str(ee)))
 
      
 def subscriptionThread(srvObj,
@@ -1079,7 +1164,8 @@ def subscriptionThread(srvObj,
                                             deliverReqDic, deliveredStatus, scheduledStatus, fileDeliveryCountDic, fileDeliveryCountDic_Sem)
             
             # Then finally check if there are back-logged files to deliver.
-            selectDiskId = srvObj.getCachingActive()
+            # selectDiskId = srvObj.getCachingActive()
+            selectDiskId = True # always select Disk Id now so that alll back log files will have disk_id
             srvObj._subscrBlScheduledDic_Sem.acquire()
             try:
                 subscrBackLog = srvObj.getDb().\
@@ -1132,17 +1218,22 @@ def subscriptionThread(srvObj,
                     info(3, 'Use existing queue for %s' % subscrId)
                     quChunks = queueDict[subscrId]
                 else:
+                    """
                     if (dataMoverOnly): # for data movers, file ids (which is the first field of the fileInfo) close to one another are sent in sequence
                         quChunks = PriorityQueue()
                     else:
                         quChunks = Queue()
+                    """
+                    quChunks = buildSubscrQueue(srvObj, subscrId, dataMoverOnly)
                     queueDict[subscrId] = quChunks
  
                 allFiles = deliverReqDic[subscrId]         
                 #if (srvObj.getSubcrBackLogCount() > 0):
                 info(3, 'Put %d new files in the queue for subscriber %s' %(len(allFiles), subscrId))        
                 for jdx in range(len(allFiles)):
-                    quChunks.put(allFiles[jdx])   
+                    ffinfo = allFiles[jdx]
+                    addToSubscrQueue(srvObj, subscrId, ffinfo, quChunks) 
+                    #quChunks.put(allFiles[jdx])   
                     # Deliver the data - spawn off a Delivery Thread to do this job                    
                 info(4, 'Number of elements in Queue %s: %d' % (subscrId, quChunks.qsize()))
                 if not deliveryThreadDic.has_key(subscrId):
