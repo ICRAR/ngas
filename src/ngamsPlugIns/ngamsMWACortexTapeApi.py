@@ -12,6 +12,13 @@
 from ngams import * 
 import ngamsPlugInApi
 
+def isFileOffline(filename):
+    """
+    To check if the file is completely offline, thus no copy is online
+    
+    return 1 - on tape, 0 - not on tape, -1 - query error
+    """
+    return isFileOnTape(filename)
 
 def isFileOnTape(filename):
     """

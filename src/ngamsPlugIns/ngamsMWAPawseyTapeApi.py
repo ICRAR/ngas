@@ -68,7 +68,14 @@ def isFileReleasable(filename):
         errMsg = "Exception '%s' when querying the status of %s" % (str(e), filename)
         alert(errMsg)
         return -1
+
+def isFileOffline(filename):
+    """
+    To check if the file is completely offline, thus no copy is online
     
+    return 1 - on tape, 0 - not on tape, -1 - query error
+    """
+    return isFileOnTape(filename)
 
 def isFileOnTape(filename):
     """
