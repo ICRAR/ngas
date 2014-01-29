@@ -10,4 +10,4 @@
 #PBS -o /home/cwu/ngas_run/run.out
 #PBS -e /home/cwu/ngas_run/run.err
 
-mpirun -np 6 /scratch/astronomy556/MWA/ngas_rt/bin/python /scratch/astronomy556/MWA/ngas_rt/src/ngamsStartup/ngamsFornaxMgr.py
+mpirun -np 6 /home/cwu/ngas_rt/bin/python /home/cwu/ngas_rt/src/ngamsStartup/ngamsFornaxMgr.py
