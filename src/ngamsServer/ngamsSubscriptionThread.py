@@ -1015,7 +1015,7 @@ def subscriptionThread(srvObj,
                     count = 0
                     #for host in dm_hosts:  
                     info(3, 'Checking hosts %s for data mover %s' % (dm_hosts, subscrId))       
-                    cursorObj = srvObj.getDb().getFileSummary2(hostId = dm_hosts, ing_date = start_date, max_num_records = 1000) # need to add file_version == 1 condition!!
+                    cursorObj = srvObj.getDb().getFileSummary2(hostId = dm_hosts, ing_date = start_date, max_num_records = 1000) 
                     while (1):
                         fileList = cursorObj.fetch(100)
                         if (fileList == []): break
