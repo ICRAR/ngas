@@ -30,23 +30,29 @@
 This module pushes missing files to MIT in a semi-automated fashion
 """
 from optparse import OptionParser
+import pcc
 
 import psycopg2
 import os.path
 import urllib2
 import cPickle as pickle
 from cPickle import UnpicklingError
-import socket
+import socket, base64
 
 from ngams import *
 import ngamsPlugInApi
 import ngamsPClient
-import ngamsMWACortexTapeApi
 
 from ngamsMWAAsyncProtocol import *
 
 mime_type = 'application/octet-stream'
-proxy_archive = 'storage01.icrar.org:7777'
+#proxy_archive = 'storage01.icrar.org:7777'
+proxy_archive = None
+#lta_db_host = '192.102.251.250'
+lta_db_host = 'mwa-pawsey-db01.pawsey.ivec.org'
+#lta_file_version = 1
+lta_file_version = 2
+
 
 g_db_conn = None # MWA metadata database connection
 
@@ -68,7 +74,7 @@ def getLTADBConn():
     try:
         l_db_conn = psycopg2.connect(database = 'ngas', user= 'ngas', 
                             password = 'bmdhcyRkYmE=\n'.decode('base64'), 
-                            host = '192.102.251.250')
+                            host = lta_db_host)
         return l_db_conn
     except Exception, e:
         errStr = 'Cannot create LTA DB Connection: %s' % str(e)
@@ -107,7 +113,7 @@ def getFileFullPath(fileId):
     Given a file id, return its full path on Cortex
     """
     lta_conn = getLTADBConn()
-    sqlQuery = "SELECT a.mount_point || '/' || b.file_name FROM ngas_disks a, ngas_files b where a.disk_id = b.disk_id AND b.file_version = 1 AND b.file_id = '%s'" % fileId
+    sqlQuery = "SELECT a.mount_point || '/' || b.file_name FROM ngas_disks a, ngas_files b where a.disk_id = b.disk_id AND b.file_version = %d AND b.file_id = '%s'" % (lta_file_version, fileId)
     res = executeQuery(lta_conn, sqlQuery)
     
     for re in res:
@@ -225,8 +231,13 @@ def main():
         strReq = pickle.dumps(myReq)
         try:
             print "Sending async retrieve request to the data mover %s" % opts.data_mover
-            strRes = urllib2.urlopen(stageUrl, data = strReq, timeout = NGAMS_SOCK_TIMEOUT_DEF).read() 
+            request = urllib2.Request(stageUrl)
+            base64string = base64.encodestring('ngasmgr:ngas$dba').replace('\n', '')
+            request.add_header("Authorization", "Basic %s" % base64string)
+            strRes = urllib2.urlopen(request, data = strReq, timeout = NGAMS_SOCK_TIMEOUT_DEF).read() 
             myRes = pickle.loads(strRes)
+            #strRes = urllib2.urlopen(stageUrl, data = strReq, timeout = NGAMS_SOCK_TIMEOUT_DEF).read() 
+            #myRes = pickle.loads(strRes)
             if (myRes):
                 print myRes.errorcode
             else:

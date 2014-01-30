@@ -32,7 +32,7 @@ metadata query, data movement, and HTTP-based communication
 during job task execution and scheduling
 """
 
-import os, threading, traceback, commands, logging, time, urllib2
+import os, threading, traceback, commands, logging, time, urllib2, base64
 from random import choice, shuffle, randint
 from urlparse import urlparse
 import psycopg2
@@ -180,7 +180,7 @@ def getCorrIdFromFileId(fileId):
     if (pos < 0):
         return None
     ll = len(gpubox_str)
-    return int(fileId[pos + len(ll) : pos + len(ll) + 2])
+    return int(fileId[pos + ll : pos + ll + 2])
 
 def getFileIdsByObsNum(obs_num):
     """
@@ -239,7 +239,7 @@ def hasAllFilesInLTA(obs_num):
     Check if ALL files associated with this observation
     have been archived in the Long-Term Archive (LTA)
     """
-    sqlQuery = "SELECT COUNT(file_id) FROM ngas_files WHERE file_id LIKE '%s_%%' AND file_version = 1" % obs_num
+    sqlQuery = "SELECT COUNT(file_id) FROM ngas_files WHERE file_id LIKE '%s_%%' AND file_version = 2" % obs_num
     conn = getLTADBConn()
     res = executeQuery(conn, sqlQuery)
     count = int(res[0][0])
@@ -568,9 +568,13 @@ def stageFile(fileIds, corrTask, toHost, frmHost = None):
         retry = 0
         max_retry = 5
         socket_timeout = 15
+        strRes = ''
         while (retry < max_retry):
             try:
-                strRes = urllib2.urlopen(stageUrl, data = strReq, timeout = socket_timeout).read() 
+                request = urllib2.Request(stageUrl)
+                base64string = base64.encodestring('ngasmgr:ngas$dba').replace('\n', '')
+                request.add_header("Authorization", "Basic %s" % base64string)
+                strRes = urllib2.urlopen(request, data = strReq, timeout = socket_timeout).read() 
                 myRes = pickle.loads(strRes)
                 break
             except (UnpicklingError, socket.timeout) as uerr:
