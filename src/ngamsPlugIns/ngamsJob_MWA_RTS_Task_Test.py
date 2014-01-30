@@ -96,7 +96,7 @@ def manualTest():
     
     ngas_host = 'macbook46.icrar.org:7779'    
     
-    cmd = '/scratch/astronomy556/MWA/ngas_rt/src/ngamsPlugIns/ngamsJob_MWA_RTS_Task.sh' +\
+    cmd = '/home/cwu/ngas_rt/src/ngamsPlugIns/ngamsJob_MWA_RTS_Task.sh' +\
         ' -j %s -o %d -c %d -t %s -f %s -g N' % (job_id, obs_num, corr_id, rts_tpl, file_list)
     re = commands.getstatusoutput(cmd)
     print re[0]

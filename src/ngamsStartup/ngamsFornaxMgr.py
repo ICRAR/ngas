@@ -46,7 +46,7 @@ io_ipovib = {'io1':'192.168.212.5', 'io2':'192.168.212.6'}
 Non_Archive_Ngas = ['202.8.39.136', '202.8.39.137', '192.168.212.5', 
                     '192.168.212.6', '192.168.222.97', '192.168.222.98', 
                     '192.168.222.99', '192.168.222.100']
-ngas_src_root = '/scratch/astronomy556/MWA/ngas_rt'
+ngas_src_root = '/home/cwu/ngas_rt'
 ngas_vol_tool = ngas_src_root + '/src/ngasUtils/src/ngasPrepareVolumeNoRoot.py'
 ngas_cache_server = ngas_src_root + '/src/ngamsServer/ngamsServer.py'
 ngas_pclient = ngas_src_root + '/bin/ngamsPClient'
@@ -56,7 +56,7 @@ tplCfgFile = ngas_src_root + '/cfg/NgamsCfg.PostgreSQL.fornax.xml'
 #NgamsCfg.PostgreSQL.fornax_lustre.xml
 host_status = {'online':'ONLINE', 'offline':'OFFLINE', 'down':'NOT-RUNNING'}
 db_host = 'fornaxspare'
-ngas_lustre_root = '/scratch/astronomy564/cwu/NGAS_roots'
+ngas_lustre_root = '/scratch/partner766/cwu/NGAS_roots'
 
 def execCmd(cmd, failonerror = True):
     re = commands.getstatusoutput(cmd)
@@ -127,6 +127,11 @@ def createConfigFile(overwrite = False, localfs = True):
     """    
     # fornax.server.id, fornax.server.archivename,fornax.server.ipaddress
     node = getNGASNodeName()    
+    foraxCfgDir = ngas_src_root + '/cfg/fornax'
+    if (not os.path.exists(foraxCfgDir)):
+        cmd = 'mkdir -p %s' % foraxCfgDir
+        execCmd(cmd)
+        
     cfgFile = ngas_src_root + '/cfg/fornax/' + node + '.xml'
     if (os.path.exists(cfgFile)):
         if (overwrite):
@@ -255,7 +260,7 @@ def _sshStartServerThread(serverId, localFS):
     else:
         nodename = 'f00%s' % str(serverId)
     
-    cmd = 'ssh %s "/scratch/astronomy556/MWA/ngas_rt/bin/python /scratch/astronomy556/MWA/ngas_rt/src/ngamsStartup/ngamsFornaxMgr.py start 1 0 %d"' % (nodename, localFS)
+    cmd = 'ssh %s "/home/cwu/ngas_rt/bin/python /home/cwu/ngas_rt/src/ngamsStartup/ngamsFornaxMgr.py start 1 0 %d"' % (nodename, localFS)
     execCmd(cmd)
 
 def sshStartServers(num = 24, localFS = 1):
