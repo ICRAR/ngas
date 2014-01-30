@@ -188,11 +188,7 @@ def getCompleteHostName():
 
     Returns:   Host name for this NGAS System (string).
     """
-    try:
-        #return socket.gethostbyname_ex(getHostName())[0]
-        return socket.getfqdn()
-    except Exception, e:
-        return getHostName()
+    return getHostName()
 
 
 def getDomain():
@@ -560,14 +556,14 @@ def httpPostUrl(url,
                   the query (string).
 
     dataSize:     Size of data to send if read from a socket (integer).
-    
+
     fileInfoHdr:  File info serialised as an XML doc for command REARCHIVE (string)
 
     Returns:      List with information from reply from contacted
                   NG/AMS Server (reply, msg, hdrs, data) (list).
     """
     T = TRACE()
-    
+
     urlres = urlparse.urlparse(url)
     if (urlres.scheme.lower() == 'houdt'):
         import ngamsUDTSender

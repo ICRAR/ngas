@@ -788,7 +788,7 @@ def ngas_full_buildout(standalone=0, typ='archive'):
         run('cp .bash_profile .bash_profile_orig')
     else:
         run('cp .bash_profile_orig .bash_profile')
-    run('export NGAS_PREFIX={0}'.format(env.PREFIX))
+    run('echo "export NGAS_PREFIX={0}\n" >> .bash_profile'.format(env.PREFIX))
     run('echo "source {0}/bin/activate\n" >> .bash_profile'.format(env.NGAS_DIR_ABS))
 
     print "\n\n******** NGAS_FULL_BUILDOUT COMPLETED!********\n\n"
@@ -1004,7 +1004,7 @@ def upgrade():
         print 'of the user running NGAS on the remote host.'
         abort('\n\n******** UPGRADE ABORTED!********\n\n')
     if not env.has_key('src_dir') or not env.src_dir:
-        print 'Please specify the local source directory of the NGAS sortware'
+        print 'Please specify the local source directory of the NGAS software'
         print 'on the command line using --set src_dir=your/local/directory'
         abort('\n\n******** UPGRADE ABORTED!********\n\n')
     else: # check whether the source directory setting is likely to be correct

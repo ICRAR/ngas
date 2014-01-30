@@ -50,7 +50,6 @@ import ngamsDiskInfo, ngamsFileInfo, ngamsHostInfo, ngamsPlugInApi
 import ngamsArchiveUtils, ngamsSrvUtils, ngamsCmdHandling
 import ngamsNotification, ngamsAuthUtils
 
-
 # Pointing to the HTTP request callback.
 _reqCallBack = None
 
@@ -2231,7 +2230,7 @@ class ngamsServer:
         hostInfo = self.getDb().getHostInfoFromHostIds([getHostId()])
         if (hostInfo == []):
             tmpHostInfoObj = ngamsHostInfo.ngamsHostInfo()
-            ipAddress = socket.gethostbyname(getHostName())
+            ipAddress = getIpAddress()
             domain = ngamsLib.getDomain()
             if (not domain): domain = NGAMS_NOT_SET
             tmpHostInfoObj.\

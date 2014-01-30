@@ -141,6 +141,8 @@ import threading
 import types
 import time
 import commands
+import urllib
+import socket
 
 # make sure that we can get a handle to the server object
 _ngamsServer = None
@@ -930,6 +932,22 @@ def ngamsGetChildNodes(parentNode,
             childNodes.append(childNode)
     return childNodes
 
+def getMyIpAddress():
+    """
+    Get the IP address of this machine as seen from the outside world.
+    An external service is pretty much the only way to find this in
+    a somewhat reliable way.
+
+    INPUT:    None
+
+    OUTPUT:   string, IP v4 address in standard notation
+    """
+    whatismyip = 'http://bot.whatismyipaddress.com/'
+    return urllib.urlopen(whatismyip).readlines()[0]
+
+def getIpAddress():
+    global NGAMS_HOST_IP
+    return NGAMS_HOST_IP
 
 def getHostName():
     """
@@ -938,24 +956,23 @@ def getHostName():
     Returns:   Host name for this NGAS System (string).
     """
     global NGAMS_HOST_IP
-    if NGAMS_HOST_IP:
-        return NGAMS_HOST_IP
     ip = None
+    if NGAMS_HOST_IP:
+        ip= NGAMS_HOST_IP
     if sys.argv.count('-cfg') > 0:
         cfgFile = sys.argv[sys.argv.index('-cfg') + 1]
         from xml.dom import minidom
         dom = minidom.parse(cfgFile)
         srv = dom.getElementsByTagName('Server')
         ip = srv[0].getAttribute('IpAddress')
+        if not ip or str(ip)[0] == '0':
+            ip = getMyIpAddress()   #This only works if the machine can connect to the web!
     if ip:
         NGAMS_HOST_IP = str(ip)
-        return str(ip)
+        hostName = socket.gethostbyaddr(NGAMS_HOST_IP)[0]
     else:
         hostName = os.uname()[1]
-        if (hostName.split(".")[-1] == "local"):
-            return hostName.split(".")[0].split("-")[0]
-        else:
-            return hostName.split(".")[0]
+    return hostName
 
 
 def setSrvPort(portNo):
@@ -995,10 +1012,16 @@ def getHostId():
 
     Returns:    NG/AMS Host ID (string).
     """
-    if (getSrvPort()):
-        return getHostName() + ":" + str(_srvPortNo)
+
+    hostName = getHostName()
+    if (hostName.split(".")[-1] == "local"):
+        hostName = hostName.split(".")[0].split("-")[0]
     else:
-        return getHostName()
+        hostName = hostName.split(".")[0]
+    if (getSrvPort()):
+        return hostName + ":" + str(_srvPortNo)
+    else:
+        return hostName
 
 
 def ignoreValue(ignoreEmptyField,
