@@ -27,6 +27,27 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      01/10/2012  Created
+
+"""
+NGAS now supports two types of filters
+
+1. attribute filter, which operates at the database level
+2. match filter, which operates at each individual file level
+
+NGAS does NOT yet support hybrid filter type with both levels
+so if the plugin has the function "getAttrFilterSql", NGAS will
+consider it as an attribute filter. Otherwise, NGAS will treat 
+it as a (file-level) match filter
+
+e.g.
+
+plugIn = 'ngamsMWA_MIT_FilterPlugin'
+bb = eval("hasattr(" + plugIn + ", 'getAttrFilterSql')")
+
+
+"""
+
+
 """
 Contains a Filter Plug-In used to filter out those files that 
 (1) have already been delivered to the remote destination
@@ -56,6 +77,23 @@ eor_list = [] # this has become a parameter of the plug-in
 proj_separator = '___'
 
 
+def getAttrFilterSql(tb, an_col, av_col):
+    """
+    Return attribute filter in the form of SQL WHERE statement (String)
+    
+    tb:        name of the attribute_table (String)
+    an_col:    name of the attribute_name column in tb (String)
+    av_col:    name of the attribute_value column in tb (String)
+    
+    """
+        
+    s = "%s.%s = '%s' " % (tb, an_col, 'project_id')
+    s += "AND (%s.%s = '%s' " % (tb, av_col, 'G0009')
+    s += "OR %s.%s = '%s' )" % (tb, av_col, 'G0010')
+    
+    return s
+    
+    
 def getMWADBConn():
     if (g_db_pool):
         return g_db_pool.getconn()
