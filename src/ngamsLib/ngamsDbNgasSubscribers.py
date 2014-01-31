@@ -344,9 +344,18 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         """
         
         sqlQuery = "UPDATE ngas_subscr_queue SET status = %d " % status
+        sqlQuery += ", status_date = '%s' " % status_date
         if (comment):
             sqlQuery += ", comment = '%s' " % comment
         sqlQuery += "WHERE subscr_id = '%s' AND file_id = '%s' AND file_version = %d AND disk_id = '%s'" % (subscrId, fileId, fileVersion, diskId)
+        self.query(sqlQuery)
+        
+    def updateSubscrQueueEntryStatus(self, subscrId, oldStatus, newStatus):
+        """
+        change the status from old to new for files belonging to a subscriber
+        """
+        sqlQuery = "UPDATE ngas_subscr_queue SET status = %d " % newStatus
+        sqlQuery += "WHERE subscr_id = '%s' AND status = %d " % (subscrId, oldStatus)
         self.query(sqlQuery)
 
     def addSubscrQueueEntry(self,
@@ -578,6 +587,34 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
             return None
         else:
             return res[0][0] #get the first row only
+        
+    def getSubscrQueueEntriesByFileInfo(self, subscrId, fileId, fileVersion = None, diskId = None, status = None):
+        """
+        Get the full queue records by the file info
+        """
+        sqlQuery = "SELECT * FROM ngas_subscr_queue WHERE subscrId = '%s' AND file_id = '%s' " % (subscrId, fileId)
+        if (fileVersion):
+            sqlQuery += "AND file_version = %d " % fileVersion
+        if (diskId):
+            sqlQuery += "AND disk_id = '%s' " % diskId
+        if (status):
+            if (type(status) is list):
+                sqlQuery += "AND ("
+                cc = 0
+                for ho in status:
+                    if (cc > 0):
+                        sqlQuery += " OR "
+                    sqlQuery += "status = %d " % ho
+                    cc += 1
+                sqlQuery += ") "
+            else:
+                sqlQuery += "AND status = %d " % status 
+        
+        res = self.query(sqlQuery, ignoreEmptyRes=0)
+        if (res == [[]]):
+            return []
+        else:
+            return res[0]
     
     def getSubscrQueue(self, subscrId, status = None):
         """
@@ -590,7 +627,17 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         sqlQuery = "SELECT a.file_id, b.mount_point || '/' || a.file_name, a.file_version, a.ingestion_date, a.format, a.disk_id " +\
                    "FROM ngas_subscr_queue a, ngas_disks b WHERE a.subscr_id = '%s' " % subscrId
         if (status):
-            sqlQuery += "AND a.status = %d " % status
+            if (type(status) is list):
+                sqlQuery += "AND ("
+                cc = 0
+                for ho in status:
+                    if (cc > 0):
+                        sqlQuery += " OR "
+                    sqlQuery += "a.status = %d " % ho
+                    cc += 1
+                sqlQuery += ") "
+            else:
+                sqlQuery += "AND a.status = %d " % status
         
         sqlQuery += "AND a.disk_id = b.disk_id"
         

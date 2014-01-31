@@ -590,6 +590,23 @@ def _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion,
         deliverFile = 1
     
     return deliverFile
+
+def fileDelivered(srvObj, subscrId, fileId, fileVersion, diskId, beingDelivered = False):
+    """
+    To check if this file has been delivered already
+    
+    beingDelivered    including files that are currently being delivered (Boolean),
+                      by default, it is set to False
+    """
+    if (beingDelivered):
+        mstat = [0, -1] # both scheduled and being sent
+    else:
+        mstat = 0
+    files = srvObj.getDb().getSubscrQueueEntriesByFileInfo(subscrId, fileId, fileVersion, diskId, mstat)
+    if (files == [] or len(files) == 0):
+        return False
+    else:
+        return True
     
 def _deliveryThread(srvObj,
                     subscrObj,
@@ -659,26 +676,34 @@ def _deliveryThread(srvObj,
             fileIngDate    = fileInfo[FILE_DATE]
             fileMimeType   = fileInfo[FILE_MIME]
             fileBackLogged = fileInfo[FILE_BL]   
-            diskId = fileInfo[FILE_DISK_ID]
+            diskId         = fileInfo[FILE_DISK_ID]
+            
             if (fileIngDate < subscrObj.getStartDate() and fileBackLogged != NGAMS_SUBSCR_BACK_LOG): #but backlog files will be sent regardless
                 # subscr_start_date is changed (through USUBSCRIBE command) in order to skip unchechked files
                 alert('File %s skipped, ingestion date %s < %s' %  (fileId, fileIngDate, subscrObj.getStartDate()))
                 continue
+            
             if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not diskId)):
                 alert('File %s has invalid diskid, removing it from the backlog' %  filename)
                 _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename)
                 continue
-            if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not os.path.isfile(filename))):# check if this file is removed by an agent outside of NGAS (e.g. Cortex volunteer cleanup)
+            
+            if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not os.path.isfile(filename))):
+                # check if this file is removed by an agent outside of NGAS (e.g. Cortex volunteer cleanup)
                 mtPt = srvObj.getDb().getMtPtFromDiskId(diskId)
-                if (os.path.exists(mtPt)): # the mount point is still there, but not the file, which means the file was removed by external agents
+                if (os.path.exists(mtPt)): 
+                    # the mount point is still there, but not the file, which means the file was removed by external agents
                     alert('File %s is no longer available, removing it from the backlog' %  filename)
                     _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename) 
                 continue
-            if (not _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion, fpiMode = FPI_MODE_DATA_ONLY)):
-                if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
+        
+            status = getSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId)
+            if (status in [0, -1]): # delivered or being delivered by other threads
+                if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and status == 0):
                     info(3, 'Removing backlog file %s that is no longer needed to be de_livered' % fileId)
                     _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename)
                 continue
+            
             baseName = os.path.basename(filename)
             contDisp = "attachment; filename=\"" + baseName + "\""
             # TODO: Note should not have no_versioning hardcoded in the
@@ -707,6 +732,7 @@ def _deliveryThread(srvObj,
             updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, -1)
             st = time.time()
             try:
+                stageFile(srvObj, filename)
                 reply, msg, hdrs, data = \
                        ngamsLib.httpPostUrl(subscrObj.getUrl(), fileMimeType,
                                             contDisp, filename, "FILE",
@@ -841,8 +867,16 @@ def buildSubscrQueue(srvObj, subscrId, dataMoverOnly = False):
         quChunks = PriorityQueue()
     else:
         quChunks = Queue()
-    #grab those files that have not been delivered but have been scheduled from the persistent queue
-    files = srvObj.getDb().getSubscrQueue(subscrId, status = -2) 
+    
+    try:
+        # change status to "scheduled" for files "being transferred" before system restart
+        srvObj.getDb().updateSubscrQueueEntryStatus(subscrId, -1, -2)    
+        #grab those files that have been scheduled from the persistent queue
+        files = srvObj.getDb().getSubscrQueue(subscrId, status = -2)
+    except Exception, ee:
+        error('Failed db operation when building subscriber cache queue: %s' % str(ee))
+        return quChunks
+    
     for locFileInfo in files:
         locFileInfo.append(None) # see function _convertFileInfo(fileInfo)
         quChunks.put(locFileInfo) # load them into the cache queue
@@ -873,7 +907,11 @@ def getSubscrQueueStatus(srvObj, subscrId, fileId, fileVersion, diskId):
     """
     Return both status and comment
     """
-    return srvObj.getDb().getSubscrQueueStatus(subscrId, fileId, fileVersion, diskId)
+    try:
+        return srvObj.getDb().getSubscrQueueStatus(subscrId, fileId, fileVersion, diskId)
+    except Exception, ex:
+        error("Fail to query persistent queue: %s" % str(ex))
+        return None
 
 def addToSubscrQueue(srvObj, subscrId, fileInfo, quChunks):
     """
@@ -897,6 +935,24 @@ def addToSubscrQueue(srvObj, subscrId, fileInfo, quChunks):
         # most likely error - key duplication, that will prevent cache queue from adding this entry, which is correct
         error('Subscriber %s failed to add to the persistent subscription queue file %s due to %s' % (subscrId, filename, str(ee)))
 
+def stageFile(srvObj, filename):
+    fspi = srvObj.getCfg().getFileStagingPlugIn()
+    if (not fspi):
+        return
+    try:
+        exec "import " + fspi
+        info(2,"Invoking FSPI.isFileOffline: " + fspi + " to check file: " + filename)
+        offline = eval(fspi + ".isFileOffline(filename)")
+        if (1 == offline):
+            info(3, "File " + filename + " is offline, staging for delivery...")
+            num = eval(fspi + ".stageFiles([filename])")
+            if (num == 0):
+                raise Exception('File staging error: %s' % filename)
+            else:
+                info(3, "File " + filename + " staging completed for delivery.")
+    except Exception, ex:
+        error("File offline_checking or staging error: %s" % filename)
+        raise ex
      
 def subscriptionThread(srvObj,
                        dummy):
@@ -1030,7 +1086,7 @@ def subscriptionThread(srvObj,
                         info(3, 'No new files for data mover %s' % subscrId)
                     else:
                         info(3, 'Data mover %s will examine %d files for delivery' % (subscrId, count))
-            if (subscrObjs != []):
+            elif (subscrObjs != []):
                 min_date = None # the "earliest" last_ingestion_date or start_date amongst all explicitly referenced subscribers.
                 # The min_date is used to exclude files that have been delivered (<= min_date) during previous NGAS sessions
                 for subscriber in subscrObjs:
@@ -1177,10 +1233,10 @@ def subscriptionThread(srvObj,
                     # with the value of the constant NGAMS_SUBSCR_BACK_LOG, that
                     # this file is a back-logged file. This is done to make the
                     # handling more efficient.
-                    if (selectDiskId):
-                        fileInfo = list(backLogInfo[2:]) + [NGAMS_SUBSCR_BACK_LOG]
-                    else:
-                        fileInfo = list(backLogInfo[2:]) + [None] + [NGAMS_SUBSCR_BACK_LOG]
+                    #if (selectDiskId):
+                    fileInfo = list(backLogInfo[2:]) + [NGAMS_SUBSCR_BACK_LOG]
+                    #else:
+                    #    fileInfo = list(backLogInfo[2:]) + [None] + [NGAMS_SUBSCR_BACK_LOG]
     
                     _addFileDeliveryDic(subscrId, fileInfo, deliverReqDic, fileDeliveryCountDic, fileDeliveryCountDic_Sem, srvObj)
             finally:
