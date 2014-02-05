@@ -969,7 +969,10 @@ def getHostName():
             ip = getMyIpAddress()   #This only works if the machine can connect to the web!
     if ip:
         NGAMS_HOST_IP = str(ip)
-        hostName = socket.gethostbyaddr(NGAMS_HOST_IP)[0]
+        try:
+            hostName = socket.gethostbyaddr(NGAMS_HOST_IP)[0]
+        except socket.herror:
+            return NGAMS_HOST_IP
     else:
         hostName = os.uname()[1]
     return hostName
@@ -1016,10 +1019,12 @@ def getHostId():
     hostName = getHostName()
     if (hostName.split(".")[-1] == "local"):
         hostName = hostName.split(".")[0].split("-")[0]
+    elif (re.match('^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$', hostName)):
+        pass
     else:
         hostName = hostName.split(".")[0]
     if (getSrvPort()):
-        return hostName + ":" + str(_srvPortNo)
+        return hostName + ":" + str(getSrvPort())
     else:
         return hostName
 

@@ -316,7 +316,7 @@ def genNgasId(ngamsCfgObj):
      
     Returns:   NGAS ID (string).
     """
-    return "NGAS-" + getHostId() + "-" + str(ngamsCfgObj.getPortNo())
+    return getHostId()
 
 
 def genProcDirName(ngamsCfgObj):
