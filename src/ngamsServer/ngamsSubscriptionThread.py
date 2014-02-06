@@ -344,7 +344,8 @@ def _checkIfDeliverFile(srvObj,
                                                 deliverReqDic, fileDeliveryCountDic, fileDeliveryCountDic_Sem, srvObj)
         #debug_chen
         info(4, 'File %s is accepted to delivery list' % fileId)
-    
+    else:
+        info(3, 'File %s is out, ingDate = %s, lastDelivery = %s' % (fileId, fileIngDate, lastDelivery))
 
 
 def _compFct(fileInfo1,
@@ -987,7 +988,9 @@ def subscriptionThread(srvObj,
     # possibly not delivered yet)
     # this will be used across multiple iterations in the subscriptionThread
     # key subscriberId, value - date string
-    scheduledStatus = srvObj._subscrScheduledStatus  
+    scheduledStatus = srvObj._subscrScheduledStatus 
+    
+    checkedStatus = srvObj._subscrCheckedStatus
     
     # key: subscriberId, value - a FIFO file queue, which is a list of fileInfo chunks, each chunk has a number of fileInfos
     queueDict = srvObj._subscrQueueDic 
@@ -1053,8 +1056,12 @@ def subscriptionThread(srvObj,
                 for subscrId in srvObj.getSubscriberDic().keys():
                     subscrObj = srvObj.getSubscriberDic()[subscrId]
                     start_date = None
+                    """
                     if (scheduledStatus.has_key(subscrId) and scheduledStatus[subscrId]):
                         start_date = scheduledStatus[subscrId]
+                    """
+                    if (checkedStatus.has_key(subscrId) and checkedStatus[subscrId]):
+                        start_date = checkedStatus[subscrId]
                     elif (subscrObj.getLastFileIngDate() and '1970-01-01' != subscrObj.getLastFileIngDate().split('T')[0]):
                         start_date = subscrObj.getLastFileIngDate()
                     elif (subscrObj.getStartDate()):
@@ -1078,7 +1085,8 @@ def subscriptionThread(srvObj,
                         time.sleep(0.1)
                     if (lastIngDate):
                         # mark the "last" file that will be checked regardless if it will be delivered or not
-                        scheduledStatus[subscrId] = lastIngDate 
+                        checkedStatus[subscrId] = lastIngDate 
+                        pass
                     del cursorObj
                     if (count == 0):
                         info(3, 'No new files for data mover %s' % subscrId)

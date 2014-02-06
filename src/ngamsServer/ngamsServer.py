@@ -344,6 +344,7 @@ class ngamsServer:
         self._deliveryStopSync        = threading.Event()
         self._subscrBackLogCount      = 0
         self._subscrScheduledStatus   = {}
+        self._subscrCheckedStatus     = {}
         self._subscrQueueDic          = {}
         self._subscrDeliveryThreadDic = {}
         self._subscrDeliveryThreadDicRef = {}
