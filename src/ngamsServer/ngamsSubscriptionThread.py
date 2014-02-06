@@ -572,7 +572,7 @@ def _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion,
              ". Subscriber: " + subscrObj.getId())
         fpiRes = eval(plugIn + "." + plugIn +\
                       "(srvObj, plugInPars, filename, fileId, " +\
-                      "fileVersion, checkMode = fpiMode)")
+                      "fileVersion)")
         if (fpiRes):
             info(4,"File (version/ID): " + fileId + "/" +\
                  str(fileVersion) + " accepted by the FPI: " + plugIn +\
@@ -740,7 +740,8 @@ def _deliveryThread(srvObj,
                                             srvObj.getCfg().getBlockSize(),
                                             suspTime = suspenTime,
                                             authHdrVal = authHdr,
-                                            fileInfoHdr = fileInfoObjHdr)
+                                            fileInfoHdr = fileInfoObjHdr,
+                                            sendBuffer = srvObj.getCfg().getArchiveSndBufSize())
                 if (data.strip() != ""):
                     stat.clear().unpackXmlDoc(data)
                 else:
@@ -1047,40 +1048,37 @@ def subscriptionThread(srvObj,
             # query information about all files available on this host.
             rmFile(fileDicDbmName + "*")
             fileDicDbm = ngamsDbm.ngamsDbm(fileDicDbmName, writePerm=1)
-            # TODO - handle the abnormal shutdown situation, i.e. 
-            # for each subscriber, find out the LastFileIngDate, and query db with: ingestion_date > 'LastFileIngDate'
-            # if (not dataMoverOnly and abnormalShutdown): abnormalShutdown = False then: blah blah
+           
             if (dataMoverOnly and srvObj.getSubcrBackLogCount() <= 1000): # do not bring in too many new files if back-logged files are piling up
-            # if (dataMoverOnly): # we need to support multiple data movers and priority on the single NGAS server, so the "backlog first" policy is cancelled                
-                #subscrId = srvObj.getSubscriberDic().keys()[0] 
                 for subscrId in srvObj.getSubscriberDic().keys():
-                    #debug_chen
-                    #info(3, 'Data mover subscriId = %s' % subscrId)
                     subscrObj = srvObj.getSubscriberDic()[subscrId]
                     start_date = None
-                    if (scheduledStatus.has_key(subscrId)):
-                        if (scheduledStatus[subscrId]):
-                            start_date = scheduledStatus[subscrId]
+                    if (scheduledStatus.has_key(subscrId) and scheduledStatus[subscrId]):
+                        start_date = scheduledStatus[subscrId]
                     elif (subscrObj.getLastFileIngDate() and '1970-01-01' != subscrObj.getLastFileIngDate().split('T')[0]):
                         start_date = subscrObj.getLastFileIngDate()
                     elif (subscrObj.getStartDate()):
                         start_date = subscrObj.getStartDate()
                     
-                    #debug_chen
                     info(3, 'Data mover %s start_date = %s\n' % (subscrId, start_date))    
                     count = 0
-                    #for host in dm_hosts:  
                     info(3, 'Checking hosts %s for data mover %s' % (dm_hosts, subscrId))       
                     cursorObj = srvObj.getDb().getFileSummary2(hostId = dm_hosts, ing_date = start_date, max_num_records = 1000) 
+                    lastIngDate = None
                     while (1):
                         fileList = cursorObj.fetch(100)
                         if (fileList == []): break
                         for fileInfo in fileList:
                             fileInfo = _convertFileInfo(fileInfo)
                             fileDicDbm.add(_fileKey(fileInfo[FILE_ID], fileInfo[FILE_VER]), fileInfo)
+                            if (fileInfo[FILE_DATE] > lastIngDate): #just in case the cursor result is not sorted!
+                                lastIngDate = fileInfo[FILE_DATE]
                             count += 1
                         _checkStopSubscriptionThread(srvObj)
                         time.sleep(0.1)
+                    if (lastIngDate):
+                        # mark the "last" file that will be checked regardless if it will be delivered or not
+                        scheduledStatus[subscrId] = lastIngDate 
                     del cursorObj
                     if (count == 0):
                         info(3, 'No new files for data mover %s' % subscrId)
@@ -1254,10 +1252,10 @@ def subscriptionThread(srvObj,
             
             for subscrId in deliverReqDic.keys():
                 deliverReqDic[subscrId].sort(_compFctIngDate)
-                #get the ingest_date of the last file in the queue (list)
+                #get the ingest_date of the last file in the queue (list)         
                 lastScheduleDate = _convertFileInfo(deliverReqDic[subscrId][-1])[FILE_DATE]
-                scheduledStatus[subscrId] = lastScheduleDate #TODO - this is wrong if there are two hosts combing into the single list
-                #need to get the earliest of the last ingestion date
+                if (lastScheduleDate > scheduledStatus[subscrId]):
+                    scheduledStatus[subscrId] = lastScheduleDate 
                 
                 """
                 This is not used since Priority Queue will sort the list 

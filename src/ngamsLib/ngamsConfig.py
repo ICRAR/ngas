@@ -773,7 +773,22 @@ class ngamsConfig:
         """
         par = "Server[1].BlockSize"
         return getInt(par, self.getVal(par))
-
+    
+    def getArchiveRcvBufSize(self):
+        """
+        Get TCP receive buffer size, which
+        sets the upper limit of the TCP window size
+        """
+        par = "Server[1].ArchiveRcvBufSize"
+        return getInt(par, self.getVal(par), retValOnFailure = None)
+    
+    def getArchiveSndBufSize(self):
+        """
+        Get TCP send buffer size, which
+        sets the upper limit of the TCP window size
+        """
+        par = "Server[1].ArchiveSndBufSize"
+        return getInt(par, self.getVal(par), retValOnFailure = None)
 
     def getMaxSimReqs(self):
         """
