@@ -36,6 +36,7 @@ skip = 0        # default skip [GB]
 testcount = 1        # default number of consecutive tests
 iosize = 1073741824l    # default size of one test: 1 GB
 blocksize = 1024    # default size of IO blocks
+tcpsndbuf = None # default tcp send buffer size
 dev = None              # no default for the actual device
 method = 'dd'           # default method for performing the tests
 pattern = 'abcd'        # default pattern to be used for writeTest
@@ -82,7 +83,10 @@ def usage():
                        the file.
           s[e]ssion:   string, session id for this HTTP write test
           data[r]ate:  the data rate for HTTP write test. This parameter
-                       is turned on only when the device is a URL (HTTP
+                       is used only when the device is a URL (HTTP
+                       write test)
+          sndbufsi[z]e:the TCP send buffer size. This parameter
+                       is used only when the device is a URL (HTTP
                        write test)
 
           NOTE: All byte values are forced to be an integer multiple
@@ -168,7 +172,7 @@ def readTest(dev,skip,testcount,iosize,blocksize):
         skip =skip + iocount
         return status
 
-def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None):
+def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, sndbufsize = None):
     """
     This is actually running the HTTP-based remote write test.
     It will read blocks of zeroes from /dev/zero and
@@ -228,6 +232,13 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None):
             http.endheaders()
             # send payload
             http._conn.sock.settimeout(locTimeout)
+            if (sndbufsize):
+                try:
+                    http._conn.sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, sndbufsize)
+                    print("Set TCP SNDBUF to %d" % sndbufsize)
+                except Exception, eer:
+                    print('Fail to set TCP SNDBUF to %d: %s' % (sndbufsize, str(eer)))
+            
             st=time.time()
             status = myDD('/dev/zero', dev, \
                            long(skip)*blocksize,blocksize,\
@@ -492,8 +503,8 @@ if __name__ == '__main__':
 
     import getopt
 
-    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:c:e:r:f:l:omwh",\
-           ["device","skip","testcount","iosize","blocksize",\
+    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:z:c:e:r:f:l:omwh",\
+           ["device","skip","testcount","iosize","blocksize", "sndbufsize"\
             "write","old","method","help","lowio", "session", "datarate",
             "file"])
 
@@ -508,6 +519,8 @@ if __name__ == '__main__':
             iosize = int(v)
         if o in ("-b","--blocksize"):
             blocksize = int(v)
+        if o in ("-z","--sndbufsize"):
+            tcpsndbuf = int(v)
         if o in ("-o","--old"):
             old = 1
         if o in ("-m","--method"):
@@ -546,7 +559,7 @@ if __name__ == '__main__':
     elif Test == 'write':
         if dev[0:4].lower() == 'http':
             print "To test writing to a remote NGAS disk"
-            bspeed = writeTestHTTP(dev, skip, testcount, iosize, blocksize)
+            bspeed = writeTestHTTP(dev, skip, testcount, iosize, blocksize, sndbufsize = tcpsndbuf)
         elif dev[0:4] == '/dev':
 
             # All the rest here just to make sure that there
