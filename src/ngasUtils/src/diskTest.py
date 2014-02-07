@@ -28,7 +28,7 @@
 
 import time, pickle
 import commands
-import sys,re, os, socket, traceback, datetime, mmap
+import sys,re, os, socket, traceback, datetime, mmap, threading
 import base64, glob
 
 Test = 'read'           # default test is readTest
@@ -53,6 +53,7 @@ NGAMS_HTTP_SUCCESS = 200
 NGAMS_HTTP_POST = 'POST'
 one_mb = 1024. ** 2
 DEFAULT_FNM = 'bspeed.pkl'
+parallel_stream = False
 
 def usage():
     """
@@ -172,7 +173,7 @@ def readTest(dev,skip,testcount,iosize,blocksize):
         skip =skip + iocount
         return status
 
-def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, sndbufsize = None):
+def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, sndbufsize = None, parallel = False):
     """
     This is actually running the HTTP-based remote write test.
     It will read blocks of zeroes from /dev/zero and
@@ -207,6 +208,10 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, snd
         sessionId = dt.strftime('%Y%m%dT%H%M%S')
 
     import httplib
+    
+    if (parallel):
+        tst = time.time()
+        myDDThreads = []
 
     for ii in range(testcount):
         st=time.time()
@@ -239,30 +244,49 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, snd
                 except Exception, eer:
                     print('Fail to set TCP SNDBUF to %d: %s' % (sndbufsize, str(eer)))
             
-            st=time.time()
-            status = myDD('/dev/zero', dev, \
-                           long(skip)*blocksize,blocksize,\
-                           iocount, httpobj = http)
+            if (not parallel):
+                st=time.time()
+                status = myDD('/dev/zero', dev, \
+                               long(skip)*blocksize,blocksize,\
+                               iocount, httpobj = http)
+            else:
+                #ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0, httpobj=None
+                args = ('/dev/zero', dev, \
+                               long(skip)*blocksize,blocksize,\
+                               iocount, 0, http)
+                thrdName = 'myDDThrd_%d' % ii
+                ddThrRef = threading.Thread(None, myDD, thrdName, args) 
+                ddThrRef.setDaemon(0)
+                ddThrRef.start()
+                myDDThreads.append(ddThrRef)
+                
         except Exception, e:
             ex = str(e) + traceback.format_exc()
             print ex
             raise e
         finally:
-            if (http):
-                try:
-                    http.close() # this may fail?
-                finally:
-                    del http
+            if (not parallel):
+                if (http):
+                    try:
+                        http.close() # this may fail?
+                    finally:
+                        del http
+        if (not parallel):
+            elapsed = time.time()-st
+            print 'Throughput: %3.2f MB/s (%5.2f s)' % \
+                  (iosize/elapsed/1024./1024., elapsed)
+            bspeed += status[0]
+            cspeed += status[1]
+            tspeed += status[2]
+    
+    if (parallel):
+        for dtr in myDDThreads:
+            dtr.join()
+        telapsed = time.time() - tst
+        print 'Total throughput: %3.2f MB/s (%5.2f s)' % \
+              (iosize * testcount /telapsed/1024./1024., telapsed)
 
-        elapsed = time.time()-st
-        print 'Throughput: %3.2f MB/s (%5.2f s)' % \
-              (iosize/elapsed/1024./1024., elapsed)
-        bspeed += status[0]
-        cspeed += status[1]
-        tspeed += status[2]
-        status = (bspeed, cspeed, tspeed)
-
-    return status
+    return (bspeed, cspeed, tspeed)
 
 def writeTestDD(dev,skip,testcount,iosize,blocksize):
     """
@@ -411,7 +435,7 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
                 else:
                     out = open(ofil,'w')
                     out.seek(seek)
-        except:
+        except Exception, ex:
             status = 255
             out.close()
             return status
@@ -503,9 +527,9 @@ if __name__ == '__main__':
 
     import getopt
 
-    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:z:c:e:r:f:l:omwh",\
+    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:z:c:e:r:f:l:ompwh",\
            ["device","skip","testcount","iosize","blocksize", "sndbufsize"\
-            "write","old","method","help","lowio", "session", "datarate",
+            "write","old","method","parallel","help","lowio", "session", "datarate",
             "file"])
 
     for o,v in opts:
@@ -525,6 +549,8 @@ if __name__ == '__main__':
             old = 1
         if o in ("-m","--method"):
             method = 'myDD'
+        if o in ("-p","--parallel"):
+            parallel_stream = True
         if o in ("-w","--write"):
             Test = 'write'
         if o in ("-l", "--lowio"):
@@ -559,7 +585,7 @@ if __name__ == '__main__':
     elif Test == 'write':
         if dev[0:4].lower() == 'http':
             print "To test writing to a remote NGAS disk"
-            bspeed = writeTestHTTP(dev, skip, testcount, iosize, blocksize, sndbufsize = tcpsndbuf)
+            bspeed = writeTestHTTP(dev, skip, testcount, iosize, blocksize, sndbufsize = tcpsndbuf, parallel = parallel_stream)
         elif dev[0:4] == '/dev':
 
             # All the rest here just to make sure that there
