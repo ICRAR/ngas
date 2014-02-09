@@ -724,114 +724,123 @@ def _deliveryThread(srvObj,
             # But if the target is an NGAS server and the authentication is on, the target must have set a user named "ngas-int"
             authHdr = srvObj.getCfg().getAuthHttpHdrVal(user = NGAMS_HTTP_INT_AUTH_USER)
             fileInfoObjHdr = None
-            if (subscrObj.getUrl().upper().endswith('/' + NGAMS_REARCHIVE_CMD) and diskId):
-                try:
-                    fileInfoObj = ngamsFileInfo.ngamsFileInfo().read(srvObj.getDb(), fileId, fileVersion, diskId)
-                    fileInfoObjHdr = base64.b64encode(fileInfoObj.genXml().toxml())
-                except Exception, e12:
-                    warning('%s - Fail to obtain fileInfo from DB: fileId/version/diskId - %s / %d / %s' % (str(e12), fileId, fileVersion, diskId))
-            updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, -1)
-            st = time.time()
-            try:
-                stageFile(srvObj, filename)
-                reply, msg, hdrs, data = \
-                       ngamsLib.httpPostUrl(subscrObj.getUrl(), fileMimeType,
-                                            contDisp, filename, "FILE",
-                                            blockSize=\
-                                            srvObj.getCfg().getBlockSize(),
-                                            suspTime = suspenTime,
-                                            authHdrVal = authHdr,
-                                            fileInfoHdr = fileInfoObjHdr,
-                                            sendBuffer = srvObj.getCfg().getArchiveSndBufSize())
-                if (data.strip() != ""):
-                    stat.clear().unpackXmlDoc(data)
-                else:
-                    # TODO: For the moment assume success in case no
-                    #       exception was thrown.
-                    stat.clear().setStatus(NGAMS_SUCCESS)
-            except Exception, e:
-                ex = str(e)
-                trace_msg = traceback.format_exc() 
-            if ((ex != "") or (reply != NGAMS_HTTP_SUCCESS) or
-                (stat.getStatus() == NGAMS_FAILURE)):
-                # If an error occurred during data delivery, we should not update
-                # the Subscription Status table for this Subscriber, but should
-                # instead make an entry in the Subscription Back-Log Table
-                # (if the file is not an already back log buffered file, which
-                # was attempted re-posted).                
-                errMsg = "Error occurred while delivering file: " + baseName +\
-                         "/" + str(fileVersion) +\
-                         " - to Subscriber with ID/url: " + subscrObj.getId() + "/" + subscrObj.getUrl() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]"
-                if (ex != ""): errMsg += " Exception: " + ex + trace_msg + "."
-                if (stat.getMessage() != ""):
-                    errMsg += " Message: " + stat.getMessage()
-                _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
-                updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 1, ex + stat.getMessage())
-                warning(errMsg)
-                if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
-                    # remove bl record from the dict
-                    if (srvObj._subscrBlScheduledDic.has_key(subscrbId)):
-                        k = _fileKey(fileId, fileVersion)
-                        srvObj._subscrBlScheduledDic_Sem.acquire()                    
-                        try:
-                            if (srvObj._subscrBlScheduledDic[subscrbId].has_key(k)):
-                                del srvObj._subscrBlScheduledDic[subscrbId][k]
-                        finally:
-                            srvObj._subscrBlScheduledDic_Sem.release()
-            else:
-                howlong = time.time() - st
-                fileSize = getFileSize(filename)
-                transfer_rate = '%.0f Bytes/s' % (fileSize / howlong)
-                updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 0, transfer_rate)
-                info(3,"File: " + baseName + "/" + str(fileVersion) +\
-                     " - delivered to Subscriber with ID: " + subscrObj.getId() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]")
-                if (srvObj.getCachingActive()):                   
-                    fkey = fileId + "/" + str(fileVersion)
-                    fileDeliveryCountDic_Sem.acquire()
+            urlList = subscrObj.getUrlList()
+            urlListLen = len(urlList)
+            for udx in range(urlListLen):
+                sendUrl = urlList[udx]
+                if (sendUrl.upper().endswith('/' + NGAMS_REARCHIVE_CMD) and diskId):
                     try:
-                        if (fileDeliveryCountDic.has_key(fkey)):
-                            fileDeliveryCountDic[fkey] -= 1
-                            if (fileDeliveryCountDic[fkey] == 0):    
-                                _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
-                                ff = fileDeliveryCountDic.pop(fkey)
-                                del ff
-                        else:
-                            if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
-                                # it is possible that backlogged files cannot find an entry in the reference count dic - 
-                                # e.g. when the server is restarted, refcount dic is empty. Later on, back-logged files are queued for delivery. 
-                                # but they did not create entries in refcount dic when they are queued
-                                _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
-                            else:
-                                alert("Fail to find %s/%d in the fileDeliveryCountDic" % (fileId, fileVersion))
-                    finally:
-                        fileDeliveryCountDic_Sem.release()
-               
-                
-                # Update the Subscriber Status to avoid that this file
-                # gets delivered again.
+                        fileInfoObj = ngamsFileInfo.ngamsFileInfo().read(srvObj.getDb(), fileId, fileVersion, diskId)
+                        fileInfoObjHdr = base64.b64encode(fileInfoObj.genXml().toxml())
+                    except Exception, e12:
+                        warning('%s - Fail to obtain fileInfo from DB: fileId/version/diskId - %s / %d / %s' % (str(e12), fileId, fileVersion, diskId))
+                updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, -1)
+                st = time.time()
                 try:
-                    subscrObj.setLastFileIngDate(fileIngDate)
-                    srvObj.getDb().updateSubscrStatus(subscrObj.getId(), fileIngDate)
+                    stageFile(srvObj, filename)
+                    reply, msg, hdrs, data = \
+                           ngamsLib.httpPostUrl(sendUrl, fileMimeType,
+                                                contDisp, filename, "FILE",
+                                                blockSize=\
+                                                srvObj.getCfg().getBlockSize(),
+                                                suspTime = suspenTime,
+                                                authHdrVal = authHdr,
+                                                fileInfoHdr = fileInfoObjHdr,
+                                                sendBuffer = srvObj.getCfg().getArchiveSndBufSize())
+                    if (data.strip() != ""):
+                        stat.clear().unpackXmlDoc(data)
+                    else:
+                        # TODO: For the moment assume success in case no
+                        #       exception was thrown.
+                        stat.clear().setStatus(NGAMS_SUCCESS)
                 except Exception, e:
-                    # continue with warning message. this means the database (i.e. last_ingestion_date) is not synchronised for this file, 
-                    # but at least remaining files can be delivered continuously, the database may be back in sync upon delivering remaining files 
-                    errMsg = "Error occurred during update the ngas_subscriber table " +\
-                         "_devliveryThread [" + str(thread.get_ident()) + "] Exception: " + str(e)
-                    alert(errMsg)
+                    ex = str(e)
+                    trace_msg = traceback.format_exc() 
+                if ((ex != "") or (reply != NGAMS_HTTP_SUCCESS) or
+                    (stat.getStatus() == NGAMS_FAILURE)):
     
-                # If the file is back-log buffered, we check if we can delete it.
-                if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
-                    srvObj._subscrBlScheduledDic_Sem.acquire()
-                    try: # the following block must be atomic
-                        _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,
-                                          fileVersion, filename)
+                    if (udx < urlListLen - 1): #try the next url
+                        continue           
+                    # If an error occurred during data delivery, we should not update
+                    # the Subscription Status table for this Subscriber, but should
+                    # instead make an entry in the Subscription Back-Log Table
+                    # (if the file is not an already back log buffered file, which
+                    # was attempted re-posted). 
+                    errMsg = "Error occurred while delivering file: " + baseName +\
+                             "/" + str(fileVersion) +\
+                             " - to Subscriber with ID/url: " + subscrObj.getId() + "/" + subscrObj.getUrl() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]"
+                    if (ex != ""): errMsg += " Exception: " + ex + trace_msg + "."
+                    if (stat.getMessage() != ""):
+                        errMsg += " Message: " + stat.getMessage()
+                    _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
+                    updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 1, ex + stat.getMessage())
+                    warning(errMsg)
+                    if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
+                        # remove bl record from the dict
                         if (srvObj._subscrBlScheduledDic.has_key(subscrbId)):
                             k = _fileKey(fileId, fileVersion)
-                            if (srvObj._subscrBlScheduledDic[subscrbId].has_key(k)):
-                                del srvObj._subscrBlScheduledDic[subscrbId][k]
-                    finally:
-                        srvObj._subscrBlScheduledDic_Sem.release()                    
+                            srvObj._subscrBlScheduledDic_Sem.acquire()                    
+                            try:
+                                if (srvObj._subscrBlScheduledDic[subscrbId].has_key(k)):
+                                    del srvObj._subscrBlScheduledDic[subscrbId][k]
+                            finally:
+                                srvObj._subscrBlScheduledDic_Sem.release()
                     
+                else:
+                    howlong = time.time() - st
+                    fileSize = getFileSize(filename)
+                    transfer_rate = '%.0f Bytes/s' % (fileSize / howlong)
+                    updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 0, transfer_rate)
+                    info(3,"File: " + baseName + "/" + str(fileVersion) +\
+                         " - delivered to Subscriber with ID: " + subscrObj.getId() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]")
+                    if (srvObj.getCachingActive()):                   
+                        fkey = fileId + "/" + str(fileVersion)
+                        fileDeliveryCountDic_Sem.acquire()
+                        try:
+                            if (fileDeliveryCountDic.has_key(fkey)):
+                                fileDeliveryCountDic[fkey] -= 1
+                                if (fileDeliveryCountDic[fkey] == 0):    
+                                    _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
+                                    ff = fileDeliveryCountDic.pop(fkey)
+                                    del ff
+                            else:
+                                if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
+                                    # it is possible that backlogged files cannot find an entry in the reference count dic - 
+                                    # e.g. when the server is restarted, refcount dic is empty. Later on, back-logged files are queued for delivery. 
+                                    # but they did not create entries in refcount dic when they are queued
+                                    _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
+                                else:
+                                    alert("Fail to find %s/%d in the fileDeliveryCountDic" % (fileId, fileVersion))
+                        finally:
+                            fileDeliveryCountDic_Sem.release()
+                   
+                    
+                    # Update the Subscriber Status to avoid that this file
+                    # gets delivered again.
+                    try:
+                        subscrObj.setLastFileIngDate(fileIngDate)
+                        srvObj.getDb().updateSubscrStatus(subscrObj.getId(), fileIngDate)
+                    except Exception, e:
+                        # continue with warning message. this means the database (i.e. last_ingestion_date) is not synchronised for this file, 
+                        # but at least remaining files can be delivered continuously, the database may be back in sync upon delivering remaining files 
+                        errMsg = "Error occurred during update the ngas_subscriber table " +\
+                             "_devliveryThread [" + str(thread.get_ident()) + "] Exception: " + str(e)
+                        alert(errMsg)
+        
+                    # If the file is back-log buffered, we check if we can delete it.
+                    if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
+                        srvObj._subscrBlScheduledDic_Sem.acquire()
+                        try: # the following block must be atomic
+                            _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId,
+                                              fileVersion, filename)
+                            if (srvObj._subscrBlScheduledDic.has_key(subscrbId)):
+                                k = _fileKey(fileId, fileVersion)
+                                if (srvObj._subscrBlScheduledDic[subscrbId].has_key(k)):
+                                    del srvObj._subscrBlScheduledDic[subscrbId][k]
+                        finally:
+                            srvObj._subscrBlScheduledDic_Sem.release() 
+                    break # do not try the next url after success                   
+                        
             srvObj._subscrDeliveryFileDic[tname] = None
         except Exception, be:
             if (str(be).find("_STOP_DELIVERY_THREAD_") != -1): 

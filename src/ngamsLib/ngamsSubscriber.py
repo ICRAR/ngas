@@ -36,6 +36,7 @@ the complete set of Subscribers.
 import xml.dom.minidom
 
 import pcc, PccUtTime
+import random
 
 from ngams import *
 
@@ -73,6 +74,8 @@ class ngamsSubscriber:
                setLastFileIngDate(lastFileIngDate)
         
         self.setConcurrentThreads(1) # by default only uses 1 thread for each subscriber
+        self._AND_DELIMIT = '____' # urllib.quote('&&')
+        self._OR_DELIMIT = '----' # urllib.quote('||')
 
 
     def setHostId(self,
@@ -189,6 +192,24 @@ class ngamsSubscriber:
         Returns:    Subscriber URL (string).
         """
         return self.__url
+    
+    def getUrlList(self):
+        """
+        Get a list of URLs from self.__url, the order of list items depends on
+        the logical relationships between these URLs
+        for 'AND' (i.e. &&), the original order must be maintained
+        for 'OR' (i.e. ||), the order must be randomised
+        """
+        url = self.getUrl()
+        if (url.find(self._AND_DELIMIT) > -1):
+            urlList = url.split(self._AND_DELIMIT)    
+        elif (url.find(self._OR_DELIMIT) > -1):
+            urlList = url.split(self._OR_DELIMIT)
+            random.shuffle(urlList)
+        else:
+            urlList = [url]
+        
+        return urlList
 
 
     def setStartDate(self,

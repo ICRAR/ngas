@@ -54,7 +54,8 @@ ngasB_port = 7778
 ngasB_url = 'http://%s:%d/QARCHIVE' % (ngasB_host, ngasB_port)
 #ngasB_url = 'houdt://%s:%d/QARCHIVE' % (ngasB_host, ngasB_port)
 
-ngasC_host = 'macbook46.icrar.org'
+#ngasC_host = 'macbook46.icrar.org'
+ngasC_host = '127.0.0.1'
 ngasC_port = 7779
 ngasC_url = 'http://%s:%d/QARCHIVE' % (ngasC_host, ngasC_port)
 
@@ -471,6 +472,51 @@ def TestCase06(num_file_per_client, num_clients, interval = 1, base_name = None,
         
     _unSubscribe(clientA, 'A-to-B')
 
+def TestCase12(num_file_per_client, num_clients, interval = 4, base_name = None):
+    if (num_file_per_client < 1):
+        raise Exception("each client at least archives one file!")
+    
+    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url + '----' + ngasC_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B_OR_C'], ['priority', 1]])
+    msg = stat.getMessage()
+    if (msg != 'Handled SUBSCRIBE command'):
+        raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
+    
+    num_files = num_file_per_client * num_clients
+    if (base_name == None):
+        print 'Creating %d dummy files ...' % num_files
+        base_name = createTmpFiles(num_files)
+    
+    last_fname = '%s-%s%s' % (base_name, num_files - 1, file_ext)
+    
+    file_list = []
+    for client in range(num_clients):
+        file_list.append([])
+        
+    for num in range(num_files):
+        fileUri = '%s/%s-%s%s' % (tmpDir, base_name, str(num), file_ext)
+        file_list[num % num_clients].append(fileUri)
+        
+    deliveryThreads = []
+    my_barrier = barrier(num_clients)
+    for clientIdx in range(num_clients):
+        args = (clientA, file_list[clientIdx], interval, clientIdx, my_barrier)
+        deliveryThrRef = threading.Thread(None, _archiveThread, 'ArchiveThrd' + str(clientIdx), args)
+        deliveryThrRef.setDaemon(0)
+        deliveryThrRef.start()
+        deliveryThreads.append(deliveryThrRef)
+    
+    print 'Wait until all archive threads are done'
+    _waitUntilThreadsExit(deliveryThreads)
+    
+    tt = 'N'
+    while (tt != 'Y' and tt != 'y'):
+        tt = raw_input("\nAre we ready to verify both ngas-B and ngas-C?(Y/N)\n")
+        
+    verifyCase(base_name, num_files, clientB, False)
+    verifyCase(base_name, num_files, clientC, True)
+    
+    _unSubscribe(clientA, 'A-to-B_OR_C')
+
 def TestCase01(num_file_per_client, num_clients, interval = 4, base_name = None, 
                wait_for_C_files = True, 
                wait_for_C_restart = False,
@@ -735,7 +781,7 @@ def verifyCase(base_name, num_files, pclient, clean_on_complete = True):
 if __name__ == '__main__':
     #TestCase02(16, base_name = '1358203679')
     #TestCase02(16)
-    TestCase01(10, 2, interval = 3)
+    #TestCase01(10, 2, interval = 3)
     #TestCase04(10, 3, interval = 3)
     #TestCase05(10, 3, interval = 3)
     #TestCase03(16)
@@ -745,3 +791,4 @@ if __name__ == '__main__':
     #TestCase09(6, 3)
     #TestCase10(8,3)
     #TestCase11(7,3)
+    TestCase12(10, 2, interval = 3)
