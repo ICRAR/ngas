@@ -305,7 +305,10 @@ def _checkIfDeliverFile(srvObj,
     
     deliverFile         = 0
     lastDelivery        = deliveredStatus[subscrObj.getId()]
-    lastSchedule        = scheduledStatus[subscrObj.getId()]
+    if (scheduledStatus.has_key(subscrObj.getId())):
+        lastSchedule = scheduledStatus[subscrObj.getId()]
+    else:
+        lastSchedule = None    
 
     fileInfo            = _convertFileInfo(fileInfo)
     fileId              = fileInfo[FILE_ID]
