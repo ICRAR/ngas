@@ -259,8 +259,8 @@ class ngamsSubscriber:
         if (num_threads == None or num_threads == ''):
             return self
         num_threads = int(num_threads)
-        if (num_threads > 0 and num_threads < 101):
-            self.__concurthrds = num_threads
+        #if (num_threads > 0 and num_threads < 101):
+        self.__concurthrds = num_threads
         return self
     
     def getConcurrentThreads(self):
