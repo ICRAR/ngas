@@ -394,9 +394,11 @@ def _convertFileInfo(fileInfo):
         locFileInfo = 7 * [None]
         locFileInfo[FILE_ID]   = fileInfo[ngamsDb.ngamsDbCore.SUM2_FILE_ID]
         locFileInfo[FILE_NM]   = \
-                             os.path.normpath(fileInfo[ngamsDb.ngamsDbCore.SUM2_MT_PT] +\
-                                              os.sep +\
-                                              fileInfo[ngamsDb.ngamsDbCore.SUM2_FILENAME])
+                                 os.path.normpath(fileInfo[ngamsDb.ngamsDbCore.SUM2_MT_PT] +\
+                                                  os.sep +\
+                                                  fileInfo[ngamsDb.ngamsDbCore.SUM2_FILENAME])
+        #info(3, "\n\n** locFileInfo[FILE_NM] =% s  \n fileInfo[ngamsDb.ngamsDbCore.SUM2_FILENAME] = %s \n\n**" % (locFileInfo[FILE_NM], fileInfo[ngamsDb.ngamsDbCore.SUM2_FILENAME]))
+        
         locFileInfo[FILE_VER]  = fileInfo[ngamsDb.ngamsDbCore.SUM2_VERSION]
         locFileInfo[FILE_DATE] = fileInfo[ngamsDb.ngamsDbCore.SUM2_ING_DATE]
         locFileInfo[FILE_MIME] = fileInfo[ngamsDb.ngamsDbCore.SUM2_MIME_TYPE]
@@ -1269,13 +1271,14 @@ def subscriptionThread(srvObj,
             # Then deliver the data (if there is something to deliver).
             # Data Delivery Thread is spawned off per Subscriber, which should
             # receive data.        
-            
-            for subscrId in deliverReqDic.keys():
-                deliverReqDic[subscrId].sort(_compFctIngDate)
-                #get the ingest_date of the last file in the queue (list)         
-                lastScheduleDate = _convertFileInfo(deliverReqDic[subscrId][-1])[FILE_DATE]
-                if (lastScheduleDate > scheduledStatus[subscrId]):
-                    scheduledStatus[subscrId] = lastScheduleDate 
+            for subscrId in srvObj.getSubscriberDic().keys():
+            #for subscrId in deliverReqDic.keys():
+                if (deliverReqDic.has_key(subscrId)):
+                    deliverReqDic[subscrId].sort(_compFctIngDate)
+                    #get the ingest_date of the last file in the queue (list)         
+                    lastScheduleDate = _convertFileInfo(deliverReqDic[subscrId][-1])[FILE_DATE]
+                    if (lastScheduleDate > scheduledStatus[subscrId]):
+                        scheduledStatus[subscrId] = lastScheduleDate 
                 
                 """
                 This is not used since Priority Queue will sort the list 
@@ -1301,7 +1304,10 @@ def subscriptionThread(srvObj,
                     quChunks = buildSubscrQueue(srvObj, subscrId, dataMoverOnly)
                     queueDict[subscrId] = quChunks
  
-                allFiles = deliverReqDic[subscrId]         
+                if (deliverReqDic.has_key(subscrId)):
+                    allFiles = deliverReqDic[subscrId]         
+                else:
+                    allFiles = []
                 #if (srvObj.getSubcrBackLogCount() > 0):
                 info(3, 'Put %d new files in the queue for subscriber %s' %(len(allFiles), subscrId))        
                 for jdx in range(len(allFiles)):
