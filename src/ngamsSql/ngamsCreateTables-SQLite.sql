@@ -90,6 +90,7 @@ create table ngas_files
   checksum_plugin        varchar(64)    null,
   file_status            char(8)        default '00000000',
   creation_date          varchar(23)    null,
+  io_time                numeric(20, 0) default -1,
   constraint file_idx primary key(file_id,file_version,disk_id)
 );
 
@@ -204,7 +205,7 @@ create table ngas_subscr_queue
 	file_name      		varchar(255)  	not null,
 	ingestion_date	    varchar(23)    	not null,
 	format         		varchar(32)   	not null,
-	status				int				default -2, 
+	status				int				default -2,
 	status_date      	varchar(23)    	not null,
 	comment             varchar(255)	null,
 	constraint subscr_queue_idx	primary key(subscr_id,file_id,file_version,disk_id)

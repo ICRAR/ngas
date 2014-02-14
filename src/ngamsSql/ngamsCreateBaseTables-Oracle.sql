@@ -108,8 +108,9 @@ Create table ngas.ngas_files
 	checksum	        varchar(64)	null,
 	checksum_plugin         varchar(64)	null,
 	file_status             char(8)         default '00000000',
-        creation_date           varchar(23)     null,
+    creation_date           varchar(23)     null,
 	constraint file_idx primary key(file_id,file_version,disk_id)
+    io_time                numeric(20, 0) default -1,
 );
 
 grant insert, update, delete, select on ngas.ngas_files to ngas;
@@ -186,7 +187,7 @@ Create table ngas.ngas_subscr_back_log
 	subscr_id			varchar(255)	not null,
 	subscr_url			varchar(255)	not null,
 	file_id				varchar(64)	not null,
-	file_name			varchar(255)	not null,	
+	file_name			varchar(255)	not null,
 	file_version            	int             not null,
 	ingestion_date                  varchar(23)     not null,
 	format                          varchar(32)	not null

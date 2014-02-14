@@ -110,7 +110,9 @@ _ngasFilesDef = [["nf.disk_id",                "NGAS_FILES_DISK_ID"],
                  ["nf.checksum",               "NGAS_FILES_CHECKSUM"],
                  ["nf.checksum_plugin",        "NGAS_FILES_CHECKSUM_PI"],
                  ["nf.file_status",            "NGAS_FILES_FILE_STATUS"],
-                 ["nf.creation_date",          "NGAS_FILES_CREATION_DATE"]]
+                 ["nf.creation_date",          "NGAS_FILES_CREATION_DATE"],
+                 ["nf.io_time",                "NGAS_FILES_IO_TIME"],
+                 ]
 _ngasFilesCols = ""
 _ngasFilesNameMap = {}
 idx = 0
@@ -170,7 +172,7 @@ for colDef in _ngasHostsDef:
     exec(colDef[1] + "=%d" % idx)
     colName = colDef[0].split(".")[1]
     _ngasHostsNameMap[idx] = colName
-    _ngasHostsNameMap[colName] = idx    
+    _ngasHostsNameMap[colName] = idx
     idx += 1
 
 def getNgasHostsCols():
@@ -222,7 +224,7 @@ for colDef in _ngasSubscribersDef:
     exec(colDef[1] + "=%d" % idx)
     colName = colDef[0].split(".")[1]
     _ngasSubscriberNameMap[idx] = colName
-    _ngasSubscriberNameMap[colName] = idx    
+    _ngasSubscriberNameMap[colName] = idx
     idx += 1
 
 
@@ -342,7 +344,7 @@ for colDef in _ngasMirQueueDef:
     exec(colDef[1] + "=%d" % idx)
     colName = colDef[0].split(".")[1]
     _ngasMirQueueNamesMap[idx] = colName
-    _ngasMirQueueNamesMap[colName] = idx    
+    _ngasMirQueueNamesMap[colName] = idx
     idx += 1
 
 
@@ -401,7 +403,7 @@ class ngamsDbTimer:
         self.__dbConObj = dbConObj
         self.__query = query
 
-        
+
     def __del__(self):
         """
         Destructor. Stop the timer and update the global timer in ngamsDbBase.
@@ -420,7 +422,7 @@ class ngamsDbTimer:
 def cleanSrvList(srvList):
     """
     Clean the server list given. This means:
-    
+
     - Removing irrelevant characters.
     - Sorting the servers.
 
@@ -429,7 +431,7 @@ def cleanSrvList(srvList):
     Returns:   Return the cleaned up list (string).
     """
     T = TRACE()
-    
+
     # Clean up the list, we ensure the servers are always listed in
     # alphabetical order.
     try:
@@ -466,16 +468,16 @@ class ngamsDbCore:
         server:              DB server name (string).
 
         db:                  DB name (string).
-        
+
         user:                DB user (string).
-        
+
         password:            DB password (string).
 
         createSnapshot:      Indicates if a DB Snapshot (temporary snapshot
                              files) should be created (integer/0|1).
 
         interface:           NG/AMS DB Interface Plug-In (string).
-        
+
         tmpDir:              Name of NGAS Temporary Directory (string).
 
         maxRetries:          Max. number of retries in case of failure
@@ -489,7 +491,7 @@ class ngamsDbCore:
         multipleConnections: Allow multiple connections or only one (boolean).
         """
         T = TRACE()
-        
+
         self.__dbDrv = None
 
         # Semaphore to protect critical DB interaction.
@@ -519,13 +521,13 @@ class ngamsDbCore:
         # Verification/Auto Recover.
         self.__dbVerify      = 1
         self.__dbAutoRecover = 0
-       
+
         self.__dbTmpDir      = tmpDir
 
         self.__maxRetries    = maxRetries
         self.__retryWait     = retryWait
-    
-  
+
+
     def takeDbSem(self):
         """
         Acquire access to a critical DB interaction.
@@ -548,7 +550,7 @@ class ngamsDbCore:
                 info(5, "Releasing DB Access Semaphore")
             self.__dbSem.release()
 
-        
+
     def takeGlobalDbSem(self):
         """
         Acquire access to a critical, global DB interaction.
@@ -588,7 +590,7 @@ class ngamsDbCore:
         """
         self.__dbAccessTime += float(dbAccessTime)
         return self
- 
+
 
     def getDbTime(self):
         """
@@ -671,7 +673,7 @@ class ngamsDbCore:
         self.__dbAutoRecover = int(autoRecover)
         return self
 
- 
+
     def getDbAutoRecover(self):
         """
         Get value of DB Auto Recover Flag.
@@ -680,7 +682,7 @@ class ngamsDbCore:
         """
         return self.__dbAutoRecover
 
-  
+
     def setDbTmpDir(self,
                     tmpDir):
         """
@@ -724,9 +726,9 @@ class ngamsDbCore:
         server:       DB server name (string).
 
         db:           DB name (string).
-        
+
         user:         DB user (string).
-        
+
         password:     DB password (base 64 encoded) (string).
 
         interface:    NG/AMS DB Interface Plug-In (string).
@@ -758,9 +760,9 @@ class ngamsDbCore:
         server:       DB server name (string).
 
         db:           DB name (string).
-        
+
         user:         DB user (string).
-        
+
         password:     DB password (base 64 encoded) (string).
 
         interface:    NG/AMS DB Interface Plug-In (string).
@@ -770,7 +772,7 @@ class ngamsDbCore:
         Returns:      Void.
         """
         T = TRACE()
-        
+
         try:
             if (self.__dbDrv != None):
                 del self.__dbDrv
@@ -789,7 +791,7 @@ class ngamsDbCore:
                        "NG/AMS:" + getThreadName(), self.__parameters)
             info(4, "Creating instance of DB Driver Interface/connecting ...")
             info(5, "Command to create DB connection object: %s" % creStat)
-            self.__dbDrv = eval(creStat)            
+            self.__dbDrv = eval(creStat)
             info(3, "DB Driver Interface ID: " + self.__dbDrv.getDriverId())
         except Exception, e:
             errMsg = genLog("NGAMS_ER_DB_COM", ["Problem setting up " +\
@@ -826,7 +828,7 @@ class ngamsDbCore:
         Returns:    Void.
         """
         T = TRACE()
-        
+
         # Perform a simply query, the ngamsDbBase.query() method will reconnect
         # automatically if the DB connection is lost
         sqlQuery = "SELECT * from ngas_hosts"
@@ -840,14 +842,14 @@ class ngamsDbCore:
         Returns:    Void.
         """
         T = TRACE()
-        
+
         try:
             self.takeDbSem()
             if (self.__dbDrv): self.__dbDrv.close()
             self.relDbSem()
         except Exception, e:
             self.relDbSem()
-            raise Exception, e            
+            raise Exception, e
 
 
     def addDbChangeEvt(self,
@@ -883,7 +885,7 @@ class ngamsDbCore:
             return self
         except Exception, e:
             self.relDbSem()
-            raise Exception, e     
+            raise Exception, e
 
 
     def query(self,
@@ -976,7 +978,7 @@ class ngamsDbCore:
                                 ["Error: connection is not open"])
                 raise Exception, errMsg
         #####################################################################
-            
+
         res = []
         startTime = time.time()
         try:
@@ -1058,12 +1060,12 @@ class ngamsDbCore:
             raise Exception, errMsg
         return curObj
 
-    
+
     def getNgasFilesMap(self):
         """
         Return the reference to the map (dictionary) containing the mapping
         between the column name and index of the ngas_files table.
-        
+
         Returns:    Reference to NGAS Files Table name map (dictionary).
         """
         return _ngasFilesNameMap
@@ -1082,22 +1084,22 @@ class ngamsDbCore:
 
         The actual conversion must be done by the loaded NGAMS DB Driver
         Plug-In.
-        
+
         timeStamp:    Timestamp (string|integer|float).
 
         Returns:      Timestamp in format, which can be written into
-                      'datetime' column of the DBMS (string).       
+                      'datetime' column of the DBMS (string).
         """
         return self.__dbDrv.convertTimeStamp(timeStamp)
 
-    
+
     def convertTimeStampToMx(self,
                              timeStamp):
         """
         Converts an ISO 8601 timestamp into an mx.DateTime object.
-        
+
         timeStamp:  ISO 8601 datetime string (string).
-        
+
         Returns:    Date time object (mx.DateTime).
         """
         T = TRACE()
@@ -1162,9 +1164,9 @@ class ngamsDbCore:
         """
         Get the server list ID associated with the server list. If not defined,
         a new can be allocated in the NGAS Servers Table automatically.
-        
+
         srvList:     Server list ('<host>:<port>,...') (string).
-        
+
         autoAlloc:   If True and no entry was found, a new entry is
                      automatically created for that server list (boolean).
 
