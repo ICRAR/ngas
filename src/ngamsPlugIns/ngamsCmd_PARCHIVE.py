@@ -39,6 +39,7 @@ from ngams import *
 import ngamsLib, ngamsStatus, ngamsHighLevelLib, ngamsDiskInfo
 
 import httplib, urllib2
+import binascii
 
 def processHttpReply(http, basename, url):
     """
@@ -80,11 +81,13 @@ def processHttpReply(http, basename, url):
         if (stat.getMessage() != ""):
             errMsg += " Message: " + stat.getMessage()
         warning(errMsg)
+        raise Exception, errMsg
 
 def buildHttpClient(url,
                     mimeType,
                     contentDisp,
-                    contentLength):
+                    contentLength,
+                    checksum = None):
     """
     construct the http client which sends file data to the remote next url
     
@@ -109,6 +112,10 @@ def buildHttpClient(url,
     
     info(4,"HTTP Header: %s: %s" % ("Host", getHostName()))
     http.putheader("Host", getHostName())
+        
+    if (checksum):
+        http.putheader(NGAMS_HTTP_HDR_CHECKSUM, checksum)
+        
     http.endheaders()
     info(4,"HTTP header sent")
     
@@ -125,7 +132,8 @@ def buildHttpClient(url,
 def saveFromHttpToHttp(reqPropsObj,
                        basename,
                        blockSize,
-                       reportHost = None):
+                       reportHost = None,
+                       checkCRC = 0):
     """
     Save the data available on an HTTP channel into the given file.
     
@@ -185,7 +193,7 @@ def saveFromHttpToHttp(reqPropsObj,
             info(3,"Archive Push/Pull Request - Data size: %d" % remSize)
             sizeKnown = 1
         
-        http = buildHttpClient(nexturl, mimeType, contDisp, remSize)
+        http = buildHttpClient(nexturl, mimeType, contDisp, remSize, checksum = reqPropsObj.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM))
         
         # Receive the data.
         buf = "-"
@@ -200,6 +208,7 @@ def saveFromHttpToHttp(reqPropsObj,
         swb = 0   # number of slow write blocks
         tot_size = 0 # total number of bytes
         nfailread = 0
+        crc = 0   # initialize CRC value
         while ((remSize > 0) and ((time.time() - lastRecepTime) < 30.0)):
             if (remSize < rdSize): rdSize = remSize
             rdt = time.time()
@@ -214,6 +223,8 @@ def saveFromHttpToHttp(reqPropsObj,
             tot_size += sizeRead
 
             if (sizeRead > 0):
+                if (checkCRC):
+                    crc = binascii.crc32(buf, crc)
                 wdt = time.time()
                 http._conn.sock.sendall(buf)
                 wdt = time.time() - wdt
@@ -255,6 +266,17 @@ def saveFromHttpToHttp(reqPropsObj,
                           (reqPropsObj.getSize() - remSize)])
             raise Exception, msg
         
+        if (checkCRC):
+            checksum = reqPropsObj.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM)
+            if (checksum):
+                if (checksum != str(crc)):
+                    msg = 'Checksum error for file %s, proxy crc = %s, but remote crc = %s' % (reqPropsObj.getFileUri(), str(crc), checksum)
+                    error(msg)
+                    raise Exception, msg
+                else:
+                    info(3, "%s CRC checked, OK!" % reqPropsObj.getFileUri())
+        
+        
         processHttpReply(http, basename, nexturl)
     except Exception, err:
         if (str(err).find('Connection refused') > -1):
@@ -277,8 +299,7 @@ def saveFromHttpToHttp(reqPropsObj,
                 except Exception, s1err:
                     error('Fail to send host-down event to server %s, Exception: %s' %(reportHost, str(s1err)))
             
-        else:
-            raise err
+        raise err
     finally:
         if (http != None):
             #http.close()
@@ -337,10 +358,11 @@ def handleCmd(srvObj,
     
     blockSize = srvObj.getCfg().getBlockSize()
     jobManHost = srvObj.getCfg().getNGASJobMANHost()
+    doCRC = srvObj.getCfg().getProxyCRC()
     if (jobManHost):
-        saveFromHttpToHttp(reqPropsObj, baseName, blockSize, reportHost = jobManHost)
+        saveFromHttpToHttp(reqPropsObj, baseName, blockSize, reportHost = jobManHost, checkCRC = doCRC)
     else:
-        saveFromHttpToHttp(reqPropsObj, baseName, blockSize)
+        saveFromHttpToHttp(reqPropsObj, baseName, blockSize, checkCRC = doCRC)
     
     # Request after-math ...
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)

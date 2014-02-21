@@ -743,6 +743,11 @@ def _deliveryThread(srvObj,
                 st = time.time()
                 try:
                     stageFile(srvObj, filename)
+                    fileChecksum = None
+                    try:
+                        fileChecksum = srvObj.getDb().getFileChecksum(diskId, fileId, fileVersion)
+                    except Exception, eyy:
+                        warning('Fail to get file checksum for file %s: %s' % (fileId, str(eyy)))
                     reply, msg, hdrs, data = \
                            ngamsLib.httpPostUrl(sendUrl, fileMimeType,
                                                 contDisp, filename, "FILE",
@@ -751,7 +756,8 @@ def _deliveryThread(srvObj,
                                                 suspTime = suspenTime,
                                                 authHdrVal = authHdr,
                                                 fileInfoHdr = fileInfoObjHdr,
-                                                sendBuffer = srvObj.getCfg().getArchiveSndBufSize())
+                                                sendBuffer = srvObj.getCfg().getArchiveSndBufSize(),
+                                                checkSum = fileChecksum)
                     if (data.strip() != ""):
                         stat.clear().unpackXmlDoc(data)
                     else:

@@ -608,6 +608,31 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             if (pickleFo): pickleFo.close()
             rmFile(tmpStatFilename)
             raise e
+    
+    
+    def getFileChecksum(self, diskId, fileId, fileVersion):
+        """
+        Get the checksum for the file.
+        
+        diskId:         ID of disk hosting the file (string).
+
+        fileId:         ID of file to be deleted. No wildcards accepted
+                        (string).
+
+        fileVersion:    Version of file to delete (integer)
+
+        Returns:        checksum (string | None).
+        """
+        T = TRACE()
+        sqlQuery = "SELECT checksum FROM ngas_files WHERE file_id = '%s' AND file_version = %d AND disk_id = '%s'" % (fileId, fileVersion, diskId)
+        res = self.query(sqlQuery, ignoreEmptyRes = 0) # throw exception if an empty record
+        if (len(res[0])):
+            if (res[0][0][0] == None):
+                return None
+            else:
+                return res[0][0][0]
+        else:
+            return None
         
 
     def getIngDate(self,

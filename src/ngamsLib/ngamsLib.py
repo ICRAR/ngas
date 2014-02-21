@@ -523,7 +523,8 @@ def httpPostUrl(url,
                 authHdrVal = "",
                 dataSize = -1,
                 fileInfoHdr = None,
-                sendBuffer = None):
+                sendBuffer = None,
+                checkSum = None):
     """
     Post the the data referenced on the given URL.
 
@@ -592,6 +593,8 @@ def httpPostUrl(url,
         http.putheader("Authorization", authHdrVal)
     if (fileInfoHdr):
         http.putheader(NGAMS_HTTP_HDR_FILE_INFO, fileInfoHdr)
+    if (checkSum):
+        http.putheader(NGAMS_HTTP_HDR_CHECKSUM, checkSum)
     if (dataSource == "FILE"):
         dataSize = getFileSize(dataRef)
     elif (dataSource == "BUFFER"):

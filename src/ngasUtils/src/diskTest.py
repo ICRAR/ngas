@@ -234,6 +234,7 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, snd
             print "Content-length = %s" % str(iosize)
             http.putheader("Authorization", authHdrVal)
             http.putheader("Host", nodeId)
+            http.putheader("NGAS-File-CRC", "1533330096")
             http.endheaders()
             # send payload
             http._conn.sock.settimeout(locTimeout)

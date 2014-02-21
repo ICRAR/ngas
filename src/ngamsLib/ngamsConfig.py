@@ -859,6 +859,16 @@ class ngamsConfig:
         """
         par = "Server[1].ProxyMode"
         return getInt(par, self.getVal(par))
+    
+    def getProxyCRC(self):
+        """
+        If the proxy archive server 
+        check CRC as well
+        
+        By default, 0 (do not check CRC)
+        """
+        par = "Server[1].ProxyCRC"
+        return getInt(par, self.getVal(par), retValOnFailure = 0)
 
 
     def getArchiveUnits(self):

@@ -286,6 +286,15 @@ def saveFromHttpToFile(ngamsCfgObj,
                          [reqPropsObj.getFileUri(), reqPropsObj.getSize(),
                           (reqPropsObj.getSize() - remSize)])
             raise Exception, msg
+        
+        checksum = reqPropsObj.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM)
+        if (checksum):
+            if (checksum != str(crc)):
+                msg = 'Checksum error for file %s, local crc = %s, but remote crc = %s' % (reqPropsObj.getFileUri(), str(crc), checksum)
+                error(msg)
+                raise Exception, msg
+            else:
+                info(3, "%s CRC checked, OK!" % reqPropsObj.getFileUri())
 
         # Release disk resouce.
         if (mutexDiskAccess):

@@ -29,6 +29,7 @@
           RootDirectory="/home/chen/proj/mwa/testNGAS/NGAS" 
           PortNo="7777" 
           ProxyMode="1"
+          ProxyCRC="0"
           Simulation="0"
           SwVersion=""/>
 
