@@ -210,6 +210,7 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
         return 0
         
     if (projectId in eor_list):
+        info(3, 'File %s added' % fileId)
         return 1
     else:
         return 0

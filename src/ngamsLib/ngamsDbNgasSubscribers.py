@@ -624,8 +624,12 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         subscrId:    subscriber Id (string)
         status:      the status of current file delivery (int or None)
         """
-        sqlQuery = "SELECT a.file_id, b.mount_point || '/' || a.file_name, a.file_version, a.ingestion_date, a.format, a.disk_id " +\
-                   "FROM ngas_subscr_queue a, ngas_disks b WHERE a.subscr_id = '%s' " % subscrId
+        #sqlQuery = "SELECT a.file_id, b.mount_point || '/' || a.file_name, a.file_version, a.ingestion_date, a.format, a.disk_id " +\
+                #           "FROM ngas_subscr_queue a, ngas_disks b WHERE a.subscr_id = '%s' " % subscrId
+
+        sqlQuery = "SELECT a.file_id, a.file_name, a.file_version, a.ingestion_date, a.format, a.disk_id " +\
+                    "FROM ngas_subscr_queue a WHERE a.subscr_id = '%s' " % subscrId
+        
         if (status):
             if (type(status) is list):
                 sqlQuery += "AND ("
@@ -639,7 +643,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
             else:
                 sqlQuery += "AND a.status = %d " % status
         
-        sqlQuery += "AND a.disk_id = b.disk_id"
+        #sqlQuery += "AND a.disk_id = b.disk_id"
         
         res = self.query(sqlQuery, ignoreEmptyRes=0)
         if (res == [[]]):

@@ -23,13 +23,14 @@
   </Header>
 
   <Server Id="Server-MWA"
-          ArchiveName="MWA-ARCHIVE-VM" 
+          ArchiveName="MWA-ARCHIVE-VM"
           BlockSize="65536"
+          ArchiveRcvBufSize="16777216"
+          ArchiveSndBufSize="16777216"
           MaxSimReqs="10" 
           RootDirectory="/home/chen/proj/mwa/testNGAS/NGAS" 
           PortNo="7777" 
           ProxyMode="1"
-          ProxyCRC="0"
           Simulation="0"
           SwVersion=""/>
 
@@ -311,6 +312,6 @@
   </Authorization>
   
   <DataMoverOnly FromHostIds="127.0.0.1:7778" 
-  				 SuspensionTime="0T00:00:30"/>
+  		 SuspensionTime="0T00:00:30"/>
 
 </NgamsCfg>

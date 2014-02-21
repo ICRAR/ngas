@@ -50,6 +50,7 @@ simplified in a few ways:
 from ngams import *
 import random
 import binascii
+import socket
 #import pcc, PccUtTime
 import ngamsLib, ngamsDbCore, ngamsFileInfo
 import ngamsDiskInfo, ngamsHighLevelLib
@@ -211,10 +212,27 @@ def saveFromHttpToFile(ngamsCfgObj,
         scb = 0   # number of slow CRC calcs
         swb = 0   # number of slow write blocks
         tot_size = 0 # total number of bytes
+        
+        readFd = reqPropsObj.getReadFd()
+        rcvBuffSize = ngamsCfgObj.getArchiveRcvBufSize()
+        if (rcvBuffSize and str(type(readFd)) == "<class 'socket._fileobject'>" and readFd._sock):   
+            dfRcvBuffSize = readFd._sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
+            while (rcvBuffSize > dfRcvBuffSize):
+                try:
+                    readFd._sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, rcvBuffSize)
+                    info(3, "Rcv buf size reset to %d" % rcvBuffSize)
+                    break
+                except Exception, exp:
+                    if (str(exp) == '[Errno 55] No buffer space available'):
+                        rcvBuffSize = int(rcvBuffSize / 2)
+                        continue
+                    else:
+                        warning('Fail to set the socket SO_RCVBUF to %s: %s' % (str(rcvBuffSize), str(exp)))
+        
         while ((remSize > 0) and ((time.time() - lastRecepTime) < 30.0)):
             if (remSize < rdSize): rdSize = remSize
             rdt = time.time()
-            buf = reqPropsObj.getReadFd().read(rdSize)
+            buf = readFd.read(rdSize)
             rdt = time.time() - rdt
             rdtt += rdt
             if rdt >= slow: rdt += 1
@@ -268,6 +286,15 @@ def saveFromHttpToFile(ngamsCfgObj,
                          [reqPropsObj.getFileUri(), reqPropsObj.getSize(),
                           (reqPropsObj.getSize() - remSize)])
             raise Exception, msg
+        
+        checksum = reqPropsObj.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM)
+        if (checksum):
+            if (checksum != str(crc)):
+                msg = 'Checksum error for file %s, local crc = %s, but remote crc = %s' % (reqPropsObj.getFileUri(), str(crc), checksum)
+                error(msg)
+                raise Exception, msg
+            else:
+                info(3, "%s CRC checked, OK!" % reqPropsObj.getFileUri())
 
         # Release disk resouce.
         if (mutexDiskAccess):

@@ -522,7 +522,9 @@ def httpPostUrl(url,
                 timeOut = None,
                 authHdrVal = "",
                 dataSize = -1,
-                fileInfoHdr = None):
+                fileInfoHdr = None,
+                sendBuffer = None,
+                checkSum = None):
     """
     Post the the data referenced on the given URL.
 
@@ -591,6 +593,8 @@ def httpPostUrl(url,
         http.putheader("Authorization", authHdrVal)
     if (fileInfoHdr):
         http.putheader(NGAMS_HTTP_HDR_FILE_INFO, fileInfoHdr)
+    if (checkSum):
+        http.putheader(NGAMS_HTTP_HDR_CHECKSUM, checkSum)
     if (dataSource == "FILE"):
         dataSize = getFileSize(dataRef)
     elif (dataSource == "BUFFER"):
@@ -606,6 +610,12 @@ def httpPostUrl(url,
 
     # Send the data.
     info(4,"Sending data ...")
+    if (sendBuffer and http._conn.sock):
+        try:
+            info(3, "Set SNDBUF to %d" % sendBuffer)
+            http._conn.sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, sendBuffer)
+        except Exception, eer:
+            warning('Fail to set socket SNDBUF to %s' % str(sendBuffer))
     try:
         if (dataSource == "FILE"):
             fdIn = open(dataRef)
