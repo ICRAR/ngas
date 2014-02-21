@@ -55,7 +55,7 @@ def _locateArchiveFile(srvObj,
     used simply to encapsulate the complete processing to be able to clean up.
     """
     T = TRACE()
-    
+
     format = "_locateArchiveFile() - Disk ID: %s - File ID: " +\
              "%s - File Version: %d ..."
     info(4, format % (str(diskId), fileId, int(fileVersion)))
@@ -81,7 +81,7 @@ def _locateArchiveFile(srvObj,
 
     # We now sort the file information sub-lists in the file list.
     # The priori is as follows:
-    # 
+    #
     #   1. Local host.
     #   2. Same cluster.
     #   3. Same domain (e.g. hq.eso.org).
@@ -106,8 +106,8 @@ def _locateArchiveFile(srvObj,
         fileCount += 1
     hostDic = ngamsHighLevelLib.resolveHostAddress(srvObj.getDb(),
                                                    srvObj.getCfg(),
-                                                   hostList.keys())    
-    
+                                                   hostList.keys())
+
     # Loop over the candidate files and sort them.
     fileCount = idx = 0
     while (fileCount < noOfFiles):
@@ -189,7 +189,7 @@ def _locateArchiveFile(srvObj,
         diskInfoObj = ngamsDiskInfo.ngamsDiskInfo().unpackSqlResult(diskInfo)
         diskInfoDic[diskInfoObj.getDiskId()] = diskInfoObj
     info(5,"Disk Info Objects Dictionary: " + str(diskInfoDic))
-    
+
     # Check if the files are accessible - when the first accessible file
     # in the fileList is found, the information is returned as the file wanted.
     # To check the file accessibility, it is also checked if the NG/AMS
@@ -200,7 +200,7 @@ def _locateArchiveFile(srvObj,
     foundFile   = 0
     for fileVer in fileVerList:
         if (foundFile): break
-        
+
         for fileInfo in candFileDic[fileVer]:
             location    = fileInfo[0]
             fileInfoObj = fileInfo[1]
@@ -330,7 +330,7 @@ def locateArchiveFile(srvObj,
        <Mime-Type>    = Mime-type of file (as registered in NGAS).
 
     srvObj:       Reference to NG/AMS server class object (ngamsServer).
-    
+
     fileId:       File ID of file to locate (string).
 
     fileVersion:  Version of the file (integer).
@@ -341,11 +341,11 @@ def locateArchiveFile(srvObj,
 
     reqPropsObj:  Request Property object to keep track of actions done during
                   the request handling (ngamsReqProps|None).
-        
+
     Returns:      List with information about file location (list).
     """
     T = TRACE()
-    
+
     locTimer = PccUtTime.Timer()
 
     # Get a list with the candidate files matching the query conditions.
@@ -369,7 +369,7 @@ def quickFileLocate(srvObj,
                     diskId = None,
                     fileVersion = -1):
     """
-    Return one file matching the given criteria. A quick version of 
+    Return one file matching the given criteria. A quick version of
     locateArchiveFile().
 
     fileId:            ID of file to retrieve (string).
@@ -389,7 +389,7 @@ def quickFileLocate(srvObj,
                           <format>) (tuple).
     """
     T = TRACE(5)
-    
+
     res = srvObj.getDb().getFileSummary3(fileId, hostId, domain, diskId,
                                          fileVersion, cursor=False)
     if (res != [[]]):
@@ -403,7 +403,7 @@ def quickFileLocate(srvObj,
     else:
         retVal = eval("(" + (8 * ", None")[2:] + ")")
     return retVal
-    
+
 
 def checkFile(srvObj,
               sum1FileInfo,
@@ -412,7 +412,7 @@ def checkFile(srvObj,
     """
     Function to carry out a consistency check on a file located on
     the local host.
-    
+
     srvObj:        Reference to NG/AMS server class object (ngamsServer).
 
     sum1FileInfo:  List with file information to be extracted using the
@@ -429,14 +429,14 @@ def checkFile(srvObj,
                    are found (list/list).
 
     skipCheckSum:  If set to 1, no checksum test is done (integer/0|1).
-     
+
     Returns:       Void.
     """
     T = TRACE(5)
 
     dataCheckPrio = srvObj.getCfg().getDataCheckPrio()
-    foundProblem  = 0    
-    fileInfo      = sum1FileInfo    
+    foundProblem  = 0
+    fileInfo      = sum1FileInfo
     diskId        = fileInfo[ngamsDbCore.SUM1_DISK_ID]
     slotId        = fileInfo[ngamsDbCore.SUM1_SLOT_ID]
     filename      = os.path.\
@@ -462,18 +462,20 @@ def checkFile(srvObj,
     # file is being checked:
     # <NGAS Rt Pt>/cache/<Thr ID>___<Disk ID>___<File ID>___<File Version>.\
     # check
-    fileChecked = os.path.normpath("%s/%s/%s___%s___%s___%s.check" %
-                                   (srvObj.getCfg().getRootDirectory(),
+    fileChecked = os.path.normpath("%s|%s___%s___%s___%s.check" %
+                                   (
                                     NGAMS_CACHE_DIR, NGAMS_DATA_CHECK_THR,
                                     diskId, fileId,
                                     str(fileVersion))).replace("/", "_")
+    fileChecked = srvObj.getCfg().getRootDirectory() + '/' + fileChecked.replace("|","/")
+
     fileCheckedFo = None
     try:
         # Create file indicating which data file is being checked.
         rmFile(fileChecked)
         fileCheckedFo = open(fileChecked, "w")
         fileCheckedFo.close()
-        
+
         # Check if file exists.
         fileExists = os.path.exists(filename)
         if (not fileExists):
@@ -573,9 +575,9 @@ def syncCachesCheckFiles(srvObj,
             logFlush()
         else:
             notice("No Disk Sync Plug-In defined - consider to provide one!")
-        #commands.getstatusoutput("sync")   
+        #commands.getstatusoutput("sync")
         for file in filenames: os.stat(file)
-    except Exception, e: 
+    except Exception, e:
         errMsg = "Severe error occurred! Could not sync file caches or " +\
                  "file not accessible! Error: " + str(e)
         raise Exception, errMsg
@@ -596,9 +598,9 @@ def checkChecksum(srvObj,
     filename:     Name of file to check (string).
 
     Returns:      Void.
-    
+
     Exceptions:   An exception is raised if the checksum is illegal.
-    """    
+    """
     # If a checksum value is available in NGAS Files, check the checksum
     # of the file.
     if (fileInfoObj.getChecksumPlugIn() and fileInfoObj.getChecksum()):
