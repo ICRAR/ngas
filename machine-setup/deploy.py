@@ -947,6 +947,10 @@ def test_deploy():
     if env.postfix:
         postfix_config()
     install()
+    with settings(user='ngas'):
+        run('ngamsDaemon start')
+    print "\n\n******** SERVER STARTED!********\n\n"
+
 
 
 @task
