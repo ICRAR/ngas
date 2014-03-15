@@ -196,7 +196,10 @@ def stageFiles(filenameList, checkCRC = False, printWarn = False):
             print errMsg
         else:
             alert(errMsg)
-        return -1
+        sysMsg = '%d' % exitCode
+        if (len(t) == 2):
+            sysMsg += str(t[1])
+        raise Exception('Staging errors: %s' % sysMsg)
     
     crc_time = 0
     if (checkCRC):
