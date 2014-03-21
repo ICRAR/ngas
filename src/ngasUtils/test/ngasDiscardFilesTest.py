@@ -50,7 +50,7 @@ FILE_INFO_1 = [["tmp-ngamsTest-NGAS-FitsStorage1-Main-1", "2"],
                ["tmp-ngamsTest-NGAS-FitsStorage1-Rep-2",  "3"],
                ["tmp-ngamsTest-NGAS-FitsStorage1-Rep-2",  "5"],
                ["tmp-ngamsTest-NGAS-FitsStorage1-Rep-2",  "8"]]
- 
+
 
 def _invokeDiscardFiles(fileList,
                         dccMsg,
@@ -62,11 +62,11 @@ def _invokeDiscardFiles(fileList,
     Execute the ngasDiscardFiles tool as a shell command.
 
     fileList:          Name of file containing the file list (string|None).
-    
+
     dccMsg:            Name of file containing the DCC message (string|None).
-    
+
     execute:           If set to 1 specify the execute parameter (integer/0|1).
-    
+
     recvNotifEmail:    Receive email notification (integer/0|1).
 
     cfgFile:           Configuration file used for the test (string).
@@ -107,9 +107,9 @@ def _verifyEmailAndStdout(testSuiteObj,
     testName:       Name of the test case (string).
 
     fileList:       Name of file list or None (string|None).
-    
+
     dccMsg:         Name of file hosting the DCC message (string|None).
-    
+
     execute:        If set to 1 the command is executed (integer/0|1).
 
     verifyEmail:    Verify also the contents of the email notification mail
@@ -146,7 +146,7 @@ def _checkFilesDiscarded(testObj,
 
     fileInfo:    List with sub-lists containing Disk ID and File Version
                  (list).
-    
+
     fileId:      File ID used for the test (string).
 
     dbObj:       DB connection object (ngamsDb).
@@ -206,8 +206,8 @@ class ngasDiscardFilesTest(ngamsTestSuite):
         """
         Synopsis:
         Normal execution of the tool, files are discarded (Disk ID, File ID,
-        File Version). 
-        
+        File Version).
+
         Description:
         The test should verify that the standard way of usage works as it
         should. A list of files is referenced to by their Disk ID, File ID
@@ -254,7 +254,7 @@ class ngasDiscardFilesTest(ngamsTestSuite):
         Normal execution of the tool, files are discarded (Disk ID, File ID,
         File Version). Not all files in three copies + file specified not
         found.
-        
+
         Description:
         The test should verify that the standard way of usage works as it
         should. A list of files is referenced to by their Disk ID, File ID
@@ -262,7 +262,7 @@ class ngasDiscardFilesTest(ngamsTestSuite):
         execute=1.
 
         Expected Result:
-        After the first invocation, the tool should produce a 
+        After the first invocation, the tool should produce a
 
         Test Steps:
         - Start server.
@@ -307,7 +307,7 @@ class ngasDiscardFilesTest(ngamsTestSuite):
         Synopsis:
         Normal execution of the tool, files are discarded (complete path
         given).
-        
+
         Description:
         The purpose of the test is to verify that files specified by their
         path, can be removed from the system. It is also tested that if a file
@@ -369,7 +369,7 @@ class ngasDiscardFilesTest(ngamsTestSuite):
         Synopsis:
         Normal execution of the tool, files are discarded (Disk ID, File ID,
         File Version mixed with complete path references).
-        
+
         Description:
         The purpose of the test is to verify the proper functioning of the
         tool when a mix of files referenced to by the Disk ID/File ID/File
@@ -443,13 +443,13 @@ class ngasDiscardFilesTest(ngamsTestSuite):
                       "storage media"
                 self.fail(msg % file)
 
-    
+
     def test_NormalExec_5(self):
         """
         Synopsis:
         Normal execution of the tool, files are discarded. The input is a
         DCC message/'Non Registered Files'.
-        
+
         Description:
         The purpose of the test is to verify that the tool handles properly
         the case where a DCC message is given as file reference.
@@ -510,7 +510,7 @@ class ngasDiscardFilesTest(ngamsTestSuite):
         Synopsis:
         Normal execution of the tool, files are discarded. The input is a
         DCC message/'File in DB missing on disk'.
-        
+
         Description:
         The purpose of the test is to verify that the tool handles properly
         the case where a DCC message is given as file reference.
@@ -526,7 +526,7 @@ class ngasDiscardFilesTest(ngamsTestSuite):
         - Invoke ngasDiscardFiles on a DCC Message reporting the files removed
           above as files registered in the DB but not found on disk.
         - Invoke ngasDiscardFiles, execute=1, check outputs.
-        - Check that the spurious files are gone.        
+        - Check that the spurious files are gone.
 
         Remarks:
         IMPL: Would be better to generate a real DCC message via the DCC.
@@ -561,7 +561,7 @@ class ngasDiscardFilesTest(ngamsTestSuite):
         Synopsis:
         Normal execution of the tool, files are discarded. The input is a
         DCC message/'File in DB missing on disk' + 'Non registrered files'.
-        
+
         Description:
         The purpose of the test is to verify that the tool handles properly
         the case where a DCC message is given as file reference.
@@ -571,20 +571,20 @@ class ngasDiscardFilesTest(ngamsTestSuite):
 
         Test Steps:
         - Start server.
-        
+
 
         Remarks:
         IMPL: Not yet implemented.
         """
         pass
-    
-     
+
+
     def test_NormalExec_8(self):
         """
         Synopsis:
         Normal execution of the tool, files are discarded. Some files are
         marked to be ignored.
-        
+
         Description:
         Test that files marked as 'ignore' can be discarded using the tool.
 
@@ -612,7 +612,7 @@ class ngasDiscardFilesTest(ngamsTestSuite):
         i = 0
         for fi in FILE_INFO_1:
             if ((i % 2) == 0):
-                query = "UPDATE ngas_files SET ignore=1 WHERE "+\
+                query = "UPDATE ngas_files SET file_ignore=1 WHERE "+\
                         "disk_id='%s' AND file_id='%s' AND file_version=%s"
                 dbObj.query(query % (fi[0], FILE_ID_1, fi[1]))
             i += 1
