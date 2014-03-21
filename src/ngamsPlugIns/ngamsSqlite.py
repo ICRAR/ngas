@@ -58,26 +58,26 @@ def _queryRewrite(sqlQuery):
     Function to adapt the SQL query for execution in SQLite.
 
     sqlQuery:    SQL query (string)
-        
+
     Returns:     Modified query string.
     """
     T = TRACE(5)
-        
+
     # The following block replaces the ignore column name
     # (reserved word in Sqlite) with file_ignore.
-    sqlQuery = sqlQuery.replace("ignore", "file_ignore")
+    sqlQuery = sqlQuery.replace("nf.ignore", "nf.file_ignore")
 
     # Remove the Sybase specific noholdlock keyword
     sqlQuery = sqlQuery.replace("noholdlock", "")
 
     return sqlQuery
 
-    
+
 class ngamsSqlite:
     """
     Class to handle the connection to the NGAS DB when Sqlite is used as DBMS.
     """
-  
+
     def __init__(self,
                  server,
                  db,
@@ -91,9 +91,9 @@ class ngamsSqlite:
         server:          DB server name (string).
 
         db:              DB name (string).
-        
+
         user:            DB user (string).
-        
+
         password:        DB password (string).
 
         application:     Name of application (ID string) (string).
@@ -108,7 +108,7 @@ class ngamsSqlite:
             msg = msg % str(db)
             alert(msg)
             raise Exception, msg
-        
+
         try:
             self.__dbModVer = str(sqlite.version)
         except:
@@ -120,9 +120,9 @@ class ngamsSqlite:
         self.__application = application
         self.__parameters  = parameters
         self.__dbDrv       = None
-        
+
         self.connect(db, application)
-        
+
 
     def getDriverId(self):
         """
@@ -131,7 +131,7 @@ class ngamsSqlite:
         Return:    Driver version (string).
         """
         return "NG/AMS_Sqlite_" + self.__dbModVer
-    
+
 
     def connect(self,
                 db,
@@ -142,11 +142,11 @@ class ngamsSqlite:
         db:              DB name (string).
 
         application:     application name (string).
- 
+
         Returns:         Reference to object itself.
         """
         T = TRACE(5)
-        
+
         # Store connection parameters. Connect is not used, a new connection
         # is created for each query.
         self.__db          = db
@@ -156,7 +156,7 @@ class ngamsSqlite:
 
         return self
 
-        
+
     def close(self):
         """
         Close the DB connection.
@@ -177,7 +177,7 @@ class ngamsSqlite:
         Returns:     Result (list).
         """
         T = TRACE(5)
-        
+
         # In the python SQLite module there is no direct execute, everything
         # is done with cursors.
         cur = self.cursor(query)
@@ -195,7 +195,7 @@ class ngamsSqlite:
         #cur.close()
         #del(cur)
         ############################################
-        
+
         if (len(res) > 0):
             return [res]
         else:
@@ -227,7 +227,7 @@ class ngamsSqlite:
             error("Exception in ngamsSqlite DB Driver Interface: %s" % str(e))
             raise e
 
- 
+
     def cursor(self,
                query):
         """
@@ -271,7 +271,7 @@ class ngamsSqlite:
                  initFromSecsSinceEpoch(timeStamp).getTimeStamp()
         return ts
 
-        
+
 class ngamsSqliteCursor:
     """
     Cursor class used to fetch sequentially the result of an SQL query.
@@ -283,7 +283,7 @@ class ngamsSqliteCursor:
                  query = None):
         """
         Constructor method creating a cursor connection to the DBMS.
- 
+
         db:           DB name (string).
 
         query:        Query to execute (string/SQL).
@@ -309,7 +309,7 @@ class ngamsSqliteCursor:
         Destructor method free'ing the internal DB connection + cursor objects.
         """
         T = TRACE(5)
-        
+
         if (self.__cursorObj):
             self.__cursorObj.close()
             del self.__cursorObj
@@ -317,24 +317,24 @@ class ngamsSqliteCursor:
             self.__dbDrv.commit()
             self.__dbDrv.close()
             del self.__dbDrv
-        
-                     
+
+
     def _init(self,
               query):
         """
         Initialize the query.
-        
+
         query:    The query to execute (string)
-        
+
         Returns pointer to itself.
         """
         T = TRACE(5)
-        
+
         query = _queryRewrite(query)
         if (getVerboseLevel() > 3): info(4, "Executing query: %s" % query)
         type = self.__cursorObj.execute(query)
         return self
-        
+
 
     def _cleanRes(self,
                   res):
@@ -354,7 +354,7 @@ class ngamsSqliteCursor:
         tmpRes = tmpRes.replace("(u'", "('")
         return eval(tmpRes)
 
-                
+
     def fetch(self,
               maxEls):
         """
@@ -365,7 +365,7 @@ class ngamsSqliteCursor:
 
         An empty list ([]) may be returned if there were no matches to the
         SQL query.
-        
+
         query:      string containing the SQL statement to be executed.
 
         maxEls:     Maximum number of elements/rows to return (integer).
@@ -374,7 +374,7 @@ class ngamsSqliteCursor:
                     (list/list).
         """
         T = TRACE(5)
-        
+
         if (self.__cursorObj):
             res = self.__cursorObj.fetchmany(int(maxEls))
             if len(res) > 0:
@@ -395,14 +395,14 @@ class ngamsSqliteCursor:
 
         An empty list ([]) may be returned if there were no matches to the
         SQL query.
-        
+
         query:      string containing the SQL statement to be executed.
 
         Return:     List containing tuples with the values queried
                     (list/list).
         """
         T = TRACE(5)
-        
+
         if (self.__cursorObj):
             res = self.__cursorObj.fetchall()
             if len(res) > 0:

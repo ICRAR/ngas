@@ -410,8 +410,8 @@ class ngamsMySqlCursor:
 
         # The following block replaces the ignore column name
         # (reserved word in MySQL) with fignore.
-        regex1 = re.compile("ignore")
-        pquery = regex1.sub("file_ignore", query)
+        regex1 = re.compile("nf.ignore")
+        pquery = regex1.sub("nf.file_ignore", query)
 
         # Remove the Sybase specific noholdlock keyword
         regex2 = re.compile("noholdlock")
