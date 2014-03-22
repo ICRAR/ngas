@@ -980,8 +980,6 @@ def uninstall():
     Uninstall NGAS, NGAS users and init script.
     """
     set_env()
-    with settings(user='ngas'):
-        run('ngamsDaemon stop')
     sudo('userdel -r ngasmgr', warn_only=True)
     sudo('userdel -r ngas', warn_only=True)
     sudo('groupdel ngas', warn_only=True)

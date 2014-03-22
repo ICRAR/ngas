@@ -1114,7 +1114,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "checksum='" + checksum + "', " +\
                            "checksum_plugin='" + checksumPlugIn + "', " +\
                            "file_status='" + fileStatus + "', " +\
-                           "creation_date='" + creDate + "' " +\
+                           "creation_date='" + creDate + "', " +\
                            "io_time=" + str(iotime) + " " +\
                            "WHERE file_id='" + fileId + "' AND " +\
                            "disk_id='" + diskId + "'"
@@ -1167,8 +1167,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                                               fileVersion, format, fileSize,
                                               uncompressedFileSize,compression,
                                               ingestionDate, ignore, checksum,
-                                              checksumPlugIn, fileStatus, iotime,
-                                              creationDate])
+                                              checksumPlugIn, fileStatus, creationDate,
+                                              iotime])
                 self.createDbFileChangeStatusDoc(dbOperation, [tmpFileObj])
                 del tmpFileObj
 
