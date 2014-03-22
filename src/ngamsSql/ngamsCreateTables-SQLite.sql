@@ -195,7 +195,7 @@ Create table ngas_subscr_back_log
   format         varchar(32)   not null
 );
 
-drop table ngas_subscr_queue
+drop table ngas_subscr_queue;
 create table ngas_subscr_queue
 (
 	subscr_id			varchar(255)	not null,
