@@ -1115,7 +1115,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "checksum_plugin='" + checksumPlugIn + "', " +\
                            "file_status='" + fileStatus + "', " +\
                            "creation_date='" + creDate + "', " +\
-                           "io_time=" + str(iotime) + " " +\
+                           "io_time=" + str(int(iotime*1000)) + " " +\
                            "WHERE file_id='" + fileId + "' AND " +\
                            "disk_id='" + diskId + "'"
                 if (int(fileVersion) != -1):
@@ -1143,7 +1143,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "'" + checksumPlugIn + "', " +\
                            "'" + fileStatus + "', " +\
                            "'" + creDate + "',"+\
-                           str(iotime) +\
+                           str(int(iotime*1000)) +\
                            ")"
                 dbOperation = NGAMS_DB_CH_FILE_INSERT
 
