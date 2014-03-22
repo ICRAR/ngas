@@ -1068,6 +1068,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                        checksumPlugIn,
                        fileStatus,
                        creationDate,
+                       iotime,
                        genSnapshot = 1,
                        updateDiskInfo = 0):
         """
@@ -1114,6 +1115,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "checksum_plugin='" + checksumPlugIn + "', " +\
                            "file_status='" + fileStatus + "', " +\
                            "creation_date='" + creDate + "' " +\
+                           "io_time=" + str(iotime) + " " +\
                            "WHERE file_id='" + fileId + "' AND " +\
                            "disk_id='" + diskId + "'"
                 if (int(fileVersion) != -1):
@@ -1125,7 +1127,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "format, file_size, " +\
                            "uncompressed_file_size, compression, " +\
                            "ingestion_date, file_ignore, checksum, " +\
-                           "checksum_plugin, file_status, creation_date) "+\
+                           "checksum_plugin, file_status, creation_date, io_time) "+\
                            "VALUES " +\
                            "('" + diskId + "', " +\
                            "'" + filename + "', " +\
@@ -1140,7 +1142,9 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "'" + checksum + "', " +\
                            "'" + checksumPlugIn + "', " +\
                            "'" + fileStatus + "', " +\
-                           "'" + creDate + "')"
+                           "'" + creDate + "',"+\
+                           str(iotime) +\
+                           ")"
                 dbOperation = NGAMS_DB_CH_FILE_INSERT
 
             # Perform the main query.
@@ -1163,7 +1167,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                                               fileVersion, format, fileSize,
                                               uncompressedFileSize,compression,
                                               ingestionDate, ignore, checksum,
-                                              checksumPlugIn, fileStatus,
+                                              checksumPlugIn, fileStatus, iotime,
                                               creationDate])
                 self.createDbFileChangeStatusDoc(dbOperation, [tmpFileObj])
                 del tmpFileObj
