@@ -212,10 +212,10 @@ def saveFromHttpToFile(ngamsCfgObj,
         scb = 0   # number of slow CRC calcs
         swb = 0   # number of slow write blocks
         tot_size = 0 # total number of bytes
-        
+
         readFd = reqPropsObj.getReadFd()
         rcvBuffSize = ngamsCfgObj.getArchiveRcvBufSize()
-        if (rcvBuffSize and str(type(readFd)) == "<class 'socket._fileobject'>" and readFd._sock):   
+        if (rcvBuffSize and str(type(readFd)) == "<class 'socket._fileobject'>" and readFd._sock):
             dfRcvBuffSize = readFd._sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
             while (rcvBuffSize > dfRcvBuffSize):
                 try:
@@ -228,7 +228,7 @@ def saveFromHttpToFile(ngamsCfgObj,
                         continue
                     else:
                         warning('Fail to set the socket SO_RCVBUF to %s: %s' % (str(rcvBuffSize), str(exp)))
-        
+
         while ((remSize > 0) and ((time.time() - lastRecepTime) < 30.0)):
             if (remSize < rdSize): rdSize = remSize
             rdt = time.time()
@@ -286,7 +286,7 @@ def saveFromHttpToFile(ngamsCfgObj,
                          [reqPropsObj.getFileUri(), reqPropsObj.getSize(),
                           (reqPropsObj.getSize() - remSize)])
             raise Exception, msg
-        
+
         checksum = reqPropsObj.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM)
         if (checksum):
             if (checksum != str(crc)):
@@ -391,6 +391,8 @@ def handleCmd(srvObj,
     stagingInfo = saveInStagingFile(srvObj.getCfg(), reqPropsObj,
                                     stgFilename, targDiskInfo)
     ioTime = stagingInfo[0]
+    msg = "IO_TIME: %10.3f s" % ioTime
+    info(4,msg)
     reqPropsObj.incIoTime(ioTime)
 
     # Invoke DAPI.

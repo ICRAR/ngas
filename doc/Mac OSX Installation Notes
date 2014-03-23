@@ -32,5 +32,13 @@ $ python2.7 setup.py --berkeley-db=~/ngas_rt install
 
 and then run buildout again.
 
+On Mountainlion > 10.9 the build of C packages does not work correctly due to a missing option in minitage.recipe.common.
+
+431c431
+<             if kv.startswith('12.'):
+---
+>             if kv.startswith('12.') or kv.startswith('13.'):
+
+
 
 
