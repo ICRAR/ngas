@@ -57,11 +57,11 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         """
         Check if file with the given File ID is registered in NGAS DB
         in connection with the given Disk ID.
-        
+
         diskId:        Disk ID (string)
 
         fileId:        File ID (string).
-        
+
         fileVersion:   Version of the file. If -1 version is not taken
                        into account (integer).
 
@@ -84,7 +84,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 return 0
         else:
             return 0
-        
+
 
     def getFileInfoFromDiskIdFilename(self,
                                       diskId,
@@ -97,7 +97,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         diskId:      ID for disk hosting the file (string).
 
         filename:    NGAS (relative) filename (string).
-                         
+
         Returns:     Return ngamsFileInfo object with the information for the
                      file if found or None if the file was not found
                      (ngamsFileInfo|None).
@@ -128,10 +128,10 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         specified in the input parameters.
 
         diskId:        Disk ID of disk hosting the file(s) (string).
-        
+
         fileId:        File ID of files to consider. Wildcards can be
                        used (string).
-        
+
         fileVersion:   Version of file(s) to consider. If set to -1 this
                        is not taken into account (integer).
 
@@ -166,11 +166,11 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             sqlQuery += diskIdStatement
         if (fileVersion != -1):
             sqlQuery += " AND nf.file_version=" + str(fileVersion)
-        if (ignore != None): sqlQuery += " AND nf.ignore=%d" % int(ignore)
+        if (ignore != None): sqlQuery += " AND nf.file_ignore=%d" % int(ignore)
 
         # Create a cursor and perform the query.
         curObj = self.dbCursor(sqlQuery)
-        
+
         return curObj
 
 
@@ -190,7 +190,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         ignore:             If set to 0 or 1, this value of ignore will be
                             queried for. If set to None, ignore is not
                             considered (None|0|1).
-                       
+
         fileListDbmName:    Name of DBM where to store the queried info
                             (string).
 
@@ -239,7 +239,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 if (curObj): del curObj
                 if (fileListDbm): del fileListDbm
                 raise Exception, e
-                
+
             if (curObj): del dbCur
 
             # Print out DB Verification Warning if actual number of files
@@ -248,8 +248,8 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 errMsg = "Problem dumping file info! Expected number of "+\
                          "files: %d, actual number of files: %d"
                 errMsg = errMsg % (expNoOfFiles, fileCount)
-                warning(errMsg)            
-            
+                warning(errMsg)
+
             # Try to Auto Recover if requested.
             if ((self.getDbVerify() and self.getDbAutoRecover()) and
                 (fileCount != expNoOfFiles)):
@@ -281,7 +281,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         Returns:   Latest File Version (integer).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT max(file_version) FROM ngas_files WHERE "+\
                    "file_id='" + fileId + "'"
         res = self.query(sqlQuery, ignoreEmptyRes=0)
@@ -292,8 +292,8 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 return int(res[0][0][0])
         else:
             return -1
-    
-    def getFileStatus(self, 
+
+    def getFileStatus(self,
                       fileId,
                       fileVersion,
                       diskId):
@@ -301,11 +301,11 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         Get the file_status string (bit) value in the ngas_files table.
 
         fileId:        ID of file (string).
-        
+
         fileVersion:   Version of file (integer).
 
         diskId:        Disk ID for disk where file is stored (string).
-        
+
         Returns:       File Status (8 bits) (string).
 
         """
@@ -319,7 +319,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 return res[0][0][0]
         else:
             return '00000000'
-        
+
     def setFileStatus(self,
                       fileId,
                       fileVersion,
@@ -329,17 +329,17 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         Set the checksum value in the ngas_files table.
 
         fileId:        ID of file (string).
-        
+
         fileVersion:   Version of file (integer).
 
         diskId:        Disk ID for disk where file is stored (string).
-        
+
         status:        File Status (8 bytes) (string).
 
         Returns:       Reference to object itself.
         """
         T = TRACE(5)
-        
+
         try:
             sqlQuery = "UPDATE ngas_files SET file_status='" + status + "' " +\
                        "WHERE file_id='" + fileId + "' AND file_version=" +\
@@ -347,10 +347,10 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             res = self.query(sqlQuery)
             self.triggerEvents()
             return self
-        except Exception, e:   
+        except Exception, e:
             raise e
 
-                   
+
     def deleteFileInfo(self,
                        diskId,
                        fileId,
@@ -435,7 +435,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             except:
                 pass
             raise e
-    
+
 
     def getSumBytesStored(self,
                           diskId):
@@ -448,7 +448,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         Return:    Total sum of bytes stored on the disk (integer).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT sum(file_size) from ngas_files WHERE " +\
                    "disk_id='" + diskId + "'"
         res = self.query(sqlQuery, ignoreEmptyRes=0)
@@ -470,7 +470,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         directory from the information in the 'fileInfoObj' object.
 
         operation:        Has to be either ngams.NGAMS_DB_CH_FILE_INSERT or
-                          ngams.NGAMS_DB_CH_FILE_DELETE (string). 
+                          ngams.NGAMS_DB_CH_FILE_DELETE (string).
 
         fileInfoObj:      List of instances of NG/AMS File Info Object
                           containing the information about the file
@@ -479,7 +479,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         diskInfoObjList:  It is possible to give the information about the
                           disk(s) in question via a list of ngamsDiskInfo
                           objects (list/ngamsDiskInfo).
-                         
+
         Returns:          Void.
         """
         T = TRACE()
@@ -529,14 +529,14 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 tmpFileObjList = fileInfoObjDic[diskId]
                 tmpFileList = ngamsFileList.ngamsFileList(dbId, operation)
                 for fileObj in tmpFileObjList:
-                    tmpFileList.addFileInfoObj(fileObj)        
+                    tmpFileList.addFileInfoObj(fileObj)
                 tmpStatObj = ngamsStatus.ngamsStatus().\
                              setDate(timeStamp).\
                              setVersion(getNgamsVersion()).\
                              setHostId(getHostId()).\
                              setMessage(dbId).\
                              addFileList(tmpFileList)
-            
+
             info(4,"Creating Temporary DB Snapshot: " + statFilename)
             pickleFo = None
             try:
@@ -552,7 +552,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             tmpStatObj = None
             del tmpFileList
             tmpFileList = None
-        
+
 
     def createDbRemFileChangeStatusDoc(self,
                                        diskInfoObj,
@@ -568,7 +568,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         fileInfoObj:      Instance of NG/AMS File Info Object
                           containing the information about the file
                           (ngamsFileInfo).
-                         
+
         Returns:          Void.
         """
         T = TRACE()
@@ -590,9 +590,9 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         tmpStatFilename = os.path.normpath("%s/%s_%s.%s.%s" %\
                                            (statFilePath, timeStamp,
                                             str(getUniqueNo()),
-                                            NGAMS_PICKLE_FILE_EXT, 
+                                            NGAMS_PICKLE_FILE_EXT,
                                             NGAMS_TMP_FILE_EXT))
-        
+
         info(4,"Creating Temporary DB Snapshot: %s" % statFilename)
         pickleFo = None
         try:
@@ -608,12 +608,12 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             if (pickleFo): pickleFo.close()
             rmFile(tmpStatFilename)
             raise e
-    
-    
+
+
     def getFileChecksum(self, diskId, fileId, fileVersion):
         """
         Get the checksum for the file.
-        
+
         diskId:         ID of disk hosting the file (string).
 
         fileId:         ID of file to be deleted. No wildcards accepted
@@ -633,7 +633,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 return res[0][0][0]
         else:
             return None
-        
+
 
     def getIngDate(self,
                    diskId,
@@ -641,7 +641,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                    fileVersion):
         """
         Get the ingestion date for the file.
-        
+
         diskId:         ID of disk hosting the file (string).
 
         fileId:         ID of file to be deleted. No wildcards accepted
@@ -653,7 +653,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                         (string/ISO 8601 | None).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT ingestion_date FROM ngas_files WHERE "+\
                    "disk_id = '%s' AND file_id = '%s' AND file_version = %d"
         sqlQuery = sqlQuery % (diskId, fileId, fileVersion)

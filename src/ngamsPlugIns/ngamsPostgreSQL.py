@@ -491,13 +491,13 @@ class ngamsPostgreSQLCursor:
         T = TRACE()
         # The following block replaces the ignore column name (reserved word
         # in mySQL and SQLite) with file_ignore.
-        regex1 = re.compile('ignore')
-        pquery = regex1.sub('file_ignore',query)
+        info(5, "Original query: %s" % query)
+        regex1 = re.compile('nf.ignore')
+        pquery = regex1.sub('nf.file_ignore',query)
 
         # Remove the Sybase specific noholdlock keyword
-        info(5, "Original query: %s" % query)
         regex2 = re.compile('noholdlock')
-        pquery = regex2.sub('', query)
+        pquery = regex2.sub('', pquery)
 
         #regex1 = re.compile('max\(right\(logical\_name, 6\)\)')
         #pquery = str(regex1.sub('max(substr(logical_name, -6))', pquery))

@@ -67,22 +67,22 @@ def _getFileInfo1(ngamsDbObj,
     Retrieve information about files supposedly cloned.
 
     ngamsDbObj:    NG/AMS DB object (ngamsDb).
-    
+
     diskId:        ID of disk to check (string).
 
     Returns:       NG/AMS Cursor Object (ngamsDbCursor).
     """
     info(5,"Entering _getFileInfo1() ...")
-    
+
     sqlQueryFormat = "SELECT nd.slot_id, nd.mount_point, nf.file_name, " +\
                      "nf.checksum, nf.checksum_plugin, nf.file_id, " +\
                      "nf.file_version, nf.file_size, nf.file_status, " +\
-                     "nd.disk_id, nf.ignore, nd.host_id " +\
+                     "nd.disk_id, nf.file_ignore, nd.host_id " +\
                      "FROM ngas_disks nd noholdlock, " +\
                      "ngas_files nf noholdlock " +\
                      "WHERE nf.disk_id='%s' AND nd.disk_id='%s'"
     sqlQuery = sqlQueryFormat % (diskId, diskId)
-    
+
     # Create a cursor and perform the query.
     ngamsDbObj._startTimer()
     server, db, user, password = ngasUtilsLib.getDbPars()
@@ -100,7 +100,7 @@ def _getFileInfo2(ngamsDbObj,
     Get information about all files stored on the given host.
 
     ngamsDbObj:    NG/AMS DB Object (ngamsDb).
-    
+
     hostId:        ID of host for which to query files (string).
 
     srcDisk:       Source disk, i.e., disk that was cloned (string).
@@ -108,16 +108,16 @@ def _getFileInfo2(ngamsDbObj,
     Returns:       NG/AMS Cursor Object (ngamsDbCursor).
     """
     info(5,"Entering _getFileInfo2() ...")
-    
+
     sqlQueryFormat = "SELECT nd.slot_id, nd.mount_point, nf.file_name, " +\
                      "nf.checksum, nf.checksum_plugin, nf.file_id, " +\
                      "nf.file_version, nf.file_size, nf.file_status, " +\
-                     "nd.disk_id, nf.ignore, nd.host_id " +\
+                     "nd.disk_id, nf.file_ignore, nd.host_id " +\
                      "FROM ngas_disks nd noholdlock, " +\
                      "ngas_files nf noholdlock " +\
                      "WHERE nd.host_id='%s' " +\
                      "AND nf.disk_id=nd.disk_id AND nf.disk_id!='%s'"
-    sqlQuery = sqlQueryFormat % (hostId, srcDisk) 
+    sqlQuery = sqlQueryFormat % (hostId, srcDisk)
 
     # Create a cursor and perform the query.
     ngamsDbObj._startTimer()
@@ -139,15 +139,15 @@ def cloneCheckFile(diskId,
     Clone a file a check afterwards if it was successfully cloned.
 
     diskId:       ID of disk cloned (string).
-    
+
     fileId:       ID of file cloned (string).
-    
+
     fileVersion:  Version of file to check (integer).
-    
+
     dbConObj:     DB Connection Object (ngamsDb).
 
     pClientObj:   Initiated instance of NG/AMS P-Client Object (ngamsPClient).
-    
+
     checkRep:     Check report (string).
 
     Returns:      Updated Check Report (string).
@@ -177,7 +177,7 @@ def cloneCheckFile(diskId,
                                         wait=1, pars=tmpPars)
             status = res.getMessage() + "\n"
     return msg + status
-    
+
 
 def checkCloning(srcDiskId,
                  autoClone):
@@ -186,7 +186,7 @@ def checkCloning(srcDiskId,
     been cloned onto disks in the system where this tool is executed.
 
     srcDiskId:     ID of the cloned disk (string).
-    
+
     autoClone:     If 1 files not cloned will be automatically cloned
                    by the tool (integer/0|1).
 
@@ -200,7 +200,7 @@ def checkCloning(srcDiskId,
 
     checkRepMain =  79 * "=" + "\n"
     checkRepMain += "Clone Verification Report - Disk: " + srcDiskId + "\n\n"
-    checkRep     = ""    
+    checkRep     = ""
     server, db, user, password = ngasUtilsLib.getDbPars()
     dbCon = ngamsDb.ngamsDb(server, db, user, password, 0)
     test = 0
@@ -226,7 +226,7 @@ def checkCloning(srcDiskId,
             if (fileList == []): break
             srcFiles += fileList
         del dbCur
-        
+
         # Get information about files on the Target Host (= this host).
         trgFiles = []
         # NGAS Utils Functional Tests: Use special target host if requested.
@@ -249,14 +249,14 @@ def checkCloning(srcDiskId,
     for fileInfo in trgFiles:
         trgFileDic[(fileInfo[ngamsDb.SUM1_FILE_ID],
                     fileInfo[ngamsDb.SUM1_VERSION])] = fileInfo
-    
+
     # Now go through each source file and check if it is registered
     # in the DB among the target files.
     for fileInfo in srcFiles:
         srcFileId  = fileInfo[ngamsDb.SUM1_FILE_ID]
         srcFileVer = fileInfo[ngamsDb.SUM1_VERSION]
         key = (srcFileId, srcFileVer)
-        
+
         # Check if target file is present in the DB.
         if (not trgFileDic.has_key(key)):
             checkRep += "*** Missing target file in DB: " + str(fileInfo)+ "\n"
@@ -283,7 +283,7 @@ def checkCloning(srcDiskId,
                                            fileInfo[6], dbCon, ngamsClient,
                                            checkRep) + "\n"
             continue
-        
+
         # 2. Check that the size is correct.
         srcFileSize  = fileInfo[ngamsDb.SUM1_FILE_SIZE]
         trgFileSize = ngamsLib.getFileSize(complTrgFilename)
@@ -295,14 +295,14 @@ def checkCloning(srcDiskId,
         checkRepMain += checkRep
     else:
         checkRepMain += "No descrepancies found\n"
-    
+
     return checkRepMain
 
 
 def correctUsage():
     """
     Print correct usage of tool to stdout.
-    
+
     Returns:   Void.
     """
     print "\nCorrect usage is:\n"
@@ -310,7 +310,7 @@ def correctUsage():
           "[-autoClone] [-notifEmail <Email Rec List>]"
     print "\n"
 
-  
+
 if __name__ == '__main__':
     """
     Main function.
@@ -341,18 +341,18 @@ if __name__ == '__main__':
         except Exception, e:
             print "\nProblem initializing Clone Verification Tool: %s\n" %\
                   str(e)
-            correctUsage()  
+            correctUsage()
             sys.exit(1)
 
     if (not diskId):
-         correctUsage()  
+         correctUsage()
          sys.exit(1)
 
     try:
         if (notifEmail == None):
             notifEmail = ngasUtilsLib.\
                          getParNgasRcFile(ngasUtilsLib.NGAS_RC_PAR_NOTIF_EMAIL)
- 
+
         # Execute the cloning.
         diskIdList = diskId.split(",")
         print 79 * "="
@@ -373,6 +373,6 @@ if __name__ == '__main__':
         print "ERROR occurred executing the Clone Verification " +\
               "Tool: \n\n" + str(e) + "\n"
         sys.exit(1)
-                
+
 #
 # EOF

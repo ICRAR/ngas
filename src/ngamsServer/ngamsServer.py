@@ -2115,7 +2115,8 @@ class ngamsServer:
             (self.getCfg().getPortNo() < 1)): return ""
         try:
             pidFile = os.path.join(self.getCfg().getRootDirectory(), "." +
-                                   ngamsHighLevelLib.genNgasId(self.getCfg()))
+                                   ngamsHighLevelLib.genNgasId(self.getCfg())
+                                   + ".pid")
         except Exception, e:
             errMsg = "Error occurred generating PID file name. Check " +\
                      "Mount Root Directory + Port Number in configuration. "+\

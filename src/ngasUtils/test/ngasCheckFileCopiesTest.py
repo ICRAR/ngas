@@ -140,7 +140,7 @@ class ngasCheckFileCopiesTest(ngamsTestSuite):
         """
         Synopsis:
         A normal run. No files found to have missing file copies.
-        
+
         Description:
         The purpose of this tests, exercises the nominal case, where the tool
         is invoked on a list of files, which are all available in 3 copies or
@@ -162,13 +162,13 @@ class ngasCheckFileCopiesTest(ngamsTestSuite):
         """
         _prepTestEnv(self)
         _verifyEmailAndStdout(self, "test_NormalExec_1")
-        
+
 
     def test_NormalExec_2(self):
         """
         Synopsis:
         A normal run. Files found to have missing file copies + dubious files.
-        
+
         Description:
         The purpose of the test is to verify that the tool detects when there
         are missing file copies/dubious files in connection with the disk
@@ -189,7 +189,7 @@ class ngasCheckFileCopiesTest(ngamsTestSuite):
         - Invoke ngasCheckFilesCopies Tool.
         - Verify that the Email Notification generated indicates that files
           were found, which have missing copies.
-        
+
         Remarks:
         ...
         """
@@ -211,20 +211,20 @@ class ngasCheckFileCopiesTest(ngamsTestSuite):
                                                 [10, "11000000", 0],
                                                 [13, "00000000", 1]]:
             dbObj.setFileStatus(fileId, fileVer, repDiskId, fileStatus)
-            query = "UPDATE ngas_files SET ignore=%d WHERE disk_id='%s' " +\
+            query = "UPDATE ngas_files SET file_ignore=%d WHERE disk_id='%s' " +\
                     "AND file_id='%s' AND file_version=%d"
             dbObj.query(query % (fileIgnore, repDiskId, fileId, fileVer))
         _verifyEmailAndStdout(self, "test_NormalExec_2", diskId=mainDiskId)
 
-        
+
     def test_AbnormalExec_1(self):
         """
         Synopsis:
         Tool executed on non-existing Disk ID.
-        
+
         Description:
         This test case exercise the situation where a Disk ID is given for a
-        non-existing disk. 
+        non-existing disk.
 
         Expected Result:
         An appropriate error message should be generated on the shell.
@@ -239,14 +239,14 @@ class ngasCheckFileCopiesTest(ngamsTestSuite):
         _verifyEmailAndStdout(self, "test_AbnormalExec_1",
                               verifyEmail=1, diskId="NON-EXISTING")
 
-        
+
 
 
     def test_AbnormalExec_2(self):
         """
         Synopsis:
         ...
-        
+
         Description:
         ...
 

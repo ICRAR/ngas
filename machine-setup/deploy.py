@@ -730,17 +730,21 @@ def ngas_buildout(standalone=0, typ='archive'):
     set_env()
 
     with cd(env.NGAS_DIR_ABS):
+        put('data/common.py.patch', '{0}/.'.\
+            format(env.NGAS_DIR_ABS))
         if (standalone):
             put('{0}/../additional_tars/eggs.tar.gz'.format(thisDir), '{0}/eggs.tar.gz'.format(env.NGAS_DIR_ABS))
             run('tar -xzf eggs.tar.gz')
+            run('patch eggs/minitage.recipe.common-1.90-py2.7.egg/minitage/recipe/common/common.py common.py.patch')
             virtualenv('buildout -Nvo')
         else:
+            run('patch eggs/minitage.recipe.common-1.90-py2.7.egg/minitage/recipe/common/common.py common.py.patch')
             virtualenv('buildout')
-        run('ln -s $PWD/NGAS ../NGAS')
+        run('cp -R {0}/NGAS {0}/../NGAS'.format(env.NGAS_DIR_ABS))
         run('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
               env.NGAS_DIR_ABS, initName(typ=typ)[2], initName(typ=typ)[3]))
         nda = '\/'+'\/'.join(env.NGAS_DIR_ABS.split('/')[1:-1])+'\/NGAS'
-        run("""sed -i 's/RootDirectory="\/home\/ngas\/NGAS"/RootDirectory="{0}"/' cfg/NgamsCfg.SQLite.mini.xml""".format(nda))
+        run("""sed -i '' 's/RootDirectory="\/home\/ngas\/NGAS"/RootDirectory="{0}"/' cfg/NgamsCfg.SQLite.mini.xml""".format(nda))
         with cd('../NGAS'):
             with settings(warn_only=True):
                 run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
@@ -871,6 +875,7 @@ def user_deploy(typ='archive', standalone=0):
 
     fab -f deploy.py user_deploy:typ='cache'
     """
+    env.HOME = run("echo ~{0}".format(env.user))
     set_env()
     ppath = check_python()
     if not ppath:
@@ -1017,9 +1022,9 @@ def upgrade():
         if not res:
             abort('src_dir does not point to a valid NGAS source directory!!')
     set_env()
-    run('ngamsDaemon stop')
+    run('$NGAS_PREFIX/ngas_rt/bin/ngamsDaemon stop')
     rsync_project(local_dir=env.src_dir+'/src', remote_dir=env.NGAS_DIR_ABS+'/src', exclude=".git")
     #git_clone_tar()
-    run('ngamsDaemon start')
+    run('$NGAS_PREFIX/ngas_rt/bin/ngamsDaemon start')
     print "\n\n******** UPGRADE COMPLETED!********\n\n"
 

@@ -867,6 +867,11 @@ def checkDbChangeCache(srvObj,
         timer = PccUtTime.Timer()
         for cacheFile in tmpCacheFiles:
             checkStopJanitorThread(srvObj)
+            if os.lstat(cacheFile)[6] == 0:
+                os.remove(cacheFile)    # sometimes there are pickle files with 0 size.
+                                        # we don't want to stop on them
+                continue
+
             cacheStatObj = ngamsLib.loadObjPickleFile(cacheFile)
             if (isinstance(cacheStatObj, types.ListType)):
                 # A list type in the Temporary DB Snapshot means that the

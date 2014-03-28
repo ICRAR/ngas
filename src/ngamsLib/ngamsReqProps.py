@@ -46,7 +46,7 @@ class ngamsReqProps:
     request. This class is passed on to the various method handling
     the request.
     """
-    
+
     def __init__(self):
         """
         Constructor method.
@@ -54,7 +54,7 @@ class ngamsReqProps:
         # Parameters from the HTTP request.
         self.__httpMethod      = ""
         # Used to store the HTTP header in 'raw' condition.
-        self.__httpHdrDic      = {}      
+        self.__httpHdrDic      = {}
         self.__cmd             = ""
         self.__wait            = 1
         self.__mimeType        = ""
@@ -134,9 +134,9 @@ class ngamsReqProps:
         members of the class accordingly.
 
         httpMethod:   HTTP request method (GET/POST) (string).
-        
+
         path:         Path of HTTP request (string).
-        
+
         headers:      Dictionary containing the information for the
                       headers of the HTTP query (dictionary).
 
@@ -145,7 +145,7 @@ class ngamsReqProps:
         T = TRACE()
 
         self.setHttpMethod(httpMethod)
-        
+
         # Handle the HTTP headers.
         for key in headers.keys():
             keyTmp = key.lower()
@@ -181,11 +181,11 @@ class ngamsReqProps:
             parList = ngamsLib.parseUrlRequest(path)
             for el in parList:
                 # For some reason '+' is not converted back to ' ' ...
-                tmpVal = el[1].replace("+", " ")    
+                tmpVal = el[1].replace("+", " ")
                 val = urllib.unquote(str(tmpVal))
                 info(4, "Found parameter: " + el[0] + " with value: " + val)
                 if (el[0] == "initiator"): self.setCmd(val)
-                if (httpMethod in [NGAMS_HTTP_GET, NGAMS_HTTP_PUT, NGAMS_HTTP_POST]): 
+                if (httpMethod in [NGAMS_HTTP_GET, NGAMS_HTTP_PUT, NGAMS_HTTP_POST]):
                     # Subscription file delivery is always POST, but sometimes we want it behave like GET (e.g. proxy qrchive) to pass on parametres in url string.
                     if (el[0] == "filename"):
                         self.setFileUri(val)
@@ -219,7 +219,7 @@ class ngamsReqProps:
         # Convert a timeout of -1 to None or if set from string to float.
         if (not self.hasHttpPar("time_out")):
             self.addHttpPar("time_out", "-1")
-                
+
         # In the case of an Archive Request, check that the mime-type is
         # known to this NGAS installation.
         if (self.getCmd() == NGAMS_ARCHIVE_CMD):
@@ -232,7 +232,7 @@ class ngamsReqProps:
 
         return self
 
-    
+
     def hasHttpHdr(self,
                    httpHdr):
         """
@@ -269,7 +269,7 @@ class ngamsReqProps:
         Returns:   List with HTTP header keys (list).
         """
         return self.__httpHdrDic.keys()
-        
+
 
     def setHttpMethod(self,
                       httpMethod):
@@ -313,7 +313,7 @@ class ngamsReqProps:
         Returns:  NG/AMS command (string).
         """
         return  self.__cmd
-   
+
 
     def setMimeType(self,
                     mimeType):
@@ -343,7 +343,7 @@ class ngamsReqProps:
         Set the size of the data in the HTTP request.
 
         size:     Size of data in bytes (integer).
-        
+
         Returns:  Reference to object itself.
         """
         self.__size = int(size)
@@ -363,7 +363,7 @@ class ngamsReqProps:
                 wait):
         """
         Set the Wait Flag.
-        
+
         wait:      1 = wait, 0 = immediate reply (integer).
 
         Returns:   Reference to object itself.
@@ -410,7 +410,7 @@ class ngamsReqProps:
         """
         Get a safe file URI, i.e. a URI where a possible password has
         been cleared out.
-        
+
         Returns:    Safe URI (string).
         """
         return self.__safeFileUri
@@ -440,7 +440,7 @@ class ngamsReqProps:
         it returns the specified return value.
 
         httpPar:      Parameter name (string).
-        
+
         retVal:       Value to return in case parameter is not found
                       (<user definable>).
 
@@ -457,14 +457,14 @@ class ngamsReqProps:
                    httpPar):
         """
         Return 1 if the object contains the referenced parameter.
-        
+
         httpPar:    Parameter name of parameter to probe for (string).
 
         Returns:    1 if parameter is contained in object,
                     otherwise 0 (integer).
         """
         return self.__httpPars.has_key(httpPar)
-    
+
 
     def getHttpPar(self,
                    httpPar):
@@ -500,7 +500,7 @@ class ngamsReqProps:
         Set the Sent Reply Flag.
 
         state:     1 = reply sent (integer).
-        
+
         Returns:   Reference to object itself.
         """
         self.__sentReply = state
@@ -510,7 +510,7 @@ class ngamsReqProps:
     def getSentReply(self):
         """
         Get the Sent Reply Flag.
-        
+
         Returns:    Sent Reply Flag (integer).
         """
         return self.__sentReply
@@ -522,7 +522,7 @@ class ngamsReqProps:
         Set the number of bytes received from the HTTP request data.
 
         bytes:     Number of bytes received (integer).
-        
+
         Returns:   Reference to object itself.
         """
         self.__bytesReceived = bytes
@@ -532,7 +532,7 @@ class ngamsReqProps:
     def getBytesReceived(self):
         """
         Get the number of bytes received from the HTTP request data.
-        
+
         Returns:    Number of bytes received (integer).
         """
         return self.__bytesReceived
@@ -570,6 +570,9 @@ class ngamsReqProps:
 
         Returns:     Reference to object itself.
         """
+        T = TRACE()
+        msg = "Increasing IO_TIME by: %10.3f s" % incrValue
+        info(4,msg)
         self.__ioTime += float(incrValue)
         return self
 
@@ -580,7 +583,7 @@ class ngamsReqProps:
 
         Returns:   IO Time (float).
         """
-        return self.__ioTime 
+        return self.__ioTime
 
 
     def setTargDiskInfo(self,
@@ -613,7 +616,7 @@ class ngamsReqProps:
         Set the authorization string (raw) of the object.
 
         authString:  Value of authorization string (string).
- 
+
         Returns:     Reference to object itself.
         """
         self.__authorization = authString
@@ -622,8 +625,8 @@ class ngamsReqProps:
     def getAuthorization(self):
         """
         Get the authorization string (raw) of the object.
- 
-        Returns:   Value of authorization string (string).  
+
+        Returns:   Value of authorization string (string).
         """
         return self.__authorization
 
@@ -676,7 +679,7 @@ class ngamsReqProps:
                          noRep):
         """
         Set the No Replication Flag.
-        
+
         noRep:      1 = no replication, 0 = replication (integer).
 
         Returns:   Reference to object itself.
@@ -736,7 +739,7 @@ class ngamsReqProps:
 
         ignoreUndefFields:     Don't take fields, which have a length of 0
                                (integer/0|1).
-                               
+
         Returns:               String buffer with ASCII output (string).
         """
         format = prFormat1()
@@ -802,7 +805,7 @@ class ngamsReqProps:
 
         updateTime:     Update time for this update of the status information
                         in case this is set to 1 (integer/0|1).
-                      
+
         Returns:        Reference to object itself.
         """
         if (complPercent): self.__completionPercent = float(complPercent)
@@ -814,7 +817,7 @@ class ngamsReqProps:
         """
         Get the degree of completion of the request (in percen).
 
-        Returns:        Degree of completion in percent (float). 
+        Returns:        Degree of completion in percent (float).
         """
         return self.__completionPercent
 
@@ -823,7 +826,7 @@ class ngamsReqProps:
                          expCount,
                          updateTime = 0):
         """
-        Set the expected number of iterations to be carried out. Could 
+        Set the expected number of iterations to be carried out. Could
         e.g. be the number of files to handle.
 
         expCount:    Expected number of iterations (integer).
@@ -840,7 +843,7 @@ class ngamsReqProps:
 
     def getExpectedCount(self):
         """
-        Return the expected number of iterations to be carried out. Could 
+        Return the expected number of iterations to be carried out. Could
         e.g. be the number of files to handle.
 
         Returns:  Expected number of iterations (integer).
@@ -858,12 +861,12 @@ class ngamsReqProps:
 
         updateTime:   Update time for this update of the status information
                       in case this is set to 1 (integer/0|1).
-       
+
         Returns:     Reference to object itself.
         """
         if (actCount): self.__actualCount = int(actCount)
         if (updateTime): self.setLastRequestStatUpdate()
-        return self 
+        return self
 
 
     def incActualCount(self,
@@ -882,13 +885,13 @@ class ngamsReqProps:
             self.__actualCount = 1
         if (updateTime): self.setLastRequestStatUpdate()
         return self
-        
-        
+
+
     def getActualCount(self):
         """
         Return the number of iterations carried out.
 
-        Returns:    Current number of iterations done (integer). 
+        Returns:    Current number of iterations done (integer).
         """
         return self.__actualCount
 
@@ -933,7 +936,7 @@ class ngamsReqProps:
         updateTime:       Update time for this update of the status information
                           in case this is set to 1 (integer/0|1).
 
-        Returns:          Current number of iterations done (integer). 
+        Returns:          Current number of iterations done (integer).
         """
         if (remainingTime): self.__remainingTime = int(remainingTime)
         if (updateTime): self.setLastRequestStatUpdate()
@@ -958,7 +961,7 @@ class ngamsReqProps:
         """
         self.__lastRequestStatUpdate = time.time()
         return self
-        
+
 
     def getLastRequestStatUpdate(self):
         """
@@ -984,7 +987,7 @@ class ngamsReqProps:
         self.__completionTime = time.time()
         if (updateTime): self.setLastRequestStatUpdate()
         return self
-    
+
 
     def getCompletionTime(self):
         """
