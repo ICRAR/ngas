@@ -88,6 +88,7 @@ YUM_PACKAGES = [
    'openssl-devel.x86_64',
    'wget.x86_64',
    'postgresql-devel.x86_64',
+   'patch',
 ]
 
 APT_PACKAGES = [
@@ -102,6 +103,7 @@ APT_PACKAGES = [
         'sqlite3',
         'libsqlite3-dev',
         'postgresql-client',
+        'patch'
         ]
 
 SLES_PACKAGES = [
@@ -123,6 +125,7 @@ SLES_PACKAGES = [
                  'libdb-4_5-devel',
                  'gcc',
                  'postgresql-devel',
+                 'patch'
                  ]
 
 PYTHON_PACKAGES = [
@@ -730,21 +733,27 @@ def ngas_buildout(standalone=0, typ='archive'):
     set_env()
 
     with cd(env.NGAS_DIR_ABS):
-        put('data/common.py.patch', '{0}/.'.\
-            format(env.NGAS_DIR_ABS))
         if (standalone):
             put('{0}/../additional_tars/eggs.tar.gz'.format(thisDir), '{0}/eggs.tar.gz'.format(env.NGAS_DIR_ABS))
             run('tar -xzf eggs.tar.gz')
-            run('patch eggs/minitage.recipe.common-1.90-py2.7.egg/minitage/recipe/common/common.py common.py.patch')
+            if env.linux_flavor == 'Darwin':
+                put('{0}/../data/common.py.patch'.format(thisDir), '.')
+                run('patch eggs/minitage.recipe.common-1.90-py2.7.egg/minitage/recipe/common/common.py common.py.patch')
             virtualenv('buildout -Nvo')
         else:
-            run('patch eggs/minitage.recipe.common-1.90-py2.7.egg/minitage/recipe/common/common.py common.py.patch')
             virtualenv('buildout')
         run('cp -R {0}/NGAS {0}/../NGAS'.format(env.NGAS_DIR_ABS))
-        run('ln -s {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
+        with settings(warn_only=True):
+            run('cp {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
               env.NGAS_DIR_ABS, initName(typ=typ)[2], initName(typ=typ)[3]))
         nda = '\/'+'\/'.join(env.NGAS_DIR_ABS.split('/')[1:-1])+'\/NGAS'
-        run("""sed -i '' 's/RootDirectory="\/home\/ngas\/NGAS"/RootDirectory="{0}"/' cfg/NgamsCfg.SQLite.mini.xml""".format(nda))
+        if env.linux_flavor == 'Darwin': # capture stupid difference in sed on Mac OSX
+            run("""sed -i '' 's/RootDirectory="\/home\/ngas\/NGAS"/RootDirectory="{0}"/' {1}/../NGAS/cfg/{2}""".
+                format(nda, env.NGAS_DIR_ABS, initName(typ=typ)[3]))
+        else:
+            run("""sed -i 's/RootDirectory="\/home\/ngas\/NGAS"/RootDirectory="{0}"/' {1}/../NGAS/cfg/{2}""".
+                format(nda, env.NGAS_DIR_ABS, initName(typ=typ)[3]))
+
         with cd('../NGAS'):
             with settings(warn_only=True):
                 run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
@@ -753,6 +762,22 @@ def ngas_buildout(standalone=0, typ='archive'):
 
 
     print "\n\n******** NGAS_BUILDOUT COMPLETED!********\n\n"
+
+@task
+def install_user_profile():
+    """
+    Put the activation of the virtualenv into the login profile of the user
+    """
+    set_env()
+    if not check_path('.bash_profile_orig'):
+        run('cp .bash_profile .bash_profile_orig')
+    else:
+        run('cp .bash_profile_orig .bash_profile')
+    run('echo "export NGAS_PREFIX={0}\n" >> .bash_profile'.format(env.PREFIX))
+    run('echo "source {0}/bin/activate\n" >> .bash_profile'.format(env.NGAS_DIR_ABS))
+
+    print "\n\n******** .bash_profile updated!********\n\n"
+
 
 
 @task
@@ -786,16 +811,10 @@ def ngas_full_buildout(standalone=0, typ='archive'):
         virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
 
     ngas_buildout(standalone=standalone, typ=typ)
-
-    # put the activation of the virtualenv into the login profile of the user
-    if not check_path('.bash_profile_orig'):
-        run('cp .bash_profile .bash_profile_orig')
-    else:
-        run('cp .bash_profile_orig .bash_profile')
-    run('echo "export NGAS_PREFIX={0}\n" >> .bash_profile'.format(env.PREFIX))
-    run('echo "source {0}/bin/activate\n" >> .bash_profile'.format(env.NGAS_DIR_ABS))
+    install_user_profile()
 
     print "\n\n******** NGAS_FULL_BUILDOUT COMPLETED!********\n\n"
+
 
 
 
@@ -1023,7 +1042,7 @@ def upgrade():
             abort('src_dir does not point to a valid NGAS source directory!!')
     set_env()
     run('$NGAS_PREFIX/ngas_rt/bin/ngamsDaemon stop')
-    rsync_project(local_dir=env.src_dir+'/src', remote_dir=env.NGAS_DIR_ABS+'/src', exclude=".git")
+    rsync_project(local_dir=env.src_dir+'/src', remote_dir=env.NGAS_DIR_ABS, exclude=".git")
     #git_clone_tar()
     run('$NGAS_PREFIX/ngas_rt/bin/ngamsDaemon start')
     print "\n\n******** UPGRADE COMPLETED!********\n\n"
