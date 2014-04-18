@@ -773,7 +773,7 @@ def install_user_profile():
         run('cp .bash_profile .bash_profile_orig')
     else:
         run('cp .bash_profile_orig .bash_profile')
-    run('echo "export NGAS_PREFIX={0}\n" >> .bash_profile'.format(env.PREFIX))
+    run('echo "export NGAS_PREFIX={0}\n" >> .bash_profile'.format(env.NGAS_DIR_ABS))
     run('echo "source {0}/bin/activate\n" >> .bash_profile'.format(env.NGAS_DIR_ABS))
 
     print "\n\n******** .bash_profile updated!********\n\n"
@@ -1025,7 +1025,8 @@ def upgrade():
     # use the PREFIX from the command line or try to set it from
     # the remote environment. If both fails bail-out.
     if not env.has_key('PREFIX') or not env.PREFIX:
-        env.PREFIX = run('echo $NGAS_PREFIX')
+        env.PREFIX = run('echo $NGAS_PREFIX/..')
+        env.NGAS_DIR_ABS = run('echo $NGAS_PREFIX')
     if not env.PREFIX:
         print 'Unable to identify location of NGAS installation!'
         print 'Please set the environment variable NGAS_PREFIX in .bash_profile.'
@@ -1041,9 +1042,9 @@ def upgrade():
         if not res:
             abort('src_dir does not point to a valid NGAS source directory!!')
     set_env()
-    run('$NGAS_PREFIX/ngas_rt/bin/ngamsDaemon stop')
+    run('$NGAS_PREFIX/bin/ngamsDaemon stop')
     rsync_project(local_dir=env.src_dir+'/src', remote_dir=env.NGAS_DIR_ABS, exclude=".git")
     #git_clone_tar()
-    run('$NGAS_PREFIX/ngas_rt/bin/ngamsDaemon start')
+    run('$NGAS_PREFIX/bin/ngamsDaemon start')
     print "\n\n******** UPGRADE COMPLETED!********\n\n"
 
