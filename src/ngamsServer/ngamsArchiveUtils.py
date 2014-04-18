@@ -99,7 +99,8 @@ def updateFileInfoDb(srvObj,
                setIngestionDate(ts).\
                setChecksum(checksum).setChecksumPlugIn(checksumPlugIn).\
                setFileStatus(NGAMS_FILE_STATUS_OK).\
-               setCreationDate(creDate)
+               setCreationDate(creDate).\
+               setIoTime(piStat.getIoTime())
     fileInfo.write(srvObj.getDb())
     info(4,"Updated file info in NGAS DB for file with ID: " +\
          piStat.getFileId())
@@ -763,6 +764,8 @@ def dataHandler(srvObj,
                                                      tmpStagingFilename,
                                                      trgDiskInfo)
         srvObj.test_AfterSaveInStagingFile()
+        info(3,"Iotime returned from saveInStagingFile: %6.2f" %\
+             ioTime)
         reqPropsObj.incIoTime(ioTime)
         info(3,"Create Temporary Request Properties File: %s" %\
              tmpReqPropsFilename)

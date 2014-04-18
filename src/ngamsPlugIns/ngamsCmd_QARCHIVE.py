@@ -449,7 +449,8 @@ def handleCmd(srvObj,
                setIngestionDate(ts).\
                setChecksum(checksum).setChecksumPlugIn(checksumPlugIn).\
                setFileStatus(NGAMS_FILE_STATUS_OK).\
-               setCreationDate(creDate)
+               setCreationDate(creDate).\
+               setIoTime(reqPropsObj.getIoTime())
     fileInfo.write(srvObj.getDb())
 
     # Inform the caching service about the new file.
