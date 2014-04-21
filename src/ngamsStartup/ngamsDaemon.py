@@ -34,7 +34,7 @@ else:
     NGAS_PREFIX = '{0}'.format(HOME)
     os.environ['NGAS_PREFIX'] = NGAS_PREFIX
 
-CFG = '%s/NGAS/cfg/ngamsServer.conf' % NGAS_PREFIX
+CFG = '%s/../NGAS/cfg/ngamsServer.conf' % NGAS_PREFIX
 cfgObj = ngamsConfig()
 cfgObj.load(CFG)
 PORT = cfgObj.getPortNo()
@@ -42,7 +42,7 @@ if os.environ.has_key('NGAMS_ARGS'):
     NGAMS_ARGS = os.environ['NGAMS_ARGS'].split() # convert from command line (string) to a list
 else:
     NGAMS_ARGS = [
-                  '%s/ngas_rt/bin/ngamsServer' % NGAS_PREFIX,
+                  '%s/bin/ngamsServer' % NGAS_PREFIX,
                   '-cfg', CFG,
                   '-force',
                   '-autoOnline',
@@ -52,10 +52,10 @@ else:
 
 
 
-PIDFILE = '%s/NGAS/var/run/ngamsDaemon.pid' % NGAS_PREFIX
+PIDFILE = '%s/../NGAS/var/run/ngamsDaemon.pid' % NGAS_PREFIX
 try:
-    os.makedirs('{0}/NGAS/var/run'.format(NGAS_PREFIX))
-    os.makedirs('{0}/NGAS/var/log'.format(NGAS_PREFIX))
+    os.makedirs('{0}/../NGAS/var/run'.format(NGAS_PREFIX))
+    os.makedirs('{0}/../NGAS/var/log'.format(NGAS_PREFIX))
 except OSError:
     pass
 
@@ -83,8 +83,8 @@ class MyDaemon(Daemon):
         """
         Send a STATUS command to server
         """
-        SCMD = "{0}/ngas_rt/bin/ngamsPClient -port {1} -host $HOSTNAME -cmd STATUS -v 1".\
-             format(HOME, PORT)
+        SCMD = "{0}/bin/ngamsPClient -port {1} -host $HOSTNAME -cmd STATUS -v 1".\
+             format(NGAS_PREFIX, PORT)
         subprocess.call(SCMD,shell=True)
 
 
@@ -97,7 +97,7 @@ def checkNgasPidFile(dum):
     """
     with open(PIDFILE, 'r') as f:
         ipid = f.readline().strip()
-    pidfils = glob.glob('%s/NGAS/.NGAS-*' % NGAS_PREFIX)
+    pidfils = glob.glob('%s/../NGAS/.NGAS-*' % NGAS_PREFIX)
     for fil in pidfils:
         with open(fil, 'r') as f:
             pid = f.readline().strip()
@@ -114,7 +114,7 @@ def main(args=sys.argv):
     if sys.argv[0] == 'ngamsCacheDaemon': #check how we are called
         infoStr = 'NGAMS Cache Server'
         progrStr = 'ngamsCacheServer'
-        NGAMS_ARGS[0] = '%s/ngas_rt/bin/ngamsCacheServer' % NGAS_PREFIX
+        NGAMS_ARGS[0] = '%s/bin/ngamsCacheServer' % NGAS_PREFIX
     else:
         progrStr = 'ngamsServer'
         infoStr = 'NGAMS Server'
