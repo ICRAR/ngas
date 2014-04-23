@@ -55,6 +55,11 @@ one_mb = 1024. ** 2
 DEFAULT_FNM = 'bspeed.pkl'
 parallel_stream = False
 
+#    "d:s:t:i:b:z:c:e:r:f:l:womph",\
+#           ["device","skip","testcount","iosize","blocksize", "sndbufsize",\
+#            "crc", "lowio", "session", "datarate", "file",\
+#            "write","old","method","parallel","help"])
+
 def usage():
     """
     This code contains methods to perform performance tests of
@@ -62,23 +67,28 @@ def usage():
     than devices directly.
 
     Synopsis: diskTest.py [-d device] [-s skip] [-t testcount] [-i iosize]
-                          [-b blocksize] [-c {b|z}] [-m] [-w] [-l] [-h]
+                          [-b blocksize] [-c {b|z}] [-f file] [-m] [-w] [-l] [-o]
+                          [-p] [-h]
 
                   long arguments are allowed as well, e.g. --device
 
           [d]evice:    string, e.g. /dev/hdb1, can also be a file or
-                       a url (for http disk write)
+                       a url (for http disk write). If the first four characters
+                       are /dev a number of additional checks are performed before
+                       writing to the raw device.
           [s]kip:      integer [0 GB], e.g. 5
           [t]estcount: integer [1], number of consecutive tests [1]
-          [b]locksize: integer [1024 bytes], number of bytes in single
-                       IO
-          [c]rc32:     string, if 'b' binascii is used, if 'z' zlib.
           [i]osize:    integer [1073741824 bytes == 1 GB], full size of
                        one test, i.e. iosize/blocksize IOs will be
                        carried out before calculating statistics.
+          [b]locksize: integer [1024 bytes], number of bytes in single
+                       IO
+          sndbufsi[z]e:the TCP send buffer size. This parameter
+                       is used only when the device is a URL (HTTP
+                       write test)
+          [c]rc:       string, if 'b' binascii is used, if 'z' zlib.
           [m]ethod:    flag, if set a python implementation of dd
                        will be used.
-          [w]rite:     flag, if set writeTest is performed.
           [l]owio:     [direct, async], this will switch to lower level I/O
                        using either the O_DIRECT or the O_ASYNC flag when opening
                        the file.
@@ -86,9 +96,15 @@ def usage():
           data[r]ate:  the data rate for HTTP write test. This parameter
                        is used only when the device is a URL (HTTP
                        write test)
-          sndbufsi[z]e:the TCP send buffer size. This parameter
-                       is used only when the device is a URL (HTTP
-                       write test)
+          [f]file:     string, filename of the file containing the results.
+                       Default: bspeed.pkl
+          [w]rite:     flag, if set writeTest is performed.
+          [o]ld:       flag, if set the old implementation of python DD is used.
+          [m]ethod:    flag, if set a python implementation of dd will be used.
+                       Default: False, standard dd will be used.
+          [p]arallel:  flag, if dev=='http', this will send <testcount> streams
+                       in parallel.
+          [h]elp:      flag, if set this help text is shown.
 
           NOTE: All byte values are forced to be an integer multiple
                  of 4.
@@ -208,7 +224,7 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, snd
         sessionId = dt.strftime('%Y%m%dT%H%M%S')
 
     import httplib
-    
+
     if (parallel):
         tst = time.time()
         myDDThreads = []
@@ -244,7 +260,7 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, snd
                     print("Set TCP SNDBUF to %d" % sndbufsize)
                 except Exception, eer:
                     print('Fail to set TCP SNDBUF to %d: %s' % (sndbufsize, str(eer)))
-            
+
             if (not parallel):
                 st=time.time()
                 status = myDD('/dev/zero', dev, \
@@ -256,11 +272,11 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, snd
                                long(skip)*blocksize,blocksize,\
                                iocount, 0, http)
                 thrdName = 'myDDThrd_%d' % ii
-                ddThrRef = threading.Thread(None, myDD, thrdName, args) 
+                ddThrRef = threading.Thread(None, myDD, thrdName, args)
                 ddThrRef.setDaemon(0)
                 ddThrRef.start()
                 myDDThreads.append(ddThrRef)
-                
+
         except Exception, e:
             ex = str(e) + traceback.format_exc()
             print ex
@@ -279,7 +295,7 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, snd
             bspeed += status[0]
             cspeed += status[1]
             tspeed += status[2]
-    
+
     if (parallel):
         for dtr in myDDThreads:
             dtr.join()
@@ -528,10 +544,10 @@ if __name__ == '__main__':
 
     import getopt
 
-    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:z:c:e:r:f:l:ompwh",\
-           ["device","skip","testcount","iosize","blocksize", "sndbufsize"\
-            "write","old","method","parallel","help","lowio", "session", "datarate",
-            "file"])
+    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:z:c:e:r:f:l:womph",\
+           ["device","skip","testcount","iosize","blocksize", "sndbufsize",\
+            "crc", "lowio", "session", "datarate", "file",\
+            "write","old","method","parallel","help"])
 
     for o,v in opts:
         if o in ("-d","--device"):
@@ -546,23 +562,7 @@ if __name__ == '__main__':
             blocksize = int(v)
         if o in ("-z","--sndbufsize"):
             tcpsndbuf = int(v)
-        if o in ("-o","--old"):
-            old = 1
-        if o in ("-m","--method"):
-            method = 'myDD'
-        if o in ("-p","--parallel"):
-            parallel_stream = True
-        if o in ("-w","--write"):
-            Test = 'write'
-        if o in ("-l", "--lowio"):
-            llflag = 1
-            if v == 'direct':
-                dioflag = 1
-            elif v == 'async':
-                asyncflag = 1
-            elif v == 'sync':
-                syncflag = 1
-        if o in ("-c","--crcfl"):
+        if o in ("-c","--crc"):
             crcfl = v
             if crcfl not in ['b', 'z']:
                 crcfl = 'b'
@@ -576,6 +576,22 @@ if __name__ == '__main__':
             data_rate = int(v)
         if o in ("-f", "--file"):
             DEFAULT_FNM = v
+        if o in ("-l", "--lowio"):
+            llflag = 1
+            if v == 'direct':
+                dioflag = 1
+            elif v == 'async':
+                asyncflag = 1
+            elif v == 'sync':
+                syncflag = 1
+        if o in ("-w","--write"):
+            Test = 'write'
+        if o in ("-o","--old"):
+            old = 1
+        if o in ("-m","--method"):
+            method = 'myDD'
+        if o in ("-p","--parallel"):
+            parallel_stream = True
         if o in ("-h","--help"):
             usage()
 
