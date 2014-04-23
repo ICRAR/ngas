@@ -28,16 +28,7 @@
 """
 Respond to a robots.txt request"""
 
-import os, datetime, threading
-from   ngams import *
-import ngamsDb
-
-chkFileThrd = None
-is_chkFileThrd_running = False
-total_tocheck = 0
-num_checked = 0
-num_wrong = 0
-
+from ngams import *
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
