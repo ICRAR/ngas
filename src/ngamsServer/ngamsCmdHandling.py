@@ -113,6 +113,8 @@ def cmdHandler(srvObj,
         try:
             if cmd == 'robots.txt':
                 cmd = 'robots'
+            if cmd == 'favicon.ico':
+                cmd = 'favicon'
             cmdMod = "ngamsCmd_%s" % cmd
             # Reload the module if requested.
             reloadMod = 0
