@@ -50,18 +50,18 @@ def cmdHandler(srvObj,
     Handle a command.
 
     srvObj:        Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:   Request Property object to keep track of
                    actions done during the request handling
                    (ngamsReqProps).
-        
+
     httpRef:       Reference to the HTTP request handler
                    object (ngamsHttpRequestHandler).
-        
+
     Returns:       Void.
     """
     T = TRACE()
-    
+
     # Interpret the command + parameters.
     cmd = reqPropsObj.getCmd()
     info(1,"Received command: " + cmd)
@@ -111,6 +111,8 @@ def cmdHandler(srvObj,
         ngamsUnsubscribeCmd.handleCmdUnsubscribe(srvObj, reqPropsObj, httpRef)
     else:
         try:
+            if cmd == 'robots.txt':
+                cmd = 'robots'
             cmdMod = "ngamsCmd_%s" % cmd
             # Reload the module if requested.
             reloadMod = 0
@@ -132,6 +134,6 @@ def cmdHandler(srvObj,
             error(errMsg)
             raise Exception, errMsg
         eval("%s.handleCmd(srvObj, reqPropsObj, httpRef)" % cmdMod)
-        
+
 
 # EOF
