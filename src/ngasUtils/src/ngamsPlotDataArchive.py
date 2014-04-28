@@ -55,7 +55,7 @@ def _buildQA(a_start, a_end, rate):
     Construct the retrieval access tuple from the line
     """
     stt = a_start.split(' ')[0]
-    dtt = a_end.split(' ')[0]
+    edt = a_end.split(' ')[0]
     #date = timestamp.split('T')[0]
     #time = timestamp.split('T')[1]        
     
