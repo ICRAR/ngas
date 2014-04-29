@@ -541,11 +541,15 @@ def archiveFromFile(srvObj,
             return NGAMS_FAILURE
 
     # If the file was handled successfully, we remove it from the
-    # Back-Log Buffer Directory.
-    info(2,"Successfully archived local file: " + filename +\
+    # Back-Log Buffer Directory unless the local file was a log-file
+    # in which case we leave the cleanup to the Janitor-Thread.
+    if stagingFile.find('LOG-ROTATE') > -1:
+        info(2,"Successfully archived local file: " + filename)
+    else:
+        info(2,"Successfully archived local file: " + filename +\
          ". Removing original file.")
-    rmFile(stagingFile)
-    rmFile(stagingFile + "." + NGAMS_PICKLE_FILE_EXT)
+        rmFile(stagingFile)
+        rmFile(stagingFile + "." + NGAMS_PICKLE_FILE_EXT)
 
     info(2,"Archived local file: " + filename + ". Time (s): " +\
          str(archiveTimer.stop()))
