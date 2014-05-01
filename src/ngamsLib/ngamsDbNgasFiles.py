@@ -318,7 +318,8 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             else:
                 return res[0][0][0]
         else:
-            return '00000000'
+            raise Exception('file not found in ngas db - %s,%s,%d' % (fileId, diskId, fileVersion))
+            #return '00000000'
 
     def setFileStatus(self,
                       fileId,

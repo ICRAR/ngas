@@ -1165,13 +1165,20 @@ def checkCacheContents(srvObj):
                     if (not fileInfoList): break
                     for sqlFileInfo in fileInfoList:
                         if (CHECK_CAN_BE_DELETED):
-                            if (not checkIfFileCanBeDeleted(srvObj, 
-                                                            sqlFileInfo[NGAMS_CACHE_FILE_ID], 
-                                                            sqlFileInfo[NGAMS_CACHE_FILE_VER], 
-                                                            sqlFileInfo[NGAMS_CACHE_DISK_ID])):
-                                info(2, "Cannot delete file from the cache: %s/%s/%s" %\
-                                     (str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2])))
-                                continue
+                            try:
+                                if (not checkIfFileCanBeDeleted(srvObj, 
+                                                                sqlFileInfo[NGAMS_CACHE_FILE_ID], 
+                                                                sqlFileInfo[NGAMS_CACHE_FILE_VER], 
+                                                                sqlFileInfo[NGAMS_CACHE_DISK_ID])):
+                                    info(2, "Cannot delete file from the cache: %s/%s/%s" %\
+                                         (str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2])))
+                                    continue
+                            except Exception, cee:
+                                if (str(cee).find('file not found in ngas db') > -1):
+                                    warning("file already gone, still mark for deletion: %s/%s/%s" %\
+                                            (str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2])))
+                                else:
+                                    raise cee
                         
                         msg = "CACHE-CRITERIA: Maximum Cache Size " +\
                               "Exceeded: %s/%s/%s"
