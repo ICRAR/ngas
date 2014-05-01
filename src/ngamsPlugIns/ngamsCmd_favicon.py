@@ -26,13 +26,13 @@
 # cwu      2014/03/28  Created
 
 """
-Respond to a robots.txt request"""
+Respond to a favicon.ico request"""
 
 from ngams import *
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
-    Respond to a robot.txt request.
+    Respond to a favicon.ico request.
 
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
 
@@ -44,4 +44,4 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
     Returns:        Void.
     """
-    srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'User-agent: *\nDisallow: /\n')
+    srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, '<link rel="shortcut icon" href="#" />', "text/html")
