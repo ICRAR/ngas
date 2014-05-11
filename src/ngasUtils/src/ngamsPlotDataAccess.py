@@ -29,15 +29,15 @@
 # time.gmtime(1067868000 + 315964800)
 import os, commands, gc, sys, time
 from os import walk
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 import numpy as np
 import datetime as dt
-from collections import defaultdict
 import pylab as pl
 from optparse import OptionParser
 import urlparse
 import re as regx
 import cPickle as pickle
+ 
 
 # retrieval access (date, observation id, was the file offline?, file_size)
 RA = namedtuple('RA', 'date obsId offline size user obsdate')
@@ -79,7 +79,7 @@ def unzipLogFiles(dir):
             cmd = 'gzip -d %s/%s' % (dir, fn)
             re = execCmd(cmd, failonerror = False)
 
-def _raListToVTimeNA(al):
+def _raListToVTimeNA(al, session_gap = 3600 * 2):
     """
     Convert a list of RA tuples to the virtual time (VTime) num arrays
     Ideally, the RA tuple should only contains read but not write
@@ -89,18 +89,50 @@ def _raListToVTimeNA(al):
 
     
     """
+    from collections import Counter
+    
     x = []
-    y = []
+    y = [] # reference stream
+    yd = [] # reuse distance
+    
+    uobsDict = {} #key - obsId, last reference time step
+    uobsDict_date = {} # key - obsId, val - last access date
+    
+    min_date = None
+    max_date = None
     
     c = 1
+    gc.disable()
     for a in al:
         if (a.offline == None): # qarchive
             continue
-        x.append(c)
-        y.append(a.obsId)
-        c += 1
-    
-    return (np.array(x), np.array(y))
+        
+        if (not min_date):
+            min_date = a.date
+        
+        max_date = a.date
+        
+        ns = 0
+        if ((not uobsDict_date.has_key(a.obsId)) or 
+            (_timeGapInSecs(a.date, uobsDict_date[a.obsId]) > session_gap)):
+            ns = 1
+        uobsDict_date[a.obsId] = a.date
+        
+        if (ns):
+            if (not uobsDict.has_key(a.obsId)):
+                rud = np.nan # referenced for the first time
+            else:
+                lastref = uobsDict[a.obsId]
+                rud = len(Counter(y[lastref:]).keys()) #excluding last reference itself
+            
+            x.append(c)
+            y.append(a.obsId)
+            yd.append(rud)
+            uobsDict[a.obsId] = c
+            c += 1
+            
+    gc.enable()
+    return (np.array(x), np.array(y), min_date, max_date, np.array(yd))
 
 def _getObsDateFrmFileId(fileId):
     """
@@ -128,7 +160,82 @@ def _timeGapInSecs(s1, s0):
     
     return (d1 - d0).seconds
 
-def _raListToVTimeNAByUser(al, min_access = 100, session_gap = 3600 * 2):
+def _raListToReuseDist(al, min_access = 100, session_gap = 3600 * 2):
+    """
+    al:             A list of RA
+    
+    """
+    from collections import Counter # this requires Python 2.7
+    
+    xd = defaultdict(list) # key - userIp, val - access list X
+    yd = defaultdict(list) # key - userIp, val - access list Y
+    rd = defaultdict(list) # key - userIp, val - reference list (obsId)
+    
+    min_access_date = {} # key - user, value - date (string)
+    max_access_date = {} # key - user, value - date (string)
+    
+    obsdict = defaultdict(dict) # key - userIp, val - a dict: key - obsId, val - virtual time of last reference
+    obsdict_date = defaultdict(dict) # key - userIp, val - a dict: key - obsId, val - actual time of last reference
+    ret_dict = {}
+    
+    print 'length of al = %d' % len(al)
+    
+    gc.disable()
+    
+    d1 = 0
+    d2 = 0
+ 
+    for a in al:
+        if (a.offline == None): # qarchive
+            d1 += 1
+            continue
+        obsDate = a.obsdate
+        if (not obsDate): # no valid observation date
+            d2 += 1
+            continue       
+        
+        if (not min_access_date.has_key(a.user)):
+            min_access_date[a.user] = a.date
+
+        max_access_date[a.user] = a.date # since al is sorted based on a.date
+       
+        ns = 0
+        uobsDict = obsdict[a.user]
+        uobsDict_date = obsdict_date[a.user]
+        if ((not uobsDict_date.has_key(a.obsId)) or 
+            (_timeGapInSecs(a.date, uobsDict_date[a.obsId]) > session_gap)):
+            ns = 1
+        uobsDict_date[a.obsId] = a.date
+        if (not ns):
+            continue
+        uas = rd[a.user]
+        if (not uobsDict.has_key(a.obsId)):
+            rud = np.nan # referenced for the first time
+        else:
+            lastref = uobsDict[a.obsId]
+            rud = len(Counter(uas[lastref:]).keys()) #excluding last reference itself
+            
+        yd[a.user].append(rud)
+        uxd = xd[a.user]
+        thisref = len(uxd) + 1
+        uxd.append(thisref)
+        uas.append(a.obsId)
+        uobsDict[a.obsId] = thisref
+    
+    for u, xl in xd.iteritems(): #key - user, val - access list
+        if (len(xl) < min_access):
+            continue
+        x = np.array(xl)
+        y = np.array(yd[u])
+        ret_dict[u] = (x, y, min_access_date[u], max_access_date[u])
+    
+    gc.enable()
+    
+    print 'No. of archive = %d, no. of invalid date = %d' % (d1, d2)
+    
+    return ret_dict
+
+def _raListToVTimeNAByUser(al, min_access = 100, session_gap = 3600 * 2, y_unit = 'obs'):
     """
     al:             A list of RA
     min_access:     if the number of accesses in a list is less than min_access, this list is disregarded
@@ -136,6 +243,8 @@ def _raListToVTimeNAByUser(al, min_access = 100, session_gap = 3600 * 2):
                     breaks a session if the last reference of this obsId is session_gap away
                     thus there is a one-one mapping between session -- obsId
                     each session is a point on the X-axis of the final plot
+    y_unit:         The unit of the Y-axis, either "day" or "obs"
+    
                     
     Return a dictionary: key - user(ip), 
                          val - a tuple
@@ -160,6 +269,12 @@ def _raListToVTimeNAByUser(al, min_access = 100, session_gap = 3600 * 2):
     
     d1 = 0
     d2 = 0
+    
+    if ('day' == y_unit):
+        yunit = 0
+    else:
+        yunit = 1
+    
  
     for a in al:
         if (a.offline == None): # qarchive
@@ -195,7 +310,10 @@ def _raListToVTimeNAByUser(al, min_access = 100, session_gap = 3600 * 2):
         if (ns):
             cd[a.user] += 1
             xd[a.user].append(cd[a.user])
-            yd[a.user].append(obsDate)
+            if (yunit == 0):
+                yd[a.user].append(obsDate)
+            else:
+                yd[a.user].append(a.obsId)
             if (md.has_key(a.user)):
                 if (obsDate < md[a.user]):
                     md[a.user] = obsDate
@@ -213,8 +331,9 @@ def _raListToVTimeNAByUser(al, min_access = 100, session_gap = 3600 * 2):
             continue
         x = np.array(xl)
         yl = yd[u]
-        for i in range(len(yl)):
-            yl[i] = (yl[i] - md[u]).days
+        if (0 == yunit):
+            for i in range(len(yl)):
+                yl[i] = (yl[i] - md[u]).days
         y = np.array(yl)
         ret_dict[u] = (x, y, min_access_date[u], max_access_date[u], md[u], ad[u])
     
@@ -356,13 +475,54 @@ def _getLR(list_of_arr):
     
     return (left - 2, right + 2)
 
-def _plotVirtualTimePerUser(accessList, archName, fgname):
+def _plotReuseDistance(accessList, archName, fgname):
+    """
+    Plot per-user based re-use distance
+    
+    ax    the figure on which plot should reside, if None, create a new one
+    """
+    print "Converting to num arrary for _plotReuseDistance"
+    stt = time.time()
+    ret_dict = _raListToReuseDist(accessList)
+    print ("Converting to num array takes %d seconds" % (time.time() - stt))
+    
+    c = 0
+    for u, na in ret_dict.iteritems():
+        if c > 20: # we only produce maximum 20 users
+            break
+        x = na[0]
+        y = na[1]
+        min_ad = na[2].split('T')[0]
+        max_ad = na[3].split('T')[0]
+        c += 1
+        uname = 'User%d' % c # we do not want to plot user ip addresses     
+        print '%s ----> %s' % (u, uname)
+        fig = pl.figure()
+        ax = fig.add_subplot(111)
+        ax.set_xlabel('User access from %s to %s' % (min_ad, max_ad), fontsize = 9)
+        ax.set_ylabel('Reuse distance', fontsize = 9)
+        ax.set_title("%s archive activity for '%s'" % (archName, uname), fontsize=10)
+        ax.tick_params(axis='both', which='major', labelsize=8)
+        ax.tick_params(axis='both', which='minor', labelsize=6)
+        
+        ax.plot(x, y, color = 'b', marker = 'x', linestyle = '', 
+                            label = 'access', markersize = 3) 
+        
+        #legend = ax.legend(loc = 'upper left', shadow=True, prop={'size':7})
+        fileName, fileExtension = os.path.splitext(fgname)
+        fig.savefig('%s_%s_rud%s' % (fileName, u, fileExtension))
+        pl.close(fig)
+
+def _plotVirtualTimePerUser(accessList, archName, fgname, yunit = 'Obs Id'):
     """
     Plot per-user based data access based on relative  time
     """
     print "Converting to num arrary for _plotVirtualTimePerUser"
     stt = time.time()
-    ret_dict = _raListToVTimeNAByUser(accessList)
+    if ("Obs Id" == yunit):
+        ret_dict = _raListToVTimeNAByUser(accessList, y_unit = 'obs')
+    else:
+        ret_dict = _raListToVTimeNAByUser(accessList, y_unit = 'day')
     print ("Converting to num array takes %d seconds" % (time.time() - stt))
     
     c = 0
@@ -380,8 +540,8 @@ def _plotVirtualTimePerUser(accessList, archName, fgname):
         print '%s ----> %s' % (u, uname)
         fig = pl.figure()
         ax = fig.add_subplot(111)
-        ax.set_xlabel('User sessions from %s to %s' % (min_ad, max_ad), fontsize = 9)
-        ax.set_ylabel('Obs date from %s to %s' % (min_od, max_od), fontsize = 9)
+        ax.set_xlabel('User access from %s to %s' % (min_ad, max_ad), fontsize = 9)
+        ax.set_ylabel('%s from %s to %s' % (yunit, min_od, max_od), fontsize = 9)
         ax.set_title("%s archive activity for '%s'" % (archName, uname), fontsize=10)
         ax.tick_params(axis='both', which='major', labelsize=8)
         ax.tick_params(axis='both', which='minor', labelsize=6)
@@ -391,31 +551,66 @@ def _plotVirtualTimePerUser(accessList, archName, fgname):
         
         #legend = ax.legend(loc = 'upper left', shadow=True, prop={'size':7})
         fileName, fileExtension = os.path.splitext(fgname)
-        fig.savefig('%s_%s%s' % (fileName, uname, fileExtension))
+        fig.savefig('%s_%s_pu%s' % (fileName, u, fileExtension))
         pl.close(fig)
 
-def _plotVirtualTime(accessList, archName, fgname):
+def _plotVirtualTime(accessList, archName, fgname, rd_bin_width = 250):
     """
     Plot data access based on virtual time
     """
     print "converting to num arrary for _plotVirtualTime"
     stt = time.time()
-    x, y = _raListToVTimeNA(accessList)
+    x, y, id, ad, yd = _raListToVTimeNA(accessList)
     print ("Converting to num array takes %d seconds" % (time.time() - stt))
     fig = pl.figure()
-    ax = fig.add_subplot(111)
-    ax.set_xlabel('Virtual time step', fontsize = 9)
+    ax = fig.add_subplot(211)
+    ax.set_xlabel('User access from %s to %s' % (id.split('T')[0], ad.split('T')[0]), fontsize = 9)
     ax.set_ylabel('Obs id', fontsize = 9)
-    ax.set_title('%s archive activity from %s to %s' % (archName, accessList[0].date,accessList[-1].date), fontsize=10)
+    ax.set_title('%s archive activity ' % (archName), fontsize=10)
     ax.tick_params(axis='both', which='major', labelsize=8)
     ax.tick_params(axis='both', which='minor', labelsize=6)
     
     ax.plot(x, y, color = 'b', marker = 'x', linestyle = '', 
                         label = 'access', markersize = 3) 
     
-    legend = ax.legend(loc = 'upper left', shadow=True, prop={'size':7})
+    #legend = ax.legend(loc = 'upper left', shadow=True, prop={'size':7})
+    
+    ax1 = fig.add_subplot(212)
+    ax1.set_xlabel('User access from %s to %s' % (id.split('T')[0], ad.split('T')[0]), fontsize = 9)
+    ax1.set_ylabel('Reuse distance', fontsize = 9)
+    
+    ax1.tick_params(axis='both', which='major', labelsize=8)
+    ax1.tick_params(axis='both', which='minor', labelsize=6)
+    
+    ax1.plot(x, yd, color = 'k', marker = '+', linestyle = '', 
+                        label = 'reuse distance', markersize = 3)
+    
+    pl.tight_layout()
     fig.savefig(fgname)
     pl.close(fig)
+    
+    y1d = yd[~np.isnan(yd)]
+    num_bin = (max(y1d) - min(y1d)) / rd_bin_width
+    hist, bins = np.histogram(y1d, bins = num_bin)
+    
+    width = 0.7 * (bins[1] - bins[0])
+    center = (bins[:-1] + bins[1:]) / 2
+    fig1 = pl.figure()
+    #fig1.suptitle('Histogram of data transfer rate from Pawsey to MIT', fontsize=14)
+    ax2 = fig1.add_subplot(111)
+    ax2.set_title('Reuse distance Histogram for %s' % archName, fontsize = 10)
+    ax2.set_ylabel('Frequency', fontsize = 9)
+    ax2.set_xlabel('Reuse distance (# of observation)', fontsize = 9)
+    
+    ax2.tick_params(axis='both', which='major', labelsize=8)
+    ax2.tick_params(axis='both', which='minor', labelsize=6)
+    
+    pl.bar(center, hist, align='center', width=width)
+    
+    fileName, fileExtension = os.path.splitext(fgname)
+    fig1.savefig('%s_rud_hist%s' % (fileName, fileExtension))
+    
+    pl.close(fig1)
     
     
 
@@ -487,7 +682,9 @@ def _plotActualTime(accessList, archName, fgname):
 
 def processLogs(dirs, fgname, stgline = 'to stage file:', 
                 aclobj = None, archName = 'Pawsey', 
-                obs_trsh = 1.05, vir_time = False, per_user = False):
+                obs_trsh = 1.05, vir_time = False, 
+                per_user = False, reuse_dist = False, 
+                per_user_y_unit = 'Obs Id'):
     """
     process all logs from a list of directories
     
@@ -518,7 +715,10 @@ def processLogs(dirs, fgname, stgline = 'to stage file:',
     
     if (vir_time):
         if (per_user):
-            _plotVirtualTimePerUser(accessList, archName, fgname)
+            if (not reuse_dist):
+                _plotVirtualTimePerUser(accessList, archName, fgname, per_user_y_unit)
+            else:
+                _plotReuseDistance(accessList, archName, fgname)
         else:
             _plotVirtualTime(accessList, archName, fgname)
     else:    
@@ -749,21 +949,26 @@ if __name__ == '__main__':
                   action="store_true", dest="vir_time", default = False,
                   help="use virtual time as X-axis")
     parser.add_option("-p", "--peruser", action="store_true", dest="per_user", default = False, help = "plot on a per-user basis")
+    parser.add_option("-y", "--yunitisday", action="store_true", dest="yunit_day", default = False, help = "Y unit is day (rather than obs id) for per-user vir time plot")
+    parser.add_option("-u", "--reusedist", action="store_true", dest="rud", default = False, help = "plot reuse distance per user")
     
     (options, args) = parser.parse_args()
     if (None == options.dir or None == options.output):
         parser.print_help()
         sys.exit(1)
     
-    print 'Checking directories....'
-    dirs = options.dir.split(':')
-    for d in dirs:
-        unzipLogFiles(d)
+    if (not options.load_acl_file):
+        print 'Checking directories....'
+        dirs = options.dir.split(':')
+        for d in dirs:
+            unzipLogFiles(d)
+    else:
+        dirs = None
     
-    print 'Processing logs...'
     if (options.load_acl_file):
         acl = pickleLoadACL(options)
     else:
+        print 'Processing logs...'
         acl = None
     
     archnm = 'Pawsey'
@@ -773,13 +978,19 @@ if __name__ == '__main__':
     obs_num_threshold = 1.05
     if (options.obs_trsh):
         obs_num_threshold = options.obs_trsh
+        
+    puyunit = "Obs Id"
+    if (options.yunit_day):
+        puyunit = "Obs Day"
     
     if (None == options.stgline): #options.stgline = "staging it for"
         acl = processLogs(dirs, options.output, aclobj = acl, 
-                          archName = archnm, obs_trsh = obs_num_threshold, vir_time = options.vir_time, per_user = options.per_user)
+                          archName = archnm, obs_trsh = obs_num_threshold, vir_time = options.vir_time, 
+                          per_user = options.per_user, reuse_dist = options.rud, per_user_y_unit = puyunit)
     else:
         acl = processLogs(dirs, options.output, stgline = options.stgline, aclobj = acl, 
-                          archName = archnm, obs_trsh = obs_num_threshold, vir_time = options.vir_time, per_user = options.per_user)
+                          archName = archnm, obs_trsh = obs_num_threshold, vir_time = options.vir_time, 
+                          per_user = options.per_user, reuse_dist = options.rud, per_user_y_unit = puyunit)
     
     if (options.save_acl_file and acl):
         pickleSaveACL(acl, options)
