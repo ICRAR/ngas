@@ -75,6 +75,7 @@
     <MimeTypeMap Extension="fits" MimeType="image/x-fits"/>
     <MimeTypeMap Extension="nglog" MimeType="ngas/nglog"/>
     <MimeTypeMap Extension="nglog.Z" MimeType="application/x-nglog"/>
+    <MimeTypeMap Extension="nglog.gz" MimeType="application/x-nglog"/>
     <MimeTypeMap Extension="log" MimeType="text/log-file"/>
     <MimeTypeMap Extension="log.Z" MimeType="application/x-clog"/>
     <MimeTypeMap Extension="paf" MimeType="ngas/paf"/>

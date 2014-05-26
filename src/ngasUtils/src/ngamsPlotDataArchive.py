@@ -35,6 +35,12 @@ import os, commands, gc, sys, time
 import re as regx
 import datetime as dt
 import numpy as np
+import pylab as pl
+import sqlite3
+
+pl_c = ['r', 'b', 'g', 'k', 'm', 'y', 'c']
+pl_m = ['o', '+', 'x', 's', '*', '^', 'D']
+pl_l = ['-', '--', ':', '-.', '-', '--', ':']
 
 # quick archive (date, start_time, end_time, transfer_rate, file_size)
 # time is "virtual", starting from 0 within the scope of each log file
@@ -144,7 +150,7 @@ def parseLogFile(fn):
     _normQAList(archiveList)
     return archiveList
 
-def computeThruput(QALists):
+def computeStats(QALists):
     """
     QALists:    a list of qaLists (all qaLists belong to the same experiment setting)
     
@@ -173,8 +179,102 @@ def computeThruput(QALists):
     return (ot, np.mean(arate), np.std(arate), np.mean(aiat), np.std(aiat))
     
     
+def _plotT(lbl_list, x_list, y_list, plot_title, fgname, y_err_list = None, ptype = 'tt', xtype = 'rate'):
+    """
+    Plot overall throughput
+    lbl_list:    a list of curve labels (List of strings)
+    x_list:     a list of num arrays, each is an array of X axis values ( List of NumArray)
+    y_list:     a list of num arrays, each is an array of Y axis values ( List of NumArray) 
+    y_err_list:    a list of num arrays, each is an array of Y-error values (List of NumArray)
+    plot_title:    the title of the plot (String)
+    fgname:        full file path/name of the plot (string)
+    ptype:     plot type ( tt / mt / iat) (string)
+    xtype:     X axis type ( data rate or number of C/S pairs) (string)
+    """
     
+    if ('tt' == ptype):
+        ylabel = 'Total throughput - MB/s'
+        lloc = 'lower right'
+    elif ('mt' == ptype):
+        ylabel = 'Mean throughput per file - MB/s'
+        lloc = 'upper left'
+    elif ('iat' == ptype):
+        ylabel = 'Inter-arrival time - Millisecond'
+        lloc = 'upper left'
+    else:
+        raise Exception('unknown ptype')
     
+    if ('rate' == xtype):
+        xlabel = 'Date rate per client - MB/s'
+    elif ('node' == xtype):
+        xlabel = 'Number of Client/Server pairs'
+    else:
+        raise Exception('unknown xtype')
+    
+    if (len(x_list) != len(y_list) or len(x_list) != len(lbl_list)):
+        raise Exception('size mismatch between x_list, y_list, and lbl_list')
+    
+    if (y_err_list and len(y_err_list) != len(y_list)):
+        raise Exception('size mismatch between y_err_list and y_list')
+    
+    fig = pl.figure()
+    ax = fig.add_subplot(111)
+    ax.set_xlabel(xlabel, fontsize = 9)
+    ax.set_ylabel(ylabel, fontsize = 9)
+    ax.set_title(plot_title, fontsize = 10)
+    ax.tick_params(axis='both', which='major', labelsize = 8)
+    ax.tick_params(axis='both', which='minor', labelsize = 6)
+    
+    if (y_err_list == None):
+        for i in range(len(x_list)):
+            ax.plot(x_list[i], y_list[i], color = pl_c[i % len(pl_c)], marker = pl_m[i % len(pl_m)], 
+                    linestyle = pl_l[i % len(pl_l)], label = lbl_list[i], markersize = 4, 
+                    markeredgecolor = pl_c[i % len(pl_c)], markerfacecolor = 'none')
+    else:
+        for i in range(len(x_list)):
+            ax.errorbar(x_list[i], y_list[i], y_err_list[i], ecolor = pl_c[i % len(pl_c)], marker = pl_m[i % len(pl_m)], 
+                    linestyle = pl_l[i % len(pl_l)], label = lbl_list[i], markersize = 4, 
+                    markeredgecolor = pl_c[i % len(pl_c)], markerfacecolor = 'none')
+    
+    legend = ax.legend(loc = lloc, shadow = True, prop = {'size' : 7})
+    fig.savefig(fgname)
+    pl.close(fig)
+
+def _isDir(dirname):
+    """
+    Check if a directory is "our" experiment directory
+    by parsing its name
+    """
+    tt = dirname.split('-')
+    if (len(tt) <> 5):
+        return None
+    if ((tt[0] == 'Lo' or tt[0] == 'Lu') and (tt[2] == 'CRC' or tt[2] == 'NoCRC')):
+        return tt
+    else:
+        return None
+
+def processLogs(root_dir, db_name):
+    """
+    Go through all directories inside the root directory
+    find sub-directories that contain logs by their names
+    from the directory name, get the experiment setting
+    add the setting and result into the sqlite database
+    then organise log processing and produce plots
+    """
+    dirns = []
+    for (dirpath, dirnames, filenames) in walk(root_dir):
+        dirns.extend(dirnames)
+        break
+    
+    conn = sqlite3.connect(db_name)
+    
+    for dirn in dirns:
+        tt = _isDir(dirn)
+        if (not tt):
+            continue
+        fs = tt[0]
+        crc = tt[1]
+        
 
 
     
