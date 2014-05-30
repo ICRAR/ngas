@@ -524,7 +524,8 @@ def httpPostUrl(url,
                 dataSize = -1,
                 fileInfoHdr = None,
                 sendBuffer = None,
-                checkSum = None):
+                checkSum = None,
+                moreHdrs = []):
     """
     Post the the data referenced on the given URL.
 
@@ -560,6 +561,8 @@ def httpPostUrl(url,
     dataSize:     Size of data to send if read from a socket (integer).
 
     fileInfoHdr:  File info serialised as an XML doc for command REARCHIVE (string)
+    
+    moreHdrs:     A list of key-value pairs, each kv pair is a tuple with two elements (k and v)
 
     Returns:      List with information from reply from contacted
                   NG/AMS Server (reply, msg, hdrs, data) (list).
@@ -595,6 +598,12 @@ def httpPostUrl(url,
         http.putheader(NGAMS_HTTP_HDR_FILE_INFO, fileInfoHdr)
     if (checkSum):
         http.putheader(NGAMS_HTTP_HDR_CHECKSUM, checkSum)
+
+    for mhd in moreHdrs:
+        kk = mhd[0]
+        vv = mhd[1]
+        http.putheader(kk, vv)
+    
     if (dataSource == "FILE"):
         dataSize = getFileSize(dataRef)
     elif (dataSource == "BUFFER"):
