@@ -748,6 +748,9 @@ def _deliveryThread(srvObj,
                         fileChecksum = srvObj.getDb().getFileChecksum(diskId, fileId, fileVersion)
                     except Exception, eyy:
                         warning('Fail to get file checksum for file %s: %s' % (fileId, str(eyy)))
+                    #hdr1 = ('x-ddn-policy', 'Perth')
+                    hdr1 = ('x-ddn-policy', 'Perth-search') # DDN WOS policy header
+                    hdr2 = ('x-ddn-meta', '"file_id":"%s"' % fileId) # DDN WOS metadata header
                     reply, msg, hdrs, data = \
                            ngamsLib.httpPostUrl(sendUrl, fileMimeType,
                                                 contDisp, filename, "FILE",
@@ -757,13 +760,20 @@ def _deliveryThread(srvObj,
                                                 authHdrVal = authHdr,
                                                 fileInfoHdr = fileInfoObjHdr,
                                                 sendBuffer = srvObj.getCfg().getArchiveSndBufSize(),
-                                                checkSum = fileChecksum)
+                                                checkSum = fileChecksum,
+                                                moreHdrs = [hdr1, hdr2])
                     if (data.strip() != ""):
                         stat.clear().unpackXmlDoc(data)
                     else:
                         # TODO: For the moment assume success in case no
                         #       exception was thrown.
                         stat.clear().setStatus(NGAMS_SUCCESS)
+                    if (hdrs.has_key('x-ddn-oid')):
+                        ddn_msg = "File %s as DDN obsid = %s" % (fileId, hdrs['x-ddn-oid'])
+                        if (hdrs.has_key('x-ddn-status')):
+                            ddn_msg += " is archived '%s'" % hdrs['x-ddn-status']
+                        info(3, ddn_msg)        
+                        
                 except Exception, e:
                     ex = str(e)
                     trace_msg = traceback.format_exc() 
