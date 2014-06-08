@@ -247,6 +247,7 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, snd
             http.putheader("Content-type", mimeType)
             http.putheader("Content-disposition", contDisp)
             http.putheader("Content-length", str(iosize))
+            http.putheader("x-ddn-policy", "replica-store")
             print "Content-length = %s" % str(iosize)
             http.putheader("Authorization", authHdrVal)
             http.putheader("Host", nodeId)
@@ -475,10 +476,10 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
                 crc = crc32(block, crc)
                 crct = time.time() - stc
                 if crct == 0: crct = 10**-6
-                cspeed.append((bsize/(crct), stc))
+                cspeed.append((bsize/(crct), stc,crct))
                 crctime += crct
             else:
-                cspeed.append((-1,time.time()))
+                cspeed.append((-1,time.time(), -1))
             stb = time.time()
             if (httpobj):
                 httpobj._conn.sock.sendall(block)
@@ -493,9 +494,9 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
             one_block_time = tend - stt
             if (sleepTime and sleepTime > one_block_time):
                 time.sleep(sleepTime - one_block_time)
-            bspeed.append((bsize/(tend - stb), stb))
+            bspeed.append((bsize/(tend - stb), stb, tend-stb))
             #tspeed.append((bsize/(tend - stt), stt))
-            tspeed.append((bsize/one_block_time, stt))
+            tspeed.append((bsize/one_block_time, stt, one_block_time))
         print "Internal throughput: %6.2f MB/s" % \
               (tsize/(time.time()-sti))
         fst = time.time()
@@ -691,5 +692,9 @@ def speedPlot(ifile=DEFAULT_FNM, timefl=1):
         pylab.xlabel('Block #')
         pylab.ylabel('Throughput[MB/s]')
         pylab.plot(tspeed[:,0], 'g+')
+
+    totalSize = (tspeed[:,0] * tspeed[:,2]).sum()
+    totalTime = tspeed[-1][1]-tspeed[0][1]
+    pylab.plot([0,totalTime],[totalSize/totalTime,totalSize/totalTime], 'g')
 
     pylab.title(os.path.basename(ifile))
