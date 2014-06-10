@@ -28,8 +28,9 @@
 # --------  ----------  -------------------------------------------------------
 # cwu  10/06/2014  Created
 
-import commands, os, datetime
+import commands, os, datetime, sys
 import logging
+from optparse import OptionParser
 
 # root_dir = '/mnt/gleam/processing/movie'
 Gleam_NGAS_root = '/mnt/gleam/NGAS'
@@ -180,18 +181,21 @@ def _makeMovie(filelist, src_dir, work_dir, resultf):
     re = execCmd('./drift_movie.sh files.txt', failonerror = False)
     if (re[0] != 0):
         logger.error('Fail to make movie %s, Exception: %s' % (movie_fn, re[1]))
+        return
     else:
         if (os.path.exists('drift_movie.avi')):
             re = execCmd('mv drift_movie.avi %s' % movie_fn, failonerror = False)
             if (re[0] != 0):
                 logger.error('Fail to make movie %s, Exception: %s' % (movie_fn, re[1]))
+                return
             else:
                 logger.info('Movie %s was made successfully.' % (movie_fn))
         else:
             logger.error('Fail to find newly-made movie %s' % (movie_fn))
+            return
     
     # archive the movie to NGAS
-    cmd = "%s -host store02.icrar.org -port 7777 -cmd QARCHIVE -mimeType application/octet-stream -fileUri %s/%s" % (ngas_client, work_dir, movie_fn)
+    cmd = "%s -host store02.icrar.org -port 7777 -cmd QARCHIVE -mimeType video/x-msvideo -fileUri %s/%s" % (ngas_client, work_dir, movie_fn)
     re = execCmd(cmd, failonerror = False)
     if (re[0] != 0):
         logger.error('Fail to archive movie %s, Exception: %s' % (movie_fn, re[1]))
@@ -251,8 +255,8 @@ def doIt(db_dir, src_dir, work_dir, resultf):
             curList.append(fi)
 
 def rotateLogResultFiles(logfile, result_file):
-    
-    
+    """
+    """
     dt = datetime.datetime.now()
     if (os.path.exists(logfile)):
         #move it to another file name with timestamp
@@ -267,10 +271,34 @@ def rotateLogResultFiles(logfile, result_file):
     
 
 if __name__ == "__main__":
+    """
+    """
+    # get options correct
+    parser = OptionParser()
+    parser.add_option("-s", "--src_dir", action="store", type="string", dest="src_dir", help="source directory (required)")
+    parser.add_option("-d", "--db_dir", action="store", type="string", dest="db_dir", help="database directory (required)")
+    parser.add_option("-w", "--work_dir", action="store", type="string", dest="work_dir", help="working directory")
+    
+    parser.add_option("-r", "--rec_db",
+                  action="store_true", dest="recreate_db", default = False,
+                  help="Whether to recreate database")
+    
+    parser.add_option("-o", "--db_only",
+                  action="store_true", dest="db_only", default = False,
+                  help="Only recreate database, do not launch movie making procedure")
+    
+    (options, args) = parser.parse_args()
+    if (None == options.src_dir or None == options.db_dir):
+        parser.print_help()
+        sys.exit(1)
+    
+    if ((not options.db_only) and None == options.work_dir):
+        print "Must specify work_dir for the non-db_only scenario!"
+        parser.print_help()
+        sys.exit(1)
     
     logfile = Gleam_processing_root + '/gleam_movie.log'
     result_file = Gleam_processing_root + '/gleam_movie_result.csv' # this will be uploaded to google docs later
-    
     rotateLogResultFiles(logfile, result_file)
     
     # setup run-time log file
@@ -282,7 +310,14 @@ if __name__ == "__main__":
     f = open(result_file, 'wb')
     f.write('obs_date,center_frequency,polarisation,ngas_url\n')
     
-    # run tasks    
+    # run tasks   
+    if (options.recreate_db):
+        getGleamNGASFiles(options.src_dir, options.db_dir)
+        getGleamVOFiles(options.src_dir, options.db_dir)
+        joinNGASVOFiles(options.src_dir, options.db_dir)
+    
+    if (not options.db_only):
+        doIt(options.db_dir, options.src_dir, options.work_dir, f)
    
     # close result file
     if (f):
