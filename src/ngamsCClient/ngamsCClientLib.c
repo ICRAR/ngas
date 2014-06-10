@@ -2925,7 +2925,7 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent, cons
 
 	/* Prepare and send the HTTP headers */
 	if (ngamsGetAuthorization()) {
-		memset(authHdr, 0, sizeof(ngamsHUGE_BUF));
+		memset(authHdr, 0, sizeof(ngamsBIG_BUF));
 		sprintf(authHdr, "\015\012Authorization: Basic %s", ngamsGetAuthorization());
 	} else
 		*authHdr = '\0';
@@ -3181,7 +3181,7 @@ int ngamsHttpPostOpen(const char* host, const int port, const char* userAgent, c
 
 	/* Prepare and send the HTTP headers */
 	if (ngamsGetAuthorization()) {
-		memset(authHdr, 0, sizeof(ngamsHUGE_BUF));
+		memset(authHdr, 0, sizeof(ngamsBIG_BUF));
 		sprintf(authHdr, "\015\012Authorization: Basic %s", ngamsGetAuthorization());
 	} else
 		*authHdr = '\0';
