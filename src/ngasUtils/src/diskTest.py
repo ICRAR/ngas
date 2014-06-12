@@ -465,7 +465,8 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
             m = mmap.mmap(-1, blocksize)
             m.write(block)
             block = m
-
+        
+        write_time = 0.0
         sti = time.time()
         for ii in range(count):
             stt = time.time()
@@ -480,23 +481,31 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
                 crctime += crct
             else:
                 cspeed.append((-1,time.time(), -1))
-            stb = time.time()
-            if (httpobj):
-                httpobj._conn.sock.sendall(block)
-            else:
-                if llflag:
-                    os.write(fd, block)
-                elif dioflag:
-                    os.write(fd, block)
+            if (Test == 'write'):
+                stb = time.time()
+                if (httpobj):
+                    httpobj._conn.sock.sendall(block)
                 else:
-                    out.write(block)
+                    if llflag:
+                        os.write(fd, block)
+                    elif dioflag:
+                        os.write(fd, block)
+                    else:
+                        out.write(block)
             tend = time.time()
             one_block_time = tend - stt
             if (sleepTime and sleepTime > one_block_time):
                 time.sleep(sleepTime - one_block_time)
-            bspeed.append((bsize/(tend - stb), stb, tend-stb))
+            if (Test == 'write'):
+                bwt = tend - stb
+                bspeed.append((bsize / bwt, stb, bwt))
+                write_time += bwt
+            else:
+                bspeed.append((-1,time.time(), -1)) # cpu only
             #tspeed.append((bsize/(tend - stt), stt))
             tspeed.append((bsize/one_block_time, stt, one_block_time))
+        if (Test == 'write'):
+            print "Pure write throughput:  %6.2f MB/s" % (tsize/write_time)
         print "Internal throughput: %6.2f MB/s" % \
               (tsize/(time.time()-sti))
         fst = time.time()
@@ -545,10 +554,10 @@ if __name__ == '__main__':
 
     import getopt
 
-    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:z:c:e:r:f:l:womph",\
+    opts,args = getopt.getopt(sys.argv[1:],"d:s:t:i:b:z:c:e:r:f:l:womphu",\
            ["device","skip","testcount","iosize","blocksize", "sndbufsize",\
             "crc", "lowio", "session", "datarate", "file",\
-            "write","old","method","parallel","help"])
+            "write","old","method","parallel","help","cpu"])
 
     for o,v in opts:
         if o in ("-d","--device"):
@@ -585,6 +594,8 @@ if __name__ == '__main__':
                 asyncflag = 1
             elif v == 'sync':
                 syncflag = 1
+        if o in ("-u", "--cpu"):
+            Test = 'cpu' # cpu test only
         if o in ("-w","--write"):
             Test = 'write'
         if o in ("-o","--old"):
@@ -600,7 +611,7 @@ if __name__ == '__main__':
 
     if Test == 'read':
         readTest(dev,skip,testcount,iosize,blocksize)
-    elif Test == 'write':
+    elif Test == 'write' or Test == 'cpu':
         if dev[0:4].lower() == 'http':
             print "To test writing to a remote NGAS disk"
             bspeed = writeTestHTTP(dev, skip, testcount, iosize, blocksize, sndbufsize = tcpsndbuf, parallel = parallel_stream)
