@@ -183,7 +183,7 @@ def readTest(dev,skip,testcount,iosize,blocksize):
             sys.exit()
         else:
             elapsed = time.time()-st
-            print 'Throughput: %3.2f MB/s (%5.2f s)' % \
+            print 'Throughput (read): %3.2f MB/s (%5.2f s)' % \
                   (iosize/elapsed/1024./1024., elapsed)
 
         skip =skip + iocount
@@ -291,7 +291,7 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, snd
                         del http
         if (not parallel):
             elapsed = time.time()-st
-            print 'Throughput: %3.2f MB/s (%5.2f s)' % \
+            print 'Throughput (elapsed time during test): %3.2f MB/s (%5.2f s)\n' % \
                   (iosize/elapsed/1024./1024., elapsed)
             bspeed += status[0]
             cspeed += status[1]
@@ -301,7 +301,7 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, snd
         for dtr in myDDThreads:
             dtr.join()
         telapsed = time.time() - tst
-        print 'Total throughput: %3.2f MB/s (%5.2f s)' % \
+        print 'Test throughput (elapsed time during test): %3.2f MB/s (%5.2f s)\n' % \
               (iosize * testcount /telapsed/1024./1024., telapsed)
 
     return (bspeed, cspeed, tspeed)
@@ -350,7 +350,7 @@ def writeTestDD(dev,skip,testcount,iosize,blocksize):
             sys.exit()
         else:
             elapsed = time.time()-st
-            print 'Throughput: %3.2f MB/s (%5.2f s)' % \
+            print 'Throughput (elapsed time): %3.2f MB/s (%5.2f s)\n' % \
                   (iosize/elapsed/1024./1024., elapsed)
             bspeed += status[0]
             cspeed += status[1]
@@ -400,8 +400,9 @@ def writeTest(dev,skip,testcount,iosize,blocksize):
                     sys.exit()
             else:
                     elapsed = time.time()-st
-                    print 'Throughput: %3.2f MB/s (%5.2f s)' % \
+                    print 'Throughput (elapsed time of test): %3.2f MB/s (%5.2f s)' % \
                           (iosize/elapsed/1024./1024., elapsed)
+                    print
 
             skip =skip + iocount
 
@@ -465,7 +466,7 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
             m = mmap.mmap(-1, blocksize)
             m.write(block)
             block = m
-        
+
         write_time = 0.0
         sti = time.time()
         for ii in range(count):
@@ -506,7 +507,7 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
             tspeed.append((bsize/one_block_time, stt, one_block_time))
         if (Test == 'write'):
             print "Pure write throughput:  %6.2f MB/s" % (tsize/write_time)
-        print "Internal throughput: %6.2f MB/s" % \
+        print "Internal throughput (write [+crc]): %6.2f MB/s" % \
               (tsize/(time.time()-sti))
         fst = time.time()
         if ifil != '/dev/zero': inputf.close()
@@ -528,10 +529,13 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
             else:
                 # out.flush()
                 out.close()
+        ste = time.time() - sti  # elapsed time of this write test
         print "File closing time: %5.2f s" % (time.time()-fst)
         if (crcfl):
             print "CRC throughput: %6.2f MB/s (%5.2f s)" % \
                     (tsize/crctime, crctime)
+        print "Total throughput (write [+ crc] + file-close): %6.2f MB/s" % \
+              (tsize/ste)
         return (bspeed,cspeed, tspeed)
     else: # do just plain nothing if no output file is specified
 
