@@ -37,6 +37,9 @@ Gleam_NGAS_root = '/mnt/gleam/NGAS'
 Gleam_processing_root = '/mnt/gleam/processing'
 ngas_client = "/mnt/gleam/software/bin/ngamsCClient"
 
+numToPol = {'1':'I', '2':'Q', '3':'U', '4':'V', '-5':'XX', '-6':'YY'}
+ngas_http_prefix = 'http://store02.icrar.org:7777/RETRIEVE?file_id='
+
 logger = logging.getLogger(__name__)
 
 
@@ -203,7 +206,8 @@ def _makeMovie(filelist, src_dir, work_dir, resultf):
         logger.info('Movie %s was archived successfully.' % (movie_fn))
     
     # put this one into the CSV file
-    resultf.write('%s,%d,%d,%s' % (date_obs, cfreq, pol, movie_fn))
+    resultf.write('\n%s,%d,%s,%s' % (date_obs, cfreq, numToPol[str(pol)], ngas_http_prefix + movie_fn))
+    resultf.flush()
     
 
 def doIt(db_dir, src_dir, work_dir, resultf):
@@ -258,15 +262,16 @@ def rotateLogResultFiles(logfile, result_file):
     """
     """
     dt = datetime.datetime.now()
+    timestr = dt.strftime('%Y-%m-%dT%H-%M-%S')
     if (os.path.exists(logfile)):
         #move it to another file name with timestamp
-        rlognm = Gleam_processing_root + '/gleam_movie_' + dt.strftime('%Y-%m-%dT%H:%M:%S') + '.log'
+        rlognm = Gleam_processing_root + '/gleam_movie_' + timestr + '.log'
         execCmd('mv %s %s' % (logfile, rlognm))
     
     
     if (os.path.exists(result_file)):
         #move it to another file name with timestamp
-        resultnm = Gleam_processing_root + '/gleam_movie_result_' + dt.strftime('%Y-%m-%dT%H:%M:%S') + '.csv'
+        resultnm = Gleam_processing_root + '/gleam_movie_result_' + timestr + '.csv'
         execCmd('mv %s %s' % (result_file, resultnm))
     
 
