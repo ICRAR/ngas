@@ -5,9 +5,11 @@ from numpy import percentile
 from sys import argv
 
 # percentile to give a decent image
-lpct=0.2
+#lpct=0.2
+lpct=50
 # No, it's not just 100 - lpct
-hpct=99.98
+#hpct=99.98
+hpct=99.99
 
 #print "pct.py Processing %s" % argv[1]
 if argv[1]:
