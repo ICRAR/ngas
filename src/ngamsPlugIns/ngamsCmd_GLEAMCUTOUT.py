@@ -104,7 +104,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     height = abs(int(2 * radius / float(hdulist[0].header['CDELT2'])))
     hdulist.close()
     
-    work_dir = srvObj.getCfg().getRootDirectory() + '/tmp/cutout'    
+    work_dir = srvObj.getCfg().getRootDirectory() + '/processing'    
     cut_fitsnm = ('%f' % time.time()).replace('.', '_') + '.fits'
     cmd1 = cmd_cutout % (cut_fitsnm, work_dir, filePath, ra, dec, width, height)
     try:
