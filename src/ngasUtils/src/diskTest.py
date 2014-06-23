@@ -348,6 +348,9 @@ def writeTestDD(dev,skip,testcount,iosize,blocksize):
                   "device "+dev
             print "Bailing out!"
             sys.exit()
+        elif status == 255:
+            print "Fail to open file obj, make sure the file system supports low-level I/O"
+            sys.exit(255)
         else:
             elapsed = time.time()-st
             print 'Throughput (elapsed time): %3.2f MB/s (%5.2f s)\n' % \
@@ -435,6 +438,7 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
 
     if ofil != '/dev/null':
         try:
+            out = None
             if (httpobj):
                 global crcfl
                 crcfl = '' # http does not need to do crc at the client side
@@ -449,14 +453,19 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
                     if dioflag == 1:
                         if os.__dict__.has_key('O_DIRECT'):
                             fd = os.open(ofil, os.O_CREAT | os.O_TRUNC | os.O_DIRECT  | os.O_WRONLY)
+                        else:
+                            print "The OS does not support direct I/O"
+                            return 255
                     elif syncflag == 1:
                         fd = os.open(ofil, os.O_CREAT | os.O_TRUNC | os.O_SYNC  | os.O_WRONLY)
                 else:
                     out = open(ofil,'w')
                     out.seek(seek)
         except Exception, ex:
+            print "Fail to open file or http obj, exception: %s" % str(ex)
             status = 255
-            out.close()
+            if (out):
+                out.close()
             return status
         print "Writing {0} blocks to {1}".format(count, ofil)
         crctime = 0.0
@@ -643,7 +652,7 @@ if __name__ == '__main__':
                     print "Bailing out!!"
                     sys.exit()
         else:
-            if iosize > 1073741824l:
+            if iosize > 1073741824l * 10:
                 print "You have selected a file for the "+\
                       "write test, but the size of that "+\
                       "file would be ",\
