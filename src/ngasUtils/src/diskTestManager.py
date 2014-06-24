@@ -147,7 +147,7 @@ def runTest(pybin, dtSrc, testDir, blocksize, mode, numoffiles, perfs, resultdir
     
     # move the pickle file as well
     spdfile = '%s/%s' % (os.getcwd(), DEFAULT_FNM)
-    newspdfile = '%s/%s.pkl' % (resultdir, mode_key_label[mode].replace(' ', '_'))
+    newspdfile = '%s/%s_%dM.pkl' % (resultdir, mode_key_label[mode].replace(' ', '_'), (blocksize / megabytes))
     if (os.path.exists(spdfile)):
         execCmd('mv %s %s' % (spdfile, newspdfile), failonerror = False)
 
