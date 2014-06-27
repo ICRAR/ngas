@@ -132,7 +132,10 @@ def _raListToVTimeNA(al, session_gap = 3600 * 2):
             c += 1
             
     gc.enable()
-    return (np.array(x), np.array(y), min_date, max_date, np.array(yd))
+    # convert absolute obsid into relative obsId (time sequence)
+    import scipy.stats as ss
+    ranked_y = ss.rankdata(y)
+    return (np.array(x), ranked_y, min_date, max_date, np.array(yd))
 
 def _getObsDateFrmFileId(fileId):
     """
@@ -564,8 +567,8 @@ def _plotVirtualTime(accessList, archName, fgname, rd_bin_width = 250):
     print ("Converting to num array takes %d seconds" % (time.time() - stt))
     fig = pl.figure()
     ax = fig.add_subplot(211)
-    ax.set_xlabel('User access from %s to %s' % (id.split('T')[0], ad.split('T')[0]), fontsize = 9)
-    ax.set_ylabel('Obs id', fontsize = 9)
+    ax.set_xlabel('Access sequence number (%s to %s)' % (id.split('T')[0], ad.split('T')[0]), fontsize = 9)
+    ax.set_ylabel('Observation sequence number', fontsize = 9)
     ax.set_title('%s archive activity ' % (archName), fontsize=10)
     ax.tick_params(axis='both', which='major', labelsize=8)
     ax.tick_params(axis='both', which='minor', labelsize=6)
@@ -576,8 +579,8 @@ def _plotVirtualTime(accessList, archName, fgname, rd_bin_width = 250):
     #legend = ax.legend(loc = 'upper left', shadow=True, prop={'size':7})
     
     ax1 = fig.add_subplot(212)
-    ax1.set_xlabel('User access from %s to %s' % (id.split('T')[0], ad.split('T')[0]), fontsize = 9)
-    ax1.set_ylabel('Reuse distance', fontsize = 9)
+    ax1.set_xlabel('Access sequence number (%s to %s)' % (id.split('T')[0], ad.split('T')[0]), fontsize = 9)
+    ax1.set_ylabel('Reuse distance (in-between accesses)', fontsize = 9)
     
     ax1.tick_params(axis='both', which='major', labelsize=8)
     ax1.tick_params(axis='both', which='minor', labelsize=6)
@@ -629,7 +632,7 @@ def _plotActualTime(accessList, archName, fgname):
         ax = fig.add_subplot(111)
     ax.set_xlabel('Time (days)', fontsize = 9)
     ax.set_ylabel('Obs number (GPS time)', fontsize = 9)
-    ax.set_title('%s archive activity from %s to %s' % (archName, accessList[0].date,accessList[-1].date), fontsize=10)
+    ax.set_title('%s archive activity from %s to %s' % (archName, accessList[0].date.split('T')[0],accessList[-1].date.split('T')[0]), fontsize=10)
     ax.tick_params(axis='both', which='major', labelsize=8)
     ax.tick_params(axis='both', which='minor', labelsize=6)
     
@@ -684,7 +687,7 @@ def processLogs(dirs, fgname, stgline = 'to stage file:',
                 aclobj = None, archName = 'Pawsey', 
                 obs_trsh = 1.05, vir_time = False, 
                 per_user = False, reuse_dist = False, 
-                per_user_y_unit = 'Obs Id'):
+                per_user_y_unit = 'Obs Id', save_acl_file = None):
     """
     process all logs from a list of directories
     
@@ -712,6 +715,9 @@ def processLogs(dirs, fgname, stgline = 'to stage file:',
         stt = time.time()
         accessList.sort() # automatically sort based on date
         print ("Sorting takes %d seconds" % (time.time() - stt))
+    
+    if (save_acl_file and accessList):
+        pickleSaveACL(accessList, save_acl_file)
     
     if (vir_time):
         if (per_user):
@@ -900,17 +906,17 @@ def parseLogFile(fn, accessList, stgline = 'to stage file:', obs_trsh = 1.05):
         else:
             print 'none RA for %s in file %s' % (k, fn)
 
-def pickleSaveACL(acl, options):
+def pickleSaveACL(acl, save_acl_file):
     print 'Serialising FileAccessPattern object to the disk......'
     try:
-        output = open(options.save_acl_file, 'wb')
+        output = open(save_acl_file, 'wb')
         stt = time.time()
         pickle.dump(acl, output)
         output.close()
         print 'Time for serialising acl: %.2f' % (time.time() - stt)
     except Exception, e:
         ex = str(e)
-        print 'Fail to serialise the acl to file %s: %s' % (options.save_fap_file, ex)
+        print 'Fail to serialise the acl to file %s: %s' % (save_acl_file, ex)
 
 def pickleLoadACL(options):
     """
@@ -932,10 +938,71 @@ def pickleLoadACL(options):
     else:
         print 'Cannot locate the acl object file %s' % options.load_acl_file
         return None
+
+def syncLogFileDir(srcDir, tgtDir):
+    """
+    to sync NGAS log files from the source directory to the target directory
+    
+    srcDir    source directory, which could be remote (via ssh) (string)
+    tgtDir    target directory, which must be local (string)
+    """
+    valid_suffix = ['.nglog', '.nglog.gz.gz', '.nglog.gz']
+    remote_src = False
+    
+    if (srcDir.find(":") > -1):
+        tmp = srcDir.split(":")
+        cmd = 'ssh %s "ls %s"' % (tmp[0], tmp[1])
+        remote_src = True
+        print 'Login to host: %s' % (tmp[0])
+    else:
+        cmd = 'ls %s' % srcDir
+    
+    srcList = execCmd(cmd)[1].split('\n')
+    
+    cmd = 'ls %s' % tgtDir
+    
+    tmpTgtlist = execCmd(cmd)[1].split('\n')
+    tgtList = []
+    for tmpf in tmpTgtlist:
+        for sf in valid_suffix:
+            if (tmpf.endswith(sf)):
+                tgtList.append(tmpf[: -1 * len(sf)]) # e.g. 'abcdc.com' --> 'abcdc'
+                break
+    newlist = []
+    for srcf in srcList:
+        for sf in valid_suffix:
+            if (srcf.endswith(sf)):
+                basef = srcf[: -1 * len(sf)]
+                if (not (basef in tgtList)):
+                    newlist.append(srcf)
+                break # move to the next 'srcf'
+    
+    # print newlist
+    # copy all files in the newlist to the target dir
+    if len(newlist) < 1:
+        return
+    
+    if (remote_src):
+        verb = 'scp'
+        start_f = '\{'
+        end_f = '\}'
+    else:
+        verb = 'cp'
+        start_f = '{'
+        end_f = '}'
+    cmd = '%s %s/%s%s' % (verb, srcDir, start_f, newlist[0])
+    if (len(newlist) > 1):
+        for nf in newlist[1:]:
+            cmd += ',%s' % nf
+    cmd += '%s %s/' % (end_f, tgtDir)
+    
+    print "Copying %d files from %s to %s" % (len(newlist), srcDir, tgtDir)
+    execCmd(cmd)
             
 if __name__ == '__main__':
     parser = OptionParser()
-    parser.add_option("-d", "--dir", action="store", type="string", dest="dir", help="directories separated by comma")
+    parser.add_option("-d", "--dir", action="store", type="string", dest="dir", help="directories separated by semicolon")
+    parser.add_option("-c", "--srcdir", action="store", type="string", dest="srcdir", help="directories separated by semicolon. If this option is present, the system will sync between srcdir and dir")
     parser.add_option("-o", "--output", action="store", type="string", dest="output", help="output figure name (path)")
     parser.add_option("-s", "--stgline", action="store", type="string", dest="stgline", help="a line representing staging activity")
     parser.add_option("-a", "--saveaclfile", action="store", dest="save_acl_file", 
@@ -953,13 +1020,30 @@ if __name__ == '__main__':
     parser.add_option("-u", "--reusedist", action="store_true", dest="rud", default = False, help = "plot reuse distance per user")
     
     (options, args) = parser.parse_args()
-    if (None == options.dir or None == options.output):
+    if (None == options.output):
+        parser.print_help()
+        sys.exit(1)
+        
+    if (None == options.dir and (not options.load_acl_file)):
         parser.print_help()
         sys.exit(1)
     
+    if (options.srcdir and (not options.load_acl_file)):
+        srcdirs = options.srcdir.split('+')
+        dirs = options.dir.split('+')
+        if (len(srcdirs) != len(dirs)):
+            print 'len(srcdirs) != len(dirs)'
+            sys.exit(1)
+        # sync all the directory
+        tt = raw_input("\nDo you want to sync (remote) ngas log src dir and local ngas dir?(Y/N)\n")
+        if (tt == 'Y' or tt == 'y'):
+            for i in range(len(srcdirs)):
+                print 'Syncing %s and %s' % (srcdirs[i], dirs[i])
+                syncLogFileDir(srcdirs[i], dirs[i])
+            
     if (not options.load_acl_file):
         print 'Checking directories....'
-        dirs = options.dir.split(':')
+        dirs = options.dir.split('+')
         for d in dirs:
             unzipLogFiles(d)
     else:
@@ -986,13 +1070,10 @@ if __name__ == '__main__':
     if (None == options.stgline): #options.stgline = "staging it for"
         acl = processLogs(dirs, options.output, aclobj = acl, 
                           archName = archnm, obs_trsh = obs_num_threshold, vir_time = options.vir_time, 
-                          per_user = options.per_user, reuse_dist = options.rud, per_user_y_unit = puyunit)
+                          per_user = options.per_user, reuse_dist = options.rud, per_user_y_unit = puyunit, save_acl_file = options.save_acl_file)
     else:
         acl = processLogs(dirs, options.output, stgline = options.stgline, aclobj = acl, 
                           archName = archnm, obs_trsh = obs_num_threshold, vir_time = options.vir_time, 
-                          per_user = options.per_user, reuse_dist = options.rud, per_user_y_unit = puyunit)
-    
-    if (options.save_acl_file and acl):
-        pickleSaveACL(acl, options)
+                          per_user = options.per_user, reuse_dist = options.rud, per_user_y_unit = puyunit, save_acl_file = options.save_acl_file)
     
         
