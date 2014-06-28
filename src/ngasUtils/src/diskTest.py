@@ -434,7 +434,7 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
                 pass
             return status
     else:
-        block = str(bytearray(blocksize))
+        block = str(bytearray(os.urandom(blocksize)))
 
     if ofil != '/dev/null':
         try:
@@ -508,6 +508,7 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
                 time.sleep(sleepTime - one_block_time)
             if (Test == 'write'):
                 bwt = tend - stb
+                if bwt == 0: bwt = 10**-10
                 bspeed.append((bsize / bwt, stb, bwt))
                 write_time += bwt
             else:
