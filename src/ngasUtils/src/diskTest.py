@@ -169,9 +169,9 @@ def readTest(dev,skip,testcount,iosize,blocksize):
             (status,output) = commands.getstatusoutput(command)
         else:
             st=time.time()
-            print "myDD("+dev+",'/dev/null',"+str(skip)+","+\
+            print "myDD("+dev+", None, '/dev/null',"+str(skip)+","+\
                   str(blocksize)+","+str(iocount)+")"
-            status = myDD(dev,'/dev/null',\
+            status = myDD(dev, None, '/dev/null',\
                            long(skip)*blocksize,blocksize,\
                            iocount)
 
@@ -229,6 +229,7 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, snd
         tst = time.time()
         myDDThreads = []
 
+    myblock = str(bytearray(os.urandom(blocksize)))
     for ii in range(testcount):
         st=time.time()
         fname = '%s_%s_%s.dat' % (sessionId, nodeId, str(ii))
@@ -261,15 +262,15 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, snd
                     print("Set TCP SNDBUF to %d" % sndbufsize)
                 except Exception, eer:
                     print('Fail to set TCP SNDBUF to %d: %s' % (sndbufsize, str(eer)))
-
+            
             if (not parallel):
                 st=time.time()
-                status = myDD('/dev/zero', dev, \
+                status = myDD('/dev/zero', myblock, dev, \
                                long(skip)*blocksize,blocksize,\
                                iocount, httpobj = http)
             else:
                 #ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0, httpobj=None
-                args = ('/dev/zero', dev, \
+                args = ('/dev/zero', myblock, dev, \
                                long(skip)*blocksize,blocksize,\
                                iocount, 0, http)
                 thrdName = 'myDDThrd_%d' % ii
@@ -324,6 +325,7 @@ def writeTestDD(dev,skip,testcount,iosize,blocksize):
     bspeed = []
     cspeed = []
     tspeed = []
+    myblock = str(bytearray(os.urandom(blocksize)))
     for ii in range(testcount):
         st=time.time()
         if method == 'dd':
@@ -336,9 +338,9 @@ def writeTestDD(dev,skip,testcount,iosize,blocksize):
             if dev[:4] != '/dev':
                 dev += str(testcount)
             st=time.time()
-            print "myDD('/dev/zero',"+dev+","+str(skip*blocksize)+","+\
+            print "myDD('/dev/zero', myblock, "+dev+","+str(skip*blocksize)+","+\
                   str(blocksize)+","+str(iocount)+")"
-            status = myDD('/dev/zero', dev, \
+            status = myDD('/dev/zero', myblock, dev, \
                            long(skip)*blocksize,blocksize,\
                            iocount)
 
@@ -414,7 +416,7 @@ def writeTest(dev,skip,testcount,iosize,blocksize):
 
 
 
-def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0, httpobj=None):
+def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0, httpobj=None):
     """
     """
     bspeed = []
@@ -422,7 +424,8 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
     tspeed = []
     crc = 0
     sleepTime = None
-    if ifil != '/dev/zero':
+    ifil_not_zero = (ifil != '/dev/zero')
+    if ifil_not_zero:
         try:
             inputf = open(ifil)
             inputf.seek(skip,0)
@@ -433,8 +436,10 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
             except:
                 pass
             return status
+    """
     else:
         block = str(bytearray(os.urandom(blocksize)))
+    """
 
     if ofil != '/dev/null':
         try:
@@ -477,11 +482,14 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
             block = m
 
         write_time = 0.0
+        read_time = 0.0
         sti = time.time()
         for ii in range(count):
             stt = time.time()
-            if ifil != '/dev/zero':
-                block=inputf.read(blocksize)
+            if ifil_not_zero:
+                block = inputf.read(blocksize)
+                if (Test == 'read'):
+                    read_time += time.time() - stt
             if crcfl:
                 stc = time.time()
                 crc = crc32(block, crc)
@@ -517,8 +525,13 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
             tspeed.append((bsize/one_block_time, stt, one_block_time))
         if (Test == 'write'):
             print "Pure write throughput:  %6.2f MB/s" % (tsize/write_time)
-        print "Internal throughput (write [+crc]): %6.2f MB/s" % \
-              (tsize/(time.time()-sti))
+        elif (Test == 'read'): 
+            print "Pure read throughput:  %6.2f MB/s" % (tsize/read_time)
+        writelabel = 'write '
+        if (Test == 'cpu'):
+            writelabel = ''
+        print "Internal throughput (%s[+crc]): %6.2f MB/s" % \
+              (writelabel, tsize/(time.time()-sti))
         fst = time.time()
         if ifil != '/dev/zero': inputf.close()
         if (httpobj):
@@ -544,8 +557,8 @@ def myDD(ifil='/dev/zero',ofil='/dev/null',skip=0,blocksize=1024,count=1,seek=0,
         if (crcfl):
             print "CRC throughput: %6.2f MB/s (%5.2f s)" % \
                     (tsize/crctime, crctime)
-        print "Total throughput (write [+ crc] + file-close): %6.2f MB/s" % \
-              (tsize/ste)
+        print "Total throughput (%s[+ crc] + file-close): %6.2f MB/s" % \
+              (writelabel, tsize/ste)
         return (bspeed,cspeed, tspeed)
     else: # do just plain nothing if no output file is specified
 
