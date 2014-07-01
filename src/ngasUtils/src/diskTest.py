@@ -588,12 +588,14 @@ if __name__ == '__main__':
             tcpsndbuf = int(v)
         if o in ("-c","--crc"):
             crcfl = v
-            if crcfl not in ['b', 'z']:
+            if crcfl not in ['b', 'z', 'c']:
                 crcfl = 'b'
             if crcfl == 'b':
                 from binascii import crc32
-            else:
+            elif crcfl == 'z':
                 from zlib import crc32
+            else:
+                from crc32c import crc32
         if o in ("-e", "--session"):
             session_id = v
         if o in ("-r", "--datarate"):
