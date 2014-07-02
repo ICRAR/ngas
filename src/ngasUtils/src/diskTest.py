@@ -503,11 +503,10 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
                     httpobj._conn.sock.sendall(block)
                 else:
                     if llflag:
-                        os.write(fd, block)
-                    elif dioflag:
-                        m.seek(0,0)
-                        m.write(block)
-                        block = m
+                        if dioflag:
+                            m.seek(0,0)
+                            m.write(block)
+                            block = m
                         os.write(fd, block)
                     else:
                         out.write(block)
