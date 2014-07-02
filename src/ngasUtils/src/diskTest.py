@@ -488,10 +488,6 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
                 block = inputf.read(blocksize)
                 if (Test == 'read'):
                     read_time += time.time() - stt
-            if dioflag:
-                m.seek(0,0)
-                m.write(block)
-                block = m
             if crcfl:
                 stc = time.time()
                 crc = crc32(block, crc)
@@ -509,6 +505,9 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
                     if llflag:
                         os.write(fd, block)
                     elif dioflag:
+                        m.seek(0,0)
+                        m.write(block)
+                        block = m
                         os.write(fd, block)
                     else:
                         out.write(block)
