@@ -79,15 +79,15 @@ static PyObject *
 crc32c_crc32(PyObject *self, PyObject *args) {
 	Py_buffer pbin;
 	unsigned char *bin_data;
-	unsigned int crc = 0U;      /* initial value of CRC for getting input */
+	uint32_t crc = 0U;      /* initial value of CRC for getting input */
 
 	if (!PyArg_ParseTuple(args, "s*|I:crc32", &pbin, &crc) )
 		return NULL;
 	bin_data = pbin.buf;
-	int result = crc32c_intel(crc, bin_data, pbin.len);
+	uint32_t result = crc32c_intel(crc, bin_data, pbin.len);
 
 	PyBuffer_Release(&pbin);
-
+	//printf("crc in c = %lX\n", result);
 	return PyInt_FromLong(result);
 }
 
