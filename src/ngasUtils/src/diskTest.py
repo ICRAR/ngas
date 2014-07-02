@@ -480,6 +480,8 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
         write_time = 0.0
         read_time = 0.0
         sti = time.time()
+        if dioflag:
+            m = mmap.mmap(-1, blocksize)
         for ii in range(count):
             stt = time.time()
             if ifil_not_zero:
@@ -487,7 +489,7 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
                 if (Test == 'read'):
                     read_time += time.time() - stt
             if dioflag:
-                m = mmap.mmap(-1, blocksize)
+                m.seek(0,0)
                 m.write(block)
                 block = m
             if crcfl:
