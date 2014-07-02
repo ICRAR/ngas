@@ -476,10 +476,6 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
         crctime = 0.0
         bsize = blocksize/one_mb
         tsize = bsize * count
-        if dioflag:
-            m = mmap.mmap(-1, blocksize)
-            m.write(block)
-            block = m
 
         write_time = 0.0
         read_time = 0.0
@@ -490,6 +486,10 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
                 block = inputf.read(blocksize)
                 if (Test == 'read'):
                     read_time += time.time() - stt
+            if dioflag:
+                m = mmap.mmap(-1, blocksize)
+                m.write(block)
+                block = m
             if crcfl:
                 stc = time.time()
                 crc = crc32(block, crc)
