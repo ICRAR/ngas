@@ -978,7 +978,7 @@ def test_deploy():
 
 
 @task
-def install():
+def install(standalone=0):
     """
     Install NGAS users and NGAS software on existing machine.
     Note: Requires root permissions!
@@ -994,7 +994,7 @@ def install():
         sudo('chown -R {0}:ngas {1}'.format(env.NGAS_USERS[0], env.PREFIX))
     with settings(user='ngas'):
         virtualenv_setup()
-        ngas_full_buildout()
+        ngas_full_buildout(standalone=standalone)
     init_deploy()
     print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
