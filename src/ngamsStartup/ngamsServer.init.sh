@@ -11,7 +11,9 @@
 # on Ubuntu, these functions can be located at: /lib/lsb/init-functions
 
 RETVAL=0
-NGAMS_PID_FILE="/home/ngas/ngas_rt/NGAS/.NGAS-"${HOSTNAME}"-7777"
+NGAS_USER="ngas-user"
+NGAS_ROOT="/home/$NGAS_USER"
+NGAMS_PID_FILE="$NGAS_ROOT/ngas_rt/NGAS/.NGAS-"${HOSTNAME}"-7777"
 
 # See how we were called.
 case "$0" in
@@ -30,7 +32,7 @@ case "$1" in
   start)
 #       echo -n "Starting ngamsServer: "
 
-        su - ngas -c "/home/ngas/ngas_rt/bin/$NGAMS_DAEMON start"
+        su - ngas -c "$NGAS_ROOT/ngas_rt/bin/$NGAMS_DAEMON start"
 
         echo "NG/AMS startup"
         [ $RETVAL -eq 0 ] && touch /var/lock/subsys/ngamsServer
@@ -38,8 +40,8 @@ case "$1" in
         ;;
   stop)
 #       echo -n "Stopping ngamsServer: "
-#        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsDaemon stop" 1>/dev/null 2>&1
-        su - ngas -c "/home/ngas/ngas_rt/bin/$NGAMS_DAEMON stop"
+#        su - ngas -c "$NGAS_ROOT/ngas_rt/bin/ngamsDaemon stop" 1>/dev/null 2>&1
+        su - ngas -c "$NGAS_ROOT/ngas_rt/bin/$NGAMS_DAEMON stop"
         if [[ -e ${NGAMS_PID_FILE} ]]
         then
           NGAMS_PID=$(cat ${NGAMS_PID_FILE})
@@ -53,7 +55,7 @@ case "$1" in
         ;;
   status)
         echo "Status ngamsServer: "
-        su - ngas -c "/home/ngas/ngas_rt/bin/$NGAMS_DAEMON status"
+        su - ngas -c "$NGAS_ROOT/ngas_rt/bin/$NGAMS_DAEMON status"
         RETVAL=$?
         ;;
   restart)
