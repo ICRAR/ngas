@@ -16,9 +16,9 @@ RETVAL=0
 NGAS_USER="ngas"
 
 #adjust to where the NGAS installation directory is.
-NGAS_ROOT="/home/$NGAS_USER"
+NGAS_ROOT="/home/$NGAS_USER/ngas_rt"
 
-NGAMS_PID_FILE="$NGAS_ROOT/ngas_rt/NGAS/.NGAS-"${HOSTNAME}"-7777"
+NGAMS_PID_FILE="$NGAS_ROOT/NGAS/.NGAS-"${HOSTNAME}"-7777"
 
 # See how we were called.
 case "$0" in
