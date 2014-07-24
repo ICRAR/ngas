@@ -188,7 +188,7 @@ def stageFiles(filenameList, checkCRC = False, printWarn = False):
             size_staged += os.path.getsize(filename)
             staged_files.append(filename)
     #print cmd1    
-    t = ngamsPlugInApi.execCmd(cmd1, -1)
+    t = ngamsPlugInApi.execCmd(cmd1, 900) # staging timeout set to 15 min
     exitCode = t[0]
     if (exitCode != 0):
         errMsg = "Staging problem: " + str(exitCode) + ", cmd: " + cmd1
