@@ -690,11 +690,11 @@ def user_setup():
         sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{1} /home/{0}/.ssh/authorized_keys'.format(user, group))
         
-        # create NGAS directories and chown to correct user and group
-        sudo('mkdir -p {0}'.format(env.NGAS_DIR_ABS))
-        sudo('chown {0}:{1} {2}'.format(user, group, env.NGAS_DIR_ABS))
-        sudo('mkdir -p {0}/../NGAS'.format(env.NGAS_DIR_ABS))
-        sudo('chown {0}:{1} {2}/../NGAS'.format(user, group, env.NGAS_DIR_ABS))
+    # create NGAS directories and chown to correct user and group
+    sudo('mkdir -p {0}'.format(env.NGAS_DIR_ABS))
+    sudo('chown {0}:{1} {2}'.format(env.NGAS_USERS[0], group, env.NGAS_DIR_ABS))
+    sudo('mkdir -p {0}/../NGAS'.format(env.NGAS_DIR_ABS))
+    sudo('chown {0}:{1} {2}/../NGAS'.format(env.NGAS_USERS[0], group, env.NGAS_DIR_ABS))
 
 
 @task
@@ -738,7 +738,8 @@ def virtualenv_setup():
     with cd('/tmp'):
         put('{0}/clib_tars/virtualenv-1.10.tar.gz'.format(env.src_dir), 'virtualenv-1.10.tar.gz')
         run('tar -xzf virtualenv-1.10.tar.gz')
-        run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
+        with settings(user=env.NGAS_USERS[0]):
+            run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
     print "\n\n******** VIRTUALENV SETUP COMPLETED!********\n\n"
 
 
