@@ -12,7 +12,7 @@ and obviously requires root access to the server.
 Pre-requisites:
 ---------------
 In order to use the installation procedure you will need some version of python
-running on some machine. Recommended versions include the 2.6 and 2.7 series.
+running on some (not the NGAS server) machine. Recommended version is one of the 2.7 series.
 If you are an advanced python user, you may already have a virtual environment
 setup. If this is the case you can either just enable your default virtualenv, or
 create a new one for this installation. If you are even more advanced and have
@@ -24,7 +24,7 @@ can skip the rest of this section.
 > python -V
 Python 2.7
 
-if it returns Python 2.6 or Python 2.7 or any version >= 2.6 <= 3.0 you are fine.
+if it returns Python 2.7 you are fine.
 
 1) check whether you've got virtualenv installed already:
 
@@ -54,10 +54,12 @@ of your choice, e.g.:
 NOTE: This will install fabric and boto into the virtualenv activated before and not
 clutter up anything else.
 
-5) In order to be able to execute the installation on a remote host you will need
-to be able to connect to the target host without a password.
-That means that you have to register your ssh public-key on that host (copy into
-~/.ssh/authorized-keys of the user on the target host.
+5) In order to be able to execute the NGAS installation on a remote host you will need
+to be able to connect to the target host through ssh. Thus try to connect to that host:
+
+> ssh billiythekid@whatever.host
+
+If you can login, you are ready to go.
 
 
 Installation of NGAS:
@@ -83,7 +85,7 @@ or
 
 $ fab -f machine-setup/deploy.py operations_deploy
 
-depending on whether you do have access to the internet or not, respectively. This is all what's required really….
+depending on whether you do have access to the internet or not, respectively. This is all what's required really.
 
 To start and stop the server you can then use either the ngamsDaemon if you are logged in as ngas.
 
@@ -102,7 +104,7 @@ required system packages independently from the rest:
 
 suppose <auth_user> is a user with full sudo access on the <target-machine>. Then you can run
 
-fab -u <auth-user> -H<target-machine> -f ~/machine-setup/deploy.py system_install_f
+fab -u <auth-user> -H<target-machine> -f machine-setup/deploy.py system_install_f
 
 and then install the NGAS software to another <target_user> like:
 
