@@ -591,6 +591,7 @@ def system_install_f():
             install_zypper(package)
     else:
         abort("Unknown linux flavor detected: {0}".format(re))
+    print "\n\n******** System packages installation COMPLETED!********\n\n"
 
 
 @task
@@ -770,11 +771,11 @@ def ngas_buildout(standalone=0, typ='archive'):
               env.NGAS_DIR_ABS, initName(typ=typ)[2], initName(typ=typ)[3]))
         nda = '\/'+'\/'.join(env.NGAS_DIR_ABS.split('/')[1:-1])+'\/NGAS'
         if env.linux_flavor == 'Darwin': # capture stupid difference in sed on Mac OSX
-            run("""sed -i '' 's/RootDirectory="\/home\/ngas\/NGAS"/RootDirectory="{0}"/' {1}/../NGAS/cfg/{2}""".
-                format(nda, env.NGAS_DIR_ABS, initName(typ=typ)[3]))
+            run("""sed -i '' 's/\*replaceRoot\*/{0}/g' {0}/cfg/{1}""".
+                format(nda, initName(typ=typ)[3]))
         else:
-            run("""sed -i 's/RootDirectory="\/home\/ngas\/NGAS"/RootDirectory="{0}"/' {1}/../NGAS/cfg/{2}""".
-                format(nda, env.NGAS_DIR_ABS, initName(typ=typ)[3]))
+            run("""sed -i 's/\*replaceRoot\*/{0}/g' {0}/cfg/{1}""".
+                format(nda, initName(typ=typ)[3]))
 
         with cd('../NGAS'):
             with settings(warn_only=True):
