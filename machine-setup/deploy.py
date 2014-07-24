@@ -14,6 +14,13 @@ fab --set postfix=False -f machine-setup/deploy.py test_deploy
 For a local installation under a normal user without sudo access
 
 fab -u `whoami` -H <IP address> -f machine-setup/deploy.py user_deploy
+
+For a remote installation under non-default user ngas-user using a
+non-default source directory for the installation you can use. This
+installation is using a different (sudo) user on the target machine
+to run the installation.
+
+fab -u sudo_user -H <IP address> -f machine-setup/deploy.py user_deploy --set NGAS_USERS=ngas-user,src_dir=/tmp/ngas_test
 """
 import glob
 
@@ -160,13 +167,13 @@ def set_env():
         env.user = USERNAME
     if not env.has_key('NGAS_USERS') or not env.NGAS_USERS:
         env.NGAS_USERS = NGAS_USERS
-    elif type(env.NGAS_USERS) == type(''): # if its just a string
+    if type(env.NGAS_USERS) == type(''): # if its just a string
         print "NGAS_USERS preset to {0}".format(env.NGAS_USERS)
         env.NGAS_USERS = [env.NGAS_USERS] # change the type
     if not env.has_key('HOME') or env.HOME[0] == '~' or not env.HOME:
-        env.HOME = run("echo ~{0}".format(NGAS_USERS[0]))
+        env.HOME = run("echo ~{0}".format(env.NGAS_USERS[0]))
     if not env.has_key('src_dir') or not env.src_dir:
-        env.src_dir = ''
+        env.src_dir = thisDir + '/../'
     require('hosts', provided_by=[test_env])
     if not env.has_key('HOME') or env.HOME[0] == '~' or not env.HOME:
         env.HOME = run("echo ~{0}".format(NGAS_USERS[0]))
@@ -196,10 +203,13 @@ def set_env():
             NGAS_DIR_ABS:      {5};
             NGAS_DIR:          {6};
             NGAS_USERS:        {7};
+            PREFIX:            {9};
+            SRC_DIR:           {10};
             """.\
             format(env.user, env.key_filename, env.hosts,
                    env.host_string, env.postfix, env.NGAS_DIR_ABS,
-                   env.NGAS_DIR, env.NGAS_USERS, env.HOME))
+                   env.NGAS_DIR, env.NGAS_USERS, env.HOME, env.PREFIX, 
+                   env.src_dir))
 
 
 @task
@@ -464,28 +474,32 @@ def git_clone_tar(standalone=0):
     is thus using a tar-file, copied over from the calling machine.
     """
     set_env()
+    egg_excl = ' '
     if not env.src_dir:
         local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
         local('cd /tmp && mv {0} {1}'.format(BRANCH, env.NGAS_DIR))
         tar_dir = '/tmp/{0}'.format(env.NGAS_DIR)
+        sdir = '/tmp'
     else:
-        tar_dir = '{0}/..'.format(env.src_dir)
-        local('cd {0} && mv {1} {2}'.format(tar_dir, os.path.basename(env.src_dir), env.NGAS_DIR))
-        tdir = tar_dir.split('/')[1:-2]
-        print tdir
-        tdir = '/' + '/'.join(tdir)
-        tar_dir = tdir+'/'+env.NGAS_DIR
-    if standalone:
-        local('cd {0}/.. && tar -cjf {1}.tar.bz2 --exclude BIG_FILES \
-            --exclude .git {1}'.format(tar_dir, env.NGAS_DIR))
-    else:
-        local('cd {0}/.. && tar -cjf {1}.tar.bz2 --exclude BIG_FILES \
-            --exclude .git --exclude eggs.tar.gz {1}'.format(tar_dir, env.NGAS_DIR))
+        tar_dir = '/tmp/'
+        sdir = tar_dir
+        local('cd {0} && ln -s {1} {2}'.format(tar_dir, env.src_dir, env.NGAS_DIR))
+        tar_dir = tar_dir+'/'+env.NGAS_DIR+'/.'
+    if not standalone:
+        egg_excl = ' --exclude eggs.tar.gz '
+
+    # create the tar
+    local('cd {0} && tar -cjf {1}.tar.bz2 --exclude BIG_FILES \
+            --exclude ".[gse]*" {2} {1}/.'.format(sdir, env.NGAS_DIR, egg_excl))
     tarfile = '{0}.tar.bz2'.format(env.NGAS_DIR)
-    put('{0}/../{1}'.format(tar_dir,tarfile), '{1}/../{0}'.format(tarfile, env.NGAS_DIR_ABS))
+
+    # transfer the tar file
+    put('{0}/{1}'.format(sdir,tarfile), '/tmp/{0}'.format(tarfile, env.NGAS_DIR_ABS))
     local('rm -rf /tmp/{0}'.format(env.NGAS_DIR))  # cleanup local git clone dir
+
+    # unpack the tar file remotely
     with cd(env.NGAS_DIR_ABS+'/..'):
-        run('tar -xjf {0} && cp {0} /tmp'.format(tarfile))
+        run('tar -xjf /tmp/{0}'.format(tarfile))
 
 
 @task
@@ -510,10 +524,10 @@ def ngas_minimal_tar():
              'machine_setup',
              'setup.py',
              ]
-    excludes = ['.git',
+    excludes = ['.gse*', 
                 ]
     exclude = ' --exclude ' + ' --exclude '.join(excludes)
-    local('cd {0}/../.. && tar {1} -czf /tmp/ngas_src.tar.gz ngas'.format(thisDir, exclude))
+    local('cd {0}/.. && tar {1} -czf /tmp/ngas_src.tar.gz ngas'.format(env.src_dir, exclude))
     put('/tmp/ngas_src.tar.gz','/tmp/ngas.tar.gz')
     run('cd {0} && tar --strip-components 1 -xzf /tmp/ngas.tar.gz'.format(env.NGAS_DIR_ABS))
 
@@ -577,6 +591,7 @@ def system_install_f():
             install_zypper(package)
     else:
         abort("Unknown linux flavor detected: {0}".format(re))
+    print "\n\n******** System packages installation COMPLETED!********\n\n"
 
 
 @task
@@ -674,6 +689,12 @@ def user_setup():
         sudo('cp {0}/.ssh/authorized_keys /home/{1}/.ssh/authorized_keys'.format(home, user))
         sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{1} /home/{0}/.ssh/authorized_keys'.format(user, group))
+        
+        # create NGAS directories and chown to correct user and group
+        sudo('mkdir -p {0}'.format(env.NGAS_DIR_ABS))
+        sudo('chown {0}:{1} {2}'.format(user, group, env.NGAS_DIR_ABS))
+        sudo('mkdir -p {0}/../NGAS'.format(env.NGAS_DIR_ABS))
+        sudo('chown {0}:{1} {2}/../NGAS'.format(user, group, env.NGAS_DIR_ABS))
 
 
 @task
@@ -715,7 +736,7 @@ def virtualenv_setup():
         abort('ngas_rt directory exists already')
 
     with cd('/tmp'):
-        put('{0}/../clib_tars/virtualenv-1.10.tar.gz'.format(thisDir), 'virtualenv-1.10.tar.gz')
+        put('{0}/clib_tars/virtualenv-1.10.tar.gz'.format(env.src_dir), 'virtualenv-1.10.tar.gz')
         run('tar -xzf virtualenv-1.10.tar.gz')
         run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
     print "\n\n******** VIRTUALENV SETUP COMPLETED!********\n\n"
@@ -734,25 +755,27 @@ def ngas_buildout(standalone=0, typ='archive'):
 
     with cd(env.NGAS_DIR_ABS):
         if (standalone):
-            put('{0}/../additional_tars/eggs.tar.gz'.format(thisDir), '{0}/eggs.tar.gz'.format(env.NGAS_DIR_ABS))
+            put('{0}/additional_tars/eggs.tar.gz'.format(env.src_dir), '{0}/eggs.tar.gz'.format(env.NGAS_DIR_ABS))
             run('tar -xzf eggs.tar.gz')
             if env.linux_flavor == 'Darwin':
-                put('{0}/../data/common.py.patch'.format(thisDir), '.')
+                put('{0}/data/common.py.patch'.format(env.src_dir), '.')
                 run('patch eggs/minitage.recipe.common-1.90-py2.7.egg/minitage/recipe/common/common.py common.py.patch')
+            run('find . -name "._*" -exec rm -rf {} \;') # get rid of stupid stuff left over from MacOSX
             virtualenv('buildout -Nvo')
         else:
+            run('find . -name "._*" -exec rm -rf {} \;')
             virtualenv('buildout')
-        run('cp -R {0}/NGAS {0}/../NGAS'.format(env.NGAS_DIR_ABS))
+        run('cp -R {0}/NGAS/* {0}/../NGAS/.'.format(env.NGAS_DIR_ABS))
         with settings(warn_only=True):
             run('cp {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
               env.NGAS_DIR_ABS, initName(typ=typ)[2], initName(typ=typ)[3]))
         nda = '\/'+'\/'.join(env.NGAS_DIR_ABS.split('/')[1:-1])+'\/NGAS'
         if env.linux_flavor == 'Darwin': # capture stupid difference in sed on Mac OSX
-            run("""sed -i '' 's/RootDirectory="\/home\/ngas\/NGAS"/RootDirectory="{0}"/' {1}/../NGAS/cfg/{2}""".
-                format(nda, env.NGAS_DIR_ABS, initName(typ=typ)[3]))
+            run("""sed -i '' 's/\*replaceRoot\*/{0}/g' {0}/cfg/{1}""".
+                format(nda, initName(typ=typ)[3]))
         else:
-            run("""sed -i 's/RootDirectory="\/home\/ngas\/NGAS"/RootDirectory="{0}"/' {1}/../NGAS/cfg/{2}""".
-                format(nda, env.NGAS_DIR_ABS, initName(typ=typ)[3]))
+            run("""sed -i 's/\*replaceRoot\*/{0}/g' {0}/cfg/{1}""".
+                format(nda, initName(typ=typ)[3]))
 
         with cd('../NGAS'):
             with settings(warn_only=True):
@@ -894,7 +917,7 @@ def user_deploy(typ='archive', standalone=0):
 
     fab -f deploy.py user_deploy:typ='cache'
     """
-    env.HOME = run("echo ~{0}".format(env.user))
+    env.HOME = run("echo ~{0}".format(env.NGAS_USERS[0]))
     set_env()
     ppath = check_python()
     if not ppath:
@@ -918,6 +941,10 @@ def init_deploy(typ='archive'):
 
     sudo('cp {0}/src/ngamsStartup/{1} /etc/init.d/{2}'.\
          format(env.NGAS_DIR_ABS, initFile, initLink))
+    sudo("sed -i 's/NGAS_USER=\"ngas\"/NGAS_USER=\"{0}\"/g' /etc/init.d/{1}".\
+         format(env.NGAS_USERS[0], initLink))
+    sudo("sed -i 's/NGAS_ROOT=\"\/home\/$NGAS_USER\/ngas_rt\"/NGAS_ROOT=\"{0}\"/g' /etc/init.d/{1}".\
+         format(env.NGAS_DIR_ABS.replace('/','\/'), initLink))
     sudo('chmod a+x /etc/init.d/{0}'.format(initLink))
     sudo('chkconfig --add /etc/init.d/{0}'.format(initLink))
     # on ubuntu, this should be
@@ -971,30 +998,30 @@ def test_deploy():
     if env.postfix:
         postfix_config()
     install()
-    with settings(user='ngas'):
+    with settings(user=env.NGAS_USERS[0]):
         run('ngamsDaemon start')
     print "\n\n******** SERVER STARTED!********\n\n"
 
 
 
 @task
-def install():
+def install(standalone=0):
     """
     Install NGAS users and NGAS software on existing machine.
     Note: Requires root permissions!
     """
     set_env()
     user_setup()
-    with settings(user='ngas'):
+    with settings(user=env.NGAS_USERS[0]):
         ppath = check_python()
         if not ppath:
             python_setup()
     if env.PREFIX != env.HOME: # generate non-standard ngas_rt directory
         sudo('mkdir -p {0}'.format(env.PREFIX))
         sudo('chown -R {0}:ngas {1}'.format(env.NGAS_USERS[0], env.PREFIX))
-    with settings(user='ngas'):
+    with settings(user=env.NGAS_USERS[0]):
         virtualenv_setup()
-        ngas_full_buildout()
+        ngas_full_buildout(standalone=standalone)
     init_deploy()
     print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
@@ -1002,14 +1029,17 @@ def install():
 def uninstall():
     """
     Uninstall NGAS, NGAS users and init script.
+    
+    NOTE: This can only be used with a sudo user.
     """
     set_env()
-    sudo('userdel -r ngasmgr', warn_only=True)
-    sudo('userdel -r ngas', warn_only=True)
+    for u in env.NGAS_USERS:
+        sudo('userdel -r {0}'.format(u), warn_only=True)
     sudo('groupdel ngas', warn_only=True)
     sudo('rm /etc/ngamsServer.conf', warn_only=True)
     sudo('rm /etc/init.d/ngamsServer', warn_only=True)
     sudo('rm -rf {0}'.format(env.PREFIX), warn_only=True)
+    sudo('rm -rf {0}'.format(env.NGAS_DIR_ABS), warn_only=True)
     print "\n\n******** UNINSTALL COMPLETED!********\n\n"
 
 @task
