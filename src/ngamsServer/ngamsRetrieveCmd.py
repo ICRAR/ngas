@@ -42,7 +42,7 @@ import ngamsDb, ngamsPlugInApi, ngamsFileInfo, ngamsDiskInfo, ngamsFileList
 import ngamsDppiStatus, ngamsStatus, ngamsDiskUtils
 import ngamsSrvUtils, ngamsFileUtils, ngamsReqProps
 
-def performStaging(srvObj, filename):
+def performStaging(srvObj, reqPropsObj, httpRef, filename):
     """
     if the staging plugin is set, then perform staging 
     using the registered staging plugin 
@@ -65,7 +65,16 @@ def performStaging(srvObj, filename):
     if (offline == 1): 
         info(2,"Invoking FSPI.stageFiles: " + fspi + " to stage file: " + filename)
         st = time.time()
-        num = eval(fspi + ".stageFiles([filename])")
+        num = 0
+        try:
+            num = eval(fspi + ".stageFiles([filename])")
+        except Exception, ex:
+            if (str(ex).find('timed out') != -1):
+                errMsg = 'Staging timed out: %s' % filename
+                warning(errMsg)
+                srvObj.httpReply(reqPropsObj, httpRef, 504, errMsg, NGAMS_TEXT_MT) 
+            raise ex
+           
         if (num == 0):
             errMsg = 'File %s is offline, but NGAS failed to stage it online' % filename
             error(errMsg)
@@ -73,7 +82,7 @@ def performStaging(srvObj, filename):
         else:
             howlong = time.time() - st
             fileSize = getFileSize(filename)
-            info(3, 'Staging rate = %.0f Bytes/s for file %s' % (fileSize / howlong, filename))
+            info(3, 'Staging rate = %.0f Bytes/s (%.0f seconds) for file %s' % (fileSize / howlong, howlong, filename))
     elif (offline == -1): 
         errMsg = 'Fail to query the offline status for file %s' % filename
         error(errMsg) # but still continue go ahead without raising Exceptions
@@ -486,7 +495,7 @@ def _handleCmdRetrieve(srvObj,
         srcFilename = os.path.normpath(mountPoint + "/" + filename)
         
         # Perform the possible file staging
-        performStaging(srvObj, srcFilename)
+        performStaging(srvObj, reqPropsObj, httpRef, srcFilename)
         
         # Perform the possible processing requested.
         procResult = performProcessing(srvObj,reqPropsObj,srcFilename,mimeType)
