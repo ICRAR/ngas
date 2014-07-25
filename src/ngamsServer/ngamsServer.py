@@ -1461,7 +1461,7 @@ class ngamsServer:
                 self.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                            NGAMS_SUCCESS, msg)
             self.setLastReqEndTime()
-            reqPropsObj.getReadFd().close()
+            #reqPropsObj.getReadFd().close()
             reqPropsObj.setCompletionTime(1)
             self.updateRequestDb(reqPropsObj)
         except Exception, e:
@@ -1478,7 +1478,7 @@ class ngamsServer:
                                      (reqPropsObj.getSize() -
                                       reqPropsObj.getBytesReceived()))
                 reqPropsObj.setBytesReceived(reqPropsObj.getSize())
-            reqPropsObj.getReadFd().close()
+            #reqPropsObj.getReadFd().close()
             if (getDebug()): traceback.print_exc(file = sys.stdout)
             errMsg = str(e)
             #error(errMsg + '\n' + traceback.format_exc())
@@ -1487,7 +1487,10 @@ class ngamsServer:
             if (not reqPropsObj.getSentReply()):
                 self.reply(reqPropsObj, httpRef, NGAMS_HTTP_BAD_REQ,
                            NGAMS_FAILURE, errMsg)
-
+        finally:
+            reqPropsObj.getWriteFd().flush()
+            reqPropsObj.getWriteFd().close()
+            reqPropsObj.getReadFd().close()
 
     def handleHttpRequest(self,
                           reqPropsObj,
