@@ -61,7 +61,7 @@ thisDir = os.path.dirname(os.path.realpath(__file__))
 BRANCH = 'master'    # this is controlling which branch is used in git clone
 USERNAME = 'ec2-user'
 POSTFIX = False
-AMI_IDs = {'CentOS':'ami-aecd60c7', 'SLES':'ami-e8084981'}
+AMI_IDs = {'New':'ami-7c807d14', 'CentOS':'ami-aecd60c7', 'SLES':'ami-e8084981'}
 AMI_ID = AMI_IDs['CentOS']
 INSTANCE_NAME = 'NGAS_{0}'.format(BRANCH)
 INSTANCE_TYPE = 't1.micro'
@@ -690,11 +690,11 @@ def user_setup():
         sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{1} /home/{0}/.ssh/authorized_keys'.format(user, group))
         
-        # create NGAS directories and chown to correct user and group
-        sudo('mkdir -p {0}'.format(env.NGAS_DIR_ABS))
-        sudo('chown {0}:{1} {2}'.format(user, group, env.NGAS_DIR_ABS))
-        sudo('mkdir -p {0}/../NGAS'.format(env.NGAS_DIR_ABS))
-        sudo('chown {0}:{1} {2}/../NGAS'.format(user, group, env.NGAS_DIR_ABS))
+    # create NGAS directories and chown to correct user and group
+    sudo('mkdir -p {0}'.format(env.NGAS_DIR_ABS))
+    sudo('chown {0}:{1} {2}'.format(env.NGAS_USERS[0], group, env.NGAS_DIR_ABS))
+    sudo('mkdir -p {0}/../NGAS'.format(env.NGAS_DIR_ABS))
+    sudo('chown {0}:{1} {2}/../NGAS'.format(env.NGAS_USERS[0], group, env.NGAS_DIR_ABS))
 
 
 @task
@@ -738,7 +738,8 @@ def virtualenv_setup():
     with cd('/tmp'):
         put('{0}/clib_tars/virtualenv-1.10.tar.gz'.format(env.src_dir), 'virtualenv-1.10.tar.gz')
         run('tar -xzf virtualenv-1.10.tar.gz')
-        run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
+        with settings(user=env.NGAS_USERS[0]):
+            run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
     print "\n\n******** VIRTUALENV SETUP COMPLETED!********\n\n"
 
 
@@ -790,14 +791,33 @@ def ngas_buildout(standalone=0, typ='archive'):
 def install_user_profile():
     """
     Put the activation of the virtualenv into the login profile of the user
+    
+    NOTE: This will be executed for the user running NGAS.
     """
     set_env()
-    if not check_path('.bash_profile_orig'):
-        run('cp .bash_profile .bash_profile_orig')
+    nuser = env.NGAS_USERS[0]
+    if env.user != nuser:
+        with cd(env.HOME):
+            res = sudo('if [ -e {0}/.bash_profile_orig ]; then echo 1; else echo ; fi'.format(env.HOME))
+            if not res:
+                sudo('sudo -u {0} cp .bash_profile .bash_profile_orig'.format(nuser))
+            else:
+                sudo('sudo -u {0} cp .bash_profile_orig .bash_profile'.format(nuser))
+            sudo('sudo -u {0} echo "export NGAS_PREFIX={1}\n" >> .bash_profile'.\
+                format(nuser, env.NGAS_DIR_ABS))
+            sudo('sudo -u {0} echo "source {1}/bin/activate\n" >> .bash_profile'.\
+                 format(nuser, env.NGAS_DIR_ABS))
     else:
-        run('cp .bash_profile_orig .bash_profile')
-    run('echo "export NGAS_PREFIX={0}\n" >> .bash_profile'.format(env.NGAS_DIR_ABS))
-    run('echo "source {0}/bin/activate\n" >> .bash_profile'.format(env.NGAS_DIR_ABS))
+        with cd(env.HOME):
+            res = run('if [ -e {0}/.bash_profile_orig ]; then echo 1; else echo ; fi'.format(env.HOME))
+            if not res:
+                run('cp .bash_profile .bash_profile_orig'.format(nuser))
+            else:
+                run('cp .bash_profile_orig .bash_profile'.format(nuser))
+            run('echo "export NGAS_PREFIX={1}\n" >> .bash_profile'.\
+                format(nuser, env.NGAS_DIR_ABS))
+            run('echo "source {1}/bin/activate\n" >> .bash_profile'.\
+                 format(nuser, env.NGAS_DIR_ABS))
 
     print "\n\n******** .bash_profile updated!********\n\n"
 

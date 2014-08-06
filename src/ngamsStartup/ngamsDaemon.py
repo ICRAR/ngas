@@ -21,17 +21,18 @@
 #    MA 02111-1307  USA
 #
 
-import os, subprocess
+import os, subprocess, socket
 from ngamsServer import *
 from logger import ngaslog
 from daemon import Daemon
 from ngamsConfig import ngamsConfig
+import ngamsHighLevelLib
 
 HOME = os.environ['HOME']
 if os.environ.has_key('NGAS_PREFIX'):
     NGAS_PREFIX = os.environ['NGAS_PREFIX']
 else:
-    NGAS_PREFIX = '{0}'.format(HOME)
+    NGAS_PREFIX = '{0}/ngas_rt'.format(HOME)
     os.environ['NGAS_PREFIX'] = NGAS_PREFIX
 
 CFG = '%s/../NGAS/cfg/ngamsServer.conf' % NGAS_PREFIX
@@ -58,6 +59,31 @@ try:
     os.makedirs('{0}/../NGAS/var/log'.format(NGAS_PREFIX))
 except OSError:
     pass
+
+
+def internalPidFile():
+        """
+        Return the name of the PID file in which NG/AMS stores its PID.
+
+        Returns:   Name of PID file (string).
+        """
+        hostId = socket.gethostbyaddr(getMyIpAddress())[0].split('.')[0]
+        # Generate a PID file with the  name: <mt root dir>/.<NGAS ID>
+        if ((not cfgObj.getRootDirectory()) or \
+            (cfgObj.getPortNo() < 1)): return ""
+        try:
+            pidFile = os.path.join(cfgObj.getRootDirectory(), "." +
+                                   hostId + ":" + str(cfgObj.getPortNo()) +
+                                   ".pid")
+        except Exception, e:
+            errMsg = "Error occurred generating PID file name. Check " +\
+                     "Mount Root Directory + Port Number in configuration. "+\
+                     "Error: " + str(e)
+            raise Exception, errMsg
+        if glob.glob(pidFile):
+            return pidFile
+        else:
+            return ""
 
 
 class MyDaemon(Daemon):
@@ -95,12 +121,17 @@ def checkNgasPidFile(dum):
     sure that the server terminated cleanly, in which
     case the PID file is removed.
     """
-    with open(PIDFILE, 'r') as f:
-        ipid = f.readline().strip()
-    pidfils = glob.glob('%s/../NGAS/.NGAS-*' % NGAS_PREFIX)
-    for fil in pidfils:
-        with open(fil, 'r') as f:
+    f = open(PIDFILE, 'r')
+    ipid = f.readline().strip()
+    f.close()
+    fil = internalPidFile()
+    if fil:
+        try:
+            f = open(fil, 'r')
             pid = f.readline().strip()
+            f.close()
+        except:
+            return False
         if ipid == pid:
             return True
     return False
