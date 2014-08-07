@@ -746,7 +746,7 @@ def _deliveryThread(srvObj,
                 if (urlres.scheme.lower() == NGAS_JOB_URI_SCHEME): 
                     # e.g. ngasjob://ngamsMWA_Compress_JobPlugin?redo_on_fail=0&plugin_params=scale_factor=4,threshold=1E-5
                     runJob = True
-                    plugIn = urlres.hostname
+                    plugIn = urlres.netloc # hostname will return all lower cases
                     plugInPars = None
                     if (plugIn):
                         tmpUrl = sendUrl.lower().replace(NGAS_JOB_URI_SCHEME, 'http')
