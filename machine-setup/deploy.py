@@ -1097,4 +1097,16 @@ def upgrade():
     #git_clone_tar()
     run('$NGAS_PREFIX/bin/ngamsDaemon start')
     print "\n\n******** UPGRADE COMPLETED!********\n\n"
+    
+    
+@task
+def assign_ddns():
+    """
+    This task assigns the dynamic address ngas.ddns.net to the specified host.
+    """
+    sudo('yum-config-manager --enable epel')
+    sudo('yum install -y noip')
+    sudo('sudo noip2 -C')
+    sudo('chkconfig noip on')
+    sudo('service noip start')
 
