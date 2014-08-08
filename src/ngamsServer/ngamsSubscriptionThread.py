@@ -34,7 +34,7 @@ This module contains the code for the (Data) Subscription Thread, which is
 used to handle the delivery of data to Subscribers.
 """
 
-import thread, threading, time, commands, cPickle, types, math, sys, traceback, os, base64
+import thread, threading, time, commands, cPickle, types, math, sys, traceback, os, base64, urlparse
 from Queue import Queue, Empty, PriorityQueue
 
 from ngams import *
@@ -58,6 +58,9 @@ FILE_BL   = 6
 FPI_MODE_METADATA_ONLY = 1 # only check meta-data related conditions (e.g. project id), a preliminary filtering
 FPI_MODE_DATA_ONLY = 2 # only check data related conditions (e.g. if data has been sent, if it is offline, etc.)
 FPI_MODE_BOTH = 3 # check both
+
+NGAS_JOB_DELIMIT = "__nj__"
+NGAS_JOB_URI_SCHEME = "ngasjob"
 
 def startSubscriptionThread(srvObj):
     """
@@ -732,8 +735,34 @@ def _deliveryThread(srvObj,
             urlList = subscrObj.getUrlList()
             urlListLen = len(urlList)
             for udx in range(urlListLen):
+                """
+                checking ngas job parameters in the url
+                """
                 sendUrl = urlList[udx]
-                if (sendUrl.upper().endswith('/' + NGAMS_REARCHIVE_CMD) and diskId):
+                info(3, 'sendURL is %s' % sendUrl)
+                urlres = urlparse.urlparse(sendUrl)
+                runJob = False
+                redo_on_fail = False
+                if (urlres.scheme.lower() == NGAS_JOB_URI_SCHEME): 
+                    # e.g. ngasjob://ngamsMWA_Compress_JobPlugin?redo_on_fail=0&plugin_params=scale_factor=4,threshold=1E-5
+                    runJob = True
+                    plugIn = urlres.netloc # hostname will return all lower cases
+                    plugInPars = None
+                    if (plugIn):
+                        tmpUrl = sendUrl.lower().replace(NGAS_JOB_URI_SCHEME, 'http')
+                        urlres_query = urlparse.urlparse(tmpUrl).query
+                        if (urlres_query):
+                            jqdict = urlparse.parse_qs(urlres_query)
+                            if (jqdict):
+                                if (jqdict.has_key('redo_on_fail') and
+                                '1' == jqdict['redo_on_fail'][0]):
+                                    redo_on_fail = True 
+                                if (jqdict.has_key('plugin_params')):
+                                    plugInPars = jqdict['plugin_params'][0]
+                    else:
+                        raise Exception('invalid ngas job plugin')
+                
+                if ((not runJob) and sendUrl.upper().endswith('/' + NGAMS_REARCHIVE_CMD) and diskId):
                     try:
                         fileInfoObj = ngamsFileInfo.ngamsFileInfo().read(srvObj.getDb(), fileId, fileVersion, diskId)
                         fileInfoObjHdr = base64.b64encode(fileInfoObj.genXml().toxml())
@@ -743,36 +772,53 @@ def _deliveryThread(srvObj,
                 st = time.time()
                 try:
                     stageFile(srvObj, filename)
-                    fileChecksum = None
-                    try:
-                        fileChecksum = srvObj.getDb().getFileChecksum(diskId, fileId, fileVersion)
-                    except Exception, eyy:
-                        warning('Fail to get file checksum for file %s: %s' % (fileId, str(eyy)))
-                    #hdr1 = ('x-ddn-policy', 'Perth')
-                    hdr1 = ('x-ddn-policy', 'Perth-search') # DDN WOS policy header
-                    hdr2 = ('x-ddn-meta', '"file_id":"%s"' % fileId) # DDN WOS metadata header
-                    reply, msg, hdrs, data = \
-                           ngamsLib.httpPostUrl(sendUrl, fileMimeType,
-                                                contDisp, filename, "FILE",
-                                                blockSize=\
-                                                srvObj.getCfg().getBlockSize(),
-                                                suspTime = suspenTime,
-                                                authHdrVal = authHdr,
-                                                fileInfoHdr = fileInfoObjHdr,
-                                                sendBuffer = srvObj.getCfg().getArchiveSndBufSize(),
-                                                checkSum = fileChecksum,
-                                                moreHdrs = [hdr1, hdr2])
-                    if (data.strip() != ""):
-                        stat.clear().unpackXmlDoc(data)
+                    if (runJob):
+                        exec "import " + plugIn
+                        info(3,"Invoking Job Plugin: " + plugIn + " on file " +\
+                               "(version/ID): " + fileId + "/" + str(fileVersion) +\
+                               ". Subscriber: " + subscrObj.getId())
+                        jpiCode, jpiResult = eval(plugIn + "." + plugIn +\
+                                      "(srvObj, plugInPars, filename, fileId, " +\
+                                      "fileVersion, diskId)")
+                        if (0 == jpiCode):
+                            reply = NGAMS_HTTP_SUCCESS
+                            stat.setStatus(NGAMS_SUCCESS)
+                        else:
+                            raise Exception(str(jpiCode) + NGAS_JOB_DELIMIT + jpiResult)
                     else:
-                        # TODO: For the moment assume success in case no
-                        #       exception was thrown.
-                        stat.clear().setStatus(NGAMS_SUCCESS)
-                    if (hdrs.has_key('x-ddn-oid')):
-                        ddn_msg = "File %s as DDN obsid = %s" % (fileId, hdrs['x-ddn-oid'])
-                        if (hdrs.has_key('x-ddn-status')):
-                            ddn_msg += " is archived '%s'" % hdrs['x-ddn-status']
-                        info(3, ddn_msg)        
+                        fileChecksum = None
+                        try:
+                            fileChecksum = srvObj.getDb().getFileChecksum(diskId, fileId, fileVersion)
+                        except Exception, eyy:
+                            warning('Fail to get file checksum for file %s: %s' % (fileId, str(eyy)))
+                        #hdr1 = ('x-ddn-policy', 'Perth')
+                        #hdr1 = ('x-ddn-policy', 'Perth-search') # DDN WOS policy header
+                        #hdr2 = ('x-ddn-meta', '"file_id":"%s"' % fileId) # DDN WOS metadata header
+                        reply, msg, hdrs, data = \
+                               ngamsLib.httpPostUrl(sendUrl, fileMimeType,
+                                                    contDisp, filename, "FILE",
+                                                    blockSize=\
+                                                    srvObj.getCfg().getBlockSize(),
+                                                    suspTime = suspenTime,
+                                                    authHdrVal = authHdr,
+                                                    fileInfoHdr = fileInfoObjHdr,
+                                                    sendBuffer = srvObj.getCfg().getArchiveSndBufSize(),
+                                                    checkSum = fileChecksum)
+                                                    #moreHdrs = [hdr1, hdr2])
+                        if (data.strip() != ""):
+                            stat.clear().unpackXmlDoc(data)
+                        else:
+                            # TODO: For the moment assume success in case no
+                            #       exception was thrown.
+                            stat.clear().setStatus(NGAMS_SUCCESS)
+                            
+                        # this is only for DDN test
+                        if (hdrs.has_key('x-ddn-oid')):
+                            ddn_msg = "File %s as DDN obsid = %s" % (fileId, hdrs['x-ddn-oid'])
+                            if (hdrs.has_key('x-ddn-status')):
+                                ddn_msg += " is archived '%s'" % hdrs['x-ddn-status']
+                            info(3, ddn_msg)        
+                        
                         
                 except Exception, e:
                     ex = str(e)
@@ -787,14 +833,31 @@ def _deliveryThread(srvObj,
                     # instead make an entry in the Subscription Back-Log Table
                     # (if the file is not an already back log buffered file, which
                     # was attempted re-posted). 
-                    errMsg = "Error occurred while delivering file: " + baseName +\
-                             "/" + str(fileVersion) +\
-                             " - to Subscriber with ID/url: " + subscrObj.getId() + "/" + subscrObj.getUrl() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]"
+                    
+                    if (runJob):
+                        if (redo_on_fail):
+                            _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
+                        jobErrorInfo = ex.split(NGAS_JOB_DELIMIT)
+                        if (len(jobErrorInfo) == 2): # job plug-in application exception
+                            updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, int(jobErrorInfo[0]), jobErrorInfo[1])
+                        else:
+                            # run-time error / or unexpected exception
+                            updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 1, ex)
+                        errMsg = "Error occurred while executing job plugin on file: " + baseName +\
+                                 "/" + str(fileVersion) +\
+                                 " - for Subscriber/url: " + subscrObj.getId() + "/" + subscrObj.getUrl() +\
+                                 " by Job Thread [" + str(thread.get_ident()) + "]"
+                    else:
+                        _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
+                        updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 1, ex + stat.getMessage())
+                        errMsg = "Error occurred while delivering file: " + baseName +\
+                                 "/" + str(fileVersion) +\
+                                 " - to Subscriber/url: " + subscrObj.getId() + "/" + subscrObj.getUrl() +\
+                                 " by Delivery Thread [" + str(thread.get_ident()) + "]"
+                    
                     if (ex != ""): errMsg += " Exception: " + ex + trace_msg + "."
                     if (stat.getMessage() != ""):
                         errMsg += " Message: " + stat.getMessage()
-                    _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
-                    updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 1, ex + stat.getMessage())
                     warning(errMsg)
                     if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
                         # remove bl record from the dict
@@ -805,15 +868,20 @@ def _deliveryThread(srvObj,
                                 if (srvObj._subscrBlScheduledDic[subscrbId].has_key(k)):
                                     del srvObj._subscrBlScheduledDic[subscrbId][k]
                             finally:
-                                srvObj._subscrBlScheduledDic_Sem.release()
-                    
+                                srvObj._subscrBlScheduledDic_Sem.release()                   
                 else:
-                    howlong = time.time() - st
-                    fileSize = getFileSize(filename)
-                    transfer_rate = '%.0f Bytes/s' % (fileSize / howlong)
-                    updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 0, transfer_rate)
-                    info(3,"File: " + baseName + "/" + str(fileVersion) +\
-                         " - delivered to Subscriber with ID: " + subscrObj.getId() + " by Data Delivery Thread [" + str(thread.get_ident()) + "]")
+                    if (runJob):
+                        updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 0, jpiResult)
+                        info(3,"File: " + baseName + "/" + str(fileVersion) +\
+                        " - executed by " + plugIn + " for Subscriber: " + subscrObj.getId() + " by Job Thread [" + str(thread.get_ident()) + "]")
+                    else:
+                        howlong = time.time() - st
+                        fileSize = getFileSize(filename)
+                        transfer_rate = '%.0f Bytes/s' % (fileSize / howlong)
+                        updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 0, transfer_rate)
+                        info(3,"File: " + baseName + "/" + str(fileVersion) +\
+                        " - delivered to Subscriber: " + subscrObj.getId() + " by Delivery Thread [" + str(thread.get_ident()) + "]")
+                        
                     if (srvObj.getCachingActive()):                   
                         fkey = fileId + "/" + str(fileVersion)
                         fileDeliveryCountDic_Sem.acquire()
