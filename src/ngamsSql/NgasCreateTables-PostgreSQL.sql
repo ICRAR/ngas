@@ -107,11 +107,11 @@ create table ngas_files
 	uncompressed_file_size	numeric(20, 0)	not null,
 	compression		varchar(32)	null,
 	ingestion_date		varchar(23)	not null,
-	file_ignore                  smallint        null,
+	file_ignore         smallint        null,
 	checksum	        varchar(64)	null,
 	checksum_plugin         varchar(64)	null,
 	file_status             char(8)         default '00000000',
-        creation_date           varchar(23)     null,
+    creation_date           varchar(23)     null,
     io_time                numeric(20, 0) default -1,
 	constraint file_idx	primary key(file_id,file_version,disk_id)
 );
