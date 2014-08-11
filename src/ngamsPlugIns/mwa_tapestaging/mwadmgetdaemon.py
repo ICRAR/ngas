@@ -37,10 +37,6 @@ server = None
 if not os.path.exists('log/'):
    os.makedirs('log/')
 
-#f = open(os.devnull, 'w')
-#sys.stdout = f
-#sys.stderr = f
-
 logger = logging.getLogger('mwadmget')
 logger.setLevel(logging.DEBUG)
 logger.propagate = False
@@ -79,16 +75,16 @@ class Command(object):
    def __init__(self, cmd):
       self.cmd = cmd
       self.process = None
-      self.excp = None
+      self.output = ""
+      self.timing = 0
       
       def __execute():
-         try:
-            # TO DO: Put timing code around this
-            self.process = subprocess.Popen(self.cmd)
-            self.process.communicate()
-         except Exception as e:
-            self.excp = e
-      
+         t0 = time.time()
+         self.process = subprocess.Popen(self.cmd, stdout = subprocess.PIPE)
+         self.output = self.process.communicate()[0]
+         t1 = time.time()
+         self.timing = t1-t0
+
       self.thread = threading.Thread(target=__execute)
       self.thread.start()
 
@@ -102,10 +98,7 @@ class Command(object):
       else:
          self.thread.join()
       
-      if self.process:
-         return self.process.returncode
-      else:
-         raise ErrorCodeException(ErrorCode.command_error, str(self.excp))
+      return self.process.returncode
       
 
 class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
@@ -165,10 +158,10 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
       
       files = None
       command = None
-      
+      originator = False
       
       try:
-         # if we are already staging all the files for this obsid then just return
+         # if we are already staging all the files for this obsid then just wait for the dmget to return
          with self.lock:
             if not obsid in self.staging:
                
@@ -177,13 +170,13 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
                   raise ErrorCodeException(ErrorCode.files_not_found_error, 'could not find any files for %s' % (str(obsid)))
                
                commandlist = ['dmget'] + files
-               #commandlist = ['sleep', '10']
-               
                logger.info("%s staging files" % (str(obsid)))
                
                command = Command(commandlist)
                
                self.staging[obsid] = (files, command)
+               
+               originator = True
                
             else:
                (files, command) = self.staging.get(obsid)
@@ -192,7 +185,10 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
          # wait for staging to complete before returning to user
          return_code = command.join()
          if return_code != 0:
-            raise ErrorCodeException(ErrorCode.command_error, "dmget exited with %s" % str(return_code))
+            raise ErrorCodeException(ErrorCode.command_error, "dmget exited with errorcode: %s output: %s" % (str(return_code), str(command.output)))
+         
+         if originator:
+            logger.info("%s staging files finished. Staging time: %s secs" % (str(obsid), str(command.timing)))
       
       finally:
          # once it is complete remove the observation and all associated files
@@ -222,12 +218,16 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
             raise ere
             
       if singleStage:
+         logger.info("%s staging file" % (filename))
          # if it is not an mwa file then just stage whatever it is
          command = Command(['dmget', filename])
          return_code = command.join()
-      
+         if return_code != 0:
+            raise ErrorCodeException(ErrorCode.command_error, "dmget exited with errorcode: %s output: %s" % (str(return_code), str(command.output)))
+         
+         logger.info("%s staging file finished. Staging time: %s secs" % (filename, str(command.timing)))
+         
       return return_code
-      #raise ErrorCodeException(ErrorCode.not_an_mwa_file_error, "Unable to parse out obsID")
 
 
 class mwadmgetHandler(SocketServer.BaseRequestHandler):
@@ -298,7 +298,7 @@ class mwadmgetHandler(SocketServer.BaseRequestHandler):
       try:
          self.request.sendall(struct.pack('>H', return_code))
          
-      except BaseException as basee:
+      except Exception as basee:
          logger.error("[%s] %s" % (str(self.client_address[0]), str(basee) ))
          
       finally:
