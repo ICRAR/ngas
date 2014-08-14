@@ -169,7 +169,7 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
                if len(files) <= 0:
                   raise ErrorCodeException(ErrorCode.files_not_found_error, 'could not find any files for %s' % (str(obsid)))
                
-               commandlist = ['dmget'] + files
+               commandlist = ['dmget', '-a'] + files
                logger.info("%s staging files" % (str(obsid)))
                
                command = Command(commandlist)
@@ -220,7 +220,7 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
       if singleStage:
          logger.info("%s staging file" % (filename))
          # if it is not an mwa file then just stage whatever it is
-         command = Command(['dmget', filename])
+         command = Command(['dmget', '-a', filename])
          return_code = command.join()
          if return_code != 0:
             raise ErrorCodeException(ErrorCode.command_error, "dmget exited with errorcode: %s output: %s" % (str(return_code), str(command.output)))
