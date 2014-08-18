@@ -13,6 +13,7 @@ import pcc
 from ngams import * 
 import ngamsPlugInApi
 import os, time
+import socket, struct
 
 TAPE_ONLY_STATUS = ['NMG', 'OFL', 'PAR'] # these states tell us there are only complete copies of the file currently on tape (no copies on disks)
 ERROR_STATUS = ['INV']
@@ -170,61 +171,115 @@ def checkFileCRC(filelist):
     
     return wrong_list
 
-def stageFiles(filenameList, checkCRC = False, printWarn = False):
+def pawseyMWAdmget(filename, host, port, timeout):
+    """
+    issue a mwadmget which will do a bulk staging of files for a complete  observation;
+    this function will block until all files are staged or there is a timeout
+    
+    filename:    filename to be staged (string)
+    host:        host running the pawseydmget daemon (string)
+    port:        port of the pawsey / mwadmget daemon (int)
+    timeout:     socket timeout (int)
+    
+    """
+    
+    sock = None
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        val = struct.pack('>H', len(filename))
+        val = val + filename
+        # Connect to server and send data
+        
+        sock.connect((host, port))
+        sock.sendall(val)
+        # set the timeout
+        sock.settimeout(timeout)
+        # Receive return code from server
+        return struct.unpack('!H', sock.recv(2))[0]
+    finally:
+        if sock:
+            sock.close()
+
+def stageFiles(filenameList, checkCRC = False, printWarn = False, usePawseyMWADmget = True):
     """
     Stage a list of files. 
     The system will sort files in the order that they are archived on the tape volumes for better performance
     
     RETURN   the number of files staged. -1, if any errors
     """
-    cmd1 = "dmget"
-    num_staged = 0
-    size_staged = 0
-    staged_files = []
-    for filename in filenameList:
-        if (isFileOnTape(filename) == 1):
-            cmd1 += ' %s' % filename
-            num_staged += 1
-            size_staged += os.path.getsize(filename)
-            staged_files.append(filename)
-    #print cmd1    
-    t = ngamsPlugInApi.execCmd(cmd1, 1350) # staging timeout set to 30 min
-    exitCode = t[0]
-    if (exitCode != 0):
-        errMsg = "Staging problem: " + str(exitCode) + ", cmd: " + cmd1
-        if (printWarn):
-            print errMsg
+    if (usePawseyMWADmget):
+        leng = len(filenameList)
+        if (leng > 1):
+            return stageFiles(filenameList, usePawseyMWADmget = False)# not to complicate things
+        elif (leng == 0):
+            return 0
         else:
-            alert(errMsg)
-        sysMsg = '%d' % exitCode
-        if (len(t) == 2):
-            sysMsg += str(t[1])
-        raise Exception('Staging errors: %s' % sysMsg)
-    
-    crc_time = 0
-    if (checkCRC):
-        if (printWarn):
-            print 'Checking CRC'
-        else:
-            info(3, 'Checking CRC')
-        cst = time.time()
-        wrongList = checkFileCRC(staged_files)
-        cet = time.time()
-        if (len(wrongList) > 0):
-            warnMsg = 'CRC checking has errors !! - %s' % str(wrongList)
+            filename = filenameList[0]
+            try:
+                exitcode = pawseyMWAdmget(filename, 'fe1.pawsey.ivec.org', 9898, 1400)
+                if exitcode != 0:
+                    errMsg = 'Bulk staging error. Filename: %s Exitcode: %s' % (filename, str(exitcode))
+                    alert(errMsg)
+                    raise Exception(errMsg)
+            except socket.timeout as t:
+                raise Exception('Socket timed out') # so retrieval can search this "timed out" string
+            except Exception, ex:
+                if (str(ex).find('Connection refused') > -1):
+                    errMsg = 'pawseyMWAdmget daemon is not running, switch to native staging'
+                    alert(errMsg)
+                    return stageFiles(filenameList, usePawseyMWADmget = False)
+                else:
+                    raise ex
+            return 1
+    else:
+        cmd1 = "dmget"
+        num_staged = 0
+        size_staged = 0
+        staged_files = []
+        for filename in filenameList:
+            if (isFileOnTape(filename) == 1):
+                cmd1 += ' %s' % filename
+                num_staged += 1
+                size_staged += os.path.getsize(filename)
+                staged_files.append(filename)
+        #print cmd1    
+        t = ngamsPlugInApi.execCmd(cmd1, 1400) # staging timeout set to 30 min
+        exitCode = t[0]
+        if (exitCode != 0):
+            errMsg = "Staging problem: " + str(exitCode) + ", cmd: " + cmd1
             if (printWarn):
-                print warnMsg
+                print errMsg
             else:
-                alert(warnMsg)
-        else:
-            infoMsg = 'CRC are all correct.'
+                alert(errMsg)
+            sysMsg = '%d' % exitCode
+            if (len(t) == 2):
+                sysMsg += str(t[1])
+            raise Exception('Staging errors: %s' % sysMsg)
+        
+        crc_time = 0
+        if (checkCRC):
             if (printWarn):
-                print infoMsg
+                print 'Checking CRC'
             else:
-                info(3, infoMsg)
-        crc_time = cet - cst
-    
-    return (num_staged, size_staged, crc_time)
+                info(3, 'Checking CRC')
+            cst = time.time()
+            wrongList = checkFileCRC(staged_files)
+            cet = time.time()
+            if (len(wrongList) > 0):
+                warnMsg = 'CRC checking has errors !! - %s' % str(wrongList)
+                if (printWarn):
+                    print warnMsg
+                else:
+                    alert(warnMsg)
+            else:
+                infoMsg = 'CRC are all correct.'
+                if (printWarn):
+                    print infoMsg
+                else:
+                    info(3, infoMsg)
+            crc_time = cet - cst
+        
+        return (num_staged, size_staged, crc_time)
 
 def sorted_ls(path):
     """
