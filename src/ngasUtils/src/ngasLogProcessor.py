@@ -386,6 +386,22 @@ def getThreadFromFile(fnm,thread):
     return logs
 
 
+def getSummaryFromFile(fnm):
+    """
+    Function extracts a summary of the number of entries
+    """
+    LOG_TYPES = {
+                 'ALERT':'ALERT',
+                 'ERROR':'ERROR',
+                 'WARNING':'WARNING',
+                 'RETRIEVE':'path=\|RETRIEVE',
+                 'ARCHIVE':'path=\|ARCHIVE',
+                 'QARCHIVE':'path=\|QARCHIVE',
+                 }
+    logs = {}
+    for l in LOG_TYPES:
+        logs[l] = getLogList(fnm, logType=LOG_TYPES[l])
+    return logs
 
 
 def test():
