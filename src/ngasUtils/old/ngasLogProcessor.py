@@ -42,7 +42,7 @@ class TraceEntry():
         self.TraceString = traceString
         (self.File, self.Method, self.Line, \
             self.Instance, self.Thread) = self.parseTrace(traceString)
-
+    
     def parseTrace(self, traceString):
         try:
             (traceFile, traceMethod, traceLine, traceInstance,\
@@ -50,7 +50,7 @@ class TraceEntry():
         except Exception, e:
             return (None, None, None, None, None)
         return (traceFile, traceMethod, traceLine, traceInstance, traceThread)
-
+    
     def __repr__(self):
         return self.TraceString
 
@@ -68,7 +68,7 @@ class LogEntry():
         except Exception,e:
             msg = "ERROR: Unable to parse logString: %s\n%s" % (e,logString.strip())
             raise exceptions.Exception, msg
-
+    
     def parseLog(self, log=''):
         rexp = re.compile('[\[\]]')
         (logTime, logType, logMsg, logTrace) = rexp.split(log,3)
@@ -81,19 +81,19 @@ class LogEntry():
 
     def getLogType(self):
         return self.LogType
-
+    
     def getLogTime(self):
         return self.LogTime
-
+    
     def getLogMsg(self):
         return self.LogMsg
-
+    
     def getLogTrace(self):
         return self.LogTrace
-
+    
     def __repr__(self):
         return self.LogString
-
+    
     def filterTrace(self, filter):
         return (lambda x:eval(filter))(self.Trace)
 
@@ -108,10 +108,10 @@ class ThreadEntry(dict):
         elif log and log.Trace.Thread:
             name = log.Trace.Thread
             entries = [log]
-            self.update({'request':request, 'start': None, 'end': None,
-      'duration':None,
+            self.update({'request':request, 'start': None, 'end': None, 
+            'duration':None,
                         'entries':entries,
-      'client':None})
+            'client':None})
             self.name = self.keys()[0]
             self.request = self['request']
             self.start = self['start']
@@ -127,14 +127,14 @@ class ThreadEntry(dict):
             self.end = self['end']
             self.duration = self['duration']
             self.entries = self['entries']
-
+            
     def appendEntry(self,logEntry):
         self.entries.append(logEntry)
         self.setTimes()
         if logEntry.Msg.startswith('Received command:'):
             self.request = logEntry.Msg.split(':')[-1].strip()
         return
-
+ 
     def setTimes(self):
         if len(self.entries) == 0:
             self['duration'] = None
@@ -149,7 +149,7 @@ class ThreadEntry(dict):
         self.end = self['end']
         self.duration = self['duration']
         return
-
+            
     def setRequest(self):
         if len(self.entries) == 0:
             self.request = 'unknown'
@@ -166,12 +166,12 @@ class ThreadEntry(dict):
 
 
 
-
+    
 def buildLogDict(logList):
     """
     Function constructs a dictionary of logs using the
     classes above.
-
+    
     Input:
         logList:  list of strings containing log entries
     Output:
@@ -181,13 +181,13 @@ def buildLogDict(logList):
     threads = []
     for log in logList:
         logEntry = LogEntry(log)
-        key = logEntry.Trace.Thread
+        key = logEntry.Trace.Thread 
         if key and (key not in threads):
             threadDict.update({key:ThreadEntry(logEntry)})
-            if logEntry.Msg.startswith('Handling HTTP request:'):
+        if logEntry.Msg.startswith('Handling HTTP request:'):
                 threadDict[key]['client'] = \
                       logEntry.Msg.split(':')[1].split("'")[1]
-            threads.append(key)
+                threads.append(key)
         elif key:
             threadDict[key].appendEntry(logEntry)
 #            threadDict[key].setTimes()
@@ -212,7 +212,7 @@ def readLog(fObj, nlines=None):
        nlines:  int: number of lines to return
 
     OUTPUT:
-       stringarr containing the log entries
+       stringarr containing the log entries   
     """
     _FACTOR = 150
     oflag = 0
@@ -241,10 +241,10 @@ def readLog(fObj, nlines=None):
 def _executeSysCmd(cmd):
     """
     Helper function to execute a system command
-
+    
     Input:
        cmd:  string, the command to be executed
-
+    
     Output:
        plain string output of the result of the command as
        received from STDOUT.
@@ -261,7 +261,7 @@ def getArchiveStartFromFile(fnm, command='ARCHIVE'):
     """
     Function uses grep command on a LogFile (fnm) to find
     the start of ARCHIVE requests.
-
+    
     Input:
         fnm:    string, file name of the log-file
     Output:
@@ -269,6 +269,8 @@ def getArchiveStartFromFile(fnm, command='ARCHIVE'):
     """
     cmd = "grep 'path=|%s|' %s" % (command, fnm)
     output = _executeSysCmd(cmd)
+    if output == '':
+        return []
     logs = output.split('\n')
     return logs
 
@@ -283,7 +285,7 @@ def getSizeTimeRate(logarr):
     tend = DateTime.DateTimeFrom(splitLine[0]) # end transfer
     saveLine = filter(lambda x:x.find('Saving data in file') > -1,logarr)[0]
     tstart = DateTime.DateTimeFrom(saveLine.split()[0]) # start of transfer
-
+    
     return (size, time, rate, tstart, tend)
 
 
@@ -309,13 +311,13 @@ def getArchiveThreadsFromFile(fnm, dict=1, command='ARCHIVE', verbose=0, nthread
         return tdict, archStats
     else:
         return tlogs
-
+                
 
 def getLogList(fnm, logType="INFO"):
     """
     Function uses grep command on a LogFile (fnm) to find
     the <logType> logs.
-
+    
     Input:
         fnm:    string, file name of the log-file
     Output:
@@ -323,6 +325,8 @@ def getLogList(fnm, logType="INFO"):
     """
     cmd = "grep %s %s" % (logType, fnm)
     output = _executeSysCmd(cmd)
+    if output == '':
+        return []
     logs = output.split('\n')
     return logs
 
@@ -331,7 +335,7 @@ def getErrorsFromFile(fnm):
     """
     Function uses grep command on a LogFile (fnm) to find
     the ERROR logs.
-
+    
     Input:
         fnm:    string, file name of the log-file
     Output:
@@ -339,6 +343,8 @@ def getErrorsFromFile(fnm):
     """
     cmd = "grep ERROR %s" % fnm
     output = _executeSysCmd(cmd)
+    if output == '':
+        return []
     logs = output.split('\n')
     return logs
 
@@ -347,7 +353,7 @@ def getWarningsFromFile(fnm):
     """
     Function uses grep command on a LogFile (fnm) to find
     the WARNING logs.
-
+    
     Input:
         fnm:    string, file name of the log-file
     Output:
@@ -355,6 +361,8 @@ def getWarningsFromFile(fnm):
     """
     cmd = "grep WARNING %s" % fnm
     output = _executeSysCmd(cmd)
+    if output == '':
+        return []
     logs = output.split('\n')
     return logs
 
@@ -363,7 +371,7 @@ def getThreadFromFile(fnm,thread):
     """
     Function uses grep command on a LogFile (fnm) to find
     the logs belonging to one thread.
-
+    
     Input:
         fnm:    string, file name of the log-file
         thread: string, thread to be searched for (e.g. Thread-123)
@@ -372,6 +380,8 @@ def getThreadFromFile(fnm,thread):
     """
     cmd = "grep '%s]' %s" % (thread,fnm)
     output = _executeSysCmd(cmd)
+    if output == '':
+        return []
     logs = output.split('\n')
     return logs
 
@@ -381,8 +391,8 @@ def getThreadFromFile(fnm,thread):
 def test():
     logs=readLog('/Users/awicenec/Work/ALMA/data/LogFile.nglog')
     l=LogEntry(logs[54000])
-    return logs, l
-
+    return logs, l    
+                                   
 
 #=====
 
@@ -390,9 +400,9 @@ if __name__ == "__main__":
     """
     The stuff below is just an example of the usage of the classes and functions
     in this file. It is best to call it in the following way:
-
+    
     python -i ngasLogProcessor.py LogFile.nglog
-
+    
     Like this it is possible to access all the variables and functions
     afterwards from the command line.
     """
@@ -407,7 +417,7 @@ if __name__ == "__main__":
         for r in req:
             print r
         sys.exit()
-
+    
     adict = getArchiveThreadsFromFile(fnm, dict=1, command='QARCHIVE')
     astart = numpy.array(map(lambda x:adict[0][x].start,adict[1].keys()))
     ind = numpy.argsort(astart)
@@ -431,11 +441,11 @@ if __name__ == "__main__":
     (bytes.sum()/1024**2/(aend.max()-astart.min()).seconds, std)
 
     adur = (aend-astart).astype(float)
-
+    
     tdur = (tend-tstart).astype(float)
     rate = bytes/1024**2/adur
 
-
+    
     step = 6
     bins = len(range(0,len(astart),step))
     dt = astart[1:] - astart[:-1]
@@ -465,7 +475,7 @@ if __name__ == "__main__":
             err[ii/step]=(tmpdur+0.0001)/2.
             fd[ii/step]=((li-ii)/(dur[ii/step]))
             ft[ii/step]=(astart[ii]+dur[ii/step]/(2.*86400)-astart[0])
-#           ff[ii/step]=([(li-ii),astart[ii],aend[li],fd[-1],adur[-1]])
+        #           ff[ii/step]=([(li-ii),astart[ii],aend[li],fd[-1],adur[-1]])
             mrr[ii/step]=(sum(rr[ii:li])/dur[ii/step])
             mtr[ii/step]=(sum(bytes[ii:li])/dur[ii/step]/1024**2)
         else:
@@ -487,12 +497,12 @@ if __name__ == "__main__":
     pylab.subplot(2,1,2)
     pylab.errorbar(tstart-tstart.min(), rate, \
           xerr=[pylab.zeros(len(tstart)),tdur], fmt='b.')
-    pylab.errorbar(astart-astart.min(), rate-0.005,
+    pylab.errorbar(astart-astart.min(), rate-0.005, 
           xerr=[pylab.zeros(len(astart)),adur], fmt='r.')
     pylab.xlabel('Time since %s [s]' % (astart[0]))
     pylab.ylabel('Transfer rate (single file) [MB/s]')
     pylab.xlim(xmin=-0.01,xmax=di[-1]+20)
-
+    
 #    logfnm = fnm + '.png'
 #    pylab.savefig(logfnm, dpi=200)
-
+    
