@@ -109,7 +109,7 @@ except:
 from sys import path
 pathTup = [__path__[0] + '/src',
            __path__[0] + '/test',
-           __path__[0] + '/main']
+           __path__[0] + '/maint']
 path.extend(pathTup)
 __path__.extend(pathTup)
 
