@@ -386,11 +386,24 @@ def getThreadFromFile(fnm,thread):
     return logs
 
 
-def getSummaryFromFile(fnm):
+def getSummaryFromFile(fnm, form='text'):
     """
     Function extracts a summary of the number of entries
+
+    INPUTS:
+    fnm:    string, full path and file name of log-file
+    form:   string, [text|dict], returns the summary as text
+                    or a dictionary, respectively.
     """
-    LOG_TYPES = {
+    LOG_TYPES = [
+                 'ALERT',
+                 'ERROR',
+                 'WARNING',
+                 'RETRIEVE',
+                 'ARCHIVE',
+                 'QARCHIVE',
+                 ]
+    LOG_QUERY = {
                  'ALERT':'ALERT',
                  'ERROR':'ERROR',
                  'WARNING':'WARNING',
@@ -398,10 +411,16 @@ def getSummaryFromFile(fnm):
                  'ARCHIVE':'path=\|ARCHIVE',
                  'QARCHIVE':'path=\|QARCHIVE',
                  }
-    logs = {}
+    dlogs = {}
+    logs = ""
     for l in LOG_TYPES:
-        logs[l] = getLogList(fnm, logType=LOG_TYPES[l])
-    return logs
+        dlogs[l] = getLogList(fnm, logType=LOG_QUERY[l])
+        if form == 'text':
+            logs += "{0}: {1}".format(l, len(dlogs[l]))
+    if form == 'dict':
+        return dlogs
+    else:
+        return logs
 
 
 def test():
