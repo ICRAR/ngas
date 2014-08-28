@@ -526,10 +526,10 @@ def ngas_minimal_tar():
              'machine_setup',
              'setup.py',
              ]
-    excludes = ['.git', '.s*', '.e*', 
+    excludes = ['.git', '.s*', 
                 ]
     exclude = ' --exclude ' + ' --exclude '.join(excludes)
-    local('cd {0}/.. && tar {1} -czf /tmp/ngas_src.tar.gz ngas'.format(env.src_dir, exclude))
+    local('cd {0}/.. && tar -czf /tmp/ngas_src.tar.gz {1} ngas'.format(env.src_dir, exclude))
     put('/tmp/ngas_src.tar.gz','/tmp/ngas.tar.gz')
     run('cd {0} && tar --strip-components 1 -xzf /tmp/ngas.tar.gz'.format(env.NGAS_DIR_ABS))
 
