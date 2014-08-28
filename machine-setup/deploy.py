@@ -945,7 +945,7 @@ def user_deploy(typ='archive', standalone=0):
     env.HOME = run("echo ~{0}".format(env.NGAS_USERS[0]))
     ppath = check_python()
     if not ppath:
-        python_setup()
+        python_setup(standalone=standalone)
     else:
         env.PYTHON = ppath
     virtualenv_setup()
@@ -1039,7 +1039,7 @@ def install(standalone=0):
     with settings(user=env.NGAS_USERS[0]):
         ppath = check_python()
         if not ppath:
-            python_setup()
+            python_setup(standalone=standalone)
     if env.PREFIX != env.HOME: # generate non-standard ngas_rt directory
         sudo('mkdir -p {0}'.format(env.PREFIX))
         sudo('chown -R {0}:ngas {1}'.format(env.NGAS_USERS[0], env.PREFIX))
