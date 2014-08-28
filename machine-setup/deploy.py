@@ -72,7 +72,7 @@ ELASTIC_IP = 'False'
 SECURITY_GROUPS = ['NGAS'] # Security group allows SSH
 NGAS_USERS = ['ngas','ngasmgr']
 NGAS_PYTHON_VERSION = '2.7'
-NGAS_PYTHON_URL = 'http://www.python.org/ftp/python/2.7.6/Python-2.7.6.tgz'
+NGAS_PYTHON_URL = 'https://www.python.org/ftp/python/2.7.8/Python-2.7.8.tgz.asc'
 NGAS_DIR = 'ngas_rt' #NGAS runtime directory
 NGAS_DEF_CFG = 'NgamsCfg.SQLite.mini.xml'
 GITUSER = 'icrargit'
@@ -698,7 +698,7 @@ def user_setup():
 
 
 @task
-def python_setup():
+def python_setup(standalone=0):
     """
     Ensure that there is the right version of python available
     If not install it from scratch in user directory.
@@ -712,7 +712,10 @@ def python_setup():
     set_env()
 
     with cd('/tmp'):
-        run('wget --no-check-certificate -q {0}'.format(NGAS_PYTHON_URL))
+        if not standalone:
+            run('wget --no-check-certificate -q {0}'.format(NGAS_PYTHON_URL))
+        else:
+            put('{0}/additional_tars/Python-2.7.8.tgz'.format(env.src_dir), 'Python-2.7.8.tgz')
         base = os.path.basename(NGAS_PYTHON_URL)
         pdir = os.path.splitext(base)[0]
         run('tar -xzf {0}'.format(base))
@@ -937,8 +940,9 @@ def user_deploy(typ='archive', standalone=0):
 
     fab -f deploy.py user_deploy:typ='cache'
     """
-    env.HOME = run("echo ~{0}".format(env.NGAS_USERS[0]))
+#    env.HOME = run("echo ~{0}".format(env.NGAS_USERS[0]))
     set_env()
+    env.HOME = run("echo ~{0}".format(env.NGAS_USERS[0]))
     ppath = check_python()
     if not ppath:
         python_setup()
