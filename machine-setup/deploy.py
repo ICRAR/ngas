@@ -185,6 +185,8 @@ def set_env():
         env.NGAS_DIR = NGAS_DIR
     else:
         env.NGAS_DIR = env.NGAS_DIR_ABS.split('/')[-1]
+    if not env.has_key('standalone') or not env.standalone:
+        env.standalone = 0
     if not env.has_key('force') or not env.force:
         env.force = 0
     if not env.has_key('ami_name') or not env.ami_name:
@@ -466,7 +468,7 @@ def git_clone():
 
 
 @task
-def git_clone_tar(standalone=0):
+def git_clone_tar():
     """
     Clones the repository into /tmp and packs it into a tar file
 
@@ -485,12 +487,12 @@ def git_clone_tar(standalone=0):
         sdir = tar_dir
         local('cd {0} && ln -s {1} {2}'.format(tar_dir, env.src_dir, env.NGAS_DIR))
         tar_dir = tar_dir+'/'+env.NGAS_DIR+'/.'
-    if not standalone:
+    if not env.standalone:
         egg_excl = ' --exclude eggs.tar.gz '
 
     # create the tar
     local('cd {0} && tar -cjf {1}.tar.bz2 --exclude BIG_FILES \
-            --exclude ".[gse]*" {2} {1}/.'.format(sdir, env.NGAS_DIR, egg_excl))
+            --exclude .git --exclude .s* --exclude .e* {2} {1}/.'.format(sdir, env.NGAS_DIR, egg_excl))
     tarfile = '{0}.tar.bz2'.format(env.NGAS_DIR)
 
     # transfer the tar file
@@ -524,7 +526,7 @@ def ngas_minimal_tar():
              'machine_setup',
              'setup.py',
              ]
-    excludes = ['.gse*', 
+    excludes = ['.git', '.s*', '.e*', 
                 ]
     exclude = ' --exclude ' + ' --exclude '.join(excludes)
     local('cd {0}/.. && tar {1} -czf /tmp/ngas_src.tar.gz ngas'.format(env.src_dir, exclude))
@@ -698,7 +700,7 @@ def user_setup():
 
 
 @task
-def python_setup(standalone=0):
+def python_setup():
     """
     Ensure that there is the right version of python available
     If not install it from scratch in user directory.
@@ -712,7 +714,7 @@ def python_setup(standalone=0):
     set_env()
 
     with cd('/tmp'):
-        if not standalone:
+        if not env.standalone:
             run('wget --no-check-certificate -q {0}'.format(NGAS_PYTHON_URL))
         else:
             put('{0}/additional_tars/Python-2.7.8.tgz'.format(env.src_dir), 'Python-2.7.8.tgz')
@@ -748,17 +750,17 @@ def virtualenv_setup():
 
 
 @task
-def ngas_buildout(standalone=0, typ='archive'):
+def ngas_buildout(typ='archive'):
     """
     Perform just the buildout and virtualenv config
 
-    if standalone is not 0 then the eggs from the additional_tars
+    if env.standalone is not 0 then the eggs from the additional_tars
     will be installed to avoid accessing the internet.
     """
     set_env()
 
     with cd(env.NGAS_DIR_ABS):
-        if (standalone):
+        if (env.standalone):
             put('{0}/additional_tars/eggs.tar.gz'.format(env.src_dir), '{0}/eggs.tar.gz'.format(env.NGAS_DIR_ABS))
             run('tar -xzf eggs.tar.gz')
             if env.linux_flavor == 'Darwin':
@@ -827,17 +829,17 @@ def install_user_profile():
 
 
 @task
-def ngas_full_buildout(standalone=0, typ='archive'):
+def ngas_full_buildout(typ='archive'):
     """
     Perform the full install and buildout
     """
     set_env()
     # First get the sources
     #
-    if (standalone):
+    if (env.standalone):
         ngas_minimal_tar()
     elif not check_path('{0}/bootstrap.py'.format(env.NGAS_DIR_ABS)):
-        git_clone_tar(standalone=standalone)
+        git_clone_tar()
 
     with cd(env.NGAS_DIR_ABS):
         virtualenv('pip install clib_tars/zc.buildout-2.2.1.tar.gz')
@@ -856,7 +858,7 @@ def ngas_full_buildout(standalone=0, typ='archive'):
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
         virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
 
-    ngas_buildout(standalone=standalone, typ=typ)
+    ngas_buildout(typ=typ)
     install_user_profile()
 
     print "\n\n******** NGAS_FULL_BUILDOUT COMPLETED!********\n\n"
@@ -933,7 +935,7 @@ def initName(typ='archive'):
 
 
 @task
-def user_deploy(typ='archive', standalone=0):
+def user_deploy(typ='archive'):
     """
     Deploy the system as a normal user without sudo access
     NOTE: The parameter can be passed from the command line by using
@@ -945,11 +947,11 @@ def user_deploy(typ='archive', standalone=0):
     env.HOME = run("echo ~{0}".format(env.NGAS_USERS[0]))
     ppath = check_python()
     if not ppath:
-        python_setup(standalone=standalone)
+        python_setup()
     else:
         env.PYTHON = ppath
     virtualenv_setup()
-    ngas_full_buildout(standalone=standalone, typ=typ)
+    ngas_full_buildout(typ=typ)
 
     print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
@@ -978,7 +980,7 @@ def init_deploy(typ='archive'):
 
 @task
 @serial
-def operations_deploy(system_install=True, user_install=True, typ='archive', standalone=0):
+def operations_deploy(system_install=True, user_install=True, typ='archive'):
     """
     ** MAIN TASK **: Deploy the full NGAS operational environment.
     In order to install NGAS on an operational host go to any host
@@ -1029,7 +1031,7 @@ def test_deploy():
 
 
 @task
-def install(standalone=0):
+def install():
     """
     Install NGAS users and NGAS software on existing machine.
     Note: Requires root permissions!
@@ -1039,13 +1041,13 @@ def install(standalone=0):
     with settings(user=env.NGAS_USERS[0]):
         ppath = check_python()
         if not ppath:
-            python_setup(standalone=standalone)
+            python_setup()
     if env.PREFIX != env.HOME: # generate non-standard ngas_rt directory
         sudo('mkdir -p {0}'.format(env.PREFIX))
         sudo('chown -R {0}:ngas {1}'.format(env.NGAS_USERS[0], env.PREFIX))
     with settings(user=env.NGAS_USERS[0]):
         virtualenv_setup()
-        ngas_full_buildout(standalone=standalone)
+        ngas_full_buildout()
     init_deploy()
     print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
