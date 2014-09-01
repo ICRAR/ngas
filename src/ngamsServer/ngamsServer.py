@@ -2314,7 +2314,7 @@ class ngamsServer:
                 if (SunOS):
                     mtPt = out.split(" ")[0].strip()
                 else:
-                    mtPt = out.split("\n")[1].split("%")[-1].strip()
+                    mtPt = out.split("\n")[-1].split("%")[-1].strip()
                 if (not self.__sysMtPtDic.has_key(mtPt)):
                     self.__sysMtPtDic[mtPt] = []
                 self.__sysMtPtDic[mtPt].append(dirInfo)
