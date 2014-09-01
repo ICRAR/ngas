@@ -996,18 +996,18 @@ def operations_deploy(system_install=True, user_install=True, typ='archive'):
     NOTE: The parameter can be passed from the command line by using
 
     fab -f deploy.py operations_deploy:typ='cache'
+    
+    NOTE: This task is now merely an alias for install.
     """
 
-    if not env.user:
-        env.user = 'root'
-    # set environment to default, if not specified otherwise.
-    set_env()
-    if system_install: system_install_f()
-    if env.postfix:
-        postfix_config()
-    if user_install: user_setup()
-    install()
+    install(system_install=system_install, user_install=user_install, typ=typ)
+    
     print "\n\n******** OPERATIONS_DEPLOY COMPLETED!********\n\n"
+    print "\n\nThe server could be started now using the sqlite backend."
+    print "In most cases this is not reflecting the operational requirements though."
+    print "Thus some local adjustments of the NGAS configuration is most probably"
+    print "required. This includes the DB backend config as well as the configuration"
+    print "of the data volumes."
 
 
 @task
@@ -1031,13 +1031,17 @@ def test_deploy():
 
 
 @task
-def install():
+def install(system_install=True, user_install=True, typ='archive'):
     """
     Install NGAS users and NGAS software on existing machine.
     Note: Requires root permissions!
     """
     set_env()
-    user_setup()
+    if system_install: system_install_f()
+    if env.postfix:
+        postfix_config()
+    if user_install: user_setup()
+
     with settings(user=env.NGAS_USERS[0]):
         ppath = check_python()
         if not ppath:
@@ -1047,16 +1051,18 @@ def install():
         sudo('chown -R {0}:ngas {1}'.format(env.NGAS_USERS[0], env.PREFIX))
     with settings(user=env.NGAS_USERS[0]):
         virtualenv_setup()
-        ngas_full_buildout()
+        ngas_full_buildout(typ=typ)
     init_deploy()
     print "\n\n******** INSTALLATION COMPLETED!********\n\n"
+
 
 @task
 def uninstall():
     """
     Uninstall NGAS, NGAS users and init script.
     
-    NOTE: This can only be used with a sudo user.
+    NOTE: This can only be used with a sudo user. Does not uninstall
+          system packages.
     """
     set_env()
     for u in env.NGAS_USERS:
@@ -1074,9 +1080,9 @@ def upgrade():
     Upgrade the NGAS software on a target host using rsync.
 
     NOTE: This does NOT perform a new buildout, i.e. all the binaries and libraries are untouched.
-
-    use --set src_dir=your/local/directory
-    to point to the top-level NGAS soruce tree directory.
+    
+    Typical command line:
+    fab -H ngas.ddns.net -i ~/.ssh/icrar_ngas.pem -u ngas -f machine-setup/deploy.py upgrade --set src_dir=.
     """
     # use the PREFIX from the command line or try to set it from
     # the remote environment. If both fails bail-out.
@@ -1108,7 +1114,11 @@ def upgrade():
 @task
 def assign_ddns():
     """
-    This task assigns the dynamic address ngas.ddns.net to the specified host.
+    This task installs the noip ddns client to the specified host.
+    After the installation the configuration step is executed and that
+    requires some manual input. Then the noip2 client is started in background.
+    
+    NOTE: Obviously this should only be carried out for one NGAS deployment!!
     """
     sudo('yum-config-manager --enable epel')
     sudo('yum install -y noip')
