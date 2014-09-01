@@ -31,7 +31,7 @@ import time, urllib
 from fabric.api import put, env, require, local, task
 from fabric.api import run as frun
 from fabric.api import sudo as fsudo
-from fabric.context_managers import cd, hide, settings
+from fabric.context_managers import cd, hide, settings, warn_only
 from fabric.contrib.console import confirm
 from fabric.contrib.files import append, sed, comment
 from fabric.contrib.project import rsync_project
@@ -94,7 +94,6 @@ YUM_PACKAGES = [
    'sqlite-devel',
    'make',
    'gcc',
-   'java-1.6.0-openjdk-devel.x86_64',
    'postfix',
    'openssl-devel.x86_64',
    'wget.x86_64',
@@ -109,7 +108,6 @@ APT_PACKAGES = [
         'libzlcore-dev',
         'libdb4.8-dev',
         'libgdbm-dev',
-        'openjdk-6-jdk',
         'libreadline-dev',
         'sqlite3',
         'libsqlite3-dev',
@@ -131,7 +129,6 @@ SLES_PACKAGES = [
                  'postfix',
                  'openssl-devel',
                  'wget',
-                 'java-1_7_0-ibm-devel',
                  'libdb-4_5',
                  'libdb-4_5-devel',
                  'gcc',
@@ -160,7 +157,6 @@ PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 def set_env():
     # set environment to default for EC2, if not specified on command line.
 
-    # puts(env)
     if not env.has_key('GITUSER') or not env.GITUSER:
         env.GITUSER = GITUSER
     if not env.has_key('GITREPO') or not env.GITREPO:
@@ -170,7 +166,11 @@ def set_env():
     if not env.has_key('user') or not env.user:
         env.user = USERNAME
     if not env.has_key('NGAS_USERS') or not env.NGAS_USERS:
-        env.NGAS_USERS = NGAS_USERS
+        if env.user != USERNAME and env.command not in \
+        ['test_deploy', 'operations_deploy']:
+            env.NGAS_USERS = [env.user]
+        else:
+            env.NGAS_USERS = NGAS_USERS
     if type(env.NGAS_USERS) == type(''): # if its just a string
         print "NGAS_USERS preset to {0}".format(env.NGAS_USERS)
         env.NGAS_USERS = [env.NGAS_USERS] # change the type
@@ -810,6 +810,8 @@ def ngas_buildout(typ='archive'):
         else:
             run('find . -name "._*" -exec rm -rf {} \;')
             virtualenv('buildout')
+        with settings(warn_only=True):
+                run('mkdir -p {0}/../NGAS'.format(env.NGAS_DIR_ABS))
         run('cp -R {0}/NGAS/* {0}/../NGAS/.'.format(env.NGAS_DIR_ABS))
         with settings(warn_only=True):
             run('cp {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
@@ -873,6 +875,7 @@ def ngas_full_buildout(typ='archive'):
     Perform the full install and buildout
     """
     set_env()
+
     # First get the sources
     #
     if (env.standalone):
@@ -981,18 +984,12 @@ def user_deploy(typ='archive'):
 
     fab -f deploy.py user_deploy:typ='cache'
     """
-#    env.HOME = run("echo ~{0}".format(env.NGAS_USERS[0]))
-    set_env()
-    env.HOME = run("echo ~{0}".format(env.NGAS_USERS[0]))
-    ppath = check_python()
-    if not ppath:
-        python_setup()
-    else:
-        env.PYTHON = ppath
-    virtualenv_setup()
-    ngas_full_buildout(typ=typ)
+    if not env.has_key('NGAS_USERS') or not env.NGAS_USERS:
+        # if not defined on the command line use the current user
+        env.NGAS_USERS = os.environ['HOME'].split('/')[-1]
 
-    print "\n\n******** INSTALLATION COMPLETED!********\n\n"
+    install(system_install=False, user_install=False, typ=typ)
+    print "\n\n******** USER INSTALLATION COMPLETED!********\n\n"
 
 
 @task
