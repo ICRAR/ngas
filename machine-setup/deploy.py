@@ -26,7 +26,7 @@ import glob
 
 import boto
 import os
-import time
+import time, urllib
 
 from fabric.api import put, env, require, local, task
 from fabric.api import run as frun
@@ -61,7 +61,11 @@ thisDir = os.path.dirname(os.path.realpath(__file__))
 BRANCH = 'master'    # this is controlling which branch is used in git clone
 USERNAME = 'ec2-user'
 POSTFIX = False
-AMI_IDs = {'New':'ami-7c807d14', 'CentOS':'ami-aecd60c7', 'SLES':'ami-e8084981'}
+AMI_IDs = {
+           'CentOS':'ami-7c807d14', 
+           'Old_CentOS':'ami-aecd60c7', 
+           'SLES':'ami-e8084981',
+           }
 AMI_ID = AMI_IDs['CentOS']
 INSTANCE_NAME = 'NGAS_{0}'.format(BRANCH)
 INSTANCE_TYPE = 't1.micro'
@@ -215,6 +219,20 @@ def set_env():
 
 
 @task
+def whatsmyip():
+    """
+    Returns the external IP address of the host running fab.
+    
+    NOTE: This is only used for EC2 setups, thus it is assumed
+    that the host is on-line.
+    """
+    whatismyip = 'http://bot.whatismyipaddress.com/'
+    myip = urllib.urlopen(whatismyip).readlines()[0]
+    print myip
+    return myip
+
+
+@task
 def create_instance(names, use_elastic_ip, public_ips):
     """Create the EC2 instance
 
@@ -261,9 +279,14 @@ def create_instance(names, use_elastic_ip, public_ips):
         time.sleep(5)
     puts('.')
 
+    # Local user and host
+    userAThost = os.environ('USER') + '@' + whatsmyip()
+
     # Tag the instance
     for i in range(number_instances):
-        conn.create_tags([instances[i].id], {'Name': names[i]})
+        conn.create_tags([instances[i].id], {'Name': names[i], 
+                                             'Created By':userAThost,
+                                             })
 
     # Associate the IP if needed
     if use_elastic_ip:
@@ -280,6 +303,7 @@ def create_instance(names, use_elastic_ip, public_ips):
     for i in range(number_instances):
         instances[i].update(True)
         puts('Current DNS name is {0} after associating the Elastic IP'.format(instances[i].dns_name))
+        puts('Instance ID is {0}'.format(instances[i].id))
         host_names.append(str(instances[i].dns_name))
 
 
@@ -291,6 +315,21 @@ def create_instance(names, use_elastic_ip, public_ips):
     puts('.')
 
     return host_names
+
+@task
+def terminate_instance(instance_id=None):
+    """
+    Terminate the EC2 instance.
+    
+    NOTE: This task is asynchronous.
+    """
+    if not instance_id:
+        abort('>>> ABORTING: instance_id not specified.')
+    # This relies on a ~/.boto file holding the '<aws access key>', '<aws secret key>'
+    conn = boto.connect_ec2()
+    conn.terminate_instances(instance_ids=[instance_id])
+    print "\n\n******** INSTANCE {0} TERMINATED!********\n\n".format(instance_id)
+
 
 
 def to_boolean(choice, default=False):
@@ -1020,9 +1059,6 @@ def test_deploy():
     test_env()
     # set environment to default for EC2, if not specified otherwise.
     set_env()
-    system_install_f()
-    if env.postfix:
-        postfix_config()
     install()
     with settings(user=env.NGAS_USERS[0]):
         run('ngamsDaemon start')
@@ -1109,7 +1145,7 @@ def upgrade():
     #git_clone_tar()
     run('$NGAS_PREFIX/bin/ngamsDaemon start')
     print "\n\n******** UPGRADE COMPLETED!********\n\n"
-    
+
     
 @task
 def assign_ddns():
