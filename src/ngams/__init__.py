@@ -116,6 +116,7 @@ try:
                __path__[0] + '/../ngamsPlugIns',
                __path__[0] + '/../ngamsServer',
                __path__[0] + '/../ngamsTest',
+               __path__[0] + '/../ngamsUtils/src',
                __path__[0] + '/../pcc',
                __path__[0] + '/../pcc/pccLog',
                __path__[0] + '/../pcc/pccUt',

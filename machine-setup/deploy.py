@@ -26,12 +26,12 @@ import glob
 
 import boto
 import os
-import time
+import time, urllib
 
 from fabric.api import put, env, require, local, task
 from fabric.api import run as frun
 from fabric.api import sudo as fsudo
-from fabric.context_managers import cd, hide, settings
+from fabric.context_managers import cd, hide, settings, warn_only
 from fabric.contrib.console import confirm
 from fabric.contrib.files import append, sed, comment
 from fabric.contrib.project import rsync_project
@@ -61,7 +61,11 @@ thisDir = os.path.dirname(os.path.realpath(__file__))
 BRANCH = 'master'    # this is controlling which branch is used in git clone
 USERNAME = 'ec2-user'
 POSTFIX = False
-AMI_IDs = {'New':'ami-7c807d14', 'CentOS':'ami-aecd60c7', 'SLES':'ami-e8084981'}
+AMI_IDs = {
+           'CentOS':'ami-7c807d14', 
+           'Old_CentOS':'ami-aecd60c7', 
+           'SLES':'ami-e8084981',
+           }
 AMI_ID = AMI_IDs['CentOS']
 INSTANCE_NAME = 'NGAS_{0}'.format(BRANCH)
 INSTANCE_TYPE = 't1.micro'
@@ -90,7 +94,6 @@ YUM_PACKAGES = [
    'sqlite-devel',
    'make',
    'gcc',
-   'java-1.6.0-openjdk-devel.x86_64',
    'postfix',
    'openssl-devel.x86_64',
    'wget.x86_64',
@@ -105,7 +108,6 @@ APT_PACKAGES = [
         'libzlcore-dev',
         'libdb4.8-dev',
         'libgdbm-dev',
-        'openjdk-6-jdk',
         'libreadline-dev',
         'sqlite3',
         'libsqlite3-dev',
@@ -127,7 +129,6 @@ SLES_PACKAGES = [
                  'postfix',
                  'openssl-devel',
                  'wget',
-                 'java-1_7_0-ibm-devel',
                  'libdb-4_5',
                  'libdb-4_5-devel',
                  'gcc',
@@ -156,7 +157,6 @@ PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 def set_env():
     # set environment to default for EC2, if not specified on command line.
 
-    # puts(env)
     if not env.has_key('GITUSER') or not env.GITUSER:
         env.GITUSER = GITUSER
     if not env.has_key('GITREPO') or not env.GITREPO:
@@ -166,7 +166,11 @@ def set_env():
     if not env.has_key('user') or not env.user:
         env.user = USERNAME
     if not env.has_key('NGAS_USERS') or not env.NGAS_USERS:
-        env.NGAS_USERS = NGAS_USERS
+        if env.user != USERNAME and env.command not in \
+        ['test_deploy', 'operations_deploy']:
+            env.NGAS_USERS = [env.user]
+        else:
+            env.NGAS_USERS = NGAS_USERS
     if type(env.NGAS_USERS) == type(''): # if its just a string
         print "NGAS_USERS preset to {0}".format(env.NGAS_USERS)
         env.NGAS_USERS = [env.NGAS_USERS] # change the type
@@ -185,6 +189,8 @@ def set_env():
         env.NGAS_DIR = NGAS_DIR
     else:
         env.NGAS_DIR = env.NGAS_DIR_ABS.split('/')[-1]
+    if not env.has_key('standalone') or not env.standalone:
+        env.standalone = 0
     if not env.has_key('force') or not env.force:
         env.force = 0
     if not env.has_key('ami_name') or not env.ami_name:
@@ -210,6 +216,20 @@ def set_env():
                    env.host_string, env.postfix, env.NGAS_DIR_ABS,
                    env.NGAS_DIR, env.NGAS_USERS, env.HOME, env.PREFIX, 
                    env.src_dir))
+
+
+@task
+def whatsmyip():
+    """
+    Returns the external IP address of the host running fab.
+    
+    NOTE: This is only used for EC2 setups, thus it is assumed
+    that the host is on-line.
+    """
+    whatismyip = 'http://bot.whatismyipaddress.com/'
+    myip = urllib.urlopen(whatismyip).readlines()[0]
+    print myip
+    return myip
 
 
 @task
@@ -259,9 +279,14 @@ def create_instance(names, use_elastic_ip, public_ips):
         time.sleep(5)
     puts('.')
 
+    # Local user and host
+    userAThost = os.environ('USER') + '@' + whatsmyip()
+
     # Tag the instance
     for i in range(number_instances):
-        conn.create_tags([instances[i].id], {'Name': names[i]})
+        conn.create_tags([instances[i].id], {'Name': names[i], 
+                                             'Created By':userAThost,
+                                             })
 
     # Associate the IP if needed
     if use_elastic_ip:
@@ -278,6 +303,7 @@ def create_instance(names, use_elastic_ip, public_ips):
     for i in range(number_instances):
         instances[i].update(True)
         puts('Current DNS name is {0} after associating the Elastic IP'.format(instances[i].dns_name))
+        puts('Instance ID is {0}'.format(instances[i].id))
         host_names.append(str(instances[i].dns_name))
 
 
@@ -289,6 +315,21 @@ def create_instance(names, use_elastic_ip, public_ips):
     puts('.')
 
     return host_names
+
+@task
+def terminate_instance(instance_id=None):
+    """
+    Terminate the EC2 instance.
+    
+    NOTE: This task is asynchronous.
+    """
+    if not instance_id:
+        abort('>>> ABORTING: instance_id not specified.')
+    # This relies on a ~/.boto file holding the '<aws access key>', '<aws secret key>'
+    conn = boto.connect_ec2()
+    conn.terminate_instances(instance_ids=[instance_id])
+    print "\n\n******** INSTANCE {0} TERMINATED!********\n\n".format(instance_id)
+
 
 
 def to_boolean(choice, default=False):
@@ -466,7 +507,7 @@ def git_clone():
 
 
 @task
-def git_clone_tar(standalone=0):
+def git_clone_tar():
     """
     Clones the repository into /tmp and packs it into a tar file
 
@@ -485,12 +526,12 @@ def git_clone_tar(standalone=0):
         sdir = tar_dir
         local('cd {0} && ln -s {1} {2}'.format(tar_dir, env.src_dir, env.NGAS_DIR))
         tar_dir = tar_dir+'/'+env.NGAS_DIR+'/.'
-    if not standalone:
+    if not env.standalone:
         egg_excl = ' --exclude eggs.tar.gz '
 
     # create the tar
     local('cd {0} && tar -cjf {1}.tar.bz2 --exclude BIG_FILES \
-            --exclude ".[gse]*" {2} {1}/.'.format(sdir, env.NGAS_DIR, egg_excl))
+            --exclude .git --exclude .s* --exclude .e* {2} {1}/.'.format(sdir, env.NGAS_DIR, egg_excl))
     tarfile = '{0}.tar.bz2'.format(env.NGAS_DIR)
 
     # transfer the tar file
@@ -524,10 +565,10 @@ def ngas_minimal_tar():
              'machine_setup',
              'setup.py',
              ]
-    excludes = ['.gse*', 
+    excludes = ['.git', '.s*', 
                 ]
     exclude = ' --exclude ' + ' --exclude '.join(excludes)
-    local('cd {0}/.. && tar {1} -czf /tmp/ngas_src.tar.gz ngas'.format(env.src_dir, exclude))
+    local('cd {0}/.. && tar -czf /tmp/ngas_src.tar.gz {1} ngas'.format(env.src_dir, exclude))
     put('/tmp/ngas_src.tar.gz','/tmp/ngas.tar.gz')
     run('cd {0} && tar --strip-components 1 -xzf /tmp/ngas.tar.gz'.format(env.NGAS_DIR_ABS))
 
@@ -698,7 +739,7 @@ def user_setup():
 
 
 @task
-def python_setup(standalone=0):
+def python_setup():
     """
     Ensure that there is the right version of python available
     If not install it from scratch in user directory.
@@ -712,7 +753,7 @@ def python_setup(standalone=0):
     set_env()
 
     with cd('/tmp'):
-        if not standalone:
+        if not env.standalone:
             run('wget --no-check-certificate -q {0}'.format(NGAS_PYTHON_URL))
         else:
             put('{0}/additional_tars/Python-2.7.8.tgz'.format(env.src_dir), 'Python-2.7.8.tgz')
@@ -748,17 +789,17 @@ def virtualenv_setup():
 
 
 @task
-def ngas_buildout(standalone=0, typ='archive'):
+def ngas_buildout(typ='archive'):
     """
     Perform just the buildout and virtualenv config
 
-    if standalone is not 0 then the eggs from the additional_tars
+    if env.standalone is not 0 then the eggs from the additional_tars
     will be installed to avoid accessing the internet.
     """
     set_env()
 
     with cd(env.NGAS_DIR_ABS):
-        if (standalone):
+        if (env.standalone):
             put('{0}/additional_tars/eggs.tar.gz'.format(env.src_dir), '{0}/eggs.tar.gz'.format(env.NGAS_DIR_ABS))
             run('tar -xzf eggs.tar.gz')
             if env.linux_flavor == 'Darwin':
@@ -769,6 +810,8 @@ def ngas_buildout(standalone=0, typ='archive'):
         else:
             run('find . -name "._*" -exec rm -rf {} \;')
             virtualenv('buildout')
+        with settings(warn_only=True):
+                run('mkdir -p {0}/../NGAS'.format(env.NGAS_DIR_ABS))
         run('cp -R {0}/NGAS/* {0}/../NGAS/.'.format(env.NGAS_DIR_ABS))
         with settings(warn_only=True):
             run('cp {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
@@ -827,17 +870,18 @@ def install_user_profile():
 
 
 @task
-def ngas_full_buildout(standalone=0, typ='archive'):
+def ngas_full_buildout(typ='archive'):
     """
     Perform the full install and buildout
     """
     set_env()
+
     # First get the sources
     #
-    if (standalone):
+    if (env.standalone):
         ngas_minimal_tar()
     elif not check_path('{0}/bootstrap.py'.format(env.NGAS_DIR_ABS)):
-        git_clone_tar(standalone=standalone)
+        git_clone_tar()
 
     with cd(env.NGAS_DIR_ABS):
         virtualenv('pip install clib_tars/zc.buildout-2.2.1.tar.gz')
@@ -856,7 +900,7 @@ def ngas_full_buildout(standalone=0, typ='archive'):
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
         virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
 
-    ngas_buildout(standalone=standalone, typ=typ)
+    ngas_buildout(typ=typ)
     install_user_profile()
 
     print "\n\n******** NGAS_FULL_BUILDOUT COMPLETED!********\n\n"
@@ -933,25 +977,19 @@ def initName(typ='archive'):
 
 
 @task
-def user_deploy(typ='archive', standalone=0):
+def user_deploy(typ='archive'):
     """
     Deploy the system as a normal user without sudo access
     NOTE: The parameter can be passed from the command line by using
 
     fab -f deploy.py user_deploy:typ='cache'
     """
-#    env.HOME = run("echo ~{0}".format(env.NGAS_USERS[0]))
-    set_env()
-    env.HOME = run("echo ~{0}".format(env.NGAS_USERS[0]))
-    ppath = check_python()
-    if not ppath:
-        python_setup(standalone=standalone)
-    else:
-        env.PYTHON = ppath
-    virtualenv_setup()
-    ngas_full_buildout(standalone=standalone, typ=typ)
+    if not env.has_key('NGAS_USERS') or not env.NGAS_USERS:
+        # if not defined on the command line use the current user
+        env.NGAS_USERS = os.environ['HOME'].split('/')[-1]
 
-    print "\n\n******** INSTALLATION COMPLETED!********\n\n"
+    install(system_install=False, user_install=False, typ=typ)
+    print "\n\n******** USER INSTALLATION COMPLETED!********\n\n"
 
 
 @task
@@ -978,7 +1016,7 @@ def init_deploy(typ='archive'):
 
 @task
 @serial
-def operations_deploy(system_install=True, user_install=True, typ='archive', standalone=0):
+def operations_deploy(system_install=True, user_install=True, typ='archive'):
     """
     ** MAIN TASK **: Deploy the full NGAS operational environment.
     In order to install NGAS on an operational host go to any host
@@ -994,18 +1032,18 @@ def operations_deploy(system_install=True, user_install=True, typ='archive', sta
     NOTE: The parameter can be passed from the command line by using
 
     fab -f deploy.py operations_deploy:typ='cache'
+    
+    NOTE: This task is now merely an alias for install.
     """
 
-    if not env.user:
-        env.user = 'root'
-    # set environment to default, if not specified otherwise.
-    set_env()
-    if system_install: system_install_f()
-    if env.postfix:
-        postfix_config()
-    if user_install: user_setup()
-    install()
+    install(system_install=system_install, user_install=user_install, typ=typ)
+    
     print "\n\n******** OPERATIONS_DEPLOY COMPLETED!********\n\n"
+    print "\n\nThe server could be started now using the sqlite backend."
+    print "In most cases this is not reflecting the operational requirements though."
+    print "Thus some local adjustments of the NGAS configuration is most probably"
+    print "required. This includes the DB backend config as well as the configuration"
+    print "of the data volumes."
 
 
 @task
@@ -1018,9 +1056,6 @@ def test_deploy():
     test_env()
     # set environment to default for EC2, if not specified otherwise.
     set_env()
-    system_install_f()
-    if env.postfix:
-        postfix_config()
     install()
     with settings(user=env.NGAS_USERS[0]):
         run('ngamsDaemon start')
@@ -1029,32 +1064,38 @@ def test_deploy():
 
 
 @task
-def install(standalone=0):
+def install(system_install=True, user_install=True, typ='archive'):
     """
     Install NGAS users and NGAS software on existing machine.
     Note: Requires root permissions!
     """
     set_env()
-    user_setup()
+    if system_install: system_install_f()
+    if env.postfix:
+        postfix_config()
+    if user_install: user_setup()
+
     with settings(user=env.NGAS_USERS[0]):
         ppath = check_python()
         if not ppath:
-            python_setup(standalone=standalone)
+            python_setup()
     if env.PREFIX != env.HOME: # generate non-standard ngas_rt directory
         sudo('mkdir -p {0}'.format(env.PREFIX))
         sudo('chown -R {0}:ngas {1}'.format(env.NGAS_USERS[0], env.PREFIX))
     with settings(user=env.NGAS_USERS[0]):
         virtualenv_setup()
-        ngas_full_buildout(standalone=standalone)
+        ngas_full_buildout(typ=typ)
     init_deploy()
     print "\n\n******** INSTALLATION COMPLETED!********\n\n"
+
 
 @task
 def uninstall():
     """
     Uninstall NGAS, NGAS users and init script.
     
-    NOTE: This can only be used with a sudo user.
+    NOTE: This can only be used with a sudo user. Does not uninstall
+          system packages.
     """
     set_env()
     for u in env.NGAS_USERS:
@@ -1072,9 +1113,9 @@ def upgrade():
     Upgrade the NGAS software on a target host using rsync.
 
     NOTE: This does NOT perform a new buildout, i.e. all the binaries and libraries are untouched.
-
-    use --set src_dir=your/local/directory
-    to point to the top-level NGAS soruce tree directory.
+    
+    Typical command line:
+    fab -H ngas.ddns.net -i ~/.ssh/icrar_ngas.pem -u ngas -f machine-setup/deploy.py upgrade --set src_dir=.
     """
     # use the PREFIX from the command line or try to set it from
     # the remote environment. If both fails bail-out.
@@ -1101,12 +1142,16 @@ def upgrade():
     #git_clone_tar()
     run('$NGAS_PREFIX/bin/ngamsDaemon start')
     print "\n\n******** UPGRADE COMPLETED!********\n\n"
-    
+
     
 @task
 def assign_ddns():
     """
-    This task assigns the dynamic address ngas.ddns.net to the specified host.
+    This task installs the noip ddns client to the specified host.
+    After the installation the configuration step is executed and that
+    requires some manual input. Then the noip2 client is started in background.
+    
+    NOTE: Obviously this should only be carried out for one NGAS deployment!!
     """
     sudo('yum-config-manager --enable epel')
     sudo('yum install -y noip')

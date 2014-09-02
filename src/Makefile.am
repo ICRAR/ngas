@@ -36,7 +36,9 @@ DISTCLEANFILES = *~
 # doc: documentaton
 # scripts: directory with script files
 # test: unit test directory
-SUBDIRS= ngamsCClient ngamsJClient/src ngamsTest
+# >>> Don't do the JClient by default SUBDIRS= ngamsCClient ngamsJClient/src ngamsTest
+SUBDIRS= ngamsCClient ngamsTest
+
 
 # Include the test for qfits options in the distribution
 EXTRA_DIST = VERSION COPYRIGHT BUGS LICENSE
