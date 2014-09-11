@@ -1196,18 +1196,23 @@ def getDiskSpaceAvail(mountPoint,
                 diskSpace = _diskSpaceDic[mountPoint][1]
 
     if (not diskSpace):
-        if (not os.path.exists(mountPoint)): os.makedirs(mountPoint)
-        if (not os.path.exists(mountPoint)):
-            raise Exception, "Illegal path encountered: " +\
-                  mountPoint + " - or path could not be created."
+        if (not os.path.exists(mountPoint)): 
+            try:
+                os.makedirs(mountPoint)
+            except:
+                # go on anyhow.
+                print "Illegal path encountered: " +\
+                  mountPoint + " - or path could not be created."            
+                # raise Exception, "Illegal path encountered: " +\
+                #      mountPoint + " - or path could not be created."
+        
         # TODO: UNIX specific/make plug-in?
     cmd = "df -k %s "
     if os.uname()[0] == 'Darwin':
         cmd = "df -kP %s "
     exitCode, stdOut = commands.getstatusoutput(cmd % mountPoint)
     if (exitCode):
-        raise Exception, "Illegal path encountered: " +\
-            mountPoint + " - or path could not be created."
+        raise Exception, "Illegal path encountered: " + mountPoint
     cmd = str(cleanList(stdOut.replace("\n", " ").split(" "))[10]) + ".0"
     info(5,'Executing command: {0}'.format(cmd))
     diskSpace = eval(cmd)
