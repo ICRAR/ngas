@@ -82,6 +82,14 @@ NGAS_DEF_CFG = 'NgamsCfg.SQLite.mini.xml'
 GITUSER = 'icrargit'
 GITREPO = 'gitsrv.icrar.org:ngas'
 
+SUPPORTED_OS = [
+                'Amazon',
+                'CentOS', 
+                'Ubuntu', 
+                'Debian', 
+                'Suse',
+                ]
+
 YUM_PACKAGES = [
    'python27-devel',
    'git',
@@ -106,14 +114,15 @@ APT_PACKAGES = [
         'autoconf',
         'zlib1g-dbg',
         'libzlcore-dev',
-        'libdb4.8-dev',
+        'libdb-dev',
         'libgdbm-dev',
         'libreadline-dev',
         'sqlite3',
         'libsqlite3-dev',
         'postgresql-client',
-        'patch'
-        ]
+        'patch',
+        'python-dev',
+                ]
 
 SLES_PACKAGES = [
                  'git',
@@ -167,7 +176,7 @@ def set_env():
         env.user = USERNAME
     if not env.has_key('NGAS_USERS') or not env.NGAS_USERS:
         if env.user != USERNAME and env.command not in \
-        ['test_deploy', 'operations_deploy']:
+        ['test_deploy', 'operations_deploy', 'uninstall']:
             env.NGAS_USERS = [env.user]
         else:
             env.NGAS_USERS = NGAS_USERS
@@ -586,19 +595,32 @@ def get_linux_flavor():
     """
     Obtain and set the env variable linux_flavor
     """
-    if (check_path('/etc/issue')):
-        re = run('cat /etc/issue')
-        linux_flavor = re.split()
-        if (len(linux_flavor) > 0):
-            if linux_flavor[0] == 'CentOS' or linux_flavor[0] == 'Ubuntu' \
-               or linux_flavor[0] == 'Debian':
-                linux_flavor = linux_flavor[0]
-            elif linux_flavor[0] == 'Amazon':
-                linux_flavor = ' '.join(linux_flavor[:2])
-            elif linux_flavor[2] == 'SUSE':
-                linux_flavor = linux_flavor[2]
+    if not env.has_key('linux_flavor'):
+        if (check_path('/etc/issue')):
+            re = run('cat /etc/issue')
+            linux_flavor = re.split()
+            if (len(linux_flavor) > 0):
+                if linux_flavor[0] == 'CentOS' or linux_flavor[0] == 'Ubuntu' \
+                   or linux_flavor[0] == 'Debian':
+                    linux_flavor = linux_flavor[0]
+                elif linux_flavor[0] == 'Amazon':
+                    linux_flavor = ' '.join(linux_flavor[:2])
+                elif linux_flavor[2] == 'SUSE':
+                    linux_flavor = linux_flavor[2]
+        else:
+            linux_flavor = run('uname -s')
     else:
-        linux_flavor = run('uname -s')
+        linux_flavor = env.linux_flavor
+    
+    if type(linux_flavor) == type([]):
+        linux_flavor = linux_flavor[0]
+    if linux_flavor not in SUPPORTED_OS:
+        puts('>>>>>>>>>>')
+        puts('Target machine is running an unsupported or unkown Linux flavor.')
+        puts('If you know better, please enter it below.')
+        puts('Must be one of:')
+        puts(' '.join(SUPPORTED_OS))
+        linux_flavor = prompt('LINUX flavor: ')
 
     print "Remote machine running %s" % linux_flavor
     env.linux_flavor = linux_flavor
@@ -631,7 +653,7 @@ def system_install_f():
         for package in SLES_PACKAGES:
             install_zypper(package)
     else:
-        abort("Unknown linux flavor detected: {0}".format(re))
+        abort("Unknown linux flavor detected: {0}".format(linux_flavor))
     print "\n\n******** System packages installation COMPLETED!********\n\n"
 
 
@@ -727,7 +749,8 @@ def user_setup():
         sudo('chmod 700 /home/{0}/.ssh'.format(user))
         sudo('chown -R {0}:{1} /home/{0}/.ssh'.format(user,group))
         home = run('echo $HOME')
-        sudo('cp {0}/.ssh/authorized_keys /home/{1}/.ssh/authorized_keys'.format(home, user))
+        put('{0}machine-setup/authorized_keys'.format(env.src_dir),
+            '/home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{1} /home/{0}/.ssh/authorized_keys'.format(user, group))
         
@@ -736,6 +759,7 @@ def user_setup():
     sudo('chown {0}:{1} {2}'.format(env.NGAS_USERS[0], group, env.NGAS_DIR_ABS))
     sudo('mkdir -p {0}/../NGAS'.format(env.NGAS_DIR_ABS))
     sudo('chown {0}:{1} {2}/../NGAS'.format(env.NGAS_USERS[0], group, env.NGAS_DIR_ABS))
+    print "\n\n******** USER SETUP COMPLETED!********\n\n"
 
 
 @task
@@ -846,7 +870,8 @@ def install_user_profile():
         with cd(env.HOME):
             res = sudo('if [ -e {0}/.bash_profile_orig ]; then echo 1; else echo ; fi'.format(env.HOME))
             if not res:
-                sudo('sudo -u {0} cp .bash_profile .bash_profile_orig'.format(nuser))
+                sudo('sudo -u {0} cp .bash_profile .bash_profile_orig'.format(nuser),
+                     warn_only=True)
             else:
                 sudo('sudo -u {0} cp .bash_profile_orig .bash_profile'.format(nuser))
             sudo('sudo -u {0} echo "export NGAS_PREFIX={1}\n" >> .bash_profile'.\
@@ -857,7 +882,7 @@ def install_user_profile():
         with cd(env.HOME):
             res = run('if [ -e {0}/.bash_profile_orig ]; then echo 1; else echo ; fi'.format(env.HOME))
             if not res:
-                run('cp .bash_profile .bash_profile_orig'.format(nuser))
+                run('cp .bash_profile .bash_profile_orig'.format(nuser), warn_only=True)
             else:
                 run('cp .bash_profile_orig .bash_profile'.format(nuser))
             run('echo "export NGAS_PREFIX={1}\n" >> .bash_profile'.\
