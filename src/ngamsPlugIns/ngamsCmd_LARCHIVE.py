@@ -160,7 +160,7 @@ def archiveFromFile(srvObj,
         info(2,"Successfully archived local file: " + filename)
     else:
         info(2,"Successfully archived local file: " + filename +\
-         ". Removing original file.")
+         ". Removing staging file.")
         rmFile(stagingFile)
         rmFile(stagingFile + "." + NGAMS_PICKLE_FILE_EXT)
 
