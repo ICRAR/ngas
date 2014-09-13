@@ -22,7 +22,11 @@
 """
 NGAS Command Plug-In, implementing a Local Archive Command.
 
-This works by calling ngamsArchiveUtils.archiveFromFile
+This works by calling archiveFromFile, which in turn takes care of all the handling
+
+Usgae example with wget:
+
+wget -O LARCHIVE.xml "http://192.168.1.123:7777/LARCHIVE?fileUri=/home/ngas/NGAS/log/LogFile.nglog"
 """
 
 from ngams import *
