@@ -440,8 +440,10 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
     else:
         block = str(bytearray(os.urandom(blocksize)))
     """
+    # print "myDD(ifil='{0}', block = {1}, ofil='{2}',skip={3},blocksize={4},count={5},seek={6}, httpobj={7})".\
+    # format(ifil, block, ofil, skip, blocksize, count, seek, httpobj)
 
-    if ofil != '/dev/null':
+    if ofil != None:
         try:
             out = None
             if (httpobj):
@@ -472,7 +474,10 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
             if (out):
                 out.close()
             return status
-        print "Writing {0} blocks to {1}".format(count, ofil)
+        if Test == 'Write':
+            print "Writing {0} blocks to {1}".format(count, ofil)
+        else:
+            print "Reading {0} blocks from {1}".format(count, ifil)
         crctime = 0.0
         bsize = blocksize/one_mb
         tsize = bsize * count
@@ -512,6 +517,8 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
                         out.write(block)
             tend = time.time()
             one_block_time = tend - stt
+            if one_block_time == 0:
+                one_block_time = 10**-10
             if (sleepTime and sleepTime > one_block_time):
                 time.sleep(sleepTime - one_block_time)
             if (Test == 'write'):
@@ -561,7 +568,6 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
               (writelabel, tsize/ste)
         return (bspeed,cspeed, tspeed)
     else: # do just plain nothing if no output file is specified
-
         for ii in range(count):
             block = inputf.read(blocksize)
 
