@@ -156,7 +156,9 @@ def readTest(dev,skip,testcount,iosize,blocksize):
     """
 
     blocksize = long(blocksize)/4 * 4   # blocksize multiple of 4
-    iosize = long(iosize)/4 * 4   # blocksize multiple of 4
+    iosize = long(iosize)/4 * 4   # iosize multiple of 4
+    if os.path.isfile(dev) and iosize > os.path.getsize(dev):
+        iosize = os.path.getsize(dev)/4 * 4
     iocount = iosize/blocksize
 
     for ii in range(testcount):
