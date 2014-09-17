@@ -83,11 +83,13 @@ GITUSER = 'icrargit'
 GITREPO = 'gitsrv.icrar.org:ngas'
 
 SUPPORTED_OS = [
+                'Amazon Linux',
                 'Amazon',
                 'CentOS', 
                 'Ubuntu', 
                 'Debian', 
                 'Suse',
+                'SLES',
                 ]
 
 YUM_PACKAGES = [
@@ -616,7 +618,8 @@ def get_linux_flavor():
         linux_flavor = linux_flavor[0]
     if linux_flavor not in SUPPORTED_OS:
         puts('>>>>>>>>>>')
-        puts('Target machine is running an unsupported or unkown Linux flavor.')
+        puts('Target machine is running an unsupported or unkown Linux flavor:{0}.'\
+             .format(linux_flavor))
         puts('If you know better, please enter it below.')
         puts('Must be one of:')
         puts(' '.join(SUPPORTED_OS))
@@ -1013,7 +1016,8 @@ def user_deploy(typ='archive'):
         # if not defined on the command line use the current user
         env.NGAS_USERS = os.environ['HOME'].split('/')[-1]
 
-    install(system_install=False, user_install=False, typ=typ)
+    install(system_install=False, user_install=False, 
+            init_install=False, typ=typ)
     print "\n\n******** USER INSTALLATION COMPLETED!********\n\n"
 
 
@@ -1089,7 +1093,8 @@ def test_deploy():
 
 
 @task
-def install(system_install=True, user_install=True, typ='archive'):
+def install(system_install=True, user_install=True, 
+            init_install=False, typ='archive'):
     """
     Install NGAS users and NGAS software on existing machine.
     Note: Requires root permissions!
@@ -1110,26 +1115,30 @@ def install(system_install=True, user_install=True, typ='archive'):
     with settings(user=env.NGAS_USERS[0]):
         virtualenv_setup()
         ngas_full_buildout(typ=typ)
-    init_deploy()
+    if init_install: init_deploy()
     print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 
 @task
-def uninstall():
+def uninstall(clean_system=False):
     """
-    Uninstall NGAS, NGAS users and init script.
+    Uninstall the NGAS software 
+    NGAS users and init script will only be removed if clean_system is True
     
     NOTE: This can only be used with a sudo user. Does not uninstall
           system packages.
     """
     set_env()
-    for u in env.NGAS_USERS:
-        sudo('userdel -r {0}'.format(u), warn_only=True)
-    sudo('groupdel ngas', warn_only=True)
-    sudo('rm /etc/ngamsServer.conf', warn_only=True)
-    sudo('rm /etc/init.d/ngamsServer', warn_only=True)
-    sudo('rm -rf {0}'.format(env.PREFIX), warn_only=True)
-    sudo('rm -rf {0}'.format(env.NGAS_DIR_ABS), warn_only=True)
+    run('rm -rf {0}'.format(env.PREFIX), warn_only=True)
+    run('rm -rf {0}'.format(env.NGAS_DIR_ABS), warn_only=True)
+    
+    if clean_system: # don't delete the users and system settings by default.
+        for u in env.NGAS_USERS:
+            sudo('userdel -r {0}'.format(u), warn_only=True)
+        sudo('groupdel ngas', warn_only=True)
+        sudo('rm /etc/ngamsServer.conf', warn_only=True)
+        sudo('rm /etc/init.d/ngamsServer', warn_only=True)
+
     print "\n\n******** UNINSTALL COMPLETED!********\n\n"
 
 @task
