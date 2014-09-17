@@ -1065,7 +1065,8 @@ def operations_deploy(system_install=True, user_install=True, typ='archive'):
     NOTE: This task is now merely an alias for install.
     """
 
-    install(system_install=system_install, user_install=user_install, typ=typ)
+    install(system_install=system_install, user_install=user_install, 
+            init_install=True, typ=typ)
     
     print "\n\n******** OPERATIONS_DEPLOY COMPLETED!********\n\n"
     print "\n\nThe server could be started now using the sqlite backend."
@@ -1085,7 +1086,7 @@ def test_deploy():
     test_env()
     # set environment to default for EC2, if not specified otherwise.
     set_env()
-    install()
+    install(system_install=True, user_install=True, init_install=True)
     with settings(user=env.NGAS_USERS[0]):
         run('ngamsDaemon start')
     print "\n\n******** SERVER STARTED!********\n\n"
@@ -1093,7 +1094,7 @@ def test_deploy():
 
 
 @task
-def install(system_install=True, user_install=True, 
+def install(system_install=False, user_install=False, 
             init_install=False, typ='archive'):
     """
     Install NGAS users and NGAS software on existing machine.
