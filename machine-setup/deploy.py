@@ -167,6 +167,11 @@ PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 
 def set_env():
     # set environment to default for EC2, if not specified on command line.
+#     puts("Environment before set_env:")
+#     for k in env:
+#         puts("{0}:{1}".format(k,env[k]))
+#     puts("<<<<<<<<")
+        
 
     if not env.has_key('GITUSER') or not env.GITUSER:
         env.GITUSER = GITUSER
@@ -185,13 +190,15 @@ def set_env():
     if type(env.NGAS_USERS) == type(''): # if its just a string
         print "NGAS_USERS preset to {0}".format(env.NGAS_USERS)
         env.NGAS_USERS = [env.NGAS_USERS] # change the type
-    if not env.has_key('HOME') or env.HOME[0] == '~' or not env.HOME:
-        env.HOME = run("echo ~{0}".format(env.NGAS_USERS[0]))
     if not env.has_key('src_dir') or not env.src_dir:
         env.src_dir = thisDir + '/../'
     require('hosts', provided_by=[test_env])
-    if not env.has_key('HOME') or env.HOME[0] == '~' or not env.HOME:
-        env.HOME = run("echo ~{0}".format(NGAS_USERS[0]))
+    if not env.command == 'archiveSource':
+        if not env.has_key('HOME') or env.HOME[0] == '~' or not env.HOME:
+            env.HOME = run("echo ~{0}".format(NGAS_USERS[0]))
+        linux_flavor = get_linux_flavor()
+    else:
+        env.HOME = os.environ['HOME']
     if not env.has_key('PREFIX') or env.PREFIX[0] == '~' or not env.PREFIX:
         env.PREFIX = env.HOME
     if not env.has_key('NGAS_DIR_ABS') or env.NGAS_DIR_ABS[0] == '~' \
@@ -209,7 +216,6 @@ def set_env():
     env.AMI_ID = AMI_IDs[env.ami_name]
     if env.ami_name == 'SLES':
         env.user = 'root'
-    get_linux_flavor()
     puts("""Environment:
             USER:              {0};
             Key file:          {1};
@@ -518,7 +524,7 @@ def git_clone():
 
 
 @task
-def git_clone_tar():
+def git_clone_tar(unpack=True):
     """
     Clones the repository into /tmp and packs it into a tar file
 
@@ -549,13 +555,14 @@ def git_clone_tar():
     put('{0}/{1}'.format(sdir,tarfile), '/tmp/{0}'.format(tarfile, env.NGAS_DIR_ABS))
     local('rm -rf /tmp/{0}'.format(env.NGAS_DIR))  # cleanup local git clone dir
 
-    # unpack the tar file remotely
-    with cd(env.NGAS_DIR_ABS+'/..'):
-        run('tar -xjf /tmp/{0}'.format(tarfile))
+    if unpack:
+        # unpack the tar file remotely
+        with cd(env.NGAS_DIR_ABS+'/..'):
+            run('tar -xjf /tmp/{0}'.format(tarfile))
 
 
 @task
-def ngas_minimal_tar():
+def ngas_minimal_tar(transfer=True):
     """
     This function packs the minimal required parts of the NGAS source tree
     into a tar file and copies it to the remote site.
@@ -580,8 +587,9 @@ def ngas_minimal_tar():
                 ]
     exclude = ' --exclude ' + ' --exclude '.join(excludes)
     local('cd {0}/.. && tar -czf /tmp/ngas_src.tar.gz {1} ngas'.format(env.src_dir, exclude))
-    put('/tmp/ngas_src.tar.gz','/tmp/ngas.tar.gz')
-    run('cd {0} && tar --strip-components 1 -xzf /tmp/ngas.tar.gz'.format(env.NGAS_DIR_ABS))
+    if transfer:
+        put('/tmp/ngas_src.tar.gz','/tmp/ngas.tar.gz')
+        run('cd {0} && tar --strip-components 1 -xzf /tmp/ngas.tar.gz'.format(env.NGAS_DIR_ABS))
 
 def processCentOSErrMsg(errmsg):
     if (errmsg == None or len(errmsg) == 0):
@@ -1091,7 +1099,34 @@ def test_deploy():
         run('ngamsDaemon start')
     print "\n\n******** SERVER STARTED!********\n\n"
 
-
+@task
+def archiveSource():
+    """
+    Archive the NGAS source package on a NGAS server
+    
+    Typical usage:
+    
+    fab -f machine-setup/deploy.py archiveSource -H ngas.ddns.net --set src_dir=.
+    
+    NOTE: The ngamsPClient module must be on the python path for fab.
+    """
+    import ngamsPClient
+    if not env.has_key('src_dir') or not env.src_dir:
+        print 'Please specify the local source directory of the NGAS software'
+        print 'on the command line using --set src_dir=your/local/directory'
+        abort('\n\n******** ARCHIVE ABORTED!********\n\n')
+    else: # check whether the source directory setting is likely to be correct
+        res = local('grep "The Next Generation Archive System" {0}/README'.format(env.src_dir), \
+                    capture=True)
+        if not res:
+            abort('src_dir does not point to a valid NGAS source directory!!')
+    #set_env()
+    client=ngamsPClient.ngamsPClient(host=env.host_string, port='7777')
+    ngas_minimal_tar(transfer=False)
+    stat = client.archive(fileUri='/tmp/ngas_rt.tar.bz2',mimeType='application/octet-stream')
+    if stat.getStatus() != 'SUCCESS':
+        puts(">>>> Problem archiving source package!")
+    puts(stat.getMessage())
 
 @task
 def install(system_install=False, user_install=False, 
