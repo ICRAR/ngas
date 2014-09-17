@@ -34,13 +34,16 @@ import logging, logging.handlers
 
 server = None
 
-if not os.path.exists('log/'):
-   os.makedirs('log/')
+APP_PATH = os.path.dirname(os.path.realpath(__file__))
+path = APP_PATH + '/log/'
+
+if not os.path.exists(path):
+   os.makedirs(path)
 
 logger = logging.getLogger('mwadmget')
 logger.setLevel(logging.DEBUG)
 logger.propagate = False
-rot = logging.handlers.RotatingFileHandler('log/mwadmget.log', maxBytes=33554432)
+rot = logging.handlers.RotatingFileHandler(path + 'mwadmget.log', maxBytes=33554432)
 rot.setLevel(logging.DEBUG)
 rot.setFormatter(logging.Formatter('%(asctime)s, %(levelname)s, %(message)s'))
 logger.addHandler(rot)
@@ -205,8 +208,13 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
       try:
          # parse out obs id if it exists
          filepart = os.path.basename(filename)
-         obsid = int(filepart.split('_', 1)[0])
-         self.stageObservation(obsid)
+         
+         # we want to ignore bulk staging for voltage data
+         if '.dat' in filepart:
+            singleState = True
+         else:
+            obsid = int(filepart.split('_', 1)[0])
+            self.stageObservation(obsid)
          
       except ValueError as ve:
          singleStage = True
