@@ -3038,10 +3038,8 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
 		ngamsHTTP_DATA* repDataRef, ngamsDATA_LEN* repDataLen,
 		ngamsHTTP_RESP* httpResp, ngamsHTTP_HDR httpHdr) {
 
-	//int sndbuf_size = 8388608;
-	int sndbuf_size = 1024000;
-	int io_size = sndbuf_size;
-	char header[ngamsBUFSIZE], inBuf[io_size];
+
+	char header[ngamsBUFSIZE];//, inBuf[io_size];
 	int sockFd = 0, fileFd = 0;
 	int retCode = 0;
 	int bytesRead, hdrLen;
@@ -3073,19 +3071,26 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
 		goto errExit;
 	}
 
-	//int sndbuf_size = 16777216;
-	//int sndbuf_size = 4194304;
-	//int sndbuf_size = 8388608;
-	//int io_size = 1048576;
-	int err = setsockopt(sockFd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size,
-			sizeof(int));
-	if (err != 0) {
-		printf("Unable to set send buffer size, continuing with default size\n");
-	}
-	err = setsockopt(sockFd, SOL_SOCKET, SO_RCVBUF, &sndbuf_size, sizeof(int));
-	if (err != 0) {
-		printf(
-				"Unable to set receive buffer size, continuing with default size\n");
+	int def_sndbuf = 10240;
+	socklen_t optlen = sizeof def_sndbuf;
+	getsockopt(sockFd, SOL_SOCKET, SO_SNDBUF, &def_sndbuf, &optlen);
+	printf("Default TCP buffer size: %d\n", def_sndbuf);
+
+	int sndbuf_size = def_sndbuf;
+	char * str_buf_size = getenv("NGAMS_CLIENT_BUF_SIZE");
+	if (str_buf_size != NULL) {
+		sndbuf_size = atoi(str_buf_size);
+		if (sndbuf_size <= 0) {
+			sndbuf_size = def_sndbuf;
+		} else {
+			int rcvbuf_size = sndbuf_size;
+			int tmp = sndbuf_size;
+			setsockopt(sockFd, SOL_SOCKET, SO_RCVBUF, &rcvbuf_size, sizeof(int)); //set receiver buffer as well
+			setsockopt(sockFd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, sizeof(int));
+			optlen = sizeof sndbuf_size;
+			getsockopt(sockFd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, &optlen);
+			printf("Set buffer size to %d, requested for %d", sndbuf_size, tmp);
+		}
 	}
 
 	/* Prepare and send the HTTP headers */
@@ -3116,17 +3121,21 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
 				goto errExit;
 			}
 			int gap = 0;
-			if (hdrLen > io_size) {
+			char* inBuf = (char *) malloc(sndbuf_size * sizeof(char));
+			if (hdrLen > sndbuf_size) {
 				//If the HTTP header is longer then buffer, send the header on its own
 				if (write(sockFd, header, hdrLen) != hdrLen) {
 					retCode = ngamsERR_WR_HD;
+					if (inBuf != NULL) {
+						free(inBuf);
+					}
 					goto errExit;
 				}
 			} else {
 				gap = hdrLen;
 				memcpy(inBuf, header, gap);
 			}
-			while ((bytesRead = read(fileFd, inBuf + gap, io_size - gap)) > 0) {
+			while ((bytesRead = read(fileFd, inBuf + gap, sndbuf_size - gap)) > 0) {
 				void *p = inBuf;
 				// reliable write
 				while (bytesRead > 0) {
@@ -3148,12 +3157,19 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
 				ngamsLogDebug("Try again on reading file(%s), bytes:(%d)",
 						srcFilename, bytesRead);
 				retCode = ngamsERR_FILE;
+				if (inBuf != NULL) {
+					free(inBuf);
+				}
 				goto errExit;
 			}
 
 			if (fileFd > 0) {
 				close(fileFd);
 			}
+			if (inBuf != NULL) {
+				free(inBuf);
+			}
+
 		} else {
 			//send header first
 			if (write(sockFd, header, hdrLen) != hdrLen) {
