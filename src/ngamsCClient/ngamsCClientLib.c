@@ -251,6 +251,7 @@
 #include <dirent.h>
 #include <pthread.h>
 #include <time.h>
+#include <assert.h>
 
 #ifndef S_IFMT
 #define S_IFMT   __S_IFMT
@@ -3036,6 +3037,7 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
 		const char* srcFilename, const char* data, const int dataLen,
 		ngamsHTTP_DATA* repDataRef, ngamsDATA_LEN* repDataLen,
 		ngamsHTTP_RESP* httpResp, ngamsHTTP_HDR httpHdr) {
+
 	//int sndbuf_size = 8388608;
 	int sndbuf_size = 1024000;
 	int io_size = sndbuf_size;
@@ -3071,9 +3073,24 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
 		goto errExit;
 	}
 
+	//int sndbuf_size = 16777216;
+	//int sndbuf_size = 4194304;
+	//int sndbuf_size = 8388608;
+	//int io_size = 1048576;
+	int err = setsockopt(sockFd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size,
+			sizeof(int));
+	if (err != 0) {
+		printf("Unable to set send buffer size, continuing with default size\n");
+	}
+	err = setsockopt(sockFd, SOL_SOCKET, SO_RCVBUF, &sndbuf_size, sizeof(int));
+	if (err != 0) {
+		printf(
+				"Unable to set receive buffer size, continuing with default size\n");
+	}
+
 	/* Prepare and send the HTTP headers */
 	if (ngamsGetAuthorization()) {
-		memset(authHdr, 0, sizeof(ngamsBIG_BUF));
+		memset(authHdr, 0, sizeof(ngamsHUGE_BUF));
 		sprintf(authHdr, "\015\012Authorization: Basic %s",
 				ngamsGetAuthorization());
 	} else
@@ -3085,14 +3102,10 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
 		"Content-disposition: %s%s\015\012\012", path, ngamsUSER_AGENT,
 			mimeType, contLen, contentDisp, authHdr);
 	hdrLen = strlen(header);
-	if (write(sockFd, header, hdrLen) != hdrLen) {
-		retCode = ngamsERR_WR_HD;
-		goto errExit;
-	}
 
-	ngamsLogDebug("Finish sending header. Try to send data ...");
 	/* Send the data if any */
 	if (contLen) {
+		ngamsLogDebug("Finish sending header. Try to send data ...");
 		if (*srcFilename != '\0') {
 			/* JKN/2008-02-18: CHECK */
 			/*if ((fileFd=open(srcFilename, (O_RDONLY | O_LARGEFILE))) == -1)*/
@@ -3102,39 +3115,61 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
 				retCode = ngamsERR_FILE;
 				goto errExit;
 			}
-
-			while ((bytesRead = read(fileFd, inBuf, io_size)) > 0) {
-				//write(sockFd, inBuf, bytesRead);
+			int gap = 0;
+			if (hdrLen > io_size) {
+				//If the HTTP header is longer then buffer, send the header on its own
+				if (write(sockFd, header, hdrLen) != hdrLen) {
+					retCode = ngamsERR_WR_HD;
+					goto errExit;
+				}
+			} else {
+				gap = hdrLen;
+				memcpy(inBuf, header, gap);
+			}
+			while ((bytesRead = read(fileFd, inBuf + gap, io_size - gap)) > 0) {
 				void *p = inBuf;
+				// reliable write
 				while (bytesRead > 0) {
-					int bytes_written = write(sockFd, inBuf, bytesRead);
+					int bytes_written = write(sockFd, p, bytesRead + gap);
 					if (bytes_written <= 0) {
-						ngamsLogError("write to socket failed");
+						printf("write to socket failed");
 					}
 					bytesRead -= bytes_written;
 					p += bytes_written;
 				}
+				gap = 0;
 			}
-
 			if (bytesRead < 0) {
 				ngamsLogDebug(
 						"Error reading file(%s) while sending data to socket(%d). errno(%d):%s",
 						srcFilename, sockFd, errno, strerror(errno));
-				usleep(20);
-				bytesRead = read(fileFd, inBuf, 10240);
+				//usleep(20);
+				//bytesRead = read(fileFd, inBuf, 10240);
 				ngamsLogDebug("Try again on reading file(%s), bytes:(%d)",
 						srcFilename, bytesRead);
 				retCode = ngamsERR_FILE;
 				goto errExit;
 			}
+
 			if (fileFd > 0) {
 				close(fileFd);
 			}
 		} else {
+			//send header first
+			if (write(sockFd, header, hdrLen) != hdrLen) {
+				retCode = ngamsERR_WR_HD;
+				goto errExit;
+			}
 			if (write(sockFd, data, contLen) != contLen) {
 				retCode = ngamsERR_WR_DATA;
 				goto errExit;
 			}
+		}
+	} else {
+		//send header only
+		if (write(sockFd, header, hdrLen) != hdrLen) {
+			retCode = ngamsERR_WR_HD;
+			goto errExit;
 		}
 	}
 
@@ -3345,7 +3380,7 @@ int ngamsHttpPostOpen(const char* host, const int port, const char* userAgent,
 
 	/* Prepare and send the HTTP headers */
 	if (ngamsGetAuthorization()) {
-		memset(authHdr, 0, sizeof(ngamsBIG_BUF));
+		memset(authHdr, 0, sizeof(ngamsHUGE_BUF));
 		sprintf(authHdr, "\015\012Authorization: Basic %s",
 				ngamsGetAuthorization());
 	} else
