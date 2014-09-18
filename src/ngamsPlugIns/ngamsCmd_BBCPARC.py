@@ -20,9 +20,13 @@
 #    MA 02111-1307  USA
 #
 """
-NGAS Command Plug-In, implementing a Local Archive Command.
+NGAS Command Plug-In, implementing a Archive PULL Command using BBCP
 
-This works by calling ngamsArchiveUtils.archiveFromFile
+This works by calling archiveFromFile, which in turn takes care of all the handling
+
+Usgae example with wget:
+
+wget -O BARCHIVE.xml "http://ngas.ddns.net:7777/BBCPARC?fileUri=/home/ngas/NGAS/log/LogFile.nglog"
 """
 
 from ngams import *
