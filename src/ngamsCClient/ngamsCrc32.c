@@ -70,6 +70,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#define GLOBALS 1
+#include "ngamsCClientGlobals.h"
+
 
 void ngamsCorrectUsage()
 {
