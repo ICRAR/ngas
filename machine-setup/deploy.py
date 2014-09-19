@@ -74,7 +74,7 @@ AWS_KEY = os.path.expanduser('~/.ssh/icrar_ngas.pem')
 KEY_NAME = 'icrar_ngas'
 ELASTIC_IP = 'False'
 SECURITY_GROUPS = ['NGAS'] # Security group allows SSH
-NGAS_USERS = ['ngas','ngasmgr']
+NGAS_USERS = ['ngas']
 NGAS_PYTHON_VERSION = '2.7'
 NGAS_PYTHON_URL = 'https://www.python.org/ftp/python/2.7.8/Python-2.7.8.tgz'
 NGAS_DIR = 'ngas_rt' #NGAS runtime directory
@@ -297,6 +297,7 @@ def create_instance(names, use_elastic_ip, public_ips):
         time.sleep(5)
         stat = conn.get_all_instance_status(iid)
         running = [x.state_name=='running' for x in stat]
+    puts('.') #enforce the line-end
 
     # Local user and host
     userAThost = os.environ['USER'] + '@' + whatsmyip()
@@ -321,7 +322,6 @@ def create_instance(names, use_elastic_ip, public_ips):
         puts('Current DNS name is {0} after associating the Elastic IP'.format(instances[i].dns_name))
         puts('Instance ID is {0}'.format(instances[i].id))
         host_names.append(str(instances[i].dns_name))
-
 
     # The instance is started, but not useable (yet)
     puts('Started the instance(s) now waiting for the SSH daemon to start.')
@@ -760,7 +760,8 @@ def user_setup():
         sudo('chown -R {0}:{1} /home/{0}/.ssh'.format(user,group))
         home = run('echo $HOME')
         put('{0}machine-setup/authorized_keys'.format(env.src_dir),
-            '/home/{0}/.ssh/authorized_keys'.format(user))
+                '/tmp/authorized_keys')
+        sudo('mv /tmp/authorized_keys /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{1} /home/{0}/.ssh/authorized_keys'.format(user, group))
         
@@ -1164,8 +1165,10 @@ def uninstall(clean_system=False):
           system packages.
     """
     set_env()
-    run('rm -rf {0}'.format(env.PREFIX), warn_only=True)
-    run('rm -rf {0}'.format(env.NGAS_DIR_ABS), warn_only=True)
+    with settings(user = env.NGAS_USERS[0]):
+        if env.PREFIX != env.HOME: # avoid removing the home directory
+            run('rm -rf {0}'.format(env.PREFIX), warn_only=True)
+        run('rm -rf {0}'.format(env.NGAS_DIR_ABS), warn_only=True)
     
     if clean_system: # don't delete the users and system settings by default.
         for u in env.NGAS_USERS:
