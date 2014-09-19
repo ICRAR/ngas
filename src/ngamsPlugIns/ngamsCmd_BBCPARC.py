@@ -35,7 +35,7 @@ import ngamsCacheControlThread
 import ngamsArchiveUtils
 
 def bbcpFile(srcFilename, targFilename, 
-    keyfile='/home/ngas/.ssh/icrar_ngas.pem', ssh_prefix='ngas@192.168.1.123:'):
+    keyfile='', ssh_prefix=''):
     """
     Use bbcp tp copy file <srcFilename> to <targFilename>
 
@@ -50,7 +50,8 @@ def bbcpFile(srcFilename, targFilename,
         #fileSize = getFileSize(srcFilename)
         #checkAvailDiskSpace(targFilename, fileSize)
         timer = PccUtTime.Timer()
-        cmd = "bbcp -V -i %s %s %s%s" %\
+        if keyfile: keyfile = '-i {0}'.format(keyfile)
+        cmd = "bbcp -Z 5678 %s %s %s%s" %\
                 (keyfile, srcFilename, ssh_prefix, targFilename)
         info(3, "Executing external command: {0}".format(cmd))
         stat, out = commands.getstatusoutput(cmd)
