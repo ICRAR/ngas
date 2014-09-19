@@ -40,7 +40,7 @@ pickupStatus_FAIL_ONLY = 1
 pickupStatus_NEW_ONLY = 2
 pickupStatus_FAIL_NEW = 3
 
-eor_host = ['eor-02:7777', 'eor-03:7777', 'eor-04:7777', 'eor-05:7777', 'eor-06:7777', 'eor-07:7777', 'eor-08:7777',
+eor_host = ['eor-01:7777', 'eor-02:7777', 'eor-03:7777', 'eor-04:7777', 'eor-05:7777', 'eor-06:7777', 'eor-07:7777', 'eor-08:7777',
             'eor-10:7777', 'eor-11:7777', 'eor-12:7777', 'eor-13:7777', 'eor-14:7777']
 
 def execCmd(cmd, failonerror = False, okErr = []):
