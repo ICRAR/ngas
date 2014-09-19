@@ -71,6 +71,9 @@
 
 #include "ngams.h"
 
+#define GLOBALS 1
+#include "ngamsCClientGlobals.h"
+
 
 void correctUsage()
 {
@@ -97,6 +100,7 @@ int main (int argc, char*  argv[])
     ngamsSMALL_BUF   command, tmpDynPar;
     ngamsSTAT        stat = 0;
     ngamsSTATUS      status;
+    setsndbuf = 0;
 
 
     ngamsInitApi();
@@ -262,6 +266,12 @@ int main (int argc, char*  argv[])
 	    if (*argv[i] == '-') goto correctUsage;
 	    port = atoi(argv[i]);
 	    }
+	else if (strcmp(tmpPar, "-SNDBUF") == 0)
+		{
+		if (++i == argc) goto correctUsage;
+		if (*argv[i] == '-') goto correctUsage;
+		setsndbuf = atoi(argv[i]);
+		}
 	else if (strcmp(tmpPar, "-PRIORITY") == 0)
 	    {
 	    if (++i == argc) goto correctUsage;

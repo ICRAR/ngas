@@ -260,6 +260,7 @@
 
 #include "ngams.h"
 #include "ngamsVERSION.h"
+#include "ngamsCClientGlobals.h"
 
 char* _ngamsLicense(void);
 char* _ngamsManPage(void);
@@ -3077,9 +3078,8 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
 	printf("Default TCP buffer size: %d\n", def_sndbuf);
 
 	int sndbuf_size = def_sndbuf;
-	char * str_buf_size = getenv("NGAMS_CLIENT_BUF_SIZE");
-	if (str_buf_size != NULL) {
-		sndbuf_size = atoi(str_buf_size);
+	if (setsndbuf != 0) {
+		sndbuf_size = setsndbuf;
 		if (sndbuf_size <= 0) {
 			sndbuf_size = def_sndbuf;
 		} else {
