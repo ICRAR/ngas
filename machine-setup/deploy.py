@@ -172,7 +172,7 @@ def set_env():
 #         puts("{0}:{1}".format(k,env[k]))
 #     puts("<<<<<<<<")
         
-
+    env.connection_attempts = 5
     if not env.has_key('GITUSER') or not env.GITUSER:
         env.GITUSER = GITUSER
     if not env.has_key('GITREPO') or not env.GITREPO:
@@ -245,7 +245,7 @@ def whatsmyip():
     """
     whatismyip = 'http://bot.whatismyipaddress.com/'
     myip = urllib.urlopen(whatismyip).readlines()[0]
-    print myip
+
     return myip
 
 
@@ -285,19 +285,21 @@ def create_instance(names, use_elastic_ip, public_ips):
         time.sleep(5)
 
     # Are we running yet?
+    iid = []
     for i in range(number_instances):
-        while not instances[i].update() == 'running':
-            fastprint('.')
-            time.sleep(5)
+        iid.append(instances[i].id)
 
-    # Sleep a bit more Amazon recognizes the new instance
-    for i in range(4):
+    stat = conn.get_all_instance_status(iid)
+    running = [x.state_name=='running' for x in stat]
+    puts('\nWaiting for instances to be fully available:\n')
+    while sum(running) != number_instances:
         fastprint('.')
         time.sleep(5)
-    puts('.')
+        stat = conn.get_all_instance_status(iid)
+        running = [x.state_name=='running' for x in stat]
 
     # Local user and host
-    userAThost = os.environ('USER') + '@' + whatsmyip()
+    userAThost = os.environ['USER'] + '@' + whatsmyip()
 
     # Tag the instance
     for i in range(number_instances):
@@ -311,9 +313,6 @@ def create_instance(names, use_elastic_ip, public_ips):
             puts('Current DNS name is {0}. About to associate the Elastic IP'.format(instances[i].dns_name))
             if not conn.associate_address(instance_id=instances[i].id, public_ip=public_ips[i]):
                 abort('Could not associate the IP {0} to the instance {1}'.format(public_ips[i], instances[i].id))
-
-    # Give AWS time to switch everything over
-    time.sleep(10)
 
     # Load the new instance data as the dns_name may have changed
     host_names = []
@@ -1129,8 +1128,8 @@ def archiveSource():
     puts(stat.getMessage())
 
 @task
-def install(system_install=False, user_install=False, 
-            init_install=False, typ='archive'):
+def install(system_install=True, user_install=True, 
+            init_install=True, typ='archive'):
     """
     Install NGAS users and NGAS software on existing machine.
     Note: Requires root permissions!
