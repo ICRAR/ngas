@@ -251,6 +251,7 @@
 #include <dirent.h>
 #include <pthread.h>
 #include <time.h>
+#include <assert.h>
 
 #ifndef S_IFMT
 #define S_IFMT   __S_IFMT
@@ -259,6 +260,7 @@
 
 #include "ngams.h"
 #include "ngamsVERSION.h"
+#include "ngamsCClientGlobals.h"
 
 char* _ngamsLicense(void);
 char* _ngamsManPage(void);
@@ -289,33 +291,34 @@ void _ngamsUnlockSrvInfoSem() {
 
 /* For checking the duplicate socket that might be assigned during multi-thread program*/
 int sockList[ngamsMAX_SOCKS];
-int registerSock(int sockFd){
+int registerSock(int sockFd) {
 	int n;
-	for (n = 0;n < ngamsMAX_SOCKS;n++){
-		if (sockList[n] == 0){
+	for (n = 0; n < ngamsMAX_SOCKS; n++) {
+		if (sockList[n] == 0) {
 			sockList[n] = sockFd;
 			return ngamsSTAT_SUCCESS;
 		}
 	}
 	return ngamsSTAT_FAILURE;
 }
-int unregisterSock(int sockFd){
+int unregisterSock(int sockFd) {
 	ngamsLogDebug("UnregisterSock socket(%d)", sockFd);
 
-	if (sockFd == 0) return ngamsSTAT_SUCCESS;
+	if (sockFd == 0)
+		return ngamsSTAT_SUCCESS;
 	int n;
-	for (n = 0;n < ngamsMAX_SOCKS;n++){
-		if (sockList[n] == sockFd){
+	for (n = 0; n < ngamsMAX_SOCKS; n++) {
+		if (sockList[n] == sockFd) {
 			sockList[n] = 0;
 			return ngamsSTAT_SUCCESS;
 		}
 	}
 	return ngamsSTAT_FAILURE;
 }
-int existedSock(int sockFd){
+int existedSock(int sockFd) {
 	int n;
-	for (n = 0;n < ngamsMAX_SOCKS;n++){
-		if (sockList[n] == sockFd){
+	for (n = 0; n < ngamsMAX_SOCKS; n++) {
+		if (sockList[n] == sockFd) {
 			return 1;
 		}
 	}
@@ -340,7 +343,8 @@ void ngamsInitApi(void) {
 	ngamsLogDebug("Leaving ngamsInitApi()");
 }
 
-void _ngamsGetSrvInfoObj(const char* listId, int* foundList, ngamsSRV_INFO** srvInfoP) {
+void _ngamsGetSrvInfoObj(const char* listId, int* foundList,
+		ngamsSRV_INFO** srvInfoP) {
 	int n;
 
 	ngamsLogDebug("Entering _ngamsGetSrvInfoObj() ...");
@@ -362,7 +366,8 @@ void _ngamsGetSrvInfoObj(const char* listId, int* foundList, ngamsSRV_INFO** srv
 	ngamsLogDebug("Leaving _ngamsGetSrvInfoObj()");
 }
 
-ngamsSTAT _ngamsGetNextSrv(int* idx, ngamsSRV_INFO* srvInfoP, char** host, int* port) {
+ngamsSTAT _ngamsGetNextSrv(int* idx, ngamsSRV_INFO* srvInfoP, char** host,
+		int* port) {
 	ngamsLogDebug("Entering _ngamsGetNextSrv() ...");
 
 	_ngamsLockSrvInfoSem();
@@ -412,7 +417,8 @@ char getLastChar(const char* str) {
 	return str[strlen(str) - 1];
 }
 
-ngamsSTAT safeStrNCp(char* dest, const char* src, const int len, const int maxLen) {
+ngamsSTAT safeStrNCp(char* dest, const char* src, const int len,
+		const int maxLen) {
 	if (len >= maxLen) {
 		ngamsLogError("Error copying value: |%s| into string buffer, source "
 			"too long for destination buffer (%d/%d)", src, maxLen, len);
@@ -430,8 +436,8 @@ ngamsSTAT safeStrCp(char* dest, const char* src, const int maxLen) {
 
 void ngamsSleep(const float sleepTime) {
 	struct timespec sleepT, timeSlept;
-	sleepT.tv_sec = (time_t)sleepTime;
-	sleepT.tv_nsec = (long)(1e9 * (sleepTime - sleepT.tv_sec));
+	sleepT.tv_sec = (time_t) sleepTime;
+	sleepT.tv_nsec = (long) (1e9 * (sleepTime - sleepT.tv_sec));
 	nanosleep(&sleepT, &timeSlept);
 }
 
@@ -463,14 +469,14 @@ float _getTimeOut() {
  */
 int _pollFd(const int fd, const float timeOut) {
 	int readyFds = 0, locTimeOut, stat;
-//	struct pollfd* fds;
+	//	struct pollfd* fds;
 	struct pollfd fdStr;
 
 	ngamsLogDebug("Entering _pollFd() ...");
 	memset(&fdStr, 0, sizeof(struct pollfd));
 	fdStr.fd = fd;
 	fdStr.events = POLLIN;
-//	fds = &fdStr;
+	//	fds = &fdStr;
 	ngamsLogDebug("Requested timeout: %.6fs", timeOut);
 	if (timeOut > 0)
 		locTimeOut = (1000 * timeOut);
@@ -481,7 +487,7 @@ int _pollFd(const int fd, const float timeOut) {
 	ngamsLogDebug("Polling for ready fd's. Timeout: %d ms", locTimeOut);
 	int n;
 	for (n = 0; n <= 3; n++) {
-//		if ((readyFds = poll(fds, 1, locTimeOut)) <= -1) {
+		//		if ((readyFds = poll(fds, 1, locTimeOut)) <= -1) {
 		if ((readyFds = poll(&fdStr, 1, locTimeOut)) <= -1) {
 			/* If an EINTR error (= Interrupted system call) is encountered it
 			 * is retried to poll the file descriptor. Sometimes in
@@ -490,14 +496,17 @@ int _pollFd(const int fd, const float timeOut) {
 			 */
 			int errNo = errno;
 			if (errNo == EINTR) {
-				ngamsLogDebug("Error calling poll() (interrupted system call). Iteration: %d", (n + 1));
+				ngamsLogDebug(
+						"Error calling poll() (interrupted system call). Iteration: %d",
+						(n + 1));
 				sleep(0.005);
 				continue;
-			} else{
-				ngamsLogDebug("Error while polling(). errno(%d):%s", errno, strerror(errno));
+			} else {
+				ngamsLogDebug("Error while polling(). errno(%d):%s", errno,
+						strerror(errno));
 				break;
 			}
-		} else{
+		} else {
 			break;
 		}
 	}
@@ -544,18 +553,28 @@ ngamsSTAT ngamsUnpackStatus(const char* xmlDoc, ngamsSTATUS* status) {
 	int OK = ngamsSTAT_SUCCESS, stat;
 
 	ngamsLogDebug("Entering ngamsUnpackStatus() ...");
-	if ((ngamsGetXmlAttr(xmlDoc, "Status", "Date", sizeof(ngamsSMALL_BUF), status->date) != OK) || (ngamsGetXmlAttr(xmlDoc, "Status", "HostId",
-			sizeof(ngamsSMALL_BUF), status->hostId) != OK) || (ngamsGetXmlAttr(xmlDoc, "Status", "Message", sizeof(ngamsHUGE_BUF), status->message) != OK)
-			|| (ngamsGetXmlAttr(xmlDoc, "Status", "State", sizeof(ngamsSMALL_BUF), status->state) != OK) || (ngamsGetXmlAttr(xmlDoc, "Status", "SubState",
-			sizeof(ngamsSMALL_BUF), status->subState)!= OK) || (ngamsGetXmlAttr(xmlDoc, "Status", "Status", sizeof(ngamsSMALL_BUF), status->status) != OK)
-			|| (ngamsGetXmlAttr(xmlDoc, "Status", "Version", sizeof(ngamsSMALL_BUF), status->version) != OK)) {
+	if ((ngamsGetXmlAttr(xmlDoc, "Status", "Date", sizeof(ngamsSMALL_BUF),
+			status->date) != OK) || (ngamsGetXmlAttr(xmlDoc, "Status",
+			"HostId", sizeof(ngamsSMALL_BUF), status->hostId) != OK)
+			|| (ngamsGetXmlAttr(xmlDoc, "Status", "Message",
+					sizeof(ngamsHUGE_BUF), status->message) != OK)
+			|| (ngamsGetXmlAttr(xmlDoc, "Status", "State",
+					sizeof(ngamsSMALL_BUF), status->state) != OK)
+			|| (ngamsGetXmlAttr(xmlDoc, "Status", "SubState",
+					sizeof(ngamsSMALL_BUF), status->subState) != OK)
+			|| (ngamsGetXmlAttr(xmlDoc, "Status", "Status",
+					sizeof(ngamsSMALL_BUF), status->status) != OK)
+			|| (ngamsGetXmlAttr(xmlDoc, "Status", "Version",
+					sizeof(ngamsSMALL_BUF), status->version) != OK)) {
 		ngamsStat2Str(ngamsERR_INV_REPLY, status->message);
 		status->errorCode = ngamsERR_INV_REPLY;
 		stat = ngamsERR_INV_REPLY;
 		goto errExit;
 	}
-	if ((strcmp(status->status, NGAMS_FAILURE) == 0) && ((strstr(status->message, ":ERROR:") != NULL) || (strstr(status->message, ":WARNING:") != NULL)
-			|| (strstr(status->message, ":ALERT:") != NULL))) {
+	if ((strcmp(status->status, NGAMS_FAILURE) == 0) && ((strstr(
+			status->message, ":ERROR:") != NULL) || (strstr(status->message,
+			":WARNING:") != NULL) || (strstr(status->message, ":ALERT:")
+			!= NULL))) {
 		tmpBuf = malloc(strlen(status->message) + 1);
 		strcpy(tmpBuf, status->message);
 		strtok(tmpBuf, ":");
@@ -567,7 +586,8 @@ ngamsSTAT ngamsUnpackStatus(const char* xmlDoc, ngamsSTATUS* status) {
 	} else
 		status->errorCode = ngamsSTAT_SUCCESS;
 
-	if ((strcmp(status->status, NGAMS_FAILURE) != 0) && (strcmp(status->status, NGAMS_SUCCESS) != 0)) {
+	if ((strcmp(status->status, NGAMS_FAILURE) != 0) && (strcmp(status->status,
+			NGAMS_SUCCESS) != 0)) {
 		ngamsStat2Str(ngamsERR_INV_REPLY, status->message);
 		status->errorCode = ngamsERR_INV_REPLY;
 		stat = ngamsERR_INV_REPLY;
@@ -575,12 +595,13 @@ ngamsSTAT ngamsUnpackStatus(const char* xmlDoc, ngamsSTATUS* status) {
 	}
 
 	/* Make the data reply array refer to the data received */
-	status->replyData[0] = (char* )xmlDoc;
+	status->replyData[0] = (char*) xmlDoc;
 
 	ngamsLogDebug("Leaving ngamsUnpackStatus().");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsLogDebug("Leaving ngamsUnpackStatus()/FAILURE. Status: %d", stat);
+	errExit: ngamsLogDebug("Leaving ngamsUnpackStatus()/FAILURE. Status: %d",
+			stat);
 	return stat;
 }
 
@@ -601,7 +622,8 @@ ngamsSTAT ngamsUnpackStatus(const char* xmlDoc, ngamsSTATUS* status) {
 
  Returns:       ngamsSTAT_SUCCESS.
  */
-ngamsSTAT ngamsHandleStatus(int retCode, ngamsHTTP_DATA* repDataRef, ngamsSTATUS* status) {
+ngamsSTAT ngamsHandleStatus(int retCode, ngamsHTTP_DATA* repDataRef,
+		ngamsSTATUS* status) {
 	ngamsSMALL_BUF errBuf;
 
 	ngamsLogDebug("Entering ngamsHandleStatus() ...");
@@ -621,7 +643,7 @@ ngamsSTAT ngamsHandleStatus(int retCode, ngamsHTTP_DATA* repDataRef, ngamsSTATUS
 	 * to the message for completenes.
 	 */
 	if (status->errorCode == ngamsERR_TIMEOUT) {
-		sprintf(errBuf, ". Timeout: %.3fs", (float)(_replyTimeout));
+		sprintf(errBuf, ". Timeout: %.3fs", (float) (_replyTimeout));
 		strcat(status->message, errBuf);
 	}
 
@@ -657,8 +679,10 @@ ngamsSTAT ngamsHandleStatus(int retCode, ngamsHTTP_DATA* repDataRef, ngamsSTATUS
 
  ngamsHttpGet(), ngamsHttpPost()
  */
-ngamsSTAT ngamsGenSendData(const char* host, const int port, const ngamsCMD cmdCode, const float timeoutSecs, const char* fileUri, const char* mimeType,
-		const ngamsPAR_ARRAY* parArray, ngamsSTATUS* status) {
+ngamsSTAT ngamsGenSendData(const char* host, const int port,
+		const ngamsCMD cmdCode, const float timeoutSecs, const char* fileUri,
+		const char* mimeType, const ngamsPAR_ARRAY* parArray,
+		ngamsSTATUS* status) {
 	int retCode, i;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -675,20 +699,26 @@ ngamsSTAT ngamsGenSendData(const char* host, const int port, const ngamsCMD cmdC
 	ngamsCmd2Str(cmdCode, cmd);
 	ngamsEncodeUrlVal(fileUri, 1, tmpFileUri);
 
-	if ((strstr(fileUri, "file:") != NULL) || (strstr(fileUri, "http:") != NULL) || (strstr(fileUri, "ftp:") != NULL)) {
+	if ((strstr(fileUri, "file:") != NULL)
+			|| (strstr(fileUri, "http:") != NULL) || (strstr(fileUri, "ftp:")
+			!= NULL)) {
 		/* Data is pulled */
-		sprintf(url, "%s?filename=\"%s\"&mime_type=\"%s\"", cmd, tmpFileUri, mimeType);
+		sprintf(url, "%s?filename=\"%s\"&mime_type=\"%s\"", cmd, tmpFileUri,
+				mimeType);
 		for (i = 0; i < parArray->idx; i++) {
 			ngamsEncodeUrlVal(parArray->valArray[i], 1, tmpEnc);
 			sprintf(tmpBuf, "&%s=\"%s\"", parArray->parArray[i], tmpEnc);
 			strcat(url, tmpBuf);
 		}
-		if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, url, 1, &repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
+		if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, url, 1,
+				&repDataRef, &repDataLen, &httpResp, httpHdr))
+				!= ngamsSTAT_SUCCESS)
 			goto errExit;
 	} else {
 		/* Data is pushed */
 		if (strstr(tmpFileUri, "uid%3A") != NULL)
-			sprintf(contDisp, "attachment; filename=\"%s\"", strstr(tmpFileUri, "uid%3A"));
+			sprintf(contDisp, "attachment; filename=\"%s\"",
+					strstr(tmpFileUri, "uid%3A"));
 		else
 			sprintf(contDisp, "attachment; filename=\"%s\"", tmpFileUri);
 		for (i = 0; i < parArray->idx; i++) {
@@ -700,8 +730,9 @@ ngamsSTAT ngamsGenSendData(const char* host, const int port, const ngamsCMD cmdC
 			strcpy(mtBuf, ngamsARHIVE_REQ_MT);
 		else
 			strcpy(mtBuf, mimeType);
-		if ((retCode = ngamsHttpPost(host, port, ngamsUSER_AGENT, cmd, mtBuf, contDisp, fileUri, "", 0, &repDataRef, &repDataLen, &httpResp, httpHdr))
-				!= ngamsSTAT_SUCCESS)
+		if ((retCode = ngamsHttpPost(host, port, ngamsUSER_AGENT, cmd, mtBuf,
+				contDisp, fileUri, "", 0, &repDataRef, &repDataLen, &httpResp,
+				httpHdr)) != ngamsSTAT_SUCCESS)
 			goto errExit;
 	}
 	ngamsHandleStatus(retCode, &repDataRef, status);
@@ -741,8 +772,9 @@ ngamsSTAT ngamsGenSendData(const char* host, const int port, const ngamsCMD cmdC
 
  Returns:      Execution status (ngamsSTAT_SUCCESS|ngamsSTAT_FAILURE).
  */
-ngamsSTAT ngamsArchive(const char* host, const int port, const float timeoutSecs, const char* fileUri, const char* mimeType, const int noVersioning,
-		const int wait, ngamsSTATUS* status) {
+ngamsSTAT ngamsArchive(const char* host, const int port,
+		const float timeoutSecs, const char* fileUri, const char* mimeType,
+		const int noVersioning, const int wait, ngamsSTATUS* status) {
 	int stat;
 	ngamsMED_BUF tmpBuf;
 	ngamsPAR_ARRAY parArray;
@@ -754,15 +786,15 @@ ngamsSTAT ngamsArchive(const char* host, const int port, const float timeoutSecs
 	sprintf(tmpBuf, "%d", wait);
 	ngamsAddParAndVal(&parArray, "wait", tmpBuf);
 	if (timeoutSecs != -1)
-		sprintf(tmpBuf, "%d", (int)(timeoutSecs + 0.5));
+		sprintf(tmpBuf, "%d", (int) (timeoutSecs + 0.5));
 	else
 		sprintf(tmpBuf, "-1");
 	ngamsAddParAndVal(&parArray, "time_out", tmpBuf);
-	stat = ngamsGenSendData(host, port, ngamsCMD_ARCHIVE, timeoutSecs, fileUri, mimeType, &parArray, status);
+	stat = ngamsGenSendData(host, port, ngamsCMD_ARCHIVE, timeoutSecs, fileUri,
+			mimeType, &parArray, status);
 	ngamsLogDebug("Leaving ngamsArchive()");
 	return stat;
 }
-
 
 /**
  ngamsSTAT ngamsQArchive(const char*         host,
@@ -791,8 +823,9 @@ ngamsSTAT ngamsArchive(const char* host, const int port, const float timeoutSecs
 
  Returns:      Execution status (ngamsSTAT_SUCCESS|ngamsSTAT_FAILURE).
  */
-ngamsSTAT ngamsQArchive(const char* host, const int port, const float timeoutSecs, const char* fileUri, const char* mimeType, const int noVersioning,
-		const int wait, ngamsSTATUS* status) {
+ngamsSTAT ngamsQArchive(const char* host, const int port,
+		const float timeoutSecs, const char* fileUri, const char* mimeType,
+		const int noVersioning, const int wait, ngamsSTATUS* status) {
 	int stat;
 	ngamsMED_BUF tmpBuf;
 	ngamsPAR_ARRAY parArray;
@@ -803,11 +836,11 @@ ngamsSTAT ngamsQArchive(const char* host, const int port, const float timeoutSec
 	 * We decided not to support this non_version business,
 	 * which will create inconsistency on the server side if a single server has multiple disk volumes
 	 *
-	int versioning = 1;
-	if (noVersioning) {
-		versioning = 0;
-	}
-	*/
+	 int versioning = 1;
+	 if (noVersioning) {
+	 versioning = 0;
+	 }
+	 */
 	sprintf(tmpBuf, "%d", noVersioning);
 	//sprintf(tmpBuf, "%d", versioning);
 	ngamsAddParAndVal(&parArray, "no_versioning", tmpBuf);
@@ -815,11 +848,12 @@ ngamsSTAT ngamsQArchive(const char* host, const int port, const float timeoutSec
 	sprintf(tmpBuf, "%d", wait);
 	ngamsAddParAndVal(&parArray, "wait", tmpBuf);
 	if (timeoutSecs != -1)
-		sprintf(tmpBuf, "%d", (int)(timeoutSecs + 0.5));
+		sprintf(tmpBuf, "%d", (int) (timeoutSecs + 0.5));
 	else
 		sprintf(tmpBuf, "-1");
 	ngamsAddParAndVal(&parArray, "time_out", tmpBuf);
-	stat = ngamsGenSendData(host, port, ngamsCMD_QARCHIVE, timeoutSecs, fileUri, mimeType, &parArray, status);
+	stat = ngamsGenSendData(host, port, ngamsCMD_QARCHIVE, timeoutSecs,
+			fileUri, mimeType, &parArray, status);
 	ngamsLogDebug("Leaving ngamsQArchive()");
 	return stat;
 }
@@ -851,8 +885,10 @@ ngamsSTAT ngamsQArchive(const char* host, const int port, const float timeoutSec
 
  Returns:      Execution status (ngamsSTAT_SUCCESS|ngamsSTAT_FAILURE).
  */
-ngamsSTAT ngamsPArchive(const char* host, const int port, const float timeoutSecs, const char* fileUri, const char* mimeType, const int noVersioning,
-		const int wait, const char* nexturl, ngamsSTATUS* status) {
+ngamsSTAT ngamsPArchive(const char* host, const int port,
+		const float timeoutSecs, const char* fileUri, const char* mimeType,
+		const int noVersioning, const int wait, const char* nexturl,
+		ngamsSTATUS* status) {
 	int stat;
 	ngamsMED_BUF tmpBuf;
 	ngamsPAR_ARRAY parArray;
@@ -864,17 +900,16 @@ ngamsSTAT ngamsPArchive(const char* host, const int port, const float timeoutSec
 	sprintf(tmpBuf, "%d", wait);
 	ngamsAddParAndVal(&parArray, "wait", tmpBuf);
 	if (timeoutSecs != -1)
-		sprintf(tmpBuf, "%d", (int)(timeoutSecs + 0.5));
+		sprintf(tmpBuf, "%d", (int) (timeoutSecs + 0.5));
 	else
 		sprintf(tmpBuf, "-1");
 	ngamsAddParAndVal(&parArray, "time_out", tmpBuf);
 	ngamsAddParAndVal(&parArray, "nexturl", nexturl);
-	stat = ngamsGenSendData(host, port, ngamsCMD_PARCHIVE, timeoutSecs, fileUri, mimeType, &parArray, status);
+	stat = ngamsGenSendData(host, port, ngamsCMD_PARCHIVE, timeoutSecs,
+			fileUri, mimeType, &parArray, status);
 	ngamsLogDebug("Leaving ngamsQArchive()");
 	return stat;
 }
-
-
 
 /**
  ngamsSTAT ngamsArchiveFromMem(const char*       host,
@@ -899,8 +934,10 @@ ngamsSTAT ngamsPArchive(const char* host, const int port, const float timeoutSec
 
  Returns:      See ngamsArchive().
  */
-ngamsSTAT ngamsArchiveFromMem(const char* host, const int port, const float timeoutSecs, const char* fileUri, const char* bufPtr, const int size,
-		const char* mimeType, const int noVersioning, const int wait, ngamsSTATUS* status) {
+ngamsSTAT ngamsArchiveFromMem(const char* host, const int port,
+		const float timeoutSecs, const char* fileUri, const char* bufPtr,
+		const int size, const char* mimeType, const int noVersioning,
+		const int wait, ngamsSTATUS* status) {
 	int retCode, locTimeout;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -920,13 +957,15 @@ ngamsSTAT ngamsArchiveFromMem(const char* host, const int port, const float time
 	if (timeoutSecs == -1)
 		locTimeout = -1;
 	else
-		locTimeout = (int)(timeoutSecs + 0.5);
+		locTimeout = (int) (timeoutSecs + 0.5);
 	sprintf(contDisp, "attachment; filename=\"%s\"; wait=\"%d\"; "
-		"no_versioning=\"%d\"; time_out\"%d\"", tmpFileUri, wait, noVersioning, locTimeout);
+		"no_versioning=\"%d\"; time_out\"%d\"", tmpFileUri, wait, noVersioning,
+			locTimeout);
 	if (*mimeType != '\0')
 		strcat(tmpUrl, mtBuf);
-	if ((retCode = ngamsHttpPost(host, port, ngamsUSER_AGENT, "ARCHIVE", ngamsARHIVE_REQ_MT, contDisp, "", bufPtr, size, &repDataRef, &repDataLen, &httpResp,
-			httpHdr)) != ngamsSTAT_SUCCESS)
+	if ((retCode = ngamsHttpPost(host, port, ngamsUSER_AGENT, "ARCHIVE",
+			ngamsARHIVE_REQ_MT, contDisp, "", bufPtr, size, &repDataRef,
+			&repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
 
@@ -964,7 +1003,8 @@ ngamsSTAT ngamsArchiveFromMem(const char* host, const int port, const float time
  Returns:         ngamsSTAT_SUCCESS or one of the error codes returned by
  the function ngamsHttpGet()
  */
-ngamsSTAT ngamsClone(const char* host, const int port, const float timeoutSecs, const char* fileId, const int fileVersion, const char* diskId,
+ngamsSTAT ngamsClone(const char* host, const int port, const float timeoutSecs,
+		const char* fileId, const int fileVersion, const char* diskId,
 		const char* targetDiskId, const int wait, ngamsSTATUS* status) {
 	int retCode;
 	ngamsDATA_LEN repDataLen;
@@ -993,7 +1033,8 @@ ngamsSTAT ngamsClone(const char* host, const int port, const float timeoutSecs, 
 		sprintf(tmpBuf, "&target_disk_id=\"%s\"", targetDiskId);
 		strcat(tmpUrl, tmpBuf);
 	}
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1, &repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
+	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
 
@@ -1017,7 +1058,8 @@ ngamsSTAT ngamsClone(const char* host, const int port, const float timeoutSecs, 
  Returns:         ngamsSTAT_SUCCESS or one of the error codes returned
  by the function ngamsHttpGet().
  */
-ngamsSTAT ngamsExit(const char* host, const int port, const float timeoutSecs, const int wait, ngamsSTATUS* status) {
+ngamsSTAT ngamsExit(const char* host, const int port, const float timeoutSecs,
+		const int wait, ngamsSTATUS* status) {
 	int retCode;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -1029,7 +1071,8 @@ ngamsSTAT ngamsExit(const char* host, const int port, const float timeoutSecs, c
 	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	sprintf(tmpUrl, "%s?wait=\"%d\"", ngamsCMD_EXIT_STR, wait);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1, &repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
+	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
 
@@ -1054,7 +1097,8 @@ ngamsSTAT ngamsExit(const char* host, const int port, const float timeoutSecs, c
  Returns:   ngamsSTAT_SUCCESS or one of the error codes returned
  by the function ngamsHttpGet().
  */
-ngamsSTAT ngamsLabel(const char* host, const int port, const float timeoutSecs, const char* slotId, ngamsSTATUS* status) {
+ngamsSTAT ngamsLabel(const char* host, const int port, const float timeoutSecs,
+		const char* slotId, ngamsSTATUS* status) {
 	int retCode;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -1067,7 +1111,8 @@ ngamsSTAT ngamsLabel(const char* host, const int port, const float timeoutSecs, 
 	ngamsInitStatus(status);
 	ngamsEncodeUrlVal(slotId, 1, tmpEnc);
 	sprintf(tmpUrl, "%s?slot_id=\"%s\"", ngamsCMD_LABEL_STR, tmpEnc);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1, &repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
+	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
 
@@ -1090,7 +1135,8 @@ ngamsSTAT ngamsLabel(const char* host, const int port, const float timeoutSecs, 
  Returns:         ngamsSTAT_SUCCESS or one of the error codes returned
  by the function ngamsHttpGet().
  */
-ngamsSTAT ngamsOnline(const char* host, const int port, const float timeoutSecs, const int wait, ngamsSTATUS* status) {
+ngamsSTAT ngamsOnline(const char* host, const int port,
+		const float timeoutSecs, const int wait, ngamsSTATUS* status) {
 	int retCode;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -1102,7 +1148,8 @@ ngamsSTAT ngamsOnline(const char* host, const int port, const float timeoutSecs,
 	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	sprintf(tmpUrl, "%s?wait=\"%d\"", ngamsCMD_ONLINE_STR, wait);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1, &repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
+	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
 
@@ -1129,7 +1176,9 @@ ngamsSTAT ngamsOnline(const char* host, const int port, const float timeoutSecs,
  Returns:   ngamsSTAT_SUCCESS or one of the error codes returned
  by the function ngamsHttpGet().
  */
-ngamsSTAT ngamsOffline(const char* host, const int port, const float timeoutSecs, const int force, const int wait, ngamsSTATUS* status) {
+ngamsSTAT ngamsOffline(const char* host, const int port,
+		const float timeoutSecs, const int force, const int wait,
+		ngamsSTATUS* status) {
 	int retCode;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -1143,7 +1192,8 @@ ngamsSTAT ngamsOffline(const char* host, const int port, const float timeoutSecs
 	sprintf(tmpUrl, "%s?wait=\"%d\"", ngamsCMD_OFFLINE_STR, wait);
 	if (force)
 		strcat(tmpUrl, "&force=1");
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1, &repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
+	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
 
@@ -1181,7 +1231,8 @@ ngamsSTAT ngamsParseSrvListId(const char* listId, const char* servers) {
 
 	ngamsLogDebug("Entering ngamsParseSrvListId() ...");
 
-	ngamsLogDebug("ngamsParseSrvListId(): listId=%s, servers=%s", listId, servers);
+	ngamsLogDebug("ngamsParseSrvListId(): listId=%s, servers=%s", listId,
+			servers);
 	_ngamsGetSrvInfoObj(listId, &foundList, &srvInfoP);
 	if (srvInfoP == NULL) {
 		ngamsLogError("Illegal Server List ID or no more free slots");
@@ -1252,7 +1303,9 @@ ngamsSTAT ngamsParseSrvList(const char* servers) {
  Returns:   ngamsSTAT_SUCCESS or one of the error codes returned
  by the function ngamsHttpGet().
  */
-ngamsSTAT ngamsRegister(const char* host, const int port, const float timeoutSecs, const char* path, const int wait, ngamsSTATUS* status) {
+ngamsSTAT ngamsRegister(const char* host, const int port,
+		const float timeoutSecs, const char* path, const int wait,
+		ngamsSTATUS* status) {
 	int retCode;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -1263,8 +1316,10 @@ ngamsSTAT ngamsRegister(const char* host, const int port, const float timeoutSec
 	ngamsLogDebug("Entering ngamsRegister() ...");
 	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
-	sprintf(tmpUrl, "%s?wait=\"%d\"&path=\"%s\"", ngamsCMD_REGISTER_STR, wait, path);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1, &repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
+	sprintf(tmpUrl, "%s?wait=\"%d\"&path=\"%s\"", ngamsCMD_REGISTER_STR, wait,
+			path);
+	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
 
@@ -1298,7 +1353,9 @@ ngamsSTAT ngamsRegister(const char* host, const int port, const float timeoutSec
  Returns:     ngamsSTAT_SUCCESS or one of the error codes returned
  by the function ngamsHttpGet().
  */
-ngamsSTAT ngamsRemDisk(const char* host, const int port, const float timeoutSecs, const char* diskId, const int execute, ngamsSTATUS* status) {
+ngamsSTAT ngamsRemDisk(const char* host, const int port,
+		const float timeoutSecs, const char* diskId, const int execute,
+		ngamsSTATUS* status) {
 	int retCode;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -1310,8 +1367,10 @@ ngamsSTAT ngamsRemDisk(const char* host, const int port, const float timeoutSecs
 	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	ngamsEncodeUrlVal(diskId, 1, tmpEnc);
-	sprintf(tmpUrl, "%s?disk_id=\"%s\"&execute=%d", ngamsCMD_REMDISK_STR, tmpEnc, execute);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1, &repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
+	sprintf(tmpUrl, "%s?disk_id=\"%s\"&execute=%d", ngamsCMD_REMDISK_STR,
+			tmpEnc, execute);
+	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
 
@@ -1352,8 +1411,9 @@ ngamsSTAT ngamsRemDisk(const char* host, const int port, const float timeoutSecs
  Returns:       ngamsSTAT_SUCCESS or one of the error codes returned
  by the function ngamsHttpGet().
  */
-ngamsSTAT ngamsRemFile(const char* host, const int port, const float timeoutSecs, const char* diskId, const char* fileId, const int fileVersion,
-		const int execute, ngamsSTATUS* status) {
+ngamsSTAT ngamsRemFile(const char* host, const int port,
+		const float timeoutSecs, const char* diskId, const char* fileId,
+		const int fileVersion, const int execute, ngamsSTATUS* status) {
 	int retCode;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -1367,8 +1427,10 @@ ngamsSTAT ngamsRemFile(const char* host, const int port, const float timeoutSecs
 	ngamsEncodeUrlVal(fileId, 1, encFileId);
 	ngamsEncodeUrlVal(diskId, 1, encDiskId);
 	sprintf(tmpUrl, "%s?disk_id=\"%s\"&file_id=\"%s\"&file_version=%d"
-		"&execute=%d", ngamsCMD_REMFILE_STR, encDiskId, encFileId, fileVersion, execute);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1, &repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
+		"&execute=%d", ngamsCMD_REMFILE_STR, encDiskId, encFileId, fileVersion,
+			execute);
+	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
 
@@ -1419,8 +1481,11 @@ ngamsSTAT ngamsRemFile(const char* host, const int port, const float timeoutSecs
  Returns:          ngamsSTAT_SUCCESS or one of the error codes returned
  by the function ngamsHttpGet().
  */
-ngamsSTAT ngamsRetrieve2Mem(const char* host, const int port, const float timeoutSecs, const char* fileId, const int fileVersion, const char* processing,
-		const char* processingPars, const int internal, const char* hostId, ngamsHTTP_DATA* repDataRef, ngamsDATA_LEN* repDataLen, ngamsSTATUS* status) {
+ngamsSTAT ngamsRetrieve2Mem(const char* host, const int port,
+		const float timeoutSecs, const char* fileId, const int fileVersion,
+		const char* processing, const char* processingPars, const int internal,
+		const char* hostId, ngamsHTTP_DATA* repDataRef,
+		ngamsDATA_LEN* repDataLen, ngamsSTATUS* status) {
 	char tmpBuf[10000];
 	int retCode;
 	int bytesRd;
@@ -1464,7 +1529,8 @@ ngamsSTAT ngamsRetrieve2Mem(const char* host, const int port, const float timeou
 		strcat(tmpUrl, tmpBuf);
 	}
 
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 0, repDataRef, repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
+	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 0,
+			repDataRef, repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 
 	/* Query went OK - for the moment no XML status document from RETRIEVE */
@@ -1494,8 +1560,11 @@ ngamsSTAT ngamsRetrieve2Mem(const char* host, const int port, const float timeou
 	return retCode;
 }
 
-ngamsSTAT _ngamsRetrieve2File(const char* host, const int port, const float timeoutSecs, const char* fileRef, const int fileVersion, const char* processing,
-		const char* processingPars, const char* targetFile, ngamsMED_BUF finalTargetFile, ngamsSTATUS* status, const int internal, const char* hostId) {
+ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
+		const float timeoutSecs, const char* fileRef, const int fileVersion,
+		const char* processing, const char* processingPars,
+		const char* targetFile, ngamsMED_BUF finalTargetFile,
+		ngamsSTATUS* status, const int internal, const char* hostId) {
 	char tmpBuf[10000];
 	char* tmpP;
 	int retCode;
@@ -1547,7 +1616,8 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port, const float time
 		strcat(tmpUrl, tmpBuf);
 	}
 
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 0, &repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS) {
+	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 0,
+			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS) {
 		ngamsLogDebug("Error invoking ngamsHttpGet(). Host:port/URL: "
 			"%s:%d/%s", host, port, tmpUrl);
 		goto errExit;
@@ -1559,7 +1629,8 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port, const float time
 	 * in the HTTP header.
 	 */
 	if (ngamsIsDir(targetFile)) {
-		if ((retCode = ngamsGetHttpHdrEntry(httpHdr, "content-disposition", "filename", tmpTargetFilename)) != ngamsSTAT_SUCCESS)
+		if ((retCode = ngamsGetHttpHdrEntry(httpHdr, "content-disposition",
+				"filename", tmpTargetFilename)) != ngamsSTAT_SUCCESS)
 			goto errExit;
 		strcpy(finalTargetFile, targetFile);
 		if (*(finalTargetFile + strlen(finalTargetFile) - 1) != '/')
@@ -1568,7 +1639,8 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port, const float time
 	} else if (*targetFile != '\0')
 		strcpy(finalTargetFile, targetFile);
 	else {
-		if ((retCode = ngamsGetHttpHdrEntry(httpHdr, "content-disposition", "filename", tmpTargetFilename)) != ngamsSTAT_SUCCESS)
+		if ((retCode = ngamsGetHttpHdrEntry(httpHdr, "content-disposition",
+				"filename", tmpTargetFilename)) != ngamsSTAT_SUCCESS)
 			goto errExit;
 		if ((tmpP = getenv("PWD")) != NULL)
 			sprintf(finalTargetFile, "%s/", tmpP);
@@ -1583,7 +1655,8 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port, const float time
 	int oflag = (O_CREAT | O_RDWR | O_TRUNC);
 	mode_t mode = (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
 	if ((fd = open(finalTargetFile, oflag, mode)) == -1) {
-		ngamsLogDebug("Error creating target file: %d/%s", errno, strerror(errno));
+		ngamsLogDebug("Error creating target file: %d/%s", errno,
+				strerror(errno));
 		retCode = ngamsERR_INV_TARG_FILE;
 		goto errExit;
 	}
@@ -1592,17 +1665,22 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port, const float time
 	time_t startTime = time(NULL);
 	int count = 0;
 	while (bytesRead < repDataLen) {
-		if ((retCode = _pollFd(repDataRef.fd, _getTimeOut())) != ngamsSTAT_SUCCESS)
+		if ((retCode = _pollFd(repDataRef.fd, _getTimeOut()))
+				!= ngamsSTAT_SUCCESS)
 			goto errExit;
 		bytesRd = read(repDataRef.fd, tmpBuf, 10000);
-		ngamsLogDebug("Read data block of size: %d. Bytes read: %.9E bytes", bytesRd, (double)bytesRead);
+		ngamsLogDebug("Read data block of size: %d. Bytes read: %.9E bytes",
+				bytesRd, (double) bytesRead);
 		if (bytesRd > 0) {
 			bytesRead += bytesRd;
-			if (((count % 1000) == 0) && ((_logLevel >= LEV5) || (_verboseLevel >= LEV5))) {
+			if (((count % 1000) == 0) && ((_logLevel >= LEV5) || (_verboseLevel
+					>= LEV5))) {
 				/* Calculate throughput */
-				float throughPut = (((bytesRead) / 1048576.) / (time(NULL) - startTime));
+				float throughPut = (((bytesRead) / 1048576.) / (time(NULL)
+						- startTime));
 				ngamsLogDebug("Data received so far: %lu bytes (%.6f MB), "
-					"Throughput: %.6f MB/s", bytesRead, (bytesRead / 1048576.), throughPut);
+					"Throughput: %.6f MB/s", bytesRead, (bytesRead / 1048576.),
+						throughPut);
 			}
 			write(fd, tmpBuf, bytesRd);
 			timeLastRec = time(NULL);
@@ -1629,7 +1707,8 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port, const float time
 
 	errExit:
 	/* Flush the connection for data waiting to be picked up. */
-	if ((retCode != ngamsSRV_INV_QUERY) && (retCode != ngamsERR_TIMEOUT) && (repDataRef.pdata == NULL)) {
+	if ((retCode != ngamsSRV_INV_QUERY) && (retCode != ngamsERR_TIMEOUT)
+			&& (repDataRef.pdata == NULL)) {
 		while (bytesRead < repDataLen) {
 			bytesRd = read(repDataRef.fd, tmpBuf, 10000);
 			bytesRead += bytesRd;
@@ -1685,12 +1764,17 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port, const float time
  Returns:          ngamsSTAT_SUCCESS or one of the error codes returned
  by the function ngamsHttpGet().
  */
-ngamsSTAT ngamsRetrieve2File(const char* host, const int port, const float timeoutSecs, const char* fileId, const int fileVersion, const char* processing,
-		const char* processingPars, const char* targetFile, ngamsMED_BUF finalTargetFile, ngamsSTATUS* status) {
+ngamsSTAT ngamsRetrieve2File(const char* host, const int port,
+		const float timeoutSecs, const char* fileId, const int fileVersion,
+		const char* processing, const char* processingPars,
+		const char* targetFile, ngamsMED_BUF finalTargetFile,
+		ngamsSTATUS* status) {
 	int stat;
 
 	ngamsLogDebug("Entering ngamsRetrieve2File() ...");
-	stat = _ngamsRetrieve2File(host, port, timeoutSecs, fileId, fileVersion, processing, processingPars, targetFile, finalTargetFile, status, 0, "");
+	stat = _ngamsRetrieve2File(host, port, timeoutSecs, fileId, fileVersion,
+			processing, processingPars, targetFile, finalTargetFile, status, 0,
+			"");
 	ngamsLogDebug("Leaving ngamsRetrieve2File()");
 	return stat;
 }
@@ -1706,8 +1790,10 @@ ngamsSTAT ngamsRetrieve2File(const char* host, const int port, const float timeo
  ngamsSTATUS*          status)
  See ngamsRetrieve2File().
  */
-ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port, const float timeoutSecs, const ngamsCMD cmdCode, const ngamsPAR_ARRAY* parArray,
-		const char* targetFile, ngamsMED_BUF finalTargetFile, ngamsSTATUS* status) {
+ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port,
+		const float timeoutSecs, const ngamsCMD cmdCode,
+		const ngamsPAR_ARRAY* parArray, const char* targetFile,
+		ngamsMED_BUF finalTargetFile, ngamsSTATUS* status) {
 	char tmpBuf[10000];
 	char* tmpP;
 	int retCode, i;
@@ -1737,7 +1823,8 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port, const float ti
 		}
 		strcat(url, tmpBuf);
 	}
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, url, 0, &repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
+	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, url, 0,
+			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 
 	/* If the specified filename is a file, store the data into a file with
@@ -1745,7 +1832,8 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port, const float ti
 	 * a file in that directory, with the name indicated in the HTTP header.
 	 */
 	if (ngamsIsDir(targetFile)) {
-		if ((retCode = ngamsGetHttpHdrEntry(httpHdr, "content-disposition", "filename", tmpTargetFilename)) != ngamsSTAT_SUCCESS)
+		if ((retCode = ngamsGetHttpHdrEntry(httpHdr, "content-disposition",
+				"filename", tmpTargetFilename)) != ngamsSTAT_SUCCESS)
 			goto errExit;
 		strcpy(finalTargetFile, targetFile);
 		if (*(finalTargetFile + strlen(finalTargetFile) - 1) != '/')
@@ -1754,7 +1842,8 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port, const float ti
 	} else if (*targetFile != '\0')
 		strcpy(finalTargetFile, targetFile);
 	else {
-		if ((retCode = ngamsGetHttpHdrEntry(httpHdr, "content-disposition", "filename", tmpTargetFilename)) != ngamsSTAT_SUCCESS)
+		if ((retCode = ngamsGetHttpHdrEntry(httpHdr, "content-disposition",
+				"filename", tmpTargetFilename)) != ngamsSTAT_SUCCESS)
 			goto errExit;
 		if ((tmpP = getenv("PWD")) != NULL)
 			sprintf(finalTargetFile, "%s/", tmpP);
@@ -1771,7 +1860,8 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port, const float ti
 	timeOut = _getTimeOut();
 	timeLastRec = time(NULL);
 	while (bytesRead < repDataLen) {
-		if ((retCode = _pollFd(repDataRef.fd, _getTimeOut())) != ngamsSTAT_SUCCESS)
+		if ((retCode = _pollFd(repDataRef.fd, _getTimeOut()))
+				!= ngamsSTAT_SUCCESS)
 			goto errExit;
 		bytesRd = read(repDataRef.fd, tmpBuf, 10000);
 		if (bytesRd > 0) {
@@ -1800,7 +1890,8 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port, const float ti
 
 	errExit:
 	/* Flush the connection for data waiting to be picked up. */
-	if ((retCode != ngamsSRV_INV_QUERY) && (retCode != ngamsERR_TIMEOUT) && (repDataRef.pdata == NULL)) {
+	if ((retCode != ngamsSRV_INV_QUERY) && (retCode != ngamsERR_TIMEOUT)
+			&& (repDataRef.pdata == NULL)) {
 		while (bytesRead < repDataLen) {
 			bytesRd = read(repDataRef.fd, tmpBuf, 10000);
 			bytesRead += bytesRd;
@@ -1813,7 +1904,8 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port, const float ti
 		strcpy(status->status, "FAILURE");
 		status->errorCode = retCode;
 	}
-	ngamsLogDebug("Leaving ngamsGenRetrieve2File()/FAILURE. Status: %d", retCode);
+	ngamsLogDebug("Leaving ngamsGenRetrieve2File()/FAILURE. Status: %d",
+			retCode);
 	return retCode;
 }
 
@@ -1828,7 +1920,8 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port, const float ti
  Returns:      ngamsSTAT_SUCCESS or one of the error codes returned
  by the function ngamsHttpGet().
  */
-ngamsSTAT ngamsStatus(const char* host, const int port, const float timeoutSecs, ngamsSTATUS* status) {
+ngamsSTAT ngamsStatus(const char* host, const int port,
+		const float timeoutSecs, ngamsSTATUS* status) {
 	int retCode;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -1840,7 +1933,8 @@ ngamsSTAT ngamsStatus(const char* host, const int port, const float timeoutSecs,
 	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	sprintf(tmpUrl, "%s", ngamsCMD_STATUS_STR);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1, &repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
+	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
 
@@ -1881,8 +1975,10 @@ ngamsSTAT ngamsStatus(const char* host, const int port, const float timeoutSecs,
  Returns:             ngamsSTAT_SUCCESS or one of the error codes returned
  by the function ngamsHttpGet().
  */
-ngamsSTAT ngamsSubscribe(const char* host, const int port, const float timeoutSecs, const char* url, const int priority, const char* startDate,
-		const char* filterPlugIn, const char* filterPlugInPars, ngamsSTATUS* status) {
+ngamsSTAT ngamsSubscribe(const char* host, const int port,
+		const float timeoutSecs, const char* url, const int priority,
+		const char* startDate, const char* filterPlugIn,
+		const char* filterPlugInPars, ngamsSTATUS* status) {
 	int retCode;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -1894,7 +1990,8 @@ ngamsSTAT ngamsSubscribe(const char* host, const int port, const float timeoutSe
 	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	ngamsEncodeUrlVal(url, 1, tmpEnc);
-	sprintf(reqUrl, "%s?url=\"%s\"&priority=%d", ngamsCMD_SUBSCRIBE_STR, tmpEnc, priority);
+	sprintf(reqUrl, "%s?url=\"%s\"&priority=%d", ngamsCMD_SUBSCRIBE_STR,
+			tmpEnc, priority);
 	if ((startDate != NULL) && (*startDate != '\0')) {
 		ngamsEncodeUrlVal(startDate, 1, tmpEnc);
 		sprintf(tmpUrl, "&start_date=\"%s\"", tmpEnc);
@@ -1910,7 +2007,8 @@ ngamsSTAT ngamsSubscribe(const char* host, const int port, const float timeoutSe
 		sprintf(tmpUrl, "&plug_in_pars=\"%s\"", tmpEnc);
 		strcpy(reqUrl, tmpUrl);
 	}
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, reqUrl, 1, &repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
+	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, reqUrl, 1,
+			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
 
@@ -1934,7 +2032,8 @@ ngamsSTAT ngamsSubscribe(const char* host, const int port, const float timeoutSe
  Returns:    ngamsSTAT_SUCCESS or one of the error codes returned
  by the function ngamsHttpGet().
  */
-ngamsSTAT ngamsUnsubscribe(const char* host, const int port, const float timeoutSecs, const char* url, ngamsSTATUS* status) {
+ngamsSTAT ngamsUnsubscribe(const char* host, const int port,
+		const float timeoutSecs, const char* url, ngamsSTATUS* status) {
 	int retCode;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -1947,7 +2046,8 @@ ngamsSTAT ngamsUnsubscribe(const char* host, const int port, const float timeout
 	ngamsInitStatus(status);
 	ngamsEncodeUrlVal(url, 1, tmpEnc);
 	sprintf(reqUrl, "%s?url=\"%s\"", ngamsCMD_UNSUBSCRIBE_STR, tmpEnc);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, reqUrl, 1, &repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
+	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, reqUrl, 1,
+			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
 
@@ -1993,7 +2093,8 @@ ngamsSTAT ngamsUnsubscribe(const char* host, const int port, const float timeout
 
  Returns:      Execution status (ngamsSTAT_SUCCESS|ngamsSTAT_FAILURE).
  */
-ngamsSTAT ngamsGetHttpHdrEntry(ngamsHTTP_HDR httpHdr, const char* hdrName, const char* fieldName, ngamsMED_BUF value) {
+ngamsSTAT ngamsGetHttpHdrEntry(ngamsHTTP_HDR httpHdr, const char* hdrName,
+		const char* fieldName, ngamsMED_BUF value) {
 	char* fieldPtr;
 	char* valPtr;
 	int found = 0, idx = 0, stat;
@@ -2035,13 +2136,15 @@ ngamsSTAT ngamsGetHttpHdrEntry(ngamsHTTP_HDR httpHdr, const char* hdrName, const
 	memset(value, 0, sizeof(ngamsMED_BUF));
 	if (*valPtr == '"')
 		valPtr++;
-	while ((*valPtr != '"') && (*valPtr != '\0') && (*valPtr != '\r') && (*valPtr != '\n'))
+	while ((*valPtr != '"') && (*valPtr != '\0') && (*valPtr != '\r')
+			&& (*valPtr != '\n'))
 		strncat(value, valPtr++, sizeof(char));
 
 	ngamsLogDebug("Leaving ngamsGetHttpHdrEntry()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsLogDebug("Leaving ngamsGetHttpHdrEntry()/FAILURE. Status: %d", stat);
+	errExit: ngamsLogDebug(
+			"Leaving ngamsGetHttpHdrEntry()/FAILURE. Status: %d", stat);
 	return stat;
 }
 
@@ -2128,7 +2231,8 @@ int ngamsRecvData(char** data, ngamsDATA_LEN dataLen, int* sockFd) {
 	}
 	*(*data + dataRead) = '\0';
 	close(*sockFd);
-	if ( unregisterSock(*sockFd) ) ngamsLogError("fail to unregister socket(%d) in the list", *sockFd); 
+	if (unregisterSock(*sockFd))
+		ngamsLogError("fail to unregister socket(%d) in the list", *sockFd);
 	ngamsLogDebug("Socket(%d) closed.", *sockFd);
 	*sockFd = 0;
 
@@ -2172,7 +2276,8 @@ ngamsSTAT _getThreadInfoObj(_ngamsTHREAD_INFO** thrInfo) {
 	_ngamsLockSrvInfoSem();
 
 	if (!initialized) {
-		memset(threadInfoHandles, 0, (MAX_CON_THR_HANDLES * sizeof(_ngamsTHREAD_INFO)));
+		memset(threadInfoHandles, 0,
+				(MAX_CON_THR_HANDLES * sizeof(_ngamsTHREAD_INFO)));
 		int i;
 		for (i = 0; i < MAX_CON_THR_HANDLES; i++) {
 			threadInfoHandles[i].handleNumber = (i + 1);
@@ -2196,9 +2301,12 @@ ngamsSTAT _getThreadInfoObj(_ngamsTHREAD_INFO** thrInfo) {
 			gettimeofday(&timeNow, NULL);
 			/* Make a forced release of locked handles after a certain
 			 timeout. */
-			if (((timeNow.tv_sec - thrHandleP->reservedTime.tv_sec) > THR_HANDLE_TIMEOUT) && (thrHandleP->connectFctLock || thrHandleP->connectThrLock)) {
+			if (((timeNow.tv_sec - thrHandleP->reservedTime.tv_sec)
+					> THR_HANDLE_TIMEOUT) && (thrHandleP->connectFctLock
+					|| thrHandleP->connectThrLock)) {
 				/* Release this entry */
-				ngamsLogInfo(1, ">>>>> releasing handle# %d", thrHandleP->handleNumber);
+				ngamsLogInfo(1, ">>>>> releasing handle# %d",
+						thrHandleP->handleNumber);
 				int handleNumber = thrHandleP->handleNumber;
 				memset(thrHandleP, 0, sizeof(_ngamsTHREAD_INFO));
 				thrHandleP->handleNumber = handleNumber;
@@ -2239,23 +2347,32 @@ void* _connectThread(void* ptr) {
 	_ngamsTHREAD_INFO* thrInfo;
 
 	ngamsLogDebug("Entering _connectThread() ...");
-	thrInfo = (_ngamsTHREAD_INFO*)ptr;
-	ngamsLogInfo(1, ">>>>> par thr id: %lu, thr id: %lu: entering _connectThread()", thrInfo->parentThreadId, pthread_self());
+	thrInfo = (_ngamsTHREAD_INFO*) ptr;
+	ngamsLogInfo(1,
+			">>>>> par thr id: %lu, thr id: %lu: entering _connectThread()",
+			thrInfo->parentThreadId, pthread_self());
 	int n;
 	for (n = 1; n <= 5; n++) {
-		ngamsLogInfo(1, "_connectThread(): connecting socket %d to server (try %d)", thrInfo->sockFd, n);
-		stat = connect(thrInfo->sockFd, thrInfo->servAddr, sizeof(struct sockaddr_in));
+		ngamsLogInfo(1,
+				"_connectThread(): connecting socket %d to server (try %d)",
+				thrInfo->sockFd, n);
+		stat = connect(thrInfo->sockFd, thrInfo->servAddr,
+				sizeof(struct sockaddr_in));
 		if (stat >= 0) {
 			connected = 1;
 			break;
 		} else {
 			ngamsLogDebug("_connectThread(): Error calling connect(). Parent "
-				"Thread ID: %lu Errno(%d):%s", thrInfo->parentThreadId, errno, strerror(errno));
+				"Thread ID: %lu Errno(%d):%s", thrInfo->parentThreadId, errno,
+					strerror(errno));
 			usleep(500);
 			continue;
 		}
 	}
-	ngamsLogInfo(1, ">>>>> par thr id: %lu, thr id: %lu: _connectThread(): connected=%d", thrInfo->parentThreadId, pthread_self(), connected);
+	ngamsLogInfo(
+			1,
+			">>>>> par thr id: %lu, thr id: %lu: _connectThread(): connected=%d",
+			thrInfo->parentThreadId, pthread_self(), connected);
 	write(thrInfo->syncPipe[1], &connected, sizeof(int));
 
 	ngamsLogDebug("Leaving _connectThread()");
@@ -2269,49 +2386,49 @@ void* _connectThread(void* ptr) {
 }
 
 ngamsSTAT _ngamsConnect(const int sockFd, const struct sockaddr_in* servAddr) {
-/*
-	int stat, creStat = -1, retStat, connected = 0;
-	pthread_t thrHandle;
-	pthread_attr_t thrAttr;
-	_ngamsTHREAD_INFO* thrInfo;
+	/*
+	 int stat, creStat = -1, retStat, connected = 0;
+	 pthread_t thrHandle;
+	 pthread_attr_t thrAttr;
+	 _ngamsTHREAD_INFO* thrInfo;
 
-	ngamsLogDebug("Entering _ngamsConnect() ...");
-//	if (_getThreadInfoObj(&thrInfo) == ngamsSTAT_FAILURE) {
-//		ngamsLogError("Error obtaining connect thread handle");
-//		retStat = ngamsSTAT_FAILURE;
-//		goto fctExit;
-//	}
-//	ngamsLogInfo(1, ">>>>> got handle# %d", thrInfo->handleNumber);
-	thrInfo->servAddr = (struct sockaddr*)servAddr;
-	thrInfo->sockFd = sockFd;
-//	if (pipe(thrInfo->syncPipe) != 0) {
-//		ngamsLogError("Error creating pipe");
-//		retStat = ngamsSTAT_FAILURE;
-//		goto fctExit;
-//	}
-	thrInfo->parentThreadId = pthread_self();
-	pthread_attr_init(&thrAttr);
-	pthread_attr_setdetachstate(&thrAttr, PTHREAD_CREATE_DETACHED);
-	creStat = pthread_create(&thrHandle, &thrAttr, _connectThread, thrInfo);
-	if (creStat != 0) {
-		ngamsLogError("Error creating connect thread");
-		retStat = ngamsSTAT_FAILURE;
-		goto fctExit;
-	}
-	stat = _pollFd(thrInfo->syncPipe[0], -1);
-	if (stat == ngamsSTAT_SUCCESS)
-		read(thrInfo->syncPipe[0], &connected, sizeof(int));
-	if (connected)
-		retStat = ngamsSTAT_SUCCESS;
-	else
-		retStat = ngamsSTAT_FAILURE;
-	goto fctExit;
+	 ngamsLogDebug("Entering _ngamsConnect() ...");
+	 //	if (_getThreadInfoObj(&thrInfo) == ngamsSTAT_FAILURE) {
+	 //		ngamsLogError("Error obtaining connect thread handle");
+	 //		retStat = ngamsSTAT_FAILURE;
+	 //		goto fctExit;
+	 //	}
+	 //	ngamsLogInfo(1, ">>>>> got handle# %d", thrInfo->handleNumber);
+	 thrInfo->servAddr = (struct sockaddr*)servAddr;
+	 thrInfo->sockFd = sockFd;
+	 //	if (pipe(thrInfo->syncPipe) != 0) {
+	 //		ngamsLogError("Error creating pipe");
+	 //		retStat = ngamsSTAT_FAILURE;
+	 //		goto fctExit;
+	 //	}
+	 thrInfo->parentThreadId = pthread_self();
+	 pthread_attr_init(&thrAttr);
+	 pthread_attr_setdetachstate(&thrAttr, PTHREAD_CREATE_DETACHED);
+	 creStat = pthread_create(&thrHandle, &thrAttr, _connectThread, thrInfo);
+	 if (creStat != 0) {
+	 ngamsLogError("Error creating connect thread");
+	 retStat = ngamsSTAT_FAILURE;
+	 goto fctExit;
+	 }
+	 stat = _pollFd(thrInfo->syncPipe[0], -1);
+	 if (stat == ngamsSTAT_SUCCESS)
+	 read(thrInfo->syncPipe[0], &connected, sizeof(int));
+	 if (connected)
+	 retStat = ngamsSTAT_SUCCESS;
+	 else
+	 retStat = ngamsSTAT_FAILURE;
+	 goto fctExit;
 
-	fctExit: if (thrInfo->syncPipe[0]) {
-		close(thrInfo->syncPipe[0]);
-		close(thrInfo->syncPipe[1]);
-	}
-*/
+	 fctExit: if (thrInfo->syncPipe[0]) {
+	 close(thrInfo->syncPipe[0]);
+	 close(thrInfo->syncPipe[1]);
+	 }
+	 */
 	/*
 	 //if (!connected && (creStat == 0)) pthread_cancel(thrHandle);
 	 //pthread_mutex_lock(&(thrInfo->syncMutex));
@@ -2327,23 +2444,23 @@ ngamsSTAT _ngamsConnect(const int sockFd, const struct sockaddr_in* servAddr) {
 	 //ngamsLogInfo(1, ">>>>> _ngamsConnect(): before thread_attr_destroy(&thrAttr);");
 	 */
 
-/*
-        ngamsLogInfo(1, "_ngamsConnect(): connecting socket %d to server (try %d)", sockFd, n);
-	if( connect(sockFd, (struct sockaddr*)servAddr, sizeof(struct sockaddr_in)) >= 0)
-		return ngamsSTAT_SUCCESS;
-	ngamsLogDebug("_ngamsConnect(): Error calling connect(). errno(%d):%s", errno, strerror(errno));
-	return ngamsSTAT_FAILURE;
-*/
-/*
-	pthread_attr_destroy(&thrAttr);
-	thrInfo->connectFctLock = 0;
-	if (retStat == ngamsSTAT_SUCCESS)
-		ngamsLogDebug("Leaving _ngamsConnect()");
-	else
-		ngamsLogDebug("Leaving _ngamsConnect()/FAILURE. Status: %d", retStat);
-	ngamsLogInfo(1, ">>>>> _ngamsConnect(): before return retStat;");
-	return retStat;
-*/
+	/*
+	 ngamsLogInfo(1, "_ngamsConnect(): connecting socket %d to server (try %d)", sockFd, n);
+	 if( connect(sockFd, (struct sockaddr*)servAddr, sizeof(struct sockaddr_in)) >= 0)
+	 return ngamsSTAT_SUCCESS;
+	 ngamsLogDebug("_ngamsConnect(): Error calling connect(). errno(%d):%s", errno, strerror(errno));
+	 return ngamsSTAT_FAILURE;
+	 */
+	/*
+	 pthread_attr_destroy(&thrAttr);
+	 thrInfo->connectFctLock = 0;
+	 if (retStat == ngamsSTAT_SUCCESS)
+	 ngamsLogDebug("Leaving _ngamsConnect()");
+	 else
+	 ngamsLogDebug("Leaving _ngamsConnect()/FAILURE. Status: %d", retStat);
+	 ngamsLogInfo(1, ">>>>> _ngamsConnect(): before return retStat;");
+	 return retStat;
+	 */
 }
 
 /* Mutex for create a socket and connect it to NGAS. */
@@ -2388,7 +2505,7 @@ int ngamsPrepSock(const char* host, const int port) {
 	/* Fill in the structure "servAddr" with the address of the
 	 * server that we want to connect with.
 	 */
-	memset((char *)&servAddr, '\0', sizeof(servAddr));
+	memset((char *) &servAddr, '\0', sizeof(servAddr));
 	memcpy(&servAddr.sin_addr, hostRef->h_addr_list[0], hostRef->h_length);
 	servAddr.sin_family = AF_INET;
 	servAddr.sin_port = htons(port);
@@ -2406,16 +2523,18 @@ int ngamsPrepSock(const char* host, const int port) {
 			stat = ngamsERR_SOCK;
 			goto errExit;
 		}
-		if (sockFd > 0){
+		if (sockFd > 0) {
 			//sometimes different threads may get the same socket number and cause unexpected result
 			//so we need to check if the socket appears before
-			if ( existedSock(sockFd) ) {
-        			ngamsLogInfo(1, "ngamsPrepSock gets the same socket(%d)", sockFd);
+			if (existedSock(sockFd)) {
+				ngamsLogInfo(1, "ngamsPrepSock gets the same socket(%d)",
+						sockFd);
 				continue;
 			}
-			if ( registerSock(sockFd) ) ngamsLogError("fail to register socket(%d) in the list", sockFd); 
+			if (registerSock(sockFd))
+				ngamsLogError("fail to register socket(%d) in the list", sockFd);
 			break;
-		}	
+		}
 		if (++count > 5) {
 			stat = ngamsERR_SOCK;
 			goto errExit;
@@ -2424,22 +2543,25 @@ int ngamsPrepSock(const char* host, const int port) {
 	ngamsLogDebug("Socket(%d) opened.", sockFd);
 
 	ngamsLogInfo(1, "connecting socket(%d) to NGAS(%s:%d).", sockFd, host, port);
-	if( connect(sockFd, (struct sockaddr*)&servAddr, sizeof(struct sockaddr_in)) < 0){
-		ngamsLogDebug("fail to connect socket(%d) to NGAS(%s:%d). errno(%d):%s", sockFd, host, port, errno, strerror(errno));
+	if (connect(sockFd, (struct sockaddr*) &servAddr,
+			sizeof(struct sockaddr_in)) < 0) {
+		ngamsLogDebug(
+				"fail to connect socket(%d) to NGAS(%s:%d). errno(%d):%s",
+				sockFd, host, port, errno, strerror(errno));
 		close(sockFd);
-		if ( unregisterSock(sockFd) ) ngamsLogError("fail to unregister socket(%d) in the list", sockFd); 
+		if (unregisterSock(sockFd))
+			ngamsLogError("fail to unregister socket(%d) in the list", sockFd);
 		ngamsLogDebug("Socket(%d) closed.", sockFd);
 		stat = ngamsERR_CON;
 		goto errExit;
 	}
 
 	ngamsLogDebug("Leaving ngamsPrepSock()");
-	 _ngamsUnlockSocketGEN();
+	_ngamsUnlockSocketGEN();
 	return sockFd;
 
-	errExit:
-		ngamsLogDebug("Leaving ngamsPrepSock()/FAILURE. Status: %d", stat);
-		 _ngamsUnlockSocketGEN();
+	errExit: ngamsLogDebug("Leaving ngamsPrepSock()/FAILURE. Status: %d", stat);
+	_ngamsUnlockSocketGEN();
 	return stat;
 }
 
@@ -2473,7 +2595,9 @@ int ngamsPrepSock(const char* host, const int port) {
  Returns:       Execution status (ngamsSTAT_SUCCESS | ngamsERR_TIMEOUT |
  ngamsERR_INV_REPLY | ngamsSRV_INV_QUERY).
  */
-int ngamsRecvHttpHdr(int* sockFd, ngamsHTTP_HDR httpHdr, ngamsHTTP_RESP* httpResp, ngamsHTTP_DATA* repDataRef, ngamsDATA_LEN* dataLen) {
+int ngamsRecvHttpHdr(int* sockFd, ngamsHTTP_HDR httpHdr,
+		ngamsHTTP_RESP* httpResp, ngamsHTTP_DATA* repDataRef,
+		ngamsDATA_LEN* dataLen) {
 	char recvLine[ngamsMAXLINE + 1];
 	char* strP1;
 	char* strP2;
@@ -2495,17 +2619,18 @@ int ngamsRecvHttpHdr(int* sockFd, ngamsHTTP_HDR httpHdr, ngamsHTTP_RESP* httpRes
 	/* Read the HTTP header: ends with a blank line. */
 	ngamsLogDebug("ReadLine from socket(%d)", *sockFd);
 	while ((bytesRead = ngamsReadLine(sockFd, recvLine, ngamsMAXLINE)) > 0) {
-		if (bytesRead > ngamsMAXLINE -10){
+		if (bytesRead > ngamsMAXLINE - 10) {
 			ngamsLogDebug("HTTP header is too big(%d).", bytesRead);
 			retCode = ngamsERR_COM;
-	                goto errExit;
+			goto errExit;
 		}
 		ngamsTrimString(recvLine, "\015\012");
-		ngamsLogDebug("Parsing HTTP header(%d): |%s|", strlen(recvLine), recvLine);
+		ngamsLogDebug("Parsing HTTP header(%d): |%s|", strlen(recvLine),
+				recvLine);
 		if ((bytesRead == 1) || (strstr(recvLine, "\015\012") == recvLine))
 			break;
 		for ((chr = recvLine); (*chr && (*chr != ':')); chr++)
-			*chr = (char)tolower((int)*chr);
+			*chr = (char) tolower((int) *chr);
 		strcpy(httpHdr[hdrIdx], recvLine);
 		hdrIdx++;
 		if (strstr(recvLine, "content-length:")) {
@@ -2558,7 +2683,7 @@ int ngamsRecvHttpHdr(int* sockFd, ngamsHTTP_HDR httpHdr, ngamsHTTP_RESP* httpRes
 	} else if (httpResp->status == ngamsSRV_REDIRECT) {
 		if (ngamsRecvData(&tmpData, *dataLen, sockFd) == ngamsSTAT_SUCCESS)
 			free(tmpData);
-			ngamsLogDebug("status == ngamsSRV_REDIRECT");
+		ngamsLogDebug("status == ngamsSRV_REDIRECT");
 	}
 
 	ngamsLogDebug("Leaving ngamsRecvHttpHdr()");
@@ -2567,7 +2692,7 @@ int ngamsRecvHttpHdr(int* sockFd, ngamsHTTP_HDR httpHdr, ngamsHTTP_RESP* httpRes
 	errExit: if (tmpData)
 		free(tmpData);
 	ngamsLogDebug("Leaving ngamsRecvHttpHdr()/FAILURE. Status: %d", retCode);
-	sleep(5);  //server might be too busy. slow down a bit
+	sleep(5); //server might be too busy. slow down a bit
 	return retCode;
 }
 
@@ -2585,7 +2710,8 @@ int ngamsRecvHttpHdr(int* sockFd, ngamsHTTP_HDR httpHdr, ngamsHTTP_RESP* httpRes
 
  See ngamsHttpGet() for parameters and return value.
  */
-int _ngamsHttpGet(const char* host, const int port, const char* userAgent, const char* path, const int receiveData, ngamsHTTP_DATA* repDataRef,
+int _ngamsHttpGet(const char* host, const int port, const char* userAgent,
+		const char* path, const int receiveData, ngamsHTTP_DATA* repDataRef,
 		ngamsDATA_LEN* dataLen, ngamsHTTP_RESP* httpResp, ngamsHTTP_HDR httpHdr) {
 	char* strP;
 	int sockFd = 0, n;
@@ -2595,14 +2721,16 @@ int _ngamsHttpGet(const char* host, const int port, const char* userAgent, const
 
 	ngamsLogDebug("Entering _ngamsHttpGet() ...");
 
-	ngamsLogDebug("Submitting request with URL: http://%s:%d/%s", host, port, path);
+	ngamsLogDebug("Submitting request with URL: http://%s:%d/%s", host, port,
+			path);
 
 	*dataLen = 0;
 	memset(repDataRef, 0, sizeof(ngamsHTTP_DATA));
 	memset(httpResp, 0, sizeof(ngamsHTTP_RESP));
 
 	if ((sockFd = ngamsPrepSock(host, port)) < 0) {
-		ngamsLogDebug("Error calling ngamsPrepSock(). URL: %s:%d/%s", host, port, path);
+		ngamsLogDebug("Error calling ngamsPrepSock(). URL: %s:%d/%s", host,
+				port, path);
 		retCode = sockFd;
 		goto errExit;
 	}
@@ -2610,29 +2738,34 @@ int _ngamsHttpGet(const char* host, const int port, const char* userAgent, const
 	/* Send the GET method */
 	if (ngamsGetAuthorization()) {
 		memset(authHdr, 0, sizeof(ngamsHUGE_BUF));
-		sprintf(authHdr, "\015\012Authorization: Basic%%20%s", ngamsGetAuthorization());
+		sprintf(authHdr, "\015\012Authorization: Basic%%20%s",
+				ngamsGetAuthorization());
 	} else
 		*authHdr = '\0';
-	sprintf(sendLine, "GET %s HTTP/1.0\nUser-Agent: %s%s\015\012\012", path, userAgent, authHdr);
-	ngamsLogDebug("Submitting HTTP header: %s to host/port: %s/%d", sendLine, host, port);
+	sprintf(sendLine, "GET %s HTTP/1.0\nUser-Agent: %s%s\015\012\012", path,
+			userAgent, authHdr);
+	ngamsLogDebug("Submitting HTTP header: %s to host/port: %s/%d", sendLine,
+			host, port);
 	n = strlen(sendLine);
 
-        // jagonzal: We are using SOCK_STREAM (non-blocking sending mode) for the socket so the write
-        //           function (UNIX System API) returns only the actual number of bytes written in the
-        //           socket at the return time that are not necessarily the number of bytes in the buffer,
-        //           so we have to disable this check.
+	// jagonzal: We are using SOCK_STREAM (non-blocking sending mode) for the socket so the write
+	//           function (UNIX System API) returns only the actual number of bytes written in the
+	//           socket at the return time that are not necessarily the number of bytes in the buffer,
+	//           so we have to disable this check.
 
-        //if (write(sockFd, sendLine, n) != n) {
-        //      ngamsLogDebug("Error writing on socket. URL: %s:%d/%s", host, port, path);
-        //      retCode = ngamsERR_WR_HD;
-        //      goto errExit;
-        //}
-        
-        write(sockFd, sendLine, n);
-	
-        /* Receive the reply for the request */
-	if ((retCode = ngamsRecvHttpHdr(&sockFd, httpHdr, httpResp, repDataRef, dataLen)) != ngamsSTAT_SUCCESS) {
-		ngamsLogDebug("Error calling ngamsRecvHttpHdr(). URL: %s:%d/%s", host, port, path);
+	//if (write(sockFd, sendLine, n) != n) {
+	//      ngamsLogDebug("Error writing on socket. URL: %s:%d/%s", host, port, path);
+	//      retCode = ngamsERR_WR_HD;
+	//      goto errExit;
+	//}
+
+	write(sockFd, sendLine, n);
+
+	/* Receive the reply for the request */
+	if ((retCode = ngamsRecvHttpHdr(&sockFd, httpHdr, httpResp, repDataRef,
+			dataLen)) != ngamsSTAT_SUCCESS) {
+		ngamsLogDebug("Error calling ngamsRecvHttpHdr(). URL: %s:%d/%s", host,
+				port, path);
 		goto errExit;
 	}
 
@@ -2642,7 +2775,8 @@ int _ngamsHttpGet(const char* host, const int port, const char* userAgent, const
 	if (httpResp->status == ngamsSRV_REDIRECT) {
 		/* Find the "Location" HTTP header and get the alternative URL.
 		 */
-		if ((retCode = ngamsGetHttpHdrEntry(httpHdr, "location", "", redirectUrl)) != ngamsSTAT_SUCCESS) {
+		if ((retCode = ngamsGetHttpHdrEntry(httpHdr, "location", "",
+				redirectUrl)) != ngamsSTAT_SUCCESS) {
 			ngamsLogDebug("Error calling ngamsGetHttpHdrEntry(). "
 				"URL: %s:%d/%s", host, port, path);
 			goto errExit;
@@ -2663,20 +2797,23 @@ int _ngamsHttpGet(const char* host, const int port, const char* userAgent, const
 		/* This function again (recursively).
 		 */
 		close(sockFd);
-		if ( unregisterSock(sockFd) ) ngamsLogError("fail to unregister socket(%d) in the list", sockFd); 
+		if (unregisterSock(sockFd))
+			ngamsLogError("fail to unregister socket(%d) in the list", sockFd);
 		ngamsLogDebug("Socket(%d) closed.", sockFd);
 		sockFd = 0;
 		if (repDataRef->pdata)
 			free(repDataRef->pdata);
 		memset(repDataRef, 0, sizeof(ngamsHTTP_DATA));
-		return ngamsHttpGet(altHost, atoi(altPort), userAgent, path, receiveData, repDataRef, dataLen, httpResp, httpHdr);
+		return ngamsHttpGet(altHost, atoi(altPort), userAgent, path,
+				receiveData, repDataRef, dataLen, httpResp, httpHdr);
 	}
 
 	/* If specified, read the data from the socket and store it into
 	 * a buffer of memory allocated.
 	 */
 	if (receiveData && *dataLen) {
-		if ((retCode = ngamsRecvData(&(repDataRef->pdata), *dataLen, &sockFd)) != ngamsSTAT_SUCCESS) {
+		if ((retCode = ngamsRecvData(&(repDataRef->pdata), *dataLen, &sockFd))
+				!= ngamsSTAT_SUCCESS) {
 			ngamsLogDebug("Error calling ngamsRecvData(). "
 				"URL: %s:%d/%s", host, port, path);
 			if (repDataRef->pdata)
@@ -2690,10 +2827,10 @@ int _ngamsHttpGet(const char* host, const int port, const char* userAgent, const
 	ngamsLogDebug("Leaving _ngamsHttpGet()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: 
-	if (sockFd > 0){
+	errExit: if (sockFd > 0) {
 		close(sockFd);
-		if ( unregisterSock(sockFd) ) ngamsLogError("fail to unregister socket(%d) in the list", sockFd); 
+		if (unregisterSock(sockFd))
+			ngamsLogError("fail to unregister socket(%d) in the list", sockFd);
 		ngamsLogDebug("Socket(%d) closed.", sockFd);
 	}
 	ngamsLogDebug("Leaving _ngamsHttpGet()/FAILURE. Status: %d", retCode);
@@ -2741,7 +2878,8 @@ int _ngamsHttpGet(const char* host, const int port, const char* userAgent, const
 
  - or the following error coded: ngamsERR_WR_HD.
  */
-int ngamsHttpGet(const char* host, const int port, const char* userAgent, const char* path, const int receiveData, ngamsHTTP_DATA* repDataRef,
+int ngamsHttpGet(const char* host, const int port, const char* userAgent,
+		const char* path, const int receiveData, ngamsHTTP_DATA* repDataRef,
 		ngamsDATA_LEN* dataLen, ngamsHTTP_RESP* httpResp, ngamsHTTP_HDR httpHdr) {
 	char* locHost;
 	int locPort, maxTries, tryCount = 0, foundList;
@@ -2752,7 +2890,8 @@ int ngamsHttpGet(const char* host, const int port, const char* userAgent, const 
 
 	_ngamsGetSrvInfoObj(host, &foundList, &srvInfoP);
 	if (!foundList) {
-		stat = _ngamsHttpGet(host, port, userAgent, path, receiveData, repDataRef, dataLen, httpResp, httpHdr);
+		stat = _ngamsHttpGet(host, port, userAgent, path, receiveData,
+				repDataRef, dataLen, httpResp, httpHdr);
 		ngamsLogDebug("Leaving ngamsHttpGet(). Status: %d", stat);
 		return stat;
 	} else {
@@ -2763,7 +2902,8 @@ int ngamsHttpGet(const char* host, const int port, const char* userAgent, const 
 		int idx = -1;
 		while (tryCount < maxTries) {
 			_ngamsGetNextSrv(&idx, srvInfoP, &locHost, &locPort);
-			stat = _ngamsHttpGet(locHost, locPort, userAgent, path, receiveData, repDataRef, dataLen, httpResp, httpHdr);
+			stat = _ngamsHttpGet(locHost, locPort, userAgent, path,
+					receiveData, repDataRef, dataLen, httpResp, httpHdr);
 			if (stat == ngamsSTAT_SUCCESS)
 				break;
 			tryCount += 1;
@@ -2793,7 +2933,9 @@ int ngamsHttpGet(const char* host, const int port, const char* userAgent, const 
  Returns:       ngamsSTAT_SUCCESS or one of the error codes returned
  by the function ngamsHttpGet().
  */
-ngamsSTAT ngamsGenSendCmd(const char* host, const int port, const float timeoutSecs, const char* cmd, const ngamsPAR_ARRAY* parArray, ngamsSTATUS* status) {
+ngamsSTAT ngamsGenSendCmd(const char* host, const int port,
+		const float timeoutSecs, const char* cmd,
+		const ngamsPAR_ARRAY* parArray, ngamsSTATUS* status) {
 	int retCode, i;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -2823,7 +2965,8 @@ ngamsSTAT ngamsGenSendCmd(const char* host, const int port, const float timeoutS
 		strcat(url, tmpUrl);
 	}
 	ngamsLogInfo(LEV4, "Issuing command with URL: %s ...", urlRaw);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, url, 1, &repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
+	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, url, 1,
+			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
 
@@ -2890,10 +3033,14 @@ ngamsSTAT ngamsGenSendCmd(const char* host, const int port, const float timeoutS
 
  See man-page for ngamsHttpPost() for a description of the parameters.
  */
-int _ngamsHttpPost(const char* host, const int port, const char* userAgent, const char* path, const char* mimeType, const char* contentDisp,
-		const char* srcFilename, const char* data, const int dataLen, ngamsHTTP_DATA* repDataRef, ngamsDATA_LEN* repDataLen, ngamsHTTP_RESP* httpResp,
-		ngamsHTTP_HDR httpHdr) {
-	char header[ngamsBUFSIZE], inBuf[10240];
+int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
+		const char* path, const char* mimeType, const char* contentDisp,
+		const char* srcFilename, const char* data, const int dataLen,
+		ngamsHTTP_DATA* repDataRef, ngamsDATA_LEN* repDataLen,
+		ngamsHTTP_RESP* httpResp, ngamsHTTP_HDR httpHdr) {
+
+
+	char header[ngamsBUFSIZE];//, inBuf[io_size];
 	int sockFd = 0, fileFd = 0;
 	int retCode = 0;
 	int bytesRead, hdrLen;
@@ -2909,10 +3056,12 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent, cons
 	/* Figure out the length of the data to send */
 	if (*srcFilename != '\0') {
 		if (stat(srcFilename, &statBuf) == -1) {
-			ngamsLogDebug("Error calling stat() on file: %s. Error: %s", srcFilename, strerror(errno));
+			ngamsLogDebug("Error calling stat() on file: %s. Error: %s",
+					srcFilename, strerror(errno));
 		} else {
 			contLen = statBuf.st_size;
-			ngamsLogDebug("Size of file to send: %s, is: %llu bytes", srcFilename, contLen);
+			ngamsLogDebug("Size of file to send: %s, is: %llu bytes",
+					srcFilename, contLen);
 		}
 	} else if (dataLen >= 0)
 		contLen = dataLen;
@@ -2923,26 +3072,45 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent, cons
 		goto errExit;
 	}
 
+	int def_sndbuf = 10240;
+	socklen_t optlen = sizeof def_sndbuf;
+	getsockopt(sockFd, SOL_SOCKET, SO_SNDBUF, &def_sndbuf, &optlen);
+	printf("Default TCP buffer size: %d\n", def_sndbuf);
+
+	int sndbuf_size = def_sndbuf;
+	if (setsndbuf != 0) {
+		sndbuf_size = setsndbuf;
+		if (sndbuf_size <= 0) {
+			sndbuf_size = def_sndbuf;
+		} else {
+			int rcvbuf_size = sndbuf_size;
+			int tmp = sndbuf_size;
+			setsockopt(sockFd, SOL_SOCKET, SO_RCVBUF, &rcvbuf_size, sizeof(int)); //set receiver buffer as well
+			setsockopt(sockFd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, sizeof(int));
+			optlen = sizeof sndbuf_size;
+			getsockopt(sockFd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, &optlen);
+			printf("Set buffer size to %d, requested for %d", sndbuf_size, tmp);
+		}
+	}
+
 	/* Prepare and send the HTTP headers */
 	if (ngamsGetAuthorization()) {
-		memset(authHdr, 0, sizeof(ngamsBIG_BUF));
-		sprintf(authHdr, "\015\012Authorization: Basic %s", ngamsGetAuthorization());
+		memset(authHdr, 0, sizeof(ngamsHUGE_BUF));
+		sprintf(authHdr, "\015\012Authorization: Basic %s",
+				ngamsGetAuthorization());
 	} else
 		*authHdr = '\0';
 	sprintf(header, "POST /%.256s HTTP/1.0\015\012"
 		"User-agent: %s\015\012"
 		"Content-type: %s\015\012"
 		"Content-length: %llu\015\012"
-		"Content-disposition: %s%s\015\012\012", path, ngamsUSER_AGENT, mimeType, contLen, contentDisp, authHdr);
+		"Content-disposition: %s%s\015\012\012", path, ngamsUSER_AGENT,
+			mimeType, contLen, contentDisp, authHdr);
 	hdrLen = strlen(header);
-	if (write(sockFd, header, hdrLen) != hdrLen) {
-		retCode = ngamsERR_WR_HD;
-		goto errExit;
-	}
 
-	ngamsLogDebug("Finish sending header. Try to send data ...");
 	/* Send the data if any */
 	if (contLen) {
+		ngamsLogDebug("Finish sending header. Try to send data ...");
 		if (*srcFilename != '\0') {
 			/* JKN/2008-02-18: CHECK */
 			/*if ((fileFd=open(srcFilename, (O_RDONLY | O_LARGEFILE))) == -1)*/
@@ -2952,43 +3120,80 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent, cons
 				retCode = ngamsERR_FILE;
 				goto errExit;
 			}
-			while ((bytesRead = read(fileFd, inBuf, 10240)) > 0) {
-
-                                // jagonzal: We are using SOCK_STREAM (non-blocking sending mode) for the socket so the write
-                                //           function (UNIX System API) returns only the actual number of bytes written in the
-                                //           socket at the return time that are not necessarily the number of bytes in the buffer,
-                                //           so we have to disable this check.
-
-				//if (write(sockFd, inBuf, bytesRead) != bytesRead) {
-				//	ngamsLogDebug("Error writing file(%s) to socket(%d) while sending data. errno(%d):%s", srcFilename, sockFd, errno, strerror(errno));
-				//	retCode = ngamsERR_WR_DATA;
-				//	goto errExit;
-				//}
-
-                                write(sockFd, inBuf, bytesRead);
+			int gap = 0;
+			char* inBuf = (char *) malloc(sndbuf_size * sizeof(char));
+			if (hdrLen > sndbuf_size) {
+				//If the HTTP header is longer then buffer, send the header on its own
+				if (write(sockFd, header, hdrLen) != hdrLen) {
+					retCode = ngamsERR_WR_HD;
+					if (inBuf != NULL) {
+						free(inBuf);
+					}
+					goto errExit;
+				}
+			} else {
+				gap = hdrLen;
+				memcpy(inBuf, header, gap);
+			}
+			while ((bytesRead = read(fileFd, inBuf + gap, sndbuf_size - gap)) > 0) {
+				void *p = inBuf;
+				// reliable write
+				while (bytesRead > 0) {
+					int bytes_written = write(sockFd, p, bytesRead + gap);
+					if (bytes_written <= 0) {
+						printf("write to socket failed");
+					}
+					bytesRead -= bytes_written;
+					p += bytes_written;
+				}
+				gap = 0;
 			}
 			if (bytesRead < 0) {
-				ngamsLogDebug("Error reading file(%s) while sending data to socket(%d). errno(%d):%s", srcFilename, sockFd, errno, strerror(errno));
-				usleep(20);
-				bytesRead = read(fileFd, inBuf, 10240);
-				ngamsLogDebug("Try again on reading file(%s), bytes:(%d)", srcFilename, bytesRead);
+				ngamsLogDebug(
+						"Error reading file(%s) while sending data to socket(%d). errno(%d):%s",
+						srcFilename, sockFd, errno, strerror(errno));
+				//usleep(20);
+				//bytesRead = read(fileFd, inBuf, 10240);
+				ngamsLogDebug("Try again on reading file(%s), bytes:(%d)",
+						srcFilename, bytesRead);
 				retCode = ngamsERR_FILE;
+				if (inBuf != NULL) {
+					free(inBuf);
+				}
 				goto errExit;
 			}
+
 			if (fileFd > 0) {
 				close(fileFd);
 			}
+			if (inBuf != NULL) {
+				free(inBuf);
+			}
+
 		} else {
+			//send header first
+			if (write(sockFd, header, hdrLen) != hdrLen) {
+				retCode = ngamsERR_WR_HD;
+				goto errExit;
+			}
 			if (write(sockFd, data, contLen) != contLen) {
 				retCode = ngamsERR_WR_DATA;
 				goto errExit;
 			}
 		}
+	} else {
+		//send header only
+		if (write(sockFd, header, hdrLen) != hdrLen) {
+			retCode = ngamsERR_WR_HD;
+			goto errExit;
+		}
 	}
 
-	ngamsLogDebug("Finish sending data. Try to get reply's header from server...");
+	ngamsLogDebug(
+			"Finish sending data. Try to get reply's header from server...");
 	/* Receive the reply for the request */
-	if ((retCode = ngamsRecvHttpHdr(&sockFd, httpHdr, httpResp, repDataRef, repDataLen)) != ngamsSTAT_SUCCESS)
+	if ((retCode = ngamsRecvHttpHdr(&sockFd, httpHdr, httpResp, repDataRef,
+			repDataLen)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 
 	/* If specified, read the data from the socket and store it into
@@ -2996,30 +3201,34 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent, cons
 	 */
 	ngamsLogDebug("Finish sending data. Try to get reply's data from server...");
 	if (repDataLen) {
-		if ((retCode = ngamsRecvData(&(repDataRef->pdata), *repDataLen, &sockFd)) != ngamsSTAT_SUCCESS) {
+		if ((retCode
+				= ngamsRecvData(&(repDataRef->pdata), *repDataLen, &sockFd))
+				!= ngamsSTAT_SUCCESS) {
 			if (repDataRef->pdata)
 				free(repDataRef->pdata);
 			memset(repDataRef, 0, sizeof(ngamsHTTP_DATA));
 			goto errExit;
 		}
 	}
-	if (sockFd > 0){
+	if (sockFd > 0) {
 		close(sockFd);
-		if ( unregisterSock(sockFd) ) ngamsLogError("fail to unregister socket(%d) in the list", sockFd); 
+		if (unregisterSock(sockFd))
+			ngamsLogError("fail to unregister socket(%d) in the list", sockFd);
 		ngamsLogDebug("Socket(%d) closed.", sockFd);
 	}
 	ngamsLogDebug("Leaving _ngamsHttpPost()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit:
-		if (sockFd > 0){
-			close(sockFd);
-			if ( unregisterSock(sockFd) ) ngamsLogError("fail to unregister socket(%d) in the list", sockFd); 
-			ngamsLogDebug("Socket(%d) closed.", sockFd);
-		}
-		if (fileFd > 0)	close(fileFd);
-		ngamsLogDebug("Leaving _ngamsHttpPost()/FAILURE. Status: %d", retCode);
-		return retCode;
+	errExit: if (sockFd > 0) {
+		close(sockFd);
+		if (unregisterSock(sockFd))
+			ngamsLogError("fail to unregister socket(%d) in the list", sockFd);
+		ngamsLogDebug("Socket(%d) closed.", sockFd);
+	}
+	if (fileFd > 0)
+		close(fileFd);
+	ngamsLogDebug("Leaving _ngamsHttpPost()/FAILURE. Status: %d", retCode);
+	return retCode;
 }
 
 /**
@@ -3077,8 +3286,10 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent, cons
 
  ngamsERR_FILE, ngamsERR_WR_HD, ngamsERR_WR_DATA.
  */
-int ngamsHttpPost(const char* host, const int port, const char* userAgent, const char* path, const char* mimeType, const char* contentDisp,
-		const char* srcFilename, const char* data, const ngamsDATA_LEN dataLen, ngamsHTTP_DATA* repDataRef, ngamsDATA_LEN* repDataLen,
+int ngamsHttpPost(const char* host, const int port, const char* userAgent,
+		const char* path, const char* mimeType, const char* contentDisp,
+		const char* srcFilename, const char* data, const ngamsDATA_LEN dataLen,
+		ngamsHTTP_DATA* repDataRef, ngamsDATA_LEN* repDataLen,
 		ngamsHTTP_RESP* httpResp, ngamsHTTP_HDR httpHdr) {
 	char* locHost;
 	int locPort, maxTries, tryCount = 0, foundList;
@@ -3089,7 +3300,9 @@ int ngamsHttpPost(const char* host, const int port, const char* userAgent, const
 
 	_ngamsGetSrvInfoObj(host, &foundList, &srvInfoP);
 	if (!foundList) {
-		stat = _ngamsHttpPost(host, port, userAgent, path, mimeType, contentDisp, srcFilename, data, dataLen, repDataRef, repDataLen, httpResp, httpHdr);
+		stat = _ngamsHttpPost(host, port, userAgent, path, mimeType,
+				contentDisp, srcFilename, data, dataLen, repDataRef,
+				repDataLen, httpResp, httpHdr);
 		ngamsLogDebug("Leaving ngamsHttpPost(). Status: %d", stat);
 		if (stat != ngamsSTAT_SUCCESS)
 			goto errExit;
@@ -3101,8 +3314,9 @@ int ngamsHttpPost(const char* host, const int port, const char* userAgent, const
 		int idx = -1;
 		while (tryCount < maxTries) {
 			_ngamsGetNextSrv(&idx, srvInfoP, &locHost, &locPort);
-			stat = _ngamsHttpPost(locHost, locPort, userAgent, path, mimeType, contentDisp, srcFilename, data, dataLen, repDataRef, repDataLen, httpResp,
-					httpHdr);
+			stat = _ngamsHttpPost(locHost, locPort, userAgent, path, mimeType,
+					contentDisp, srcFilename, data, dataLen, repDataRef,
+					repDataLen, httpResp, httpHdr);
 			if (stat == ngamsSTAT_SUCCESS)
 				break;
 			tryCount += 1;
@@ -3159,7 +3373,8 @@ int ngamsHttpPost(const char* host, const int port, const char* userAgent, const
 
  ngamsERR_WR_HD
  */
-int ngamsHttpPostOpen(const char* host, const int port, const char* userAgent, const char* path, const char* mimeType, const char* contentDisp,
+int ngamsHttpPostOpen(const char* host, const int port, const char* userAgent,
+		const char* path, const char* mimeType, const char* contentDisp,
 		const ngamsDATA_LEN dataLen) {
 	char header[ngamsBUFSIZE];
 	int sockFd = 0;
@@ -3181,15 +3396,17 @@ int ngamsHttpPostOpen(const char* host, const int port, const char* userAgent, c
 
 	/* Prepare and send the HTTP headers */
 	if (ngamsGetAuthorization()) {
-		memset(authHdr, 0, sizeof(ngamsBIG_BUF));
-		sprintf(authHdr, "\015\012Authorization: Basic %s", ngamsGetAuthorization());
+		memset(authHdr, 0, sizeof(ngamsHUGE_BUF));
+		sprintf(authHdr, "\015\012Authorization: Basic %s",
+				ngamsGetAuthorization());
 	} else
 		*authHdr = '\0';
 	sprintf(header, "POST /%.256s HTTP/1.0\015\012"
 		"User-agent: %s\015\012"
 		"Content-type: %s\015\012"
 		"Content-length: %d\015\012"
-		"Content-disposition: %s%s\015\012\012", path, ngamsUSER_AGENT, mimeType, contLen, contentDisp, authHdr);
+		"Content-disposition: %s%s\015\012\012", path, ngamsUSER_AGENT,
+			mimeType, contLen, contentDisp, authHdr);
 	hdrLen = strlen(header);
 	if (write(sockFd, header, hdrLen) != hdrLen) {
 		retCode = ngamsERR_WR_HD;
@@ -3198,12 +3415,12 @@ int ngamsHttpPostOpen(const char* host, const int port, const char* userAgent, c
 
 	return sockFd;
 
-	errExit:
-		if (sockFd > 0){
-			close(sockFd);
-			if ( unregisterSock(sockFd) ) ngamsLogError("fail to unregister socket(%d) in the list", sockFd); 
-			ngamsLogDebug("Socket(%d) closed.", sockFd);
-		}
+	errExit: if (sockFd > 0) {
+		close(sockFd);
+		if (unregisterSock(sockFd))
+			ngamsLogError("fail to unregister socket(%d) in the list", sockFd);
+		ngamsLogDebug("Socket(%d) closed.", sockFd);
+	}
 	return retCode;
 }
 
@@ -3228,7 +3445,8 @@ int ngamsHttpPostOpen(const char* host, const int port, const char* userAgent, c
  Returns:       ngamsSTAT_SUCCESS
  or ngamsERR_FILE, ngamsERR_WR_DATA
  */
-int ngamsHttpPostSend(int sockFd, const char* srcFilename, const char* data, const ngamsDATA_LEN dataLen) {
+int ngamsHttpPostSend(int sockFd, const char* srcFilename, const char* data,
+		const ngamsDATA_LEN dataLen) {
 	char inBuf[1024];
 	int fileFd = 0;
 	int retCode = 0;
@@ -3276,11 +3494,12 @@ int ngamsHttpPostSend(int sockFd, const char* srcFilename, const char* data, con
 
 	return ngamsSTAT_SUCCESS;
 
-	errExit: 
-	if (fileFd > 0)	close(fileFd);
-	if ((foo > 0) && (retCode == ngamsERR_WR_DATA)){
+	errExit: if (fileFd > 0)
+		close(fileFd);
+	if ((foo > 0) && (retCode == ngamsERR_WR_DATA)) {
 		close(foo);
-		if ( unregisterSock(foo) ) ngamsLogError("fail to unregister socket(%d) in the list", foo); 
+		if (unregisterSock(foo))
+			ngamsLogError("fail to unregister socket(%d) in the list", foo);
 		ngamsLogDebug("Socket(%d) closed.", foo);
 	}
 	return retCode;
@@ -3313,7 +3532,9 @@ int ngamsHttpPostSend(int sockFd, const char* srcFilename, const char* data, con
  ngamsRecvHttpHdr(), ngamsGetHttpHdrEntry(),
  ngamsRecvData()
  */
-int ngamsHttpPostClose(int sockFd, ngamsHTTP_DATA* repDataRef, ngamsDATA_LEN* repDataLen, ngamsHTTP_RESP* httpResp, ngamsHTTP_HDR httpHdr) {
+int ngamsHttpPostClose(int sockFd, ngamsHTTP_DATA* repDataRef,
+		ngamsDATA_LEN* repDataLen, ngamsHTTP_RESP* httpResp,
+		ngamsHTTP_HDR httpHdr) {
 	int retCode;
 
 	/* VWA: This line was commented out for some reason, but no one can
@@ -3326,32 +3547,36 @@ int ngamsHttpPostClose(int sockFd, ngamsHTTP_DATA* repDataRef, ngamsDATA_LEN* re
 	*repDataLen = 0;
 
 	/* Receive the reply for the request */
-	if ((retCode = ngamsRecvHttpHdr(&sockFd, httpHdr, httpResp, repDataRef, repDataLen)) != ngamsSTAT_SUCCESS)
+	if ((retCode = ngamsRecvHttpHdr(&sockFd, httpHdr, httpResp, repDataRef,
+			repDataLen)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 
 	/* If specified, read the data from the socket and store it into
 	 * a buffer of memory allocated.
 	 */
 	if (repDataLen) {
-		if ((retCode = ngamsRecvData(&(repDataRef->pdata), *repDataLen, &sockFd)) != ngamsSTAT_SUCCESS) {
+		if ((retCode
+				= ngamsRecvData(&(repDataRef->pdata), *repDataLen, &sockFd))
+				!= ngamsSTAT_SUCCESS) {
 			if (repDataRef->pdata)
 				free(repDataRef->pdata);
 			memset(repDataRef, 0, sizeof(ngamsHTTP_DATA));
 			goto errExit;
 		}
 	}
-	if (sockFd > 0){
+	if (sockFd > 0) {
 		close(sockFd);
-		if ( unregisterSock(sockFd) ) ngamsLogError("fail to unregister socket(%d) in the list", sockFd); 
+		if (unregisterSock(sockFd))
+			ngamsLogError("fail to unregister socket(%d) in the list", sockFd);
 		ngamsLogDebug("Socket(%d) closed.", sockFd);
 	}
 
 	return ngamsSTAT_SUCCESS;
 
-	errExit: 
-	if (sockFd > 0){
+	errExit: if (sockFd > 0) {
 		close(sockFd);
-		if ( unregisterSock(sockFd) ) ngamsLogError("fail to unregister socket(%d) in the list", sockFd); 
+		if (unregisterSock(sockFd))
+			ngamsLogError("fail to unregister socket(%d) in the list", sockFd);
 		ngamsLogDebug("Socket(%d) closed.", sockFd);
 	}
 	return retCode;
@@ -3396,7 +3621,8 @@ void _ngamsUnlockLogWR() {
 
  Returns:     Void.
  */
-void ngamsLog_v(const char* type, const ngamsLOG_LEVEL level, const char* format, va_list vaParList) {
+void ngamsLog_v(const char* type, const ngamsLOG_LEVEL level,
+		const char* format, va_list vaParList) {
 	int fd = 0;
 	ngamsHUGE_BUF logMsg, tmpLogMsg;
 	ngamsMED_BUF isoTime;
@@ -3404,10 +3630,11 @@ void ngamsLog_v(const char* type, const ngamsLOG_LEVEL level, const char* format
 
 	/* Create log line */
 	ngamsGenIsoTime(3, isoTime);
-	while (strlen(isoTime)!=23)
+	while (strlen(isoTime) != 23)
 		ngamsGenIsoTime(3, isoTime);
-	vsprintf((char*)tmpLogMsg, format, vaParList);
-	sprintf(logMsg, "%s [%s] %s [%lu]\n%s", isoTime, type, tmpLogMsg, pthread_self(), "\0");
+	vsprintf((char*) tmpLogMsg, format, vaParList);
+	sprintf(logMsg, "%s [%s] %s [%lu]\n%s", isoTime, type, tmpLogMsg,
+			pthread_self(), "\0");
 
 	_ngamsLockLogWR();
 	/* Log in log file */
@@ -3419,14 +3646,15 @@ void ngamsLog_v(const char* type, const ngamsLOG_LEVEL level, const char* format
 		}
 		lseek(fd, 0, SEEK_END);
 		write(fd, logMsg, strlen(logMsg));
-		if (fd > 0) close(fd);
+		if (fd > 0)
+			close(fd);
 	}
 
 	/* Log on stdout */
 	if (level <= _verboseLevel)
 		printf(logMsg);
-	errExit: 
-	if (fd > 0) close(fd);
+	errExit: if (fd > 0)
+		close(fd);
 	_ngamsUnlockLogWR();
 }
 
@@ -3447,7 +3675,9 @@ void ngamsLog_v(const char* type, const ngamsLOG_LEVEL level, const char* format
 
  Returns:         ngamsSTAT_SUCCESS or ngamsERR_OPEN_LOG_FILE.
  */
-ngamsSTAT ngamsPrepLog(const ngamsMED_BUF logFile, const ngamsLOG_LEVEL logLevel, const int logRotate, const int logHistory) {
+ngamsSTAT ngamsPrepLog(const ngamsMED_BUF logFile,
+		const ngamsLOG_LEVEL logLevel, const int logRotate,
+		const int logHistory) {
 	int fd;
 
 	strcpy(_logFile, logFile);
@@ -3637,7 +3867,8 @@ void ngamsLogDebug(const char* format, ...) {
 
  Returns:         ngamsSTAT_SUCCESS or ngamsSTAT_FAILURE.
  */
-ngamsSTAT ngamsLogFileRotate(const ngamsLOG_LEVEL tmpLogLevel, const ngamsMED_BUF systemId, ngamsMED_BUF rotatedLogFile) {
+ngamsSTAT ngamsLogFileRotate(const ngamsLOG_LEVEL tmpLogLevel,
+		const ngamsMED_BUF systemId, ngamsMED_BUF rotatedLogFile) {
 	char* chrP;
 	struct timeval timeEpoch;
 	struct tm* timeDay;
@@ -3649,8 +3880,9 @@ ngamsSTAT ngamsLogFileRotate(const ngamsLOG_LEVEL tmpLogLevel, const ngamsMED_BU
 	*rotatedLogFile = '\0';
 
 	gettimeofday(&timeEpoch, NULL);
-	timeDay = localtime((time_t*)&timeEpoch.tv_sec);
-	secsOfDay = ((3600 * timeDay->tm_hour) + (60 * timeDay->tm_min) + timeDay->tm_sec);
+	timeDay = localtime((time_t*) &timeEpoch.tv_sec);
+	secsOfDay = ((3600 * timeDay->tm_hour) + (60 * timeDay->tm_min)
+			+ timeDay->tm_sec);
 
 	/* Get time for last rotatation and determine from this if we should
 	 * rotate now.
@@ -3667,17 +3899,20 @@ ngamsSTAT ngamsLogFileRotate(const ngamsLOG_LEVEL tmpLogLevel, const ngamsMED_BU
 		sscanf((chrP + strlen(ngamsLOG_ROT_PREFIX) + 2), "%ld", &secsLastRot);
 	}
 
-	if (((timeEpoch.tv_sec - secsLastRot) > (24 * 3600)) && (secsOfDay >= _logRotate)) {
+	if (((timeEpoch.tv_sec - secsLastRot) > (24 * 3600)) && (secsOfDay
+			>= _logRotate)) {
 		ngamsLogInfo(tmpLogLevel, "Rotating log file ...");
 		ngamsSplitFilename(_logFile, path, logFilename);
-		sprintf(rotatedLogFile, "%s/%s_%ld_%s", path, ngamsLOG_ROT_PREFIX, (long int)timeEpoch.tv_sec, logFilename);
+		sprintf(rotatedLogFile, "%s/%s_%ld_%s", path, ngamsLOG_ROT_PREFIX,
+				(long int) timeEpoch.tv_sec, logFilename);
 		if (rename(_logFile, rotatedLogFile) == -1) {
 			ngamsLogError("Serious error ocurred rotating log file: %s "
 				"- rotated log file: %s!", _logFile, rotatedLogFile);
 			return ngamsSTAT_FAILURE;
 		}
 		ngamsPrepLog(_logFile, _logLevel, _logRotate, _logHistory);
-		ngamsLogInfo(tmpLogLevel, "%s: %ld - SYSTEM-ID: %s", ngamsLOG_ROT_PREFIX, timeEpoch.tv_sec, systemId);
+		ngamsLogInfo(tmpLogLevel, "%s: %ld - SYSTEM-ID: %s",
+				ngamsLOG_ROT_PREFIX, timeEpoch.tv_sec, systemId);
 	}
 
 	return ngamsSTAT_SUCCESS;
@@ -3717,11 +3952,13 @@ ngamsSTAT ngamsCleanUpRotLogFiles(const ngamsLOG_LEVEL tmpLogLevel) {
 			 *
 			 * Get the seconds since epoch for when the log file was rotated.
 			 */
-			sscanf((dirEnt->d_name + strlen(ngamsLOG_ROT_PREFIX) + 1), "%ld", &secsLastRot);
+			sscanf((dirEnt->d_name + strlen(ngamsLOG_ROT_PREFIX) + 1), "%ld",
+					&secsLastRot);
 			gettimeofday(&timeEpoch, NULL);
-			daysSinceLastRot = ((timeEpoch.tv_sec - secsLastRot)/(3600 * 24));
+			daysSinceLastRot = ((timeEpoch.tv_sec - secsLastRot) / (3600 * 24));
 			if (daysSinceLastRot >= _logHistory) {
-				ngamsLogInfo(tmpLogLevel, "Removing rotated log file: %s", tmpLogFilename);
+				ngamsLogInfo(tmpLogLevel, "Removing rotated log file: %s",
+						tmpLogFilename);
 				remove(tmpLogFilename);
 			}
 		}
@@ -3730,8 +3967,8 @@ ngamsSTAT ngamsCleanUpRotLogFiles(const ngamsLOG_LEVEL tmpLogLevel) {
 
 	return ngamsSTAT_SUCCESS;
 
-	errExit: 
-	if (dirPtr != NULL) closedir(dirPtr);
+	errExit: if (dirPtr != NULL)
+		closedir(dirPtr);
 	return ngamsSTAT_FAILURE;
 }
 
@@ -3785,7 +4022,8 @@ char* ngamsGetAuthorization(void) {
 
  Returns:     Void.
  */
-void ngamsAddParAndVal(ngamsPAR_ARRAY* parArray, const char* par, const char* val) {
+void ngamsAddParAndVal(ngamsPAR_ARRAY* parArray, const char* par,
+		const char* val) {
 	strcpy(parArray->parArray[parArray->idx], par);
 	strcpy(parArray->valArray[parArray->idx], val);
 	parArray->idx++;
@@ -3859,64 +4097,64 @@ ngamsSTAT ngamsCmd2No(const ngamsSMALL_BUF cmdStr, ngamsCMD* cmdCode) {
  */
 ngamsSTAT ngamsCmd2Str(const ngamsCMD cmdCode, ngamsSMALL_BUF cmdStr) {
 	switch (cmdCode) {
-		case ngamsCMD_ARCHIVE:
-			strcpy(cmdStr, ngamsCMD_ARCHIVE_STR);
-			break;
-		case ngamsCMD_QARCHIVE:
-			strcpy(cmdStr, ngamsCMD_QARCHIVE_STR);
-			break;
-		case ngamsCMD_PARCHIVE:
-			strcpy(cmdStr, ngamsCMD_PARCHIVE_STR);
-			break;
-		case ngamsCMD_CHECKFILE:
-			strcpy(cmdStr, ngamsCMD_CHECKFILE_STR);
-			break;
-		case ngamsCMD_CLONE:
-			strcpy(cmdStr, ngamsCMD_CLONE_STR);
-			break;
-		case ngamsCMD_DISCARD:
-			strcpy(cmdStr, ngamsCMD_DISCARD_STR);
-			break;
-		case ngamsCMD_EXIT:
-			strcpy(cmdStr, ngamsCMD_EXIT_STR);
-			break;
-		case ngamsCMD_INIT:
-			strcpy(cmdStr, ngamsCMD_INIT_STR);
-			break;
-		case ngamsCMD_LABEL:
-			strcpy(cmdStr, ngamsCMD_LABEL_STR);
-			break;
-		case ngamsCMD_ONLINE:
-			strcpy(cmdStr, ngamsCMD_ONLINE_STR);
-			break;
-		case ngamsCMD_OFFLINE:
-			strcpy(cmdStr, ngamsCMD_OFFLINE_STR);
-			break;
-		case ngamsCMD_REGISTER:
-			strcpy(cmdStr, ngamsCMD_REGISTER_STR);
-			break;
-		case ngamsCMD_REMDISK:
-			strcpy(cmdStr, ngamsCMD_REMDISK_STR);
-			break;
-		case ngamsCMD_REMFILE:
-			strcpy(cmdStr, ngamsCMD_REMFILE_STR);
-			break;
-		case ngamsCMD_RETRIEVE:
-			strcpy(cmdStr, ngamsCMD_RETRIEVE_STR);
-			break;
-		case ngamsCMD_STATUS:
-			strcpy(cmdStr, ngamsCMD_STATUS_STR);
-			break;
-		case ngamsCMD_SUBSCRIBE:
-			strcpy(cmdStr, ngamsCMD_SUBSCRIBE_STR);
-			break;
-		case ngamsCMD_UNSUBSCRIBE:
-			strcpy(cmdStr, ngamsCMD_UNSUBSCRIBE_STR);
-			break;
-		default:
-			*cmdStr = '\0';
-			return ngamsERR_UNKNOWN_CMD;
-			break;
+	case ngamsCMD_ARCHIVE:
+		strcpy(cmdStr, ngamsCMD_ARCHIVE_STR);
+		break;
+	case ngamsCMD_QARCHIVE:
+		strcpy(cmdStr, ngamsCMD_QARCHIVE_STR);
+		break;
+	case ngamsCMD_PARCHIVE:
+		strcpy(cmdStr, ngamsCMD_PARCHIVE_STR);
+		break;
+	case ngamsCMD_CHECKFILE:
+		strcpy(cmdStr, ngamsCMD_CHECKFILE_STR);
+		break;
+	case ngamsCMD_CLONE:
+		strcpy(cmdStr, ngamsCMD_CLONE_STR);
+		break;
+	case ngamsCMD_DISCARD:
+		strcpy(cmdStr, ngamsCMD_DISCARD_STR);
+		break;
+	case ngamsCMD_EXIT:
+		strcpy(cmdStr, ngamsCMD_EXIT_STR);
+		break;
+	case ngamsCMD_INIT:
+		strcpy(cmdStr, ngamsCMD_INIT_STR);
+		break;
+	case ngamsCMD_LABEL:
+		strcpy(cmdStr, ngamsCMD_LABEL_STR);
+		break;
+	case ngamsCMD_ONLINE:
+		strcpy(cmdStr, ngamsCMD_ONLINE_STR);
+		break;
+	case ngamsCMD_OFFLINE:
+		strcpy(cmdStr, ngamsCMD_OFFLINE_STR);
+		break;
+	case ngamsCMD_REGISTER:
+		strcpy(cmdStr, ngamsCMD_REGISTER_STR);
+		break;
+	case ngamsCMD_REMDISK:
+		strcpy(cmdStr, ngamsCMD_REMDISK_STR);
+		break;
+	case ngamsCMD_REMFILE:
+		strcpy(cmdStr, ngamsCMD_REMFILE_STR);
+		break;
+	case ngamsCMD_RETRIEVE:
+		strcpy(cmdStr, ngamsCMD_RETRIEVE_STR);
+		break;
+	case ngamsCMD_STATUS:
+		strcpy(cmdStr, ngamsCMD_STATUS_STR);
+		break;
+	case ngamsCMD_SUBSCRIBE:
+		strcpy(cmdStr, ngamsCMD_SUBSCRIBE_STR);
+		break;
+	case ngamsCMD_UNSUBSCRIBE:
+		strcpy(cmdStr, ngamsCMD_UNSUBSCRIBE_STR);
+		break;
+	default:
+		*cmdStr = '\0';
+		return ngamsERR_UNKNOWN_CMD;
+		break;
 	} /* end-switch (cmdCode) */
 
 	return ngamsSTAT_SUCCESS;
@@ -3967,19 +4205,21 @@ void ngamsDumpStatStdout(const ngamsSTATUS* status) {
 
  Returns:           Void.
  */
-void ngamsEncodeUrlVal(const char* urlVal, const int skipScheme, char* encodedUrl) {
+void ngamsEncodeUrlVal(const char* urlVal, const int skipScheme,
+		char* encodedUrl) {
 	char* strP;
 	int idx = 0;
 
 	*encodedUrl = '\0';
 	if (skipScheme) {
-		if ((strstr(urlVal, "http:") == urlVal) || (strstr(urlVal, "file:") == urlVal))
+		if ((strstr(urlVal, "http:") == urlVal) || (strstr(urlVal, "file:")
+				== urlVal))
 			idx = 5;
 		else if (strstr(urlVal, "ftp:") == urlVal)
 			idx = 4;
 	}
 
-	strP = (char*)(urlVal + idx);
+	strP = (char*) (urlVal + idx);
 	strncpy(encodedUrl, urlVal, idx);
 	*(encodedUrl + idx) = '\0';
 	while (*strP != '\0') {
@@ -4057,7 +4297,7 @@ void ngamsGenIsoTime(const int prec, ngamsMED_BUF dayTime) {
 	int intVal;
 
 	gettimeofday(&timeEpoch, NULL);
-	timeNow = gmtime((time_t*)&timeEpoch.tv_sec);
+	timeNow = gmtime((time_t*) &timeEpoch.tv_sec);
 	strcpy(tmpBuf, asctime(timeNow));
 
 	/* Now, reformat:
@@ -4188,7 +4428,8 @@ char* ngamsGetParVal(ngamsPAR_ARRAY* parArray, const char* par) {
 
  Returns:      The status code: ngamsSTAT_SUCCESS or ngamsERR_INV_REPLY.
  */
-ngamsSTAT ngamsGetXmlAttr(const char* xmlDoc, const char* pt, const char* attr, const int maxValLen, char* value) {
+ngamsSTAT ngamsGetXmlAttr(const char* xmlDoc, const char* pt, const char* attr,
+		const int maxValLen, char* value) {
 	char* ptP;
 	char* attrP;
 	char* valP;
@@ -4382,7 +4623,8 @@ ngamsSTAT ngamsSaveInFile(const char* filename, const char* buf) {
 
  Returns:     ngamsSTAT_SUCCESS.
  */
-ngamsSTAT ngamsSplitFilename(const char* complPath, ngamsMED_BUF path, ngamsMED_BUF filename) {
+ngamsSTAT ngamsSplitFilename(const char* complPath, ngamsMED_BUF path,
+		ngamsMED_BUF filename) {
 	char* chrP;
 
 	memset(path, 0, sizeof(ngamsMED_BUF));
@@ -4458,67 +4700,67 @@ ngamsSTAT ngamsSplitParVal(const char* parVal, char* par, char* val) {
  */
 ngamsSTAT ngamsStat2Str(const ngamsSTAT statNo, ngamsMED_BUF statStr) {
 	switch (statNo) {
-		case ngamsSTAT_SUCCESS:
-			strcpy(statStr, "Status OK");
-			break;
-		case ngamsERR_UNKNOWN_CMD:
-			strcpy(statStr, "Unknown command issued");
-			break;
-		case ngamsERR_INV_TARG_FILE:
-			strcpy(statStr, "Invalid target filename specified");
-			break;
-		case ngamsERR_UNKNOWN_STAT:
-			strcpy(statStr, "Unknown status code");
-			break;
-		case ngamsERR_INV_PARS:
-			strcpy(statStr, "Illegal parameters given");
-			break;
-		case ngamsERR_HOST:
-			strcpy(statStr, "No such host");
-			break;
-		case ngamsERR_SOCK:
-			strcpy(statStr, "Cannot create socket");
-			break;
-		case ngamsERR_CON:
-			strcpy(statStr, "Cannot connect to host/server");
-			break;
-		case ngamsERR_COM:
-			strcpy(statStr, "Problem communicating with server");
-			break;
-		case ngamsERR_TIMEOUT:
-			strcpy(statStr, "Timeout encountered while communicating with "
-				"server");
-			break;
-		case ngamsERR_WR_HD:
-			strcpy(statStr, "Write error on socket while writing header");
-			break;
-		case ngamsERR_WR_DATA:
-			strcpy(statStr, "Write error on socket while writing data");
-			break;
-		case ngamsERR_INV_REPLY:
-			strcpy(statStr, "Invalid reply from data server");
-			break;
-		case ngamsERR_ALLOC_MEM:
-			strcpy(statStr, "Cannot allocate memory");
-			break;
-		case ngamsERR_RD_DATA:
-			strcpy(statStr, "Read error while reading data");
-			break;
-		case ngamsERR_FILE:
-			strcpy(statStr, "Invalid filename specified");
-			break;
-		case ngamsERR_OPEN_LOG_FILE:
-			strcpy(statStr, "Could not open specified log file");
-			break;
-		case ngamsSRV_OK:
-			strcpy(statStr, "Request sucessfully handled by server");
-			break;
-		case ngamsSRV_INV_QUERY:
-			strcpy(statStr, "Invalid query");
-			break;
-		default:
-			return ngamsERR_UNKNOWN_STAT;
-			break;
+	case ngamsSTAT_SUCCESS:
+		strcpy(statStr, "Status OK");
+		break;
+	case ngamsERR_UNKNOWN_CMD:
+		strcpy(statStr, "Unknown command issued");
+		break;
+	case ngamsERR_INV_TARG_FILE:
+		strcpy(statStr, "Invalid target filename specified");
+		break;
+	case ngamsERR_UNKNOWN_STAT:
+		strcpy(statStr, "Unknown status code");
+		break;
+	case ngamsERR_INV_PARS:
+		strcpy(statStr, "Illegal parameters given");
+		break;
+	case ngamsERR_HOST:
+		strcpy(statStr, "No such host");
+		break;
+	case ngamsERR_SOCK:
+		strcpy(statStr, "Cannot create socket");
+		break;
+	case ngamsERR_CON:
+		strcpy(statStr, "Cannot connect to host/server");
+		break;
+	case ngamsERR_COM:
+		strcpy(statStr, "Problem communicating with server");
+		break;
+	case ngamsERR_TIMEOUT:
+		strcpy(statStr, "Timeout encountered while communicating with "
+			"server");
+		break;
+	case ngamsERR_WR_HD:
+		strcpy(statStr, "Write error on socket while writing header");
+		break;
+	case ngamsERR_WR_DATA:
+		strcpy(statStr, "Write error on socket while writing data");
+		break;
+	case ngamsERR_INV_REPLY:
+		strcpy(statStr, "Invalid reply from data server");
+		break;
+	case ngamsERR_ALLOC_MEM:
+		strcpy(statStr, "Cannot allocate memory");
+		break;
+	case ngamsERR_RD_DATA:
+		strcpy(statStr, "Read error while reading data");
+		break;
+	case ngamsERR_FILE:
+		strcpy(statStr, "Invalid filename specified");
+		break;
+	case ngamsERR_OPEN_LOG_FILE:
+		strcpy(statStr, "Could not open specified log file");
+		break;
+	case ngamsSRV_OK:
+		strcpy(statStr, "Request sucessfully handled by server");
+		break;
+	case ngamsSRV_INV_QUERY:
+		strcpy(statStr, "Invalid query");
+		break;
+	default:
+		return ngamsERR_UNKNOWN_STAT;
+		break;
 	} /* end-switch (statNo) */
 	return ngamsSTAT_SUCCESS;
 }
@@ -4557,7 +4799,7 @@ char* ngamsStrRStr(const char* haystack, const char* needle)
 		if (strstr((haystack + --i), needle) != NULL)
 			break;
 	if (i >= 0)
-		return (char*)(haystack + i);
+		return (char*) (haystack + i);
 	else
 		return NULL;
 }
@@ -4574,7 +4816,7 @@ char* ngamsStrRStr(const char* haystack, const char* needle)
 void ngamsToUpper(char* str) {
 	int i;
 	for (i = 0; i < strlen(str); i++)
-		*(str + i) = (char)toupper((int)*(str + i));
+		*(str + i) = (char) toupper((int) *(str + i));
 }
 
 /**
@@ -4602,8 +4844,8 @@ void ngamsTrimString(char* str, const char* trimChars) {
 
 	/* Trim from right */
 	strPtr = (tmpStr + strlen(tmpStr) - 1);
-	if (strPtr<tmpStr)
-		strPtr=tmpStr; //for the string that has no character, but only null
+	if (strPtr < tmpStr)
+		strPtr = tmpStr; //for the string that has no character, but only null
 	while ((strPtr != tmpStr) && (strchr(trimChars, *strPtr) != NULL))
 		*strPtr-- = '\0';
 	strcpy(str, tmpStr);
@@ -4634,7 +4876,8 @@ void ngamsTrimString(char* str, const char* trimChars) {
 
  Returns:      Trimmed string.
  */
-int ngamsSplitString(char* str, const char* splitPat, const int maxSubStr, ngamsMED_BUF subStr[], int* noOfSubStr) {
+int ngamsSplitString(char* str, const char* splitPat, const int maxSubStr,
+		ngamsMED_BUF subStr[], int* noOfSubStr) {
 	char* tokenP;
 	char* strP;
 	char* prevPos;
