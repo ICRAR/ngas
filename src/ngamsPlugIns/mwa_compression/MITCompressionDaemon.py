@@ -24,6 +24,7 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      2014-09-01  Created
+# cwu      2014-09-19  Added parallel processing
 #
 
 import datetime, logging, os, commands, threading, sys
@@ -265,33 +266,15 @@ def compressObs(fileList, sqlite_file):
     
     logger.info("Processing observation completed %s" % obsId)
 
-def doIt(db_dir, pickupStatus = pickupStatus_NEW_ONLY):
+def _executeProcess(procId, allfiles, sqlite_file):
     """
-    loop thru the database, find the ones that have not yet been done
+    A thread representing one compression "process"
+    
+    procId:    process Id (integer)
+    allfiles:    a list of files to be compressed by this process (list)
+    sqlite_file:    the name of the sqlite db file (string)
     """
-    sqlite_file = '%s/compress.sqlite' % db_dir
-    if (not os.path.exists(sqlite_file)):
-        logger.error("Cannot locate local sqlite %s" % sqlite_file)
-        raise Exception('Cannot find compress.sqlite in %s' % db_dir)
-    
-    
-    dbconn = dbdrv.connect(sqlite_file)
-    query = "select file_id, disk_id, file_version, obs_id, host_id, file_path from mitfile where status "
-    if (pickupStatus == pickupStatus_FAIL_NEW):
-        query += " <> 0 "
-    elif (pickupStatus == pickupStatus_NEW_ONLY):
-        query += " = -1 "
-    else: # failed only
-        query += " > 0 "
-    query += "order by obs_id, host_id"
-    
-    logger.info(query)
-    
-    cur = dbconn.cursor()
-    cur.execute(query)
-    allfiles = cur.fetchall() # this is ok for now, but not after we have millions of files
-    cur.close()
-    
+    logger.info("Process %d is allocated %d files" % (procId, len(allfiles)))
     curList = []
     curKey = ''
     for fi in allfiles:
@@ -314,9 +297,75 @@ def doIt(db_dir, pickupStatus = pickupStatus_NEW_ONLY):
     
     if (curList != None and len(curList) > 0):
         compressObs(curList, sqlite_file)
+
+def split_list(l, n):
+    """ Yield successive n-sized chunks from l.
+    http://stackoverflow.com/questions/312443/\
+    how-do-you-split-a-list-into-evenly-sized-chunks-in-python
+    """
+    for i in xrange(0, len(l), n):
+        yield l[i:i+n]
+
+def doIt(db_dir, pickupStatus = pickupStatus_NEW_ONLY, num_processes = 4):
+    """
+    loop thru the database, find the ones that have not yet been done
+    """
+    sqlite_file = '%s/compress.sqlite' % db_dir
+    if (not os.path.exists(sqlite_file)):
+        logger.error("Cannot locate local sqlite %s" % sqlite_file)
+        raise Exception('Cannot find compress.sqlite in %s' % db_dir)
     
+    
+    dbconn = dbdrv.connect(sqlite_file)
+    condi = ""
+    query = "select count(*) from mitfile where status"
+    if (pickupStatus == pickupStatus_FAIL_NEW):
+        condi = " <> 0 "
+    elif (pickupStatus == pickupStatus_NEW_ONLY):
+        condi = " = -1 "
+    else: # failed only
+        condi = " > 0 "
+    query += condi
+    logger.info(query)
+    cur = dbconn.cursor()
+    cur.execute(query)
+    resu = cur.fetchall()
+    cur.close()
+    tt = int(resu[0][0])
+    chunk_size = tt / num_processes
+    
+    logger.info("chunk size = %d" % chunk_size)
+    
+    query = "select file_id, disk_id, file_version, obs_id, host_id, file_path from mitfile where status "
+    query += condi
+    query += "order by obs_id, host_id"
+    
+    logger.info(query)
+    
+    cur = dbconn.cursor()
+    cur.execute(query)
+    allfiles = cur.fetchall() # this is ok for now, but not after we have millions of files
+    cur.close()
     if (dbconn != None):
         dbconn.close()
+    
+    fchunks = list(split_list(allfiles, chunk_size))
+    thdList = []
+    for i in range(len(fchunks)):
+        thdname = 'CompressProc_' + str(i)
+        logger.info("Starting a new 'process': %s" % thdname)
+        args = (i, fchunks[i], sqlite_file)
+        thd = threading.Thread(None, _executeProcess, thdname, args)
+        thdList.append(thd)
+        thd.setDaemon(0)
+        thd.start()
+     
+    for thd in thdList:
+        thd.join()
+    
+    logger.info("All done in this session")
+    
+
 
 def pingHost(url, timeout = 5):
     """
@@ -331,6 +380,12 @@ def pingHost(url, timeout = 5):
         return execCmd(cmd)[0]
     except Exception, err:
         return 1 
+
+def usage():
+    print 'python MITCompressionDaemon <pickupStatus> [num_parallel_processes]'
+    print 'pickupStatus_FAIL_ONLY = 1'
+    print 'pickupStatus_NEW_ONLY = 2'
+    print 'pickupStatus_FAIL_NEW = 3'
 
 if __name__ == '__main__':
     
@@ -349,5 +404,12 @@ if __name__ == '__main__':
         if (ret != 0):
             logger.error("NGAS is not up running: %s, quit now" % ho)
             sys.exit(1)
+    logger.info("All NGAS servers are running fine")
     
-    doIt(MIT_processing_root)
+    argc = len(sys.argv)
+    if (argc <= 1 or argc > 3):
+        usage()
+    elif (argc == 2):
+        doIt(MIT_processing_root, int(sys.argv[1]))
+    elif (argc == 3):
+        doIt(MIT_processing_root, int(sys.argv[1]), int(sys.argv[2]))
