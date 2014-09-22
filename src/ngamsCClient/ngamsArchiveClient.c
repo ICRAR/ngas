@@ -83,6 +83,10 @@
 #include "ngamsArchiveClient.h"
 
 
+#define GLOBALS 1
+#include "ngamsCClientGlobals.h"
+
+
 /**************************************************************************
  * Various utility functions.
  */

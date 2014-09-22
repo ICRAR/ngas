@@ -74,7 +74,7 @@ AWS_KEY = os.path.expanduser('~/.ssh/icrar_ngas.pem')
 KEY_NAME = 'icrar_ngas'
 ELASTIC_IP = 'False'
 SECURITY_GROUPS = ['NGAS'] # Security group allows SSH
-NGAS_USERS = ['ngas','ngasmgr']
+NGAS_USERS = ['ngas']
 NGAS_PYTHON_VERSION = '2.7'
 NGAS_PYTHON_URL = 'https://www.python.org/ftp/python/2.7.8/Python-2.7.8.tgz'
 NGAS_DIR = 'ngas_rt' #NGAS runtime directory
@@ -167,7 +167,12 @@ PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 
 def set_env():
     # set environment to default for EC2, if not specified on command line.
-
+#     puts("Environment before set_env:")
+#     for k in env:
+#         puts("{0}:{1}".format(k,env[k]))
+#     puts("<<<<<<<<")
+        
+    env.connection_attempts = 5
     if not env.has_key('GITUSER') or not env.GITUSER:
         env.GITUSER = GITUSER
     if not env.has_key('GITREPO') or not env.GITREPO:
@@ -185,13 +190,15 @@ def set_env():
     if type(env.NGAS_USERS) == type(''): # if its just a string
         print "NGAS_USERS preset to {0}".format(env.NGAS_USERS)
         env.NGAS_USERS = [env.NGAS_USERS] # change the type
-    if not env.has_key('HOME') or env.HOME[0] == '~' or not env.HOME:
-        env.HOME = run("echo ~{0}".format(env.NGAS_USERS[0]))
     if not env.has_key('src_dir') or not env.src_dir:
         env.src_dir = thisDir + '/../'
     require('hosts', provided_by=[test_env])
-    if not env.has_key('HOME') or env.HOME[0] == '~' or not env.HOME:
-        env.HOME = run("echo ~{0}".format(NGAS_USERS[0]))
+    if not env.command == 'archiveSource':
+        if not env.has_key('HOME') or env.HOME[0] == '~' or not env.HOME:
+            env.HOME = run("echo ~{0}".format(NGAS_USERS[0]))
+        linux_flavor = get_linux_flavor()
+    else:
+        env.HOME = os.environ['HOME']
     if not env.has_key('PREFIX') or env.PREFIX[0] == '~' or not env.PREFIX:
         env.PREFIX = env.HOME
     if not env.has_key('NGAS_DIR_ABS') or env.NGAS_DIR_ABS[0] == '~' \
@@ -209,7 +216,6 @@ def set_env():
     env.AMI_ID = AMI_IDs[env.ami_name]
     if env.ami_name == 'SLES':
         env.user = 'root'
-    get_linux_flavor()
     puts("""Environment:
             USER:              {0};
             Key file:          {1};
@@ -239,7 +245,7 @@ def whatsmyip():
     """
     whatismyip = 'http://bot.whatismyipaddress.com/'
     myip = urllib.urlopen(whatismyip).readlines()[0]
-    print myip
+
     return myip
 
 
@@ -279,19 +285,22 @@ def create_instance(names, use_elastic_ip, public_ips):
         time.sleep(5)
 
     # Are we running yet?
+    iid = []
     for i in range(number_instances):
-        while not instances[i].update() == 'running':
-            fastprint('.')
-            time.sleep(5)
+        iid.append(instances[i].id)
 
-    # Sleep a bit more Amazon recognizes the new instance
-    for i in range(4):
+    stat = conn.get_all_instance_status(iid)
+    running = [x.state_name=='running' for x in stat]
+    puts('\nWaiting for instances to be fully available:\n')
+    while sum(running) != number_instances:
         fastprint('.')
         time.sleep(5)
-    puts('.')
+        stat = conn.get_all_instance_status(iid)
+        running = [x.state_name=='running' for x in stat]
+    puts('.') #enforce the line-end
 
     # Local user and host
-    userAThost = os.environ('USER') + '@' + whatsmyip()
+    userAThost = os.environ['USER'] + '@' + whatsmyip()
 
     # Tag the instance
     for i in range(number_instances):
@@ -306,9 +315,6 @@ def create_instance(names, use_elastic_ip, public_ips):
             if not conn.associate_address(instance_id=instances[i].id, public_ip=public_ips[i]):
                 abort('Could not associate the IP {0} to the instance {1}'.format(public_ips[i], instances[i].id))
 
-    # Give AWS time to switch everything over
-    time.sleep(10)
-
     # Load the new instance data as the dns_name may have changed
     host_names = []
     for i in range(number_instances):
@@ -316,7 +322,6 @@ def create_instance(names, use_elastic_ip, public_ips):
         puts('Current DNS name is {0} after associating the Elastic IP'.format(instances[i].dns_name))
         puts('Instance ID is {0}'.format(instances[i].id))
         host_names.append(str(instances[i].dns_name))
-
 
     # The instance is started, but not useable (yet)
     puts('Started the instance(s) now waiting for the SSH daemon to start.')
@@ -518,7 +523,7 @@ def git_clone():
 
 
 @task
-def git_clone_tar():
+def git_clone_tar(unpack=True):
     """
     Clones the repository into /tmp and packs it into a tar file
 
@@ -549,13 +554,14 @@ def git_clone_tar():
     put('{0}/{1}'.format(sdir,tarfile), '/tmp/{0}'.format(tarfile, env.NGAS_DIR_ABS))
     local('rm -rf /tmp/{0}'.format(env.NGAS_DIR))  # cleanup local git clone dir
 
-    # unpack the tar file remotely
-    with cd(env.NGAS_DIR_ABS+'/..'):
-        run('tar -xjf /tmp/{0}'.format(tarfile))
+    if unpack:
+        # unpack the tar file remotely
+        with cd(env.NGAS_DIR_ABS+'/..'):
+            run('tar -xjf /tmp/{0}'.format(tarfile))
 
 
 @task
-def ngas_minimal_tar():
+def ngas_minimal_tar(transfer=True):
     """
     This function packs the minimal required parts of the NGAS source tree
     into a tar file and copies it to the remote site.
@@ -580,8 +586,9 @@ def ngas_minimal_tar():
                 ]
     exclude = ' --exclude ' + ' --exclude '.join(excludes)
     local('cd {0}/.. && tar -czf /tmp/ngas_src.tar.gz {1} ngas'.format(env.src_dir, exclude))
-    put('/tmp/ngas_src.tar.gz','/tmp/ngas.tar.gz')
-    run('cd {0} && tar --strip-components 1 -xzf /tmp/ngas.tar.gz'.format(env.NGAS_DIR_ABS))
+    if transfer:
+        put('/tmp/ngas_src.tar.gz','/tmp/ngas.tar.gz')
+        run('cd {0} && tar --strip-components 1 -xzf /tmp/ngas.tar.gz'.format(env.NGAS_DIR_ABS))
 
 def processCentOSErrMsg(errmsg):
     if (errmsg == None or len(errmsg) == 0):
@@ -753,7 +760,8 @@ def user_setup():
         sudo('chown -R {0}:{1} /home/{0}/.ssh'.format(user,group))
         home = run('echo $HOME')
         put('{0}machine-setup/authorized_keys'.format(env.src_dir),
-            '/home/{0}/.ssh/authorized_keys'.format(user))
+                '/tmp/authorized_keys')
+        sudo('mv /tmp/authorized_keys /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{1} /home/{0}/.ssh/authorized_keys'.format(user, group))
         
@@ -1065,7 +1073,8 @@ def operations_deploy(system_install=True, user_install=True, typ='archive'):
     NOTE: This task is now merely an alias for install.
     """
 
-    install(system_install=system_install, user_install=user_install, typ=typ)
+    install(system_install=system_install, user_install=user_install, 
+            init_install=True, typ=typ)
     
     print "\n\n******** OPERATIONS_DEPLOY COMPLETED!********\n\n"
     print "\n\nThe server could be started now using the sqlite backend."
@@ -1085,16 +1094,43 @@ def test_deploy():
     test_env()
     # set environment to default for EC2, if not specified otherwise.
     set_env()
-    install()
+    install(system_install=True, user_install=True, init_install=True)
     with settings(user=env.NGAS_USERS[0]):
         run('ngamsDaemon start')
     print "\n\n******** SERVER STARTED!********\n\n"
 
-
+@task
+def archiveSource():
+    """
+    Archive the NGAS source package on a NGAS server
+    
+    Typical usage:
+    
+    fab -f machine-setup/deploy.py archiveSource -H ngas.ddns.net --set src_dir=.
+    
+    NOTE: The ngamsPClient module must be on the python path for fab.
+    """
+    import ngamsPClient
+    if not env.has_key('src_dir') or not env.src_dir:
+        print 'Please specify the local source directory of the NGAS software'
+        print 'on the command line using --set src_dir=your/local/directory'
+        abort('\n\n******** ARCHIVE ABORTED!********\n\n')
+    else: # check whether the source directory setting is likely to be correct
+        res = local('grep "The Next Generation Archive System" {0}/README'.format(env.src_dir), \
+                    capture=True)
+        if not res:
+            abort('src_dir does not point to a valid NGAS source directory!!')
+    #set_env()
+    client=ngamsPClient.ngamsPClient(host=env.host_string, port='7777')
+    ngas_minimal_tar(transfer=False)
+    stat = client.archive(fileUri='/tmp/ngas_rt.tar.bz2',mimeType='application/octet-stream')
+    if stat.getStatus() != 'SUCCESS':
+        puts(">>>> Problem archiving source package!")
+    puts(stat.getMessage())
 
 @task
 def install(system_install=True, user_install=True, 
-            init_install=False, typ='archive'):
+            init_install=True, typ='archive'):
     """
     Install NGAS users and NGAS software on existing machine.
     Note: Requires root permissions!
@@ -1129,8 +1165,10 @@ def uninstall(clean_system=False):
           system packages.
     """
     set_env()
-    run('rm -rf {0}'.format(env.PREFIX), warn_only=True)
-    run('rm -rf {0}'.format(env.NGAS_DIR_ABS), warn_only=True)
+    with settings(user = env.NGAS_USERS[0]):
+        if env.PREFIX != env.HOME: # avoid removing the home directory
+            run('rm -rf {0}'.format(env.PREFIX), warn_only=True)
+        run('rm -rf {0}'.format(env.NGAS_DIR_ABS), warn_only=True)
     
     if clean_system: # don't delete the users and system settings by default.
         for u in env.NGAS_USERS:

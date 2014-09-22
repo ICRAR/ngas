@@ -166,6 +166,9 @@
                          
 -nexturl <URL>:          Used with the PARCHIVE command to specify the next
                          destination where the file will be archived
+                         
+-sndbuf <BUF_SIZE>:	  TCP send/receive buffer size, e.g. 2097152
+                         set to the BDP value for high latency links
 
 
 The parameter combinations valid for each command are:
