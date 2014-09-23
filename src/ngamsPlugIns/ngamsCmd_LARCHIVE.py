@@ -77,6 +77,7 @@ def archiveFromFile(srvObj,
     T = TRACE()
 
     info(2,"Archiving file: " + filename + " ...")
+    info(3, "Mimetype used is %s" % mimeType)
     if (reqPropsObj):
         info(3,"Request Properties Object given - using this")
         reqPropsObjLoc = reqPropsObj
@@ -142,7 +143,7 @@ def archiveFromFile(srvObj,
             notice("Tried to archive local file: " + filename +\
                    ". Attempt failed with following error: " + str(e) +\
                    ". Keeping original file.")
-            return NGAMS_FAILURE
+            return [NGAMS_FAILURE, str(e), NGAMS_FAILURE]
         else:
             error("Tried to archive local file: " + filename +\
                   ". Attempt failed with following error: " + str(e) + ".")
@@ -155,7 +156,7 @@ def archiveFromFile(srvObj,
             if (os.path.exists(pickleObjFile)):
                 info(2,"Removing Back-Log Buffer Pickle File: "+pickleObjFile)
                 rmFile(pickleObjFile)
-            return [NGAMS_FAILURE,NGAMS_FAILURE,NGAMS_FAILURE] 
+            return [NGAMS_FAILURE, str(e), NGAMS_FAILURE] 
 
     # If the file was handled successfully, we remove it from the
     # Back-Log Buffer Directory unless the local file was a log-file
@@ -215,6 +216,13 @@ def handleCmd(srvObj,
 
     # Get mime-type (try to guess if not provided as an HTTP parameter).
     info(3, "Get mime-type (try to guess if not provided as an HTTP parameter).")
+    if (not parsDic.has_key('mimeType') or parsDic['mimeType'] == ""):
+        mimeType = ""
+        reqPropsObj.setMimeType("")
+    else:
+        reqPropsObj.setMimeType(parsDic['mimeType'])
+        mimeType = reqPropsObj.getMimeType()
+        
     if (reqPropsObj.getMimeType() == ""):
         mimeType = ngamsHighLevelLib.\
                    determineMimeType(srvObj.getCfg(), reqPropsObj.getFileUri())
@@ -225,7 +233,11 @@ def handleCmd(srvObj,
     ioTime = 0
     reqPropsObj.incIoTime(ioTime)
     
-    (resDapi, targDiskInfo, iorate) = archiveFromFile(srvObj, fileUri, 0, None, reqPropsObj)
+    (resDapi, targDiskInfo, iorate) = archiveFromFile(srvObj, fileUri, 0, mimeType, reqPropsObj)
+    if (resDapi == NGAMS_FAILURE):
+        errMsg = targDiskInfo
+        srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg + '\n')
+        return
 
     # Get crc info
 #     info(3, "Get checksum info")
