@@ -1079,6 +1079,8 @@ int main (int argc, char *argv[])
     ngamsMED_BUF     tmpPar, tmpVal, statStr;
     ngamsSTAT        stat;
     ngamsCMD         cmdCode;
+    setsndbuf = 0;
+    setfver = 0;
 
     ngamsInitApi();
 

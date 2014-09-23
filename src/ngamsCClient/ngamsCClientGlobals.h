@@ -5,3 +5,4 @@
 #endif
 
 EXTERN int setsndbuf;
+EXTERN int setfver;
