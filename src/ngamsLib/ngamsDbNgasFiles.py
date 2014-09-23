@@ -292,6 +292,29 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 return int(res[0][0][0])
         else:
             return -1
+    
+    def checkFileVersion(self, fileId, fileVersion):
+        """
+        queries if the file given the fileId has the version given by fileVersion
+        
+        fileId:    File ID (string).
+        fileVersion:    File Version (integer)
+
+        Returns:   True or False
+        
+        """
+        T = TRACE()
+
+        sqlQuery = "SELECT count(file_id) FROM ngas_files WHERE "+\
+                   "file_id='" + fileId + "' and file_version = %d" % fileVersion
+        res = self.query(sqlQuery, ignoreEmptyRes=0)
+        if (len(res[0])):
+            if (res[0][0][0] == None):
+                return False
+            else:
+                return (int(res[0][0][0]) > 0)
+        else:
+            return False
 
     def getFileStatus(self,
                       fileId,
