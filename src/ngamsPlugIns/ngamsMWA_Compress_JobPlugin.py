@@ -45,21 +45,30 @@ import ngamsPlugInApi
 #     url=ngasjob://ngamsMWA_Compress_JobPlugin%3Fredo_on_fail%3D0%26plugin_params%3Dscale_factor%3D4%2Cthreshold%3D1E-5%2Cbins%3D30%2Cremove_uc%3D1
 
 
-debug = 1
+debug = 0
 work_dir = '/tmp'
-uvcompress = '/home/ngas/processing/compression/uvcompress'
-archive_client = '/home/ngas/ngas_rt/bin/ngamsCClient'
-archive_host = getHostId().split(':')[0] # archive host must be on the same machine as the  data mover or job runner
+#uvcompress = '/home/ngas/processing/compression/uvcompress'
+uvcompress = '/Users/chen/processing/compression/uvcompress'
 
-def execCmd(cmd, failonerror = True, okErr = []):
-    re = commands.getstatusoutput(cmd)
-    if (re[0] != 0 and not (re[0] in okErr)):
-        errMsg = 'Fail to execute command: "%s". Exception: %s' % (cmd, re[1])
-        if (failonerror):
-            raise Exception(errMsg)
+#archive_client = '/home/ngas/ngas_rt/bin/ngamsCClient'
+archive_client = '/Users/chen/proj/ngas_buildout/bin/ngamsCClient'
+
+#archive_host = getHostId().split(':')[0] # archive host must be on the same machine as the  data mover or job runner
+archive_host = getIpAddress()
+
+def execCmd(cmd, timeout):
+    info(3, 'Executing command: %s' % cmd)
+    try:
+        ret = ngamsPlugInApi.execCmd(cmd, timeout)
+    except Exception, ex:
+        if (str(ex).find('timed out') != -1):
+            return (-1, 'Timed out (%d seconds): %s' % (timeout, cmd))
         else:
-            print errMsg
-    return re
+            return (-1, str(ex))
+    if (ret):
+        return ret
+    else:
+        return (-1, 'Unknown error')
 
 def ngamsMWA_Compress_JobPlugin(srvObj,
                           plugInPars,
@@ -86,6 +95,7 @@ def ngamsMWA_Compress_JobPlugin(srvObj,
     th = 1E-5 # threshold
     bins = 0
     remove_uc = 0
+    timeout = 600 # each command should not run more than 10 min, otherwise something is wrong
     if ((plugInPars != "") and (plugInPars != None)):
         pars = plugInPars
     
@@ -102,6 +112,11 @@ def ngamsMWA_Compress_JobPlugin(srvObj,
         
     if (parDic.has_key('remove_uc')):
         remove_uc = int(parDic['remove_uc'])
+        
+    if (parDic.has_key('timeout')):
+        timeout = int(parDic['timeout'])
+        if (timeout <= 0):
+            timeout = 600
     
     if (bins):
         binstr = '-h %d' % bins
@@ -125,7 +140,8 @@ def ngamsMWA_Compress_JobPlugin(srvObj,
         info(3, '*******************************************')
         return (0, 'Compressed OK')
     else:
-        re = commands.getstatusoutput(cmd)
+        #re = commands.getstatusoutput(cmd)
+        re = execCmd(cmd, timeout)
         if (0 == re[0]):
             if (not bins):
                 retstr = re[1].split('\n')[-1] # just get the elapsed time
@@ -134,7 +150,8 @@ def ngamsMWA_Compress_JobPlugin(srvObj,
             
             # archive it back
             # TODO - enable time out!!
-            re = commands.getstatusoutput(cmd1)
+            # re = commands.getstatusoutput(cmd1)
+            re = execCmd(cmd1, timeout)
             if (0 == re[0]):
                 info(3, 'Successfully re-archived the compressed file %s' % newfn)
             else:
@@ -143,14 +160,16 @@ def ngamsMWA_Compress_JobPlugin(srvObj,
             
             if (remove_uc):
                 # remove the uncompressed file if necessary
-                re = commands.getstatusoutput(cmd2)
+                # re = commands.getstatusoutput(cmd2)
+                re = execCmd(cmd2, timeout)
                 if (0 == re[0]):
                     info(3, 'Successfully DISCARDED the uncompressed file %s' % filename)
                 else:
                     warning('Fail to DISCARD the uncompressed file %s' % filename)
             
             # remove the temp file
-            re = commands.getstatusoutput(cmd3)
+            # re = commands.getstatusoutput(cmd3)
+            re = execCmd(cmd3, timeout)
             if (0 != re[0]):
                 warning('Fail to remove the temp compressed file %s' % newfn)
             
