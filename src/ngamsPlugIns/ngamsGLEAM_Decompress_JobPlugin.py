@@ -54,7 +54,8 @@ work_dir = '/mnt/gleam2/tmp'
 archive_client = '/home/ngas/ngas_rt/bin/ngamsCClient'
 #archive_client = '/Users/chen/proj/ngas_buildout/bin/ngamsCClient'
 
-archive_host = getHostId().split(':')[0] # archive host must be on the same machine as the  data mover or job runner
+#archive_host = getHostId().split(':')[0] # archive host must be on the same machine as the  data mover or job runner
+archive_host = getIpAddress()
 
 def execCmd(cmd, timeout):
     info(3, 'Executing command: %s' % cmd)
@@ -135,7 +136,7 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
         for imgfile in imglist:
             url = 'http://%s:7777/LARCHIVE?fileUri=%s\&mimeType=application/octet-stream\&file_version=%d' % (archive_host, imgfile, fileVersion)
             cmd1 = 'curl --connect-timeout %d %s' % (timeout, url)
-            info(3, 'Local archiving %s' % imgfile)
+            info(3, 'Local archiving %s' % cmd1)
             re = commands.getstatusoutput(cmd1)
             if (0 == re[0] and (re[1].count('Successfully handled Archive Pull Request') > 0)):
                 info(3, 'Successfully re-archived the untarred FITS file %s' % imgfile)
@@ -164,7 +165,7 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
         if (errNo == 0):
             return (0, 'Done')
         else:
-            return (errNo, lasterrMsg)
+            return (errNo, lasterrMsg.replace("'", ""))
     else:
         error('Fail to untar file %s: %s' % (filename, re[1]))
         return (re[0], re[1])
