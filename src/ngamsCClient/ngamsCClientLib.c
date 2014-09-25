@@ -852,6 +852,11 @@ ngamsSTAT ngamsQArchive(const char* host, const int port,
 	else
 		sprintf(tmpBuf, "-1");
 	ngamsAddParAndVal(&parArray, "time_out", tmpBuf);
+
+	if (setfver > 0) {
+		sprintf(tmpBuf, "%d", setfver);
+		ngamsAddParAndVal(&parArray, "file_version", tmpBuf);
+	}
 	stat = ngamsGenSendData(host, port, ngamsCMD_QARCHIVE, timeoutSecs,
 			fileUri, mimeType, &parArray, status);
 	ngamsLogDebug("Leaving ngamsQArchive()");

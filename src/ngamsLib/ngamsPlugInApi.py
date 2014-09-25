@@ -396,14 +396,29 @@ def genFileInfo(dbConObj,
     """
     T = TRACE()
     
-    if (reqPropsObj.hasHttpPar("no_versioning")):
+    if (reqPropsObj.hasHttpPar("file_version")):
+        paraFV = int(reqPropsObj.getHttpPar("file_version"))
+    else:
+        paraFV = -1
+    
+    if (reqPropsObj.hasHttpPar("no_versioning")): 
         noVersioning = int(reqPropsObj.getHttpPar("no_versioning"))
     else:
         noVersioning = 0
-    if (not noVersioning):
-        fileVersion = ngamsHighLevelLib.getNewFileVersion(dbConObj, fileId)
-    else:
-        fileVersion = dbConObj.getLatestFileVersion(fileId)
+        
+    if (not noVersioning): # no_versioning = 0 means do not overwrite
+        if (paraFV > 0):
+            # check if this version already exists 
+            if (dbConObj.checkFileVersion(fileId, paraFV)):
+                raise Exception("Version %d exists for file %s. Please use no_versioning = 1 for overwrite." % (paraFV, fileId))
+            fileVersion = paraFV
+        else:
+            fileVersion = ngamsHighLevelLib.getNewFileVersion(dbConObj, fileId)
+    else: #no_versioning = 1 means overwrite either the latest or the specified version
+        if (paraFV > 0):
+            fileVersion = paraFV # could potentially replace this version (if it is there)
+        else:
+            fileVersion = dbConObj.getLatestFileVersion(fileId)
     if (fileVersion < 1): fileVersion = 1
     relPath = ngamsCfgObj.getPathPrefix()
     for subDir in subDirs:

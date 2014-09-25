@@ -86,6 +86,8 @@ int main (int argc, char *argv[])
 {
     char             buf[131072];
     int              crc = 0, fd, len;
+    setsndbuf = 0;
+    setfver = 0;
 
     if (argc != 2)
 	{

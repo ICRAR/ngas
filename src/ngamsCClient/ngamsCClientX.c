@@ -109,6 +109,8 @@ int main (int argc, char *argv[])
     ngamsSMALL_BUF   command, tmpDynPar;
     ngamsSTAT        stat = 0;
     ngamsSTATUS      status;
+    setsndbuf = 0;
+    setfver = 0;
 
 
     ngamsInitApi();

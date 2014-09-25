@@ -101,6 +101,7 @@ int main (int argc, char*  argv[])
     ngamsSTAT        stat = 0;
     ngamsSTATUS      status;
     setsndbuf = 0;
+    setfver = 0;
 
 
     ngamsInitApi();
@@ -176,6 +177,7 @@ int main (int argc, char*  argv[])
 	    if (*argv[i] == '-') goto correctUsage;
 	    fileVersion = atoi(argv[i]);
 	    ngamsAddParAndVal(&parArray, "file_version", argv[i]);
+	    setfver = fileVersion;
 	    }
 	else if (strcmp(tmpPar, "-NEXTURL") == 0)
 		{

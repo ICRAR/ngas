@@ -26,32 +26,33 @@
 #******************************************************************************
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
-# cwu      29/05/2014  Created
+# cwu      23/Sep/2014  Created
 
 """
-Compression job plugin that will be called
+Decompression job plugin that will be called
 by the SubscriptionThread._deliveryThread
 """
 
 import commands, os
+from glob import glob
 
 from ngams import *
 import ngamsPlugInApi
 
 # decoded job uri: 
-#     ngasjob://ngamsMWA_Compress_JobPlugin?redo_on_fail=0&plugin_params=scale_factor=4,threshold=1E-5,bins=30,remove_uc=1
+#     ngasjob://ngamsGLEAM_Decompress_JobPlugin?redo_on_fail=0
 
 # originally encoded joburi (during subscribe command)
-#     url=ngasjob://ngamsMWA_Compress_JobPlugin%3Fredo_on_fail%3D0%26plugin_params%3Dscale_factor%3D4%2Cthreshold%3D1E-5%2Cbins%3D30%2Cremove_uc%3D1
+#     url=ngasjob://ngamsGLEAM_Decompress_JobPlugin%3Fredo_on_fail%3D0
 
 
 debug = 0
-work_dir = '/tmp'
+work_dir = '/mnt/gleam2/tmp'
 #uvcompress = '/home/ngas/processing/compression/uvcompress'
-uvcompress = '/Users/chen/processing/compression/uvcompress'
+#uvcompress = '/Users/chen/processing/compression/uvcompress'
 
-#archive_client = '/home/ngas/ngas_rt/bin/ngamsCClient'
-archive_client = '/Users/chen/proj/ngas_buildout/bin/ngamsCClient'
+archive_client = '/home/ngas/ngas_rt/bin/ngamsCClient'
+#archive_client = '/Users/chen/proj/ngas_buildout/bin/ngamsCClient'
 
 #archive_host = getHostId().split(':')[0] # archive host must be on the same machine as the  data mover or job runner
 archive_host = getIpAddress()
@@ -70,7 +71,7 @@ def execCmd(cmd, timeout):
     else:
         return (-1, 'Unknown error')
 
-def ngamsMWA_Compress_JobPlugin(srvObj,
+def ngamsGLEAM_Decompress_JobPlugin(srvObj,
                           plugInPars,
                           filename,
                           fileId,
@@ -91,25 +92,13 @@ def ngamsMWA_Compress_JobPlugin(srvObj,
     Returns:       the return code of the compression plugin (integer).
     """
     pars = ""
-    sf = 4 # scaling factor
-    th = 1E-5 # threshold
-    bins = 0
     remove_uc = 0
     timeout = 600 # each command should not run more than 10 min, otherwise something is wrong
     if ((plugInPars != "") and (plugInPars != None)):
         pars = plugInPars
     
-    parDic = ngamsPlugInApi.parseRawPlugInPars(pars)
-            
-    if (parDic.has_key('scale_factor')):
-        sf = int(parDic['scale_factor'])
+    parDic = ngamsPlugInApi.parseRawPlugInPars(pars)     
     
-    if (parDic.has_key('threshold')):
-        th = float(parDic['threshold'])
-    
-    if (parDic.has_key('bins')):
-        bins = int(parDic['bins'])
-        
     if (parDic.has_key('remove_uc')):
         remove_uc = int(parDic['remove_uc'])
         
@@ -118,18 +107,11 @@ def ngamsMWA_Compress_JobPlugin(srvObj,
         if (timeout <= 0):
             timeout = 600
     
-    if (bins):
-        binstr = '-h %d' % bins
-    else:
-        binstr = ''
-    
-    newfn = '%s/%s' % (work_dir, os.path.basename(filename))
-    
-    cmd = "%s -d %d %s %s %s" % (uvcompress, sf, binstr, filename, newfn)
-    cmd1 = "%s -host %s -port 7777 -fileUri %s -cmd QARCHIVE -mimeType application/octet-stream " % (archive_client, archive_host, newfn)
+    #cmd1 = "%s -host %s -port 7777 -fileUri %s -cmd QARCHIVE -mimeType application/octet-stream " % (archive_client, archive_host, newfn)
     cmd2 = "curl http://%s:7777/DISCARD?file_id=%s\\&file_version=%d\\&disk_id=%s\\&execute=1" % (archive_host, fileId, fileVersion, diskId)
-    cmd3 = "rm %s" % newfn
     
+    
+    """
     if (debug):
         info(3, '*******************************************')
         info(3, cmd)
@@ -140,44 +122,53 @@ def ngamsMWA_Compress_JobPlugin(srvObj,
         info(3, '*******************************************')
         return (0, 'Compressed OK')
     else:
+    """
         #re = commands.getstatusoutput(cmd)
-        re = execCmd(cmd, timeout)
-        if (0 == re[0]):
-            if (not bins):
-                retstr = re[1].split('\n')[-1] # just get the elapsed time
+    cmd = "tar xf %s -C %s" % (filename, work_dir)
+    info(3, "Extracting %s to %s" % (filename, work_dir))
+    re = execCmd(cmd, timeout)
+    if (0 == re[0]):
+        # archive it back
+        obsId = fileId.split('_')[0]
+        imglist = glob('%s/%s/*.fits' % (work_dir, obsId))
+        errNo = 0
+        lasterrMsg = ''
+        for imgfile in imglist:
+            url = 'http://%s:7777/LARCHIVE?fileUri=%s\&mimeType=application/octet-stream\&file_version=%d' % (archive_host, imgfile, fileVersion)
+            cmd1 = 'curl --connect-timeout %d %s' % (timeout, url)
+            info(3, 'Local archiving %s' % cmd1)
+            re = commands.getstatusoutput(cmd1)
+            if (0 == re[0] and (re[1].count('Successfully handled Archive Pull Request') > 0)):
+                info(3, 'Successfully re-archived the untarred FITS file %s' % imgfile)
             else:
-                retstr = re[1].split('------ Histogram ------\n')[1]
-            
-            # archive it back
-            # TODO - enable time out!!
-            # re = commands.getstatusoutput(cmd1)
-            re = execCmd(cmd1, timeout)
+                error('Fail to re-archive the untarred FITS file  %s: %s' % (imgfile, re[1]))
+                errNo += 1
+                lasterrMsg = re[1]
+                #return (re[0], re[1])
+        
+        if (remove_uc and errNo == 0):
+            # remove the original file if necessary
+            re = execCmd(cmd2, timeout)
+            info(3, 'Removing the tar file %s' % filename)
             if (0 == re[0]):
-                info(3, 'Successfully re-archived the compressed file %s' % newfn)
+                info(3, 'Successfully DISCARDED the tar file %s' % filename)
             else:
-                error('Fail to re-archive compressed file %s: %s' % (newfn, re[1]))
-                return (re[0], re[1])
-            
-            if (remove_uc):
-                # remove the uncompressed file if necessary
-                # re = commands.getstatusoutput(cmd2)
-                re = execCmd(cmd2, timeout)
-                if (0 == re[0]):
-                    info(3, 'Successfully DISCARDED the uncompressed file %s' % filename)
-                else:
-                    warning('Fail to DISCARD the uncompressed file %s' % filename)
-            
-            # remove the temp file
-            # re = commands.getstatusoutput(cmd3)
-            re = execCmd(cmd3, timeout)
-            if (0 != re[0]):
-                warning('Fail to remove the temp compressed file %s' % newfn)
-            
-            return (0, retstr)
-            
+                warning('Fail to DISCARD the tar file %s' % filename)
+        
+        # remove the temp file
+        cmd3 = "rm -rf %s/%s" % (work_dir, obsId)
+        info(3, "Removing the temp directory %s/%s" % (work_dir, obsId))
+        re = execCmd(cmd3, timeout)
+        if (0 != re[0]):
+            warning('Fail to remove the temp untarred directory %s/%s' % (work_dir, obsId))
+        
+        if (errNo == 0):
+            return (0, 'Done')
         else:
-            error('Fail to compress file %s: %s' % (filename, re[1]))
-            return (re[0], re[1])
+            return (errNo, lasterrMsg.replace("'", ""))
+    else:
+        error('Fail to untar file %s: %s' % (filename, re[1]))
+        return (re[0], re[1])
     
     
     
