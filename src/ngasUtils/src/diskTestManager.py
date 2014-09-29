@@ -61,7 +61,7 @@ perf_key_string = {PERF_COMPUTE:'CRC throughput:', PERF_WRITE:'Pure write throug
 perf_key_label = {PERF_COMPUTE:'Pure compute throughput', PERF_WRITE:'Pure write throughput',
               PERF_INTERNAL:'Internal throughput', PERF_TOTAL:'Total throughput', PERF_FILECLOSING:'File closing time'}
 
-mode_key_string = {MODE_CRC_ONLY:'-u -c b', MODE_WRITE_ONLY:'-w', MODE_CRC_WRITE:'-w -c b'}
+mode_key_string = {MODE_CRC_ONLY:'-u -c c', MODE_WRITE_ONLY:'-w', MODE_CRC_WRITE:'-w -c c'}
 
 mode_key_label = {MODE_CRC_ONLY:'CRC Only', MODE_WRITE_ONLY:'Write Only', MODE_CRC_WRITE:'CRC and Write'}
 
@@ -334,7 +334,7 @@ if __name__ == '__main__':
     parser.add_option("-t", "--testdir", action="store", type="string", dest="testdir", help="Directory being tested")
     parser.add_option("-r", "--resultdir", action="store", type="string", dest="resultdir", help="Directory for results (text and plots)")
     parser.add_option("-i", "--iosize", action="store", type="int", dest="iosize", help = "File size in GB")
-    parser.add_option("-m", "--iomode", action="store", type="int", dest="iomode", help = "types of io, 1:normal, 2:lowlevel-direct, 3:lowlevel-async, 4:lowlevel-sync")
+    parser.add_option("-m", "--iomode", action="store", type="int", dest="iomode", help = "types of io, 1:normal, 2:lowlevel-async, 3:lowlevel-direct, 4:lowlevel-sync")
     parser.add_option("-u", "--runmode", action="store", type="int", dest="runmode", help = "Running mode: 1 - Test only, 2 - Plot only, 3 - Test and Plot")
       
     (options, args) = parser.parse_args()

@@ -1,0 +1,181 @@
+#
+#    (c) University of Western Australia
+#    International Centre of Radio Astronomy Research
+#    M468/35 Stirling Hwy
+#    Perth WA 6009
+#    Australia
+#
+#    Copyright by UWA,
+#    All rights reserved
+#
+#    This library is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU Lesser General Public
+#    License as published by the Free Software Foundation; either
+#    version 2.1 of the License, or (at your option) any later version.
+#
+#    This library is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#    Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public
+#    License along with this library; if not, write to the Free Software
+#    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+#    MA 02111-1307  USA
+#
+#******************************************************************************
+# Who       When        What
+# --------  ----------  -------------------------------------------------------
+# cwu      23/Sep/2014  Created
+
+"""
+Decompression job plugin that will be called
+by the SubscriptionThread._deliveryThread
+"""
+
+import commands, os
+import datetime
+from glob import glob
+
+from ngams import *
+import ngamsPlugInApi
+import pccFits.PccSimpleFitsReader as fitsapi
+
+# used to connect to MWA M&C database
+from psycopg2.pool import ThreadedConnectionPool
+
+mime = "images/fits"
+myhost = commands.getstatusoutput('hostname')[1]
+
+# maximum connection = 3
+g_db_pool = ThreadedConnectionPool(1, 3, database = 'gavo', user = 'zhl', 
+                            password = 'emhsZ2x5\n'.decode('base64'), 
+                            host = 'mwa-web.icrar.org')
+
+# decoded job uri: 
+#     ngasjob://ngamsGLEAM_Decompress_JobPlugin?redo_on_fail=0
+
+# originally encoded joburi (during subscribe command)
+#     url=ngasjob://ngamsGLEAM_Decompress_JobPlugin%3Fredo_on_fail%3D0
+
+def getVODBConn():
+    if (g_db_pool):
+        return g_db_pool.getconn()
+    else:
+        raise Exception('connection pool is None when get conn')
+    """
+    global g_db_conn
+    if (g_db_conn and (not g_db_conn.closed)):
+        return g_db_conn
+    try:        
+        g_db_conn = psycopg2.connect(database = 'mwa', user = 'mwa', 
+                            password = 'Qm93VGll\n'.decode('base64'), 
+                            host = 'ngas01.ivec.org')
+        return g_db_conn 
+    except Exception, e:
+        errStr = 'Cannot create MWA DB Connection: %s' % str(e)
+        raise Exception, errStr
+    """
+def putVODBConn(conn):
+    if (g_db_pool):
+        g_db_pool.putconn(conn)
+    else:
+        error("Fail to get VO DB connection pool")
+        raise Exception('connection pool is None when put conn')
+
+def executeQuery(conn, sqlQuery):
+    try:
+        cur = conn.cursor()
+        cur.execute(sqlQuery)
+        return cur.fetchall()
+    finally:
+        if (cur):
+            del cur
+        putVODBConn(conn)
+
+def execCmd(cmd, timeout):
+    info(3, 'Executing command: %s' % cmd)
+    try:
+        ret = ngamsPlugInApi.execCmd(cmd, timeout)
+    except Exception, ex:
+        if (str(ex).find('timed out') != -1):
+            return (-1, 'Timed out (%d seconds): %s' % (timeout, cmd))
+        else:
+            return (-1, str(ex))
+    if (ret):
+        return ret
+    else:
+        return (-1, 'Unknown error')
+
+def ngamsGLEAM_VO_JobPlugin(srvObj,
+                          plugInPars,
+                          filename,
+                          fileId,
+                          fileVersion,
+                          diskId):
+    """
+    srvObj:        Reference to NG/AMS Server Object (ngamsServer).
+
+    plugInPars:    Parameters to take into account for the plug-in
+                   execution (string).(e.g. scale_factor=4,threshold=1E-5)
+   
+    fileId:        File ID for file to test (string).
+
+    filename:      Filename of (complete) (string).
+
+    fileVersion:   Version of file to test (integer).
+ 
+    Returns:       the return code of the compression plugin (integer).
+    """
+    
+    hdrs = fitsapi.getFitsHdrs(filename)
+    ra = float(hdrs[0]['CRVAL1'][0][1])
+    dec = float(hdrs[0]['CRVAL2'][0][1])
+    date_obs = hdrs[0]['DATE-OBS'][0][1].replace("'", "").split('T')[0]
+    center_freq = int(float(hdrs[0]['CRVAL3'][0][1])) / 1000000
+    band_width = round(float(hdrs[0]['CDELT3'][0][1]) / 1000000, 2)
+    stokes = int(float(hdrs[0]['CRVAL4'][0][1]))
+    accsize = os.path.getsize(filename)
+    embargo = datetime.date.today() - datetime.timedelta(days = 1)
+    owner="MRO"
+    accref_file =  "gleam/%s" % fileId
+    file_url =  "http://%s:7777/RETRIEVE?file_id=%s" % (myhost, fileId)
+    gleam_phase = 1
+    if (fileId.split('_v')[1].split('.')[0] == '2'):
+        gleam_phase = 2
+    #1068228616_095-103MHz_YY_r0.0_v2.0.fits
+    
+    conn = getVODBConn()
+    cur = conn.cursor()
+    sqlStr = ''
+    try:
+        sqlStr = "SELECT scircle '< (%10fd, %10fd), 20d>'" % (ra, dec)
+        cur.execute(sqlStr)
+        res = cur.fetchall()
+        if (not res or len(res) == 0):
+            errMsg = "fail to calculate scircle"
+            error(errMsg)
+            raise Exception(errMsg)
+        coverage = res[0][0]
+    
+        sqlStr = """INSERT INTO mwa.gleam(embargo,owner,centeralpha,centerdelta,accref,coverage,center_freq,band_width, mime,accsize,date_obs,stokes,filename, gleam_phase) VALUES('%s', '%s','%s', '%s', '%s','%s', '%s', '%s','%s','%s', '%s', '%s','%s', %d)""" % (embargo,owner,str(ra), str(dec), accref_file, coverage, str(center_freq), str(band_width), mime, str(accsize), str(date_obs),str(stokes),fileId, gleam_phase)
+        #info(3, sqlStr)
+        cur.execute(sqlStr)
+          
+        sqlStr = """INSERT INTO dc.products(embargo,owner,accref, mime,accesspath,sourcetable) VALUES('%s', '%s', '%s', '%s', '%s', '%s')""" % (embargo,owner,accref_file, mime, file_url, 'mwa.gleam')
+        #info(3, sqlStr)
+        cur.execute(sqlStr)        
+        conn.commit()
+        info(3, 'File %s added to VO database.' % fileId)
+    except Exception, exp:
+        error("Unable to execute %s: %s" % (sqlStr, str(exp)))
+        return (1, str(exp))
+    finally:
+        if (cur):
+            del cur
+        putVODBConn(conn)
+    
+    return (0, 'Done')
+    
+    
+    
