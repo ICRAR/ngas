@@ -80,7 +80,8 @@ class ngamsPostgreSQL:
         """
         self.__conn_lost_msg = ["connection has been closed", "invalid connection", # the first two messages are returned from pgdb.py
                            "connection is not valid", "no connection to the server",
-                           "terminating connection", "server closed the connection unexpectedly"]
+                           "terminating connection", "server closed the connection unexpectedly",
+                           "'can't start transaction' in 'BEGIN'"]
         try:
             self.__dbModVer = pg.version
         except:
@@ -178,7 +179,7 @@ class ngamsPostgreSQL:
                     conn_lost = 1
                     break
             if (conn_lost):
-                info(1, "Connection is stale, sleeping 2 seconds before trying to reconnect")
+                info(1, "Connection is stale, sleeping 2 seconds before reconnecting: %s" % (ex))
                 time.sleep(2.0)
                 self.connect(self.__server, self.__db, self.__user, self.__password, self.__application, self.__parameters)
                 info(1,"Reconnected to DB - performing SQL query: " + query)
