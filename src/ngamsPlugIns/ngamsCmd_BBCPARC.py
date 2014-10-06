@@ -41,7 +41,7 @@ import ngamsHighLevelLib
 import ngamsCacheControlThread
 import ngamsArchiveUtils
 
-bbcp_param = namedtuple('bbcp_param', 'port, winsize, num_streams')
+bbcp_param = namedtuple('bbcp_param', 'port, winsize, num_streams, checksum')
 
 def bbcpFile(srcFilename, targFilename, bparam,
     keyfile='', ssh_prefix=''):
@@ -194,7 +194,12 @@ def archiveFromFile(srvObj,
         iorate = reqPropsObjLoc.getSize()/(time.time() - st)
         setLogCache(10)
 
-        ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain)
+        diskInfo = ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain)
+        if (bparam.checksum):
+            cal_checksum = diskInfo.getFileObj(0).getChecksum()
+            if (cal_checksum != bparam.checksum):
+                raise Exception("Check sum error: remote CRC: %s, locally calculated: %s" % (bparam.checksum, cal_checksum))
+        
     except Exception, e:
         # If another error occurs, than one qualifying for Back-Log
         # Buffering the file, we have to log an error.
@@ -203,7 +208,7 @@ def archiveFromFile(srvObj,
             notice("Tried to archive local file: " + filename +\
                    ". Attempt failed with following error: " + str(e) +\
                    ". Keeping original file.")
-            return NGAMS_FAILURE
+            return [NGAMS_FAILURE, str(e), NGAMS_FAILURE]
         else:
             error("Tried to archive local file: " + filename +\
                   ". Attempt failed with following error: " + str(e) + ".")
@@ -216,7 +221,7 @@ def archiveFromFile(srvObj,
             if (os.path.exists(pickleObjFile)):
                 info(2,"Removing Back-Log Buffer Pickle File: "+pickleObjFile)
                 rmFile(pickleObjFile)
-            return [NGAMS_FAILURE,NGAMS_FAILURE,NGAMS_FAILURE] 
+            return [NGAMS_FAILURE, str(e), NGAMS_FAILURE] 
 
     # If the file was handled successfully, we remove it from the
     # Back-Log Buffer Directory unless the local file was a log-file
@@ -295,17 +300,25 @@ def handleCmd(srvObj,
     
     port = None
     winsize = None
-    num_streams = None    
+    num_streams = None   
+    checksum = None 
     if (parsDic.has_key('bport')):
         port = int(parsDic['bport'])
     if (parsDic.has_key('bwinsize')):
         winsize = parsDic['bwinsize']
     if (parsDic.has_key('bnum_streams')):
         num_streams = int(parsDic['bnum_streams'])
+    if (parsDic.has_key('bchecksum')):
+        checksum = parsDic['bchecksum']
+        
     
-    bparam = bbcp_param(port, winsize, num_streams)
+    bparam = bbcp_param(port, winsize, num_streams, checksum)
     
     (resDapi, targDiskInfo, iorate) = archiveFromFile(srvObj, fileUri, bparam, 0, mimeType, reqPropsObj)
+    if (resDapi == NGAMS_FAILURE):
+        errMsg = targDiskInfo
+        srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg + '\n')
+        return
 
     # Inform the caching service about the new file.
     info(3, "Inform the caching service about the new file.")
