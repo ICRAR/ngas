@@ -27,21 +27,30 @@ This works by calling archiveFromFile, which in turn takes care of all the handl
 Usgae example with wget:
 
 wget -O BARCHIVE.xml "http://ngas.ddns.net:7777/BBCPARC?fileUri=/home/ngas/NGAS/log/LogFile.nglog"
+
+Usage example with curl to send file from Pawsey to MIT:
+
+curl --connect-timeout 7200 http://eor-12.mit.edu:7777/BBCPARC?fileUri=ngas%40146.118.84.67%3A/mnt/mwa01fs/MWA/testfs/KNOPPIX_V7.2.0DVD-2013-06-16-EN.iso\&bport=7790\&bwinsize=%3D32m\&bnum_streams=12\&mimeType=application/octet-stream
 """
+
+import commands
+from collections import namedtuple
 
 from ngams import *
 import ngamsHighLevelLib
 import ngamsCacheControlThread
 import ngamsArchiveUtils
 
-def bbcpFile(srcFilename, targFilename, 
+bbcp_param = namedtuple('bbcp_param', 'port, winsize, num_streams')
+
+def bbcpFile(srcFilename, targFilename, bparam,
     keyfile='', ssh_prefix=''):
     """
     Use bbcp tp copy file <srcFilename> to <targFilename>
 
     NOTE: This requires remote access to the host as well as
          a bbcp installation on both the remote and local host.
-    """
+    """    
     info(3,"Copying file: " + srcFilename + " to filename: " + targFilename)
     try:
         # Make target file writable if existing.
@@ -51,13 +60,30 @@ def bbcpFile(srcFilename, targFilename,
         #checkAvailDiskSpace(targFilename, fileSize)
         timer = PccUtTime.Timer()
         if keyfile: keyfile = '-i {0}'.format(keyfile)
-        cmd = "bbcp -Z 5678 %s %s %s%s" %\
-                (keyfile, srcFilename, ssh_prefix, targFilename)
+        
+        if bparam.port:
+            pt = '-Z %d' % bparam.port
+        else:
+            pt = '-Z 5678'
+        
+        if bparam.winsize: 
+            fw = '-w %s' % bparam.winsize
+        else:
+            fw = ''
+        
+        if (bparam.num_streams):
+            ns = '-s %d' % bparam.num_streams
+        else:
+            ns = ''
+        
+        cmd = "bbcp -r -V -a %s %s -P 2 %s %s %s %s%s" %\
+                (fw, ns, pt, keyfile, srcFilename, ssh_prefix, targFilename)
         info(3, "Executing external command: {0}".format(cmd))
         stat, out = commands.getstatusoutput(cmd)
         if (stat): raise Exception, "Error executing copy command: %s: %s"%\
                    (cmd, str(out))
         deltaTime = timer.stop()
+        info(3, 'BBCP final message: ' + out.split('\n')[-1]) # e.g. "1 file copied at effectively 18.9 MB/s"
     except Exception, e:
         errMsg = genLog("NGAMS_AL_CP_FILE", [srcFilename, targFilename, str(e)])
         alert(errMsg)
@@ -89,6 +115,7 @@ def updateDiskInfo(srvObj,
 
 def archiveFromFile(srvObj,
                     filename,
+                    bparam,
                     noReplication = 0,
                     mimeType = None,
                     reqPropsObj = None):
@@ -98,6 +125,8 @@ def archiveFromFile(srvObj,
     srvObj:          Reference to NG/AMS Server Object (ngamsServer).
 
     filename:        Name of file to archive (string).
+    
+    bparam:          BBCP parameter (named tuple)
 
     noReplication:   Flag to enable/disable replication (integer).
 
@@ -142,7 +171,7 @@ def archiveFromFile(srvObj,
                 reqPropsObjLoc.setTargDiskInfo(trgDiskInfo)
                 # copy the file to the staging area of the target disk
                 stagingFile = trgDiskInfo.getMountPoint()+ '/staging/' + os.path.basename(filename)
-                bbcpFile(filename, stagingFile)
+                bbcpFile(filename, stagingFile, bparam)
                 reqPropsObjLoc.setStagingFilename(stagingFile)
             except Exception, e:
                 errMsg = str(e) + ". Attempting to archive local file: " +\
@@ -263,7 +292,20 @@ def handleCmd(srvObj,
     ioTime = 0
     reqPropsObj.incIoTime(ioTime)
     
-    (resDapi, targDiskInfo, iorate) = archiveFromFile(srvObj, fileUri, 0, mimeType, reqPropsObj)
+    
+    port = None
+    winsize = None
+    num_streams = None    
+    if (parsDic.has_key('bport')):
+        port = int(parsDic['bport'])
+    if (parsDic.has_key('bwinsize')):
+        winsize = parsDic['bwinsize']
+    if (parsDic.has_key('bnum_streams')):
+        num_streams = int(parsDic['bnum_streams'])
+    
+    bparam = bbcp_param(port, winsize, num_streams)
+    
+    (resDapi, targDiskInfo, iorate) = archiveFromFile(srvObj, fileUri, bparam, 0, mimeType, reqPropsObj)
 
     # Inform the caching service about the new file.
     info(3, "Inform the caching service about the new file.")
