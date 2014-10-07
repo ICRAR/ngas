@@ -1,7 +1,6 @@
 #
-#    ALMA - Atacama Large Millimiter Array
-#    (c) European Southern Observatory, 2002
-#    Copyright by ESO (in the framework of the ALMA collaboration),
+#    ICRAR - International Centre for Radio Astronomy Research
+#    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
 #
 #    This library is free software; you can redistribute it and/or
@@ -19,6 +18,8 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+
+#******************************************************************************
 """
 NGAS Command Plug-In, implementing a Archive PULL Command using BBCP
 
@@ -30,7 +31,11 @@ wget -O BARCHIVE.xml "http://ngas.ddns.net:7777/BBCPARC?fileUri=/home/ngas/NGAS/
 
 Usage example with curl to send file from Pawsey to MIT:
 
-curl --connect-timeout 7200 http://eor-12.mit.edu:7777/BBCPARC?fileUri=ngas%40146.118.84.67%3A/mnt/mwa01fs/MWA/testfs/KNOPPIX_V7.2.0DVD-2013-06-16-EN.iso\&bport=7790\&bwinsize=%3D32m\&bnum_streams=12\&mimeType=application/octet-stream
+(without checksum)
+curl --connect-timeout 7200 eor-12.mit.edu:7777/BBCPARC?fileUri=ngas%40146.118.84.67%3A/mnt/mwa01fs/MWA/testfs/KNOPPIX_V7.2.0DVD-2013-06-16-EN.iso\&bport=7790\&bwinsize=%3D32m\&bnum_streams=12\&mimeType=application/octet-stream
+
+(with checksum)
+curl --connect-timeout 7200 eor-12.mit.edu:7777/BBCPARC?fileUri=ngas%40146.118.84.67%3A/mnt/mwa01fs/MWA/testfs/output_320M_001.dat\&bport=7790\&bwinsize=%3D32m\&bnum_streams=12\&mimeType=application/octet-stream\&bchecksum=-354041269
 """
 
 import commands
@@ -174,7 +179,7 @@ def archiveFromFile(srvObj,
                 bbcpFile(filename, stagingFile, bparam)
                 reqPropsObjLoc.setStagingFilename(stagingFile)
             except Exception, e:
-                errMsg = str(e) + ". Attempting to archive local file: " +\
+                errMsg = str(e) + ". Attempting to bbcp archive file: " +\
                          filename
                 ngamsArchiveUtils.ngamsNotification.notify(srvObj.getCfg(),
                                          NGAMS_NOTIF_NO_DISKS,
@@ -196,9 +201,16 @@ def archiveFromFile(srvObj,
 
         diskInfo = ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain)
         if (bparam.checksum):
-            cal_checksum = diskInfo.getFileObj(0).getChecksum()
+            #info(3, "Checking the checksum")
+            fileObj = diskInfo.getFileObj(0)
+            cal_checksum = fileObj.getChecksum()
             if (cal_checksum != bparam.checksum):
-                raise Exception("Check sum error: remote CRC: %s, locally calculated: %s" % (bparam.checksum, cal_checksum))
+                info(3, "Checksum inconsistency, removing the file from the archive")
+                import ngamsDiscardCmd
+                work_dir = srvObj.getCfg().getRootDirectory() + '/tmp/'
+                ngamsDiscardCmd._discardFile(srvObj, diskInfo.getDiskId(), fileObj.getFileId(), 
+                                             int(fileObj.getFileVersion()), execute = 1, tmpFilePat = work_dir)
+                raise Exception("Check sum error: remote CRC: %s, local CRC: %s" % (bparam.checksum, cal_checksum))
         
     except Exception, e:
         # If another error occurs, than one qualifying for Back-Log
@@ -212,10 +224,14 @@ def archiveFromFile(srvObj,
         else:
             error("Tried to archive local file: " + filename +\
                   ". Attempt failed with following error: " + str(e) + ".")
+            
+            """
+            # this will not work for bbcp files since they are often remote, cannot be moved like this
             notice("Moving local file: " +\
                    filename + " to Bad Files Directory -- cannot be handled.")
             ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename,
                                               filename)
+            """
             # Remove pickle file if available.
             pickleObjFile = filename + "." + NGAMS_PICKLE_FILE_EXT
             if (os.path.exists(pickleObjFile)):
