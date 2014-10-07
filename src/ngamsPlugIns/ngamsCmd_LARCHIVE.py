@@ -1,7 +1,6 @@
 #
-#    ALMA - Atacama Large Millimiter Array
-#    (c) European Southern Observatory, 2002
-#    Copyright by ESO (in the framework of the ALMA collaboration),
+#    ICRAR - International Centre for Radio Astronomy Research
+#    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
 #
 #    This library is free software; you can redistribute it and/or
@@ -19,6 +18,8 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+
+#******************************************************************************
 """
 NGAS Command Plug-In, implementing a Local Archive Command.
 
