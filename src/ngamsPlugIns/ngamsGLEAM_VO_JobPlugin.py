@@ -140,10 +140,41 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
     owner="MRO"
     accref_file =  "gleam/%s" % fileId
     file_url =  "http://%s:7777/RETRIEVE?file_id=%s" % (myhost, fileId)
+    
     gleam_phase = 1
-    if (fileId.split('_v')[1].split('.')[0] == '2'):
+    getf_frmfn = 0
+    if (hdrs[0].has_key('ORIGIN')):
+        fits_origin = hdrs[0]['ORIGIN'][0][1]
+        if (fits_origin.find('WSClean') > -1):
+            gleam_phase = 2
+    else:
+        getf_frmfn = 1
+    
+    if (getf_frmfn == 1 and fileId.split('_v')[1].split('.')[0] == '2'): # filename pattern is brittle, only use it if no fits header key: ORIGIN
         gleam_phase = 2
+    
     #1068228616_095-103MHz_YY_r0.0_v2.0.fits
+    """
+    select cast((string_to_array((string_to_array((string_to_array(filename, '_r'))[2], '_'))[1], '.'))[1] as int) from mwa.gleam limit 10;
+    """
+    #TODO - add robustness scheme (reading from the header and filename)
+    robustness = 0
+    getr_frmfn = 0
+    if (gleam_phase == 1):
+        if (hdrs[0].has_key('ROBUST')):
+            robustness = int(float(hdrs[0]['ROBUST'][0][1]))
+        else:
+            getr_frmfn = 1
+    elif (gleam_phase == 2):
+        if (hdrs[0].has_key('WSCWEIGH')):
+            if (hdrs[0]['WSCWEIGH'][0][1] == "'Briggs'"):
+                robustness = int(float(hdrs[0]['WSCWEIGH'][0][2].replace("'(", "").replace(")'","")))
+            else:
+                getr_frmfn = 1
+        else:
+            getr_frmfn = 1
+    if (getr_frmfn == 1):
+        robustness = int(float(fileId.split('_r')[1].split('_')[0]))
     
     conn = getVODBConn()
     cur = conn.cursor()
@@ -158,7 +189,7 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
             raise Exception(errMsg)
         coverage = res[0][0]
     
-        sqlStr = """INSERT INTO mwa.gleam(embargo,owner,centeralpha,centerdelta,accref,coverage,center_freq,band_width, mime,accsize,date_obs,stokes,filename, gleam_phase) VALUES('%s', '%s','%s', '%s', '%s','%s', '%s', '%s','%s','%s', '%s', '%s','%s', %d)""" % (embargo,owner,str(ra), str(dec), accref_file, coverage, str(center_freq), str(band_width), mime, str(accsize), str(date_obs),str(stokes),fileId, gleam_phase)
+        sqlStr = """INSERT INTO mwa.gleam(embargo,owner,centeralpha,centerdelta,accref,coverage,center_freq,band_width, mime,accsize,date_obs,stokes,filename, gleam_phase, robustness) VALUES('%s', '%s','%s', '%s', '%s','%s', '%s', '%s','%s','%s', '%s', '%s','%s', %d, %d)""" % (embargo,owner,str(ra), str(dec), accref_file, coverage, str(center_freq), str(band_width), mime, str(accsize), str(date_obs),str(stokes),fileId, gleam_phase, robustness)
         #info(3, sqlStr)
         cur.execute(sqlStr)
           
