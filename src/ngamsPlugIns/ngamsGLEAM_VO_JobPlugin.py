@@ -58,6 +58,63 @@ g_db_pool = ThreadedConnectionPool(1, 3, database = 'gavo', user = 'zhl',
 # originally encoded joburi (during subscribe command)
 #     url=ngasjob://ngamsGLEAM_Decompress_JobPlugin%3Fredo_on_fail%3D0
 
+def getVODBSchema():
+    """
+    -- Table: mwa.gleam
+
+    -- DROP TABLE mwa.gleam;
+    
+    CREATE TABLE mwa.gleam
+    (
+      centeralpha real,
+      centerdelta real,
+      coverage scircle,
+      center_freq integer,
+      band_width numeric,
+      date_obs date,
+      stokes integer,
+      filename text,
+      accref text,
+      "owner" text,
+      embargo date,
+      mime text,
+      accsize integer,
+      img_rms real,
+      cat_sepn real,
+      psf_distortion real,
+      gleam_phase integer DEFAULT 1,
+      robustness integer
+    )
+    WITH (
+      OIDS=FALSE
+    );
+    ALTER TABLE mwa.gleam OWNER TO gavoadmin;
+    GRANT ALL ON TABLE mwa.gleam TO gavoadmin;
+    GRANT SELECT ON TABLE mwa.gleam TO untrusted;
+    GRANT SELECT ON TABLE mwa.gleam TO gavo;
+    
+    -- Index: mwa.gleam_pgspos
+    
+    -- DROP INDEX mwa.gleam_pgspos;
+    
+    CREATE INDEX gleam_pgspos
+      ON mwa.gleam
+      USING gist
+      (coverage);
+    
+    
+    -- Rule: cleanupproducts ON mwa.gleam
+    
+    -- DROP RULE cleanupproducts ON mwa.gleam;
+    
+    CREATE OR REPLACE RULE cleanupproducts AS
+        ON DELETE TO mwa.gleam DO  DELETE FROM dc.products
+      WHERE products.accref = old.accref;
+
+
+    """
+    pass
+
 def getVODBConn():
     if (g_db_pool):
         return g_db_pool.getconn()
@@ -156,6 +213,11 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
     #1068228616_095-103MHz_YY_r0.0_v2.0.fits
     """
     select cast((string_to_array((string_to_array((string_to_array(filename, '_r'))[2], '_'))[1], '.'))[1] as int) from mwa.gleam limit 10;
+    
+    # update the robustness value for those already in the database (thus did not get to run this job plugin)
+    update mwa.gleam set robustness = cast((string_to_array((string_to_array((string_to_array(filename, '_r'))[2], '_'))[1], '.'))[1] as int) 
+    where position('escale' in filename) < 1 
+    and robustness is NULL;
     """
     #TODO - add robustness scheme (reading from the header and filename)
     robustness = 0
