@@ -71,16 +71,26 @@ def ngamsGLEAM_VUW_FilterPI(srvObj,
                    conditions (integer/0|1).
     """
     match = 0
+    parDic = {}
+    pars = ""
+    if ((plugInPars != "") and (plugInPars != None)):
+        pars = plugInPars
+    elif (reqPropsObj != None):
+        if (reqPropsObj.hasHttpPar("plug_in_pars")):
+            pars = reqPropsObj.getHttpPar("plug_in_pars")
+    parDic = ngamsPlugInApi.parseRawPlugInPars(pars)
     fn, fext = os.path.splitext(fileId)
-    if (fext.lower() in file_ext and _isLatestVer(srvObj, fileId, fileVersion)): # only send FITS files, no measurement sets, only send the (known) latest version 
-        parDic = []
-        pars = ""
-        if ((plugInPars != "") and (plugInPars != None)):
-            pars = plugInPars
-        elif (reqPropsObj != None):
-            if (reqPropsObj.hasHttpPar("plug_in_pars")):
-                pars = reqPropsObj.getHttpPar("plug_in_pars")
-        parDic = ngamsPlugInApi.parseRawPlugInPars(pars)
+    if (fext.lower() in file_ext): # only send FITS files, no measurement sets, 
+        if (parDic.has_key('check_version')):
+            if (parDic['check_version'] != '0' and parDic['check_version'] != ''):
+                if (_isLatestVer(srvObj, fileId, fileVersion)): # only send the (known) latest version 
+                    match = 1 
+            else:
+                match = 1
+        else:
+            match = 1
+        
+        """
         if (not parDic.has_key("remote_host") or 
             not parDic.has_key("remote_port")):
             errMsg = "ngamsGLEAM_VUW_FilterPI: Missing Plug-In Parameter: " +\
@@ -111,7 +121,8 @@ def ngamsGLEAM_VUW_FilterPI(srvObj,
                 return 1 # matched since file id does not exist
             
             #if the same file id (with the latest version) is there already, check CRC
-            """
+        """
+        """
             xmlnode = rest.genXml(genDiskStatus = 1, genFileStatus = 1)
             tgtCrc = xmlnode.getElementsByTagName('FileStatus')[0].attributes['Checksum'].value
             cursorObj = srvObj.getDb().getFileInfoList('', fileId, fileVersion)
@@ -128,7 +139,7 @@ def ngamsGLEAM_VUW_FilterPI(srvObj,
             else:
                 match = 1 # if no CRC information can be found, send the file regardless
             """
-            
+        """    
         except Exception, e:
             errMsg = "Error occurred during checking remote file status " +\
                          "ngamsGLEAM_VUW_FilterPI. Exception: " + str(e)
@@ -136,5 +147,6 @@ def ngamsGLEAM_VUW_FilterPI(srvObj,
             return 1 # matched as if the filter does not exist
         #info(5, "filter return status = " + rest.getStatus())
         #info(4, "filter match = " + str(match))    
+        """
     
     return match  
