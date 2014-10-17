@@ -1033,7 +1033,7 @@ def addToSubscrQueue(srvObj, subscrId, fileInfo, quChunks):
         quChunks.put(fileInfo)
     except Exception, ee:
         # most likely error - key duplication, that will prevent cache queue from adding this entry, which is correct
-        error('Subscriber %s failed to add to the persistent subscription queue file %s due to %s' % (subscrId, filename, str(ee)))
+        warning('Subscriber %s failed to add to the persistent subscription queue file %s: %s' % (subscrId, filename, str(ee)))
 
 def stageFile(srvObj, filename):
     fspi = srvObj.getCfg().getFileStagingPlugIn()
@@ -1389,17 +1389,16 @@ def subscriptionThread(srvObj,
                     queueDict[subscrId] = quChunks
  
                 if (deliverReqDic.has_key(subscrId)):
-                    allFiles = deliverReqDic[subscrId]         
+                    allFiles = deliverReqDic[subscrId]    # allFiles is list of newly discovered files, quChunks is the final queue     
                 else:
                     allFiles = []
                 #if (srvObj.getSubcrBackLogCount() > 0):
                 info(3, 'Put %d new files in the queue for subscriber %s' %(len(allFiles), subscrId))        
-                for jdx in range(len(allFiles)):
-                    ffinfo = allFiles[jdx]
-                    addToSubscrQueue(srvObj, subscrId, ffinfo, quChunks) 
-                    #quChunks.put(allFiles[jdx])   
-                    # Deliver the data - spawn off a Delivery Thread to do this job                    
-                info(4, 'Number of elements in Queue %s: %d' % (subscrId, quChunks.qsize()))
+                for ffinfo in allFiles:
+                    addToSubscrQueue(srvObj, subscrId, ffinfo, quChunks) # add new files to the queue
+                
+                # Deliver the data - spawn off a Delivery Thread to do this job                    
+                info(3, 'Number of elements in Queue %s: %d' % (subscrId, quChunks.qsize()))
                 if not deliveryThreadDic.has_key(subscrId):
                     deliveryThreads = []
                     for tid in range(int(num_threads)):

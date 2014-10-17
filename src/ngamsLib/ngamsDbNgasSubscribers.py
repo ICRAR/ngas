@@ -370,6 +370,13 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                             status_date,
                             comment = None
                             ):
+        sqlQuery = "SELECT EXISTS (SELECT subscr_id FROM ngas_subscr_queue WHERE subscr_id = '%s' AND file_id = '%s' AND file_version = %d AND disk_id = '%s')" % (subscrId, fileId, fileVersion, diskId)
+        res = self.query(sqlQuery)
+        retstr = res[0][0][0]
+        #info(3, "SELECT EXISTS = '%s' for sql: %s" % (retstr, sqlQuery))
+        if (retstr): # PostgreSQL returns true/false, Sqlite returns 1/0
+            raise Exception("ngas_subscr_queue already has: %s / %s / %d / %s" % (subscrId, fileId, fileVersion, diskId))
+        
         sqlQuery = "INSERT INTO ngas_subscr_queue " +\
                     "(subscr_id, file_id, file_version, disk_id, file_name, ingestion_date, " +\
                     "format, status, status_date, comment) " +\
