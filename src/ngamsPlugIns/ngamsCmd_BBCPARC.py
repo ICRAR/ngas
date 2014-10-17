@@ -22,19 +22,11 @@
 """
 NGAS Command Plug-In, implementing a Archive PULL Command using BBCP
 
-In order to be able to use it you will need to have bbcp installed and 
-accessible on the system path on both the target and the source machines 
-of the data file. You will also need to make sure that you can login using 
-authorised_keys with the intended users in both directions. Once this is 
-correctly configured, you can run a command like:
+This works by calling archiveFromFile, which in turn takes care of all the handling
 
-wget -O BBCPARC.xml "http://ngas.ddns.net:7777/BBCPARC?fileUri=/home/ngas/NGAS/log/LogFile.nglog”
+Usgae example with wget:
 
-or
-
-wget -O BARCHIVE.xml "http://ngas1.ddns.net:7777/BBCPARC?fileUri=ngas@ngas2.host:/home/ngas/NGAS/log/LogFile.nglog&reload=1”
-
-from a third machine. The first is a local archiving using bbcp, the second pulls the file from the remote host using bbcp.
+wget -O BARCHIVE.xml "http://ngas.ddns.net:7777/BBCPARC?fileUri=/home/ngas/NGAS/log/LogFile.nglog"
 """
 
 from ngams import *
