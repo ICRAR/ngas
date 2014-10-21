@@ -121,21 +121,23 @@ def cmdHandler(srvObj,
             if (reqPropsObj.hasHttpPar("reload")):
                 if (int(reqPropsObj.getHttpPar("reload")) == 1):
                     reloadMod = 1
-            info(2,"Loading dynamic command module: %s" % cmdMod)
-            exec "import %s" % cmdMod
+            if not sys.modules.has_key(cmdMod):
+                info(2,"Importing dynamic command module: %s" % cmdMod)
+                mod = __import__(cmdMod, fromlist=[__name__])
+            elif reloadMod == 1:
+                info(2,"Re-loading dynamic command module: %s" % cmdMod)
+                mod = reload(sys.modules[cmdMod])
+            else:
+                mod = __import__(cmdMod, fromlist=[__name__]) # just make sure that mod is initialized
+                info(2,"Using loaded dynamic command module: %s" % cmdMod)
+
             srvObj.getDynCmdDic()[cmdMod] = 1
-            if (reloadMod):
-                info(2,"Reloading dynamic command module: %s" % cmdMod)
-                reloadCmd = "reload(%s)" % cmdMod
-                stat = eval(reloadCmd)
-                info(4,"Status of reloading command module: %s" % str(stat))
         except Exception, e:
             warning("Error encountered loading dynamic command module: %s" %\
                     str(e))
             errMsg = genLog("NGAMS_ER_ILL_CMD", [cmd])
             error(errMsg)
             raise Exception, errMsg
-        eval("%s.handleCmd(srvObj, reqPropsObj, httpRef)" % cmdMod)
-
+        mod.handleCmd(srvObj, reqPropsObj, httpRef)
 
 # EOF
