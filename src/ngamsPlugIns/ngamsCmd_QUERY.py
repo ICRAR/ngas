@@ -250,6 +250,10 @@ def handleCmd(srvObj,
                 query = 'select * from ngas_files where ingestion_date >= "{0}"'.format(param1)
             else:
                 query = valid_queries['files_list']
+    else:
+        msg = "No query specified. Valid queries are: %s" %\
+        valid_queries.keys()
+        raise Exception, msg
 
     out_format = None
     if (reqPropsObj.hasHttpPar("format")):
