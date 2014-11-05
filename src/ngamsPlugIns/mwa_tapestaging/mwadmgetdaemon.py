@@ -203,10 +203,15 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
       singleStage = False
       
       try:
-         # parse out obs id if it exists
          filepart = os.path.basename(filename)
-         obsid = int(filepart.split('_', 1)[0])
-         self.stageObservation(obsid)
+         
+         # we want to ignore bulk staging for voltage data
+         if '.dat' in filepart:
+            singleState = True
+         else:
+            # parse out obs id if it exists
+            obsid = int(filepart.split('_', 1)[0])
+            self.stageObservation(obsid)
          
       except ValueError as ve:
          singleStage = True
