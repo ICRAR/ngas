@@ -27,7 +27,7 @@
 # --------  ----------  -------------------------------------------------------
 # dpallot  8/08/2014  Created
 
-import SocketServer, socket, struct, select, os, time, sys
+import SocketServer, socket, struct, select, os, time, sys, json, binascii
 import psycopg2, psycopg2.pool
 import threading, subprocess, signal
 import logging, logging.handlers
@@ -40,11 +40,11 @@ if not os.path.exists('log/'):
 logger = logging.getLogger('mwadmget')
 logger.setLevel(logging.DEBUG)
 logger.propagate = False
-rot = logging.handlers.RotatingFileHandler('log/mwadmget.log', maxBytes=33554432)
+rot = logging.FileHandler('log/mwadmget.log')
 rot.setLevel(logging.DEBUG)
 rot.setFormatter(logging.Formatter('%(asctime)s, %(levelname)s, %(message)s'))
 logger.addHandler(rot)
-   
+
 
 class ErrorCode():
    socket_timeout_error = 1
@@ -57,6 +57,7 @@ class ErrorCode():
    unknown_error = 8
    connection_error = 9
    invalid_args_error = 10
+   file_limit_exceeded = 11
 
 
 class ErrorCodeException(Exception):
@@ -76,14 +77,18 @@ class Command(object):
       self.cmd = cmd
       self.process = None
       self.output = ""
+      self.error = ""
       self.timing = 0
       
       def __execute():
-         t0 = time.time()
-         self.process = subprocess.Popen(self.cmd, stdout = subprocess.PIPE)
-         self.output = self.process.communicate()[0]
-         t1 = time.time()
-         self.timing = t1-t0
+         try:
+            t0 = time.time()
+            self.process = subprocess.Popen(self.cmd, stdout = subprocess.PIPE, stderr = subprocess.PIPE)         
+            self.output, self.error = self.process.communicate()
+            t1 = time.time()
+            self.timing = t1-t0
+         except Exception as s:
+            self.error = str(s)
 
       self.thread = threading.Thread(target=__execute)
       self.thread.start()
@@ -93,10 +98,17 @@ class Command(object):
       if timeout:
          self.thread.join(timeout)
          if self.thread.is_alive():
+            
+            if self.process is None:
+               raise Exception(self.error)
+      
             self.process.terminate()
             raise TimeoutError()
       else:
          self.thread.join()
+      
+      if self.process is None:
+         raise Exception(self.error)
       
       return self.process.returncode
       
@@ -106,6 +118,9 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
    dbp = None
    lock = threading.Lock()
    staging = {}
+   
+   mlock = threading.Lock()
+   mstaging = {}
    
    def __init__(self, *args, **kwargs):
 
@@ -121,6 +136,46 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
       SocketServer.TCPServer.__init__(self, *args, **kwargs)
    
 
+   def fillPath(self, filenames):
+      fullfiles = []
+      query = []
+      
+      # check to see if the file has a full path
+      for f in filenames:
+         query.append(os.path.basename(f))
+      
+      con = None
+      cursor = None
+   
+      try:
+         con = self.dbp.getconn()
+         cursor = con.cursor()
+         cursor.execute("select mount_point || '/' || file_name as path from ngas_files \
+                        inner join ngas_disks on ngas_disks.disk_id = ngas_files.disk_id where file_id in %s;", [tuple(query)])
+         #print cursor.query
+         row = cursor.fetchall()
+         for r in row:
+            fullfiles.append(r[0])
+
+         if len(row) != len(filenames):
+            raise ErrorCodeException(ErrorCode.invalid_args_error, "There are files in the list that are not part of NGAS %s %s" % (str(len(row)), str(len(filenames))))
+         
+         return fullfiles
+      
+      except ErrorCodeException as ece:
+         raise ece
+         
+      except BaseException as e:
+         raise ErrorCodeException(ErrorCode.database_error, str(e))
+      
+      finally:
+         if cursor:
+            cursor.close()
+         
+         if con:
+            self.dbp.putconn(conn=con)
+      
+
    def queryFiles(self, obsid):
       
       files = []
@@ -134,7 +189,7 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
                         inner join ngas_disks on ngas_disks.disk_id = ngas_files.disk_id where file_id like %s \
                         and ngas_disks.disk_id in \
                         ('35ecaa0a7c65795635087af61c3ce903', '54ab8af6c805f956c804ee1e4de92ca4', \
-                        '921d259d7bc2a0ae7d9a532bccd049c7', 'e3d87c5bc9fa1f17a84491d03b732afd')", [str(obsid) + '%'])
+                        '921d259d7bc2a0ae7d9a532bccd049c7', 'e3d87c5bc9fa1f17a84491d03b732afd')", [str(obsid) + '%fits'])
          
          row = cursor.fetchall()
          for r in row:
@@ -152,6 +207,48 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
          if con:
             self.dbp.putconn(conn=con)
             
+
+   def stageMultipleFiles(self, filenames):
+      
+      # get unique hash for this set
+      hash = 0
+      for f in filenames:
+         hash = binascii.crc32(f, hash)
+      
+      command = None
+      originator = False
+      
+      try:
+         with self.mlock:
+            if not hash in self.mstaging:
+               
+               fullfilenames = self.fillPath(filenames)
+               commandlist = ['dmget', '-a'] + fullfilenames
+               logger.info("%s: %s staging files %s" % (str(threading.currentThread().name), str(hash), str(len(fullfilenames))))
+               
+               command = Command(commandlist)
+            
+               self.mstaging[hash] = command
+               
+               originator = True
+               
+            else:
+                command = self.mstaging.get(hash)
+                logger.info("%s: %s file set in the process of being staged" % (str(threading.currentThread().name), str(hash)))
+         
+            
+         return_code = command.join()
+         if return_code != 0:
+            raise ErrorCodeException(ErrorCode.command_error, "%s: %s dmget exited with errorcode: %s output: %s" % (str(threading.currentThread().name), str(hash), str(return_code), str(command.output)))
+      
+         if originator:
+            logger.info("%s: %s staging files finished. Staging time: %s secs" % (str(threading.currentThread().name), str(hash), str(command.timing)))
+     
+      finally:
+         # once it is complete remove the hash and its dmget command
+         with self.mlock:
+            if hash in self.mstaging:
+               self.mstaging.pop(hash)
    
    
    def stageObservation(self, obsid):
@@ -167,10 +264,10 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
                
                files = self.queryFiles(obsid)
                if len(files) <= 0:
-                  raise ErrorCodeException(ErrorCode.files_not_found_error, 'could not find any files for %s' % (str(obsid)))
+                  raise ErrorCodeException(ErrorCode.files_not_found_error, '%s: could not find any files for %s' % (str(threading.currentThread().name), str(obsid)))
                
                commandlist = ['dmget', '-a'] + files
-               logger.info("%s staging files" % (str(obsid)))
+               logger.info("%s: %s staging files" % (str(threading.currentThread().name), str(obsid)))
                
                command = Command(commandlist)
                
@@ -180,15 +277,15 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
                
             else:
                (files, command) = self.staging.get(obsid)
-               logger.info("%s files already in the process of being staged" % (str(obsid)))
+               logger.info("%s: %s files already in the process of being staged" % (str(threading.currentThread().name), str(obsid)))
                
          # wait for staging to complete before returning to user
          return_code = command.join()
          if return_code != 0:
-            raise ErrorCodeException(ErrorCode.command_error, "dmget exited with errorcode: %s output: %s" % (str(return_code), str(command.output)))
+            raise ErrorCodeException(ErrorCode.command_error, "%s: dmget exited with errorcode: %s output: %s" % (str(threading.currentThread().name), str(return_code), str(command.output)))
          
          if originator:
-            logger.info("%s staging files finished. Staging time: %s secs" % (str(obsid), str(command.timing)))
+            logger.info("%s: %s staging files finished. Staging time: %s secs" % (str(threading.currentThread().name), str(obsid), str(command.timing)))
       
       finally:
          # once it is complete remove the observation and all associated files
@@ -197,40 +294,53 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
                self.staging.pop(obsid)
 
             
-   def handleFile(self, filename):
+   def handleFiles(self, filenames):
       
       return_code = 0
       singleStage = False
-      
-      try:
-         filepart = os.path.basename(filename)
+
+      # if we get a single file and its a fits file then bulk stage the whole observation
+      # if its a voltage file, zip file or something else then single stage file
+      if len(filenames) == 1:
          
-         # we want to ignore bulk staging for voltage data
-         if '.dat' in filepart:
-            singleState = True
-         else:
-            # parse out obs id if it exists
-            obsid = int(filepart.split('_', 1)[0])
-            self.stageObservation(obsid)
-         
-      except ValueError as ve:
-         singleStage = True
-         
-      except ErrorCodeException as ere:
-         if ere.error_code == ErrorCode.files_not_found_error:
-            singleStage = True
-         else:
-            raise ere
+         try:   
+            filepart = os.path.basename(filenames[0])
+
+            # we want to ignore bulk staging for voltage data
+            if '.dat' in filepart:
+               singleStage = True
             
-      if singleStage:
-         logger.info("%s staging file" % (filename))
-         # if it is not an mwa file then just stage whatever it is
-         command = Command(['dmget', '-a', filename])
-         return_code = command.join()
-         if return_code != 0:
-            raise ErrorCodeException(ErrorCode.command_error, "dmget exited with errorcode: %s output: %s" % (str(return_code), str(command.output)))
-         
-         logger.info("%s staging file finished. Staging time: %s secs" % (filename, str(command.timing)))
+            # single stage flag files
+            elif 'flags.zip' in filepart:
+               singleStage = True
+               
+            else:
+               # parse out obs id if it exists; if it does not exist then its not an MWA visiblity file, so just single stage
+               obsid = int(filepart.split('_', 1)[0])
+               self.stageObservation(obsid)
+            
+         except ValueError as ve:
+            singleStage = True
+            
+         except ErrorCodeException as ere:
+            if ere.error_code == ErrorCode.files_not_found_error:
+               singleStage = True
+            else:
+               raise ere
+               
+         if singleStage:            
+            logger.info("%s: %s staging single file" % (str(threading.currentThread().name), filenames[0]))
+            # if it is not an mwa file then just stage whatever it is
+            command = Command(['dmget', '-a', filenames[0]])
+            return_code = command.join()
+            if return_code != 0:
+               raise ErrorCodeException(ErrorCode.command_error, "%s: dmget exited with errorcode: %s output: %s" % (str(threading.currentThread()), str(return_code), str(command.output)))
+            
+            logger.info("%s: %s staging file finished. Staging time: %s secs" % (str(threading.currentThread().name), filenames[0], str(command.timing)))
+      
+      else:
+         # if we get a list of files then just stage the whole lot
+         self.stageMultipleFiles(filenames)
          
       return return_code
 
@@ -266,49 +376,59 @@ class mwadmgetHandler(SocketServer.BaseRequestHandler):
          raise ErrorCodeException(ErrorCode.io_error, str(ioe))
 
 
-   def readFilename(self):
-      # read header as 16-bit value
-      header = self.readPacket(2)
+   def readInput(self):
+      # read header as 32-bit value
+      header = self.readPacket(4)
       
-      # convert to number
-      headerval = struct.unpack('!H', header)[0]
+      # convert to 32-bit value to unsigned int
+      headerval = struct.unpack('!I', header)[0]
       
       # header size exceeded
-      if headerval > 65536:
-         raise ErrorCodeException(ErrorCode.protocol_error, "header size is too big")
+      #if headerval > 65536:
+      #   raise ErrorCodeException(ErrorCode.protocol_error, "header size is too big")
       
       return self.readPacket(headerval)
 
 
    def handle(self):
       
-      logger.info("[%s] connected" % str(self.client_address[0]))
+      logger.info("%s: %s connected" % (str(threading.currentThread().name), str(self.client_address[0])))
       
       return_code = 0
       
       try:
          # get the filename from the client, this will be a full path
-         filename = self.readFilename()
-         return_code = self.server.handleFile(filename)
+         jsoninput = self.readInput()
+         inputfiles = json.loads(jsoninput)
+         
+         files = inputfiles['files']
+         if len(files) <= 0:
+            raise ErrorCodeException(ErrorCode.invalid_args_error, 'file input list is 0')
+         
+         numfiles = len(files)
+         if numfiles >= 20000:
+            raise ErrorCodeException(ErrorCode.file_limit_exceeded, "file limit exceeded 20000: %s" % (numfiles))
+         
+         return_code = self.server.handleFiles(files)
          
       except ErrorCodeException as ee:
-         logger.error("[%s] errorcode: %s message: %s" % (str(self.client_address[0]), str(ee), ee.getMsg()))
+         logger.error("%s: %s errorcode: %s message: %s" % (str(threading.currentThread().name), str(self.client_address[0]), str(ee), ee.getMsg()))
          return_code = ee.error_code
          
       # catch unknown exceptions
       except Exception as be:
-         logger.error("[%s] %s" % (str(self.client_address[0]), str(be)) )
+         logger.error("%s: %s %s" % (str(threading.currentThread().name), str(self.client_address[0]), str(be)) )
          return_code = ErrorCode.unknown_error
       
       try:
          self.request.sendall(struct.pack('>H', return_code))
          
       except Exception as basee:
-         logger.error("[%s] %s" % (str(self.client_address[0]), str(basee) ))
+         logger.error("%s: %s %s" % (str(threading.currentThread().name), str(self.client_address[0]), str(basee) ))
          
       finally:
          self.request.close()
-         logger.info("[%s] disconnected" % str(self.client_address[0]))
+         logger.info("%s: %s disconnected" % (str(threading.currentThread().name), str(self.client_address[0])))
 
 
    def finish(self):

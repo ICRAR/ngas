@@ -67,7 +67,7 @@ def performStaging(srvObj, reqPropsObj, httpRef, filename):
         st = time.time()
         num = 0
         try:
-            num = eval(fspi + ".stageFiles([filename])")
+            num = eval(fspi + ".stageFiles(filenameList=[filename], requestObj=reqPropsObj)")
         except Exception, ex:
             if (str(ex).find('timed out') != -1):
                 errMsg = 'Staging timed out: %s' % filename

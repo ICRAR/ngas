@@ -28,7 +28,7 @@
 # dpallot  8/08/2014  Created
 
 
-import socket
+import socket, json
 import sys
 import struct
 from optparse import OptionParser
@@ -44,7 +44,7 @@ class ErrorCode():
    unknown_error = 8
    connection_error = 9
    invalid_args_error = 10
-
+   file_limit_exceeded = 11
 
 class ErrorCodeException(Exception):
    def __init__(self, err, msg):
@@ -63,21 +63,27 @@ def main():
    sock = None
    try:
       
-      parser = OptionParser(usage="usage: %prog -f [mwa file] -s [mwadmgetserver]", version="%prog 1.0")
-      parser.add_option('-f', action='store', dest='filename', help="MWA file")
-      parser.add_option('-s', default='fe1.pawsey.ivec.org', action='store', dest='server', help="mwadmgetserver")
+      files = []
+      
+      parser = OptionParser(usage="usage: %prog -f [mwa files] -s [mwadmgetserver]", version="%prog 1.0")
+      parser.add_option('-f', default=[], dest='filename', action='append', help="MWA file(s)")
+      parser.add_option('-s', default='localhost', action='store', dest='server', help="mwadmgetserver")
       
       (options, args) = parser.parse_args()
       
-      if not options.filename:
-         parser.print_usage()
-         sys.exit(ErrorCode.invalid_args_error)
+      for i, opt in enumerate(options.filename):
+         files.append(opt)
       
       sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      #filename = '/home/ngas/NGAS/volume1/MWAArchive/2013-12-19/1/1069588992_20131127120356_gpubox10_01.fits'
       
-      val = struct.pack('>H', len(options.filename))
-      val = val + options.filename
+      #/home/ngas/NGAS/volume1/MWAArchive/2013-12-19/1/1069588992_20131127120356_gpubox10_01.fits
+      #1069588992_20131127120356_gpubox14_01.fits
+      
+      files = {'files' : files}
+      jsonoutput = json.dumps(files)
+      
+      val = struct.pack('>I', len(jsonoutput))
+      val = val + jsonoutput
       
       # Connect to server and send data
       sock.connect((options.server, PORT))

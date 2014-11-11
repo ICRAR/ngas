@@ -12,8 +12,9 @@
 import pcc
 from ngams import * 
 import ngamsPlugInApi
-import os, time
+import os, time, json
 import socket, struct
+import ngamsReqProps
 
 TAPE_ONLY_STATUS = ['NMG', 'OFL', 'PAR'] # these states tell us there are only complete copies of the file currently on tape (no copies on disks)
 ERROR_STATUS = ['INV']
@@ -76,6 +77,7 @@ def isFileOffline(filename):
     
     return 1 - on tape, 0 - not on tape, -1 - query error
     """
+    #return 1
     return isFileOnTape(filename)
 
 def isFileOnTape(filename):
@@ -171,7 +173,7 @@ def checkFileCRC(filelist):
     
     return wrong_list
 
-def pawseyMWAdmget(filename, host, port, timeout):
+def pawseyMWAdmget(fileList, host, port, timeout):
     """
     issue a mwadmget which will do a bulk staging of files for a complete  observation;
     this function will block until all files are staged or there is a timeout
@@ -182,55 +184,94 @@ def pawseyMWAdmget(filename, host, port, timeout):
     timeout:     socket timeout (int)
     
     """
-    
     sock = None
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        val = struct.pack('>H', len(filename))
-        val = val + filename
-        # Connect to server and send data
-        
-        sock.connect((host, port))
-        sock.sendall(val)
-        # set the timeout
-        sock.settimeout(timeout)
-        # Receive return code from server
-        return struct.unpack('!H', sock.recv(2))[0]
+      files = {'files' : fileList}
+      jsonoutput = json.dumps(files)
+      
+      val = struct.pack('>I', len(jsonoutput))
+      val = val + jsonoutput
+      
+      sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      
+      # set the timeout
+      sock.settimeout(timeout)
+
+      # Connect to server and send data
+      sock.connect((host, port))
+      sock.sendall(val)     
+      
+      return struct.unpack('!H', sock.recv(2))[0]
     finally:
         if sock:
             sock.close()
 
-def stageFiles(filenameList, checkCRC = False, printWarn = False, usePawseyMWADmget = True):
+
+def stageFiles(filenameList, checkCRC = False, printWarn = False, usePawseyMWADmget = True, requestObj = None):
     """
     Stage a list of files. 
     The system will sort files in the order that they are archived on the tape volumes for better performance
     
     RETURN   the number of files staged. -1, if any errors
     """
+            
     if (usePawseyMWADmget):
-        leng = len(filenameList)
-        if (leng > 1):
-            return stageFiles(filenameList, usePawseyMWADmget = False)# not to complicate things
-        elif (leng == 0):
-            return 0
-        else:
-            filename = filenameList[0]
-            try:
-                exitcode = pawseyMWAdmget(filename, 'fe1.pawsey.ivec.org', 9898, 1400)
-                if exitcode != 0:
-                    errMsg = 'Bulk staging error. Filename: %s Exitcode: %s' % (filename, str(exitcode))
-                    alert(errMsg)
-                    raise Exception(errMsg)
-            except socket.timeout as t:
-                raise Exception('Socket timed out') # so retrieval can search this "timed out" string
-            except Exception, ex:
-                if (str(ex).find('Connection refused') > -1):
-                    errMsg = 'pawseyMWAdmget daemon is not running, switch to native staging'
-                    alert(errMsg)
-                    return stageFiles(filenameList, usePawseyMWADmget = False)
-                else:
-                    raise ex
-            return 1
+       if filenameList is None:
+          errMsg = 'ngamsMWAPawseyTapeAPI stageFiles: filenameList is None'
+          raise Exception(errMsg)
+       
+       numFiles = len(filenameList)
+       if numFiles == 0:
+          return 0
+       
+       # do a copy first
+       fileList = list(filenameList)
+       
+       try:
+          try:
+             # if we have a requestObj that implies that its from the a file RETRIEVE command therefore we should have only one file in the list
+             if requestObj:
+                if numFiles == 1:
+                   # if the http header contains a list of advised files to prestage then stage these instead
+                   prestageStr = requestObj.getHttpHdr('prestagefilelist')
+                   if prestageStr:
+                      prestageList = json.loads(prestageStr)
+                      requestedfile = os.path.basename(fileList[0])
+                      # make sure the file that is being asked for is also in the prestage list
+                      #if requestedfile in prestageList:     
+                      if not any(requestedfile in s for s in prestageList):           
+                         alert('ngamsMWAPawseyTapeAPI stageFiles: requested file %s is not in prestage list' % requestedfile)
+                         fileList = fileList + prestageList
+                      else:
+                         info(3, 'ngamsMWAPawseyTapeAPI stageFiles: requested file %s is in prestage list, prestaging files now' % requestedfile)
+                         fileList = prestageList
+                   else:
+                      info(3, 'ngamsMWAPawseyTapeAPI stageFiles: prestagefilelist not found in http header, ignoring')
+                      
+          except Exception as exp:
+             alert('ngamsMWAPawseyTapeAPI stageFiles: prestagefilelist error %s' % (str(exp)))
+             pass
+          
+          exitcode = pawseyMWAdmget(fileList, 'fe1.pawsey.ivec.org', 9898, 1400)
+          if exitcode != 0:
+             err = 'staging error'  
+             if exitcode == 11:
+                err = 'file stage request has exceeded 20000'
+             
+             errMsg = 'ngamsMWAPawseyTapeAPI stageFiles: %s errorcode: %s' % (err, str(exitcode))
+             alert(errMsg)
+             raise Exception(errMsg)
+       
+       except socket.timeout as t:
+           raise Exception('timed out') # so retrieval can search this "timed out" string
+        
+       except Exception as ex:
+           if (str(ex).find('Connection refused') > -1):
+              errMsg = 'ngamsMWAPawseyTapeAPI stageFiles: pawseyMWAdmget daemon is not running!'
+              alert(errMsg)
+              raise ex
+           else:
+              raise ex
     else:
         cmd1 = "dmget"
         num_staged = 0
@@ -255,7 +296,7 @@ def stageFiles(filenameList, checkCRC = False, printWarn = False, usePawseyMWADm
             if (len(t) == 2):
                 sysMsg += str(t[1])
             raise Exception('Staging errors: %s' % sysMsg)
-        
+
         crc_time = 0
         if (checkCRC):
             if (printWarn):

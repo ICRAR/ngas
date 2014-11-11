@@ -1535,8 +1535,8 @@ class ngamsServer:
         safePath = ngamsLib.hidePassword(path)
         msg = "Handling HTTP request: client_address=" + str(clientAddress) +\
               " - method=" + method + " - path=|" + safePath + "|"
-        for key in headers.keys():
-            msg = msg + " - " + key + "=" + str(headers[key])
+        #for key in headers.keys():
+        #    msg = msg + " - " + key + "=" + str(headers[key])
         info(1,msg)
         reqPropsObj.unpackHttpInfo(self.getCfg(), method, path, headers)
 
