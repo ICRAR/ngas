@@ -67,7 +67,7 @@ def internalPidFile():
 
         Returns:   Name of PID file (string).
         """
-        hostId = getHostId()
+        hostId = getHostId(cfgFile=CFG)
         # Generate a PID file with the  name: <mt root dir>/.<NGAS ID>
         if ((not cfgObj.getRootDirectory()) or \
             (cfgObj.getPortNo() < 1)): return ""

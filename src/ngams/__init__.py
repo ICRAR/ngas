@@ -951,7 +951,7 @@ def getIpAddress():
     global NGAMS_HOST_IP
     return NGAMS_HOST_IP
 
-def getHostName():
+def getHostName(cfgFile=None):
     """
     Return the host name is it should be used internally in NG/AMS.
 
@@ -961,8 +961,8 @@ def getHostName():
     ip = None
     if NGAMS_HOST_IP:
         ip= NGAMS_HOST_IP
-    if sys.argv.count('-cfg') > 0:
-        cfgFile = sys.argv[sys.argv.index('-cfg') + 1]
+    if cfgFile or sys.argv.count('-cfg') > 0:
+        if not cfgFile: cfgFile = sys.argv[sys.argv.index('-cfg') + 1]
         from xml.dom import minidom
         dom = minidom.parse(cfgFile)
         srv = dom.getElementsByTagName('Server')
@@ -1004,7 +1004,7 @@ def getSrvPort():
     return _srvPortNo
 
 
-def getHostId():
+def getHostId(cfgFile=None):
     """
     Returns the proper NG/AMS Host ID according whether multiple servers
     can be executed on the same host.
@@ -1018,7 +1018,7 @@ def getHostId():
     Returns:    NG/AMS Host ID (string).
     """
 
-    hostName = getHostName()
+    hostName = getHostName(cfgFile=cfgFile)
     if (hostName.split(".")[-1] == "local"):
         hostName = hostName.split(".")[0].split("-")[0]
     elif (re.match('^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$', hostName)):
