@@ -934,7 +934,7 @@ def ngas_full_buildout(typ='archive'):
 
         # run bootstrap with correct python version (explicit)
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
-        virtualenv('python{0} bootstrap.py'.format(NGAS_PYTHON_VERSION))
+        virtualenv('python{0} bootstrap.py -v 2.2.1'.format(NGAS_PYTHON_VERSION))
 
     ngas_buildout(typ=typ)
     install_user_profile()
