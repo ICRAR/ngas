@@ -37,6 +37,8 @@ import ngamsPlugInApi, ngamsLib, ngamsStatus
 import os, commands, binascii
 import ngamsDiscardCmd
 
+MOVE_SUCCESS = 'MOVEALLOK'
+
 """
 1. Check if the file on this host, and check if the target host has already got the file?
 2. Calculate the CRC of this file, and compared it with the one inside the database
@@ -58,7 +60,7 @@ def isMWAVisFile(fileId):
     
     return True
 
-def fileOnHost(fileId, hostId):
+def fileOnHost(srvObj, fileId, hostId):
     """
     hostId:    string without port number, e.g. eor-01
     Return boolean
@@ -66,7 +68,7 @@ def fileOnHost(fileId, hostId):
     query = "SELECT COUNT(a.file_id) FROM ngas_files a, ngas_disks b WHERE a.file_id = '%s' AND b.host_id = '%s:7777' AND a.disk_id = b.disk_id" % (fileId, hostId)
     info(3, "Executing SQL query for checking file on target host: %s" % query)
     res = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
-    c = int(res[0][0])
+    c = int(res[0][0][0])
     return (c > 0)
 
 def getCRCFromFile(filename):
@@ -113,7 +115,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     Returns:        Void.
     """
     # target_host does not contain port
-    required_params = ['file_path', 'file_id', 'file_version', 'disk_id', 'target_host', 'crc_db']
+    required_params = ['file_path', 'file_id', 'file_version', 'disk_id', 'target_host', 'crc_db', 'debug']
     
     filename = reqPropsObj.getHttpPar('file_path')
     
@@ -136,18 +138,24 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     diskId = parDic['disk_id']
     tgtHost = parDic['target_host']
     crcDb = parDic['crc_db']
+    debug = int(parDic['debug'])
     
     if (not isMWAVisFile(fileId)):
         errMsg = 'Not MWA visibilty file: %' % (fileId)
         warning(errMsg)
         srvObj.httpReply(reqPropsObj, httpRef, 503, errMsg, NGAMS_TEXT_MT)
         return
-    
-    if (fileOnHost(fileId, fileVersion, tgtHost)):
-        errMsg = "File %s/%d already on host %s" % (fileId, fileVersion, tgtHost)
+    """
+    if (fileOnHost(srvObj, fileId, tgtHost)):
+        errMsg = "File %s already on host %s" % (fileId, tgtHost)
         warning(errMsg)
         srvObj.httpReply(reqPropsObj, httpRef, 200, errMsg, NGAMS_TEXT_MT) # make it correct
         return
+    """
+    if (debug):
+        info(3, 'Only for file movment debugging, return now')
+        srvObj.httpReply(reqPropsObj, httpRef, 200, 'DEBUG ONLY', NGAMS_TEXT_MT)
+        return 
     
     fileCRC = getCRCFromFile(filename)
     if (fileCRC != crcDb):
@@ -155,7 +163,9 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         warning(errMsg)
         srvObj.httpReply(reqPropsObj, httpRef, 504, errMsg, NGAMS_TEXT_MT)
         return
-    sendUrl = 'http://%s:7777/QARCHIVE'
+    
+    sendUrl = 'http://%s:7777/QARCHIVE' % tgtHost
+    info(3, "Moving to %s" % sendUrl)
     fileMimeType = 'application/octet-stream'
     baseName = os.path.basename(filename)
     contDisp = "attachment; filename=\"" + baseName + "\""
@@ -169,7 +179,6 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                                                             contDisp, filename, "FILE",
                                                             blockSize=\
                                                             srvObj.getCfg().getBlockSize(),
-                                                            sendBuffer = srvObj.getCfg().getArchiveSndBufSize(),
                                                             checkSum = fileCRC)
             if (data.strip() != ""):
                 stat.clear().unpackXmlDoc(data)
@@ -202,7 +211,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         return
     
     
-    srvObj.httpReply(reqPropsObj, httpRef, 200, 'OK', NGAMS_TEXT_MT)
+    srvObj.httpReply(reqPropsObj, httpRef, 200, MOVE_SUCCESS, NGAMS_TEXT_MT)
             
     
     
