@@ -105,16 +105,28 @@ def ngamsGLEAM_Fix_Phase2_JobPI(srvObj,
     date_obs = hdrs[0]['DATE-OBS'][0][1].replace("'", "").split('T')[0]
     if (not dict_dec.has_key(date_obs)):
         return (1, 'no date for %s' % filename)
+    
     # copy it to some tmp directory
     fndir = os.path.dirname(filename)
     bname = os.path.basename(filename)
+    execCmd('cp %s %s/' % (filename, work_dir))
+    
+    # add header keyword
     fn = '%s/%s' % (work_dir, bname)
-    execCmd('mv %s %s/' % (filename, work_dir))
     os.chmod(fn, 644) # owner writable
     hdulist = pyfits.open(fn, mode='update')
     prihdr = hdulist[0].header
     prihdr['DEC_PNT'] = dict_dec[date_obs]
     hdulist.close()
+    
+    # double check if the key is really added or the file is not corrupted
+    hdrs = fitsapi.getFitsHdrs(fn)
+    if (not hdrs[0].has_key('DEC_PNT')):
+        # header is not added
+        # remove the temp file
+        os.remove(fn)
+        # raise error
+        raise Exception('%s still does not have key DEC_PNT' % (fn))
     
     # calculate the checksum, new filesize
     csum = getFileCRC(fn)
