@@ -44,6 +44,8 @@ import pccFits.PccSimpleFitsReader as fitsapi
 # used to connect to MWA M&C database
 from psycopg2.pool import ThreadedConnectionPool
 
+import ephem_utils
+
 mime = "images/fits"
 myhost = commands.getstatusoutput('hostname')[1]
 
@@ -52,11 +54,34 @@ g_db_pool = ThreadedConnectionPool(1, 3, database = 'gavo', user = 'zhl',
                             password = 'emhsZ2x5\n'.decode('base64'), 
                             host = 'mwa-web.icrar.org')
 
+mc_db_pool = ThreadedConnectionPool(1, 3, database = 'mwa', user = 'mwa', 
+                            password = 'Qm93VGll\n'.decode('base64'), 
+                            host = 'ngas01.ivec.org')
+
+
 # decoded job uri: 
 #     ngasjob://ngamsGLEAM_Decompress_JobPlugin?redo_on_fail=0
 
 # originally encoded joburi (during subscribe command)
 #     url=ngasjob://ngamsGLEAM_Decompress_JobPlugin%3Fredo_on_fail%3D0
+
+
+# fast lookup table
+dict_dec = {'2013-08-03':-55.0,'2013-08-05':-26.7,'2013-08-06':-13.0,'2013-08-07':-40.0,
+'2013-08-08':1.6,'2013-08-09':-55.0,'2013-08-10':-26.7,'2013-08-12':18.6,
+'2013-08-13':-72.0,'2013-08-17':18.6,'2013-08-18':-72.0,'2013-08-22':-13.0,
+'2013-08-25':-40.0,'2013-11-04':-27.0,'2013-11-05':-13.0,'2013-11-06':-40.0,
+'2013-11-07':1.6,'2013-11-08':-55.0,'2013-11-11':-18.0,'2013-11-12':-72.0,
+'2013-11-25':-27.0,'2014-03-03':-27.0,'2014-03-04':-13.0,'2014-03-05':-40.0,
+'2014-03-06':1.6,'2014-03-07':-55.0,'2014-03-08':18.0,'2014-03-09':-72.0,
+'2014-03-16':-40.0,'2014-03-17':-55.0,'2014-06-09':-27.0,'2014-06-10':-40.0,
+'2014-06-11':1.6,'2014-06-12':-55.0,'2014-06-13':-13.0,'2014-06-14':-72.0,
+'2014-06-15':18.0,'2014-06-16':-13.0,'2014-06-18':-55.0,'2014-08-04':-27.0,
+'2014-08-05':-40.0,'2014-08-06':-55.0,'2014-08-07':-72.0,'2014-08-08':-13.0,
+'2014-08-09':1.6,'2014-08-10':18.0,'2014-09-15':-27.0,'2014-09-16':-40.0,
+'2014-09-17':-55.0,'2014-09-18':-72.0,'2014-09-19':-13.0,'2014-09-20':1.6,
+'2014-09-21':18.0,'2014-10-27':-27.0,'2014-10-28':-40.0,'2014-10-29':-55.0,
+'2014-10-30':-72.0,'2014-10-31':-13.0,'2014-11-01':1.6,'2014-11-02':18.0}
 
 def getVODBSchema():
     """
@@ -119,26 +144,27 @@ def getVODBConn():
     if (g_db_pool):
         return g_db_pool.getconn()
     else:
-        raise Exception('connection pool is None when get conn')
-    """
-    global g_db_conn
-    if (g_db_conn and (not g_db_conn.closed)):
-        return g_db_conn
-    try:        
-        g_db_conn = psycopg2.connect(database = 'mwa', user = 'mwa', 
-                            password = 'Qm93VGll\n'.decode('base64'), 
-                            host = 'ngas01.ivec.org')
-        return g_db_conn 
-    except Exception, e:
-        errStr = 'Cannot create MWA DB Connection: %s' % str(e)
-        raise Exception, errStr
-    """
+        raise Exception('VO connection pool is None when get conn')
+
+def getMCDBConn():
+    if (mc_db_pool):
+        return mc_db_pool.getconn()
+    else:
+        raise Exception('MC connection pool is None when get conn')
+    
 def putVODBConn(conn):
     if (g_db_pool):
         g_db_pool.putconn(conn)
     else:
         error("Fail to get VO DB connection pool")
-        raise Exception('connection pool is None when put conn')
+        raise Exception('VO connection pool is None when put conn')
+
+def putMCDBConn(conn):
+    if (mc_db_pool):
+        mc_db_pool.putconn(conn)
+    else:
+        error("Fail to get MC DB connection pool")
+        raise Exception('MC connection pool is None when put conn')
 
 def executeQuery(conn, sqlQuery):
     try:
@@ -237,6 +263,37 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
             getr_frmfn = 1
     if (getr_frmfn == 1):
         robustness = int(float(fileId.split('_r')[1].split('_')[0]))
+    
+    # get the correct DEC for phase 2
+    if (2 == gleam_phase):
+        if (hdrs[0].has_key('DEC_PNT')):
+            dec = float(hdrs[0]['DEC_PNT'][0][1])
+        elif (dict_dec.has_key(date_obs)): # see if we have cached
+            dec = dict_dec[date_obs]
+        else: # have to query MC database
+            obsId = fileId.split('_')[0]
+            conn_mc = getMCDBConn()
+            cur_mc = conn_mc.cursor()
+            res_mc = None
+            try:
+                cur_mc.execute("SELECT azimuth, elevation FROM rf_stream WHERE starttime = %s" % obsId)
+                res_mc = cur_mc.fetchall()
+            except Exception, dbdex:
+                error("Fail to query DEC from DB: %s" % str(dbdex))
+            finally:
+                if (cur_mc != None):
+                    del cur_mc
+                putMCDBConn(conn_mc)
+            
+            if (not res_mc or len(res_mc) == 0):
+                errMsg = "fail to obtain DEC from MC db"
+                error(errMsg)
+                #raise Exception(errMsg)
+            else:
+                az = res_mc[0][0]
+                elv = res_mc[0][1]
+                ra1, dec = ephem_utils.azel2radec(az, elv, int(obsId))
+    
     
     conn = getVODBConn()
     cur = conn.cursor()
