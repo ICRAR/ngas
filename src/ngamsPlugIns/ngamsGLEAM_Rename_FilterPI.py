@@ -29,7 +29,7 @@
 # cwu      02/Dec/2014  Created
 
 """
-Pick only measuremenetset tar ball (e.g. 1069415952.tar.gz)
+Pick only measurementset tar ball (e.g. 1069415952.tar.gz)
 """
 import os
 
@@ -64,7 +64,7 @@ def ngamsGLEAM_Rename_FilterPI(srvObj,
         return 0
     if (ss[1] != 'tar' or ss[2] != 'gz'):
         return 0
-    if (len(ss[0]) != 10):
+    if (len(ss[0]) != 10): # this also avoids duplicated efforts (if it has processed as "phase2")
         return 0
     
     return 1
