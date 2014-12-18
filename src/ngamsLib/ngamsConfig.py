@@ -79,7 +79,7 @@ def checkIfSetStr(property,
                if the string was not properly formatted (integer/0|1).
     """
     info(4, "Checking if property: " + property + " is properly set ...")
-    if ((not isinstance(value, types.StringType)) or (value == "")):
+    if ((not isinstance(value, types.StringType))):
         errMsg = "Must define a proper string value for property: " + property
         errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
         error(errMsg)
@@ -88,6 +88,9 @@ def checkIfSetStr(property,
             return 0
         else:
             raise Exception, errMsg
+    elif value == "":
+        msg = "Value of property %s is an empty string" % property
+        warning(msg)
     else:
         return 1
 

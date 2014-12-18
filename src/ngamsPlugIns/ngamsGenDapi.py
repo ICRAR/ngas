@@ -113,7 +113,8 @@ def handlePars(reqPropsObj,
             info(1,"No file_id given, but found one in the URI: %s" % parDic[FILE_ID])
         else:
             parDic[FILE_ID] = os.path.basename(reqPropsObj.getFileUri())
-            info(1,"No file_id given, using basename of URI: %s" % parDic[FILE_ID])
+            info(1,"No file_id given, using basename of fileUri: %s" \
+                 % parDic[FILE_ID])
 
     if (reqPropsObj.hasHttpPar(VERSIONING)):
         parDic[VERSIONING] = int(reqPropsObj.getHttpPar(VERSIONING))

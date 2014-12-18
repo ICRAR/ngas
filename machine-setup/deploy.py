@@ -1121,9 +1121,9 @@ def archiveSource():
         if not res:
             abort('src_dir does not point to a valid NGAS source directory!!')
     #set_env()
-    client=ngamsPClient.ngamsPClient(host=env.host_string, port='7777')
+    client=ngamsPClient.ngamsPClient(host=env.host_string, port=7777)
     ngas_minimal_tar(transfer=False)
-    stat = client.archive(fileUri='/tmp/ngas_rt.tar.bz2',mimeType='application/octet-stream')
+    stat = client.archive(fileUri='/tmp/ngas_src.tar.gz',mimeType='application/octet-stream')
     if stat.getStatus() != 'SUCCESS':
         puts(">>>> Problem archiving source package!")
     puts(stat.getMessage())
