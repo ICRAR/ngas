@@ -109,7 +109,7 @@ def handlePars(reqPropsObj,
     if (not parDic[FILE_ID]):
         if (reqPropsObj.getFileUri().find("file_id=") > 0):
             file_id = reqPropsObj.getFileUri().split("file_id=")[1]
-            parDic[FILE_ID] = file_id
+            parDic[FILE_ID] = os.path.basename(file_id)
             info(1,"No file_id given, but found one in the URI: %s" % parDic[FILE_ID])
         else:
             parDic[FILE_ID] = os.path.basename(reqPropsObj.getFileUri())
