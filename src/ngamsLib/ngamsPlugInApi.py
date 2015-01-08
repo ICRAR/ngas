@@ -410,8 +410,8 @@ def genFileInfo(dbConObj,
         if (relPath != ""): relPath += "/" + subDir
     relPath = trim(relPath + "/" + str(fileVersion), "/")
     complPath = os.path.normpath(trgDiskInfoObj.getMountPoint()+"/"+relPath)
-    ext = string.split(os.path.basename(stagingFilename), ".")[-1]
-    newFilename = baseFilename + "." + ext
+    newFilename = ngamsHighLevelLib.checkAddExt(ngamsCfgObj, reqPropsObj.getMimeType(),
+                                  baseFilename)
     for addExt in addExts:
         if (addExt.strip() != ""): newFilename += "." + addExt
     complFilename = os.path.normpath(complPath + "/" + newFilename)

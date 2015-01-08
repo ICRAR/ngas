@@ -248,25 +248,25 @@
                 Active="1"
                 MaxRetentionSize="1"
                 MaxRetentionTime="00T00:30:00"
-                Sender="ngast@hq.eso.org"
-                SmtpHost="smtphost.hq.eso.org">
+                Sender="ngas@ngas.ddns.net"
+                SmtpHost="localhost">
     <AlertNotification>
-      <EmailRecipient Address="DEFINE@eso.org"/>
+      <EmailRecipient Address="DEFINE@googlegroups.com"/>
     </AlertNotification>
     <ErrorNotification>
-      <EmailRecipient Address="DEFINE@eso.org"/>
+      <EmailRecipient Address="DEFINE@googlegroups.com"/>
     </ErrorNotification>
     <DiskSpaceNotification>
-      <EmailRecipient Address="DEFINE@eso.org"/>
+      <EmailRecipient Address="DEFINE@googlegroups.com"/>
     </DiskSpaceNotification>
     <DiskChangeNotification>
-      <EmailRecipient Address="DEFINE@eso.org"/>
+      <EmailRecipient Address="DEFINE@googlegroups.com"/>
     </DiskChangeNotification>
     <NoDiskSpaceNotification>
-      <EmailRecipient Address="DEFINE@eso.org"/>
+      <EmailRecipient Address="DEFINE@googlegroups.com"/>
     </NoDiskSpaceNotification>
     <DataCheckNotification>
-      <EmailRecipient Address="DEFINE@eso.org"/>
+      <EmailRecipient Address="DEFINE@googlegroups.com"/>
     </DataCheckNotification>
   </Notification>
 
