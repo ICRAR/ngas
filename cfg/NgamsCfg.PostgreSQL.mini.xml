@@ -244,8 +244,8 @@
                 Active="1" 
                 MaxRetentionSize="1" 
                 MaxRetentionTime="00T00:30:00" 
-                Sender="ngast@hq.eso.org" 
-                SmtpHost="smtphost.hq.eso.org">
+                Sender="ngas@localhost" 
+                SmtpHost="localhost">
     <AlertNotification>
       <EmailRecipient Address="DEFINE@eso.org"/>
     </AlertNotification>
