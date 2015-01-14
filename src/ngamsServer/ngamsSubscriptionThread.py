@@ -1034,6 +1034,8 @@ def addToSubscrQueue(srvObj, subscrId, fileInfo, quChunks):
     except Exception, ee:
         # most likely error - key duplication, that will prevent cache queue from adding this entry, which is correct
         error('Subscriber %s failed to add to the persistent subscription queue file %s due to %s' % (subscrId, filename, str(ee)))
+        if (fileInfo[FILE_BL] == NGAMS_SUBSCR_BACK_LOG):
+            quChunks.put(fileInfo)
 
 def stageFile(srvObj, filename):
     fspi = srvObj.getCfg().getFileStagingPlugIn()
