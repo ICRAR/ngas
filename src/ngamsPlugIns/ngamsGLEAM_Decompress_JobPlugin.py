@@ -134,7 +134,7 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
         errNo = 0
         lasterrMsg = ''
         for imgfile in imglist:
-            url = 'http://%s:7777/LARCHIVE?fileUri=%s\&mimeType=application/octet-stream\&file_version=%d' % (archive_host, imgfile, fileVersion)
+            url = 'http://%s:7777/LARCHIVE?fileUri=%s\&mimeType=application/octet-stream\&file_version=%d\&no_versioning=1\&versioning=0' % (archive_host, imgfile, fileVersion)
             cmd1 = 'curl --connect-timeout %d %s' % (timeout, url)
             info(3, 'Local archiving %s' % cmd1)
             re = commands.getstatusoutput(cmd1)
