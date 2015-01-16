@@ -101,7 +101,7 @@ def ngamsJob_MITDeliveryPlugin(srvObj,
     th = 1E-5 # threshold
     bins = 0
     send_crc = 1
-    to_host = 'eor-12.mit.edu'
+    to_host = 'eor-10.mit.edu'
     to_port = '7777'
     if ((plugInPars != "") and (plugInPars != None)):
         pars = plugInPars
