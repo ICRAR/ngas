@@ -29,6 +29,7 @@
  * --------  ----------  -------------------------------------------------------
  * mark	    30/June/2014	ported from Intel C code
  * cwu      1/July/2014  Created python extension module
+ * dpallot  19/Feb/2015  Allow for execution on 32 and 64 bit platforms
  */
 
 #include "Python.h"
@@ -38,8 +39,22 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+#ifdef __WORDSIZE
+#define BITS_PER_LONG	__WORDSIZE
+#else
+#define BITS_PER_LONG	32
+#endif
 
-static uint32_t crc32c_intel_le_hw_byte(uint32_t crc, unsigned char const *data,
+#if BITS_PER_LONG == 64
+#define REX_PRE "0x48, "
+#define SCALE_F 8
+#else
+#define REX_PRE
+#define SCALE_F 4
+#endif
+
+
+static uint32_t crc32c_intel_le_hw_byte(uint32_t crc, unsigned const char *data,
 										unsigned long length) {
 	while (length--) {
 		__asm__ __volatile__(
@@ -53,21 +68,25 @@ static uint32_t crc32c_intel_le_hw_byte(uint32_t crc, unsigned char const *data,
 	return crc;
 }
 
-static uint32_t crc32c_intel(uint32_t crc_init, unsigned char const *data, unsigned long length) {
-	unsigned int iquotient = length / sizeof(uint64_t);
-	unsigned int iremainder = length % sizeof(uint64_t);
-	uint64_t *ptmp = (uint64_t *) data;
-	uint32_t crc = crc_init;
+static uint32_t crc32c_intel(uint32_t crc, unsigned const char *data, unsigned long length) {
+	unsigned int iquotient = length / SCALE_F;
+	unsigned int iremainder = length % SCALE_F;
 
+#if BITS_PER_LONG == 64
+    uint64_t *ptmp = (uint64_t *) data;
+#else
+    uint32_t *ptmp = (uint32_t *) data;
+#endif
+    
 	while (iquotient--) {
 		__asm__ __volatile__(
-			".byte 0xf2, " "0x48, 0xf, 0x38, 0xf1, 0xf1;"
+			".byte 0xf2, " REX_PRE "0xf, 0x38, 0xf1, 0xf1;"
 			:"=S"(crc)
 			:"0"(crc), "c"(*ptmp)
 		);
 		ptmp++;
 	}
-
+    
 	if (iremainder)
 		crc = crc32c_intel_le_hw_byte(crc, (unsigned char *)ptmp,
 				 iremainder);
@@ -78,16 +97,17 @@ static uint32_t crc32c_intel(uint32_t crc_init, unsigned char const *data, unsig
 static PyObject *
 crc32c_crc32(PyObject *self, PyObject *args) {
 	Py_buffer pbin;
-	unsigned char *bin_data;
+	unsigned char *bin_data = NULL;
 	uint32_t crc = 0U;      /* initial value of CRC for getting input */
 
 	if (!PyArg_ParseTuple(args, "s*|I:crc32", &pbin, &crc) )
 		return NULL;
+    
 	bin_data = pbin.buf;
 	uint32_t result = crc32c_intel(crc, bin_data, pbin.len);
 
 	PyBuffer_Release(&pbin);
-	//printf("crc in c = %lX\n", result);
+
 	return PyInt_FromLong(result);
 }
 
