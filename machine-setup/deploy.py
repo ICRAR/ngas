@@ -20,11 +20,11 @@ non-default source directory for the installation you can use. This
 installation is using a different (sudo) user on the target machine
 to run the installation.
 
-fab -u sudo_user -H <IP address> -f machine-setup/deploy.py user_deploy --set NGAS_USERS=ngas-user,src_dir=/tmp/ngas_test
+fab -u sudo_user -H <IP address> -f machine-setup/deploy.py user_deploy --set APP_USERS=ngas-user,src_dir=/tmp/ngas_test
 """
 import glob
 
-import boto
+import boto, boto.ec2
 import os
 import time, urllib
 
@@ -58,27 +58,36 @@ def sudo(*args, **kwargs):
 #Defaults
 thisDir = os.path.dirname(os.path.realpath(__file__))
 
+#### This should be replaced by another key and security group
+AWS_REGION = 'us-east-1'
+AWS_PROFILE = 'NGAS'
+AWS_KEY = os.path.expanduser('~/.ssh/icrar_ngas.pem')
+KEY_NAME = 'icrar_ngas'
+SECURITY_GROUPS = ['NGAS'] # Security group allows SSH and other ports
+
+
 BRANCH = 'master'    # this is controlling which branch is used in git clone
 USERNAME = 'ec2-user'
 POSTFIX = False
 AMI_IDs = {
            'CentOS':'ami-7c807d14', 
            'Old_CentOS':'ami-aecd60c7', 
-           'SLES':'ami-e8084981',
+           'SLES-SP2':'ami-e8084981',
+           'SLES-SP3':'ami-c08fcba8'
            }
-AMI_ID = AMI_IDs['CentOS']
+AMI_NAME = 'CentOS'
+AMI_ID = AMI_IDs[AMI_NAME]
 INSTANCE_NAME = 'NGAS_{0}'.format(BRANCH)
 INSTANCE_TYPE = 't1.micro'
 INSTANCES_FILE = os.path.expanduser('~/.aws/aws_instances')
-AWS_KEY = os.path.expanduser('~/.ssh/icrar_ngas.pem')
-KEY_NAME = 'icrar_ngas'
 ELASTIC_IP = 'False'
-SECURITY_GROUPS = ['NGAS'] # Security group allows SSH
-NGAS_USERS = ['ngas']
-NGAS_PYTHON_VERSION = '2.7'
-NGAS_PYTHON_URL = 'https://www.python.org/ftp/python/2.7.8/Python-2.7.8.tgz'
-NGAS_DIR = 'ngas_rt' #NGAS runtime directory
-NGAS_DEF_CFG = 'NgamsCfg.SQLite.mini.xml'
+USERS = ['ngas']
+APP_PYTHON_VERSION = '2.7'
+APP_PYTHON_URL = 'https://www.python.org/ftp/python/2.7.8/Python-2.7.8.tgz'
+APP_DIR = 'ngas_rt' #NGAS runtime directory
+INIT_SRC_T = '{0}/src/ngamsStartup/ngamsServer.init.sh' # Template for init source file.
+INIT_TRG = '/etc/init.d/ngamsServer'
+APP_CONF = 'ngamsServer.conf'
 GITUSER = 'icrargit'
 GITREPO = 'gitsrv.icrar.org:ngas'
 
@@ -89,7 +98,9 @@ SUPPORTED_OS = [
                 'Ubuntu', 
                 'Debian', 
                 'Suse',
-                'SLES',
+                'SUSE',
+                'SLES-SP2',
+                'SLES-SP3',
                 ]
 
 YUM_PACKAGES = [
@@ -167,12 +178,8 @@ PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 
 def set_env():
     # set environment to default for EC2, if not specified on command line.
-#     puts("Environment before set_env:")
-#     for k in env:
-#         puts("{0}:{1}".format(k,env[k]))
-#     puts("<<<<<<<<")
-        
-    env.connection_attempts = 5
+
+    # puts(env)
     if not env.has_key('GITUSER') or not env.GITUSER:
         env.GITUSER = GITUSER
     if not env.has_key('GITREPO') or not env.GITREPO:
@@ -181,41 +188,43 @@ def set_env():
         env.postfix = POSTFIX
     if not env.has_key('user') or not env.user:
         env.user = USERNAME
-    if not env.has_key('NGAS_USERS') or not env.NGAS_USERS:
-        if env.user != USERNAME and env.command not in \
-        ['test_deploy', 'operations_deploy', 'uninstall']:
-            env.NGAS_USERS = [env.user]
-        else:
-            env.NGAS_USERS = NGAS_USERS
-    if type(env.NGAS_USERS) == type(''): # if its just a string
-        print "NGAS_USERS preset to {0}".format(env.NGAS_USERS)
-        env.NGAS_USERS = [env.NGAS_USERS] # change the type
+    if not env.has_key('APP_USERS') or not env.APP_USERS:
+        env.APP_USERS = USERS
+    if type(env.APP_USERS) == type(''): # if its just a string
+        print "USERS preset to {0}".format(env.APP_USERS)
+        env.APP_USERS = [env.APP_USERS] # change the type
+    if not env.has_key('HOME') or env.HOME[0] == '~' or not env.HOME:
+        env.HOME = run("echo ~{0}".format(env.APP_USERS[0]))
     if not env.has_key('src_dir') or not env.src_dir:
         env.src_dir = thisDir + '/../'
     require('hosts', provided_by=[test_env])
-    if not env.command == 'archiveSource':
-        if not env.has_key('HOME') or env.HOME[0] == '~' or not env.HOME:
-            env.HOME = run("echo ~{0}".format(NGAS_USERS[0]))
-        linux_flavor = get_linux_flavor()
-    else:
-        env.HOME = os.environ['HOME']
+    if not env.has_key('HOME') or env.HOME[0] == '~' or not env.HOME:
+        env.HOME = run("echo ~{0}".format(USERS[0]))
     if not env.has_key('PREFIX') or env.PREFIX[0] == '~' or not env.PREFIX:
         env.PREFIX = env.HOME
-    if not env.has_key('NGAS_DIR_ABS') or env.NGAS_DIR_ABS[0] == '~' \
-    or not env.NGAS_DIR_ABS:
-        env.NGAS_DIR_ABS = '{0}/{1}'.format(env.PREFIX, NGAS_DIR)
-        env.NGAS_DIR = NGAS_DIR
+    if not env.has_key('APP_CONF') or not env.APP_CONF:
+        env.APP_CONF = APP_CONF
+    if not env.has_key('APP_DIR_ABS') or env.APP_DIR_ABS[0] == '~' \
+    or not env.APP_DIR_ABS:
+        env.APP_DIR_ABS = '{0}/{1}'.format(env.PREFIX, APP_DIR)
+        env.APP_DIR = APP_DIR
     else:
-        env.NGAS_DIR = env.NGAS_DIR_ABS.split('/')[-1]
-    if not env.has_key('standalone') or not env.standalone:
-        env.standalone = 0
+        env.APP_DIR = env.APP_DIR_ABS.split('/')[-1]
+    if not env.has_key('INIT_SRC') or not env.INIT_SRC:
+        env.INIT_SRC = INIT_SRC_T.format(env.APP_DIR_ABS)
+    if not env.has_key('AWS_PROFILE') or not env.AWS_PROFILE:
+        env.AWS_PROFILE = AWS_PROFILE
+    if not env.has_key('INIT_TRG') or not env.INIT_TRG:
+        env.INIT_TRG = INIT_TRG
     if not env.has_key('force') or not env.force:
         env.force = 0
-    if not env.has_key('ami_name') or not env.ami_name:
-        env.ami_name = 'CentOS'
-    env.AMI_ID = AMI_IDs[env.ami_name]
-    if env.ami_name == 'SLES':
+    if not env.has_key('standalone') or not env.standalone:
+        env.standalone = 0
+    if not env.has_key('AMI_NAME') or not env.AMI_NAME:
+        env.AMI_NAME = 'CentOS'
+    if env.AMI_NAME == 'SLES':
         env.user = 'root'
+    get_linux_flavor()
     puts("""Environment:
             USER:              {0};
             Key file:          {1};
@@ -223,15 +232,15 @@ def set_env():
             host_string:       {3};
             postfix:           {4};
             HOME:              {8};
-            NGAS_DIR_ABS:      {5};
-            NGAS_DIR:          {6};
-            NGAS_USERS:        {7};
+            APP_DIR_ABS:      {5};
+            APP_DIR:          {6};
+            USERS:        {7};
             PREFIX:            {9};
             SRC_DIR:           {10};
             """.\
             format(env.user, env.key_filename, env.hosts,
-                   env.host_string, env.postfix, env.NGAS_DIR_ABS,
-                   env.NGAS_DIR, env.NGAS_USERS, env.HOME, env.PREFIX, 
+                   env.host_string, env.postfix, env.APP_DIR_ABS,
+                   env.APP_DIR, env.APP_USERS, env.HOME, env.PREFIX, 
                    env.src_dir))
 
 
@@ -249,7 +258,6 @@ def whatsmyip():
     return myip
 
 
-@task
 def create_instance(names, use_elastic_ip, public_ips):
     """Create the EC2 instance
 
@@ -267,7 +275,7 @@ def create_instance(names, use_elastic_ip, public_ips):
         abort('The lists do not match in length')
 
     # This relies on a ~/.boto file holding the '<aws access key>', '<aws secret key>'
-    conn = boto.connect_ec2()
+    conn = boto.ec2.connect_to_region(AWS_REGION, profile_name=env.AWS_PROFILE)
 
     if use_elastic_ip:
         # Disassociate the public IP
@@ -275,7 +283,7 @@ def create_instance(names, use_elastic_ip, public_ips):
             if not conn.disassociate_address(public_ip=public_ip):
                 abort('Could not disassociate the IP {0}'.format(public_ip))
 
-    reservations = conn.run_instances(env.AMI_ID, instance_type=INSTANCE_TYPE, \
+    reservations = conn.run_instances(AMI_IDs[env.AMI_NAME], instance_type=INSTANCE_TYPE, \
                                     key_name=KEY_NAME, security_groups=SECURITY_GROUPS,\
                                     min_count=number_instances, max_count=number_instances)
     instances = reservations.instances
@@ -321,6 +329,8 @@ def create_instance(names, use_elastic_ip, public_ips):
         instances[i].update(True)
         puts('Current DNS name is {0} after associating the Elastic IP'.format(instances[i].dns_name))
         puts('Instance ID is {0}'.format(instances[i].id))
+        puts('In order to terminate this instance you can call:')
+        puts('fab terminate:{0}'.format(instances[i].id))
         host_names.append(str(instances[i].dns_name))
 
     # The instance is started, but not useable (yet)
@@ -331,21 +341,6 @@ def create_instance(names, use_elastic_ip, public_ips):
     puts('.')
 
     return host_names
-
-@task
-def terminate_instance(instance_id=None):
-    """
-    Terminate the EC2 instance.
-    
-    NOTE: This task is asynchronous.
-    """
-    if not instance_id:
-        abort('>>> ABORTING: instance_id not specified.')
-    # This relies on a ~/.boto file holding the '<aws access key>', '<aws secret key>'
-    conn = boto.connect_ec2()
-    conn.terminate_instances(instance_ids=[instance_id])
-    print "\n\n******** INSTANCE {0} TERMINATED!********\n\n".format(instance_id)
-
 
 
 def to_boolean(choice, default=False):
@@ -401,13 +396,13 @@ def check_python():
     path to python binary    string, could be empty string
     """
     # Try whether there is already a local python installation for this user
-    ppath = env.NGAS_DIR_ABS+'/../python'
-    ppath = check_command('{0}/bin/python{1}'.format(ppath, NGAS_PYTHON_VERSION))
+    ppath = env.APP_DIR_ABS+'/../python'
+    ppath = check_command('{0}/bin/python{1}'.format(ppath, APP_PYTHON_VERSION))
     if ppath:
         env.PYTHON = ppath
         return ppath
     # Try python2.7 first
-    ppath = check_command('python{0}'.format(NGAS_PYTHON_VERSION))
+    ppath = check_command('python{0}'.format(APP_PYTHON_VERSION))
     if ppath:
         env.PYTHON = ppath
         return ppath
@@ -416,7 +411,7 @@ def check_python():
     # all the stuff with a version number.
 #    elif check_command('python'):
 #        res = run('python -V')
-#        if res.find(NGAS_PYTHON_VERSION) >= 0:
+#        if res.find(APP_PYTHON_VERSION) >= 0:
 #            return check_command('python')
 #        else:
 #            return ''
@@ -500,8 +495,8 @@ def virtualenv(command):
     """
     Just a helper function to execute commands in the virtualenv
     """
-    env.activate = 'source {0}/bin/activate'.format(env.NGAS_DIR_ABS)
-    with cd(env.NGAS_DIR_ABS):
+    env.activate = 'source {0}/bin/activate'.format(env.APP_DIR_ABS)
+    with cd(env.APP_DIR_ABS):
         run(env.activate + '&&' + command)
 
 def git_pull():
@@ -510,15 +505,15 @@ def git_pull():
     TODO: This does not work outside iVEC. The current implementation
     is thus using a tar-file, copied over from the calling machine.
     """
-    with cd(env.NGAS_DIR_ABS):
+    with cd(env.APP_DIR_ABS):
         sudo('git pull', user=env.user)
 
 def git_clone():
     """
-    Clones the NGAS repository.
+    Clones the APP repository.
     """
     copy_public_keys()
-    with cd(env.NGAS_DIR_ABS):
+    with cd(env.APP_DIR_ABS):
         run('git clone {0}@{1} -b {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
 
 
@@ -534,29 +529,29 @@ def git_clone_tar(unpack=True):
     egg_excl = ' '
     if not env.src_dir:
         local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
-        local('cd /tmp && mv {0} {1}'.format(BRANCH, env.NGAS_DIR))
-        tar_dir = '/tmp/{0}'.format(env.NGAS_DIR)
+        local('cd /tmp && mv {0} {1}'.format(BRANCH, env.APP_DIR))
+        tar_dir = '/tmp/{0}'.format(env.APP_DIR)
         sdir = '/tmp'
     else:
         tar_dir = '/tmp/'
         sdir = tar_dir
-        local('cd {0} && ln -s {1} {2}'.format(tar_dir, env.src_dir, env.NGAS_DIR))
-        tar_dir = tar_dir+'/'+env.NGAS_DIR+'/.'
+        local('cd {0} && ln -s {1} {2}'.format(tar_dir, env.src_dir, env.APP_DIR))
+        tar_dir = tar_dir+'/'+env.APP_DIR+'/.'
     if not env.standalone:
         egg_excl = ' --exclude eggs.tar.gz '
 
     # create the tar
     local('cd {0} && tar -cjf {1}.tar.bz2 --exclude BIG_FILES \
-            --exclude .git --exclude .s* --exclude .e* {2} {1}/.'.format(sdir, env.NGAS_DIR, egg_excl))
-    tarfile = '{0}.tar.bz2'.format(env.NGAS_DIR)
+            --exclude .git --exclude .s* --exclude .e* {2} {1}/.'.format(sdir, env.APP_DIR, egg_excl))
+    tarfile = '{0}.tar.bz2'.format(env.APP_DIR)
 
     # transfer the tar file
-    put('{0}/{1}'.format(sdir,tarfile), '/tmp/{0}'.format(tarfile, env.NGAS_DIR_ABS))
-    local('rm -rf /tmp/{0}'.format(env.NGAS_DIR))  # cleanup local git clone dir
+    put('{0}/{1}'.format(sdir,tarfile), '/tmp/{0}'.format(tarfile, env.APP_DIR_ABS))
+    local('rm -rf /tmp/{0}'.format(env.APP_DIR))  # cleanup local git clone dir
 
     if unpack:
         # unpack the tar file remotely
-        with cd(env.NGAS_DIR_ABS+'/..'):
+        with cd(env.APP_DIR_ABS+'/..'):
             run('tar -xjf /tmp/{0}'.format(tarfile))
 
 
@@ -588,7 +583,7 @@ def ngas_minimal_tar(transfer=True):
     local('cd {0}/.. && tar -czf /tmp/ngas_src.tar.gz {1} ngas'.format(env.src_dir, exclude))
     if transfer:
         put('/tmp/ngas_src.tar.gz','/tmp/ngas.tar.gz')
-        run('cd {0} && tar --strip-components 1 -xzf /tmp/ngas.tar.gz'.format(env.NGAS_DIR_ABS))
+        run('cd {0} && tar --strip-components 1 -xzf /tmp/ngas.tar.gz'.format(env.APP_DIR_ABS))
 
 def processCentOSErrMsg(errmsg):
     if (errmsg == None or len(errmsg) == 0):
@@ -637,7 +632,7 @@ def get_linux_flavor():
     return linux_flavor
 
 @task
-def system_install_f():
+def system_install():
     """
     Perform the system installation part.
 
@@ -658,7 +653,7 @@ def system_install_f():
         errmsg = sudo('apt-get -qq -y update', combine_stderr=True, warn_only=True)
         for package in APT_PACKAGES:
             install_apt(package)
-    elif linux_flavor == 'SUSE':
+    elif linux_flavor in ['SUSE','SLES-SP2', 'SLES-SP3', 'SLES']:
         errmsg = sudo('zypper -n -q patch', combine_stderr=True, warn_only=True)
         for package in SLES_PACKAGES:
             install_zypper(package)
@@ -753,7 +748,7 @@ def user_setup():
         env.user = USERNAME # defaults to ec2-user
     group = 'ngas'
     sudo('groupadd ngas', warn_only=True)
-    for user in env.NGAS_USERS:
+    for user in env.APP_USERS:
         sudo('useradd -g {0} -m -s /bin/bash {1}'.format(group, user), warn_only=True)
         sudo('mkdir /home/{0}/.ssh'.format(user), warn_only=True)
         sudo('chmod 700 /home/{0}/.ssh'.format(user))
@@ -766,10 +761,10 @@ def user_setup():
         sudo('chown {0}:{1} /home/{0}/.ssh/authorized_keys'.format(user, group))
         
     # create NGAS directories and chown to correct user and group
-    sudo('mkdir -p {0}'.format(env.NGAS_DIR_ABS))
-    sudo('chown {0}:{1} {2}'.format(env.NGAS_USERS[0], group, env.NGAS_DIR_ABS))
-    sudo('mkdir -p {0}/../NGAS'.format(env.NGAS_DIR_ABS))
-    sudo('chown {0}:{1} {2}/../NGAS'.format(env.NGAS_USERS[0], group, env.NGAS_DIR_ABS))
+    sudo('mkdir -p {0}'.format(env.APP_DIR_ABS))
+    sudo('chown {0}:{1} {2}'.format(env.APP_USERS[0], group, env.APP_DIR_ABS))
+    sudo('mkdir -p {0}/../NGAS'.format(env.APP_DIR_ABS))
+    sudo('chown {0}:{1} {2}/../NGAS'.format(env.APP_USERS[0], group, env.APP_DIR_ABS))
     print "\n\n******** USER SETUP COMPLETED!********\n\n"
 
 
@@ -789,16 +784,16 @@ def python_setup():
 
     with cd('/tmp'):
         if not env.standalone:
-            run('wget --no-check-certificate -q {0}'.format(NGAS_PYTHON_URL))
+            run('wget --no-check-certificate -q {0}'.format(APP_PYTHON_URL))
         else:
             put('{0}/additional_tars/Python-2.7.8.tgz'.format(env.src_dir), 'Python-2.7.8.tgz')
-        base = os.path.basename(NGAS_PYTHON_URL)
+        base = os.path.basename(APP_PYTHON_URL)
         pdir = os.path.splitext(base)[0]
         run('tar -xzf {0}'.format(base))
-    ppath = env.NGAS_DIR_ABS + '/../python'
+    ppath = env.APP_DIR_ABS + '/../python'
     with cd('/tmp/{0}'.format(pdir)):
         run('./configure --prefix {0};make;make install'.format(ppath))
-        ppath = '{0}/bin/python{1}'.format(ppath,NGAS_PYTHON_VERSION)
+        ppath = '{0}/bin/python{1}'.format(ppath,APP_PYTHON_VERSION)
     env.PYTHON = ppath
     print "\n\n******** PYTHON INSTALLATION COMPLETED!********\n\n"
 
@@ -810,15 +805,15 @@ def virtualenv_setup():
     """
     set_env()
     check_python()
-    print "CHECK_DIR: {0}".format(env.NGAS_DIR_ABS+'/src')
-    if check_dir(env.NGAS_DIR_ABS+'/src') and not env.force:
+    print "CHECK_DIR: {0}".format(env.APP_DIR_ABS+'/src')
+    if check_dir(env.APP_DIR_ABS+'/src') and not env.force:
         abort('ngas_rt directory exists already')
 
     with cd('/tmp'):
         put('{0}/clib_tars/virtualenv-1.10.tar.gz'.format(env.src_dir), 'virtualenv-1.10.tar.gz')
         run('tar -xzf virtualenv-1.10.tar.gz')
-        with settings(user=env.NGAS_USERS[0]):
-            run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.NGAS_DIR_ABS))
+        with settings(user=env.APP_USERS[0]):
+            run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.APP_DIR_ABS))
     print "\n\n******** VIRTUALENV SETUP COMPLETED!********\n\n"
 
 
@@ -833,9 +828,9 @@ def ngas_buildout(typ='archive'):
     """
     set_env()
 
-    with cd(env.NGAS_DIR_ABS):
+    with cd(env.APP_DIR_ABS):
         if (env.standalone):
-            put('{0}/additional_tars/eggs.tar.gz'.format(env.src_dir), '{0}/eggs.tar.gz'.format(env.NGAS_DIR_ABS))
+            put('{0}/additional_tars/eggs.tar.gz'.format(env.src_dir), '{0}/eggs.tar.gz'.format(env.APP_DIR_ABS))
             run('tar -xzf eggs.tar.gz')
             if env.linux_flavor == 'Darwin':
                 put('{0}/data/common.py.patch'.format(env.src_dir), '.')
@@ -846,12 +841,12 @@ def ngas_buildout(typ='archive'):
             run('find . -name "._*" -exec rm -rf {} \;')
             virtualenv('buildout')
         with settings(warn_only=True):
-                run('mkdir -p {0}/../NGAS'.format(env.NGAS_DIR_ABS))
-        run('cp -R {0}/NGAS/* {0}/../NGAS/.'.format(env.NGAS_DIR_ABS))
+                run('mkdir -p {0}/../NGAS'.format(env.APP_DIR_ABS))
+        run('cp -R {0}/NGAS/* {0}/../NGAS/.'.format(env.APP_DIR_ABS))
         with settings(warn_only=True):
             run('cp {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
-              env.NGAS_DIR_ABS, initName(typ=typ)[2], initName(typ=typ)[3]))
-        nda = '\/'+'\/'.join(env.NGAS_DIR_ABS.split('/')[1:-1])+'\/NGAS'
+              env.APP_DIR_ABS, initName(typ=typ)[2], initName(typ=typ)[3]))
+        nda = '\/'+'\/'.join(env.APP_DIR_ABS.split('/')[1:-1])+'\/NGAS'
         if env.linux_flavor == 'Darwin': # capture stupid difference in sed on Mac OSX
             run("""sed -i '' 's/\*replaceRoot\*/{0}/g' {0}/cfg/{1}""".
                 format(nda, initName(typ=typ)[3]))
@@ -862,8 +857,8 @@ def ngas_buildout(typ='archive'):
         with cd('../NGAS'):
             with settings(warn_only=True):
                 run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
-                    .format(env.NGAS_DIR_ABS))
-                run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template'.format(env.NGAS_DIR_ABS))
+                    .format(env.APP_DIR_ABS))
+                run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template'.format(env.APP_DIR_ABS))
 
 
     print "\n\n******** NGAS_BUILDOUT COMPLETED!********\n\n"
@@ -876,7 +871,7 @@ def install_user_profile():
     NOTE: This will be executed for the user running NGAS.
     """
     set_env()
-    nuser = env.NGAS_USERS[0]
+    nuser = env.APP_USERS[0]
     if env.user != nuser:
         with cd(env.HOME):
             res = sudo('if [ -e {0}/.bash_profile_orig ]; then echo 1; else echo ; fi'.format(env.HOME))
@@ -886,9 +881,9 @@ def install_user_profile():
             else:
                 sudo('sudo -u {0} cp .bash_profile_orig .bash_profile'.format(nuser))
             sudo('sudo -u {0} echo "export NGAS_PREFIX={1}\n" >> .bash_profile'.\
-                format(nuser, env.NGAS_DIR_ABS))
+                format(nuser, env.APP_DIR_ABS))
             sudo('sudo -u {0} echo "source {1}/bin/activate\n" >> .bash_profile'.\
-                 format(nuser, env.NGAS_DIR_ABS))
+                 format(nuser, env.APP_DIR_ABS))
     else:
         with cd(env.HOME):
             res = run('if [ -e {0}/.bash_profile_orig ]; then echo 1; else echo ; fi'.format(env.HOME))
@@ -897,9 +892,9 @@ def install_user_profile():
             else:
                 run('cp .bash_profile_orig .bash_profile'.format(nuser))
             run('echo "export NGAS_PREFIX={1}\n" >> .bash_profile'.\
-                format(nuser, env.NGAS_DIR_ABS))
+                format(nuser, env.APP_DIR_ABS))
             run('echo "source {1}/bin/activate\n" >> .bash_profile'.\
-                 format(nuser, env.NGAS_DIR_ABS))
+                 format(nuser, env.APP_DIR_ABS))
 
     print "\n\n******** .bash_profile updated!********\n\n"
 
@@ -916,10 +911,10 @@ def ngas_full_buildout(typ='archive'):
     #
     if (env.standalone):
         ngas_minimal_tar()
-    elif not check_path('{0}/bootstrap.py'.format(env.NGAS_DIR_ABS)):
+    elif not check_path('{0}/bootstrap.py'.format(env.APP_DIR_ABS)):
         git_clone_tar()
 
-    with cd(env.NGAS_DIR_ABS):
+    with cd(env.APP_DIR_ABS):
         virtualenv('pip install clib_tars/zc.buildout-2.2.1.tar.gz')
         virtualenv('pip install clib_tars/pycrypto-2.6.tar.gz')
         virtualenv('pip install clib_tars/paramiko-1.11.0.tar.gz')
@@ -934,7 +929,7 @@ def ngas_full_buildout(typ='archive'):
 
         # run bootstrap with correct python version (explicit)
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
-        virtualenv('python{0} bootstrap.py -v 2.2.1'.format(NGAS_PYTHON_VERSION))
+        virtualenv('python{0} bootstrap.py -v 2.2.1'.format(APP_PYTHON_VERSION))
 
     ngas_buildout(typ=typ)
     install_user_profile()
@@ -953,15 +948,16 @@ def test_env():
 
     Allow the user to select if a Elastic IP address is to be used
     """
+    if not env.has_key('AWS_PROFILE') or not env.AWS_PROFILE:
+        env.AWS_PROFILE = AWS_PROFILE
     if not env.has_key('instance_name') or not env.instance_name:
         env.instance_name = INSTANCE_NAME
     if not env.has_key('use_elastic_ip') or not env.use_elastic_ip:
         env.use_elastic_ip = ELASTIC_IP
     if not env.has_key('key_filename') or not env.key_filename:
         env.key_filename = AWS_KEY
-    if not env.has_key('ami_name') or not env.ami_name:
-        env.ami_name = 'CentOS'
-    env.AMI_ID = AMI_IDs[env.ami_name]
+    if not env.has_key('AMI_NAME') or not env.AMI_NAME:
+        env.AMI_NAME = 'CentOS'
     env.instance_name = INSTANCE_NAME
     env.use_elastic_ip = ELASTIC_IP
     if 'use_elastic_ip' in env:
@@ -985,7 +981,7 @@ def test_env():
     if not env.host_string:
         env.host_string = env.hosts[0]
     env.user = USERNAME
-    if env.ami_name == 'SLES':
+    if env.AMI_NAME == 'SLES':
         env.user = 'root'
 
     env.key_filename = AWS_KEY
@@ -1020,9 +1016,9 @@ def user_deploy(typ='archive'):
 
     fab -f deploy.py user_deploy:typ='cache'
     """
-    if not env.has_key('NGAS_USERS') or not env.NGAS_USERS:
+    if not env.has_key('APP_USERS') or not env.APP_USERS:
         # if not defined on the command line use the current user
-        env.NGAS_USERS = os.environ['HOME'].split('/')[-1]
+        env.APP_USERS = os.environ['HOME'].split('/')[-1]
 
     install(system_install=False, user_install=False, 
             init_install=False, typ=typ)
@@ -1039,15 +1035,16 @@ def init_deploy(typ='archive'):
     set_env()
 
     sudo('cp {0}/src/ngamsStartup/{1} /etc/init.d/{2}'.\
-         format(env.NGAS_DIR_ABS, initFile, initLink))
+         format(env.APP_DIR_ABS, initFile, initLink))
     sudo("sed -i 's/NGAS_USER=\"ngas\"/NGAS_USER=\"{0}\"/g' /etc/init.d/{1}".\
-         format(env.NGAS_USERS[0], initLink))
+         format(env.APP_USERS[0], initLink))
     sudo("sed -i 's/NGAS_ROOT=\"\/home\/$NGAS_USER\/ngas_rt\"/NGAS_ROOT=\"{0}\"/g' /etc/init.d/{1}".\
-         format(env.NGAS_DIR_ABS.replace('/','\/'), initLink))
+         format(env.APP_DIR_ABS.replace('/','\/'), initLink))
     sudo('chmod a+x /etc/init.d/{0}'.format(initLink))
-    sudo('chkconfig --add /etc/init.d/{0}'.format(initLink))
-    # on ubuntu, this should be
-    # sudo('chkconfig --add {0}'.format(initLink))
+    if (get_linux_flavor() in ['Ubuntu','SUSE', 'Suse']):
+        sudo('chkconfig --add {0}'.format(initLink))
+    else:
+        sudo('chkconfig --add /etc/init.d/{0}'.format(initLink))
     print "\n\n******** CONFIGURED INIT SCRIPTS!********\n\n"
 
 
@@ -1095,7 +1092,7 @@ def test_deploy():
     # set environment to default for EC2, if not specified otherwise.
     set_env()
     install(system_install=True, user_install=True, init_install=True)
-    with settings(user=env.NGAS_USERS[0]):
+    with settings(user=env.APP_USERS[0]):
         run('ngamsDaemon start')
     print "\n\n******** SERVER STARTED!********\n\n"
 
@@ -1129,26 +1126,26 @@ def archiveSource():
     puts(stat.getMessage())
 
 @task
-def install(system_install=True, user_install=True, 
+def install(sys_install=True, user_install=True, 
             init_install=True, typ='archive'):
     """
     Install NGAS users and NGAS software on existing machine.
     Note: Requires root permissions!
     """
     set_env()
-    if system_install: system_install_f()
+    if sys_install: system_install()
     if env.postfix:
         postfix_config()
     if user_install: user_setup()
 
-    with settings(user=env.NGAS_USERS[0]):
+    with settings(user=env.APP_USERS[0]):
         ppath = check_python()
         if not ppath:
             python_setup()
     if env.PREFIX != env.HOME: # generate non-standard ngas_rt directory
         sudo('mkdir -p {0}'.format(env.PREFIX))
-        sudo('chown -R {0}:ngas {1}'.format(env.NGAS_USERS[0], env.PREFIX))
-    with settings(user=env.NGAS_USERS[0]):
+        sudo('chown -R {0}:ngas {1}'.format(env.APP_USERS[0], env.PREFIX))
+    with settings(user=env.APP_USERS[0]):
         virtualenv_setup()
         ngas_full_buildout(typ=typ)
     if init_install: init_deploy()
@@ -1165,13 +1162,13 @@ def uninstall(clean_system=False):
           system packages.
     """
     set_env()
-    with settings(user = env.NGAS_USERS[0]):
+    with settings(user = env.APP_USERS[0]):
         if env.PREFIX != env.HOME: # avoid removing the home directory
             run('rm -rf {0}'.format(env.PREFIX), warn_only=True)
-        run('rm -rf {0}'.format(env.NGAS_DIR_ABS), warn_only=True)
+        run('rm -rf {0}'.format(env.APP_DIR_ABS), warn_only=True)
     
     if clean_system: # don't delete the users and system settings by default.
-        for u in env.NGAS_USERS:
+        for u in env.APP_USERS:
             sudo('userdel -r {0}'.format(u), warn_only=True)
         sudo('groupdel ngas', warn_only=True)
         sudo('rm /etc/ngamsServer.conf', warn_only=True)
@@ -1193,7 +1190,7 @@ def upgrade():
     # the remote environment. If both fails bail-out.
     if not env.has_key('PREFIX') or not env.PREFIX:
         env.PREFIX = run('echo $NGAS_PREFIX/..')
-        env.NGAS_DIR_ABS = run('echo $NGAS_PREFIX')
+        env.APP_DIR_ABS = run('echo $NGAS_PREFIX')
     if not env.PREFIX:
         print 'Unable to identify location of NGAS installation!'
         print 'Please set the environment variable NGAS_PREFIX in .bash_profile.'
@@ -1210,7 +1207,7 @@ def upgrade():
             abort('src_dir does not point to a valid NGAS source directory!!')
     set_env()
     run('$NGAS_PREFIX/bin/ngamsDaemon stop')
-    rsync_project(local_dir=env.src_dir+'/src', remote_dir=env.NGAS_DIR_ABS, exclude=".git")
+    rsync_project(local_dir=env.src_dir+'/src', remote_dir=env.APP_DIR_ABS, exclude=".git")
     #git_clone_tar()
     run('$NGAS_PREFIX/bin/ngamsDaemon start')
     print "\n\n******** UPGRADE COMPLETED!********\n\n"
@@ -1230,4 +1227,54 @@ def assign_ddns():
     sudo('sudo noip2 -C')
     sudo('chkconfig noip on')
     sudo('service noip start')
+
+@task
+def connect():
+    if not env.has_key('AWS_PROFILE') or not env.AWS_PROFILE:
+        env.AWS_PROFILE = AWS_PROFILE
+    if not env.has_key('key_filename') or not env.key_filename:
+        env.key_filename = AWS_KEY
+
+    conn = boto.ec2.connect_to_region(AWS_REGION, profile_name=env.AWS_PROFILE)
+    return conn
+
+@task
+def list_instances():
+    conn = connect()
+    res = conn.get_all_instances()
+    for r in res:
+        inst_id = r.instances[0].id
+        puts('Instance {0} tags:'.format(inst_id))
+        tagdict = r.instances[0].tags
+        for k in tagdict:
+            print '{0}: {1}'.format(k,tagdict[k]),
+        print
+        print
+
+@task
+def terminate(instance_id):
+    """
+    Task to terminate the boto instances
+    """
+    userAThost = os.environ['USER'] + '@' + whatsmyip()
+    if not(instance_id):
+        puts('No instance ID specified. Please provide one.')
+        return
+    conn = connect()
+    inst = conn.get_all_instances(instance_ids=[instance_id])
+    puts('Instance {0} tags:'.format(instance_id))
+    tagdict = inst[0].instances[0].tags
+    for k in tagdict:
+        print '{0}: {1}'.format(k,tagdict[k]),
+    print
+    if tagdict['Created By'] != userAThost:
+        puts('******************************************************')
+        puts('WARNING: This instances has not been created by you!!!')
+        puts('******************************************************')
+    if confirm("Do you really want to terminate this instance?"):
+        puts('Teminating instance {0}'.format(instance_id))
+        conn.terminate_instances(instance_ids=[instance_id])
+    else:
+        puts('Instance NOT terminated!')
+    return
 
