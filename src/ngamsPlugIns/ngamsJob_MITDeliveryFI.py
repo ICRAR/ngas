@@ -42,11 +42,12 @@ obswanted = {}
 #obswanted['1096147824'] = 1
 #obswanted['1096147696'] = 1
 #obswanted['1096147576'] = 1
-obswanted['1096147456'] = 1
+obswanted['1099315640'] = 1
 #obswanted['1096147336'] = 1
 #obswanted['1096147216'] = 1
 #obswanted['1096147088'] = 1
-obswanted['1096146968'] = 1
+obswanted['1099315760'] = 1
+obswanted['1099315888'] = 1
 #obswanted['1096146848'] = 1 #2014-10-01T05:16:05.661    
 
 def isWanted(fileId):
@@ -54,7 +55,12 @@ def isWanted(fileId):
     #if (not fileId.endswith('_flags.zip')):
     #    return 0    
     k = fileId.split('_')[0]
-    return obswanted.has_key(k)
+    #return obswanted.has_key(k)
+    try:
+        intk = int(k)
+        return (intk >= 1099306200 and intk <= 1099339800)
+    except:
+        return False
     
     
 def isMWAVisFile(fileId):
