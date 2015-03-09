@@ -445,7 +445,7 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
     # print "myDD(ifil='{0}', block = {1}, ofil='{2}',skip={3},blocksize={4},count={5},seek={6}, httpobj={7})".\
     # format(ifil, block, ofil, skip, blocksize, count, seek, httpobj)
 
-    if ofil != None:
+    if ofil != '/dev/null' and ofil != None:
         try:
             out = None
             if (httpobj):
@@ -514,7 +514,8 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
                             m.seek(0,0)
                             m.write(block)
                             block = m
-                        os.write(fd, block)
+                        else:
+                            os.write(fd, block)
                     else:
                         out.write(block)
             tend = time.time()

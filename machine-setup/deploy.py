@@ -83,7 +83,7 @@ INSTANCES_FILE = os.path.expanduser('~/.aws/aws_instances')
 ELASTIC_IP = 'False'
 USERS = ['ngas']
 APP_PYTHON_VERSION = '2.7'
-APP_PYTHON_URL = 'https://www.python.org/ftp/python/2.7.8/Python-2.7.8.tgz'
+APP_PYTHON_URL = 'https://www.python.org/ftp/python/2.7.9/Python-2.7.9.tgz'
 APP_DIR = 'ngas_rt' #NGAS runtime directory
 INIT_SRC_T = '{0}/src/ngamsStartup/ngamsServer.init.sh' # Template for init source file.
 INIT_TRG = '/etc/init.d/ngamsServer'
@@ -180,6 +180,8 @@ def set_env():
     # set environment to default for EC2, if not specified on command line.
 
     # puts(env)
+    env.keepalive = 15
+    env.connection_attempts = 5
     if not env.has_key('GITUSER') or not env.GITUSER:
         env.GITUSER = GITUSER
     if not env.has_key('GITREPO') or not env.GITREPO:
@@ -915,7 +917,7 @@ def ngas_full_buildout(typ='archive'):
         git_clone_tar()
 
     with cd(env.APP_DIR_ABS):
-        virtualenv('pip install clib_tars/zc.buildout-2.2.1.tar.gz')
+        virtualenv('pip install clib_tars/zc.buildout-2.3.1.tar.gz')
         virtualenv('pip install clib_tars/pycrypto-2.6.tar.gz')
         virtualenv('pip install clib_tars/paramiko-1.11.0.tar.gz')
         # make this installation self consistent
