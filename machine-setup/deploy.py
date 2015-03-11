@@ -373,11 +373,6 @@ def create_instance(names, use_elastic_ip, public_ips):
     puts('Started the instance(s) now waiting for the SSH daemon to start.')
     env.host_string = host_names[0]
     check_ssh()
-#     for i in range(12):
-#         fastprint('.')
-#         time.sleep(5)
-#     puts('.')
-
     return host_names
 
 
