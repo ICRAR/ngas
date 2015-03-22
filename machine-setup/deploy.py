@@ -202,7 +202,8 @@ def set_env():
         env.HOME = run("echo ~{0}".format(env.APP_USERS[0]))
     if not env.has_key('src_dir') or not env.src_dir:
         env.src_dir = thisDir + '/../'
-    require('hosts', provided_by=[test_env])
+    if not env.has_key('hosts') or env.hosts:
+        env.hosts = [env.host_string]
     if not env.has_key('HOME') or env.HOME[0] == '~' or not env.HOME:
         env.HOME = run("echo ~{0}".format(USERS[0]))
     if not env.has_key('PREFIX') or env.PREFIX[0] == '~' or not env.PREFIX:
@@ -524,13 +525,13 @@ def copy_public_keys():
         env.list_of_users.append(user)
         put(file, filename)
 
-def virtualenv(command):
+def virtualenv(command, **kwargs):
     """
     Just a helper function to execute commands in the virtualenv
     """
     env.activate = 'source {0}/bin/activate'.format(env.APP_DIR_ABS)
     with cd(env.APP_DIR_ABS):
-        run(env.activate + '&&' + command)
+        run(env.activate + '&&' + command, **kwargs)
 
 def git_pull():
     """
@@ -579,9 +580,10 @@ def git_clone_tar(unpack=True):
             --exclude .git --exclude .s* --exclude .e* {2} {1}/.'.format(sdir, env.APP_DIR, egg_excl))
     tarfile = '{0}.tar.bz2'.format(env.APP_DIR)
 
-    # transfer the tar file
-    put('{0}/{1}'.format(sdir,tarfile), '/tmp/{0}'.format(tarfile, env.APP_DIR_ABS))
-    local('rm -rf /tmp/{0}'.format(env.APP_DIR))  # cleanup local git clone dir
+    # transfer the tar file if not local
+    if not env.host_string in ['localhost','127.0.0.1',whatsmyip()]:
+        put('{0}/{1}'.format(sdir,tarfile), '/tmp/{0}'.format(tarfile, env.APP_DIR_ABS))
+        local('rm -rf /tmp/{0}'.format(env.APP_DIR))  # cleanup local git clone dir
 
     if unpack:
         # unpack the tar file remotely
@@ -972,7 +974,21 @@ def ngas_full_buildout(typ='archive'):
         virtualenv('pip install clib_tars/markup-1.9.tar.gz')
         virtualenv('pip install additional_tars/egenix-mx-base-3.2.6.tar.gz')
         #The following will only work if the Berkeley DB had been installed already
-        virtualenv('pip install additional_tars/bsddb3-6.0.0.tar.gz')
+        if env.linux_flavor == 'Darwin':
+            puts('>>>> Installing Berkeley DB')
+            virtualenv('cd /tmp; tar -xzf {0}/additional_tars/db-6.0.20.tar.gz'.format(env.APP_DIR_ABS))
+            virtualenv('cd /tmp/db-6.0.20/build_unix; ../dist/configure prefix={0}'.format(env.APP_DIR_ABS))
+            virtualenv('cd /tmp/db-6.0.20/build_unix; make')
+            virtualenv('cd /tmp/db-6.0.20/build_unix; make install')
+            virtualenv('cd /tmp; tar -xzf {0}/additional_tars/bsddb3-6.1.0.tar.gz'.format(env.APP_DIR_ABS))
+            virtualenv('cd /tmp/bsddb3-6.1.0; ' + \
+                       'export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1; ' +\
+                       'python setup.py --berkeley-db={0} build'.format(env.APP_DIR_ABS))
+            virtualenv('cd /tmp/bsddb3-6.1.0; ' + \
+                       'export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1; ' +\
+                       'python setup.py --berkeley-db={0} install'.format(env.APP_DIR_ABS))
+        else:
+            virtualenv('pip install additional_tars/bsddb3-6.1.0.tar.gz')
         virtualenv('pip install additional_tars/bottle-0.11.6.tar.gz')
 
         # run bootstrap with correct python version (explicit)
