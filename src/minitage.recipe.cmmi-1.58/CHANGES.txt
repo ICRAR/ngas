@@ -1,0 +1,63 @@
+=======================
+CHANGELOG
+=======================
+
+
+1.58 (2013-06-02)
+-----------------
+
+- gmake can be make on OSX
+
+
+1.57 (2013-02-25)
+-----------------
+
+- bugfix: create tmp dir 
+
+
+1.56 (2012-12-19)
+-----------------
+
+- fix doc, again
+
+1.55 (2012-12-19)
+-----------------
+
+- fix doc
+
+
+1.54 (2012-05-09)
+-----------------
+
+- use cache subdirs for download files
+
+
+1.53 (2011-03-09)
+-----------------
+- conditionnaly remove la files
+
+
+1.52 (2011-03-09)
+-----------------
+
+- add a 'make-install-append-options' to add after make install targets the 'make-options' buildout option.
+- add a 'make-install-options' to add after make install targets
+- add a debug stop flag
+- add env file generation for debug
+- add per os options
+- fix develop link
+- win32 fix
+- Remove la files if present
+
+1.37
+---------
+
+- API FIX
+
+-> 1.36
+--------
+
+- splitted out from minitage.recipe
+
+
+

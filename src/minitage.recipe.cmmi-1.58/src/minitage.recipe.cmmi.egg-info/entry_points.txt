@@ -1,0 +1,4 @@
+[zc.buildout]
+default = minitage.recipe.cmmi.cmmi:Recipe
+cmmi = minitage.recipe.cmmi.cmmi:Recipe
+

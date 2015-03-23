@@ -10,8 +10,16 @@ the fabric. This requires that the ngas_rt virtualenv is enabled by running:
 
 source ~/ngas_rt/bin/activate
 
-The buildout fails, because it can't find the BSD database include files and library. I've downloaded the DB (5.3.21)
-and configured the installation to point to the ngas_rt root directory (--prefix=~/ngas_rt). The compilation goes through without
+The buildout fails, because it can't find the BSD database include files and library. BSDDB is in additional_tars. Unpack to /tmp
+and configure the installation to point to the ngas_rt root directory (--prefix=~/ngas_rt). 
+
+cd /tmp
+tar -xvzf /Users/awicenec/ngas_rt/additional_tars/db-6.0.20.tar.gz
+cd db-6.0.20/build_unix
+../dist/configure prefix=/Users/awicenec/ngas_rt
+
+
+The compilation goes through without
 problems. However the buildout still reports:
 ====
 Can't find a local Berkeley DB installation.
@@ -20,9 +28,11 @@ Can't find a local Berkeley DB installation.
 
 This is due to the non-standard installation location of BSD DB. Thus run
 
-$ pip install bsddb3
+$ pip install --no-clean bsddb3
 
 in order to get a build directory of the module and then ran
+
+$ export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1
 
 $ python2.7 setup.py --berkeley-db=~/ngas_rt build
 
@@ -32,6 +42,6 @@ $ python2.7 setup.py --berkeley-db=~/ngas_rt install
 
 and then run buildout again:
 
-fab -u awicenec -H localhost -f machine-setup/deploy.py ngas_buildout:standalone=1 --set HOME=/Users/awicenec
+fab -u awicenec -H localhost -f machine-setup/deploy.py ngas_buildout --set HOME=/Users/awicenec
 
 

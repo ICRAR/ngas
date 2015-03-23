@@ -1388,3 +1388,16 @@ def terminate(instance_id):
         puts(red('Instance NOT terminated!'))
     return
 
+@task
+def cleanup_tmp():
+    """
+    Task to cleanup temporary files left-over from an installation.
+    This task runs as the login user, not sudo.
+    """
+    tmp_items = [
+                 'virtualenv*',
+                 'db-6*',
+                 'ngas_rt*',
+                 ]
+    for item in tmp_items:
+        run('rm -rf /tmp/{0}'.format(item))
