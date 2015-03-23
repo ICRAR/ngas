@@ -1,0 +1,5 @@
+<?xml version="1.0" ?>
+<NgamsStatus>
+	<Status Date="2012-02-28T15:51:19.738" HostId="mwa02" Message="Disk status file" Version="v4.1-ALMA/2010-04-14T08:00:00"/>
+	<DiskStatus Archive="ALMA-ARCHIVE-VM" AvailableMb="133336" BytesStored="0" Checksum="" Completed="0" CompletionDate="" DiskId="91c476e66dfb6f0a1c4fecba463c0315" InstallationDate="2011-01-31T14:31:43.499" LogicalName="BULK-M-000002" Manufacturer="0" NumberOfFiles="0" TotalDiskWriteTime="0.0" Type="None"/>
+</NgamsStatus>
