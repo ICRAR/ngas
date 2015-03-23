@@ -161,6 +161,10 @@ SLES_PACKAGES = [
                  'patch'
                  ]
 
+BREW_PACKAGES = [
+                 'berkeley-db'
+                 ]
+
 PYTHON_PACKAGES = [
         'zc.buildout',
         'pycrypto',
@@ -479,6 +483,30 @@ def install_apt(package):
     sudo('apt-get -qq -y install {0}'.format(package))
 
 
+def install_brew(package):
+    """
+    Install a package using homebrew (Mac OSX)
+    """
+    with settings(warn_only=True):
+        run('export HOMEBREW_NO_EMOJI=1; brew install {0} | grep -v "\%"'.format(package))
+
+
+@task    
+def install_homebrew():
+    """
+    Task to install homebrew on Mac OSX.
+    
+    NOTE: This should not be done if macports is installed already.
+    """
+    if check_command('port'):
+        puts(red('macports is installed and it is not recommended to mix it with homebrew!!'))
+        return
+    if not check_command('brew'):
+        run('ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"')
+    else:
+        puts(red('Homebrew is installed already! New installation not required.'))
+    
+
 def check_yum(package):
     """
     Check whether package is installed or not
@@ -512,6 +540,15 @@ def check_apt(package):
     else:
         print "NOT installed package {0}".format(package)
         return False
+
+def check_brew_cellar():
+    """
+    Find the brewing cellar (Mac OSX)
+    """
+    with hide('output'):
+        cellar = run('brew config | grep HOMEBREW_CELLAR')
+    return cellar.split(':')[1].strip()
+
 
 
 def copy_public_keys():
@@ -696,8 +733,12 @@ def system_install():
         errmsg = sudo('zypper -n -q patch', combine_stderr=True, warn_only=True)
         for package in SLES_PACKAGES:
             install_zypper(package)
+    elif linux_flavor == 'Darwin':
+        install_homebrew()
+        for package in BREW_PACKAGES:
+            install_brew(package)        
     else:
-        abort("Unknown linux flavor detected: {0}".format(linux_flavor))
+        abort("Unsupported linux flavor detected: {0}".format(linux_flavor))
     puts(green("\n\n******** System packages installation COMPLETED!********\n\n"))
 
 
@@ -976,17 +1017,20 @@ def ngas_full_buildout(typ='archive'):
         #The following will only work if the Berkeley DB had been installed already
         if env.linux_flavor == 'Darwin':
             puts('>>>> Installing Berkeley DB')
-            virtualenv('cd /tmp; tar -xzf {0}/additional_tars/db-6.0.20.tar.gz'.format(env.APP_DIR_ABS))
-            virtualenv('cd /tmp/db-6.0.20/build_unix; ../dist/configure prefix={0}'.format(env.APP_DIR_ABS))
-            virtualenv('cd /tmp/db-6.0.20/build_unix; make')
-            virtualenv('cd /tmp/db-6.0.20/build_unix; make install')
+            system_install()
+            cellar_dir = check_brew_cellar()
+            db_version = run('ls -tr1 {0}/berkeley-db'.format(cellar_dir)).split()[-1]
+#             virtualenv('cd /tmp; tar -xzf {0}/additional_tars/db-6.0.20.tar.gz'.format(env.APP_DIR_ABS))
+#             virtualenv('cd /tmp/db-6.0.20/build_unix; ../dist/configure prefix={0}'.format(env.APP_DIR_ABS))
+#             virtualenv('cd /tmp/db-6.0.20/build_unix; make')
+#             virtualenv('cd /tmp/db-6.0.20/build_unix; make install')
             virtualenv('cd /tmp; tar -xzf {0}/additional_tars/bsddb3-6.1.0.tar.gz'.format(env.APP_DIR_ABS))
             virtualenv('cd /tmp/bsddb3-6.1.0; ' + \
                        'export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1; ' +\
-                       'python setup.py --berkeley-db={0} build'.format(env.APP_DIR_ABS))
+                       'python setup.py --berkeley-db=/usr/local/Cellar/berkeley-db/{0} build'.format(db_version))
             virtualenv('cd /tmp/bsddb3-6.1.0; ' + \
                        'export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1; ' +\
-                       'python setup.py --berkeley-db={0} install'.format(env.APP_DIR_ABS))
+                       'python setup.py --berkeley-db=/usr/local/Cellar/berkeley-db/{0} install'.format(db_version))
         else:
             virtualenv('pip install additional_tars/bsddb3-6.1.0.tar.gz')
         virtualenv('pip install additional_tars/bottle-0.11.6.tar.gz')
