@@ -499,7 +499,9 @@ def install_homebrew():
     NOTE: This should not be done if macports is installed already.
     """
     if check_command('port'):
-        puts(red('macports is installed and it is not recommended to mix it with homebrew!!'))
+        puts(red('MacPorts is installed and it is not recommended to mix it with homebrew!!'))
+        puts(red('Bailing out!'))
+        raise(ValueError)
         return
     if not check_command('brew'):
         run('ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"')
@@ -1020,10 +1022,6 @@ def ngas_full_buildout(typ='archive'):
             system_install()
             cellar_dir = check_brew_cellar()
             db_version = run('ls -tr1 {0}/berkeley-db'.format(cellar_dir)).split()[-1]
-#             virtualenv('cd /tmp; tar -xzf {0}/additional_tars/db-6.0.20.tar.gz'.format(env.APP_DIR_ABS))
-#             virtualenv('cd /tmp/db-6.0.20/build_unix; ../dist/configure prefix={0}'.format(env.APP_DIR_ABS))
-#             virtualenv('cd /tmp/db-6.0.20/build_unix; make')
-#             virtualenv('cd /tmp/db-6.0.20/build_unix; make install')
             virtualenv('cd /tmp; tar -xzf {0}/additional_tars/bsddb3-6.1.0.tar.gz'.format(env.APP_DIR_ABS))
             virtualenv('cd /tmp/bsddb3-6.1.0; ' + \
                        'export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1; ' +\
