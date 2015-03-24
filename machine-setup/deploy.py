@@ -1303,7 +1303,7 @@ def install(sys_install=True, user_install=True,
     with settings(user=env.APP_USERS[0]):
         virtualenv_setup()
         ngas_full_buildout(typ=typ)
-    cleanup_tmp()
+        cleanup_tmp()
     if init_install and init_install != 'False': init_deploy()
     puts(green("\n\n******** INSTALLATION COMPLETED!********\n\n"))
 
