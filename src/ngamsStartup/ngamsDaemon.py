@@ -36,6 +36,10 @@ else:
     os.environ['NGAS_PREFIX'] = NGAS_PREFIX
 
 CFG = '%s/../NGAS/cfg/ngamsServer.conf' % NGAS_PREFIX
+if not os.path.exists(CFG):
+    ngaslog("ERROR", "Configuration file not found: {0}".format(CFG))
+    raise(ValueError)
+
 cfgObj = ngamsConfig()
 cfgObj.load(CFG)
 PORT = cfgObj.getPortNo()
