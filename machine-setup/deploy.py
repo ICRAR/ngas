@@ -1224,7 +1224,11 @@ def test_deploy():
     with settings(user=env.APP_USERS[0]):
         run('ngamsDaemon start')
     puts(green("\n\n******** SERVER STARTED!********\n\n"))
-    stat = test_status()
+    if test_status():
+        puts(green("\n\n>>>>> SERVER STATUS CHECKED <<<<<<<<<<<\n\n"))
+    else:
+        puts(red("\n\n>>>>>>> SERVER STATUS NOT OK <<<<<<<<<<<<\n\n"))
+    
     puts(green("\n\n******** TEST_DEPLOY COMPLETED on AWS host: {0} ********\n\n".format(env.host_string)))
 
 @task
