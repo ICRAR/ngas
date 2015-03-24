@@ -1386,6 +1386,10 @@ def upgrade():
     rsync_project(local_dir=env.src_dir+'/src', remote_dir=env.APP_DIR_ABS, exclude=".git")
     #git_clone_tar()
     run('$NGAS_PREFIX/bin/ngamsDaemon start')
+    if test_status():
+        puts(green("\n\n>>>>> SERVER STATUS CHECKED <<<<<<<<<<<\n\n"))
+    else:
+        puts(red("\n\n>>>>>>> SERVER STATUS NOT OK <<<<<<<<<<<<\n\n"))
     puts(green("\n\n******** UPGRADE COMPLETED!********\n\n"))
 
     
