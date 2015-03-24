@@ -1022,7 +1022,7 @@ def ngas_full_buildout(typ='archive'):
         virtualenv('pip install clib_tars/pycrypto-2.6.tar.gz')
         virtualenv('pip install clib_tars/paramiko-1.11.0.tar.gz')
         # make this installation self consistent
-        virtualenv('pip install clib_tars/Fabric-1.7.0.tar.gz')
+        virtualenv('pip install clib_tars/Fabric-1.10.1.tar.gz')
         virtualenv('pip install clib_tars/boto-2.36.0.tar.gz')
         virtualenv('pip install clib_tars/markup-1.9.tar.gz')
         virtualenv('pip install additional_tars/egenix-mx-base-3.2.6.tar.gz')
@@ -1291,7 +1291,7 @@ def install(sys_install=True, user_install=True,
     if sys_install and sys_install != 'False': system_install()
     if env.postfix:
         postfix_config()
-    if user_install: user_setup()
+    if user_install and user_install != 'False': user_setup()
 
     with settings(user=env.APP_USERS[0]):
         ppath = check_python()
@@ -1304,7 +1304,7 @@ def install(sys_install=True, user_install=True,
         virtualenv_setup()
         ngas_full_buildout(typ=typ)
     cleanup_tmp()
-    if init_install: init_deploy()
+    if init_install and init_install != 'False': init_deploy()
     puts(green("\n\n******** INSTALLATION COMPLETED!********\n\n"))
 
 
@@ -1324,7 +1324,7 @@ def uninstall(clean_system=False):
             run('rm -rf {0}'.format(env.PREFIX), warn_only=True)
         run('rm -rf {0}'.format(env.APP_DIR_ABS), warn_only=True)
     
-    if clean_system: # don't delete the users and system settings by default.
+    if clean_system and clean_system != 'False': # don't delete the users and system settings by default.
         for u in env.APP_USERS:
             sudo('userdel -r {0}'.format(u), warn_only=True)
         sudo('groupdel ngas', warn_only=True)
