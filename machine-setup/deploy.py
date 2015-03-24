@@ -41,13 +41,14 @@ from fabric.utils import puts, abort, fastprint
 from fabric.exceptions import NetworkError
 from fabric.colors import *
 
-FILTER = 'The cray-mpich2 module is now deprecated and will be removed in a future release.\r\r\nPlease use the cray-mpich module.'
+# FILTER = 'The cray-mpich2 module is now deprecated and will be removed in a future release.\r\r\nPlease use the cray-mpich module.'
 
 def run(*args, **kwargs):
+    FILTER = frun('echo')  # This should not return anything
     res = frun(*args, **kwargs)
     res = res.replace(FILTER,'')
-    res = res.replace('\n','')
-    res = res.replace('\r','')
+#     res = res.replace('\n','')
+#     res = res.replace('\r','')
     return res
 
 def sudo(*args, **kwargs):
@@ -162,7 +163,10 @@ SLES_PACKAGES = [
                  ]
 
 BREW_PACKAGES = [
-                 'berkeley-db'
+                 'berkeley-db',
+                 'libtool',
+                 'automake',
+                 'autoconf'
                  ]
 
 PYTHON_PACKAGES = [
@@ -419,7 +423,7 @@ def check_path(path):
     """
     Check existence of remote path
     """
-    res = run('if [ -e {0} ]; then echo 1; else echo ; fi'.format(path))
+    res = run('if [ -e {0} ]; then echo 1; else echo 0; fi'.format(path))
     return res
 
 
@@ -677,7 +681,7 @@ def get_linux_flavor():
     """
     puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
     if not env.has_key('linux_flavor'):
-        if (check_path('/etc/issue')):
+        if (check_path('/etc/issue') == '1'):
             re = run('cat /etc/issue')
             linux_flavor = re.split()
             if (len(linux_flavor) > 0):
@@ -1004,7 +1008,7 @@ def ngas_full_buildout(typ='archive'):
     #
     if (env.standalone):
         ngas_minimal_tar()
-    elif not check_path('{0}/bootstrap.py'.format(env.APP_DIR_ABS)):
+    elif check_path('{0}/bootstrap.py'.format(env.APP_DIR_ABS)) == '0':
         git_clone_tar()
 
     with cd(env.APP_DIR_ABS):
