@@ -1237,7 +1237,12 @@ def test_status():
     Execute the STATUS command against a running NGAS server
     """
     puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
-    serv = urllib.urlopen('http://{0}:7777/STATUS'.format(env.host_string))
+    try:
+        serv = urllib.urlopen('http://{0}:7777/STATUS'.format(env.host_string))
+    except IOError:
+        puts(red('Problem connecting to server !!!'))
+        return False
+        
     response = serv.read()
     serv.close()
     if response.find('Status="SUCCESS"') == -1:
