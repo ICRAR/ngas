@@ -1323,6 +1323,7 @@ def uninstall(clean_system=False):
         if env.PREFIX != env.HOME: # avoid removing the home directory
             run('rm -rf {0}'.format(env.PREFIX), warn_only=True)
         run('rm -rf {0}'.format(env.APP_DIR_ABS), warn_only=True)
+        run('mv .bash_profile_orig .bash_profile', warn_only=True)
     
     if clean_system and clean_system != 'False': # don't delete the users and system settings by default.
         for u in env.APP_USERS:
