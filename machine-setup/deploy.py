@@ -502,6 +502,10 @@ def install_homebrew():
     
     NOTE: This should not be done if macports is installed already.
     """
+    lf = get_linux_flavor()
+    if lf != 'Darwin':
+        puts(red("Potentially this is not a Mac OSX installation: {0}".format(lf)))
+        raise(ValueError)
     if check_command('port'):
         puts(red('MacPorts is installed and it is not recommended to mix it with homebrew!!'))
         puts(red('Bailing out!'))
