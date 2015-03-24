@@ -907,7 +907,7 @@ def virtualenv_setup():
 
     with cd('/tmp'):
         put('{0}/clib_tars/virtualenv-12.0.7.tar.gz'.format(env.src_dir), 'virtualenv-12.0.7.tar.gz')
-        run('tar -xzf virtualenv-1.10.tar.gz')
+        run('tar -xzf virtualenv-12.0.7.tar.gz')
         with settings(user=env.APP_USERS[0]):
             run('cd virtualenv-12.0.7; {0} virtualenv.py {1}'.format(env.PYTHON, env.APP_DIR_ABS))
             run('mkdir ~/.pip; cd ~/.pip; wget http://curl.haxx.se/ca/cacert.pem')
@@ -927,6 +927,7 @@ def ngas_buildout(typ='archive'):
     """
     puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
     set_env()
+    run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
 
     with cd(env.APP_DIR_ABS):
         if (env.standalone):
@@ -1022,7 +1023,7 @@ def ngas_full_buildout(typ='archive'):
         virtualenv('pip install clib_tars/paramiko-1.11.0.tar.gz')
         # make this installation self consistent
         virtualenv('pip install clib_tars/Fabric-1.7.0.tar.gz')
-        virtualenv('pip install clib_tars/boto-2.13.0.tar.gz')
+        virtualenv('pip install clib_tars/boto-2.36.0.tar.gz')
         virtualenv('pip install clib_tars/markup-1.9.tar.gz')
         virtualenv('pip install additional_tars/egenix-mx-base-3.2.6.tar.gz')
         #The following will only work if the Berkeley DB had been installed already
