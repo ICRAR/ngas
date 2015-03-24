@@ -906,10 +906,10 @@ def virtualenv_setup():
         abort('ngas_rt directory exists already')
 
     with cd('/tmp'):
-        put('{0}/clib_tars/virtualenv-1.10.tar.gz'.format(env.src_dir), 'virtualenv-1.10.tar.gz')
+        put('{0}/clib_tars/virtualenv-12.0.7.tar.gz'.format(env.src_dir), 'virtualenv-12.0.7.tar.gz')
         run('tar -xzf virtualenv-1.10.tar.gz')
         with settings(user=env.APP_USERS[0]):
-            run('cd virtualenv-1.10; {0} virtualenv.py {1}'.format(env.PYTHON, env.APP_DIR_ABS))
+            run('cd virtualenv-12.0.7; {0} virtualenv.py {1}'.format(env.PYTHON, env.APP_DIR_ABS))
             run('mkdir ~/.pip; cd ~/.pip; wget http://curl.haxx.se/ca/cacert.pem')
             run('echo "[global]" > ~/.pip/pip.conf; echo "cert = {0}/.pip/cacert.pem" >> ~/.pip/pip.conf;'.format(env.HOME))
 
