@@ -1140,6 +1140,14 @@ def user_deploy(typ='archive'):
 
     install(sys_install=False, user_install=False, 
             init_install=False, typ=typ)
+    with settings(user=env.APP_USERS[0]):
+        run('ngamsDaemon start')
+    puts(green("\n\n******** SERVER STARTED!********\n\n"))
+    if test_status():
+        puts(green("\n\n>>>>> SERVER STATUS CHECKED <<<<<<<<<<<\n\n"))
+    else:
+        puts(red("\n\n>>>>>>> SERVER STATUS NOT OK <<<<<<<<<<<<\n\n"))
+    
     puts(green("\n\n******** USER INSTALLATION COMPLETED!********\n\n"))
 
 
