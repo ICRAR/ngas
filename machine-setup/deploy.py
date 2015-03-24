@@ -52,6 +52,7 @@ def run(*args, **kwargs):
     return res
 
 def sudo(*args, **kwargs):
+    FILTER = frun('echo')  # This should not return anything
     res = fsudo(*args, **kwargs)
     res = res.replace(FILTER, '')
     res = res.replace('\n','')
