@@ -976,7 +976,7 @@ def install_user_profile():
                      warn_only=True)
             else:
                 sudo('sudo -u {0} cp .bash_profile_orig .bash_profile'.format(nuser))
-            sudo('sudo -u {0} echo "export NGAS_PREFIX={1}\n" >> .bash_profile'.\
+            sudo('sudo -u {0} echo "\nexport NGAS_PREFIX={1}\n" >> .bash_profile'.\
                 format(nuser, env.APP_DIR_ABS))
             sudo('sudo -u {0} echo "source {1}/bin/activate\n" >> .bash_profile'.\
                  format(nuser, env.APP_DIR_ABS))
