@@ -1,3 +1,2 @@
-#define ngamsNGAMS_CVS_ID    "@(#) $Id: VERSION,v 1.10 2010/04/13 19:19:45 awicenec Exp $"
-#define ngamsNGAMS_SW_VER    "v5.5-MWA"
-#define ngamsVER_DATE        "2013-08-05T11:00:00"
+#define ngamsNGAMS_SW_VER    "v6.0-MWA"
+#define ngamsVER_DATE        "2015-03-24T11:00:00"
