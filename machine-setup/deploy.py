@@ -74,12 +74,13 @@ BRANCH = 'master'    # this is controlling which branch is used in git clone
 USERNAME = 'ec2-user'
 POSTFIX = False
 AMI_IDs = {
-           'CentOS':'ami-7c807d14', 
+           'Amazon':'ami-7c807d14', 
+           'CentOS': 'ami-8997afe0',
            'Old_CentOS':'ami-aecd60c7', 
            'SLES-SP2':'ami-e8084981',
            'SLES-SP3':'ami-c08fcba8'
            }
-AMI_NAME = 'CentOS'
+AMI_NAME = 'Amazon'
 AMI_ID = AMI_IDs[AMI_NAME]
 INSTANCE_NAME = 'NGAS_{0}'.format(BRANCH)
 INSTANCE_TYPE = 't1.micro'
@@ -236,8 +237,8 @@ def set_env():
     if not env.has_key('standalone') or not env.standalone:
         env.standalone = 0
     if not env.has_key('AMI_NAME') or not env.AMI_NAME:
-        env.AMI_NAME = 'CentOS'
-    if env.AMI_NAME == 'SLES':
+        env.AMI_NAME = 'Amazon'
+    if env.AMI_NAME in ['CentOS', 'SLES']:
         env.user = 'root'
     get_linux_flavor()
     puts("""Environment:
@@ -735,7 +736,8 @@ def system_install():
         processCentOSErrMsg(errmsg)
         for package in YUM_PACKAGES:
             install_yum(package)
-
+        if linux_flavor == 'CentOS':
+            sudo('/etc/init.d/iptables stop') # CentOS firewall blocks NGAS port!
     elif (linux_flavor in ['Ubuntu', 'Debian']):
         errmsg = sudo('apt-get -qq -y update', combine_stderr=True, warn_only=True)
         for package in APT_PACKAGES:
@@ -1093,7 +1095,7 @@ def test_env():
         prompt('AWS Instance name: ', 'instance_name')
 
     env.user = USERNAME
-    if env.AMI_NAME == 'SLES':
+    if env.AMI_NAME in ['CentOS', 'SLES']:
         env.user = 'root'
     # Create the instance in AWS
     host_names = create_instance([env.instance_name], use_elastic_ip, [public_ip])
