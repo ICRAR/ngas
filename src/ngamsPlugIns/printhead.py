@@ -308,7 +308,7 @@ class FitsHead:
                             skfl = 1
                         LineDict = HD.keyTuple2Dict(LineTuple)
                         LineDict['index']={index:LineTuple[0]}
-                        HD.updateKeyword(LineDict)
+                        HD._updateKeyword(LineDict)
                 index += 1
 
             keys.append(kkeys)
@@ -464,7 +464,7 @@ class FitsHead:
                     LineDict = HD.keyTuple2Dict(LineTuple)
                 if len(key) > 0: 
                     LineDict.update({'index':{ind/80:LineTuple[0]}})
-                    HD.updateKeyword(LineDict)
+                    HD._updateKeyword(LineDict)
             
             HD.setNumber(ii)
             HD.setPos(self.Extension[ii].POS)
@@ -1274,7 +1274,7 @@ class HeadDict(dict):
 
 
 
-    def updateKeyword(self,keyDict,force=0):
+    def _updateKeyword(self,keyDict,force=0):
         """
         Method takes a keyDict and updates HeadDict accordingly.
 
@@ -1318,7 +1318,23 @@ class HeadDict(dict):
             self['index'].update({ind:key})
         return 1
 
+
+    def updateKeyword(self, keyName, value):
+        """
+        Method takes a keyword name and updates the value.
         
+        INPUT:    header, int, number of extension
+                   keyName, string, name of keyword
+                  value, string, new value of keyword. 
+                  The type of the keyword will not be changed.
+        OUTPUT:   void
+        """
+        kdict = self.getKeyDict(keyName)
+        kdict['nodes'][keyName]['Value'] = value
+        self._updateKeyword(kdict, force=1)
+        return
+    
+    
     def getKeyPos(self,key):
         """
         Method takes a keyword <key> and returns the position in the original FITS
@@ -2144,7 +2160,7 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
             keyDict['index'].update({ind:k}) 
 
             print keyDict
-            pH.Extension[0].updateKeyword(keyDict,force=1)
+            pH.Extension[0]._updateKeyword(keyDict,force=1)
 
 #            pH.Extension[0]['nodes'].update({k:extHead['nodes'][k]})
 #            print {k:extHead['nodes'][k]}
