@@ -34,24 +34,15 @@ if the platform does not support sse4.2 then bail out
 
 import os, inspect, sys
 from ctypes import cdll
-
-currFilePath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-libfile = '%s/libchecksse42.so' % currFilePath
-if (not os.path.exists(libfile)):
-    print "Cannot check SSE4.2 availability, library '%s' cannot be found" % libfile
-    sys.exit(1)
-
-lib = cdll.LoadLibrary(libfile)
-if (not lib.crc32c_intel_probe()):
-    print "Platform does not support SSE4.2 instruction set"
-    sys.exit(1)
-
 from distutils.core import setup, Extension
+
+module0 = Extension('libchecksse42',
+                    sources = ['checksse42.c'])
 
 module1 = Extension('crc32c',
                     sources = ['crc32c.c'])
 
-setup (name = 'PackageName',
+setup (name = 'crc32_SSE',
        version = '1.0',
        description = 'This is a CRC32C package using Intel SSE4.2 instruction set',
-       ext_modules = [module1])
+       ext_modules = [module0, module1])

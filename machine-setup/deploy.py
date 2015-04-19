@@ -93,8 +93,12 @@ APP_DIR = 'ngas_rt' #NGAS runtime directory
 INIT_SRC_T = '{0}/src/ngamsStartup/ngamsServer.init.sh' # Template for init source file.
 INIT_TRG = '/etc/init.d/ngamsServer'
 APP_CONF = 'ngamsServer.conf'
-GITUSER = 'icrargit'
-GITREPO = 'gitsrv.icrar.org:ngas'
+
+# the following can be set on the command line in order to clone from git.
+GITUSER = '' 
+GITREPO = ''
+# GITUSER = 'icrargit'
+# GITREPO = 'gitsrv.icrar.org:ngas'
 
 SUPPORTED_OS = [
                 'Amazon Linux',
@@ -611,7 +615,7 @@ def git_clone_tar(unpack=True):
     puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
     set_env()
     egg_excl = ' '
-    if not env.src_dir:
+    if env.GITREPO and env.GITUSER:
         local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
         local('cd /tmp && mv {0} {1}'.format(BRANCH, env.APP_DIR))
         tar_dir = '/tmp/{0}'.format(env.APP_DIR)
