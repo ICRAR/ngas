@@ -42,10 +42,11 @@ can be used to build up Python applications communicating with NG/AMS.
 import os, sys, re, httplib, mimetools, urllib, random, time, base64
 import pcc, PccUtTime
 from   ngams import *
-import ngamsLib, ngamsFileInfo, ngamsPlugInApi, ngamsStatus
+from ngamsLib import ngamsLib
+import ngamsFileInfo, ngamsStatus
 
 
-manPage = os.path.normpath(ngamsGetSrcDir() + "/ngamsPClient/ngamsPClient.doc")
+manPage = os.path.normpath(ngamsGetSrcDir() + "/doc/ngamsPClient.doc")
 fo = open(manPage)
 __doc__ += "\n\n\nMan-Page for the NG/AMS Python Client Tool:\n\n"
 __doc__ += "ngamsPClient " + fo.read()
@@ -1194,7 +1195,7 @@ class ngamsPClient:
         """
         buf = "\n"
         buf += "> ngamsPClient "
-        docFile = os.path.normpath(ngamsGetSrcDir() + "/ngamsPClient/" +\
+        docFile = os.path.normpath(ngamsGetSrcDir() + "/doc/" +\
                                    "ngamsPClient.doc")
         fo = open(docFile)
         buf += fo.read()
