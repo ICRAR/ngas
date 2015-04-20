@@ -1,0 +1,733 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  E.S.O.
+
+  Who        When        What
+  ********   **********  ***************************************************
+  jknudstr   04.04.2001  Created
+  **************************************************************************
+  The ngamsInternal.dtd defines various common elements to be used
+  in the NG/AMS XML documents.
+  -->
+
+
+<!--
+  The Server Element defines properties for the individual
+  installation of NG/AMS.
+
+  Attributes:
+    ArchiveName:            Name of the archive - e.g. ESO-VLT.
+
+    PortNo:                 Port number to use for the NG/AMS HTTP server.
+
+    SwVersion:	            If defined, NG/AMS will compare the value of
+                            this attribute with the version ID of NG/AMS.
+                            If these are not completely identical an error
+                            is reported and the NG/AMS Server will perform
+                            an exit. If the SwVersion is not specified
+                            (set to ""), this check is not done.
+
+    BlockSize:              Block size applied when receiving and
+                            sending data via HTTP (bytes).
+
+    Simulation:             Simulation system "1" otherwise "0".
+
+    MaxSimReqs:             Maximum number of simultaneous requests that
+                            the server should be capable of handling.
+			    If more are received, these will be rejected.
+
+    RootDirectory:          NGAS home directory.
+
+    VolumeDirectory:        Location of NGAS data volumes. The given directory
+                            will be appended to the NGAS Root Directory.
+
+    ProxyMode:              If a server which is contacted with a Retrieve
+                            Request, finds a file to be retrieved, on
+                            another NGAS Host, it will act as proxy and
+                            send back the file to the requestor if possible.
+  -->
+<!ELEMENT Server EMPTY>
+<!ATTLIST Server Id                     CDATA          #IMPLIED
+                 ArchiveName            CDATA          #REQUIRED
+                 PortNo                 CDATA          #REQUIRED
+                 SwVersion              CDATA          ""
+                 BlockSize              CDATA          #REQUIRED
+                 Simulation             (0|1)          "0"
+                 MaxSimReqs             CDATA          #REQUIRED
+                 RootDirectory          CDATA          #REQUIRED
+                 IpAddress              CDATA          #IMPLIED
+                 VolumeDirectory        CDATA          #IMPLIED
+                 ProxyMode              (0|1)          #IMPLIED>
+
+<!--
+  The SystemPlugIns element contains the properties for executing the
+  System Plug-Ins.
+
+  Attributes:
+    OnlinePlugIn:             Plug-In utility invoked by NG/AMS when
+                              going Online to prepare the system and to
+                              obtain the information about the current
+                              disk configuration and status of the disks.
+
+    OnlinePlugInPars:         Input parameters to the Online Plug-In.
+
+    OfflinePlugIn:            Plug-In invoked by NG/AMS when going Offline
+                              to prepare the system for standby mode.
+
+    OfflinePlugInPars:        Input parameters to the Online Plug-In.
+
+    LabelPrinterPlugIn:       Plug-in used to control the connected label
+                              printer.
+
+    LabelPrinterPlugInPars:   Input parameters for the label printer.
+
+    DiskSyncPlugIn:           Plug-in invoked by NG/AMS to ensure that a
+                              data file archived is sync'ed to disk before
+			      updating the information about it in the DB.
+
+    DiskSyncPlugInPars:       Parameters for the Disk Synchronization Plug-In.
+
+    UserServicePlugIn:        Name of User Service Plug-In to execute
+                              periodically. It carries out various (background)
+                              services needed in the given context.
+
+    UserServicePlugInPars:    Parameters for the User Service Plug-In
+                              (comma separated list).
+
+    UserServicePlugInPeriod:  Period for executing the service. The execution
+                              time is taken into account.
+-->
+<!ELEMENT SystemPlugIns EMPTY>
+<!ATTLIST SystemPlugIns Id                      CDATA          #IMPLIED
+                        OnlinePlugIn            CDATA          #REQUIRED
+                        OnlinePlugInPars        CDATA          #REQUIRED
+                        OfflinePlugIn           CDATA          #REQUIRED
+                        OfflinePlugInPars       CDATA          #REQUIRED
+                        LabelPrinterPlugIn      CDATA          #IMPLIED
+                        LabelPrinterPlugInPars  CDATA          #IMPLIED
+                        DiskSyncPlugIn          CDATA          #REQUIRED
+                        DiskSyncPlugInPars      CDATA          #REQUIRED
+                        UserServicePlugIn       CDATA          #IMPLIED
+                        UserServicePlugInPars   CDATA          #IMPLIED
+                        UserServicePlugInPeriod CDATA          #IMPLIED>
+
+
+<!--
+  The Permissions Element contains definition of the permission
+  settings for the system.
+
+    AllowArchiveReq:        Allow clients to issue Archive Requests
+                            to the system (0|1).
+
+    AllowRetrieveReq:       Allow clients to retrieve data from this
+                            NG/AMS installation (0|1).
+
+    AllowProcessingReq:     Allow clients to perform processing requests
+                            on this NG/AMS installation (0|1).
+
+    AllowRemoveReq:         Allow clients to carry out REMFILE and REMDISK
+                            commands (0|1).
+-->
+<!ELEMENT Permissions EMPTY>
+<!ATTLIST Permissions Id                     CDATA          #IMPLIED
+                      AllowArchiveReq        (0|1)          #REQUIRED
+                      AllowRetrieveReq       (0|1)          #REQUIRED
+                      AllowProcessingReq     (0|1)          #REQUIRED
+                      AllowRemoveReq         (0|1)          #REQUIRED>
+
+<!--
+  The JanitorThread Element defines the settings for the Janitor Thread.
+
+  Attributes:
+    SuspensionTime:         Period of time the Janitor Thread is suspended
+                            after each iteration. Should be given as
+                            '<days>T<hours>:<minutes>:<seconds>'.
+
+    MinSpaceSysDirMb:       The minimum free amount of disk space for the
+                            various NG/AMS System Directories (e.g. the
+                            Processing Directory).
+-->
+<!ELEMENT JanitorThread EMPTY>
+<!ATTLIST JanitorThread Id                   CDATA          #IMPLIED
+                        SuspensionTime       CDATA          #REQUIRED
+                        MinSpaceSysDirMb     CDATA          #REQUIRED>
+
+<!--
+  The ArchiveHandling Element contains definition of parameters for the
+  archive handling.
+
+  Attributes:
+    ArchiveUnits:           Comma separated list of arhive hosts,
+                            which can be contacted to handle Archive Requests.
+
+    PathPrefix:             A prefix which will be used when building up the
+                            target filename. Could e.g. be used as to build
+                            a filename like:
+
+                            <mount point>/<PathPrefix>/<add. path>/<filename>
+
+                            - but it is up to the Data Handling Plug-In
+                            to use it in a way appropriate for the context.
+
+    Replication:            Indicates if file replication should be
+                            carried out by this NG/AMS (0|1).
+
+    BackLogBuffering:       Enable/disable Back-Log Data Buffering (0|1).
+
+    BackLogBufferDirectory: Directory that will host the "back-log" directory
+                            where data files are buffered for later handling.
+
+    MinFreeSpaceWarning:    Indicates the free disk space limit before issuing
+                            an Warning Log Message (MB).
+
+    FreeSpaceDiskChangeMb:  Indicates the free disk space limit before
+                            changing disk (MB).
+-->
+<!ELEMENT ArchiveHandling EMPTY>
+<!ATTLIST ArchiveHandling Id                      CDATA          #IMPLIED
+                          ArchiveUnits            CDATA          #IMPLIED
+                          PathPrefix              CDATA          #REQUIRED
+                          Replication             (0|1)          #IMPLIED
+                          BackLogBuffering        (0|1)          #IMPLIED
+                          BackLogBufferDirectory  CDATA          #IMPLIED
+                          MinFreeSpaceWarningMb   CDATA          #REQUIRED
+                          FreeSpaceDiskChangeMb   CDATA          #REQUIRED>
+
+
+<!--
+  The Db Element defines properties for the interaction with the NGAS DB.
+
+  Attributes:
+    Server:              Name of DB server.
+
+    Name:                Name of the DB to use.
+
+    User:                The DB user name to connect as.
+
+    Password:            The password for the DB user.
+
+    Parameters:          Plug-in parameters for the DB driver plug-in.
+
+    MultipleConnections: Allow to have multiple connections.
+
+    Snapshot:            Attribute to switch on/off the DB Snapshot Feature.
+
+    Interface:           Specifies an NG/AMS DB Interface Plug-In to use
+                         for the DB communication.
+
+    Verify:              Verify when retrieving file info that the expected
+                         number of files were dumped.
+
+    AutoRecover:         Try to auto recover if the actual number of files
+                         dumped differs from the expected number.
+  -->
+<!ELEMENT Db EMPTY>
+<!ATTLIST Db Id                   CDATA  #IMPLIED
+             AutoRecover          (0|1)  "0"
+             Server               CDATA  #REQUIRED
+             Name                 CDATA  #REQUIRED
+             User                 CDATA  #REQUIRED
+             Password             CDATA  #REQUIRED
+             Parameters           CDATA  #IMPLIED
+             MultipleConnections  (0|1)  "0"
+             Snapshot             (0|1)  #REQUIRED
+             Interface            CDATA  #IMPLIED
+             Verify               (0|1)  "1">
+
+
+<!--
+  The MimeTypes Element contains a mapping between the mime-types used
+  by NG/AMS and the extension names of the data files.
+
+  The element MimeTypeMap contains the mapping between each mime-type
+  and the corresponding extension.
+
+  Attributes:
+    MimeType:      Mime-type, e.g. "ngas/fits".
+
+    Extension:     Extension of data file, e.g. "fits" (without
+                   leading dot).
+  -->
+<!ELEMENT MimeTypes     (MimeTypeMap+)>
+<!ATTLIST MimeTypes     Id         CDATA  #IMPLIED>
+<!ELEMENT MimeTypeMap   EMPTY>
+<!ATTLIST MimeTypeMap   MimeType   CDATA  #REQUIRED
+                        Extension  CDATA  #REQUIRED>
+
+
+<!--
+  The StorageSets Element contains the definition of the various
+  Storage Sets defined.
+-->
+<!ELEMENT StorageSets (StorageSet+)>
+
+<!--
+  The StorageSet Element defines properties for each 'storage unit',
+  consisting of two disks (Main Disk and Replication Disk).
+
+  Attributes:
+    StorageSetId:       ID used to refer to this particular
+                        storage unit (string).
+
+    DiskLabel:          Name of label prefix to put on the
+                        disk. Optional (string).
+
+    MainDiskSlotId:     Slot ID for Main Disk (string).
+
+    RepDiskSlotId:      Slot ID for Replication Disk (string).
+
+    Mutex:              Indicates if mutual exclusion access should be
+                        enforced to the disks. If this is enabled, only
+                        one data reception session will write data to
+                        that slot (disk), and not simultaneous as otherwise
+                        done if several files for the same disk is received
+                        at the same time. 1 = mutual exclusion (integer).
+
+    Synchronize:        The synchronize flag is used to indicate if the two
+                        disks of a set should be considerd as locked
+                        together so that when one is completed also
+                        the other is marked as completed although it
+                        may not be (integer/0|1).
+  -->
+<!ELEMENT StorageSet EMPTY>
+<!ATTLIST StorageSet Id                  CDATA  #IMPLIED
+                     StorageSetId        CDATA  #REQUIRED
+                     DiskLabel           CDATA  ""
+                     MainDiskSlotId      CDATA  #REQUIRED
+                     RepDiskSlotId       CDATA  #IMPLIED
+                     Mutex               (0|1)  "0"
+                     Synchronize         (0|1)  "1">
+
+
+<!--
+  The DataCheckThread Element defines properties for the file handling.
+
+  Attributes:
+   ChecksumPlugIn:        DCPI - Data Checksum Plug-In, which generates the
+                          checksum of a data file.
+
+   ChecksumPlugInPars:    Input parameters to the DCPI.
+
+   Active:                Enable/disable Data Check Service (1 = activate).
+
+   ForceNotif:            If set to 1, an Notification Message will always
+                          be sent out when a checking cycle has finished,
+			  also if no discrepancies were encountered.
+
+   MaxProcs:              Specify the maximum number of parallel sub-processes
+                          are allowed to carry out the data checking.
+
+   Scan:                  If set to 1, only a scan of the data holding is
+                          carried out. This means that it is checked if the
+                          files are accessible and if their size are OK.
+			  The checksum is not calculated however.
+
+   Prio:                  Priority of Data Check Thread (1 = highest priority).
+                          with this parameter it is possible to adjust the
+                          amount of CPU power the Data Check Thread should
+                          consume. The higher the number, the lesser CPU
+                          the check will consume. At the same time, it
+                          will take more time to carry out the check of
+                          the data holding.
+
+   MinCycle:              Indicates the minimum allowed time for carrying out
+                          one check cycle (ddThh:mm:ss). If this is specified
+                          e.g. to 24 hours, and one check cycle would only
+                          take 11 hours, the check would be suspended for
+                          13 hours before running again.
+
+   DiskSeq:               Used to indicate if disks should be checked
+                          sequentially (ordered according to the Slot
+                          ID), or randomly (SEQUENTIAL|RANDOM).
+
+   FileSeq:               Used to indicate if files on a disk should be checked
+                          sequentially (ordered according to the ingestion
+                          date), or randomly (SEQUENTIAL|RANDOM).
+
+   LogSummary:            If set to 1, a summary log info will be generated
+                          each time a complete check of the data holding
+                          of one NGAS Host has been carried out.
+  -->
+<!ELEMENT DataCheckThread EMPTY>
+<!ATTLIST DataCheckThread ChecksumPlugIn       CDATA               #REQUIRED
+                          ChecksumPlugInPars   CDATA               #REQUIRED
+                          Active               (0|1)               #REQUIRED
+                          ForceNotif           (0|1)               #REQUIRED
+   		                  MaxProcs             CDATA               #REQUIRED
+                          Scan                 (0|1)               #REQUIRED
+                          Prio                 CDATA               #REQUIRED
+                          MinCycle             CDATA               #REQUIRED
+                          DiskSeq              (SEQUENTIAL|RANDOM) #REQUIRED
+                          FileSeq              (SEQUENTIAL|RANDOM) #REQUIRED
+                          LogSummary           (0|1)               #REQUIRED>
+
+
+<!--
+  The Streams Element contains the definition of the various streams
+-->
+<!ELEMENT Streams (Stream+)>
+<!ATTLIST Streams  Id    CDATA     #IMPLIED>
+
+
+<!--
+  The Stream Element defines properties for the handling of data
+  streams into the NGAS System.
+
+  The StorageSetRef contains an attribute with a reference to a StorageSet.
+
+  Attributes:
+  MimeType:      Mime-type identifying this type of data.
+
+  PlugIn:        A plug-in command that will be executed to 1) Check the
+                 consistency of the data file of the given mime-type,
+                 2) Generate the necessary information for the NGAS DB.
+
+  PlugInPars:    Parameters which will be transferred to the plug-in
+                 function.
+  -->
+<!ELEMENT Stream (StorageSetRef+)>
+<!ATTLIST Stream MimeType       CDATA  #REQUIRED
+                 PlugIn         CDATA  #REQUIRED
+                 PlugInPars     CDATA  #IMPLIED>
+<!ELEMENT StorageSetRef EMPTY>
+<!ATTLIST StorageSetRef  StorageSetId CDATA  #REQUIRED>
+
+
+<!--
+  The Processing Element defines the set of DPPIs that are available
+  for a specific NGAS Host.
+
+  The element contains a number of PlugIn Elements which each define
+  the properties of the DPPIs. In addition the PlugIn Element defines
+  which types of data can be handled.
+
+  Attributes:
+    ProcessingDirectory:  Base directory in which temporary files
+                          will be stored during processing.
+-->
+<!ELEMENT Processing (PlugIn*)>
+<!ATTLIST Processing  Id                    CDATA    #IMPLIED
+                      ProcessingDirectory   CDATA    #IMPLIED>
+<!ELEMENT PlugIn (MimeType+)>
+<!ATTLIST PlugIn Name         CDATA  #REQUIRED
+                 PlugInPars   CDATA  #IMPLIED>
+<!ELEMENT MimeType  EMPTY>
+<!ATTLIST MimeType  Name      CDATA  #REQUIRED>
+
+
+<!--
+  The Register Element defines the of DRPIs needed for registering
+  various file types.
+-->
+<!ELEMENT Register (PlugIn*)>
+<!ATTLIST Register Id                    CDATA    #IMPLIED>
+
+
+<!--
+  The Log Element defines properties for the logging performed by
+  the NG/AMS Server.
+
+  Attributes:
+    SysLog:         Switch on UNIX syslog logging (0|1).
+
+    SysLogPrefix:   Prefix (tag) written first in the syslog entries
+                    (in the data part).
+
+    LocLogFile:     Indicates a name of a local log file. Should be
+                    complete path.
+
+    LocalLogLevel:  Log level for producing logs into the local
+                    log file. Must be in the interval from 0 to 5.
+
+    LogBufferSize:  Size of the internal log buffer (in terms of log
+                    entries). This indicates how many entries are buffered
+                    before the logs are purged out to the log file.
+
+    LogRotateInt:   ISO8601 timestamp indicating how often the log file
+                    should be rotated. "01T00:00:00" means every day (24h).
+
+    LogRotateCache: Indicates how many rotated log files should be kept.
+                    If set to 0 the log files will be deleted when the
+                    log file is regenerated. A value of 30 means that
+                    the past 30 log files are kept.
+  -->
+<!ELEMENT Log EMPTY>
+<!ATTLIST Log SysLog          (0|1)         #REQUIRED
+              SysLogPrefix    CDATA         #REQUIRED
+              LocalLogFile    CDATA         #REQUIRED
+              LocalLogLevel   (0|1|2|3|4|5) #REQUIRED
+              LogBufferSize   CDATA         #REQUIRED
+              LogRotateInt    CDATA         #REQUIRED
+              LogRotateCache  CDATA         #REQUIRED>
+
+
+<!--
+  The Notification Element is used to define subscribers (e-mail
+  recipients) that will receive an e-mail when certain events
+  occur. For the moment the following events can trigger e-mails
+  to one or more recipients:
+
+    o Alert Logs.
+    o Error Logs.
+    o Disk Running Full (Min. Free Disk Space).
+    o Disk Change (Disk Change Log).
+    o No more disk space.
+  -->
+<!ELEMENT Notification (AlertNotification?, ErrorNotification?,
+                        DiskSpaceNotification?, DiskChangeNotification?,
+                        NoDiskSpaceNotification?,
+                        DataCheckNotification?)>
+<!ATTLIST Notification  SmtpHost          CDATA  #REQUIRED
+                        Active            (0|1)  #REQUIRED
+                        MaxRetentionTime  CDATA  #REQUIRED
+                        MaxRetentionSize  CDATA  #REQUIRED>
+<!ELEMENT EmailRecipient EMPTY>
+<!ATTLIST EmailRecipient Address   CDATA  #REQUIRED>
+<!ELEMENT AlertNotification (EmailRecipient+)>
+<!ELEMENT ErrorNotification (EmailRecipient+)>
+<!ELEMENT DiskSpaceNotification (EmailRecipient+)>
+<!ELEMENT DiskChangeNotification (EmailRecipient+)>
+<!ELEMENT NoDiskSpaceNotification (EmailRecipient+)>
+<!ELEMENT DataCheckNotification (EmailRecipient+)>
+
+
+<!--
+  The Host Suspension Element is used to define the conditions for
+  suspending an NGAS Host and for waking up a suspended NGAS Host.
+
+  Attributes:
+      IdleSuspension:       Switches on/off host idle suspension (0 = Off,
+                            1 = 0n).
+
+      IdleSuspensionTime:   The idle time that must elapse for an  NGAS
+                            system to suspending itself given in seconds.
+
+      WakeUpServerHost:     Name of server that should be requested to
+                            wake up a suspended NGAS Host.
+
+      SuspensionPlugIn:     Name of plug-in to be invoked to suspend the
+                            NGAS Host.
+
+      SuspensionPlugInPars: Optional parameters to be transferred to the
+                            Suspension Plug-In.
+
+      WakeUpPlugIn:         Name of plug-in to be invoked to wake-up a
+                            suspended NGAS Host.
+
+      WakeUpPlugInPars:     Optional parameters to be transferred to
+                            the Wake-Up Plug-In.
+
+      WakeUpCallTimeOut:    Time-out for waiting for an NGAS Host being
+                            woken up to wake up.
+  -->
+<!ELEMENT HostSuspension EMPTY>
+<!ATTLIST HostSuspension  IdleSuspension       (0|1)  "0"
+                          IdleSuspensionTime   CDATA  "0"
+                          WakeUpServerHost     CDATA  ""
+                          SuspensionPlugIn     CDATA  ""
+                          SuspensionPlugInPars CDATA  ""
+                          WakeUpPlugIn         CDATA  ""
+                          WakeUpPlugInPars     CDATA  ""
+                          WakeUpCallTimeOut    CDATA  "0">
+
+
+<!--
+  The SubscriptionDef Element is used to define the properties for
+  Data Subscription. It may contain a number of Subscription Elements
+  indicating to which server this NG/AMS should subscribe to.
+
+  Attributes:
+      AutoUnsubscribe:    Indicates if the server should un-subscribe
+                          automatically when going Offline.
+
+      SuspensionTime:     Time the thread should suspend itself between
+                          attempting to deliver back-logged buffered
+                          files (ISO8601).
+
+      BackLogExpTime:     Expiration time for entries in the
+                          Subscription Back-Log (string/ISO8601).
+  -->
+<!ELEMENT SubscriptionDef (Subscription*)>
+<!ATTLIST SubscriptionDef AutoUnsubscribe   (0|1)  "1"
+                          SuspensionTime    CDATA  #REQUIRED
+                          BackLogExpTime    CDATA  #REQUIRED
+                          Enable            (0|1)  "1">
+
+
+<!--
+  The Subscription Element defines a data subscription. It will trigger
+  the NG/AMS Server to subscribe itself to data from another NG/AMS Server.
+
+  Attributes:
+      SubscriberId:       If given this will be used to uniquely identify the
+                          subscriber. If not given or empty the URL will be used.
+      HostId:             Host ID of the Data Provider.
+
+      PortNo:             Port number used by the Data Provider.
+
+      Priority:           Priority requested for this Subscription.
+                          The lower the number the higher the priority.
+                          Default is 10. If other Subscribers subscribe
+                          with a higher priority then this client, they
+                          will be served faster.
+
+      SubscriberUrl:      Subscriber URL, which is issued when subscribing.
+                          The Data Provider will use this URL when delivering
+                          the data to the Subscriber.
+
+      FilterPlugIn:       A Filter Plug-In applied on the data files to
+                          decide whether to deliver a file to a Subscriber
+                          or not.
+
+      FilterPlugInPars:   Parameters to issue to the Filter Plug-In.
+  -->
+<!ELEMENT Subscription    EMPTY>
+<!ATTLIST Subscription    SubscriberId      CDATA  #IMPLIED
+                          HostId            CDATA  #REQUIRED
+                          PortNo            CDATA  #REQUIRED
+                          Priority          CDATA  "10"
+                          SubscriberUrl     CDATA  #REQUIRED
+                          FilterPlugIn      CDATA  #IMPLIED
+                          FilterPlugInPars  CDATA  #IMPLIED>
+
+<!--
+  The Authorization Element defines the parameters for the
+  authentication scheme in use.
+
+  Attributes:
+      Enable:             Swicth authentication on/off.
+  -->
+<!ELEMENT Authorization    (User*)>
+<!ATTLIST Authorization    Enable            (0|1)  "1">
+
+<!--
+  The User Element defines the properties for a user, authorized to
+  communicate with the system.
+
+  Attributes:
+      Password:             Swicth authentication on/off.
+  -->
+<!ELEMENT User    EMPTY>
+<!ATTLIST User    Name       CDATA  #REQUIRED
+                  Password   CDATA  #REQUIRED>
+
+
+<!--
+  The Mirroring Element defines properties for the NGAS Mirroring Service.
+
+  Attributes:
+
+      Active:              Enable/disable the service (globally).
+
+      Threads:             Number of mirroring threads to use.
+
+      CleanUpTime:         Time(s) for cleanining up (removing handled
+                           entries) from the mirrroring queue. Must be given
+                           as ISO 8601 timestamps.
+
+      ReportRecipients:    List of email recipients to receive status
+                           reports in connection with the mirroring
+                           service.
+
+      ErrorRetryPeriod:    Specifies the period in seconds for retrying
+                           to mirror failing requests, within the specified
+                           Error Retry Timeout.
+
+      ErrorRetryTimeOut:   Time in seconds to keep a Mirroring Request in
+                           Error State in the queue and keeping on retrying
+                           repicating it.
+  -->
+<!ELEMENT Mirroring (MirroringSource+)>
+<!ATTLIST  Mirroring
+           Active            (0|1)  #REQUIRED
+           Threads           CDATA  #REQUIRED
+           CleanUpTime       CDATA  #REQUIRED
+           ReportRecipients  CDATA  #IMPLIED
+           ErrorRetryPeriod  CDATA  #REQUIRED
+           ErrorRetryTimeOut CDATA  #REQUIRED>
+
+
+<!--
+  The Mirroring Source Element defines properties for a single source
+  from which data is mirrored to the local archive.
+
+  Attributes:
+      ServerList:       List of servers to contact for checking for
+                        new data and downloading it.
+
+      Period:           Period (in seconds) for which to check for
+                        availability of new data in the source archive.
+
+      CompleteSync:     List of ISO 8601 time stamps indicating when
+                        to make a complete syncrhonization with the
+                        source archive. If empty, a complete sync will
+                        never be done.
+
+      SyncType:         Type of synchronization to use.
+
+      TargetNodes:      Local nodes to be contacted for handling the
+                        download and ingestion of data to be mirrored.
+
+      FilterPlugIn:     Name of a filter plug-in to use when
+                        scheduling data for mirroring in the source archive.
+
+      FilterPlugInPars: Parameters for the filter plug-in.
+  -->
+<!ELEMENT MirroringSource EMPTY>
+<!ATTLIST MirroringSource
+          ServerList       CDATA                          #REQUIRED
+          Period           CDATA                          #REQUIRED
+          CompleteSync     CDATA                          #REQUIRED
+          SyncType         CDATA                          #REQUIRED
+          TargetNodes      CDATA                          #REQUIRED
+          FilterPlugIn     (INGESTION_DATE|FILTER_PLUGIN) #REQUIRED
+          FilterPlugInPars CDATA                          "">
+
+
+<!--
+  The Caching Element defines properties for this node, when used as
+  an NGAS Cache Archive.
+
+  Attributes:
+      Period:                  Period in seconds for which to check
+                               the contents of the cache.
+
+      MaxTime:                 Maximum amount of time to keep a file
+                               in the cache. When this time is
+                               exceeded, the file is scheduled for deletion.
+
+      MaxCacheSize:            Maximum size of the cache in bytes. If
+                               the size of the cache grows beyond this
+                               threshold, the oldest files are removed
+                               until the maximum number of files is
+                               below the given threshold.
+
+      MaxFiles:                Maximum number of files that should be
+                               in the cache. If more files are cached
+                               than the limit specified, the oldest
+                               files are removed until the maximum
+                               number of files is below the given threshold.
+
+      MinCacheSpace:           Minimum amount of space that should be
+                               available in the cache. If the availble
+                               (free) space drops below this limit,
+                               the oldest files are removed until
+                               there is enough free space.
+
+      CacheControlPlugIn:      Name of the Cache Control Plug-In.
+
+      CacheControlPlugInPars:  Plug-in parameters for the Cache
+                               Control Plug-In.
+  -->
+<!ELEMENT Caching EMPTY>
+<!ATTLIST Caching
+          Period                  CDATA     #REQUIRED
+          MaxTime                 CDATA     #IMPLIED
+          MaxCacheSize            CDATA     #IMPLIED
+          MaxFiles                CDATA     #IMPLIED
+          MinCacheSpace           CDATA     #IMPLIED
+          CacheControlPlugIn      CDATA     #IMPLIED
+          CacheControlPlugInPars  CDATA     #IMPLIED>
+
+<!-- EOF -->
