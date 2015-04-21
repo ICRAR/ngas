@@ -1,0 +1,11 @@
+This version of the ngamsPClient allows stand-alone installation. This means 
+that this part of the source tree is independent from the rest.
+Installation can be performed with a standard
+
+$ python setup.py install
+
+If executed inside a virtualenv the ngamsPClient command will be available
+and can be called with -h to obtain the help page:
+
+$ ngamsPClient -h
+

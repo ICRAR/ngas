@@ -29,6 +29,10 @@ Further information about these three components of the NG/AMS
 Python Client Sub-Module can be obtained by selecting the specific
 man-pages.
 
+$ ngamsPClient -h
+
+will display the man page as well.
+
 
 ADDITIONAL INFORMATION:
 Send comments/questions concerning the NG/AMS Package and NGAS to the
