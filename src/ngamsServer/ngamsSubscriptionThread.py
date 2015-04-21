@@ -67,7 +67,7 @@ def startSubscriptionThread(srvObj):
     Start the Data Subscription Thread.
 
     srvObj:     Reference to server object (ngamsServer).
-    
+
     Returns:    Void.
     """
     info(3,"Starting Subscription Thread ...")
@@ -77,10 +77,10 @@ def startSubscriptionThread(srvObj):
                                                   NGAMS_SUBSCRIPTION_THR, args)
     srvObj._subscriptionThread.setDaemon(0)
     srvObj._subscriptionThread.start()
-    
+
     if (srvObj._deliveryStopSync.isSet()):
         srvObj._deliveryStopSync.clear() #revoke the shutdown (offline) setting
-        
+
     info(3,"Subscription Thread started")
 
 
@@ -89,7 +89,7 @@ def stopSubscriptionThread(srvObj):
     Stop the Data Subscription Thread.
 
     srvObj:     Reference to server object (ngamsServer).
-    
+
     Returns:    Void.
     """
     info(3,"Stopping Subscription Thread ...")
@@ -111,7 +111,7 @@ def _checkStopSubscriptionThread(srvObj):
     the thread.
 
     srvObj:     Reference to server object (ngamsServer).
-    
+
     Returns:    Void.
     """
     if (srvObj._subscriptionStopSync.isSet()):
@@ -126,8 +126,8 @@ def _checkStopDataDeliveryThread(srvObj, subscrbId):
     stop execution.
 
     srvObj:     Reference to server object (ngamsServer).
-    
-    Returns:    Void. 
+
+    Returns:    Void.
     """
     deliveryThreadRefDic = srvObj._subscrDeliveryThreadDicRef
     tname = threading.current_thread().name
@@ -144,7 +144,7 @@ def _waitForScheduling(srvObj):
     to check if data should be deliveried.
 
     srvObj:     Reference to server object (ngamsServer).
-    
+
     Returns:    Tuple with list of files to check for delivery and Subscribers
                 that should be checked to see if there is data to deliver
                 (tuple/string, ngamsSubscriber).
@@ -159,7 +159,7 @@ def _waitForScheduling(srvObj):
         #debug_chen
         info(3, 'Subscription thread will suspend %s seconds before re-trying delivering back-logged files' % str(suspTime))
         srvObj._subscriptionRunSync.wait(suspTime)
-    elif (srvObj.getDataMoverOnlyActive()):       
+    elif (srvObj.getDataMoverOnlyActive()):
         tmout = isoTime2Secs(srvObj.getCfg().getDataMoverSuspenstionTime()) # in general, tmout > suspTime
         #debug_chen
         info(3, 'Data mover thread will suspend %s seconds before re-trying querying the db to get new files' % str(tmout))
@@ -167,7 +167,7 @@ def _waitForScheduling(srvObj):
     else:
         info(3,"Data Subscription Thread is going to sleep ...")
         srvObj._subscriptionRunSync.wait()
-    
+
     _checkStopSubscriptionThread(srvObj)
     info(3,"Data Subscription Thread received wake-up signal ...")
     try:
@@ -199,12 +199,12 @@ def _addFileDeliveryDic(subscrId,
     Add a file in the delivery dictionary. If file already registered,
     replace the existing entry only if (1) the old entry is not a back-log buffered file, and (2) the
     new entry is back-log buffered
-    
+
     subscrId:         Subscriber ID (string).
-    
+
     fileInfo:         List with file infomation as returned by
                       ngams.getFileSummary2() or on the internal format (list).
-    
+
     deliverReqDic:    Dictionary with Subscriber IDs as keys referring
                       to lists with the information about the files to
                       deliver to each of the Subscribers (dictionary/list).
@@ -228,37 +228,37 @@ def _addFileDeliveryDic(subscrId,
             if ((tstFilename == filename) and
                 (tstFileVersion == fileVersion) and
                 tstFileBackLogBuffered != NGAMS_SUBSCR_BACK_LOG):
-                
+
                 # The new entry is back-log buffered, the old not,
                 # replace the old entry.
                 deliverReqDic[subscrId][idx] = fileInfo
                 add = 0
                 replaceWithBL = 1
                 break
-    
-    #Second, Check if the file is a back-logged file that has been previously registered                 
+
+    #Second, Check if the file is a back-logged file that has been previously registered
     if (fileBackLogBuffered == NGAMS_SUBSCR_BACK_LOG):
         if (not srvObj._subscrBlScheduledDic.has_key(subscrId)):
             srvObj._subscrBlScheduledDic[subscrId] = {}
-        k = _fileKey(fileId, fileVersion) 
+        k = _fileKey(fileId, fileVersion)
         if (srvObj._subscrBlScheduledDic[subscrId].has_key(k)):
             add = 0 # if this is an old entry, do not add again
         else:
-            # if this is a new entry, maybe it will be added unless the first check set 'add' to 0. 
+            # if this is a new entry, maybe it will be added unless the first check set 'add' to 0.
             # Must occupy the dic key space
-            srvObj._subscrBlScheduledDic[subscrId][k] = None 
+            srvObj._subscrBlScheduledDic[subscrId][k] = None
     if (add):
         if (deliverReqDic.has_key(subscrId)):
             deliverReqDic[subscrId].append(fileInfo)
         else:
             # It was a new entry, create new list for this Subscriber.
             deliverReqDic[subscrId] = [fileInfo]
-    
-    if (srvObj.getCachingActive() and 
+
+    if (srvObj.getCachingActive() and
         (fileBackLogBuffered != NGAMS_SUBSCR_BACK_LOG or replaceWithBL)):
-        # if the server is running in a cache mode, 
+        # if the server is running in a cache mode,
         #   then  prepare for marking deletion - increase by 1 the reference count to this file
-        #   but do not bother if it is a backlogged file, since it has its own deletion mechanism 
+        #   but do not bother if it is a backlogged file, since it has its own deletion mechanism
         fkey = fileInfo[FILE_ID] + "/" + str(fileVersion)
         fileDeliveryCountDic_Sem.acquire()
         try:
@@ -272,7 +272,7 @@ def _addFileDeliveryDic(subscrId,
             else:
                 fileDeliveryCountDic[fkey] = 1
         finally:
-            fileDeliveryCountDic_Sem.release() 
+            fileDeliveryCountDic_Sem.release()
 
 def _checkIfDeliverFile(srvObj,
                         subscrObj,
@@ -287,12 +287,12 @@ def _checkIfDeliverFile(srvObj,
     Analyze if a file should be delivered to a Subscriber.
 
     srvObj:           Reference to server object (ngamsServer).
-  
+
     subscrObj:        Subscriber object (ngamsSubscriber).
-    
+
     fileInfo:         List with file infomation as returned by
                       ngams.getFileSummary2() (sub-list) (list).
-    
+
     deliverReqDic:    Dictionary with Subscriber IDs as keys referring
                       to lists with the information about the files to
                       deliver to each of the Subscribers (dictionary/list).
@@ -305,13 +305,13 @@ def _checkIfDeliverFile(srvObj,
     Returns:          Void.
     """
     T = TRACE()
-    
+
     deliverFile         = 0
     lastDelivery        = deliveredStatus[subscrObj.getId()]
     if (scheduledStatus.has_key(subscrObj.getId())):
         lastSchedule = scheduledStatus[subscrObj.getId()]
     else:
-        lastSchedule = None    
+        lastSchedule = None
 
     fileInfo            = _convertFileInfo(fileInfo)
     fileId              = fileInfo[FILE_ID]
@@ -319,7 +319,7 @@ def _checkIfDeliverFile(srvObj,
     fileVersion         = fileInfo[FILE_VER]
     fileIngDate         = fileInfo[FILE_DATE]
     fileBackLogBuffered = fileInfo[FILE_BL]
-    
+
     if (lastSchedule != None and lastSchedule > lastDelivery):
         # assume what have been scheduled are already delivered, this avoids multiple schedules for the same file across multiple main thread iterations
         # (so that we do not have to block the main iteration anymore)
@@ -327,18 +327,18 @@ def _checkIfDeliverFile(srvObj,
         lastDelivery = lastSchedule
     if (
         ((lastDelivery == None) and (subscrObj.getStartDate() == "")) or
-        
+
         ((lastDelivery == None) and
          (fileIngDate >= subscrObj.getStartDate())) or
-        
+
         ((lastDelivery != None) and
          (fileIngDate >= subscrObj.getStartDate()) and
          (fileIngDate >= lastDelivery)) or
-        
+
         ((lastDelivery != None) and
          (fileIngDate >= subscrObj.getStartDate()) and
          explicitFileDelivery)
-        
+
         ):
         deliverFile = 1
 
@@ -360,7 +360,7 @@ def _compFct(fileInfo1,
     Sorter function to sort the elements in the file info list as returned by
     ngamsDb.getFileSummary2() (according to the File Ingestion Date).
 
-    fileInfo1:    
+    fileInfo1:
     fileInfo2:    Lists with file information (list).
 
     Returns:      -1 if fileInfo1.IngestionDate  < fileInfo2.IngestionDate
@@ -390,7 +390,7 @@ def _convertFileInfo(fileInfo):
 
     If already in the right format, nothing is done.
 
-    fileInfo:       File info in DB Summary 2 format or 
+    fileInfo:       File info in DB Summary 2 format or
     """
     # If element #4 is an integr (=file version), convert to internal format.
     if (type(fileInfo[ngamsDb.ngamsDbCore.SUM2_VERSION]) == types.IntType):
@@ -401,7 +401,7 @@ def _convertFileInfo(fileInfo):
                                                   os.sep +\
                                                   fileInfo[ngamsDb.ngamsDbCore.SUM2_FILENAME])
         #info(3, "\n\n** locFileInfo[FILE_NM] =% s  \n fileInfo[ngamsDb.ngamsDbCore.SUM2_FILENAME] = %s \n\n**" % (locFileInfo[FILE_NM], fileInfo[ngamsDb.ngamsDbCore.SUM2_FILENAME]))
-        
+
         locFileInfo[FILE_VER]  = fileInfo[ngamsDb.ngamsDbCore.SUM2_VERSION]
         locFileInfo[FILE_DATE] = fileInfo[ngamsDb.ngamsDbCore.SUM2_ING_DATE]
         locFileInfo[FILE_MIME] = fileInfo[ngamsDb.ngamsDbCore.SUM2_MIME_TYPE]
@@ -421,20 +421,20 @@ def _genSubscrBackLogFile(srvObj,
     in the DB. This is only done if the file is not already back-logged.
 
     srvObj:        Reference to server object (ngamsServer).
-    
-    subscrObj:     Subscriber Object (ngamsSubscriber).  
-    
+
+    subscrObj:     Subscriber Object (ngamsSubscriber).
+
     fileInfo:      List with sub-lists with information about file
                    (list/list).
 
     Returns:       Void.
     """
     # If in ngamsDbBase.SUM2 format, convert to the internal format.
-    locFileInfo = _convertFileInfo(fileInfo)        
+    locFileInfo = _convertFileInfo(fileInfo)
 
     # If file was already back-logged, nothing is done.
-    if (locFileInfo[FILE_BL] == NGAMS_SUBSCR_BACK_LOG): return        
-    
+    if (locFileInfo[FILE_BL] == NGAMS_SUBSCR_BACK_LOG): return
+
     #info(3, 'Generating backlog db entry for file %s' % locFileInfo[FILE_ID])
 
     # NOTE: The actions carried out by this function are critical and need
@@ -471,7 +471,7 @@ def _genSubscrBackLogFile(srvObj,
 
         # Increase the Subscription Back-Log Counter to indicate to the Data
         # Subscription Thread that it should only suspend itself temporarily.
-        srvObj.incSubcrBackLogCount()        
+        srvObj.incSubcrBackLogCount()
         srvObj._backLogAreaSem.release()
     except Exception, e:
         srvObj._backLogAreaSem.release()
@@ -492,25 +492,25 @@ def _delFromSubscrBackLog(srvObj,
     srvObj:        Reference to server object (ngamsServer).
 
     subscrId:      Subscriber ID (string).
-    
+
     fileId:        File ID (string).
-    
+
     fileVersion:   File Version (string).
-    
+
     fileName:      Complete filename (string).
 
-    Returns:       Void      
+    Returns:       Void
     """
     # NOTE: The actions carried out by this function are critical and need
     #       to be semaphore protected (Back-Log Operations Semaphore).
-    
+
     srvObj._backLogAreaSem.acquire()
     try:
         srvObj.decSubcrBackLogCount()
         # Delete the entry from the DB for that file/Subscriber.
         srvObj.getDb().delSubscrBackLogEntry(getHostId(),
                                              srvObj.getCfg().getPortNo(),
-                                             subscrId, fileId, fileVersion)        
+                                             subscrId, fileId, fileVersion)
         # If there are no other Subscribers interested in this file, we
         # delete the file.
         # subscrIds = srvObj.getDb().getSubscrsOfBackLogFile(fileId, fileVersion)
@@ -520,29 +520,29 @@ def _delFromSubscrBackLog(srvObj,
         srvObj._backLogAreaSem.release()
         raise e
 
-def _markDeletion(srvObj, 
+def _markDeletion(srvObj,
                   diskId,
-                  fileId, 
+                  fileId,
                   fileVersion):
     """
     srvObj:       Reference to server object (ngamsServer)
-    
+
     diskId:       Disk ID of volume hosting the file (string).
- 
+
     fileId:       File ID for file to consider (string).
 
     fileVersion:  Version of file (integer).
-    
+
     """
     sqlFileInfo = (diskId, fileId, fileVersion)
     ngamsCacheControlThread.requestFileForDeletion(srvObj, sqlFileInfo)
-    
+
 def _backupQueueToBacklog(srvObj):
     """
-    When NGAS server is shutdown, pending files in the queue for each subscriber need to be kept in the backlog 
+    When NGAS server is shutdown, pending files in the queue for each subscriber need to be kept in the backlog
     so that their delivery can be resumed when server is restarted
-    
-    This is necessary because the current three triggering mechanism - (explicit file ref, explicit subscribers, backlog) - 
+
+    This is necessary because the current three triggering mechanism - (explicit file ref, explicit subscribers, backlog) -
     cannot trigger "resuming" delivering these "in-queue and delivery-pending" files after the server is restarted, when all queues are cleared to empty.
     """
     info(3, 'Started - backing up pending files from delivery queue to back logs ......')
@@ -566,7 +566,7 @@ def _backupQueueToBacklog(srvObj):
             _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
             info(3, 'File %s for subscriber %s is backed up to backlog' % (fileInfo[FILE_ID], subscrbId))
     info(3, 'Completed - backing up pending files from delivery queue to back logs')
-    
+
 
 def _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion, fpiMode = FPI_MODE_BOTH):
     deliverFile = 0
@@ -597,13 +597,13 @@ def _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion,
              str(fileVersion) + " selected for Subscriber: " +
              subscrObj.getId())
         deliverFile = 1
-    
+
     return deliverFile
 
 def fileDelivered(srvObj, subscrId, fileId, fileVersion, diskId, beingDelivered = False):
     """
     To check if this file has been delivered already
-    
+
     beingDelivered    including files that are currently being delivered (Boolean),
                       by default, it is set to False
     """
@@ -616,7 +616,7 @@ def fileDelivered(srvObj, subscrId, fileId, fileVersion, diskId, beingDelivered 
         return False
     else:
         return True
-    
+
 def _deliveryThread(srvObj,
                     subscrObj,
                     quChunks,
@@ -628,105 +628,105 @@ def _deliveryThread(srvObj,
 
     srvObj:        Reference to server object (ngamsServer).
 
-    subscrObj:     Subscriber Object (ngamsSubscriber). 
-    
+    subscrObj:     Subscriber Object (ngamsSubscriber).
+
     quChunks:      The queue associated with this subscriber, each element
                    in the queue is a fileInfoList (defined below)
-    
+
                    A fileInfoList is a List with sub-lists with information about file
                    (sub-list generated by ngamsDb.getFileSummary2().
                    Note: In case the file was contained in the Subscription
                    Back-Log, it will have an extra element appended to the
                    file info list, with the value of NGAMS_SUBSCR_BACK_LOG
                    (list/list).
-    
+
     fileDeliveryCountDic:
                    The counter dict for tracking the references to a file to be delivered
-    
-    dummy:         Needed by the thread handling ... 
+
+    dummy:         Needed by the thread handling ...
 
     Returns:       Void.
-    """        
-    
+    """
+
     subscrbId = subscrObj.getId();
     tname = threading.current_thread().name
     remindMainThread = True # whether to notify the subscriptionThread when the queue is empty in order to bypass static suspension time
     firstThread = (threading.current_thread().name == NGAMS_DELIVERY_THR + subscrbId + '0')
-    
+
     while (1): # the delivery is always running unless either unsubscribeCmd is called, or server is shutting down, or it is kicked out by the USUBSCRIBE command
         try:
-            _checkStopDataDeliveryThread(srvObj, subscrbId)     
-            srvObj._subscrSuspendDic[subscrbId].wait() # to check if it should suspend file delivery   
+            _checkStopDataDeliveryThread(srvObj, subscrbId)
+            srvObj._subscrSuspendDic[subscrbId].wait() # to check if it should suspend file delivery
             _checkStopDataDeliveryThread(srvObj, subscrbId)
             fileInfo = None
-            
-            # block for up to 1 minute if the queue is empty. 
-            try:                                
-                fileInfo = quChunks.get(timeout = 60)   
+
+            # block for up to 1 minute if the queue is empty.
+            try:
+                fileInfo = quChunks.get(timeout = 60)
                 srvObj._subscrDeliveryFileDic[tname] = fileInfo # once it is dequeued, it is no longer safe, so need to record it in case server shut down.
             except Empty, e:
                 info(4, "Data delivery thread [" + str(thread.get_ident()) + "] block timeout")
                 _checkStopDataDeliveryThread(srvObj, subscrbId) # Timeout allows it to check if the delivery thread should stop
                 # if delivery thread is to continue, trigger the subscriptionThread to get more files in
-                if (srvObj.getDataMoverOnlyActive() and remindMainThread and firstThread):                    
+                if (srvObj.getDataMoverOnlyActive() and remindMainThread and firstThread):
                     # But only the first thread does this to avoid repeated notifications, but what if the first thread is busy (i.e. sending a file)
                     srvObj.triggerSubscriptionThread()
                     remindMainThread = False # only notify once within each "empty session"
-            
+
             if (fileInfo == None):
-                continue   
+                continue
             if (srvObj.getDataMoverOnlyActive() and firstThread):
-                remindMainThread = True             
-            fileInfo = _convertFileInfo(fileInfo)       
+                remindMainThread = True
+            fileInfo = _convertFileInfo(fileInfo)
             # Prepare info and POST the file.
             fileId         = fileInfo[FILE_ID]
             filename       = fileInfo[FILE_NM]
             fileVersion    = fileInfo[FILE_VER]
             fileIngDate    = fileInfo[FILE_DATE]
             fileMimeType   = fileInfo[FILE_MIME]
-            fileBackLogged = fileInfo[FILE_BL]   
+            fileBackLogged = fileInfo[FILE_BL]
             diskId         = fileInfo[FILE_DISK_ID]
-            
+
             if (fileIngDate < subscrObj.getStartDate() and fileBackLogged != NGAMS_SUBSCR_BACK_LOG): #but backlog files will be sent regardless
                 # subscr_start_date is changed (through USUBSCRIBE command) in order to skip unchechked files
                 alert('File %s skipped, ingestion date %s < %s' %  (fileId, fileIngDate, subscrObj.getStartDate()))
                 continue
-            
+
             if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not diskId)):
                 alert('File %s has invalid diskid, removing it from the backlog' %  filename)
                 _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename)
                 continue
-            
+
             if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not os.path.isfile(filename))):
                 # check if this file is removed by an agent outside of NGAS (e.g. Cortex volunteer cleanup)
                 mtPt = srvObj.getDb().getMtPtFromDiskId(diskId)
-                if (os.path.exists(mtPt)): 
+                if (os.path.exists(mtPt)):
                     # the mount point is still there, but not the file, which means the file was removed by external agents
                     alert('File %s is no longer available, removing it from the backlog' %  filename)
-                    _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename) 
+                    _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename)
                 continue
-        
+
             status = getSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId)
             if (status in [0, -1]): # delivered or being delivered by other threads
                 if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and status == 0):
                     info(3, 'Removing backlog file %s that is no longer needed to be de_livered' % fileId)
                     _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename)
                 continue
-            
+
             baseName = os.path.basename(filename)
             contDisp = "attachment; filename=\"" + baseName + "\""
             # TODO: Note should not have no_versioning hardcoded in the
             # request send to the client/subscriber.
-            contDisp += "; no_versioning=1"
+            contDisp += "; no_versioning=1; file_id={0}".format(fileId)
             info(3,"Thread [" + str(thread.get_ident()) + "] Delivering file: " + baseName + "/" +\
                  str(fileVersion) + " - to Subscriber with ID: " +\
                  subscrObj.getId() + " ...")
             ex = ""
-            stat = ngamsStatus.ngamsStatus()       
-            # Calculate the suspension time for this thread based on the priority of this subscriber. 
+            stat = ngamsStatus.ngamsStatus()
+            # Calculate the suspension time for this thread based on the priority of this subscriber.
             # Dynamically calculated for each file so that the priority can be changed on the fly (no re-subscribe or server restart is needed)
-            suspenTime = (0.005 * (subscrObj.getPriority() - 1)) # so that the top priority (level 1) does not suspend at all 
-            
+            suspenTime = (0.005 * (subscrObj.getPriority() - 1)) # so that the top priority (level 1) does not suspend at all
+
             # If the target does not turn on the authentication (or even not an NGAS), this still works
             # as long as there is a user named "ngas-int" in the configuration file for the current server
             # But if the target is an NGAS server and the authentication is on, the target must have set a user named "ngas-int"
@@ -743,7 +743,7 @@ def _deliveryThread(srvObj,
                 urlres = urlparse.urlparse(sendUrl)
                 runJob = False
                 redo_on_fail = False
-                if (urlres.scheme.lower() == NGAS_JOB_URI_SCHEME): 
+                if (urlres.scheme.lower() == NGAS_JOB_URI_SCHEME):
                     # e.g. ngasjob://ngamsMWA_Compress_JobPlugin?redo_on_fail=0&plugin_params=scale_factor=4,threshold=1E-5
                     runJob = True
                     plugIn = urlres.netloc # hostname will return all lower cases
@@ -756,12 +756,12 @@ def _deliveryThread(srvObj,
                             if (jqdict):
                                 if (jqdict.has_key('redo_on_fail') and
                                 '1' == jqdict['redo_on_fail'][0]):
-                                    redo_on_fail = True 
+                                    redo_on_fail = True
                                 if (jqdict.has_key('plugin_params')):
                                     plugInPars = jqdict['plugin_params'][0]
                     else:
                         raise Exception('invalid ngas job plugin')
-                
+
                 if ((not runJob) and sendUrl.upper().endswith('/' + NGAMS_REARCHIVE_CMD) and diskId):
                     try:
                         fileInfoObj = ngamsFileInfo.ngamsFileInfo().read(srvObj.getDb(), fileId, fileVersion, diskId)
@@ -811,29 +811,29 @@ def _deliveryThread(srvObj,
                             # TODO: For the moment assume success in case no
                             #       exception was thrown.
                             stat.clear().setStatus(NGAMS_SUCCESS)
-                            
+
                         # this is only for DDN test
                         if (hdrs.has_key('x-ddn-oid')):
                             ddn_msg = "File %s as DDN obsid = %s" % (fileId, hdrs['x-ddn-oid'])
                             if (hdrs.has_key('x-ddn-status')):
                                 ddn_msg += " is archived '%s'" % hdrs['x-ddn-status']
-                            info(3, ddn_msg)        
-                        
-                        
+                            info(3, ddn_msg)
+
+
                 except Exception, e:
                     ex = str(e)
-                    trace_msg = traceback.format_exc() 
+                    trace_msg = traceback.format_exc()
                 if ((ex != "") or (reply != NGAMS_HTTP_SUCCESS) or
                     (stat.getStatus() == NGAMS_FAILURE)):
-    
+
                     if (udx < urlListLen - 1): #try the next url
-                        continue           
+                        continue
                     # If an error occurred during data delivery, we should not update
                     # the Subscription Status table for this Subscriber, but should
                     # instead make an entry in the Subscription Back-Log Table
                     # (if the file is not an already back log buffered file, which
-                    # was attempted re-posted). 
-                    
+                    # was attempted re-posted).
+
                     if (runJob):
                         if (redo_on_fail):
                             _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
@@ -854,7 +854,7 @@ def _deliveryThread(srvObj,
                                  "/" + str(fileVersion) +\
                                  " - to Subscriber/url: " + subscrObj.getId() + "/" + subscrObj.getUrl() +\
                                  " by Delivery Thread [" + str(thread.get_ident()) + "]"
-                    
+
                     if (ex != ""): errMsg += " Exception: " + ex + trace_msg + "."
                     if (stat.getMessage() != ""):
                         errMsg += " Message: " + stat.getMessage()
@@ -863,12 +863,12 @@ def _deliveryThread(srvObj,
                         # remove bl record from the dict
                         if (srvObj._subscrBlScheduledDic.has_key(subscrbId)):
                             k = _fileKey(fileId, fileVersion)
-                            srvObj._subscrBlScheduledDic_Sem.acquire()                    
+                            srvObj._subscrBlScheduledDic_Sem.acquire()
                             try:
                                 if (srvObj._subscrBlScheduledDic[subscrbId].has_key(k)):
                                     del srvObj._subscrBlScheduledDic[subscrbId][k]
                             finally:
-                                srvObj._subscrBlScheduledDic_Sem.release()                   
+                                srvObj._subscrBlScheduledDic_Sem.release()
                 else:
                     if (runJob):
                         updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 0, jpiResult)
@@ -881,41 +881,41 @@ def _deliveryThread(srvObj,
                         updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 0, transfer_rate)
                         info(3,"File: " + baseName + "/" + str(fileVersion) +\
                         " - delivered to Subscriber: " + subscrObj.getId() + " by Delivery Thread [" + str(thread.get_ident()) + "]")
-                        
-                    if (srvObj.getCachingActive()):                   
+
+                    if (srvObj.getCachingActive()):
                         fkey = fileId + "/" + str(fileVersion)
                         fileDeliveryCountDic_Sem.acquire()
                         try:
                             if (fileDeliveryCountDic.has_key(fkey)):
                                 fileDeliveryCountDic[fkey] -= 1
-                                if (fileDeliveryCountDic[fkey] == 0):    
+                                if (fileDeliveryCountDic[fkey] == 0):
                                     _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
                                     ff = fileDeliveryCountDic.pop(fkey)
                                     del ff
                             else:
                                 if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
-                                    # it is possible that backlogged files cannot find an entry in the reference count dic - 
-                                    # e.g. when the server is restarted, refcount dic is empty. Later on, back-logged files are queued for delivery. 
+                                    # it is possible that backlogged files cannot find an entry in the reference count dic -
+                                    # e.g. when the server is restarted, refcount dic is empty. Later on, back-logged files are queued for delivery.
                                     # but they did not create entries in refcount dic when they are queued
                                     _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
                                 else:
                                     alert("Fail to find %s/%d in the fileDeliveryCountDic" % (fileId, fileVersion))
                         finally:
                             fileDeliveryCountDic_Sem.release()
-                   
-                    
+
+
                     # Update the Subscriber Status to avoid that this file
                     # gets delivered again.
                     try:
                         subscrObj.setLastFileIngDate(fileIngDate)
                         srvObj.getDb().updateSubscrStatus(subscrObj.getId(), fileIngDate)
                     except Exception, e:
-                        # continue with warning message. this means the database (i.e. last_ingestion_date) is not synchronised for this file, 
-                        # but at least remaining files can be delivered continuously, the database may be back in sync upon delivering remaining files 
+                        # continue with warning message. this means the database (i.e. last_ingestion_date) is not synchronised for this file,
+                        # but at least remaining files can be delivered continuously, the database may be back in sync upon delivering remaining files
                         errMsg = "Error occurred during update the ngas_subscriber table " +\
                              "_devliveryThread [" + str(thread.get_ident()) + "] Exception: " + str(e)
                         alert(errMsg)
-        
+
                     # If the file is back-log buffered, we check if we can delete it.
                     if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
                         srvObj._subscrBlScheduledDic_Sem.acquire()
@@ -927,12 +927,12 @@ def _deliveryThread(srvObj,
                                 if (srvObj._subscrBlScheduledDic[subscrbId].has_key(k)):
                                     del srvObj._subscrBlScheduledDic[subscrbId][k]
                         finally:
-                            srvObj._subscrBlScheduledDic_Sem.release() 
-                    break # do not try the next url after success                   
-                        
+                            srvObj._subscrBlScheduledDic_Sem.release()
+                    break # do not try the next url after success
+
             srvObj._subscrDeliveryFileDic[tname] = None
         except Exception, be:
-            if (str(be).find("_STOP_DELIVERY_THREAD_") != -1): 
+            if (str(be).find("_STOP_DELIVERY_THREAD_") != -1):
                 # Stop delivery thread.
                 info(3, 'Delivery thread [' + str(thread.get_ident()) + '] is exiting.')
                 thread.exit()
@@ -946,7 +946,7 @@ def _fileKey(fileId,
     Generate file identifier.
 
     fileId:        File ID (string).
-    
+
     fileVersion:   File Version (integer).
 
     Returns:       File identifier (string).
@@ -958,29 +958,29 @@ def buildSubscrQueue(srvObj, subscrId, dataMoverOnly = False):
     initialise the subscription queue and
     load records from the persistent ngas_subscr_queue
     into the cache queue
-    
+
     This is to sync cache queue with the persistent queue
-    
+
     Returns:    the subscriber (cache) queue
     """
     if (dataMoverOnly): # for data movers, file ids (which is the first field of the fileInfo) close to one another are sent in sequence
         quChunks = PriorityQueue()
     else:
         quChunks = Queue()
-    
+
     try:
         # change status to "scheduled" for files "being transferred" before system restart
-        srvObj.getDb().updateSubscrQueueEntryStatus(subscrId, -1, -2)    
+        srvObj.getDb().updateSubscrQueueEntryStatus(subscrId, -1, -2)
         #grab those files that have been scheduled from the persistent queue
         files = srvObj.getDb().getSubscrQueue(subscrId, status = -2)
     except Exception, ee:
         error('Failed db operation when building subscriber cache queue: %s' % str(ee))
         return quChunks
-    
+
     for locFileInfo in files:
         locFileInfo.append(None) # see function _convertFileInfo(fileInfo)
         quChunks.put(locFileInfo) # load them into the cache queue
-    
+
     return quChunks
 
 
@@ -1017,10 +1017,10 @@ def addToSubscrQueue(srvObj, subscrId, fileInfo, quChunks):
     """
     Insert into the persistent subscription queue,
     if successful, then add to the cache subscription queue
-    
+
     fileInfo    file information (List) that has already been converted (see _convertFileInfo(fileInfo))
     """
-    fileInfo = _convertFileInfo(fileInfo)       
+    fileInfo = _convertFileInfo(fileInfo)
     fileId         = fileInfo[FILE_ID]
     filename       = fileInfo[FILE_NM]
     fileVersion    = fileInfo[FILE_VER]
@@ -1055,7 +1055,7 @@ def stageFile(srvObj, filename):
     except Exception, ex:
         error("File offline_checking or staging error: %s" % filename)
         raise ex
-     
+
 def subscriptionThread(srvObj,
                        dummy):
     """
@@ -1064,8 +1064,8 @@ def subscriptionThread(srvObj,
 
     srvObj:      Reference to server object (ngamsServer).
 
-    dummy:       Needed by the thread handling ... 
-    
+    dummy:       Needed by the thread handling ...
+
     Returns:     Void.
     """
     info(3,"Data Subscription Thread initializing ...")
@@ -1074,47 +1074,47 @@ def subscriptionThread(srvObj,
         dm_hosts = srvObj.getCfg().getDataMoverHostIds()
         if (dm_hosts == None):
             raise Exception, "No data mover hosts are available!"
-        else:    
+        else:
             dm_hosts = map(lambda x: x.strip(), dm_hosts.split(','))
             if (len(dm_hosts) < 1):
                 raise Exception, "Invalid data mover hosts configuration!"
-        
+
     fileDicDbm = None
     fileDicDbmName = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),
                                                       NGAMS_SUBSCRIPTION_THR +\
                                                       "_FILE_DIC")
     # Similar to Deliver Status Dictionary, the Schedule Status Dictionary
-    # indicates for each Subscriber when the last file was scheduled (but 
+    # indicates for each Subscriber when the last file was scheduled (but
     # possibly not delivered yet)
     # this will be used across multiple iterations in the subscriptionThread
     # key subscriberId, value - date string
-    scheduledStatus = srvObj._subscrScheduledStatus 
-    
+    scheduledStatus = srvObj._subscrScheduledStatus
+
     checkedStatus = srvObj._subscrCheckedStatus
-    
+
     # key: subscriberId, value - a FIFO file queue, which is a list of fileInfo chunks, each chunk has a number of fileInfos
-    queueDict = srvObj._subscrQueueDic 
-    
+    queueDict = srvObj._subscrQueueDic
+
     # key: subscriberId, value - a List of deliveryThreads for that subscriber
-    deliveryThreadDic = srvObj._subscrDeliveryThreadDic  
+    deliveryThreadDic = srvObj._subscrDeliveryThreadDic
     #deliverySuspendDic = srvObj._subscrSuspendDic
-    
+
     # key: threadName (unique), value -  dummy 1
     # Threads for the same subscriber will have different thread names
     deliveryThreadRefDic = srvObj._subscrDeliveryThreadDicRef
-    
+
     # key: threadName (unique), value -  None or FileInfo (the current file that is being transferred)
-    # Threads for the same subscriber will have different thread names 
+    # Threads for the same subscriber will have different thread names
     deliveryFileDic = srvObj._subscrDeliveryFileDic
-    
-    # key: file_id, value - the number of pending deliveries, should be > 0, 
+
+    # key: file_id, value - the number of pending deliveries, should be > 0,
     # decreases by 1 upon a successful delivery
     fileDeliveryCountDic = srvObj._subscrFileCountDic
     fileDeliveryCountDic_Sem = srvObj._subscrFileCountDic_Sem
-    
+
     # trigger all subscribers, so it can go ahead checking files when the server/subscriptionThread is just started
     srvObj.addSubscriptionInfo([], srvObj.getSubscriberDic().values()).triggerSubscriptionThread()
-    
+
     while (1):
         # Incapsulate this whole block to avoid that the thread dies in
         # case a problem occurs, like e.g. a problem with the DB connection.
@@ -1151,7 +1151,7 @@ def subscriptionThread(srvObj,
             # query information about all files available on this host.
             rmFile(fileDicDbmName + "*")
             fileDicDbm = ngamsDbm.ngamsDbm(fileDicDbmName, writePerm=1)
-           
+
             if (dataMoverOnly and srvObj.getSubcrBackLogCount() <= 1000): # do not bring in too many new files if back-logged files are piling up
                 for subscrId in srvObj.getSubscriberDic().keys():
                     subscrObj = srvObj.getSubscriberDic()[subscrId]
@@ -1166,11 +1166,11 @@ def subscriptionThread(srvObj,
                         start_date = subscrObj.getLastFileIngDate()
                     elif (subscrObj.getStartDate()):
                         start_date = subscrObj.getStartDate()
-                    
-                    info(3, 'Data mover %s start_date = %s\n' % (subscrId, start_date))    
+
+                    info(3, 'Data mover %s start_date = %s\n' % (subscrId, start_date))
                     count = 0
-                    info(3, 'Checking hosts %s for data mover %s' % (dm_hosts, subscrId))       
-                    cursorObj = srvObj.getDb().getFileSummary2(hostId = dm_hosts, ing_date = start_date, max_num_records = 1000) 
+                    info(3, 'Checking hosts %s for data mover %s' % (dm_hosts, subscrId))
+                    cursorObj = srvObj.getDb().getFileSummary2(hostId = dm_hosts, ing_date = start_date, max_num_records = 1000)
                     lastIngDate = None
                     while (1):
                         fileList = cursorObj.fetch(100)
@@ -1185,7 +1185,7 @@ def subscriptionThread(srvObj,
                         time.sleep(0.1)
                     if (lastIngDate):
                         # mark the "last" file that will be checked regardless if it will be delivered or not
-                        checkedStatus[subscrId] = lastIngDate 
+                        checkedStatus[subscrId] = lastIngDate
                         pass
                     del cursorObj
                     if (count == 0):
@@ -1197,14 +1197,14 @@ def subscriptionThread(srvObj,
                 # The min_date is used to exclude files that have been delivered (<= min_date) during previous NGAS sessions
                 for subscriber in subscrObjs:
                     myMinDate = subscriber.getStartDate()
-                    
-                    myIngDate = subscriber.getLastFileIngDate()                                                            
+
+                    myIngDate = subscriber.getLastFileIngDate()
                     if (myIngDate and '1970-01-01' != myIngDate.split('T')[0]):
-                        myMinDate = myIngDate                        
-                        
+                        myMinDate = myIngDate
+
                     if (not min_date or min_date > myMinDate):
-                        min_date = myMinDate                    
-                            
+                        min_date = myMinDate
+
                 cursorObj = srvObj.getDb().getFileSummary2(getHostId(), ing_date = min_date)
                 info(3, 'Fetching files ingested after %s' % min_date)
                 while (1):
@@ -1250,14 +1250,14 @@ def subscriptionThread(srvObj,
                             fileDicDbm.add(_fileKey(fileInfo[FILE_ID],
                                                     fileInfo[FILE_VER]),
                                            fileInfo)
-                    time.sleep(0.1) 
+                    time.sleep(0.1)
                 del cursorObj
 
             # The Deliver Status Dictionary indicates for each Subscriber
             # when the last file was delivered. We first initialize the
             # Deliver Status Dictionary with None to indicate later if that
             # this Subscriber (apparently) didn't have any files delivered.
-            deliveredStatus = {}            
+            deliveredStatus = {}
             for subscrId in srvObj.getSubscriberDic().keys():
                 deliveredStatus[subscrId] = None
                 if (not scheduledStatus.has_key(subscrId)):
@@ -1315,7 +1315,7 @@ def subscriptionThread(srvObj,
                     for fileKey in fileDicDbm.keys():
                         fileInfo = fileDicDbm.get(fileKey)
                         _checkIfDeliverFile(srvObj, subscrObj, fileInfo,
-                                            deliverReqDic, deliveredStatus, scheduledStatus, fileDeliveryCountDic, fileDeliveryCountDic_Sem)         
+                                            deliverReqDic, deliveredStatus, scheduledStatus, fileDeliveryCountDic, fileDeliveryCountDic_Sem)
             else:  # Third, if datamover, add those files
                 for subscrId in srvObj.getSubscriberDic().keys():
                     subscrObj = srvObj.getSubscriberDic()[subscrId]
@@ -1324,7 +1324,7 @@ def subscriptionThread(srvObj,
                         fileInfo = fileDicDbm.get(fileKey)
                         _checkIfDeliverFile(srvObj, subscrObj, fileInfo,
                                             deliverReqDic, deliveredStatus, scheduledStatus, fileDeliveryCountDic, fileDeliveryCountDic_Sem)
-            
+
             # Then finally check if there are back-logged files to deliver.
             # selectDiskId = srvObj.getCachingActive()
             selectDiskId = True # always select Disk Id now so that alll back log files will have disk_id
@@ -1343,11 +1343,11 @@ def subscriptionThread(srvObj,
                     fileInfo = list(backLogInfo[2:]) + [NGAMS_SUBSCR_BACK_LOG]
                     #else:
                     #    fileInfo = list(backLogInfo[2:]) + [None] + [NGAMS_SUBSCR_BACK_LOG]
-    
+
                     _addFileDeliveryDic(subscrId, fileInfo, deliverReqDic, fileDeliveryCountDic, fileDeliveryCountDic_Sem, srvObj)
             finally:
                 srvObj._subscrBlScheduledDic_Sem.release()
-                
+
             # Sort the files listed in the Delivery Dictionary for each
             # Subscriber so that files are sorted according to Ingestion Date.
             # This is done in order to prevent that a file with a more recent
@@ -1356,22 +1356,22 @@ def subscriptionThread(srvObj,
             # should have been delivered from being delivered.
             # Then deliver the data (if there is something to deliver).
             # Data Delivery Thread is spawned off per Subscriber, which should
-            # receive data.        
+            # receive data.
             for subscrId in srvObj.getSubscriberDic().keys():
             #for subscrId in deliverReqDic.keys():
                 if (deliverReqDic.has_key(subscrId)):
                     deliverReqDic[subscrId].sort(_compFctIngDate)
-                    #get the ingest_date of the last file in the queue (list)         
+                    #get the ingest_date of the last file in the queue (list)
                     lastScheduleDate = _convertFileInfo(deliverReqDic[subscrId][-1])[FILE_DATE]
                     if (lastScheduleDate > scheduledStatus[subscrId]):
-                        scheduledStatus[subscrId] = lastScheduleDate 
-                
+                        scheduledStatus[subscrId] = lastScheduleDate
+
                 """
-                This is not used since Priority Queue will sort the list 
-                if (dataMoverOnly):# 
-                    deliverReqDic[subscrId].sort(_compFctFileId) 
+                This is not used since Priority Queue will sort the list
+                if (dataMoverOnly):#
+                    deliverReqDic[subscrId].sort(_compFctFileId)
                 """
-                
+
                 # multi-threaded concurrent transfer, added by chen.wu@icrar.org
                 if (not srvObj.getSubscriberDic().has_key(subscrId)): # this is possible since back log files can still use old subscriber names
                     continue
@@ -1389,18 +1389,18 @@ def subscriptionThread(srvObj,
                     """
                     quChunks = buildSubscrQueue(srvObj, subscrId, dataMoverOnly)
                     queueDict[subscrId] = quChunks
- 
+
                 if (deliverReqDic.has_key(subscrId)):
-                    allFiles = deliverReqDic[subscrId]         
+                    allFiles = deliverReqDic[subscrId]
                 else:
                     allFiles = []
                 #if (srvObj.getSubcrBackLogCount() > 0):
-                info(3, 'Put %d new files in the queue for subscriber %s' %(len(allFiles), subscrId))        
+                info(3, 'Put %d new files in the queue for subscriber %s' %(len(allFiles), subscrId))
                 for jdx in range(len(allFiles)):
                     ffinfo = allFiles[jdx]
-                    addToSubscrQueue(srvObj, subscrId, ffinfo, quChunks) 
-                    #quChunks.put(allFiles[jdx])   
-                    # Deliver the data - spawn off a Delivery Thread to do this job                    
+                    addToSubscrQueue(srvObj, subscrId, ffinfo, quChunks)
+                    #quChunks.put(allFiles[jdx])
+                    # Deliver the data - spawn off a Delivery Thread to do this job
                 info(4, 'Number of elements in Queue %s: %d' % (subscrId, quChunks.qsize()))
                 if not deliveryThreadDic.has_key(subscrId):
                     deliveryThreads = []
@@ -1412,8 +1412,8 @@ def subscriptionThread(srvObj,
                         deliveryThrRef = threading.Thread(None, _deliveryThread, thrdName, args)
                         deliveryThrRef.setDaemon(0)
                         deliveryThrRef.start()
-                        deliveryThreads.append(deliveryThrRef)                        
-                        
+                        deliveryThreads.append(deliveryThrRef)
+
                     deliveryThreadDic[subscrId] = deliveryThreads
         except Exception, e:
             try:
@@ -1424,8 +1424,8 @@ def subscriptionThread(srvObj,
             if (str(e).find("_STOP_SUBSCRIPTION_THREAD_") != -1): thread.exit()
             errMsg = "Error occurred during execution of the Data " +\
                      "Subscription Thread. Exception: " + str(e)
-            alert(errMsg)    
-            em = traceback.format_exc()    
-            alert(em)             
+            alert(errMsg)
+            em = traceback.format_exc()
+            alert(em)
 
 # EOF
