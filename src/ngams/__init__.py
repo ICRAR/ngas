@@ -958,24 +958,23 @@ def getHostName(cfgFile=None):
     Returns:   Host name for this NGAS System (string).
     """
     global NGAMS_HOST_IP
-    ip = None
+    ip = IpAddress = None
     if NGAMS_HOST_IP:
-        ip= NGAMS_HOST_IP
+        ip = IpAddress = NGAMS_HOST_IP
     if cfgFile or sys.argv.count('-cfg') > 0:
         if not cfgFile: cfgFile = sys.argv[sys.argv.index('-cfg') + 1]
         from xml.dom import minidom
         dom = minidom.parse(cfgFile)
         srv = dom.getElementsByTagName('Server')
-        ip = srv[0].getAttribute('IpAddress')
-        if not ip or str(ip)[0] == '0':
-            ip = getMyIpAddress()   #This only works if the machine can connect to the web!
-    if ip:
-        NGAMS_HOST_IP = str(ip)
-        try:
-            hostName = socket.gethostbyaddr(NGAMS_HOST_IP)[0]
-        except socket.herror:
-            return NGAMS_HOST_IP
-    else:
+        IpAddress = ip = srv[0].getAttribute('IpAddress')
+    if not ip or str(ip)[0] == '0':
+        ip = getMyIpAddress()   #This only works if the machine can connect to the web!
+    if not IpAddress:
+        IpAddress = ip
+    NGAMS_HOST_IP = str(IpAddress)
+    try:
+        hostName = socket.gethostbyaddr(ip)[0]
+    except socket.herror:
         hostName = os.uname()[1]
     return hostName
 

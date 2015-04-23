@@ -17,6 +17,7 @@
           BlockSize="65536"
           MaxSimReqs="30" 
           MountRootDirectory="/NGAS" 
+          IpAddress="0.0.0.0"
           PortNo="7777" 
           ProxyMode="1"
           Simulation="1"

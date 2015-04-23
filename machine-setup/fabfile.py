@@ -630,7 +630,7 @@ def git_clone_tar(unpack=True):
         egg_excl = ' --exclude eggs.tar.gz '
 
     # create the tar
-    local('cd {0} && tar -cjf {1}.tar.bz2 --exclude BIG_FILES \
+    local('cd {0} && tar -cjf ngas_tmp.tar.bz2 --exclude BIG_FILES \
             --exclude .git --exclude .s* --exclude .e* {2} {1}/.'.format(sdir, env.APP_DIR, egg_excl))
     tarfile = '{0}.tar.bz2'.format(env.APP_DIR)
 
@@ -640,7 +640,7 @@ def git_clone_tar(unpack=True):
     else:
         testlist = ['localhost','127.0.0.1',whatsmyip()]
     if not env.host_string in testlist:
-        put('{0}/{1}'.format(sdir,tarfile), '/tmp/{0}'.format(tarfile, env.APP_DIR_ABS))
+        put('{0}/ngas_tmp.tar.bz2'.format(sdir), '/tmp/{0}'.format(tarfile, env.APP_DIR_ABS))
         local('rm -rf /tmp/{0}'.format(env.APP_DIR))  # cleanup local git clone dir
 
     if unpack:
