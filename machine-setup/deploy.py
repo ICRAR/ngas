@@ -634,7 +634,11 @@ def git_clone_tar(unpack=True):
     tarfile = '{0}.tar.bz2'.format(env.APP_DIR)
 
     # transfer the tar file if not local
-    if not env.host_string in ['localhost','127.0.0.1',whatsmyip()]:
+    if env.standalone != 0:
+        testlist = ['localhost','127.0.0.1']
+    else:
+        testlist = ['localhost','127.0.0.1',whatsmyip()]
+    if not env.host_string in testlist:
         put('{0}/{1}'.format(sdir,tarfile), '/tmp/{0}'.format(tarfile, env.APP_DIR_ABS))
         local('rm -rf /tmp/{0}'.format(env.APP_DIR))  # cleanup local git clone dir
 
@@ -670,7 +674,8 @@ def ngas_minimal_tar(transfer=True):
     excludes = ['.git', '.s*', 
                 ]
     exclude = ' --exclude ' + ' --exclude '.join(excludes)
-    local('cd {0}/.. && tar -czf /tmp/ngas_src.tar.gz {1} ngas'.format(env.src_dir, exclude))
+    src_dir_rel = os.path.split(env.src_dir)[-1]
+    local('cd {0}/.. && tar -czf /tmp/ngas_src.tar.gz {1} {2}'.format(env.src_dir, exclude, src_dir_rel))
     if transfer:
         put('/tmp/ngas_src.tar.gz','/tmp/ngas.tar.gz')
         run('cd {0} && tar --strip-components 1 -xzf /tmp/ngas.tar.gz'.format(env.APP_DIR_ABS))
@@ -846,7 +851,7 @@ def user_setup():
     set_env()
     if not env.user:
         env.user = USERNAME # defaults to ec2-user
-    group = 'ngas'
+    group = env.user # defaults to the same as the user name
     sudo('groupadd ngas', warn_only=True)
     for user in env.APP_USERS:
         sudo('useradd -g {0} -m -s /bin/bash {1}'.format(group, user), warn_only=True)
@@ -909,14 +914,15 @@ def virtualenv_setup():
     check_python()
     print "CHECK_DIR: {0}".format(env.APP_DIR_ABS+'/src')
     if check_dir(env.APP_DIR_ABS+'/src') and not env.force:
-        abort('ngas_rt directory exists already')
+        abort('{0} directory exists already'.format(env.APP_DIR_ABS))
 
     with cd('/tmp'):
         put('{0}/clib_tars/virtualenv-12.0.7.tar.gz'.format(env.src_dir), 'virtualenv-12.0.7.tar.gz')
         run('tar -xzf virtualenv-12.0.7.tar.gz')
         with settings(user=env.APP_USERS[0]):
             run('cd virtualenv-12.0.7; {0} virtualenv.py {1}'.format(env.PYTHON, env.APP_DIR_ABS))
-            run('mkdir ~/.pip; cd ~/.pip; wget http://curl.haxx.se/ca/cacert.pem')
+            if not(check_dir('~/.pip')):
+                run('mkdir ~/.pip; cd ~/.pip; wget http://curl.haxx.se/ca/cacert.pem')
             run('echo "[global]" > ~/.pip/pip.conf; echo "cert = {0}/.pip/cacert.pem" >> ~/.pip/pip.conf;'.format(env.HOME))
 
     puts(green("\n\n******** VIRTUALENV SETUP COMPLETED!********\n\n"))
@@ -1019,7 +1025,7 @@ def ngas_full_buildout(typ='archive'):
     # First get the sources
     #
     if (env.standalone):
-        ngas_minimal_tar()
+        git_clone_tar()
     elif check_path('{0}/bootstrap.py'.format(env.APP_DIR_ABS)) == '0':
         git_clone_tar()
 
@@ -1041,16 +1047,18 @@ def ngas_full_buildout(typ='archive'):
             virtualenv('cd /tmp; tar -xzf {0}/additional_tars/bsddb3-6.1.0.tar.gz'.format(env.APP_DIR_ABS))
             virtualenv('cd /tmp/bsddb3-6.1.0; ' + \
                        'export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1; ' +\
-                       'python setup.py --berkeley-db=/usr/local/Cellar/berkeley-db/{0} build'.format(db_version))
+                       'python{1} setup.py --berkeley-db=/usr/local/Cellar/berkeley-db/{0} build'.format(db_version, APP_PYTHON_VERSION))
             virtualenv('cd /tmp/bsddb3-6.1.0; ' + \
                        'export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1; ' +\
-                       'python setup.py --berkeley-db=/usr/local/Cellar/berkeley-db/{0} install'.format(db_version))
+                       'python{1} setup.py --berkeley-db=/usr/local/Cellar/berkeley-db/{0} install'.format(db_version, APP_PYTHON_VERSION))
         else:
             virtualenv('pip install additional_tars/bsddb3-6.1.0.tar.gz')
         virtualenv('pip install additional_tars/bottle-0.11.6.tar.gz')
 
         # run bootstrap with correct python version (explicit)
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
+        # install the ngamsPClient here standalone
+        virtualenv('cd {0}/src/ngamsPClient; python setup.py install'.format(env.APP_DIR_ABS))
         virtualenv('python{0} bootstrap.py -v 2.3.1'.format(APP_PYTHON_VERSION))
 
     ngas_buildout(typ=typ)
@@ -1235,6 +1243,7 @@ def test_deploy():
     # set environment to default for EC2, if not specified otherwise.
     set_env()
     install(sys_install=True, user_install=True, init_install=True)
+    sudo('chown -R {0}:{0} /home/{0}'.format(env.user))
     with settings(user=env.APP_USERS[0]):
         run('ngamsDaemon start')
     puts(green("\n\n******** SERVER STARTED!********\n\n"))
