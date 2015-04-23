@@ -342,7 +342,8 @@ def _encFileInfo(dbConObj,
     T = TRACE(5)
 
     tmpDic = {}
-    for n in range(ngamsDbCore.NGAS_FILES_CREATION_DATE + 1):
+    #for n in range(ngamsDbCore.NGAS_FILES_CREATION_DATE + 1):
+    for n in range(ngamsDbCore.NGAS_FILES_IO_TIME + 1): #newly added column!
         colName = dbConObj.getNgasFilesMap()[n]
         colId = _encName(dbSnapshot, colName)
         tmpDic[colId] = fileInfo[n]
@@ -368,11 +369,16 @@ def _encFileInfo2Obj(dbConObj,
     T = TRACE(5)
 
     sqlFileInfo = []
-    for n in range (ngamsDbCore.NGAS_FILES_CREATION_DATE + 1):
+    #for n in range (ngamsDbCore.NGAS_FILES_CREATION_DATE + 1):
+    for n in range (ngamsDbCore.NGAS_FILES_IO_TIME + 1):
         sqlFileInfo.append(None)
     idxKeys = encFileInfoDic.keys()
     for idx in idxKeys:
-        colName = _readDb(dbSnapshot, NGAMS_SN_SH_ID2NM_TAG + str(idx))
+        kid = NGAMS_SN_SH_ID2NM_TAG + str(idx)
+        if (not dbSnapshot.has_key(kid)):
+            warning("dbSnapshot has no key '{0}', is it corrupted?".format(kid))
+            return None
+        colName = _readDb(dbSnapshot, kid)
         sqlFileInfoIdx = dbConObj.getNgasFilesMap()[colName]
         sqlFileInfo[sqlFileInfoIdx] = encFileInfoDic[idx]
     tmpFileInfoObj = ngamsFileInfo.ngamsFileInfo().unpackSqlResult(sqlFileInfo)
@@ -616,6 +622,8 @@ def checkUpdateDbSnapShots(srvObj):
             else:
                 tmpFileObj = _encFileInfo2Obj(srvObj.getDb(), snapshotDbm,
                                               value)
+                if (tmpFileObj is None):
+                    continue
                 complFilename = os.path.normpath(mtPt + "/" +\
                                                  tmpFileObj.getFilename())
 
@@ -633,6 +641,8 @@ def checkUpdateDbSnapShots(srvObj):
                 elif (not tmpSnapshotDbm.has_key(key)):
                     tmpFileObj = _encFileInfo2Obj(srvObj.getDb(), snapshotDbm,
                                                   value)
+                    if (tmpFileObj is None):
+                        continue
 
                     # Is the file on the disk?
                     if (os.path.exists(complFilename)):
@@ -730,6 +740,8 @@ def checkUpdateDbSnapShots(srvObj):
                 if (not snapshotDbm.has_key(key)):
                     tmpFileObj = _encFileInfo2Obj(srvObj.getDb(),
                                                   tmpSnapshotDbm, value)
+                    if (tmpFileObj is None):
+                        continue
 
                     # Is the file on the disk?
                     complFilename = os.path.normpath(mtPt + "/" +\
@@ -1031,6 +1043,8 @@ def janitorThread(srvObj,
     except Exception, e:
         errMsg = "Problem updating DB Snapshot files: " + str(e)
         warning(errMsg)
+        import traceback
+        info(3, traceback.format_exc())
 
     suspendTime = isoTime2Secs(srvObj.getCfg().getJanitorSuspensionTime())
     while (1):
