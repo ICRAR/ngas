@@ -44,16 +44,22 @@ from fabric.colors import *
 # FILTER = 'The cray-mpich2 module is now deprecated and will be removed in a future release.\r\r\nPlease use the cray-mpich module.'
 
 def run(*args, **kwargs):
-    FILTER = frun('echo')  # This should not return anything
-    res = frun(*args, **kwargs)
+    with hide('running'):
+        FILTER = frun('echo')  # This should not return anything
+    com = list(args)[0]
+    com = 'unset PYTHONPATH; {0}'.format(com)
+    res = frun(com, **kwargs)
     res = res.replace(FILTER,'')
 #     res = res.replace('\n','')
 #     res = res.replace('\r','')
     return res
 
 def sudo(*args, **kwargs):
-    FILTER = frun('echo')  # This should not return anything
-    res = fsudo(*args, **kwargs)
+    with hide('running'):
+        FILTER = frun('echo')  # This should not return anything
+    com = list(args)[0]
+    com = 'unset PYTHONPATH; {0}'.format(com)
+    res = fsudo(com, **kwargs)
     res = res.replace(FILTER, '')
     res = res.replace('\n','')
     res = res.replace('\r','')
@@ -169,11 +175,21 @@ SLES_PACKAGES = [
                  ]
 
 BREW_PACKAGES = [
+                 'wget',
                  'berkeley-db',
                  'libtool',
                  'automake',
                  'autoconf'
                  ]
+
+PORT_PACKAGES = [
+                 'wget',
+                 'db60',
+                 'libtool',
+                 'automake',
+                 'autoconf',
+                 ]
+
 
 PYTHON_PACKAGES = [
         'zc.buildout',
@@ -433,7 +449,7 @@ def check_path(path):
     res = run('if [ -e {0} ]; then echo 1; else echo 0; fi'.format(path))
     return res
 
-
+@task
 def check_python():
     """
     Check for the existence of correct version of python
@@ -445,7 +461,8 @@ def check_python():
     path to python binary    string, could be empty string
     """
     # Try whether there is already a local python installation for this user
-    ppath = env.APP_DIR_ABS+'/../python'
+    set_env()
+    ppath = env.APP_DIR_ABS.split(env.APP_DIR)[0] + '/python' # make sure this is an absolute path
     ppath = check_command('{0}/bin/python{1}'.format(ppath, APP_PYTHON_VERSION))
     if ppath:
         env.PYTHON = ppath
@@ -500,6 +517,14 @@ def install_brew(package):
     """
     with settings(warn_only=True):
         run('export HOMEBREW_NO_EMOJI=1; brew install {0} | grep -v "\%"'.format(package))
+
+
+def install_port(package):
+    """
+    Install a package using macports (Mac OSX)
+    """
+    with settings(warn_only=True):
+        sudo('port install {0}'.format(package))
 
 
 @task    
@@ -557,6 +582,20 @@ def check_apt(package):
     else:
         print "NOT installed package {0}".format(package)
         return False
+
+def check_brew_port():
+    """
+    Check for existence of homebrew or macports
+    
+    RETRUNS: string containing the installed package manager or None
+    """
+    if check_command('brew'):
+        return 'brew'
+    elif check_command('port'):
+        return 'port'
+    else:
+        return None
+
 
 def check_brew_cellar():
     """
@@ -642,6 +681,8 @@ def git_clone_tar(unpack=True):
     if not env.host_string in testlist:
         put('{0}/ngas_tmp.tar.bz2'.format(sdir), '/tmp/{0}'.format(tarfile, env.APP_DIR_ABS))
         local('rm -rf /tmp/{0}'.format(env.APP_DIR))  # cleanup local git clone dir
+    else: # if this is all local
+        tarfile = 'ngas_tmp.tar.bz2'
 
     if unpack:
         # unpack the tar file remotely
@@ -757,9 +798,15 @@ def system_install():
         for package in SLES_PACKAGES:
             install_zypper(package)
     elif linux_flavor == 'Darwin':
-        install_homebrew()
-        for package in BREW_PACKAGES:
-            install_brew(package)        
+        pkg_mgr = check_brew_port()
+        if pkg_mgr == None: 
+            install_homebrew()
+        elif pkg_mgr == 'brew':
+            for package in BREW_PACKAGES:
+                install_brew(package)
+        elif pkg_mgr == 'port':
+            for package in PORT_PACKAGES:
+                install_port(package)     
     else:
         abort("Unsupported linux flavor detected: {0}".format(linux_flavor))
     puts(green("\n\n******** System packages installation COMPLETED!********\n\n"))
@@ -977,6 +1024,8 @@ def ngas_buildout(typ='archive'):
 
     puts(green("\n\n******** NGAS_BUILDOUT COMPLETED!********\n\n"))
 
+
+
 @task
 def install_user_profile():
     """
@@ -1059,7 +1108,7 @@ def ngas_full_buildout(typ='archive'):
         # run bootstrap with correct python version (explicit)
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
         # install the ngamsPClient here standalone
-        virtualenv('cd {0}/src/ngamsPClient; python setup.py install'.format(env.APP_DIR_ABS))
+        virtualenv('cd {0}/src/ngamsPClient; python2.7 setup.py install'.format(env.APP_DIR_ABS))
         virtualenv('python{0} bootstrap.py -v 2.3.1'.format(APP_PYTHON_VERSION))
 
     ngas_buildout(typ=typ)
@@ -1314,7 +1363,8 @@ def archiveSource():
 
 @task
 def install(sys_install=True, user_install=True, 
-            init_install=True, typ='archive'):
+            init_install=True, typ='archive',
+            python_install=False):
     """
     Install NGAS users and NGAS software on existing machine.
     Note: Requires root permissions!
@@ -1328,13 +1378,15 @@ def install(sys_install=True, user_install=True,
 
     with settings(user=env.APP_USERS[0]):
         ppath = check_python()
-        if not ppath:
+        if not ppath or str(python_install) == 'True':
             python_setup()
     if env.PREFIX != env.HOME: # generate non-standard ngas_rt directory
         sudo('mkdir -p {0}'.format(env.PREFIX))
-        sudo('chown -R {0}:ngas {1}'.format(env.APP_USERS[0], env.PREFIX))
     with settings(user=env.APP_USERS[0]):
         virtualenv_setup()
+    if env.PREFIX != env.HOME:
+        sudo('chown -R {0}:ngas {1}'.format(env.APP_USERS[0], env.PREFIX))
+    with settings(user=env.APP_USERS[0]):
         ngas_full_buildout(typ=typ)
         cleanup_tmp()
     if init_install and init_install != 'False': init_deploy()
@@ -1352,10 +1404,11 @@ def uninstall(clean_system=False):
     """
     puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
     set_env()
+    if env.PREFIX != env.HOME: # avoid removing the home directory
+        sudo('rm -rf {0}'.format(env.PREFIX), warn_only=True)
+    run('rm -rf {0}/../python {0}'.format(env.APP_DIR_ABS), warn_only=True)
+    run('rm -rf /tmp/Py* /tmp/ngas* /tmp/virtual*')
     with settings(user = env.APP_USERS[0]):
-        if env.PREFIX != env.HOME: # avoid removing the home directory
-            run('rm -rf {0}'.format(env.PREFIX), warn_only=True)
-        run('rm -rf {0}'.format(env.APP_DIR_ABS), warn_only=True)
         run('mv .bash_profile_orig .bash_profile', warn_only=True)
     
     if clean_system and clean_system != 'False': # don't delete the users and system settings by default.
