@@ -99,6 +99,7 @@ APP_DIR = 'ngas_rt' #NGAS runtime directory
 INIT_SRC_T = '{0}/src/ngamsStartup/ngamsServer.init.sh' # Template for init source file.
 INIT_TRG = '/etc/init.d/ngamsServer'
 APP_CONF = 'ngamsServer.conf'
+MACPORT_DIR = '/opt/local' # The directory under which 'port' installs stuff
 
 # the following can be set on the command line in order to clone from git.
 GITUSER = '' 
@@ -798,10 +799,8 @@ def system_install():
         for package in SLES_PACKAGES:
             install_zypper(package)
     elif linux_flavor == 'Darwin':
-        pkg_mgr = check_brew_port()
-        if pkg_mgr == None: 
-            install_homebrew()
-        elif pkg_mgr == 'brew':
+        pkg_mgr = pkg_mgr_ensure()
+        if pkg_mgr == 'brew':
             for package in BREW_PACKAGES:
                 install_brew(package)
         elif pkg_mgr == 'port':
@@ -811,6 +810,17 @@ def system_install():
         abort("Unsupported linux flavor detected: {0}".format(linux_flavor))
     puts(green("\n\n******** System packages installation COMPLETED!********\n\n"))
 
+@task
+def pkg_mgr_ensure():
+    """
+    Checks if either brew or port is installed. If none is it installs brew
+    It then returns the package manager currently installed on the system
+    """
+    pkg_mgr = check_brew_port()
+    if pkg_mgr == None:
+        install_homebrew()
+        pkg_mgr = 'brew'
+    return pkg_mgr
 
 @task
 def system_check():
@@ -990,6 +1000,13 @@ def ngas_buildout(typ='archive'):
     run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
 
     with cd(env.APP_DIR_ABS):
+
+        # With ports we need to pass down the berkeley DB libs/include locations
+        buildoutCommand = 'buildout'
+        pkgmgr = check_brew_port()
+        if pkgmgr == 'port':
+            buildoutCommand += ' cjclient:ldflags=-L{0}/lib/db60 cjclient:cflags=-I{0}/include/db60'.format(MACPORT_DIR)
+
         if (env.standalone):
             put('{0}/additional_tars/eggs.tar.gz'.format(env.src_dir), '{0}/eggs.tar.gz'.format(env.APP_DIR_ABS))
             run('tar -xzf eggs.tar.gz')
@@ -997,10 +1014,11 @@ def ngas_buildout(typ='archive'):
                 put('{0}/data/common.py.patch'.format(env.src_dir), '.')
                 run('patch eggs/minitage.recipe.common-1.90-py2.7.egg/minitage/recipe/common/common.py common.py.patch')
             run('find . -name "._*" -exec rm -rf {} \;') # get rid of stupid stuff left over from MacOSX
-            virtualenv('buildout -Nvo')
+            virtualenv('{0} -Nvo'.format(buildoutCommand))
         else:
             run('find . -name "._*" -exec rm -rf {} \;')
-            virtualenv('buildout')
+            virtualenv(buildoutCommand)
+
         with settings(warn_only=True):
                 run('mkdir -p {0}/../NGAS'.format(env.APP_DIR_ABS))
         run('cp -R {0}/NGAS/* {0}/../NGAS/.'.format(env.APP_DIR_ABS))
@@ -1088,19 +1106,27 @@ def ngas_full_buildout(typ='archive'):
         virtualenv('pip install clib_tars/boto-2.36.0.tar.gz')
         virtualenv('pip install clib_tars/markup-1.9.tar.gz')
         virtualenv('pip install additional_tars/egenix-mx-base-3.2.6.tar.gz')
-        #The following will only work if the Berkeley DB had been installed already
+        #The following will only work if the Berkeley DB has been installed already
         if env.linux_flavor == 'Darwin':
             puts('>>>> Installing Berkeley DB')
             system_install()
-            cellar_dir = check_brew_cellar()
-            db_version = run('ls -tr1 {0}/berkeley-db'.format(cellar_dir)).split()[-1]
             virtualenv('cd /tmp; tar -xzf {0}/additional_tars/bsddb3-6.1.0.tar.gz'.format(env.APP_DIR_ABS))
+
+            # Different flags given to the setup.py script depending on whether
+            # the berkeley DB was installed using brew or port
+            dbLocFlags='--berkeley-db-incdir={0}/include/db60 --berkeley-db-libdir={0}/lib/db60/'.format(MACPORT_DIR)
+            pkgmgr = check_brew_port()
+            if pkgmgr == 'brew':
+               cellardir=check_brew_cellar()
+               db_version = run('ls -tr1 {0}/berkeley-db'.format(cellar_dir)).split()[-1]
+               dbLocFlags = '--berkeley-db={0}/berkeley-db/{1}'.format(cellardir,db_version)
+
             virtualenv('cd /tmp/bsddb3-6.1.0; ' + \
                        'export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1; ' +\
-                       'python{1} setup.py --berkeley-db=/usr/local/Cellar/berkeley-db/{0} build'.format(db_version, APP_PYTHON_VERSION))
+                       'python{1} setup.py {0} build'.format(dbLocFlags, APP_PYTHON_VERSION))
             virtualenv('cd /tmp/bsddb3-6.1.0; ' + \
                        'export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1; ' +\
-                       'python{1} setup.py --berkeley-db=/usr/local/Cellar/berkeley-db/{0} install'.format(db_version, APP_PYTHON_VERSION))
+                       'python{1} setup.py {0} install'.format(dbLocFlags, APP_PYTHON_VERSION))
         else:
             virtualenv('pip install additional_tars/bsddb3-6.1.0.tar.gz')
         virtualenv('pip install additional_tars/bottle-0.11.6.tar.gz')
