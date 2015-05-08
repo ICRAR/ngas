@@ -49,7 +49,7 @@ class ngamsFileInfo:
     """
     Class to handle the information in connection with a file from the NGAS DB.
     """
-    
+
     def __init__(self):
         """
         Constructor method.
@@ -70,6 +70,7 @@ class ngamsFileInfo:
         self.__creationDate         = ""
 
         self.__tag                  = ""
+        self.__ioTime               = -1.
 
         # Specific OS info about file.
         self.__permissions          = ""
@@ -77,7 +78,7 @@ class ngamsFileInfo:
         self.__group                = ""
         self.__modDate              = ""
         self.__accDate              = ""
-        
+
 
     def getObjStatus(self):
         """
@@ -102,13 +103,15 @@ class ngamsFileInfo:
                 ["Checksum", self.getChecksum()],
                 ["ChecksumPlugIn",self.getChecksumPlugIn()],
                 ["FileStatus", self.getFileStatus()],
-                ["CreationDate", self.getCreationDate()],                
+                ["CreationDate", self.getCreationDate()],
                 ["Tag", self.getTag()],
                 ["Permissions", self.getPermissions()],
                 ["Owner", self.getOwner()],
                 ["Group", self.getGroup()],
                 ["ModificationDate", self.getModDate()],
-                ["AccessDate", self.getAccDate()]]
+                ["AccessDate", self.getAccDate()],
+                ["TotalIoTime", self.getIoTime()]
+                ]
 
 
     def setDiskId(self,
@@ -117,7 +120,7 @@ class ngamsFileInfo:
         Set Disk ID.
 
         id:        Disk ID (string).
-        
+
         Returns:   Reference to object itself.
         """
         self.__diskId = trim(id, "\" ")
@@ -127,7 +130,7 @@ class ngamsFileInfo:
     def getDiskId(self):
         """
         Get Disk ID.
-        
+
         Returns:   Disk ID (string).
         """
         return self.__diskId
@@ -139,7 +142,7 @@ class ngamsFileInfo:
         Set filename.
 
         filename:   Filename (string).
-        
+
         Returns:    Reference to object itself.
         """
         self.__filename = trim(filename, "\" ")
@@ -149,7 +152,7 @@ class ngamsFileInfo:
     def getFilename(self):
         """
         Get filename.
-        
+
         Returns:   Filename (string).
         """
         return self.__filename
@@ -159,9 +162,9 @@ class ngamsFileInfo:
                   id):
         """
         Set File ID.
-        
+
         id:         File ID (string).
-        
+
         Returns:    Reference to object itself.
         """
         self.__fileId = str(trim(id, "\" "))
@@ -171,7 +174,7 @@ class ngamsFileInfo:
     def getFileId(self):
         """
         Get File ID.
-        
+
         Returns:   File ID (string).
         """
         return self.__fileId
@@ -181,19 +184,19 @@ class ngamsFileInfo:
                        version):
         """
         Set File Version.
-        
+
         version:    File Version (integer).
-        
+
         Returns:    Reference to object itself.
         """
         if (str(version).strip()): self.__fileVersion = int(version)
         return self
 
-  
+
     def getFileVersion(self):
         """
         Get File Version.
-        
+
         Returns:   File Version (string).
         """
         return self.__fileVersion
@@ -205,7 +208,7 @@ class ngamsFileInfo:
         Set file format.
 
         format:     File format (string).
-         
+
         Returns:    Reference to object itself.
         """
         self.__format = trim(format, "\" ")
@@ -215,7 +218,7 @@ class ngamsFileInfo:
     def getFormat(self):
         """
         Get file format.
-        
+
         Returns:   File format (string).
         """
         return self.__format
@@ -227,7 +230,7 @@ class ngamsFileInfo:
         Set file size.
 
         size:       File size in bytes (integer).
-        
+
         Returns:    Reference to object itself.
         """
         self.__fileSize = int(size)
@@ -237,7 +240,7 @@ class ngamsFileInfo:
     def getFileSize(self):
         """
         Get file size.
-         
+
         Returns:    File size in bytes (integer).
         """
         return self.__fileSize
@@ -249,7 +252,7 @@ class ngamsFileInfo:
         Set uncompresssed file size.
 
         size:       Uncompressed file size (integer).
-        
+
         Returns:    Reference to object itself.
         """
         self.__uncompressedFileSize = size
@@ -259,7 +262,7 @@ class ngamsFileInfo:
     def getUncompressedFileSize(self):
         """
         Get the uncompressed file size.
-        
+
         Returns:   Uncompressed file size (integer).
         """
         return self.__uncompressedFileSize
@@ -271,7 +274,7 @@ class ngamsFileInfo:
         Set compression method applied on the file.
 
         compression: Compresion method applied on the file (string).
-        
+
         Returns:     Reference to object itself.
         """
         if ((not compression) or (compression == "None")):
@@ -284,7 +287,7 @@ class ngamsFileInfo:
     def getCompression(self):
         """
         Get the compression method.
-        
+
         Returns:   Compression method (string).
         """
         return self.__compression
@@ -296,7 +299,7 @@ class ngamsFileInfo:
         Set ingestion date for file in seconds since epoch.
 
         dateSecs:   Set the ingestion date from seconds since epoch (integer).
-        
+
         Returns:    Reference to object itself.
         """
         self.__ingestionDate = PccUtTime.TimeStamp().\
@@ -310,7 +313,7 @@ class ngamsFileInfo:
         Set the ingestion date for the file (in the ISO 8601 format).
 
         date:       Ingestion date for file (string/ISO 8601|float/secs).
-        
+
         Returns:    Reference to object itself.
         """
         if (not date): return self
@@ -321,7 +324,7 @@ class ngamsFileInfo:
     def getIngestionDate(self):
         """
         Get the ingestion date.
-         
+
         Returns:   Ingestion data in ISO 8601 format (string).
         """
         return self.__ingestionDate
@@ -333,7 +336,7 @@ class ngamsFileInfo:
         Set the Ignore Flag for the file.
 
         ignore:     1 = ignore (integer).
-        
+
         Returns:    Reference to object itself.
         """
         if (ignore == None): ignore = 0
@@ -344,7 +347,7 @@ class ngamsFileInfo:
     def getIgnore(self):
         """
         Get the Ignore Flag for the file.
-         
+
         Returns:   Ignore Flag. 1 = ignore (integer).
         """
         return self.__ignore
@@ -356,7 +359,7 @@ class ngamsFileInfo:
         Set the checksum for the file.
 
         checksum:     Checksum (string).
-        
+
         Returns:      Reference to object itself.
         """
         if (checksum == None): checksum = ""
@@ -367,7 +370,7 @@ class ngamsFileInfo:
     def getChecksum(self):
         """
         Get the checksum for the file.
-         
+
         Returns:   Checksum (string).
         """
         return self.__checksum
@@ -379,7 +382,7 @@ class ngamsFileInfo:
         Set the Checksum Plug-In used to calculate the file checksum.
 
         plugIn:       Name of Checksum Plug-In (string).
-        
+
         Returns:      Reference to object itself.
         """
         self.__checksumPlugIn = str(plugIn)
@@ -390,7 +393,7 @@ class ngamsFileInfo:
         """
         Get the name of the Checksum Plug-In used to calculate the
         checksum for the file.
-         
+
         Returns:   Name of Checksum Plug-In (string).
         """
         return self.__checksumPlugIn
@@ -402,7 +405,7 @@ class ngamsFileInfo:
         Set the File Status field.
 
         status:       File Status (string).
-        
+
         Returns:      Reference to object itself.
         """
         self.__fileStatus = str(status)
@@ -412,7 +415,7 @@ class ngamsFileInfo:
     def getFileStatus(self):
         """
         Get the File Status.
-         
+
         Returns:   File Status (string).
         """
         return self.__fileStatus
@@ -424,7 +427,7 @@ class ngamsFileInfo:
         Set Creation Date for file in seconds since epoch.
 
         dateSecs:   Set the Creation Date from seconds since epoch (integer).
-        
+
         Returns:    Reference to object itself.
         """
         self.__creationDate = PccUtTime.TimeStamp().\
@@ -438,7 +441,7 @@ class ngamsFileInfo:
         Set the Creation Date for the file (in the ISO 8601 format).
 
         date:       Creation Date for file (string/ISO 8601|float/secs).
-        
+
         Returns:    Reference to object itself.
         """
         if (not date): return self
@@ -449,7 +452,7 @@ class ngamsFileInfo:
     def getCreationDate(self):
         """
         Get the Creation Date for the file.
-         
+
         Returns:   Creation Date (string).
         """
         return self.__creationDate
@@ -461,7 +464,7 @@ class ngamsFileInfo:
         Set the Tag field.
 
         tag:          Tag (string).
-        
+
         Returns:      Reference to object itself.
         """
         self.__tag = str(tag)
@@ -471,7 +474,7 @@ class ngamsFileInfo:
     def getTag(self):
         """
         Get the Tag.
-         
+
         Returns:   Tag (string).
         """
         return self.__tag
@@ -486,7 +489,7 @@ class ngamsFileInfo:
         Set the permissions.
 
         permissions:  Permissions (UNIX style) (string).
-        
+
         Returns:      Reference to object itself.
         """
         self.__permissions = str(permissions)
@@ -496,19 +499,19 @@ class ngamsFileInfo:
     def getPermissions(self):
         """
         Get the permissions.
-         
+
         Returns:   Permissions (UNIX style) (string).
         """
         return self.__permissions
-    
-    
+
+
     def setOwner(self,
                  owner):
         """
         Set the owner.
 
         owner:        File owner (user name) (string).
-        
+
         Returns:      Reference to object itself.
         """
         self.__owner = str(owner)
@@ -518,7 +521,7 @@ class ngamsFileInfo:
     def getOwner(self):
         """
         Get the owner.
-         
+
         Returns:   Owner (user name) (string).
         """
         return self.__owner
@@ -530,7 +533,7 @@ class ngamsFileInfo:
         Set the group.
 
         group:        Group related to file (string).
-        
+
         Returns:      Reference to object itself.
         """
         self.__group = str(group)
@@ -540,7 +543,7 @@ class ngamsFileInfo:
     def getGroup(self):
         """
         Get the group.
-         
+
         Returns:   Group (string).
         """
         return self.__group
@@ -552,7 +555,7 @@ class ngamsFileInfo:
         Set Modification Date for file in seconds since epoch.
 
         dateSecs:   Set Modification Date from seconds since epoch (integer).
-        
+
         Returns:    Reference to object itself.
         """
         self.__modDate = PccUtTime.TimeStamp().\
@@ -566,7 +569,7 @@ class ngamsFileInfo:
         Set the Modification Date for the file (in the ISO 8601 format).
 
         date:       Modification Date for file (string/ISO 8601|float/secs).
-        
+
         Returns:    Reference to object itself.
         """
         if (not date): return self
@@ -577,7 +580,7 @@ class ngamsFileInfo:
     def getModDate(self):
         """
         Get the Modification Date for the file.
-         
+
         Returns:   Modification Date (string).
         """
         return self.__modDate
@@ -589,7 +592,7 @@ class ngamsFileInfo:
         Set Access Date for file in seconds since epoch.
 
         dateSecs:   Set Access Date from seconds since epoch (integer).
-        
+
         Returns:    Reference to object itself.
         """
         self.__accDate = PccUtTime.TimeStamp().\
@@ -603,7 +606,7 @@ class ngamsFileInfo:
         Set the Access Date for the file (in the ISO 8601 format).
 
         date:       Access Date for file (string/ISO 8601|float/secs).
-        
+
         Returns:    Reference to object itself.
         """
         if (not date): return self
@@ -614,10 +617,33 @@ class ngamsFileInfo:
     def getAccDate(self):
         """
         Get the Access Date for the file.
-         
+
         Returns:   Access Date (string).
         """
         return self.__accDate
+
+    def setIoTime(self,
+                   ioTime):
+        """
+        Set the total I/O time for the file (in seconds).
+
+        ioTime:     float, seconds
+
+        Returns:    Reference to object itself.
+        """
+        if (not ioTime): return self
+        self.__ioTime = ioTime
+        return self
+
+
+    def getIoTime(self):
+        """
+        Get the Access Date for the file.
+
+        Returns:   Access Date (string).
+        """
+        return self.__ioTime
+
     ########################################################################
 
 
@@ -632,7 +658,7 @@ class ngamsFileInfo:
         Return:        Reference to object itself.
         """
         T = TRACE(5)
-        
+
         self.setDiskId(sqlQueryRes[ngamsDbCore.NGAS_FILES_DISK_ID])
         self.setFilename(sqlQueryRes[ngamsDbCore.NGAS_FILES_FILE_NAME])
         self.setFileId(sqlQueryRes[ngamsDbCore.NGAS_FILES_FILE_ID])
@@ -648,6 +674,7 @@ class ngamsFileInfo:
         self.setChecksumPlugIn(sqlQueryRes[ngamsDbCore.NGAS_FILES_CHECKSUM_PI])
         self.setFileStatus(sqlQueryRes[ngamsDbCore.NGAS_FILES_FILE_STATUS])
         self.setCreationDate(sqlQueryRes[ngamsDbCore.NGAS_FILES_CREATION_DATE])
+        self.setIoTime(sqlQueryRes[ngamsDbCore.NGAS_FILES_IO_TIME])
         return self
 
 
@@ -655,7 +682,7 @@ class ngamsFileInfo:
         """
         Generate a list with the information as read from ngas_files and
         defined by the variables ngamsDbCore.NGAS_FILES_DISK_ID, ... .
-        
+
         Returns:   List with information from one row of ngas_files (list).
         """
         return [self.getDiskId(), self.getFilename(), self.getFileId(),
@@ -664,8 +691,8 @@ class ngamsFileInfo:
                 self.getCompression(), self.getIngestionDate(),
                 int(self.getIgnore()), self.getChecksum(),
                 self.getChecksumPlugIn(), self.getFileStatus(),
-                self.getCreationDate()]
-        
+                self.getCreationDate(), self.getIoTime()]
+
 
     def read(self,
              dbConObj,
@@ -677,13 +704,13 @@ class ngamsFileInfo:
         variables accordingly.
 
         dbConObj:         DB connection object (ngamsDb).
-        
+
         fileId:           File ID (string).
 
         fileVersion:      Version of the file to query info for (integer).
 
         diskId:           Used to refer to a specific disk (string).
-        
+
         Returns:          Reference to object itself.
         """
         fileInfo = dbConObj.getFileInfoFromFileIdHostId(getHostId(), fileId,
@@ -698,7 +725,7 @@ class ngamsFileInfo:
             errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [fileId])
             raise Exception, errMsg
         else:
-            self.unpackSqlResult(fileInfo)            
+            self.unpackSqlResult(fileInfo)
         return self
 
 
@@ -715,7 +742,7 @@ class ngamsFileInfo:
 
         updateDiskInfo:  Update automatically the disk info for the
                          disk hosting this file (integer/0|1).
-        
+
         Returns:         Reference to object itself.
         """
         T = TRACE(5)
@@ -727,7 +754,7 @@ class ngamsFileInfo:
                                 self.getCompression(), self.getIngestionDate(),
                                 self.getIgnore(), self.getChecksum(),
                                 self.getChecksumPlugIn(), self.getFileStatus(),
-                                self.getCreationDate(), genSnapshot,
+                                self.getCreationDate(), self.getIoTime(), genSnapshot,
                                 updateDiskInfo)
         return self
 
@@ -743,7 +770,7 @@ class ngamsFileInfo:
         Returns:            Reference to object itself.
         """
         T = TRACE()
-        
+
         statusNode = xml.dom.minidom.parseString(xmlDoc).\
                      getElementsByTagName("FileStatus")[0]
         self.unpackFromDomNode(statusNode)
@@ -804,11 +831,11 @@ class ngamsFileInfo:
 
         ignoreUndefFields:  Don't take fields, which have a length of 0
                             (integer/0|1).
-          
+
         Returns:            XML DOM Node object (Node).
         """
         T = TRACE(5)
-        
+
         ign = ignoreUndefFields
         fileStatusEl = xml.dom.minidom.Document().createElement("FileStatus")
         objStat = self.getObjStatus()
@@ -829,9 +856,9 @@ class ngamsFileInfo:
 
         ignoreUndefFields:     Don't take fields, which have a length of 0
                                (integer/0|1).
-                            
+
         Returns:               String buffer with contents of object (string).
-        """        
+        """
         format = prFormat1()
         buf = "FileStatus:\n"
         objStat = self.getObjStatus()
@@ -864,7 +891,7 @@ class ngamsFileInfo:
                setFileStatus(self.getFileStatus()).\
                setCreationDate(self.getCreationDate()).\
                setTag(self.getTag())
-   
+
 
 if __name__ == '__main__':
     """
@@ -892,6 +919,6 @@ if __name__ == '__main__':
 
         fileInfo2.setFileId(fileId)
         fileInfo2.write(db)
-        
+
 
 # EOF

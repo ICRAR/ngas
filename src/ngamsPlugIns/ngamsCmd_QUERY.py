@@ -46,15 +46,28 @@ NGAMS_JSON_MT = "application/json"
 NGAMS_FILES_COLS = map(lambda x:x[1],ngamsDbCore._ngasFilesDef)
 NGAMS_DISKS_COLS = map(lambda x:x[1],ngamsDbCore._ngasDisksDef)
 
+#creation_date could be different from ingestion_date if it is a mirrored archive 
+# ingestion_date is when the original copy was ingested in the system, 
+# creation_date is when the replicated copy appears on the mirrored archive
+LASTVER_LOCATION = "SELECT a.host_id, a.mount_point || '/' || b.file_name as file_full_path, b.file_version, b.creation_date, b.ingestion_date FROM ngas_disks a, ngas_files b, " +\
+                    "(SELECT file_id, MAX(file_version) AS max_ver FROM ngas_files WHERE file_id like '{0}' GROUP BY file_id) c " +\
+                    "WHERE a.disk_id = b.disk_id and " +\
+                    "b.file_id like '{0}' and " +\
+                    "b.file_id = c.file_id and b.file_version = c.max_ver " +\
+                    "order by b.file_id"
 
 valid_queries = {"files_list":"select * from ngas_files",
                   "disks_list":"select * from ngas_disks", 
                   "hosts_list":"select * from ngas_hosts",
                   "files_like":"select * from ngas_files where file_id like '{0}'",
+                  "files_location":"select a.host_id, a.mount_point || '/' || b.file_name as file_full_path, b.file_version, b.ingestion_date from ngas_disks a, ngas_files b where a.disk_id = b.disk_id and b.file_id like '{0}' order by b.file_id",
+                  "lastver_location":LASTVER_LOCATION,
                   "files_between":"select * from ngas_files where ingestion_date between '{0}' and '{1}'",
                   "files_stats":"select count(*),sum(uncompressed_file_size)/1048576. as MB from ngas_files",
                   "files_list_recent":"select file_id, file_name, file_size, ingestion_date from ngas_files order by ingestion_date desc limit 300",
                 }
+
+
 
 def encode_decimal(obj):
     """
@@ -220,7 +233,7 @@ def handleCmd(srvObj,
             valid_queries.keys()
             raise Exception, msg
         
-        if reqPropsObj.getHttpPar("query") == 'files_like':
+        if reqPropsObj.getHttpPar("query") == 'files_like' or reqPropsObj.getHttpPar("query") == 'files_location' or reqPropsObj.getHttpPar("query") == 'lastver_location':
             param = '%'
             if (reqPropsObj.hasHttpPar("like")):
                 param = reqPropsObj.getHttpPar("like")
@@ -237,6 +250,10 @@ def handleCmd(srvObj,
                 query = 'select * from ngas_files where ingestion_date >= "{0}"'.format(param1)
             else:
                 query = valid_queries['files_list']
+    else:
+        msg = "No query specified. Valid queries are: %s" %\
+        valid_queries.keys()
+        raise Exception, msg
 
     out_format = None
     if (reqPropsObj.hasHttpPar("format")):
@@ -258,7 +275,7 @@ def handleCmd(srvObj,
         #       Implement streaming result directly.
         if (out_format == "list"):
             header = None
-            if reqPropsObj.getHttpPar("query") not in ['files_stats', 'files_list_recent']:
+            if reqPropsObj.getHttpPar("query") not in ['files_stats', 'files_list_recent', 'files_location', 'lastver_location']:
                 if query.find('ngas_files') >=0:
                     header = NGAMS_FILES_COLS
                 elif query.find('ngas_disks') >= 0:
@@ -267,7 +284,12 @@ def handleCmd(srvObj,
                 header = ['Number of files', 'Total volume [MB]']
             elif reqPropsObj.getHttpPar("query") == 'files_list_recent':
                 header = ['file_id', 'file_name', 'file_size', 'ingestion_date']
+            elif reqPropsObj.getHttpPar("query") == 'files_location':
+                header = ['host_id', 'file_full_path', 'file_version', 'ingestion_date']
+            elif reqPropsObj.getHttpPar("query") == 'lastver_location':
+                header = ['host_id', 'file_full_path', 'file_version', 'creation_date', 'ingestion_date']
             finalRes = formatAsList(res, header=header)
+            """
             if query.find('ngas_files') >=0:
                 header = NGAMS_FILES_COLS
             elif query.find('ngas_disks') >= 0:
@@ -275,6 +297,7 @@ def handleCmd(srvObj,
             else:
                 header = None
             finalRes = formatAsList(res, header=header)
+            """
             mimeType = NGAMS_TEXT_MT
         elif (out_format == "pickle"):
             finalRes = cPickle.dumps(res)

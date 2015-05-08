@@ -42,10 +42,11 @@ can be used to build up Python applications communicating with NG/AMS.
 import os, sys, re, httplib, mimetools, urllib, random, time, base64
 import pcc, PccUtTime
 from   ngams import *
-import ngamsLib, ngamsFileInfo, ngamsPlugInApi, ngamsStatus
+from ngamsLib import ngamsLib
+import ngamsFileInfo, ngamsStatus
 
 
-manPage = os.path.normpath(ngamsGetSrcDir() + "/ngamsPClient/ngamsPClient.doc")
+manPage = os.path.normpath(ngamsGetSrcDir() + "/doc/ngamsPClient.doc")
 fo = open(manPage)
 __doc__ += "\n\n\nMan-Page for the NG/AMS Python Client Tool:\n\n"
 __doc__ += "ngamsPClient " + fo.read()
@@ -675,7 +676,7 @@ class ngamsPClient:
         else:
             timeout = "-1"
         httpPars = []
-        for par in pars: httpPars.append(pars)
+        for par in pars: httpPars.append(par)
         httpPars += [["attachment; filename", os.path.basename(fileUri)],
                      ["wait", str(wait)], ["no_versioning", str(noVersioning)],
                      ["time_out", timeout]]
@@ -934,6 +935,7 @@ class ngamsPClient:
                     return self.sendCmdGen(self.getHost(), self.getPort(),
                                            cmd, wait, outputFile, parArray)
                 elif (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
+                    info(3,'Command found: {0}'.format(cmd))
 
                     return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd)
                 elif (cmd == NGAMS_CACHEDEL_CMD):
@@ -1246,7 +1248,7 @@ class ngamsPClient:
         """
         buf = "\n"
         buf += "> ngamsPClient "
-        docFile = os.path.normpath(ngamsGetSrcDir() + "/ngamsPClient/" +\
+        docFile = os.path.normpath(ngamsGetSrcDir() + "/doc/" +\
                                    "ngamsPClient.doc")
         fo = open(docFile)
         buf += fo.read()
@@ -1266,7 +1268,7 @@ def handleCmdLinePars(argv,
     ngamsClient = ngamsPClient()
     try:
         ngamsStat = ngamsClient.handleCmd(argv)
-        if ngamsClient.verbosity > 0  and ngamsStat:
+        if ngamsClient.verbosity > 0 :
             pprintStatus(ngamsClient, ngamsStat)
     except Exception, e:
         print str(e)

@@ -38,7 +38,7 @@ Some constraints for scheduler:
 
 Either the job itself or the job wrapper should do the additional tasks:
 3. The image result will be archived back to the NGAS node under a different storage set (volume)
-    3.1 Before being archived, the result must be zipped into a single file, whose id is: job_id_obs_id_corr_id.tar.gz
+    3.1 Before being archived, the result must be zipped into a single file, whose id is: job_id_obs_id_corr_id.tar
 """
 import commands, os, fnmatch
 from optparse import OptionParser
@@ -59,19 +59,21 @@ num_subband = 24 # should be the same as coarse channel
 tiles = '128T'
 use_gpu = 1
 added_lines = ['UseCorrelatorInput=1', 'UsePacketInput=0', 'UseThreadedVI=0',
-               'CorrelatorPort=65535', 'ArrayFile=array_file.txt',
+               'ArrayFile=array_file.txt',
                'ArrayPositionLat=-26.70331940',
                'ArrayPositionLong=116.67081524']
 added_lines128T = ['ChannelBandwidth=0.04', 'ArrayNumberOfStations=128',
                'NumberOfChannels=32']
 added_lines32T = ['ChannelBandwidth=0.01', 'ArrayNumberOfStations=32',
                'NumberOfChannels=1536']
+
+ERROR_LT_FILEMISSING = 116
 """
 -- add the following ---
 UseCorrelatorInput=1
 UsePacketInput=0
 UseThreadedVI=0
-CorrelatorPort=65535
+# CorrelatorPort=65535  # this was removed (see Mitch's email on 8 Aug 2013)
 ArrayFile=array_file.txt
 ChannelBandwidth=0.04
 ArrayNumberOfStations=128
@@ -154,10 +156,17 @@ def main():
     
     # create symbolic links in the work_dir to real file paths 
     fileList = opts.file_list.split(',')
+    validFiles = 0
     for file in fileList:
-        base_name = os.path.basename(file)
-        cmd = 'ln -s %s %s' % (file, base_name)
-        execCmd(cmd) #don't care if this failed
+        if (os.path.exists(file)):
+            validFiles += 1
+            base_name = os.path.basename(file)
+            cmd = 'ln -s %s %s' % (file, base_name)
+            execCmd(cmd) #don't care if this failed
+    
+    if (not validFiles):
+        print('No visibility files are there to be processed')
+        exit(ERROR_FILEMISSING)
     
     # create the template list file
     if (opts.tpl_pf):
@@ -202,9 +211,9 @@ def main():
         # 1. change the BaseFilename for all input files
     cmd = 'sed -i s/ngas_run_band_/*gpubox*/g ngas_run_rts_*.in'
     execCmd(cmd)
-        # 2. add correct subbandId
-    cmd = 'sed -i s/SubBandIDs=/SubBandIDs=%d/g ngas_run_rts_*.in' % (corrId)
-    execCmd(cmd)
+        # 2. add correct subbandId (This has been done in latest generate_RTS_in.py, so no need to do again otherwise create double digits)
+    #cmd = 'sed -i s/SubBandIDs=/SubBandIDs=%d/g ngas_run_rts_*.in' % (corrId)
+    #execCmd(cmd)
         # 3. compute the ObservationTimeBase
     cmd = 'timeconvert.py --gps=%d' % obs_num
     re = execCmd(cmd)
@@ -266,8 +275,8 @@ def main():
         execCmd(cmd, False)
     
     # pack all template directories into a single 'image (gzip)' file   
-    imgFile = '%s__%d__%s.tar.gz' % (opts.job_id, obs_num, gpubox)
-    cmd = 'tar -czf %s' % imgFile
+    imgFile = '%s__%d__%s.tar' % (opts.job_id, obs_num, gpubox)
+    cmd = 'tar -cf %s' % imgFile
     for tpa in temp_alias:
         cmd += ' %s/' % tpa
     execCmd(cmd)

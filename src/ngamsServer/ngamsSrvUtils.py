@@ -55,7 +55,7 @@ def ngamsBaseExitHandler(srvObj,
     is killed terminated.
 
     srvObj:      Reference to NG/AMS server class object (ngamsServer).
-    
+
     signalNo:    Number of signal received (integer).
 
     killServer:  If set to 1 the server will be killed by the
@@ -66,7 +66,7 @@ def ngamsBaseExitHandler(srvObj,
     delPidFile:  Flag indicating if NG/AMS PID file should be deleted or
                  not (integer/0|1).
 
-    Returns:     Void. 
+    Returns:     Void.
     """
     info(1,"In NG/AMS Exit Handler - received signal: " + str(signalNo))
     info(1,"NG/AMS Exit Handler - cleaning up ...")
@@ -78,24 +78,24 @@ def ngamsBaseExitHandler(srvObj,
 
     info(1,"NG/AMS Exit Handler finished cleaning up - terminating server ...")
 
-    try:
-        logFile = srvObj.getCfg().getLocalLogFile()
-        logPath = os.path.dirname(logFile)
-        rotLogFile = "LOG-ROTATE-" +\
-                    PccUtTime.TimeStamp().getTimeStamp()+\
-                    ".nglog"
-        rotLogFile = os.path.normpath(logPath + "/" + rotLogFile)
-        PccLog.info(1, "Rotating log file: %s -> %s" %\
-                    (logFile, rotLogFile), getLocation())
-        logFlush()
-        commands.getstatusoutput("mv " + logFile + " " +\
-                                                     rotLogFile)
-    except:
-        pass
     if (killServer):
         srvObj.killServer(delPidFile)
     else:
-        os._exit(exitCode)
+        try:
+            logFile = srvObj.getCfg().getLocalLogFile()
+            logPath = os.path.dirname(logFile)
+            rotLogFile = "LOG-ROTATE-" +\
+                        PccUtTime.TimeStamp().getTimeStamp()+\
+                        ".nglog"
+            rotLogFile = os.path.normpath(logPath + "/" + rotLogFile)
+            PccLog.info(1, "Rotating log file: %s -> %s" %\
+                        (logFile, rotLogFile), getLocation())
+            logFlush()
+            commands.getstatusoutput("mv " + logFile + " " +\
+                                                         rotLogFile)
+        except:
+            pass
+    os._exit(exitCode)
 
 
 def _subscriberThread(srvObj,
@@ -107,11 +107,11 @@ def _subscriberThread(srvObj,
     srvObj:      Reference to NG/AMS Server class instance (ngamsServer).
 
     dummy:       Needed by the thread handling ...
-  
+
     Returns:     Void.
     """
     if (not srvObj.getCfg().getSubscriptionsDic().keys()): thread.exit()
-    
+
     # Generate a list with Subscriptions from the configuration file.
     subscrList = []
     for subscrId in srvObj.getCfg().getSubscriptionsDic().keys():
@@ -132,7 +132,7 @@ def _subscriberThread(srvObj,
             if (not srvObj.getThreadRunPermission()):
                 info(2,"Terminating Subscriber thread ...")
                 thread.exit()
-            
+
             subscrObj = subscrList[idx]
             if (subscrObj.getHostId() == NGAMS_DEFINE):
                 idx += 1
@@ -146,7 +146,7 @@ def _subscriberThread(srvObj,
                         "subscription (host/port): " + hostPort)
                 del subscrList[idx]
                 break
-            
+
             info(4,"Attempting to subscribe to Data Provider (host/port): " +\
                  hostPort + " ...")
             pars = [["priority", subscrObj.getPriority()],
@@ -218,7 +218,7 @@ def getDiskInfo(srvObj,
                    disks (dictionary).
     """
     T = TRACE()
-    
+
     diskInfoDic = {}
 
     plugIn = srvObj.getCfg().getOnlinePlugIn()
@@ -269,7 +269,7 @@ def getDiskInfo(srvObj,
                                           setDeviceName("/dev/dummy" + slotId)
                     # We create the mount directory if it does not exist
                     checkCreatePath(mtPt)
-                
+
                     portNo = portNo + 1
         else:
             # It is not an Archiving System. We check which of the directories
@@ -312,11 +312,11 @@ def handleOnline(srvObj,
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
 
     reqPropsObj:    NG/AMS request properties object (ngamsReqProps).
- 
+
     Returns:        Void.
     """
     info(3,"Prepare NGAS and NG/AMS for Online State ...")
-        
+
     # Re-load Configuration + check disk configuration.
     srvObj.loadCfg()
     for stream in srvObj.getCfg().getStreamList():
@@ -330,6 +330,12 @@ def handleOnline(srvObj,
     # Get possible Subscribers from the DB.
     subscrList = srvObj.getDb().getSubscriberInfo("", getHostId(),
                                                   srvObj.getCfg().getPortNo())
+    num_bl =  srvObj.getDb().getSubscrBackLogCount(getHostId(), srvObj.getCfg().getPortNo())
+    #debug_chen
+    if (num_bl > 0):
+        info(3, 'Preset the backlog count to %d' % num_bl)
+        srvObj.presetSubcrBackLogCount(num_bl)
+
     for subscrInfo in subscrList:
         tmpSubscrObj = ngamsSubscriber.ngamsSubscriber().\
                        unpackSqlResult(subscrInfo)
@@ -337,19 +343,19 @@ def handleOnline(srvObj,
         if ((tmpSubscrObj.getHostId() == getHostId()) and
             (tmpSubscrObj.getPortNo() == srvObj.getCfg().getPortNo())):
             #srvObj.getSubscriberDic()[tmpSubscrObj.getId()] = tmpSubscrObj
-            if (srvObj.getDataMoverOnlyActive() and len(srvObj.getSubscriberDic()) > 0):
-                break #only load one subscriber under the data mover mode
+            #if (srvObj.getDataMoverOnlyActive() and len(srvObj.getSubscriberDic()) > 0):
+            #   break #only load one subscriber under the data mover mode
             srvObj.registerSubscriber(tmpSubscrObj)
 
     try:
         # Get information about the disks of this system.
         srvObj.setDiskDic(getDiskInfo(srvObj, reqPropsObj))
         ngamsArchiveUtils.resetDiskSpaceWarnings()
-        
+
         # Update disk info in DB.
         ngamsDiskUtils.checkDisks(srvObj.getDb(), srvObj.getCfg(),
                                   srvObj.getDiskDic())
-    
+
         # Write status file on disk.
         ngamsDiskUtils.dumpDiskInfoAllDisks(srvObj.getDb(), srvObj.getCfg())
     except Exception, e:
@@ -418,7 +424,7 @@ def handleOffline(srvObj,
     ngamsUserServiceThread.stopUserServiceThread(srvObj)
     ngamsMirroringControlThread.stopMirControlThread(srvObj)
     srvObj.setThreadRunPermission(0)
-    
+
     info(3, "Prepare NG/AMS for Offline State ...")
 
     # Unsubscribe possible subscriptions. This is only tried once.
@@ -459,7 +465,7 @@ def handleOffline(srvObj,
     flushMsg = "NOTE: Distribution of retained Email Notification Messages " +\
                "forced at Offline"
     ngamsNotification.checkNotifRetBuf(srvObj.getCfg(), 1, flushMsg)
-    
+
     info(3,"NG/AMS prepared for Offline State")
 
 
@@ -479,7 +485,7 @@ def wakeUpHost(srvObj,
     Returns:        Void.
     """
     T = TRACE()
-    
+
     wakeUpPi = srvObj.getCfg().getWakeUpPlugIn()
     portNo = srvObj.getDb().getPortNoFromHostId(suspHost)
     try:
@@ -498,13 +504,13 @@ def checkStagingAreas(srvObj):
     """
     Check the Staging Areas of the disks registered, and in case files
     are found on these move htese to the Back-Log Area.
-    
+
     srvObj:    Reference to NG/AMS server class object (ngamsServer).
-    
+
     Returns:   Void.
     """
     T = TRACE()
-    
+
     diskList = ngamsDiskUtils.\
                getDiskInfoForMountedDisks(srvObj.getDb(), getHostId(),
                                           srvObj.getCfg().\
@@ -528,7 +534,7 @@ def genIntAuthHdr(srvObj):
     Generate an internal HTTP Authentication Header if possible.
 
     srvObj:    Reference to NG/AMS server class object (ngamsServer).
-    
+
     Returns:   Authentication code or '' if no internal NGAS user defined
                (string).
     """

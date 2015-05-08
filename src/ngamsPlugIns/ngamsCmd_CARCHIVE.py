@@ -265,7 +265,6 @@ def saveFromHttpToFile(ngamsCfgObj,
                 end = buf.find('"\r\n\n', start)
                 filename = saveDir + buf[start:end]
                 fdOut = open(filename, 'w')
-                info(4, "Opening '{0}' for writing".format(filename))
                 newFile = False
                 buf = buf[end+4:]
             bufSplit = buf.split(EOF, 1)
@@ -473,7 +472,7 @@ def handleCmd(srvObj,
                            "(disk_id, file_name, file_id, file_version, " +\
                            "format, file_size, " +\
                            "uncompressed_file_size, compression, " +\
-                           "ingestion_date, ignore, checksum, " +\
+                           "ingestion_date, file_ignore, checksum, " +\
                            "checksum_plugin, file_status, " +\
                            "creation_date, container_id) "+\
                            "VALUES " +\

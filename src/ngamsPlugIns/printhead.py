@@ -308,7 +308,7 @@ class FitsHead:
                             skfl = 1
                         LineDict = HD.keyTuple2Dict(LineTuple)
                         LineDict['index']={index:LineTuple[0]}
-                        HD.updateKeyword(LineDict)
+                        HD._updateKeyword(LineDict)
                 index += 1
 
             keys.append(kkeys)
@@ -377,16 +377,17 @@ class FitsHead:
         wfl = 0
         if len(ofile) > 0:           
             try:
-                of = open(ofile,'w')
+                of = open(ofile,'a')
                 wfl = 1
             except:
                 print "Problem opening output file:",ofile
                 return
         if wfl:
-            for ii in range(nblocks):
+            for ii in range(nblocks+1):
                 block = self.fd.read(2880)
                 of.write(block)
             del(block)
+            of.close()
             return -1
         else:
             if blfl == 0:
@@ -395,6 +396,24 @@ class FitsHead:
                 rsiz = nblocks*2880
             data = self.fd.read(rsiz)
             return data
+        
+    def writeFile(self, header=0, ofile=''):
+        """
+        Method writes a FITS file using the header with index <header>
+        and the associated data.
+        """
+        if len(ofile) > 0:           
+            try:
+                of = open(ofile,'w')
+                wfl = 1
+            except:
+                print "Problem opening output file:",ofile
+                return
+        of.write(self.Extension[header].Serialize())
+        of.close()
+        void = self.getData(header=header, ofile=ofile)
+
+        return
 
 
     def openFile(self,ffile):
@@ -445,7 +464,7 @@ class FitsHead:
                     LineDict = HD.keyTuple2Dict(LineTuple)
                 if len(key) > 0: 
                     LineDict.update({'index':{ind/80:LineTuple[0]}})
-                    HD.updateKeyword(LineDict)
+                    HD._updateKeyword(LineDict)
             
             HD.setNumber(ii)
             HD.setPos(self.Extension[ii].POS)
@@ -528,7 +547,8 @@ class FitsHead:
             if rest[0] == "'":
                 try:
                     m = qexpr.match(rest)
-                    value = m.group()[1:-1].strip()                    
+#                     value = m.group()[1:-1].strip()                    
+                    value = m.group()
                     vind = m.end()
                     typ = 'C'
                 except Exception, e:
@@ -551,7 +571,7 @@ class FitsHead:
             comment = comment.strip()
         elif sexpr.match(line):
             key = sexpr.match(line).group()
-            rest = sexpr.split(line)
+            rest = line.split(key,1)
             comment = ''
             if key in ['COMMENT', 'HISTORY', 'ESO-LOG']:
                 value = [rest[1].strip()]
@@ -1254,7 +1274,7 @@ class HeadDict(dict):
 
 
 
-    def updateKeyword(self,keyDict,force=0):
+    def _updateKeyword(self,keyDict,force=0):
         """
         Method takes a keyDict and updates HeadDict accordingly.
 
@@ -1298,7 +1318,23 @@ class HeadDict(dict):
             self['index'].update({ind:key})
         return 1
 
+
+    def updateKeyword(self, keyName, value):
+        """
+        Method takes a keyword name and updates the value.
         
+        INPUT:    header, int, number of extension
+                   keyName, string, name of keyword
+                  value, string, new value of keyword. 
+                  The type of the keyword will not be changed.
+        OUTPUT:   void
+        """
+        kdict = self.getKeyDict(keyName)
+        kdict['nodes'][keyName]['Value'] = value
+        self._updateKeyword(kdict, force=1)
+        return
+    
+    
     def getKeyPos(self,key):
         """
         Method takes a keyword <key> and returns the position in the original FITS
@@ -1494,11 +1530,11 @@ class HeadDict(dict):
 # COMMENT and HISTORY and ESO-LOG keywords
 
                 elif key in ['COMMENT', 'HISTORY', 'ESO-LOG']:
-                    comhist[key] += 1
                     if type(self['nodes'][key]['Value']) == type([]):
-                        fitsLine = key + self['nodes'][key]['Value'][comhist[key]]
-                        fitsLine = fitsLine + (80-len(fitsLine))*' '
-                        FHead.append(fitsLine)
+                        for ci in range(len(self['nodes'][key]['Value'])):
+                            fitsLine = key + ' ' + self['nodes'][key]['Value'][ci]
+                            fitsLine = fitsLine + (80-len(fitsLine))*' '
+                            FHead.append(fitsLine)
                     elif type(self['nodes'][key]['Value']) == type(''):
                         fitsLine = key + self['nodes'][key]['Value']
                         fitsLine = fitsLine + (80-len(fitsLine))*' '
@@ -1547,7 +1583,7 @@ class HeadDict(dict):
                     FHead.append(blankCards*80*' ')
                     FHead.append('END' + 77*' ')
 
-        return FHead
+        return ''.join(FHead)
         
         
         
@@ -2124,7 +2160,7 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
             keyDict['index'].update({ind:k}) 
 
             print keyDict
-            pH.Extension[0].updateKeyword(keyDict,force=1)
+            pH.Extension[0]._updateKeyword(keyDict,force=1)
 
 #            pH.Extension[0]['nodes'].update({k:extHead['nodes'][k]})
 #            print {k:extHead['nodes'][k]}

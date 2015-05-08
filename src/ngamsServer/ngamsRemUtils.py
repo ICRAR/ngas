@@ -41,7 +41,7 @@ import ngamsDiskInfo, ngamsFileInfo, ngamsFileList
 import ngamsHighLevelLib, ngamsNotification
 import ngamsFileUtils
 
-   
+
 def checkSpuriousFiles(srvObj,
                        tmpFilePat = None,
                        hostId = None,
@@ -57,7 +57,7 @@ def checkSpuriousFiles(srvObj,
     srvObj:          Reference to NG/AMS server class object (ngamsServer).
 
     tmpFilePat:      Pattern to apply for temporary files (string).
-    
+
     hostId:          Name of NGAS host on which the files reside (string).
 
     diskId:          Disk ID of disk to take into account (string|None).
@@ -70,7 +70,7 @@ def checkSpuriousFiles(srvObj,
                      files found (string).
     """
     T = TRACE()
-    
+
     if (hostId == ""): hostId = None
     if (diskId == ""): diskId = None
     if (fileId == ""): fileId = None
@@ -86,7 +86,7 @@ def checkSpuriousFiles(srvObj,
     spuriousFilesDbm = ngamsDbm.ngamsDbm(spuriousFilesDbmName, writePerm=1)
 
     # Check that there are no spurious files in connection with this disk in
-    # the DB (where ngas_files.ignore != 0 or ngas_files.status != "1*******"
+    # the DB (where ngas_files.file_ignore != 0 or ngas_files.status != "1*******"
     cursorObj = srvObj.getDb().\
                 getFileSummarySpuriousFiles1(hostId, diskId, fileId,
                                              fileVersion)
@@ -113,7 +113,7 @@ def checkFilesRemovable(srvObj,
     deleted/removed from the disk.
 
     srvObj:          Reference to NG/AMS server class object (ngamsServer).
-  
+
     fileListDbmName: Name of DBM DB containing the information about the
                      files in question (string
 
@@ -157,9 +157,9 @@ def _notify(srvObj,
 
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-    
+
     statRep:        Status report filename (string).
-    
+
     mimeType:       Mime-type of data to send (string/mime-type).
 
     Returns:        Void.
@@ -171,10 +171,10 @@ def _notify(srvObj,
                              cmd + " STATUS REPORT", statRep,
                              emailAdrList, 1, mimeType, attachmentName, 1)
 
- 
+
 def _remStatErrReport(srvObj,
                       reqPropsObj,
-                      tmpFilePat, 
+                      tmpFilePat,
                       filesMisCopiesDbmName,
                       filesNotRegDbmName,
                       fileListDbmName,
@@ -187,27 +187,27 @@ def _remStatErrReport(srvObj,
 
     srvObj:                Reference to NG/AMS server class object
                            (ngamsServer).
-  
+
     reqPropsObj:           Request Property object to keep track of actions
                            done during the request handling (ngamsReqProps).
 
     tmpFilePat:            File pattern to be used when generating temporary
                            files (string).
-    
+
     filesMisCopiesDbmName: Name of DBM containing references to files with
                            less than the required number of copies (string).
-    
+
     filesNotRegDbmName:    Name of DBM containing complete filenames as keys
                            referring to files, which are not registered in
                            the DB (string).
-    
+
     fileListDbmName:       Name of DBM containing all information about the
                            files concerned with the query.
-    
+
     diskId:                Disk ID if relevant (string).
-    
+
     fileId:                File ID if relevant (string).
-    
+
     fileVersion:           File Version if relevant (integer).
 
     Returns:               In case inconsistencies were found, an ngamsStatus
@@ -261,7 +261,7 @@ def _remStatErrReport(srvObj,
         # Send out Notification Email.
         _notify(srvObj, reqPropsObj, statRep, mimeType, cmd)
     del filesMisCopyDbm
- 
+
     # Generate error message if files with less than the required number
     # of copies are concerned by the query.
     if (misFileCopies):
@@ -270,10 +270,10 @@ def _remStatErrReport(srvObj,
         status.setMessage(status.getMessage() +\
                           " Cannot remove item: %s/%s/%s" %
                           (str(diskId), str(fileId), str(fileVersion)))
-        warning(errMsg) 
+        warning(errMsg)
         return status
     #########################################################################
-     
+
     #########################################################################
     # Check for spurious files.
     #########################################################################
@@ -338,7 +338,7 @@ def _remStatErrReport(srvObj,
         status.setMessage(msg)
         return status
     #########################################################################
-   
+
     #########################################################################
     # Unregistered files found?
     #########################################################################
@@ -466,9 +466,9 @@ def checkFileCopiesAndReg(srvObj,
     File List is returned, containing references to the files not registered.
 
     srvObj:          Instance of the NG/AMS Server Class (ngamsServer).
-    
+
     minReqCopies:    Minimum number of copies required (integer).
-    
+
     dbFilePat:       Filename pattern used to build the DBM containing
                      information about the files (string).
 
@@ -480,7 +480,7 @@ def checkFileCopiesAndReg(srvObj,
     diskId:          Used to refer to all files stored on a disk (string|None).
 
     ignoreMounted:   Carry out the check also if the disk is not mounted
-                     (integer/0|1). 
+                     (integer/0|1).
 
     Returns:         Tuple contaning the filenames of three DBM DBs with the
                      following information:
@@ -500,7 +500,7 @@ def checkFileCopiesAndReg(srvObj,
                          which are a simple counter pointing to pickled
                          list containing the information as returned by
                          ngamsDb.getFileSummary1().
-                    
+
                      (tuple/string).
     """
     T = TRACE()
@@ -517,7 +517,7 @@ def checkFileCopiesAndReg(srvObj,
     # specified number of copies.
     fileMisCopyDbmName    = os.path.normpath(dbFilePat+"_MISSING_COPIES")
     fileMisCopyDbm        = ngamsDbm.ngamsDbm(fileMisCopyDbmName, writePerm=1)
- 
+
     # - DB that contains information about files stored on the DB,
     # which are not registered in the NGAS DB. At the end of the function,
     # this will contain information about files found on the disk but
@@ -559,7 +559,7 @@ def checkFileCopiesAndReg(srvObj,
                             dumpFileSummary1(tmpFileSumDbmName,
                                              None, [diskId], [],
                                              ignore=0, fileStatus=[])
-        tmpFileSumDbm = ngamsDbm.ngamsDbm(tmpFileSumDbmName)        
+        tmpFileSumDbm = ngamsDbm.ngamsDbm(tmpFileSumDbmName)
         for key in range(0, tmpFileSumDbm.getCount()):
             tmpFileInfo = tmpFileSumDbm.get(str(key))
             fileListDbm.addIncKey(tmpFileInfo)
@@ -573,7 +573,7 @@ def checkFileCopiesAndReg(srvObj,
         checkDicDbm.sync()
         del tmpFileSumDbm
         rmFile(tmpFileSumDbmName + "*")
-        
+
         # Get the list of files located on the disk. Later on, remove entries
         # from this dictionary as the files are parsed, based on their DB info,
         # further down in this method.
@@ -606,7 +606,7 @@ def checkFileCopiesAndReg(srvObj,
                              NGAMS_VOLUME_INFO_FILE)):
                             filesOnDiskDicDbm.add(filename, "")
                     pattern += "/*"
-                
+
     # Generate File ID DBM in case a file list DBM is given.
     if (fileListDbmName):
         info(4,"Handling file list DBM given in the function call ...")
@@ -691,7 +691,7 @@ def checkFileCopiesAndReg(srvObj,
         tmpDic = checkDicDbm.get(checkDicKey)
         tmpDic[fileInfo[ngamsDbCore.SUM1_DISK_ID]] = fileInfo
         checkDicDbm.add(checkDicKey, tmpDic)
-    
+
     # Check if there are at least minReqCopies occurrences of the files +
     # check that all files are registered (if a Disk ID is specified).
     info(4,"Check for files with less copies than: " + str(minReqCopies))
@@ -699,7 +699,7 @@ def checkFileCopiesAndReg(srvObj,
     while (1):
         checkDicKey, tmpDic = checkDicDbm.getNext()
         if (not checkDicKey): break
-    
+
         tmpDicKeys = tmpDic.keys()
         noOfCopies = len(tmpDicKeys)
         if (noOfCopies < minReqCopies):
@@ -712,7 +712,7 @@ def checkFileCopiesAndReg(srvObj,
                          setTag("Independent copies: " + str(noOfCopies))
             fileKey = ngamsLib.genFileKey(None, fileId, fileVersion)
             fileMisCopyDbm.add(fileKey, tmpFileObj)
-    
+
         # Remove this file from the Files On Disk DBM - do this only
         # if a Disk ID is specified.
         if (diskId):
@@ -723,7 +723,7 @@ def checkFileCopiesAndReg(srvObj,
                                     "/" + fileInfo[ngamsDbCore.SUM1_FILENAME])
                 if (filesOnDiskDicDbm.hasKey(filename)):
                     filesOnDiskDicDbm.rem(filename)
-        
+
     # Close all DBM objects.
     del fileMisCopyDbm
     del filesOnDiskDicDbm
@@ -731,7 +731,7 @@ def checkFileCopiesAndReg(srvObj,
     del fileIdDbm
     del complFileListDbm
     del checkDicDbm
-    
+
     # The DBM filesOnDiskDicDbmName now contains references to files,
     # which are found on the disk but not registered in the DB.
     return (fileMisCopyDbmName, filesOnDiskDicDbmName, complFileListDbmName)

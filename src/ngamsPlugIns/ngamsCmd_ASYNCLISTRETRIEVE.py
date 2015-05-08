@@ -539,21 +539,21 @@ def _deliveryThread(srvObj, asyncListReqObj):
     # clone the original list to for loop
     # use the original list for elements reduction
     #fileList = list(asyncListReqObj.file_id)
-    #info(3, "* * * entering the _deliveryThread")
+    info(3, "* * * entering the _deliveryThread")
     clientUrl = asyncListReqObj.url
     sessionId = asyncListReqObj.session_uuid
-    #info(3, "clientUrl = %s, sessionId = %s" % (clientUrl, sessionId))
+    info(3, "clientUrl = %s, sessionId = %s" % (clientUrl, sessionId))
     if (clientUrl is None or sessionId is None):
         return
     filesOnDisk = []
     filesOnTape = []
-    #info(3, "file_id length = %d" % len(asyncListReqObj.file_id))
+    info(3, "file_id length = %d" % len(asyncListReqObj.file_id))
     fileHost = None
     if (asyncListReqObj.one_host):
         fileHost = getHostId()
     cursorObj = srvObj.getDb().getFileSummary1(fileHost, [], asyncListReqObj.file_id, None, [], None, 0)
     fileInfoList = cursorObj.fetch(1000)
-    #info(3, "fileIninfList length = %d" % len(fileInfoList))
+    info(3, "fileIninfList length = %d" % len(fileInfoList))
     baseNameDic = {} # key - basename, value - file size
     
     statusRes = None
@@ -567,7 +567,7 @@ def _deliveryThread(srvObj, asyncListReqObj):
         # so remembering the old AsyncListRetrieveResponse is useless
         
         basename = fileInfo[ngamsDbCore.SUM1_FILE_ID] #e.g. 110024_20120914132151_12.fits
-        #info(3, "------basename %s" % basename)
+        info(3, "------basename %s" % basename)
         if (baseNameDic.has_key(basename)):
             #info(3, "duplication detected %s" % basename)
             continue #get rid of multiple versions
@@ -583,9 +583,10 @@ def _deliveryThread(srvObj, asyncListReqObj):
                 statusRes.number_files_to_be_staged += 1
                 statusRes.number_bytes_to_be_staged += file_size
         else:
-            filesOnDisk.append(filename)        
+            filesOnDisk.append(filename)  
+            info(3, "add %s in the queue" % filename)      
     del cursorObj
-    #info(3, " * * * middle of the _deliveryThread")
+    info(3, " * * * middle of the _deliveryThread")
     stageRet = 0
     if (len(filesOnTape) > 0):
         stageRet = ngamsMWACortexTapeApi.stageFiles(filesOnTape) # TODO - this should be done in another thread very soon! then the thread synchronisation issues....
@@ -604,6 +605,7 @@ def _deliveryThread(srvObj, asyncListReqObj):
         if (threadRunDic.has_key(sessionId) and threadRunDic[sessionId] == 0):
             info(3, "transfer cancelled/suspended before transferring file '%s'" % basename)
             break
+        info(3, "About to deliver %s" % filename)
         ret = _httpPost(srvObj, clientUrl, filename, sessionId)
         if (ret == 0):           
             #info(3, "Removing %s" % basename)

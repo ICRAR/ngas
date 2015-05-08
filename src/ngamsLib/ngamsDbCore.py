@@ -107,13 +107,14 @@ _ngasFilesDef = [
                  ["nf.uncompressed_file_size", "NGAS_FILES_UNCOMPR_FILE_SIZE"],
                  ["nf.compression",            "NGAS_FILES_COMPRESSION"],
                  ["nf.ingestion_date",         "NGAS_FILES_INGEST_DATE"],
-                 ["nf.ignore",                 "NGAS_FILES_IGNORE"],
+                 ["nf.file_ignore",            "NGAS_FILES_IGNORE"],
                  ["nf.checksum",               "NGAS_FILES_CHECKSUM"],
                  ["nf.checksum_plugin",        "NGAS_FILES_CHECKSUM_PI"],
                  ["nf.file_status",            "NGAS_FILES_FILE_STATUS"],
                  ["nf.creation_date",          "NGAS_FILES_CREATION_DATE"],
                  ["nf.container_id",           "NGAS_FILES_CONTAINER_ID"],
                  ["nf.ingestion_rate",         "NGAS_FILES_INGESTION_RATE"],
+                 ["nf.io_time",                "NGAS_FILES_IO_TIME"],
                  ]
 _ngasFilesCols = ""
 _ngasFilesNameMap = {}
@@ -260,7 +261,7 @@ _sum1Def = [["nd.slot_id",         "SUM1_SLOT_ID"],
             ["nf.file_size",       "SUM1_FILE_SIZE"],
             ["nf.file_status",     "SUM1_FILE_STATUS"],
             ["nd.disk_id",         "SUM1_DISK_ID"],
-            ["nf.ignore",          "SUM1_FILE_IGNORE"],
+            ["nf.file_ignore",     "SUM1_FILE_IGNORE"],
             ["nd.host_id",         "SUM1_HOST_ID"]]
 _sum1Cols = ""
 idx = 0

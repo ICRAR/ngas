@@ -71,6 +71,9 @@
 
 #include "ngams.h"
 
+#define GLOBALS 1
+#include "ngamsCClientGlobals.h"
+
 char *_ngamsManPageX(void);
 
 

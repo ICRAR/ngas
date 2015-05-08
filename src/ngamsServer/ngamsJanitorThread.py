@@ -62,7 +62,7 @@ def startJanitorThread(srvObj):
     Start the Janitor Thread.
 
     srvObj:     Reference to server object (ngamsServer).
-    
+
     Returns:    Void.
     """
     T = TRACE()
@@ -90,7 +90,7 @@ def stopJanitorThread(srvObj):
     Stop the Janitor Thread.
 
     srvObj:     Reference to server object (ngamsServer).
-    
+
     Returns:    Void.
     """
     T = TRACE()
@@ -111,7 +111,7 @@ def checkStopJanitorThread(srvObj):
     yes, to stop it.
 
     srvObj:     Reference to server object (ngamsServer).
-    
+
     Returns:    Void.
     """
     T = TRACE(5)
@@ -121,7 +121,7 @@ def checkStopJanitorThread(srvObj):
         srvObj._janitorThreadRunSync.set()
         srvObj.setJanitorThreadRunning(0)
         raise Exception, "_STOP_JANITOR_THREAD_"
-    
+
 
 def checkCleanDirs(startDir,
                    dirExp,
@@ -134,10 +134,10 @@ def checkCleanDirs(startDir,
 
     startDir:       Starting directory. The function will move downwards from
                     this starting point (string).
-    
+
     dirExp:         Expiration time in seconds for directories. Empty
                     directories older than this time are deleted (integer).
-    
+
     fileExp:        Expiration time in seconds for file. Empty file older than
                     this time are deleted (integer).
 
@@ -188,17 +188,17 @@ def _addInDbm(snapShotDbObj,
     Add an entry in the DB Snapshot. This entry is pickled in binary format.
 
     snapShotDbObj:    Snapshot DB file (bsddb).
-    
+
     key:              Key in DB (string).
-    
+
     val:              Value to be put in the DB (<object>).
 
     sync:             Sync the DB to the DB file (integer/0|1).
-    
+
     Returns:          Void.
     """
     T = TRACE(5)
-    
+
     snapShotDbObj[key] = cPickle.dumps(val, 1)
     if (sync): snapShotDbObj.sync()
 
@@ -215,9 +215,9 @@ def _readDb(snapShotDbObj,
     Returns:         Void.
     """
     T = TRACE(5)
-    
+
     return cPickle.loads(snapShotDbObj[key])
-                     
+
 
 def _genFileKey(fileInfo):
     """
@@ -231,7 +231,7 @@ def _genFileKey(fileInfo):
     Returns:        File key (string).
     """
     T = TRACE(5)
-    
+
     if ((type(fileInfo) == types.ListType) or
         (type(fileInfo) == types.TupleType)):
         fileId  = fileInfo[ngamsDbCore.NGAS_FILES_FILE_ID]
@@ -260,17 +260,17 @@ def _encName(dbSnapshot,
 
     The get from the name to the corresponding ID the following mapping
     should be used:
-    
+
       NGAMS_SN_SH_NM2ID_TAG + <Name> -> <ID>
 
     dbSnapshot:      Open DB object (bsddb).
-    
+
     name:            Name to be encoded (string).
 
     Returns:         The ID allocated to that name (integer).
     """
     T = TRACE(5)
-    
+
     nm2IdTag = NGAMS_SN_SH_NM2ID_TAG + name
     if (dbSnapshot.has_key(nm2IdTag)):
         nameId = _readDb(dbSnapshot, nm2IdTag)
@@ -300,7 +300,7 @@ def _encName(dbSnapshot,
             _addInDbm(dbSnapshot, id2NmTag, name, 1)
             raise e
         _addInDbm(dbSnapshot, id2NmTag, name, 1)
-        
+
     return nameId
 
 
@@ -340,9 +340,10 @@ def _encFileInfo(dbConObj,
     Returns:       Dictionary with encoded column names (dictionary).
     """
     T = TRACE(5)
-    
+
     tmpDic = {}
-    for n in range(ngamsDbCore.NGAS_FILES_CREATION_DATE + 1):
+    #for n in range(ngamsDbCore.NGAS_FILES_CREATION_DATE + 1):
+    for n in range(ngamsDbCore.NGAS_FILES_IO_TIME + 1): #newly added column!
         colName = dbConObj.getNgasFilesMap()[n]
         colId = _encName(dbSnapshot, colName)
         tmpDic[colId] = fileInfo[n]
@@ -366,19 +367,24 @@ def _encFileInfo2Obj(dbConObj,
     Returns:         NG/AMS File Info Object (ngamsFileInfo).
     """
     T = TRACE(5)
-    
+
     sqlFileInfo = []
-    for n in range (ngamsDbCore.NGAS_FILES_CREATION_DATE + 1):
+    #for n in range (ngamsDbCore.NGAS_FILES_CREATION_DATE + 1):
+    for n in range (ngamsDbCore.NGAS_FILES_IO_TIME + 1):
         sqlFileInfo.append(None)
     idxKeys = encFileInfoDic.keys()
     for idx in idxKeys:
-        colName = _readDb(dbSnapshot, NGAMS_SN_SH_ID2NM_TAG + str(idx))
+        kid = NGAMS_SN_SH_ID2NM_TAG + str(idx)
+        if (not dbSnapshot.has_key(kid)):
+            warning("dbSnapshot has no key '{0}', is it corrupted?".format(kid))
+            return None
+        colName = _readDb(dbSnapshot, kid)
         sqlFileInfoIdx = dbConObj.getNgasFilesMap()[colName]
         sqlFileInfo[sqlFileInfoIdx] = encFileInfoDic[idx]
     tmpFileInfoObj = ngamsFileInfo.ngamsFileInfo().unpackSqlResult(sqlFileInfo)
     return tmpFileInfoObj
-    
-        
+
+
 def _updateSnapshot(ngamsCfgObj):
     """
     Return 1 if the DB Snapshot should be updated, otherwise 0 is
@@ -387,7 +393,7 @@ def _updateSnapshot(ngamsCfgObj):
     ngamsCfgObj:   NG/AMS Configuration Object (ngamsConfig).
 
     Returns:       1 = update DB Snapshot, 0 = do not update DB Snapshot
-                   (integer/0|1). 
+                   (integer/0|1).
     """
     T = TRACE(5)
 
@@ -395,7 +401,7 @@ def _updateSnapshot(ngamsCfgObj):
         return 1
     else:
         return 0
-        
+
 
 def _openDbSnapshot(ngamsCfgObj,
                     mtPt):
@@ -414,13 +420,13 @@ def _openDbSnapshot(ngamsCfgObj,
       <Disk Mount Point>/NGAMS_DB_DIR/NGAMS_DB_NGAS_FILES
 
     ngamsCfgObj:    NG/AMS Configuration Object (ngamsConfig).
-      
+
     mtPt:           Mount point (string).
 
     Returns:        File DB object (bsddb|None).
     """
     T = TRACE()
-    
+
     snapShotFile = os.path.normpath(mtPt + "/" + NGAMS_DB_DIR + "/" +\
                                     NGAMS_DB_NGAS_FILES)
     checkCreatePath(os.path.normpath(mtPt + "/" + NGAMS_DB_CH_CACHE))
@@ -457,11 +463,11 @@ def _delFileEntry(dbConObj,
     dbConObj:        NG/AMS DB object (ngamsDB).
 
     fileInfoObj:     File Info Object (ngamsFileInfo).
-    
+
     Returns:         Void.
     """
     T = TRACE(5)
-    
+
     if (dbConObj.fileInDb(fileInfoObj.getDiskId(),
                           fileInfoObj.getFileId(),
                           fileInfoObj.getFileVersion())):
@@ -480,7 +486,7 @@ def checkUpdateDbSnapShots(srvObj):
     this creation it is checked if the file are physically stored on the
     disk.
 
-    srvObj:        Reference to NG/AMS server class object (ngamsServer). 
+    srvObj:        Reference to NG/AMS server class object (ngamsServer).
 
     Returns:       Void.
     """
@@ -488,7 +494,7 @@ def checkUpdateDbSnapShots(srvObj):
 
     tmpSnapshotDbm = None
     lostFileRefsDbm = None
-    
+
     if (not srvObj.getCfg().getDbSnapshot()):
         info(3,"NOTE: DB Snapshot Feature is switched off")
         return
@@ -526,7 +532,7 @@ def checkUpdateDbSnapShots(srvObj):
 
         snapshotDbm = _openDbSnapshot(srvObj.getCfg(), mtPt)
         if (snapshotDbm == None): continue
-        
+
         # The scheme for synchronizing the Snapshot and the DB is:
         #
         # - Loop over file entries in the Snapshot:
@@ -582,7 +588,7 @@ def checkUpdateDbSnapShots(srvObj):
         # these against the DB.
         #####################################################################
         info(4,"Loop over file entries in the DB Snapshot - %s ..." % diskId)
-        count = 0 
+        count = 0
         try:
             key, pickleValue = snapshotDbm.first()
         except Exception, e:
@@ -616,9 +622,11 @@ def checkUpdateDbSnapShots(srvObj):
             else:
                 tmpFileObj = _encFileInfo2Obj(srvObj.getDb(), snapshotDbm,
                                               value)
+                if (tmpFileObj is None):
+                    continue
                 complFilename = os.path.normpath(mtPt + "/" +\
                                                  tmpFileObj.getFilename())
-                
+
                 # Is the file in the DB?
                 if (tmpSnapshotDbm.has_key(key)):
                     # Is the file on the disk?
@@ -633,6 +641,8 @@ def checkUpdateDbSnapShots(srvObj):
                 elif (not tmpSnapshotDbm.has_key(key)):
                     tmpFileObj = _encFileInfo2Obj(srvObj.getDb(), snapshotDbm,
                                                   value)
+                    if (tmpFileObj is None):
+                        continue
 
                     # Is the file on the disk?
                     if (os.path.exists(complFilename)):
@@ -649,9 +659,9 @@ def checkUpdateDbSnapShots(srvObj):
                         # the entry for deletion.
                         if (_updateSnapshot(srvObj.getCfg())):
                             snapshotDelDbm.add(key, 1)
-                            
+
                     del tmpFileObj
- 
+
             # Be friendly, make a break every now and then + sync the DB file.
             count += 1
             if ((count % 100) == 0):
@@ -692,7 +702,7 @@ def checkUpdateDbSnapShots(srvObj):
             del snapshotDbm[key]
         #################################################################################################
         del snapshotDelDbm
-        
+
         info(4,"Looped over file entries in the DB Snapshot - %s" % diskId)
         # End-Loop: Check DB against DB Snapshot. ###########################
         if (_updateSnapshot(srvObj.getCfg())): snapshotDbm.sync()
@@ -712,7 +722,7 @@ def checkUpdateDbSnapShots(srvObj):
         except Exception, e:
             key = None
             tmpSnapshotDbm.dbc = None
-        
+
         #################################################################################################
         #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
         #          when iterating at the end of the table that are prone to corrupt the hash table object
@@ -720,7 +730,7 @@ def checkUpdateDbSnapShots(srvObj):
         for key,pickleValue in tmpSnapshotDbm.iteritems():
         #################################################################################################
             value = _unPickle(pickleValue)
- 
+
             # Check if it is an administrative element, if yes add it if needed
             if (key.find("___") != -1):
                 if (not snapshotDbm.has_key(key)):
@@ -730,6 +740,8 @@ def checkUpdateDbSnapShots(srvObj):
                 if (not snapshotDbm.has_key(key)):
                     tmpFileObj = _encFileInfo2Obj(srvObj.getDb(),
                                                   tmpSnapshotDbm, value)
+                    if (tmpFileObj is None):
+                        continue
 
                     # Is the file on the disk?
                     complFilename = os.path.normpath(mtPt + "/" +\
@@ -747,7 +759,7 @@ def checkUpdateDbSnapShots(srvObj):
                     # in-sync with the DB entry.
                     if (_updateSnapshot(srvObj.getCfg())):
                         snapshotDbm[key] = pickleValue
-           
+
             # Be friendly and make a break every now and then +
             # sync the DB file.
             count += 1
@@ -829,16 +841,16 @@ def checkDbChangeCache(srvObj,
     in the DB cache area on the disk concerned, into the Main DB Snapshot
     Document in a safe way which prevents that any information is lost.
 
-    srvObj:        Reference to NG/AMS server class object (ngamsServer). 
+    srvObj:        Reference to NG/AMS server class object (ngamsServer).
 
     diskId:        ID for disk (string).
-    
+
     diskMtPt:      Mount point of the disk, e.g. '/NGAS/disk1' (string).
-    
+
     Returns:       Void.
     """
     T = TRACE(5)
-    
+
     if (not srvObj.getCfg().getDbSnapshot()): return
     if (not _updateSnapshot(srvObj.getCfg())): return
 
@@ -867,6 +879,11 @@ def checkDbChangeCache(srvObj,
         timer = PccUtTime.Timer()
         for cacheFile in tmpCacheFiles:
             checkStopJanitorThread(srvObj)
+            if os.lstat(cacheFile)[6] == 0:
+                os.remove(cacheFile)    # sometimes there are pickle files with 0 size.
+                                        # we don't want to stop on them
+                continue
+
             cacheStatObj = ngamsLib.loadObjPickleFile(cacheFile)
             if (isinstance(cacheStatObj, types.ListType)):
                 # A list type in the Temporary DB Snapshot means that the
@@ -903,11 +920,11 @@ def checkDbChangeCache(srvObj,
                     # Should not happen.
                     pass
             del cacheStatObj
-            
+
             # Sleep if not last iteration (or if only one file).
             fileCount += 1
             if (fileCount < noOfCacheFiles): time.sleep(0.010)
-            
+
             # Synchronize the DB.
             count += 1
             if (count == 100):
@@ -950,12 +967,12 @@ def updateDbSnapShots(srvObj,
     """
     Check/update the DB Snapshot Documents for all disks.
 
-    srvObj:            Reference to NG/AMS server class object (ngamsServer). 
+    srvObj:            Reference to NG/AMS server class object (ngamsServer).
 
     diskInfo:          If a Snapshot should only be updated for a specific
                        disk, this can be specifically indicated by giving
                        the Disk ID and Mount Point of the disk (list).
-    
+
     Returns:           Void.
     """
     T = TRACE()
@@ -1009,8 +1026,8 @@ def janitorThread(srvObj,
 
     srvObj:      Reference to server object (ngamsServer).
 
-    dummy:       Needed by the thread handling ... 
-    
+    dummy:       Needed by the thread handling ...
+
     Returns:     Void.
     """
     T = TRACE()
@@ -1026,6 +1043,8 @@ def janitorThread(srvObj,
     except Exception, e:
         errMsg = "Problem updating DB Snapshot files: " + str(e)
         warning(errMsg)
+        import traceback
+        info(3, traceback.format_exc())
 
     suspendTime = isoTime2Secs(srvObj.getCfg().getJanitorSuspensionTime())
     while (1):
@@ -1053,7 +1072,7 @@ def janitorThread(srvObj,
                     errMsg = genLog("NGAMS_ER_ARCH_BACK_LOG_BUF", [str(e)])
                     error(errMsg)
             ##################################################################
-                    
+
             ##################################################################
             # => Check if we need to clean up Processing Directory (if
             #    appropriate). If a Processing Directory is more than
@@ -1066,7 +1085,7 @@ def janitorThread(srvObj,
             checkCleanDirs(procDir, 1800, 1800, 0)
             info(4,"Processing Directory checked/cleaned up")
             ##################################################################
-            
+
             ##################################################################
             # => Check if there are old Requests in the Request DBM, which
             #    should be removed.
@@ -1106,7 +1125,7 @@ def janitorThread(srvObj,
                 error("Exception encountered: %s" % str(e))
             info(4,"Request DB checked/cleaned up")
             ##################################################################
-                
+
             ##################################################################
             # => Check if we need to clean up Subscription Back-Log Buffer.
             ##################################################################
@@ -1128,10 +1147,21 @@ def janitorThread(srvObj,
             # => Check for retained Email Notification Messages to send out.
             ngamsNotification.checkNotifRetBuf(srvObj.getCfg())
 
-            # => Check if its time to carry out a rotation of the log file.
+            # => Check there are any unsaved log files from a shutdown and archive them.
             logFile = srvObj.getCfg().getLocalLogFile()
             logPath = os.path.dirname(logFile)
             if (os.path.exists(srvObj.getCfg().getLocalLogFile())):
+                unsavedLogFiles = glob.glob(logPath + '/*.unsaved')
+                if (len(unsavedLogFiles) > 0):
+                    info(3,"Archiving unsaved log-files ...")
+                    for ulogFile in unsavedLogFiles:
+                        ologFile = '.'.join(ulogFile.split('.')[:-1])
+                        os.rename(ulogFile, ologFile)
+                        ngamsArchiveUtils.archiveFromFile(srvObj, ologFile, 0,
+                        'ngas/nglog', None)
+
+            # => Check if its time to carry out a rotation of the log file.
+
                 info(4,"Checking if a Local Log File rotate is due ...")
                 logFo = None
                 try:
@@ -1163,16 +1193,19 @@ def janitorThread(srvObj,
                             commands.getstatusoutput("mv " + logFile + " " +\
                                                      rotLogFile)
                             open(logFile, "w").close()
-                            msg = "NG/AMS Local Log File Rotated (%s)"
+                            msg = "NG/AMS Local Log File Rotated and archived (%s)"
                             PccLog.info(1,msg % getHostId(), getLocation())
                     relLogSem()
+                    if (line != "" and deltaTime >= logRotInt):
+                            ngamsArchiveUtils.archiveFromFile(srvObj, rotLogFile, 0,
+                                                    'ngas/nglog', None)
                 except Exception, e:
                     relLogSem()
                     if (logFo): logFo.close()
                     raise e
-                info(4,"Checked for Local Log File rotatation") 
+                info(4,"Checked for Local Log File rotatation")
             ##################################################################
-                
+
             ##################################################################
             # => Check if there are rotated Local Log Files to remove.
             ##################################################################
@@ -1233,7 +1266,7 @@ def janitorThread(srvObj,
             # => Check if the conditions for suspending this NGAS Host are met.
             ##################################################################
             srvDataChecking = srvObj.getDb().getSrvDataChecking(getHostId())
-            if ((not srvDataChecking) and 
+            if ((not srvDataChecking) and
                 (srvObj.getCfg().getIdleSuspension()) and
                 (not srvObj.getHandlingCmd())):
                 timeNow = time.time()
@@ -1301,7 +1334,7 @@ def janitorThread(srvObj,
                         error(msg)
                         time.sleep(5)
                 time.sleep(1.0)
-                    
+
         except Exception, e:
             if (str(e).find("_STOP_JANITOR_THREAD_") != -1): thread.exit()
             errMsg = "Error occurred during execution of the Janitor " +\

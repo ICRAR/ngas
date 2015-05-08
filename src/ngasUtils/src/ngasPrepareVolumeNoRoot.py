@@ -53,7 +53,7 @@ all.
 
 """
 
-import ngasPrepareVolume
+import ngasPrepareVolume, sys
 
 if __name__ == '__main__':
     """

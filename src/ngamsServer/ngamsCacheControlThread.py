@@ -35,7 +35,7 @@ to manage the contents in the cache archive when running the NG/AMS Server
 as a cache archive.
 """
 
-import os, sys, time, thread, threading, random, copy, base64, cPickle
+import os, sys, time, thread, threading, random, copy, base64, cPickle, traceback
 from Queue import Queue, Empty
 try:
     from pysqlite2 import dbapi2 as sqlite
@@ -98,6 +98,10 @@ NGAMS_CACHE_CTRL_PI_DBM_SQL   = "SQL_INFO"
 # Used as exception message when the thread is stopping execution
 # (deliberately).
 NGAMS_CACHE_CONTROL_THR_STOP = "_STOP_CACHE_CONTROL_THREAD_"
+CACHE_DEL_BIT_MASK = "00000100"
+CACHE_DEL_BIT_MASK_INT = int(CACHE_DEL_BIT_MASK, 2)
+
+CHECK_CAN_BE_DELETED = 0 #whether or not check if a file can be deleted (has it been transferred to remote sites?) during file cleaning-up
 
 
 def startCacheControlThread(srvObj):
@@ -111,6 +115,16 @@ def startCacheControlThread(srvObj):
     T = TRACE()
     
     info(1, "Starting the Cache Control Thread ...")
+    
+    global CHECK_CAN_BE_DELETED
+    
+    try:
+        CHECK_CAN_BE_DELETED = int(srvObj.getCfg().getVal("Caching[1].CheckCanBeDeleted"))
+    except:
+        CHECK_CAN_BE_DELETED = 0
+    
+    info(1, "Cache Control - CHECK_CAN_BE_DELETED = %d" % CHECK_CAN_BE_DELETED)
+    
     args = (srvObj, None)
     srvObj._cacheControlThread = threading.Thread(None, cacheControlThread,
                                                   NGAMS_CACHE_CONTROL_THR,
@@ -133,6 +147,10 @@ def stopCacheControlThread(srvObj):
     
     if (not srvObj.getCacheControlThreadRunning()): return
     info(1, "Stopping the Cache Control Thread ...")
+    if (CHECK_CAN_BE_DELETED):
+        info(1, "Marking any outstanding files in the delQueue")
+        markFileCanBeDeleted(srvObj) # so that files in the queue do not get lost after restart
+        info(1, "Done marking")
     srvObj._cacheControlThread = None
     info(1, "Cache Control Thread stopped")
 
@@ -211,7 +229,7 @@ def createCacheDbms(srvObj):
                       (ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg()),
                        NGAMS_CACHE_NEW_FILES_DBM, getHostId())
     rmFile("%s*" % newFilesDbmName)
-    srvObj._cacheNewFilesDbm = ngamsDbm.ngamsDbm2(newFilesDbmName,
+    srvObj._cacheNewFilesDbm = ngamsDbm.ngamsDbm(newFilesDbmName,
                                                   cleanUpOnDestr = 0,
                                                   writePerm = 1)
     
@@ -221,7 +239,7 @@ def createCacheDbms(srvObj):
     cacheCtrlPiDbmName = "%s/%s_%s" % (cacheDir, NGAMS_CACHE_CTRL_PI_DBM,
                                        getHostId())
     rmFile("%s*" % cacheCtrlPiDbmName)
-    srvObj._cacheCtrlPiDbm = ngamsDbm.ngamsDbm2(cacheCtrlPiDbmName,
+    srvObj._cacheCtrlPiDbm = ngamsDbm.ngamsDbm(cacheCtrlPiDbmName,
                                                 cleanUpOnDestr = 0,
                                                 writePerm = 1)
     srvObj._cacheCtrlPiDbm.add(NGAMS_CACHE_CTRL_PI_DBM_WR, 0)
@@ -231,7 +249,7 @@ def createCacheDbms(srvObj):
                                           NGAMS_CACHE_CTRL_PI_DEL_DBM,
                                           getHostId())
     rmFile("%s*" % cacheCtrlPiDelDbmName)
-    srvObj._cacheCtrlPiDelDbm = ngamsDbm.ngamsDbm2(cacheCtrlPiDelDbmName,
+    srvObj._cacheCtrlPiDelDbm = ngamsDbm.ngamsDbm(cacheCtrlPiDelDbmName,
                                                    cleanUpOnDestr = 0,
                                                    writePerm = 1)
     # - DBM used by the Cache Control Plug-Ins to schedule files which should
@@ -240,7 +258,7 @@ def createCacheDbms(srvObj):
                                             NGAMS_CACHE_CTRL_PI_FILES_DBM,
                                             getHostId())
     rmFile("%s*" % cacheCtrlPiFilesDbmName)
-    srvObj._cacheCtrlPiFilesDbm = ngamsDbm.ngamsDbm2(cacheCtrlPiFilesDbmName,
+    srvObj._cacheCtrlPiFilesDbm = ngamsDbm.ngamsDbm(cacheCtrlPiFilesDbmName,
                                                      cleanUpOnDestr = 0,
                                                      writePerm = 1)
 
@@ -456,12 +474,12 @@ def addEntryInCacheDbms(srvObj,
     T = TRACE()
 
     # Insert entry in the local DBMS (if not already there).
+    timeNow = time.time()
     if (not entryInCacheDbms(srvObj, diskId, fileId, fileVersion)):
         if (delete):
             delete = 1
         else:
             delete = 0
-        timeNow = time.time()
         cacheEntryObjPickle = cPickle.dumps(cacheEntryObj)
         # Have to encode the pickled object to be able to write it in the
         # DB table.
@@ -842,7 +860,7 @@ def createTmpDbm(srvObj,
                                getNgasTmpDir(srvObj.getCfg()) +\
                                "/CACHE_%s_DBM" % id)
     rmFile(dbmName + "*")
-    dbm = ngamsDbm.ngamsDbm2(dbmName, cleanUpOnDestr = delOnDestr,
+    dbm = ngamsDbm.ngamsDbm(dbmName, cleanUpOnDestr = delOnDestr,
                              writePerm = 1)
     return dbm
 
@@ -969,6 +987,44 @@ def _cacheCtrlPlugInThread(threadGrObj):
                 # still.
                 srvObj._cacheCtrlPiFilesDbm.addIncKey(cacheEntryObj)
 
+def markFileCanBeDeleted(srvObj):
+    """
+    Go through the explicitDel queue to mark file deletion
+    using the file_status flag in the remote database
+    """
+    info(3, 'marking file can be deleted')
+    while (1):
+        sqlFileInfo = None
+        try:
+            sqlFileInfo = explicitDelQueue.get_nowait()
+        except Empty, e:
+            break
+        if (sqlFileInfo is None):
+            continue
+        diskId      = sqlFileInfo[NGAMS_CACHE_DISK_ID]
+        fileId      = sqlFileInfo[NGAMS_CACHE_FILE_ID]
+        fileVersion = int(sqlFileInfo[NGAMS_CACHE_FILE_VER])
+        #TODO - should get the original file_status from the remote db, and then do a bitmask OR operation,
+        # maybe too db resource intensive, since this file is about to be deleted, the original value is not that important
+        # moreover, it is most likely just ingested (when cache delete is triggered), so we can assume that it is "00000000"
+        try:
+            info(3, 'Set file_status for file %s' % fileId)
+            srvObj.getDb().setFileStatus(fileId, fileVersion, diskId, CACHE_DEL_BIT_MASK) # should be (CACHE_DEL_BIT_MASK | file_status)
+        except Exception, err:
+            error('Fail to set file status for file %s, Exception: %s' % (fileId, str(err)))
+            continue
+
+def checkIfFileCanBeDeleted(srvObj, fileId, fileVersion, diskId):
+    """
+    Check if the file can be deleted from its file_status flag
+    """
+    fileStatus = srvObj.getDb().getFileStatus(fileId, fileVersion, diskId)
+    
+    re = bin(int(fileStatus, 2) & CACHE_DEL_BIT_MASK_INT)[2:] # logic AND, and remove the '0b', e.g '0b11001' --> '11001'
+    re = re.zfill(8) # fill zeroes at the beginning, e.g. '100' --> '00000100'
+    
+    return (CACHE_DEL_BIT_MASK == re)
+    
 
 def checkCacheContents(srvObj):
     """
@@ -1010,6 +1066,7 @@ def checkCacheContents(srvObj):
     #    configuration).
 
     # 0. Go through the explicitDel queue to remove files
+    """
     while (1):
         sqlFileInfo = None
         try:
@@ -1020,6 +1077,9 @@ def checkCacheContents(srvObj):
             continue
         scheduleFileForDeletion(srvObj, sqlFileInfo)
         markFileChecked(srvObj, sqlFileInfo)
+    """
+    if (CHECK_CAN_BE_DELETED):
+        markFileCanBeDeleted(srvObj)
 
     # 1. Evaluate if there are files residing in the cache for more than
     #    the specified amount of time.
@@ -1075,6 +1135,12 @@ def checkCacheContents(srvObj):
             cacheSum = 0
         else:
             cacheSum = int(cacheSum)
+        
+        msg = "Current size of cache: %.3f GB, " +\
+                  "Maximum cache size: %.3f GB"
+        info(3, msg % ((float(cacheSum) / 1e9),
+                           (float(maxCacheSize) / 1e9)))
+        
         if (cacheSum > maxCacheSize):
             msg = "Current size of cache: %.6f MB exceeding specified " +\
                   "threshold: %.6f MB"
@@ -1098,6 +1164,22 @@ def checkCacheContents(srvObj):
                     fileInfoList = srvObj._cacheContDbmsCur.fetchmany(10000)
                     if (not fileInfoList): break
                     for sqlFileInfo in fileInfoList:
+                        if (CHECK_CAN_BE_DELETED):
+                            try:
+                                if (not checkIfFileCanBeDeleted(srvObj, 
+                                                                sqlFileInfo[NGAMS_CACHE_FILE_ID], 
+                                                                sqlFileInfo[NGAMS_CACHE_FILE_VER], 
+                                                                sqlFileInfo[NGAMS_CACHE_DISK_ID])):
+                                    info(2, "Cannot delete file from the cache: %s/%s/%s" %\
+                                         (str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2])))
+                                    continue
+                            except Exception, cee:
+                                if (str(cee).find('file not found in ngas db') > -1):
+                                    warning("file already gone, still mark for deletion: %s/%s/%s" %\
+                                            (str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2])))
+                                else:
+                                    raise cee
+                        
                         msg = "CACHE-CRITERIA: Maximum Cache Size " +\
                               "Exceeded: %s/%s/%s"
                         info(2, msg %\
@@ -1401,6 +1483,7 @@ def cleanUpCache(srvObj):
         fileId      = sqlFileInfo[1]
         fileVersion = sqlFileInfo[2]
         filename    = sqlFileInfo[3]
+        
         info(2, "Deleting entry from the cache: %s/%s/%s" %\
              (str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2])))
 
@@ -1508,6 +1591,8 @@ def cacheControlThread(srvObj,
             errMsg = "Error occurred during execution of the Cache " +\
                      "Control Thread. Exception: " + str(e)
             alert(errMsg)
+            em = traceback.format_exc()    
+            alert(em)
             # We make a small wait here to avoid that the process tries
             # too often to carry out the tasks that failed.
             time.sleep(5.0)

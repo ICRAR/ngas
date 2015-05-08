@@ -74,18 +74,25 @@ def _queScanThread(jobManHost):
         g_mrLocalTask = queTasks.get()
         # skip tasks that have been cancelled
         if (cancelDict.has_key(g_mrLocalTask._taskId)):
+            info(3, 'Task %s has been cancelled, skip it' % g_mrLocalTask._taskId)
             continue
         
         # before executing the task, inform JobMAN that 
         # this task is just dequeued and about to start...
         try:
-            strRes = urllib2.urlopen(dqUrl + g_mrLocalTask._taskId, timeout = 15).read() #HTTP Post
-            #info(3, "Got result from JobMAN: '%s'" % strRes)
+            strRes = urllib2.urlopen(dqUrl + urllib2.quote(g_mrLocalTask._taskId), timeout = 15).read() #HTTP Get (need to encode url)
+            if (strRes.find('Error response') > -1):
+                error('Error when sending dequeue event to JobMAN: %s' % strRes)
         except urllib2.URLError, urlerr:
             error('Fail to send dequeue event to JobMAN: %s' % str(urlerr))
         
         # execute the task
-        localTaskResult = g_mrLocalTask.execute()
+        localTaskResult = None
+        try:
+            localTaskResult = g_mrLocalTask.execute()
+        except Exception, execErr:
+            error('Fail to execute task %s: Unexpected exception - %s' % (g_mrLocalTask._taskId, str(execErr)))
+            localTaskResult = MRLocalTaskResult(g_mrLocalTask._taskId, ERROR_LT_UNEXPECTED, str(execErr), True)
         
         # archive the file locally if required
         if (localTaskResult.getErrCode() == 0 and 
@@ -127,8 +134,11 @@ def _archiveFileLocal(fpath, localTaskResult):
 
 def _scheduleQScanThread(srvObj, mrLocalTask):
     global queScanThread
-    if (queScanThread == None):
-        info(3, 'queScanThread is None!!!')
+    if (queScanThread == None or (not queScanThread.isAlive())):
+        if (not queScanThread):
+            info(3, 'queScanThread is None !!! Create it')
+        else:
+            info(3, 'queScanThread is Dead !!! Re-launch it')
         jobManHost = srvObj.getCfg().getNGASJobMANHost()
         args = (jobManHost,)
         queScanThread = threading.Thread(None, _queScanThread, 'QUESCAN_THRD', args) 
@@ -164,7 +174,9 @@ def handleCmd(srvObj,
                     taskId = reqPropsObj.getHttpPar('task_id')
                     cancelDict[taskId] = 1
                     if (g_mrLocalTask and taskId == g_mrLocalTask._taskId):
-                        g_mrLocalTask.stop()
+                        res = g_mrLocalTask.stop()
+                        if (res[0]):
+                            errMsg = 'Cancel result failed: %s\n' % str(res[1])
                 else:
                     errMsg = 'task_id is missing'                   
             else:
@@ -181,7 +193,8 @@ def handleCmd(srvObj,
             errMsg = 'Cannot instantiate local task from POST'
             mrr = MRLocalTaskResult(None, -2, errMsg)
             srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(mrr), NGAMS_TEXT_MT)
-        else:            
+        else: 
+            info(3, 'Local task %s is submitted' % mrLocalTask._taskId)           
             mrr = MRLocalTaskResult(mrLocalTask._taskId, 0, '')
             srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(mrr), NGAMS_TEXT_MT)
             

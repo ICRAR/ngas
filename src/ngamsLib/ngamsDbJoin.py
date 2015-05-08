@@ -132,7 +132,9 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                         fileIds = [],
                         diskId = None,
                         ignore = None,
-                        ing_date = None):
+                        ing_date = None,
+                        max_num_records = None,
+                        upto_ing_date = None):
         """
         Return summary information about files. An NG/AMS DB Cursor Object
         is created, which can be used to query the information sequentially.
@@ -146,7 +148,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         hostId:            Name of NGAS host on which the files reside. If
                            None is specified, the host is not taken into
-                           account (string).
+                           account (string or a list of string).
 
         fileIds:           List of file IDs for which to query information.
                            If not specified, all files of the referenced
@@ -159,6 +161,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            queried for. If set to None, ignore is not
                            considered (None|0|1).
 
+        max_num_records:   The maximum number of returned records (if presented) (int)
+
         Returns:           Cursor object (<NG/AMS DB Cursor Object API>).
         """
         T = TRACE()
@@ -166,13 +170,26 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         sqlQuery = "SELECT " + ngamsDbCore.getNgasSummary2Cols() + " " +\
                    "FROM ngas_disks nd, ngas_files nf " +\
                    "WHERE nd.disk_id=nf.disk_id "
-        if (ignore != None): sqlQuery += "AND nf.ignore=%d" % int(ignore)
-        if (hostId): sqlQuery += " AND nd.host_id='" + hostId + "'"
+        if (ignore != None): sqlQuery += "AND nf.file_ignore=%d" % int(ignore)
+        if (hostId):
+            if (type(hostId) is list):
+                sqlQuery += " AND ("
+                cc = 0
+                for ho in hostId:
+                    if (cc > 0):
+                        sqlQuery += " OR "
+                    sqlQuery += "nd.host_id='" + ho + "'"
+                    cc += 1
+                sqlQuery += ") "
+            else: #assume it is string
+                sqlQuery += " AND nd.host_id='" + hostId + "'"
         if (diskId): sqlQuery += " AND nf.disk_id='" + diskId + "'"
         if (fileIds != []):
             sqlQuery += " AND nf.file_id IN (" + str(fileIds)[1:-1] + ")"
         if (ing_date): sqlQuery += " AND nf.ingestion_date > '" + ing_date + "'"
+        if (upto_ing_date): sqlQuery += " AND nf.ingestion_date < '" + upto_ing_date + "'"
         sqlQuery += " ORDER BY nf.ingestion_date"
+        if (max_num_records): sqlQuery += " LIMIT %d" % max_num_records
 
         # Create a cursor and perform the query.
         curObj = self.dbCursor(sqlQuery)
@@ -220,7 +237,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                    "nf.format " +\
                    "FROM ngas_files nf, ngas_disks nd, ngas_hosts nh " +\
                    "WHERE nf.file_id='%s' AND nf.disk_id=nd.disk_id AND " +\
-                   "nd.host_id=nh.host_id AND nf.ignore=0 AND " +\
+                   "nd.host_id=nh.host_id AND nf.file_ignore=0 AND " +\
                    "nf.file_status='00000000'"
         sqlQuery = sqlQuery % fileId
         if (hostId): sqlQuery += " AND nh.host_id='%s'" % hostId
@@ -270,7 +287,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         sqlQuery = "SELECT " + ngamsDbCore.getNgasSummary1Cols() + " " +\
                    "FROM ngas_disks nd, ngas_files nf " +\
                    "WHERE nd.disk_id=nf.disk_id " +\
-                   "AND (nf.ignore=1 OR " +\
+                   "AND (nf.file_ignore=1 OR " +\
                    "nf.file_status NOT IN (" + str(fileStatusList)[1:-1]+ "))"
 
         if (hostId): sqlQuery += " AND nd.host_id='" + hostId + "'"
@@ -389,7 +406,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                    "WHERE nd.disk_id=nf.disk_id"
 
         # Additional WHERE clauses.
-        if (ignore != None): sqlQuery += " AND nf.ignore=%d" % int(ignore)
+        if (ignore != None): sqlQuery += " AND nf.file_ignore=%d" % int(ignore)
         if (hostId): sqlQuery += " AND nd.host_id='" + hostId + "'"
         if (diskIds != []):
             sqlQuery += " AND nd.disk_id IN (" + str(diskIds)[1:-1] + ")"
@@ -452,7 +469,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                    "nd.host_id='" + hostId + "' AND nd.mounted=1 AND " +\
                    "nf.file_version=" + str(fileVersion)
         if (diskId): sqlQuery += " AND nd.disk_id='%s'" % diskId
-        if (ignore != None): sqlQuery += " AND nf.ignore=%d" % int(ignore)
+        if (ignore != None): sqlQuery += " AND nf.file_ignore=%d" % int(ignore)
         res = self.query(sqlQuery, ignoreEmptyRes=0)
         if (len(res[0]) == 0):
             return []
@@ -532,7 +549,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                    "nd.mount_point FROM ngas_files nf, ngas_disks nd, "+\
                    "ngas_hosts nh WHERE nh.host_id=nd.host_id AND " +\
                    "nf.disk_id=nd.disk_id"
-        if (ignore != None): sqlQuery != " AND nf.ignore=%d" % int(ignore)
+        if (ignore != None): sqlQuery != " AND nf.file_ignore=%d" % int(ignore)
         # File ID specified.
         if (fileId): sqlQuery += " AND nf.file_id='%s'" % fileId
         # Do we want a specific File Version?
@@ -917,7 +934,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         if (fileId): sqlQuery += " AND nf.file_id='%s'" % fileId
         if (fileVersion > 0): sqlQuery += " AND nf.file_version=%d" %\
                                           int(fileVersion)
-        if (ignore != None): sqlQuery += " AND nf.ignore=%d" % int(ignore)
+        if (ignore != None): sqlQuery += " AND nf.file_ignore=%d" % int(ignore)
         if (onlyOnlineFiles):
             # We assume here that either Disk ID, File ID, File Version
             # or ignore=1 specified so that we can append and AND clause.
@@ -1053,6 +1070,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                        creationDate,
                        containerId = None,
                        ingestionRate = -1,
+                       iotime,
                        genSnapshot = 1,
                        updateDiskInfo = 0):
         """
@@ -1094,13 +1112,14 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "uncompressed_file_size=" +\
                            str(uncompressedFileSize) + ", " +\
                            "compression='" + compression + "', " +\
-                           "ignore=" + str(ignore) + ", " +\
+                           "file_ignore=" + str(ignore) + ", " +\
                            "checksum='" + checksum + "', " +\
                            "checksum_plugin='" + checksumPlugIn + "', " +\
                            "file_status='" + fileStatus + "', " +\
                            "creation_date='" + creDate + "' " +\
                            "container_id='" + containerId + "' " +\
                            "ingestion_rate='" + ingestionRate + "' " +\
+                           "io_time=" + str(int(iotime*1000)) + " " +\
                            "WHERE file_id='" + fileId + "' AND " +\
                            "disk_id='" + diskId + "'"
                 if (int(fileVersion) != -1):
@@ -1111,8 +1130,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "(disk_id, file_name, file_id, file_version, " +\
                            "format, file_size, " +\
                            "uncompressed_file_size, compression, " +\
-                           "ingestion_date, ignore, checksum, " +\
-                           "checksum_plugin, file_status, creation_date, " +\
+                           "ingestion_date, file_ignore, checksum, " +\
+                           "checksum_plugin, file_status, creation_date, io_time, " +\
                            "container_id, ingestion_rate) "+\
                            "VALUES " +\
                            "('" + diskId + "', " +\
@@ -1129,6 +1148,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "'" + checksumPlugIn + "', " +\
                            "'" + fileStatus + "', " +\
                            "'" + creDate + "', " +\
+                           str(int(iotime*1000)) + ", " +\
                            "'" + containerId + "', " +\
                            "'" + ingestionRate + "', " +\
                            "')"
@@ -1154,8 +1174,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                                               fileVersion, format, fileSize,
                                               uncompressedFileSize,compression,
                                               ingestionDate, ignore, checksum,
-                                              checksumPlugIn, fileStatus,
-                                              creationDate])
+                                              checksumPlugIn, fileStatus, creationDate,
+                                              iotime])
                 self.createDbFileChangeStatusDoc(dbOperation, [tmpFileObj])
                 del tmpFileObj
 

@@ -330,6 +330,52 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         else:
             return 0
 
+    def updateSubscrQueueEntry(self,
+                            subscrId,
+                            fileId,
+                            fileVersion,
+                            diskId,
+                            status,
+                            status_date,
+                            comment = None):
+        """
+        Update the status (and comment) of a file in the persistent queue
+        given its primary key
+        """
+        
+        sqlQuery = "UPDATE ngas_subscr_queue SET status = %d " % status
+        sqlQuery += ", status_date = '%s' " % status_date
+        if (comment):
+            sqlQuery += ", comment = '%s' " % comment
+        sqlQuery += "WHERE subscr_id = '%s' AND file_id = '%s' AND file_version = %d AND disk_id = '%s'" % (subscrId, fileId, fileVersion, diskId)
+        self.query(sqlQuery)
+        
+    def updateSubscrQueueEntryStatus(self, subscrId, oldStatus, newStatus):
+        """
+        change the status from old to new for files belonging to a subscriber
+        """
+        sqlQuery = "UPDATE ngas_subscr_queue SET status = %d " % newStatus
+        sqlQuery += "WHERE subscr_id = '%s' AND status = %d " % (subscrId, oldStatus)
+        self.query(sqlQuery)
+
+    def addSubscrQueueEntry(self,
+                            subscrId,
+                            fileId,
+                            fileVersion,
+                            diskId,
+                            fileName,
+                            ingestionDate,
+                            format,
+                            status,
+                            status_date,
+                            comment = None
+                            ):
+        sqlQuery = "INSERT INTO ngas_subscr_queue " +\
+                    "(subscr_id, file_id, file_version, disk_id, file_name, ingestion_date, " +\
+                    "format, status, status_date, comment) " +\
+                    "VALUES " +\
+                    "('%s', '%s', %d, '%s', '%s', '%s', '%s', %d, '%s', '%s')" % (subscrId,fileId,fileVersion,diskId,fileName,ingestionDate,format,status,status_date,comment)
+        self.query(sqlQuery)
 
     def addSubscrBackLogEntry(self,
                               hostId,
@@ -512,7 +558,99 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                 newItem = [fi[0]] + [fi[1]] + [fi[2]]
                 procList.append(newItem)
             return procList
+    
+    def getSubscrBackLogCount(self, hostId, portNo):
+        """
+        Read the number of entries in the Subscriber Back-Log Table 'belonging'
+        to a specific Data Provider/Mover
+
+        hostId:      Host ID of Data Provider (string).
         
+        portNo:      Port number used by Data Provider (integer).
+        
+        Returns:     The number of records (integer)
+        """
+        sqlQuery = "SELECT COUNT(*) FROM ngas_subscr_back_log WHERE host_id = '%s' AND srv_port = %d" % (hostId, portNo)
+        res = self.query(sqlQuery, ignoreEmptyRes=0) #impossible to return an empty record unless other exceptions
+        if (res == [[]]):
+            return 0
+        else:
+            #info(3, '\n\n ****** Backlog count returned %s with a type %s \n\n' % (res[0][0][0], str(type(res[0][0][0]))))
+            return int(res[0][0][0])
+
+    def getSubscrQueueStatus(self, subscrId, fileId, fileVersion, diskId):
+        sqlQuery = "SELECT status, comment FROM ngas_subscr_queue " +\
+                    "WHERE subscr_id = '%s' AND file_id = '%s' AND file_version = %d AND disk_id = '%s'" % (subscrId, fileId, fileVersion, diskId)
+        
+        res = self.query(sqlQuery, ignoreEmptyRes=0)
+        if (res == [[]] or len(res[0]) == 0):
+            return None
+        else:
+            return res[0][0] #get the first row only
+        
+    def getSubscrQueueEntriesByFileInfo(self, subscrId, fileId, fileVersion = None, diskId = None, status = None):
+        """
+        Get the full queue records by the file info
+        """
+        sqlQuery = "SELECT * FROM ngas_subscr_queue WHERE subscrId = '%s' AND file_id = '%s' " % (subscrId, fileId)
+        if (fileVersion):
+            sqlQuery += "AND file_version = %d " % fileVersion
+        if (diskId):
+            sqlQuery += "AND disk_id = '%s' " % diskId
+        if (status):
+            if (type(status) is list):
+                sqlQuery += "AND ("
+                cc = 0
+                for ho in status:
+                    if (cc > 0):
+                        sqlQuery += " OR "
+                    sqlQuery += "status = %d " % ho
+                    cc += 1
+                sqlQuery += ") "
+            else:
+                sqlQuery += "AND status = %d " % status 
+        
+        res = self.query(sqlQuery, ignoreEmptyRes=0)
+        if (res == [[]]):
+            return []
+        else:
+            return res[0]
+    
+    def getSubscrQueue(self, subscrId, status = None):
+        """
+        Read all entries in the ngas_subscr_queue table 'belonging' to a 
+        specific subscriber, and where the status meets the "status" condition 
+        
+        subscrId:    subscriber Id (string)
+        status:      the status of current file delivery (int or None)
+        """
+        #sqlQuery = "SELECT a.file_id, b.mount_point || '/' || a.file_name, a.file_version, a.ingestion_date, a.format, a.disk_id " +\
+                #           "FROM ngas_subscr_queue a, ngas_disks b WHERE a.subscr_id = '%s' " % subscrId
+
+        sqlQuery = "SELECT a.file_id, a.file_name, a.file_version, a.ingestion_date, a.format, a.disk_id " +\
+                    "FROM ngas_subscr_queue a WHERE a.subscr_id = '%s' " % subscrId
+        
+        if (status):
+            if (type(status) is list):
+                sqlQuery += "AND ("
+                cc = 0
+                for ho in status:
+                    if (cc > 0):
+                        sqlQuery += " OR "
+                    sqlQuery += "a.status = %d " % ho
+                    cc += 1
+                sqlQuery += ") "
+            else:
+                sqlQuery += "AND a.status = %d " % status
+        
+        #sqlQuery += "AND a.disk_id = b.disk_id"
+        
+        res = self.query(sqlQuery, ignoreEmptyRes=0)
+        if (res == [[]]):
+            return []
+        else:
+            return res[0]
+            
     def getSubscrBackLog(self,
                          hostId,
                          portNo,

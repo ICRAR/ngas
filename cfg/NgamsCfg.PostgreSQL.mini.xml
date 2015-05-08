@@ -29,6 +29,7 @@
           RootDirectory="/home/chen/proj/mwa/testNGAS/NGAS" 
           PortNo="7777" 
           ProxyMode="1"
+          ProxyCRC="0"
           Simulation="0"
           SwVersion=""/>
 
@@ -74,6 +75,7 @@
     <MimeTypeMap Extension="fits" MimeType="image/x-fits"/>
     <MimeTypeMap Extension="nglog" MimeType="ngas/nglog"/>
     <MimeTypeMap Extension="nglog.Z" MimeType="application/x-nglog"/>
+    <MimeTypeMap Extension="nglog.gz" MimeType="application/x-nglog"/>
     <MimeTypeMap Extension="log" MimeType="text/log-file"/>
     <MimeTypeMap Extension="log.Z" MimeType="application/x-clog"/>
     <MimeTypeMap Extension="paf" MimeType="ngas/paf"/>
@@ -242,8 +244,8 @@
                 Active="1" 
                 MaxRetentionSize="1" 
                 MaxRetentionTime="00T00:30:00" 
-                Sender="ngast@hq.eso.org" 
-                SmtpHost="smtphost.hq.eso.org">
+                Sender="ngas@ngas.ddns.net" 
+                SmtpHost="localhost">
     <AlertNotification>
       <EmailRecipient Address="DEFINE@eso.org"/>
     </AlertNotification>
@@ -292,16 +294,21 @@
                    FilterPlugIn="FilterPlugIn2"
                    FilterPlugInPars="5,6,7,8"/>
   </SubscriptionDef>
-
-
+  
+  <FileStagingDef Enable="0"
+  				  PlugIn="ngamsMWAPawseyTapeApi"/>
+  
   <Authorization Id="Authorization"
                  Enable="0">
     <User Name="ngas" 
-          Password="bmdhcw=="/>
+          Password="bmdhcw=="
+          Commands="STATUS,RETRIEVE"/>
     <User Name="ngasmgr" 
-          Password="bmdhc21ncg=="/>
+          Password="bmdhc21ncg=="
+          Commands="*"/>
     <User Name="ngas-int"
-          Password="bmdhcy1pbnQ="/>
+          Password="bmdhcy1pbnQ="
+          Commands="STATUS,QARCHIVE,ARCHIVE,RETRIEVE"/>
   </Authorization>
   
   <DataMoverOnly FromHostIds="127.0.0.1:7778" 

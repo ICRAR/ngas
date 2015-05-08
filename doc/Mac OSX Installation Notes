@@ -1,36 +1,11 @@
 MAC OSX Installation notes:
+===========================
 
-These notes reflect the installation I've performed on my Mac Book Pro Mid 2010 with Mountain Lion 10.8.2 installed.
+Mac OSX installation has been completely overhauled. Now a local user installation can be performed with the command:
 
-The installation was performed on 2013-01-06.
+$ fab -u `whoami` -H localhost -f machine_setup/deploy.py user_deploy
 
-
-1) NOTE: Run the fix below directly from the already installed ngas_rt directory rather than through
-the fabric. This requires that the ngas_rt virtualenv is enabled by running:
-
-source ~/ngas_rt/bin/activate
-
-The buildout fails, because it can't find the BSD database include files and library. I've downloaded the DB (5.3.21)
-and configured the installation to point to the ngas_rt root directory (--prefix=~/ngas_rt). The compilation goes through without
-problems. However the buildout still reports:
-====
-Can't find a local Berkeley DB installation.
-(suggestion: try the --berkeley-db=/path/to/bsddb option)
-====
-
-This is due to the non-standard installation location of BSD DB. Thus run
-
-$ pip install bsddb3
-
-in order to get a build directory of the module and then ran
-
-$ python2.7 setup.py --berkeley-db=~/ngas_rt build
-
-and
-
-$ python2.7 setup.py --berkeley-db=~/ngas_rt install
-
-and then run buildout again.
-
-
-
+This will perform the full installation under ~/ngas_rt with data files under ~/NGAS. It will use homebrew to install 
+missing dependencies. If homebrew is not available it will be installed as well, but only if MacPorts is not installed,
+in order to prevent nasty side-effects. At the end of the installation the .bash_profile file will be modified (a backup
+of the original one is kept under ~/.bash_profile_orig).

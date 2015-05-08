@@ -1,9 +1,9 @@
 AUTOMAKE_OPTIONS = 1.8 foreign
 DISTCLEANFILES = *~
 
-INCLUDES = -I$(top_srcdir)/incl $(INTROOT_INCLUDES) $(CFITSIO_INCLUDES) $(SYBASE_INCLUDES)
+INCLUDES = -I$(top_srcdir)/incl $(INTROOT_INCLUDES) $(CFITSIO_INCLUDES) $(SYBASE_INCLUDES) -I/usr/local/include
 
-LDADD = libngams.la -lz -lpthread -ldb $(SYSTEM_LIBS)
+LDADD = libngams.la -lz -lpthread -ldb $(SYSTEM_LIBS) -L/usr/local/lib
 
 bin_PROGRAMS =  ngamsCClient ngamsCClientX ngamsArchiveClient ngamsCrc32
 
@@ -64,7 +64,7 @@ ngamsMAN_PAGE.c:
 	@-(echo  "static char buf[32768];" >> ngamsMAN_PAGE.c)
 	@-(echo  "char *txt[] = {" >> ngamsMAN_PAGE.c)
 	@-(awk -f ngamsFormatHdrFile.awk \
-		../ngamsPClient/ngamsPClient.doc >> ngamsMAN_PAGE.c)
+		../doc/ngamsPClient/ngamsPClient.doc >> ngamsMAN_PAGE.c)
 	@-(echo  "\"*\"};" >> ngamsMAN_PAGE.c)
 	@-(echo  "int n;" >> ngamsMAN_PAGE.c)
 	@-(echo  "for (n = 0; *txt[n] != '*'; n++) {strcat(buf, txt[n]); strcat(buf, ngamsNEWLINE);}" >> ngamsMAN_PAGE.c)

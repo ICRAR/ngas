@@ -45,10 +45,10 @@ def getInt(property,
     """
     Get an integer value from what is extracted from the XML document
     and make an overall validity check of the value.
-    
+
     property:         Property being checked, e.g. <element>.<attrbute>
                       (string).
-    
+
     val:              Value as extracted from the XML document (string|?).
 
     retValOnFailure:  Value to return in case the integer value could not
@@ -70,16 +70,16 @@ def checkIfSetStr(property,
     Check if the value given is of type string, and is different from "".
 
     property:  Name of property being tested (string).
-    
+
     value:     Value of property (string).
 
     checkRep:  List, which will contain the errors encountered (list).
- 
+
     Returns:   1 is returned if string checked is OK. 0 is returned
                if the string was not properly formatted (integer/0|1).
     """
     info(4, "Checking if property: " + property + " is properly set ...")
-    if ((not isinstance(value, types.StringType)) or (value == "")):
+    if ((not isinstance(value, types.StringType))):
         errMsg = "Must define a proper string value for property: " + property
         errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
         error(errMsg)
@@ -88,6 +88,9 @@ def checkIfSetStr(property,
             return 0
         else:
             raise Exception, errMsg
+    elif value == "":
+        msg = "Value of property %s is an empty string" % property
+        warning(msg)
     else:
         return 1
 
@@ -97,13 +100,13 @@ def checkIfSetInt(property,
                   checkRep = None):
     """
     Check if the value given is of type integer, and is different from -1.
-    
+
     property:  Name of property being tested (string).
-    
+
     value:     Value of property (integer).
 
     checkRep:  List, which will contain the errors encountered (list).
- 
+
     Returns:   1 is returned if value checked is OK. 0 is returned
                if the value was not properly formatted (integer/0|1).
     """
@@ -129,11 +132,11 @@ def checkIfZeroOrOne(property,
     Check if value for a property is 0 or 1. If not throw exception.
 
     property:   Name of property being tested (string).
-    
-    value:      Value of property (integer). 
+
+    value:      Value of property (integer).
 
     checkRep:   List, which will contain the errors encountered (list).
- 
+
     Returns:    1 is returned if value checked is OK. 0 is returned
                 if the value was not properly formatted (integer/0|1).
     """
@@ -159,15 +162,15 @@ def checkDuplicateValue(checkDic,
     """
     Check if the given propery was already registered as key in the
     dictionary referenced.
-    
+
     checkDic:    Dictionary containing the property names as keys (dictionary).
-    
+
     property:    Name of property being tested (string).
-    
+
     value:       Value of property (*).
 
     checkRep:    List, which will contain the errors encountered (list).
-    
+
     Returns:     Void.
     """
     if (checkDic.has_key(value)):
@@ -183,12 +186,12 @@ def checkDuplicateValue(checkDic,
         checkDic[value] = 1
 
 
- 
+
 class ngamsConfig:
     """
     Class to handle the information in the NG/AMS Configuration.
     """
-                      
+
     def __init__(self,
                  filename = "",
                  dbObj = None):
@@ -235,13 +238,16 @@ class ngamsConfig:
         self.__noDiskSpaceNotif        = []
         self.__dataCheckNotif          = []
 
-        self.__checkRep                = []   
+        self.__checkRep                = []
 
         # Dictionary with Subscribers.
         self.__subscriptionsDic        = {}
 
         # User IDs for HTTP authentication.
         self.__authUserDic             = {}
+
+        # key user name, value: allowed user commands separated by comma
+        self.__authUserCommandsDic     = {}
 
         # Mirroring sources.
         self.__mirSrcObjList           = []
@@ -291,11 +297,11 @@ class ngamsConfig:
                    dbObj = None):
         """
         Load a configuration from the DB via the given ID.
-        
+
         name:       Name of the configuration in the DB (string).
 
         dbObj:      DB connection object (ngamsDb).
-        
+
         Returns:    Reference to object itself.
         """
         if (dbObj): self.setDbObj(dbObj)
@@ -347,7 +353,7 @@ class ngamsConfig:
             self.__cfgMgr.load(filename)
         except Exception, e:
             errMsg = genLog("NGAMS_ER_LOAD_CFG", [filename, str(e)])
-            raise Exception, errMsg 
+            raise Exception, errMsg
         self._unpackCfg()
         if (check): self._check()
 
@@ -417,14 +423,14 @@ class ngamsConfig:
                         if (attrEl.getName() == "StorageSetId"):
                             val = self.getVal(attrFormat2 % (idx1, stoSetIdx))
                             tmpStrObj.addStorageSetId(val)
-                            stoSetIdx += 1 
+                            stoSetIdx += 1
                         else:
                             val = self.getVal(attrFormat3 % (idx1,archUnitIdx))
                             tmpStrObj.addHostId(val)
                             archUnitIdx += 1
 
                 self.addStreamObj(tmpStrObj)
-                
+
         # Get information about DPPIs.
         procObj = self.__cfgMgr.getXmlObj("Processing[1]")
         if (procObj):
@@ -457,7 +463,7 @@ class ngamsConfig:
                     mimeType = self.getVal(attrFormat2 % (idx1, idx2))
                     tmpPlugInObj.addMimeType(mimeType)
                 self.addRegPiDef(tmpPlugInObj)
-        
+
         # Process the information about subscribers to Notification Emails.
         attrList = [["AlertNotification",       self.__alertNotif],
                     ["ErrorNotification",       self.__errorNotif],
@@ -503,8 +509,11 @@ class ngamsConfig:
             info(3, "Unpacking Authorization Element ...")
             fm = "Authorization[1].User[%d].%s"
             for idx in range(1, (len(authObj.getSubElList()) + 1)):
-                self.addAuthUser(self.getVal(fm % (idx, "Name")),
+                userName = self.getVal(fm % (idx, "Name"))
+                self.addAuthUser(userName,
                                  self.getVal(fm % (idx, "Password")))
+                self.addAuthUserCommands(userName,
+                                 self.getVal(fm % (idx, "Commands")))
 
         # Unpack information in Mirroring Element.
         srcArchIdDic = {}
@@ -534,7 +543,7 @@ class ngamsConfig:
 
         return self
 
-    
+
     def getVal(self,
                parName):
         """
@@ -542,7 +551,7 @@ class ngamsConfig:
 
         parName:   Name of the parameter in the 'Simplified XPath Syntax',
                    e.g.:
-                   
+
                      NgamsCfg.Server[1].ArchiveName              (string).
 
         Returns:   Value of parameter or None (<Value>|None).
@@ -564,7 +573,7 @@ class ngamsConfig:
         value:        Value of the parameter (string).
 
         dbCfgGroupId: DB configuration group ID (string|None).
-  
+
         Returns:      Reference to object itself.
         """
         self.__cfgMgr.storeVal(parName, value, dbCfgGroupId)
@@ -578,7 +587,7 @@ class ngamsConfig:
         Returns:    Name of archive (string).
         """
         return self.getVal("Server[1].ArchiveName")
-        
+
 
     def getSimulation(self):
         """
@@ -588,19 +597,30 @@ class ngamsConfig:
         """
         par = "Server[1].Simulation"
         return getInt(par, self.getVal(par))
-        
+
 
     def getRootDirectory(self):
         """
         Get NGAS Root Directory.
 
+        NOTE: THE NGAMS_PREFIX environment variable overrides the one in the
+        Config-file.
+
         Returns:  NGAS Root Directory (string).
         """
-        rootDir = self.getVal("Server[1].RootDirectory")
+        rootDir = self.getVal("NgamsCfg.Server[1].RootDirectory")
+        if os.environ.has_key('NGAMS_PREFIX'):
+            rootDir = os.environ['NGAMS_PREFIX']
         if (not rootDir):
             raise Exception, "Server[1].RootDirectory not properly defined"
-        elif rootDir[0] != '/':
+        if rootDir[0] != '/':
             rootDir = os.environ['HOME'] + '/' + rootDir
+        if rootDir[-1] == '/':
+            rootDir = rootDir[:-1]
+        if rootDir.split('/')[-1] != 'NGAS':
+            rootDir += '/NGAS'
+        os.environ['NGAMS_ROOT'] = rootDir
+        self.storeVal('NgamsCfg.Server[1].RootDirectory', rootDir, None)
         return rootDir
 
 
@@ -615,8 +635,10 @@ class ngamsConfig:
         except:
             return ""
         if (not volDir): volDir = ""
+        if volDir != "" and volDir[0] != '/':
+            volDir = self.getRootDirectory() + '/' + volDir
         return volDir
-            
+
 
     def getProcessingDirectory(self):
         """
@@ -624,7 +646,11 @@ class ngamsConfig:
 
         Returns:   Processing directory (string).
         """
-        return self.getVal("Processing[1].ProcessingDirectory")
+        procDir = self.getVal("Processing[1].ProcessingDirectory")
+        if procDir == "." or procDir[0] != '/':
+            if procDir == ".": procDir = ""
+            procDir = self.getRootDirectory() + '/' + procDir
+        return procDir
 
 
     def getPortNo(self):
@@ -667,7 +693,7 @@ class ngamsConfig:
         Returns:  Name of Online Plug-In (string).
         """
         return self.getVal("SystemPlugIns[1].OnlinePlugIn")
-    
+
 
     def getOnlinePlugInPars(self):
         """
@@ -703,7 +729,7 @@ class ngamsConfig:
         Returns:  Name of Printer Plug-In (string).
         """
         return self.getVal("SystemPlugIns[1].LabelPrinterPlugIn")
-    
+
 
     def getLabelPrinterPlugInPars(self):
         """
@@ -712,7 +738,7 @@ class ngamsConfig:
         Returns:  Input parameters for Label Printer Plug-In (string).
         """
         return self.getVal("SystemPlugIns[1].LabelPrinterPlugInPars")
-    
+
 
     def getDiskSyncPlugIn(self):
         """
@@ -721,7 +747,7 @@ class ngamsConfig:
         Returns:  Name of Disk Sync Plug-In (string).
         """
         return self.getVal("SystemPlugIns[1].DiskSyncPlugIn")
-    
+
 
     def getDiskSyncPlugInPars(self):
         """
@@ -730,17 +756,17 @@ class ngamsConfig:
         Returns:  Input parameters for Disk Sync Plug-In (string).
         """
         return self.getVal("SystemPlugIns[1].DiskSyncPlugInPars")
-    
+
 
     def getReplication(self):
         """
         Return File Replication on/off flag.
 
-        Returns:    File Replication on/off flag (integer). 
+        Returns:    File Replication on/off flag (integer).
         """
         par = "ArchiveHandling[1].Replication"
         return getInt(par, self.getVal(par))
-    
+
 
     def getBlockSize(self):
         """
@@ -750,7 +776,22 @@ class ngamsConfig:
         """
         par = "Server[1].BlockSize"
         return getInt(par, self.getVal(par))
-
+    
+    def getArchiveRcvBufSize(self):
+        """
+        Get TCP receive buffer size, which
+        sets the upper limit of the TCP window size
+        """
+        par = "Server[1].ArchiveRcvBufSize"
+        return getInt(par, self.getVal(par), retValOnFailure = None)
+    
+    def getArchiveSndBufSize(self):
+        """
+        Get TCP send buffer size, which
+        sets the upper limit of the TCP window size
+        """
+        par = "Server[1].ArchiveSndBufSize"
+        return getInt(par, self.getVal(par), retValOnFailure = None)
 
     def getMaxSimReqs(self):
         """
@@ -821,6 +862,16 @@ class ngamsConfig:
         """
         par = "Server[1].ProxyMode"
         return getInt(par, self.getVal(par))
+    
+    def getProxyCRC(self):
+        """
+        If the proxy archive server 
+        check CRC as well
+        
+        By default, 0 (do not check CRC)
+        """
+        par = "Server[1].ProxyCRC"
+        return getInt(par, self.getVal(par), retValOnFailure = 0)
 
 
     def getArchiveUnits(self):
@@ -836,7 +887,7 @@ class ngamsConfig:
         """
         Get Janitor Service Suspension Time.
 
-        Returns:   Janitor Service Suspension Time (string). 
+        Returns:   Janitor Service Suspension Time (string).
         """
         return self.getVal("JanitorThread[1].SuspensionTime")
 
@@ -857,7 +908,11 @@ class ngamsConfig:
 
         Returns:   Back Log Buffer Directory (string).
         """
-        return self.getVal("ArchiveHandling[1].BackLogBufferDirectory")
+        bbufDir = self.getVal("ArchiveHandling[1].BackLogBufferDirectory")
+        if bbufDir == "." or bbufDir[0] != '/':
+            if bbufDir == ".": bbufDir = ""
+            bbufDir = self.getRootDirectory() + '/' + bbufDir
+        return bbufDir
 
 
     def getDbServer(self):
@@ -867,7 +922,7 @@ class ngamsConfig:
         Returns:  DB server name (string).
         """
         return self.getVal("Db[1].Server")
-        
+
 
     def getDbName(self):
         """
@@ -875,7 +930,12 @@ class ngamsConfig:
 
         Returns:  DB name (string).
         """
-        return self.getVal("Db[1].Name")
+        dbName = self.getVal("Db[1].Name")
+        if self.getDbInterface() == "ngamsSqlite":
+            if dbName[0] != '/':
+                dbName = self.getRootDirectory() + '/' + dbName
+
+        return dbName
 
 
     def getDbUser(self):
@@ -894,13 +954,13 @@ class ngamsConfig:
         Returns:    DB password (string).
         """
         return self.getVal("Db[1].Password")
-        
+
 
     def getDbSnapshot(self):
         """
         Return the DB Snapshot Feature on/off.
 
-        Returns:   DB Snapshot Feature state (integer/0|1). 
+        Returns:   DB Snapshot Feature state (integer/0|1).
         """
         par = "Db[1].Snapshot"
         return getInt(par, self.getVal(par))
@@ -924,7 +984,7 @@ class ngamsConfig:
         if the expected number of rows have been retrieved. If this is not
         the case, a warning message will be logged.
 
-        Returns:   DB Verification Flag (integer/0|1). 
+        Returns:   DB Verification Flag (integer/0|1).
         """
         par = "Db[1].Verify"
         try:
@@ -965,7 +1025,7 @@ class ngamsConfig:
         checked if the expected number of rows have been retrieved. If this
         is not the case, it will be retried to execute the query.
 
-        Returns:   DB Auto Recover Flag (integer/0|1). 
+        Returns:   DB Auto Recover Flag (integer/0|1).
         """
         par = "Db[1].AutoRecover"
         try:
@@ -981,7 +1041,7 @@ class ngamsConfig:
         Add a mime-type map to the object.
 
         mimeType:     Mime-type (string).
-        
+
         extension:    Extension corresponding to mime-type (string).
 
         Returns:      Reference to object itself.
@@ -1033,7 +1093,7 @@ class ngamsConfig:
             ext = self.__mimeType2ExtDic[mt]
             mappingsList.append([mt, ext])
         return mappingsList
-    
+
 
     def getStorageSetList(self):
         """
@@ -1043,7 +1103,7 @@ class ngamsConfig:
         """
         return self.__storageSetList
 
-             
+
     def addStorageSetObj(self,
                          storageSetObj):
         """
@@ -1151,11 +1211,11 @@ class ngamsConfig:
     def getPathPrefix(self):
         """
         Return Path Prefix.
- 
+
         Returns:     Path Prefix (string).
         """
         return self.getVal("ArchiveHandling[1].PathPrefix")
-    
+
     def getDataMoverSuspenstionTime(self):
         """
         Return the Data Mover (Subscription) Thread Suspension Time.
@@ -1169,19 +1229,24 @@ class ngamsConfig:
         """
         return self.getVal("DataMoverOnly[1].FromHostIds")
 
+    def getNGASJobMANHost(self):
+        """
+        """
+        return self.getVal("NGASJobMAN[1].host")
+
     def getChecksumPlugIn(self):
         """
         Return Checksum Plug-In.
- 
+
         Returns:     Checksum Plug-In (string).
         """
         return self.getVal("DataCheckThread[1].ChecksumPlugIn")
-        
+
 
     def getChecksumPlugInPars(self):
         """
         Return the Checksum Plug-In input parameters.
- 
+
         Returns:     Checksum Plug-In parameters(string).
         """
         return self.getVal("DataCheckThread[1].ChecksumPlugInPars")
@@ -1190,7 +1255,7 @@ class ngamsConfig:
     def getDataCheckActive(self):
         """
         Return the Data Check Service enable/disable flag.
- 
+
         Returns:     Data Check Service enabled/disabled (integer).
         """
         par = "DataCheckThread[1].Active"
@@ -1200,7 +1265,7 @@ class ngamsConfig:
     def getDataCheckForceNotif(self):
         """
         Return the Force Data Check Notification Flag.
- 
+
         Returns:       Force notification = 1 (integer/0|1).
         """
         par = "DataCheckThread[1].ForceNotif"
@@ -1210,7 +1275,7 @@ class ngamsConfig:
     def getDataCheckMaxProcs(self):
         """
         Return the maximum number of parallel Data Check sub-processes.
- 
+
         Returns:     Maximum number of sub-processes (integer).
         """
         par = "DataCheckThread[1].MaxProcs"
@@ -1220,7 +1285,7 @@ class ngamsConfig:
     def getDataCheckScan(self):
         """
         Return the Data Check Scan Flag.
- 
+
         Returns:     Data Check Scan Flag (integer/0|1).
         """
         par = "DataCheckThread[1].Scan"
@@ -1230,7 +1295,7 @@ class ngamsConfig:
     def getDataCheckPrio(self):
         """
         Return the Data Check Service priority.
- 
+
         Returns:     Data Check priority (integer).
         """
         par = "DataCheckThread[1].Prio"
@@ -1240,7 +1305,7 @@ class ngamsConfig:
     def getDataCheckMinCycle(self):
         """
         Return the Data Check Service Minimum Cycle Time.
- 
+
         Returns:     Data Check  Minimum Cycle Time (string).
         """
         return self.getVal("DataCheckThread[1].MinCycle")
@@ -1249,7 +1314,7 @@ class ngamsConfig:
     def getDataCheckDiskSeq(self):
         """
         Return the Data Check Service Disk Check Sequence.
- 
+
         Returns:     Data Check Disk Sequence (string).
         """
         return self.getVal("DataCheckThread[1].DiskSeq")
@@ -1258,7 +1323,7 @@ class ngamsConfig:
     def getDataCheckFileSeq(self):
         """
         Return the Data Check Service File Check Sequence.
- 
+
         Returns:     Data Check File Sequence (string).
         """
         return self.getVal("DataCheckThread[1].FileSeq")
@@ -1267,7 +1332,7 @@ class ngamsConfig:
     def getDataCheckLogSummary(self):
         """
         Return the Data Check Service log summary flag.
- 
+
         Returns:     Data Check log summarry (integer).
         """
         par = "DataCheckThread[1].LogSummary"
@@ -1320,7 +1385,7 @@ class ngamsConfig:
             if (dppiEl.getPlugInName() == dppiName):
                 return dppiEl
         return None
-        
+
 
     def hasDppiDef(self,
                    dppiName):
@@ -1436,7 +1501,7 @@ class ngamsConfig:
         Get an ngamsStream object from its mime-type.
 
         mimeType:   Mime-type for Stream (string).
-        
+
         Returns:    Stream object or None (ngamsStream|None).
         """
         T = TRACE()
@@ -1446,8 +1511,8 @@ class ngamsConfig:
             if (stream.getMimeType() == mimeType):
                 return stream
         return None
-    
-             
+
+
     def addStreamObj(self,
                      streamObj):
         """
@@ -1465,7 +1530,7 @@ class ngamsConfig:
         """
         Get the limit for the minimum free space available, before
         a warning is issued to change the disk.
- 
+
         Returns:   Minimum free space before issuing warning (integer).
         """
         par = "ArchiveHandling[1].MinFreeSpaceWarningMb"
@@ -1481,7 +1546,7 @@ class ngamsConfig:
         """
         par = "ArchiveHandling[1].FreeSpaceDiskChangeMb"
         return getInt(par, self.getVal(par))
-               
+
 
     def getSysLog(self):
         """
@@ -1508,7 +1573,10 @@ class ngamsConfig:
 
         Returns:  Name of Local Log File (string).
         """
-        return self.getVal("Log[1].LocalLogFile")
+        logFile = self.getVal("Log[1].LocalLogFile")
+        if logFile[0] != '/':
+            logFile = self.getRootDirectory() + '/' + logFile
+        return logFile
 
 
     def getLocalLogLevel(self):
@@ -1530,7 +1598,7 @@ class ngamsConfig:
         par = "Log[1].LogBufferSize"
         return getInt(par, self.getVal(par))
 
-    
+
     def getLogRotateInt(self):
         """
         Return the Log Rotation Interval given as an ISO 8601 timestamp.
@@ -1542,7 +1610,7 @@ class ngamsConfig:
 
     def getLogRotateCache(self):
         """
-        Return the size of the internal log rotation cache. 
+        Return the size of the internal log rotation cache.
 
         Returns:  Size of internal log buffer (integer).
         """
@@ -1558,7 +1626,7 @@ class ngamsConfig:
         """
         return self.getVal("Notification[1].SmtpHost")
 
-    
+
     def getNotifActive(self):
         """
         Return the Email Notification Active Flag.
@@ -1568,7 +1636,7 @@ class ngamsConfig:
         par = "Notification[1].Active"
         return getInt(par, self.getVal(par))
 
-    
+
     def getMaxRetentionTime(self):
         """
         Return the Maximum Retention Time, which is the maximum time an
@@ -1590,7 +1658,7 @@ class ngamsConfig:
         """
         return self.getVal("Notification[1].Sender")
 
-    
+
     def getMaxRetentionSize(self):
         """
         Get the Maximum Retention Size, which is the maximum number of
@@ -1642,7 +1710,7 @@ class ngamsConfig:
 
         Returns:          Reference to object itself.
         """
-        self.__diskSpaceNotif = subscriberList        
+        self.__diskSpaceNotif = subscriberList
         # Update also the XML Manager.
         xmlPath = "NgamsCfg.Notification[1].DiskSpaceNotification[1]." +\
                   "EmailRecipient[%d].Address"
@@ -1668,7 +1736,7 @@ class ngamsConfig:
         for idx in range(len(subscriberList)):
             self.__cfgMgr.storeVal(xmlPath % (idx + 1), subscriberList[idx])
         return self
-        
+
 
     def getDiskChangeNotifList(self):
         """
@@ -1708,7 +1776,7 @@ class ngamsConfig:
         """
         par = "HostSuspension[1].IdleSuspension"
         return getInt(par, self.getVal(par))
-    
+
 
     def getIdleSuspensionTime(self):
         """
@@ -1758,7 +1826,7 @@ class ngamsConfig:
 
     def getWakeUpPlugIn(self):
         """
-        Return the name of the Wake-Up Plug-In. 
+        Return the name of the Wake-Up Plug-In.
 
         Returns:   Name of plug-in (string).
         """
@@ -1832,6 +1900,36 @@ class ngamsConfig:
         Returns:    Subscriber List (list/ngamsSubscriber).
         """
         return self.__subscriptionsDic
+    
+    def getFileStagingEnable(self):
+        """
+        Return if the file staging flag is set to Enabled / Disable
+        
+        Returns:    1 = enabled, 0 = disabled (integer/0|1)
+        """
+        par = "FileStagingDef[1].Enable"
+        strVal = self.getVal(par)
+        if (not strVal):
+            return 0
+        return getInt(par, strVal)
+    
+    def getFileStagingPlugIn(self):
+        """
+        Return the name of the FileStagingPlugIn,
+        which takes file online if it is offline.
+        
+        The plugin must contain these two functions:
+        
+        def isFileOffline(filename)
+            PAR: filename: string
+            RETURN: 1 - yes, 0 - no, -1 - error
+            
+        def stageFiles(filenameList)
+            PAR: filenameList: List of file names (string)
+            RETURN:   the number of files staged. -1, if any errors
+        """
+        par = "FileStagingDef[1].PlugIn"
+        return self.getVal(par)
 
 
     def getAuthorize(self):
@@ -1851,7 +1949,7 @@ class ngamsConfig:
         Returns:   List with user names (list).
         """
         return self.__authUserDic.keys()
-    
+
 
     def addAuthUser(self,
                     user,
@@ -1866,6 +1964,21 @@ class ngamsConfig:
         Returns:      Reference to object itself.
         """
         self.__authUserDic[user] = password
+        return self
+
+    def addAuthUserCommands(self, user, commands):
+        """
+        Add a user in the object.
+
+        user:         User name (string).
+
+        commands:     comma separated commands (string). e.g. RETRIEVE,STATUS,QARCHIVE
+                      a "*" means all commands
+
+        Returns:      Reference to object itself.
+        """
+        if (commands):
+            self.__authUserCommandsDic[user] = commands.upper()
         return self
 
 
@@ -1897,6 +2010,19 @@ class ngamsConfig:
             return None
         else:
             return self.__authUserDic[user]
+
+    def getAuthUserCommands(self, user):
+        """
+        Returns the info (password) for a user.
+
+        user:      User name (string).
+
+        Returns:   Password or None (string).
+        """
+        if (not self.__authUserCommandsDic.has_key(user)):
+            return None
+        else:
+            return self.__authUserCommandsDic[user]
 
 
     def getAuthHttpHdrVal(self,
@@ -1992,13 +2118,13 @@ class ngamsConfig:
         """
         T = TRACE()
 
-        if (not self.__mirSrcObjDic.has_key(id)): 
+        if (not self.__mirSrcObjDic.has_key(id)):
             msg = "No Mirroring Source found in configuration with ID: %s"
             raise Exception, msg % id
         else:
             return self.__mirSrcObjDic[id]
 
-        
+
     def getMirroringSrcObjFromSrvList(self,
                                       srvList,
                                       cleanList = False):
@@ -2018,12 +2144,12 @@ class ngamsConfig:
         T = TRACE()
 
         if (cleanList): srvList = ngamsDbCore.cleanSrvList(srvList)
-        if (not self.__mirSrcObjDic.has_key(srvList)): 
+        if (not self.__mirSrcObjDic.has_key(srvList)):
             msg = "No Mirroring Source Object found for Server List: %s"
             raise Exception, msg % srvList
         else:
             return self.__mirSrcObjDic[srvList]
-    
+
 
     def getMirroringSrcList(self):
         """
@@ -2070,7 +2196,7 @@ class ngamsConfig:
         checkIfSetInt("Server.BlockSize", self.getBlockSize(),
                       self.getCheckRep())
         if (self.getSwVersion()):
-            if ((self.getSwVersion().strip() != "") and 
+            if ((self.getSwVersion().strip() != "") and
                 (self.getSwVersion().strip() != getNgamsVersionRaw().strip())):
                 errMsg = "The SW Version defined in the NG/AMS " +\
                          "Configuration: " + self.getSwVersion() + " " +\
@@ -2095,7 +2221,7 @@ class ngamsConfig:
         checkIfZeroOrOne("Server.ProxyMode", self.getProxyMode(),
                          self.getCheckRep())
         info(4, "Checked Server Element")
-       
+
         info(4, "Check SystemPlugIns Element ...")
         checkIfSetStr("SystemPlugIns.OnlinePlugIn",
                       self.getOnlinePlugIn(), self.getCheckRep())
@@ -2149,7 +2275,7 @@ class ngamsConfig:
             for map in self.getMimeTypeMappings():
                 checkIfSetStr("MimeTypeMap.MimeType",map[0],self.getCheckRep())
                 checkIfSetStr("MimeTypeMap.Extension", map[1],
-                              self.getCheckRep()) 
+                              self.getCheckRep())
         info(4, "Checked MimeTypes Element")
 
         info(4, "Check Storage Sets ...")
@@ -2297,7 +2423,7 @@ class ngamsConfig:
                           self.getWakeUpServerHost(), self.getCheckRep())
         info(4, "Checked HostSuspension Element")
 
-        info(4, "Check SubscriptionDef Element ...")        
+        info(4, "Check SubscriptionDef Element ...")
         checkIfZeroOrOne("SubscriptionDef.AutoUnsubscribe",
                          self.getAutoUnsubscribe(), self.getCheckRep())
         checkIfSetStr("SubscriptionDef.SuspensionTime",
@@ -2341,11 +2467,11 @@ class ngamsConfig:
         hideCritInfo:      If set to 1 passwords and other 'confidential'
                            information appearing in the log file, will
                            be hidden (integer/0|1).
-                           
+
         Returns:           Reference to object itself.
         """
         T = TRACE()
-        
+
         self.__cfgMgr.save(targetFilename, hideCritInfo)
         return self
 
@@ -2359,7 +2485,7 @@ class ngamsConfig:
         Returns:    XML DOM Node (Node).
         """
         T = TRACE()
-        
+
         xmlDomObj = self.__cfgMgr.genXml(hideCritInfo)
         return xmlDomObj
 
@@ -2375,7 +2501,7 @@ class ngamsConfig:
         Returns:    XML document (string).
         """
         return self.__cfgMgr.genXmlDoc(hideCritInfo)
-        
+
 
     def getCheckRep(self):
         """
@@ -2385,7 +2511,7 @@ class ngamsConfig:
         Returns:   Reference to Check Report (list).
         """
         return self.__checkRep
-    
+
 
     def genCheckRep(self,
                     sep = "; "):
@@ -2393,7 +2519,7 @@ class ngamsConfig:
         Generate a Check Report from the errors stored in the object.
 
         sep:       Sepator used to separate each item in the report (string).
-        
+
         Returns:   Check Report (string).
         """
         testRep = "CHECK REPORT FOR NG/AMS CONFIGURATION" + sep
@@ -2402,7 +2528,7 @@ class ngamsConfig:
             testRep += err + sep
         testRep = testRep[0:-2]
         return testRep
-        
+
 
     def getBackLogDir(self):
         """
@@ -2418,13 +2544,14 @@ def usage():
     """
     Return usage/man-page when executing the Python module as a stand-alone
     program.
-    
+
     Returns:    Buffer with usage (string).
     """
     buf = "Usage is:\n\n" +\
           "% python ngamsConfig.py -cfg <XML Cfg. Document> " +\
           "[-dumpXml] [-dumpXmlDic] [-save <Targ XML Doc>] [-storeDb] " +\
-          "[-dumpDb <DB ID>] [-dbCon <DB Server>/<DB Name>/<User>/<Pwd>]\n\n"
+          "[-dumpDb <DB ID>] [-dbCon <DB Server>/<DB Name>/<User>/<Pwd>] " +\
+          "[-method MethodToCall] [-listMethods]\n\n"
     return buf
 
 
@@ -2438,8 +2565,10 @@ if __name__ == '__main__':
     dumpXml = 0
     dumpXmlDic = 0
     storeDb = 0
+    silent = mlist = 0
     dbCon = ""
     dumpDb = ""
+    method = ""
     idx = 1
     while idx < len(sys.argv):
         par = sys.argv[idx].upper()
@@ -2461,6 +2590,15 @@ if __name__ == '__main__':
         elif (par == "-DUMPDB"):
             idx += 1
             dumpDb = sys.argv[idx].strip()
+        elif (par == "-METHOD"):
+            idx += 1
+            method = 'get' + sys.argv[idx].strip()
+        elif (par == "-SILENT"):
+            silent = 1
+            idx += 1
+        elif (par == "-LISTMETHODS"):
+            mlist = 1
+            idx += 1
         idx += 1
 
     if (((cfg == "") and (not dumpDb)) or
@@ -2471,9 +2609,9 @@ if __name__ == '__main__':
     # Load the configuration file + parse input parameters
     cfgObj = ngamsConfig()
     if (cfg):
-        print "Loading configuration: " + cfg
+        if not silent: print "Loading configuration: " + cfg
         cfgObj.load(cfg)
-        print "Configuration: " + cfg + " loaded!"
+        if not silent: print "Configuration: " + cfg + " loaded!"
     if (storeDb or dumpDb):
         try:
             dbSrv, db, user, pwd = dbCon.split("/")
@@ -2500,6 +2638,11 @@ if __name__ == '__main__':
         print cfgObj.dumpXmlDic()
     elif (save):
         cfgObj.save(save)
-
+    elif (method):
+        if hasattr(cfgObj, method):
+            print getattr(cfgObj, method)()
+    elif (mlist):
+        for i in dir(cfgObj):
+            if i[0:3] == 'get': print i[3:]
 
 # EOF

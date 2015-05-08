@@ -6,7 +6,7 @@ SET session AUTHORIZATION ngas;
 -- Define the tablespace to be used for object creation
 SET default_tablespace = ngas;
 
-\qecho drop table ngas_cfg 
+\qecho drop table ngas_cfg
 drop table if exists ngas_cfg cascade;
 \qecho drop table ngas_cfg_pars
 drop table if exists ngas_cfg_pars cascade;
@@ -39,7 +39,7 @@ create table ngas_cache
 	file_id			varchar(64)	not null,
 	file_version		int		not null,
 	cache_time		numeric(16, 6) 	not null,
-	cache_delete		smallint	not null,		
+	cache_delete		smallint	not null,
 	constraint ngas_cache_idx     primary key(disk_id, file_id, file_version)
 );
 
@@ -107,11 +107,12 @@ create table ngas_files
 	uncompressed_file_size	numeric(20, 0)	not null,
 	compression		varchar(32)	null,
 	ingestion_date		varchar(23)	not null,
-	file_ignore                  smallint        null,
+	file_ignore         smallint        null,
 	checksum	        varchar(64)	null,
 	checksum_plugin         varchar(64)	null,
 	file_status             char(8)         default '00000000',
-        creation_date           varchar(23)     null,
+    creation_date           varchar(23)     null,
+    io_time                numeric(20, 0) default -1,
 	constraint file_idx	primary key(file_id,file_version,disk_id)
 );
 
@@ -178,10 +179,31 @@ create table ngas_subscr_back_log
 	subscr_id			varchar(255)	not null,
 	subscr_url			varchar(255)	not null,
 	file_id				varchar(64)	not null,
-	file_name			varchar(255)	not null,	
+	file_name			varchar(255)	not null,
 	file_version        int             not null,
 	ingestion_date      varchar(23)        not null,
 	format              varchar(32)	not null
 );
+
+-- status -2 - scheduled, -1 - being delivered, 0 - delivered, 1 - failed, > 1 - # of errors
+\qecho create table ngas_subscr_queue
+create table ngas_subscr_queue
+(
+	subscr_id			varchar(255)	not null,
+	file_id				varchar(64)		not null,
+	file_version    	int             default 1,
+	disk_id				varchar(128)	not null,
+	file_name      		varchar(255)  	not null,
+	ingestion_date	    varchar(23)    	not null,
+	format              varchar(32)		not null,
+	status				int				default -2,
+	status_date      	varchar(23)    	not null,
+	comment             varchar(255)	null,
+	constraint subscr_queue_idx	primary key(subscr_id,file_id,file_version,disk_id)
+);
+
+\qecho create index subscr_queue_subscr_id_idx
+create index subscr_queue_subscr_id_idx on ngas_subscr_queue(subscr_id);
+
 
 \o

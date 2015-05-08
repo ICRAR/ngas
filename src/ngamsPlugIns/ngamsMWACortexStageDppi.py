@@ -42,7 +42,7 @@ def ngamsMWACortexStageDppi(srvObj,
         alert(errMsg)
         return statusObj #the sls -D command failed to execute, but retrieval might still go on, so just simply return empty result
     
-    offline = t[1].find('offline;  archdone;')
+    offline = t[1].find('offline;')
     
     if (offline != -1): # the file is offline, i.e. it is on tape
         info(3, "File " + filename + " is currently on tapes, staging it for retrieval...")

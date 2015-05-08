@@ -37,6 +37,8 @@ def changeNumThreads(srvObj, subscrId, oldNum, newNum):
     # key: threadName (unique), value - dummy 0
     deliveryThreadRefDic = srvObj._subscrDeliveryThreadDicRef
     # key: subscriberId, value - a List of deliveryThreads for that subscriber
+    if (not srvObj._subscrDeliveryThreadDic.has_key(subscrId)): # threads have not started yet
+        return
     deliveryThreadList = srvObj._subscrDeliveryThreadDic[subscrId]
     
     if (oldNum > newNum):
@@ -47,6 +49,8 @@ def changeNumThreads(srvObj, subscrId, oldNum, newNum):
                 del deliveryThreadList[tid]
     elif (oldNum < newNum):        
         num_threads = newNum - oldNum
+        if (not srvObj._subscrQueueDic.has_key(subscrId)):
+            raise Exception('Cannot find the file queue associated with subscriber %s' % subscrId)
         quChunks = srvObj._subscrQueueDic[subscrId]
         
         for tid in range(int(num_threads)):
@@ -125,11 +129,17 @@ def handleCmd(srvObj,
         if (startDate):
             subscriber.setStartDate(startDate)
             lastIngDate = subscriber.getLastFileIngDate()
-            if (startDate < lastIngDate and lastIngDate):
-                subscriber.setLastFileIngDate(None) # prepare for re-delivering files that have been previously delivered  
+            #if (startDate < lastIngDate and lastIngDate): # prepare for re-delivering files that have been previously delivered
+            if (lastIngDate): # either re-check past files or skip unchecked files
+                subscriber.setLastFileIngDate(None)   
             if (srvObj._subscrScheduledStatus.has_key(subscrId)):
-                if (startDate < srvObj._subscrScheduledStatus[subscrId] and srvObj._subscrScheduledStatus[subscrId]):
-                    srvObj._subscrScheduledStatus[subscrId] = None # enables trigger re-delivering files that have been previously delivered         
+                #if (startDate < srvObj._subscrScheduledStatus[subscrId] and srvObj._subscrScheduledStatus[subscrId]): # enables trigger re-delivering files that have been previously delivered
+                del srvObj._subscrScheduledStatus[subscrId]
+            if (srvObj._subscrCheckedStatus.has_key(subscrId)):
+                del srvObj._subscrCheckedStatus[subscrId]
+                #if (srvObj._subscrScheduledStatus[subscrId]):# either re-check past files or skip unchecked files
+                    #del srvObj._subscrScheduledStatus[subscrId]
+                    #srvObj._subscrScheduledStatus[subscrId] = None          
     
     if (reqPropsObj.hasHttpPar("filter_plug_in")):
         filterPi = reqPropsObj.getHttpPar("filter_plug_in")

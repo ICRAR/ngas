@@ -91,6 +91,7 @@ create table ngas_files
   creation_date          varchar(23)    null,
   container_id           varchar(36)    null,
   ingestion_rate         int            null,
+  io_time                numeric(20, 0) default -1,
   constraint file_idx primary key(file_id,file_version,disk_id)
 );
 
@@ -116,6 +117,7 @@ Create table ngas_hosts
   cluster_name         varchar(32)    null,
   installation_date    varchar(23)    null,
   ngas_type            varchar(32)    null,
+  idate			       varchar(23)	  null,
   srv_version          varchar(20)    null,
   srv_port             int            null,
   srv_archive          smallint       null,
@@ -203,4 +205,21 @@ Create table ngas_subscr_back_log
   ingestion_date varchar(23)   not null,
   format         varchar(32)   not null
 );
+
+drop table ngas_subscr_queue;
+create table ngas_subscr_queue
+(
+	subscr_id			varchar(255)	not null,
+	file_id				varchar(64)		not null,
+	file_version    	int             default 1,
+	disk_id				varchar(128)	not null,
+	file_name      		varchar(255)  	not null,
+	ingestion_date	    varchar(23)    	not null,
+	format         		varchar(32)   	not null,
+	status				int				default -2,
+	status_date      	varchar(23)    	not null,
+	comment             varchar(255)	null,
+	constraint subscr_queue_idx	primary key(subscr_id,file_id,file_version,disk_id)
+);
+create index subscr_queue_subscr_id_idx on ngas_subscr_queue(subscr_id);
 

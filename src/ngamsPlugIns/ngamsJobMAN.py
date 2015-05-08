@@ -54,7 +54,7 @@ from urlparse import urlparse
 import cPickle as pickle
 import logging
 
-from bottle import route, run, request, get, post, static_file, template
+from bottle import route, run, request, get, post, static_file, template, redirect
 
 import ngamsJobMWALib
 from ngamsJob_MWA_RTS import *
@@ -90,7 +90,7 @@ def failToDeliver():
             return msg
         except Exception, err:
             logger.error(traceback.format_exc())
-            return 'Exception (%s) when doing - File %s failed to be deliverred on %s' % (str(err), fileId, toHost)
+            return 'Exception (%s) when doing - File %s failed to be deliverred on %s' % (str(err), fileId, toUrl)
 
 @route('/ingest')
 def ingest():
@@ -123,6 +123,10 @@ def reportHostError():
         finally:
             return 'Thanks for letting me know that %s:%d is down' % (o.hostname, o.port)
 
+@route('/')
+def redictToSubmit():
+    redirect('/job/submit')
+
 @get('/job/submit')
 def submit_job_get():
     return template('ngamsJobMAN_submit.html')
@@ -142,6 +146,7 @@ def submit_job_post():
     name = request.forms.get('name')
     if invalidParam(name):
         return _responseMsg('Invalid user name')
+    name = name.strip()
     
     observations = request.forms.get('observations')
     if invalidParam(observations):
@@ -168,14 +173,14 @@ def submit_job_post():
         else:
             params.rts_tpl_name = all_tpls[1:] #remove the first comma
     else:
-        tmp_prefix = request.forms.get('tpl_prefix')
+        tmp_prefix = request.forms.get('tpl_prefix').strip()
         tpl_path = os.path.dirname(tmp_prefix)
         if (not os.path.exists(tpl_path)):
             return _responseMsg('It appears that template path %s does not exist on Fornax.' % tpl_path)
-        tpl_suffix = request.forms.get('tpl_suffix')
+        tpl_suffix = request.forms.get('tpl_suffix').strip()
         if (not tpl_suffix):
             tpl_suffix = ''
-        tpl_files = request.forms.get('tpl_name')
+        tpl_files = request.forms.get('tpl_name').strip()
         if invalidParam(tpl_files):
             return _responseMsg('Please specify template name')
         for tpl_file in tpl_files.split(','):
@@ -202,7 +207,7 @@ def submit_job_post():
     except Exception, err:
         return _responseMsg('invalid File ingestion timeout')
         
-    obsNums = observations.split(',')
+    obsNums = observations.replace(' ', '').split(',')
     try:
         for obsNum in obsNums:
             if (not ngamsJobMWALib.isValidObsNum(obsNum)):
@@ -216,22 +221,10 @@ def submit_job_post():
     
     dt = datetime.datetime.now()
     jobId = name + '_' + dt.strftime('%Y%m%dT%H%M%S') + '.' + str(dt.microsecond / 1000)
+    params.obsList = obsNums
     
-    job = None
-    try:        
-        if (jtype == 'MWA_RTS'):
-            
-            params.obsList = obsNums
-            job = RTSJob(jobId, params)
-        
-        if (job == None):
-            raise Exception ('Cannot initialise the job.')
-    except Exception, e:
-        return _responseMsg('Failed to submit your job due to Exception: %s' % str(e))
-    
-    jobDic[jobId] = job
-    # launch thread to execute the job
-    args = (job,)
+    # launch thread to create and execute the job
+    args = (jobId, params, jobDic)
     thrd = threading.Thread(None, _jobThread, 'MR_THRD_%s' % jobId, args) 
     thrd.setDaemon(1) # it will exit immediately should the server down
     thrd.start()
@@ -330,7 +323,7 @@ def getJobResult():
         return _responseMsg('Please provide an valid job_id as the parameter')
     mrJob = jobDic[jobId]
     sta = mrJob.getStatus()
-    if (sta == STATUS_RUNNING or sta == STATUS_NOT_STARTED):
+    if (sta < STATUS_COMPLETE):
         return _responseMsg('Job is still running or not yet started. Check the result later.')
     if (sta == STATUS_EXCEPTION and mrJob.getFinalJobResult() == None):
         return _responseMsg('Job encountered exceptions, result is not available')
@@ -373,8 +366,19 @@ def server_static(filepath):
 def getHello():
     return "Hello World 001"
 
-def _jobThread(mrTaskJob):
-    mrTaskJob.start()
+def _jobThread(jobId, params, myjobDic):   
+    job = RTSJob(jobId, params)
+    myjobDic[jobId] = job
+    if (job):
+        try:
+            job.buildRTSTasks()
+            job.start()
+        except Exception, err:
+            job.setStatus(STATUS_EXCEPTION)
+            job.setFinalJobResult('Fail to start the Job %s, Exception: %s' % (jobId, str(traceback.format_exc())))
+            logger.error(traceback.format_exc())
+    else:
+        logger.error('Cannot initialise the job %s' % jobId)   
 
 """
 def _scheduleStageThread(dummy):

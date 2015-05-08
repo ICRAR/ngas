@@ -1,0 +1,4 @@
+include *.txt *.rst *.cfg
+recursive-include src *py
+recursive-include src *
+global-exclude *pyc

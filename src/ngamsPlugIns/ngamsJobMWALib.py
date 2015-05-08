@@ -32,23 +32,25 @@ metadata query, data movement, and HTTP-based communication
 during job task execution and scheduling
 """
 
-import os, threading, urllib, traceback, commands, logging, time
+import os, threading, traceback, commands, logging, time, urllib2, base64
 from random import choice, shuffle, randint
 from urlparse import urlparse
 import psycopg2
 import cPickle as pickle
 from cPickle import UnpicklingError
-import logging
+import socket
 
 #from Queue import Queue, Empty
 from ngamsMWAAsyncProtocol import *
 import ngamsJobMAN
+from ngamsJobProtocol import * 
 
 g_db_conn = None # MWA metadata database connection
 f_db_conn = None # Fornax NGAS database connection
 l_db_conn = None # LTA NGAS database connection
 
 io_ex_ip = {'io1':'202.8.39.136:7777', 'io2':'202.8.39.137:7777'}  # the two Copy Nodes external ip
+gpubox_str = 'gpubox'
 
 stage_queue = []
 stage_dic = {} # key - fileId, value - a list of CorrTasks
@@ -79,7 +81,7 @@ def pingHost(url, timeout = 5):
     0        Success
     1        Failure
     """
-    cmd = 'curl %s --connect-timeout %d' % (url, timeout)
+    cmd = 'curl --connect-timeout %d %s' % (timeout, url)
     try:
         return execCmd(cmd)[0]
     except Exception, err:
@@ -173,6 +175,13 @@ def executeQuery(conn, sqlQuery):
         if (cur):
             del cur
 
+def getCorrIdFromFileId(fileId):
+    pos = fileId.find(gpubox_str)
+    if (pos < 0):
+        return None
+    ll = len(gpubox_str)
+    return int(fileId[pos + ll : pos + ll + 2])
+
 def getFileIdsByObsNum(obs_num):
     """
     Query the mwa database to get a list of files
@@ -189,7 +198,10 @@ def getFileIdsByObsNum(obs_num):
     retDic = {}
     for re in res:
         fileId = re[0]
-        corrId = int(fileId.split('_')[2][-2:])
+        #corrId = int(fileId.split('_')[2][-2:])
+        corrId = getCorrIdFromFileId(fileId)
+        if (not corrId):
+            raise Exception('file id %s is invalid' % fileId)
         if (retDic.has_key(corrId)):
             retDic[corrId].append(fileId)
         else:
@@ -227,7 +239,7 @@ def hasAllFilesInLTA(obs_num):
     Check if ALL files associated with this observation
     have been archived in the Long-Term Archive (LTA)
     """
-    sqlQuery = "SELECT COUNT(file_id) FROM ngas_files WHERE file_id LIKE '%s_%%' AND file_version = 1" % obs_num
+    sqlQuery = "SELECT COUNT(file_id) FROM ngas_files WHERE file_id LIKE '%s_%%' AND file_version = 2" % obs_num
     conn = getLTADBConn()
     res = executeQuery(conn, sqlQuery)
     count = int(res[0][0])
@@ -296,7 +308,9 @@ def getFileLocations(fileId):
         #path_file = os.path.split(re[1])
         #if (len(path_file) < 1):
             #continue
-        if (pingHost('http://%s/STATUS' % re[0])):
+        #if (pingHost('http://%s/STATUS' % re[0])):
+            #continue
+        if (not _isFileOnHost(re[0], re[1])):
             continue
         floc = FileLocation(re[0], re[1], fileId)
         ret.append(floc)
@@ -361,9 +375,9 @@ def getBestHost(fileIds, blackList = None):
     dictHosts = {} # key - host_id, # value - a list of FileLocations 
         
     for re in res:
-        #path_file = os.path.split(re[1])
-        #if (len(path_file) < 1):
-            #continue
+        if (not _isFileOnHost(re[0], re[1])):
+            continue
+
         floc = FileLocation(re[0], re[1], re[2]) # the path also includes the filename
         if (dictHosts.has_key(re[0])):
             dictHosts[re[0]].append(floc)
@@ -401,8 +415,35 @@ def getBestHost(fileIds, blackList = None):
     else:
         return {}
 
+def _isFileOnHost(hostId, filePath):
+    #reFileStatus = commands.getstatusoutput('curl -K 5 http://%s/FILEONHOST?file_path=%s' % (hostId, filePath))
+    try:
+        resp = urllib2.urlopen('http://%s/FILEONHOST?file_path=%s' % (hostId, filePath), timeout = 15).read()
+        if (resp == 'YES'):
+            return 1
+        else:
+            return 0
+    except Exception, err:
+        logger.error('Fail to check file %s online status on host %s: %s' % (filePath, hostId, str(err)))
+        return 0
+    
 def _sortFunc(dic):
     return -1 * len(dic.keys())
+
+def testIsFileOnHost():
+    hostId = 'cortex.ivec.org:7777'
+    fileId1 = '/pbstore/astrofs/mwa/NGAS_MWA_RUNTIME/volume2/afa/2013-05-21/1053182656/1/1053182656_20130521144502_gpubox01_01.fits'
+    fileId2 = '/pbstore/astrofs/mwa/NGAS_MWA_RUNTIME/volume2/afa/2013-05-21/1053182656/1/1053182656_20130521144502_gpubox08_02.fits'
+    
+    if (_isFileOnHost(hostId, fileId1)):
+        print 'File %s is on host %s' % (fileId1, hostId)
+    else:
+        print 'File %s is NOT on host %s' % (fileId1, hostId)
+        
+    if (_isFileOnHost(hostId, fileId2)):
+        print 'File %s is on host %s' % (fileId2, hostId)
+    else:
+        print 'File %s is NOT on host %s' % (fileId2, hostId)
     
 def testGetBestHost():
     # this test data works when 
@@ -526,30 +567,47 @@ def stageFile(fileIds, corrTask, toHost, frmHost = None):
         myRes = None
         retry = 0
         max_retry = 5
+        socket_timeout = 15
+        strRes = ''
         while (retry < max_retry):
-            strRes = urllib.urlopen(stageUrl, strReq).read()
             try:
+                request = urllib2.Request(stageUrl)
+                base64string = base64.encodestring('ngasmgr:ngas$dba').replace('\n', '')
+                request.add_header("Authorization", "Basic %s" % base64string)
+                strRes = urllib2.urlopen(request, data = strReq, timeout = socket_timeout).read() 
                 myRes = pickle.loads(strRes)
                 break
-            except UnpicklingError, uerr:
-                if (strRes.find("NGAMS_ER_MAX_REQ_EXCEEDED")):
+            except (UnpicklingError, socket.timeout) as uerr:
+                if (strRes.find("NGAMS_ER_MAX_REQ_EXCEEDED") or str(uerr).find('timed out') > -1):
                     retry += 1
                     myRes = None
                     logger.info('Archive server is too busy to stage files, wait for 15 seconds......')
-                    time.sleep(randint(9,16)) # sleep for random seconds so that not all threads retry at the same time...
+                    time.sleep(randint(9, 16)) # sleep for random seconds so that not all threads retry at the same time...
+                    if (str(uerr).find('timed out') > -1):
+                        # this is socket read time out, which means connection is okay, 
+                        # but server is really slow or the server is rather busy, so give it a larger timeout
+                        socket_timeout += 30
+                        logger.info('Server is really slow or busy, set a larger timeout %d' % socket_timeout)
                     continue
                 else:
                     logger.error('Staging response error %s: %s' % (str(uerr), strRes))
-                    return 502
+                    return ERROR_ST_SERVER
         if (myRes):
             return myRes.errorcode
         else:
             logger.error('Response is None when staging files')
-            return 501
+            return ERROR_ST_NONRESP
     except Exception, err:
-        # log err
-        logger.error((str(err) + traceback.format_exc()))
-        return 500
+        logger.error((str(err) + ':' + traceback.format_exc()))
+        
+        if (str(err).find('urlopen error timed out') > -1):
+            # urlopen timeout means the server is not reachable, this is different from socket timeout
+            if (frmHost):
+                return ERROR_ST_HOSTDOWN
+            else:
+                return ERROR_ST_LTADOWN
+       
+        return ERROR_ST_GENERIC
     
         
 def getExternalArchiveURL(fileId = None):
@@ -581,7 +639,7 @@ def getPushURL(hostId, gateway = None):
         gateways = gateway.split(',')
         gurl = 'http://%s/QAPLUS' % hostId
         for gw in gateways:
-            gurl = 'http://%s/PARCHIVE?nexturl=%s' % (gw, urllib.quote(gurl))
+            gurl = 'http://%s/PARCHIVE?nexturl=%s' % (gw, urllib2.quote(gurl))
         #return 'http://%s/PARCHIVE?nexturl=http://%s/QAPLUS' % (gateway, hostId)
         return gurl
     else:
@@ -681,6 +739,26 @@ def fileIngested(fileId, filePath, toHost, ingestRate):
     for corr in corrList:
         corr.fileIngested(fileId, filePath, ingestRate)
 
+def fileIngestTimeout(fileId, toHost, corrObj):
+    """
+    if a correlator obj found a file ingestion timeout,
+    it should remove itself from the stage_dic so that
+    future staging request of the same file on the same host can be retried
+    otherwise see line 539
+    """
+    skey = '%s___%s' % (fileId, toHost)
+    stage_sem.acquire()
+    try:
+        if (stage_dic.has_key(skey)):
+            corrList = stage_dic[skey]
+            if (corrObj in corrList):
+                corrList.remove(corrObj)
+                if (len(corrList) == 0):
+                    stage_dic.pop(skey)        
+    finally:
+        stage_sem.release()
+    
+
 def registerLocalTask(taskId, mrTask):
     #LT_dic_sem.acquire()
     #try:
@@ -758,7 +836,8 @@ if __name__=="__main__":
     #testGetNextOnlineHostUrl()
     #print pingHost('http://cortex.ivec.org:7799/STATUS')
     #print pingHost('http://fornax-io1.ivec.org:7777/STATUS')
-    testGetPushURL()
+    #testGetPushURL()
+    testIsFileOnHost()
     #testHasFilesInLTA()
     #testIsValidObsNum()
     closeConn(g_db_conn)

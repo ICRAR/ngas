@@ -11,15 +11,33 @@
 # on Ubuntu, these functions can be located at: /lib/lsb/init-functions
 
 RETVAL=0
-NGAMS_PID_FILE="/home/ngas/ngas_rt/NGAS/.NGAS-"${HOSTNAME}"-7777"
+
+# replace the following if run under a different user.
+NGAS_USER="ngas"
+
+#adjust to where the NGAS installation directory is.
+NGAS_ROOT="/home/$NGAS_USER/ngas_rt"
+
+NGAMS_PID_FILE="$NGAS_ROOT/NGAS/.NGAS-"${HOSTNAME}"-7777"
 
 # See how we were called.
+case "$0" in
+  *ngamsServer)
+        NGAMS_DAEMON="ngamsDaemon"
+        ;;
+  *ngamsCacheServer)
+        NGAMS_DAEMON="ngamsCacheDaemon"
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|status|restart}"
+        exit 1
+esac
+
 case "$1" in
   start)
 #       echo -n "Starting ngamsServer: "
 
-#       daemon --user ngas "/home/ngas/ngas_rt/bin/ngamsServer -cfg /home/ngas/ngas_rt/cfg/ngamsServer.conf -autoOnline -force"
-        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsServer -cfg /home/ngas/ngas_rt/cfg/ngamsServer.conf -autoOnline -force -multiplesrvs&"
+        su - $NGAS_USER -c "$NGAS_ROOT/bin/$NGAMS_DAEMON start"
 
         echo "NG/AMS startup"
         [ $RETVAL -eq 0 ] && touch /var/lock/subsys/ngamsServer
@@ -27,8 +45,8 @@ case "$1" in
         ;;
   stop)
 #       echo -n "Stopping ngamsServer: "
-        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsPClient -port 7777 -host $HOSTNAME -status -cmd OFFLINE -force" 1>/dev/null 2>&1
-        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsPClient -port 7777 -host $HOSTNAME -status -cmd EXIT" 1>/dev/null 2>&1
+#        su - $NGAS_USER -c "$NGAS_ROOT/bin/ngamsDaemon stop" 1>/dev/null 2>&1
+        su - $NGAS_USER -c "$NGAS_ROOT/bin/$NGAMS_DAEMON stop"
         if [[ -e ${NGAMS_PID_FILE} ]]
         then
           NGAMS_PID=$(cat ${NGAMS_PID_FILE})
@@ -42,7 +60,7 @@ case "$1" in
         ;;
   status)
         echo "Status ngamsServer: "
-        su - ngas -c "/home/ngas/ngas_rt/bin/ngamsPClient -port 7777 -host $HOSTNAME -status -cmd STATUS"
+        su - $NGAS_USER -c "$NGAS_ROOT/bin/$NGAMS_DAEMON status"
         RETVAL=$?
         ;;
   restart)

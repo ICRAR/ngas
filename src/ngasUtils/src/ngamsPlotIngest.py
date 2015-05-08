@@ -21,6 +21,20 @@
 #
 """
 Module to create throughput statistics plots.
+
+The best way to call it is like this:
+
+1) Start ipython --pylab
+2) On the ipython prompt enter:
+
+%run ngamsPlotIngest <date> [--db=MIT]
+
+replace <date> with the date you want to producde the stats. The db keyword
+is optional and defaults to ICRAR. The routine will ask for the DB password
+of the ngas_ro user. For more information on the input parameters run the
+script like
+%run ngamsPlotIngest -h
+
 """
 
 import pylab, argparse
@@ -28,6 +42,19 @@ from pylab import median, mean, where
 import sys, datetime
 from calendar import monthrange
 import getpass
+
+def _construct_drange(self):
+    """
+    Helper method to construct the date range for the Weekly mode.
+    """
+    dt = self.start_date # initialise the loop
+    for ii in range(self.loop):
+        delt=datetime.timedelta(days=(7-dt.weekday()))
+        de=dt+delt
+        if de.year > dt.year:
+            de=datetime.datetime.strptime('{0}-12-31'.format(dt.year),'%Y-%m-%d')
+        self.drange.append([dt.strftime("'%Y-%m-%dT00:00:00.000'"),de.strftime("'%Y-%m-%dT00:00:00.000'")])
+        dt=de
 
 class throughputPlot():
     """
@@ -38,7 +65,7 @@ class throughputPlot():
     """
     def __init__(self, args):
 
-        self.DB = {'ICRAR':'192.102.251.250', 'MIT':'eor-02.mit.edu'}
+        self.DB = {'ICRAR':'146.118.87.250', 'MIT':'ngas.mit.edu'}
         self.mode = []
         self.y = []
         self.n = []
@@ -61,7 +88,8 @@ class throughputPlot():
         myparser.add_argument('date', metavar='date', type=str,
                    help='a date to gather the statistics for.' +\
                         'Examples: 2013-06-10 will produce hourly stats for that day.'+
-                        '          2013-06 will produce daily stats for June 2013')
+                        '          2013-06 will produce daily stats for June 2013'+
+                        '          2013 will produce weekly stats for the whole of 2013')
 
         myparser.add_argument('--db', dest='db', type=str,
                    default='ICRAR',
@@ -71,13 +99,36 @@ class throughputPlot():
         args = myparser.parse_args(iargs)
         self.date = args.date
         self.db = args.db
-        try:
-            dt = datetime.datetime.strptime(args.date,'%Y-%m')
-            self.mode = ['Daily', 'Day']
-            mr = monthrange(dt.year, dt.month)
-            self.fdate = "'%s-%02dT24:00:00.000'"
-            self.loop = mr[1]
-        except ValueError:
+        dc = self.date.count('-')
+        if dc == 0:
+            # Just a year given: switch to weekly mode
+            try:
+                dt = datetime.datetime.strptime(args.date,'%Y')
+                self.start_date = dt
+                self.mode = ['Weekly', 'Week']
+                mr = monthrange(dt.year, dt.month)
+                self.fdate = "'%04-%dT00:00:00.000'"
+                self.loop = 53 # cover the whole year
+                self.drange =[]
+                _construct_drange(self)
+
+            except ValueError:
+                raise
+                sys.exit()
+
+        if dc == 1:
+            # Year and month given: switch to daily mode
+            try:
+                dt = datetime.datetime.strptime(args.date,'%Y-%m')
+                self.mode = ['Daily', 'Day']
+                mr = monthrange(dt.year, dt.month)
+                self.fdate = "'%s-%02dT24:00:00.000'"
+                self.loop = mr[1]
+            except ValueError:
+                raise
+                sys.exit()
+        elif dc == 2:
+            # Year, month, day given: switch to hourly mode
             try:
                 dt = datetime.datetime.strptime(args.date,'%Y-%m-%d')
                 self.mode = ['Hourly','Hour']
@@ -88,6 +139,7 @@ class throughputPlot():
                 sys.exit()
         self.dt = dt
         return
+
 
     def queryDb(self):
         """
@@ -110,7 +162,7 @@ class throughputPlot():
                 t=dbpass
             except NameError:
                 dbpass = getpass.getpass('%s DB password: ' % self.db)
-            dbconn=dbdrv.connect(database="ngas", user="ngas",password=dbpass,host=self.DB[self.db])
+            dbconn=dbdrv.connect(database="ngas", user="ngas_ro",password=dbpass,host=self.DB[self.db])
         else:
             import sqlite3 as dbdrv
             hsql="""select count(file_id),
@@ -123,7 +175,10 @@ class throughputPlot():
         cur = dbconn.cursor()
         res = []
         for ii in range(1,self.loop+1):
-            ssql = hsql.format(self.fdate % (self.date, (ii-1)), self.fdate % (self.date,ii))
+            if self.mode[0] != 'Weekly':
+                ssql = hsql.format(self.fdate % (self.date, (ii-1)), self.fdate % (self.date,ii))
+            else:
+                ssql = hsql.format(self.drange[ii-1][0], self.drange[ii-1][1])
             cur.execute(ssql)
             r = cur.fetchall()
             res.append(r)
@@ -138,11 +193,12 @@ class throughputPlot():
         self.y = pylab.float16(y)
         self.n = pylab.float16(n)
         vol = pylab.float16(res[:,:,4])
-        self.tvol = vol[vol>0].sum()
+        self.tvol = pylab.float64(vol)[vol>0].sum()
+        self.tfils = pylab.int32(self.n.sum())
         self.res=res
         dbconn.close()
         del(dbconn)
-
+        print self.tfils, pylab.int32(self.n.sum())
         return
 
 
@@ -187,13 +243,14 @@ class throughputPlot():
         ax2.set_ylabel('Number of files',{'color':'r'})
 
         if self.mode[1] == 'Day':
-            fig.canvas.set_window_title('%s: %s' % (self.db,self.dt.strftime('%B %Y')))
-            ax2.set_title('%s %s transfer rate: %s' % (self.db, self.mode[0], self.dt.strftime('%B %Y')))
+            fig.canvas.set_window_title('%s: %s' % (self.db,self.date))
+            ax2.set_title('%s %s transfer rate: %s' % (self.db, self.mode[0], self.date))
         else:
-            fig.canvas.set_window_title('%s: %s' % (self.db,self.dt.strftime('%d %B %Y')))
-            ax2.set_title('%s %s transfer rate: %s' % (self.db, self.mode[0], self.dt.strftime('%d %B %Y')))
+            fig.canvas.set_window_title('%s: %s' % (self.db,self.date))
+            ax2.set_title('%s %s transfer rate: %s' % (self.db, self.mode[0], self.date))
 
-        pylab.text(0.99,0.95,'Total: %5.2f TB' % self.tvol,transform = ax1.transAxes,ha='right')
+        pylab.text(0.99,0.95,'Total: %5.2f TB' % self.tvol,transform = ax1.transAxes,ha='right', va='bottom')
+        pylab.text(0.99,0.95,'Total # files: %8d' % self.tfils,transform = ax1.transAxes,ha='right', va='top')
         fig.show()
 
 

@@ -71,10 +71,13 @@
 
 #include "ngams.h"
 
+#define GLOBALS 1
+#include "ngamsCClientGlobals.h"
+
 
 void correctUsage()
 {
-    printf("> ngamsCClient %s", (ngamsManPage() + 1));
+    printf(">> ngamsCClient %s", (ngamsManPage() + 1));
 }
 
 
@@ -90,13 +93,14 @@ int main (int argc, char*  argv[])
     ngamsPAR_ARRAY   parArray;
     ngamsMED_BUF     tmpPar, host, servers, repHost, tmpBuf;
     ngamsMED_BUF     outputFile, finalOutputFile;
-    ngamsMED_BUF     fileUri, fileId, mimeType, slotId, path;
+    ngamsMED_BUF     fileUri, fileId, mimeType, slotId, path, nexturl;
     ngamsMED_BUF     diskId, processing, processingPars, url, startDate;
     ngamsMED_BUF     internal, hostId;
     ngamsMED_BUF     filterPlugIn, plugInPars, targetDiskId, authorization;
     ngamsSMALL_BUF   command, tmpDynPar;
     ngamsSTAT        stat = 0;
     ngamsSTATUS      status;
+    setsndbuf = 0;
 
 
     ngamsInitApi();
@@ -112,7 +116,7 @@ int main (int argc, char*  argv[])
     *host = *servers = *repHost = '\0';
     *command = *outputFile = *fileUri = *fileId = *diskId = '\0';
     *mimeType = *slotId = *path = *processing = *processingPars = '\0';
-    *url = *startDate = *filterPlugIn = *plugInPars = '\0';
+    *url = *startDate = *filterPlugIn = *plugInPars = *nexturl = '\0';
     *hostId = *internal = *targetDiskId = *authorization= '\0';
     for (i = 1; i < argc; i++)
 	{
@@ -173,6 +177,13 @@ int main (int argc, char*  argv[])
 	    fileVersion = atoi(argv[i]);
 	    ngamsAddParAndVal(&parArray, "file_version", argv[i]);
 	    }
+	else if (strcmp(tmpPar, "-NEXTURL") == 0)
+		{
+		if (++i == argc) goto correctUsage;
+		if (*argv[i] == '-') goto correctUsage;
+		strcpy(nexturl, argv[i]);
+		ngamsAddParAndVal(&parArray, "next_url", argv[i]);
+		}
 	else if (strcmp(tmpPar, "-FILTERPLUGIN") == 0)
 	    {
 	    if (++i == argc) goto correctUsage;
@@ -255,6 +266,12 @@ int main (int argc, char*  argv[])
 	    if (*argv[i] == '-') goto correctUsage;
 	    port = atoi(argv[i]);
 	    }
+	else if (strcmp(tmpPar, "-SNDBUF") == 0)
+		{
+		if (++i == argc) goto correctUsage;
+		if (*argv[i] == '-') goto correctUsage;
+		setsndbuf = atoi(argv[i]);
+		}
 	else if (strcmp(tmpPar, "-PRIORITY") == 0)
 	    {
 	    if (++i == argc) goto correctUsage;
@@ -370,10 +387,14 @@ int main (int argc, char*  argv[])
 	goto correctUsage;
     /* Send timeout with the request */
     if (timeOut != -1)
-	sprintf(tmpBuf, "%d", (int)(timeOut + 0.5));
+    	sprintf(tmpBuf, "%d", (int)(timeOut + 0.5));
     else
-	sprintf(tmpBuf, "-1");
+    	sprintf(tmpBuf, "-1");
     ngamsAddParAndVal(&parArray, "time_out", tmpBuf);
+
+    if (cmdCode == ngamsCMD_PARCHIVE && nexturl[0] == '\0') {
+    	goto correctUsage;
+    }
 
     /* Authorization defined? */
     if (*authorization) ngamsSetAuthorization(authorization);
@@ -386,7 +407,7 @@ int main (int argc, char*  argv[])
 	{
 	if (repeat > 1) printf("\nCommand repetition counter: %d\n\n", count);
 	if ((cmdCode != ngamsCMD_ARCHIVE) && (cmdCode != ngamsCMD_RETRIEVE) &&
-			(cmdCode != ngamsCMD_QARCHIVE))
+			(cmdCode != ngamsCMD_QARCHIVE) && (cmdCode != ngamsCMD_PARCHIVE))
 	    stat = ngamsGenSendCmd(host, port, timeOut, command, &parArray,
 				   &status);
 	else
@@ -400,6 +421,10 @@ int main (int argc, char*  argv[])
 		case ngamsCMD_QARCHIVE:
 		    stat = ngamsQArchive(host, port, timeOut, fileUri, mimeType,
 					noVersioning, wait, &status);
+			break;
+		case ngamsCMD_PARCHIVE:
+			stat = ngamsPArchive(host, port, timeOut, fileUri, mimeType,
+					noVersioning, wait, nexturl, &status);
 			break;
 		default:
 		    /* ngamsCMD_RETRIEVE */

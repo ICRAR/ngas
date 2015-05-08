@@ -43,7 +43,7 @@ class ngamsFileSummary1:
     Class to handle the information in connection with one entry in the
     NGAS Cache.
     """
-    
+
     def __init__(self):
         """
         Constructor method.
@@ -83,7 +83,7 @@ class ngamsFileSummary1:
         """
         return self.__slotId
 
- 
+
     def setMountPoint(self,
                       mountPoint):
         """
@@ -207,7 +207,7 @@ class ngamsFileSummary1:
             self.__fileVersion = int(fileVersion)
         except:
             msg = "Wrong format of File Version given: %s" % str(fileVersion)
-            raise Exception, msg 
+            raise Exception, msg
         return self
 
 
@@ -357,13 +357,13 @@ class ngamsFileSummary1:
                setHostId(sqlInfo[ngamsDbCore.SUM1_HOST_ID])
 
         return self
-        
-    
+
+
 if __name__ == '__main__':
     """
     Main function.
     """
     setLogCond(0, 0, "", 5)
-        
+
 
 # EOF

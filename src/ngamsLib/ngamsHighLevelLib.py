@@ -316,7 +316,7 @@ def genNgasId(ngamsCfgObj):
      
     Returns:   NGAS ID (string).
     """
-    return "NGAS-" + getHostId() + "-" + str(ngamsCfgObj.getPortNo())
+    return getHostId()
 
 
 def genProcDirName(ngamsCfgObj):
@@ -358,6 +358,10 @@ def checkAddExt(ngamsCfgObj,
               "mappings in the configuration"
         info(2, msg % mimeType)
         return filename
+    elif len(expExt) == 0:
+        msg = "No extension added to filename due to configuration mapping."
+        info(3, msg)
+        return filename        
     if ((filename.rfind(expExt) + len(expExt)) != len(filename)):
         filename = "%s.%s" % (filename, expExt)
         info(4,"New filename: %s" % filename)

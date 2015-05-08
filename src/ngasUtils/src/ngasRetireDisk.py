@@ -37,7 +37,7 @@ The ngasRetireDisk Tool is used to retire disks, i.e., to mark disks as
 created a back-up in the ngas_files_retired table.
 
 It is only possible to retire disks that are not mounted. In addition, it
-is not possible to retire a disk where less than 3 independent copies are 
+is not possible to retire a disk where less than 3 independent copies are
 available in the system. This however, can be enforced by specifying the
 'force' option.
 """
@@ -67,7 +67,7 @@ def retireDisk(diskId,
     force:         Even though there are less than 3 copies of each file on
                    the disk in the system or even if the disk is mounted
                    retire the disk (integer/0|1).
-                   
+
     notifEmail:    Comma separated list of email recipients that should be
                    informed about the actions carried out, or the actions
                    that would be carried out if executing the command
@@ -76,7 +76,7 @@ def retireDisk(diskId,
     Returns:       Void.
     """
     info(0,"Executing Retire Disk Procedure on disk with ID: %s" % diskId)
-    
+
     # Open DB connection.
     info(3,"Open DB connection")
     server, db, user, password = ngasUtilsLib.getDbPars()
@@ -143,7 +143,7 @@ def retireDisk(diskId,
         query = "INSERT INTO ngas_files_retired SELECT disk_id, " +\
                 "file_name, file_id, file_version, format, file_size, " +\
                 "uncompressed_file_size, compression, ingestion_date, " +\
-                "ignore, checksum, checksum_plugin, file_status, " +\
+                "file_ignore, checksum, checksum_plugin, file_status, " +\
                 "creation_date FROM ngas_files WHERE disk_id='%s'"
         query = query % diskId
         dbCon.query(query, 1)
@@ -185,13 +185,13 @@ def retireDisk(diskId,
                 report += tmpFormat % (fileInfo[0], fileInfo[1], fileInfo[2])
         else:
             report += "No files found on disk!\n"
-        report += 78 * "-" + "\n"   
+        report += 78 * "-" + "\n"
         subject = "ngasRetireDisk: DISK RETIREMENT REPORT - %s" % diskId
         ngasUtilsLib.sendEmail(subject, notifEmail, report)
         info(0,"Generated DISK RETIREMENT STATUS REPORT")
     info(0,"Finished Disk Retirement Procedure for disk: %s/%s" %\
          (diskInfoObj.getDiskId(), diskInfoObj.getLogicalName()))
-    
+
 
 def correctUsage():
     """
@@ -204,7 +204,7 @@ def correctUsage():
           "[-force] [-accessCode <Code>] [-notifEmail <Email List>]\n\n"
     return buf
 
-  
+
 if __name__ == '__main__':
     """
     Main function to execute the tool.
@@ -239,7 +239,7 @@ if __name__ == '__main__':
             idx += 1
         except Exception, e:
             print "\nProblem executing the tool: %s\n" % str(e)
-            print correctUsage()  
+            print correctUsage()
             sys.exit(1)
     if (not diskId):
         print correctUsage()

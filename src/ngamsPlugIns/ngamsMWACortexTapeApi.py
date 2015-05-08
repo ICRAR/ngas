@@ -12,6 +12,13 @@
 from ngams import * 
 import ngamsPlugInApi
 
+def isFileOffline(filename):
+    """
+    To check if the file is completely offline, thus no copy is online
+    
+    return 1 - on tape, 0 - not on tape, -1 - query error
+    """
+    return isFileOnTape(filename)
 
 def isFileOnTape(filename):
     """
@@ -26,7 +33,7 @@ def isFileOnTape(filename):
         #print errMsg
         return -1 #raise error
     
-    offline = t[1].find('offline;  archdone;')
+    offline = t[1].find('offline;') # Do not use "archdone" any more given this reason: http://www.mail-archive.com/sam-qfs-discuss@mail.opensolaris.org/msg00419.html
     
     if (offline != -1): # the file is offline, i.e. it is on tape
         return 1

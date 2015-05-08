@@ -45,13 +45,13 @@ import pcc,PccUtTime
 from   ngams import *
 from   mx import DateTime
 
- 
+
 class ngamsMysql:
     """
     Class to handle the connection to the NGAS DB when MySQL is
     used as DBMS.
     """
-  
+
     def __init__(self,
                  server,
                  db,
@@ -65,9 +65,9 @@ class ngamsMysql:
         server:          DB server name (string).
 
         db:              DB name (string).
-        
+
         user:            DB user (string).
-        
+
         password:        DB password (string).
 
         application:     Name of application (ID string) (string).
@@ -90,9 +90,9 @@ class ngamsMysql:
         Return:    Driver version (string).
         """
         T = TRACE()
-        
+
         return "NG/AMS_MySQL_" + self.__dbModVer
-    
+
 
     def connect(self,
                 server,
@@ -107,23 +107,23 @@ class ngamsMysql:
         server:          DB server name (string).
 
         db:              DB name (string).
-        
+
         user:            DB user (string).
-        
+
         password:        DB password (string).
 
         application:     Name of application (ID string) (string).
 
         parameters:      Parameters for the connection object (string).
- 
+
         Returns:         Reference to object itself.
         """
         T = TRACE()
-        
+
         # Set up DB connection.
         self.__dbDrv = ngamsMySqlCursor(server, db, user, password,
                                         application, parameters)
-               
+
         # Store connection parameters.
         self.__server      = server
         self.__db          = db
@@ -134,7 +134,7 @@ class ngamsMysql:
 
         return self
 
-        
+
     def close(self):
         """
         Close the DB connection.
@@ -142,7 +142,7 @@ class ngamsMysql:
         Returns:    Reference to object itself.
         """
         T = TRACE()
-        
+
         del(self.__dbDrv)
         return close
 
@@ -155,7 +155,7 @@ class ngamsMysql:
         method here.
         """
         T = TRACE(5)
-        
+
         cur = self.cursor(query)
         res = cur.fetchall()
         del(cur)
@@ -163,7 +163,7 @@ class ngamsMysql:
             return [res]
         else:
             return [[]]
-        
+
 
     def query(self,
               query):
@@ -181,7 +181,7 @@ class ngamsMysql:
         Returns:       Result of SQL query (list).
         """
         T = TRACE(5)
-        
+
         try:
             res = self.execute(query)
             return res
@@ -208,7 +208,7 @@ class ngamsMysql:
             else:
                 raise e
 
- 
+
     def cursor(self,
                query):
         """
@@ -242,7 +242,7 @@ class ngamsMysql:
                       'datetime' column of the DBMS (string).
         """
         T = TRACE(5)
-        
+
         if (str(timeStamp).find(":") != -1):
             if (timeStamp[10] != "T"): timeStamp[10] = "T"
             ts = timeStamp
@@ -253,18 +253,18 @@ class ngamsMysql:
                  initFromSecsSinceEpoch(timeStamp).getTimeStamp()
         return ts
 
-        
+
     def convertTimeStampToMx(self,
                              timeStamp):
         """
         Converts an ISO 8601 timestamp into an mx.DateTime object.
-        
+
         timeStamp:  ISO 8601 datetime string (string).
-        
+
         Returns:    Datetime object (mx.DateTime).
         """
         T = TRACE(5)
-        
+
         dt = DateTime.ISO.ParseDateTime(timeStamp)
         return dt
 
@@ -286,11 +286,11 @@ class ngamsMySqlCursor:
         Constructor method creating a cursor connection to the DBMS.
 
         server:       DB server name (string).
- 
+
         db:           DB name (string).
-        
+
         user:         DB user (string).
-        
+
         password:     DB password (string).
 
 
@@ -315,29 +315,29 @@ class ngamsMySqlCursor:
         Destructor method free'ing the internal DB connection + cursor objects.
         """
         T = TRACE()
-        
+
         if (self.__cursorObj): del self.__cursorObj
         if (self.__dbDrv): del self.__dbDrv
-        
-                     
+
+
     def initQuery(self,
                   query):
         """
         Initialize the query.
-        
+
         query:    The query to execute (string)
-        
+
         Returns pointer to itself.
         """
         T = TRACE(5)
-        
+
         # query replace to catch DB specifics
         pquery = self.queryRewrite(query)
 
         info(4, "Executing query:" + pquery)
         type = self.__cursorObj.execute(pquery)
         return self
-        
+
 
     def fetch(self,
               maxEls):
@@ -349,7 +349,7 @@ class ngamsMySqlCursor:
 
         An empty list ([]) may be returned if there were no matches to the
         SQL query.
-        
+
         query:      string containing the SQL statement to be executed.
 
         maxEls:     Maximum number of elements/rows to return (integer).
@@ -358,7 +358,7 @@ class ngamsMySqlCursor:
                     (list/list).
         """
         T = TRACE(5)
-        
+
         if (self.__cursorObj):
             res = self.__cursorObj.fetchmany(maxEls)
             if len(res) > 0:
@@ -378,14 +378,14 @@ class ngamsMySqlCursor:
 
         An empty list ([]) may be returned if there were no matches to the
         SQL query.
-        
+
         query:      string containing the SQL statement to be executed.
 
         Return:     List containing tuples with the values queried
                     (list/list).
         """
         T = TRACE()
-        
+
         if (self.__cursorObj):
             res = self.__cursorObj.fetchall()
             if len(res) > 0:
@@ -403,15 +403,15 @@ class ngamsMySqlCursor:
         the DB.
 
         query:    The query as send by ngamsDb (string)
-        
+
         Returns the modified query string.
         """
         T = TRACE(5)
-        
+
         # The following block replaces the ignore column name
         # (reserved word in MySQL) with fignore.
-        regex1 = re.compile("ignore")
-        pquery = regex1.sub("fignore", query)
+        regex1 = re.compile("nf.ignore")
+        pquery = regex1.sub("nf.file_ignore", query)
 
         # Remove the Sybase specific noholdlock keyword
         regex2 = re.compile("noholdlock")

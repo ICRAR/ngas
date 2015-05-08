@@ -46,12 +46,12 @@ import pcc, PccUtTime
 from   ngams import *
 from   mx import DateTime
 
- 
+
 class ngamsOracle:
     """
     Class to handle the connection to the NGAS DB when Oracle is used as DBMS.
     """
-  
+
     def __init__(self,
                  server,
                  db,
@@ -65,9 +65,9 @@ class ngamsOracle:
         server:          DB server name (string).
 
         db:              DB name (string).
-        
+
         user:            DB user (string).
-        
+
         password:        DB password (string).
 
         application:     Name of application (ID string) (string).
@@ -88,9 +88,9 @@ class ngamsOracle:
         Return:    Driver version (string).
         """
         T = TRACE()
-        
+
         return "NG/AMS_Oracle_" + self.__dbModVer
-    
+
 
     def connect(self,
                 server,
@@ -105,9 +105,9 @@ class ngamsOracle:
         server:          DB server name (string).
 
         db:              DB name (string).
-        
+
         user:            DB user (string).
-        
+
         password:        DB password (string).
 
         application:     Name of application (ID string) (string).
@@ -117,7 +117,7 @@ class ngamsOracle:
         Returns:         Reference to object itself.
         """
         T = TRACE()
-        
+
         # Set up DB connection.
         tns = db   # the tns string is used by Oracle as part of the connection
                    # protocol. There is a mapping defined between the tns and
@@ -134,7 +134,7 @@ class ngamsOracle:
 
         return self
 
-        
+
     def close(self):
         """
         Close the DB connection.
@@ -142,7 +142,7 @@ class ngamsOracle:
         Returns:    Reference to object itself.
         """
         T = TRACE()
-        
+
         del(self.__dbDrv)
         return close
 
@@ -154,7 +154,7 @@ class ngamsOracle:
         goes through cursors, thus we emulate the db.excute() method here.
         """
         T = TRACE(5)
-        
+
         cur = self.__dbDrv.cursor()
         info(4, "Executing query: |%s|" % query)
         try:
@@ -162,7 +162,7 @@ class ngamsOracle:
         except Exception, e:
             if str(e).find('ORA-00001'): #unique constraint violated
               errMsg = genLog("NGAMS_ER_DB_UNIQUE", [str(e)])
-              error(errMsg)                
+              error(errMsg)
             else:
                 error(str(e))
         res = self._fetchAll(cur)
@@ -184,7 +184,7 @@ class ngamsOracle:
 
         An empty list ([]) may be returned if there were no matches to the
         SQL query.
-        
+
         query:      string containing the SQL statement to be executed.
 
         Return:     List containing tuples with the values queried
@@ -208,7 +208,7 @@ class ngamsOracle:
                 info(4, errMsg)
                 return []
         deltaTime = (time.time() - startTime)
-        
+
         if (len(res) > 0):
             info(4, "Leaving _fetchAll() with results. Time: %.4fs" %\
                  deltaTime)
@@ -264,7 +264,7 @@ class ngamsOracle:
             else:
                 raise e
 
- 
+
     def cursor(self,
                query):
         """
@@ -302,7 +302,7 @@ class ngamsOracle:
                       'datetime' column of the DBMS (string).
         """
         T = TRACE(5)
-        
+
         if (str(timeStamp).find(":") != -1):
             if (timeStamp[10] != "T"): timeStamp[10] = "T"
             ts = timeStamp
@@ -313,18 +313,18 @@ class ngamsOracle:
                  initFromSecsSinceEpoch(timeStamp).getTimeStamp()
         return ts
 
-        
+
     def convertTimeStampToMx(self,
                              timeStamp):
         """
         Converts an ISO 8601 timestamp into an mx.DateTime object.
-        
+
         timeStamp:  ISO 8601 Datetime string (string/ISO 8601).
-        
+
         Returns:    Date time object (mx.DateTime).
         """
         T = TRACE(5)
-        
+
         return DateTime.ISO.ParseDateTime(timeStamp)
 
 
@@ -345,11 +345,11 @@ class ngamsOracleCursor:
         Constructor method creating a cursor connection to the DBMS.
 
         server:       DB server name (string).
- 
+
         db:           DB name (string).
-        
+
         user:         DB user (string).
-        
+
         password:     DB password (string).
 
         query:        Query to execute (string/SQL).
@@ -364,36 +364,36 @@ class ngamsOracleCursor:
         self.__cursorObj = None
         self.__dbDrv = cx_Oracle.connect(user, password, tns, threaded = 1)
         if ((query != None) and (len(query) != 0)): self._initQuery(query)
-        
+
 
     def __del__(self):
         """
         Destructor method free'ing the internal DB connection + cursor objects.
         """
         T = TRACE()
-        
+
         if (self.__cursorObj): del self.__cursorObj
         if (self.__dbDrv): del self.__dbDrv
-        
-                     
+
+
     def _initQuery(self,
                    query):
         """
         Initialize the query.
-        
+
         query:    The query to execute (string)
-        
+
         Returns pointer to itself.
         """
         T = TRACE()
-        
+
         # Query replace to catch DB specifics.
         #query = self._queryRewrite(query)
         self.__cursorObj = self.__dbDrv.cursor()
         info(4, "Executing query: |%s|" % query)
         self.__cursorObj.execute(str(query))
         return self
-        
+
 
     def fetch(self,
               maxEls):
@@ -405,7 +405,7 @@ class ngamsOracleCursor:
 
         An empty list ([]) may be returned if there were no matches to the
         SQL query.
-        
+
         query:      string containing the SQL statement to be executed.
 
         maxEls:     Maximum number of elements/rows to return (integer).
@@ -414,7 +414,7 @@ class ngamsOracleCursor:
                     (list/list).
         """
         T = TRACE()
-        
+
         if (self.__cursorObj):
             res = self.__cursorObj.fetchmany(maxEls)
             if len(res) > 0:
@@ -437,21 +437,21 @@ class ngamsOracleCursor:
         the DB.
 
         query:    The query as send by ngamsDb (string)
-        
+
         Returns the modified query string.
         """
         T = TRACE()
 
         # The following block replaces the ignore column name (reserved word
         # in mySQL) with file_ignore.
-        regex1 = re.compile('ignore')
-        pquery = regex1.sub('file_ignore',query)
+        info(5, "Original query: %s" % query)
+        regex1 = re.compile('nf.ignore')
+        pquery = regex1.sub('nf.file_ignore',query)
 
         # Remove the Sybase specific noholdlock keyword
-        info(5, "Original query: %s" % query)
         regex2 = re.compile('noholdlock')
-        pquery = regex2.sub('', query)
-        
+        pquery = regex2.sub('', pquery)
+
         #regex1 = re.compile('max\(right\(logical\_name, 6\)\)')
         #pquery = str(regex1.sub('max(substr(logical_name, -6))', pquery))
         info(5, "Rewritten query: %s" % pquery)

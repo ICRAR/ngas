@@ -29,7 +29,7 @@
 # awicenec  2005-03-15  Created
 # jknudstr  2008-02-11  Removed usage of _queryRewrite(), not needed anymore.
 # cwu       2012-04-25  Copied from ngamsOracle to ngamsPostgreSQL
-# awicenec  2013-02-15  re-established _queyRewrite to cover change from 
+# awicenec  2013-02-15  re-established _queyRewrite to cover change from
 #                       ignore to file_ignore
 #
 
@@ -49,13 +49,13 @@ import pcc, PccUtTime
 from   ngams import *
 from   mx import DateTime
 
- 
+
 class ngamsPostgreSQL:
     """
     Class to handle the connection to the NGAS DB when PostgreSQL is used as DBMS.
     """
-    
-  
+
+
     def __init__(self,
                  server,
                  db,
@@ -69,9 +69,9 @@ class ngamsPostgreSQL:
         server:          DB server name (string).
 
         db:              DB name (string).
-        
+
         user:            DB user (string).
-        
+
         password:        DB password (string).
 
         application:     Name of application (ID string) (string).
@@ -95,9 +95,9 @@ class ngamsPostgreSQL:
         Return:    Driver version (string).
         """
         T = TRACE()
-        
+
         return "NG/AMS_PostgreSQL_" + self.__dbModVer
-    
+
 
     def connect(self,
                 server,
@@ -112,9 +112,9 @@ class ngamsPostgreSQL:
         server:          DB server name (string).
 
         db:              DB name (string).
-        
+
         user:            DB user (string).
-        
+
         password:        DB password (string).
 
         application:     Name of application (ID string) (string).
@@ -124,12 +124,14 @@ class ngamsPostgreSQL:
         Returns:         Reference to object itself.
         """
         T = TRACE()
-        
+
         # Set up DB connection.
         # connect([dbname], [host], [port], [opt], [tty], [user], [passwd])
-        
+
         #connect_string = 'host:database:user:password:opt:tty'
-        connect_string = server + ':' + db + ':' + user + ':' + password
+        opt = ''
+        tty = ''
+        connect_string = server + ':' + db + ':' + user + ':' + password + ':' + opt + ':' + tty
         self.__dbConn = pgdb.connect(connect_string)
         #self.__dbConn = pg.connect(db, server, -1, None, None, user, password)
 
@@ -144,7 +146,7 @@ class ngamsPostgreSQL:
 
         return self
 
-        
+
     def close(self):
         """
         Close the DB connection.
@@ -152,27 +154,27 @@ class ngamsPostgreSQL:
         Returns:    Reference to object itself.
         """
         T = TRACE()
-        self.__dbConn.close()  
+        self.__dbConn.close()
         del(self.__dbConn)
         return self
 
 
     def _execute(self,
                  query):
-        
+
         T = TRACE(5)
-        
+
         cur = self.__dbConn.cursor()
         info(4, "Executing query: |%s|" % query)
         try:
             dum = cur.execute(str(query))
             self.__dbConn.commit()
-            #cur = self.__dbConn.query(query)       
+            #cur = self.__dbConn.query(query)
         except Exception, e:
             ex = str(e).lower()
             conn_lost = 0
             for conn_err in self.__conn_lost_msg:
-                if (ex.find(conn_err)):
+                if (ex.find(conn_err) > -1):
                     conn_lost = 1
                     break
             if (conn_lost):
@@ -191,20 +193,20 @@ class ngamsPostgreSQL:
                 error(errMsg)
                 if ("can't commit" != ex):
                     self.__dbConn.rollback()
-                return [[]]                            
-        
+                return [[]]
+
         """
         try:
            dum = cur.execute(str(query))
         except Exception, e:
             if str(e).find('ORA-00001'): #unique constraint violated
               errMsg = genLog("NGAMS_ER_DB_UNIQUE", [str(e)])
-              error(errMsg)                
+              error(errMsg)
             else:
                 error(str(e))
         """
-        
-        res = self._fetchAll(cur)       
+
+        res = self._fetchAll(cur)
         del(cur)
         if (len(res) > 0):
             info(5, "Leaving _execute() with results")
@@ -212,7 +214,7 @@ class ngamsPostgreSQL:
         else:
             info(5, "Leaving _execute() without results")
             return [[]]
-        
+
     def _fetchAll(self, cursor):
         """
         Fetch all elements from the query and return this.
@@ -222,7 +224,7 @@ class ngamsPostgreSQL:
 
         An empty list ([]) may be returned if there were no matches to the
         SQL query.
-        
+
         query:      string containing the SQL statement to be executed.
 
         Return:     List containing tuples with the values queried
@@ -247,7 +249,7 @@ class ngamsPostgreSQL:
                 return []
 
         deltaTime = (time.time() - startTime)
-        
+
         if (len(res) > 0):
             info(4, "Leaving _fetchAll() with results. Time: %.4fs" %\
                  deltaTime)
@@ -309,7 +311,7 @@ class ngamsPostgreSQL:
                     self.__dbConn.rollback()
                 raise e
 
- 
+
     def cursor(self,
                query):
         """
@@ -347,7 +349,7 @@ class ngamsPostgreSQL:
                       'datetime' column of the DBMS (string).
         """
         T = TRACE(5)
-        
+
         if (str(timeStamp).find(":") != -1):
             if (timeStamp[10] != "T"): timeStamp[10] = "T"
             ts = timeStamp
@@ -358,18 +360,18 @@ class ngamsPostgreSQL:
                  initFromSecsSinceEpoch(timeStamp).getTimeStamp()
         return ts
 
-        
+
     def convertTimeStampToMx(self,
                              timeStamp):
         """
         Converts an ISO 8601 timestamp into an mx.DateTime object.
-        
+
         timeStamp:  ISO 8601 Datetime string (string/ISO 8601).
-        
+
         Returns:    Date time object (mx.DateTime).
         """
         T = TRACE(5)
-        
+
         return DateTime.ISO.ParseDateTime(timeStamp)
 
 
@@ -390,11 +392,11 @@ class ngamsPostgreSQLCursor:
         Constructor method creating a cursor connection to the DBMS.
 
         server:       DB server name (string).
- 
+
         db:           DB name (string).
-        
+
         user:         DB user (string).
-        
+
         password:     DB password (string).
 
         query:        Query to execute (string/SQL).
@@ -410,36 +412,36 @@ class ngamsPostgreSQLCursor:
         connect_string = server + ':' + db + ':' + user + ':' + password
         self.__dbConn = pgdb.connect(connect_string)
         if ((query != None) and (len(query) != 0)): self._initQuery(query)
-        
+
 
     def __del__(self):
         """
         Destructor method free'ing the internal DB connection + cursor objects.
         """
         T = TRACE()
-        
+
         if (self.__cursorObj): del self.__cursorObj
         if (self.__dbConn): del self.__dbConn
-        
-                     
+
+
     def _initQuery(self,
                    query):
         """
         Initialize the query.
-        
+
         query:    The query to execute (string)
-        
+
         Returns pointer to itself.
         """
         T = TRACE()
-        
+
         # Query replace to catch DB specifics.
         query = self._queryRewrite(query)
         info(4, "Executing query: |%s|" % query)
-        self.__cursorObj = self.__dbConn.cursor()     
+        self.__cursorObj = self.__dbConn.cursor()
         self.__cursorObj.execute(str(query))
         return self
-        
+
 
     def fetch(self,
               maxEls):
@@ -451,7 +453,7 @@ class ngamsPostgreSQLCursor:
 
         An empty list ([]) may be returned if there were no matches to the
         SQL query.
-        
+
         query:      string containing the SQL statement to be executed.
 
         maxEls:     Maximum number of elements/rows to return (integer).
@@ -460,7 +462,7 @@ class ngamsPostgreSQLCursor:
                     (list/list).
         """
         T = TRACE()
-        
+
         if (self.__cursorObj):
             res = self.__cursorObj.fetchmany(maxEls)
             if len(res) > 0:
@@ -483,20 +485,20 @@ class ngamsPostgreSQLCursor:
         the DB.
 
         query:    The query as send by ngamsDb (string)
-        
+
         Returns the modified query string.
         """
         T = TRACE()
         # The following block replaces the ignore column name (reserved word
         # in mySQL and SQLite) with file_ignore.
-        regex1 = re.compile('ignore')
-        pquery = regex1.sub('file_ignore',query)
+        info(5, "Original query: %s" % query)
+        regex1 = re.compile('nf.ignore')
+        pquery = regex1.sub('nf.file_ignore',query)
 
         # Remove the Sybase specific noholdlock keyword
-        info(5, "Original query: %s" % query)
         regex2 = re.compile('noholdlock')
-        pquery = regex2.sub('', query)
-        
+        pquery = regex2.sub('', pquery)
+
         #regex1 = re.compile('max\(right\(logical\_name, 6\)\)')
         #pquery = str(regex1.sub('max(substr(logical_name, -6))', pquery))
         info(5, "Rewritten query: %s" % pquery)

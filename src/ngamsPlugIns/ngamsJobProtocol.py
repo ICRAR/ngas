@@ -32,11 +32,25 @@ A particular job type (i.e. RTS) should implement these interfaces
 import threading, datetime
 
 STATUS_NOT_STARTED = 0
-STATUS_RUNNING = 1
-STATUS_COMPLETE = 2
-STATUS_EXCEPTION = 3
+STATUS_STARTED = 1 # started (esp children), but itself has not been running yet
+STATUS_STAGING = 2 # getting the data needed to execute the task
+STATUS_QUEUEING = 3 # task is in the queue
+STATUS_RUNNING = 4
+STATUS_COMPLETE = 5
+STATUS_EXCEPTION = 6
 
-statusDic = {STATUS_NOT_STARTED:'Queueing', STATUS_RUNNING:'Running', STATUS_COMPLETE:'Completed', STATUS_EXCEPTION:'Error'}
+ERROR_LT_UNEXPECTED = 117
+ERROR_LT_FILEMISSING = 116
+ERROR_LT_FAILCREATEDIR = 118
+ERROR_ST_LTADOWN = 501
+ERROR_ST_GENERIC = 500
+ERROR_ST_HOSTDOWN = 502
+ERROR_ST_NONRESP = 503
+ERROR_ST_SERVER = 504
+
+statusDic = {STATUS_NOT_STARTED:'Starting', STATUS_RUNNING:'Running', 
+             STATUS_COMPLETE:'Completed', STATUS_EXCEPTION:'Error', 
+             STATUS_STAGING:'Staging', STATUS_QUEUEING:'Queueing', STATUS_STARTED:'Started'}
 
 class MapReduceTask:
     """
@@ -75,12 +89,13 @@ class MapReduceTask:
             raise Exception, errStr
         self.__id = Id 
         #self.__status = STATUS_NOT_STARTED # not running
-        self.setStatus(STATUS_NOT_STARTED)
         self.setReducer()
         if (parent):
             self._parent = parent
         else:
             self._parent = None
+        
+        self.setStatus(STATUS_NOT_STARTED)
     
     def _mapTaskThread(self, mrTask):        
         out = mrTask.__map()
@@ -90,10 +105,8 @@ class MapReduceTask:
     def __map(self):
         """
         TODO - fault tolerance (e.g. some tasks may fail)
-        """  
-        #self.__status = STATUS_RUNNING  
-        self.setStatus(STATUS_RUNNING)
-                   
+        """   
+        self.setStatus(STATUS_STARTED)                  
         if (len(self.__mapList) > 0):
             if (self.__reducer == None):
                 errStr = 'Reducer missing for the MRtask %s, which has at least one child mapper.' % str(self.getId())
@@ -109,10 +122,13 @@ class MapReduceTask:
                 
             for mrt in mrThreads:
                 mrt.join()
+                
+            self.__reducer.setStatus(STATUS_RUNNING)
             return self.__reducer.__reduce()
         else:
             # no children MRTasks at this level
             # Thus no reducer either, so return to the upper level            
+            self.setStatus(STATUS_RUNNING)
             obj = self.map()
             if (self.__status == STATUS_RUNNING):
                 self.setStatus(STATUS_COMPLETE)
@@ -155,6 +171,7 @@ class MapReduceTask:
         jsobj = {}
         jsobj['name'] = self.getId() + '-' + statusDic[self.getStatus()]
         jsobj['status'] = self.getStatus()
+        jsobj['walltime'] = self.getWallTime()
         moredic = self.getMoreJSONAttr()
         if (moredic):
             jsobj = dict(jsobj.items() + moredic.items())
@@ -175,15 +192,26 @@ class MapReduceTask:
     
     def setStatus(self, status):
         self.__status = status
-        if (status == STATUS_RUNNING):
-            self._starttime = datetime.datetime.now().replace(microsecond=0)
+        if (status < STATUS_COMPLETE):
+            setStartTime = 0
+            if (self.getParent()): # not root, 
+                if (status > STATUS_STARTED): #only records time when really started (e.g. staging, queueing, or running)
+                    setStartTime = 1
+            else: # root always records time
+                setStartTime = 1
+            
+            if (setStartTime and not self._starttime):
+                    self._starttime = datetime.datetime.now().replace(microsecond=0)
+            
         elif (status == STATUS_COMPLETE or status == STATUS_EXCEPTION):
             self._endtime = datetime.datetime.now().replace(microsecond=0)
     
     def getWallTime(self):
-        if (self.getStatus() < STATUS_RUNNING):
+        if (self.getStatus() == STATUS_NOT_STARTED):
             return '0:00:00'
-        if (self.getStatus() == STATUS_RUNNING):
+        if (self.getParent() and self.getStatus() == STATUS_STARTED):
+            return '0:00:00'
+        if (self.getStatus() < STATUS_COMPLETE):
             endtime = datetime.datetime.now().replace(microsecond=0)
         else:
             endtime = self._endtime
@@ -198,6 +226,46 @@ class MapReduceTask:
         Execute the map reduce tasks on this and all children MRTasks
         """
         return self.__map()
+    
+    def async_start(self):
+        """
+        Start the task asynchronously
+        This is a bottom-up execution approach, starting from the leave nodes
+        and walk up the tree in an even-driven manner
+        """
+        # do a little bit work and return immediately, then wait for further events
+        
+        # 1. Look up NGAS db, figure out if staging is needed. If so, send data staging requests then return
+        # 2. When the "data_ready" event is received, send local task to the exeHost then return
+        # 3. When the "task_complete" event is received, analyse the result, 
+        #    then forwards the "task_complete" event together with results to the parent, then return
+        # 4. When the "timeout" event is received, analyse the timeout details, 
+        #    either form the result or re-start from 1. then return
+        pass
+    
+    def async_stagefiles(self):
+        """
+        Find which files need to be staged from LTA (Cortex)
+        For files to be staged from the Cluster, they are requested inside this function
+        
+        Return:     a list of files that need to be staged from LTA
+        """
+        pass
+    
+    def async_fileFailToDeliver(self, fileId, isLTA, errHost, errMsg):
+        pass
+    
+    def async_fileIngested(self, fileId, filePath, ingestRate):
+        pass
+    
+    def async_localTaskCompleted(self, localTaskResult):
+        pass
+    
+    def async_localTaskDequeued(self, taskId):
+        pass
+    
+    def async_reportHostDown(self, fileId, errorHost):
+        pass
     
     def addMapper(self, mpT):
         if (mpT):
