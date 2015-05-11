@@ -1068,9 +1068,9 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                        checksumPlugIn,
                        fileStatus,
                        creationDate,
+                       iotime,
                        containerId = None,
                        ingestionRate = -1,
-                       iotime,
                        genSnapshot = 1,
                        updateDiskInfo = 0):
         """
