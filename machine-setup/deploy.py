@@ -65,22 +65,6 @@ def sudo(*args, **kwargs):
     res = res.replace('\r','')
     return res
 
-FILTER = 'The cray-mpich2 module is now deprecated and will be removed in a future release.\r\r\nPlease use the cray-mpich module.'
-
-def run(*args, **kwargs):
-    res = frun(*args, **kwargs)
-    res = res.replace(FILTER,'')
-    res = res.replace('\n','')
-    res = res.replace('\r','')
-    return res
-
-def sudo(*args, **kwargs):
-    res = fsudo(*args, **kwargs)
-    res = res.replace(FILTER, '')
-    res = res.replace('\n','')
-    res = res.replace('\r','')
-    return res
-
 #Defaults
 thisDir = os.path.dirname(os.path.realpath(__file__))
 
@@ -152,6 +136,7 @@ YUM_PACKAGES = [
    'openssl-devel.x86_64',
    'wget.x86_64',
    'postgresql-devel.x86_64',
+   'patch',
 ]
 
 APT_PACKAGES = [
@@ -540,7 +525,7 @@ def install_port(package):
     Install a package using macports (Mac OSX)
     """
     with settings(warn_only=True):
-        sudo('port install {0}'.format(package))
+        run('sudo port install {0}'.format(package))
 
 
 @task    
@@ -786,7 +771,7 @@ def get_linux_flavor():
     return linux_flavor
 
 @task
-def system_install_f():
+def system_install():
     """
     Perform the system installation part.
 
@@ -1433,8 +1418,6 @@ def install(sys_install=True, user_install=True,
     if init_install and init_install != 'False': init_deploy()
     puts(green("\n\n******** INSTALLATION COMPLETED!********\n\n"))
 
-
-    print "\n\n******** INSTALLATION COMPLETED!********\n\n"
 
 @task
 def uninstall(clean_system=False):
