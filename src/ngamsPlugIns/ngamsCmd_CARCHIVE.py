@@ -518,7 +518,7 @@ def handleCmd(srvObj,
                "('" + str(containerId) + "', " +\
                "'" + containerName + "', " +\
                "'" + creDate + "', " +\
-               "'" + str(containerSize) +\
+               str(containerSize) + ", " \
                "'logical'" +\
                ")"
 
