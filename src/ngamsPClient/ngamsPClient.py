@@ -205,8 +205,7 @@ class ngamsPClient:
         Returns:       NG/AMS Status object (ngamsStatus).
         """
         T = TRACE()
-        baseName = os.path.basename(fileUri)
-        info(1,"Archiving file with URI: " + baseName)
+        info(1,"Archiving file with URI: " + fileUri)
         locPars = []
         for par in pars: locPars.append(par)
         if (ngamsLib.isArchivePull(fileUri)):
@@ -216,7 +215,7 @@ class ngamsPClient:
             res = self.sendCmd(cmd, wait, "", locPars)
         else:
             res = self.pushFile(fileUri, mimeType, wait, noVersioning, locPars, cmd=cmd)
-        info(1,"Archive request for file: " + baseName + " issued.")
+        info(1,"Archive request for file: " + fileUri + " issued.")
         return res
 
 
@@ -663,6 +662,7 @@ class ngamsPClient:
 
         Returns:       NG/AMS Status Object (ngamsStatus).
         """
+
         if (mimeType):
             mt = mimeType
         else:

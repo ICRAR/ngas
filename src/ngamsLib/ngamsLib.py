@@ -819,7 +819,7 @@ def httpPost(host,
     mimeType:     Mime-type of message (string).
 
     dataRef:      Data to send to remote NG/AMS Server or name of
-                  file containing data to send (string).
+                  file/directory containing data to send (string).
 
     dataSource:   Source where to pick up the data (string/BUFFER|FILE|FD).
 
@@ -849,40 +849,45 @@ def httpPost(host,
     """
     T = TRACE()
 
+    # If the dataRef is a directory, scan the directory
+    # and build up a list of files contained directly within
+    # Start preparing a mutipart MIME message that will contain
+    # all of them
     if os.path.isdir(dataRef):
-        from random import randint
+
+        info(4, 'Request is to archive a directory')
+        mimeType = 'application/octet-stream'
+
         # Create the enclosing (outer) message
+        from random import randint
         deliminater = '===============' + str(randint(10**9,(10**10)-1)) + '=='
         EOF = '--' + deliminater + '\n'
-        EOC = EOF[:-1] + '--'
+        EOC = '--' + deliminater + '--'
         subject = 'Contents of directory %s' % os.path.abspath(dataRef)
         mainHeader = ('Content-Type: multipart/mixed; boundary="' + deliminater + '"\n'
             'Subject: '+ subject + '\n')
         filesList = [mainHeader]
-        dataSize = 0
-        dataSize += len(mainHeader)
+        dataSize = len(mainHeader)
         for filename in os.listdir(dataRef):
             path = os.path.join(dataRef, filename)
+            info(5, 'Including ' + path + ' in the to-be-generated container')
             if not os.path.isfile(path):
                 continue
             size = os.path.getsize(path)
-            mimetype = 'application/octet-stream'
-            fileHeader = ('Content-Type: ' + mimetype + '\n'
+            fileHeader = ('Content-Type: ' + mimeType + '\n'
                               'Content-Disposition: attachment; '
                               'filename="' + filename + '"\r\n\n')
             dataSize += size
             dataSize += (len(fileHeader) + len(EOF))
-            filesList.append([path, size, mimetype])
+            filesList.append([path, size, mimeType])
 
         dataSize += (len(EOC))
-
         dataRef = filesList
         dataSource = 'FILESLIST'
-            
+
         fileName = 'mimemessage'
         if pars[0][0] == 'attachment; filename': pars[0][0] = 'attachment'
-        mimeType = 'application/octet-stream'
-        
+
     contDisp = ""
     for parInfo in pars:
         if (parInfo[0] == "attachment"):
