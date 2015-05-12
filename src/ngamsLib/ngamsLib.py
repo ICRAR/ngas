@@ -439,73 +439,38 @@ def _httpHandleResp(fileObj,
     elif (returnFileObj):
         _waitForResp(fileObj, timeOut)
         data = fileObj
-    elif(hdrDic.has_key("content-rtype")):
 
-        dataRecv = 0
+    # It's a container response
+    elif(hdrDic.has_key("content-type") and 'ngams/container' == hdrDic['content-type']):
 
-        #Get deliminater and remove remaining header
-        buf = fileObj.readline()
-        dataRecv += len(buf)
-        buf = fileObj.readline()
-        deliminater = buf[-29:-2]
-        EOF = '--' + deliminater
-        EOC = EOF + '--'
-        dataRecv += len(buf)
-        buf = fileObj.readline()
-        dataRecv += len(buf)
-        buf = fileObj.readline()
-        dataRecv += len(buf)
+        # This is a multipart message (mm), parse it
+        # and store each of its parts
+        from email.parser import Parser
+        mm = Parser().parse(fileObj)
+        for part in mm.walk():
 
-        lastRecepTime = time.time()
-        #Begin reading the content and store to respective files
-        safeRead = True
-        newFile = True
-        lastChars = ''
-        reqSize = blockSize
-        while (dataRecv < dataSize and ((time.time() - lastRecepTime) < 30.0)):
-            if ((dataSize - dataRecv) < blockSize):
-                    reqSize = (dataSize - dataRecv)
+            # The multipart message itself contains
+            # the name of the container but no data
+            # Make sure the directory is there for the files
+            if part.is_multipart():
+                dirname = part.get_param('container_name')
+                info(4, 'Receving a container with container_name=' + dirname)
 
-            if(safeRead):
-                buf = fileObj.read(reqSize)
-                dataRecv += len(buf)
-                buf = lastChars + buf
-            if newFile:
-                start = buf.find('filename="') + 10
-                end = buf.find('"\r\n\n', start)
-                filename = buf[start:end]
-##                if saveDir[-1] != '/': saveDir += '/'
-##                if saveDir: filename = saveDir + filename
-                directory = filename.split('/', 1)[0]
-                try:
-                    os.mkdir(directory)
-                except OSError as e:
-                    import errno
-                    # Ignore directory exists error
-                    if e.errno != errno.EEXIST:
-                        raise
-                fdOut = open(filename, 'w')
-                newFile = False
-                buf = buf[end+4:]
-            bufSplit = buf.split(EOF, 1)
-            lastChars = ''
-            if (bufSplit[0] != ''):
-                lastChars = bufSplit[0][-30:]
-                fdOut.write(bufSplit[0][:-30])
-                lastRecepTime = time.time()
-            if len(bufSplit) > 1:
-                fdOut.write(lastChars[:-1])#Don't write extra newline char
-                fdOut.close()
-                info(4, "Closing '{0}' after writing".format(filename))
-                buf = bufSplit[1]
-                newFile = True
-                safeRead = False
-                if (not dataRecv < dataSize): dataSize = dataRecv + 1
-            else:
-                safeRead = True
-            if buf[:2] == '--':
-                dataSize = dataRecv
-        data = directory
+                if os.path.exists(dirname) and not os.path.isdir(dirname):
+                    pass # TODO do something useful
+                if not os.path.isdir(dirname):
+                    os.mkdir(dirname)
+
+                data = dirname
+                continue
+
+            # The rest of the files are simply dumped to disk
+            path = part.get_filename()
+            info(4, 'Saving file ' + path + ' into ' + dirname + '/')
+            fd = open(dirname + '/' + path, 'w')
+            fd.write(part.get_payload())
+            fd.close()
+
     else:
         fd = None
 

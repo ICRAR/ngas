@@ -128,89 +128,100 @@ def genReplyRetrieve(srvObj,
     """
     T = TRACE()
 
+    CRLF = '\r\n'
+
     # Send back reply with the result queried.
+    # This is done by constructing a mutipart/mixed MIME message,
+    # where each part of the message is a MIME message containing the
+    # binary data for one file. Each of these individual MIME messages
+    # also state the MIME type of the indiviual file and its filename
+    #
+    # Because we don't want to use that much memory we must feed the
+    # multipart MIME message through the output socket as we create it,
+    # instead of creating the whole beast and then sending it over the wire
+    # In the latter case we would be able to use the assisting classes from
+    # the email.message and email.mime modules
     try:
-        # TODO: Make possible to send back several results - use multipart
-        # mime-type message -- for now only one result is sent back.
-        resObjList = []
-        headerDict = {}
-        dataSize = -1
 
-        from random import randint
-
-        deliminater = '===============' + str(randint(10**9,(10**10)-1)) + '=='
-        EOF = '--' + deliminater
-        EOC = EOF + '--'
-        headerList = []
+        dataSize = 0
 
         info(4, "Number of objects in container: {0}".format(len(statusObjList)))
-        for obj in statusObjList:
-            resObjList.append(obj[0].getResultObject(0))
-            mimeType = resObjList[-1].getMimeType()
-            mimeLen = len(mimeType) + len('Mime-Type: ')
-            refFilename = resObjList[-1].getRefFilename()
-            contDisp = 'attachment; filename="{0}/{1}"'.format(
-                                container_name, refFilename)
-            contDispLen = len(contDisp) + len('Content-Type: ')
-            headerDict.update({'Content-Type':mimeType,
-                               'Content-disposition':contDisp})
-            headerList.append(headerDict.copy())
-            dataSize += resObjList[-1].getDataSize()
-            relHeader = 'Content-Type: {0}\r\nContent-disposition: attachment; filename="{1}/{2}"\r\n\n'.format(
-                                mimeType, container_name, refFilename)
-            dataSize += len(relHeader) + len(EOF) + 1
+        resObjList = [obj[0].getResultObject(0) for obj in statusObjList]
 
-        dataSize += len(EOC) + 1
-        #info(3, "Getting block size for retrieval")
+        # To send the initial response line to the client
+        # want to know what is the size of the response.
+        # We thus compute the header of the multipart MIME message,
+        # its boundaries, their sizes and the sizes of each individual
+        # MIME message containing each file
+        from random import randint
+        boundary = '===============' + str(randint(10**9,(10**10)-1)) + '=='
+        multipartHeader = 'MIME-Version: 1.0' + CRLF +\
+                          'Content-Type: multipart/mixed; boundary="' + boundary +\
+                          '"; container_name="' + container_name + '"' + CRLF
+
+        # These mark the boundaries between MIME messages (EOF)
+        # and the end of the multipart message (EOC)
+        EOF = '--' + boundary
+        EOC = EOF + '--'
+
+        # Pre-compute the headers for each file
+        # and calculate how much space do they use
+        from collections import deque
+        headerDeque = deque()
+        for obj in resObjList:
+
+            mimeType = obj.getMimeType()
+            contDisp = 'attachment; filename="{0}"'.format(obj.getRefFilename())
+            headerDeque.append({'Content-Type': mimeType, 'Content-disposition': contDisp})
+
+            relHeader = 'Content-Type: {0}\r\nContent-disposition: {1}"\r\n\n'.format(mimeType, contDisp)
+            dataSize += obj.getDataSize()
+            dataSize += len(relHeader) + len(EOF)
+
+        # Now sum up the lenght of the multipart header and the
+        # EOC, which marks the end of the multipart MIME message
+        dataSize += len(multipartHeader)
+        dataSize += len(EOC)
+
+        # Let's send the status line reply
+        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, None, 0, 'ngams/container', dataSize)
+
+        # ... and now all the rest: multipart MIME headers,
+        # individual MIME messages for each file, and EOC line
+        info(4, "Sending mainHeader:  " + multipartHeader)
+        httpRef.wfile.write(CRLF + multipartHeader)
+
         blockSize = srvObj.getCfg().getBlockSize()
-
-
-        header = ('\nMIME-Version: 1.0\nContent-Type: ' +
-                    'multipart/mixed; boundary="' + deliminater + '"\n')
-
-        dataSize += len(header)
-
-
-        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, None, 0,
-                            'multipart/mixed; boundary="{0}"'.format(deliminater),
-                            dataSize, [["Content-Rtype", "Container"]])
-
-
-        
-        info(4, "Sending mainHeader:  " + header)
-
-        httpRef.wfile.write(header)
-
-        ii = 0
         for resObj in resObjList:
             #Send deliminater to reference end of section
-            info(4, "Sending deliminater: " + EOF)
-            httpRef.wfile.write(EOF + '\n')
+            info(4, "Sending boundary: " + EOF)
+            httpRef.wfile.write(CRLF + EOF + CRLF)
 
             #Get file information
             dataSize = resObj.getDataSize()
-            headerDict = headerList[ii]
-            ii += 1
-            for hk in headerDict.keys():
-                info(4, "Sending header: {0}: {1}".format(hk, headerDict[hk]))
-                httpRef.send_header(hk, headerDict[hk])
-            httpRef.wfile.write("\n")
+            headerDict = headerDeque.popleft()
+            for header, value in headerDict.iteritems():
+                info(4, "Sending header: {0}: {1}".format(header, value))
+                httpRef.send_header(header, value)
+            httpRef.wfile.write(CRLF)
 
             # Send back data from the memory buffer, from the result file, or
             # from HTTP socket connection.
+            # TODO: An important improvement here would be to use sendfile instead
+            # of doing the data copy at user-space level. sendfile is not officially
+            # supported in python 2.7 though, but there are backported versions
+            # that do support it (and it's been in Linux since 2.4)
             if (resObj.getObjDataType() == NGAMS_PROC_DATA):
                 info(3,"Sending data in buffer to requestor ...")
                 #httpRef.wfile.write(resObj.getDataRef())
                 httpRef.wfile._sock.sendall(resObj.getDataRef())
             elif (resObj.getObjDataType() == NGAMS_PROC_FILE):
-                info(3,"Reading data block-wise from file and sending " +\
-                     "to requestor ...")
+                info(3,"Reading data block-wise from file and sending to requestor ...")
                 fd = open(resObj.getDataRef())
                 dataSent = 0
                 dataToSent = getFileSize(resObj.getDataRef())
                 while (dataSent < dataToSent):
                     tmpData = fd.read(blockSize)
-                    #os.write(httpRef.wfile.fileno(), tmpData)
                     httpRef.wfile._sock.sendall(tmpData)
                     dataSent += len(tmpData)
                 fd.close()
@@ -223,12 +234,11 @@ def genReplyRetrieve(srvObj,
                 while (dataSent < dataToSent):
                     tmpData = resObj.getDataRef().\
                               read(blockSize)
-                    #os.write(httpRef.wfile.fileno(), tmpData)
                     httpRef.wfile._sock.sendall(tmpData)
                     dataSent += len(tmpData)
 
         info(4,"Sending End of Container: " + EOC)
-        httpRef.wfile.write(EOC + '\n')
+        httpRef.wfile.write(EOC)
 
         info(4,"HTTP reply sent to: " + str(httpRef.client_address))
         reqPropsObj.setSentReply(1)
