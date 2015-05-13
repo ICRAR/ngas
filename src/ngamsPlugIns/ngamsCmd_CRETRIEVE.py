@@ -184,7 +184,7 @@ def genReplyRetrieve(srvObj,
         dataSize += len(EOC)
 
         # Let's send the status line reply
-        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, None, 0, 'ngams/container', dataSize)
+        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, None, 0, NGAMS_CONT_MT, dataSize)
 
         # ... and now all the rest: multipart MIME headers,
         # individual MIME messages for each file, and EOC line

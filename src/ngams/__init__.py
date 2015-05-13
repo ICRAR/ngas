@@ -104,12 +104,10 @@ _debug = 0
 # Flag indicating if we're executing in Unit Test Mode.
 _testMode = 0
 
-
 # Make the NG/AMS classes available by extending the search paths.
 try:
     from sys import path
-    pathTup = [__path__[0] + '/../plug-ins',
-               __path__[0] + '/../ngamsCClient',
+    pathTup = [__path__[0] + '/../ngamsCClient',
                __path__[0] + '/../ngamsData',
                __path__[0] + '/../ngamsLib',
                __path__[0] + '/../ngamsPClient',
@@ -282,6 +280,7 @@ NGAMS_BUSY_SUBSTATE       = "BUSY"
 
 # Built-In Mime-types.
 NGAMS_ARCH_REQ_MT         = "ngas/archive-request"
+NGAMS_CONT_MT             = "ngas/container"
 NGAMS_TEXT_MT             = "text/plain"
 NGAMS_XML_MT              = "text/xml"
 NGAMS_GZIP_XML_MT         = "application/x-gxml"

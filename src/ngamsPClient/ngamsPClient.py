@@ -41,12 +41,12 @@ can be used to build up Python applications communicating with NG/AMS.
 
 import os, sys, re, httplib, mimetools, urllib, random, time, base64
 import pcc, PccUtTime
-from   ngams import *
+from ngams import *
 from ngamsLib import ngamsLib
 import ngamsFileInfo, ngamsStatus
 
 
-manPage = os.path.normpath(ngamsGetSrcDir() + "/doc/ngamsPClient.doc")
+manPage = os.path.normpath(ngamsGetSrcDir() + "/ngamsPClient/doc/ngamsPClient.doc")
 fo = open(manPage)
 __doc__ += "\n\n\nMan-Page for the NG/AMS Python Client Tool:\n\n"
 __doc__ += "ngamsPClient " + fo.read()
@@ -437,7 +437,8 @@ class ngamsPClient:
                       hostId = "",
                       containerName = None,
                       containerId = None,
-                      cmd = NGAMS_RETRIEVE_CMD):
+                      cmd = NGAMS_RETRIEVE_CMD,
+                      reloadMod = False):
         """
         Request a file from the NG/AMS Server associated to the object.
         The file will be stored under the name given by the 'targetFile'
@@ -488,23 +489,23 @@ class ngamsPClient:
             pars = [["cfg", ""]]
         elif (fileId == "--NG--LOG--"):
             pars = [["ng_log", ""]]
-        else:                
-            info(4, '{0}, {1}, {2}'.format(cmd, fileId, containerId, containerName))
+        else:
+            info(4, 'Requesting data with cmd={0}, fileId={1}, containerId={2}, containerName={3}'.format(cmd, fileId, containerId, containerName))
+            pars = []
             if cmd == NGAMS_RETRIEVE_CMD:
-                pars = []
                 if fileId: pars.append(["file_id", fileId])
+            elif cmd == 'CRETRIEVE':
                 if containerId: pars.append(["container_id", containerId])
                 if containerName: pars.append(["container_name", containerName])
-            elif cmd == 'CRETRIEVE' and fileId:
-                pars = [["container_id", fileId]]
-            elif cmd == 'CRETRIEVE' and containerName:
-                pars = [["container_name", containerName]]
+
         if (hostId): pars.append(["host_id", hostId])
         if (fileVersion != -1): pars.append(["file_version", str(fileVersion)])
         if (processing != ""):
             pars.append(["processing", processing])
             if (processingPars != ""):
                 pars.append(["processingPars", processingPars])
+        if reloadMod: pars.append(['reload', 1])
+
         return self.sendCmd(cmd, 0, targetFile, pars)
 
 
@@ -784,6 +785,7 @@ class ngamsPClient:
         parArrayIdx      = -1
         containerId      = ""
         containerName    = ""
+        reloadMod        = False
 
         # Control variables.
         parLen           = len(argv)
@@ -883,6 +885,8 @@ class ngamsPClient:
                 elif (par == "-processingpars"):
                     idx = idx + 1
                     processingPars = argv[idx]
+                elif (par == "-reloadmod"):
+                    reloadMod = True
                 elif (par == "-servers"):
                     idx = idx + 1
                     servers = argv[idx]
@@ -926,6 +930,10 @@ class ngamsPClient:
             errMsg = self.correctUsageBuf()
             raise Exception, errMsg
         if (servers != ""): self.parseSrvList(servers)
+        if reloadMod:
+            reloadMod = 1
+        else:
+            reloadMod = 0
 
         # Invoke the proper operation.
         if (not getDebug()):
@@ -935,9 +943,7 @@ class ngamsPClient:
                     return self.sendCmdGen(self.getHost(), self.getPort(),
                                            cmd, wait, outputFile, parArray)
                 elif (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
-                    info(3,'Command found: {0}'.format(cmd))
-
-                    return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd)
+                    return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd, pars=[['reload', reloadMod]])
                 elif (cmd == NGAMS_CACHEDEL_CMD):
                     parArray.append(["disk_id", diskId])
                     parArray.append(["file_id", fileId])
@@ -982,11 +988,11 @@ class ngamsPClient:
                     elif containerId:
                         return self.retrieve2File(containerId, fileVersion, outputFile,
                                               processing, processingPars,
-                                              internal, hostId, cmd=cmd)
+                                              internal, hostId, cmd=cmd, reloadMod=reloadMod)
                     elif containerName:
                         return self.retrieve2File(None, fileVersion, outputFile,
                                               processing, processingPars,
-                                              internal, hostId, containerName=containerName, cmd=cmd)
+                                              internal, hostId, containerName=containerName, cmd=cmd, reloadMod=reloadMod)
                 elif (cmd == NGAMS_STATUS_CMD):
                     return self.status()
                 elif (cmd == NGAMS_SUBSCRIBE_CMD):
@@ -995,15 +1001,14 @@ class ngamsPClient:
                 elif (cmd == NGAMS_UNSUBSCRIBE_CMD):
                     return self.unsubscribe(url)
                 else:
-                    errMsg = self.correctUsageBuf()
-                    raise Exception, errMsg
+                    raise Exception, 'Unknown command: ' + cmd
             except Exception, e:
                 self.setStatus(0)
                 print "Error executing command:", e
         else:
             info(3,'Command found: {0}'.format(cmd))
             if (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
-                return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd)
+                return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd, pars=[['reload', reloadMod]])
             elif (cmd == NGAMS_CACHEDEL_CMD):
                 parArray.append("disk_id", diskId)
                 parArray.append("file_id", fileId)
@@ -1043,14 +1048,13 @@ class ngamsPClient:
                           "a CRETRIEVE Command"
                     raise Exception, msg
                 elif containerId:
-                    return self.retrieve2File(containerId, outputFile, cmd=cmd)
+                    return self.retrieve2File(containerId, outputFile, cmd=cmd, reloadMod=reloadMod)
                 elif containerName:
-                    return self.retrieve2File(None, outputFile, containerName=containerName, cmd=cmd)
+                    return self.retrieve2File(None, outputFile, containerName=containerName, cmd=cmd, reloadMod=reloadMod)
             elif (cmd == NGAMS_STATUS_CMD):
                 return self.status()
             else:
-                errMsg = self.correctUsageBuf()
-                raise Exception, errMsg
+                raise Exception, 'Unknown command: ' + cmd
 
 
     def _httpGet(self,
@@ -1246,11 +1250,10 @@ class ngamsPClient:
 
         Returns:  Man-page for tool (string).
         """
+        global manPage
         buf = "\n"
         buf += "> ngamsPClient "
-        docFile = os.path.normpath(ngamsGetSrcDir() + "/doc/" +\
-                                   "ngamsPClient.doc")
-        fo = open(docFile)
+        fo = open(manPage)
         buf += fo.read()
         return buf
 

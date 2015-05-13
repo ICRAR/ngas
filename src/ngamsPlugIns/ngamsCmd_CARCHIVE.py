@@ -54,6 +54,7 @@ import binascii
 import ngamsLib, ngamsDbCore, ngamsFileInfo
 import ngamsDiskInfo, ngamsHighLevelLib
 import ngamsCacheControlThread
+from email.parser import Parser
 
 
 GET_AVAIL_VOLS_QUERY = "SELECT %s FROM ngas_disks nd WHERE completed=0 AND " +\
@@ -161,6 +162,7 @@ def saveFromHttpToFile(ngamsCfgObj,
                      file (s) (tuple).
     """
     T = TRACE()
+    CRLF = '\r\n'
 
     checkCreatePath(os.path.dirname(trgFilename))
 ##    fdOut = open(trgFilename, "w")
@@ -200,100 +202,174 @@ def saveFromHttpToFile(ngamsCfgObj,
             sizeKnown = 1
 
         # Receive the data.
-        buf = "-"
         rdSize = blockSize
         slow = blockSize / (512 * 1024.)  # limit for 'slow' transfers
-#        sizeAccu = 0
+
         lastRecepTime = time.time()
         crc = 0   # initialize CRC value
         rdtt = 0  # total read time
         cdtt = 0  # total CRC time
         wdtt = 0  # total write time
-        nb = 0    # number of blocks
-        srb = 0   # number of slow read blocks
-        scb = 0   # number of slow CRC calcs
-        swb = 0   # number of slow write blocks
         tot_size = 0 # total number of bytes
+        fd = reqPropsObj.getReadFd()
 
-        buf = reqPropsObj.getReadFd().readline()
-        sizeRead = len(buf)
-        remSize -= sizeRead
-        tot_size += sizeRead
-        deliminater = buf[-29:-2]
-        EOF = '--' + deliminater
-        buf = reqPropsObj.getReadFd().readline()
-        sizeRead = len(buf)
-        remSize -= sizeRead
-        tot_size += sizeRead
-        container_name = buf.rsplit('/', 1)[1][:-1]
-        buf = reqPropsObj.getReadFd().readline()
-        sizeRead = len(buf)
-        remSize -= sizeRead
-        tot_size += sizeRead
+        # Read the main headers using the email.parser.Parser class
+        # for easier code reading
+        info(4, 'Parsing MIME multipart headers first')
 
         fileDataList = []
+
+        class ReadingState:
+            mainheader, delimiter, headers, data = range(4)
 
         safeRead = True
         newFile = True
         lastChars = ''
-        while ((remSize > 0) and ((time.time() - lastRecepTime) < 30.0)):
-            if (remSize < rdSize): rdSize = remSize
-            if(safeRead):
-                rdt = time.time()
-                buf = reqPropsObj.getReadFd().read(rdSize)
-                rdt = time.time() - rdt
-                rdtt += rdt
-                nb += 1
-                sizeRead = len(buf)
-    #            info(5,"Read %d bytes from HTTP stream in %.3f s" % (sizeRead, rdt))
-                if (sizeRead > 0):
+
+        # Read the rest of the message from the input stream manually
+        # We can be in three stages: readingDelimiter, readingHeader,
+        # readingData, or readingFinalDelimiter
+        info(4, 'Manually parsing body of the MIME multipart headers')
+        prevBuf = None
+        fdOut = None
+        filename = None
+        state = ReadingState.mainheader
+
+        while True:
+
+            # Don't try to over-read during the last reading
+            if remSize < rdSize:
+               rdSize = remSize
+
+            # Read, read, read...
+            rdt = time.time()
+            buf = fd.read(rdSize)
+            rdtt += (time.time() - rdt)
+            remSize -= rdSize
+
+            print str(len(buf)) + ' bytes read. Step is ' + str(state) + '. First 10 are: <<<' + buf[:10] + '>>>. Last 10 are: <<<' +buf[-10:] + '>>>'
+
+            # Anything coming from a previous iteration gets prefixed
+            if prevBuf:
+                print 'Attaching previous buffer that is ' + str(len(prevBuf)) + ' bytes long'
+                buf = prevBuf + buf
+            prevBuf = None
+
+            # On the first stage we read the MIME multipart headers and parse them
+            # If found, we start reading delimiters; otherwise we keep reading data
+            if state == ReadingState.mainheader:
+                endingIdx = buf.find(CRLF + CRLF)
+                if endingIdx != -1:
+                    info(4, 'Parsing MIME multipart headers')
+                    state = ReadingState.delimiter
+                    headers = buf[:endingIdx + 4]
+                    buf     = buf[endingIdx + 4:]
+                    msg = Parser().parsestr(headers, headersonly=True)
+                    boundary = msg.get_param('boundary')
+                    container_name = msg.get_param('container_name')
+                    info(5, 'MIME multipart boundary: ' + boundary)
+
+                    # Fail if we're missing any of these
+                    if not boundary or not container_name:
+                        msg = 'Either boundary or container_name are not specified in the Content-type header'
+                        error(msg)
+                        raise Exception, msg
+                else:
+                    prevBuf = buf
+                    continue
+
+            # We can read delimiters either because we've just started
+            # reading the body of the MIME multipart message or because
+            # we just finished reading a particular part of the multipart
+            if state == ReadingState.delimiter:
+
+                # We come from reading a previous multipart part
+                if fdOut:
+                    info(4, 'Closing file ' + filename)
+                    fileDataList.append([filename, crc])
+                    fdOut.close()
+                fdOut = None
+                filename = None
+                crc = 0
+
+                # Look for both delimiter and final delimiter
+                delIdx  = buf.find(CRLF + '--' + boundary + CRLF)
+                fDelIdx = buf.find(CRLF + '--' + boundary + '--')
+                if delIdx != -1:
+                    delimiter = buf[:delIdx + 4 + len(boundary) + 2]
+                    buf       = buf[delIdx + 4 + len(boundary) + 2:]
+                    state = ReadingState.headers
+                elif fDelIdx != -1:
+                    info(4, 'Finished parsing the MIME multipart message')
+                    break
+                else:
+                    prevBuf = buf
+                    continue
+
+            if state == ReadingState.headers:
+                idx = buf.find(CRLF + CRLF)
+                if idx != -1:
+                    info(4, 'Processing file headers')
+                    headers = buf[:idx+4]
+                    buf     = buf[idx+4:]
+                    msg = Parser().parsestr(headers, headersonly=True)
+                    filename = msg.get_filename()
+                    if not filename:
+                        msg = 'No filename found in internal multipart part header'
+                        raise Exception, msg
+                    info(4, 'Opening new file ' + filename)
+                    fdOut = open(filename, 'w')
+                    state = ReadingState.data
+                else:
+                    prevBuf = buf
+                    continue
+
+            # When reading data, look for the next delimiter
+            # When found, finish writing data, and pass the
+            # delimiter to the ReadingState.delimiter state
+            if state == ReadingState.data:
+                delIdx  = buf.find(CRLF + '--' + boundary)
+                if delIdx != -1:
+                    info(4, 'Found end of file ' + filename)
+                    state = ReadingState.delimiter
+                    prevBuf = buf[delIdx:]
+                    buf = buf[:delIdx]
+
+                # only write in 'blockSize' blocks
+                while len(buf) > blockSize:
+                    info(4, 'Writing ' + str(blockSize) + ' bytes of data to ' + filename)
+                    block = buf[:blockSize]
+                    buf = buf[blockSize:]
+
+                    wrt = time.time()
+                    fdOut.write(block)
+                    wdtt += (time.time() - wrt)
+
+                    cdt = time.time()
+                    crc = binascii.crc32(block, crc)
+                    cdtt += (time.time() - cdt)
+
+                # If the content of this file has finished
+                # arriving write the last piece to the file;
+                # otherwise keep the remaining data for the next loop
+                if state == ReadingState.delimiter:
+                    print 'Writing ' + str(len(buf)) + ' bytes of data to ' + filename
+
+                    wrt = time.time()
+                    fdOut.write(buf)
+                    wdtt += (time.time() - wrt)
+
                     cdt = time.time()
                     crc = binascii.crc32(buf, crc)
-                    cdt = time.time() - cdt
-                    cdtt += cdt
-                    if cdt >= slow: scb += 1
-    #                info(5,"Calculated checksum from stream buffer in %.3f s" % cdt)
-
-                remSize -= sizeRead
-                tot_size += sizeRead
-
-                buf = lastChars + buf
-    #            reqPropsObj.setBytesReceived(reqPropsObj.getBytesReceived() +\
-    #                                         sizeRead)
-            if newFile:
-                start = buf.find('filename="') + 10
-                end = buf.find('"\r\n\n', start)
-                filename = saveDir + buf[start:end]
-                fdOut = open(filename, 'w')
-                newFile = False
-                buf = buf[end+4:]
-            bufSplit = buf.split(EOF, 1)
-            lastChars = ''
-            if (bufSplit[0] != ''):
-                lastChars = bufSplit[0][-30:]
-                fdOut.write(bufSplit[0][:-30])
-                lastRecepTime = time.time()
-            if len(bufSplit) > 1:
-                fdOut.write(lastChars)
-                fdOut.close()
-                info(4, "Closing '{0}' after writing".format(filename))
-                buf = bufSplit[1]
-                newFile = True
-                safeRead = False
-                fileDataList.append([filename, crc])
-                crc = 0
-                if (remSize == 0): remSize = 1
-            else:
-                safeRead = True
-            if buf[:2] == '--':
-                remSize = 0
+                    cdtt += (time.time() - cdt)
+                elif len(buf) > 0:
+                    print 'Remaining ' + str(len(buf)) + ' bytes will be written later'
+                    prevBuf = buf
 
         deltaTime = timer.stop()
         reqPropsObj.setBytesReceived(tot_size)
         info(4,"Transfer time: %.3f s; CRC time: %.3f s; write time %.3f s" % (rdtt, cdtt, wdtt))
-        msg = "Saved data in file: %s. Bytes received: %d. Time: %.3f s. " +\
-              "Rate: %.2f Bytes/s"
-        ingestRate = (float(reqPropsObj.getBytesReceived()) / deltaTime)
+        ingestRate = (float(tot_size) / deltaTime)
 
         # Release disk resouce.
         if (mutexDiskAccess):
@@ -410,16 +486,16 @@ def handleCmd(srvObj,
         filepath = item[0]
         crc = item[1]
 
-        parDic['file_id'] = filepath.rsplit('/', 1)[1]
+        parDic['file_id'] = filepath
 
         fileVersion, relPath, relFilename,\
                      complFilename, fileExists =\
                      ngamsPlugInApi.genFileInfo(srvObj.getDb(),
                                                 srvObj.getCfg(),
                                                 reqPropsObj, diskInfo,
+                                                filepath
                                                 filepath,
-                                                parDic['file_id'],
-                                                parDic['file_id'], [dateDir])
+                                                filepath, [dateDir])
         complFilename, relFilename = ngamsGenDapi.checkForDblExt(complFilename,
                                                     relFilename)
 

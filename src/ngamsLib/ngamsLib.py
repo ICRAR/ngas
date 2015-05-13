@@ -440,8 +440,8 @@ def _httpHandleResp(fileObj,
         _waitForResp(fileObj, timeOut)
         data = fileObj
 
-    # It's a container response
-    elif(hdrDic.has_key("content-type") and 'ngams/container' == hdrDic['content-type']):
+    # It's a container
+    elif(NGAMS_CONT_MT == hdrDic['content-type']):
 
         # This is a multipart message (mm), parse it
         # and store each of its parts
@@ -600,6 +600,7 @@ def httpPostUrl(url,
                   NG/AMS Server (reply, msg, hdrs, data) (list).
     """
     T = TRACE()
+    CRLF = '\r\n'
 
     urlres = urlparse.urlparse(url)
     if (urlres.scheme.lower() == 'houdt'):
@@ -635,7 +636,7 @@ def httpPostUrl(url,
         kk = mhd[0]
         vv = mhd[1]
         http.putheader(kk, vv)
-    
+
     if (dataSource == "FILE"):
         dataSize = getFileSize(dataRef)
     elif (dataSource == "BUFFER"):
@@ -669,30 +670,23 @@ def httpPostUrl(url,
                 if (suspTime > 0.0): time.sleep(suspTime)
             fdIn.close()
         elif (dataSource == "FILESLIST"):
-            mainHeader = dataRef[0]
-            deliminater = mainHeader[41:68]
-            EOF = '--' + deliminater + '\n'
-            EOC = EOF[:-1] + '--'
+            boundary = dataRef[0]
+            mainHeader = dataRef[1]
+            EOF = CRLF + '--' + boundary
+            EOC = CRLF + '--' + boundary + '--'
             http._conn.sock.sendall(mainHeader)
-            for aFile in dataRef[1:]:
-                path = aFile[0]
-                mimetype = aFile[2]
-                filename = path.rsplit('/', 1)[1]
-                data = EOF
-                fileHeader = ('Content-Type: ' + mimetype + '\n'
-                              'Content-Disposition: attachment; '
-                              'filename="' + filename + '"\r\n\n')
-                data += fileHeader
+            for fileData in dataRef[2:]:
+                fileHeader = fileData[0]
+                filename = fileData[1]
+                data = EOF + CRLF + fileHeader
                 http._conn.sock.sendall(data)
-                fdIn = open(path)
-                block = "-"
-                blockAccu = 0
+                fdIn = open(filename)
+                block = '-'
                 while (block != ""):
                     block = fdIn.read(blockSize)
-                    blockAccu += len(block)
                     http._conn.sock.sendall(block)
                     if (suspTime > 0.0): time.sleep(suspTime)
-                info(4, "Closing file: '{0}' after sending.".format(path))
+                info(5, "Closing file '{0}' after sending.".format(filename))
                 fdIn.close()
             http._conn.sock.sendall(EOC)
         elif (dataSource == "FD"):
@@ -813,6 +807,7 @@ def httpPost(host,
                   NG/AMS Server (reply, msg, hdrs, data) (list).
     """
     T = TRACE()
+    CRLF = '\r\n'
 
     # If the dataRef is a directory, scan the directory
     # and build up a list of files contained directly within
@@ -821,33 +816,36 @@ def httpPost(host,
     if os.path.isdir(dataRef):
 
         info(4, 'Request is to archive a directory')
-        mimeType = 'application/octet-stream'
+        mimeType = NGAMS_CONT_MT
 
         # Create the enclosing (outer) message
         from random import randint
-        deliminater = '===============' + str(randint(10**9,(10**10)-1)) + '=='
-        EOF = '--' + deliminater + '\n'
-        EOC = '--' + deliminater + '--'
-        subject = 'Contents of directory %s' % os.path.abspath(dataRef)
-        mainHeader = ('Content-Type: multipart/mixed; boundary="' + deliminater + '"\n'
-            'Subject: '+ subject + '\n')
-        filesList = [mainHeader]
+        boundary = '===============' + str(randint(10**9,(10**10)-1)) + '=='
+        EOF = CRLF + '--' + boundary
+        EOC = CRLF + '--' + boundary + '--'
+        dirname = os.path.basename(os.path.abspath(dataRef))
+        mainHeader = 'MIME-Version: 1.0' + CRLF + \
+                     'Content-Type: multipart/mixed; boundary="' + boundary + \
+                     '"; container_name="' + dirname + '"' + CRLF + CRLF
+        filesHeaders = [boundary, mainHeader]
         dataSize = len(mainHeader)
         for filename in os.listdir(dataRef):
+
+            # Include only files for the time being
             path = os.path.join(dataRef, filename)
-            info(5, 'Including ' + path + ' in the to-be-generated container')
             if not os.path.isfile(path):
                 continue
-            size = os.path.getsize(path)
-            fileHeader = ('Content-Type: ' + mimeType + '\n'
-                              'Content-Disposition: attachment; '
-                              'filename="' + filename + '"\r\n\n')
-            dataSize += size
-            dataSize += (len(fileHeader) + len(EOF))
-            filesList.append([path, size, mimeType])
+            info(4, 'Including \'' + path + '\' in the to-be-generated container')
+
+            fileHeader = 'Content-Type: ' + NGAMS_ARCH_REQ_MT + CRLF + \
+                         'Content-Disposition: attachment; ' + \
+                         'filename="' + filename + '"' + CRLF + CRLF
+            dataSize += os.path.getsize(path)
+            dataSize += (len(EOF) + 2 + len(fileHeader))
+            filesHeaders.append([fileHeader, path])
 
         dataSize += (len(EOC))
-        dataRef = filesList
+        dataRef = filesHeaders
         dataSource = 'FILESLIST'
 
         fileName = 'mimemessage'
