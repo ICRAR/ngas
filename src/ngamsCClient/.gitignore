@@ -2,6 +2,7 @@
 .deps
 .libs
 Makefile
+Makefile.in
 libngams.la
 ngamsARCH_CLI_MAN_PAGE.c
 ngamsARCH_CLI_MAN_PAGE.lo
