@@ -224,13 +224,10 @@ def saveFromHttpToFile(ngamsCfgObj,
                      file (s) (tuple).
     """
     T = TRACE()
-    CRLF = '\r\n'
 
     checkCreatePath(os.path.dirname(trgFilename))
 ##    fdOut = open(trgFilename, "w")
 ##    info(2,"Saving data in file: " + trgFilename + " ...")
-
-    saveDir = trgFilename.rsplit('/', 1)[0] + '/'
 
     timer = PccUtTime.Timer()
     try:
