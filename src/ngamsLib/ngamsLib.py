@@ -443,17 +443,13 @@ def _httpHandleResp(fileObj,
     # It's a container
     elif(NGAMS_CONT_MT == hdrDic['content-type']):
 
-        # This is a multipart message (mm), parse it
-        # and store each of its parts
-        from email.parser import Parser
-        mm = Parser().parse(fileObj)
-        for part in mm.walk():
+        from ngamsMIMEMultipart import MIMEMultipartParser
 
-            # The multipart message itself contains
-            # the name of the container but no data
-            # Make sure the directory is there for the files
-            if part.is_multipart():
-                dirname = part.get_param('container_name')
+        class MultipartHandler(object):
+
+            def startContainer(self, containerName):
+                dirname = containerName
+                self._dirname = dirname
                 info(4, 'Receving a container with container_name=' + dirname)
 
                 if os.path.exists(dirname) and not os.path.isdir(dirname):
@@ -461,15 +457,29 @@ def _httpHandleResp(fileObj,
                 if not os.path.isdir(dirname):
                     os.mkdir(dirname)
 
-                data = dirname
-                continue
+                self._dirname = dirname
 
-            # The rest of the files are simply dumped to disk
-            path = part.get_filename()
-            info(4, 'Saving file ' + path + ' into ' + dirname + '/')
-            fd = open(dirname + '/' + path, 'w')
-            fd.write(part.get_payload())
-            fd.close()
+            def endContainer(self):
+                info(4, 'Finished receiving container')
+
+            def startFile(self, filename):
+                info(4, 'Saving file ' + filename + ' into ' + self._dirname + '/')
+                self._fd = open(self._dirname + '/' + filename, 'w')
+
+            def handleData(self, data, moreExpected):
+                self._fd.write(data)
+                return None
+
+            def endFile(self):
+                self._fd.close()
+
+            def getDirname(self):
+                return self._dirname
+
+        handler = MultipartHandler()
+        parser = MIMEMultipartParser(handler, fileObj, dataSize, 1024)
+        parser.parse()
+        data = handler.getDirname()
 
     else:
         fd = None

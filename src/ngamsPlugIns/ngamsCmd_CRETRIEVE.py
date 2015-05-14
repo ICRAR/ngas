@@ -157,12 +157,12 @@ def genReplyRetrieve(srvObj,
         boundary = '===============' + str(randint(10**9,(10**10)-1)) + '=='
         multipartHeader = 'MIME-Version: 1.0' + CRLF +\
                           'Content-Type: multipart/mixed; boundary="' + boundary +\
-                          '"; container_name="' + container_name + '"' + CRLF
+                          '"; container_name="' + container_name + '"' + CRLF + CRLF
 
         # These mark the boundaries between MIME messages (EOF)
         # and the end of the multipart message (EOC)
-        EOF = '--' + boundary
-        EOC = EOF + '--'
+        EOF = CRLF + '--' + boundary
+        EOC = CRLF + '--' + boundary + '--'
 
         # Pre-compute the headers for each file
         # and calculate how much space do they use
@@ -172,38 +172,37 @@ def genReplyRetrieve(srvObj,
 
             mimeType = obj.getMimeType()
             contDisp = 'attachment; filename="{0}"'.format(obj.getRefFilename())
-            headerDeque.append({'Content-Type': mimeType, 'Content-disposition': contDisp})
 
-            relHeader = 'Content-Type: {0}\r\nContent-disposition: {1}"\r\n\n'.format(mimeType, contDisp)
+            header = 'Content-Type: ' + mimeType + CRLF + \
+                     'Content-disposition: ' + contDisp + CRLF + CRLF
+            headerDeque.append(header)
             dataSize += obj.getDataSize()
-            dataSize += len(relHeader) + len(EOF)
+            dataSize += len(header) + 2 + len(EOF)
 
         # Now sum up the lenght of the multipart header and the
         # EOC, which marks the end of the multipart MIME message
         dataSize += len(multipartHeader)
         dataSize += len(EOC)
 
-        # Let's send the status line reply
+        # Let's send the status line reply and the
+        # extra CLRF to start the body
         srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, None, 0, NGAMS_CONT_MT, dataSize)
+        httpRef.wfile.write(CRLF)
 
         # ... and now all the rest: multipart MIME headers,
         # individual MIME messages for each file, and EOC line
         info(4, "Sending mainHeader:  " + multipartHeader)
-        httpRef.wfile.write(CRLF + multipartHeader)
+        httpRef.wfile.write(multipartHeader)
 
         blockSize = srvObj.getCfg().getBlockSize()
         for resObj in resObjList:
-            #Send deliminater to reference end of section
-            info(4, "Sending boundary: " + EOF)
-            httpRef.wfile.write(CRLF + EOF + CRLF)
+
+            # Send deliminater and headers
+            header = headerDeque.popleft()
+            httpRef.wfile.write(EOF + CRLF + header)
 
             #Get file information
             dataSize = resObj.getDataSize()
-            headerDict = headerDeque.popleft()
-            for header, value in headerDict.iteritems():
-                info(4, "Sending header: {0}: {1}".format(header, value))
-                httpRef.send_header(header, value)
-            httpRef.wfile.write(CRLF)
 
             # Send back data from the memory buffer, from the result file, or
             # from HTTP socket connection.

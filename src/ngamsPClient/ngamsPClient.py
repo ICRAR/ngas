@@ -1101,6 +1101,7 @@ class ngamsPClient:
                 success = 1
                 break
             except Exception, e:
+                print(traceback.format_exc())
                 # Problem contacting server.
                 deltaTime = (time.time() - startTime)
                 errors += " - Error/%s/%d: %s. Timeout/time: %ss/%.3fs" %\
