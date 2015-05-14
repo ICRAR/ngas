@@ -40,7 +40,7 @@ import urllib, urllib2, glob, re, select, cPickle
 from ngams import *
 import PccUtTime
 import ngamsSmtpLib
-from ngamsMIMEMultipart import MIMEMultipartHandler, MIMEMultipartParser
+from ngamsMIMEMultipart import MIMEMultipartHandler, MIMEMultipartParser, MIMEMultipartWriter
 
 class RetreiveClientHandler(MIMEMultipartHandler):
     """
@@ -612,7 +612,6 @@ def httpPostUrl(url,
                   NG/AMS Server (reply, msg, hdrs, data) (list).
     """
     T = TRACE()
-    CRLF = '\r\n'
 
     urlres = urlparse.urlparse(url)
     if (urlres.scheme.lower() == 'houdt'):
@@ -682,25 +681,23 @@ def httpPostUrl(url,
                 if (suspTime > 0.0): time.sleep(suspTime)
             fdIn.close()
         elif (dataSource == "FILESLIST"):
-            boundary = dataRef[0]
-            mainHeader = dataRef[1]
-            EOF = CRLF + '--' + boundary
-            EOC = CRLF + '--' + boundary + '--'
-            http._conn.sock.sendall(mainHeader)
-            for fileData in dataRef[2:]:
-                fileHeader = fileData[0]
-                filename = fileData[1]
-                data = EOF + CRLF + fileHeader
-                http._conn.sock.sendall(data)
-                fdIn = open(filename)
+
+            writer = dataRef[0]
+            filesInformation = dataRef[1]
+
+            writer.setOutput(http._conn.sock.makefile("w"))
+            writer.startContainer()
+            for absPath in [i[3] for i in filesInformation]:
+                writer.startNextFile()
+                fdIn = open(absPath)
                 block = '-'
                 while (block != ""):
                     block = fdIn.read(blockSize)
-                    http._conn.sock.sendall(block)
+                    writer.writeData(block)
                     if (suspTime > 0.0): time.sleep(suspTime)
-                info(5, "Closing file '{0}' after sending.".format(filename))
                 fdIn.close()
-            http._conn.sock.sendall(EOC)
+            writer.endContainer()
+
         elif (dataSource == "FD"):
             fdIn = dataRef
             dataRead = 0
@@ -819,7 +816,6 @@ def httpPost(host,
                   NG/AMS Server (reply, msg, hdrs, data) (list).
     """
     T = TRACE()
-    CRLF = '\r\n'
 
     # If the dataRef is a directory, scan the directory
     # and build up a list of files contained directly within
@@ -827,37 +823,28 @@ def httpPost(host,
     # all of them
     if os.path.isdir(dataRef):
 
-        info(4, 'Request is to archive a directory')
+        absDirname = os.path.abspath(dataRef)
+        dirname = os.path.basename(absDirname)
+        info(4, 'Request is to archive directory ' + absDirname)
         mimeType = NGAMS_CONT_MT
 
         # Create the enclosing (outer) message
-        from random import randint
-        boundary = '===============' + str(randint(10**9,(10**10)-1)) + '=='
-        EOF = CRLF + '--' + boundary
-        EOC = CRLF + '--' + boundary + '--'
-        dirname = os.path.basename(os.path.abspath(dataRef))
-        mainHeader = 'MIME-Version: 1.0' + CRLF + \
-                     'Content-Type: multipart/mixed; boundary="' + boundary + \
-                     '"; container_name="' + dirname + '"' + CRLF + CRLF
-        filesHeaders = [boundary, mainHeader]
-        dataSize = len(mainHeader)
-        for filename in os.listdir(dataRef):
-
+        filesPaths = []
+        filesInformation = []
+        for filename in os.listdir(absDirname):
             # Include only files for the time being
-            path = os.path.join(dataRef, filename)
+            path = os.path.join(absDirname, filename)
             if not os.path.isfile(path):
                 continue
             info(4, 'Including \'' + path + '\' in the to-be-generated container')
+            filesInformation.append([NGAMS_ARCH_REQ_MT, filename, os.path.getsize(path), path])
+            filesPaths.append(path)
 
-            fileHeader = 'Content-Type: ' + NGAMS_ARCH_REQ_MT + CRLF + \
-                         'Content-Disposition: attachment; ' + \
-                         'filename="' + filename + '"' + CRLF + CRLF
-            dataSize += os.path.getsize(path)
-            dataSize += (len(EOF) + 2 + len(fileHeader))
-            filesHeaders.append([fileHeader, path])
+        dirname = os.path.basename(os.path.abspath(dataRef))
+        writer = MIMEMultipartWriter(dirname, filesInformation)
+        dataSize = writer.getTotalSize()
 
-        dataSize += (len(EOC))
-        dataRef = filesHeaders
+        dataRef = [writer, filesInformation]
         dataSource = 'FILESLIST'
 
         fileName = 'mimemessage'

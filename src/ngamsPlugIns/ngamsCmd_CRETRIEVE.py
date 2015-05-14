@@ -31,6 +31,7 @@ import ngamsDb, ngamsLib, ngamsHighLevelLib, ngamsDbCore
 import ngamsDb, ngamsPlugInApi, ngamsFileInfo, ngamsDiskInfo, ngamsFileList
 import ngamsDppiStatus, ngamsStatus, ngamsDiskUtils
 import ngamsSrvUtils, ngamsFileUtils, ngamsReqProps
+import ngamsMIMEMultipart
 
 def performProcessing(srvObj,
                       reqPropsObj,
@@ -128,8 +129,6 @@ def genReplyRetrieve(srvObj,
     """
     T = TRACE()
 
-    CRLF = '\r\n'
-
     # Send back reply with the result queried.
     # This is done by constructing a mutipart/mixed MIME message,
     # where each part of the message is a MIME message containing the
@@ -148,58 +147,22 @@ def genReplyRetrieve(srvObj,
         info(4, "Number of objects in container: {0}".format(len(statusObjList)))
         resObjList = [obj[0].getResultObject(0) for obj in statusObjList]
 
-        # To send the initial response line to the client
-        # want to know what is the size of the response.
-        # We thus compute the header of the multipart MIME message,
-        # its boundaries, their sizes and the sizes of each individual
-        # MIME message containing each file
-        from random import randint
-        boundary = '===============' + str(randint(10**9,(10**10)-1)) + '=='
-        multipartHeader = 'MIME-Version: 1.0' + CRLF +\
-                          'Content-Type: multipart/mixed; boundary="' + boundary +\
-                          '"; container_name="' + container_name + '"' + CRLF + CRLF
-
-        # These mark the boundaries between MIME messages (EOF)
-        # and the end of the multipart message (EOC)
-        EOF = CRLF + '--' + boundary
-        EOC = CRLF + '--' + boundary + '--'
-
-        # Pre-compute the headers for each file
-        # and calculate how much space do they use
-        from collections import deque
-        headerDeque = deque()
-        for obj in resObjList:
-
-            mimeType = obj.getMimeType()
-            contDisp = 'attachment; filename="{0}"'.format(obj.getRefFilename())
-
-            header = 'Content-Type: ' + mimeType + CRLF + \
-                     'Content-disposition: ' + contDisp + CRLF + CRLF
-            headerDeque.append(header)
-            dataSize += obj.getDataSize()
-            dataSize += len(header) + 2 + len(EOF)
-
-        # Now sum up the lenght of the multipart header and the
-        # EOC, which marks the end of the multipart MIME message
-        dataSize += len(multipartHeader)
-        dataSize += len(EOC)
+        filesInformation = [[obj.getMimeType(), obj.getRefFilename(), obj.getDataSize()] for obj in resObjList]
+        writer = ngamsMIMEMultipart.MIMEMultipartWriter(container_name, filesInformation, httpRef.wfile)
+        dataSize = writer.getTotalSize()
 
         # Let's send the status line reply and the
         # extra CLRF to start the body
         srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, None, 0, NGAMS_CONT_MT, dataSize)
-        httpRef.wfile.write(CRLF)
+        httpRef.end_headers()
 
         # ... and now all the rest: multipart MIME headers,
         # individual MIME messages for each file, and EOC line
-        info(4, "Sending mainHeader:  " + multipartHeader)
-        httpRef.wfile.write(multipartHeader)
-
+        writer.startContainer()
         blockSize = srvObj.getCfg().getBlockSize()
         for resObj in resObjList:
 
-            # Send deliminater and headers
-            header = headerDeque.popleft()
-            httpRef.wfile.write(EOF + CRLF + header)
+            writer.startNextFile()
 
             #Get file information
             dataSize = resObj.getDataSize()
@@ -212,8 +175,7 @@ def genReplyRetrieve(srvObj,
             # that do support it (and it's been in Linux since 2.4)
             if (resObj.getObjDataType() == NGAMS_PROC_DATA):
                 info(3,"Sending data in buffer to requestor ...")
-                #httpRef.wfile.write(resObj.getDataRef())
-                httpRef.wfile._sock.sendall(resObj.getDataRef())
+                writer.writeData(resObj.getDataRef())
             elif (resObj.getObjDataType() == NGAMS_PROC_FILE):
                 info(3,"Reading data block-wise from file and sending to requestor ...")
                 fd = open(resObj.getDataRef())
@@ -221,7 +183,7 @@ def genReplyRetrieve(srvObj,
                 dataToSent = getFileSize(resObj.getDataRef())
                 while (dataSent < dataToSent):
                     tmpData = fd.read(blockSize)
-                    httpRef.wfile._sock.sendall(tmpData)
+                    writer.writeData(tmpData)
                     dataSent += len(tmpData)
                 fd.close()
             else:
@@ -231,13 +193,11 @@ def genReplyRetrieve(srvObj,
                 dataSent = 0
                 dataToSent = dataSize
                 while (dataSent < dataToSent):
-                    tmpData = resObj.getDataRef().\
-                              read(blockSize)
-                    httpRef.wfile._sock.sendall(tmpData)
+                    tmpData = resObj.getDataRef().read(blockSize)
+                    writer.writeData(tmpData)
                     dataSent += len(tmpData)
 
-        info(4,"Sending End of Container: " + EOC)
-        httpRef.wfile.write(EOC)
+        writer.endContainer()
 
         info(4,"HTTP reply sent to: " + str(httpRef.client_address))
         reqPropsObj.setSentReply(1)

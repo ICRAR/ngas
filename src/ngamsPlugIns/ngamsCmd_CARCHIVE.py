@@ -258,6 +258,7 @@ def saveFromHttpToFile(ngamsCfgObj,
             remSize = reqPropsObj.getSize()
             info(3,"Archive Push/Pull Request - Data size: %d" % remSize)
 
+        reload(sys.modules['ngamsMIMEMultipart'])
         fd = reqPropsObj.getReadFd()
         handler = ArchivingHandler(blockSize)
         parser = MIMEMultipartParser(handler, fd, remSize, blockSize)
