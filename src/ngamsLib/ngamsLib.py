@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsLib.py,v 1.13 2008/08/19 20:51:50 jknudstr Exp $"
@@ -41,6 +40,43 @@ import urllib, urllib2, glob, re, select, cPickle
 from ngams import *
 import PccUtTime
 import ngamsSmtpLib
+from ngamsMIMEMultipart import MIMEMultipartHandler, MIMEMultipartParser
+
+class RetreiveClientHandler(MIMEMultipartHandler):
+    """
+    A MIME Multipart handler that is meant to be executed by client-side code,
+    which makes sure a directory with the name of the container exists in the
+    current working directory, and then stores each file within the container
+    as a separate file in that directory.
+    """
+
+    def startContainer(self, containerName):
+        dirname = containerName
+        self._dirname = dirname
+        info(4, 'Receiving a container with container_name=' + dirname)
+
+        if os.path.exists(dirname) and not os.path.isdir(dirname):
+            pass # TODO do something useful
+        if not os.path.isdir(dirname):
+            os.mkdir(dirname)
+
+    def endContainer(self):
+        info(4, 'Finished receiving container')
+
+    def startFile(self, filename):
+        info(4, 'Saving file ' + filename + ' into ' + self._dirname + '/')
+        self._fd = open(self._dirname + '/' + filename, 'w')
+
+    def handleData(self, data, moreExpected):
+        self._fd.write(data)
+        return None
+
+    def endFile(self):
+        self._fd.close()
+
+    def getDirname(self):
+        return self._dirname
+
 
 
 def hidePassword(fileUri):
@@ -442,41 +478,7 @@ def _httpHandleResp(fileObj,
 
     # It's a container
     elif(NGAMS_CONT_MT == hdrDic['content-type']):
-
-        from ngamsMIMEMultipart import MIMEMultipartParser
-
-        class MultipartHandler(object):
-
-            def startContainer(self, containerName):
-                dirname = containerName
-                self._dirname = dirname
-                info(4, 'Receving a container with container_name=' + dirname)
-
-                if os.path.exists(dirname) and not os.path.isdir(dirname):
-                    pass # TODO do something useful
-                if not os.path.isdir(dirname):
-                    os.mkdir(dirname)
-
-                self._dirname = dirname
-
-            def endContainer(self):
-                info(4, 'Finished receiving container')
-
-            def startFile(self, filename):
-                info(4, 'Saving file ' + filename + ' into ' + self._dirname + '/')
-                self._fd = open(self._dirname + '/' + filename, 'w')
-
-            def handleData(self, data, moreExpected):
-                self._fd.write(data)
-                return None
-
-            def endFile(self):
-                self._fd.close()
-
-            def getDirname(self):
-                return self._dirname
-
-        handler = MultipartHandler()
+        handler = RetreiveClientHandler()
         parser = MIMEMultipartParser(handler, fileObj, dataSize, 1024)
         parser.parse()
         data = handler.getDirname()
