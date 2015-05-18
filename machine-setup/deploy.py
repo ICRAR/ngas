@@ -44,16 +44,22 @@ from fabric.colors import *
 # FILTER = 'The cray-mpich2 module is now deprecated and will be removed in a future release.\r\r\nPlease use the cray-mpich module.'
 
 def run(*args, **kwargs):
-    FILTER = frun('echo')  # This should not return anything
-    res = frun(*args, **kwargs)
+    with hide('running'):
+        FILTER = frun('echo')  # This should not return anything
+    com = list(args)[0]
+    com = 'unset PYTHONPATH; {0}'.format(com)
+    res = frun(com, **kwargs)
     res = res.replace(FILTER,'')
 #     res = res.replace('\n','')
 #     res = res.replace('\r','')
     return res
 
 def sudo(*args, **kwargs):
-    FILTER = frun('echo')  # This should not return anything
-    res = fsudo(*args, **kwargs)
+    with hide('running'):
+        FILTER = frun('echo')  # This should not return anything
+    com = list(args)[0]
+    com = 'unset PYTHONPATH; {0}'.format(com)
+    res = fsudo(com, **kwargs)
     res = res.replace(FILTER, '')
     res = res.replace('\n','')
     res = res.replace('\r','')
@@ -93,6 +99,7 @@ APP_DIR = 'ngas_rt' #NGAS runtime directory
 INIT_SRC_T = '{0}/src/ngamsStartup/ngamsServer.init.sh' # Template for init source file.
 INIT_TRG = '/etc/init.d/ngamsServer'
 APP_CONF = 'ngamsServer.conf'
+MACPORT_DIR = '/opt/local' # The directory under which 'port' installs stuff
 
 # the following can be set on the command line in order to clone from git.
 GITUSER = '' 
@@ -169,11 +176,21 @@ SLES_PACKAGES = [
                  ]
 
 BREW_PACKAGES = [
+                 'wget',
                  'berkeley-db',
                  'libtool',
                  'automake',
                  'autoconf'
                  ]
+
+PORT_PACKAGES = [
+                 'wget',
+                 'db60',
+                 'libtool',
+                 'automake',
+                 'autoconf',
+                 ]
+
 
 PYTHON_PACKAGES = [
         'zc.buildout',
@@ -275,6 +292,7 @@ def whatsmyip():
     puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
     whatismyip = 'http://bot.whatismyipaddress.com/'
     myip = urllib.urlopen(whatismyip).readlines()[0]
+    puts(green('IpAddress = "{0}"'.format(myip)))
 
     return myip
 
@@ -432,7 +450,7 @@ def check_path(path):
     res = run('if [ -e {0} ]; then echo 1; else echo 0; fi'.format(path))
     return res
 
-
+@task
 def check_python():
     """
     Check for the existence of correct version of python
@@ -444,7 +462,8 @@ def check_python():
     path to python binary    string, could be empty string
     """
     # Try whether there is already a local python installation for this user
-    ppath = env.APP_DIR_ABS+'/../python'
+    set_env()
+    ppath = env.APP_DIR_ABS.split(env.APP_DIR)[0] + '/python' # make sure this is an absolute path
     ppath = check_command('{0}/bin/python{1}'.format(ppath, APP_PYTHON_VERSION))
     if ppath:
         env.PYTHON = ppath
@@ -499,6 +518,14 @@ def install_brew(package):
     """
     with settings(warn_only=True):
         run('export HOMEBREW_NO_EMOJI=1; brew install {0} | grep -v "\%"'.format(package))
+
+
+def install_port(package):
+    """
+    Install a package using macports (Mac OSX)
+    """
+    with settings(warn_only=True):
+        sudo('port install {0}'.format(package))
 
 
 @task    
@@ -556,6 +583,20 @@ def check_apt(package):
     else:
         print "NOT installed package {0}".format(package)
         return False
+
+def check_brew_port():
+    """
+    Check for existence of homebrew or macports
+    
+    RETRUNS: string containing the installed package manager or None
+    """
+    if check_command('brew'):
+        return 'brew'
+    elif check_command('port'):
+        return 'port'
+    else:
+        return None
+
 
 def check_brew_cellar():
     """
@@ -629,14 +670,20 @@ def git_clone_tar(unpack=True):
         egg_excl = ' --exclude eggs.tar.gz '
 
     # create the tar
-    local('cd {0} && tar -cjf {1}.tar.bz2 --exclude BIG_FILES \
+    local('cd {0} && tar -cjf ngas_tmp.tar.bz2 --exclude BIG_FILES \
             --exclude .git --exclude .s* --exclude .e* {2} {1}/.'.format(sdir, env.APP_DIR, egg_excl))
     tarfile = '{0}.tar.bz2'.format(env.APP_DIR)
 
     # transfer the tar file if not local
-    if not env.host_string in ['localhost','127.0.0.1',whatsmyip()]:
-        put('{0}/{1}'.format(sdir,tarfile), '/tmp/{0}'.format(tarfile, env.APP_DIR_ABS))
+    if env.standalone != 0:
+        testlist = ['localhost','127.0.0.1']
+    else:
+        testlist = ['localhost','127.0.0.1',whatsmyip()]
+    if not env.host_string in testlist:
+        put('{0}/ngas_tmp.tar.bz2'.format(sdir), '/tmp/{0}'.format(tarfile, env.APP_DIR_ABS))
         local('rm -rf /tmp/{0}'.format(env.APP_DIR))  # cleanup local git clone dir
+    else: # if this is all local
+        tarfile = 'ngas_tmp.tar.bz2'
 
     if unpack:
         # unpack the tar file remotely
@@ -670,7 +717,8 @@ def ngas_minimal_tar(transfer=True):
     excludes = ['.git', '.s*', 
                 ]
     exclude = ' --exclude ' + ' --exclude '.join(excludes)
-    local('cd {0}/.. && tar -czf /tmp/ngas_src.tar.gz {1} ngas'.format(env.src_dir, exclude))
+    src_dir_rel = os.path.split(env.src_dir)[-1]
+    local('cd {0}/.. && tar -czf /tmp/ngas_src.tar.gz {1} {2}'.format(env.src_dir, exclude, src_dir_rel))
     if transfer:
         put('/tmp/ngas_src.tar.gz','/tmp/ngas.tar.gz')
         run('cd {0} && tar --strip-components 1 -xzf /tmp/ngas.tar.gz'.format(env.APP_DIR_ABS))
@@ -751,13 +799,28 @@ def system_install():
         for package in SLES_PACKAGES:
             install_zypper(package)
     elif linux_flavor == 'Darwin':
-        install_homebrew()
-        for package in BREW_PACKAGES:
-            install_brew(package)        
+        pkg_mgr = pkg_mgr_ensure()
+        if pkg_mgr == 'brew':
+            for package in BREW_PACKAGES:
+                install_brew(package)
+        elif pkg_mgr == 'port':
+            for package in PORT_PACKAGES:
+                install_port(package)     
     else:
         abort("Unsupported linux flavor detected: {0}".format(linux_flavor))
     puts(green("\n\n******** System packages installation COMPLETED!********\n\n"))
 
+@task
+def pkg_mgr_ensure():
+    """
+    Checks if either brew or port is installed. If none is it installs brew
+    It then returns the package manager currently installed on the system
+    """
+    pkg_mgr = check_brew_port()
+    if pkg_mgr == None:
+        install_homebrew()
+        pkg_mgr = 'brew'
+    return pkg_mgr
 
 @task
 def system_check():
@@ -846,7 +909,7 @@ def user_setup():
     set_env()
     if not env.user:
         env.user = USERNAME # defaults to ec2-user
-    group = 'ngas'
+    group = env.user # defaults to the same as the user name
     sudo('groupadd ngas', warn_only=True)
     for user in env.APP_USERS:
         sudo('useradd -g {0} -m -s /bin/bash {1}'.format(group, user), warn_only=True)
@@ -909,14 +972,15 @@ def virtualenv_setup():
     check_python()
     print "CHECK_DIR: {0}".format(env.APP_DIR_ABS+'/src')
     if check_dir(env.APP_DIR_ABS+'/src') and not env.force:
-        abort('ngas_rt directory exists already')
+        abort('{0} directory exists already'.format(env.APP_DIR_ABS))
 
     with cd('/tmp'):
         put('{0}/clib_tars/virtualenv-12.0.7.tar.gz'.format(env.src_dir), 'virtualenv-12.0.7.tar.gz')
         run('tar -xzf virtualenv-12.0.7.tar.gz')
         with settings(user=env.APP_USERS[0]):
             run('cd virtualenv-12.0.7; {0} virtualenv.py {1}'.format(env.PYTHON, env.APP_DIR_ABS))
-            run('mkdir ~/.pip; cd ~/.pip; wget http://curl.haxx.se/ca/cacert.pem')
+            if not(check_dir('~/.pip')):
+                run('mkdir ~/.pip; cd ~/.pip; wget http://curl.haxx.se/ca/cacert.pem')
             run('echo "[global]" > ~/.pip/pip.conf; echo "cert = {0}/.pip/cacert.pem" >> ~/.pip/pip.conf;'.format(env.HOME))
 
     puts(green("\n\n******** VIRTUALENV SETUP COMPLETED!********\n\n"))
@@ -936,6 +1000,13 @@ def ngas_buildout(typ='archive'):
     run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
 
     with cd(env.APP_DIR_ABS):
+
+        # With ports we need to pass down the berkeley DB libs/include locations
+        buildoutCommand = 'buildout'
+        pkgmgr = check_brew_port()
+        if pkgmgr == 'port':
+            buildoutCommand += ' cjclient:ldflags=-L{0}/lib/db60 cjclient:cflags=-I{0}/include/db60'.format(MACPORT_DIR)
+
         if (env.standalone):
             put('{0}/additional_tars/eggs.tar.gz'.format(env.src_dir), '{0}/eggs.tar.gz'.format(env.APP_DIR_ABS))
             run('tar -xzf eggs.tar.gz')
@@ -943,10 +1014,11 @@ def ngas_buildout(typ='archive'):
                 put('{0}/data/common.py.patch'.format(env.src_dir), '.')
                 run('patch eggs/minitage.recipe.common-1.90-py2.7.egg/minitage/recipe/common/common.py common.py.patch')
             run('find . -name "._*" -exec rm -rf {} \;') # get rid of stupid stuff left over from MacOSX
-            virtualenv('buildout -Nvo')
+            virtualenv('{0} -Nvo'.format(buildoutCommand))
         else:
             run('find . -name "._*" -exec rm -rf {} \;')
-            virtualenv('buildout')
+            virtualenv(buildoutCommand)
+
         with settings(warn_only=True):
                 run('mkdir -p {0}/../NGAS'.format(env.APP_DIR_ABS))
         run('cp -R {0}/NGAS/* {0}/../NGAS/.'.format(env.APP_DIR_ABS))
@@ -969,6 +1041,8 @@ def ngas_buildout(typ='archive'):
 
 
     puts(green("\n\n******** NGAS_BUILDOUT COMPLETED!********\n\n"))
+
+
 
 @task
 def install_user_profile():
@@ -1019,7 +1093,7 @@ def ngas_full_buildout(typ='archive'):
     # First get the sources
     #
     if (env.standalone):
-        ngas_minimal_tar()
+        git_clone_tar()
     elif check_path('{0}/bootstrap.py'.format(env.APP_DIR_ABS)) == '0':
         git_clone_tar()
 
@@ -1032,25 +1106,35 @@ def ngas_full_buildout(typ='archive'):
         virtualenv('pip install clib_tars/boto-2.36.0.tar.gz')
         virtualenv('pip install clib_tars/markup-1.9.tar.gz')
         virtualenv('pip install additional_tars/egenix-mx-base-3.2.6.tar.gz')
-        #The following will only work if the Berkeley DB had been installed already
+        #The following will only work if the Berkeley DB has been installed already
         if env.linux_flavor == 'Darwin':
             puts('>>>> Installing Berkeley DB')
             system_install()
-            cellar_dir = check_brew_cellar()
-            db_version = run('ls -tr1 {0}/berkeley-db'.format(cellar_dir)).split()[-1]
             virtualenv('cd /tmp; tar -xzf {0}/additional_tars/bsddb3-6.1.0.tar.gz'.format(env.APP_DIR_ABS))
+
+            # Different flags given to the setup.py script depending on whether
+            # the berkeley DB was installed using brew or port
+            dbLocFlags='--berkeley-db-incdir={0}/include/db60 --berkeley-db-libdir={0}/lib/db60/'.format(MACPORT_DIR)
+            pkgmgr = check_brew_port()
+            if pkgmgr == 'brew':
+               cellardir=check_brew_cellar()
+               db_version = run('ls -tr1 {0}/berkeley-db'.format(cellar_dir)).split()[-1]
+               dbLocFlags = '--berkeley-db={0}/berkeley-db/{1}'.format(cellardir,db_version)
+
             virtualenv('cd /tmp/bsddb3-6.1.0; ' + \
                        'export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1; ' +\
-                       'python setup.py --berkeley-db=/usr/local/Cellar/berkeley-db/{0} build'.format(db_version))
+                       'python{1} setup.py {0} build'.format(dbLocFlags, APP_PYTHON_VERSION))
             virtualenv('cd /tmp/bsddb3-6.1.0; ' + \
                        'export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1; ' +\
-                       'python setup.py --berkeley-db=/usr/local/Cellar/berkeley-db/{0} install'.format(db_version))
+                       'python{1} setup.py {0} install'.format(dbLocFlags, APP_PYTHON_VERSION))
         else:
             virtualenv('pip install additional_tars/bsddb3-6.1.0.tar.gz')
         virtualenv('pip install additional_tars/bottle-0.11.6.tar.gz')
 
         # run bootstrap with correct python version (explicit)
         run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
+        # install the ngamsPClient here standalone
+        virtualenv('cd {0}/src/ngamsPClient; python2.7 setup.py install'.format(env.APP_DIR_ABS))
         virtualenv('python{0} bootstrap.py -v 2.3.1'.format(APP_PYTHON_VERSION))
 
     ngas_buildout(typ=typ)
@@ -1235,6 +1319,7 @@ def test_deploy():
     # set environment to default for EC2, if not specified otherwise.
     set_env()
     install(sys_install=True, user_install=True, init_install=True)
+    sudo('chown -R {0}:{0} /home/{0}'.format(env.user))
     with settings(user=env.APP_USERS[0]):
         run('ngamsDaemon start')
     puts(green("\n\n******** SERVER STARTED!********\n\n"))
@@ -1304,7 +1389,8 @@ def archiveSource():
 
 @task
 def install(sys_install=True, user_install=True, 
-            init_install=True, typ='archive'):
+            init_install=True, typ='archive',
+            python_install=False):
     """
     Install NGAS users and NGAS software on existing machine.
     Note: Requires root permissions!
@@ -1318,13 +1404,15 @@ def install(sys_install=True, user_install=True,
 
     with settings(user=env.APP_USERS[0]):
         ppath = check_python()
-        if not ppath:
+        if not ppath or str(python_install) == 'True':
             python_setup()
     if env.PREFIX != env.HOME: # generate non-standard ngas_rt directory
         sudo('mkdir -p {0}'.format(env.PREFIX))
-        sudo('chown -R {0}:ngas {1}'.format(env.APP_USERS[0], env.PREFIX))
     with settings(user=env.APP_USERS[0]):
         virtualenv_setup()
+    if env.PREFIX != env.HOME:
+        sudo('chown -R {0}:ngas {1}'.format(env.APP_USERS[0], env.PREFIX))
+    with settings(user=env.APP_USERS[0]):
         ngas_full_buildout(typ=typ)
         cleanup_tmp()
     if init_install and init_install != 'False': init_deploy()
@@ -1342,10 +1430,11 @@ def uninstall(clean_system=False):
     """
     puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
     set_env()
+    if env.PREFIX != env.HOME: # avoid removing the home directory
+        sudo('rm -rf {0}'.format(env.PREFIX), warn_only=True)
+    run('rm -rf {0}/../python {0}'.format(env.APP_DIR_ABS), warn_only=True)
+    run('rm -rf /tmp/Py* /tmp/ngas* /tmp/virtual*')
     with settings(user = env.APP_USERS[0]):
-        if env.PREFIX != env.HOME: # avoid removing the home directory
-            run('rm -rf {0}'.format(env.PREFIX), warn_only=True)
-        run('rm -rf {0}'.format(env.APP_DIR_ABS), warn_only=True)
         run('mv .bash_profile_orig .bash_profile', warn_only=True)
     
     if clean_system and clean_system != 'False': # don't delete the users and system settings by default.

@@ -2413,15 +2413,15 @@ class ngamsServer:
         _reqCallBack = self.reqCallBack
 
         hostName = getHostName()
+        ipAddress = getIpAddress()
         portNo = self.getCfg().getPortNo()
-        info(1,"Setting up NG/AMS HTTP Server (Host: " + getHostName() +\
-             " - Port: " + str(portNo) + ") ...")
-        self.__httpDaemon = ngamsHttpServer((hostName, portNo),
+        info(1,"Setting up NG/AMS HTTP Server (Host: {0} - IP: {1} - Port: {2}...)".\
+             format(getHostName(), ipAddress, str(portNo)))
+        self.__httpDaemon = ngamsHttpServer((ipAddress, portNo),
                                             ngamsHttpRequestHandler)
-        info(1,"NG/AMS HTTP Server ready (Host: " + getHostName() +\
-             " - Port: " + str(portNo) + ")")
+        info(1,"NG/AMS HTTP Server ready (Host: {0} - IP: {1} - Port: {2}...)".\
+             format(getHostName(), ipAddress, str(portNo)))
         self.__httpDaemon.serve_forever()
-
 
     def killServer(self,
                    delPidFile = 1):
