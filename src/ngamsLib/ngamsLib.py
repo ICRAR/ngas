@@ -681,23 +681,10 @@ def httpPostUrl(url,
                 if (suspTime > 0.0): time.sleep(suspTime)
             fdIn.close()
         elif (dataSource == "FILESLIST"):
-
             writer = dataRef[0]
-            filesInformation = dataRef[1]
-
+            allPaths = dataRef[1]
             writer.setOutput(http._conn.sock.makefile("w"))
-            writer.startContainer()
-            for absPath in [i[3] for i in filesInformation]:
-                writer.startNextFile()
-                fdIn = open(absPath)
-                block = '-'
-                while (block != ""):
-                    block = fdIn.read(blockSize)
-                    writer.writeData(block)
-                    if (suspTime > 0.0): time.sleep(suspTime)
-                fdIn.close()
-            writer.endContainer()
-
+            writeDirContents(writer, allPaths[1], blockSize, suspTime)
         elif (dataSource == "FD"):
             fdIn = dataRef
             dataRead = 0
@@ -756,6 +743,22 @@ def httpPostUrl(url,
 
     return [reply, msg, hdrs, data]
 
+def writeDirContents(writer, paths, blockSize, suspTime):
+
+    writer.startContainer()
+    for absPath in paths:
+        if isinstance(absPath, list):
+            writeDirContents(writer, absPath[1], blockSize, suspTime)
+        else:
+            writer.startNextFile()
+            fdIn = open(absPath)
+            block = '-'
+            while (block != ""):
+                block = fdIn.read(blockSize)
+                writer.writeData(block)
+                if (suspTime > 0.0): time.sleep(suspTime)
+            fdIn.close()
+    writer.endContainer()
 
 def httpPost(host,
              port,
@@ -824,27 +827,18 @@ def httpPost(host,
     if os.path.isdir(dataRef):
 
         absDirname = os.path.abspath(dataRef)
-        dirname = os.path.basename(absDirname)
         info(4, 'Request is to archive directory ' + absDirname)
         mimeType = NGAMS_CONT_MT
 
-        # Create the enclosing (outer) message
-        filesPaths = []
-        filesInformation = []
-        for filename in os.listdir(absDirname):
-            # Include only files for the time being
-            path = os.path.join(absDirname, filename)
-            if not os.path.isfile(path):
-                continue
-            info(4, 'Including \'' + path + '\' in the to-be-generated container')
-            filesInformation.append([NGAMS_ARCH_REQ_MT, filename, os.path.getsize(path), path])
-            filesPaths.append(path)
+        # Recursively collect all files
+        # TODO: Probably here we can reuse the filesInformation
+        # structure instead of having the absPaths separately
+        filesInformation, absPaths = collectFiles(absDirname)
 
-        dirname = os.path.basename(os.path.abspath(dataRef))
-        writer = MIMEMultipartWriter(dirname, filesInformation)
+        writer = MIMEMultipartWriter(filesInformation)
         dataSize = writer.getTotalSize()
 
-        dataRef = [writer, filesInformation]
+        dataRef = [writer, absPaths]
         dataSource = 'FILESLIST'
 
         fileName = 'mimemessage'
@@ -871,6 +865,28 @@ def httpPost(host,
         errMsg = "Problem occurred issuing request with URL: " + url +\
                  ". Error: " + str(e)
         raise Exception, errMsg
+
+def collectFiles(absDirname):
+
+    dirname = os.path.basename(os.path.abspath(absDirname))
+    absPaths = []
+    filesInfo = []
+
+    for filename in os.listdir(absDirname):
+        # Include only files for the time being
+        path = os.path.join(absDirname, filename)
+        if os.path.isdir(path):
+            childrenFiles, childrenPaths = collectFiles(path)
+            filesInfo.append(childrenFiles)
+            absPaths.append(childrenPaths)
+        elif os.path.isfile(path):
+            info(4, 'Including \'' + path + '\' in the to-be-generated container')
+            absPaths.append(path)
+            filesInfo.append([NGAMS_ARCH_REQ_MT, filename, os.path.getsize(path), path])
+        else:
+            info(4, 'Not including \'' + path + '\' because it\'s neither a file nor a directory')
+
+    return [[dirname, filesInfo], [absDirname, absPaths]]
 
 
 def httpGetUrl(url,

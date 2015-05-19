@@ -97,8 +97,7 @@ def getNgasDisksDef():
 # NOTE: DON'T CHANGE THE SEQUENCE ALLOCATED - A NEW ENTRY CAN BE ADDED AT THE
 #       END OF THE LIST, BUT CHANGING THE EXISTING ENTRIES WILL BREAK THE DB
 #       SNAPSHOT FEATURE.
-_ngasFilesDef = [
-                 ["nf.disk_id",                "NGAS_FILES_DISK_ID"],
+_ngasFilesDef = [["nf.disk_id",                "NGAS_FILES_DISK_ID"],
                  ["nf.file_name",              "NGAS_FILES_FILE_NAME"],
                  ["nf.file_id",                "NGAS_FILES_FILE_ID"],
                  ["nf.file_version",           "NGAS_FILES_FILE_VER"],
@@ -112,9 +111,9 @@ _ngasFilesDef = [
                  ["nf.checksum_plugin",        "NGAS_FILES_CHECKSUM_PI"],
                  ["nf.file_status",            "NGAS_FILES_FILE_STATUS"],
                  ["nf.creation_date",          "NGAS_FILES_CREATION_DATE"],
+                 ["nf.io_time",                "NGAS_FILES_IO_TIME"],
                  ["nf.container_id",           "NGAS_FILES_CONTAINER_ID"],
                  ["nf.ingestion_rate",         "NGAS_FILES_INGESTION_RATE"],
-                 ["nf.io_time",                "NGAS_FILES_IO_TIME"],
                  ]
 _ngasFilesCols = ""
 _ngasFilesNameMap = {}

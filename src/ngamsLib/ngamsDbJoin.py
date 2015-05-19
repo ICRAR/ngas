@@ -1103,6 +1103,9 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             except Exception, e:
                 self.relDbSem()
                 raise Exception, e
+
+            # Sanitize optional containerId
+            containerIdForSql = "'" + containerId + "'" if containerId else 'null'
             if (self.fileInDb(diskId, fileId, fileVersion)):
                 # We only allow to modify a limited set of columns.
                 sqlQuery = "UPDATE ngas_files SET " +\
@@ -1116,9 +1119,9 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "checksum='" + checksum + "', " +\
                            "checksum_plugin='" + checksumPlugIn + "', " +\
                            "file_status='" + fileStatus + "', " +\
-                           "creation_date='" + creDate + "' " +\
-                           "container_id='" + containerId + "' " +\
-                           "ingestion_rate='" + ingestionRate + "' " +\
+                           "creation_date='" + creDate + "', " +\
+                           "container_id=" + containerIdForSql + ", " +\
+                           "ingestion_rate=" + str(ingestionRate) + ", " +\
                            "io_time=" + str(int(iotime*1000)) + " " +\
                            "WHERE file_id='" + fileId + "' AND " +\
                            "disk_id='" + diskId + "'"
@@ -1149,9 +1152,9 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "'" + fileStatus + "', " +\
                            "'" + creDate + "', " +\
                            str(int(iotime*1000)) + ", " +\
-                           "'" + containerId + "', " +\
-                           "'" + ingestionRate + "', " +\
-                           "')"
+                           containerIdForSql + ", " +\
+                           str(ingestionRate) +\
+                           ")"
                 dbOperation = NGAMS_DB_CH_FILE_INSERT
 
             # Perform the main query.

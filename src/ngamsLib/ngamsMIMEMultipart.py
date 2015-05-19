@@ -25,14 +25,66 @@ messages representing the contents of an
 ngams/container
 """
 
-import time
+import binascii
 import random
 import string
-from collections import deque
+import time
 from email.parser import Parser
-from ngams import error, info
+from ngams import error, info, checkCreatePath
 
 CRLF = '\r\n'
+
+class Container(object):
+
+	def __init__(self, containerName):
+		self._files = []
+		self._containers = []
+		self._containerName = containerName
+		self._parentContainer = None
+		self._containerId = None
+
+	def addFile(self, fileName):
+		self._files.append(fileName)
+
+	def addContainer(self, container):
+		self._containers.append(container)
+		container.setParentContainer(self)
+
+	def setParentContainer(self, parentContainer):
+		self._parentContainer = parentContainer
+
+	def getFiles(self):
+		return self._files[:]
+
+	def getContainers(self):
+		return self._containers[:]
+
+	def getContainerName(self):
+		return self._containerName
+
+	def setContainerId(self, containerId):
+		self._containerId = containerId
+
+	def getContainerId(self):
+		return self._containerId
+
+	def getParentContainer(self):
+		return self._parentContainer
+
+	def toStr(self, tab):
+		spaces = ''.join(' ' for _ in range(tab))
+		buf = spaces + self._containerName
+		if self._containerId:
+			buf += '(id=' + str(self._containerId) + ')'
+		buf += ':\n'
+		for cont in self._containers:
+			buf += spaces + cont.toStr(tab+4) + '\n'
+		for filename in self._files:
+			buf += spaces + ' - '  + filename + '\n'
+		return buf
+
+	def __str__(self, *args, **kwargs):
+		return self.toStr(0)
 
 class MIMEMultipartHandler(object):
 	"""
@@ -84,6 +136,118 @@ class MIMEMultipartHandler(object):
 		"""
 		pass
 
+
+class ContainerBuilderHandler(MIMEMultipartHandler):
+
+	def __init__(self):
+		self._container = None
+
+	def startContainer(self, containerName):
+		info(4, 'Found container: ' + containerName)
+		MIMEMultipartHandler.startContainer(self, containerName)
+		prevContainer = self._container
+		self._container = Container(containerName)
+		if prevContainer:
+			prevContainer.addContainer(self._container)
+		else:
+			self._root = self._container
+
+	def startFile(self, filename):
+		MIMEMultipartHandler.startFile(self, filename)
+		info(4, 'Found file: ' + filename)
+		self._container.addFile(filename)
+
+	def endContainer(self):
+		MIMEMultipartHandler.endContainer(self)
+		if self._container.getParentContainer():
+			self._container = self._container.getParentContainer()
+
+	def getRoot(self):
+		return self._root
+
+class FilesystemWriterHandler(ContainerBuilderHandler):
+
+	def __init__(self, writeBlockSize, calculateCRC=False, basePath="."):
+		ContainerBuilderHandler.__init__(self)
+		self._fileDataList = []
+		self._writeBlockSize = writeBlockSize
+		self._writeTime = 0
+		self._containerNames = []
+		self._basePath = basePath if basePath else '.'
+		self._calculateCRC = calculateCRC
+		self._crcTime = 0
+
+	def _curSavingDir(self):
+		return self._basePath + '/' + '/'.join(self._containerNames)
+
+	def startContainer(self, containerName):
+		ContainerBuilderHandler.startContainer(self, containerName)
+		info(4, 'Receiving a container with container_name=' + containerName)
+		self._containerName = containerName
+		self._containerNames.append(containerName)
+		checkCreatePath(self._curSavingDir())
+
+	def endContainer(self):
+		ContainerBuilderHandler.endContainer(self)
+		self._containerNames.pop()
+		info(4, 'Finished receiving container')
+
+	def startFile(self, filename):
+		ContainerBuilderHandler.startFile(self, filename)
+		path = self._curSavingDir() + '/' + filename
+		info(4, 'Opening new file ' + path)
+		self._fdOut = open(path, 'w')
+		self._filename = path
+		self._crc = 0
+
+	def handleData(self, buf, moreExpected):
+		# Write always in _writeBlockSize blocks
+		while len(buf) > self._writeBlockSize:
+			block = buf[:self._writeBlockSize]
+			buf = buf[self._writeBlockSize:]
+			self.timedWrite(block)
+
+		# If the content of this file has finished
+		# arriving write the last piece to the file;
+		# otherwise return the remaining data so it's
+		# considered during the next call
+		if not moreExpected:
+			self.timedWrite(buf)
+		elif len(buf) > 0:
+			return buf
+
+		return None
+
+	def timedWrite(self, data):
+		t = time.time()
+		self._fdOut.write(data)
+		self._writeTime += (time.time() - t)
+
+		if self._calculateCRC:
+			t = time.time()
+			self._crc = binascii.crc32(data, self._crc)
+			self._crcTime += (time.time() - t)
+
+	def endFile(self):
+		info(4, 'Closing file ' + self._filename)
+		self._fdOut.close()
+		if self._calculateCRC:
+			self._fileDataList.append([self._container, self._filename, self._crc])
+		else:
+			self._fileDataList.append([self._container, self._filename])
+
+	def getContainerName(self):
+		return self._containerName
+
+	def getFileDataList(self):
+		return self._fileDataList
+
+	def getWritingTime(self):
+		return self._writeTime
+
+	def getCrcTime(self):
+		return self._crcTime
+
 class MIMEMultipartParser(object):
 	"""
 	A class that parses incoming ngams/container contents, which are
@@ -124,6 +288,8 @@ class MIMEMultipartParser(object):
 		self._totalSize = totalSize
 		self._readSize = readSize
 		self._bytesRead = 0
+		self._bytesToRead = self._totalSize
+		self._readingTime = 0
 
 	def getReadingTime(self):
 		"""
@@ -148,32 +314,35 @@ class MIMEMultipartParser(object):
 		lead potentially to partial files being received, so users should be
 		careful about it
 		"""
+		self._recurse()
+		info(4, 'Bytes expected/bytes received: ' + str(self._totalSize) + '/' + str(self._bytesRead))
+
+	def _recurse(self):
 
 		rdSize = self._readSize
-		remSize = self._totalSize
-
-		readingTime = 0
-
 		readingFile = False
+		state = self._ReadingState.headers
 		prevBuf = None
-		state = self._ReadingState.mainheader
+		boundary = None
+		boundaries = []
 
 		# Kick the loop of with bytesRead = 1, but stop
 		# if any reading yields 0 bytes
 		bytesRead = 1
-		while bytesRead:
+		while True:
 
 			# Don't try to over-read during the last reading
-			if remSize < rdSize:
-				rdSize = remSize
+			if self._bytesToRead < rdSize:
+				rdSize = self._bytesToRead
 
 			# Read, read, read...
-			rdt = time.time()
+			t = time.time()
 			buf = self._fd.read(rdSize)
-			readingTime += (time.time() - rdt)
-			remSize -= rdSize
+			self._readingTime += (time.time() - t)
+
 			bytesRead = len(buf)
-			self._bytesRead += bytesRead
+			self._bytesToRead -= bytesRead
+			self._bytesRead   += bytesRead
 
 			# Anything coming from a previous iteration gets prefixed
 			if prevBuf:
@@ -182,26 +351,45 @@ class MIMEMultipartParser(object):
 
 			# On the first stage we read the MIME multipart headers and parse them
 			# If found, we start reading delimiters; otherwise we keep reading data
-			if state == self._ReadingState.mainheader:
-				endingIdx = buf.find(CRLF + CRLF)
-				if endingIdx != -1:
-					info(4, 'Parsing MIME multipart headers')
-					state         = self._ReadingState.delimiter
-					headers       = buf[:endingIdx + 4]
-					buf           = buf[endingIdx + 4:]
-					msg           = Parser().parsestr(headers, headersonly=True)
-					boundary      = msg.get_param('boundary')
-					containerName = msg.get_param('container_name')
-					info(5, 'MIME multipart boundary: ' + boundary)
+			if state == self._ReadingState.headers:
+				idx = buf.find(CRLF + CRLF)
+				if idx != -1:
+					info(5, 'Processing headers')
+					headers  = buf[:idx+4]
+					buf      = buf[idx+4:]
+					msg      = Parser().parsestr(headers, headersonly=True)
 
-					# Fail if we're missing any of these
-					if not boundary or not containerName:
-						msg = 'Either \'boundary\' or \'container_name\' are not specified in the Content-type header'
-						error(msg)
-						raise Exception, msg
+					# It's a new container, recurse
+					mimeType = msg.get_content_type()
+					if 'multipart/mixed' == mimeType:
 
-					self._handler.startContainer(containerName)
+						# Save the current boundary for later
+						if boundary:
+							boundaries.append(boundary)
 
+						boundary      = msg.get_param('boundary')
+						containerName = msg.get_param('container_name')
+						info(5, 'MIME multipart boundary: ' + boundary)
+
+						# Fail if we're missing any of these
+						if not boundary or not containerName:
+							msg = 'Either \'boundary\' or \'container_name\' are not specified in the Content-type header'
+							error(msg)
+							raise Exception, msg
+
+						self._handler.startContainer(containerName)
+						state = self._ReadingState.delimiter
+
+					# It's a file within the container
+					else:
+						filename = msg.get_filename()
+						if not filename:
+							raise Exception, 'No filename found in internal multipart part header'
+						state = self._ReadingState.data
+						self._handler.startFile(filename)
+						readingFile = True
+
+				# Read more data until we reach the end of the headers
 				else:
 					prevBuf = buf
 					continue
@@ -216,35 +404,33 @@ class MIMEMultipartParser(object):
 					self._handler.endFile()
 				readingFile = False
 
+				info(5, 'Looking for delimiters')
+
 				# Look for both delimiter and final delimiter
 				delIdx  = buf.find(CRLF + '--' + boundary + CRLF)
 				fDelIdx = buf.find(CRLF + '--' + boundary + '--')
 				if delIdx != -1:
 					# We don't actually need the delimiter itself
-					#delimiter = buf[:delIdx + 4 + len(boundary) + 2]
+					delimiter = buf[:delIdx + 4 + len(boundary) + 2]
+					info(5, 'File delimiter found: ' + delimiter)
 					buf       = buf[delIdx + 4 + len(boundary) + 2:]
 					state     = self._ReadingState.headers
-				elif fDelIdx != -1:
-					self._handler.endContainer()
-					break
-				else:
 					prevBuf = buf
 					continue
-
-			if state == self._ReadingState.headers:
-				idx = buf.find(CRLF + CRLF)
-				if idx != -1:
-					info(4, 'Processing file headers')
-					headers  = buf[:idx+4]
-					buf      = buf[idx+4:]
-					msg      = Parser().parsestr(headers, headersonly=True)
-					filename = msg.get_filename()
-					if not filename:
-						msg = 'No filename found in internal multipart part header'
-						raise Exception, msg
-					state = self._ReadingState.data
-					self._handler.startFile(filename)
-					readingFile = True
+				elif fDelIdx != -1:
+					delimiter = buf[:fDelIdx + 4 + len(boundary) + 2]
+					info(5, 'Final delimiter found: ' + delimiter)
+					# Take out the final delimiter and start
+					# using the previous boundary
+					self._handler.endContainer()
+					state = self._ReadingState.delimiter
+					if boundaries:
+						boundary = boundaries.pop()
+						buf = buf[fDelIdx + 4 + len(boundary) + 2:]
+						prevBuf = buf
+						continue;
+					else:
+						break
 				else:
 					prevBuf = buf
 					continue
@@ -255,20 +441,19 @@ class MIMEMultipartParser(object):
 			if state == self._ReadingState.data:
 				delIdx  = buf.find(CRLF + '--' + boundary)
 				if delIdx != -1:
-					info(5, 'Found end of file ' + filename)
+					info(5, 'Found end of file ' + filename + ' because we found boundary: ' + boundary)
 					state = self._ReadingState.delimiter
 					prevBuf = buf[delIdx:]
 					buf = buf[:delIdx]
 
 				buf = self._handler.handleData(buf, state == self._ReadingState.data)
-				if buf and len(buf) > 0:
+				if buf and len(buf):
+					if prevBuf:
+						raise Exception, 'No data should be returned when delimiter has been found'
 					prevBuf = buf
 
-		info(4, 'Bytes expected/bytes received: ' + str(self._totalSize) + '/' + str(self._bytesRead))
-		self._readingTime = readingTime
-
-
 class MIMEMultipartWriter(object):
+
 	"""
 	A class that, given a file object, writes a MIME multipart message
 	into it representing an NGAMS container. Because users of this class
@@ -278,12 +463,13 @@ class MIMEMultipartWriter(object):
 	MIME multipart message.
 	"""
 
-	def __init__(self, containerName, filesInformation, outputFd=None):
-		self._containerName = containerName
-		self._filesInformation = deque(filesInformation)
+	def __init__(self, containerInformation, outputFd=None):
+		self._containerInformation = containerInformation
+		self._currentContainerInformation = None
 		self._outputFd = outputFd
 		self._boundLen = 10
-		self._boundary = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(self._boundLen))
+		self._boundary = None
+		self._progress = []
 
 	def setOutput(self, outputFd):
 		"""
@@ -302,17 +488,31 @@ class MIMEMultipartWriter(object):
 		containing the mime type of the file in place 0 (as a string), its name in
 		place 1 (as a string), and the its size in place 2 (as a number)
 		"""
+		return self._getTotalLengthContainer(self._containerInformation)
 
 		# See the individual methods to understand these numbers
 		# and change accordingly if some of the fixed content changes
-
 		# initial headers and final delimiter
+
+	def _getTotalLengthContainer(self, containerInformation):
+
+		containerName = containerInformation[0]
+		filesInformation = containerInformation[1]
+
 		#      strings       vars                       boundaries         CLRFs
-		size = 17 + 60 + 4 + len(self._containerName) + 2*self._boundLen + 8
-		# file-dependent length
-		for fileInfo in self._filesInformation:
-			#        strings       vars                                                boundary         CLRFs
-			size += (2 + 14 + 44 + len(fileInfo[0]) + len(fileInfo[1]) + fileInfo[2] + self._boundLen + 10)
+		size = 17 + 61 + 4 + len(containerName) + 2*self._boundLen + 8
+
+		# fileInfo can now either be a list with simple elements (str, str, int)
+		# or a list containing a container name and a filesInformation list (str, list)
+		# We thus differentiate on the second element
+		for fileInfo in filesInformation:
+			# Boundary   strings   boundary         CRLFs
+			size +=       2       + self._boundLen + 4
+			if isinstance(fileInfo[1], list):
+				size += self._getTotalLengthContainer(fileInfo)
+			else:
+				#        strings   vars                                                CLRFs
+				size += (14 + 44 + len(fileInfo[0]) + len(fileInfo[1]) + fileInfo[2] + 6)
 		return size
 
 	def startContainer(self):
@@ -322,10 +522,23 @@ class MIMEMultipartWriter(object):
 		if not self._outputFd:
 			raise Exception, 'No output has been given to this writer'
 
+		# We are currently processing a container
+		# Print a new boundary, save our current progress
+		# and start the new container headers
+		if self._boundary:
+			self._writeBoundary()
+			contInfo = self._filesInfoIt.next()
+			self._progress.append([self._boundary, self._filesInfoIt])
+		else:
+			contInfo = self._containerInformation
+
+		containerName = contInfo[0]
+		self._filesInfoIt = iter(contInfo[1])
+		self._boundary = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(self._boundLen))
 		info(4, "Sending container's MIME multipart headers")
 		self.writeData('MIME-Version: 1.0' + CRLF)
 		self.writeData('Content-Type: multipart/mixed; ' + \
-		               'container_name="' + self._containerName +'";' + \
+		               'container_name="' + containerName +'"; ' + \
 		               'boundary="' + self._boundary +'"' + CRLF + CRLF)
 
 	def startNextFile(self):
@@ -334,14 +547,18 @@ class MIMEMultipartWriter(object):
 		the start of a new part on the multipart message
 		containing the contents of a new file
 		"""
-		fileInfo = self._filesInformation.popleft()
-		if not fileInfo:
-			raise Exception, 'More files requested for writing than informed at construction time'
+		try:
+			fileInfo = self._filesInfoIt.next()
+		except StopIteration:
+			raise Exception('More files requested for writing than informed at construction time')
 
 		info(4, 'Sending ' + fileInfo[1])
-		self.writeData(CRLF + '--' + self._boundary + CRLF)
+		self._writeBoundary()
 		self.writeData('Content-Type: ' + fileInfo[0] + CRLF)
 		self.writeData('Content-disposition: attachment; filename="' + fileInfo[1] + '"' + CRLF + CRLF)
+
+	def _writeBoundary(self):
+		self.writeData(CRLF + '--' + self._boundary + CRLF)
 
 	def writeData(self, data):
 		"""
@@ -359,5 +576,7 @@ class MIMEMultipartWriter(object):
 		info(4, 'Sending final delimiter')
 		self.writeData(CRLF + '--' + self._boundary + '--')
 		self._outputFd.flush()
+		if  self._progress:
+			self._boundary, self._filesInfoIt = self._progress.pop()
 
 # EOF

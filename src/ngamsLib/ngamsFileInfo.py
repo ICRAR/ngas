@@ -754,8 +754,8 @@ class ngamsFileInfo:
                                 self.getCompression(), self.getIngestionDate(),
                                 self.getIgnore(), self.getChecksum(),
                                 self.getChecksumPlugIn(), self.getFileStatus(),
-                                self.getCreationDate(), self.getIoTime(), genSnapshot,
-                                updateDiskInfo)
+                                self.getCreationDate(), self.getIoTime(), genSnapshot=genSnapshot,
+                                updateDiskInfo=updateDiskInfo)
         return self
 
 
