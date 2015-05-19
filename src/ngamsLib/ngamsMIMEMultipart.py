@@ -180,6 +180,9 @@ class FilesystemWriterHandler(ContainerBuilderHandler):
 	def _curSavingDir(self):
 		return self._basePath + '/' + '/'.join(self._containerNames)
 
+	def getRootSavingDirectory(self):
+		return self._basePath + '/' + self._root.getContainerName()
+
 	def startContainer(self, containerName):
 		ContainerBuilderHandler.startContainer(self, containerName)
 		info(4, 'Receiving a container with container_name=' + containerName)
