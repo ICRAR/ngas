@@ -199,7 +199,6 @@ def saveFromHttpToFile(ngamsCfgObj,
         parser.parse()
         deltaTime = timer.stop()
 
-        containerName = handler.getContainerName()
         fileDataList  = handler.getFileDataList()
         crcTime       = handler.getCrcTime()
         writingTime   = handler.getWritingTime()
@@ -215,7 +214,7 @@ def saveFromHttpToFile(ngamsCfgObj,
         if (mutexDiskAccess):
             ngamsHighLevelLib.releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
 
-        return [deltaTime, rootContainer, fileDataList,ingestRate, containerName]
+        return [deltaTime, rootContainer, fileDataList,ingestRate]
 
     except Exception, e:
         #fdOut.close()
@@ -344,7 +343,6 @@ def handleCmd(srvObj,
     rootContainer = stagingInfo[1]
     fileDataList = stagingInfo[2]
     ingestRage = stagingInfo[3]
-    containerName = stagingInfo[4]
     reqPropsObj.incIoTime(ioTime)
 
     generateContainerIds(rootContainer)

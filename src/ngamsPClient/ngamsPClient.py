@@ -1,5 +1,4 @@
 #!/bin/env python
-
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -44,6 +43,7 @@ import pcc, PccUtTime
 from ngams import *
 from ngamsLib import ngamsLib
 import ngamsFileInfo, ngamsStatus
+from xml.dom import minidom
 
 
 manPage = os.path.normpath(ngamsGetSrcDir() + "/ngamsPClient/doc/ngamsPClient.doc")
@@ -298,6 +298,35 @@ class ngamsPClient:
         pars.append(["wait", str(wait)])
         return self.sendCmd(NGAMS_CLONE_CMD, 0, "", pars)
 
+    def cappend(self, fileIdList, containerId, containerName, force, reloadMod):
+        """
+        Sends a CAPPEND command to the NG/AMS Server to append the
+        given files to the container indicated either by containerId
+        or containerName
+        """
+        if not (bool(containerId) ^ bool(containerName)):
+            raise Exception('Either containerId or containerName must be indicated for CAPPEND')
+
+        pars = [['container_id', containerId], ['container_name', containerName]]
+        if reloadMod:
+            pars.append(['reload', 1])
+        if force:
+            pars.append(['force', 1])
+
+        # Convert the list of file IDs to an XML document
+        doc = minidom.Document()
+        fileListEl = doc.createElement('FileList')
+        doc.appendChild(fileListEl)
+        for fileId in fileIdList.split(':'):
+            fileEl = doc.createElement('File')
+            fileEl.setAttribute('FileId', fileId)
+            fileListEl.appendChild(fileEl)
+        fileListXml = doc.toxml(encoding='utf-8')
+
+        # And send it out!
+        response = self._httpPost(self.getHost(), self.getPort(), 'CAPPEND', 'text/xml', fileListXml, 'BUFFER', pars, dataSize=len(fileListXml))
+        # response = [reply, msg, hdrs, data]
+        return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
 
     def exit(self):
         """
@@ -760,11 +789,13 @@ class ngamsPClient:
         diskId           = ""
         execute          = 0
         fileId           = ""
+        fileIdList       = ""
         fileInfoXml      = ""
         fileUri          = ""
         fileVersion      = -1
         filterPlugIn     = ""
         force            = 0
+        host             = os.environ['HOSTNAME'] if os.environ.has_key('HOSTNAME') else 'localhost'
         hostId           = ""
         internal         = ""
         mimeType         = ""
@@ -773,6 +804,7 @@ class ngamsPClient:
         wait             = 1
         outputFile       = ""
         path             = ""
+        port             = 7777
         priority         = 10
         processing       = ""
         processingPars   = ""
@@ -806,10 +838,10 @@ class ngamsPClient:
                     fileId = "--CFG--"
                 elif (par == "-host"):
                     idx = idx + 1
-                    self.setHost(argv[idx])
+                    host = argv[idx]
                 elif (par == "-port"):
                     idx = idx + 1
-                    self.setPort(int(argv[idx]))
+                    port = int(argv[idx])
                 elif (par == "-cmd"):
                     idx = idx + 1
                     cmd = argv[idx]
@@ -823,6 +855,9 @@ class ngamsPClient:
                 elif (par == "-fileid"):
                     idx = idx + 1
                     fileId = argv[idx]
+                elif (par == "-fileidlist"):
+                    idx = idx + 1
+                    fileIdList = argv[idx]
                 elif (par == "-containerid"):
                     idx = idx + 1
                     containerId = argv[idx]
@@ -922,97 +957,27 @@ class ngamsPClient:
 
         self.verbosity = verboseLevel
 
-        # Check input parameters.
-        if ((servers == "") and (self.getHost() == "")):
-            self.setHost(os.environ["HOSTNAME"])
-        if (((self.getHost() == "") or (self.getPort() == -1)) and
-            (servers == "")):
-            errMsg = self.correctUsageBuf()
-            raise Exception, errMsg
-        if (servers != ""): self.parseSrvList(servers)
-        if reloadMod:
-            reloadMod = 1
-        else:
-            reloadMod = 0
+        # Check generic input parameters.
+        self.setHost(host)
+        self.setPort(port)
+
+        if servers != "":
+            self.parseSrvList(servers)
+        reloadMod = 1 if reloadMod else 0
 
         # Invoke the proper operation.
-        if (not getDebug()):
-            try:
-                info(3,'Command found: {0}'.format(cmd))
-                if (parArray):
-                    return self.sendCmdGen(self.getHost(), self.getPort(),
-                                           cmd, wait, outputFile, parArray)
-                elif (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
-                    return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd, pars=[['reload', reloadMod]])
-                elif (cmd == NGAMS_CACHEDEL_CMD):
-                    parArray.append(["disk_id", diskId])
-                    parArray.append(["file_id", fileId])
-                    parArray.append(["file_version", str(fileVersion)])
-                    return self.sendCmdGen(self.getHost(), self.getPort(),
-                                           cmd, wait, "", parArray)
-                elif (cmd == NGAMS_CLONE_CMD):
-                    return self.clone(fileId, diskId, fileVersion)
-                elif (cmd == NGAMS_EXIT_CMD):
-                    return self.exit()
-                elif (cmd == NGAMS_INIT_CMD):
-                    return self.init()
-                elif (cmd == NGAMS_LABEL_CMD):
-                    return self.label(slotId)
-                elif (cmd == NGAMS_OFFLINE_CMD):
-                    return self.offline(force, wait)
-                elif (cmd == NGAMS_REARCHIVE_CMD):
-                    if (not fileInfoXml):
-                        msg = "Must specify parameter -fileInfoXml for " +\
-                              "a REARCHIVE Command"
-                        raise Exception, msg
-                    return self.reArchive(fileUri, fileInfoXml, wait, parArray)
-                elif (cmd == NGAMS_ONLINE_CMD):
-                    return self.online(wait)
-                elif (cmd == NGAMS_REGISTER_CMD):
-                    return self.register(path, wait)
-                elif (cmd == NGAMS_REMDISK_CMD):
-                    return self.remDisk(diskId, execute)
-                elif (cmd == NGAMS_REMFILE_CMD):
-                    return self.remFile(diskId, fileId, fileVersion, execute)
-                elif (cmd == NGAMS_RETRIEVE_CMD):
-                    return self.retrieve2File(fileId, fileVersion, outputFile,
-                                              processing, processingPars,
-                                              internal, hostId, containerName=containerName,
-                                              containerId=containerId, cmd=cmd)
-                elif (cmd == 'CRETRIEVE'):
-                    info(4, '{0}, {1}, {2}'.format(cmd, containerId, containerName))
-                    if (not containerId and not containerName):
-                        msg = "Must specify parameter -containerId or -containerName for " +\
-                            "a CRETRIEVE Command"
-                        raise Exception, msg
-                    elif containerId:
-                        return self.retrieve2File(containerId, fileVersion, outputFile,
-                                              processing, processingPars,
-                                              internal, hostId, cmd=cmd, reloadMod=reloadMod)
-                    elif containerName:
-                        return self.retrieve2File(None, fileVersion, outputFile,
-                                              processing, processingPars,
-                                              internal, hostId, containerName=containerName, cmd=cmd, reloadMod=reloadMod)
-                elif (cmd == NGAMS_STATUS_CMD):
-                    return self.status()
-                elif (cmd == NGAMS_SUBSCRIBE_CMD):
-                    return self.subscribe(url, priority, startDate,
-                                          filterPlugIn, plugInPars)
-                elif (cmd == NGAMS_UNSUBSCRIBE_CMD):
-                    return self.unsubscribe(url)
-                else:
-                    raise Exception, 'Unknown command: ' + cmd
-            except Exception, e:
-                self.setStatus(0)
-                print "Error executing command:", e
-        else:
-            info(3,'Command found: {0}'.format(cmd))
-            if (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
+        try:
+            if (parArray):
+                return self.sendCmdGen(self.getHost(), self.getPort(),
+                                       cmd, wait, outputFile, parArray)
+            elif (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
                 return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd, pars=[['reload', reloadMod]])
+            elif cmd == "CAPPEND":
+                return self.cappend(fileIdList, containerId, containerName, force, reloadMod)
             elif (cmd == NGAMS_CACHEDEL_CMD):
-                parArray.append("disk_id", diskId)
-                parArray.append("file_id", fileId)
-                parArray.append("file_version", str(fileVersion))
+                parArray.append(["disk_id", diskId])
+                parArray.append(["file_id", fileId])
+                parArray.append(["file_version", str(fileVersion)])
                 return self.sendCmdGen(self.getHost(), self.getPort(),
                                        cmd, wait, "", parArray)
             elif (cmd == NGAMS_CLONE_CMD):
@@ -1032,7 +997,7 @@ class ngamsPClient:
                     msg = "Must specify parameter -fileInfoXml for " +\
                           "a REARCHIVE Command"
                     raise Exception, msg
-                return self.reArchive(fileUri, fileInfoXml, wait, pars)
+                return self.reArchive(fileUri, fileInfoXml, wait, parArray) # no parArray in noDebug()
             elif (cmd == NGAMS_REGISTER_CMD):
                 return self.register(path, wait)
             elif (cmd == NGAMS_REMDISK_CMD):
@@ -1040,21 +1005,37 @@ class ngamsPClient:
             elif (cmd == NGAMS_REMFILE_CMD):
                 return self.remFile(diskId, fileId, fileVersion, execute)
             elif (cmd == NGAMS_RETRIEVE_CMD):
-                return self.retrieve2File(fileId, outputFile, cmd=cmd)
+                # return self.retrieve2File(fileId, outputFile, cmd=cmd) # noDebug() version
+                return self.retrieve2File(fileId, fileVersion, outputFile,
+                                          processing, processingPars,
+                                          internal, hostId, containerName=containerName,
+                                          containerId=containerId, cmd=cmd)
             elif (cmd == 'CRETRIEVE'):
-                info(4, '{0}, {1}, {2}'.format(cmd, containerId, containerName))
                 if (not containerId and not containerName):
                     msg = "Must specify parameter -containerId or -containerName for " +\
                           "a CRETRIEVE Command"
                     raise Exception, msg
                 elif containerId:
-                    return self.retrieve2File(containerId, outputFile, cmd=cmd, reloadMod=reloadMod)
+                    # return self.retrieve2File(containerId, outputFile, cmd=cmd, reloadMod=reloadMod # noDebug() version
+                    return self.retrieve2File(containerId, fileVersion, outputFile,
+                                          processing, processingPars,
+                                          internal, hostId, cmd=cmd, reloadMod=reloadMod)
                 elif containerName:
-                    return self.retrieve2File(None, outputFile, containerName=containerName, cmd=cmd, reloadMod=reloadMod)
+                    # return self.retrieve2File(None, outputFile, containerName=containerName, cmd=cmd, reloadMod=reloadMod) # noDebug() version
+                    return self.retrieve2File(None, fileVersion, outputFile,
+                                          processing, processingPars,
+                                          internal, hostId, containerName=containerName, cmd=cmd, reloadMod=reloadMod)
             elif (cmd == NGAMS_STATUS_CMD):
                 return self.status()
+            elif (cmd == NGAMS_SUBSCRIBE_CMD):
+                return self.subscribe(url, priority, startDate, filterPlugIn, plugInPars)
+            elif (cmd == NGAMS_UNSUBSCRIBE_CMD):
+                return self.unsubscribe(url)
             else:
                 raise Exception, 'Unknown command: ' + cmd
+        except Exception, e:
+            self.setStatus(0)
+            print "Error executing command:", e
 
 
     def _httpGet(self,
@@ -1275,7 +1256,7 @@ def handleCmdLinePars(argv,
         if ngamsClient.verbosity > 0 :
             pprintStatus(ngamsClient, ngamsStat)
     except Exception, e:
-        print str(e)
+        print(traceback.print_exc())
         _exit(1)
     if (ngamsClient.getStatus()):
         fo.write(ngamsStat.genXml(0, 1, 1, 1).toprettyxml('  ', '\n')[0:-1])
@@ -1332,5 +1313,3 @@ if __name__ == '__main__':
     main()
 
 # EOF
-
- 

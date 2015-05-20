@@ -173,13 +173,18 @@ def flushHttpCh(fd,
     """
     T = TRACE()
 
+    # Avoid hanging indefinitely on streams
+    # that have been already consumed entirely
+    r = select.select([fd], [], [], 0)
+    if fd not in r[0]:
+        return
+
     remSize = complSize
     while (remSize > 0):
         rdSize = blockSize
         if (remSize < rdSize): rdSize = remSize
-        buf = fd.read(rdSize)
+        fd.read(rdSize)
         remSize -= rdSize
-
 
 def getCompleteHostName():
     """
@@ -660,9 +665,11 @@ def httpPostUrl(url,
                 http._conn.sock.sendall(block)
                 dataRead += len(block)
                 if (suspTime > 0.0): time.sleep(suspTime)
-        else:
-            # dataSource == "BUFFER"
+        elif dataSource == "BUFFER":
             http.send(dataRef)
+        else:
+            raise Exception('Unknown data source: ' + dataSource)
+
         info(4,"Data sent")
 
         # Receive + unpack reply.
