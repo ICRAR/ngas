@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 '''
 Module handling CAPPEND commands
 
@@ -28,50 +27,62 @@ Created on 20 May 2015
 :author: rtobar
 '''
 
-from ngams import error, genLog
+from ngams import error, genLog, NGAMS_HTTP_GET, info
 from xml.dom import minidom
 
-def addFilesToContainer(srvObj, containerId, fileIds, containerIdKnownToExist, force):
+def addFileToContainer(srvObj, containerId, fileId, force):
     """
-    Adds the files pointed by fileIds to the container
-    pointed by containerId. If a file doesn't exist
+    Adds the file pointed by fileIds to the container
+    pointed by containerId. If the file doesn't exist an
+    error will be raised. If the file is currently associated
+    with a container and the force flag is not True and
+    error will be raised also.
 
     :param srvObj: ngamsServer.ngamsServer
     :param containerId: string
     :param filesIds: list
-    :param containerIdKnownToExist: bool
     :param force bool
     """
+    # Check if the file exists, and if
+    # it already is contained in another container
+    sql = "SELECT container_id FROM ngas_files WHERE file_id = '" + fileId + "'"
+    res = srvObj.getDb().query(sql)
+    if not res[0]:
+        msg = "No file with fileId '" + fileId + "' found, cannot append it to container"
+        raise Exception(msg)
 
-    # If necessary, check that the container exists
-    if not containerIdKnownToExist:
-        sql = "SELECT container_id FROM ngas_containers WHERE container_id = '" + containerId + "'"
-        res = srvObj.getDb().query(sql)
-        if not res[0]:
-            msg = "No container with containerId '" + containerId + "' found, cannot append files to it"
-            error(msg)
-            raise Exception(msg)
+    prevConatinerId = res[0][0][0]
+    if prevConatinerId:
+        if prevConatinerId == containerId:
+            info(4, 'File ' + fileId + ' already belongs to container ' + containerId + ', skipping it')
+            return
 
-    # Append each file
-    for fileId in fileIds:
-
-        # Check if the file exists, and if
-        # it already is contained in another container
-        sql = "SELECT container_id FROM ngas_files WHERE file_id = '" + fileId + "'"
-        res = srvObj.getDb().query(sql)
-        if not res[0]:
-            msg = "No file with fileId '" + fileId + "' found, cannot append it to container"
-            error(msg)
-            raise Exception(msg)
-
-        prevConatinerId = res[0][0][0]
-        if prevConatinerId and not force:
+        if not force:
             msg = "File '" + fileId + "' is already associated to container '" + prevConatinerId + "'. To override the 'force' parameter must be given"
-            error(msg)
             raise Exception(msg)
 
-        sql = "UPDATE ngas_files SET container_id = '" + containerId + "' WHERE file_id = '" + fileId + "'"
-        res = srvObj.getDb().query(sql)
+    sql = "UPDATE ngas_files SET container_id = '" + containerId + "' WHERE file_id = '" + fileId + "'"
+    res = srvObj.getDb().query(sql)
+
+
+def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
+    fileId = None
+    if reqPropsObj.hasHttpPar("file_id") and reqPropsObj.getHttpPar("file_id").strip():
+        fileId = reqPropsObj.getHttpPar("file_id")
+    if not fileId:
+        msg = 'No file_id given in GET request, one needs to be specified'
+        raise Exception(msg)
+    addFileToContainer(srvObj, containerId, fileId, force)
+
+
+def _handleFileList(srvObj, containerId, reqPropsObj, force):
+    # TODO: Do this properly; that is, giving the fd to minidom but without it hanging
+    size = reqPropsObj.getSize()
+    fileListStr = reqPropsObj.getReadFd().read(size)
+    fileList = minidom.parseString(fileListStr)
+    fileIds = [el.getAttribute('FileId') for el in fileList.getElementsByTagName('File')]
+    for fileId in fileIds:
+        addFileToContainer(srvObj, containerId, fileId, force)
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -115,11 +126,22 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         containerId = cursor[0][0][0]
         containerIdKnownToExist = True
 
-    # Read the file list.
-    # TODO: Do this properly
-    size = reqPropsObj.getSize()
-    fileListStr = reqPropsObj.getReadFd().read(size)
-    fileList = minidom.parseString(fileListStr)
-    fileIds = [el.getAttribute('FileId') for el in fileList.getElementsByTagName('File')]
+    # If necessary, check that the container exists
+    if not containerIdKnownToExist:
+        sql = "SELECT container_id FROM ngas_containers WHERE container_id = '" + containerId + "'"
+        res = srvObj.getDb().query(sql)
+        if not res[0]:
+            msg = "No container with containerId '" + containerId + "' found, cannot append files to it"
+            error(msg)
+            raise Exception(msg)
 
-    addFilesToContainer(srvObj, containerId, fileIds, containerIdKnownToExist, force)
+    # If a single fileId has been given via URL parameters
+    # and the request is a GET we update that single file
+    # Otherwise, we assume a list of files is given in the
+    # body of he request
+    if reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET:
+        _handleSingleFile(srvObj, containerId, reqPropsObj, force)
+    else:
+        _handleFileList(srvObj, containerId, reqPropsObj, force)
+
+# EOF

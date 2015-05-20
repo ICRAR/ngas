@@ -298,11 +298,12 @@ class ngamsPClient:
         pars.append(["wait", str(wait)])
         return self.sendCmd(NGAMS_CLONE_CMD, 0, "", pars)
 
-    def cappend(self, fileIdList, containerId, containerName, force, reloadMod):
+    def cappend(self, fileId, fileIdList, containerId, containerName, force, reloadMod):
         """
         Sends a CAPPEND command to the NG/AMS Server to append the
-        given files to the container indicated either by containerId
-        or containerName
+        given file/s to the container indicated either by containerId
+        or containerName. If fileId is given it is used; otherwise
+        filesIdList must be given
         """
         if not (bool(containerId) ^ bool(containerName)):
             raise Exception('Either containerId or containerName must be indicated for CAPPEND')
@@ -313,18 +314,23 @@ class ngamsPClient:
         if force:
             pars.append(['force', 1])
 
-        # Convert the list of file IDs to an XML document
-        doc = minidom.Document()
-        fileListEl = doc.createElement('FileList')
-        doc.appendChild(fileListEl)
-        for fileId in fileIdList.split(':'):
-            fileEl = doc.createElement('File')
-            fileEl.setAttribute('FileId', fileId)
-            fileListEl.appendChild(fileEl)
-        fileListXml = doc.toxml(encoding='utf-8')
+        if fileId:
+            pars.append(['file_id', fileId])
+            response = self._httpGet(self.getHost(), self.getPort(), 'CAPPEND', pars=pars)
+        else:
+            # Convert the list of file IDs to an XML document
+            doc = minidom.Document()
+            fileListEl = doc.createElement('FileList')
+            doc.appendChild(fileListEl)
+            for fileId in fileIdList.split(':'):
+                fileEl = doc.createElement('File')
+                fileEl.setAttribute('FileId', fileId)
+                fileListEl.appendChild(fileEl)
+            fileListXml = doc.toxml(encoding='utf-8')
 
-        # And send it out!
-        response = self._httpPost(self.getHost(), self.getPort(), 'CAPPEND', 'text/xml', fileListXml, 'BUFFER', pars, dataSize=len(fileListXml))
+            # And send it out!
+            response = self._httpPost(self.getHost(), self.getPort(), 'CAPPEND', 'text/xml', fileListXml, 'BUFFER', pars, dataSize=len(fileListXml))
+
         # response = [reply, msg, hdrs, data]
         return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
 
@@ -973,7 +979,7 @@ class ngamsPClient:
             elif (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
                 return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd, pars=[['reload', reloadMod]])
             elif cmd == "CAPPEND":
-                return self.cappend(fileIdList, containerId, containerName, force, reloadMod)
+                return self.cappend(fileIdList, fileId, containerId, containerName, force, reloadMod)
             elif (cmd == NGAMS_CACHEDEL_CMD):
                 parArray.append(["disk_id", diskId])
                 parArray.append(["file_id", fileId])
