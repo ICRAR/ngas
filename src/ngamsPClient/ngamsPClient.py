@@ -334,6 +334,30 @@ class ngamsPClient:
         # response = [reply, msg, hdrs, data]
         return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
 
+    def ccreate(self, containerName, parentContainerId=None, containerHierarchy=None, reloadMod=False):
+        """
+        Sends a CCREATE command to the NG/AMS Server to create a container
+        or a container hierarchy
+        """
+        if not (bool(containerName) ^ bool(containerHierarchy)):
+            raise Exception('Either a container name or container hierarchy must be indicated to create container/s')
+
+        pars = []
+        if reloadMod:
+            pars.append(['reload', reloadMod])
+
+        if containerName:
+            pars.append(['container_name', containerName])
+            if parentContainerId:
+                pars.append(['parent_container_id', parentContainerId])
+            response = self._httpGet(self.getHost(), self.getPort(), 'CCREATE', pars=pars)
+        else:
+            contHierarchyXml = containerHierarchy
+            response = self._httpPost(self.getHost(), self.getPort(), 'CCREATE', 'text/xml', contHierarchyXml, 'BUFFER', pars, dataSize=len(contHierarchyXml))
+
+        # response = [reply, msg, hdrs, data]
+        return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
+
     def exit(self):
         """
         Send an EXIT command to the NG/AMS Server associated to the object.
@@ -792,6 +816,7 @@ class ngamsPClient:
         T = TRACE()
         # Command line parameters.
         cmd              = ""
+        contHierarchy    = ''
         diskId           = ""
         execute          = 0
         fileId           = ""
@@ -809,6 +834,7 @@ class ngamsPClient:
         plugInPars       = ""
         wait             = 1
         outputFile       = ""
+        parentContId     = ''
         path             = ""
         port             = 7777
         priority         = 10
@@ -864,6 +890,9 @@ class ngamsPClient:
                 elif (par == "-fileidlist"):
                     idx = idx + 1
                     fileIdList = argv[idx]
+                elif (par == '-containerhierarchy'):
+                    idx = idx + 1
+                    contHierarchy = argv[idx]
                 elif (par == "-containerid"):
                     idx = idx + 1
                     containerId = argv[idx]
@@ -914,6 +943,9 @@ class ngamsPClient:
                     idx = idx + 1
                     parArrayIdx += 1
                     parArray.append([argv[idx], ""])
+                elif (par == '-parentContainerId'):
+                    idx = idx + 1
+                    parentContId = argv[idx]
                 elif (par == "-path"):
                     idx = idx + 1
                     path = argv[idx]
@@ -979,7 +1011,9 @@ class ngamsPClient:
             elif (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
                 return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd, pars=[['reload', reloadMod]])
             elif cmd == "CAPPEND":
-                return self.cappend(fileIdList, fileId, containerId, containerName, force, reloadMod)
+                return self.cappend(fileId, fileIdList, containerId, containerName, force, reloadMod)
+            elif cmd == "CCREATE":
+                return self.ccreate(containerName, parentContId, contHierarchy, reloadMod)
             elif (cmd == NGAMS_CACHEDEL_CMD):
                 parArray.append(["disk_id", diskId])
                 parArray.append(["file_id", fileId])
@@ -1025,7 +1059,7 @@ class ngamsPClient:
                     # return self.retrieve2File(containerId, outputFile, cmd=cmd, reloadMod=reloadMod # noDebug() version
                     return self.retrieve2File(containerId, fileVersion, outputFile,
                                           processing, processingPars,
-                                          internal, hostId, cmd=cmd, reloadMod=reloadMod)
+                                          internal, hostId, containerId=containerId, cmd=cmd, reloadMod=reloadMod)
                 elif containerName:
                     # return self.retrieve2File(None, outputFile, containerName=containerName, cmd=cmd, reloadMod=reloadMod) # noDebug() version
                     return self.retrieve2File(None, fileVersion, outputFile,

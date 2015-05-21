@@ -101,10 +101,11 @@ create table ngas_containers
   container_id        varchar(36)    not null,
   parent_container_id varchar(36)    null,
   container_name      varchar(255)   not null,
-  ingestion_date      varchar(23)    not null,
+  ingestion_date      varchar(23)    null,
   container_size      numeric(20, 0) not null,
   container_type      varchar(10)    not null,
-  constraint container_idx primary key(container_id)
+  constraint container_idx primary key(container_id),
+  constraint container_uni unique(parent_container_id, container_name)
 );
 
 drop table ngas_hosts;
