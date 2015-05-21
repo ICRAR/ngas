@@ -57,7 +57,7 @@ def destroySingleContainer(srvObj, containerId, checkForChildren):
     sql = "DELETE FROM ngas_containers WHERE container_id = '" + containerId + "'"
     res = srvObj.getDb().query(sql)
 
-    info(3, "Deleted container '" + containerId + "'")
+    info(3, "Destroyed container '" + containerId + "'")
 
 def destroyContainer(srvObj, containerId, recursive):
 

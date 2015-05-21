@@ -34,6 +34,7 @@
 __all__ = ["ngamsCacheEntry",
 "ngamsConfig",
 "ngamsConfigBase",
+"ngamsContainer",
 "ngamsDapiStatus",
 "ngamsDb",
 "ngamsDbBase",

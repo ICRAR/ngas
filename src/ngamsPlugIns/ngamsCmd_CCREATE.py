@@ -26,7 +26,7 @@ Module implementing the CCREATE command
 
 import uuid
 from ngams import info, NGAMS_HTTP_GET
-import ngamsMIMEMultipart
+import ngamsContainer
 from xml.dom import minidom
 
 def insertSingleContainer(srvObj, containerName, parentContainerId=None, parentKnownToExist=False):
@@ -120,7 +120,7 @@ def _handleComplexContainer(srvObj, reqPropsObj):
 
     def parseContainerDoc(contEl):
         contName = contEl.getAttribute('ContainerName')
-        cont = ngamsMIMEMultipart.Container(contName)
+        cont = ngamsContainer.ngamsContainer(contName)
         if contEl.hasChildNodes():
             for childContEl in [n for n in contEl.childNodes if n.nodeType == minidom.Node.ELEMENT_NODE]:
                 cont.addContainer(parseContainerDoc(childContEl))

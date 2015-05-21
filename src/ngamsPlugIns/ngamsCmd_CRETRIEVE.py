@@ -30,7 +30,7 @@ import ngamsDb, ngamsLib, ngamsHighLevelLib, ngamsDbCore
 import ngamsDb, ngamsPlugInApi, ngamsFileInfo, ngamsDiskInfo, ngamsFileList
 import ngamsDppiStatus, ngamsStatus, ngamsDiskUtils
 import ngamsSrvUtils, ngamsFileUtils, ngamsReqProps
-import ngamsMIMEMultipart
+import ngamsMIMEMultipart, ngamsContainer
 
 def performProcessing(srvObj,
                       reqPropsObj,
@@ -252,7 +252,7 @@ def _handleRemoteIntFile(srvObj,
 
 def buildContainerHierarchy(dbObj, containerId, containerName):
 
-    cont = ngamsMIMEMultipart.Container(containerName)
+    cont = ngamsContainer.ngamsContainer(containerName)
     cont.setContainerId(containerId)
 
     # Check if it contains children

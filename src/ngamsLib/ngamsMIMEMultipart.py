@@ -31,60 +31,9 @@ import string
 import time
 from email.parser import Parser
 from ngams import error, info, checkCreatePath
+import ngamsContainer
 
 CRLF = '\r\n'
-
-class Container(object):
-
-	def __init__(self, containerName):
-		self._files = []
-		self._containers = []
-		self._containerName = containerName
-		self._parentContainer = None
-		self._containerId = None
-
-	def addFile(self, fileName):
-		self._files.append(fileName)
-
-	def addContainer(self, container):
-		self._containers.append(container)
-		container.setParentContainer(self)
-
-	def setParentContainer(self, parentContainer):
-		self._parentContainer = parentContainer
-
-	def getFiles(self):
-		return self._files[:]
-
-	def getContainers(self):
-		return self._containers[:]
-
-	def getContainerName(self):
-		return self._containerName
-
-	def setContainerId(self, containerId):
-		self._containerId = containerId
-
-	def getContainerId(self):
-		return self._containerId
-
-	def getParentContainer(self):
-		return self._parentContainer
-
-	def toStr(self, tab):
-		spaces = ''.join(' ' for _ in range(tab))
-		buf = spaces + self._containerName
-		if self._containerId:
-			buf += '(id=' + str(self._containerId) + ')'
-		buf += ':\n'
-		for cont in self._containers:
-			buf += spaces + cont.toStr(tab+4) + '\n'
-		for filename in self._files:
-			buf += spaces + ' - '  + filename + '\n'
-		return buf
-
-	def __str__(self, *args, **kwargs):
-		return self.toStr(0)
 
 class MIMEMultipartHandler(object):
 	"""
@@ -146,7 +95,7 @@ class ContainerBuilderHandler(MIMEMultipartHandler):
 		info(4, 'Found container: ' + containerName)
 		MIMEMultipartHandler.startContainer(self, containerName)
 		prevContainer = self._container
-		self._container = Container(containerName)
+		self._container = ngamsContainer.ngamsContainer(containerName)
 		if prevContainer:
 			prevContainer.addContainer(self._container)
 		else:

@@ -446,7 +446,7 @@ def _httpHandleResp(fileObj,
 
     # It's a container
     elif(NGAMS_CONT_MT == hdrDic['content-type']):
-        handler = ngamsMIMEMultipart.FilesystemWriterHandler(1024, basePath=".")
+        handler = ngamsMIMEMultipart.FilesystemWriterHandler(1024, basePath=dataTargFile)
         parser = ngamsMIMEMultipart.MIMEMultipartParser(handler, fileObj, dataSize, 1024)
         parser.parse()
         data = handler.getRootSavingDirectory()

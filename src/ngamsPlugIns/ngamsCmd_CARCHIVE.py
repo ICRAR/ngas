@@ -227,7 +227,7 @@ def saveFromHttpToFile(ngamsCfgObj,
 def createContainers(container, parentContainer, srvObj):
     """
     Recursively creates the necessary entries in the ngas_containers table
-    to store the given hierrachy of Container objects
+    to store the given hierarchy of Container objects
     """
 
     # TODO: get real container size
