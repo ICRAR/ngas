@@ -110,7 +110,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         force = True
 
     # If container_name is specified, and maps to more than one container,
-    # an error is issued
+    # (or to none) an error is issued
     containerIdKnownToExist = False
     if not containerId:
         SQL = "SELECT container_id FROM ngas_containers nc WHERE nc.container_name='" + containerName + "'"

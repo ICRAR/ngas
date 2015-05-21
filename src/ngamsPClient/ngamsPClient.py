@@ -358,6 +358,24 @@ class ngamsPClient:
         # response = [reply, msg, hdrs, data]
         return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
 
+    def cdestroy(self, containerName, containerId, recursive, reloadMod):
+        """
+        Sends a CDESTROY command to the NG/AMS Server to destroy a container
+        or a container hierarchy
+        """
+        if not (bool(containerId) ^ bool(containerName)):
+            raise Exception('Either containerId or containerName must be indicated for CAPPEND')
+
+        pars = [['container_id', containerId], ['container_name', containerName]]
+        if reloadMod:
+            pars.append(['reload', 1])
+        if recursive:
+            pars.append(['recursive', 1])
+
+        # response = [reply, msg, hdrs, data]
+        response = self._httpGet(self.getHost(), self.getPort(), 'CDESTROY', pars=pars)
+        return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
+
     def exit(self):
         """
         Send an EXIT command to the NG/AMS Server associated to the object.
@@ -840,6 +858,8 @@ class ngamsPClient:
         priority         = 10
         processing       = ""
         processingPars   = ""
+        recursive        = False
+        reloadMod        = False
         servers          = ""
         slotId           = ""
         startDate        = ""
@@ -849,7 +869,6 @@ class ngamsPClient:
         parArrayIdx      = -1
         containerId      = ""
         containerName    = ""
-        reloadMod        = False
 
         # Control variables.
         parLen           = len(argv)
@@ -958,6 +977,8 @@ class ngamsPClient:
                 elif (par == "-processingpars"):
                     idx = idx + 1
                     processingPars = argv[idx]
+                elif (par == "-recursive"):
+                    recursive = True
                 elif (par == "-reloadmod"):
                     reloadMod = True
                 elif (par == "-servers"):
@@ -1014,6 +1035,8 @@ class ngamsPClient:
                 return self.cappend(fileId, fileIdList, containerId, containerName, force, reloadMod)
             elif cmd == "CCREATE":
                 return self.ccreate(containerName, parentContId, contHierarchy, reloadMod)
+            elif cmd == "CDESTROY":
+                return self.cdestroy(containerName, containerId, recursive, reloadMod)
             elif (cmd == NGAMS_CACHEDEL_CMD):
                 parArray.append(["disk_id", diskId])
                 parArray.append(["file_id", fileId])
