@@ -20,7 +20,7 @@
 #    MA 02111-1307  USA
 #
 '''
-Module handling CAPPEND commands
+Module handling CREMOVE commands
 
 Created on 20 May 2015
 
@@ -30,45 +30,43 @@ Created on 20 May 2015
 from ngams import error, genLog, NGAMS_HTTP_GET, info
 from xml.dom import minidom
 
-def addFileToContainer(srvObj, containerId, fileId, force):
+def removeFileFromContainer(srvObj, containerId, fileId, force):
     """
-    Adds the file pointed by fileId to the container
+    Removes the file pointed by fileId from the container
     pointed by containerId. If the file doesn't exist an
-    error will be raised. If the file is currently associated
-    with a container and the force flag is not True an
-    error will be raised also.
+    error will be raised. If the file is currently not associated
+    with the indicated container and error will be raised also.
 
     :param srvObj: ngamsServer.ngamsServer
     :param containerId: string
     :param filesIds: list
     :param force bool
     """
+
     # Check if the file exists, and if
-    # it already is contained in another container
+    # it is contained in the indicated container
     sql = "SELECT container_id FROM ngas_files WHERE file_id = '" + fileId + "'"
     res = srvObj.getDb().query(sql)
     if not res[0]:
         msg = "No file with fileId '" + fileId + "' found, cannot append it to container"
         raise Exception(msg)
+    currentContainerId = res[0][0][0]
+    if not currentContainerId:
+        info(3, "File with fileId '" + fileId +"' is part of no container, skipping it")
+        return
+    elif currentContainerId != containerId:
+        msg = "File with fileId '" + fileId + "' is associated with a different container: " + currentContainerId
+        raise Exception(msg)
 
-    prevConatinerId = res[0][0][0]
-    if prevConatinerId:
-        if prevConatinerId == containerId:
-            info(4, 'File ' + fileId + ' already belongs to container ' + containerId + ', skipping it')
-            return
-
-        if not force:
-            msg = "File '" + fileId + "' is already associated to container '" + prevConatinerId + "'. To override the 'force' parameter must be given"
-            raise Exception(msg)
-
-    sql = "UPDATE ngas_files SET container_id = '" + containerId + "' WHERE file_id = '" + fileId + "'"
+    # Perform the update
+    sql = "UPDATE ngas_files SET container_id = null WHERE file_id = '" + fileId + "'"
     res = srvObj.getDb().query(sql)
-    info(4, 'File ' + fileId + ' added to container ' + containerId)
+    info(4, 'File ' + fileId + ' was removed from container ' + containerId)
 
 
 def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
     """
-    Handles the CAPPEND command for the case of
+    Handles the CREMOVE command for the case of
     a single file being given in the URL parameter of
     a GET request
 
@@ -83,12 +81,12 @@ def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
     if not fileId:
         msg = 'No file_id given in GET request, one needs to be specified'
         raise Exception(msg)
-    addFileToContainer(srvObj, containerId, fileId, force)
+    removeFileFromContainer(srvObj, containerId, fileId, force)
 
 
 def _handleFileList(srvObj, containerId, reqPropsObj, force):
     """
-    Handles the CAPPEND command for the case of
+    Handles the CREMOVE command for the case of
     file list being given in the body of POST request
 
     @param srvObj: ngamsServer.ngamsServer
@@ -102,11 +100,11 @@ def _handleFileList(srvObj, containerId, reqPropsObj, force):
     fileList = minidom.parseString(fileListStr)
     fileIds = [el.getAttribute('FileId') for el in fileList.getElementsByTagName('File')]
     for fileId in fileIds:
-        addFileToContainer(srvObj, containerId, fileId, force)
+        removeFileFromContainer(srvObj, containerId, fileId, force)
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
-    Handles the CAPPEND command
+    Handles the CREMOVE command
 
     @param srvObj: ngamsServer.ngamsServer
     @param reqPropsObj: ngamsLib.ngamsReqProps

@@ -293,6 +293,7 @@ def collectProcResults(srvObj, reqPropsObj, fileVer, diskId, hostId, container):
 
         if location == NGAMS_HOST_LOCAL:
             # Get the file and send back the contents from this NGAS host.
+            # TODO: pass down the fileId to get it at the container build time
             srcFilename = os.path.normpath(mountPoint + "/" + filename)
             # Perform the possible processing requested.
             procResult = performProcessing(srvObj,reqPropsObj,srcFilename,mimeType)
@@ -393,6 +394,10 @@ def _handleCmdCRetrieve(srvObj,
     if not containerId:
         SQL = "SELECT container_id FROM ngas_containers nc WHERE nc.container_name='" + containerName + "'"
         cursor = srvObj.getDb().query(SQL)
+        if len(cursor[0]) == 0:
+            errMsg = 'No container found with name ' + containerName
+            error(errMsg)
+            raise Exception, errMsg
         if len(cursor[0]) > 1:
             errMsg = 'More than one container with name ' + containerName + ' found, cannot proceed with unique fetching'
             error(errMsg)

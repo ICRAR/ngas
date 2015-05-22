@@ -36,10 +36,8 @@ def destroySingleContainer(srvObj, containerId, checkForChildren):
     subcontainers, it is not removed though
 
     @param srvObj: ngamsServer.ngamsServer
-    @param containerName: string
-    @param parentContaienrId: string
-    @param parentKnownToExist: bool
-    @return: uuid.uuid4
+    @param containerId: string
+    @param checkForChildren: bool
     """
 
     # Check that the given parent container ID exists
@@ -60,7 +58,17 @@ def destroySingleContainer(srvObj, containerId, checkForChildren):
     info(3, "Destroyed container '" + containerId + "'")
 
 def destroyContainer(srvObj, containerId, recursive):
+    """
+    Destroys the container indicated by containerId, and its
+    children containers if indicated by the recursive flag.
 
+    If the container to be destroyed contains subcontainers, but
+    the recursive flag hasn't been set, an error is issued
+
+    @param srvObj: ngamsServer.ngamsServer
+    @param containerId: string
+    @param recursive: bool
+    """
     if recursive:
         sql = "SELECT container_id FROM ngas_containers WHERE parent_container_id = '" + containerId + "'"
         res = srvObj.getDb().query(sql)
