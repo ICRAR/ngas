@@ -122,11 +122,13 @@ SUPPORTED_OS = [
 
 YUM_PACKAGES = [
    'python27-devel',
+   'python-devel',
    'git',
    'autoconf',
    'libtool',
    'zlib-devel',
    'db4-devel',
+   'libdb-devel',
    'gdbm-devel',
    'readline-devel',
    'sqlite-devel',
@@ -152,6 +154,7 @@ APT_PACKAGES = [
         'postgresql-client',
         'patch',
         'python-dev',
+        'libdb5.3-dev',
                 ]
 
 SLES_PACKAGES = [
@@ -422,6 +425,8 @@ def to_boolean(choice, default=False):
         return valid[choice_lower]
     return default
 
+
+@task
 def check_command(command):
     """
     Check existence of command remotely
@@ -434,6 +439,7 @@ def check_command(command):
     """
     res = run('if command -v {0} &> /dev/null ;then command -v {0};else echo ;fi'.format(command))
     return res
+
 
 def check_dir(directory):
     """
@@ -738,6 +744,10 @@ def get_linux_flavor():
     Obtain and set the env variable linux_flavor
     """
     puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
+    if check_command('python'):
+        lf = run("python -c 'import platform; print platform.linux_distribution()[0]'")
+        if lf:
+            env.linux_flavor = lf.split()[0]
     if not env.has_key('linux_flavor'):
         if (check_path('/etc/issue') == '1'):
             re = run('cat /etc/issue')
@@ -750,6 +760,8 @@ def get_linux_flavor():
                     linux_flavor = ' '.join(linux_flavor[:2])
                 elif linux_flavor[2] == 'SUSE':
                     linux_flavor = linux_flavor[2]
+                else:
+                    check_path('/etc/os-release')
         else:
             linux_flavor = run('uname -s')
     else:
@@ -1128,7 +1140,7 @@ def ngas_full_buildout(typ='archive'):
                        'export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1; ' +\
                        'python{1} setup.py {0} install'.format(dbLocFlags, APP_PYTHON_VERSION))
         else:
-            virtualenv('pip install additional_tars/bsddb3-6.1.0.tar.gz')
+            virtualenv('pip install --install-option="--berkeley-db=/usr" additional_tars/bsddb3-6.1.0.tar.gz')
         virtualenv('pip install additional_tars/bottle-0.11.6.tar.gz')
 
         # run bootstrap with correct python version (explicit)
