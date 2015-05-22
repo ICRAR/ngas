@@ -1178,7 +1178,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                                               uncompressedFileSize,compression,
                                               ingestionDate, ignore, checksum,
                                               checksumPlugIn, fileStatus, creationDate,
-                                              iotime])
+                                              iotime, containerId])
                 self.createDbFileChangeStatusDoc(dbOperation, [tmpFileObj])
                 del tmpFileObj
 

@@ -356,22 +356,20 @@ class MIMEMultipartParser(object):
 					self._handler.endFile()
 				readingFile = False
 
-				info(5, 'Looking for delimiters')
-
 				# Look for both delimiter and final delimiter
 				delIdx  = buf.find(CRLF + '--' + boundary + CRLF)
 				fDelIdx = buf.find(CRLF + '--' + boundary + '--')
 				if delIdx != -1:
 					# We don't actually need the delimiter itself
-					delimiter = buf[:delIdx + 4 + len(boundary) + 2]
-					info(5, 'File delimiter found: ' + delimiter)
+					# delimiter = buf[:delIdx + 4 + len(boundary) + 2]
+					info(5, 'File delimiter found')
 					buf       = buf[delIdx + 4 + len(boundary) + 2:]
 					state     = self._ReadingState.headers
 					prevBuf = buf
 					continue
 				elif fDelIdx != -1:
-					delimiter = buf[:fDelIdx + 4 + len(boundary) + 2]
-					info(5, 'Final delimiter found: ' + delimiter)
+					# delimiter = buf[:fDelIdx + 4 + len(boundary) + 2]
+					info(5, 'Final delimiter found')
 					# Take out the final delimiter and start
 					# using the previous boundary
 					self._handler.endContainer()

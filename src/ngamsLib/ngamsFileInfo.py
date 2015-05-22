@@ -71,6 +71,7 @@ class ngamsFileInfo:
 
         self.__tag                  = ""
         self.__ioTime               = -1.
+        self.__containerId          = None
 
         # Specific OS info about file.
         self.__permissions          = ""
@@ -644,6 +645,28 @@ class ngamsFileInfo:
         """
         return self.__ioTime
 
+
+    def setContainerId(self,
+                       containerId):
+        """
+        Set the ID to which this file belongs.
+
+        ioTime:     string
+
+        Returns:    Reference to object itself.
+        """
+        if (not containerId): return self
+        self.__containerId = containerId
+        return self
+
+
+    def getContainerId(self):
+        """
+        Get the ID of the container to which this file belongs.
+
+        Returns:   Container ID (string).
+        """
+        return self.__containerId
     ########################################################################
 
 
@@ -675,6 +698,7 @@ class ngamsFileInfo:
         self.setFileStatus(sqlQueryRes[ngamsDbCore.NGAS_FILES_FILE_STATUS])
         self.setCreationDate(sqlQueryRes[ngamsDbCore.NGAS_FILES_CREATION_DATE])
         self.setIoTime(sqlQueryRes[ngamsDbCore.NGAS_FILES_IO_TIME])
+        self.setContainerId(sqlQueryRes[ngamsDbCore.NGAS_FILES_CONTAINER_ID])
         return self
 
 
@@ -691,7 +715,7 @@ class ngamsFileInfo:
                 self.getCompression(), self.getIngestionDate(),
                 int(self.getIgnore()), self.getChecksum(),
                 self.getChecksumPlugIn(), self.getFileStatus(),
-                self.getCreationDate(), self.getIoTime()]
+                self.getCreationDate(), self.getIoTime(), self.getContainerId()]
 
 
     def read(self,
@@ -754,7 +778,9 @@ class ngamsFileInfo:
                                 self.getCompression(), self.getIngestionDate(),
                                 self.getIgnore(), self.getChecksum(),
                                 self.getChecksumPlugIn(), self.getFileStatus(),
-                                self.getCreationDate(), self.getIoTime(), genSnapshot=genSnapshot,
+                                self.getCreationDate(), self.getIoTime(),
+                                self.getContainerId(),
+                                genSnapshot=genSnapshot,
                                 updateDiskInfo=updateDiskInfo)
         return self
 
