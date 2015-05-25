@@ -231,35 +231,21 @@ def createContainers(container, parentContainer, srvObj):
     """
 
     # TODO: get real container size
-    containerSize = 0
     containerName = container.getContainerName()
-    containerId = container.getContainerId()
-    creationDate = timeRef2Iso8601(time.time())
-    parentContainerIdSql = "'" + str(parentContainer.getContainerId()) + "'" if parentContainer else 'null'
-    sqlQuery = "INSERT INTO ngas_containers " +\
-               "(container_id, container_name, ingestion_date, " +\
-               "container_size, container_type, parent_container_id)" +\
-               "VALUES (" +\
-                "'" + str(containerId) + "', " +\
-                "'" + containerName + "', " +\
-                "'" + creationDate + "', " +\
-                str(containerSize) + ", " +\
-                "'logical', " +\
-                parentContainerIdSql + ")"
-
-    srvObj.getDb().query(sqlQuery)
+    ingestionDate = time.time()
+    parentContainerId = str(parentContainer.getContainerId()) + "'" if parentContainer else None
+    containerId = srvObj.getDb().createContainer(containerName,
+                                                 containerSize=0,
+                                                 ingestionDate=ingestionDate,
+                                                 parentContainerId=parentContainerId,
+                                                 parentKnownToExist=True)
+    container.setContainerId(containerId)
+    container.setIngestionDate(ingestionDate)
 
     # Recurse on our children
     for childContainer in container.getContainers():
         createContainers(childContainer, container, srvObj)
 
-def generateContainerIds(container):
-    """
-    Generate IDs for a given hierarchy of containers
-    """
-    container.setContainerId(uuid.uuid4())
-    for childContainer in container.getContainers():
-        generateContainerIds(childContainer)
 
 def handleCmd(srvObj,
               reqPropsObj,
@@ -345,7 +331,6 @@ def handleCmd(srvObj,
     ingestRage = stagingInfo[3]
     reqPropsObj.incIoTime(ioTime)
 
-    generateContainerIds(rootContainer)
     createContainers(rootContainer, None, srvObj)
 
     import ngamsPlugInApi

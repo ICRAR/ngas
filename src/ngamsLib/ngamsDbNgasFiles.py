@@ -667,5 +667,66 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         else:
             return None
 
+    def addFileToContainer(self, containerId, fileId, force):
+        """
+        Adds the file pointed by fileId to the container
+        pointed by containerId. If the file doesn't exist an
+        error will be raised. If the file is currently associated
+        with a container and the force flag is not True an
+        error will be raised also.
+
+        :param containerId: string
+        :param fileId: string
+        :param force bool
+        """
+        # Check if the file exists, and if
+        # it already is contained in another container
+        sql = "SELECT container_id FROM ngas_files WHERE file_id = '" + fileId + "'"
+        res = self.query(sql)
+        if not res[0]:
+            msg = "No file with fileId '" + fileId + "' found, cannot append it to container"
+            raise Exception(msg)
+
+        prevConatinerId = res[0][0][0]
+        if prevConatinerId:
+            if prevConatinerId == containerId:
+                info(4, 'File ' + fileId + ' already belongs to container ' + containerId + ', skipping it')
+                return
+
+            if not force:
+                msg = "File '" + fileId + "' is already associated to container '" + prevConatinerId + "'. To override the 'force' parameter must be given"
+                raise Exception(msg)
+
+        sql = "UPDATE ngas_files SET container_id = '" + containerId + "' WHERE file_id = '" + fileId + "'"
+        res = self.query(sql)
+        info(4, 'File ' + fileId + ' added to container ' + containerId)
+
+    def removeFileFromContainer(self, fileId, containerId):
+        """
+        Removes the file pointed by fileId from the container
+        pointed by containerId. If the file doesn't exist an
+        error will be raised. If the file is currently not associated
+        with the indicated container and error will be raised also.
+
+        :param fileId: string
+        :param containerId: string
+        """
+
+        sql = "SELECT container_id FROM ngas_files WHERE file_id = '" + fileId + "'"
+        res = self.query(sql)
+        if not res[0]:
+            msg = "No file with fileId '" + fileId + "' found, cannot append it to container"
+            raise Exception(msg)
+        currentContainerId = res[0][0][0]
+        if not currentContainerId:
+            info(3, "File with fileId '" + fileId +"' is part of no container, skipping it")
+            return
+        elif currentContainerId != containerId:
+            msg = "File with fileId '" + fileId + "' is associated with a different container: " + currentContainerId
+            raise Exception(msg)
+
+        sql = "UPDATE ngas_files SET container_id = null WHERE file_id = '" + fileId + "'"
+        self.query(sql)
+        info(4, 'File ' + fileId + ' was removed from container ' + containerId)
 
 # EOF

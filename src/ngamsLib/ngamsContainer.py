@@ -37,11 +37,13 @@ class ngamsContainer(object):
     """
 
     def __init__(self, containerName):
+        self._containerId = None
+        self._containerName = containerName
+        self._containerSize = -1
+        self._ingestionDate = None
+        self._parentContainer = None
         self._files = []
         self._containers = []
-        self._containerName = containerName
-        self._parentContainer = None
-        self._containerId = None
 
     def addFile(self, fileName):
         self._files.append(fileName)
@@ -70,6 +72,18 @@ class ngamsContainer(object):
 
     def getParentContainer(self):
         return self._parentContainer
+
+    def getContainerSize(self):
+        return self._containerSize
+
+    def setContainerSize(self, containerSize):
+        self._containerSize = containerSize
+
+    def getIngestionDate(self):
+        return self._ingestionDate
+
+    def setIngestionDate(self, ingestionDate):
+        self._ingestionDate = ingestionDate
 
     def toStr(self, tab):
         spaces = ''.join(' ' for _ in range(tab))

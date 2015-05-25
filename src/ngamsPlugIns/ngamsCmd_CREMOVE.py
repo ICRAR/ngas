@@ -27,42 +27,8 @@ Created on 20 May 2015
 :author: rtobar
 '''
 
-from ngams import error, genLog, NGAMS_HTTP_GET, info
+from ngams import error, genLog, NGAMS_HTTP_GET
 from xml.dom import minidom
-
-def removeFileFromContainer(srvObj, containerId, fileId, force):
-    """
-    Removes the file pointed by fileId from the container
-    pointed by containerId. If the file doesn't exist an
-    error will be raised. If the file is currently not associated
-    with the indicated container and error will be raised also.
-
-    :param srvObj: ngamsServer.ngamsServer
-    :param containerId: string
-    :param filesIds: list
-    :param force bool
-    """
-
-    # Check if the file exists, and if
-    # it is contained in the indicated container
-    sql = "SELECT container_id FROM ngas_files WHERE file_id = '" + fileId + "'"
-    res = srvObj.getDb().query(sql)
-    if not res[0]:
-        msg = "No file with fileId '" + fileId + "' found, cannot append it to container"
-        raise Exception(msg)
-    currentContainerId = res[0][0][0]
-    if not currentContainerId:
-        info(3, "File with fileId '" + fileId +"' is part of no container, skipping it")
-        return
-    elif currentContainerId != containerId:
-        msg = "File with fileId '" + fileId + "' is associated with a different container: " + currentContainerId
-        raise Exception(msg)
-
-    # Perform the update
-    sql = "UPDATE ngas_files SET container_id = null WHERE file_id = '" + fileId + "'"
-    res = srvObj.getDb().query(sql)
-    info(4, 'File ' + fileId + ' was removed from container ' + containerId)
-
 
 def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
     """
@@ -73,7 +39,6 @@ def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
     @param srvObj: ngamsServer.ngamsServer
     @param containerId: string
     @param reqPropsObj: ngamsLib.ngamsReqProps
-    @param force: bool
     """
     fileId = None
     if reqPropsObj.hasHttpPar("file_id") and reqPropsObj.getHttpPar("file_id").strip():
@@ -81,7 +46,8 @@ def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
     if not fileId:
         msg = 'No file_id given in GET request, one needs to be specified'
         raise Exception(msg)
-    removeFileFromContainer(srvObj, containerId, fileId, force)
+
+    srvObj.getDb().removeFileFromContainer(fileId, containerId)
 
 
 def _handleFileList(srvObj, containerId, reqPropsObj, force):
@@ -95,12 +61,13 @@ def _handleFileList(srvObj, containerId, reqPropsObj, force):
     @param force: bool
     """
     # TODO: Do this properly; that is, giving the fd to minidom but without it hanging
+    #       (or maybe it's OK like it currently is?)
     size = reqPropsObj.getSize()
     fileListStr = reqPropsObj.getReadFd().read(size)
     fileList = minidom.parseString(fileListStr)
     fileIds = [el.getAttribute('FileId') for el in fileList.getElementsByTagName('File')]
     for fileId in fileIds:
-        removeFileFromContainer(srvObj, containerId, fileId, force)
+        srvObj.getDb().removeFileFromContainer(fileId, containerId)
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -131,24 +98,12 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     # (or to none) an error is issued
     containerIdKnownToExist = False
     if not containerId:
-        SQL = "SELECT container_id FROM ngas_containers nc WHERE nc.container_name='" + containerName + "'"
-        cursor = srvObj.getDb().query(SQL)
-        if len(cursor[0]) == 0:
-            errMsg = 'No container found with name ' + containerName
-            error(errMsg)
-            raise Exception, errMsg
-        if len(cursor[0]) > 1:
-            errMsg = 'More than one container with name ' + containerName + ' found, cannot proceed with unique fetching'
-            error(errMsg)
-            raise Exception, errMsg
-        containerId = cursor[0][0][0]
+        containerId = srvObj.getDb().getContainerIdForUniqueName(containerName)
         containerIdKnownToExist = True
 
     # If necessary, check that the container exists
     if not containerIdKnownToExist:
-        sql = "SELECT container_id FROM ngas_containers WHERE container_id = '" + containerId + "'"
-        res = srvObj.getDb().query(sql)
-        if not res[0]:
+        if not srvObj.getDb().containerExists(containerId):
             msg = "No container with containerId '" + containerId + "' found, cannot append files to it"
             error(msg)
             raise Exception(msg)

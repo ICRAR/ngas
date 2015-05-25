@@ -23,14 +23,16 @@
 """
 Function + code to handle the CRETRIEVE Command.
 """
-from   ngams import *
-import socket, re, glob, commands
-import PccUtTime
-import ngamsDb, ngamsLib, ngamsHighLevelLib, ngamsDbCore
-import ngamsDb, ngamsPlugInApi, ngamsFileInfo, ngamsDiskInfo, ngamsFileList
-import ngamsDppiStatus, ngamsStatus, ngamsDiskUtils
-import ngamsSrvUtils, ngamsFileUtils, ngamsReqProps
-import ngamsMIMEMultipart, ngamsContainer
+import os
+from ngams import TRACE, genLog, info, error, rmFile, getFileSize, checkCreatePath
+from ngams import NGAMS_PROC_FILE, NGAMS_PROC_DATA, NGAMS_PROC_STREAM
+from ngams import NGAMS_CONT_MT, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE
+from ngams import NGAMS_HOST_LOCAL, NGAMS_HOST_REMOTE, NGAMS_HOST_CLUSTER
+from ngams import NGAMS_RETRIEVE_CMD, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE
+import ngamsLib, ngamsHighLevelLib, ngamsDbCore
+import ngamsDppiStatus, ngamsStatus
+import ngamsSrvUtils, ngamsFileUtils
+import ngamsMIMEMultipart
 
 def performProcessing(srvObj,
                       reqPropsObj,
@@ -250,18 +252,6 @@ def _handleRemoteIntFile(srvObj,
                                         forwardPort, autoReply = 1)
 
 
-def buildContainerHierarchy(dbObj, containerId, containerName):
-
-    cont = ngamsContainer.ngamsContainer(containerName)
-    cont.setContainerId(containerId)
-
-    # Check if it contains children
-    res = dbObj.query("select container_id, container_name FROM ngas_containers WHERE parent_container_id = '" + containerId + "'")
-    for r in res[0]:
-        cont.addContainer(buildContainerHierarchy(dbObj, r[0], r[1]))
-    return cont
-
-
 def collectProcResults(srvObj, reqPropsObj, fileVer, diskId, hostId, container):
 
     # Collect inner containers
@@ -392,23 +382,7 @@ def _handleCmdCRetrieve(srvObj,
     # If container_name is specified, and maps to more than one container,
     # an error is issued
     if not containerId:
-        SQL = "SELECT container_id FROM ngas_containers nc WHERE nc.container_name='" + containerName + "'"
-        cursor = srvObj.getDb().query(SQL)
-        if len(cursor[0]) == 0:
-            errMsg = 'No container found with name ' + containerName
-            error(errMsg)
-            raise Exception, errMsg
-        if len(cursor[0]) > 1:
-            errMsg = 'More than one container with name ' + containerName + ' found, cannot proceed with unique fetching'
-            error(errMsg)
-            raise Exception, errMsg
-        containerId = cursor[0][0][0]
-
-    # Eagerly fetch the container name if still not given
-    if not containerName:
-        SQL = "SELECT container_name FROM ngas_containers nc WHERE nc.container_id='" + containerId + "'"
-        cursor = srvObj.getDb().query(SQL)
-        containerName = cursor[0][0][0]
+        containerId = srvObj.getDb().getContainerIdForUniqueName(containerName)
 
     info(4,"Handling request for file with containerId: " + containerId)
     fileVer = -1
@@ -422,7 +396,7 @@ def _handleCmdCRetrieve(srvObj,
         hostId = reqPropsObj.getHttpPar("host_id")
 
     # Build the container hierarchy and collect all results recursively
-    container = buildContainerHierarchy(srvObj.getDb(), containerId, containerName)
+    container = srvObj.getDb().buildContainerHierarchy(containerId, containerName)
     procResultList = collectProcResults(srvObj, reqPropsObj, fileVer, diskId, hostId, container)
 
     # Send back reply with the result(s) queried and possibly processed.

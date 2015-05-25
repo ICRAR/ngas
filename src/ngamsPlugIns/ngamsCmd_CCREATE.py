@@ -19,59 +19,13 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-from ngamsPlugIns.ngamsCmd_CARCHIVE import createContainers
 """
 Module implementing the CCREATE command
 """
 
-import uuid
-from ngams import info, NGAMS_HTTP_GET
+from ngams import NGAMS_HTTP_GET
 import ngamsContainer
 from xml.dom import minidom
-
-def insertSingleContainer(srvObj, containerName, parentContainerId=None, parentKnownToExist=False):
-    """
-    Creates a single container with name containerName.
-
-    If parentContainerId is given the new container will
-    point to it as its parent. The parent container ID is
-    checked for existence, unless parentKnownToExist indicates
-    that the check is not necessary
-
-    @param srvObj: ngamsServer.ngamsServer
-    @param containerName: string
-    @param parentContaienrId: string
-    @param parentKnownToExist: bool
-    @return: uuid.uuid4
-    """
-
-    # Check that the given parent container ID exists
-    if parentContainerId and not parentKnownToExist:
-        sql = "SELECT container_id FROM ngas_containers WHERE container_id = '" + parentContainerId + "'"
-        res = srvObj.getDb().query(sql)
-        if not res[0]:
-            raise Exception("No container with id '" + parentContainerId + "' exists, cannot use it as parent_container_id")
-
-    # If we're associating the container to a parent, check
-    # that the parent container doesn't have already a sub-container
-    # with the given name
-    if parentContainerId:
-        sql = "SELECT container_name FROM ngas_containers WHERE parent_container_id ='" + parentContainerId+ "' and container_name='" + containerName +"'"
-        res = srvObj.getDb().query(sql)
-        if res[0]:
-            msg = "A container with name '" + containerName + "' already exists as subcontainer of '" +\
-                  parentContainerId + "', cannot add a new container with the same name"
-            raise Exception(msg)
-
-    # Do the insert
-    containerId = uuid.uuid4()
-    parentContainerId = "'" + parentContainerId + "'" if parentContainerId else 'null'
-    sql = "INSERT INTO ngas_containers (container_id, parent_container_id, container_name, container_size, container_type) " +\
-          "VALUES ('" + str(containerId) + "', " + parentContainerId + ", '" + containerName + "', 0, 'logical')"
-    res = srvObj.getDb().query(sql)
-
-    info(3, "Created container '" + containerName + "' with id '" + str(containerId) + "'")
-    return containerId
 
 def _handleSingleContainer(srvObj, reqPropsObj):
     """
@@ -94,7 +48,7 @@ def _handleSingleContainer(srvObj, reqPropsObj):
     if not containerName:
         raise Exception('No container_name parameter given, cannot create a nameless container')
 
-    insertSingleContainer(srvObj, containerName, parentContainerId, False)
+    srvObj.getDb().createContainer(containerName, parentContainerId=parentContainerId, parentKnownToExist=False)
 
 def _handleComplexContainer(srvObj, reqPropsObj):
     """
@@ -129,7 +83,9 @@ def _handleComplexContainer(srvObj, reqPropsObj):
 
     # Create all containers
     def createContainers(cont, parentContainerId, parentKnownToExist):
-        containerId = insertSingleContainer(srvObj, cont.getContainerName(), parentContainerId, parentKnownToExist)
+        containerId = srvObj.getDb().createContainer(cont.getContainerName(),
+                                                     parentContainerId=parentContainerId,
+                                                     parentKnownToExist=parentKnownToExist)
         cont.setContainerId(containerId)
         for childCont in cont.getContainers():
             createContainers(childCont, str(containerId), True)

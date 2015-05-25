@@ -23,39 +23,7 @@
 Module implementing the CDESTROY command
 """
 
-from ngams import genLog, error, info
-
-def destroySingleContainer(srvObj, containerId, checkForChildren):
-    """
-    Destroys a single container with id containerId.
-
-    If the container contains subcontainers an error is issued.
-
-    Before destroying the container, all files associated to the
-    container are removed from it first. If the container has
-    subcontainers, it is not removed though
-
-    @param srvObj: ngamsServer.ngamsServer
-    @param containerId: string
-    @param checkForChildren: bool
-    """
-
-    # Check that the given parent container ID exists
-    if checkForChildren:
-        sql = "SELECT container_id FROM ngas_containers WHERE parent_container_id = '" + containerId + "'"
-        res = srvObj.getDb().query(sql)
-        if res[0]:
-            raise Exception("Container with id '" + containerId + "' has sub-containers, use the recursive option to remove them")
-
-    # Remove the files that are currently part of the container from it
-    sql = "UPDATE ngas_files SET container_id = null WHERE container_id = '" + containerId + "'"
-    res = srvObj.getDb().query(sql)
-
-    # Remove the container
-    sql = "DELETE FROM ngas_containers WHERE container_id = '" + containerId + "'"
-    res = srvObj.getDb().query(sql)
-
-    info(3, "Destroyed container '" + containerId + "'")
+from ngams import genLog, error
 
 def destroyContainer(srvObj, containerId, recursive):
     """
@@ -78,7 +46,7 @@ def destroyContainer(srvObj, containerId, recursive):
     # If we are recursive, we already ensure that
     # the children containers are gone, so there's no need
     # to check again
-    destroySingleContainer(srvObj, containerId, not recursive)
+    srvObj.getDb().destroySingleContainer(containerId, not recursive)
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -108,17 +76,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     # If container_name is specified, and maps to more than one container,
     # (or to none) an error is issued
     if not containerId:
-        SQL = "SELECT container_id FROM ngas_containers nc WHERE nc.container_name='" + containerName + "'"
-        cursor = srvObj.getDb().query(SQL)
-        if len(cursor[0]) == 0:
-            errMsg = 'No container found with name ' + containerName
-            error(errMsg)
-            raise Exception, errMsg
-        if len(cursor[0]) > 1:
-            errMsg = 'More than one container with name ' + containerName + ' found, cannot proceed with unique fetching'
-            error(errMsg)
-            raise Exception, errMsg
-        containerId = cursor[0][0][0]
+        containerId = srvObj.getDb().getContainerIdForUniqueName(containerName)
 
     destroyContainer(srvObj, containerId, recursive)
 
