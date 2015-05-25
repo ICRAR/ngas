@@ -48,7 +48,9 @@ def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
         msg = 'No file_id given in GET request, one needs to be specified'
         raise Exception(msg)
     srvObj.getDb().addFileToContainer(containerId, fileId, force)
-
+    # TODO: update the container size with the uncompressed size of fileId
+    #       For this we have to settle the matter of whether we'll logically
+    #       group all versions of a file in a container, or only the last one
 
 def _handleFileList(srvObj, containerId, reqPropsObj, force):
     """

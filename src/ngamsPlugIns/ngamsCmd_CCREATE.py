@@ -23,7 +23,7 @@
 Module implementing the CCREATE command
 """
 
-from ngams import NGAMS_HTTP_GET
+from ngams import NGAMS_HTTP_GET, NGAMS_HTTP_SUCCESS, NGAMS_XML_MT
 import ngamsContainer
 from xml.dom import minidom
 
@@ -39,7 +39,7 @@ def _handleSingleContainer(srvObj, reqPropsObj):
     @param httpRef: ngamsLib.ngamsHttpRequestHandler
     """
 
-    # Get request paremeters, check that at least the container name has been given
+    # Get request parameters, check that at least the container name has been given
     containerName = parentContainerId = None
     if reqPropsObj.hasHttpPar('container_name'):
         containerName = reqPropsObj.getHttpPar('container_name').strip()
@@ -48,7 +48,18 @@ def _handleSingleContainer(srvObj, reqPropsObj):
     if not containerName:
         raise Exception('No container_name parameter given, cannot create a nameless container')
 
-    srvObj.getDb().createContainer(containerName, parentContainerId=parentContainerId, parentKnownToExist=False)
+    containerId = srvObj.getDb().createContainer(containerName, parentContainerId=parentContainerId, parentKnownToExist=False)
+
+    # Return a container
+    container = ngamsContainer.ngamsContainer()
+    container.setContainerId(containerId)
+    container.setContainerName(containerName)
+    container.setContainerSize(0)
+    if parentContainerId:
+        parentContainer = ngamsContainer.ngamsContainer()
+        parentContainer.setContainerId(parentContainerId)
+        container.setParentContainer(parentContainer)
+    return container
 
 def _handleComplexContainer(srvObj, reqPropsObj):
     """
@@ -63,17 +74,14 @@ def _handleComplexContainer(srvObj, reqPropsObj):
     """
 
     # Parse the message body into a hierarchy of containers
-    # TODO: Do this properly; that is, giving the fd to minidom but without it hanging
-    # TODO: Use a SAX parser to immediately construct the container
-    #       hierarchy instead of passing through the DOM representation first
     size = reqPropsObj.getSize()
     contHierarchyStr = reqPropsObj.getReadFd().read(size)
     contHierarchyDoc = minidom.parseString(contHierarchyStr)
     rootContNode = contHierarchyDoc.childNodes[0]
-    parentContainerId = rootContNode.getAttribute('ParentContainerId')
+    parentContainerId = rootContNode.getAttribute('parentContainerId')
 
     def parseContainerDoc(contEl):
-        contName = contEl.getAttribute('ContainerName')
+        contName = contEl.getAttribute('name')
         cont = ngamsContainer.ngamsContainer(contName)
         if contEl.hasChildNodes():
             for childContEl in [n for n in contEl.childNodes if n.nodeType == minidom.Node.ELEMENT_NODE]:
@@ -90,6 +98,7 @@ def _handleComplexContainer(srvObj, reqPropsObj):
         for childCont in cont.getContainers():
             createContainers(childCont, str(containerId), True)
     createContainers(root, parentContainerId, False)
+    return root
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -105,8 +114,13 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     # Otherwise, we assume a list of files is given in the
     # body of he request
     if reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET:
-        _handleSingleContainer(srvObj, reqPropsObj)
+        rootCont = _handleSingleContainer(srvObj, reqPropsObj)
     else:
-        _handleComplexContainer(srvObj, reqPropsObj)
+        rootCont = _handleComplexContainer(srvObj, reqPropsObj)
+
+    statusObj = srvObj.genStatus('OK', "Successfully created container(s)")
+    statusObj.addContainer(rootCont)
+    statusXml = statusObj.genXml().toxml(encoding="utf8")
+    srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, statusXml, NGAMS_XML_MT)
 
 # EOF

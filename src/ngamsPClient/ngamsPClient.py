@@ -376,6 +376,26 @@ class ngamsPClient:
         response = self._httpGet(self.getHost(), self.getPort(), 'CDESTROY', pars=pars)
         return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
 
+    def clist(self, containerName, containerId, reloadMod):
+        """
+        Sends a CLIST command to the NG/AMS Server to get information about
+        a particular container and its recursive hierarchy
+        """
+        """
+        Sends a CDESTROY command to the NG/AMS Server to destroy a container
+        or a container hierarchy
+        """
+        if not (bool(containerId) ^ bool(containerName)):
+            raise Exception('Either containerId or containerName must be indicated for CAPPEND')
+
+        pars = [['container_id', containerId], ['container_name', containerName]]
+        if reloadMod:
+            pars.append(['reload', 1])
+
+        # response = [reply, msg, hdrs, data]
+        response = self._httpGet(self.getHost(), self.getPort(), 'CLIST', pars=pars)
+        return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
+
     def cremove(self, fileId, fileIdList, containerId, containerName, reloadMod):
         """
         Sends a CAPPEND command to the NG/AMS Server to append the
@@ -1071,6 +1091,8 @@ class ngamsPClient:
                 return self.ccreate(containerName, parentContId, contHierarchy, reloadMod)
             elif cmd == "CDESTROY":
                 return self.cdestroy(containerName, containerId, recursive, reloadMod)
+            elif cmd == "CLIST":
+                return self.clist(containerName, containerId, reloadMod)
             elif cmd == "CREMOVE":
                 return self.cremove(fileId, fileIdList, containerId, containerName, reloadMod)
             elif (cmd == NGAMS_CACHEDEL_CMD):

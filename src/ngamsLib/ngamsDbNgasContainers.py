@@ -26,7 +26,7 @@ Module containing SQL queries against the ngas_containers table
 """
 
 import uuid
-from ngams import info, error, timeRef2Iso8601
+from ngams import info, error, timeRef2Iso8601, iso8601ToSecs
 from ngamsDbCore import ngamsDbCore
 import ngamsContainer
 
@@ -82,29 +82,47 @@ class ngamsDbNgasContainers(ngamsDbCore):
             raise Exception, errMsg
         return cursor[0][0][0]
 
-    def buildContainerHierarchy(self, containerId, containerName):
+    def read(self, containerId):
         """
-        Builds an ngamsContainer object with the given
-        containerId and containerName and recursively
-        populates it with its children containers.
-        containerId should be properly defined.
-        If containerName is not defined, it is retrieved
-        from the database.
+        Reads a single ngamsContainer object from the database
 
         :param containerId: string
-        :param containerName: string
+        :return ngamsContainer.ngamsContainer
         """
-        if not containerName:
-            containerName = self.getContainerName(containerId)
 
-        cont = ngamsContainer.ngamsContainer(containerName)
-        cont.setContainerId(containerId)
+        sql = "SELECT container_id, container_name, container_size, parent_container_id, ingestion_date FROM ngas_containers WHERE container_id = '" + containerId + "'"
+        res = self.query(sql)
+        if not res[0]:
+            return None
 
-        # Check if it contains children
-        res = self.query("select container_id, container_name FROM ngas_containers WHERE parent_container_id = '" + containerId + "'")
-        for r in res[0]:
-            cont.addContainer(self.buildContainerHierarchy(r[0], r[1]))
+        res = res[0][0]
+        cont = ngamsContainer.ngamsContainer()
+        cont.setContainerId(res[0])
+        cont.setContainerName(res[1])
+        cont.setContainerSize(res[2])
+        if res[3]:
+            parentContainer = ngamsContainer.ngamsContainer()
+            parentContainer.setContainerId(res[3])
+            cont.setParentContainer(parentContainer)
+        if res[4]:
+            cont.setIngestionDate(iso8601ToSecs(res[4]))
         return cont
+
+    def readHierarchy(self, containerId):
+        """
+        Reads an ngamsContainer object from the database
+        and recursively populates it with its children containers.
+
+        :param containerId: string
+        :return ngamsContainer.ngamsContainer
+        """
+
+        container = self.read(containerId)
+        # Check if it contains children
+        res = self.query("select container_id FROM ngas_containers WHERE parent_container_id = '" + container.getContainerId() + "'")
+        for r in res[0]:
+            container.addContainer(self.readHierarchy(r[0]))
+        return container
 
     def createContainer(self, containerName, containerSize=0, ingestionDate=None, parentContainerId=None, parentKnownToExist=False):
         """
@@ -121,7 +139,7 @@ class ngamsDbNgasContainers(ngamsDbCore):
         :param containerName: string
         :param containerSize: integer
         :param ingestionDate: float
-        :param parentContaienrId: string
+        :param parentContainerId: string
         :param parentKnownToExist: bool
         :return: uuid.uuid4
         """
@@ -192,11 +210,26 @@ class ngamsDbNgasContainers(ngamsDbCore):
 
         # Remove the files that are currently part of the container from it
         sql = "UPDATE ngas_files SET container_id = null WHERE container_id = '" + containerId + "'"
-        res = self.query(sql)
+        self.query(sql)
 
         # Remove the container
         sql = "DELETE FROM ngas_containers WHERE container_id = '" + containerId + "'"
-        res = self.query(sql)
+        self.query(sql)
         info(3, "Destroyed container '" + containerId + "'")
+
+    def setContainerSize(self, containerId, containerSize):
+        """
+        Updates the size of the indicated container
+        """
+        sql = "UPDATE ngas_containers SET container_size = " + str(containerSize) + " WHERE container_id = '" + containerId + "'"
+        self.query(sql)
+
+    def addToContainerSize(self, containerId, amount):
+        """
+        Updates the size of the indicated container by the given amount
+        """
+        amountSql = "+ " + str(amount) if amount >= 0 else "- " + str(amount)
+        sql = "UPDATE ngas_containers SET container_size = (container_size " + amountSql + ") WHERE container_id = '" + containerId + "'"
+        self.query(sql)
 
 # EOF

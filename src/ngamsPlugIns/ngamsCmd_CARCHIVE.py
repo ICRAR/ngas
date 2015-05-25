@@ -230,10 +230,9 @@ def createContainers(container, parentContainer, srvObj):
     to store the given hierarchy of Container objects
     """
 
-    # TODO: get real container size
     containerName = container.getContainerName()
     ingestionDate = time.time()
-    parentContainerId = str(parentContainer.getContainerId()) + "'" if parentContainer else None
+    parentContainerId = str(parentContainer.getContainerId()) if parentContainer else None
     containerId = srvObj.getDb().createContainer(containerName,
                                                  containerSize=0,
                                                  ingestionDate=ingestionDate,
@@ -344,7 +343,7 @@ def handleCmd(srvObj,
     dateDir = PccUtTime.TimeStamp().getTimeStamp().split("T")[0]
     resDapiList = []
 
-    containerSize = 0
+    containerSizes = {}
 
     for item in fileDataList:
         container = item[0]
@@ -366,11 +365,12 @@ def handleCmd(srvObj,
         complFilename, relFilename = ngamsGenDapi.checkForDblExt(complFilename,
                                                     relFilename)
 
-##        # Compress the file if requested.
-##        uncomprSize, archFileSize, format, compression, comprExt =\
-##                     ngamsGenDapi.compressFile(srvObj, reqPropsObj, parDic)
+        # Keep track of the total size of the container
         uncomprSize = ngamsPlugInApi.getFileSize(filepath)
-        containerSize += uncomprSize
+        if not containerSizes.has_key(containerId):
+            containerSizes[containerId] = 0
+        containerSizes[containerId] += uncomprSize
+
         mimeType = reqPropsObj.getMimeType()
         compression = "NONE"
         archFileSize = ngamsPlugInApi.getFileSize(filepath)
@@ -433,6 +433,10 @@ def handleCmd(srvObj,
                            "'" + containerId + "')"
 
         srvObj.getDb().query(sqlQuery)
+
+        # Update the container sizes
+        for contSizeInfo in containerSizes.iteritems():
+            srvObj.getDb().setContainerSize(contSizeInfo[0], contSizeInfo[1])
 
         # Inform the caching service about the new file.
         info(3, "Inform the caching service about the new file.")

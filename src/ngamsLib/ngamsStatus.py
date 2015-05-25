@@ -40,6 +40,7 @@ import pcc, PccUtTime
 
 from ngams import *
 import ngamsLib, ngamsConfig, ngamsDiskInfo, ngamsFileInfo, ngamsFileList
+import ngamsContainer
 
 
 def _time2SecsSinceEpoch(timeStamp):
@@ -124,6 +125,9 @@ class ngamsStatus:
 
         # File Lists.
         self.__fileListList   = []
+
+        # Container
+        self.__containers     = []
 
         return self
 
@@ -692,6 +696,24 @@ class ngamsStatus:
         self.__ngamsCfg = ngamsCfgObj
         return self
 
+    def addContainer(self, container):
+        """
+        Add a Container in the status report.
+
+        container:   An NGAMS container (ngamsContainer)
+
+        Returns:     Reference to object itself
+        """
+        self.__containers.append(container)
+        return self
+
+    def getContainerList(self):
+        """
+        Get tuple of Container objects
+
+        Returns: Tuple with Container objects ([ngamsContainer, ...])
+        """
+        return self.__containers
 
     def load(self,
              filename,
@@ -800,6 +822,15 @@ class ngamsStatus:
             self.addFileList(fileListObj)
             fileListObj.unpackFromDomNode(fileListNode)
 
+        # Unpack Containers. Loop over the root containers,
+        # then let them deal with their own recursion
+        rootContainerEls = [node for node in ngamsStatusEl.childNodes \
+                            if node.nodeType == xml.dom.minidom.Node.ELEMENT_NODE\
+                            and node.tagName == 'Container']
+        for rootContainerEl in rootContainerEls:
+            container = ngamsContainer.ngamsContainer()
+            container.unpackFromDomNode(rootContainerEl)
+            self.addContainer(container)
 
         dom.unlink()
 
@@ -867,8 +898,9 @@ class ngamsStatus:
         """
         T = TRACE(5)
 
-        ngamsStatusEl = xml.dom.minidom.Document().\
-                        createElement(NGAMS_XML_STATUS_ROOT_EL)
+        doc = xml.dom.minidom.Document()
+        ngamsStatusEl = doc.createElement(NGAMS_XML_STATUS_ROOT_EL)
+        doc.appendChild(ngamsStatusEl)
 
         # Status Element.
         statusEl = xml.dom.minidom.Document().createElement("Status")
@@ -922,8 +954,9 @@ class ngamsStatus:
                 fileListXmlNode = fileListObj.genXml()
                 ngamsStatusEl.appendChild(fileListXmlNode)
 
-        doc = xml.dom.minidom.Document()
-        doc.appendChild(ngamsStatusEl)
+        # Container Elements
+        for container in self.getContainerList():
+            ngamsStatusEl.appendChild(container.genXml())
 
         return doc
 

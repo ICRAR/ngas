@@ -25,6 +25,9 @@ Contains classes related to the handling of Containers in ngams
 @author: rtobar
 '''
 
+from ngams import timeRef2Iso8601
+from xml.dom import minidom
+
 class ngamsContainer(object):
     """
     A class representing a container.
@@ -36,7 +39,7 @@ class ngamsContainer(object):
     to other containers have a reference to their parent container's ID
     """
 
-    def __init__(self, containerName):
+    def __init__(self, containerName=None):
         self._containerId = None
         self._containerName = containerName
         self._containerSize = -1
@@ -60,6 +63,9 @@ class ngamsContainer(object):
 
     def getContainers(self):
         return self._containers[:]
+
+    def setContainerName(self, containerName):
+        self._containerName = containerName
 
     def getContainerName(self):
         return self._containerName
@@ -99,3 +105,42 @@ class ngamsContainer(object):
 
     def __str__(self, *args, **kwargs):
         return self.toStr(0)
+
+    def genXml(self):
+        return self._genXml(minidom.Document())
+
+    def _genXml(self, doc):
+        contEl = doc.createElement('Container')
+        contEl.setAttribute('id', str(self.getContainerId())) # might be an uuid.uuid4 object
+        contEl.setAttribute('name', self.getContainerName())
+        contEl.setAttribute('size', str(self.getContainerSize()))
+        if self.getIngestionDate():
+            contEl.setAttribute('ingestionDate', timeRef2Iso8601(self.getIngestionDate()))
+        # TODO: append file information
+        for childCont in self._containers:
+            contEl.appendChild( childCont._genXml(doc) )
+        return contEl
+
+    def unpackFromDomNode(self, contEl):
+        """
+        Unpacks the contents of the given DOM Element
+        and populates this ngamsContainer object with
+        them. This method also recursively traverses
+        any children elements containing information
+        about child containers and files.
+
+        :param contEl: xml.dom.minidom.Element
+        """
+
+        self.setContainerId(contEl.getAttribute('id'))
+        self.setContainerName(contEl.getAttribute('name'))
+        self.setContainerSize(contEl.getAttribute('size'))
+
+        ingDate = contEl.getAttribute('ingestionDate')
+        self.setIngestionDate(ingDate if ingDate else None)
+
+        # TODO: parse file information
+        for node in contEl.childNodes:
+            childContainer = ngamsContainer()
+            childContainer.unpackFromDomNode(node)
+            self.addContainer(childContainer)

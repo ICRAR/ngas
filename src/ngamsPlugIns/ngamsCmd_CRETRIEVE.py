@@ -395,11 +395,9 @@ def _handleCmdCRetrieve(srvObj,
     if (reqPropsObj.hasHttpPar("host_id")):
         hostId = reqPropsObj.getHttpPar("host_id")
 
-    # Build the container hierarchy and collect all results recursively
-    container = srvObj.getDb().buildContainerHierarchy(containerId, containerName)
+    # Build the container hierarchy, get all file references and send back the results
+    container = srvObj.getDb().readHierarchy(containerId)
     procResultList = collectProcResults(srvObj, reqPropsObj, fileVer, diskId, hostId, container)
-
-    # Send back reply with the result(s) queried and possibly processed.
     genReplyRetrieve(srvObj, reqPropsObj, httpRef, procResultList)
 
 
