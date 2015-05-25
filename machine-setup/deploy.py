@@ -437,6 +437,7 @@ def check_command(command):
     OUTPUT:
     Boolean
     """
+    puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
     res = run('if command -v {0} &> /dev/null ;then command -v {0};else echo ;fi'.format(command))
     return res
 
@@ -467,6 +468,7 @@ def check_python():
     OUTPUT:
     path to python binary    string, could be empty string
     """
+    puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
     # Try whether there is already a local python installation for this user
     set_env()
     ppath = env.APP_DIR_ABS.split(env.APP_DIR)[0] + '/python' # make sure this is an absolute path
@@ -1238,7 +1240,10 @@ def user_deploy(typ='archive'):
     puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
     if not env.has_key('APP_USERS') or not env.APP_USERS:
         # if not defined on the command line use the current user
-        env.APP_USERS = os.environ['HOME'].split('/')[-1]
+        if env.user:
+            env.APP_USERS = [env.user]
+        else:
+            env.APP_USERS = os.environ['HOME'].split('/')[-1]
 
     install(sys_install=False, user_install=False, 
             init_install=False, typ=typ)
