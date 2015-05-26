@@ -88,7 +88,7 @@ AMI_IDs = {
            }
 AMI_NAME = 'Amazon'
 AMI_ID = AMI_IDs[AMI_NAME]
-INSTANCE_NAME = 'NGAS_{0}'.format(BRANCH)
+INSTANCE_NAME = 'NGAS_{0}'
 INSTANCE_TYPE = 't1.micro'
 INSTANCES_FILE = os.path.expanduser('~/.aws/aws_instances')
 ELASTIC_IP = 'False'
@@ -223,6 +223,8 @@ def set_env():
         env.GITUSER = GITUSER
     if not env.has_key('GITREPO') or not env.GITREPO:
         env.GITREPO = GITREPO
+    if not env.has_key('BRANCH') or not env.BRANCH:
+        env.BRANCH = BRANCH
     if not env.has_key('postfix') or not env.postfix:
         env.postfix = POSTFIX
     if not env.has_key('user') or not env.user:
@@ -272,16 +274,17 @@ def set_env():
             host_string:       {3};
             postfix:           {4};
             HOME:              {8};
-            APP_DIR_ABS:      {5};
-            APP_DIR:          {6};
-            USERS:        {7};
+            APP_DIR_ABS:       {5};
+            APP_DIR:           {6};
+            USERS:             {7};
             PREFIX:            {9};
-            SRC_DIR:           {10};
+            SRC_DIR:          {10};
+            BRANCH:           {11};
             """.\
             format(env.user, env.key_filename, env.hosts,
                    env.host_string, env.postfix, env.APP_DIR_ABS,
                    env.APP_DIR, env.APP_USERS, env.HOME, env.PREFIX, 
-                   env.src_dir))
+                   env.src_dir, env.BRANCH))
 
 
 @task
@@ -650,7 +653,7 @@ def git_clone():
     """
     copy_public_keys()
     with cd(env.APP_DIR_ABS):
-        run('git clone {0}@{1} -b {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
+        run('git clone {0}@{1} -b {2}'.format(env.GITUSER, env.GITREPO, env.BRANCH))
 
 
 @task
@@ -665,8 +668,8 @@ def git_clone_tar(unpack=True):
     set_env()
     egg_excl = ' '
     if env.GITREPO and env.GITUSER:
-        local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
-        local('cd /tmp && mv {0} {1}'.format(BRANCH, env.APP_DIR))
+        local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, env.BRANCH))
+        local('cd /tmp && mv {0} {1}'.format(env.BRANCH, env.APP_DIR))
         tar_dir = '/tmp/{0}'.format(env.APP_DIR)
         sdir = '/tmp'
     else:
@@ -1171,15 +1174,17 @@ def test_env():
     puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
     if not env.has_key('AWS_PROFILE') or not env.AWS_PROFILE:
         env.AWS_PROFILE = AWS_PROFILE
+    if not env.has_key('BRANCH') or not env.BRANCH:
+        env.BRANCH = BRANCH
     if not env.has_key('instance_name') or not env.instance_name:
-        env.instance_name = INSTANCE_NAME
+        env.instance_name = INSTANCE_NAME.format(env.BRANCH)
     if not env.has_key('use_elastic_ip') or not env.use_elastic_ip:
         env.use_elastic_ip = ELASTIC_IP
     if not env.has_key('key_filename') or not env.key_filename:
         env.key_filename = AWS_KEY
     if not env.has_key('AMI_NAME') or not env.AMI_NAME:
         env.AMI_NAME = 'CentOS'
-    env.instance_name = INSTANCE_NAME
+    env.instance_name = INSTANCE_NAME.format(env.BRANCH)
     env.use_elastic_ip = ELASTIC_IP
     if 'use_elastic_ip' in env:
         use_elastic_ip = to_boolean(env.use_elastic_ip)
@@ -1336,8 +1341,8 @@ def test_deploy():
     # set environment to default for EC2, if not specified otherwise.
     set_env()
     install(sys_install=True, user_install=True, init_install=True)
-    sudo('chown -R {0}:{0} /home/{0}'.format(env.user))
     with settings(user=env.APP_USERS[0]):
+        sudo('chown -R {0}:{0} /home/{0}'.format(user))
         run('ngamsDaemon start')
     puts(green("\n\n******** SERVER STARTED!********\n\n"))
     if test_status():
