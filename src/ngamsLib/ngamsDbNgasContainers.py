@@ -119,8 +119,17 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
 
         container = self.read(containerId)
         if includeFiles:
-            res = self.query("SELECT " + ngamsDbCore.getNgasFilesCols() + " FROM ngas_files nf WHERE container_id = '" + containerId + "'")
+
+            # Always get the latest version of the files
+            # We do this on the software side to avoid any complex SQL query
+            # that might not work in some engines
+            res = self.query("SELECT " + ngamsDbCore.getNgasFilesCols() + " FROM ngas_files nf WHERE container_id = '" + containerId + "' ORDER BY nf.file_id, nf.file_version DESC")
+            prevFileId = None
             for r in res[0]:
+                fileId      = r[ngamsDbCore.NGAS_FILES_FILE_ID]
+                if fileId == prevFileId:
+                    continue
+                prevFileId = fileId
                 fileInfo = ngamsFileInfo.ngamsFileInfo().unpackSqlResult(r)
                 container.addFileInfo(fileInfo)
 
@@ -234,7 +243,7 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
         """
         Updates the size of the indicated container by the given amount
         """
-        amountSql = "+ " + str(amount) if amount >= 0 else "- " + str(amount)
+        amountSql = "+ " + str(amount) if amount >= 0 else "- " + str(-amount)
         sql = "UPDATE ngas_containers SET container_size = (container_size " + amountSql + ") WHERE container_id = '" + containerId + "'"
         self.query(sql)
 

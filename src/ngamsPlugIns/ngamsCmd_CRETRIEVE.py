@@ -260,12 +260,10 @@ def collectProcResults(srvObj, reqPropsObj, fileVer, diskId, hostId, container):
         procResultList.append(collectProcResults(srvObj, reqPropsObj, fileVer, diskId, hostId, childCont))
 
     # Collect individual files
-    containerId = container.getContainerId()
-    filesInContainer = "SELECT " + ngamsDbCore.getNgasFilesCols() + " FROM ngas_files nf WHERE nf.container_id='" + containerId + "'"
-    cursor = srvObj.getDb().query(filesInContainer)
+    for fileInfo in container.getFilesInfo():
+        fileId = fileInfo.getFileId()
+        fileVer = fileInfo.getFileVersion()
 
-    for files in cursor[0]:
-        fileId = files[2]
         # If not located the quick way try the normal way.
         ipAddress = None
         if (not ipAddress):
@@ -396,7 +394,7 @@ def _handleCmdCRetrieve(srvObj,
         hostId = reqPropsObj.getHttpPar("host_id")
 
     # Build the container hierarchy, get all file references and send back the results
-    container = srvObj.getDb().readHierarchy(containerId)
+    container = srvObj.getDb().readHierarchy(containerId, True)
     procResultList = collectProcResults(srvObj, reqPropsObj, fileVer, diskId, hostId, container)
     genReplyRetrieve(srvObj, reqPropsObj, httpRef, procResultList)
 

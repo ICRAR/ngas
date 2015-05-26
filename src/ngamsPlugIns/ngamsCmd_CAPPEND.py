@@ -47,10 +47,9 @@ def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
     if not fileId:
         msg = 'No file_id given in GET request, one needs to be specified'
         raise Exception(msg)
-    srvObj.getDb().addFileToContainer(containerId, fileId, force)
-    # TODO: update the container size with the uncompressed size of fileId
-    #       For this we have to settle the matter of whether we'll logically
-    #       group all versions of a file in a container, or only the last one
+
+    fileSize = srvObj.getDb().addFileToContainer(containerId, fileId, force)
+    srvObj.getDb().addToContainerSize(containerId, fileSize)
 
 def _handleFileList(srvObj, containerId, reqPropsObj, force):
     """
@@ -62,7 +61,6 @@ def _handleFileList(srvObj, containerId, reqPropsObj, force):
     @param reqPropsObj: ngamsLib.ngamsReqProps
     @param force: bool
     """
-    # TODO: Do this properly; that is, giving the fd to minidom but without it hanging
     size = reqPropsObj.getSize()
     fileListStr = reqPropsObj.getReadFd().read(size)
     fileList = minidom.parseString(fileListStr)

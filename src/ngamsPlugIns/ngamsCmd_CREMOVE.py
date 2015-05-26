@@ -47,7 +47,9 @@ def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
         msg = 'No file_id given in GET request, one needs to be specified'
         raise Exception(msg)
 
-    srvObj.getDb().removeFileFromContainer(fileId, containerId)
+    # Remove the file from the container and reduce the total size of the container
+    fileSize = srvObj.getDb().removeFileFromContainer(fileId, containerId)
+    srvObj.getDb().addToContainerSize(containerId, -fileSize)
 
 
 def _handleFileList(srvObj, containerId, reqPropsObj, force):
@@ -60,8 +62,6 @@ def _handleFileList(srvObj, containerId, reqPropsObj, force):
     @param reqPropsObj: ngamsLib.ngamsReqProps
     @param force: bool
     """
-    # TODO: Do this properly; that is, giving the fd to minidom but without it hanging
-    #       (or maybe it's OK like it currently is?)
     size = reqPropsObj.getSize()
     fileListStr = reqPropsObj.getReadFd().read(size)
     fileList = minidom.parseString(fileListStr)
