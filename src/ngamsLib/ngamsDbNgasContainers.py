@@ -27,10 +27,10 @@ Module containing SQL queries against the ngas_containers table
 
 import uuid
 from ngams import info, error, timeRef2Iso8601, iso8601ToSecs
-from ngamsDbCore import ngamsDbCore
-import ngamsContainer
+import ngamsDbCore
+import ngamsFileInfo, ngamsContainer
 
-class ngamsDbNgasContainers(ngamsDbCore):
+class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
     """
     A class containing SQL queries against the ngas_containers table
     """
@@ -108,7 +108,7 @@ class ngamsDbNgasContainers(ngamsDbCore):
             cont.setIngestionDate(iso8601ToSecs(res[4]))
         return cont
 
-    def readHierarchy(self, containerId):
+    def readHierarchy(self, containerId, includeFiles=False):
         """
         Reads an ngamsContainer object from the database
         and recursively populates it with its children containers.
@@ -118,10 +118,16 @@ class ngamsDbNgasContainers(ngamsDbCore):
         """
 
         container = self.read(containerId)
+        if includeFiles:
+            res = self.query("SELECT " + ngamsDbCore.getNgasFilesCols() + " FROM ngas_files nf WHERE container_id = '" + containerId + "'")
+            for r in res[0]:
+                fileInfo = ngamsFileInfo.ngamsFileInfo().unpackSqlResult(r)
+                container.addFileInfo(fileInfo)
+
         # Check if it contains children
         res = self.query("select container_id FROM ngas_containers WHERE parent_container_id = '" + container.getContainerId() + "'")
         for r in res[0]:
-            container.addContainer(self.readHierarchy(r[0]))
+            container.addContainer(self.readHierarchy(r[0], includeFiles))
         return container
 
     def createContainer(self, containerName, containerSize=0, ingestionDate=None, parentContainerId=None, parentKnownToExist=False):

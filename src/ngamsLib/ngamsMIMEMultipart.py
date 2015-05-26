@@ -19,6 +19,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+from ngamsFileInfo import ngamsFileInfo
 """
 Module containing classes to deal with MIME multipart
 messages representing the contents of an
@@ -31,7 +32,7 @@ import string
 import time
 from email.parser import Parser
 from ngams import error, info, checkCreatePath
-import ngamsContainer
+import ngamsContainer, ngamsFileInfo
 
 CRLF = '\r\n'
 
@@ -104,7 +105,9 @@ class ContainerBuilderHandler(MIMEMultipartHandler):
 	def startFile(self, filename):
 		MIMEMultipartHandler.startFile(self, filename)
 		info(4, 'Found file: ' + filename)
-		self._container.addFile(filename)
+		fileInfo = ngamsFileInfo.ngamsFileInfo()
+		fileInfo.setFileId(filename)
+		self._container.addFileInfo(fileInfo)
 
 	def endContainer(self):
 		MIMEMultipartHandler.endContainer(self)

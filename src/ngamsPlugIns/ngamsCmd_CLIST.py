@@ -58,7 +58,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             raise Exception(msg)
 
     # Do it!
-    rootCont = srvObj.getDb().readHierarchy(containerId)
+    rootCont = srvObj.getDb().readHierarchy(containerId, True)
 
     statusObj = srvObj.genStatus('OK', "Successfully retrieved containers list")
     statusObj.addContainer(rootCont)

@@ -27,6 +27,7 @@ Contains classes related to the handling of Containers in ngams
 
 from ngams import timeRef2Iso8601
 from xml.dom import minidom
+import ngamsFileInfo
 
 class ngamsContainer(object):
     """
@@ -45,11 +46,11 @@ class ngamsContainer(object):
         self._containerSize = -1
         self._ingestionDate = None
         self._parentContainer = None
-        self._files = []
+        self._filesInfo = []
         self._containers = []
 
-    def addFile(self, fileName):
-        self._files.append(fileName)
+    def addFileInfo(self, fileInfo):
+        self._filesInfo.append(fileInfo)
 
     def addContainer(self, container):
         self._containers.append(container)
@@ -58,8 +59,8 @@ class ngamsContainer(object):
     def setParentContainer(self, parentContainer):
         self._parentContainer = parentContainer
 
-    def getFiles(self):
-        return self._files[:]
+    def getFilesInfo(self):
+        return self._filesInfo[:]
 
     def getContainers(self):
         return self._containers[:]
@@ -99,8 +100,8 @@ class ngamsContainer(object):
         buf += ':\n'
         for cont in self._containers:
             buf += spaces + cont.toStr(tab+4) + '\n'
-        for filename in self._files:
-            buf += spaces + ' - '  + filename + '\n'
+        for fileInfo in self._filesInfo:
+            buf += spaces + ' - '  + fileInfo.getFileId() + '\n'
         return buf
 
     def __str__(self, *args, **kwargs):
@@ -116,7 +117,8 @@ class ngamsContainer(object):
         contEl.setAttribute('size', str(self.getContainerSize()))
         if self.getIngestionDate():
             contEl.setAttribute('ingestionDate', timeRef2Iso8601(self.getIngestionDate()))
-        # TODO: append file information
+        for fileInfo in self._filesInfo:
+            contEl.appendChild( fileInfo.genXml() )
         for childCont in self._containers:
             contEl.appendChild( childCont._genXml(doc) )
         return contEl
@@ -139,8 +141,18 @@ class ngamsContainer(object):
         ingDate = contEl.getAttribute('ingestionDate')
         self.setIngestionDate(ingDate if ingDate else None)
 
-        # TODO: parse file information
-        for node in contEl.childNodes:
+        subContEls = [n for n in contEl.childNodes \
+                      if n.nodeType == minidom.Node.ELEMENT_NODE
+                      and n.tagName == 'Container']
+        fileEls    = [n for n in contEl.childNodes \
+                      if n.nodeType == minidom.Node.ELEMENT_NODE
+                      and n.tagName == 'FileStatus']
+
+        for subContEl in subContEls:
             childContainer = ngamsContainer()
-            childContainer.unpackFromDomNode(node)
+            childContainer.unpackFromDomNode(subContEl)
             self.addContainer(childContainer)
+        for fileEl in fileEls:
+            fileInfo = ngamsFileInfo.ngamsFileInfo()
+            fileInfo.unpackFromDomNode(fileEl)
+            self.addFileInfo(fileInfo)
