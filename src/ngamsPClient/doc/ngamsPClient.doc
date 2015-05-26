@@ -16,7 +16,17 @@
                          tool are:
 
                            ARCHIVE:       Archive a file.
-                           CARCHIVE:      Archive a directory.
+                           CAPPEND:       Adds an existing file to a container.
+                           CARCHIVE:      Recursively archive a directory and
+                                          all its contents, creating a new
+                                          container for each directory.
+                           CCREATE:       Creates a container hierarchy.
+                           CDESTROY:      Destroys a container (not its files).
+                           CLIST:         Lists the contents of a container.
+                           CREMOVE:       Removes a file/s from a container.
+                           CRETRIEVE:     Recursively retrieve a container and
+                                          all its files, creating a directory
+                                          for each container.
                            QARCHIVE:      Quick Archive a file.
                            PARCHIVE:      Archive a file via a Proxy NGAS
                            CACHEDEL:      Schedule a file for deletion in an
@@ -163,11 +173,11 @@
 
 -url <URL>:              URL. Used for the SUBSCRIBE command to indicate
                          to where NG/AMS should deliver data subscribed for.
-                         
+
 -nexturl <URL>:          Used with the PARCHIVE command to specify the next
                          destination where the file will be archived
-                         
--sndbuf <BUF_SIZE>:	  TCP send/receive buffer size, e.g. 2097152
+
+-sndbuf <BUF_SIZE>:      TCP send/receive buffer size, e.g. 2097152
                          set to the BDP value for high latency links
 
 
@@ -175,6 +185,23 @@ The parameter combinations valid for each command are:
 
 ARCHIVE:                 [-fileUri <URI> [-mimeType <Mime-Type>]
                          [-noVersioning]] | [<Generic Par Array>]
+
+CAPPEND:                 [-fileId <ID> | -fileIdList <ID1:ID2:...> ]
+                         [-containerName <Name> | -containerId <ID> ]
+
+CARCHIVE:                -fileUri <URI>
+
+CCREATE:                 -containerName <Name> | -containerHierarchy <XML>
+
+CDESTROY:                -containerName <Name> | -containerId <ID>
+
+CLIST:                   -containerName <Name> | -containerId <ID>
+
+CREMOVE:                 [-fileId <ID> | -fileIdList <ID1:ID2:...> ]
+                         [-containerName <Name> | -containerId <ID> ]
+
+CRETRIEVE:               -containerName <Name> | -containerId <ID>
+                         [-outputFile <OF>]
 
 CACHEDEL:                -diskId <ID> -fileId <ID> -fileVersion <Ver>
 

@@ -1063,9 +1063,10 @@ class ngamsPClient:
                 else:
                     print self.correctUsageBuf()
                     _exit(1)
-            except:
-                if (not silentExit): print self.correctUsageBuf()
-                _exit(exitValue)
+            except Exception as e:
+                if (not silentExit):
+                    print self.correctUsageBuf()
+                raise e
             idx = idx + 1
 
         self.verbosity = verboseLevel
