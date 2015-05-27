@@ -30,6 +30,22 @@ Created on 20 May 2015
 from ngams import error, genLog, NGAMS_HTTP_GET
 from xml.dom import minidom
 
+def removeFileFromContainer(srvObj, fileId, containerId):
+    """
+    Removes the file from the container and updates the container size
+    accordingly
+
+    @param srvObj: ngamsServer.ngamsServer
+    @param fileId: string
+    @param containerId: string
+    """
+    # Remove the file from the container and reduce the total size of the container
+    # If the file wasn't already part of any container, fileSize is 0 and no
+    # further update is necessary
+    fileSize = srvObj.getDb().removeFileFromContainer(fileId, containerId)
+    if fileSize:
+        srvObj.getDb().addToContainerSize(containerId, -fileSize)
+
 def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
     """
     Handles the CREMOVE command for the case of
@@ -47,10 +63,7 @@ def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
         msg = 'No file_id given in GET request, one needs to be specified'
         raise Exception(msg)
 
-    # Remove the file from the container and reduce the total size of the container
-    fileSize = srvObj.getDb().removeFileFromContainer(fileId, containerId)
-    srvObj.getDb().addToContainerSize(containerId, -fileSize)
-
+    removeFileFromContainer(srvObj, fileId, containerId)
 
 def _handleFileList(srvObj, containerId, reqPropsObj, force):
     """
@@ -67,7 +80,7 @@ def _handleFileList(srvObj, containerId, reqPropsObj, force):
     fileList = minidom.parseString(fileListStr)
     fileIds = [el.getAttribute('FileId') for el in fileList.getElementsByTagName('File')]
     for fileId in fileIds:
-        srvObj.getDb().removeFileFromContainer(fileId, containerId)
+        removeFileFromContainer(srvObj, fileId, containerId)
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """

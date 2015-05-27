@@ -698,7 +698,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         if prevConatinerId:
             if prevConatinerId == containerId:
                 info(4, 'File ' + fileId + ' already belongs to container ' + containerId + ', skipping it')
-                return
+                return 0
 
             if not force:
                 msg = "File '" + fileId + "' is already associated to container '" + prevConatinerId + "'. To override the 'force' parameter must be given"
@@ -738,7 +738,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         fileSize = res[0][0][1]
         if not currentContainerId:
             info(3, "File with fileId '" + fileId +"' is part of no container, skipping it")
-            return
+            return 0
         elif currentContainerId != containerId:
             msg = "File with fileId '" + fileId + "' is associated with a different container: " + currentContainerId
             raise Exception(msg)

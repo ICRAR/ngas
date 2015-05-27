@@ -30,6 +30,23 @@ Created on 20 May 2015
 from ngams import error, genLog, NGAMS_HTTP_GET
 from xml.dom import minidom
 
+def addFileToContainer(srvObj, containerId, fileId, force):
+    """
+    Adds the file to the container and updates the container size
+    accordingly
+
+    @param srvObj: ngamsServer.ngamsServer
+    @param containerId: string
+    @param fileId: string
+    @param force: bool
+    """
+    # Add file to container and update container size
+    # If the file is already contained, fileSize is 0 and no
+    # further update is necessary
+    fileSize = srvObj.getDb().addFileToContainer(containerId, fileId, force)
+    if fileSize:
+        srvObj.getDb().addToContainerSize(containerId, fileSize)
+
 def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
     """
     Handles the CAPPEND command for the case of
@@ -48,8 +65,7 @@ def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
         msg = 'No file_id given in GET request, one needs to be specified'
         raise Exception(msg)
 
-    fileSize = srvObj.getDb().addFileToContainer(containerId, fileId, force)
-    srvObj.getDb().addToContainerSize(containerId, fileSize)
+    addFileToContainer(srvObj, containerId, fileId, force)
 
 def _handleFileList(srvObj, containerId, reqPropsObj, force):
     """
@@ -66,7 +82,7 @@ def _handleFileList(srvObj, containerId, reqPropsObj, force):
     fileList = minidom.parseString(fileListStr)
     fileIds = [el.getAttribute('FileId') for el in fileList.getElementsByTagName('File')]
     for fileId in fileIds:
-        srvObj.getDb().addFileToContainer(containerId, fileId, force)
+        addFileToContainer(srvObj, containerId, fileId, force)
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
