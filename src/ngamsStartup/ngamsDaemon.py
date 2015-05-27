@@ -21,7 +21,8 @@
 #    MA 02111-1307  USA
 #
 
-import sys, os, subprocess, socket
+import sys, os, subprocess, socket, glob
+from ngams import getHostId
 from ngamsServer import ngamsServer
 from logger import ngaslog
 from daemon import Daemon
