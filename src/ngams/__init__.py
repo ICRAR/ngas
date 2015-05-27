@@ -957,20 +957,28 @@ def getHostName(cfgFile=None):
     Returns:   Host name for this NGAS System (string).
     """
     global NGAMS_HOST_IP
-    ip = IpAddress = None
+    ip = None
+    # Use previously set global IP address
     if NGAMS_HOST_IP:
-        ip = IpAddress = NGAMS_HOST_IP
-    if cfgFile or sys.argv.count('-cfg') > 0:
-        if not cfgFile: cfgFile = sys.argv[sys.argv.index('-cfg') + 1]
-        from xml.dom import minidom
-        dom = minidom.parse(cfgFile)
-        srv = dom.getElementsByTagName('Server')
-        IpAddress = ip = srv[0].getAttribute('IpAddress')
-    if not ip or str(ip)[0] == '0':
-        ip = getMyIpAddress()   #This only works if the machine can connect to the web!
-    if not IpAddress:
-        IpAddress = ip
-    NGAMS_HOST_IP = str(IpAddress)
+        ip = NGAMS_HOST_IP
+    else:
+        # Read IP from configuration file if necessary
+        if cfgFile or sys.argv.count('-cfg') > 0:
+            if not cfgFile: cfgFile = sys.argv[sys.argv.index('-cfg') + 1]
+            from xml.dom import minidom
+            dom = minidom.parse(cfgFile)
+            srv = dom.getElementsByTagName('Server')
+            ip = srv[0].getAttribute('IpAddress')
+        # If no ip is given in the configuration, or "0.0.0.0" is set,
+        # figure out one of our external IPs
+        if not ip or str(ip)[0] == '0':
+            # TODO: This slows down *everything*, and needs connection to the web
+            ip = getMyIpAddress()
+            # We could use this instead?
+            # ip = socket.gethostbyname(socket.gethostname())
+        NGAMS_HOST_IP = str(ip)
+
+    # Figure out the name for our ip and return it
     try:
         hostName = socket.gethostbyaddr(ip)[0]
     except socket.herror:
