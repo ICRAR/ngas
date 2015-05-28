@@ -34,7 +34,7 @@ Cutout a gleam FITS image, convert it into png, and display in the browser, then
 
 from ngams import *
 
-import math, time, commands, os, subprocess
+import math, time, commands, os, subprocess, traceback
 import ephem
 import pyfits
 
@@ -60,6 +60,9 @@ wcstools_path_dict = {"store02:7777":"/mnt/gleam/software/wcstools-3.8.7",
 ds9_path_dict = {"store02:7777":"/mnt/gleam/software/bin",
 "store04:7777":"/home/ngas/software",
 "store06:7777":"/home/ngas/software"}
+
+montage_reproj_exec = "/home/ngas/software/Montage_v3.3/bin/mProject"
+montage_cutout_exec = "/home/ngas/software/Montage_v3.3/bin/mSubimage"
 
 """
 /mnt/gleam/software/bin/ds9 -grid -geometry 1250x1250  $file -cmap Heat -scale limits $min_max -zoom 0.25 -saveimage "$outname" 100 -exit
@@ -94,6 +97,36 @@ def execCmd(cmd, failonerror = True, okErr=[]):
 def is_mosaic(file_id):
     return file_id.startswith('mosaic_')
 
+def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
+    """
+    all units of distances are in degrees
+    both file names are strings
+    """
+    try:
+        import astropy.io.fits as pyfits
+        import astropy.wcs as pywcs
+    except ImportError:
+        import pyfits
+        import pywcs
+    import numpy
+    file = pyfits.open(infile)
+    head = file[0].header.copy()
+    cd1 = head.get('CDELT1') if head.get('CDELT1') else head.get('CD1_1')
+    cd2 = head.get('CDELT2') if head.get('CDELT2') else head.get('CD2_2')
+    if cd1 is None or cd2 is None:
+        raise Exception("Missing CD or CDELT keywords in header")
+    head['CRVAL1'] = xc
+    head['CRVAL2'] = yc
+    cdelt = numpy.sqrt(cd1 ** 2 + cd2 ** 2)
+    head['CRPIX1'] = xw / cdelt
+    head['CRPIX2'] = yw / cdelt
+    head['NAXIS1'] = int(xw * 2 / cdelt)
+    head['NAXIS2'] = int(yw * 2 / cdelt)
+    st = str(time.time()).replace('.', '_')
+    hdr_tpl = '{0}/{1}_temp_montage.hdr'.format(work_dir, st)
+    head.toTxtFile(hdr_tpl, clobber=True)
+    cmd = "{0} {1} {2} {3}".format(montage_reproj_exec,infile, outfile,hdr_tpl)
+    execCmd(cmd)
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -153,7 +186,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
     work_dir = srvObj.getCfg().getRootDirectory() + '/processing'
     cut_fitsnm = ('%f' % time.time()).replace('.', '_') + '.fits'
-
+    to_be_removed = []
     try:
         if (not is_mosaic(fileId)):
             hdulist = pyfits.open(filePath)
@@ -163,52 +196,74 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             cmd1 = cmd_cutout % (cut_fitsnm, work_dir, filePath, ra, dec, width, height)
             info(3, "Executing command: %s" % cmd1)
             execCmd(cmd1)
+
         else:
-            import gleam_cutout
+            do_regrid = (reqPropsObj.hasHttpPar('regrid') and '1' == reqPropsObj.getHttpPar("regrid"))
             outfile_nm = "{0}/{1}".format(work_dir, cut_fitsnm)
-            gleam_cutout.cutout(filePath, float(coord[0]), float(coord[1]), xw=radius, yw=radius,
-                            outfile=outfile_nm, useMontage=True)
-        """
-        info(3, "====== Cutout returns - {0}".format(re[1]))
-        if (not os.path.exists(work_dir + '/' + cut_fitsnm)):
-            raise Exception("FITS cutout {0} does not exists!".format(work_dir + '/' + cut_fitsnm))
-        else:
-            info(3, " ====== Found cutout file on disk: {0}".format(work_dir + '/' + cut_fitsnm))
-        """
+            cmd1 = "{0} {1} {2} {3} {4} {5} {6}".format(montage_cutout_exec,
+                                                        filePath, outfile_nm,
+                                                        float(coord[0]),
+                                                        float(coord[1]),
+                                                        radius * 2,
+                                                        radius * 2)
+            info(3, "Executing command: %s" % cmd1)
+            execCmd(cmd1)
+
+            if (do_regrid):
+                #import gleam_cutout
+                outfile_proj_nm = "{0}/proj_{1}".format(work_dir, cut_fitsnm)
+                regrid_fits(outfile_nm, outfile_proj_nm,
+                            float(coord[0]),float(coord[1]),
+                            radius, radius, work_dir)
+                """
+                gleam_cutout.cutout(outfile_nm, float(coord[0]), float(coord[1]),
+                                    xw=radius, yw=radius, outfile=outfile_proj_nm,
+                                    useMontage=True)
+                """
+                to_be_removed.append(work_dir + '/' + cut_fitsnm)
+                cut_fitsnm = "proj_" + cut_fitsnm
+        to_be_removed.append(work_dir + '/' + cut_fitsnm)
     except Exception, excmd1:
         srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
                      "Cutout failed: '%s'" % str(excmd1))
+        info(3, traceback.format_exc())
         return
-    ttt = time.time()
-    jpfnm = ('%f' % ttt).replace('.', '_') + '.jpg'
-    cmd2 = cmd_ds9.format(ds9_path_dict[my_host], work_dir + '/' + cut_fitsnm, work_dir + '/' + jpfnm)
-    try:
-        os.environ['DISPLAY'] = ":7777"
-        info(3, "Executing command: %s" % cmd2)
-        execCmd(cmd2)
-    except Exception, excmd2:
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
-                     "Conversion from FITS to JPEG failed: '%s', display = '%s'" % (str(excmd2), os.getenv('DISPLAY', 'NOTSET!')))
-        return
+    if (reqPropsObj.hasHttpPar('fits_format') and '1' == reqPropsObj.getHttpPar("fits_format")):
+        hdr_fnm = "gleamcutout.fits"
+        hdr_cttp = "image/fits"
+        hdr_dataref = work_dir + '/' + cut_fitsnm
+    else:
+        ttt = time.time()
+        jpfnm = ('%f' % ttt).replace('.', '_') + '.jpg'
+        cmd2 = cmd_ds9.format(ds9_path_dict[my_host], work_dir + '/' + cut_fitsnm, work_dir + '/' + jpfnm)
+        try:
+            os.environ['DISPLAY'] = ":7777"
+            info(3, "Executing command: %s" % cmd2)
+            execCmd(cmd2)
+        except Exception, excmd2:
+            srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
+                         "Conversion from FITS to JPEG failed: '%s', display = '%s'" % (str(excmd2), os.getenv('DISPLAY', 'NOTSET!')))
+            return
 
-    hdrInfo = ["Content-disposition", "inline;filename=gleamcutout.jpg"]
+        hdr_fnm = "gleamcutout.jpg"
+        hdr_cttp = "image/jpeg"
+        hdr_dataref = work_dir + '/' + jpfnm
+        to_be_removed.append(hdr_dataref)
+
+    hdrInfo = ["Content-disposition", "inline;filename={0}".format(hdr_fnm)]
 
     srvObj.httpReplyGen(reqPropsObj,
                      httpRef,
                      NGAMS_HTTP_SUCCESS,
-                     dataRef = work_dir + '/' + jpfnm,
+                     dataRef = hdr_dataref,
                      dataInFile = 1,
-                     contentType = 'image/jpeg',
+                     contentType = hdr_cttp,
                      contentLength = 0,
                      addHttpHdrs = [hdrInfo],
                      closeWrFo = 1)
 
-    if (os.path.exists(work_dir + '/' + cut_fitsnm)):
-        cmd_rm = 'rm %s/%s' % (work_dir, cut_fitsnm)
-        execCmd(cmd_rm, failonerror = False)
-
-    if (os.path.exists(work_dir + '/' + jpfnm)):
-        cmd_rm = 'rm %s/%s' % (work_dir, jpfnm)
-        execCmd(cmd_rm, failonerror = False)
+    for fn in to_be_removed:
+        if (os.path.exists(fn)):
+            os.remove(fn)
 
 
