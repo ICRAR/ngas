@@ -404,6 +404,11 @@ class MIMEMultipartParser(object):
 						raise Exception, 'No data should be returned when delimiter has been found'
 					prevBuf = buf
 
+			# If nothing was read, and nothing
+			# was left for the next iteration, stop
+			if not prevBuf and not bytesRead:
+				break
+
 class MIMEMultipartWriter(object):
 
 	"""
@@ -487,7 +492,7 @@ class MIMEMultipartWriter(object):
 		containerName = contInfo[0]
 		self._filesInfoIt = iter(contInfo[1])
 		self._boundary = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(self._boundLen))
-		info(4, "Sending container's MIME multipart headers")
+		info(4, "Writing container's MIME multipart headers")
 		self.writeData('MIME-Version: 1.0' + CRLF)
 		self.writeData('Content-Type: multipart/mixed; ' + \
 		               'container_name="' + containerName +'"; ' + \
@@ -504,7 +509,7 @@ class MIMEMultipartWriter(object):
 		except StopIteration:
 			raise Exception('More files requested for writing than informed at construction time')
 
-		info(4, 'Sending ' + fileInfo[1])
+		info(4, 'Writing file ' + fileInfo[1])
 		self._writeBoundary()
 		self.writeData('Content-Type: ' + fileInfo[0] + CRLF)
 		self.writeData('Content-disposition: attachment; filename="' + fileInfo[1] + '"' + CRLF + CRLF)
@@ -525,7 +530,7 @@ class MIMEMultipartWriter(object):
 		Writes the final delimiter into the output file object.
 		After calling this method no further writing should occur
 		"""
-		info(4, 'Sending final delimiter')
+		info(4, 'Writing final delimiter')
 		self.writeData(CRLF + '--' + self._boundary + '--')
 		self._outputFd.flush()
 		if  self._progress:
