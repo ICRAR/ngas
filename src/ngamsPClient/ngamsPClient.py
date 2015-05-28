@@ -41,7 +41,7 @@ can be used to build up Python applications communicating with NG/AMS.
 import os, sys, re, httplib, mimetools, urllib, random, time, base64
 import pcc, PccUtTime
 from ngams import *
-from ngamsLib import ngamsLib
+import ngamsLib
 import ngamsFileInfo, ngamsStatus
 from xml.dom import minidom
 
@@ -1188,7 +1188,7 @@ class ngamsPClient:
         random.shuffle(serverList)
         info(5,"Server list: %s" % str(serverList))
 
-        # Very simple algorith, should maybe be refined.
+        # Very simple algorithm, should maybe be refined.
         success = 0
         errors = ""
         for tmpHost, tmpPort in serverList:
@@ -1204,7 +1204,6 @@ class ngamsPClient:
                 success = 1
                 break
             except Exception, e:
-                print(traceback.format_exc())
                 # Problem contacting server.
                 deltaTime = (time.time() - startTime)
                 errors += " - Error/%s/%d: %s. Timeout/time: %ss/%.3fs" %\
