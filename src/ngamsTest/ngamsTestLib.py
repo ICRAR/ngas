@@ -1059,6 +1059,12 @@ def runTest(argv):
     if (skip):
         for testCase in skip.split(","): skipDic[testCase.strip()] = 1
 
+    # Always ensure that the local "tmp" directory exists
+    if not os.path.isdir("tmp"):
+        if os.path.exists("tmp"):
+            raise Exception("./tmp exists and is not a directory, cannot continue")
+        os.mkdir("tmp")
+
     # Execute the test.
     exec "import " + testModuleName
     if (tests == []):
@@ -1381,24 +1387,17 @@ class ngamsTestSuite(unittest.TestCase):
         # Take over the DB parameters from the reference.
         mergeRefCfg(tmpCfgObj)
 
-        # Exceptional handling for SQLite.
-        # TODO: Should start an auxiliary NGAMS Server acting as central
-        #       RDBMS for the tests.
-        if (refCfgObj.getDbInterface().upper().find("SQLITE") != -1):
-            # Ensure the SQLite DB is available if working with SQLite.
-            sqliteDbTpl = "src/ngas_Sqlite_db_template"
-            sqliteDb = "tmp/%s_sqlite.db" % hostName
-            if (not os.path.exists(sqliteDb)):
-                info(1,"Creating SQLite DB file")
-                os.system("cp %s %s" % (sqliteDbTpl, sqliteDb))
+        # Ensure the SQLite DB is created if working with SQLite.
+        # TODO: It would probably be better if we simply run
+        # the SQL script that creates the tables
+        if (tmpCfgObj.getDbInterface().upper().find("SQLITE") != -1):
+            info(1,"Creating SQLite DB file")
+            sqliteDb = ngamsGetSrcDir() + "/ngamsTest/tmp/" + hostName +".sqlite"
+            cpFile("src/ngas_Sqlite_db_template", sqliteDb)
             tmpCfgObj.storeVal("NgamsCfg.Db[1].Name", sqliteDb)
-        info(3,"Ref DB Name: %s" % refCfgObj.getDbName())
-        # Take over the DB parameters from the reference.
-        # mergeRefCfg(tmpCfgObj)
-        tmpCfgFile = saveInFile(None, tmpCfgObj.genXmlDoc(0))
-        info(3,"Temp DB Name: %s" % tmpCfgObj.getDbName())
 
         # Clean up.
+        tmpCfgFile = saveInFile(None, tmpCfgObj.genXmlDoc(0))
         cfgObj = cleanUp(tmpCfgFile, delDirs, clearDb, 1)
 
         # If configuration parameters should be changed, do this.
@@ -1409,12 +1408,7 @@ class ngamsTestSuite(unittest.TestCase):
                 cfgObj.storeVal(cfgProp[0], cfgProp[1])
             tmpCfgFile = saveInFile(None, cfgObj.genXmlDoc(0))
 
-        if (not multipleSrvs):
-            pidFile = "/tmp/ngamsTest/NGAS/.NGAS-%s-%s" %\
-                      (getHostName(), str(portNo))
-        else:
-            pidFile = "/tmp/ngamsTest/NGAS:%d/.NGAS-%s:%s-%s" %\
-                      (portNo, getHostName(), str(portNo), str(portNo))
+        pidFile = os.path.join(cfgObj.getRootDirectory(), "." + ngamsHighLevelLib.genNgasId(cfgObj)) + ".pid"
 
         multCons = cfgObj.getDbMultipleCons()
         dbObj = ngamsDb.ngamsDb(cfgObj.getDbServer(), cfgObj.getDbName(),
@@ -1756,6 +1750,15 @@ class ngamsTestSuite(unittest.TestCase):
             for cfgPar in cfgParList: tmpCfg.storeVal(cfgPar[0], cfgPar[1])
             tmpCfgFile = "tmp/%s_tmp.xml" % srvId
             tmpCfg.save(tmpCfgFile, 0)
+
+            # Exceptional handling for SQLite.
+            # TODO: It would probably be better if we simply run
+            # the SQL script that creates the tables
+            if (tmpCfg.getDbInterface().upper().find("SQLITE") != -1):
+                # Ensure the SQLite DB is available if working with SQLite.
+                sqliteDbTpl = "src/ngas_Sqlite_db_template"
+                sqliteDb = tmpCfg.getDbName()
+                os.system("cp %s %s" % (sqliteDbTpl, sqliteDb))
 
             # Check if server has entry in referenced DB. If not, create it.
             multCons = tmpCfg.getDbMultipleCons()
