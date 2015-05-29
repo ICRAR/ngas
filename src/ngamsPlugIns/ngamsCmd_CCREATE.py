@@ -23,7 +23,7 @@
 Module implementing the CCREATE command
 """
 
-from ngams import NGAMS_HTTP_GET, NGAMS_HTTP_SUCCESS, NGAMS_XML_MT
+from ngams import NGAMS_HTTP_GET, NGAMS_HTTP_SUCCESS, NGAMS_XML_MT, NGAMS_SUCCESS
 import ngamsContainer
 from xml.dom import minidom
 
@@ -118,7 +118,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     else:
         rootCont = _handleComplexContainer(srvObj, reqPropsObj)
 
-    statusObj = srvObj.genStatus('OK', "Successfully created container(s)")
+    statusObj = srvObj.genStatus(NGAMS_SUCCESS, "Successfully created container(s)")
     statusObj.addContainer(rootCont)
     statusXml = statusObj.genXml().toxml(encoding="utf8")
     srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, statusXml, NGAMS_XML_MT)

@@ -126,7 +126,7 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
             res = self.query("SELECT " + ngamsDbCore.getNgasFilesCols() + " FROM ngas_files nf WHERE container_id = '" + containerId + "' ORDER BY nf.file_id, nf.file_version DESC")
             prevFileId = None
             for r in res[0]:
-                fileId      = r[ngamsDbCore.NGAS_FILES_FILE_ID]
+                fileId = r[ngamsDbCore.NGAS_FILES_FILE_ID]
                 if fileId == prevFileId:
                     continue
                 prevFileId = fileId

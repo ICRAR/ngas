@@ -20,7 +20,7 @@
 #    MA 02111-1307  USA
 #
 
-from ngams import error, NGAMS_HTTP_SUCCESS, NGAMS_XML_MT
+from ngams import error, NGAMS_HTTP_SUCCESS, NGAMS_XML_MT, NGAMS_SUCCESS
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -60,7 +60,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     # Do it!
     rootCont = srvObj.getDb().readHierarchy(containerId, True)
 
-    statusObj = srvObj.genStatus('OK', "Successfully retrieved containers list")
+    statusObj = srvObj.genStatus(NGAMS_SUCCESS, "Successfully retrieved containers list")
     statusObj.addContainer(rootCont)
     statusXml = statusObj.genXml().toxml(encoding="utf8")
     srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, statusXml, NGAMS_XML_MT)

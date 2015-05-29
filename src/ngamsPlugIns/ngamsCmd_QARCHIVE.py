@@ -460,7 +460,7 @@ def handleCmd(srvObj,
                setCreationDate(creDate).\
                setIoTime(reqPropsObj.getIoTime()).\
                setContainerId(containerId)
-    fileInfo.write(srvObj.getDb())
+    fileInfo.write(srvObj.getDb(), genSnapshot=0)
 
     # Update the container size with the new size
     if containerId:

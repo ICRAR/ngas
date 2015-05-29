@@ -298,7 +298,18 @@ class ngamsPClient:
         pars.append(["wait", str(wait)])
         return self.sendCmd(NGAMS_CLONE_CMD, 0, "", pars)
 
-    def cappend(self, fileId, fileIdList, containerId, containerName, force, reloadMod):
+    def carchive(self, fileUri, reloadMod=False):
+        """
+        Sends a CARCHIVE command to the NG/AMS Server to archive
+        a full hierarchy of files, effectively creating a hierarchy of
+        containers with all the files within
+        """
+        pars = []
+        if reloadMod:
+            pars.append(['reload', 1])
+        return self.archive(fileUri, pars=pars, cmd="CARCHIVE")
+
+    def cappend(self, fileId, fileIdList='', containerId=None, containerName=None, force=False, reloadMod=False):
         """
         Sends a CAPPEND command to the NG/AMS Server to append the
         given file/s to the container indicated either by containerId
@@ -308,7 +319,11 @@ class ngamsPClient:
         if not (bool(containerId) ^ bool(containerName)):
             raise Exception('Either containerId or containerName must be indicated for CAPPEND')
 
-        pars = [['container_id', containerId], ['container_name', containerName]]
+        pars = []
+        if containerId:
+            pars.append(['container_id', containerId])
+        if containerName:
+            pars.append(['container_name', containerName])
         if reloadMod:
             pars.append(['reload', 1])
         if force:
@@ -358,7 +373,7 @@ class ngamsPClient:
         # response = [reply, msg, hdrs, data]
         return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
 
-    def cdestroy(self, containerName, containerId, recursive, reloadMod):
+    def cdestroy(self, containerName, containerId=None, recursive=False, reloadMod=None):
         """
         Sends a CDESTROY command to the NG/AMS Server to destroy a container
         or a container hierarchy
@@ -366,7 +381,11 @@ class ngamsPClient:
         if not (bool(containerId) ^ bool(containerName)):
             raise Exception('Either containerId or containerName must be indicated for CAPPEND')
 
-        pars = [['container_id', containerId], ['container_name', containerName]]
+        pars = []
+        if containerId:
+            pars.append(['container_id', containerId])
+        if containerName:
+            pars.append(['container_name', containerName])
         if reloadMod:
             pars.append(['reload', 1])
         if recursive:
@@ -376,7 +395,7 @@ class ngamsPClient:
         response = self._httpGet(self.getHost(), self.getPort(), 'CDESTROY', pars=pars)
         return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
 
-    def clist(self, containerName, containerId, reloadMod):
+    def clist(self, containerName, containerId=None, reloadMod=False):
         """
         Sends a CLIST command to the NG/AMS Server to get information about
         a particular container and its recursive hierarchy
@@ -388,7 +407,11 @@ class ngamsPClient:
         if not (bool(containerId) ^ bool(containerName)):
             raise Exception('Either containerId or containerName must be indicated for CAPPEND')
 
-        pars = [['container_id', containerId], ['container_name', containerName]]
+        pars = []
+        if containerId:
+            pars.append(['container_id', containerId])
+        if containerName:
+            pars.append(['container_name', containerName])
         if reloadMod:
             pars.append(['reload', 1])
 
@@ -396,7 +419,7 @@ class ngamsPClient:
         response = self._httpGet(self.getHost(), self.getPort(), 'CLIST', pars=pars)
         return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
 
-    def cremove(self, fileId, fileIdList, containerId, containerName, reloadMod):
+    def cremove(self, fileId, fileIdList='', containerId=None, containerName=None, reloadMod=False):
         """
         Sends a CAPPEND command to the NG/AMS Server to append the
         given file/s to the container indicated either by containerId
@@ -406,7 +429,11 @@ class ngamsPClient:
         if not (bool(containerId) ^ bool(containerName)):
             raise Exception('Either containerId or containerName must be indicated for CAPPEND')
 
-        pars = [['container_id', containerId], ['container_name', containerName]]
+        pars = []
+        if containerId:
+            pars.append(['container_id', containerId])
+        if containerName:
+            pars.append(['container_name', containerName])
         if reloadMod:
             pars.append(['reload', 1])
 
@@ -429,6 +456,19 @@ class ngamsPClient:
 
         # response = [reply, msg, hdrs, data]
         return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
+
+    def cretrieve(self, containerName, containerId=None, targetDir='.', reloadMod=False):
+        """
+        Sends a CRETRIEVE command to NG/AMS to retrieve the full contents of a
+        container and dumps them into the file system.
+        """
+        if (not containerId and not containerName):
+            msg = "Must specify parameter -containerId or -containerName for " +\
+                  "a CRETRIEVE Command"
+            raise Exception, msg
+        if not targetDir:
+            targetDir = '.'
+        return self.retrieve2File(None, targetFile=targetDir, containerName=containerName, containerId=containerId, cmd="CRETRIEVE", reloadMod=reloadMod)
 
     def exit(self):
         """
@@ -1084,8 +1124,10 @@ class ngamsPClient:
             if (parArray):
                 return self.sendCmdGen(self.getHost(), self.getPort(),
                                        cmd, wait, outputFile, parArray)
-            elif (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
+            elif (cmd in [NGAMS_ARCHIVE_CMD, 'QARCHIVE']):
                 return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd, pars=[['reload', reloadMod]])
+            elif cmd == "CARCHIVE":
+                return self.carchive(fileUri, reloadMod)
             elif cmd == "CAPPEND":
                 return self.cappend(fileId, fileIdList, containerId, containerName, force, reloadMod)
             elif cmd == "CCREATE":
@@ -1096,6 +1138,8 @@ class ngamsPClient:
                 return self.clist(containerName, containerId, reloadMod)
             elif cmd == "CREMOVE":
                 return self.cremove(fileId, fileIdList, containerId, containerName, reloadMod)
+            elif cmd == 'CRETRIEVE':
+                return self.cretrieve(containerName, containerId, outputFile, reloadMod)
             elif (cmd == NGAMS_CACHEDEL_CMD):
                 parArray.append(["disk_id", diskId])
                 parArray.append(["file_id", fileId])
@@ -1132,21 +1176,6 @@ class ngamsPClient:
                                           processing, processingPars,
                                           internal, hostId, containerName=containerName,
                                           containerId=containerId, cmd=cmd)
-            elif (cmd == 'CRETRIEVE'):
-                if (not containerId and not containerName):
-                    msg = "Must specify parameter -containerId or -containerName for " +\
-                          "a CRETRIEVE Command"
-                    raise Exception, msg
-                elif containerId:
-                    # return self.retrieve2File(containerId, outputFile, cmd=cmd, reloadMod=reloadMod # noDebug() version
-                    return self.retrieve2File(containerId, fileVersion, outputFile,
-                                          processing, processingPars,
-                                          internal, hostId, containerId=containerId, cmd=cmd, reloadMod=reloadMod)
-                elif containerName:
-                    # return self.retrieve2File(None, outputFile, containerName=containerName, cmd=cmd, reloadMod=reloadMod) # noDebug() version
-                    return self.retrieve2File(None, fileVersion, outputFile,
-                                          processing, processingPars,
-                                          internal, hostId, containerName=containerName, cmd=cmd, reloadMod=reloadMod)
             elif (cmd == NGAMS_STATUS_CMD):
                 return self.status()
             elif (cmd == NGAMS_SUBSCRIBE_CMD):

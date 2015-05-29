@@ -35,7 +35,7 @@ This module contains test utilities used to build the NG/AMS Functional Tests.
 
 # TODO: Check for each function if it can be moved to the ngamsTestSuite Class.
 
-import os, sys, time, string, unittest, socket, getpass, commands, re, glob
+import os, sys, time, string, unittest, socket, getpass, commands, re, glob, subprocess, signal
 import cPickle, shutil
 import pcc, PccUtUtils, PccUtTime
 from   ngams import *
@@ -1082,21 +1082,19 @@ def runTest(argv):
     ngamsTextTestRunner(sys.stdout, 1, 0).run(testSuite)
 
 
-def srvRunning():
+def srvRunning(pid):
     """
-    Return 1 if an NG/AMS Server is running under this user's account.
+    Return 1 if a process is running under the given pid
+
+    pid: a PID (int)
 
     Returns:   1 if server is running (integer/0|1).
     """
-    grepCmd = "ps -ax |grep " + getpass.getuser() +\
-              " | grep ngams/ngamsServer/ngamsServer.py | egrep -v grep"
-    exitCode, stdout, stderr = PccUtUtils.execCmd(grepCmd)
-    stdout = stdout.strip()
-    if (stdout == ""):
-        return 0
-    else:
-        return 1
-
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
 
 def writeFitsKey(filename,
                  key,
@@ -1264,7 +1262,6 @@ class ngamsTestSuite(unittest.TestCase):
 
     def addSrvInfo(self,
                    pid,
-                   pidFile,
                    port,
                    mtRtDir = None):
         """
@@ -1280,7 +1277,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:    Reference to object itself.
         """
-        self.__extSrvInfo.append([pid, pidFile, port, mtRtDir])
+        self.__extSrvInfo.append([pid, port, mtRtDir])
         return self
 
 
@@ -1408,8 +1405,6 @@ class ngamsTestSuite(unittest.TestCase):
                 cfgObj.storeVal(cfgProp[0], cfgProp[1])
             tmpCfgFile = saveInFile(None, cfgObj.genXmlDoc(0))
 
-        pidFile = os.path.join(cfgObj.getRootDirectory(), "." + ngamsHighLevelLib.genNgasId(cfgObj)) + ".pid"
-
         multCons = cfgObj.getDbMultipleCons()
         dbObj = ngamsDb.ngamsDb(cfgObj.getDbServer(), cfgObj.getDbName(),
                                 cfgObj.getDbUser(), cfgObj.getDbPassword(),
@@ -1424,29 +1419,23 @@ class ngamsTestSuite(unittest.TestCase):
         cfgObj.storeVal("NgamsCfg.Server[1].PortNo", str(portNo))
         cfgObj.save(tmpCfg, 0)
         info(3,"DB Name: %s" % cfgObj.getDbName())
+
         # Execute the server as an external process.
-        execCmd = "python " + ngamsGetSrcDir() + "/" +\
-                  srvModule + " -cfg " + tmpCfg
-        if (autoOnline):   execCmd += " -autoOnline"
-        if (verbose):      execCmd += " -v " + str(verbose)
-        if (multipleSrvs): execCmd += " -multipleSrvs"
-        if (dbCfgName):    execCmd += " -dbCfgId %s" % dbCfgName
-        if (test):         execCmd += " -test"
-        execCmd += " -force &"
-        info(3,"Starting external NG/AMS Server with shell command: "+execCmd)
-        try:
-            os.system(execCmd)
-        except Exception, e:
-            info(3,"Problem launching external NG/AMS Server - Exception: "+\
-                 str(e))
-            raise Exception, e
+        execCmd = ["python", ngamsGetSrcDir() + "/" +srvModule, "-cfg", tmpCfg, "-force"]
+        if (autoOnline):   execCmd.append("-autoOnline")
+        if (verbose):      execCmd.extend(["-v", str(verbose)])
+        if (multipleSrvs): execCmd.append("-multipleSrvs")
+        if (dbCfgName):    execCmd.extend(["-dbCfgId", dbCfgName])
+        if (test):         execCmd.append("-test")
+        info(3,"Starting external NG/AMS Server with shell command: " + " ".join(execCmd))
+
+        srvProcess = subprocess.Popen(execCmd)
 
         # We have to wait until the server is serving.
         pCl = ngamsPClient.ngamsPClient(getHostName(), portNo)
         startTime = time.time()
         stat = None
         count = 0  # Want to have 10 STATUS Commands successfully handled.
-        srvPid = None
         while ((time.time() - startTime) < 20):
             if (stat):
                 count += 1
@@ -1458,34 +1447,22 @@ class ngamsTestSuite(unittest.TestCase):
                     if ((stat.getState() =="OFFLINE") and (count == 10)): break
             try:
                 stat = pCl.status()
-                srvPid = int(loadFile(pidFile))
             except Exception, e:
                 info(3,"Polled server - not yet running ...")
                 time.sleep(0.2)
+
         if ((time.time() - startTime) >= 25):
-            try:
-                pCl.offline()
-            except:
-                pass
-            try:
-                pCl.exit()
-            except:
-                pass
-            if (srvPid): os.system("kill -9 %s 2> /dev/null" % str(srvPid))
+            self.termExtSrv(srvProcess, portNo)
             raise Exception,"NGAMS TEST LIB> NG/AMS Server did not start " +\
                   "correctly"
-        try:
-            srvPid = int(loadFile(pidFile))
-        except Exception, e:
-            raise Exception, "Error accessing NG/AMS Server PID file: " +\
-                  pidFile
-        self.addSrvInfo(srvPid, pidFile, portNo,cfgObj.getRootDirectory())
+
+        self.addSrvInfo(srvProcess, portNo, cfgObj.getRootDirectory())
 
         return (cfgObj, dbObj)
 
 
     def termExtSrv(self,
-                   pid,
+                   srvProcess,
                    port):
         """
         Terminate an externally running server.
@@ -1496,54 +1473,46 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:   Void.
         """
+
         info(3,"PID of externally running server. PID: %s, Port: %s " %\
-             (str(pid), str(port)))
+             (str(srvProcess.pid), str(port)))
         info(3,"Killing externally running NG/AMS Server ...")
         pCl = ngamsPClient.ngamsPClient(getHostName(), port)
         try:
             info(1,"Sending OFFLINE command to external server ...")
             stat = pCl.offline(1)
-            info(3, "Status OFFLINE command: " +\
-                 re.sub("\n", "", str(stat.genXml().\
-                                      toprettyxml('  ', '\n'))))
-            if (stat.getStatus() == NGAMS_SUCCESS):
-                status = NGAMS_SUCCESS
-            else:
-                status = NGAMS_FAILURE
+            if getLogLevel() >= 3:
+                info(3, "Status OFFLINE command: " + re.sub("\n", "", str(stat.genXmlDoc())))
+            status = stat.getStatus()
         except Exception, e:
             info(3,"Error encountered sending OFFLINE command: " + str(e))
             status = NGAMS_FAILURE
+
+        # If OFFLINE was successfully handled, try to
+        # shut down the server via a nice EXIT command
+        # Otherwise, kill it with -9
+        kill9 = True
         if (status == NGAMS_SUCCESS):
             info(1,"External server in Offline State - " +\
                  "sending EXIT command ...")
             try:
                 stat = pCl.exit()
-                info(3, "Status EXIT command: " +\
-                     re.sub("\n", "", str(stat.genXml().\
-                                          toprettyxml('  ', '\n'))))
+                if getLogLevel() >= 3:
+                    info(3, "Status EXIT command: " + re.sub("\n", "", str(stat.genXmlDoc())))
             except Exception, e:
                 info(3,"Error encountered sending EXIT command: " + str(e))
-
-            # Wait for the server to be definitively terminated.
-            waitLoops = 0
-            while ((waitLoops > -1) and (waitLoops < 20)):
-                if (srvRunning()):
+            else:
+                # Wait for the server to be definitively terminated.
+                waitLoops = 0
+                while srvProcess.poll() is None and waitLoops < 20:
                     time.sleep(0.5)
                     waitLoops += 1
-                else:
-                    waitLoops = -1
-        cmd = "kill -9 %s 2> /dev/null" % str(pid)
-        info(3,"Executing shell command: " + cmd)
-        os.system(cmd)
 
-        # Wait up to 10s to ensure that externally running NG/AMS Server
-        # has been stopped.
-        startTime = time.time()
-        psCmd = "ps -efww|grep ngamsServer |grep -v grep"
-        while ((time.time() - startTime) < 10):
-            stat, out = commands.getstatusoutput(psCmd)
-            if ((stat != 0) and (out.strip() == "")): break
+                # ... or force it to die
+                kill9 = waitLoops == 20
 
+        if kill9:
+            srvProcess.send_signal(signal.SIGKILL)
 
     def tearDown(self):
         """
@@ -1555,11 +1524,12 @@ class ngamsTestSuite(unittest.TestCase):
 
         # Make an external servers terminate.
         for srvInfo in self.__extSrvInfo:
-            self.termExtSrv(srvInfo[0], srvInfo[2])
+            self.termExtSrv(srvInfo[0], srvInfo[1])
             # Remove NGAS Root Directories if clean-up requested.
-            if ((not getNoCleanUp()) and srvInfo[3]):
-                execCmd("sudo /bin/umount %s/*" % srvInfo[3], 0)
-                execCmd("rm -rf %s" % srvInfo[3], 0)
+            rootDir = srvInfo[2]
+            if ((not getNoCleanUp()) and rootDir):
+                execCmd("sudo /bin/umount %s/*" % rootDir, 0)
+                execCmd("rm -rf %s" % rootDir, 0)
         # Check that no servers are running.
         stat, out = execCmd("ps -efww | grep autoOnline")
         for line in out.split("\n"):
@@ -1571,10 +1541,8 @@ class ngamsTestSuite(unittest.TestCase):
             execCmd("sudo /bin/umount /tmp/ngamsTest/*/*", 0)
             tmpDir = os.path.normpath(ngamsGetSrcDir() + "/ngamsTest/tmp")
             fileList = glob.glob(tmpDir + "/*")
-            for file in fileList:
-                if ((file.find("_sqlite.db") == -1) and
-                    (file.find("CVS") == -1)):
-                    os.system("rm -rf %s" % file)
+            for tmpFile in fileList:
+                rmFile(tmpFile)
             #try:
             #    commands.getstatusoutput("mv %s/CVS %s/.CVS" %(tmpDir,tmpDir))
             #    commands.getstatusoutput("rm -rf %s/*" % tmpDir)

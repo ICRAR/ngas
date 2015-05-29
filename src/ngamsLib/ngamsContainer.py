@@ -136,7 +136,7 @@ class ngamsContainer(object):
 
         self.setContainerId(contEl.getAttribute('id'))
         self.setContainerName(contEl.getAttribute('name'))
-        self.setContainerSize(contEl.getAttribute('size'))
+        self.setContainerSize(int(contEl.getAttribute('size')))
 
         ingDate = contEl.getAttribute('ingestionDate')
         self.setIngestionDate(ingDate if ingDate else None)
