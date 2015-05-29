@@ -101,6 +101,8 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
     """
     all units of distances are in degrees
     both file names are strings
+
+    return the header template file (string) to be deleted
     """
     try:
         import astropy.io.fits as pyfits
@@ -127,6 +129,7 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
     head.toTxtFile(hdr_tpl, clobber=True)
     cmd = "{0} {1} {2} {3}".format(montage_reproj_exec,infile, outfile,hdr_tpl)
     execCmd(cmd)
+    return hdr_tpl
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -212,7 +215,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             if (do_regrid):
                 #import gleam_cutout
                 outfile_proj_nm = "{0}/proj_{1}".format(work_dir, cut_fitsnm)
-                regrid_fits(outfile_nm, outfile_proj_nm,
+                hdr_tpl = regrid_fits(outfile_nm, outfile_proj_nm,
                             float(coord[0]),float(coord[1]),
                             radius, radius, work_dir)
                 """
@@ -220,8 +223,11 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                                     xw=radius, yw=radius, outfile=outfile_proj_nm,
                                     useMontage=True)
                 """
+                to_be_removed.append(hdr_tpl)
                 to_be_removed.append(work_dir + '/' + cut_fitsnm)
                 cut_fitsnm = "proj_" + cut_fitsnm
+                area_fitsnm = cut_fitsnm.replace(".fits", "_area.fits")
+                to_be_removed.append(work_dir + '/' + area_fitsnm)
         to_be_removed.append(work_dir + '/' + cut_fitsnm)
     except Exception, excmd1:
         srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
