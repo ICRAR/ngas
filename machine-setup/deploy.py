@@ -147,6 +147,7 @@ APT_PACKAGES = [
         'libdb-dev',
         'libgdbm-dev',
         'libreadline-dev',
+        'libssl-dev',
         'sqlite3',
         'libsqlite3-dev',
         'postgresql-client',
@@ -283,6 +284,7 @@ def set_env():
                    env.host_string, env.postfix, env.APP_DIR_ABS,
                    env.APP_DIR, env.APP_USERS, env.HOME, env.PREFIX,
                    env.src_dir))
+
 
     env['environment_already_set'] = 1
 
@@ -1133,6 +1135,8 @@ def ngas_full_buildout(typ='archive'):
             virtualenv('cd /tmp/bsddb3-6.1.0; ' + \
                        'export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1; ' +\
                        'python{1} setup.py {0} install'.format(dbLocFlags, APP_PYTHON_VERSION))
+        elif env.linux_flavor == 'Ubuntu':
+            virtualenv('BERKELEYDB_DIR=/usr pip install additional_tars/bsddb3-6.1.0.tar.gz')
         else:
             virtualenv('pip install additional_tars/bsddb3-6.1.0.tar.gz')
         virtualenv('pip install additional_tars/bottle-0.11.6.tar.gz')
