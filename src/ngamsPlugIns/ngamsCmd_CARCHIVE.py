@@ -149,18 +149,12 @@ def saveFromHttpToFile(ngamsCfgObj,
 
         info(4,"Transfer time: %.3f s; CRC time: %.3f s; write time %.3f s" % (readingTime, crcTime, writingTime))
 
-        # Release disk resouce.
-        if (mutexDiskAccess):
-            ngamsHighLevelLib.releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
-
         return [deltaTime, rootContainer, fileDataList,ingestRate]
 
-    except Exception, e:
-        #fdOut.close()
+    finally:
         # Release disk resouce.
         if (mutexDiskAccess):
             ngamsHighLevelLib.releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
-        raise Exception, e
 
 
 def createContainers(container, parentContainer, srvObj):
@@ -203,13 +197,6 @@ def handleCmd(srvObj,
     """
     T = TRACE()
 
-##    # Check if the URI is correctly set.
-##    info(3, "Check if the URI is correctly set.")
-##    if (reqPropsObj.getFileUri() == ""):
-##        errMsg = genLog("NGAMS_ER_MISSING_URI")
-##        error(errMsg)
-##        raise Exception, errMsg
-
     # Is this NG/AMS permitted to handle Archive Requests?
     info(3, "Is this NG/AMS permitted to handle Archive Requests?")
     if (not srvObj.getCfg().getAllowArchiveReq()):
@@ -228,7 +215,6 @@ def handleCmd(srvObj,
         reqPropsObj.setMimeType(mimeType)
     else:
         mimeType = reqPropsObj.getMimeType()
-
 
     ## Set reference in request handle object to the read socket.
     info(3, "Set reference in request handle object to the read socket.")
@@ -266,7 +252,7 @@ def handleCmd(srvObj,
     ioTime = stagingInfo[0]
     rootContainer = stagingInfo[1]
     fileDataList = stagingInfo[2]
-    ingestRage = stagingInfo[3]
+    ingestRate = stagingInfo[3]
     reqPropsObj.incIoTime(ioTime)
 
     createContainers(rootContainer, None, srvObj)
@@ -413,8 +399,4 @@ def handleCmd(srvObj,
                                      resDapi.getFileVersion())], [])
         srvObj.triggerSubscriptionThread()
 
-
-    return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()), ingestRage)
-
 # EOF
-
