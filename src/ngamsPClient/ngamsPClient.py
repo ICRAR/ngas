@@ -938,7 +938,7 @@ class ngamsPClient:
         fileVersion      = -1
         filterPlugIn     = ""
         force            = 0
-        host             = os.environ['HOSTNAME'] if os.environ.has_key('HOSTNAME') else 'localhost'
+        host             = os.environ['HOSTNAME'] if os.environ.has_key('HOSTNAME') else getHostName()
         hostId           = ""
         internal         = ""
         mimeType         = ""
