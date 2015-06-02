@@ -318,6 +318,8 @@ class ngamsPClient:
         """
         if not (bool(containerId) ^ bool(containerName)):
             raise Exception('Either containerId or containerName must be indicated for CAPPEND')
+        if not (bool(fileId) ^ bool(fileIdList)):
+            raise Exception('Either fileId or fileIdList must be indicated for CAPPEND')
 
         pars = []
         if containerId:
@@ -427,7 +429,9 @@ class ngamsPClient:
         filesIdList must be given
         """
         if not (bool(containerId) ^ bool(containerName)):
-            raise Exception('Either containerId or containerName must be indicated for CAPPEND')
+            raise Exception('Either containerId or containerName must be indicated for CREMOVE')
+        if not (bool(fileId) ^ bool(fileIdList)):
+            raise Exception('Either fileId or fileIdList must be indicated for CREMOVE')
 
         pars = []
         if containerId:
@@ -1120,73 +1124,69 @@ class ngamsPClient:
         reloadMod = 1 if reloadMod else 0
 
         # Invoke the proper operation.
-        try:
-            if (parArray):
-                return self.sendCmdGen(self.getHost(), self.getPort(),
-                                       cmd, wait, outputFile, parArray)
-            elif (cmd in [NGAMS_ARCHIVE_CMD, 'QARCHIVE']):
-                return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd, pars=[['reload', reloadMod]])
-            elif cmd == "CARCHIVE":
-                return self.carchive(fileUri, reloadMod)
-            elif cmd == "CAPPEND":
-                return self.cappend(fileId, fileIdList, containerId, containerName, force, reloadMod)
-            elif cmd == "CCREATE":
-                return self.ccreate(containerName, parentContId, contHierarchy, reloadMod)
-            elif cmd == "CDESTROY":
-                return self.cdestroy(containerName, containerId, recursive, reloadMod)
-            elif cmd == "CLIST":
-                return self.clist(containerName, containerId, reloadMod)
-            elif cmd == "CREMOVE":
-                return self.cremove(fileId, fileIdList, containerId, containerName, reloadMod)
-            elif cmd == 'CRETRIEVE':
-                return self.cretrieve(containerName, containerId, outputFile, reloadMod)
-            elif (cmd == NGAMS_CACHEDEL_CMD):
-                parArray.append(["disk_id", diskId])
-                parArray.append(["file_id", fileId])
-                parArray.append(["file_version", str(fileVersion)])
-                return self.sendCmdGen(self.getHost(), self.getPort(),
-                                       cmd, wait, "", parArray)
-            elif (cmd == NGAMS_CLONE_CMD):
-                return self.clone(fileId, diskId, fileVersion)
-            elif (cmd == NGAMS_EXIT_CMD):
-                return self.exit()
-            elif (cmd == NGAMS_INIT_CMD):
-                return self.init()
-            elif (cmd == NGAMS_LABEL_CMD):
-                return self.label(slotId)
-            elif (cmd == NGAMS_OFFLINE_CMD):
-                return self.offline(force, wait)
-            elif (cmd == NGAMS_ONLINE_CMD):
-                return self.online(wait)
-            elif (cmd == NGAMS_REARCHIVE_CMD):
-                if (not fileInfoXml):
-                    msg = "Must specify parameter -fileInfoXml for " +\
-                          "a REARCHIVE Command"
-                    raise Exception, msg
-                return self.reArchive(fileUri, fileInfoXml, wait, parArray) # no parArray in noDebug()
-            elif (cmd == NGAMS_REGISTER_CMD):
-                return self.register(path, wait)
-            elif (cmd == NGAMS_REMDISK_CMD):
-                return self.remDisk(diskId, execute)
-            elif (cmd == NGAMS_REMFILE_CMD):
-                return self.remFile(diskId, fileId, fileVersion, execute)
-            elif (cmd == NGAMS_RETRIEVE_CMD):
-                # return self.retrieve2File(fileId, outputFile, cmd=cmd) # noDebug() version
-                return self.retrieve2File(fileId, fileVersion, outputFile,
-                                          processing, processingPars,
-                                          internal, hostId, containerName=containerName,
-                                          containerId=containerId, cmd=cmd)
-            elif (cmd == NGAMS_STATUS_CMD):
-                return self.status()
-            elif (cmd == NGAMS_SUBSCRIBE_CMD):
-                return self.subscribe(url, priority, startDate, filterPlugIn, plugInPars)
-            elif (cmd == NGAMS_UNSUBSCRIBE_CMD):
-                return self.unsubscribe(url)
-            else:
-                raise Exception, 'Unknown command: ' + cmd
-        except Exception, e:
-            self.setStatus(0)
-            print "Error executing command:", e
+        if (parArray):
+            return self.sendCmdGen(self.getHost(), self.getPort(),
+                                   cmd, wait, outputFile, parArray)
+        elif (cmd in [NGAMS_ARCHIVE_CMD, 'QARCHIVE']):
+            return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd, pars=[['reload', reloadMod]])
+        elif cmd == "CARCHIVE":
+            return self.carchive(fileUri, reloadMod)
+        elif cmd == "CAPPEND":
+            return self.cappend(fileId, fileIdList, containerId, containerName, force, reloadMod)
+        elif cmd == "CCREATE":
+            return self.ccreate(containerName, parentContId, contHierarchy, reloadMod)
+        elif cmd == "CDESTROY":
+            return self.cdestroy(containerName, containerId, recursive, reloadMod)
+        elif cmd == "CLIST":
+            return self.clist(containerName, containerId, reloadMod)
+        elif cmd == "CREMOVE":
+            return self.cremove(fileId, fileIdList, containerId, containerName, reloadMod)
+        elif cmd == 'CRETRIEVE':
+            return self.cretrieve(containerName, containerId, outputFile, reloadMod)
+        elif (cmd == NGAMS_CACHEDEL_CMD):
+            parArray.append(["disk_id", diskId])
+            parArray.append(["file_id", fileId])
+            parArray.append(["file_version", str(fileVersion)])
+            return self.sendCmdGen(self.getHost(), self.getPort(),
+                                   cmd, wait, "", parArray)
+        elif (cmd == NGAMS_CLONE_CMD):
+            return self.clone(fileId, diskId, fileVersion)
+        elif (cmd == NGAMS_EXIT_CMD):
+            return self.exit()
+        elif (cmd == NGAMS_INIT_CMD):
+            return self.init()
+        elif (cmd == NGAMS_LABEL_CMD):
+            return self.label(slotId)
+        elif (cmd == NGAMS_OFFLINE_CMD):
+            return self.offline(force, wait)
+        elif (cmd == NGAMS_ONLINE_CMD):
+            return self.online(wait)
+        elif (cmd == NGAMS_REARCHIVE_CMD):
+            if (not fileInfoXml):
+                msg = "Must specify parameter -fileInfoXml for " +\
+                      "a REARCHIVE Command"
+                raise Exception, msg
+            return self.reArchive(fileUri, fileInfoXml, wait, parArray) # no parArray in noDebug()
+        elif (cmd == NGAMS_REGISTER_CMD):
+            return self.register(path, wait)
+        elif (cmd == NGAMS_REMDISK_CMD):
+            return self.remDisk(diskId, execute)
+        elif (cmd == NGAMS_REMFILE_CMD):
+            return self.remFile(diskId, fileId, fileVersion, execute)
+        elif (cmd == NGAMS_RETRIEVE_CMD):
+            # return self.retrieve2File(fileId, outputFile, cmd=cmd) # noDebug() version
+            return self.retrieve2File(fileId, fileVersion, outputFile,
+                                      processing, processingPars,
+                                      internal, hostId, containerName=containerName,
+                                      containerId=containerId, cmd=cmd)
+        elif (cmd == NGAMS_STATUS_CMD):
+            return self.status()
+        elif (cmd == NGAMS_SUBSCRIBE_CMD):
+            return self.subscribe(url, priority, startDate, filterPlugIn, plugInPars)
+        elif (cmd == NGAMS_UNSUBSCRIBE_CMD):
+            return self.unsubscribe(url)
+        else:
+            raise Exception, 'Unknown command: ' + cmd
 
 
     def _httpGet(self,
