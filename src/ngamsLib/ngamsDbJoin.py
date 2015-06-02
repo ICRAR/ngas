@@ -1069,7 +1069,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                        fileStatus,
                        creationDate,
                        iotime,
-                       ingestionRate = -1,
                        genSnapshot = 1,
                        updateDiskInfo = 0):
         """
@@ -1117,7 +1116,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "checksum_plugin='" + checksumPlugIn + "', " +\
                            "file_status='" + fileStatus + "', " +\
                            "creation_date='" + creDate + "', " +\
-                           "ingestion_rate=" + str(ingestionRate) + ", " +\
                            "io_time=" + str(int(iotime*1000)) + " " +\
                            "WHERE file_id='" + fileId + "' AND " +\
                            "disk_id='" + diskId + "'"
@@ -1130,8 +1128,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "format, file_size, " +\
                            "uncompressed_file_size, compression, " +\
                            "ingestion_date, file_ignore, checksum, " +\
-                           "checksum_plugin, file_status, creation_date, io_time, " +\
-                           "ingestion_rate) "+\
+                           "checksum_plugin, file_status, creation_date, io_time) "+\
                            "VALUES " +\
                            "('" + diskId + "', " +\
                            "'" + filename + "', " +\
@@ -1142,13 +1139,12 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            str(uncompressedFileSize) + ", " +\
                            "'" + compression + "', " +\
                            "'" + ingDate + "', " +\
-                           str(ignore) + ", " +\
+                           str(ignore) + "," +\
                            "'" + checksum + "', " +\
                            "'" + checksumPlugIn + "', " +\
                            "'" + fileStatus + "', " +\
                            "'" + creDate + "', " +\
-                           str(int(iotime*1000)) + ", " +\
-                           str(ingestionRate) +\
+                           str(int(iotime*1000)) +\
                            ")"
                 dbOperation = NGAMS_DB_CH_FILE_INSERT
 
