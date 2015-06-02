@@ -1069,7 +1069,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                        fileStatus,
                        creationDate,
                        iotime,
-                       ingestionRate = -1,
+                       ingestionRate,
                        genSnapshot = 1,
                        updateDiskInfo = 0):
         """
@@ -1090,96 +1090,91 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE(5)
 
+        # Check if the entry already exists. If yes update it, otherwise
+        # insert a new element.
+        if (ignore == -1): ignore = 0
         try:
-            # Check if the entry already exists. If yes update it, otherwise
-            # insert a new element.
-            if (ignore == -1): ignore = 0
-            try:
-                self.takeDbSem()
-                ingDate = self.convertTimeStamp(ingestionDate)
-                creDate = self.convertTimeStamp(creationDate)
-                self.relDbSem()
-            except Exception, e:
-                self.relDbSem()
-                raise Exception, e
+            self.takeDbSem()
+            ingDate = self.convertTimeStamp(ingestionDate)
+            creDate = self.convertTimeStamp(creationDate)
+        finally:
+            self.relDbSem()
 
-            if (self.fileInDb(diskId, fileId, fileVersion)):
-                # We only allow to modify a limited set of columns.
-                sqlQuery = "UPDATE ngas_files SET " +\
-                           "file_name='" + filename + "', " +\
-                           "format='" + format + "', " +\
-                           "file_size=" + str(fileSize) + ", " +\
-                           "uncompressed_file_size=" +\
-                           str(uncompressedFileSize) + ", " +\
-                           "compression='" + compression + "', " +\
-                           "file_ignore=" + str(ignore) + ", " +\
-                           "checksum='" + checksum + "', " +\
-                           "checksum_plugin='" + checksumPlugIn + "', " +\
-                           "file_status='" + fileStatus + "', " +\
-                           "creation_date='" + creDate + "', " +\
-                           "ingestion_rate=" + str(ingestionRate) + ", " +\
-                           "io_time=" + str(int(iotime*1000)) + " " +\
-                           "WHERE file_id='" + fileId + "' AND " +\
-                           "disk_id='" + diskId + "'"
-                if (int(fileVersion) != -1):
-                    sqlQuery += " AND file_version=" + str(fileVersion)
-                dbOperation = NGAMS_DB_CH_FILE_UPDATE
-            else:
-                sqlQuery = "INSERT INTO ngas_files " +\
-                           "(disk_id, file_name, file_id, file_version, " +\
-                           "format, file_size, " +\
-                           "uncompressed_file_size, compression, " +\
-                           "ingestion_date, file_ignore, checksum, " +\
-                           "checksum_plugin, file_status, creation_date, io_time, " +\
-                           "ingestion_rate) "+\
-                           "VALUES " +\
-                           "('" + diskId + "', " +\
-                           "'" + filename + "', " +\
-                           "'" + fileId + "', " +\
-                           "" + str(fileVersion) + ", " +\
-                           "'" + format + "', " +\
-                           str(fileSize) + ", " +\
-                           str(uncompressedFileSize) + ", " +\
-                           "'" + compression + "', " +\
-                           "'" + ingDate + "', " +\
-                           str(ignore) + ", " +\
-                           "'" + checksum + "', " +\
-                           "'" + checksumPlugIn + "', " +\
-                           "'" + fileStatus + "', " +\
-                           "'" + creDate + "', " +\
-                           str(int(iotime*1000)) + ", " +\
-                           str(ingestionRate) +\
-                           ")"
-                dbOperation = NGAMS_DB_CH_FILE_INSERT
+        if (self.fileInDb(diskId, fileId, fileVersion)):
+            # We only allow to modify a limited set of columns.
+            sqlQuery = "UPDATE ngas_files SET " +\
+                       "file_name='" + filename + "', " +\
+                       "format='" + format + "', " +\
+                       "file_size=" + str(fileSize) + ", " +\
+                       "uncompressed_file_size=" +\
+                       str(uncompressedFileSize) + ", " +\
+                       "compression='" + compression + "', " +\
+                       "file_ignore=" + str(ignore) + ", " +\
+                       "checksum='" + checksum + "', " +\
+                       "checksum_plugin='" + checksumPlugIn + "', " +\
+                       "file_status='" + fileStatus + "', " +\
+                       "creation_date='" + creDate + "', " +\
+                       "ingestion_rate=" + str(ingestionRate) + ", " +\
+                       "io_time=" + str(int(iotime*1000)) + " " +\
+                       "WHERE file_id='" + fileId + "' AND " +\
+                       "disk_id='" + diskId + "'"
+            if (int(fileVersion) != -1):
+                sqlQuery += " AND file_version=" + str(fileVersion)
+            dbOperation = NGAMS_DB_CH_FILE_UPDATE
+        else:
+            sqlQuery = "INSERT INTO ngas_files " +\
+                       "(disk_id, file_name, file_id, file_version, " +\
+                       "format, file_size, " +\
+                       "uncompressed_file_size, compression, " +\
+                       "ingestion_date, file_ignore, checksum, " +\
+                       "checksum_plugin, file_status, creation_date, io_time, " +\
+                       "ingestion_rate) "+\
+                       "VALUES " +\
+                       "('" + diskId + "', " +\
+                       "'" + filename + "', " +\
+                       "'" + fileId + "', " +\
+                       "" + str(fileVersion) + ", " +\
+                       "'" + format + "', " +\
+                       str(fileSize) + ", " +\
+                       str(uncompressedFileSize) + ", " +\
+                       "'" + compression + "', " +\
+                       "'" + ingDate + "', " +\
+                       str(ignore) + ", " +\
+                       "'" + checksum + "', " +\
+                       "'" + checksumPlugIn + "', " +\
+                       "'" + fileStatus + "', " +\
+                       "'" + creDate + "', " +\
+                       str(int(iotime*1000)) + ", " +\
+                       str(ingestionRate) +\
+                       ")"
+            dbOperation = NGAMS_DB_CH_FILE_INSERT
 
-            # Perform the main query.
-            self.query(sqlQuery)
+        # Perform the main query.
+        self.query(sqlQuery)
 
-            # Update the Disk Info of the disk concerned if requested and
-            # if a new entry was added.
-            #
-            # Note: In case of an update the columns ngas_disks.avail_mb
-            #       and ngas_disks.bytes_stored should in principle be
-            #       updated according to the actual size of the new
-            #       version of the file.
-            if (updateDiskInfo and (dbOperation == NGAMS_DB_CH_FILE_INSERT)):
-                self.updateDiskFileStatus(diskId, fileSize)
+        # Update the Disk Info of the disk concerned if requested and
+        # if a new entry was added.
+        #
+        # Note: In case of an update the columns ngas_disks.avail_mb
+        #       and ngas_disks.bytes_stored should in principle be
+        #       updated according to the actual size of the new
+        #       version of the file.
+        if (updateDiskInfo and (dbOperation == NGAMS_DB_CH_FILE_INSERT)):
+            self.updateDiskFileStatus(diskId, fileSize)
 
-            # Create a Temporary DB Change Snapshot Document if requested.
-            if (self.getCreateDbSnapshot() and genSnapshot):
-                tmpFileObj = ngamsFileInfo.ngamsFileInfo().\
-                             unpackSqlResult([diskId, filename, fileId,
-                                              fileVersion, format, fileSize,
-                                              uncompressedFileSize,compression,
-                                              ingestionDate, ignore, checksum,
-                                              checksumPlugIn, fileStatus, creationDate,
-                                              iotime, None])
-                self.createDbFileChangeStatusDoc(dbOperation, [tmpFileObj])
-                del tmpFileObj
+        # Create a Temporary DB Change Snapshot Document if requested.
+        if (self.getCreateDbSnapshot() and genSnapshot):
+            tmpFileObj = ngamsFileInfo.ngamsFileInfo().\
+                         unpackSqlResult([diskId, filename, fileId,
+                                          fileVersion, format, fileSize,
+                                          uncompressedFileSize,compression,
+                                          ingestionDate, ignore, checksum,
+                                          checksumPlugIn, fileStatus, creationDate,
+                                          iotime, ingestionRate, None])
+            self.createDbFileChangeStatusDoc(dbOperation, [tmpFileObj])
+            del tmpFileObj
 
-            self.triggerEvents([diskId, None])
-        except Exception, e:
-            raise e
+        self.triggerEvents([diskId, None])
 
 
     def getClusterReadyArchivingUnits(self,

@@ -443,6 +443,7 @@ def handleCmd(srvObj,
 
     # Check/generate remaining file info + update in DB.
     info(3, "Creating db entry")
+    ingestionRate = stagingInfo[2]
     ts = PccUtTime.TimeStamp().getTimeStamp()
     creDate = getFileCreationTime(resDapi.getCompleteFilename())
     fileInfo = ngamsFileInfo.ngamsFileInfo().\
@@ -458,7 +459,8 @@ def handleCmd(srvObj,
                setChecksum(checksum).setChecksumPlugIn(checksumPlugIn).\
                setFileStatus(NGAMS_FILE_STATUS_OK).\
                setCreationDate(creDate).\
-               setIoTime(reqPropsObj.getIoTime())
+               setIoTime(reqPropsObj.getIoTime()).\
+               setIngestionRate(ingestionRate)
     fileInfo.write(srvObj.getDb())
 
     # Update the container size with the new size
@@ -508,6 +510,6 @@ def handleCmd(srvObj,
     srvObj.triggerSubscriptionThread()
 
 
-    return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()), stagingInfo[2])
+    return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()), ingestionRate)
 
 # EOF
