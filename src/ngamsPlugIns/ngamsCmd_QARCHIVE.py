@@ -458,13 +458,13 @@ def handleCmd(srvObj,
                setChecksum(checksum).setChecksumPlugIn(checksumPlugIn).\
                setFileStatus(NGAMS_FILE_STATUS_OK).\
                setCreationDate(creDate).\
-               setIoTime(reqPropsObj.getIoTime()).\
-               setContainerId(containerId)
-    fileInfo.write(srvObj.getDb(), genSnapshot=0)
+               setIoTime(reqPropsObj.getIoTime())
+    fileInfo.write(srvObj.getDb())
 
     # Update the container size with the new size
     if containerId:
         newSize = fileInfo.getUncompressedFileSize()
+        srvObj.getDb().addFileToContainer(containerId, resDapi.getFileId(), True)
         srvObj.getDb().addToContainerSize(containerId, (newSize - prevSize))
 
     # Inform the caching service about the new file.

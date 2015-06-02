@@ -779,7 +779,6 @@ class ngamsFileInfo:
                                 self.getIgnore(), self.getChecksum(),
                                 self.getChecksumPlugIn(), self.getFileStatus(),
                                 self.getCreationDate(), self.getIoTime(),
-                                self.getContainerId(),
                                 genSnapshot=genSnapshot,
                                 updateDiskInfo=updateDiskInfo)
         return self

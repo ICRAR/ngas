@@ -1069,7 +1069,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                        fileStatus,
                        creationDate,
                        iotime,
-                       containerId = None,
                        ingestionRate = -1,
                        genSnapshot = 1,
                        updateDiskInfo = 0):
@@ -1104,8 +1103,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                 self.relDbSem()
                 raise Exception, e
 
-            # Sanitize optional containerId
-            containerIdForSql = "'" + containerId + "'" if containerId else 'null'
             if (self.fileInDb(diskId, fileId, fileVersion)):
                 # We only allow to modify a limited set of columns.
                 sqlQuery = "UPDATE ngas_files SET " +\
@@ -1120,7 +1117,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "checksum_plugin='" + checksumPlugIn + "', " +\
                            "file_status='" + fileStatus + "', " +\
                            "creation_date='" + creDate + "', " +\
-                           "container_id=" + containerIdForSql + ", " +\
                            "ingestion_rate=" + str(ingestionRate) + ", " +\
                            "io_time=" + str(int(iotime*1000)) + " " +\
                            "WHERE file_id='" + fileId + "' AND " +\
@@ -1135,7 +1131,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "uncompressed_file_size, compression, " +\
                            "ingestion_date, file_ignore, checksum, " +\
                            "checksum_plugin, file_status, creation_date, io_time, " +\
-                           "container_id, ingestion_rate) "+\
+                           "ingestion_rate) "+\
                            "VALUES " +\
                            "('" + diskId + "', " +\
                            "'" + filename + "', " +\
@@ -1152,7 +1148,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                            "'" + fileStatus + "', " +\
                            "'" + creDate + "', " +\
                            str(int(iotime*1000)) + ", " +\
-                           containerIdForSql + ", " +\
                            str(ingestionRate) +\
                            ")"
                 dbOperation = NGAMS_DB_CH_FILE_INSERT
@@ -1178,7 +1173,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                                               uncompressedFileSize,compression,
                                               ingestionDate, ignore, checksum,
                                               checksumPlugIn, fileStatus, creationDate,
-                                              iotime, containerId])
+                                              iotime, None])
                 self.createDbFileChangeStatusDoc(dbOperation, [tmpFileObj])
                 del tmpFileObj
 

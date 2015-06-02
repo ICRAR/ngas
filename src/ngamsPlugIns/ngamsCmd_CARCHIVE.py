@@ -19,31 +19,13 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-#******************************************************************************
-#
-# "@(#) $Id: ngamsCmd_QARCHIVE.py,v 1.6 2009/12/07 16:36:40 awicenec Exp $"
-#
-# Who       When        What
-# --------  ----------  -------------------------------------------------------
-# jknudstr  03/02/2009  Created
-#
-
 """
-NGAS Command Plug-In, implementing a Quick Archive Command.
+NGAS Command Plug-In, implementing a Container Archive Command.
 
-This works in a similar way as the 'standard' ARCHIVE Command, but has been
-simplified in a few ways:
-
-  - No replication to a Replication Volume is carried out.
-  - Target disks are selected randomly, disregarding the Streams/Storage Set
-    mappings in the configuration. This means that 'volume load balancing' is
-    provided.
-  - Archive Proxy Mode is not supported.
-  - No probing for storage availability is supported.
-  - In general, less SQL queries are performed and the algorithm is more
-    light-weight.
-  - crc is computed from the incoming stream
-  - ngas_files data is 'cloned' from the source file
+This works similarly as the QARCHIVE Command, but archiving more than
+one file in one request, and also creating the necessary containers
+in the NGAS database. Because of this reason this module reuses
+methods defined in the ngamsCmd_QARCHIVE module
 """
 
 from ngams import *
@@ -55,51 +37,8 @@ import ngamsLib, ngamsDbCore, ngamsFileInfo
 import ngamsDiskInfo, ngamsHighLevelLib
 import ngamsCacheControlThread
 import ngamsMIMEMultipart
+import ngamsCmd_QARCHIVE
 
-
-GET_AVAIL_VOLS_QUERY = "SELECT %s FROM ngas_disks nd WHERE completed=0 AND " +\
-                       "host_id='%s'"
-
-def getTargetVolume(srvObj):
-    """
-    Get a random target volume with availability.
-
-    srvObj:         Reference to NG/AMS server class object (ngamsServer).
-
-    Returns:        Target volume object or None (ngamsDiskInfo | None).
-    """
-    T = TRACE()
-
-    sqlQuery = GET_AVAIL_VOLS_QUERY % (ngamsDbCore.getNgasDisksCols(),
-                                       getHostId())
-    res = srvObj.getDb().query(sqlQuery, ignoreEmptyRes=0)
-    if (res == [[]]):
-        return None
-    else:
-        # Shuffle the results.
-        random.shuffle(res[0])
-        return ngamsDiskInfo.ngamsDiskInfo().unpackSqlResult(res[0][0])
-
-
-def updateDiskInfo(srvObj,
-                   resDapi):
-    """
-    Update the row for the volume hosting the new file.
-
-    srvObj:    Reference to NG/AMS server class object (ngamsServer).
-
-    resDapi:   Result returned from the DAPI (ngamsDapiStatus).
-
-    Returns:   Void.
-    """
-    T = TRACE()
-
-    sqlQuery = "UPDATE ngas_disks SET " +\
-               "number_of_files=(number_of_files + 1), " +\
-               "bytes_stored=(bytes_stored + %d) WHERE " +\
-               "disk_id='%s'"
-    sqlQuery = sqlQuery % (resDapi.getFileSize(), resDapi.getDiskId())
-    srvObj.getDb().query(sqlQuery, ignoreEmptyRes=0)
 
 def saveInStagingFile(ngamsCfgObj,
                       reqPropsObj,
@@ -300,7 +239,7 @@ def handleCmd(srvObj,
 
     # Determine the target volume, ignoring the stream concept.
     info(3, "Determine the target volume, ignoring the stream concept.")
-    targDiskInfo = getTargetVolume(srvObj)
+    targDiskInfo = ngamsCmd_QARCHIVE.getTargetVolume(srvObj)
     if (targDiskInfo == None):
         errMsg = "No disk volumes are available for ingesting any files."
         error(errMsg)
@@ -406,33 +345,25 @@ def handleCmd(srvObj,
         # Check/generate remaining file info + update in DB.
         info(3, "Creating db entry")
         ts = PccUtTime.TimeStamp().getTimeStamp()
-        ignore = 0
-        creDate = timeRef2Iso8601(getFileCreationTime(resDapi.getCompleteFilename()))
-        sqlQuery = "INSERT INTO ngas_files " +\
-                           "(disk_id, file_name, file_id, file_version, " +\
-                           "format, file_size, " +\
-                           "uncompressed_file_size, compression, " +\
-                           "ingestion_date, file_ignore, checksum, " +\
-                           "checksum_plugin, file_status, " +\
-                           "creation_date, container_id) "+\
-                           "VALUES " +\
-                           "('" + resDapi.getDiskId() + "', " +\
-                           "'" + resDapi.getRelFilename() + "', " +\
-                           "'" + resDapi.getFileId() + "', " +\
-                           "" + str(file_version) + ", " +\
-                           "'" + resDapi.getFormat() + "', " +\
-                           str(resDapi.getFileSize()) + ", " +\
-                           str(resDapi.getUncomprSize()) + ", " +\
-                           "'" + resDapi.getCompression() + "', " +\
-                           "'" + ts + "', " +\
-                           str(ignore) + ", " +\
-                           "'" + checksum + "', " +\
-                           "'" + checksumPlugIn + "', " +\
-                           "'" + NGAMS_FILE_STATUS_OK + "', " +\
-                           "'" + creDate + "', " +\
-                           "'" + containerId + "')"
+        creDate = getFileCreationTime(resDapi.getCompleteFilename())
+        fileInfo = ngamsFileInfo.ngamsFileInfo().\
+                   setDiskId(resDapi.getDiskId()).\
+                   setFilename(resDapi.getRelFilename()).\
+                   setFileId(resDapi.getFileId()).\
+                   setFileVersion(file_version).\
+                   setFormat(resDapi.getFormat()).\
+                   setFileSize(resDapi.getFileSize()).\
+                   setUncompressedFileSize(resDapi.getUncomprSize()).\
+                   setCompression(resDapi.getCompression()).\
+                   setIngestionDate(ts).\
+                   setChecksum(checksum).setChecksumPlugIn(checksumPlugIn).\
+                   setFileStatus(NGAMS_FILE_STATUS_OK).\
+                   setCreationDate(creDate).\
+                   setIoTime(reqPropsObj.getIoTime())
+        fileInfo.write(srvObj.getDb())
 
-        srvObj.getDb().query(sqlQuery)
+        # Add the file to the container
+        srvObj.getDb().addFileToContainer(containerId, resDapi.getFileId(), True)
 
         # Update the container sizes
         for contSizeInfo in containerSizes.iteritems():
@@ -450,7 +381,7 @@ def handleCmd(srvObj,
 
         # Update disk info in NGAS Disks.
         info(3, "Update disk info in NGAS Disks.")
-        updateDiskInfo(srvObj, resDapi)
+        ngamsCmd_QARCHIVE.updateDiskInfo(srvObj, resDapi)
 
         resDapiList.append(resDapi)
 
