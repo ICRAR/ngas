@@ -88,7 +88,7 @@ AMI_IDs = {
            }
 AMI_NAME = 'Amazon'
 AMI_ID = AMI_IDs[AMI_NAME]
-INSTANCE_NAME = 'NGAS_{0}'.format(BRANCH)
+INSTANCE_NAME = 'NGAS_{0}'
 INSTANCE_TYPE = 't1.micro'
 INSTANCES_FILE = os.path.expanduser('~/.aws/aws_instances')
 ELASTIC_IP = 'False'
@@ -122,11 +122,13 @@ SUPPORTED_OS = [
 
 YUM_PACKAGES = [
    'python27-devel',
+   'python-devel',
    'git',
    'autoconf',
    'libtool',
    'zlib-devel',
    'db4-devel',
+   'libdb-devel',
    'gdbm-devel',
    'readline-devel',
    'sqlite-devel',
@@ -153,6 +155,7 @@ APT_PACKAGES = [
         'postgresql-client',
         'patch',
         'python-dev',
+        'libdb5.3-dev',
                 ]
 
 SLES_PACKAGES = [
@@ -225,6 +228,8 @@ def set_env():
         env.GITUSER = GITUSER
     if not env.has_key('GITREPO') or not env.GITREPO:
         env.GITREPO = GITREPO
+    if not env.has_key('BRANCH') or not env.BRANCH:
+        env.BRANCH = BRANCH
     if not env.has_key('postfix') or not env.postfix:
         env.postfix = POSTFIX
     if not env.has_key('user') or not env.user:
@@ -274,16 +279,17 @@ def set_env():
             host_string:       {3};
             postfix:           {4};
             HOME:              {8};
-            APP_DIR_ABS:      {5};
-            APP_DIR:          {6};
-            USERS:        {7};
+            APP_DIR_ABS:       {5};
+            APP_DIR:           {6};
+            USERS:             {7};
             PREFIX:            {9};
-            SRC_DIR:           {10};
+            SRC_DIR:          {10};
+            BRANCH:           {11};
             """.\
             format(env.user, env.key_filename, env.hosts,
                    env.host_string, env.postfix, env.APP_DIR_ABS,
                    env.APP_DIR, env.APP_USERS, env.HOME, env.PREFIX,
-                   env.src_dir))
+                   env.src_dir, env.BRANCH))
 
 
     env['environment_already_set'] = 1
@@ -430,6 +436,8 @@ def to_boolean(choice, default=False):
         return valid[choice_lower]
     return default
 
+
+@task
 def check_command(command):
     """
     Check existence of command remotely
@@ -440,8 +448,10 @@ def check_command(command):
     OUTPUT:
     Boolean
     """
+    puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
     res = run('if command -v {0} &> /dev/null ;then command -v {0};else echo ;fi'.format(command))
     return res
+
 
 def check_dir(directory):
     """
@@ -469,6 +479,7 @@ def check_python():
     OUTPUT:
     path to python binary    string, could be empty string
     """
+    puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
     # Try whether there is already a local python installation for this user
     set_env()
     ppath = env.APP_DIR_ABS.split(env.APP_DIR)[0] + '/python' # make sure this is an absolute path
@@ -650,7 +661,7 @@ def git_clone():
     """
     copy_public_keys()
     with cd(env.APP_DIR_ABS):
-        run('git clone {0}@{1} -b {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
+        run('git clone {0}@{1} -b {2}'.format(env.GITUSER, env.GITREPO, env.BRANCH))
 
 
 @task
@@ -665,8 +676,8 @@ def git_clone_tar(unpack=True):
     set_env()
     egg_excl = ' '
     if env.GITREPO and env.GITUSER:
-        local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, BRANCH))
-        local('cd /tmp && mv {0} {1}'.format(BRANCH, env.APP_DIR))
+        local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, env.BRANCH))
+        local('cd /tmp && mv {0} {1}'.format(env.BRANCH, env.APP_DIR))
         tar_dir = '/tmp/{0}'.format(env.APP_DIR)
         sdir = '/tmp'
     else:
@@ -746,6 +757,10 @@ def get_linux_flavor():
     Obtain and set the env variable linux_flavor
     """
     puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
+    if check_command('python'):
+        lf = run("python -c 'import platform; print platform.linux_distribution()[0]'")
+        if lf:
+            env.linux_flavor = lf.split()[0]
     if not env.has_key('linux_flavor'):
         if (check_path('/etc/issue') == '1'):
             re = run('cat /etc/issue')
@@ -758,6 +773,8 @@ def get_linux_flavor():
                     linux_flavor = ' '.join(linux_flavor[:2])
                 elif linux_flavor[2] == 'SUSE':
                     linux_flavor = linux_flavor[2]
+                else:
+                    check_path('/etc/os-release')
         else:
             linux_flavor = run('uname -s')
     else:
@@ -1138,7 +1155,7 @@ def ngas_full_buildout(typ='archive'):
         elif env.linux_flavor == 'Ubuntu':
             virtualenv('BERKELEYDB_DIR=/usr pip install additional_tars/bsddb3-6.1.0.tar.gz')
         else:
-            virtualenv('pip install additional_tars/bsddb3-6.1.0.tar.gz')
+            virtualenv('pip install --install-option="--berkeley-db=/usr" additional_tars/bsddb3-6.1.0.tar.gz')
         virtualenv('pip install additional_tars/bottle-0.11.6.tar.gz')
 
         # run bootstrap with correct python version (explicit)
@@ -1167,15 +1184,17 @@ def test_env():
     puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
     if not env.has_key('AWS_PROFILE') or not env.AWS_PROFILE:
         env.AWS_PROFILE = AWS_PROFILE
+    if not env.has_key('BRANCH') or not env.BRANCH:
+        env.BRANCH = BRANCH
     if not env.has_key('instance_name') or not env.instance_name:
-        env.instance_name = INSTANCE_NAME
+        env.instance_name = INSTANCE_NAME.format(env.BRANCH)
     if not env.has_key('use_elastic_ip') or not env.use_elastic_ip:
         env.use_elastic_ip = ELASTIC_IP
     if not env.has_key('key_filename') or not env.key_filename:
         env.key_filename = AWS_KEY
     if not env.has_key('AMI_NAME') or not env.AMI_NAME:
         env.AMI_NAME = 'CentOS'
-    env.instance_name = INSTANCE_NAME
+    env.instance_name = INSTANCE_NAME.format(env.BRANCH)
     env.use_elastic_ip = ELASTIC_IP
     if 'use_elastic_ip' in env:
         use_elastic_ip = to_boolean(env.use_elastic_ip)
@@ -1236,7 +1255,10 @@ def user_deploy(typ='archive'):
     puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
     if not env.has_key('APP_USERS') or not env.APP_USERS:
         # if not defined on the command line use the current user
-        env.APP_USERS = os.environ['HOME'].split('/')[-1]
+        if env.user:
+            env.APP_USERS = [env.user]
+        else:
+            env.APP_USERS = os.environ['HOME'].split('/')[-1]
 
     install(sys_install=False, user_install=False, 
             init_install=False, typ=typ)
@@ -1329,8 +1351,8 @@ def test_deploy():
     # set environment to default for EC2, if not specified otherwise.
     set_env()
     install(sys_install=True, user_install=True, init_install=True)
-    sudo('chown -R {0}:{0} /home/{0}'.format(env.user))
     with settings(user=env.APP_USERS[0]):
+        sudo('chown -R {0}:{0} /home/{0}'.format(user))
         run('ngamsDaemon start')
     puts(green("\n\n******** SERVER STARTED!********\n\n"))
     if test_status():

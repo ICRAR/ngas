@@ -420,7 +420,7 @@ def handleCmd(srvObj,
     # Get crc info
     info(3, "Get checksum info")
     crc = stagingInfo[1]
-    checksumPlugIn = "ngamsGenCrc32"
+    checksumPlugIn = "ngamsGenCrc32" # this is put into the DB for the DataCheck to pick the right plugin
     checksum = str(crc)
     info(3, "Invoked Checksum Plug-In: " + checksumPlugIn +\
             " to handle file: " + resDapi.getCompleteFilename() +\

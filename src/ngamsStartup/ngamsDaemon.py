@@ -22,8 +22,8 @@
 #
 
 import sys, os, subprocess, socket, glob
-from ngams import getHostId
 from ngamsServer import ngamsServer
+from ngams import getHostId
 from logger import ngaslog
 from daemon import Daemon
 from ngamsConfig import ngamsConfig

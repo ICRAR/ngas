@@ -91,8 +91,11 @@ def getFitsHdrs(filename):
                 # HIERARCH ESO CAT TST         = 'XX/YY/ZZ'   / Test
                 # CHECKSUM= 'ZOZAgNX7ZNXAfNX7'  / ASCII 1's complement checksum 
                 lineEls = line.split("=")
+		if (len(lineEls) < 2): # avoid situations like "CONTINUE" keyword without a "=" sign
+                    continue
                 key = lineEls[0].strip()
-
+		#if (len(lineEls) == 1):
+		#	print "key = %s" % key
                 ###############################################
                 # Get value and comment.
                 valCom = lineEls[1].strip()
