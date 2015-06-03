@@ -1114,8 +1114,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                        "checksum_plugin='" + checksumPlugIn + "', " +\
                        "file_status='" + fileStatus + "', " +\
                        "creation_date='" + creDate + "', " +\
-                       "ingestion_rate=" + str(ingestionRate) + ", " +\
-                       "io_time=" + str(int(iotime*1000)) + " " +\
+                       "io_time=" + str(int(iotime*1000)) + ", " +\
+                       "ingestion_rate=" + str(ingestionRate) + " " +\
                        "WHERE file_id='" + fileId + "' AND " +\
                        "disk_id='" + diskId + "'"
             if (int(fileVersion) != -1):

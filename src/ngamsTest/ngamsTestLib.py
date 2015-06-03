@@ -1082,20 +1082,6 @@ def runTest(argv):
     ngamsTextTestRunner(sys.stdout, 1, 0).run(testSuite)
 
 
-def srvRunning(pid):
-    """
-    Return 1 if a process is running under the given pid
-
-    pid: a PID (int)
-
-    Returns:   1 if server is running (integer/0|1).
-    """
-    try:
-        os.kill(pid, 0)
-        return True
-    except OSError:
-        return False
-
 def writeFitsKey(filename,
                  key,
                  value,
@@ -1268,8 +1254,6 @@ class ngamsTestSuite(unittest.TestCase):
         Set the PID and port number used by an external NG/AMS Server running.
 
         pid:        PID of external server process (integer).
-
-        pidFile:    NG/AMS PID file (string).
 
         port:       HTTP socket port number used by external server (integer).
 

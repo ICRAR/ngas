@@ -764,7 +764,6 @@ class ngamsStatus:
 
         Returns:            Reference to object itself.
         """
-        T = TRACE()
         dom = xml.dom.minidom.parseString(doc)
         ngamsStatusEl = ngamsGetChildNodes(dom, NGAMS_XML_STATUS_ROOT_EL)[0]
 

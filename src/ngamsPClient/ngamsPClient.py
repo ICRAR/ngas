@@ -654,7 +654,6 @@ class ngamsPClient:
 
         Returns:         NG/AMS Status object (ngamsStatus).
         """
-        T = TRACE()
         # If the target file is not specified, we give the
         # current working directory as target.
         if (targetFile == ""): targetFile = os.path.abspath(os.curdir)
