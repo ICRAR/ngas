@@ -1122,6 +1122,11 @@ class ngamsPClient:
             self.parseSrvList(servers)
         reloadMod = 1 if reloadMod else 0
 
+        if not parArray and not cmd:
+            print "Error: Neither a command (-cmd) nor parameters (-par/-val) have been given"
+            print self.correctUsageBuf()
+            _exit(1)
+
         # Invoke the proper operation.
         if (parArray):
             return self.sendCmdGen(self.getHost(), self.getPort(),
