@@ -364,8 +364,6 @@ def parseCommandLine(argv):
             correctUsage()
             sys.exit(1)
         idx += 1
-    if (not notifEmail):
-        raise Exception, "Specify parameter: -notifEmail <Rec List>"
     if (not cfg):
         raise Exception, "Specify parameter: -cfg <Ref. Cfg. File>"
 
