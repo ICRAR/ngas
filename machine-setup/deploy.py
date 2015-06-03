@@ -107,18 +107,25 @@ GITREPO = ''
 # GITUSER = 'icrargit'
 # GITREPO = 'gitsrv.icrar.org:ngas'
 
-SUPPORTED_OS = [
-                'Amazon Linux',
-                'Amazon',
-                'CentOS', 
-                'Ubuntu', 
-                'Debian', 
-                'Suse',
-                'SUSE',
-                'SLES-SP2',
-                'SLES-SP3',
-                'Darwin',
-                ]
+SUPPORTED_OS_LINUX = [
+                      'Amazon Linux',
+                      'Amazon',
+                      'CentOS',
+                      'Ubuntu',
+                      'Debian',
+                      'Suse',
+                      'SUSE',
+                      'SLES-SP2',
+                      'SLES-SP3'
+]
+
+SUPPORTED_OS_MAC = [
+                    'Darwin',
+]
+
+SUPPORTED_OS = []
+SUPPORTED_OS.extend(SUPPORTED_OS_LINUX)
+SUPPORTED_OS.extend(SUPPORTED_OS_MAC)
 
 YUM_PACKAGES = [
    'python27-devel',
@@ -272,6 +279,11 @@ def set_env():
     if env.AMI_NAME in ['CentOS', 'SLES']:
         env.user = 'root'
     get_linux_flavor()
+
+    env.nprocs = 1
+    if env.linux_flavor in SUPPORTED_OS_LINUX:
+        env.nprocs = int(run('grep -c processor /proc/cpuinfo'))
+
     puts("""Environment:
             USER:              {0};
             Key file:          {1};
@@ -285,11 +297,12 @@ def set_env():
             PREFIX:            {9};
             SRC_DIR:          {10};
             BRANCH:           {11};
+            # procs:          {12};
             """.\
             format(env.user, env.key_filename, env.hosts,
                    env.host_string, env.postfix, env.APP_DIR_ABS,
                    env.APP_DIR, env.APP_USERS, env.HOME, env.PREFIX,
-                   env.src_dir, env.BRANCH))
+                   env.src_dir, env.BRANCH, env.nprocs))
 
 
     env['environment_already_set'] = 1
@@ -981,7 +994,7 @@ def python_setup():
         run('tar -xzf {0}'.format(base))
     ppath = env.APP_DIR_ABS + '/../python'
     with cd('/tmp/{0}'.format(pdir)):
-        run('./configure --prefix {0};make;make install'.format(ppath))
+        run('./configure --prefix {0}; make -j{1};make install'.format(ppath, env.nprocs))
         ppath = '{0}/bin/python{1}'.format(ppath,APP_PYTHON_VERSION)
     env.PYTHON = ppath
     puts(green("\n\n******** PYTHON INSTALLATION COMPLETED!********\n\n"))
@@ -1260,7 +1273,7 @@ def user_deploy(typ='archive'):
         else:
             env.APP_USERS = os.environ['HOME'].split('/')[-1]
 
-    install(sys_install=False, user_install=False, 
+    install(sys_install=False, user_install=False,
             init_install=False, typ=typ)
     with settings(user=env.APP_USERS[0]):
         run('ngamsDaemon start')
@@ -1436,15 +1449,26 @@ def install(sys_install=True, user_install=True,
     if user_install and user_install != 'False': user_setup()
 
     with settings(user=env.APP_USERS[0]):
-        ppath = check_python()
-        if not ppath or str(python_install) == 'True':
+
+        # Get the base dir of the current python installation
+        # and check that it's what we need (i.e., our own
+        # installation alongside the ngas installation)
+        # Only check if we're not explicitly asked to install
+        # python, in which case we do it anyway
+        if not python_install:
+            currentPython  = os.path.abspath(check_python())
+            currentDir     = os.path.sep.join(currentPython.split(os.path.sep)[:-2]) if currentPython else ''
+            intendedDir    = os.path.abspath(env.APP_DIR_ABS + os.path.sep + '..' + os.path.sep + 'python')
+            python_install = currentDir != intendedDir
+        if python_install:
             python_setup()
+
     if env.PREFIX != env.HOME: # generate non-standard ngas_rt directory
         sudo('mkdir -p {0}'.format(env.PREFIX))
     with settings(user=env.APP_USERS[0]):
         virtualenv_setup()
     if env.PREFIX != env.HOME:
-        sudo('chown -R {0}:ngas {1}'.format(env.APP_USERS[0], env.PREFIX))
+        sudo('chown -R {0}:{0} {1}'.format(env.APP_USERS[0], env.PREFIX))
     with settings(user=env.APP_USERS[0]):
         ngas_full_buildout(typ=typ)
         cleanup_tmp()
