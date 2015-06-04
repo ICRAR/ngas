@@ -769,36 +769,49 @@ def get_linux_flavor():
     """
     Obtain and set the env variable linux_flavor
     """
-    puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
-    if check_command('python'):
+
+    # Already ran through this method
+    if env.has_key('linux_flavor'):
+        return env.linux_flavor
+
+    linux_flavor = None
+    # Try lsb_release
+    if check_command('lsb_release'):
+        distributionId = run('lsb_release -i')
+        if distributionId and distributionId.find(':') != -1:
+            linux_flavor = distributionId.split(':')[1].strip()
+
+    # Try python
+    if not linux_flavor and check_command('python'):
         lf = run("python -c 'import platform; print platform.linux_distribution()[0]'")
         if lf:
-            env.linux_flavor = lf.split()[0]
-    if not env.has_key('linux_flavor'):
-        if (check_path('/etc/issue') == '1'):
-            re = run('cat /etc/issue')
-            linux_flavor = re.split()
-            if (len(linux_flavor) > 0):
-                if linux_flavor[0] == 'CentOS' or linux_flavor[0] == 'Ubuntu' \
-                   or linux_flavor[0] == 'Debian':
-                    linux_flavor = linux_flavor[0]
-                elif linux_flavor[0] == 'Amazon':
-                    linux_flavor = ' '.join(linux_flavor[:2])
-                elif linux_flavor[2] == 'SUSE':
-                    linux_flavor = linux_flavor[2]
-                else:
-                    check_path('/etc/os-release')
-        else:
-            linux_flavor = run('uname -s')
-    else:
-        linux_flavor = env.linux_flavor
-    
-    if type(linux_flavor) == type([]):
+            linux_flavor = lf.split()[0]
+
+    # Try /etc/issue
+    if not linux_flavor and check_path('/etc/issue') == '1':
+        re = run('cat /etc/issue')
+        issue = re.split()
+        if issue:
+            if issue[0] == 'CentOS' or issue[0] == 'Ubuntu' \
+               or issue[0] == 'Debian':
+                linux_flavor = issue[0]
+            elif issue[0] == 'Amazon':
+                linux_flavor = ' '.join(issue[:2])
+            elif issue[2] == 'SUSE':
+                linux_flavor = issue[2]
+
+    # Try uname -s
+    if not linux_flavor:
+        linux_flavor = run('uname -s')
+
+    # Sanitize
+    if linux_flavor and type(linux_flavor) == type([]):
         linux_flavor = linux_flavor[0]
-    if linux_flavor not in SUPPORTED_OS:
+
+    # Final check
+    if not linux_flavor or linux_flavor not in SUPPORTED_OS:
         puts('>>>>>>>>>>')
-        puts('Target machine is running an unsupported or unkown Linux flavor:{0}.'\
-             .format(linux_flavor))
+        puts('Target machine is running an unsupported or unkown Linux flavor: {0}.'.format(linux_flavor))
         puts('If you know better, please enter it below.')
         puts('Must be one of:')
         puts(' '.join(SUPPORTED_OS))
