@@ -150,6 +150,7 @@ class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
 		containerName = "testing"
 		status = client.ccreate(containerName)
 		self.assertEquals(status.getStatus(), NGAMS_SUCCESS)
+		self._checkContainerClosed(client, containerName, False)
 
 		#------------------------------------------------------------------
 		# We start testing with a single file append/removal,
@@ -164,11 +165,13 @@ class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
 		self.assertEquals(client.archive(myfile, "application/octet-stream", cmd="QARCHIVE").getStatus(), NGAMS_SUCCESS)
 		self.assertEquals(client.cappend(myfileId, containerName=containerName).getStatus(), NGAMS_SUCCESS)
 		self._checkFilesAndContainerSize(client, containerName, 1, myfileSize)
+		self._checkContainerClosed(client, containerName, False)
 
 		# Remove the file now and check that the file is not there anymore,
 		# decreasing the container size
 		self.assertEquals(client.cremove(myfileId, containerName=containerName).getStatus(), NGAMS_SUCCESS)
 		self._checkFilesAndContainerSize(client, containerName, 0, 0)
+		self._checkContainerClosed(client, containerName, False)
 
 		#------------------------------------------------------------------
 		# We continue testing with a list of files for append/removal,
@@ -184,11 +187,13 @@ class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
 			self.assertEquals(client.archive(myfile, "application/octet-stream", cmd="QARCHIVE").getStatus(), NGAMS_SUCCESS)
 		self.assertEquals(client.cappend(None, fileIdList=fileIds, containerName=containerName).getStatus(), NGAMS_SUCCESS)
 		self._checkFilesAndContainerSize(client, containerName, len(self.myfiles), allFilesSize)
+		self._checkContainerClosed(client, containerName, False)
 
 		# Remove the files now and check that the files are not part of the container anymore,
 		# decreasing the container size
 		self.assertEquals(client.cremove(None, fileIdList=fileIds, containerName=containerName).getStatus(), NGAMS_SUCCESS)
 		self._checkFilesAndContainerSize(client, containerName, 0, 0)
+		self._checkContainerClosed(client, containerName, False)
 
 
 		#------------------------------------------------------------------
@@ -210,10 +215,12 @@ class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
 		for myfile in self.myfiles:
 			self.assertEquals(client.archive(myfile, "application/octet-stream", cmd="QARCHIVE").getStatus(), NGAMS_SUCCESS)
 		self._checkFilesAndContainerSize(client, containerName, len(self.myfiles), allFilesSize, fileVersion=2)
+		self._checkContainerClosed(client, containerName, False)
 
 		# Remove all files and check that the container is empty
 		self.assertEquals(client.cremove(None, fileIdList=fileIds, containerName=containerName).getStatus(), NGAMS_SUCCESS)
 		self._checkFilesAndContainerSize(client, containerName, 0, 0)
+		self._checkContainerClosed(client, containerName, False)
 
 		# Re-archive the files, add them to the container and check again
 		# The new version of the files should be 3, and the new container size
@@ -224,10 +231,34 @@ class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
 			self.assertEquals(client.archive(myfile, "application/octet-stream", cmd="QARCHIVE").getStatus(), NGAMS_SUCCESS)
 		self.assertEquals(client.cappend(None, fileIdList=fileIds, containerName=containerName).getStatus(), NGAMS_SUCCESS)
 		self._checkFilesAndContainerSize(client, containerName, len(self.myfiles), allFilesSize, fileVersion=3)
+		self._checkContainerClosed(client, containerName, False)
 
 		# Remove all files and check that the container is empty
 		self.assertEquals(client.cremove(None, fileIdList=fileIds, containerName=containerName).getStatus(), NGAMS_SUCCESS)
 		self._checkFilesAndContainerSize(client, containerName, 0, 0)
+		self._checkContainerClosed(client, containerName, False)
+
+
+		#------------------------------------------------------------------
+		# The final test in this section is about "closing" a container
+		# When a container is created via CCREATE it remains "opened",
+		# until a CAPPEND command specifies that it wants to "close" the
+		# container. A container is closed when its ingestion date is set.
+		#------------------------------------------------------------------
+
+		# First of all, check that the container is still currently opened
+		self._checkContainerClosed(client, containerName, False)
+
+		# Append a file, check that the container is still opened
+		myfileId = os.path.basename(self.myfiles[0])
+		self.assertEquals(client.cappend(myfileId, containerName=containerName).getStatus(), NGAMS_SUCCESS)
+		self._checkContainerClosed(client, containerName, False)
+
+		# Append a second file and mark the container as closed
+		myfileId = os.path.basename(self.myfiles[1])
+		self.assertEquals(client.cappend(myfileId, containerName=containerName, closeContainer=True).getStatus(), NGAMS_SUCCESS)
+		self._checkContainerClosed(client, containerName, True)
+
 
 	def _checkFilesAndContainerSize(self, client, containerName, nFiles, filesSizeInDisk, fileVersion=1):
 		status = client.clist(containerName)
@@ -262,6 +293,15 @@ class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
 		self.assertEquals(nFiles, totalContFiles)
 		self.assertEquals(filesSizeInDisk, totalContSize)
 
+	def _checkContainerClosed(self, client, containerName, isClosed):
+		status = client.clist(containerName)
+		self.assertEquals(status.getStatus(), NGAMS_SUCCESS)
+		self.assertEquals(1, len(status.getContainerList()))
+		container = status.getContainerList()[0]
+		self.assertEquals(containerName, container.getContainerName())
+
+		# Containers are closed when they have an ingestion date
+		self.assertEquals(isClosed, container.isClosed(), "Container's ingestion date is: '" + str(container.getIngestionDate()) + "'; expected isClosed=" + str(isClosed))
 
 	def test_ArchiveReceive(self):
 

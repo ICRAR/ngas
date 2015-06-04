@@ -92,6 +92,12 @@ class ngamsContainer(object):
     def setIngestionDate(self, ingestionDate):
         self._ingestionDate = ingestionDate
 
+    def isClosed(self):
+        return bool(self._ingestionDate)
+
+    def isOpened(self):
+        return not self.isClosed()
+
     def toStr(self, tab):
         spaces = ''.join(' ' for _ in range(tab))
         buf = spaces + self._containerName

@@ -39,7 +39,7 @@ import os, sys, time, string, unittest, socket, getpass, commands, re, glob, sub
 import cPickle, shutil
 import pcc, PccUtUtils, PccUtTime
 from   ngams import *
-from   ngamsPClient import ngamsPClient
+import ngamsPClient
 import ngamsLib, ngamsDbm, ngamsDb, ngamsStatus, ngamsConfig, ngamsServer
 import ngamsCmdHandling
 import ngamsDataCheckThread, ngamsJanitorThread, ngamsSubscriptionThread

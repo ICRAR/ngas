@@ -25,7 +25,7 @@ Module containing SQL queries against the ngas_containers table
 @author rtobar, May 2015
 """
 
-import uuid
+import time, uuid
 from ngams import info, error, timeRef2Iso8601, iso8601ToSecs
 import ngamsDbCore
 import ngamsFileInfo, ngamsContainer
@@ -245,6 +245,15 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
         """
         amountSql = "+ " + str(amount) if amount >= 0 else "- " + str(-amount)
         sql = "UPDATE ngas_containers SET container_size = (container_size " + amountSql + ") WHERE container_id = '" + containerId + "'"
+        self.query(sql)
+
+    def closeContainer(self, containerId):
+        """
+        Marks the container as "closed"; that is, it sets an
+        ingestion date on it equals to the current time
+        """
+        ts = time.time()
+        sql = "UPDATE ngas_containers SET ingestion_date = '" + timeRef2Iso8601(ts) + "' WHERE container_id = '" + containerId + "'"
         self.query(sql)
 
 # EOF

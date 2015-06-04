@@ -47,7 +47,7 @@ def addFileToContainer(srvObj, containerId, fileId, force):
     if fileSize:
         srvObj.getDb().addToContainerSize(containerId, fileSize)
 
-def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
+def _handleSingleFile(srvObj, containerId, reqPropsObj, force, closeContainer):
     """
     Handles the CAPPEND command for the case of
     a single file being given in the URL parameter of
@@ -57,6 +57,7 @@ def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
     @param containerId: string
     @param reqPropsObj: ngamsLib.ngamsReqProps
     @param force: bool
+    @param closeContainer: bool
     """
     fileId = None
     if reqPropsObj.hasHttpPar("file_id") and reqPropsObj.getHttpPar("file_id").strip():
@@ -66,8 +67,11 @@ def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
         raise Exception(msg)
 
     addFileToContainer(srvObj, containerId, fileId, force)
+    if closeContainer:
+        srvObj.getDb().closeContainer(containerId)
 
-def _handleFileList(srvObj, containerId, reqPropsObj, force):
+
+def _handleFileList(srvObj, containerId, reqPropsObj, force, closeContainer):
     """
     Handles the CAPPEND command for the case of
     file list being given in the body of POST request
@@ -76,6 +80,7 @@ def _handleFileList(srvObj, containerId, reqPropsObj, force):
     @param containerId: string
     @param reqPropsObj: ngamsLib.ngamsReqProps
     @param force: bool
+    @param closeContainer: bool
     """
     size = reqPropsObj.getSize()
     fileListStr = reqPropsObj.getReadFd().read(size)
@@ -83,6 +88,9 @@ def _handleFileList(srvObj, containerId, reqPropsObj, force):
     fileIds = [el.getAttribute('FileId') for el in fileList.getElementsByTagName('File')]
     for fileId in fileIds:
         addFileToContainer(srvObj, containerId, fileId, force)
+
+    if closeContainer:
+        srvObj.getDb().closeContainer(containerId)
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -109,6 +117,11 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if reqPropsObj.hasHttpPar('force') and reqPropsObj.getHttpPar('force') == '1':
         force = True
 
+    # Check if we have been asked to "close" the container
+    closeContainer = False
+    if reqPropsObj.hasHttpPar('close_container') and reqPropsObj.getHttpPar('close_container') == '1':
+        closeContainer = True
+
     # If container_name is specified, and maps to more than one container,
     # (or to none) an error is issued
     containerIdKnownToExist = False
@@ -128,8 +141,8 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     # Otherwise, we assume a list of files is given in the
     # body of he request
     if reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET:
-        _handleSingleFile(srvObj, containerId, reqPropsObj, force)
+        _handleSingleFile(srvObj, containerId, reqPropsObj, force, closeContainer)
     else:
-        _handleFileList(srvObj, containerId, reqPropsObj, force)
+        _handleFileList(srvObj, containerId, reqPropsObj, force, closeContainer)
 
 # EOF

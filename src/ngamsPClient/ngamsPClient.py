@@ -309,7 +309,7 @@ class ngamsPClient:
             pars.append(['reload', 1])
         return self.archive(fileUri, pars=pars, cmd="CARCHIVE")
 
-    def cappend(self, fileId, fileIdList='', containerId=None, containerName=None, force=False, reloadMod=False):
+    def cappend(self, fileId, fileIdList='', containerId=None, containerName=None, force=False, closeContainer=False, reloadMod=False):
         """
         Sends a CAPPEND command to the NG/AMS Server to append the
         given file/s to the container indicated either by containerId
@@ -330,6 +330,8 @@ class ngamsPClient:
             pars.append(['reload', 1])
         if force:
             pars.append(['force', 1])
+        if closeContainer:
+            pars.append(['close_container', 1])
 
         if fileId:
             pars.append(['file_id', fileId])
@@ -932,6 +934,7 @@ class ngamsPClient:
         # Command line parameters.
         cmd              = ""
         contHierarchy    = ''
+        closeContainer   = False
         diskId           = ""
         execute          = 0
         fileId           = ""
@@ -1006,6 +1009,8 @@ class ngamsPClient:
                 elif (par == "-fileidlist"):
                     idx = idx + 1
                     fileIdList = argv[idx]
+                elif (par == '-closecontainer'):
+                    closeContainer = True
                 elif (par == '-containerhierarchy'):
                     idx = idx + 1
                     contHierarchy = argv[idx]
@@ -1136,7 +1141,7 @@ class ngamsPClient:
         elif cmd == "CARCHIVE":
             return self.carchive(fileUri, reloadMod)
         elif cmd == "CAPPEND":
-            return self.cappend(fileId, fileIdList, containerId, containerName, force, reloadMod)
+            return self.cappend(fileId, fileIdList, containerId, containerName, force, closeContainer, reloadMod)
         elif cmd == "CCREATE":
             return self.ccreate(containerName, parentContId, contHierarchy, reloadMod)
         elif cmd == "CDESTROY":

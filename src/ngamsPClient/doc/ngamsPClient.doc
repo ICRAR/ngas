@@ -188,6 +188,7 @@ ARCHIVE:                 [-fileUri <URI> [-mimeType <Mime-Type>]
 
 CAPPEND:                 [-fileId <ID> | -fileIdList <ID1:ID2:...> ]
                          [-containerName <Name> | -containerId <ID> ]
+                         [-closeContainer]
 
 CARCHIVE:                -fileUri <URI>
 
