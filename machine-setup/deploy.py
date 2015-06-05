@@ -1185,6 +1185,8 @@ def test_env():
     if not env.has_key('AMI_NAME') or not env.AMI_NAME:
         env.AMI_NAME = 'CentOS'
     env.instance_name = INSTANCE_NAME.format(env.BRANCH)
+    if not env.has_key('user') or not env.user:
+        env.user = USERNAME
     env.use_elastic_ip = ELASTIC_IP
     if 'use_elastic_ip' in env:
         use_elastic_ip = to_boolean(env.use_elastic_ip)
@@ -1201,7 +1203,6 @@ def test_env():
     if 'instance_name' not in env:
         prompt('AWS Instance name: ', 'instance_name')
 
-    env.user = USERNAME
     if env.AMI_NAME in ['CentOS', 'SLES']:
         env.user = 'root'
     # Create the instance in AWS
