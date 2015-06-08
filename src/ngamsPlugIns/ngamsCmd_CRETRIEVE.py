@@ -301,7 +301,7 @@ def collectProcResults(srvObj, reqPropsObj, fileVer, diskId, hostId, container):
             # Processing Area.
             procDir = ngamsHighLevelLib.genProcDirName(srvObj.getCfg())
             checkCreatePath(procDir)
-            pars = []
+            pars = [['file_id', fileId], ['file_version', fileVer]]
             for par in reqPropsObj.getHttpParNames():
                 if (par != "initiator"):
                     pars.append([par, reqPropsObj.getHttpPar(par)])
