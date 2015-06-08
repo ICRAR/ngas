@@ -222,10 +222,6 @@ PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 # DOWNLOAD_HOST = 2
 
 def set_env():
-
-    # Avoid multiple calls taking effect, one is enough
-    if env.has_key('environment_already_set'): return
-
     # set environment to default for EC2, if not specified on command line.
 
     # puts(env)
@@ -304,8 +300,6 @@ def set_env():
                    env.APP_DIR, env.APP_USERS, env.HOME, env.PREFIX,
                    env.src_dir, env.BRANCH, env.nprocs))
 
-
-    env['environment_already_set'] = 1
 
 
 @task
@@ -1393,7 +1387,6 @@ def test_status():
     """
     Execute the STATUS command against a running NGAS server
     """
-    set_env()
     puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
     try:
         serv = urllib.urlopen('http://{0}:7777/STATUS'.format(env.host_string))
