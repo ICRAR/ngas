@@ -1742,6 +1742,8 @@ class ngamsServer:
         """
         T = TRACE()
 
+        if msg is None: msg = ''
+
         if (reqPropsObj.getSentReply()):
             info(3,"Reply already sent for this request")
             return

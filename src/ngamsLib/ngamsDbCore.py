@@ -112,6 +112,8 @@ _ngasFilesDef = [["nf.disk_id",                "NGAS_FILES_DISK_ID"],
                  ["nf.file_status",            "NGAS_FILES_FILE_STATUS"],
                  ["nf.creation_date",          "NGAS_FILES_CREATION_DATE"],
                  ["nf.io_time",                "NGAS_FILES_IO_TIME"],
+                 ["nf.ingestion_rate",         "NGAS_FILES_INGEST_RATE"],
+                 ["nf.container_id",           "NGAS_FILES_CONTAINER_ID"],
                  ]
 _ngasFilesCols = ""
 _ngasFilesNameMap = {}

@@ -1,4 +1,3 @@
-
 drop table ngas_cache;
 Create table ngas_cache
 (
@@ -90,10 +89,24 @@ create table ngas_files
   checksum_plugin        varchar(64)    null,
   file_status            char(8)        default '00000000',
   creation_date          varchar(23)    null,
+  container_id           varchar(36)    null,
+  ingestion_rate         int            null,
   io_time                numeric(20, 0) default -1,
   constraint file_idx primary key(file_id,file_version,disk_id)
 );
 
+drop table ngas_containers;
+create table ngas_containers
+(
+  container_id        varchar(36)    not null,
+  parent_container_id varchar(36)    null,
+  container_name      varchar(255)   not null,
+  ingestion_date      varchar(23)    null,
+  container_size      numeric(20, 0) not null,
+  container_type      varchar(10)    not null,
+  constraint container_idx primary key(container_id),
+  constraint container_uni unique(parent_container_id, container_name)
+);
 
 drop table ngas_hosts;
 Create table ngas_hosts

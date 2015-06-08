@@ -56,6 +56,7 @@ from ngams import *
 import ngamsDbCore, ngamsDbNgasCfg, ngamsDbNgasDisks, ngamsDbNgasDisksHist
 import ngamsDbNgasFiles, ngamsDbNgasHosts, ngamsDbNgasSubscribers
 import ngamsDbMirroring, ngamsDbNgasCache, ngamsDbJoin
+import ngamsDbNgasContainers
 
 
 # Generate documentation for the table access parameters.
@@ -94,7 +95,8 @@ class ngamsDbBase(ngamsDbCore.ngamsDbCore,
                   ngamsDbNgasHosts.ngamsDbNgasHosts,
                   ngamsDbNgasSubscribers.ngamsDbNgasSubscribers,
                   ngamsDbMirroring.ngamsDbMirroring,
-                  ngamsDbJoin.ngamsDbJoin):
+                  ngamsDbJoin.ngamsDbJoin,
+                  ngamsDbNgasContainers.ngamsDbNgasContainers):
     """
     Class to handle the connection to the NGAS DB.
     """

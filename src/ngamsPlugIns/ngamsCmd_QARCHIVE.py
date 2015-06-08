@@ -433,8 +433,17 @@ def handleCmd(srvObj,
     if reqPropsObj.getFileUri().count("file_version"):
         file_version = int((reqPropsObj.getFileUri().split("file_version=")[1]).split("&")[0])
 
+    # If there was a previous version of this file, and it had a container associated with it
+    # associte the new version with the container too
+    containerId = None
+    if file_version > 1:
+        fileInfo = ngamsFileInfo.ngamsFileInfo().read(srvObj.getDb(), resDapi.getFileId(), fileVersion=(file_version-1))
+        containerId = fileInfo.getContainerId()
+        prevSize = fileInfo.getUncompressedFileSize()
+
     # Check/generate remaining file info + update in DB.
     info(3, "Creating db entry")
+    ingestionRate = stagingInfo[2]
     ts = PccUtTime.TimeStamp().getTimeStamp()
     creDate = getFileCreationTime(resDapi.getCompleteFilename())
     fileInfo = ngamsFileInfo.ngamsFileInfo().\
@@ -450,8 +459,15 @@ def handleCmd(srvObj,
                setChecksum(checksum).setChecksumPlugIn(checksumPlugIn).\
                setFileStatus(NGAMS_FILE_STATUS_OK).\
                setCreationDate(creDate).\
-               setIoTime(reqPropsObj.getIoTime())
+               setIoTime(reqPropsObj.getIoTime()).\
+               setIngestionRate(ingestionRate)
     fileInfo.write(srvObj.getDb())
+
+    # Update the container size with the new size
+    if containerId:
+        newSize = fileInfo.getUncompressedFileSize()
+        srvObj.getDb().addFileToContainer(containerId, resDapi.getFileId(), True)
+        srvObj.getDb().addToContainerSize(containerId, (newSize - prevSize))
 
     # Inform the caching service about the new file.
     info(3, "Inform the caching service about the new file.")
@@ -494,6 +510,6 @@ def handleCmd(srvObj,
     srvObj.triggerSubscriptionThread()
 
 
-    return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()), stagingInfo[2])
+    return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()), ingestionRate)
 
 # EOF
