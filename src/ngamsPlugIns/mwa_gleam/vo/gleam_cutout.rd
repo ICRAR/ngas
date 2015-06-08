@@ -2,10 +2,10 @@
 <resource schema="mwa">
 <meta name="title">GLEAM Images</meta>
 <meta name="copyright" format="plain">
-GLEAM Cutout Service: The GaLactic and Extragalactic MWA Survey Cutout Service
+GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage Stamp Service
 </meta>
 <meta name="creationDate">2015-06-06T12:00:00Z</meta>
-<meta name="description">The GLEAM cutout service provides mosaic cutout interface to the GLEAM science user community.</meta>
+<meta name="description">The GLEAM postage stamp service provides image cutout interface to the GLEAM science user community.</meta>
 <meta name="subject">Gleam cutout</meta>
 <meta name="coverage.waveband">Radio</meta>
 <meta name="creator"></meta>
@@ -43,7 +43,7 @@ GLEAM Cutout Service: The GaLactic and Extragalactic MWA Survey Cutout Service
 			description="Briggs weighting scheme">
       <values nullLiteral="-1"/>
 	</column>
-  <column name="filename"  type="text" tablehead="File Download"
+  <column name="filename"  type="text" tablehead="File name"
 			description="The name of archived file in NGAS"
 	/>
 </table>
@@ -90,8 +90,8 @@ GLEAM Cutout Service: The GaLactic and Extragalactic MWA Survey Cutout Service
 1. dd, dd; 2. dd dd; 3. h:m:s, d:m:s; 4. h:m:s d:m:s; 5. h m s, d m s; 6. h m s d m s" tablehead="Position/Name">
 		  <property name="notForRenderer">scs.xml</property>
 	  </inputKey>
-    <inputKey name="sr" type="real" description="Search radius in degrees" multiplicity="single" tablehead="Search radius">
-      <property key="defaultForForm">1</property>
+    <inputKey name="sr" type="real" description="Cutout radius in degrees" multiplicity="single" tablehead="Cutout radius">
+      <property key="defaultForForm">2.5</property>
     </inputKey>
     <phraseMaker id="humanSCSPhrase" name="humanSCSSQL"  original="//scs#scsUtils">
       <setup>
@@ -119,7 +119,7 @@ GLEAM Cutout Service: The GaLactic and Extragalactic MWA Survey Cutout Service
       	yield "%%(%s)s = %%(%s)s and %%(%s)s = %%(%s)s" % (base.getSQLKey("RA", ra*DEG, outPars), base.getSQLKey("RA", ra*DEG, outPars), base.getSQLKey("DEC", dec*DEG, outPars), base.getSQLKey("DEC", dec*DEG, outPars))
       	return
       elif "sr" in inPars and inPars["sr"] >= 0:
-          retstr =  "scircle(SPoint(%%(%s)s, %%(%s)s), %%(%s)s ) &amp;&amp; coverage" %( base.getSQLKey("RA", ra*DEG, outPars), base.getSQLKey("DEC", dec*DEG, outPars), base.getSQLKey("sr", inPars["sr"]*DEG, outPars))
+          retstr =  "scircle(SPoint(%%(%s)s, %%(%s)s), %%(%s)s ) @ coverage" %( base.getSQLKey("RA", ra*DEG, outPars), base.getSQLKey("DEC", dec*DEG, outPars), base.getSQLKey("sr", inPars["sr"]*DEG, outPars))
       else:
           retstr =  "spoint(%%(%s)s, %%(%s)s) @ coverage"%( base.getSQLKey("RA", ra*DEG, outPars), base.getSQLKey("DEC", dec*DEG, outPars))
       yield retstr
@@ -141,6 +141,17 @@ GLEAM Cutout Service: The GaLactic and Extragalactic MWA Survey Cutout Service
         </code>
     </phraseMaker>
   </condDesc>
+
+  <!--
+  <condDesc>
+  <inputKey name="regrid" type="integer" required="True" multiplicity="single" tablehead="Regrid image">
+    <values nullLiteral="1">
+      <option title="Yes">1</option>
+      <option title="No">0</option>
+    </values>
+  </inputKey>
+  </condDesc>
+  -->
 
   <!--
   <condDesc>
@@ -171,12 +182,12 @@ GLEAM Cutout Service: The GaLactic and Extragalactic MWA Survey Cutout Service
 </dbCore>
 
 <service id="q" allowed="siap.xml,form,static" core="gleam_cutout" limitTo="gleam">
-		<!-- <property name="defaultSortKey">distance</property> -->
-    <property name="defaultSortKey">center_freq</property>
+		<property name="defaultSortKey">distance</property>
+    <!-- <property name="defaultSortKey">center_freq</property> -->
     <property name="staticData">static</property>
 		<publish render="form" sets="local"/>
 		<meta name="shortName">GLEAM CS</meta>
-		<meta name="title">GLEAM Cutout Service</meta>
+		<meta name="title">GLEAM Postage Stamp Service</meta>
 		<meta name="sia.type">Image</meta>
 		<meta name="testQuery.pos.ra">40</meta>
 		<meta name="testQuery.pos.dec">-22</meta>
@@ -184,21 +195,39 @@ GLEAM Cutout Service: The GaLactic and Extragalactic MWA Survey Cutout Service
 		<meta name="testQuery.size.dec">1</meta>
     <outputTable namePath="gleam_cutout">
       <outputField original="filename" displayHint="noxml=true">
+        <!--
 				<formatter>
 					yield T.a(href="http://180.149.251.152/getproduct/gleam_cutout/"
 						"%s"%data)[data]
 				</formatter>
+        -->
 			</outputField>
       <LOOP listItems="accsize ">
   				<events>
   					<outputField original="\item"/>
   				</events>
   		</LOOP>
-			<outputField original="centerAlpha" displayHint="type=hms" tablehead="RA"/>
-			<outputField original="centerDelta" displayHint="type=dms,sf=1" tablehead="DEC"/>
+
+			<outputField original="centerAlpha" displayHint="type=hms" tablehead="Mosaic center RA"/>
+			<outputField original="centerDelta" displayHint="type=dms,sf=1" tablehead="Mosaic center DEC"/>
+
+      <outputField name="mbr" original="coverage" tablehead="Mosaic sky coverage">
+      </outputField>
 		  <outputField original="center_freq" displayHint="type=humanDate" />
 
-			<outputField name="cr" displayHint="noxml=true" tablehead="Cutout JPEG" select="filename || ',' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s)">
+      <outputField name="distance"
+                    unit="deg" ucd="pos.andDistance"
+              tablehead="Distance"
+              description="Distance from Mosaic center to cutout center"
+              select="DEGREES(spoint(RADIANS(centerAlpha), RADIANS(centerDelta))
+                &lt;->spoint(%(RA0)s, %(DEC0)s))">
+             <formatter>
+             x = float(data)
+             return ["{:10.3f}".format(x)]
+             </formatter>
+      </outputField>
+
+			<outputField name="cr" displayHint="noxml=true" tablehead="Cutout JPEG" select="filename || ',' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || ',' ||  DEGREES(%(sr0)s)">
 			   <formatter>
 			         <!--  yield [data]  if (data == "45.1912,45.1912"): -->
 			       params = data.split(',')
@@ -206,10 +235,10 @@ GLEAM Cutout Service: The GaLactic and Extragalactic MWA Survey Cutout Service
 			       	yield ["--"]
 			       else:
 			       	yield T.a(href="http://store04.icrar.org:7777/GLEAMCUTOUT?radec="
-			       	"%s,%s&amp;radius=2.5&amp;file_id=%s&amp;regrid=1"%(params[1], params[2], params[0]), target="_blank")["JPEG"]
+			       	"%s,%s&amp;radius=%s&amp;file_id=%s&amp;regrid=1"%(params[1], params[2], params[3], params[0]), target="_blank")["JPEG"]
          </formatter>
 			</outputField>
-      <outputField name="cr_fits" displayHint="noxml=true" tablehead="Cutout FITS" select="filename || ',' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s)">
+      <outputField name="cr_fits" displayHint="noxml=true" tablehead="Cutout FITS" select="filename || ',' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || ',' ||  DEGREES(%(sr0)s)">
          <formatter>
                <!--  yield [data]  if (data == "45.1912,45.1912"): -->
              params = data.split(',')
@@ -217,7 +246,7 @@ GLEAM Cutout Service: The GaLactic and Extragalactic MWA Survey Cutout Service
               yield ["--"]
              else:
               yield T.a(href="http://store04.icrar.org:7777/GLEAMCUTOUT?radec="
-              "%s,%s&amp;radius=2.5&amp;file_id=%s&amp;regrid=1&amp;fits_format=1"%(params[1], params[2], params[0]), target="_blank")["FITS"]
+              "%s,%s&amp;radius=%s&amp;file_id=%s&amp;regrid=1&amp;fits_format=1"%(params[1], params[2], params[3], params[0]), target="_blank")["FITS"]
          </formatter>
       </outputField>
 		</outputTable>

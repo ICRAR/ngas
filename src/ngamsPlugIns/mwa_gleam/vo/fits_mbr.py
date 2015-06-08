@@ -128,6 +128,9 @@ def get_fits_mbr(fin, row_ignore_factor=10):
 			DEC_max = sky_tb[0][1]
 	print "Done"
 
+	center_ra = (RA_min + RA_max) / 2.0
+	center_dec = (DEC_min + DEC_max) / 2.0
+
 	if (RA_min < 0):
 		RA_min += 360
 	if (RA_max < 0):
@@ -144,7 +147,7 @@ def get_fits_mbr(fin, row_ignore_factor=10):
 	#sqlStr = "SELECT sbox '((%10fd, %10fd), (%10fd, %10fd))'" % (sky[0][0], sky[0][1], sky[2][0], sky[2][1])
 	sqlStr = "SELECT sbox '((%10fd, %10fd), (%10fd, %10fd))'" % (RA_min, DEC_min, RA_max, DEC_max)
 	#print sqlStr
-	return sqlStr
+	return sqlStr, center_ra, center_dec
 
 def get_centre_freq(fileId):
 	ends = fileId.split("MHz")[0].split("_")[-1].split("-")
@@ -158,9 +161,15 @@ def insert_db(conn, filename):
 	mosaic_20130822_162-170MHz_YY_r-1.0.fits
 	mosaic_20130822_162-170MHz_XX_r-1.0.fits
 	"""
-	hdrs = fitsapi.getFitsHdrs(filename)
-	ra = float(hdrs[0]['CRVAL1'][0][1])
-	dec = float(hdrs[0]['CRVAL2'][0][1])
+	hdr = fitsapi.getFitsHdrs(filename)[0]
+	required_hdrs = ['CRVAL1', 'CRVAL2']
+	for rhdr in required_hdrs:
+		if (not hdr.has_key(rhdr)):
+			print "Missing header keyword {0}".format(rhdr)
+			return
+
+	#ra = float(hdr['CRVAL1'][0][1])
+	#dec = float(hdr['CRVAL2'][0][1])
 	accsize = os.path.getsize(filename)
 	embargo = datetime.date.today() - datetime.timedelta(days = 1)
 	owner="ICRAR"
@@ -168,13 +177,13 @@ def insert_db(conn, filename):
 	accref_file =  "gleam/%s" % fileId
 	myhost = "store04.icrar.org"
 	file_url =  "http://%s:7777/RETRIEVE?file_id=%s" % (myhost, fileId)
-	sqlStr = get_fits_mbr(filename)
+	sqlStr, ra, dec = get_fits_mbr(filename)
 	cur = conn.cursor()
 	center_freq = get_centre_freq(fileId)
 	cur.execute(sqlStr)
 	res = cur.fetchall()
 	if (not res or len(res) == 0):
-		errMsg = "fail to calculate spoly {0}".format(sqlStr)
+		errMsg = "fail to calculate sbox {0}".format(sqlStr)
 		print(errMsg)
 		raise Exception(errMsg)
 	coverage = res[0][0]
