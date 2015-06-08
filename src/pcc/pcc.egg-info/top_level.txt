@@ -1,6 +1,0 @@
-pccUt
-pccFits
-pccKey
-pccDid
-pccPaf
-pccLog

@@ -187,13 +187,11 @@ class ngamsPostgreSQL:
                 dum = cur.execute(str(query)) #if exception again, it will be caught by the caller of this function
                 self.__dbConn.commit()
             else:
-                #raise e
                 errMsg = "PostgreSQL DB Exception: '%s' after executing [ %s ]" % (str(e), str(query))
-                #info(4, errMsg)
                 error(errMsg)
                 if ("can't commit" != ex):
                     self.__dbConn.rollback()
-                return [[]]
+                raise e
 
         """
         try:
@@ -301,8 +299,7 @@ class ngamsPostgreSQL:
                     break
             if (conn_lost):
                 time.sleep(2.0)
-                self.connect(self.__server, self.__db, self.__user,
-                             self.__password)
+                self.connect(self.__server, self.__db, self.__user, self.__password, self.__application, self.__parameters)
                 info(1,"Reconnected to DB - performing SQL query: " + query)
                 res = self._execute(query)
                 return res

@@ -1,5 +1,4 @@
 #!/bin/env python
-
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -41,12 +40,13 @@ can be used to build up Python applications communicating with NG/AMS.
 
 import os, sys, re, httplib, mimetools, urllib, random, time, base64
 import pcc, PccUtTime
-from   ngams import *
-from ngamsLib import ngamsLib
+from ngams import *
+import ngamsLib
 import ngamsFileInfo, ngamsStatus
+from xml.dom import minidom
 
 
-manPage = os.path.normpath(ngamsGetSrcDir() + "/doc/ngamsPClient.doc")
+manPage = os.path.normpath(ngamsGetSrcDir() + "/ngamsPClient/doc/ngamsPClient.doc")
 fo = open(manPage)
 __doc__ += "\n\n\nMan-Page for the NG/AMS Python Client Tool:\n\n"
 __doc__ += "ngamsPClient " + fo.read()
@@ -205,8 +205,7 @@ class ngamsPClient:
         Returns:       NG/AMS Status object (ngamsStatus).
         """
         T = TRACE()
-        baseName = os.path.basename(fileUri)
-        info(1,"Archiving file with URI: " + baseName)
+        info(1,"Archiving file with URI: " + fileUri)
         locPars = []
         for par in pars: locPars.append(par)
         if (ngamsLib.isArchivePull(fileUri)):
@@ -216,7 +215,7 @@ class ngamsPClient:
             res = self.sendCmd(cmd, wait, "", locPars)
         else:
             res = self.pushFile(fileUri, mimeType, wait, noVersioning, locPars, cmd=cmd)
-        info(1,"Archive request for file: " + baseName + " issued.")
+        info(1,"Archive request for file: " + fileUri + " issued.")
         return res
 
 
@@ -299,6 +298,183 @@ class ngamsPClient:
         pars.append(["wait", str(wait)])
         return self.sendCmd(NGAMS_CLONE_CMD, 0, "", pars)
 
+    def carchive(self, fileUri, reloadMod=False):
+        """
+        Sends a CARCHIVE command to the NG/AMS Server to archive
+        a full hierarchy of files, effectively creating a hierarchy of
+        containers with all the files within
+        """
+        pars = []
+        if reloadMod:
+            pars.append(['reload', 1])
+        return self.archive(fileUri, pars=pars, cmd="CARCHIVE")
+
+    def cappend(self, fileId, fileIdList='', containerId=None, containerName=None, force=False, closeContainer=False, reloadMod=False):
+        """
+        Sends a CAPPEND command to the NG/AMS Server to append the
+        given file/s to the container indicated either by containerId
+        or containerName. If fileId is given it is used; otherwise
+        filesIdList must be given
+        """
+        if not (bool(containerId) ^ bool(containerName)):
+            raise Exception('Either containerId or containerName must be indicated for CAPPEND')
+        if not (bool(fileId) ^ bool(fileIdList)):
+            raise Exception('Either fileId or fileIdList must be indicated for CAPPEND')
+
+        pars = []
+        if containerId:
+            pars.append(['container_id', containerId])
+        if containerName:
+            pars.append(['container_name', containerName])
+        if reloadMod:
+            pars.append(['reload', 1])
+        if force:
+            pars.append(['force', 1])
+        if closeContainer:
+            pars.append(['close_container', 1])
+
+        if fileId:
+            pars.append(['file_id', fileId])
+            response = self._httpGet(self.getHost(), self.getPort(), 'CAPPEND', pars=pars)
+        else:
+            # Convert the list of file IDs to an XML document
+            doc = minidom.Document()
+            fileListEl = doc.createElement('FileList')
+            doc.appendChild(fileListEl)
+            for fileId in fileIdList.split(':'):
+                fileEl = doc.createElement('File')
+                fileEl.setAttribute('FileId', fileId)
+                fileListEl.appendChild(fileEl)
+            fileListXml = doc.toxml(encoding='utf-8')
+
+            # And send it out!
+            response = self._httpPost(self.getHost(), self.getPort(), 'CAPPEND', 'text/xml', fileListXml, 'BUFFER', pars, dataSize=len(fileListXml))
+
+        # response = [reply, msg, hdrs, data]
+        return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
+
+    def ccreate(self, containerName, parentContainerId=None, containerHierarchy=None, reloadMod=False):
+        """
+        Sends a CCREATE command to the NG/AMS Server to create a container
+        or a container hierarchy
+        """
+        if not (bool(containerName) ^ bool(containerHierarchy)):
+            raise Exception('Either a container name or container hierarchy must be indicated to create container/s')
+
+        pars = []
+        if reloadMod:
+            pars.append(['reload', reloadMod])
+
+        if containerName:
+            pars.append(['container_name', containerName])
+            if parentContainerId:
+                pars.append(['parent_container_id', parentContainerId])
+            response = self._httpGet(self.getHost(), self.getPort(), 'CCREATE', pars=pars)
+        else:
+            contHierarchyXml = containerHierarchy
+            response = self._httpPost(self.getHost(), self.getPort(), 'CCREATE', 'text/xml', contHierarchyXml, 'BUFFER', pars, dataSize=len(contHierarchyXml))
+
+        # response = [reply, msg, hdrs, data]
+        return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
+
+    def cdestroy(self, containerName, containerId=None, recursive=False, reloadMod=None):
+        """
+        Sends a CDESTROY command to the NG/AMS Server to destroy a container
+        or a container hierarchy
+        """
+        if not (bool(containerId) ^ bool(containerName)):
+            raise Exception('Either containerId or containerName must be indicated for CAPPEND')
+
+        pars = []
+        if containerId:
+            pars.append(['container_id', containerId])
+        if containerName:
+            pars.append(['container_name', containerName])
+        if reloadMod:
+            pars.append(['reload', 1])
+        if recursive:
+            pars.append(['recursive', 1])
+
+        # response = [reply, msg, hdrs, data]
+        response = self._httpGet(self.getHost(), self.getPort(), 'CDESTROY', pars=pars)
+        return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
+
+    def clist(self, containerName, containerId=None, reloadMod=False):
+        """
+        Sends a CLIST command to the NG/AMS Server to get information about
+        a particular container and its recursive hierarchy
+        """
+        """
+        Sends a CDESTROY command to the NG/AMS Server to destroy a container
+        or a container hierarchy
+        """
+        if not (bool(containerId) ^ bool(containerName)):
+            raise Exception('Either containerId or containerName must be indicated for CAPPEND')
+
+        pars = []
+        if containerId:
+            pars.append(['container_id', containerId])
+        if containerName:
+            pars.append(['container_name', containerName])
+        if reloadMod:
+            pars.append(['reload', 1])
+
+        # response = [reply, msg, hdrs, data]
+        response = self._httpGet(self.getHost(), self.getPort(), 'CLIST', pars=pars)
+        return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
+
+    def cremove(self, fileId, fileIdList='', containerId=None, containerName=None, reloadMod=False):
+        """
+        Sends a CAPPEND command to the NG/AMS Server to append the
+        given file/s to the container indicated either by containerId
+        or containerName. If fileId is given it is used; otherwise
+        filesIdList must be given
+        """
+        if not (bool(containerId) ^ bool(containerName)):
+            raise Exception('Either containerId or containerName must be indicated for CREMOVE')
+        if not (bool(fileId) ^ bool(fileIdList)):
+            raise Exception('Either fileId or fileIdList must be indicated for CREMOVE')
+
+        pars = []
+        if containerId:
+            pars.append(['container_id', containerId])
+        if containerName:
+            pars.append(['container_name', containerName])
+        if reloadMod:
+            pars.append(['reload', 1])
+
+        if fileId:
+            pars.append(['file_id', fileId])
+            response = self._httpGet(self.getHost(), self.getPort(), 'CREMOVE', pars=pars)
+        else:
+            # Convert the list of file IDs to an XML document
+            doc = minidom.Document()
+            fileListEl = doc.createElement('FileList')
+            doc.appendChild(fileListEl)
+            for fileId in fileIdList.split(':'):
+                fileEl = doc.createElement('File')
+                fileEl.setAttribute('FileId', fileId)
+                fileListEl.appendChild(fileEl)
+            fileListXml = doc.toxml(encoding='utf-8')
+
+            # And send it out!
+            response = self._httpPost(self.getHost(), self.getPort(), 'CREMOVE', 'text/xml', fileListXml, 'BUFFER', pars, dataSize=len(fileListXml))
+
+        # response = [reply, msg, hdrs, data]
+        return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
+
+    def cretrieve(self, containerName, containerId=None, targetDir='.', reloadMod=False):
+        """
+        Sends a CRETRIEVE command to NG/AMS to retrieve the full contents of a
+        container and dumps them into the file system.
+        """
+        if (not containerId and not containerName):
+            msg = "Must specify parameter -containerId or -containerName for " +\
+                  "a CRETRIEVE Command"
+            raise Exception, msg
+        if not targetDir:
+            targetDir = '.'
+        return self.retrieve2File(None, targetFile=targetDir, containerName=containerName, containerId=containerId, cmd="CRETRIEVE", reloadMod=reloadMod)
 
     def exit(self):
         """
@@ -435,7 +611,11 @@ class ngamsPClient:
                       processing = "",
                       processingPars = "",
                       internal = 0,
-                      hostId = ""):
+                      hostId = "",
+                      containerName = None,
+                      containerId = None,
+                      cmd = NGAMS_RETRIEVE_CMD,
+                      reloadMod = False):
         """
         Request a file from the NG/AMS Server associated to the object.
         The file will be stored under the name given by the 'targetFile'
@@ -468,6 +648,12 @@ class ngamsPClient:
         hostId:          Host ID of host where to pick up internal file
                          (string).
 
+        containerName:   Name of a container to retrieve
+                         (string).
+
+        cmd:             The actual command to send.
+                         (string).
+
         Returns:         NG/AMS Status object (ngamsStatus).
         """
         # If the target file is not specified, we give the
@@ -480,14 +666,23 @@ class ngamsPClient:
         elif (fileId == "--NG--LOG--"):
             pars = [["ng_log", ""]]
         else:
-            pars = [["file_id", fileId]]
+            info(4, 'Requesting data with cmd={0}, fileId={1}, containerId={2}, containerName={3}'.format(cmd, fileId, containerId, containerName))
+            pars = []
+            if cmd == NGAMS_RETRIEVE_CMD:
+                if fileId: pars.append(["file_id", fileId])
+            elif cmd == 'CRETRIEVE':
+                if containerId: pars.append(["container_id", containerId])
+                if containerName: pars.append(["container_name", containerName])
+
         if (hostId): pars.append(["host_id", hostId])
         if (fileVersion != -1): pars.append(["file_version", str(fileVersion)])
         if (processing != ""):
             pars.append(["processing", processing])
             if (processingPars != ""):
                 pars.append(["processingPars", processingPars])
-        return self.sendCmd(NGAMS_RETRIEVE_CMD, 0, targetFile, pars)
+        if reloadMod: pars.append(['reload', 1])
+
+        return self.sendCmd(cmd, 0, targetFile, pars)
 
 
     def status(self):
@@ -644,6 +839,7 @@ class ngamsPClient:
 
         Returns:       NG/AMS Status Object (ngamsStatus).
         """
+
         if (mimeType):
             mt = mimeType
         else:
@@ -737,14 +933,18 @@ class ngamsPClient:
         T = TRACE()
         # Command line parameters.
         cmd              = ""
+        contHierarchy    = ''
+        closeContainer   = False
         diskId           = ""
         execute          = 0
         fileId           = ""
+        fileIdList       = ""
         fileInfoXml      = ""
         fileUri          = ""
         fileVersion      = -1
         filterPlugIn     = ""
         force            = 0
+        host             = os.environ['HOSTNAME'] if os.environ.has_key('HOSTNAME') else getHostName()
         hostId           = ""
         internal         = ""
         mimeType         = ""
@@ -752,10 +952,14 @@ class ngamsPClient:
         plugInPars       = ""
         wait             = 1
         outputFile       = ""
+        parentContId     = ''
         path             = ""
+        port             = 7777
         priority         = 10
         processing       = ""
         processingPars   = ""
+        recursive        = False
+        reloadMod        = False
         servers          = ""
         slotId           = ""
         startDate        = ""
@@ -763,6 +967,8 @@ class ngamsPClient:
         url              = ""
         parArray         = []
         parArrayIdx      = -1
+        containerId      = ""
+        containerName    = ""
 
         # Control variables.
         parLen           = len(argv)
@@ -783,10 +989,10 @@ class ngamsPClient:
                     fileId = "--CFG--"
                 elif (par == "-host"):
                     idx = idx + 1
-                    self.setHost(argv[idx])
+                    host = argv[idx]
                 elif (par == "-port"):
                     idx = idx + 1
-                    self.setPort(int(argv[idx]))
+                    port = int(argv[idx])
                 elif (par == "-cmd"):
                     idx = idx + 1
                     cmd = argv[idx]
@@ -800,6 +1006,20 @@ class ngamsPClient:
                 elif (par == "-fileid"):
                     idx = idx + 1
                     fileId = argv[idx]
+                elif (par == "-fileidlist"):
+                    idx = idx + 1
+                    fileIdList = argv[idx]
+                elif (par == '-closecontainer'):
+                    closeContainer = True
+                elif (par == '-containerhierarchy'):
+                    idx = idx + 1
+                    contHierarchy = argv[idx]
+                elif (par == "-containerid"):
+                    idx = idx + 1
+                    containerId = argv[idx]
+                elif (par == "-containername"):
+                    idx = idx + 1
+                    containerName = argv[idx]
                 elif (par == "-fileinfoxml"):
                     idx = idx + 1
                     fileInfoXml = argv[idx]
@@ -844,6 +1064,9 @@ class ngamsPClient:
                     idx = idx + 1
                     parArrayIdx += 1
                     parArray.append([argv[idx], ""])
+                elif (par == '-parentContainerId'):
+                    idx = idx + 1
+                    parentContId = argv[idx]
                 elif (par == "-path"):
                     idx = idx + 1
                     path = argv[idx]
@@ -856,6 +1079,10 @@ class ngamsPClient:
                 elif (par == "-processingpars"):
                     idx = idx + 1
                     processingPars = argv[idx]
+                elif (par == "-recursive"):
+                    recursive = True
+                elif (par == "-reloadmod"):
+                    reloadMod = True
                 elif (par == "-servers"):
                     idx = idx + 1
                     servers = argv[idx]
@@ -884,120 +1111,91 @@ class ngamsPClient:
                 else:
                     print self.correctUsageBuf()
                     _exit(1)
-            except:
-                if (not silentExit): print self.correctUsageBuf()
-                _exit(exitValue)
+            except Exception as e:
+                if (not silentExit):
+                    print self.correctUsageBuf()
+                raise e
             idx = idx + 1
 
         self.verbosity = verboseLevel
 
-        # Check input parameters.
-        if ((servers == "") and (self.getHost() == "")):
-            self.setHost(os.environ["HOSTNAME"])
-        if (((self.getHost() == "") or (self.getPort() == -1)) and
-            (servers == "")):
-            errMsg = self.correctUsageBuf()
-            raise Exception, errMsg
-        if (servers != ""): self.parseSrvList(servers)
+        # Check generic input parameters.
+        self.setHost(host)
+        self.setPort(port)
+
+        if servers != "":
+            self.parseSrvList(servers)
+        reloadMod = 1 if reloadMod else 0
+
+        if not parArray and not cmd:
+            print "Error: Neither a command (-cmd) nor parameters (-par/-val) have been given"
+            print self.correctUsageBuf()
+            _exit(1)
 
         # Invoke the proper operation.
-        if (not getDebug()):
-            try:
-                if (parArray):
-                    return self.sendCmdGen(self.getHost(), self.getPort(),
-                                           cmd, wait, outputFile, parArray)
-                elif (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
-                    info(3,'Command found: {0}'.format(cmd))
-
-                    return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd)
-                elif (cmd == NGAMS_CACHEDEL_CMD):
-                    parArray.append(["disk_id", diskId])
-                    parArray.append(["file_id", fileId])
-                    parArray.append(["file_version", str(fileVersion)])
-                    return self.sendCmdGen(self.getHost(), self.getPort(),
-                                           cmd, wait, "", parArray)
-                elif (cmd == NGAMS_CLONE_CMD):
-                    return self.clone(fileId, diskId, fileVersion)
-                elif (cmd == NGAMS_EXIT_CMD):
-                    return self.exit()
-                elif (cmd == NGAMS_INIT_CMD):
-                    return self.init()
-                elif (cmd == NGAMS_LABEL_CMD):
-                    return self.label(slotId)
-                elif (cmd == NGAMS_OFFLINE_CMD):
-                    return self.offline(force, wait)
-                elif (cmd == NGAMS_REARCHIVE_CMD):
-                    if (not fileInfoXml):
-                        msg = "Must specify parameter -fileInfoXml for " +\
-                              "a REARCHIVE Command"
-                        raise Exception, msg
-                    return self.reArchive(fileUri, fileInfoXml, wait, parArray)
-                elif (cmd == NGAMS_ONLINE_CMD):
-                    return self.online(wait)
-                elif (cmd == NGAMS_REGISTER_CMD):
-                    return self.register(path, wait)
-                elif (cmd == NGAMS_REMDISK_CMD):
-                    return self.remDisk(diskId, execute)
-                elif (cmd == NGAMS_REMFILE_CMD):
-                    return self.remFile(diskId, fileId, fileVersion, execute)
-                elif (cmd == NGAMS_RETRIEVE_CMD):
-                    return self.retrieve2File(fileId, fileVersion, outputFile,
-                                              processing, processingPars,
-                                              internal, hostId)
-                elif (cmd == NGAMS_STATUS_CMD):
-                    return self.status()
-                elif (cmd == NGAMS_SUBSCRIBE_CMD):
-                    return self.subscribe(url, priority, startDate,
-                                          filterPlugIn, plugInPars)
-                elif (cmd == NGAMS_UNSUBSCRIBE_CMD):
-                    return self.unsubscribe(url)
-                else:
-                    errMsg = self.correctUsageBuf()
-                    raise Exception, errMsg
-            except Exception, e:
-                self.setStatus(0)
-                print "Error executing command:", e
+        if (parArray):
+            return self.sendCmdGen(self.getHost(), self.getPort(),
+                                   cmd, wait, outputFile, parArray)
+        elif (cmd in [NGAMS_ARCHIVE_CMD, 'QARCHIVE']):
+            return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd, pars=[['reload', reloadMod]])
+        elif cmd == "CARCHIVE":
+            return self.carchive(fileUri, reloadMod)
+        elif cmd == "CAPPEND":
+            return self.cappend(fileId, fileIdList, containerId, containerName, force, closeContainer, reloadMod)
+        elif cmd == "CCREATE":
+            return self.ccreate(containerName, parentContId, contHierarchy, reloadMod)
+        elif cmd == "CDESTROY":
+            return self.cdestroy(containerName, containerId, recursive, reloadMod)
+        elif cmd == "CLIST":
+            return self.clist(containerName, containerId, reloadMod)
+        elif cmd == "CREMOVE":
+            return self.cremove(fileId, fileIdList, containerId, containerName, reloadMod)
+        elif cmd == 'CRETRIEVE':
+            return self.cretrieve(containerName, containerId, outputFile, reloadMod)
+        elif (cmd == NGAMS_CACHEDEL_CMD):
+            parArray.append(["disk_id", diskId])
+            parArray.append(["file_id", fileId])
+            parArray.append(["file_version", str(fileVersion)])
+            return self.sendCmdGen(self.getHost(), self.getPort(),
+                                   cmd, wait, "", parArray)
+        elif (cmd == NGAMS_CLONE_CMD):
+            return self.clone(fileId, diskId, fileVersion)
+        elif (cmd == NGAMS_EXIT_CMD):
+            return self.exit()
+        elif (cmd == NGAMS_INIT_CMD):
+            return self.init()
+        elif (cmd == NGAMS_LABEL_CMD):
+            return self.label(slotId)
+        elif (cmd == NGAMS_OFFLINE_CMD):
+            return self.offline(force, wait)
+        elif (cmd == NGAMS_ONLINE_CMD):
+            return self.online(wait)
+        elif (cmd == NGAMS_REARCHIVE_CMD):
+            if (not fileInfoXml):
+                msg = "Must specify parameter -fileInfoXml for " +\
+                      "a REARCHIVE Command"
+                raise Exception, msg
+            return self.reArchive(fileUri, fileInfoXml, wait, parArray) # no parArray in noDebug()
+        elif (cmd == NGAMS_REGISTER_CMD):
+            return self.register(path, wait)
+        elif (cmd == NGAMS_REMDISK_CMD):
+            return self.remDisk(diskId, execute)
+        elif (cmd == NGAMS_REMFILE_CMD):
+            return self.remFile(diskId, fileId, fileVersion, execute)
+        elif (cmd == NGAMS_RETRIEVE_CMD):
+            # return self.retrieve2File(fileId, outputFile, cmd=cmd) # noDebug() version
+            return self.retrieve2File(fileId, fileVersion, outputFile,
+                                      processing, processingPars,
+                                      internal, hostId, containerName=containerName,
+                                      containerId=containerId, cmd=cmd)
+        elif (cmd == NGAMS_STATUS_CMD):
+            return self.status()
+        elif (cmd == NGAMS_SUBSCRIBE_CMD):
+            return self.subscribe(url, priority, startDate, filterPlugIn, plugInPars)
+        elif (cmd == NGAMS_UNSUBSCRIBE_CMD):
+            return self.unsubscribe(url)
         else:
-            info(3,'Command found: {0}'.format(cmd))
-            if (cmd in [NGAMS_ARCHIVE_CMD, 'CARCHIVE', 'QARCHIVE']):
-                return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd)
-            elif (cmd == NGAMS_CACHEDEL_CMD):
-                parArray.append("disk_id", diskId)
-                parArray.append("file_id", fileId)
-                parArray.append("file_version", str(fileVersion))
-                return self.sendCmdGen(self.getHost(), self.getPort(),
-                                       cmd, wait, "", parArray)
-            elif (cmd == NGAMS_CLONE_CMD):
-                return self.clone(fileId, diskId, fileVersion)
-            elif (cmd == NGAMS_EXIT_CMD):
-                return self.exit()
-            elif (cmd == NGAMS_INIT_CMD):
-                return self.init()
-            elif (cmd == NGAMS_LABEL_CMD):
-                return self.label(slotId)
-            elif (cmd == NGAMS_OFFLINE_CMD):
-                return self.offline(force, wait)
-            elif (cmd == NGAMS_ONLINE_CMD):
-                return self.online(wait)
-            elif (cmd == NGAMS_REARCHIVE_CMD):
-                if (not fileInfoXml):
-                    msg = "Must specify parameter -fileInfoXml for " +\
-                          "a REARCHIVE Command"
-                    raise Exception, msg
-                return self.reArchive(fileUri, fileInfoXml, wait, pars)
-            elif (cmd == NGAMS_REGISTER_CMD):
-                return self.register(path, wait)
-            elif (cmd == NGAMS_REMDISK_CMD):
-                return self.remDisk(diskId, execute)
-            elif (cmd == NGAMS_REMFILE_CMD):
-                return self.remFile(diskId, fileId, fileVersion, execute)
-            elif (cmd == NGAMS_RETRIEVE_CMD):
-                return self.retrieve2File(fileId, outputFile)
-            elif (cmd == NGAMS_STATUS_CMD):
-                return self.status()
-            else:
-                errMsg = self.correctUsageBuf()
-                raise Exception, errMsg
+            raise Exception, 'Unknown command: ' + cmd
 
 
     def _httpGet(self,
@@ -1028,7 +1226,7 @@ class ngamsPClient:
         random.shuffle(serverList)
         info(5,"Server list: %s" % str(serverList))
 
-        # Very simple algorith, should maybe be refined.
+        # Very simple algorithm, should maybe be refined.
         success = 0
         errors = ""
         for tmpHost, tmpPort in serverList:
@@ -1193,11 +1391,10 @@ class ngamsPClient:
 
         Returns:  Man-page for tool (string).
         """
+        global manPage
         buf = "\n"
         buf += "> ngamsPClient "
-        docFile = os.path.normpath(ngamsGetSrcDir() + "/doc/" +\
-                                   "ngamsPClient.doc")
-        fo = open(docFile)
+        fo = open(manPage)
         buf += fo.read()
         return buf
 
@@ -1218,7 +1415,7 @@ def handleCmdLinePars(argv,
         if ngamsClient.verbosity > 0 :
             pprintStatus(ngamsClient, ngamsStat)
     except Exception, e:
-        print str(e)
+        print(traceback.print_exc())
         _exit(1)
     if (ngamsClient.getStatus()):
         fo.write(ngamsStat.genXml(0, 1, 1, 1).toprettyxml('  ', '\n')[0:-1])

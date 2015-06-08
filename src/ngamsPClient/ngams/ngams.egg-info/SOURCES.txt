@@ -1,8 +1,0 @@
-setup.cfg
-setup.py
-ngams.egg-info/PKG-INFO
-ngams.egg-info/SOURCES.txt
-ngams.egg-info/dependency_links.txt
-ngams.egg-info/entry_points.txt
-ngams.egg-info/top_level.txt
-ngams.egg-info/zip-safe

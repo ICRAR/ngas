@@ -71,6 +71,8 @@ class ngamsFileInfo:
 
         self.__tag                  = ""
         self.__ioTime               = -1.
+        self.__ingestionRate        = -1.
+        self.__containerId          = None
 
         # Specific OS info about file.
         self.__permissions          = ""
@@ -110,7 +112,9 @@ class ngamsFileInfo:
                 ["Group", self.getGroup()],
                 ["ModificationDate", self.getModDate()],
                 ["AccessDate", self.getAccDate()],
-                ["TotalIoTime", self.getIoTime()]
+                ["TotalIoTime", self.getIoTime()],
+                ["IngestionRate", self.getIngestionRate()],
+                ["ContainerId", self.getContainerId()]
                 ]
 
 
@@ -638,12 +642,57 @@ class ngamsFileInfo:
 
     def getIoTime(self):
         """
-        Get the Access Date for the file.
+        Get the I/O time for the file (in seconds).
 
-        Returns:   Access Date (string).
+        Returns:   I/O time (float).
         """
         return self.__ioTime
 
+
+    def setIngestionRate(self,
+                         ingestionRate):
+        """
+        Set the ingestion rate for the file (in bytes/seconds).
+
+        ingestionRate:  float, bytes/second
+
+        Returns:        Reference to object itself.
+        """
+        if (not ingestionRate): return self
+        self.__ingestionRate = ingestionRate
+        return self
+
+
+    def getIngestionRate(self):
+        """
+        Get the ingestion rate for the file (in bytes/second).
+
+        Returns:   Ingestion rate (float).
+        """
+        return self.__ingestionRate
+
+
+    def setContainerId(self,
+                       containerId):
+        """
+        Set the ID of the container to which this file belongs.
+
+        containerId: string
+
+        Returns:     Reference to object itself.
+        """
+        if (not containerId): return self
+        self.__containerId = containerId
+        return self
+
+
+    def getContainerId(self):
+        """
+        Get the ID of the container to which this file belongs.
+
+        Returns:   Container ID (string).
+        """
+        return self.__containerId
     ########################################################################
 
 
@@ -675,6 +724,8 @@ class ngamsFileInfo:
         self.setFileStatus(sqlQueryRes[ngamsDbCore.NGAS_FILES_FILE_STATUS])
         self.setCreationDate(sqlQueryRes[ngamsDbCore.NGAS_FILES_CREATION_DATE])
         self.setIoTime(sqlQueryRes[ngamsDbCore.NGAS_FILES_IO_TIME])
+        self.setIngestionRate(sqlQueryRes[ngamsDbCore.NGAS_FILES_INGEST_RATE])
+        self.setContainerId(sqlQueryRes[ngamsDbCore.NGAS_FILES_CONTAINER_ID])
         return self
 
 
@@ -691,7 +742,8 @@ class ngamsFileInfo:
                 self.getCompression(), self.getIngestionDate(),
                 int(self.getIgnore()), self.getChecksum(),
                 self.getChecksumPlugIn(), self.getFileStatus(),
-                self.getCreationDate(), self.getIoTime()]
+                self.getCreationDate(), self.getIoTime(), self.getIngestionRate(),
+                self.getContainerId()]
 
 
     def read(self,
@@ -754,8 +806,10 @@ class ngamsFileInfo:
                                 self.getCompression(), self.getIngestionDate(),
                                 self.getIgnore(), self.getChecksum(),
                                 self.getChecksumPlugIn(), self.getFileStatus(),
-                                self.getCreationDate(), self.getIoTime(), genSnapshot,
-                                updateDiskInfo)
+                                self.getCreationDate(), self.getIoTime(),
+                                self.getIngestionRate(),
+                                genSnapshot=genSnapshot,
+                                updateDiskInfo=updateDiskInfo)
         return self
 
 
@@ -804,6 +858,7 @@ class ngamsFileInfo:
                setCreationDate(getAttribValue(fileNode,  "CreationDate", 1)).\
                setFileId(getAttribValue(fileNode,        "FileId", 1)).\
                setFilename(getAttribValue(fileNode,      "FileName", 1)).\
+               setUncompressedFileSize(uncomprSize).\
                setFileSize(getAttribValue(fileNode,      "FileSize", 1)).\
                setFileStatus(getAttribValue(fileNode,    "FileStatus", 1)).\
                setFileVersion(getAttribValue(fileNode,   "FileVersion", 1)).\
@@ -811,11 +866,14 @@ class ngamsFileInfo:
                setGroup(getAttribValue(fileNode,         "Group", 1)).\
                setIngestionDate(getAttribValue(fileNode, "IngestionDate", 1)).\
                setIgnore(getAttribValue(fileNode,        "Ignore", 1)).\
-               setModDate(getAttribValue(fileNode,    "ModificationDate", 1)).\
+               setModDate(getAttribValue(fileNode,       "ModificationDate", 1)).\
                setOwner(getAttribValue(fileNode,         "Owner", 1)).\
                setPermissions(getAttribValue(fileNode,   "Permissions", 1)).\
                setTag(getAttribValue(fileNode,           "Tag", 1)).\
-               setUncompressedFileSize(uncomprSize)
+               setIoTime(getAttribValue(fileNode,        "TotalIoTime", 1)).\
+               setIngestionRate(getAttribValue(fileNode, "IngestionRate", 1)).\
+               setContainerId(getAttribValue(fileNode,   "ContainerId", 1))
+
         return self
 
 
@@ -890,7 +948,10 @@ class ngamsFileInfo:
                setChecksumPlugIn(self.getChecksumPlugIn()).\
                setFileStatus(self.getFileStatus()).\
                setCreationDate(self.getCreationDate()).\
-               setTag(self.getTag())
+               setTag(self.getTag()).\
+               setIoTime(self.getIoTime()).\
+               setIngestionRate(self.getIngestionDate()).\
+               setContainerId(self.setContainerId())
 
 
 if __name__ == '__main__':

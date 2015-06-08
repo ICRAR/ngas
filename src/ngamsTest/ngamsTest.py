@@ -81,12 +81,12 @@ def getTestList():
     return testModList
 
 
-def runAllTests(notifEmail = None,
+def runAllTests(notifyemail = None,
                 skip = None):
     """
     Run all tests in ngams/ngamsTest.
 
-    notifEmail:  List of email recipients that should be notified about the
+    notifyemail:  List of email recipients that should be notified about the
                  test results (list/email addresses).
 
     skip:        Test Suites or Test Cases to skip. Comma separated list
@@ -168,13 +168,13 @@ def runAllTests(notifEmail = None,
         testRep += line
 
     # Send out email with test report if requested.
-    if (notifEmail):
-        notifEmail = notifEmail.split(",")
+    if (notifyemail):
+        notifyemail = notifyemail.split(",")
         par = "NgamsCfg.Server[1].RootDirectory"
         ngamsCfgObj = ngamsConfig.ngamsConfig().storeVal(par, "/NGAS")
         ngamsHighLevelLib.sendEmail(ngamsCfgObj, "localhost",
                                     "NG/AMS FUNCTIONAL TESTS REPORT",
-                                    notifEmail,
+                                    notifyemail,
                                     "ngas@%s" % ngamsLib.getCompleteHostName(),
                                     testRep)
 
@@ -331,7 +331,7 @@ def correctUsage():
     print "Input parameters for NG/AMS test program:\n"
     print "> ngamsTest [-status] " +\
            "[-tests \"<mod>,...\"] [-skip \"<mod>[.<test case>],...\" " +\
-           "-notifEmail \"<Email List>\" -cfg <Ref. Cfg. File>\n"
+           "-notifyEmail \"<Email List>\" -cfg <Ref. Cfg. File>\n"
     print ngamsCopyrightString()
     
 
@@ -341,7 +341,7 @@ def parseCommandLine(argv):
     skip = None
     status = 0
     tests = []
-    notifEmail = None
+    notifyemail = None
     cfg = None
     idx = 1
     while idx < len(sys.argv):
@@ -354,9 +354,9 @@ def parseCommandLine(argv):
         elif (par == "-TESTS"):
             idx += 1
             tests = sys.argv[idx].split(",")
-        elif (par == "-NOTIFEMAIL"):
+        elif (par == "-NOTIFYEMAIL"):
             idx += 1
-            notifEmail = sys.argv[idx]
+            notifyemail = sys.argv[idx]
         elif (par == "-CFG"):
             idx += 1
             cfg = sys.argv[idx]
@@ -364,17 +364,17 @@ def parseCommandLine(argv):
             correctUsage()
             sys.exit(1)
         idx += 1
-    if (not notifEmail):
-        raise Exception, "Specify parameter: -notifEmail <Rec List>"
+    if (not notifyemail):
+        raise Exception, "Specify parameter: -notifyEmail <Rec List>"
     if (not cfg):
         raise Exception, "Specify parameter: -cfg <Ref. Cfg. File>"
 
-    if (notifEmail == ""): notifEmail = None
+    if (notifyemail == ""): notifyemail = None
 
-    return skip, status, tests, notifEmail, cfg
+    return skip, status, tests, notifyemail, cfg
 
 def main():
-    skip, status, tests, notifEmail, cfg = parseCommandLine(sys.argv)
+    skip, status, tests, notifyemail, cfg = parseCommandLine(sys.argv)
     ngamsTestLib.setRefCfg(cfg)
     if (status):
         genStatus()
@@ -383,7 +383,7 @@ def main():
             exec "import " + testMod
             exec testMod + ".run()"
     else:
-        runAllTests(notifEmail, skip)
+        runAllTests(notifyemail, skip)
 
 if __name__ == '__main__':
     """

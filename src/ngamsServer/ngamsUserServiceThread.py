@@ -86,6 +86,12 @@ def stopUserServiceThread(srvObj):
     """
     T = TRACE()
 
+    # Start only if service is defined; otherwise we
+    # spen 10 seconds waiting for nothing
+    userPlugPar = "NgamsCfg.SystemPlugIns[1].UserServicePlugIn"
+    userServicePlugIn = srvObj.getCfg().getVal(userPlugPar)
+    if (not userServicePlugIn): return
+
     info(1,"Stopping User Service Thread ...")
     srvObj._userServiceRunSync.clear()
     srvObj._userServiceRunSync.wait(10)
