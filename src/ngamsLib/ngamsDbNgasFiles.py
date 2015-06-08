@@ -667,5 +667,88 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         else:
             return None
 
+    def addFileToContainer(self, containerId, fileId, force):
+        """
+        Adds the file pointed by fileId to the container
+        pointed by containerId. If the file doesn't exist an
+        error will be raised. If the file is currently associated
+        with a container and the force flag is not True an
+        error will be raised also.
+
+        This method returns the uncompressed size of the file just
+        added to the container. This can then be used to update the total
+        size of the container
+
+        :param containerId: string
+        :param fileId: string
+        :param force bool
+        :return integer
+        """
+        # Check if the file exists, and if
+        # it already is contained in another container
+        # We take into account only the latest version of the file for this
+        sql = "SELECT container_id, uncompressed_file_size FROM ngas_files WHERE file_id = '" + fileId + "' ORDER BY file_version DESC"
+        res = self.query(sql)
+        if not res[0]:
+            msg = "No file with fileId '" + fileId + "' found, cannot append it to container"
+            raise Exception(msg)
+
+        prevConatinerId = res[0][0][0]
+        fileSize = res[0][0][1]
+        if prevConatinerId:
+            if prevConatinerId == containerId:
+                info(4, 'File ' + fileId + ' already belongs to container ' + containerId + ', skipping it')
+                return 0
+
+            if not force:
+                msg = "File '" + fileId + "' is already associated to container '" + prevConatinerId + "'. To override the 'force' parameter must be given"
+                raise Exception(msg)
+
+        # Update all versions and copies of the file, since the grouping by container
+        # is at fileId level
+        sql = "UPDATE ngas_files SET container_id = '" + containerId + "' WHERE file_id = '" + fileId + "'"
+        res = self.query(sql)
+        info(4, 'File ' + fileId + ' added to container ' + containerId)
+
+        return fileSize
+
+    def removeFileFromContainer(self, fileId, containerId):
+        """
+        Removes the file pointed by fileId from the container
+        pointed by containerId. If the file doesn't exist an
+        error will be raised. If the file is currently not associated
+        with the indicated container and error will be raised also.
+
+        This method returns the uncompressed size of the file just
+        removed from the container. This can then be used to update the total
+        size of the container
+
+        :param fileId: string
+        :param containerId: string
+        :return integer
+        """
+
+        sql = "SELECT container_id, uncompressed_file_size FROM ngas_files WHERE file_id = '" + fileId + "' ORDER BY file_version DESC"
+        res = self.query(sql)
+        if not res[0]:
+            msg = "No file with fileId '" + fileId + "' found, cannot append it to container"
+            raise Exception(msg)
+
+        currentContainerId = res[0][0][0]
+        fileSize = res[0][0][1]
+        if not currentContainerId:
+            info(3, "File with fileId '" + fileId +"' is part of no container, skipping it")
+            return 0
+        elif currentContainerId != containerId:
+            msg = "File with fileId '" + fileId + "' is associated with a different container: " + currentContainerId
+            raise Exception(msg)
+
+        # Update all versions and copies of the file, since the grouping by container
+        # is at fileId level
+        sql = "UPDATE ngas_files SET container_id = null WHERE file_id = '" + fileId + "'"
+        self.query(sql)
+        info(4, 'File ' + fileId + ' was removed from container ' + containerId)
+
+        return fileSize
 
 # EOF

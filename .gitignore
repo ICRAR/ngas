@@ -4,3 +4,9 @@
 *.pyc
 *.pyo
 CVS
+bin
+downloads
+eggs
+include
+lib
+.installed.cfg

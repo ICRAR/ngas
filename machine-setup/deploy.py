@@ -107,18 +107,25 @@ GITREPO = ''
 # GITUSER = 'icrargit'
 # GITREPO = 'gitsrv.icrar.org:ngas'
 
-SUPPORTED_OS = [
-                'Amazon Linux',
-                'Amazon',
-                'CentOS', 
-                'Ubuntu', 
-                'Debian', 
-                'Suse',
-                'SUSE',
-                'SLES-SP2',
-                'SLES-SP3',
-                'Darwin',
-                ]
+SUPPORTED_OS_LINUX = [
+                      'Amazon Linux',
+                      'Amazon',
+                      'CentOS',
+                      'Ubuntu',
+                      'Debian',
+                      'Suse',
+                      'SUSE',
+                      'SLES-SP2',
+                      'SLES-SP3'
+]
+
+SUPPORTED_OS_MAC = [
+                    'Darwin',
+]
+
+SUPPORTED_OS = []
+SUPPORTED_OS.extend(SUPPORTED_OS_LINUX)
+SUPPORTED_OS.extend(SUPPORTED_OS_MAC)
 
 YUM_PACKAGES = [
    'python27-devel',
@@ -149,6 +156,7 @@ APT_PACKAGES = [
         'libdb-dev',
         'libgdbm-dev',
         'libreadline-dev',
+        'libssl-dev',
         'sqlite3',
         'libsqlite3-dev',
         'postgresql-client',
@@ -267,6 +275,11 @@ def set_env():
     if env.AMI_NAME in ['CentOS', 'SLES']:
         env.user = 'root'
     get_linux_flavor()
+
+    env.nprocs = 1
+    if env.linux_flavor in SUPPORTED_OS_LINUX:
+        env.nprocs = int(run('grep -c processor /proc/cpuinfo'))
+
     puts("""Environment:
             USER:              {0};
             Key file:          {1};
@@ -280,11 +293,13 @@ def set_env():
             PREFIX:            {9};
             SRC_DIR:          {10};
             BRANCH:           {11};
+            # procs:          {12};
             """.\
             format(env.user, env.key_filename, env.hosts,
                    env.host_string, env.postfix, env.APP_DIR_ABS,
-                   env.APP_DIR, env.APP_USERS, env.HOME, env.PREFIX, 
-                   env.src_dir, env.BRANCH))
+                   env.APP_DIR, env.APP_USERS, env.HOME, env.PREFIX,
+                   env.src_dir, env.BRANCH, env.nprocs))
+
 
 
 @task
@@ -536,7 +551,7 @@ def install_port(package):
     Install a package using macports (Mac OSX)
     """
     with settings(warn_only=True):
-        sudo('port install {0}'.format(package))
+        run('sudo port install {0}'.format(package))
 
 
 @task    
@@ -748,36 +763,49 @@ def get_linux_flavor():
     """
     Obtain and set the env variable linux_flavor
     """
-    puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
-    if check_command('python'):
+
+    # Already ran through this method
+    if env.has_key('linux_flavor'):
+        return env.linux_flavor
+
+    linux_flavor = None
+    # Try lsb_release
+    if check_command('lsb_release'):
+        distributionId = run('lsb_release -i')
+        if distributionId and distributionId.find(':') != -1:
+            linux_flavor = distributionId.split(':')[1].strip()
+
+    # Try python
+    if not linux_flavor and check_command('python'):
         lf = run("python -c 'import platform; print platform.linux_distribution()[0]'")
         if lf:
-            env.linux_flavor = lf.split()[0]
-    if not env.has_key('linux_flavor'):
-        if (check_path('/etc/issue') == '1'):
-            re = run('cat /etc/issue')
-            linux_flavor = re.split()
-            if (len(linux_flavor) > 0):
-                if linux_flavor[0] == 'CentOS' or linux_flavor[0] == 'Ubuntu' \
-                   or linux_flavor[0] == 'Debian':
-                    linux_flavor = linux_flavor[0]
-                elif linux_flavor[0] == 'Amazon':
-                    linux_flavor = ' '.join(linux_flavor[:2])
-                elif linux_flavor[2] == 'SUSE':
-                    linux_flavor = linux_flavor[2]
-                else:
-                    check_path('/etc/os-release')
-        else:
-            linux_flavor = run('uname -s')
-    else:
-        linux_flavor = env.linux_flavor
-    
-    if type(linux_flavor) == type([]):
+            linux_flavor = lf.split()[0]
+
+    # Try /etc/issue
+    if not linux_flavor and check_path('/etc/issue') == '1':
+        re = run('cat /etc/issue')
+        issue = re.split()
+        if issue:
+            if issue[0] == 'CentOS' or issue[0] == 'Ubuntu' \
+               or issue[0] == 'Debian':
+                linux_flavor = issue[0]
+            elif issue[0] == 'Amazon':
+                linux_flavor = ' '.join(issue[:2])
+            elif issue[2] == 'SUSE':
+                linux_flavor = issue[2]
+
+    # Try uname -s
+    if not linux_flavor:
+        linux_flavor = run('uname -s')
+
+    # Sanitize
+    if linux_flavor and type(linux_flavor) == type([]):
         linux_flavor = linux_flavor[0]
-    if linux_flavor not in SUPPORTED_OS:
+
+    # Final check
+    if not linux_flavor or linux_flavor not in SUPPORTED_OS:
         puts('>>>>>>>>>>')
-        puts('Target machine is running an unsupported or unkown Linux flavor:{0}.'\
-             .format(linux_flavor))
+        puts('Target machine is running an unsupported or unkown Linux flavor: {0}.'.format(linux_flavor))
         puts('If you know better, please enter it below.')
         puts('Must be one of:')
         puts(' '.join(SUPPORTED_OS))
@@ -973,7 +1001,7 @@ def python_setup():
         run('tar -xzf {0}'.format(base))
     ppath = env.APP_DIR_ABS + '/../python'
     with cd('/tmp/{0}'.format(pdir)):
-        run('./configure --prefix {0};make;make install'.format(ppath))
+        run('./configure --prefix {0}; make -j{1};make install'.format(ppath, env.nprocs))
         ppath = '{0}/bin/python{1}'.format(ppath,APP_PYTHON_VERSION)
     env.PYTHON = ppath
     puts(green("\n\n******** PYTHON INSTALLATION COMPLETED!********\n\n"))
@@ -1144,6 +1172,8 @@ def ngas_full_buildout(typ='archive'):
             virtualenv('cd /tmp/bsddb3-6.1.0; ' + \
                        'export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1; ' +\
                        'python{1} setup.py {0} install'.format(dbLocFlags, APP_PYTHON_VERSION))
+        elif env.linux_flavor == 'Ubuntu':
+            virtualenv('BERKELEYDB_DIR=/usr pip install additional_tars/bsddb3-6.1.0.tar.gz')
         else:
             virtualenv('pip install --install-option="--berkeley-db=/usr" additional_tars/bsddb3-6.1.0.tar.gz')
         virtualenv('pip install additional_tars/bottle-0.11.6.tar.gz')
@@ -1250,7 +1280,7 @@ def user_deploy(typ='archive'):
         else:
             env.APP_USERS = os.environ['HOME'].split('/')[-1]
 
-    install(sys_install=False, user_install=False, 
+    install(sys_install=False, user_install=False,
             init_install=False, typ=typ)
     with settings(user=env.APP_USERS[0]):
         run('ngamsDaemon start')
@@ -1425,15 +1455,26 @@ def install(sys_install=True, user_install=True,
     if user_install and user_install != 'False': user_setup()
 
     with settings(user=env.APP_USERS[0]):
-        ppath = check_python()
-        if not ppath or str(python_install) == 'True':
+
+        # Get the base dir of the current python installation
+        # and check that it's what we need (i.e., our own
+        # installation alongside the ngas installation)
+        # Only check if we're not explicitly asked to install
+        # python, in which case we do it anyway
+        if not python_install:
+            currentPython  = os.path.abspath(check_python())
+            currentDir     = os.path.sep.join(currentPython.split(os.path.sep)[:-2]) if currentPython else ''
+            intendedDir    = os.path.abspath(env.APP_DIR_ABS + os.path.sep + '..' + os.path.sep + 'python')
+            python_install = currentDir != intendedDir
+        if python_install:
             python_setup()
+
     if env.PREFIX != env.HOME: # generate non-standard ngas_rt directory
         sudo('mkdir -p {0}'.format(env.PREFIX))
     with settings(user=env.APP_USERS[0]):
         virtualenv_setup()
     if env.PREFIX != env.HOME:
-        sudo('chown -R {0}:ngas {1}'.format(env.APP_USERS[0], env.PREFIX))
+        sudo('chown -R {0}:{0} {1}'.format(env.APP_USERS[0], env.PREFIX))
     with settings(user=env.APP_USERS[0]):
         ngas_full_buildout(typ=typ)
         cleanup_tmp()

@@ -19,87 +19,26 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
-#******************************************************************************
-#
-# "@(#) $Id: ngamsCmd_QARCHIVE.py,v 1.6 2009/12/07 16:36:40 awicenec Exp $"
-#
-# Who       When        What
-# --------  ----------  -------------------------------------------------------
-# jknudstr  03/02/2009  Created
-#
-
 """
-NGAS Command Plug-In, implementing a Quick Archive Command.
+NGAS Command Plug-In, implementing a Container Archive Command.
 
-This works in a similar way as the 'standard' ARCHIVE Command, but has been
-simplified in a few ways:
-
-  - No replication to a Replication Volume is carried out.
-  - Target disks are selected randomly, disregarding the Streams/Storage Set
-    mappings in the configuration. This means that 'volume load balancing' is
-    provided.
-  - Archive Proxy Mode is not supported.
-  - No probing for storage availability is supported.
-  - In general, less SQL queries are performed and the algorithm is more
-    light-weight.
-  - crc is computed from the incoming stream
-  - ngas_files data is 'cloned' from the source file
+This works similarly as the QARCHIVE Command, but archiving more than
+one file in one request, and also creating the necessary containers
+in the NGAS database. Because of this reason this module reuses
+methods defined in the ngamsCmd_QARCHIVE module
 """
 
 from ngams import *
 import random
-import binascii
+import uuid
+
 #import pcc, PccUtTime
 import ngamsLib, ngamsDbCore, ngamsFileInfo
 import ngamsDiskInfo, ngamsHighLevelLib
 import ngamsCacheControlThread
+import ngamsMIMEMultipart
+import ngamsCmd_QARCHIVE
 
-
-GET_AVAIL_VOLS_QUERY = "SELECT %s FROM ngas_disks nd WHERE completed=0 AND " +\
-                       "host_id='%s'"
-
-
-def getTargetVolume(srvObj):
-    """
-    Get a random target volume with availability.
-
-    srvObj:         Reference to NG/AMS server class object (ngamsServer).
-
-    Returns:        Target volume object or None (ngamsDiskInfo | None).
-    """
-    T = TRACE()
-
-    sqlQuery = GET_AVAIL_VOLS_QUERY % (ngamsDbCore.getNgasDisksCols(),
-                                       getHostId())
-    res = srvObj.getDb().query(sqlQuery, ignoreEmptyRes=0)
-    if (res == [[]]):
-        return None
-    else:
-        # Shuffle the results.
-        random.shuffle(res[0])
-        return ngamsDiskInfo.ngamsDiskInfo().unpackSqlResult(res[0][0])
-
-
-def updateDiskInfo(srvObj,
-                   resDapi):
-    """
-    Update the row for the volume hosting the new file.
-
-    srvObj:    Reference to NG/AMS server class object (ngamsServer).
-
-    resDapi:   Result returned from the DAPI (ngamsDapiStatus).
-
-    Returns:   Void.
-    """
-    T = TRACE()
-
-    sqlQuery = "UPDATE ngas_disks SET " +\
-               "number_of_files=(number_of_files + 1), " +\
-               "bytes_stored=(bytes_stored + %d) WHERE " +\
-               "disk_id='%s'"
-    sqlQuery = sqlQuery % (resDapi.getFileSize(), resDapi.getDiskId())
-    srvObj.getDb().query(sqlQuery, ignoreEmptyRes=0)
 
 def saveInStagingFile(ngamsCfgObj,
                       reqPropsObj,
@@ -163,10 +102,6 @@ def saveFromHttpToFile(ngamsCfgObj,
     T = TRACE()
 
     checkCreatePath(os.path.dirname(trgFilename))
-##    fdOut = open(trgFilename, "w")
-##    info(2,"Saving data in file: " + trgFilename + " ...")
-
-    saveDir = trgFilename.rsplit('/', 1)[0] + '/'
 
     timer = PccUtTime.Timer()
     try:
@@ -176,7 +111,6 @@ def saveFromHttpToFile(ngamsCfgObj,
 
         # Distinguish between Archive Pull and Push Request. By Archive
         # Pull we may simply read the file descriptor until it returns "".
-        sizeKnown = 0
         if (ngamsLib.isArchivePull(reqPropsObj.getFileUri()) and
             not reqPropsObj.getFileUri().startswith('http://')):
             # (reqPropsObj.getSize() == -1)):
@@ -197,122 +131,52 @@ def saveFromHttpToFile(ngamsCfgObj,
         else:
             remSize = reqPropsObj.getSize()
             info(3,"Archive Push/Pull Request - Data size: %d" % remSize)
-            sizeKnown = 1
 
-        # Receive the data.
-        buf = "-"
-        rdSize = blockSize
-        slow = blockSize / (512 * 1024.)  # limit for 'slow' transfers
-#        sizeAccu = 0
-        lastRecepTime = time.time()
-        crc = 0   # initialize CRC value
-        rdtt = 0  # total read time
-        cdtt = 0  # total CRC time
-        wdtt = 0  # total write time
-        nb = 0    # number of blocks
-        srb = 0   # number of slow read blocks
-        scb = 0   # number of slow CRC calcs
-        swb = 0   # number of slow write blocks
-        tot_size = 0 # total number of bytes
-
-        buf = reqPropsObj.getReadFd().readline()
-        sizeRead = len(buf)
-        remSize -= sizeRead
-        tot_size += sizeRead
-        deliminater = buf[-29:-2]
-        EOF = '--' + deliminater
-        buf = reqPropsObj.getReadFd().readline()
-        sizeRead = len(buf)
-        remSize -= sizeRead
-        tot_size += sizeRead
-        buf = reqPropsObj.getReadFd().readline()
-        sizeRead = len(buf)
-        remSize -= sizeRead
-        tot_size += sizeRead
-        container_name = buf.rsplit('/', 1)[1][:-1]
-        buf = reqPropsObj.getReadFd().readline()
-        sizeRead = len(buf)
-        remSize -= sizeRead
-        tot_size += sizeRead
-        buf = reqPropsObj.getReadFd().readline()
-        sizeRead = len(buf)
-        remSize -= sizeRead
-        tot_size += sizeRead
-
-        fileDataList = []
-
-        safeRead = True
-        newFile = True
-        lastChars = ''
-        while ((remSize > 0) and ((time.time() - lastRecepTime) < 30.0)):
-            if (remSize < rdSize): rdSize = remSize
-            if(safeRead):
-                rdt = time.time()
-                buf = reqPropsObj.getReadFd().read(rdSize)
-                rdt = time.time() - rdt
-                rdtt += rdt
-                nb += 1
-                sizeRead = len(buf)
-    #            info(5,"Read %d bytes from HTTP stream in %.3f s" % (sizeRead, rdt))
-                if (sizeRead > 0):
-                    cdt = time.time()
-                    crc = binascii.crc32(buf, crc)
-                    cdt = time.time() - cdt
-                    cdtt += cdt
-                    if cdt >= slow: scb += 1
-    #                info(5,"Calculated checksum from stream buffer in %.3f s" % cdt)
-
-                remSize -= sizeRead
-                tot_size += sizeRead
-
-                buf = lastChars + buf
-    #            reqPropsObj.setBytesReceived(reqPropsObj.getBytesReceived() +\
-    #                                         sizeRead)
-            if newFile:
-                start = buf.find('filename="') + 10
-                end = buf.find('"\r\n\n', start)
-                filename = saveDir + buf[start:end]
-                fdOut = open(filename, 'w')
-                newFile = False
-                buf = buf[end+4:]
-            bufSplit = buf.split(EOF, 1)
-            lastChars = ''
-            if (bufSplit[0] != ''):
-                lastChars = bufSplit[0][-30:]
-                fdOut.write(bufSplit[0][:-30])
-                lastRecepTime = time.time()
-            if len(bufSplit) > 1:
-                fdOut.write(lastChars)
-                fdOut.close()
-                buf = bufSplit[1]
-                newFile = True
-                safeRead = False
-                fileDataList.append([filename, crc])
-                crc = 0
-            else:
-                safeRead = True
-            if buf[:2] == '--':
-                remSize = 0
-
+        fd = reqPropsObj.getReadFd()
+        handler = ngamsMIMEMultipart.FilesystemWriterHandler(blockSize, True, trgFilename)
+        parser = ngamsMIMEMultipart.MIMEMultipartParser(handler, fd, remSize, blockSize)
+        parser.parse()
         deltaTime = timer.stop()
-        reqPropsObj.setBytesReceived(tot_size)
-        info(4,"Transfer time: %.3f s; CRC time: %.3f s; write time %.3f s" % (rdtt, cdtt, wdtt))
-        msg = "Saved data in file: %s. Bytes received: %d. Time: %.3f s. " +\
-              "Rate: %.2f Bytes/s"
-        ingestRate = (float(reqPropsObj.getBytesReceived()) / deltaTime)
 
+        fileDataList  = handler.getFileDataList()
+        crcTime       = handler.getCrcTime()
+        writingTime   = handler.getWritingTime()
+        rootContainer = handler.getRoot()
+        readingTime   = parser.getReadingTime()
+        bytesRead     = parser.getBytesRead()
+        ingestRate    = (float(bytesRead) / deltaTime)
+        reqPropsObj.setBytesReceived(bytesRead)
+
+        info(4,"Transfer time: %.3f s; CRC time: %.3f s; write time %.3f s" % (readingTime, crcTime, writingTime))
+
+        return [deltaTime, rootContainer, fileDataList,ingestRate]
+
+    finally:
         # Release disk resouce.
         if (mutexDiskAccess):
             ngamsHighLevelLib.releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
 
-        return [deltaTime,fileDataList,ingestRate, container_name]
-    except Exception, e:
-        info(4, 'Exception is breaking it')
-        #fdOut.close()
-        # Release disk resouce.
-        if (mutexDiskAccess):
-            ngamsHighLevelLib.releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
-        raise Exception, e
+
+def createContainers(container, parentContainer, srvObj):
+    """
+    Recursively creates the necessary entries in the ngas_containers table
+    to store the given hierarchy of Container objects
+    """
+
+    containerName = container.getContainerName()
+    ingestionDate = time.time()
+    parentContainerId = str(parentContainer.getContainerId()) if parentContainer else None
+    containerId = srvObj.getDb().createContainer(containerName,
+                                                 containerSize=0,
+                                                 ingestionDate=ingestionDate,
+                                                 parentContainerId=parentContainerId,
+                                                 parentKnownToExist=True)
+    container.setContainerId(containerId)
+    container.setIngestionDate(ingestionDate)
+
+    # Recurse on our children
+    for childContainer in container.getContainers():
+        createContainers(childContainer, container, srvObj)
 
 
 def handleCmd(srvObj,
@@ -333,13 +197,6 @@ def handleCmd(srvObj,
     """
     T = TRACE()
 
-    # Check if the URI is correctly set.
-    info(3, "Check if the URI is correctly set.")
-    if (reqPropsObj.getFileUri() == ""):
-        errMsg = genLog("NGAMS_ER_MISSING_URI")
-        error(errMsg)
-        raise Exception, errMsg
-
     # Is this NG/AMS permitted to handle Archive Requests?
     info(3, "Is this NG/AMS permitted to handle Archive Requests?")
     if (not srvObj.getCfg().getAllowArchiveReq()):
@@ -359,7 +216,6 @@ def handleCmd(srvObj,
     else:
         mimeType = reqPropsObj.getMimeType()
 
-
     ## Set reference in request handle object to the read socket.
     info(3, "Set reference in request handle object to the read socket.")
     if reqPropsObj.getFileUri().startswith('http://'):
@@ -369,7 +225,7 @@ def handleCmd(srvObj,
 
     # Determine the target volume, ignoring the stream concept.
     info(3, "Determine the target volume, ignoring the stream concept.")
-    targDiskInfo = getTargetVolume(srvObj)
+    targDiskInfo = ngamsCmd_QARCHIVE.getTargetVolume(srvObj)
     if (targDiskInfo == None):
         errMsg = "No disk volumes are available for ingesting any files."
         error(errMsg)
@@ -394,28 +250,15 @@ def handleCmd(srvObj,
     stagingInfo = saveInStagingFile(srvObj.getCfg(), reqPropsObj,
                                     stgFilename, targDiskInfo)
     ioTime = stagingInfo[0]
+    rootContainer = stagingInfo[1]
+    fileDataList = stagingInfo[2]
+    ingestRate = stagingInfo[3]
     reqPropsObj.incIoTime(ioTime)
 
-##    # Invoke DAPI.
-##    plugIn = srvObj.getMimeTypeDic()[mimeType]
-##    try:
-##        exec "import " + plugIn
-##    except Exception, e:
-##        errMsg = "Error loading DAPI: %s. Error: %s" % (plugIn, str(e))
-##        raise Exception, errMsg
-##    info(2, "Invoking DAPI: " + plugIn +\
-##         " to handle data for file with URI: " + baseName)
-##    timeBeforeDapi = time.time()
-##    resDapi = eval(plugIn + "." + plugIn + "(srvObj, reqPropsObj)")
-##    if (getVerboseLevel() > 4):
-##        info(3, "Invoked DAPI: %s. Time: %.3fs." %\
-##             (plugIn, (time.time() - timeBeforeDapi)))
-##        info(3, "Result DAPI: %s" % str(resDapi.toString()))
-##
+    createContainers(rootContainer, None, srvObj)
 
     import ngamsPlugInApi
     import ngamsGenDapi
-    import uuid
 
     parDic = {}
     ngamsGenDapi.handlePars(reqPropsObj, parDic)
@@ -425,16 +268,16 @@ def handleCmd(srvObj,
     dateDir = PccUtTime.TimeStamp().getTimeStamp().split("T")[0]
     resDapiList = []
 
-    containerId = uuid.uuid4()
-    containerName = stagingInfo[3]
-    containerSize = 0
+    containerSizes = {}
 
+    for item in fileDataList:
+        container = item[0]
+        filepath = item[1]
+        crc = item[2]
 
-    for item in stagingInfo[1]:
-        filepath = item[0]
-        crc = item[1]
-
-        parDic['file_id'] = filepath.rsplit('/', 1)[1]
+        containerId = str(container.getContainerId())
+        basename = os.path.basename(filepath)
+        fileId = basename
 
         fileVersion, relPath, relFilename,\
                      complFilename, fileExists =\
@@ -442,25 +285,25 @@ def handleCmd(srvObj,
                                                 srvObj.getCfg(),
                                                 reqPropsObj, diskInfo,
                                                 filepath,
-                                                parDic['file_id'],
-                                                parDic['file_id'], [dateDir])
+                                                fileId,
+                                                basename, [dateDir])
         complFilename, relFilename = ngamsGenDapi.checkForDblExt(complFilename,
                                                     relFilename)
 
-##        # Compress the file if requested.
-##        uncomprSize, archFileSize, format, compression, comprExt =\
-##                     ngamsGenDapi.compressFile(srvObj, reqPropsObj, parDic)
+        # Keep track of the total size of the container
         uncomprSize = ngamsPlugInApi.getFileSize(filepath)
-        containerSize += uncomprSize
-        comprExt = ""
-        format = reqPropsObj.getMimeType()
+        if not containerSizes.has_key(containerId):
+            containerSizes[containerId] = 0
+        containerSizes[containerId] += uncomprSize
+
+        mimeType = reqPropsObj.getMimeType()
         compression = "NONE"
         archFileSize = ngamsPlugInApi.getFileSize(filepath)
 
         resDapi = ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(),
                                                      relFilename,
-                                                     parDic['file_id'],
-                                                     fileVersion, format,
+                                                     fileId,
+                                                     fileVersion, mimeType,
                                                      archFileSize, uncomprSize,
                                                      compression, relPath,
                                                      diskInfo.getSlotId(),
@@ -470,7 +313,6 @@ def handleCmd(srvObj,
         ioTime = mvFile(filepath,
                         resDapi.getCompleteFilename())
         reqPropsObj.incIoTime(ioTime)
-
 
         # Get crc info
         checksumPlugIn = "StreamCrc32"
@@ -490,50 +332,28 @@ def handleCmd(srvObj,
         info(3, "Creating db entry")
         ts = PccUtTime.TimeStamp().getTimeStamp()
         creDate = getFileCreationTime(resDapi.getCompleteFilename())
-##        fileInfo = ngamsFileInfo.ngamsFileInfo().\
-##                   setDiskId(resDapi.getDiskId()).\
-##                   setFilename(resDapi.getRelFilename()).\
-##                   setFileId(resDapi.getFileId()).\
-##                   setFileVersion(file_version).\
-##                   setFormat(resDapi.getFormat()).\
-##                   setFileSize(resDapi.getFileSize()).\
-##                   setUncompressedFileSize(resDapi.getUncomprSize()).\
-##                   setCompression(resDapi.getCompression()).\
-##                   setIngestionDate(ts).\
-##                   setChecksum(checksum).setChecksumPlugIn(checksumPlugIn).\
-##                   setFileStatus(NGAMS_FILE_STATUS_OK).\
-##                   setCreationDate(creDate).\
-##                   setContainerId(containerId)
-##        fileInfo.write(srvObj.getDb())
-        ignore = 0
-        creDate = timeRef2Iso8601(creDate)
-        sqlQuery = "INSERT INTO ngas_files " +\
-                           "(disk_id, file_name, file_id, file_version, " +\
-                           "format, file_size, " +\
-                           "uncompressed_file_size, compression, " +\
-                           "ingestion_date, file_ignore, checksum, " +\
-                           "checksum_plugin, file_status, " +\
-                           "creation_date, container_id) "+\
-                           "VALUES " +\
-                           "('" + resDapi.getDiskId() + "', " +\
-                           "'" + resDapi.getRelFilename() + "', " +\
-                           "'" + resDapi.getFileId() + "', " +\
-                           "" + str(file_version) + ", " +\
-                           "'" + resDapi.getFormat() + "', " +\
-                           str(resDapi.getFileSize()) + ", " +\
-                           str(resDapi.getUncomprSize()) + ", " +\
-                           "'" + resDapi.getCompression() + "', " +\
-                           "'" + ts + "', " +\
-                           str(ignore) + ", " +\
-                           "'" + checksum + "', " +\
-                           "'" + checksumPlugIn + "', " +\
-                           "'" + NGAMS_FILE_STATUS_OK + "', " +\
-                           "'" + creDate + "', " +\
-                           "'" + str(containerId) + "')"
+        fileInfo = ngamsFileInfo.ngamsFileInfo().\
+                   setDiskId(resDapi.getDiskId()).\
+                   setFilename(resDapi.getRelFilename()).\
+                   setFileId(resDapi.getFileId()).\
+                   setFileVersion(file_version).\
+                   setFormat(resDapi.getFormat()).\
+                   setFileSize(resDapi.getFileSize()).\
+                   setUncompressedFileSize(resDapi.getUncomprSize()).\
+                   setCompression(resDapi.getCompression()).\
+                   setIngestionDate(ts).\
+                   setChecksum(checksum).setChecksumPlugIn(checksumPlugIn).\
+                   setFileStatus(NGAMS_FILE_STATUS_OK).\
+                   setCreationDate(creDate).\
+                   setIoTime(reqPropsObj.getIoTime())
+        fileInfo.write(srvObj.getDb())
 
-        srvObj.getDb().query(sqlQuery)
+        # Add the file to the container
+        srvObj.getDb().addFileToContainer(containerId, resDapi.getFileId(), True)
 
-
+        # Update the container sizes
+        for contSizeInfo in containerSizes.iteritems():
+            srvObj.getDb().setContainerSize(contSizeInfo[0], contSizeInfo[1])
 
         # Inform the caching service about the new file.
         info(3, "Inform the caching service about the new file.")
@@ -547,19 +367,9 @@ def handleCmd(srvObj,
 
         # Update disk info in NGAS Disks.
         info(3, "Update disk info in NGAS Disks.")
-        updateDiskInfo(srvObj, resDapi)
+        ngamsCmd_QARCHIVE.updateDiskInfo(srvObj, resDapi)
 
         resDapiList.append(resDapi)
-
-        sqlQuery = "INSERT INTO ngas_containers " +\
-               "(container_id, container_name, ingestion_date, " +\
-               "container_size) VALUES " +\
-               "('" + str(containerId) + "', " +\
-               "'" + containerName + "', " +\
-               "'" + creDate + "', " +\
-               "'" + str(containerSize) + "')"
-
-    srvObj.getDb().query(sqlQuery)
 
     # Check if the disk is completed.
     # We use an approximate extimate for the remaning disk space to avoid
@@ -589,8 +399,4 @@ def handleCmd(srvObj,
                                      resDapi.getFileVersion())], [])
         srvObj.triggerSubscriptionThread()
 
-
-    return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()), stagingInfo[2])
-
 # EOF
-

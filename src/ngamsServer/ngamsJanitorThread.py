@@ -370,7 +370,7 @@ def _encFileInfo2Obj(dbConObj,
 
     sqlFileInfo = []
     #for n in range (ngamsDbCore.NGAS_FILES_CREATION_DATE + 1):
-    for n in range (ngamsDbCore.NGAS_FILES_IO_TIME + 1):
+    for n in range (ngamsDbCore.NGAS_FILES_CONTAINER_ID + 1):
         sqlFileInfo.append(None)
     idxKeys = encFileInfoDic.keys()
     for idx in idxKeys:

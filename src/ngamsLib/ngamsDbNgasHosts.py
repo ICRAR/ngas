@@ -133,7 +133,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
                 return 0
         else:
             errMsg = "Error retrieving Server Suspended Flag for host: " +\
-                     hostId
+                     str(ngasHostId)
             raise Exception, errMsg
 
 

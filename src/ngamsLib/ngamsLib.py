@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsLib.py,v 1.13 2008/08/19 20:51:50 jknudstr Exp $"
@@ -41,7 +40,7 @@ import urllib, urllib2, glob, re, select, cPickle
 from ngams import *
 import PccUtTime
 import ngamsSmtpLib
-
+import ngamsMIMEMultipart
 
 def hidePassword(fileUri):
     """
@@ -174,13 +173,18 @@ def flushHttpCh(fd,
     """
     T = TRACE()
 
+    # Avoid hanging indefinitely on streams
+    # that have been already consumed entirely
+    r = select.select([fd], [], [], 0)
+    if fd not in r[0]:
+        return
+
     remSize = complSize
     while (remSize > 0):
         rdSize = blockSize
         if (remSize < rdSize): rdSize = remSize
-        buf = fd.read(rdSize)
+        fd.read(rdSize)
         remSize -= rdSize
-
 
 def getCompleteHostName():
     """
@@ -439,6 +443,14 @@ def _httpHandleResp(fileObj,
     elif (returnFileObj):
         _waitForResp(fileObj, timeOut)
         data = fileObj
+
+    # It's a container
+    elif(NGAMS_CONT_MT == hdrDic['content-type']):
+        handler = ngamsMIMEMultipart.FilesystemWriterHandler(1024, basePath=dataTargFile)
+        parser = ngamsMIMEMultipart.MIMEMultipartParser(handler, fileObj, dataSize, 1024)
+        parser.parse()
+        data = handler.getRootSavingDirectory()
+
     else:
         fd = None
 
@@ -543,7 +555,7 @@ def httpPostUrl(url,
     dataRef:      Data to post or name of file containing data to send
                   (string).
 
-    dataSource:   Source where to pick up the data (string/BUFFER|FILE|FD).
+    dataSource:   Source where to pick up the data (string/BUFFER|FILE|FD|FILESLIST).
 
     dataTargFile: If a filename is specified with this parameter, the
                   data received is stored into a file of that name (string).
@@ -603,7 +615,7 @@ def httpPostUrl(url,
         kk = mhd[0]
         vv = mhd[1]
         http.putheader(kk, vv)
-    
+
     if (dataSource == "FILE"):
         dataSize = getFileSize(dataRef)
     elif (dataSource == "BUFFER"):
@@ -636,6 +648,11 @@ def httpPostUrl(url,
                 http._conn.sock.sendall(block)
                 if (suspTime > 0.0): time.sleep(suspTime)
             fdIn.close()
+        elif (dataSource == "FILESLIST"):
+            writer = dataRef[0]
+            allPaths = dataRef[1]
+            writer.setOutput(http._conn.sock.makefile("w"))
+            writeDirContents(writer, allPaths[1], blockSize, suspTime)
         elif (dataSource == "FD"):
             fdIn = dataRef
             dataRead = 0
@@ -648,9 +665,11 @@ def httpPostUrl(url,
                 http._conn.sock.sendall(block)
                 dataRead += len(block)
                 if (suspTime > 0.0): time.sleep(suspTime)
-        else:
-            # dataSource == "BUFFER"
+        elif dataSource == "BUFFER":
             http.send(dataRef)
+        else:
+            raise Exception('Unknown data source: ' + dataSource)
+
         info(4,"Data sent")
 
         # Receive + unpack reply.
@@ -694,6 +713,22 @@ def httpPostUrl(url,
 
     return [reply, msg, hdrs, data]
 
+def writeDirContents(writer, paths, blockSize, suspTime):
+
+    writer.startContainer()
+    for absPath in paths:
+        if isinstance(absPath, list):
+            writeDirContents(writer, absPath[1], blockSize, suspTime)
+        else:
+            writer.startNextFile()
+            fdIn = open(absPath)
+            block = '-'
+            while (block != ""):
+                block = fdIn.read(blockSize)
+                writer.writeData(block)
+                if (suspTime > 0.0): time.sleep(suspTime)
+            fdIn.close()
+    writer.endContainer()
 
 def httpPost(host,
              port,
@@ -725,7 +760,7 @@ def httpPost(host,
     mimeType:     Mime-type of message (string).
 
     dataRef:      Data to send to remote NG/AMS Server or name of
-                  file containing data to send (string).
+                  file/directory containing data to send (string).
 
     dataSource:   Source where to pick up the data (string/BUFFER|FILE|FD).
 
@@ -755,6 +790,30 @@ def httpPost(host,
     """
     T = TRACE()
 
+    # If the dataRef is a directory, scan the directory
+    # and build up a list of files contained directly within
+    # Start preparing a mutipart MIME message that will contain
+    # all of them
+    if os.path.isdir(dataRef):
+
+        absDirname = os.path.abspath(dataRef)
+        info(4, 'Request is to archive directory ' + absDirname)
+        mimeType = NGAMS_CONT_MT
+
+        # Recursively collect all files
+        # TODO: Probably here we can reuse the filesInformation
+        # structure instead of having the absPaths separately
+        filesInformation, absPaths = collectFiles(absDirname)
+
+        writer = ngamsMIMEMultipart.MIMEMultipartWriter(filesInformation)
+        dataSize = writer.getTotalSize()
+
+        dataRef = [writer, absPaths]
+        dataSource = 'FILESLIST'
+
+        fileName = 'mimemessage'
+        if pars[0][0] == 'attachment; filename': pars[0][0] = 'attachment'
+
     contDisp = ""
     for parInfo in pars:
         if (parInfo[0] == "attachment"):
@@ -776,6 +835,28 @@ def httpPost(host,
         errMsg = "Problem occurred issuing request with URL: " + url +\
                  ". Error: " + str(e)
         raise Exception, errMsg
+
+def collectFiles(absDirname):
+
+    dirname = os.path.basename(os.path.abspath(absDirname))
+    absPaths = []
+    filesInfo = []
+
+    for filename in os.listdir(absDirname):
+        # Include only files for the time being
+        path = os.path.join(absDirname, filename)
+        if os.path.isdir(path):
+            childrenFiles, childrenPaths = collectFiles(path)
+            filesInfo.append(childrenFiles)
+            absPaths.append(childrenPaths)
+        elif os.path.isfile(path):
+            info(4, 'Including \'' + path + '\' in the to-be-generated container')
+            absPaths.append(path)
+            filesInfo.append([NGAMS_ARCH_REQ_MT, filename, os.path.getsize(path), path])
+        else:
+            info(4, 'Not including \'' + path + '\' because it\'s neither a file nor a directory')
+
+    return [[dirname, filesInfo], [absDirname, absPaths]]
 
 
 def httpGetUrl(url,

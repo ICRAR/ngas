@@ -104,12 +104,10 @@ _debug = 0
 # Flag indicating if we're executing in Unit Test Mode.
 _testMode = 0
 
-
 # Make the NG/AMS classes available by extending the search paths.
 try:
     from sys import path
-    pathTup = [__path__[0] + '/../plug-ins',
-               __path__[0] + '/../ngamsCClient',
+    pathTup = [__path__[0] + '/../ngamsCClient',
                __path__[0] + '/../ngamsData',
                __path__[0] + '/../ngamsLib',
                __path__[0] + '/../ngamsPClient',
@@ -282,6 +280,7 @@ NGAMS_BUSY_SUBSTATE       = "BUSY"
 
 # Built-In Mime-types.
 NGAMS_ARCH_REQ_MT         = "ngas/archive-request"
+NGAMS_CONT_MT             = "ngas/container"
 NGAMS_TEXT_MT             = "text/plain"
 NGAMS_XML_MT              = "text/xml"
 NGAMS_GZIP_XML_MT         = "application/x-gxml"
@@ -958,20 +957,28 @@ def getHostName(cfgFile=None):
     Returns:   Host name for this NGAS System (string).
     """
     global NGAMS_HOST_IP
-    ip = IpAddress = None
+    ip = None
+    # Use previously set global IP address
     if NGAMS_HOST_IP:
-        ip = IpAddress = NGAMS_HOST_IP
-    if cfgFile or sys.argv.count('-cfg') > 0:
-        if not cfgFile: cfgFile = sys.argv[sys.argv.index('-cfg') + 1]
-        from xml.dom import minidom
-        dom = minidom.parse(cfgFile)
-        srv = dom.getElementsByTagName('Server')
-        IpAddress = ip = srv[0].getAttribute('IpAddress')
-    if not ip or str(ip)[0] == '0':
-        ip = getMyIpAddress()   #This only works if the machine can connect to the web!
-    if not IpAddress:
-        IpAddress = ip
-    NGAMS_HOST_IP = str(IpAddress)
+        ip = NGAMS_HOST_IP
+    else:
+        # Read IP from configuration file if necessary
+        if cfgFile or sys.argv.count('-cfg') > 0:
+            if not cfgFile: cfgFile = sys.argv[sys.argv.index('-cfg') + 1]
+            from xml.dom import minidom
+            dom = minidom.parse(cfgFile)
+            srv = dom.getElementsByTagName('Server')
+            ip = srv[0].getAttribute('IpAddress')
+        # If no ip is given in the configuration, or "0.0.0.0" is set,
+        # figure out one of our external IPs
+        if not ip or str(ip)[0] == '0':
+            # TODO: This slows down *everything*, and needs connection to the web
+            ip = getMyIpAddress()
+            # We could use this instead?
+            # ip = socket.gethostbyname(socket.gethostname())
+        NGAMS_HOST_IP = str(ip)
+
+    # Figure out the name for our ip and return it
     try:
         hostName = socket.gethostbyaddr(ip)[0]
     except socket.herror:
@@ -1309,9 +1316,15 @@ def mvFile(srcFilename,
         fileSize = getFileSize(srcFilename)
         checkAvailDiskSpace(trgFilename, fileSize)
         timer = PccUtTime.Timer()
-        stat, out = commands.getstatusoutput("mv %s %s" %\
-                                             (srcFilename, trgFilename))
-        if (stat): raise Exception, "Error executing move command: " + str(out)
+
+        # Don't rely on executing separate OS commands to move files
+        # Do it the python way instead
+        #stat, out = commands.getstatusoutput("mv %s %s" %\
+        #                                     (srcFilename, trgFilename))
+        os.rename(srcFilename, trgFilename)
+
+        # os.rename returns nothiing but throws OSErrors
+        #if (stat): raise Exception, "Error executing move command: " + str(out)
         deltaTime = timer.stop()
     except Exception, e:
         errMsg = genLog("NGAMS_AL_MV_FILE", [srcFilename, trgFilename, str(e)])
