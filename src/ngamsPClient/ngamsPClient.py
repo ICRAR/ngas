@@ -41,12 +41,12 @@ can be used to build up Python applications communicating with NG/AMS.
 import os, sys, re, httplib, mimetools, urllib, random, time, base64
 import pcc, PccUtTime
 from ngams import *
-import ngamsLib
+from ngamsLib import ngamsLib
 import ngamsFileInfo, ngamsStatus
 from xml.dom import minidom
 
 
-manPage = os.path.normpath(ngamsGetSrcDir() + "/ngamsPClient/doc/ngamsPClient.doc")
+manPage = os.path.normpath(ngamsGetSrcDir() + "/doc/ngamsPClient.doc")
 fo = open(manPage)
 __doc__ += "\n\n\nMan-Page for the NG/AMS Python Client Tool:\n\n"
 __doc__ += "ngamsPClient " + fo.read()
@@ -944,7 +944,8 @@ class ngamsPClient:
         fileVersion      = -1
         filterPlugIn     = ""
         force            = 0
-        host             = os.environ['HOSTNAME'] if os.environ.has_key('HOSTNAME') else getHostName()
+#        host             = os.environ['HOSTNAME'] if os.environ.has_key('HOSTNAME') else getHostName()
+        host             = '127.0.0.1'
         hostId           = ""
         internal         = ""
         mimeType         = ""
