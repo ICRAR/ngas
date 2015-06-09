@@ -90,8 +90,8 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 1. dd, dd; 2. dd dd; 3. h:m:s, d:m:s; 4. h:m:s d:m:s; 5. h m s, d m s; 6. h m s d m s" tablehead="Position/Name">
 		  <property name="notForRenderer">scs.xml</property>
 	  </inputKey>
-    <inputKey name="sr" type="real" description="Cutout radius in degrees" multiplicity="single" tablehead="Cutout radius">
-      <property key="defaultForForm">2.5</property>
+    <inputKey name="size" type="real" description="Angular size of the cutout image in degrees" multiplicity="single" tablehead="Angular size">
+      <property key="defaultForForm">5</property>
     </inputKey>
     <phraseMaker id="humanSCSPhrase" name="humanSCSSQL"  original="//scs#scsUtils">
       <setup>
@@ -118,8 +118,8 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
       if (ra == 45.1912 and dec == 45.1912):
       	yield "%%(%s)s = %%(%s)s and %%(%s)s = %%(%s)s" % (base.getSQLKey("RA", ra*DEG, outPars), base.getSQLKey("RA", ra*DEG, outPars), base.getSQLKey("DEC", dec*DEG, outPars), base.getSQLKey("DEC", dec*DEG, outPars))
       	return
-      elif "sr" in inPars and inPars["sr"] >= 0:
-          retstr =  "scircle(SPoint(%%(%s)s, %%(%s)s), %%(%s)s ) @ coverage" %( base.getSQLKey("RA", ra*DEG, outPars), base.getSQLKey("DEC", dec*DEG, outPars), base.getSQLKey("sr", inPars["sr"]*DEG, outPars))
+      elif "size" in inPars and inPars["size"] >= 0:
+          retstr =  "scircle(SPoint(%%(%s)s, %%(%s)s), %%(%s)s ) @ coverage" %( base.getSQLKey("RA", ra*DEG, outPars), base.getSQLKey("DEC", dec*DEG, outPars), base.getSQLKey("size", inPars["size"]*DEG/2, outPars))
       else:
           retstr =  "spoint(%%(%s)s, %%(%s)s) @ coverage"%( base.getSQLKey("RA", ra*DEG, outPars), base.getSQLKey("DEC", dec*DEG, outPars))
       yield retstr
@@ -127,13 +127,13 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
     </phraseMaker>
   </condDesc>
   <condDesc>
-    <inputKey name="frequency" type="double precision"   multiplicity="single"  description= "The central frequency of an image in MHz. Min 72, Max 250 MHz.">
+    <inputKey name="frequency" type="integer"   multiplicity="single"  description= "The central frequency of an image in MHz. Min 72, Max 250 MHz.">
       <property name="notForRenderer">scs.xml</property>
       <property key="defaultForForm">154</property>
     </inputKey>
-    <inputKey name="search_freq" type="double precision"   multiplicity="single"  description= "Search frequency range within +/- MHz." tablehead="Search frequency">
+    <inputKey name="search_freq" type="integer"   multiplicity="single"  description= "Search frequency range within +/- MHz." tablehead="Search frequency">
       <property name="notForRenderer">scs.xml</property>
-      <property key="defaultForForm">15.0</property>
+      <property key="defaultForForm">15</property>
     </inputKey>
     <phraseMaker>
         <code>
@@ -194,7 +194,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 		<meta name="testQuery.size.ra">1</meta>
 		<meta name="testQuery.size.dec">1</meta>
     <outputTable namePath="gleam_cutout">
-      <outputField original="filename" displayHint="noxml=true">
+      <outputField original="filename" displayHint="noxml=true" tablehead="Mosaic file name">
         <!--
 				<formatter>
 					yield T.a(href="http://180.149.251.152/getproduct/gleam_cutout/"
@@ -202,16 +202,18 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 				</formatter>
         -->
 			</outputField>
+      <!--
       <LOOP listItems="accsize ">
   				<events>
   					<outputField original="\item"/>
   				</events>
   		</LOOP>
+      -->
 
-			<outputField original="centerAlpha" displayHint="type=hms" tablehead="Mosaic center RA"/>
-			<outputField original="centerDelta" displayHint="type=dms,sf=1" tablehead="Mosaic center DEC"/>
+			<outputField original="centerAlpha" displayHint="type=hms" tablehead="Center RA"/>
+			<outputField original="centerDelta" displayHint="type=dms,sf=1" tablehead="Center DEC"/>
 
-      <outputField name="mbr" original="coverage" tablehead="Mosaic sky coverage">
+      <outputField name="sky_coverage" type="text" unit="SW-NE deg" tablehead="Sky coverage" select="'(' || round(cast(degrees(long(sw(coverage))) as numeric), 2) || ', ' || round(cast(degrees(lat(sw(coverage))) as numeric), 2)|| ') to (' || round(cast(degrees(long(ne(coverage))) as numeric),2) || ', ' || round(cast(degrees(lat(ne(coverage))) as numeric),2) || ')'">
       </outputField>
 		  <outputField original="center_freq" displayHint="type=humanDate" />
 
@@ -227,7 +229,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
              </formatter>
       </outputField>
 
-			<outputField name="cr" displayHint="noxml=true" tablehead="Cutout JPEG" select="filename || ',' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || ',' ||  DEGREES(%(sr0)s)">
+			<outputField name="cr" displayHint="noxml=true" tablehead="Cutout JPEG" select="filename || ',' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || ',' ||  DEGREES(%(size0)s)">
 			   <formatter>
 			         <!--  yield [data]  if (data == "45.1912,45.1912"): -->
 			       params = data.split(',')
@@ -238,15 +240,14 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 			       	"%s,%s&amp;radius=%s&amp;file_id=%s&amp;regrid=1"%(params[1], params[2], params[3], params[0]), target="_blank")["JPEG"]
          </formatter>
 			</outputField>
-      <outputField name="cr_fits" displayHint="noxml=true" tablehead="Cutout FITS" select="filename || ',' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || ',' ||  DEGREES(%(sr0)s)">
+      <outputField name="accref" type="text" tablehead="Cutout FITS" select="'http://store04.icrar.org:7777/GLEAMCUTOUT?radec=' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || '&amp;radius=' || DEGREES(%(size0)s) || '&amp;file_id=' || filename || '&amp;regrid=1&amp;fits_format=1'">
          <formatter>
                <!--  yield [data]  if (data == "45.1912,45.1912"): -->
              params = data.split(',')
              if (params[1] == "45.1912" and params[2] == "45.1912"):
               yield ["--"]
              else:
-              yield T.a(href="http://store04.icrar.org:7777/GLEAMCUTOUT?radec="
-              "%s,%s&amp;radius=%s&amp;file_id=%s&amp;regrid=1&amp;fits_format=1"%(params[1], params[2], params[3], params[0]), target="_blank")["FITS"]
+              yield T.a(href=data, target="_blank")["FITS"]
          </formatter>
       </outputField>
 		</outputTable>
