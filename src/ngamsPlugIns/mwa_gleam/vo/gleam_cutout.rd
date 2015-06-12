@@ -8,7 +8,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 <meta name="description">The GLEAM postage stamp service provides image cutout interface to the GLEAM science user community.</meta>
 <meta name="subject">Gleam cutout</meta>
 <meta name="coverage.waveband">Radio</meta>
-<meta name="creator"></meta>
+<meta name="creator">Chen Wu@ICRAR</meta>
 <meta name="logo">http://ict.icrar.org/store/staff/biqing/GLEAM-logo.png</meta>
 <meta name="_related" title="GLEAM Web Site">http://www.mwatelescope.org/index.php/science/galactic-and-extragalactic-surveys</meta>
 <meta name="_bottominfo" format="raw">
@@ -19,7 +19,6 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 
 <table id="gleam_mosaic" adql="True" onDisk="True" mixin="//products#table">
   <stc>
-   Polygon ICRS [coverage]
    Position "centerAlpha" "centerDelta"
   </stc>
 
@@ -219,7 +218,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 
       <outputField name="distance"
                     unit="deg" ucd="pos.andDistance"
-              tablehead="Distance"
+              tablehead="Distance to center"
               description="Distance from Mosaic center to cutout center"
               select="DEGREES(spoint(RADIANS(centerAlpha), RADIANS(centerDelta))
                 &lt;->spoint(%(RA0)s, %(DEC0)s))">
@@ -240,7 +239,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 			       	"%s,%s&amp;radius=%s&amp;file_id=%s&amp;regrid=1"%(params[1], params[2], params[3], params[0]), target="_blank")["JPEG"]
          </formatter>
 			</outputField>
-      <outputField name="accref" type="text" tablehead="Cutout FITS" select="'http://store04.icrar.org:7777/GLEAMCUTOUT?radec=' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || '&amp;radius=' || DEGREES(%(size0)s) || '&amp;file_id=' || filename || '&amp;regrid=1&amp;fits_format=1'">
+      <outputField name="accref" type="text" tablehead="Cutout FITS" utype="Access.Reference" select="'http://store04.icrar.org:7777/GLEAMCUTOUT?radec=' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || '&amp;radius=' || DEGREES(%(size0)s) || '&amp;file_id=' || filename || '&amp;regrid=1&amp;fits_format=1'">
          <formatter>
                <!--  yield [data]  if (data == "45.1912,45.1912"): -->
              params = data.split(',')
