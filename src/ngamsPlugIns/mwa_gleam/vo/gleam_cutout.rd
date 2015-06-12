@@ -19,6 +19,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 
 <table id="gleam_mosaic" adql="True" onDisk="True" mixin="//products#table">
   <stc>
+   Polygon ICRS [coverage]
    Position "centerAlpha" "centerDelta"
   </stc>
 
