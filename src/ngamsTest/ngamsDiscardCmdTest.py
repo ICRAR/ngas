@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDiscardCmdTest.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,15 +27,15 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  02/04/2004  Created
 #
-
 """
 This module contains the Test Suite for the SUBSCRIBE Command.
 """
 
-import os, sys
-from   ngams import *
-from   ngamsTestLib import *
-import ngamsPClient
+import sys
+
+from ngamsLib.ngamsCore import ngamsGetSrcDir, getHostName, NGAMS_DISCARD_CMD, info, cpFile
+from ngamsPClient import ngamsPClient
+from ngamsTestLib import ngamsTestSuite, sendExtCmd, sendPclCmd, getClusterName, runTest
 
 
 try:

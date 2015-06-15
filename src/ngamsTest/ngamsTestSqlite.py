@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsTestSqlite.py,v 1.2 2008/08/19 20:51:50 jknudstr Exp $"
@@ -31,19 +30,14 @@
 """
 Test program that runs the NG/AMS Functional Tests, using SQLite as DB.
 """
-
-import sys
-from ngams import *
-try:
-    import ngamsTestLib
-except Exception, e:
-    print str(e)
-    sys.exit(1)
-import ngamsTest
-    
-
 # Disabled because some tests involving simulated clusters won't run with
 # SQLite as a federated DB.
+
+import sys
+
+import ngamsTest
+
+
 SKIPLIST1 =\
           "ngamsArchiveCmdTest.test_ArchiveProxyMode_01,\
           ngamsArchiveCmdTest.test_ArchiveProxyMode_02,\
@@ -65,9 +59,9 @@ if __name__ == '__main__':
             exec testMod + ".run()"
     else:
         if (skip):
-            skip += SKIPLIST
+            skip += SKIPLIST1
         else:
-            skip = SKIPLIST
+            skip = SKIPLIST1
         ngamsTest.runAllTests(notifEmail, skip)
 
 # EOF

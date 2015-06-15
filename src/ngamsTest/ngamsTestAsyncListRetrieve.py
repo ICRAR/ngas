@@ -27,19 +27,21 @@
 #
 
 import urllib, time
-from ngamsMWAAsyncProtocol import *
+
 import cPickle as pickle
+from ngamsPlugIns.ngamsMWAAsyncProtocol import AsyncListRetrieveRequest, \
+    AsyncListRetrieveProtocolError
+
 
 # this is for my own laptop
 #svrUrl = 'http://localhost:7778/ASYNCLISTRETRIEVE'
- 
 # this is ngas server1 on arch1 that pushes files
 svrUrl = 'http://180.149.251.189:7779/ASYNCLISTRETRIEVE' 
 file_id = ['8879_20120914160100_32.fits', '8883_20120914160108_32.fits', '666_20120611061858_11_07.fits', '8890_20120914160121_32.fits', '8876_20120914160055_32.fits', \
            '8878_20120914160058_32.fits', '110028_20120914132202_12.fits', '110030_20120914130914_12.fits', '91_20120914164909_71.fits']
 cancel_file_id = ['8881_20120914160104_32.fits', '23_20120914165048_71.fits', '110026_20120914130904_12.fits', '25_20120914165052_71.fits', '21_20120914165044_71.fits', \
                   '8880_20120914160102_32.fits', '8875_20120914160053_32.fits', '110023_20120914130857_12.fits', '23_20120914165048_71.fits', '110026_20120914130904_12.fits']
- # this is for my own laptop
+# this is for my own laptop
 # pushUrl = 'http://localhost:7777/QARCHIVE'
 
 # this is ngas server2 on arch1 that receives files, 

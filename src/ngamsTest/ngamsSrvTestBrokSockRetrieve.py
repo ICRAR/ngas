@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsSrvTestBrokSockRetrieve.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,16 +27,18 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  07/10/2004  Created
 #
-
 """
 Special version of the NG/AMS Server class used to send back a non-sense
 (corrupted/illegal) HTTP response.
 """
 
-import os, sys, time, BaseHTTPServer
-from   ngams import *
-import ngamsServer
-from   ngamsTestLib import *
+import os
+import sys
+
+from ngamsLib.ngamsCore import TRACE, info, NGAMS_HTTP_SUCCESS, NGAMS_PROC_DATA, \
+    NGAMS_PROC_FILE, getFileSize
+from ngamsServer import ngamsServer
+
 
 def cleanUpAfterProc(dummy):
     pass
@@ -135,7 +136,7 @@ class ngamsServerTestBrokSockRetrieve(ngamsServer.ngamsServer):
         # Replace the function ngamsRetrieveCmd.genReplyRetrieve() used to
         # reply to the RETRIEVE Command with the test version provoking a
         # broken socket situation.
-        import ngamsRetrieveCmd
+        from ngamsServer import ngamsRetrieveCmd
         ngamsRetrieveCmd.genReplyRetrieve = genReplyRetrieveFail
 
         

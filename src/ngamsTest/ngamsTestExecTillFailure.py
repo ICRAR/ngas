@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsTestExecTillFailure.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  12/07/2004  Created
 #
-
 """
 Execute a command on the sheel until a failure is encountered. This is used
 to execute a Test Case/Test Suite until a problem occurrs, which is not
@@ -49,9 +47,9 @@ An exemple of executing this tool is:
 % Executing command for the 2th time (Time difference: 20.7s/Total time: 20.7s 
 """
 
-import os, sys, time, commands
-from   ngams import *
-from   ngamsTestLib import *
+import commands
+import sys
+import time
 
 
 def execTillFailure(cmd):

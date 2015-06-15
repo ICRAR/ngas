@@ -74,8 +74,8 @@ class ngamsTestPstats(pstats.Stats):
         if count < len(self.stats):
             width = 0
             for func in list:
-                if  len(func_std_string(func)) > width:
-                    width = len(func_std_string(func))
+                if  len(pstats.func_std_string(func)) > width:
+                    width = len(pstats.func_std_string(func))
         return width+2, list
         
 

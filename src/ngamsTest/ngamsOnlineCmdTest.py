@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsOnlineCmdTest.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,15 +27,17 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  20/11/2003  Created
 #
-
 """
 This module contains the Test Suite for the ONLINE Command.
 """
 
-import os, sys
-from   ngams import *
-from   ngamsTestLib import *
+import os
+import sys
 
+from ngamsLib import ngamsDiskInfo, ngamsStatus
+from ngamsLib.ngamsCore import getHostName, NGAMS_ONLINE_CMD
+from ngamsTestLib import filterDbStatus1, saveInFile, cmpFiles, \
+    genErrMsg, loadFile, ngamsTestSuite, sendExtCmd, runTest
 
 
 def _checkDiskInfo(testCaseObj,

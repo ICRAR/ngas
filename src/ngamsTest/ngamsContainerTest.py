@@ -21,10 +21,10 @@
 #
 
 import os, random, string, sys
-from ngams import rmFile, checkCreatePath, getHostName, getFileSize
-from ngams import NGAMS_SUCCESS, NGAMS_FAILURE
+from ngamsLib.ngamsCore import rmFile, checkCreatePath, getHostName, getFileSize
+from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE
+from ngamsPClient import ngamsPClient
 import ngamsTestLib
-import ngamsPClient
 
 class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
 

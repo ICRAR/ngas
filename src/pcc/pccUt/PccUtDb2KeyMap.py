@@ -12,10 +12,10 @@
 Module providing class to handle mapping of FITS keywords into
 Sybase table columns and vice versa.
 """
-from pcc.pccUt import PccUtUtils, PccUtString
-from pcc.pccLog.PccLog import info
-from pcc.pccKey import PccKey
-from pcc.pccPaf import PccPaf
+import PccUtUtils, PccUtString
+from pccLog.PccLog import info
+from pccKey import PccKey
+from pccPaf import PccPaf
 import string, exceptions
 
 from PccLog import *

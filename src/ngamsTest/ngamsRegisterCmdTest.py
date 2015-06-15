@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsRegisterCmdTest.py,v 1.6 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,15 +27,18 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  18/11/2003  Created
 #
-
 """
 This module contains the Test Suite for the REGISTER Command.
 """
 
-import os, sys, time
-from   ngams import *
-import ngamsFileInfo
-from   ngamsTestLib import *
+import os
+import sys
+import time
+
+from ngamsLib import ngamsFileInfo
+from ngamsLib.ngamsCore import checkCreatePath, getHostName, NGAMS_REGISTER_CMD
+from ngamsTestLib import ngamsTestSuite, sendExtCmd, saveInFile, \
+    filterDbStatus1, runTest
 
 
 class ngamsRegisterCmdTest(ngamsTestSuite):

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsAuthorizationTest.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,14 +27,13 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  25/06/2004  Created
 #
-
 """
 This module contains the Test Suite for the Authorization Feature of NG/AMS.
 """
 
-import os, sys
-from   ngams import *
-from   ngamsTestLib import *
+import sys
+
+from ngamsTestLib import ngamsTestSuite, sendPclCmd, saveInFile, filterDbStatus1, runTest
 
 
 class ngamsAuthorizationTest(ngamsTestSuite):

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsStatusCmdTest.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,18 +27,15 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  23/04/2002  Created
 #
-
 """
 This module contains the Test Suite for the STATUS Command.
 """
 
-import sys, unittest, socket, time, shutil
-from   ngams import *
-from   ngamsTestLib import *
-import ngamsConfig, ngamsStatus, ngamsReqProps
-import ngamsLib
-import ngamsDiskInfo, ngamsFileInfo
-import ngamsHighLevelLib, ngamsCmdHandling
+import sys
+
+from ngamsLib.ngamsCore import getHostName
+from ngamsPClient import ngamsPClient
+from ngamsTestLib import ngamsTestSuite, getClusterName, getNcu11, runTest
 
 
 class ngamsStatusCmdTest(ngamsTestSuite):

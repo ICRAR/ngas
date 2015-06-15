@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsGenTestPlan.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,19 +27,21 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  12/10/2004  Created
 #
-
 """
 Small tool to generate a test plan from the contents of the Test Suite
 Python modules. 
 """
-
 # TODO: Make index in the beginning of the report with which there can easily
 #       be jumped to Test Suites and Test Cases. In addition, links in
 #       connection with the Test Suites/Cases to jump back to the index.
 
-import os, sys, glob, getpass
-import pcc, PccUtTime
-from   ngams import *
+import getpass
+import glob
+import sys
+
+from ngamsLib.ngamsCore import ngamsGetSrcDir, getNgamsVersion
+from pccUt import PccUtTime
+
 
 htmlHdr = """
 <body bgcolor="#FFFFFF" text="#000000">

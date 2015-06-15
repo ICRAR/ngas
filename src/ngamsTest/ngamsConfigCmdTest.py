@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsConfigCmdTest.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,15 +27,15 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  19/04/2002  Created
 #
-
 """
 This module contains the Test Suite for the CONFIG Command.
 """
 
-import sys, unittest, socket
-from   ngams import *
-from   ngamsTestLib import *
-import ngamsHighLevelLib, ngamsConfig
+import sys
+
+from ngamsLib.ngamsCore import getHostName, NGAMS_CONFIG_CMD
+from ngamsPClient import ngamsPClient
+from ngamsTestLib import ngamsTestSuite, saveInFile, filterOutLines, runTest
 
 
 class ngamsConfigCmdTest(ngamsTestSuite):

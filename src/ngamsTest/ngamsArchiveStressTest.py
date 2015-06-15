@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsArchiveStressTest.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,15 +27,19 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  12/07/2004  Created
 #
-
 """
 This module contains the Test Suite for testing the robustness of the
 Archive Command handling
 """
 
-import os, sys, time, threading, thread
-from   ngams import *
-from   ngamsTestLib import *
+import os
+import sys
+import thread
+import threading
+import time
+
+from ngamsLib.ngamsCore import cpFile
+from ngamsTestLib import incArcfile, sendPclCmd, ngamsTestSuite, runTest, AUTH
 
 
 TST_STR1 = "Successfully handled Archive Push Request for data file " +\

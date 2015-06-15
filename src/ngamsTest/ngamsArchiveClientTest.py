@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsArchiveClientTest.py,v 1.7 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,14 +27,20 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  10/11/2003  Created
 #
-
 """
 This module contains the Test Suite for the NG/AMS Archive Client.
 """
 
-import os, sys, commands, time, threading, glob
-from   ngams import *
-from   ngamsTestLib import *
+import commands
+import glob
+import os
+import sys
+import time
+
+from ngamsLib import ngamsStatus
+from ngamsLib.ngamsCore import getHostName, info
+from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, runTest
+
 
 try:
     _cmdLineParsDic = {"-host": getHostName(), "-port": "8888",

@@ -20,16 +20,15 @@
 #    MA 02111-1307  USA
 #
 #*************************************************************************
-
 """
 To see how HttPostUrl works in the ngamsLib
 """
 
-from ngams import *
-import ngamsPlugInApi, ngamsStatus
-import ngamsLib
-
 import httplib, socket, time, sys, os, traceback
+
+from ngamsLib.ngamsCore import NGAMS_HTTP_POST, getHostName, NGAMS_SUCCESS
+from ngamsLib import ngamsPlugInApi, ngamsLib, ngamsStatus
+
 
 log_level = 3
 

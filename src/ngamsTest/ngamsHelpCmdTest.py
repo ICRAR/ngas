@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsHelpCmdTest.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,15 +27,14 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  18/11/2003  Created
 #
-
 """
 This module contains the Test Suite for the HELP Command.
 """
 
+import sys
 
-import os, sys
-from   ngams import *
-from   ngamsTestLib import *
+from ngamsLib.ngamsCore import getHostName, NGAMS_HELP_CMD
+from ngamsTestLib import ngamsTestSuite, sendExtCmd, runTest
 
 
 class ngamsHelpCmdTest(ngamsTestSuite):

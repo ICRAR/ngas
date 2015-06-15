@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngams_test_tpl.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,16 +27,15 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  **/**/200*  Created
 #
-
 """
 <TEMPLATE FOR TEST SUITE SOURCE CODE FILES - REMOVE THIS LINE>
 
 This module contains the Test Suite for ...
 """
 
-import os, sys
-from   ngams import *
-from   ngamsTestLib import *
+import sys
+
+from ngamsTestLib import ngamsTestSuite, runTest
 
 
 class ngams_test_tpl(ngamsTestSuite):

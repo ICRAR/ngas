@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsArchiveCmdTest.py,v 1.7 2008/08/19 20:51:50 jknudstr Exp $"
@@ -29,16 +28,25 @@
 # jknudstr  23/04/2002  Created
 # jknudstr  18/11/2003  Overhaul
 #
-
 """
 Contains the Test Suite for the ARCHIVE Command.
 """
 
-import os, sys, getpass, time, glob, cPickle, shutil, commands, threading
-from   ngams import *
-import ngamsFileInfo, ngamsDiskInfo
-import ngamsStatus, ngamsHighLevelLib, ngamsArchiveUtils
-from   ngamsTestLib import *
+import cPickle
+import commands
+import getpass
+import glob
+import os
+import shutil
+import sys
+
+from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile
+from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo
+from ngamsPClient import ngamsPClient
+from ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
+    saveInFile, filterDbStatus1, sendPclCmd, pollForFile, getClusterName, \
+    sendExtCmd, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, runTest, \
+    copyFile, genTmpFilename, execCmd
 
 
 class ngamsArchiveCmdTest(ngamsTestSuite):

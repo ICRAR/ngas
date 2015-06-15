@@ -43,9 +43,10 @@ Case 12. Running ngas-A in the standard mode. A will randomly choose B or C to d
 Case 13  Testing the proxy archive
 """
 import time, os, commands, threading, thread, base64
-import ngamsPClient
 
-from pybarrier import *
+from ngamsPClient import ngamsPClient
+from pybarrier import barrier
+
 
 ngasA_host = '127.0.0.1'
 ngasA_port = 7777

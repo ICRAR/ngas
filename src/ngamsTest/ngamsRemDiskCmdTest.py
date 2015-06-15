@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsRemDiskCmdTest.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,16 +27,16 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  23/04/2002  Created
 #
-
 """
 This module contains the Test Suite for the REMDISK Command.
 """
 
-import os, sys, glob
-from   ngams import *
-import ngamsDiskInfo, ngamsStatus, ngamsHighLevelLib, ngamsPClient
-import ngamsLib
-from   ngamsTestLib import *
+import sys
+
+from ngamsLib.ngamsCore import getHostName, NGAMS_REMDISK_CMD
+from ngamsPClient import ngamsPClient
+from ngamsTestLib import ngamsTestSuite, waitReqCompl, saveInFile, \
+    filterDbStatus1, getThreadId, getClusterName, sendExtCmd, runTest
 
 
 class ngamsRemDiskCmdTest(ngamsTestSuite):

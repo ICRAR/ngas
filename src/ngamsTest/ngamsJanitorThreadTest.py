@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsJanitorThreadTest.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,14 +27,14 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  23/04/2002  Created
 #
-
 """
 This module contains the Test Suite for the NG/AMS Janitor Thread.
 """
 
-import os, sys, time
-from   ngams import *
-from   ngamsTestLib import *
+import sys
+
+from ngamsLib.ngamsCore import info
+from ngamsTestLib import ngamsTestSuite, runTest
 
 
 class ngamsJanitorThreadTest(ngamsTestSuite):

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsCloneCmdTest.py,v 1.6 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,15 +27,19 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  20/11/2003  Created
 #
-
 """
 This module contains the Test Suite for the CLONE Command.
 """
 
-import os, sys
-from   ngams import *
-from   ngamsTestLib import *
-import ngamsDiskInfo, ngamsFileInfo, ngamsStatus, ngamsCloneCmd
+import getpass
+import sys
+
+from ngamsLib.ngamsCore import getHostName, NGAMS_CLONE_CMD
+from ngamsLib import ngamsFileInfo, ngamsLib
+from ngamsPClient import ngamsPClient
+from ngamsTestLib import getClusterName, flushEmailQueue, saveInFile, \
+    filterDbStatus1, getEmailMsg, ngamsTestSuite, waitReqCompl, genErrMsgVals, \
+    runTest
 
 
 def _sortRepFileList(report):

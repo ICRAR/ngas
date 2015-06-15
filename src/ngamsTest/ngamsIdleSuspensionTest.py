@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsIdleSuspensionTest.py,v 1.6 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,15 +27,17 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  18/11/2003  Created
 #
-
 """
 This module contains the Test Suite for the handling of Idle Suspension.
 """
 
-import os, sys, time, socket
-from   ngams import *
-from   ngamsTestLib import *
+import socket
+import sys
+import time
 
+from ngamsLib.ngamsCore import getHostName, info, NGAMS_STATUS_CMD, NGAMS_RETRIEVE_CMD, NGAMS_CHECKFILE_CMD, rmFile
+from ngamsTestLib import getClusterName, ngamsTestSuite, sendPclCmd, \
+    filterOutLines, saveInFile, loadFile, runTest, genTmpFilename
 
 
 SUSP_EL = "NgamsCfg.HostSuspension[1]"

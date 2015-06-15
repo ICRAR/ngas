@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsKillSrvDapi.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,17 +27,17 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  10/05/2001  Created
 #
-
 """
 This DAPI is used for test purposes. It kills the server to simulate that the
 server crashes during the execution of the DAPI.
 """
-
-import os, string, sys
-from   ngams import *
-
-
 # DAPI function.
+
+import sys
+
+from ngamsLib.ngamsCore import info
+
+
 def ngamsKillSrvDapi(srvObj,
                      reqPropsObj):
     """

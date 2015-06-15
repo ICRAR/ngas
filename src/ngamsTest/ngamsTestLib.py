@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsTestLib.py,v 1.17 2009/02/12 23:17:48 awicenec Exp $"
@@ -28,25 +27,22 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  19/04/2002  Created
 #
-
 """
 This module contains test utilities used to build the NG/AMS Functional Tests.
 """
-
 # TODO: Check for each function if it can be moved to the ngamsTestSuite Class.
 
-import os, sys, time, string, unittest, socket, getpass, commands, re, glob, subprocess, signal
-import cPickle, shutil
-import pcc, PccUtUtils, PccUtTime
-from   ngams import *
-import ngamsPClient
-import ngamsDbm, ngamsDb, ngamsStatus, ngamsConfig, ngamsServer
-import ngamsLib
-import ngamsCmdHandling
-import ngamsDataCheckThread, ngamsJanitorThread, ngamsSubscriptionThread
-import ngamsArchiveCmd, ngamsReqProps, ngamsHighLevelLib
-import ngamsRemFileCmd, ngamsCloneCmd, ngamsRemDiskCmd, ngamsRegisterCmd
-import ngamsFileUtils
+import os, sys, time, unittest, socket, getpass, commands, re, glob, subprocess, signal, shutil
+
+from ngamsLib.ngamsCore import ngamsGetSrcDir, getHostName, TRACE, info, \
+    ngamsCopyrightString, rmFile, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BAD_FILES_DIR, \
+    NGAMS_PROC_DIR, error, cleanList, setLogCond, getVerboseLevel, logFlush, \
+    cpFile, getLogLevel, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
+    checkIfIso8601
+from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
+from ngamsPClient import ngamsPClient
+from pccUt import PccUtUtils, PccUtTime
+
 
 try:
     import pcfitsio
@@ -564,18 +560,6 @@ def genErrMsgVals(msg,
     Returns:   Buffer with message (string).
     """
     return msg + "\nRef Val: " + str(refVal) + "\nAct Val: " + str(actVal)
-
-
-def remove(path):
-    """
-    Remove the given file or directory + sub-directories. Executes a
-    'rm -rf'.
-
-    path:     Path to remove (string).
-
-    Returns:  Void.
-    """
-    os.system("rm -rf " + path)
 
 
 def copyFile(srcFile,

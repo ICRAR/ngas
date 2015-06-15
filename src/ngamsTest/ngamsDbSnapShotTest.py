@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDbSnapShotTest.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,14 +27,21 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  21/11/2003  Created
 #
-
 """
 This module contains the Test Suite for the DB Snapshot Feature.
 """
 
-import os, sys, commands, time, glob
-from   ngams import *
-from   ngamsTestLib import *
+import commands
+import glob
+import os
+import sys
+import time
+
+from ngamsLib import ngamsConfig
+from ngamsLib.ngamsCore import getHostName, NGAMS_CLONE_CMD, NGAMS_REMFILE_CMD, \
+    NGAMS_REMDISK_CMD, checkCreatePath, NGAMS_REGISTER_CMD, info
+from ngamsPClient import ngamsPClient
+from ngamsTestLib import saveInFile, ngamsTestSuite, runTest
 
 
 NM2IDX = "___NM2ID___"

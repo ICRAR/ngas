@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsSrvTestDynReqCallBack.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,16 +27,18 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  07/10/2004  Created
 #
-
 """
 Child class of ngamsServer where the test case code can define how requests
 are handled.
 """
 
-import os, sys, time
-from   ngams import *
-import ngamsServer
-from   ngamsTestLib import *
+import sys
+import time
+
+from ngamsLib.ngamsCore import TRACE, info, NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, \
+    NGAMS_STATUS_CMD, NGAMS_ARCHIVE_CMD
+from ngamsServer import ngamsServer
+from ngamsTestLib import loadFile
 
 
 class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):

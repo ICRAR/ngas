@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsTest.py,v 1.7 2008/08/19 20:51:50 jknudstr Exp $"
@@ -33,20 +32,21 @@ Test program that runs all the NG/AMS Unit Tests. It is also possible to
 generate a profile of the test, from which it can be seen which functions
 where not tested.
 """
-
 # TODO: Implement a test DB in which times for executing the tests are stored.
 #       There should be a window of 100 test runs per node per test suite.
 #       This information will be printed out when executing the tests in the
 #       test report.
 
-
 import os, sys, glob, getpass, time
-import cProfile as profile
 import pstats
-import pcc, PccUtUtils, PccUtTime
-from ngams import *
-import ngamsConfig, ngamsHighLevelLib
-import ngamsLib
+
+import cProfile as profile
+from ngamsLib.ngamsCore import NGAMS_SRC_DIR, getHostName, getNgamsVersion, trim, \
+    ngamsCopyrightString, rmFile
+from ngamsLib import ngamsConfig, ngamsHighLevelLib, ngamsLib
+from pccUt import PccUtTime, PccUtUtils
+
+
 try:
     import ngamsTestLib
 except Exception, e:
@@ -275,7 +275,7 @@ def genStatus():
         else:
             statObj.add(repFileDic[mod])
     for mod in repFileDic.keys():
-        ngamsTestLib.remove(repFileDic[mod])
+        rmFile(repFileDic[mod])
     statObj.strip_dirs() 
     #statObj.print_stats()
     proWidth, proList = statObj.get_print_list(())
@@ -365,8 +365,6 @@ def parseCommandLine(argv):
             correctUsage()
             sys.exit(1)
         idx += 1
-    if (not notifyemail):
-        raise Exception, "Specify parameter: -notifyEmail <Rec List>"
     if (not cfg):
         raise Exception, "Specify parameter: -cfg <Ref. Cfg. File>"
 

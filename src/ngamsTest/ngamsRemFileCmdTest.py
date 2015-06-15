@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsRemFileCmdTest.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,15 +27,18 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  18/11/2003  Created
 #
-
 """
 This module contains the Test Suite for the REMFILE Command.
 """
 
-import os, sys
-from   ngams import *
-import ngamsFileInfo
-from   ngamsTestLib import *
+import os
+import sys
+
+from ngamsLib import ngamsFileInfo
+from ngamsLib.ngamsCore import getHostName, NGAMS_REMFILE_CMD, NGAMS_CLONE_CMD
+from ngamsPClient import ngamsPClient
+from ngamsTestLib import ngamsTestSuite, waitReqCompl, saveInFile, \
+    filterDbStatus1, getClusterName, sendPclCmd, sendExtCmd, runTest
 
 
 class ngamsRemFileCmdTest(ngamsTestSuite):

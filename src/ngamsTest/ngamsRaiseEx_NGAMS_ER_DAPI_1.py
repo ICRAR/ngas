@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsRaiseEx_NGAMS_ER_DAPI_1.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,17 +27,17 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  10/05/2001  Created
 #
-
 """
 This DAPI exits with an NGAMS_ER_DAPI exception, which should make the
 NG/AMS Server Back-Log Buffer the file.
 
 The errors in the stack are: NGAMS_ER_DAPI and NGAMS_ER_DB_COM.
 """
-
-from ngams import *
-
 # DAPI function.
+
+from ngamsLib.ngamsCore import genLog
+
+
 def ngamsRaiseEx_NGAMS_ER_DAPI_1(srvObj,
                                reqPropsObj):
     """

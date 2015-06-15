@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsOfflineCmdTest.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,14 +27,14 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  20/11/2003  Created
 #
-
 """
 This module contains the Test Suite for the OFFLINE Command.
 """
 
-import os, sys
-from   ngams import *
-from   ngamsTestLib import *
+import sys
+
+from ngamsLib.ngamsCore import getHostName, NGAMS_OFFLINE_CMD, info
+from ngamsTestLib import ngamsTestSuite, sendExtCmd, runTest
 
 
 class ngamsOfflineCmdTest(ngamsTestSuite):

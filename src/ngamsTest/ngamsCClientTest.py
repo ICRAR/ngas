@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsCClientTest.py,v 1.8 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,14 +27,19 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  10/11/2003  Created
 #
-
 """
 This module contains the Test Suite for the NG/AMS C-Client and C-API.
 """
 
-import os, sys, time
-from   ngams import *
-from   ngamsTestLib import *
+import commands
+import os
+import sys
+import time
+
+from ngamsLib import ngamsStatus
+from ngamsLib.ngamsCore import getHostName, info, rmFile, cpFile
+from ngamsTestLib import ngamsTestSuite, saveInFile, loadFile, \
+    filterOutLines, getClusterName, sendPclCmd, STD_DISK_STAT_FILT, runTest
 
 
 def _genPars(parValList):

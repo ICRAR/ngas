@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsRetrieveCmdTest.py,v 1.7 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,15 +27,21 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  23/04/2002  Created
 #
-
 """
 This module contains the Test Suite for the RETRIEVE Command.
 """
 
-import os, sys
-from   ngams import *
-from   ngamsTestLib import *
-import ngamsRetrieveCmd
+import commands
+import os
+import sys
+
+from ngamsLib import ngamsConfig
+from ngamsLib.ngamsCore import getHostName, info, NGAMS_RETRIEVE_CMD, \
+    checkCreatePath, rmFile
+from ngamsLib.ngamsHighLevelLib import genTmpFilename
+from ngamsPClient import ngamsPClient
+from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
+    getClusterName, getNcu11, getNmu, sendPclCmd, runTest, waitTillSuspended
 
 
 class ngamsRetrieveCmdTest(ngamsTestSuite):

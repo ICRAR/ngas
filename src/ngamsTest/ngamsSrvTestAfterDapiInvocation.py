@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsSrvTestAfterDapiInvocation.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,15 +27,13 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  07/10/2004  Created
 #
-
 """
 Child class of ngamsServer killing itself immediately before invoking the DAPI.
 """
 
-import os, sys, time
-from   ngams import *
-import ngamsServer
-from   ngamsTestLib import *
+import sys
+
+from ngamsServer import ngamsServer
 
 
 class ngamsSrvTestAfterDapiInvocation(ngamsServer.ngamsServer):

@@ -20,11 +20,13 @@
 #    MA 02111-1307  USA
 #
 
-import os, sys, string, random
-import ngamsLib
 import StringIO
-import ngamsTestLib, ngamsMIMEMultipart
-from ngams import checkCreatePath, rmFile
+import os, sys, string, random
+
+from ngamsLib import ngamsMIMEMultipart, ngamsLib
+from ngamsLib.ngamsCore import rmFile, checkCreatePath
+import ngamsTestLib
+
 
 class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
 

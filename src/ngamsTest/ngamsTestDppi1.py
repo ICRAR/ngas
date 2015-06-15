@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsTestDppi1.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  09-06-2005  Created
 #
-
 """
 Test DPPI to test the functioning of the RETRIEVE Command used in conjuction
 with DPPI processing.
@@ -36,8 +34,8 @@ with DPPI processing.
 
 import commands
 
-from ngams import *
-import ngamsPlugInApi, ngamsDppiStatus
+from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
+from ngamsLib.ngamsCore import info, NGAMS_PROC_FILE, NGAMS_PROC_DATA
 
 
 def ngamsTestDppi1(srvObj,

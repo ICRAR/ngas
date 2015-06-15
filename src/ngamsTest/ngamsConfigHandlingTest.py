@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsConfigHandlingTest.py,v 1.7 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,17 +27,17 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  24/06/2004  Created
 #
-
 """
 This module contains the Test Suite for the handling of the NG/AMS
 Configuration, in particular, the handling of the configuration in the
 DB is tested.
 """
 
-import os, sys
-from   ngams import *
-import ngamsDb, ngamsConfig
-from   ngamsTestLib import *
+import sys
+
+from ngamsLib import ngamsConfig, ngamsDb
+from ngamsTestLib import getRefCfg, delNgasTbls, ngamsTestSuite, \
+    saveInFile, sendPclCmd, filterDbStatus1, runTest
 
 
 stdCfgGrIdList = ["ngamsCfg-Test", "ArchiveHandling-Test",

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsCheckFileCmdTest.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,14 +27,15 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  10/11/2003  Created
 #
-
 """
 This module contains the Test Suite for the CHECKFILE Command.
 """
 
-import os, sys
-from   ngams import *
-from   ngamsTestLib import *
+import sys
+
+from ngamsLib.ngamsCore import getHostName, NGAMS_CHECKFILE_CMD
+from ngamsTestLib import ngamsTestSuite, sendPclCmd, saveInFile, \
+    loadFile, getClusterName, sendExtCmd, runTest
 
 
 class ngamsCheckFileCmdTest(ngamsTestSuite):
