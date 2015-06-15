@@ -13,8 +13,8 @@ Class to handle DIDs.
 """
 
 import sys, exceptions
-from PccLog import *
-import PccUtString, PccUtList
+from pccLog.PccLog import info, setLogCond, getVerboseLevel
+from pccUt import PccUtList
 import PccDidBase, PccDidHdr, PccDidRec, PccDidException
 
 

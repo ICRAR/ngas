@@ -14,8 +14,9 @@ Module providing the PccPaf class to handle PAF files.
 See documentation for PccPaf for futher information.
 """
 
-import sys
-import PccUtString, PccUtList, PccKey
+import re, sys, string
+from pccUt  import PccUtString, PccUtList
+from pccKey import PccKey
 
 
 class PccPaf:

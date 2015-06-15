@@ -52,6 +52,8 @@ o LOG5: For very detailed, very repetitive information (at bit level).
 o LOG_OFF: No logging.
 """
 
+import exceptions
+
 # Undefined property.
 UNDEFINED = -1
 
@@ -100,13 +102,13 @@ def procStatus2No(statusStr):
 
     Returns:     Status ID number.
     """
-    if (statusNo == SUCCESS_STR):
+    if (statusStr == SUCCESS_STR):
         return SUCCESS
-    elif (statusNo == FAILURE_STR):
+    elif (statusStr == FAILURE_STR):
         return FAILURE
-    elif (statusNo == IDLE_STR):
+    elif (statusStr == IDLE_STR):
         return IDLE
-    elif (statusNo == EXECUTING_STR):
+    elif (statusStr == EXECUTING_STR):
         return EXECUTING
     else:
         raise exceptions.Exception, \

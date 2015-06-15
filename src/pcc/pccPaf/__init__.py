@@ -9,7 +9,7 @@
 
 
 """
-The pccPaf module contains classes to hand PAF Files.
+The pccPaf package contains classes to hand PAF Files.
 """
 
 # --- oOo ---

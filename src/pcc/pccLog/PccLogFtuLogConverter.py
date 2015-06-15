@@ -14,7 +14,8 @@ PccLogInfo objects.
 """
 
 import os.path, string
-import PccLogInfo, PccUtString
+import PccLogInfo
+from pccUt import PccUtString
 
 class PccLogFtuLogConverter:
     """

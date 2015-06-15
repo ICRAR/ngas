@@ -9,7 +9,7 @@
 
 
 """
-The pccFits module contains a simple FITS utility.
+The pccFits package contains a simple FITS utility.
 """
 
 # --- oOo ---

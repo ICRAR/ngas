@@ -13,7 +13,7 @@ Contains classes functions to handle a FITS/PAR keyword card.
 """
 
 import types
-import PccUtString, PccUtUtils
+from pccUt import PccUtString, PccUtUtils
 
 
 def splitKeywordLine(keywordLine):

@@ -45,7 +45,8 @@ else:
         LOG_DEBUG   = 7
 ##################################################################
 
-import PccLogInfo, PccUtTime
+import PccLogInfo
+from pccUt import PccUtTime
 
 # Log Levels.
 LOG0 = 0
@@ -148,17 +149,6 @@ class PccLogMgr:
             self.flush()
         except Exception, e:
             pass
-
-
-    def getLogLocation(self):
-        """
-        Return the flag indicating if the location of the log (from
-        where it was generated) should be added in the log output
-        in the log files.
-
-        Returns:    Value of Log Location Flag (integer/0|1).
-        """
-        return self.__logLocation
 
 
     def setLogLocation(self,

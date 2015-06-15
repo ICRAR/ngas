@@ -9,17 +9,13 @@
 
 
 """
-The pccLog module contains logging facilities.
+The pccLog package contains logging facilities.
 """
-import pcc
-
-__all__ = []
-__all__.extend(['PccLog',
-                'PccLogDef',
-                'PccLogFtuLogConverter',
-                'PccLogInfo',
-                'PccLogMgr',
-                ])
-pcc.__all__.extend(__all__)
+__all__ = ['PccLog',
+           'PccLogDef',
+           'PccLogFtuLogConverter',
+           'PccLogInfo',
+           'PccLogMgr',
+           ]
 
 # --- oOo ---

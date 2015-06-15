@@ -8,7 +8,7 @@
 
 
 """
-The pccDid module contains classes to handle Data Interface Dictionaries.
+The pccDid package contains classes to handle Data Interface Dictionaries.
 """
 
 # --- oOo ---

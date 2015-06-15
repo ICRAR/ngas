@@ -14,7 +14,7 @@ Document.
 """
 
 import sys, exceptions, string, re, types, xml.dom.minidom
-import PccUtString
+from pccUt import PccUtString
 
 # Log types (from UNIX syslog)
 PCC_LOG_EMERGENCY = "EMERGENCY"

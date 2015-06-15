@@ -12,8 +12,8 @@
 Module providing a class for handling a record within a DID.
 """
 
-from   PccLog import *
-import PccUtString
+from   pccUt import PccUtString
+from   pccLog.PccLog import info
 import PccDidBase, PccDidException
 
 

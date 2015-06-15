@@ -13,7 +13,7 @@ Base class for the PCC DID project classes.
 """
 
 import string
-import PccUtString
+from pccUt import PccUtString
 
 class PccDidBase:
     """

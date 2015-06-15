@@ -12,9 +12,8 @@
 Class representing a DID header.
 """
 
-import sys, string
-from PccLog import *
-import PccUtString
+import string
+from   pccUt import PccUtString
 import PccDidException
 
 import PccDidBase, PccDidRevRec
@@ -106,9 +105,9 @@ class PccDidHdr(PccDidBase.PccDidBase):
             if (line != "") and (line[0] != "#"):
                 fields = self.splitField(line)
                 if (fields[0] == "Revision:"):
-                     revRec = PccDidRevRec.PccDidRevRec()
-                     revRec.getRevFields(pccListDidBuf)
-                     self.__revRecs.append(revRec)
+                    revRec = PccDidRevRec.PccDidRevRec()
+                    revRec.getRevFields(pccListDidBuf)
+                    self.__revRecs.append(revRec)
                 elif (fields[0] == "Parameter Name:"):
                     run = 0
 

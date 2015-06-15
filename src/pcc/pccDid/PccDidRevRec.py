@@ -14,8 +14,7 @@ Contains the PccDidRevRec to handle a DID Revision Record.
 
 
 import string
-from PccLog import *
-import PccUtString, PccUtTime
+from pccUt import PccUtString, PccUtTime
 import PccDidBase, PccDidException
 
 

@@ -13,7 +13,8 @@ Module that provides a convenient API to the PCC Log Manager.
 """
 
 import types, threading
-import PccLogMgr, PccUtUtils
+import PccLogMgr
+from pccUt import PccUtUtils
 
 # Remove this when going to v2.1 and import syslog only.
 if (PccLogMgr.sysLog()):

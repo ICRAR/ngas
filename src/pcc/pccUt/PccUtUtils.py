@@ -13,7 +13,6 @@ Module that provide various utilities.
 """
 
 import exceptions, time, popen2, os, select
-from PccLog import *
 
 
 def checkType(parameter,
