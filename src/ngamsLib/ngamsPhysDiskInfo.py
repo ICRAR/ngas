@@ -34,8 +34,7 @@ Contains definition of class to handle the 'physical' information
 for a disk installed in an NGAS system.
 """
 
-from ngams import *
-
+from ngamsCore import prFormat1, ignoreValue
 
 class ngamsPhysDiskInfo:
     """

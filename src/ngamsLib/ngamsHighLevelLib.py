@@ -33,11 +33,18 @@
 Contains higher level common functions. 
 """
 
-import os, socket, threading, random, time, getpass, cPickle, commands, urllib
-import pcc, PccUtTime
-from ngams import *
-import ngamsLib, ngamsDbm, ngamsSmtpLib
-import ngamsHostInfo, ngamsFileInfo, ngamsReqProps, ngamsStatus
+import os, re, string, threading, random, time, commands, urllib
+
+from pccUt import PccUtTime
+from ngamsCore import TRACE, genLog, getHostId, NGAMS_HOST_LOCAL,\
+    NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN, NGAMS_HOST_REMOTE, info, getUniqueNo,\
+    NGAMS_PROC_DIR, NGAMS_UNKNOWN_MT, NGAMS_STAGING_DIR, NGAMS_TMP_FILE_PREFIX,\
+    NGAMS_PICKLE_FILE_EXT, checkCreatePath, error, checkAvailDiskSpace,\
+    getFileSize, NGAMS_BAD_FILES_DIR, NGAMS_BAD_FILE_PREFIX, NGAMS_STATUS_CMD,\
+    mvFile, rmFile
+import ngamsSmtpLib
+import ngamsLib
+import ngamsHostInfo, ngamsStatus
 
 
 # Dictionary with semaphores to ensure mutual exclusion on disk access

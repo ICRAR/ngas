@@ -35,7 +35,8 @@ This module contains the Test Suite for the REMDISK Command.
 
 import os, sys, glob
 from   ngams import *
-import ngamsLib, ngamsDiskInfo, ngamsStatus, ngamsHighLevelLib, ngamsPClient
+import ngamsDiskInfo, ngamsStatus, ngamsHighLevelLib, ngamsPClient
+import ngamsLib
 from   ngamsTestLib import *
 
 

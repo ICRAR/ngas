@@ -1,4 +1,3 @@
-
 #    ICRAR - International Centre for Radio Astronomy Research
 #    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
@@ -18,29 +17,28 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 #
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      2014-10-15  Created
-
 """
 Compression, CRC, and transfer to MIT job plugin that will be called
 by the SubscriptionThread._deliveryThread
 """
-
-import commands, os, binascii, urllib2
-
-from ngams import *
-import ngamsPlugInApi
-
 """
 curl 146.118.84.67:7792/SUBSCRIBE?priority=1\&url=ngasjob://ngamsJob_MITDeliveryPlugin%3Fredo_on_fail%3D0\&subscr_id=COMPRESS_TO_MIT_SYNC\&filter_plug_in=ngamsJob_MITDeliveryFI\&start_date=2014-10-01T05:16:05.660
 nohup /home/ngas/ngas_rt/bin/python /home/ngas/ngas_rt/src/ngamsServer/ngamsDataMoverServer.py -cfg /home/ngas/ngas_rt/cfg/NgamsCfg.PostgreSQL.fe04_dm_mit_sync02.xml -autoOnline -force -multiplesrvs > /dev/null&
 
 """
+
+import commands, os, binascii, urllib2
+
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import error, info, warning
+
+
 uvcompress = '/home/ngas/ngas_rt/bin/uvcompress'
 
 def execCmd(cmd, failonerror = False):

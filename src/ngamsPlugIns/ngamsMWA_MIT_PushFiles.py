@@ -19,31 +19,27 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # Who                   When             What
 # -----------------   ----------      ------------
 # chen.wu@icrar.org  03/Aug/2013        Created
-
 """
 This module pushes missing files to MIT in a semi-automated fashion
 """
-from optparse import OptionParser
-import pcc
 
-import psycopg2
-import os.path
-import urllib2
 import cPickle as pickle
 from cPickle import UnpicklingError
+from optparse import OptionParser
 import socket, base64
+import urllib2
 
-from ngams import *
-import ngamsPlugInApi
-import ngamsPClient
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import NGAMS_STATUS_CMD, NGAMS_FAILURE, NGAMS_SOCK_TIMEOUT_DEF
+from ngamsPClient import ngamsPClient
+from ngamsPlugIns.ngamsMWAAsyncProtocol import AsyncListRetrieveRequest
+import psycopg2
 
-from ngamsMWAAsyncProtocol import *
 
 mime_type = 'application/octet-stream'
 #proxy_archive = 'storage01.icrar.org:7777'

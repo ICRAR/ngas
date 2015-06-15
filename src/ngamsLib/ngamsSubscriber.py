@@ -33,12 +33,11 @@
 Contains classes to handle the information about each Subscriber and
 the complete set of Subscribers.
 """
+import random
 import xml.dom.minidom
 
-import pcc, PccUtTime
-import random
-
-from ngams import *
+from pccUt import PccUtTime
+from ngamsCore import info, timeRef2Iso8601, TRACE, prFormat1
 
 
 class ngamsSubscriber:

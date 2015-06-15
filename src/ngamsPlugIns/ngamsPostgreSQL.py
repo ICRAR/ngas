@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsPostgreSQL.py,v 0.1 2012/04/25 13:19:08 cwu Exp $"
@@ -32,7 +31,6 @@
 # awicenec  2013-02-15  re-established _queyRewrite to cover change from
 #                       ignore to file_ignore
 #
-
 """
 This module contains two classes:
 
@@ -43,11 +41,13 @@ The ngamsPostgreSQLCursor class, which implements a cursor object based on
 the NG/AMS Cursor Object API definition.
 """
 
+import threading
 import time, re
 import pgdb
-import pcc, PccUtTime
-from   ngams import *
+
 from   mx import DateTime
+from ngamsLib.ngamsCore import TRACE, info, error
+from pccUt import PccUtTime
 
 
 class ngamsPostgreSQL:

@@ -36,10 +36,11 @@ the NG/AMS Status Report.
 
 import sys, xml.dom.minidom, types
 
-import pcc, PccUtTime
-
-from ngams import *
-import ngamsLib, ngamsConfig, ngamsDiskInfo, ngamsFileInfo, ngamsFileList
+from pccUt import PccUtTime
+from ngamsCore import iso8601ToSecs, isoTime2Secs, getAsciiTime,\
+     ngamsGetChildNodes, NGAMS_XML_STATUS_ROOT_EL, getAttribValue, TRACE,\
+     prFormat1
+import ngamsConfig, ngamsDiskInfo, ngamsFileList
 import ngamsContainer
 
 

@@ -27,15 +27,15 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      02/Dec/2014  Created
-
-import os, commands, re
-
-from ngams import *
-
 """
 This job plugin rename all phase 2 measurementset files
 The system must already have pigz installed
 """
+
+import os, commands, re
+
+from ngamsLib.ngamsCore import info
+
 
 phase2_line = "solutions.bin"
 phase2_label = "phase2"

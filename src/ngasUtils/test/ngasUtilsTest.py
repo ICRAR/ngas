@@ -42,7 +42,8 @@ listed.
 import os, sys, glob, getpass, profile, pstats, time
 import pcc, PccUtUtils, PccUtTime
 from ngams import *
-import ngamsLib, ngamsConfig, ngamsHighLevelLib
+import ngamsConfig, ngamsHighLevelLib
+import ngamsLib
 try:
     import ngamsTestLib
     import ngasUtilsTestLib

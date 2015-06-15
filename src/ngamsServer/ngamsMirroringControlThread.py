@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsMirroringControlThread.py,v 1.27 2010/06/18 12:03:55 awicenec Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  27/03/2008  Created
 #
-
 """
 This module contains the code for the Mirroring Control Thread, which is used
 to coordinate the mirroring of the local NGAS Cluster with other NGAS Clusters.
@@ -36,35 +34,30 @@ to coordinate the mirroring of the local NGAS Cluster with other NGAS Clusters.
 The NGAS Mirroring Service is running as a background service which does not
 consume soo many resources for the general command handling.
 """
-
 # TODO:
 #   - Detailed reporting not yet implemented.
+# Various definitions used within this module.
+# Definitions for internal DBM based queues used.
 
-
-from ngams import *
-import ngamsLib
-import ngamsFileInfo
-import ngamsStatus
-import ngamsHighLevelLib
-import ngamsDbm
-import ngamsMirroringRequest
+import base64
+import copy
+import httplib
 import os
-import sys
-import time
+import random
 import thread
 import threading
-import random
-import copy
-import base64
-import pcc
-import PccUtTime
-import urllib,httplib
+import time
+
+from ngamsLib.ngamsCore import TRACE, info, NGAMS_MIR_CONTROL_THR, rmFile, \
+    cleanList, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, \
+    NGAMS_HTTP_HDR_CONTENT_TYPE, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_SUCCESS, notice, \
+    warning, alert, getHostId, NGAMS_STATUS_CMD, decompressFile, \
+    NGAMS_HTTP_PAR_FILE_LIST_ID, getAsciiTime, iso8601ToSecs, getTestMode, \
+    NGAMS_HTTP_PAR_FILE_LIST, NGAMS_HTTP_PAR_UNIQUE, NGAMS_HTTP_PAR_MAX_ELS, \
+    NGAMS_HTTP_PAR_FROM_ING_DATE, timeRef2Iso8601
+from ngamsLib import ngamsFileInfo, ngamsStatus, ngamsHighLevelLib, ngamsDbm, ngamsMirroringRequest, ngamsLib
 
 
-
-# Various definitions used within this module.
-
-# Definitions for internal DBM based queues used.
 NGAMS_MIR_QUEUE_DBM          = "MIR_QUEUE"
 NGAMS_MIR_ERR_QUEUE_DBM      = "MIR_ERROR_QUEUE"
 NGAMS_MIR_COMPL_QUEUE_DBM    = "MIR_COMPLETED_QUEUE"

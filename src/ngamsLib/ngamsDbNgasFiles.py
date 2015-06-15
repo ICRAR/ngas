@@ -36,13 +36,20 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
+import commands
 import cPickle
+import os
+import re
+import time
 
-from   ngams import *
-import ngamsLib, ngamsDbm, ngamsDbCore
+from pccUt import PccUtTime
+from ngamsCore import info, warning, error, getHostId, rmFile, getTestMode, notice, getUniqueNo, getNgamsVersion, timeRef2Iso8601
+from ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE, NGAMS_PICKLE_FILE_EXT, NGAMS_TMP_FILE_EXT
+import ngamsDbm, ngamsDbCore
+import ngamsLib
 
 # TODO: Avoid using these classes in this module (mutual dependency):
-import ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsFileList
+import ngamsFileInfo, ngamsStatus, ngamsFileList
 
 
 class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
@@ -431,10 +438,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             return self
         except Exception, e:
             if (fileInfoDbmName): rmFile(fileInfoDbmName)
-            try:
-                del cursorObj
-            except:
-                pass
             raise e
 
 

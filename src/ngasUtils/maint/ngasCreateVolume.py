@@ -49,7 +49,8 @@ import sys, os, time, getpass
 import pcc, PccUtTime
 
 from ngams import *
-import ngamsDb, ngamsDbm, ngamsLib, ngamsStatus, ngamsFileInfo, ngamsDiskInfo
+import ngamsDb, ngamsDbm, ngamsStatus, ngamsFileInfo, ngamsDiskInfo
+import ngamsLib
 import ngamsConfig, ngamsJanitorThread
 import ngamsPClient
 import ngasUtils, ngasUtilsLib

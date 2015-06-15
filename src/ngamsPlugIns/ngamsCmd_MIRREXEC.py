@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsCmd_MIRREXEC.py,v 1.7 2010/06/22 18:55:03 awicenec Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jagonzal  2009/12/15  Created
 #
-
 """
 NGAS Command Plug-In, implementing a command to actually perform mirroring tasks
 
@@ -54,11 +52,13 @@ EXAMPLES:
     
 """
 
-from ngams import *
-import ngamsLib, ngamsStatus, ngamsDbm
-import urllib,httplib
-from time import *
-from threading import *
+from threading import Thread
+from time import time, strftime, gmtime
+import urllib, httplib
+
+from ngamsLib import ngamsLib
+from ngamsLib.ngamsCore import TRACE, info, getHostName
+
 
 def handleCmd(srvObj,
               reqPropsObj,
@@ -86,9 +86,9 @@ def handleCmd(srvObj,
     if (reqPropsObj.hasHttpPar("mirror_cluster")):
         mirror_cluster = int(reqPropsObj.getHttpPar("mirror_cluster")) 
     if (reqPropsObj.hasHttpPar("n_threads")):
-       n_threads = int(reqPropsObj.getHttpPar("n_threads"))
+        n_threads = int(reqPropsObj.getHttpPar("n_threads"))
     if (reqPropsObj.hasHttpPar("order")):
-       order = int(reqPropsObj.getHttpPar("order"))
+        order = int(reqPropsObj.getHttpPar("order"))
 
     # Centralized cluster mirroring
     if (mirror_cluster == 1):
@@ -187,11 +187,11 @@ def get_active_source_nodes(srvObj,cluster_name="none",full_qualified_name="none
 
     # Construct query
     if (full_qualified_name == "none"):
-       query = "select source_host from ngas_mirroring_bookkeeping where status='READY' and target_cluster='" + cluster_name +"' group by source_host"
-       info(4, "Executing SQL query to get active nodes with files to mirror for cluster %s: %s" % (cluster_name,query))
+        query = "select source_host from ngas_mirroring_bookkeeping where status='READY' and target_cluster='" + cluster_name +"' group by source_host"
+        info(4, "Executing SQL query to get active nodes with files to mirror for cluster %s: %s" % (cluster_name,query))
     else:
-       query = "select source_host from ngas_mirroring_bookkeeping where status='READY' and target_host='" + full_qualified_name +"' group by source_host"
-       info(4, "Executing SQL query to get active nodes with files to mirror for local server %s: %s" % (full_qualified_name,query))
+        query = "select source_host from ngas_mirroring_bookkeeping where status='READY' and target_host='" + full_qualified_name +"' group by source_host"
+        info(4, "Executing SQL query to get active nodes with files to mirror for local server %s: %s" % (full_qualified_name,query))
 
     # Execute query
     source_nodes = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
@@ -200,7 +200,7 @@ def get_active_source_nodes(srvObj,cluster_name="none",full_qualified_name="none
     source_nodes = source_nodes[0]
     active_source_nodes = []
     for node in source_nodes:
-       if ngams_server_status(node[0]): active_source_nodes.append(node[0]) 
+        if ngams_server_status(node[0]): active_source_nodes.append(node[0]) 
     
     # Return result
     return active_source_nodes
@@ -229,7 +229,7 @@ def get_active_target_nodes(cluster_name,srvObj):
     target_nodes = target_nodes[0]
     active_target_nodes = []
     for node in target_nodes:
-       if ngams_server_status(node[0]): active_target_nodes.append(node[0]) 
+        if ngams_server_status(node[0]): active_target_nodes.append(node[0]) 
 
     # Log info
     info(3, "Active nodes found in cluster %s: %s" % (cluster_name,str(active_target_nodes)))
@@ -463,9 +463,9 @@ def multithreading_mirroring(source_nodes_list,target_nodes_list,n_threads,total
                 # Flip inner sequence order so that we have a mixture
                 # of big files/small files arriving to the target node
                 if (inner_sequence_reverse_flag):
-                     inner_sequence_reverse_flag = False
+                    inner_sequence_reverse_flag = False
                 else:
-                     inner_sequence_reverse_flag = True
+                    inner_sequence_reverse_flag = True
                 # Increase source_i counter (for cut-off file_size)
                 source_i += 1
     
@@ -554,7 +554,7 @@ def distributed_mirroring(target_nodes_list,n_threads):
     sequence_order = 1
     machine_conf = []
     for target_node in sorted_target_nodes_list:
-	# Get host machine sequence order info
+    # Get host machine sequence order info
         machine = target_node.split(".")[0]
         conf_1 = [machine,sequence_order]
         conf_2 = [machine,1*(sequence_order==0)]

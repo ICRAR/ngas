@@ -36,8 +36,11 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
-from   ngams import *
-import ngamsLib, ngamsDbm, ngamsDbCore
+import time
+from ngamsCore import TRACE, warning, error, notice, getHostId, rmFile, getTestMode
+from ngamsCore import NGAMS_FILE_STATUS_OK, NGAMS_FILE_CHK_ACTIVE,NGAMS_DB_CH_FILE_UPDATE, NGAMS_DB_CH_FILE_INSERT
+import ngamsDbm, ngamsDbCore
+import ngamsLib
 
 # TODO: Avoid using these classes in this module (mutual dependency):
 import ngamsFileInfo

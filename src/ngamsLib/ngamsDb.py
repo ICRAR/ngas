@@ -34,8 +34,7 @@ Front-end class for the DB access module. It loads all DB sub-modules needed
 to expose only one class (module) to the rest of the SW.
 """
 
-from ngams import *
-from ngamsDbBase import *
+from ngamsDbBase import ngamsDbBase
 
 
 class ngamsDb(ngamsDbBase):

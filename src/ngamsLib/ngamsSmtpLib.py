@@ -36,7 +36,6 @@ file.
 
 import os, smtplib
 
-
 class ngamsSMTP(smtplib.SMTP):
     """
     This is a sub-class of the smtplib.SMTP class. The purpose is to make
@@ -79,7 +78,7 @@ class ngamsSMTP(smtplib.SMTP):
         (code, repl) = self.getreply()
         if self.debuglevel >0 : print "data:", (code, repl)
         if code != 354:
-            raise SMTPDataError(code, repl)
+            raise smtplib.SMTPDataError(code, repl)
         else:
             if (not self.__msgInFile):
                 # Data contained in the message in memory.

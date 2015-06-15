@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsRegisterCmd.py,v 1.8 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,17 +27,29 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  02/04/2002  Created
 #
-
 """
 Contains functions for handling the REGISTER command.
 """
 
-import os, glob, thread, time, cPickle, commands
-import PccUtTime
-from   ngams import *
-import ngamsDbm, ngamsDbCore, ngamsDb, ngamsLib, ngamsDiskUtils, ngamsReqProps
-import ngamsFileInfo, ngamsFileList, ngamsDiskInfo
-import ngamsHighLevelLib, ngamsArchiveUtils, ngamsNotification
+import commands
+import os
+import thread
+import threading
+import time
+
+from pccUt import PccUtTime
+from ngamsLib.ngamsCore import TRACE, rmFile, info, NGAMS_HTTP_GET, \
+    NGAMS_REGISTER_CMD, getHostId, notice, mvFile, getFileCreationTime, \
+    NGAMS_FILE_STATUS_OK, genLog, sysLogInfo, error, NGAMS_SUCCESS, \
+    NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, NGAMS_TEXT_MT, \
+    NGAMS_NOTIF_INFO, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
+    NGAMS_VOLUME_INFO_FILE, NGAMS_REGISTER_THR, getThreadName, \
+    NGAMS_HTTP_SUCCESS, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
+    NGAMS_BUSY_SUBSTATE
+from ngamsLib import ngamsDbm, ngamsReqProps, ngamsFileInfo, ngamsDbCore, \
+    ngamsHighLevelLib, ngamsDiskUtils, ngamsLib, ngamsFileList, \
+    ngamsNotification, ngamsDiskInfo
+import ngamsArchiveUtils, ngamsCacheControlThread
 
 
 def _registerExec(srvObj,

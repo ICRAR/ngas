@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsEscaladeUtils.py,v 1.9 2008/08/19 20:43:56 jknudstr Exp $"
@@ -28,14 +27,14 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  10/05/2001  Created,
 #
-
 """
 This module contains tools for interacting with the Escalade 6800 controller.
 """
 
 import string, urllib, commands
-from   ngams import *
-import ngamsLib, ngamsPhysDiskInfo
+
+from ngamsLib.ngamsCore import TRACE, warning, trim, info, cleanList
+from ngamsLib import ngamsPhysDiskInfo, ngamsLib
 
 
 def parseHtmlInfo(url,

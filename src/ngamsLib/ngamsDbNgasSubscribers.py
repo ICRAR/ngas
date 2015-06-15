@@ -36,7 +36,8 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
-from   ngams import *
+from pccUt import PccUtTime
+from ngamsCore import TRACE
 import ngamsDbCore
 
 

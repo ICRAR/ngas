@@ -33,10 +33,8 @@
 Contains code for handling the CACHEDEL Command.
 """
 
-import pcc, PccUtTime
-from ngams import *
-import ngamsLib
 import ngamsFileUtils, ngamsCacheControlThread
+from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, info, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, NGAMS_HOST_CLUSTER, TRACE
 
 
 def cacheDel(srvObj,

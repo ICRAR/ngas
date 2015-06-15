@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsRemFileCmd.py,v 1.6 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,18 +27,17 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  15/04/2002  Created
 #
-
 """
 Functions to handle the REMFILE Command.
 """
 
-import os, glob, time
+import os
 
-from ngams import *
-import ngamsDbm, ngamsDbCore, ngamsDb, ngamsLib
-import ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsDiskInfo
-import ngamsFileList, ngamsHighLevelLib, ngamsDiskUtils
-import ngamsSrvUtils, ngamsFileUtils, ngamsRemUtils
+from ngamsLib import ngamsDbm, ngamsDbCore, ngamsHighLevelLib
+from ngamsLib.ngamsCore import genLog, NGAMS_REMFILE_CMD, warning, getHostId, \
+    info, rmFile, NGAMS_SUCCESS, TRACE, error, NGAMS_XML_STATUS_ROOT_EL, \
+    NGAMS_XML_STATUS_DTD, NGAMS_HTTP_SUCCESS
+import ngamsRemUtils
 
 
 def _remFile(srvObj,

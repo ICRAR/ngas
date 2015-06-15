@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDbConPool.py,v 1.4 2009/06/02 07:46:19 awicenec Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  30/04/2008  Created
 #
-
 """
 The ngamsDbConPool is an NG/AMS DB Interface Driver, which implements a 
 DB connection pool. The actual connections in the pool are 'normal' NG/AMS
@@ -38,10 +36,8 @@ parameters.
 
 import threading, Queue
 
-import pcc, PccUtTime
-from   ngams import *
-import ngamsPlugInApi
- 
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import TRACE, getHostName, info
 
 
 def _getObjId(obj):
@@ -84,30 +80,30 @@ class ngamsDbConPool:
 
                            'Driver=(Driver Name),Connections=(#)'     (string).
         """
-	T = TRACE()
+        T = TRACE()
 
         self.__server      = server
         self.__db          = db
         self.__user        = user
         self.__password    = password
         self.__application = application
-	self.__parameters  = parameters
-	parDic = ngamsPlugInApi.parseRawPlugInPars(parameters)
-	try:
-	    self.__driver      = parDic["Driver"]
-	    self.__connections = int(parDic["Connections"])
-	except Exception, e:
-	    msg = "Incorrect input parameters for ngamsDbConPool DB " +\
-                  "Driver. Must specify: Driver=(Driver Name),Connection=(#)"
-	    raise Exception, msg
-	self.__conCount    = 0
-	self.__poolSem     = threading.Lock()
-	self.__idleCons    = Queue.Queue()
-	# Create and insert one connection in the queue, usually at least one 
-	# connection will be needed. This connection is at the same time used
-	# as utility connection, although no queries are done through this 
-	# connection. Amongst other, it is used as DB cursor factory.
-	self.__utilDrvObj  = self._allocConnection()
+        self.__parameters  = parameters
+        parDic = ngamsPlugInApi.parseRawPlugInPars(parameters)
+        try:
+            self.__driver      = parDic["Driver"]
+            self.__connections = int(parDic["Connections"])
+        except Exception, e:
+            msg = "Incorrect input parameters for ngamsDbConPool DB " +\
+                      "Driver. Must specify: Driver=(Driver Name),Connection=(#)"
+            raise Exception, msg
+        self.__conCount    = 0
+        self.__poolSem     = threading.Lock()
+        self.__idleCons    = Queue.Queue()
+        # Create and insert one connection in the queue, usually at least one 
+        # connection will be needed. This connection is at the same time used
+        # as utility connection, although no queries are done through this 
+        # connection. Amongst other, it is used as DB cursor factory.
+        self.__utilDrvObj  = self._allocConnection()
 
 
     def getDriverId(self):
@@ -116,7 +112,7 @@ class ngamsDbConPool:
 
         Return:    Driver version (string).
         """
-	T = TRACE()
+        T = TRACE()
 
         return self.__utilDrvObj.getDriverId()
     
@@ -145,11 +141,11 @@ class ngamsDbConPool:
   
         Returns:         Reference to object itself.
         """
-	T = TRACE()
+        T = TRACE()
 
-	# The connect() method does not have a meaning in the case of the
-	# connection pool class, as the connections are managed per 
-	# DB connection and not globally.
+        # The connect() method does not have a meaning in the case of the
+        # connection pool class, as the connections are managed per 
+        # DB connection and not globally.
         return self
 
         
@@ -159,89 +155,88 @@ class ngamsDbConPool:
 
         Returns:    Reference to object itself (ngamsSybase).
         """
-	T = TRACE()
+        T = TRACE()
 
-	# The close() method does not have a meaning in the case of the
-	# connection pool class, as the connections are managed per 
-	# DB connection and not globally.
-	return self
+        # The close() method does not have a meaning in the case of the
+        # connection pool class, as the connections are managed per 
+        # DB connection and not globally.
+        return self
 
 
     def _allocConnection(self):
-	"""
-	Allocate a new connection and add it in the pool. This is only done
-	if the maximum specified number of connections have not already been
-	allocated.
+        """
+        Allocate a new connection and add it in the pool. This is only done
+        if the maximum specified number of connections have not already been
+        allocated.
 
-	Returns:    Reference to the allocated connection object 
-                    (NG/AMS DB Driver Plug-In Class).
-	"""
-	T = TRACE()
+        Returns:    Reference to the allocated connection object 
+                        (NG/AMS DB Driver Plug-In Class).
+        """
+        T = TRACE()
 
-	conObj = None
-	try:
-	    self.__poolSem.acquire()
+        conObj = None
+        try:
+            self.__poolSem.acquire()
 
-	    # Check if the maximum number of connections have been created.
-	    if (self.__conCount == self.__connections): 
-		self.__poolSem.release()
-		return None
+            # Check if the maximum number of connections have been created.
+            if (self.__conCount == self.__connections): 
+                self.__poolSem.release()
+                return None
 
-	    # OK, go ahead and create the connection.
-	    exec "import " + self.__driver
+            # OK, go ahead and create the connection.
+            exec "import " + self.__driver
             creStat = "%s.%s('%s', '%s', '%s', '%s', '%s', '%s')" %\
-                      (self.__driver, self.__driver, self.__server, self.__db,
-		       self.__user, self.__password, "NG/AMS:" + getHostName(),
-		       self.__parameters)
+                          (self.__driver, self.__driver, self.__server, self.__db,
+                   self.__user, self.__password, "NG/AMS:" + getHostName(),
+                   self.__parameters)
             info(4, "Creating instance of DB Driver Interface/connecting ...")
             conObj = eval(creStat)
-	    self.__conCount += 1
-	    self.__idleCons.put(conObj)
+            self.__conCount += 1
+            self.__idleCons.put(conObj)
             info(4, "Created instance of DB Driver Interface/connecting")
-   
-	    self.__poolSem.release()
-	    return conObj
-	except Exception, e:
-	    self.__poolSem.release()
-	    msg = "Error allocating DB connection. Error: %s" % str(e)
-	    raise Exception, msg
+
+            self.__poolSem.release()
+            return conObj
+        except Exception, e:
+            self.__poolSem.release()
+            msg = "Error allocating DB connection. Error: %s" % str(e)
+            raise Exception, msg
 
 
     def _getConnection(self):
-	"""
-	Get a connection from the pool. If no connection is free, the 
-	method waits for the next connection to become available/
+        """
+        Get a connection from the pool. If no connection is free, the 
+        method waits for the next connection to become available/
+        
+        Returns:  Reference to next connection object (NG/AMS DB Driver
+                      Object).
+        """
+        T = TRACE(5)
 
-	Returns:  Reference to next connection object (NG/AMS DB Driver
-                  Object).
-	"""
-	T = TRACE(5)
-
-	# Allocate a new connection if not the maximum number of connections
-	# has been reached.
-	if (self.__conCount < self.__connections): self._allocConnection()
-	# Wait for the next free connection.
-	conObj = self.__idleCons.get()
+        # Allocate a new connection if not the maximum number of connections
+        # has been reached.
+        if (self.__conCount < self.__connections): self._allocConnection()
+        # Wait for the next free connection.
+        conObj = self.__idleCons.get()
         info(5, "Got connection: %s" % _getObjId(conObj))
-	return conObj
+        return conObj
 
 
-    def _releaseConnection(self,
-			   conObj):
-	"""
-	Release a connection, previously given, to the pool, making it 
-	available for other threads.
-	
-	conObj:    Connection object to be freed (NG/AMS DB Driver object).
-	
-	Returns:   Reference to object itself.
-	"""
-	T = TRACE(5)
-	
-	# Put the referenced connection object back into the idle queue.
+    def _releaseConnection(self, conObj):
+        """
+        Release a connection, previously given, to the pool, making it 
+        available for other threads.
+        	
+        conObj:    Connection object to be freed (NG/AMS DB Driver object).
+        	
+        Returns:   Reference to object itself.
+        """
+        T = TRACE(5)
+
+        # Put the referenced connection object back into the idle queue.
         info(5, "Releasing connection: %s" % _getObjId(conObj))
-	self.__idleCons.put(conObj)
-	return self
+        self.__idleCons.put(conObj)
+        return self
 
 
     def query(self,
@@ -260,7 +255,7 @@ class ngamsDbConPool:
         Returns:       Result of SQL query (list).
         """
         T = TRACE()
-        
+
         conObj = None
         try:
             conObj = self._getConnection()
@@ -269,14 +264,14 @@ class ngamsDbConPool:
             return res
         except Exception, e:
             if (conObj):
-		              # If the query produces an exception, just reconnect.
+                # If the query produces an exception, just reconnect.
                 try:
-                   conObj.connect(self.__server, self.__db, self.__user,
-				            self.__password, self.__application,
-				            self.__parameters)
+                    conObj.connect(self.__server, self.__db, self.__user,
+                                  self.__password, self.__application,
+                                  self.__parameters)
                 except:
-		          pass
-                  # Delete the connection.
+                    pass
+                # Delete the connection.
                 self._deleteConnection(conObj)
                 del conObj
                 raise Exception, e
@@ -292,7 +287,7 @@ class ngamsDbConPool:
 
         Returns:     Cursor object (NG/AMS Cursor Object).
         """
-	T = TRACE()
+        T = TRACE()
 
         return self.__utilDrvObj.cursor(query)
 
@@ -314,9 +309,8 @@ class ngamsDbConPool:
         Returns:      Timestamp in format, which can be written into a
                       'datetime' column of the DBMS (string).
         """
-	T = TRACE()
-
-	return self.__utilDrvObj.convertTimeStamp(timeStamp)
+        T = TRACE()
+        return self.__utilDrvObj.convertTimeStamp(timeStamp)
 
 
     # TODO: Possible try to change this such that the native Python
@@ -333,7 +327,6 @@ class ngamsDbConPool:
         T = TRACE(5)
         
         return self.__utilDrvObj.convertTimeStampToMx(timeStamp)
-    
 
 if __name__ == '__main__':
     """

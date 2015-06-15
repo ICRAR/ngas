@@ -1,4 +1,3 @@
-
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -20,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsCacheServer.py,v 1.1 2008/08/24 15:32:03 jknudstr Exp $"
@@ -34,10 +32,10 @@
 This module facilitates running the NG/AMS Server in 'caching mode'.
 """
 
-import sys
-import pcc
 
-from   ngams import *
+import sys
+
+from ngamsLib.ngamsCore import TRACE
 import ngamsServer
 
 def main():

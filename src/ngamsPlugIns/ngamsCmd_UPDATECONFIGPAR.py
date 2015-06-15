@@ -17,7 +17,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 #
@@ -25,7 +24,6 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      2013/09/22  Created
 #
-
 """
 Change a particular configuration parameter without having to restart
 NGAS server
@@ -38,9 +36,10 @@ example usage:
 curl 146.118.84.67:7778/UPDATECONFIGPAR?config_param=NgamsCfg.Server%5B1%5D.BlockSize\&config_value=262144
 
 """
+
 import traceback
 
-from ngams import *
+from ngamsLib.ngamsCore import info, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """

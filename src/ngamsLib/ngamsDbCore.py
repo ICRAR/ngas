@@ -19,6 +19,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+import importlib
 
 #******************************************************************************
 #
@@ -33,11 +34,12 @@
 Core class for the NG/AMS DB interface.
 """
 
-import os, sys, string, time, types, base64, random
+import time, base64, random
 
-import pcc, PccLog, PccUtTime
-from   ngams import *
-import ngamsDbm, threading
+from pccLog import  PccLog
+from ngamsCore import info, notice, error, warning
+from ngamsCore import TRACE, getVerboseLevel, getThreadName, genLog, getTestMode, timeRef2Iso8601
+import threading
 
 
 # Global DB Semaphore to protect critical, global DB interaction.
@@ -781,19 +783,16 @@ class ngamsDbCore:
                 self.__dbDrv = None
 
             info(4, "Importing DB Driver Interface: %s" % interface)
-            exec "import " + interface
+            dbMod = importlib.import_module('ngamsPlugIns.' + interface)
             try:
                 decryptPassword = base64.decodestring(password)
             except Exception, e:
                 errMsg = "Incorrect, encrypted DB password given. Error: " +\
                          str(e)
                 raise Exception, errMsg
-            creStat = "%s.%s('%s', '%s', '%s', '%s', '%s', '%s')" %\
-                      (interface, interface, server, db, user, decryptPassword,
-                       "NG/AMS:" + getThreadName(), self.__parameters)
+            dbConstructor = getattr(dbMod, interface)
             info(4, "Creating instance of DB Driver Interface/connecting ...")
-            info(5, "Command to create DB connection object: %s" % creStat)
-            self.__dbDrv = eval(creStat)
+            self.__dbDrv = dbConstructor(server, db, user, decryptPassword, "NG/AMS:" + getThreadName(), self.__parameters)
             info(3, "DB Driver Interface ID: " + self.__dbDrv.getDriverId())
         except Exception, e:
             errMsg = genLog("NGAMS_ER_DB_COM", ["Problem setting up " +\

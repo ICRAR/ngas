@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsMimeTypeFilterPI.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,14 +27,11 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  21/11/2002  Created
 #
-
 """
 Contains a Filter Plug-In used to filter on the mime-type of the data.
 """
 
-from ngams import *
-import ngamsPlugInApi
-
+from ngamsLib import ngamsPlugInApi
 
 def ngamsMimeTypeFilterPI(srvObj,
                           plugInPars,

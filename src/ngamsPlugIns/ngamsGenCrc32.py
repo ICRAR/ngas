@@ -35,10 +35,7 @@ Checksum Plug-In to generate the checksum stored in the ngas_files tables
 in connection with each file archived into NGAS.
 """
 
-import sys, time
-import pcc
-import binascii
-from   ngams import *
+import sys, time, binascii
 
 
 def ngamsGenCrc32(srvObj,

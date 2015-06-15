@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsOfflineCmd.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,14 +27,15 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  13/05/2003  Created
 #
-
 """
 Function + code to handle the OFFLINE command.
 """
 
 import time
 
-from ngams import *
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, \
+    NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_OFFLINE_STATE, \
+    NGAMS_BUSY_SUBSTATE, info
 import ngamsSrvUtils 
 
 

@@ -31,10 +31,8 @@
 """
 This filter will keep  all already-compressed FITS file from entering the job queue
 """
-from ngams import *
 
-import ngamsPlugInApi
-import os, commands
+import os
 
 obswanted = {}
 

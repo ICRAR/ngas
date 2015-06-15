@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsFitsPlugIn.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  10/05/2001  Created
 #
-
 """
 This Data Archiving Plug-In is used to handle reception and processing
 of FITS files.
@@ -38,10 +36,11 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
-import os, string
-import PccUtTime
-from   ngams import *
-import ngamsPlugInApi, ngamsDiskUtils, ngamsDiskInfo
+import commands, os, string
+
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import TRACE, genLog, info
+from pccUt import PccUtTime
 
 
 def getComprExt(comprMethod):

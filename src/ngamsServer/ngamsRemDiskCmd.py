@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsRemDiskCmd.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,18 +27,18 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  15/04/2002  Created
 #
-
 """
 Functions to handle the REMDISK command.
 """
 
-import os, glob
+import os
 
-from ngams import *
-import ngamsDbm, ngamsDb, ngamsLib
-import ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsDiskInfo
-import ngamsFileList, ngamsHighLevelLib, ngamsDiskUtils
-import ngamsRemUtils, ngamsNotification
+from ngamsLib import ngamsDiskInfo, ngamsDbm, ngamsDiskUtils, ngamsHighLevelLib
+from ngamsLib.ngamsCore import getHostId, getHostName, error, info, \
+    getDiskSpaceAvail, genLog, NGAMS_XML_MT, NGAMS_SUCCESS, TRACE, rmFile, \
+    NGAMS_REMDISK_CMD, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, \
+    NGAMS_HTTP_SUCCESS, NGAMS_HTTP_BAD_REQ
+import ngamsRemUtils
 
 
 def _remDisk(srvObj,
@@ -122,7 +121,7 @@ def _remDisk(srvObj,
             raise Exception, errMsg
         info(1,"Deleting contents on disk with ID: " + diskId + " ...")
         try:
-            ngamsLib.rmFile(os.path.normpath(diskInfo.getMountPoint() + "/*"))
+            rmFile(os.path.normpath(diskInfo.getMountPoint() + "/*"))
         except Exception, e:
             errMsg = genLog("NGAMS_ER_DEL_DISK", [diskId, str(e)])
             error(errMsg)

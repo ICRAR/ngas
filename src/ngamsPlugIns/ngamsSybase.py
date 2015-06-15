@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsSybase.py,v 1.7 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  07/05/2001  Created
 #
-
 """
 This module contains two classes:
 
@@ -48,14 +46,15 @@ Note: A mechanism for simulating problems in the interaction with remote
 This feature is only enabled if the global Test Mode Flag is set to one.
 See functions setTestMode()/getTestMode() in the main NG/AMS module.
 """
+# Probability for different, simulated errors.
 
 import time, threading, random
+
 import Sybase
+from pccUt import PccUtTime
+from ngamsLib.ngamsCore import getTestMode, TRACE, getHostName, info
 
-import pcc, PccUtTime
-from   ngams import *
 
-# Probability for different, simulated errors.
 if (1):
     ERR_BROKEN_CON = 0.0
     ERR_CREAT_CON  = 0.0
@@ -192,7 +191,7 @@ class ngamsSybase:
         T = TRACE()
         
         self.__dbDrv.close()
-        return close
+        return self
 
 
     def query(self,

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsFileUtils.py,v 1.14 2010/06/23 09:49:43 awicenec Exp $"
@@ -28,19 +27,23 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  24/04/03    Created
 #
-
 """
 Contains various utility functions used by the command handling callback
 functions, to deal with archive files.
 """
-import os, socket, cPickle, time
 
-import pcc, PccUtTime, PccLog
+import os
+import re
 
-from ngams import *
-import ngamsDbm, ngamsDbCore, ngamsDb, ngamsLib, ngamsFileInfo, ngamsDiskInfo, ngamsStatus
-import ngamsHighLevelLib
+from pccLog import PccLog
+from pccUt import PccUtTime
 import ngamsSrvUtils
+from ngamsLib import ngamsDbm, ngamsDbCore, ngamsDiskInfo, ngamsStatus, ngamsLib
+from ngamsLib import ngamsHighLevelLib
+from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
+    NGAMS_HOST_DOMAIN, rmFile, NGAMS_HOST_REMOTE, NGAMS_RETRIEVE_CMD, genLog, \
+    warning, NGAMS_STATUS_CMD, getHostName, getHostId, NGAMS_CACHE_DIR, \
+    NGAMS_DATA_CHECK_THR, getFileSize, logFlush, notice, info
 
 
 def _locateArchiveFile(srvObj,

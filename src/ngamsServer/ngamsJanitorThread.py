@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsJanitorThread.py,v 1.14 2010/03/25 14:47:44 jagonzal Exp $"
@@ -28,17 +27,33 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  29/01/2002  Created
 #
-
 """
 This module contains the code for the Janitor Thread, which is used to perform
 various background activities as cleaning up after processing, waking up
 suspended NGAS hosts, suspending itself.
 """
-
 # TODO: Give overhaul to handling of the DB Snapshot: Use ngamsDbm instead
 #       of bsddb + simplify the algorithm.
 
-import os, sys, time, thread, threading, random, glob, cPickle
+import commands
+import os, time, thread, threading, glob, cPickle
+import types
+
+import ngamsArchiveUtils, ngamsSrvUtils
+from ngamsLib.ngamsCore import TRACE, info, NGAMS_JANITOR_THR, \
+    getFileCreationTime, getFileModificationTime, getFileAccessTime, rmFile, \
+    warning, NGAMS_DB_DIR, NGAMS_DB_NGAS_FILES, checkCreatePath, \
+    NGAMS_DB_CH_CACHE, getHostId, getVerboseLevel, NGAMS_NOTIF_DATA_CHECK, \
+    NGAMS_TEXT_MT, NGAMS_PICKLE_FILE_EXT, NGAMS_DB_CH_FILE_DELETE, \
+    NGAMS_DB_CH_FILE_INSERT, NGAMS_DB_CH_FILE_UPDATE, notice, error, \
+    isoTime2Secs, genLog, NGAMS_PROC_DIR, NGAMS_SUBSCR_BACK_LOG_DIR, takeLogSem, \
+    iso8601ToSecs, getLocation, logFlush, relLogSem, alert, \
+    NGAMS_HTTP_INT_AUTH_USER, getHostName, NGAMS_OFFLINE_CMD, NGAMS_NOTIF_ERROR
+from ngamsLib import ngamsFileInfo, ngamsNotification
+from ngamsLib import ngamsDbm, ngamsDbCore, ngamsEvent, ngamsHighLevelLib, ngamsLib
+from pccLog import PccLog
+from pccUt import PccUtTime
+
 try:
     import bsddb3 as bsddb
 except Exception, e:
@@ -46,15 +61,7 @@ except Exception, e:
         import bsddb
     except:
         raise e
-import base64, types
 
-import pcc, PccUtTime
-
-from ngams import *
-import ngamsLib, ngamsDbm, ngamsDbCore, ngamsDb, ngamsEvent, ngamsHighLevelLib
-import ngamsFileList, ngamsStatus
-import ngamsFileInfo, ngamsDiskInfo, ngamsPlugInApi, ngamsArchiveUtils
-import ngamsSrvUtils, ngamsNotification
 
 
 def startJanitorThread(srvObj):

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsExtractAlmaMultipart.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,15 +27,15 @@
 # --------  ----------  -------------------------------------------------------
 # awicenec  2005-04-04  Created
 #
-
 """
 Contains a DDPI which is used to extract one part of a multipart/related
 message file.
 """
 
-from ngams import *
-import ngamsPlugInApi, ngamsDppiStatus
-import MultipartHandler
+from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
+from ngamsLib.ngamsCore import TRACE, error, info, NGAMS_PROC_DATA
+from ngamsPlugIns.ngamsAlmaMultipart import specificTreatment
+from ngamsPlugIns.printhead import head
 
 
 def extractData(result, resourceId, verbose=0):

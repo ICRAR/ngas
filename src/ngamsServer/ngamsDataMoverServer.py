@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 #
@@ -27,15 +26,13 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      14/04/2013  Created
 #
-
 """
 This module facilitates running the NG/AMS Server in 'DataMover mode'.
 """
 
 import sys
-import pcc
 
-from   ngams import *
+from ngamsLib.ngamsCore import TRACE
 import ngamsServer
 
 

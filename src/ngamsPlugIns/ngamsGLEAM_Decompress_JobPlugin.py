@@ -27,23 +27,20 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      23/Sep/2014  Created
-
 """
 Decompression job plugin that will be called
 by the SubscriptionThread._deliveryThread
 """
-
-import commands, os
-from glob import glob
-
-from ngams import *
-import ngamsPlugInApi
-
 # decoded job uri: 
 #     ngasjob://ngamsGLEAM_Decompress_JobPlugin?redo_on_fail=0
-
 # originally encoded joburi (during subscribe command)
 #     url=ngasjob://ngamsGLEAM_Decompress_JobPlugin%3Fredo_on_fail%3D0
+
+import commands
+from glob import glob
+
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import getIpAddress, info, error, warning
 
 
 debug = 0

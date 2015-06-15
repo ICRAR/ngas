@@ -40,8 +40,7 @@ Specifically now, it is ensured that all NGAS Data Volumes are unmounted.
 
 import sys
 
-from ngams import *
-import ngamsDb, ngamsConfig
+from ngamsLib import ngamsDb, ngamsConfig
 
 
 if __name__ == '__main__':

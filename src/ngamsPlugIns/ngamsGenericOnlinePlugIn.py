@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsGenericOnlinePlugIn.py,v 1.5 2008/08/19 20:46:04 jknudstr Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  26/02/2007  Created.
 #
-
 """
 Contains the Generic Online Plug-In.
 
@@ -52,10 +50,12 @@ mounted at boot time.
 
 import os, glob
 
-from   ngams import *
-import ngamsPlugInApi, ngamsPhysDiskInfo
-import ngamsServer
-from ngamsGenericPlugInLib import *
+from ngamsLib import ngamsPhysDiskInfo
+from ngamsLib.ngamsCore import TRACE, info, setLogCond
+from ngamsPlugIns.ngamsGenericPlugInLib import NGAS_VOL_INFO_FILE, \
+    loadVolInfoFile, NGAS_VOL_INFO_ID, NGAS_VOL_INFO_IGNORE, NGAS_VOL_INFO_TYPE, \
+    NGAS_VOL_INFO_MANUFACT
+from ngamsServer import ngamsServer
 
 
 def ngamsGenericOnlinePlugIn(srvObj,
@@ -136,7 +136,7 @@ if __name__ == '__main__':
     Main function.
     """
     import sys
-    import ngamsConfig, ngamsDb
+    from ngamsLib import ngamsConfig, ngamsDb
 
     setLogCond(0, "", 0, "", 1)
     

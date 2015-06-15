@@ -27,24 +27,21 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      23/Sep/2014  Created
-
 """
 Decompression job plugin that will be called
 by the SubscriptionThread._deliveryThread
 """
+# used to connect to MWA M&C database
 
 import commands, os
 import datetime
-from glob import glob
-
-from ngams import *
-import ngamsPlugInApi
-import pccFits.PccSimpleFitsReader as fitsapi
-
-# used to connect to MWA M&C database
-from psycopg2.pool import ThreadedConnectionPool
 
 import ephem_utils
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import error, info
+import pccFits.PccSimpleFitsReader as fitsapi
+from psycopg2.pool import ThreadedConnectionPool
+
 
 mime = "images/fits"
 myhost = commands.getstatusoutput('hostname')[1]

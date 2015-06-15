@@ -18,7 +18,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
@@ -28,10 +27,11 @@ this command updates an existing subscriber's information
 including priority, url, start_date, and num_concurrent_threads
 """
 
-from ngams import *
-import ngamsSubscriptionThread
-
 import threading
+
+from ngamsLib.ngamsCore import NGAMS_DELIVERY_THR, TRACE, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_SUCCESS, warning
+from ngamsServer import ngamsSubscriptionThread
+
 
 def changeNumThreads(srvObj, subscrId, oldNum, newNum):         
     # key: threadName (unique), value - dummy 0

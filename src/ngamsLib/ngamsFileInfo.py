@@ -34,15 +34,13 @@ Contains classes to handle the information in connection with
 an archived file.
 """
 
-import types
 import xml.dom.minidom
-import PccUtTime
-from   ngams import *
-import ngamsLib
+from pccUt import PccUtTime
+from ngamsCore import timeRef2Iso8601, ignoreValue, getAttribValue, setLogCond, prFormat1, TRACE, getHostId, trim, genLog
 
 # TODO: Analyze the usage of the ngamsDb class in this class. Move maybe
 #       DB access constants to ngams/__init__.py.
-import ngamsDb, ngamsDbCore
+import ngamsDbCore
 
 
 class ngamsFileInfo:

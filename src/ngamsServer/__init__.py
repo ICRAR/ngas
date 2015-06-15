@@ -32,9 +32,6 @@
 
 import os, sys
 
-from ngams import *
-#execfile('src/ngams/ngams/__init__.py')
-
 __all__ = ["ngamsArchiveCmd",
 "ngamsArchiveUtils",
 "ngamsAuthUtils",

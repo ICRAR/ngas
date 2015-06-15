@@ -54,7 +54,8 @@ pattern given, by specifying the --list parameter.
 import sys, os, time
 
 from ngams import *
-import ngamsDb, ngamsLib, ngamsStatus, ngamsFileInfo, ngamsDiskInfo
+import ngamsDb, ngamsStatus, ngamsFileInfo, ngamsDiskInfo
+import ngamsLib
 import ngamsPClient
 import ngasUtils, ngasUtilsLib
 

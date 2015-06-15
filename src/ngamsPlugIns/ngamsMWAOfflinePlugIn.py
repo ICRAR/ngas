@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsGenericOfflinePlugIn.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,19 +27,19 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  28/02/2007  Created.
 #
-
 """
 Module that contains a generic Offline Plug-In for NGAS.
 """
 
-from   ngams import *
-import ngamsPlugInApi
-import ngamsLinuxSystemPlugInApi, ngamsEscaladeUtils, ngamsSubscriptionThread
-from ngamsGenericPlugInLib import notifyRegistrationService
+import os
 
-import urllib, os
 import cPickle as pickle
 import ngamsCmd_ASYNCLISTRETRIEVE
+from ngamsGenericPlugInLib import notifyRegistrationService
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import info, alert, TRACE, setLogCond
+from ngamsServer import ngamsSubscriptionThread
+
 
 def _saveSubscriptionInfoToDisk(srvObj):
     """
@@ -122,7 +121,7 @@ if __name__ == '__main__':
     Main function.
     """
     import sys
-    import ngamsConfig, ngamsDb
+    from ngamsLib import ngamsConfig, ngamsDb
     import ngamsServer
 
     setLogCond(0, "", 0, "", 1)

@@ -1,4 +1,3 @@
-
 #    ICRAR - International Centre for Radio Astronomy Research
 #    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
@@ -18,7 +17,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 #
@@ -26,16 +24,17 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      2014-10-31  Created
 #
-
 """
 Move a file (no version) from this host to a target NGAS (increasing the version id)
 """
 
-from ngams import *
+import os, binascii
 
-import ngamsPlugInApi, ngamsLib, ngamsStatus
-import os, commands, binascii
-import ngamsDiscardCmd
+from ngamsLib.ngamsCore import info, warning, NGAMS_TEXT_MT, getHostId, \
+    NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE
+from ngamsLib import ngamsStatus, ngamsLib
+from ngamsServer import ngamsDiscardCmd
+
 
 MOVE_SUCCESS = 'MOVEALLOK'
 

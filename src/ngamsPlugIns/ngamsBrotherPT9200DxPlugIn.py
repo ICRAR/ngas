@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsBrotherPT9200DxPlugIn.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -29,16 +28,10 @@
 # awicenec/
 # jknudstr  10/05/2001  Created
 #
-
 """
 This module contains a plug-in driver for printing labels on
 the Brother PT-9200DX label printer.
 """
-
-import sys, time
-from   ngams import *
-import ngamsPlugInApi, ngamsConfig
-
 # TODO: Build in a semaphore protection to avoid that more than one
 #       request is executed simultaneously attempting to print a label.
 #       Parallel access to the label printer may harm the printer.
@@ -50,6 +43,13 @@ import ngamsPlugInApi, ngamsConfig
 #       executed, an exception will be raised.
 #       Implementing this, the _labelPrinterSem semaphore can be removed
 #       from the ngamsLabelCmd.py module.
+
+import os
+import sys
+
+from ngamsLib import ngamsPlugInApi, ngamsConfig
+from ngamsLib.ngamsCore import error, info, NGAMS_NOTIF_ERROR, getTestMode, setLogCond
+
 
 def genFontsDictionary(fnm):
 

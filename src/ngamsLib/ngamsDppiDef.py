@@ -34,9 +34,6 @@ Contains the implementation of the DPPI Definition Class, used to handle the
 information in connection with one DPPI.
 """
 
-from ngams import *
-
-
 class ngamsDppiDef:
     """
     Class to contain info about one DPPI definition in the configuration.

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDataCheckThread.py,v 1.13 2010/03/25 14:47:59 jagonzal Exp $"
@@ -28,18 +27,23 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  29/01/2002  Created
 #
-
 """
 This module contains the code for the Data Check Thread, which is used
 to check the data holding in connection with one NGAS host.
 """
 
+import commands
 import os, time, thread, threading, random, glob, cPickle
-import pcc, PccUtTime
-from ngams import *
-import ngamsDbCore, ngamsDb, ngamsDbm, ngamsLib, ngamsHighLevelLib
-import ngamsNotification
-import ngamsDiskInfo, ngamsFileUtils
+
+from pccUt import PccUtTime
+import ngamsFileUtils
+from ngamsLib.ngamsCore import TRACE, info, NGAMS_DATA_CHECK_THR, error, \
+    getHostId, NGAMS_CACHE_DIR, checkCreatePath, isoTime2Secs, iso8601ToSecs, \
+    rmFile, genLog, mvFile, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
+    NGAMS_VOLUME_INFO_FILE, NGAMS_STAGING_DIR, warning, NGAMS_NOTIF_DATA_CHECK, \
+    getTestMode
+from ngamsLib import ngamsNotification, ngamsDiskInfo
+from ngamsLib import ngamsDbCore, ngamsDbm, ngamsHighLevelLib, ngamsLib
 
 
 def startDataCheckThread(srvObj):

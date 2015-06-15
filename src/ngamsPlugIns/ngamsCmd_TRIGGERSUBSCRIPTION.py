@@ -18,7 +18,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 #
@@ -26,7 +25,6 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      2013/02/25  Created
 #
-
 """
 This plug-in command  explicitly triggers subscriptionThread. 
 
@@ -43,7 +41,7 @@ re-subscribe, re-archive, or re-start the server
 
 """
 
-from ngams import *
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_TEXT_MT
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """

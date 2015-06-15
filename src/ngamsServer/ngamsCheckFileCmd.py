@@ -33,9 +33,10 @@
 Contains the functions to handle the CHECKFILE command.
 """
 
-from ngams import *
-import ngamsDbCore, ngamsDb, ngamsFileUtils
-
+import ngamsFileUtils
+from ngamsLib import ngamsDbCore
+from ngamsLib.ngamsCore import info, NGAMS_HOST_LOCAL, genLog,\
+    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, NGAMS_HOST_CLUSTER
 
 def handleCmdCheckFile(srvObj,
                        reqPropsObj,

@@ -17,18 +17,16 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 #
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      2014/03/28  Created
-
 """
 Respond to a robots.txt request"""
 
-from ngams import *
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """

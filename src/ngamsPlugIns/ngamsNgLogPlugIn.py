@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsNgLogPlugIn.py,v 1.2 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  09/07/2001  Created
 #
-
 """
 This Data Archiving Plug-In is used to handle reception and processing
 of NG/AMS (OLAS Style) log files.
@@ -38,9 +36,10 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
-import os, multifile, string
-from   ngams import *
-import ngamsPlugInApi, ngamsDiskUtils, ngamsDiskInfo
+import os
+
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import info
 
 
 def ngamsNgLogPlugIn(srvObj,

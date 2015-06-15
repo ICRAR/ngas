@@ -68,7 +68,8 @@ A File List has the following contents:
 import sys, os, time
 
 from ngams import *
-import ngamsDb, ngamsLib, ngamsPClient
+import ngamsDb, ngamsPClient
+import ngamsLib
 import ngasUtils, ngasUtilsLib, ngasVerifyCloning
 
 

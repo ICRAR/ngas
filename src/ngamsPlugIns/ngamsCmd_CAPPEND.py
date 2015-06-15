@@ -27,7 +27,7 @@ Created on 20 May 2015
 :author: rtobar
 '''
 
-from ngams import error, genLog, NGAMS_HTTP_GET
+from ngamsLib.ngamsCore import error, genLog, NGAMS_HTTP_GET
 from xml.dom import minidom
 
 def addFileToContainer(srvObj, containerId, fileId, force):

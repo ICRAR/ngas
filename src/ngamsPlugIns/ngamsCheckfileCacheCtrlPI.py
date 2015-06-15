@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsCheckfileCacheCtrlPI.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  29/07/2008  Created
 #
-
 """
 This is a Cache Control Plug-In, which can be used to check if the file
 analyzed is available in one or more other archives.
@@ -76,15 +74,15 @@ Set#2: [['host2_1_1:port2_1_1'; 'host2_1_2:port2_1_2'; ...];
 If the plug-in has a successful result contacting one node in set Set#1 _and_
 in Set#2, the file is signalled for removal from the cache.
 """
-
-import os, string, random, time
-import PccUtTime
-from   ngams import *
-import ngamsLib, ngamsStatus, ngamsPlugInApi, ngamsDiskUtils, ngamsDiskInfo
-
-
 # Compiled list with the nodes to contact for check for availability of
 # the given file.
+
+import random, time
+
+from ngamsLib.ngamsCore import TRACE, info, NGAMS_CHECKFILE_CMD, NGAMS_FAILURE, error
+from ngamsLib import ngamsLib, ngamsStatus
+
+
 CheckfileCacheCtrlPI_initialized    = False
 CheckfileCacheCtrlPI_sets           = None
 CheckfileCacheCtrlPI_checkingPeriod = None

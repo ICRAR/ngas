@@ -36,8 +36,8 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
-from   ngams import *
-import ngamsLib, ngamsDbCore
+from   ngamsCore import TRACE, getHostId, timeRef2Iso8601, iso8601ToSecs
+import ngamsDbCore
 
 
 class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):

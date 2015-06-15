@@ -6,15 +6,13 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      22/11/2013  Created
 #
-
 """ A python wrapper that interacts with DMF using command line """
 
-import pcc
-from ngams import * 
-import ngamsPlugInApi
-import os, time, json
-import socket, struct
-import ngamsReqProps
+import os, time, json, socket, struct
+
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import alert, info
+
 
 TAPE_ONLY_STATUS = ['NMG', 'OFL', 'PAR'] # these states tell us there are only complete copies of the file currently on tape (no copies on disks)
 ERROR_STATUS = ['INV']
@@ -186,22 +184,22 @@ def pawseyMWAdmget(fileList, host, port, timeout):
     """
     sock = None
     try:
-      files = {'files' : fileList}
-      jsonoutput = json.dumps(files)
-      
-      val = struct.pack('>I', len(jsonoutput))
-      val = val + jsonoutput
-      
-      sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      
-      # set the timeout
-      sock.settimeout(timeout)
+        files = {'files' : fileList}
+        jsonoutput = json.dumps(files)
 
-      # Connect to server and send data
-      sock.connect((host, port))
-      sock.sendall(val)     
-      
-      return struct.unpack('!H', sock.recv(2))[0]
+        val = struct.pack('>I', len(jsonoutput))
+        val = val + jsonoutput
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        # set the timeout
+        sock.settimeout(timeout)
+
+        # Connect to server and send data
+        sock.connect((host, port))
+        sock.sendall(val)     
+
+        return struct.unpack('!H', sock.recv(2))[0]
     finally:
         if sock:
             sock.close()
@@ -216,62 +214,62 @@ def stageFiles(filenameList, checkCRC = False, printWarn = False, usePawseyMWADm
     """
             
     if (usePawseyMWADmget):
-       if filenameList is None:
-          errMsg = 'ngamsMWAPawseyTapeAPI stageFiles: filenameList is None'
-          raise Exception(errMsg)
-       
-       numFiles = len(filenameList)
-       if numFiles == 0:
-          return 0
-       
-       # do a copy first
-       fileList = list(filenameList)
-       
-       try:
-          try:
-             # if we have a requestObj that implies that its from the a file RETRIEVE command therefore we should have only one file in the list
-             if requestObj:
-                if numFiles == 1:
-                   # if the http header contains a list of advised files to prestage then stage these instead
-                   prestageStr = requestObj.getHttpHdr('prestagefilelist')
-                   if prestageStr:
-                      prestageList = json.loads(prestageStr)
-                      requestedfile = os.path.basename(fileList[0])
-                      # make sure the file that is being asked for is also in the prestage list
-                      #if requestedfile in prestageList:     
-                      if not any(requestedfile in s for s in prestageList):           
-                         alert('ngamsMWAPawseyTapeAPI stageFiles: requested file %s is not in prestage list' % requestedfile)
-                         fileList = fileList + prestageList
-                      else:
-                         info(3, 'ngamsMWAPawseyTapeAPI stageFiles: requested file %s is in prestage list, prestaging files now' % requestedfile)
-                         fileList = prestageList
-                   else:
-                      info(3, 'ngamsMWAPawseyTapeAPI stageFiles: prestagefilelist not found in http header, ignoring')
-                      
-          except Exception as exp:
-             alert('ngamsMWAPawseyTapeAPI stageFiles: prestagefilelist error %s' % (str(exp)))
-             pass
-          
-          exitcode = pawseyMWAdmget(fileList, 'fe1.pawsey.ivec.org', 9898, 1400)
-          if exitcode != 0:
-             err = 'staging error'  
-             if exitcode == 11:
-                err = 'file stage request has exceeded 20000'
-             
-             errMsg = 'ngamsMWAPawseyTapeAPI stageFiles: %s errorcode: %s' % (err, str(exitcode))
-             alert(errMsg)
-             raise Exception(errMsg)
-       
-       except socket.timeout as t:
-           raise Exception('timed out') # so retrieval can search this "timed out" string
-        
-       except Exception as ex:
-           if (str(ex).find('Connection refused') > -1):
-              errMsg = 'ngamsMWAPawseyTapeAPI stageFiles: pawseyMWAdmget daemon is not running!'
-              alert(errMsg)
-              raise ex
-           else:
-              raise ex
+        if filenameList is None:
+            errMsg = 'ngamsMWAPawseyTapeAPI stageFiles: filenameList is None'
+            raise Exception(errMsg)
+
+        numFiles = len(filenameList)
+        if numFiles == 0:
+            return 0
+
+        # do a copy first
+        fileList = list(filenameList)
+
+        try:
+            try:
+                # if we have a requestObj that implies that its from the a file RETRIEVE command therefore we should have only one file in the list
+                if requestObj:
+                    if numFiles == 1:
+                        # if the http header contains a list of advised files to prestage then stage these instead
+                        prestageStr = requestObj.getHttpHdr('prestagefilelist')
+                        if prestageStr:
+                            prestageList = json.loads(prestageStr)
+                            requestedfile = os.path.basename(fileList[0])
+                            # make sure the file that is being asked for is also in the prestage list
+                            #if requestedfile in prestageList:     
+                            if not any(requestedfile in s for s in prestageList):           
+                                alert('ngamsMWAPawseyTapeAPI stageFiles: requested file %s is not in prestage list' % requestedfile)
+                                fileList = fileList + prestageList
+                            else:
+                                info(3, 'ngamsMWAPawseyTapeAPI stageFiles: requested file %s is in prestage list, prestaging files now' % requestedfile)
+                                fileList = prestageList
+                        else:
+                            info(3, 'ngamsMWAPawseyTapeAPI stageFiles: prestagefilelist not found in http header, ignoring')
+
+            except Exception as exp:
+                alert('ngamsMWAPawseyTapeAPI stageFiles: prestagefilelist error %s' % (str(exp)))
+                pass
+
+            exitcode = pawseyMWAdmget(fileList, 'fe1.pawsey.ivec.org', 9898, 1400)
+            if exitcode != 0:
+                err = 'staging error'  
+                if exitcode == 11:
+                    err = 'file stage request has exceeded 20000'
+
+                errMsg = 'ngamsMWAPawseyTapeAPI stageFiles: %s errorcode: %s' % (err, str(exitcode))
+                alert(errMsg)
+                raise Exception(errMsg)
+
+        except socket.timeout as t:
+            raise Exception('timed out') # so retrieval can search this "timed out" string
+
+        except Exception as ex:
+            if (str(ex).find('Connection refused') > -1):
+                errMsg = 'ngamsMWAPawseyTapeAPI stageFiles: pawseyMWAdmget daemon is not running!'
+                alert(errMsg)
+                raise ex
+            else:
+                raise ex
     else:
         cmd1 = "dmget"
         num_staged = 0

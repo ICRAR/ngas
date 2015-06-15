@@ -32,10 +32,13 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
-from ngams import *
-#import os, string
-#from pcc.pccUt import PccUtTime
+import commands
+import os
+import string
+
+from pccUt import PccUtTime
 from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import TRACE, genLog, info
 
 
 def getComprExt(comprMethod):

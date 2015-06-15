@@ -33,11 +33,13 @@
 Contains tools for handling the disk configuration.
 """
 
+import os
 import xml.dom.minidom
-import PccUtTime
-from   ngams import *
-import ngamsLib, ngamsFileInfo
 
+from pccUt import PccUtTime
+from ngamsCore import genLog, error, getAttribValue, setLogCond, trim, timeRef2Iso8601, prFormat1, ignoreValue
+from ngamsCore import TRACE, NGAMS_STAGING_DIR, NGAMS_SRC_DIR
+import ngamsFileInfo
 
 def getStorageSetIdFromDiskId(dbConObj,
                               ngamsCfgObj,

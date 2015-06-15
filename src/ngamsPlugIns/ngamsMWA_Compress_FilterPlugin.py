@@ -27,14 +27,13 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      07/Aug/2014  Created
-
 """
 This filter will keep  all already-compressed FITS file from entering the job queue
 """
-from ngams import *
 
-import ngamsPlugInApi
 import os, commands
+
+from ngamsLib.ngamsCore import error, info, warning
 
 BINTB_STR = "XTENSION= 'BINTABLE'" # used to decide if a FITS file is compressed or not (only works for MWA visibility files)
 

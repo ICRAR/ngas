@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsSqlite.py,v 1.7 2008/08/19 20:51:50 jknudstr Exp $"
@@ -29,7 +28,6 @@
 # awicenec  2005-02-28  Created
 # jknudstr  2006-02-04  Updated
 #
-
 """
 This module contains two classed:
 
@@ -40,17 +38,20 @@ The ngamsSqliteCursor class, which implements a cursor object based on
 the NG/AMS Cursor Object API definition.
 """
 
-import time, re
+import os
+
+from mx import DateTime
+from ngamsLib.ngamsCore import TRACE, alert, getVerboseLevel, info, error
+from pccUt import PccUtTime
+
+
+
 
 try:
     import sqlite3 as sqlite
 except:
     from pysqlite2 import dbapi2 as sqlite
 
-from mx import DateTime
-
-import pcc, PccUtTime
-from   ngams import *
 
 
 def _queryRewrite(sqlQuery):

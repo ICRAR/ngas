@@ -46,7 +46,8 @@ For each file found on the disk, the following output is generated:
 import sys, os, time
 
 from ngams import *
-import ngamsDb, ngamsLib, ngamsFileInfo, ngamsDiskInfo
+import ngamsDb, ngamsFileInfo, ngamsDiskInfo
+import ngamsLib
 import ngasUtils, ngasUtilsLib
 
 

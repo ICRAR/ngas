@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsRetrieveCmd.py,v 1.12 2010/06/22 13:19:40 awicenec Exp $"
@@ -28,19 +27,27 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  11/01/2002  Created
 #
-
 """
 Function + code to handle the RETRIEVE Command.
 """
 
-import socket, re, glob, commands, time
-from socket import *
-from   ngams import *
-import PccUtTime
-import ngamsDb, ngamsLib, ngamsHighLevelLib
-import ngamsDb, ngamsPlugInApi, ngamsFileInfo, ngamsDiskInfo, ngamsFileList
-import ngamsDppiStatus, ngamsStatus, ngamsDiskUtils
-import ngamsSrvUtils, ngamsFileUtils, ngamsReqProps
+from _socket import SOL_SOCKET, SO_SNDBUF
+import glob, commands, time
+import os
+
+from ngamsLib import ngamsDppiStatus, ngamsStatus
+from ngamsLib import ngamsHighLevelLib, ngamsLib
+from ngamsLib import ngamsPlugInApi, ngamsFileInfo, ngamsFileList
+from ngamsLib.ngamsCore import info, warning, NGAMS_TEXT_MT, error, getFileSize, \
+    TRACE, genLog, NGAMS_PROC_FILE, NGAMS_HTTP_SUCCESS, NGAMS_PROC_DATA, \
+    getHostId, NGAMS_SUCCESS, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, \
+    NGAMS_XML_MT, NGAMS_DISK_INFO, cleanList, NGAMS_VOLUME_ID_FILE, \
+    NGAMS_VOLUME_INFO_FILE, NGAMS_UNKNOWN_MT, NGAMS_HOST_LOCAL, \
+    NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE, checkCreatePath, NGAMS_RETRIEVE_CMD, \
+    NGAMS_FAILURE, NGAMS_PROC_STREAM, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
+    NGAMS_BUSY_SUBSTATE
+import ngamsSrvUtils, ngamsFileUtils
+
 
 def performStaging(srvObj, reqPropsObj, httpRef, filename):
     """

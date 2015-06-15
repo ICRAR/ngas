@@ -34,9 +34,6 @@ Contains the implementation of the Stream Class used to handle the
 information in connection with a Stream definition.
 """
 
-from ngams import *
-
-           
 class ngamsStream:
     """
     Class to handle the information in connection with a Stream definition.

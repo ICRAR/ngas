@@ -17,12 +17,10 @@
 #    License along with this library; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
-
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      11/12/2012  Created
 #
-
 """
 NGAS Command Plug-In, implementing asynchronous retrieval file list. It supports the following basic features
 
@@ -60,16 +58,21 @@ For detailed examples on how to write all other features, please read
 src/ngamsTest/ngamsTestAsyncListRetrieve.py
 
 """
-import cPickle as pickle
-import thread, threading, urllib2, httplib, time
-import os
 
-from ngams import *
-import ngamsDbCore, ngamsLib, ngamsStatus, ngamsPlugInApi
+import os
+import thread, threading, urllib2, httplib, time
+
+import cPickle as pickle
+from ngamsLib.ngamsCore import info, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT, TRACE, \
+    NGAMS_HTTP_POST, getFileSize, getHostName, NGAMS_SUCCESS, NGAMS_FAILURE, \
+    warning, error, getHostId
+from ngamsLib import ngamsDbCore, ngamsStatus, ngamsPlugInApi, ngamsLib
 import ngamsMWACortexTapeApi
-import ngamsMWAAsyncProtocol
-from ngamsMWAAsyncProtocol import *
-#import difflib
+from ngamsPlugIns.ngamsMWAAsyncProtocol import AsyncListRetrieveResponse, \
+    AsyncListRetrieveProtocolError, AsyncListRetrieveCancelResponse, \
+    AsyncListRetrieveSuspendResponse, AsyncListRetrieveResumeResponse, \
+    AsyncListRetrieveStatusResponse, FileInfo
+
 
 asyncReqDic = {} #key - uuid, value - AsyncListRetrieveRequest (need to remember the original request in case of cancel/suspend/resume or server shutting down)
 statusResDic = {} #key - uuid, value - AsyncListRetrieveStatusResponse

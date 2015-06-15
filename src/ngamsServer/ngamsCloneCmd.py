@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsCloneCmd.py,v 1.9 2009/03/30 20:49:05 jknudstr Exp $"
@@ -28,22 +27,29 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  21/03/2002  Created
 #
-
 """
 Contains utilities used in connection with the cloning of files.
 """
 
-import urllib, thread, getpass, cPickle
+import os
+import threading
+import time
+import urllib, thread
 
-import pcc, PccUtTime
-
-from   ngams import *
-import ngamsLib, ngamsDbm, ngamsFileList, ngamsStatus
-import ngamsArchiveUtils, ngamsDiskUtils
-import ngamsFileInfo, ngamsDiskInfo
-import ngamsReqProps, ngamsHighLevelLib, ngamsDapiStatus
-import ngamsNotification, ngamsSrvUtils, ngamsFileUtils
+import ngamsArchiveUtils, ngamsSrvUtils, ngamsFileUtils
 import ngamsCacheControlThread
+from ngamsLib import ngamsDbm, ngamsFileList, ngamsStatus, ngamsDiskUtils, ngamsFileInfo, ngamsDiskInfo, \
+    ngamsLib
+from ngamsLib import ngamsNotification
+from ngamsLib import ngamsReqProps, ngamsHighLevelLib, ngamsDapiStatus
+from ngamsLib.ngamsCore import TRACE, genLog, error, NGAMS_ONLINE_STATE, \
+    NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, info, getHostId, getDiskSpaceAvail, \
+    rmFile, getFileSize, NGAMS_XML_MT, NGAMS_FAILURE, warning, checkCreatePath, \
+    mvFile, getFileCreationTime, NGAMS_SUCCESS, sysLogInfo, \
+    NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_TEXT_MT, \
+    NGAMS_NOTIF_INFO, NGAMS_CLONE_CMD, NGAMS_CLONE_THR, getThreadName, \
+    NGAMS_HTTP_SUCCESS
+from pccUt import PccUtTime
 
 
 def handleCmdClone(srvObj,
@@ -626,7 +632,7 @@ def _cloneExec(srvObj,
                                           ", FAILURE: " +\
                                           str(failedCloneCount) +\
                                           ", NOT DONE: " +\
-                                          str(len(cloneList) -\
+                                          str(len(cloneStatusFileList) -\
                                               successCloneCount -\
                                               failedCloneCount))
             status = srvObj.genStatus(NGAMS_SUCCESS,

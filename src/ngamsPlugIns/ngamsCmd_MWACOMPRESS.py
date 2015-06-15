@@ -1,4 +1,3 @@
-
 #    ICRAR - International Centre for Radio Astronomy Research
 #    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
@@ -18,7 +17,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 #
@@ -26,7 +24,6 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      2014-08-08  Created
 #
-
 """
 Reinstall NGAS on eor-02
     fab --host=eor-02.mit.edu -u ngas --set standalone=1 -f machine-setup/deploy.py user_deploy
@@ -38,10 +35,10 @@ Deploy this command on all EOR machines
 This command wil be invoked by a central processing client
 """
 
-from ngams import *
-
-import ngamsPlugInApi
 import os, commands, binascii
+
+from ngamsLib.ngamsCore import error, info, warning, NGAMS_TEXT_MT, NGAMS_HTTP_SUCCESS, getFileSize
+
 
 debug = 0
 uvcompress = '/home/ngas/ngas_rt/bin/uvcompress'

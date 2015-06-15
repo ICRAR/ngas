@@ -32,9 +32,10 @@ Contains a Filter Plug-In used to filter on the files that have already been del
  to the remote destination
 """
 
-from ngams import *
-import ngamsPlugInApi
-import ngamsPClient
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import alert, NGAMS_STATUS_CMD, info, NGAMS_FAILURE
+from ngamsPClient import ngamsPClient
+
 
 def ngamsMWACheckRemoteFilterPlugin(srvObj,
                           plugInPars,
@@ -66,7 +67,7 @@ def ngamsMWACheckRemoteFilterPlugin(srvObj,
     """
     match = 0
     
-     # Parse plug-in parameters.
+    # Parse plug-in parameters.
     parDic = []
     pars = ""
     if ((plugInPars != "") and (plugInPars != None)):

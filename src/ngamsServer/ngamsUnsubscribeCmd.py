@@ -34,10 +34,11 @@ This module contains functions used in connection with the
 UNSUBSCRIBE Command.
 """
 import Queue
-import pcc, PccUtTime
-from ngams import *
-import ngamsLib, ngamsCacheControlThread, ngamsSubscriptionThread
-
+import ngamsSubscriptionThread
+from ngamsLib.ngamsCore import TRACE, warning, NGAMS_DELIVERY_THR, getHostId,\
+    info, genLog, NGAMS_SUBSCRIBE_CMD, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,\
+    NGAMS_FAILURE
+from ngamsLib import ngamsLib
 
 def delSubscriber(srvObj,
                   subscrId):

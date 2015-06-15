@@ -26,7 +26,8 @@ To see how HttPostUrl works in the ngamsLib
 """
 
 from ngams import *
-import ngamsLib, ngamsPlugInApi, ngamsStatus
+import ngamsPlugInApi, ngamsStatus
+import ngamsLib
 
 import httplib, socket, time, sys, os, traceback
 

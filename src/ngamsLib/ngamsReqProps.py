@@ -34,9 +34,11 @@ Contains definition of class to handle the properties (parameters) in
 connection with a request.
 """
 
-import time, urllib, types, copy
+import time, urllib, types, copy, os
 
-from   ngams import *
+from ngamsCore import TRACE, info, trim, NGAMS_HTTP_GET, NGAMS_HTTP_PUT,\
+    NGAMS_HTTP_POST, NGAMS_ARCHIVE_CMD, NGAMS_ARCH_REQ_MT, genLog,\
+    NGAMS_UNKNOWN_MT, createSortDicDump, ignoreValue, prFormat1
 import ngamsLib
 
 

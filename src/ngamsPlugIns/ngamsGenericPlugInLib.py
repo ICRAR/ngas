@@ -18,7 +18,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsGenericPlugInLib.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,17 +27,16 @@
 # jknudstr  26/02/2007  Created.
 # cwu       24/06/2012  Added registration service utility
 #
-
 """
 Contains various utilities for building NGAS Plug-Ins.
 """
 
 import base64
-import httplib, urllib #this is only used for notifying the registration service
+import httplib, urllib  # this is only used for notifying the registration service
+import os
 
-from   ngams import *
-import ngamsPlugInApi
-
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import TRACE, getHostName, genLog, error, info
 
 
 NGAS_VOL_INFO_FILE      = ".ngas_volume_info"

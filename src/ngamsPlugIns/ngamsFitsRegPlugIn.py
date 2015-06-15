@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsFitsRegPlugIn.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  10/05/2001  Created
 #
-
 """
 This Data Register Plug-In is used to handle the registration of FITS files
 already stored on an 'NGAS disk', which just need to be registered in the DB.
@@ -37,13 +35,13 @@ Note, that the plug-in is implemented for the usage at ESO. If used in other
 contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
-
-import os, string
-from   ngams import *
-import ngamsPlugInApi, ngamsDiskUtils, ngamsDiskInfo, ngamsFitsPlugIn
-
-
 # Data Registration Function.
+
+import ngamsFitsPlugIn
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import info, rmFile
+
+
 def ngamsFitsRegPlugIn(srvObj,
                        reqPropsObj):
     """

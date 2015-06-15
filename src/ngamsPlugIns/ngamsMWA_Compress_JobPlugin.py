@@ -27,22 +27,19 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      29/05/2014  Created
-
 """
 Compression job plugin that will be called
 by the SubscriptionThread._deliveryThread
 """
+# decoded job uri: 
+#     ngasjob://ngamsMWA_Compress_JobPlugin?redo_on_fail=0&plugin_params=scale_factor=4,threshold=1E-5,bins=30,remove_uc=1
+# originally encoded joburi (during subscribe command)
+#     url=ngasjob://ngamsMWA_Compress_JobPlugin%3Fredo_on_fail%3D0%26plugin_params%3Dscale_factor%3D4%2Cthreshold%3D1E-5%2Cbins%3D30%2Cremove_uc%3D1
 
 import commands, os
 
-from ngams import *
-import ngamsPlugInApi
-
-# decoded job uri: 
-#     ngasjob://ngamsMWA_Compress_JobPlugin?redo_on_fail=0&plugin_params=scale_factor=4,threshold=1E-5,bins=30,remove_uc=1
-
-# originally encoded joburi (during subscribe command)
-#     url=ngasjob://ngamsMWA_Compress_JobPlugin%3Fredo_on_fail%3D0%26plugin_params%3Dscale_factor%3D4%2Cthreshold%3D1E-5%2Cbins%3D30%2Cremove_uc%3D1
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import getHostId, info, error, warning
 
 
 debug = 1

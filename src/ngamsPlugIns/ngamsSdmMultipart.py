@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsSdmMultipart.py,v 1.9 2010/06/29 16:03:42 mbauhofe Exp $"
@@ -29,7 +28,6 @@
 # awicenec  2008/04/10  Created
 # mbauhofe  2010/06/29  Corrected exception handling.
 #
-
 """
 This Data Archiving Plug-In is used to handle reception and processing
 of SDM multipart related message files containing Content-Location UIDs.
@@ -39,11 +37,11 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
-from   ngams import *
-import ngamsPlugInApi, ngamsDiskUtils, ngamsDiskInfo
-from mx import DateTime
+import os
 
-import os, multifile, string
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import genLog, info
+
 
 _PLUGIN_ID = __name__
 
@@ -81,15 +79,15 @@ def specificTreatment(fo):
         raise Exception, errMsg
     try:
         # CAUTION!!! parse_header returns stuff in lower case that's why it is not used here
-       almaUid = message["alma-uid"]
+        almaUid = message["alma-uid"]
     except:
         try:
             almaUid = message["Content-Location"]
         except:
-           err = "Mandatory alma-uid or Content-Location parameter not found in mime header!"
-           errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
+            err = "Mandatory alma-uid or Content-Location parameter not found in mime header!"
+            errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
                                                _PLUGIN_ID, err])
-           raise Exception, errMsg
+            raise Exception, errMsg
     
     if not uidTempl.match(almaUid): 
         err = "Invalid alma-uid found in Content-Location: " + almaUid

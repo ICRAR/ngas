@@ -45,7 +45,8 @@ available in the system. This however, can be enforced by specifying the
 import sys, os, time
 
 from ngams import *
-import ngamsDb, ngamsLib, ngamsFileInfo, ngamsDiskInfo, ngamsRemUtils
+import ngamsDb, ngamsFileInfo, ngamsDiskInfo, ngamsRemUtils
+import ngamsLib
 import ngamsReqProps, ngamsServer
 import ngasUtils, ngasUtilsLib
 

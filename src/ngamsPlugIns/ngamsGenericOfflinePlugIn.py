@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsGenericOfflinePlugIn.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,14 +27,11 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  28/02/2007  Created.
 #
-
 """
 Module that contains a generic Offline Plug-In for NGAS.
 """
 
-from   ngams import *
-import ngamsPlugInApi
-import ngamsLinuxSystemPlugInApi, ngamsEscaladeUtils
+from ngamsLib.ngamsCore import TRACE
 
 
 def ngamsGenericOfflinePlugIn(srvObj,

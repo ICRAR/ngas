@@ -26,7 +26,7 @@ Module containing SQL queries against the ngas_containers table
 """
 
 import time, uuid
-from ngams import info, error, timeRef2Iso8601, iso8601ToSecs
+from ngamsCore import info, error, timeRef2Iso8601, iso8601ToSecs
 import ngamsDbCore
 import ngamsFileInfo, ngamsContainer
 

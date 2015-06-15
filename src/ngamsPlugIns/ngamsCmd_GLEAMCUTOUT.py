@@ -1,4 +1,3 @@
-
 #    ICRAR - International Centre for Radio Astronomy Research
 #    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
@@ -18,7 +17,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 #
@@ -26,17 +24,16 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      2014/06/06  Created
 #
-
 """
 read fits header, get cdel1,2 and epoch information
 Cutout a gleam FITS image, convert it into png, and display in the browser, then remove the jpeg file
 """
 
-from ngams import *
-
-import math, time, commands, os, subprocess, traceback
+import math, time, commands, os, traceback
 import ephem
 import pyfits
+
+from ngamsLib.ngamsCore import getHostId, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, info
 
 
 my_host = getHostId()

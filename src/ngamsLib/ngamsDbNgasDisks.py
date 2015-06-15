@@ -36,8 +36,10 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
-from   ngams import *
-import ngamsLib, ngamsDbm, ngamsDbCore
+import os, types
+from pccUt import PccUtTime
+from ngamsCore import TRACE, getDiskSpaceAvail, iso8601ToSecs, rmFile, error, getUniqueNo, NGAMS_DB_CH_FILE_DELETE
+import ngamsDbm, ngamsDbCore
 
 
 # TODO: Avoid using these classes in this module (mutual dependency):
@@ -729,10 +731,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
             error("Error deleting disk info from DB: %s" % str(e))
             if (fileInfoDbm): del fileInfoDbm
             if (fileInfoDbmName): rmFile(fileInfoDbmName + "*")
-            try:
-                del cursorObj
-            except:
-                pass
             raise e
 
 

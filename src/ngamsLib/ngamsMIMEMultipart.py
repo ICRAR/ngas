@@ -30,7 +30,7 @@ import random
 import string
 import time
 from email.parser import Parser
-from ngams import error, info, checkCreatePath
+from ngamsCore import error, info, checkCreatePath
 import ngamsContainer, ngamsFileInfo
 
 CRLF = '\r\n'

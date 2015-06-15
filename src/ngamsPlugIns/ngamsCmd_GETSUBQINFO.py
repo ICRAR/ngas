@@ -1,4 +1,3 @@
-
 #    ICRAR - International Centre for Radio Astronomy Research
 #    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
@@ -18,7 +17,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 #
@@ -26,14 +24,12 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      2013/07/04  Created
 #
-
 """
 Get the queue information for all subscribers
 
 """
-import os
 
-from ngams import *
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 
 
 def handleCmd(srvObj, reqPropsObj, httpRef):

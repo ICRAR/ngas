@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsZHLDapi.py,v 1.0 2013/10/15 12:48:12 jagonzal Exp $"
@@ -29,7 +28,6 @@
 # jknudstr  30/03/2006  Created
 # ZHANGHAILONG  10/15/2013  Add functions to fill the GAVO table for MWA-WEB.ICRAR.ORG
 #
-
 """
 This is a generic Data Archiving Plug-In to archive any kind of data file.
 
@@ -59,16 +57,17 @@ compression_ext:    Extension resulting from applying the specified compression
 */**: These parameters must be given in pairs, it is not possible only to
       specify one of them.
 """
+# Parameters.
 
-import os, multifile, string, md5, traceback, urllib
-from   ngams import *
-import ngamsPlugInApi
+import os, traceback
 
-
+from pccUt import PccUtTime
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import TRACE, info, genLog, alert, error
 import psycopg2 
 import pyfits
 
-# Parameters.
+
 TARG_MIME_TYPE  = "target_mime_type"
 FILE_ID         = "file_id"
 VERSIONING      = "versioning"

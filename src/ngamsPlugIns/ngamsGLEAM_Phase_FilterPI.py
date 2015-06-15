@@ -27,15 +27,16 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      18/Nov/2014  Created
-
 """
 Pick images based on its GLEAM phase (phase 1 or 2?)
 """
+
 import os
 
-from ngams import *
-import ngamsPlugInApi
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import warning
 import pccFits.PccSimpleFitsReader as fitsapi
+
 
 QUERY_MAX_VER = "SELECT MAX(file_version) FROM ngas_files WHERE file_id = '%s'"
 

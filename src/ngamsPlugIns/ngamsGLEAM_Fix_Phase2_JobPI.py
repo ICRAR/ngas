@@ -27,7 +27,6 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      23/Sep/2014  Created
-
 """
 Fix phase2 image DEC job plugin that will be called
 by the SubscriptionThread._deliveryThread
@@ -40,9 +39,13 @@ by the SubscriptionThread._deliveryThread
 6. copy the file back (involves changing file permission)
 7. update the NGAS DB (checksum, size, etc.)
 """
+
 import os, commands, binascii
+
+from ngamsLib.ngamsCore import getFileSize
 import pccFits.PccSimpleFitsReader as fitsapi
 import pyfits
+
 
 work_dir = '/home/ngas/NGAS/volume1/processing/phase2fix'
 

@@ -1,4 +1,3 @@
-
 #    ICRAR - International Centre for Radio Astronomy Research
 #    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
@@ -18,7 +17,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 #
@@ -26,7 +24,6 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      2013-12-21  Created
 #
-
 """
 Retain only files look like this:
 
@@ -39,10 +36,12 @@ I estimate that we will need  67*2*30*24*7*5/1000 ~ 3.4 TB of disk space.
 (67 MB per file, 2 pols, 30 files an hour, 24 hours, 7 pointings, 5 freqs)
 
 """
+
 import threading, datetime
 
-from ngams import *
-import ngamsDiscardCmd
+from ngamsLib.ngamsCore import getHostId, error, info, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsServer import ngamsDiscardCmd
+
 
 QUERY_ALL_FILES = "SELECT a.disk_id, a.file_id, a.file_version FROM ngas_files a, "+\
                  "ngas_disks b "+\

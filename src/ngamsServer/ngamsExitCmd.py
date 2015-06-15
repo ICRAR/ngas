@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsExitCmd.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,13 +27,13 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  13/05/2003  Created
 #
-
 """
 Function + code to handle the EXIT command.
 """
 
-from ngams import *
 import ngamsSrvUtils
+from ngamsLib.ngamsCore import NGAMS_OFFLINE_STATE, NGAMS_IDLE_SUBSTATE, \
+    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS
 
 
 def handleCmdExit(srvObj,

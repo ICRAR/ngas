@@ -40,7 +40,8 @@ import cPickle, shutil
 import pcc, PccUtUtils, PccUtTime
 from   ngams import *
 import ngamsPClient
-import ngamsLib, ngamsDbm, ngamsDb, ngamsStatus, ngamsConfig, ngamsServer
+import ngamsDbm, ngamsDb, ngamsStatus, ngamsConfig, ngamsServer
+import ngamsLib
 import ngamsCmdHandling
 import ngamsDataCheckThread, ngamsJanitorThread, ngamsSubscriptionThread
 import ngamsArchiveCmd, ngamsReqProps, ngamsHighLevelLib

@@ -18,14 +18,12 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # CWU      03/JUNE/2013  Created
 #
-
 """
 NGAS Command Plug-In, implementing a Quick Archive PLUS Command
 
@@ -34,11 +32,11 @@ This is an extension of the original QARCHIVE command, basically does
 
 """
 
-from ngams import *
-
 import urllib2
 
 import ngamsCmd_QARCHIVE
+from ngamsLib.ngamsCore import getHostId, info, error
+
 
 def handleCmd(srvObj,
               reqPropsObj,

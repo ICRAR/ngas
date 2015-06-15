@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsTestSuspensionPlugIn.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  23/01/2002  Created
 #
-
 """
 Test Suspension Plug-In to simulate the NGAS host suspension.
 
@@ -41,13 +39,11 @@ This is done in the following way:
 
 See also ngamsTestWakeUpPlugIn.py.
 """
-
 # TODO: Move this module to ngams/ngamsTest!
 
 import time
 
-from   ngams import *
-import ngamsDiskInfo
+from ngamsLib.ngamsCore import TRACE, info, logFlush, getHostName
 
 
 def ngamsTestSuspensionPlugIn(srvObj):

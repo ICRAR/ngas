@@ -19,6 +19,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+from pccUt import PccUtTime
 
 #******************************************************************************
 #
@@ -34,12 +35,15 @@ This module contains the code for the (Data) Subscription Thread, which is
 used to handle the delivery of data to Subscribers.
 """
 
-import thread, threading, time, commands, cPickle, types, math, sys, traceback, os, base64, urlparse
+import thread, threading, time, types, traceback, os, base64, urlparse
 from Queue import Queue, Empty, PriorityQueue
 
-from ngams import *
-import ngamsDbm, ngamsDb, ngamsLib, ngamsStatus, ngamsHighLevelLib, ngamsCacheControlThread
-import ngamsFileInfo
+import ngamsCacheControlThread
+from ngamsLib.ngamsCore import TRACE, info, NGAMS_SUBSCRIPTION_THR, isoTime2Secs,\
+    alert, NGAMS_SUBSCR_BACK_LOG, error, getHostId, NGAMS_DELIVERY_THR,\
+    NGAMS_HTTP_INT_AUTH_USER, NGAMS_REARCHIVE_CMD, warning, NGAMS_FAILURE,\
+    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, getFileSize, rmFile
+from ngamsLib import ngamsDbm, ngamsDb, ngamsStatus, ngamsHighLevelLib, ngamsFileInfo, ngamsLib
 
 # TODO:
 # - Should not hardcode no_versioning=1.

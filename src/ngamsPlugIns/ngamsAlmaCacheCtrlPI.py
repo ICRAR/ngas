@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsAlmaCacheCtrlPI.py,v 1.1 2010/06/01 13:17:32 awicenec Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  24/07/2008  Created
 #
-
 """
 This is an example Cache Control Plug-In, which can be used as template
 when implementing this type of plug-in.
@@ -36,10 +34,8 @@ when implementing this type of plug-in.
 It simply deletes files from the cache after a given expiration time.
 """
 
-import os, string
-import PccUtTime
-from   ngams import *
-import ngamsPlugInApi, ngamsDiskUtils, ngamsDiskInfo
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import TRACE, info
 
 
 def ngamsAlmaCacheCtrlPI(srvObj,cacheEntryObj):

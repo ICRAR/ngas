@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsRearchiveCmd.py,v 1.9 2008/08/19 20:51:50 jknudstr Exp $"
@@ -37,16 +36,17 @@ former, the data of the file is provided in the request, using the second,
 the file is pulled via a provided URL from the remote, host node.
 """
 
+import os
 import time, base64
 
-from ngams import *
-
-import PccUtTime
-
-import ngamsDb, ngamsLib, ngamsStatus
-import ngamsHighLevelLib, ngamsDiskUtils, ngamsFileUtils
-import ngamsFileInfo, ngamsArchiveCmd
-import ngamsCacheControlThread
+from pccUt import PccUtTime
+import ngamsArchiveCmd, ngamsFileUtils, ngamsCacheControlThread
+from ngamsLib import ngamsStatus, ngamsLib
+from ngamsLib import ngamsFileInfo
+from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
+from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_GET, \
+    NGAMS_HTTP_SUCCESS, info, mvFile, getDiskSpaceAvail, genLog, sysLogInfo, \
+    NGAMS_IDLE_SUBSTATE, NGAMS_SUCCESS
 
 
 def receiveData(srvObj,

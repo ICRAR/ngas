@@ -1,4 +1,3 @@
-
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -20,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsTileCompress.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -29,17 +27,14 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  18/05/2006  Created
 #
-
 """
 Command line utility + function to tile compress a FITS file.
 For now the 'imcopy' utility of the CFITSIO package is invoked for this.
 """
 
-import sys, time, commands
+import sys, commands
 
-
-from   ngams import *
-
+from ngamsLib.ngamsCore import info, mvFile, rmFile, setLogCond
 
 def ngamsTileCompress(filename):
     """

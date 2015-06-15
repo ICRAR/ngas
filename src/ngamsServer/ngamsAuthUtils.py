@@ -35,8 +35,9 @@ This module utilities used to authorization.
 
 import base64
 
-from ngams import *
-import ngamsLib, ngamsHostInfo
+from ngamsLib.ngamsCore import TRACE, getHostId, getHostName, NGAMS_HTTP_UNAUTH,\
+    NGAMS_FAILURE, genLog, warning
+from ngamsLib import ngamsHostInfo, ngamsLib
 
 
 def genUnAuthResponse(srvObj,

@@ -104,35 +104,11 @@ _debug = 0
 # Flag indicating if we're executing in Unit Test Mode.
 _testMode = 0
 
-# Make the NG/AMS classes available by extending the search paths.
-try:
-    from sys import path
-    pathTup = [__path__[0] + '/../ngamsCClient',
-               __path__[0] + '/../ngamsData',
-               __path__[0] + '/../ngamsLib',
-               __path__[0] + '/../ngamsPClient',
-               __path__[0] + '/../ngamsPlugIns',
-               __path__[0] + '/../ngamsServer',
-               __path__[0] + '/../ngamsTest',
-               __path__[0] + '/../ngamsUtils/src',
-               __path__[0] + '/../pcc',
-               __path__[0] + '/../pcc/pccLog',
-               __path__[0] + '/../pcc/pccUt',
-               ]
-    path.extend(pathTup)
-    __path__.extend(pathTup)
-except Exception, e:
-    print "ngams/__init__.py: Line 122"
-    pass
-
-import PccLog
-import PccLogDef
-import PccUtString
-import PccUtTime
+from pccLog import PccLog, PccLogDef
+from pccUt  import PccUtString, PccUtTime
 import md5
 import os
 import sys
-import string
 import re
 import syslog
 import traceback
@@ -142,12 +118,13 @@ import time
 import commands
 import urllib
 import socket
+import pkg_resources
 
 # make sure that we can get a handle to the server object
 _ngamsServer = None
 
 # NG/AMS source directory
-NGAMS_SRC_DIR = os.path.realpath(__path__[0] + '/..')
+NGAMS_SRC_DIR = pkg_resources.resource_filename(__name__, '..')
 
 #NGAMS_SRC_DIR = os.path.normpath(os.path.relpath('.') + "/../..")
 
@@ -209,7 +186,7 @@ for line in verBufLines:
 
 
 # Load Error Definition File
-NGAMS_ERR_DEF_FILE = os.path.abspath(__path__[0] + '/../ngamsData/'+\
+NGAMS_ERR_DEF_FILE = pkg_resources.resource_filename(__name__, '/../ngamsData/'+\
                                       "ngamsLogDef.xml")
 _logDef = PccLogDef.PccLogDef().load(NGAMS_ERR_DEF_FILE)
 

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsCmd_MIRRARCHIVE.py,v 1.6 2010/06/17 14:23:45 awicenec Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jagonzal  2010/17/01  Created
 #
-
 """
 NGAS Command Plug-In, implementing an Archive Command specific for Mirroring 
 
@@ -47,13 +45,21 @@ simplified in a few ways:
   - ngas_files data is 'cloned' from the source file
 """
 
-import random
 import binascii
-import pcc, PccUtTime
-from ngams import *
-import ngamsLib, ngamsStatus, ngamsDbm, ngamsDbCore, ngamsFileInfo
-import ngamsDiskInfo, ngamsHighLevelLib
-import ngamsCacheControlThread
+import os
+import random
+import time
+
+from ngamsLib import ngamsDbCore, ngamsDiskInfo, ngamsHighLevelLib, ngamsLib, \
+    ngamsFileInfo
+from ngamsLib.ngamsCore import TRACE, getHostName, genLog, error, \
+    checkCreatePath, info, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
+    NGAMS_BUSY_SUBSTATE, NGAMS_STAGING_DIR, genUniqueId, getVerboseLevel, mvFile, \
+    getFileCreationTime, NGAMS_FILE_STATUS_OK, getDiskSpaceAvail, \
+    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS
+from ngamsServer import ngamsCacheControlThread
+from pccUt import PccUtTime
+
 
 GET_AVAIL_VOLS_QUERY = "SELECT %s FROM ngas_disks nd WHERE completed=0 AND " +\
                        "host_id='%s'"
@@ -168,7 +174,7 @@ def saveFromHttpToFile(ngamsCfgObj,
     try:
         # Make mutual exclusion on disk access (if requested).
         if (mutexDiskAccess):
-           ngamsHighLevelLib.acquireDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
+            ngamsHighLevelLib.acquireDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
 
         # Distinguish between Archive Pull and Push Request. By Archive
         # Pull we may simply read the file descriptor until it returns "".
@@ -232,7 +238,7 @@ def saveFromHttpToFile(ngamsCfgObj,
 
         # Release disk resouce.
         if (mutexDiskAccess):
-           ngamsHighLevelLib.releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
+            ngamsHighLevelLib.releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
 
         return [deltaTime,crc]
     except Exception, e:
@@ -409,8 +415,8 @@ def handleCmd(srvObj,
     srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                        NGAMS_SUCCESS, msg, targDiskInfo)
     
-     # Trigger Subscription Thread. This is a special version for MWA, in which we simply swapped MIRRARCHIVE and QARCHIVE
-     # chen.wu@icrar.org
+    # Trigger Subscription Thread. This is a special version for MWA, in which we simply swapped MIRRARCHIVE and QARCHIVE
+    # chen.wu@icrar.org
     msg = "triggering SubscriptionThread"
     info(3, msg)
     srvObj.addSubscriptionInfo([(resDapi.getFileId(),

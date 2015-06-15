@@ -37,7 +37,6 @@ ngamsCmd_RUNTASK
 import commands, urllib2
 import cPickle as pickle
 from ngamsJob_MWA_RTS import CorrLocalTask, RTSJobParam, DummyLocalTask
-from ngamsJobProtocol import MRLocalTask
 from optparse import OptionParser
 
 """

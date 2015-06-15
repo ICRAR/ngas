@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsCmd_QARCHIVE.py,v 1.6 2009/12/07 16:36:40 awicenec Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  03/02/2009  Created
 #
-
 """
 NGAS Command Plug-In, implementing a Quick Archive Command.
 
@@ -47,14 +45,20 @@ simplified in a few ways:
   - ngas_files data is 'cloned' from the source file
 """
 
-from ngams import *
-import random
 import binascii
+import os
+import random
 import socket
-#import pcc, PccUtTime
-import ngamsLib, ngamsDbCore, ngamsFileInfo
-import ngamsDiskInfo, ngamsHighLevelLib
-import ngamsCacheControlThread
+import time
+
+from ngamsLib.ngamsCore import TRACE, getHostId, genLog, error, checkCreatePath, \
+    info, warning, NGAMS_HTTP_HDR_CHECKSUM, NGAMS_ONLINE_STATE, \
+    NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_STAGING_DIR, genUniqueId, \
+    getVerboseLevel, mvFile, getFileCreationTime, NGAMS_FILE_STATUS_OK, \
+    getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS
+from ngamsLib import ngamsDbCore, ngamsDiskInfo, ngamsHighLevelLib, ngamsFileInfo, ngamsLib
+from ngamsServer import ngamsCacheControlThread
+from pccUt import PccUtTime
 
 
 GET_AVAIL_VOLS_QUERY = "SELECT %s FROM ngas_disks nd WHERE completed=0 AND " +\

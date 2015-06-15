@@ -6,11 +6,11 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      07/12/2012  Created
 #
-
 """ Contains a DDPI which stage the file from Tape to the disk (only if the file is offline). """
 
-from ngams import * 
-import ngamsPlugInApi, ngamsDppiStatus
+from ngamsLib import ngamsPlugInApi, ngamsDppiStatus
+from ngamsLib.ngamsCore import NGAMS_PROC_FILE, alert, info
+
 
 def ngamsMWACortexStageDppi(srvObj,
                            reqPropsObj,

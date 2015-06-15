@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsCmd_QUERY.py,v 1.6 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,16 +27,18 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  15/07/2006  Created
 #
-
 """
 Dynamic loadable command to query the DB associated with the NG/AMS instance.
 """
-
-from ngams import *
-import ngamsDbm, ngamsDbCore
-import cPickle, json, decimal
-
 # import markup TODO: This is for HTML formatting
+
+import cPickle, json, decimal
+import os
+
+from ngamsLib import ngamsDbm, ngamsDbCore
+from ngamsLib.ngamsCore import NGAMS_TMP_FILE_EXT, TRACE, info, NGAMS_TEXT_MT, \
+    NGAMS_HTTP_SUCCESS, getMaxLogLevel, notice, rmFile
+
 
 CURSOR_IDX           = "__CURSOR_IDX__"
 NGAMS_PYTHON_LIST_MT = "application/python-list"

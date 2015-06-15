@@ -34,14 +34,19 @@ Contains utility functions used in connection with the handling of
 the file archiving.
 """
 
-import os, glob, urllib, commands, cPickle, random
+import os, glob, cPickle, random, time
 
-import PccUtTime
-
-from   ngams import *
-import ngamsLib, ngamsHighLevelLib, ngamsNotification
-import ngamsReqProps, ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsDiskUtils
-import ngamsFileUtils, ngamsPlugInApi
+from pccUt import PccUtTime
+from ngamsLib.ngamsCore import info, NGAMS_FAILURE, getFileCreationTime,\
+    NGAMS_FILE_STATUS_OK, TRACE, notice, NGAMS_NOTIF_DISK_SPACE,\
+    getDiskSpaceAvail, NGAMS_XML_MT, NGAMS_NOTIF_DISK_CHANGE, genLog,\
+    NGAMS_HTTP_GET, NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile,\
+    NGAMS_NOTIF_NO_DISKS, setLogCache, mvFile, error, NGAMS_PICKLE_FILE_EXT,\
+    rmFile, NGAMS_SUCCESS, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BACK_LOG_DIR,\
+    warning, sysLogInfo, getHostName, alert
+from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsPlugInApi, ngamsLib
+from ngamsLib import ngamsReqProps, ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsDiskUtils
+import ngamsFileUtils
 import ngamsCacheControlThread
 
 

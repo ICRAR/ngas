@@ -18,7 +18,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 """
 NGAS Command Plug-In, implementing a Archive PULL Command using BBCP
@@ -38,13 +37,20 @@ curl --connect-timeout 7200 eor-12.mit.edu:7777/BBCPARC?fileUri=ngas%40146.118.8
 curl --connect-timeout 7200 eor-12.mit.edu:7777/BBCPARC?fileUri=ngas%40146.118.84.67%3A/mnt/mwa01fs/MWA/testfs/output_320M_001.dat\&bport=7790\&bwinsize=%3D32m\&bnum_streams=12\&mimeType=application/octet-stream\&bchecksum=-354041269
 """
 
-import commands
 from collections import namedtuple
+import commands
+import os
+import time
 
-from ngams import *
-import ngamsHighLevelLib
-import ngamsCacheControlThread
-import ngamsArchiveUtils
+from ngamsLib import ngamsHighLevelLib
+from ngamsLib.ngamsCore import info, checkCreatePath, genLog, alert, TRACE, \
+    NGAMS_SUCCESS, NGAMS_HTTP_GET, NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, \
+    NGAMS_NOTIF_NO_DISKS, setLogCache, mvFile, notice, NGAMS_FAILURE, error, \
+    NGAMS_PICKLE_FILE_EXT, rmFile, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
+    NGAMS_BUSY_SUBSTATE, getDiskSpaceAvail, NGAMS_HTTP_SUCCESS
+from ngamsServer import ngamsArchiveUtils, ngamsCacheControlThread
+from pccUt import PccUtTime
+
 
 bbcp_param = namedtuple('bbcp_param', 'port, winsize, num_streams, checksum')
 
@@ -206,7 +212,7 @@ def archiveFromFile(srvObj,
             cal_checksum = fileObj.getChecksum()
             if (cal_checksum != bparam.checksum):
                 info(3, "Checksum inconsistency, removing the file from the archive")
-                import ngamsDiscardCmd
+                from ngamsServer import ngamsDiscardCmd
                 work_dir = srvObj.getCfg().getRootDirectory() + '/tmp/'
                 ngamsDiscardCmd._discardFile(srvObj, diskInfo.getDiskId(), fileObj.getFileId(), 
                                              int(fileObj.getFileVersion()), execute = 1, tmpFilePat = work_dir)

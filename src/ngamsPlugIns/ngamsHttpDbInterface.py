@@ -18,7 +18,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsHttpDbInterface.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -27,7 +26,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  2007-03-09  Created
 #
-
 """
 This module contains two classed:
 
@@ -38,17 +36,12 @@ The ngamsHttpDbInterfaceCursor class, which implements a cursor object based on
 the NG/AMS Cursor Object API definition.
 """
 
-import time, re
+from ngamsLib import ngamsStatus, ngamsLib
+from ngamsLib.ngamsCore import TRACE, getNgamsVersion, error, genUniqueId, \
+    NGAMS_HTTP_SUCCESS
+from pccUt import PccUtTime
 
-from mx import DateTime
 
-import pcc, PccUtTime
-
-from   ngams import *
-#import ngamsPClient
-import ngamsLib, ngamsStatus
-
- 
 class ngamsHttpDbInterface:
     """
     Class to handle the connection to the NGAS DB via the NG/AMS HTTP

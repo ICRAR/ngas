@@ -69,11 +69,10 @@ NgamsCfg.Authorization[1].Id = Authorization-Std
 Using this scheme, a 1:1 mapping between the two representations is obtained.
 """
 
-import sys
+import re
 import xml.dom.minidom
 
-
-from ngams import *
+from ngamsCore import TRACE, genLog, rmFile, info
 
 
 class ngamsAttribute:

@@ -33,9 +33,9 @@
 Contains class for handling the return result for the Data Processing Plug-Ins.
 """
 
-from   ngams import *
-import ngamsLib
-
+import os
+from ngamsCore import TRACE, NGAMS_PROC_DATA, NGAMS_PROC_FILE,\
+    getFileSize
 
 class ngamsDppiResult:
     """
@@ -201,7 +201,7 @@ class ngamsDppiResult:
 
         Returns:      Reference to object itself.
         """     
-        self.__refFilename = os.path.basename(refFilename)        
+        self.__refFilename = os.path.basename(refFilename)
         return self
 
     

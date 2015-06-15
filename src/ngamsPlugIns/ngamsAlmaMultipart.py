@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsAlmaMultipart.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # awicenec  2004/10/01  Created
 #
-
 """
 This Data Archiving Plug-In is used to handle reception and processing
 of ALMA multipart related message files containing ALMA UIDs.
@@ -38,11 +36,12 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
-from   ngams import *
-import ngamsPlugInApi, ngamsDiskUtils, ngamsDiskInfo
-from mx import DateTime
+import os
 
-import os, multifile, string
+from mx import DateTime
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import genLog, info
+
 
 _PLUGIN_ID = __name__
 
@@ -190,9 +189,9 @@ def ngamsAlmaMultipart(srvObj,
                                                  compression, relPath,
                                                  diskInfo.getSlotId(),
                                                  fileExists, complFilename)
-    except:
-        errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
-                                                   _PLUGIN_ID, err])
+    except Exception, e:
+        errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(stagingFilename),
+                                                   _PLUGIN_ID, str(e)])
         raise Exception, errMsg
         
 if __name__ == "__main__":

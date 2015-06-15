@@ -45,7 +45,8 @@ import cProfile as profile
 import pstats
 import pcc, PccUtUtils, PccUtTime
 from ngams import *
-import ngamsLib, ngamsConfig, ngamsHighLevelLib
+import ngamsConfig, ngamsHighLevelLib
+import ngamsLib
 try:
     import ngamsTestLib
 except Exception, e:

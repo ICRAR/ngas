@@ -11,26 +11,24 @@ data = glob('ngamsData/*')
 setup(name='ngamsPClient',
       version=version,
       description="'NGAS Python Client'",
-      long_description="""\
-""",
-      classifiers=[], # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
+      long_description="The NGAS Python Client",
+      classifiers=['Topic :: Database', 'Topic :: System :: Archiving', 'Programming Language :: Python'], # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
       keywords='',
       author='Andreas Wicenec',
       author_email='awicenec@gmail.com',
       url='',
       license='LGPL',
-      packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
+      packages=find_packages(),
       data_files=[('doc', ['doc/COPYRIGHT', 'doc/VERSION', 'doc/ngamsPClient.doc']),
                   ('ngamsData', data),
                   ('ngamsLib',['README']),
-                  ('.',['command_line.py', 'ngamsPClient.py']),
+                  ('.',['ngamsPClient.py']),
                   ],
-#      scripts = ['ngamsPClient.py'],
       include_package_data=True,
       zip_safe=False,
       entry_points= {
-      'console_scripts':[
-      'ngamsPClient = command_line:main'
-      ],
+        'console_scripts':[
+            'ngamsPClient = ngamsPClient:main'
+        ],
       },
-      )
+)

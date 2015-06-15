@@ -33,12 +33,13 @@ Contains a Filter Plug-In used to filter out those files that
 (2) belong to Solar observations with project_id 'c105' or 'c106'
 """
 
-from ngams import *
 import os, threading
-import ngamsPlugInApi
-import ngamsPClient
-import ngamsMWACortexTapeApi
+
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import genLog, alert, info, NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, NGAMS_FAILURE
+from ngamsPClient import ngamsPClient
 import pccFits.PccSimpleFitsReader as fitsapi
+
 
 g_db_conn = None # MWA metadata database connection
 

@@ -25,7 +25,7 @@ Contains classes related to the handling of Containers in ngams
 @author: rtobar
 '''
 
-from ngams import timeRef2Iso8601
+from ngamsCore import timeRef2Iso8601
 from xml.dom import minidom
 import ngamsFileInfo
 

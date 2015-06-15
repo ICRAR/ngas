@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsMysql.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # awicenec  2005-02-28  Created
 #
-
 """
 This module contains two classed:
 
@@ -41,9 +39,10 @@ the NG/AMS Cursor Object API definition.
 
 import time, re
 import MySQLdb
-import pcc,PccUtTime
-from   ngams import *
-from   mx import DateTime
+
+from mx import DateTime
+from pccUt import PccUtTime
+from ngamsLib.ngamsCore import TRACE, info
 
 
 class ngamsMysql:
@@ -144,7 +143,7 @@ class ngamsMysql:
         T = TRACE()
 
         del(self.__dbDrv)
-        return close
+        return self
 
 
     def execute(self,
@@ -202,7 +201,7 @@ class ngamsMysql:
                 self.connect(self.__server, self.__db, self.__user,
                              self.__password, self.__parameters)
                 info(1,"Reconnected to DB - performing SQL query: " +\
-                     sqlQuery)
+                     query)
                 res = self.__dbDrv.execute(query)
                 return [res]
             else:

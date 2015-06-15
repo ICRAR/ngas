@@ -29,10 +29,18 @@ Usgae example with wget:
 wget -O LARCHIVE.xml "http://192.168.1.123:7777/LARCHIVE?fileUri=/home/ngas/NGAS/log/LogFile.nglog"
 """
 
-from ngams import *
-import ngamsHighLevelLib
-import ngamsCacheControlThread
-import ngamsArchiveUtils
+import os
+import time
+
+from ngamsLib import ngamsHighLevelLib
+from ngamsLib.ngamsCore import TRACE, NGAMS_SUCCESS, info, NGAMS_HTTP_GET, \
+    NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile, NGAMS_NOTIF_NO_DISKS, \
+    setLogCache, mvFile, notice, NGAMS_FAILURE, error, NGAMS_PICKLE_FILE_EXT, \
+    rmFile, genLog, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, \
+    getDiskSpaceAvail, NGAMS_HTTP_SUCCESS
+from ngamsServer import ngamsArchiveUtils, ngamsCacheControlThread
+from pccUt import PccUtTime
+
 
 def updateDiskInfo(srvObj,
                    resDapi):

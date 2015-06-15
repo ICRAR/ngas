@@ -1,4 +1,3 @@
-
 #    ICRAR - International Centre for Radio Astronomy Research
 #    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
@@ -18,7 +17,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 #
@@ -26,7 +24,6 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      2013-12-21  Created
 #
-
 """
 Retain the latest (or earliest) version of files on this host, and purge all previous (or subsequent) versions 
 Does not support multiple threads
@@ -49,10 +46,12 @@ pv_on_any_hosts  flag parameter (no value), this flag is only read if the flag k
                                                  the command will remove the second version on ngas_host_002
 
 """
+
 import threading, datetime
 
-from ngams import *
-import ngamsDiscardCmd
+from ngamsLib.ngamsCore import getHostId, error, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsServer import ngamsDiscardCmd
+
 
 QUERY_PREV_VER = "SELECT a.disk_id, a.file_id, a.file_version FROM ngas_files a, "+\
                  "(SELECT file_id, MAX(file_version) AS max_ver FROM ngas_files, ngas_disks WHERE ngas_files.disk_id = ngas_disks.disk_id AND ngas_disks.host_id = '%s' GROUP BY file_id) c, " % getHostId() +\

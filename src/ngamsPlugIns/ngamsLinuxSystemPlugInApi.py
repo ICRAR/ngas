@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsLinuxSystemPlugInApi.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -29,17 +28,10 @@
 # awicenec  15/06/2001  Created.
 # jknudstr  10/05/2001  Introduced in ngams project.
 #
-
 """
 This module contains tools for the System Check/Online/Offline Plug-Ins
 for Linux.
 """
-
-import os, posix, commands, string, urllib, exceptions, re, sys, glob
-import pcc
-from   ngams import *
-import ngamsLib, ngamsDiskUtils, ngamsHostInfo
-
 # Constants.
 #MTAB_DEFAULT    = "/etc/mtab"
 #FSTAB_DEFAULT   = "/etc/fstab"
@@ -47,8 +39,6 @@ import ngamsLib, ngamsDiskUtils, ngamsHostInfo
 ##_MODULE = '3w-xxxx'
 ##_MNT_PREFIX = '/NGAS'
 ##_URI = "http://localhost:1080/technical.html"
-
-
 # def getMntDict(mtabFile = MTAB_DEFAULT,
 #                short = 1):
 #     """
@@ -57,13 +47,9 @@ import ngamsLib, ngamsDiskUtils, ngamsHostInfo
 #     of the mtab records are returned in a list, where the first element is
 #     the device name. If the short parameter is set to 1 (default) only the
 #     device name is returned as key values.
-
 #     Synopsis:   getMntDict([mtabFile=<mtabFile>][,short = 0|1])
-
 #     mtabFile:   Mount tab file (string).
-    
 #     short:      Short output (int)
-
 #     Returns:    Dictionary with entries in mtab file (dictionary).
 #     """
 #     try:
@@ -74,7 +60,6 @@ import ngamsLib, ngamsDiskUtils, ngamsHostInfo
 #         error(str(e))
 #         errMsg = "Problems opening mtab file (" + str(e) + ") "
 #         raise Exception, errMsg
-
 #     mntDict = {}
 #     for l in mtab:
 #         record = l[:-1].split()
@@ -85,24 +70,23 @@ import ngamsLib, ngamsDiskUtils, ngamsHostInfo
 #         else:
 #             rest = record[0]
 #         mntDict.update({record[1]:rest})
-                
 #     return mntDict
-
-
 # def getMountedDev(mntPt):
 #     """
 #     Return the device name for a mount point <mntPT> or an empty string.
-
 #     Synopsis:   getMountedDev(mntPt)
- 
 #     mntPt:      Mount point (string).
-    
 #     Returns:    Mount point or "" if device name not found (string).
 #     """
 #     mntDict = getMntDict()            # all existing mounts
 #     for k in mntDict.keys():
 #         if k == mntPt: return mntDict[k]
 #     return ""
+
+import os, posix, commands, exceptions, glob
+
+from ngamsLib import ngamsHostInfo
+from ngamsLib.ngamsCore import info, error, warning, getHostName
 
 
 def mountToMountpoint(devName,
@@ -270,7 +254,7 @@ def insMod(module):
         info(1,errMsg)
         return 0
     if istat > 0:
-        errMsg = "Problem while inserting module " + module + ":" + out
+        errMsg = "Problem while inserting module " + module + ":" + str(stat)
         error(errMsg)
         raise Exception, errMsg
 

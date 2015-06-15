@@ -33,14 +33,11 @@
 Class to handle the information in connection with one Mirroring Request.
 """
 
-import types
-import xml.dom.minidom
-import PccUtTime
-from   ngams import *
+import time
+
+from ngamsCore import getHostId, timeRef2Iso8601, trim, iso8601ToSecs,\
+    TRACE, setLogCond
 import ngamsLib
-
-
-import ngamsDbCore
 
 
 # TODO: Add writeMirroringReq() in ngamsDbJoin.py
@@ -124,7 +121,7 @@ class ngamsMirroringRequest:
         """
         try:
             statusInt = _mirReqStatStr2NoDic[statusStr]
-            return statusNo
+            return statusInt
         except:
             msg = "Error converting Mirroring Request Status from text " +\
                   "to number representation. Status given: %s/type: %s"

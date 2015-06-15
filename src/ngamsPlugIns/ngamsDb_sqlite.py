@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDb_sqlite.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  03/02/2006  Created
 #
-
 """
 Contains the the specific implementation for the DB engine for the NGAS
 SQLite interface.
@@ -37,8 +35,8 @@ Make a link to this file names 'ngamsDb.py' in a directory, which is searched
 before the ngams main directory.
 """
 
-from   ngams import *
-from   ngamsDbBase import *
+from ngamsLib.ngamsCore import TRACE
+from ngamsLib.ngamsDbBase import ngamsDbBase
 
 
 class ngamsDb(ngamsDbBase):

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsHelpCmd.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,17 +27,19 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  04/04/2002  Created
 #
-
 """
 Contains code for handling the HELP command.
 
 TODO: The HELP command is not yet implemented!
 """
 
+import os
 import pydoc
-import pcc, PccUtTime
-from ngams import *
-import ngamsLib, ngamsStatus
+
+from pccUt import PccUtTime
+from ngamsLib import ngamsStatus
+from ngamsLib.ngamsCore import TRACE, getNgamsVersion, getHostId, NGAMS_FAILURE, \
+    NGAMS_HTTP_SUCCESS, NGAMS_SRC_DIR, NGAMS_SUCCESS
 
 
 def handleCmdHelp(srvObj,

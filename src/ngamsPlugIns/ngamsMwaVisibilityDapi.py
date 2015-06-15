@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsGenDapi.py,v 1.3 2010/05/21 12:28:12 jagonzal Exp $"
@@ -30,7 +29,6 @@
 # jknudstr  12/09/2006  Gave overhaul
 # cwu       06/08/2012  Adapted to MWA project on the PBStore
 #
-
 """
 This is a generic Data Archiving Plug-In to archive any kind of data file.
 
@@ -60,12 +58,15 @@ compression_ext:    Extension resulting from applying the specified compression
 */**: These parameters must be given in pairs, it is not possible only to
       specify one of them.
 """
-
-import os, multifile, string, md5
-from   ngams import *
-import ngamsPlugInApi
-
 # Parameters.
+
+import os
+
+from pccUt import PccUtTime
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import TRACE, info, genLog, error
+
+
 TARG_MIME_TYPE  = "target_mime_type"
 FILE_ID         = "file_id"
 VERSIONING      = "versioning"

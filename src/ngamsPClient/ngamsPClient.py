@@ -38,15 +38,23 @@ The NG/AMS Python Client is implemented as a class, ngamsPClient, which
 can be used to build up Python applications communicating with NG/AMS.
 """
 
-import os, sys, re, httplib, mimetools, urllib, random, time, base64
-import pcc, PccUtTime
-from ngams import *
-import ngamsLib
-import ngamsFileInfo, ngamsStatus
+import os, sys, random, time, traceback, base64
+from pccUt import PccUtTime
+from ngamsLib import ngamsLib, ngamsFileInfo, ngamsStatus
+from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CONTENT_TYPE,\
+    NGAMS_LABEL_CMD, NGAMS_ONLINE_CMD, NGAMS_OFFLINE_CMD, NGAMS_REMDISK_CMD,\
+    NGAMS_REMFILE_CMD, NGAMS_REGISTER_CMD, NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD,\
+    NGAMS_FAILURE, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD, NGAMS_ARCH_REQ_MT,\
+    getHostName, setLogCond, setDebug, NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,\
+    NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE,\
+    NGAMS_IDLE_SUBSTATE
+from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD
+from ngamsLib.ngamsCore import info, notice, getTestMode
 from xml.dom import minidom
+import pkg_resources
 
 
-manPage = os.path.normpath(ngamsGetSrcDir() + "/ngamsPClient/doc/ngamsPClient.doc")
+manPage = pkg_resources.resource_filename(__name__, 'doc/ngamsPClient.doc')
 fo = open(manPage)
 __doc__ += "\n\n\nMan-Page for the NG/AMS Python Client Tool:\n\n"
 __doc__ += "ngamsPClient " + fo.read()
@@ -747,7 +755,7 @@ class ngamsPClient:
 
         Returns:            NG/AMS Status object (ngamsStatus).
         """
-        pars = [["url", url], ["priority", priority]]
+        pars = [["url", url]]
         return self.sendCmd(NGAMS_UNSUBSCRIBE_CMD, 1, "", pars)
 
 

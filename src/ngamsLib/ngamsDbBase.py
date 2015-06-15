@@ -52,7 +52,7 @@ the tables:
   ns = NGAS Subscribers Table (ngas_subscribers).
 """
 
-from ngams import *
+from ngamsCore import setLogCond
 import ngamsDbCore, ngamsDbNgasCfg, ngamsDbNgasDisks, ngamsDbNgasDisksHist
 import ngamsDbNgasFiles, ngamsDbNgasHosts, ngamsDbNgasSubscribers
 import ngamsDbMirroring, ngamsDbNgasCache, ngamsDbJoin

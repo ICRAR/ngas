@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsRemUtils.py,v 1.6 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,18 +27,19 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  11/06/2003  Created
 #
-
 """
 Contains common functions used for the REMFILE and REMDISK commands.
 """
 
 import os, time, glob
 
-from ngams import *
-import ngamsLib, ngamsDbm, ngamsDbCore, ngamsDb
-import ngamsDiskInfo, ngamsFileInfo, ngamsFileList
-import ngamsHighLevelLib, ngamsNotification
-import ngamsFileUtils
+from ngamsLib import ngamsDbm, ngamsDbCore, ngamsLib
+from ngamsLib import ngamsDiskInfo, ngamsFileInfo
+from ngamsLib import ngamsHighLevelLib, ngamsNotification
+from ngamsLib.ngamsCore import TRACE, NGAMS_NOTIF_INFO, getHostId, NGAMS_TEXT_MT, \
+    genLog, NGAMS_FAILURE, warning, info, rmFile, NGAMS_DISK_INFO, \
+    NGAMS_VOLUME_ID_FILE, NGAMS_VOLUME_INFO_FILE, NGAMS_MAX_SQL_QUERY_SZ
+from pccUt import PccUtTime
 
 
 def checkSpuriousFiles(srvObj,

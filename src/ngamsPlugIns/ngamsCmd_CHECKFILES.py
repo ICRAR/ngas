@@ -17,22 +17,22 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 #
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      2014/03/28  Created
-
 """
 Check if all files belonging to this server
 are still available on the file system
 """
 
 import os, datetime, threading
-from   ngams import *
-import ngamsDb
+
+from ngamsLib.ngamsCore import getHostId, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsDb import ngamsDb
+
 
 chkFileThrd = None
 is_chkFileThrd_running = False

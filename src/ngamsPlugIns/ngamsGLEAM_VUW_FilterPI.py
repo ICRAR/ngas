@@ -28,11 +28,13 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      20/09/2013  Created
 
-from ngams import *
-import ngamsPlugInApi
-import ngamsPClient
 
 import os
+
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import alert, NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, NGAMS_FAILURE
+from ngamsPClient import ngamsPClient
+
 
 file_ext = ['.fits', '.png']
 

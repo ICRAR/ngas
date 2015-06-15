@@ -33,12 +33,17 @@
 Contains utilities for handling the disk configuration.
 """
 
-import  sys, os, re, string, threading, glob, commands
-import  xml.dom.minidom
-import  PccUtTime
-from    ngams import *
-import  ngamsLib, ngamsHighLevelLib, ngamsNotification
-import  ngamsDiskInfo, ngamsStatus, ngamsPhysDiskInfo
+import  sys, os, re, string, threading, commands
+import time
+
+from pccUt import PccUtTime
+from ngamsCore import info, TRACE, getHostId, getNgamsVersion, genLog, error,\
+    NGAMS_DB_DIR, checkCreatePath, NGAMS_DB_CH_CACHE, NGAMS_NOTIF_ERROR,\
+    NGAMS_SUCCESS, warning, NGAMS_NOTIF_NO_DISKS, NGAMS_FAILURE, padString,\
+    NGAMS_DISK_INFO, getDiskSpaceAvail, alert, setLogCond
+import ngamsNotification
+import ngamsLib
+import ngamsDiskInfo, ngamsStatus
 
 
 # Semaphore to protect critical operations done on the ngas_disk table.

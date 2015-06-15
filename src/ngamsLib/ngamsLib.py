@@ -35,11 +35,14 @@ NG/AMS implementation.
 The functions in this module can be used in all the NG/AMS code.
 """
 
-import os, string, threading, httplib, time, getpass, socket, urlparse
+import os, string, httplib, time, getpass, socket, urlparse
 import urllib, urllib2, glob, re, select, cPickle
-from ngams import *
-import PccUtTime
-import ngamsSmtpLib
+from pccUt import PccUtTime
+from ngamsCore import genLog, info, TRACE, trim, getHostName, warning,\
+    NGAMS_HTTP_SUCCESS, getVerboseLevel, NGAMS_CONT_MT, NGAMS_SOCK_TIMEOUT_DEF,\
+    NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM,\
+    getFileSize, NGAMS_ARCH_REQ_MT, getHostId, getUniqueNo,\
+    NGAMS_MAX_FILENAME_LEN, NGAMS_SRC_DIR, error, NGAMS_UNKNOWN_MT, rmFile
 import ngamsMIMEMultipart
 
 def hidePassword(fileUri):

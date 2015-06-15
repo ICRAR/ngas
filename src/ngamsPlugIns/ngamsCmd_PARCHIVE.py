@@ -18,7 +18,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 #
@@ -35,11 +34,17 @@ PARCHIVE CMD is very similar to the original QARCHIVE CMD, the only difference i
 instead of saveFromHttpToFile, it saveFromHttpToAnotherHttp
 """
 
-from ngams import *
-import ngamsLib, ngamsStatus, ngamsHighLevelLib, ngamsDiskInfo
-
-import httplib, urllib2
 import binascii
+import httplib, urllib2
+import os
+import time
+
+from ngamsLib.ngamsCore import info, NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, \
+    NGAMS_FAILURE, warning, NGAMS_HTTP_POST, getHostName, \
+    NGAMS_HTTP_HDR_CHECKSUM, TRACE, genLog, error, NGAMS_IDLE_SUBSTATE
+from ngamsLib import ngamsStatus, ngamsHighLevelLib, ngamsDiskInfo, ngamsLib
+from pccUt import PccUtTime
+
 
 def processHttpReply(http, basename, url):
     """

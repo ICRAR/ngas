@@ -19,6 +19,10 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+import thread
+import threading
+import time
+from ngamsLib.ngamsCore import info, alert, NGAMS_USER_SERVICE_THR, isoTime2Secs, TRACE
 
 #******************************************************************************
 #
@@ -33,10 +37,6 @@
 This module contains the code for the User Service Thread, which execute
 a plug-in provided by the user periodically.
 """
-
-from ngams import *
-import ngamsLib
-
 
 USR_THR_STOP_TAG = "_STOP_USER_SERVICE_THREAD_"
 

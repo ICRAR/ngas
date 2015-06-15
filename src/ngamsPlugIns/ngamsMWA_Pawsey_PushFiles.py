@@ -19,35 +19,31 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # Who                   When             What
 # -----------------   ----------      ------------
 # chen.wu@icrar.org  29/Aug/2013        Created
-
 """
 This module pushes important Cortex files to Pawsey in a semi-automated fashion
 usage:
 
 nohup python ngamsMWA_Pawsey_PushFiles.py -s 146.118.84.64 -p 7777 -m cortex.ivec.org:7781 > ~/MWA_HSM/test/pushfile.log &
 """
-from optparse import OptionParser
 
-import psycopg2
-import os.path
-import urllib2, time
 import cPickle as pickle
 from cPickle import UnpicklingError
-import socket
-
-from ngams import *
-import ngamsPlugInApi
-import ngamsPClient
-import ngamsMWACortexTapeApi
-
-from ngamsMWAAsyncProtocol import *
 import logging
+from optparse import OptionParser
+import socket
+import urllib2, time
+import psycopg2
+
+from ngamsLib.ngamsCore import NGAMS_STATUS_CMD, NGAMS_FAILURE, \
+    NGAMS_SOCK_TIMEOUT_DEF
+from ngamsPClient import ngamsPClient
+from ngamsPlugIns.ngamsMWAAsyncProtocol import AsyncListRetrieveRequest
+
 
 mime_type = 'application/octet-stream'
 proxy_archive = 'storage01.icrar.org:7777'

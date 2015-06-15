@@ -41,7 +41,8 @@ NOTE: TO BE EXECUTED ON THE HOST ON WHICH THE FILES WHERE CLONED (TARGET
 import sys, os, time
 
 from ngams import *
-import ngamsDb, ngamsLib, ngamsGenCrc32, ngamsPClient, ngamsFileInfo
+import ngamsDb, ngamsGenCrc32, ngamsPClient, ngamsFileInfo
+import ngamsLib
 import ngasUtils, ngasUtilsLib
 
 # IBM-DTLA-307075-YSDYSG6L675

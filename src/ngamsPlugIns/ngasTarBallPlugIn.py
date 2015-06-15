@@ -7,7 +7,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  05/11/2003  Created
 #
-
 """
 This Data Archiving Plug-In is used to handle archiving of tarball files.
 The File ID is derived from the filename. This means that the filename
@@ -18,10 +17,11 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
-import os, string, commands
-import PccUtTime
-from   ngams import *
-import ngamsPlugInApi, ngamsDiskUtils, ngamsDiskInfo
+import os, commands
+
+from pccUt import PccUtTime
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import rmFile, genLog, error, info
 
 
 def checkTarball(filename):

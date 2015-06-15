@@ -36,9 +36,7 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
-import time, random
-
-from   ngams import *
+from   ngamsCore import TRACE
 import ngamsDbCore
 
 

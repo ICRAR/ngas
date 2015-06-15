@@ -1,4 +1,4 @@
-#
+
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
 #    Copyright by UWA (in the framework of the ICRAR)
@@ -32,13 +32,18 @@
 """
 Function + code to handle the STATUS command.
 """
-import time, sys, types, gzip, glob
+import os, re, sys, types, glob
 
-import pcc, PccUtTime
-from ngams import *
-import ngamsDbCore, ngamsDb, ngamsDbm, ngamsLib, ngamsStatus, ngamsDiskInfo
-import ngamsDppiStatus
-import ngamsFileInfo, ngamsHighLevelLib, ngamsFileUtils
+from pccUt import PccUtTime
+from ngamsLib.ngamsCore import loadDoc, TRACE, info, NGAMS_HOST_LOCAL,\
+    getHostName, genLog, timeRef2Iso8601, genUniqueId, getHostId, mvFile, rmFile,\
+    error, compressFile, NGAMS_PROC_FILE, NGAMS_GZIP_XML_MT, getNgamsVersion,\
+    NGAMS_SUCCESS, logFlush, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD,\
+    NGAMS_HTTP_SUCCESS, NGAMS_XML_MT
+from ngamsLib import ngamsDbCore, ngamsDbm, ngamsStatus, ngamsDiskInfo
+from ngamsLib import ngamsDppiStatus
+from ngamsLib import ngamsFileInfo, ngamsHighLevelLib
+import ngamsFileUtils
 import ngamsSrvUtils, ngamsRetrieveCmd
 
 

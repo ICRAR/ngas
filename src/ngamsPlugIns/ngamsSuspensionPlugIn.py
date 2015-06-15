@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsSuspensionPlugIn.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,15 +27,13 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  23/01/2002  Created
 #
-
 """
 Test Suspension Plug-In to simulate the NGAS host suspension.
 """
 
 import commands
 
-from   ngams import *
-import ngamsDiskInfo
+from ngamsLib.ngamsCore import TRACE
 
 
 def ngamsSuspensionPlugIn(srvObj):

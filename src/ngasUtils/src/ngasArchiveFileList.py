@@ -43,7 +43,8 @@ in a File List:
 import sys, os, time
 
 from ngams import *
-import ngamsDb, ngamsLib, ngamsFileInfo, ngamsDiskInfo, ngamsRemUtils
+import ngamsDb, ngamsFileInfo, ngamsDiskInfo, ngamsRemUtils
+import ngamsLib
 import ngamsStatus, ngamsReqProps, ngamsPClient
 import ngasUtils, ngasUtilsLib
 

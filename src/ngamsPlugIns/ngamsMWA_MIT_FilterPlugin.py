@@ -27,7 +27,6 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      01/10/2012  Created
-
 """
 NGAS now supports two types of filters
 
@@ -46,24 +45,22 @@ bb = eval("hasattr(" + plugIn + ", 'getAttrFilterSql')")
 
 
 """
-
-
 """
 Contains a Filter Plug-In used to filter out those files that 
 (1) have already been delivered to the remote destination
 (2) belong to Solar observations with project_id 'c105' or 'c106'
 """
+# maximum connection = 5
 
-from ngams import *
 import os
-import ngamsPlugInApi
-#import ngamsMWACortexTapeApi
-import pccFits.PccSimpleFitsReader as fitsapi
 
-import psycopg2 # used to connect to MWA M&C database
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import alert, info, genLog
+import pccFits.PccSimpleFitsReader as fitsapi
+import psycopg2  # used to connect to MWA M&C database
 from psycopg2.pool import ThreadedConnectionPool
 
-# maximum connection = 5
+
 g_db_pool = ThreadedConnectionPool(1, 5, database = 'mwa', user = 'mwa', 
                             password = 'Qm93VGll\n'.decode('base64'), 
                             host = 'ngas01.ivec.org')

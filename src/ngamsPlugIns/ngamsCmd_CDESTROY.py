@@ -23,7 +23,7 @@
 Module implementing the CDESTROY command
 """
 
-from ngams import genLog, error
+from ngamsLib.ngamsCore import genLog, error
 
 def destroyContainer(srvObj, containerId, recursive):
     """

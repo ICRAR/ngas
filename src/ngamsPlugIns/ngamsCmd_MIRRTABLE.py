@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsCmd_MIRRTABLE.py,v 1.6 2010/06/22 18:55:14 awicenec Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jagonzal  2009/12/14  Created
 #
-
 """
 NGAS Command Plug-In, implementing a command to fill the mirroring_bookkeping_table
 
@@ -54,8 +52,7 @@ EXAMPLES:
 
 """
 
-from ngams import *
-import ngamsLib, ngamsStatus, ngamsDb
+from ngamsLib.ngamsCore import TRACE, info
 
 
 def handleCmd(srvObj,

@@ -33,9 +33,10 @@
 The ngamsConfig class is used to handle the NG/AMS Configuration.
 """
 
-import os, sys, types, re, base64
-from   ngams import *
-import ngamsLib, ngamsDbCore, ngamsDb, ngamsConfigBase, ngamsSubscriber
+import os, sys, types, base64
+from   ngamsCore import info, error, warning, genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, getTestMode, isoTime2Secs, getNgamsVersionRaw, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
+import ngamsDbCore, ngamsDb, ngamsConfigBase, ngamsSubscriber
+import ngamsLib
 import ngamsStorageSet, ngamsStream, ngamsDppiDef, ngamsMirroringSource
 
 

@@ -19,6 +19,8 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+from ngamsCore import timeRef2Iso8601, prFormat1, ignoreValue
+from pccUt import PccUtTime
 
 #******************************************************************************
 #
@@ -33,9 +35,6 @@
 Contains definition of class for handling information in connection with
 one NGAS host.
 """
-
-import pcc, PccUtTime
-from ngams import *
 
 
 class ngamsHostInfo:
@@ -649,7 +648,7 @@ class ngamsHostInfo:
                setHostId(self.getHostId()).\
                setDomain(self.getDomain()).\
                setIpAddress(self.getIpAddress()).\
-               setMacAddress(getMacAddress()).\
+               setMacAddress(self.getMacAddress()).\
                setNSlots(self.getNSlots()).\
                setClusterName(self.getClusterName()).\
                setInstallationDate(self.getInstallationDate()).\

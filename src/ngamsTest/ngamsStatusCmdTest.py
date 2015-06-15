@@ -36,7 +36,8 @@ This module contains the Test Suite for the STATUS Command.
 import sys, unittest, socket, time, shutil
 from   ngams import *
 from   ngamsTestLib import *
-import ngamsLib, ngamsConfig, ngamsStatus, ngamsReqProps
+import ngamsConfig, ngamsStatus, ngamsReqProps
+import ngamsLib
 import ngamsDiskInfo, ngamsFileInfo
 import ngamsHighLevelLib, ngamsCmdHandling
 

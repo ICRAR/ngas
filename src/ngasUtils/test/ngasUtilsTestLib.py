@@ -35,7 +35,8 @@ Common utilities for the Test Suite of the NGAS Utilities.
 import getpass, popen2
 
 from ngams import *
-import ngamsLib, ngamsConfig
+import ngamsConfig
+import ngamsLib
 import ngamsTestLib
 
 

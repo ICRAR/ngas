@@ -62,7 +62,8 @@ input.
 import sys, os, time
 
 from ngams import *
-import ngamsDb, ngamsLib, ngamsFileInfo, ngamsDiskInfo
+import ngamsDb, ngamsFileInfo, ngamsDiskInfo
+import ngamsLib
 import ngasUtils, ngasUtilsLib
 
 

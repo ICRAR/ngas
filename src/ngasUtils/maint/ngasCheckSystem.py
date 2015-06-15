@@ -76,7 +76,8 @@ Result: [<Test ID>, <Time>, <Last Reported>, <Srv Host>, <Srv Port>, <Host>,
 import sys, os, time, getpass
 
 from ngams import *
-import ngamsDb, ngamsDbm, ngamsLib, ngamsStatus, ngamsFileInfo, ngamsDiskInfo
+import ngamsDb, ngamsDbm, ngamsStatus, ngamsFileInfo, ngamsDiskInfo
+import ngamsLib
 import ngamsPClient
 import ngasUtils, ngasUtilsLib
 

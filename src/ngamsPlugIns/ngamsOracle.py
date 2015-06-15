@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsOracle.py,v 1.15 2009/12/02 23:19:08 awicenec Exp $"
@@ -29,7 +28,6 @@
 # awicenec  2005-03-15  Created
 # jknudstr  2008-02-11  Removed usage of _queryRewrite(), not needed anymore.
 #
-
 """
 This module contains two classes:
 
@@ -40,11 +38,13 @@ The ngamsOracleCursor class, which implements a cursor object based on
 the NG/AMS Cursor Object API definition.
 """
 
+import threading
 import time, re
+
 import cx_Oracle
-import pcc, PccUtTime
-from   ngams import *
-from   mx import DateTime
+from mx import DateTime
+from pccUt import PccUtTime
+from ngamsLib.ngamsCore import TRACE, info, genLog, error
 
 
 class ngamsOracle:
@@ -144,7 +144,7 @@ class ngamsOracle:
         T = TRACE()
 
         del(self.__dbDrv)
-        return close
+        return self
 
 
     def _execute(self,

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsGenericOnlinePlugIn.py,v 1.5 2008/08/19 20:46:04 jknudstr Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  26/02/2007  Created.
 # cwu       22/06/2012  Added registration service notification
-
 """
 Contains the Generic Online Plug-In.
 
@@ -51,15 +49,15 @@ mounted at boot time.
 """
 
 import os, glob
-import urllib
+
 import cPickle as pickle
-
-from   ngams import *
-import ngamsPlugInApi, ngamsPhysDiskInfo
-import ngamsServer
-from ngamsGenericPlugInLib import *
-
 import ngamsCmd_ASYNCLISTRETRIEVE
+from ngamsLib import ngamsPhysDiskInfo, ngamsPlugInApi
+from ngamsLib.ngamsCore import TRACE, info, alert, setLogCond
+from ngamsPlugIns.ngamsGenericPlugInLib import NGAS_VOL_INFO_FILE, \
+    loadVolInfoFile, NGAS_VOL_INFO_ID, NGAS_VOL_INFO_IGNORE, NGAS_VOL_INFO_TYPE, \
+    NGAS_VOL_INFO_MANUFACT, notifyRegistrationService
+from ngamsServer import ngamsServer
 
 
 def ngamsMWAOnlinePlugIn(srvObj,
@@ -190,7 +188,7 @@ if __name__ == '__main__':
     Main function.
     """
     import sys
-    import ngamsConfig, ngamsDb
+    from ngamsLib import ngamsConfig, ngamsDb
 
     setLogCond(0, "", 0, "", 1)
     

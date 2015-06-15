@@ -33,10 +33,11 @@
 Function to handle the ARCHIVE command.
 """
 
-
-from ngams import *
-import ngamsStatus, ngamsHighLevelLib, ngamsNotification, ngamsDiskUtils
-import ngamsArchiveUtils, ngamsCacheControlThread
+from ngamsLib.ngamsCore import TRACE, genLog, NGAMS_ONLINE_STATE,\
+    NGAMS_BUSY_SUBSTATE, NGAMS_IDLE_SUBSTATE, getHostName, NGAMS_HTTP_SUCCESS,\
+    NGAMS_SUCCESS, error, info, NGAMS_NOTIF_ERROR, NGAMS_HTTP_GET
+from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsDiskUtils
+import ngamsArchiveUtils
 
 
 def archiveInitHandling(srvObj,

@@ -19,13 +19,11 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      28/May/2013  Created
-
 """
 This module is responsible for running local tasks, i.e.
 1. Maintain a task queue (this is important for mutually-exclusve GPU resource access)
@@ -34,13 +32,16 @@ This module is responsible for running local tasks, i.e.
 4. Receive task monitor request
 5. Monitor task progress, including error handling
 """
-import os, urllib2
-import cPickle as pickle
-from Queue import Queue, Empty
 
-from ngams import *
-from ngamsJobProtocol import *
-import ngamsPClient
+import cPickle as pickle
+from Queue import Queue
+import os, urllib2
+import threading
+
+from ngamsLib.ngamsCore import getHostId, info, error, TRACE, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsPClient import ngamsPClient
+from ngamsPlugIns.ngamsJobProtocol import MRLocalTaskResult, ERROR_LT_UNEXPECTED
+
 
 queScanThread = None
 queTasks = Queue()

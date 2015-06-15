@@ -19,31 +19,31 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # Who                   When             What
 # -----------------   ----------      ------------
 # chen.wu@icrar.org  26/May/2013        Created
-
 """
 This module provides MWA_RTS MRTask with functions for
 metadata query, data movement, and HTTP-based communication
 during job task execution and scheduling
 """
-
-import os, threading, traceback, commands, logging, time, urllib2, base64
-from random import choice, shuffle, randint
-from urlparse import urlparse
-import psycopg2
-import cPickle as pickle
-from cPickle import UnpicklingError
-import socket
-
 #from Queue import Queue, Empty
-from ngamsMWAAsyncProtocol import *
+
+from cPickle import UnpicklingError
+from random import shuffle, randint
+import socket
+import threading
+import traceback, commands, logging, time, urllib2, base64
+from urlparse import urlparse
+
+import cPickle as pickle
 import ngamsJobMAN
-from ngamsJobProtocol import * 
+from ngamsJobProtocol import ERROR_ST_SERVER, ERROR_ST_NONRESP, ERROR_ST_HOSTDOWN, ERROR_ST_LTADOWN, ERROR_ST_GENERIC
+from ngamsMWAAsyncProtocol import AsyncListRetrieveRequest
+import psycopg2
+
 
 g_db_conn = None # MWA metadata database connection
 f_db_conn = None # Fornax NGAS database connection

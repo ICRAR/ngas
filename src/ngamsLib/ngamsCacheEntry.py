@@ -33,9 +33,8 @@
 Class to handle the information in connection with one entry in the NGAS Cache.
 """
 
-from pcc import PccUtTime
-from   ngams import *
-import ngamsLib, ngamsFileSummary1
+from ngamsCore import TRACE, setLogCond
+import ngamsFileSummary1
 
 
 class ngamsCacheEntry(ngamsFileSummary1.ngamsFileSummary1):

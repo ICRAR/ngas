@@ -20,7 +20,7 @@
 #    MA 02111-1307  USA
 #
 
-from ngams import error, NGAMS_HTTP_SUCCESS, NGAMS_XML_MT, NGAMS_SUCCESS
+from ngamsLib.ngamsCore import error, NGAMS_HTTP_SUCCESS, NGAMS_XML_MT, NGAMS_SUCCESS
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """

@@ -19,13 +19,11 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # Who                   When             What
 # -----------------   ----------      ------------
 # chen.wu@icrar.org  26/May/2013        Created
-
 """
 This module builds the NGAS MapReduce job for the MWA RTS system running
 on a cluster of NGAS servers (e.g. iVEC Fornax)
@@ -35,13 +33,17 @@ to have another pipeline (e.g. CASA for VLA), write your own based on the generi
 framework in ngamsJobProtocol.py
 """
 
-import os, threading, commands, time, urllib2, logging, shlex, subprocess, signal, traceback
-from Queue import Queue, Empty
 import cPickle as pickle
+from Queue import Queue, Empty
+import os, threading, commands, time, urllib2, logging, shlex, subprocess, signal
 from urlparse import urlparse
 
-from ngamsJobProtocol import *
 import ngamsJobMWALib
+from ngamsPlugIns.ngamsJobProtocol import STATUS_NOT_STARTED, STATUS_RUNNING, \
+    STATUS_COMPLETE, STATUS_EXCEPTION, MapReduceTask, STATUS_QUEUEING, \
+    ERROR_ST_LTADOWN, STATUS_STAGING, statusDic, MRLocalTask, MRLocalTaskResult, \
+    ERROR_LT_FAILCREATEDIR
+
 
 DEBUG = 1
 debug_url = 'http://192.168.1.1:7777'

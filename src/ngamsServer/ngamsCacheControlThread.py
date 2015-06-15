@@ -35,19 +35,16 @@ to manage the contents in the cache archive when running the NG/AMS Server
 as a cache archive.
 """
 
-import os, sys, time, thread, threading, random, copy, base64, cPickle, traceback
+import os, time, thread, threading, base64, cPickle, traceback
 from Queue import Queue, Empty
 try:
     from pysqlite2 import dbapi2 as sqlite
 except:
     import sqlite3 as sqlite
 
-import pcc, PccUtTime
-
-from ngams import *
-import ngamsDbCore, ngamsLib, ngamsFileInfo, ngamsStatus, ngamsHighLevelLib
-import ngamsDbm, ngamsDiskInfo
-import ngamsCacheEntry, ngamsThreadGroup
+from ngamsLib.ngamsCore import info, logFlush, TRACE, getHostId, rmFile,\
+    getVerboseLevel, iso8601ToSecs, error, warning, notice, genLog, alert
+from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib
 
 # An internal queue contains files that have been explicitly requested to be removed  
 explicitDelQueue = Queue()
@@ -127,7 +124,7 @@ def startCacheControlThread(srvObj):
     
     args = (srvObj, None)
     srvObj._cacheControlThread = threading.Thread(None, cacheControlThread,
-                                                  NGAMS_CACHE_CONTROL_THR,
+                                                  NGAMS_CACHE_CONTROL_THR_STOP,
                                                   args)
     srvObj._cacheControlThread.setDaemon(0)
     srvObj._cacheControlThread.start()

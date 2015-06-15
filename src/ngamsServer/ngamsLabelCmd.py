@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsLabelCmd.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,15 +27,19 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  13/05/2003  Created
 #
-
 """
 Functions to handle the LABEL Command.
 """
+# Semaphore to avoid that the server tries to access with several threads
+# simulating the label printer (maybe only needed for the Brother printer).
 
 import threading
 
-# Semaphore to avoid that the server tries to access with several threads
-# simulating the label printer (maybe only needed for the Brother printer).
+from ngamsLib.ngamsCore import TRACE, info, NGAMS_OFFLINE_STATE, \
+    NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, genLog, \
+    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS
+
+
 _labelPrinterSem = threading.Semaphore(1)
 
 

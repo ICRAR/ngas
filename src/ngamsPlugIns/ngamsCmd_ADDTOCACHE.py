@@ -17,7 +17,6 @@
 #    License along with this library; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
-
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      2013-08-22  Created
@@ -27,11 +26,12 @@ This command add existing files to cache database. This command is useful
 when a normal NGAS server becomes a cache server 
 """
 
-from ngams import *
-
 import os, time
 
-import ngamsDb, ngamsCacheControlThread
+from ngamsLib import ngamsDb
+from ngamsLib.ngamsCore import getHostId, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT, info
+from ngamsServer import ngamsCacheControlThread
+
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """

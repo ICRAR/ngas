@@ -35,9 +35,9 @@ Contains definition of class for handling a DBM DB (BSDDB).
 
 # TODO: Stop using dbm. Use only bsddb and remove ngamsDbm2
 
-import sys, os, cPickle, random
+import sys, os, cPickle, random, threading
 
-from ngams import *
+from ngamsCore import warning, TRACE, NGAMS_DBM_EXT, info, NGAMS_FILE_DB_COUNTER, rmFile
 
 try:
     import bsddb

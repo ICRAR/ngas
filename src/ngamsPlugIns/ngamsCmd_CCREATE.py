@@ -23,8 +23,8 @@
 Module implementing the CCREATE command
 """
 
-from ngams import NGAMS_HTTP_GET, NGAMS_HTTP_SUCCESS, NGAMS_XML_MT, NGAMS_SUCCESS
-import ngamsContainer
+from ngamsLib.ngamsCore import NGAMS_HTTP_GET, NGAMS_HTTP_SUCCESS, NGAMS_XML_MT, NGAMS_SUCCESS
+from ngamsLib import ngamsContainer
 from xml.dom import minidom
 
 def _handleSingleContainer(srvObj, reqPropsObj):

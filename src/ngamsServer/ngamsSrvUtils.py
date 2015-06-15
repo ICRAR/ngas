@@ -33,16 +33,22 @@
 This module contains various utilities used by the NG/AMS Server.
 """
 
-import os, thread, threading, glob, commands, cPickle
+import os, re, string, thread, threading, time, glob, commands
 
-from ngams import *
-import ngamsLib, ngamsDb
-import ngamsPhysDiskInfo, ngamsDiskInfo, ngamsFileInfo, ngamsFileList
-import ngamsStatus, ngamsSubscriber, ngamsStatus
-import ngamsHighLevelLib, ngamsDiskUtils, ngamsArchiveUtils, ngamsFileUtils
+from pccLog import PccLog
+from pccUt import PccUtTime
+from ngamsLib.ngamsCore import logFlush, getLocation, info, NGAMS_NOT_RUN_STATE,\
+    NGAMS_ONLINE_STATE, getHostId, NGAMS_DEFINE, warning, NGAMS_SUBSCRIBE_CMD,\
+    NGAMS_SUCCESS, TRACE, genLog, notice, NGAMS_DISK_INFO, checkCreatePath,\
+    error, NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER
+from ngamsLib import ngamsStatus, ngamsLib
+from ngamsLib import ngamsPhysDiskInfo
+from ngamsLib import ngamsSubscriber
+from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
+from ngamsLib import ngamsNotification
+import ngamsArchiveUtils
 import ngamsJanitorThread, ngamsDataCheckThread, ngamsSubscriptionThread
 import ngamsUserServiceThread, ngamsMirroringControlThread
-import ngamsNotification
 
 
 def ngamsBaseExitHandler(srvObj,

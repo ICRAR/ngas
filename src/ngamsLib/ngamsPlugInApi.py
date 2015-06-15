@@ -34,12 +34,12 @@ Module containing functions to be used for implementing the different
 types of NG/AMS plug-ins.
 """
 
-import os, string, commands
-import PccUtUtils
-from   ngams import *
-import ngamsLib, ngamsHighLevelLib, ngamsNotification
-import ngamsDiskInfo, ngamsDiskUtils
-import ngamsDapiStatus, ngamsDppiStatus
+import os, commands
+from pccUt import PccUtUtils
+from ngamsCore import NGAMS_SUCCESS, TRACE, genLog, error, info, checkCreatePath, trim
+import ngamsHighLevelLib, ngamsNotification
+import ngamsLib
+import ngamsDapiStatus
 
 
 def genDapiSuccessStat(diskId,

@@ -24,15 +24,14 @@
 Function + code to handle the CRETRIEVE Command.
 """
 import os
-from ngams import TRACE, genLog, info, error, rmFile, getFileSize, checkCreatePath
-from ngams import NGAMS_PROC_FILE, NGAMS_PROC_DATA, NGAMS_PROC_STREAM
-from ngams import NGAMS_CONT_MT, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE
-from ngams import NGAMS_HOST_LOCAL, NGAMS_HOST_REMOTE, NGAMS_HOST_CLUSTER
-from ngams import NGAMS_RETRIEVE_CMD, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE
-import ngamsLib, ngamsHighLevelLib, ngamsDbCore
-import ngamsDppiStatus, ngamsStatus
-import ngamsSrvUtils, ngamsFileUtils
-import ngamsMIMEMultipart
+from ngamsLib.ngamsCore import TRACE, genLog, info, error, rmFile, getFileSize, checkCreatePath
+from ngamsLib.ngamsCore import NGAMS_PROC_FILE, NGAMS_PROC_DATA, NGAMS_PROC_STREAM
+from ngamsLib.ngamsCore import NGAMS_CONT_MT, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE
+from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, NGAMS_HOST_REMOTE, NGAMS_HOST_CLUSTER
+from ngamsLib.ngamsCore import NGAMS_RETRIEVE_CMD, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE
+from ngamsLib import ngamsHighLevelLib, ngamsDppiStatus, ngamsStatus
+from ngamsLib import ngamsLib, ngamsMIMEMultipart
+from ngamsServer import ngamsSrvUtils, ngamsFileUtils
 
 def performProcessing(srvObj,
                       reqPropsObj,

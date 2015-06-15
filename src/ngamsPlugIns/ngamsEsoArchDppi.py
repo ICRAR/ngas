@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsEsoArchDppi.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,14 +27,13 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  08/01/2002  Created
 #
-
 """
 Contains a DDPI which is used by the ESO Archive Facility to perform the
 processing in connection with a standard data request handling.
 """
 
-from ngams import *
-import ngamsPlugInApi, ngamsDppiStatus
+from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
+from ngamsLib.ngamsCore import NGAMS_PROC_FILE
 
 
 def ngamsEsoArchDppi(srvObj,

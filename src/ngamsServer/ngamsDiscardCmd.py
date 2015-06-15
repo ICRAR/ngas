@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDiscardCmd.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  04/04/2002  Created
 #
-
 """
 Contains code for handling the DISCARD command.
 
@@ -50,8 +48,15 @@ Parameter: Path.
 When executing the DISCARD Command, the number of available copies of the
 file in the archive it is not taken into account.
 """
-
 # Man-page for the command.
+
+import os
+
+from ngamsLib.ngamsCore import getHostId, getHostName, genLog, rmFile, TRACE, \
+    NGAMS_DISCARD_CMD, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, error, NGAMS_FAILURE
+from ngamsLib import ngamsHighLevelLib, ngamsDbm, ngamsLib
+
+
 _help = """
 DISCARD - Command to discard (remove) files from the archive.
 
@@ -63,11 +68,6 @@ or
 path=(Path)[&host_id=(Host ID)]
 """[1:-1]
  
-
-import pcc, PccUtTime
-from ngams import *
-import ngamsLib, ngamsStatus, ngamsHighLevelLib, ngamsDbm
-import ngamsFileUtils
 
 
 def _delFile(srvObj,

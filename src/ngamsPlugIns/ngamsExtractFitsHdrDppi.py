@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsExtractFitsHdrDppi.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -29,17 +28,17 @@
 # awicenec  26/09/2002  Created
 # awicenec  31/03/2004  Support for extraction of certain headers
 #
-
 """
 Contains a DDPI which is used to extract the main header from FITS files.
 """
 
-from ngams import *
-import ngamsPlugInApi, ngamsDppiStatus
-#import printhead
-import os, re
 from commands import getstatusoutput
+import os, re
 from sets import Set
+
+from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
+from ngamsLib.ngamsCore import info, TRACE, NGAMS_PROC_DATA
+
 
 def constructCommand(file, head=0, struct=0, skey='END', tsv=0, \
                      xmlfl='', mode=1, check=0):

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsLinuxOfflinePlugIn.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,14 +27,13 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  10/05/2001  Created.
 #
-
 """
 Module that contains a System Offline Plug-In used by the ESO NGAS
 installations.
 """
 
-from   ngams import *
-import ngamsPlugInApi
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import genLog, error, info, setLogCond
 import ngamsLinuxSystemPlugInApi, ngamsEscaladeUtils
 
 
@@ -92,7 +90,7 @@ def ngamsLinuxOfflinePlugIn(srvObj,
         try:
             ngamsLinuxSystemPlugInApi.ngamsUmount(diskDic,
                                                   srvObj.getCfg().getSlotIds())
-            if (parDic.has_key("module")):
+            if (parDicOffline.has_key("module")):
                 stat = ngamsLinuxSystemPlugInApi.rmMod(parDicOnline["module"])
             else:
                 stat = 0
@@ -102,7 +100,7 @@ def ngamsLinuxOfflinePlugIn(srvObj,
                 errMsg = genLog("NGAMS_ER_OFFLINE_PLUGIN", [errMsg])
                 error(errMsg)
                 raise Exception, errMsg
-            if (parDic.has_key("module")):
+            if (parDicOffline.has_key("module")):
                 msg = "Kernel module " + parDicOnline["module"] + " unloaded"
                 info(1,msg)
         except Exception, e:
@@ -117,7 +115,7 @@ if __name__ == '__main__':
     Main function.
     """
     import sys
-    import ngamsConfig, ngamsDb
+    from ngamsLib import ngamsConfig, ngamsDb
 
     setLogCond(0, "", 0, "", 1)
 

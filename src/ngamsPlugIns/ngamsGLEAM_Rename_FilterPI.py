@@ -31,9 +31,6 @@
 """
 Pick only measurementset tar ball (e.g. 1069415952.tar.gz)
 """
-import os
-
-from ngams import *
 
 def ngamsGLEAM_Rename_FilterPI(srvObj,
                           plugInPars,

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsLinuxOnlinePlugIn.py,v 1.7 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,15 +27,14 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  10/05/2001  Created.
 #
-
 """
 Module containing a System Online Plug-In used by the ESO NGAS installations.
 """
 
-from   ngams import *
-import ngamsPlugInApi
-import ngamsServer
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import TRACE, info, genLog, error, setLogCond
 import ngamsLinuxSystemPlugInApi, ngamsEscaladeUtils
+from ngamsServer import ngamsServer
 
 
 def ngamsLinuxOnlinePlugIn(srvObj,
@@ -129,7 +127,7 @@ if __name__ == '__main__':
     Main function.
     """
     import sys
-    import ngamsConfig, ngamsDb
+    from ngamsLib import ngamsConfig, ngamsDb
 
     setLogCond(0, "", 0, "", 1)
     

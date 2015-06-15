@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDiskSyncPlugIn.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,13 +27,13 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  10/05/2001  Created.
 #
-
 """
 Module that contains a generic Disk Dync Plug-In for Linux.
 """
 
-from   ngams import *
-import ngamsPlugInApi
+import commands
+
+from ngamsLib.ngamsCore import TRACE, info, logFlush
 
 
 def ngamsDiskSyncPlugIn(srvObj):

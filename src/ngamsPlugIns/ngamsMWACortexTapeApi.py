@@ -6,11 +6,11 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      11/12/2012  Created
 #
-
 """ A python wrapper that interacts with tape libraries using command line """
 
-from ngams import * 
-import ngamsPlugInApi
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import alert
+
 
 def isFileOffline(filename):
     """

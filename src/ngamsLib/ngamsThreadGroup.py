@@ -79,11 +79,9 @@ frequently, the threads may block eachother unnecessarily.
 When the 
 """
 
-import sys, os, time, threading
+import time, threading
 
-from ngams import *
-import ngamsLib
-
+from ngamsCore import TRACE, info, warning, setLogCond
 
 # Constants.
 # - Used to signal that the thread has terminated execution. This will be

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsCmdHandling.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,16 +27,22 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  07/01/2002  Created
 #
-
 """
 Contains various functions for handling commands.
 """
 
-from   ngams import *
-import ngamsLib
+import sys
+
 import ngamsArchiveCmd, ngamsCacheDelCmd, ngamsCheckFileCmd, ngamsDiscardCmd
 import ngamsConfigCmd, ngamsCloneCmd
 import ngamsExitCmd, ngamsHelpCmd, ngamsInitCmd, ngamsLabelCmd, ngamsOfflineCmd
+from ngamsLib.ngamsCore import info, warning, genLog, error, TRACE, \
+    NGAMS_RETRIEVE_CMD, NGAMS_ARCHIVE_CMD, NGAMS_CACHEDEL_CMD, \
+    NGAMS_CHECKFILE_CMD, NGAMS_CLONE_CMD, NGAMS_CONFIG_CMD, NGAMS_DISCARD_CMD, \
+    NGAMS_EXIT_CMD, NGAMS_HELP_CMD, NGAMS_INIT_CMD, NGAMS_LABEL_CMD, \
+    NGAMS_OFFLINE_CMD, NGAMS_ONLINE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_REGISTER_CMD, \
+    NGAMS_REMDISK_CMD, NGAMS_REMFILE_CMD, NGAMS_STATUS_CMD, NGAMS_SUBSCRIBE_CMD, \
+    NGAMS_UNSUBSCRIBE_CMD
 import ngamsOnlineCmd, ngamsRearchiveCmd, ngamsRegisterCmd, ngamsRemDiskCmd
 import ngamsRemFileCmd, ngamsRetrieveCmd, ngamsStatusCmd, ngamsSubscribeCmd
 import ngamsUnsubscribeCmd
@@ -115,7 +120,7 @@ def cmdHandler(srvObj,
                 cmd = 'robots'
             if cmd == 'favicon.ico':
                 cmd = 'favicon'
-            cmdMod = "ngamsCmd_%s" % cmd
+            cmdMod = "ngamsPlugIns.ngamsCmd_%s" % cmd
             # Reload the module if requested.
             reloadMod = 0
             if (reqPropsObj.hasHttpPar("reload")):

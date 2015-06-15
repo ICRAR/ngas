@@ -18,7 +18,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 #
@@ -26,13 +25,15 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      2013/05/04  Created
 #
-
 """
 Check how many current threads are running, and print their names
 
 """
+
 import threading
-from ngams import *
+
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """

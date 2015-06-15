@@ -33,11 +33,10 @@
 This module contains functions used in connection with the SUBSCRIBE Command.
 """
 
-import pcc, PccUtTime
-from ngams import *
-import ngamsLib, ngamsSubscriber
-import threading
-
+from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, getHostId,\
+    genLog, NGAMS_SUBSCRIBE_CMD, TRACE, info
+from ngamsLib import ngamsSubscriber, ngamsLib
+from pccUt import PccUtTime
 
 def addSubscriber(srvObj,
                   subscrObj):

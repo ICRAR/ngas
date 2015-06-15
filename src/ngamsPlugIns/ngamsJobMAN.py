@@ -19,13 +19,11 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      20/May/2013  Created
-
 """
 JobMAN manages NGAS MapReduce jobs by providing the following features:
 1. Maintain a job queue
@@ -46,20 +44,21 @@ To deploy (install) them:
 3. pip install Paste
 
 """
-import os, ConfigParser, time, threading, signal, json, decimal, traceback
-#from datetime import datetime
-import datetime
-from optparse import OptionParser
-from urlparse import urlparse
+#staging_run = 1
+
 import cPickle as pickle
+import datetime
 import logging
+from optparse import OptionParser
+import os, ConfigParser, threading, json, decimal, traceback
+from urlparse import urlparse
 
 from bottle import route, run, request, get, post, static_file, template, redirect
+from ngamsPlugIns import ngamsJobMWALib
+from ngamsPlugIns.ngamsJobProtocol import STATUS_COMPLETE, STATUS_EXCEPTION
+from ngamsPlugIns.ngamsJob_MWA_RTS import RTSJobParam, RTSJob
 
-import ngamsJobMWALib
-from ngamsJob_MWA_RTS import *
 
-#staging_run = 1
 jobDic = {} # key - jobId, val - job obj
 predef_tpls = ['drift','FnxA','gencal','regrid','simplecal','stokes','usecal']
 
