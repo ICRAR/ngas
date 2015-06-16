@@ -1,5 +1,3 @@
-
-
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -21,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasMonMemUsage.py,v 1.2 2008/08/19 20:37:45 jknudstr Exp $"
@@ -30,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  12/07/2005  Created
 #
-
 _doc =\
 """
 The tool is used to monitor the memory usage of a process referred to by its
@@ -40,11 +36,10 @@ written in a output file specified.
 %s
 """
 
-import sys, os, time
+import commands, sys, time
 
-
-from ngams import *
-import pcc, PccUtTime
+from ngamsLib.ngamsCore import rmFile, setDebug
+from pccUt import PccUtTime
 
 
 # Definition of predefined command line parameters.

@@ -32,7 +32,7 @@
 # Small jacket module to make it possible to view the header file for
 # the NG/AMS C-API.
 
-from ngams import *
+from ngamsLib.ngamsCore import ngamsGetSrcDir
 
 docFile = ngamsGetSrcDir() + "/ngamsCClient/ngams.h"
 fo = open(docFile)

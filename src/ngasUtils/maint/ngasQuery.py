@@ -1,3 +1,9 @@
+import sys, time, urllib
+
+from ngamsLib.ngamsCore import info, NGAMS_SUCCESS, setLogCond
+from ngamsPClient import ngamsPClient
+from ngasUtils.src.ngasUtilsLib import NGAS_OPT_MAN, NGAS_OPT_OPT, \
+    genOptDicAndDoc, NGAS_OPT_VAL, parseCmdLine
 
 
 #
@@ -21,7 +27,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasQuery.py,v 1.2 2008/08/19 20:37:45 jknudstr Exp $"
@@ -30,7 +35,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  06/03/2007  Created
 #
-
 _doc =\
 """
 The ngasQuery Tool is used to query the associated DB. The query result is
@@ -40,17 +44,6 @@ returned.
 
 """
 
-import sys, os, time, getpass, urllib
-
-import pcc, PccUtTime
-
-from ngams import *
-import ngamsDb
-import ngamsLib
-import ngamsPClient
-import ngasUtils
-from ngasUtilsLib import *
-import ngasUtilsLib
 
 
 # Definition of predefined command line parameters.

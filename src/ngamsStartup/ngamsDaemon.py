@@ -21,13 +21,14 @@
 #    MA 02111-1307  USA
 #
 
-import sys, os, subprocess, socket, glob
+import sys, os, subprocess, glob
+
+from ngamsLib import ngamsConfig
+from ngamsLib.daemon import Daemon
+from ngamsLib.logger import ngaslog
+from ngamsLib.ngamsCore import getHostId
 from ngamsServer import ngamsServer
-from ngams import getHostId
-from logger import ngaslog
-from daemon import Daemon
-from ngamsConfig import ngamsConfig
-import ngamsHighLevelLib
+
 
 HOME = os.environ['HOME']
 if os.environ.has_key('NGAS_PREFIX'):

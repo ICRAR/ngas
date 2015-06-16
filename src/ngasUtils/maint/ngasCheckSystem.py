@@ -1,5 +1,3 @@
-
-
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -21,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasCheckSystem.py,v 1.2 2008/08/19 20:37:45 jknudstr Exp $"
@@ -30,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  12/07/2005  Created
 #
-
 _doc =\
 """
 The tool is used to check the condition of an NGAS installation. This is done
@@ -69,17 +65,20 @@ Result: [<Test ID>, <Time>, <Last Reported>, <Srv Host>, <Srv Port>, <Host>,
          <Status Info (e.g. error output or NGAS XML Status Document)>]
 """
 
+import sys, os, time, getpass
+
+from ngamsLib.ngamsCore import info, NGAMS_SUCCESS, NGAMS_STATUS_CMD, \
+    getHostName, checkCreatePath, setDebug, setLogCond
+from ngamsLib import ngamsLib, ngamsDb, ngamsDbm
+from ngamsPClient import ngamsPClient
+from ngasUtils.src import ngasUtilsLib
+
+
 # IMPL:
 # - Make tests as plug-ins.
 # - Make it possible to specify which tests to execute.
 
-import sys, os, time, getpass
 
-from ngams import *
-import ngamsDb, ngamsDbm, ngamsStatus, ngamsFileInfo, ngamsDiskInfo
-import ngamsLib
-import ngamsPClient
-import ngasUtils, ngasUtilsLib
 
 # Constants.
 

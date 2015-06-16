@@ -7,18 +7,17 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  05/02/2000  Created
 #
-
 """
 Module providing class to handle mapping of FITS keywords into
 Sybase table columns and vice versa.
 """
-import PccUtUtils, PccUtString
-from pccLog.PccLog import info
-from pccKey import PccKey
-from pccPaf import PccPaf
+
 import string, exceptions
 
-from PccLog import *
+import PccUtUtils, PccUtString
+from pccKey import PccKey
+from pccLog.PccLog import info
+from pccPaf import PccPaf
 
 
 class PccUtDb2KeyMap:

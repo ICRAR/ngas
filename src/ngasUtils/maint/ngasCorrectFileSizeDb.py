@@ -1,5 +1,3 @@
-
-
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -21,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasCorrectFileSizeDb.py,v 1.2 2008/08/19 20:37:45 jknudstr Exp $"
@@ -30,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  09/08/2004  Created
 #
-
 """
 Checks the size of files on a disk and correct the size given in the DB if
 necessary. Only the actual/archived size is corrected, not the uncompressed
@@ -42,11 +38,13 @@ the DB.
 Note, the disk to check must be inserted in the host where this script
 is executed.
 """
-import sys, os, time
 
-from ngams import *
-import ngamsDb, ngamsFileInfo, ngamsDiskInfo
-import ngasUtils, ngasUtilsLib
+import sys, os
+
+from ngamsLib import ngamsDb, ngamsDiskInfo, ngamsFileInfo
+from ngamsLib.ngamsCore import setLogCond, getHostName, getFileSize, NGAMS_FILE_STATUS_OK
+from ngasUtils.src import ngasUtilsLib
+
 
 setLogCond(0, "NGASLog", 0, "", 1)
 
@@ -97,7 +95,7 @@ def checkCorrectFileSizeDb(diskId,
             else:
                 msg += "SIZE WRONG!"
                 # Check checksum.
-                import ngamsGenCrc32
+                from ngamsPlugIns import ngamsGenCrc32
                 checksum = ngamsGenCrc32.ngamsGenCrc32(None, complFilename, 0)
                 if (checksum != dbChecksum):
                     msg += " ILLEGAL CHECKSUM!"

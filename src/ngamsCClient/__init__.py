@@ -33,9 +33,9 @@
 
 import os, sys
 
-from ngams import *
+from ngamsLib.ngamsCore import ngamsGetSrcDir
 
-docFile = os.path.normpath(NGAMS_SRC_DIR + "/ngamsCClient/README")
+docFile = os.path.normpath(ngamsGetSrcDir() + "/ngamsCClient/README")
 fo = open(docFile)
 __doc__ = fo.read()
 fo.close()

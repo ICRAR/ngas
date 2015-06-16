@@ -1,5 +1,3 @@
-
-
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -21,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasArchiveFileXTimes.py,v 1.6 2008/08/19 20:37:45 jknudstr Exp $"
@@ -30,18 +27,18 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  16/07/2003  Created
 #
-
 """
 The script is used to archive a file a specified number of times.
 """
 
+import commands
+import os
 import sys
 
+from ngamsLib.ngamsCore import mvFile, getHostName
+from ngamsPClient import ngamsPClient
+from pccUt import PccUtTime
 import pcfitsio
-import pcc, PccUtTime
-
-from ngams import *
-import ngamsPClient
 
 
 def correctUsage():

@@ -36,7 +36,6 @@ The script is used to remove an entry from a BSDDB.
 """
 
 import sys, bsddb, cPickle
-import Sybase
 
 
 def correctUsage():

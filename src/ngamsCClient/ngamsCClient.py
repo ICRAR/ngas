@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsCClient.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -27,12 +26,10 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # jknudstr  11/06/2001  Created
-
-
 # Small jacket module to make it possible to view the header file for
 # the NG/AMS C-Client
 
-from ngams import *
+from ngamsLib.ngamsCore import ngamsGetSrcDir
 
 docFile = ngamsGetSrcDir() + "/ngamsPClient/ngamsPClient.doc"
 fo = open(docFile)

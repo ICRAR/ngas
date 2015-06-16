@@ -19,6 +19,8 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+from ngamsLib.ngamsCore import ngamsGetSrcDir
+
 
 #******************************************************************************
 #
@@ -27,14 +29,8 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # jknudstr  11/06/2001  Created
-
-
 # Small jacket module to make it possible to view the header file for
 # the NG/AMS C-API Library.
-
-from ngams import *
-
-
 def _ngamsGenDocPage(cSrcFile):
     """
     Parse in a C source file code and generate an ASCII man-page from

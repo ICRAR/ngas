@@ -94,7 +94,7 @@ NgasPort           Port number used by the NG/AMS Server on
    ngast@eso.org.
 """
 try:
-    from ngams import *
+    from ngamsLib.ngamsCore import ngamsCopyrightString
     __doc__ = _doc % ngamsCopyrightString()
 except:
     copRight =\
@@ -105,13 +105,6 @@ except:
              "                    All rights reserved"
     __doc__ = _doc % copRight
 
-
-from sys import path
-pathTup = [__path__[0] + '/src',
-           __path__[0] + '/test',
-           __path__[0] + '/maint']
-path.extend(pathTup)
-__path__.extend(pathTup)
 
 
 # EOF

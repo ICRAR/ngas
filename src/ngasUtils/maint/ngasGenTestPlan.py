@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasGenTestPlan.py,v 1.2 2008/08/19 20:37:45 jknudstr Exp $"
@@ -28,14 +27,14 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  27/01/2005  Created
 #
-
 """
 """
 
-import os, sys
-from   ngams import *
-import ngamsGenTestPlan
- 
+import sys
+
+from ngamsTest import ngamsGenTestPlan
+
+
 if __name__ == '__main__':
     """
     Main program generating the test plan.

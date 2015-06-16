@@ -27,12 +27,10 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # jknudstr  11/06/2001  Created
-
-
 # Small jacket module to make it possible to view the header file for
 # the NG/AMS Archive Client
 
-from ngams import *
+from ngamsLib.ngamsCore import ngamsGetSrcDir
 
 docFile = ngamsGetSrcDir() + "/ngamsCClient/ngamsArchiveClient.doc"
 fo = open(docFile)

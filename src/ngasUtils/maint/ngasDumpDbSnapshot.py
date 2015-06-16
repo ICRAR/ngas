@@ -38,15 +38,6 @@ in a human readible (ASCII) format.
 
 import sys, bsddb, cPickle
 
-try:
-    from ngams import *
-except:
-    pass
-try:
-    import Sybase
-except:
-    pass
-
 def correctUsage():
     """
     Print out correct usage of the tool on stdout.

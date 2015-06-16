@@ -34,7 +34,7 @@ if the platform does not support sse4.2 then bail out
 
 import os, inspect, sys
 from ctypes import cdll
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 
 module0 = Extension('libchecksse42',
                     sources = ['checksse42.c'])

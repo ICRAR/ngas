@@ -19,23 +19,22 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      06/May/2013  Created
 #
-
 """
 Launch and manage NGAS instances on the Fornax GPU Cluster
 The work was supported by iVEC through the use of advanced computing resources
 located at iVEC@UWA.
 """
-import commands, os, sys, random, threading, datetime
-import psycopg2
 
-import ngamsCmd_QUERY
+import commands, os, sys, random, threading, datetime
+
+from ngamsPlugIns import ngamsCmd_QUERY
+import psycopg2
 
 
 ipovib_prefix = '192.168.222.'

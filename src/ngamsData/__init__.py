@@ -30,7 +30,7 @@
 
 import os, glob, commands
 
-from ngams import *
+from ngamsLib.ngamsCore import NGAMS_SRC_DIR
 
 cfgList = glob.glob(NGAMS_SRC_DIR + "/ngamsData/*.xml") +\
           glob.glob(NGAMS_SRC_DIR + "/ngamsData/*.dtd")

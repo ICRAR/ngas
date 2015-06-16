@@ -21,7 +21,6 @@
 #    MA 02111-1307  USA
 #
 #******************************************************************************
-
 #******************************************************************************
 #
 # "@(#) $Id: __init__.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -29,7 +28,6 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # jknudstr  27/09/2002  Created
-
 """
 Module init script to enable viewing of the SQL creation scripts by means
 of Pydoc.
@@ -37,10 +35,11 @@ of Pydoc.
 
 import os, glob, commands
 
-from ngams import *
+from ngamsLib.ngamsCore import ngamsGetSrcDir
 
-sqlScriptList = [NGAMS_SRC_DIR + "/ngamsSql/ngamsCreateBaseTables.sql",
-                 NGAMS_SRC_DIR + "/ngamsSql/ngamsCreateOpsLogTable.sql"]
+
+sqlScriptList = [ngamsGetSrcDir() + "/ngamsSql/ngamsCreateBaseTables.sql",
+                 ngamsGetSrcDir() + "/ngamsSql/ngamsCreateOpsLogTable.sql"]
 
 
 __doc__ = "\nNG/AMS DB TABLES:\n\n" +\

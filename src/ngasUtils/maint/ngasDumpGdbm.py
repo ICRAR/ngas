@@ -1,5 +1,3 @@
-
-
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -21,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasDumpGdbm.py,v 1.2 2008/08/19 20:37:45 jknudstr Exp $"
@@ -30,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  13/10/2005  Created
 #
-
 _doc =\
 """
 Tool to dump the contents of a GDBM DBM.
@@ -41,16 +37,13 @@ The defined input parameters to the tool are:
 
 """
 
-import sys, os, time, getpass
+import sys
 
-import pcc, PccUtTime
+from ngamsLib import ngamsDbm
+from ngamsLib.ngamsCore import TRACE
+from ngasUtils.src.ngasUtilsLib import NGAS_OPT_MAN, genOptDicAndDoc, \
+    NGAS_OPT_VAL, parseCmdLine
 
-from ngams import *
-import ngamsDbm, ngamsFileInfo
-import ngamsLib
-import ngamsPClient
-import ngasUtils
-from ngasUtilsLib import *
 
 # Constants.
 NGAS_TOOL_ID = "NGAS_DUMP_GDBM"

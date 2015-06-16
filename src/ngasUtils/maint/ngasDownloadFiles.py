@@ -1,5 +1,3 @@
-
-
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -21,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasDownloadFiles.py,v 1.2 2008/08/19 20:37:45 jknudstr Exp $"
@@ -30,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  02/03/2005  Created
 #
-
 """
 The tool is used to download files from NGAS Nodes via 
 
@@ -47,17 +43,14 @@ traversed recursively.
 It is also possible to only list the files, which would be concerned by the
 pattern given, by specifying the --list parameter.
 """
-
 # IMPL: - If --list is specified don't download the file.
 #       - Write file system information about file.
 
-import sys, os, time
+import commands, string, sys, os
 
-from ngams import *
-import ngamsDb, ngamsStatus, ngamsFileInfo, ngamsDiskInfo
-import ngamsLib
-import ngamsPClient
-import ngasUtils, ngasUtilsLib
+from ngamsLib.ngamsCore import info, NGAMS_RETRIEVE_CMD, NGAMS_FAILURE, setLogCond
+from ngamsLib import ngamsLib, ngamsStatus
+from ngamsPClient import ngamsPClient
 
 
 def isNgasXmlStatusDoc(doc):

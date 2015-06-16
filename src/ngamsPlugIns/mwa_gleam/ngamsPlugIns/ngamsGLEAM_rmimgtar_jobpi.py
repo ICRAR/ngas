@@ -27,7 +27,6 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      13/April/2015  Created
-
 """
 1. Check if the imgtar file has been untarred successfully (this is now in filter)
 If so,
@@ -35,9 +34,11 @@ If so,
 3. remove the imgtar file from ICRAR archive
 
 """
+
 import os, commands
-from ngams import *
-import ngamsDiscardCmd
+
+from ngamsLib.ngamsCore import info, warning, error
+
 
 ngas_path = "/home/ngas/ngas_rt"
 archive_client = '/home/ngas/ngas_rt/bin/ngamsCClient'

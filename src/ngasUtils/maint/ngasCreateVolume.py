@@ -1,3 +1,10 @@
+import string
+import sys, os, time
+
+from ngamsLib import ngamsDiskInfo, ngamsDb, ngamsConfig, ngamsFileInfo
+from ngamsLib.ngamsCore import getFileSize, info, setDebug, setLogCond
+from ngamsServer import ngamsJanitorThread
+from pccUt import PccUtTime
 
 
 #
@@ -21,7 +28,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasCreateVolume.py,v 1.2 2008/08/19 20:37:45 jknudstr Exp $"
@@ -30,7 +36,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  26/07/2005  Created
 #
-
 _doc =\
 """
 The tool is used to create a set of files on an NGAS Disk as though these
@@ -44,16 +49,8 @@ The pre-defined input parameters to the tool are:
 
 """
 
-import sys, os, time, getpass
 
-import pcc, PccUtTime
 
-from ngams import *
-import ngamsDb, ngamsDbm, ngamsStatus, ngamsFileInfo, ngamsDiskInfo
-import ngamsLib
-import ngamsConfig, ngamsJanitorThread
-import ngamsPClient
-import ngasUtils, ngasUtilsLib
 
 # Constants.
 
@@ -110,10 +107,10 @@ def _encFileInfo(dbSnapshot,
     """
     See ngamsJanitorThread._encFileInfo().
     """
-    import ngamsDb, ngamsDbBase
+    from ngamsLib import ngamsDb, ngamsDbCore
     tmpDic = {}
     for n in range(ngamsDb.NGAS_FILES_CREATION_DATE + 1):
-        colName = ngamsDbBase._ngasFilesNameMap[n]
+        colName = ngamsDbCore._ngasFilesNameMap[n]
         colId = ngamsJanitorThread._encName(dbSnapshot, colName)
         tmpDic[colId] = fileInfo[n]
     return tmpDic
@@ -159,7 +156,7 @@ def createFitsFiles(testParDic):
 
     Returns:   Void.
     """
-    import ngamsFitsPlugIn
+    from ngamsPlugIns import ngamsFitsPlugIn
     
     filesPerDay = 10000  # Max. number of files to generate per day.
     baseFile = testParDic["BASEFILE"]

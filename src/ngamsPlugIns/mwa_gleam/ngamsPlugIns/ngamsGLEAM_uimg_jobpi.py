@@ -27,13 +27,14 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      30/March/2015  Created
-
 """
 Update GLEAM image values (due to wrong scales used)
 """
 
 import os, commands, binascii
-from ngams import *
+
+from ngamsLib.ngamsCore import getIpAddress, info, error
+
 
 host_name = os.uname()[1].split('.')[0]
 python_path = {"store02":"/usr/local/share/gleamenv/bin/python",

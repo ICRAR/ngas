@@ -38,8 +38,6 @@ on stdout in a human readible (ASCII) format.
 
 import sys, cPickle
 
-from ngams import *
-
 
 def correctUsage():
     """

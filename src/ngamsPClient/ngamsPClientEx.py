@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsPClientEx.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,14 +27,14 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  26/02/2002  Created
 #
-
 """
 Small example application to archive a file.
 """
 
 import sys
-from   ngams import *
+
 import ngamsPClient
+
 
 if __name__ == '__main__':
     """

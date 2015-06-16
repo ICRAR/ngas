@@ -1,5 +1,3 @@
-
-
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -21,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasRetrieveFiles.py,v 1.2 2008/08/19 20:37:45 jknudstr Exp $"
@@ -30,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  13/10/2005  Created
 #
-
 _doc =\
 """
 TEMPORARY IMPLEMENTATION - COULD BE IMPROVED IF DECIDED TO KEEP THIS.
@@ -41,16 +37,14 @@ The defined input parameters to the tool are:
 
 """
 
-import sys, os, time, getpass, random, thread, threading
+import sys, time, random, thread, threading
 
-import pcc, PccUtTime
+from ngamsLib.ngamsCore import NGAMS_RETRIEVE_CMD, info, getThreadName, getFileSize, error, setLogCond
+from ngamsLib import ngamsLib
+from ngamsPClient import ngamsPClient
+from ngasUtils.src.ngasUtilsLib import NGAS_OPT_INT, NGAS_OPT_MAN, \
+    genOptDicAndDoc, NGAS_OPT_VAL, parseCmdLine
 
-from ngams import *
-import ngamsDbm, ngamsFileInfo
-import ngamsLib
-import ngamsPClient
-import ngasUtils
-from ngasUtilsLib import *
 
 BLOCK_SIZE = 131072
 

@@ -27,13 +27,13 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # cwu      13/April/2015  Created
-
 """
 1 Check if it is imgtar (e.g. 1077914808_images.tar)
 2 Check if the imgtar file has been untarred successfully
 """
 
-from ngams import *
+from ngamsLib.ngamsCore import info
+
 
 sql_query = "SELECT status FROM ngas_subscr_queue WHERE"\
             + " subscr_id = 'STORE04_UNTAR_IMAGE' AND file_id = '{0}'"\

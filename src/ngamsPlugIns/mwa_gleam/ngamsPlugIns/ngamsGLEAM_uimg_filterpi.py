@@ -29,7 +29,9 @@
 # cwu      30/March/2015  Created
 
 import re
-from ngams import *
+
+from ngamsLib.ngamsCore import warning
+
 
 QUERY_MAX_VER = "SELECT MAX(file_version) FROM ngas_files WHERE file_id = '%s'"
 
