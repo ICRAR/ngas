@@ -14,7 +14,7 @@ Sybase table columns and vice versa.
 
 import string, exceptions
 
-import PccUtUtils, PccUtString
+from pccUt import PccUtUtils, PccUtString
 from pccKey import PccKey
 from pccLog.PccLog import info
 from pccPaf import PccPaf
