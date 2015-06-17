@@ -1,5 +1,3 @@
-C++ = g++
-
 ifndef os
    os = LINUX
 endif
@@ -43,14 +41,14 @@ APP = ngamsUDTSender ngamsUDTReceiver ngamsUDTReceiver_Test
 all: $(APP)
 
 %.o: %.cpp
-	$(C++) $(CCFLAGS) $< -c
+	$(CXX) $(CCFLAGS) $< -c
 
 ngamsUDTSender: ngamsUDTSender.o ngamsUDTUtils.o
-	$(C++) $^ -o $@ $(LDFLAGS)
+	$(CXX) $^ -o $@ $(LDFLAGS)
 ngamsUDTReceiver: ngamsUDTReceiver.o ngamsUDTUtils.o
-	$(C++) $^ -o $@ $(LDFLAGS)
+	$(CXX) $^ -o $@ $(LDFLAGS)
 ngamsUDTReceiver_Test: ngamsUDTReceiver_Test.o
-	$(C++) $^ -o $@ $(LDFLAGS)
+	$(CXX) $^ -o $@ $(LDFLAGS)
 
 
 clean:

@@ -78,7 +78,7 @@ UDTSOCKET getUDTSocket(char* argv[]) {
 	if (0 != getaddrinfo(argv[1], argv[2], &hints, &peer))
 	{
 	  cout << "incorrect server/peer address. " << argv[1] << ":" << argv[2] << endl;
-	  return NULL;
+	  return 0;
 	}
 	// connect to the server, implict bind
 	int status = UDT::connect(fhandle, peer->ai_addr, peer->ai_addrlen);
@@ -107,7 +107,7 @@ int sendStringInfo(UDTSOCKET fhandle, const char* str) {
  *  This function is not used, as we combine all parameter to send in one go
  *  but could be useful in the future.
  */
-int sendSizeInfo(UDTSOCKET fhandle, int64_t size) {
+int sendSizeInfo(UDTSOCKET fhandle, off_t size) {
 	int status = UDT::send(fhandle, (char*)&size, sizeof(int64_t), 0);
 	checkUDTError(status, true, "send size info");
 	return 0;
@@ -124,7 +124,7 @@ void buildHTTPHeader(char* header, const char* mimeType, const char* file_name, 
 	sprintf(header, "POST /%.256s HTTP/1.0\015\012"
 			"User-agent: %s\015\012"
 			"Content-type: %s\015\012"
-			"Content-length: %llu\015\012"
+			"Content-length: %"PRIXMAX"\015\012"
 			"Content-disposition: %s%s\015\012\012", path, ngamsUSER_AGENT, mimeType, filesize, contentDisp, authHdr);
 }
 
@@ -138,13 +138,13 @@ int main(int argc, char* argv[]) {
 	string file = string(argv[4]);
 	string mime = string(argv[3]);
 	string param = mime + udt_param_delimit + basename(argv[4]);
-	int64_t filesize = 0;
+	off_t filesize = 0;
 
 	// size passed in
 	if (argc == 6) {
 		param += udt_param_delimit + string(argv[4]);
 		char * endptr = NULL;
-		filesize = strtoimax(argv[5], &endptr, 10);
+		filesize = (off_t)strtoimax(argv[5], &endptr, 10);
 	} else {
 		struct stat filestatus;
 		if (stat(file.c_str(), &filestatus ) < 0) {

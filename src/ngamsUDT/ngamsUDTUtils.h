@@ -15,13 +15,13 @@ typedef struct HTTPHeader {
 typedef struct HTTPPayload {
 	int64_t payloadsize;
 	char* buff;
-};
+} HTTPPayload;
 
 typedef struct SockeThrdArgs {
 	string ngas_host;
 	int ngas_port;
 	UDTSOCKET* udt_sock;
-};
+} SockeThrdArgs;
 
 // connect to a remote tcp socket
 int connect(const char* host, const int port);
