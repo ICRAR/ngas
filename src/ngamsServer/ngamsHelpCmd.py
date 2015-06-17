@@ -33,13 +33,9 @@ Contains code for handling the HELP command.
 TODO: The HELP command is not yet implemented!
 """
 
-import os
-import pydoc
-
 from pccUt import PccUtTime
 from ngamsLib import ngamsStatus
-from ngamsLib.ngamsCore import TRACE, getNgamsVersion, getHostId, NGAMS_FAILURE, \
-    NGAMS_HTTP_SUCCESS, NGAMS_SRC_DIR, NGAMS_SUCCESS
+from ngamsLib.ngamsCore import TRACE, getNgamsVersion, getHostId, NGAMS_FAILURE, NGAMS_HTTP_SUCCESS
 
 
 def handleCmdHelp(srvObj,
@@ -77,32 +73,32 @@ def handleCmdHelp(srvObj,
     return
     ##########################################################################
 
-    # Get the information requested.
-    msg = ""
-    doc = ""
-    if (reqPropsObj.hasHttpPar("doc")):
-        doc = reqPropsObj.getHttpPar("doc")
-        if (doc == ""):
-            msg = pydoc.HTMLDoc().index(NGAMS_SRC_DIR + "/..")
-        elif (os.path.isdir("doc")):
-            msg = pydoc.HTMLDoc().index(doc)
-        elif (doc.find(".py") != -1):
-            msg = pydoc.HTMLDoc().docmodule(NGAMS_SRC_DIR + "/" + doc)
-        else:
-            pass
-    else:
-        status = ngamsStatus.ngamsStatus()
-        status.\
-                 setDate(PccUtTime.TimeStamp().getTimeStamp()).\
-                 setVersion(getNgamsVersion()).\
-                 setHostId(getHostId()).setStatus(NGAMS_SUCCESS).\
-                 setMessage("Successfully handled command HELP").\
-                 setState(srvObj.getState()).setSubState(srvObj.getSubState())
-        msg = status.genXmlDoc()
-        
-    srvObj.httpReplyGen(reqPropsObj.setCompletionTime(), httpRef,
-                        NGAMS_HTTP_SUCCESS, msg)
-    srvObj.updateRequestDb(reqPropsObj)
+    ## Get the information requested.
+    #msg = ""
+    #doc = ""
+    #if (reqPropsObj.hasHttpPar("doc")):
+    #    doc = reqPropsObj.getHttpPar("doc")
+    #    if (doc == ""):
+    #        msg = pydoc.HTMLDoc().index(ngamsGetSrcDir() + "/..")
+    #    elif (os.path.isdir("doc")):
+    #        msg = pydoc.HTMLDoc().index(doc)
+    #    elif (doc.find(".py") != -1):
+    #        msg = pydoc.HTMLDoc().docmodule(ngamsGetSrcDir() + "/" + doc)
+    #    else:
+    #        pass
+    #else:
+    #    status = ngamsStatus.ngamsStatus()
+    #    status.\
+    #             setDate(PccUtTime.TimeStamp().getTimeStamp()).\
+    #             setVersion(getNgamsVersion()).\
+    #             setHostId(getHostId()).setStatus(NGAMS_SUCCESS).\
+    #             setMessage("Successfully handled command HELP").\
+    #             setState(srvObj.getState()).setSubState(srvObj.getSubState())
+    #    msg = status.genXmlDoc()
+    #    
+    #srvObj.httpReplyGen(reqPropsObj.setCompletionTime(), httpRef,
+    #                    NGAMS_HTTP_SUCCESS, msg)
+    #srvObj.updateRequestDb(reqPropsObj)
 
 
 # EOF

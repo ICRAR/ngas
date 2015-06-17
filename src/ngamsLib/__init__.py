@@ -77,12 +77,9 @@ __all__ = ["ngamsCacheEntry",
 "ngamsXmlMgr",]
 
 
-import os, sys
+import pkg_resources
 
-docFile = os.path.normpath(os.path.dirname(__file__) + "/README")
-fo = open(docFile)
-__doc__ = fo.read()
-fo.close()
+__doc__ = pkg_resources.resource_string(__name__, 'README')
 
 
 # EOF

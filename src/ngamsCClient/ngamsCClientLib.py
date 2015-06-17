@@ -19,8 +19,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-from ngamsLib.ngamsCore import ngamsGetSrcDir
-
+import pkg_resources
 
 #******************************************************************************
 #
@@ -31,18 +30,15 @@ from ngamsLib.ngamsCore import ngamsGetSrcDir
 # jknudstr  11/06/2001  Created
 # Small jacket module to make it possible to view the header file for
 # the NG/AMS C-API Library.
-def _ngamsGenDocPage(cSrcFile):
+def _ngamsGenDocPage(srcFileLines):
     """
     Parse in a C source file code and generate an ASCII man-page from
     comments in the doc++ format.
 
-    cSrcFile:     C source file.
+    srcFileLines: C source file contents.
 
     Returns:      Man-page string buffer.
     """
-    fo = open(libSrcFile)
-
-    srcFileLines = fo.readlines()
 
     docDic   = {}
     docCount = 0
@@ -70,8 +66,7 @@ def _ngamsGenDocPage(cSrcFile):
 
     return docPage
 
-libSrcFile = ngamsGetSrcDir() + "/ngamsCClient/ngamsCClientLib.c"
-__doc__ = _ngamsGenDocPage(libSrcFile)
+__doc__ = _ngamsGenDocPage(pkg_resources.resource_string(__name__, 'ngamsCClientLib.c'))
 
 
 # EOF

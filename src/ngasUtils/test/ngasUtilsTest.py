@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasUtilsTest.py,v 1.2 2008/08/19 20:37:46 jknudstr Exp $"
@@ -39,17 +38,15 @@ A status report will be printed on stdout and sent to the email recipients
 listed.
 """
 
-import os, sys, glob, getpass, profile, pstats, time
-import pcc, PccUtUtils, PccUtTime
-from ngams import *
-import ngamsConfig, ngamsHighLevelLib
-import ngamsLib
-try:
-    import ngamsTestLib
-    import ngasUtilsTestLib
-except Exception, e:
-    print str(e)
-    sys.exit(1)
+import glob
+import os
+import sys
+import time
+
+from ngamsLib import ngamsConfig, ngamsHighLevelLib, ngamsLib
+from ngamsLib.ngamsCore import ngamsGetSrcDir, getHostName, getNgamsVersion
+from ngamsTest.ngamsTest import genStatus
+from pccUt import PccUtTime, PccUtUtils
 
 
 NGAMS_TEST_MAX_TS_TIME = 800
@@ -63,7 +60,7 @@ def getTestList():
     Returns:   List with names of test Python modules (list/string).
     """
     testModList = []
-    globPat = os.path.normpath(NGAMS_SRC_DIR + "/../ngasUtils/test/*Test.py")
+    globPat = os.path.normpath(ngamsGetSrcDir() + "/../ngasUtils/test/*Test.py")
     fileList = glob.glob(globPat)
     fileList.sort()
     supprTests = []
@@ -196,7 +193,6 @@ if __name__ == '__main__':
             idx += 1
             notifEmail = sys.argv[idx]
         else:
-            correctUsage()
             sys.exit(1)
         idx += 1
     if (notifEmail == None):

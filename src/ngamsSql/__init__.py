@@ -33,13 +33,9 @@ Module init script to enable viewing of the SQL creation scripts by means
 of Pydoc.
 """
 
-import os, glob, commands
+import os, glob, commands, pkg_resources
 
-from ngamsLib.ngamsCore import ngamsGetSrcDir
-
-
-sqlScriptList = [ngamsGetSrcDir() + "/ngamsSql/ngamsCreateBaseTables.sql",
-                 ngamsGetSrcDir() + "/ngamsSql/ngamsCreateOpsLogTable.sql"]
+sqlScriptList = ['ngamsCreateBaseTables.sql', 'ngamsCreateOpsLogTable.sql']
 
 
 __doc__ = "\nNG/AMS DB TABLES:\n\n" +\
@@ -50,7 +46,7 @@ __doc__ = "\nNG/AMS DB TABLES:\n\n" +\
           
 for sqlScript in sqlScriptList:
     fo = open(sqlScript)
-    script = fo.readlines()
+    script = pkg_resources.resource_string(__name__, sqlScript)
     fo.close()
     idx = 0
     while (idx < len(script)):

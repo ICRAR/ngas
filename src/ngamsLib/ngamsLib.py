@@ -27,6 +27,7 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  12/05/2001  Created
 #
+import pkg_resources
 
 """
 Base module that contains various utility functions used for the
@@ -42,7 +43,7 @@ from ngamsCore import genLog, info, TRACE, trim, getHostName, warning,\
     NGAMS_HTTP_SUCCESS, getVerboseLevel, NGAMS_CONT_MT, NGAMS_SOCK_TIMEOUT_DEF,\
     NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM,\
     getFileSize, NGAMS_ARCH_REQ_MT, getHostId, getUniqueNo,\
-    NGAMS_MAX_FILENAME_LEN, NGAMS_SRC_DIR, error, NGAMS_UNKNOWN_MT, rmFile
+    NGAMS_MAX_FILENAME_LEN, ngamsGetSrcDir, error, NGAMS_UNKNOWN_MT, rmFile
 import ngamsMIMEMultipart
 
 def hidePassword(fileUri):
@@ -1155,17 +1156,19 @@ def locateInternalFile(filename):
     elif (os.path.exists(filename)):
         complFilename = filename
     else:
-        pattern = ""
-        for n in range(5):
-            complFilename = os.path.normpath(NGAMS_SRC_DIR + "/" +\
-                                             pattern + filename)
-            fileList = glob.glob(complFilename)
-            if (len(fileList) > 0):
-                complFilename = fileList[0]
-                break
-            else:
-                complFilename = ""
-                pattern += "*/"
+
+        # Locate via pkg_resources.resource_filename
+        # The full path (i.e., package1.package2.module.py) should be given
+        filenameParts = filename.split("/")
+        if len(filenameParts) > 1:
+            pkgName = filenameParts[0]
+            filename = '/'.join(filenameParts[1:])
+        else:
+            pkgName = __name__
+        try:
+            complFilename = pkg_resources.resource_filename(pkgName, filename)
+        except Exception:
+            pass
 
     if ((not complFilename) or (not os.path.exists(complFilename))):
         errMsg = "Could not locate local file according to pattern: "+ filename

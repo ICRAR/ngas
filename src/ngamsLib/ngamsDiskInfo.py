@@ -38,7 +38,7 @@ import xml.dom.minidom
 
 from pccUt import PccUtTime
 from ngamsCore import genLog, error, getAttribValue, setLogCond, trim, timeRef2Iso8601, prFormat1, ignoreValue
-from ngamsCore import TRACE, NGAMS_STAGING_DIR, NGAMS_SRC_DIR
+from ngamsCore import TRACE, NGAMS_STAGING_DIR, ngamsGetSrcDir
 import ngamsFileInfo
 
 def getStorageSetIdFromDiskId(dbConObj,
@@ -277,7 +277,7 @@ class ngamsDiskInfo:
         if (mountPoint):
             mntPt = trim(mountPoint, "\" ")
             if mntPt[0] != '/':
-                mntPt = NGAMS_SRC_DIR + '/' + mntPt
+                mntPt = ngamsGetSrcDir() + '/' + mntPt
             self.__mountPoint = mntPt
         else:
             self.__mountPoint = ""

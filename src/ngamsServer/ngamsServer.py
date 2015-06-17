@@ -35,7 +35,7 @@ This module contains the class ngamsServer that provides the
 services for the NG/AMS Server.
 """
 
-import os, sys, re, threading, time, glob, commands
+import os, sys, re, threading, time, glob, commands, pkg_resources
 import thread, traceback
 import SocketServer, BaseHTTPServer, socket, signal
 
@@ -46,7 +46,7 @@ from ngamsLib.ngamsCore import \
     genLog, error, info, alert, notice, setLogCache, logFlush, sysLogInfo, TRACE,\
     rmFile, trim, getNgamsVersion, getDebug, getTestMode, setDebug, setTestMode, \
     getFileSize, getDiskSpaceAvail, setLogCond, setSrvPort, getIpAddress, checkCreatePath,\
-    getHostId, getHostName, getLocation, ngamsCopyrightString, ngamsGetSrcDir, getNgamsLicense,\
+    getHostId, getHostName, getLocation, ngamsCopyrightString, getNgamsLicense,\
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, NGAMS_HTTP_GET,\
     NGAMS_HTTP_BAD_REQ, NGAMS_HTTP_SERVICE_NA, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, NGAMS_DEF_LOG_PREFIX, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR, NGAMS_TEXT_MT,\
@@ -2498,9 +2498,7 @@ class ngamsServer:
 
         Returns:    Void.
         """
-        fo = open(ngamsGetSrcDir() + "/ngamsServer/ngamsServer.doc")
-        manPage = fo.read()
-        fo.close()
+        manPage = pkg_resources.resource_string(__name__, 'ngamsServer.txt')
         manPage = manPage.replace("ngamsServer", self._serverName)
         print manPage
         print ngamsCopyrightString()

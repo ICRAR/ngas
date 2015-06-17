@@ -27,30 +27,3 @@
 # Who       When        What
 # --------  ----------  -------------------------------------------------------
 # jknudstr  27/09/2002  Created
-
-import os, glob, commands
-
-from ngamsLib.ngamsCore import NGAMS_SRC_DIR
-
-cfgList = glob.glob(NGAMS_SRC_DIR + "/ngamsData/*.xml") +\
-          glob.glob(NGAMS_SRC_DIR + "/ngamsData/*.dtd")
-
-__doc__ = "\n\nNG/AMS Data Files:\n\n"
-for cfgFile in cfgList:
-    __doc__ += "    - " + os.path.basename(cfgFile) + "\n"
-
-    # Create a dummy .py file containing the contents of the file.
-    fo = open(cfgFile)
-    cfgBuf = fo.read()
-    fo.close()
-    
-    cfgDocFile = cfgFile.replace(".", "_") + ".py"
-    commands.getstatusoutput("rm -rf " + cfgDocFile)
-    fo = open(cfgDocFile, "w")
-    fo.write('"""\n' + cfgBuf + '\n"""\n\n# EOF\n')
-    fo.close()
-
-__doc__ += "\nIt is possible to view the contents of these "+\
-           "files, by clicking on their corresponding links in this page.\n"
-
-# EOF

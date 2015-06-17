@@ -30,8 +30,6 @@
 
 # Dummy __init__.py file to build up the documentation for the module.
 
-import os, sys
-
 __all__ = ["ngamsArchiveCmd",
 "ngamsArchiveUtils",
 "ngamsAuthUtils",
@@ -67,20 +65,8 @@ __all__ = ["ngamsArchiveCmd",
 "ngamsUnsubscribeCmd",
 "ngamsUserServiceThread",
 ]
-NGAMS_SRC_DIR = __path__[0]
-docFile = os.path.normpath(NGAMS_SRC_DIR + "/README")
-fo = open(docFile)
-__doc__ = fo.read()
-fo.close()
 
-# Create man-page for the NG/AMS Server.
-srcDocFile = os.path.normpath(NGAMS_SRC_DIR +"/ngamsServer.doc")
-trgDocFile = os.path.normpath(NGAMS_SRC_DIR +"/ngamsServer_doc.py")
-fo = open(srcDocFile)
-srcDoc = fo.read()
-fo.close()
-fo = open(trgDocFile, "w")
-fo.write('"""\n' + srcDoc + '\n"""\n\n# EOF\n')
-fo.close()
+import pkg_resources
+__doc__ = pkg_resources.resource_filename(__name__, 'README')
 
 # EOF:

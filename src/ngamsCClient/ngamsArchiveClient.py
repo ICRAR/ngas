@@ -30,13 +30,9 @@
 # Small jacket module to make it possible to view the header file for
 # the NG/AMS Archive Client
 
-from ngamsLib.ngamsCore import ngamsGetSrcDir
+import pkg_resources
 
-docFile = ngamsGetSrcDir() + "/ngamsCClient/ngamsArchiveClient.doc"
-fo = open(docFile)
-__doc__ = fo.read()
-fo.close()
+__doc__ = pkg_resources.resource_string(__name__, 'ngamsArchiveClient.doc')
 
 
 # EOF
-

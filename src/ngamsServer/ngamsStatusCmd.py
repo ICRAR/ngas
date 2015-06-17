@@ -1,4 +1,3 @@
-
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
 #    Copyright by UWA (in the framework of the ICRAR)
@@ -32,10 +31,10 @@
 """
 Function + code to handle the STATUS command.
 """
-import os, re, sys, types, glob
+import os, re, sys, types, glob, pkg_resources
 
 from pccUt import PccUtTime
-from ngamsLib.ngamsCore import loadDoc, TRACE, info, NGAMS_HOST_LOCAL,\
+from ngamsLib.ngamsCore import TRACE, info, NGAMS_HOST_LOCAL,\
     getHostName, genLog, timeRef2Iso8601, genUniqueId, getHostId, mvFile, rmFile,\
     error, compressFile, NGAMS_PROC_FILE, NGAMS_GZIP_XML_MT, getNgamsVersion,\
     NGAMS_SUCCESS, logFlush, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD,\
@@ -48,7 +47,7 @@ import ngamsSrvUtils, ngamsRetrieveCmd
 
 
 # Man-page for the command.
-_help = loadDoc("ngamsServer/ngamsStatusCmd.doc")
+_help = pkg_resources.resource_string('ngamsStatusCmd.doc')
 
 
 def _checkFileAccess(srvObj,

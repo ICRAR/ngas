@@ -37,11 +37,11 @@ where not tested.
 #       This information will be printed out when executing the tests in the
 #       test report.
 
-import os, sys, glob, getpass, time
+import os, sys, glob, getpass, time, pkg_resources
 import pstats
 
 import cProfile as profile
-from ngamsLib.ngamsCore import NGAMS_SRC_DIR, getHostName, getNgamsVersion, trim, \
+from ngamsLib.ngamsCore import ngamsGetSrcDir, getHostName, getNgamsVersion, trim, \
     ngamsCopyrightString, rmFile
 from ngamsLib import ngamsConfig, ngamsHighLevelLib, ngamsLib
 from pccUt import PccUtTime, PccUtUtils
@@ -65,8 +65,8 @@ def getTestList():
     Returns:   List with names of test Python modules (list/string).
     """
     testModList = []
-    globPat = os.path.normpath(NGAMS_SRC_DIR + "/ngamsTest/*Test.py")
-    fileList = glob.glob(globPat)
+    filesInNgamsTest = pkg_resources.resource_listdir(__name__, ".")
+    fileList = [f for f in filesInNgamsTest if f.endswith("Test.py")]
     fileList.sort()
     supprTests = []
     for file in fileList:
@@ -200,7 +200,7 @@ def getAllSrcFiles():
     modules = ["ngamsLib", "ngamsPClient", "ngamsServer"]
     fctDic = {}
     for mod in modules:
-        modDir = os.path.normpath(NGAMS_SRC_DIR + "/" + mod + "/*.py")
+        modDir = os.path.normpath(ngamsGetSrcDir() + "/" + mod + "/*.py")
         exitCode, stdOut, stdErr = PccUtUtils.execCmd("grep -n def " + modDir)
         fcts = stdOut.split("\n")
         for fct in fcts:

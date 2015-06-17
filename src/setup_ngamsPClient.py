@@ -1,6 +1,6 @@
 #
 #    ICRAR - International Centre for Radio Astronomy Research
-#    (c) UWA - The University of Western Australia, 2012
+#    (c) UWA - The University of Western Australia, 2015
 #    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
 #
@@ -19,20 +19,34 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+from setuptools import setup
 
-#******************************************************************************
-#
-# "@(#) $Id: __init__.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
-#
-# Who       When        What
-# --------  ----------  -------------------------------------------------------
-# jknudstr  11/06/2001  Created
+with open('VERSION') as vfile:
+    for line in vfile.readlines():
+        if "ngamsNGAMS_SW_VER" in line:
+            version = line.split("NGAMS_SW_VER ")[1].strip()[1:-1]
+            break
 
-# Dummy __init__.py file to make it possible to view the documentation of
-# the NG/AMS C-Client Sub-Module using e.g. pydoc.
-
-import pkg_resources
-
-__doc__ = pkg_resources.resource_string(__name__, 'README')
-
-# EOF
+setup(
+    name='ngamsPClient',
+    version=version,
+    description="The python package containing the python NGAMS client",
+    long_description="The python package containing the python NGAMS client",
+    classifiers=[], # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
+    packages=[
+        'ngamsPClient',
+    ],
+    include_package_data=True,
+    package_data = {
+        'ngamsPClient' : ['README']
+    },
+    install_requires=[
+        'pcc',
+        'ngamsCore'
+    ],
+    entry_points= {
+        'console_scripts':[
+            'ngamsPClient = ngamsPClient.ngamsPClient:main'
+        ],
+    },
+)

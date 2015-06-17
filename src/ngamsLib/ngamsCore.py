@@ -123,10 +123,9 @@ import pkg_resources
 # make sure that we can get a handle to the server object
 _ngamsServer = None
 
-# NG/AMS source directory
-NGAMS_SRC_DIR = pkg_resources.resource_filename(__name__, '..')
-
-#NGAMS_SRC_DIR = os.path.normpath(os.path.relpath('.') + "/../..")
+# NG/AMS source directory.
+# TODO: This should not be used anymore!
+_NGAMS_SRC_DIR = pkg_resources.resource_filename(__name__, '..')
 
 # Main PID of server
 NGAMS_SRV_PID = os.getpid()
@@ -144,8 +143,8 @@ def ngamsGetSrcDir():
 
     Returns:  NG/AMS source directory (string).
     """
-    global NGAMS_SRC_DIR
-    return NGAMS_SRC_DIR
+    global _NGAMS_SRC_DIR
+    return _NGAMS_SRC_DIR
 
 
 def getSrvPid():
@@ -186,8 +185,7 @@ for line in verBufLines:
 
 
 # Load Error Definition File
-NGAMS_ERR_DEF_FILE = pkg_resources.resource_filename(__name__, '/../ngamsData/'+\
-                                      "ngamsLogDef.xml")
+NGAMS_ERR_DEF_FILE = pkg_resources.resource_filename('ngamsData', 'ngamsLogDef.xml')
 _logDef = PccLogDef.PccLogDef().load(NGAMS_ERR_DEF_FILE)
 
 
@@ -1564,26 +1562,6 @@ def padString(strBuf,
     for i in range(noMisChars):
         strBuf = prependChr + strBuf
     return strBuf
-
-
-def loadDoc(docName):
-    """
-    Load the given documation page and return the contents in a string buffer.
-    Lines initiated with # in the documentation are filtered out.
-
-    docName:  Name of documentation page, relative to the ngams module
-              root directory (string).
-
-    Returns:  Documentation page (string).
-    """
-    complDocName = os.path.normpath(ngamsGetSrcDir() + "/" + docName)
-    fo = open(complDocName)
-    docBufLines = fo.readlines()
-    fo.close()
-    docBuf = ""
-    for docLine in docBufLines:
-        if (docLine[0] != "#"): docBuf += docLine
-    return docBuf
 
 
 def setTestMode():

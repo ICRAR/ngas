@@ -29,13 +29,6 @@
 # Small jacket module to make it possible to view the header file for
 # the NG/AMS C-Client
 
-from ngamsLib.ngamsCore import ngamsGetSrcDir
-
-docFile = ngamsGetSrcDir() + "/ngamsPClient/ngamsPClient.doc"
-fo = open(docFile)
-__doc__ = "ngamsCClient " + fo.read()
-fo.close()
-
+__doc__ = pkg_resources.resource_string('ngamsPClient', 'doc/ngamsPClient.doc')
 
 # EOF
-

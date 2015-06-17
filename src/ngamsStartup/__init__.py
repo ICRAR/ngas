@@ -19,23 +19,3 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
-#******************************************************************************
-#
-# "@(#) $Id: ngams_h.py,v 1.3 2008/08/19 20:51:50 jknudstr Exp $"
-#
-# Who       When        What
-# --------  ----------  -------------------------------------------------------
-# jknudstr  11/06/2001  Created
-
-
-# Small jacket module to make it possible to view the header file for
-# the NG/AMS C-API.
-
-import pkg_resources
-
-__doc__ = pkg_resources.resource_string(__name__, 'ngams,h')
-
-
-# EOF
-

@@ -28,13 +28,8 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  11/06/2001  Created
 
-import os
+import pkg_resources
 
-readMeFile = os.path.normpath(os.path.dirname(__file__) + "/README")
-fo = open(readMeFile)
-__doc__ = fo.read()
-fo.close()
-
+__doc__ = pkg_resources.resource_string(__name__, 'README')
 
 # EOF
-

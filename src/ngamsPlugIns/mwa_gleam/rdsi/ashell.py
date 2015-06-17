@@ -10,6 +10,7 @@ import random
 import getpass
 import tempfile
 import subprocess
+import pkg_resources
 
 # --- settings, do not edit (unless you know what you're doing)
 
@@ -450,7 +451,8 @@ if __name__ == '__main__':
 #	if (code):
 #		exit(-1)
 # check for aterm.jar
-	client = os.path.dirname(os.path.abspath(__file__)) + "/aterm.jar"
+
+	client = pkg_resources.resource_filename(__name__, 'aterm.jar')
 	if (os.path.isfile(client) == 0):
 		raise Exception("Error: aterm.jar not found")
 
