@@ -39,15 +39,13 @@ setup(
     url='',
     license='',
     packages=[
-        'ngamsLib',
-        'ngamsData',
-        'ngamsSql'
+        'ngamsPlugIns',
     ],
     include_package_data=True,
     package_data = {
-        'ngamsSql' : ['*.sql'],
-        'ngamsData': ['*.fnt', '*.xml', '*.dtd'],
-        'ngamsLib' : ['README']
+        'ngamsPlugIns' : ['README', '*.css', '*.html', '*.cfg', 'd3/*', 'mwa_compression/*',
+                          'mwa_gleam/ngamsPlugins/*', 'mwa_gleam/rdsi/*', 'mwa_gleam/vo/*',
+                          'mwa_gleam/*.sh', 'mwa_gleam/*.sql', 'mwa_gleam/*.py', 'mwa_mit/*', 'mwa_tapestaging/*'],
     },
     install_requires=[
         'pcc',

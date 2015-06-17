@@ -21,7 +21,11 @@
 #
 from setuptools import setup, find_packages
 
-version = '0.0'
+with open('../../VERSION') as vfile:
+    for line in vfile.readlines():
+        if "ngamsNGAMS_SW_VER" in line:
+            version = line.split("NGAMS_SW_VER ")[1].strip()[1:-1]
+            break
 
 setup(name='pcc',
       version=version,

@@ -11,3 +11,6 @@ autom4te.cache
 stamp-h1
 admin
 tags
+*.egg-info
+build
+dist

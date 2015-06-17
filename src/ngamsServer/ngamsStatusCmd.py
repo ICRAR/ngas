@@ -47,7 +47,7 @@ import ngamsSrvUtils, ngamsRetrieveCmd
 
 
 # Man-page for the command.
-_help = pkg_resources.resource_string('ngamsStatusCmd.doc')
+_help = pkg_resources.resource_string(__name__, 'ngamsStatusCmd.txt')
 
 
 def _checkFileAccess(srvObj,
