@@ -19,9 +19,10 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+import os, shutil
 from setuptools import setup
 
-with open('VERSION') as vfile:
+with open('../VERSION') as vfile:
     for line in vfile.readlines():
         if "ngamsNGAMS_SW_VER" in line:
             version = line.split("NGAMS_SW_VER ")[1].strip()[1:-1]
@@ -46,7 +47,7 @@ setup(
     include_package_data=True,
     package_data = {
         'ngamsSql' : ['*.sql'],
-        'ngamsData': ['*.fnt', '*.xml', '*.dtd'],
+        'ngamsData': ['*.fnt', '*.xml', '*.dtd', 'COPYRIGHT', 'LICENSE', 'VERSION'],
         'ngamsLib' : ['README']
     },
     install_requires=[

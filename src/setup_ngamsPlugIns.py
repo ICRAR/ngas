@@ -21,7 +21,7 @@
 #
 from setuptools import setup
 
-with open('VERSION') as vfile:
+with open('../VERSION') as vfile:
     for line in vfile.readlines():
         if "ngamsNGAMS_SW_VER" in line:
             version = line.split("NGAMS_SW_VER ")[1].strip()[1:-1]

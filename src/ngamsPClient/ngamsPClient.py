@@ -47,14 +47,14 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NG
     NGAMS_FAILURE, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD, NGAMS_ARCH_REQ_MT,\
     getHostName, setLogCond, setDebug, NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,\
     NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE,\
-    NGAMS_IDLE_SUBSTATE
+    NGAMS_IDLE_SUBSTATE, getNgamsLicense
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD
 from ngamsLib.ngamsCore import info, notice, getTestMode
 from xml.dom import minidom
 import pkg_resources
 
 
-manPage = pkg_resources.resource_filename(__name__, 'doc/ngamsPClient.doc')
+manPage = pkg_resources.resource_filename(__name__, 'doc/ngamsPClient.txt')
 fo = open(manPage)
 __doc__ += "\n\n\nMan-Page for the NG/AMS Python Client Tool:\n\n"
 __doc__ += "ngamsPClient " + fo.read()
@@ -952,7 +952,7 @@ class ngamsPClient:
         fileVersion      = -1
         filterPlugIn     = ""
         force            = 0
-        host             = os.environ['HOSTNAME'] if os.environ.has_key('HOSTNAME') else getHostName()
+        host             = os.environ['HOSTNAME'] if os.environ.has_key('HOSTNAME') else 'localhost'
         hostId           = ""
         internal         = ""
         mimeType         = ""
@@ -982,7 +982,6 @@ class ngamsPClient:
         parLen           = len(argv)
         idx              = 1
         silentExit       = 0
-        exitValue        = 1
         while idx < parLen:
             par = argv[idx].lower()
             try:
@@ -1052,8 +1051,7 @@ class ngamsPClient:
                 elif (par == "-force"):
                     force = 1
                 elif (par == "-license"):
-                    print ngamsLicense()
-                    exitValue = 0
+                    print getNgamsLicense()
                     silentExit = 1
                     _exit(0)
                 elif (par == "-mimetype"):
@@ -1110,7 +1108,6 @@ class ngamsPClient:
                     parArray[parArrayIdx][1] = argv[idx]
                 elif (par == "-version"):
                     print getNgamsVersion()
-                    exitValue = 0
                     silentExit = 1
                     _exit(0)
                 elif (par == "-url"):

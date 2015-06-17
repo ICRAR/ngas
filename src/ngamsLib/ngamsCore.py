@@ -123,10 +123,6 @@ import pkg_resources
 # make sure that we can get a handle to the server object
 _ngamsServer = None
 
-# NG/AMS source directory.
-# TODO: This should not be used anymore!
-_NGAMS_SRC_DIR = pkg_resources.resource_filename(__name__, '..')
-
 # Main PID of server
 NGAMS_SRV_PID = os.getpid()
 NGAMS_HOST_IP = None
@@ -141,10 +137,13 @@ def ngamsGetSrcDir():
     Return the NG/AMS source directory, i.e., the directory where
     the modules of NG/AMS are contained.
 
+    This function is deprecated and will be removed shortly, so don't even
+    think on using it anymore. Instead use the pkg_resources module to
+    retrieve resources from any package.
+
     Returns:  NG/AMS source directory (string).
     """
-    global _NGAMS_SRC_DIR
-    return _NGAMS_SRC_DIR
+    return pkg_resources.resource_filename(__name__, '..')
 
 
 def getSrvPid():
@@ -159,20 +158,15 @@ def getSrvPid():
 
 
 # Import COPYRIGHT statement into doc page.
-fo = open(os.path.normpath(ngamsGetSrcDir() + "/COPYRIGHT"))
-NGAMS_COPYRIGHT_TEXT = fo.read()
-fo.close()
+NGAMS_COPYRIGHT_TEXT = pkg_resources.resource_string('ngamsData', 'COPYRIGHT')
 __doc__ = _doc % NGAMS_COPYRIGHT_TEXT
 
 
 # Handle NG/AMS Version.
-fo = open(os.path.normpath(ngamsGetSrcDir() + "/VERSION"))
-verBufLines = fo.readlines()
-fo.close()
 _NGAMS_CVS_ID   = "--UNDEFINED--"
 _NGAMS_SW_VER   = "--UNDEFINED--"
 _NGAMS_VER_DATE = "--UNDEFINED--"
-for line in verBufLines:
+for line in iter(pkg_resources.resource_string('ngamsData', 'VERSION').splitlines()):
     if (line.find("NGAMS_CVS_ID") != -1):
         _NGAMS_CVS_ID = line.split("NGAMS_CVS_ID ")[1].strip()[1:-1]
     elif (line.find("NGAMS_SW_VER") != -1):
@@ -210,10 +204,7 @@ def getNgamsLicense():
 
     Returns:   Contents of license agreement (string).
     """
-    fo = open(os.path.normpath(ngamsGetSrcDir() + "/../LICENSE"))
-    license = fo.read()
-    fo.close()
-    return license
+    return pkg_resources.resource_string('ngamsData', 'LICENSE')
 
 
 def prFormat1():
