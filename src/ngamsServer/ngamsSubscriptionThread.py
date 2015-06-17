@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-from pccUt import PccUtTime
 
 #******************************************************************************
 #
@@ -38,11 +37,12 @@ used to handle the delivery of data to Subscribers.
 import thread, threading, time, types, traceback, os, base64, urlparse
 from Queue import Queue, Empty, PriorityQueue
 
+from pccUt import PccUtTime
 import ngamsCacheControlThread
 from ngamsLib.ngamsCore import TRACE, info, NGAMS_SUBSCRIPTION_THR, isoTime2Secs,\
     alert, NGAMS_SUBSCR_BACK_LOG, error, getHostId, NGAMS_DELIVERY_THR,\
     NGAMS_HTTP_INT_AUTH_USER, NGAMS_REARCHIVE_CMD, warning, NGAMS_FAILURE,\
-    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, getFileSize, rmFile
+    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, getFileSize, rmFile, loadPlugInEntryPoint
 from ngamsLib import ngamsDbm, ngamsDb, ngamsStatus, ngamsHighLevelLib, ngamsFileInfo, ngamsLib
 
 # TODO:
@@ -579,13 +579,11 @@ def _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion,
     if (plugIn != ""):
         # Apply Filter Plug-In
         plugInPars = subscrObj.getFilterPiPars()
-        exec "import " + plugIn
         info(3,"Invoking FPI: " + plugIn + " on file " +\
              "(version/ID): " + fileId + "/" + str(fileVersion) +\
              ". Subscriber: " + subscrObj.getId())
-        fpiRes = eval(plugIn + "." + plugIn +\
-                      "(srvObj, plugInPars, filename, fileId, " +\
-                      "fileVersion)")
+        plugInMethod = loadPlugInEntryPoint(plugIn)
+        fpiRes = plugInMethod(srvObj, plugInPars, filename, fileId, fileVersion)
         if (fpiRes):
             info(4,"File (version/ID): " + fileId + "/" +\
                  str(fileVersion) + " accepted by the FPI: " + plugIn +\
@@ -777,13 +775,11 @@ def _deliveryThread(srvObj,
                 try:
                     stageFile(srvObj, filename)
                     if (runJob):
-                        exec "import " + plugIn
                         info(3,"Invoking Job Plugin: " + plugIn + " on file " +\
                                "(version/ID): " + fileId + "/" + str(fileVersion) +\
                                ". Subscriber: " + subscrObj.getId())
-                        jpiCode, jpiResult = eval(plugIn + "." + plugIn +\
-                                      "(srvObj, plugInPars, filename, fileId, " +\
-                                      "fileVersion, diskId)")
+                        plugInMethod = loadPlugInEntryPoint(plugIn)
+                        jpiCode, jpiResult = plugInMethod(srvObj, plugInPars, filename, fileId, fileVersion, diskId)
                         if (0 == jpiCode):
                             reply = NGAMS_HTTP_SUCCESS
                             stat.setStatus(NGAMS_SUCCESS)
@@ -1046,12 +1042,13 @@ def stageFile(srvObj, filename):
     if (not fspi):
         return
     try:
-        exec "import " + fspi
         info(2,"Invoking FSPI.isFileOffline: " + fspi + " to check file: " + filename)
-        offline = eval(fspi + ".isFileOffline(filename)")
+        isFileOffline = loadPlugInEntryPoint(fspi, 'isFileOffline')
+        offline = isFileOffline(filename)
         if (1 == offline):
             info(3, "File " + filename + " is offline, staging for delivery...")
-            num = eval(fspi + ".stageFiles([filename])")
+            stageFiles = loadPlugInEntryPoint(fspi, 'stageFiles')
+            num = stageFiles([filename])
             if (num == 0):
                 raise Exception('File staging error: %s' % filename)
             else:

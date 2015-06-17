@@ -37,7 +37,7 @@ import threading
 
 from ngamsLib.ngamsCore import TRACE, info, NGAMS_OFFLINE_STATE, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, genLog, \
-    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS
+    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, loadPlugInEntryPoint
 
 
 _labelPrinterSem = threading.Semaphore(1)
@@ -76,11 +76,12 @@ def printLabel(srvObj,
     prStr = label + "   " + hostId + ":" + slotId 
     info(3,"Invoking Label Printer Plug-In: " + plugIn +\
          "(srvObj, " + prStr + ")")
-    exec "import " +  plugIn
+
     global _labelPrinterSem
     _labelPrinterSem.acquire()
     try:
-        eval(plugIn + "." + plugIn + "(srvObj, prStr, reqPropsObj)")
+        pluginMethod = loadPlugInEntryPoint(plugIn)
+        pluginMethod(srvObj, prStr, reqPropsObj)
     except Exception, e:
         _labelPrinterSem.release()
         raise e

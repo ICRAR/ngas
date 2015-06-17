@@ -46,7 +46,7 @@ setup(
     ],
     entry_points= {
         'console_scripts':[
-            'ngamsPClient = ngamsPClient.ngamsPClient:main'
+            'ngamsPClient=ngamsPClient.ngamsPClient:main'
         ],
     },
 )

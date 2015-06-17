@@ -24,7 +24,8 @@
 Function + code to handle the CRETRIEVE Command.
 """
 import os
-from ngamsLib.ngamsCore import TRACE, genLog, info, error, rmFile, getFileSize, checkCreatePath
+from ngamsLib.ngamsCore import TRACE, genLog, info, error, rmFile, getFileSize, checkCreatePath,\
+    loadPlugInEntryPoint
 from ngamsLib.ngamsCore import NGAMS_PROC_FILE, NGAMS_PROC_DATA, NGAMS_PROC_STREAM
 from ngamsLib.ngamsCore import NGAMS_CONT_MT, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE
 from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, NGAMS_HOST_REMOTE, NGAMS_HOST_CLUSTER
@@ -65,10 +66,11 @@ def performProcessing(srvObj,
         if (not srvObj.getCfg().hasDppiDef(dppi)):
             errMsg = genLog("NGAMS_ER_ILL_DPPI", [dppi])
             raise Exception, errMsg
+
         # Invoke the DPPI.
-        exec "import " + dppi
         info(2,"Invoking DPPI: " + dppi + " to process file: " + filename)
-        statusObj = eval(dppi + "." + dppi + "(srvObj, reqPropsObj, filename)")
+        plugInMethod = loadPlugInEntryPoint(dppi)
+        statusObj = plugInMethod(srvObj, reqPropsObj, filename)
     else:
         info(2,"No processing requested - sending back file as is")
         resultObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_FILE, mimeType,

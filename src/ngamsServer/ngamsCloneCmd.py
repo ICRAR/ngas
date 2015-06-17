@@ -38,9 +38,7 @@ import urllib, thread
 
 import ngamsArchiveUtils, ngamsSrvUtils, ngamsFileUtils
 import ngamsCacheControlThread
-from ngamsLib import ngamsDbm, ngamsFileList, ngamsStatus, ngamsDiskUtils, ngamsFileInfo, ngamsDiskInfo, \
-    ngamsLib
-from ngamsLib import ngamsNotification
+from ngamsLib import ngamsNotification, ngamsFileInfo, ngamsDiskInfo
 from ngamsLib import ngamsReqProps, ngamsHighLevelLib, ngamsDapiStatus
 from ngamsLib.ngamsCore import TRACE, genLog, error, NGAMS_ONLINE_STATE, \
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, info, getHostId, getDiskSpaceAvail, \
@@ -48,7 +46,8 @@ from ngamsLib.ngamsCore import TRACE, genLog, error, NGAMS_ONLINE_STATE, \
     mvFile, getFileCreationTime, NGAMS_SUCCESS, sysLogInfo, \
     NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_CLONE_CMD, NGAMS_CLONE_THR, getThreadName, \
-    NGAMS_HTTP_SUCCESS
+    NGAMS_HTTP_SUCCESS, loadPlugInEntryPoint
+from ngamsLib import ngamsDbm, ngamsFileList, ngamsStatus, ngamsDiskUtils, ngamsLib
 from pccUt import PccUtTime
 
 
@@ -322,8 +321,8 @@ def _checkFile(srvObj,
         dcpi = fileInfoObj.getChecksumPlugIn()
         if (dcpi):
             try:
-                exec "import " + dcpi
-                checksum = eval(dcpi + "." + dcpi + "(srvObj, stagFile, 0)")
+                plugInMethod = loadPlugInEntryPoint(dcpi)
+                checksum = plugInMethod(srvObj, stagFile, 0)
             except Exception, e:
                 errMsg = "Error checking checksum of file: " + str(e)
                 raise Exception, errMsg

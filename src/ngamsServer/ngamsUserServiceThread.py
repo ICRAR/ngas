@@ -22,7 +22,8 @@
 import thread
 import threading
 import time
-from ngamsLib.ngamsCore import info, alert, NGAMS_USER_SERVICE_THR, isoTime2Secs, TRACE
+from ngamsLib.ngamsCore import info, alert, NGAMS_USER_SERVICE_THR, isoTime2Secs, TRACE,\
+    loadPlugInEntryPoint
 
 #******************************************************************************
 #
@@ -59,12 +60,11 @@ def startUserServiceThread(srvObj):
 
     info(1,"Loading User Service Plug-In module: %s" % userServicePlugIn)
     try:
-        exec "import %s" % userServicePlugIn
+        srvObj._userServicePlugIn = loadPlugInEntryPoint(userServicePlugIn)
     except Exception, e:
         msg = "Error loading User Service Plug-In: %s. Error: %s"
         errMsg = msg % (userServicePlugIn, str(e))
         raise Exception, errMsg
-    srvObj._userServicePlugIn = userServicePlugIn
 
     info(1,"Starting User Service Thread ...")
     srvObj._userServiceRunSync.set()
@@ -147,17 +147,9 @@ def userServiceThread(srvObj,
             startTime = time.time()
             info(4,"Executing User Service Plug-In: %s" %\
                  srvObj._userServicePlugIn)
-            try:
-                exec "import %s" % srvObj._userServicePlugIn
-            except Exception, e:
-                msg = "Error loading User Service Plug-In: %s. Error: %s"
-                errMsg = msg % (srvObj._userServicePlugIn, str(e))
-                raise Exception, errMsg
-            plugInCmd = "%s.%s(srvObj, userServicePlugInPars)" %\
-                        (srvObj._userServicePlugIn, srvObj._userServicePlugIn)
-            info(5,"Executing User Service Plug-In with command: %s" %\
-                 plugInCmd)
-            eval(plugInCmd)
+
+            info(5,"Executing User Service Plug-In")
+            srvObj._userServicePlugIn(srvObj, userServicePlugInPars)
             stopTime = time.time()
             sleepTime = (period - (stopTime - startTime))
             if (sleepTime > 0):

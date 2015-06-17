@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsSrvUtils.py,v 1.9 2009/11/26 14:55:40 awicenec Exp $"
@@ -40,7 +39,8 @@ from pccUt import PccUtTime
 from ngamsLib.ngamsCore import logFlush, getLocation, info, NGAMS_NOT_RUN_STATE,\
     NGAMS_ONLINE_STATE, getHostId, NGAMS_DEFINE, warning, NGAMS_SUBSCRIBE_CMD,\
     NGAMS_SUCCESS, TRACE, genLog, notice, NGAMS_DISK_INFO, checkCreatePath,\
-    error, NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER
+    error, NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
+    loadPlugInEntryPoint
 from ngamsLib import ngamsStatus, ngamsLib
 from ngamsLib import ngamsPhysDiskInfo
 from ngamsLib import ngamsSubscriber
@@ -230,9 +230,8 @@ def getDiskInfo(srvObj,
     plugIn = srvObj.getCfg().getOnlinePlugIn()
     if (not srvObj.getCfg().getSimulation()):
         info(3,"Invoking System Online Plug-In: " + plugIn + "(srvObj)")
-        exec "import " +  plugIn
-        slotIdLst = srvObj.getCfg().getSlotIds()
-        diskInfoDic = eval(plugIn + "." + plugIn + "(srvObj, reqPropsObj)")
+        plugInMethod = loadPlugInEntryPoint(plugIn)
+        diskInfoDic = plugInMethod(srvObj, reqPropsObj)
         if (len(diskInfoDic) == 0):
             if (not ngamsLib.trueArchiveProxySrv(srvObj.getCfg())):
                 errMsg = genLog("NGAMS_NOTICE_NO_DISKS_AVAIL",
@@ -461,8 +460,8 @@ def handleOffline(srvObj,
     if (srvObj.getCfg().getSimulation() == 0):
         info(3, "Invoking System Offline Plug-In: " + plugIn +\
              "(srvObj, reqPropsObj)")
-        exec "import " +  plugIn
-        plugInRes = eval(plugIn + "." + plugIn + "(srvObj, reqPropsObj)")
+        plugInMethod = loadPlugInEntryPoint(plugIn)
+        plugInRes = plugInMethod(srvObj, reqPropsObj)
     else:
         pass
     ngamsDiskUtils.markDisksAsUnmountedInDb(srvObj.getDb(), srvObj.getCfg())
@@ -495,8 +494,9 @@ def wakeUpHost(srvObj,
     wakeUpPi = srvObj.getCfg().getWakeUpPlugIn()
     portNo = srvObj.getDb().getPortNoFromHostId(suspHost)
     try:
-        exec "import " + wakeUpPi
-        eval(wakeUpPi + "." + wakeUpPi + "(srvObj, suspHost)")
+        plugInMethod = loadPlugInEntryPoint(wakeUpPi)
+        plugInMethod(srvObj, suspHost)
+
         ipAddress = srvObj.getDb().getIpFromHostId(suspHost)
         ngamsHighLevelLib.pingServer(suspHost, ipAddress, portNo,
                                      srvObj.getCfg().getWakeUpCallTimeOut())

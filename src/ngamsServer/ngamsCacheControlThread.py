@@ -43,7 +43,8 @@ except:
     import sqlite3 as sqlite
 
 from ngamsLib.ngamsCore import info, logFlush, TRACE, getHostId, rmFile,\
-    getVerboseLevel, iso8601ToSecs, error, warning, notice, genLog, alert
+    getVerboseLevel, iso8601ToSecs, error, warning, notice, genLog, alert,\
+    loadPlugInEntryPoint
 from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib
 
 # An internal queue contains files that have been explicitly requested to be removed  
@@ -952,7 +953,7 @@ def _cacheCtrlPlugInThread(threadGrObj):
 
     # Load the plug-in module.
     cacheCtrlPlugIn = srvObj.getCfg().getVal("Caching[1].CacheControlPlugIn")
-    exec "import " + cacheCtrlPlugIn
+    plugInMethod = loadPlugInEntryPoint(cacheCtrlPlugIn)
 
     deleteMsg = "CACHE-CRITERIA: Plug-in Selected File for Deletion: %s/%s/%s"
    
@@ -969,8 +970,7 @@ def _cacheCtrlPlugInThread(threadGrObj):
         
             # Invoke Cache Control Plug-In on the file.
             try:
-                deleteFile = eval(cacheCtrlPlugIn + "." + cacheCtrlPlugIn +\
-                                  "(srvObj, cacheEntryObj)")
+                deleteFile = plugInMethod(srvObj, cacheEntryObj)
                 if (deleteFile):
                     info(2, deleteMsg % (cacheEntryObj.getDiskId(),
                                          cacheEntryObj.getFileId(),

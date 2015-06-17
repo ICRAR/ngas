@@ -37,7 +37,7 @@ where not tested.
 #       This information will be printed out when executing the tests in the
 #       test report.
 
-import os, sys, glob, getpass, time, pkg_resources
+import os, sys, getpass, time, pkg_resources, importlib
 import pstats
 
 import cProfile as profile
@@ -378,9 +378,10 @@ def main():
     if (status):
         genStatus()
     elif (tests != []):
-        for testMod in tests:
-            exec "import " + testMod
-            exec testMod + ".run()"
+        for testModName in tests:
+            testMod   = importlib.import_module('ngamsTest.' + testModName)
+            runMethod = getattr(testMod, 'run')
+            runMethod()
     else:
         runAllTests(notifyemail, skip)
 

@@ -45,7 +45,7 @@ from ngamsLib.ngamsCore import info, warning, NGAMS_TEXT_MT, error, getFileSize,
     NGAMS_VOLUME_INFO_FILE, NGAMS_UNKNOWN_MT, NGAMS_HOST_LOCAL, \
     NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE, checkCreatePath, NGAMS_RETRIEVE_CMD, \
     NGAMS_FAILURE, NGAMS_PROC_STREAM, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
-    NGAMS_BUSY_SUBSTATE
+    NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint
 import ngamsSrvUtils, ngamsFileUtils
 
 
@@ -66,15 +66,16 @@ def performStaging(srvObj, reqPropsObj, httpRef, filename):
     if (not fspi):
         return
     
-    exec "import " + fspi
     info(2,"Invoking FSPI.isFileOffline: " + fspi + " to check file: " + filename)
-    offline = eval(fspi + ".isFileOffline(filename)")
+    isFileOffline = loadPlugInEntryPoint(fspi, 'isFileOffline')
+    offline = isFileOffline(filename)
     if (offline == 1): 
         info(2,"Invoking FSPI.stageFiles: " + fspi + " to stage file: " + filename)
         st = time.time()
         num = 0
         try:
-            num = eval(fspi + ".stageFiles(filenameList=[filename], requestObj=reqPropsObj)")
+            stageFiles = loadPlugInEntryPoint(fspi, 'stageFiles')
+            num = stageFiles(filenameList=[filename], requestObj=reqPropsObj)
         except Exception, ex:
             if (str(ex).find('timed out') != -1):
                 errMsg = 'Staging timed out: %s' % filename
@@ -128,9 +129,9 @@ def performProcessing(srvObj,
             errMsg = genLog("NGAMS_ER_ILL_DPPI", [dppi])
             raise Exception, errMsg
         # Invoke the DPPI.
-        exec "import " + dppi
         info(2,"Invoking DPPI: " + dppi + " to process file: " + filename)
-        statusObj = eval(dppi + "." + dppi + "(srvObj, reqPropsObj, filename)")
+        plugInMethod = loadPlugInEntryPoint(dppi)
+        statusObj = plugInMethod(srvObj, reqPropsObj, filename)
     else:
         info(2,"No processing requested - sending back file as is")
         resultObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_FILE, mimeType,

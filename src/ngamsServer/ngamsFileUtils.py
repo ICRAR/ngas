@@ -43,7 +43,8 @@ from ngamsLib import ngamsHighLevelLib
 from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
     NGAMS_HOST_DOMAIN, rmFile, NGAMS_HOST_REMOTE, NGAMS_RETRIEVE_CMD, genLog, \
     warning, NGAMS_STATUS_CMD, getHostName, getHostId, NGAMS_CACHE_DIR, \
-    NGAMS_DATA_CHECK_THR, getFileSize, logFlush, notice, info
+    NGAMS_DATA_CHECK_THR, getFileSize, logFlush, notice, info,\
+    loadPlugInEntryPoint
 
 
 def _locateArchiveFile(srvObj,
@@ -513,9 +514,8 @@ def checkFile(srvObj,
             if (dcpi == None): dcpi = srvObj.getCfg().getChecksumPlugIn()
             if ((dcpi != None) and (dcpi != "")):
                 try:
-                    exec "import " + dcpi
-                    checksumFile = eval(dcpi + "." + dcpi +\
-                                        "(srvObj, filename, dataCheckPrio)")
+                    plugInMethod = loadPlugInEntryPoint(dcpi)
+                    checksumFile = plugInMethod(srvObj, filename, dataCheckPrio)
                 except Exception, e:
                     # We assume an IO error:
                     # "[Errno 2] No such file or directory"
@@ -579,8 +579,8 @@ def syncCachesCheckFiles(srvObj,
         diskSyncPlugIn = srvObj.getCfg().getDiskSyncPlugIn()
         if (diskSyncPlugIn):
             info(3,"Invoking Disk Sync Plug-In: %s ..." % diskSyncPlugIn)
-            exec "import " + diskSyncPlugIn
-            eval(diskSyncPlugIn + "." + diskSyncPlugIn + "(srvObj)")
+            plugInMethod = loadPlugInEntryPoint(diskSyncPlugIn)
+            plugInMethod(srvObj)
             info(3,"Invoked Disk Sync Plug-In: %s" % diskSyncPlugIn)
             logFlush()
         else:
@@ -615,8 +615,8 @@ def checkChecksum(srvObj,
     # of the file.
     if (fileInfoObj.getChecksumPlugIn() and fileInfoObj.getChecksum()):
         dcpi = fileInfoObj.getChecksumPlugIn()
-        exec "import " + dcpi
-        checksumStgFile = eval(dcpi + "." + dcpi + "(srvObj, filename)")
+        plugInMethod = loadPlugInEntryPoint(dcpi)
+        checksumStgFile = plugInMethod(srvObj, filename)
         if (checksumStgFile != fileInfoObj.getChecksum()):
             msg = "Illegal checksum for file to re-archive. Reference " +\
                   "file: %s/%s/%s" % (fileInfoObj.getDiskId(),

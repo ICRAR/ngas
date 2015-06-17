@@ -51,11 +51,12 @@ setup(
         'pcc',
         'ngamsCore'
     ],
+    # No spaces allowed between the '='s
     entry_points= {
         'console_scripts':[
-            'ngamsServer      = ngamsServer.ngamsServer:main',
-            'ngamsCacheServer = ngamsServer.ngamsCacheServer:main',
-            'ngamsDaemon      = ngamsStartup.ngamsDaemon:main'
+            'ngamsServer=ngamsServer.ngamsServer:main',
+            'ngamsCacheServer=ngamsServer.ngamsCacheServer:main',
+            'ngamsDaemon=ngamsStartup.ngamsDaemon:main'
         ],
     }
 )

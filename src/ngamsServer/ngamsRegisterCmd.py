@@ -45,7 +45,7 @@ from ngamsLib.ngamsCore import TRACE, rmFile, info, NGAMS_HTTP_GET, \
     NGAMS_NOTIF_INFO, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
     NGAMS_VOLUME_INFO_FILE, NGAMS_REGISTER_THR, getThreadName, \
     NGAMS_HTTP_SUCCESS, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
-    NGAMS_BUSY_SUBSTATE
+    NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint
 from ngamsLib import ngamsDbm, ngamsReqProps, ngamsFileInfo, ngamsDbCore, \
     ngamsHighLevelLib, ngamsDiskUtils, ngamsLib, ngamsFileList, \
     ngamsNotification, ngamsDiskInfo
@@ -205,8 +205,8 @@ def _registerExec(srvObj,
         try:
             # Invoke Registration Plug-In.
             piName = regPi.getPlugInName()
-            exec "import " + piName
-            piRes = eval(piName + "." + piName + "(srvObj, tmpReqPropsObj)")
+            plugInMethod = loadPlugInEntryPoint(piName)
+            piRes = plugInMethod(srvObj, tmpReqPropsObj)
             del tmpReqPropsObj
 
             # Check if this file is already registered on this disk. In case
@@ -255,9 +255,8 @@ def _registerExec(srvObj,
             if (checksumPlugIn != ""):
                 info(3,"Invoking Checksum Plug-In: " + checksumPlugIn +\
                      " to handle file: " + filename)
-                exec "import " + checksumPlugIn
-                checksum = eval(checksumPlugIn + "." + checksumPlugIn +\
-                                "(srvObj, filename, 0)")
+                plugInMethod = loadPlugInEntryPoint(checksumPlugIn)
+                checksum = plugInMethod(srvObj, filename, 0)
             else:
                 checksum = ""
 

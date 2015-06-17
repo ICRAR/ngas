@@ -43,7 +43,7 @@ from ngamsLib.ngamsCore import info, NGAMS_FAILURE, getFileCreationTime,\
     NGAMS_HTTP_GET, NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile,\
     NGAMS_NOTIF_NO_DISKS, setLogCache, mvFile, error, NGAMS_PICKLE_FILE_EXT,\
     rmFile, NGAMS_SUCCESS, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BACK_LOG_DIR,\
-    warning, sysLogInfo, getHostName, alert
+    warning, sysLogInfo, getHostName, alert, loadPlugInEntryPoint
 from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsPlugInApi, ngamsLib
 from ngamsLib import ngamsReqProps, ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsDiskUtils
 import ngamsFileUtils
@@ -376,9 +376,8 @@ def postFileRecepHandling(srvObj,
     if (checksumPlugIn != ""):
         info(4,"Invoking Checksum Plug-In: " + checksumPlugIn +\
              " to handle file: " + resultPlugIn.getCompleteFilename())
-        exec "import " + checksumPlugIn
-        checksum = eval(checksumPlugIn + "." + checksumPlugIn +\
-                        "(srvObj, resultPlugIn.getCompleteFilename(), 0)")
+        plugInMethod = loadPlugInEntryPoint(checksumPlugIn)
+        checksum = plugInMethod(srvObj, resultPlugIn.getCompleteFilename(), 0)
         info(4,"Invoked Checksum Plug-In: " + checksumPlugIn +\
              " to handle file: " + resultPlugIn.getCompleteFilename() +\
              ". Result: " + checksum)
@@ -514,8 +513,8 @@ def archiveFromFile(srvObj,
         setLogCache(1)
         plugIn = srvObj.getMimeTypeDic()[mimeType]
         info(2,"Invoking DAPI: " + plugIn + " to handle file: " + stagingFile)
-        exec "import " + plugIn
-        resMain = eval(plugIn + "." + plugIn + "(srvObj, reqPropsObjLoc)")
+        plugInMethod = loadPlugInEntryPoint(plugIn)
+        resMain = plugInMethod(srvObj, reqPropsObjLoc)
         # Move the file to final destination.
         mvFile(reqPropsObjLoc.getStagingFilename(),
                resMain.getCompleteFilename())
@@ -800,7 +799,7 @@ def dataHandler(srvObj,
         # Invoke the Data Archiving Plug-In.
         plugIn = srvObj.getMimeTypeDic()[mimeType]
         try:
-            exec "import " + plugIn
+            plugInMethod = loadPlugInEntryPoint(plugIn)
         except Exception, e:
             errMsg = "Error loading DAPI: %s. Error: %s" % (plugIn, str(e))
             raise Exception, errMsg
@@ -809,7 +808,7 @@ def dataHandler(srvObj,
              os.path.basename(reqPropsObj.getFileUri()))
         srvObj.test_BeforeDapiInvocation()
         timeBeforeDapi = time.time()
-        resMain = eval(plugIn + "." + plugIn + "(srvObj, reqPropsObj)")
+        resMain = plugInMethod(srvObj, reqPropsObj)
         srvObj.test_AfterDapiInvocation()
         info(4,"Invoked DAPI: %s. Time: %.3fs." %\
              (plugIn, (time.time() - timeBeforeDapi)))

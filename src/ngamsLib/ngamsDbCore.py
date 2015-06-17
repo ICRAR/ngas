@@ -19,8 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-import importlib
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDbCore.py,v 1.13 2010/03/29 12:56:17 awicenec Exp $"
@@ -37,7 +35,7 @@ Core class for the NG/AMS DB interface.
 import time, base64, random
 
 from pccLog import  PccLog
-from ngamsCore import info, notice, error, warning
+from ngamsCore import info, notice, error, warning, loadPlugInEntryPoint
 from ngamsCore import TRACE, getVerboseLevel, getThreadName, genLog, getTestMode, timeRef2Iso8601
 import threading
 
@@ -782,15 +780,15 @@ class ngamsDbCore:
                 del self.__dbDrv
                 self.__dbDrv = None
 
-            info(4, "Importing DB Driver Interface: %s" % interface)
-            dbMod = importlib.import_module('ngamsPlugIns.' + interface)
             try:
                 decryptPassword = base64.decodestring(password)
             except Exception, e:
                 errMsg = "Incorrect, encrypted DB password given. Error: " +\
                          str(e)
                 raise Exception, errMsg
-            dbConstructor = getattr(dbMod, interface)
+
+            info(4, "Importing DB Driver Interface: %s" % interface)
+            dbConstructor = loadPlugInEntryPoint(interface)
             info(4, "Creating instance of DB Driver Interface/connecting ...")
             self.__dbDrv = dbConstructor(server, db, user, decryptPassword, "NG/AMS:" + getThreadName(), self.__parameters)
             info(3, "DB Driver Interface ID: " + self.__dbDrv.getDriverId())

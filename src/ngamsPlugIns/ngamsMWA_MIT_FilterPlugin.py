@@ -55,7 +55,7 @@ Contains a Filter Plug-In used to filter out those files that
 import os
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import alert, info, genLog
+from ngamsLib.ngamsCore import alert, info, genLog, loadPlugInEntryPoint
 import pccFits.PccSimpleFitsReader as fitsapi
 import psycopg2  # used to connect to MWA M&C database
 from psycopg2.pool import ThreadedConnectionPool
@@ -184,9 +184,9 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
     if (not fspi):
         offline = -1
     else:
-        exec "import " + fspi
         info(2,"Invoking FSPI.isFileOffline: " + fspi + " to check file: " + filename)
-        offline = eval(fspi + ".isFileOffline(filename)")  
+        isFileOffline = loadPlugInEntryPoint(fspi, 'isFileOffline')
+        offline = isFileOffline(filename)  
     
     try:    
         if (offline == 1 or offline == -1):

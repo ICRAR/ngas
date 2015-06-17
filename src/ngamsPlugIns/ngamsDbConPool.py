@@ -37,7 +37,7 @@ parameters.
 import threading, Queue
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, getHostName, info
+from ngamsLib.ngamsCore import TRACE, getHostName, info, loadPlugInEntryPoint
 
 
 def _getObjId(obj):
@@ -184,13 +184,10 @@ class ngamsDbConPool:
                 return None
 
             # OK, go ahead and create the connection.
-            exec "import " + self.__driver
-            creStat = "%s.%s('%s', '%s', '%s', '%s', '%s', '%s')" %\
-                          (self.__driver, self.__driver, self.__server, self.__db,
-                   self.__user, self.__password, "NG/AMS:" + getHostName(),
-                   self.__parameters)
             info(4, "Creating instance of DB Driver Interface/connecting ...")
-            conObj = eval(creStat)
+            dbConstructor = loadPlugInEntryPoint(self.__driver)
+            conObj = dbConstructor(self.__server, self.__db, self.__user, self.__password,
+                                   "NG/AMS:" + getHostName(), self.__parameters)
             self.__conCount += 1
             self.__idleCons.put(conObj)
             info(4, "Created instance of DB Driver Interface/connecting")

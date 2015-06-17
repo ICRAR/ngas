@@ -19,6 +19,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+import importlib
 
 #******************************************************************************
 #
@@ -1595,5 +1596,16 @@ def getBoolean(val):
         msg = "Value given: %s, does not seem to be a boolean"
         raise Exception, msg % str(val)
 
+def loadPlugInEntryPoint(plugInName, entryPointMethodName=None):
+    """
+    Loads the entry point method of an NGAMS Plug-In. First the
+    module is loaded and then the method that acts as entry point is
+    also loaded and returned to the caller, who can then use
+    the method reference directly
+    """
+    if not entryPointMethodName:
+        entryPointMethodName = plugInName
+    plugInModule = importlib.import_module('ngamsPlugIns.' + plugInName)
+    return getattr(plugInModule, entryPointMethodName)
 
 # EOF

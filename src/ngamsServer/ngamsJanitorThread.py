@@ -48,7 +48,8 @@ from ngamsLib.ngamsCore import TRACE, info, NGAMS_JANITOR_THR, \
     NGAMS_DB_CH_FILE_INSERT, NGAMS_DB_CH_FILE_UPDATE, notice, error, \
     isoTime2Secs, genLog, NGAMS_PROC_DIR, NGAMS_SUBSCR_BACK_LOG_DIR, takeLogSem, \
     iso8601ToSecs, getLocation, logFlush, relLogSem, alert, \
-    NGAMS_HTTP_INT_AUTH_USER, getHostName, NGAMS_OFFLINE_CMD, NGAMS_NOTIF_ERROR
+    NGAMS_HTTP_INT_AUTH_USER, getHostName, NGAMS_OFFLINE_CMD, NGAMS_NOTIF_ERROR,\
+    loadPlugInEntryPoint
 from ngamsLib import ngamsFileInfo, ngamsNotification
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsEvent, ngamsHighLevelLib, ngamsLib
 from pccLog import PccLog
@@ -1298,8 +1299,8 @@ def janitorThread(srvObj,
                          "suspend NG/AMS Server: " + getHostId() + " ...")
                     logFlush()
                     try:
-                        exec "import " + suspPi
-                        eval(suspPi + "." + suspPi + "(srvObj)")
+                        plugInMethod = loadPlugInEntryPoint(suspPi)
+                        plugInMethod(srvObj)
                     except Exception, e:
                         errMsg = "Error suspending NG/AMS Server: " +\
                                  getHostId() + " using Suspension Plug-In: "+\

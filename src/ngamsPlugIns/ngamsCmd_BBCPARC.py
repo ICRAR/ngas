@@ -47,7 +47,8 @@ from ngamsLib.ngamsCore import info, checkCreatePath, genLog, alert, TRACE, \
     NGAMS_SUCCESS, NGAMS_HTTP_GET, NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, \
     NGAMS_NOTIF_NO_DISKS, setLogCache, mvFile, notice, NGAMS_FAILURE, error, \
     NGAMS_PICKLE_FILE_EXT, rmFile, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
-    NGAMS_BUSY_SUBSTATE, getDiskSpaceAvail, NGAMS_HTTP_SUCCESS
+    NGAMS_BUSY_SUBSTATE, getDiskSpaceAvail, NGAMS_HTTP_SUCCESS,\
+    loadPlugInEntryPoint
 from ngamsServer import ngamsArchiveUtils, ngamsCacheControlThread
 from pccUt import PccUtTime
 
@@ -196,8 +197,8 @@ def archiveFromFile(srvObj,
         setLogCache(1)
         plugIn = srvObj.getMimeTypeDic()[mimeType]
         info(2,"Invoking DAPI: " + plugIn + " to handle file: " + stagingFile)
-        exec "import " + plugIn
-        resMain = eval(plugIn + "." + plugIn + "(srvObj, reqPropsObjLoc)")
+        plugInMethod = loadPlugInEntryPoint(plugIn)
+        resMain = plugInMethod(srvObj, reqPropsObjLoc)
         # Move the file to final destination.
         st = time.time()
         mvFile(reqPropsObjLoc.getStagingFilename(),
