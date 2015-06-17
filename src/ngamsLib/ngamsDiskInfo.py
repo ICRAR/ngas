@@ -949,21 +949,6 @@ class ngamsDiskInfo:
         """
         if (self.getMountPoint() == ""): return ""
         return os.path.normpath(self.getMountPoint() + "/" + NGAMS_STAGING_DIR)
-        
 
-if __name__ == '__main__':
-    """
-    Main function.
-    """
-    setLogCond(0, 0, "", 5)
-
-    import ngamsDb
-    db = ngamsDb.ngamsDb("TESTSRV", "", "", "")
-    diskInfo = ngamsDiskInfo()
-    diskInfo.read(db, "DiskId-1-1")
-    print diskInfo.dumpBuf()
-    diskInfo.setDiskId(diskInfo.getDiskId() + "-")
-    diskInfo.write(db)
-    
 
 # EOF

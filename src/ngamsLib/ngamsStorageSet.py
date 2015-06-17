@@ -33,8 +33,6 @@
 Contains the implementation of the NG/AMS Storage Set Class.
 """
 
-import ngamsConfig
-
 class ngamsStorageSet:
     """
     Class to handle information for one Storage Set.
@@ -178,7 +176,7 @@ class ngamsStorageSet:
         Returns:    Reference to the object itself.
         """
         if (mutex == None): return self
-        self.__mutex = ngamsConfig.getInt("StorageSet.Mutex", mutex)
+        self.__mutex = int(mutex)
         return self
 
 
@@ -201,7 +199,7 @@ class ngamsStorageSet:
         Returns:    Reference to the object itself.
         """
         if (sync == None): return self
-        self.__synchronize = ngamsConfig.getInt("StorageSet.Synchronize", sync)
+        self.__synchronize = int(sync)
         return self
 
 

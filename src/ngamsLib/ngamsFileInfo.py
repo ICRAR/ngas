@@ -36,11 +36,19 @@ an archived file.
 
 import xml.dom.minidom
 from pccUt import PccUtTime
-from ngamsCore import timeRef2Iso8601, ignoreValue, getAttribValue, setLogCond, prFormat1, TRACE, getHostId, trim, genLog
+from ngamsCore import timeRef2Iso8601, ignoreValue, getAttribValue, prFormat1, TRACE, getHostId, trim, genLog
 
-# TODO: Analyze the usage of the ngamsDb class in this class. Move maybe
-#       DB access constants to ngams/__init__.py.
-import ngamsDbCore
+# TODO:
+#
+# There is a conceptual circular dependency between this class and ngamsDb,
+# which inherits from ngamsDbJoin. This class uses ngamsDbJoin instances to
+# write and read properties of instances of this class, but the ngamsDbJ*
+# classes in general depend on the ngamsFileInfo and similar classes, which in
+# theory should be simple domain classes with not much behaviour of them.
+#
+# In particular, the unpackSqlResult and genSqlResult methods of this class
+# should probably live in one of the ngamsDb* classes, which would mean some
+# changes in parts of the code that use those methods.
 
 
 class ngamsFileInfo:
@@ -280,7 +288,7 @@ class ngamsFileInfo:
         Returns:     Reference to object itself.
         """
         if ((not compression) or (compression == "None")):
-             self.__compression = ""
+            self.__compression = ""
         else:
             self.__compression = trim(compression, "\" ")
         return self
@@ -706,24 +714,24 @@ class ngamsFileInfo:
         """
         T = TRACE(5)
 
-        self.setDiskId(sqlQueryRes[ngamsDbCore.NGAS_FILES_DISK_ID])
-        self.setFilename(sqlQueryRes[ngamsDbCore.NGAS_FILES_FILE_NAME])
-        self.setFileId(sqlQueryRes[ngamsDbCore.NGAS_FILES_FILE_ID])
-        self.setFileVersion(sqlQueryRes[ngamsDbCore.NGAS_FILES_FILE_VER])
-        self.setFormat(sqlQueryRes[ngamsDbCore.NGAS_FILES_FORMAT])
-        self.setFileSize(sqlQueryRes[ngamsDbCore.NGAS_FILES_FILE_SIZE])
-        uncomprSz = sqlQueryRes[ngamsDbCore.NGAS_FILES_UNCOMPR_FILE_SIZE]
+        self.setDiskId(sqlQueryRes[0])
+        self.setFilename(sqlQueryRes[1])
+        self.setFileId(sqlQueryRes[2])
+        self.setFileVersion(sqlQueryRes[3])
+        self.setFormat(sqlQueryRes[4])
+        self.setFileSize(sqlQueryRes[5])
+        uncomprSz = sqlQueryRes[6]
         self.setUncompressedFileSize(uncomprSz)
-        self.setCompression(sqlQueryRes[ngamsDbCore.NGAS_FILES_COMPRESSION])
-        self.setIngestionDate(sqlQueryRes[ngamsDbCore.NGAS_FILES_INGEST_DATE])
-        self.setIgnore(sqlQueryRes[ngamsDbCore.NGAS_FILES_IGNORE])
-        self.setChecksum(sqlQueryRes[ngamsDbCore.NGAS_FILES_CHECKSUM])
-        self.setChecksumPlugIn(sqlQueryRes[ngamsDbCore.NGAS_FILES_CHECKSUM_PI])
-        self.setFileStatus(sqlQueryRes[ngamsDbCore.NGAS_FILES_FILE_STATUS])
-        self.setCreationDate(sqlQueryRes[ngamsDbCore.NGAS_FILES_CREATION_DATE])
-        self.setIoTime(sqlQueryRes[ngamsDbCore.NGAS_FILES_IO_TIME])
-        self.setIngestionRate(sqlQueryRes[ngamsDbCore.NGAS_FILES_INGEST_RATE])
-        self.setContainerId(sqlQueryRes[ngamsDbCore.NGAS_FILES_CONTAINER_ID])
+        self.setCompression(sqlQueryRes[7])
+        self.setIngestionDate(sqlQueryRes[8])
+        self.setIgnore(sqlQueryRes[9])
+        self.setChecksum(sqlQueryRes[10])
+        self.setChecksumPlugIn(sqlQueryRes[11])
+        self.setFileStatus(sqlQueryRes[12])
+        self.setCreationDate(sqlQueryRes[13])
+        self.setIoTime(sqlQueryRes[14])
+        self.setIngestionRate(sqlQueryRes[15])
+        self.setContainerId(sqlQueryRes[16])
         return self
 
 
@@ -950,34 +958,6 @@ class ngamsFileInfo:
                setIoTime(self.getIoTime()).\
                setIngestionRate(self.getIngestionDate()).\
                setContainerId(self.setContainerId())
-
-
-if __name__ == '__main__':
-    """
-    Main function.
-    """
-    setLogCond(0, 0, "", 5)
-
-    import ngamsDb
-    db = ngamsDb.ngamsDb("TESTSRV", "ngas_dev", "ngas_dbo", "ngas_dbo_pw")
-    fileInfo = ngamsFileInfo()
-    fileInfo.read(db, "FileId1-fits")
-    print fileInfo.dumpBuf()
-
-    fileInfo.setFormat(fileInfo.getFormat() + "-")
-    fileInfo.write(db)
-
-    # Fill the DB with some data files.
-    import random
-    fileInfo2 = ngamsFileInfo()
-    fileInfo2.read(db, "FileId1-fits", 1)
-    for i in range(100):
-        fileId = str(abs(int(random.gauss(100000, 100000))))
-        fileInfo.setFileId(fileId)
-        fileInfo.write(db)
-
-        fileInfo2.setFileId(fileId)
-        fileInfo2.write(db)
 
 
 # EOF
