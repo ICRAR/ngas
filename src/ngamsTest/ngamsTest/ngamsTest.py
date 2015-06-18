@@ -41,17 +41,13 @@ import os, sys, getpass, time, pkg_resources, importlib
 import pstats
 
 import cProfile as profile
-from ngamsLib.ngamsCore import ngamsGetSrcDir, getHostName, getNgamsVersion, trim, \
+from ngamsLib.ngamsCore import getHostName, getNgamsVersion, trim, \
     ngamsCopyrightString, rmFile
 from ngamsLib import ngamsConfig, ngamsHighLevelLib, ngamsLib
 from pccUt import PccUtTime, PccUtUtils
+import ngamsTestLib
 
 
-try:
-    import ngamsTestLib
-except Exception, e:
-    print str(e)
-    sys.exit(1)
 
 
 NGAMS_TEST_MAX_TS_TIME = 2000
@@ -126,10 +122,9 @@ def runAllTests(notifyemail = None,
         testRep += line
         sys.stdout.write(line)
         sys.stdout.flush()
-        suiteStartTime = time.time() 
+        suiteStartTime = time.time()
         tstCmdLine = "python " + mod + ".py -cfg %s" % ngamsTestLib.getRefCfg()
-        stat, stdout, stderr = PccUtUtils.execCmd(tstCmdLine,
-                                                  NGAMS_TEST_MAX_TS_TIME)
+        stat, stdout, stderr = PccUtUtils.execCmd(tstCmdLine, NGAMS_TEST_MAX_TS_TIME)
         testTime = (time.time() - suiteStartTime)
         if (testTime >= NGAMS_TEST_MAX_TS_TIME):
             failModDic[mod] = "TIME-OUT"
@@ -200,7 +195,7 @@ def getAllSrcFiles():
     modules = ["ngamsLib", "ngamsPClient", "ngamsServer"]
     fctDic = {}
     for mod in modules:
-        modDir = os.path.normpath(ngamsGetSrcDir() + "/" + mod + "/*.py")
+        modDir = os.path.normpath("FIXME_PLEASE/" + mod + "/*.py")
         exitCode, stdOut, stdErr = PccUtUtils.execCmd("grep -n def " + modDir)
         fcts = stdOut.split("\n")
         for fct in fcts:

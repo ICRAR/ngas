@@ -38,8 +38,10 @@ Python modules.
 import getpass
 import glob
 import sys
+import re
+import pkg_resources
 
-from ngamsLib.ngamsCore import ngamsGetSrcDir, getNgamsVersion
+from ngamsLib.ngamsCore import getNgamsVersion
 from pccUt import PccUtTime
 
 
@@ -91,17 +93,18 @@ def genTestPlan(title,
 
     Returns:   HTML Test Plan (string).
     """
-    fileList = glob.glob(ngamsGetSrcDir() + "/ngamsTest/ngams*Test.py")
+    fileList = pkg_resources.resource_listdir(__name__, ".")
     testPlan = htmlHdr % (title, PccUtTime.TimeStamp().getTimeStamp(),
                           getpass.getuser(), getNgamsVersion())
     testPlanList = []
     for testSuite in fileList:
-        testSuiteName = testSuite.split("/")[-1].split(".")[0]
+        testSuiteName = testSuite.split(".")[0]
         if (testSuiteName == "ngamsTest"): continue
+        if not re.match("ngams.*Test.py", testSuiteName): continue
         if (testSuitePat):
             if (testSuiteName.find(testSuitePat) != 0): continue
         exec "import %s" % testSuiteName
-        #print str(eval("%s.__doc__" % testSuiteName))
+
         docList = []
         for method in dir(eval("%s.%s" % (testSuiteName, testSuiteName))):
             if (method.find("test_") == 0):
@@ -160,8 +163,8 @@ def execute(argv):
             idx += 1
             testSuite = argv[idx]
         elif (par == "-TESTCASES"):
-             idx += 1
-             testCases = argv[idx].split(",")
+            idx += 1
+            testCases = argv[idx].split(",")
         elif (par == "-TITLE"):
             idx += 1
             title = argv[idx]

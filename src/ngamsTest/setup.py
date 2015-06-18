@@ -50,5 +50,6 @@ setup(
         'ngamsPlugIns',
         'ngamsServer',
         'ngamsPClient'
-    ]
+    ],
+    zip_safe=False
 )

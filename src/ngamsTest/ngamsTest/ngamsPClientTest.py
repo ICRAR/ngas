@@ -34,8 +34,9 @@ This module contains the Test Suite for the Python Client.
 import commands
 import shutil
 import sys
+import pkg_resources
 
-from ngamsLib.ngamsCore import getHostName, ngamsGetSrcDir
+from ngamsLib.ngamsCore import getHostName
 from ngamsPClient import ngamsPClient
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterOutLines, waitReqCompl, runTest
 
@@ -110,12 +111,10 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         self.prepExtSrv(8888, 1, 1, 1)
         client = ngamsPClient.ngamsPClient(getHostName(), 8888)
-        srcFileUri = "file:" + ngamsGetSrcDir() +\
-                     "/ngamsTest/src/SmallFile.fits"
+        srcFileUri = "file:" + pkg_resources.resource_filename(__name__, "src/SmallFile.fits")
         status = client.archive(srcFileUri)
         refMsg = "Successfully handled Archive Pull Request for data file " +\
-                 "with URI: file:" + ngamsGetSrcDir() + "/ngamsTest/src/" +\
-                 "SmallFile.fits"
+                 "with URI: " + srcFileUri
         self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "Archive Pull Request")
 

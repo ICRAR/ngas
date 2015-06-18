@@ -34,7 +34,7 @@ This module contains test utilities used to build the NG/AMS Functional Tests.
 
 import os, sys, time, unittest, socket, getpass, commands, re, glob, subprocess, signal, shutil
 
-from ngamsLib.ngamsCore import ngamsGetSrcDir, getHostName, TRACE, info, \
+from ngamsLib.ngamsCore import getHostName, TRACE, info, \
     ngamsCopyrightString, rmFile, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BAD_FILES_DIR, \
     NGAMS_PROC_DIR, error, cleanList, setLogCond, getVerboseLevel, logFlush, \
     cpFile, getLogLevel, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
@@ -192,8 +192,7 @@ try:
 except:
     ignoreCClient = 0
 if (not ignoreCClient):
-    bins = [ngamsGetSrcDir() + "/ngamsCClient/ngamsCClient",
-            ngamsGetSrcDir() + "/ngamsCClient/ngamsArchiveClient"]
+    bins = ["ngamsCClient", "ngamsArchiveClient"]
     for bin in bins:
         stat, out = commands.getstatusoutput(bin)
         if (out.find("No such file or directory") != -1):
@@ -1359,7 +1358,7 @@ class ngamsTestSuite(unittest.TestCase):
         # the SQL script that creates the tables
         if (tmpCfgObj.getDbInterface().upper().find("SQLITE") != -1):
             info(1,"Creating SQLite DB file")
-            sqliteDb = ngamsGetSrcDir() + "/ngamsTest/tmp/" + hostName +".sqlite"
+            sqliteDb = "tmp/" + hostName +".sqlite"
             cpFile("src/ngas_Sqlite_db_template", sqliteDb)
             tmpCfgObj.storeVal("NgamsCfg.Db[1].Name", sqliteDb)
 
@@ -1384,14 +1383,14 @@ class ngamsTestSuite(unittest.TestCase):
         checkHostEntry(dbObj, hostName, domain, ipAddress, clusterName)
 
         # Update configuration.
-        tmpCfg = ngamsGetSrcDir() + "/ngamsTest/tmp/CFG_%d_tmp.xml" %\
+        tmpCfg = "tmp/CFG_%d_tmp.xml" %\
                  int(time.time())
         cfgObj.storeVal("NgamsCfg.Server[1].PortNo", str(portNo))
         cfgObj.save(tmpCfg, 0)
         info(3,"DB Name: %s" % cfgObj.getDbName())
 
         # Execute the server as an external process.
-        execCmd = ["python", ngamsGetSrcDir() + "/" +srvModule, "-cfg", tmpCfg, "-force"]
+        execCmd = ["ngamsServer", "-cfg", tmpCfg, "-force"]
         if (autoOnline):   execCmd.append("-autoOnline")
         if (verbose):      execCmd.extend(["-v", str(verbose)])
         if (multipleSrvs): execCmd.append("-multipleSrvs")
@@ -1509,8 +1508,7 @@ class ngamsTestSuite(unittest.TestCase):
         # Remove temporary files in ngams/ngamsTest/tmp.
         if (not getNoCleanUp()):
             execCmd("sudo /bin/umount /tmp/ngamsTest/*/*", 0)
-            tmpDir = os.path.normpath(ngamsGetSrcDir() + "/ngamsTest/tmp")
-            fileList = glob.glob(tmpDir + "/*")
+            fileList = glob.glob("tmp/*")
             for tmpFile in fileList:
                 rmFile(tmpFile)
             #try:

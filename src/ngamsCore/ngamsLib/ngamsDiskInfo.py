@@ -38,7 +38,7 @@ import xml.dom.minidom
 
 from pccUt import PccUtTime
 from ngamsCore import genLog, error, getAttribValue, trim, timeRef2Iso8601, prFormat1, ignoreValue
-from ngamsCore import TRACE, NGAMS_STAGING_DIR, ngamsGetSrcDir
+from ngamsCore import TRACE, NGAMS_STAGING_DIR
 import ngamsFileInfo
 
 def getStorageSetIdFromDiskId(dbConObj,
