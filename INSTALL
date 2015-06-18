@@ -19,42 +19,16 @@ create a new one for this installation. If you are even more advanced and have
 the fabric and boto modules installed already, you have all that's required and
 can skip the rest of this section.
 
-0) look at the output of python -V:
+To perform these checks and create a virtual environment you simply need to run
+the following:
 
-> python -V
-Python 2.7
+$> ./boot.sh <virtualenv-directory>
 
-if it returns Python 2.7 you are fine.
+This will create a virtual environment in <virtualenv-directory> and will
+populate it with the necessary libraries.
 
-1) check whether you've got virtualenv installed already:
 
-> which virtualenv
-/usr/bin/virtualenv
-
-If it is not installed you can execute the following:
-
-> wget --no-check-certificate -q https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.10.tar.gz
-> tar -xvzf virtualenv-1.10.tar.gz
-> cd virtualenv-1.10; python virtualenv.py .v_ngasdeploy
-
-If virtualenv is installed already, create a virtual environment in a directory
-of your choice, e.g.:
-
-> virtualenv -p python .v_ngasdeploy
-
-3) activate the virtual environment:
-
-> source .v_ngasdeploy/bin/activate
-
-4) install fabric and boto:
-
-> pip install fabric
-> pip install boto
-
-NOTE: This will install fabric and boto into the virtualenv activated before and not
-clutter up anything else.
-
-5) In order to be able to execute the NGAS installation on a remote host you will need
+In order to be able to execute the NGAS installation on a remote host you will need
 to be able to connect to the target host through ssh. Thus try to connect to that host:
 
 > ssh billiythekid@whatever.host
