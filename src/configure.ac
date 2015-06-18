@@ -156,6 +156,6 @@ AC_SUBST(SYSTEM_LIBS)
 AC_CONFIG_FILES([Makefile
                  ngamsCClient/Makefile
                  ngamsJClient/src/Makefile
-                 ngamsTest/Makefile])
+                 ngamsTest/ngamsTest/Makefile])
 
 AC_OUTPUT

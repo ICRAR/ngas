@@ -1,7 +1,7 @@
 AUTOMAKE_OPTIONS = 1.8 foreign
 DISTCLEANFILES = *~
 
-INCLUDES = -I$(top_srcdir)/incl $(INTROOT_INCLUDES) $(CFITSIO_INCLUDES) $(SYBASE_INCLUDES) -I/usr/local/include
+AM_CPPFLAGS = -I$(top_srcdir)/incl $(INTROOT_INCLUDES) $(CFITSIO_INCLUDES) $(SYBASE_INCLUDES) -I/usr/local/include
 
 LDADD = libngams.la -lz -lpthread -ldb $(SYSTEM_LIBS) -L/usr/local/lib
 
@@ -10,7 +10,7 @@ bin_PROGRAMS =  ngamsCClient ngamsCClientX ngamsArchiveClient ngamsCrc32
 ngamsCClient_SOURCES = ngamsCClient.c
 ngamsCClientX_SOURCES = ngamsCClientX.c
 ngamsArchiveClient_SOURCES = ngamsArchiveClient.c
-ngamsCrc32 = ngamsCrc32.c
+ngamsCrc32_SOURCES = ngamsCrc32.c
 
 #AM_CFLAGS =
 
@@ -18,7 +18,6 @@ ngamsCrc32 = ngamsCrc32.c
 
 lib_LTLIBRARIES = libngams.la
 
-#libngams_a_SOURCES = 
 libngams_la_SOURCES = \
 		ngamsCClientLib.c \
 		ngamsARCH_CLI_MAN_PAGE.c \
@@ -31,7 +30,7 @@ ngamsCClientLib.c: ngamsVERSION.h
 # Files to be installed under <prefix>/include
 include_HEADERS = ngams.h
 
-# Files not to be installed under <prefix>/include, but to be added to the 
+# Files not to be installed under <prefix>/include, but to be added to the
 # distribution
 noinst_HEADERS = ngamsArchiveClient.h
 
@@ -48,7 +47,7 @@ ngamsLICENSE.c:
 	@-(echo  "{" >> ngamsLICENSE.c)
 	@-(echo  "static char buf[32768];" >> ngamsLICENSE.c)
 	@-(echo  "char *txt[] = {" >> ngamsLICENSE.c)
-	@-(awk -f ngamsFormatHdrFile.awk ../LICENSE >> ngamsLICENSE.c)
+	@-(awk -f ngamsFormatHdrFile.awk ../../LICENSE >> ngamsLICENSE.c)
 	@-(echo  "\"*\"};" >> ngamsLICENSE.c)
 	@-(echo  "int n;" >> ngamsLICENSE.c)
 	@-(echo  "for (n = 0; *txt[n] != '*'; n++) {strcat(buf, txt[n]); strcat(buf, ngamsNEWLINE);}" >> ngamsLICENSE.c)
@@ -63,8 +62,7 @@ ngamsMAN_PAGE.c:
 	@-(echo  "{" >> ngamsMAN_PAGE.c)
 	@-(echo  "static char buf[32768];" >> ngamsMAN_PAGE.c)
 	@-(echo  "char *txt[] = {" >> ngamsMAN_PAGE.c)
-	@-(awk -f ngamsFormatHdrFile.awk \
-		../doc/ngamsPClient/ngamsPClient.doc >> ngamsMAN_PAGE.c)
+	@-(awk -f ngamsFormatHdrFile.awk ngamsPClient/ngamsPClient/doc/ngamsPClient.txt >> ngamsMAN_PAGE.c)
 	@-(echo  "\"*\"};" >> ngamsMAN_PAGE.c)
 	@-(echo  "int n;" >> ngamsMAN_PAGE.c)
 	@-(echo  "for (n = 0; *txt[n] != '*'; n++) {strcat(buf, txt[n]); strcat(buf, ngamsNEWLINE);}" >> ngamsMAN_PAGE.c)
@@ -79,8 +77,7 @@ ngamsMAN_PAGE_X.c:
 	@-(echo  "{" >> ngamsMAN_PAGE_X.c)
 	@-(echo  "static char buf[32768];" >> ngamsMAN_PAGE_X.c)
 	@-(echo  "char *txt[] = {" >> ngamsMAN_PAGE_X.c)
-	@-(awk -f ngamsFormatHdrFile.awk \
-		./ngamsCClientX.doc >> ngamsMAN_PAGE_X.c)
+	@-(awk -f ngamsFormatHdrFile.awk ngamsCClientX.doc >> ngamsMAN_PAGE_X.c)
 	@-(echo  "\"*\"};" >> ngamsMAN_PAGE_X.c)
 	@-(echo  "int n;" >> ngamsMAN_PAGE_X.c)
 	@-(echo  "for (n = 0; *txt[n] != '*'; n++) {strcat(buf, txt[n]); strcat(buf, ngamsNEWLINE);}" >> ngamsMAN_PAGE_X.c)
@@ -95,8 +92,7 @@ ngamsARCH_CLI_MAN_PAGE.c:
 	@-(echo  "{" >> ngamsARCH_CLI_MAN_PAGE.c)
 	@-(echo  "static char buf[32768];" >> ngamsARCH_CLI_MAN_PAGE.c)
 	@-(echo  "char *txt[] = {" >> ngamsARCH_CLI_MAN_PAGE.c)
-	@-(awk -f ngamsFormatHdrFile.awk \
-		../ngamsCClient/ngamsArchiveClient.doc >> ngamsARCH_CLI_MAN_PAGE.c)
+	@-(awk -f ngamsFormatHdrFile.awk ngamsArchiveClient.doc >> ngamsARCH_CLI_MAN_PAGE.c)
 	@-(echo  "\"*\"};" >> ngamsARCH_CLI_MAN_PAGE.c)
 	@-(echo  "int n;" >> ngamsARCH_CLI_MAN_PAGE.c)
 	@-(echo  "for (n = 0; *txt[n] != '*'; n++) {strcat(buf, txt[n]); strcat(buf, ngamsNEWLINE);}" >> ngamsARCH_CLI_MAN_PAGE.c)

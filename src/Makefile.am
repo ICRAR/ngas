@@ -37,7 +37,7 @@ DISTCLEANFILES = *~
 # scripts: directory with script files
 # test: unit test directory
 # >>> Don't do the JClient by default SUBDIRS= ngamsCClient ngamsJClient/src ngamsTest
-SUBDIRS= ngamsCClient ngamsTest
+SUBDIRS= ngamsCClient ngamsTest/ngamsTest
 
 
 # Include the test for qfits options in the distribution
