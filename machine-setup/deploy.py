@@ -1120,6 +1120,7 @@ def ngas_buildout(typ='archive'):
         if pkgmgr == 'port':
             buildoutCommand += ' cjclient:ldflags=-L{0}/lib/db60 cjclient:cflags=-I{0}/include/db60'.format(MACPORT_DIR)
 
+        # Main NGAMs compilation routine
         if (env.standalone):
             put('{0}/additional_tars/eggs.tar.gz'.format(env.src_dir), '{0}/eggs.tar.gz'.format(env.APP_DIR_ABS))
             run('tar -xzf eggs.tar.gz')
@@ -1132,8 +1133,9 @@ def ngas_buildout(typ='archive'):
             run('find . -name "._*" -exec rm -rf {} \;')
             virtualenv(buildoutCommand)
 
+        # Installing and initializing an NGAS_ROOT directory
         with settings(warn_only=True):
-                run('mkdir -p {0}/../NGAS'.format(env.APP_DIR_ABS))
+            run('mkdir -p {0}/../NGAS'.format(env.APP_DIR_ABS))
         run('cp -R {0}/NGAS/* {0}/../NGAS/.'.format(env.APP_DIR_ABS))
         with settings(warn_only=True):
             run('cp {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
@@ -1245,12 +1247,6 @@ def ngas_full_buildout(typ='archive'):
         else:
             virtualenv('pip install --install-option="--berkeley-db=/usr" additional_tars/bsddb3-6.1.0.tar.gz')
         virtualenv('pip install additional_tars/bottle-0.11.6.tar.gz')
-
-        # run bootstrap with correct python version (explicit)
-        run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
-        # install the ngamsPClient here standalone
-        virtualenv('cd {0}/src/ngamsPClient; python2.7 setup.py install'.format(env.APP_DIR_ABS))
-        virtualenv('python{0} bootstrap.py -v 2.3.1'.format(APP_PYTHON_VERSION))
 
     ngas_buildout(typ=typ)
     install_user_profile()
