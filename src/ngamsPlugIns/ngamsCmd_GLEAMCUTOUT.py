@@ -171,6 +171,7 @@ def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, t
         area_fitsnm = cut_fitsnm.replace(".fits", "_area.fits")
         to_be_removed.append(work_dir + '/' + area_fitsnm)
         to_be_removed.append(work_dir + '/' + cut_fitsnm)
+    return cut_fitsnm
 
 def add_header(cut_fits_path, cut_psf_paths):
     """
@@ -178,8 +179,9 @@ def add_header(cut_fits_path, cut_psf_paths):
     """
     output = pyfits.open(cut_fits_path)
     for i, t in enumerate(psf_seq):
-        psflist = pyfits.open(cut_psf_paths[i])
-        output[0].header[t] = numpy.nanmean(psflist[0].data[0])
+        #psflist = pyfits.open(cut_psf_paths[i])
+        #output[0].header[t] = numpy.nanmean(psflist[0].data[0])
+        output[0].header[t] = cut_psf_paths[i]
 
     output.writeto(cut_fits_path, clobber=True)
 
@@ -196,6 +198,18 @@ def add_header(cut_fits_path, cut_psf_paths):
         output[0].header['BPA'] = bpa
         output.writeto(cut_fits_path, clobber=True)
     """
+
+def get_bparam(ra, dec, psf_path):
+    """
+    """
+    #psflist = pyfits.open('mosaic_Week2_freqrange_psf.fits')
+    psflist = pyfits.open(psf_path)
+    w = pywcs.WCS(psflist[0].header, naxis=2)
+    pixcoords = w.wcs_world2pix([[ra, dec]], 0)[0]
+    bmaj = psflist[0].data[0][pixcoords[1]][pixcoords[0]]
+    bmin = psflist[0].data[1][pixcoords[1]][pixcoords[0]]
+    bpa = psflist[0].data[2][pixcoords[1]][pixcoords[0]]
+    return (bmaj, bmin, bpa)
 
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
@@ -274,7 +288,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             do_regrid = (reqPropsObj.hasHttpPar('regrid') and '1' == reqPropsObj.getHttpPar("regrid"))
             no_psf = (reqPropsObj.hasHttpPar('nopsf') and '1' == reqPropsObj.getHttpPar("nopsf"))
 
-            cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed)
+            cut_fitsnm = cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed)
             if (no_psf == False):
                 psf_fileId = fileId.split('.fits')[0] + '_psf.fits'
                 query = qs % psf_fileId
@@ -283,6 +297,8 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                 psfList = pres[0]
                 if (len(psfList) > 0):
                     psf_path = psfList[0][0]
+
+                    """
                     dim = pyfits.open(psf_path)[0].shape
                     cut_psfnm_list = []
                     for i, t in enumerate(psf_seq):
@@ -299,13 +315,17 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                         cutout_mosaics(ra, dec, radius, work_dir, psf_path_splitnm, do_regrid, cut_psfnm, to_be_removed)
                         cut_psfnm_list.append(work_dir + '/' + cut_psfnm)
                         to_be_removed.append(psf_path_splitnm)
-
-                    add_header(work_dir + '/' + cut_fitsnm, cut_psfnm_list)
+                    """
+                    #add_header(work_dir + '/' + cut_fitsnm, cut_psfnm_list)
+                    add_header(work_dir + '/' + cut_fitsnm, get_bparam(ra, dec, psf_path))
 
     except Exception, excmd1:
         srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
                      "Cutout failed: '%s'" % str(excmd1))
         info(3, traceback.format_exc())
+        for fn in to_be_removed:
+            if (os.path.exists(fn)):
+                os.remove(fn)
         return
     if (reqPropsObj.hasHttpPar('fits_format') and '1' == reqPropsObj.getHttpPar("fits_format")):
         hdr_fnm = "gleamcutout.fits"
