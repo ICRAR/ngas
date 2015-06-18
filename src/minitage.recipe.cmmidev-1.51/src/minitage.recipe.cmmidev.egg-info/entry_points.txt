@@ -1,4 +1,0 @@
-[zc.buildout]
-default = minitage.recipe.cmmidev.cmmidev:Recipe
-cmmi = minitage.recipe.cmmidev.cmmidev:Recipe
-

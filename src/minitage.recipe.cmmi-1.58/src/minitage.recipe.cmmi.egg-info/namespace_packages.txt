@@ -1,3 +1,0 @@
-minitage
-minitage.recipe
-minitage.recipe.cmmi

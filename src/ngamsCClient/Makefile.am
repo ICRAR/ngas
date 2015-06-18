@@ -105,7 +105,7 @@ ngamsARCH_CLI_MAN_PAGE.c:
 
 ngamsVERSION.h:
 	@-(rm -f ngamsVERSION.h)
-	@-(cat ../VERSION > ngamsVERSION.h)
+	@-(cat ../../VERSION > ngamsVERSION.h)
 
 CLEANFILES= ngamsVERSION.h ngamsARCH_CLI_MAN_PAGE.c ngamsMAN_PAGE.c ngamsLICENSE.c
 
