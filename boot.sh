@@ -57,7 +57,7 @@ then
 fi
 
 # Install Fabric and Boto
-for pkg in pycrypto-2.6 paramiko-1.11.0 boto-2.36.0 Fabric-1.10.1
+for pkg in pycrypto-2.6 paramiko-1.15.1 boto-2.36.0 Fabric-1.10.1
 do
 	echo "Installing clib_tags/$pkg.tar.gz"
 	pip install "clib_tars/$pkg.tar.gz" > /dev/null || error "Failed to install $pkg"

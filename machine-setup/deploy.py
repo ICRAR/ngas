@@ -1216,7 +1216,7 @@ def ngas_full_buildout(typ='archive'):
     with cd(env.APP_DIR_ABS):
         virtualenv('pip install clib_tars/zc.buildout-2.3.1.tar.gz')
         virtualenv('pip install clib_tars/pycrypto-2.6.tar.gz')
-        virtualenv('pip install clib_tars/paramiko-1.11.0.tar.gz')
+        virtualenv('pip install clib_tars/paramiko-1.15.1.tar.gz')
         # make this installation self consistent
         virtualenv('pip install clib_tars/Fabric-1.10.1.tar.gz')
         virtualenv('pip install clib_tars/boto-2.36.0.tar.gz')
