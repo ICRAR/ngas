@@ -365,21 +365,25 @@ def create_key_pair():
     if not env.has_key('AWS_PROFILE') or not env.AWS_PROFILE:
         env.AWS_PROFILE = AWS_PROFILE
     conn = boto.ec2.connect_to_region(AWS_REGION, profile_name=env.AWS_PROFILE)
-    kp = None
-    if not conn.get_key_pair(KEY_NAME):
+    kp = conn.get_key_pair(KEY_NAME)
+    if not kp:
         kp = conn.create_key_pair(KEY_NAME)
-        puts(green("\n******** KEY_PAIR created!********\n"))
-    if not os.path.exists(os.path.expanduser(AWS_KEY)):
-        if not kp:
-            kp = conn.get_key_pair(KEY_NAME)
-        puts(green("\n******** KEY_PAIR retrieved********\n"))
         kp.save('~/.ssh/')
-        puts(green("\n******** KEY_PAIR written!********\n"))
+        puts(green("\n******** KEY_PAIR created and written!********\n"))
+    else:
+        puts(green("\n******** KEY_PAIR retrieved********\n"))
+        keyFile = os.path.expanduser(AWS_KEY)
+        if not os.path.exists(keyFile):
+            puts("Key file doesn't exist, creating new key in the server")
+            conn.delete_key_pair(KEY_NAME)
+            kp = conn.create_key_pair(KEY_NAME)
+            kp.save('~/.ssh/')
+            puts(green("\n******** KEY_PAIR created and written!********\n"))
+
     puts(green("\n******** Task {0} finished!********\n".\
         format(inspect.stack()[0][3])))
     conn.close()
     return
-    
 
 
 
@@ -452,10 +456,7 @@ def create_instance(names, use_elastic_ip, public_ips):
     host_names = []
     for i in range(number_instances):
         instances[i].update(True)
-        puts('Current DNS name is {0} after associating the Elastic IP'.format(instances[i].dns_name))
-        puts('Instance ID is {0}'.format(instances[i].id))
-        print blue('In order to terminate this instance you can call:')
-        print blue('fab -f machine-setup/deploy.py terminate:instance_id={0}'.format(instances[i].id))
+        print_instance(instances[i])
         host_names.append(str(instances[i].dns_name))
 
     # The instance is started, but not useable (yet)
@@ -912,7 +913,7 @@ def system_install():
                 install_brew(package)
         elif pkg_mgr == 'port':
             for package in PORT_PACKAGES:
-                install_port(package)     
+                install_port(package)
     else:
         abort("Unsupported linux flavor detected: {0}".format(linux_flavor))
     puts(green("\n******** System packages installation COMPLETED!********\n"))
@@ -1659,13 +1660,30 @@ def list_instances():
     conn = connect()
     res = conn.get_all_instances()
     for r in res:
-        inst_id = r.instances[0].id
-        puts('Instance {0} tags:'.format(inst_id))
-        tagdict = r.instances[0].tags
-        for k in tagdict:
-            print '{0}: {1}'.format(k,tagdict[k]),
+        print_instance(r.instances[0])
         print
         print
+
+def print_instance(inst):
+    inst_id    = inst.id
+    inst_state = inst.state
+    pub_name   = inst.public_dns_name
+    tagdict    = inst.tags
+    puts('Instance {0} is {1}'.format(inst_id, color_ec2state(inst_state)))
+    for k in tagdict:
+        puts('{0}: {1}'.format(k,tagdict[k]))
+    if inst_state == 'running':
+        puts("Connect:   ssh -i {0} {1}".format(AWS_KEY, pub_name))
+        puts("Terminate: fab terminate:instance_id={0}".format(inst_id))
+
+def color_ec2state(state):
+    if state == 'running':
+        return green(state)
+    elif state == 'terminated':
+        return red(state)
+    elif state == 'shutting-down':
+        return yellow(state)
+    return state
 
 @task
 def terminate(instance_id):
