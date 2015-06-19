@@ -24,9 +24,8 @@ mosaic_20130808_162-170MHz_XX_r-1.0.fits
 
 import numpy as np
 from astropy.io import fits
-import sys, os, datetime
+import sys, os, datetime, math
 import pywcs, pyfits
-import pccFits.PccSimpleFitsReader as fitsapi
 
 # used to connect to MWA M&C database
 
@@ -128,6 +127,9 @@ def get_fits_mbr(fin, row_ignore_factor=10):
 			DEC_max = sky_tb[0][1]
 	print "Done"
 
+	center_ra = (RA_min + RA_max) / 2.0
+	center_dec = (DEC_min + DEC_max) / 2.0
+
 	if (RA_min < 0):
 		RA_min += 360
 	if (RA_max < 0):
@@ -144,7 +146,7 @@ def get_fits_mbr(fin, row_ignore_factor=10):
 	#sqlStr = "SELECT sbox '((%10fd, %10fd), (%10fd, %10fd))'" % (sky[0][0], sky[0][1], sky[2][0], sky[2][1])
 	sqlStr = "SELECT sbox '((%10fd, %10fd), (%10fd, %10fd))'" % (RA_min, DEC_min, RA_max, DEC_max)
 	#print sqlStr
-	return sqlStr
+	return sqlStr, center_ra, center_dec
 
 def get_centre_freq(fileId):
 	ends = fileId.split("MHz")[0].split("_")[-1].split("-")
@@ -158,9 +160,16 @@ def insert_db(conn, filename):
 	mosaic_20130822_162-170MHz_YY_r-1.0.fits
 	mosaic_20130822_162-170MHz_XX_r-1.0.fits
 	"""
-	hdrs = fitsapi.getFitsHdrs(filename)
-	ra = float(hdrs[0]['CRVAL1'][0][1])
-	dec = float(hdrs[0]['CRVAL2'][0][1])
+	import pccFits.PccSimpleFitsReader as fitsapi
+	hdr = fitsapi.getFitsHdrs(filename)[0]
+	required_hdrs = ['CRVAL1', 'CRVAL2']
+	for rhdr in required_hdrs:
+		if (not hdr.has_key(rhdr)):
+			print "Missing header keyword {0}".format(rhdr)
+			return
+
+	#ra = float(hdr['CRVAL1'][0][1])
+	#dec = float(hdr['CRVAL2'][0][1])
 	accsize = os.path.getsize(filename)
 	embargo = datetime.date.today() - datetime.timedelta(days = 1)
 	owner="ICRAR"
@@ -168,13 +177,13 @@ def insert_db(conn, filename):
 	accref_file =  "gleam/%s" % fileId
 	myhost = "store04.icrar.org"
 	file_url =  "http://%s:7777/RETRIEVE?file_id=%s" % (myhost, fileId)
-	sqlStr = get_fits_mbr(filename)
+	sqlStr, ra, dec = get_fits_mbr(filename)
 	cur = conn.cursor()
 	center_freq = get_centre_freq(fileId)
 	cur.execute(sqlStr)
 	res = cur.fetchall()
 	if (not res or len(res) == 0):
-		errMsg = "fail to calculate spoly {0}".format(sqlStr)
+		errMsg = "fail to calculate sbox {0}".format(sqlStr)
 		print(errMsg)
 		raise Exception(errMsg)
 	coverage = res[0][0]
@@ -194,17 +203,115 @@ def insert_db(conn, filename):
 	if (cur):
 		del cur
 
+def insert_new_mosaic(conn, filename):
+	accsize = os.path.getsize(filename)
+	embargo = datetime.date.today() - datetime.timedelta(days = 1)
+	owner="ICRAR"
+	fileId = os.path.basename(filename) # e.g. mosaic_Week1_154-162MHz.fits
+	freq = fileId.split('MHz')[0].split('_')[-1]
+	accref_file =  "gleam/%s" % fileId
+	myhost = "store04.icrar.org"
+	file_url =  "http://%s:7777/RETRIEVE?file_id=%s" % (myhost, fileId)
+	sqlStr = """INSERT INTO mwa.gleam_postage(filename,accref,owner,embargo,mime,accsize,freq) VALUES('{0}','{1}','{2}','{3}','{4}','{5}','{6}')"""
+	sqlStr = sqlStr.format(fileId, accref_file, owner, embargo, mime, accsize, freq)
+	print sqlStr
+	cur = conn.cursor()
+	if (not DEBUG):
+		cur.execute(sqlStr)
+
+	sqlStr = """INSERT INTO dc.products(embargo,owner,accref, mime,accesspath,sourcetable) VALUES('{0}','{1}','{2}','{3}','{4}','{5}')"""
+	sqlStr = sqlStr.format(embargo, owner, accref_file, mime, file_url, 'mwa.gleam_postage')
+	print sqlStr
+	print
+	if (not DEBUG):
+		cur.execute(sqlStr)
+		conn.commit()
+	if (cur):
+		del cur
+
+
+def get_distance(long1, lat1, long2, lat2):
+ 	# http://www.johndcook.com/blog/python_longitude_latitude/
+    # Convert latitude and longitude to
+    # spherical coordinates in radians.
+    # http://www.johndcook.com/lat_long_details.html
+    degrees_to_radians = math.pi / 180.0
+
+    # phi = 90 - latitude
+    phi1 = (90.0 - lat1) * degrees_to_radians
+    phi2 = (90.0 - lat2) * degrees_to_radians
+
+    # theta = longitude
+    theta1 = long1 * degrees_to_radians
+    theta2 = long2 * degrees_to_radians
+
+    # Compute spherical distance from spherical coordinates.
+
+    # For two locations in spherical coordinates
+    # (1, theta, phi) and (1, theta, phi)
+    # cosine( arc length ) =
+    #    sin phi sin phi' cos(theta-theta') + cos phi cos phi'
+    # distance = rho * arc length
+
+    cos = (math.sin(phi1) * math.sin(phi2) * math.cos(theta1 - theta2) +
+           math.cos(phi1) * math.cos(phi2))
+    arc = math.acos(cos) / degrees_to_radians
+    print arc
+    return arc
+
+
+def get_week_by_coord(ra, dec):
+	# need to consider the border case
+	# do not use "elif"
+	from operator import itemgetter
+	res = []
+	if (0 <= dec <= 30):
+		if (0 <= ra <= 120): # 8h
+			res.append((2, 60.0, 15.0)) # tuple (week, center_ra, center_dec)
+		if (120 <= ra <= 217.5): # 14:30
+			res.append((3, 168.75, 15.0))
+		if (217.5 <= ra <= 330): # 22:00
+			res.append((4, 273.75, 15.0))
+	if (-30 <= dec <= 0):
+		if (292.5 <= ra <= 360 or ra == 0):
+			res.append((1, 326.25, -15.0))
+		if (0 <= ra <= 120):
+			res.append((2, 60.0, -15.0))
+		if (120 <= ra <= 232.5):
+			res.append((3, 176.25, -15.0))
+		if (232.5 <= ra <= 292.5):
+			res.append(4, 262.5, -15.0)
+	if (-90 <= dec <= -30):
+		if (315 <= ra <= 360 or ra == 0):
+			res.append((1, 337.5, -60.0))
+		if (0 <= ra <= 120):
+			res.append((2, 60.0, -60.0))
+		if (120 <= ra <= 202.5):
+			res.append((3, 161.25, -60.0))
+		if (202.5 <= ra <= 315):
+			res.append((4, 258.75, -60.0))
+	leng = len(res)
+	if (leng == 1):
+		return res[0][0]
+	elif (leng > 1):
+		dist = [get_distance(ra, dec, x[1], x[2]) for x in res]
+		index = min(enumerate(dist), key=itemgetter(1))[0]
+		return res[index][0]
+	else:
+		return 0
+
 def do_it():
 	"""
 	"""
 	# read from CSV file
-	mosaic_list = "/home/ngas/processing/mosaic_cutout/mosaic_list"
+	mosaic_list = "/home/ngas/processing/mosaic_cutout/new_mosaic_list"
 	with open(mosaic_list) as f:
 		content = f.readlines()
 	conn = getVODBConn()
 	try:
 		for fn in content:
-			insert_db(conn, fn.replace("\n",""))
+			#insert_db(conn, fn.replace("\n",""))
+			insert_new_mosaic(conn, fn.replace("\n",""))
 	finally:
 		putVODBConn(conn)
 
@@ -220,3 +327,4 @@ if __name__ == '__main__':
 	#print pgSqlStr
 	"""
 	do_it()
+	#print get_week_by_coord(float(sys.argv[1]), float(sys.argv[2]))
