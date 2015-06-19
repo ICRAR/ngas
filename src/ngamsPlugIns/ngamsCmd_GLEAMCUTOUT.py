@@ -209,7 +209,9 @@ def get_bparam(ra, dec, psf_path):
     #psflist = pyfits.open('mosaic_Week2_freqrange_psf.fits')
     psflist = pyfits.open(psf_path)
     w = pywcs.WCS(psflist[0].header, naxis=2)
+    #pixcoords = w.wcs_world2pix([[ra, dec]], 0)[0]
     pixcoords = w.wcs_world2pix([[ra, dec]], 0)[0]
+    pixcoords = [int(round(elem)) for elem in pixcoords]
     bmaj = psflist[0].data[0][pixcoords[1]][pixcoords[0]]
     bmin = psflist[0].data[1][pixcoords[1]][pixcoords[0]]
     bpa = psflist[0].data[2][pixcoords[1]][pixcoords[0]]
