@@ -153,7 +153,9 @@ NGAMS_SRC_DIR = os.path.realpath(__path__[0] + '/..')
 
 # Main PID of server
 NGAMS_SRV_PID = os.getpid()
-NGAMS_HOST_IP = None
+NGAMS_HOST_IP   = None
+NGAMS_HOST_NAME = None
+
 
 # Semaphore + counter to ensure unique, temporary filenames.
 _uniqueNumberSem   = threading.Semaphore(1)
@@ -948,6 +950,8 @@ def getMyIpAddress():
 
 def getIpAddress():
     global NGAMS_HOST_IP
+    if not NGAMS_HOST_IP:
+        getHostName()
     return NGAMS_HOST_IP
 
 def getHostName(cfgFile=None):
@@ -956,34 +960,41 @@ def getHostName(cfgFile=None):
 
     Returns:   Host name for this NGAS System (string).
     """
-    global NGAMS_HOST_IP
+
+    global NGAMS_HOST_NAME
+    if NGAMS_HOST_NAME:
+        return NGAMS_HOST_NAME
+
+    # Check which interface we are configured to use
+    # and retrieve the name associated to it
     ip = None
-    # Use previously set global IP address
-    if NGAMS_HOST_IP:
-        ip = NGAMS_HOST_IP
-    else:
-        # Read IP from configuration file if necessary
-        if cfgFile or sys.argv.count('-cfg') > 0:
-            if not cfgFile: cfgFile = sys.argv[sys.argv.index('-cfg') + 1]
-            from xml.dom import minidom
-            dom = minidom.parse(cfgFile)
-            srv = dom.getElementsByTagName('Server')
-            ip = srv[0].getAttribute('IpAddress')
-        # If no ip is given in the configuration, or "0.0.0.0" is set,
-        # figure out one of our external IPs
-        if not ip or str(ip)[0] == '0':
-            # TODO: This slows down *everything*, and needs connection to the web
-            ip = getMyIpAddress()
-            # We could use this instead?
-            # ip = socket.gethostbyname(socket.gethostname())
-        NGAMS_HOST_IP = str(ip)
+    if cfgFile or sys.argv.count('-cfg') > 0:
+        if not cfgFile: cfgFile = sys.argv[sys.argv.index('-cfg') + 1]
+        from xml.dom import minidom
+        dom = minidom.parse(cfgFile)
+        srv = dom.getElementsByTagName('Server')
+        ip = srv[0].getAttribute('IpAddress')
+
+    # If no IP is given in the configuration
+    # figure out one of our external IPs
+    if not ip:
+        # TODO: This slows down *everything*, and needs connection to the web
+        # We could use this instead?
+        # ip = socket.gethostbyname(socket.gethostname())
+        ip = getMyIpAddress()
+
+    global NGAMS_HOST_IP
+    NGAMS_HOST_IP = str(ip)
 
     # Figure out the name for our ip and return it
+    # In the case of '0.0.0.0' we use the getMyIpAddress()
+    if ip[0] == '0':
+        ip = getMyIpAddress()
     try:
-        hostName = socket.gethostbyaddr(ip)[0]
+        NGAMS_HOST_NAME = socket.gethostbyaddr(ip)[0]
     except socket.herror:
-        hostName = os.uname()[1]
-    return hostName
+        NGAMS_HOST_NAME = os.uname()[1]
+    return NGAMS_HOST_NAME
 
 
 def setSrvPort(portNo):
