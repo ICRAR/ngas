@@ -12,7 +12,7 @@
 Module that provide various utilities.
 """
 
-import exceptions, time, popen2, os, select
+import exceptions, time, subprocess, os, select
 
 
 def checkType(parameter,
@@ -78,30 +78,34 @@ def execCmd(cmd,
     exitCode = 0
     startTime = time.time()
     pollTime = 0.100
-    p = popen2.Popen3(cmd, 1)
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     while (1):
+
+        # Read the stdout and stderr from our process
+        rdFds, _, _ = select.select([p.stdout, p.stderr], [], [], 0)
+        for rdFd in rdFds:
+            if (rdFd == p.stdout):
+                stdOut = stdOut + rdFd.read()
+            else:
+                stdErr = stdErr + rdFd.read()
+
+        # Check if it already finished
         exitCode = p.poll()
-        if (exitCode == -1):
+        if (exitCode is None):
             deltaTime = (time.time() - startTime)
             if ((timeOut != -1) and (deltaTime > timeOut)):
+                p.kill()
                 raise exceptions.Exception, \
                       "Executing command " + cmd + " timed out after " +\
                       str(deltaTime) + " s."
         else:
             break
-        rdFds, wrFds, exFds = select.select([p.fromchild, p.childerr], [],
-                                            [], 0)
-        for rdFd in rdFds:
-            if (rdFd == p.fromchild):
-                stdOut = stdOut + rdFd.read()
-            else:
-                stdErr = stdErr + rdFd.readline()
+
         time.sleep(pollTime)
 
-    p.childerr.close()
-    p.fromchild.close()
-    del p
-    
+    p.stdout.close()
+    p.stderr.close()
+
     return [exitCode, stdOut, stdErr]
 
 
