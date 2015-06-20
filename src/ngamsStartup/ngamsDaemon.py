@@ -22,12 +22,9 @@
 #
 
 import sys, os, subprocess, socket, glob
-from ngamsServer import ngamsServer
 from ngams import getHostId
 from logger import ngaslog
 from daemon import Daemon
-from ngamsConfig import ngamsConfig
-import ngamsHighLevelLib
 
 HOME = os.environ['HOME']
 if os.environ.has_key('NGAS_PREFIX'):
@@ -40,7 +37,11 @@ CFG = '%s/../NGAS/cfg/ngamsServer.conf' % NGAS_PREFIX
 if not os.path.exists(CFG):
     ngaslog("ERROR", "Configuration file not found: {0}".format(CFG))
     raise(ValueError)
+HOST_ID = getHostId(CFG)
 
+# importing it here makes sure that getHostID is called with
+# the config file.
+from ngamsConfig import ngamsConfig
 cfgObj = ngamsConfig()
 cfgObj.load(CFG)
 PORT = cfgObj.getPortNo()
@@ -97,6 +98,9 @@ class MyDaemon(Daemon):
     and overrides the run method for NGAMS.
     """
     def run(self):
+
+        from ngamsServer import ngamsServer
+
         ngaslog('INFO', "Inside run...")
         ARGS_BCK = sys.argv
         try:

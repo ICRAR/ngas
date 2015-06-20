@@ -408,7 +408,7 @@ def check_aws_meta():
     This is used to figure out whether a specific node is an
     AWS instance or not.
     """
-    res = run('curl http://169.254.169.254/latest/meta-data/ami-id > /dev/null 2>&1; if [ $? -eq 0 ]; then echo 1; else echo 0; fi')
+    res = run('curl --connect-timeout 2 http://169.254.169.254/latest/meta-data/ami-id > /dev/null 2>&1; if [ $? -eq 0 ]; then echo 1; else echo 0; fi')
     IP = '169.254.169.254'
     if res == '0':
         return False
@@ -1532,8 +1532,8 @@ def test_deploy():
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
     test_env()
     install(sys_install=True, user_install=True, init_install=True)
+    sudo('chown -R {0}:{0} {0}'.format(env.HOME))
     with settings(user=env.APP_USERS[0]):
-        sudo('chown -R {0}:{0} {0}'.format(env.HOME))
         run('ngamsDaemon start')
     puts(green("\n******** SERVER STARTED!********\n"))
     if test_status():
@@ -1614,7 +1614,7 @@ def install(sys_install=True, user_install=True,
     Note: Requires root permissions!
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
-    set_env(hideing='everything', display=True)
+    set_env(hideing='nothing', display=True)
     if sys_install and sys_install != 'False': system_install()
     if env.postfix:
         postfix_config()
@@ -1670,7 +1670,10 @@ def uninstall(clean_system=False):
     run('rm -rf /tmp/Py* /tmp/ngas* /tmp/virtual*')
     local('rm -rf /tmp/ngas*')
     with settings(user = env.APP_USERS[0]):
-        run('mv .bash_profile_orig .bash_profile', warn_only=True)
+        if check_path('.bash_profile_orig'):
+            run('mv .bash_profile_orig .bash_profile', warn_only=True)
+        else: # if there was nothing before just remove the current one
+            run('mv .bash_profile .bash_profile.bak', warn_only=True)
     
     if clean_system and clean_system != 'False': # don't delete the users and system settings by default.
         for u in env.APP_USERS:
