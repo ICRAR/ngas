@@ -5,7 +5,7 @@ Mac OSX installation has been completely overhauled. Now a local user installati
 
 $ fab -u `whoami` -H localhost -f machine_setup/deploy.py user_deploy
 
-This will perform the full installation under ~/ngas_rt with data files under ~/NGAS. It will use homebrew to install 
-missing dependencies. If homebrew is not available it will be installed as well, but only if MacPorts is not installed,
-in order to prevent nasty side-effects. At the end of the installation the .bash_profile file will be modified (a backup
-of the original one is kept under ~/.bash_profile_orig).
+This will perform the full installation under ~/ngas_rt with data files under ~/NGAS. It will use homebrew or MacPorts 
+to install missing dependencies. If homebrew is not available it will be installed as well, but only if MacPorts is not 
+installed, in order to prevent nasty side-effects. At the end of the installation the .bash_profile file will be modified 
+(a backup of the original one is kept under ~/.bash_profile_orig).
