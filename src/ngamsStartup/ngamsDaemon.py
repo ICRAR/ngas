@@ -21,6 +21,9 @@
 #    MA 02111-1307  USA
 #
 
+# *** CAUTION: Never import any other NGAS modules here! This
+# ***          would likely break the determination of the IP address
+
 import sys, os, subprocess, socket, glob
 from ngams import getHostId
 from logger import ngaslog
