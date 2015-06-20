@@ -944,7 +944,11 @@ def getMyIpAddress():
     OUTPUT:   string, IP v4 address in standard notation
     """
     whatismyip = 'http://bot.whatismyipaddress.com/'
-    return urllib.urlopen(whatismyip).readlines()[0]
+    try:
+        myIp = urllib.urlopen(whatismyip).readlines()[0]
+    except: # can't figure out ext. IP address use internal one instead
+        myIp = socket.gethostbyname(socket.gethostname())
+    return myIp
 
 def getIpAddress():
     global NGAMS_HOST_IP
@@ -971,7 +975,7 @@ def getHostName(cfgFile=None):
             ip = srv[0].getAttribute('IpAddress')
         # If no ip is given in the configuration, or "0.0.0.0" is set,
         # figure out one of our external IPs
-        if not ip or str(ip)[0] == '0':
+        if not ip:
             # TODO: This slows down *everything*, and needs connection to the web
             ip = getMyIpAddress()
             # We could use this instead?
@@ -979,10 +983,13 @@ def getHostName(cfgFile=None):
         NGAMS_HOST_IP = str(ip)
 
     # Figure out the name for our ip and return it
-    try:
-        hostName = socket.gethostbyaddr(ip)[0]
-    except socket.herror:
+    if ip == '0.0.0.0':
         hostName = os.uname()[1]
+    else:
+        try:
+            hostName = socket.gethostbyaddr(ip)[0]
+        except socket.herror:
+            hostName = os.uname()[1]
     return hostName
 
 

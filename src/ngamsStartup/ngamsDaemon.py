@@ -26,7 +26,6 @@ from ngamsServer import ngamsServer
 from ngams import getHostId
 from logger import ngaslog
 from daemon import Daemon
-from ngamsConfig import ngamsConfig
 import ngamsHighLevelLib
 
 HOME = os.environ['HOME']
@@ -40,7 +39,11 @@ CFG = '%s/../NGAS/cfg/ngamsServer.conf' % NGAS_PREFIX
 if not os.path.exists(CFG):
     ngaslog("ERROR", "Configuration file not found: {0}".format(CFG))
     raise(ValueError)
+HOST_ID = getHostId(CFG)
 
+# importing it here makes sure that getHostID is called with
+# the config file.
+from ngamsConfig import ngamsConfig
 cfgObj = ngamsConfig()
 cfgObj.load(CFG)
 PORT = cfgObj.getPortNo()

@@ -1532,8 +1532,8 @@ def test_deploy():
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
     test_env()
     install(sys_install=True, user_install=True, init_install=True)
+    sudo('chown -R {0}:{0} {0}'.format(env.HOME))
     with settings(user=env.APP_USERS[0]):
-        sudo('chown -R {0}:{0} {0}'.format(env.HOME))
         run('ngamsDaemon start')
     puts(green("\n******** SERVER STARTED!********\n"))
     if test_status():
