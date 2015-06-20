@@ -1737,8 +1737,11 @@ def assign_ddns():
     NOTE: Obviously this should only be carried out for one NGAS deployment!!
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
-    sudo('yum-config-manager --enable epel')
-    sudo('yum install -y noip')
+    with cd('/usr/local/src'):
+        sudo('wget http://www.no-ip.com/client/linux/noip-duc-linux.tar.gz')
+        sudo('tar xf noip-duc-linux.tar.gz')
+        sudo('cd noip-2.1.9-1')
+        sudo('make install')
     sudo('sudo noip2 -C')
     sudo('chkconfig noip on')
     sudo('service noip start')
