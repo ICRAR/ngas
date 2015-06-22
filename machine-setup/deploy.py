@@ -53,7 +53,7 @@ def run(*args, **kwargs):
         com = list(args)[0]
         com = 'unset PYTHONPATH; {0}'.format(com)
         puts('Executing: {0}'.format(com))
-        res = frun(com, quiet=True, **kwargs)
+        res = frun(com, quiet=False, **kwargs)
         res = res.replace(FILTER,'')
 #        puts('Result: {0}'.format(res))
     return res
@@ -1742,9 +1742,10 @@ def assign_ddns():
         sudo('tar xf noip-duc-linux.tar.gz')
         sudo('cd noip-2.1.9-1')
         sudo('make install')
-    sudo('sudo noip2 -C')
-    sudo('chkconfig noip on')
-    sudo('service noip start')
+    sudo('noip2 -C')
+    # TODO: put startup script in repo and install it
+    # sudo('chkconfig noip on')
+    # sudo('service noip start')
     puts(green("\n***** Dynamic IP address assigned ******\n"))
 
 @task
