@@ -32,6 +32,10 @@ setup(
     version=version,
     description="The python package containing the python NGAMS client",
     long_description="The python package containing the python NGAMS client",
+    author='Andreas Wicenec',
+    author_email='awicenec@gmail.com',
+    url='',
+    license='LGPL',
     classifiers=[], # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
     packages=find_packages(),
     include_package_data=True,

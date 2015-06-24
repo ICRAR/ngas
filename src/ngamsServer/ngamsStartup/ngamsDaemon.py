@@ -29,6 +29,21 @@ from ngamsLib.logger import ngaslog
 from ngamsLib.ngamsCore import getHostId
 from ngamsServer import ngamsServer
 
+#
+# The following commented code is probably not relevant anymore
+# and can be removed, but I have to double-check. The fact that importing
+# modules was breaking the getHostId() call underneath meant that at
+# import time there was a call to getHostId() without a configuration file
+# which is probably the cause of the CAUTION down there. I found (and fixed)
+# exactly something like that a few commits ago, and thus this is probably
+# not an issue anymore.
+
+# *** CAUTION: Never import any other NGAS modules here! This
+# ***          would likely break the determination of the IP address
+#import sys, os, subprocess, socket, glob
+#from ngams import getHostId
+#from logger import ngaslog
+#from daemon import Daemon
 
 HOME = os.environ['HOME']
 if os.environ.has_key('NGAS_PREFIX'):
@@ -41,7 +56,11 @@ CFG = '%s/../NGAS/cfg/ngamsServer.conf' % NGAS_PREFIX
 if not os.path.exists(CFG):
     ngaslog("ERROR", "Configuration file not found: {0}".format(CFG))
     raise(ValueError)
+HOST_ID = getHostId(CFG)
 
+# importing it here makes sure that getHostID is called with
+# the config file.
+from ngamsConfig import ngamsConfig
 cfgObj = ngamsConfig()
 cfgObj.load(CFG)
 PORT = cfgObj.getPortNo()
@@ -98,6 +117,9 @@ class MyDaemon(Daemon):
     and overrides the run method for NGAMS.
     """
     def run(self):
+
+        from ngamsServer import ngamsServer
+
         ngaslog('INFO', "Inside run...")
         ARGS_BCK = sys.argv
         try:

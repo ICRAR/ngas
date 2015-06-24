@@ -7,20 +7,22 @@ fab test_deploy
 The tasks can be used individually and thus allow installations in very
 diverse situations.
 
-For a full deployment use the command
+For a full deployment on AWS use the command
 
-fab --set postfix=False -f machine-setup/deploy.py test_deploy
+fab test_deploy
 
 For a local installation under a normal user without sudo access
 
-fab -u `whoami` -H <IP address> -f machine-setup/deploy.py user_deploy
+fab -u `whoami` -H <IP address> user_deploy
 
 For a remote installation under non-default user ngas-user using a
 non-default source directory for the installation you can use. This
 installation is using a different (sudo) user on the target machine
 to run the installation.
 
-fab -u sudo_user -H <IP address> -f machine-setup/deploy.py user_deploy --set APP_USERS=ngas-user,src_dir=/tmp/ngas_test
+fab -u sudo_user -H <IP address> user_deploy --set APP_USERS=ngas-user,src_dir=/tmp/ngas_test
+
+Please also refer to the INSTALL document in the root directory of the NGAS source tree.
 """
 import glob
 
@@ -31,6 +33,7 @@ import time, urllib, inspect
 from fabric.api import put, env, require, local, task
 from fabric.api import run as frun
 from fabric.api import sudo as fsudo
+from fabric.state import output
 from fabric.context_managers import cd, hide, settings, warn_only
 from fabric.contrib.console import confirm
 from fabric.contrib.files import append, sed, comment
@@ -43,30 +46,37 @@ from fabric.colors import *
 
 # FILTER = 'The cray-mpich2 module is now deprecated and will be removed in a future release.\r\r\nPlease use the cray-mpich module.'
 
+#@task
 def run(*args, **kwargs):
     with hide('running'):
-        FILTER = frun('echo')  # This should not return anything
-    com = list(args)[0]
-    com = 'unset PYTHONPATH; {0}'.format(com)
-    res = frun(com, **kwargs)
-    res = res.replace(FILTER,'')
-#     res = res.replace('\n','')
-#     res = res.replace('\r','')
+        FILTER = frun('echo', quiet=True)  # This should not return anything
+        com = list(args)[0]
+        com = 'unset PYTHONPATH; {0}'.format(com)
+        puts('Executing: {0}'.format(com))
+        res = frun(com, quiet=False, **kwargs)
+        res = res.replace(FILTER,'')
+#        puts('Result: {0}'.format(res))
     return res
 
+#@task
 def sudo(*args, **kwargs):
     with hide('running'):
-        FILTER = frun('echo')  # This should not return anything
-    com = list(args)[0]
-    com = 'unset PYTHONPATH; {0}'.format(com)
-    res = fsudo(com, **kwargs)
+        FILTER = frun('echo', quiet=True)  # This should not return anything
+        com = list(args)[0]
+        com = 'unset PYTHONPATH; {0}'.format(com)
+        puts('Executing: {0}'.format(com))
+    res = fsudo(com, quiet=True, **kwargs)
     res = res.replace(FILTER, '')
     res = res.replace('\n','')
     res = res.replace('\r','')
+#    puts('Result: {0}'.format(res))
     return res
 
 #Defaults
 thisDir = os.path.dirname(os.path.realpath(__file__))
+if not env.has_key('mykeys') and not env.has_key('okeys'): 
+    env.okeys = env.keys() # save original keys
+
 
 #### This should be replaced by another key and security group
 AWS_REGION = 'us-east-1'
@@ -91,6 +101,7 @@ AMI_ID = AMI_IDs[AMI_NAME]
 INSTANCE_NAME = 'NGAS_{0}'
 INSTANCE_TYPE = 't1.micro'
 INSTANCES_FILE = os.path.expanduser('~/.aws/aws_instances')
+env.instance_id = 'UNKNOWN' # preset
 ELASTIC_IP = 'False'
 USERS = ['ngas']
 APP_PYTHON_VERSION = '2.7'
@@ -221,95 +232,126 @@ PUBLIC_KEYS = os.path.expanduser('~/.ssh')
 # UPLOAD_HOST = 1
 # DOWNLOAD_HOST = 2
 
-def set_env():
+@task
+def set_env(hideing='nothing', display=False):
 
-    # Avoid multiple calls taking effect, one is enough
-    if env.has_key('environment_already_set'): 
-        if check_command('wget'): # first time set_env is called wget might not yet be available
-            get_instance_id()
-        else:
-            env.instance_id = 'UNKNOWN'
-        return  # already done
+    output.update({'nothing':[]}) # enable hideing nothing
+    with hide(hideing):
+        puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
+    
+        # Avoid multiple calls of set_env for most things
+        if env.has_key('environment_already_set') and env.environment_already_set: 
+            puts('Environment already established.')
+            if check_aws_meta() and env.instance_id == 'UNKNOWN': # is this an AWS instance? 
+                get_instance_id()
+            elif env.instance_id == 'UNKNOWN': # not an AWS instance
+                env.instance_id = 'N/A'
+            if env.HOME[0] == '~' and check_user(env.APP_USERS[0]):
+                with settings(user = env.APP_USERS[0]):
+                    env.HOME = run("echo $HOME") # always set to $HOME of APP_USERS[0]
+                env.PREFIX = env.HOME
+                env.APP_DIR_ABS = '{0}/{1}'.format(env.PREFIX, APP_DIR)
+        else:  # first time in set_env
+        # puts(env)
+            env.keepalive = 15
+            env.connection_attempts = 5
+            if not env.has_key('key_filename') or not env.key_filename:
+                env.key_filename = AWS_KEY
+            else:
+                puts(red("SSH key_filename: {0}".format(env.key_filename)))        
+            if not env.has_key('GITUSER') or not env.GITUSER:
+                env.GITUSER = GITUSER
+            if not env.has_key('GITREPO') or not env.GITREPO:
+                env.GITREPO = GITREPO
+            if not env.has_key('BRANCH') or not env.BRANCH:
+                env.BRANCH = BRANCH
+            if not env.has_key('postfix') or not env.postfix:
+                env.postfix = POSTFIX
+            if not env.has_key('user') or not env.user:
+                env.user = USERNAME
+            if not env.has_key('APP_USERS') or not env.APP_USERS:
+                env.APP_USERS = USERS
+            if type(env.APP_USERS) == type(''): # if its just a string
+                print "USERS preset to {0}".format(env.APP_USERS)
+                env.APP_USERS = [env.APP_USERS] # change the type                        
+            if not env.has_key('src_dir') or not env.src_dir:
+                env.src_dir = thisDir + '/../'
+            if not env.has_key('hosts') or env.hosts:
+                env.hosts = [env.host_string]
+            if not env.has_key('HOME') or not env.HOME:
+                if not check_user(env.APP_USERS[0]): #preset if user does not exist
+                    env.HOME = '~{0}'.format(env.APP_USERS[0])
+                else:
+                    with settings(user=env.APP_USERS[0]):
+                        env.HOME = run('echo $HOME')
+            if not env.has_key('PREFIX') or env.PREFIX[0] == '~' or not env.PREFIX:
+                env.PREFIX = env.HOME
+            if not env.has_key('APP_DIR_ABS') or env.APP_DIR_ABS[0] == '~' \
+            or not env.APP_DIR_ABS:
+                env.APP_DIR_ABS = '{0}/{1}'.format(env.PREFIX, APP_DIR)
+                env.APP_DIR = APP_DIR
+            else:
+                env.APP_DIR = env.APP_DIR_ABS.split('/')[-1]
+            if not env.has_key('APP_CONF') or not env.APP_CONF:
+                env.APP_CONF = APP_CONF
+            if not env.has_key('INIT_SRC') or not env.INIT_SRC:
+                env.INIT_SRC = INIT_SRC_T.format(env.APP_DIR_ABS)
+            if not env.has_key('AWS_PROFILE') or not env.AWS_PROFILE:
+                env.AWS_PROFILE = AWS_PROFILE
+            if not env.has_key('INIT_TRG') or not env.INIT_TRG:
+                env.INIT_TRG = INIT_TRG
+            if not env.has_key('force') or not env.force:
+                env.force = 0
+            if not env.has_key('standalone') or not env.standalone:
+                env.standalone = 0
+            if not env.has_key('AMI_NAME') or not env.AMI_NAME:
+                env.AMI_NAME = 'Amazon'
+            if env.AMI_NAME in ['CentOS', 'SLES']:
+                env.user = 'root'
+            get_linux_flavor()
+            if check_aws_meta(): # is this an AWS instance? 
+                get_instance_id()
+            else:
+                env.instance_id = 'N/A'
+        
+            env.nprocs = 1
+            if env.linux_flavor in SUPPORTED_OS_LINUX:
+                env.nprocs = int(run('grep -c processor /proc/cpuinfo'))
+        
+            nkeys = env.keys()
+            env.mykeys = set(nkeys).difference(env.okeys)
+            env.environment_already_set = True
+        
+    if display == 'all':
+        print_env(all=True)
+    elif len(str(display)) > 0:
+        print_env()
+    return
 
-    # set environment to default for EC2, if not specified on command line.
-
-    # puts(env)
-    env.keepalive = 15
-    env.connection_attempts = 5
-    if not env.has_key('GITUSER') or not env.GITUSER:
-        env.GITUSER = GITUSER
-    if not env.has_key('GITREPO') or not env.GITREPO:
-        env.GITREPO = GITREPO
-    if not env.has_key('BRANCH') or not env.BRANCH:
-        env.BRANCH = BRANCH
-    if not env.has_key('postfix') or not env.postfix:
-        env.postfix = POSTFIX
-    if not env.has_key('user') or not env.user:
-        env.user = USERNAME
-    if not env.has_key('APP_USERS') or not env.APP_USERS:
-        env.APP_USERS = USERS
-    if type(env.APP_USERS) == type(''): # if its just a string
-        print "USERS preset to {0}".format(env.APP_USERS)
-        env.APP_USERS = [env.APP_USERS] # change the type
-    if not env.has_key('HOME') or env.HOME[0] == '~' or not env.HOME:
-        with settings(user = env.APP_USERS[0]):
-            env.HOME = run("echo $HOME") # always set to $HOME of APP_USERS[0]
-                    
-    if not env.has_key('src_dir') or not env.src_dir:
-        env.src_dir = thisDir + '/../'
-    if not env.has_key('hosts') or env.hosts:
-        env.hosts = [env.host_string]
-    if not env.has_key('PREFIX') or env.PREFIX[0] == '~' or not env.PREFIX:
-        env.PREFIX = env.HOME
-    if not env.has_key('APP_CONF') or not env.APP_CONF:
-        env.APP_CONF = APP_CONF
-    if not env.has_key('APP_DIR_ABS') or env.APP_DIR_ABS[0] == '~' \
-    or not env.APP_DIR_ABS:
-        env.APP_DIR_ABS = '{0}/{1}'.format(env.PREFIX, APP_DIR)
-        env.APP_DIR = APP_DIR
-    else:
-        env.APP_DIR = env.APP_DIR_ABS.split('/')[-1]
-    if not env.has_key('INIT_SRC') or not env.INIT_SRC:
-        env.INIT_SRC = INIT_SRC_T.format(env.APP_DIR_ABS)
-    if not env.has_key('AWS_PROFILE') or not env.AWS_PROFILE:
-        env.AWS_PROFILE = AWS_PROFILE
-    if not env.has_key('INIT_TRG') or not env.INIT_TRG:
-        env.INIT_TRG = INIT_TRG
-    if not env.has_key('force') or not env.force:
-        env.force = 0
-    if not env.has_key('standalone') or not env.standalone:
-        env.standalone = 0
-    if not env.has_key('AMI_NAME') or not env.AMI_NAME:
-        env.AMI_NAME = 'Amazon'
-    if env.AMI_NAME in ['CentOS', 'SLES']:
-        env.user = 'root'
-    get_linux_flavor()
-
-    env.nprocs = 1
-    if env.linux_flavor in SUPPORTED_OS_LINUX:
-        env.nprocs = int(run('grep -c processor /proc/cpuinfo'))
-
-    puts("""Environment:
-            USER:              {0};
-            Key file:          {1};
-            hosts:             {2};
-            host_string:       {3};
-            postfix:           {4};
-            HOME:              {8};
-            APP_DIR_ABS:       {5};
-            APP_DIR:           {6};
-            USERS:             {7};
-            PREFIX:            {9};
-            SRC_DIR:          {10};
-            BRANCH:           {11};
-            instance_id:      {12};
-            """.\
-            format(env.user, env.key_filename, env.hosts,
-                   env.host_string, env.postfix, env.APP_DIR_ABS,
-                   env.APP_DIR, env.APP_USERS, env.HOME, env.PREFIX,
-                   env.src_dir, env.BRANCH, env.instance_id))
-
-
+@task
+def print_env(force=False, all=False):
+    """
+    Task prints the current fabric environment variables.
+    
+    force, if set, calls set_env again
+    all, if set, prints all variables instead of the private ones
+    """
+    puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
+    if not env.has_key('mykeys') or force:
+        print blue('Calling set_env. This will take a moment...')
+        with settings(environment_already_set = False):
+            set_env(hideing='everything')
+    print blue('Private variables:')
+    for k in env.mykeys:
+        if k not in ['okeys','mykeys']:
+            print '{0:50s}>>>{1:>50s}'.format(k,repr(env[k]))
+    if all:
+        print blue('\nStandard FABRIC variables:')
+        for k in env.okeys():
+            if k not in ['okeys','mykeys']:
+                print '{0:50s}>>>{1:>50s}'.format(k,repr(env[k]))
+    puts(green("\n******** Task {0} finished!********\n".format(inspect.stack()[0][3])))
+        
 
 @task
 def whatsmyip():
@@ -321,7 +363,11 @@ def whatsmyip():
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
     whatismyip = 'http://bot.whatismyipaddress.com/'
-    myip = urllib.urlopen(whatismyip).readlines()[0]
+    try:
+        myip = urllib.urlopen(whatismyip).readlines()[0]
+    except:
+        puts(red('Unable to derive IP through {0}'.format(whatismyip)))
+        myip = '127.0.0.1'
     puts(green('IpAddress = "{0}"'.format(myip)))
 
     return myip
@@ -355,6 +401,20 @@ def check_ssh():
             puts(red("SSH is NOT working after {0} seconds!".format(str(tries*t_sleep))))
             tries += 1
             time.sleep(t_sleep)
+
+def check_aws_meta():
+    """
+    Tasks checks the availability of the AWS meta data service.
+    This is used to figure out whether a specific node is an
+    AWS instance or not.
+    """
+    res = run('curl --connect-timeout 2 http://169.254.169.254/latest/meta-data/ami-id > /dev/null 2>&1; if [ $? -eq 0 ]; then echo 1; else echo 0; fi')
+    IP = '169.254.169.254'
+    if res == '0':
+        return False
+    else:
+        return True
+
 
 @task
 def create_key_pair():
@@ -512,6 +572,19 @@ def check_path(path):
     return res
 
 @task
+def check_user(user):
+    """
+    Task checking existence of user
+    """
+    res = run('if id -u "{0}" >/dev/null 2>&1; then echo 1; else echo 0; fi;'.format(user))
+    if res == '0': 
+        puts('User {0} does not exist'.format(user))
+        return False
+    else:
+        return True
+
+
+@task
 def check_python():
     """
     Check for the existence of correct version of python
@@ -524,7 +597,8 @@ def check_python():
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
     # Try whether there is already a local python installation for this user
-    set_env()
+    set_env(hideing='everything', display=True)
+
     ppath = env.APP_DIR_ABS.split(env.APP_DIR)[0] + '/python' # make sure this is an absolute path
     ppath = check_command('{0}/bin/python{1}'.format(ppath, APP_PYTHON_VERSION))
     if ppath:
@@ -680,7 +754,7 @@ def copy_public_keys():
         user, ext = os.path.splitext(filename)
         env.list_of_users.append(user)
         put(file, filename)
-
+        
 def virtualenv(command, **kwargs):
     """
     Just a helper function to execute commands in the virtualenv
@@ -716,7 +790,8 @@ def git_clone_tar(unpack=True):
     is thus using a tar-file, copied over from the calling machine.
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
-    set_env()
+    set_env(hideing='everything')
+
     egg_excl = ' '
     if env.GITREPO and env.GITUSER:
         local('cd /tmp && git clone {0}@{1} -b {2} {2}'.format(env.GITUSER, env.GITREPO, env.BRANCH))
@@ -761,7 +836,8 @@ def ngas_minimal_tar(transfer=True):
     into a tar file and copies it to the remote site.
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
-    set_env()
+    set_env(hideing='everything')
+
     parts = ['src',
              'cfg',
              'NGAS',
@@ -800,7 +876,7 @@ def get_info():
     """
     Show login and termination info
     """
-    set_env()
+    set_env(hideing='everything', display=True)
     puts(green('To login run:'))
     puts(red('$ ssh -i {0} {1}@{2}'.
         format(AWS_KEY, env.APP_USERS[0], env.host_string)))
@@ -861,7 +937,7 @@ def get_linux_flavor():
         puts(' '.join(SUPPORTED_OS))
         linux_flavor = prompt('LINUX flavor: ')
 
-    print "Remote machine running %s" % linux_flavor
+    puts(blue("Remote machine running %s" % linux_flavor))
     env.linux_flavor = linux_flavor
     return linux_flavor
 
@@ -872,7 +948,11 @@ def get_instance_id():
     It alos sets the variable env.instance_id
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
-    env.instance_id = run("wget -qO- http://169.254.169.254/latest/meta-data/instance-id")
+    if check_command('wget'):
+        env.instance_id = run("wget -qO- http://169.254.169.254/latest/meta-data/instance-id")
+    else:
+        env.instance_id = 'UNKNOWN'
+    puts(env.instance_id)
     puts(green("\n******** Task {0} finished!********\n".\
         format(inspect.stack()[0][3])))
     return env.instance_id
@@ -886,7 +966,10 @@ def system_install():
     NOTE: Most of this requires sudo access on the machine(s)
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
-    set_env()
+    
+    with settings(environment_already_set=False):
+        set_env(hideing='everything')
+
 
     # Install required packages
     linux_flavor = get_linux_flavor()
@@ -939,7 +1022,8 @@ def system_check():
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
     with hide('running','stderr','stdout'):
-        set_env()
+        set_env(hideing='everything', display=True)
+
 
         re = run('cat /etc/issue')
     linux_flavor = re.split()
@@ -1014,7 +1098,9 @@ def user_setup():
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
 
-    set_env()
+    with settings(environment_setup_already = False):
+        set_env(hideing='everything', display=True)
+
     if not env.user:
         env.user = USERNAME # defaults to ec2-user
     group = env.user # defaults to the same as the user name
@@ -1052,7 +1138,8 @@ def python_setup():
     None
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
-    set_env()
+    set_env(hideing='everything', display=True)
+
     if check_python():
         puts(green("\n******** Valid Python found {0}!********\n".format(env.PYTHON)))
         return
@@ -1082,7 +1169,8 @@ def virtualenv_setup():
     setup virtualenv with the detected or newly installed python
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
-    set_env()
+    set_env(hideing='everything', display=True)
+
     check_python()
     print "CHECK_DIR: {0}".format(env.APP_DIR_ABS+'/src')
     if check_dir(env.APP_DIR_ABS+'/src') and not env.force:
@@ -1110,7 +1198,8 @@ def ngas_buildout(typ='archive'):
     will be installed to avoid accessing the internet.
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
-    set_env()
+    set_env(hideing='everything')
+
     run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
 
     with cd(env.APP_DIR_ABS):
@@ -1168,7 +1257,8 @@ def install_user_profile():
     NOTE: This will be executed for the user running NGAS.
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
-    set_env()
+    set_env(hideing='everything')
+
     nuser = env.APP_USERS[0]
     if env.user != nuser:
         with cd(env.HOME):
@@ -1204,7 +1294,8 @@ def ngas_full_buildout(typ='archive'):
     Perform the full install and buildout
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
-    set_env()
+    set_env(hideing='everything')
+
 
     # First get the sources
     #
@@ -1373,7 +1464,8 @@ def init_deploy(typ='archive'):
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
     (initFile, initLink, cfg, lcfg) = initName(typ=typ)
 
-    set_env()
+    set_env(hideing='everything')
+
 
     sudo('cp {0}/src/ngamsStartup/{1} /etc/init.d/{2}'.\
          format(env.APP_DIR_ABS, initFile, initLink))
@@ -1436,11 +1528,9 @@ def test_deploy():
 
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
     test_env()
-    # set environment to default for EC2, if not specified otherwise.
-    set_env()
     install(sys_install=True, user_install=True, init_install=True)
+    sudo('chown -R {0}:{0} {0}'.format(env.HOME))
     with settings(user=env.APP_USERS[0]):
-        sudo('chown -R {0}:{0} /home/{0}'.format(user))
         run('ngamsDaemon start')
     puts(green("\n******** SERVER STARTED!********\n"))
     if test_status():
@@ -1457,7 +1547,8 @@ def test_status():
     """
     puts(blue("\n\n***** Entering task {0} *****\n\n".format(inspect.stack()[0][3])))
 
-    set_env()
+    set_env(hideing='everything')
+
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
     try:
         serv = urllib.urlopen('http://{0}:7777/STATUS'.format(env.host_string))
@@ -1500,7 +1591,8 @@ def archiveSource():
                     capture=True)
         if not res:
             abort('src_dir does not point to a valid NGAS source directory!!')
-    #set_env()
+    #set_env(hideing='everything')
+
     client=ngamsPClient.ngamsPClient(host=env.host_string, port=7777)
     ngas_minimal_tar(transfer=False)
     stat = client.archive(fileUri='/tmp/ngas_src.tar.gz',mimeType='application/octet-stream')
@@ -1519,7 +1611,7 @@ def install(sys_install=True, user_install=True,
     Note: Requires root permissions!
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
-    set_env()
+    set_env(hideing='nothing', display=True)
     if sys_install and sys_install != 'False': system_install()
     if env.postfix:
         postfix_config()
@@ -1567,13 +1659,18 @@ def uninstall(clean_system=False):
           system packages.
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
-    set_env()
+    set_env(hideing='everything')
+
     if env.PREFIX != env.HOME: # avoid removing the home directory
         sudo('rm -rf {0}'.format(env.PREFIX), warn_only=True)
     run('rm -rf {0}/../python {0}'.format(env.APP_DIR_ABS), warn_only=True)
     run('rm -rf /tmp/Py* /tmp/ngas* /tmp/virtual*')
+    local('rm -rf /tmp/ngas*')
     with settings(user = env.APP_USERS[0]):
-        run('mv .bash_profile_orig .bash_profile', warn_only=True)
+        if check_path('.bash_profile_orig'):
+            run('mv .bash_profile_orig .bash_profile', warn_only=True)
+        else: # if there was nothing before just remove the current one
+            run('mv .bash_profile .bash_profile.bak', warn_only=True)
     
     if clean_system and clean_system != 'False': # don't delete the users and system settings by default.
         for u in env.APP_USERS:
@@ -1614,7 +1711,8 @@ def upgrade():
                     capture=True)
         if not res:
             abort(red('src_dir does not point to a valid NGAS source directory!!'))
-    set_env()
+    set_env(hideing='everything')
+
     run('$NGAS_PREFIX/bin/ngamsDaemon stop')
     rsync_project(local_dir=env.src_dir+'/src', remote_dir=env.APP_DIR_ABS, exclude=".git")
     #git_clone_tar()
@@ -1636,11 +1734,15 @@ def assign_ddns():
     NOTE: Obviously this should only be carried out for one NGAS deployment!!
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
-    sudo('yum-config-manager --enable epel')
-    sudo('yum install -y noip')
-    sudo('sudo noip2 -C')
-    sudo('chkconfig noip on')
-    sudo('service noip start')
+    with cd('/usr/local/src'):
+        sudo('wget http://www.no-ip.com/client/linux/noip-duc-linux.tar.gz')
+        sudo('tar xf noip-duc-linux.tar.gz')
+        sudo('cd noip-2.1.9-1')
+        sudo('make install')
+    sudo('noip2 -C')
+    # TODO: put startup script in repo and install it
+    # sudo('chkconfig noip on')
+    # sudo('service noip start')
     puts(green("\n***** Dynamic IP address assigned ******\n"))
 
 @task
@@ -1702,7 +1804,7 @@ def terminate(instance_id):
     for k in tagdict:
         print '{0}: {1}'.format(k,tagdict[k]),
     print
-    if tagdict['Created By'] != userAThost:
+    if tagdict.has_key('Created By') and tagdict['Created By'] != userAThost:
         puts('******************************************************')
         puts('WARNING: This instances has not been created by you!!!')
         puts('******************************************************')
@@ -1726,3 +1828,6 @@ def cleanup_tmp():
                  ]
     for item in tmp_items:
         run('rm -rf /tmp/{0}'.format(item))
+
+
+# -- EOF --

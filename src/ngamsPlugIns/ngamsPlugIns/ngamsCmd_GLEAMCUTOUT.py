@@ -118,6 +118,7 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
 
     file = pyfits.open(infile)
     head = file[0].header.copy()
+    dim = file[0].data.shape
     cd1 = head.get('CDELT1') if head.get('CDELT1') else head.get('CD1_1')
     cd2 = head.get('CDELT2') if head.get('CDELT2') else head.get('CD2_2')
     if cd1 is None or cd2 is None:
@@ -133,7 +134,10 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
     hdr_tpl = '{0}/{1}_temp_montage.hdr'.format(work_dir, st)
     head.toTxtFile(hdr_tpl, clobber=True)
     cmd = "{0} {1} {2} {3}".format(montage_reproj_exec,infile, outfile,hdr_tpl)
+    info(3, "Executing regridding {0}".format(cmd))
+    st = time.time()
     execCmd(cmd)
+    info(3, "Regridding {1} took {0} seconds".format((time.time() - st), dim))
     return hdr_tpl
 
 def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed):
@@ -202,7 +206,9 @@ def get_bparam(ra, dec, psf_path):
     #psflist = pyfits.open('mosaic_Week2_freqrange_psf.fits')
     psflist = pyfits.open(psf_path)
     w = pywcs.WCS(psflist[0].header, naxis=2)
+    #pixcoords = w.wcs_world2pix([[ra, dec]], 0)[0]
     pixcoords = w.wcs_world2pix([[ra, dec]], 0)[0]
+    pixcoords = [int(round(elem)) for elem in pixcoords]
     bmaj = psflist[0].data[0][pixcoords[1]][pixcoords[0]]
     bmin = psflist[0].data[1][pixcoords[1]][pixcoords[0]]
     bpa = psflist[0].data[2][pixcoords[1]][pixcoords[0]]

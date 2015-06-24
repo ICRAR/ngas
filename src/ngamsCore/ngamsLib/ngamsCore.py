@@ -207,7 +207,7 @@ def getNgamsLicense():
 
     Returns:   Contents of license agreement (string).
     """
-    return pkg_resources.resource_string('ngamsData', 'LICENSE')
+    return pkg_resources.resource_string('ngamsData', 'COPYING')
 
 
 def prFormat1():
@@ -913,7 +913,11 @@ def getMyIpAddress():
     OUTPUT:   string, IP v4 address in standard notation
     """
     whatismyip = 'http://bot.whatismyipaddress.com/'
-    return urllib.urlopen(whatismyip).readlines()[0]
+    try:
+        myIp = urllib.urlopen(whatismyip).readlines()[0]
+    except: # can't figure out ext. IP address use internal one instead
+        myIp = socket.gethostbyname(socket.gethostname())
+    return myIp
 
 def getIpAddress():
     global NGAMS_HOST_IP
@@ -945,7 +949,6 @@ def getHostName(cfgFile=None):
     # If no IP is given in the configuration
     # figure out one of our external IPs
     if not ip:
-        # TODO: This slows down *everything*, and needs connection to the web
         # We could use this instead?
         # ip = socket.gethostbyname(socket.gethostname())
         ip = getMyIpAddress()
@@ -956,11 +959,12 @@ def getHostName(cfgFile=None):
     # Figure out the name for our ip and return it
     # In the case of '0.0.0.0' we use the getMyIpAddress()
     if ip[0] == '0':
-        ip = getMyIpAddress()
-    try:
-        NGAMS_HOST_NAME = socket.gethostbyaddr(ip)[0]
-    except socket.herror:
         NGAMS_HOST_NAME = os.uname()[1]
+    else:
+        try:
+            NGAMS_HOST_NAME = socket.gethostbyaddr(ip)[0]
+        except socket.herror:
+            NGAMS_HOST_NAME = os.uname()[1]
     return NGAMS_HOST_NAME
 
 
