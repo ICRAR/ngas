@@ -49,7 +49,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
     def mirReqInQueue(self,
                       fileId,
                       fileVersion,
-                      instanceId = getHostId()):
+                      instanceId = None):
         """
         Probe if the a Mirroring Request with the given ID is in the
         associated Mirroring Queue.
@@ -64,7 +64,10 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         Returns:      Indication if the request is in the queue (boolean).
         """
         T = TRACE()
-        
+
+        if instanceId is None:
+            instanceId = getHostId()
+
         sqlQuery = "SELECT file_id FROM %s WHERE file_id='%s' " +\
                    "AND file_version=%d AND instance_id='%s'"
         sqlQuery = sqlQuery %\
