@@ -157,7 +157,7 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
          for r in row:
             fullfiles.append(r[0])
 
-         if len(row) != len(filenames):
+         if len(row) < len(filenames):
             raise ErrorCodeException(ErrorCode.invalid_args_error, "There are files in the list that are not part of NGAS %s %s" % (str(len(row)), str(len(filenames))))
          
          return fullfiles
