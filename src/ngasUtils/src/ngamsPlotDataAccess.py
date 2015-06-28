@@ -32,6 +32,9 @@ from os import walk
 from collections import namedtuple, defaultdict
 import numpy as np
 import datetime as dt
+import matplotlib
+# see http://stackoverflow.com/questions/4706451/how-to-save-a-figure-remotely-with-pylab/4706614#4706614
+matplotlib.use('Agg')
 import pylab as pl
 from optparse import OptionParser
 import urlparse
