@@ -185,7 +185,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
     def getMirReq(self,
                   fileId,
                   fileVersion,
-                  instanceId = getHostId()):
+                  instanceId = None):
         """
         Read the information for a mirroring request and return the raw result.
 
@@ -199,6 +199,9 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         Returns:      Raw result (list|[]).
         """
         T = TRACE()
+
+        if instanceId is None:
+            instanceId = getHostId()
 
         sqlQuery = "SELECT %s FROM %s mq WHERE file_id='%s' AND " +\
                    "file_version=%d AND instance_id='%s'"
@@ -249,7 +252,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
     def getMirReqObj(self,
                      fileId,
                      fileVersion,
-                     instanceId = getHostId()):
+                     instanceId = None):
         """
         Read the information about a mirroring request and return the
         a Mirroring Request Object.
@@ -266,6 +269,8 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
         
+        if instanceId is None:
+            instanceId = getHostId()
         res = self.getMirReq(fileId, fileVersion, instanceId)
         if (len(res[0]) == 0): return None            
         mirReqObj = unpackSqlResult(res[0][0])
@@ -276,7 +281,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
     def deleteMirReq(self,
                      fileId,
                      fileVersion,
-                     instanceId = getHostId()):
+                     instanceId = None):
         """
         Delete an entry in the NGAS Mirroring Queue.
 
@@ -290,6 +295,9 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         Returns:      Reference to object itself.
         """
         T = TRACE()
+
+        if instanceId is None:
+            instanceId = getHostId()
 
         # TODO: The two queries in this method should be carried out in one
         # transaction, so that a roll-back is possible in case of failure.
@@ -315,7 +323,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
 
 
     def dumpMirroringQueue(self,
-                           instanceId = getHostId()):
+                           instanceId = None):
         """
         Dump the entire contents of the DB Mirroring Queue into a DBM
         in raw format.
@@ -324,7 +332,10 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
                    Queue (string).
         """
         T = TRACE()
-        
+
+        if instanceId is None:
+            instanceId = getHostId()
+
         sqlQuery = "SELECT %s FROM %s mq WHERE instance_id='%s'"
         sqlQuery = sqlQuery % (ngamsDbCore.getNgasMirQueueCols(),
                                ngamsDbCore.NGAS_MIR_QUEUE, instanceId)

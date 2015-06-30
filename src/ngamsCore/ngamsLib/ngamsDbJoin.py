@@ -1212,7 +1212,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
 
     def getSpaceAvailForHost(self,
-                             hostId = getHostId()):
+                             hostId = None):
         """
         Return the amount of free disk space for the given host. This is
         calculated as the total sum of free space for all non-completed volumes
@@ -1223,6 +1223,9 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         Returns:    Amount of free disk space in MB bytes (float)
         """
         T = TRACE()
+
+        if hostId is None:
+            hostId = getHostId()
 
         sqlQuery = "SELECT sum(available_mb) FROM ngas_disks WHERE " +\
                    "host_id='%s'"
@@ -1238,7 +1241,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
 
     def getCacheContents(self,
-                         hostId = getHostId()):
+                         hostId = None):
         """
         Execute query by means of a cursor, with which the entire contents
         of the cache can be downloaded.
@@ -1249,6 +1252,9 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                    Cursor object (<NG/AMS DB Cursor Object API>).
         """
         T = TRACE()
+
+        if hostId is None:
+            hostId = getHostId()
 
         sqlQuery = "SELECT disk_id, file_id, file_version, " +\
                    "cache_time, cache_delete FROM ngas_cache " +\
