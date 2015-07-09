@@ -44,6 +44,8 @@ from fabric.utils import puts, abort, fastprint
 from fabric.exceptions import NetworkError
 from fabric.colors import *
 
+from Crypto.PublicKey import RSA
+
 # FILTER = 'The cray-mpich2 module is now deprecated and will be removed in a future release.\r\r\nPlease use the cray-mpich module.'
 
 #@task
@@ -83,7 +85,7 @@ AWS_REGION = 'us-east-1'
 AWS_PROFILE = 'NGAS'
 KEY_NAME = 'icrar_ngas'
 AWS_KEY = os.path.expanduser('~/.ssh/{0}.pem'.format(KEY_NAME))
-SECURITY_GROUPS = ['NGAS'] # Security group allows SSH and other ports
+AWS_SEC_GROUP = 'NGAS' # Security group allows SSH and other ports
 
 
 BRANCH = 'master'    # this is controlling which branch is used in git clone
@@ -304,15 +306,19 @@ def set_env(hideing='nothing', display=False):
                 env.force = 0
             if not env.has_key('standalone') or not env.standalone:
                 env.standalone = 0
-            if not env.has_key('AMI_NAME') or not env.AMI_NAME:
-                env.AMI_NAME = 'Amazon'
-            if env.AMI_NAME in ['CentOS', 'SLES']:
-                env.user = 'root'
-            get_linux_flavor()
+
             if check_aws_meta(): # is this an AWS instance? 
                 get_instance_id()
             else:
                 env.instance_id = 'N/A'
+
+
+            if env.instance_id != 'N/A' and (not env.has_key('AMI_NAME') or not env.AMI_NAME):
+                env.AMI_NAME = AMI_NAME
+                env.user = USERNAME
+            if env.instance_id != 'N/A' and env.AMI_NAME in ['CentOS', 'SLES']:
+                env.user = 'root'
+            get_linux_flavor()
         
             env.nprocs = 1
             if env.linux_flavor in SUPPORTED_OS_LINUX:
@@ -415,9 +421,31 @@ def check_aws_meta():
     else:
         return True
 
+def check_create_aws_sec_group():
+    """
+    Check whether default security group exists
+    """
+    puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
+    conn = connect()
+    sec = conn.get_all_security_groups()
+    conn.close()
+    if map(lambda x:x.name, sec).count(AWS_SEC_GROUP):
+        puts(green("\n******** Group {0} exists!********\n".format(AWS_SEC_GROUP)))
+        return True
+    else:
+        ngassg = conn.create_security_group(AWS_SEC_GROUP, 'NGAS default permissions')
+        ngassg.authorize('tcp', 22, 22, '0.0.0.0/0')
+        ngassg.authorize('tcp', 80, 80, '0.0.0.0/0')
+        ngassg.authorize('tcp', 5678, 5678, '0.0.0.0/0')
+        ngassg.authorize('tcp', 7777, 7777, '0.0.0.0/0')
+        ngassg.authorize('tcp', 8888, 8888, '0.0.0.0/0')
+        return False
+    puts(green("\n******** Task {0} finished!********\n".\
+        format(inspect.stack()[0][3])))
+    
 
 @task
-def create_key_pair():
+def aws_create_key_pair():
     """
     Create the AWS_KEY if it does not exist already and copies it into ~/.ssh
     """
@@ -425,23 +453,59 @@ def create_key_pair():
     if not env.has_key('AWS_PROFILE') or not env.AWS_PROFILE:
         env.AWS_PROFILE = AWS_PROFILE
     conn = boto.ec2.connect_to_region(AWS_REGION, profile_name=env.AWS_PROFILE)
-    kp = None
-    if not conn.get_key_pair(KEY_NAME):
+    kp = conn.get_key_pair(KEY_NAME)
+    if not kp: # key does not exist on AWS
         kp = conn.create_key_pair(KEY_NAME)
         puts(green("\n******** KEY_PAIR created!********\n"))
-    if not os.path.exists(os.path.expanduser(AWS_KEY)):
+        if os.path.exists(os.path.expanduser(AWS_KEY)):
+            os.unlink(AWS_KEY)
+        kp.save('~/.ssh/')
+        Rkey = RSA.importKey(kp.material)
+        env.SSH_PUBLIC_KEY = Rkey.exportKey('OpenSSH')
+        puts(green("\n******** KEY_PAIR written!********\n"))
+    else:
+        puts(green('***** KEY_PAIR exists! *******'))
+
+    if not os.path.exists(os.path.expanduser(AWS_KEY)): # don't have the private key
         if not kp:
             kp = conn.get_key_pair(KEY_NAME)
         puts(green("\n******** KEY_PAIR retrieved********\n"))
+        Rkey = RSA.importKey(kp.material)
+        env.SSH_PUBLIC_KEY = Rkey.exportKey('OpenSSH')
         kp.save('~/.ssh/')
         puts(green("\n******** KEY_PAIR written!********\n"))
     puts(green("\n******** Task {0} finished!********\n".\
         format(inspect.stack()[0][3])))
     conn.close()
     return
+
+@task
+def create_key_pair():
+    """
+    Create a key pair using pycrypto and returning key object
     
+    NOTE: access to
+    private key: key.exportKey('PEM')
+    public key:  key.exportKey('OpenSSH')
+    """
+    puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
 
+    key_fname = os.path.expanduser(AWS_KEY)
+    if os.path.exists(key_fname): # have the private key
+        with open(key_fname, 'r') as content_file:
+            key = content_file.read()
+            okey = RSA.importKey(key)
+    else:        
+        okey = RSA.generate(2048, os.urandom)
+        with open(key_fname, 'w') as content_file:
+            chmod(key_fname, 0600)
+            content_file.write(okey.exportKey('PEM'))
+    
+    env.SSH_PUBLIC_KEY = okey.exportKey('OpenSSH')
 
+    puts(green("\n******** Task {0} finished!********\n".\
+        format(inspect.stack()[0][3])))
+    return
 
 def create_instance(names, use_elastic_ip, public_ips):
     """Create the EC2 instance
@@ -469,7 +533,7 @@ def create_instance(names, use_elastic_ip, public_ips):
                 abort('Could not disassociate the IP {0}'.format(public_ip))
 
     reservations = conn.run_instances(AMI_IDs[env.AMI_NAME], instance_type=INSTANCE_TYPE, \
-                                    key_name=KEY_NAME, security_groups=SECURITY_GROUPS,\
+                                    key_name=KEY_NAME, security_groups=[AWS_SEC_GROUP],\
                                     min_count=number_instances, max_count=number_instances)
     instances = reservations.instances
     # Sleep so Amazon recognizes the new instance
@@ -521,6 +585,11 @@ def create_instance(names, use_elastic_ip, public_ips):
     # The instance is started, but not useable (yet)
     puts('Started the instance(s) now waiting for the SSH daemon to start.')
     env.host_string = host_names[0]
+    
+    if env.AMI_NAME in ['CentOS', 'SLES']:
+        env.user = 'root'
+    else:
+        env.user = USERNAME
     check_ssh()
     return host_names
 
@@ -602,11 +671,13 @@ def check_python():
     ppath = check_command('{0}/bin/python{1}'.format(ppath, APP_PYTHON_VERSION))
     if ppath:
         env.PYTHON = ppath
+        puts(green("\n******** Task {0} finished!********\n".format(inspect.stack()[0][3])))
         return ppath
     # Try python2.7 first
     ppath = check_command('python{0}'.format(APP_PYTHON_VERSION))
     if ppath:
         env.PYTHON = ppath
+        puts(green("\n******** Task {0} finished!********\n".format(inspect.stack()[0][3])))
         return ppath
 
     # don't check for any other python, since we need to run
@@ -835,7 +906,6 @@ def ngas_minimal_tar(transfer=True):
     into a tar file and copies it to the remote site.
     """
     puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
-    set_env(hideing='everything')
 
     parts = ['src',
              'cfg',
@@ -1110,9 +1180,10 @@ def user_setup():
         sudo('chmod 700 /home/{0}/.ssh'.format(user))
         sudo('chown -R {0}:{1} /home/{0}/.ssh'.format(user,group))
         home = run('echo $HOME')
-        put('{0}machine-setup/authorized_keys'.format(env.src_dir),
-                '/tmp/authorized_keys')
-        sudo('mv /tmp/authorized_keys /home/{0}/.ssh/authorized_keys'.format(user))
+        create_key_pair()
+#         put('{0}machine-setup/authorized_keys'.format(env.src_dir),
+#                 '/tmp/authorized_keys')
+        sudo("echo '{0}' >> /home/{1}/.ssh/authorized_keys".format(env.SSH_PUBLIC_KEY, user))
         sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{1} /home/{0}/.ssh/authorized_keys'.format(user, group))
         
@@ -1321,8 +1392,8 @@ def ngas_full_buildout(typ='archive'):
             dbLocFlags='--berkeley-db-incdir={0}/include/db60 --berkeley-db-libdir={0}/lib/db60/'.format(MACPORT_DIR)
             pkgmgr = check_brew_port()
             if pkgmgr == 'brew':
-               cellardir=check_brew_cellar()
-               db_version = run('ls -tr1 {0}/berkeley-db'.format(cellar_dir)).split()[-1]
+               cellardir = check_brew_cellar()
+               db_version = run('ls -tr1 {0}/berkeley-db'.format(cellardir)).split()[-1]
                dbLocFlags = '--berkeley-db={0}/berkeley-db/{1}'.format(cellardir,db_version)
 
             virtualenv('cd /tmp/bsddb3-6.1.0; ' + \
@@ -1372,7 +1443,7 @@ def test_env():
     if not env.has_key('key_filename') or not env.key_filename:
         env.key_filename = AWS_KEY
     if not env.has_key('AMI_NAME') or not env.AMI_NAME:
-        env.AMI_NAME = 'CentOS'
+        env.AMI_NAME = AMI_NAME
     env.instance_name = INSTANCE_NAME.format(env.BRANCH)
     if not env.has_key('user') or not env.user:
         env.user = USERNAME
@@ -1395,7 +1466,9 @@ def test_env():
     if env.AMI_NAME in ['CentOS', 'SLES']:
         env.user = 'root'
     # Check and create the key_pair if necessary
-    create_key_pair()
+    aws_create_key_pair()
+    # Check and create security group if necessary
+    check_create_aws_sec_group()
     # Create the instance in AWS
     host_names = create_instance([env.instance_name], use_elastic_ip, [public_ip])
     env.hosts = host_names
@@ -1639,12 +1712,12 @@ def install(sys_install=True, user_install=True,
         if not ppath or str(python_install) == 'True':
             python_setup()
 
-    if env.PREFIX != env.HOME: # generate non-standard ngas_rt directory
-        sudo('mkdir -p {0}'.format(env.PREFIX))
     with settings(user=env.APP_USERS[0]):
+        if env.PREFIX != env.HOME: # generate non-standard ngas_rt directory
+            run('mkdir -p {0}'.format(env.PREFIX))
         virtualenv_setup()
-    if env.PREFIX != env.HOME:
-        sudo('chown -R {0}:{0} {1}'.format(env.APP_USERS[0], env.PREFIX))
+#     if env.PREFIX != env.HOME:
+#         sudo('chown -R {0}:{0} {1}'.format(env.APP_USERS[0], env.PREFIX))
     with settings(user=env.APP_USERS[0]):
         ngas_full_buildout(typ=typ)
         cleanup_tmp()
