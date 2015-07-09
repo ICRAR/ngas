@@ -429,7 +429,7 @@ def check_create_aws_sec_group():
     conn = connect()
     sec = conn.get_all_security_groups()
     conn.close()
-    if map(lambda x:x.name, sec).count(AWS_SEC_GROUP):
+    if map(lambda x:x.name.upper(), sec).count(AWS_SEC_GROUP):
         puts(green("\n******** Group {0} exists!********\n".format(AWS_SEC_GROUP)))
         return True
     else:
