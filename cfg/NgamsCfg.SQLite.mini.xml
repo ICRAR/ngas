@@ -80,6 +80,7 @@
     <MimeTypeMap Extension="fits" MimeType="image/x-fits"/>
     <MimeTypeMap Extension="nglog" MimeType="ngas/nglog"/>
     <MimeTypeMap Extension="nglog.gz" MimeType="application/x-nglog"/>
+    <MimeTypeMap Extension="txt" MimeType="text/ascii"/>
     <MimeTypeMap Extension="log" MimeType="text/log-file"/>
     <MimeTypeMap Extension="log.Z" MimeType="application/x-clog"/>
     <MimeTypeMap Extension="paf" MimeType="ngas/paf"/>
@@ -163,6 +164,13 @@
     </Stream>
     <Stream MimeType="ngas/nglog"
             PlugIn="ngamsNgLogPlugIn"
+            PlugInPars="">
+      <StorageSetRef StorageSetId="volume1"/>
+      <StorageSetRef StorageSetId="volume2"/>
+      <StorageSetRef StorageSetId="volume3"/>
+    </Stream>
+    <Stream MimeType="text/ascii"
+            PlugIn="ngamsGenDapi"
             PlugInPars="">
       <StorageSetRef StorageSetId="volume1"/>
       <StorageSetRef StorageSetId="volume2"/>
