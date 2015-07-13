@@ -1844,6 +1844,8 @@ def list_instances():
         for k in tagdict:
             print '{0}: {1}'.format(k,tagdict[k]),
         print
+        print 'Launch time: {0}'.format(r.instances[0].launch_time)
+        print
         print
 
 @task
