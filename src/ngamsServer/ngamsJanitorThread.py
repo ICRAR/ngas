@@ -866,7 +866,8 @@ def checkDbChangeCache(srvObj,
     snapshotDbm = None
     try:
         snapshotDbm = _openDbSnapshot(srvObj.getCfg(), diskMtPt)
-        if (snapshotDbm == None): return
+        if (snapshotDbm == None):
+            return
 
         # Remove possible, old /<mt pt>/.db/cache/*.xml snapshots.
         # TODO: Remove when it can be assumed that all old XML snapshots have
@@ -943,7 +944,7 @@ def checkDbChangeCache(srvObj,
 
         # Clean up, delete the temporary File Remove Status Document.
         snapshotDbm.sync()
-        snapshotDbm.close()
+
         for cacheFile in tmpCacheFiles:
             rmFile(cacheFile)
         totTime = timer.stop()
@@ -955,20 +956,10 @@ def checkDbChangeCache(srvObj,
             tmpMsg += "Total time: %.3fs. Time per file: %.3fs." %\
                       (totTime, (totTime / fileCount))
         info(4, tmpMsg)
-    except Exception, e:
-        try:
-            if (snapshotDbm): snapshotDbm.sync()
-        except:
-            pass
-        try:
-            if (snapshotDbm): snapshotDbm.close()
-        except:
-            pass
-        try:
-            if (snapshotDbm): del snapshotDbm
-        except:
-            pass
-        raise e
+    finally:
+        if snapshotDbm:
+            snapshotDbm.close()
+       
 
 
 def updateDbSnapShots(srvObj,
