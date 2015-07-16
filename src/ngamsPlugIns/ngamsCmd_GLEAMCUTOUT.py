@@ -72,7 +72,7 @@ fits_copy_exec = "/home/ngas/software/fitscopy"
 /mnt/gleam/software/bin/ds9 -grid -geometry 1250x1250  $file -cmap Heat -scale limits $min_max -zoom 0.25 -saveimage "$outname" 100 -exit
 /mnt/gleam/software/bin/ds9 -colorbar -grid -geometry 1250x1250  $file -cmap Heat -scale zscale -zoom 0.25 -saveimage "$outname" -exit
 """
-cmd_ds9 = '{0}/ds9 -grid -geometry 1250x1250  {1} -cmap Heat -scale zscale -saveimage "{2}" -exit'
+cmd_ds9 = '{0}/ds9 -grid yes -grid numerics fontsize 14 -grid numerics fontweight bold -grid skyformat degrees -geometry 1250x1250  {1} -cmap Heat -zoom to fit -scale zscale -saveimage "{2}" -exit'
 qs = "SELECT a.mount_point || '/' || b.file_name AS file_full_path, a.host_id FROM ngas_disks a, ngas_files b WHERE a.disk_id = b.disk_id AND b.file_id = '%s' ORDER BY b.file_version DESC"
 cmd_cutout = "{0}/bin/getfits -sv -o %s -d %s %s %s %s J2000 %d %d".format(wcstools_path_dict[my_host]) # % (outputfname, outputdir, inputfname, ra, dec, width, height)
 cmd_fits2jpg = "/mnt/gleam/software/bin/fits2jpeg -fits %s -jpeg %s -nonLinear" # % (fitsfname, jpegfname)
