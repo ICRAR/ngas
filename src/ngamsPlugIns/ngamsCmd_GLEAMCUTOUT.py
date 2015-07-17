@@ -123,21 +123,22 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
     file = pyfits.open(infile)
     head = file[0].header.copy()
     dim = file[0].data.shape
-    cd1 = head.get('CDELT1') if head.get('CDELT1') else head.get('CD1_1')
-    cd2 = head.get('CDELT2') if head.get('CDELT2') else head.get('CD2_2')
-    if cd1 is None or cd2 is None:
-        raise Exception("Missing CD or CDELT keywords in header")
-    f1 = astro_field.Field([xc, yc], xw * 2)
-    ref_val = f1.cornersLonLat[2]
-    head['CRVAL1'] = ref_val[0]#xc
-    head['CRVAL2'] = ref_val[1]#yc
+    #cd1 = head.get('CDELT1') if head.get('CDELT1') else head.get('CD1_1')
+    #cd2 = head.get('CDELT2') if head.get('CDELT2') else head.get('CD2_2')
+    #if cd1 is None or cd2 is None:
+    #    raise Exception("Missing CD or CDELT keywords in header")
+    #f1 = astro_field.Field([xc, yc], xw * 2)
+    #ref_val = f1.cornersLonLat[2]
+    head['CRVAL1'] = xc#ref_val[0]#xc
+    head['CRVAL2'] = yc#ref_val[1]#yc
     #cdelt = numpy.sqrt(cd1 ** 2 + cd2 ** 2)
-    head['CRPIX1'] = 1#xw / cdelt
-    head['CRPIX2'] = 1#yw / cdelt
+    #1.5 = 3 / 2
+    head['CRPIX1'] = dim[1] / 1.5 / 2#1#xw / cdelt
+    head['CRPIX2'] = dim[0] / 1.5 / 2#1#yw / cdelt
     #head['CTYPE1'] = "RA---SIN"
     #head['CTYPE2'] = "DEC--SIN"
-    #head['NAXIS1'] = int(xw * 2 / cdelt)
-    #head['NAXIS2'] = int(yw * 2 / cdelt)
+    head['NAXIS1'] = int(dim[1] / 1.5)#int(xw * 2 / cdelt)
+    head['NAXIS2'] = int(dim[0] / 1.5)#int(yw * 2 / cdelt)
     st = str(time.time()).replace('.', '_')
     hdr_tpl = '{0}/{1}_temp_montage.hdr'.format(work_dir, st)
     head.toTxtFile(hdr_tpl, clobber=True)
@@ -150,13 +151,13 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
 
 def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed):
     outfile_nm = "{0}/{1}".format(work_dir, cut_fitsnm)
-    factor = 2
-    """
+    #factor = 2
+
     if (do_regrid):
-        factor = 2
+        factor = 3
     else:
         factor = 2
-    """
+
     cmd1 = "{0} {1} {2} {3} {4} {5} {6}".format(montage_cutout_exec,
                                                 filePath, outfile_nm,
                                                 ra, #float(coord[0]),

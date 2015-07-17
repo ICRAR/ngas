@@ -68,7 +68,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 		  <property name="notForRenderer">scs.xml</property>
 	  </inputKey>
     <inputKey name="size" type="real" description="Angular size of the cutout image in degrees" multiplicity="single" tablehead="Angular size">
-      <property key="defaultForForm">5</property>
+      <property key="defaultForForm">2</property>
       <values max="5.0" min="0.0">
       </values>
     </inputKey>
@@ -118,7 +118,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
           if (120 &lt;= ra &lt;= 232.5):
             res.append((3, 176.25, -15.0))
           if (232.5 &lt;= ra &lt;= 292.5):
-            res.append(4, 262.5, -15.0)
+            res.append((4, 262.5, -15.0))
         if (-90 &lt;= dec &lt;= -30):
           if (315 &lt;= ra &lt;= 360 or ra == 0):
             res.append((1, 337.5, -60.0))
@@ -195,7 +195,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
   <condDesc combining="True">
     <inputKey name="grid_opt" type="text" required="True" multiplicity="single" tablehead="Options">
       <values multiOk="True">
-        <option title="Regrid the cutout image (which takes a bit longer)">regrid</option>
+        <option title="Regrid the image onto a more regular and perpendicular grid (which takes a bit longer)">regrid</option>
       </values>
     </inputKey>
 
