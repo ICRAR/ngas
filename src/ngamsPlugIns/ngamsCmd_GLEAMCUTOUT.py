@@ -72,6 +72,7 @@ fits_copy_exec = "/home/ngas/software/fitscopy"
 /mnt/gleam/software/bin/ds9 -grid -geometry 1250x1250  $file -cmap Heat -scale limits $min_max -zoom 0.25 -saveimage "$outname" 100 -exit
 /mnt/gleam/software/bin/ds9 -colorbar -grid -geometry 1250x1250  $file -cmap Heat -scale zscale -zoom 0.25 -saveimage "$outname" -exit
 """
+#-grid skyformat degrees
 cmd_ds9 = '{0}/ds9 -grid yes -grid numerics fontsize 14 -grid numerics fontweight bold -grid skyformat degrees -geometry 1250x1250  {1} -cmap Heat -zoom to fit -scale zscale -saveimage "{2}" -exit'
 qs = "SELECT a.mount_point || '/' || b.file_name AS file_full_path, a.host_id FROM ngas_disks a, ngas_files b WHERE a.disk_id = b.disk_id AND b.file_id = '%s' ORDER BY b.file_version DESC"
 cmd_cutout = "{0}/bin/getfits -sv -o %s -d %s %s %s %s J2000 %d %d".format(wcstools_path_dict[my_host]) # % (outputfname, outputdir, inputfname, ra, dec, width, height)
@@ -118,7 +119,7 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
         import pyfits
         import pywcs
     """
-
+    import astro_field
     file = pyfits.open(infile)
     head = file[0].header.copy()
     dim = file[0].data.shape
@@ -126,13 +127,17 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
     cd2 = head.get('CDELT2') if head.get('CDELT2') else head.get('CD2_2')
     if cd1 is None or cd2 is None:
         raise Exception("Missing CD or CDELT keywords in header")
-    head['CRVAL1'] = xc
-    head['CRVAL2'] = yc
-    cdelt = numpy.sqrt(cd1 ** 2 + cd2 ** 2)
-    head['CRPIX1'] = xw / cdelt
-    head['CRPIX2'] = yw / cdelt
-    head['NAXIS1'] = int(xw * 2 / cdelt)
-    head['NAXIS2'] = int(yw * 2 / cdelt)
+    f1 = astro_field.Field([xc, yc], xw * 2)
+    ref_val = f1.cornersLonLat[2]
+    head['CRVAL1'] = ref_val[0]#xc
+    head['CRVAL2'] = ref_val[1]#yc
+    #cdelt = numpy.sqrt(cd1 ** 2 + cd2 ** 2)
+    head['CRPIX1'] = 1#xw / cdelt
+    head['CRPIX2'] = 1#yw / cdelt
+    #head['CTYPE1'] = "RA---SIN"
+    #head['CTYPE2'] = "DEC--SIN"
+    #head['NAXIS1'] = int(xw * 2 / cdelt)
+    #head['NAXIS2'] = int(yw * 2 / cdelt)
     st = str(time.time()).replace('.', '_')
     hdr_tpl = '{0}/{1}_temp_montage.hdr'.format(work_dir, st)
     head.toTxtFile(hdr_tpl, clobber=True)
@@ -145,12 +150,19 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
 
 def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed):
     outfile_nm = "{0}/{1}".format(work_dir, cut_fitsnm)
+    factor = 2
+    """
+    if (do_regrid):
+        factor = 2
+    else:
+        factor = 2
+    """
     cmd1 = "{0} {1} {2} {3} {4} {5} {6}".format(montage_cutout_exec,
                                                 filePath, outfile_nm,
                                                 ra, #float(coord[0]),
                                                 dec, #float(coord[1]),
-                                                radius * 2,
-                                                radius * 2)
+                                                radius * factor,
+                                                radius * factor)
     info(3, "Executing command: %s" % cmd1)
     execCmd(cmd1)
 

@@ -69,6 +69,8 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 	  </inputKey>
     <inputKey name="size" type="real" description="Angular size of the cutout image in degrees" multiplicity="single" tablehead="Angular size">
       <property key="defaultForForm">5</property>
+      <values max="5.0" min="0.0">
+      </values>
     </inputKey>
     <phraseMaker id="humanSCSPhrase" name="humanSCSSQL"  original="//scs#scsUtils">
       <setup>
@@ -138,6 +140,9 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
         </code>
   		</setup>
       <code>
+      inparsize = inPars["size"]
+      if (inparsize &gt; 5.0 or inparsize &lt; 0 or inparsize == 0):
+        raise Exception("Angular size must be between 0 and 5 Degree")
       retstr = ""
       ra, dec = getRADec(inPars, outPars)
       week = get_week_by_coord(ra, dec)
@@ -145,6 +150,12 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
       base.getSQLKey("RA", ra*DEG, outPars)
       base.getSQLKey("DEC", dec*DEG, outPars)
       #yield "filename like mosaic_Week{0}_%MHz.fits".format(week)
+
+      if (inPars.has_key("grid_opt") and (inPars["grid_opt"] is not None) and (u'regrid' in inPars["grid_opt"])):
+        base.getSQLKey("grid_opt", '1', outPars)
+      else:
+        base.getSQLKey("grid_opt", '0', outPars)
+
       yield "substring(filename, 12, 1) = '" + str(week) + "'"
       </code>
     </phraseMaker>
@@ -179,6 +190,21 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
         <option title="223-231">223-231</option>
       </values>
     </inputKey>
+  </condDesc>
+
+  <condDesc combining="True">
+    <inputKey name="grid_opt" type="text" required="True" multiplicity="single" tablehead="Options">
+      <values multiOk="True">
+        <option title="Regrid the cutout image (which takes a bit longer)">regrid</option>
+      </values>
+    </inputKey>
+
+    <phraseMaker id="myph" name="myph" original="//scs#scsUtils">
+      <code>
+        yield "1 = 1"
+      </code>
+    </phraseMaker>
+
   </condDesc>
 
 </dbCore>
@@ -221,7 +247,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 
       <outputField original="freq" unit="MHz" tablehead="Frequency range"/>
 
-			<outputField name="cr" displayHint="noxml=true" tablehead="Cutout JPEG" select="filename || ',' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || ',' ||  DEGREES(%(size0)s)">
+			<outputField name="cr" displayHint="noxml=true" tablehead="Cutout JPEG" select="filename || ',' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || ',' ||  DEGREES(%(size0)s) || ',' || %(grid_opt0)s">
 			   <formatter>
 			         <!--  yield [data]  if (data == "45.1912,45.1912"): -->
 			       params = data.split(',')
@@ -229,7 +255,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 			       	yield ["--"]
 			       else:
 			       	yield T.a(href="http://store04.icrar.org:7777/GLEAMCUTOUT?radec="
-			       	"%s,%s&amp;radius=%s&amp;file_id=%s&amp;regrid=1"%(params[1], params[2], params[3], params[0]), target="_blank")["JPEG"]
+			       	"%s,%s&amp;radius=%s&amp;file_id=%s&amp;regrid=%s"%(params[1], params[2], params[3], params[0], params[4]), target="_blank")["JPEG"]
          </formatter>
 			</outputField>
       <outputField name="accref" type="text" tablehead="Cutout FITS" utype="Access.Reference" select="'http://store04.icrar.org:7777/GLEAMCUTOUT?radec=' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || '&amp;radius=' || DEGREES(%(size0)s) || '&amp;file_id=' || filename || '&amp;regrid=1&amp;fits_format=1'">
