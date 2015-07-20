@@ -252,7 +252,7 @@ def stageFiles(filenameList, checkCRC = False, printWarn = False, usePawseyMWADm
              alert('ngamsMWAPawseyTapeAPI stageFiles: prestagefilelist error %s' % (str(exp)))
              pass
           
-          exitcode = pawseyMWAdmget(fileList, 'fe1.pawsey.ivec.org', 9898, 1400)
+          exitcode = pawseyMWAdmget(fileList, 'fe1.pawsey.ivec.org', 9898, 3600)
           if exitcode != 0:
              err = 'staging error'  
              if exitcode == 11:
