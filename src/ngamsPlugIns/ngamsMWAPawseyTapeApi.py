@@ -173,38 +173,56 @@ def checkFileCRC(filelist):
     
     return wrong_list
 
-def pawseyMWAdmget(fileList, host, port, timeout):
+def pawseyMWAdmget(fileList, host, port, retries = 3, backoff = 1, timeout = 1800):
     """
-    issue a mwadmget which will do a bulk staging of files for a complete  observation;
+    issue a dmget which will do a bulk staging of files for a complete observation;
     this function will block until all files are staged or there is a timeout
     
     filename:    filename to be staged (string)
     host:        host running the pawseydmget daemon (string)
     port:        port of the pawsey / mwadmget daemon (int)
-    timeout:     socket timeout (int)
-    
+    timeout:     socket timeout in seconds
+    retries:     number of times to retry (timeout is halved each retry)
+    backoff:     number of seconds to wait before retrying
     """
-    sock = None
-    try:
-      files = {'files' : fileList}
-      jsonoutput = json.dumps(files)
-      
-      val = struct.pack('>I', len(jsonoutput))
-      val = val + jsonoutput
-      
-      sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      
-      # set the timeout
-      sock.settimeout(timeout)
 
-      # Connect to server and send data
-      sock.connect((host, port))
-      sock.sendall(val)     
+    # Retry scheme should be a decorator
+    while True:
+      sock = None
+      try:
+        files = {'files' : fileList}
+        jsonoutput = json.dumps(files)
+
+        val = struct.pack('>I', len(jsonoutput))
+        val = val + jsonoutput
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((host, port))
+        sock.sendall(val)
+        sock.settimeout(timeout)
+
+        exitcode = struct.unpack('!H', sock.recv(2))[0]
+        if exitcode != 0:
+          raise Exception('pawseyMWAdmget error with exitcode %s' % (str(exitcode)))
       
-      return struct.unpack('!H', sock.recv(2))[0]
-    finally:
-        if sock:
-            sock.close()
+        # success so exit retry loop
+        break
+
+      except Exception as e:
+        if retries > 0:
+          retries -= 1
+          timeout /= 2
+          errMsg = 'pawseyMWAdmget raised an error: %s, retrying...' % (str(e))
+          alert(errMsg)
+          time.sleep(backoff)
+        else:
+          errMsg = 'pawseyMWAdmget raised an error: %s, no more retries, raising exception!' % (str(e))
+          alert(errMsg)
+          raise e
+
+      finally:
+          if sock:
+              sock.close()
 
 
 def stageFiles(filenameList, checkCRC = False, printWarn = False, usePawseyMWADmget = True, requestObj = None):
@@ -215,7 +233,7 @@ def stageFiles(filenameList, checkCRC = False, printWarn = False, usePawseyMWADm
     RETURN   the number of files staged. -1, if any errors
     """
             
-    if (usePawseyMWADmget):
+    if usePawseyMWADmget is True:
        if filenameList is None:
           errMsg = 'ngamsMWAPawseyTapeAPI stageFiles: filenameList is None'
           raise Exception(errMsg)
@@ -252,15 +270,7 @@ def stageFiles(filenameList, checkCRC = False, printWarn = False, usePawseyMWADm
              alert('ngamsMWAPawseyTapeAPI stageFiles: prestagefilelist error %s' % (str(exp)))
              pass
           
-          exitcode = pawseyMWAdmget(fileList, 'fe1.pawsey.ivec.org', 9898, 1400)
-          if exitcode != 0:
-             err = 'staging error'  
-             if exitcode == 11:
-                err = 'file stage request has exceeded 20000'
-             
-             errMsg = 'ngamsMWAPawseyTapeAPI stageFiles: %s errorcode: %s' % (err, str(exitcode))
-             alert(errMsg)
-             raise Exception(errMsg)
+          pawseyMWAdmget(fileList, 'fe1.pawsey.ivec.org', 9898)
        
        except socket.timeout as t:
            raise Exception('timed out') # so retrieval can search this "timed out" string
