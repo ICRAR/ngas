@@ -36,6 +36,7 @@ import matplotlib
 # see http://stackoverflow.com/questions/4706451/how-to-save-a-figure-remotely-with-pylab/4706614#4706614
 #matplotlib.use('Agg')
 import pylab as pl
+import matplotlib.pyplot as plt
 from optparse import OptionParser
 import urlparse
 import re as regx
@@ -443,6 +444,38 @@ def sort_obsid_from_sqlite(sqlite_file):
 
     return (obs_dict, all_obs[0][0], all_obs[-1][0])
 
+def ralist_to_obs_acc_matrix(al, min_obs_date, max_obs_date, serialise_file=None):
+    """
+    min_obs_date:   string
+    """
+    first_obs_date = dt.datetime.strptime(min_obs_date,'%Y-%m-%d').date()
+    last_obs_date = dt.datetime.strptime(max_obs_date,'%Y-%m-%d').date()
+    dfirst = dt.datetime.strptime(al[0].date,'%Y-%m-%dT%H:%M:%S.%f').date()
+    dlast = dt.datetime.strptime(al[-1].date,'%Y-%m-%dT%H:%M:%S.%f').date()
+    num_acess_days = int((dlast - dfirst).days) + 1
+    num_obs_days = int((last_obs_date - first_obs_date).days) + 1
+    data = np.zeros((num_obs_days, num_acess_days), dtype=np.float)
+
+    for a in al:
+        if (a.offline is None or a.obsdate == 'None'): #archive
+            continue
+        di = dt.datetime.strptime(a.date,'%Y-%m-%dT%H:%M:%S.%f').date()
+        dj = dt.datetime.strptime(a.obsdate,'%Y-%m-%d').date()
+        # if no retrievals on a particular day, that day will show nothing
+        ax = int((di - dfirst).days)
+        ay = int((dj - first_obs_date).days)
+        data[ay][ax] += 1
+
+    if (serialise_file is not None):
+        try:
+            np.save(serialise_file, data)
+        except Exception, exp:
+            print "Fail to serialise matrix to '{0}':{1}".format(serialise_file,
+                                                              str(exp))
+
+    return (data, None, num_acess_days, dfirst, dlast)
+
+
 def ralist_to_access_matrix(al, obs_info, num_bins=200, serialise_file=None):
     """
     obs_info:   a tuple of  (1) dictionary (key: obsid, sequence_id)
@@ -460,7 +493,7 @@ def ralist_to_access_matrix(al, obs_info, num_bins=200, serialise_file=None):
     dfirst = dt.datetime.strptime(al[0].date,'%Y-%m-%dT%H:%M:%S.%f').date()
     dlast = dt.datetime.strptime(al[-1].date,'%Y-%m-%dT%H:%M:%S.%f').date()
     num_days = int((dlast - dfirst).days) + 1
-    data = np.zeros((num_bins, num_days), dtype=np.int)
+    data = np.zeros((num_bins, num_days), dtype=np.float)
 
     for a in al:
         if (a.offline is None): #archive
@@ -477,9 +510,9 @@ def ralist_to_access_matrix(al, obs_info, num_bins=200, serialise_file=None):
         except Exception, exp:
             print "Fail to serialise matrix to '{0}':{1}".format(serialise_file,
                                                               str(exp))
-    return (data, obs_range, num_days)
+    return (data, obs_range, num_days, dfirst, dlast)
 
-def plot_access_heatmap(data, obs_range, num_days):
+def plot_access_heatmap(data, obs_range, num_days, dfirst, dlast, scale=None):
     """
     x_axis = []
     for nd in range(num_days):
@@ -496,9 +529,17 @@ def plot_access_heatmap(data, obs_range, num_days):
             y_axis.append(' ')
     """
 
-    fig = pl.figure()
-    ax = fig.add_subplot(111)
-    heatmap = ax.pcolor(data, cmap=matplotlib.pyplot.cm.Blues)
+    fig, ax = plt.subplots()
+    if ('log' == scale):
+        data = np.log10(data)
+    plt.pcolor(data, cmap=plt.cm.hot)
+    ax.set_xlim(0, data.shape[1] - 1)
+    ax.set_ylim(0, data.shape[0] - 1)
+    plt.colorbar()
+    plt.ylabel('Observation time in days',fontsize=15)
+    plt.xlabel('Access time in days',fontsize=15)
+    plt.title('MWA long-term archive access heatmap from {0} to {1}'.format(dfirst, dlast))
+    #heatmap = ax.pcolor(data, cmap=plt.pyplot.cm.Blues)
 
     # put the major ticks at the middle of each cell
     """
@@ -509,8 +550,8 @@ def plot_access_heatmap(data, obs_range, num_days):
     ax.set_yticklabels(y_axis, minor=False)
     """
 
-    pl.show()
-    pl.close(fig)
+    plt.show()
+    plt.close(fig)
 
 
 def _raListToNumArray(al):
