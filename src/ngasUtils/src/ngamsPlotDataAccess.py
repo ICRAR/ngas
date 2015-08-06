@@ -27,15 +27,16 @@
 # cwu      17/April/2014  Created
 #
 # time.gmtime(1067868000 + 315964800)
-import os, commands, gc, sys, time
+import os, commands, gc, sys, time, math
 from os import walk
 from collections import namedtuple, defaultdict
 import numpy as np
 import datetime as dt
 import matplotlib
 # see http://stackoverflow.com/questions/4706451/how-to-save-a-figure-remotely-with-pylab/4706614#4706614
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import pylab as pl
+import matplotlib.pyplot as plt
 from optparse import OptionParser
 import urlparse
 import re as regx
@@ -349,6 +350,210 @@ def _raListToVTimeNAByUser(al, min_access = 100, session_gap = 3600 * 2, y_unit 
 
     return ret_dict
 
+def ra_list_to_csv(al, csv_file):
+    """
+    convert a list of RA/AA tuples to a csv file
+    """
+    if (al is None or len(al) == 0):
+        return
+
+    """
+    RA = namedtuple('RA', 'date obsId offline size user obsdate')
+    """
+    pattern = '%Y-%m-%dT%H:%M:%S'
+
+    with open(csv_file, "a") as myfile:
+        for a in al:
+            if (a.offline is None):
+                act = -1
+            elif (a.offline):
+                act = 1
+            else:
+                act = 0
+            tt = a.date.split('.')
+            epoch = int(time.mktime(time.strptime(tt[0], pattern)))
+            date_int = int("{0}{1}".format(epoch, tt[1]))
+            line = "{0},{1},{2},{3},{4},{5}\n".format(date_int,
+                                                      a.obsId,
+                                                      act,
+                                                      a.size,
+                                                      a.user,
+                                                      a.obsdate)
+            myfile.write(line)
+
+    print "Appended {0} items to {1}".format(len(al), csv_file)
+
+def csv_to_ra_list(csv_file):
+    """
+    read data from csv file, and return the populated RA list
+    """
+    stt = time.time()
+    if (not os.path.exists(csv_file)):
+        return None
+    import csv
+    pattern = '%Y-%m-%dT%H:%M:%S'
+    al = []
+    gc.disable()
+    with open(csv_file, 'rb') as f:
+        reader = csv.reader(f)
+        al_list = list(reader)
+        for a in al_list:
+            epoch = int(a[0][:-3])
+            time_str = time.strftime(pattern, time.localtime(epoch))
+            timestamp = "{0}.{1}".format(time_str, a[0][-3:])
+            obsNum = a[1]
+            a2 = int(a[2])
+            if (-1 == a2):
+                isOffline = None
+            elif (1 == a2):
+                isOffline = True
+            else:
+                isOffline = False
+            fsize = int(a[3])
+            userIp = a[4]
+            obsDate = a[5]
+            re = RA(timestamp, obsNum, isOffline, fsize, userIp, obsDate)
+            al.append(re)
+    gc.enable()
+    print "Loading csv to list took {0} seconds".format(time.time() - stt)
+    return al
+
+def fit_csv_for_sqlite(csv_in, csv_out):
+    """
+    Difference between input/output CSV
+    time - from string (input) to epoch integer (output)
+    offline - from boolean (T/F/None) to integer (1/0/-1)
+    """
+    al = csv_to_ra_list(csv_in)
+    ra_list_to_csv(al, csv_out)
+
+def sort_obsid_from_sqlite(sqlite_file):
+    """
+    """
+    import sqlite3 as dbdrv
+    obs_dict = defaultdict(int)
+    query = "SELECT DISTINCT(obs_id) FROM ac WHERE offline > -1 ORDER BY obs_id"
+    dbconn = dbdrv.connect(sqlite_file)
+    cur = dbconn.cursor()
+    cur.execute(query)
+    all_obs = cur.fetchall() # not OK if we have millions of obs numbers
+    cur.close()
+
+    for c, obsid_row in enumerate(all_obs):
+        obs_dict[obsid_row[0]] = c + 1
+
+    return (obs_dict, all_obs[0][0], all_obs[-1][0])
+
+def ralist_to_obs_acc_matrix(al, min_obs_date, max_obs_date, serialise_file=None):
+    """
+    min_obs_date:   string
+    """
+    first_obs_date = dt.datetime.strptime(min_obs_date,'%Y-%m-%d').date()
+    last_obs_date = dt.datetime.strptime(max_obs_date,'%Y-%m-%d').date()
+    dfirst = dt.datetime.strptime(al[0].date,'%Y-%m-%dT%H:%M:%S.%f').date()
+    dlast = dt.datetime.strptime(al[-1].date,'%Y-%m-%dT%H:%M:%S.%f').date()
+    num_acess_days = int((dlast - dfirst).days) + 1
+    num_obs_days = int((last_obs_date - first_obs_date).days) + 1
+    data = np.zeros((num_obs_days, num_acess_days), dtype=np.float)
+
+    for a in al:
+        if (a.offline is None or a.obsdate == 'None'): #archive
+            continue
+        di = dt.datetime.strptime(a.date,'%Y-%m-%dT%H:%M:%S.%f').date()
+        dj = dt.datetime.strptime(a.obsdate,'%Y-%m-%d').date()
+        # if no retrievals on a particular day, that day will show nothing
+        ax = int((di - dfirst).days)
+        ay = int((dj - first_obs_date).days)
+        data[ay][ax] += 1
+
+    if (serialise_file is not None):
+        try:
+            np.save(serialise_file, data)
+        except Exception, exp:
+            print "Fail to serialise matrix to '{0}':{1}".format(serialise_file,
+                                                              str(exp))
+
+    return (data, None, num_acess_days, dfirst, dlast)
+
+
+def ralist_to_access_matrix(al, obs_info, num_bins=200, serialise_file=None):
+    """
+    obs_info:   a tuple of  (1) dictionary (key: obsid, sequence_id)
+                            (2) min obs number
+                            (3) max obs number
+    for each day, we plot the distribution (in the form of heatmap) of
+    the number of accesses within a contiguous range of observation numbers.
+    """
+    # sort the obsId
+    obs_dict = obs_info[0]
+    min_obs = obs_info[1]
+    max_obs = obs_info[2]
+    step = int(math.ceil(float(obs_dict[max_obs] - obs_dict[min_obs]) / float(num_bins)))
+    obs_range = range(min_obs, max_obs, step)
+    dfirst = dt.datetime.strptime(al[0].date,'%Y-%m-%dT%H:%M:%S.%f').date()
+    dlast = dt.datetime.strptime(al[-1].date,'%Y-%m-%dT%H:%M:%S.%f').date()
+    num_days = int((dlast - dfirst).days) + 1
+    data = np.zeros((num_bins, num_days), dtype=np.float)
+
+    for a in al:
+        if (a.offline is None): #archive
+            continue
+        di = dt.datetime.strptime(a.date,'%Y-%m-%dT%H:%M:%S.%f').date()
+        # if no retrievals on a particular day, that day will show nothing
+        ax = int((di - dfirst).days)
+        ay = obs_dict[int(a.obsId)] / step
+        data[ay][ax] += 1
+
+    if (serialise_file is not None):
+        try:
+            np.save(serialise_file, data)
+        except Exception, exp:
+            print "Fail to serialise matrix to '{0}':{1}".format(serialise_file,
+                                                              str(exp))
+    return (data, obs_range, num_days, dfirst, dlast)
+
+def plot_access_heatmap(data, obs_range, num_days, dfirst, dlast, scale=None):
+    """
+    x_axis = []
+    for nd in range(num_days):
+        if (nd % 30 == 0):
+            x_axis.append(str(nd))
+        else:
+            x_axis.append(' ')
+
+    y_axis = []
+    for y in obs_range:
+        if (y % 50 == 0):
+            y_axis.append(str(y))
+        else:
+            y_axis.append(' ')
+    """
+
+    fig, ax = plt.subplots()
+    if ('log' == scale):
+        data = np.log10(data)
+    plt.pcolor(data, cmap=plt.cm.hot)
+    ax.set_xlim(0, data.shape[1] - 1)
+    ax.set_ylim(0, data.shape[0] - 1)
+    plt.colorbar()
+    plt.ylabel('Observation time in days',fontsize=15)
+    plt.xlabel('Access time in days',fontsize=15)
+    plt.title('MWA long-term archive access heatmap from {0} to {1}'.format(dfirst, dlast))
+    #heatmap = ax.pcolor(data, cmap=plt.pyplot.cm.Blues)
+
+    # put the major ticks at the middle of each cell
+    """
+    ax.set_xticks(np.arange(data.shape[0])+0.5, minor=False)
+    ax.set_yticks(np.arange(data.shape[1])+0.5, minor=False)
+
+    ax.set_xticklabels(x_axis, minor=False)
+    ax.set_yticklabels(y_axis, minor=False)
+    """
+
+    plt.show()
+    plt.close(fig)
+
+
 def _raListToNumArray(al):
     """
     Convert a list of RA tuples to the following num arrays:
@@ -622,7 +827,8 @@ def _plotVirtualTime(accessList, archName, fgname, rd_bin_width = 250):
 
     pl.close(fig1)
 
-
+def post_actual_time(acl, series_name, col_name, influx_host, influx_port, influx_db):
+    pass
 
 def _plotActualTime(accessList, archName, fgname):
     """
@@ -692,11 +898,11 @@ def _plotActualTime(accessList, archName, fgname):
 def get_sort_key(ra):
     return ra.date
 
-def processLogs(dirs, fgname, stgline = 'to stage file:',
-                aclobj = None, archName = 'Pawsey',
-                obs_trsh = 1.05, vir_time = False,
-                per_user = False, reuse_dist = False,
-                per_user_y_unit = 'Obs Id', save_acl_file = None):
+def processLogs(dirs, fgname, stgline='to stage file:',
+                aclobj=None, archName='Pawsey',
+                obs_trsh=1.05, vir_time=False,
+                per_user=False, reuse_dist=False,
+                per_user_y_unit='Obs Id', save_acl_file=None):
     """
     process all logs from a list of directories
 
@@ -705,7 +911,7 @@ def processLogs(dirs, fgname, stgline = 'to stage file:',
     """
     if (aclobj):
         accessList = aclobj
-        accessList = sorted(accessList, key=get_sort_key)
+        #accessList = sorted(accessList, key=get_sort_key)
     else:
         accessList = []
         pool = mp.Pool(15)
@@ -734,11 +940,11 @@ def processLogs(dirs, fgname, stgline = 'to stage file:',
         try:
             #accessList.sort() # automatically sort based on date
             accessList = sorted(accessList, key=get_sort_key)
+            print ("Sorting takes %d seconds" % (time.time() - stt))
         finally:
             if (save_acl_file and accessList):
-                pickleSaveACL(accessList, save_acl_file)
-
-        print ("Sorting takes %d seconds" % (time.time() - stt))
+                ra_list_to_csv(accessList, save_acl_file)
+                #pickleSaveACL(accessList, save_acl_file)
 
     """
     if (vir_time):
@@ -752,13 +958,14 @@ def processLogs(dirs, fgname, stgline = 'to stage file:',
     else:
         _plotActualTime(accessList, archName, fgname)
     """
+    """
     print "Producing actual time plot......"
     _plotActualTime(accessList, archName, fgname + "_actual_time.pdf")
     print "Producing virtual time plot......"
     _plotVirtualTime(accessList, archName, fgname + "_virtual_time.pdf")
     print "Producing RUD plot......"
     _plotReuseDistance(accessList, archName, fgname + "_rud.pdf")
-
+    """
     return accessList
 
 def _getTidFrmLine(line):
@@ -989,14 +1196,16 @@ def parseLogFile(fn, accessList=None, stgline = 'to stage file:', obs_trsh = 1.0
         if (aa):
             use_list.append(aa)
         else:
-            print 'non AA for {0} in {1}'.format(tid, fn)
+            pass
+            #print 'non AA for {0} in {1}'.format(tid, fn)
 
     for k, v in raDict.items():
         ra = _buildRA(v, stg.has_key(k), fsize[k], obs_trsh)
         if (ra):
             use_list.append(ra)
         else:
-            print 'none RA for %s in file %s' % (k, fn)
+            pass
+            #print 'none RA for %s in file %s' % (k, fn)
 
     if (accessList):
         return
@@ -1133,9 +1342,9 @@ if __name__ == '__main__':
     parser.add_option("-o", "--output", action="store", type="string", dest="output", help="output figure name (path)")
     parser.add_option("-s", "--stgline", action="store", type="string", dest="stgline", help="a line representing staging activity")
     parser.add_option("-a", "--saveaclfile", action="store", dest="save_acl_file",
-                      type = "string", default = "", help = "Save access list object to the file")
+                      type = "string", default = "", help = "Save access list to the CSV file")
     parser.add_option("-l", "--loadaclfile", action="store", dest="load_acl_file",
-                      type = "string", default = "", help = "Load access list object from the file")
+                      type = "string", default = "", help = "Load access list CSV from the file")
     parser.add_option("-r", "--archname", action="store", type="string", dest="arch_name", help="name of the archive")
     parser.add_option("-e", "--threshold", action="store", type="float", dest="obs_trsh",
                       help = "obs_number threshold, below which accesses will not be counted")
@@ -1178,7 +1387,8 @@ if __name__ == '__main__':
         dirs = None
 
     if (options.load_acl_file):
-        acl = pickleLoadACL(options)
+        #acl = pickleLoadACL(options)
+        acl = csv_to_ra_list(options.load_acl_file)
     else:
         print 'Processing logs...'
         acl = None
