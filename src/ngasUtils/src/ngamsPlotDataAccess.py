@@ -444,6 +444,88 @@ def sort_obsid_from_sqlite(sqlite_file):
 
     return (obs_dict, all_obs[0][0], all_obs[-1][0])
 
+def plot_fresh_matrix_from_ralist(sqlite_f  ile,
+                                  num_bins=10,
+                                  serialise_file=None):
+    """
+    Produce the following matrices after one pass of the sqlite database
+
+    1. obs_time vs. access_time
+    2. age_dist vs. access_time
+    3. freshness_dist vs. access_time
+    4. # of accesses vs. access_time
+    5. data volume vs. access_time
+
+    """
+    import sqlite3 as dbdrv
+    dbconn = dbdrv.connect(sqlite_file)
+    date_pattern = '%Y-%m-%dT%H:%M:%S.%f'
+    # TODO - get dfirst_epoch and dlast_epoch from the database
+    dfirst = dt.datetime.strptime(dfirst_epoch, date_pattern).date()
+    dlast = dt.datetime.strptime(dlast_epoch, date_pattern).date()
+    num_access_days = int((dlast - dfirst).days) + 1
+    #num_bins = 10 # 2 ** [0, 1, ..., 10], from bin 0 to bin 9
+    # the value of each matrix cell is frequency percentage
+    data_ref = np.zeros((num_bins, num_access_days), dtype=np.float)
+    data_age = np.zeros((num_bins, num_access_days), dtype=np.float)
+
+    """
+    freshness - number of days between the current time and
+    when an observation has been most recently accessed
+
+    so for each day, all observations will be accounted for
+    thus for each day, we need to check all observations
+    ingested on or before that day
+    """
+
+    # get all observations in a dict
+    obs_dict = dict() # key - obs_id, value - a tuple of (last access (archive) date, archive date)
+    query = "SELECT DISTINCT(obs_id), ts, offline FROM ac WHERE ts BETWEEN {0} and {1}"
+    #check those observations ingested on or before that day but after dfirst
+    half_day_in_ms = 12 * 3600 * 1000 # half_day_in_millisecs
+    for i in range(num_access_days):
+        x_date = dfirst + dt.timedelta(days=i)
+        x_stt = "{0}T00:00:00.000".format(x_date)
+        x_end = "{0}T23:59:59.999".format(x_date)
+        epoch1 = int(time.mktime(time.strptime(x_stt, date_pattern)) * 1000)
+        epoch2 = int(time.mktime(time.strptime(x_end, date_pattern)) * 1000)
+
+        ingest_q = query.format(epoch1, epoch2)
+        cur = dbconn.cursor()
+        cur.execute(ingest_q)
+        day_obs = cur.fetchall() # not OK if we have millions of obs numbers
+        cur.close()
+
+        temp_dict = dict()
+        for r in day_obs:
+            obs_id = r[0]
+            ts = r[1]
+            offline = r[2]
+            # ingest can always directly create dict entries
+            if (offline == -1):
+                obs_dict[obs_id] = (ts, ts) #integer is fine
+            else:
+                temp_dict[obs_id] = ts
+
+        # evaluate y values
+        for obs_id, v in obs_dict.iteritems():
+            y_ref_day = math.ceil(float(epoch1 + half_day_in_ms - v[0]) / 3600000.0) + 1
+            y_age_day = math.ceil(float(epoch1 + half_day_in_ms - v[1]) / 3600000.0) + 1
+            bin_no_ref = math.floor(np.log2(y_ref_day))
+            data_ref[bin_no_ref][i] += 1.0
+            bin_no_age = math.floor(np.log2(y_age_day))
+            data_age[bin_no_age][i] += 1.0
+
+        # update last accessed time
+        for obs_id, ts in temp_dict.iteritems():
+            obs_dict[obs_id][0] = ts
+
+        # normalise it to percentage
+        data_ref[:, i] /= len(obs_dict)
+        data_age[:, i] /= len(obs_dict)
+
+        return (data_ref, data_age)
+
 def ralist_to_obs_acc_matrix(al, min_obs_date, max_obs_date, serialise_file=None):
     """
     min_obs_date:   string
@@ -512,7 +594,9 @@ def ralist_to_access_matrix(al, obs_info, num_bins=200, serialise_file=None):
                                                               str(exp))
     return (data, obs_range, num_days, dfirst, dlast)
 
-def plot_access_heatmap(data, obs_range, num_days, dfirst, dlast, scale=None):
+def plot_access_heatmap(data, obs_range, num_days,
+                        dfirst, dlast, first_obsdate=None,
+                        last_obsdate=None, scale=None):
     """
     x_axis = []
     for nd in range(num_days):
@@ -528,6 +612,24 @@ def plot_access_heatmap(data, obs_range, num_days, dfirst, dlast, scale=None):
         else:
             y_axis.append(' ')
     """
+    if (type(dfirst) is str):
+        dfirst = dt.datetime.strptime(dfirst,'%Y-%m-%d').date()
+    x_tick_range = np.arange(0, num_days - 1, 90)
+    x_tick_range[-1] = num_days - 1
+    x_tick_label = []
+    for dx in x_tick_range:
+        x_date = dfirst + dt.timedelta(days=dx)
+        x_tick_label.append(str(x_date))
+
+    if (first_obsdate is not None):
+        if (type(first_obsdate) is str):
+            first_obsdate = dt.datetime.strptime(first_obsdate,'%Y-%m-%d').date()
+        y_tick_range = np.arange(0, data.shape[0] - 1, 90)
+        y_tick_range[-1] = data.shape[0] - 1
+        y_tick_label = []
+        for dy in y_tick_range:
+            y_date = first_obsdate + dt.timedelta(days=dy)
+            y_tick_label.append(str(y_date))
 
     fig, ax = plt.subplots()
     if ('log' == scale):
@@ -535,21 +637,30 @@ def plot_access_heatmap(data, obs_range, num_days, dfirst, dlast, scale=None):
     plt.pcolor(data, cmap=plt.cm.hot)
     ax.set_xlim(0, data.shape[1] - 1)
     ax.set_ylim(0, data.shape[0] - 1)
-    plt.colorbar()
-    plt.ylabel('Observation time in days',fontsize=15)
-    plt.xlabel('Access time in days',fontsize=15)
-    plt.title('MWA long-term archive access heatmap from {0} to {1}'.format(dfirst, dlast))
+    cbar = plt.colorbar()
+    #cbar.ax.xaxis.tick_top()
+    cbar.ax.xaxis.set_label_position('top')
+    cbar.ax.set_xlabel('Log 10 scale', fontsize=13)
+    plt.ylabel('Observation time',fontsize=15)
+    plt.xlabel('Access time', fontsize=15)
+    plt.title('MWA long-term archive access distribution from {0} to {1}'.format(dfirst, dlast), fontsize=18)
     #heatmap = ax.pcolor(data, cmap=plt.pyplot.cm.Blues)
 
     # put the major ticks at the middle of each cell
+
+    ax.set_xticks(x_tick_range, minor=False)
+    ax.set_xticklabels(x_tick_label, minor=False, rotation=45)
+
+    if (first_obsdate is not None):
+        ax.set_yticks(y_tick_range, minor=False)
+        ax.set_yticklabels(y_tick_label, minor=False)
     """
-    ax.set_xticks(np.arange(data.shape[0])+0.5, minor=False)
     ax.set_yticks(np.arange(data.shape[1])+0.5, minor=False)
 
     ax.set_xticklabels(x_axis, minor=False)
     ax.set_yticklabels(y_axis, minor=False)
     """
-
+    ax.tick_params(direction='out')
     plt.show()
     plt.close(fig)
 
