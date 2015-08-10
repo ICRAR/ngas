@@ -34,7 +34,7 @@ Cutout a gleam FITS image, convert it into png, and display in the browser, then
 
 from ngams import *
 
-import math, time, commands, os, subprocess, traceback
+import math, time, commands, os, subprocess, traceback, threading
 import ephem
 import pyfits as pyfits_real
 import astropy.io.fits as pyfits
@@ -78,6 +78,8 @@ qs = "SELECT a.mount_point || '/' || b.file_name AS file_full_path, a.host_id FR
 cmd_cutout = "{0}/bin/getfits -sv -o %s -d %s %s %s %s J2000 %d %d".format(wcstools_path_dict[my_host]) # % (outputfname, outputdir, inputfname, ra, dec, width, height)
 cmd_fits2jpg = "/mnt/gleam/software/bin/fits2jpeg -fits %s -jpeg %s -nonLinear" # % (fitsfname, jpegfname)
 psf_seq = ['BMAJ', 'BMIN', 'BPA']
+
+ds9_sem = threading.Semaphore(1)
 
 
 """
@@ -166,6 +168,7 @@ def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, t
                                                 radius * factor)
     info(3, "Executing command: %s" % cmd1)
     execCmd(cmd1)
+    to_be_removed.append(work_dir + '/' + cut_fitsnm)
 
     if (do_regrid):
         #import gleam_cutout
@@ -183,7 +186,7 @@ def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, t
                             useMontage=True)
         """
         to_be_removed.append(hdr_tpl)
-        to_be_removed.append(work_dir + '/' + cut_fitsnm)
+
         cut_fitsnm = "proj_" + cut_fitsnm
         area_fitsnm = cut_fitsnm.replace(".fits", "_area.fits")
         to_be_removed.append(work_dir + '/' + area_fitsnm)
@@ -351,6 +354,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         hdr_cttp = "image/fits"
         hdr_dataref = work_dir + '/' + cut_fitsnm
     else:
+        ds9_sem.acquire()
         ttt = time.time()
         jpfnm = ('%f' % ttt).replace('.', '_') + '.jpg'
         cmd2 = cmd_ds9.format(ds9_path_dict[my_host], work_dir + '/' + cut_fitsnm, work_dir + '/' + jpfnm)
@@ -362,6 +366,8 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
                          "Conversion from FITS to JPEG failed: '%s', display = '%s'" % (str(excmd2), os.getenv('DISPLAY', 'NOTSET!')))
             return
+        finally:
+            ds9_sem.release()
 
         hdr_fnm = "gleamcutout.jpg"
         hdr_cttp = "image/jpeg"
