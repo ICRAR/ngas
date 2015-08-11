@@ -457,6 +457,8 @@ def get_fresh_matrices_from_db(sqlite_file,
     5. data volume vs. access_time
 
     """
+    print "this is called"
+
     import sqlite3 as dbdrv
     dbconn = dbdrv.connect(sqlite_file)
     date_pattern = '%Y-%m-%dT%H:%M:%S'
@@ -467,7 +469,6 @@ def get_fresh_matrices_from_db(sqlite_file,
     dfirst_epoch = cur.fetchall()[0][0]
     cur.close()
     dfirst_epoch = time.strftime(date_pattern, time.localtime(dfirst_epoch / 1000))
-
 
     q = "SELECT max(ts) from ac"
     cur = dbconn.cursor()
@@ -492,7 +493,6 @@ def get_fresh_matrices_from_db(sqlite_file,
     thus for each day, we need to check all observations
     ingested on or before that day
     """
-
     # get all observations in a dict
     obs_dict = dict() # key - obs_id, value - a tuple of (last access (archive) date, archive date)
     query = "SELECT DISTINCT(obs_id), ts, offline FROM ac WHERE ts BETWEEN {0} and {1}"
@@ -521,17 +521,18 @@ def get_fresh_matrices_from_db(sqlite_file,
             offline = r[2]
             # ingest can always directly create dict entries
             if (offline == -1):
-                obs_dict[obs_id] = [ts, ts] #integer is fine
+                obs_dict[obs_id] = [None, ts] #integer is fine
             else:
                 temp_dict[obs_id] = ts
 
         # evaluate y values
         for obs_id, v in obs_dict.iteritems():
-            y_ref_day = math.floor(float(epoch2 - v[0]) / 3600000.0 / 24) + 1
+            if (v[0] is not None):
+                y_ref_day = math.floor(float(epoch2 - v[0]) / 3600000.0 / 24) + 1
+                bin_no_ref = math.floor(np.log2(y_ref_day))
+                data_ref[bin_no_ref][i] += 1.0
             #print "----- y_ref_day = {0}, v[0] = {1}".format(y_ref_day, v[0])
             y_age_day = math.floor(float(epoch2 - v[1]) / 3600000.0 / 24) + 1
-            bin_no_ref = math.floor(np.log2(y_ref_day))
-            data_ref[bin_no_ref][i] += 1.0
             bin_no_age = math.floor(np.log2(y_age_day))
             data_age[bin_no_age][i] += 1.0
 
@@ -562,46 +563,58 @@ def plot_fresh_matrices(data_ref, data_age, dfirst, dlast, num_days, num_bins, s
     y_tick_label = []
     y_tick_range = []
     for i in range(num_bins + 1):
-        print "i = {0}".format(i)
+        #print "i = {0}".format(i)
         y_tick_range.append(i)
         y_tick_label.append("{0}".format(2 ** i))
 
     for i, data in enumerate(matrices):
         data *= 100
         data = data.astype(np.int) # convert to 1 ~ 100
-        fig, ax = plt.subplots()
-        if ('log' == scale):
-            data = np.log10(data)
-        plt.pcolor(data, cmap=plt.cm.hot)
-        ax.set_xlim(0, data.shape[1])
-        ax.set_ylim(0, data.shape[0])
-        cbar = plt.colorbar()
-        #cbar.ax.xaxis.tick_top()
-        cbar.ax.xaxis.set_label_position('top')
-        cbar.ax.set_xlabel('Percentage', fontsize=13)
         if (0 == i):
-            ylabel = 'Days since last access'
-            plot_tt = 'MWA LTA observation distribution based on last access'
+            ylabel = 'Days since last access (refreshness)'
+            xlabel = ''
+            plot_tt = "MWA LTA daily distribution of observation 'refreshness' and 'age'"
+            ax = plt.subplot(211)
         elif (1 == i):
             ylabel = 'Days since ingestion (age)'
-            plot_tt = 'MWA LTA observation distribution based on age'
+            plot_tt = ''#'MWA LTA observation distribution based on age'
+            xlabel = 'Access time'
+            ax = plt.subplot(212)
         else:
             ylabel = 'Days'
             plot_tt = 'MWA LTA observation distribution'
-        plt.ylabel(ylabel, fontsize=15)
-        plt.xlabel('Access time', fontsize=15)
-        plt.title('{2} from {0} to {1}'.format(dfirst, dlast, plot_tt), fontsize=17)
+
+        if ('log' == scale):
+            data = np.log10(data)
+
+        plt.pcolor(data, cmap=plt.cm.hot)
+        ax.set_xlim(0, data.shape[1])
+        ax.set_ylim(0, data.shape[0])
+
+        ax.set_ylabel(ylabel, fontsize=15)
+        ax.set_xlabel(xlabel, fontsize=15)
+        if (0 == i):
+            ax.set_title('{2} from {0} to {1}'.format(dfirst, dlast, plot_tt), fontsize=17)
 
         ax.set_xticks(x_tick_range, minor=False)
         ax.set_xticklabels(x_tick_label, minor=False, rotation=45)
 
-        #if (first_obsdate is not None):
         ax.set_yticks(y_tick_range, minor=False)
         ax.set_yticklabels(y_tick_label, minor=False)
 
         ax.tick_params(direction='out')
-        plt.show()
-        plt.close(fig)
+
+        cbar = plt.colorbar()
+        cbar.ax.xaxis.set_label_position('top')
+        cbar.ax.set_xlabel('% of observations', fontsize=13)
+
+        if (i == len(matrices) - 1):
+            #ax.get_figure().tight_layout()
+            #plt.tight_layout()
+            pass
+
+    plt.show()
+    #plt.close(fig)
 
 def ralist_to_obs_acc_matrix(al, min_obs_date, max_obs_date, serialise_file=None):
     """
