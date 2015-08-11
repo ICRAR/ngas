@@ -444,9 +444,9 @@ def sort_obsid_from_sqlite(sqlite_file):
 
     return (obs_dict, all_obs[0][0], all_obs[-1][0])
 
-def plot_fresh_matrix_from_ralist(sqlite_f  ile,
-                                  num_bins=10,
-                                  serialise_file=None):
+def get_fresh_matrices_from_db(sqlite_file,
+                             num_bins=10,
+                             serialise_file=None):
     """
     Produce the following matrices after one pass of the sqlite database
 
@@ -459,8 +459,23 @@ def plot_fresh_matrix_from_ralist(sqlite_f  ile,
     """
     import sqlite3 as dbdrv
     dbconn = dbdrv.connect(sqlite_file)
-    date_pattern = '%Y-%m-%dT%H:%M:%S.%f'
-    # TODO - get dfirst_epoch and dlast_epoch from the database
+    date_pattern = '%Y-%m-%dT%H:%M:%S'
+
+    q = "SELECT min(ts) from ac"
+    cur = dbconn.cursor()
+    cur.execute(q)
+    dfirst_epoch = cur.fetchall()[0][0]
+    cur.close()
+    dfirst_epoch = time.strftime(date_pattern, time.localtime(dfirst_epoch / 1000))
+
+
+    q = "SELECT max(ts) from ac"
+    cur = dbconn.cursor()
+    cur.execute(q)
+    dlast_epoch = cur.fetchall()[0][0]
+    cur.close()
+    dlast_epoch = time.strftime(date_pattern, time.localtime(dlast_epoch / 1000))
+
     dfirst = dt.datetime.strptime(dfirst_epoch, date_pattern).date()
     dlast = dt.datetime.strptime(dlast_epoch, date_pattern).date()
     num_access_days = int((dlast - dfirst).days) + 1
@@ -484,12 +499,15 @@ def plot_fresh_matrix_from_ralist(sqlite_f  ile,
     #check those observations ingested on or before that day but after dfirst
     half_day_in_ms = 12 * 3600 * 1000 # half_day_in_millisecs
     for i in range(num_access_days):
+        stt = time.time()
         x_date = dfirst + dt.timedelta(days=i)
-        x_stt = "{0}T00:00:00.000".format(x_date)
-        x_end = "{0}T23:59:59.999".format(x_date)
+        x_stt = "{0}T00:00:00".format(x_date)
+        x_end = "{0}T23:59:59".format(x_date)
         epoch1 = int(time.mktime(time.strptime(x_stt, date_pattern)) * 1000)
         epoch2 = int(time.mktime(time.strptime(x_end, date_pattern)) * 1000)
-
+        #print "***"
+        #print x_date, x_stt, x_end, epoch1, epoch2
+        #print "***"
         ingest_q = query.format(epoch1, epoch2)
         cur = dbconn.cursor()
         cur.execute(ingest_q)
@@ -503,14 +521,15 @@ def plot_fresh_matrix_from_ralist(sqlite_f  ile,
             offline = r[2]
             # ingest can always directly create dict entries
             if (offline == -1):
-                obs_dict[obs_id] = (ts, ts) #integer is fine
+                obs_dict[obs_id] = [ts, ts] #integer is fine
             else:
                 temp_dict[obs_id] = ts
 
         # evaluate y values
         for obs_id, v in obs_dict.iteritems():
-            y_ref_day = math.ceil(float(epoch1 + half_day_in_ms - v[0]) / 3600000.0) + 1
-            y_age_day = math.ceil(float(epoch1 + half_day_in_ms - v[1]) / 3600000.0) + 1
+            y_ref_day = math.floor(float(epoch2 - v[0]) / 3600000.0 / 24) + 1
+            #print "----- y_ref_day = {0}, v[0] = {1}".format(y_ref_day, v[0])
+            y_age_day = math.floor(float(epoch2 - v[1]) / 3600000.0 / 24) + 1
             bin_no_ref = math.floor(np.log2(y_ref_day))
             data_ref[bin_no_ref][i] += 1.0
             bin_no_age = math.floor(np.log2(y_age_day))
@@ -518,13 +537,71 @@ def plot_fresh_matrix_from_ralist(sqlite_f  ile,
 
         # update last accessed time
         for obs_id, ts in temp_dict.iteritems():
-            obs_dict[obs_id][0] = ts
+            if (obs_dict.has_key(obs_id)): # if accessed old obs ingested before dfirst, ignore
+                obs_dict[obs_id][0] = ts
 
         # normalise it to percentage
-        data_ref[:, i] /= len(obs_dict)
-        data_age[:, i] /= len(obs_dict)
+        data_ref[:, i] /= float(len(obs_dict))
+        data_age[:, i] /= float(len(obs_dict))
+        print "Day {0} processed in {1} seconds".format(i, "%.3f" % (time.time() - stt))
 
-        return (data_ref, data_age)
+    return (data_ref, data_age, dfirst, dlast, num_access_days, num_bins)
+
+def plot_fresh_matrices(data_ref, data_age, dfirst, dlast, num_days, num_bins, scale=None):
+    matrices = [data_ref, data_age]
+
+    if (type(dfirst) is str):
+        dfirst = dt.datetime.strptime(dfirst,'%Y-%m-%d').date()
+    x_tick_range = np.arange(0, num_days - 1, 90)
+    x_tick_range[-1] = num_days - 1
+    x_tick_label = []
+    for dx in x_tick_range:
+        x_date = dfirst + dt.timedelta(days=dx)
+        x_tick_label.append(str(x_date))
+
+    y_tick_label = []
+    y_tick_range = []
+    for i in range(num_bins + 1):
+        print "i = {0}".format(i)
+        y_tick_range.append(i)
+        y_tick_label.append("{0}".format(2 ** i))
+
+    for i, data in enumerate(matrices):
+        data *= 100
+        data = data.astype(np.int) # convert to 1 ~ 100
+        fig, ax = plt.subplots()
+        if ('log' == scale):
+            data = np.log10(data)
+        plt.pcolor(data, cmap=plt.cm.hot)
+        ax.set_xlim(0, data.shape[1])
+        ax.set_ylim(0, data.shape[0])
+        cbar = plt.colorbar()
+        #cbar.ax.xaxis.tick_top()
+        cbar.ax.xaxis.set_label_position('top')
+        cbar.ax.set_xlabel('Percentage', fontsize=13)
+        if (0 == i):
+            ylabel = 'Days since last access'
+            plot_tt = 'MWA LTA observation distribution based on last access'
+        elif (1 == i):
+            ylabel = 'Days since ingestion (age)'
+            plot_tt = 'MWA LTA observation distribution based on age'
+        else:
+            ylabel = 'Days'
+            plot_tt = 'MWA LTA observation distribution'
+        plt.ylabel(ylabel, fontsize=15)
+        plt.xlabel('Access time', fontsize=15)
+        plt.title('{2} from {0} to {1}'.format(dfirst, dlast, plot_tt), fontsize=17)
+
+        ax.set_xticks(x_tick_range, minor=False)
+        ax.set_xticklabels(x_tick_label, minor=False, rotation=45)
+
+        #if (first_obsdate is not None):
+        ax.set_yticks(y_tick_range, minor=False)
+        ax.set_yticklabels(y_tick_label, minor=False)
+
+        ax.tick_params(direction='out')
+        plt.show()
+        plt.close(fig)
 
 def ralist_to_obs_acc_matrix(al, min_obs_date, max_obs_date, serialise_file=None):
     """
@@ -663,7 +740,6 @@ def plot_access_heatmap(data, obs_range, num_days,
     ax.tick_params(direction='out')
     plt.show()
     plt.close(fig)
-
 
 def _raListToNumArray(al):
     """
