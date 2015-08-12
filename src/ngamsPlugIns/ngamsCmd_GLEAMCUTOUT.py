@@ -79,7 +79,7 @@ cmd_cutout = "{0}/bin/getfits -sv -o %s -d %s %s %s %s J2000 %d %d".format(wcsto
 cmd_fits2jpg = "/mnt/gleam/software/bin/fits2jpeg -fits %s -jpeg %s -nonLinear" # % (fitsfname, jpegfname)
 psf_seq = ['BMAJ', 'BMIN', 'BPA']
 
-ds9_sem = threading.Semaphore(1)
+ds9_sem = threading.Semaphore(10)
 
 
 """
@@ -121,7 +121,7 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
         import pyfits
         import pywcs
     """
-    import astro_field
+    #import astro_field
     file = pyfits.open(infile)
     head = file[0].header.copy()
     dim = file[0].data.shape
