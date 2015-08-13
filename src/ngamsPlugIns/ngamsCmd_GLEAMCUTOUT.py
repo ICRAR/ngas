@@ -197,13 +197,15 @@ def add_header(cut_fits_path, cut_psf_paths):
     """
     TODO
     """
-    output = pyfits.open(cut_fits_path)
+    output = pyfits.open(cut_fits_path, mode='update')
     for i, t in enumerate(psf_seq):
         #psflist = pyfits.open(cut_psf_paths[i])
         #output[0].header[t] = numpy.nanmean(psflist[0].data[0])
         output[0].header[t] = cut_psf_paths[i]
 
-    output.writeto(cut_fits_path, clobber=True)
+    output[0].header['history'] = 'GLEAM-IDR2 11-Aug-2015'
+    #output.writeto(cut_fits_path, clobber=True)
+    output.close()
 
     """
     for cut_psf_path in cut_psf_paths:
