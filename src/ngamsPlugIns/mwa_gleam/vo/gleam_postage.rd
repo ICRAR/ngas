@@ -258,7 +258,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 			       	"%s,%s&amp;radius=%s&amp;file_id=%s&amp;regrid=%s"%(params[1], params[2], params[3], params[0], params[4]), target="_blank")["JPEG"]
          </formatter>
 			</outputField>
-      <outputField name="accref" type="text" tablehead="Cutout FITS" utype="Access.Reference" select="'http://store04.icrar.org:7777/GLEAMCUTOUT?radec=' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || '&amp;radius=' || DEGREES(%(size0)s) || '&amp;file_id=' || filename || '&amp;regrid=1&amp;fits_format=1'">
+      <outputField name="accref" type="text" tablehead="Cutout FITS" utype="Access.Reference" select="'http://store04.icrar.org:7777/GLEAMCUTOUT?radec=' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || '&amp;radius=' || DEGREES(%(size0)s) || '&amp;file_id=' || filename || '&amp;regrid=' || %(grid_opt0)s ||'&amp;fits_format=1'">
          <formatter>
                <!--  yield [data]  if (data == "45.1912,45.1912"): -->
              params = data.split(',')
