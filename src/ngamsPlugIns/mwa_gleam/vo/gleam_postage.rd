@@ -103,6 +103,8 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 
     def get_week_by_coord(ra, dec):
         res = []
+        if (ra &lt; 0):
+          ra += 360
         if (0 &lt;= dec &lt;= 30):
           if (0 &lt;= ra &lt;= 120): # 8h
             res.append((2, 60.0, 15.0)) # tuple (week, center_ra, center_dec)
