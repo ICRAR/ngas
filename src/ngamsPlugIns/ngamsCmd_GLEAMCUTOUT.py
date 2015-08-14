@@ -151,21 +151,35 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
     info(3, "Regridding {1} took {0} seconds".format((time.time() - st), dim))
     return hdr_tpl
 
-def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed):
+def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, use_montage=True):
     outfile_nm = "{0}/{1}".format(work_dir, cut_fitsnm)
     #factor = 2
+    if (ra < 0):
+        ra += 360
 
     if (do_regrid):
         factor = 3
     else:
         factor = 2
 
-    cmd1 = "{0} {1} {2} {3} {4} {5} {6}".format(montage_cutout_exec,
-                                                filePath, outfile_nm,
-                                                ra, #float(coord[0]),
-                                                dec, #float(coord[1]),
-                                                radius * factor,
-                                                radius * factor)
+    if (use_montage):
+        cmd1 = "{0} {1} {2} {3} {4} {5} {6}".format(montage_cutout_exec,
+                                                    filePath, outfile_nm,
+                                                    ra, #float(coord[0]),
+                                                    dec, #float(coord[1]),
+                                                    radius * factor,
+                                                    radius * factor)
+    else:
+        ra0 = str(ephem.hours(ra * math.pi / 180)).split('.')[0]
+        dec0 = str(ephem.degrees(dec * math.pi / 180)).split('.')[0]
+        hdulist = pyfits_real.open(filePath)
+        cdelt_x = float(hdulist[0].header['CD1_1'])
+        cdelt_y = float(hdulist[0].header['CD2_2'])
+        width = abs(int(factor * radius / cdelt_x))
+        height = abs(int(factor * radius / cdelt_y))
+        hdulist.close()
+        cmd1 = cmd_cutout % (cut_fitsnm, work_dir, filePath, ra0, dec0, width, height)
+
     info(3, "Executing command: %s" % cmd1)
     execCmd(cmd1)
     to_be_removed.append(work_dir + '/' + cut_fitsnm)
@@ -311,8 +325,11 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             dec = float(coord[1])
             do_regrid = (reqPropsObj.hasHttpPar('regrid') and '1' == reqPropsObj.getHttpPar("regrid"))
             no_psf = (reqPropsObj.hasHttpPar('nopsf') and '1' == reqPropsObj.getHttpPar("nopsf"))
+            use_montage_cut = False
+            if (reqPropsObj.hasHttpPar('use_montage') and '1' == reqPropsObj.getHttpPar("use_montage")):
+                use_montage_cut = True
 
-            cut_fitsnm = cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed)
+            cut_fitsnm = cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, use_montage=use_montage_cut)
             if (no_psf == False):
                 psf_fileId = fileId.split('.fits')[0] + '_psf.fits'
                 query = qs % psf_fileId
