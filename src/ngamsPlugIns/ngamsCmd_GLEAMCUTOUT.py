@@ -40,6 +40,7 @@ import pyfits as pyfits_real
 import astropy.io.fits as pyfits
 import astropy.wcs as pywcs
 import numpy
+from string import Template
 
 
 my_host = getHostId()
@@ -81,6 +82,47 @@ psf_seq = ['BMAJ', 'BMIN', 'BPA']
 
 ds9_sem = threading.Semaphore(10)
 
+html_info = """
+<html>
+<title>GLEAM CUTOUT</title>
+<style>
+body{
+font-family:Arial, Helvetica, sans-serif;
+font-size:13px;
+}
+.info, .success, .warning, .error, .validation {
+border: 1px solid;
+margin: 10px 0px;
+padding:15px 10px 15px 50px;
+background-repeat: no-repeat;
+background-position: 10px center;
+}
+.info {
+color: #00529B;
+background-color: #BDE5F8;
+}
+.success {
+color: #4F8A10;
+background-color: #DFF2BF;
+}
+.warning {
+color: #9F6000;
+background-color: #FEEFB3;
+}
+.error {
+color: #D8000C;
+background-color: #FFBABA;
+}
+
+</style>
+<body>
+${html_content}
+</body>
+</html>
+"""
+
+class AddPSFException(Exception):
+    pass
 
 """
 To add:
@@ -241,12 +283,23 @@ def get_bparam(ra, dec, psf_path):
     #psflist = pyfits.open('mosaic_Week2_freqrange_psf.fits')
     psflist = pyfits.open(psf_path)
     w = pywcs.WCS(psflist[0].header, naxis=2)
-    #pixcoords = w.wcs_world2pix([[ra, dec]], 0)[0]
     pixcoords = w.wcs_world2pix([[ra, dec]], 0)[0]
-    pixcoords = [int(round(elem)) for elem in pixcoords]
-    bmaj = psflist[0].data[0][pixcoords[1]][pixcoords[0]]
-    bmin = psflist[0].data[1][pixcoords[1]][pixcoords[0]]
-    bpa = psflist[0].data[2][pixcoords[1]][pixcoords[0]]
+    #pixcoords = w.wcs_world2pix([[ra, dec]], 1)[0]
+    #pixcoords = [int(round(elem)) for elem in pixcoords]
+    pixcoords = [int(elem) for elem in pixcoords]
+    a = pixcoords[1]
+    b = pixcoords[0]
+    a_len = psflist[0].data[0].shape[0]
+    b_len = psflist[0].data[0].shape[1]
+    if (a >= a_len):
+        raise Exception("Cutout centre is out of the PSF map: {0} >= {1}".format(a, a_len))
+        a = a_len - (a_len - a + 1)
+    if (b >= b_len):
+        raise Exception("Cutout centre is out of the PSF map: {0} >= {1}".format(b, b_len))
+        b = b_len - (b_len - b + 1)
+    bmaj = psflist[0].data[0][a][b]
+    bmin = psflist[0].data[1][a][b]
+    bpa = psflist[0].data[2][a][b]
     return (bmaj, bmin, bpa)
 
 
@@ -271,7 +324,9 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, #let HTTP returns OK so that curl can continue printing XML code
                      "GLEAMCUTOUT command failed: '%s' is not specified" % attnm)
             return
-
+    fits_format = False
+    if (reqPropsObj.hasHttpPar('fits_format') and '1' == reqPropsObj.getHttpPar("fits_format")):
+        fits_format = True
     fileId = reqPropsObj.getHttpPar("file_id")
     query = qs % fileId
     info(3, "Executing SQL query for GLEAM CUTOUT: %s" % str(query))
@@ -330,7 +385,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                 use_montage_cut = True
 
             cut_fitsnm = cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, use_montage=use_montage_cut)
-            if (no_psf == False):
+            if (no_psf == False and fits_format):
                 psf_fileId = fileId.split('.fits')[0] + '_psf.fits'
                 query = qs % psf_fileId
                 info(3, "Executing SQL query for GLEAM PSF CUTOUT: %s" % str(query))
@@ -358,17 +413,44 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                         to_be_removed.append(psf_path_splitnm)
                     """
                     #add_header(work_dir + '/' + cut_fitsnm, cut_psfnm_list)
-                    add_header(work_dir + '/' + cut_fitsnm, get_bparam(ra, dec, psf_path))
+                    try:
+                        add_header(work_dir + '/' + cut_fitsnm, get_bparam(ra, dec, psf_path))
+                    except Exception, hdr_except:
+                        raise AddPSFException(str(hdr_except))
 
     except Exception, excmd1:
+        """
         srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
                      "Cutout failed: '%s'" % str(excmd1))
+        """
+        if (type(excmd1) is AddPSFException):
+            do_regrid = (reqPropsObj.hasHttpPar('regrid') and '1' == reqPropsObj.getHttpPar("regrid"))
+            if (do_regrid):
+                re_grid = 1
+            else:
+                re_grid = 0
+            url = "http://store04.icrar.org:7777/GLEAMCUTOUT?file_id={0}&radec={1}&regrid={2}&radius={3}&fits_format=1&nopsf=1".format(fileId,
+                                                                                                                    reqPropsObj.getHttpPar("radec"),
+                                                                                                                    re_grid,
+                                                                                                                    reqPropsObj.getHttpPar("radius"))
+            html_dict = {}
+            html_content = "<div class=\"warning\">Failed to add PSF info to the FITS header: {0}.</div> <div class=\"info\"><a href='{1}'>Proceed without PSF info.</a></div>".format(excmd1, url)
+            html_dict["html_content"] = html_content
+            ts = Template(html_info)
+            err_msg = ts.safe_substitute(html_dict)
+            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, err_msg, "text/html")
+        else:
+            if (reqPropsObj.hasHttpPar('debug') and '1' == reqPropsObj.getHttpPar("debug")):
+                err_msg = traceback.format_exc()
+            else:
+                err_msg = "Cutout failed: '%s'" % str(excmd1)
+            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, err_msg, NGAMS_TEXT_MT)
         info(3, traceback.format_exc())
         for fn in to_be_removed:
             if (os.path.exists(fn)):
                 os.remove(fn)
         return
-    if (reqPropsObj.hasHttpPar('fits_format') and '1' == reqPropsObj.getHttpPar("fits_format")):
+    if (fits_format):
         hdr_fnm = "gleamcutout.fits"
         hdr_cttp = "image/fits"
         hdr_dataref = work_dir + '/' + cut_fitsnm
