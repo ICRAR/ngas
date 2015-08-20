@@ -63,7 +63,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
   <condDesc combining="True">
 	  <inputKey name="pos" type="text"
 	  	multiplicity="single"
-		  description= "SIMBAD-resolvable object or coordinates.Supporting formats:
+		  description= "SIMBAD/GLEAM-resolvable object (e.g. J013830-280538) or coordinates. Supporting formats:
 1. dd, dd; 2. dd dd; 3. h:m:s, d:m:s; 4. h:m:s d:m:s; 5. h m s, d m s; 6. h m s d m s" tablehead="Position/Name">
 		  <property name="notForRenderer">scs.xml</property>
 	  </inputKey>
@@ -78,6 +78,22 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
     from gavo.protocols import simbadinterface
     import math
     from operator import itemgetter
+    from urllib2 import urlopen, quote
+    def resolve_gleam_obj(pos):
+        obj_name = pos.split()[-1]
+        url = "http://localhost:7778/resolve_gleam_obj?obj_name=%s" % (quote(obj_name))
+        try:
+          resp = urlopen(url)
+          ret = resp.read()
+          if ("None" == ret):
+            return None
+          else:
+            retstr = ret.split(",")
+            retdict = {"RA":retstr[0], "dec":retstr[1]}
+            return retdict
+        except Exception:
+          return None
+
     def getRADec(inPars, sqlPars):
         pos = inPars["pos"]
         if (pos == None):
@@ -86,9 +102,14 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
         	pos = pos.replace(':', ' ')
             return base.parseCooPair(pos)
         except ValueError:
-            data = base.caches.getSesame("web").query(pos)
+            data = resolve_gleam_obj(pos)
             if not data:
-                raise base.ValidationError("%s is neither a RA,DEC" "pair nor a simbad resolvable object"% inPars["pos"], "pos")
+              try:
+                data = base.caches.getSesame("web").query(pos)
+              except Exception:
+                data = None
+              if not data:
+                raise base.ValidationError("%s is neither a RA,DEC" "pair nor a GLEAM or SIMBAD resolvable object"% inPars["pos"], "pos")
             return float(data["RA"]), float(data["dec"])
 
     def get_distance(long1, lat1, long2, lat2):
@@ -144,7 +165,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
       <code>
       inparsize = inPars["size"]
       if (inparsize &gt; 5.0 or inparsize &lt; 0 or inparsize == 0):
-        raise Exception("Angular size must be between 0 and 5 Degree")
+        raise base.ValidationError("Angular size must be between 0 and 5 Degree", "size")
       retstr = ""
       ra, dec = getRADec(inPars, outPars)
       week = get_week_by_coord(ra, dec)
