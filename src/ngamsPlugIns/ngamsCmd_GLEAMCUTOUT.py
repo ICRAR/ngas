@@ -416,7 +416,10 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                     try:
                         add_header(work_dir + '/' + cut_fitsnm, get_bparam(ra, dec, psf_path))
                     except Exception, hdr_except:
-                        raise AddPSFException(str(hdr_except))
+                        if (reqPropsObj.hasHttpPar('skip_psf_err') and '1' == reqPropsObj.getHttpPar("skip_psf_err")):
+                            info(3, "PSF error skipped: {0}".format(hdr_except))
+                        else:
+                            raise AddPSFException(str(hdr_except))
 
     except Exception, excmd1:
         """
