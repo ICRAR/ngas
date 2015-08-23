@@ -212,7 +212,7 @@ def regrid_fits(header_fits, infile, outfile, work_dir, delta=1):
     st = str(time.time()).replace('.', '_')
     hdr_tpl = outfile.replace(".fits", ".hdr")
     head.toTxtFile(hdr_tpl, clobber=True)
-    cmd = "{0} {1} {2} {3}".format(montage_reproj_exec, infile, outfile, hdr_tpl)
+    cmd = "{0} -z 1.1 {1} {2} {3}".format(montage_reproj_exec, infile, outfile, hdr_tpl)
     print("Executing regridding {0}".format(cmd))
     st = time.time()
     execCmd(cmd)
@@ -230,25 +230,35 @@ def upsample_fits_img(hires_fn, lores_fn):
     outfnm = lobnm.split(".")[0] + "_upspl.fits"
     regrid_fits(hires_fn, lores_fn, work_dir + '/' + outfnm, work_dir)
 
+def colorfits_to_jpeg:
+    """
+    /Users/Chen/proj/Montage_v3.3/bin/mJPEG  -red fornax_103-134_upspl.fits 0% 99.98% linear -green ./fornax_139-170_upspl.fits 0% 99.98% linear -blue /Users/Chen/Downloads/fornax_170-231.fits 0% 99.98% linear -out out1.jpg
+    """
+
 if __name__ == '__main__':
-    #upsample_fits_img('/Users/Chen/Downloads/lmc_231_3d.fits', '/Users/Chen/Downloads/lmc_72_4d.fits')
-    #upsample_fits_img('/Users/Chen/Downloads/fornax_170-231.fits', '/Users/Chen/Downloads/fornax_072-103.fits')
+    test_single = True
+    if (test_single):
+        montage_reproj_exec = "/Users/Chen/proj/Montage_v3.3/bin/mProject"
+        #upsample_fits_img('/Users/Chen/Downloads/lmc_231_3d.fits', '/Users/Chen/Downloads/lmc_72_4d.fits')
+        #upsample_fits_img('/Users/Chen/Downloads/fornax_170-231.fits', '/Users/Chen/Downloads/fornax_072-103.fits')
+        upsample_fits_img('/Users/Chen/Downloads/fornax_170-231.fits', '/Users/Chen/Downloads/fornax_103-134.fits')
+        upsample_fits_img('/Users/Chen/Downloads/fornax_170-231.fits', '/Users/Chen/Downloads/fornax_139-170.fits')
+    else:
+        parser = OptionParser()
+        parser.add_option("-m", "--mosaicdir", action="store", type="string", dest="mosaic_path",
+                          help="mosaic path (input)")
+        parser.add_option("-o", "--outdir", action="store", type="string", dest="output_path",
+                          help="output path for cutout images")
 
-    parser = OptionParser()
-    parser.add_option("-m", "--mosaicdir", action="store", type="string", dest="mosaic_path",
-                      help="mosaic path (input)")
-    parser.add_option("-o", "--outdir", action="store", type="string", dest="output_path",
-                      help="output path for cutout images")
+        parser.add_option("-r", "--hiresdir", action="store", type="string", dest="hires_path",
+                          help="high resolution fits path against which low res fits are upsampled")
 
-    parser.add_option("-r", "--hiresdir", action="store", type="string", dest="hires_path",
-                      help="high resolution fits path against which low res fits are upsampled")
+        (options, args) = parser.parse_args()
+        if (None == options.mosaic_path or None == options.output_path):
+            parser.print_help()
+            sys.exit(1)
 
-    (options, args) = parser.parse_args()
-    if (None == options.mosaic_path or None == options.output_path):
-        parser.print_help()
-        sys.exit(1)
-
-    split_mosaics(options.mosaic_path, options.output_path, hires_path=options.hires_path)
+        split_mosaics(options.mosaic_path, options.output_path, hires_path=options.hires_path)
 
 
 
