@@ -258,7 +258,8 @@ def set_env(hideing='nothing', display=False):
             env.keepalive = 15
             env.connection_attempts = 5
             if not env.has_key('key_filename') or not env.key_filename:
-                env.key_filename = AWS_KEY
+                if os.path.exists(os.path.expanduser(AWS_KEY)):
+                    env.key_filename = AWS_KEY
             else:
                 puts(red("SSH key_filename: {0}".format(env.key_filename)))        
             if not env.has_key('GITUSER') or not env.GITUSER:
@@ -1186,6 +1187,9 @@ def user_setup():
         sudo("echo '{0}' >> /home/{1}/.ssh/authorized_keys".format(env.SSH_PUBLIC_KEY, user))
         sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{1} /home/{0}/.ssh/authorized_keys'.format(user, group))
+        if not env.has_key('key_filename') or not env.key_filename:
+            if os.path.exists(os.path.expanduser(AWS_KEY)):
+                env.key_filename = AWS_KEY
         
     # create NGAS directories and chown to correct user and group
     sudo('mkdir -p {0}'.format(env.APP_DIR_ABS))
