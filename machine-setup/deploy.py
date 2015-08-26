@@ -27,7 +27,7 @@ Please also refer to the INSTALL document in the root directory of the NGAS sour
 import glob
 
 import boto, boto.ec2
-import os
+import os, stat
 import time, urllib, inspect
 
 from fabric.api import put, env, require, local, task
@@ -498,7 +498,7 @@ def create_key_pair():
     else:        
         okey = RSA.generate(2048, os.urandom)
         with open(key_fname, 'w') as content_file:
-            chmod(key_fname, 0600)
+            os.chmod(key_fname, stat.S_IRWXU)
             content_file.write(okey.exportKey('PEM'))
     
     env.SSH_PUBLIC_KEY = okey.exportKey('OpenSSH')
