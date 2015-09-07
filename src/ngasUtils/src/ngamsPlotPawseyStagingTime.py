@@ -33,11 +33,12 @@ cd /home/ngas/NGAS_roots/fe02/NGAS/bad-files
 ls -rt | tail | xargs grep "Staging rate" >> ~/staging_rate_Aug.txt
 """
 
-import commands
+import commands, numpy as np
 import matplotlib.pyplot as plt
 
 
-cmd = "cat /tmp/staging_rate_Aug.txt | awk {'print $8'}"
+#cmd = "cat /tmp/staging_rate_Aug.txt | awk {'print $8'}"
+cmd = "cat /Users/Chen/data/fe01_stage_60dyas.log | awk {'print $8'}"
 
 re = commands.getstatusoutput(cmd)
 
@@ -45,18 +46,20 @@ a = []
 
 for aa in re[1].split('\n'):
     a.append(int(aa[1:]))
-    
+
 x = np.array(a)
 
-hist, bins = np.histogram(x, bins=30)
+hist, bins = np.histogram(x, bins=100)
 width = 0.7 * (bins[1] - bins[0])
 center = (bins[:-1] + bins[1:]) / 2
 fig = plt.figure()
 
-fig.suptitle('Pawsey staging time from 6 Aug to 13 Aug 2014', fontsize=14)
+#fig.suptitle('Pawsey staging time from 6 Aug to 13 Aug 2014', fontsize=14)
+fig.suptitle('Pawsey staging time in July and August 2015', fontsize=16)
 ax = fig.add_subplot(111)
 ax.set_ylabel('Number of staging requests')
 ax.set_xlabel('Staging completion time in seconds')
+ax.set_xlim([0, 4500])
 
 plt.bar(center, hist, align='center', width=width)
 plt.show()
