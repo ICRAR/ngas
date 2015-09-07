@@ -406,7 +406,8 @@ def csv_to_ra_list(csv_file):
             if (-1 == a2):
                 isOffline = None
             elif (1 == a2):
-                isOffline = True
+                #isOffline = True
+                isOffline = False
             else:
                 isOffline = False
             fsize = int(a[3])
@@ -420,6 +421,14 @@ def csv_to_ra_list(csv_file):
 
 def fit_csv_for_sqlite(csv_in, csv_out):
     """
+    split -l 21701733 2015-08-01T19-42-25-int.csv
+    # 21701733 is "count(*) from ac"
+    create table ac(ts integer, obs_id integer, offline integer, file_size integer, user_ip varchar(256), obs_date char(10));
+    create index ac_ts_index on ac(ts);
+    .separator ","
+    .import 2015-08-01T19-42-25-int.csv ac
+
+
     Difference between input/output CSV
     time - from string (input) to epoch integer (output)
     offline - from boolean (T/F/None) to integer (1/0/-1)
@@ -443,6 +452,96 @@ def sort_obsid_from_sqlite(sqlite_file):
         obs_dict[obsid_row[0]] = c + 1
 
     return (obs_dict, all_obs[0][0], all_obs[-1][0])
+
+def get_LFU_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=True):
+    pass
+
+def get_LTP_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=True):
+    pass
+
+def get_OPT_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=True):
+    pass
+
+def get_LRU_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=True):
+    """
+    Stack distance based on paper:
+    http://dl.acm.org/citation.cfm?id=1663471
+    """
+    import sqlite3 as dbdrv
+    from collections import Counter
+
+    dbconn = dbdrv.connect(sqlite_file)
+    q = "SELECT ts, obs_id, offline from ac"
+    cur = dbconn.cursor()
+    cur.execute(q)
+
+    y = [] # reference stream or the so called "stack" in LRU scheme (only)
+    yd = [] # reuse distance
+    uobsDict = {} #key - obsId, last reference relative time step
+    uobsDict_date = {} # key - obsId, val - last access date
+
+    session_gap *= 1000 # change into milliseconds
+
+    c = 1
+    while (True):
+        al = cur.fetchmany(10000)
+        if (al == []):
+            break
+        for a in al:
+            obsId = a[1]
+            a_date = a[0]
+            """
+            if (a[2] == -1): # qarchive
+                if (ingest_into_disk):
+                    uobsDict[obsId] = c
+                    c += 1
+                    y.append(obsId)
+                continue
+            """
+
+            if ((not uobsDict_date.has_key(obsId)) or
+                (a_date - uobsDict_date[obsId] > session_gap)):
+
+                if (not uobsDict.has_key(obsId)):
+                    if (a[2] != -1):
+                        rud = np.nan # referenced for the first time
+                else:
+                    lastref = uobsDict[obsId]
+                    rud = len(Counter(y[lastref:])) #excluding last reference itself
+
+                y.append(obsId)
+                if (a[2] != -1):
+                    yd.append(rud)
+                uobsDict[obsId] = c
+                c += 1
+            uobsDict_date[obsId] = a_date
+        sys.stdout.write('.')
+        sys.stdout.flush()
+
+    cur.close()
+    return np.array(yd)
+
+def plot_success_function(yd, label='LRU replacement', lcolor='b', line='-', show=True, ax=None, init_on_tape=True):
+    if (init_on_tape):
+        pass
+    else:
+        yd = yd[~np.isnan(yd)]
+    sorted = np.sort(yd)
+    yvals = np.arange(len(sorted)) / float(len(sorted))
+    if (ax is None):
+        fig = pl.figure()
+        ax = fig.add_subplot(111)
+        ax.set_title('Disk cache hits ratio as a function of disk capacity and replacement policy', fontsize=15)
+        ax.set_xlabel('Disk cache capacity (# of Obs)', fontsize=14)
+        ax.set_ylabel("Disk cache hit ratio", fontsize=14)
+        ax.set_ylim([0, 1.1])
+    ax.plot(sorted, yvals, color=lcolor, linestyle=line, label=label, linewidth=2.0)
+    ax.grid(True)
+    if (show):
+        legend = ax.legend(loc="center right", shadow=True, prop={'size':14})
+        pl.show()
+    else:
+        return ax
 
 def get_fresh_matrices_from_db(sqlite_file,
                              num_bins=10,
@@ -823,15 +922,16 @@ def _raListToNumArray(al):
             if (a.offline):
                 #x2.append(ax)
                 #y2.append(int(a.obsId)) # miss
-                x2d[ax].add(a.obsId)
+                #x2d[ax].add(a.obsId)
                 xy3[ax] += 1
             else:
                 #x1.append(ax)
                 #y1.append(int(a.obsId)) # hit
-                x1d[ax].add(a.obsId)
+                #x1d[ax].add(a.obsId)
                 xy4[ax] += 1
             xy5[ax] += a.size
 
+    """
     for k, v in x1d.items():
         for oid in v:
             x1.append(k)
@@ -841,6 +941,7 @@ def _raListToNumArray(al):
         for oid in v:
             x2.append(k)
             y2.append(oid)
+    """
 
     for k, v in x6d.items():
         for oid in v:
@@ -1030,7 +1131,7 @@ def _plotVirtualTime(accessList, archName, fgname, rd_bin_width = 250):
 def post_actual_time(acl, series_name, col_name, influx_host, influx_port, influx_db):
     pass
 
-def _plotActualTime(accessList, archName, fgname):
+def _plotActualTime(accessList, archName, fgname=None):
     """
     Plot data access based on actual time
     """
@@ -1039,10 +1140,15 @@ def _plotActualTime(accessList, archName, fgname):
     x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6, x7, y7, x8, y8 = _raListToNumArray(accessList)
     print ("Converting to num array takes %d seconds" % (time.time() - stt))
     fig = pl.figure()
+    fig.suptitle('%s archive activity from %s to %s' % (archName, accessList[0].date.split('T')[0],accessList[-1].date.split('T')[0]), fontsize=14)
+
+    ax1 = fig.add_subplot(211)
+    """
     if (len(x3) or len(x4)):
         ax = fig.add_subplot(211)
     else:
         ax = fig.add_subplot(111)
+
     ax.set_xlabel('Time (days)', fontsize = 9)
     ax.set_ylabel('Obs number (GPS time)', fontsize = 9)
     ax.set_title('%s archive activity from %s to %s' % (archName, accessList[0].date.split('T')[0],accessList[-1].date.split('T')[0]), fontsize=10)
@@ -1057,52 +1163,90 @@ def _plotActualTime(accessList, archName, fgname):
     ax.plot(x6, y6, color = 'k', marker = 'o', linestyle = '',
                         label = 'ingestion', markersize = 3, markeredgecolor = 'k', markerfacecolor = 'none')
 
+    """
     left, right = _getLR([x1, x2, x3, x4, x5, x6, x7, x8])
 
-    ax.set_xlim([left, right])
-    legend = ax.legend(loc = 'upper left', shadow=True, prop={'size':7})
+    #ax1.set_xlim([left, right])
+    #legend = ax.legend(loc = 'upper left', shadow=True, prop={'size':7})
 
     if (len(x3) or len(x4) or len(x7)):
-        ax1 = fig.add_subplot(212)
-        ax1.set_xlabel('Time (days)', fontsize = 9)
-        ax1.set_ylabel('Number of files', fontsize = 9)
-        ax1.tick_params(axis='both', which='major', labelsize=8)
-        ax1.tick_params(axis='both', which='minor', labelsize=6)
+        #ax1 = fig.add_subplot(212)
+        ax1.set_xlabel('Time (days)', fontsize = 12)
+        ax1.set_ylabel('Number of files', fontsize = 12)
+        ax1.tick_params(axis='both', which='major', labelsize=10)
+        ax1.tick_params(axis='both', which='minor', labelsize=8)
         ax1.set_title('Number/Volume of data access and ingestion', fontsize=10)
 
         if (len(x4)):
-            ax1.plot(x4, y4, color = 'b', linestyle = '-', marker = 'x', label = 'online access', markersize = 3)
+            ax1.plot(x4, y4, color = 'b', linestyle = '-', marker = 'x', label = 'access', markersize = 3)
+        """
         if (len(x3)):
             ax1.plot(x3, y3, color = 'r', linestyle = '--', marker = '+', label = 'offline access', markersize = 3)
+        """
         if (len(x7)):
             ax1.plot(x7, y7, color = 'k', linestyle = '-.', marker = 'o', label = 'ingestion', markersize = 3, markerfacecolor = 'none')
 
-        ax2 = ax1.twinx()
-        ax2.set_ylabel('Data volume (TB)', fontsize = 9)
-        ax2.tick_params(axis='both', which='major', labelsize=8)
-        ax2.tick_params(axis='both', which='minor', labelsize=6)
+        #ax2 = ax1.twinx()
+        ax2 = fig.add_subplot(212, sharex=ax1)
+        ax2.set_ylabel('Data volume (TB)', fontsize = 12)
+        ax2.set_xlabel('Time (days)', fontsize = 12)
+        ax2.tick_params(axis='both', which='major', labelsize=10)
+        ax2.tick_params(axis='both', which='minor', labelsize=8)
+        ax2.set_title('Volume of data access and ingestion', fontsize=10)
         ax2.plot(x5, y5 / 1024.0 ** 4, color = 'g', linestyle = '-.', marker = 's', label = 'access volume',
                  markersize = 3, markeredgecolor = 'g', markerfacecolor = 'none')
         ax2.plot(x8, y8 / 1024.0 ** 4, color = 'm', linestyle = ':', marker = 'd', label = 'ingestion volume',
                  markersize = 3, markeredgecolor = 'm', markerfacecolor = 'none')
 
-        ax1.set_xlim([left, right])
+        #ax1.set_xlim([left, right])
 
-        legend1 = ax1.legend(loc = 'upper left', shadow=True, prop={'size':7})
-        legend2 = ax2.legend(loc = 'upper right', shadow=True, prop={'size':7})
+        legend1 = ax1.legend(loc = 'upper left', shadow=True, prop={'size':10})
+        legend2 = ax2.legend(loc = 'upper right', shadow=True, prop={'size':10})
 
     pl.tight_layout()
-    fig.savefig(fgname)
+    if (fgname is not None):
+        fig.savefig(fgname)
+    else:
+        pl.show()
     pl.close(fig)
 
 def get_sort_key(ra):
     return ra.date
 
+def get_unprocessed_list(csv_file, f, dir):
+    import subprocess
+    last_line = subprocess.check_output(['tail', '-1', csv_file]).strip()
+    last_time = float(last_line.split(",")[0])
+
+    #ftime = "2014-01-24T13:47:14.679"
+    pat = "%Y-%m-%dT%H:%M:%S.%f"
+    re = []
+    retry = 5
+    for fn in f:
+        first_lines = subprocess.check_output(['head', '-%d' % retry, "%s/%s" % (dir, fn)]).split('\n')
+        for first_line in first_lines:
+            """
+            print "--------"
+            print first_line
+            print "--------"
+            """
+            try:
+                ftime = first_line.split()[0]
+                epoch = int(time.mktime(time.strptime(ftime, pat)) * 1000)
+                if (epoch >= last_time):
+                    re.append(fn)
+                break
+            except:
+                continue
+
+    print(" ** {0} new files will be processed".format(len(re)))
+    return re
+
 def processLogs(dirs, fgname, stgline='to stage file:',
                 aclobj=None, archName='Pawsey',
                 obs_trsh=1.05, vir_time=False,
                 per_user=False, reuse_dist=False,
-                per_user_y_unit='Obs Id', save_acl_file=None):
+                per_user_y_unit='Obs Id', cvs_file=None):
     """
     process all logs from a list of directories
 
@@ -1120,8 +1264,13 @@ def processLogs(dirs, fgname, stgline='to stage file:',
             for (dirpath, dirnames, filenames) in walk(dir):
                 f.extend(filenames)
                 break
+            if (cvs_file and os.path.exists(cvs_file)):
+                """
+                skip files that have been processed
+                """
+                filter_list = get_unprocessed_list(cvs_file, f, dir)
             if (mp.cpu_count() > 2):
-                results = [pool.apply_async(parse_log_thrd, args=('%s/%s' % (dir, fn), stgline, obs_trsh)) for fn in f]
+                results = [pool.apply_async(parse_log_thrd, args=('%s/%s' % (dir, fn), stgline, obs_trsh)) for fn in filter_list]
                 output = [p.get() for p in results]
                 for o in output:
                     accessList += o
@@ -1142,9 +1291,9 @@ def processLogs(dirs, fgname, stgline='to stage file:',
             accessList = sorted(accessList, key=get_sort_key)
             print ("Sorting takes %d seconds" % (time.time() - stt))
         finally:
-            if (save_acl_file and accessList):
-                ra_list_to_csv(accessList, save_acl_file)
-                #pickleSaveACL(accessList, save_acl_file)
+            if (cvs_file and accessList):
+                ra_list_to_csv(accessList, cvs_file)
+                #pickleSaveACL(accessList, cvs_file)
 
     """
     if (vir_time):
@@ -1465,7 +1614,11 @@ def syncLogFileDir(srcDir, tgtDir, pawsey_stage=False):
         remote_src = True
         print 'Login to host: %s' % (tmp[0])
     else:
-        cmd = 'ls %s' % srcDir
+        if (pawsey_stage):
+            cmd = 'dmls -l %s/' % (srcDir)
+            print cmd
+        else:
+            cmd = 'ls %s' % srcDir
 
     srcList = execCmd(cmd)[1].split('\n')
 
@@ -1508,15 +1661,15 @@ def syncLogFileDir(srcDir, tgtDir, pawsey_stage=False):
         #cmd = 'ssh %s "cd %s; dmget ' % (tmp[0], tmp[1])
         cmd = 'dmget '
         for sfnm in stage_list:
-            cmd += '{0} '.format(sfnm)
-        print "cd {0}".format(tmp[1])
+            cmd += '{0} '.format(srcDir + "/" + sfnm)
+        #print "cd {0}".format(tmp[1])
         print cmd
-        return
+        #return
         #cmd += '"'
-        #re = execCmd(cmd)
-        #print "Staging result {0}: {1}".format(re[0], re[1])
-        #if (re[0] != 0):
-            #sys.exit(1)
+        re = execCmd(cmd)
+        print "Staging result {0}: {1}".format(re[0], re[1])
+        if (re[0] != 0):
+            sys.exit(1)
 
     if (remote_src):
         verb = 'scp'
@@ -1541,9 +1694,9 @@ if __name__ == '__main__':
     parser.add_option("-c", "--srcdir", action="store", type="string", dest="srcdir", help="directories separated by semicolon. If this option is present, the system will sync between srcdir and dir")
     parser.add_option("-o", "--output", action="store", type="string", dest="output", help="output figure name (path)")
     parser.add_option("-s", "--stgline", action="store", type="string", dest="stgline", help="a line representing staging activity")
-    parser.add_option("-a", "--saveaclfile", action="store", dest="save_acl_file",
+    parser.add_option("-a", "--savecvsfile", action="store", dest="save_cvs_file",
                       type = "string", default = "", help = "Save access list to the CSV file")
-    parser.add_option("-l", "--loadaclfile", action="store", dest="load_acl_file",
+    parser.add_option("-l", "--loadcvsfile", action="store", dest="load_cvs_file",
                       type = "string", default = "", help = "Load access list CSV from the file")
     parser.add_option("-r", "--archname", action="store", type="string", dest="arch_name", help="name of the archive")
     parser.add_option("-e", "--threshold", action="store", type="float", dest="obs_trsh",
@@ -1556,15 +1709,16 @@ if __name__ == '__main__':
     parser.add_option("-u", "--reusedist", action="store_true", dest="rud", default = False, help = "plot reuse distance per user")
 
     (options, args) = parser.parse_args()
+    """
     if (None == options.output):
         parser.print_help()
         sys.exit(1)
-
-    if (None == options.dir and (not options.load_acl_file)):
+    """
+    if (None == options.dir and (not options.load_cvs_file)):
         parser.print_help()
         sys.exit(1)
 
-    if (options.srcdir and (not options.load_acl_file)):
+    if (options.srcdir and (not options.load_cvs_file)):
         srcdirs = options.srcdir.split('+')
         dirs = options.dir.split('+')
         if (len(srcdirs) > len(dirs)):
@@ -1575,10 +1729,10 @@ if __name__ == '__main__':
         if (tt == 'Y' or tt == 'y'):
             for i in range(len(srcdirs)):
                 print 'Syncing %s and %s' % (srcdirs[i], dirs[i])
-                syncLogFileDir(srcdirs[i], dirs[i])
-            #sys.exit(1)
+                syncLogFileDir(srcdirs[i], dirs[i], pawsey_stage=True)
+            sys.exit(0) # do not mix file syncing and file processing
 
-    if (not options.load_acl_file):
+    if (not options.load_cvs_file):
         print 'Checking directories....'
         dirs = options.dir.split('+')
         for d in dirs:
@@ -1586,9 +1740,9 @@ if __name__ == '__main__':
     else:
         dirs = None
 
-    if (options.load_acl_file):
+    if (options.load_cvs_file):
         #acl = pickleLoadACL(options)
-        acl = csv_to_ra_list(options.load_acl_file)
+        acl = csv_to_ra_list(options.load_cvs_file)
     else:
         print 'Processing logs...'
         acl = None
@@ -1608,9 +1762,9 @@ if __name__ == '__main__':
     if (None == options.stgline): #options.stgline = "staging it for"
         acl = processLogs(dirs, options.output, aclobj = acl,
                           archName = archnm, obs_trsh = obs_num_threshold, vir_time = options.vir_time,
-                          per_user = options.per_user, reuse_dist = options.rud, per_user_y_unit = puyunit, save_acl_file = options.save_acl_file)
+                          per_user = options.per_user, reuse_dist = options.rud, per_user_y_unit = puyunit, cvs_file=options.save_cvs_file)
     else:
         acl = processLogs(dirs, options.output, stgline = options.stgline, aclobj = acl,
                           archName = archnm, obs_trsh = obs_num_threshold, vir_time = options.vir_time,
-                          per_user = options.per_user, reuse_dist = options.rud, per_user_y_unit = puyunit, save_acl_file = options.save_acl_file)
+                          per_user = options.per_user, reuse_dist = options.rud, per_user_y_unit = puyunit, cvs_file=options.save_cvs_file)
 

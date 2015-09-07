@@ -108,7 +108,7 @@ def plotIt(x, db='Pawsey'):
                                                                                         ttlen,
                                                                                         round(ttsize, 2),
                                                                                         timestr),
-                 fontsize=14)
+                 fontsize=18)
     ax = fig.add_subplot(111)
     ax.set_ylabel('Frequency')
     ax.set_xlabel('log(file size [B])')
