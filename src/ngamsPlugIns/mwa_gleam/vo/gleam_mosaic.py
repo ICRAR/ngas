@@ -34,11 +34,14 @@ from optparse import OptionParser
 import ephem
 import astropy.io.fits as pyfits
 import multiprocessing as mp
+import numpy as np
 
 montage_cutout_exec = "/home/ngas/software/Montage_v3.3/bin/mSubimage"
 wcstools_cutout_exec = "/home/ngas/software/wcstools-3.9.2/bin/getfits -sv -o %s -d %s %s %s %s J2000 %d %d"
 montage_reproj_exec = "/home/ngas/software/Montage_v3.3/bin/mProject"
-#montage_reproj_exec = "/Users/Chen/proj/Montage_v3.3/bin/mProject"
+if (not (os.path.exists(montage_reproj_exec))):
+    montage_reproj_exec = "/Users/Chen/proj/Montage_v3.3/bin/mProject"
+montage_jpeg_exec = "/home/ngas/software/Montage_v3.3/bin/mJPEG"
 
 DEBUG = False
 
@@ -200,7 +203,7 @@ def split_mosaics(mosaic_path, output_path, hires_path=None):
             cut_effective_area(ff, output_path, hires_path=hires_path)
     """
 
-def regrid_fits(header_fits, infile, outfile, work_dir, delta=1):
+def regrid_fits(header_fits, infile, outfile, work_dir):
     """
     all units of distances are in degrees
     both file names are strings
@@ -210,13 +213,29 @@ def regrid_fits(header_fits, infile, outfile, work_dir, delta=1):
     dim = in_file_hdu[0].data.shape
 
     st = str(time.time()).replace('.', '_')
+
     hdr_tpl = outfile.replace(".fits", ".hdr")
+    if (os.path.exists(hdr_tpl)):
+        os.remove(hdr_tpl)
     head.toTxtFile(hdr_tpl, clobber=True)
-    cmd = "{0} -z 1.1 {1} {2} {3}".format(montage_reproj_exec, infile, outfile, hdr_tpl)
+
+    #for i in range(4):
+    area_file = outfile.replace(".fits", "_area.fits")
+    if (os.path.exists(area_file)):
+        os.remove(area_file)
+
+    #factor = 1.1 + 0.1 * i # shrink factor
+    cmd = "{0} {1} {2} {3}".format(montage_reproj_exec, infile, outfile, hdr_tpl)
     print("Executing regridding {0}".format(cmd))
     st = time.time()
     execCmd(cmd)
     print("Regridding {1} took {0} seconds".format((time.time() - st), dim))
+    lh = pyfits.open(outfile)
+    dim_low = lh[0].data.shape
+    lh.close()
+    if (dim_low != dim):
+        print "dim mismatch {0}:{1} vs. {2}{3}".format(header_fits, dim, outfile, dim_low)
+    in_file_hdu.close()
     return hdr_tpl
 
 def upsample_fits_img(hires_fn, lores_fn):
@@ -228,21 +247,144 @@ def upsample_fits_img(hires_fn, lores_fn):
     work_dir = '/tmp/gleamvo/upsample'
     lobnm = os.path.basename(lores_fn)
     outfnm = lobnm.split(".")[0] + "_upspl.fits"
+    i = 1
+    while (os.path.exists(outfnm)):
+        outfnm = lobnm.split(".")[0] + "_upspl_%d.fits" % i
+        i += 1
     regrid_fits(hires_fn, lores_fn, work_dir + '/' + outfnm, work_dir)
 
-def colorfits_to_jpeg:
+def colorfits_to_jpeg():
     """
     /Users/Chen/proj/Montage_v3.3/bin/mJPEG  -red fornax_103-134_upspl.fits 0% 99.98% linear -green ./fornax_139-170_upspl.fits 0% 99.98% linear -blue /Users/Chen/Downloads/fornax_170-231.fits 0% 99.98% linear -out out1.jpg
     """
+    base_dir = "/mnt/mwa_scratch_01fs/aladin_img/gleam_hips/color"
+
+    lr = listdir("%s/103-134/hires" % base_dir)
+    lr.sort()
+    lr = [base_dir + "/103-134/hires/" + f for f in lr]
+
+    lg = listdir("%s/139-170/hires" % base_dir)
+    lg.sort()
+    lg = [base_dir + "/139-170/hires/" + f for f in lg]
+
+    lb = listdir("%s/170-231/non-regrid" % base_dir)
+    lb.sort()
+    lb = [base_dir + "/170-231/non-regrid/" + f for f in lb]
+
+    out_dir = "/mnt/mwa_scratch_01fs/aladin_img/gleam_hips/color/RGB"
+
+    for i, f in enumerate(lb):
+        bn = os.path.basename(f)
+        cmd = "{0} -red {1} 0% 99.98% linear -green {2} 0% 99.98% linear -blue {3} 0% 99.98% linear -out {4}".format(montage_jpeg_exec,
+                                                                                                                     lr[i],
+                                                                                                                     lg[i],
+                                                                                                                     f,
+                                                                                                                     out_dir + "/" + bn.replace("170-231MHz.fits", "Color.jpg"))
+        print cmd
+        execCmd(cmd)
+
+
+def check_dim(move_to=None, fix_to=None):
+    base_dir = "/mnt/mwa_scratch_01fs/aladin_img/gleam_hips/color"
+
+    lr = listdir("%s/103-134/hires" % base_dir)
+    lr.sort()
+    lr = [base_dir + "/103-134/hires/" + f for f in lr]
+
+    lg = listdir("%s/139-170/hires" % base_dir)
+    lg.sort()
+    lg = [base_dir + "/139-170/hires/" + f for f in lg]
+
+    lb = listdir("%s/170-231/non-regrid" % base_dir)
+    lb.sort()
+    lb = [base_dir + "/170-231/non-regrid/" + f for f in lb]
+
+    # first check all the dimensions are correct
+    if (move_to and (not os.path.exists(move_to))):
+        print "Move to {0} does not exist.".format(move_to)
+        move_to = None
+
+    for i, f in enumerate(lb):
+        bl = pyfits.open(f)
+        hb = bl[0].data.shape
+
+        gl = pyfits.open(lg[i])
+        hg = gl[0].data.shape
+
+        rl = pyfits.open(lr[i])
+        hr = rl[0].data.shape
+
+        blhdr = bl[0].header
+
+        l_bad = None
+        bad_l = None
+
+        if (hb == hg):
+            pass
+        else:
+            l_bad = lg # file path
+            bad_l = gl # file handle
+            bad_dim = hg
+        if (hb == hr):
+            if (hb != hg):
+                print
+        else:
+            l_bad = lr
+            bad_l = rl
+            bad_dim = hr
+
+        if (l_bad and bad_l):
+            badhdr = bad_l[0].header
+            print "Mismatch between {0}:{1} and {2}:{3}".format(os.path.basename(lb[i]), hb, os.path.basename(l_bad[i]), hg)
+            print "CRVAL1 left: {0}, CRVAL1 right: {1}".format(blhdr['CRVAL1'], badhdr['CRVAL1'])
+            print "CRVAL2 left: {0}, CRVAL2 right: {1}".format(blhdr['CRVAL2'], badhdr['CRVAL2'])
+            print "CRPIX1 left: {0}, CRPIX1 right: {1}".format(blhdr['CRPIX1'], badhdr['CRPIX1'])
+            print "CRPIX2 left: {0}, CRPIX2 right: {1}".format(blhdr['CRPIX2'], badhdr['CRPIX2'])
+            if (l_bad == lr):
+                print
+            if (move_to):
+                os.rename(l_bad[i], "%s/%s" % (move_to, os.path.basename(l_bad[i])))
+            if (fix_to and os.path.exists(fix_to)):
+                a = bad_l[0].data
+                b = np.zeros(hb)
+                delta_0 = hb[0] - bad_dim[0]
+                delta_1 = hb[1] - bad_dim[1]
+                if (delta_0 > 0 and delta_1 > 0):
+                    b[delta_0:, delta_1:] = a
+                    for j in range(delta_0):
+                        b[j, delta_1:] = a[0, :]
+                        b[delta_0:, j] = a[:, 0]
+                elif (delta_0 > 0):
+                    b[delta_0:, :] = a
+                    for j in range(delta_0):
+                        b[j, :] = a[0, :] #pad with a's first row
+                elif (delta_1 > 0):
+                    b[:, delta_1:] = a
+                    for j in range(delta_1):
+                        b[:, j] = a[:, 0] #pad with a's first col
+                bad_l[0].data = b
+                bad_l[0].header['CRPIX2'] = blhdr['CRPIX2']
+                bad_l[0].header['NAXIS2'] = blhdr['NAXIS2']
+                bad_l[0].header['CRPIX1'] = blhdr['CRPIX1']
+                bad_l[0].header['NAXIS1'] = blhdr['NAXIS1']
+                write_file = '{0}/{1}'.format(fix_to, os.path.basename(l_bad[i]))
+                print "Writing fixed file to %s" % write_file
+                bad_l.writeto(write_file)
+                bad_l.close()
 
 if __name__ == '__main__':
     test_single = True
     if (test_single):
-        montage_reproj_exec = "/Users/Chen/proj/Montage_v3.3/bin/mProject"
+        #montage_reproj_exec = "/Users/Chen/proj/Montage_v3.3/bin/mProject"
         #upsample_fits_img('/Users/Chen/Downloads/lmc_231_3d.fits', '/Users/Chen/Downloads/lmc_72_4d.fits')
         #upsample_fits_img('/Users/Chen/Downloads/fornax_170-231.fits', '/Users/Chen/Downloads/fornax_072-103.fits')
-        upsample_fits_img('/Users/Chen/Downloads/fornax_170-231.fits', '/Users/Chen/Downloads/fornax_103-134.fits')
-        upsample_fits_img('/Users/Chen/Downloads/fornax_170-231.fits', '/Users/Chen/Downloads/fornax_139-170.fits')
+        #upsample_fits_img('/Users/Chen/Downloads/fornax_170-231.fits', '/Users/Chen/Downloads/fornax_103-134.fits')
+        #upsample_fits_img('/Users/Chen/Downloads/fornax_170-231.fits', '/Users/Chen/Downloads/fornax_139-170.fits')
+        #check_dim(move_to="/mnt/mwa_scratch_01fs/aladin_img/gleam_hips/color/mismatched")
+        #          fix_to="/mnt/mwa_scratch_01fs/aladin_img/gleam_hips/color/fixed")
+        #check_dim(fix_to="/mnt/mwa_scratch_01fs/aladin_img/gleam_hips/color/fixed")
+        #check_dim()
+        colorfits_to_jpeg()
     else:
         parser = OptionParser()
         parser.add_option("-m", "--mosaicdir", action="store", type="string", dest="mosaic_path",
