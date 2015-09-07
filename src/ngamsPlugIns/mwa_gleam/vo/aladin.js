@@ -4048,16 +4048,16 @@ ProgressiveCat = (function() {
 
             this.otherSources = [];
             var norder = this.view.realNorder;
-            console.log('Current Norder = ' + norder.toString())
+            //console.log('Current Norder = ' + norder.toString())
             if (norder>this.maxOrder) {
                 norder = this.maxOrder;
             }
-            if (norder<=3) {
+            if (norder<=2) {
                 return; // nothing to do, hurrayh !
             }
             var cells = this.view.getVisibleCells(norder, this.frame);
             var ipixList, ipix;
-            for (var curOrder=4; curOrder<=norder; curOrder++) {
+            for (var curOrder=3; curOrder<=norder; curOrder++) {
                 ipixList = [];
                 for (var k=0; k<cells.length; k++) {
                     ipix = Math.floor(cells[k].ipix / Math.pow(4, norder - curOrder));
