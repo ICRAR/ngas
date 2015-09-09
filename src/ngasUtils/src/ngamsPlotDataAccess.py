@@ -42,6 +42,8 @@ import urlparse
 import re as regx
 import cPickle as pickle
 import multiprocessing as mp
+from operator import itemgetter
+from SortedCollection import SortedCollection
 
 
 # retrieval access (date, observation id, was the file offline?, file_size)
@@ -453,13 +455,168 @@ def sort_obsid_from_sqlite(sqlite_file):
 
     return (obs_dict, all_obs[0][0], all_obs[-1][0])
 
+class ACCESS_MODE:
+    INGEST, RETRIEVAL, WRITE, READ, CREATE = xrange(5)
+
+class AccessStack:
+    def __init__(self, sqlite_file):
+        self._sqlite_file = sqlite_file
+        self.ref_stream = self.construct_sorted_list()
+        self.uobsDict = {} #key - obsId, # of times this obs is accessed
+        self.uobsDict_date = {} # key - obsId, val - last access date
+        self._session_gap = 7200
+        self._mode_map = {-1 : ACCESS_MODE.INGEST,
+        0 : ACCESS_MODE.RETRIEVAL, 1 : ACCESS_MODE.RETRIEVAL}
+
+    def construct_sorted_list():
+        return list()
+
+    def push(self, access_id, access_mode, access_date):
+        """
+        A generic funciton
+        access_id could just be obs_id
+        mode - could be ingest/retrieval or write/read
+        access_date - time stamp in milliseconds (int)
+
+        Return None (ingest) or RUD
+        """
+        go_ahead = False
+        if ((not self.uobsDict_date.has_key(access_id)) or
+                (access_date - self.uobsDict_date[access_id] > self._session_gap)):
+            go_ahead = True
+        self.uobsDict_date[access_id] = access_date
+        if (not go_ahead):
+            return None
+
+        if self.uobsDict.has_key(access_id):
+            self.uobsDict[access_id] += 1
+            rud = self.compute_rud(access_id)
+        else:
+            if (access_mode == ACCESS_MODE.INGEST or
+                access_mode == ACCESS_MODE.CREATE):
+                self.uobsDict[access_id] = 0
+                rud = None
+            else:
+                # referenced for the very first time for read/retrieval/write
+                # without being ingested/created previously (this is possible)
+                # it is a kind of "initial conditions" of a simulation
+                self.uobsDict[access_id] = 1
+                rud = np.nan
+            self.append_access(access_id, rud)
+        self.sort_list(rud)
+        self.collect_stats(access_id, access_mode)
+        return rud
+
+    def compute_rud(self, access_id):
+        """
+        compute RUD
+        default impl. override in sub-class
+        """
+        return self.ref_stream.index(access_id)
+
+    def append_access(self, access_id, rud):
+        #default impl. override in sub-class
+        self.ref_stream.append(access_id)
+
+    def get_rud_list(self):
+        """
+        Return a list of reuse distances
+        """
+        import sqlite3 as dbdrv
+        dbconn = dbdrv.connect(self._sqlite_file)
+        q = "SELECT ts, obs_id, offline from ac"
+        cur = dbconn.cursor()
+        cur.execute(q)
+        yd = [] # reuse distance list
+        while (True):
+            al = cur.fetchmany(10000)
+            if (al == []):
+                break
+            for a in al:
+                rud = self.push(a[1], self._mode_map[a[2]], a[0])
+                if (rud is not None):
+                    yd.append(rud)
+            sys.stdout.write('.')
+            sys.stdout.flush()
+
+        cur.close()
+        return np.array(yd)
+
+    def sort_list(self, rud):
+       raise Exception("Not implemented")
+
+    def collect_stats(self, access_id, access_mode):
+        pass
+
+class LFUStack(AccessStack):
+
+
+    def compute_rud(self, access_id):
+        """
+        not only compute RUD, but also sort at the same time
+        """
+        #return self.ref_stream.index(access_id)
+        """
+        index = None
+        for i, acc in enumerate(self.ref_stream):
+            if (acc[0] == access_id):
+                index = i
+                break
+        if (index is None):
+            raise Exception("Cannot find {0}".format(access_id))
+        """
+        old_count = self.uobsDict[access_id] - 1
+        index = self.ref_stream.remove((access_id, -old_count))
+        ref_count = old_count + 1
+        self.ref_stream.insert((access_id, -ref_count))
+        return index
+
+    def append_access(self, access_id, rud):
+        if (rud is None):
+            ref_count = 0
+        else:
+            ref_count = 1
+        # insert to the left if equal, so age is punished (if value is equal)
+        self.ref_stream.insert((access_id, -ref_count))
+
+    def construct_sorted_list(self):
+        return SortedCollection(key=itemgetter(1))
+
+    def sort_list(self, rud):
+        pass
+
+class LRUStack(AccessStack):
+    def sort_list(self, rud):
+        if (rud is not None and rud is not np.nan):
+            #print("------rud is {0}".format(rud))
+            access_id = self.ref_stream.pop(rud)
+            self.ref_stream.append(access_id)
+
+class OPTStack(AccessStack):
+    def _key_func(self, access_id):
+        """
+        call back that produces a key to sort
+        must be implemented by sub-class
+        """
+        return -1 * self.uobsDict[access_id]
+
 def get_LFU_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=True):
+    """
+    least frequently used
+    """
     pass
 
 def get_LTP_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=True):
+    """
+    least transition probability
+    """
     pass
 
 def get_OPT_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=True):
+    """
+    optimal (the longest next reference)
+    the chosen page is the one whose next reference is farthest in the future.
+    """
     pass
 
 def get_LRU_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=True):
