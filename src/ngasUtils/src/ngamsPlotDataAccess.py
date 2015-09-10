@@ -459,64 +459,69 @@ class ACCESS_MODE:
     INGEST, RETRIEVAL, WRITE, READ, CREATE = xrange(5)
 
 class AccessStack:
-    def __init__(self, sqlite_file):
+    def __init__(self, sqlite_file, session_gap=7200):
         self._sqlite_file = sqlite_file
         self.ref_stream = self.construct_sorted_list()
-        self.uobsDict = {} #key - obsId, # of times this obs is accessed
-        self.uobsDict_date = {} # key - obsId, val - last access date
-        self._session_gap = 7200
+        self.chunk_ref_dict = {} #key - chunkId, # of times this obs is accessed
+        self.chunk_date_dict = {} # key - chunkId, val - last access date
+        self._session_gap = session_gap * 1000 # turn that into milliseconds
         self._mode_map = {-1 : ACCESS_MODE.INGEST,
         0 : ACCESS_MODE.RETRIEVAL, 1 : ACCESS_MODE.RETRIEVAL}
+        self.init()
+
+    def init(self):
+        pass
 
     def construct_sorted_list():
         return list()
 
-    def push(self, access_id, access_mode, access_date):
+    def push(self, chunk_id, access_mode, access_date):
         """
         A generic funciton
-        access_id could just be obs_id
+        chunk_id: identifier of an equal-sized piece of data, could just be
+        obs_id or block_id
         mode - could be ingest/retrieval or write/read
         access_date - time stamp in milliseconds (int)
 
         Return None (ingest) or RUD
         """
         go_ahead = False
-        if ((not self.uobsDict_date.has_key(access_id)) or
-                (access_date - self.uobsDict_date[access_id] > self._session_gap)):
+        if ((not self.chunk_date_dict.has_key(chunk_id)) or
+                (access_date - self.chunk_date_dict[chunk_id] > self._session_gap)):
             go_ahead = True
-        self.uobsDict_date[access_id] = access_date
+
         if (not go_ahead):
             return None
 
-        if self.uobsDict.has_key(access_id):
-            self.uobsDict[access_id] += 1
-            rud = self.compute_rud(access_id)
+        if self.chunk_ref_dict.has_key(chunk_id):
+            self.chunk_ref_dict[chunk_id] += 1
+            rud = self.compute_rud(chunk_id, access_date)
         else:
             if (access_mode == ACCESS_MODE.INGEST or
                 access_mode == ACCESS_MODE.CREATE):
-                self.uobsDict[access_id] = 0
+                self.chunk_ref_dict[chunk_id] = 0
                 rud = None
             else:
                 # referenced for the very first time for read/retrieval/write
                 # without being ingested/created previously (this is possible)
                 # it is a kind of "initial conditions" of a simulation
-                self.uobsDict[access_id] = 1
+                self.chunk_ref_dict[chunk_id] = 1
                 rud = np.nan
-            self.append_access(access_id, rud)
-        self.sort_list(rud)
-        self.collect_stats(access_id, access_mode)
+            self.append_access(chunk_id, access_mode, access_date)
+        self.chunk_date_dict[chunk_id] = access_date
+        self.collect_stats(chunk_id, access_mode)
         return rud
 
-    def compute_rud(self, access_id):
+    def compute_rud(self, chunk_id, access_date):
         """
         compute RUD
         default impl. override in sub-class
         """
-        return self.ref_stream.index(access_id)
+        return self.ref_stream.index(chunk_id)
 
-    def append_access(self, access_id, rud):
+    def append_access(self, chunk_id, access_mode, access_date):
         #default impl. override in sub-class
-        self.ref_stream.append(access_id)
+        self.ref_stream.append(chunk_id)
 
     def get_rud_list(self):
         """
@@ -542,73 +547,121 @@ class AccessStack:
         cur.close()
         return np.array(yd)
 
-    def sort_list(self, rud):
-       raise Exception("Not implemented")
-
-    def collect_stats(self, access_id, access_mode):
+    def collect_stats(self, chunk_id, access_mode):
         pass
 
 class LFUStack(AccessStack):
-
-
-    def compute_rud(self, access_id):
+    """
+    least frequently used files will be replaced
+    """
+    def compute_rud(self, chunk_id, access_date):
         """
         not only compute RUD, but also sort at the same time
         """
-        #return self.ref_stream.index(access_id)
-        """
-        index = None
-        for i, acc in enumerate(self.ref_stream):
-            if (acc[0] == access_id):
-                index = i
-                break
-        if (index is None):
-            raise Exception("Cannot find {0}".format(access_id))
-        """
-        old_count = self.uobsDict[access_id] - 1
-        index = self.ref_stream.remove((access_id, -old_count))
+        old_count = self.chunk_ref_dict[chunk_id] - 1
+        index = self.ref_stream.remove((chunk_id, -old_count))
         ref_count = old_count + 1
-        self.ref_stream.insert((access_id, -ref_count))
+        self.ref_stream.insert((chunk_id, -ref_count))
         return index
 
-    def append_access(self, access_id, rud):
-        if (rud is None):
+    def append_access(self, chunk_id, access_mode, access_date):
+        if (access_mode in [ACCESS_MODE.INGEST, ACCESS_MODE.CREATE]):
             ref_count = 0
         else:
             ref_count = 1
         # insert to the left if equal, so age is punished (if value is equal)
-        self.ref_stream.insert((access_id, -ref_count))
+        self.ref_stream.insert((chunk_id, -ref_count))
 
     def construct_sorted_list(self):
         return SortedCollection(key=itemgetter(1))
 
-    def sort_list(self, rud):
-        pass
-
 class LRUStack(AccessStack):
-    def sort_list(self, rud):
-        if (rud is not None and rud is not np.nan):
-            #print("------rud is {0}".format(rud))
-            access_id = self.ref_stream.pop(rud)
-            self.ref_stream.append(access_id)
-
-class OPTStack(AccessStack):
-    def _key_func(self, access_id):
+    """
+    least recently used files will be replaced
+    """
+    def compute_rud(self, chunk_id, access_date):
         """
-        call back that produces a key to sort
-        must be implemented by sub-class
+        not only compute RUD, but also sort at the same time
         """
-        return -1 * self.uobsDict[access_id]
+        old_date = self.chunk_date_dict[chunk_id]
+        index = self.ref_stream.remove((chunk_id, -old_date))
 
-def get_LFU_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=True):
-    """
-    least frequently used
-    """
-    pass
+        # replace with the new access data, and append to the left of the list
+        self.ref_stream.insert((chunk_id, -access_date))
+        return index
 
-def get_LTP_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=True):
+    def append_access(self, chunk_id, access_mode, access_date):
+        # insert to the left, so recency is rewarded (if access_date is equal)
+        self.ref_stream.insert((chunk_id, -access_date))
+
+    def construct_sorted_list(self):
+        return SortedCollection(key=itemgetter(1))
+
+class LIATStack(AccessStack):
     """
-    least transition probability
+    a file with a Longest (expected) Inter-Arrival Time is replaced
+    Notice the IAT is a absolute interval (i.e. milliseconds in between)
+    Whereas RUD is relative interval
+    """
+    def init(self):
+        self.chunk_iat_dict = dict()
+        ret = self._get_epochs()
+        self.start_date = ret[0]
+        self.zero_iat_on_ingest = True
+        self.max_iat = float(ret[1] - ret[0])
+
+    def set_zero_iat_on_ingest(self, setval):
+        if (type(setval) is bool):
+            self.zero_iat_on_ingest = setval
+
+    def _get_epochs(self):
+        import sqlite3 as dbdrv
+        dbconn = dbdrv.connect(self._sqlite_file)
+        q = "SELECT min(ts) from ac"
+        cur = dbconn.cursor()
+        cur.execute(q)
+        dfirst_epoch = cur.fetchall()[0][0]
+        cur.close()
+
+        q = "SELECT max(ts) from ac"
+        cur = dbconn.cursor()
+        cur.execute(q)
+        dlast_epoch = cur.fetchall()[0][0]
+        cur.close()
+
+        return (dfirst_epoch, dlast_epoch)
+
+    def compute_rud(self, chunk_id, access_date):
+        """
+        not only compute RUD, but also sort at the same time
+        """
+        old_iat = self.chunk_iat_dict[chunk_id]
+        index = self.ref_stream.remove((chunk_id, old_iat))
+
+        last_access_date = self.chunk_date_dict[chunk_id]
+        iat = (access_date - last_access_date + old_iat) / 2.0
+        self.ref_stream.insert((chunk_id, iat))
+        self.chunk_iat_dict[chunk_id] = iat
+        return index
+
+    def append_access(self, chunk_id, access_mode, access_date):
+        # first time appear
+        if (ACCESS_MODE.RETRIEVAL == access_mode):
+            iat = access_date - self.start_date
+        else:
+            if (self.zero_iat_on_ingest):
+                iat = 0.0 # put files that have never been accessed at front
+            else:
+                iat = self.max_iat
+        self.chunk_iat_dict[chunk_id] = iat
+        self.ref_stream.insert((chunk_id, iat))
+
+    def construct_sorted_list(self):
+        return SortedCollection(key=itemgetter(1))
+
+class LTPStack(AccessStack):
+    """
+    a file with least transition probability is replaced
     """
     pass
 
@@ -620,10 +673,7 @@ def get_OPT_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=Tr
     pass
 
 def get_LRU_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=True):
-    """
-    Stack distance based on paper:
-    http://dl.acm.org/citation.cfm?id=1663471
-    """
+
     import sqlite3 as dbdrv
     from collections import Counter
 
@@ -679,6 +729,10 @@ def get_LRU_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=Tr
     return np.array(yd)
 
 def plot_success_function(yd, label='LRU replacement', lcolor='b', line='-', show=True, ax=None, init_on_tape=True):
+    """
+    Plot stack distance based on paper:
+    http://dl.acm.org/citation.cfm?id=1663471
+    """
     if (init_on_tape):
         pass
     else:
@@ -690,15 +744,34 @@ def plot_success_function(yd, label='LRU replacement', lcolor='b', line='-', sho
         ax = fig.add_subplot(111)
         ax.set_title('Disk cache hits ratio as a function of disk capacity and replacement policy', fontsize=15)
         ax.set_xlabel('Disk cache capacity (# of Obs)', fontsize=14)
-        ax.set_ylabel("Disk cache hit ratio", fontsize=14)
-        ax.set_ylim([0, 1.1])
+        ax.set_ylabel("Disk cache hits ratio", fontsize=14)
+        ax.set_yticks(np.arange(0, 1.1, 0.1))
+        ax.set_ylim([0, 1.05])
     ax.plot(sorted, yvals, color=lcolor, linestyle=line, label=label, linewidth=2.0)
     ax.grid(True)
     if (show):
+        pawsey_x = 1024 ** 2 / 36
+        ax.vlines(pawsey_x, 0, 1.05)
+        ax.text(pawsey_x + 1000, 0.25, "MWA 1PB disk cache at Pawsey", fontsize=12)
         legend = ax.legend(loc="center right", shadow=True, prop={'size':14})
         pl.show()
     else:
         return ax
+
+def plot_success_functions():
+    data_dir = "/Users/Chen/data/ngas_logs"
+    lru_yd = np.load("{0}/{1}".format(data_dir, 'yd_lru_ingest_correct.npy'))
+    lfu_yd = np.load("{0}/{1}".format(data_dir, 'yd_lfu_ingest_correct.npy'))
+    liat_yd = np.load("{0}/{1}".format(data_dir, 'yd_liat_ingest_correct.npy'))
+    #liat_yd_imiat = np.load("{0}/{1}".format(data_dir, 'yd_liat_ingest_max_iat.npy'))
+    ax1 = plot_success_function(lru_yd, label='Least Recently Used', show=False)
+    #plot_success_function(lru_yd, label='LRU - default on disk', line='--', show=False, init_on_tape=False, ax=ax1)
+    plot_success_function(lfu_yd, label='Least Frequently Used', line='--', lcolor='r', show=False, ax=ax1)
+    #plot_success_function(lfu_yd, label='LFU - default on disk', lcolor='r', line='--', init_on_tape=False, show=False, ax=ax1)
+    plot_success_function(liat_yd, label='Longest Inter-Arrival Time', line=':', lcolor='g', show=True, ax=ax1)
+    #plot_success_function(liat_yd, label='LIAT - default on disk', lcolor='g', line='--', init_on_tape=False, ax=ax1)
+    #plot_success_function(liat_yd_imiat, label='LIAT - ingest max iat', lcolor='g', line='-.', ax=ax1)
+
 
 def get_fresh_matrices_from_db(sqlite_file,
                              num_bins=10,
