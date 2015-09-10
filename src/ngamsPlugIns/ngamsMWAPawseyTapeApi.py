@@ -199,7 +199,7 @@ def pawseyMWAdmget(fileList, host, port, retries = 3, backoff = 1, timeout = 180
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((host, port))
         sock.sendall(val)
-        sock.settimeout(timeout)
+        #sock.settimeout(timeout)
 
         exitcode = struct.unpack('!H', sock.recv(2))[0]
         if exitcode != 0:
