@@ -502,6 +502,8 @@ def checkUpdateDbSnapShots(srvObj):
 
     tmpSnapshotDbm = None
     lostFileRefsDbm = None
+    snapshotDbm = None
+    tmpSnapshotDbm = None
 
     if (not srvObj.getCfg().getDbSnapshot()):
         info(3,"NOTE: DB Snapshot Feature is switched off")
@@ -538,260 +540,269 @@ def checkUpdateDbSnapShots(srvObj):
         info(2,"Check/create/update DB Snapshot for disk with " +\
              "mount point: " + mtPt)
 
-        snapshotDbm = _openDbSnapshot(srvObj.getCfg(), mtPt)
-        if (snapshotDbm == None): continue
-
-        # The scheme for synchronizing the Snapshot and the DB is:
-        #
-        # - Loop over file entries in the Snapshot:
-        #  - If in DB:
-        #    - If file on disk     -> OK, do nothing.
-        #    - If file not on disk -> Accumulate + issue collective warning.
-        #
-        #  - If entry not in DB:
-        #    - If file on disk     -> Add entry in DB.
-        #    - If file not on disk -> Remove entry from Snapshot.
-        #
-        # - Loop over entries for that disk in the DB:
-        #  - If entry in Snapshot  -> OK, do nothing.
-        #  - If entry not in Snapshot:
-        #    - If file on disk     -> Add entry in Snapshot.
-        #    - If file not on disk -> Remove entry from DB.
-
-        # Create a temporary DB Snapshot with the files from the DB.
-        #
-        # TODO: This algorithm could be improved such that the intermediate
-        #       DBM (tmpSnapshotDbm) is not created. I.e., tmpFileListDbm
-        #       is used diretly futher down.
-        tmpSnapshotDbm = None
-        tmpFileListDbm = None
-        tmpFileListDbmName = None
         try:
-            rmFile(tmpSnapshotDbmName + "*")
-            tmpSnapshotDbm = bsddb.hashopen(tmpSnapshotDbmName, "c")
-            tmpFileListDbmName = srvObj.getDb().dumpFileInfoList(diskId,
-                                                                 ignore=None)
-            tmpFileListDbm = ngamsDbm.ngamsDbm(tmpFileListDbmName)
-            while (1):
-                key, fileInfo = tmpFileListDbm.getNext()
-                if (not key): break
-                fileKey = _genFileKey(fileInfo)
-                encFileInfoDic = _encFileInfo(srvObj.getDb(), tmpSnapshotDbm,
-                                              fileInfo)
-                _addInDbm(tmpSnapshotDbm, fileKey, encFileInfoDic)
-                checkStopJanitorThread(srvObj)
-                time.sleep(0.005)
-            tmpSnapshotDbm.sync()
-            del tmpFileListDbm
-            rmFile(tmpFileListDbmName)
-        except Exception, e:
-            if (tmpSnapshotDbm): del tmpSnapshotDbm
-            rmFile(tmpSnapshotDbmName)
-            if (tmpFileListDbmName): rmFile(tmpFileListDbmName)
-            if (tmpFileListDbm): del tmpFileListDbm
-            raise e
+            snapshotDbm = _openDbSnapshot(srvObj.getCfg(), mtPt)
+            if (snapshotDbm == None):
+                continue
 
-        #####################################################################
-        # Loop over the possible entries in the DB Snapshot and compare
-        # these against the DB.
-        #####################################################################
-        info(4,"Loop over file entries in the DB Snapshot - %s ..." % diskId)
-        count = 0
-        try:
-            key, pickleValue = snapshotDbm.first()
-        except Exception, e:
-            msg = "Exception raised accessing DB Snapshot for disk: %s. " +\
-                  "Error: %s"
-            info(4,msg % (diskId, str(e)))
-            key = None
-            snapshotDbm.dbc = None
+            # The scheme for synchronizing the Snapshot and the DB is:
+            #
+            # - Loop over file entries in the Snapshot:
+            #  - If in DB:
+            #    - If file on disk     -> OK, do nothing.
+            #    - If file not on disk -> Accumulate + issue collective warning.
+            #
+            #  - If entry not in DB:
+            #    - If file on disk     -> Add entry in DB.
+            #    - If file not on disk -> Remove entry from Snapshot.
+            #
+            # - Loop over entries for that disk in the DB:
+            #  - If entry in Snapshot  -> OK, do nothing.
+            #  - If entry not in Snapshot:
+            #    - If file on disk     -> Add entry in Snapshot.
+            #    - If file not on disk -> Remove entry from DB.
 
-        # Create a DBM which is used to keep the list of files to remove
-        # from the DB Snapshot.
-        snapshotDelDbmName = ngamsHighLevelLib.\
-                             genTmpFilename(srvObj.getCfg(),
-                                            NGAMS_DB_NGAS_FILES)
-        snapshotDelDbm = ngamsDbm.ngamsDbm(snapshotDelDbmName,
-                                           cleanUpOnDestr=1,
-                                           writePerm=1)
+            # Create a temporary DB Snapshot with the files from the DB.
+            #
+            # TODO: This algorithm could be improved such that the intermediate
+            #       DBM (tmpSnapshotDbm) is not created. I.e., tmpFileListDbm
+            #       is used diretly futher down.
+            tmpFileListDbm = None
+            tmpFileListDbmName = None
+            try:
+                rmFile(tmpSnapshotDbmName + "*")
+                tmpSnapshotDbm = bsddb.hashopen(tmpSnapshotDbmName, "c")
+                tmpFileListDbmName = srvObj.getDb().dumpFileInfoList(diskId,
+                                                                     ignore=None)
+                tmpFileListDbm = ngamsDbm.ngamsDbm(tmpFileListDbmName)
+                while (1):
+                    key, fileInfo = tmpFileListDbm.getNext()
+                    if (not key): break
+                    fileKey = _genFileKey(fileInfo)
+                    encFileInfoDic = _encFileInfo(srvObj.getDb(), tmpSnapshotDbm,
+                                                  fileInfo)
+                    _addInDbm(tmpSnapshotDbm, fileKey, encFileInfoDic)
+                    checkStopJanitorThread(srvObj)
+                    time.sleep(0.005)
+                tmpSnapshotDbm.sync()
+            except Exception, e:
+                if tmpSnapshotDbm:
+                    tmpSnapshotDbm.close()
+                raise e
+            finally:
+                rmFile(tmpSnapshotDbmName)
+                if tmpFileListDbmName:
+                    rmFile(tmpFileListDbmName)
+                if tmpFileListDbm:
+                    del tmpFileListDbm
+            #####################################################################
+            # Loop over the possible entries in the DB Snapshot and compare
+            # these against the DB.
+            #####################################################################
+            info(4,"Loop over file entries in the DB Snapshot - %s ..." % diskId)
+            count = 0
+            try:
+                key, pickleValue = snapshotDbm.first()
+            except Exception, e:
+                msg = "Exception raised accessing DB Snapshot for disk: %s. " +\
+                      "Error: %s"
+                info(4,msg % (diskId, str(e)))
+                key = None
+                snapshotDbm.dbc = None
 
-        #################################################################################################
-        #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
-        #          when iterating at the end of the table that are prone to corrupt the hash table object
-        #while (key):
-        for key,pickleValue in snapshotDbm.iteritems():
-        #################################################################################################
-            value = _unPickle(pickleValue)
+            # Create a DBM which is used to keep the list of files to remove
+            # from the DB Snapshot.
+            snapshotDelDbmName = ngamsHighLevelLib.\
+                                 genTmpFilename(srvObj.getCfg(),
+                                                NGAMS_DB_NGAS_FILES)
+            snapshotDelDbm = ngamsDbm.ngamsDbm(snapshotDelDbmName,
+                                               cleanUpOnDestr=1,
+                                               writePerm=1)
 
-            # Check if an administrative element, if yes add it if necessary.
-            if (key.find("___") != -1):
-                if (not tmpSnapshotDbm.has_key(key)):
-                    tmpSnapshotDbm[key] = pickleValue
-            else:
-                tmpFileObj = _encFileInfo2Obj(srvObj.getDb(), snapshotDbm,
-                                              value)
-                if (tmpFileObj is None):
-                    continue
-                complFilename = os.path.normpath(mtPt + "/" +\
-                                                 tmpFileObj.getFilename())
+            #################################################################################################
+            #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
+            #          when iterating at the end of the table that are prone to corrupt the hash table object
+            #while (key):
+            for key,pickleValue in snapshotDbm.iteritems():
+            #################################################################################################
+                value = _unPickle(pickleValue)
 
-                # Is the file in the DB?
-                if (tmpSnapshotDbm.has_key(key)):
-                    # Is the file on the disk?
-                    if (not os.path.exists(complFilename)):
-                        fileVer = tmpFileObj.getFileVersion()
-                        tmpFileObj.setTag(complFilename)
-                        fileKey = ngamsLib.genFileKey(tmpFileObj.getDiskId(),
-                                                      tmpFileObj.getFileId(),
-                                                      fileVer)
-                        lostFileRefsDbm.add(fileKey, tmpFileObj)
-                        lostFileRefsDbm.sync()
-                elif (not tmpSnapshotDbm.has_key(key)):
+                # Check if an administrative element, if yes add it if necessary.
+                if (key.find("___") != -1):
+                    if (not tmpSnapshotDbm.has_key(key)):
+                        tmpSnapshotDbm[key] = pickleValue
+                else:
                     tmpFileObj = _encFileInfo2Obj(srvObj.getDb(), snapshotDbm,
                                                   value)
                     if (tmpFileObj is None):
                         continue
-
-                    # Is the file on the disk?
-                    if (os.path.exists(complFilename)):
-                        # Add this entry in the NGAS DB.
-                        tmpFileObj.write(srvObj.getDb(), 0, 1)
-                        tmpSnapshotDbm[key] = pickleValue
-                    else:
-                        # Remove this entry from the DB Snapshot.
-                        if (getVerboseLevel() >= 5):
-                            msg = "Scheduling entry: %s in DB Snapshot " +\
-                                  "for disk with ID: %s for removal"
-                            info(4,msg % (diskId, key))
-                        # Add entry in the DB Snapshot Deletion DBM marking
-                        # the entry for deletion.
-                        if (_updateSnapshot(srvObj.getCfg())):
-                            snapshotDelDbm.add(key, 1)
-
-                    del tmpFileObj
-
-            # Be friendly, make a break every now and then + sync the DB file.
-            count += 1
-            if ((count % 100) == 0):
-                if (_updateSnapshot(srvObj.getCfg())): snapshotDbm.sync()
-                checkStopJanitorThread(srvObj)
-                tmpSnapshotDbm.sync()
-                time.sleep(0.010)
-            else:
-                time.sleep(0.002)
-            #################################################################################################
-            #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
-            #          when iterating at the end of the table that are prone to corrupt the hash table object
-            #try:
-            #    key, pickleValue = snapshotDbm.next()
-            #except:
-            #    key = None
-            #    snapshotDbm.dbc = None
-            #################################################################################################
-
-        # Now, delete entries in the DB Snapshot if there are any scheduled for
-        # deletion.
-
-        #################################################################################################
-        #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
-        #          when iterating at the end of the table that are prone to corrupt the hash table object
-        #snapshotDelDbm.initKeyPtr()
-        #while (True):
-        #    key, value = snapshotDelDbm.getNext()
-        #    if (not key): break
-        for key,value in snapshotDelDbm.iteritems():
-            # jagonzal: We need to reformat the values and skip administrative elements #################
-            if (str(key).find("__") != -1): continue
-            #############################################################################################
-            if (getVerboseLevel() >= 4):
-                msg = "Removing entry: %s from DB Snapshot for " +\
-                      "disk with ID: %s"
-                info(4,msg % (key, diskId))
-            del snapshotDbm[key]
-        #################################################################################################
-        del snapshotDelDbm
-
-        info(4,"Looped over file entries in the DB Snapshot - %s" % diskId)
-        # End-Loop: Check DB against DB Snapshot. ###########################
-        if (_updateSnapshot(srvObj.getCfg())): snapshotDbm.sync()
-        tmpSnapshotDbm.sync()
-
-        info(2,"Checked/created/updated DB Snapshot for disk with " +\
-             "mount point: " + mtPt)
-
-        #####################################################################
-        # Loop over the entries in the DB and compare these against the
-        # DB Snapshot.
-        #####################################################################
-        info(4,"Loop over the entries in the DB - %s ..." % diskId)
-        count = 0
-        try:
-            key, pickleValue = tmpSnapshotDbm.first()
-        except Exception, e:
-            key = None
-            tmpSnapshotDbm.dbc = None
-
-        #################################################################################################
-        #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
-        #          when iterating at the end of the table that are prone to corrupt the hash table object
-        #while (key):
-        for key,pickleValue in tmpSnapshotDbm.iteritems():
-        #################################################################################################
-            value = _unPickle(pickleValue)
-
-            # Check if it is an administrative element, if yes add it if needed
-            if (key.find("___") != -1):
-                if (not snapshotDbm.has_key(key)):
-                    snapshotDbm[key] = pickleValue
-            else:
-                # Is the file in the DB Snapshot?
-                if (not snapshotDbm.has_key(key)):
-                    tmpFileObj = _encFileInfo2Obj(srvObj.getDb(),
-                                                  tmpSnapshotDbm, value)
-                    if (tmpFileObj is None):
-                        continue
-
-                    # Is the file on the disk?
                     complFilename = os.path.normpath(mtPt + "/" +\
                                                      tmpFileObj.getFilename())
-                    if (os.path.exists(complFilename)):
-                        # Add this entry in the DB Snapshot.
-                        if (_updateSnapshot(srvObj.getCfg())):
-                            snapshotDbm[key] = pickleValue
-                    else:
-                        # Remove this entry from the DB (if it is there).
-                        _delFileEntry(srvObj.getDb(), tmpFileObj)
-                    del tmpFileObj
-                else:
-                    # We always update the DB Snapshot to ensure it is
-                    # in-sync with the DB entry.
-                    if (_updateSnapshot(srvObj.getCfg())):
-                        snapshotDbm[key] = pickleValue
 
-            # Be friendly and make a break every now and then +
-            # sync the DB file.
-            count += 1
-            if ((count % 100) == 0):
-                if (_updateSnapshot(srvObj.getCfg())): snapshotDbm.sync()
-                checkStopJanitorThread(srvObj)
-                time.sleep(0.010)
-            else:
-                time.sleep(0.002)
+                    # Is the file in the DB?
+                    if (tmpSnapshotDbm.has_key(key)):
+                        # Is the file on the disk?
+                        if (not os.path.exists(complFilename)):
+                            fileVer = tmpFileObj.getFileVersion()
+                            tmpFileObj.setTag(complFilename)
+                            fileKey = ngamsLib.genFileKey(tmpFileObj.getDiskId(),
+                                                          tmpFileObj.getFileId(),
+                                                          fileVer)
+                            lostFileRefsDbm.add(fileKey, tmpFileObj)
+                            lostFileRefsDbm.sync()
+                    elif (not tmpSnapshotDbm.has_key(key)):
+                        tmpFileObj = _encFileInfo2Obj(srvObj.getDb(), snapshotDbm,
+                                                      value)
+                        if (tmpFileObj is None):
+                            continue
+
+                        # Is the file on the disk?
+                        if (os.path.exists(complFilename)):
+                            # Add this entry in the NGAS DB.
+                            tmpFileObj.write(srvObj.getDb(), 0, 1)
+                            tmpSnapshotDbm[key] = pickleValue
+                        else:
+                            # Remove this entry from the DB Snapshot.
+                            if (getVerboseLevel() >= 5):
+                                msg = "Scheduling entry: %s in DB Snapshot " +\
+                                      "for disk with ID: %s for removal"
+                                info(4,msg % (diskId, key))
+                            # Add entry in the DB Snapshot Deletion DBM marking
+                            # the entry for deletion.
+                            if (_updateSnapshot(srvObj.getCfg())):
+                                snapshotDelDbm.add(key, 1)
+
+                        del tmpFileObj
+
+                # Be friendly, make a break every now and then + sync the DB file.
+                count += 1
+                if ((count % 100) == 0):
+                    if (_updateSnapshot(srvObj.getCfg())): snapshotDbm.sync()
+                    checkStopJanitorThread(srvObj)
+                    tmpSnapshotDbm.sync()
+                    time.sleep(0.010)
+                else:
+                    time.sleep(0.002)
+                #################################################################################################
+                #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
+                #          when iterating at the end of the table that are prone to corrupt the hash table object
+                #try:
+                #    key, pickleValue = snapshotDbm.next()
+                #except:
+                #    key = None
+                #    snapshotDbm.dbc = None
+                #################################################################################################
+
+            # Now, delete entries in the DB Snapshot if there are any scheduled for
+            # deletion.
+
             #################################################################################################
             #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
             #          when iterating at the end of the table that are prone to corrupt the hash table object
-            #try:
-            #    key, pickleValue = tmpSnapshotDbm.next()
-            #except:
-            #    key = None
+            #snapshotDelDbm.initKeyPtr()
+            #while (True):
+            #    key, value = snapshotDelDbm.getNext()
+            #    if (not key): break
+            for key,value in snapshotDelDbm.iteritems():
+                # jagonzal: We need to reformat the values and skip administrative elements #################
+                if (str(key).find("__") != -1): continue
+                #############################################################################################
+                if (getVerboseLevel() >= 4):
+                    msg = "Removing entry: %s from DB Snapshot for " +\
+                          "disk with ID: %s"
+                    info(4,msg % (key, diskId))
+                del snapshotDbm[key]
             #################################################################################################
-        info(4,"Checked DB Snapshot against DB - %s" % diskId)
-        # End-Loop: Check DB Snapshot against DB. ###########################
-        if (_updateSnapshot(srvObj.getCfg())): snapshotDbm.sync()
-        snapshotDbm.close()
+            del snapshotDelDbm
 
-        # Make a small break between each disk/mount point.
-        time.sleep(0.1)
+            info(4,"Looped over file entries in the DB Snapshot - %s" % diskId)
+            # End-Loop: Check DB against DB Snapshot. ###########################
+            if (_updateSnapshot(srvObj.getCfg())): snapshotDbm.sync()
+            tmpSnapshotDbm.sync()
+
+            info(2,"Checked/created/updated DB Snapshot for disk with " +\
+                 "mount point: " + mtPt)
+
+            #####################################################################
+            # Loop over the entries in the DB and compare these against the
+            # DB Snapshot.
+            #####################################################################
+            info(4,"Loop over the entries in the DB - %s ..." % diskId)
+            count = 0
+            try:
+                key, pickleValue = tmpSnapshotDbm.first()
+            except Exception, e:
+                key = None
+                tmpSnapshotDbm.dbc = None
+
+            #################################################################################################
+            #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
+            #          when iterating at the end of the table that are prone to corrupt the hash table object
+            #while (key):
+            for key,pickleValue in tmpSnapshotDbm.iteritems():
+            #################################################################################################
+                value = _unPickle(pickleValue)
+
+                # Check if it is an administrative element, if yes add it if needed
+                if (key.find("___") != -1):
+                    if (not snapshotDbm.has_key(key)):
+                        snapshotDbm[key] = pickleValue
+                else:
+                    # Is the file in the DB Snapshot?
+                    if (not snapshotDbm.has_key(key)):
+                        tmpFileObj = _encFileInfo2Obj(srvObj.getDb(),
+                                                      tmpSnapshotDbm, value)
+                        if (tmpFileObj is None):
+                            continue
+
+                        # Is the file on the disk?
+                        complFilename = os.path.normpath(mtPt + "/" +\
+                                                         tmpFileObj.getFilename())
+                        if (os.path.exists(complFilename)):
+                            # Add this entry in the DB Snapshot.
+                            if (_updateSnapshot(srvObj.getCfg())):
+                                snapshotDbm[key] = pickleValue
+                        else:
+                            # Remove this entry from the DB (if it is there).
+                            _delFileEntry(srvObj.getDb(), tmpFileObj)
+                        del tmpFileObj
+                    else:
+                        # We always update the DB Snapshot to ensure it is
+                        # in-sync with the DB entry.
+                        if (_updateSnapshot(srvObj.getCfg())):
+                            snapshotDbm[key] = pickleValue
+
+                # Be friendly and make a break every now and then +
+                # sync the DB file.
+                count += 1
+                if ((count % 100) == 0):
+                    if (_updateSnapshot(srvObj.getCfg())): snapshotDbm.sync()
+                    checkStopJanitorThread(srvObj)
+                    time.sleep(0.010)
+                else:
+                    time.sleep(0.002)
+                #################################################################################################
+                #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
+                #          when iterating at the end of the table that are prone to corrupt the hash table object
+                #try:
+                #    key, pickleValue = tmpSnapshotDbm.next()
+                #except:
+                #    key = None
+                #################################################################################################
+            info(4,"Checked DB Snapshot against DB - %s" % diskId)
+            # End-Loop: Check DB Snapshot against DB. ###########################
+            if (_updateSnapshot(srvObj.getCfg())):
+                snapshotDbm.sync()
+            
+            # Make a small break between each disk/mount point.
+            time.sleep(0.1)
+
+        finally:
+            if snapshotDbm:
+                snapshotDbm.close()
+
+            if tmpSnapshotDbm:
+                tmpSnapshotDbm.close()
 
     # Check if lost files found.
     info(4,"Check if there are Lost Files ...")
@@ -835,8 +846,6 @@ def checkUpdateDbSnapShots(srvObj):
          noOfLostFiles)
 
     # Clean up.
-    del tmpSnapshotDbm
-    rmFile(tmpSnapshotDbmName + "*")
     del lostFileRefsDbm
     rmFile(lostFileRefsDbmName + "*")
 
@@ -865,7 +874,8 @@ def checkDbChangeCache(srvObj,
     snapshotDbm = None
     try:
         snapshotDbm = _openDbSnapshot(srvObj.getCfg(), diskMtPt)
-        if (snapshotDbm == None): return
+        if (snapshotDbm == None):
+            return
 
         # Remove possible, old /<mt pt>/.db/cache/*.xml snapshots.
         # TODO: Remove when it can be assumed that all old XML snapshots have
@@ -942,7 +952,7 @@ def checkDbChangeCache(srvObj,
 
         # Clean up, delete the temporary File Remove Status Document.
         snapshotDbm.sync()
-        snapshotDbm.close()
+
         for cacheFile in tmpCacheFiles:
             rmFile(cacheFile)
         totTime = timer.stop()
@@ -954,20 +964,10 @@ def checkDbChangeCache(srvObj,
             tmpMsg += "Total time: %.3fs. Time per file: %.3fs." %\
                       (totTime, (totTime / fileCount))
         info(4, tmpMsg)
-    except Exception, e:
-        try:
-            if (snapshotDbm): snapshotDbm.sync()
-        except:
-            pass
-        try:
-            if (snapshotDbm): snapshotDbm.close()
-        except:
-            pass
-        try:
-            if (snapshotDbm): del snapshotDbm
-        except:
-            pass
-        raise e
+    finally:
+        if snapshotDbm:
+            snapshotDbm.close()
+       
 
 
 def updateDbSnapShots(srvObj,

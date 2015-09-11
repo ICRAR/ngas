@@ -29,12 +29,13 @@ read fits header, get cdel1,2 and epoch information
 Cutout a gleam FITS image, convert it into png, and display in the browser, then remove the jpeg file
 """
 
-import math, time, commands, os, traceback
+import math, time, commands, os, subprocess, traceback, threading
 import ephem
 import pyfits as pyfits_real
 import astropy.io.fits as pyfits
 import astropy.wcs as pywcs
 import numpy
+from string import Template
 
 from ngamsLib.ngamsCore import getHostId, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, info
 
@@ -69,12 +70,56 @@ fits_copy_exec = "/home/ngas/software/fitscopy"
 /mnt/gleam/software/bin/ds9 -grid -geometry 1250x1250  $file -cmap Heat -scale limits $min_max -zoom 0.25 -saveimage "$outname" 100 -exit
 /mnt/gleam/software/bin/ds9 -colorbar -grid -geometry 1250x1250  $file -cmap Heat -scale zscale -zoom 0.25 -saveimage "$outname" -exit
 """
-cmd_ds9 = '{0}/ds9 -grid -geometry 1250x1250  {1} -cmap Heat -scale zscale -saveimage "{2}" -exit'
+#-grid skyformat degrees
+cmd_ds9 = '{0}/ds9 -grid yes -grid numerics fontsize 14 -grid numerics fontweight bold -grid skyformat degrees -geometry 1250x1250  {1} -cmap Heat -zoom to fit -scale zscale -saveimage "{2}" -exit'
 qs = "SELECT a.mount_point || '/' || b.file_name AS file_full_path, a.host_id FROM ngas_disks a, ngas_files b WHERE a.disk_id = b.disk_id AND b.file_id = '%s' ORDER BY b.file_version DESC"
 cmd_cutout = "{0}/bin/getfits -sv -o %s -d %s %s %s %s J2000 %d %d".format(wcstools_path_dict[my_host]) # % (outputfname, outputdir, inputfname, ra, dec, width, height)
 cmd_fits2jpg = "/mnt/gleam/software/bin/fits2jpeg -fits %s -jpeg %s -nonLinear" # % (fitsfname, jpegfname)
 psf_seq = ['BMAJ', 'BMIN', 'BPA']
 
+ds9_sem = threading.Semaphore(10)
+
+html_info = """
+<html>
+<title>GLEAM CUTOUT</title>
+<style>
+body{
+font-family:Arial, Helvetica, sans-serif;
+font-size:13px;
+}
+.info, .success, .warning, .error, .validation {
+border: 1px solid;
+margin: 10px 0px;
+padding:15px 10px 15px 50px;
+background-repeat: no-repeat;
+background-position: 10px center;
+}
+.info {
+color: #00529B;
+background-color: #BDE5F8;
+}
+.success {
+color: #4F8A10;
+background-color: #DFF2BF;
+}
+.warning {
+color: #9F6000;
+background-color: #FEEFB3;
+}
+.error {
+color: #D8000C;
+background-color: #FFBABA;
+}
+
+</style>
+<body>
+${html_content}
+</body>
+</html>
+"""
+
+class AddPSFException(Exception):
+    pass
 
 """
 To add:
@@ -115,21 +160,26 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
         import pyfits
         import pywcs
     """
-
+    #import astro_field
     file = pyfits.open(infile)
     head = file[0].header.copy()
     dim = file[0].data.shape
-    cd1 = head.get('CDELT1') if head.get('CDELT1') else head.get('CD1_1')
-    cd2 = head.get('CDELT2') if head.get('CDELT2') else head.get('CD2_2')
-    if cd1 is None or cd2 is None:
-        raise Exception("Missing CD or CDELT keywords in header")
-    head['CRVAL1'] = xc
-    head['CRVAL2'] = yc
-    cdelt = numpy.sqrt(cd1 ** 2 + cd2 ** 2)
-    head['CRPIX1'] = xw / cdelt
-    head['CRPIX2'] = yw / cdelt
-    head['NAXIS1'] = int(xw * 2 / cdelt)
-    head['NAXIS2'] = int(yw * 2 / cdelt)
+    #cd1 = head.get('CDELT1') if head.get('CDELT1') else head.get('CD1_1')
+    #cd2 = head.get('CDELT2') if head.get('CDELT2') else head.get('CD2_2')
+    #if cd1 is None or cd2 is None:
+    #    raise Exception("Missing CD or CDELT keywords in header")
+    #f1 = astro_field.Field([xc, yc], xw * 2)
+    #ref_val = f1.cornersLonLat[2]
+    head['CRVAL1'] = xc#ref_val[0]#xc
+    head['CRVAL2'] = yc#ref_val[1]#yc
+    #cdelt = numpy.sqrt(cd1 ** 2 + cd2 ** 2)
+    #1.5 = 3 / 2
+    head['CRPIX1'] = dim[1] / 1.5 / 2#1#xw / cdelt
+    head['CRPIX2'] = dim[0] / 1.5 / 2#1#yw / cdelt
+    #head['CTYPE1'] = "RA---SIN"
+    #head['CTYPE2'] = "DEC--SIN"
+    head['NAXIS1'] = int(dim[1] / 1.5)#int(xw * 2 / cdelt)
+    head['NAXIS2'] = int(dim[0] / 1.5)#int(yw * 2 / cdelt)
     st = str(time.time()).replace('.', '_')
     hdr_tpl = '{0}/{1}_temp_montage.hdr'.format(work_dir, st)
     head.toTxtFile(hdr_tpl, clobber=True)
@@ -140,16 +190,38 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
     info(3, "Regridding {1} took {0} seconds".format((time.time() - st), dim))
     return hdr_tpl
 
-def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed):
+def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, use_montage=True):
     outfile_nm = "{0}/{1}".format(work_dir, cut_fitsnm)
-    cmd1 = "{0} {1} {2} {3} {4} {5} {6}".format(montage_cutout_exec,
-                                                filePath, outfile_nm,
-                                                ra, #float(coord[0]),
-                                                dec, #float(coord[1]),
-                                                radius * 2,
-                                                radius * 2)
+    #factor = 2
+    if (ra < 0):
+        ra += 360
+
+    if (do_regrid):
+        factor = 3
+    else:
+        factor = 2
+
+    if (use_montage):
+        cmd1 = "{0} {1} {2} {3} {4} {5} {6}".format(montage_cutout_exec,
+                                                    filePath, outfile_nm,
+                                                    ra, #float(coord[0]),
+                                                    dec, #float(coord[1]),
+                                                    radius * factor,
+                                                    radius * factor)
+    else:
+        ra0 = str(ephem.hours(ra * math.pi / 180)).split('.')[0]
+        dec0 = str(ephem.degrees(dec * math.pi / 180)).split('.')[0]
+        hdulist = pyfits_real.open(filePath)
+        cdelt_x = float(hdulist[0].header['CD1_1'])
+        cdelt_y = float(hdulist[0].header['CD2_2'])
+        width = abs(int(factor * radius / cdelt_x))
+        height = abs(int(factor * radius / cdelt_y))
+        hdulist.close()
+        cmd1 = cmd_cutout % (cut_fitsnm, work_dir, filePath, ra0, dec0, width, height)
+
     info(3, "Executing command: %s" % cmd1)
     execCmd(cmd1)
+    to_be_removed.append(work_dir + '/' + cut_fitsnm)
 
     if (do_regrid):
         #import gleam_cutout
@@ -167,7 +239,7 @@ def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, t
                             useMontage=True)
         """
         to_be_removed.append(hdr_tpl)
-        to_be_removed.append(work_dir + '/' + cut_fitsnm)
+
         cut_fitsnm = "proj_" + cut_fitsnm
         area_fitsnm = cut_fitsnm.replace(".fits", "_area.fits")
         to_be_removed.append(work_dir + '/' + area_fitsnm)
@@ -178,13 +250,15 @@ def add_header(cut_fits_path, cut_psf_paths):
     """
     TODO
     """
-    output = pyfits.open(cut_fits_path)
+    output = pyfits.open(cut_fits_path, mode='update')
     for i, t in enumerate(psf_seq):
         #psflist = pyfits.open(cut_psf_paths[i])
         #output[0].header[t] = numpy.nanmean(psflist[0].data[0])
         output[0].header[t] = cut_psf_paths[i]
 
-    output.writeto(cut_fits_path, clobber=True)
+    output[0].header['history'] = 'GLEAM-IDR2 11-Aug-2015'
+    #output.writeto(cut_fits_path, clobber=True)
+    output.close()
 
     """
     for cut_psf_path in cut_psf_paths:
@@ -206,12 +280,23 @@ def get_bparam(ra, dec, psf_path):
     #psflist = pyfits.open('mosaic_Week2_freqrange_psf.fits')
     psflist = pyfits.open(psf_path)
     w = pywcs.WCS(psflist[0].header, naxis=2)
-    #pixcoords = w.wcs_world2pix([[ra, dec]], 0)[0]
     pixcoords = w.wcs_world2pix([[ra, dec]], 0)[0]
-    pixcoords = [int(round(elem)) for elem in pixcoords]
-    bmaj = psflist[0].data[0][pixcoords[1]][pixcoords[0]]
-    bmin = psflist[0].data[1][pixcoords[1]][pixcoords[0]]
-    bpa = psflist[0].data[2][pixcoords[1]][pixcoords[0]]
+    #pixcoords = w.wcs_world2pix([[ra, dec]], 1)[0]
+    #pixcoords = [int(round(elem)) for elem in pixcoords]
+    pixcoords = [int(elem) for elem in pixcoords]
+    a = pixcoords[1]
+    b = pixcoords[0]
+    a_len = psflist[0].data[0].shape[0]
+    b_len = psflist[0].data[0].shape[1]
+    if (a >= a_len):
+        raise Exception("Cutout centre is out of the PSF map: {0} >= {1}".format(a, a_len))
+        a = a_len - (a_len - a + 1)
+    if (b >= b_len):
+        raise Exception("Cutout centre is out of the PSF map: {0} >= {1}".format(b, b_len))
+        b = b_len - (b_len - b + 1)
+    bmaj = psflist[0].data[0][a][b]
+    bmin = psflist[0].data[1][a][b]
+    bpa = psflist[0].data[2][a][b]
     return (bmaj, bmin, bpa)
 
 
@@ -236,7 +321,9 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, #let HTTP returns OK so that curl can continue printing XML code
                      "GLEAMCUTOUT command failed: '%s' is not specified" % attnm)
             return
-
+    fits_format = False
+    if (reqPropsObj.hasHttpPar('fits_format') and '1' == reqPropsObj.getHttpPar("fits_format")):
+        fits_format = True
     fileId = reqPropsObj.getHttpPar("file_id")
     query = qs % fileId
     info(3, "Executing SQL query for GLEAM CUTOUT: %s" % str(query))
@@ -290,9 +377,12 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             dec = float(coord[1])
             do_regrid = (reqPropsObj.hasHttpPar('regrid') and '1' == reqPropsObj.getHttpPar("regrid"))
             no_psf = (reqPropsObj.hasHttpPar('nopsf') and '1' == reqPropsObj.getHttpPar("nopsf"))
+            use_montage_cut = False
+            if (reqPropsObj.hasHttpPar('use_montage') and '1' == reqPropsObj.getHttpPar("use_montage")):
+                use_montage_cut = True
 
-            cut_fitsnm = cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed)
-            if (no_psf == False):
+            cut_fitsnm = cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, use_montage=use_montage_cut)
+            if (no_psf == False and fits_format):
                 psf_fileId = fileId.split('.fits')[0] + '_psf.fits'
                 query = qs % psf_fileId
                 info(3, "Executing SQL query for GLEAM PSF CUTOUT: %s" % str(query))
@@ -320,21 +410,59 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                         to_be_removed.append(psf_path_splitnm)
                     """
                     #add_header(work_dir + '/' + cut_fitsnm, cut_psfnm_list)
-                    add_header(work_dir + '/' + cut_fitsnm, get_bparam(ra, dec, psf_path))
+                    try:
+                        add_header(work_dir + '/' + cut_fitsnm, get_bparam(ra, dec, psf_path))
+                    except Exception, hdr_except:
+                        if (reqPropsObj.hasHttpPar('skip_psf_err') and '1' == reqPropsObj.getHttpPar("skip_psf_err")):
+                            info(3, "PSF error skipped: {0}".format(hdr_except))
+                        else:
+                            raise AddPSFException(str(hdr_except))
 
     except Exception, excmd1:
+        """
         srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
                      "Cutout failed: '%s'" % str(excmd1))
+        """
+        if (type(excmd1) is AddPSFException):
+            do_regrid = (reqPropsObj.hasHttpPar('regrid') and '1' == reqPropsObj.getHttpPar("regrid"))
+            if (do_regrid):
+                re_grid = 1
+            else:
+                re_grid = 0
+            url = "http://store04.icrar.org:7777/GLEAMCUTOUT?file_id={0}&radec={1}&regrid={2}&radius={3}&fits_format=1&nopsf=1".format(fileId,
+                                                                                                                    reqPropsObj.getHttpPar("radec"),
+                                                                                                                    re_grid,
+                                                                                                                    reqPropsObj.getHttpPar("radius"))
+            html_dict = {}
+            html_content = "<div class=\"warning\">Failed to add PSF info to the FITS header: {0}.</div> <div class=\"info\"><a href='{1}'>Proceed without PSF info.</a></div>".format(excmd1, url)
+            html_dict["html_content"] = html_content
+            ts = Template(html_info)
+            err_msg = ts.safe_substitute(html_dict)
+            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, err_msg, "text/html")
+        else:
+            if (reqPropsObj.hasHttpPar('debug') and '1' == reqPropsObj.getHttpPar("debug")):
+                err_msg = traceback.format_exc()
+            else:
+                err_msg = "Cutout failed: '%s'" % str(excmd1)
+            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, err_msg, NGAMS_TEXT_MT)
         info(3, traceback.format_exc())
         for fn in to_be_removed:
             if (os.path.exists(fn)):
                 os.remove(fn)
         return
-    if (reqPropsObj.hasHttpPar('fits_format') and '1' == reqPropsObj.getHttpPar("fits_format")):
-        hdr_fnm = "gleamcutout.fits"
+    #http://store04.icrar.org:7777/GLEAMCUTOUT?radec=92.4125,20.4867&radius=1&file_id=mosaic_Week2_223-231MHz.fits&regrid=0
+    #http://store04.icrar.org:7777/GLEAMCUTOUT?radec=92.4125,20.4867&radius=1&file_id=mosaic_Week2_223-231MHz.fits&regrid=0&fits_format=1
+    fn_suff = ""
+    if (is_mosaic(fileId)):
+        freq_part = fileId.split("_")[-1].split(".fits")[0]
+        loc_part = "{0}_{1}".format(coord[0], coord[1])
+        fn_suff = "_{0}_{1}".format(freq_part, loc_part)
+    if (fits_format):
+        hdr_fnm = "gleam_cutout{0}.fits".format(fn_suff)
         hdr_cttp = "image/fits"
         hdr_dataref = work_dir + '/' + cut_fitsnm
     else:
+        ds9_sem.acquire()
         ttt = time.time()
         jpfnm = ('%f' % ttt).replace('.', '_') + '.jpg'
         cmd2 = cmd_ds9.format(ds9_path_dict[my_host], work_dir + '/' + cut_fitsnm, work_dir + '/' + jpfnm)
@@ -346,8 +474,10 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
                          "Conversion from FITS to JPEG failed: '%s', display = '%s'" % (str(excmd2), os.getenv('DISPLAY', 'NOTSET!')))
             return
+        finally:
+            ds9_sem.release()
 
-        hdr_fnm = "gleamcutout.jpg"
+        hdr_fnm = "gleam_cutout{0}.jpg".format(fn_suff)
         hdr_cttp = "image/jpeg"
         hdr_dataref = work_dir + '/' + jpfnm
         to_be_removed.append(hdr_dataref)

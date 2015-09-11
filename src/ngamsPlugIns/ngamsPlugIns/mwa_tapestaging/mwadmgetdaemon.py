@@ -124,12 +124,12 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
    
    def __init__(self, *args, **kwargs):
 
-      self.dbp = psycopg2.pool.ThreadedConnectionPool(minconn=2, \
-                                                    maxconn=20, \
-                                                    host="mwa-pawsey-db01.pawsey.ivec.org", \
-                                                    user="ngas_ro", \
-                                                    database="ngas", \
-                                                    password="ngas$ro", \
+      self.dbp = psycopg2.pool.ThreadedConnectionPool(minconn=2,
+                                                    maxconn=20,
+                                                    host="mwa-pawsey-db01.pawsey.ivec.org",
+                                                    user="ngas_ro",
+                                                    database="ngas",
+                                                    password="ngas$ro",
                                                     port=5432)
       
       self.allow_reuse_address = True
@@ -151,7 +151,11 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
          con = self.dbp.getconn()
          cursor = con.cursor()
          cursor.execute("select mount_point || '/' || file_name as path from ngas_files \
-                        inner join ngas_disks on ngas_disks.disk_id = ngas_files.disk_id where file_id in %s;", [tuple(query)])
+                        inner join ngas_disks on ngas_disks.disk_id = ngas_files.disk_id where file_id in %s \
+                        and ngas_disks.disk_id in \
+                        ('35ecaa0a7c65795635087af61c3ce903', '54ab8af6c805f956c804ee1e4de92ca4', \
+                        '921d259d7bc2a0ae7d9a532bccd049c7', 'e3d87c5bc9fa1f17a84491d03b732afd')", [tuple(query)])
+
          #print cursor.query
          row = cursor.fetchall()
          for r in row:

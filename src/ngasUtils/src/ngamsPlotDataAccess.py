@@ -27,20 +27,23 @@
 # cwu      17/April/2014  Created
 #
 # time.gmtime(1067868000 + 315964800)
-import os, commands, gc, sys, time
+import os, commands, gc, sys, time, math
 from os import walk
 from collections import namedtuple, defaultdict
 import numpy as np
 import datetime as dt
 import matplotlib
 # see http://stackoverflow.com/questions/4706451/how-to-save-a-figure-remotely-with-pylab/4706614#4706614
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import pylab as pl
+import matplotlib.pyplot as plt
 from optparse import OptionParser
 import urlparse
 import re as regx
 import cPickle as pickle
 import multiprocessing as mp
+from operator import itemgetter
+from SortedCollection import SortedCollection
 
 
 # retrieval access (date, observation id, was the file offline?, file_size)
@@ -349,6 +352,737 @@ def _raListToVTimeNAByUser(al, min_access = 100, session_gap = 3600 * 2, y_unit 
 
     return ret_dict
 
+def ra_list_to_csv(al, csv_file):
+    """
+    convert a list of RA/AA tuples to a csv file
+    """
+    if (al is None or len(al) == 0):
+        return
+
+    """
+    RA = namedtuple('RA', 'date obsId offline size user obsdate')
+    """
+    pattern = '%Y-%m-%dT%H:%M:%S'
+
+    with open(csv_file, "a") as myfile:
+        for a in al:
+            if (a.offline is None):
+                act = -1
+            elif (a.offline):
+                act = 1
+            else:
+                act = 0
+            tt = a.date.split('.')
+            epoch = int(time.mktime(time.strptime(tt[0], pattern)))
+            date_int = int("{0}{1}".format(epoch, tt[1]))
+            line = "{0},{1},{2},{3},{4},{5}\n".format(date_int,
+                                                      a.obsId,
+                                                      act,
+                                                      a.size,
+                                                      a.user,
+                                                      a.obsdate)
+            myfile.write(line)
+
+    print "Appended {0} items to {1}".format(len(al), csv_file)
+
+def csv_to_ra_list(csv_file):
+    """
+    read data from csv file, and return the populated RA list
+    """
+    stt = time.time()
+    if (not os.path.exists(csv_file)):
+        return None
+    import csv
+    pattern = '%Y-%m-%dT%H:%M:%S'
+    al = []
+    gc.disable()
+    with open(csv_file, 'rb') as f:
+        reader = csv.reader(f)
+        al_list = list(reader)
+        for a in al_list:
+            epoch = int(a[0][:-3])
+            time_str = time.strftime(pattern, time.localtime(epoch))
+            timestamp = "{0}.{1}".format(time_str, a[0][-3:])
+            obsNum = a[1]
+            a2 = int(a[2])
+            if (-1 == a2):
+                isOffline = None
+            elif (1 == a2):
+                #isOffline = True
+                isOffline = False
+            else:
+                isOffline = False
+            fsize = int(a[3])
+            userIp = a[4]
+            obsDate = a[5]
+            re = RA(timestamp, obsNum, isOffline, fsize, userIp, obsDate)
+            al.append(re)
+    gc.enable()
+    print "Loading csv to list took {0} seconds".format(time.time() - stt)
+    return al
+
+def fit_csv_for_sqlite(csv_in, csv_out):
+    """
+    split -l 21701733 2015-08-01T19-42-25-int.csv
+    # 21701733 is "count(*) from ac"
+    create table ac(ts integer, obs_id integer, offline integer, file_size integer, user_ip varchar(256), obs_date char(10));
+    create index ac_ts_index on ac(ts);
+    .separator ","
+    .import 2015-08-01T19-42-25-int.csv ac
+
+
+    Difference between input/output CSV
+    time - from string (input) to epoch integer (output)
+    offline - from boolean (T/F/None) to integer (1/0/-1)
+    """
+    al = csv_to_ra_list(csv_in)
+    ra_list_to_csv(al, csv_out)
+
+def sort_obsid_from_sqlite(sqlite_file):
+    """
+    """
+    import sqlite3 as dbdrv
+    obs_dict = defaultdict(int)
+    query = "SELECT DISTINCT(obs_id) FROM ac WHERE offline > -1 ORDER BY obs_id"
+    dbconn = dbdrv.connect(sqlite_file)
+    cur = dbconn.cursor()
+    cur.execute(query)
+    all_obs = cur.fetchall() # not OK if we have millions of obs numbers
+    cur.close()
+
+    for c, obsid_row in enumerate(all_obs):
+        obs_dict[obsid_row[0]] = c + 1
+
+    return (obs_dict, all_obs[0][0], all_obs[-1][0])
+
+class ACCESS_MODE:
+    INGEST, RETRIEVAL, WRITE, READ, CREATE = xrange(5)
+
+class AccessStack:
+    def __init__(self, sqlite_file, session_gap=7200):
+        self._sqlite_file = sqlite_file
+        self.ref_stream = self.construct_sorted_list()
+        self.chunk_ref_dict = {} #key - chunkId, # of times this obs is accessed
+        self.chunk_date_dict = {} # key - chunkId, val - last access date
+        self._session_gap = session_gap * 1000 # turn that into milliseconds
+        self._mode_map = {-1 : ACCESS_MODE.INGEST,
+        0 : ACCESS_MODE.RETRIEVAL, 1 : ACCESS_MODE.RETRIEVAL}
+        self.init()
+
+    def init(self):
+        pass
+
+    def construct_sorted_list():
+        return list()
+
+    def push(self, chunk_id, access_mode, access_date):
+        """
+        A generic funciton
+        chunk_id: identifier of an equal-sized piece of data, could just be
+        obs_id or block_id
+        mode - could be ingest/retrieval or write/read
+        access_date - time stamp in milliseconds (int)
+
+        Return None (ingest) or RUD
+        """
+        go_ahead = False
+        if ((not self.chunk_date_dict.has_key(chunk_id)) or
+                (access_date - self.chunk_date_dict[chunk_id] > self._session_gap)):
+            go_ahead = True
+
+        if (not go_ahead):
+            return None
+
+        if self.chunk_ref_dict.has_key(chunk_id):
+            self.chunk_ref_dict[chunk_id] += 1
+            rud = self.compute_rud(chunk_id, access_date)
+        else:
+            if (access_mode == ACCESS_MODE.INGEST or
+                access_mode == ACCESS_MODE.CREATE):
+                self.chunk_ref_dict[chunk_id] = 0
+                rud = None
+            else:
+                # referenced for the very first time for read/retrieval/write
+                # without being ingested/created previously (this is possible)
+                # it is a kind of "initial conditions" of a simulation
+                self.chunk_ref_dict[chunk_id] = 1
+                rud = np.nan
+            self.append_access(chunk_id, access_mode, access_date)
+        self.chunk_date_dict[chunk_id] = access_date
+        self.collect_stats(chunk_id, access_mode)
+        return rud
+
+    def compute_rud(self, chunk_id, access_date):
+        """
+        compute RUD
+        default impl. override in sub-class
+        """
+        return self.ref_stream.index(chunk_id)
+
+    def append_access(self, chunk_id, access_mode, access_date):
+        #default impl. override in sub-class
+        self.ref_stream.append(chunk_id)
+
+    def get_rud_list(self):
+        """
+        Return a list of reuse distances
+        """
+        import sqlite3 as dbdrv
+        dbconn = dbdrv.connect(self._sqlite_file)
+        q = "SELECT ts, obs_id, offline from ac"
+        cur = dbconn.cursor()
+        cur.execute(q)
+        yd = [] # reuse distance list
+        while (True):
+            al = cur.fetchmany(10000)
+            if (al == []):
+                break
+            for a in al:
+                rud = self.push(a[1], self._mode_map[a[2]], a[0])
+                if (rud is not None):
+                    yd.append(rud)
+            sys.stdout.write('.')
+            sys.stdout.flush()
+
+        cur.close()
+        return np.array(yd)
+
+    def collect_stats(self, chunk_id, access_mode):
+        pass
+
+class LFUStack(AccessStack):
+    """
+    least frequently used files will be replaced
+    """
+    def compute_rud(self, chunk_id, access_date):
+        """
+        not only compute RUD, but also sort at the same time
+        """
+        old_count = self.chunk_ref_dict[chunk_id] - 1
+        index = self.ref_stream.remove((chunk_id, -old_count))
+        ref_count = old_count + 1
+        self.ref_stream.insert((chunk_id, -ref_count))
+        return index
+
+    def append_access(self, chunk_id, access_mode, access_date):
+        if (access_mode in [ACCESS_MODE.INGEST, ACCESS_MODE.CREATE]):
+            ref_count = 0
+        else:
+            ref_count = 1
+        # insert to the left if equal, so age is punished (if value is equal)
+        self.ref_stream.insert((chunk_id, -ref_count))
+
+    def construct_sorted_list(self):
+        return SortedCollection(key=itemgetter(1))
+
+class LRUStack(AccessStack):
+    """
+    least recently used files will be replaced
+    """
+    def compute_rud(self, chunk_id, access_date):
+        """
+        not only compute RUD, but also sort at the same time
+        """
+        old_date = self.chunk_date_dict[chunk_id]
+        index = self.ref_stream.remove((chunk_id, -old_date))
+
+        # replace with the new access data, and append to the left of the list
+        self.ref_stream.insert((chunk_id, -access_date))
+        return index
+
+    def append_access(self, chunk_id, access_mode, access_date):
+        # insert to the left, so recency is rewarded (if access_date is equal)
+        self.ref_stream.insert((chunk_id, -access_date))
+
+    def construct_sorted_list(self):
+        return SortedCollection(key=itemgetter(1))
+
+class LIATStack(AccessStack):
+    """
+    a file with a Longest (expected) Inter-Arrival Time is replaced
+    Notice the IAT is a absolute interval (i.e. milliseconds in between)
+    Whereas RUD is relative interval
+    """
+    def init(self):
+        self.chunk_iat_dict = dict()
+        ret = self._get_epochs()
+        self.start_date = ret[0]
+        self.zero_iat_on_ingest = True
+        self.max_iat = float(ret[1] - ret[0])
+
+    def set_zero_iat_on_ingest(self, setval):
+        if (type(setval) is bool):
+            self.zero_iat_on_ingest = setval
+
+    def _get_epochs(self):
+        import sqlite3 as dbdrv
+        dbconn = dbdrv.connect(self._sqlite_file)
+        q = "SELECT min(ts) from ac"
+        cur = dbconn.cursor()
+        cur.execute(q)
+        dfirst_epoch = cur.fetchall()[0][0]
+        cur.close()
+
+        q = "SELECT max(ts) from ac"
+        cur = dbconn.cursor()
+        cur.execute(q)
+        dlast_epoch = cur.fetchall()[0][0]
+        cur.close()
+
+        return (dfirst_epoch, dlast_epoch)
+
+    def compute_rud(self, chunk_id, access_date):
+        """
+        not only compute RUD, but also sort at the same time
+        """
+        old_iat = self.chunk_iat_dict[chunk_id]
+        index = self.ref_stream.remove((chunk_id, old_iat))
+
+        last_access_date = self.chunk_date_dict[chunk_id]
+        iat = (access_date - last_access_date + old_iat) / 2.0
+        self.ref_stream.insert((chunk_id, iat))
+        self.chunk_iat_dict[chunk_id] = iat
+        return index
+
+    def append_access(self, chunk_id, access_mode, access_date):
+        # first time appear
+        if (ACCESS_MODE.RETRIEVAL == access_mode):
+            iat = access_date - self.start_date
+        else:
+            if (self.zero_iat_on_ingest):
+                iat = 0.0 # put files that have never been accessed at front
+            else:
+                iat = self.max_iat
+        self.chunk_iat_dict[chunk_id] = iat
+        self.ref_stream.insert((chunk_id, iat))
+
+    def construct_sorted_list(self):
+        return SortedCollection(key=itemgetter(1))
+
+class LTPStack(AccessStack):
+    """
+    a file with least transition probability is replaced
+    """
+    pass
+
+def get_OPT_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=True):
+    """
+    optimal (the longest next reference)
+    the chosen page is the one whose next reference is farthest in the future.
+    """
+    pass
+
+def get_LRU_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=True):
+
+    import sqlite3 as dbdrv
+    from collections import Counter
+
+    dbconn = dbdrv.connect(sqlite_file)
+    q = "SELECT ts, obs_id, offline from ac"
+    cur = dbconn.cursor()
+    cur.execute(q)
+
+    y = [] # reference stream or the so called "stack" in LRU scheme (only)
+    yd = [] # reuse distance
+    uobsDict = {} #key - obsId, last reference relative time step
+    uobsDict_date = {} # key - obsId, val - last access date
+
+    session_gap *= 1000 # change into milliseconds
+
+    c = 1
+    while (True):
+        al = cur.fetchmany(10000)
+        if (al == []):
+            break
+        for a in al:
+            obsId = a[1]
+            a_date = a[0]
+            """
+            if (a[2] == -1): # qarchive
+                if (ingest_into_disk):
+                    uobsDict[obsId] = c
+                    c += 1
+                    y.append(obsId)
+                continue
+            """
+
+            if ((not uobsDict_date.has_key(obsId)) or
+                (a_date - uobsDict_date[obsId] > session_gap)):
+
+                if (not uobsDict.has_key(obsId)):
+                    if (a[2] != -1):
+                        rud = np.nan # referenced for the first time
+                else:
+                    lastref = uobsDict[obsId]
+                    rud = len(Counter(y[lastref:])) #excluding last reference itself
+
+                y.append(obsId)
+                if (a[2] != -1):
+                    yd.append(rud)
+                uobsDict[obsId] = c
+                c += 1
+            uobsDict_date[obsId] = a_date
+        sys.stdout.write('.')
+        sys.stdout.flush()
+
+    cur.close()
+    return np.array(yd)
+
+def plot_success_function(yd, label='LRU replacement', lcolor='b', line='-', show=True, ax=None, init_on_tape=True):
+    """
+    Plot stack distance based on paper:
+    http://dl.acm.org/citation.cfm?id=1663471
+    """
+    if (init_on_tape):
+        pass
+    else:
+        yd = yd[~np.isnan(yd)]
+    sorted = np.sort(yd)
+    yvals = np.arange(len(sorted)) / float(len(sorted))
+    if (ax is None):
+        fig = pl.figure()
+        ax = fig.add_subplot(111)
+        ax.set_title('Disk cache hits ratio as a function of disk capacity and replacement policy', fontsize=15)
+        ax.set_xlabel('Disk cache capacity (# of Obs)', fontsize=14)
+        ax.set_ylabel("Disk cache hits ratio", fontsize=14)
+        ax.set_yticks(np.arange(0, 1.1, 0.1))
+        ax.set_ylim([0, 1.05])
+    ax.plot(sorted, yvals, color=lcolor, linestyle=line, label=label, linewidth=2.0)
+    ax.grid(True)
+    if (show):
+        pawsey_x = 1024 ** 2 / 36
+        ax.vlines(pawsey_x, 0, 1.05)
+        ax.text(pawsey_x + 1000, 0.25, "MWA 1PB disk cache at Pawsey", fontsize=12)
+        legend = ax.legend(loc="center right", shadow=True, prop={'size':14})
+        pl.show()
+    else:
+        return ax
+
+def plot_success_functions():
+    data_dir = "/Users/Chen/data/ngas_logs"
+    lru_yd = np.load("{0}/{1}".format(data_dir, 'yd_lru_ingest_correct.npy'))
+    lfu_yd = np.load("{0}/{1}".format(data_dir, 'yd_lfu_ingest_correct.npy'))
+    liat_yd = np.load("{0}/{1}".format(data_dir, 'yd_liat_ingest_correct.npy'))
+    #liat_yd_imiat = np.load("{0}/{1}".format(data_dir, 'yd_liat_ingest_max_iat.npy'))
+    ax1 = plot_success_function(lru_yd, label='Least Recently Used', show=False)
+    #plot_success_function(lru_yd, label='LRU - default on disk', line='--', show=False, init_on_tape=False, ax=ax1)
+    plot_success_function(lfu_yd, label='Least Frequently Used', line='--', lcolor='r', show=False, ax=ax1)
+    #plot_success_function(lfu_yd, label='LFU - default on disk', lcolor='r', line='--', init_on_tape=False, show=False, ax=ax1)
+    plot_success_function(liat_yd, label='Longest Inter-Arrival Time', line=':', lcolor='g', show=True, ax=ax1)
+    #plot_success_function(liat_yd, label='LIAT - default on disk', lcolor='g', line='--', init_on_tape=False, ax=ax1)
+    #plot_success_function(liat_yd_imiat, label='LIAT - ingest max iat', lcolor='g', line='-.', ax=ax1)
+
+
+def get_fresh_matrices_from_db(sqlite_file,
+                             num_bins=10,
+                             serialise_file=None):
+    """
+    Produce the following matrices after one pass of the sqlite database
+
+    1. obs_time vs. access_time
+    2. age_dist vs. access_time
+    3. freshness_dist vs. access_time
+    4. # of accesses vs. access_time
+    5. data volume vs. access_time
+
+    """
+    print "this is called"
+
+    import sqlite3 as dbdrv
+    dbconn = dbdrv.connect(sqlite_file)
+    date_pattern = '%Y-%m-%dT%H:%M:%S'
+
+    q = "SELECT min(ts) from ac"
+    cur = dbconn.cursor()
+    cur.execute(q)
+    dfirst_epoch = cur.fetchall()[0][0]
+    cur.close()
+    dfirst_epoch = time.strftime(date_pattern, time.localtime(dfirst_epoch / 1000))
+
+    q = "SELECT max(ts) from ac"
+    cur = dbconn.cursor()
+    cur.execute(q)
+    dlast_epoch = cur.fetchall()[0][0]
+    cur.close()
+    dlast_epoch = time.strftime(date_pattern, time.localtime(dlast_epoch / 1000))
+
+    dfirst = dt.datetime.strptime(dfirst_epoch, date_pattern).date()
+    dlast = dt.datetime.strptime(dlast_epoch, date_pattern).date()
+    num_access_days = int((dlast - dfirst).days) + 1
+    #num_bins = 10 # 2 ** [0, 1, ..., 10], from bin 0 to bin 9
+    # the value of each matrix cell is frequency percentage
+    data_ref = np.zeros((num_bins, num_access_days), dtype=np.float)
+    data_age = np.zeros((num_bins, num_access_days), dtype=np.float)
+
+    """
+    freshness - number of days between the current time and
+    when an observation has been most recently accessed
+
+    so for each day, all observations will be accounted for
+    thus for each day, we need to check all observations
+    ingested on or before that day
+    """
+    # get all observations in a dict
+    obs_dict = dict() # key - obs_id, value - a tuple of (last access (archive) date, archive date)
+    query = "SELECT DISTINCT(obs_id), ts, offline FROM ac WHERE ts BETWEEN {0} and {1}"
+    #check those observations ingested on or before that day but after dfirst
+    half_day_in_ms = 12 * 3600 * 1000 # half_day_in_millisecs
+    for i in range(num_access_days):
+        stt = time.time()
+        x_date = dfirst + dt.timedelta(days=i)
+        x_stt = "{0}T00:00:00".format(x_date)
+        x_end = "{0}T23:59:59".format(x_date)
+        epoch1 = int(time.mktime(time.strptime(x_stt, date_pattern)) * 1000)
+        epoch2 = int(time.mktime(time.strptime(x_end, date_pattern)) * 1000)
+        #print "***"
+        #print x_date, x_stt, x_end, epoch1, epoch2
+        #print "***"
+        ingest_q = query.format(epoch1, epoch2)
+        cur = dbconn.cursor()
+        cur.execute(ingest_q)
+        day_obs = cur.fetchall() # not OK if we have millions of obs numbers
+        cur.close()
+
+        temp_dict = dict()
+        for r in day_obs:
+            obs_id = r[0]
+            ts = r[1]
+            offline = r[2]
+            # ingest can always directly create dict entries
+            if (offline == -1):
+                obs_dict[obs_id] = [None, ts] #integer is fine
+            else:
+                temp_dict[obs_id] = ts
+
+        # evaluate y values
+        for obs_id, v in obs_dict.iteritems():
+            if (v[0] is not None):
+                y_ref_day = math.floor(float(epoch2 - v[0]) / 3600000.0 / 24) + 1
+                bin_no_ref = math.floor(np.log2(y_ref_day))
+                data_ref[bin_no_ref][i] += 1.0
+            #print "----- y_ref_day = {0}, v[0] = {1}".format(y_ref_day, v[0])
+            y_age_day = math.floor(float(epoch2 - v[1]) / 3600000.0 / 24) + 1
+            bin_no_age = math.floor(np.log2(y_age_day))
+            data_age[bin_no_age][i] += 1.0
+
+        # update last accessed time
+        for obs_id, ts in temp_dict.iteritems():
+            if (obs_dict.has_key(obs_id)): # if accessed old obs ingested before dfirst, ignore
+                obs_dict[obs_id][0] = ts
+
+        # normalise it to percentage
+        data_ref[:, i] /= float(len(obs_dict))
+        data_age[:, i] /= float(len(obs_dict))
+        print "Day {0} processed in {1} seconds".format(i, "%.3f" % (time.time() - stt))
+
+    return (data_ref, data_age, dfirst, dlast, num_access_days, num_bins)
+
+def plot_fresh_matrices(data_ref, data_age, dfirst, dlast, num_days, num_bins, scale=None):
+    matrices = [data_ref, data_age]
+
+    if (type(dfirst) is str):
+        dfirst = dt.datetime.strptime(dfirst,'%Y-%m-%d').date()
+    x_tick_range = np.arange(0, num_days - 1, 90)
+    x_tick_range[-1] = num_days - 1
+    x_tick_label = []
+    for dx in x_tick_range:
+        x_date = dfirst + dt.timedelta(days=dx)
+        x_tick_label.append(str(x_date))
+
+    y_tick_label = []
+    y_tick_range = []
+    for i in range(num_bins + 1):
+        #print "i = {0}".format(i)
+        y_tick_range.append(i)
+        y_tick_label.append("{0}".format(2 ** i))
+
+    for i, data in enumerate(matrices):
+        data *= 100
+        data = data.astype(np.int) # convert to 1 ~ 100
+        if (0 == i):
+            ylabel = 'Days since last access (refreshness)'
+            xlabel = ''
+            plot_tt = "MWA LTA daily distribution of observation 'refreshness' and 'age'"
+            ax = plt.subplot(211)
+        elif (1 == i):
+            ylabel = 'Days since ingestion (age)'
+            plot_tt = ''#'MWA LTA observation distribution based on age'
+            xlabel = 'Access time'
+            ax = plt.subplot(212)
+        else:
+            ylabel = 'Days'
+            plot_tt = 'MWA LTA observation distribution'
+
+        if ('log' == scale):
+            data = np.log10(data)
+
+        plt.pcolor(data, cmap=plt.cm.hot)
+        ax.set_xlim(0, data.shape[1])
+        ax.set_ylim(0, data.shape[0])
+
+        ax.set_ylabel(ylabel, fontsize=15)
+        ax.set_xlabel(xlabel, fontsize=15)
+        if (0 == i):
+            ax.set_title('{2} from {0} to {1}'.format(dfirst, dlast, plot_tt), fontsize=17)
+
+        ax.set_xticks(x_tick_range, minor=False)
+        ax.set_xticklabels(x_tick_label, minor=False, rotation=45)
+
+        ax.set_yticks(y_tick_range, minor=False)
+        ax.set_yticklabels(y_tick_label, minor=False)
+
+        ax.tick_params(direction='out')
+
+        cbar = plt.colorbar()
+        cbar.ax.xaxis.set_label_position('top')
+        cbar.ax.set_xlabel('% of observations', fontsize=13)
+
+        if (i == len(matrices) - 1):
+            #ax.get_figure().tight_layout()
+            #plt.tight_layout()
+            pass
+
+    plt.show()
+    #plt.close(fig)
+
+def ralist_to_obs_acc_matrix(al, min_obs_date, max_obs_date, serialise_file=None):
+    """
+    min_obs_date:   string
+    """
+    first_obs_date = dt.datetime.strptime(min_obs_date,'%Y-%m-%d').date()
+    last_obs_date = dt.datetime.strptime(max_obs_date,'%Y-%m-%d').date()
+    dfirst = dt.datetime.strptime(al[0].date,'%Y-%m-%dT%H:%M:%S.%f').date()
+    dlast = dt.datetime.strptime(al[-1].date,'%Y-%m-%dT%H:%M:%S.%f').date()
+    num_acess_days = int((dlast - dfirst).days) + 1
+    num_obs_days = int((last_obs_date - first_obs_date).days) + 1
+    data = np.zeros((num_obs_days, num_acess_days), dtype=np.float)
+
+    for a in al:
+        if (a.offline is None or a.obsdate == 'None'): #archive
+            continue
+        di = dt.datetime.strptime(a.date,'%Y-%m-%dT%H:%M:%S.%f').date()
+        dj = dt.datetime.strptime(a.obsdate,'%Y-%m-%d').date()
+        # if no retrievals on a particular day, that day will show nothing
+        ax = int((di - dfirst).days)
+        ay = int((dj - first_obs_date).days)
+        data[ay][ax] += 1
+
+    if (serialise_file is not None):
+        try:
+            np.save(serialise_file, data)
+        except Exception, exp:
+            print "Fail to serialise matrix to '{0}':{1}".format(serialise_file,
+                                                              str(exp))
+
+    return (data, None, num_acess_days, dfirst, dlast)
+
+
+def ralist_to_access_matrix(al, obs_info, num_bins=200, serialise_file=None):
+    """
+    obs_info:   a tuple of  (1) dictionary (key: obsid, sequence_id)
+                            (2) min obs number
+                            (3) max obs number
+    for each day, we plot the distribution (in the form of heatmap) of
+    the number of accesses within a contiguous range of observation numbers.
+    """
+    # sort the obsId
+    obs_dict = obs_info[0]
+    min_obs = obs_info[1]
+    max_obs = obs_info[2]
+    step = int(math.ceil(float(obs_dict[max_obs] - obs_dict[min_obs]) / float(num_bins)))
+    obs_range = range(min_obs, max_obs, step)
+    dfirst = dt.datetime.strptime(al[0].date,'%Y-%m-%dT%H:%M:%S.%f').date()
+    dlast = dt.datetime.strptime(al[-1].date,'%Y-%m-%dT%H:%M:%S.%f').date()
+    num_days = int((dlast - dfirst).days) + 1
+    data = np.zeros((num_bins, num_days), dtype=np.float)
+
+    for a in al:
+        if (a.offline is None): #archive
+            continue
+        di = dt.datetime.strptime(a.date,'%Y-%m-%dT%H:%M:%S.%f').date()
+        # if no retrievals on a particular day, that day will show nothing
+        ax = int((di - dfirst).days)
+        ay = obs_dict[int(a.obsId)] / step
+        data[ay][ax] += 1
+
+    if (serialise_file is not None):
+        try:
+            np.save(serialise_file, data)
+        except Exception, exp:
+            print "Fail to serialise matrix to '{0}':{1}".format(serialise_file,
+                                                              str(exp))
+    return (data, obs_range, num_days, dfirst, dlast)
+
+def plot_access_heatmap(data, obs_range, num_days,
+                        dfirst, dlast, first_obsdate=None,
+                        last_obsdate=None, scale=None):
+    """
+    x_axis = []
+    for nd in range(num_days):
+        if (nd % 30 == 0):
+            x_axis.append(str(nd))
+        else:
+            x_axis.append(' ')
+
+    y_axis = []
+    for y in obs_range:
+        if (y % 50 == 0):
+            y_axis.append(str(y))
+        else:
+            y_axis.append(' ')
+    """
+    if (type(dfirst) is str):
+        dfirst = dt.datetime.strptime(dfirst,'%Y-%m-%d').date()
+    x_tick_range = np.arange(0, num_days - 1, 90)
+    x_tick_range[-1] = num_days - 1
+    x_tick_label = []
+    for dx in x_tick_range:
+        x_date = dfirst + dt.timedelta(days=dx)
+        x_tick_label.append(str(x_date))
+
+    if (first_obsdate is not None):
+        if (type(first_obsdate) is str):
+            first_obsdate = dt.datetime.strptime(first_obsdate,'%Y-%m-%d').date()
+        y_tick_range = np.arange(0, data.shape[0] - 1, 90)
+        y_tick_range[-1] = data.shape[0] - 1
+        y_tick_label = []
+        for dy in y_tick_range:
+            y_date = first_obsdate + dt.timedelta(days=dy)
+            y_tick_label.append(str(y_date))
+
+    fig, ax = plt.subplots()
+    if ('log' == scale):
+        data = np.log10(data)
+    plt.pcolor(data, cmap=plt.cm.hot)
+    ax.set_xlim(0, data.shape[1] - 1)
+    ax.set_ylim(0, data.shape[0] - 1)
+    cbar = plt.colorbar()
+    #cbar.ax.xaxis.tick_top()
+    cbar.ax.xaxis.set_label_position('top')
+    cbar.ax.set_xlabel('Log 10 scale', fontsize=13)
+    plt.ylabel('Observation time',fontsize=15)
+    plt.xlabel('Access time', fontsize=15)
+    plt.title('MWA long-term archive access distribution from {0} to {1}'.format(dfirst, dlast), fontsize=18)
+    #heatmap = ax.pcolor(data, cmap=plt.pyplot.cm.Blues)
+
+    # put the major ticks at the middle of each cell
+
+    ax.set_xticks(x_tick_range, minor=False)
+    ax.set_xticklabels(x_tick_label, minor=False, rotation=45)
+
+    if (first_obsdate is not None):
+        ax.set_yticks(y_tick_range, minor=False)
+        ax.set_yticklabels(y_tick_label, minor=False)
+    """
+    ax.set_yticks(np.arange(data.shape[1])+0.5, minor=False)
+
+    ax.set_xticklabels(x_axis, minor=False)
+    ax.set_yticklabels(y_axis, minor=False)
+    """
+    ax.tick_params(direction='out')
+    plt.show()
+    plt.close(fig)
+
 def _raListToNumArray(al):
     """
     Convert a list of RA tuples to the following num arrays:
@@ -418,15 +1152,16 @@ def _raListToNumArray(al):
             if (a.offline):
                 #x2.append(ax)
                 #y2.append(int(a.obsId)) # miss
-                x2d[ax].add(a.obsId)
+                #x2d[ax].add(a.obsId)
                 xy3[ax] += 1
             else:
                 #x1.append(ax)
                 #y1.append(int(a.obsId)) # hit
-                x1d[ax].add(a.obsId)
+                #x1d[ax].add(a.obsId)
                 xy4[ax] += 1
             xy5[ax] += a.size
 
+    """
     for k, v in x1d.items():
         for oid in v:
             x1.append(k)
@@ -436,6 +1171,7 @@ def _raListToNumArray(al):
         for oid in v:
             x2.append(k)
             y2.append(oid)
+    """
 
     for k, v in x6d.items():
         for oid in v:
@@ -622,9 +1358,10 @@ def _plotVirtualTime(accessList, archName, fgname, rd_bin_width = 250):
 
     pl.close(fig1)
 
+def post_actual_time(acl, series_name, col_name, influx_host, influx_port, influx_db):
+    pass
 
-
-def _plotActualTime(accessList, archName, fgname):
+def _plotActualTime(accessList, archName, fgname=None):
     """
     Plot data access based on actual time
     """
@@ -633,10 +1370,15 @@ def _plotActualTime(accessList, archName, fgname):
     x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6, x7, y7, x8, y8 = _raListToNumArray(accessList)
     print ("Converting to num array takes %d seconds" % (time.time() - stt))
     fig = pl.figure()
+    fig.suptitle('%s archive activity from %s to %s' % (archName, accessList[0].date.split('T')[0],accessList[-1].date.split('T')[0]), fontsize=14)
+
+    ax1 = fig.add_subplot(211)
+    """
     if (len(x3) or len(x4)):
         ax = fig.add_subplot(211)
     else:
         ax = fig.add_subplot(111)
+
     ax.set_xlabel('Time (days)', fontsize = 9)
     ax.set_ylabel('Obs number (GPS time)', fontsize = 9)
     ax.set_title('%s archive activity from %s to %s' % (archName, accessList[0].date.split('T')[0],accessList[-1].date.split('T')[0]), fontsize=10)
@@ -651,52 +1393,90 @@ def _plotActualTime(accessList, archName, fgname):
     ax.plot(x6, y6, color = 'k', marker = 'o', linestyle = '',
                         label = 'ingestion', markersize = 3, markeredgecolor = 'k', markerfacecolor = 'none')
 
+    """
     left, right = _getLR([x1, x2, x3, x4, x5, x6, x7, x8])
 
-    ax.set_xlim([left, right])
-    legend = ax.legend(loc = 'upper left', shadow=True, prop={'size':7})
+    #ax1.set_xlim([left, right])
+    #legend = ax.legend(loc = 'upper left', shadow=True, prop={'size':7})
 
     if (len(x3) or len(x4) or len(x7)):
-        ax1 = fig.add_subplot(212)
-        ax1.set_xlabel('Time (days)', fontsize = 9)
-        ax1.set_ylabel('Number of files', fontsize = 9)
-        ax1.tick_params(axis='both', which='major', labelsize=8)
-        ax1.tick_params(axis='both', which='minor', labelsize=6)
+        #ax1 = fig.add_subplot(212)
+        ax1.set_xlabel('Time (days)', fontsize = 12)
+        ax1.set_ylabel('Number of files', fontsize = 12)
+        ax1.tick_params(axis='both', which='major', labelsize=10)
+        ax1.tick_params(axis='both', which='minor', labelsize=8)
         ax1.set_title('Number/Volume of data access and ingestion', fontsize=10)
 
         if (len(x4)):
-            ax1.plot(x4, y4, color = 'b', linestyle = '-', marker = 'x', label = 'online access', markersize = 3)
+            ax1.plot(x4, y4, color = 'b', linestyle = '-', marker = 'x', label = 'access', markersize = 3)
+        """
         if (len(x3)):
             ax1.plot(x3, y3, color = 'r', linestyle = '--', marker = '+', label = 'offline access', markersize = 3)
+        """
         if (len(x7)):
             ax1.plot(x7, y7, color = 'k', linestyle = '-.', marker = 'o', label = 'ingestion', markersize = 3, markerfacecolor = 'none')
 
-        ax2 = ax1.twinx()
-        ax2.set_ylabel('Data volume (TB)', fontsize = 9)
-        ax2.tick_params(axis='both', which='major', labelsize=8)
-        ax2.tick_params(axis='both', which='minor', labelsize=6)
+        #ax2 = ax1.twinx()
+        ax2 = fig.add_subplot(212, sharex=ax1)
+        ax2.set_ylabel('Data volume (TB)', fontsize = 12)
+        ax2.set_xlabel('Time (days)', fontsize = 12)
+        ax2.tick_params(axis='both', which='major', labelsize=10)
+        ax2.tick_params(axis='both', which='minor', labelsize=8)
+        ax2.set_title('Volume of data access and ingestion', fontsize=10)
         ax2.plot(x5, y5 / 1024.0 ** 4, color = 'g', linestyle = '-.', marker = 's', label = 'access volume',
                  markersize = 3, markeredgecolor = 'g', markerfacecolor = 'none')
         ax2.plot(x8, y8 / 1024.0 ** 4, color = 'm', linestyle = ':', marker = 'd', label = 'ingestion volume',
                  markersize = 3, markeredgecolor = 'm', markerfacecolor = 'none')
 
-        ax1.set_xlim([left, right])
+        #ax1.set_xlim([left, right])
 
-        legend1 = ax1.legend(loc = 'upper left', shadow=True, prop={'size':7})
-        legend2 = ax2.legend(loc = 'upper right', shadow=True, prop={'size':7})
+        legend1 = ax1.legend(loc = 'upper left', shadow=True, prop={'size':10})
+        legend2 = ax2.legend(loc = 'upper right', shadow=True, prop={'size':10})
 
     pl.tight_layout()
-    fig.savefig(fgname)
+    if (fgname is not None):
+        fig.savefig(fgname)
+    else:
+        pl.show()
     pl.close(fig)
 
 def get_sort_key(ra):
     return ra.date
 
-def processLogs(dirs, fgname, stgline = 'to stage file:',
-                aclobj = None, archName = 'Pawsey',
-                obs_trsh = 1.05, vir_time = False,
-                per_user = False, reuse_dist = False,
-                per_user_y_unit = 'Obs Id', save_acl_file = None):
+def get_unprocessed_list(csv_file, f, dir):
+    import subprocess
+    last_line = subprocess.check_output(['tail', '-1', csv_file]).strip()
+    last_time = float(last_line.split(",")[0])
+
+    #ftime = "2014-01-24T13:47:14.679"
+    pat = "%Y-%m-%dT%H:%M:%S.%f"
+    re = []
+    retry = 5
+    for fn in f:
+        first_lines = subprocess.check_output(['head', '-%d' % retry, "%s/%s" % (dir, fn)]).split('\n')
+        for first_line in first_lines:
+            """
+            print "--------"
+            print first_line
+            print "--------"
+            """
+            try:
+                ftime = first_line.split()[0]
+                epoch = int(time.mktime(time.strptime(ftime, pat)) * 1000)
+                if (epoch >= last_time):
+                    re.append(fn)
+                break
+            except:
+                continue
+
+    print(" ** {0} new files will be processed".format(len(re)))
+    return re
+
+def processLogs(dirs, fgname, stgline='to stage file:',
+                aclobj=None, archName='Pawsey',
+                obs_trsh=1.05, vir_time=False,
+                per_user=False, reuse_dist=False,
+                per_user_y_unit='Obs Id', cvs_file=None):
     """
     process all logs from a list of directories
 
@@ -705,7 +1485,7 @@ def processLogs(dirs, fgname, stgline = 'to stage file:',
     """
     if (aclobj):
         accessList = aclobj
-        accessList = sorted(accessList, key=get_sort_key)
+        #accessList = sorted(accessList, key=get_sort_key)
     else:
         accessList = []
         pool = mp.Pool(15)
@@ -714,8 +1494,13 @@ def processLogs(dirs, fgname, stgline = 'to stage file:',
             for (dirpath, dirnames, filenames) in walk(dir):
                 f.extend(filenames)
                 break
+            if (cvs_file and os.path.exists(cvs_file)):
+                """
+                skip files that have been processed
+                """
+                filter_list = get_unprocessed_list(cvs_file, f, dir)
             if (mp.cpu_count() > 2):
-                results = [pool.apply_async(parse_log_thrd, args=('%s/%s' % (dir, fn), stgline, obs_trsh)) for fn in f]
+                results = [pool.apply_async(parse_log_thrd, args=('%s/%s' % (dir, fn), stgline, obs_trsh)) for fn in filter_list]
                 output = [p.get() for p in results]
                 for o in output:
                     accessList += o
@@ -734,11 +1519,11 @@ def processLogs(dirs, fgname, stgline = 'to stage file:',
         try:
             #accessList.sort() # automatically sort based on date
             accessList = sorted(accessList, key=get_sort_key)
+            print ("Sorting takes %d seconds" % (time.time() - stt))
         finally:
-            if (save_acl_file and accessList):
-                pickleSaveACL(accessList, save_acl_file)
-
-        print ("Sorting takes %d seconds" % (time.time() - stt))
+            if (cvs_file and accessList):
+                ra_list_to_csv(accessList, cvs_file)
+                #pickleSaveACL(accessList, cvs_file)
 
     """
     if (vir_time):
@@ -752,13 +1537,14 @@ def processLogs(dirs, fgname, stgline = 'to stage file:',
     else:
         _plotActualTime(accessList, archName, fgname)
     """
+    """
     print "Producing actual time plot......"
     _plotActualTime(accessList, archName, fgname + "_actual_time.pdf")
     print "Producing virtual time plot......"
     _plotVirtualTime(accessList, archName, fgname + "_virtual_time.pdf")
     print "Producing RUD plot......"
     _plotReuseDistance(accessList, archName, fgname + "_rud.pdf")
-
+    """
     return accessList
 
 def _getTidFrmLine(line):
@@ -989,14 +1775,16 @@ def parseLogFile(fn, accessList=None, stgline = 'to stage file:', obs_trsh = 1.0
         if (aa):
             use_list.append(aa)
         else:
-            print 'non AA for {0} in {1}'.format(tid, fn)
+            pass
+            #print 'non AA for {0} in {1}'.format(tid, fn)
 
     for k, v in raDict.items():
         ra = _buildRA(v, stg.has_key(k), fsize[k], obs_trsh)
         if (ra):
             use_list.append(ra)
         else:
-            print 'none RA for %s in file %s' % (k, fn)
+            pass
+            #print 'none RA for %s in file %s' % (k, fn)
 
     if (accessList):
         return
@@ -1056,7 +1844,11 @@ def syncLogFileDir(srcDir, tgtDir, pawsey_stage=False):
         remote_src = True
         print 'Login to host: %s' % (tmp[0])
     else:
-        cmd = 'ls %s' % srcDir
+        if (pawsey_stage):
+            cmd = 'dmls -l %s/' % (srcDir)
+            print cmd
+        else:
+            cmd = 'ls %s' % srcDir
 
     srcList = execCmd(cmd)[1].split('\n')
 
@@ -1099,15 +1891,15 @@ def syncLogFileDir(srcDir, tgtDir, pawsey_stage=False):
         #cmd = 'ssh %s "cd %s; dmget ' % (tmp[0], tmp[1])
         cmd = 'dmget '
         for sfnm in stage_list:
-            cmd += '{0} '.format(sfnm)
-        print "cd {0}".format(tmp[1])
+            cmd += '{0} '.format(srcDir + "/" + sfnm)
+        #print "cd {0}".format(tmp[1])
         print cmd
-        return
+        #return
         #cmd += '"'
-        #re = execCmd(cmd)
-        #print "Staging result {0}: {1}".format(re[0], re[1])
-        #if (re[0] != 0):
-            #sys.exit(1)
+        re = execCmd(cmd)
+        print "Staging result {0}: {1}".format(re[0], re[1])
+        if (re[0] != 0):
+            sys.exit(1)
 
     if (remote_src):
         verb = 'scp'
@@ -1132,10 +1924,10 @@ if __name__ == '__main__':
     parser.add_option("-c", "--srcdir", action="store", type="string", dest="srcdir", help="directories separated by semicolon. If this option is present, the system will sync between srcdir and dir")
     parser.add_option("-o", "--output", action="store", type="string", dest="output", help="output figure name (path)")
     parser.add_option("-s", "--stgline", action="store", type="string", dest="stgline", help="a line representing staging activity")
-    parser.add_option("-a", "--saveaclfile", action="store", dest="save_acl_file",
-                      type = "string", default = "", help = "Save access list object to the file")
-    parser.add_option("-l", "--loadaclfile", action="store", dest="load_acl_file",
-                      type = "string", default = "", help = "Load access list object from the file")
+    parser.add_option("-a", "--savecvsfile", action="store", dest="save_cvs_file",
+                      type = "string", default = "", help = "Save access list to the CSV file")
+    parser.add_option("-l", "--loadcvsfile", action="store", dest="load_cvs_file",
+                      type = "string", default = "", help = "Load access list CSV from the file")
     parser.add_option("-r", "--archname", action="store", type="string", dest="arch_name", help="name of the archive")
     parser.add_option("-e", "--threshold", action="store", type="float", dest="obs_trsh",
                       help = "obs_number threshold, below which accesses will not be counted")
@@ -1147,15 +1939,16 @@ if __name__ == '__main__':
     parser.add_option("-u", "--reusedist", action="store_true", dest="rud", default = False, help = "plot reuse distance per user")
 
     (options, args) = parser.parse_args()
+    """
     if (None == options.output):
         parser.print_help()
         sys.exit(1)
-
-    if (None == options.dir and (not options.load_acl_file)):
+    """
+    if (None == options.dir and (not options.load_cvs_file)):
         parser.print_help()
         sys.exit(1)
 
-    if (options.srcdir and (not options.load_acl_file)):
+    if (options.srcdir and (not options.load_cvs_file)):
         srcdirs = options.srcdir.split('+')
         dirs = options.dir.split('+')
         if (len(srcdirs) > len(dirs)):
@@ -1166,10 +1959,10 @@ if __name__ == '__main__':
         if (tt == 'Y' or tt == 'y'):
             for i in range(len(srcdirs)):
                 print 'Syncing %s and %s' % (srcdirs[i], dirs[i])
-                syncLogFileDir(srcdirs[i], dirs[i])
-            #sys.exit(1)
+                syncLogFileDir(srcdirs[i], dirs[i], pawsey_stage=True)
+            sys.exit(0) # do not mix file syncing and file processing
 
-    if (not options.load_acl_file):
+    if (not options.load_cvs_file):
         print 'Checking directories....'
         dirs = options.dir.split('+')
         for d in dirs:
@@ -1177,8 +1970,9 @@ if __name__ == '__main__':
     else:
         dirs = None
 
-    if (options.load_acl_file):
-        acl = pickleLoadACL(options)
+    if (options.load_cvs_file):
+        #acl = pickleLoadACL(options)
+        acl = csv_to_ra_list(options.load_cvs_file)
     else:
         print 'Processing logs...'
         acl = None
@@ -1198,9 +1992,9 @@ if __name__ == '__main__':
     if (None == options.stgline): #options.stgline = "staging it for"
         acl = processLogs(dirs, options.output, aclobj = acl,
                           archName = archnm, obs_trsh = obs_num_threshold, vir_time = options.vir_time,
-                          per_user = options.per_user, reuse_dist = options.rud, per_user_y_unit = puyunit, save_acl_file = options.save_acl_file)
+                          per_user = options.per_user, reuse_dist = options.rud, per_user_y_unit = puyunit, cvs_file=options.save_cvs_file)
     else:
         acl = processLogs(dirs, options.output, stgline = options.stgline, aclobj = acl,
                           archName = archnm, obs_trsh = obs_num_threshold, vir_time = options.vir_time,
-                          per_user = options.per_user, reuse_dist = options.rud, per_user_y_unit = puyunit, save_acl_file = options.save_acl_file)
+                          per_user = options.per_user, reuse_dist = options.rud, per_user_y_unit = puyunit, cvs_file=options.save_cvs_file)
 
