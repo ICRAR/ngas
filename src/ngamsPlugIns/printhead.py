@@ -1,5 +1,25 @@
 #!/usr/bin/env python
-# @(#) $Id: printhead.py,v 1.1 2009/01/16 13:58:11 awicenec Exp $
+#
+#    ICRAR - International Centre for Radio Astronomy Research
+#    (c) UWA - The University of Western Australia, 2012
+#    Copyright by UWA (in the framework of the ICRAR)
+#    All rights reserved
+#
+#    This library is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU Lesser General Public
+#    License as published by the Free Software Foundation; either
+#    version 2.1 of the License, or (at your option) any later version.
+#
+#    This library is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#    Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public
+#    License along with this library; if not, write to the Free Software
+#    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+#    MA 02111-1307  USA
+#
 #
 # Script dumps the primary header of FITS files to stdout or creates
 # header files
@@ -25,142 +45,9 @@
 #                         FitsHead.getKeyType
 #             2005-07-21  Added possibility to pass file and cStringIO objects to
 #                         FitsHead.__init__
-# $Log: printhead.py,v $
-# Revision 1.1  2009/01/16 13:58:11  awicenec
-# Initial checkin here. Code is the same as in original ngasPlugIns directory [AW]
-#
-# Revision 1.35  2008/03/07 09:17:26  awicenec
-# Fixed bug with R type  [AW]
-#
-# Revision 1.34  2007/12/12 08:33:48  awicenec
-# full support for stupid special and invalid keyword ESO-LOG used in early ONTT files!! They are now treated like HISTORY and COMMENT
-#
-# Revision 1.33  2007/12/11 08:41:22  awicenec
-# support for stupid special and invalid keyword ESO-LOG used in early ONTT files!!
-#
-# Revision 1.32  2007/11/12 14:44:07  awicenec
-# fixed bug for 'R' type when value == 0 [AW]
-#
-# Revision 1.31  2007/09/06 14:13:46  awicenec
-# Fixed bug if value is smaller than 1e-15 [AW]
-#
-# Revision 1.30  2007/08/14 11:51:57  awicenec
-# Fixed behaviour for stupidly long numeric keyword values to return 'R' instead of 'I' [AW]
-#
-# Revision 1.29  2007/06/24 13:11:22  awicenec
-# Fixed bug with floating point types (ex undefined) [AW]
-#
-# Revision 1.28  2007/05/30 09:33:25  awicenec
-# Remove kw_value_numeric if type is 'R' [AW]
-#
-# Revision 1.27  2007/05/11 13:23:01  awicenec
-# update of the getKeyType methods [AW]
-#
-# Revision 1.26  2007/03/22 09:52:28  awicenec
-# Added 'NAN' to reserved keyword values to fix SINFO headers. [AW]
-#
-# Revision 1.25  2007/03/07 13:31:05  awicenec
-# Better treatment of olasId prefix to support master calibration frames. [AW]
-#
-# Revision 1.24  2006/12/20 10:45:35  awicenec
-# added 'T' type and some additional in-line doc [AW]
-#
-# Revision 1.23  2006/10/27 14:49:27  awicenec
-# Make XFits output working again [AW]
-#
-# Revision 1.22  2006/08/29 12:09:01  awicenec
-# Fixed problem in getKeyType when quoted numeric values are in the header [AW]
-#
-# Revision 1.21  2006/08/16 10:02:46  awicenec
-# Allow T and blank as separator between date and time [AW]
-#
-# Revision 1.20  2006/08/16 09:59:24  awicenec
-# Another update of dateTime regexp [AW]
-#
-# Revision 1.19  2006/08/16 08:27:22  awicenec
-# Updated dateTime type guessing to match also dateTime strings without ms [AW]
-#
-# Revision 1.18  2006/08/14 14:15:45  awicenec
-# DateTime type added in getKeyType [AW]
-#
-# Revision 1.17  2006/08/10 12:47:04  awicenec
-# Changed doc string of parseFitsHead2TupleList [AW]
-#
-# Revision 1.16  2006/08/10 12:32:39  awicenec
-# Limit kw_datetime_value to contain only 23 characters [AW]
-#
-# Revision 1.15  2006/08/10 12:08:16  awicenec
-# just chenged the version number [AW]
-#
-# Revision 1.14  2006/08/10 12:03:56  awicenec
-# Implemented DBCM format for TSV output [AW]
-#
-# Revision 1.13  2006/07/17 14:39:48  awicenec
-# Strip keyword name string on input [AW]
-#
-# Revision 1.12  2006/06/23 10:12:28  awicenec
-# Improved error handling in the case of  wrongly quoted string values [AW]
-#
-# Revision 1.11  2006/06/23 09:39:30  awicenec
-# Improved excetion handling [AW]
-#
-# Revision 1.10  2006/06/23 09:32:39  awicenec
-# forgot to change the version number in the previous commit [AW]
-#
-# Revision 1.9  2006/06/23 09:31:47  awicenec
-# Several changes to make the skey option working correctly [AW]
-#
-# Revision 1.8  2006/06/07 09:31:09  awicenec
-# Another fix after test for getKeyType [AW]
-#
-# Revision 1.7  2006/06/07 09:23:02  awicenec
-# Fixed bug in getKeyType to deal with a value 'INFINITY' [AW]
-#
-# Revision 1.6  2006/04/11 13:12:35  awicenec
-# added BLOCKSIZE and support to print skeys from all headers
-#
-# Revision 1.5  2006/03/29 12:25:34  awicenec
-# Fixed bug in treatment of HISTROY and COMMENT keywords for tsv output [AW]
-#
-# Revision 1.4  2006/03/29 07:36:16  awicenec
-# Removed debug output [AW]
-#
-# Revision 1.3  2006/03/27 10:15:35  awicenec
-# fixed bug with maximum length of header card line [AW]
-#
-# Revision 1.2  2006/03/23 11:05:27  awicenec
-# Fixed treatment of possible crazy keyword values like 'o''Neil' [AW]
-#
-# Revision 1.1  2006/02/25 00:06:16  awicenec
-# initial checkin of python utilities [AW]
-#
-# Revision 1.33  2005/11/24 11:05:24  awicenec
-# Improved documentation [AW]
-#
-# Revision 1.32  2005/11/23 23:11:34  awicenec
-# Fixed bug in XML indentation [AW]
-#
-# Revision 1.31  2005/11/23 09:56:10  awicenec
-# Re-structuring of code for NGAS plugin [AW]
-#
-# Revision 1.30  2005/11/11 16:01:16  awicenec
-# Restructuring to support ngams plugin [AW]
-#
-# Revision 1.29  2005/11/07 16:33:26  awicenec
-# New format for tab-separated output [AW]
-#
-# Revision 1.28  2005/08/05 08:33:11  awicenec
-# Again CVS test [AW]
-#
-# Revision 1.27  2005/08/05 08:31:35  awicenec
-# Just to check CVS keyword expansion [AW]
-# 
-# Revision 1.26  2005/08/05 08:30:20  awicenec
-# Just to check CVS keyword expansion [AW]
-# 
 
-__version__ = "3.36"
-import sys,os,popen2, types
+__version__ = "4.0"
+import sys,os, types, subprocess
 import string,re
 from glob import glob
 from zlib import crc32
@@ -174,7 +61,7 @@ class FitsHead:
     for more details just call the usage function or run the
     script without parameters.
     """
-    def __init__(self,ffile,skey='END',struct=1,show=0,check=0, verbose=0, mode=1):
+    def __init__(self,file,skey='END',struct=0,show=0,check=0, verbose=0, mode=1):
         """
         """
         self.verbose = int(verbose)
@@ -190,17 +77,17 @@ class FitsHead:
                                      # not contain data (.hdr file)
         self.KKeys = ['SIMPLE','EXTEND','NAXIS[0-9]{0,2}','BITPIX','XTENSION', 'END',]
         if skey != 'END': self.KKeys.append(skey)
-        if type(ffile) == types.StringType:
-            (self.fd, self.size) = self.openFile(ffile)
+        if type(file) == types.StringType:
+            (self.fd, self.size) = self.openFile(file)
             if self.size == -1: 
-                errMsg = "*** File %s does not exists ****" % ffile
+                errMsg = "*** File %s does not exists ****" % file
                 raise Exception, errMsg
-        elif type(ffile) == types.FileType:  # if fd != 0 we assume that a file object is passed
-            (self.fd, self.size) = (ffile, ffile.tell())
+        elif type(file) == types.FileType:  # if fd != 0 we assume that a file object is passed
+            (self.fd, self.size) = (file, file.tell())
             self.ID = self.fd.name
             self.name = self.fd.name
-        elif type(ffile).__name__ == 'StringI': # this is a cStringIO object
-            (self.fd, self.size) = (ffile, ffile.tell())
+        elif type(file).__name__ == 'StringI': # this is a cStringIO object
+            (self.fd, self.size) = (file, file.tell())
             self.ID = ""
             self.name = ""
         else:
@@ -308,7 +195,7 @@ class FitsHead:
                             skfl = 1
                         LineDict = HD.keyTuple2Dict(LineTuple)
                         LineDict['index']={index:LineTuple[0]}
-                        HD._updateKeyword(LineDict)
+                        HD.updateKeyword(LineDict)
                 index += 1
 
             keys.append(kkeys)
@@ -377,17 +264,16 @@ class FitsHead:
         wfl = 0
         if len(ofile) > 0:           
             try:
-                of = open(ofile,'a')
+                of = open(ofile,'w')
                 wfl = 1
             except:
                 print "Problem opening output file:",ofile
                 return
         if wfl:
-            for ii in range(nblocks+1):
+            for ii in range(nblocks):
                 block = self.fd.read(2880)
                 of.write(block)
             del(block)
-            of.close()
             return -1
         else:
             if blfl == 0:
@@ -396,45 +282,26 @@ class FitsHead:
                 rsiz = nblocks*2880
             data = self.fd.read(rsiz)
             return data
-        
-    def writeFile(self, header=0, ofile=''):
-        """
-        Method writes a FITS file using the header with index <header>
-        and the associated data.
-        """
-        if len(ofile) > 0:           
-            try:
-                of = open(ofile,'w')
-                wfl = 1
-            except:
-                print "Problem opening output file:",ofile
-                return
-        of.write(self.Extension[header].Serialize())
-        of.close()
-        void = self.getData(header=header, ofile=ofile)
-
-        return
 
 
-    def openFile(self,ffile):
+    def openFile(self,file):
         """
         Opens the file or a pipe if the file is compressed and returns
         a file-descriptor and the size of the file.
         """
-        flist = glob(ffile)        #try to find the file
+        flist = glob(file)        #try to find the file
         if len(flist) == 0:            # don't open new one if it does not exist
             return (-1,-1)
         else:
-            base = os.path.basename(ffile)
+            base = os.path.basename(file)
             ID, ext = os.path.splitext(base)
             if ext == '.Z' or ext == '.gz':
-                (fd,STDIN,STDOUT) = popen2.popen3('gunzip -qc ' + \
-                        ffile,0,2880)
+                (fd,STDIN,STDOUT) = subprocess.Popen(['/usr/bin/gunzip','-qc',file],0)
                 size = -2   # size is not available in a pipe, but this is not a problem
-                self.name = ffile
+                self.name = file
                 self.ID, ext = os.path.splitext(ID)
             else:
-                fd=open(ffile,'r')
+                fd=open(file,'r')
                 fd.seek(0,2)
                 size = fd.tell()
                 fd.seek(0,0)
@@ -464,7 +331,7 @@ class FitsHead:
                     LineDict = HD.keyTuple2Dict(LineTuple)
                 if len(key) > 0: 
                     LineDict.update({'index':{ind/80:LineTuple[0]}})
-                    HD._updateKeyword(LineDict)
+                    HD.updateKeyword(LineDict)
             
             HD.setNumber(ii)
             HD.setPos(self.Extension[ii].POS)
@@ -547,8 +414,7 @@ class FitsHead:
             if rest[0] == "'":
                 try:
                     m = qexpr.match(rest)
-#                     value = m.group()[1:-1].strip()                    
-                    value = m.group()
+                    value = m.group()[1:-1].strip()                    
                     vind = m.end()
                     typ = 'C'
                 except Exception, e:
@@ -571,7 +437,7 @@ class FitsHead:
             comment = comment.strip()
         elif sexpr.match(line):
             key = sexpr.match(line).group()
-            rest = line.split(key,1)
+            rest = sexpr.split(line)
             comment = ''
             if key in ['COMMENT', 'HISTORY', 'ESO-LOG']:
                 value = [rest[1].strip()]
@@ -583,7 +449,7 @@ class FitsHead:
 
 
 
-    def xmlHead(self, outform='vo', outfile = '', pretty = 1, head=0):
+    def xmlHead(self, format='vo', outfile = '', pretty = 1, head=0):
         """
         Method takes Extension and creates a list of XML strings or writes
         the XML strings to <outfile>. If <pretty> is 1 (default) then the
@@ -600,7 +466,7 @@ class FitsHead:
         indent = '   '
         XmlHead.append('<?xml version="1.0" encoding="ISO-8859-1"?>')
 
-        if outform == 'vo':
+        if format == 'vo':
 
             XmlHead.append('<VOTABLE version="1.1">')
             level = 1 * pretty
@@ -618,7 +484,7 @@ class FitsHead:
     
             level -=1
             XmlHead.append(level*indent + '</DESCRIPTION>')
-        elif outform == 'xfits':
+        elif format == 'xfits':
             level = 1 * pretty
             XmlHead.append('<?xml-stylesheet type="text/xml" href="XMLmenu.xsl"?>')
             XmlHead.append('<XFits>')
@@ -626,14 +492,14 @@ class FitsHead:
             XmlHead.append("<ERROR>Invalid format specified. Should be vo or xfits</ERROR>")
             return XmlHead
         for HD in heads:
-            if outform == 'vo':
+            if format == 'vo':
                 XmlHead.append(HD.VotableSerialize(level=level, indent=indent))
             else:
                 XmlHead.append(HD.XfitsSerialize(level=level, indent=indent))
                    
 # close the root element
 
-        if outform == 'vo':
+        if format == 'vo':
             XmlHead.append('\n</VOTABLE>')
         else:
             XmlHead.append('\n</XFits>')
@@ -809,32 +675,32 @@ class FitsHead:
             typ = 'C'
         else:
             try: 
-                float(val)
-                value = float(val)
-                if value != 0 and (abs(value) > 1.0e15 or value < 1e-15):
-                    typ = 'R'
-                    value = None
-                dotpos = val.find('.')
-                if dotpos < 0 and typ != 'R':
-                    try:
-                        iv = int(val)
-                        if iv < 256 and iv >= 0:
-                            typ = 'U'
-                        elif iv < 65536:
-                            typ = 'S'
-                        else:
-                            typ = 'I'
-                    except:
-                        typ = 'L'
-                elif typ != 'R':
-                    epos = val.upper().find('E')
-                    if epos == -1: 
-                        epos = len(val)
-                    else:
-                        ex = int(val[epos+1:])
-                    if dotpos >= 0:
-                        typ = 'F'
-                    if len(val[dotpos+1:epos]) > 15:
+              float(val)
+              value = float(val)
+              if value != 0 and (abs(value) > 1.0e15 or value < 1e-15):
+                  typ = 'R'
+                  value = None
+              dotpos = val.find('.')
+              if dotpos < 0 and typ != 'R':
+                  try:
+                     iv = int(val)
+                     if iv < 256 and iv >= 0:
+                        typ = 'U'
+                     elif iv < 65536:
+                        typ = 'S'
+                     else:
+                        typ = 'I'
+                  except:
+                     typ = 'L'
+              elif typ != 'R':
+                  epos = val.upper().find('E')
+                  if epos == -1: 
+                     epos = len(val)
+                  else:
+                     ex = int(val[epos+1:])
+                  if dotpos >= 0:
+                     typ = 'F'
+                     if len(val[dotpos+1:epos]) > 15:
                         typ = 'P'
             except:
                 if val == 'T' or val == 'F':
@@ -1028,17 +894,6 @@ class HeadDict(dict):
         for hk in hkeys:
             node = node[hk]        
         return node
-
-
-    def getKeyValue(self,key=''):
-        """
-        Return node of HD dictionary for a certain keyword.
-        
-        INPUT:     string, keyword
-        OUTPUT:    value of key.
-        """
-        
-        return self.getNode(key=key)['Value']
 
 
     def getElementType(self,key=''):
@@ -1265,7 +1120,7 @@ class HeadDict(dict):
             elif eval("self['nodes']"+fullInd+".has_key('Type')"):
                 typ = eval("self['nodes']"+fullInd+"['Type']")
                 if typ == '':
-                    typ = self.getKeyType(key)
+                   typ = self.getKeyType(key)
             else:
                 typ = ''
         except:
@@ -1274,7 +1129,7 @@ class HeadDict(dict):
 
 
 
-    def _updateKeyword(self,keyDict,force=0):
+    def updateKeyword(self,keyDict,force=0):
         """
         Method takes a keyDict and updates HeadDict accordingly.
 
@@ -1318,23 +1173,7 @@ class HeadDict(dict):
             self['index'].update({ind:key})
         return 1
 
-
-    def updateKeyword(self, keyName, value):
-        """
-        Method takes a keyword name and updates the value.
         
-        INPUT:    header, int, number of extension
-                   keyName, string, name of keyword
-                  value, string, new value of keyword. 
-                  The type of the keyword will not be changed.
-        OUTPUT:   void
-        """
-        kdict = self.getKeyDict(keyName)
-        kdict['nodes'][keyName]['Value'] = value
-        self._updateKeyword(kdict, force=1)
-        return
-    
-    
     def getKeyPos(self,key):
         """
         Method takes a keyword <key> and returns the position in the original FITS
@@ -1378,11 +1217,6 @@ class HeadDict(dict):
             typ = eval("self['nodes']"+fullInd+".has_key('Type')")
         else:
             typ = ""
-
-        # deal with reserved words, which would lead to the wrong type...
-        reserved = ['INFINITY', 'INF', 'NAN']
-
-
         if eval("self['nodes']"+fullInd+".has_key('Value')"):
 
             val = eval("self['nodes']"+fullInd+"['Value']")
@@ -1390,33 +1224,33 @@ class HeadDict(dict):
                 typ = 'C'
             else:
                 try: 
-                    float(val)
-                    value = float(val)
-                    if value != 0 and (abs(value) > 1.0e15 or abs(value) < 1e-15):
-                        typ = 'R'
-                        value = None
-                    dotpos = val.find('.')
-                    if dotpos < 0 and typ != 'R':
-                        try:
-                            iv = int(val)
-                            if iv < 256 and iv >= 0:
-                                typ = 'U'
-                            elif iv < 65536:
-                                typ = 'S'
-                            else:
-                                typ = 'I'
-                        except:
-                            typ = 'L'
-                    elif typ != 'R':
-                        epos = val.upper().find('E')
-                        if epos == -1:
-                            epos = len(val)
-                        else:
-                            ex = int(val[epos+1:])
-                        if dotpos >= 0:
-                            typ = 'F'
-                            if len(val[dotpos+1:epos]) > 15:
-                                typ = 'P'
+                  float(val)
+                  value = float(val)
+                  if value != 0 and (abs(value) > 1.0e15 or abs(value) < 1e-15):
+                      typ = 'R'
+                      value = None
+                  dotpos = val.find('.')
+                  if dotpos < 0 and typ != 'R':
+                      try:
+                         iv = int(val)
+                         if iv < 256 and iv >= 0:
+                            typ = 'U'
+                         elif iv < 65536:
+                            typ = 'S'
+                         else:
+                            typ = 'I'
+                      except:
+                         typ = 'L'
+                  elif typ != 'R':
+                      epos = val.upper().find('E')
+                      if epos == -1: 
+                         epos = len(val)
+                      else:
+                         ex = int(val[epos+1:])
+                      if dotpos >= 0:
+                         typ = 'F'
+                         if len(val[dotpos+1:epos]) > 15:
+                            typ = 'P'
                 except:
                     if val == 'T' or val == 'F':
                         typ = 'B'
@@ -1530,11 +1364,11 @@ class HeadDict(dict):
 # COMMENT and HISTORY and ESO-LOG keywords
 
                 elif key in ['COMMENT', 'HISTORY', 'ESO-LOG']:
+                    comhist[key] += 1
                     if type(self['nodes'][key]['Value']) == type([]):
-                        for ci in range(len(self['nodes'][key]['Value'])):
-                            fitsLine = key + ' ' + self['nodes'][key]['Value'][ci]
-                            fitsLine = fitsLine + (80-len(fitsLine))*' '
-                            FHead.append(fitsLine)
+                        fitsLine = key + self['nodes'][key]['Value'][comhist[key]]
+                        fitsLine = fitsLine + (80-len(fitsLine))*' '
+                        FHead.append(fitsLine)
                     elif type(self['nodes'][key]['Value']) == type(''):
                         fitsLine = key + self['nodes'][key]['Value']
                         fitsLine = fitsLine + (80-len(fitsLine))*' '
@@ -1583,7 +1417,7 @@ class HeadDict(dict):
                     FHead.append(blankCards*80*' ')
                     FHead.append('END' + 77*' ')
 
-        return ''.join(FHead)
+        return FHead
         
         
         
@@ -1746,7 +1580,7 @@ class HeadDict(dict):
 
         xstr = '<RESOURCE id="' + str(self.NUMBER) + '"'
         if self['nodes'].has_key('EXTNAME'):
-            xstr = xstr + ' name="' + self['nodes']['EXTNAME']['Value'][1:-1] +'"'
+           xstr = xstr + ' name="' + self['nodes']['EXTNAME']['Value'][1:-1] +'"'
 
         xstr = xstr + ' type="meta">'
         XmlHead.append(level*indent + xstr)
@@ -1762,37 +1596,37 @@ class HeadDict(dict):
 # treat all 'normal' keywords
 
 #                if key[0:8] != 'HIERARCH':
-            if key[0:8] != '--------':     # for test we treat all keywords the same
-                if hflag:
-                    for ot in openTags:
-                        level = (level-1) * pretty
-                        XmlHead.append(level*indent + '</'+ot+'>')
-                    openTags = ['']
-                    hflag = 0
-                openTags = ['PARAM']
+             if key[0:8] != '--------':     # for test we treat all keywords the same
+                 if hflag:
+                     for ot in openTags:
+                         level = (level-1) * pretty
+                         XmlHead.append(level*indent + '</'+ot+'>')
+                     openTags = ['']
+                     hflag = 0
+                 openTags = ['PARAM']
                  
-                (keyword,val,comm,typ,flag) = self.getKeyword(key)
+                 (keyword,val,comm,typ,flag) = self.getKeyword(key)
 
-                if typ == 'I':
-                    voTyp = 'int'
-                elif typ == 'U':
-                    voTyp = 'unsignedByte'
-                elif typ == 'S':
-                    voTyp = 'short'
-                elif typ == 'L':
-                    voTyp = 'long'
-                elif typ == 'F':
-                    voTyp = 'float'
-                elif typ == 'D':
-                    voTyp = 'double'
-                elif typ == 'C':
-                    voTyp = 'char'
-                elif typ == 'B':
-                    voTyp = 'boolean'
-                else:
-                    voTyp = ''
+                 if typ == 'I':
+                     voTyp = 'int'
+                 elif typ == 'U':
+                     voTyp = 'unsignedByte'
+                 elif typ == 'S':
+                     voTyp = 'short'
+                 elif typ == 'L':
+                     voTyp = 'long'
+                 elif typ == 'F':
+                     voTyp = 'float'
+                 elif typ == 'D':
+                     voTyp = 'double'
+                 elif typ == 'C':
+                     voTyp = 'char'
+                 elif typ == 'B':
+                     voTyp = 'boolean'
+                 else:
+                     voTyp = ''
 
-                if type(val) == type(''):
+                 if type(val) == type(''):
                     XmlHead.append(level*indent + '<PARAM name="' + \
                                 key + '" value="' + val + '" datatype="' +\
                                 voTyp + '">')
@@ -1800,7 +1634,7 @@ class HeadDict(dict):
                                 comm + '</DESCRIPTION>')
                     XmlHead.append(level*indent + '</PARAM>')
 
-                elif type(val) == type([]):
+                 elif type(val) == type([]):
                     for vv in val:
                         XmlHead.append(level*indent + '<PARAM name="' + \
                                     key + '" value="' + vv + '" datatype="' +\
@@ -1814,7 +1648,7 @@ class HeadDict(dict):
 # HIERARCH keywords are placed in a real XML hierarchy
 
 #                elif key[0:8] == 'HIERARCH':
-            elif key[0:8] == '--------':
+             elif key[0:8] == '--------':
 
 
 #hflag controls whether we are already in a HIERARCH element
@@ -1963,23 +1797,23 @@ def run(args,skey='END',header=0, mode=1):
         pipe (compressed files) or the file directly.
         """
         for name in args:
-            try:
-                pH = FitsHead(name,skey=skey, show=header, struct=struct,check=check, mode=mode)
-                if skey != 'END':
-                    if header == 99:
-                        heads = range(len(pH.HEAD))
-                    else:
-                        heads = [header]
-                    for h in heads:
-                        if pH.Extension[h]['index'].values().count(skey) == 0:
-                            print '%s\t%3d\t%s\t*not found*' % (name, h, skey)
-                        else:
-                            print "%s\t%3d\t%s\t%s" % (name, h, skey, pH.Extension[h].getKeyword(skey)[1])
+          try:
+            pH = FitsHead(name,skey=skey, show=header, struct=struct,check=check, mode=mode)
+            if skey != 'END':
+                if header == 99:
+                    heads = range(len(pH.HEAD))
                 else:
-                    print pH.HEAD[header]
-            except Exception, e:
-                print e
-#               sys.exit('<ERROR> unable to open file:' +name+' <ERROR>')
+                    heads = [header]
+                for h in heads:
+                    if pH.Extension[h]['index'].values().count(skey) == 0:
+                        print '%s\t%3d\t%s\t*not found*' % (name, h, skey)
+                    else:
+                       print "%s\t%3d\t%s\t%s" % (name, h, skey, pH.Extension[h].getKeyword(skey)[1])
+            else:
+                print pH.HEAD[header]
+          except Exception, e:
+            print e
+#            sys.exit('<ERROR> unable to open file:' +name+' <ERROR>')
         return pH
 
 def tsvFunc(args,skey='END',header=0, mode=1):
@@ -2046,9 +1880,9 @@ def hdrExtract(name, xmlfl='', xtract=0, skey='END', show=0, struct=1, check=0, 
     """
     file_list = glob(name)
     if xmlfl >= 1:
-        oext = '.xml'
+		oext = '.xml'
     else:
-        oext = '.hdr'
+		oext = '.hdr'
     
     if len(file_list) == 0:
         return -1
@@ -2086,7 +1920,7 @@ def hdrExtract(name, xmlfl='', xtract=0, skey='END', show=0, struct=1, check=0, 
         elif xmlfl != '':
 #            print 'extracting header of file ',file,' to ',ofnm
             pH.parseFitsHead()
-            XmlHead = pH.xmlHead(outform=xmlfl, head=show)
+            XmlHead = pH.xmlHead(format=xmlfl, head=show)
             
             # if outfile is specified write the XML to it
 
@@ -2094,7 +1928,7 @@ def hdrExtract(name, xmlfl='', xtract=0, skey='END', show=0, struct=1, check=0, 
                 try:
                     o = open(ofnm,'w')
                 except:
-                    print "ERROR: Unable to open ",ofnm
+                    print "ERROR: Unable to open ",outfile
                     return 1
     
                 for xml in XmlHead:
@@ -2143,8 +1977,8 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
     extHead = pH.Extension[extnum]
     
 
-    # maxind = pH.Extension[0]['index'].keys()[-1]
-    # del(pH.Extension[0]['index'][maxind])   # get rid of the END keyword
+    maxind = pH.Extension[0]['index'].keys()[-1]
+#    del(pH.Extension[0]['index'][maxind])   # get rid of the END keyword
 
     for k in extHead['index'].values()[:-1]:
 
@@ -2160,7 +1994,7 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
             keyDict['index'].update({ind:k}) 
 
             print keyDict
-            pH.Extension[0]._updateKeyword(keyDict,force=1)
+            pH.Extension[0].updateKeyword(keyDict,force=1)
 
 #            pH.Extension[0]['nodes'].update({k:extHead['nodes'][k]})
 #            print {k:extHead['nodes'][k]}
@@ -2249,6 +2083,7 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
 if __name__ == '__main__': 
 
         import getopt
+        from commands import getstatusoutput
 
         args = sys.argv[1:]
         opts,args = getopt.getopt(args,"s:H:x:M:m:peSctqh",\
@@ -2352,7 +2187,7 @@ if __name__ == '__main__':
                                       check=check, mode=mode)
                         pH.fd.close()
                         pH.parseFitsHead()
-                        XmlHead = pH.xmlHead(outform=xmlfl, head=show)
+                        XmlHead = pH.xmlHead(format=xmlfl, head=show)
                         for xml in XmlHead:
                             if type(xml) == type(''):
                                 print xml + "\n"
@@ -2377,9 +2212,9 @@ if __name__ == '__main__':
                 elif breakfl == 1:
                     break
                 else:
-                    pH = run(args)
+                   pH = run(args)
                 break
             except Exception,e:
-                errMsg = "Problem extracting headers: %s" % str(e)
-                print errMsg
-                break
+               errMsg = "Problem extracting headers: %s" % str(e)
+               print errMsg
+               break

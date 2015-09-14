@@ -154,7 +154,7 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
                         inner join ngas_disks on ngas_disks.disk_id = ngas_files.disk_id where file_id in %s \
                         and ngas_disks.disk_id in \
                         ('35ecaa0a7c65795635087af61c3ce903', '54ab8af6c805f956c804ee1e4de92ca4', \
-                        '921d259d7bc2a0ae7d9a532bccd049c7', 'e3d87c5bc9fa1f17a84491d03b732afd')", [tuple(query)])
+                        '921d259d7bc2a0ae7d9a532bccd049c7', 'e3d87c5bc9fa1f17a84491d03b732afd', '848575aeeb7a8a6b5579069f2b72282c')", [tuple(query)])
 
          #print cursor.query
          row = cursor.fetchall()
