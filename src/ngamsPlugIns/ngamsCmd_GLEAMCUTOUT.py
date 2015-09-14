@@ -173,14 +173,16 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
     #    raise Exception("Missing CD or CDELT keywords in header")
     #f1 = astro_field.Field([xc, yc], xw * 2)
     #ref_val = f1.cornersLonLat[2]
+    del head['RADESYS']
+    head['EQUINOX'] = 2000.
     head['CRVAL1'] = xc#ref_val[0]#xc
     head['CRVAL2'] = yc#ref_val[1]#yc
     #cdelt = numpy.sqrt(cd1 ** 2 + cd2 ** 2)
     #1.5 = 3 / 2
     head['CRPIX1'] = dim[1] / 1.5 / 2#1#xw / cdelt
     head['CRPIX2'] = dim[0] / 1.5 / 2#1#yw / cdelt
-    #head['CTYPE1'] = "RA---SIN"
-    #head['CTYPE2'] = "DEC--SIN"
+    head['CTYPE1'] = "RA---SIN"
+    head['CTYPE2'] = "DEC--SIN"
     head['NAXIS1'] = int(dim[1] / 1.5)#int(xw * 2 / cdelt)
     head['NAXIS2'] = int(dim[0] / 1.5)#int(yw * 2 / cdelt)
     st = str(time.time()).replace('.', '_')
