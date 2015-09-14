@@ -453,8 +453,15 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             if (os.path.exists(fn)):
                 os.remove(fn)
         return
+    #http://store04.icrar.org:7777/GLEAMCUTOUT?radec=92.4125,20.4867&radius=1&file_id=mosaic_Week2_223-231MHz.fits&regrid=0
+    #http://store04.icrar.org:7777/GLEAMCUTOUT?radec=92.4125,20.4867&radius=1&file_id=mosaic_Week2_223-231MHz.fits&regrid=0&fits_format=1
+    fn_suff = ""
+    if (is_mosaic(fileId)):
+        freq_part = fileId.split("_")[-1].split(".fits")[0]
+        loc_part = "{0}_{1}".format(coord[0], coord[1])
+        fn_suff = "_{0}_{1}".format(freq_part, loc_part)
     if (fits_format):
-        hdr_fnm = "gleamcutout.fits"
+        hdr_fnm = "gleam_cutout{0}.fits".format(fn_suff)
         hdr_cttp = "image/fits"
         hdr_dataref = work_dir + '/' + cut_fitsnm
     else:
@@ -473,7 +480,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         finally:
             ds9_sem.release()
 
-        hdr_fnm = "gleamcutout.jpg"
+        hdr_fnm = "gleam_cutout{0}.jpg".format(fn_suff)
         hdr_cttp = "image/jpeg"
         hdr_dataref = work_dir + '/' + jpfnm
         to_be_removed.append(hdr_dataref)
