@@ -684,6 +684,10 @@ class LIATStack(AccessStack):
         self.start_date = ret[0]
         self.zero_iat_on_ingest = True
         self.max_iat = float(ret[1] - ret[0])
+        # whether to consider only the latest IAT, which is equivalent to "AGE_WEIGHT"
+        # used in some HSM like DMF, see
+        # http://www.bic.mni.mcgill.ca/~malin/bicsystems/dmf-howto.txt
+        self.use_age_weight = False
 
     def set_zero_iat_on_ingest(self, setval):
         if (type(setval) is bool):
@@ -714,7 +718,10 @@ class LIATStack(AccessStack):
         index = self.ref_stack.remove((chunk_id, old_iat))
 
         last_access_date = self.chunk_date_dict[chunk_id]
-        iat = (access_date - last_access_date + old_iat) / 2.0
+        if (self.use_age_weight): #only consider the latest IAT
+            iat = access_date - last_access_date
+        else:
+            iat = (access_date - last_access_date + old_iat) / 2.0
         self.ref_stack.insert((chunk_id, iat))
         self.chunk_iat_dict[chunk_id] = iat
         return index
@@ -837,7 +844,7 @@ def get_LRU_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=Tr
     return np.array(yd)
 
 def plot_success_function(yd, label='LRU replacement', lcolor='b', line='-', show=True,
-                          ax=None, init_on_tape=True, marker=None, lw=2.0):
+                          ax=None, init_on_tape=False, marker=None, lw=2.0):
     """
     Plot stack distance based on paper:
     http://dl.acm.org/citation.cfm?id=1663471
@@ -856,16 +863,67 @@ def plot_success_function(yd, label='LRU replacement', lcolor='b', line='-', sho
         ax.set_ylabel("Disk cache hits ratio", fontsize=14)
         ax.set_yticks(np.arange(0, 1.1, 0.1))
         ax.set_ylim([0, 1.05])
+        ax.grid(True)
     ax.plot(sorted, yvals, color=lcolor, linestyle=line, label=label, linewidth=lw, marker=marker)
-    ax.grid(True)
+
     if (show):
         pawsey_x = 1024 ** 2 / 36
         ax.vlines(pawsey_x, 0, 1.05)
         ax.text(pawsey_x + 1000, 0.25, "MWA 1PB disk cache at Pawsey", fontsize=12)
-        legend = ax.legend(loc="center right", shadow=True, prop={'size':14})
+        legend = ax.legend(loc="center right", shadow=True, prop={'size':13})
         pl.show()
     else:
         return ax
+
+def plot_ws_success_function(yd, label='WorkingSet', lcolor='sienna', line='-', show=False,
+                          ax=None, marker=None, lw=2.0, init_on_tape=False):
+    """
+    refer to http://dl.acm.org/citation.cfm?id=361167
+    """
+    #yd = yd[~np.isnan(yd)]
+    if (init_on_tape):
+        pass
+    else:
+        yd = yd[~np.isnan(yd)]
+    yd_c = Counter(yd)
+    k = len(yd)
+    T_start = 1
+    s_list = []
+    F_list = []
+    Ck_prev = 0.0
+    for x in range(1, T_start):
+        Ck_prev += yd_c[x] # get F(T - 1) * k
+
+    s_T_start = 0.0
+    for z in range(0, T_start):
+        Ck_sum = 0.0
+        for x in range(1, z + 1):
+            Ck_sum += yd_c[x]
+            s_T_start += 1 - (Ck_sum) / k
+    s_list.append(s_T_start) # get s(T)
+
+    print("Building s(T) for k = {0}".format(k))
+    for T in range(T_start, k):
+        # for each T, we derive an "average workingset size" and a success rate
+        Ck_prev += yd_c[T] # F(T) * k = F(T - 1) * k + c[T]
+        tmp = Ck_prev / k # get F(T)
+        F_list.append(tmp)
+
+        s_T_start += 1 - tmp # TODO - need corrected "Ck_prev"
+        if (tmp > 1):
+            print("T = {0}".format(T))
+        s_list.append(s_T_start) # get s(T + 1)
+
+    s_list.pop() # remove the last element
+    if (len(s_list) != len(F_list)):
+        raise Exception("s_list == {0}, but F_list == {1}".format(len(s_list), len(F_list)))
+    else:
+        print("length = {0}".format(len(s_list)))
+
+    if (ax is None):
+        return (s_list, F_list)
+    else:
+        ax.plot(np.array(s_list), np.array(F_list), color=lcolor, linestyle=line, label=label, linewidth=lw, marker=marker)
 
 def plot_success_functions():
     data_dir = "/Users/Chen/data/ngas_logs"
@@ -874,15 +932,18 @@ def plot_success_functions():
     liat_yd = np.load("{0}/{1}".format(data_dir, 'yd_liat_ingest_correct.npy'))
     lrud_yd = np.load("{0}/{1}".format(data_dir, 'yd_lrud_ingest_correct.npy'))
     lnr_yd = np.load("{0}/{1}".format(data_dir, 'yd_lnr_ingest_correct.npy'))
+    law_yd = np.load("{0}/{1}".format(data_dir, 'yd_law_ingest_correct.npy'))
     #liat_yd_imiat = np.load("{0}/{1}".format(data_dir, 'yd_liat_ingest_max_iat.npy'))
     ax1 = plot_success_function(lru_yd, label='Least Recently Used', show=False)
     #plot_success_function(lru_yd, label='LRU - default on disk', line='--', show=False, init_on_tape=False, ax=ax1)
-    plot_success_function(lfu_yd, label='Least Frequently Used', line='--', lcolor='r', show=False, ax=ax1)
+    plot_success_function(lfu_yd, label='Least Frequently Used', line='--', lcolor='skyblue', show=False, ax=ax1)
     #plot_success_function(lfu_yd, label='LFU - default on disk', lcolor='r', line='--', init_on_tape=False, show=False, ax=ax1)
     plot_success_function(liat_yd, label='Longest Inter-Arrival Time', line=':', lcolor='darkorchid', show=False, ax=ax1)
+    plot_success_function(law_yd, label='Largest Age Weight (DMF)', line='-', lcolor='k', show=False, ax=ax1)
     #plot_success_function(liat_yd, label='LIAT - default on disk', lcolor='g', line='--', init_on_tape=False, ax=ax1)
     #plot_success_function(liat_yd_imiat, label='LIAT - ingest max iat', lcolor='g', line='-.', ax=ax1)
-    plot_success_function(lnr_yd, label='Longest Next Access', line='-', lcolor='deeppink', show=False, ax=ax1, lw=3.0)
+    plot_success_function(lnr_yd, label='Longest Next Access (Optimal)', line='--', lcolor='deeppink', show=False, ax=ax1, lw=3.0)
+    plot_ws_success_function(lru_yd, ax=ax1, lw=3.0)
     plot_success_function(lrud_yd, label='Longest Reuse Distance', line='-.', lcolor='lime', show=True, ax=ax1, lw=4.0)
 
 
