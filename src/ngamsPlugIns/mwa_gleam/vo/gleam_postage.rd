@@ -179,6 +179,11 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
       else:
         base.getSQLKey("grid_opt", '0', outPars)
 
+      if (inPars.has_key("proj_opt") and (inPars["proj_opt"] is not None)):
+        base.getSQLKey("proj_opt", inPars["proj_opt"], outPars)
+      else:
+        base.getSQLKey("proj_opt", 'ZEA', outPars)
+
       yield "substring(filename, 12, 1) = '" + str(week) + "'"
       </code>
     </phraseMaker>
@@ -216,13 +221,29 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
   </condDesc>
 
   <condDesc combining="True">
-    <inputKey name="grid_opt" type="text" required="True" multiplicity="single" tablehead="Options">
+    <inputKey name="grid_opt" type="text" required="True" multiplicity="single" tablehead="Regridding">
       <values multiOk="True">
         <option title="Regrid the image onto a more regular and perpendicular grid (which takes a bit longer)">regrid</option>
       </values>
     </inputKey>
 
     <phraseMaker id="myph" name="myph" original="//scs#scsUtils">
+      <code>
+        yield "1 = 1"
+      </code>
+    </phraseMaker>
+
+  </condDesc>
+
+  <condDesc combining="True">
+    <inputKey name="proj_opt" type="text" required="False" multiplicity="single" tablehead="Projection">
+      <values default="ZEA">
+        <option title="ZEA (default)">ZEA</option>
+        <option title="SIN">SIN</option>
+      </values>
+    </inputKey>
+
+    <phraseMaker id="myph1" name="myph1" original="//scs#scsUtils">
       <code>
         yield "1 = 1"
       </code>
@@ -270,7 +291,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 
       <outputField original="freq" unit="MHz" tablehead="Frequency range"/>
 
-			<outputField name="cr" displayHint="noxml=true" tablehead="Cutout JPEG" select="filename || ',' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || ',' ||  DEGREES(%(size0)s) || ',' || %(grid_opt0)s">
+			<outputField name="cr" displayHint="noxml=true" tablehead="Cutout JPEG" select="filename || ',' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || ',' ||  DEGREES(%(size0)s) || ',' || %(grid_opt0)s || ',' || %(proj_opt0)s">
 			   <formatter>
 			         <!--  yield [data]  if (data == "45.1912,45.1912"): -->
 			       params = data.split(',')
@@ -278,10 +299,10 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 			       	yield ["--"]
 			       else:
 			       	yield T.a(href="http://store04.icrar.org:7777/GLEAMCUTOUT?radec="
-			       	"%s,%s&amp;radius=%s&amp;file_id=%s&amp;regrid=%s"%(params[1], params[2], params[3], params[0], params[4]), target="_blank")["JPEG"]
+			       	"%s,%s&amp;radius=%s&amp;file_id=%s&amp;regrid=%s&amp;projection=%s"%(params[1], params[2], params[3], params[0], params[4], params[5]), target="_blank")["JPEG"]
          </formatter>
 			</outputField>
-      <outputField name="accref" type="text" tablehead="Cutout FITS" utype="Access.Reference" select="'http://store04.icrar.org:7777/GLEAMCUTOUT?radec=' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || '&amp;radius=' || DEGREES(%(size0)s) || '&amp;file_id=' || filename || '&amp;regrid=' || %(grid_opt0)s ||'&amp;fits_format=1'">
+      <outputField name="accref" type="text" tablehead="Cutout FITS" utype="Access.Reference" select="'http://store04.icrar.org:7777/GLEAMCUTOUT?radec=' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || '&amp;radius=' || DEGREES(%(size0)s) || '&amp;file_id=' || filename || '&amp;regrid=' || %(grid_opt0)s || '&amp;projection=' || %(proj_opt0)s ||'&amp;fits_format=1'">
          <formatter>
                <!--  yield [data]  if (data == "45.1912,45.1912"): -->
              params = data.split(',')

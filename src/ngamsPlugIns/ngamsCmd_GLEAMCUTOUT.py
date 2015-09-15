@@ -148,7 +148,7 @@ def execCmd(cmd, failonerror = True, okErr=[]):
 def is_mosaic(file_id):
     return file_id.startswith('mosaic_')
 
-def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
+def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir, projection="ZEA"):
     """
     all units of distances are in degrees
     both file names are strings
@@ -173,16 +173,21 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
     #    raise Exception("Missing CD or CDELT keywords in header")
     #f1 = astro_field.Field([xc, yc], xw * 2)
     #ref_val = f1.cornersLonLat[2]
-    del head['RADESYS']
-    head['EQUINOX'] = 2000.
+    if (projection != 'ZEA'):
+        try:
+            del head['RADESYS']
+        except KeyError, ke:
+            pass
+        head['EQUINOX'] = 2000.
+        head['CTYPE1'] = "RA---{0}".format(projection)
+        head['CTYPE2'] = "DEC--{0}".format(projection)
     head['CRVAL1'] = xc#ref_val[0]#xc
     head['CRVAL2'] = yc#ref_val[1]#yc
     #cdelt = numpy.sqrt(cd1 ** 2 + cd2 ** 2)
     #1.5 = 3 / 2
     head['CRPIX1'] = dim[1] / 1.5 / 2#1#xw / cdelt
     head['CRPIX2'] = dim[0] / 1.5 / 2#1#yw / cdelt
-    head['CTYPE1'] = "RA---SIN"
-    head['CTYPE2'] = "DEC--SIN"
+
     head['NAXIS1'] = int(dim[1] / 1.5)#int(xw * 2 / cdelt)
     head['NAXIS2'] = int(dim[0] / 1.5)#int(yw * 2 / cdelt)
     st = str(time.time()).replace('.', '_')
@@ -195,7 +200,7 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir):
     info(3, "Regridding {1} took {0} seconds".format((time.time() - st), dim))
     return hdr_tpl
 
-def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, use_montage=True):
+def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, use_montage=True, projection="ZEA"):
     outfile_nm = "{0}/{1}".format(work_dir, cut_fitsnm)
     #factor = 2
     if (ra < 0):
@@ -237,7 +242,8 @@ def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, t
                               dec,
                               radius,
                               radius,
-                              work_dir)
+                              work_dir,
+                              projection=projection)
         """
         gleam_cutout.cutout(outfile_nm, float(coord[0]), float(coord[1]),
                             xw=radius, yw=radius, outfile=outfile_proj_nm,
@@ -381,12 +387,17 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             ra = float(coord[0])
             dec = float(coord[1])
             do_regrid = (reqPropsObj.hasHttpPar('regrid') and '1' == reqPropsObj.getHttpPar("regrid"))
+            projection = 'ZEA'
+            if (reqPropsObj.hasHttpPar('projection')):
+                projection = reqPropsObj.getHttpPar("projection")
+            if (projection != 'ZEA'):
+                do_regrid = True # always regrid if reprojection is needed
             no_psf = (reqPropsObj.hasHttpPar('nopsf') and '1' == reqPropsObj.getHttpPar("nopsf"))
             use_montage_cut = False
             if (reqPropsObj.hasHttpPar('use_montage') and '1' == reqPropsObj.getHttpPar("use_montage")):
                 use_montage_cut = True
 
-            cut_fitsnm = cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, use_montage=use_montage_cut)
+            cut_fitsnm = cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, use_montage=use_montage_cut, projection=projection)
             if (no_psf == False and fits_format):
                 psf_fileId = fileId.split('.fits')[0] + '_psf.fits'
                 query = qs % psf_fileId
