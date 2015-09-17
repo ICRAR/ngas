@@ -174,15 +174,19 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
       base.getSQLKey("DEC", dec*DEG, outPars)
       #yield "filename like mosaic_Week{0}_%MHz.fits".format(week)
 
-      if (inPars.has_key("grid_opt") and (inPars["grid_opt"] is not None) and (u'regrid' in inPars["grid_opt"])):
-        base.getSQLKey("grid_opt", '1', outPars)
-      else:
-        base.getSQLKey("grid_opt", '0', outPars)
-
       if (inPars.has_key("proj_opt") and (inPars["proj_opt"] is not None)):
-        base.getSQLKey("proj_opt", inPars["proj_opt"], outPars)
+        proj_option = inPars["proj_opt"]
+        if ('ZEA' == proj_option):
+          base.getSQLKey("grid_opt", '0', outPars)
+        else:
+          base.getSQLKey("grid_opt", '1', outPars)
+
+        if ('ZEA_regrid' == proj_option):
+          proj_option = 'ZEA'
+        base.getSQLKey("proj_opt", proj_option, outPars)
       else:
         base.getSQLKey("proj_opt", 'ZEA', outPars)
+        base.getSQLKey("grid_opt", '0', outPars)
 
       yield "substring(filename, 12, 1) = '" + str(week) + "'"
       </code>
@@ -220,6 +224,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
     </inputKey>
   </condDesc>
 
+  <!--
   <condDesc combining="True">
     <inputKey name="grid_opt" type="text" required="True" multiplicity="single" tablehead="Regridding">
       <values multiOk="True">
@@ -234,12 +239,14 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
     </phraseMaker>
 
   </condDesc>
+ -->
 
   <condDesc combining="True">
     <inputKey name="proj_opt" type="text" required="False" multiplicity="single" tablehead="Projection">
       <values default="ZEA">
-        <option title="ZEA (default)">ZEA</option>
-        <option title="SIN">SIN</option>
+        <option title="ZEA">ZEA</option>
+        <option title="ZEA (regrid)">ZEA_regrid</option>
+        <option title="SIN (regrid)">SIN</option>
       </values>
     </inputKey>
 
