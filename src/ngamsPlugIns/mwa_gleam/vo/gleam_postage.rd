@@ -245,9 +245,9 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
  -->
 
   <condDesc combining="True">
-    <inputKey name="proj_opt" type="text" required="False" multiplicity="single" tablehead="Projection">
+    <inputKey name="proj_opt" type="text" required="True" multiplicity="single" tablehead="Projection">
       <property key="defaultForForm">ZEA</property>
-      <values>
+      <values default="ZEA">
         <option title="ZEA">ZEA</option>
         <option title="ZEA (regrid)">ZEA_regrid</option>
         <option title="SIN (regrid)">SIN</option>
