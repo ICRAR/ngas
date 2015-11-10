@@ -176,6 +176,9 @@ expected PSF"
 				<bind key="owner">"XAO"</bind>
 				<bind key="embargo">getEmbargo(row)</bind>
 				<bind key="table">"mwa.gleam"</bind>
+<!--				<bind key="preview">"http://foo.bar"+os.path.basename(\inputRelativePath{False})
+				<bind key="preview_mime">"image/jpeg"</bind>
+-->
 			</rowfilter>
 
 
@@ -220,7 +223,6 @@ expected PSF"
           <inputKey name="distance_limit" type="double precision"   multiplicity="single"
           			description= "Objects whose distance from the pos is greater than this distance_limit are filtered out" tablehead="Distance limit">
 			<property name="notForRenderer">scs.xml</property>
-			 <!--  <property key="defaultForForm">5.0</property>  -->
 		</inputKey>
 
 <phraseMaker id="humanSCSPhrase" name="humanSCSSQL"  original="//scs#scsUtils">
@@ -230,8 +232,10 @@ expected PSF"
 from gavo.protocols import simbadinterface
 def getRADec(inPars, sqlPars):
     pos = inPars["pos"]
+    """
     if (pos == None):
     	return 45.1912, 45.1912
+    """
     try:
     	pos = pos.replace(':', ' ')
         return base.parseCooPair(pos)
@@ -267,11 +271,7 @@ yield retstr + addstr
 </phraseMaker>
 </condDesc>
 
-<condDesc>
-
-
-</condDesc>
-
+<!-- <FEED source="//scs#coreDescs"/> -->
 
 <condDesc>
 

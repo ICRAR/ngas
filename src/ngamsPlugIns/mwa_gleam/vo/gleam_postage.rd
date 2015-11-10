@@ -6,15 +6,18 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 </meta>
 <meta name="creationDate">2015-06-12T12:00:00Z</meta>
 <meta name="description">The GLEAM postage stamp service provides image cutout interface to the GLEAM science user community.</meta>
+<meta name="_intro" format="rst">
+	.. image:: http://ict.icrar.org/store/staff/biqing/GLEAM-logo.png
+	   :width: 200
+	
+	The GLEAM postage stamp service provides image cutout interface to the GLEAM science user community.
+</meta>
 <meta name="subject">Gleam cutout</meta>
 <meta name="coverage.waveband">Radio</meta>
-<meta name="creator">Chen Wu@ICRAR</meta>
-<meta name="logo">http://ict.icrar.org/store/staff/biqing/GLEAM-logo.png</meta>
+<meta name="creator.name">Chen Wu@ICRAR</meta>
+<meta name="creator.logo">http://ict.icrar.org/store/staff/biqing/GLEAM-logo.png</meta>
 <meta name="_related" title="GLEAM Web Site">http://www.mwatelescope.org/index.php/science/galactic-and-extragalactic-surveys</meta>
 <meta name="_bottominfo" format="raw">
-      	<![CDATA[
-				<img src="http://ict.icrar.org/store/staff/biqing/GLEAM-logo.png" height="42" width="160"/>
-			]]>
 </meta>
 
 <table id="gleam_postage" adql="True" onDisk="True" mixin="//products#table">
@@ -244,7 +247,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
   <condDesc combining="True">
     <inputKey name="proj_opt" type="text" required="False" multiplicity="single" tablehead="Projection">
       <property key="defaultForForm">ZEA</property>
-      <values default="1">
+      <values>
         <option title="ZEA">ZEA</option>
         <option title="ZEA (regrid)">ZEA_regrid</option>
         <option title="SIN (regrid)">SIN</option>
@@ -322,6 +325,27 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
       </outputField>
 		</outputTable>
   </service>
+
+	<regSuite title="GLEAM postage service">
+		<regTest title="GLEAM postage is access restricted">
+			<url parSet="form" pos="10 12" proj_opt="ZEA" 
+				freq="147-154" size="2.0">q/form</url>
+			<code><![CDATA[
+				self.assertHTTPStatus(401)
+				self.assertHasStrings("<html", "is protected")
+			]]></code>
+		</regTest>
+
+		<regTest title="GLEAM postage works">
+			<url parSet="form" pos="10 12" proj_opt="ZEA" 
+				freq="147-154" size="2.0" httpAuthKey='gleam'>q/form</url>
+			<code><![CDATA[
+				self.assertHasStrings('href="http://store04.icrar.org:7777/GLEAMCUTOUT?radec=10,12&amp;radius=1&amp;file_id=mosaic_Week2_147-154MHz.fits&amp;regrid=0&amp;projection=ZEA&amp;fits_format=1')
+				self.assertHasStrings('http://store04.icrar.org:7777/GLEAMCUTOUT?radec=10,12&amp;radius=1&amp;file_id=mosaic_Week2_147-154MHz.fits&amp;regrid=0&amp;projection=ZEA')
+			]]></code>
+		</regTest>
+
+	</regSuite>
 </resource>
 
 
