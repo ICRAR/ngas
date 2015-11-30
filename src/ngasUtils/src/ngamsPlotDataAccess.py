@@ -43,7 +43,10 @@ import re as regx
 import cPickle as pickle
 import multiprocessing as mp
 from operator import itemgetter
-from SortedCollection import SortedCollection
+try:
+    from SortedCollection import SortedCollection
+except:
+    print "can't run migration policy plot"
 from collections import Counter
 
 
@@ -868,8 +871,13 @@ def plot_success_function(yd, label='LRU replacement', lcolor='b', line='-', sho
 
     if (show):
         pawsey_x = 1024 ** 2 / 36
-        ax.vlines(pawsey_x, 0, 1.05)
-        ax.text(pawsey_x + 1000, 0.25, "MWA 1PB disk cache at Pawsey", fontsize=12)
+        ax.vlines(pawsey_x, 0, 1.05, linestyle="--")
+        ax.text(pawsey_x + 1000, 0.25, "1PB disk cache at MWA LTA", fontsize=12)
+
+        hi_watermark = pawsey_x * 0.8
+        ax.vlines(hi_watermark, 0, 1.05)
+        ax.text(hi_watermark + 500, 0.15, "DMF High Watermark at MWA LTA", fontsize=12)
+
         legend = ax.legend(loc="center right", shadow=True, prop={'size':13})
         pl.show()
     else:
@@ -1579,7 +1587,7 @@ def _plotActualTime(accessList, archName, fgname=None):
         ax1.set_ylabel('Number of files', fontsize = 12)
         ax1.tick_params(axis='both', which='major', labelsize=10)
         ax1.tick_params(axis='both', which='minor', labelsize=8)
-        ax1.set_title('Number/Volume of data access and ingestion', fontsize=10)
+        #ax1.set_title('Number/Volume of data access and ingestion', fontsize=10)
 
         if (len(x4)):
             ax1.plot(x4, y4, color = 'b', linestyle = '-', marker = 'x', label = 'access', markersize = 3)
@@ -1596,7 +1604,7 @@ def _plotActualTime(accessList, archName, fgname=None):
         ax2.set_xlabel('Time (days)', fontsize = 12)
         ax2.tick_params(axis='both', which='major', labelsize=10)
         ax2.tick_params(axis='both', which='minor', labelsize=8)
-        ax2.set_title('Volume of data access and ingestion', fontsize=10)
+        #ax2.set_title('Volume of data access and ingestion', fontsize=10)
         ax2.plot(x5, y5 / 1024.0 ** 4, color = 'g', linestyle = '-.', marker = 's', label = 'access volume',
                  markersize = 3, markeredgecolor = 'g', markerfacecolor = 'none')
         ax2.plot(x8, y8 / 1024.0 ** 4, color = 'm', linestyle = ':', marker = 'd', label = 'ingestion volume',
@@ -1605,7 +1613,7 @@ def _plotActualTime(accessList, archName, fgname=None):
         #ax1.set_xlim([left, right])
 
         legend1 = ax1.legend(loc = 'upper left', shadow=True, prop={'size':10})
-        legend2 = ax2.legend(loc = 'upper right', shadow=True, prop={'size':10})
+        legend2 = ax2.legend(loc = 'upper left', shadow=True, prop={'size':10})
 
     pl.tight_layout()
     if (fgname is not None):

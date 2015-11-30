@@ -30,14 +30,14 @@ The best way to call it is like this:
 %run ngamsPlotIngest <date> [--db=MIT]
 
 replace <date> with the date you want to producde the stats. The db keyword
-is optional and defaults to ICRAR. The routine will ask for the DB password
+is optional and defaults to Pawsey. The routine will ask for the DB password
 of the ngas_ro user. For more information on the input parameters run the
 script like
 %run ngamsPlotIngest -h
 
 """
 
-import pylab, argparse
+import pylab, argparse, time
 from pylab import median, mean, where
 import sys, datetime
 from calendar import monthrange
@@ -59,13 +59,13 @@ def _construct_drange(self):
 class throughputPlot():
     """
     Class encapsulates the DB query and preparation of the ingest
-    statistics of the main ICRAR or the MIT NGAS DB. Depending on
+    statistics of the main Pawsey or the MIT NGAS DB. Depending on
     the input date format the statistics will be done daily for a
     whole month or hourly for one day.
     """
     def __init__(self, args):
 
-        self.DB = {'ICRAR':'146.118.87.250', 'MIT':'ngas.mit.edu'}
+        self.DB = {'Pawsey':'146.118.87.250', 'MIT':'ngas.mit.edu'}
         self.mode = []
         self.y = []
         self.n = []
@@ -92,8 +92,8 @@ class throughputPlot():
                         '          2013 will produce weekly stats for the whole of 2013')
 
         myparser.add_argument('--db', dest='db', type=str,
-                   default='ICRAR',
-                   help='The database to be used [ICRAR] or MIT')
+                   default='Pawsey',
+                   help='The database to be used [Pawsey] or MIT')
 
 
         args = myparser.parse_args(iargs)
@@ -141,7 +141,7 @@ class throughputPlot():
         return
 
 
-    def queryDb(self):
+    def queryDb(self, filter_stmt=None):
         """
         Execute the DB queries for a month or 24 hours depending on self.mode.
 
@@ -158,10 +158,13 @@ class throughputPlot():
             max(ingestion_date) as last , min(ingestion_date) as first ,
             sum(uncompressed_file_size)/1024^4 as volume from
             ngas_files where ingestion_date between {0} and {1}"""
+            """
             try:
                 t=dbpass
             except NameError:
                 dbpass = getpass.getpass('%s DB password: ' % self.db)
+            """
+            dbpass = "ngas$ro"
             dbconn=dbdrv.connect(database="ngas", user="ngas_ro",password=dbpass,host=self.DB[self.db])
         else:
             import sqlite3 as dbdrv
@@ -172,6 +175,9 @@ class throughputPlot():
             sum(uncompressed_file_size)/1024/1024/1024./1024. as volume
             from ngas_files where ingestion_date between {0} and {1}"""
             dbconn = dbdrv.connect(self.db)
+        if (filter_stmt is not None):
+            filter_stmt = " AND {0}".format(filter_stmt)
+            hsql += filter_stmt
         cur = dbconn.cursor()
         res = []
         for ii in range(1,self.loop+1):
@@ -191,7 +197,7 @@ class throughputPlot():
         n[where(n < -1)]=0
 
         self.y = pylab.float16(y)
-        self.n = pylab.float16(n)
+        self.n = pylab.int32(n)
         vol = pylab.float16(res[:,:,4])
         self.tvol = pylab.float64(vol)[vol>0].sum()
         self.tfils = pylab.int32(self.n.sum())
@@ -202,7 +208,7 @@ class throughputPlot():
         return
 
 
-    def plot(self):
+    def plot(self, output=None):
         """
         Plot the statistics.
 
@@ -244,19 +250,23 @@ class throughputPlot():
 
         if self.mode[1] == 'Day':
             fig.canvas.set_window_title('%s: %s' % (self.db,self.date))
-            ax2.set_title('%s %s transfer rate: %s' % (self.db, self.mode[0], self.date))
+            ax2.set_title('%s %s ingest rate: %s' % (self.db, self.mode[0], self.date))
         else:
             fig.canvas.set_window_title('%s: %s' % (self.db,self.date))
-            ax2.set_title('%s %s transfer rate: %s' % (self.db, self.mode[0], self.date))
+            ax2.set_title('%s %s ingest rate: %s' % (self.db, self.mode[0], self.date))
 
         pylab.text(0.99,0.95,'Total: %5.2f TB' % self.tvol,transform = ax1.transAxes,ha='right', va='bottom')
         pylab.text(0.99,0.95,'Total # files: %8d' % self.tfils,transform = ax1.transAxes,ha='right', va='top')
-        fig.show()
 
+        if (output is not None):
+            fig.savefig(output)
+        else:
+            fig.show()
+        #pl.close(fig)
 
 
 if __name__ == '__main__':
     t = throughputPlot(sys.argv[1:],)
     t.queryDb()
-    t.plot()
+    #t.plot('/tmp/ingest_rate_{0}.pdf'.format(int(time.time())))
     raw_input('Press ENTER to continue....')
