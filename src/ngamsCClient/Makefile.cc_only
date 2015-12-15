@@ -29,7 +29,7 @@
 # jknudstr  30/08/2001  Created
 
 # Include directories
-INC_DIRS = 
+INC_DIRS =
 
 # Library directories
 LIB_DIRS = -L/usr/lib
@@ -119,7 +119,7 @@ genincludes:
 	@-(echo  "static char buf[32768];" >> ngamsMAN_PAGE.c)
 	@-(echo  "char *txt[] = {" >> ngamsMAN_PAGE.c)
 	@-(awk -f ngamsFormatHdrFile.awk \
-		../ngamsPClient/ngamsPClient.doc >> ngamsMAN_PAGE.c)
+		../ngamsPClient/doc/ngamsPClient.doc >> ngamsMAN_PAGE.c)
 	@-(echo  "\"*\"};" >> ngamsMAN_PAGE.c)
 	@-(echo  "int n;" >> ngamsMAN_PAGE.c)
 	@-(echo  "for (n = 0; *txt[n] != '*'; n++) {strcat(buf, txt[n]); strcat(buf, ngamsNEWLINE);}" >> ngamsMAN_PAGE.c)
@@ -171,10 +171,10 @@ ngamsMAN_PAGE_X.c:
 ngamsARCH_CLI_MAN_PAGE.c:
 	$(CC) $(LDFLAGS) $@ $(SYSLIBS) -o $@
 
-ngamsCClient: ngamsCClient.o libngams.a 
+ngamsCClient: ngamsCClient.o libngams.a
 	$(CC) $(LDFLAGS) $@.o -lngams $(SYSLIBS) -o $@
 
-ngamsCClientX: ngamsCClientX.o ngamsMAN_PAGE_X.o libngams.a 
+ngamsCClientX: ngamsCClientX.o ngamsMAN_PAGE_X.o libngams.a
 	$(CC) $(LDFLAGS) $@.o -lngams $(SYSLIBS) -o $@
 
 
@@ -195,7 +195,7 @@ install: $(TARGETS)
 	$(MKDIR) $(INCDIR)
 	$(CP) ngams.h $(INCDIR)/ngams.h
 
-clean: 
+clean:
 	rm -f $(TARGETS)
 	rm -f *.tgz
 	rm -f *.pyc

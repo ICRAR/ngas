@@ -18,7 +18,7 @@ ngamsCrc32 = ngamsCrc32.c
 
 lib_LTLIBRARIES = libngams.la
 
-#libngams_a_SOURCES = 
+#libngams_a_SOURCES =
 libngams_la_SOURCES = \
 		ngamsCClientLib.c \
 		ngamsARCH_CLI_MAN_PAGE.c \
@@ -31,7 +31,7 @@ ngamsCClientLib.c: ngamsVERSION.h
 # Files to be installed under <prefix>/include
 include_HEADERS = ngams.h
 
-# Files not to be installed under <prefix>/include, but to be added to the 
+# Files not to be installed under <prefix>/include, but to be added to the
 # distribution
 noinst_HEADERS = ngamsArchiveClient.h
 
@@ -64,7 +64,7 @@ ngamsMAN_PAGE.c:
 	@-(echo  "static char buf[32768];" >> ngamsMAN_PAGE.c)
 	@-(echo  "char *txt[] = {" >> ngamsMAN_PAGE.c)
 	@-(awk -f ngamsFormatHdrFile.awk \
-		../doc/ngamsPClient/ngamsPClient.doc >> ngamsMAN_PAGE.c)
+		../doc/ngamsPClient/doc/ngamsPClient.doc >> ngamsMAN_PAGE.c)
 	@-(echo  "\"*\"};" >> ngamsMAN_PAGE.c)
 	@-(echo  "int n;" >> ngamsMAN_PAGE.c)
 	@-(echo  "for (n = 0; *txt[n] != '*'; n++) {strcat(buf, txt[n]); strcat(buf, ngamsNEWLINE);}" >> ngamsMAN_PAGE.c)
