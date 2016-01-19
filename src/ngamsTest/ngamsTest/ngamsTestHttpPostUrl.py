@@ -62,7 +62,7 @@ def httpPostUrl(url,
     
     mimeType:     Mime-type of message (string).
 
-    contDisp:     Content-disposition of the data (string).
+    contDisp:     Content-Disposition of the data (string).
     
     dataRef:      Data to post or name of file containing data to send
                   (string).
@@ -95,11 +95,11 @@ def httpPostUrl(url,
     printinfo(4,"Sending HTTP header ...")
     printinfo(4,"HTTP Header: %s: %s" % (NGAMS_HTTP_POST, cmd))
     http.putrequest(NGAMS_HTTP_POST, cmd)
-    printinfo(4,"HTTP Header: %s: %s" % ("Content-type", mimeType))
-    http.putheader("Content-type", mimeType)
+    printinfo(4,"HTTP Header: %s: %s" % ("Content-Type", mimeType))
+    http.putheader("Content-Type", mimeType)
     if (contDisp != ""):
-        printinfo(4,"HTTP Header: %s: %s" % ("Content-disposition", contDisp))
-        http.putheader("Content-disposition", contDisp)
+        printinfo(4,"HTTP Header: %s: %s" % ("Content-Disposition", contDisp))
+        http.putheader("Content-Disposition", contDisp)
     if (authHdrVal):
         if (authHdrVal[-1] == "\n"): authHdrVal = authHdrVal[:-1]
         printinfo(4,"HTTP Header: %s: %s" % ("Authorization", authHdrVal))
@@ -110,8 +110,8 @@ def httpPostUrl(url,
         dataSize = len(dataRef)
 
     if (dataSize != -1):
-        printinfo(4,"HTTP Header: %s: %s" % ("Content-length", str(dataSize)))
-        http.putheader("Content-length", str(dataSize))
+        printinfo(4,"HTTP Header: %s: %s" % ("Content-Length", str(dataSize)))
+        http.putheader("Content-Length", str(dataSize))
     printinfo(4,"HTTP Header: %s: %s" % ("Host", getHostName()))
     http.putheader("Host", getHostName())
     http.endheaders()

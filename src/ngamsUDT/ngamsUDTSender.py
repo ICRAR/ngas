@@ -159,9 +159,9 @@ def buildHTTPHeader(path, mime_type, file_size, authHdrVal, contentDisp):
     
     header_format = "POST %s HTTP/1.0\015\012" +\
              "User-agent: %s\015\012" +\
-             "Content-length: %d\015\012" +\
-             "Content-type: %s\015\012" +\
-             "Content-disposition: %s%s\015\012\012"
+             "Content-Length: %d\015\012" +\
+             "Content-Type: %s\015\012" +\
+             "Content-Disposition: %s%s\015\012\012"
     
     header = header_format % (path, ngamsUSER_AGENT, file_size, mime_type, contentDisp, auth_hdr)
     return header
@@ -405,7 +405,7 @@ def httpPostUrl(url,
 
     mimeType:     Mime-type of message (string).
 
-    contDisp:     Content-disposition of the data (string).
+    contDisp:     Content-Disposition of the data (string).
 
     dataRef:      Data to post or name of file containing data to send
                   (string).

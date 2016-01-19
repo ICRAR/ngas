@@ -171,7 +171,7 @@ if __name__ == '__main__':
     Main program.
     """
     msg = "Subject:  TEST MESSAGE\n" +\
-          "Content-type: text/plain\n\n" +\
+          "Content-Type: text/plain\n\n" +\
           "THIS IS A SMALL TEST!!"
     
     srv = ngamsSMTP("smtphost.hq.eso.org")

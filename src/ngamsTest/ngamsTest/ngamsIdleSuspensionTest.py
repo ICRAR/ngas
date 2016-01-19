@@ -560,7 +560,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
                     "internal=/etc/hosts",
                     "host_id=%s" % subNode1,
                     "- host=%s" % masterNode,
-                    "Sending header: Content-disposition: attachment; " +\
+                    "Sending header: Content-Disposition: attachment; " +\
                     "filename=hosts"]
         self.checkTags(subNode1LogBuf, testTags, showBuf=0)
        

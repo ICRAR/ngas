@@ -194,7 +194,7 @@ class ngamsDppiResult:
         """
         Set the Reference Filename of the status object. The Reference
         Filename is the name which is set as filename in the
-        'Content-disposition' HTTP header in the HTTP response when
+        'Content-Disposition' HTTP header in the HTTP response when
         sending back data from a Retrieval Request.
 
         reFilename:   Reference Filename (string).

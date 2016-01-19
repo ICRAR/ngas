@@ -495,7 +495,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         hdr_dataref = work_dir + '/' + jpfnm
         to_be_removed.append(hdr_dataref)
 
-    hdrInfo = ["Content-disposition", "inline;filename={0}".format(hdr_fnm)]
+    hdrInfo = ["Content-Disposition", "inline;filename={0}".format(hdr_fnm)]
 
     srvObj.httpReplyGen(reqPropsObj,
                      httpRef,

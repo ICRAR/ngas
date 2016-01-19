@@ -139,7 +139,7 @@ def notifyRegistrationService(srvObj, svrStatus = 'online'):
         host_port = srvObj.getCfg().getPortNo()
         
         params = urllib.urlencode({'ngas_host': host_name, 'ngas_port': host_port, 'status': svrStatus}) 
-        headers = {"Content-type": "application/x-www-form-urlencoded","Accept": "text/plain"}
+        headers = {"Content-Type": "application/x-www-form-urlencoded","Accept": "text/plain"}
         conn = httplib.HTTPConnection(regsvr_host+':'+regsvr_port)
         try:
             conn.request("POST", regsvr_path, params, headers)

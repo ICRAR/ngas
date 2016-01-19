@@ -107,13 +107,13 @@ def buildHttpClient(url,
     info(4,"Sending HTTP header ...")
     info(4,"HTTP Header: %s: %s" % (NGAMS_HTTP_POST, cmd))
     http.putrequest(NGAMS_HTTP_POST, cmd)
-    info(4,"HTTP Header: %s: %s" % ("Content-type", mimeType))
-    http.putheader("Content-type", mimeType)
+    info(4,"HTTP Header: %s: %s" % ("Content-Type", mimeType))
+    http.putheader("Content-Type", mimeType)
     
-    info(4,"HTTP Header: %s: %s" % ("Content-disposition", contentDisp))
-    http.putheader("Content-disposition", contentDisp)
-    info(4,"HTTP Header: %s: %s" % ("Content-length", str(contentLength)))
-    http.putheader("Content-length", str(contentLength))
+    info(4,"HTTP Header: %s: %s" % ("Content-Disposition", contentDisp))
+    http.putheader("Content-Disposition", contentDisp)
+    info(4,"HTTP Header: %s: %s" % ("Content-Length", str(contentLength)))
+    http.putheader("Content-Length", str(contentLength))
     
     info(4,"HTTP Header: %s: %s" % ("Host", getHostName()))
     http.putheader("Host", getHostName())
@@ -183,14 +183,14 @@ def saveFromHttpToHttp(reqPropsObj,
             info(3,"It is an Archive Pull Request/data with unknown size")
             remSize = int(1e11)
         elif reqPropsObj.getFileUri().startswith('http://'):
-            info(3,"It is an HTTP Archive Pull Request: trying to get Content-length")
+            info(3,"It is an HTTP Archive Pull Request: trying to get Content-Length")
             httpInfo = reqPropsObj.getReadFd().info()
             headers = httpInfo.headers
             hdrsDict = ngamsLib.httpMsgObj2Dic(''.join(headers))
             if hdrsDict.has_key('content-length'):
                 remSize = int(hdrsDict['content-length'])
             else:
-                info(3,"No HTTP header parameter Content-length!")
+                info(3,"No HTTP header parameter Content-Length!")
                 info(3,"Header keys: %s" % hdrsDict.keys())
                 remSize = int(1e11)
         else:

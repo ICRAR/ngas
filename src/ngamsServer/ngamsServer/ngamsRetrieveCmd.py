@@ -204,8 +204,8 @@ def genReplyRetrieve(srvObj,
         srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, None, 0,
                             mimeType, dataSize)
         contDisp = "attachment; filename=\"" + refFilename + "\""
-        info(4,"Sending header: Content-disposition: " + contDisp)
-        httpRef.send_header('Content-disposition', contDisp)
+        info(4,"Sending header: Content-Disposition: " + contDisp)
+        httpRef.send_header('Content-Disposition', contDisp)
         httpRef.wfile.write("\n")
         
         if (reqPropsObj.hasHttpPar("send_buffer")):

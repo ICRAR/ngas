@@ -1645,22 +1645,22 @@ class ngamsServer:
             # Send additional headers if any.
             sentContDisp = 0
             for hdrInfo in addHttpHdrs:
-                if (hdrInfo[0] == "Content-disposition"): sentContDisp = 1
+                if (hdrInfo[0] == "Content-Disposition"): sentContDisp = 1
                 info(4,"Sending header: " + hdrInfo[0] + ": " + hdrInfo[1])
                 httpRef.send_header(hdrInfo[0], hdrInfo[1])
             if (contentType != None):
-                info(4,"Sending header: Content-type: " + contentType)
-                httpRef.send_header("Content-type", contentType)
+                info(4,"Sending header: Content-Type: " + contentType)
+                httpRef.send_header("Content-Type", contentType)
             if (dataRef != None):
-                info(4,"Sending header: Content-length/1: " + str(dataSize))
-                httpRef.send_header("Content-length", dataSize)
+                info(4,"Sending header: Content-Length/1: " + str(dataSize))
+                httpRef.send_header("Content-Length", dataSize)
                 if (dataInFile):
                     if (not sentContDisp):
                         contDisp = "attachment; filename=" +\
                                    os.path.basename(dataRef)
-                        info(4,"Sending header: Content-disposition: " +\
+                        info(4,"Sending header: Content-Disposition: " +\
                              contDisp)
-                        httpRef.send_header("Content-disposition", contDisp)
+                        httpRef.send_header("Content-Disposition", contDisp)
                     httpRef.wfile.write("\n")
                     fo = None
                     try:
@@ -1679,8 +1679,8 @@ class ngamsServer:
                     info(5,"Message sent with HTTP reply=|%s|" %\
                          str(dataRef).replace("\n", ""))
             elif (contentLength != 0):
-                info(4,"Sending header: Content-length/2: "+str(contentLength))
-                httpRef.send_header("Content-length", contentLength)
+                info(4,"Sending header: Content-Length/2: "+str(contentLength))
+                httpRef.send_header("Content-Length", contentLength)
 
             httpRef.wfile.flush()
 
@@ -1909,7 +1909,7 @@ class ngamsServer:
                 mimeType = tmpReqObj.getMimeType()
                 if (tmpReqObj.getFileUri()):
                     attachmentName = os.path.basename(tmpReqObj.getFileUri())
-                    httpHdrs = [["Content-disposition",
+                    httpHdrs = [["Content-Disposition",
                                  "attachment; filename=" + attachmentName]]
                 else:
                     httpHdrs = []

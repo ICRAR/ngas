@@ -201,7 +201,7 @@ class ngamsReqProps:
                         self.addHttpPar(el[0], val)
 
         # Small trick to set the mime-type in case not defined by the
-        # Content-type HTTP header.
+        # Content-Type HTTP header.
         if ((self.getCmd() == NGAMS_ARCHIVE_CMD) and
             ((self.getMimeType() == "") or
              ((self.getMimeType() == NGAMS_ARCH_REQ_MT)))):

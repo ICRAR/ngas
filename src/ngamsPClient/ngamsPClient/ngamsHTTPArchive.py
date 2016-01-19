@@ -68,10 +68,10 @@ class NGASHttpArchive(object):
          
          base64string = base64.encodestring('%s:%s' % (self.username, self.password)).replace('\n', '')
          conn.putheader("Authorization", "Basic %s" % base64string)
-         conn.putheader("Content-disposition", "attachment; filename=%s" % filename)
-         conn.putheader("Content-length", filesize)
+         conn.putheader("Content-Disposition", "attachment; filename=%s" % filename)
+         conn.putheader("Content-Length", filesize)
          conn.putheader("Host", socket.gethostname())
-         conn.putheader("Content-type", self.mimetype)
+         conn.putheader("Content-Type", self.mimetype)
          conn.endheaders()
          
          blocksize = 65536

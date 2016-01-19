@@ -1379,7 +1379,7 @@ class ngamsPClient:
 
                        [[<par>, <val>], [<par>, <val>], ...]
 
-                     These are send as 'Content-disposition' in the HTTP
+                     These are send as 'Content-Disposition' in the HTTP
                      command (list).
 
         Returns:     NG/AMS Status Object (ngamsStatus).
