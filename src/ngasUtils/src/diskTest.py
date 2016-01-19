@@ -247,11 +247,11 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, snd
             #print "Sending HTTP header ..."
             http.putrequest(NGAMS_HTTP_POST, cmd)
 
-            http.putheader("Content-type", mimeType)
-            http.putheader("Content-disposition", contDisp)
-            http.putheader("Content-length", str(iosize))
+            http.putheader("Content-Type", mimeType)
+            http.putheader("Content-Disposition", contDisp)
+            http.putheader("Content-Length", str(iosize))
             http.putheader("x-ddn-policy", "replica-store")
-            print "Content-length = %s" % str(iosize)
+            print "Content-Length = %s" % str(iosize)
             http.putheader("Authorization", authHdrVal)
             http.putheader("Host", nodeId)
             http.putheader("NGAS-File-CRC", "1533330096")

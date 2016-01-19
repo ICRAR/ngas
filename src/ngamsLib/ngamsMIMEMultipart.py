@@ -206,7 +206,7 @@ class MIMEMultipartParser(object):
 	"""
 	A class that parses incoming ngams/container contents, which are
 	encapsulated in the form of MIME multipart messages with the
-	Content-type multipart/mixed.
+	Content-Type multipart/mixed.
 
 	A message parser exists already in the system-wide email.parser package.
 	However, it works by first consuming the whole content of a given stream
@@ -327,7 +327,7 @@ class MIMEMultipartParser(object):
 
 						# Fail if we're missing any of these
 						if not boundary or not containerName:
-							msg = 'Either \'boundary\' or \'container_name\' are not specified in the Content-type header'
+							msg = 'Either \'boundary\' or \'container_name\' are not specified in the Content-Type header'
 							error(msg)
 							raise Exception, msg
 
@@ -512,7 +512,7 @@ class MIMEMultipartWriter(object):
 		info(4, 'Writing file ' + fileInfo[1])
 		self._writeBoundary()
 		self.writeData('Content-Type: ' + fileInfo[0] + CRLF)
-		self.writeData('Content-disposition: attachment; filename="' + fileInfo[1] + '"' + CRLF + CRLF)
+		self.writeData('Content-Disposition: attachment; filename="' + fileInfo[1] + '"' + CRLF + CRLF)
 
 	def _writeBoundary(self):
 		self.writeData(CRLF + '--' + self._boundary + CRLF)

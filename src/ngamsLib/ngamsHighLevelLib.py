@@ -527,14 +527,14 @@ def saveFromHttpToFile(ngamsCfgObj,
             info(4,"It is an Archive Pull Request/data with unknown size")
             remSize = int(1e11)
         elif reqPropsObj.getFileUri().startswith('http://'):
-            info(4,"It is an HTTP Archive Pull Request: trying to get Content-length")
+            info(4,"It is an HTTP Archive Pull Request: trying to get Content-Length")
             httpInfo = reqPropsObj.getReadFd().info()
             headers = httpInfo.headers
             hdrsDict = ngamsLib.httpMsgObj2Dic(''.join(headers))
             if hdrsDict.has_key('content-length'):
                 remSize = int(hdrsDict['content-length'])
             else:
-                info(4,"No HTTP header parameter Content-length!")
+                info(4,"No HTTP header parameter Content-Length!")
                 remSize = int(1e11)
                 info(5,"Header keys: %s" % hdrsDict.keys())
         else:
@@ -980,9 +980,9 @@ def sendEmail(ngamsCfgObj,
 
     hdr = "Subject: " + subject + "\n"
     if (contentType):
-        hdr += "Content-type: " + contentType + "\n"
+        hdr += "Content-Type: " + contentType + "\n"
     if (attachmentName):
-        hdr += "Content-disposition: attachment; filename=" +\
+        hdr += "Content-Disposition: attachment; filename=" +\
                attachmentName + "\n"
     if (not dataInFile):
         data = hdr + "\n" + dataRef
