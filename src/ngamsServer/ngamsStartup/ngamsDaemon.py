@@ -26,8 +26,7 @@ import sys, os, subprocess, glob
 from ngamsLib import ngamsConfig
 from ngamsLib.daemon import Daemon
 from ngamsLib.logger import ngaslog
-from ngamsLib.ngamsCore import getHostId
-from ngamsServer import ngamsServer
+from ngamsLib.ngamsCore import getHostId, getIpAddress, getHostName
 
 #
 # The following commented code is probably not relevant anymore
@@ -45,30 +44,31 @@ from ngamsServer import ngamsServer
 #from logger import ngaslog
 #from daemon import Daemon
 
-HOME = os.environ['HOME']
 if os.environ.has_key('NGAS_PREFIX'):
-    NGAS_PREFIX = os.environ['NGAS_PREFIX']
+    NGAS_PREFIX = os.path.abspath(os.environ['NGAS_PREFIX'])
 else:
+    HOME = os.environ['HOME']
     NGAS_PREFIX = '{0}/ngas_rt'.format(HOME)
-    os.environ['NGAS_PREFIX'] = NGAS_PREFIX
 
-CFG = '%s/../NGAS/cfg/ngamsServer.conf' % NGAS_PREFIX
+if not NGAS_PREFIX or not os.path.exists(NGAS_PREFIX):
+    raise Exception("NGAS_PREFIX not found or not defined")
+
+CFG = os.path.join(NGAS_PREFIX, 'cfg', 'ngamsServer.conf')
 if not os.path.exists(CFG):
-    ngaslog("ERROR", "Configuration file not found: {0}".format(CFG))
-    raise(ValueError)
-HOST_ID = getHostId(CFG)
+    msg = "Configuration file not found: {0}".format(CFG)
+    ngaslog("ERROR", msg)
+    raise ValueError(msg)
 
 # importing it here makes sure that getHostID is called with
 # the config file.
-from ngamsConfig import ngamsConfig
-cfgObj = ngamsConfig()
+cfgObj = ngamsConfig.ngamsConfig()
 cfgObj.load(CFG)
 PORT = cfgObj.getPortNo()
 if os.environ.has_key('NGAMS_ARGS'):
     NGAMS_ARGS = os.environ['NGAMS_ARGS'].split() # convert from command line (string) to a list
 else:
     NGAMS_ARGS = [
-                  '%s/bin/ngamsServer' % NGAS_PREFIX,
+                  'ngamsServer',
                   '-cfg', CFG,
                   '-force',
                   '-autoOnline',
@@ -125,7 +125,7 @@ class MyDaemon(Daemon):
         try:
             ARGS_BCK = sys.argv       # store original arguments
             sys.argv = NGAMS_ARGS     # put the NGAMS_ARGS instead
-            nserver = ngamsServer()   # instantiate server
+            nserver = ngamsServer.ngamsServer()   # instantiate server
             ngaslog('INFO', 'Initializing server: {}'.format(' '.join(NGAMS_ARGS)))
             nserver.init(NGAMS_ARGS, extlogger=ngaslog)  # initialize server
             sys.argv = ARGS_BCK
@@ -137,8 +137,13 @@ class MyDaemon(Daemon):
         """
         Send a STATUS command to server
         """
-        SCMD = "{0}/bin/ngamsPClient -port {1} -host $HOSTNAME -cmd STATUS -v 1".\
-             format(NGAS_PREFIX, PORT)
+        # If the server is listening in all interfaces, connect to localhost
+        # when asking for the status; otherwise try with getHostName(CFG)
+        server = getHostName(CFG)
+        if getIpAddress() == '0.0.0.0':
+            server = 'localhost'
+        # TODO: This creates a dependency on ngamsPClient
+        SCMD = "ngamsPClient -host {0} -port {1} -cmd STATUS -v 1".format(server, PORT)
         subprocess.call(SCMD,shell=True)
 
 
@@ -173,7 +178,7 @@ def main(args=sys.argv):
     if sys.argv[0] == 'ngamsCacheDaemon': #check how we are called
         infoStr = 'NGAMS Cache Server'
         progrStr = 'ngamsCacheServer'
-        NGAMS_ARGS[0] = '%s/bin/ngamsCacheServer' % NGAS_PREFIX
+        NGAMS_ARGS[0] = 'ngamsCacheServer'
     else:
         progrStr = 'ngamsServer'
         infoStr = 'NGAMS Server'

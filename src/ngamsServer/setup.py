@@ -53,7 +53,8 @@ setup(
         'console_scripts':[
             'ngamsServer=ngamsServer.ngamsServer:main',
             'ngamsCacheServer=ngamsServer.ngamsCacheServer:main',
-            'ngamsDaemon=ngamsStartup.ngamsDaemon:main'
+            'ngamsDaemon=ngamsStartup.ngamsDaemon:main',
+            'ngamsCacheDaemon=ngamsStartup.ngamsDaemon:main'
         ],
     }
 )
