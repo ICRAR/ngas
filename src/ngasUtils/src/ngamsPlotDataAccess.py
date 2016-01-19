@@ -43,7 +43,11 @@ import re as regx
 import cPickle as pickle
 import multiprocessing as mp
 from operator import itemgetter
-from SortedCollection import SortedCollection
+try:
+    from SortedCollection import SortedCollection
+except:
+    print "can't run migration policy plot"
+from collections import Counter
 
 
 # retrieval access (date, observation id, was the file offline?, file_size)
@@ -96,7 +100,6 @@ def _raListToVTimeNA(al, session_gap = 3600 * 2):
 
 
     """
-    from collections import Counter
 
     x = []
     y = [] # reference stream
@@ -459,20 +462,22 @@ class ACCESS_MODE:
     INGEST, RETRIEVAL, WRITE, READ, CREATE = xrange(5)
 
 class AccessStack:
-    def __init__(self, sqlite_file, session_gap=7200):
+    def __init__(self, sqlite_file, session_gap=7200, data_root='/Users/Chen/data/ngas_logs'):
+        self._data_root = data_root
         self._sqlite_file = sqlite_file
-        self.ref_stream = self.construct_sorted_list()
+        self.ref_stack = self.construct_ref_stack()
         self.chunk_ref_dict = {} #key - chunkId, # of times this obs is accessed
         self.chunk_date_dict = {} # key - chunkId, val - last access date
         self._session_gap = session_gap * 1000 # turn that into milliseconds
         self._mode_map = {-1 : ACCESS_MODE.INGEST,
         0 : ACCESS_MODE.RETRIEVAL, 1 : ACCESS_MODE.RETRIEVAL}
+        self.stack_dist_list = None
         self.init()
 
     def init(self):
         pass
 
-    def construct_sorted_list():
+    def construct_ref_stack():
         return list()
 
     def push(self, chunk_id, access_mode, access_date):
@@ -495,7 +500,7 @@ class AccessStack:
 
         if self.chunk_ref_dict.has_key(chunk_id):
             self.chunk_ref_dict[chunk_id] += 1
-            rud = self.compute_rud(chunk_id, access_date)
+            rud = self.compute_stack_dist(chunk_id, access_date)
         else:
             if (access_mode == ACCESS_MODE.INGEST or
                 access_mode == ACCESS_MODE.CREATE):
@@ -512,27 +517,27 @@ class AccessStack:
         self.collect_stats(chunk_id, access_mode)
         return rud
 
-    def compute_rud(self, chunk_id, access_date):
+    def compute_stack_dist(self, chunk_id, access_date):
         """
         compute RUD
         default impl. override in sub-class
         """
-        return self.ref_stream.index(chunk_id)
+        return self.ref_stack.index(chunk_id)
 
     def append_access(self, chunk_id, access_mode, access_date):
         #default impl. override in sub-class
-        self.ref_stream.append(chunk_id)
+        self.ref_stack.append(chunk_id)
 
-    def get_rud_list(self):
+    def get_stack_dist_list(self):
         """
-        Return a list of reuse distances
+        Return a list of stack distances
         """
         import sqlite3 as dbdrv
         dbconn = dbdrv.connect(self._sqlite_file)
         q = "SELECT ts, obs_id, offline from ac"
         cur = dbconn.cursor()
         cur.execute(q)
-        yd = [] # reuse distance list
+        yd = [] # stack distance list
         while (True):
             al = cur.fetchmany(10000)
             if (al == []):
@@ -545,23 +550,31 @@ class AccessStack:
             sys.stdout.flush()
 
         cur.close()
-        return np.array(yd)
+        self.stack_dist_list = np.array(yd)
+        try:
+            self.reduce_stats()
+        except Exception, exp:
+            print("Fail to reduce stats: {0}".format(exp))
+        return self.stack_dist_list
 
     def collect_stats(self, chunk_id, access_mode):
+        pass
+
+    def reduce_stats(self):
         pass
 
 class LFUStack(AccessStack):
     """
     least frequently used files will be replaced
     """
-    def compute_rud(self, chunk_id, access_date):
+    def compute_stack_dist(self, chunk_id, access_date):
         """
         not only compute RUD, but also sort at the same time
         """
         old_count = self.chunk_ref_dict[chunk_id] - 1
-        index = self.ref_stream.remove((chunk_id, -old_count))
+        index = self.ref_stack.remove((chunk_id, -old_count))
         ref_count = old_count + 1
-        self.ref_stream.insert((chunk_id, -ref_count))
+        self.ref_stack.insert((chunk_id, -ref_count))
         return index
 
     def append_access(self, chunk_id, access_mode, access_date):
@@ -570,32 +583,97 @@ class LFUStack(AccessStack):
         else:
             ref_count = 1
         # insert to the left if equal, so age is punished (if value is equal)
-        self.ref_stream.insert((chunk_id, -ref_count))
+        self.ref_stack.insert((chunk_id, -ref_count))
 
-    def construct_sorted_list(self):
+    def construct_ref_stack(self):
         return SortedCollection(key=itemgetter(1))
 
 class LRUStack(AccessStack):
     """
     least recently used files will be replaced
     """
-    def compute_rud(self, chunk_id, access_date):
+    def compute_stack_dist(self, chunk_id, access_date):
         """
-        not only compute RUD, but also sort at the same time
+        Only in LRU, stack distance is the same as reuse distance
+        This is because the raw reference stream is the same as the
+            reference stack (i.e. the priority list)
         """
         old_date = self.chunk_date_dict[chunk_id]
-        index = self.ref_stream.remove((chunk_id, -old_date))
+        index = self.ref_stack.remove((chunk_id, -old_date))
 
         # replace with the new access data, and append to the left of the list
-        self.ref_stream.insert((chunk_id, -access_date))
+        self.ref_stack.insert((chunk_id, -access_date))
         return index
 
     def append_access(self, chunk_id, access_mode, access_date):
         # insert to the left, so recency is rewarded (if access_date is equal)
-        self.ref_stream.insert((chunk_id, -access_date))
+        self.ref_stack.insert((chunk_id, -access_date))
 
-    def construct_sorted_list(self):
+    def construct_ref_stack(self):
         return SortedCollection(key=itemgetter(1))
+
+class LRUDStack(AccessStack):
+    """
+    A file with a longest (expected) Re-Use Distance is replaced
+
+    use RUD in the original reference stream as the key for the
+    stack (i.e. the priority list)
+
+    This is similar to LIAT stack except that it uses virtual time interval
+    """
+    def init(self):
+        self.access_pos = -1 # not thread safe
+        self.ref_stream = []
+        #key - chunk_id, val - a tuple (position in access_pos, current rud)
+        self.chunk_pos_rud_dict = dict()
+        self.zero_rud_on_ingest = True
+
+    def compute_stack_dist(self, chunk_id, access_date):
+        old_pos, old_rud = self.chunk_pos_rud_dict[chunk_id]
+        index = self.ref_stack.remove((chunk_id, old_rud))
+
+        self.access_pos += 1
+        new_pos = self.access_pos
+        rud = (new_pos - old_pos + old_rud) / 2.0
+        self.ref_stack.insert((chunk_id, rud))
+        self.chunk_pos_rud_dict[chunk_id] = (new_pos, rud)
+        return index
+
+    def append_access(self, chunk_id, access_mode, access_date):
+        self.access_pos += 1
+        # first time appear
+        if (ACCESS_MODE.RETRIEVAL == access_mode):
+            rud = self.access_pos
+        else:
+            if (self.zero_rud_on_ingest):
+                rud = 0.0 # put files that have never been accessed at front
+            else:
+                rud = float(self.access_pos)
+        self.chunk_pos_rud_dict[chunk_id] = (self.access_pos, rud)
+        self.ref_stack.insert((chunk_id, rud))
+
+    def construct_ref_stack(self):
+        return SortedCollection(key=itemgetter(1))
+
+    def collect_stats(self, chunk_id, access_mode):
+        self.ref_stream.append(chunk_id)
+
+    def reduce_stats(self):
+        """
+        """
+        if (len(self.ref_stream) > 0):
+            print "\nSaving reference stream to disk"
+            fn = '{0}/ref_stream.npy'.format(self._data_root)
+            if (os.path.exists(fn)):
+                os.remove(fn)
+            np.save(fn, np.array(self.ref_stream))
+
+        if (self.stack_dist_list is not None):
+            print "Saving stack distane list"
+            fn = '{0}/yd_lrud_ingest_correct.npy'.format(self._data_root)
+            if (os.path.exists(fn)):
+                os.remove(fn)
+            np.save(fn, self.stack_dist_list)
 
 class LIATStack(AccessStack):
     """
@@ -609,6 +687,10 @@ class LIATStack(AccessStack):
         self.start_date = ret[0]
         self.zero_iat_on_ingest = True
         self.max_iat = float(ret[1] - ret[0])
+        # whether to consider only the latest IAT, which is equivalent to "AGE_WEIGHT"
+        # used in some HSM like DMF, see
+        # http://www.bic.mni.mcgill.ca/~malin/bicsystems/dmf-howto.txt
+        self.use_age_weight = False
 
     def set_zero_iat_on_ingest(self, setval):
         if (type(setval) is bool):
@@ -631,16 +713,19 @@ class LIATStack(AccessStack):
 
         return (dfirst_epoch, dlast_epoch)
 
-    def compute_rud(self, chunk_id, access_date):
+    def compute_stack_dist(self, chunk_id, access_date):
         """
         not only compute RUD, but also sort at the same time
         """
         old_iat = self.chunk_iat_dict[chunk_id]
-        index = self.ref_stream.remove((chunk_id, old_iat))
+        index = self.ref_stack.remove((chunk_id, old_iat))
 
         last_access_date = self.chunk_date_dict[chunk_id]
-        iat = (access_date - last_access_date + old_iat) / 2.0
-        self.ref_stream.insert((chunk_id, iat))
+        if (self.use_age_weight): #only consider the latest IAT
+            iat = access_date - last_access_date
+        else:
+            iat = (access_date - last_access_date + old_iat) / 2.0
+        self.ref_stack.insert((chunk_id, iat))
         self.chunk_iat_dict[chunk_id] = iat
         return index
 
@@ -654,23 +739,56 @@ class LIATStack(AccessStack):
             else:
                 iat = self.max_iat
         self.chunk_iat_dict[chunk_id] = iat
-        self.ref_stream.insert((chunk_id, iat))
+        self.ref_stack.insert((chunk_id, iat))
 
-    def construct_sorted_list(self):
+    def construct_ref_stack(self):
         return SortedCollection(key=itemgetter(1))
 
-class LTPStack(AccessStack):
+class LNRStack(AccessStack):
     """
-    a file with least transition probability is replaced
-    """
-    pass
-
-def get_OPT_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=True):
-    """
-    optimal (the longest next reference)
+    Optimal (the longest next reference)
     the chosen page is the one whose next reference is farthest in the future.
+
+    get the reference stream saved previously from the LRUDStack!
     """
-    pass
+    def init(self):
+        #self.ref_stream = SortedCollection(key=itemgetter(1))
+        self.ref_stream = defaultdict(list)
+        #self.ref_counter = 0
+        self.chunk_nr_dict = dict()
+        alist = np.load("{0}/ref_stream.npy".format(self._data_root))
+        print "Building up the access stream"
+        stt = time.time()
+        for i, a in enumerate(alist):
+            self.ref_stream[a].append(i)
+        print "That took {0} seconds".format(time.time() - stt)
+        self.max_nr = len(alist)
+
+    def _get_nr(self, chunk_id):
+        li = self.ref_stream[chunk_id]
+        curr = li.pop(0)
+        if (len(li) > 0):
+            nr = li[0] - curr
+        else:
+            nr = self.max_nr
+        #self.ref_counter += 1
+        self.chunk_nr_dict[chunk_id] = nr
+        self.ref_stack.insert((chunk_id, nr))
+
+    def compute_stack_dist(self, chunk_id, access_date):
+        """
+        """
+        old_nr = self.chunk_nr_dict[chunk_id]
+        index = self.ref_stack.remove((chunk_id, old_nr))
+        self._get_nr(chunk_id)
+        return index
+
+    def append_access(self, chunk_id, access_mode, access_date):
+        # first time appear
+        self._get_nr(chunk_id)
+
+    def construct_ref_stack(self):
+        return SortedCollection(key=itemgetter(1))
 
 def get_LRU_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=True):
 
@@ -728,7 +846,8 @@ def get_LRU_stack_from_db(sqlite_file, session_gap=3600 * 2, ingest_into_disk=Tr
     cur.close()
     return np.array(yd)
 
-def plot_success_function(yd, label='LRU replacement', lcolor='b', line='-', show=True, ax=None, init_on_tape=True):
+def plot_success_function(yd, label='LRU replacement', lcolor='b', line='-', show=True,
+                          ax=None, init_on_tape=False, marker=None, lw=2.0):
     """
     Plot stack distance based on paper:
     http://dl.acm.org/citation.cfm?id=1663471
@@ -747,30 +866,93 @@ def plot_success_function(yd, label='LRU replacement', lcolor='b', line='-', sho
         ax.set_ylabel("Disk cache hits ratio", fontsize=14)
         ax.set_yticks(np.arange(0, 1.1, 0.1))
         ax.set_ylim([0, 1.05])
-    ax.plot(sorted, yvals, color=lcolor, linestyle=line, label=label, linewidth=2.0)
-    ax.grid(True)
+        ax.grid(True)
+    ax.plot(sorted, yvals, color=lcolor, linestyle=line, label=label, linewidth=lw, marker=marker)
+
     if (show):
         pawsey_x = 1024 ** 2 / 36
-        ax.vlines(pawsey_x, 0, 1.05)
-        ax.text(pawsey_x + 1000, 0.25, "MWA 1PB disk cache at Pawsey", fontsize=12)
-        legend = ax.legend(loc="center right", shadow=True, prop={'size':14})
+        ax.vlines(pawsey_x, 0, 1.05, linestyle="--")
+        ax.text(pawsey_x + 1000, 0.25, "1PB disk cache at MWA LTA", fontsize=12)
+
+        hi_watermark = pawsey_x * 0.8
+        ax.vlines(hi_watermark, 0, 1.05)
+        ax.text(hi_watermark + 500, 0.15, "DMF High Watermark at MWA LTA", fontsize=12)
+
+        legend = ax.legend(loc="center right", shadow=True, prop={'size':13})
         pl.show()
     else:
         return ax
+
+def plot_ws_success_function(yd, label='WorkingSet', lcolor='sienna', line='-', show=False,
+                          ax=None, marker=None, lw=2.0, init_on_tape=False):
+    """
+    refer to http://dl.acm.org/citation.cfm?id=361167
+    """
+    #yd = yd[~np.isnan(yd)]
+    if (init_on_tape):
+        pass
+    else:
+        yd = yd[~np.isnan(yd)]
+    yd_c = Counter(yd)
+    k = len(yd)
+    T_start = 1
+    s_list = []
+    F_list = []
+    Ck_prev = 0.0
+    for x in range(1, T_start):
+        Ck_prev += yd_c[x] # get F(T - 1) * k
+
+    s_T_start = 0.0
+    for z in range(0, T_start):
+        Ck_sum = 0.0
+        for x in range(1, z + 1):
+            Ck_sum += yd_c[x]
+            s_T_start += 1 - (Ck_sum) / k
+    s_list.append(s_T_start) # get s(T)
+
+    print("Building s(T) for k = {0}".format(k))
+    for T in range(T_start, k):
+        # for each T, we derive an "average workingset size" and a success rate
+        Ck_prev += yd_c[T] # F(T) * k = F(T - 1) * k + c[T]
+        tmp = Ck_prev / k # get F(T)
+        F_list.append(tmp)
+
+        s_T_start += 1 - tmp # TODO - need corrected "Ck_prev"
+        if (tmp > 1):
+            print("T = {0}".format(T))
+        s_list.append(s_T_start) # get s(T + 1)
+
+    s_list.pop() # remove the last element
+    if (len(s_list) != len(F_list)):
+        raise Exception("s_list == {0}, but F_list == {1}".format(len(s_list), len(F_list)))
+    else:
+        print("length = {0}".format(len(s_list)))
+
+    if (ax is None):
+        return (s_list, F_list)
+    else:
+        ax.plot(np.array(s_list), np.array(F_list), color=lcolor, linestyle=line, label=label, linewidth=lw, marker=marker)
 
 def plot_success_functions():
     data_dir = "/Users/Chen/data/ngas_logs"
     lru_yd = np.load("{0}/{1}".format(data_dir, 'yd_lru_ingest_correct.npy'))
     lfu_yd = np.load("{0}/{1}".format(data_dir, 'yd_lfu_ingest_correct.npy'))
     liat_yd = np.load("{0}/{1}".format(data_dir, 'yd_liat_ingest_correct.npy'))
+    lrud_yd = np.load("{0}/{1}".format(data_dir, 'yd_lrud_ingest_correct.npy'))
+    lnr_yd = np.load("{0}/{1}".format(data_dir, 'yd_lnr_ingest_correct.npy'))
+    law_yd = np.load("{0}/{1}".format(data_dir, 'yd_law_ingest_correct.npy'))
     #liat_yd_imiat = np.load("{0}/{1}".format(data_dir, 'yd_liat_ingest_max_iat.npy'))
     ax1 = plot_success_function(lru_yd, label='Least Recently Used', show=False)
     #plot_success_function(lru_yd, label='LRU - default on disk', line='--', show=False, init_on_tape=False, ax=ax1)
-    plot_success_function(lfu_yd, label='Least Frequently Used', line='--', lcolor='r', show=False, ax=ax1)
+    plot_success_function(lfu_yd, label='Least Frequently Used', line='--', lcolor='skyblue', show=False, ax=ax1)
     #plot_success_function(lfu_yd, label='LFU - default on disk', lcolor='r', line='--', init_on_tape=False, show=False, ax=ax1)
-    plot_success_function(liat_yd, label='Longest Inter-Arrival Time', line=':', lcolor='g', show=True, ax=ax1)
+    plot_success_function(liat_yd, label='Longest Inter-Arrival Time', line=':', lcolor='darkorchid', show=False, ax=ax1)
+    plot_success_function(law_yd, label='Largest Age Weight (DMF)', line='-', lcolor='k', show=False, ax=ax1)
     #plot_success_function(liat_yd, label='LIAT - default on disk', lcolor='g', line='--', init_on_tape=False, ax=ax1)
     #plot_success_function(liat_yd_imiat, label='LIAT - ingest max iat', lcolor='g', line='-.', ax=ax1)
+    plot_success_function(lnr_yd, label='Longest Next Access (Optimal)', line='--', lcolor='deeppink', show=False, ax=ax1, lw=3.0)
+    plot_ws_success_function(lru_yd, ax=ax1, lw=3.0)
+    plot_success_function(lrud_yd, label='Longest Reuse Distance', line='-.', lcolor='lime', show=True, ax=ax1, lw=4.0)
 
 
 def get_fresh_matrices_from_db(sqlite_file,
@@ -1405,7 +1587,7 @@ def _plotActualTime(accessList, archName, fgname=None):
         ax1.set_ylabel('Number of files', fontsize = 12)
         ax1.tick_params(axis='both', which='major', labelsize=10)
         ax1.tick_params(axis='both', which='minor', labelsize=8)
-        ax1.set_title('Number/Volume of data access and ingestion', fontsize=10)
+        #ax1.set_title('Number/Volume of data access and ingestion', fontsize=10)
 
         if (len(x4)):
             ax1.plot(x4, y4, color = 'b', linestyle = '-', marker = 'x', label = 'access', markersize = 3)
@@ -1422,7 +1604,7 @@ def _plotActualTime(accessList, archName, fgname=None):
         ax2.set_xlabel('Time (days)', fontsize = 12)
         ax2.tick_params(axis='both', which='major', labelsize=10)
         ax2.tick_params(axis='both', which='minor', labelsize=8)
-        ax2.set_title('Volume of data access and ingestion', fontsize=10)
+        #ax2.set_title('Volume of data access and ingestion', fontsize=10)
         ax2.plot(x5, y5 / 1024.0 ** 4, color = 'g', linestyle = '-.', marker = 's', label = 'access volume',
                  markersize = 3, markeredgecolor = 'g', markerfacecolor = 'none')
         ax2.plot(x8, y8 / 1024.0 ** 4, color = 'm', linestyle = ':', marker = 'd', label = 'ingestion volume',
@@ -1431,7 +1613,7 @@ def _plotActualTime(accessList, archName, fgname=None):
         #ax1.set_xlim([left, right])
 
         legend1 = ax1.legend(loc = 'upper left', shadow=True, prop={'size':10})
-        legend2 = ax2.legend(loc = 'upper right', shadow=True, prop={'size':10})
+        legend2 = ax2.legend(loc = 'upper left', shadow=True, prop={'size':10})
 
     pl.tight_layout()
     if (fgname is not None):

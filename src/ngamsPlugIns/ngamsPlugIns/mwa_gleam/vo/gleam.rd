@@ -43,7 +43,7 @@ GLEAM: The GaLactic and Extragalactic MWA Survey
         <meta name="coverage.waveband">Radio</meta>
 
         <meta name="creator">
-        <meta name="logo">http://ict.icrar.org/store/staff/biqing/GLEAM-logo.png</meta>
+        <meta name="name">The GLEAM Team</meta>
 	</meta>
 	<!--
          <meta name="_related" title="GLEAM VO Table">/mwa/pulsar/q/siap.xml?</meta>
@@ -176,6 +176,9 @@ expected PSF"
 				<bind key="owner">"XAO"</bind>
 				<bind key="embargo">getEmbargo(row)</bind>
 				<bind key="table">"mwa.gleam"</bind>
+<!--				<bind key="preview">"http://foo.bar"+os.path.basename(\inputRelativePath{False})
+				<bind key="preview_mime">"image/jpeg"</bind>
+-->
 			</rowfilter>
 
 
@@ -213,14 +216,13 @@ expected PSF"
 1. dd, dd; 2. dd dd; 3. h:m:s, d:m:s; 4. h:m:s d:m:s; 5. h m s, d m s; 6. h m s d m s" tablehead="Position/Name">
 			<property name="notForRenderer">scs.xml</property>
 		  </inputKey>
-          <inputKey name="sr" type="real" description="Search radius in degrees" multiplicity="single" tablehead="Search radius">
+						<inputKey name="sr" type="real" description="Search radius in degrees" multiplicity="single" tablehead="Search radius">
                   <property key="defaultForForm">1
                   </property>
           </inputKey>
           <inputKey name="distance_limit" type="double precision"   multiplicity="single"
           			description= "Objects whose distance from the pos is greater than this distance_limit are filtered out" tablehead="Distance limit">
 			<property name="notForRenderer">scs.xml</property>
-			 <!--  <property key="defaultForForm">5.0</property>  -->
 		</inputKey>
 
 <phraseMaker id="humanSCSPhrase" name="humanSCSSQL"  original="//scs#scsUtils">
@@ -230,8 +232,6 @@ expected PSF"
 from gavo.protocols import simbadinterface
 def getRADec(inPars, sqlPars):
     pos = inPars["pos"]
-    if (pos == None):
-    	return 45.1912, 45.1912
     try:
     	pos = pos.replace(':', ' ')
         return base.parseCooPair(pos)
@@ -246,12 +246,11 @@ def getRADec(inPars, sqlPars):
 		</setup>
 <code>
 retstr = ""
+if not inPars.get("pos"):
+	return 
 ra, dec = getRADec(inPars, outPars)
 
-if (ra == 45.1912 and dec == 45.1912):
-	yield "%%(%s)s = %%(%s)s and %%(%s)s = %%(%s)s" % (base.getSQLKey("RA", ra*DEG, outPars), base.getSQLKey("RA", ra*DEG, outPars), base.getSQLKey("DEC", dec*DEG, outPars), base.getSQLKey("DEC", dec*DEG, outPars))
-	return
-elif "sr" in inPars and inPars["sr"] >= 0:
+if "sr" in inPars and inPars["sr"] >= 0:
     retstr =  "scircle(SPoint(%%(%s)s, %%(%s)s), %%(%s)s ) &amp;&amp; coverage" %( base.getSQLKey("RA", ra*DEG, outPars), base.getSQLKey("DEC", dec*DEG, outPars), base.getSQLKey("sr", inPars["sr"]*DEG, outPars))
 else:
     retstr =  "spoint(%%(%s)s, %%(%s)s) @ coverage"%( base.getSQLKey("RA", ra*DEG, outPars), base.getSQLKey("DEC", dec*DEG, outPars))
@@ -268,10 +267,17 @@ yield retstr + addstr
 </condDesc>
 
 <condDesc>
-
-
+	<phraseMaker>
+		<code>
+			if not inPars.get("pos"):
+				outPars["RA0"] = 0
+				outPars["DEC0"] = 90
+			if False:
+				yield ""
+		</code>
+	</phraseMaker>
 </condDesc>
-
+<!-- <FEED source="//scs#coreDescs"/> -->
 
 <condDesc>
 
@@ -463,7 +469,7 @@ yield retstr + addstr
 					    select="DEGREES(spoint(RADIANS(centerAlpha), RADIANS(centerDelta))
 					      &lt;->spoint(%(RA0)s, %(DEC0)s))">
 					   <formatter>
-					   if (data >= 20):
+					   if (data >= 40):
 					   	return ["--"]
 					   else:
 					   	x = float(data)

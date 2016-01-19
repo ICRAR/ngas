@@ -18,6 +18,7 @@ ngamsCrc32_SOURCES = ngamsCrc32.c
 
 lib_LTLIBRARIES = libngams.la
 
+#libngams_a_SOURCES =
 libngams_la_SOURCES = \
 		ngamsCClientLib.c \
 		ngamsARCH_CLI_MAN_PAGE.c \

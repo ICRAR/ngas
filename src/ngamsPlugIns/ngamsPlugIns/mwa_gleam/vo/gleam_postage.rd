@@ -6,15 +6,18 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 </meta>
 <meta name="creationDate">2015-06-12T12:00:00Z</meta>
 <meta name="description">The GLEAM postage stamp service provides image cutout interface to the GLEAM science user community.</meta>
+<meta name="_intro" format="rst">
+	.. image:: http://ict.icrar.org/store/staff/biqing/GLEAM-logo.png
+	   :width: 200
+	
+	The GLEAM postage stamp service provides image cutout interface to the GLEAM science user community.
+</meta>
 <meta name="subject">Gleam cutout</meta>
 <meta name="coverage.waveband">Radio</meta>
-<meta name="creator">Chen Wu@ICRAR</meta>
-<meta name="logo">http://ict.icrar.org/store/staff/biqing/GLEAM-logo.png</meta>
+<meta name="creator.name">Chen Wu@ICRAR</meta>
+<meta name="creator.logo">http://ict.icrar.org/store/staff/biqing/GLEAM-logo.png</meta>
 <meta name="_related" title="GLEAM Web Site">http://www.mwatelescope.org/index.php/science/galactic-and-extragalactic-surveys</meta>
 <meta name="_bottominfo" format="raw">
-      	<![CDATA[
-				<img src="http://ict.icrar.org/store/staff/biqing/GLEAM-logo.png" height="42" width="160"/>
-			]]>
 </meta>
 
 <table id="gleam_postage" adql="True" onDisk="True" mixin="//products#table">
@@ -174,9 +177,18 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
       base.getSQLKey("DEC", dec*DEG, outPars)
       #yield "filename like mosaic_Week{0}_%MHz.fits".format(week)
 
-      if (inPars.has_key("grid_opt") and (inPars["grid_opt"] is not None) and (u'regrid' in inPars["grid_opt"])):
-        base.getSQLKey("grid_opt", '1', outPars)
+      if (inPars.has_key("proj_opt") and (inPars["proj_opt"] is not None)):
+        proj_option = inPars["proj_opt"]
+        if ('ZEA' == proj_option):
+          base.getSQLKey("grid_opt", '0', outPars)
+        else:
+          base.getSQLKey("grid_opt", '1', outPars)
+
+        if ('ZEA_regrid' == proj_option):
+          proj_option = 'ZEA'
+        base.getSQLKey("proj_opt", proj_option, outPars)
       else:
+        base.getSQLKey("proj_opt", 'ZEA', outPars)
         base.getSQLKey("grid_opt", '0', outPars)
 
       yield "substring(filename, 12, 1) = '" + str(week) + "'"
@@ -215,14 +227,34 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
     </inputKey>
   </condDesc>
 
+  <!--
   <condDesc combining="True">
-    <inputKey name="grid_opt" type="text" required="True" multiplicity="single" tablehead="Options">
+    <inputKey name="grid_opt" type="text" required="True" multiplicity="single" tablehead="Regridding">
       <values multiOk="True">
         <option title="Regrid the image onto a more regular and perpendicular grid (which takes a bit longer)">regrid</option>
       </values>
     </inputKey>
 
     <phraseMaker id="myph" name="myph" original="//scs#scsUtils">
+      <code>
+        yield "1 = 1"
+      </code>
+    </phraseMaker>
+
+  </condDesc>
+ -->
+
+  <condDesc combining="True">
+    <inputKey name="proj_opt" type="text" required="True" multiplicity="single" tablehead="Projection">
+      <property key="defaultForForm">ZEA</property>
+      <values default="ZEA">
+        <option title="ZEA">ZEA</option>
+        <option title="ZEA (regrid)">ZEA_regrid</option>
+        <option title="SIN (regrid)">SIN</option>
+      </values>
+    </inputKey>
+
+    <phraseMaker id="myph1" name="myph1" original="//scs#scsUtils">
       <code>
         yield "1 = 1"
       </code>
@@ -270,7 +302,7 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 
       <outputField original="freq" unit="MHz" tablehead="Frequency range"/>
 
-			<outputField name="cr" displayHint="noxml=true" tablehead="Cutout JPEG" select="filename || ',' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || ',' ||  DEGREES(%(size0)s) || ',' || %(grid_opt0)s">
+			<outputField name="cr" displayHint="noxml=true" tablehead="Cutout JPEG" select="filename || ',' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || ',' ||  DEGREES(%(size0)s) || ',' || %(grid_opt0)s || ',' || %(proj_opt0)s">
 			   <formatter>
 			         <!--  yield [data]  if (data == "45.1912,45.1912"): -->
 			       params = data.split(',')
@@ -278,10 +310,10 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
 			       	yield ["--"]
 			       else:
 			       	yield T.a(href="http://store04.icrar.org:7777/GLEAMCUTOUT?radec="
-			       	"%s,%s&amp;radius=%s&amp;file_id=%s&amp;regrid=%s"%(params[1], params[2], params[3], params[0], params[4]), target="_blank")["JPEG"]
+			       	"%s,%s&amp;radius=%s&amp;file_id=%s&amp;regrid=%s&amp;projection=%s"%(params[1], params[2], params[3], params[0], params[4], params[5]), target="_blank")["JPEG"]
          </formatter>
 			</outputField>
-      <outputField name="accref" type="text" tablehead="Cutout FITS" utype="Access.Reference" select="'http://store04.icrar.org:7777/GLEAMCUTOUT?radec=' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || '&amp;radius=' || DEGREES(%(size0)s) || '&amp;file_id=' || filename || '&amp;regrid=' || %(grid_opt0)s ||'&amp;fits_format=1'">
+      <outputField name="accref" type="text" tablehead="Cutout FITS" utype="Access.Reference" select="'http://store04.icrar.org:7777/GLEAMCUTOUT?radec=' || DEGREES(%(RA0)s) || ',' || DEGREES(%(DEC0)s) || '&amp;radius=' || DEGREES(%(size0)s) || '&amp;file_id=' || filename || '&amp;regrid=' || %(grid_opt0)s || '&amp;projection=' || %(proj_opt0)s ||'&amp;fits_format=1'">
          <formatter>
                <!--  yield [data]  if (data == "45.1912,45.1912"): -->
              params = data.split(',')
@@ -293,6 +325,27 @@ GLEAM Postage Stamp Service: The GaLactic and Extragalactic MWA Survey Postage S
       </outputField>
 		</outputTable>
   </service>
+
+	<regSuite title="GLEAM postage service">
+		<regTest title="GLEAM postage is access restricted">
+			<url parSet="form" pos="10 12" proj_opt="ZEA" 
+				freq="147-154" size="2.0">q/form</url>
+			<code><![CDATA[
+				self.assertHTTPStatus(401)
+				self.assertHasStrings("<html", "is protected")
+			]]></code>
+		</regTest>
+
+		<regTest title="GLEAM postage works">
+			<url parSet="form" pos="10 12" proj_opt="ZEA" 
+				freq="147-154" size="2.0" httpAuthKey='gleam'>q/form</url>
+			<code><![CDATA[
+				self.assertHasStrings('href="http://store04.icrar.org:7777/GLEAMCUTOUT?radec=10,12&amp;radius=1&amp;file_id=mosaic_Week2_147-154MHz.fits&amp;regrid=0&amp;projection=ZEA&amp;fits_format=1')
+				self.assertHasStrings('http://store04.icrar.org:7777/GLEAMCUTOUT?radec=10,12&amp;radius=1&amp;file_id=mosaic_Week2_147-154MHz.fits&amp;regrid=0&amp;projection=ZEA')
+			]]></code>
+		</regTest>
+
+	</regSuite>
 </resource>
 
 
