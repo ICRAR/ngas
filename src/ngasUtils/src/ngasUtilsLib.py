@@ -413,7 +413,7 @@ def checkDelTmpDirs(dirNamePat,
                 commands.getstatusoutput("rm -rf " + file)
 
 
-def checkSrvRunning(host = getHostName(),
+def checkSrvRunning(host = None,
                     port = 7777):
     """
     Function to check if server is running. It returns the status of the
@@ -429,6 +429,8 @@ def checkSrvRunning(host = getHostName(),
 
     Returns:  Status (string).
     """
+    if host is None:
+        host = getHostName()
     try:
         res = ngamsPClient.ngamsPClient().\
               sendCmdGen(host, port, NGAMS_STATUS_CMD)

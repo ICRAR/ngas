@@ -744,7 +744,7 @@ def checkHostEntry(dbObj,
     dbObj.query(sqlQuery)
 
 
-def sendPclCmd(host = getHostName(),
+def sendPclCmd(host = None,
                port = 8888,
                auth = None,
                timeOut = 60.0):
@@ -762,6 +762,8 @@ def sendPclCmd(host = getHostName(),
 
     Returns:       Created instance of Python Client (ngamsPClient).
     """
+    if host is None:
+        host = getHostName()
     return ngamsPClient.ngamsPClient(host, port).setAuthorization(auth).\
            setTimeOut(timeOut)
 
