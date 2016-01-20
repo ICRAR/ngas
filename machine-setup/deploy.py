@@ -1313,10 +1313,13 @@ def ngas_buildout(typ='archive'):
 def install_user_profile():
     """
     Put the activation of the virtualenv into the login profile of the user
-    
+    unless the NGAS_DONT_MODIFY_BASHPROFILE environment variable is defined
+
     NOTE: This will be executed for the user running NGAS.
     """
-    puts(blue("\n***** Entering task {0} *****\n".format(inspect.stack()[0][3])))
+    if run('echo $NGAS_DONT_MODIFY_BASHPROFILE'):
+        return
+
     set_env(hideing='everything')
 
     nuser = env.APP_USERS[0]
