@@ -389,23 +389,26 @@ def check_ssh():
     if not env.has_key('key_filename') or not env.key_filename:
         env.key_filename = AWS_KEY
     else:
-        puts(red("SSH key_filename: {0}".format(env.key_filename)))        
+        puts(red("SSH key_filename: {0}".format(env.key_filename)))
     if not env.has_key('user') or not env.user:
         env.user = USERNAME
     else:
-        puts(red("SSH user name: {0}".format(env.user)))                
+        puts(red("SSH user name: {0}".format(env.user)))
 
     ssh_available = False
-    ntries = 10
+    ntries = 30
     tries = 0
-    t_sleep = 30
+    test_period = 10
+    timeout = 3
+    t_sleep = test_period - timeout
     while tries < ntries and not ssh_available:
         try:
-            run("echo 'Is SSH working?'", combine_stderr=True)
+            with settings(timeout=timeout, warn_only=True):
+                run("echo 'Is SSH working?'", combine_stderr=True)
             ssh_available = True
             puts(green("SSH is working!"))
         except NetworkError:
-            puts(red("SSH is NOT working after {0} seconds!".format(str(tries*t_sleep))))
+            puts(red("SSH is NOT working after {0} seconds!".format(str(tries*test_period))))
             tries += 1
             time.sleep(t_sleep)
 
