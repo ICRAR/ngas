@@ -31,19 +31,19 @@ import os, stat
 import time, urllib
 import threading
 
-from fabric.api import put, env, require, local, task
+from fabric.api import put, env, local, task
 from fabric.api import run as frun
 from fabric.api import sudo as fsudo
 from fabric.state import output
-from fabric.context_managers import cd, hide, settings, warn_only
+from fabric.context_managers import cd, hide, settings
 from fabric.contrib.console import confirm
-from fabric.contrib.files import append, sed, comment
+from fabric.contrib.files import exists
 from fabric.contrib.project import rsync_project
 from fabric.decorators import task as fabtask, serial
 from fabric.operations import prompt
 from fabric.utils import puts, abort, fastprint
 from fabric.exceptions import NetworkError
-from fabric.colors import *
+from fabric.colors import blue, green, red, yellow
 
 from Crypto.PublicKey import RSA
 
@@ -434,6 +434,7 @@ def check_aws_meta():
     else:
         return True
 
+@task
 def check_create_aws_sec_group():
     """
     Check whether default security group exists
@@ -441,17 +442,19 @@ def check_create_aws_sec_group():
     conn = connect()
     sec = conn.get_all_security_groups()
     conn.close()
-    if map(lambda x:x.name.upper(), sec).count(AWS_SEC_GROUP):
-        puts(green("\n******** Group {0} exists!********\n".format(AWS_SEC_GROUP)))
-        return True
-    else:
-        ngassg = conn.create_security_group(AWS_SEC_GROUP, 'NGAS default permissions')
-        ngassg.authorize('tcp', 22, 22, '0.0.0.0/0')
-        ngassg.authorize('tcp', 80, 80, '0.0.0.0/0')
-        ngassg.authorize('tcp', 5678, 5678, '0.0.0.0/0')
-        ngassg.authorize('tcp', 7777, 7777, '0.0.0.0/0')
-        ngassg.authorize('tcp', 8888, 8888, '0.0.0.0/0')
-        return False
+    for sg in sec:
+        if sg.name.upper() == AWS_SEC_GROUP:
+            puts(green("AWS Security Group {0} exists ({1})".format(AWS_SEC_GROUP, sg.id)))
+            return sg.id
+
+    # Not found, create a new one
+    ngassg = conn.create_security_group(AWS_SEC_GROUP, 'NGAS default permissions')
+    ngassg.authorize('tcp', 22, 22, '0.0.0.0/0')
+    ngassg.authorize('tcp', 80, 80, '0.0.0.0/0')
+    ngassg.authorize('tcp', 5678, 5678, '0.0.0.0/0')
+    ngassg.authorize('tcp', 7777, 7777, '0.0.0.0/0')
+    ngassg.authorize('tcp', 8888, 8888, '0.0.0.0/0')
+    return ngassg.id
 
 @task
 def aws_create_key_pair():
@@ -517,7 +520,7 @@ def create_key_pair():
     
     env.SSH_PUBLIC_KEY = okey.exportKey('OpenSSH')
 
-def create_instance(names, use_elastic_ip, public_ips):
+def create_instance(names, use_elastic_ip, public_ips, sgid):
     """Create the EC2 instance
 
     :param names: the name to be used for this instance
@@ -543,7 +546,7 @@ def create_instance(names, use_elastic_ip, public_ips):
                 abort('Could not disassociate the IP {0}'.format(public_ip))
 
     reservations = conn.run_instances(AMI_IDs[env.AMI_NAME], instance_type=INSTANCE_TYPE, \
-                                    key_name=KEY_NAME, security_groups=[AWS_SEC_GROUP],\
+                                    key_name=KEY_NAME, security_group_ids=[sgid],\
                                     min_count=number_instances, max_count=number_instances)
     instances = reservations.instances
     # Sleep so Amazon recognizes the new instance
@@ -1284,21 +1287,19 @@ def ngas_buildout(typ='archive'):
             virtualenv(buildoutCommand)
 
         # Installing and initializing an NGAS_ROOT directory
+        _,_,cfg,lcfg,  = initName(typ=typ)
+        ngasRootDir = getNgasRootDir()
         with settings(warn_only=True):
-            run('mkdir -p {0}/../NGAS'.format(env.APP_DIR_ABS))
-        run('cp -R {0}/NGAS/* {0}/../NGAS/.'.format(env.APP_DIR_ABS))
+            run('mkdir -p {0}'.format(ngasRootDir))
+        run('cp -R {0}/NGAS/* {1}'.format(env.APP_DIR_ABS, ngasRootDir))
         with settings(warn_only=True):
-            run('cp {0}/cfg/{1} {0}/../NGAS/cfg/{2}'.format(\
-              env.APP_DIR_ABS, initName(typ=typ)[2], initName(typ=typ)[3]))
-        nda = '\/'+'\/'.join(env.APP_DIR_ABS.split('/')[1:-1])+'\/NGAS'
+            run('cp {0}/cfg/{1} {2}/cfg/{3}'.format(env.APP_DIR_ABS, cfg, ngasRootDir, lcfg))
         if env.linux_flavor == 'Darwin': # capture stupid difference in sed on Mac OSX
-            run("""sed -i '' 's/\*replaceRoot\*/{0}/g' {0}/cfg/{1}""".
-                format(nda, initName(typ=typ)[3]))
+            run("""sed -i '' 's/\*replaceRoot\*/{0}/g' {0}/cfg/{1}""".format(ngasRootDir.replace('/','\\/'), lcfg))
         else:
-            run("""sed -i 's/\*replaceRoot\*/{0}/g' {0}/cfg/{1}""".
-                format(nda, initName(typ=typ)[3]))
+            run("""sed -i 's/\*replaceRoot\*/{0}/g' {0}/cfg/{1}""".format(ngasRootDir.replace('/', '\\/'), lcfg))
 
-        with cd('../NGAS'):
+        with cd(ngasRootDir):
             with settings(warn_only=True):
                 run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
                     .format(env.APP_DIR_ABS))
@@ -1307,7 +1308,8 @@ def ngas_buildout(typ='archive'):
 
     puts(green("\n******** NGAS_BUILDOUT COMPLETED!********\n"))
 
-
+def getNgasRootDir():
+    return os.path.abspath(os.path.join(env.APP_DIR_ABS, '..', 'NGAS'))
 
 @task
 def install_user_profile():
@@ -1323,32 +1325,24 @@ def install_user_profile():
     set_env(hideing='everything')
 
     nuser = env.APP_USERS[0]
+    appDir = env.APP_DIR_ABS
+    ngasRootDir = getNgasRootDir()
     if env.user != nuser:
         with cd(env.HOME):
-            res = sudo('if [ -e {0}/.bash_profile_orig ]; then echo 1; else echo ; fi'.format(env.HOME))
-            if not res:
-                sudo('sudo -u {0} cp .bash_profile .bash_profile_orig'.format(nuser),
-                     warn_only=True)
+            if not exists("{0}/.bash_profile_orig".format(env.HOME)):
+                sudo('sudo -u {0} cp .bash_profile .bash_profile_orig'.format(nuser), warn_only=True)
             else:
                 sudo('sudo -u {0} cp .bash_profile_orig .bash_profile'.format(nuser))
-            sudo('sudo -u {0} echo "\nexport NGAS_PREFIX={1}\n" >> .bash_profile'.\
-                format(nuser, env.APP_DIR_ABS))
-            sudo('sudo -u {0} echo "source {1}/bin/activate\n" >> .bash_profile'.\
-                 format(nuser, env.APP_DIR_ABS))
+            sudo('sudo -u {0} echo "export NGAS_PREFIX={1}" >> .bash_profile'.format(nuser, ngasRootDir))
+            sudo('sudo -u {0} echo "source {1}/bin/activate" >> .bash_profile'.format(nuser, appDir))
     else:
         with cd(env.HOME):
-            res = run('if [ -e {0}/.bash_profile_orig ]; then echo 1; else echo ; fi'.format(env.HOME))
-            if not res:
+            if not exists("{0}/.bash_profile_orig".format(env.HOME)):
                 run('cp .bash_profile .bash_profile_orig'.format(nuser), warn_only=True)
             else:
                 run('cp .bash_profile_orig .bash_profile'.format(nuser))
-            run('echo "export NGAS_PREFIX={1}\n" >> .bash_profile'.\
-                format(nuser, env.APP_DIR_ABS))
-            run('echo "source {1}/bin/activate\n" >> .bash_profile'.\
-                 format(nuser, env.APP_DIR_ABS))
-
-    puts(green("\n******** .bash_profile updated!********\n"))
-
+            run('echo "export NGAS_PREFIX={1}" >> .bash_profile'.format(nuser, ngasRootDir))
+            run('echo "source {1}/bin/activate" >> .bash_profile'.format(nuser, appDir))
 
 
 @task
@@ -1405,9 +1399,6 @@ def ngas_full_buildout(typ='archive'):
     ngas_buildout(typ=typ)
     install_user_profile()
 
-    puts(green("\n******** NGAS_FULL_BUILDOUT COMPLETED!********\n"))
-
-
 
 
 @task
@@ -1455,9 +1446,9 @@ def test_env():
     # Check and create the key_pair if necessary
     aws_create_key_pair()
     # Check and create security group if necessary
-    check_create_aws_sec_group()
+    sgid = check_create_aws_sec_group()
     # Create the instance in AWS
-    host_names = create_instance([env.instance_name], use_elastic_ip, [public_ip])
+    host_names = create_instance([env.instance_name], use_elastic_ip, [public_ip], sgid)
     env.hosts = host_names
     if not env.host_string:
         env.host_string = env.hosts[0]
@@ -1467,8 +1458,6 @@ def test_env():
         'ngasmgr' : host_names,
         'ngas' : host_names,
     }
-    puts(green("\n******** EC2 INSTANCE SETUP COMPLETE!********\n"))
-
 
 
 def initName(typ='archive'):
@@ -1503,16 +1492,20 @@ def user_deploy(typ='archive'):
 
     install(sys_install=False, user_install=False,
             init_install=False, typ=typ)
+    start_ngas_and_check_status()
+
+@task
+def start_ngas_and_check_status():
+    """
+    Starts the ngamsDaemon process and checks that the server is up and running
+    """
     with settings(user=env.APP_USERS[0]):
-        run('ngamsDaemon start')
+        virtualenv('ngamsDaemon start')
     puts(green("\n******** SERVER STARTED!********\n"))
     if test_status():
         puts(green("\n>>>>> SERVER STATUS CHECKED <<<<<<<<<<<\n"))
     else:
         puts(red("\n>>>>>>> SERVER STATUS NOT OK <<<<<<<<<<<<\n"))
-    
-    puts(green("\n******** USER INSTALLATION COMPLETED!********\n"))
-
 
 @task
 def init_deploy(typ='archive'):
@@ -1539,7 +1532,6 @@ def init_deploy(typ='archive'):
         sudo('chkconfig --add {0}'.format(initLink))
     else:
         sudo('chkconfig --add /etc/init.d/{0}'.format(initLink))
-    puts(green("\n******** CONFIGURED INIT SCRIPTS!********\n"))
 
 
 @task
@@ -1588,40 +1580,29 @@ def test_deploy():
     test_env()
     install(sys_install=True, user_install=True, init_install=True)
     sudo('chown -R {0}:{0} {0}'.format(env.HOME))
-    with settings(user=env.APP_USERS[0]):
-        run('ngamsDaemon start')
-    puts(green("\n******** SERVER STARTED!********\n"))
-    if test_status():
-        puts(green("\n>>>>> SERVER STATUS CHECKED <<<<<<<<<<<\n"))
-    else:
-        puts(red("\n>>>>>>> SERVER STATUS NOT OK <<<<<<<<<<<<\n"))
-    
-    puts(green("\n******** TEST_DEPLOY COMPLETED on AWS host: {0} ********\n".format(env.host_string)))
+    start_ngas_and_check_status()
+    puts(green("******** TEST_DEPLOY COMPLETED on AWS hosts: %r ********\n".format(env.hosts)))
 
 @task
 def test_status():
     """
     Execute the STATUS command against a running NGAS server
     """
-    set_env(hideing='everything')
     try:
-        serv = urllib.urlopen('http://{0}:7777/STATUS'.format(env.host_string))
+        serv = urllib.urlopen('http://{0}:7777/STATUS'.format(env.host))
     except IOError:
-        puts(red('Problem connecting to server !!!'))
+        puts(red('Problem connecting to server {0}'.format(env.host)))
         return False
-        
+
     response = serv.read()
     serv.close()
     if response.find('Status="SUCCESS"') == -1:
-        puts(red('Problem with server response!!!'))
+        puts(red('Problem with response from {0}, not SUCESS as expected'.format(env.host)))
         puts(red(response))
         return False
     else:
-        puts(green('STATUS="SUCCESS"'))
+        puts(green('Response from {0} OK'.format(env.host)))
         return True
-    
-    
-
 
 @task
 def archiveSource():
