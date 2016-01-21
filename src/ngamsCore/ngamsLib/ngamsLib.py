@@ -37,7 +37,7 @@ The functions in this module can be used in all the NG/AMS code.
 """
 
 import os, string, httplib, time, getpass, socket, urlparse
-import urllib, urllib2, glob, re, select, cPickle
+import urllib, urllib2, re, select, cPickle
 from pccUt import PccUtTime
 from ngamsCore import genLog, info, TRACE, trim, getHostName, warning,\
     NGAMS_HTTP_SUCCESS, getVerboseLevel, NGAMS_CONT_MT, NGAMS_SOCK_TIMEOUT_DEF,\
@@ -1166,7 +1166,7 @@ def locateInternalFile(filename):
         else:
             pkgName = __name__
         try:
-            complFilename = pkg_resources.resource_filename(pkgName, filename)
+            complFilename = pkg_resources.resource_filename(pkgName, filename)  # @UndefinedVariable
         except Exception:
             pass
 
