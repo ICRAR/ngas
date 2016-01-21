@@ -1699,9 +1699,6 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 	strcpy(status->status, "OK");
 	status->errorCode = ngamsSTAT_SUCCESS;
 
-	if (repDataRef.fd > 0)
-		close(repDataRef.fd);
-
 	ngamsLogDebug("Leaving _ngamsRetrieve2File()");
 	return ngamsSTAT_SUCCESS;
 
@@ -1709,11 +1706,21 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 	/* Flush the connection for data waiting to be picked up. */
 	if ((retCode != ngamsSRV_INV_QUERY) && (retCode != ngamsERR_TIMEOUT)
 			&& (repDataRef.pdata == NULL)) {
+
 		while (bytesRead < repDataLen) {
 			bytesRd = read(repDataRef.fd, tmpBuf, 10000);
+			if( bytesRd == -1 ) {
+				perror("Error while reading from repDataRef.fd: ");
+				break;
+			}
 			bytesRead += bytesRd;
 		}
 	}
+
+	if (repDataRef.fd > 0)
+		close(repDataRef.fd);
+
+
 	if (repDataRef.pdata)
 		ngamsUnpackStatus(repDataRef.pdata, status);
 	else {
