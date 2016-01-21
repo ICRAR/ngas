@@ -107,6 +107,9 @@ ngamsVERSION.h:
 CLEANFILES= ngamsVERSION.h ngamsARCH_CLI_MAN_PAGE.c ngamsMAN_PAGE.c ngamsLICENSE.c
 
 # Files to be removed with command: make maintainer-clean
-MAINTAINERCLEANFILES = Makefile.in
+MAINTAINERCLEANFILES = Makefile.in aclocal.m4 config.h.in config.log \
+        config.status configure stamp-h.in configure.scan autoscan.log \
+        admin/config.guess admin/config.sub admin/depcomp admin/install-sh \
+        admin/ltmain.sh admin/missing
 
 # EOF

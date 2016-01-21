@@ -13,7 +13,7 @@ AC_PREREQ(2.59)
 # Example: AC_INIT(qfits, 5.4.0, jyung@eso.org)
 # AC_INIT(FULL-PACKAGE-NAME, VERSION, BUG-REPORT-ADDRESS)
 # Example: 
-AC_INIT(ngams, 3.1, jknudstr@eso.org)
+AC_INIT(ngams-C-client, 3.1, jknudstr@eso.org)
 
 # MODIFIED: AC_CONFIG_SRCDIR
 # A unique file that identifies the project. Example: Makefile.am
@@ -31,8 +31,6 @@ AM_INIT_AUTOMAKE
 
 # Checks for programs.
 AC_PROG_CC
-AC_CHECK_PROG([JAR], [jar], [jar])
-#AM_PROG_GCJ
 
 
 # MODIFIED. AC_PROG_RANLIB in comments
@@ -153,9 +151,6 @@ AC_SUBST(SYSTEM_LIBS)
 # esac
 
 # MODIFIED: List of directories where to build Makefiles
-AC_CONFIG_FILES([Makefile
-                 ngamsCClient/Makefile
-                 ngamsJClient/src/Makefile
-                 ngamsTest/ngamsTest/Makefile])
+AC_CONFIG_FILES([Makefile])
 
 AC_OUTPUT
