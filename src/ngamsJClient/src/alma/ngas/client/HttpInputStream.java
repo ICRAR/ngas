@@ -62,7 +62,7 @@ public class HttpInputStream extends InputStream {
 						logger);
 			} else {
 				String contentLength = httpConnection
-						.getHeaderField("content-length");
+						.getHeaderField("Content-Length");
 				// Create objects to read data from the socket and out into a
 				// file.
 				this.inputStream = new BufferedInputStream(this.httpConnection
