@@ -1,4 +1,4 @@
-# sqlite
+# sqlite created from the output of the ngamsPlotDataAccess.py
 create table ac(ts integer, obs_id integer, offline integer, file_size integer, user_ip varchar(256), obs_date char(10));
 create index ac_ts_index on ac(ts);
 .separator ","
@@ -69,8 +69,6 @@ order by a.proj_id) bb
 on aa.proj_id = bb.proj_id
 order by aa.total_count desc
 
-
-
 # sqlite getting file distribution by project id (joined with access table)
 select sum(a.file_size) proj_size, b.proj_id from ac a, opm b where a.offline = -1 and a.obs_id = b.obs_id group by b.proj_id order by proj_size desc;
 -- 3917462398121714,G0002
@@ -106,5 +104,6 @@ select sum(a.file_size) proj_size, b.proj_id from ac a, opm b where a.offline = 
 -- 291829045368,G0021
 -- 128215255272,G0019
 -- 99214529130,OA002
-# NGAS postgresql (archiv evolume by )
+
+# NGAS postgresql (archive volume by)
 select substring(file_id, 1, 10), file_size from ngas_files where disk_id <> '848575aeeb7a8a6b5579069f2b72282c';

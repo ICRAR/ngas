@@ -29,7 +29,7 @@
 plot the file size distribution
 """
 import psycopg2 as dbdrv
-import sys, getpass, os, datetime
+import sys, getpass, os, datetime, math
 
 import numpy as np
 import pylab
@@ -47,11 +47,11 @@ def queryDb(db='Pawsey', limit=None, saveToCSV=None):
     if (not DB.has_key(db)):
         raise Exception("Unknown db name {0}".format(db))
     # don't want to use group by to relief the database
-    if (limit is None):
+    if (limit is None or len(limit) == 0):
         sl = ""
     else:
-        sl = " limit {0}".format(limit)
-    hsql = "select file_size from ngas_files {}".format(sl)
+        sl = " {0}".format(limit)
+    hsql = "select file_size from ngas_files {0}".format(sl)
     try:
         t = dbpass
     except NameError:
@@ -83,7 +83,7 @@ def queryCSV(csvfile):
         re = f.readlines()
         return pylab.array(re)
 
-def plotIt(x, db='Pawsey'):
+def plotIt(x, db='Pawsey', title_timestr=None, data_name="MWA LTA"):
 
     x = np.int64(x)
     ttsize = np.sum(x) / 1024.0 ** 5
@@ -103,31 +103,42 @@ def plotIt(x, db='Pawsey'):
     y2 = y2 / np.sum(y2) * 100
     fig = plt.figure()
     dt = datetime.datetime.now()
-    timestr = dt.strftime('%Y-%m-%dT%H:%M:%S')
-    fig.suptitle("MWA LTA {0} at {3}, # of files: {1}, total size: {2:.2f} PB".format(db,
+    if (title_timestr is None):
+        timestr = dt.strftime('%Y-%m-%dT%H:%M:%S')
+    else:
+        timestr = title_timestr
+    fig.suptitle("{4} {0} at {3}, # of files: {1}, total size: {2:.2f} PB".format(db,
                                                                                         ttlen,
                                                                                         round(ttsize, 2),
-                                                                                        timestr),
+                                                                                        timestr,
+                                                                                        data_name),
                  fontsize=18)
     ax = fig.add_subplot(111)
-    ax.set_ylabel('Frequency')
-    ax.set_xlabel('log(file size [B])')
+    ax.set_ylabel('Frequency', fontsize=16)
+    ax.set_xlabel('log(file size [B])', fontsize=16)
     ax.set_yscale('log')
+    ax.tick_params(axis='both', which='major', labelsize=14)
+    ax.tick_params(axis='both', which='minor', labelsize=12)
     plt.xticks(np.arange(int(min(center)), int(max(center)) + 1, 1))
     plt.bar(center, hist, align='center', width=width)
     ax2 = ax.twinx()
-    ax2.set_ylabel('Frequency %')
+    ax2.set_ylabel('Frequency %', fontsize=16)
     ax2.set_yscale('log')
+    ax2.tick_params(axis='both', which='major', labelsize=14)
+    ax2.tick_params(axis='both', which='minor', labelsize=12)
     ax2.plot(center, y2, color = 'r', linestyle = ':', label = 'percentage')
 
     ymax = ax.get_ylim()[1]
-    ax.vlines(3, 0, ymax, colors = 'k', linestyles=':')
-    ax.vlines(6, 0, ymax, colors = 'k', linestyles=':')
-    ax.vlines(9, 0, ymax, colors = 'k', linestyles=':')
+    three = math.log10(1024)
+    six = math.log10(1024 ** 2)
+    nine = math.log10(1024 ** 3)
+    ax.vlines(three, 0, ymax, colors = 'k', linestyles=':')
+    ax.vlines(six, 0, ymax, colors = 'k', linestyles=':')
+    ax.vlines(nine, 0, ymax, colors = 'k', linestyles=':')
 
-    ax.text(3, ymax + 100, 'K')
-    ax.text(6, ymax + 100, 'M')
-    ax.text(9, ymax + 100, 'G')
+    ax.text(three, ymax + 110, 'K', fontsize=16)
+    ax.text(six, ymax + 110, 'M', fontsize=16)
+    ax.text(nine, ymax + 110, 'G', fontsize=16)
 
 
     plt.show()
@@ -141,7 +152,11 @@ if __name__ == '__main__':
             x = queryCSV(csvfile)
         else:
             x = queryDb(saveToCSV=csvfile)
+            #x = queryDb(saveToCSV=csvfile, limit="WHERE ingestion_date <= '2015-11-25T23:59:59.999'")
+            #x = queryDb(saveToCSV=csvfile, limit="WHERE ingestion_date <= '2015-11-25T23:59:59.999' and disk_id <> '848575aeeb7a8a6b5579069f2b72282c'")
+            #x = queryDb(saveToCSV=csvfile, limit="WHERE ingestion_date <= '2015-11-25T23:59:59.999' and disk_id = '848575aeeb7a8a6b5579069f2b72282c'")
     plotIt(x)
+    #plotIt(x, title_timestr="2015-11-25T23:11:53")
+    #plotIt(x, title_timestr="2015-11-25T23:11:53", data_name="MWA LTA Visibilities Data")
+    #plotIt(x, title_timestr="2015-11-25T23:11:53", data_name="MWA LTA Voltage Data")
     raw_input('Press ENTER to continue....')
-
-
