@@ -443,7 +443,7 @@ def _httpHandleResp(fileObj,
         fd = None
 
         # If the 'target file' specified in fact is a directory, we take the
-        # filename contained in the Content-disposition of the HTTP header.
+        # filename contained in the Content-Disposition of the HTTP header.
         if (os.path.isdir(dataTargFile)):
             if (hdrDic.has_key("content-disposition")):
                 tmpLine = hdrDic["content-disposition"]
@@ -538,7 +538,7 @@ def httpPostUrl(url,
 
     mimeType:     Mime-type of message (string).
 
-    contDisp:     Content-disposition of the data (string).
+    contDisp:     Content-Disposition of the data (string).
 
     dataRef:      Data to post or name of file containing data to send
                   (string).
@@ -585,11 +585,11 @@ def httpPostUrl(url,
 
     # set the socket timeout for this socket only
     _setSocketTimeout(timeOut,http)
-    info(4,"HTTP Header: %s: %s" % ("Content-type", mimeType))
-    http.putheader("Content-type", mimeType)
+    info(4,"HTTP Header: %s: %s" % ("Content-Type", mimeType))
+    http.putheader("Content-Type", mimeType)
     if (contDisp != ""):
-        info(4,"HTTP Header: %s: %s" % ("Content-disposition", contDisp))
-        http.putheader("Content-disposition", contDisp)
+        info(4,"HTTP Header: %s: %s" % ("Content-Disposition", contDisp))
+        http.putheader("Content-Disposition", contDisp)
     if (authHdrVal):
         if (authHdrVal[-1] == "\n"): authHdrVal = authHdrVal[:-1]
         info(4,"HTTP Header: %s: %s" % ("Authorization", authHdrVal))
@@ -610,8 +610,8 @@ def httpPostUrl(url,
         dataSize = len(dataRef)
 
     if (dataSize != -1):
-        info(4,"HTTP Header: %s: %s" % ("Content-length", str(dataSize)))
-        http.putheader("Content-length", str(dataSize))
+        info(4,"HTTP Header: %s: %s" % ("Content-Length", str(dataSize)))
+        http.putheader("Content-Length", str(dataSize))
     info(4,"HTTP Header: %s: %s" % ("Host", getHostName()))
     http.putheader("Host", getHostName())
     http.endheaders()
@@ -734,7 +734,7 @@ def httpPost(host,
 
                     [[<par 1>, <val par 1>], ...]
 
-                  These are send as 'Content-disposition' in the HTTP
+                  These are send as 'Content-Disposition' in the HTTP
                   command (list).
 
     dataTargFile: If a filename is specified with this parameter, the
@@ -893,7 +893,7 @@ def httpGet(host,
 
                         [[<par 1>, <val par 1>], ...]
 
-                      These are send as 'Content-disposition' in the HTTP
+                      These are send as 'Content-Disposition' in the HTTP
                       command (list).
 
     dataTargFile:     If a filename is specified with this parameter, the

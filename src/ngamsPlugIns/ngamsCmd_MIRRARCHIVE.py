@@ -180,14 +180,14 @@ def saveFromHttpToFile(ngamsCfgObj,
             info(3,"It is an Archive Pull Request/data with unknown size")
             remSize = int(1e11)
         elif reqPropsObj.getFileUri().startswith('http://'):
-            info(3,"It is an HTTP Archive Pull Request: trying to get Content-length")
+            info(3,"It is an HTTP Archive Pull Request: trying to get Content-Length")
             httpInfo = reqPropsObj.getReadFd().info()
             headers = httpInfo.headers
             hdrsDict = ngamsLib.httpMsgObj2Dic(''.join(headers))
             if hdrsDict.has_key('content-length'):
                 remSize = int(hdrsDict['content-length'])
             else:
-                info(3,"No HTTP header parameter Content-length!")
+                info(3,"No HTTP header parameter Content-Length!")
                 info(3,"Header keys: %s" % hdrsDict.keys())
                 remSize = int(1e11)
         else:

@@ -674,8 +674,8 @@ class ngamsCClientTest(ngamsTestSuite):
                    "Server: NGAMS/v2.3/2004-07-12T11:39:39\015\012" +\
                    "Date: Thu, 7 Oct 2004 16:20:28 GMT\015\012" +\
                    "Expires: Thu, 7 Oct 2004 16:20:28 GMT\015\012" +\
-                   "Content-type: text/xml\015\012" +\
-                   "Content-length: 36\015\012" +\
+                   "Content-Type: text/xml\015\012" +\
+                   "Content-Length: 36\015\012" +\
                    "\015\012" +\
                    "COMPLETELY CORRUPT NG/AMS XML STATUS"
         saveInFile("tmp/ngamsServerTestIllegalResp_tmp", httpResp)

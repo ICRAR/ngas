@@ -294,7 +294,7 @@ def _httpPostUrl(url,
     
     mimeType:     Mime-type of message (string).
 
-    contDisp:     Content-disposition of the data (string).
+    contDisp:     Content-Disposition of the data (string).
     
     dataRef:      Data to post or name of file containing data to send
                   (string).
@@ -329,11 +329,11 @@ def _httpPostUrl(url,
     info(4,"Sending HTTP header ...")
     info(4,"HTTP Header: %s: %s" % (NGAMS_HTTP_POST, cmd))
     http.putrequest(NGAMS_HTTP_POST, cmd)
-    info(4,"HTTP Header: %s: %s" % ("Content-type", mimeType))
-    http.putheader("Content-type", mimeType)
+    info(4,"HTTP Header: %s: %s" % ("Content-Type", mimeType))
+    http.putheader("Content-Type", mimeType)
     if (contDisp != ""):
-        info(4,"HTTP Header: %s: %s" % ("Content-disposition", contDisp))
-        http.putheader("Content-disposition", contDisp)
+        info(4,"HTTP Header: %s: %s" % ("Content-Disposition", contDisp))
+        http.putheader("Content-Disposition", contDisp)
     if (authHdrVal):
         if (authHdrVal[-1] == "\n"): authHdrVal = authHdrVal[:-1]
         info(4,"HTTP Header: %s: %s" % ("Authorization", authHdrVal))
@@ -344,8 +344,8 @@ def _httpPostUrl(url,
         dataSize = len(dataRef)
 
     if (dataSize != -1):
-        info(4,"HTTP Header: %s: %s" % ("Content-length", str(dataSize)))
-        http.putheader("Content-length", str(dataSize))
+        info(4,"HTTP Header: %s: %s" % ("Content-Length", str(dataSize)))
+        http.putheader("Content-Length", str(dataSize))
     info(4,"HTTP Header: %s: %s" % ("Host", getHostName()))
     http.putheader("Host", getHostName())
     http.endheaders()

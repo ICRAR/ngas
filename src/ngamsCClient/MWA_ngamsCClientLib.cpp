@@ -662,7 +662,7 @@ ngamsSTAT ngamsHandleStatus(int retCode, ngamsHTTP_DATA* repDataRef, ngamsSTATUS
  fileUri:        URI referring to file.
 
  mimeType:       Mime-type of data. If set to '\0' a generic mime-type will
- be contained in the HTTP header 'Content-type' and the
+ be contained in the HTTP header 'Content-Type' and the
  NG/AMS Server will determine the mime-type itself.
 
  parArray:       Instance of the ngamsPAR_ARRAY structure containing the
@@ -1978,7 +1978,7 @@ ngamsSTAT ngamsGetHttpHdrEntry(ngamsHTTP_HDR httpHdr, const char* hdrName, const
 	sprintf(fieldLoc, "%s=", fieldName);
 
 	/* An HTTP header could be something like:
-	 * Content-disposition: attachment;
+	 * Content-Disposition: attachment;
 	 * filename="ISAAC.1999-04-11T05:03:21.035.fits.Z"
 	 */
 
@@ -2511,7 +2511,7 @@ int ngamsRecvHttpHdr(int* sockFd, ngamsHTTP_HDR httpHdr, ngamsHTTP_RESP* httpRes
 			long long int tmpLen = atol(&recvLine[15]); /* >>>> */
 			*dataLen = tmpLen;
 			/* *dataLen = atof(&recvLine[15]); */
-			ngamsLogDebug("Extracted Content-length: %llu bytes", *dataLen);
+			ngamsLogDebug("Extracted Content-Length: %llu bytes", *dataLen);
 		}
 		/* atoi(&recvLine[15]); */
 	}
@@ -2938,9 +2938,9 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent, cons
 		*authHdr = '\0';
 	sprintf(header, "POST /%.256s HTTP/1.0\015\012"
 		"User-agent: %s\015\012"
-		"Content-type: %s\015\012"
-		"Content-length: %llu\015\012"
-		"Content-disposition: %s%s\015\012\012", path, ngamsUSER_AGENT, mimeType, contLen, contentDisp, authHdr);
+		"Content-Type: %s\015\012"
+		"Content-Length: %llu\015\012"
+		"Content-Disposition: %s%s\015\012\012", path, ngamsUSER_AGENT, mimeType, contLen, contentDisp, authHdr);
 	hdrLen = strlen(header);
 	if (write(sockFd, header, hdrLen) != hdrLen) {
 		retCode = ngamsERR_WR_HD;
@@ -3080,7 +3080,7 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent, cons
  mimeType:      Mime-type of the possible data contained in the body of
  the HTTP request.
 
- contentDisp:   Value of Content-disposition HTTP header.
+ contentDisp:   Value of Content-Disposition HTTP header.
 
  srcFilename:   If different from '\0', the data contained in this file
  will be send in the body of the HTTP request.
@@ -3173,7 +3173,7 @@ int ngamsHttpPost(const char* host, const int port, const char* userAgent, const
  mimeType:      Mime-type of the possible data contained in the body of
  the HTTP request.
 
- contentDisp:   Value of Content-disposition HTTP header.
+ contentDisp:   Value of Content-Disposition HTTP header.
 
  srcFilename:   If different from '\0', the data contained in this file
  will be send in the body of the HTTP request.
@@ -3221,9 +3221,9 @@ int ngamsHttpPostOpen(const char* host, const int port, const char* userAgent, c
 		*authHdr = '\0';
 	sprintf(header, "POST /%.256s HTTP/1.0\015\012"
 		"User-agent: %s\015\012"
-		"Content-type: %s\015\012"
-		"Content-length: %lld\015\012"
-		"Content-disposition: %s%s\015\012\012", path, ngamsUSER_AGENT, mimeType, contLen, contentDisp, authHdr);
+		"Content-Type: %s\015\012"
+		"Content-Length: %lld\015\012"
+		"Content-Disposition: %s%s\015\012\012", path, ngamsUSER_AGENT, mimeType, contLen, contentDisp, authHdr);
 	hdrLen = strlen(header);
 	if (write(sockFd, header, hdrLen) != hdrLen) {
 		retCode = ngamsERR_WR_HD;

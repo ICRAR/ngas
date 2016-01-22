@@ -340,7 +340,7 @@ NGAMS_HTTP_PAR_UNIQUE        = "unique"
 
 # Common HTTP headers.
 NGAMS_HTTP_HDR_FILE_INFO     = "NGAS-File-Info"
-NGAMS_HTTP_HDR_CONTENT_TYPE  = "Content-type"
+NGAMS_HTTP_HDR_CONTENT_TYPE  = "Content-Type"
 NGAMS_HTTP_HDR_CHECKSUM      = "NGAS-File-CRC"
 
 # Types of Notification Events.

@@ -216,9 +216,9 @@ def sendEmail(subject,
     for emailAdr in emailList:
         try:
             hdr = "Subject: " + subject + "\n"
-            if (contentType): hdr += "Content-type: " + contentType + "\n"
+            if (contentType): hdr += "Content-Type: " + contentType + "\n"
             if (attachmentName):
-                hdr += "Content-disposition: attachment; filename=" +\
+                hdr += "Content-Disposition: attachment; filename=" +\
                        attachmentName + "\n"
             tmpMsg = hdr + "\n" + msg
             server = smtplib.SMTP(smtpHost)

@@ -497,7 +497,7 @@ public class JClient {
             // Create objects to read data from the socket and out into a file.
             DataInputStream in = new DataInputStream(con.getInputStream());
             DataOutputStream out = new DataOutputStream(outStream);
-            String contentLength = con.getHeaderField("content-length");
+            String contentLength = con.getHeaderField("Content-Length");
 
             byte[] buf = new byte[BLOCK_SIZE];
             int nRead = 0;
