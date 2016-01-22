@@ -36,7 +36,7 @@ This module utilities used to authorization.
 import base64
 
 from ngamsLib.ngamsCore import TRACE, getHostId, getHostName, NGAMS_HTTP_UNAUTH,\
-    NGAMS_FAILURE, genLog, warning
+    NGAMS_FAILURE, genLog, warning, info
 from ngamsLib import ngamsHostInfo, ngamsLib
 
 
@@ -124,8 +124,10 @@ def authorize(srvObj,
     Returns:       Void.
     """
     T = TRACE()
-    
-    if (not srvObj.getCfg().getAuthorize()): return
+
+    if not srvObj.getCfg().getAuthorize():
+        info(3, "Authorization is disabled, continuing anonymously")
+        return
 
     # For now only Basic HTTP Authentication is implemented.
     if (reqPropsObj.getAuthorization()):
@@ -161,6 +163,8 @@ def authorize(srvObj,
             # Generate HTTP unauthorized response.
             genUnAuthResponse(srvObj, reqPropsObj, httpRef)
             raise Exception, errMsg
+
+        info(3, "Successfully authenticated user %s" % (reqUser))
     else:
         # Challenge the client.
         msg = genLog("NGAMS_ER_UNAUTH_REQ") + " Challenging client"
