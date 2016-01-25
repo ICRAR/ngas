@@ -123,6 +123,7 @@
             PlugIn="ngamsFitsPlugIn"
             PlugInPars="compression=compress -f,
                         checksum_util=utilFitsChecksum,
+                        skip_checksum=,
                         checksum_result=0/0000000000000000,
                         frame_ingest_db_id=TEST_SRV">
       <StorageSetRef StorageSetId="volume1"/>
@@ -312,7 +313,8 @@
   <Authorization Id="Authorization"
                  Enable="0">
     <User Name="ngas"
-          Password="bmdhcw=="/>
+          Password="bmdhcw=="
+          Commands="*"/>
     <User Name="ngasmgr"
           Password="bmdhc21ncg=="/>
     <User Name="ngas-int"

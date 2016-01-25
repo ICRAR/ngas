@@ -197,7 +197,8 @@ def prepFile(reqPropsObj,
         reqPropsObj.setStagingFilename(os.path.splitext(tmpFn)[0])
     checkFitsFileSize(reqPropsObj.getStagingFilename())
     #checkChecksum(parDic, reqPropsObj.getStagingFilename())
-    checkFitsChecksum(reqPropsObj, reqPropsObj.getStagingFilename())
+    if 'skip_checksum' not in parDic:
+        checkFitsChecksum(reqPropsObj, reqPropsObj.getStagingFilename())
     if (parDic.has_key("compression")):
         comprExt = getComprExt(parDic["compression"])
     else:

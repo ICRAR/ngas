@@ -54,6 +54,7 @@
           BlockSize="65536"
           MaxSimReqs="30" 
           RootDirectory="/tmp/ngamsTest/NGAS" 
+          IpAddress="0.0.0.0"
           PortNo="8888" 
           ProxyMode="1"
           Simulation="1"
@@ -83,8 +84,8 @@
       Verify="1"/>
 
   <SystemPlugIns Id="SystemPlugIns-Std"
-                 LabelPrinterPlugIn="ngamsBrotherPT9200DxPlugIn" 
-                 LabelPrinterPlugInPars="dev=/dev/null,font_file=/opsw/plone/ngas_buildout/src/ngamsData/ngamsBrotherPT9200DxFonts.fnt" 
+                 LabelPrinterPlugIn="ngamsNullLabelPrinterPlugIn" 
+                 LabelPrinterPlugInPars="-" 
                  OfflinePlugIn="ngamsLinuxOfflinePlugIn" 
                  OfflinePlugInPars="unmount=0" 
                  OnlinePlugIn="ngamsLinuxOnlinePlugIn" 
@@ -150,10 +151,11 @@
       <StorageSetRef StorageSetId="FitsStorage3"/>
     </Stream>
 
-    <Stream  MimeType="image/x-fits" 
+    <Stream  MimeType="image/x-fits"
              PlugIn="ngamsFitsPlugIn"
              PlugInPars="compression=gzip --no-name,
                          checksum_util=utilFitsChecksum,
+                         skip_checksum=,
                          checksum_result=0/0000000000000000">
       <StorageSetRef StorageSetId="FitsStorage1"/>
       <StorageSetRef StorageSetId="FitsStorage2"/>
@@ -164,6 +166,7 @@
              PlugIn="ngamsFitsPlugIn"
              PlugInPars="compression=gzip --no-name,
                          checksum_util=utilFitsChecksum,
+                         skip_checksum=,
                          checksum_result=0/0000000000000000">
       <StorageSetRef StorageSetId="FitsStorage1"/>
       <StorageSetRef StorageSetId="FitsStorage2"/>
@@ -174,6 +177,7 @@
              PlugIn="ngamsFitsPlugIn"
              PlugInPars="compression=gzip --no-name,
                          checksum_util=utilFitsChecksum,
+                         skip_checksum=,
                          checksum_result=0/0000000000000000">
       <StorageSetRef StorageSetId="FitsStorage1"/>
       <StorageSetRef StorageSetId="FitsStorage2"/>
@@ -303,7 +307,8 @@
   <Authorization Id="Authorization-Test"
                  Enable="0">
     <User Name="ngas" 
-          Password="bmdhcw=="/>
+          Password="bmdhcw=="
+          Commands="*"/>
     <User Name="ngasmgr" 
           Password="bmdhc21ncg=="/>
     <User Name="ngas-int"
