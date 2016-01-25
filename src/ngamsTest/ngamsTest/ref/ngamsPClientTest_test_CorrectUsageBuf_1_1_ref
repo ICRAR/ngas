@@ -1,15 +1,16 @@
+Error: Neither a command (-cmd) nor parameters (-par/-val) have been given
 
 > ngamsPClient [-host <Host>] -port <Port> | -servers '<Host>:<Port>,<Host>:<Port>,...'
     -cmd <Command> [-auth <Access Code>]
-    [-v <Level>] [-version] [-d] [-noWait] [-status] [-license] 
-    [-timeOut <Secs>] [<Cmd Spec Pars>] | [<Generic Par Array>] 
+    [-v <Level>] [-version] [-d] [-noWait] [-status] [-license]
+    [-timeOut <Secs>] [<Cmd Spec Pars>] | [<Generic Par Array>]
 
-        
+
 -host <Host>:            Host where the NG/AMS Server is running.
                          If not specified, local host is chosen.
 
 -port <Port>:            Port number used by the NG/AMS Server.
-        
+
 -servers ...:            Comma separated list of server nodes and their
                          corresponding ports.
 
@@ -17,17 +18,33 @@
                          tool are:
 
                            ARCHIVE:       Archive a file.
+                           CAPPEND:       Adds an existing file to a container.
+                           CARCHIVE:      Recursively archive a directory and
+                                          all its contents, creating a new
+                                          container for each directory.
+                           CCREATE:       Creates a container hierarchy.
+                           CDESTROY:      Destroys a container (not its files).
+                           CLIST:         Lists the contents of a container.
+                           CREMOVE:       Removes a file/s from a container.
+                           CRETRIEVE:     Recursively retrieve a container and
+                                          all its files, creating a directory
+                                          for each container.
+                           QARCHIVE:      Quick Archive a file.
+                           PARCHIVE:      Archive a file via a Proxy NGAS
+                           CACHEDEL:      Schedule a file for deletion in an
+                                          NGAS Cache Archive.
                            CLONE:         Clone a file or a set of file.
                            EXIT:          Make the server exit.
                            INIT:          Re-initialize the server.
                            LABEL:         Print a disk label.
                            ONLINE:        Bring server to Online State.
                            OFFLINE:       Bring server to Offline State.
+                           REARCHIVE:     Send Re-archive Request to server.
                            REGISTER       Register a file or a set of files.
                            REMDISK:       Remove information about a disk from
-                                          the NGAS DB and delete the files 
+                                          the NGAS DB and delete the files
                                           stored on the disk.
-                           REMFILE:       Remove info about a file or a set of 
+                           REMFILE:       Remove info about a file or a set of
                                           files from the NGAS DB and delete the
                                           files from the disks hosting them.
                            RETRIEVE:      Retrieve a data file from NGAS.
@@ -40,13 +57,14 @@
 -auth <Access Code>:     Authorization code used to access the remote
                          NG/AMS Server.
 
--v <Level>:              Verbose output level.
+-v <Level>:              Verbose output level. NOTE: By default the client is
+                         SILENT. At least level 1 is required to see any output.
 
 -version:                Print version and exit.
 
 -d:                      Run in Debug Mode.
-        
--noWait:                 Don't wait for the NG/AMS Server to terminate the 
+
+-noWait:                 Don't wait for the NG/AMS Server to terminate the
                          handling of the command.
 
 -status:                 Dump the status message sent by the NG/AMS
@@ -60,7 +78,7 @@
                          is ignored.
 
 <Generic Par Array>:     Array consisting of the parameters + values for
-                         these to be provided with the command. This is 
+                         these to be provided with the command. This is
                          given in the format:
 
                            -par <Parameter> [-val <Val>] [-par <Parameter ...]
@@ -74,8 +92,8 @@
                          Note, using the generic parameter specification,
                          the API is not providing any support to the user
                          (application) when it comes to checking the
-                         correctness of the parameters specified. Errors will 
-                         be sent back by the NG/AMS Server in case a request 
+                         correctness of the parameters specified. Errors will
+                         be sent back by the NG/AMS Server in case a request
                          could not be handled. Not all commands can be
                          executed using the generic interface. It is for
                          instance not possible to execute an Archive Push
@@ -84,24 +102,24 @@
 -cfg:                    Refers to the NG/AMS Configuration.
 
 <Cmd Spec Pars>:         The command specific parameters are:
-         
+
 -diskId <Disk ID>:       Refers to a specific disk.
 
 -execute:                Execute an action.
 
 -fileId <ID>:            Refers to a specific file.
-        
+
 -fileUri <URI>:          URI pointing to the file to be archived.
 
                            file:/home/data/Image1.fits
 
-                         This will result in an Archive Pull Request. It can 
+                         This will result in an Archive Pull Request. It can
                          also be given directly as a filename, e.g.:
 
                            /home/data/Image1.fits
 
                          This will result in an Archive Push Request.
-        
+
 -fileVersion <Version>:  Refers to a specific File Version of a file.
 
 -filterPlugIn ...:       Reference to a Filter Plug-In to apply in connection
@@ -114,9 +132,9 @@
                          internal file from a specific host.
 
 -internal <Filename>:    Refer to an NG/AMS 'internal file'.
-       
--mimeType <Mime-Type>:   If it is not possible to determine the mime-type of 
-                         a data file from the filename, the mime-type must 
+
+-mimeType <Mime-Type>:   If it is not possible to determine the mime-type of
+                         a data file from the filename, the mime-type must
                          be explicitly given with the ARCHIVE command.
 
 -ngLog:                  Refers to the Local Log File used by NG/AMS.
@@ -124,10 +142,10 @@
 -notifEmail:             List of comma separated email recipients that will
                          be informed via email about the execution/status
                          of the command.
-        
--outputFile ...:         Directory or file in which to dump a file when 
+
+-outputFile ...:         Directory or file in which to dump a file when
                          retrieving files.
-        
+
 -path <Path>:            Specifies a path, which should be taken into
                          account when carrying out the request.
 
@@ -137,12 +155,12 @@
                          priority than the default one (10). A low number
                          means a high priority.
 
--processing <DDPI>:      Name of Data Processing Plug-In to execute on the 
+-processing <DDPI>:      Name of Data Processing Plug-In to execute on the
                          data before sending it back to the requestor.
 
 -processingPars <Pars>:  Optional parameters to be handed over to the DPPI.
                          These should normally be given on the format:
-                
+
                            par1=val,par2=val2,...
 
                          - although it is up to the DPPI to interpret these.
@@ -158,14 +176,40 @@
 -url <URL>:              URL. Used for the SUBSCRIBE command to indicate
                          to where NG/AMS should deliver data subscribed for.
 
+-nexturl <URL>:          Used with the PARCHIVE command to specify the next
+                         destination where the file will be archived
+
+-sndbuf <BUF_SIZE>:      TCP send/receive buffer size, e.g. 2097152
+                         set to the BDP value for high latency links
+
 
 The parameter combinations valid for each command are:
 
 ARCHIVE:                 [-fileUri <URI> [-mimeType <Mime-Type>]
                          [-noVersioning]] | [<Generic Par Array>]
 
+CAPPEND:                 [-fileId <ID> | -fileIdList <ID1:ID2:...> ]
+                         [-containerName <Name> | -containerId <ID> ]
+                         [-closeContainer]
+
+CARCHIVE:                -fileUri <URI>
+
+CCREATE:                 -containerName <Name> | -containerHierarchy <XML>
+
+CDESTROY:                -containerName <Name> | -containerId <ID>
+
+CLIST:                   -containerName <Name> | -containerId <ID>
+
+CREMOVE:                 [-fileId <ID> | -fileIdList <ID1:ID2:...> ]
+                         [-containerName <Name> | -containerId <ID> ]
+
+CRETRIEVE:               -containerName <Name> | -containerId <ID>
+                         [-outputFile <OF>]
+
+CACHEDEL:                -diskId <ID> -fileId <ID> -fileVersion <Ver>
+
 CLONE:                   [-fileId <ID> v| -diskId <ID> v| -fileVersion <Ver>
-                          [-targetDiskId <ID>] [-notifEmail <Rec. List>]] | 
+                          [-targetDiskId <ID>] [-notifEmail <Rec. List>]] |
                          [<Generic Par Array>]
 
 EXIT:                    None.
@@ -178,9 +222,11 @@ OFFLINE:                 [-force] | [<Generic Par Array>]
 
 ONLINE:                  None.
 
+REARCHIVE:               -fileUri <URI> -fileInfoXml <XML File Info>
+
 REGISTER:                [-path <Path>] | [<Generic Par Array>]
 
-REMDISK:                 [-diskId <ID> [-execute]] | 
+REMDISK:                 [-diskId <ID> [-execute]] |
                          [<Generic Par Array>]
 
 REMFILE:                 [[-diskId <ID>] -fileId <ID> [-fileVersion <Ver>]
@@ -188,14 +234,14 @@ REMFILE:                 [[-diskId <ID>] -fileId <ID> [-fileVersion <Ver>]
 
 RETRIEVE:                [-fileId <ID> [-fileVersion <Ver>] [-outputFile <OF>]
                           [-processing <DDPI> [-processingPars <Pars>]] |
-                          -internal <Filename> [-hostId <Host ID>] | 
+                          -internal <Filename> [-hostId <Host ID>] |
                           -ngLog [-hostId <Host ID>] |
                           -cfg [-hostId <Host ID>]] |
                          [<Generic Par Array>]
 
-STATUS:                  [-hostId <Host ID> | 
+STATUS:                  [-hostId <Host ID> |
                           -requestId <Request ID> |
-                          -fileAccess <File ID> [-fileVersion <Ver>] 
+                          -fileAccess <File ID> [-fileVersion <Ver>]
                           [-diskId <ID>] |
                           -fileId <ID> [-fileVersion <Ver>] [-diskId <ID>] |
                           -configFile |
@@ -203,9 +249,9 @@ STATUS:                  [-hostId <Host ID> |
 
 SUBSCRIBE:               [-url <URL> [-priority <Prio>]
                           [-startDate <Start Date (ISO8601)>]
-                          [-filterPlugIn <Filter Plug-In> 
+                          [-filterPlugIn <Filter Plug-In>
                            [-plugInPars <Filter Plug-In Pars>]]] |
-                         [<Generic Par Array>] 
+                         [<Generic Par Array>]
 
 UNSUBSCRIBE:             [-url <URL>] | [<Generic Par Array>]
 

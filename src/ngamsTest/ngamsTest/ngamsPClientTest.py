@@ -142,7 +142,6 @@ class ngamsPClientTest(ngamsTestSuite):
         It is not checked if the files have been cloned as such. The CLONE
         Command is tested in the Test Suite ngamsCloneCmdTest.py.
         """
-	print "Executing test_Clone_1"
         self.prepExtSrv(8888, 1, 1, 1)
         client = ngamsPClient.ngamsPClient(getHostName(), 8888)
         client.archive("src/SmallFile.fits")
@@ -241,8 +240,7 @@ class ngamsPClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        stat, out = commands.\
-                    getstatusoutput("python ../ngamsPClient/ngamsPClient.py")
+        _, out = commands.getstatusoutput("ngamsPClient")
         refStatFile = "ref/ngamsPClientTest_test_CorrectUsageBuf_1_1_ref"
         tmpStatFile = "tmp/ngamsPClientTest_test_CorrectUsageBuf_1_1_tmp"
         saveInFile(tmpStatFile, filterOutLines(out, ["(c) ALMA"]))
@@ -463,7 +461,6 @@ class ngamsPClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-	print "Executing test_RemFile_1"
         self.prepExtSrv(8888, 1, 1, 1)
         client = ngamsPClient.ngamsPClient(getHostName(), 8888)
         client.archive("src/SmallFile.fits")
@@ -503,7 +500,6 @@ class ngamsPClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-	print "Executing test_Retrieve2File_1"
         self.prepExtSrv(8888, 1, 1, 1)
         client = ngamsPClient.ngamsPClient(getHostName(), 8888)
         client.archive("src/SmallFile.fits")
