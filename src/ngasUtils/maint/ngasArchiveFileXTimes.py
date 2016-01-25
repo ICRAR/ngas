@@ -27,6 +27,7 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  16/07/2003  Created
 #
+import pyfits
 """
 The script is used to archive a file a specified number of times.
 """
@@ -38,7 +39,6 @@ import sys
 from ngamsLib.ngamsCore import mvFile, getHostName
 from ngamsPClient import ngamsPClient
 from pccUt import PccUtTime
-import pcfitsio
 
 
 def correctUsage():
@@ -136,8 +136,7 @@ def archiveXTimes(filename,
 
         # Increment the ARCFILE keyword.
         if (increment):
-            fptr = pcfitsio.fits_open_file(tmpFilename, 1)
-            arcFile = pcfitsio.fits_read_keyword(fptr, "ARCFILE")[0][1:-1]
+            arcFile = pyfits.getval(tmpFilename, 'ARCFILE')
             idx = arcFile.find(".")
             insId = arcFile[0:idx]
             ts = arcFile[(idx + 1):]
@@ -145,8 +144,7 @@ def archiveXTimes(filename,
                      (0.001 / 86400)
             newArcFile = insId + "." +\
                          PccUtTime.TimeStamp(newMjd).getTimeStamp()
-            pcfitsio.fits_modify_key_str(fptr, "ARCFILE", newArcFile, "")
-            pcfitsio.fits_close_file(fptr)
+            pyfits.setval(tmpFilename, 'ARCFILE', value=newArcFile)
             commands.getstatusoutput("add_chksum " + tmpFilename)
 
 

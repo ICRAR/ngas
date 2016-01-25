@@ -36,12 +36,48 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
+from collections import defaultdict
 import commands, os, string
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, genLog, info
+from ngamsLib.ngamsCore import TRACE, genLog, info, error
 from pccUt import PccUtTime
 
+
+def getFitsKeys(fitsFile,
+                keyList):
+    """
+    Get a FITS keyword from a FITS file. A dictionary is returned whereby
+    the keys in the keyword list are the dictionary keys and the value
+    the elements that these refer to.
+
+    fitsFile:   Filename of FITS file (string).
+
+    keyList:    Tuple of keys for which to extract values (tuple).
+
+    Returns:    Dictionary with the values extracted of the format:
+
+                  {<key 1>: [<val hdr 0>, <val hdr 1> ...], <key 2>: ...}
+
+                (dictionary).
+    """
+    T = TRACE()
+
+    import pyfits
+    keyDic = defaultdict(list)
+    try:
+        for key in keyList:
+            vals = pyfits.getval(fitsFile, key)
+            if isinstance(vals, basestring):
+                vals = [vals]
+            keyDic[key] = list(vals)
+        return keyDic
+    except Exception, e:
+        msg = ". Error: %s" % str(e)
+        errMsg = genLog("NGAMS_ER_RETRIEVE_KEYS", [str(keyList),
+                                                   fitsFile + msg])
+        error(errMsg)
+        raise Exception, errMsg
 
 def getComprExt(comprMethod):
     """
@@ -78,7 +114,7 @@ def getDpIdInfo(filename):
                 the ARCFILE keyword (tuple).
     """
     try:
-        keyDic  = ngamsPlugInApi.getFitsKeys(filename, ["ARCFILE"])
+        keyDic  = getFitsKeys(filename, ["ARCFILE"])
         arcFile = keyDic["ARCFILE"][0]
         els     = string.split(arcFile, ".")
         dpId    = els[0] + "." + els[1] + "." + els[2]

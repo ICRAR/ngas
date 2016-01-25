@@ -36,9 +36,10 @@ import commands
 import os
 import string
 
-from pccUt import PccUtTime
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE, genLog, info
+from ngamsPlugIns import ngamsFitsPlugIn
+from pccUt import PccUtTime
 
 
 def getComprExt(comprMethod):
@@ -76,7 +77,7 @@ def getDpIdInfo(filename):
                 the ARCFILE keyword (tuple).
     """
     try:
-        keyDic  = ngamsPlugInApi.getFitsKeys(filename, ["PROJID"])
+        keyDic  = ngamsFitsPlugIn.getFitsKeys(filename, ["PROJID"])
         projectId = keyDic["PROJID"][0]
 
         return projectId

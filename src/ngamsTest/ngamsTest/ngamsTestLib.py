@@ -43,11 +43,7 @@ from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
 from ngamsPClient import ngamsPClient
 from pccUt import PccUtUtils, PccUtTime
 
-
-try:
-    import pcfitsio
-except:
-    pass
+import pyfits
 
 # Global parameters to control the test run.
 _noCleanUp   = 0
@@ -1086,10 +1082,7 @@ def writeFitsKey(filename,
 
     Returns:      Void.
     """
-    fo = pcfitsio.fits_open_file(filename, 1)
-    pcfitsio.fits_update_key(fo, key, value, comment)
-    pcfitsio.fits_close_file(fo)
-
+    pyfits.setval(filename, key, value=value, comment=comment)
 
 def remFitsKey(filename,
                key):
@@ -1102,10 +1095,7 @@ def remFitsKey(filename,
 
     Returns:    Void.
     """
-    fo = pcfitsio.fits_open_file(filename, 1)
-    pcfitsio.fits_delete_key(fo, key)
-    pcfitsio.fits_close_file(fo)
-
+    pyfits.delval(filename, key)
 
 def prepCfg(cfgFile,
             parList):
@@ -1153,16 +1143,14 @@ def incArcfile(filename,
 
     Returns:     Void.
     """
-    fptr = pcfitsio.fits_open_file(filename, 1)
-    arcFile = pcfitsio.fits_read_keyword(fptr, "ARCFILE")[0][1:-1]
+    arcFile = str(pyfits.getval('ARCFILE'))
     idx = arcFile.find(".")
     insId = arcFile[0:idx]
     ts = arcFile[(idx + 1):]
     newMjd = PccUtTime.TimeStamp().initFromTimeStamp(ts).getMjd() +\
              (float(step) / 86400.0)
     newArcFile = insId + "." + PccUtTime.TimeStamp(newMjd).getTimeStamp()
-    pcfitsio.fits_modify_key_str(fptr, "ARCFILE", newArcFile, "")
-    pcfitsio.fits_close_file(fptr)
+    pyfits.setval('ARCFILE', newArcFile)
     # TODO: Use PCFITSIO to reprocess the checksum.
     commands.getstatusoutput("add_chksum " + filename)
 

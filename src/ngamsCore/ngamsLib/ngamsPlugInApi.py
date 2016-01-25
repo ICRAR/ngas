@@ -148,69 +148,6 @@ def getFileSize(filename):
     Returns:    File size (integer).
     """
     return int(os.stat(filename)[6])
-    
-
-def getFitsKeys(fitsFile,
-                keyList):
-    """
-    Get a FITS keyword from a FITS file. A dictionary is returned whereby
-    the keys in the keyword list are the dictionary keys and the value
-    the elements that these refer to.
-
-    fitsFile:   Filename of FITS file (string).
-    
-    keyList:    Tuple of keys for which to extract values (tuple).
-
-    Returns:    Dictionary with the values extracted of the format:
-
-                  {<key 1>: [<val hdr 0>, <val hdr 1> ...], <key 2>: ...}
-                  
-                (dictionary).
-    """
-    T = TRACE()
-
-    keyDic = {}
-    if (1):
-        try:
-            import pcfitsio
-            fitsPtr = pcfitsio.fits_open_file(fitsFile, 0)
-            for key in keyList:
-                keyVal = pcfitsio.fits_read_keyword(fitsPtr, key)[0]
-                #if (keyVal[0] == "'"): keyVal = keyVal[1:-1]
-                if (keyVal[0] == "'"): keyVal = keyVal.split("'")[1]
-                keyVal = str(keyVal).strip()
-                if (keyVal == None): raise Exception, "Key not available: " +\
-                   key
-                keyDic[key] = [keyVal]
-            pcfitsio.fits_close_file(fitsPtr)
-            return keyDic
-        except Exception, e:
-            try:
-                pcfitsio.fits_close_file(fitsPtr)
-            except:
-                pass
-            msg = ". Error: %s" % str(e)
-            errMsg = genLog("NGAMS_ER_RETRIEVE_KEYS", [str(keyList),
-                                                       fitsFile + msg])
-            error(errMsg)
-            raise Exception, errMsg
-    else:
-        import Qfits
-        try:
-            fitsFile = Qfits.Qfits(fitsFile)
-        except:
-            fitsFile = Qfits.fitsinfo(fitsFile)
-        try:
-            for key in keyList:
-                keyVal = fitsFile.get(key)
-                if (keyVal == None): raise Exception, "Key not available: " +\
-                   key
-                keyDic[key] = [keyVal]
-            return keyDic
-        except Exception, e:
-            errMsg = genLog("NGAMS_ER_RETRIEVE_KEYS", [str(keyList), fitsFile])
-            error(errMsg)
-            raise Exception, errMsg
 
 
 def parseDapiPlugInPars(ngamsCfgObj,
