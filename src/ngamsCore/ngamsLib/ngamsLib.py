@@ -798,7 +798,7 @@ def httpPost(host,
     # and build up a list of files contained directly within
     # Start preparing a mutipart MIME message that will contain
     # all of them
-    if os.path.isdir(dataRef):
+    if isinstance(dataRef, basestring) and os.path.isdir(dataRef):
 
         absDirname = os.path.abspath(dataRef)
         info(4, 'Request is to archive directory ' + absDirname)
