@@ -956,8 +956,8 @@ class ngamsFileInfo:
                setCreationDate(self.getCreationDate()).\
                setTag(self.getTag()).\
                setIoTime(self.getIoTime()).\
-               setIngestionRate(self.getIngestionDate()).\
-               setContainerId(self.setContainerId())
+               setIngestionRate(self.getIngestionRate()).\
+               setContainerId(self.getContainerId())
 
 
 # EOF
