@@ -188,6 +188,9 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """
     Class used to handle an HTTP request.
     """
+    def setup(self):
+        self.timeout = 10
+        BaseHTTPServer.BaseHTTPRequestHandler.setup(self)
 
     def finish(self):
         """
@@ -1469,17 +1472,21 @@ class ngamsServer:
             self.updateRequestDb(reqPropsObj)
             self.setLastReqEndTime()
 
-            # Flush read socket if needed.
-            if (reqPropsObj.getBytesReceived() < reqPropsObj.getSize()):
+            # Flush read socket if needed - not a good idea as the request could
+            # be massive, we do not want to wait. What we want to do is send
+            # an error reponse straight away and put a timeout on the socket so
+            # there is no deadlock.
+            #if (reqPropsObj.getBytesReceived() < reqPropsObj.getSize()):
                 #info(4,"Closing HTTP read socket ...")
                 #reqPropsObj.getReadFd().close()
                 #info(4,"Closed HTTP read socket")
-                ngamsLib.flushHttpCh(reqPropsObj.getReadFd(), 32768,
-                                     (reqPropsObj.getSize() -
-                                      reqPropsObj.getBytesReceived()))
-                reqPropsObj.setBytesReceived(reqPropsObj.getSize())
+                #ngamsLib.flushHttpCh(reqPropsObj.getReadFd(), 32768,
+                #                     (reqPropsObj.getSize() -
+                #                      reqPropsObj.getBytesReceived()))
+                #reqPropsObj.setBytesReceived(reqPropsObj.getSize())
             #reqPropsObj.getReadFd().close()
-            if (getDebug()): traceback.print_exc(file = sys.stdout)
+            if (getDebug()):
+                traceback.print_exc(file = sys.stdout)
             errMsg = str(e)
             #error(errMsg + '\n' + traceback.format_exc())
             error(errMsg)
@@ -1488,9 +1495,9 @@ class ngamsServer:
                 self.reply(reqPropsObj, httpRef, NGAMS_HTTP_BAD_REQ,
                            NGAMS_FAILURE, errMsg)
         finally:
+            reqPropsObj.getReadFd().close()
             reqPropsObj.getWriteFd().flush()
             reqPropsObj.getWriteFd().close()
-            reqPropsObj.getReadFd().close()
 
     def handleHttpRequest(self,
                           reqPropsObj,
@@ -1655,18 +1662,13 @@ class ngamsServer:
                              contDisp)
                         httpRef.send_header("Content-Disposition", contDisp)
                     httpRef.wfile.write("\n")
-                    fo = None
-                    try:
-                        fo = open(dataRef, "r")
+
+                    with open(dataRef, "r") as fo:
                         dataSent = 0
                         while (dataSent < dataSize):
                             tmpData = fo.read(65536)
                             httpRef.wfile.write(tmpData)
                             dataSent += len(tmpData)
-                        fo.close()
-                    except Exception, e:
-                        if (fo != None): fo.close()
-                        raise e
                 else:
                     httpRef.wfile.write("\n" + dataRef)
                     info(5,"Message sent with HTTP reply=|%s|" %\

@@ -30,7 +30,7 @@
 #
 
 """
-Contains higher level common functions. 
+Contains higher level common functions.
 """
 
 import os, socket, threading, random, time, getpass, cPickle, commands, urllib
@@ -58,7 +58,7 @@ def getHostInfoFromHostIds(dbConObj,
                   found, None will be the value (dictionary).
     """
     T = TRACE()
-    
+
     resHostList = dbConObj.getHostInfoFromHostIds(hostList)
     hostDic = {}
     for host in resHostList:
@@ -85,7 +85,7 @@ def updateSrvHostInfo(dbConObj,
     ignoreErr:       If set to 1, a possible exception thrown will be
                      caught, and this error ignored. Otherwise the
                      method will throw an exception itself (integer/0|1).
-                     
+
     Returns:         Void.
     """
     T = TRACE(5)
@@ -114,7 +114,7 @@ def _addHostInDic(dbConObj,
     dbConObj:    DB object used when accessing the DB (ngamsDb).
 
     hostId:      ID of host to add (string).
-    
+
     hostDic:     Dictionary with host IDs as keys pointing to instances
                  of ngamsHostInfo (dictionary).
 
@@ -126,7 +126,7 @@ def _addHostInDic(dbConObj,
     sqlHostInfo = tmpHostInfo[0]
     hostDic[hostId] = ngamsHostInfo.ngamsHostInfo().\
                       unpackFromSqlQuery(sqlHostInfo)
-    
+
 
 def resolveHostAddress(dbConObj,
                        ngamsCfgObj,
@@ -150,7 +150,7 @@ def resolveHostAddress(dbConObj,
                  ngamsHostInfo objects (dictionary).
     """
     T = TRACE()
-    
+
     try:
         hostInfoDic = getHostInfoFromHostIds(dbConObj, hostList)
     except Exception, e:
@@ -165,7 +165,7 @@ def resolveHostAddress(dbConObj,
             errMsg = genLog("NGAMS_AL_MIS_HOST", [hostName])
             raise Exception, errMsg
         hi = hostInfoDic[hostName]
- 
+
         # Find out if this host is local, within a cluster, within the same
         # domain or remote.
         hostIpInfo = hi.getIpAddress().split(".")
@@ -206,7 +206,7 @@ def addDocTypeXmlDoc(srvObj,
                      rootElName,
                      dtd):
     """
-    Generates an XML document (as an ASCII document) with the proper 
+    Generates an XML document (as an ASCII document) with the proper
     document type definition in it, e.g.:
 
 
@@ -214,7 +214,7 @@ def addDocTypeXmlDoc(srvObj,
        http://acngast1.hq.eso.org:7777/RETRIEVE?internal=ngamsCfg.dtd>
 
     srvObj:       Reference to instance of NG/AMS Server Object (ngamsServer).
-    
+
     xmlDoc:       XML document in ASCII format (string).
 
     rootElName:   Name of the root element. I.e., 'NgamsStatus' above (string).
@@ -242,7 +242,7 @@ def determineMimeType(ngamsCfgObj,
     NG/AMS Configuration and the filename (extension) of the file.
 
     ngamsCfgObj:   NG/AMS Configuration Object (ngamsConfig).
-    
+
     filename:      Filename (string).
 
     noException:   If the function should not throw an exception
@@ -261,13 +261,13 @@ def acquireDiskResource(ngamsCfgObj,
     Acquire access right to a disk resource.
 
     ngamsCfgObj:   NG/AMS Configuration Object (ngamsConfig).
-    
-    slotId:        Slot ID referring to the disk resource (string). 
+
+    slotId:        Slot ID referring to the disk resource (string).
 
     Returns:       Void.
     """
     T = TRACE()
-    
+
     storageSet = ngamsCfgObj.getStorageSetFromSlotId(slotId)
     if (not storageSet.getMutex()): return
 
@@ -289,16 +289,16 @@ def releaseDiskResource(ngamsCfgObj,
     ngamsHighLevelLib.acquireDiskResource().
 
     ngamsCfgObj:   NG/AMS Configuration Object (ngamsConfig).
-    
-    slotId:        Slot ID referring to the disk resource (string). 
+
+    slotId:        Slot ID referring to the disk resource (string).
 
     Returns:       Void.
     """
     T = TRACE()
-    
+
     storageSet = ngamsCfgObj.getStorageSetFromSlotId(slotId)
     if (not storageSet.getMutex()): return
-    
+
     global _diskMutexSems
     if (not _diskMutexSems.has_key(slotId)):
         _diskMutexSems[slotId] = threading.Semaphore(1)
@@ -313,7 +313,7 @@ def genNgasId(ngamsCfgObj):
     the port number concatenated, e.g.: <host>:<port number>.
 
     ngamsCfgObj:   NG/AMS Configuration Object (ngamsConfig).
-     
+
     Returns:   NGAS ID (string).
     """
     return getHostId()
@@ -325,7 +325,7 @@ def genProcDirName(ngamsCfgObj):
 
     ngamsCfgObj:    NG/AMS Configuration Object (ngamsConfig).
 
-    Returns:        
+    Returns:
     """
     procDir = os.path.normpath(ngamsCfgObj.getProcessingDirectory() + "/" +\
                                NGAMS_PROC_DIR + "/" +\
@@ -341,7 +341,7 @@ def checkAddExt(ngamsCfgObj,
     Check that a given filename has the extension as expected from the
     mime-type supposed for the file. If the file does not have the
     proper extension, the latter is added.
-    
+
     ngamsCfgObj:    NG/AMS Configuration (ngamsConfig).
 
     mimeType:       Expected mime-type of the data file (string).
@@ -361,7 +361,7 @@ def checkAddExt(ngamsCfgObj,
     elif len(expExt) == 0:
         msg = "No extension added to filename due to configuration mapping."
         info(3, msg)
-        return filename        
+        return filename
     if ((filename.rfind(expExt) + len(expExt)) != len(filename)):
         filename = "%s.%s" % (filename, expExt)
         info(4,"New filename: %s" % filename)
@@ -381,7 +381,7 @@ def genStagingFilename(ngamsCfgObj,
                        genTmpFiles = 0):
     """
     Generate a Staging Area Filename in which the data is received at first.
-    
+
     ngamsCfgObj:    NG/AMS Configuration (ngamsConfig).
 
     reqPropsObj:    NG/AMS Request Properties object (ngamsReqProps).
@@ -389,9 +389,9 @@ def genStagingFilename(ngamsCfgObj,
     diskDic:        Dictionary containing ngamsPhysDiskInfo objects
                     with the information about the disk configuration
                     (dictionary).
-    
+
     storageSetId:   Storage Set ID (string).
-    
+
     filename:       Filename as given in the URI in the HTTP request (string).
 
     genTmpFiles:    If set to 1, the following filenames are generated and
@@ -410,12 +410,12 @@ def genStagingFilename(ngamsCfgObj,
          storageSetId + " - URI: " + filename)
     try:
         tmpFilename = re.sub("\?|=|&", "_", os.path.basename(filename))
-    
+
         # Check proper extension and ensure to obtain a unique name.
         tmpFilename = checkAddExt(ngamsCfgObj, reqPropsObj.getMimeType(),
                                   tmpFilename)
         tmpFilename = ngamsLib.genUniqueFilename(tmpFilename)
-    
+
         # Generate complete paths.
         slotId = ngamsCfgObj.getStorageSetFromId(storageSetId).\
                  getMainDiskSlotId()
@@ -431,7 +431,7 @@ def genStagingFilename(ngamsCfgObj,
             tmpReqPropFilename = "%s.%s" % (tmpStagingFilename,
                                             NGAMS_PICKLE_FILE_EXT)
             reqPropFilename = "%s.%s" % (stagingFilename,NGAMS_PICKLE_FILE_EXT)
-        
+
         info(4,"Generated staging filename: " + stagingFilename)
         checkCreatePath(os.path.dirname(stagingFilename))
         if (genTmpFiles):
@@ -456,7 +456,7 @@ def openCheckUri(uri):
     Returns:        Open file object from where to read the data (file object).
     """
     T = TRACE()
-    
+
     info(4,"Opening URL: " + uri)
     err = ""
     retStat = None
@@ -487,11 +487,11 @@ def saveFromHttpToFile(ngamsCfgObj,
                        diskInfoObj = None):
     """
     Save the data available on an HTTP channel into the given file.
-    
+
     ngamsCfgObj:     NG/AMS Configuration object (ngamsConfig).
 
     reqPropsObj:     NG/AMS Request Properties object (ngamsReqProps).
-        
+
     trgFilename:     Target name for file where data will be
                      written (string).
 
@@ -502,91 +502,85 @@ def saveFromHttpToFile(ngamsCfgObj,
 
     diskInfoObj:     Disk info object. Only needed if mutual exclusion
                      is required for disk access (ngamsDiskInfo).
-            
+
     Returns:         Tuple. Element 0: Time in took to write
                      file (s) (tuple).
     """
     T = TRACE()
 
     checkCreatePath(os.path.dirname(trgFilename))
-    fdOut = open(trgFilename, "w")
+
     info(2,"Saving data in file: " + trgFilename + " ...")
     timer = PccUtTime.Timer()
-    try:
-        # Make mutual exclusion on disk access (if requested).
-        if (mutexDiskAccess):
-            acquireDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
-            
-        # Distinguish between Archive Pull and Push Request. By Archive
-        # Pull we may simply read the file descriptor until it returns "".
-        sizeKnown = 0
-        if (ngamsLib.isArchivePull(reqPropsObj.getFileUri()) and
-            not reqPropsObj.getFileUri().startswith('http://')):
-            # (reqPropsObj.getSize() == -1)):
-            # Just specify something huge.
-            info(4,"It is an Archive Pull Request/data with unknown size")
-            remSize = int(1e11)
-        elif reqPropsObj.getFileUri().startswith('http://'):
-            info(4,"It is an HTTP Archive Pull Request: trying to get Content-Length")
-            httpInfo = reqPropsObj.getReadFd().info()
-            headers = httpInfo.headers
-            hdrsDict = ngamsLib.httpMsgObj2Dic(''.join(headers))
-            if hdrsDict.has_key('content-length'):
-                remSize = int(hdrsDict['content-length'])
-            else:
-                info(4,"No HTTP header parameter Content-Length!")
-                remSize = int(1e11)
-                info(5,"Header keys: %s" % hdrsDict.keys())
-        else:
-            remSize = reqPropsObj.getSize()
-            info(4,"Archive Push/Pull Request - Data size: %d" % remSize)
-            sizeKnown = 1
 
-        # Receive the data.
-        buf = "-"
-        rdSize = blockSize
-        sizeAccu = 0
-        lastRecepTime = time.time()
-        while ((remSize > 0) and ((time.time() - lastRecepTime) < 30.0)):
-            if (remSize < rdSize): rdSize = remSize
-            buf = reqPropsObj.getReadFd().read(rdSize)
-            sizeRead = len(buf)
-            remSize -= sizeRead
-            reqPropsObj.setBytesReceived(reqPropsObj.getBytesReceived() +\
-                                         sizeRead)
-            if (sizeRead > 0):
+    with open(trgFilename, "w") as fdOut:
+        try:
+            # Make mutual exclusion on disk access (if requested).
+            if (mutexDiskAccess):
+                acquireDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
+
+            # Distinguish between Archive Pull and Push Request. By Archive
+            # Pull we may simply read the file descriptor until it returns "".
+            sizeKnown = 0
+            if (ngamsLib.isArchivePull(reqPropsObj.getFileUri()) and
+                not reqPropsObj.getFileUri().startswith('http://')):
+                # (reqPropsObj.getSize() == -1)):
+                # Just specify something huge.
+                info(4,"It is an Archive Pull Request/data with unknown size")
+                remSize = int(1e11)
+            elif reqPropsObj.getFileUri().startswith('http://'):
+                info(4,"It is an HTTP Archive Pull Request: trying to get Content-Length")
+                httpInfo = reqPropsObj.getReadFd().info()
+                headers = httpInfo.headers
+                hdrsDict = ngamsLib.httpMsgObj2Dic(''.join(headers))
+                if hdrsDict.has_key('content-length'):
+                    remSize = int(hdrsDict['content-length'])
+                else:
+                    info(4,"No HTTP header parameter Content-Length!")
+                    remSize = int(1e11)
+                    info(5,"Header keys: %s" % hdrsDict.keys())
+            else:
+                remSize = reqPropsObj.getSize()
+                info(4,"Archive Push/Pull Request - Data size: %d" % remSize)
+                sizeKnown = 1
+
+            # Receive the data.
+            rdSize = blockSize
+            lastRecepTime = time.time()
+            while ((remSize > 0) and ((time.time() - lastRecepTime) < 30.0)):
+                if (remSize < rdSize):
+                    rdSize = remSize
+                buf = reqPropsObj.getReadFd().read(rdSize)
+                if not buf:
+                    break
+                sizeRead = len(buf)
+                remSize -= sizeRead
+                reqPropsObj.setBytesReceived(reqPropsObj.getBytesReceived() + \
+                                             sizeRead)
                 fdOut.write(buf)
                 lastRecepTime = time.time()
-            else:
-                time.sleep(0.050)
-     
-        deltaTime = timer.stop()
-        fdOut.close()
-        msg = "Saved data in file: %s. Bytes received: %d. Time: %.3f s. " +\
-              "Rate: %.2f Bytes/s"
-        info(2,msg % (trgFilename, int(reqPropsObj.getBytesReceived()),
-                      deltaTime, (float(reqPropsObj.getBytesReceived()) /
-                                  deltaTime)))
-        
-        # Raise exception if less byes were received as expected.
-        if (sizeKnown and (remSize > 0)):
-            msg = genLog("NGAMS_ER_ARCH_RECV",
-                         [reqPropsObj.getFileUri(), reqPropsObj.getSize(),
-                          (reqPropsObj.getSize() - remSize)])
-            raise Exception, msg
-        
-        # Release disk resouce.
-        if (mutexDiskAccess):
-            releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
 
-        return [deltaTime]
-    except Exception, e:
-        fdOut.close()
-        # Release disk resouce.
-        if (mutexDiskAccess):
-            releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
-        raise Exception, e
+            deltaTime = timer.stop()
 
+            msg = "Saved data in file: %s. Bytes received: %d. Time: %.3f s. " +\
+                  "Rate: %.2f Bytes/s"
+            info(2,msg % (trgFilename, int(reqPropsObj.getBytesReceived()),
+                          deltaTime, (float(reqPropsObj.getBytesReceived()) /
+                                      deltaTime)))
+
+            # Raise exception if less byes were received as expected.
+            if (sizeKnown and (remSize > 0)):
+                msg = genLog("NGAMS_ER_ARCH_RECV",
+                             [reqPropsObj.getFileUri(), reqPropsObj.getSize(),
+                              (reqPropsObj.getSize() - remSize)])
+                raise Exception, msg
+
+            return [deltaTime]
+
+        finally:
+            # Release disk resouce.
+            if (mutexDiskAccess):
+                releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
 
 def saveInStagingFile(ngamsCfgObj,
                       reqPropsObj,
@@ -597,9 +591,9 @@ def saveInStagingFile(ngamsCfgObj,
     Area file.
 
     ngamsCfgObj:     NG/AMS Configuration (ngamsConfig).
-    
+
     reqPropsObj:     NG/AMS Request Properties object (ngamsReqProps).
-        
+
     stagingFilename: Staging Area Filename as generated by
                      ngamsHighLevelLib.genStagingFilename() (string).
 
@@ -609,7 +603,7 @@ def saveInStagingFile(ngamsCfgObj,
     Returns:         Void.
     """
     T = TRACE()
-    
+
     try:
         blockSize = ngamsCfgObj.getBlockSize()
         return saveFromHttpToFile(ngamsCfgObj, reqPropsObj, stagingFilename,
@@ -619,7 +613,7 @@ def saveInStagingFile(ngamsCfgObj,
         error(errMsg)
         raise Exception, errMsg
 
- 
+
 def checkIfFileExists(dbConObj,
                       fileId,
                       diskId,
@@ -633,16 +627,16 @@ def checkIfFileExists(dbConObj,
     dbConObj:           DB connection object (ngamsDb).
 
     fileId:             File ID (string).
-    
+
     diskId:             Disk ID (string).
 
     fileVersion:        Version of the file (integer).
-                        
+
     completeFilename:   Complete filename (string).
-                       
+
     Returns:            1 if file exists, 0 if not (integer).
     """
-    if (not dbConObj.fileInDb(diskId, fileId, fileVersion)): return 0 
+    if (not dbConObj.fileInDb(diskId, fileId, fileVersion)): return 0
     return os.path.exists(completeFilename)
 
 
@@ -655,15 +649,15 @@ def copyFile(ngamsCfgObj,
     Copy a file, possibly between two different disks.
 
     ngamsCfgObj:        Instance of NG/AMS Configuration (ngamsConfig).
-    
+
     srcFileSlotId:      Slot ID for source file (string).
-    
+
     trgFileSlotId:      Slot ID for target file (string).
-    
+
     srcFilename:        Source file filename (string).
-    
+
     trgFilename:        Target file filename (string).
-    
+
     Returns:            Tuple. Element 0: Time in took to move
                         file (s) (tuple).
     """
@@ -728,13 +722,13 @@ def moveFile2BadDir(ngamsCfgObj,
                     orgFilename):
     """
     Move a file to the Bad File Directory on the destination disk.
-    
+
     ngamsCfgObj:     Instance of NG/AMS Configuration Object (ngamsConfig).
-    
+
     srcFilename:     Name of source file (string).
-    
+
     orgFilename:     Original filename - received in HTTP request (string).
-    
+
     Returns:         Name of filename in Bad Files Area (string).
     """
     info(2,"Moving file to Bad Files Area: %s->%s ..." %\
@@ -766,7 +760,7 @@ def performBackLogBuffering(ngamsCfgObj,
     buffering of the data.
 
     ngamsCfgObj:     Configuration object (ngamsConfig).
-    
+
     reqPropsObj:     Request handling properties object (ngamsReqProps).
 
     ex:              Exception thrown (Exception).
@@ -811,9 +805,9 @@ def pingServer(hostId,
                   running (string).
 
     ipAddress:    IP Address of the host to wake up (string).
-    
+
     portNo:       Port number used by NG/AMS Server to ping (integer).
-    
+
     timeOut:      Time-out in seconds to apply waiting for the server to
                   respond. If this is exhausted an exception is
                   thrown (integer).
@@ -861,7 +855,7 @@ def stdReqTimeStatUpdate(srvObj,
 
     reqPropsObj:        Request Property object to keep track of actions done
                         during the request handling (ngamsReqProps).
-    
+
     accumulatedTime:    Accumulated time used to handle the request so
                         far (float).
 
@@ -887,7 +881,7 @@ def getTmpDir(ngamsCfgObj):
 
     ngamsCfgObj:    NG/AMS Configuration Object (ngamsConfig).
 
-    Returns:        
+    Returns:
     """
     return os.path.normpath(ngamsCfgObj.getRootDirectory() + "/tmp")
 
@@ -898,7 +892,7 @@ def genCacheDirName(ngamsCfgObj):
 
     ngamsCfgObj:    NG/AMS Configuration Object (ngamsConfig).
 
-    Returns:        
+    Returns:
     """
     return os.path.normpath(ngamsCfgObj.getRootDirectory() + "/cache")
 
@@ -906,9 +900,9 @@ def genCacheDirName(ngamsCfgObj):
 def getNgasTmpDir(ngamsCfgObj):
     """
     Return name of the NGAS Temporary Directory.
-    
+
     ngamsCfgObj:    NG/AMS Configuration Object (ngamsConfig).
-    
+
     Returns:        Name of NGAS Temporary Directory (string).
     """
     return os.path.normpath(ngamsCfgObj.getRootDirectory() + "/tmp/")
@@ -917,9 +911,9 @@ def getNgasTmpDir(ngamsCfgObj):
 def getNgasChacheDir(ngamsCfgObj):
     """
     Return name of the NGAS Cache Directory.
-    
+
     ngamsCfgObj:    NG/AMS Configuration Object (ngamsConfig).
-    
+
     Returns:        Name of NGAS Cache Directory (string).
     """
     return os.path.normpath(ngamsCfgObj.getRootDirectory() + "/cache/")
@@ -955,25 +949,25 @@ def sendEmail(ngamsCfgObj,
 
     ngamsCfgObj:    Reference to object containing NG/AMS
                     configuration file (ngamsConfig).
-                    
+
     smtpHost:       Mail server to use for sending the mail (string).
-    
+
     subject:        Subject of mail message (string).
-    
+
     recList:        List containing recipients, e.g. user@test.com (string).
-        
+
     fromField:      Name for the from field (string).
-        
+
     dataRef:        Message to send or reference to file containing data
                     to send (string).
 
     contentType:    Mime-type of message (string).
-    
+
     attachmentName: Name of attachment in mail (string).
 
     dataInFile:     Used to make the sendmail tool send the data contained
                     in a file (integer).
-        
+
     Returns:        Void.
     """
     T = TRACE()
@@ -998,7 +992,7 @@ def sendEmail(ngamsCfgObj,
             fo.write(buf)
         fo.close()
         foIn.close()
-            
+
     for emailAdr in recList:
         try:
             server = ngamsSmtpLib.ngamsSMTP(smtpHost)
