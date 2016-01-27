@@ -174,12 +174,21 @@ def flushHttpCh(fd,
     """
     T = TRACE()
 
+    # Avoid hanging indefinitely on streams
+    # that have been already consumed entirely
+    r = select.select([fd], [], [], 0)
+    if fd not in r[0]:
+        return
+
     remSize = complSize
     while (remSize > 0):
         rdSize = blockSize
-        if (remSize < rdSize): rdSize = remSize
+        if (remSize < rdSize):
+            rdSize = remSize
         buf = fd.read(rdSize)
-        remSize -= rdSize
+        if not buf:
+            break
+        remSize -= len(rdSize)
 
 
 def getCompleteHostName():
@@ -561,7 +570,7 @@ def httpPostUrl(url,
     dataSize:     Size of data to send if read from a socket (integer).
 
     fileInfoHdr:  File info serialised as an XML doc for command REARCHIVE (string)
-    
+
     moreHdrs:     A list of key-value pairs, each kv pair is a tuple with two elements (k and v)
 
     Returns:      List with information from reply from contacted
@@ -603,7 +612,7 @@ def httpPostUrl(url,
         kk = mhd[0]
         vv = mhd[1]
         http.putheader(kk, vv)
-    
+
     if (dataSource == "FILE"):
         dataSize = getFileSize(dataRef)
     elif (dataSource == "BUFFER"):

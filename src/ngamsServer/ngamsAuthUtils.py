@@ -45,26 +45,25 @@ def genUnAuthResponse(srvObj,
     """
     Generate a HTTP unauthorized response (401 Unauthorized) according
     to the authorization scheme used.
-    
+
     srvObj:        Reference to NG/AMS Server class instance (ngamsServer).
- 
+
     reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
 
     httpRef:       Reference to the HTTP request handler
                    object (ngamsHttpRequestHandler).
-                       
+
     Returns:       Void.
     """
     T = TRACE()
-    
-    ngamsLib.flushHttpCh(reqPropsObj.getReadFd(), 32768,
-                         reqPropsObj.getSize())
-    reqPropsObj.setBytesReceived(reqPropsObj.getSize())
+
+    #ngamsLib.flushHttpCh(reqPropsObj.getReadFd(), 32768, reqPropsObj.getSize())
+    #reqPropsObj.setBytesReceived(reqPropsObj.getSize())
     hostInfo = srvObj.getDb().getHostInfoFromHostIds([getHostId()])[0]
     hostInfoObj = ngamsHostInfo.ngamsHostInfo().unpackFromSqlQuery(hostInfo)
     authRealm = "Basic realm=\"ngas-clients@%s.%s\"" %\
                 (getHostName(), hostInfoObj.getDomain())
-    srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_UNAUTH, 
+    srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_UNAUTH,
                  NGAMS_FAILURE, genLog("NGAMS_ER_UNAUTH_REQ"),
                  [["WWW-Authenticate", authRealm]])
 
@@ -72,26 +71,26 @@ def cmdPermitted(srvObj, reqPropsObj, reqUser):
     """
     to check if the requested command is allowed
     for the reqUser
-    
+
     srvObj:        Reference to NG/AMS Server class instance (ngamsServer).
     reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
     reqUser:       authenticated user (string)
-    
+
     Returns:       Boolean (True or False)
-    
+
     """
     commands = srvObj.getCfg().getAuthUserCommands(reqUser)
     if (not commands):
         return False
     elif ('*' == commands):
         return True
-    
+
     cmd = reqPropsObj.getCmd().strip()
     if (cmd in commands.split(',')):
         return True
     else:
         return False
-    
+
 
 def authorize(srvObj,
               reqPropsObj,
@@ -114,7 +113,7 @@ def authorize(srvObj,
       The function returns silently.
 
     srvObj:        Reference to NG/AMS Server class instance (ngamsServer).
- 
+
     reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
 
     httpRef:       Reference to the HTTP request handler
@@ -123,7 +122,7 @@ def authorize(srvObj,
     Returns:       Void.
     """
     T = TRACE()
-    
+
     if (not srvObj.getCfg().getAuthorize()): return
 
     # For now only Basic HTTP Authentication is implemented.
@@ -143,7 +142,7 @@ def authorize(srvObj,
             decPassword = base64.decodestring(password)
         else:
             decPassword = None
-    
+
         # Check if this user is defined and if the password matches.
         errMsg = ""
         if (not decPassword):
@@ -156,7 +155,7 @@ def authorize(srvObj,
             errMsg += genLog("NGAMS_ER_UNAUTH_REQ") + " Command: %s" %\
                      reqPropsObj.getCmd()
             warning(errMsg)
-            
+
             # Generate HTTP unauthorized response.
             genUnAuthResponse(srvObj, reqPropsObj, httpRef)
             raise Exception, errMsg
@@ -169,4 +168,3 @@ def authorize(srvObj,
 
 
 # EOF
-
