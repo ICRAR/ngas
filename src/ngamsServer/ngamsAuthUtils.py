@@ -63,6 +63,7 @@ def genUnAuthResponse(srvObj,
     hostInfoObj = ngamsHostInfo.ngamsHostInfo().unpackFromSqlQuery(hostInfo)
     authRealm = "Basic realm=\"ngas-clients@%s.%s\"" %\
                 (getHostName(), hostInfoObj.getDomain())
+    httpRef.wfile._sock.settimeout(20)
     srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_UNAUTH,
                  NGAMS_FAILURE, genLog("NGAMS_ER_UNAUTH_REQ"),
                  [["WWW-Authenticate", authRealm]])

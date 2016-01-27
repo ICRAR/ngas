@@ -188,10 +188,6 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """
     Class used to handle an HTTP request.
     """
-    def setup(self):
-        self.timeout = 10
-        BaseHTTPServer.BaseHTTPRequestHandler.setup(self)
-
     def finish(self):
         """
         Finish the handling of the HTTP request.
@@ -1492,6 +1488,7 @@ class ngamsServer:
             error(errMsg)
             self.setSubState(NGAMS_IDLE_SUBSTATE)
             if (not reqPropsObj.getSentReply()):
+                httpRef.wfile._sock.settimeout(20)
                 self.reply(reqPropsObj, httpRef, NGAMS_HTTP_BAD_REQ,
                            NGAMS_FAILURE, errMsg)
         finally:
