@@ -3082,7 +3082,7 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
 	int def_sndbuf = 10240;
 	socklen_t optlen = sizeof def_sndbuf;
 	getsockopt(sockFd, SOL_SOCKET, SO_SNDBUF, &def_sndbuf, &optlen);
-	printf("Default TCP buffer size: %d\n", def_sndbuf);
+	ngamsLogDebug("Default TCP buffer size: %d\n", def_sndbuf);
 
 	int sndbuf_size = def_sndbuf;
 	if (setsndbuf != 0) {
