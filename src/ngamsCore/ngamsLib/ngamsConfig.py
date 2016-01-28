@@ -618,8 +618,6 @@ class ngamsConfig:
             rootDir = os.environ['HOME'] + '/' + rootDir
         if rootDir[-1] == '/':
             rootDir = rootDir[:-1]
-        if rootDir.split('/')[-1] != 'NGAS':
-            rootDir += '/NGAS'
         os.environ['NGAMS_ROOT'] = rootDir
         self.storeVal('NgamsCfg.Server[1].RootDirectory', rootDir, None)
         return rootDir
