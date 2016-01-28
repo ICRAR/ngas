@@ -27,6 +27,7 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  18/11/2003  Created
 #
+import shutil
 """
 This module contains the Test Suite for the REGISTER Command.
 """
@@ -87,7 +88,7 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
         tmpSrcFile = "/tmp/ngamsTest/NGAS/" +\
                      "FitsStorage2-Main-3/saf/test/SmallFile.fits"
         checkCreatePath(os.path.dirname(tmpSrcFile))
-        os.system("cp " + srcFile + " " + tmpSrcFile)
+        shutil.copy(srcFile, tmpSrcFile)
         tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_REGISTER_CMD,
                                  [["path", tmpSrcFile]])
         refStatFile = "ref/ngamsRegisterCmdTest_test_RegisterCmd_1_ref"
@@ -103,6 +104,8 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
             tmpFileRes = dbObj.getFileInfoFromFileIdHostId(getHostName(),
                                                            fileId, 1, diskId)
             if (tmpFileRes): break
+        if not tmpFileRes:
+            self.fail("Couldn't get fileInfo result from database within 10 seconds")
         tmpFileObj = ngamsFileInfo.ngamsFileInfo().unpackSqlResult(tmpFileRes)
         saveInFile(fileInfoTmp, filterDbStatus1(tmpFileObj.dumpBuf()))
         self.checkFilesEq(fileInfoRef, fileInfoTmp,

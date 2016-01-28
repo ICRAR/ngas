@@ -8,11 +8,14 @@ FileSize:                           69120
 UncompressedFileSize:               69120
 Compression:                        
 Ignore:                             0
-Checksum:                           941344590
+Checksum:                           347746833
 ChecksumPlugIn:                     ngamsGenCrc32
 FileStatus:                         00000000
 Tag:                                
 Permissions:                        
 Owner:                              
 Group:                              
+TotalIoTime:                        -1000
+IngestionRate:                      -1
+ContainerId:                        None
 
