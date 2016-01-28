@@ -45,7 +45,7 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NG
     NGAMS_LABEL_CMD, NGAMS_ONLINE_CMD, NGAMS_OFFLINE_CMD, NGAMS_REMDISK_CMD,\
     NGAMS_REMFILE_CMD, NGAMS_REGISTER_CMD, NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD,\
     NGAMS_FAILURE, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD, NGAMS_ARCH_REQ_MT,\
-    getHostName, setLogCond, setDebug, NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,\
+    setLogCond, setDebug, NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,\
     NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, getNgamsLicense
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD
@@ -54,7 +54,7 @@ from xml.dom import minidom
 import pkg_resources
 
 
-manPage = pkg_resources.resource_filename(__name__, 'doc/ngamsPClient.txt')
+manPage = pkg_resources.resource_filename(__name__, 'doc/ngamsPClient.txt')  # @UndefinedVariable
 fo = open(manPage)
 __doc__ += "\n\n\nMan-Page for the NG/AMS Python Client Tool:\n\n"
 __doc__ += "ngamsPClient " + fo.read()
