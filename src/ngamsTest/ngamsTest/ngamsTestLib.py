@@ -27,17 +27,18 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  19/04/2002  Created
 #
-import importlib
 """
 This module contains test utilities used to build the NG/AMS Functional Tests.
 """
 # TODO: Check for each function if it can be moved to the ngamsTestSuite Class.
 
-import os, sys, time, unittest, socket, getpass, commands, re, glob, subprocess, signal, shutil
+import collections
+import importlib
+import os, sys, time, unittest, socket, getpass, commands, re, glob, subprocess, shutil
 
 from ngamsLib.ngamsCore import getHostName, TRACE, info, \
-    ngamsCopyrightString, rmFile, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BAD_FILES_DIR, \
-    NGAMS_PROC_DIR, error, cleanList, setLogCond, getVerboseLevel, logFlush, \
+    ngamsCopyrightString, rmFile, \
+    error, cleanList, setLogCond, getVerboseLevel, logFlush, \
     cpFile, getLogLevel, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
     checkIfIso8601
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
@@ -662,35 +663,10 @@ def delNgamsDirs(cfgObj):
 
     Returns:  Void.
     """
-    T = TRACE(3)
-
     try:
-        info(3,"Unmounting possibly mounted, simulated disks ...")
-        execCmd("sudo /bin/umount /tmp/ngamsTest/*/*", 0)
-
-        info(3,"Removing directory: " + cfgObj.getRootDirectory())
-        os.system("rm -rf " + cfgObj.getRootDirectory())
-
-        backLogDir = os.path.normpath(cfgObj.getBackLogBufferDirectory() +\
-                                      "/" + NGAMS_BACK_LOG_TMP_PREFIX)
-        info(3,"Removing directory: " + backLogDir)
-        os.system("rm -rf " + backLogDir)
-
-        globBadDir = os.path.normpath(cfgObj.getRootDirectory() +\
-                                      "/" + NGAMS_BAD_FILES_DIR)
-        info(3,"Removing directory: " + globBadDir)
-        os.system("rm -rf " + globBadDir)
-
-        procDir = os.path.normpath(cfgObj.getProcessingDirectory() +\
-                                   "/" + NGAMS_PROC_DIR)
-        info(3,"Removing directory: " + procDir)
-        os.system("rm -rf " + procDir)
-
-        info(3,"Removing directory: " + cfgObj.getLocalLogFile())
-        os.system("rm -rf " + cfgObj.getLocalLogFile())
-
-        info(3,"Removing directory: /tmp/ngamsTest")
-        os.system("rm -rf /tmp/ngamsTest")
+        for d in [cfgObj.getRootDirectory(), "/tmp/ngamsTest"]:
+            info(3,"Removing directory: %s" + d)
+            shutil.rmtree(d, True)
     except Exception, e:
         error("Error encountered removing NG/AMS directories: " + str(e))
 
@@ -760,7 +736,7 @@ def sendPclCmd(host = None,
     Returns:       Created instance of Python Client (ngamsPClient).
     """
     if host is None:
-        host = getHostName()
+        host = 'localhost'
     return ngamsPClient.ngamsPClient(host, port).setAuthorization(auth).\
            setTimeOut(timeOut)
 
@@ -1196,6 +1172,7 @@ def getThreadId(logFile,
 # END: Utility functions
 ###########################################################################
 
+ServerInfo = collections.namedtuple('ServerInfo', ['pid', 'port', 'rootDir'])
 
 class ngamsTestSuite(unittest.TestCase):
     """
@@ -1219,29 +1196,11 @@ class ngamsTestSuite(unittest.TestCase):
         self.__fromSrv       = ""
         self.__toSrv         = ""
         self.__foList        = []
+        self.__mountedDirs   = []
 
     def assertStatus(self, status, expectedStatus='SUCCESS'):
         self.assertIsNotNone(status)
         self.assertEquals(expectedStatus, status.getStatus())
-
-    def addSrvInfo(self,
-                   pid,
-                   port,
-                   mtRtDir = None):
-        """
-        Set the PID and port number used by an external NG/AMS Server running.
-
-        pid:        PID of external server process (integer).
-
-        port:       HTTP socket port number used by external server (integer).
-
-        mtRtDir:    Mount root directory used by the server (string).
-
-        Returns:    Reference to object itself.
-        """
-        self.__extSrvInfo.append([pid, port, mtRtDir])
-        return self
-
 
     def prepExtSrv(self,
                    portNo = 8888,
@@ -1339,22 +1298,14 @@ class ngamsTestSuite(unittest.TestCase):
         if (not multipleSrvs):
             hostId = hostName
         else:
-            hostId = "%s:%d" % (getHostName(), portNo)
+            hostId = "%s:%d" % (hostName, portNo)
 
         tmpCfgObj = ngamsConfig.ngamsConfig().load(tmpCfgFile)
 
         # Take over the DB parameters from the reference.
         mergeRefCfg(tmpCfgObj)
 
-        # Ensure the SQLite DB is created if working with SQLite.
-        # TODO: It would probably be better if we simply run
-        # the SQL script that creates the tables
-        if (tmpCfgObj.getDbInterface().upper().find("SQLITE") != -1):
-            info(1,"Creating SQLite DB file")
-            sqliteDb = os.path.abspath("tmp/" + hostName +".sqlite")
-            if not os.path.isfile(sqliteDb) or clearDb:
-                cpFile("src/ngas_Sqlite_db_template", sqliteDb)
-            tmpCfgObj.storeVal("NgamsCfg.Db[1].Name", sqliteDb)
+        self.point_to_sqlite_database(tmpCfgObj, hostName, not multipleSrvs)
 
         # Clean up.
         tmpCfgFile = saveInFile(None, tmpCfgObj.genXmlDoc(0))
@@ -1395,7 +1346,7 @@ class ngamsTestSuite(unittest.TestCase):
         srvProcess = subprocess.Popen(execCmd)
 
         # We have to wait until the server is serving.
-        pCl = ngamsPClient.ngamsPClient(getHostName(), portNo)
+        pCl = ngamsPClient.ngamsPClient('localhost', portNo)
         startTime = time.time()
         stat = None
         while ((time.time() - startTime) < 20):
@@ -1414,7 +1365,7 @@ class ngamsTestSuite(unittest.TestCase):
             raise Exception,"NGAMS TEST LIB> NG/AMS Server did not start " +\
                   "correctly"
 
-        self.addSrvInfo(srvProcess, portNo, cfgObj.getRootDirectory())
+        self.__extSrvInfo.append(ServerInfo(srvProcess, portNo, cfgObj.getRootDirectory()))
 
         return (cfgObj, dbObj)
 
@@ -1435,7 +1386,7 @@ class ngamsTestSuite(unittest.TestCase):
         info(3,"PID of externally running server. PID: %s, Port: %s " %\
              (str(srvProcess.pid), str(port)))
         info(3,"Killing externally running NG/AMS Server ...")
-        pCl = ngamsPClient.ngamsPClient(getHostName(), port)
+        pCl = ngamsPClient.ngamsPClient('localhost', port)
         try:
             info(1,"Sending OFFLINE command to external server ...")
             stat = pCl.offline(1)
@@ -1476,6 +1427,12 @@ class ngamsTestSuite(unittest.TestCase):
             srvProcess.wait()
             info(3, "Finished server process %d gracefully :)" % (srvProcess.pid,))
 
+    def setUp(self):
+        # Make sure there is a 'tmp' directory here, since most of the tests
+        # depend on it
+        if not os.path.isdir('tmp'):
+            os.mkdir('tmp')
+
     def tearDown(self):
         """
         Clean up the test environment.
@@ -1484,26 +1441,20 @@ class ngamsTestSuite(unittest.TestCase):
         """
         T = TRACE(3)
 
+        if (not getNoCleanUp()):
+            for d in self.__mountedDirs:
+                execCmd("sudo /bin/umount %s" % (d,), 0)
+
         # Make an external servers terminate.
         for srvInfo in self.__extSrvInfo:
-            self.termExtSrv(srvInfo[0], srvInfo[1])
+            self.termExtSrv(srvInfo.pid, srvInfo.port)
             # Remove NGAS Root Directories if clean-up requested.
-            rootDir = srvInfo[2]
-            if ((not getNoCleanUp()) and rootDir):
-                execCmd("sudo /bin/umount %s/*" % rootDir, 0)
-                execCmd("rm -rf %s" % rootDir, 0)
-        # Check that no servers are running.
-        stat, out = execCmd("ps -efww | grep autoOnline")
-        for line in out.split("\n"):
-            if (line.strip() == ""): continue
-            pid = cleanList(line.split(" "))[1]
-            os.system("kill -9 %s 2> /dev/null" % pid)
+            if ((not getNoCleanUp()) and srvInfo.rootDir):
+                shutil.rmtree(srvInfo.rootDir, True)
+
         # Remove temporary files in ngams/ngamsTest/tmp.
         if (not getNoCleanUp()):
-            execCmd("sudo /bin/umount /tmp/ngamsTest/*/*", 0)
-            fileList = glob.glob("tmp/*")
-            for tmpFile in fileList:
-                rmFile(tmpFile)
+            shutil.rmtree('tmp', True)
 
         # Have to reset the log conditions, to avoid that some class created in
         # a subsequent test tries to access this before new log environment
@@ -1627,7 +1578,7 @@ class ngamsTestSuite(unittest.TestCase):
         srvDic = {}
         multSrvs = (len(serverList) - 1)
         cleanUp = 1     # Clean up first time prepSrcExt is called.
-        for srvInfo in serverList:
+        for idx, srvInfo in enumerate(serverList):
             portNo      = int(srvInfo[0])
             domain      = srvInfo[1]
             ipAddress   = srvInfo[2]
@@ -1672,15 +1623,8 @@ class ngamsTestSuite(unittest.TestCase):
             for cfgPar in cfgParList: tmpCfg.storeVal(cfgPar[0], cfgPar[1])
             tmpCfgFile = "tmp/%s_tmp.xml" % srvId
 
-
-            # Exceptional handling for SQLite.
-            # TODO: It would probably be better if we simply run
-            # the SQL script that creates the tables
-            if (tmpCfg.getDbInterface().upper().find("SQLITE") != -1):
-                sqliteDb = os.path.abspath("tmp/" + hostName +".sqlite")
-                if not os.path.isfile(sqliteDb):
-                    cpFile("src/ngas_Sqlite_db_template", sqliteDb)
-                tmpCfg.storeVal("NgamsCfg.Db[1].Name", sqliteDb)
+            # Create a common database only once
+            self.point_to_sqlite_database(tmpCfg, hostName, idx == 0)
 
             tmpCfg.save(tmpCfgFile, 0)
 
@@ -1713,6 +1657,16 @@ class ngamsTestSuite(unittest.TestCase):
 
         return srvDic
 
+    def point_to_sqlite_database(self, cfgObj, hostName, create):
+        # Exceptional handling for SQLite.
+        # TODO: It would probably be better if we simply run
+        # the SQL script that creates the tables
+        if (cfgObj.getDbInterface().upper().find("SQLITE") != -1):
+            sqliteDb = os.path.abspath("tmp/" + hostName +".sqlite")
+            if create:
+                info(1,"Creating SQLite DB file under %s" % (sqliteDb,))
+                cpFile("src/ngas_Sqlite_db_template", sqliteDb)
+            cfgObj.storeVal("NgamsCfg.Db[1].Name", sqliteDb)
 
     def prepDiskCfg(self,
                     diskCfg,
@@ -1798,6 +1752,7 @@ class ngamsTestSuite(unittest.TestCase):
                 fileSysName = fileSysName[0:-3]
                 execCmd("sudo /bin/mount -o loop %s %s" %\
                         (fileSysName, diskDir))
+                self.__mountedDirs.append(diskDir)
                 try:
                     execCmd("sudo /bin/chmod -R a+rwx %s" % diskDir)
                 except:
