@@ -76,7 +76,8 @@ def ngamsFitsRegPlugIn(srvObj,
     # Check file (size + checksum).
     ngamsFitsPlugIn.checkFitsFileSize(workingFile)
     #ngamsFitsPlugIn.c_heckChecksum(parDic, workingFile)
-    ngamsFitsPlugIn.checkFitsChecksum(reqPropsObj, workingFile)
+    if 'skip_checksum' not in parDic:
+        ngamsFitsPlugIn.checkFitsChecksum(reqPropsObj, workingFile)
 
     # Get various information about the file being handled.
     arcFile, dpId, dateDirName = ngamsFitsPlugIn.getDpIdInfo(workingFile)
