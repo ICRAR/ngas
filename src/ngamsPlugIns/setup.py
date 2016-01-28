@@ -48,6 +48,7 @@ setup(
     install_requires=[
         'egenix-mx-base',
         'pcc',
+        'pysqlite',
         'pyfits',
         'ngamsCore',
         'ngamsPClient',

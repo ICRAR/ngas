@@ -27,6 +27,14 @@ with open('../../VERSION') as vfile:
             version = line.split("NGAMS_SW_VER ")[1].strip()[1:-1]
             break
 
+install_requires = [
+    'pcc'
+]
+try:
+    import bsddb
+except ImportError:
+    install_requires.append('bsddb3')
+
 setup(
     name='ngamsCore',
     version=version,
@@ -45,7 +53,5 @@ setup(
         'ngamsData': ['*.fnt', '*.xml', '*.dtd', 'COPYRIGHT', 'LICENSE', 'VERSION'],
         'ngamsLib' : ['README']
     },
-    install_requires=[
-        'pcc'
-    ]
+    install_requires=[install_requires]
 )
