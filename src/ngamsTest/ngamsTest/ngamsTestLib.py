@@ -804,9 +804,11 @@ def filterDbStatus1(statBuf,
     statBufLines = statBuf.split("\n")
     filteredBuf = ""
     for line in statBufLines:
-        if ((line.find("Date:") == 0) or (line.find("Version:") == 0) or
+        if ((line.find("Date:") == 0) or
+            (line.find("Version:") == 0) or
             (line.find("InstallationDate:") == 0) or
-            (line.find("HostId:") == 0) or (line.find("AvailableMb:") == 0) or
+            (line.find("HostId:") == 0) or
+            (line.find("AvailableMb:") == 0) or
             (line.find("TotalDiskWriteTime:") == 0) or
             (line.find("IngestionDate:") == 0) or
             (line.find("CompletionDate:") == 0) or
@@ -814,6 +816,11 @@ def filterDbStatus1(statBuf,
             (line.find("RequestTime:") == 0) or
             (line.find("CompletionTime:") == 0) or
             (line.find("StagingFilename:") == 0) or
+            (line.find("ModificationDate:") == 0) or
+            (line.find("TotalIoTime") == 0) or
+            (line.find("IngestionRate") == 0) or
+            (line.find("ContainerId") == 0) or
+            (line.find("ModificationDate:") == 0) or
             (line.find("ModificationDate:") == 0) or
             (line.find("AccessDate:") == 0)):
             continue
