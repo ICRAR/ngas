@@ -12,7 +12,11 @@
 Module that provide various utilities.
 """
 
-import exceptions, time, subprocess, os, select
+import exceptions
+import os
+import subprocess
+import threading
+import time
 
 
 def checkType(parameter,
@@ -60,10 +64,9 @@ def raiseTypeException(parameter,
           " is not of type " + str(type) + "."
 
 
-def execCmd(cmd,
-            timeOut = -1):
+def execCmd(cmd, timeOut = -1):
     """
-    Execute sthe command given on the UNIX command line and returns a
+    Executes the command given on the UNIX command line and returns a
     list with the cmd exit code and the output written on stdout and stderr.
 
     timeOut:     Timeout waiting for the command in seconds. A timeout of
@@ -73,40 +76,25 @@ def execCmd(cmd,
 
                      [<exit code>, <stdout>, <stderr>]  (list).
     """
-    stdOut = ""
-    stdErr = ""
-    exitCode = 0
-    startTime = time.time()
-    pollTime = 0.100
-    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    while (1):
 
-        # Read the stdout and stderr from our process
-        rdFds, _, _ = select.select([p.stdout, p.stderr], [], [], 0)
-        for rdFd in rdFds:
-            if (rdFd == p.stdout):
-                stdOut = stdOut + rdFd.read()
-            else:
-                stdErr = stdErr + rdFd.read()
+    p = subprocess.Popen(cmd, bufsize=1, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        # Check if it already finished
-        exitCode = p.poll()
-        if (exitCode is None):
-            deltaTime = (time.time() - startTime)
-            if ((timeOut != -1) and (deltaTime > timeOut)):
-                p.kill()
-                raise exceptions.Exception, \
-                      "Executing command " + cmd + " timed out after " +\
-                      str(deltaTime) + " s."
-        else:
-            break
+    if timeOut != -1:
+        killed = threading.Event()
+        def _kill():
+            p.kill()
+            killed.set()
+        startTime = time.time()
+        timer = threading.Timer(timeOut, _kill)
+        timer.daemon = True
+        timer.start()
+    stdout, stderr = p.communicate()
+    if timeOut != -1:
+        timer.cancel()
+        if killed.is_set():
+            raise Exception('Command %s timed out after %.2f [s]' % (cmd, time.time() - startTime))
 
-        time.sleep(pollTime)
-
-    p.stdout.close()
-    p.stderr.close()
-
-    return [exitCode, stdOut, stdErr]
+    return p.poll(), stdout, stderr
 
 
 def checkInList(value,
