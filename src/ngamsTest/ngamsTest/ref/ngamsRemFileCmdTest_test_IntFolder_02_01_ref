@@ -9,6 +9,9 @@ Comment:                            Info about folder: /tmp/ngamsTest/NGAS:8011/
 Compression:                        
 Compression:                        
 Compression:                        
+ContainerId:                        None
+ContainerId:                        None
+ContainerId:                        None
 DiskId:                             
 DiskId:                             
 DiskId:                             
@@ -35,9 +38,12 @@ Id:                                 DIR-INFO
 Ignore:                             
 Ignore:                             
 Ignore:                             
+IngestionRate:                      -1.0
+IngestionRate:                      -1.0
+IngestionRate:                      -1.0
 Message:                            Successfully handled RETRIEVE Command
-Permissions:                        -rw-r--r--
-Permissions:                        drwxr-xr-x
+Permissions:                        -rw-rw-r--
+Permissions:                        drwxrwxr-x
 Permissions:                        drwxrwxr-x
 State:                              ONLINE
 Status:
@@ -47,3 +53,6 @@ SubState:                           IDLE
 Tag:                                
 Tag:                                
 Tag:                                
+TotalIoTime:                        -1.0
+TotalIoTime:                        -1.0
+TotalIoTime:                        -1.0

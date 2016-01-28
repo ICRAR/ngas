@@ -12,7 +12,7 @@ DATAMAX =           160.000000          / Maximum pixel value
 DATAMEAN=           123.048477          / Mean Pixel Value                      
 DATARMS =             8.981074          / RMS of Pixel Values                   
 DATAMED =           123.000000          / Median Pixel Value                    
-CHECKSUM= '3ZTNAZSN3ZSNAZSN'            / ASCII 1's complement checksum         
+CHECKSUM= 'SiGdVhEZShEdShEZ'   / HDU checksum updated 2011-02-01T05:39:29       
 COMMENT FTU-1.44/2001-06-09T14:24:45/                                           
 HISTORY processed by eclipse version 3.6.1                                      
 HISTORY FTU-1.44/2001-06-09/ADD: DATAMIN                                        
@@ -20,6 +20,7 @@ HISTORY FTU-1.44/2001-06-09/ADD: DATAMAX
 HISTORY FTU-1.44/2001-06-09/ADD: DATAMEAN                                       
 HISTORY FTU-1.44/2001-06-09/ADD: DATARMS                                        
 HISTORY FTU-1.44/2001-06-09/ADD: DATAMED                                        
+DATASUM = '2771290005'         / data unit checksum updated 2011-02-01T05:39:29 
 END                                                                             
 
 
@@ -30,7 +31,7 @@ TARGET=FILE
 Parameters Transferred:
 file_id=TEST.2001-05-08T15:25:00.123
 initiator=RETRIEVE
-processing=ngamsTestDppi1
+processing=ngamsTest.ngamsTestDppi1
 test_case=test_DppiProc_03
 test_suite=ngamsRetrieveCmdTest
 time_out=-1
