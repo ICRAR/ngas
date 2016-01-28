@@ -78,9 +78,15 @@ def ngamsGenericOnlinePlugIn(srvObj,
 
     # Build the root directory for the NGAS Volumes and make a glob to
     # get directories under this.
-    ngasVolDir = os.path.normpath(rootDir + os.sep + volumeDir)
+    # Note: the ngamsCfg object already calculates an absolute path, which is
+    # probably not nice. We still have to account for that though
+    if volumeDir.startswith('/'):
+        ngasVolDir = volumeDir
+    else:
+        ngasVolDir = os.path.normpath(rootDir + os.sep + volumeDir)
     dirList = glob.glob(ngasVolDir + os.sep + "*")
     diskInfoDic = {}
+    info(3, 'Will check the following directories for rootDir/volumeDir %s/%s: %r' % (rootDir, volumeDir, dirList))
     for dir in dirList:
         # Check if a '.ngas_volume_id' is found under the directory.
         volInfoFile = os.path.\
