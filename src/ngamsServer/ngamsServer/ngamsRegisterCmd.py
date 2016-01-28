@@ -319,6 +319,9 @@ def _registerExec(srvObj,
                              setTag(errMsg)
             fileFailCount += 1
             regTime = regTimer.stop()
+            # TODO (rtobar, 2016-01): Why don't we raise an exception here?
+            #      Otherwise the command appears as successful on the
+            #      client-side
   
         # Add the file information in the registration report.
         if (emailNotif): regDbm.addIncKey(tmpFileObj)
