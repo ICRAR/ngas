@@ -36,10 +36,11 @@ Python modules.
 #       connection with the Test Suites/Cases to jump back to the index.
 
 import getpass
-import glob
 import sys
 import re
 import pkg_resources
+import importlib
+import inspect
 
 from ngamsLib.ngamsCore import getNgamsVersion
 from pccUt import PccUtTime
@@ -88,42 +89,41 @@ def genTestPlan(title,
                 testSuitePat = None,
                 testCasePatList = []):
     """
-    Generate a test plan for all Test Suites and ech Test Case in these.
+    Generate a test plan for all Test Suites and each Test Case in these.
     For the moment the out it simply a 'rough' HTML document.
 
     Returns:   HTML Test Plan (string).
     """
-    fileList = pkg_resources.resource_listdir(__name__, ".")
-    testPlan = htmlHdr % (title, PccUtTime.TimeStamp().getTimeStamp(),
-                          getpass.getuser(), getNgamsVersion())
+    testModuleNames = pkg_resources.resource_listdir(__name__, ".")
     testPlanList = []
-    for testSuite in fileList:
-        testSuiteName = testSuite.split(".")[0]
-        if (testSuiteName == "ngamsTest"): continue
-        if not re.match("ngams.*Test.py", testSuiteName): continue
+    for testModuleName in testModuleNames:
+        if pkg_resources.resource_isdir(__name__, testModuleName): continue
+        if (testModuleName == "ngamsTest"): continue
+        if not re.match("^ngams.*Test.py$", testModuleName): continue
         if (testSuitePat):
-            if (testSuiteName.find(testSuitePat) != 0): continue
-        exec "import %s" % testSuiteName
+            if (testModuleName.find(testSuitePat) != 0): continue
+
+        testModule = importlib.import_module('ngamsTest.' + testModuleName)
 
         docList = []
-        for method in dir(eval("%s.%s" % (testSuiteName, testSuiteName))):
-            if (method.find("test_") == 0):
+        for method in inspect.getmembers(testModule, inspect.isfunction):
+            methodName = method.__name__
+            if (methodName.find("test_") == 0):
                 if (testCasePatList):
                     match = 0
                     for testCasePat in testCasePatList:
-                        if (method.find(testCasePat) == 0):
+                        if (methodName.find(testCasePat) == 0):
                             match = 1
                             break
                 else:
                     match = 1
                 if (match):
-                    docList.append([method,
-                                    eval("%s.%s.%s.__doc__" %\
-                                         (testSuiteName, testSuiteName,
-                                          method))])
-        testPlanList.append([testSuiteName, eval("%s.%s.__doc__" %\
-                             (testSuiteName, testSuiteName)), docList])
+                    docList.append([methodName, method.__doc__])
+        testPlanList.append([testModuleName, testModule.__doc__, docList])
+
     testPlanList.sort()
+    testPlan = htmlHdr % (title, PccUtTime.TimeStamp().getTimeStamp(),
+                          getpass.getuser(), getNgamsVersion())
     for testSuite in testPlanList:
         testPlan += testSuiteFormat % (testSuite[0], testSuite[1])
         for testCase in testSuite[2]:

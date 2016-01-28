@@ -61,8 +61,8 @@ def getTestList():
     Returns:   List with names of test Python modules (list/string).
     """
     testModList = []
-    filesInNgamsTest = pkg_resources.resource_listdir(__name__, ".")
-    fileList = [f for f in filesInNgamsTest if f.endswith("Test.py")]
+    modulesInNgamsTest = pkg_resources.resource_listdir(__name__, ".")
+    fileList = [f for f in modulesInNgamsTest if f.endswith("Test.py")]
     fileList.sort()
     supprTests = []
     for file in fileList:
@@ -123,7 +123,7 @@ def runAllTests(notifyemail = None,
         sys.stdout.write(line)
         sys.stdout.flush()
         suiteStartTime = time.time()
-        tstCmdLine = "python " + mod + ".py -cfg %s" % ngamsTestLib.getRefCfg()
+        tstCmdLine = "python %s.py -cfg %s" % (mod, ngamsTestLib.getRefCfg())
         stat, stdout, stderr = PccUtUtils.execCmd(tstCmdLine, NGAMS_TEST_MAX_TS_TIME)
         testTime = (time.time() - suiteStartTime)
         if (testTime >= NGAMS_TEST_MAX_TS_TIME):
@@ -374,7 +374,7 @@ def main():
         genStatus()
     elif (tests != []):
         for testModName in tests:
-            testMod   = importlib.import_module('ngamsTest.' + testModName)
+            testMod   = importlib.import_module(testModName)
             runMethod = getattr(testMod, 'run')
             runMethod()
     else:

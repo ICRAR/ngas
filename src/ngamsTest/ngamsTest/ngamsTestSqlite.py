@@ -27,6 +27,7 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  23/04/2002  Created
 #
+import importlib
 """
 Test program that runs the NG/AMS Functional Tests, using SQLite as DB.
 """
@@ -54,9 +55,10 @@ if __name__ == '__main__':
     if (len(sys.argv) > 2): argv += sys.argv[2:]
     skip, status, tests, notifEmail = ngamsTest.parseCommandLine(sys.argv)
     if (tests != []):
-        for testMod in tests:
-            exec "import " + testMod
-            exec testMod + ".run()"
+        for testModName in tests:
+            testMod = importlib.import_module(testModName)
+            run = getattr(testMod, 'run')
+            run()
     else:
         if (skip):
             skip += SKIPLIST1

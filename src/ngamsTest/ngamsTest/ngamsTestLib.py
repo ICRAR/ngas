@@ -27,6 +27,7 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  19/04/2002  Created
 #
+import importlib
 """
 This module contains test utilities used to build the NG/AMS Functional Tests.
 """
@@ -1049,19 +1050,18 @@ def runTest(argv):
         os.mkdir("tmp")
 
     # Execute the test.
-    exec "import " + testModuleName
+    testModule = importlib.import_module(testModuleName)
+    testClass = getattr(testModule, testModuleName)
     if (tests == []):
         # No specific test specified - run all tests.
-        testSuite = unittest.makeSuite(eval(testModuleName + "." +\
-                                            testModuleName))
+        testSuite = unittest.makeSuite(testClass)
     elif (skipDic != {}):
         print "TODO: IMPLEMENT SKIP PARAMETER FOR TEST SUITES!"
         sys.exit(1)
     else:
         testSuite = unittest.TestSuite()
         for testCase in tests:
-            testSuite.addTest(eval(testModuleName + "." + testModuleName +\
-                                   '("' + testCase + '")'))
+            testSuite.addTest(testClass(testCase))
     ngamsTextTestRunner(sys.stdout, 1, 0).run(testSuite)
 
 
@@ -1220,6 +1220,9 @@ class ngamsTestSuite(unittest.TestCase):
         self.__toSrv         = ""
         self.__foList        = []
 
+    def assertStatus(self, status, expectedStatus='SUCCESS'):
+        self.assertIsNotNone(status)
+        self.assertEquals(expectedStatus, status.getStatus())
 
     def addSrvInfo(self,
                    pid,
@@ -1308,13 +1311,12 @@ class ngamsTestSuite(unittest.TestCase):
 
         verbose = getVerboseLevel()
 
-        # Handle DB connection in Reference Configuration File.
-        refCfgObj = ngamsConfig.ngamsConfig().load(getRefCfg())
 
         if (dbCfgName):
             # If a DB Configuration Name is specified, we first have to
             # extract the configuration information from the DB to
             # create a complete temporary cfg. file.
+            refCfgObj = ngamsConfig.ngamsConfig().load(getRefCfg())
             multCons = refCfgObj.getDbMultipleCons()
             dbObj =\
                   ngamsDb.ngamsDb(refCfgObj.getDbServer(),
@@ -1333,10 +1335,11 @@ class ngamsTestSuite(unittest.TestCase):
             tmpCfgFile = cfgFile
 
         # Derive NG/AMS Server name for this instance.
+        hostName = getHostName()
         if (not multipleSrvs):
-            hostName = getHostName()
+            hostId = hostName
         else:
-            hostName = "%s:%d" % (getHostName(), portNo)
+            hostId = "%s:%d" % (getHostName(), portNo)
 
         tmpCfgObj = ngamsConfig.ngamsConfig().load(tmpCfgFile)
 
@@ -1348,8 +1351,9 @@ class ngamsTestSuite(unittest.TestCase):
         # the SQL script that creates the tables
         if (tmpCfgObj.getDbInterface().upper().find("SQLITE") != -1):
             info(1,"Creating SQLite DB file")
-            sqliteDb = "tmp/" + hostName +".sqlite"
-            cpFile("src/ngas_Sqlite_db_template", sqliteDb)
+            sqliteDb = os.path.abspath("tmp/" + hostName +".sqlite")
+            if not os.path.isfile(sqliteDb) or clearDb:
+                cpFile("src/ngas_Sqlite_db_template", sqliteDb)
             tmpCfgObj.storeVal("NgamsCfg.Db[1].Name", sqliteDb)
 
         # Clean up.
@@ -1370,7 +1374,7 @@ class ngamsTestSuite(unittest.TestCase):
                                 interface = tmpCfgObj.getDbInterface(),
                                 parameters = cfgObj.getDbParameters(),
                                 multipleConnections = multCons)
-        checkHostEntry(dbObj, hostName, domain, ipAddress, clusterName)
+        checkHostEntry(dbObj, hostId, domain, ipAddress, clusterName)
 
         # Update configuration.
         tmpCfg = "tmp/CFG_%d_tmp.xml" %\
@@ -1394,19 +1398,14 @@ class ngamsTestSuite(unittest.TestCase):
         pCl = ngamsPClient.ngamsPClient(getHostName(), portNo)
         startTime = time.time()
         stat = None
-        count = 0  # Want to have 10 STATUS Commands successfully handled.
         while ((time.time() - startTime) < 20):
             if (stat):
-                count += 1
-                if (autoOnline):
-                    info(2,"Test server running - State: ONLINE")
-                    if ((stat.getState() == "ONLINE") and (count == 10)): break
-                else:
-                    info(2,"Test server running - State: OFFLINE")
-                    if ((stat.getState() =="OFFLINE") and (count == 10)): break
+                state = "ONLINE" if autoOnline else "OFFLINE"
+                info(2,"Test server running - State: %s" % (state))
+                if stat.getState() == state: break
             try:
                 stat = pCl.status()
-            except Exception, e:
+            except Exception:
                 info(3,"Polled server - not yet running ...")
                 time.sleep(0.2)
 
@@ -1471,7 +1470,11 @@ class ngamsTestSuite(unittest.TestCase):
                 kill9 = waitLoops == 20
 
         if kill9:
-            srvProcess.send_signal(signal.SIGKILL)
+            srvProcess.kill()
+            info(3, "Server process had %d to be killed, sorry :(" % (srvProcess.pid,))
+        else:
+            srvProcess.wait()
+            info(3, "Finished server process %d gracefully :)" % (srvProcess.pid,))
 
     def tearDown(self):
         """
@@ -1501,15 +1504,6 @@ class ngamsTestSuite(unittest.TestCase):
             fileList = glob.glob("tmp/*")
             for tmpFile in fileList:
                 rmFile(tmpFile)
-            #try:
-            #    commands.getstatusoutput("mv %s/CVS %s/.CVS" %(tmpDir,tmpDir))
-            #    commands.getstatusoutput("rm -rf %s/*" % tmpDir)
-            #except:
-            #    pass
-            #try:
-            #    commands.getstatusoutput("mv %s/.CVS %s/CVS" %(tmpDir,tmpDir))
-            #except:
-            #    pass
 
         # Have to reset the log conditions, to avoid that some class created in
         # a subsequent test tries to access this before new log environment
@@ -1629,7 +1623,6 @@ class ngamsTestSuite(unittest.TestCase):
                                                                  (dictionary).
         """
         # Delete all NGAS Mount Root Directories.
-        rmFile("/tmp/ngamsTest/*")
 
         srvDic = {}
         multSrvs = (len(serverList) - 1)
@@ -1650,11 +1643,14 @@ class ngamsTestSuite(unittest.TestCase):
             # Set port number in configuration and allocate a mount root
             # directory + other directories + generate new, temporary
             # configuration file based on this information.
-            srvId = "%s:%d" % (getHostName(), portNo)
+            hostName = getHostName()
+            srvId = "%s:%d" % (hostName, portNo)
             if (multSrvs):
+                rmFile("/tmp/ngamsTest/NGAS:%d" %(portNo,))
                 srvDbHostId = srvId
             else:
-                srvDbHostId = getHostName()
+                rmFile("/tmp/ngamsTest/NGAS")
+                srvDbHostId = hostName
 
             # Create directories.
             if (multSrvs):
@@ -1675,16 +1671,18 @@ class ngamsTestSuite(unittest.TestCase):
             # Set special values if so specified.
             for cfgPar in cfgParList: tmpCfg.storeVal(cfgPar[0], cfgPar[1])
             tmpCfgFile = "tmp/%s_tmp.xml" % srvId
-            tmpCfg.save(tmpCfgFile, 0)
+
 
             # Exceptional handling for SQLite.
             # TODO: It would probably be better if we simply run
             # the SQL script that creates the tables
             if (tmpCfg.getDbInterface().upper().find("SQLITE") != -1):
-                # Ensure the SQLite DB is available if working with SQLite.
-                sqliteDbTpl = "src/ngas_Sqlite_db_template"
-                sqliteDb = tmpCfg.getDbName()
-                os.system("cp %s %s" % (sqliteDbTpl, sqliteDb))
+                sqliteDb = os.path.abspath("tmp/" + hostName +".sqlite")
+                if not os.path.isfile(sqliteDb):
+                    cpFile("src/ngas_Sqlite_db_template", sqliteDb)
+                tmpCfg.storeVal("NgamsCfg.Db[1].Name", sqliteDb)
+
+            tmpCfg.save(tmpCfgFile, 0)
 
             # Check if server has entry in referenced DB. If not, create it.
             multCons = tmpCfg.getDbMultipleCons()
@@ -1702,8 +1700,8 @@ class ngamsTestSuite(unittest.TestCase):
             # Start server + add reference to server configuration object and
             # server DB object.
             srvCfgObj, srvDbObj = self.prepExtSrv(portNo,
-                                                  delDirs = cleanUp,
-                                                  clearDb = cleanUp,
+                                                  delDirs = 0,
+                                                  clearDb = 0,
                                                   autoOnline = 1,
                                                   cfgFile = tmpCfgFile,
                                                   multipleSrvs = multSrvs,
