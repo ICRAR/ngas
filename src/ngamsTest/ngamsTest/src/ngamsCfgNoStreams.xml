@@ -54,6 +54,7 @@
           BlockSize="65536"
           MaxSimReqs="30" 
           RootDirectory="/tmp/ngamsTest/NGAS" 
+          IpAddress="0.0.0.0"
           PortNo="8888" 
           ProxyMode="1"
           Simulation="1"
@@ -73,8 +74,8 @@
                    Replication="1"/>
 
   <SystemPlugIns Id="SystemPlugIns-Std"
-                 LabelPrinterPlugIn="ngamsBrotherPT9200DxPlugIn" 
-                 LabelPrinterPlugInPars="dev=/dev/null,font_file=/opsw/packages/ngams/ngamsData/ngamsBrotherPT9200DxFonts.fnt" 
+                 LabelPrinterPlugIn="ngamsNullLabelPrinterPlugIn"
+                 LabelPrinterPlugInPars="-"
                  OfflinePlugIn="ngamsLinuxOfflinePlugIn" 
                  OfflinePlugInPars="unmount=0" 
                  OnlinePlugIn="ngamsLinuxOnlinePlugIn" 
@@ -132,7 +133,9 @@
                 Synchronize="1"/> 
   </StorageSets>
 
+  <!--
   <Streams Id="Streams-4-Dbl"/>
+	-->
 
   <Processing Id="Processing-Std"
               ProcessingDirectory="/tmp/ngamsTest/NGAS">

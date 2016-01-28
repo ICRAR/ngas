@@ -55,6 +55,7 @@
           MaxSimReqs="30" 
           RootDirectory="/tmp/ngamsTest/NGAS" 
           VolumeDirectory="volumes"
+          IpAddress="0.0.0.0"
           PortNo="8888" 
           ProxyMode="1"
           Simulation="0"
@@ -135,6 +136,7 @@
     <Stream  MimeType="image/x-fits" 
              PlugIn="ngamsFitsPlugIn"
              PlugInPars="compression=gzip --no-name,
+                         skip_checksum=,
                          checksum_util=utilFitsChecksum,
                          checksum_result=0/0000000000000000">
       <StorageSetRef StorageSetId="StorageSet001"/>
