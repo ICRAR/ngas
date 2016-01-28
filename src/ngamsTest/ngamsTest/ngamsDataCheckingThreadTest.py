@@ -93,27 +93,25 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
         cfg.storeVal("NgamsCfg.DataCheckThread[1].Prio", "1")
         cfg.storeVal("NgamsCfg.DataCheckThread[1].MinCycle", "0T00:00:00")
         cfg.save(tmpCfgFile, 0)
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1, tmpCfgFile)
+        self.prepExtSrv(8888, 1, 1, 1, tmpCfgFile)
         client = ngamsPClient.ngamsPClient(getHostName(), 8888)
-        for n in range(3): client.archive("src/SmallFile.fits")
+        for _ in range(3):
+            client.archive("src/SmallFile.fits")
 
         # Wait a while to be sure that one check cycle has been completed.
         logFo = open(cfg.getLocalLogFile(), "r")
         startTime = time.time()
-        run = 1
-        while (run and ((time.time() - startTime) < 60)):
+        found = False
+        while not found and ((time.time() - startTime) < 60):
             lines = logFo.readlines()
             for line in lines:
+                # The DCC finished
                 if (line.find("NGAMS_INFO_DATA_CHK_STAT") != -1):
-                    if (int(float(line.split(" ")[7])) == 6):
-                        run = 0
-                        break
-        logFo.close()
-        if (not run):
-            self.checkEqual("0.306", line.split(" MB. ")[0].split(" ")[-1], 
-                            "Data Check Thread didn't perform check as "+\
-                            "expected")
-        else:
+                    # "6" is what comes after "Number of files checked"
+                    # in the log statement
+                    self.assertEquals(6, int(line.split(" ")[7][:-1]))
+                    found = True
+        if not found:
             self.fail("Data Check Thread didn't complete "+\
                       "check cycle within the expected period of time")
 
