@@ -1618,9 +1618,20 @@ def loadPlugInEntryPoint(plugInName, entryPointMethodName=None):
     also loaded and returned to the caller, who can then use
     the method reference directly
     """
+
+    # By default the entry point has the same name as the module
     if not entryPointMethodName:
-        entryPointMethodName = plugInName
-    plugInModule = importlib.import_module('ngamsPlugIns.' + plugInName)
+        entryPointMethodName = plugInName.split('.')[-1]
+
+    info(2, "Looking for %s plug-in module" % (plugInName,))
+    try:
+        info(3, "Trying with module ngamsPlugIns.%s " % (plugInName,))
+        plugInModule = importlib.import_module('ngamsPlugIns.' + plugInName)
+    except ImportError:
+        info(3, "Trying with module %s " % (plugInName,))
+        plugInModule = importlib.import_module(plugInName)
+
+    info(2, "Loading entry-point method %s from module %s " % (entryPointMethodName,plugInModule.__name__))
     return getattr(plugInModule, entryPointMethodName)
 
 # EOF
