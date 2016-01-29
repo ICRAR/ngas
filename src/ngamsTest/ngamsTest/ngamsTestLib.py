@@ -1126,14 +1126,14 @@ def incArcfile(filename,
 
     Returns:     Void.
     """
-    arcFile = str(pyfits.getval('ARCFILE'))
+    arcFile = str(pyfits.getval(filename, 'ARCFILE'))
     idx = arcFile.find(".")
     insId = arcFile[0:idx]
     ts = arcFile[(idx + 1):]
     newMjd = PccUtTime.TimeStamp().initFromTimeStamp(ts).getMjd() +\
              (float(step) / 86400.0)
     newArcFile = insId + "." + PccUtTime.TimeStamp(newMjd).getTimeStamp()
-    pyfits.setval('ARCFILE', newArcFile)
+    pyfits.setval(filename, 'ARCFILE', value=newArcFile)
     # TODO: Use PCFITSIO to reprocess the checksum.
     commands.getstatusoutput("add_chksum " + filename)
 
