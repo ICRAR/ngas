@@ -207,9 +207,9 @@ class ngamsArchiveStressTest(ngamsTestSuite):
              semantical errors. Only in the former case a reconnection should
              be attempted.
         """
-        print "TODO: Disabled."
+        # TODO: Disabled."
         return
-        self._scheduleTest(0)
+        # self._scheduleTest(0)
 
 
     def test_StressTest_3(self):
