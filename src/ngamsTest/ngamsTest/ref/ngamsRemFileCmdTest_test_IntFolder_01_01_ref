@@ -9,9 +9,6 @@ Comment:                            Info about folder: /tmp/ngamsTest/NGAS/FitsS
 Compression:                        
 Compression:                        
 Compression:                        
-ContainerId:                        None
-ContainerId:                        None
-ContainerId:                        None
 DiskId:                             
 DiskId:                             
 DiskId:                             
@@ -38,9 +35,6 @@ Id:                                 DIR-INFO
 Ignore:                             
 Ignore:                             
 Ignore:                             
-IngestionRate:                      -1.0
-IngestionRate:                      -1.0
-IngestionRate:                      -1.0
 Message:                            Successfully handled RETRIEVE Command
 Permissions:                        -rw-rw-r--
 Permissions:                        drwxrwxr-x
@@ -53,6 +47,3 @@ SubState:                           IDLE
 Tag:                                
 Tag:                                
 Tag:                                
-TotalIoTime:                        -1.0
-TotalIoTime:                        -1.0
-TotalIoTime:                        -1.0

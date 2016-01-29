@@ -249,19 +249,18 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         diskId1 = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         fileId  = "TEST.2001-05-08T15:25:00.123"
         fileVer = 2
-        sendPclCmd().sendCmd(NGAMS_CLONE_CMD, pars=[["disk_id", diskId1]])
+        status = sendPclCmd().sendCmd(NGAMS_CLONE_CMD, pars=[["disk_id", diskId1]])
+        self.assertEquals('SUCCESS', status.getStatus())
+
         diskId2 = "tmp-ngamsTest-NGAS-FitsStorage2-Main-3"
         filePath = "/tmp/ngamsTest/NGAS/FitsStorage2-Main-3/saf/" +\
-                   "2001-05-08/2/TEST.2001-05-08T15:25:00.123.fits.Z"
+                   "2001-05-08/2/TEST.2001-05-08T15:25:00.123.fits.gz"
         for execute in [0, 1]:
             httpPars=[["disk_id", diskId2], ["file_id", fileId],
                       ["file_version", fileVer], ["execute", execute]]
-            tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_REMFILE_CMD,
-                                     pars=httpPars)
-            refStatFile = "ref/ngamsRemFileCmdTest_test_" +\
-                          "FileVerHandling_01_0%d_ref" % (execute + 1)
-            self.checkFilesEq(refStatFile, tmpStatFile,
-                              "Incorrect handling of REMFILE Command detected")
+            stat = sendPclCmd().sendCmd(NGAMS_REMFILE_CMD, pars=httpPars)
+            self.assertStatus(stat)
+
             fileInfo = ngamsFileInfo.ngamsFileInfo()
             try:
                 fileInfo.read(dbObj, fileId, fileVer, diskId2)
@@ -273,6 +272,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
             else:
                 if (os.path.exists(filePath)):
                     self.fail("File not removed as expected")
+
             refStatFile = "ref/ngamsRemFileCmdTest_test_" +\
                           "FileVerHandling_01_0%d_ref" % (execute + 3)
             tmpStatFile = saveInFile(None, filterDbStatus1(fileInfo.dumpBuf()))

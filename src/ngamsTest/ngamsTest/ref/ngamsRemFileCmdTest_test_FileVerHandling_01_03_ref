@@ -1,14 +1,14 @@
 FileStatus:
 DiskId:                             tmp-ngamsTest-NGAS-FitsStorage2-Main-3
-FileName:                           saf/2001-05-08/2/TEST.2001-05-08T15:25:00.123.fits.Z
+FileName:                           saf/2001-05-08/2/TEST.2001-05-08T15:25:00.123.fits.gz
 FileId:                             TEST.2001-05-08T15:25:00.123
 FileVersion:                        2
-Format:                             application/x-cfits
-FileSize:                           53546
+Format:                             application/x-gfits
+FileSize:                           45823
 UncompressedFileSize:               69120
-Compression:                        gzip
+Compression:                        gzip --no-name
 Ignore:                             0
-Checksum:                           1246906309
+Checksum:                           1379947874
 ChecksumPlugIn:                     ngamsGenCrc32
 FileStatus:                         00000000
 Tag:                                
