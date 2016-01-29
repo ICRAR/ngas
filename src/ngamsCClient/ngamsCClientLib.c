@@ -3148,7 +3148,8 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
 				while (bytesRead > 0) {
 					int bytes_written = write(sockFd, p, bytesRead + gap);
 					if (bytes_written <= 0) {
-						printf("write to socket failed");
+						ngamsLogDebug("Error while sending data to NGAS server: %s", strerror(errno));
+						goto readResp;
 					}
 					bytesRead -= bytes_written;
 					p += bytes_written;
@@ -3196,6 +3197,7 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
 		}
 	}
 
+readResp:
 	ngamsLogDebug(
 			"Finish sending data. Try to get reply's header from server...");
 	/* Receive the reply for the request */
