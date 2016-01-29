@@ -40,7 +40,7 @@ import os, string, httplib, time, getpass, socket, urlparse
 import urllib, urllib2, re, select, cPickle
 from pccUt import PccUtTime
 from ngamsCore import genLog, info, TRACE, trim, getHostName, warning,\
-    NGAMS_HTTP_SUCCESS, getVerboseLevel, NGAMS_CONT_MT, NGAMS_SOCK_TIMEOUT_DEF,\
+    NGAMS_HTTP_SUCCESS, getMaxLogLevel, NGAMS_CONT_MT, NGAMS_SOCK_TIMEOUT_DEF,\
     NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM,\
     getFileSize, NGAMS_ARCH_REQ_MT, getHostId, getUniqueNo,\
     NGAMS_MAX_FILENAME_LEN, error, NGAMS_UNKNOWN_MT, rmFile
@@ -441,7 +441,7 @@ def _httpHandleResp(fileObj,
     if ((not dataTargFile) and (not returnFileObj)):
         _waitForResp(fileObj, timeOut)
         data = fileObj.read(dataSize)
-        if (getVerboseLevel() > 4):
+        if (getMaxLogLevel() > 4):
             info(5,"Data received from remote host=|%s|" %\
                  str(data).replace("\n", ""))
     elif (returnFileObj):

@@ -44,7 +44,7 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
     NGAMS_HOST_DOMAIN, rmFile, NGAMS_HOST_REMOTE, NGAMS_RETRIEVE_CMD, genLog, \
     warning, NGAMS_STATUS_CMD, getHostName, getHostId, NGAMS_CACHE_DIR, \
     NGAMS_DATA_CHECK_THR, getFileSize, logFlush, notice, info,\
-    loadPlugInEntryPoint
+    loadPlugInEntryPoint, getMaxLogLevel
 
 
 def _locateArchiveFile(srvObj,
@@ -161,7 +161,7 @@ def _locateArchiveFile(srvObj,
     fileVerList = candFileDic.keys()
     fileVerList.sort()
     fileVerList.reverse()
-    if ((PccLog.getVerboseLevel() >= 4) or (PccLog.getLogLevel() >= 4)):
+    if getMaxLogLevel() >= 4:
         msg = ""
         count = 1
         for fileVer in fileVerList:

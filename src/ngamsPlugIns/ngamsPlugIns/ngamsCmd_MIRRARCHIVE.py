@@ -54,7 +54,7 @@ from ngamsLib import ngamsDbCore, ngamsDiskInfo, ngamsHighLevelLib, ngamsLib, \
     ngamsFileInfo
 from ngamsLib.ngamsCore import TRACE, getHostName, genLog, error, \
     checkCreatePath, info, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
-    NGAMS_BUSY_SUBSTATE, NGAMS_STAGING_DIR, genUniqueId, getVerboseLevel, mvFile, \
+    NGAMS_BUSY_SUBSTATE, NGAMS_STAGING_DIR, genUniqueId, getMaxLogLevel, mvFile, \
     getFileCreationTime, NGAMS_FILE_STATUS_OK, getDiskSpaceAvail, \
     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, loadPlugInEntryPoint
 from ngamsServer import ngamsCacheControlThread
@@ -337,7 +337,7 @@ def handleCmd(srvObj,
          " to handle data for file with URI: " + baseName)
     timeBeforeDapi = time.time()
     resDapi = plugInMethod(srvObj, reqPropsObj)
-    if (getVerboseLevel() > 4):
+    if (getMaxLogLevel() > 4):
         info(3, "Invoked DAPI: %s. Time: %.3fs." %\
              (plugIn, (time.time() - timeBeforeDapi)))
         info(3, "Result DAPI: %s" % str(resDapi.toString()))

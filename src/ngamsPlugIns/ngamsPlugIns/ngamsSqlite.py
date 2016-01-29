@@ -41,7 +41,7 @@ the NG/AMS Cursor Object API definition.
 import os
 
 from mx import DateTime
-from ngamsLib.ngamsCore import TRACE, alert, getVerboseLevel, info, error
+from ngamsLib.ngamsCore import TRACE, alert, getMaxLogLevel, info, error
 from pccUt import PccUtTime
 
 
@@ -296,10 +296,10 @@ class ngamsSqliteCursor:
         self.__dbDrv = None
         self.__cursorObj = None
 
-        if (getVerboseLevel() > 4):
+        if (getMaxLogLevel() > 4):
             info(5, "Creating cursor in NGAS SQLite DB ...")
         self.__dbDrv = sqlite.connect(db)
-        if (getVerboseLevel() > 4):
+        if (getMaxLogLevel() > 4):
             info(5, "Created cursor in NGAS SQLite DB ...")
         self.__cursorObj = self.__dbDrv.cursor()
         if ((query != None) and (len(query) > 0)): self._init(query + ";")
@@ -332,7 +332,7 @@ class ngamsSqliteCursor:
         T = TRACE(5)
 
         query = _queryRewrite(query)
-        if (getVerboseLevel() > 3): info(4, "Executing query: %s" % query)
+        if (getMaxLogLevel() > 3): info(4, "Executing query: %s" % query)
         type = self.__cursorObj.execute(query)
         return self
 

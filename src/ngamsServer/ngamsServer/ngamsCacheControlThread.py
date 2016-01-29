@@ -43,7 +43,7 @@ except:
     import sqlite3 as sqlite
 
 from ngamsLib.ngamsCore import info, logFlush, TRACE, getHostId, rmFile,\
-    getVerboseLevel, iso8601ToSecs, error, warning, notice, genLog, alert,\
+    getMaxLogLevel, iso8601ToSecs, error, warning, notice, genLog, alert,\
     loadPlugInEntryPoint
 from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib
 
@@ -339,13 +339,13 @@ def queryCacheDbms(srvObj,
     try:
         srvObj._cacheContDbmsSem.acquire()
         sqlQuery += ";"
-        if (getVerboseLevel() > 4):
+        if (getMaxLogLevel() > 4):
             info(5, "Performing SQL query (Cache DBMS): " + str(sqlQuery))
         srvObj._cacheContDbmsCur.execute(sqlQuery)
         srvObj._cacheContDbms.commit() # TODO: Investigate this.
         res = srvObj._cacheContDbmsCur.fetchall()
         srvObj._cacheContDbmsSem.release()
-        if (getVerboseLevel() > 4):
+        if (getMaxLogLevel() > 4):
             info(5, "Result of SQL query  (Cache DBMS) (" +\
                  str(sqlQuery) + "): " + str(res))
         return res

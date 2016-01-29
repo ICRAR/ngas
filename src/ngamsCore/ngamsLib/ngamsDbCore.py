@@ -27,16 +27,14 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  07/03/2008  Created
 #
-
 """
 Core class for the NG/AMS DB interface.
 """
 
 import time, base64, random
 
-from pccLog import  PccLog
 from ngamsCore import info, notice, error, warning, loadPlugInEntryPoint
-from ngamsCore import TRACE, getVerboseLevel, getThreadName, genLog, getTestMode, timeRef2Iso8601
+from ngamsCore import TRACE, getMaxLogLevel, getThreadName, genLog, getTestMode, timeRef2Iso8601
 import threading
 
 
@@ -414,7 +412,7 @@ class ngamsDbTimer:
             stopTime = time.time()
             deltaTime = (stopTime - self.__startTime)
             self.__dbConObj.updateDbTime(deltaTime)
-            if (PccLog.getVerboseLevel() >= 4):
+            if (getMaxLogLevel() >= 4):
                 msg = "DB-TIME: Time spent for DB query: |%s|: %.6fs" %\
                       (self.__query, deltaTime)
                 info(4, msg)
@@ -537,7 +535,7 @@ class ngamsDbCore:
         Returns:   Reference to object itself.
         """
         if (not self.__multipleConnections):
-            if (getVerboseLevel() > 4): info(5, "Taking DB Access Semaphore")
+            if (getMaxLogLevel() > 4): info(5, "Taking DB Access Semaphore")
             self.__dbSem.acquire()
 
 
@@ -548,7 +546,7 @@ class ngamsDbCore:
         Returns:   Reference to object itself.
         """
         if (not self.__multipleConnections):
-            if (getVerboseLevel() > 4):
+            if (getMaxLogLevel() > 4):
                 info(5, "Releasing DB Access Semaphore")
             self.__dbSem.release()
 
@@ -561,7 +559,7 @@ class ngamsDbCore:
         """
         # TODO: Check if really needed with a Global DB Semaphore (if yes
         #       write the reason in the documentation).
-        if (getVerboseLevel() > 4):
+        if (getMaxLogLevel() > 4):
             info(5, "Taking Global DB Access Semaphore")
         global _globalDbSem
         _globalDbSem.acquire()
@@ -575,7 +573,7 @@ class ngamsDbCore:
         """
         # TODO: Check if really needed with a Global DB Semaphore (if yes
         #       write the reason in the documentation).
-        if (getVerboseLevel() > 4):
+        if (getMaxLogLevel() > 4):
             info(5, "Releasing Global DB Access Semaphore")
         global _globalDbSem
         _globalDbSem.release()
@@ -952,7 +950,7 @@ class ngamsDbCore:
         """
         T = TRACE(5)
 
-        if (getVerboseLevel() > 4):
+        if (getMaxLogLevel() > 4):
             info(5, "Performing SQL query: " + str(sqlQuery))
 
         #####################################################################
@@ -1012,7 +1010,7 @@ class ngamsDbCore:
         # with a 1s delay between each attempt. If all attempts to query the DB
         # fail, return an error in case the result was empty and such a result
         # should be reported as an error.
-        if (getVerboseLevel() > 4):
+        if (getMaxLogLevel() > 4):
             info(5, "Result of SQL query (" + str(sqlQuery) + "): " + str(res))
         if ((res == []) and (not ignoreEmptyRes) and
             (sqlQuery.find("SELECT ") != -1)):
@@ -1046,7 +1044,7 @@ class ngamsDbCore:
         T = TRACE()
 
         try:
-            if (getVerboseLevel() > 4):
+            if (getMaxLogLevel() > 4):
                 info(5, "Performing SQL query (using a cursor): " +\
                      str(sqlQuery))
             self.takeDbSem()

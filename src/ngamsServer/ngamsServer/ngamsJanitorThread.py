@@ -43,7 +43,7 @@ import ngamsArchiveUtils, ngamsSrvUtils
 from ngamsLib.ngamsCore import TRACE, info, NGAMS_JANITOR_THR, \
     getFileCreationTime, getFileModificationTime, getFileAccessTime, rmFile, \
     warning, NGAMS_DB_DIR, NGAMS_DB_NGAS_FILES, checkCreatePath, \
-    NGAMS_DB_CH_CACHE, getHostId, getVerboseLevel, NGAMS_NOTIF_DATA_CHECK, \
+    NGAMS_DB_CH_CACHE, getHostId, getMaxLogLevel, NGAMS_NOTIF_DATA_CHECK, \
     NGAMS_TEXT_MT, NGAMS_PICKLE_FILE_EXT, NGAMS_DB_CH_FILE_DELETE, \
     NGAMS_DB_CH_FILE_INSERT, NGAMS_DB_CH_FILE_UPDATE, notice, error, \
     isoTime2Secs, genLog, NGAMS_PROC_DIR, NGAMS_SUBSCR_BACK_LOG_DIR, takeLogSem, \
@@ -663,7 +663,7 @@ def checkUpdateDbSnapShots(srvObj):
                             tmpSnapshotDbm[key] = pickleValue
                         else:
                             # Remove this entry from the DB Snapshot.
-                            if (getVerboseLevel() >= 5):
+                            if (getMaxLogLevel() >= 5):
                                 msg = "Scheduling entry: %s in DB Snapshot " +\
                                       "for disk with ID: %s for removal"
                                 info(4,msg % (diskId, key))
@@ -707,7 +707,7 @@ def checkUpdateDbSnapShots(srvObj):
                 # jagonzal: We need to reformat the values and skip administrative elements #################
                 if (str(key).find("__") != -1): continue
                 #############################################################################################
-                if (getVerboseLevel() >= 4):
+                if (getMaxLogLevel() >= 4):
                     msg = "Removing entry: %s from DB Snapshot for " +\
                           "disk with ID: %s"
                     info(4,msg % (key, diskId))
