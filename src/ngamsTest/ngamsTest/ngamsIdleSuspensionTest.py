@@ -414,7 +414,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
             self.checkEqual("Successfully handled request",
                             statObj.getMessage(),
                             "Unexpected return value for RETRIEVE Command")
-            self.checkFilesEq("src/SmallFile.fits.Z", tmpRetFile,
+            self.checkFilesEq("src/SmallFile.fits.gz", tmpRetFile,
                               "File retrieved incorrect")
             info(1,"TODO!: Check that the file has been properly returned")
 

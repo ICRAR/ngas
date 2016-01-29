@@ -2428,7 +2428,7 @@ class ngamsServer:
              format(getHostName(), ipAddress, str(portNo)))
         self.__httpDaemon = ngamsHttpServer((ipAddress, portNo),
                                             ngamsHttpRequestHandler)
-        info(1,"NG/AMS HTTP Server ready (Host: {0} - IP: {1} - Port: {2}...)".\
+        info(1,"NG/AMS HTTP Server ready (Host: {0} - IP: {1} - Port: {2})".\
              format(getHostName(), ipAddress, str(portNo)))
         self.__httpDaemon.serve_forever()
 

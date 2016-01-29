@@ -38,10 +38,10 @@ import sys
 from ngamsLib import ngamsConfig
 from ngamsLib.ngamsCore import getHostName, info, NGAMS_RETRIEVE_CMD, \
     checkCreatePath, rmFile
-from ngamsLib.ngamsHighLevelLib import genTmpFilename
 from ngamsPClient import ngamsPClient
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
-    getClusterName, getNcu11, getNmu, sendPclCmd, runTest, waitTillSuspended
+    getClusterName, getNcu11, getNmu, sendPclCmd, runTest, waitTillSuspended, \
+    genTmpFilename
 
 
 class ngamsRetrieveCmdTest(ngamsTestSuite):
@@ -108,7 +108,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                           "Execution")
 
         # Check file retrieved.
-        refFile = "src/SmallFile.fits.Z"
+        refFile = "src/SmallFile.fits.gz"
         self.checkFilesEq(refFile, trgFile, "Retrieved file incorrect")
 
 
@@ -199,7 +199,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                           "Retrieval")
 
         # Check the retrieved file (checksum).
-        refFile = "src/TinyTestFile.fits.Z"
+        refFile = "src/TinyTestFile.fits.gz"
         self.checkFilesEq(refFile, trgFile, "Retrieved file incorrect")
 
 
@@ -241,7 +241,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         fo = open(trgFile)
         logBuf = fo.read()
         fo.close()
-        refStr = "NG/AMS HTTP Server ready (Host: %s - Port: 8000)" %\
+        refStr = "NG/AMS HTTP Server ready (Host: %s - IP: 0.0.0.0 - Port: 8000)" %\
                  getHostName()
         if (logBuf.find(refStr) == -1):
             self.fail("Illegal Log File retrieved from " + getHostName())
@@ -254,7 +254,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         fo = open(trgFile)
         logBuf = fo.read()
         fo.close()
-        refStr = "NG/AMS HTTP Server ready (Host: %s - Port: 8011" %\
+        refStr = "NG/AMS HTTP Server ready (Host: %s - IP: 0.0.0.0 - Port: 8011)" %\
                  getHostName()
         if (logBuf.find(refStr) == -1):
             self.fail("Illegal Log File retrieved from %s/%s" %\
@@ -603,7 +603,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         """
         tmpCfgFile = genTmpFilename("ngamsRetrieveCmdTest")
         cfg = ngamsConfig.ngamsConfig().load("src/ngamsCfg.xml")
-        cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].Name", "ngamsTestDppi1")
+        cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].Name", "ngamsTest.ngamsTestDppi1")
         cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].PlugInPars",
                      "TAG=test_DppiProc_01,TARGET=FILE")
         cfg.save(tmpCfgFile, 0)
@@ -612,7 +612,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_01")
         cmdPars = [["file_id", "TEST.2001-05-08T15:25:00.123"],
-                   ["processing", "ngamsTestDppi1"],
+                   ["processing", "ngamsTest.ngamsTestDppi1"],
                    ["test_suite", "ngamsRetrieveCmdTest"],
                    ["test_case", "test_DppiProc_01"]]                   
         stat = ngamsPClient.ngamsPClient().sendCmdGen(getHostName(), 8888,
@@ -653,7 +653,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         """
         tmpCfgFile = genTmpFilename("ngamsRetrieveCmdTest")
         cfg = ngamsConfig.ngamsConfig().load("src/ngamsCfg.xml")
-        cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].Name", "ngamsTestDppi1")
+        cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].Name", "ngamsTest.ngamsTestDppi1")
         cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].PlugInPars",
                      "TAG=test_DppiProc_02,TARGET=BUFFER")
         cfg.save(tmpCfgFile, 0)
@@ -662,7 +662,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_02")
         cmdPars = [["file_id", "TEST.2001-05-08T15:25:00.123"],
-                   ["processing", "ngamsTestDppi1"],
+                   ["processing", "ngamsTest.ngamsTestDppi1"],
                    ["test_suite", "ngamsRetrieveCmdTest"],
                    ["test_case", "test_DppiProc_02"]]                   
         stat = ngamsPClient.ngamsPClient().sendCmdGen(getHostName(), 8888,
@@ -703,7 +703,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         ...
         """
         ncuCfgPars = [["NgamsCfg.Processing[1].PlugIn[1].Name",
-                       "ngamsTestDppi1"],
+                       "ngamsTest.ngamsTestDppi1"],
                       ["NgamsCfg.Processing[1].PlugIn[1].PlugInPars",
                        "TAG=test_DppiProc_02,TARGET=FILE"]]
         self.prepCluster("src/ngamsCfg.xml",
@@ -713,7 +713,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_03")
         cmdPars = [["file_id", "TEST.2001-05-08T15:25:00.123"],
-                   ["processing", "ngamsTestDppi1"],
+                   ["processing", "ngamsTest.ngamsTestDppi1"],
                    ["test_suite", "ngamsRetrieveCmdTest"],
                    ["test_case", "test_DppiProc_03"]]                   
         stat = ngamsPClient.ngamsPClient().sendCmdGen(getHostName(), 8000,
@@ -776,7 +776,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         # Check that the target files have been archived in their
         # appropriate locations.
         trgFile = "tmp/test_VolumeDir_01_tmp"
-        refFile = "src/SmallFile.fits.Z"
+        refFile = "src/SmallFile.fits.gz"
         client = ngamsPClient.ngamsPClient(getHostName(), 8888)
         client.retrieve2File("TEST.2001-05-08T15:25:00.123", 1, trgFile)
         self.checkFilesEq(refFile, trgFile, "Retrieved file incorrect")
