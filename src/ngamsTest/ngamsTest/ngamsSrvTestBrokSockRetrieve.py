@@ -60,8 +60,6 @@ def genReplyRetrieveFail(srvObj,
     
     # Send back reply with the result queried.
     try:
-        # TODO: Make possible to send back several results - use multipart
-        #       mime-type message -- for now only one result is sent back.
         resObj = statusObjList[0].getResultObject(0)
 
         mimeType = resObj.getMimeType()
@@ -75,48 +73,16 @@ def genReplyRetrieveFail(srvObj,
         info(4,"Sending header: Content-Disposition: " + contDisp)
         httpRef.send_header('Content-Disposition', contDisp)
         httpRef.wfile.write("\n")
-        
-        # Send back data from the memory buffer, from the result file, or
-        # from HTTP socket connection.
-        if (resObj.getObjDataType() == NGAMS_PROC_DATA):
-            info(3,"Sending data in buffer to requestor ...")
-            httpRef.wfile.write(resObj.getDataRef())
-        elif (resObj.getObjDataType() == NGAMS_PROC_FILE):
-            info(3,"Reading data block-wise from file and sending " +\
-                 "to requestor ...")
-            fd = open(resObj.getDataRef())
-            dataSent = 0
-            dataToSent = getFileSize(resObj.getDataRef())
-            while (dataSent < dataToSent):
-                tmpData = fd.read(srvObj.getCfg().getBlockSize())
-                os.write(httpRef.wfile.fileno(), tmpData)
-                dataSent += len(tmpData)
 
-                #############################################################
-                # TEST: SIMULATE BROKEN SOCKET BY TERMINATING WHEN HALF OF
-                #       THE DATA HAS BEEN SENT.
-                #############################################################
-                if (dataSent > (dataToSent / 2)):
-                    srvObj.killServer()
-                    sys.exit(0)
-                #############################################################
-                
-        else:
-            # NGAMS_PROC_STREAM - read the data from the File Object in
-            # blocks and send it directly to the requestor.
-            info(3,"Routing data from foreign location to requestor ...")
-            dataSent = 0
-            dataToSent = dataSize
-            while (dataSent < dataToSent):
-                tmpData = resObj.getDataRef().\
-                          read(srvObj.getCfg().getBlockSize())
-                os.write(httpRef.wfile.fileno(), tmpData)
-                dataSent += len(tmpData)
+        #############################################################
+        # TEST: SIMULATE BROKEN SOCKET BY TERMINATING WHEN HALF OF
+        #       THE DATA HAS BEEN SENT.
+        #############################################################
+        info(2, "Simulating crash on server, which will screw up all connections")
+        srvObj.killServer()
+        sys.exit(0)
+        #############################################################
 
-        info(4,"HTTP reply sent to: " + str(httpRef.client_address))
-        reqPropsObj.setSentReply(1)
-    
-        cleanUpAfterProc(statusObjList)
     except Exception, e:
         cleanUpAfterProc(statusObjList)
         raise e

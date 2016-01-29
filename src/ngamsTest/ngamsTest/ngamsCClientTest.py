@@ -79,7 +79,7 @@ def _execCClient(unpackXmlStat = 1,
     if (cmdLine.find("-servers") == -1):
         cmdLine += " -host %s" % getHostName()
     info(1,"Invoking NG/AMS C-Client with command: " + cmdLine)
-    stat, out = commands.getstatusoutput(cmdLine)
+    _, out = commands.getstatusoutput(cmdLine)
     if (unpackXmlStat):
         statObjList = []
         xmlStatList = out.split("Command repetition counter:")
@@ -217,15 +217,15 @@ class ngamsCClientTest(ngamsTestSuite):
                                      ["-fileVersion", "2"]])[0]
         self.checkTags(statObj.dumpBuf(),
                        ["NumberOfFiles:                      2",
-                        "BytesStored:                        107092",
-                        "saf/2001-05-08/2/TEST.2001-05-08T15:25:00.123.fits.Z",
+                        "BytesStored:                        91646",
+                        "saf/2001-05-08/2/TEST.2001-05-08T15:25:00.123.fits.gz",
                         "TEST.2001-05-08T15:25:00.123",
-                        "application/x-cfits",
-                        "FileSize:                           53546",
+                        "application/x-gfits",
+                        "FileSize:                           45823",
                         "UncompressedFileSize:               69120",
                         "Compression:                        gzip",
                         "Ignore:                             0",
-                        "Checksum:                           1246906309",
+                        "Checksum:                           1379947874",
                         "ChecksumPlugIn:                     ngamsGenCrc32"])
 
 
@@ -258,7 +258,7 @@ class ngamsCClientTest(ngamsTestSuite):
                                      ["-fileId", fileId],
                                      ["-fileVersion", "2"]])[0]
         self.checkTags(statObj.dumpBuf(),
-                       ["saf/2001-05-08/2/TEST.2001-05-08T15:25:00.123.fits.Z",
+                       ["saf/2001-05-08/2/TEST.2001-05-08T15:25:00.123.fits.gz",
                         "TEST.2001-05-08T15:25:00.123"])
 
 
@@ -444,7 +444,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         rmFile("tmp/reqCallBack_tmp")
         saveInFile("tmp/reqCallBack_tmp", "reqCallBack_BlockCmds1")
-        self.prepExtSrv(srvModule="ngamsTest/ngamsSrvTestDynReqCallBack.py")
+        self.prepExtSrv(srvModule="ngamsSrvTestDynReqCallBack")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
@@ -484,7 +484,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         rmFile("tmp/reqCallBack_tmp")
         saveInFile("tmp/reqCallBack_tmp", "reqCallBack_SrvCrash1")
-        self.prepExtSrv(srvModule="ngamsTest/ngamsSrvTestDynReqCallBack.py")
+        self.prepExtSrv(srvModule="ngamsSrvTestDynReqCallBack")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
@@ -541,7 +541,7 @@ class ngamsCClientTest(ngamsTestSuite):
         saveInFile("tmp/reqCallBack_tmp", "reqCallBack_IllegalResp")
         rmFile("tmp/ngamsServerTestIllegalResp_tmp")
         saveInFile("tmp/ngamsServerTestIllegalResp_tmp", "\015\012")
-        self.prepExtSrv(srvModule="ngamsTest/ngamsSrvTestDynReqCallBack.py")
+        self.prepExtSrv(srvModule="ngamsSrvTestDynReqCallBack")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
@@ -580,7 +580,7 @@ class ngamsCClientTest(ngamsTestSuite):
         saveInFile("tmp/reqCallBack_tmp", "reqCallBack_IllegalResp")
         rmFile("tmp/ngamsServerTestIllegalResp_tmp")
         saveInFile("tmp/ngamsServerTestIllegalResp_tmp", "")
-        self.prepExtSrv(srvModule="ngamsTest/ngamsSrvTestDynReqCallBack.py")
+        self.prepExtSrv(srvModule="ngamsSrvTestDynReqCallBack")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
@@ -619,7 +619,7 @@ class ngamsCClientTest(ngamsTestSuite):
         saveInFile("tmp/reqCallBack_tmp", "reqCallBack_IllegalResp")
         rmFile("tmp/ngamsServerTestIllegalResp_tmp")
         saveInFile("tmp/ngamsServerTestIllegalResp_tmp", "f-423hcqfe-0")
-        self.prepExtSrv(srvModule="ngamsTest/ngamsSrvTestDynReqCallBack.py")
+        self.prepExtSrv(srvModule="ngamsSrvTestDynReqCallBack")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],
@@ -673,7 +673,7 @@ class ngamsCClientTest(ngamsTestSuite):
 
         rmFile("tmp/reqCallBack_tmp")
         saveInFile("tmp/reqCallBack_tmp", "reqCallBack_IllegalResp")
-        self.prepExtSrv(srvModule="ngamsTest/ngamsSrvTestDynReqCallBack.py")
+        self.prepExtSrv(srvModule="ngamsSrvTestDynReqCallBack")
         httpResp = "HTTP/1.0 200 OK\015\012" +\
                    "Server: NGAMS/v2.3/2004-07-12T11:39:39\015\012" +\
                    "Date: Thu, 7 Oct 2004 16:20:28 GMT\015\012" +\
@@ -718,7 +718,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         rmFile("tmp/reqCallBack_tmp")
         saveInFile("tmp/reqCallBack_tmp", "reqCallBack_SrvCrash1")
-        self.prepExtSrv(srvModule="ngamsTest/ngamsSrvTestDynReqCallBack.py")
+        self.prepExtSrv(srvModule="ngamsSrvTestDynReqCallBack")
         cpFile("src/WFI-TEST.fits.Z", "tmp/WFI-TEST_tmp.fits.Z")
         os.system("rm -f tmp/WFI-TEST_tmp.fits")
         commands.getstatusoutput("uncompress tmp/WFI-TEST_tmp.fits.Z")
@@ -757,7 +757,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         rmFile("tmp/reqCallBack_tmp")
         saveInFile("tmp/reqCallBack_tmp", "reqCallBack_AccArchiveBlock2")
-        self.prepExtSrv(srvModule="ngamsTest/ngamsSrvTestDynReqCallBack.py")
+        self.prepExtSrv(srvModule="ngamsSrvTestDynReqCallBack")
         sendPclCmd(port=8888).archive("src/SmallFile.fits")
         out =\
             _execCClient(unpackXmlStat = 0,
@@ -798,7 +798,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         rmFile("tmp/reqCallBack_tmp")
         saveInFile("tmp/reqCallBack_tmp", "reqCallBack_SrvCrash2")
-        self.prepExtSrv(srvModule="ngamsTest/ngamsSrvTestDynReqCallBack.py")
+        self.prepExtSrv(srvModule="ngamsSrvTestDynReqCallBack")
         out =\
             _execCClient(unpackXmlStat = 0,
                          pars = [["-port", "8888"],
@@ -838,14 +838,12 @@ class ngamsCClientTest(ngamsTestSuite):
         Remarks:
         ...       
         """
-        self.prepExtSrv(srvModule="ngamsTest/ngamsSrvTestBrokSockRetrieve.py")
-        cpFile("src/ISAAC-TEST.fits.gz", "tmp/ISAAC-TEST.fits.gz")
-        commands.getstatusoutput("gunzip -f tmp/ISAAC-TEST.fits.gz")
-        sendPclCmd(port=8888).archive("tmp/ISAAC-TEST.fits")
+        self.prepExtSrv(srvModule="ngamsSrvTestBrokSockRetrieve")
+        sendPclCmd(port=8888).archive("src/SmallFile.fits")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "RETRIEVE"],
-                                   ["-fileId","ISAAC.1999-04-11T05:03:21.035"],
+                                   ["-fileId","TEST.2001-05-08T15:25:00.123"],
                                    ["-timeOut", "5"]])
         tmpStatFile = saveInFile(None, filterOutLines(out, ["Host"]))
         refStatFile = "ref/ngamsCClientTest_test_RetrieveCmd_Err_1_3"

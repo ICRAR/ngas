@@ -1221,7 +1221,7 @@ class ngamsTestSuite(unittest.TestCase):
                    clusterName = None,
                    cfgProps = [],
                    dbCfgName = None,
-                   srvModule = "ngamsServer/ngamsServer.py",
+                   srvModule = None,
                    test = 1):
         """
         Prepare a standard server object, which runs as a separate process and
@@ -1342,7 +1342,11 @@ class ngamsTestSuite(unittest.TestCase):
         info(3,"DB Name: %s" % cfgObj.getDbName())
 
         # Execute the server as an external process.
-        execCmd = ["ngamsServer", "-cfg", tmpCfg, "-force"]
+        if srvModule:
+            execCmd = ['python', '-m', srvModule]
+        else:
+            execCmd = ["ngamsServer"]
+        execCmd += ["-cfg", tmpCfg, "-force"]
         if (autoOnline):   execCmd.append("-autoOnline")
         if (verbose):      execCmd.extend(["-v", str(verbose)])
         if (multipleSrvs): execCmd.append("-multipleSrvs")
