@@ -27,6 +27,7 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  10/11/2003  Created
 #
+from time import sleep
 """
 This module contains the Test Suite for the NG/AMS Archive Client.
 """
@@ -34,6 +35,7 @@ This module contains the Test Suite for the NG/AMS Archive Client.
 import commands
 import glob
 import os
+import shutil
 import sys
 import time
 
@@ -41,17 +43,6 @@ from ngamsLib import ngamsStatus
 from ngamsLib.ngamsCore import getHostName, info
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, runTest
 
-
-try:
-    _cmdLineParsDic = {"-host": getHostName(), "-port": "8888",
-                       "-rootDir": "/tmp/ngamsTest", "-pollTime": "5",
-                       "-checksum": "ngamsCrc32", "-cleanUpTimeOut": "10",
-                       "-logLevel": "3", "-logRotate": "0", "-logHistory": "2",
-                       "-archiveLog": None, "-v": "0",
-                       "-license": None, "-version": None}
-except:
-    _cmdLineParsDic = {}
-    
 
 def arcCliDir():
     """
@@ -74,19 +65,19 @@ def stopArchiveClient(sleep = 1,
     Returns:         Void.
     """
     try:
-        fo = open(arcCliDir() + "/.ngamsArchiveClient-PID")
-    except:
+        with open(arcCliDir()  + "/.ngamsArchiveClient-PID") as f:
+            pid = f.read()
+    except IOError:
         return
-    pid = fo.read()
-    fo.close()
+
     commands.getstatusoutput("kill " + pid)
     time.sleep(sleep)
     commands.getstatusoutput("kill -9 " + pid)
     if (delArchCliDir):
-        commands.getstatusoutput("rm -rf " + arcCliDir())
+        shutil.rmtree(arcCliDir())
 
 
-def startArchiveClient(cmdLineParsDic = _cmdLineParsDic):
+def startArchiveClient():
     """
     Start the NG/AMS Archive Client as a background process.
 
@@ -95,7 +86,14 @@ def startArchiveClient(cmdLineParsDic = _cmdLineParsDic):
     Returns:          Void.
     """
     stopArchiveClient(0, 1)
-    #cmdLine = "../ngamsCClient/ngamsArchiveClient"
+
+    cmdLineParsDic = {"-host": getHostName(), "-port": "8888",
+                      "-rootDir": "/tmp/ngamsTest", "-pollTime": "5",
+                      "-checksum": "ngamsCrc32", "-cleanUpTimeOut": "10",
+                      "-logLevel": "3", "-logRotate": "0", "-logHistory": "2",
+                      "-archiveLog": None, "-v": "0",
+                      "-license": None, "-version": None}
+
     cmdLine = "ngamsArchiveClient"
     for cmdLineOpt in cmdLineParsDic.keys():
         if (cmdLineParsDic[cmdLineOpt]):
@@ -123,6 +121,10 @@ class ngamsArchiveClientTest(ngamsTestSuite):
     - Test that if a file which was archived is not found in the remote
       NGAS System, it remains in the Archived Files Area.
     """
+
+    def tearDown(self):
+        stopArchiveClient(1, 0)
+        ngamsTestSuite.tearDown(self)
 
     def test_NormalOp_1(self):
         """
@@ -159,13 +161,11 @@ class ngamsArchiveClientTest(ngamsTestSuite):
         startArchiveClient()
 
         # Archive a file as copy and link.
+        # Make sure at least the quee dir is already created
+        os.makedirs(os.path.join(arcCliDir(), 'queue'))
         srcFile = os.path.abspath("src/SmallFile.fits")
-        cmd = "cp " + srcFile + " " + arcCliDir() + "/queue"
-        info(1, cmd)
-        commands.getstatusoutput(cmd)
-        cmd = "ln -s " + srcFile + " " + arcCliDir() + "/queue/Test.fits"
-        info(1, cmd)
-        commands.getstatusoutput(cmd)
+        shutil.copy(srcFile, os.path.join(arcCliDir(), 'queue'))
+        os.symlink(srcFile, os.path.join(arcCliDir(), 'queue', 'Test.fits'))
 
         # Check that files are being archived (within 20s) + NG/AMS Status
         # Documents created.
@@ -232,8 +232,6 @@ class ngamsArchiveClientTest(ngamsTestSuite):
                 # (len(globFile2StatPat)):
                 errMsg = "Did not remove status XML document: "+file2StatPat[0]
             self.fail(errMsg)
-
-        stopArchiveClient(1, 0)
 
 
 def run():
