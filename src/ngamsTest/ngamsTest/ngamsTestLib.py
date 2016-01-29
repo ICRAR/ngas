@@ -1820,7 +1820,7 @@ class ngamsTestSuite(unittest.TestCase):
         """
         queryVal = str(queryVal.strip().replace("$HOSTNAME", getHostName()))
         if ((queryVal.find("<DateTime object") != -1) or
-            checkIfIso8601(queryVal)):
+            checkIfIso8601(queryVal.strip("'"))):
             queryVal = "_DATETIME_"
         elif (isFloat(queryVal)):
             queryVal = "_FLOAT_"
