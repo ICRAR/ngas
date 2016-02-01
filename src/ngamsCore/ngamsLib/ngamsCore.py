@@ -1623,15 +1623,15 @@ def loadPlugInEntryPoint(plugInName, entryPointMethodName=None):
     if not entryPointMethodName:
         entryPointMethodName = plugInName.split('.')[-1]
 
-    info(2, "Looking for %s plug-in module" % (plugInName,))
+    info(3, "Looking for %s plug-in module" % (plugInName,))
     try:
-        info(3, "Trying with module ngamsPlugIns.%s " % (plugInName,))
+        info(4, "Trying with module ngamsPlugIns.%s " % (plugInName,))
         plugInModule = importlib.import_module('ngamsPlugIns.' + plugInName)
     except ImportError:
-        info(3, "Trying with module %s " % (plugInName,))
+        info(4, "Trying with module %s " % (plugInName,))
         plugInModule = importlib.import_module(plugInName)
 
-    info(2, "Loading entry-point method %s from module %s " % (entryPointMethodName,plugInModule.__name__))
+    info(3, "Loading entry-point method %s from module %s " % (entryPointMethodName,plugInModule.__name__))
     return getattr(plugInModule, entryPointMethodName)
 
 # EOF
