@@ -27,6 +27,7 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  24/06/2004  Created
 #
+import time
 """
 This module contains the Test Suite for the handling of the NG/AMS
 Configuration, in particular, the handling of the configuration in the
@@ -36,8 +37,10 @@ DB is tested.
 import sys
 
 from ngamsLib import ngamsConfig, ngamsDb
-from ngamsTestLib import getRefCfg, delNgasTbls, ngamsTestSuite, \
+from ngamsLib.ngamsCore import getHostName
+from ngamsTestLib import delNgasTbls, ngamsTestSuite, \
     saveInFile, sendPclCmd, filterDbStatus1, runTest
+from ngamsTestLib import mergeRefCfg
 
 
 stdCfgGrIdList = ["ngamsCfg-Test", "ArchiveHandling-Test",
@@ -48,48 +51,6 @@ stdCfgGrIdList = ["ngamsCfg-Test", "ArchiveHandling-Test",
                   "Permissions-Test", "Processing-Std", "Register-Std",
                   "Server-Sim", "StorageSets-PATA-8-Dbl", "Streams-4-Dbl",
                   "SubscriptionDef-Test", "SystemPlugIns-Std"]
-
-
-def loadCfg(dbCfgName,
-            cfgFile = "src/ngamsCfg.xml",
-            dbCfgGroupIds = stdCfgGrIdList,
-            checkCfg = 1,
-            delDbTbls = 1):
-    """
-    Load configuration into NGAS DB. Return the configuration and DB objects.
-
-    cfgFile:        Name of configuration file to load (string).
-
-    dbCfgGroupIds:  DB Cfg. Group IDs to use when defining the cfg. (list).
- 
-    checkCfg:       Check cfg. when loading before writing in the DB
-                    (integer/0|1).
-
-    delDbTbls:      Delete the NGAS tables in the DB (integer/0|1).
-
-    Returns:        Tuple with ngamsConfig and ngamsDb Objects (tuple).
-    """
-    cfgObj = ngamsConfig.ngamsConfig().load(cfgFile, checkCfg)
-    revAttr = "NgamsCfg.Header[1].Revision"
-    cfgObj.storeVal(revAttr, "TEST-REVISION", "ngamsCfg-Test")
-
-    refCfgObj = ngamsConfig.ngamsConfig().load(getRefCfg())
-    multCons = refCfgObj.getDbMultipleCons()
-    dbObj = ngamsDb.ngamsDb(refCfgObj.getDbServer(), refCfgObj.getDbName(),
-                            refCfgObj.getDbUser(), refCfgObj.getDbPassword(),
-                            interface = refCfgObj.getDbInterface(),
-                            parameters = refCfgObj.getDbParameters(), 
-                            multipleConnections = multCons)
-    if (delDbTbls): delNgasTbls(dbObj)
-    cfgObj.writeToDb(dbObj)
-    
-    # Create a DB configuration association.
-    sqlQueryFormat = "INSERT INTO ngas_cfg (cfg_name, cfg_par_group_ids, " +\
-                     "cfg_comment) VALUES ('%s', '%s', 'Test Cfg')"
-    sqlQuery = sqlQueryFormat %\
-               (dbCfgName, str(dbCfgGroupIds)[1:-1].replace("'", ""))
-    dbObj.query(sqlQuery)
-    return (cfgObj, dbObj)
 
 
 # Remove zero string length values + values = None, due to a incorrect
@@ -125,6 +86,50 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
       feature.
     """
 
+    def loadCfg(self,
+                dbCfgName,
+                cfgFile = "src/ngamsCfg.xml",
+                dbCfgGroupIds = stdCfgGrIdList,
+                checkCfg = 1,
+                delDbTbls = 1,
+                createDatabase = True):
+        """
+        Load configuration into NGAS DB. Return the configuration and DB objects.
+
+        cfgFile:        Name of configuration file to load (string).
+
+        dbCfgGroupIds:  DB Cfg. Group IDs to use when defining the cfg. (list).
+
+        checkCfg:       Check cfg. when loading before writing in the DB
+                        (integer/0|1).
+
+        delDbTbls:      Delete the NGAS tables in the DB (integer/0|1).
+
+        Returns:        Tuple with ngamsConfig and ngamsDb Objects (tuple).
+        """
+        cfgObj = ngamsConfig.ngamsConfig().load(cfgFile, checkCfg)
+        mergeRefCfg(cfgObj)
+        revAttr = "NgamsCfg.Header[1].Revision"
+        cfgObj.storeVal(revAttr, "TEST-REVISION", "ngamsCfg-Test")
+
+        self.point_to_sqlite_database(cfgObj, getHostName(), createDatabase)
+        multCons = cfgObj.getDbMultipleCons()
+        dbObj = ngamsDb.ngamsDb(cfgObj.getDbServer(), cfgObj.getDbName(),
+                                cfgObj.getDbUser(), cfgObj.getDbPassword(),
+                                interface = cfgObj.getDbInterface(),
+                                parameters = cfgObj.getDbParameters(), 
+                                multipleConnections = multCons)
+        if (delDbTbls): delNgasTbls(dbObj)
+        cfgObj.writeToDb(dbObj)
+
+        # Create a DB configuration association.
+        sqlQueryFormat = "INSERT INTO ngas_cfg (cfg_name, cfg_par_group_ids, " +\
+                         "cfg_comment) VALUES ('%s', '%s', 'Test Cfg')"
+        sqlQuery = sqlQueryFormat %\
+                   (dbCfgName, str(dbCfgGroupIds)[1:-1].replace("'", ""))
+        dbObj.query(sqlQuery)
+        return (cfgObj, dbObj)
+
     def test_Load_1(self):
         """
         Synopsis:
@@ -150,7 +155,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         Remarks:
         ...        
         """
-        cfgObj1, dbObj = loadCfg("test_Load_1")
+        cfgObj1, dbObj = self.loadCfg("test_Load_1")
 
         # Load + check the configuration from the DB.
         cfgObj2 = ngamsConfig.ngamsConfig()
@@ -192,9 +197,10 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         ...
         """
         cfgName = "test_ServerLoad_1"
-        loadCfg(cfgName)
-        self.prepExtSrv(cfgFile="src/ngamsCfgDbCon.xml", dbCfgName=cfgName,
-                        clearDb=0)
+        cfgObj, _ = self.loadCfg(cfgName)
+        cfgFile = saveInFile(None, str(cfgObj.genXmlDoc()))
+        self.prepExtSrv(cfgFile=cfgFile, dbCfgName=cfgName, clearDb=0)
+
         # Archive a file, should be OK.
         statObj = sendPclCmd().archive("src/SmallFile.fits")
         refStatFile = "ref/ngamsConfigHandlingTest_test_ServerLoad_1_1_ref"
@@ -236,9 +242,10 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         tmpCfg = ngamsConfig.ngamsConfig().load("src/ngamsCfg.xml").\
                  storeVal("NgamsCfg.Permissions[1].AllowArchiveReq", "0",
                           "Permissions-Test")
-        loadCfg(cfgName, cfgFile=saveInFile(None,tmpCfg.genXmlDoc(0)))
-        self.prepExtSrv(cfgFile="src/ngamsCfgDbCon.xml", dbCfgName=cfgName,
-                        clearDb=0)
+        cfgFile=saveInFile(None,tmpCfg.genXmlDoc(0))
+        cfgObj, _ = self.loadCfg(cfgName, cfgFile=cfgFile)
+        cfgFile = saveInFile(None, str(cfgObj.genXmlDoc()))
+        self.prepExtSrv(cfgFile=cfgFile, dbCfgName=cfgName, clearDb=0)
 
         # Archive a file, should be rejected.
         statObj = sendPclCmd().archive("src/SmallFile.fits")
@@ -274,7 +281,9 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         ...
         """
         cfgName1 = "test_ServerLoad_1"
-        loadCfg(cfgName1)
+        cfgObj, _ = self.loadCfg(cfgName1)
+        cfgFile = saveInFile(None,cfgObj.genXmlDoc(0))
+
         # For the second cfg. set all the DB Cfg. Group ID to a common value
         # + set all values to a non-sense value.
         cfgName2 = "test_ServerLoad_2"
@@ -285,12 +294,11 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         tmpCfg.storeVal("NgamsCfg.Log[1].LocalLogFile",
                         "/tmp/ngamsTest/NGAS/log/LogFile.nglog", "0")
         tmpCfgFile = saveInFile(None,tmpCfg.genXmlDoc(0))
-        loadCfg(cfgName2, cfgFile=tmpCfgFile, checkCfg=0, delDbTbls=0,
-                dbCfgGroupIds=[0])
+        self.loadCfg(cfgName2, cfgFile=tmpCfgFile, checkCfg=0, delDbTbls=0,
+                dbCfgGroupIds=[0], createDatabase=False)
 
         # Start server specifying 1st DB cfg.
-        self.prepExtSrv(cfgFile="src/ngamsCfgDbCon.xml", dbCfgName=cfgName1,
-                        clearDb=0)
+        self.prepExtSrv(cfgFile=cfgFile, dbCfgName=cfgName1, clearDb=0)
         statObj = sendPclCmd().archive("src/SmallFile.fits")
         refStatFile = "ref/ngamsConfigHandlingTest_test_ServerLoad_3_1_ref"
         tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))

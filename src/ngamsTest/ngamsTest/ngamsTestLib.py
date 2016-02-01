@@ -1282,7 +1282,7 @@ class ngamsTestSuite(unittest.TestCase):
             # If a DB Configuration Name is specified, we first have to
             # extract the configuration information from the DB to
             # create a complete temporary cfg. file.
-            refCfgObj = ngamsConfig.ngamsConfig().load(getRefCfg())
+            refCfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
             multCons = refCfgObj.getDbMultipleCons()
             dbObj =\
                   ngamsDb.ngamsDb(refCfgObj.getDbServer(),
@@ -1296,6 +1296,7 @@ class ngamsTestSuite(unittest.TestCase):
             cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, dbObj)
             del dbObj
             dbObj = None
+            info(2, "Successfully read configuration from database, root dir is %s" % (cfgObj2.getRootDirectory()))
             tmpCfgFile = saveInFile(None, cfgObj2.genXmlDoc(0))
         else:
             tmpCfgFile = cfgFile
@@ -1312,7 +1313,7 @@ class ngamsTestSuite(unittest.TestCase):
         # Take over the DB parameters from the reference.
         mergeRefCfg(tmpCfgObj)
 
-        self.point_to_sqlite_database(tmpCfgObj, hostName, not multipleSrvs)
+        self.point_to_sqlite_database(tmpCfgObj, hostName, not multipleSrvs and not dbCfgName)
 
         # Clean up.
         tmpCfgFile = saveInFile(None, tmpCfgObj.genXmlDoc(0))

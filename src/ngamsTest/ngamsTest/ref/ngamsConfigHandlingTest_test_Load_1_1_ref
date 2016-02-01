@@ -8,6 +8,7 @@ NgamsCfg.ArchiveHandling[1].PathPrefix                 : saf
 NgamsCfg.ArchiveHandling[1].Replication                : 1
 NgamsCfg.Authorization[1].Enable                       : 0
 NgamsCfg.Authorization[1].Id                           : Authorization-Test
+NgamsCfg.Authorization[1].User[1].Commands             : *
 NgamsCfg.Authorization[1].User[1].Name                 : ngas
 NgamsCfg.Authorization[1].User[1].Password             : bmdhcw==
 NgamsCfg.Authorization[1].User[2].Name                 : ngasmgr
@@ -25,15 +26,7 @@ NgamsCfg.DataCheckThread[1].MaxProcs                   : 4
 NgamsCfg.DataCheckThread[1].MinCycle                   : 00T00:03:00
 NgamsCfg.DataCheckThread[1].Prio                       : 25
 NgamsCfg.DataCheckThread[1].Scan                       : 0
-NgamsCfg.Db[1].AutoRecover                             : 1
 NgamsCfg.Db[1].Id                                      : Db-DEVSRV-ngastst2
-NgamsCfg.Db[1].Interface                               : ngamsSybase
-NgamsCfg.Db[1].Name                                    : ngastst2
-NgamsCfg.Db[1].Password                                : bmdhc19wdw==
-NgamsCfg.Db[1].Server                                  : DEVSRV
-NgamsCfg.Db[1].Snapshot                                : 1
-NgamsCfg.Db[1].User                                    : ngas
-NgamsCfg.Db[1].Verify                                  : 1
 NgamsCfg.Header[1].Context                             : NG/AMS
 NgamsCfg.Header[1].Name                                : ngamsCfg.xml
 NgamsCfg.Header[1].Release                             : 1.0
@@ -76,17 +69,19 @@ NgamsCfg.MimeTypes[1].MimeTypeMap[6].Extension         : fits.Z
 NgamsCfg.MimeTypes[1].MimeTypeMap[6].MimeType          : application/x-cfits
 NgamsCfg.MimeTypes[1].MimeTypeMap[7].Extension         : hfits
 NgamsCfg.MimeTypes[1].MimeTypeMap[7].MimeType          : application/x-hfits
+NgamsCfg.MimeTypes[1].MimeTypeMap[8].Extension         : nglog.gz
+NgamsCfg.MimeTypes[1].MimeTypeMap[8].MimeType          : application/x-nglog
 NgamsCfg.Notification[1].Active                        : 1
-NgamsCfg.Notification[1].AlertNotification[1].EmailRecipient[1].Address: DEFINE@eso.org
-NgamsCfg.Notification[1].DataErrorNotification[1].EmailRecipient[1].Address: DEFINE@eso.org
-NgamsCfg.Notification[1].DiskChangeNotification[1].EmailRecipient[1].Address: DEFINE@eso.org
-NgamsCfg.Notification[1].DiskSpaceNotification[1].EmailRecipient[1].Address: DEFINE@eso.org
-NgamsCfg.Notification[1].ErrorNotification[1].EmailRecipient[1].Address: DEFINE@eso.org
+NgamsCfg.Notification[1].AlertNotification[1].EmailRecipient[1].Address: plone@localhost
+NgamsCfg.Notification[1].DataErrorNotification[1].EmailRecipient[1].Address: plone@localhost
+NgamsCfg.Notification[1].DiskChangeNotification[1].EmailRecipient[1].Address: plone@localhost
+NgamsCfg.Notification[1].DiskSpaceNotification[1].EmailRecipient[1].Address: plone@localhost
+NgamsCfg.Notification[1].ErrorNotification[1].EmailRecipient[1].Address: plone@localhost
 NgamsCfg.Notification[1].Id                            : Notification-Test
 NgamsCfg.Notification[1].MaxRetentionSize              : 1000
 NgamsCfg.Notification[1].MaxRetentionTime              : 00T00:30:00
-NgamsCfg.Notification[1].NoDiskSpaceNotification[1].EmailRecipient[1].Address: DEFINE@eso.org
-NgamsCfg.Notification[1].Sender                        : ngast@eso.org
+NgamsCfg.Notification[1].NoDiskSpaceNotification[1].EmailRecipient[1].Address: plone@localhost
+NgamsCfg.Notification[1].Sender                        : ngast@localhost
 NgamsCfg.Notification[1].SmtpHost                      : localhost
 NgamsCfg.Permissions[1].AllowArchiveReq                : 1
 NgamsCfg.Permissions[1].AllowProcessingReq             : 1
@@ -113,10 +108,11 @@ NgamsCfg.Register[1].PlugIn[1].MimeType[1].Name        : image/x-fits
 NgamsCfg.Register[1].PlugIn[1].MimeType[2].Name        : application/x-gfits
 NgamsCfg.Register[1].PlugIn[1].MimeType[3].Name        : application/x-cfits
 NgamsCfg.Register[1].PlugIn[1].Name                    : ngamsFitsRegPlugIn
-NgamsCfg.Register[1].PlugIn[1].PlugInPars              : checksum_util=utilFitsChecksum,checksum_result=0/0000000000000000
+NgamsCfg.Register[1].PlugIn[1].PlugInPars              : checksum_util=utilFitsChecksum,skip_checksum=,checksum_result=0/0000000000000000
 NgamsCfg.Server[1].ArchiveName                         : ESO-ARCHIVE
 NgamsCfg.Server[1].BlockSize                           : 65536
 NgamsCfg.Server[1].Id                                  : Server-Sim
+NgamsCfg.Server[1].IpAddress                           : 0.0.0.0
 NgamsCfg.Server[1].MaxSimReqs                          : 30
 NgamsCfg.Server[1].PortNo                              : 8888
 NgamsCfg.Server[1].ProxyMode                           : 1
@@ -150,24 +146,40 @@ NgamsCfg.StorageSets[1].StorageSet[5].RepDiskSlotId    : 10
 NgamsCfg.StorageSets[1].StorageSet[5].StorageSetId     : LogStorage
 NgamsCfg.StorageSets[1].StorageSet[5].Synchronize      : 1
 NgamsCfg.Streams[1].Id                                 : Streams-4-Dbl
-NgamsCfg.Streams[1].Stream[1].MimeType                 : image/x-fits
-NgamsCfg.Streams[1].Stream[1].PlugIn                   : ngamsFitsPlugIn
-NgamsCfg.Streams[1].Stream[1].PlugInPars               : compression=compress-f,checksum_util=utilFitsChecksum,checksum_result=0/0000000000000000
+NgamsCfg.Streams[1].Stream[1].MimeType                 : application/octet-stream
+NgamsCfg.Streams[1].Stream[1].PlugIn                   : ngamsGenDapi
 NgamsCfg.Streams[1].Stream[1].StorageSetRef[1].StorageSetId: FitsStorage1
 NgamsCfg.Streams[1].Stream[1].StorageSetRef[2].StorageSetId: FitsStorage2
 NgamsCfg.Streams[1].Stream[1].StorageSetRef[3].StorageSetId: FitsStorage3
-NgamsCfg.Streams[1].Stream[2].MimeType                 : application/x-cfits
+NgamsCfg.Streams[1].Stream[2].MimeType                 : image/x-fits
 NgamsCfg.Streams[1].Stream[2].PlugIn                   : ngamsFitsPlugIn
-NgamsCfg.Streams[1].Stream[2].PlugInPars               : compression=compress-f,checksum_util=utilFitsChecksum,checksum_result=0/0000000000000000
+NgamsCfg.Streams[1].Stream[2].PlugInPars               : compression=gzip--no-name,checksum_util=utilFitsChecksum,skip_checksum=,checksum_result=0/0000000000000000
 NgamsCfg.Streams[1].Stream[2].StorageSetRef[1].StorageSetId: FitsStorage1
 NgamsCfg.Streams[1].Stream[2].StorageSetRef[2].StorageSetId: FitsStorage2
 NgamsCfg.Streams[1].Stream[2].StorageSetRef[3].StorageSetId: FitsStorage3
-NgamsCfg.Streams[1].Stream[3].MimeType                 : ngas/log
-NgamsCfg.Streams[1].Stream[3].PlugIn                   : ngamsLogPlugIn
-NgamsCfg.Streams[1].Stream[3].StorageSetRef[1].StorageSetId: LogStorage
-NgamsCfg.Streams[1].Stream[4].MimeType                 : ngas/nglog
-NgamsCfg.Streams[1].Stream[4].PlugIn                   : ngamsNgLogPlugIn
-NgamsCfg.Streams[1].Stream[4].StorageSetRef[1].StorageSetId: LogStorage
+NgamsCfg.Streams[1].Stream[3].MimeType                 : application/x-cfits
+NgamsCfg.Streams[1].Stream[3].PlugIn                   : ngamsFitsPlugIn
+NgamsCfg.Streams[1].Stream[3].PlugInPars               : compression=gzip--no-name,checksum_util=utilFitsChecksum,skip_checksum=,checksum_result=0/0000000000000000
+NgamsCfg.Streams[1].Stream[3].StorageSetRef[1].StorageSetId: FitsStorage1
+NgamsCfg.Streams[1].Stream[3].StorageSetRef[2].StorageSetId: FitsStorage2
+NgamsCfg.Streams[1].Stream[3].StorageSetRef[3].StorageSetId: FitsStorage3
+NgamsCfg.Streams[1].Stream[4].MimeType                 : application/x-gfits
+NgamsCfg.Streams[1].Stream[4].PlugIn                   : ngamsFitsPlugIn
+NgamsCfg.Streams[1].Stream[4].PlugInPars               : compression=gzip--no-name,checksum_util=utilFitsChecksum,skip_checksum=,checksum_result=0/0000000000000000
+NgamsCfg.Streams[1].Stream[4].StorageSetRef[1].StorageSetId: FitsStorage1
+NgamsCfg.Streams[1].Stream[4].StorageSetRef[2].StorageSetId: FitsStorage2
+NgamsCfg.Streams[1].Stream[4].StorageSetRef[3].StorageSetId: FitsStorage3
+NgamsCfg.Streams[1].Stream[5].MimeType                 : ngas/log
+NgamsCfg.Streams[1].Stream[5].PlugIn                   : ngamsLogPlugIn
+NgamsCfg.Streams[1].Stream[5].StorageSetRef[1].StorageSetId: LogStorage
+NgamsCfg.Streams[1].Stream[6].MimeType                 : ngas/nglog
+NgamsCfg.Streams[1].Stream[6].PlugIn                   : ngamsNgLogPlugIn
+NgamsCfg.Streams[1].Stream[6].StorageSetRef[1].StorageSetId: LogStorage
+NgamsCfg.Streams[1].Stream[7].MimeType                 : application/x-nglog
+NgamsCfg.Streams[1].Stream[7].PlugIn                   : ngamsGenDapi
+NgamsCfg.Streams[1].Stream[7].StorageSetRef[1].StorageSetId: FitsStorage1
+NgamsCfg.Streams[1].Stream[7].StorageSetRef[2].StorageSetId: FitsStorage2
+NgamsCfg.Streams[1].Stream[7].StorageSetRef[3].StorageSetId: FitsStorage3
 NgamsCfg.SubscriptionDef[1].AutoUnsubscribe            : 0
 NgamsCfg.SubscriptionDef[1].BackLogExpTime             : 28T00:00:00
 NgamsCfg.SubscriptionDef[1].Enable                     : 1
@@ -182,8 +194,8 @@ NgamsCfg.SubscriptionDef[1].SuspensionTime             : 0T00:03:00
 NgamsCfg.SystemPlugIns[1].DiskSyncPlugIn               : ngamsDiskSyncPlugIn
 NgamsCfg.SystemPlugIns[1].DiskSyncPlugInPars           : controllers=1/2
 NgamsCfg.SystemPlugIns[1].Id                           : SystemPlugIns-Std
-NgamsCfg.SystemPlugIns[1].LabelPrinterPlugIn           : ngamsBrotherPT9200DxPlugIn
-NgamsCfg.SystemPlugIns[1].LabelPrinterPlugInPars       : dev=/dev/null,font_file=/opsw/packages/ngams/ngamsData/ngamsBrotherPT9200DxFonts.fnt
+NgamsCfg.SystemPlugIns[1].LabelPrinterPlugIn           : ngamsNullLabelPrinterPlugIn
+NgamsCfg.SystemPlugIns[1].LabelPrinterPlugInPars       : -
 NgamsCfg.SystemPlugIns[1].OfflinePlugIn                : ngamsLinuxOfflinePlugIn
 NgamsCfg.SystemPlugIns[1].OfflinePlugInPars            : unmount=0
 NgamsCfg.SystemPlugIns[1].OnlinePlugIn                 : ngamsLinuxOnlinePlugIn
