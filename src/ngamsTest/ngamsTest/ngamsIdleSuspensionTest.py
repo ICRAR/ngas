@@ -455,11 +455,12 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         targetFile = genTmpFilename()
         sendPclCmd(port=8000, auth=AUTH).\
                               sendCmd(NGAMS_RETRIEVE_CMD, 0, targetFile, pars)
+        time.sleep(2)
+
         # We have to retrieve it twice, since otherwise, maybe not all info
         # has been written to the log file.
         sendPclCmd(port=8000, auth=AUTH).\
                               sendCmd(NGAMS_RETRIEVE_CMD, 0, targetFile, pars)
-        
         # Check that the proper log file has been retrieved.
         testStr = ["NGAS Node: %s:8001 woken up after" % getHostName()]
         logBuf = loadFile(targetFile)
@@ -541,6 +542,8 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         targetFile = genTmpFilename()
         sendPclCmd(port=8000, auth=AUTH).\
                               sendCmd(NGAMS_RETRIEVE_CMD, 0, targetFile, pars)
+        time.sleep(2)
+
         # Check that the file has been retrieved from the proper host.
         # 1. Log file on Master Node.
         masterLogBuf = loadFile(masterNodeLog)
@@ -559,7 +562,6 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
                     "RETRIEVE?",
                     "internal=/etc/hosts",
                     "host_id=%s" % subNode1,
-                    "- host=%s" % masterNode,
                     "Sending header: Content-Disposition: attachment; " +\
                     "filename=hosts"]
         self.checkTags(subNode1LogBuf, testTags, showBuf=0)
@@ -640,7 +642,6 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
                  "Version:1) (2: Location:LOCAL, Host:%s, Version:1)"
         testTags = ["CHECKFILE?time_out=60.0&file_version=1&" +\
                     "file_id=TEST.2001-05-08T15:25:0",
-                    "host=%s" % masterNode,
                     tmpTag % (subNode1, subNode1)]
         subNodeLogBuf = loadFile(subNode1Log)
         self.checkTags(subNodeLogBuf, testTags, showBuf=0)
@@ -715,6 +716,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         self.checkTags(loadFile(masterNodeLog), testTags, showBuf=0)
         # Check log output in Sub-Node Log File.
         sendPclCmd(port=8001, auth=AUTH).status()  # Flush log cache.
+        time.sleep(2) # and wait a bit
         testTags = ["NGAS Node: %s woken up after" % subNode1]
         self.checkTags(loadFile(subNode1Log), testTags, showBuf=0)
         # Wait until the DCC has been executed.
