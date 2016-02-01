@@ -1222,7 +1222,8 @@ class ngamsTestSuite(unittest.TestCase):
                    cfgProps = [],
                    dbCfgName = None,
                    srvModule = None,
-                   test = 1):
+                   test = 1,
+                   skip_database_creation = False):
         """
         Prepare a standard server object, which runs as a separate process and
         serves via the standard HTTP interface.
@@ -1313,7 +1314,7 @@ class ngamsTestSuite(unittest.TestCase):
         # Take over the DB parameters from the reference.
         mergeRefCfg(tmpCfgObj)
 
-        self.point_to_sqlite_database(tmpCfgObj, hostName, not multipleSrvs and not dbCfgName)
+        self.point_to_sqlite_database(tmpCfgObj, hostName, not multipleSrvs and not dbCfgName and not skip_database_creation)
 
         # Clean up.
         tmpCfgFile = saveInFile(None, tmpCfgObj.genXmlDoc(0))
@@ -1552,7 +1553,8 @@ class ngamsTestSuite(unittest.TestCase):
 
     def prepCluster(self,
                     comCfgFile,
-                    serverList):
+                    serverList,
+                    createDatabase = True):
         """
         Prepare a common, simulated cluster. This consists of 1 to N
         servers running on the same node. It is ensured that each of
@@ -1636,7 +1638,7 @@ class ngamsTestSuite(unittest.TestCase):
             tmpCfgFile = "tmp/%s_tmp.xml" % srvId
 
             # Create a common database only once
-            self.point_to_sqlite_database(tmpCfg, hostName, idx == 0)
+            self.point_to_sqlite_database(tmpCfg, hostName, createDatabase and idx == 0)
 
             tmpCfg.save(tmpCfgFile, 0)
 

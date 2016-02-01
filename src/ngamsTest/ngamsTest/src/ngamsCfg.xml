@@ -108,6 +108,7 @@
     <MimeTypeMap  MimeType="application/x-gfits"  Extension="fits.gz"/>
     <MimeTypeMap  MimeType="application/x-cfits"  Extension="fits.Z"/>
     <MimeTypeMap  MimeType="application/x-hfits"  Extension="hfits"/>
+    <MimeTypeMap  MimeType="application/x-nglog"  Extension="nglog.gz"/>
   </MimeTypes>
 
   <StorageSets Id="StorageSets-PATA-8-Dbl">
@@ -193,6 +194,12 @@
              PlugIn="ngamsNgLogPlugIn"
              PlugInPars="">
       <StorageSetRef StorageSetId="LogStorage"/>
+    </Stream>
+    <Stream  MimeType="application/x-nglog"
+      PlugIn="ngamsGenDapi">
+      <StorageSetRef StorageSetId="FitsStorage1"/>
+      <StorageSetRef StorageSetId="FitsStorage2"/>
+      <StorageSetRef StorageSetId="FitsStorage3"/>
     </Stream>
   </Streams>
 

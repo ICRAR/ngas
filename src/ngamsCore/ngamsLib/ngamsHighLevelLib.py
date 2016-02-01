@@ -552,7 +552,6 @@ def saveFromHttpToFile(ngamsCfgObj,
         # Receive the data.
         buf = "-"
         rdSize = blockSize
-        sizeAccu = 0
         lastRecepTime = time.time()
         while ((remSize > 0) and ((time.time() - lastRecepTime) < 30.0)):
             if (remSize < rdSize): rdSize = remSize
@@ -565,7 +564,7 @@ def saveFromHttpToFile(ngamsCfgObj,
                 fdOut.write(buf)
                 lastRecepTime = time.time()
             else:
-                time.sleep(0.050)
+                break
      
         deltaTime = timer.stop()
         fdOut.close()

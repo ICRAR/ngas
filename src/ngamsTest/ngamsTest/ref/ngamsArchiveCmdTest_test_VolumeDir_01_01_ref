@@ -8,7 +8,7 @@ DiskId:                             d8dbcece4572c9e31c9ef00dbc38751e
 Archive:                            ESO-ARCHIVE
 Type:                               testtype1
 Manufacturer:                       testmanu1
-LogicalName:                        M-000005
+LogicalName:                        M-000001
 SlotId:                             Volume001
 Mounted:                            1
 MountPoint:                         /tmp/ngamsTest/NGAS/volumes/Volume001
@@ -21,7 +21,7 @@ FileStatus:
 DiskId:                             d8dbcece4572c9e31c9ef00dbc38751e
 FileName:                           saf/2001-05-08/1/TEST.2001-05-08T15:25:00.123.fits.gz
 FileId:                             TEST.2001-05-08T15:25:00.123
-FileVersion:                        4
+FileVersion:                        1
 Format:                             application/x-gfits
 FileSize:                           45823
 UncompressedFileSize:               69120
