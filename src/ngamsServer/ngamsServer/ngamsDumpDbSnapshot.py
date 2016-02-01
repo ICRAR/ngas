@@ -45,7 +45,7 @@ def correctUsage():
     Returns:   Void.
     """    
     print "\nCorrect usage is: "
-    print "\n  % ngasDumpDbSnapshot.py <Snapshot Filename>\n\n"
+    print "\n  % ngamsDumpDbSnapshot <Snapshot Filename>\n\n"
     
 
 def dumpDbSnapshot(dbSnapshotName,
@@ -92,7 +92,7 @@ def dumpDbSnapshot(dbSnapshotName,
     db.close()
 
 
-if __name__ == '__main__':
+def main():
     """
     Main function invoking the function to dump the DB Snapshot.
     """  
@@ -100,6 +100,8 @@ if __name__ == '__main__':
         correctUsage()
         sys.exit(1)
     dumpDbSnapshot(sys.argv[1], 1)
-    
+
+if __name__ == '__main__':
+    main()
 
 # EOF

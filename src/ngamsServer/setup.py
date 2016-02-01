@@ -54,7 +54,8 @@ setup(
             'ngamsServer=ngamsServer.ngamsServer:main',
             'ngamsCacheServer=ngamsServer.ngamsCacheServer:main',
             'ngamsDaemon=ngamsStartup.ngamsDaemon:main',
-            'ngamsCacheDaemon=ngamsStartup.ngamsDaemon:main'
+            'ngamsCacheDaemon=ngamsStartup.ngamsDaemon:main',
+            'ngamsDumpDbSnapshot=ngamsServer.ngamsDumpDbSnapshot:main'
         ],
     }
 )

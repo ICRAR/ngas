@@ -82,7 +82,8 @@ def _parseDbSnapshot(dbSnapshotDump):
             val = fileInfo[key]
             col = mapDic[IDX2NM + str(key)]
             if ((col.find("ingestion_date") == -1) and
-                (col.find("creation_date") == -1)):
+                (col.find("creation_date") == -1) and
+                (col.find("io_time") == -1)):
                 convDbSnapshot += "%-16s = %s\n" % (col, val)
     return convDbSnapshot
             
@@ -90,8 +91,8 @@ def _parseDbSnapshot(dbSnapshotDump):
 def _checkContDbSnapshot(testSuiteObj,
                          testCaseNo,
                          dataDirList,
-                         waitEmptyCache = 0,
-                         filterContents = 0):
+                         waitEmptyCache = True,
+                         filterContents = True):
     """
     Function to check the contents of a DB Snapshot file.
 
@@ -131,8 +132,7 @@ def _checkContDbSnapshot(testSuiteObj,
             time.sleep(0.200)
         testSuiteObj.checkEqual(1, os.path.exists(complName),
                                 "DB Snapshot missing: " + complName)
-        cmd = "python /opsw/packages/ngasUtils/maint/" +\
-              "ngasDumpDbSnapshot.py " + complName
+        cmd = "ngamsDumpDbSnapshot " + complName
         out = commands.getstatusoutput(cmd)[1]
         if (filterContents):
             snapshotDump = _parseDbSnapshot(out)
@@ -221,7 +221,8 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         """
         cfgObj, dbObj = _prepSrv(self)
         _checkContDbSnapshot(self, 1,
-                             ["FitsStorage1-Main-1", "PafStorage-Rep-8"])
+                             ["FitsStorage1-Main-1", "PafStorage-Rep-8"],
+                             waitEmptyCache=False, filterContents=False)
 
 
     def test_DbSnapshot_2(self):
@@ -252,7 +253,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         client = ngamsPClient.ngamsPClient(getHostName(), 8888)
         for n in range(3): client.archive("src/SmallFile.fits")
         _checkContDbSnapshot(self, 2, ["FitsStorage1-Main-1",
-                                       "FitsStorage1-Rep-2"], 1, 1)
+                                       "FitsStorage1-Rep-2"])
 
 
     def test_DbSnapshot_3(self):
@@ -291,7 +292,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
                                   ["file_id", fileId],
                                   ["file_version", "2"],
                                   ["execute", "1"]])
-        _checkContDbSnapshot(self, 3, ["FitsStorage1-Main-1"], 1, 1)
+        _checkContDbSnapshot(self, 3, ["FitsStorage1-Main-1"])
 
          
     def test_DbSnapshot_4(self):
@@ -327,7 +328,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
                           pars = [["disk_id", diskId], ["wait", "1"]])
         client.sendCmdGen(getHostName(), 8888, NGAMS_REMDISK_CMD,
                           pars = [["disk_id", diskId], ["execute", "1"]])
-        _checkContDbSnapshot(self, 4, ["FitsStorage1-Main-1"], 1, 1)
+        _checkContDbSnapshot(self, 4, ["FitsStorage1-Main-1"])
         
     
     def test_DbSnapshot_5(self):
@@ -361,7 +362,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         client.sendCmdGen(getHostName(), 8888, NGAMS_CLONE_CMD,
                           pars = [["disk_id", diskId], ["wait", "1"]])
         time.sleep(5)
-        _checkContDbSnapshot(self, 5, ["FitsStorage2-Main-3"], 1, 1)
+        _checkContDbSnapshot(self, 5, ["FitsStorage2-Main-3"])
 
 
     def test_DbSnapshot_6(self):
