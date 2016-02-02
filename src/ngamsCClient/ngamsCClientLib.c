@@ -1570,6 +1570,7 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 	int retCode;
 	int fd = 0, bytesRd;
 	time_t timeOut, timeLastRec;
+	ssize_t bytes_written;
 	ngamsDATA_LEN bytesRead = 0;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -1682,7 +1683,12 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 					"Throughput: %.6f MB/s", bytesRead, (bytesRead / 1048576.),
 						throughPut);
 			}
-			write(fd, tmpBuf, bytesRd);
+			bytes_written = write(fd, tmpBuf, bytesRd);
+			if (bytes_written == -1) {
+				ngamsLogError("Error while writing data to target file %s: %s", finalTargetFile, strerror(errno));
+				retCode = ngamsERR_WR_DATA;
+				goto errExit;
+			}
 			timeLastRec = time(NULL);
 			count++;
 		} else {
@@ -1806,6 +1812,7 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port,
 	int retCode, i;
 	int fd = 0, bytesRd;
 	time_t timeOut, timeLastRec;
+	ssize_t bytes_written;
 	ngamsDATA_LEN bytesRead = 0;
 	ngamsDATA_LEN repDataLen;
 	ngamsHTTP_DATA repDataRef;
@@ -1872,7 +1879,12 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port,
 			goto errExit;
 		bytesRd = read(repDataRef.fd, tmpBuf, 10000);
 		if (bytesRd > 0) {
-			write(fd, tmpBuf, bytesRd);
+			bytes_written = write(fd, tmpBuf, bytesRd);
+			if (bytes_written == -1) {
+				ngamsLogError("Error while writing data to target file %s: %s", finalTargetFile, strerror(errno));
+				retCode = ngamsERR_WR_DATA;
+				goto errExit;
+			}
 			bytesRead += bytesRd;
 			timeLastRec = time(NULL);
 		} else {
@@ -2351,6 +2363,7 @@ ngamsSTAT _getThreadInfoObj(_ngamsTHREAD_INFO** thrInfo) {
 
 void* _connectThread(void* ptr) {
 	int stat, connected = 0;
+	ssize_t bytes_written;
 	_ngamsTHREAD_INFO* thrInfo;
 
 	ngamsLogDebug("Entering _connectThread() ...");
@@ -2380,7 +2393,11 @@ void* _connectThread(void* ptr) {
 			1,
 			">>>>> par thr id: %lu, thr id: %lu: _connectThread(): connected=%d",
 			thrInfo->parentThreadId, pthread_self(), connected);
-	write(thrInfo->syncPipe[1], &connected, sizeof(int));
+	bytes_written = write(thrInfo->syncPipe[1], &connected, sizeof(int));
+	if( bytes_written == -1 ) {
+		ngamsLogError("Error while writing to thrInfo->syncPipe[1]: %s", strerror(errno));
+		/* We can't do much else, I don't actually know what's exactly going on here... */
+	}
 
 	ngamsLogDebug("Leaving _connectThread()");
 	//ngamsLogInfo(1, ">>>>> par thr id: %lu, thr id: %lu: _connectThread(): before pthread_mutex_lock()", thrInfo->parentThreadId, pthread_self());
@@ -2759,14 +2776,15 @@ int _ngamsHttpGet(const char* host, const int port, const char* userAgent,
 	//           function (UNIX System API) returns only the actual number of bytes written in the
 	//           socket at the return time that are not necessarily the number of bytes in the buffer,
 	//           so we have to disable this check.
-
-	//if (write(sockFd, sendLine, n) != n) {
-	//      ngamsLogDebug("Error writing on socket. URL: %s:%d/%s", host, port, path);
-	//      retCode = ngamsERR_WR_HD;
-	//      goto errExit;
-	//}
-
-	write(sockFd, sendLine, n);
+	// rtobar: The coment above is misleading, since the SOCK_STREAM (a socket type) has nothing to do
+	//         with socket I/O operations blocking or not (which is controlled by the O_NONBLOCK flag
+	//         set via fcntl(), or the SOCK_NONBLOCK option given at socket() creation time). Thus,
+	//         I'm re-enabling the check on the write() call, which is the correct thing to do.
+	if (write(sockFd, sendLine, n) != n) {
+	      ngamsLogDebug("Error writing on socket. URL: %s:%d/%s", host, port, path);
+	      retCode = ngamsERR_WR_HD;
+	      goto errExit;
+	}
 
 	/* Receive the reply for the request */
 	if ((retCode = ngamsRecvHttpHdr(&sockFd, httpHdr, httpResp, repDataRef,
@@ -3146,9 +3164,9 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
 				void *p = inBuf;
 				// reliable write
 				while (bytesRead > 0) {
-					int bytes_written = write(sockFd, p, bytesRead + gap);
+					ssize_t bytes_written = write(sockFd, p, bytesRead + gap);
 					if (bytes_written <= 0) {
-						ngamsLogDebug("Error while sending data to NGAS server: %s", strerror(errno));
+						ngamsLogError("Error while sending data to NGAS server: %s", strerror(errno));
 						goto readResp;
 					}
 					bytesRead -= bytes_written;
@@ -3405,7 +3423,7 @@ int ngamsHttpPostOpen(const char* host, const int port, const char* userAgent,
 
 	/* Prepare and send the HTTP headers */
 	if (ngamsGetAuthorization()) {
-		memset(authHdr, 0, sizeof(ngamsHUGE_BUF));
+		memset(authHdr, 0, sizeof(ngamsBIG_BUF));
 		sprintf(authHdr, "\015\012Authorization: Basic %s",
 				ngamsGetAuthorization());
 	} else
@@ -3413,7 +3431,7 @@ int ngamsHttpPostOpen(const char* host, const int port, const char* userAgent,
 	sprintf(header, "POST /%.256s HTTP/1.0\015\012"
 		"User-agent: %s\015\012"
 		"Content-Type: %s\015\012"
-		"Content-Length: %d\015\012"
+		"Content-Length: %lld\015\012"
 		"Content-Disposition: %s%s\015\012\012", path, ngamsUSER_AGENT,
 			mimeType, contLen, contentDisp, authHdr);
 	hdrLen = strlen(header);
@@ -3633,6 +3651,7 @@ void _ngamsUnlockLogWR() {
 void ngamsLog_v(const char* type, const ngamsLOG_LEVEL level,
 		const char* format, va_list vaParList) {
 	int fd = 0;
+	ssize_t bytes_written;
 	ngamsHUGE_BUF logMsg, tmpLogMsg;
 	ngamsMED_BUF isoTime;
 	ngamsSTAT stat;
@@ -3642,8 +3661,9 @@ void ngamsLog_v(const char* type, const ngamsLOG_LEVEL level,
 	while (strlen(isoTime) != 23)
 		ngamsGenIsoTime(3, isoTime);
 	vsprintf((char*) tmpLogMsg, format, vaParList);
-	sprintf(logMsg, "%s [%s] %s [%lu]\n%s", isoTime, type, tmpLogMsg,
-			pthread_self(), "\0");
+	memset(logMsg, 0, sizeof(ngamsHUGE_BUF));
+	sprintf(logMsg, "%s [%s] %s [%lu]\n", isoTime, type, tmpLogMsg,
+			pthread_self());
 
 	_ngamsLockLogWR();
 	/* Log in log file */
@@ -3654,16 +3674,18 @@ void ngamsLog_v(const char* type, const ngamsLOG_LEVEL level,
 			goto errExit;
 		}
 		lseek(fd, 0, SEEK_END);
-		write(fd, logMsg, strlen(logMsg));
+		bytes_written = write(fd, logMsg, strlen(logMsg));
+		if (bytes_written == -1) {
+			ngamsLogError("Error while writing log line to %s: %s", _logFile, strerror(errno));
+		}
 		if (fd > 0)
 			close(fd);
 	}
 
 	/* Log on stdout */
 	if (level <= _verboseLevel)
-		printf(logMsg);
-	errExit: if (fd > 0)
-		close(fd);
+		puts(logMsg);
+	errExit:
 	_ngamsUnlockLogWR();
 }
 
@@ -4607,12 +4629,17 @@ void ngamsResetParArray(ngamsPAR_ARRAY* parArray) {
  */
 ngamsSTAT ngamsSaveInFile(const char* filename, const char* buf) {
 	int fd;
+	ssize_t bytes_written;
 
 	if ((fd = open(filename, (O_WRONLY | O_CREAT), ngamsSTD_PERMS)) == -1) {
 		ngamsLogError("Error ocurred creating file: %s", filename);
 		return ngamsSTAT_FAILURE;
 	}
-	write(fd, buf, strlen(buf));
+	bytes_written = write(fd, buf, strlen(buf));
+	if (bytes_written == -1) {
+		ngamsLogError("Error while writing data to %s: %s", filename, strerror(errno));
+		return ngamsSTAT_FAILURE;
+	}
 	close(fd);
 
 	return ngamsSTAT_SUCCESS;
