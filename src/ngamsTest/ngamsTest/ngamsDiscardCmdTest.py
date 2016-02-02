@@ -171,7 +171,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         ...
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        ngamsPClient.ngamsPClient(getHostName(), 8888).pushFile(srcFitsFile)
+        ngamsPClient.ngamsPClient(port=8888).pushFile(srcFitsFile)
         mDiskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         pars = [["disk_id", mDiskId],
                 ["file_id", "TEST.2001-05-08T15:25:00.123"],

@@ -311,8 +311,7 @@ def waitReqCompl(clientObj,
     """
     startTime = time.time()
     while ((time.time() - startTime) < timeOut):
-        res = clientObj.\
-              sendCmdGen(clientObj.getHost(), clientObj.getPort(), "STATUS",
+        res = clientObj.sendCmdGen("STATUS",
                          1, "", [["request_id", str(requestId)]])
         if (res.getCompletionPercent() != None):
             if (float(res.getCompletionPercent()) >= 99.9):
@@ -772,8 +771,8 @@ def sendExtCmd(host,
                    or ngamsStatus object (string|ngamsStatus).
     """
     try:
-        statObj = ngamsPClient.ngamsPClient().\
-                  sendCmdGen(host, port, cmd, 1, "", pars)
+        statObj = ngamsPClient.ngamsPClient(host=host, port=port).\
+                  sendCmdGen(cmd, 1, "", pars)
         if (genStatFile):
             tmpStatFile = "tmp/%s_CmdStatus_%s_tmp" %\
                           (cmd, str(int(time.time())))

@@ -89,7 +89,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
                in the DB in ngas_files and ngas_disks is properly updated.
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
 
         # Archive a file + clone it to be able to execute the REMDISK Command.
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
@@ -146,7 +146,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         ...
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
         client.archive("src/SmallFile.fits")
         
         # Remove the cloned disk (execute=0), should fail.
@@ -198,7 +198,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
               containing test data preceeded with a heading.
         """
         self.prepExtSrv(test=0)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
         for n in range(5): client.archive("src/SmallFile.fits")
         client.clone("", "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)
         client.remDisk("tmp-ngamsTest-NGAS-FitsStorage2-Main-3", execute=0)
@@ -239,7 +239,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(test=0)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
         for n in range(5): client.archive("src/SmallFile.fits")
         client.clone("", "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)
         client.remDisk("tmp-ngamsTest-NGAS-FitsStorage2-Main-3", execute=1)

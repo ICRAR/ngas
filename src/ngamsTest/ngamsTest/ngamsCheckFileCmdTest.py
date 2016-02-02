@@ -77,8 +77,7 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         sendPclCmd().archive("src/SmallFile.fits")
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         fileId = "TEST.2001-05-08T15:25:00.123"
-        statObj = sendPclCmd().sendCmdGen(getHostName(), 8888,
-                                          NGAMS_CHECKFILE_CMD,
+        statObj = sendPclCmd(port=8888).sendCmdGen(NGAMS_CHECKFILE_CMD,
                                           pars = [["disk_id", diskId],
                                                   ["file_id", fileId],
                                                   ["file_version", "1"]])
@@ -140,9 +139,8 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
                          "100",
                          "ref/ngamsCheckFileCmdTest_test_ErrHandling_1_3_ref"]]
         for testData in testDataList:
-            statObj = sendPclCmd().\
-                      sendCmdGen(getHostName(), 8888,
-                                 NGAMS_CHECKFILE_CMD,
+            statObj = sendPclCmd(port=8888).\
+                      sendCmdGen(NGAMS_CHECKFILE_CMD,
                                  pars = [["disk_id", testData[1]],
                                          ["file_id", testData[2]],
                                          ["file_version", testData[3]]])

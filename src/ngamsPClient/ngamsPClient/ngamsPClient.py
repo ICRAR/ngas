@@ -85,6 +85,8 @@ class ngamsPClient:
         """
         Constructor method.
         """
+        if not host:
+            host = 'localhost'
         self.setHost(host).setPort(port).setStatus(0).setTimeOut(timeOut)
         self.setAuthorization(None)
         self.__servers = []
@@ -263,8 +265,7 @@ class ngamsPClient:
             locPars.append([NGAMS_HTTP_PAR_FILENAME, fileUri])
             httpHdrs = [[NGAMS_HTTP_HDR_FILE_INFO, encFileInfo],
                         [NGAMS_HTTP_HDR_CONTENT_TYPE, tmpFileInfo.getFormat()]]
-            res = self.sendCmdGen(self.getHost(), self.getPort(),
-                                  NGAMS_REARCHIVE_CMD, wait, pars = locPars,
+            res = self.sendCmdGen(NGAMS_REARCHIVE_CMD, wait, pars = locPars,
                                   additionalHdrs = httpHdrs)
         else:
             msg = "Rearchive Push is not yet supported!"
@@ -1140,8 +1141,7 @@ class ngamsPClient:
 
         # Invoke the proper operation.
         if (parArray):
-            return self.sendCmdGen(self.getHost(), self.getPort(),
-                                   cmd, wait, outputFile, parArray)
+            return self.sendCmdGen(cmd, wait, outputFile, parArray)
         elif (cmd in [NGAMS_ARCHIVE_CMD, 'QARCHIVE']):
             return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd, pars=[['reload', reloadMod]])
         elif cmd == "CARCHIVE":
@@ -1162,8 +1162,7 @@ class ngamsPClient:
             parArray.append(["disk_id", diskId])
             parArray.append(["file_id", fileId])
             parArray.append(["file_version", str(fileVersion)])
-            return self.sendCmdGen(self.getHost(), self.getPort(),
-                                   cmd, wait, "", parArray)
+            return self.sendCmdGen(cmd, wait, "", parArray)
         elif (cmd == NGAMS_CLONE_CMD):
             return self.clone(fileId, diskId, fileVersion)
         elif (cmd == NGAMS_EXIT_CMD):
@@ -1262,19 +1261,15 @@ class ngamsPClient:
 
 
     def sendCmdGen(self,
-                   host,
-                   port,
                    cmd,
                    wait = 1,
                    outputFile = "",
                    pars = [],
-                   additionalHdrs = []):
+                   additionalHdrs = [],
+                   host=None,
+                   port=None):
         """
         Send a command to the NG/AMS Server and receive the reply.
-
-        host:             Host where NG/AMS Server is running (string).
-
-        port:             Port number used by NG/AMS Server (integer).
 
         cmd:              NG/AMS command (string).
 
@@ -1311,6 +1306,8 @@ class ngamsPClient:
         for par in pars: locPars.append(par)
         locPars.append(["time_out", timeout])
 
+        host = host or self.getHost()
+        port = port or self.getPort()
         try:
             startTime = time.time()
             reply, msg, hdrs, data =\
@@ -1337,7 +1334,7 @@ class ngamsPClient:
             host, port = hdrDic["location"].split("/")[2].split(":")
             info(4,"Redirect to NG/AMS running on host: " + host + " using "+\
                  "port: " + str(port) + " is carried out")
-            return self.sendCmdGen(host, port, cmd, wait, outputFile, locPars)
+            return self.sendCmdGen(cmd, wait, outputFile, locPars, host=host, port=port)
         else:
             if ((data != "") and (data.find("<?xml") != -1)):
                 ngamsStat = ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
@@ -1386,8 +1383,7 @@ class ngamsPClient:
         """
         T = TRACE()
 
-        stat = self.sendCmdGen(self.getHost(), self.getPort(), cmd, wait,
-                               outputFile, pars)
+        stat = self.sendCmdGen(cmd, wait, outputFile, pars)
         return stat
 
 

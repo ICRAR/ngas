@@ -295,7 +295,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         
         # 2. Send STATUS Command to sub-node using master as proxy.
         statObj = sendPclCmd(port=8000, auth=AUTH).\
-                      sendCmdGen(getHostName(), 8000, NGAMS_STATUS_CMD,
+                      sendCmdGen(NGAMS_STATUS_CMD,
                                  pars = [["host_id", subNode1]])
         statBuf = filterOutLines(statObj.dumpBuf(), ["Date:", "Version:"])
         tmpStatFile = saveInFile(None, statBuf)
@@ -357,7 +357,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         # Retrieve information about the file on the suspended sub-node.
         fileId = "TEST.2001-05-08T15:25:00.123"
         statObj = sendPclCmd(port=8000, auth=AUTH).\
-                  sendCmdGen(getHostName(), 8000, NGAMS_STATUS_CMD,
+                  sendCmdGen(NGAMS_STATUS_CMD,
                              pars=[["file_access", fileId]])
         statBuf = filterOutLines(statObj.dumpBuf(), ["Date:", "Version:"])
         tmpStatFile = saveInFile(None, statBuf)

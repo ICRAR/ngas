@@ -135,10 +135,10 @@ def _execCloneTest(testObj,
         testObj.prepCluster("src/ngamsCfg.xml",
                             [[8000, None, None, getClusterName()],
                              [8011, None, None, getClusterName()]])
-        clNcu = ngamsPClient.ngamsPClient(getHostName(), 8011)
+        clNcu = ngamsPClient.ngamsPClient(port=8011)
     else:
         testObj.prepExtSrv(8000)
-    clMnu = ngamsPClient.ngamsPClient(getHostName(), 8000)
+    clMnu = ngamsPClient.ngamsPClient(port=8000)
     for n in range(5):
         statObj = clMnu.archive("src/SmallFile.fits")
         if (subNode): clNcu.archive("src/TinyTestFile.fits")
@@ -151,7 +151,7 @@ def _execCloneTest(testObj,
     cmdPars.append(["notif_email", getpass.getuser() + "@" +\
                     ngamsLib.getCompleteHostName()])
     flushEmailQueue()   
-    statObj = clMnu.sendCmdGen(getHostName(), 8000, NGAMS_CLONE_CMD,
+    statObj = clMnu.sendCmdGen(NGAMS_CLONE_CMD,
                                pars = cmdPars)
 
     # Check returned status.
@@ -529,11 +529,11 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         """
         srcFile = "src/SmallFile.fits"        
         cfgObj, dbObj = self.prepExtSrv(test=1)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
         for n in range(2): client.archive(srcFile)
         flushEmailQueue()
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
-        statObj = client.sendCmdGen(getHostName(), 8888, NGAMS_CLONE_CMD,
+        statObj = client.sendCmdGen(NGAMS_CLONE_CMD,
                                     pars = [["disk_id", srcDiskId],
                                             ["file_id", nmuFileId],
                                             ["file_version", "1"],
@@ -604,12 +604,12 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         """
         srcFile = "src/SmallFile.fits"
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
         for n in range(10): client.archive(srcFile)
         flushEmailQueue()
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
-        statObj = client.sendCmdGen(getHostName(), 8888, NGAMS_CLONE_CMD,
+        statObj = client.sendCmdGen(NGAMS_CLONE_CMD,
                                     pars = [["disk_id", diskId],
                                             ["wait", "0"],
                                             ["notif_email", testUserEmail]])
