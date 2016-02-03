@@ -47,48 +47,40 @@ from fabric.colors import blue, green, red, yellow
 
 from Crypto.PublicKey import RSA
 
-# FILTER = 'The cray-mpich2 module is now deprecated and will be removed in a future release.\r\r\nPlease use the cray-mpich module.'
 
+# Verbose tasks tell the user when they are being executed
 _task_depth = threading.local()
 _task_depth.value = 0
-def task(func):
-    def wrapper(*args, **kwargs):
+class VerboseTask(WrappedCallableTask):
+    def run(self, *args, **kwargs):
         global _task_depth
         _task_depth.value += 1
         depth = _task_depth.value
+        fname = self.wrapped.__name__
         if 'silent' not in env:
-            puts(blue("*"*depth + " Entering task {0}".format(func.__name__)))
-        ret = fabtask(func)(*args, **kwargs)
+            puts(blue("*"*depth + " Entering task {0}".format(fname)))
+        ret = super(VerboseTask, self).run(*args, **kwargs)
         if 'silent' not in env:
-            puts(green("*"*depth + " Exiting task {0}".format(func.__name__)))
+            puts(green("*"*depth + " Exiting task {0}".format(fname)))
         _task_depth.value -= 1
         return ret
-    return wrapper
 
-#@task
+# Replacement functions for running commands
+# They wrap up the command with useful things
 def run(*args, **kwargs):
     with hide('running'):
-        FILTER = frun('echo', quiet=True)  # This should not return anything
-        com = list(args)[0]
+        com = args[0]
         com = 'unset PYTHONPATH; {0}'.format(com)
         puts('Executing: {0}'.format(com))
         res = frun(com, quiet=False, **kwargs)
-        res = res.replace(FILTER,'')
-#        puts('Result: {0}'.format(res))
     return res
 
-#@task
 def sudo(*args, **kwargs):
     with hide('running'):
-        FILTER = frun('echo', quiet=True)  # This should not return anything
-        com = list(args)[0]
+        com = args[0]
         com = 'unset PYTHONPATH; {0}'.format(com)
         puts('Executing: {0}'.format(com))
     res = fsudo(com, quiet=True, **kwargs)
-    res = res.replace(FILTER, '')
-    res = res.replace('\n','')
-    res = res.replace('\r','')
-#    puts('Result: {0}'.format(res))
     return res
 
 #Defaults
@@ -372,7 +364,7 @@ def print_env(force=False, all=False):
             if k not in ['okeys','mykeys']:
                 print '{0:50s}>>>{1:>50s}'.format(k,repr(env[k]))
 
-@task
+@task(task_class=VerboseTask)
 def whatsmyip():
     """
     Returns the external IP address of the host running fab.
@@ -390,7 +382,7 @@ def whatsmyip():
 
     return myip
 
-@task
+@task(task_class=VerboseTask)
 def check_ssh():
     """
     Check availability of SSH on HOST
