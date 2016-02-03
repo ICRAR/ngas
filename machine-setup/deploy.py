@@ -1103,8 +1103,6 @@ def user_setup():
         sudo('chown -R {0}:{1} /home/{0}/.ssh'.format(user,group))
         home = run('echo $HOME')
         create_key_pair()
-#         put('{0}machine-setup/authorized_keys'.format(env.src_dir),
-#                 '/tmp/authorized_keys')
         sudo("echo '{0}' >> /home/{1}/.ssh/authorized_keys".format(env.SSH_PUBLIC_KEY, user))
         sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{1} /home/{0}/.ssh/authorized_keys'.format(user, group))
