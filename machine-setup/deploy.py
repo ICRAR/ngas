@@ -395,7 +395,6 @@ def check_aws_meta():
     AWS instance or not.
     """
     res = run('curl --connect-timeout 2 http://169.254.169.254/latest/meta-data/ami-id > /dev/null 2>&1; if [ $? -eq 0 ]; then echo 1; else echo 0; fi')
-    IP = '169.254.169.254'
     if res == '0':
         return False
     else:
@@ -949,7 +948,7 @@ def system_install():
     # Install required packages
     linux_flavor = get_linux_flavor()
     if (linux_flavor in ['CentOS','Amazon Linux']):
-         # Update the machine completely
+        # Update the machine completely
         errmsg = sudo('yum --assumeyes --quiet update', combine_stderr=True, warn_only=True)
         processCentOSErrMsg(errmsg)
         for package in YUM_PACKAGES:
@@ -1013,7 +1012,7 @@ def system_check():
             if not check_yum(package):
                 summary = False
     elif (linux_flavor == 'Ubuntu'):
-        for package in APT_PACKAGE:
+        for package in APT_PACKAGES:
             if not check_apt(package):
                 summary = False
     else:
@@ -1080,7 +1079,7 @@ def user_setup():
         sudo('mkdir /home/{0}/.ssh'.format(user), warn_only=True)
         sudo('chmod 700 /home/{0}/.ssh'.format(user))
         sudo('chown -R {0}:{1} /home/{0}/.ssh'.format(user,group))
-        home = run('echo $HOME')
+        _ = run('echo $HOME')
         create_key_pair()
         sudo("echo '{0}' >> /home/{1}/.ssh/authorized_keys".format(env.SSH_PUBLIC_KEY, user))
         sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
@@ -1090,10 +1089,10 @@ def user_setup():
                 env.key_filename = AWS_KEY
         
     # create NGAS directories and chown to correct user and group
-    sudo('mkdir -p {0}'.format(env.APP_DIR_ABS))
-    sudo('chown {0}:{1} {2}'.format(env.APP_USERS[0], group, env.APP_DIR_ABS))
-    sudo('mkdir -p {0}/../NGAS'.format(env.APP_DIR_ABS))
-    sudo('chown {0}:{1} {2}/../NGAS'.format(env.APP_USERS[0], group, env.APP_DIR_ABS))
+    for dirname in env.APP_DIR_ABS, getNgasRootDir():
+        sudo('mkdir -p {0}'.format(dirname))
+        sudo('chown {0}:{1} {2}'.format(env.APP_USERS[0], group, dirname))
+
     puts(green("\n******** USER SETUP COMPLETED!********\n"))
 
 
@@ -1286,9 +1285,9 @@ def ngas_full_buildout(typ='archive'):
             dbLocFlags='--berkeley-db-incdir={0}/include/db60 --berkeley-db-libdir={0}/lib/db60/'.format(MACPORT_DIR)
             pkgmgr = check_brew_port()
             if pkgmgr == 'brew':
-               cellardir = check_brew_cellar()
-               db_version = run('ls -tr1 {0}/berkeley-db'.format(cellardir)).split()[-1]
-               dbLocFlags = '--berkeley-db={0}/berkeley-db/{1}'.format(cellardir,db_version)
+                cellardir = check_brew_cellar()
+                db_version = run('ls -tr1 {0}/berkeley-db'.format(cellardir)).split()[-1]
+                dbLocFlags = '--berkeley-db={0}/berkeley-db/{1}'.format(cellardir,db_version)
 
             virtualenv('cd /tmp/bsddb3-6.1.0; ' + \
                        'export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1; ' +\
@@ -1391,8 +1390,7 @@ def user_deploy(typ='archive'):
         else:
             env.APP_USERS = os.environ['HOME'].split('/')[-1]
 
-    install(sys_install=False, user_install=False,
-            init_install=False, typ=typ)
+    install(sys_install=False, user_install=False, init_install=False, typ=typ)
     start_ngas_and_check_status()
 
 @task
@@ -1402,6 +1400,7 @@ def start_ngas_and_check_status():
     """
     with settings(user=env.APP_USERS[0]):
         virtualenv('ngamsDaemon start')
+
     puts(green("\n******** SERVER STARTED!********\n"))
     if test_status():
         puts(green("\n>>>>> SERVER STATUS CHECKED <<<<<<<<<<<\n"))
@@ -1417,7 +1416,7 @@ def init_deploy(typ='archive'):
     
     fab -f machine-setup/deploy.py init_deploy -H <host> -i <ssh-key-file> -u <sudo_user>
     """
-    (initFile, initLink, cfg, lcfg) = initName(typ=typ)
+    initFile, initLink, _, _ = initName(typ=typ)
 
     set_env(hideing='everything')
 
@@ -1489,20 +1488,18 @@ def test_status():
     Execute the STATUS command against a running NGAS server
     """
     try:
-        serv = urllib.urlopen('http://{0}:7777/STATUS'.format(env.host))
+        serv = urllib2.urlopen('http://{0}:7777/STATUS'.format(env.host), timeout=5)
     except IOError:
         puts(red('Problem connecting to server {0}'.format(env.host)))
-        return False
+        raise
 
     response = serv.read()
     serv.close()
     if response.find('Status="SUCCESS"') == -1:
         puts(red('Problem with response from {0}, not SUCESS as expected'.format(env.host)))
-        puts(red(response))
-        return False
+        raise ValueError(response)
     else:
         puts(green('Response from {0} OK'.format(env.host)))
-        return True
 
 @task
 def archiveSource():
@@ -1537,7 +1534,7 @@ def archiveSource():
 
 
 @task
-def install(sys_install=True, user_install=True, 
+def install(sys_install=True, user_install=True,
             init_install=True, typ='archive',
             python_install=False):
     """
@@ -1545,42 +1542,28 @@ def install(sys_install=True, user_install=True,
     Note: Requires root permissions!
     """
     set_env(hideing='nothing', display=True)
-    if sys_install and sys_install != 'False': system_install()
+    if sys_install and sys_install != 'False':
+        system_install()
     if env.postfix:
         postfix_config()
-    if user_install and user_install != 'False': user_setup()
+    if user_install and user_install != 'False':
+        user_setup()
 
     with settings(user=env.APP_USERS[0]):
-
-        # Get the base dir of the current python installation
-        # and check that it's what we need (i.e., our own
-        # installation alongside the ngas installation)
-        # Only check if we're not explicitly asked to install
-        # python, in which case we do it anyway
-#         if not python_install:
-#             currentPython  = os.path.abspath(check_python())
-#             currentDir     = os.path.sep.join(currentPython.split(os.path.sep)[:-2]) if currentPython else ''
-#             intendedDir    = os.path.abspath(env.APP_DIR_ABS + os.path.sep + '..' + os.path.sep + 'python')
-#             python_install = currentDir != intendedDir
-#         if python_install:
-#             python_setup()
-
         ppath = check_python()
         if not ppath or str(python_install) == 'True':
             python_setup()
 
-    with settings(user=env.APP_USERS[0]):
         if env.PREFIX != env.HOME: # generate non-standard ngas_rt directory
             run('mkdir -p {0}'.format(env.PREFIX))
         virtualenv_setup()
-#     if env.PREFIX != env.HOME:
-#         sudo('chown -R {0}:{0} {1}'.format(env.APP_USERS[0], env.PREFIX))
-    with settings(user=env.APP_USERS[0]):
         ngas_full_buildout(typ=typ)
         cleanup_tmp()
-    if init_install and init_install != 'False': init_deploy()
-    puts(green("\n******** INSTALLATION COMPLETED!********\n"))
 
+    if init_install and init_install != 'False':
+        init_deploy()
+    puts(green("\n******** INSTALLATION COMPLETED!********\n"))
+    return env
 
 @task
 def uninstall(clean_system=False):
