@@ -79,10 +79,18 @@ class ngamsPawseyStageTest(ngamsTestLib.ngamsTestSuite):
             pass
 
     def test_stage(self):
-        stageFiles(['/mnt/mwa01fs/MWA/ngas_data_volume/mfa/2016-01-14/2/1136798736_20160114092621_gpubox02_01.fits'])
+        host = 'fe1.pawsey.ivec.org'
+        port = 9898
+        try:
+            pawseyMWAdmget(['/mnt/mwa01fs/MWA/ngas_data_volume/mfa/2016-01-14/ \
+                          2/1136798736_20160114092621_gpubox02_01.fits'],
+                          host,
+                          port)
+        except:
+            self.assertTrue(False)
 
         try:
-            stageFiles(['test'])
+            pawseyMWAdmget(['test'], host, port)
             self.assertTrue(False)
         except:
             pass

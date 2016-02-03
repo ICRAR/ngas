@@ -165,7 +165,7 @@ def stageFiles(filenames, requestObj = None, serverObj = None):
 
         pport = serverObj.getCfg().getFileStagingPlugPort()
         if pport:
-            port = pport
+            port = int(pport)
 
     filelist = filenames
 
