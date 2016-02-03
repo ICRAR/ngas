@@ -1168,47 +1168,30 @@ def ngas_buildout(typ='archive'):
     """
     set_env(hideing='everything')
 
-    run('if [ -a bin/python ] ; then rm bin/python ; fi') # avoid the 'busy' error message
-
     with cd(env.APP_DIR_ABS):
 
-        # With ports we need to pass down the berkeley DB libs/include locations
-        buildoutCommand = 'buildout'
-        pkgmgr = check_brew_port()
-        if pkgmgr == 'port':
-            buildoutCommand += ' cjclient:ldflags=-L{0}/lib/db60 cjclient:cflags=-I{0}/include/db60'.format(MACPORT_DIR)
-
         # Main NGAMs compilation routine
-        if (env.standalone):
-            put('{0}/additional_tars/eggs.tar.gz'.format(env.src_dir), '{0}/eggs.tar.gz'.format(env.APP_DIR_ABS))
-            run('tar -xzf eggs.tar.gz')
-            if env.linux_flavor == 'Darwin':
-                put('{0}/data/common.py.patch'.format(env.src_dir), '.')
-                run('patch eggs/minitage.recipe.common-1.90-py2.7.egg/minitage/recipe/common/common.py common.py.patch')
-            run('find . -name "._*" -exec rm -rf {} \;') # get rid of stupid stuff left over from MacOSX
-            virtualenv('{0} -Nvo'.format(buildoutCommand))
-        else:
-            run('find . -name "._*" -exec rm -rf {} \;')
-            virtualenv(buildoutCommand)
+        virtualenv("./build.sh")
 
         # Installing and initializing an NGAS_ROOT directory
         _,_,cfg,lcfg,  = initName(typ=typ)
         ngasRootDir = getNgasRootDir()
+        ngasTargetCfg = os.path.join(ngasRootDir, 'cfg', lcfg)
         with settings(warn_only=True):
             run('mkdir -p {0}'.format(ngasRootDir))
         run('cp -R {0}/NGAS/* {1}'.format(env.APP_DIR_ABS, ngasRootDir))
         with settings(warn_only=True):
-            run('cp {0}/cfg/{1} {2}/cfg/{3}'.format(env.APP_DIR_ABS, cfg, ngasRootDir, lcfg))
+            run('cp {0}/cfg/{1} {2}'.format(env.APP_DIR_ABS, cfg, ngasTargetCfg))
         if env.linux_flavor == 'Darwin': # capture stupid difference in sed on Mac OSX
-            run("""sed -i '' 's/\*replaceRoot\*/{0}/g' {0}/cfg/{1}""".format(ngasRootDir.replace('/','\\/'), lcfg))
+            run("""sed -i '' 's/\*replaceRoot\*/{0}/g' {1}""".format(ngasRootDir.replace('/','\\/'), ngasTargetCfg))
         else:
-            run("""sed -i 's/\*replaceRoot\*/{0}/g' {0}/cfg/{1}""".format(ngasRootDir.replace('/', '\\/'), lcfg))
+            run("""sed -i 's/\*replaceRoot\*/{0}/g' {1}""".format(ngasRootDir.replace('/', '\\/'), ngasTargetCfg))
 
         with cd(ngasRootDir):
             with settings(warn_only=True):
-                run('sqlite3 -init {0}/src/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
+                run('sqlite3 -init {0}/src/ngamsCore/ngamsSql/ngamsCreateTables-SQLite.sql ngas.sqlite <<< $(echo ".quit")'\
                     .format(env.APP_DIR_ABS))
-                run('cp ngas.sqlite {0}/src/ngamsTest/src/ngas_Sqlite_db_template'.format(env.APP_DIR_ABS))
+                run('cp ngas.sqlite {0}/src/ngamsTest/ngamsTest/src/ngas_Sqlite_db_template'.format(env.APP_DIR_ABS))
 
 
     puts(green("\n******** NGAS_BUILDOUT COMPLETED!********\n"))
@@ -1262,22 +1245,12 @@ def ngas_full_buildout(typ='archive'):
     #
     if (env.standalone):
         git_clone_tar()
-    elif check_path('{0}/bootstrap.py'.format(env.APP_DIR_ABS)) == '0':
+    elif check_path('{0}/README'.format(env.APP_DIR_ABS)) == '0':
         git_clone_tar()
 
     with cd(env.APP_DIR_ABS):
-        virtualenv('pip install clib_tars/zc.buildout-2.3.1.tar.gz')
-        virtualenv('pip install clib_tars/pycrypto-2.6.tar.gz')
-        virtualenv('pip install clib_tars/paramiko-1.15.1.tar.gz')
-        # make this installation self consistent
-        virtualenv('pip install clib_tars/Fabric-1.10.1.tar.gz')
-        virtualenv('pip install clib_tars/boto-2.36.0.tar.gz')
-        virtualenv('pip install clib_tars/markup-1.9.tar.gz')
-        virtualenv('pip install additional_tars/egenix-mx-base-3.2.6.tar.gz')
         #The following will only work if the Berkeley DB has been installed already
         if env.linux_flavor == 'Darwin':
-            puts('>>>> Installing Berkeley DB')
-            system_install()
             virtualenv('cd /tmp; tar -xzf {0}/additional_tars/bsddb3-6.1.0.tar.gz'.format(env.APP_DIR_ABS))
 
             # Different flags given to the setup.py script depending on whether
