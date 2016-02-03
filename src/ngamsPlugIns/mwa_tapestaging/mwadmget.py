@@ -50,68 +50,62 @@ class ErrorCodeException(Exception):
    def __init__(self, err, msg):
       self.error_code = err
       self.msg = msg
-   
+
    def getMsg(self):
       return self.msg
-   
+
    def __str__(self):
       return repr(self.error_code)
-   
+
 
 def main():
    PORT = 9898
    sock = None
    try:
-      
+
       files = []
-      
+
       parser = OptionParser(usage="usage: %prog -f [mwa files] -s [mwadmgetserver]", version="%prog 1.0")
-      parser.add_option('-f', default=[], dest='filename', action='append', help="MWA file(s)")
+      parser.add_option('-f', default='', dest='filename', action='store', help="MWA file(s)")
       parser.add_option('-s', default='localhost', action='store', dest='server', help="mwadmgetserver")
-      
+
       (options, args) = parser.parse_args()
-      
-      for i, opt in enumerate(options.filename):
-         files.append(opt)
+
+      files = options.filename.split(',')
       
       sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      
-      #/home/ngas/NGAS/volume1/MWAArchive/2013-12-19/1/1069588992_20131127120356_gpubox10_01.fits
-      #1069588992_20131127120356_gpubox14_01.fits
-      
+
       files = {'files' : files}
       jsonoutput = json.dumps(files)
-      
+
       val = struct.pack('>I', len(jsonoutput))
       val = val + jsonoutput
-      
+
       # Connect to server and send data
       sock.connect((options.server, PORT))
       sock.sendall(val)
-      
+
       # Receive return code from server
       return struct.unpack('!H', sock.recv(2))[0]
-      
+
    finally:
       if sock:
          sock.close()
-       
+
 
 if __name__ == "__main__":
    try:
       retcode = main()
       if (retcode != 0):
          raise ErrorCodeException(retcode, '')
-         
+
       sys.exit(retcode)
-      
+
    except IOError as ioe:
       print ioe
       sys.exit(ErrorCode.io_error)
-      
+
    except Exception as e:
       print e
 
       sys.exit(ErrorCode.unknown_error)
-  
-  
