@@ -1,4 +1,4 @@
-drop table ngas_cache;
+drop table if exists ngas_cache;
 Create table ngas_cache
 (
     disk_id       varchar(128)    not null,
@@ -10,7 +10,7 @@ Create table ngas_cache
 );
 
 
-drop table ngas_cfg;
+drop table if exists ngas_cfg;
 create table ngas_cfg (
   cfg_name           varchar(32)  not null,
   cfg_par_group_ids  text         not null,
@@ -19,7 +19,7 @@ create table ngas_cfg (
 );
 
 
-drop table ngas_cfg_pars;
+drop table if exists ngas_cfg_pars;
 create table ngas_cfg_pars
 (
   cfg_group_id       varchar(32)  not null,
@@ -30,7 +30,7 @@ create table ngas_cfg_pars
 );
 
 
-drop table ngas_disks;
+drop table if exists ngas_disks;
 create table ngas_disks
 (
   disk_id                 varchar(128)   not null,
@@ -57,7 +57,7 @@ create table ngas_disks
 );
 
 
-drop table ngas_disks_hist;
+drop table if exists ngas_disks_hist;
 create table ngas_disks_hist
 (
   disk_id                 varchar(128)   not null,
@@ -72,7 +72,7 @@ create index ngas_disks_hist_date     on ngas_disks_hist(hist_date);
 create index ngas_disks_hist_origin   on ngas_disks_hist(hist_origin);
 
 
-drop table ngas_files;
+drop table if exists ngas_files;
 create table ngas_files
 (
   disk_id                varchar(128)   not null,
@@ -95,7 +95,7 @@ create table ngas_files
   constraint file_idx primary key(file_id,file_version,disk_id)
 );
 
-drop table ngas_containers;
+drop table if exists ngas_containers;
 create table ngas_containers
 (
   container_id        varchar(36)    not null,
@@ -108,7 +108,7 @@ create table ngas_containers
   constraint container_uni unique(parent_container_id, container_name)
 );
 
-drop table ngas_hosts;
+drop table if exists ngas_hosts;
 Create table ngas_hosts
 (
   host_id              varchar(32)    not null,
@@ -143,7 +143,7 @@ Create table ngas_hosts
 );
 
 
-drop table ngas_mirroring_queue;
+drop table if exists ngas_mirroring_queue;
 Create table ngas_mirroring_queue
 (
   instance_id           varchar(32)     not null,
@@ -160,7 +160,7 @@ Create table ngas_mirroring_queue
 );
 
 
-drop table ngas_mirroring_hist;
+drop table if exists ngas_mirroring_hist;
 Create table ngas_mirroring_hist
 (
   instance_id           varchar(32)     not null,
@@ -177,7 +177,7 @@ Create table ngas_mirroring_hist
 );
 
 
-drop table ngas_subscribers;
+drop table if exists ngas_subscribers;
 Create table ngas_subscribers
 (
   host_id                   varchar(32)   not null,
@@ -194,7 +194,7 @@ Create table ngas_subscribers
 
 create unique index subscr_id_idx on ngas_subscribers(subscr_id);
 
-drop table ngas_subscr_back_log;
+drop table if exists ngas_subscr_back_log;
 Create table ngas_subscr_back_log
 (
   host_id        varchar(32)   not null,
@@ -208,7 +208,7 @@ Create table ngas_subscr_back_log
   format         varchar(32)   not null
 );
 
-drop table ngas_subscr_queue;
+drop table if exists ngas_subscr_queue;
 create table ngas_subscr_queue
 (
 	subscr_id			varchar(255)	not null,
@@ -224,4 +224,3 @@ create table ngas_subscr_queue
 	constraint subscr_queue_idx	primary key(subscr_id,file_id,file_version,disk_id)
 );
 create index subscr_queue_subscr_id_idx on ngas_subscr_queue(subscr_id);
-
