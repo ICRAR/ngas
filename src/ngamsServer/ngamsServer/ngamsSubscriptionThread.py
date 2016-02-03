@@ -1039,22 +1039,18 @@ def addToSubscrQueue(srvObj, subscrId, fileInfo, quChunks):
 
 def stageFile(srvObj, filename):
     fspi = srvObj.getCfg().getFileStagingPlugIn()
-    if (not fspi):
+    if not fspi:
         return
     try:
-        info(2,"Invoking FSPI.isFileOffline: " + fspi + " to check file: " + filename)
+        info(2,"Invoking FSPI.isFileOffline: %s to check file: %s" % (fspi, filename))
         isFileOffline = loadPlugInEntryPoint(fspi, 'isFileOffline')
-        offline = isFileOffline(filename)
-        if (1 == offline):
-            info(3, "File " + filename + " is offline, staging for delivery...")
+        if isFileOffline(filename) == 1:
+            info(3, "File %s is offline, staging for delivery..." % filename)
             stageFiles = loadPlugInEntryPoint(fspi, 'stageFiles')
-            num = stageFiles([filename])
-            if (num == 0):
-                raise Exception('File staging error: %s' % filename)
-            else:
-                info(3, "File " + filename + " staging completed for delivery.")
-    except Exception, ex:
-        error("File offline_checking or staging error: %s" % filename)
+            stageFiles(filenameList = [filename], serverObj = srvObj)
+            info(3, "File %s staging completed for delivery." % filename)
+    except Exception as ex:
+        error("File staging error: %s" % filename)
         raise ex
 
 def subscriptionThread(srvObj,
