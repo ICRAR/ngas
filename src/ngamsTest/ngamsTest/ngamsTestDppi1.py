@@ -63,11 +63,15 @@ def ngamsTestDppi1(srvObj,
 
     # Uncompress the file.
     procFile, procDir = ngamsPlugInApi.prepProcFile(srvObj.getCfg(), filename)
-    commands.getstatusoutput("uncompress %s" % procFile)
+    stat, out = commands.getstatusoutput("gunzip %s" % procFile)
+    if stat:
+        raise Exception('Problem while uncompressing %s: %s' % (procFile, out))
     procFile = procFile[0:procFile.rfind(".")]
 
     # Process the output file.
     stat, out = commands.getstatusoutput("fold %s" % procFile)
+    if stat:
+        raise Exception('Problem while folding %s: %s' % (procFile, out))
     head = ""
     for line in out.split("\n"):
         if (line.strip() == ""): continue

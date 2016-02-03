@@ -36,9 +36,6 @@ Ignore:
 Ignore:                             
 Ignore:                             
 Message:                            Successfully handled RETRIEVE Command
-Permissions:                        -rw-rw-r--
-Permissions:                        drwxrwxr-x
-Permissions:                        drwxrwxr-x
 State:                              ONLINE
 Status:
 Status:                             SUCCESS

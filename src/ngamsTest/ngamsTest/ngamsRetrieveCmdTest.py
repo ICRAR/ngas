@@ -474,7 +474,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         refStatFile = "ref/ngamsRemFileCmdTest_test_IntFolder_01_01_ref"
         filtStat = filterDbStatus1(stat.dumpBuf(), filterTags=["FileSize:",
                                                                "Owner:",
-                                                               "Group:"])
+                                                               "Group:",
+                                                               "Permissions:"])
         tmpStatFile = saveInFile(None, filtStat)
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status for " +\
                           "RETRIEVE Command/internal folder, local", sort=1)
@@ -519,7 +520,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         refStatFile = "ref/ngamsRemFileCmdTest_test_IntFolder_02_01_ref"
         filtStat = filterDbStatus1(stat.dumpBuf(), filterTags=["FileSize:",
                                                                "Owner:",
-                                                               "Group:"])
+                                                               "Group:",
+                                                               "Permissions:"])
         tmpStatFile = saveInFile(None, filtStat)
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status for " +\
                           "RETRIEVE Command/internal folder, proxy", sort=1)
@@ -708,7 +710,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         self.prepCluster("src/ngamsCfg.xml",
                          [[8000, None, None, getClusterName()],
                           [8011, None, None, getClusterName(), ncuCfgPars]])
-        sendPclCmd(port=8011).archive("src/SmallFile.fits")
+        stat = sendPclCmd(port=8011).archive("src/SmallFile.fits")
+        self.assertEquals('SUCCESS', stat.getStatus())
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_03")
         cmdPars = [["file_id", "TEST.2001-05-08T15:25:00.123"],
