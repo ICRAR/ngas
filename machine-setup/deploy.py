@@ -357,12 +357,10 @@ def whatsmyip():
     """
     whatismyip = 'http://bot.whatismyipaddress.com/'
     try:
-        myip = urllib.urlopen(whatismyip).readlines()[0]
+        myip = urllib2.urlopen(whatismyip, timeout=5).readlines()[0]
     except:
         puts(red('Unable to derive IP through {0}'.format(whatismyip)))
         myip = '127.0.0.1'
-    puts(green('IpAddress = "{0}"'.format(myip)))
-
     return myip
 
 @task(task_class=VerboseTask)
