@@ -32,6 +32,7 @@ Function + code to handle the RETRIEVE Command.
 """
 
 from _socket import SOL_SOCKET, SO_SNDBUF
+from socket import timeout
 import glob, commands, time
 import os
 
@@ -51,50 +52,47 @@ import ngamsSrvUtils, ngamsFileUtils
 
 def performStaging(srvObj, reqPropsObj, httpRef, filename):
     """
-    if the staging plugin is set, then perform staging 
-    using the registered staging plugin 
+    if the staging plugin is set, then perform staging
+    using the registered staging plugin
     if the file is offline (i.e. on Tape)
-    
+
     srvObj:       Reference to NG/AMS server class object (ngamsServer).
-    
+
     filename:     File to be processed (string).
-    
+
     """
-    if (srvObj.getCfg().getFileStagingEnable() != 1):
-        return 
-    fspi = srvObj.getCfg().getFileStagingPlugIn()
-    if (not fspi):
+    if srvObj.getCfg().getFileStagingEnable() != 1:
         return
-    
+
+    fspi = srvObj.getCfg().getFileStagingPlugIn()
+    if not fspi:
+        return
+
     info(2,"Invoking FSPI.isFileOffline: " + fspi + " to check file: " + filename)
     isFileOffline = loadPlugInEntryPoint(fspi, 'isFileOffline')
-    offline = isFileOffline(filename)
-    if (offline == 1): 
-        info(2,"Invoking FSPI.stageFiles: " + fspi + " to stage file: " + filename)
+
+    if isFileOffline(filename) == 0:
+        return
+
+    info(2,"Invoking FSPI.stageFiles: " + fspi + " to stage file: " + filename)
+    stageFiles = loadPlugInEntryPoint(fspi, 'stageFiles')
+
+    try:
         st = time.time()
-        num = 0
-        try:
-            stageFiles = loadPlugInEntryPoint(fspi, 'stageFiles')
-            num = stageFiles(filenameList=[filename], requestObj=reqPropsObj)
-        except Exception, ex:
-            if (str(ex).find('timed out') != -1):
-                errMsg = 'Staging timed out: %s' % filename
-                warning(errMsg)
-                srvObj.httpReply(reqPropsObj, httpRef, 504, errMsg, NGAMS_TEXT_MT) 
-            raise ex
-           
-        if (num == 0):
-            errMsg = 'File %s is offline, but NGAS failed to stage it online' % filename
-            error(errMsg)
-            raise Exception(errMsg)
-        else:
-            howlong = time.time() - st
-            fileSize = getFileSize(filename)
-            info(3, 'Staging rate = %.0f Bytes/s (%.0f seconds) for file %s' % (fileSize / howlong, howlong, filename))
-    elif (offline == -1): 
-        errMsg = 'Fail to query the offline status for file %s' % filename
-        error(errMsg) # but still continue go ahead without raising Exceptions
-    
+        stageFiles(filenameList = [filename],
+                    requestObj = reqPropsObj,
+                    serverObj = srvObj)
+        howlong = time.time() - st
+        fileSize = getFileSize(filename)
+        info(3, 'Staging rate = %.0f Bytes/s (%.0f seconds) for file %s' % (fileSize / howlong, howlong, filename))
+
+    except timeout as t:
+        errMsg = 'Staging timed out: %s' % filename
+        warning(errMsg)
+        srvObj.httpReply(reqPropsObj, httpRef, 504, errMsg, NGAMS_TEXT_MT)
+        raise t
+
+
 
 def performProcessing(srvObj,
                       reqPropsObj,
@@ -207,7 +205,7 @@ def genReplyRetrieve(srvObj,
         info(4,"Sending header: Content-Disposition: " + contDisp)
         httpRef.send_header('Content-Disposition', contDisp)
         httpRef.wfile.write("\n")
-        
+
         if (reqPropsObj.hasHttpPar("send_buffer")):
             try:
                 sendBufSize = int(reqPropsObj.getHttpPar("send_buffer"))
@@ -501,10 +499,10 @@ def _handleCmdRetrieve(srvObj,
     if (location == NGAMS_HOST_LOCAL):
         # Get the file and send back the contents from this NGAS host.
         srcFilename = os.path.normpath(mountPoint + "/" + filename)
-        
+
         # Perform the possible file staging
         performStaging(srvObj, reqPropsObj, httpRef, srcFilename)
-        
+
         # Perform the possible processing requested.
         procResult = performProcessing(srvObj,reqPropsObj,srcFilename,mimeType)
     elif (((location == NGAMS_HOST_CLUSTER) or \

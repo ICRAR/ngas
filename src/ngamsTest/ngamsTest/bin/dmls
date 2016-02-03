@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+
+import sys
+from optparse import OptionParser
+
+if __name__ == "__main__":
+    parser = OptionParser(usage='usage: %prog [options]', version='%prog 1.0')
+    parser.add_option('-l', action='store', dest='filename', help='Filename')
+
+    (options, args) = parser.parse_args()
+
+    status = '(N/A)'
+    if options.filename == 'DUL':
+        status = '(DUL)'
+    elif options.filename == 'REG':
+        status = '(REG)'
+    elif options.filename == 'Error':
+        sys.exit(-1)
+    elif options.filename == 'NMG':
+        status = '(NMG)'
+    elif options.filename == 'OFL':
+        status = '(OFL)'
+    elif options.filename == 'PAR':
+        status = '(PAR)'
+    elif options.filename == 'INV':
+        status = '(INV)'
+
+    print ("-rw-r--r-- 1 ngas ngas 236694 2014-02-14 16:28 %s %s" % (status, options.filename))
+    sys.exit(0)

@@ -779,7 +779,7 @@ class ngamsConfig:
         """
         par = "Server[1].BlockSize"
         return getInt(par, self.getVal(par))
-    
+
     def getArchiveRcvBufSize(self):
         """
         Get TCP receive buffer size, which
@@ -787,7 +787,7 @@ class ngamsConfig:
         """
         par = "Server[1].ArchiveRcvBufSize"
         return getInt(par, self.getVal(par), retValOnFailure = None)
-    
+
     def getArchiveSndBufSize(self):
         """
         Get TCP send buffer size, which
@@ -865,12 +865,12 @@ class ngamsConfig:
         """
         par = "Server[1].ProxyMode"
         return getInt(par, self.getVal(par))
-    
+
     def getProxyCRC(self):
         """
-        If the proxy archive server 
+        If the proxy archive server
         check CRC as well
-        
+
         By default, 0 (do not check CRC)
         """
         par = "Server[1].ProxyCRC"
@@ -1903,11 +1903,11 @@ class ngamsConfig:
         Returns:    Subscriber List (list/ngamsSubscriber).
         """
         return self.__subscriptionsDic
-    
+
     def getFileStagingEnable(self):
         """
         Return if the file staging flag is set to Enabled / Disable
-        
+
         Returns:    1 = enabled, 0 = disabled (integer/0|1)
         """
         par = "FileStagingDef[1].Enable"
@@ -1915,21 +1915,29 @@ class ngamsConfig:
         if (not strVal):
             return 0
         return getInt(par, strVal)
-    
+
+    def getFileStagingPlugInHost(self):
+        par = "FileStagingDef[1].Host"
+        return self.getVal(par)
+
+    def getFileStagingPlugInPort(self):
+        par = "FileStagingDef[1].Port"
+        return self.getVal(par)
+
     def getFileStagingPlugIn(self):
         """
         Return the name of the FileStagingPlugIn,
         which takes file online if it is offline.
-        
+
         The plugin must contain these two functions:
-        
+
         def isFileOffline(filename)
             PAR: filename: string
-            RETURN: 1 - yes, 0 - no, -1 - error
-            
+            RETURN: 1 - yes, 0 - no, Exception - error
+
         def stageFiles(filenameList)
             PAR: filenameList: List of file names (string)
-            RETURN:   the number of files staged. -1, if any errors
+            RETURN:   the number of files staged. Exception, if any errors
         """
         par = "FileStagingDef[1].PlugIn"
         return self.getVal(par)
