@@ -164,6 +164,7 @@ YUM_PACKAGES = [
    'wget.x86_64',
    'postgresql-devel.x86_64',
    'patch',
+   'cfitsio-devel'
 ]
 
 APT_PACKAGES = [
@@ -181,6 +182,7 @@ APT_PACKAGES = [
         'patch',
         'python-dev',
         'libdb5.3-dev',
+        'libcfitsio-dev'
                 ]
 
 SLES_PACKAGES = [
