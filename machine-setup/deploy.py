@@ -108,10 +108,8 @@ AMI_IDs = {
            'SLES-SP3':'ami-c08fcba8'
            }
 AMI_NAME = 'Amazon'
-AMI_ID = AMI_IDs[AMI_NAME]
 INSTANCE_NAME = 'NGAS_{0}'
 INSTANCE_TYPE = 't1.micro'
-INSTANCES_FILE = os.path.expanduser('~/.aws/aws_instances')
 env.instance_id = 'UNKNOWN' # preset
 ELASTIC_IP = 'False'
 USERS = ['ngas']
@@ -126,8 +124,6 @@ MACPORT_DIR = '/opt/local' # The directory under which 'port' installs stuff
 # the following can be set on the command line in order to clone from git.
 GITUSER = '' 
 GITREPO = ''
-# GITUSER = 'icrargit'
-# GITREPO = 'gitsrv.icrar.org:ngas'
 
 SUPPORTED_OS_LINUX = [
                       'Amazon Linux',
@@ -223,19 +219,6 @@ PORT_PACKAGES = [
                  'automake',
                  'autoconf',
                  ]
-
-
-PYTHON_PACKAGES = [
-        'zc.buildout',
-        'pycrypto',
-        'paramiko',
-        'Fabric',
-        'boto',
-        'markup',
-        'egenix-mx-base',
-        'bsddb3',
-        'bottle',
-        ]
 
 
 PUBLIC_KEYS = os.path.expanduser('~/.ssh')
@@ -810,19 +793,6 @@ def check_brew_cellar():
         cellar = run('brew config | grep HOMEBREW_CELLAR')
     return cellar.split(':')[1].strip()
 
-
-
-def copy_public_keys():
-    """
-    Copy the public keys to the remote servers
-    """
-    env.list_of_users = []
-    for file in glob.glob(PUBLIC_KEYS + '/*.pub'):
-        filename = '.ssh/{0}'.format(os.path.basename(file))
-        user, ext = os.path.splitext(filename)
-        env.list_of_users.append(user)
-        put(file, filename)
-        
 def virtualenv(command, **kwargs):
     """
     Just a helper function to execute commands in the virtualenv
@@ -830,24 +800,6 @@ def virtualenv(command, **kwargs):
     env.activate = 'source {0}/bin/activate'.format(env.APP_DIR_ABS)
     with cd(env.APP_DIR_ABS):
         run(env.activate + '&&' + command, **kwargs)
-
-def git_pull():
-    """
-    Updates the repository.
-    TODO: This does not work outside iVEC. The current implementation
-    is thus using a tar-file, copied over from the calling machine.
-    """
-    with cd(env.APP_DIR_ABS):
-        sudo('git pull', user=env.user)
-
-def git_clone():
-    """
-    Clones the APP repository.
-    """
-    copy_public_keys()
-    with cd(env.APP_DIR_ABS):
-        run('git clone {0}@{1} -b {2}'.format(env.GITUSER, env.GITREPO, env.BRANCH))
-
 
 @task
 def git_clone_tar(unpack=True):
@@ -902,21 +854,6 @@ def ngas_minimal_tar(transfer=True):
     This function packs the minimal required parts of the NGAS source tree
     into a tar file and copies it to the remote site.
     """
-    parts = ['src',
-             'cfg',
-             'NGAS',
-             'COPYRIGHT',
-             'README',
-             'INSTALL',
-             'LICENSE',
-             'VERSION',
-             'bootstrap.py',
-             'buildout.cfg',
-             'doc',
-             'hooks',
-             'machine_setup',
-             'setup.py',
-             ]
     excludes = ['.git', '.s*', 
                 ]
     exclude = ' --exclude ' + ' --exclude '.join(excludes)
