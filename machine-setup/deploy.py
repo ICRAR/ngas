@@ -101,7 +101,8 @@ BRANCH = 'master'    # this is controlling which branch is used in git clone
 USERNAME = 'ec2-user'
 POSTFIX = False
 AMI_IDs = {
-           'Amazon':'ami-7c807d14', 
+           'Amazon':'ami-7c807d14',
+           'Amazon-hvm': 'ami-60b6c60a',
            'CentOS': 'ami-8997afe0',
            'Old_CentOS':'ami-aecd60c7', 
            'SLES-SP2':'ami-e8084981',
@@ -370,15 +371,6 @@ def check_ssh():
     """
     Check availability of SSH on HOST
     """
-    if not env.has_key('key_filename') or not env.key_filename:
-        env.key_filename = AWS_KEY
-    else:
-        puts(red("SSH key_filename: {0}".format(env.key_filename)))
-    if not env.has_key('user') or not env.user:
-        env.user = USERNAME
-    else:
-        puts(red("SSH user name: {0}".format(env.user)))
-
     ssh_available = False
     ntries = 30
     tries = 0
@@ -495,7 +487,7 @@ def create_key_pair():
     
     env.SSH_PUBLIC_KEY = okey.exportKey('OpenSSH')
 
-def create_instance(names, use_elastic_ip, public_ips, sgid):
+def create_instance(names, instance_type, use_elastic_ip, public_ips, sgid):
     """Create the EC2 instance
 
     :param names: the name to be used for this instance
@@ -520,7 +512,7 @@ def create_instance(names, use_elastic_ip, public_ips, sgid):
             if not conn.disassociate_address(public_ip=public_ip):
                 abort('Could not disassociate the IP {0}'.format(public_ip))
 
-    reservations = conn.run_instances(AMI_IDs[env.AMI_NAME], instance_type=INSTANCE_TYPE, \
+    reservations = conn.run_instances(AMI_IDs[env.AMI_NAME], instance_type=instance_type, \
                                     key_name=KEY_NAME, security_group_ids=[sgid],\
                                     min_count=number_instances, max_count=number_instances)
     instances = reservations.instances
@@ -530,10 +522,7 @@ def create_instance(names, use_elastic_ip, public_ips, sgid):
         time.sleep(5)
 
     # Are we running yet?
-    iid = []
-    for i in range(number_instances):
-        iid.append(instances[i].id)
-
+    iid = [x.id for x in instances]
     stat = conn.get_all_instance_status(iid)
     running = [x.state_name=='running' for x in stat]
     puts('\nWaiting for instances to be fully available:\n')
@@ -549,7 +538,7 @@ def create_instance(names, use_elastic_ip, public_ips, sgid):
 
     # Tag the instance
     for i in range(number_instances):
-        conn.create_tags([instances[i].id], {'Name': names[i], 
+        conn.create_tags([instances[i].id], {'Name': names[i],
                                              'Created By':userAThost,
                                              })
 
@@ -566,16 +555,6 @@ def create_instance(names, use_elastic_ip, public_ips, sgid):
         instances[i].update(True)
         print_instance(instances[i])
         host_names.append(str(instances[i].dns_name))
-
-    # The instance is started, but not useable (yet)
-    puts('Started the instance(s) now waiting for the SSH daemon to start.')
-    env.host_string = host_names[0]
-    
-    if env.AMI_NAME in ['CentOS', 'SLES']:
-        env.user = 'root'
-    else:
-        env.user = USERNAME
-    check_ssh()
     return host_names
 
 
@@ -1327,64 +1306,59 @@ def ngas_full_buildout(typ='archive'):
     install_user_profile()
 
 
+def default_if_empty(env, key, default):
+    if key not in env or not env[key]:
+        env[key] = default
 
 @task
 @serial
-def test_env():
+def configure_test_env(n_instances=1):
     """Configure the test environment on EC2
 
-    Ask a series of questions before deploying to the cloud.
-
-    Allow the user to select if a Elastic IP address is to be used
+    This method creates AWS instances and points the fabric environment to them with
+    the current public IP and username.
     """
-    if not env.has_key('AWS_PROFILE') or not env.AWS_PROFILE:
-        env.AWS_PROFILE = AWS_PROFILE
-    if not env.has_key('BRANCH') or not env.BRANCH:
-        env.BRANCH = BRANCH
-    if not env.has_key('instance_name') or not env.instance_name:
-        env.instance_name = INSTANCE_NAME.format(env.BRANCH)
-    if not env.has_key('use_elastic_ip') or not env.use_elastic_ip:
-        env.use_elastic_ip = ELASTIC_IP
-    if not env.has_key('key_filename') or not env.key_filename:
-        env.key_filename = AWS_KEY
-    if not env.has_key('AMI_NAME') or not env.AMI_NAME:
-        env.AMI_NAME = AMI_NAME
-    env.instance_name = INSTANCE_NAME.format(env.BRANCH)
-    if not env.has_key('user') or not env.user:
-        env.user = USERNAME
-    env.use_elastic_ip = ELASTIC_IP
-    if 'use_elastic_ip' in env:
-        use_elastic_ip = to_boolean(env.use_elastic_ip)
-    else:
-        use_elastic_ip = confirm('Do you want to assign an Elastic IP to this instance: ', False)
+    env.BRANCH = local('git rev-parse --abbrev-ref HEAD', capture=True)
+    default_if_empty(env, 'AMI_NAME',       AMI_NAME)
+    default_if_empty(env, 'AWS_PROFILE',    AWS_PROFILE)
+    default_if_empty(env, 'instance_name',  INSTANCE_NAME.format(env.BRANCH))
+    default_if_empty(env, 'instance_type',  INSTANCE_TYPE)
+    default_if_empty(env, 'use_elastic_ip', ELASTIC_IP)
 
+    use_elastic_ip = to_boolean(env.use_elastic_ip)
     public_ip = None
     if use_elastic_ip:
         if 'public_ip' in env:
             public_ip = env.public_ip
         else:
             public_ip = prompt('What is the public IP address: ', 'public_ip')
+    public_ips = [public_ip for _ in xrange(n_instances)]
 
-    if 'instance_name' not in env:
-        prompt('AWS Instance name: ', 'instance_name')
 
-    if env.AMI_NAME in ['CentOS', 'SLES']:
-        env.user = 'root'
     # Check and create the key_pair if necessary
     aws_create_key_pair()
     # Check and create security group if necessary
     sgid = check_create_aws_sec_group()
     # Create the instance in AWS
-    host_names = create_instance([env.instance_name], use_elastic_ip, [public_ip], sgid)
-    env.hosts = host_names
-    if not env.host_string:
-        env.host_string = env.hosts[0]
+    if n_instances > 1:
+        instance_names = ["%s_%d" % (env.instance_name, i) for i in xrange(n_instances)]
+    else:
+        instance_names = [env.instance_name]
+    host_names = create_instance(instance_names, env.instance_type, use_elastic_ip, public_ips, sgid)
 
-    env.key_filename = AWS_KEY
-    env.roledefs = {
-        'ngasmgr' : host_names,
-        'ngas' : host_names,
-    }
+    # Update our fabric environment so from now on we connect to the
+    # AWS machine (and using the correct usernames)
+    env.hosts = host_names
+    if 'key_filename' not in env or not env.key_filename:
+        env.key_filename = AWS_KEY
+    if env.AMI_NAME in ['CentOS', 'SLES']:
+        env.user = 'root'
+    else:
+        env.user = 'ec2-user'
+
+    # Instances have started, but are not useable yet, make sure SSH has started
+    puts('Started the instance(s) now waiting for the SSH daemon to start.')
+    execute(check_ssh)
 
 
 def initName(typ='archive'):
@@ -1504,11 +1478,10 @@ def test_deploy():
     
     fab -f machine-setup/deploy.py test_deploy
     """
-    test_env()
+    configure_test_env()
     install(sys_install=True, user_install=True, init_install=True)
-    sudo('chown -R {0}:{0} {0}'.format(env.HOME))
     start_ngas_and_check_status()
-    puts(green("******** TEST_DEPLOY COMPLETED on AWS hosts: %r ********\n".format(env.hosts)))
+    puts(green("******** TEST_DEPLOY COMPLETED on AWS hosts: {0} ********\n".format(env.hosts)))
 
 @task
 def test_status():
@@ -1706,9 +1679,6 @@ def assign_ddns():
 def connect():
     if not env.has_key('AWS_PROFILE') or not env.AWS_PROFILE:
         env.AWS_PROFILE = AWS_PROFILE
-    if not env.has_key('key_filename') or not env.key_filename:
-        env.key_filename = AWS_KEY
-
     conn = boto.ec2.connect_to_region(AWS_REGION, profile_name=env.AWS_PROFILE)
     return conn
 
