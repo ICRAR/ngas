@@ -86,7 +86,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
                removed from the DB and from the disk.
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
 
         # Archive a file + clone it to be able to execute the REMFILE Command.
         client.archive("src/SmallFile.fits")
@@ -143,7 +143,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
                in less than 3 copies.
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
 
         # Archive file.
         client.archive("src/SmallFile.fits")

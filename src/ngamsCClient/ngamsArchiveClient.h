@@ -98,6 +98,10 @@ typedef struct {
     pthread_t        cleanUpThread;
 } ngamsARCHIVE_CLIENT_REGISTRY;
 
+/* Avoid warnings because function definitions are missing */
+ngamsSTAT ngamsCheckArchiveQueue(ngamsARCHIVE_CLIENT_REGISTRY*  regP);
+ngamsSTAT ngamsArchiveFile(ngamsARCHIVE_CLIENT_REGISTRY*  regP, const char* sourceFile);
+ngamsSTAT ngamsCleanUpArchivedFiles(ngamsARCHIVE_CLIENT_REGISTRY*  regP);
 
 #ifdef __cplusplus
 }

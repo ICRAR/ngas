@@ -75,8 +75,8 @@ class ngamsConfigCmdTest(ngamsTestSuite):
         TODO: Check in Log File that low level logs are produced.
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        statObj = ngamsPClient.ngamsPClient().\
-                  sendCmdGen(getHostName(), 8888, NGAMS_CONFIG_CMD,
+        statObj = ngamsPClient.ngamsPClient(port=8888).\
+                  sendCmdGen(NGAMS_CONFIG_CMD,
                              pars = [["log_local_log_level", "4"]])
         tmpStatFile = "tmp/ngamsConfigCmdTest_test_ChangeLocLogLev_1_1_tmp"
         refStatFile = "ref/ngamsConfigCmdTest_test_ChangeLocLogLev_1_1_ref"

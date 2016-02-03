@@ -82,7 +82,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         ...
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
         status = client.status()
         if (status.getMessage().\
             find("Successfully handled command STATUS") == -1):
@@ -115,8 +115,8 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         self.prepCluster("src/ngamsCfg.xml",
                          [[8000, None, None, getClusterName()],
                           [8011, None, None, getClusterName()]])
-        statObj = ngamsPClient.ngamsPClient().\
-                  sendCmdGen(getHostName(), 8000, "STATUS",
+        statObj = ngamsPClient.ngamsPClient(port=8000).\
+                  sendCmdGen("STATUS",
                              1, "", [["host_id", getNcu11()]])        
         refMsg = "Successfully handled command STATUS"
         if ((statObj.getMessage().find(refMsg) == -1) or
@@ -155,9 +155,9 @@ class ngamsStatusCmdTest(ngamsTestSuite):
                          [[8000, None, None, getClusterName()],
                           [8011, None, None, getClusterName()]])
         srcFile = "src/TinyTestFile.fits"
-        ngamsPClient.ngamsPClient(getHostName(),8011).archive(srcFile,"", 1, 0)
-        statObj = ngamsPClient.ngamsPClient().\
-                  sendCmdGen(getHostName(), 8011, "STATUS", 1, "",
+        client = ngamsPClient.ngamsPClient(port=8011)
+        client.archive(srcFile,"", 1, 0)
+        statObj = client.sendCmdGen("STATUS", 1, "",
                              [["file_access", "NCU.2003-11-11T11:11:11.111"],
                               ["file_version", "1"]])
         refMsg = "NGAMS_INFO_FILE_AVAIL:4029:INFO: File with File ID: " +\

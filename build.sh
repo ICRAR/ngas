@@ -31,6 +31,9 @@ make clean all install || fail "Failed to compile $cModule"
 cd ..
 
 # Build python setup.py-based modules
+# The ngamsPlugIns module eventually requires numpy which we need to install
+# manually outside the setuptools world
+pip install numpy
 for pyModule in pcc ngamsCore ngamsPClient ngamsServer ngamsPlugIns
 do
 	prevDir=$(pwd -P)

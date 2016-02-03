@@ -165,8 +165,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         cfg.save(tmpCfgFile, 0)
         cfgObj, dbObj = self.prepExtSrv(8888, cfgFile=tmpCfgFile)
         flushEmailQueue()
-        ngamsPClient.ngamsPClient(getHostName(), 8888).\
-                                                 archive("src/SmallFile.fits")
+        ngamsPClient.ngamsPClient(port=8888).archive("src/SmallFile.fits")
 
         # Check that Disk Change Notification message have been generated.
         if _checkMail:
@@ -251,8 +250,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         cfg.save(tmpCfgFile, 0)
         cfgObj, dbObj = self.prepExtSrv(8888, cfgFile=tmpCfgFile)
         flushEmailQueue()
-        ngamsPClient.ngamsPClient(getHostName(),
-                                  8888).archive("src/SmallFile.fits")
+        ngamsPClient.ngamsPClient(port=8888).archive("src/SmallFile.fits")
 
         # Check that Disk Change Notification message have been generated.
         if _checkMail:
@@ -486,8 +484,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         self.prepExtSrv(8888)
         shutil.copyfile(srcFile, tmpSrcFile)
         srcFileUrl = "file:" + tmpSrcFile
-        statObj = ngamsPClient.ngamsPClient(getHostName(),
-                                            8888).archive(srcFileUrl)
+        statObj = ngamsPClient.ngamsPClient(port=8888).archive(srcFileUrl)
         tmpStatFile = "tmp/ngamsArchiveCmdTest_test_ArchivePullReq_1_tmp"
         refStatFile = "ref/ngamsArchiveCmdTest_test_ArchivePullReq_1_ref"
         saveInFile(tmpStatFile, filterDbStatus1(statObj.dumpBuf()))
@@ -524,8 +521,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         self.prepCluster("src/ngamsCfg.xml",
                          [[8000, None, None, getClusterName()],
                           [8011, None, None, getClusterName()]])
-        ngamsPClient.ngamsPClient(getHostName(),
-                                  8011).archive("src/SmallFile.fits")
+        ngamsPClient.ngamsPClient(port=8011).archive("src/SmallFile.fits")
         fileUri = "http://%s:8011/RETRIEVE?file_id=" +\
                   "TEST.2001-05-08T15:25:00.123&file_version=1"
         tmpStatFile = sendExtCmd(getHostName(), 8000, NGAMS_ARCHIVE_CMD,

@@ -21,7 +21,7 @@
 #
 
 import os, random, string, sys
-from ngamsLib.ngamsCore import rmFile, checkCreatePath, getHostName, getFileSize
+from ngamsLib.ngamsCore import rmFile, checkCreatePath, getFileSize
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE
 from ngamsPClient import ngamsPClient
 import ngamsTestLib
@@ -75,7 +75,7 @@ class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
 
 		# Server and client
 		self.prepExtSrv(8888)
-		client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+		client = ngamsPClient.ngamsPClient(port=8888)
 
 		#------------------------------------------------------------------
 		# We start testing with a single container creation/deletion,
@@ -144,7 +144,7 @@ class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
 
 		# Server and client
 		self.prepExtSrv(8888)
-		client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+		client = ngamsPClient.ngamsPClient(port=8888)
 
 		# Create a container, shouldn't be a problem
 		containerName = "testing"
@@ -307,7 +307,7 @@ class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
 
 		# Server and client
 		self.prepExtSrv(8888)
-		client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+		client = ngamsPClient.ngamsPClient(port=8888)
 		containerName = "toplevel"
 
 		# Archive the top-level directory

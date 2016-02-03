@@ -79,7 +79,7 @@ class ngamsPClientTest(ngamsTestSuite):
         Command is tested in the Test Suite ngamsArchiveCmdTest.py.
         """
         self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
         status = client.archive("src/SmallFile.fits")
         refMsg = "Successfully handled Archive Push Request for data " +\
                  "file with URI: SmallFile.fits"
@@ -110,7 +110,7 @@ class ngamsPClientTest(ngamsTestSuite):
         Command is tested in the Test Suite ngamsArchiveCmdTest.py.
         """
         self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
         srcFileUri = "file:" + pkg_resources.resource_filename(__name__, "src/SmallFile.fits")
         status = client.archive(srcFileUri)
         refMsg = "Successfully handled Archive Pull Request for data file " +\
@@ -143,7 +143,7 @@ class ngamsPClientTest(ngamsTestSuite):
         Command is tested in the Test Suite ngamsCloneCmdTest.py.
         """
         self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
         client.archive("src/SmallFile.fits")
         statObj = client.clone("TEST.2001-05-08T15:25:00.123",
                                "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)
@@ -176,7 +176,7 @@ class ngamsPClientTest(ngamsTestSuite):
         Command is tested in the Test Suite ngamsCloneCmdTest.py.
         """
         self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
         client.archive("src/SmallFile.fits")
         statObj = client.clone("TEST.2001-05-08T15:25:00.123",
                                "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1,
@@ -210,7 +210,7 @@ class ngamsPClientTest(ngamsTestSuite):
         Command is tested in the Test Suite ngamsCloneCmdTest.py.
         """
         self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
         client.archive("src/SmallFile.fits")
         statObj = client.clone("TEST.2001-05-08T15:25:00.123",
                                "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1,
@@ -271,7 +271,7 @@ class ngamsPClientTest(ngamsTestSuite):
        
         """
         self.prepExtSrv(8888, 1, 1, 1)
-        status = ngamsPClient.ngamsPClient(getHostName(), 8888).init()
+        status = ngamsPClient.ngamsPClient(port=8888).init()
         refMsg = "Successfully handled command INIT"
         self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "INIT Command")
@@ -297,7 +297,7 @@ class ngamsPClientTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(8888, 1, 1, 1)
-        status = ngamsPClient.ngamsPClient(getHostName(), 8888).\
+        status = ngamsPClient.ngamsPClient(port=8888).\
                  label("1", getHostName())
         refMsg = "Successfully handled command LABEL"
         self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
@@ -325,7 +325,7 @@ class ngamsPClientTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(8888, 1, 1, 0)
-        status = ngamsPClient.ngamsPClient(getHostName(), 8888).online()
+        status = ngamsPClient.ngamsPClient(port=8888).online()
         refMsg = "Successfully handled command ONLINE"
         self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "ONLINE Command")
@@ -362,7 +362,7 @@ class ngamsPClientTest(ngamsTestSuite):
         self.prepExtSrv(8888, 1, 1, 1)
         trgFile = "/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/SmallFile.fits"
         shutil.copy("src/SmallFile.fits", trgFile)
-        status = ngamsPClient.ngamsPClient(getHostName(), 8888).\
+        status = ngamsPClient.ngamsPClient(port=8888).\
                  register(trgFile)
         refMsg = "Successfully handled command REGISTER"
         self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
@@ -399,7 +399,7 @@ class ngamsPClientTest(ngamsTestSuite):
         self.prepExtSrv(8888, 1, 1, 1)
         trgFile = "/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/SmallFile.fits"
         shutil.copy("src/SmallFile.fits", trgFile)
-        status = ngamsPClient.ngamsPClient(getHostName(), 8888).\
+        status = ngamsPClient.ngamsPClient(port=8888).\
                  register(trgFile, wait = 1)
         refMsg = "Successfully handled command REGISTER"
         self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
@@ -429,7 +429,7 @@ class ngamsPClientTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(8888, 1, 1, 1)
-        status = ngamsPClient.ngamsPClient(getHostName(), 8888).\
+        status = ngamsPClient.ngamsPClient(port=8888).\
                  remDisk("tmp-ngamsTest-NGAS-FitsStorage1-Main-1", 1)
         refMsg = "NGAMS_INFO_DEL_DISK:4043:INFO: Successfully deleted " +\
                  "info for disk. Disk ID: " +\
@@ -462,7 +462,7 @@ class ngamsPClientTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
         client.archive("src/SmallFile.fits")
         status = client.clone("", "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)
         waitReqCompl(client, status.getRequestId())
@@ -501,7 +501,7 @@ class ngamsPClientTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = ngamsPClient.ngamsPClient(port=8888)
         client.archive("src/SmallFile.fits")
         trgDir = "tmp"
         status = client.retrieve2File("TEST.2001-05-08T15:25:00.123",1,trgDir)
