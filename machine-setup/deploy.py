@@ -25,27 +25,29 @@ fab -u sudo_user -H <IP address> user_deploy --set APP_USERS=ngas-user,src_dir=/
 Please also refer to the INSTALL document in the root directory of the NGAS source tree.
 """
 import glob
-
-import boto, boto.ec2
-import os, stat
-import time, urllib
+import os
+import stat
 import threading
+import time
+import urllib2
 
-from fabric.api import put, env, local, task
+from Crypto.PublicKey import RSA
+import boto.ec2
+from fabric.api import put, env, local
 from fabric.api import run as frun
 from fabric.api import sudo as fsudo
-from fabric.state import output
+from fabric.colors import blue, green, red, yellow
 from fabric.context_managers import cd, hide, settings
 from fabric.contrib.console import confirm
 from fabric.contrib.files import exists
 from fabric.contrib.project import rsync_project
-from fabric.decorators import task as fabtask, serial
-from fabric.operations import prompt
-from fabric.utils import puts, abort, fastprint
+from fabric.decorators import serial
+from fabric.decorators import task
 from fabric.exceptions import NetworkError
-from fabric.colors import blue, green, red, yellow
-
-from Crypto.PublicKey import RSA
+from fabric.operations import prompt
+from fabric.state import output
+from fabric.tasks import execute, WrappedCallableTask
+from fabric.utils import puts, abort, fastprint
 
 
 # Verbose tasks tell the user when they are being executed
