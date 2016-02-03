@@ -1720,23 +1720,27 @@ def list_instances():
     conn = connect()
     res = conn.get_all_instances()
     for r in res:
+        print
         print_instance(r.instances[0])
-        print
-        print 'Launch time: {0}'.format(r.instances[0].launch_time)
-        print
         print
 
 def print_instance(inst):
     inst_id    = inst.id
     inst_state = inst.state
+    inst_type  = inst.instance_type
     pub_name   = inst.public_dns_name
     tagdict    = inst.tags
-    puts('Instance {0} is {1}'.format(inst_id, color_ec2state(inst_state)))
-    for k in tagdict:
-        puts('{0}: {1}'.format(k,tagdict[k]))
+    l_time     = inst.launch_time
+    key_name   = inst.key_name
+    puts('Instance {0} ({1}) is {2}'.format(inst_id, inst_type, color_ec2state(inst_state)))
+    for k, val in tagdict.items():
+        if k == 'Name':
+            val = blue(val)
+        puts('{0}: {1}'.format(k,val))
     if inst_state == 'running':
-        puts("Connect:   ssh -i {0} {1}".format(AWS_KEY, pub_name))
+        puts("Connect:   ssh -i ~/.ssh/{0}.pem {1}".format(key_name, pub_name))
         puts("Terminate: fab terminate:instance_id={0}".format(inst_id))
+    print 'Launch time: {0}'.format(l_time)
 
 def color_ec2state(state):
     if state == 'running':
