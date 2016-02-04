@@ -245,8 +245,8 @@ def python_setup(ppath):
     return ppath
 
 
-def get_public_key():
-    with open(env.key_filename) as f:
+def get_public_key(key_filename):
+    with open(key_filename) as f:
         okey = RSA.importKey(f.read())
         return okey.exportKey('OpenSSH')
 
@@ -263,8 +263,13 @@ def create_user(user, group=None):
     sudo('chown -R {0}:{1} /home/{0}/.ssh'.format(user,group))
 
     # Copy the public key of our SSH key if we're using one
-    if env.key_filename:
-        public_key = get_public_key()
+    for key_filename in [env.key_filename, os.path.expanduser("~/.ssh/id_rsa")]:
+        if key_filename is not None:
+            public_key = get_public_key(key_filename)
+            if public_key:
+                break
+
+    if public_key:
         sudo("echo '{0}' >> /home/{1}/.ssh/authorized_keys".format(public_key, user))
         sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{1} /home/{0}/.ssh/authorized_keys'.format(user, group))
