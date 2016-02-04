@@ -365,16 +365,20 @@ def copy_sources():
     nsd = ngas_source_dir()
     branch = ngas_branch()
     tarfile = '/tmp/ngas_tmp.tar'
-    local('git archive -o {0} {1}'.format(tarfile, branch))
+
+    # Make sure we are git-archivin'ing from the root of the repository,
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    local('cd {0}; git archive -o {1} {2}'.format(repo_root, tarfile, branch))
 
     # transfer the tar file if not local
     if not is_localhost():
         put(tarfile, tarfile)
 
     # unpack the tar file into the ngas_src_dir
+    # (mind the "p", to preserve permissions)
     run('mkdir -p {0}'.format(nsd))
     with cd(nsd):
-        run('tar xf {0}'.format(tarfile))
+        run('tar xpf {0}'.format(tarfile))
 
     local('rm {0}'.format(tarfile))
 
