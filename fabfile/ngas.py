@@ -140,9 +140,10 @@ def start_ngas_and_check_status():
     puts(green("\n******** SERVER STARTED!********\n"))
     time.sleep(5)
 
-    if test_ngas_status():
+    try:
+        test_ngas_status()
         puts(green("\n>>>>> SERVER STATUS CHECKED <<<<<<<<<<<\n"))
-    else:
+    except:
         puts(red("\n>>>>>>> SERVER STATUS NOT OK <<<<<<<<<<<<\n"))
 
 @task

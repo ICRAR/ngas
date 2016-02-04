@@ -36,11 +36,11 @@ from utils import sudo, run
 __all__ = ['install_homebrew', 'install_system_packages', 'system_check']
 
 
-def install_yum(package):
+def install_yum(packages):
     """
-    Install a package using YUM
+    Install packages using YUM
     """
-    errmsg = sudo('yum --assumeyes --quiet install {0}'.format(package),\
+    errmsg = sudo('yum --assumeyes --quiet install {0}'.format(' '.join(packages)),\
                    combine_stderr=True, warn_only=True)
     processCentOSErrMsg(errmsg)
 
@@ -64,9 +64,7 @@ def install_zypper(package):
 
 def install_apt(packages):
     """
-    Install a package using APT
-
-    NOTE: This requires sudo access
+    Install packages using APT
     """
     sudo('apt-get -qq -y install {0}'.format(' '.join(packages)))
 
@@ -256,8 +254,7 @@ def install_system_packages():
         # Update the machine completely
         errmsg = sudo('yum --assumeyes --quiet update', combine_stderr=True, warn_only=True)
         processCentOSErrMsg(errmsg)
-        for package in YUM_PACKAGES:
-            install_yum(package)
+        install_yum(YUM_PACKAGES)
         if linux_flavor == 'CentOS':
             sudo('/etc/init.d/iptables stop') # CentOS firewall blocks NGAS port!
     elif (linux_flavor in ['Ubuntu', 'Debian']):
