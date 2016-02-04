@@ -20,9 +20,10 @@ cd src
 # Build the C autotools-based module
 # If we're using a virtualenv install it there
 prefix=
-if [ -z "$VIRTUAL_ENV" ]
+if [ -n "$VIRTUAL_ENV" ]
 then
-	prefix="--prefix=\"$VIRTUAL_ENV\""
+	prefix="--prefix=$VIRTUAL_ENV"
+	echo "Will install NGAS under $VIRTUAL_ENV"
 fi
 
 cd ngamsCClient
