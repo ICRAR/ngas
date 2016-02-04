@@ -138,7 +138,7 @@ def start_ngas_and_check_status():
 
     # Give it a few seconds to make sure it started
     puts(green("\n******** SERVER STARTED!********\n"))
-    time.sleep(3)
+    time.sleep(5)
 
     if test_ngas_status():
         puts(green("\n>>>>> SERVER STATUS CHECKED <<<<<<<<<<<\n"))
