@@ -30,7 +30,7 @@ import urllib2
 
 from fabric.colors import green, red
 from fabric.context_managers import settings, hide
-from fabric.decorators import task
+from fabric.decorators import task, parallel
 from fabric.exceptions import NetworkError
 from fabric.operations import run as frun, sudo as fsudo
 from fabric.state import env
@@ -79,6 +79,7 @@ def home():
     return run('echo $HOME')
 
 @task
+@parallel
 def check_ssh():
     """
     Check availability of SSH

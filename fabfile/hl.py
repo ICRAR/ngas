@@ -49,9 +49,9 @@ def operations_deploy(typ = 'archive'):
     install_and_check(sys_install=True, user_install=True, init_install=True, typ=typ)
 
 @task
-def aws_deploy(typ='archive'):
+def aws_deploy(n_instances=1, typ='archive'):
     """
     Deploy NGAS into a fresh EC2 instance.
     """
-    create_aws_instances()
+    create_aws_instances(n_instances)
     execute(install_and_check, sys_install=True, user_install=True, init_install=True, typ=typ)

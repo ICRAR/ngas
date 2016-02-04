@@ -118,7 +118,7 @@ def check_create_aws_sec_group(conn):
     return ngassg.id
 
 
-def create_instance(conn, n_instances, sgid):
+def create_instances(conn, n_instances, sgid):
     """
     Create one or more EC2 instances
     """
@@ -127,6 +127,7 @@ def create_instance(conn, n_instances, sgid):
     default_if_empty(env, 'instance_type',  INSTANCE_TYPE)
     default_if_empty(env, 'use_elastic_ip', USE_ELASTIC_IP)
 
+    n_instances = int(n_instances)
     if n_instances > 1:
         names = ["%s_%d" % (env.instance_name, i) for i in xrange(n_instances)]
     else:
@@ -213,7 +214,7 @@ def create_aws_instances(n_instances=1):
     sgid = check_create_aws_sec_group(conn)
 
     # Create the instance in AWS
-    host_names = create_instance(conn, n_instances, sgid)
+    host_names = create_instances(conn, n_instances, sgid)
 
     # Update our fabric environment so from now on we connect to the
     # AWS machine using the correct user and SSH private key
@@ -236,9 +237,10 @@ def list_instances():
     conn = connect()
     res = conn.get_all_instances()
     for r in res:
-        print
-        print_instance(r.instances[0])
-        print
+        for inst in r.instances:
+            print
+            print_instance(inst)
+            print
 
 def print_instance(inst):
     inst_id    = inst.id

@@ -23,8 +23,9 @@
 Main module where NGAS-specific tasks are carried out, like copying its sources,
 installing it and making sure it works after starting it.
 """
-
 import os
+import tempfile
+import time
 import urllib2
 
 from fabric.colors import green, red
@@ -40,7 +41,6 @@ from system import check_dir, download, check_command, \
     postfix_config, create_user, get_linux_flavor, python_setup, check_python, \
     MACPORT_DIR
 from utils import to_boolean, is_localhost, home, default_if_empty, sudo, run
-import time
 
 
 # Don't re-export the tasks imported from other modules, only ours
@@ -146,6 +146,7 @@ def start_ngas_and_check_status():
         puts(red("\n>>>>>>> SERVER STATUS NOT OK <<<<<<<<<<<<\n"))
 
 @task
+@parallel
 def test_ngas_status():
     """
     Execute the STATUS command against the NGAS server on the host fabric is
@@ -364,23 +365,27 @@ def copy_sources():
 
     nsd = ngas_source_dir()
     branch = ngas_branch()
-    tarfile = '/tmp/ngas_tmp.tar'
+
+    # Because this could be happening in parallel in various machines
+    # we generate a tmpfile locally, but the target file is the same
+    local_file = tempfile.mktemp(".tar.gz")
+    target_tarfile = '/tmp/ngas_tmp.tar'
 
     # Make sure we are git-archivin'ing from the root of the repository,
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    local('cd {0}; git archive -o {1} {2}'.format(repo_root, tarfile, branch))
+    local('cd {0}; git archive -o {1} {2}'.format(repo_root, local_file, branch))
 
     # transfer the tar file if not local
     if not is_localhost():
-        put(tarfile, tarfile)
+        put(local_file, target_tarfile)
 
     # unpack the tar file into the ngas_src_dir
     # (mind the "p", to preserve permissions)
     run('mkdir -p {0}'.format(nsd))
     with cd(nsd):
-        run('tar xpf {0}'.format(tarfile))
+        run('tar xpf {0}'.format(target_tarfile))
 
-    local('rm {0}'.format(tarfile))
+    local('rm {0}'.format(local_file))
 
 @task
 @parallel
