@@ -23,22 +23,17 @@
 Module with a few high-level fabric tasks users are likely to use
 """
 
-from fabric.colors import green
-from fabric.decorators import task
-from fabric.state import env
+from fabric.decorators import task, hosts
 from fabric.tasks import execute
-from fabric.utils import puts
 
 from aws import create_aws_instances
-from ngas import install, install_and_check
+from ngas import install_and_check
 
 
 # Don't re-export the tasks imported from other modules, only ours
 __all__ = ['user_deploy', 'operations_deploy', 'aws_deploy']
 
-# The rest of the imports are all done within the method bodies so we don't
-# pollute this module's global namespace with other modules' tasks (which makes
-# "fab -l" list tasks more than once.
+@hosts('localhost')
 @task
 def user_deploy(typ = 'archive'):
     """
@@ -47,18 +42,16 @@ def user_deploy(typ = 'archive'):
     install_and_check(sys_install=False, user_install=False, init_install=False, typ=typ)
 
 @task
-def operations_deploy(sys_install = True, user_install = True, typ = 'archive'):
+def operations_deploy(typ = 'archive'):
     """
     Deploy the full NGAS operational environment.
     """
-    install(sys_install = sys_install, user_install = user_install,
-            init_install = True, typ = typ)
+    install_and_check(sys_install=True, user_install=True, init_install=True, typ=typ)
 
 @task
-def aws_deploy():
+def aws_deploy(typ='archive'):
     """
     Deploy NGAS into a fresh EC2 instance.
     """
     create_aws_instances()
-    execute(install_and_check, sys_install=True, user_install=True, init_install=True, typ='archive')
-    puts(green("******** AWS deployment COMPLETED on AWS hosts: {0} ********".format(env.hosts)))
+    execute(install_and_check, sys_install=True, user_install=True, init_install=True, typ=typ)
