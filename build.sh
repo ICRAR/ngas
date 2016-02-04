@@ -5,12 +5,6 @@ fail() {
 	exit 1
 }
 
-# Check that we're using a virtualenv
-if test -z "$VIRTUAL_ENV"
-then
-	fail "No VIRTUAL_ENV variable defined, make sure you have the correct environment loaded"
-fi
-
 # Make sure we're standing where alongside this script
 # in order to properly execute the rest of the stuff
 this=$0
@@ -24,9 +18,16 @@ cd $(dirname $this)
 cd src
 
 # Build the C autotools-based module
+# If we're using a virtualenv install it there
+prefix=
+if [ -z "$VIRTUAL_ENV" ]
+then
+	prefix="--prefix=\"$VIRTUAL_ENV\""
+fi
+
 cd ngamsCClient
 ./bootstrap || fail "Failed to bootstrap ngamsCClient module"
-./configure --prefix="$VIRTUAL_ENV" || fail "Failed to ./configure $cModule"
+./configure $prefix || fail "Failed to ./configure $cModule"
 make clean all install || fail "Failed to compile $cModule"
 cd ..
 
