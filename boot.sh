@@ -37,12 +37,23 @@ then
 fi
 
 # Check if we already have virtualenv
-# If not use the one from our tarball
+# If not download one and untar it
 veCommand="virtualenv"
 sourceCommand="source $veDir/bin/activate"
 if [[ -z "$(which virtualenv 2> /dev/null)" ]]
 then
-	tar xf clib_tars/virtualenv-12.0.7.tar.gz
+	VIRTUALENV_URL='https://pypi.python.org/packages/source/v/virtualenv/virtualenv-12.0.7.tar.gz'
+	if [[ ! -z "$(which wget 2> /dev/null)" ]]
+	then
+		wget "$VIRTUALENV_URL" | error "Failed to download virtualenv"
+	elif [[ ! -z "$(which curl 2> /dev/null)" ]]
+	then
+		curl "$VIRTUALENV_URL" | error "Failed to download virtualenv"
+	else
+		error "Can't find a download tool (tried wget and curl), cannot download virtualenv"
+	fi
+
+	tar xf virtualenv-12.0.7.tar.gz  | error "Failed to untar virtualenv"
 	veCommand="python virtualenv-12.0.7/virtualenv.py"
 	removeVE="rm -rf virtualenv-12.0.7"
 fi
@@ -57,10 +68,9 @@ then
 fi
 
 # Install Fabric and Boto
-for pkg in pycrypto-2.6 paramiko-1.15.1 boto-2.36.0 Fabric-1.10.1
+for pkg in boto Fabric
 do
-	echo "Installing clib_tags/$pkg.tar.gz"
-	pip install "clib_tars/$pkg.tar.gz" > /dev/null || error "Failed to install $pkg"
+	pip install $pkg
 done
 
 echo
