@@ -62,13 +62,13 @@ def install_zypper(package):
 
 
 
-def install_apt(package):
+def install_apt(packages):
     """
     Install a package using APT
 
     NOTE: This requires sudo access
     """
-    sudo('apt-get -qq -y install {0}'.format(package))
+    sudo('apt-get -qq -y install {0}'.format(' '.join(packages)))
 
 
 def install_brew(package):
@@ -199,6 +199,7 @@ APT_PACKAGES = [
     'libssl-dev',
     'libtool',
     'libzlcore-dev',
+    'make',
     'patch',
     'postgresql-client',
     'python-dev',
@@ -261,8 +262,7 @@ def install_system_packages():
             sudo('/etc/init.d/iptables stop') # CentOS firewall blocks NGAS port!
     elif (linux_flavor in ['Ubuntu', 'Debian']):
         errmsg = sudo('apt-get -qq -y update', combine_stderr=True, warn_only=True)
-        for package in APT_PACKAGES:
-            install_apt(package)
+        install_apt(APT_PACKAGES)
     elif linux_flavor in ['SUSE','SLES-SP2', 'SLES-SP3', 'SLES']:
         errmsg = sudo('zypper -n -q patch', combine_stderr=True, warn_only=True)
         for package in SLES_PACKAGES:
