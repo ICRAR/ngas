@@ -27,7 +27,7 @@ import urlparse
 
 from Crypto.PublicKey import RSA
 from fabric.colors import blue, green
-from fabric.context_managers import cd
+from fabric.context_managers import cd, settings
 from fabric.decorators import task
 from fabric.operations import prompt
 from fabric.state import env
@@ -46,6 +46,7 @@ SUPPORTED_OS_LINUX = [
     'Debian',
     'Suse',
     'SUSE',
+    'openSUSE',
     'SLES-SP2',
     'SLES-SP3'
 ]
@@ -129,7 +130,7 @@ def get_linux_flavor():
                 linux_flavor = issue[0]
             elif issue[0] == 'Amazon':
                 linux_flavor = ' '.join(issue[:2])
-            elif issue[2] == 'SUSE':
+            elif issue[2] in ('SUSE', 'openSUSE'):
                 linux_flavor = issue[2]
 
     # Try uname -s
@@ -273,3 +274,10 @@ def create_user(user, group=None):
         sudo("echo '{0}' >> /home/{1}/.ssh/authorized_keys".format(public_key, user))
         sudo('chmod 600 /home/{0}/.ssh/authorized_keys'.format(user))
         sudo('chown {0}:{1} /home/{0}/.ssh/authorized_keys'.format(user, group))
+
+    # openSUSE creates a suboptimal ~/.profile because it shows an error message
+    # if /etc/profile doesn't exist (which is the case on openSUES dockers),
+    # so we comment out that particular line
+    if get_linux_flavor() == 'openSUSE':
+        with settings(user=user):
+            run('''sed -i 's/^test -z "$PROFILEREAD".*/#\\0/' ~/.profile ''')
