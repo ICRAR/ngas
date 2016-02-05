@@ -919,7 +919,7 @@ def httpGetUrl(url,
     try:
         reqObj = urllib2.Request(url)
         if (authHdrVal): reqObj.add_header("Authorization", authHdrVal)
-        reqObj.add_header("Host", getHostId())
+        reqObj.add_header("Host", socket.gethostname())
 
         # Send additional HTTP headers, if any.
         for addHdr in additionalHdrs:
