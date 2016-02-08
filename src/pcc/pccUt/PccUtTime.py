@@ -429,18 +429,18 @@ def getIsoTime(onlyDate  = 0,
     Returns:      The ISO-8601 time stamp (string).
     """
     timeNow = time.time()
-    timeTuple = time.localtime(timeNow)
+    timeTuple = time.gmtime(timeNow)
     if (onlyDate == 0):
         isoTimeNow = time.strftime("%Y-%m-%dT%H:%M:%S", timeTuple)
         # Get the decimals.
         if (precision):
             #secDecs = str(math.fmod(timeNow, .99999999))
             #isoTimeNow = isoTimeNow + secDecs[1:(precision + 2)]
-            secDecs = "%1.10f" % math.fmod(timeNow, 1.)
-            isoTimeNow = isoTimeNow + secDecs[1:(precision + 2)] 
+            tpl = "%{0}.{1}f".format(precision + 2, precision)
+            secDecs = tpl % math.fmod(timeNow, 1.)
+            isoTimeNow += secDecs[1:(precision + 2)]
     else:
         isoTimeNow = time.strftime("%Y-%m-%d", timeTuple) 
-                
     return isoTimeNow
 
 #
