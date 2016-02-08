@@ -53,11 +53,12 @@ def processCentOSErrMsg(errmsg):
     if (firstKey == 'Error:'):
         abort(errmsg)
 
-def install_zypper(package):
+
+def install_zypper(packages):
     """
-    Install a package using zypper (SLES)
+    Install packages using zypper (SLES)
     """
-    sudo('zypper --non-interactive install {0}'.format(package),\
+    sudo('zypper --non-interactive install {0}'.format(' '.join(packages)),\
                    combine_stderr=True, warn_only=True)
 
 
@@ -105,7 +106,7 @@ def install_homebrew():
         run('ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"')
     else:
         puts(red('Homebrew is installed already! New installation not required.'))
-    
+
 
 def check_yum(package):
     """
@@ -182,6 +183,7 @@ YUM_PACKAGES = [
    'python-devel',
    'readline-devel',
    'sqlite-devel',
+   'tar',
    'wget',
    'zlib-devel',
 ]
@@ -201,7 +203,9 @@ APT_PACKAGES = [
     'patch',
     'postgresql-client',
     'python-dev',
+    'tar',
     'sqlite3',
+    'wget',
     'zlib1g-dbg',
 ]
 
@@ -215,11 +219,14 @@ SLES_PACKAGES = [
     'libdb-4_5-devel',
     'libtool',
     'make',
-    'openssl-devel',
+    'openssl',
     'patch',
+    'python-devel',
+    'python-html5lib',
+    'python-pyOpenSSL',
+    'python-xml',
     'postfix',
     'postgresql-devel',
-    'readline-devel',
     'sqlite3-devel',
     'wget',
     'zlib',
@@ -260,10 +267,9 @@ def install_system_packages():
     elif (linux_flavor in ['Ubuntu', 'Debian']):
         errmsg = sudo('apt-get -qq -y update', combine_stderr=True, warn_only=True)
         install_apt(APT_PACKAGES)
-    elif linux_flavor in ['SUSE','SLES-SP2', 'SLES-SP3', 'SLES']:
+    elif linux_flavor in ['SUSE','SLES-SP2', 'SLES-SP3', 'SLES', 'openSUSE']:
         errmsg = sudo('zypper -n -q patch', combine_stderr=True, warn_only=True)
-        for package in SLES_PACKAGES:
-            install_zypper(package)
+        install_zypper(SLES_PACKAGES)
     elif linux_flavor == 'Darwin':
         pkg_mgr = check_brew_port()
         if pkg_mgr == None:

@@ -10,3 +10,6 @@ eggs
 include
 lib
 .installed.cfg
+
+.idea
+*.iml
