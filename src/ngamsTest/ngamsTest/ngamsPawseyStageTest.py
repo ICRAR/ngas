@@ -22,6 +22,7 @@
 
 import sys
 import os
+import socket
 import ngamsTestLib
 from ngamsPlugIns.ngamsMWAPawseyTapeApi import *
 
@@ -81,19 +82,28 @@ class ngamsPawseyStageTest(ngamsTestLib.ngamsTestSuite):
     def test_stage(self):
         host = 'fe1.pawsey.ivec.org'
         port = 9898
-        try:
-            pawseyMWAdmget(['/mnt/mwa01fs/MWA/ngas_data_volume/mfa/2016-01-14/ \
-                          2/1136798736_20160114092621_gpubox02_01.fits'],
-                          host,
-                          port)
-        except:
-            self.assertTrue(False)
 
         try:
-            pawseyMWAdmget(['test'], host, port)
-            self.assertTrue(False)
+            # check if we can connect to pawsey, if not then just ignore
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(3)
+            sock.connect((host, port))
+
+            try:
+                pawseyMWAdmget(['/mnt/mwa01fs/MWA/ngas_data_volume/mfa/2016-01-14/ \
+                              2/1136798736_20160114092621_gpubox02_01.fits'],
+                              host,
+                              port)
+            except:
+                self.assertTrue(False)
+
+            try:
+                pawseyMWAdmget(['test'], host, port)
+                self.assertTrue(False)
+            except:
+                pass
         except:
-            pass
+            pass #ingore
 
 def run():
     ngamsTestLib.runTest(["ngamsPawseyStageTest"])
