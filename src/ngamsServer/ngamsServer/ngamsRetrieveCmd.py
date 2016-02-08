@@ -217,7 +217,6 @@ def genReplyRetrieve(srvObj,
         # from HTTP socket connection.
         if (resObj.getObjDataType() == NGAMS_PROC_DATA):
             info(3,"Sending data in buffer to requestor ...")
-            #httpRef.wfile.write(resObj.getDataRef())
             httpRef.wfile._sock.sendall(resObj.getDataRef())
         elif (resObj.getObjDataType() == NGAMS_PROC_FILE):
             info(3,"Reading data block-wise from file and sending " +\
@@ -249,10 +248,8 @@ def genReplyRetrieve(srvObj,
         info(4,"HTTP reply sent to: " + str(httpRef.client_address))
         reqPropsObj.setSentReply(1)
 
+    finally:
         cleanUpAfterProc(statusObjList)
-    except Exception, e:
-        cleanUpAfterProc(statusObjList)
-        raise e
 
 
 def _handleRemoteIntFile(srvObj,
@@ -342,7 +339,7 @@ def _handleCmdRetrieve(srvObj,
         # If specified path is a directory, return contents of the directory.
         if (os.path.isdir(intPath) or (intPath == "/")):
             info(2,"Querying info about directory: %s" % intPath)
-            comment = "Info about folder: " + intPath
+            comment = "Info about folder: %s" % intPath
             fileListObj = ngamsFileList.ngamsFileList("DIR-INFO", comment,
                                                       NGAMS_SUCCESS)
             if (intPath[-1] != "/"): intPath += "/"
@@ -351,7 +348,8 @@ def _handleCmdRetrieve(srvObj,
             # To get the permissions, owner, group, access and modification
             # time we use 'ls -l' for now.
             # TODO: PORTABILITY ISSUE: Avoid usage of UNIX commands.
-            lsCmd = "ls --full-time %s" % intPath
+            # dpallot: use os.walk functionality
+            lsCmd = "ls -l %s" % intPath
             stat, lsBuf = commands.getstatusoutput(lsCmd)
             dirInfoList = lsBuf.split("\n")
             dirDic = {}
@@ -596,11 +594,8 @@ def handleCmdRetrieve(srvObj,
         error(errMsg)
         srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
         raise Exception, errMsg
-    try:
-        _handleCmdRetrieve(srvObj, reqPropsObj, httpRef)
-        srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
-    except Exception, e:
-        raise Exception, e
 
+    _handleCmdRetrieve(srvObj, reqPropsObj, httpRef)
+    srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
 
 # EOF

@@ -1462,18 +1462,13 @@ class ngamsServer:
         try:
             self.handleHttpRequest(reqPropsObj, httpRef, clientAddress,
                                    method, path, requestVersion, headers)
-            if (not reqPropsObj.getSentReply()):
+
+            if not reqPropsObj.getSentReply():
                 msg = "Successfully handled request"
                 self.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                            NGAMS_SUCCESS, msg)
-            self.setLastReqEndTime()
-            #reqPropsObj.getReadFd().close()
-            reqPropsObj.setCompletionTime(1)
-            self.updateRequestDb(reqPropsObj)
-        except Exception, e:
-            reqPropsObj.setCompletionTime(1)
-            self.updateRequestDb(reqPropsObj)
-            self.setLastReqEndTime()
+
+        except Exception as e:
 
             # Flush read socket if needed - not a good idea as the request could
             # be massive, we do not want to wait. What we want to do is send
@@ -1488,17 +1483,21 @@ class ngamsServer:
                 #                      reqPropsObj.getBytesReceived()))
                 #reqPropsObj.setBytesReceived(reqPropsObj.getSize())
             #reqPropsObj.getReadFd().close()
-            if (getDebug()):
+            if getDebug():
                 traceback.print_exc(file = sys.stdout)
+
             errMsg = str(e)
-            #error(errMsg + '\n' + traceback.format_exc())
             error(errMsg)
             self.setSubState(NGAMS_IDLE_SUBSTATE)
-            if (not reqPropsObj.getSentReply()):
+            if not reqPropsObj.getSentReply():
                 httpRef.wfile._sock.settimeout(20)
                 self.reply(reqPropsObj, httpRef, NGAMS_HTTP_BAD_REQ,
                            NGAMS_FAILURE, errMsg)
         finally:
+            reqPropsObj.setCompletionTime(1)
+            self.updateRequestDb(reqPropsObj)
+            self.setLastReqEndTime()
+
             reqPropsObj.getReadFd().close()
             reqPropsObj.getWriteFd().flush()
             reqPropsObj.getWriteFd().close()
@@ -1611,37 +1610,36 @@ class ngamsServer:
         """
         T = TRACE()
 
-        info(4, "httpReplyGen(). Generating HTTP reply " +\
-             "to: " + str(httpRef.client_address) + " ...")
-        if (reqPropsObj.getSentReply()):
+        info(4, "httpReplyGen(). Generating HTTP reply to: %s" \
+                % str(httpRef.client_address))
+
+        if reqPropsObj.getSentReply():
             info(3,"Reply already sent for this request")
             return
         try:
-            if (BaseHTTPServer.BaseHTTPRequestHandler.responses.has_key(code)):
-                message = BaseHTTPServer.BaseHTTPRequestHandler.\
-                          responses[code][0]
-            else:
-                message = ""
+            message = ''
+            if BaseHTTPServer.BaseHTTPRequestHandler.responses.has_key(code):
+                message = BaseHTTPServer.BaseHTTPRequestHandler.responses[code][0]
 
             protocol = BaseHTTPServer.BaseHTTPRequestHandler.protocol_version
-            httpRef.wfile.write("%s %s %s\r\n" % (protocol, str(code),message))
-            srvInfo = "NGAMS/" + getNgamsVersion()
-            info(4,"Sending header: Server: " + srvInfo)
+            httpRef.wfile.write("%s %s %s\r\n" % (protocol, str(code), message))
+            srvInfo = "NGAMS/%s" % getNgamsVersion()
+            info(4,"Sending header: Server: %s" % srvInfo)
             httpRef.send_header("Server", srvInfo)
             httpTimeStamp = ngamsLib.httpTimeStamp()
-            info(4,"Sending header: Date: " + httpTimeStamp)
+            info(4,"Sending header: Date: %s" % httpTimeStamp)
             httpRef.send_header("Date", httpTimeStamp)
             # Expires HTTP reponse header field, e.g.:
             # Expires: Mon, 17 Sep 2001 09:21:38 GMT
-            info(4,"Sending header: Expires: " + httpTimeStamp)
+            info(4,"Sending header: Expires: %s" % httpTimeStamp)
             httpRef.send_header("Expires", httpTimeStamp)
 
-            if (dataRef == None):
+            if dataRef == None:
                 dataSize = 0
-            elif ((dataRef != None) and (dataInFile)):
+            elif dataRef != None and dataInFile:
                 dataSize = getFileSize(dataRef)
-            elif (dataRef != None):
-                if (len(dataRef) and (not contentLength)):
+            elif dataRef != None:
+                if len(dataRef) and not contentLength:
                     dataSize = len(dataRef)
                 else:
                     dataSize = contentLength
@@ -1649,21 +1647,20 @@ class ngamsServer:
             # Send additional headers if any.
             sentContDisp = 0
             for hdrInfo in addHttpHdrs:
-                if (hdrInfo[0] == "Content-Disposition"): sentContDisp = 1
-                info(4,"Sending header: " + hdrInfo[0] + ": " + hdrInfo[1])
+                if hdrInfo[0] == "Content-Disposition":
+                    sentContDisp = 1
+                info(4,"Sending header: %s:%s" % (hdrInfo[0], hdrInfo[1]))
                 httpRef.send_header(hdrInfo[0], hdrInfo[1])
-            if (contentType != None):
-                info(4,"Sending header: Content-Type: " + contentType)
+            if contentType != None:
+                info(4,"Sending header: Content-Type: %s" % contentType)
                 httpRef.send_header("Content-Type", contentType)
-            if (dataRef != None):
-                info(4,"Sending header: Content-Length/1: " + str(dataSize))
+            if dataRef != None:
+                info(4,"Sending header: Content-Length/1: %s" % str(dataSize))
                 httpRef.send_header("Content-Length", dataSize)
-                if (dataInFile):
-                    if (not sentContDisp):
-                        contDisp = "attachment; filename=" +\
-                                   os.path.basename(dataRef)
-                        info(4,"Sending header: Content-Disposition: " +\
-                             contDisp)
+                if dataInFile:
+                    if not sentContDisp:
+                        contDisp = "attachment; filename=%s" % os.path.basename(dataRef)
+                        info(4,"Sending header: Content-Disposition: %s" % contDisp)
                         httpRef.send_header("Content-Disposition", contDisp)
                     httpRef.wfile.write("\n")
 
@@ -1671,49 +1668,29 @@ class ngamsServer:
                         dataSent = 0
                         while (dataSent < dataSize):
                             tmpData = fo.read(65536)
+                            if not tmpData:
+                                raise Exception('read EOF')
                             httpRef.wfile.write(tmpData)
                             dataSent += len(tmpData)
                 else:
-                    httpRef.wfile.write("\n" + dataRef)
-                    info(5,"Message sent with HTTP reply=|%s|" %\
-                         str(dataRef).replace("\n", ""))
-            elif (contentLength != 0):
-                info(4,"Sending header: Content-Length/2: "+str(contentLength))
+                    httpRef.wfile.write("\n%s" % dataRef)
+                    info(5,"Message sent with HTTP reply=|%s|" \
+                            % str(dataRef).replace("\n", ""))
+            elif contentLength != 0:
+                info(4,"Sending header: Content-Length/2: %s" % str(contentLength))
                 httpRef.send_header("Content-Length", contentLength)
 
-            httpRef.wfile.flush()
-
-            #################################################################
-            # Due to synchronization problems/socket communication problems
-            # when running several servers on the same node (data lost, e.g.
-            # test ngasDiscardCmd.py) a small pause is build in when the sender
-            # of the command is running on the same node. This is acceptable,
-            # since only in case of the Unit Tests it is used to run several
-            # servers on a node to simulate the operation in a cluster
-            # configuration.
-            #
-            # This patch is not a guarantee that the lost data in connection
-            # with the socket may occur. However, it reduces the probability
-            # that it happens.
-            #
-            # TODO: Check if this piece of code can be removed using a newer
-            #       version of Python (socket module).
-            #################################################################
-            if (reqPropsObj.hasHttpHdr("remote_host")):
-                reqHost = reqPropsObj.getHttpHdr("remote_host").split(":")[0]
-                if (reqHost == getHostName()):
-                    info(4,"Sender and receiver running on the same host: Sleeping 0.1 s")
-                    time.sleep(0.100)
-            #################################################################
-
-            if (closeWrFo): httpRef.wfile.close()
-            reqPropsObj.setSentReply(1)
-        except Exception, e:
-            reqPropsObj.setSentReply(1)
-            errMsg = "Error occurred while sending reply to: " +\
-                     str(httpRef.client_address) + ". Error: " + str(e)
+        except Exception as e:
+            errMsg = "Error occurred while sending reply to: %s Error: %s" \
+                    % (str(httpRef.client_address), str(e))
             error(errMsg)
-        info(4,"Generated HTTP reply to: " + str(httpRef.client_address))
+        finally:
+            reqPropsObj.setSentReply(1)
+            httpRef.wfile.flush()
+            if closeWrFo == 1:
+                httpRef.wfile.close()
+
+        info(4,"Generated HTTP reply to: %s" % str(httpRef.client_address))
 
 
     def httpReply(self,

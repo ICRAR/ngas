@@ -52,9 +52,9 @@ def ngamsTestDppi1(srvObj,
 
     srvObj:        Reference to instance of the NG/AMS Server
                    class (ngamsServer).
-    
+
     reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
-    
+
     filename:      Name of file to process (string).
 
     Returns:       DPPI return status object (ngamsDppiStatus).
@@ -68,44 +68,53 @@ def ngamsTestDppi1(srvObj,
         raise Exception('Problem while uncompressing %s: %s' % (procFile, out))
     procFile = procFile[0:procFile.rfind(".")]
 
+    # dpallot: fold fails miserably on Mac when dealing with binary files
+    #
     # Process the output file.
-    stat, out = commands.getstatusoutput("fold %s" % procFile)
-    if stat:
-        raise Exception('Problem while folding %s: %s' % (procFile, out))
-    head = ""
-    for line in out.split("\n"):
-        if (line.strip() == ""): continue
-        head += line + "\n"
-        if (line.strip().find("END") == 0): break
+    #stat, out = commands.getstatusoutput("fold %s" % procFile)
+    #if stat:
+    #    raise Exception('Problem while folding %s: %s' % (procFile, out))
+
+    head = []
+    with open(procFile, 'rb') as f:
+        while True:
+            line = f.read(80)
+            assert(line and len(line) == 80)
+            head.append(line + "\n")
+            if 'END' in line:
+                break
+
     mimeType = "TEST-MIME-TYPE"
     rawPiPars = srvObj.getCfg().getDppiPars("ngamsTest.ngamsTestDppi1")
     cfgParDic = ngamsPlugInApi.parseRawPlugInPars(rawPiPars)
 
-    head += "\n\nConfiguration Parameters:\n"
+    head.append("\n\nConfiguration Parameters:\n")
     parList = cfgParDic.keys()
     parList.sort()
-    for par in parList: head += "%s=%s\n" % (par, cfgParDic[par])
+    for par in parList:
+        head.append("%s=%s\n" % (par, cfgParDic[par]))
 
-    head += "\nParameters Transferred:\n"
+    head.append("\nParameters Transferred:\n")
     httpParsDic = reqPropsObj.getHttpParsDic()
     httpPars = httpParsDic.keys()
     httpPars.sort()
-    for httpPar in httpPars: head += "%s=%s\n" % (httpPar,httpParsDic[httpPar])
-    head += "\nEOF\n"
+    for httpPar in httpPars:
+        head.append("%s=%s\n" % (httpPar,httpParsDic[httpPar]))
+    head.append("\nEOF\n")
 
+    buf = ''.join(head)
     # Generate status.
     if (cfgParDic["TARGET"] == "FILE"):
         outFile = procFile + "_ngamsTestDppi1"
-        fo = open(outFile, "a")
-        fo.write(head)
-        fo.close()
+        with open(outFile, "a") as fo:
+            fo.write(buf)
         info(3,"Storing result data in file: %s" % outFile)
         resObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_FILE, mimeType,
                                                  outFile, filename, procDir)
     else:
         info(3,"Keeping result data in buffer")
         resObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_DATA, mimeType,
-                                                 head, filename)
+                                                 buf, filename)
     statusObj.addResult(resObj)
     return statusObj
 
