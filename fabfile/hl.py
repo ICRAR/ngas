@@ -33,7 +33,6 @@ from ngas import install_and_check
 # Don't re-export the tasks imported from other modules, only ours
 __all__ = ['user_deploy', 'operations_deploy', 'aws_deploy']
 
-@hosts('localhost')
 @task
 def user_deploy(typ = 'archive'):
     """
