@@ -121,9 +121,6 @@ import urllib
 import socket
 import pkg_resources
 
-# make sure that we can get a handle to the server object
-_ngamsServer = None
-
 # Main PID of server
 NGAMS_SRV_PID = os.getpid()
 NGAMS_HOST_IP   = None

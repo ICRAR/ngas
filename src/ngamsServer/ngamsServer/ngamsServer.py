@@ -1,4 +1,3 @@
-#!/bin/env python
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -20,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsServer.py,v 1.30 2009/06/02 07:44:36 awicenec Exp $"
@@ -57,41 +55,6 @@ from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
 import ngamsArchiveUtils, ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
 
-# Pointing to the HTTP request callback.
-_reqCallBack = None
-
-
-# Refers to the instance of the NG/AMS Server. Used to access the
-# server instance e.g. from the NG/AMS Exit Handler.
-_ngamsServer = None
-
-
-def ngamsExitHandler(signalNo,
-                     frameObject = "",
-                     killServer = 1,
-                     exitCode = 0,
-                     delPidFile = 1):
-    """
-    NG/AMS Exit Handler Function. Is invoked when the NG/AMS Server
-    is killed/terminated.
-
-    signalNo:     Number of signal received.
-
-    frameObject:  Frame object (string).
-
-    killServer:   1 = kill the server (integer).
-
-    exitCode:     Exit code with which the server should exit (integer).
-
-    delPidFile:   Flag indicating if NG/AMS PID file should be deleted or
-                  not (integer/0|1).
-
-    Returns:      Void.
-    """
-    global _ngamsServer
-    ngamsSrvUtils.ngamsBaseExitHandler(_ngamsServer, signalNo, killServer,
-                                       exitCode, delPidFile)
-
 
 class ngamsSimpleRequest:
     """
@@ -125,17 +88,17 @@ class ngamsSimpleRequest:
         self.wfile.write("%s: %s\r\n" % (keyword, value))
 
 
-# class ngamsHttpServer(SocketServer.ForkingMixIn,
-#                      SocketServer.TCPServer,
-#                      BaseHTTPServer.HTTPServer):
 class ngamsHttpServer(SocketServer.ThreadingMixIn,
-                      SocketServer.TCPServer,
                       BaseHTTPServer.HTTPServer):
     """
     Class that provides the multithreaded HTTP server functionality.
     """
     allow_reuse_address = 1
 
+    def __init__(self, ngamsServer, server_address):
+        ngamsHttpRequestHandler.reqCallBack = ngamsServer.reqCallBack
+        BaseHTTPServer.HTTPServer.__init__(self, server_address, ngamsHttpRequestHandler)
+        self._ngamsServer = ngamsServer
 
     def process_request(self,
                         request,
@@ -149,22 +112,22 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
         for thrObj in threading.enumerate():
             try:
                 if (thrObj.isAlive()): noOfAliveThr += 1
-            except Exception, e:
+            except Exception:
                 pass
-        if (_ngamsServer):
-            if ((noOfAliveThr - 4) >= _ngamsServer.getCfg().getMaxSimReqs()):
-                try:
-                    errMsg = genLog("NGAMS_ER_MAX_REQ_EXCEEDED",
-                                [_ngamsServer.getCfg().getMaxSimReqs()])
-                    error(errMsg)
-                    httpRef = ngamsSimpleRequest(request, client_address)
-                    tmpReqPropsObj = ngamsReqProps.ngamsReqProps()
-                    _ngamsServer.reply(tmpReqPropsObj, httpRef, NGAMS_HTTP_SERVICE_NA,
-                                   NGAMS_FAILURE, errMsg)
-                except IOError:
-                    errMsg = "Maximum number of requests exceeded and I/O ERROR encountered! Trying to continue...."
-                    error(errMsg)
-                return
+
+        if ((noOfAliveThr - 4) >= self._ngamsServer.getCfg().getMaxSimReqs()):
+            try:
+                errMsg = genLog("NGAMS_ER_MAX_REQ_EXCEEDED",
+                            [self._ngamsServer.getCfg().getMaxSimReqs()])
+                error(errMsg)
+                httpRef = self.RequestHandlerClass(request, client_address, self)
+                tmpReqPropsObj = ngamsReqProps.ngamsReqProps()
+                self._ngamsServer.reply(tmpReqPropsObj, httpRef, NGAMS_HTTP_SERVICE_NA,
+                               NGAMS_FAILURE, errMsg)
+            except IOError:
+                errMsg = "Maximum number of requests exceeded and I/O ERROR encountered! Trying to continue...."
+                error(errMsg)
+            return
 
         # Create a new thread to handle the request.
         t = threading.Thread(target = self.finish_request,
@@ -264,26 +227,15 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         Returns:    Void.
         """
-        global _reqCallBack
-        if (_reqCallBack != None):
-            path = trim(self.path, "?/ ")
-            try:
-                _reqCallBack(self, self.client_address, self.command, path,
-                             self.request_version, self.headers,
-                             self.wfile, self.rfile)
-            except Exception, e:
-                error(str(e))
-                sysLogInfo(1,str(e))
-                thread.exit()
-        else:
-            status = ngamsStatus.ngamsStatus()
-            status.\
-                     setDate(PccUtTime.TimeStamp().getTimeStamp()).\
-                     setVersion(getNgamsVersion()).setHostId(getHostId()).\
-                     setStatus(NGAMS_FAILURE).\
-                     setMessage("NG/AMS Server not properly functioning! " +\
-                                "No HTTP request callback!")
-            self.send_error(NGAMS_HTTP_BAD_REQ, status.genXmlDoc())
+        path = trim(self.path, "?/ ")
+        try:
+            self.reqCallBack(self, self.client_address, self.command, path,
+                         self.request_version, self.headers,
+                         self.wfile, self.rfile)
+        except Exception, e:
+            error(str(e))
+            sysLogInfo(1,str(e))
+            thread.exit()
 
 
 class ngamsServer:
@@ -2050,15 +2002,11 @@ class ngamsServer:
         info(1,"Python version: " + re.sub("\n", "", sys.version))
         if extlogger: extlogger("INFO", "NG/AMS Server version: " + getNgamsVersion())
 
-        # Make global reference to this instance of the NG/AMS Server.
-        global _ngamsServer
-        _ngamsServer = self
-
         # Set up signal handlers.
         info(4,"Setting up signal handler for SIGTERM ...")
-        signal.signal(signal.SIGTERM, ngamsExitHandler)
+        signal.signal(signal.SIGTERM, self.ngamsExitHandler)
         info(4,"Setting up signal handler for SIGINT ...")
-        signal.signal(signal.SIGINT, ngamsExitHandler)
+        signal.signal(signal.SIGINT, self.ngamsExitHandler)
 
         if (getDebug()):
             self.handleStartUp(serve)
@@ -2261,7 +2209,7 @@ class ngamsServer:
             error(errMsg)
             ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "CONFLICT STARTING NG/AMS SERVER", errMsg)
-            ngamsExitHandler(0, "", 0, 1, 0)
+            self.ngamsExitHandler(0, 0, 1, 0)
 
         # Store the PID of this process in a PID file.
         info(4,"Creating PID file for this session: {0}".format(self.pidFile()))
@@ -2358,12 +2306,13 @@ class ngamsServer:
             try:
                 self.serve()
             except Exception, e:
+                traceback.print_exc()
                 errMsg = genLog("NGAMS_ER_OP_HTTP_SERV", [str(e)])
                 error(errMsg)
                 ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
                                          "PROBLEM ENCOUNTERED STARTING " +\
                                          "SERVER", errMsg)
-                ngamsExitHandler(0, "")
+                self.ngamsExitHandler(0)
 
 
     def reqWakeUpCall(self,
@@ -2394,19 +2343,40 @@ class ngamsServer:
 
         Returns:  Void.
         """
-        global _reqCallBack
-        _reqCallBack = self.reqCallBack
-
         hostName = getHostName()
         ipAddress = getIpAddress()
         portNo = self.getCfg().getPortNo()
         info(1,"Setting up NG/AMS HTTP Server (Host: {0} - IP: {1} - Port: {2}...)".\
-             format(getHostName(), ipAddress, str(portNo)))
-        self.__httpDaemon = ngamsHttpServer((ipAddress, portNo),
-                                            ngamsHttpRequestHandler)
+             format(hostName, ipAddress, str(portNo)))
+
+        self.__httpDaemon = ngamsHttpServer(self, (ipAddress, portNo))
         info(1,"NG/AMS HTTP Server ready (Host: {0} - IP: {1} - Port: {2})".\
-             format(getHostName(), ipAddress, str(portNo)))
+             format(hostName, ipAddress, str(portNo)))
         self.__httpDaemon.serve_forever()
+
+    def ngamsExitHandler(self,
+                         signalNo,
+                         killServer = 1,
+                         exitCode = 0,
+                         delPidFile = 1):
+        """
+        NG/AMS Exit Handler Function. Is invoked when the NG/AMS Server
+        is killed/terminated.
+
+        signalNo:     Number of signal received.
+
+        killServer:   1 = kill the server (integer).
+
+        exitCode:     Exit code with which the server should exit (integer).
+
+        delPidFile:   Flag indicating if NG/AMS PID file should be deleted or
+                      not (integer/0|1).
+
+        Returns:      Void.
+        """
+        ngamsSrvUtils.ngamsBaseExitHandler(self, signalNo, killServer,
+                                           exitCode, delPidFile)
+
 
     def killServer(self,
                    delPidFile = 1):
@@ -2422,17 +2392,9 @@ class ngamsServer:
                                              self.getCfg().getPortNo()])
         sysLogInfo(1, msg)
         info(1,msg)
-        pid = None
-        if (self.pidFile()):
-            pidFile = self.pidFile()
-            if (os.path.exists(pidFile)):
-                fo = open(pidFile, "r")
-                pid = fo.read()
-                fo.close()
-                if (delPidFile): os.remove(pidFile)
-        if (not pid): pid = os.getpid()
+        pid = os.getpid()
         try:
-            notice("Killing NG/AMS Main Thread. PID: %d" % int(pid))
+            notice("Killing NG/AMS Main Thread. PID: %d" % (pid,))
             logFile = self.getCfg().getLocalLogFile()
             logPath = os.path.dirname(logFile)
             rotLogFile = "LOG-ROTATE-" +\
@@ -2445,7 +2407,7 @@ class ngamsServer:
             commands.getstatusoutput("mv " + logFile + " " +\
                                                      rotLogFile)
 
-            os.kill(int(pid), signal.SIGKILL)
+            os.kill(pid, signal.SIGKILL)
         except Exception, e:
             error("Server encountered problem terminating: " + str(e))
         info(1,"Terminated NG/AMS Server")
@@ -2474,7 +2436,7 @@ class ngamsServer:
 
         Returns:    Void.
         """
-        manPage = pkg_resources.resource_string(__name__, 'ngamsServer.txt')
+        manPage = pkg_resources.resource_string(__name__, 'ngamsServer.txt')  # @UndefinedVariable
         manPage = manPage.replace("ngamsServer", self._serverName)
         print manPage
         print ngamsCopyrightString()
@@ -2679,7 +2641,6 @@ def main():
 
     ngams = ngamsServer()
     ngams.init(sys.argv)
-
 
 if __name__ == '__main__':
     main()
