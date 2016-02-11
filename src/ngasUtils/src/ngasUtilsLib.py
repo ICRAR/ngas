@@ -1,4 +1,3 @@
-
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -20,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasUtilsLib.py,v 1.4 2008/12/15 22:09:52 jknudstr Exp $"
@@ -29,15 +27,18 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  21/01/2004  Created
 #
-
 """
 Utility functions used by the tool in the NGAS Utils module.
 """
 
-import sys, os, base64, getpass, smtplib, glob, commands
+import os, base64, getpass, smtplib, glob, commands
+import time
 
-from ngams import *
-import ngamsPClient
+from ngamsLib.ngamsCore import getHostName, cleanList, getFileCreationTime, \
+    NGAMS_STATUS_CMD, NGAMS_NOT_RUN_STATE, NGAMS_COPYRIGHT_TEXT, info, setDebug, \
+    setLogCond
+from ngamsPClient import ngamsPClient
+from pccUt import PccUtTime
 
 
 NGAS_RC_FILE            = "~/.ngas"

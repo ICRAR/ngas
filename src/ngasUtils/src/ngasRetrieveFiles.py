@@ -1,5 +1,3 @@
-
-
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -21,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasRetrieveFiles.py,v 1.2 2008/08/19 20:37:45 jknudstr Exp $"
@@ -30,15 +27,15 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  04/02/2003  Created
 #
-
 """
 Script that retrieves all files from a given Disk ID.
 """
 
 import time
 
-from ngams import *
-import ngamsDb, ngamsPClient
+from ngamsLib import ngamsDb
+from ngamsLib.ngamsCore import NGAMS_SUCCESS, rmFile
+from ngamsPClient import ngamsPClient
 
 
 def retrieveFiles(diskIdList):

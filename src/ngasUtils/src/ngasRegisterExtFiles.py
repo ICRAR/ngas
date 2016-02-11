@@ -1,5 +1,3 @@
-
-
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -21,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasRegisterExtFiles.py,v 1.2 2008/08/19 20:37:45 jknudstr Exp $"
@@ -30,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  30/01/2004  Created
 #
-
 """
 The ngasRegisterExtFiles tool is used to register files in the NGAS DB as
 EXTERNAL Files. This means, that they have a normal entry in the NGAS DB
@@ -58,16 +54,15 @@ If files have already been registered, they are not registered again. I.e.,
 there is no danger in running the tool with the same file references as
 input.
 """
-
-import sys, os, time
-
-from ngams import *
-import ngamsDb, ngamsFileInfo, ngamsDiskInfo
-import ngamsLib
-import ngasUtils, ngasUtilsLib
-
-
 # IMPL: Use ngasUtilsLib.parseFileList()
+
+import sys, time
+
+from ngamsLib import ngamsDb, ngamsDiskInfo, ngamsFileInfo
+from ngamsLib.ngamsCore import info, NGAMS_FILE_STATUS_OK, setLogCond
+import ngasUtilsLib
+
+
 def parseFileList(fileListFile):
     """
     Function that parses the the given file list file and returns the

@@ -19,6 +19,18 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+import commands
+import os
+import sys
+import time, md5
+
+from ngamsLib.ngamsCore import getHostName, info, rmFile, setLogCond
+from ngamsPlugIns.ngamsGenericPlugInLib import NGAS_VOL_INFO_ID, \
+    NGAS_VOL_INFO_TYPE, NGAS_VOL_INFO_UNDEF, NGAS_VOL_INFO_MANUFACT, \
+    NGAS_VOL_INFO_FILE, loadVolInfoFile, writeVolInfoFile
+from ngasUtilsLib import NGAS_OPT_MAN, NGAS_OPT_OPT, genOptDicAndDoc, \
+    NGAS_OPT_VAL, parseCmdLine
+
 
 #******************************************************************************
 #
@@ -28,7 +40,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  26/02/2007  Created
 #
-
 _doc =\
 """
 The ngasPrepareVolume Tool is used to prepare a 'HW independent' NGAS
@@ -51,18 +62,6 @@ all.
 %s
 
 """
-
-import sys, os, time, getpass, md5
-
-import pcc, PccUtTime
-
-from ngams import *
-import ngamsDb
-import ngamsLib
-from ngamsGenericPlugInLib import *
-import ngasUtils
-from ngasUtilsLib import *
-#import ngasUtilsLib
 
 
 # Definition of predefined command line parameters.
