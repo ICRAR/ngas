@@ -585,10 +585,6 @@ def checkUpdateDbSnapShots(srvObj):
                     checkStopJanitorThread(srvObj)
                     time.sleep(0.005)
                 tmpSnapshotDbm.sync()
-            except Exception, e:
-                if tmpSnapshotDbm:
-                    tmpSnapshotDbm.close()
-                raise e
             finally:
                 rmFile(tmpSnapshotDbmName)
                 if tmpFileListDbmName:
@@ -1049,6 +1045,7 @@ def janitorThread(srvObj,
     try:
         checkUpdateDbSnapShots(srvObj)
     except Exception, e:
+        if (str(e).find("_STOP_JANITOR_THREAD_") != -1): thread.exit()
         errMsg = "Problem updating DB Snapshot files: " + str(e)
         warning(errMsg)
         import traceback
