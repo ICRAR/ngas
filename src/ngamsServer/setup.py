@@ -46,7 +46,8 @@ setup(
     },
     install_requires=[
         'pcc',
-        'ngamsCore'
+        'ngamsCore',
+        'python-daemon'
     ],
     # No spaces allowed between the '='s
     entry_points= {

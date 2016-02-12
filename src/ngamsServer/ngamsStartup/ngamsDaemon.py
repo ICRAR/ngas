@@ -21,190 +21,157 @@
 #    MA 02111-1307  USA
 #
 
-import sys, os, subprocess, glob
+import errno
+import os
+import signal
+import subprocess
+import sys
+import time
+
+import daemon
+from lockfile.pidlockfile import PIDLockFile
 
 from ngamsLib import ngamsConfig
-from ngamsLib.daemon import Daemon
-from ngamsLib.logger import ngaslog
-from ngamsLib.ngamsCore import getHostId, getIpAddress, getHostName
-
-#
-# The following commented code is probably not relevant anymore
-# and can be removed, but I have to double-check. The fact that importing
-# modules was breaking the getHostId() call underneath meant that at
-# import time there was a call to getHostId() without a configuration file
-# which is probably the cause of the CAUTION down there. I found (and fixed)
-# exactly something like that a few commits ago, and thus this is probably
-# not an issue anymore.
-
-# *** CAUTION: Never import any other NGAS modules here! This
-# ***          would likely break the determination of the IP address
-#import sys, os, subprocess, socket, glob
-#from ngams import getHostId
-#from logger import ngaslog
-#from daemon import Daemon
-
-if os.environ.has_key('NGAS_PREFIX'):
-    NGAS_PREFIX = os.path.abspath(os.environ['NGAS_PREFIX'])
-else:
-    HOME = os.environ['HOME']
-    NGAS_PREFIX = '{0}/ngas_rt'.format(HOME)
-
-if not NGAS_PREFIX or not os.path.exists(NGAS_PREFIX):
-    raise Exception("NGAS_PREFIX not found or not defined")
-
-CFG = os.path.join(NGAS_PREFIX, 'cfg', 'ngamsServer.conf')
-if not os.path.exists(CFG):
-    msg = "Configuration file not found: {0}".format(CFG)
-    ngaslog("ERROR", msg)
-    raise ValueError(msg)
-
-# importing it here makes sure that getHostID is called with
-# the config file.
-cfgObj = ngamsConfig.ngamsConfig()
-cfgObj.load(CFG)
-PORT = cfgObj.getPortNo()
-if os.environ.has_key('NGAMS_ARGS'):
-    NGAMS_ARGS = os.environ['NGAMS_ARGS'].split() # convert from command line (string) to a list
-else:
-    NGAMS_ARGS = [
-                  'ngamsServer',
-                  '-cfg', CFG,
-                  '-force',
-                  '-autoOnline',
-                  '-multiplesrvs',
-                  '-v', '3',
-         ]
+from ngamsLib.ngamsCore import getIpAddress, getHostName
+from ngamsServer import ngamsServer
 
 
+def err(s):
+    sys.stderr.write(s + '\n')
 
-PIDFILE = '%s/../NGAS/var/run/ngamsDaemon.pid' % NGAS_PREFIX
-try:
-    os.makedirs('{0}/../NGAS/var/run'.format(NGAS_PREFIX))
-    os.makedirs('{0}/../NGAS/var/log'.format(NGAS_PREFIX))
-except OSError:
-    pass
+def start(cmdline_name, cfgFile, pidfile):
 
+    # Build up a fake command-line before launching the NGAS server
+    # This is because deep inside the NGAS code directly reads sometimes the
+    # sys.argv variable (big TODO: remove that hidden dependency)
+    srv = 'ngamsServer'
+    if cmdline_name == 'ngamsCacheDaemon': #check how we are called
+        srv = 'ngamsCacheServer'
+    sys.argv = [srv, '-cfg', cfgFile, '-force', '-autoOnline', '-multiplesrvs', '-v', '3']
 
-def internalPidFile():
-        """
-        Return the name of the PID file in which NG/AMS stores its PID.
+    # Go!
+    if os.path.isfile(pidfile):
+        err('PID file already exists, not overwriting possibly existing instance')
+        return 1
 
-        Returns:   Name of PID file (string).
-        """
-        hostId = getHostId(cfgFile=CFG)
-        # Generate a PID file with the  name: <mt root dir>/.<NGAS ID>
-        if ((not cfgObj.getRootDirectory()) or \
-            (cfgObj.getPortNo() < 1)): return ""
+    print 'Starting: %s' % (' '.join(sys.argv),)
+    with daemon.DaemonContext(pidfile=PIDLockFile(pidfile, timeout=1)):
+        ngamsServer.ngamsServer().init(sys.argv)
+
+    return 0
+
+def stop(pidfile):
+    pid = PIDLockFile(pidfile).read_pid()
+    if pid is None:
+        err('Cannot read PID file, is there an instance running?')
+        return 1
+    else:
         try:
-            pidFile = os.path.join(cfgObj.getRootDirectory(), "." +
-                                   hostId + ":" + str(cfgObj.getPortNo()) +
-                                   ".pid")
-        except Exception, e:
-            errMsg = "Error occurred generating PID file name. Check " +\
-                     "Mount Root Directory + Port Number in configuration. "+\
-                     "Error: " + str(e)
-            raise Exception, errMsg
-        if glob.glob(pidFile):
-            return pidFile
-        else:
-            return ""
+            return kill_and_wait(pid, pidfile)
+        except OSError, e:
+            if e.errno == errno.ESRCH:
+                err('PID file points to non-existing process, removing it')
+                os.unlink(pidfile)
+                return 1
 
+def kill_and_wait(pid, pidfile):
 
-class MyDaemon(Daemon):
+    os.kill(pid, signal.SIGTERM)
+
+    tries = 0
+    max_tries = 20
+    sleep_period = 1
+
+    start = time.time()
+    while tries < max_tries:
+        if not os.path.exists(pidfile):
+            break
+        tries += 1
+        time.sleep(sleep_period)
+        sys.stdout.write('.')
+        sys.stdout.flush()
+    sys.stdout.write('\n')
+    sys.stdout.flush()
+    end = time.time()
+
+    if tries == max_tries:
+        err("Process didn't die after %.2f [s], killing it with -9" % (end-start))
+        os.kill(pid, signal.SIGKILL)
+        return 1
+
+    return 0
+
+def status(configFile):
     """
-    This class inherits from the main Daemon class
-    and overrides the run method for NGAMS.
+    Send a STATUS command to server
     """
-    def run(self):
 
-        from ngamsServer import ngamsServer
+    cfgObj = ngamsConfig.ngamsConfig()
+    cfgObj.load(configFile)
+    port = cfgObj.getPortNo()
 
-        ngaslog('INFO', "Inside run...")
-        ARGS_BCK = sys.argv
-        try:
-            ARGS_BCK = sys.argv       # store original arguments
-            sys.argv = NGAMS_ARGS     # put the NGAMS_ARGS instead
-            nserver = ngamsServer.ngamsServer()   # instantiate server
-            ngaslog('INFO', 'Initializing server: {}'.format(' '.join(NGAMS_ARGS)))
-            nserver.init(NGAMS_ARGS, extlogger=ngaslog)  # initialize server
-            sys.argv = ARGS_BCK
-        except Exception as e:
-            ngaslog('INFO', str(e))
-            raise e
+    # If the server is listening in all interfaces, connect to localhost
+    # when asking for the status; otherwise try with getHostName(CFG)
+    server = getHostName(cfgFile=configFile)
+    if getIpAddress() == '0.0.0.0':
+        server = 'localhost'
 
-    def status(self):
-        """
-        Send a STATUS command to server
-        """
-        # If the server is listening in all interfaces, connect to localhost
-        # when asking for the status; otherwise try with getHostName(CFG)
-        server = getHostName(CFG)
-        if getIpAddress() == '0.0.0.0':
-            server = 'localhost'
-        # TODO: This creates a dependency on ngamsPClient
-        SCMD = "ngamsPClient -host {0} -port {1} -cmd STATUS -v 1".format(server, PORT)
-        subprocess.call(SCMD,shell=True)
-
-
-def checkNgasPidFile(dum):
-    """
-    Check for existence of NGAS internal PID file.
-    This function is used during shutdown to make
-    sure that the server terminated cleanly, in which
-    case the PID file is removed.
-    """
-    f = open(PIDFILE, 'r')
-    ipid = f.readline().strip()
-    f.close()
-    fil = internalPidFile()
-    if fil:
-        try:
-            f = open(fil, 'r')
-            pid = f.readline().strip()
-            f.close()
-        except:
-            return False
-        if ipid == pid:
-            return True
-    return False
+    # TODO: This creates a dependency on ngamsPClient
+    SCMD = "ngamsPClient -host {0} -port {1} -cmd STATUS -v 1 -timeout 1".format(server, port)
+    return subprocess.call(SCMD,shell=True)
 
 def main(args=sys.argv):
     """
-    Entry point function
+    Entry point function. It's mapped to two different scripts, which is why
+    we can distinguish here between them and start different processes
     """
-    daemon = MyDaemon(PIDFILE,)
 
-    if sys.argv[0] == 'ngamsCacheDaemon': #check how we are called
-        infoStr = 'NGAMS Cache Server'
-        progrStr = 'ngamsCacheServer'
-        NGAMS_ARGS[0] = 'ngamsCacheServer'
+    # Check the NGAS_PREFIX environment variable, which, if present, points to
+    # our NGAS installation
+    if os.environ.has_key('NGAS_PREFIX'):
+        NGAS_PREFIX = os.path.abspath(os.environ['NGAS_PREFIX'])
     else:
-        progrStr = 'ngamsServer'
-        infoStr = 'NGAMS Server'
+        HOME = os.environ['HOME']
+        NGAS_PREFIX = '{0}/ngas_rt'.format(HOME)
+    if not NGAS_PREFIX or not os.path.exists(NGAS_PREFIX):
+        raise Exception("NGAS_PREFIX not found or not defined")
 
-    if len(sys.argv) == 2:
-            if 'start' == sys.argv[1]:
-                    ngaslog('INFO', '{0} Starting'.format(infoStr))
-                    daemon.start()
-            elif 'stop' == sys.argv[1]:
-                    ngaslog('INFO', '{0} Stopping'.format(infoStr))
-                    daemon.stop(cfunc=checkNgasPidFile)
-            elif 'restart' == sys.argv[1]:
-                    ngaslog('INFO', '{0} Restarting'.format(infoStr))
-                    daemon.restart(cfunc=checkNgasPidFile)
-            elif 'status' == sys.argv[1]:
-                    ngaslog('INFO', 'Sending STATUS command')
-                    daemon.status()
-            else:
-                    print "Unknown command"
-                    print "usage: %s start|stop|restart|status" % sys.argv[0]
-                    sys.exit(2)
-            sys.exit(0)
+    # The default configuration file
+    configFile = os.path.join(NGAS_PREFIX, 'cfg', 'ngamsServer.conf')
+    if not os.path.exists(configFile):
+        msg = "Configuration file not found: {0}".format(configFile)
+        raise ValueError(msg)
+
+    # The daemon PID file, prepare its playground
+    pidfile = os.path.join(NGAS_PREFIX, 'var', 'run', 'ngamsDaemon.pid')
+    try:
+        os.makedirs(os.path.join(NGAS_PREFIX, 'var', 'run'))
+        os.makedirs(os.path.join(NGAS_PREFIX, 'var', 'log'))
+    except OSError:
+        pass
+
+    name = sys.argv[0]
+    if len(sys.argv) < 2:
+        print "usage: %s start|stop|restart|status" % (name,)
+        sys.exit(2)
+    cmd = sys.argv[1]
+
+    # Main command switch
+    if 'start' == cmd:
+        exitCode = start(name, configFile, pidfile)
+    elif 'stop' == cmd:
+        exitCode = stop(pidfile)
+    elif 'restart' == cmd:
+        stop(pidfile)
+        exitCode = start(name, configFile, pidfile)
+    elif 'status' == cmd:
+        exitCode = status(configFile)
     else:
-            print "usage: %s start|stop|restart|status" % sys.argv[0]
-            sys.exit(2)
+        print "Unknown command: %s" % (cmd,)
+        print "usage: %s start|stop|restart|status" % (name,)
+        exitCode = 1
+
+    sys.exit(exitCode)
 
 if __name__ == "__main__":
     main()
-

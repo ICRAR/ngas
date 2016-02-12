@@ -818,7 +818,6 @@ def DEBUG(msg = ""):
     Returns:   Void.
     """
     if (getDebug()):
-        import traceback
         stackInfo = traceback.extract_stack()[-2]
         module = stackInfo[0].split("/")[-1]
         lineNo = stackInfo[1]

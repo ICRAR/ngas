@@ -32,11 +32,9 @@
 This module contains various utilities used by the NG/AMS Server.
 """
 
-import os, re, string, thread, threading, time, glob, commands
+import os, re, string, thread, threading, time, glob
 
-from pccLog import PccLog
-from pccUt import PccUtTime
-from ngamsLib.ngamsCore import logFlush, getLocation, info, NGAMS_NOT_RUN_STATE,\
+from ngamsLib.ngamsCore import info, NGAMS_NOT_RUN_STATE,\
     NGAMS_ONLINE_STATE, getHostId, NGAMS_DEFINE, warning, NGAMS_SUBSCRIBE_CMD,\
     NGAMS_SUCCESS, TRACE, genLog, notice, NGAMS_DISK_INFO, checkCreatePath,\
     error, NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
@@ -51,11 +49,7 @@ import ngamsJanitorThread, ngamsDataCheckThread, ngamsSubscriptionThread
 import ngamsUserServiceThread, ngamsMirroringControlThread
 
 
-def ngamsBaseExitHandler(srvObj,
-                         signalNo,
-                         killServer = 1,
-                         exitCode = 0,
-                         delPidFile = 1):
+def ngamsBaseExitHandler(srvObj):
     """
     NG/AMS Exit Handler Function. Is invoked when the NG/AMS Server
     is killed terminated.
@@ -74,34 +68,13 @@ def ngamsBaseExitHandler(srvObj,
 
     Returns:     Void.
     """
-    info(1,"In NG/AMS Exit Handler - received signal: " + str(signalNo))
     info(1,"NG/AMS Exit Handler - cleaning up ...")
 
-    if (srvObj.getState() == NGAMS_ONLINE_STATE): handleOffline(srvObj)
+    if (srvObj.getState() == NGAMS_ONLINE_STATE):
+        handleOffline(srvObj)
 
     # Update the ngas_hosts table.
     srvObj.updateHostInfo("", None, 0, 0, 0, 0, 0, NGAMS_NOT_RUN_STATE)
-
-    info(1,"NG/AMS Exit Handler finished cleaning up - terminating server ...")
-
-    if (killServer):
-        srvObj.killServer(delPidFile)
-    else:
-        try:
-            logFile = srvObj.getCfg().getLocalLogFile()
-            logPath = os.path.dirname(logFile)
-            rotLogFile = "LOG-ROTATE-" +\
-                        PccUtTime.TimeStamp().getTimeStamp()+\
-                        ".nglog"
-            rotLogFile = os.path.normpath(logPath + "/" + rotLogFile)
-            PccLog.info(1, "Rotating log file: %s -> %s" %\
-                        (logFile, rotLogFile), getLocation())
-            logFlush()
-            commands.getstatusoutput("mv " + logFile + " " +\
-                                                         rotLogFile)
-        except:
-            pass
-    os._exit(exitCode)
 
 
 def _subscriberThread(srvObj,

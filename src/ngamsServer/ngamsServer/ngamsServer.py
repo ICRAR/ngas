@@ -33,18 +33,17 @@ This module contains the class ngamsServer that provides the
 services for the NG/AMS Server.
 """
 
-import os, sys, re, threading, time, glob, commands, pkg_resources
+import os, sys, re, threading, time, commands, pkg_resources
 import thread, traceback
 import SocketServer, BaseHTTPServer, socket, signal
 
-from pccLog import PccLog
 from pccUt import PccUtTime
 
 from ngamsLib.ngamsCore import \
-    genLog, error, info, alert, notice, setLogCache, logFlush, sysLogInfo, TRACE,\
+    genLog, error, info, alert, setLogCache, logFlush, sysLogInfo, TRACE,\
     rmFile, trim, getNgamsVersion, getDebug, getTestMode, setDebug, setTestMode, \
     getFileSize, getDiskSpaceAvail, setLogCond, setSrvPort, getIpAddress, checkCreatePath,\
-    getHostId, getHostName, getLocation, ngamsCopyrightString, getNgamsLicense,\
+    getHostId, getHostName, ngamsCopyrightString, getNgamsLicense,\
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, NGAMS_HTTP_GET,\
     NGAMS_HTTP_BAD_REQ, NGAMS_HTTP_SERVICE_NA, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, NGAMS_DEF_LOG_PREFIX, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR, NGAMS_TEXT_MT,\
@@ -53,7 +52,7 @@ from ngamsLib.ngamsCore import \
 from ngamsLib import ngamsHighLevelLib, ngamsLib
 from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
-import ngamsArchiveUtils, ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
+import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
 
 
 class ngamsSimpleRequest:
@@ -275,6 +274,8 @@ class ngamsServer:
         self.__srvListDic             = {}
 
         self.__httpDaemon             = None
+
+        self.__handling_exit          = False
 
         # General flag to control thread execution.
         self._threadRunPermission     = 0
@@ -1980,17 +1981,12 @@ class ngamsServer:
                 raise Exception, errMsg
 
 
-    def init(self,
-             argv,
-             serve = 1, extlogger = None):
+    def init(self, argv, extlogger=None):
         """
         Initialize the NG/AMS Server.
 
         argv:       Tuple containing the command line parameters to
                     the server (tuple).
-
-        serve:      If set to 1, the server will start serving on the
-                    given HTTP port (integer/0|1).
 
         Returns:    Reference to object itself.
         """
@@ -2009,10 +2005,10 @@ class ngamsServer:
         signal.signal(signal.SIGINT, self.ngamsExitHandler)
 
         if (getDebug()):
-            self.handleStartUp(serve)
+            self.handleStartUp()
         else:
             try:
-                self.handleStartUp(serve)
+                self.handleStartUp()
                 if extlogger:
                     extlogger("INFO", "Successfully returned from handleStartup")
             except Exception, e:
@@ -2023,22 +2019,7 @@ class ngamsServer:
                 ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
                                          "PROBLEMS INITIALIZING NG/AMS SERVER",
                                          errMsg, [], 1)
-                self.killServer()
-
-        logFile = self.getCfg().getLocalLogFile()
-        logPath = os.path.dirname(logFile)
-        unsavedLogFiles = glob.glob(logPath + '/*.unsaved')
-        if (len(unsavedLogFiles) > 0):
-            info(3,"Archiving unsaved log-files ...")
-            for logFile in unsavedLogFiles:
-                ngamsArchiveUtils.archiveFromFile(self, logFile, 0,
-                        'ngas/nglog', None)
-                os.rename(logFile, '.'.join(logFile.split('.')[:-1]))
-
-
-
-        return self
-
+                self.terminate()
 
     def pidFile(self):
         """
@@ -2118,8 +2099,7 @@ class ngamsServer:
         return self
 
 
-    def handleStartUp(self,
-                      serve = 1):
+    def handleStartUp(self):
         """
         Initialize the NG/AMS Server. This implies loading the NG/AMS
         Configuration, setting up DB connection, checking disk configuration,
@@ -2209,14 +2189,13 @@ class ngamsServer:
             error(errMsg)
             ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "CONFLICT STARTING NG/AMS SERVER", errMsg)
-            self.ngamsExitHandler(0, 0, 1, 0)
+            self.terminate()
 
         # Store the PID of this process in a PID file.
         info(4,"Creating PID file for this session: {0}".format(self.pidFile()))
         checkCreatePath(os.path.dirname(self.pidFile()))
-        fo = open(self.pidFile(), "w")
-        fo.write(str(os.getpid()))
-        fo.close()
+        with open(self.pidFile(), "w") as fo:
+            fo.write(str(os.getpid()))
         info(4,"PID file for this session created")
 
         # Check/create the NG/AMS Temporary and Cache Directories.
@@ -2240,7 +2219,6 @@ class ngamsServer:
                    (self.getCfg().getLocalLogFile(),
                     "Local Log File (Log:LocalLogFile)")]
         for dirInfo in dirList:
-            dirName = os.path.dirname(dirInfo[1])
             stat, out = commands.getstatusoutput("df " + dirInfo[0])
             if (stat == 0):
                 SunOS = 0
@@ -2301,18 +2279,17 @@ class ngamsServer:
         ngamsLib._setSocketTimeout(NGAMS_SOCK_TIMEOUT_DEF)
 
         # Start HTTP server.
-        if (serve):
-            info(1,"Initializing HTTP server ...")
-            try:
-                self.serve()
-            except Exception, e:
-                traceback.print_exc()
-                errMsg = genLog("NGAMS_ER_OP_HTTP_SERV", [str(e)])
-                error(errMsg)
-                ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
-                                         "PROBLEM ENCOUNTERED STARTING " +\
-                                         "SERVER", errMsg)
-                self.ngamsExitHandler(0)
+        info(1,"Initializing HTTP server ...")
+        try:
+            self.serve()
+        except Exception, e:
+            traceback.print_exc()
+            errMsg = genLog("NGAMS_ER_OP_HTTP_SERV", [str(e)])
+            error(errMsg)
+            ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
+                                     "PROBLEM ENCOUNTERED STARTING " +\
+                                     "SERVER", errMsg)
+            self.terminate()
 
 
     def reqWakeUpCall(self,
@@ -2336,7 +2313,6 @@ class ngamsServer:
                                 setSrvReqWakeUpTime(wakeUpTime)
         return self
 
-
     def serve(self):
         """
         Start to serve.
@@ -2352,7 +2328,12 @@ class ngamsServer:
         self.__httpDaemon = ngamsHttpServer(self, (ipAddress, portNo))
         info(1,"NG/AMS HTTP Server ready (Host: {0} - IP: {1} - Port: {2})".\
              format(hostName, ipAddress, str(portNo)))
+
         self.__httpDaemon.serve_forever()
+
+    def stopServer(self):
+        if self.__httpDaemon:
+            self.__httpDaemon.shutdown()
 
     def ngamsExitHandler(self,
                          signalNo,
@@ -2374,44 +2355,64 @@ class ngamsServer:
 
         Returns:      Void.
         """
-        ngamsSrvUtils.ngamsBaseExitHandler(self, signalNo, killServer,
-                                           exitCode, delPidFile)
 
+        if self.__handling_exit:
+            info(1, 'Already handling exit signal')
+            return
 
-    def killServer(self,
-                   delPidFile = 1):
+        self.__handling_exit = True
+        info(1,"In NG/AMS Exit Handler - received signal: " + str(signalNo))
+        self.terminate()
+
+    def terminate(self):
         """
-        Kills the server itself and deletes the PID file.
+        Terminates the server process.
 
-        delPidFile:  Flag indicating if NG/AMS PID file should be deleted or
-                     not (integer/0|1).
+        If this server is listening for HTTP requests it is first stopped. Then
+        the server is taken to the OFFLINE state.
+
+        It flushes the logging system and renames the
+        local log file so it gets automatically archived later.
 
         Returns:     Void.
         """
+        t = threading.Thread(target=self._terminate)
+        t.start()
+
+    def _terminate(self):
         msg = genLog("NGAMS_INFO_TERM_SRV", [getNgamsVersion(), getHostName(),
                                              self.getCfg().getPortNo()])
         sysLogInfo(1, msg)
         info(1,msg)
-        pid = os.getpid()
+
+        self.stopServer()
+        ngamsSrvUtils.ngamsBaseExitHandler(self)
+
+        # Rotate the log file; it's called .unsaved because the next time NGAS
+        # starts it will pick them up and save them into itself
         try:
-            notice("Killing NG/AMS Main Thread. PID: %d" % (pid,))
             logFile = self.getCfg().getLocalLogFile()
             logPath = os.path.dirname(logFile)
-            rotLogFile = "LOG-ROTATE-" +\
-                    PccUtTime.TimeStamp().getTimeStamp()+\
-                    ".nglog.unsaved"
+            rotLogFile = "LOG-ROTATE-%s.nglog.unsaved" % (PccUtTime.TimeStamp().getTimeStamp(),)
             rotLogFile = os.path.normpath(logPath + "/" + rotLogFile)
-            PccLog.info(1, "Closing log file: %s -> %s" %\
-                    (logFile, rotLogFile), getLocation())
+            info(1, "Closing log file: %s -> %s" % (logFile, rotLogFile))
             logFlush()
-            commands.getstatusoutput("mv " + logFile + " " +\
-                                                     rotLogFile)
-
-            os.kill(pid, signal.SIGKILL)
+            os.rename(logFile, rotLogFile)
         except Exception, e:
-            error("Server encountered problem terminating: " + str(e))
+            error("Server encountered problem while terminating: " + str(e))
+
+        # Avoid last logs going into the local file
+        setLogCond(self.__sysLog, self.__sysLogPrefix, 0,
+                       self.__locLogFile, self.__verboseLevel)
         info(1,"Terminated NG/AMS Server")
 
+    def killServer(self):
+        """
+        Kills this process with SIGKILL
+        """
+        info(1,"About to commit suicide... good-by cruel world")
+        pid = os.getpid()
+        os.kill(pid, signal.SIGKILL)
 
     def _incCheckIdx(self,
                      idx,
