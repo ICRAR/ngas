@@ -28,10 +28,11 @@ from fabric.tasks import execute
 
 from aws import create_aws_instances
 from ngas import install_and_check
+from dockerContainer import create_docker_image, follow_stage1
 
 
 # Don't re-export the tasks imported from other modules, only ours
-__all__ = ['user_deploy', 'operations_deploy', 'aws_deploy']
+__all__ = ['user_deploy', 'operations_deploy', 'aws_deploy', 'docker_image']
 
 @task
 def user_deploy(typ = 'archive'):
@@ -54,3 +55,12 @@ def aws_deploy(n_instances=1, typ='archive'):
     """
     create_aws_instances(n_instances)
     execute(install_and_check, sys_install=True, user_install=True, init_install=True, typ=typ)
+
+@task
+def docker_image(typ='archive'):
+    """
+    Create a Docker image running NGAS.
+    """
+    container = create_docker_image()
+    execute(install_and_check, sys_install=True, user_install=True, init_install=True, typ=typ)
+    follow_stage1(container)

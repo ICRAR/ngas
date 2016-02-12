@@ -28,6 +28,8 @@ import time
 import types
 import urllib2
 
+from Crypto.PublicKey import RSA
+
 from fabric.colors import green, red
 from fabric.context_managers import settings, hide
 from fabric.decorators import task, parallel
@@ -127,3 +129,8 @@ def is_localhost():
 
 def key_filename(key_name):
     return os.path.join(os.path.expanduser('~/.ssh/'), '{0}.pem'.format(key_name))
+
+def get_public_key(key_filename):
+    with open(key_filename) as f:
+        okey = RSA.importKey(f.read())
+        return okey.exportKey('OpenSSH')

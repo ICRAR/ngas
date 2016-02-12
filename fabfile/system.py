@@ -34,7 +34,7 @@ from fabric.state import env
 from fabric.utils import puts
 import pkg_resources
 
-from utils import run, sudo
+from utils import run, sudo, get_public_key
 
 
 # List of supported OSes
@@ -244,12 +244,6 @@ def python_setup(ppath):
         run('make install >> /tmp/py_install.log 2>&1')
         ppath = '{0}/bin/python{1}'.format(ppath,APP_PYTHON_VERSION)
     return ppath
-
-
-def get_public_key(key_filename):
-    with open(key_filename) as f:
-        okey = RSA.importKey(f.read())
-        return okey.exportKey('OpenSSH')
 
 @task
 def create_user(user, group=None):

@@ -20,25 +20,15 @@
 #    MA 02111-1307  USA
 #
 
-FROM centos:centos7
+FROM ngas-stage2:latest
 MAINTAINER Mark Boulton <mark.boulton@icrar.org.org>
 
 RUN yum -y update; yum clean all
-RUN yum -y install epel-release; yum clean all
-RUN yum -y install python-pip; yum clean all
-RUN yum -y install gcc; yum clean all
-RUN yum -y install openssh-server; yum clean all
-RUN yum -y install openssh-clients; yum clean all
-RUN yum -y install sudo; yum clean all
+RUN rm -f /home/ngas/NGAS/var/run/ngamsDaemon.pid
+RUN rm -f /tmp/ngas_tmp.tar
 
 # Add ssh support for install
-RUN echo 'root:chpasswd' | chpasswd
-RUN sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/' /etc/ssh/sshd_config
-RUN sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config
-RUN ssh-keygen -A
 EXPOSE 22
+EXPOSE 7777
 
-# Add key to allow passwordless login
-ADD authorized_keys /root/.ssh/
-
-CMD ["/usr/sbin/sshd", "-D"]
+CMD ["/usr/bin/su", "-", "ngas", "-c", "/home/ngas/ngas_rt/bin/ngamsServer -cfg /home/ngas/NGAS/cfg/ngamsServer.conf -autoOnline -force -multiplesrvs"]
