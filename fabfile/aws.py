@@ -26,22 +26,17 @@ Module containing AWS-related methods and tasks
 import os
 import time
 
-from Crypto.PublicKey import RSA
-import boto.ec2
 from fabric.colors import green, red, blue, yellow
 from fabric.contrib.console import confirm
 from fabric.decorators import task
+from fabric.operations import prompt
 from fabric.state import env
 from fabric.tasks import execute
 from fabric.utils import puts, abort, fastprint
 
 from ngas import ngas_branch
-from utils import default_if_empty, to_boolean, whatsmyip, check_ssh,\
+from utils import default_if_empty, to_boolean, whatsmyip, check_ssh, \
     key_filename
-
-
-from fabric.operations import prompt
-
 
 # Don't re-export the tasks imported from other modules
 __all__ = ['create_aws_instances', 'list_instances', 'terminate']
@@ -70,6 +65,7 @@ AWS_REGION = 'us-east-1'
 
 
 def connect():
+    import boto.ec2
     default_if_empty(env, 'AWS_PROFILE', AWS_PROFILE)
     default_if_empty(env, 'AWS_REGION',  AWS_REGION)
     return boto.ec2.connect_to_region(env.AWS_REGION, profile_name=env.AWS_PROFILE)
@@ -93,8 +89,6 @@ def aws_create_key_pair(conn):
     # We don't have the private key locally, save it
     if not os.path.exists(key_file):
         kp.save('~/.ssh/')
-        Rkey = RSA.importKey(kp.material)
-        env.SSH_PUBLIC_KEY = Rkey.exportKey('OpenSSH')
 
 
 def check_create_aws_sec_group(conn):

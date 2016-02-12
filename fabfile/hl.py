@@ -23,7 +23,7 @@
 Module with a few high-level fabric tasks users are likely to use
 """
 
-from fabric.decorators import task, hosts
+from fabric.decorators import task
 from fabric.tasks import execute
 
 from aws import create_aws_instances
