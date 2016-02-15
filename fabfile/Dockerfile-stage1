@@ -27,12 +27,11 @@ RUN yum -y update; yum clean all
 RUN yum -y install epel-release; yum clean all
 RUN yum -y install python-pip; yum clean all
 RUN yum -y install gcc; yum clean all
-RUN yum -y install openssh-server; yum clean all
-RUN yum -y install openssh-clients; yum clean all
+RUN yum -y install openssh-server openssh-clients; yum clean all
 RUN yum -y install sudo; yum clean all
 
 # Add ssh support for install
-RUN echo 'root:chpasswd' | chpasswd
+# RUN echo 'root:chpasswd' | chpasswd
 RUN sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config
 RUN ssh-keygen -A

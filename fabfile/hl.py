@@ -28,7 +28,7 @@ from fabric.tasks import execute
 
 from aws import create_aws_instances
 from ngas import install_and_check
-from dockerContainer import create_docker_image, follow_stage1
+from dockerContainer import create_stage1_docker_container, create_stage2_docker_image, create_final_docker_image
 
 
 # Don't re-export the tasks imported from other modules, only ours
@@ -61,6 +61,15 @@ def docker_image(typ='archive'):
     """
     Create a Docker image running NGAS.
     """
-    container = create_docker_image()
+    # Build and start the stage1 container holding onto the container info to use later.
+    container = create_stage1_docker_container()
+
+    # Now install into the docker container.
+    # We assume above has set the environment host IP address to install into
     execute(install_and_check, sys_install=True, user_install=True, init_install=True, typ=typ)
-    follow_stage1(container)
+
+    # Now that NGAS is istalled in container do cleanup on it and build final image.
+    create_stage2_docker_image(container)
+
+    # Now build the final NGAS docker image
+    create_final_docker_image()
