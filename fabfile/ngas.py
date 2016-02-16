@@ -386,6 +386,8 @@ def copy_sources():
     with cd(nsd):
         run('tar xpf {0}'.format(target_tarfile))
 
+    # Cleaning up now
+    run('rm {0}'.format(target_tarfile))
     local('rm {0}'.format(local_file))
 
 @task

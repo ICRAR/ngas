@@ -25,7 +25,6 @@ MAINTAINER Mark Boulton <mark.boulton@icrar.org.org>
 
 RUN yum -y update; yum clean all
 RUN rm -f /home/ngas/NGAS/var/run/ngamsDaemon.pid
-RUN rm -f /tmp/ngas_tmp.tar
 
 # Add ssh support for install
 EXPOSE 22
