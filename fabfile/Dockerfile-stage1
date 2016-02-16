@@ -24,10 +24,10 @@ FROM centos:centos7
 MAINTAINER Mark Boulton <mark.boulton@icrar.org>
 
 # We do a clean all after each install/update to keep unwanted files out of each image layer
-RUN yum -y update; yum clean all
+RUN yum -y update && yum clean all
 RUN yum -y install \
     openssh-server \
-    sudo; \
+    sudo && \
     yum clean all
 
 # Add ssh support for install
