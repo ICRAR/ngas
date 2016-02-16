@@ -23,15 +23,14 @@
 FROM centos:centos7
 MAINTAINER Mark Boulton <mark.boulton@icrar.org>
 
-RUN yum -y update
+# We do a clean all after each install/update to keep unwanted files out of each image layer
+RUN yum -y update; yum clean all
 RUN yum -y install \
     openssh-server \
-    openssh-clients \
-    sudo
-RUN yum clean all
+    sudo; \
+    yum clean all
 
 # Add ssh support for install
-# RUN echo 'root:chpasswd' | chpasswd
 RUN sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config
 RUN ssh-keygen -A
