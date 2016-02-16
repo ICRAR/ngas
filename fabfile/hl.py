@@ -63,6 +63,8 @@ def docker_image(typ='archive'):
     """
     # Build and start the stage1 container holding onto the container info to use later.
     container = create_stage1_docker_container()
+    if not container:
+        return
 
     # Now install into the docker container.
     # We assume above has set the environment host IP address to install into

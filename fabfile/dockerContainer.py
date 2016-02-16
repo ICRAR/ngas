@@ -23,13 +23,10 @@
 Module containing Docker related methods and tasks
 """
 
-import os
-#from Crypto.PublicKey import RSA
-
-import shutil
-
-from types import GeneratorType
 import json
+import os
+import shutil
+from types import GeneratorType
 
 from fabric.colors import red, green
 from fabric.decorators import task
@@ -66,7 +63,7 @@ CREATE_CONTAINER_SUCCESSFUL_STR = 'None'
 
 
 def split_json(the_json):
-    print the_json
+    puts(the_json)
     bracket_count = 0
     print_string = ''
     for ch in the_json:
@@ -78,10 +75,10 @@ def split_json(the_json):
             print_string += ch
             if bracket_count == 0:
                 converted = json.loads(print_string)
-                print json.dumps(converted,
+                puts(json.dumps(converted,
                                  sort_keys=True,
                                  indent=4,
-                                 separators=(',', ': '))
+                                 separators=(',', ': ')))
                 print_string = ''
         elif bracket_count >= 1:
             print_string += ch
@@ -94,16 +91,15 @@ def handle_generator(the_generator):
 
 def json_pretty_print(the_json):
     # Do pretty print of "the_json" taking into account different types.
-    print(the_json.__class__)
     if type(the_json) == unicode or type(the_json) == str:
         split_json(the_json)
     elif type(the_json) == GeneratorType:
         handle_generator(the_json)
     else:
-        print json.dumps(the_json,
+        puts(json.dumps(the_json,
                          sort_keys=True,
                          indent=4,
-                         separators=(',', ': '))
+                         separators=(',', ': ')))
 
 
 def check_if_successful_build(the_json):
@@ -138,7 +134,7 @@ def check_if_successful(the_json, json_field, json_value):
     # Default success to False in case we skip over generator.
     success = False
     for value in the_json:
-        print 'searching for field: ' + json_field + ' and value: ' + json_value + ' in:' + value
+        puts('searching for field: ' + json_field + ' and value: ' + json_value + ' in:' + value)
         dct = json.loads(value)
         if json_field in dct:
             my_str = dct[json_field]
@@ -190,6 +186,8 @@ def create_stage1_docker_container():
     branch = ngas_branch()
     default_if_empty(env, 'container_name',  STAGE1_BUILD_NAME.format(branch))
 
+    # Copy our current public SSH key into the to-be-built container so we
+    # can connect to the root user afterwards
     docker_public_add_ssh_key()
 
     # The main connection for testing the deployment and use of our own docker registry.
@@ -197,7 +195,7 @@ def create_stage1_docker_container():
 
     if cli is None:
         puts(red("\n******** FAILED TO INSTALL CREATE CONNECTION TO DOCKER DAEMON ********\n"))
-        return False
+        return None
 
     try:
         # Build the stage1 docker container to deploy NGAS into
@@ -207,7 +205,7 @@ def create_stage1_docker_container():
 
         if not successful:
             puts(red("\n******** FAILED TO BUILD STAGE1 DOCKER IMAGE ********\n"))
-            return False
+            return None
 
         container = cli.create_container(image=STAGE1_BUILD_NAME, detach=True, name="ngas")
 
@@ -215,7 +213,7 @@ def create_stage1_docker_container():
             puts(red("\n******** FAILED TO CREATE STAGE1 DOCKER CONTAINER FROM IMAGE ********\n"))
             # Cleanup
             cli.remove_image(STAGE1_BUILD_NAME, force=True)
-            return False
+            return None
 
         try:
             cli.start(container=container, publish_all_ports=True)
@@ -226,7 +224,7 @@ def create_stage1_docker_container():
             # Cleanup
             cli.remove_container(container)
             cli.remove_image(STAGE1_BUILD_NAME, force=True)
-            return False
+            return None
 
         info = cli.inspect_container(container)
 
@@ -237,17 +235,13 @@ def create_stage1_docker_container():
             # Cleanup
             cli.remove_container(container)
             cli.remove_image(STAGE1_BUILD_NAME, force=True)
-            return False
+            return None
 
+        # From now on we connect to root@host_ip using our SSH key
         env.hosts = host_ip
-
-        #print 'do remove of image from local docker cache'
-        #try:
-        #    json_pretty_print(cli.remove_image(image=STAGE1_BUILD_NAME))
-        #except errors.APIError as e:
-        #    print e.explanation
-        #    print e.message
-        #    return
+        env.user = 'root'
+        if 'key_filename' not in env:
+            env.key_filename = os.path.expanduser("~/.ssh/id_rsa")
 
         # Instances have started, but are not usable yet, make sure SSH has started
         puts(green('\nStarted the docker container now waiting for the SSH daemon to start.\n'))

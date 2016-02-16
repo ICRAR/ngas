@@ -21,14 +21,14 @@
 #
 
 FROM centos:centos7
-MAINTAINER Mark Boulton <mark.boulton@icrar.org.org>
+MAINTAINER Mark Boulton <mark.boulton@icrar.org>
 
-RUN yum -y update; yum clean all
-RUN yum -y install epel-release; yum clean all
-RUN yum -y install python-pip; yum clean all
-RUN yum -y install gcc; yum clean all
-RUN yum -y install openssh-server openssh-clients; yum clean all
-RUN yum -y install sudo; yum clean all
+RUN yum -y update
+RUN yum -y install \
+    openssh-server \
+    openssh-clients \
+    sudo
+RUN yum clean all
 
 # Add ssh support for install
 # RUN echo 'root:chpasswd' | chpasswd
