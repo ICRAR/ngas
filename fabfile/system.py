@@ -25,7 +25,6 @@ Module containing system-level utility methods and fabric tasks
 import os
 import urlparse
 
-from Crypto.PublicKey import RSA
 from fabric.colors import blue, green
 from fabric.context_managers import cd, settings
 from fabric.decorators import task
