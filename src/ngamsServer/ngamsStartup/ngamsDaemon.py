@@ -120,7 +120,7 @@ def status(configFile):
     SCMD = "ngamsPClient -host {0} -port {1} -cmd STATUS -v 1 -timeout 1".format(server, port)
     return subprocess.call(SCMD,shell=True)
 
-def main(args=sys.argv):
+def main(argv):
     """
     Entry point function. It's mapped to two different scripts, which is why
     we can distinguish here between them and start different processes
@@ -150,11 +150,11 @@ def main(args=sys.argv):
     except OSError:
         pass
 
-    name = sys.argv[0]
-    if len(sys.argv) < 2:
+    name = argv[0]
+    if len(argv) < 2:
         print "usage: %s start|stop|restart|status" % (name,)
         sys.exit(2)
-    cmd = sys.argv[1]
+    cmd = argv[1]
 
     # Main command switch
     if 'start' == cmd:
@@ -174,4 +174,4 @@ def main(args=sys.argv):
     sys.exit(exitCode)
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv)

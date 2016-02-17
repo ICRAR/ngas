@@ -59,8 +59,8 @@ def dumpDbSnapshot(dbSnapshotName,
 
     Returns:            Void.
     """
-    db = bsddb.hashopen(sys.argv[1], "r")
-    print "\nDumping contents of NG/AMS DB Snapshot: " + sys.argv[1]
+    db = bsddb.hashopen(dbSnapshotName, "r")
+    print "\nDumping contents of NG/AMS DB Snapshot: " + dbSnapshotName
 
     try:
         key, pickleVal = db.first()
@@ -92,16 +92,16 @@ def dumpDbSnapshot(dbSnapshotName,
     db.close()
 
 
-def main():
+def main(argv):
     """
     Main function invoking the function to dump the DB Snapshot.
     """  
-    if (len(sys.argv) != 2):
+    if (len(argv) != 2):
         correctUsage()
         sys.exit(1)
-    dumpDbSnapshot(sys.argv[1], 1)
+    dumpDbSnapshot(argv[1], 1)
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv)
 
 # EOF

@@ -38,21 +38,21 @@ import sys
 from ngamsLib.ngamsCore import TRACE
 import ngamsServer
 
-def main():
+def main(argv):
     "Wrapper as an entry-point"
     T = TRACE()
 
     ngamsSrv = ngamsServer.ngamsServer()
     ngamsSrv._cacheArchive = True
     ngamsSrv._serverName   = "ngamsCacheServer"
-    ngamsSrv.init(sys.argv)
+    ngamsSrv.init(argv)
 
 
 if __name__ == '__main__':
     """
     Main function instatiating the NG/AMS Server Class and starting the server.
     """
-    main()
+    main(sys.argv)
 
 
 # EOF
