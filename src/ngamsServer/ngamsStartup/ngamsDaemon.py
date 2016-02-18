@@ -132,7 +132,7 @@ def main(args=sys.argv):
         NGAS_PREFIX = os.path.abspath(os.environ['NGAS_PREFIX'])
     else:
         HOME = os.environ['HOME']
-        NGAS_PREFIX = '{0}/ngas_rt'.format(HOME)
+        NGAS_PREFIX = '{0}/NGAS'.format(HOME)
     if not NGAS_PREFIX or not os.path.exists(NGAS_PREFIX):
         raise Exception("NGAS_PREFIX not found or not defined")
 
