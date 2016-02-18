@@ -13,3 +13,5 @@ lib
 
 .idea
 *.iml
+
+fabfile/authorized_keys

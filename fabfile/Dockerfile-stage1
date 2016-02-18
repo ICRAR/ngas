@@ -34,6 +34,9 @@ RUN yum -y install \
 RUN sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config
 RUN ssh-keygen -A
+
+# Expose 7777 and 22
+EXPOSE 7777
 EXPOSE 22
 
 # Add key to allow passwordless login

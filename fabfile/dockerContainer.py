@@ -61,6 +61,28 @@ JSON_ID = 'Id'
 BUILD_SUCCESSFUL_STR = 'Successfully built'
 CREATE_CONTAINER_SUCCESSFUL_STR = 'None'
 
+class DockerContainerState(object):
+
+    def __init__(self, client, container=None):
+        self.client = client
+        self.container = container
+
+    @property
+    def client(self):
+        return self._client
+
+    @client.setter
+    def client(self, client):
+        self._client = client
+
+    @property
+    def container(self):
+        return self._container
+
+    @container.setter
+    def container(self, container):
+        self._container = container
+
 
 def split_json(the_json):
     puts(the_json)
@@ -106,7 +128,7 @@ def check_if_successful_build(the_json):
     return check_if_successful(the_json, JSON_STREAM, BUILD_SUCCESSFUL_STR)
 
 def check_if_successful_commit(the_json):
-    if the_json[JSON_ID] is None:
+    if the_json is None or the_json[JSON_ID] is None:
         return False
 
     return True
@@ -178,10 +200,20 @@ def create_stage1_docker_container():
 
     This method creates a Docker container and points the fabric environment to it with
     the container IP.
+
+    If using Docker in a virtual machine such as on a Mac (setup with say docker-machine),
+    the code will look for three environemnt variables
+        DOCKER_TLS_VERIFY
+        DOCKER_HOST
+        DOCKER_CERT_PATH
+    using these to connect to the remote daemon. Extra steps are then taken during setup to
+    then connect to the correct exposed port on the docker daemon host rather than trying to connect
+    to the docker container we create as we likely don't have a route to the IP address used.
     """
 
     from docker.client import AutoVersionClient
     from docker import errors
+    from docker import tls
 
     branch = ngas_branch()
     default_if_empty(env, 'container_name',  STAGE1_BUILD_NAME.format(branch))
@@ -190,72 +222,98 @@ def create_stage1_docker_container():
     # can connect to the root user afterwards
     docker_public_add_ssh_key()
 
+    # Get the following environment in case Docker daemon is not local!
+    base_url = os.getenv('DOCKER_HOST')
+    tls_verify = os.getenv('DOCKER_TLS_VERIFY')
+    cert_path = os.getenv('DOCKER_CERT_PATH')
+
+    if base_url is None:
+        base_url = 'unix://var/run/docker.sock'
+    else:
+        base_url = base_url.replace('tcp','https')
+
+    if tls_verify is not None and cert_path is not None:
+        # client_cert is a tuple of client cert and key. We don't use TLS as causes issues when accessing
+        # server using IP address
+        tls_config = tls.TLSConfig(client_cert=(os.path.join(cert_path, 'cert.pem'),os.path.join(cert_path, 'key.pem')),
+                                   verify=False)
+    else:
+        tls_config = False
+
+    puts(green('URL is ' + base_url + ' for connection to docker daemon'))
+
     # The main connection for testing the deployment and use of our own docker registry.
-    cli = AutoVersionClient(base_url='unix://var/run/docker.sock', timeout=10)
+    cli = AutoVersionClient(base_url=base_url, timeout=10, tls=tls_config)
 
     if cli is None:
         puts(red("\n******** FAILED TO INSTALL CREATE CONNECTION TO DOCKER DAEMON ********\n"))
         return None
 
+    # Build the stage1 docker container to deploy NGAS into
+    print 'do build'
+    successful = check_if_successful_build(cli.build(
+        path=BUILD_ROOT, tag=STAGE1_BUILD_NAME, rm=True, pull=True, dockerfile=DOCKERFILE_STAGE1))
+
+    if not successful:
+        puts(red("\n******** FAILED TO BUILD STAGE1 DOCKER IMAGE ********\n"))
+        return None
+
+    container = cli.create_container(image=STAGE1_BUILD_NAME, detach=True, name="ngas")
+
+    if not check_if_successful_create_container(container):
+        puts(red("\n******** FAILED TO CREATE STAGE1 DOCKER CONTAINER FROM IMAGE ********\n"))
+        # Cleanup
+        cli.remove_image(STAGE1_BUILD_NAME, force=True)
+        return None
+
     try:
-        # Build the stage1 docker container to deploy NGAS into
-        print 'do build'
-        successful = check_if_successful_build(cli.build(
-            path=BUILD_ROOT, tag=STAGE1_BUILD_NAME, rm=True, pull=True, dockerfile=DOCKERFILE_STAGE1))
-
-        if not successful:
-            puts(red("\n******** FAILED TO BUILD STAGE1 DOCKER IMAGE ********\n"))
-            return None
-
-        container = cli.create_container(image=STAGE1_BUILD_NAME, detach=True, name="ngas")
-
-        if not check_if_successful_create_container(container):
-            puts(red("\n******** FAILED TO CREATE STAGE1 DOCKER CONTAINER FROM IMAGE ********\n"))
-            # Cleanup
-            cli.remove_image(STAGE1_BUILD_NAME, force=True)
-            return None
-
-        try:
+        if base_url is None:
             cli.start(container=container, publish_all_ports=True)
-        except errors.APIError as e:
-            print e.explanation
-            print e.message
-            puts(red("\n******** FAILED TO START STAGE1 DOCKER CONTAINER FROM IMAGE ********\n"))
-            # Cleanup
-            cli.remove_container(container)
-            cli.remove_image(STAGE1_BUILD_NAME, force=True)
-            return None
+        else:
+            cli.start(container=container, publish_all_ports=True, port_bindings={7777: ('0.0.0.0', 7777)})
+    except errors.APIError as e:
+        print e.explanation
+        print e.message
+        puts(red("\n******** FAILED TO START STAGE1 DOCKER CONTAINER FROM IMAGE ********\n"))
+        # Cleanup
+        cli.remove_container(container)
+        cli.remove_image(STAGE1_BUILD_NAME, force=True)
+        return None
 
-        info = cli.inspect_container(container)
+    info = cli.inspect_container(container)
 
+    if tls_config:
+        port = info['NetworkSettings']['Ports']['22/tcp'][0]['HostPort']
+        ip_address = base_url.replace('https://','').split(':')[0]
+        host_ip = ip_address + ':' + port
+    else:
         host_ip = info['NetworkSettings']['IPAddress']
 
-        if host_ip is None:
-            puts(red("\n******** FAILED TO GET IP ADDRESS OF CONTAINER ********\n"))
-            # Cleanup
-            cli.remove_container(container)
-            cli.remove_image(STAGE1_BUILD_NAME, force=True)
-            return None
+    puts('ssh connection IP address will be {0}'.format(host_ip))
+    if host_ip is None:
+        puts(red("\n******** FAILED TO GET IP ADDRESS OF CONTAINER ********\n"))
+        # Cleanup
+        cli.remove_container(container)
+        cli.remove_image(STAGE1_BUILD_NAME, force=True)
+        return None
 
-        # From now on we connect to root@host_ip using our SSH key
-        env.hosts = host_ip
-        env.user = 'root'
-        if 'key_filename' not in env:
-            env.key_filename = os.path.expanduser("~/.ssh/id_rsa")
+    # From now on we connect to root@host_ip using our SSH key
+    env.hosts = host_ip
+    env.user = 'root'
+    if 'key_filename' not in env:
+        env.key_filename = os.path.expanduser("~/.ssh/id_rsa")
 
-        # Instances have started, but are not usable yet, make sure SSH has started
-        puts(green('\nStarted the docker container now waiting for the SSH daemon to start.\n'))
+    # Instances have started, but are not usable yet, make sure SSH has started
+    puts(green('\nStarted the docker container now waiting for the SSH daemon to start.\n'))
 
-        execute(check_ssh)
+    execute(check_ssh)
 
-        # This is needed in the follow_stage1 function following installation
-        return container
-
-    finally:
-        cli.close()
+    # This is needed in the follow_stage1 function following installation
+    state = DockerContainerState(client=cli, container=container)
+    return state
 
 @task
-def create_stage2_docker_image(container):
+def create_stage2_docker_image(state):
     """
     Create stage2 image from stage1 container
 
@@ -263,60 +321,64 @@ def create_stage2_docker_image(container):
     The methd then stops and removes the stage1 containe plus the stage1 image.
     """
 
-    from docker.client import AutoVersionClient
     from docker import errors
+
+    if type(state) is not DockerContainerState:
+        return False
 
     create_successful = True
     puts(green("\n******** NOW BUILD THE STAGE2 DOCKER IMAGE ********\n"))
 
-    cli = AutoVersionClient(base_url='unix://var/run/docker.sock', timeout=10)
-
     try:
         puts('\ndo stop of stage1 container')
         try:
-            json_pretty_print(cli.stop(container))
+            json_pretty_print(state.client.stop(state.container))
         except errors.APIError as e:
             print e.explanation
             print e.message
             puts(red("\n******** FAILED TO STOP STAGE1 CONTAINER ********\n"))
             return False
 
-        puts(green('\nRemoved stage1 docker container.\n'))
+        puts(green('\nStopped stage1 docker container.\n'))
 
         puts('\ndo commit of container to stage2 image')
-        result = cli.commit(container, repository=STAGE2_REPO_NAME, tag=BUILD_TAG)
+        result = state.client.commit(state.container, repository=STAGE2_REPO_NAME, tag=BUILD_TAG)
         json_pretty_print(result)
         if not check_if_successful_commit(result):
             puts(red("\n******** FAILED TO COMMIT STAGE1 CONTAINER TO STAGE2 IMAGE ********\n"))
             create_successful = False
-            # We leep going from here as next steps are cleanup, return failure at end!
+            # We keep going from here as next steps are cleanup, return failure at end!
         else:
             puts(green('\nCompleted commit of stage2 image from stage1 container.\n'))
 
         puts('\ndo remove of stage1 container')
         try:
-            json_pretty_print(cli.remove_container(container))
+            json_pretty_print(state.client.remove_container(state.container))
             puts(green('\nRemoved stage1 docker container.\n'))
         except errors.APIError as e:
             print e.explanation
             print e.message
             puts(red("\n******** FAILED TO REMOVE STAGE1 CONTAINER ********\n"))
 
+        state.container = None
+
         puts("\ndo remove of stage1 docker image")
         try:
-            json_pretty_print(cli.remove_image(STAGE1_BUILD_NAME, force=True))
+            json_pretty_print(state.client.remove_image(STAGE1_BUILD_NAME, force=True))
             puts(green('\nRemoved stage1 docker image.\n'))
         except errors.APIError as e:
             print e.explanation
             print e.message
             puts(red("\n******** FAILED TO REMOVE STAGE1 IMAGE ********\n"))
+    except Exception as e:
+        puts(red('\n' + e.message + '\n'))
+        create_successful = False
     finally:
-        cli.close()
         return create_successful
 
 
 @task
-def create_final_docker_image():
+def create_final_docker_image(state):
     """
     Create final image from stage2 image
 
@@ -324,14 +386,14 @@ def create_final_docker_image():
     The methd then removes the stage2 image.
     """
 
-    from docker.client import AutoVersionClient
     from docker import errors
 
-    cli = AutoVersionClient(base_url='unix://var/run/docker.sock', timeout=10)
+    if type(state) is not DockerContainerState:
+        return False
 
     try:
         puts('\ndo build of final image')
-        successful = check_if_successful_build(cli.build(
+        successful = check_if_successful_build(state.client.build(
             path=BUILD_ROOT, tag=FINAL_BUILD_NAME, rm=True, pull=False, dockerfile=DOCKERFILE_FINAL))
 
         if not successful:
@@ -340,7 +402,7 @@ def create_final_docker_image():
 
         puts("\ndo remove of stage2 docker image")
         try:
-            json_pretty_print(cli.remove_image(STAGE2_BUILD_NAME, force=True))
+            json_pretty_print(state.client.remove_image(STAGE2_BUILD_NAME, force=True))
             puts(green('\nRemoved stage2 docker image.\n'))
         except errors.APIError as e:
             print e.explanation
@@ -349,5 +411,9 @@ def create_final_docker_image():
 
         return True
 
+    except Exception as e:
+        puts(red('\n' + e.message + '\n'))
+        return False
     finally:
-        cli.close()
+        state.client.close()
+        state.client = None

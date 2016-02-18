@@ -134,11 +134,13 @@ def start_ngas_and_check_status():
     """
     Starts the ngamsDaemon process and checks that the server is up and running
     """
-    virtualenv('ngamsDaemon start')
+    # We sleep 2 here as it was found on Mac deployment to docker container that the
+    # shell would exit before the ngasDaemon could detach, thus resulting in no startup.
+    virtualenv('ngamsDaemon start && sleep 2')
 
     # Give it a few seconds to make sure it started
     puts(green("\n******** SERVER STARTED!********\n"))
-    time.sleep(5)
+    time.sleep(3)
 
     try:
         test_ngas_status()

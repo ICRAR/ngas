@@ -62,8 +62,8 @@ def docker_image(typ='archive'):
     Create a Docker image running NGAS.
     """
     # Build and start the stage1 container holding onto the container info to use later.
-    container = create_stage1_docker_container()
-    if not container:
+    dockerState = create_stage1_docker_container()
+    if not dockerState:
         return
 
     # Now install into the docker container.
@@ -71,7 +71,10 @@ def docker_image(typ='archive'):
     execute(install_and_check, sys_install=True, user_install=True, init_install=True, typ=typ)
 
     # Now that NGAS is istalled in container do cleanup on it and build final image.
-    create_stage2_docker_image(container)
+    if not create_stage2_docker_image(dockerState):
+        return
 
     # Now build the final NGAS docker image
-    create_final_docker_image()
+    if not create_final_docker_image(dockerState):
+        # This is not really needed by included in case code is added below this point
+        return
