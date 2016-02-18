@@ -35,24 +35,13 @@ This module facilitates running the NG/AMS Server in 'caching mode'.
 
 import sys
 
-from ngamsLib.ngamsCore import TRACE
 import ngamsServer
 
 def main(argv):
-    "Wrapper as an entry-point"
-    T = TRACE()
-
     ngamsSrv = ngamsServer.ngamsServer()
     ngamsSrv._cacheArchive = True
     ngamsSrv._serverName   = "ngamsCacheServer"
     ngamsSrv.init(argv)
 
-
 if __name__ == '__main__':
-    """
-    Main function instatiating the NG/AMS Server Class and starting the server.
-    """
     main(sys.argv)
-
-
-# EOF
