@@ -23,7 +23,6 @@
 FROM ngas-stage2:latest
 MAINTAINER Mark Boulton <mark.boulton@icrar.org.org>
 
-RUN yum -y update; yum clean all
 RUN rm -f /home/ngas/NGAS/var/run/ngamsDaemon.pid
 
 # Add ssh support for install

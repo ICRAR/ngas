@@ -35,7 +35,7 @@ from fabric.tasks import execute
 from fabric.utils import puts
 
 from ngas import ngas_branch
-from utils import default_if_empty, check_ssh, get_public_key
+from utils import default_if_empty, check_ssh, get_public_key, sudo
 
 
 # Don't re-export the tasks imported from other modules
@@ -313,6 +313,16 @@ def create_stage1_docker_container():
     return state
 
 @task
+def cleanup_stage1():
+    """
+    Perform any post installation cleanup so that they don't become part of the Docker image.
+
+    This method simply runs any command on the container to cleanup anything that can be cleaned up
+    before creating an image from the container. It is a task so that the environment is picked up.
+    """
+    sudo('yum clean all')
+
+@task
 def create_stage2_docker_image(state):
     """
     Create stage2 image from stage1 container
@@ -328,6 +338,9 @@ def create_stage2_docker_image(state):
 
     create_successful = True
     puts(green("\n******** NOW BUILD THE STAGE2 DOCKER IMAGE ********\n"))
+
+    # First need to cleanup container before we stop and commit it.
+    execute(cleanup_stage1)
 
     try:
         puts('\ndo stop of stage1 container')
