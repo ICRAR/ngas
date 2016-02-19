@@ -46,7 +46,7 @@ def removeFileFromContainer(srvObj, fileId, containerId):
     if fileSize:
         srvObj.getDb().addToContainerSize(containerId, -fileSize)
 
-def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
+def _handleSingleFile(srvObj, containerId, reqPropsObj):
     """
     Handles the CREMOVE command for the case of
     a single file being given in the URL parameter of
@@ -65,7 +65,7 @@ def _handleSingleFile(srvObj, containerId, reqPropsObj, force):
 
     removeFileFromContainer(srvObj, fileId, containerId)
 
-def _handleFileList(srvObj, containerId, reqPropsObj, force):
+def _handleFileList(srvObj, containerId, reqPropsObj):
     """
     Handles the CREMOVE command for the case of
     file list being given in the body of POST request
@@ -73,7 +73,6 @@ def _handleFileList(srvObj, containerId, reqPropsObj, force):
     @param srvObj: ngamsServer.ngamsServer
     @param containerId: string
     @param reqPropsObj: ngamsLib.ngamsReqProps
-    @param force: bool
     """
     size = reqPropsObj.getSize()
     fileListStr = reqPropsObj.getReadFd().read(size)
@@ -102,11 +101,6 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         error(errMsg)
         raise Exception, errMsg
 
-    # Check if we have been asked to force the operation
-    force = False
-    if reqPropsObj.hasHttpPar('force') and reqPropsObj.getHttpPar('force') == '1':
-        force = True
-
     # If container_name is specified, and maps to more than one container,
     # (or to none) an error is issued
     containerIdKnownToExist = False
@@ -126,8 +120,8 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     # Otherwise, we assume a list of files is given in the
     # body of he request
     if reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET:
-        _handleSingleFile(srvObj, containerId, reqPropsObj, force)
+        _handleSingleFile(srvObj, containerId, reqPropsObj)
     else:
-        _handleFileList(srvObj, containerId, reqPropsObj, force)
+        _handleFileList(srvObj, containerId, reqPropsObj)
 
 # EOF
