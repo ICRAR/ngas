@@ -13,3 +13,4 @@ Contents:
 
    install
    running
+   commands-index
