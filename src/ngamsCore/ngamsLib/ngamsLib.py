@@ -199,7 +199,7 @@ def getCompleteHostName():
 
     Returns:   Host name for this NGAS System (string).
     """
-    return getHostName()
+    return socket.getfqdn()
 
 
 def getDomain():
@@ -208,14 +208,10 @@ def getDomain():
 
     Returns: Domain name or "" if unknown (string).
     """
-    hostName = getCompleteHostName()
-    els = hostName.split(".")
-    if (len(els) == 1):
+    fqdn = socket.getfqdn()
+    if '.' not in fqdn:
         return ""
-    else:
-        domain = ""
-        for name in els[1:]: domain += "%s." % name
-        return domain[:-1]
+    return '.'.join(fqdn.split('.')[1:])
 
 
 def getNgamsUser():
