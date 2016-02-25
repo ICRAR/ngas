@@ -4,10 +4,16 @@ Storage
 ARCHIVE/QARCHIVE
 ----------------
 
-Main archiving commands.
+Stores a file into NGAS.
+
 
 RETRIEVE
 --------
+
+Reads a file from NGAS.
+
+
+
 
 CLONE
 -----

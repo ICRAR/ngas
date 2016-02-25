@@ -13,4 +13,5 @@ Contents:
 
    install
    running
+   server
    commands-index

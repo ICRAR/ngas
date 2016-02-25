@@ -2,6 +2,8 @@
 Running
 #######
 
+.. _running.server:
+
 Server
 ======
 
