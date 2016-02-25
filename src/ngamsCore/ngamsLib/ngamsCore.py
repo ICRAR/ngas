@@ -122,7 +122,6 @@ import socket
 import pkg_resources
 
 # Main PID of server
-NGAMS_SRV_PID = os.getpid()
 NGAMS_HOST_IP   = None
 NGAMS_HOST_NAME = None
 
@@ -144,17 +143,6 @@ def ngamsGetSrcDir():
     Returns:  NG/AMS source directory (string).
     """
     return pkg_resources.resource_filename(__name__, '..')
-
-
-def getSrvPid():
-    """
-    Get the main PID of the Python interpreter, in which the NG/AMS Server
-    or another application based on the NG/AMS library, is running.
-
-    Returns:    Main PID of server (integer).
-    """
-    global NGAMS_SRV_PID
-    return NGAMS_SRV_PID
 
 
 # Import COPYRIGHT statement into doc page.
