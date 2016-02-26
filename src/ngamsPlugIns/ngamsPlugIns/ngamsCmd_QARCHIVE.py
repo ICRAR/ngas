@@ -51,7 +51,7 @@ import random
 import socket
 import time
 
-from ngamsLib.ngamsCore import TRACE, getHostId, genLog, error, checkCreatePath, \
+from ngamsLib.ngamsCore import TRACE, genLog, error, checkCreatePath, \
     info, warning, NGAMS_HTTP_HDR_CHECKSUM, NGAMS_ONLINE_STATE, \
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_STAGING_DIR, genUniqueId, \
     getMaxLogLevel, mvFile, getFileCreationTime, NGAMS_FILE_STATUS_OK, \
@@ -76,7 +76,7 @@ def getTargetVolume(srvObj):
     T = TRACE()
 
     sqlQuery = GET_AVAIL_VOLS_QUERY % (ngamsDbCore.getNgasDisksCols(),
-                                       getHostId())
+                                       srvObj.getHostId())
     res = srvObj.getDb().query(sqlQuery, ignoreEmptyRes=0)
     if (res == [[]]):
         return None
@@ -441,7 +441,8 @@ def handleCmd(srvObj,
     # associte the new version with the container too
     containerId = None
     if file_version > 1:
-        fileInfo = ngamsFileInfo.ngamsFileInfo().read(srvObj.getDb(), resDapi.getFileId(), fileVersion=(file_version-1))
+        fileInfo = ngamsFileInfo.ngamsFileInfo().read(srvObj.getHostId(),
+                                                      srvObj.getDb(), resDapi.getFileId(), fileVersion=(file_version-1))
         containerId = fileInfo.getContainerId()
         prevSize = fileInfo.getUncompressedFileSize()
 
@@ -465,7 +466,7 @@ def handleCmd(srvObj,
                setCreationDate(creDate).\
                setIoTime(reqPropsObj.getIoTime()).\
                setIngestionRate(ingestionRate)
-    fileInfo.write(srvObj.getDb())
+    fileInfo.write(srvObj.getHostId(), srvObj.getDb())
 
     # Update the container size with the new size
     if containerId:

@@ -51,10 +51,10 @@ import time
 from ngamsLib.ngamsCore import TRACE, info, NGAMS_MIR_CONTROL_THR, rmFile, \
     cleanList, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, \
     NGAMS_HTTP_HDR_CONTENT_TYPE, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_SUCCESS, notice, \
-    warning, alert, getHostId, NGAMS_STATUS_CMD, decompressFile, \
+    warning, alert, NGAMS_STATUS_CMD, decompressFile, \
     NGAMS_HTTP_PAR_FILE_LIST_ID, getAsciiTime, iso8601ToSecs, getTestMode, \
     NGAMS_HTTP_PAR_FILE_LIST, NGAMS_HTTP_PAR_UNIQUE, NGAMS_HTTP_PAR_MAX_ELS, \
-    NGAMS_HTTP_PAR_FROM_ING_DATE, timeRef2Iso8601
+    NGAMS_HTTP_PAR_FROM_ING_DATE, timeRef2Iso8601, get_contact_ip
 from ngamsLib import ngamsFileInfo, ngamsStatus, ngamsHighLevelLib, ngamsDbm, ngamsMirroringRequest, ngamsLib
 
 
@@ -716,6 +716,7 @@ def initMirroring(srvObj):
     """
     T = TRACE()
 
+    hostId = srvObj.getHostId()
     # Build up the server list in the DB and the local repository kept
     # in memory.
     # The ID allocated to each Mirroring Source, is used as ID in the Server
@@ -733,7 +734,7 @@ def initMirroring(srvObj):
     # Create the Mirroring DBM Queue.
     mirQueueDbmName = "%s/%s_%s" %\
                       (ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg()),
-                       NGAMS_MIR_QUEUE_DBM, getHostId())
+                       NGAMS_MIR_QUEUE_DBM, hostId)
     rmFile("%s*" % mirQueueDbmName)
     srvObj._mirQueueDbm = ngamsDbm.ngamsDbm(mirQueueDbmName,
                                             cleanUpOnDestr = 0,
@@ -745,7 +746,7 @@ def initMirroring(srvObj):
     # Create the Error DBM Queue.
     errQueueDbmName = "%s/%s_%s" %\
                       (ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg()),
-                       NGAMS_MIR_ERR_QUEUE_DBM, getHostId())
+                       NGAMS_MIR_ERR_QUEUE_DBM, hostId)
     rmFile("%s*" % errQueueDbmName)
     srvObj._errQueueDbm = ngamsDbm.ngamsDbm(errQueueDbmName,
                                             cleanUpOnDestr = 0,
@@ -754,7 +755,7 @@ def initMirroring(srvObj):
     # Create the Completed DBM Queue.
     complQueueDbmName = "%s/%s_%s" %\
                         (ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg()),
-                         NGAMS_MIR_COMPL_QUEUE_DBM, getHostId())
+                         NGAMS_MIR_COMPL_QUEUE_DBM, hostId)
     rmFile("%s*" % complQueueDbmName)
     srvObj._complQueueDbm = ngamsDbm.ngamsDbm(complQueueDbmName,
                                               cleanUpOnDestr = 0,
@@ -765,7 +766,7 @@ def initMirroring(srvObj):
     # to avoid too frequent complete syncrhonization checks.
     srcArchInfoDbm = "%s/%s_%s" %\
                      (ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg()),
-                      NGAMS_MIR_SRC_ARCH_INF_DBM, getHostId())
+                      NGAMS_MIR_SRC_ARCH_INF_DBM, hostId)
     srvObj._srcArchInfoDbm = ngamsDbm.ngamsDbm(srcArchInfoDbm,
                                                cleanUpOnDestr = 0,
                                                writePerm = 1)
@@ -780,7 +781,7 @@ def initMirroring(srvObj):
     
     # Restore the previous state of the mirroring from the DB Mirroring Queue
     # (if the service was interrupted).
-    mirQCursor = srvObj.getDb().dumpMirroringQueue()
+    mirQCursor = srvObj.getDb().dumpMirroringQueue(srvObj.getHostId())
     while (True):
         mirReqInfoList = mirQCursor.fetch(10000)
         if (not mirReqInfoList): break
@@ -832,11 +833,13 @@ def retrieveFileList(srvObj,
     Returns:              Void
     """
     T = TRACE()
-    
+
+    hostId = srvObj.getHostId()
+
     # Send the STATUS?file_list query. Receive the data into a temporary file.
     rawFileListCompr = "%s/%s_%s.gz" %\
                        (ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg()),
-                        NGAMS_MIR_FILE_LIST_RAW, getHostId())
+                        NGAMS_MIR_FILE_LIST_RAW, hostId)
    
 
     fileListId = None
@@ -933,7 +936,7 @@ def retrieveFileList(srvObj,
                             # The data object is not available, schedule it!
                             srvListIdDb = srvObj.getSrvListDic()\
                                           [mirSrcObj.getServerList()]
-                            scheduleMirReq(srvObj, getHostId(),
+                            scheduleMirReq(srvObj, hostId,
                                            tmpFileObj.getFileId(),
                                            tmpFileObj.getFileVersion(),
                                            tmpFileObj.getIngestionDate(),
@@ -958,7 +961,7 @@ def checkSourceArchives(srvObj):
     T = TRACE()
 
     # Dump the information for all files managed by this cluster.
-    clusterName = srvObj.getDb().getClusterNameFromHostId(getHostId())
+    clusterName = srvObj.getDb().getClusterNameFromHostId(srvObj.getHostId())
     clusterFilesDbmName = "%s/%s_%s" %\
                           (ngamsHighLevelLib.\
                            getNgasChacheDir(srvObj.getCfg()),
@@ -1171,7 +1174,7 @@ def generateReport(srvObj):
 
     reportHdr = "Date:         %s\n" +\
                 "Control Node: %s\n\n"
-    reportHdr = reportHdr % (timeRef2Iso8601(time.time()), getHostId())
+    reportHdr = reportHdr % (timeRef2Iso8601(time.time()), srvObj.getHostId())
     summary   = "NGAS MIRRORING - SUMMARY REPORT\n\n" + reportHdr
     # TODO: Generate detailed report in file.
     report    = "NGAS MIRRORING - SUMMARY\n\n" + reportHdr
@@ -1266,28 +1269,6 @@ def generateReport(srvObj):
                                         srvObj.getCfg().getSender(), summary,
                                         "text/plain")
 
-def get_full_qualified_name(srvObj):
-    """
-    Get full qualified server name for the input NGAS server object
-    
-    INPUT:
-        srvObj  ngamsServer, Reference to NG/AMS server class object 
-    
-    RETURNS:
-        fqdn    string, full qualified host name (host name + domain + port)
-    """
-
-    # Get hots_id, domain and port using ngamsLib functions
-    host_id = getHostId()
-    domain = ngamsLib.getDomain()
-    port = str(srvObj.getCfg().getPortNo())
-    # Concatenate all elements to construct full qualified name
-    # Notice that host_id may contain port number
-    fqdn = (host_id.rsplit(":"))[0] + "." + domain + ":" + port
-
-    # Return full qualified server name
-    return fqdn
-
 
 def mirControlThread(srvObj,
                      dummy):
@@ -1330,8 +1311,8 @@ def mirControlThread(srvObj,
 
                 # Update mirroring book keeping table
                 info(3, "ALMA Mirroring Control Thread updating book keeping table ...")
-                local_server_full_qualified_name = get_full_qualified_name(srvObj)
-                target_node_conn = httplib.HTTPConnection(local_server_full_qualified_name)
+                local_server_contact_ip = get_contact_ip(srvObj.getCfg())
+                target_node_conn = httplib.HTTPConnection(local_server_contact_ip)
                 target_node_conn.request("GET","MIRRTABLE?"+\
                                                "all_versions="+srvObj.getCfg().getVal("Mirroring[1].all_versions")+\
                                                "&target_cluster="+srvObj.getCfg().getVal("Mirroring[1].target_cluster")+\

@@ -34,7 +34,7 @@ Functions to handle the REMFILE Command.
 import os
 
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsHighLevelLib
-from ngamsLib.ngamsCore import genLog, NGAMS_REMFILE_CMD, warning, getHostId, \
+from ngamsLib.ngamsCore import genLog, NGAMS_REMFILE_CMD, warning, \
     info, rmFile, NGAMS_SUCCESS, TRACE, error, NGAMS_XML_STATUS_ROOT_EL, \
     NGAMS_XML_STATUS_DTD, NGAMS_HTTP_SUCCESS
 import ngamsRemUtils
@@ -70,7 +70,7 @@ def _remFile(srvObj,
     if (diskId):
         diskIds = [diskId]
     elif ((not diskId) and fileId):
-        hostId = getHostId()
+        hostId = srvObj.getHostId()
     if (fileId): fileIds = [fileId]
     if (fileVersion == -1): fileVersion = None
     tmpFileSumDbmName = srvObj.getDb().dumpFileSummary1(tmpFileSumDbmName,
@@ -110,7 +110,7 @@ def _remFile(srvObj,
     while (1):
         key, fileInfo = fileListDbm.getNext()
         if (not key): break
-        if (fileInfo[ngamsDbCore.SUM1_HOST_ID] != getHostId()):
+        if (fileInfo[ngamsDbCore.SUM1_HOST_ID] != hostId):
             remKeyList.append(key)
     for remKey in remKeyList: fileListDbm.rem(remKey)
 

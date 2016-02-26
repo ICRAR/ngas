@@ -42,7 +42,7 @@ import commands
 import os
 import time
 
-from ngamsLib import ngamsHighLevelLib
+from ngamsLib import ngamsHighLevelLib, ngamsPlugInApi
 from ngamsLib.ngamsCore import info, checkCreatePath, genLog, alert, TRACE, \
     NGAMS_SUCCESS, NGAMS_HTTP_GET, NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, \
     NGAMS_NOTIF_NO_DISKS, setLogCache, mvFile, notice, NGAMS_FAILURE, error, \
@@ -177,7 +177,8 @@ def archiveFromFile(srvObj,
         if (not reqPropsObjLoc.getTargDiskInfo()):
             try:
                 trgDiskInfo = ngamsArchiveUtils.ngamsDiskUtils.\
-                              findTargetDisk(srvObj.getDb(), srvObj.getCfg(),
+                              findTargetDisk(srvObj.getHostId(),
+                                             srvObj.getDb(), srvObj.getCfg(),
                                              mimeType, 0,
                                              reqSpace=reqPropsObjLoc.getSize())
                 reqPropsObjLoc.setTargDiskInfo(trgDiskInfo)
@@ -188,7 +189,7 @@ def archiveFromFile(srvObj,
             except Exception, e:
                 errMsg = str(e) + ". Attempting to bbcp archive file: " +\
                          filename
-                ngamsArchiveUtils.ngamsNotification.notify(srvObj.getCfg(),
+                ngamsPlugInApi.notify(srvObj,
                                          NGAMS_NOTIF_NO_DISKS,
                                          "NO DISKS AVAILABLE", errMsg)
                 raise Exception, errMsg

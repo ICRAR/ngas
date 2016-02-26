@@ -239,15 +239,14 @@ def parseRawPlugInPars(rawPars):
     return ngamsLib.parseRawPlugInPars(rawPars)
 
 
-def notify(ngamsCfgObj,
+def notify(srvObj,
            type,
            subject,
            msg):
     """
     Send a notification e-mail to a subscriber about an event happening.
 
-    ngamsCfgObj:   Reference to object containing NG/AMS
-                   configuration file (ngamsConfig).
+    srvObj:        Reference to the NGAS server object (ngamsServer).
     
     type:          Type of Notification (See NGAMS_NOTIF_* in ngams).
     
@@ -257,7 +256,7 @@ def notify(ngamsCfgObj,
 
     Returns:       Void.
     """
-    ngamsNotification.notify(ngamsCfgObj, type, subject, msg)
+    ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), type, subject, msg)
 
 
 def prepProcFile(ngamsCfgObj,
@@ -446,19 +445,6 @@ def getDppiPars(ngamsCfgObj,
     Returns:      DPPI parameters (string).
     """
     return ngamsCfgObj.getPlugInPars(dppiName)
-
-
-def genNgasId(ngamsCfgObj):
-    """
-    Generate an NGAS Identification String, which uniquely identifies
-    an instance of NGAS (NG/AMS). This consists of the host name with
-    the port number concatenated: <host>:<port number>.
-
-    ngamsCfgObj:   NG/AMS Configuration Object (ngamsConfig).
-     
-    Returns:       NGAS ID (string).
-    """
-    return ngamsHighLevelLib.genNgasId(ngamsCfgObj)
 
 
 def rmFile(filename):

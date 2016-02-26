@@ -29,20 +29,15 @@ read fits header, get cdel1,2 and epoch information
 Cutout a gleam FITS image, convert it into png, and display in the browser, then remove the jpeg file
 """
 
-import math, time, commands, os, subprocess, traceback, threading
+import math, time, commands, os, traceback, threading
 import ephem
 import pyfits as pyfits_real
 import astropy.io.fits as pyfits
 import astropy.wcs as pywcs
-import numpy
 from string import Template
 
-from ngamsLib.ngamsCore import getHostId, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, info
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, info, NGAMS_TEXT_MT
 
-
-my_host = getHostId()
-if ("store04:7779" == my_host):
-    my_host = "store04:7777"
 
 """
 disk_host_dict = {"3bcfe8b4996a5c15d91e32f287a1a574":"store02:7777",
@@ -73,7 +68,7 @@ fits_copy_exec = "/home/ngas/software/fitscopy"
 #-grid skyformat degrees
 cmd_ds9 = '{0}/ds9 -grid yes -grid numerics fontsize 14 -grid numerics fontweight bold -grid skyformat degrees -geometry 1250x1250  {1} -cmap Heat -zoom to fit -scale zscale -saveimage "{2}" -exit'
 qs = "SELECT a.mount_point || '/' || b.file_name AS file_full_path, a.host_id FROM ngas_disks a, ngas_files b WHERE a.disk_id = b.disk_id AND b.file_id = '%s' ORDER BY b.file_version DESC"
-cmd_cutout = "{0}/bin/getfits -sv -o %s -d %s %s %s %s J2000 %d %d".format(wcstools_path_dict[my_host]) # % (outputfname, outputdir, inputfname, ra, dec, width, height)
+
 cmd_fits2jpg = "/mnt/gleam/software/bin/fits2jpeg -fits %s -jpeg %s -nonLinear" # % (fitsfname, jpegfname)
 psf_seq = ['BMAJ', 'BMIN', 'BPA']
 
@@ -197,7 +192,7 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir, projection="ZEA"):
     info(3, "Regridding {1} took {0} seconds".format((time.time() - st), dim))
     return hdr_tpl
 
-def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, use_montage=True, projection="ZEA"):
+def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, cmd_cutout, use_montage=True, projection="ZEA"):
     outfile_nm = "{0}/{1}".format(work_dir, cut_fitsnm)
     #factor = 2
     if (ra < 0):
@@ -324,6 +319,11 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     """
     attnm_list = ['file_id', 'radec', 'radius']
 
+    my_host = srvObj.getHostId()
+    if ("store04:7779" == my_host):
+        my_host = "store04:7777"
+    cmd_cutout = "{0}/bin/getfits -sv -o %s -d %s %s %s %s J2000 %d %d".format(wcstools_path_dict[my_host]) # % (outputfname, outputdir, inputfname, ra, dec, width, height)
+
     for attnm in attnm_list:
         if (not reqPropsObj.hasHttpPar(attnm)):
             srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, #let HTTP returns OK so that curl can continue printing XML code
@@ -394,7 +394,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             if (reqPropsObj.hasHttpPar('use_montage') and '1' == reqPropsObj.getHttpPar("use_montage")):
                 use_montage_cut = True
 
-            cut_fitsnm = cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, use_montage=use_montage_cut, projection=projection)
+            cut_fitsnm = cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, cmd_cutout, use_montage=use_montage_cut, projection=projection)
             if (no_psf == False and fits_format):
                 psf_fileId = fileId.split('.fits')[0] + '_psf.fits'
                 query = qs % psf_fileId

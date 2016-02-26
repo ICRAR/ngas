@@ -36,7 +36,7 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
-from   ngamsCore import getHostId, TRACE
+from   ngamsCore import TRACE
 import ngamsDbCore
 import ngamsMirroringRequest
 
@@ -49,7 +49,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
     def mirReqInQueue(self,
                       fileId,
                       fileVersion,
-                      instanceId = None):
+                      instanceId):
         """
         Probe if the a Mirroring Request with the given ID is in the
         associated Mirroring Queue.
@@ -64,9 +64,6 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         Returns:      Indication if the request is in the queue (boolean).
         """
         T = TRACE()
-
-        if instanceId is None:
-            instanceId = getHostId()
 
         sqlQuery = "SELECT file_id FROM %s WHERE file_id='%s' " +\
                    "AND file_version=%d AND instance_id='%s'"
@@ -155,7 +152,8 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         insertRow = True
         if (check):
             if (self.mirReqInQueue(mirReqObj.getFileId(),
-                                   mirReqObj.getFileVersion())):
+                                   mirReqObj.getFileVersion(),
+                                   mirReqObj.getInstanceId())):
                 self.updateMirReq(mirReqObj)
                 insertRow = False
         if (insertRow):
@@ -185,7 +183,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
     def getMirReq(self,
                   fileId,
                   fileVersion,
-                  instanceId = None):
+                  instanceId):
         """
         Read the information for a mirroring request and return the raw result.
 
@@ -199,9 +197,6 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         Returns:      Raw result (list|[]).
         """
         T = TRACE()
-
-        if instanceId is None:
-            instanceId = getHostId()
 
         sqlQuery = "SELECT %s FROM %s mq WHERE file_id='%s' AND " +\
                    "file_version=%d AND instance_id='%s'"
@@ -252,7 +247,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
     def getMirReqObj(self,
                      fileId,
                      fileVersion,
-                     instanceId = None):
+                     instanceId):
         """
         Read the information about a mirroring request and return the
         a Mirroring Request Object.
@@ -269,10 +264,8 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
         
-        if instanceId is None:
-            instanceId = getHostId()
         res = self.getMirReq(fileId, fileVersion, instanceId)
-        if (len(res[0]) == 0): return None            
+        if (len(res[0]) == 0): return None
         mirReqObj = unpackSqlResult(res[0][0])
 
         return mirReqObj
@@ -281,7 +274,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
     def deleteMirReq(self,
                      fileId,
                      fileVersion,
-                     instanceId = None):
+                     instanceId):
         """
         Delete an entry in the NGAS Mirroring Queue.
 
@@ -295,9 +288,6 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         Returns:      Reference to object itself.
         """
         T = TRACE()
-
-        if instanceId is None:
-            instanceId = getHostId()
 
         # TODO: The two queries in this method should be carried out in one
         # transaction, so that a roll-back is possible in case of failure.
@@ -322,8 +312,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         return self
 
 
-    def dumpMirroringQueue(self,
-                           instanceId = None):
+    def dumpMirroringQueue(self, instanceId):
         """
         Dump the entire contents of the DB Mirroring Queue into a DBM
         in raw format.
@@ -332,9 +321,6 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
                    Queue (string).
         """
         T = TRACE()
-
-        if instanceId is None:
-            instanceId = getHostId()
 
         sqlQuery = "SELECT %s FROM %s mq WHERE instance_id='%s'"
         sqlQuery = sqlQuery % (ngamsDbCore.getNgasMirQueueCols(),

@@ -49,25 +49,25 @@ pv_on_any_hosts  flag parameter (no value), this flag is only read if the flag k
 
 import threading, datetime
 
-from ngamsLib.ngamsCore import getHostId, error, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import error, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 from ngamsServer import ngamsDiscardCmd
 
 
 QUERY_PREV_VER = "SELECT a.disk_id, a.file_id, a.file_version FROM ngas_files a, "+\
-                 "(SELECT file_id, MAX(file_version) AS max_ver FROM ngas_files, ngas_disks WHERE ngas_files.disk_id = ngas_disks.disk_id AND ngas_disks.host_id = '%s' GROUP BY file_id) c, " % getHostId() +\
+                 "(SELECT file_id, MAX(file_version) AS max_ver FROM ngas_files, ngas_disks WHERE ngas_files.disk_id = ngas_disks.disk_id AND ngas_disks.host_id = '%s' GROUP BY file_id) c, " +\
                  "ngas_disks b "+\
-                 "WHERE a.file_id = c.file_id AND a.file_version < c.max_ver AND a.disk_id = b.disk_id AND b.host_id = '%s'" % getHostId()
+                 "WHERE a.file_id = c.file_id AND a.file_version < c.max_ver AND a.disk_id = b.disk_id AND b.host_id = '%s'"
 
 QUERY_LATER_VER = "SELECT a.disk_id, a.file_id, a.file_version FROM ngas_files a, "+\
-                 "(SELECT file_id, MIN(file_version) AS min_ver FROM ngas_files, ngas_disks WHERE ngas_files.disk_id = ngas_disks.disk_id AND ngas_disks.host_id = '%s' GROUP BY file_id) c, " % getHostId() +\
+                 "(SELECT file_id, MIN(file_version) AS min_ver FROM ngas_files, ngas_disks WHERE ngas_files.disk_id = ngas_disks.disk_id AND ngas_disks.host_id = '%s' GROUP BY file_id) c, " +\
                  "ngas_disks b "+\
-                 "WHERE a.file_id = c.file_id AND a.file_version > c.min_ver AND a.disk_id = b.disk_id AND b.host_id = '%s'" % getHostId()
+                 "WHERE a.file_id = c.file_id AND a.file_version > c.min_ver AND a.disk_id = b.disk_id AND b.host_id = '%s'"
 
 # the previous versions can be On any (valid) hosts
 QUERY_LATER_VER_POAH = "SELECT a.disk_id, a.file_id, a.file_version FROM ngas_files a, "+\
                  "(SELECT file_id, MIN(file_version) AS min_ver FROM ngas_files, ngas_disks WHERE ngas_files.disk_id = ngas_disks.disk_id AND ngas_disks.host_id <> '' GROUP BY file_id) c, " +\
                  "ngas_disks b "+\
-                 "WHERE a.file_id = c.file_id AND a.file_version > c.min_ver AND a.disk_id = b.disk_id AND b.host_id = '%s'" % getHostId()
+                 "WHERE a.file_id = c.file_id AND a.file_version > c.min_ver AND a.disk_id = b.disk_id AND b.host_id = '%s'"
 
 purgeThrd = None
 is_purgeThrd_running = False
@@ -78,14 +78,16 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
     global is_purgeThrd_running, total_todo, num_done
     is_purgeThrd_running = True
     work_dir = srvObj.getCfg().getRootDirectory() + '/tmp/'
+
+    hostId = srvObj.getHostId()
     try:  
         if (reqPropsObj.hasHttpPar("keep_earliest")): # early could be 1, or 2,...
             if (reqPropsObj.hasHttpPar("pv_on_any_hosts")):
-                resDel = srvObj.getDb().query(QUERY_LATER_VER_POAH) # grab all later versions on this host to remove
+                resDel = srvObj.getDb().query(QUERY_LATER_VER_POAH % (hostId,)) # grab all later versions on this host to remove
             else:
-                resDel = srvObj.getDb().query(QUERY_LATER_VER) # grab all later versions on this host to remove
+                resDel = srvObj.getDb().query(QUERY_LATER_VER % (hostId, hostId)) # grab all later versions on this host to remove
         else: # by default, keep latest
-            resDel = srvObj.getDb().query(QUERY_PREV_VER) # grab all previous versions to remove
+            resDel = srvObj.getDb().query(QUERY_PREV_VER % (hostId, hostId)) # grab all previous versions to remove
         if (resDel == [[]]):
             raise Exception('Could not find any files to discard / retain')
         else:

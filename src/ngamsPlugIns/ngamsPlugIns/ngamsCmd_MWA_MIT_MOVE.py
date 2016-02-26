@@ -30,7 +30,7 @@ Move a file (no version) from this host to a target NGAS (increasing the version
 
 import os, binascii
 
-from ngamsLib.ngamsCore import info, warning, NGAMS_TEXT_MT, getHostId, \
+from ngamsLib.ngamsCore import info, warning, NGAMS_TEXT_MT, \
     NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE
 from ngamsLib import ngamsStatus, ngamsLib
 from ngamsServer import ngamsDiscardCmd
@@ -158,7 +158,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     
     fileCRC = getCRCFromFile(filename)
     if (fileCRC != crcDb):
-        errMsg = 'File %s on source host %s already corrupted, moving request rejected' % (filename, getHostId().replace(':', '-'))
+        errMsg = 'File %s on source host %s already corrupted, moving request rejected' % (filename, srvObj.getHostId().replace(':', '-'))
         warning(errMsg)
         srvObj.httpReply(reqPropsObj, httpRef, 504, errMsg, NGAMS_TEXT_MT)
         return

@@ -32,7 +32,7 @@ import daemon
 from lockfile.pidlockfile import PIDLockFile
 
 from ngamsLib import ngamsConfig
-from ngamsLib.ngamsCore import getIpAddress, getHostName
+from ngamsLib.ngamsCore import is_localhost, get_contact_ip
 from ngamsServer import ngamsServer
 
 
@@ -108,16 +108,11 @@ def status(configFile):
 
     cfgObj = ngamsConfig.ngamsConfig()
     cfgObj.load(configFile)
+    ipAddress = get_contact_ip(cfgObj)
     port = cfgObj.getPortNo()
 
-    # If the server is listening in all interfaces, connect to localhost
-    # when asking for the status; otherwise try with getHostName(CFG)
-    server = getHostName(cfgFile=configFile)
-    if getIpAddress() == '0.0.0.0':
-        server = 'localhost'
-
     # TODO: This creates a dependency on ngamsPClient
-    SCMD = "ngamsPClient -host {0} -port {1} -cmd STATUS -v 1 -timeout 1".format(server, port)
+    SCMD = "ngamsPClient -host {0} -port {1} -cmd STATUS -v 1 -timeout 1".format(ipAddress, port)
     return subprocess.call(SCMD,shell=True)
 
 def main(argv):

@@ -37,7 +37,7 @@ It should be used as part of the ngamsDbBase parent classes.
 """
 
 import time
-from ngamsCore import TRACE, warning, error, notice, getHostId, rmFile, getTestMode
+from ngamsCore import TRACE, warning, error, notice, rmFile, getTestMode
 from ngamsCore import NGAMS_FILE_STATUS_OK, NGAMS_FILE_CHK_ACTIVE,NGAMS_DB_CH_FILE_UPDATE, NGAMS_DB_CH_FILE_INSERT
 import ngamsDbm, ngamsDbCore
 import ngamsLib
@@ -306,6 +306,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
 
     def setFileChecksum(self,
+                        hostId,
                         fileId,
                         fileVersion,
                         diskId,
@@ -313,6 +314,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                         checksumPlugIn):
         """
         Set the checksum value in the ngas_files table.
+
+        hostId:          ID of this NGAS host
 
         fileId:          ID of file (string).
 
@@ -338,13 +341,14 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
             # Create a File Removal Status Document.
             if (self.getCreateSnapshot()):
-                dbFileInfo = self.getFileInfoFromFileIdHostId(getHostId(),
+                dbFileInfo = self.getFileInfoFromFileIdHostId(hostId,
                                                               fileId,
                                                               fileVersion,
                                                               diskId)
                 tmpFileObj = ngamsFileInfo.ngamsFileInfo().\
                              unpackSqlResult(dbFileInfo)
-                self.createDbFileChangeStatusDoc(NGAMS_DB_CH_FILE_UPDATE,
+                self.createDbFileChangeStatusDoc(hostId,
+                                                 NGAMS_DB_CH_FILE_UPDATE,
                                                  [tmpFileObj])
 
             self.triggerEvents()
@@ -779,7 +783,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         # Build query, create cursor.
         sqlQuery = self.\
-                   buildFileSummary1Query(getHostId(), ignore=0,
+                   buildFileSummary1Query(hostId, ignore=0,
                                           lowLimIngestDate=lowLimIngestDate,
                                           order=0)
         sqlQuery = sqlQuery % ngamsDbCore.getNgasFilesCols()
@@ -1057,6 +1061,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
 
     def writeFileEntry(self,
+                       hostId,
                        diskId,
                        filename,
                        fileId,
@@ -1174,7 +1179,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                                           ingestionDate, ignore, checksum,
                                           checksumPlugIn, fileStatus, creationDate,
                                           iotime, ingestionRate, None])
-            self.createDbFileChangeStatusDoc(dbOperation, [tmpFileObj])
+            self.createDbFileChangeStatusDoc(hostId, dbOperation, [tmpFileObj])
             del tmpFileObj
 
         self.triggerEvents([diskId, None])
@@ -1211,8 +1216,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             return hostList
 
 
-    def getSpaceAvailForHost(self,
-                             hostId = None):
+    def getSpaceAvailForHost(self, hostId):
         """
         Return the amount of free disk space for the given host. This is
         calculated as the total sum of free space for all non-completed volumes
@@ -1223,9 +1227,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         Returns:    Amount of free disk space in MB bytes (float)
         """
         T = TRACE()
-
-        if hostId is None:
-            hostId = getHostId()
 
         sqlQuery = "SELECT sum(available_mb) FROM ngas_disks WHERE " +\
                    "host_id='%s'"
@@ -1240,8 +1241,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             return 0.0
 
 
-    def getCacheContents(self,
-                         hostId = None):
+    def getCacheContents(self, hostId):
         """
         Execute query by means of a cursor, with which the entire contents
         of the cache can be downloaded.
@@ -1252,9 +1252,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                    Cursor object (<NG/AMS DB Cursor Object API>).
         """
         T = TRACE()
-
-        if hostId is None:
-            hostId = getHostId()
 
         sqlQuery = "SELECT disk_id, file_id, file_version, " +\
                    "cache_time, cache_delete FROM ngas_cache " +\

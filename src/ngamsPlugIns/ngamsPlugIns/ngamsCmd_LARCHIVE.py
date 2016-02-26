@@ -32,7 +32,7 @@ wget -O LARCHIVE.xml "http://192.168.1.123:7777/LARCHIVE?fileUri=/home/ngas/NGAS
 import os
 import time
 
-from ngamsLib import ngamsHighLevelLib
+from ngamsLib import ngamsHighLevelLib, ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE, NGAMS_SUCCESS, info, NGAMS_HTTP_GET, \
     NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile, NGAMS_NOTIF_NO_DISKS, \
     setLogCache, mvFile, notice, NGAMS_FAILURE, error, NGAMS_PICKLE_FILE_EXT, \
@@ -113,7 +113,8 @@ def archiveFromFile(srvObj,
         if (not reqPropsObjLoc.getTargDiskInfo()):
             try:
                 trgDiskInfo = ngamsArchiveUtils.ngamsDiskUtils.\
-                              findTargetDisk(srvObj.getDb(), srvObj.getCfg(),
+                              findTargetDisk(srvObj.getHostId(),
+                                             srvObj.getDb(), srvObj.getCfg(),
                                              mimeType, 0,
                                              reqSpace=reqPropsObjLoc.getSize())
                 reqPropsObjLoc.setTargDiskInfo(trgDiskInfo)
@@ -124,7 +125,7 @@ def archiveFromFile(srvObj,
             except Exception, e:
                 errMsg = str(e) + ". Attempting to archive local file: " +\
                          filename
-                ngamsArchiveUtils.ngamsNotification.notify(srvObj.getCfg(),
+                ngamsPlugInApi.notify(srvObj,
                                          NGAMS_NOTIF_NO_DISKS,
                                          "NO DISKS AVAILABLE", errMsg)
                 raise Exception, errMsg

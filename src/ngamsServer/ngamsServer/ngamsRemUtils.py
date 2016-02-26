@@ -36,7 +36,7 @@ import os, time, glob
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsLib
 from ngamsLib import ngamsDiskInfo, ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsNotification
-from ngamsLib.ngamsCore import TRACE, NGAMS_NOTIF_INFO, getHostId, NGAMS_TEXT_MT, \
+from ngamsLib.ngamsCore import TRACE, NGAMS_NOTIF_INFO, NGAMS_TEXT_MT, \
     genLog, NGAMS_FAILURE, warning, info, rmFile, NGAMS_DISK_INFO, \
     NGAMS_VOLUME_ID_FILE, NGAMS_VOLUME_INFO_FILE, NGAMS_MAX_SQL_QUERY_SZ
 from pccUt import PccUtTime
@@ -167,7 +167,7 @@ def _notify(srvObj,
     emailAdrList = reqPropsObj.getHttpPar("notif_email").split(",")
     attachmentName = cmd + "-StatusReport"
     attachmentName += "-" + reqPropsObj.getHttpPar("disk_id")
-    ngamsNotification.notify(srvObj.getCfg(), NGAMS_NOTIF_INFO,
+    ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_INFO,
                              cmd + " STATUS REPORT", statRep,
                              emailAdrList, 1, mimeType, attachmentName, 1)
 
@@ -216,6 +216,7 @@ def _remStatErrReport(srvObj,
                            (ngamsStatus|None).
     """
     cmd = reqPropsObj.getCmd()
+    hostId = srvObj.getHostId()
 
     #########################################################################
     # At least three copies of each file?
@@ -239,7 +240,7 @@ def _remStatErrReport(srvObj,
                         "Disk ID:                    %s\n" +\
                         "Files Detected:             %d\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (timeStamp, getHostId(),diskId,misFileCopies))
+            fo.write(tmpFormat % (timeStamp, hostId, diskId,misFileCopies))
             tmpFormat = "%-32s %-12s %-6s\n"
             fo.write(tmpFormat % ("File ID", "Version", "Copies"))
             fo.write(tmpFormat % (32 * "-", 7 * "-", 6 * "-"))
@@ -277,11 +278,11 @@ def _remStatErrReport(srvObj,
     #########################################################################
     # Check for spurious files.
     #########################################################################
-    spuriousFilesDbmName = checkSpuriousFiles(srvObj, tmpFilePat, getHostId(),
+    spuriousFilesDbmName = checkSpuriousFiles(srvObj, tmpFilePat, hostId,
                                               diskId, fileId, fileVersion)
     spuriousFilesDbm = ngamsDbm.ngamsDbm(spuriousFilesDbmName, writePerm = 0)
     spuriousFiles = spuriousFilesDbm.getCount()
-    srvDataChecking = srvObj.getDb().getSrvDataChecking(getHostId())
+    srvDataChecking = srvObj.getDb().getSrvDataChecking(hostId)
     if (spuriousFiles and reqPropsObj.hasHttpPar("notif_email")):
         xmlReport = 0
         if (xmlReport):
@@ -297,7 +298,7 @@ def _remStatErrReport(srvObj,
                         "NGAS Host ID:               %s\n" +\
                         "Disk ID:                    %s\n" +\
                         "Spurious Files:             %d\n"
-            fo.write(tmpFormat % (timeStamp,getHostId(),diskId,spuriousFiles))
+            fo.write(tmpFormat % (timeStamp,hostId,diskId,spuriousFiles))
             if (srvDataChecking):
                 fo.write("Note: NGAS Host is performing Data Consistency " +\
                          "Checking - consider to switch off!\n")
@@ -361,7 +362,7 @@ def _remStatErrReport(srvObj,
                         "Disk ID:                    %s\n" +\
                         "Non-Registered Files:       %d\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (timeStamp, getHostId(), diskId,
+            fo.write(tmpFormat % (timeStamp, hostId, diskId,
                                   unRegFilesFound))
 
             # Loop over the files an generate the report.
@@ -412,7 +413,7 @@ def _remStatErrReport(srvObj,
                         "Disk ID:                    %s\n" +\
                         "Non-Removable Files:        %d\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (timeStamp, getHostId(), diskId, nonRemFiles))
+            fo.write(tmpFormat % (timeStamp, hostId, diskId, nonRemFiles))
 
             tmpFormat = "%-32s %-12s %-32s\n"
             fo.write(tmpFormat % ("File ID", "File Version", "Filename"))

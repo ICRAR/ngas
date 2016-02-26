@@ -40,7 +40,7 @@ import commands
 from glob import glob
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import getIpAddress, info, error, warning
+from ngamsLib.ngamsCore import info, error, warning, get_contact_ip
 
 
 debug = 0
@@ -50,9 +50,6 @@ work_dir = '/mnt/gleam2/tmp'
 
 archive_client = '/home/ngas/ngas_rt/bin/ngamsCClient'
 #archive_client = '/Users/chen/proj/ngas_buildout/bin/ngamsCClient'
-
-#archive_host = getHostId().split(':')[0] # archive host must be on the same machine as the  data mover or job runner
-archive_host = getIpAddress()
 
 def execCmd(cmd, timeout):
     info(3, 'Executing command: %s' % cmd)
@@ -103,7 +100,9 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
         timeout = int(parDic['timeout'])
         if (timeout <= 0):
             timeout = 600
-    
+
+    archive_host = get_contact_ip(srvObj.getCfg())
+
     #cmd1 = "%s -host %s -port 7777 -fileUri %s -cmd QARCHIVE -mimeType application/octet-stream " % (archive_client, archive_host, newfn)
     cmd2 = "curl http://%s:7777/DISCARD?file_id=%s\\&file_version=%d\\&disk_id=%s\\&execute=1" % (archive_host, fileId, fileVersion, diskId)
     

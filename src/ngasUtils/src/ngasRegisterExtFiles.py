@@ -59,7 +59,7 @@ input.
 import sys, time
 
 from ngamsLib import ngamsDb, ngamsDiskInfo, ngamsFileInfo
-from ngamsLib.ngamsCore import info, NGAMS_FILE_STATUS_OK, setLogCond
+from ngamsLib.ngamsCore import info, NGAMS_FILE_STATUS_OK, setLogCond, getHostName
 import ngasUtilsLib
 
 
@@ -212,7 +212,7 @@ def ingestExtFiles(fileListFile,
                       setFileStatus(NGAMS_FILE_STATUS_OK).\
                       setCreationDateFromSecs(0).\
                       setTag("EXTERNAL")
-        fileInfoObj.write(dbCon, 0, 1)
+        fileInfoObj.write(getHostName(), dbCon, 0, 1)
         fileRegList.append((diskId, fileId, fileVer))
         time.sleep(0.050)
         fileCount += 1

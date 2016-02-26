@@ -276,8 +276,6 @@ class ngamsDiskInfo:
         """
         if (mountPoint):
             mntPt = trim(mountPoint, "\" ")
-            if mntPt[0] != '/':
-                mntPt = ngamsGetSrcDir() + '/' + mntPt
             self.__mountPoint = mntPt
         else:
             self.__mountPoint = ""

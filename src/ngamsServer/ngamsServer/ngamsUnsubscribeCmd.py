@@ -35,7 +35,7 @@ UNSUBSCRIBE Command.
 """
 import Queue
 import ngamsSubscriptionThread
-from ngamsLib.ngamsCore import TRACE, warning, NGAMS_DELIVERY_THR, getHostId,\
+from ngamsLib.ngamsCore import TRACE, warning, NGAMS_DELIVERY_THR, \
     info, genLog, NGAMS_SUBSCRIBE_CMD, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,\
     NGAMS_FAILURE
 from ngamsLib import ngamsLib
@@ -163,7 +163,7 @@ def delSubscriber(srvObj,
     
     # remove all backlog entries associated with this subscriber
     try:
-        srvObj.getDb().delSubscrBackLogEntries(getHostId(), srvObj.getCfg().getPortNo(), subscrId)
+        srvObj.getDb().delSubscrBackLogEntries(srvObj.getHostId(), srvObj.getCfg().getPortNo(), subscrId)
     except Exception, e:
         estr = " Error deleting entries from the subscr_back_log table for subscriber %s, Exception: %s" % (subscrId, str(e))
         warning(estr)

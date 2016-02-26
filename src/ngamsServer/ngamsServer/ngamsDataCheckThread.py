@@ -38,7 +38,7 @@ import os, time, thread, threading, random, glob, cPickle
 from pccUt import PccUtTime
 import ngamsFileUtils
 from ngamsLib.ngamsCore import TRACE, info, NGAMS_DATA_CHECK_THR, error, \
-    getHostId, NGAMS_CACHE_DIR, checkCreatePath, isoTime2Secs, iso8601ToSecs, \
+    NGAMS_CACHE_DIR, checkCreatePath, isoTime2Secs, iso8601ToSecs, \
     rmFile, genLog, mvFile, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
     NGAMS_VOLUME_INFO_FILE, NGAMS_STAGING_DIR, warning, NGAMS_NOTIF_DATA_CHECK, \
     getTestMode
@@ -297,7 +297,7 @@ def _initFileCheckStatus(srvObj,
     except Exception, e:
         _statCheckSem.release()
         error("Exception caught in Data Checking Thread: " + str(e))
-    srvObj.getDb().updateDataCheckStat(getHostId(), _statCheckStart,
+    srvObj.getDb().updateDataCheckStat(srvObj.getHostId(), _statCheckStart,
                                        _statCheckRemain, statEstimTime,
                                        _statCheckRate, _statCheckMb,
                                        _statCheckedMb, _statCheckFiles,
@@ -358,7 +358,7 @@ def _updateFileCheckStatus(srvObj,
 
         # Update DB only every 10s.
         if (force or ((timeNow - _statLastDbUpdate) >= 10)):
-            srvObj.getDb().updateDataCheckStat(getHostId(), _statCheckStart,
+            srvObj.getDb().updateDataCheckStat(srvObj.getHostId(), _statCheckStart,
                                                _statCheckRemain, statEstimTime,
                                                _statCheckRate, _statCheckMb,
                                                _statCheckedMb, _statCheckFiles,
@@ -482,9 +482,9 @@ def _dumpFileInfo(srvObj,
     # added if 'ripe' for checking.
     ###########################################################################
     info(4,"Get information about all disks mounted in this system ...")
-    slotIdList = srvObj.getDb().getSlotIdsMountedDisks(getHostId())
+    slotIdList = srvObj.getDb().getSlotIdsMountedDisks(srvObj.getHostId())
     diskListRaw = srvObj.getDb().\
-                  getDiskInfoForSlotsAndHost(getHostId(), slotIdList)
+                  getDiskInfoForSlotsAndHost(srvObj.getHostId(), slotIdList)
     minCycleTime = isoTime2Secs(srvObj.getCfg().getDataCheckMinCycle())
     _resetDiskDic()
     lastDiskCheckDic = {}
@@ -641,7 +641,7 @@ def _dumpFileInfo(srvObj,
     ###########################################################################
     info(4,"Create DBM with references to all files on the storage disks ...")
     fileRefDbm = "%s/%s_FILES_%s.bsddb" %\
-                 (cacheDir, NGAMS_DATA_CHECK_THR, getHostId())
+                 (cacheDir, NGAMS_DATA_CHECK_THR, srvObj.getHostId())
     rmFile(fileRefDbm)
     _setFileRefDbm(ngamsDbm.ngamsDbm(fileRefDbm, 1, 1))
     tmpGlobFile = tmpFilePat + "_FILE_GLOB.glob"
@@ -685,7 +685,7 @@ def _dumpFileInfo(srvObj,
     # taking into account in the checking loop
     ###########################################################################
     info(4,"Retrieve information about files to be ignored ...")
-    spuFilesCur = srvObj.getDb().getFileSummarySpuriousFiles1(getHostId())
+    spuFilesCur = srvObj.getDb().getFileSummarySpuriousFiles1(srvObj.getHostId())
     while (1):
         _stopDataCheckThr(srvObj)
         fileList = spuFilesCur.fetch(1000)
@@ -910,7 +910,7 @@ def _genReport(srvObj):
         # Build up the report.
         report =  "DATA CHECKING REPORT:\n\n"
         report += hdrForm % ("Date", PccUtTime.TimeStamp().getTimeStamp())
-        report += hdrForm % ("NGAS Host ID", getHostId())
+        report += hdrForm % ("NGAS Host ID", srvObj.getHostId())
         report += hdrForm % ("Start Time", PccUtTime.TimeStamp().\
                              initFromSecsSinceEpoch(_statCheckStart).\
                              getTimeStamp())
@@ -966,7 +966,7 @@ def _genReport(srvObj):
             
         # Send Notification Message if needed (only if disks where checked).
         if (len(_getDiskDic().keys())):
-            ngamsNotification.notify(srvObj.getCfg(), NGAMS_NOTIF_DATA_CHECK,
+            ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_DATA_CHECK,
                                      "DATA CHECK REPORT", report, [], 1)
 
     # Give out the statistics for the checking.
@@ -1208,7 +1208,7 @@ def dataCheckThread(srvObj,
             # Check if we should wait for a while for the Minimum Cycle
             # Time to elapse.
             ###################################################################
-            lastOldestCheck = srvObj.getDb().getMinLastDiskCheck(getHostId())
+            lastOldestCheck = srvObj.getDb().getMinLastDiskCheck(srvObj.getHostId())
             waitTime = 0
             timeNow = time.time()
             if (lastOldestCheck):

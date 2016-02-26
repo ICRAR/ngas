@@ -82,7 +82,8 @@ def receiveData(srvObj,
     while (True):
         try:
             tmpTrgDiskInfo = ngamsDiskUtils.\
-                             findTargetDisk(srvObj.getDb(), srvObj.getCfg(),
+                             findTargetDisk(srvObj.getHostId(),
+                                            srvObj.getDb(), srvObj.getCfg(),
                                             reqPropsObj.getMimeType(),
                                             sendNotification = 0,
                                             diskExemptList = diskExList,
@@ -190,7 +191,7 @@ def processRequest(srvObj,
 
     # Update the DB with the information about the new file.
     # Update information for Main File/Disk in DB.
-    newFileInfoObj.write(srvObj.getDb())
+    newFileInfoObj.write(srvObj.getHostId(), srvObj.getDb())
     diskSpace = getDiskSpaceAvail(trgDiskInfoObj.getMountPoint())
     newSize = (trgDiskInfoObj.getBytesStored() + newFileInfoObj.getFileSize())
     ioTime = (trgDiskInfoObj.getTotalDiskWriteTime() + reqPropsObj.getIoTime())

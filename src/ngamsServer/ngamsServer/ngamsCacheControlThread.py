@@ -42,7 +42,7 @@ try:
 except:
     import sqlite3 as sqlite
 
-from ngamsLib.ngamsCore import info, logFlush, TRACE, getHostId, rmFile,\
+from ngamsLib.ngamsCore import info, logFlush, TRACE, rmFile,\
     getMaxLogLevel, iso8601ToSecs, error, warning, notice, genLog, alert,\
     loadPlugInEntryPoint
 from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib
@@ -189,10 +189,12 @@ def createCacheDbms(srvObj):
     """
     T = TRACE()
 
+    hostId = srvObj.getHostId()
+
     # Create local Cache Contents DBMS.
     cacheContDbmName = "%s/%s_%s.db" %\
                        (ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg()),
-                        NGAMS_CACHE_CONTENTS_DBMS, getHostId())
+                        NGAMS_CACHE_CONTENTS_DBMS, hostId)
     srvObj._cacheContDbms = sqlite.connect(cacheContDbmName,
                                            check_same_thread = False)
     srvObj._cacheContDbmsCur = srvObj._cacheContDbms.cursor()
@@ -225,7 +227,7 @@ def createCacheDbms(srvObj):
     # on this node (to be inserted into the Local Cache Contents DBMS).
     newFilesDbmName = "%s/%s_%s" %\
                       (ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg()),
-                       NGAMS_CACHE_NEW_FILES_DBM, getHostId())
+                       NGAMS_CACHE_NEW_FILES_DBM, hostId)
     rmFile("%s*" % newFilesDbmName)
     srvObj._cacheNewFilesDbm = ngamsDbm.ngamsDbm(newFilesDbmName,
                                                   cleanUpOnDestr = 0,
@@ -235,7 +237,7 @@ def createCacheDbms(srvObj):
     # - DBM used to schedule files for checking.
     cacheDir = ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg())
     cacheCtrlPiDbmName = "%s/%s_%s" % (cacheDir, NGAMS_CACHE_CTRL_PI_DBM,
-                                       getHostId())
+                                       hostId)
     rmFile("%s*" % cacheCtrlPiDbmName)
     srvObj._cacheCtrlPiDbm = ngamsDbm.ngamsDbm(cacheCtrlPiDbmName,
                                                 cleanUpOnDestr = 0,
@@ -245,7 +247,7 @@ def createCacheDbms(srvObj):
     # - DBM used by the Cache Control Plug-Ins to schedule files for removal.
     cacheCtrlPiDelDbmName = "%s/%s_%s" % (cacheDir,
                                           NGAMS_CACHE_CTRL_PI_DEL_DBM,
-                                          getHostId())
+                                          hostId)
     rmFile("%s*" % cacheCtrlPiDelDbmName)
     srvObj._cacheCtrlPiDelDbm = ngamsDbm.ngamsDbm(cacheCtrlPiDelDbmName,
                                                    cleanUpOnDestr = 0,
@@ -254,7 +256,7 @@ def createCacheDbms(srvObj):
     # stay in the cache.
     cacheCtrlPiFilesDbmName = "%s/%s_%s" % (cacheDir,
                                             NGAMS_CACHE_CTRL_PI_FILES_DBM,
-                                            getHostId())
+                                            hostId)
     rmFile("%s*" % cacheCtrlPiFilesDbmName)
     srvObj._cacheCtrlPiFilesDbm = ngamsDbm.ngamsDbm(cacheCtrlPiFilesDbmName,
                                                      cleanUpOnDestr = 0,
@@ -632,7 +634,7 @@ def initCacheArchive(srvObj):
 
     # Check if all files registered in the RDBMS NGAS Cache Table are
     # registered in the Local Cache DBMS.
-    curObj = srvObj.getDb().getCacheContents(getHostId())
+    curObj = srvObj.getDb().getCacheContents(srvObj.getHostId())
     while (True):
         fileInfoList = curObj.fetch(10000)
         if (not fileInfoList): break
@@ -649,7 +651,7 @@ def initCacheArchive(srvObj):
     
     # Update the local Cache Content DBMS with the information about files
     # online on this node.
-    curObj = srvObj.getDb().getFileSummary1(hostId = getHostId(),
+    curObj = srvObj.getDb().getFileSummary1(hostId = srvObj.getHostId(),
                                             fileStatus = [], order = False)
     while (True):
         fileInfoList = curObj.fetch(10000)
@@ -1276,7 +1278,7 @@ def checkCacheContents(srvObj):
     if (0 and srvObj.getCfg().getVal("Caching[1].MinCacheSpace")):
         info(4, "Applying criteria: Minimum available cache space ...")
         minCacheSpace = int(srvObj.getCfg().getVal("Caching[1].MinCacheSpace"))
-        spaceAvailMb = srvObj.getDb().getSpaceAvailForHost(getHostId())
+        spaceAvailMb = srvObj.getDb().getSpaceAvailForHost(srvObj.getHostId())
         msg = "Space Available=%.6f MB, Min. Cache Space=%.6f MB, " +\
               "Availability till Threshold: %.6f MB"
         info(4, msg % (spaceAvailMb, minCacheSpace,
@@ -1413,7 +1415,7 @@ def removeFile(srvObj,
     try:
         info(3, "Deleting file information from DB for file: %s/%s/%s" %\
              (diskInfoObj.getDiskId(), fileId, str(fileVersion)))
-        srvObj.getDb().deleteFileInfo(diskInfoObj.getDiskId(), fileId,
+        srvObj.getDb().deleteFileInfo(srvObj.getHostId(), diskInfoObj.getDiskId(), fileId,
                                       fileVersion)
         msg = "Deleted file from DB: %s/%s/%s" %\
               (diskInfoObj.getDiskId(), fileId, str(fileVersion))

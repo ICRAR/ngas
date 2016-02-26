@@ -42,7 +42,7 @@ from pccUt import PccUtTime
 from ngamsCore import genLog, info, TRACE, trim, getHostName, warning,\
     NGAMS_HTTP_SUCCESS, getMaxLogLevel, NGAMS_CONT_MT, NGAMS_SOCK_TIMEOUT_DEF,\
     NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM,\
-    getFileSize, NGAMS_ARCH_REQ_MT, getHostId, getUniqueNo,\
+    getFileSize, NGAMS_ARCH_REQ_MT, getUniqueNo,\
     NGAMS_MAX_FILENAME_LEN, error, NGAMS_UNKNOWN_MT, rmFile
 import ngamsMIMEMultipart
 
@@ -915,7 +915,7 @@ def httpGetUrl(url,
     try:
         reqObj = urllib2.Request(url)
         if (authHdrVal): reqObj.add_header("Authorization", authHdrVal)
-        reqObj.add_header("Host", socket.gethostname())
+        reqObj.add_header("Host", getHostName())
 
         # Send additional HTTP headers, if any.
         for addHdr in additionalHdrs:

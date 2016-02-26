@@ -35,9 +35,9 @@ This module utilities used to authorization.
 
 import base64
 
-from ngamsLib.ngamsCore import TRACE, getHostId, getHostName, NGAMS_HTTP_UNAUTH,\
+from ngamsLib.ngamsCore import TRACE, getHostName, NGAMS_HTTP_UNAUTH,\
     NGAMS_FAILURE, genLog, warning, info
-from ngamsLib import ngamsHostInfo, ngamsLib
+from ngamsLib import ngamsHostInfo
 
 
 def genUnAuthResponse(srvObj,
@@ -60,7 +60,7 @@ def genUnAuthResponse(srvObj,
 
     #ngamsLib.flushHttpCh(reqPropsObj.getReadFd(), 32768, reqPropsObj.getSize())
     #reqPropsObj.setBytesReceived(reqPropsObj.getSize())
-    hostInfo = srvObj.getDb().getHostInfoFromHostIds([getHostId()])[0]
+    hostInfo = srvObj.getDb().getHostInfoFromHostIds([srvObj.getHostId()])[0]
     hostInfoObj = ngamsHostInfo.ngamsHostInfo().unpackFromSqlQuery(hostInfo)
     authRealm = "Basic realm=\"ngas-clients@%s.%s\"" %\
                 (getHostName(), hostInfoObj.getDomain())

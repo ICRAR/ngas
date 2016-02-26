@@ -42,7 +42,7 @@ from ngamsLib import ngamsDbm, ngamsDbCore, ngamsDiskInfo, ngamsStatus, ngamsLib
 from ngamsLib import ngamsHighLevelLib
 from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
     NGAMS_HOST_DOMAIN, rmFile, NGAMS_HOST_REMOTE, NGAMS_RETRIEVE_CMD, genLog, \
-    warning, NGAMS_STATUS_CMD, getHostName, getHostId, NGAMS_CACHE_DIR, \
+    warning, NGAMS_STATUS_CMD, getHostName, NGAMS_CACHE_DIR, \
     NGAMS_DATA_CHECK_THR, getFileSize, logFlush, notice, info,\
     loadPlugInEntryPoint, getMaxLogLevel
 
@@ -108,7 +108,8 @@ def _locateArchiveFile(srvObj,
         hostList[hostId] = ""
         idx += 1
         fileCount += 1
-    hostDic = ngamsHighLevelLib.resolveHostAddress(srvObj.getDb(),
+    hostDic = ngamsHighLevelLib.resolveHostAddress(srvObj.getHostId(),
+                                                   srvObj.getDb(),
                                                    srvObj.getCfg(),
                                                    hostList.keys())
 
@@ -456,7 +457,7 @@ def checkFile(srvObj,
     fileStatus   = fileInfo[ngamsDbCore.SUM1_FILE_STATUS]
     dbFileSize   = fileInfo[ngamsDbCore.SUM1_FILE_SIZE]
     info(6,"Checking file with ID: " + fileId + " and filename: " + filename +\
-         " on NGAS host: " + getHostId() + " ...")
+         " on NGAS host: " + srvObj.getHostId() + " ...")
 
     ## Set the file status "checking bit" temporary to 1.
     #tmpFileStatus = fileStatus[0] + "1" + fileStatus[2:]
@@ -522,7 +523,8 @@ def checkFile(srvObj,
                 checkReport.append(["NOTICE: Missing checksum - generated",
                                     fileId, fileVersion, slotId, diskId,
                                     filename])
-                srvObj.getDb().setFileChecksum(fileId, fileVersion, diskId,
+                srvObj.getDb().setFileChecksum(srvObj.getHostId(),
+                                               fileId, fileVersion, diskId,
                                                checksumFile, dcpi)
             elif ((checksumDb == "") and (checksumFile == "")):
                 checkReport.append(["NOTICE: Missing checksum - " +\

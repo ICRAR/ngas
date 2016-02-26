@@ -106,7 +106,7 @@ def updateFileInfoDb(srvObj,
                setFileStatus(NGAMS_FILE_STATUS_OK).\
                setCreationDate(creDate).\
                setIoTime(piStat.getIoTime())
-    fileInfo.write(srvObj.getDb())
+    fileInfo.write(srvObj.getHostId(), srvObj.getDb())
     info(4,"Updated file info in NGAS DB for file with ID: " +\
          piStat.getFileId())
 
@@ -194,8 +194,7 @@ def resetDiskSpaceWarnings():
         _diskSpaceWarningDic[diskId] = 0
 
 
-def issueDiskSpaceWarning(dbConObj,
-                          ngamsCfgObj,
+def issueDiskSpaceWarning(srvObj,
                           diskId):
     """
     Check if the amount of free disk space on the disk with the given ID is
@@ -217,14 +216,14 @@ def issueDiskSpaceWarning(dbConObj,
         _diskSpaceWarningDic[diskId] = 0
     if (_diskSpaceWarningDic[diskId] == 0):
         diskInfo = ngamsDiskInfo.ngamsDiskInfo()
-        diskInfo.read(dbConObj, diskId)
+        diskInfo.read(srvObj.getDb(), diskId)
         msg = "Disk with ID: " + diskId + " - Name: " +\
               diskInfo.getLogicalName() + " - Slot No.: " +\
               str(diskInfo.getSlotId()) + " - running low in "+\
               "available space (" + str(diskInfo.getAvailableMb())+" MB)!"
         notice(msg)
         _diskSpaceWarningDic[diskId] = 1
-        ngamsNotification.notify(ngamsCfgObj, NGAMS_NOTIF_DISK_SPACE,
+        ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_DISK_SPACE,
                                  "NOTICE: DISK SPACE RUNNING LOW",
                                  msg + "\n\nNote: This is just a notice. " +\
                                  "A message will be send when the disk " +\
@@ -278,7 +277,7 @@ def checkDiskSpace(srvObj,
     if ((availSpaceMbMain < srvObj.getCfg().getMinFreeSpaceWarningMb()) or \
         ((availSpaceMbRep < srvObj.getCfg().getMinFreeSpaceWarningMb()) and \
          (repDiskSlotId != ""))):
-        issueDiskSpaceWarning(srvObj.getDb(), srvObj.getCfg(), mainDiskId)
+        issueDiskSpaceWarning(srvObj, mainDiskId)
 
     # Check if we should change Disk Set/mark disks as completed.
     freeDiskSpaceLim = srvObj.getCfg().getFreeSpaceDiskChangeMb()
@@ -309,10 +308,12 @@ def checkDiskSpace(srvObj,
                "- PLEASE CHANGE!")
         # - Update NGAS Disk Info accordingly
         ngasDiskInfoFile = ngamsDiskUtils.\
-                           dumpDiskInfo(srvObj.getDb(), srvObj.getCfg(),
+                           dumpDiskInfo(srvObj.getHostId(),
+                                        srvObj.getDb(), srvObj.getCfg(),
                                         mainDiskInfo.getDiskId(),
                                         mainDiskInfo.getMountPoint())
-        srvObj.getDb().addDiskHistEntry(mainDiskInfo.getDiskId(),
+        srvObj.getDb().addDiskHistEntry(srvObj.getHostId(),
+                                        mainDiskInfo.getDiskId(),
                                         "Disk Completed", NGAMS_XML_MT,
                                         ngasDiskInfoFile)
 
@@ -326,10 +327,12 @@ def checkDiskSpace(srvObj,
                " - as 'completed' - PLEASE CHANGE!")
         # - Update NGAS Disk Info accordingly
         ngasDiskInfoFile = ngamsDiskUtils.\
-                           dumpDiskInfo(srvObj.getDb(), srvObj.getCfg(),
+                           dumpDiskInfo(srvObj.getHostId(),
+                                        srvObj.getDb(), srvObj.getCfg(),
                                         repDiskInfo.getDiskId(),
                                         repDiskInfo.getMountPoint())
-        srvObj.getDb().addDiskHistEntry(repDiskInfo.getDiskId(),
+        srvObj.getDb().addDiskHistEntry(srvObj.getHostId(),
+                                        repDiskInfo.getDiskId(),
                                         "Disk Completed", NGAMS_XML_MT,
                                         ngasDiskInfoFile)
 
@@ -344,7 +347,7 @@ def checkDiskSpace(srvObj,
             msg += "Replication Disk:\n" +\
                    "- Logical Name: " + repDiskInfo.getLogicalName() + "\n" +\
                    "- Slot ID:      " + repDiskInfo.getSlotId() + "\n\n"
-        ngamsNotification.notify(srvObj.getCfg(), NGAMS_NOTIF_DISK_CHANGE,
+        ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_DISK_CHANGE,
                                  "CHANGE DISK(S)", msg, [], 1)
 
     info(4,"Checked disk space for disk with ID: " + mainDiskId)
@@ -432,7 +435,8 @@ def postFileRecepHandling(srvObj,
 
     # Generate a File Info Object for the file stored.
     fileInfo = ngamsFileInfo.ngamsFileInfo()
-    fileInfo.read(srvObj.getDb(), resultPlugIn.getFileId(),
+    fileInfo.read(srvObj.getHostId(),
+                  srvObj.getDb(), resultPlugIn.getFileId(),
                   resultPlugIn.getFileVersion())
     mainDiskInfo.addFileObj(fileInfo)
 
@@ -493,7 +497,8 @@ def archiveFromFile(srvObj,
         if (not reqPropsObjLoc.getTargDiskInfo()):
             try:
                 trgDiskInfo = ngamsDiskUtils.\
-                              findTargetDisk(srvObj.getDb(), srvObj.getCfg(),
+                              findTargetDisk(srvObj.getHostId(),
+                                             srvObj.getDb(), srvObj.getCfg(),
                                              mimeType, 0,
                                              reqSpace=reqPropsObjLoc.getSize())
                 reqPropsObjLoc.setTargDiskInfo(trgDiskInfo)
@@ -504,7 +509,7 @@ def archiveFromFile(srvObj,
             except Exception, e:
                 errMsg = str(e) + ". Attempting to archive local file: " +\
                          filename
-                ngamsNotification.notify(srvObj.getCfg(),
+                ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(),
                                          NGAMS_NOTIF_NO_DISKS,
                                          "NO DISKS AVAILABLE", errMsg)
                 raise Exception, errMsg
@@ -743,14 +748,15 @@ def dataHandler(srvObj,
         # Generate target filename. Remember to set this in the Request Object.
         try:
             trgDiskInfo = ngamsDiskUtils.\
-                          findTargetDisk(srvObj.getDb(), srvObj.getCfg(),
+                          findTargetDisk(srvObj.getHostId(),
+                                         srvObj.getDb(), srvObj.getCfg(),
                                          mimeType, 0, caching=0,
                                          reqSpace=reqPropsObj.getSize())
             reqPropsObj.setTargDiskInfo(trgDiskInfo)
         except Exception, e:
             errMsg = str(e) + ". Attempting to archive file: " +\
                       reqPropsObj.getSafeFileUri()
-            ngamsNotification.notify(srvObj.getCfg(), NGAMS_NOTIF_NO_DISKS,
+            ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_NO_DISKS,
                                       "NO DISKS AVAILABLE", errMsg)
             raise Exception, errMsg
 
@@ -877,7 +883,8 @@ def dataHandler(srvObj,
     return diskInfo
 
 
-def findTargetNode(dbConObj,
+def findTargetNode(hostId,
+                   dbConObj,
                    ngamsCfgObj,
                    mimeType):
     """
@@ -887,6 +894,8 @@ def findTargetNode(dbConObj,
     on that node.
 
     If no nodes are available, an exception is raised (NGAMS_AL_NO_STO_SETS).
+
+    hostId:            The ID of this NGAS host
 
     dbConObj:          DB connection object (ngamsDb).
 
@@ -958,7 +967,7 @@ def findTargetNode(dbConObj,
             # If local host, check if there are available Storage Sets.
             try:
                 tmpDiskObj = ngamsDiskUtils.\
-                             findTargetDisk(dbConObj, ngamsCfgObj, mimeType,
+                             findTargetDisk(hostId, dbConObj, ngamsCfgObj, mimeType,
                                             sendNotification=0)
                 targNode    = node
                 targPort    = ngamsCfgObj.getPortNo()

@@ -63,7 +63,7 @@ def checkCorrectFileSizeDb(diskId,
     """
     server, db, user, password = ngasUtilsLib.getDbPars()
     db = ngamsDb.ngamsDb(server, db, user, password, createSnapshot=0)
-    tmpDiskInfo = ngamsDiskInfo.ngamsDiskInfo().read(db, diskId)
+    tmpDiskInfo = ngamsDiskInfo.ngamsDiskInfo().read(getHostName(), db, diskId)
     if (tmpDiskInfo.getHostId() != getHostName()):
         raise Exception, "The disk: %s is not inserted in this system!!" %\
               diskId
@@ -111,7 +111,7 @@ def checkCorrectFileSizeDb(diskId,
                         if (not tmpFileInfo.getCreationDate()):
                             tmpFileInfo.setCreationDate(tmpFileInfo.\
                                                         getIngestionDate())
-                        tmpFileInfo.write(db, 0, 1)
+                        tmpFileInfo.write(getHostName(), db, 0, 1)
                         msg += " FILE SIZE CORRECTED!"
                 notifMsg += msg
             sys.stdout.write(msg)

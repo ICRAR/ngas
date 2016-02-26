@@ -27,6 +27,7 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  07/05/2001  Created
 #
+from ngamsPlugIns.ngamsGenericOnlinePlugIn import srvObj
 
 """
 This module contains the class ngamsServer that provides the
@@ -42,8 +43,8 @@ from pccUt import PccUtTime
 from ngamsLib.ngamsCore import \
     genLog, error, info, alert, setLogCache, logFlush, sysLogInfo, TRACE,\
     rmFile, trim, getNgamsVersion, getDebug, getTestMode, setDebug, setTestMode, \
-    getFileSize, getDiskSpaceAvail, setLogCond, setSrvPort, getIpAddress, checkCreatePath,\
-    getHostId, getHostName, ngamsCopyrightString, getNgamsLicense,\
+    getFileSize, getDiskSpaceAvail, setLogCond, checkCreatePath,\
+    getHostName, ngamsCopyrightString, getNgamsLicense,\
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, NGAMS_HTTP_GET,\
     NGAMS_HTTP_BAD_REQ, NGAMS_HTTP_SERVICE_NA, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, NGAMS_DEF_LOG_PREFIX, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR, NGAMS_TEXT_MT,\
@@ -375,6 +376,22 @@ class ngamsServer:
         self._cacheCtrlPiThreadGr       = None
         self._dataMoverOnly             = False
 
+        # The listening end
+        self.ipAddress = None
+        self.portNo    = None
+
+    def getHostId(self):
+        """
+        Returns the proper NG/AMS Host ID according whether multiple servers
+        can be executed on the same host, and this server is one of those.
+    
+        If multiple servers can be executed on one node, the Host ID will be
+        <Host Name>:<Port No>. Otherwise, the Host ID will be the hostname.
+        """
+        hostname = getHostName()
+        if self.__multipleSrvs:
+            return hostname + ":" + str(self.portNo)
+        return hostname
 
     def getLogFilename(self):
         """
@@ -433,7 +450,7 @@ class ngamsServer:
 
         Returns:    Filename of Request Info DB (string).
         """
-        ngasId = ngamsHighLevelLib.genNgasId(self.getCfg())
+        ngasId = self.getHostId()
         cacheDir = ngamsHighLevelLib.genCacheDirName(self.getCfg())
         return os.path.normpath(cacheDir + "/" + ngasId + "_REQUEST_INFO_DB")
 
@@ -1489,7 +1506,7 @@ class ngamsServer:
         # If running in Unit Test Mode, check if the server is suspended.
         # In case yes, raise an exception indicating this.
         if (getTestMode()):
-            if (self.getDb().getSrvSuspended(getHostId())):
+            if (self.getDb().getSrvSuspended(self.getHostId())):
                 raise Exception, "UNIT-TEST: This server is suspended"
 
         # Handle the command.
@@ -1767,7 +1784,7 @@ class ngamsServer:
 
         # Resolve the proper contact host/port if needed/possible.
         hostDic = ngamsHighLevelLib.\
-                  resolveHostAddress(self.getDb(),self.getCfg(),[forwardHost])
+                  resolveHostAddress(self.getHostId(), self.getDb(),self.getCfg(),[forwardHost])
         if (hostDic[forwardHost] != None):
             contactHost = hostDic[forwardHost].getHostId()
             contactAddr = hostDic[forwardHost].getIpAddress()
@@ -1866,7 +1883,7 @@ class ngamsServer:
         """
         return ngamsStatus.ngamsStatus().\
                setDate(PccUtTime.TimeStamp().getTimeStamp()).\
-               setVersion(getNgamsVersion()).setHostId(getHostId()).\
+               setVersion(getNgamsVersion()).setHostId(self.getHostId()).\
                setStatus(status).setMessage(msg).setState(self.getState()).\
                setSubState(self.getSubState())
 
@@ -2016,7 +2033,7 @@ class ngamsServer:
                 if extlogger:
                     extlogger("INFO", errMsg)
                 error(errMsg)
-                ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
+                ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                          "PROBLEMS INITIALIZING NG/AMS SERVER",
                                          errMsg, [], 1)
                 self.terminate()
@@ -2032,7 +2049,7 @@ class ngamsServer:
             (self.getCfg().getPortNo() < 1)): return ""
         try:
             pidFile = os.path.join(self.getCfg().getRootDirectory(), "." +
-                                   ngamsHighLevelLib.genNgasId(self.getCfg())
+                                   self.getHostId()
                                    + ".pid")
         except Exception, e:
             errMsg = "Error occurred generating PID file name. Check " +\
@@ -2116,6 +2133,15 @@ class ngamsServer:
 
         # Load NG/AMS Configuration (from XML Document/DB).
         self.loadCfg()
+
+        # IP address defaults to localhost
+        ipAddress = self.getCfg().getIpAddress()
+        self.ipAddress = ipAddress or '127.0.0.1'
+
+        # Port number defaults to 7777
+        portNo = self.getCfg().getPortNo()
+        self.portNo = portNo if portNo != -1 else 7777
+
         # Set up final logging conditions.
         if (self.__locLogLevel == -1):
             self.__locLogLevel = self.getCfg().getLocalLogLevel()
@@ -2132,39 +2158,43 @@ class ngamsServer:
                   "defined as: Sys Log: %s " +\
                   "- Sys Log Prefix: %s  - Local Log File: %s " +\
                   "- Local Log Level: %s - Verbose Level: %s"
-            info(1, msg % (getHostId(), str(self.__sysLog),
+            info(1, msg % (self.getHostId(), str(self.__sysLog),
                            self.__sysLogPrefix, self.__locLogFile,
                            str(self.__locLogLevel), str(self.__verboseLevel)))
         except Exception, e:
             errMsg = genLog("NGAMS_ER_INIT_LOG", [self.__locLogFile, str(e)])
             error(errMsg)
-            ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
+            ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM SETTING UP LOGGING", errMsg)
             raise Exception, errMsg
 
         # Check if there is an entry for this node in the ngas_hosts
         # table, if not create it.
-        if (self.getMultipleSrvs()): setSrvPort(self.getCfg().getPortNo())
-        hostInfo = self.getDb().getHostInfoFromHostIds([getHostId()])
+        hostInfo = self.getDb().getHostInfoFromHostIds([self.getHostId()])
         if (hostInfo == []):
             tmpHostInfoObj = ngamsHostInfo.ngamsHostInfo()
-            ipAddress = getIpAddress()
-            domain = ngamsLib.getDomain()
-            if (not domain): domain = NGAMS_NOT_SET
+
+            # If we specified a Proxy Name/IP in the configuration we use that
+            # to save our IP address in the database so it becomes visible to
+            # external users
+            # TODO: This still needs to be properly done
+            raise Exception()
+
+            domain = ngamsLib.getDomain() or NGAMS_NOT_SET
             tmpHostInfoObj.\
-                             setHostId(getHostId()).\
+                             setHostId(self.getHostId()).\
                              setDomain(domain).\
                              setIpAddress(ipAddress).\
                              setMacAddress(NGAMS_NOT_SET).\
                              setNSlots(-1).\
-                             setClusterName(getHostId()).\
+                             setClusterName(self.getHostId()).\
                              setInstallationDateFromSecs(time.time())
             info(1,"Creating entry in NGAS Hosts Table for this node: %s" %\
-                 getHostId())
+                 self.getHostId())
             self.getDb().writeHostInfo(tmpHostInfoObj)
 
         # Should be possible to execute several servers on one node.
-        self.__hostInfo.setHostId(getHostId())
+        self.__hostInfo.setHostId(self.getHostId())
 
         # Log some essential information.
         allowArchiveReq    = self.getCfg().getAllowArchiveReq()
@@ -2187,7 +2217,7 @@ class ngamsServer:
         if (not self.getForce() and os.path.exists(self.pidFile())):
             errMsg = genLog("NGAMS_ER_MULT_INST")
             error(errMsg)
-            ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
+            ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "CONFLICT STARTING NG/AMS SERVER", errMsg)
             self.terminate()
 
@@ -2241,11 +2271,11 @@ class ngamsServer:
             setLogCache(self.getCfg().getLogBufferSize())
 
         sysLogInfo(1, genLog("NGAMS_INFO_STARTING_SRV",
-                             [getNgamsVersion(), getHostId(),
+                             [getNgamsVersion(), self.getHostId(),
                               self.getCfg().getPortNo()]))
 
         # Reset the parameters for the suspension.
-        self.getDb().resetWakeUpCall(None, 1)
+        self.getDb().resetWakeUpCall(self.getHostId(), 1)
 
         # Create a mime-type to DAPI dictionary
         for stream in self.getCfg().getStreamList():
@@ -2266,7 +2296,7 @@ class ngamsServer:
                  "server remaining in Offline State")
 
         # Update the internal ngamsHostInfo object + ngas_hosts table.
-        clusterName = self.getDb().getClusterNameFromHostId(getHostId())
+        clusterName = self.getDb().getClusterNameFromHostId(self.getHostId())
         self.getHostInfoObj().setClusterName(clusterName)
         self.updateHostInfo(getNgamsVersion(), self.getCfg().getPortNo(),
                             self.getCfg().getAllowArchiveReq(),
@@ -2286,7 +2316,7 @@ class ngamsServer:
             traceback.print_exc()
             errMsg = genLog("NGAMS_ER_OP_HTTP_SERV", [str(e)])
             error(errMsg)
-            ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
+            ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM ENCOUNTERED STARTING " +\
                                      "SERVER", errMsg)
             self.terminate()
@@ -2306,7 +2336,7 @@ class ngamsServer:
 
         Returns:       Reference to object itself.
         """
-        self.getDb().reqWakeUpCall(wakeUpHostId, wakeUpTime)
+        self.getDb().reqWakeUpCall(self.getHostId(), wakeUpHostId, wakeUpTime)
         self.getHostInfoObj().\
                                 setSrvSuspended(1).\
                                 setSrvReqWakeUpSrv(wakeUpHostId).\
@@ -2320,14 +2350,10 @@ class ngamsServer:
         Returns:  Void.
         """
         hostName = getHostName()
-        ipAddress = getIpAddress()
-        portNo = self.getCfg().getPortNo()
-        info(1,"Setting up NG/AMS HTTP Server (Host: {0} - IP: {1} - Port: {2}...)".\
-             format(hostName, ipAddress, str(portNo)))
-
-        self.__httpDaemon = ngamsHttpServer(self, (ipAddress, portNo))
-        info(1,"NG/AMS HTTP Server ready (Host: {0} - IP: {1} - Port: {2})".\
-             format(hostName, ipAddress, str(portNo)))
+        info(1, "Setting up NG/AMS HTTP Server (Host: {0} - IP: {1} - Port: {2})".\
+             format(hostName, self.ipAddress, self.portNo))
+        self.__httpDaemon = ngamsHttpServer(self, (self.ipAddress, self.portNo))
+        info(1,"NG/AMS HTTP Server ready")
 
         self.__httpDaemon.serve_forever()
 

@@ -39,7 +39,7 @@ import time
 
 from pccUt import PccUtTime
 from ngamsLib.ngamsCore import TRACE, rmFile, info, NGAMS_HTTP_GET, \
-    NGAMS_REGISTER_CMD, getHostId, notice, mvFile, getFileCreationTime, \
+    NGAMS_REGISTER_CMD, notice, mvFile, getFileCreationTime, \
     NGAMS_FILE_STATUS_OK, genLog, sysLogInfo, error, NGAMS_SUCCESS, \
     NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
@@ -213,7 +213,7 @@ def _registerExec(srvObj,
             # yes, it is not registered again.
             cursorObj = None
             cursorObj = srvObj.getDb().\
-                        getFileSummary1(getHostId(), [piRes.getDiskId()],
+                        getFileSummary1(srvObj.getHostId(), [piRes.getDiskId()],
                                         [piRes.getFileId()])
             fileRegistered = 0
             while (1):
@@ -412,7 +412,7 @@ def _registerExec(srvObj,
                         "Total processing time (s):  %.3f\n" +\
                         "Handling time per file (s): %.3f\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (timeStamp, getHostId(), path, fileCount,
+            fo.write(tmpFormat % (timeStamp, srvObj.getHostId(), path, fileCount,
                                   fileRegCount, fileFailCount, fileRejectCount,
                                   regTimeAccu, timePerFile))
             tmpFormat = "%-80s %-32s %-3s %-10s\n"
@@ -443,7 +443,7 @@ def _registerExec(srvObj,
         if (reqPropsObj.hasHttpPar("path")):
             attachmentName += "-" + reqPropsObj.getHttpPar("path").\
                               replace("/", "_")       
-        ngamsNotification.notify(srvObj.getCfg(), NGAMS_NOTIF_INFO,
+        ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_INFO,
                                  "REGISTER STATUS REPORT", statRep, 
                                  emailAdrList, 1, mimeType, attachmentName, 1)
         del regDbm

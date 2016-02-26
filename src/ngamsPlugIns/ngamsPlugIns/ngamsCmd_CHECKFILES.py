@@ -30,7 +30,7 @@ are still available on the file system
 
 import os, datetime, threading
 
-from ngamsLib.ngamsCore import getHostId, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 from ngamsLib.ngamsDb import ngamsDb
 
 
@@ -45,7 +45,7 @@ def _checkFileThread(srvObj, reqPropsObj, httpRef):
     is_chkFileThrd_running = True
     wrong_files = []
     
-    cursorObj = srvObj.getDb().getFileSummary2(hostId = getHostId())
+    cursorObj = srvObj.getDb().getFileSummary2(hostId = srvObj.getHostId())
     while (1):
         fileList = cursorObj.fetch(100)
         if (fileList == []): break

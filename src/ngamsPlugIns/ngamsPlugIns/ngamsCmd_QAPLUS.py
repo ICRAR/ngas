@@ -35,7 +35,7 @@ This is an extension of the original QARCHIVE command, basically does
 import urllib2
 
 import ngamsCmd_QARCHIVE
-from ngamsLib.ngamsCore import getHostId, info, error
+from ngamsLib.ngamsCore import info, error
 
 
 def handleCmd(srvObj,
@@ -57,7 +57,7 @@ def handleCmd(srvObj,
     (fileId, filePath, ingestRate) = ngamsCmd_QARCHIVE.handleCmd(srvObj, reqPropsObj, httpRef)
     jobManHost = srvObj.getCfg().getNGASJobMANHost()
     try:
-        reply = urllib2.urlopen('http://%s/ingest?file_id=%s&file_path=%s&to_host=%s&ingest_rate=%.2f' % (jobManHost, fileId, filePath, getHostId(), ingestRate), timeout = 15).read()
+        reply = urllib2.urlopen('http://%s/ingest?file_id=%s&file_path=%s&to_host=%s&ingest_rate=%.2f' % (jobManHost, fileId, filePath, srvObj.getHostId(), ingestRate), timeout = 15).read()
         info('Reply from sending file %s ingestion event to server %s - %s' % (fileId, jobManHost, reply))
     except Exception, err:
         error('Fail to send file ingestion event to server %s, Exception: %s' %(jobManHost, str(err)))

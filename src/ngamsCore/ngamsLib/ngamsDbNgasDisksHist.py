@@ -38,7 +38,7 @@ It should be used as part of the ngamsDbBase parent classes.
 
 import re
 from pccUt import PccUtTime
-from ngamsCore import TRACE, NGAMS_XML_MT, info, getHostId
+from ngamsCore import TRACE, NGAMS_XML_MT, info
 import ngamsDbCore
 
 
@@ -48,6 +48,7 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
     """
        
     def addDiskHistEntry(self,
+                         hostId,
                          diskId,
                          synopsis,
                          descrMimeType = None,
@@ -86,7 +87,7 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
         T = TRACE()
 
         try:
-            if (origin == None): origin = "NG/AMS@" + getHostId()
+            if (origin == None): origin = "NG/AMS@" + hostId
             tsObj = PccUtTime.TimeStamp()
             try:
                 self.takeDbSem()

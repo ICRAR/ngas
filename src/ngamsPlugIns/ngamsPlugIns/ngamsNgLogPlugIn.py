@@ -110,7 +110,7 @@ def ngamsNgLogPlugIn(srvObj,
             logId = firstLine[sysIdIdx + len("SYSTEM-ID:"):].strip().\
                     split(" ")[0]
         else:
-            logId = ngamsPlugInApi.genNgasId(srvObj.getCfg())
+            logId = srvObj.getHostId()
         fileId = logId + "." + timeStamp
         fileVersion, relPath, relFilename,\
                      complFilename, fileExists =\

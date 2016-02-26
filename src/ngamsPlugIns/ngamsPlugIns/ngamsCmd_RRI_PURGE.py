@@ -39,13 +39,13 @@ I estimate that we will need  67*2*30*24*7*5/1000 ~ 3.4 TB of disk space.
 
 import threading, datetime
 
-from ngamsLib.ngamsCore import getHostId, error, info, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import error, info, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 from ngamsServer import ngamsDiscardCmd
 
 
 QUERY_ALL_FILES = "SELECT a.disk_id, a.file_id, a.file_version FROM ngas_files a, "+\
                  "ngas_disks b "+\
-                 "WHERE a.disk_id = b.disk_id AND b.host_id = '%s'" % getHostId()
+                 "WHERE a.disk_id = b.disk_id AND b.host_id = '%s'"
 
 purgeThrd = None
 is_purgeThrd_running = False
@@ -79,9 +79,10 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
     is_purgeThrd_running = True
     work_dir = srvObj.getCfg().getRootDirectory() + '/tmp/'
     try:  
-        info(3, "host_id = %s" % getHostId())
-        info(3, "Executing query: %s" % QUERY_ALL_FILES)
-        resDel = srvObj.getDb().query(QUERY_ALL_FILES)
+        info(3, "host_id = %s" % srvObj.getHostId())
+        query =  QUERY_ALL_FILES % srvObj.getHostId()
+        info(3, "Executing query: %s" % query)
+        resDel = srvObj.getDb().query(query)
         if (resDel == [[]]):
             raise Exception('Could not find any files to discard / retain')
         else:
