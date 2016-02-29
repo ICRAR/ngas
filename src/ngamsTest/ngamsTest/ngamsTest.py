@@ -45,7 +45,6 @@ from ngamsLib.ngamsCore import getHostName, getNgamsVersion, trim, \
     ngamsCopyrightString, rmFile
 from ngamsLib import ngamsConfig, ngamsHighLevelLib, ngamsLib
 from pccUt import PccUtTime, PccUtUtils
-import ngamsTestLib
 
 
 
@@ -112,9 +111,6 @@ def runAllTests(notifyemail = None,
     line = "NG/AMS Version:   %s" % getNgamsVersion()
     print line
     testRep += line + "\n"    
-    line = "DB Configuration: %s\n" % str(ngamsTestLib.getRefCfg())
-    print line
-    testRep += line + "\n"
     for mod in testModList:
         if (skipDic.has_key(mod)): continue
         testCount += 1
@@ -123,7 +119,7 @@ def runAllTests(notifyemail = None,
         sys.stdout.write(line)
         sys.stdout.flush()
         suiteStartTime = time.time()
-        tstCmdLine = "python %s.py -cfg %s" % (mod, ngamsTestLib.getRefCfg())
+        tstCmdLine = "python %s.py" % (mod)
         stat, stdout, stderr = PccUtUtils.execCmd(tstCmdLine, NGAMS_TEST_MAX_TS_TIME)
         testTime = (time.time() - suiteStartTime)
         if (testTime >= NGAMS_TEST_MAX_TS_TIME):
@@ -327,7 +323,7 @@ def correctUsage():
     print "Input parameters for NG/AMS test program:\n"
     print "> ngamsTest [-status] " +\
            "[-tests \"<mod>,...\"] [-skip \"<mod>[.<test case>],...\" " +\
-           "-notifyEmail \"<Email List>\" -cfg <Ref. Cfg. File>\n"
+           "-notifyEmail \"<Email List>\"\n"
     print ngamsCopyrightString()
     
 
@@ -338,7 +334,6 @@ def parseCommandLine(argv):
     status = 0
     tests = []
     notifyemail = None
-    cfg = None
     idx = 1
     while idx < len(sys.argv):
         par = sys.argv[idx].upper()
@@ -353,23 +348,17 @@ def parseCommandLine(argv):
         elif (par == "-NOTIFYEMAIL"):
             idx += 1
             notifyemail = sys.argv[idx]
-        elif (par == "-CFG"):
-            idx += 1
-            cfg = sys.argv[idx]
         else:
             correctUsage()
             sys.exit(1)
         idx += 1
-    if (not cfg):
-        raise Exception, "Specify parameter: -cfg <Ref. Cfg. File>"
 
     if (notifyemail == ""): notifyemail = None
 
-    return skip, status, tests, notifyemail, cfg
+    return skip, status, tests, notifyemail
 
 def main():
-    skip, status, tests, notifyemail, cfg = parseCommandLine(sys.argv)
-    ngamsTestLib.setRefCfg(cfg)
+    skip, status, tests, notifyemail = parseCommandLine(sys.argv)
     if (status):
         genStatus()
     elif (tests != []):

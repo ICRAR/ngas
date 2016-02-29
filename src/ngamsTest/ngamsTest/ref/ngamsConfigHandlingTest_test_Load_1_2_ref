@@ -9,7 +9,7 @@
     <User Name="ngas-int" Password="bmdhcy1pbnQ="/>
   </Authorization>
   <DataCheckThread Active="0" ChecksumPlugIn="ngamsGenCrc32" ChecksumPlugInPars="" DiskSeq="SEQUENTIAL" FileSeq="SEQUENTIAL" ForceNotif="1" Id="DataCheckThread-Test" LogSummary="1" MaxProcs="4" MinCycle="00T00:03:00" Prio="25" Scan="0"/>
-  <Db Id="Db-DEVSRV-ngastst2"/>
+  <Db Id="Db-Sqlite-Test" Interface="ngamsSqlite" Password="bmdhcyRkYmE=\n" Server="localhost" Snapshot="1" User="ngas"/>
   <Header Context="NG/AMS" Name="ngamsCfg.xml" Release="1.0" Revision="TEST-REVISION" Source="jknudstr@eso.org" Type="NGAMS-TEST-BASE-CONFIGURATION">
     <Description/>
   </Header>

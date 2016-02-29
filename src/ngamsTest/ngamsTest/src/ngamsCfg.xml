@@ -73,15 +73,13 @@
                    PathPrefix="saf"
                    Replication="1"/>
 
-  <Db Id="Db-DEVSRV-ngastst2"
-      AutoRecover="1"
-      Interface="ngamsSybase" 
-      Name="ngastst2" 
-      Password="bmdhc19wdw==" 
-      Server="DEVSRV" 
-      Snapshot="1" 
+  <Db Id="Db-Sqlite-Test"
+      Server="localhost"
+      Interface="ngamsSqlite"
+      Name="ngas.sqlite"
       User="ngas"
-      Verify="1"/>
+      Password="bmdhcyRkYmE=\n"
+      Snapshot="1"/>
 
   <SystemPlugIns Id="SystemPlugIns-Std"
                  LabelPrinterPlugIn="ngamsNullLabelPrinterPlugIn" 

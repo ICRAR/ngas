@@ -60,6 +60,14 @@
           Simulation="1"
           SwVersion=""/>
 
+  <Db Id="Db-Sqlite-Test"
+      Server="localhost"
+      Interface="ngamsSqlite"
+      Name="ngas.sqlite"
+      User="ngas"
+      Password="bmdhcyRkYmE=\n"
+      Snapshot="1"/>
+
   <JanitorThread Id="JanitorThread-Std"
                  SuspensionTime="0T00:03:00" 
                  MinSpaceSysDirMb="1000"/>
