@@ -27,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  07/05/2001  Created
 #
-from ngamsPlugIns.ngamsGenericOnlinePlugIn import srvObj
 
 """
 This module contains the class ngamsServer that provides the
