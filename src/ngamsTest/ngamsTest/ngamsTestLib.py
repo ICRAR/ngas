@@ -1395,9 +1395,7 @@ class ngamsTestSuite(unittest.TestCase):
         Returns:   Void.
         """
 
-        info(3,"PID of externally running server. PID: %s, Port: %s " %\
-             (str(srvProcess.pid), str(port)))
-        info(3,"Killing externally running NG/AMS Server ...")
+        info(3,"Killing externally running NG/AMS Server. PID: %d, Port: %d " % (srvProcess.pid, port))
         pCl = ngamsPClient.ngamsPClient('localhost', port)
         try:
             info(1,"Sending OFFLINE command to external server ...")
@@ -1434,6 +1432,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         if kill9:
             srvProcess.kill()
+            srvProcess.wait()
             info(3, "Server process had %d to be merciless killed, sorry :(" % (srvProcess.pid,))
         else:
             srvProcess.wait()
