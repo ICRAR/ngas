@@ -1434,7 +1434,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         if kill9:
             srvProcess.kill()
-            info(3, "Server process had %d to be killed, sorry :(" % (srvProcess.pid,))
+            info(3, "Server process had %d to be merciless killed, sorry :(" % (srvProcess.pid,))
         else:
             srvProcess.wait()
             info(3, "Finished server process %d gracefully :)" % (srvProcess.pid,))
