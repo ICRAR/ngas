@@ -92,7 +92,7 @@ def dumpDbSnapshot(dbSnapshotName,
     db.close()
 
 
-def main(argv):
+def main(argv=sys.argv):
     """
     Main function invoking the function to dump the DB Snapshot.
     """  

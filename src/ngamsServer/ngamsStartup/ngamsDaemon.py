@@ -32,7 +32,7 @@ import daemon
 from lockfile.pidlockfile import PIDLockFile
 
 from ngamsLib import ngamsConfig
-from ngamsLib.ngamsCore import is_localhost, get_contact_ip
+from ngamsLib.ngamsCore import get_contact_ip
 from ngamsServer import ngamsServer
 
 
@@ -115,7 +115,7 @@ def status(configFile):
     SCMD = "ngamsPClient -host {0} -port {1} -cmd STATUS -v 1 -timeout 1".format(ipAddress, port)
     return subprocess.call(SCMD,shell=True)
 
-def main(argv):
+def main(argv=sys.argv):
     """
     Entry point function. It's mapped to two different scripts, which is why
     we can distinguish here between them and start different processes
@@ -167,6 +167,3 @@ def main(argv):
         exitCode = 1
 
     sys.exit(exitCode)
-
-if __name__ == "__main__":
-    main(sys.argv)

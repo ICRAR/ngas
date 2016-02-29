@@ -2659,14 +2659,12 @@ class ngamsServer:
         pass
     ########################################################################
 
-def main():
+def main(argv=sys.argv):
     """
-    Main function instatiating the NG/AMS Server Class and starting the server.
+    Main function instantiating the NG/AMS Server Class and starting the server.
     """
-    T = TRACE()
-
     ngams = ngamsServer()
-    ngams.init(sys.argv)
+    ngams.init(argv)
 
 if __name__ == '__main__':
     main()
