@@ -462,7 +462,8 @@ def _openDbSnapshot(ngamsCfgObj,
     return snapshotDbm
 
 
-def _delFileEntry(dbConObj,
+def _delFileEntry(hostId,
+                  dbConObj,
                   fileInfoObj):
     """
     Delete a file entry in the NGAS DB. If the file does not exist,
@@ -480,7 +481,8 @@ def _delFileEntry(dbConObj,
                           fileInfoObj.getFileId(),
                           fileInfoObj.getFileVersion())):
         try:
-            dbConObj.deleteFileInfo(fileInfoObj.getDiskId(),
+            dbConObj.deleteFileInfo(hostId,
+                                    fileInfoObj.getDiskId(),
                                     fileInfoObj.getFileId(),
                                     fileInfoObj.getFileVersion(), 0)
         except:
@@ -760,7 +762,7 @@ def checkUpdateDbSnapShots(srvObj):
                                 snapshotDbm[key] = pickleValue
                         else:
                             # Remove this entry from the DB (if it is there).
-                            _delFileEntry(srvObj.getDb(), tmpFileObj)
+                            _delFileEntry(srvObj.getHostId(), srvObj.getDb(), tmpFileObj)
                         del tmpFileObj
                     else:
                         # We always update the DB Snapshot to ensure it is
@@ -929,7 +931,7 @@ def checkDbChangeCache(srvObj,
                     tmpFileInfoObj.write(srvObj.getHostId(), srvObj.getDb(), 0)
                 elif (operation == NGAMS_DB_CH_FILE_DELETE):
                     if (snapshotDbm.has_key(fileKey)): del snapshotDbm[fileKey]
-                    _delFileEntry(srvObj.getDb(), tmpFileInfoObj)
+                    _delFileEntry(srvObj.getHostId(), srvObj.getDb(), tmpFileInfoObj)
                 else:
                     # Should not happen.
                     pass

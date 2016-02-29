@@ -169,7 +169,7 @@ def _discardFile(srvObj,
         filename = os.path.normpath(mtPt + "/" + fileInfo[0].getFilename())
         _delFile(srvObj, filename, hostId, execute)
         if (execute):
-            srvObj.getDb().deleteFileInfo(diskId, fileId, fileVersion)
+            srvObj.getDb().deleteFileInfo(srvObj.getHostId(), diskId, fileId, fileVersion)
             msg = genLog("NGAMS_INFO_DISCARD_OK",
                          ["Disk ID: %s/File ID: %s/File Version: %s" %\
                           (str(diskId), str(fileId), str(fileVersion)),

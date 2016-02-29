@@ -570,7 +570,8 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         fileInfoRef = "ref/" + filePrefix + "_FileInfo_ref"
         fileInfoTmp = "tmp/" + filePrefix + "_FileInfo_tmp"
         fileInfo = ngamsFileInfo.\
-                   ngamsFileInfo().read(dbObj, "TEST.2001-05-08T15:25:00.123",
+                   ngamsFileInfo().read(getHostName() + ":" + 8888,
+                                        dbObj, "TEST.2001-05-08T15:25:00.123",
                                         1, diskId)
         saveInFile(fileInfoTmp, filterDbStatus1(fileInfo.dumpBuf()))
         self.checkFilesEq(fileInfoRef, fileInfoTmp, "Incorrect info in DB " +\
