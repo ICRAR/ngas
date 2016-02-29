@@ -110,7 +110,7 @@ def _remFile(srvObj,
     while (1):
         key, fileInfo = fileListDbm.getNext()
         if (not key): break
-        if (fileInfo[ngamsDbCore.SUM1_HOST_ID] != hostId):
+        if (fileInfo[ngamsDbCore.SUM1_HOST_ID] != srvObj.getHostId()):
             remKeyList.append(key)
     for remKey in remKeyList: fileListDbm.rem(remKey)
 
@@ -144,7 +144,7 @@ def _remFile(srvObj,
                 # than vice versa, since NGAS uses the info in the DB to check
                 # for the number of available copies.
                 try:
-                    srvObj.getDb().deleteFileInfo(diskId, fileId, fileVer)
+                    srvObj.getDb().deleteFileInfo(srvObj.getHostId(), diskId, fileId, fileVer)
                     infoMsg = genLog("NGAMS_INFO_DEL_FILE",
                                      [diskId, fileId, fileVer])
                     info(3,infoMsg)
