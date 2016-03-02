@@ -27,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  10/11/2003  Created
 #
-from time import sleep
 """
 This module contains the Test Suite for the NG/AMS Archive Client.
 """
