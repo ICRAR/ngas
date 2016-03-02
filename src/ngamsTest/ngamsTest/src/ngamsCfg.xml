@@ -249,7 +249,7 @@
 
   <Log Id="Log-Test" 
        LocalLogFile="/tmp/ngamsTest/NGAS/log/LogFile.nglog"
-       LocalLogLevel="5" 
+       LocalLogLevel="1"
        LogBufferSize="10"
        LogRotateCache="30" 
        LogRotateInt="01T00:00:00" 
