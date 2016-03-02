@@ -53,7 +53,7 @@ NgamsCfg.JanitorThread[1].MinSpaceSysDirMb             : 1000
 NgamsCfg.JanitorThread[1].SuspensionTime               : 0T00:03:00
 NgamsCfg.Log[1].Id                                     : Log-Test
 NgamsCfg.Log[1].LocalLogFile                           : /tmp/ngamsTest/NGAS/log/LogFile.nglog
-NgamsCfg.Log[1].LocalLogLevel                          : 5
+NgamsCfg.Log[1].LocalLogLevel                          : 1
 NgamsCfg.Log[1].LogBufferSize                          : 10
 NgamsCfg.Log[1].LogRotateCache                         : 30
 NgamsCfg.Log[1].LogRotateInt                           : 01T00:00:00

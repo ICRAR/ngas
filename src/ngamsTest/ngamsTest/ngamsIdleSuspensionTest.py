@@ -93,6 +93,9 @@ def prepSimCluster(testObj,
     for portNo in hostList:
         par = "NgamsCfg.JanitorThread[1].SuspensionTime"
         locCfgParDic[portNo].append([par, "0T00:00:02"])
+        # Some tests use inspect the log file, sigh...
+        locCfgParDic[portNo].append(["NgamsCfg.Log[1].LocalLogLevel","5"])
+
     # If special configuration parameters are specified by the Test Case these
     # are stored last in the locCfgParDic to ensure that these are taken.
     for node in cfgParDic.keys(): locCfgParDic[node] += cfgParDic[node]
