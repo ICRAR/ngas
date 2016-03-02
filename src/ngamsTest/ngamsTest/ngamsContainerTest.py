@@ -112,9 +112,9 @@ class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
 		                     '<Container name="1.2"><Container name="1.2.1"></Container>' + \
 		                     '</Container></Container>'
 		rootContainerIds = []
-		for parentId, expectedStatus in [{"DOESNT EXIST", NGAMS_FAILURE},
-		                                 {containerId, NGAMS_SUCCESS},
-		                                 {None, NGAMS_SUCCESS}]:
+		for parentId, expectedStatus in [("DOESNT EXIST", NGAMS_FAILURE),
+		                                 (containerId, NGAMS_SUCCESS),
+		                                 (None, NGAMS_SUCCESS)]:
 
 			parentId = ' parentContainerId="' + parentId + '"' if parentId else ""
 			containerHierarchy = containerHierarchyTpl % (parentId)
