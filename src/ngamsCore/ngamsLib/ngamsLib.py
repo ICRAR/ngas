@@ -27,8 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  12/05/2001  Created
 #
-import pkg_resources
-
 """
 Base module that contains various utility functions used for the
 NG/AMS implementation.
@@ -38,13 +36,17 @@ The functions in this module can be used in all the NG/AMS code.
 
 import os, string, httplib, time, getpass, socket, urlparse
 import urllib, urllib2, re, select, cPickle
-from pccUt import PccUtTime
-from ngamsCore import genLog, info, TRACE, trim, getHostName, warning,\
-    NGAMS_HTTP_SUCCESS, getMaxLogLevel, NGAMS_CONT_MT, NGAMS_SOCK_TIMEOUT_DEF,\
-    NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM,\
-    getFileSize, NGAMS_ARCH_REQ_MT, getUniqueNo,\
+
+import pkg_resources
+
+from ngamsCore import genLog, info, TRACE, trim, getHostName, warning, \
+    NGAMS_HTTP_SUCCESS, getMaxLogLevel, NGAMS_CONT_MT, NGAMS_SOCK_TIMEOUT_DEF, \
+    NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM, \
+    getFileSize, NGAMS_ARCH_REQ_MT, getUniqueNo, \
     NGAMS_MAX_FILENAME_LEN, error, NGAMS_UNKNOWN_MT, rmFile
 import ngamsMIMEMultipart
+from pccUt import PccUtTime
+
 
 def hidePassword(fileUri):
     """
@@ -160,38 +162,6 @@ def httpMsgObj2Dic(httpMessageObj):
             httpHdrDic[hdr] = val
     return httpHdrDic
 
-
-def flushHttpCh(fd,
-                blockSize,
-                complSize):
-    """
-    Flush the data on an HTTP channel.
-
-    fd:          File descriptor to the open HTTP channel (file object).
-
-    blockSize:   Block size to apply when reading the data (integer).
-
-    complSize:   Size of the data (integer).
-
-    Returns:     Void.
-    """
-    T = TRACE()
-
-    # Avoid hanging indefinitely on streams
-    # that have been already consumed entirely
-    r = select.select([fd], [], [], 0)
-    if fd not in r[0]:
-        return
-
-    remSize = complSize
-    while (remSize > 0):
-        rdSize = blockSize
-        if (remSize < rdSize):
-            rdSize = remSize
-        buf = fd.read(rdSize)
-        if not buf:
-            break
-        remSize -= len(buf)
 
 def getCompleteHostName():
     """

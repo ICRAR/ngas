@@ -1439,19 +1439,10 @@ class ngamsServer:
 
         except Exception as e:
 
-            # Flush read socket if needed - not a good idea as the request could
-            # be massive, we do not want to wait. What we want to do is send
-            # an error reponse straight away and put a timeout on the socket so
-            # there is no deadlock.
-            #if (reqPropsObj.getBytesReceived() < reqPropsObj.getSize()):
-                #info(4,"Closing HTTP read socket ...")
-                #reqPropsObj.getReadFd().close()
-                #info(4,"Closed HTTP read socket")
-                #ngamsLib.flushHttpCh(reqPropsObj.getReadFd(), 32768,
-                #                     (reqPropsObj.getSize() -
-                #                      reqPropsObj.getBytesReceived()))
-                #reqPropsObj.setBytesReceived(reqPropsObj.getSize())
-            #reqPropsObj.getReadFd().close()
+            # Quickly respond with a 400 status code for unexpected exceptions
+            # (although it should be a 5xx code)
+            # Before we were consuming the whole input stream here before
+            # sending the response which wasted resources unnecessarily
             if getDebug():
                 traceback.print_exc(file = sys.stdout)
 
