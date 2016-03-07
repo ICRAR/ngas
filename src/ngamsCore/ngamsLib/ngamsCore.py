@@ -19,8 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-import importlib
-
 #******************************************************************************
 #
 # "@(#) $Id: __init__.py,v 1.30 2009/11/11 13:08:02 awicenec Exp $"
@@ -30,7 +28,6 @@ import importlib
 # jknudstr  12/04/2001  Created
 # awicenec  29/05/2001  Added path extension
 # jknudstr  11/06/2001  Added proper version + implemented getNgamsVersion()
-
 _doc =\
 """
              #     #  #####        #    #    #     #  #####
@@ -98,6 +95,24 @@ The source files contained in the sub-modules 'ngamsServer', 'ngamsPClient',
 sub-module contaning example plug-ins 'ngamsPlugIns' is not considered either.
 """
 
+import commands
+import glob
+import importlib
+import md5
+import os
+import shutil
+import socket
+import syslog
+import threading
+import time
+import traceback
+import types
+
+import pkg_resources
+
+from pccLog import PccLog, PccLogDef
+from pccUt  import PccUtString, PccUtTime
+
 
 # Debug flag.
 _debug = 0
@@ -105,18 +120,6 @@ _debug = 0
 # Flag indicating if we're executing in Unit Test Mode.
 _testMode = 0
 
-from pccLog import PccLog, PccLogDef
-from pccUt  import PccUtString, PccUtTime
-import md5
-import os
-import syslog
-import traceback
-import threading
-import types
-import time
-import commands
-import socket
-import pkg_resources
 
 # Semaphore + counter to ensure unique, temporary filenames.
 _uniqueNumberSem   = threading.Semaphore(1)
@@ -1122,8 +1125,12 @@ def rmFile(filename):
 
     Returns:    Void.
     """
-    info(4,"Removing file: %s" % filename)
-    commands.getstatusoutput("rm -rf " + filename)
+    info(4,"Removing file(s): %s" % filename)
+    for f in glob.glob(filename):
+        if os.path.isdir(f):
+            shutil.rmtree(f, True)
+        else: # file, link, etc
+            os.remove(f)
 
 
 def mvFile(srcFilename,
