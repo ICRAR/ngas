@@ -75,7 +75,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
     - Tests with 'real file systems' (simulated disks).
 
     - Test Back-Log Buffering for all defined cases:
-    
+
       o NGAMS_ER_PROB_STAGING_AREA
       o NGAMS_ER_PROB_BACK_LOG_BUF
       o NGAMS_AL_MV_FILE
@@ -116,7 +116,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Synopsis:
         Test handling of normal Archive Push Request/check that Disk
         Change Notification Message is sent out.
-        
+
         Description:
         This Test Case exercises the Archive Push Request. It is checked
         that a disk change is done as expected and that an Email Notification
@@ -213,7 +213,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Synopsis:
         Test handling of normal Archive Push Request/check that Disk Space
         Notification Message is sent out.
-        
+
         Description:
         Before a disks get classified as completed, a Disk Space Notification
         Message can be sent out to prepare the operators that soon a Disk
@@ -223,7 +223,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Expected Result:
         After having issued an Archive Push Request the disk should
         reach the thresshold value for sending out the Disk Space Notification
-        Email. 
+        Email.
 
         Test Steps:
         - Start server with cfg. specifying test user at localhost as
@@ -268,7 +268,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test handling of normal Archive Push Request/no_versioning=1.
-        
+
         Description:
         It is possible to indicate to the NG/AMS Server in connection with an
         Archive Request, that no new version number should be allocated
@@ -306,7 +306,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test archiving of file URIs with equal signs in them.
-        
+
         Description:
         The purpose of this Test Case is to check if the system can handle
         archiving of files with equal signs in the name.
@@ -338,7 +338,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test handling of Back-Log Buffering (basic test).
-        
+
         Description:
         The purpose of this test is to check the proper functioning of the
         Back-Log Buffer Feature. In this case, the error ocurring is a
@@ -413,7 +413,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test correct handling when Back-Log Buffering is disabled.
-        
+
         Description:
         The purpose of this test is to check the proper functioning when
         Back-Log Buffering is disabled and an error qualifying for Back-Log
@@ -453,12 +453,12 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         pollForFile("/tmp/ngamsTest/NGAS/back-log/*", 0)
         pollForFile("/tmp/ngamsTest/NGAS/bad-files/*", 0)
 
-                   
+
     def test_ArchivePullReq_1(self):
         """
         Synopsis:
         Test Archive Pull Request/file:<Path>.
-        
+
         Description:
         Files can be archived either via the Archive Push and Archive
         Pull Technique. When using latter, a URL is specified where the
@@ -497,7 +497,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Synopsis:
         Test Archive Pull Request/Retrieve Request
         (http://<Host>:<Port>/RETRIEVE?file_id=<ID>).
-        
+
         Description:
         When using the Archive Pull Technique, it is possible to archive a
         file into an NGAS Node, by specifying its URL its URL in another
@@ -537,7 +537,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test handling of illegal FITS Files.
-        
+
         Description:
         The purpose of this test is to check if NG/AMS and the DAPI,
         'ngamsFitsPlugIn', properly handle/detect the following improper FITS
@@ -578,8 +578,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
           - Check that Bad Files Area is empty.
 
         Remarks:
-        ...      
-        
+        ...
+
         """
         stgAreaPat = "/tmp/ngamsTest/NGAS/FitsStorage*-Main-*/staging/*"
         badFilesAreaPat = "/tmp/ngamsTest/NGAS/bad-files/*"
@@ -643,7 +643,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Problems creating Replication File.
-        
+
         Description:
         This test exercises the handling of the situation where the Replication
         File cannot be created, in this case due to that the Replication Area
@@ -682,7 +682,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         Synopsis:
         No free Storage Sets for mime-type.
-        
+
         Description:
         The purpose of this Test Case is to check the handling of the situation
         where there are no free Storage Sets for a given mime-type.
@@ -717,7 +717,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                           "No Free Storage Sets")
         pollForFile("/tmp/ngamsTest/NGAS/FitsStorage*-Main-*/staging/*", 0)
         pollForFile("/tmp/ngamsTest/NGAS/bad-files/*", 0)
-        
+
 
     @skip("Test case requires missing file under src/")
     def test_MainDiskSmallerThanRep_1(self):
@@ -725,7 +725,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Synopsis:
         Check usage of several Main Disks with one Rep. Disk (different sizes
         of Main and Rep. Disks).
-        
+
         Description:
         The purpose of this test is to verify that it is possible to use
         several Main Disks together with one Replication Disk. This simulates
@@ -772,14 +772,14 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
           - That Email Notification sent out indicating to replace disk/Slot 2.
 
         Remarks:
-        ...        
+        ...
         """
         #####################################################################
         # Note: Test file is 1.07 MB, min. free space 4 MB (integer). This
         #       means that 3 files can be archived on a 8 MB volume
         #       (8 MB - (3 * 1.07) = 4.79 MB -> 4 MB.
         #                                                    End Result
-        #             First Disk         New Disk            (# files)      
+        #             First Disk         New Disk            (# files)
         #       |-1: [111     ]          [4444445         ]       7
         # Set 1-|
         #       |-2: [1114444445      ]                          10
@@ -797,7 +797,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # Phase 1: Archive data until disk/Slot 1 fills up.
         #####################################################################
         flushEmailQueue()
-        
+
         tmpCfgFile = prepCfg("src/ngamsCfg.xml",
                              [["ArchiveHandling[1].FreeSpaceDiskChangeMb","4"],
                               ["Notification[1].Active", "1"],
@@ -813,7 +813,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                                         "Synchronize":    "0",
                                         "_SIZE_MAIN_":    "8MB",
                                         "_SIZE_REP_":     "16MB"},
-                                       
+
                                        {"DiskLabel":      None,
                                         "MainDiskSlotId": "3",
                                         "RepDiskSlotId":  "4",
@@ -880,7 +880,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing Disk "+\
                               "Change Notification Email Msg")
         #####################################################################
-        
+
         #####################################################################
         # Phase 3: Bring server Offline + 'replace' disks in Slot 1/3 +
         #          continue to archive until disk/Slot 5 fills up.
@@ -894,7 +894,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                            "Synchronize":    "0",
                            "_SIZE_MAIN_":    "16MB",
                            "_SIZE_REP_":     None},
-                                       
+
                           {"DiskLabel":      None,
                            "MainDiskSlotId": "3",
                            "RepDiskSlotId":  None,
@@ -909,7 +909,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         for n in range(8): sendPclCmd().archive(fitsFile[0:-3])  # #4
         # Re-init the server to ensure the NgasDiskInfo file has been updated.
         sendPclCmd().init()
-        
+
         # Check: That disk/Slot 5 is marked as completed.
         # Check: That disk/Slot 6 is not marked as completed.
         for diFiles in [["/tmp/ngamsTest/NGAS/Data3-Main-5/NgasDiskInfo",
@@ -937,7 +937,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Re-init the server to ensure the NgasDiskInfo file has been updated.
         sendPclCmd().init()
-        
+
         # Check: That disk/Slot 1 is not marked as completed.
         # Check: That disk/Slot 2 is marked as completed.
         for diFiles in [["/tmp/ngamsTest/NGAS/Data1-Main-1/NgasDiskInfo",
@@ -962,7 +962,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Spurios files found in Staging Area/Offline.
-        
+
         Description:
         If Staging Files are found in a Staging Area something went wrong
         during handling of an Archive Rerquest. Such files should be moved
@@ -983,7 +983,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         self.prepExtSrv()
         stgPat = "/tmp/ngamsTest/NGAS/%s/staging/%s.fits"
-        diskList = ["FitsStorage1-Main-1", "FitsStorage2-Main-3", 
+        diskList = ["FitsStorage1-Main-1", "FitsStorage2-Main-3",
                     "FitsStorage3-Main-5", "PafStorage-Main-7",
                     "LogStorage-Main-9"]
         for diskName in diskList:
@@ -1001,13 +1001,13 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             badFile = badDirPat % diskName
             pollForFile(badFile, 1)
             pollForFile("%s.%s" % (badFile, NGAMS_PICKLE_FILE_EXT), 1)
-            
+
 
     def test_ArchiveRobustness_02_01(self):
         """
         Synopsis:
         Server dies before cleaning up the Staging Files.
-        
+
         Description:
         This Test Case is similar to test_ArchiveRobustness_01_01 but
         in this case it is a real test scenario.
@@ -1021,7 +1021,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         - Archive file, the server should kill itself.
         - Check that the Req. Props. File is in the Staging Area.
         - Start the server.
-        - Check that the Req. Props. File is moved to the Bad Files Area. 
+        - Check that the Req. Props. File is moved to the Bad Files Area.
 
         Remarks:
         ...
@@ -1044,7 +1044,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         Synopsis:
         No DAPI installed to handled request/Archive Push/wait=1.
-        
+
         Description:
         If the specified DAPI cannot be loaded during the Archive Request
         handling it is not possible to handle the Archive Request and
@@ -1121,7 +1121,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test Archiving Proxy Mode - 1 Master/no archiving, 4 NAUs.
-        
+
         Description:
         The purpose of this Test Case is to test that the Archving Proxy Mode
         works as expected.
@@ -1179,7 +1179,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test Archiving Proxy Mode - 1 Master/+archiving, 3 nodes.
-        
+
         Description:
         The purpose of this Test Case is to test that the Archving Proxy Mode
         works as expected.
@@ -1225,7 +1225,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                           [8001, None, None, getClusterName()],
                           [8002, None, None, getClusterName()],
                           [8003, None, None, getClusterName()]])
-        
+
         noOfNodes = len(naus.keys())
         nodeCount = 0
         for n in range(100):
@@ -1238,13 +1238,13 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         if (nodeCount != noOfNodes):
             self.fail("Not all specified Archiving Units were contacted " +\
                       "within 100 attempts")
-       
-        
+
+
     def test_ArchiveProxyMode_03(self):
         """
         Synopsis:
         Test Archiving Proxy Mode - 1 node no sto. sets, 1 node Offline.
-        
+
         Description:
         The is virtually the same as test_ArchiveProxyMode_01(). However,
         in this test, one NAU has no free Storage Sets and another is
@@ -1305,7 +1305,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Grouping of data volumes under the Volume Dir in the NGAS Root Dir.
-        
+
         Description:
         The purpose of the test is to verify that it is possible to work
         with the structure:
@@ -1357,7 +1357,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         refStatFile = "ref/ngamsArchiveCmdTest_test_VolumeDir_01_01_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
                           "message from NG/AMS Server")
-        
+
         # Check that the target files have been archived in their
         # appropriate locations.
         checkFile = ngasRootDir + "/volumes/Volume00%d/saf/" +\
@@ -1367,7 +1367,31 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                 self.fail("Did not find archived file as expected: %s" %\
                           (checkFile % n))
 
-                
+
+    def test_FileSizeZero(self):
+        """
+        Synopsis:
+            Reject files that are of length 0
+
+        Description:
+            As above
+        """
+
+        # Test ARCHIVE
+        self.prepExtSrv(8888)
+        open('src/zerofile.fits', 'a').close()
+        client = ngamsPClient.ngamsPClient(port = 8888)
+        status = client.archive('src/zerofile.fits', "application/octet-stream", cmd="ARCHIVE")
+        self.checkEqual(status.getStatus(), 'FAILURE', None)
+        self.checkEqual('content-length is 0' in status.getMessage(), True, None)
+
+        # Test QARCHIVE
+        client = ngamsPClient.ngamsPClient(port = 8888)
+        status = client.archive('src/zerofile.fits', "application/octet-stream", cmd="QARCHIVE")
+        self.checkEqual(status.getStatus(), 'FAILURE', None)
+        self.checkEqual('content-length is 0' in status.getMessage(), True, None)
+
+
 def run():
     """
     Run the complete test.
@@ -1382,6 +1406,6 @@ if __name__ == '__main__':
     Main program executing the test cases of the module test.
     """
     runTest(sys.argv)
-    
+
 
 # EOF

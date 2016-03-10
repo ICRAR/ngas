@@ -331,6 +331,12 @@ def handleCmd(srvObj,
     """
     T = TRACE()
 
+    if reqPropsObj.getSize() <= 0:
+        errMsg = genLog("NGAMS_ER_ARCHIVE_PULL_REQ",
+                        [reqPropsObj.getSafeFileUri(), 'content-length is 0'])
+        error(errMsg)
+        raise Exception, errMsg
+
     # Check if the URI is correctly set.
     info(3, "Check if the URI is correctly set.")
     if (reqPropsObj.getFileUri() == ""):

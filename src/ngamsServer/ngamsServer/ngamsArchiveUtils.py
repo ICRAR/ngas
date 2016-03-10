@@ -728,6 +728,9 @@ def dataHandler(srvObj,
     sysLogInfo(1, genLog("NGAMS_INFO_ARCHIVING_FILE",
                          [reqPropsObj.getFileUri()]))
 
+    if reqPropsObj.getSize() <= 0:
+        raise Exception('content-length is 0')
+
     baseName = os.path.basename(reqPropsObj.getFileUri())
     mimeType = reqPropsObj.getMimeType()
     archiveTimer = PccUtTime.Timer()
