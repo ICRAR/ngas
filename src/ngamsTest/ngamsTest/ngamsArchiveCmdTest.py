@@ -1378,18 +1378,19 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
 
         # Test ARCHIVE
-        self.prepExtSrv(8888)
+        self.prepExtSrv(8888, cfgFile = 'src/ngamsCfg.xml')
+
         open('src/zerofile.fits', 'a').close()
         client = ngamsPClient.ngamsPClient(port = 8888)
-        status = client.archive('src/zerofile.fits', "application/octet-stream", cmd="ARCHIVE")
+        status = client.archive('src/zerofile.fits', 'application/octet-stream', cmd = 'ARCHIVE')
         self.checkEqual(status.getStatus(), 'FAILURE', None)
-        self.checkEqual('content-length is 0' in status.getMessage(), True, None)
+        self.checkEqual('Content-Length is 0' in status.getMessage(), True, None)
 
         # Test QARCHIVE
         client = ngamsPClient.ngamsPClient(port = 8888)
-        status = client.archive('src/zerofile.fits', "application/octet-stream", cmd="QARCHIVE")
+        status = client.archive('src/zerofile.fits', 'application/octet-stream', cmd = 'QARCHIVE')
         self.checkEqual(status.getStatus(), 'FAILURE', None)
-        self.checkEqual('content-length is 0' in status.getMessage(), True, None)
+        self.checkEqual('Content-Length is 0' in status.getMessage(), True, None)
 
 
 def run():

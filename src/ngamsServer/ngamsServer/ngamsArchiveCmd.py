@@ -111,10 +111,10 @@ def archiveInitHandling(srvObj,
                                                 targNodeName, targPort, 1,
                                                 mimeType)
             # Request handled at remote host and reply sent to client.
-            return None  
+            return None
 
     return mimeType
- 
+
 
 def handleCmdArchive(srvObj,
                      reqPropsObj,
@@ -123,13 +123,13 @@ def handleCmdArchive(srvObj,
     Handle an ARCHIVE command.
 
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
@@ -144,8 +144,12 @@ def handleCmdArchive(srvObj,
         try:
             if (reqPropsObj.getFileUri() == ""):
                 raise Exception, "No File URI/Filename specified!"
-            reqPropsObj.setReadFd(ngamsHighLevelLib.\
-                                  openCheckUri(reqPropsObj.getFileUri()))
+
+            handle = ngamsHighLevelLib.openCheckUri(reqPropsObj.getFileUri())
+            # urllib.urlopen will attempt to get the content-length based on the URI
+            # i.e. file, ftp, http
+            reqPropsObj.setSize(handle.info()['Content-Length'])
+            reqPropsObj.setReadFd(handle)
             diskInfoObj = ngamsArchiveUtils.dataHandler(srvObj, reqPropsObj,
                                                         httpRef)
             srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
@@ -174,7 +178,7 @@ def handleCmdArchive(srvObj,
                   "data file with URI: " + reqPropsObj.getSafeFileUri()
             info(4, msg)
             srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
-            
+
             # If it was specified not to reply immediately (= to wait),
             # we send back a reply now.
             if (reqPropsObj.getWait()):

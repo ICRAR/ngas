@@ -167,150 +167,61 @@ def saveFromHttpToFile(ngamsCfgObj,
     """
     T = TRACE()
 
-    checkCreatePath(os.path.dirname(trgFilename))
-    fdOut = open(trgFilename, "w")
-    info(2,"Saving data in file: " + trgFilename + " ...")
-    timer = PccUtTime.Timer()
+    info(2, "Saving data in file: {0}".format(trgFilename))
+
     try:
         # Make mutual exclusion on disk access (if requested).
-        if (mutexDiskAccess):
+        if mutexDiskAccess:
             ngamsHighLevelLib.acquireDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
 
-        # Distinguish between Archive Pull and Push Request. By Archive
-        # Pull we may simply read the file descriptor until it returns "".
-        sizeKnown = 0
-        if (ngamsLib.isArchivePull(reqPropsObj.getFileUri()) and
-            not reqPropsObj.getFileUri().startswith('http://')):
-            # (reqPropsObj.getSize() == -1)):
-            # Just specify something huge.
-            info(3,"It is an Archive Pull Request/data with unknown size")
-            remSize = int(1e11)
-        elif reqPropsObj.getFileUri().startswith('http://'):
-            info(3,"It is an HTTP Archive Pull Request: trying to get Content-Length")
-            httpInfo = reqPropsObj.getReadFd().info()
-            headers = httpInfo.headers
-            hdrsDict = ngamsLib.httpMsgObj2Dic(''.join(headers))
-            if hdrsDict.has_key('content-length'):
-                remSize = int(hdrsDict['content-length'])
-            else:
-                info(3,"No HTTP header parameter Content-Length!")
-                info(3,"Header keys: %s" % hdrsDict.keys())
-                remSize = int(1e11)
-        else:
-            remSize = reqPropsObj.getSize()
-            info(3,"Archive Push/Pull Request - Data size: %d" % remSize)
-            sizeKnown = 1
+        crctime = 0
+        wtime = 0
+        crc = 0
+        readin = 0
+        size = reqPropsObj.getSize()
+        fin = reqPropsObj.getReadFd()
+        checkCreatePath(os.path.dirname(trgFilename))
 
-        # Receive the data.
-        buf = "-"
-        rdSize = blockSize
-        slow = blockSize / (512 * 1024.)  # limit for 'slow' transfers
-#        sizeAccu = 0
-        lastRecepTime = time.time()
-        crc = 0   # initialize CRC value
-        rdtt = 0  # total read time
-        cdtt = 0  # total CRC time
-        wdtt = 0  # total write time
-        nb = 0    # number of blocks
-        srb = 0   # number of slow read blocks
-        scb = 0   # number of slow CRC calcs
-        swb = 0   # number of slow write blocks
-        tot_size = 0 # total number of bytes
-
-        readFd = reqPropsObj.getReadFd()
-        rcvBuffSize = ngamsCfgObj.getArchiveRcvBufSize()
-        if (rcvBuffSize and str(type(readFd)) == "<class 'socket._fileobject'>" and readFd._sock):
-            dfRcvBuffSize = readFd._sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
-            while (rcvBuffSize > dfRcvBuffSize):
-                try:
-                    readFd._sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, rcvBuffSize)
-                    info(3, "Rcv buf size reset to %d" % rcvBuffSize)
+        start = time.time()
+        with open(trgFilename, 'wb') as fout:
+            while readin < size:
+                buff = fin.read(size - readin)
+                if not buff:
                     break
-                except Exception, exp:
-                    if (str(exp) == '[Errno 55] No buffer space available'):
-                        rcvBuffSize = int(rcvBuffSize / 2)
-                        continue
-                    else:
-                        warning('Fail to set the socket SO_RCVBUF to %s: %s' % (str(rcvBuffSize), str(exp)))
+                readin += len(buff)
 
-        while ((remSize > 0) and ((time.time() - lastRecepTime) < 30.0)):
-            if (remSize < rdSize): rdSize = remSize
-            rdt = time.time()
-            buf = readFd.read(rdSize)
-            rdt = time.time() - rdt
-            rdtt += rdt
-            if rdt >= slow: rdt += 1
-            nb += 1
-            sizeRead = len(buf)
-#            info(5,"Read %d bytes from HTTP stream in %.3f s" % (sizeRead, rdt))
-            if (sizeRead > 0):
-                cdt = time.time()
-                crc = binascii.crc32(buf, crc)
-                cdt = time.time() - cdt
-                cdtt += cdt
-                if cdt >= slow: scb += 1
-#                info(5,"Calculated checksum from stream buffer in %.3f s" % cdt)
+                wstart = time.time()
+                fout.write(buff)
+                wtime += time.time() - wstart
 
-            remSize -= sizeRead
-            tot_size += sizeRead
-#            reqPropsObj.setBytesReceived(reqPropsObj.getBytesReceived() +\
-#                                         sizeRead)
-            if (sizeRead > 0):
-                wdt = time.time()
-                fdOut.write(buf)
-                wdt = time.time() - wdt
-                wdtt += wdt
-                if wdt >= slow: swb += 1
-#                info(5,"Wrote %d bytes to file in %.3f s" % (sizeRead, wdt))
-                lastRecepTime = time.time()
-            else:
-                info(4,"Unsuccessful read attempt from HTTP stream! Sleeping 50 ms")
-                time.sleep(0.050)
+                crcstart = time.time()
+                crc = binascii.crc32(buff, crc)
+                crctime += time.time() - crcstart
+        deltaT = time.time() - start
 
-        deltaTime = timer.stop()
-        reqPropsObj.setBytesReceived(tot_size)
-        fdOut.close()
-        info(4,"Transfer time: %.3f s; CRC time: %.3f s; write time %.3f s" % (rdtt, cdtt, wdtt))
-        msg = "Saved data in file: %s. Bytes received: %d. Time: %.3f s. " +\
-              "Rate: %.2f Bytes/s"
-        ingestRate = (float(reqPropsObj.getBytesReceived()) / deltaTime)
-        info(2,msg % (trgFilename, int(reqPropsObj.getBytesReceived()),
-                      deltaTime, ingestRate))
-        # Raise a special info message if the transfer speed to disk or over network was
-        # slower than 512 kB/s
-        if srb > 0:
-            warning("Number of slow network reads during this transfer: %d. \
-            Consider checking the network!" % srb)
-        if swb > 0:
-            warning("Number of slow disk writes during this transfer: %d. \
-            Consider checking your disks!" % swb)
-        # Raise exception if less byes were received as expected.
-        if (sizeKnown and (remSize > 0)):
-            msg = genLog("NGAMS_ER_ARCH_RECV",
-                         [reqPropsObj.getFileUri(), reqPropsObj.getSize(),
-                          (reqPropsObj.getSize() - remSize)])
+        reqPropsObj.setBytesReceived(size)
+        ingestRate = size / deltaT
+
+        if readin != size:
+            msg = genLog('NGAMS_ER_ARCH_RECV', [reqPropsObj.getFileUri(), size, readin])
             raise Exception, msg
 
         checksum = reqPropsObj.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM)
-        if (checksum):
-            if (checksum != str(crc)):
+        if checksum:
+            if checksum != str(crc):
                 msg = 'Checksum error for file %s, local crc = %s, but remote crc = %s' % (reqPropsObj.getFileUri(), str(crc), checksum)
                 error(msg)
                 raise Exception, msg
             else:
                 info(3, "%s CRC checked, OK!" % reqPropsObj.getFileUri())
 
-        # Release disk resouce.
-        if (mutexDiskAccess):
-            ngamsHighLevelLib.releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
+        info(4, 'Transfer time: %.4f s; CRC time: %.4f s; write time %.4f s' % (deltaT, crctime, wtime))
+        info(2, 'Saved data in file: %s. Bytes received: %d. Time: %.4f s. Rate: %.2f Bytes/s' % (trgFilename, size, deltaT, ingestRate))
 
-        return [deltaTime,crc,ingestRate]
-    except Exception, e:
-        fdOut.close()
-        # Release disk resouce.
-        if (mutexDiskAccess):
+        return [deltaT, crc, ingestRate]
+    finally:
+        if mutexDiskAccess:
             ngamsHighLevelLib.releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
-        raise Exception, e
 
 
 def handleCmd(srvObj,
@@ -330,12 +241,6 @@ def handleCmd(srvObj,
     Returns:        (fileId, filePath) tuple.
     """
     T = TRACE()
-
-    if reqPropsObj.getSize() <= 0:
-        errMsg = genLog("NGAMS_ER_ARCHIVE_PULL_REQ",
-                        [reqPropsObj.getSafeFileUri(), 'content-length is 0'])
-        error(errMsg)
-        raise Exception, errMsg
 
     # Check if the URI is correctly set.
     info(3, "Check if the URI is correctly set.")
@@ -365,11 +270,19 @@ def handleCmd(srvObj,
 
 
     ## Set reference in request handle object to the read socket.
-    info(3, "Set reference in request handle object to the read socket.")
-    if reqPropsObj.getFileUri().startswith('http://'):
-        fileUri = reqPropsObj.getFileUri()
-        readFd = ngamsHighLevelLib.openCheckUri(fileUri)
-        reqPropsObj.setReadFd(readFd)
+    info(3, "Set reference in request handle object to the read handle.")
+    if reqPropsObj.getFileUri().startswith('file:'):
+        handle = ngamsHighLevelLib.openCheckUri(reqPropsObj.getFileUri())
+        # urllib.urlopen will attempt to get the content-length based on the URI
+        # i.e. file, ftp
+        reqPropsObj.setSize(handle.info()['Content-Length'])
+        reqPropsObj.setReadFd(handle)
+
+    if reqPropsObj.getSize() <= 0:
+        errMsg = genLog("NGAMS_ER_ARCHIVE_PULL_REQ",
+                        [reqPropsObj.getSafeFileUri(), 'Content-Length is 0'])
+        error(errMsg)
+        raise Exception, errMsg
 
     # Determine the target volume, ignoring the stream concept.
     info(3, "Determine the target volume, ignoring the stream concept.")

@@ -729,7 +729,7 @@ def dataHandler(srvObj,
                          [reqPropsObj.getFileUri()]))
 
     if reqPropsObj.getSize() <= 0:
-        raise Exception('content-length is 0')
+        raise Exception('Content-Length is 0')
 
     baseName = os.path.basename(reqPropsObj.getFileUri())
     mimeType = reqPropsObj.getMimeType()
