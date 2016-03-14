@@ -31,49 +31,66 @@
 This module contains the Test Suite for the NG/AMS Server.
 """
 
+import errno
+import httplib
+import os
+import socket
 import sys
+import time
 
-from ngamsLib.ngamsCore import info
+from ngamsLib import ngamsStatus
+from ngamsLib.ngamsCore import NGAMS_SUCCESS
 from ngamsTestLib import ngamsTestSuite, runTest
+from ngamsTestLib import sendPclCmd
 
 
 class ngamsServerTest(ngamsTestSuite):
-    """
-    Synopsis:
-    Test Suite of NG/AMS Server.
 
-    Description:
-    The purpose of this Test Suite is to exercise specific features of the
-    NG/AMS Server not exercised while testing other features (commands etc).
-
-    Missing Test Cases:
-    - Analyze if this Test Suite is relevant.
-    - Test HTTP authorization
-    - Test loading of NG/AMS Configuration from DB (different combinations
-      of parameters).
-    - Test of handling of Request DB/Info.
-    """
-
-    def test_1(self):
+    def test_slow_receiving_client(self):
         """
-        Synopsis:
-        ...
-        
-        Description:
-        ...
-
-        Expected Result:
-        ...
-
-        Test Steps:
-        - ...
-
-        Remarks:
-        ...
-        
+        This test checks that the NGAS server doesn't hang forever on a slow
+        client, since it would block the server for ever
         """
-        info(1,"TODO: Implement ngamsServerTest()!!!!")
 
+        timeout = 3
+        amount_of_data = 10*1024*1024 # 10 MBs
+        spaces = " " * amount_of_data
+        self.prepExtSrv(portNo=8888, cfgProps=[["NgamsCfg.Server[1].TimeOut",str(timeout)]])
+        client = sendPclCmd(port=8888)
+        _, _, _, data = client._httpPost(host='localhost',
+                         port=8888,
+                         cmd="ARCHIVE",
+                         mimeType='application/octet-stream',
+                         dataRef = spaces,
+                         dataSource = "BUFFER",
+                         pars = [["attachment; filename", "some-file.data"]])
+
+        status = ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
+        self.assertEquals(NGAMS_SUCCESS, status.getStatus())
+
+        # Normal retrieval works fine
+        self.assertEquals(NGAMS_SUCCESS, client.retrieve2File(fileId='some-file.data').getStatus())
+        os.unlink('some-file.data')
+
+        # Now retrieve the data, but sloooooooooooowly and check that the server
+        # times out and closes the connection, which in turn makes our receiving
+        # end finish earlier than expected (i.e., receiving less data than we
+        # ask for).
+        # We have to make sure that the receiving buffer is tiny so the server
+        # really can't write any more data into the socket. We don't need to
+        # specify a timeout because the recv will return immediately if the
+        # server has closed the connection.
+        s = socket.socket()
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 256)
+        s.connect(('localhost', 8888))
+        s.send('GET /RETRIEVE?file_id=some-file.data HTTP/1.0\r\n')
+        s.send('\r\n')
+        time.sleep(timeout + 2) # More than enough to provoke a server timeout
+
+        data = s.recv(amount_of_data, socket.MSG_WAITALL)
+        self.assertLess(len(data), amount_of_data, "Should have read less data")
+        self.assertEquals('', s.recv(amount_of_data - len(data)))
+        s.close()
 
 def run():
     """
