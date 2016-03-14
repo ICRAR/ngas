@@ -95,9 +95,8 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
     allow_reuse_address = 1
 
     def __init__(self, ngamsServer, server_address):
-        ngamsHttpRequestHandler.reqCallBack = ngamsServer.reqCallBack
-        BaseHTTPServer.HTTPServer.__init__(self, server_address, ngamsHttpRequestHandler)
         self._ngamsServer = ngamsServer
+        BaseHTTPServer.HTTPServer.__init__(self, server_address, ngamsHttpRequestHandler)
 
     def process_request(self,
                         request,
@@ -134,25 +133,6 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
         t.start()
 
 
-    def handle_request(self):
-        """
-        Handle a request.
-        """
-        T = TRACE(5)
-
-        try:
-            request, client_address = self.get_request()
-        except socket.error:
-            info(5,"handle_request() - socket.error")
-            return
-        if self.verify_request(request, client_address):
-            try:
-                self.process_request(request, client_address)
-            except:
-                self.handle_error(request, client_address)
-                self.close_request(request)
-
-
 class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """
     Class used to handle an HTTP request.
@@ -179,23 +159,11 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         Returns:    Void.
         """
         try:
-            self.rfile.close()
-        except:
-            pass
-        try:
-            self.wfile.flush()
-            self.wfile.close()
-        except:
-            pass
-        try:
+            BaseHTTPServer.BaseHTTPRequestHandler.finish(self)
+        finally:
             logFlush()
-        except:
-            pass
 
-
-    def log_request(self,
-                    code = '-',
-                    size = '-'):
+    def log_message(self, fmt, *args):
         """
         The default log_request is not safe (it blocks) under heavy load.
         I suggest using a Queue and another thread to read from the queue
@@ -243,7 +211,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         """
         path = trim(self.path, "?/ ")
         try:
-            self.reqCallBack(self, self.client_address, self.command, path,
+            self.ngasServer.reqCallBack(self, self.client_address, self.command, path,
                          self.request_version, self.headers,
                          self.wfile, self.rfile)
         except Exception, e:
@@ -1452,7 +1420,9 @@ class ngamsServer:
                 self.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                            NGAMS_SUCCESS, msg)
 
-        except Exception as e:
+            reqPropsObj.getWriteFd().flush()
+
+        except Exception, e:
 
             # Quickly respond with a 400 status code for unexpected exceptions
             # (although it should be a 5xx code)
@@ -1480,10 +1450,6 @@ class ngamsServer:
             reqPropsObj.setCompletionTime(1)
             self.updateRequestDb(reqPropsObj)
             self.setLastReqEndTime()
-
-            reqPropsObj.getReadFd().close()
-            reqPropsObj.getWriteFd().flush()
-            reqPropsObj.getWriteFd().close()
 
     def handleHttpRequest(self,
                           reqPropsObj,
