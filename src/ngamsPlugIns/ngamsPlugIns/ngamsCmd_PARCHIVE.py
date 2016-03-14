@@ -69,7 +69,6 @@ def processHttpReply(http, basename, url):
     else:
         dataSize = 0
     
-    ngamsLib._waitForResp(http.getfile(), None)
     data = http.getfile().read(dataSize)
     
     stat = ngamsStatus.ngamsStatus()

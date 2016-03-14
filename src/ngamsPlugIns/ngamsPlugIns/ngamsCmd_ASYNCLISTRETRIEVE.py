@@ -407,14 +407,12 @@ def _httpPostUrl(url,
     else:
         dataSize = 0
     if (dataTargFile == ""):
-        ngamsLib._waitForResp(http.getfile(), timeOut)
         data = http.getfile().read(dataSize)
     else:
         fd = None
         try:
             data = dataTargFile
             fd = open(dataTargFile, "w")
-            ngamsLib._waitForResp(http.getfile(), timeOut)
             fd.write(http.getfile().read(dataSize))
             fd.close()
         except Exception, e:

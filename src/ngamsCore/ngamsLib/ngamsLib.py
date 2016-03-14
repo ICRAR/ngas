@@ -339,29 +339,6 @@ def httpTimeStamp():
            tsList[4] + " " + tsList[3] + " GMT"
 
 
-def _waitForResp(fd,
-                 timeOut):
-    """
-    Wait for input to ready on the given file descriptor, which is either
-    a file descriptor (integer) or a File Object providing a fileno()
-    method. If the timeout specified is exhausted, an exception is
-    thrown.
-
-    fo:           File descriptor or File Object (integer/File Object).
-
-    timeOut:      Timeout in seconds (double).
-
-    Returns:      Void.
-    """
-    return
-    if (fd and (timeOut > 0)):
-        rdFds, wrFds, exFds = select.select([fd], [], [], timeOut)
-        if (rdFds == []):
-            errMsg = "Timeout encountered while wating for response from " +\
-                     "server. Timeout: " + str(timeOut) + "s."
-            raise Exception, errMsg
-
-
 def _httpHandleResp(fileObj,
                     dataTargFile,
                     blockSize,
