@@ -420,8 +420,8 @@ def _httpPostUrl(url,
     http.endheaders()
     info(4,"HTTP header sent")
 
-    ngamsLib._setSocketTimeout(timeOut, http)
-    
+    http._conn.sock.settimeout(timeOut)
+
     # Send the data.
     info(4,"Sending data ...")
     if (dataSource == "FILE"):

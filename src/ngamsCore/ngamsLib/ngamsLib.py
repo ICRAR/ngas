@@ -40,7 +40,7 @@ import urllib, urllib2, re, select, cPickle
 import pkg_resources
 
 from ngamsCore import genLog, info, TRACE, trim, getHostName, warning, \
-    NGAMS_HTTP_SUCCESS, getMaxLogLevel, NGAMS_CONT_MT, NGAMS_SOCK_TIMEOUT_DEF, \
+    NGAMS_HTTP_SUCCESS, getMaxLogLevel, NGAMS_CONT_MT, \
     NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM, \
     getFileSize, NGAMS_ARCH_REQ_MT, getUniqueNo, \
     NGAMS_MAX_FILENAME_LEN, error, NGAMS_UNKNOWN_MT, rmFile
@@ -455,37 +455,6 @@ def _httpHandleResp(fileObj,
         info(4,"HTTP Header: " + hdr + ": " + hdrs[hdr])
 
     return code, msg, hdrs, data
-
-
-def _setSocketTimeout(timeOut,
-                      httpObj = None):
-    """
-    Set socket timeout.
-
-    WARNING: This is set globally!!
-
-    timeOut:   Timeout in seconds (float).
-
-    httpObj:   HTTP object (http).
-
-    Returns:   Void.
-    """
-    # TODO: This is not a proper solution! Should be possible to set
-    #       time-out per socket connection.
-    try:
-        # We don't accept a infinite timeout (=None/-1).
-        if ((timeOut == None) or (str(timeOut).strip() == "-1")):
-            locTimeout = NGAMS_SOCK_TIMEOUT_DEF
-        else:
-            locTimeout = int(float(timeOut) + 0.5)
-        if (httpObj):
-            info(4,"Setting socket timeout to: %ss" % str(timeOut))
-            httpObj._conn.sock.settimeout(locTimeout)
-        else:
-            info(3,"Setting default socket timeout to: %ss" % str(timeOut))
-            socket.setdefaulttimeout(locTimeout)
-    except Exception, e:
-        pass
 
 
 def httpPostUrl(url,
@@ -953,9 +922,6 @@ def httpGet(host,
     T = TRACE()
 
     if (not blockSize): blockSize = 65536
-#   Don't set timeout globally here. It is done in httpGetUrl for the connection
-#   and by default for the whole server in the ngamsServer.handleStartup
-#    _setSocketTimeout(timeOut)
 
     # Prepare URL + parameters.
     url = "http://" + host + ":" + str(port) + "/" + cmd
