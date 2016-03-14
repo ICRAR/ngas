@@ -49,7 +49,7 @@ from pccUt import PccUtTime, PccUtUtils
 
 
 
-NGAMS_TEST_MAX_TS_TIME = 2000
+NGAMS_TEST_MAX_TS_TIME = 900 # 15 [min]
 
 
 def getTestList():
