@@ -57,6 +57,7 @@
                  MaxSimReqs             CDATA          #REQUIRED
                  RootDirectory          CDATA          #REQUIRED
                  IpAddress              CDATA          #IMPLIED
+                 TimeOut                CDATA          #IMPLIED
                  VolumeDirectory        CDATA          #IMPLIED
                  ProxyMode              (0|1)          #IMPLIED>
 

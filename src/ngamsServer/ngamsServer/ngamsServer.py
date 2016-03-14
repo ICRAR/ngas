@@ -34,7 +34,7 @@ services for the NG/AMS Server.
 """
 
 import os, sys, re, threading, time, commands, pkg_resources
-import thread, traceback
+import traceback
 import SocketServer, BaseHTTPServer, socket, signal
 
 from pccUt import PccUtTime
@@ -47,7 +47,7 @@ from ngamsLib.ngamsCore import \
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, NGAMS_HTTP_GET,\
     NGAMS_HTTP_BAD_REQ, NGAMS_HTTP_SERVICE_NA, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, NGAMS_DEF_LOG_PREFIX, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR, NGAMS_TEXT_MT,\
-    NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_SOCK_TIMEOUT_DEF, NGAMS_XML_STATUS_ROOT_EL,\
+    NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_XML_STATUS_ROOT_EL,\
     NGAMS_XML_STATUS_DTD, NGAMS_XML_MT
 from ngamsLib import ngamsHighLevelLib, ngamsLib
 from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
@@ -157,6 +157,21 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """
     Class used to handle an HTTP request.
     """
+
+    def setup(self):
+        BaseHTTPServer.BaseHTTPRequestHandler.setup(self)
+
+        self.ngasServer = self.server._ngamsServer
+
+        # Set the request timeout to the value given in the server configuration
+        # or default to 1 minute (apache defaults to 1 minute so I assume it's
+        # a sensible value)
+        cfg = self.ngasServer.getCfg()
+        timeout = cfg.getTimeOut()
+        if timeout is None:
+            timeout = 60
+        self.connection.settimeout(timeout)
+
     def finish(self):
         """
         Finish the handling of the HTTP request.
@@ -234,7 +249,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         except Exception, e:
             error(str(e))
             sysLogInfo(1,str(e))
-            thread.exit()
+            raise
 
 
 class ngamsServer:
@@ -1449,8 +1464,16 @@ class ngamsServer:
             errMsg = str(e)
             error(errMsg)
             self.setSubState(NGAMS_IDLE_SUBSTATE)
+
+            # If we fail because of a timeout we give up sending any response
+            if isinstance(e, socket.timeout):
+                raise
+
+            # Send a response if one hasn't been send yet. Use a shorter timeout
+            # if possible to avoid hanging out in here
             if not reqPropsObj.getSentReply():
-                httpRef.wfile._sock.settimeout(20)
+                timeout = min((httpRef.wfile._sock.gettimeout(), 20))
+                httpRef.wfile._sock.settimeout(timeout)
                 self.reply(reqPropsObj, httpRef, NGAMS_HTTP_BAD_REQ,
                            NGAMS_FAILURE, errMsg)
         finally:
@@ -2294,9 +2317,6 @@ class ngamsServer:
                             self.getCfg().getAllowProcessingReq(),
                             self.getCfg().getAllowRemoveReq(),
                             0, None)
-
-        # set the default socket timeout for all new sockets created
-        ngamsLib._setSocketTimeout(NGAMS_SOCK_TIMEOUT_DEF)
 
         # Start HTTP server.
         info(1,"Initializing HTTP server ...")
