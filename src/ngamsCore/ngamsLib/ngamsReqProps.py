@@ -218,10 +218,6 @@ class ngamsReqProps:
             else:
                 self.setMimeType(mimeType)
 
-        # Convert a timeout of -1 to None or if set from string to float.
-        if (not self.hasHttpPar("time_out")):
-            self.addHttpPar("time_out", "-1")
-
         # In the case of an Archive Request, check that the mime-type is
         # known to this NGAS installation.
         if (self.getCmd() == NGAMS_ARCHIVE_CMD):
