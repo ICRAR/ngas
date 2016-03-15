@@ -1384,7 +1384,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # Test ARCHIVE
         self.prepExtSrv(8888, cfgFile = 'src/ngamsCfg.xml')
 
-        open('src/zerofile.fits', 'a').close()
+        open('tmp/zerofile.fits', 'a').close()
         client = ngamsPClient.ngamsPClient(port = 8888)
         status = client.archive('src/zerofile.fits', 'application/octet-stream', cmd = 'ARCHIVE')
         self.checkEqual(status.getStatus(), 'FAILURE', None)
@@ -1392,7 +1392,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Test QARCHIVE
         client = ngamsPClient.ngamsPClient(port = 8888)
-        status = client.archive('src/zerofile.fits', 'application/octet-stream', cmd = 'QARCHIVE')
+        status = client.archive('tmp/zerofile.fits', 'application/octet-stream', cmd = 'QARCHIVE')
         self.checkEqual(status.getStatus(), 'FAILURE', None)
         self.checkEqual('Content-Length is 0' in status.getMessage(), True, None)
 
@@ -1431,7 +1431,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             self.checkEqual(resp.status, 400, None)
             self.checkEqual('NGAMS_ER_UNKNOWN_MIME_TYPE' in resp.read(), True, None)
 
-        test_file = 'src/zerofile.fits'
+        test_file = 'tmp/zerofile.fits'
         open(test_file, 'a').close()
         params = {'filename': test_file,
                   'mime_type': 'application/octet-stream'}
