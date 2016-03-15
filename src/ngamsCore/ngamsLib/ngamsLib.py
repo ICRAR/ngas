@@ -35,7 +35,7 @@ The functions in this module can be used in all the NG/AMS code.
 """
 
 import os, string, httplib, time, getpass, socket, urlparse
-import urllib, urllib2, re, select, cPickle
+import urllib, urllib2, re, cPickle
 
 import pkg_resources
 
@@ -832,7 +832,8 @@ def httpGetUrl(url,
                  ". Error: " + re.sub("<|>", "", str(e))
         raise Exception, errMsg
     finally:
-        if fileObj:
+        # If we are returning the fileObj then we cannot return it closed
+        if fileObj and not returnFileObj:
             fileObj.close()
 
 

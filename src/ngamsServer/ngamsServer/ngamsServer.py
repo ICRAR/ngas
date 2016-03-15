@@ -1837,7 +1837,7 @@ class ngamsServer:
                 tmpReqObj = ngamsReqProps.ngamsReqProps().\
                             unpackHttpInfo(self.getCfg(),
                                            reqPropsObj.getHttpMethod(), "",
-                                           httpHdrs.dict)
+                                           httpHdrs)
                 mimeType = tmpReqObj.getMimeType()
                 if (tmpReqObj.getFileUri()):
                     attachmentName = os.path.basename(tmpReqObj.getFileUri())
