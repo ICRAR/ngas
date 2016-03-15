@@ -50,6 +50,7 @@ import os
 import random
 import socket
 import time
+from urlparse import urlparse, parse_qs
 
 from ngamsLib.ngamsCore import TRACE, getHostId, genLog, error, checkCreatePath, \
     info, warning, NGAMS_HTTP_HDR_CHECKSUM, NGAMS_ONLINE_STATE, \
@@ -199,7 +200,7 @@ def saveFromHttpToFile(ngamsCfgObj,
                 crctime += time.time() - crcstart
         deltaT = time.time() - start
 
-        reqPropsObj.setBytesReceived(size)
+        reqPropsObj.setBytesReceived(readin)
         ingestRate = size / deltaT
 
         if readin != size:
@@ -242,39 +243,56 @@ def handleCmd(srvObj,
     """
     T = TRACE()
 
-    # Check if the URI is correctly set.
     info(3, "Check if the URI is correctly set.")
-    if (reqPropsObj.getFileUri() == ""):
+    if not reqPropsObj.getFileUri():
         errMsg = genLog("NGAMS_ER_MISSING_URI")
         error(errMsg)
         raise Exception, errMsg
 
-    # Is this NG/AMS permitted to handle Archive Requests?
     info(3, "Is this NG/AMS permitted to handle Archive Requests?")
-    if (not srvObj.getCfg().getAllowArchiveReq()):
+    if not srvObj.getCfg().getAllowArchiveReq():
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Archive"])
         raise Exception, errMsg
+
     srvObj.checkSetState("Archive Request", [NGAMS_ONLINE_STATE],
                          [NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE],
                          NGAMS_ONLINE_STATE, NGAMS_BUSY_SUBSTATE,
                          updateDb=False)
 
-    # Get mime-type (try to guess if not provided as an HTTP parameter).
     info(3, "Get mime-type (try to guess if not provided as an HTTP parameter).")
-    if (reqPropsObj.getMimeType() == ""):
-        mimeType = ngamsHighLevelLib.\
-                   determineMimeType(srvObj.getCfg(), reqPropsObj.getFileUri())
+    mimeType = reqPropsObj.getMimeType()
+    if not mimeType:
+        mimeType = ngamsHighLevelLib.determineMimeType(srvObj.getCfg(),
+                                                        reqPropsObj.getFileUri())
         reqPropsObj.setMimeType(mimeType)
-    else:
-        mimeType = reqPropsObj.getMimeType()
 
+    uri = reqPropsObj.getFileUri()
+    info(3, "Checking File URI scheme for %s" % uri)
+    file_version_uri = None
+    uri_res = urlparse(uri)
+    base_name = uri_res.path
+    if uri_res.scheme:
+        if uri_res.query:
+            params = parse_qs(uri_res.query)
+            try:
+                file_id = params['file_id'][0]
+                base_name = os.path.basename(file_id)
+            except KeyError:
+                pass
+            try:
+                file_version_uri = params['file_version'][0]
+                try:
+                    file_version_uri = int(file_version_uri)
+                except ValueError:
+                    raise Exception('file_version is not an integer')
+            except KeyError:
+                pass
 
-    ## Set reference in request handle object to the read socket.
-    info(3, "Set reference in request handle object to the read handle.")
-    if reqPropsObj.getFileUri().startswith('file:'):
-        handle = ngamsHighLevelLib.openCheckUri(reqPropsObj.getFileUri())
-        # urllib.urlopen will attempt to get the content-length based on the URI
-        # i.e. file, ftp
+        uri_open = uri
+        if 'file' in uri_res.scheme:
+            uri_open = uri_res.path
+
+        handle = ngamsHighLevelLib.openCheckUri(uri_open)
         reqPropsObj.setSize(handle.info()['Content-Length'])
         reqPropsObj.setReadFd(handle)
 
@@ -284,25 +302,19 @@ def handleCmd(srvObj,
         error(errMsg)
         raise Exception, errMsg
 
-    # Determine the target volume, ignoring the stream concept.
     info(3, "Determine the target volume, ignoring the stream concept.")
     targDiskInfo = getTargetVolume(srvObj)
-    if (targDiskInfo == None):
+    if targDiskInfo is None:
         errMsg = "No disk volumes are available for ingesting any files."
         error(errMsg)
         raise Exception, errMsg
+
     reqPropsObj.setTargDiskInfo(targDiskInfo)
 
-    # Generate staging filename.
-    info(3, "Generate staging filename from URI: %s" % reqPropsObj.getFileUri())
-    if (reqPropsObj.getFileUri().find("file_id=") >= 0):
-        file_id = reqPropsObj.getFileUri().split("file_id=")[1]
-        baseName = os.path.basename(file_id)
-    else:
-        baseName = os.path.basename(reqPropsObj.getFileUri())
-    stgFilename = os.path.join("/", targDiskInfo.getMountPoint(),
+    stgFilename = os.path.join('/', targDiskInfo.getMountPoint(),
                                NGAMS_STAGING_DIR,
-                               genUniqueId() + "___" + baseName)
+                               '{0}{1}{2}'.format(genUniqueId(), '___', base_name))
+
     if stgFilename.count('.') == 0:  #make sure there is at least one extension
         stgFilename = ngamsHighLevelLib.checkAddExt(srvObj.getCfg(), reqPropsObj.getMimeType(), stgFilename)
 
@@ -325,11 +337,13 @@ def handleCmd(srvObj,
     except Exception, e:
         errMsg = "Error loading DAPI: %s. Error: %s" % (plugIn, str(e))
         raise Exception, errMsg
-    info(2, "Invoking DAPI: " + plugIn +\
-         " to handle data for file with URI: " + baseName)
+
+    info(2, "Invoking DAPI: %s to handle data for file with URI: %s" % (plugIn, base_name))
+
     timeBeforeDapi = time.time()
     resDapi = plugInMethod(srvObj, reqPropsObj)
-    if (getMaxLogLevel() > 4):
+
+    if getMaxLogLevel() > 4:
         info(3, "Invoked DAPI: %s. Time: %.3fs." %\
              (plugIn, (time.time() - timeBeforeDapi)))
         info(3, "Result DAPI: %s" % str(resDapi.toString()))
@@ -345,16 +359,15 @@ def handleCmd(srvObj,
     crc = stagingInfo[1]
     checksumPlugIn = "ngamsGenCrc32" # this is put into the DB for the DataCheck to pick the right plugin
     checksum = str(crc)
-    info(3, "Invoked Checksum Plug-In: " + checksumPlugIn +\
-            " to handle file: " + resDapi.getCompleteFilename() +\
-            ". Result: " + checksum)
+    info(3, "Invoked Checksum Plug-In: %s to handle file: %s. Result: %s" %\
+            (checksumPlugIn, resDapi.getCompleteFilename(), checksum))
 
     # Get source file version
     # e.g.: http://ngas03.hq.eso.org:7778/RETRIEVE?file_version=1&file_id=X90/X962a4/X1
     info(3, "Get file version")
     file_version = resDapi.getFileVersion()
-    if reqPropsObj.getFileUri().count("file_version"):
-        file_version = int((reqPropsObj.getFileUri().split("file_version=")[1]).split("&")[0])
+    if file_version_uri:
+        file_version = file_version_uri
 
     # If there was a previous version of this file, and it had a container associated with it
     # associte the new version with the container too
@@ -418,9 +431,10 @@ def handleCmd(srvObj,
 
     # Request after-math ...
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
-    msg = "Successfully handled Archive Pull Request for data file " +\
-          "with URI: " + reqPropsObj.getSafeFileUri()
+    msg = "Successfully handled Archive Pull Request for data file with URI: %s" %\
+            reqPropsObj.getSafeFileUri()
     info(1, msg)
+
     srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                        NGAMS_SUCCESS, msg, targDiskInfo)
 
@@ -431,7 +445,6 @@ def handleCmd(srvObj,
     srvObj.addSubscriptionInfo([(resDapi.getFileId(),
                                  resDapi.getFileVersion())], [])
     srvObj.triggerSubscriptionThread()
-
 
     return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()), ingestionRate)
 

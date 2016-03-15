@@ -39,7 +39,11 @@ import glob
 import os
 import shutil
 import sys
+import urllib
+import httplib
+import base64
 from unittest.case import skip
+from contextlib import closing
 
 from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile
 from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo
@@ -1391,6 +1395,84 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         status = client.archive('src/zerofile.fits', 'application/octet-stream', cmd = 'QARCHIVE')
         self.checkEqual(status.getStatus(), 'FAILURE', None)
         self.checkEqual('Content-Length is 0' in status.getMessage(), True, None)
+
+
+    def test_QArchive(self):
+        """
+        Synopsis:
+            Test QARCHIVE branches
+
+        Description:
+            As above
+        """
+        self.prepExtSrv(8888, cfgFile = 'src/ngamsCfg.xml')
+
+        host = 'localhost:8888'
+        method = 'GET'
+        cmd = 'QARCHIVE'
+
+        params = {'filename': '',
+                  'mime_type': 'application/octet-stream'}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, '', {})
+            resp = conn.getresponse()
+            self.checkEqual(resp.status, 400, None)
+            self.checkEqual('NGAMS_ER_MISSING_URI' in resp.read(), True, None)
+
+        params = {'filename': 'test',
+                  'mime_type': ''}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, '', {})
+            resp = conn.getresponse()
+            self.checkEqual(resp.status, 400, None)
+            self.checkEqual('NGAMS_ER_UNKNOWN_MIME_TYPE' in resp.read(), True, None)
+
+        test_file = 'src/zerofile.fits'
+        open(test_file, 'a').close()
+        params = {'filename': test_file,
+                  'mime_type': 'application/octet-stream'}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, open(test_file, 'rb'), {})
+            resp = conn.getresponse()
+            self.checkEqual(resp.status, 400, None)
+            self.checkEqual('Content-Length is 0' in resp.read(), True, None)
+
+        test_file = 'src/SmallFile.fits'
+        params = {'filename': test_file,
+                  'mime_type': 'application/octet-stream'}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, open(test_file, 'rb'), {})
+            resp = conn.getresponse()
+            self.checkEqual(resp.status, 200, None)
+
+        test_file = 'file:/bin/cp'
+        params = {'filename': '{0}/?file_version={1}'.format(test_file, 'test'),
+                  'mime_type': 'application/octet-stream'}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, '', {})
+            resp = conn.getresponse()
+            self.checkEqual(resp.status, 400, None)
+            self.checkEqual('file_version is not an integer' in resp.read(), True, None)
+
+        test_file = 'file:/bin/cp'
+        params = {'filename': '{0}?file_id={1}'.format(test_file, 'test'),
+                  'mime_type': 'application/octet-stream'}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, '', {})
+            resp = conn.getresponse()
+            self.checkEqual(resp.status, 200, None)
 
 
 def run():
