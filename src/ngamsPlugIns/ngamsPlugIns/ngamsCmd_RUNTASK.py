@@ -38,17 +38,13 @@ from Queue import Queue
 import os, urllib2
 import threading
 
-from ngamsLib.ngamsCore import getHostId, info, error, TRACE, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import info, error, TRACE, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 from ngamsPClient import ngamsPClient
 from ngamsPlugIns.ngamsJobProtocol import MRLocalTaskResult, ERROR_LT_UNEXPECTED
 
 
 queScanThread = None
 queTasks = Queue()
-ngas_hostId = getHostId()
-ngas_host = ngas_hostId.split(':')[0]
-ngas_port = int(ngas_hostId.split(':')[1])
-ngas_client = ngamsPClient.ngamsPClient(ngas_host, ngas_port)
 mime_type = 'application/octet-stream'
 cancelDict = {} #key - taskId that has been cancelled, value - 1 (place holder)
 g_mrLocalTask = None # the current running task
@@ -67,7 +63,7 @@ def _getPostContent(srvObj, reqPropsObj):
         reqPropsObj.setBytesReceived(sizeRead)
     return buf
 
-def _queScanThread(jobManHost):
+def _queScanThread(jobManHost, ngas_hostId, ngas_client):
     svrUrl = 'http://%s/localtask/result' % jobManHost
     dqUrl = 'http://%s/localtask/dequeue?task_id=' % jobManHost
     global g_mrLocalTask
@@ -101,7 +97,7 @@ def _queScanThread(jobManHost):
             fpath = localTaskResult.getInfo()
             #if (os.path.exists(fpath)):
             fpath = fpath.strip('\n') #get rid of the trailing '\n' produced by the python "print" statement in the localTask
-            _archiveFileLocal(fpath, localTaskResult)
+            _archiveFileLocal(fpath, localTaskResult, ngas_hostId, ngas_client)
             #else:
                 #warning('Cannot locate the image local path - %s' % fpath)
                 
@@ -114,7 +110,7 @@ def _queScanThread(jobManHost):
         except urllib2.URLError, urlerr:
             error('Fail to send local result to JobMAN: %s' % str(urlerr))
 
-def _archiveFileLocal(fpath, localTaskResult):
+def _archiveFileLocal(fpath, localTaskResult, ngas_hostId, ngas_client):
     try:
         stat = ngas_client.pushFile(fpath, mime_type, cmd = 'QARCHIVE')
     except Exception as e:
@@ -140,8 +136,14 @@ def _scheduleQScanThread(srvObj, mrLocalTask):
             info(3, 'queScanThread is None !!! Create it')
         else:
             info(3, 'queScanThread is Dead !!! Re-launch it')
+
+        ngas_hostId = srvObj.getHostId()
+        ngas_host = ngas_hostId.split(':')[0]
+        ngas_port = int(ngas_hostId.split(':')[1])
+        ngas_client = ngamsPClient.ngamsPClient(ngas_host, ngas_port)
+
         jobManHost = srvObj.getCfg().getNGASJobMANHost()
-        args = (jobManHost,)
+        args = (jobManHost,ngas_hostId, ngas_client)
         queScanThread = threading.Thread(None, _queScanThread, 'QUESCAN_THRD', args) 
         queScanThread.setDaemon(1) 
         queScanThread.start()           
@@ -198,7 +200,7 @@ def handleCmd(srvObj,
             info(3, 'Local task %s is submitted' % mrLocalTask._taskId)           
             mrr = MRLocalTaskResult(mrLocalTask._taskId, 0, '')
             srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(mrr), NGAMS_TEXT_MT)
-            
+
             args = (srvObj, mrLocalTask)
             scheduleThread = threading.Thread(None, _scheduleQScanThread, 'SCHEDULE_THRD', args) 
             scheduleThread.setDaemon(0) 

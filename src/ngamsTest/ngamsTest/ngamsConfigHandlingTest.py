@@ -27,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  24/06/2004  Created
 #
-import time
 """
 This module contains the Test Suite for the handling of the NG/AMS
 Configuration, in particular, the handling of the configuration in the
@@ -40,12 +39,11 @@ from ngamsLib import ngamsConfig, ngamsDb
 from ngamsLib.ngamsCore import getHostName
 from ngamsTestLib import delNgasTbls, ngamsTestSuite, \
     saveInFile, sendPclCmd, filterDbStatus1, runTest
-from ngamsTestLib import mergeRefCfg
 
 
 stdCfgGrIdList = ["ngamsCfg-Test", "ArchiveHandling-Test",
                   "Authorization-Test",
-                  "DataCheckThread-Test", "Db-DEVSRV-ngastst2",
+                  "DataCheckThread-Test", "Db-Sqlite-Test",
                   "HostSuspension-Test", "JanitorThread-Std",
                   "Log-Test", "MimeTypes-Std", "Notification-Test",
                   "Permissions-Test", "Processing-Std", "Register-Std",
@@ -108,7 +106,6 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         Returns:        Tuple with ngamsConfig and ngamsDb Objects (tuple).
         """
         cfgObj = ngamsConfig.ngamsConfig().load(cfgFile, checkCfg)
-        mergeRefCfg(cfgObj)
         revAttr = "NgamsCfg.Header[1].Revision"
         cfgObj.storeVal(revAttr, "TEST-REVISION", "ngamsCfg-Test")
 

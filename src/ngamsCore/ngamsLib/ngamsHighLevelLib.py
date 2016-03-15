@@ -36,7 +36,7 @@ Contains higher level common functions.
 import os, re, string, threading, random, time, commands, urllib
 
 from pccUt import PccUtTime
-from ngamsCore import TRACE, genLog, getHostId, NGAMS_HOST_LOCAL,\
+from ngamsCore import TRACE, genLog, NGAMS_HOST_LOCAL,\
     NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN, NGAMS_HOST_REMOTE, info, getUniqueNo,\
     NGAMS_PROC_DIR, NGAMS_UNKNOWN_MT, NGAMS_STAGING_DIR, NGAMS_TMP_FILE_PREFIX,\
     NGAMS_PICKLE_FILE_EXT, checkCreatePath, error, checkAvailDiskSpace,\
@@ -135,7 +135,8 @@ def _addHostInDic(dbConObj,
                       unpackFromSqlQuery(sqlHostInfo)
 
 
-def resolveHostAddress(dbConObj,
+def resolveHostAddress(localHostId,
+                       dbConObj,
                        ngamsCfgObj,
                        hostList):
     """
@@ -164,9 +165,9 @@ def resolveHostAddress(dbConObj,
         hostInfoDic = {}
         for host in hostList:
             hostInfoDic[host] = None
-    localHost = getHostId()
-    if (not hostInfoDic.has_key(localHost)):
-        _addHostInDic(dbConObj, localHost, hostInfoDic)
+
+    if (not hostInfoDic.has_key(localHostId)):
+        _addHostInDic(dbConObj, localHostId, hostInfoDic)
     for hostName in hostList:
         if (not hostInfoDic.has_key(hostName)):
             errMsg = genLog("NGAMS_AL_MIS_HOST", [hostName])
@@ -176,12 +177,12 @@ def resolveHostAddress(dbConObj,
         # Find out if this host is local, within a cluster, within the same
         # domain or remote.
         hostIpInfo = hi.getIpAddress().split(".")
-        if (hi.getHostId() == localHost):
+        if (hi.getHostId() == localHostId):
             hi.setHostType(NGAMS_HOST_LOCAL)
-        elif (hi.getClusterName() == hostInfoDic[localHost].getClusterName()):
+        elif (hi.getClusterName() == hostInfoDic[localHostId].getClusterName()):
             # Host is within the same cluster as where this request is handled.
             hi.setHostType(NGAMS_HOST_CLUSTER)
-        elif (hi.getDomain() == hostInfoDic[localHost].getDomain()):
+        elif (hi.getDomain() == hostInfoDic[localHostId].getDomain()):
             # Host is within the same domain. Set the information about the
             # host to be contacted for handling the request.
             clusterName = hi.getClusterName()
@@ -311,19 +312,6 @@ def releaseDiskResource(ngamsCfgObj,
         _diskMutexSems[slotId] = threading.Semaphore(1)
     info(4,"Releasing disk resource with Slot ID: " + slotId)
     _diskMutexSems[slotId].release()
-
-
-def genNgasId(ngamsCfgObj):
-    """
-    Generate an NGAS Identification String, which uniquely identifies
-    an instance of NGAS (NG/AMS). This consists of the host name with
-    the port number concatenated, e.g.: <host>:<port number>.
-
-    ngamsCfgObj:   NG/AMS Configuration Object (ngamsConfig).
-
-    Returns:   NGAS ID (string).
-    """
-    return getHostId()
 
 
 def genProcDirName(ngamsCfgObj):

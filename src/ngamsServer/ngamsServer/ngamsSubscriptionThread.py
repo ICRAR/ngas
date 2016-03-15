@@ -40,7 +40,7 @@ from Queue import Queue, Empty, PriorityQueue
 from pccUt import PccUtTime
 import ngamsCacheControlThread
 from ngamsLib.ngamsCore import TRACE, info, NGAMS_SUBSCRIPTION_THR, isoTime2Secs,\
-    alert, NGAMS_SUBSCR_BACK_LOG, error, getHostId, NGAMS_DELIVERY_THR,\
+    alert, NGAMS_SUBSCR_BACK_LOG, error, NGAMS_DELIVERY_THR,\
     NGAMS_HTTP_INT_AUTH_USER, NGAMS_REARCHIVE_CMD, warning, NGAMS_FAILURE,\
     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, getFileSize, rmFile, loadPlugInEntryPoint
 from ngamsLib import ngamsDbm, ngamsDb, ngamsStatus, ngamsHighLevelLib, ngamsFileInfo, ngamsLib
@@ -463,7 +463,7 @@ def _genSubscrBackLogFile(srvObj,
 #            checkCreatePath(os.path.dirname(backLogName))
 #            commands.getstatusoutput("cp " + filename +\
 #                                     " " + backLogName)
-        srvObj.getDb().addSubscrBackLogEntry(getHostId(),
+        srvObj.getDb().addSubscrBackLogEntry(srvObj.getHostId(),
                                              srvObj.getCfg().getPortNo(),
                                              subscrObj.getId(),
                                              subscrObj.getUrl(),
@@ -512,7 +512,7 @@ def _delFromSubscrBackLog(srvObj,
     try:
         srvObj.decSubcrBackLogCount()
         # Delete the entry from the DB for that file/Subscriber.
-        srvObj.getDb().delSubscrBackLogEntry(getHostId(),
+        srvObj.getDb().delSubscrBackLogEntry(srvObj.getHostId(),
                                              srvObj.getCfg().getPortNo(),
                                              subscrId, fileId, fileVersion)
         # If there are no other Subscribers interested in this file, we
@@ -766,7 +766,8 @@ def _deliveryThread(srvObj,
 
                 if ((not runJob) and sendUrl.upper().endswith('/' + NGAMS_REARCHIVE_CMD) and diskId):
                     try:
-                        fileInfoObj = ngamsFileInfo.ngamsFileInfo().read(srvObj.getDb(), fileId, fileVersion, diskId)
+                        fileInfoObj = ngamsFileInfo.ngamsFileInfo().read(srvObj.getHostId(),
+                                                                         srvObj.getDb(), fileId, fileVersion, diskId)
                         fileInfoObjHdr = base64.b64encode(fileInfoObj.genXml().toxml())
                     except Exception, e12:
                         warning('%s - Fail to obtain fileInfo from DB: fileId/version/diskId - %s / %d / %s' % (str(e12), fileId, fileVersion, diskId))
@@ -1202,7 +1203,7 @@ def subscriptionThread(srvObj,
                     if (not min_date or min_date > myMinDate):
                         min_date = myMinDate
 
-                cursorObj = srvObj.getDb().getFileSummary2(getHostId(), ing_date = min_date)
+                cursorObj = srvObj.getDb().getFileSummary2(srvObj.getHostId(), ing_date = min_date)
                 info(3, 'Fetching files ingested after %s' % min_date)
                 while (1):
                     fileList = cursorObj.fetch(100)
@@ -1231,7 +1232,7 @@ def subscriptionThread(srvObj,
                     else:
                         fileRefDic[fileId] = [fileVersion]
 
-                cursorObj = srvObj.getDb().getFileSummary2(getHostId(),
+                cursorObj = srvObj.getDb().getFileSummary2(srvObj.getHostId(),
                                                            fileIds.keys(),
                                                            ignore=0)
                 while (1):
@@ -1261,7 +1262,7 @@ def subscriptionThread(srvObj,
                     scheduledStatus[subscrId] = None
             subscrIds = srvObj.getSubscriberDic().keys()
             subscrStatus = srvObj.getDb().\
-                           getSubscriberStatus(subscrIds, getHostId(),
+                           getSubscriberStatus(subscrIds, srvObj.getHostId(),
                                                srvObj.getCfg().getPortNo())
             for subscrStat in subscrStatus:
                 subscrId      = subscrStat[0]
@@ -1328,7 +1329,7 @@ def subscriptionThread(srvObj,
             srvObj._subscrBlScheduledDic_Sem.acquire()
             try:
                 subscrBackLog = srvObj.getDb().\
-                                getSubscrBackLog(getHostId(),
+                                getSubscrBackLog(srvObj.getHostId(),
                                                  srvObj.getCfg().getPortNo(), selectDiskId)
                 for backLogInfo in subscrBackLog:
                     subscrId = backLogInfo[0]

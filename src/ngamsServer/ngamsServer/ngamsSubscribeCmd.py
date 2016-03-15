@@ -33,7 +33,7 @@
 This module contains functions used in connection with the SUBSCRIBE Command.
 """
 
-from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, getHostId,\
+from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, \
     genLog, NGAMS_SUBSCRIBE_CMD, TRACE, info
 from ngamsLib import ngamsSubscriber, ngamsLib
 from pccUt import PccUtTime
@@ -107,7 +107,7 @@ def handleCmdSubscribe(srvObj,
     else:
         id = ngamsLib.getSubscriberId(url)
 
-    subscrObj = ngamsSubscriber.ngamsSubscriber(getHostId(),
+    subscrObj = ngamsSubscriber.ngamsSubscriber(srvObj.getHostId(),
                                                 srvObj.getCfg().getPortNo(),
                                                 priority, url, startDate,
                                                 filterPi, filterPiPars, subscrId=id)

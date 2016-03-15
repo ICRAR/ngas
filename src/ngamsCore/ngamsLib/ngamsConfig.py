@@ -675,6 +675,12 @@ class ngamsConfig:
         par = "Server[1].IpAddress"
         return self.getVal(par)
 
+    def getTimeOut(self):
+        """
+        Gets the timeout that applies to HTTP requests.
+        """
+        par = "Server[1].TimeOut"
+        return getInt(par, self.getVal(par), None)
 
     def getSwVersion(self):
         """

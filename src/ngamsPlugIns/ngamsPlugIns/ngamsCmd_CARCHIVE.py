@@ -347,7 +347,7 @@ def handleCmd(srvObj,
                    setFileStatus(NGAMS_FILE_STATUS_OK).\
                    setCreationDate(creDate).\
                    setIoTime(reqPropsObj.getIoTime())
-        fileInfo.write(srvObj.getDb())
+        fileInfo.write(srvObj.getHostId(), srvObj.getDb())
 
         # Add the file to the container
         srvObj.getDb().addFileToContainer(containerId, resDapi.getFileId(), True)

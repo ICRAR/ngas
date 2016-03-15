@@ -43,7 +43,7 @@ import ngamsArchiveUtils, ngamsSrvUtils
 from ngamsLib.ngamsCore import TRACE, info, NGAMS_JANITOR_THR, \
     getFileCreationTime, getFileModificationTime, getFileAccessTime, rmFile, \
     warning, NGAMS_DB_DIR, NGAMS_DB_NGAS_FILES, checkCreatePath, \
-    NGAMS_DB_CH_CACHE, getHostId, getMaxLogLevel, NGAMS_NOTIF_DATA_CHECK, \
+    NGAMS_DB_CH_CACHE, getMaxLogLevel, NGAMS_NOTIF_DATA_CHECK, \
     NGAMS_TEXT_MT, NGAMS_PICKLE_FILE_EXT, NGAMS_DB_CH_FILE_DELETE, \
     NGAMS_DB_CH_FILE_INSERT, NGAMS_DB_CH_FILE_UPDATE, notice, error, \
     isoTime2Secs, genLog, NGAMS_PROC_DIR, NGAMS_SUBSCR_BACK_LOG_DIR, takeLogSem, \
@@ -462,7 +462,8 @@ def _openDbSnapshot(ngamsCfgObj,
     return snapshotDbm
 
 
-def _delFileEntry(dbConObj,
+def _delFileEntry(hostId,
+                  dbConObj,
                   fileInfoObj):
     """
     Delete a file entry in the NGAS DB. If the file does not exist,
@@ -480,7 +481,8 @@ def _delFileEntry(dbConObj,
                           fileInfoObj.getFileId(),
                           fileInfoObj.getFileVersion())):
         try:
-            dbConObj.deleteFileInfo(fileInfoObj.getDiskId(),
+            dbConObj.deleteFileInfo(hostId,
+                                    fileInfoObj.getDiskId(),
                                     fileInfoObj.getFileId(),
                                     fileInfoObj.getFileVersion(), 0)
         except:
@@ -510,7 +512,7 @@ def checkUpdateDbSnapShots(srvObj):
         return
 
     info(4,"Generate list of disks to check ...")
-    tmpDiskIdMtPtList = srvObj.getDb().getDiskIdsMtPtsMountedDisks(getHostId())
+    tmpDiskIdMtPtList = srvObj.getDb().getDiskIdsMtPtsMountedDisks(srvObj.getHostId())
     diskIdMtPtList = []
     for diskId, mtPt in tmpDiskIdMtPtList:
         diskIdMtPtList.append([mtPt, diskId])
@@ -518,7 +520,7 @@ def checkUpdateDbSnapShots(srvObj):
     info(4,"Generated list of disks to check: " + str(diskIdMtPtList))
 
     # Generate temporary snapshot filename.
-    ngasId = ngamsHighLevelLib.genNgasId(srvObj.getCfg())
+    ngasId = srvObj.getHostId()
     tmpDir = ngamsHighLevelLib.getTmpDir(srvObj.getCfg())
 
     # Temporary DBM with file info from the DB.
@@ -655,7 +657,7 @@ def checkUpdateDbSnapShots(srvObj):
                         # Is the file on the disk?
                         if (os.path.exists(complFilename)):
                             # Add this entry in the NGAS DB.
-                            tmpFileObj.write(srvObj.getDb(), 0, 1)
+                            tmpFileObj.write(srvObj.getHostId(), srvObj.getDb(), 0, 1)
                             tmpSnapshotDbm[key] = pickleValue
                         else:
                             # Remove this entry from the DB Snapshot.
@@ -760,7 +762,7 @@ def checkUpdateDbSnapShots(srvObj):
                                 snapshotDbm[key] = pickleValue
                         else:
                             # Remove this entry from the DB (if it is there).
-                            _delFileEntry(srvObj.getDb(), tmpFileObj)
+                            _delFileEntry(srvObj.getHostId(), srvObj.getDb(), tmpFileObj)
                         del tmpFileObj
                     else:
                         # We always update the DB Snapshot to ensure it is
@@ -814,7 +816,7 @@ def checkUpdateDbSnapShots(srvObj):
                     "NGAS Host ID:               %s\n" +\
                     "Lost Files:                 %d\n\n" +\
                     "==File List:\n\n"
-        fo.write(tmpFormat % (timeStamp, getHostId(), noOfLostFiles))
+        fo.write(tmpFormat % (timeStamp, srvObj.getHostId(), noOfLostFiles))
 
         tmpFormat = "%-32s %-32s %-12s %-80s\n"
         fo.write(tmpFormat % ("Disk ID", "File ID", "File Version",
@@ -833,7 +835,7 @@ def checkUpdateDbSnapShots(srvObj):
             fo.write(tmpFormat % (diskId, fileId, fileVersion, filename))
         fo.write("\n\n==END\n")
         fo.close()
-        ngamsNotification.notify(srvObj.getCfg(), NGAMS_NOTIF_DATA_CHECK,
+        ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_DATA_CHECK,
                                  "LOST FILE(S) DETECTED", statRep,
                                  [], 1, NGAMS_TEXT_MT,
                                  NGAMS_JANITOR_THR + "_LOST_FILES", 1)
@@ -926,10 +928,10 @@ def checkDbChangeCache(srvObj,
                 if ((operation == NGAMS_DB_CH_FILE_INSERT) or
                     (operation == NGAMS_DB_CH_FILE_UPDATE)):
                     _addInDbm(snapshotDbm, fileKey, encFileInfoDic)
-                    tmpFileInfoObj.write(srvObj.getDb(), 0)
+                    tmpFileInfoObj.write(srvObj.getHostId(), srvObj.getDb(), 0)
                 elif (operation == NGAMS_DB_CH_FILE_DELETE):
                     if (snapshotDbm.has_key(fileKey)): del snapshotDbm[fileKey]
-                    _delFileEntry(srvObj.getDb(), tmpFileInfoObj)
+                    _delFileEntry(srvObj.getHostId(), srvObj.getDb(), tmpFileInfoObj)
                 else:
                     # Should not happen.
                     pass
@@ -1001,7 +1003,7 @@ def updateDbSnapShots(srvObj,
             raise Exception, msg
     else:
         tmpDiskIdMtPtList = srvObj.getDb().\
-                            getDiskIdsMtPtsMountedDisks(getHostId())
+                            getDiskIdsMtPtsMountedDisks(srvObj.getHostId())
         diskIdMtPtList = []
         for diskId, mtPt in tmpDiskIdMtPtList:
             diskIdMtPtList.append([mtPt, diskId])
@@ -1040,6 +1042,8 @@ def janitorThread(srvObj,
     # for the ngamsDb class.
     dbChangeSync = ngamsEvent.ngamsEvent()
     srvObj.getDb().addDbChangeEvt(dbChangeSync)
+
+    hostId = srvObj.getHostId()
 
     # => Update NGAS DB + DB Snapshot Document for the DB connected.
     try:
@@ -1150,7 +1154,7 @@ def janitorThread(srvObj,
             info(4,"NG/AMS Temp Directory checked/cleaned up")
 
             # => Check for retained Email Notification Messages to send out.
-            ngamsNotification.checkNotifRetBuf(srvObj.getCfg())
+            ngamsNotification.checkNotifRetBuf(srvObj.getHostId(), srvObj.getCfg())
 
             # => Check there are any unsaved log files from a shutdown and archive them.
             logFile = srvObj.getCfg().getLocalLogFile()
@@ -1199,7 +1203,7 @@ def janitorThread(srvObj,
                                                      rotLogFile)
                             open(logFile, "w").close()
                             msg = "NG/AMS Local Log File Rotated and archived (%s)"
-                            PccLog.info(1,msg % getHostId(), getLocation())
+                            PccLog.info(1,msg % hostId, getLocation())
                     relLogSem()
                     if (line != "" and deltaTime >= logRotInt):
                             ngamsArchiveUtils.archiveFromFile(srvObj, rotLogFile, 0,
@@ -1257,20 +1261,20 @@ def janitorThread(srvObj,
             #    another/other NGAS Host(s).
             ##################################################################
             timeNow = time.time()
-            for wakeUpReq in srvObj.getDb().getWakeUpRequests():
+            for wakeUpReq in srvObj.getDb().getWakeUpRequests(srvObj.getHostId()):
                 # Check if the individual host is 'ripe' for being woken up.
                 suspHost = wakeUpReq[0]
                 if (timeNow > wakeUpReq[1]):
                     info(2,"Found suspended NG/AMS Server: "+ suspHost + " " +\
                          "that should be woken up by this NG/AMS Server: " +\
-                         getHostId() + " ...")
+                         hostId + " ...")
                     ngamsSrvUtils.wakeUpHost(srvObj, suspHost)
             ##################################################################
 
             ##################################################################
             # => Check if the conditions for suspending this NGAS Host are met.
             ##################################################################
-            srvDataChecking = srvObj.getDb().getSrvDataChecking(getHostId())
+            srvDataChecking = srvObj.getDb().getSrvDataChecking(hostId)
             if ((not srvDataChecking) and
                 (srvObj.getCfg().getIdleSuspension()) and
                 (not srvObj.getHandlingCmd())):
@@ -1281,7 +1285,7 @@ def janitorThread(srvObj,
                     srvObj.getCfg().getIdleSuspensionTime()):
                     # Conditions are met for suspending this NGAS host.
                     info(2,"NG/AMS Server: %s suspending itself ..." %\
-                         getHostId())
+                         hostId)
 
                     # If Data Checking is on, we request a wake-up call.
                     if (srvObj.getCfg().getDataCheckActive()):
@@ -1290,20 +1294,20 @@ def janitorThread(srvObj,
                         srvObj.reqWakeUpCall(wakeUpSrv, nextDataCheck)
 
                     # Now, suspend this host.
-                    srvObj.getDb().markHostSuspended()
+                    srvObj.getDb().markHostSuspended(srvObj.getHostId())
                     suspPi = srvObj.getCfg().getSuspensionPlugIn()
                     info(3,"Invoking Suspension Plug-In: " + suspPi + " to " +\
-                         "suspend NG/AMS Server: " + getHostId() + " ...")
+                         "suspend NG/AMS Server: " + hostId + " ...")
                     logFlush()
                     try:
                         plugInMethod = loadPlugInEntryPoint(suspPi)
                         plugInMethod(srvObj)
                     except Exception, e:
                         errMsg = "Error suspending NG/AMS Server: " +\
-                                 getHostId() + " using Suspension Plug-In: "+\
+                                 hostId + " using Suspension Plug-In: "+\
                                  suspPi + ". Error: " + str(e)
                         error(errMsg)
-                        ngamsNotification.notify(srvObj.getCfg(),
+                        ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(),
                                                  NGAMS_NOTIF_ERROR,
                                                  "ERROR INVOKING SUSPENSION "+\
                                                  "PLUG-IN", errMsg)

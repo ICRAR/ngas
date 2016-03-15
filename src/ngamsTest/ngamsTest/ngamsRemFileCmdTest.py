@@ -263,7 +263,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
 
             fileInfo = ngamsFileInfo.ngamsFileInfo()
             try:
-                fileInfo.read(dbObj, fileId, fileVer, diskId2)
+                fileInfo.read(getHostName(), dbObj, fileId, fileVer, diskId2)
             except:
                 pass
             if (execute == 0):

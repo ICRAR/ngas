@@ -35,7 +35,7 @@ This module contains various utilities used by the NG/AMS Server.
 import os, re, string, thread, threading, time, glob
 
 from ngamsLib.ngamsCore import info, NGAMS_NOT_RUN_STATE,\
-    NGAMS_ONLINE_STATE, getHostId, NGAMS_DEFINE, warning, NGAMS_SUBSCRIBE_CMD,\
+    NGAMS_ONLINE_STATE, NGAMS_DEFINE, warning, NGAMS_SUBSCRIBE_CMD,\
     NGAMS_SUCCESS, TRACE, genLog, notice, NGAMS_DISK_INFO, checkCreatePath,\
     error, NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
     loadPlugInEntryPoint
@@ -97,7 +97,7 @@ def _subscriberThread(srvObj,
         subscrList.append(srvObj.getCfg().getSubscriptionsDic()[subscrId])
 
     myPort = srvObj.getCfg().getPortNo()
-    myHost = getHostId()
+    myHost = srvObj.getHostId()
 
     # Run this loop until all requested Subscriptions have been
     # successfully executed, or until the server goes Offline.
@@ -208,8 +208,8 @@ def getDiskInfo(srvObj,
         if (len(diskInfoDic) == 0):
             if (not ngamsLib.trueArchiveProxySrv(srvObj.getCfg())):
                 errMsg = genLog("NGAMS_NOTICE_NO_DISKS_AVAIL",
-                                [ngamsHighLevelLib.genNgasId(srvObj.getCfg()),
-                                 getHostId()])
+                                [srvObj.getHostId(),
+                                 srvObj.getHostId()])
                 notice(errMsg)
     else:
         if (srvObj.getCfg().getAllowArchiveReq()):
@@ -297,18 +297,20 @@ def handleOnline(srvObj,
 
     # Re-load Configuration + check disk configuration.
     srvObj.loadCfg()
+
+    hostId = srvObj.getHostId()
     for stream in srvObj.getCfg().getStreamList():
         srvObj.getMimeTypeDic()[stream.getMimeType()] = stream.getPlugIn()
 
     # Flush/send out possible retained Email Notification Messages.
     flushMsg = "NOTE: Distribution of retained Email Notification Messages " +\
                "forced at Online"
-    ngamsNotification.checkNotifRetBuf(srvObj.getCfg(), 1, flushMsg)
+    ngamsNotification.checkNotifRetBuf(srvObj.getHostId(), srvObj.getCfg(), 1, flushMsg)
 
     # Get possible Subscribers from the DB.
-    subscrList = srvObj.getDb().getSubscriberInfo("", getHostId(),
+    subscrList = srvObj.getDb().getSubscriberInfo("", hostId,
                                                   srvObj.getCfg().getPortNo())
-    num_bl =  srvObj.getDb().getSubscrBackLogCount(getHostId(), srvObj.getCfg().getPortNo())
+    num_bl =  srvObj.getDb().getSubscrBackLogCount(hostId, srvObj.getCfg().getPortNo())
     #debug_chen
     if (num_bl > 0):
         info(3, 'Preset the backlog count to %d' % num_bl)
@@ -318,7 +320,7 @@ def handleOnline(srvObj,
         tmpSubscrObj = ngamsSubscriber.ngamsSubscriber().\
                        unpackSqlResult(subscrInfo)
         # Take only subscribers for this NG/AMS Server.
-        if ((tmpSubscrObj.getHostId() == getHostId()) and
+        if ((tmpSubscrObj.getHostId() == hostId) and
             (tmpSubscrObj.getPortNo() == srvObj.getCfg().getPortNo())):
             #srvObj.getSubscriberDic()[tmpSubscrObj.getId()] = tmpSubscrObj
             #if (srvObj.getDataMoverOnlyActive() and len(srvObj.getSubscriberDic()) > 0):
@@ -331,11 +333,12 @@ def handleOnline(srvObj,
         ngamsArchiveUtils.resetDiskSpaceWarnings()
 
         # Update disk info in DB.
-        ngamsDiskUtils.checkDisks(srvObj.getDb(), srvObj.getCfg(),
+        ngamsDiskUtils.checkDisks(hostId, srvObj.getDb(), srvObj.getCfg(),
                                   srvObj.getDiskDic())
 
         # Write status file on disk.
-        ngamsDiskUtils.dumpDiskInfoAllDisks(srvObj.getDb(), srvObj.getCfg())
+        ngamsDiskUtils.dumpDiskInfoAllDisks(srvObj.getHostId(),
+                                            srvObj.getDb(), srvObj.getCfg())
     except Exception, e:
         errMsg = "Error occurred while bringing the system Online: " + str(e)
         error(errMsg)
@@ -428,7 +431,8 @@ def handleOffline(srvObj,
 
     # Dump disk info on all disks, invoke the Offline Plug-In to prepare the
     # disks for offline, and mark the disks as unmounted in the DB.
-    ngamsDiskUtils.dumpDiskInfoAllDisks(srvObj.getDb(), srvObj.getCfg())
+    ngamsDiskUtils.dumpDiskInfoAllDisks(srvObj.getHostId(),
+                                        srvObj.getDb(), srvObj.getCfg())
     plugIn = srvObj.getCfg().getOfflinePlugIn()
     if (srvObj.getCfg().getSimulation() == 0):
         info(3, "Invoking System Offline Plug-In: " + plugIn +\
@@ -437,12 +441,12 @@ def handleOffline(srvObj,
         plugInRes = plugInMethod(srvObj, reqPropsObj)
     else:
         pass
-    ngamsDiskUtils.markDisksAsUnmountedInDb(srvObj.getDb(), srvObj.getCfg())
+    ngamsDiskUtils.markDisksAsUnmountedInDb(srvObj.getHostId(), srvObj.getDb(), srvObj.getCfg())
 
     # Send out possible Retained Email Notification Messages.
     flushMsg = "NOTE: Distribution of retained Email Notification Messages " +\
                "forced at Offline"
-    ngamsNotification.checkNotifRetBuf(srvObj.getCfg(), 1, flushMsg)
+    ngamsNotification.checkNotifRetBuf(srvObj.getHostId(), srvObj.getCfg(), 1, flushMsg)
 
     info(3,"NG/AMS prepared for Offline State")
 
@@ -491,7 +495,7 @@ def checkStagingAreas(srvObj):
     T = TRACE()
 
     diskList = ngamsDiskUtils.\
-               getDiskInfoForMountedDisks(srvObj.getDb(), getHostId(),
+               getDiskInfoForMountedDisks(srvObj.getDb(), srvObj.getHostId(),
                                           srvObj.getCfg().\
                                           getRootDirectory())
     # Generate first a dictionary with all files in the staging areas.

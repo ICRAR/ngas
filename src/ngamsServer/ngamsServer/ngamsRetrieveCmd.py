@@ -41,7 +41,7 @@ from ngamsLib import ngamsHighLevelLib, ngamsLib
 from ngamsLib import ngamsPlugInApi, ngamsFileInfo, ngamsFileList
 from ngamsLib.ngamsCore import info, warning, NGAMS_TEXT_MT, error, getFileSize, \
     TRACE, genLog, NGAMS_PROC_FILE, NGAMS_HTTP_SUCCESS, NGAMS_PROC_DATA, \
-    getHostId, NGAMS_SUCCESS, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, \
+    NGAMS_SUCCESS, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, \
     NGAMS_XML_MT, NGAMS_DISK_INFO, cleanList, NGAMS_VOLUME_ID_FILE, \
     NGAMS_VOLUME_INFO_FILE, NGAMS_UNKNOWN_MT, NGAMS_HOST_LOCAL, \
     NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE, checkCreatePath, NGAMS_RETRIEVE_CMD, \
@@ -299,7 +299,7 @@ def _handleCmdRetrieve(srvObj,
     # Get query information.
     if (reqPropsObj.hasHttpPar("ng_log")):
         if (reqPropsObj.hasHttpPar("host_id")):
-            if (reqPropsObj.getHttpPar("host_id") != getHostId()):
+            if (reqPropsObj.getHttpPar("host_id") != srvObj.getHostId()):
                 _handleRemoteIntFile(srvObj, reqPropsObj, httpRef)
                 return
 
@@ -316,7 +316,7 @@ def _handleCmdRetrieve(srvObj,
             raise Exception, errMsg
     elif (reqPropsObj.hasHttpPar("cfg")):
         if (reqPropsObj.hasHttpPar("host_id")):
-            if (reqPropsObj.getHttpPar("host_id") != getHostId()):
+            if (reqPropsObj.getHttpPar("host_id") != srvObj.getHostId()):
                 _handleRemoteIntFile(srvObj, reqPropsObj, httpRef)
                 return
 
@@ -326,7 +326,7 @@ def _handleCmdRetrieve(srvObj,
         return
     elif (reqPropsObj.hasHttpPar("internal")):
         if (reqPropsObj.hasHttpPar("host_id")):
-            if (reqPropsObj.getHttpPar("host_id") != getHostId()):
+            if (reqPropsObj.getHttpPar("host_id") != srvObj.getHostId()):
                 _handleRemoteIntFile(srvObj, reqPropsObj, httpRef)
                 return
 
@@ -393,7 +393,7 @@ def _handleCmdRetrieve(srvObj,
         # storage areas. Certain files like NgasDiskInfo, DB Snapshot Files,
         # ect., can be retrieved.
         complFilename = ngamsLib.locateInternalFile(intPath)
-        diskIdsMtPts = srvObj.getDb().getDiskIdsMtPtsMountedDisks(getHostId())
+        diskIdsMtPts = srvObj.getDb().getDiskIdsMtPtsMountedDisks(srvObj.getHostId())
         mountRtDir = srvObj.getCfg().getRootDirectory()
         for diskInfo in diskIdsMtPts:
             tmpDir   = os.path.normpath(diskInfo[1] + "/tmp/")

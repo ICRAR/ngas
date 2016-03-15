@@ -400,13 +400,13 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         mDiskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         rDiskId = "tmp-ngamsTest-NGAS-FitsStorage1-Rep-2"
         mFileInfo = ngamsFileInfo.\
-                    ngamsFileInfo().read(dbObj, fileId, 1, mDiskId)
+                    ngamsFileInfo().read(getHostName(), dbObj, fileId, 1, mDiskId)
         mFileInfoTmp = saveInFile(None, filterDbStatus1(mFileInfo.dumpBuf()))
         mFileInfoRef = "ref/test_BackLogBuf_01_03_ref"
         self.checkFilesEq(mFileInfoRef, mFileInfoTmp, "Incorrect info in DB "+\
                           "for Main File archived")
         rFileInfo = ngamsFileInfo.\
-                    ngamsFileInfo().read(dbObj, fileId, 1, rDiskId)
+                    ngamsFileInfo().read(getHostName(), dbObj, fileId, 1, rDiskId)
         rFileInfoTmp = saveInFile(None, filterDbStatus1(rFileInfo.dumpBuf()))
         rFileInfoRef = "ref/test_BackLogBuf_01_04_ref"
         self.checkFilesEq(rFileInfoRef, rFileInfoTmp, "Incorrect info in DB "+\

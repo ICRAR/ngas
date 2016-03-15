@@ -41,7 +41,7 @@ import ngamsCacheControlThread
 from ngamsLib import ngamsNotification, ngamsFileInfo, ngamsDiskInfo
 from ngamsLib import ngamsReqProps, ngamsHighLevelLib, ngamsDapiStatus
 from ngamsLib.ngamsCore import TRACE, genLog, error, NGAMS_ONLINE_STATE, \
-    NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, info, getHostId, getDiskSpaceAvail, \
+    NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, info, getDiskSpaceAvail, \
     rmFile, getFileSize, NGAMS_XML_MT, NGAMS_FAILURE, warning, checkCreatePath, \
     mvFile, getFileCreationTime, NGAMS_SUCCESS, sysLogInfo, \
     NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_TEXT_MT, \
@@ -140,7 +140,7 @@ def cloneCheckDiskSpace(srvObj,
     else:
         tmpDiskInfoObjList = ngamsDiskUtils.\
                              getDiskInfoForMountedDisks(srvObj.getDb(),
-                                                        getHostId(),
+                                                        srvObj.getHostId(),
                                                         mtRootDir)
     for diskInfoObj in tmpDiskInfoObjList:
         mtPt = diskInfoObj.getMountPoint()
@@ -178,7 +178,7 @@ def cloneCheckDiskSpace(srvObj,
     cloneSimDiskCompl = []
     if (targetDiskId):
         tmpDiskList = ngamsDiskUtils.\
-                      getDiskInfoForMountedDisks(srvObj.getDb(), getHostId(),
+                      getDiskInfoForMountedDisks(srvObj.getDb(), srvObj.getHostId(),
                                                  mtRootDir)
         for idx in range(len(tmpDiskList)):
             if (tmpDiskList[idx].getDiskId() != targetDiskId):
@@ -204,7 +204,8 @@ def cloneCheckDiskSpace(srvObj,
         while (1):
             try:
                 trgDiskInfo = ngamsDiskUtils.\
-                              findTargetDisk(srvObj.getDb(), srvObj.getCfg(),
+                              findTargetDisk(srvObj.getHostId(),
+                                             srvObj.getDb(), srvObj.getCfg(),
                                              fio.getFormat(), 0,
                                              diskExemptList, 1)
             except Exception, e:
@@ -366,7 +367,8 @@ def _cloneExec(srvObj,
         key, fileInfo = cloneListDbm.getNext()
         if (not key): break
         hostInfoDic[fileInfo[1]] = -1
-    hostInfoDic = ngamsHighLevelLib.resolveHostAddress(srvObj.getDb(),
+    hostInfoDic = ngamsHighLevelLib.resolveHostAddress(srvObj.getHostId(),
+                                                       srvObj.getDb(),
                                                        srvObj.getCfg(),
                                                        hostInfoDic.keys())
 
@@ -420,7 +422,8 @@ def _cloneExec(srvObj,
                 diskExemptList = [fio.getDiskId()]
                 while (1):
                     trgDiskInfo = ngamsDiskUtils.\
-                                  findTargetDisk(srvObj.getDb(),
+                                  findTargetDisk(srvObj.getHostId(),
+                                                 srvObj.getDb(),
                                                  srvObj.getCfg(),
                                                  fio.getFormat(),
                                                  1, diskExemptList)
@@ -474,7 +477,7 @@ def _cloneExec(srvObj,
                                                  srvObj.getDiskDic(),
                                                  storageSetId, fio.getFileId())
             # Receive the data into the Staging File using the urllib.
-            if (getHostId() != hostId):
+            if (srvObj.getHostId() != hostId):
                 # Example: http://host:7777/RETRIEVE?file_id=id&file_version=1
                 ipAddress = hostInfoDic[hostId].getIpAddress()
                 portNo = hostInfoDic[hostId].getSrvPort()
@@ -533,7 +536,7 @@ def _cloneExec(srvObj,
             fileExists = srvObj.getDb().fileInDb(trgDiskInfo.getDiskId(),
                                                  fio.getFileId(),
                                                  fio.getFileVersion())
-            newFileInfo.write(srvObj.getDb())
+            newFileInfo.write(srvObj.getHostId(), srvObj.getDb())
 
             # Update status for the Target Disk in DB + check if the disk is
             # completed.
@@ -673,7 +676,7 @@ def _cloneExec(srvObj,
                         "Total processing time (s):  %.3f\n" +\
                         "Handling time per file (s): %.3f\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (timeStamp, getHostId(), diskId, fileId,
+            fo.write(tmpFormat % (timeStamp, srvObj.getHostId(), diskId, fileId,
                                   str(fileVersion), totFiles,
                                   successCloneCount, failedCloneCount,
                                   timeAccu, (timeAccu / totFiles)))
@@ -711,7 +714,7 @@ def _cloneExec(srvObj,
             attachmentName += "-" + reqPropsObj.getHttpPar("file_id")
         if (reqPropsObj.hasHttpPar("file_version")):
             attachmentName += "-" + reqPropsObj.getHttpPar("file_version")
-        ngamsNotification.notify(srvObj.getCfg(), NGAMS_NOTIF_INFO,
+        ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_INFO,
                                  "CLONE STATUS REPORT", statRep, emailAdrList,
                                  1, mimeType, attachmentName, 1)
         del cloneStatusDbm
@@ -758,7 +761,8 @@ def _cloneExplicit(srvObj,
                                              diskId=diskId,
                                              fileVersion=fileVersion)
     # Read also the entire file info (unfortunately).
-    srcFileInfo = ngamsFileInfo.ngamsFileInfo().read(srvObj.getDb(), fileId,
+    srcFileInfo = ngamsFileInfo.ngamsFileInfo().read(srvObj.getHostId(),
+                                                     srvObj.getDb(), fileId,
                                                      fileVersion, diskId)
 
     # Determine target disk.
@@ -768,7 +772,8 @@ def _cloneExplicit(srvObj,
         diskExemptList = [diskId]
         while (1):
             trgDiskInfo = ngamsDiskUtils.\
-                          findTargetDisk(srvObj.getDb(), srvObj.getCfg(),
+                          findTargetDisk(srvObj.getHostId(),
+                                         srvObj.getDb(), srvObj.getCfg(),
                                          mimeType, 1, diskExemptList)
             # Check if a file with that ID + version is already
             # stored on the selected Target Disk.
@@ -813,7 +818,7 @@ def _cloneExplicit(srvObj,
             quickLocation = int(reqPropsObj.getHttpPar("quick"))
 
         # Receive the data into the Staging File using the urllib.
-        if (getHostId() != hostId):
+        if (srvObj.getHostId() != hostId):
             # Example: http://host:7777/RETRIEVE?disk_id=%s&"
             #          file_id=id&file_version=1
             fileUrl = "http://%s:%s/RETRIEVE?disk_id=%s&file_id=%s&" +\
@@ -834,6 +839,7 @@ def _cloneExplicit(srvObj,
                      "NGAS Host: " + hostId)
                 ngamsSrvUtils.wakeUpHost(srvObj, hostId)
         else:
+            # TODO: a time-bomb waiting to explode....
             fileUrl = "file:" + mtPt + "/" + filename
         info(3,"Receiving file via URI: " + fileUrl + " into " +\
              "staging filename: " + stagingFilename)
@@ -877,7 +883,7 @@ def _cloneExplicit(srvObj,
                       setCreationDate(getFileCreationTime(complFilename))
         fileExists = srvObj.getDb().fileInDb(trgDiskInfo.getDiskId(),
                                              fileId, fileVersion)
-        newFileInfo.write(srvObj.getDb())
+        newFileInfo.write(srvObj.getHostId(), srvObj.getDb())
 
         # Update status for the Target Disk in DB + check if the disk is
         # completed.

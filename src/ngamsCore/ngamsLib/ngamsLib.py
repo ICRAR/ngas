@@ -27,8 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  12/05/2001  Created
 #
-import pkg_resources
-
 """
 Base module that contains various utility functions used for the
 NG/AMS implementation.
@@ -37,14 +35,18 @@ The functions in this module can be used in all the NG/AMS code.
 """
 
 import os, string, httplib, time, getpass, socket, urlparse
-import urllib, urllib2, re, select, cPickle
-from pccUt import PccUtTime
-from ngamsCore import genLog, info, TRACE, trim, getHostName, warning,\
-    NGAMS_HTTP_SUCCESS, getMaxLogLevel, NGAMS_CONT_MT, NGAMS_SOCK_TIMEOUT_DEF,\
-    NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM,\
-    getFileSize, NGAMS_ARCH_REQ_MT, getHostId, getUniqueNo,\
+import urllib, urllib2, re, cPickle
+
+import pkg_resources
+
+from ngamsCore import genLog, info, TRACE, trim, getHostName, warning, \
+    NGAMS_HTTP_SUCCESS, getMaxLogLevel, NGAMS_CONT_MT, \
+    NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM, \
+    getFileSize, NGAMS_ARCH_REQ_MT, getUniqueNo, \
     NGAMS_MAX_FILENAME_LEN, error, NGAMS_UNKNOWN_MT, rmFile
 import ngamsMIMEMultipart
+from pccUt import PccUtTime
+
 
 def hidePassword(fileUri):
     """
@@ -161,45 +163,13 @@ def httpMsgObj2Dic(httpMessageObj):
     return httpHdrDic
 
 
-def flushHttpCh(fd,
-                blockSize,
-                complSize):
-    """
-    Flush the data on an HTTP channel.
-
-    fd:          File descriptor to the open HTTP channel (file object).
-
-    blockSize:   Block size to apply when reading the data (integer).
-
-    complSize:   Size of the data (integer).
-
-    Returns:     Void.
-    """
-    T = TRACE()
-
-    # Avoid hanging indefinitely on streams
-    # that have been already consumed entirely
-    r = select.select([fd], [], [], 0)
-    if fd not in r[0]:
-        return
-
-    remSize = complSize
-    while (remSize > 0):
-        rdSize = blockSize
-        if (remSize < rdSize):
-            rdSize = remSize
-        buf = fd.read(rdSize)
-        if not buf:
-            break
-        remSize -= len(buf)
-
 def getCompleteHostName():
     """
     Return the complete host name, i.e., including the name of the domain.
 
     Returns:   Host name for this NGAS System (string).
     """
-    return getHostName()
+    return socket.getfqdn()
 
 
 def getDomain():
@@ -208,14 +178,10 @@ def getDomain():
 
     Returns: Domain name or "" if unknown (string).
     """
-    hostName = getCompleteHostName()
-    els = hostName.split(".")
-    if (len(els) == 1):
+    fqdn = socket.getfqdn()
+    if '.' not in fqdn:
         return ""
-    else:
-        domain = ""
-        for name in els[1:]: domain += "%s." % name
-        return domain[:-1]
+    return '.'.join(fqdn.split('.')[1:])
 
 
 def getNgamsUser():
@@ -373,29 +339,6 @@ def httpTimeStamp():
            tsList[4] + " " + tsList[3] + " GMT"
 
 
-def _waitForResp(fd,
-                 timeOut):
-    """
-    Wait for input to ready on the given file descriptor, which is either
-    a file descriptor (integer) or a File Object providing a fileno()
-    method. If the timeout specified is exhausted, an exception is
-    thrown.
-
-    fo:           File descriptor or File Object (integer/File Object).
-
-    timeOut:      Timeout in seconds (double).
-
-    Returns:      Void.
-    """
-    return
-    if (fd and (timeOut > 0)):
-        rdFds, wrFds, exFds = select.select([fd], [], [], timeOut)
-        if (rdFds == []):
-            errMsg = "Timeout encountered while wating for response from " +\
-                     "server. Timeout: " + str(timeOut) + "s."
-            raise Exception, errMsg
-
-
 def _httpHandleResp(fileObj,
                     dataTargFile,
                     blockSize,
@@ -442,13 +385,11 @@ def _httpHandleResp(fileObj,
         dataSize = 0
     info(5,"Size of data returned by remote host: %d" % dataSize)
     if ((not dataTargFile) and (not returnFileObj)):
-        _waitForResp(fileObj, timeOut)
         data = fileObj.read(dataSize)
         if (getMaxLogLevel() > 4):
             info(5,"Data received from remote host=|%s|" %\
                  str(data).replace("\n", ""))
     elif (returnFileObj):
-        _waitForResp(fileObj, timeOut)
         data = fileObj
 
     # It's a container
@@ -475,21 +416,17 @@ def _httpHandleResp(fileObj,
         data = trgFile
 
         # Get the data and save it to the file.
-        try:
-            fd = open(trgFile, "w")
+        with open(trgFile, "w") as fd:
             dataRecv = 0
             reqSize = blockSize
             while (dataRecv < dataSize):
-                _waitForResp(fileObj, timeOut)
                 if ((dataSize - dataRecv) < blockSize):
                     reqSize = (dataSize - dataRecv)
                 tmpData = fileObj.read(reqSize)
+                if len(tmpData) == 0:
+                    raise Exception("HTTP reply finished before expected. Received data is incomplete")
                 fd.write(tmpData)
                 dataRecv += len(tmpData)
-            fd.close()
-        except Exception, e:
-            if (fd != None): fd.close()
-            raise e
 
     # Dump HTTP headers if Verbose Level >= 4.
     info(4,"HTTP Header: HTTP/1.0 " + str(code) + " " + msg)
@@ -497,37 +434,6 @@ def _httpHandleResp(fileObj,
         info(4,"HTTP Header: " + hdr + ": " + hdrs[hdr])
 
     return code, msg, hdrs, data
-
-
-def _setSocketTimeout(timeOut,
-                      httpObj = None):
-    """
-    Set socket timeout.
-
-    WARNING: This is set globally!!
-
-    timeOut:   Timeout in seconds (float).
-
-    httpObj:   HTTP object (http).
-
-    Returns:   Void.
-    """
-    # TODO: This is not a proper solution! Should be possible to set
-    #       time-out per socket connection.
-    try:
-        # We don't accept a infinite timeout (=None/-1).
-        if ((timeOut == None) or (str(timeOut).strip() == "-1")):
-            locTimeout = NGAMS_SOCK_TIMEOUT_DEF
-        else:
-            locTimeout = int(float(timeOut) + 0.5)
-        if (httpObj):
-            info(4,"Setting socket timeout to: %ss" % str(timeOut))
-            httpObj._conn.sock.settimeout(locTimeout)
-        else:
-            info(3,"Setting default socket timeout to: %ss" % str(timeOut))
-            socket.setdefaulttimeout(locTimeout)
-    except Exception, e:
-        pass
 
 
 def httpPostUrl(url,
@@ -597,13 +503,15 @@ def httpPostUrl(url,
     idx = (url[7:].find("/") + 7)
     tmpUrl = url[7:idx]
     cmd    = url[(idx + 1):]
-    http = httplib.HTTP(tmpUrl)
+
+    response = None
+    http = httplib.HTTPConnection(tmpUrl, timeout=timeOut)
+
     info(4,"Sending HTTP header ...")
     info(4,"HTTP Header: %s: %s" % (NGAMS_HTTP_POST, cmd))
     http.putrequest(NGAMS_HTTP_POST, cmd)
 
     # set the socket timeout for this socket only
-    _setSocketTimeout(timeOut,http)
     info(4,"HTTP Header: %s: %s" % ("Content-Type", mimeType))
     http.putheader("Content-Type", mimeType)
     if (contDisp != ""):
@@ -638,12 +546,13 @@ def httpPostUrl(url,
 
     # Send the data.
     info(4,"Sending data ...")
-    if (sendBuffer and http._conn.sock):
+    if (sendBuffer and http.sock):
         try:
             info(3, "Set SNDBUF to %d" % sendBuffer)
-            http._conn.sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, sendBuffer)
+            http.sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, sendBuffer)
         except Exception, eer:
             warning('Fail to set socket SNDBUF to %s' % str(sendBuffer))
+
     try:
         if (dataSource == "FILE"):
             fdIn = open(dataRef)
@@ -652,13 +561,13 @@ def httpPostUrl(url,
             while (block != ""):
                 block = fdIn.read(blockSize)
                 blockAccu += len(block)
-                http._conn.sock.sendall(block)
+                http.send(block)
                 if (suspTime > 0.0): time.sleep(suspTime)
             fdIn.close()
         elif (dataSource == "FILESLIST"):
             writer = dataRef[0]
             allPaths = dataRef[1]
-            writer.setOutput(http._conn.sock.makefile("w"))
+            writer.setOutput(http.sock.makefile("w"))
             writeDirContents(writer, allPaths[1], blockSize, suspTime)
         elif (dataSource == "FD"):
             fdIn = dataRef
@@ -669,7 +578,7 @@ def httpPostUrl(url,
                 else:
                     rdSize = blockSize
                 block = fdIn.read(rdSize)
-                http._conn.sock.sendall(block)
+                http.send(block)
                 dataRead += len(block)
                 if (suspTime > 0.0): time.sleep(suspTime)
         elif dataSource == "BUFFER":
@@ -681,42 +590,28 @@ def httpPostUrl(url,
 
         # Receive + unpack reply.
         info(4,"Waiting for reply ...")
-        _setSocketTimeout(timeOut, http)
-        reply, msg, hdrs = http.getreply()
+        response = http.getresponse()
+        reply, msg, hdrs = response.status, response.reason, response.getheaders()
 
-        if (hdrs == None):
-            errMsg = "Illegal/no response to HTTP request encountered!"
-            raise Exception, errMsg
+        hdrs = {h[0]: h[1] for h in hdrs}
 
         if (hdrs.has_key("content-length")):
             dataSize = int(hdrs["content-length"])
         else:
             dataSize = 0
         if (dataTargFile == ""):
-            _waitForResp(http.getfile(), timeOut)
-            data = http.getfile().read(dataSize)
+            data = response.read(dataSize)
         else:
-            fd = None
-            try:
-                data = dataTargFile
-                fd = open(dataTargFile, "w")
-                _waitForResp(http.getfile(), timeOut)
-                fd.write(http.getfile().read(dataSize))
-                fd.close()
-            except Exception, e:
-                if (fd != None): fd.close()
-                raise e
+            data = dataTargFile
+            with open(dataTargFile, "w") as fd:
+                fd.write(response.read(dataSize))
 
         # Dump HTTP headers if Verbose Level >= 4.
         info(4,"HTTP Header: HTTP/1.0 " + str(reply) + " " + msg)
         for hdr in hdrs.keys():
             info(4,"HTTP Header: " + hdr + ": " + hdrs[hdr])
     finally:
-        if (http != None):
-            try:
-                http.close() # this may fail?
-            finally:
-                del http
+        http.close()
 
     return [reply, msg, hdrs, data]
 
@@ -912,40 +807,34 @@ def httpGetUrl(url,
 
     # Issue request + handle result.
     info(4,"Issuing request with URL: " + url)
-    try:
-        orgTimeOut = socket.getdefaulttimeout()
-    except:
-        orgTimeOut = None
-    try:
-        reqObj = urllib2.Request(url)
-        if (authHdrVal): reqObj.add_header("Authorization", authHdrVal)
-        reqObj.add_header("Host", socket.gethostname())
 
-        # Send additional HTTP headers, if any.
-        for addHdr in additionalHdrs:
-            reqObj.add_header(addHdr[0], addHdr[1])
+    reqObj = urllib2.Request(url)
+    if (authHdrVal): reqObj.add_header("Authorization", authHdrVal)
+    reqObj.add_header("Host", getHostName())
 
-        _setSocketTimeout(timeOut)
-        # TODO: Consider to invoke ngamsLib.ngasPingHost() to avoid blocking.
-        fileObj = urllib2.urlopen(reqObj)
-        _setSocketTimeout(orgTimeOut)
+    # Send additional HTTP headers, if any.
+    for addHdr in additionalHdrs:
+        reqObj.add_header(addHdr[0], addHdr[1])
+
+    fileObj = None
+    try:
+        fileObj = urllib2.urlopen(reqObj, timeout=timeOut)
+        code, msg, hdrs, data = _httpHandleResp(fileObj, dataTargFile, blockSize,
+                                                timeOut, returnFileObj)
+        return (code, msg, hdrs, data)
     except urllib2.HTTPError, e:
-        _setSocketTimeout(orgTimeOut)
         code, msg, hdrs, data = e.code, str(e).split(":")[1].strip(),\
                                 e.headers, e.read()
         info(4,"httpGetUrl() - Exception: urllib2.HTTPError: %s" % str(e))
         return (code, msg, hdrs, data)
     except Exception, e:
-        _setSocketTimeout(orgTimeOut)
         errMsg = "Problem occurred issuing request with URL: " + url +\
                  ". Error: " + re.sub("<|>", "", str(e))
         raise Exception, errMsg
-
-    # Handle response.
-    code, msg, hdrs, data = _httpHandleResp(fileObj, dataTargFile, blockSize,
-                                            timeOut, returnFileObj)
-
-    return (code, msg, hdrs, data)
+    finally:
+        # If we are returning the fileObj then we cannot return it closed
+        if fileObj and not returnFileObj:
+            fileObj.close()
 
 
 def httpGet(host,
@@ -1013,9 +902,6 @@ def httpGet(host,
     T = TRACE()
 
     if (not blockSize): blockSize = 65536
-#   Don't set timeout globally here. It is done in httpGetUrl for the connection
-#   and by default for the whole server in the ngamsServer.handleStartup
-#    _setSocketTimeout(timeOut)
 
     # Prepare URL + parameters.
     url = "http://" + host + ":" + str(port) + "/" + cmd

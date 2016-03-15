@@ -65,7 +65,7 @@ import thread, threading, urllib2, httplib, time
 import cPickle as pickle
 from ngamsLib.ngamsCore import info, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT, TRACE, \
     NGAMS_HTTP_POST, getFileSize, getHostName, NGAMS_SUCCESS, NGAMS_FAILURE, \
-    warning, error, getHostId
+    warning, error
 from ngamsLib import ngamsDbCore, ngamsStatus, ngamsPlugInApi, ngamsLib
 import ngamsMWACortexTapeApi
 from ngamsPlugIns.ngamsMWAAsyncProtocol import AsyncListRetrieveResponse, \
@@ -354,8 +354,8 @@ def _httpPostUrl(url,
     http.endheaders()
     info(4,"HTTP header sent")
 
-    ngamsLib._setSocketTimeout(timeOut, http)
-    
+    http._conn.sock.settimeout(timeOut)
+
     # Send the data.
     info(4,"Sending data ...")
     if (dataSource == "FILE"):
@@ -407,14 +407,12 @@ def _httpPostUrl(url,
     else:
         dataSize = 0
     if (dataTargFile == ""):
-        ngamsLib._waitForResp(http.getfile(), timeOut)
         data = http.getfile().read(dataSize)
     else:
         fd = None
         try:
             data = dataTargFile
             fd = open(dataTargFile, "w")
-            ngamsLib._waitForResp(http.getfile(), timeOut)
             fd.write(http.getfile().read(dataSize))
             fd.close()
         except Exception, e:
@@ -553,7 +551,7 @@ def _deliveryThread(srvObj, asyncListReqObj):
     info(3, "file_id length = %d" % len(asyncListReqObj.file_id))
     fileHost = None
     if (asyncListReqObj.one_host):
-        fileHost = getHostId()
+        fileHost = srvObj.getHostId()
     cursorObj = srvObj.getDb().getFileSummary1(fileHost, [], asyncListReqObj.file_id, None, [], None, 0)
     fileInfoList = cursorObj.fetch(1000)
     info(3, "fileIninfList length = %d" % len(fileInfoList))

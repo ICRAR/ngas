@@ -58,57 +58,6 @@ AUTH               = "bmdhczpuZ2Fz"
 
 
 ###########################################################################
-# Handle reference configuration file.
-###########################################################################
-_refCfg = None
-def setRefCfg(cfg):
-    """
-    Set the Reference Configuration File.
-
-    cfg:       Name of NG/AMS Configuration File to use (string).
-
-    Returns:   Void.
-    """
-    global _refCfg
-    _refCfg = cfg
-
-def getRefCfg():
-    """
-    Return name of Reference Configuration.
-
-    Returns:  Name of Reference Configuration File (string).
-    """
-    global _refCfg
-    return _refCfg
-
-def mergeRefCfg(targCfg):
-    """
-    Merges the parameters from the reference configuration into the given
-    target configuration.
-
-    targCfg:    Target configuration object (ngamsConfig).
-
-    Return:     Void
-    """
-    refCfgObj = ngamsConfig.ngamsConfig().load(getRefCfg())
-    # Take over the DB parameters from the reference.
-    dbParFormat = "NgamsCfg.Db[1].%s"
-    dbParList = [["AutoRecover", refCfgObj.getDbAutoRecover()],
-                 ["Interface", refCfgObj.getDbInterface()],
-                 ["Name", refCfgObj.getDbName()],
-                 ["Password", refCfgObj.getDbPassword()],
-                 ["Server", refCfgObj.getDbServer()],
-                 ["Snapshot", refCfgObj.getDbSnapshot()],
-                 ["User", refCfgObj.getDbUser()],
-                 ["Verify", refCfgObj.getDbVerify()],
-                 ["Parameters", refCfgObj.getDbParameters()],
-                 ["MultipleConnections",
-                     refCfgObj.getVal("Db[1].MultipleConnections")]]
-    for dbPar in dbParList:
-        par = dbParFormat % dbPar[0]
-        targCfg.storeVal(par, dbPar[1])
-
-###########################################################################
 
 ###########################################################################
 # Check that it is not possible to connect accidentally to an operating DB.
@@ -984,10 +933,7 @@ def runTest(argv):
     while idx < len(argv):
         par = argv[idx].upper()
         try:
-            if (par == "-CFG"):
-                idx += 1
-                setRefCfg(argv[idx])
-            elif (par == "-LOGLEVEL"):
+            if (par == "-LOGLEVEL"):
                 idx += 1
                 logLevel = int(argv[idx])
             elif (par == "-LOGFILE"):
@@ -1016,10 +962,6 @@ def runTest(argv):
             sys.exit(1)
 
     setLogCond(0, "", logLevel, logFile, verboseLevel)
-
-    if (not getRefCfg()):
-        msg = "Must specify a basis configuration (command line option: -cfg)"
-        raise Exception, msg
 
     skipDic = {}
     if (skip):
@@ -1277,29 +1219,26 @@ class ngamsTestSuite(unittest.TestCase):
 
         verbose = getVerboseLevel()
 
-
         if (dbCfgName):
             # If a DB Configuration Name is specified, we first have to
             # extract the configuration information from the DB to
             # create a complete temporary cfg. file.
-            refCfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
-            multCons = refCfgObj.getDbMultipleCons()
+            cfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
+            multCons = cfgObj.getDbMultipleCons()
             dbObj =\
-                  ngamsDb.ngamsDb(refCfgObj.getDbServer(),
-                                  refCfgObj.getDbName(),
-                                  refCfgObj.getDbUser(),
-                                  refCfgObj.getDbPassword(),
-                                  interface = refCfgObj.getDbInterface(),
-                                  parameters = refCfgObj.getDbParameters(),
+                  ngamsDb.ngamsDb(cfgObj.getDbServer(),
+                                  cfgObj.getDbName(),
+                                  cfgObj.getDbUser(),
+                                  cfgObj.getDbPassword(),
+                                  interface = cfgObj.getDbInterface(),
+                                  parameters = cfgObj.getDbParameters(),
                                   multipleConnections = multCons)
             logFlush()
             cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, dbObj)
             del dbObj
             dbObj = None
             info(2, "Successfully read configuration from database, root dir is %s" % (cfgObj2.getRootDirectory()))
-            tmpCfgFile = saveInFile(None, cfgObj2.genXmlDoc(0))
-        else:
-            tmpCfgFile = cfgFile
+            cfgFile = saveInFile(None, cfgObj2.genXmlDoc(0))
 
         # Derive NG/AMS Server name for this instance.
         hostName = getHostName()
@@ -1308,10 +1247,7 @@ class ngamsTestSuite(unittest.TestCase):
         else:
             hostId = "%s:%d" % (hostName, portNo)
 
-        tmpCfgObj = ngamsConfig.ngamsConfig().load(tmpCfgFile)
-
-        # Take over the DB parameters from the reference.
-        mergeRefCfg(tmpCfgObj)
+        tmpCfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
 
         self.point_to_sqlite_database(tmpCfgObj, hostName, not multipleSrvs and not dbCfgName and not skip_database_creation)
 
@@ -1336,17 +1272,17 @@ class ngamsTestSuite(unittest.TestCase):
         checkHostEntry(dbObj, hostId, domain, ipAddress, clusterName)
 
         # Update configuration.
-        tmpCfg = "tmp/CFG_%d_tmp.xml" %\
-                 int(time.time())
+        tmpCfg = genTmpFilename("CFG_") + ".xml"
         cfgObj.storeVal("NgamsCfg.Server[1].PortNo", str(portNo))
         cfgObj.save(tmpCfg, 0)
         info(3,"DB Name: %s" % cfgObj.getDbName())
 
         # Execute the server as an external process.
+        #srvModule = srvModule or 'ngamsServer.ngamsServer'
         if srvModule:
-            execCmd = ['python', '-m', srvModule]
+            execCmd = [sys.executable, '-m', srvModule]
         else:
-            execCmd = ["ngamsServer"]
+            execCmd = ['ngamsServer']
         execCmd += ["-cfg", tmpCfg, "-force"]
         if (autoOnline):   execCmd.append("-autoOnline")
         if (verbose):      execCmd.extend(["-v", str(verbose)])
@@ -1395,9 +1331,7 @@ class ngamsTestSuite(unittest.TestCase):
         Returns:   Void.
         """
 
-        info(3,"PID of externally running server. PID: %s, Port: %s " %\
-             (str(srvProcess.pid), str(port)))
-        info(3,"Killing externally running NG/AMS Server ...")
+        info(3,"Killing externally running NG/AMS Server. PID: %d, Port: %d " % (srvProcess.pid, port))
         pCl = ngamsPClient.ngamsPClient('localhost', port)
         try:
             info(1,"Sending OFFLINE command to external server ...")
@@ -1434,7 +1368,8 @@ class ngamsTestSuite(unittest.TestCase):
 
         if kill9:
             srvProcess.kill()
-            info(3, "Server process had %d to be killed, sorry :(" % (srvProcess.pid,))
+            srvProcess.wait()
+            info(3, "Server process had %d to be merciless killed, sorry :(" % (srvProcess.pid,))
         else:
             srvProcess.wait()
             info(3, "Finished server process %d gracefully :)" % (srvProcess.pid,))
@@ -1602,7 +1537,6 @@ class ngamsTestSuite(unittest.TestCase):
                 cfgParList = []
 
             tmpCfg = ngamsConfig.ngamsConfig().load(comCfgFile)
-            mergeRefCfg(tmpCfg)
 
             # Set port number in configuration and allocate a mount root
             # directory + other directories + generate new, temporary
@@ -1621,7 +1555,6 @@ class ngamsTestSuite(unittest.TestCase):
                 mtRtDir    = "/tmp/ngamsTest/NGAS:%d" % portNo
             else:
                 mtRtDir    = "/tmp/ngamsTest/NGAS"
-            locLogFile = mtRtDir + "/log/LogFile.nglog"
             tmpCfg.storeVal("NgamsCfg.Header[1].Type", "TEST CONFIG: %s" %\
                             srvId)
             tmpCfg.storeVal("NgamsCfg.Server[1].PortNo", portNo)
@@ -1718,7 +1651,6 @@ class ngamsTestSuite(unittest.TestCase):
                         (string).
         """
         cfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
-        mergeRefCfg(cfgObj)
         multCons = cfgObj.getDbMultipleCons()
         dbObj  = ngamsDb.ngamsDb(cfgObj.getDbServer(), cfgObj.getDbName(),
                                  cfgObj.getDbUser(), cfgObj.getDbPassword(),

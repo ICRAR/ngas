@@ -420,8 +420,8 @@ def _httpPostUrl(url,
     http.endheaders()
     info(4,"HTTP header sent")
 
-    ngamsLib._setSocketTimeout(timeOut, http)
-    
+    http._conn.sock.settimeout(timeOut)
+
     # Send the data.
     info(4,"Sending data ...")
     if (dataSource == "FILE"):
@@ -476,14 +476,12 @@ def _httpPostUrl(url,
     else:
         dataSize = 0
     if (dataTargFile == ""):
-        ngamsLib._waitForResp(http.getfile(), timeOut)
         data = http.getfile().read(dataSize)
     else:
         fd = None
         try:
             data = dataTargFile
             fd = open(dataTargFile, "w")
-            ngamsLib._waitForResp(http.getfile(), timeOut)
             fd.write(http.getfile().read(dataSize))
             fd.close()
         except Exception, e:

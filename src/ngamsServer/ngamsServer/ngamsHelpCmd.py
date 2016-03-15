@@ -35,7 +35,7 @@ TODO: The HELP command is not yet implemented!
 
 from pccUt import PccUtTime
 from ngamsLib import ngamsStatus
-from ngamsLib.ngamsCore import TRACE, getNgamsVersion, getHostId, NGAMS_FAILURE, NGAMS_HTTP_SUCCESS
+from ngamsLib.ngamsCore import TRACE, getNgamsVersion, NGAMS_FAILURE, NGAMS_HTTP_SUCCESS
 
 
 def handleCmdHelp(srvObj,
@@ -63,7 +63,7 @@ def handleCmdHelp(srvObj,
     status.\
              setDate(PccUtTime.TimeStamp().getTimeStamp()).\
              setVersion(getNgamsVersion()).\
-             setHostId(getHostId()).setStatus(NGAMS_FAILURE).\
+             setHostId(srvObj.getHostId()).setStatus(NGAMS_FAILURE).\
              setMessage("Command HELP not implemented").\
              setState(srvObj.getState()).setSubState(srvObj.getSubState())
     msg = status.genXmlDoc()
@@ -91,7 +91,7 @@ def handleCmdHelp(srvObj,
     #    status.\
     #             setDate(PccUtTime.TimeStamp().getTimeStamp()).\
     #             setVersion(getNgamsVersion()).\
-    #             setHostId(getHostId()).setStatus(NGAMS_SUCCESS).\
+    #             setHostId(srvObj.getHostId()).setStatus(NGAMS_SUCCESS).\
     #             setMessage("Successfully handled command HELP").\
     #             setState(srvObj.getState()).setSubState(srvObj.getSubState())
     #    msg = status.genXmlDoc()

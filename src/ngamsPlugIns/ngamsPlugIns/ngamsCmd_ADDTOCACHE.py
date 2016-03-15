@@ -29,7 +29,7 @@ when a normal NGAS server becomes a cache server
 import os, time
 
 from ngamsLib import ngamsDb
-from ngamsLib.ngamsCore import getHostId, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT, info
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT, info
 from ngamsServer import ngamsCacheControlThread
 
 
@@ -48,7 +48,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     Returns:        Void.
     
     """
-    myhostId = getHostId()
+    myhostId = srvObj.getHostId()
     if (not srvObj.getCachingActive()):
         srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, '%s is not a Cache Server!' % myhostId, NGAMS_TEXT_MT)
         return

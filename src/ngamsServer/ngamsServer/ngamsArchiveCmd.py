@@ -74,7 +74,8 @@ def archiveInitHandling(srvObj,
     if (reqPropsObj.hasHttpPar("probe")):
         if (int(reqPropsObj.getHttpPar("probe"))):
             try:
-                ngamsDiskUtils.findTargetDisk(srvObj.getDb(), srvObj.getCfg(),
+                ngamsDiskUtils.findTargetDisk(srvObj.getHostId(),
+                                              srvObj.getDb(), srvObj.getCfg(),
                                               mimeType, sendNotification=0)
                 msg = genLog("NGAMS_INFO_ARCH_REQ_OK",
                              [mimeType, getHostName()])
@@ -100,7 +101,7 @@ def archiveInitHandling(srvObj,
     if (len(archUnits) > 0):
         targNodeName, targNode, targPort, targDiskObj =\
                       ngamsArchiveUtils.\
-                      findTargetNode(srvObj.getDb(), srvObj.getCfg(),
+                      findTargetNode(srvObj.getHostId(), srvObj.getDb(), srvObj.getCfg(),
                                      reqPropsObj.getMimeType())
         if ((targNodeName != getHostName()) or
             (int(targPort) != int(srvObj.getCfg().getPortNo()))):
@@ -165,7 +166,7 @@ def handleCmdArchive(srvObj,
             errMsg = genLog("NGAMS_ER_ARCHIVE_PULL_REQ",
                             [reqPropsObj.getSafeFileUri(), str(e)])
             error(errMsg)
-            ngamsNotification.notify(srvObj.getCfg(), NGAMS_NOTIF_ERROR,
+            ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM HANDLING ARCHIVE PULL REQUEST",
                                      errMsg)
             raise Exception, errMsg
@@ -188,7 +189,7 @@ def handleCmdArchive(srvObj,
             errMsg = genLog("NGAMS_ER_ARCHIVE_PUSH_REQ",
                             [reqPropsObj.getSafeFileUri(), str(e)])
             error(errMsg)
-            ngamsNotification.notify(srvObj.getCfg(), NGAMS_NOTIF_ERROR,
+            ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM ARCHIVE HANDLING", errMsg)
             raise Exception, errMsg
 

@@ -36,7 +36,7 @@ an archived file.
 
 import xml.dom.minidom
 from pccUt import PccUtTime
-from ngamsCore import timeRef2Iso8601, ignoreValue, getAttribValue, prFormat1, TRACE, getHostId, trim, genLog
+from ngamsCore import timeRef2Iso8601, ignoreValue, getAttribValue, prFormat1, TRACE, trim, genLog
 
 # TODO:
 #
@@ -753,6 +753,7 @@ class ngamsFileInfo:
 
 
     def read(self,
+             hostId,
              dbConObj,
              fileId,
              fileVersion = 1,
@@ -771,7 +772,7 @@ class ngamsFileInfo:
 
         Returns:          Reference to object itself.
         """
-        fileInfo = dbConObj.getFileInfoFromFileIdHostId(getHostId(), fileId,
+        fileInfo = dbConObj.getFileInfoFromFileIdHostId(hostId, fileId,
                                                         fileVersion, diskId)
         if (not fileInfo):
             cursorObj = dbConObj.getFileInfoFromFileId(fileId, fileVersion,
@@ -788,6 +789,7 @@ class ngamsFileInfo:
 
 
     def write(self,
+              hostId,
               dbConObj,
               genSnapshot = 1,
               updateDiskInfo = 0):
@@ -805,7 +807,8 @@ class ngamsFileInfo:
         """
         T = TRACE(5)
 
-        dbConObj.writeFileEntry(self.getDiskId(), self.getFilename(),
+        dbConObj.writeFileEntry(hostId,
+                                self.getDiskId(), self.getFilename(),
                                 self.getFileId(), self.getFileVersion(),
                                 self.getFormat(), self.getFileSize(),
                                 self.getUncompressedFileSize(),

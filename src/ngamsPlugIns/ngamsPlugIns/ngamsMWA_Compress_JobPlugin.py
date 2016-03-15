@@ -39,14 +39,13 @@ by the SubscriptionThread._deliveryThread
 import commands, os
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import getHostId, info, error, warning
+from ngamsLib.ngamsCore import info, error, warning, get_contact_ip
 
 
 debug = 1
 work_dir = '/tmp'
 uvcompress = '/home/ngas/processing/compression/uvcompress'
 archive_client = '/home/ngas/ngas_rt/bin/ngamsCClient'
-archive_host = getHostId().split(':')[0] # archive host must be on the same machine as the  data mover or job runner
 
 def execCmd(cmd, failonerror = True, okErr = []):
     re = commands.getstatusoutput(cmd)
@@ -106,7 +105,8 @@ def ngamsMWA_Compress_JobPlugin(srvObj,
         binstr = ''
     
     newfn = '%s/%s' % (work_dir, os.path.basename(filename))
-    
+
+    archive_host = get_contact_ip(srvObj.getCfg()) # archive host must be on the same machine as the  data mover or job runner
     cmd = "%s -d %d %s %s %s" % (uvcompress, sf, binstr, filename, newfn)
     cmd1 = "%s -host %s -port 7777 -fileUri %s -cmd QARCHIVE -mimeType application/octet-stream " % (archive_client, archive_host, newfn)
     cmd2 = "curl http://%s:7777/DISCARD?file_id=%s\\&file_version=%d\\&disk_id=%s\\&execute=1" % (archive_host, fileId, fileVersion, diskId)

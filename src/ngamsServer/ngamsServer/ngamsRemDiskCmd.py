@@ -34,7 +34,7 @@ Functions to handle the REMDISK command.
 import os
 
 from ngamsLib import ngamsDiskInfo, ngamsDbm, ngamsDiskUtils, ngamsHighLevelLib
-from ngamsLib.ngamsCore import getHostId, getHostName, error, info, \
+from ngamsLib.ngamsCore import getHostName, error, info, \
     getDiskSpaceAvail, genLog, NGAMS_XML_MT, NGAMS_SUCCESS, TRACE, rmFile, \
     NGAMS_REMDISK_CMD, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, \
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_BAD_REQ
@@ -53,7 +53,7 @@ def _remDisk(srvObj,
     sqlDiskInfo = srvObj.getDb().getDiskInfoFromDiskId(diskId)
     diskInfo = ngamsDiskInfo.ngamsDiskInfo()
     if (sqlDiskInfo != []):
-        if (diskInfo.unpackSqlResult(sqlDiskInfo).getHostId() != getHostId()):
+        if (diskInfo.unpackSqlResult(sqlDiskInfo).getHostId() != srvObj.getHostId()):
             sqlDiskInfo = None
 
     # Check that the disk is mounted in this unit (no proxy for the REMDISK
@@ -136,13 +136,13 @@ def _remDisk(srvObj,
         info(1,infoMsg)
 
         # Add entry in the NGAS Disks History Table.
-        ngasDiskInfo = ngamsDiskUtils.prepNgasDiskInfoFile(diskInfo, 1, 1)
-        srvObj.getDb().addDiskHistEntry(diskId, "Disk Removed",
+        ngasDiskInfo = ngamsDiskUtils.prepNgasDiskInfoFile(srvObj.getHostId(), diskInfo, 1, 1)
+        srvObj.getDb().addDiskHistEntry(srvObj.getHostId(), diskId, "Disk Removed",
                                         NGAMS_XML_MT, ngasDiskInfo)
     elif (sqlDiskInfo != []):
         infoMsg = genLog("NGAMS_INFO_DEL_DISK_SEL", [diskId]) 
     else:
-        infoMsg = genLog("NGAMS_WA_DEL_DISK2", [getHostId(), diskId])
+        infoMsg = genLog("NGAMS_WA_DEL_DISK2", [srvObj.getHostId(), diskId])
  
     # Generate status.
     status = srvObj.genStatus(NGAMS_SUCCESS, infoMsg)

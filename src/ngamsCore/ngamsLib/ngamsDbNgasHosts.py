@@ -36,7 +36,7 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
-from   ngamsCore import TRACE, getHostId, timeRef2Iso8601, iso8601ToSecs
+from   ngamsCore import TRACE, timeRef2Iso8601, iso8601ToSecs
 import ngamsDbCore
 
 
@@ -160,47 +160,6 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
             raise Exception, errMsg
 
 
-    def getHostContactInfo(self,
-                           hostId):
-        """
-        Get the information needed to be able to contact a host. If the
-        host is located within a cluster the Host ID/IP + Port Number of the
-        Cluster Main Node is returned. In addition is returned whether or not
-        the contact host is suspended.
-
-        hostId:   ID of host to analyze (string).
-        
-        Returns:  Returns a tuple with the information:
-
-                  (<Contact Host ID>, <Contact Host IP>, <Contact Port>,
-                   <Suspended>)  (tuple).
-        """
-        T = TRACE()
-
-        sqlQuery = "SELECT host_id, ip_address, srv_port, srv_suspended " +\
-                   "FROM ngas_hosts WHERE host_id=(SELECT cluster_name " +\
-                   "FROM ngas_hosts WHERE host_id='" + hostId + "')"
-        res = self.query(sqlQuery, ignoreEmptyRes = 0)
-        if (len(res[0]) == 1):
-            # If the contact host corresponds to the local host, the contact
-            # information for the host specified in the method invocation
-            # must be queried and returned (since it can contact the
-            # specified host directly).
-            if (res[0][0][0] == getHostId()):
-                sqlQuery = "SELECT host_id, ip_address, srv_port, " +\
-                           "srv_suspended FROM ngas_hosts " +\
-                           "WHERE host_id='" + hostId + "'"
-                res = self.query(sqlQuery, ignoreEmptyRes = 0)
-                if (len(res[0]) != 1):
-                    errMsg = "Error retrieving info for host: " + hostId
-                    raise Exception, errMsg 
-            return (res[0][0][0], res[0][0][1], int(res[0][0][2]),res[0][0][3])
-        else:
-            errMsg = "Error retrieving info for Cluster Main Node " +\
-                     "in connection with host: " + hostId
-            raise Exception, errMsg
-
-
     def writeHostInfo(self,
                       hostInfoObj):
         """
@@ -299,6 +258,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
             
 
     def reqWakeUpCall(self,
+                      localHostId,
                       wakeUpHostId,
                       wakeUpTime):
         """
@@ -326,7 +286,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
                        "srv_suspended=1, " +\
                        "srv_req_wake_up_srv='" + wakeUpHostId + "', " +\
                        "srv_req_wake_up_time='" + wakeUpTimeLoc + "' " +\
-                       "WHERE host_id='" + getHostId() + "'"
+                       "WHERE host_id='" + localHostId + "'"
             self.query(sqlQuery)
             self.triggerEvents()
             return self
@@ -334,8 +294,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
             raise e
 
 
-    def markHostSuspended(self,
-                          hostId = None):
+    def markHostSuspended(self, hostId):
         """
         Mark a host as being suspended in the NGAS DB.
 
@@ -347,7 +306,6 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         T = TRACE()
 
         try:
-            if (hostId == None): hostId = getHostId()
             sqlQuery = "UPDATE ngas_hosts SET " + "srv_suspended=1 " +\
                        "WHERE host_id='" + hostId + "'"
             self.query(sqlQuery)
@@ -358,7 +316,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
 
 
     def resetWakeUpCall(self,
-                        hostId = None,
+                        hostId,
                         resetSrvSusp = 0):
         """
         Cancel/reset the Wake-Up Call parameters.
@@ -371,7 +329,6 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         T = TRACE()
 
         try:
-            if (hostId == None): hostId = getHostId()
             sqlQuery = "UPDATE ngas_hosts SET srv_req_wake_up_srv=''"
             if (resetSrvSusp): sqlQuery += ", srv_suspended=0"
             sqlQuery += " WHERE host_id='" + hostId + "'"
@@ -405,7 +362,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
             return hostIds
 
 
-    def getWakeUpRequests(self):
+    def getWakeUpRequests(self, hostId):
         """
         Generates a tuple with suspended NGAS Hosts that have requested
         to be woken up by this host.
@@ -420,7 +377,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         T = TRACE(5)
         
         sqlQuery = "SELECT host_id, srv_req_wake_up_time from ngas_hosts " +\
-                   "WHERE srv_req_wake_up_srv='" + getHostId() + "' " +\
+                   "WHERE srv_req_wake_up_srv='" + hostId + "' " +\
                    "AND srv_suspended=1"
         res = self.query(sqlQuery, ignoreEmptyRes = 0)
         if (len(res[0]) >= 1):

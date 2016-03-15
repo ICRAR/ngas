@@ -64,7 +64,7 @@ def raiseTypeException(parameter,
           " is not of type " + str(type) + "."
 
 
-def execCmd(cmd, timeOut = -1):
+def execCmd(cmd, timeOut = -1, shell=True):
     """
     Executes the command given on the UNIX command line and returns a
     list with the cmd exit code and the output written on stdout and stderr.
@@ -77,7 +77,7 @@ def execCmd(cmd, timeOut = -1):
                      [<exit code>, <stdout>, <stderr>]  (list).
     """
 
-    p = subprocess.Popen(cmd, bufsize=1, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.Popen(cmd, bufsize=1, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     if timeOut != -1:
         killed = threading.Event()

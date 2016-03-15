@@ -34,7 +34,7 @@ services for the NG/AMS Server.
 """
 
 import os, sys, re, threading, time, commands, pkg_resources
-import thread, traceback
+import traceback
 import SocketServer, BaseHTTPServer, socket, signal
 
 from pccUt import PccUtTime
@@ -42,12 +42,12 @@ from pccUt import PccUtTime
 from ngamsLib.ngamsCore import \
     genLog, error, info, alert, setLogCache, logFlush, sysLogInfo, TRACE,\
     rmFile, trim, getNgamsVersion, getDebug, getTestMode, setDebug, setTestMode, \
-    getFileSize, getDiskSpaceAvail, setLogCond, setSrvPort, getIpAddress, checkCreatePath,\
-    getHostId, getHostName, ngamsCopyrightString, getNgamsLicense,\
+    getFileSize, getDiskSpaceAvail, setLogCond, checkCreatePath,\
+    getHostName, ngamsCopyrightString, getNgamsLicense,\
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, NGAMS_HTTP_GET,\
     NGAMS_HTTP_BAD_REQ, NGAMS_HTTP_SERVICE_NA, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, NGAMS_DEF_LOG_PREFIX, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR, NGAMS_TEXT_MT,\
-    NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_SOCK_TIMEOUT_DEF, NGAMS_XML_STATUS_ROOT_EL,\
+    NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_XML_STATUS_ROOT_EL,\
     NGAMS_XML_STATUS_DTD, NGAMS_XML_MT
 from ngamsLib import ngamsHighLevelLib, ngamsLib
 from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
@@ -95,9 +95,8 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
     allow_reuse_address = 1
 
     def __init__(self, ngamsServer, server_address):
-        ngamsHttpRequestHandler.reqCallBack = ngamsServer.reqCallBack
-        BaseHTTPServer.HTTPServer.__init__(self, server_address, ngamsHttpRequestHandler)
         self._ngamsServer = ngamsServer
+        BaseHTTPServer.HTTPServer.__init__(self, server_address, ngamsHttpRequestHandler)
 
     def process_request(self,
                         request,
@@ -134,29 +133,25 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
         t.start()
 
 
-    def handle_request(self):
-        """
-        Handle a request.
-        """
-        T = TRACE(5)
-
-        try:
-            request, client_address = self.get_request()
-        except socket.error:
-            info(5,"handle_request() - socket.error")
-            return
-        if self.verify_request(request, client_address):
-            try:
-                self.process_request(request, client_address)
-            except:
-                self.handle_error(request, client_address)
-                self.close_request(request)
-
-
 class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """
     Class used to handle an HTTP request.
     """
+
+    def setup(self):
+        BaseHTTPServer.BaseHTTPRequestHandler.setup(self)
+
+        self.ngasServer = self.server._ngamsServer
+
+        # Set the request timeout to the value given in the server configuration
+        # or default to 1 minute (apache defaults to 1 minute so I assume it's
+        # a sensible value)
+        cfg = self.ngasServer.getCfg()
+        timeout = cfg.getTimeOut()
+        if timeout is None:
+            timeout = 60
+        self.connection.settimeout(timeout)
+
     def finish(self):
         """
         Finish the handling of the HTTP request.
@@ -164,23 +159,11 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         Returns:    Void.
         """
         try:
-            self.rfile.close()
-        except:
-            pass
-        try:
-            self.wfile.flush()
-            self.wfile.close()
-        except:
-            pass
-        try:
+            BaseHTTPServer.BaseHTTPRequestHandler.finish(self)
+        finally:
             logFlush()
-        except:
-            pass
 
-
-    def log_request(self,
-                    code = '-',
-                    size = '-'):
+    def log_message(self, fmt, *args):
         """
         The default log_request is not safe (it blocks) under heavy load.
         I suggest using a Queue and another thread to read from the queue
@@ -228,13 +211,13 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         """
         path = trim(self.path, "?/ ")
         try:
-            self.reqCallBack(self, self.client_address, self.command, path,
+            self.ngasServer.reqCallBack(self, self.client_address, self.command, path,
                          self.request_version, self.headers,
                          self.wfile, self.rfile)
         except Exception, e:
             error(str(e))
             sysLogInfo(1,str(e))
-            thread.exit()
+            raise
 
 
 class ngamsServer:
@@ -375,6 +358,22 @@ class ngamsServer:
         self._cacheCtrlPiThreadGr       = None
         self._dataMoverOnly             = False
 
+        # The listening end
+        self.ipAddress = None
+        self.portNo    = None
+
+    def getHostId(self):
+        """
+        Returns the proper NG/AMS Host ID according whether multiple servers
+        can be executed on the same host, and this server is one of those.
+    
+        If multiple servers can be executed on one node, the Host ID will be
+        <Host Name>:<Port No>. Otherwise, the Host ID will be the hostname.
+        """
+        hostname = getHostName()
+        if self.__multipleSrvs:
+            return hostname + ":" + str(self.portNo)
+        return hostname
 
     def getLogFilename(self):
         """
@@ -433,7 +432,7 @@ class ngamsServer:
 
         Returns:    Filename of Request Info DB (string).
         """
-        ngasId = ngamsHighLevelLib.genNgasId(self.getCfg())
+        ngasId = self.getHostId()
         cacheDir = ngamsHighLevelLib.genCacheDirName(self.getCfg())
         return os.path.normpath(cacheDir + "/" + ngasId + "_REQUEST_INFO_DB")
 
@@ -1421,39 +1420,36 @@ class ngamsServer:
                 self.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                            NGAMS_SUCCESS, msg)
 
-        except Exception as e:
+            reqPropsObj.getWriteFd().flush()
 
-            # Flush read socket if needed - not a good idea as the request could
-            # be massive, we do not want to wait. What we want to do is send
-            # an error reponse straight away and put a timeout on the socket so
-            # there is no deadlock.
-            #if (reqPropsObj.getBytesReceived() < reqPropsObj.getSize()):
-                #info(4,"Closing HTTP read socket ...")
-                #reqPropsObj.getReadFd().close()
-                #info(4,"Closed HTTP read socket")
-                #ngamsLib.flushHttpCh(reqPropsObj.getReadFd(), 32768,
-                #                     (reqPropsObj.getSize() -
-                #                      reqPropsObj.getBytesReceived()))
-                #reqPropsObj.setBytesReceived(reqPropsObj.getSize())
-            #reqPropsObj.getReadFd().close()
+        except Exception, e:
+
+            # Quickly respond with a 400 status code for unexpected exceptions
+            # (although it should be a 5xx code)
+            # Before we were consuming the whole input stream here before
+            # sending the response which wasted resources unnecessarily
             if getDebug():
                 traceback.print_exc(file = sys.stdout)
 
             errMsg = str(e)
             error(errMsg)
             self.setSubState(NGAMS_IDLE_SUBSTATE)
+
+            # If we fail because of a timeout we give up sending any response
+            if isinstance(e, socket.timeout):
+                raise
+
+            # Send a response if one hasn't been send yet. Use a shorter timeout
+            # if possible to avoid hanging out in here
             if not reqPropsObj.getSentReply():
-                httpRef.wfile._sock.settimeout(20)
+                timeout = min((httpRef.wfile._sock.gettimeout(), 20))
+                httpRef.wfile._sock.settimeout(timeout)
                 self.reply(reqPropsObj, httpRef, NGAMS_HTTP_BAD_REQ,
                            NGAMS_FAILURE, errMsg)
         finally:
             reqPropsObj.setCompletionTime(1)
             self.updateRequestDb(reqPropsObj)
             self.setLastReqEndTime()
-
-            reqPropsObj.getReadFd().close()
-            reqPropsObj.getWriteFd().flush()
-            reqPropsObj.getWriteFd().close()
 
     def handleHttpRequest(self,
                           reqPropsObj,
@@ -1489,7 +1485,7 @@ class ngamsServer:
         # If running in Unit Test Mode, check if the server is suspended.
         # In case yes, raise an exception indicating this.
         if (getTestMode()):
-            if (self.getDb().getSrvSuspended(getHostId())):
+            if (self.getDb().getSrvSuspended(self.getHostId())):
                 raise Exception, "UNIT-TEST: This server is suspended"
 
         # Handle the command.
@@ -1767,7 +1763,7 @@ class ngamsServer:
 
         # Resolve the proper contact host/port if needed/possible.
         hostDic = ngamsHighLevelLib.\
-                  resolveHostAddress(self.getDb(),self.getCfg(),[forwardHost])
+                  resolveHostAddress(self.getHostId(), self.getDb(),self.getCfg(),[forwardHost])
         if (hostDic[forwardHost] != None):
             contactHost = hostDic[forwardHost].getHostId()
             contactAddr = hostDic[forwardHost].getIpAddress()
@@ -1800,7 +1796,14 @@ class ngamsServer:
                 authHttpHdrVal = ""
 
             # Forward GET or POST request.
-            reqTimeOut = reqPropsObj.getHttpPar("time_out")
+            # Make sure the time_out parameters is positive if given; otherwise
+            # a sane default
+            def_timeout = 300 # 3 [min]
+            reqTimeOut = def_timeout
+            if reqPropsObj.hasHttpPar('time_out'):
+                reqTimeOut = reqPropsObj.getHttpPar("time_out")
+                reqTimeOut = float(reqTimeOut) if reqTimeOut else def_timeout
+                reqTimeOut = reqTimeOut if reqTimeOut >= 0 else def_timeout
             if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
                 httpStatCode, httpStatMsg, httpHdrs, data =\
                               ngamsLib.httpGet(contactAddr, contactPort,
@@ -1834,7 +1837,7 @@ class ngamsServer:
                 tmpReqObj = ngamsReqProps.ngamsReqProps().\
                             unpackHttpInfo(self.getCfg(),
                                            reqPropsObj.getHttpMethod(), "",
-                                           httpHdrs.dict)
+                                           httpHdrs)
                 mimeType = tmpReqObj.getMimeType()
                 if (tmpReqObj.getFileUri()):
                     attachmentName = os.path.basename(tmpReqObj.getFileUri())
@@ -1866,7 +1869,7 @@ class ngamsServer:
         """
         return ngamsStatus.ngamsStatus().\
                setDate(PccUtTime.TimeStamp().getTimeStamp()).\
-               setVersion(getNgamsVersion()).setHostId(getHostId()).\
+               setVersion(getNgamsVersion()).setHostId(self.getHostId()).\
                setStatus(status).setMessage(msg).setState(self.getState()).\
                setSubState(self.getSubState())
 
@@ -2016,7 +2019,7 @@ class ngamsServer:
                 if extlogger:
                     extlogger("INFO", errMsg)
                 error(errMsg)
-                ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
+                ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                          "PROBLEMS INITIALIZING NG/AMS SERVER",
                                          errMsg, [], 1)
                 self.terminate()
@@ -2032,7 +2035,7 @@ class ngamsServer:
             (self.getCfg().getPortNo() < 1)): return ""
         try:
             pidFile = os.path.join(self.getCfg().getRootDirectory(), "." +
-                                   ngamsHighLevelLib.genNgasId(self.getCfg())
+                                   self.getHostId()
                                    + ".pid")
         except Exception, e:
             errMsg = "Error occurred generating PID file name. Check " +\
@@ -2116,6 +2119,15 @@ class ngamsServer:
 
         # Load NG/AMS Configuration (from XML Document/DB).
         self.loadCfg()
+
+        # IP address defaults to localhost
+        ipAddress = self.getCfg().getIpAddress()
+        self.ipAddress = ipAddress or '127.0.0.1'
+
+        # Port number defaults to 7777
+        portNo = self.getCfg().getPortNo()
+        self.portNo = portNo if portNo != -1 else 7777
+
         # Set up final logging conditions.
         if (self.__locLogLevel == -1):
             self.__locLogLevel = self.getCfg().getLocalLogLevel()
@@ -2132,39 +2144,43 @@ class ngamsServer:
                   "defined as: Sys Log: %s " +\
                   "- Sys Log Prefix: %s  - Local Log File: %s " +\
                   "- Local Log Level: %s - Verbose Level: %s"
-            info(1, msg % (getHostId(), str(self.__sysLog),
+            info(1, msg % (self.getHostId(), str(self.__sysLog),
                            self.__sysLogPrefix, self.__locLogFile,
                            str(self.__locLogLevel), str(self.__verboseLevel)))
         except Exception, e:
             errMsg = genLog("NGAMS_ER_INIT_LOG", [self.__locLogFile, str(e)])
             error(errMsg)
-            ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
+            ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM SETTING UP LOGGING", errMsg)
             raise Exception, errMsg
 
         # Check if there is an entry for this node in the ngas_hosts
         # table, if not create it.
-        if (self.getMultipleSrvs()): setSrvPort(self.getCfg().getPortNo())
-        hostInfo = self.getDb().getHostInfoFromHostIds([getHostId()])
+        hostInfo = self.getDb().getHostInfoFromHostIds([self.getHostId()])
         if (hostInfo == []):
             tmpHostInfoObj = ngamsHostInfo.ngamsHostInfo()
-            ipAddress = getIpAddress()
-            domain = ngamsLib.getDomain()
-            if (not domain): domain = NGAMS_NOT_SET
+
+            # If we specified a Proxy Name/IP in the configuration we use that
+            # to save our IP address in the database so it becomes visible to
+            # external users
+            # TODO: This still needs to be properly done
+            raise Exception()
+
+            domain = ngamsLib.getDomain() or NGAMS_NOT_SET
             tmpHostInfoObj.\
-                             setHostId(getHostId()).\
+                             setHostId(self.getHostId()).\
                              setDomain(domain).\
                              setIpAddress(ipAddress).\
                              setMacAddress(NGAMS_NOT_SET).\
                              setNSlots(-1).\
-                             setClusterName(getHostId()).\
+                             setClusterName(self.getHostId()).\
                              setInstallationDateFromSecs(time.time())
             info(1,"Creating entry in NGAS Hosts Table for this node: %s" %\
-                 getHostId())
+                 self.getHostId())
             self.getDb().writeHostInfo(tmpHostInfoObj)
 
         # Should be possible to execute several servers on one node.
-        self.__hostInfo.setHostId(getHostId())
+        self.__hostInfo.setHostId(self.getHostId())
 
         # Log some essential information.
         allowArchiveReq    = self.getCfg().getAllowArchiveReq()
@@ -2187,7 +2203,7 @@ class ngamsServer:
         if (not self.getForce() and os.path.exists(self.pidFile())):
             errMsg = genLog("NGAMS_ER_MULT_INST")
             error(errMsg)
-            ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
+            ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "CONFLICT STARTING NG/AMS SERVER", errMsg)
             self.terminate()
 
@@ -2241,11 +2257,11 @@ class ngamsServer:
             setLogCache(self.getCfg().getLogBufferSize())
 
         sysLogInfo(1, genLog("NGAMS_INFO_STARTING_SRV",
-                             [getNgamsVersion(), getHostId(),
+                             [getNgamsVersion(), self.getHostId(),
                               self.getCfg().getPortNo()]))
 
         # Reset the parameters for the suspension.
-        self.getDb().resetWakeUpCall(None, 1)
+        self.getDb().resetWakeUpCall(self.getHostId(), 1)
 
         # Create a mime-type to DAPI dictionary
         for stream in self.getCfg().getStreamList():
@@ -2266,7 +2282,7 @@ class ngamsServer:
                  "server remaining in Offline State")
 
         # Update the internal ngamsHostInfo object + ngas_hosts table.
-        clusterName = self.getDb().getClusterNameFromHostId(getHostId())
+        clusterName = self.getDb().getClusterNameFromHostId(self.getHostId())
         self.getHostInfoObj().setClusterName(clusterName)
         self.updateHostInfo(getNgamsVersion(), self.getCfg().getPortNo(),
                             self.getCfg().getAllowArchiveReq(),
@@ -2274,9 +2290,6 @@ class ngamsServer:
                             self.getCfg().getAllowProcessingReq(),
                             self.getCfg().getAllowRemoveReq(),
                             0, None)
-
-        # set the default socket timeout for all new sockets created
-        ngamsLib._setSocketTimeout(NGAMS_SOCK_TIMEOUT_DEF)
 
         # Start HTTP server.
         info(1,"Initializing HTTP server ...")
@@ -2286,7 +2299,7 @@ class ngamsServer:
             traceback.print_exc()
             errMsg = genLog("NGAMS_ER_OP_HTTP_SERV", [str(e)])
             error(errMsg)
-            ngamsNotification.notify(self.getCfg(), NGAMS_NOTIF_ERROR,
+            ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM ENCOUNTERED STARTING " +\
                                      "SERVER", errMsg)
             self.terminate()
@@ -2306,7 +2319,7 @@ class ngamsServer:
 
         Returns:       Reference to object itself.
         """
-        self.getDb().reqWakeUpCall(wakeUpHostId, wakeUpTime)
+        self.getDb().reqWakeUpCall(self.getHostId(), wakeUpHostId, wakeUpTime)
         self.getHostInfoObj().\
                                 setSrvSuspended(1).\
                                 setSrvReqWakeUpSrv(wakeUpHostId).\
@@ -2320,14 +2333,10 @@ class ngamsServer:
         Returns:  Void.
         """
         hostName = getHostName()
-        ipAddress = getIpAddress()
-        portNo = self.getCfg().getPortNo()
-        info(1,"Setting up NG/AMS HTTP Server (Host: {0} - IP: {1} - Port: {2}...)".\
-             format(hostName, ipAddress, str(portNo)))
-
-        self.__httpDaemon = ngamsHttpServer(self, (ipAddress, portNo))
-        info(1,"NG/AMS HTTP Server ready (Host: {0} - IP: {1} - Port: {2})".\
-             format(hostName, ipAddress, str(portNo)))
+        info(1, "Setting up NG/AMS HTTP Server (Host: {0} - IP: {1} - Port: {2})".\
+             format(hostName, self.ipAddress, self.portNo))
+        self.__httpDaemon = ngamsHttpServer(self, (self.ipAddress, self.portNo))
+        info(1,"NG/AMS HTTP Server ready")
 
         self.__httpDaemon.serve_forever()
 
@@ -2634,14 +2643,12 @@ class ngamsServer:
         pass
     ########################################################################
 
-def main():
+def main(argv=sys.argv):
     """
-    Main function instatiating the NG/AMS Server Class and starting the server.
+    Main function instantiating the NG/AMS Server Class and starting the server.
     """
-    T = TRACE()
-
     ngams = ngamsServer()
-    ngams.init(sys.argv)
+    ngams.init(argv)
 
 if __name__ == '__main__':
     main()

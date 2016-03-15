@@ -19,8 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-import importlib
-
 #******************************************************************************
 #
 # "@(#) $Id: __init__.py,v 1.30 2009/11/11 13:08:02 awicenec Exp $"
@@ -30,7 +28,6 @@ import importlib
 # jknudstr  12/04/2001  Created
 # awicenec  29/05/2001  Added path extension
 # jknudstr  11/06/2001  Added proper version + implemented getNgamsVersion()
-
 _doc =\
 """
              #     #  #####        #    #    #     #  #####
@@ -98,6 +95,24 @@ The source files contained in the sub-modules 'ngamsServer', 'ngamsPClient',
 sub-module contaning example plug-ins 'ngamsPlugIns' is not considered either.
 """
 
+import commands
+import glob
+import importlib
+import md5
+import os
+import shutil
+import socket
+import syslog
+import threading
+import time
+import traceback
+import types
+
+import pkg_resources
+
+from pccLog import PccLog, PccLogDef
+from pccUt  import PccUtString, PccUtTime
+
 
 # Debug flag.
 _debug = 0
@@ -105,56 +120,10 @@ _debug = 0
 # Flag indicating if we're executing in Unit Test Mode.
 _testMode = 0
 
-from pccLog import PccLog, PccLogDef
-from pccUt  import PccUtString, PccUtTime
-import md5
-import os
-import sys
-import re
-import syslog
-import traceback
-import threading
-import types
-import time
-import commands
-import urllib
-import socket
-import pkg_resources
-
-# Main PID of server
-NGAMS_SRV_PID = os.getpid()
-NGAMS_HOST_IP   = None
-NGAMS_HOST_NAME = None
-
 
 # Semaphore + counter to ensure unique, temporary filenames.
 _uniqueNumberSem   = threading.Semaphore(1)
 _uniqueNumberCount = 0
-
-
-def ngamsGetSrcDir():
-    """
-    Return the NG/AMS source directory, i.e., the directory where
-    the modules of NG/AMS are contained.
-
-    This function is deprecated and will be removed shortly, so don't even
-    think on using it anymore. Instead use the pkg_resources module to
-    retrieve resources from any package.
-
-    Returns:  NG/AMS source directory (string).
-    """
-    return pkg_resources.resource_filename(__name__, '..')
-
-
-def getSrvPid():
-    """
-    Get the main PID of the Python interpreter, in which the NG/AMS Server
-    or another application based on the NG/AMS library, is running.
-
-    Returns:    Main PID of server (integer).
-    """
-    global NGAMS_SRV_PID
-    return NGAMS_SRV_PID
 
 
 # Import COPYRIGHT statement into doc page.
@@ -185,13 +154,6 @@ _logDef = PccLogDef.PccLogDef().load(NGAMS_ERR_DEF_FILE)
 
 # Flag used to suppress error logging on stderr.
 _suppresErrorLogging = 0
-
-
-# Variable indicating port number used in case multiple servers are executed
-# on the same node. In this case, the Host ID used for addressing will be
-# <Host Name>:<Port No> for unique addressing.
-# If this feature is not used, this should be None.
-_srvPortNo = None
 
 
 # Log protection semaphore.
@@ -898,121 +860,13 @@ def ngamsGetChildNodes(parentNode,
             childNodes.append(childNode)
     return childNodes
 
-def getMyIpAddress():
+def getHostName():
     """
-    Get the IP address of this machine as seen from the outside world.
-    An external service is pretty much the only way to find this in
-    a somewhat reliable way.
-
-    INPUT:    None
-
-    OUTPUT:   string, IP v4 address in standard notation
-    """
-    whatismyip = 'http://bot.whatismyipaddress.com/'
-    try:
-        myIp = urllib.urlopen(whatismyip).readlines()[0]
-    except: # can't figure out ext. IP address use internal one instead
-        myIp = socket.gethostbyname(socket.gethostname())
-    return myIp
-
-def getIpAddress():
-    global NGAMS_HOST_IP
-    if not NGAMS_HOST_IP:
-        getHostName()
-    return NGAMS_HOST_IP
-
-def getHostName(cfgFile=None):
-    """
-    Return the host name is it should be used internally in NG/AMS.
+    Return the host name of this system
 
     Returns:   Host name for this NGAS System (string).
     """
-
-    global NGAMS_HOST_NAME
-    if NGAMS_HOST_NAME:
-        return NGAMS_HOST_NAME
-
-    # Check which interface we are configured to use
-    # and retrieve the name associated to it
-    ip = None
-    if cfgFile or sys.argv.count('-cfg') > 0:
-        if not cfgFile: cfgFile = sys.argv[sys.argv.index('-cfg') + 1]
-        from xml.dom import minidom
-        dom = minidom.parse(cfgFile)
-        srv = dom.getElementsByTagName('Server')
-        ip = srv[0].getAttribute('IpAddress')
-
-    # If no IP is given in the configuration
-    # figure out one of our external IPs
-    if not ip:
-        # We could use this instead?
-        # ip = socket.gethostbyname(socket.gethostname())
-        ip = getMyIpAddress()
-
-    global NGAMS_HOST_IP
-    NGAMS_HOST_IP = str(ip)
-
-    # Figure out the name for our ip and return it
-    # In the case of '0.0.0.0' we use the getMyIpAddress()
-    if ip[0] == '0':
-        NGAMS_HOST_NAME = os.uname()[1]
-    else:
-        try:
-            NGAMS_HOST_NAME = socket.gethostbyaddr(ip)[0]
-        except socket.herror:
-            NGAMS_HOST_NAME = os.uname()[1]
-    return NGAMS_HOST_NAME
-
-
-def setSrvPort(portNo):
-    """
-    Set the server port number. Should only be set if multiple NG/AMS Servers
-    are executed on the same node.
-
-    portNo:   Server port number (integer).
-
-    Returns:  Void.
-    """
-    global _srvPortNo
-    _srvPortNo = int(portNo)
-
-
-def getSrvPort():
-    """
-    Get the server port number. Is only set if multiple NG/AMS Servers
-    are executed on the same node.
-
-    Returns:  Server port number (integer|None).
-    """
-    global _srvPortNo
-    return _srvPortNo
-
-
-def getHostId(cfgFile=None):
-    """
-    Returns the proper NG/AMS Host ID according whether multiple servers
-    can be executed on the same host.
-
-    If multiple servers can be executed on one node, the Host ID will be:
-
-      <Host Name>:<Port No>
-
-    Otherwise, the Host ID will simply be the host name.
-
-    Returns:    NG/AMS Host ID (string).
-    """
-
-    hostName = getHostName(cfgFile=cfgFile)
-    if (hostName.split(".")[-1] == "local"):
-        hostName = hostName.split(".")[0].split("-")[0]
-    elif (re.match('^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$', hostName)):
-        pass
-    else:
-        hostName = hostName.split(".")[0]
-    if (getSrvPort()):
-        return hostName + ":" + str(getSrvPort())
-    else:
-        return hostName
+    return socket.gethostname()
 
 
 def ignoreValue(ignoreEmptyField,
@@ -1271,8 +1125,12 @@ def rmFile(filename):
 
     Returns:    Void.
     """
-    info(4,"Removing file: %s" % filename)
-    commands.getstatusoutput("rm -rf " + filename)
+    info(4,"Removing file(s): %s" % filename)
+    for f in glob.glob(filename):
+        if os.path.isdir(f):
+            shutil.rmtree(f, True)
+        else: # file, link, etc
+            os.remove(f)
 
 
 def mvFile(srcFilename,
@@ -1629,5 +1487,24 @@ def loadPlugInEntryPoint(plugInName, entryPointMethodName=None):
 
     info(3, "Loading entry-point method %s from module %s " % (entryPointMethodName,plugInModule.__name__))
     return getattr(plugInModule, entryPointMethodName)
+
+def is_localhost(host_or_ip):
+    return host_or_ip == 'localhost' or \
+           host_or_ip.startswith("127.0.") or \
+           host_or_ip == getHostName()
+
+def get_contact_ip(cfgObj):
+    """
+    Returns a host or IP address that can be used to contact an NGAS server
+    that is running in this machine and configured with the given `cfgObj`.
+
+    By default this method returns 'localhost' except when the server has been
+    configured to listen in a given non-local interface, in which case that
+    address is returned instead.
+    """
+    ipAddress = cfgObj.getIpAddress()
+    if not ipAddress or ipAddress == '0.0.0.0' or is_localhost(ipAddress):
+        return 'localhost'
+    return ipAddress
 
 # EOF

@@ -252,7 +252,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                 logBuf.append(data)
         logBuf = ''.join(logBuf)
 
-        refStr = "NG/AMS HTTP Server ready (Host: %s - IP: 0.0.0.0 - Port: 8000)" %\
+        refStr = "Setting up NG/AMS HTTP Server (Host: %s - IP: 0.0.0.0 - Port: 8000)" %\
                  getHostName()
         if (logBuf.find(refStr) == -1):
             self.fail("Illegal Log File retrieved from " + getHostName())
@@ -268,7 +268,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                 logBuf.append(data)
         logBuf = ''.join(logBuf)
 
-        refStr = "NG/AMS HTTP Server ready (Host: %s - IP: 0.0.0.0 - Port: 8011)" %\
+        refStr = "Setting up NG/AMS HTTP Server (Host: %s - IP: 0.0.0.0 - Port: 8011)" %\
                  getHostName()
         if (logBuf.find(refStr) == -1):
             self.fail("Illegal Log File retrieved from %s/%s" %\

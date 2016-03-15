@@ -2,7 +2,7 @@ import string
 import sys, os, time
 
 from ngamsLib import ngamsDiskInfo, ngamsDb, ngamsConfig, ngamsFileInfo
-from ngamsLib.ngamsCore import getFileSize, info, setDebug, setLogCond
+from ngamsLib.ngamsCore import getFileSize, info, setDebug, setLogCond, getHostName
 from ngamsServer import ngamsJanitorThread
 from pccUt import PccUtTime
 
@@ -290,7 +290,7 @@ def createFitsFiles(testParDic):
                               setIgnore(0).\
                               setIngestionDate(ingestionTime).\
                               setUncompressedFileSize(uncomprSize)
-                fileInfoObj.write(dbCon, genSnapshot=0)
+                fileInfoObj.write(getHostName(), dbCon, genSnapshot=0)
                 del fileInfoObj
 
             dayFileCount += 1

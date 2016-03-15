@@ -58,22 +58,22 @@ retentionBuf_ = None
 notifSem_ = threading.Semaphore(1)
 
 
-def _getNotifRetBufPickleFile(ngamsCfgObj):
+def _getNotifRetBufPickleFile(ngamsCfgObj, hostId):
     """
     Generate the Notification Pickle Buffer filename.
 
-    ngamsCfgObj:    Reference to object containing NG/AMS
-                    Configuration (ngamsConfig).
+    srvObj:         Reference to NGAS server object (ngamsServer).
 
     Returns:        Name of Retention Buffer Pickle File (string).
     """
     mtRootDir = ngamsCfgObj.getRootDirectory()
-    ngasId    = ngamsHighLevelLib.genNgasId(ngamsCfgObj)
+    ngasId    = hostId
     return os.path.normpath(mtRootDir + "/cache/" + ngasId +\
                             "-NOTIFICATION." + NGAMS_PICKLE_FILE_EXT)
 
 
-def _sendNotifMsg(ngamsCfgObj,
+def _sendNotifMsg(hostId,
+                  ngamsCfgObj,
                   type,
                   subject,
                   msg,
@@ -112,7 +112,7 @@ def _sendNotifMsg(ngamsCfgObj,
         msg = "Notification Message:\n\n" + msg + "\n\n\n" +\
               "Note: This is an automatically generated message"
     if (lst != []):
-        subject = ngamsHighLevelLib.genNgasId(ngamsCfgObj) + ": " + subject
+        subject = hostId + ": " + subject
         fromField = ngamsCfgObj.getSender()
         for recipient in lst:
             # Small trick to avoid to distribute emails when default values
@@ -130,7 +130,8 @@ def _sendNotifMsg(ngamsCfgObj,
                 pass
 
 
-def _checkSendNotifMsg(ngamsCfgObj,
+def _checkSendNotifMsg(hostId,
+                       ngamsCfgObj,
                        msgId,
                        retBuf,
                        flush = 0,
@@ -139,8 +140,7 @@ def _checkSendNotifMsg(ngamsCfgObj,
     Send out a retained Notification Message referenced by its ID if
     the time is ready for this.
 
-    ngamsCfgObj:    Reference to object containing NG/AMS
-                    configuration file (ngamsConfig).
+    srvObj:         Reference to NGAS server object (ngamsServer).
 
     msgId:          Message ID within the Retention Buffer (string).
 
@@ -203,17 +203,18 @@ def _checkSendNotifMsg(ngamsCfgObj,
         # messages are lost.
         del retBuf[msgId]
         retBuf[msgId] = [timeNow, None, type, subject, recList, []]
-        pickleObjFile = _getNotifRetBufPickleFile(ngamsCfgObj)
+        pickleObjFile = _getNotifRetBufPickleFile(ngamsCfgObj, hostId)
         ngamsLib.createObjPickleFile(pickleObjFile, retBuf)
 
         # Send the Notification Message.
-        _sendNotifMsg(ngamsCfgObj, type, subject, msg, recList)
+        _sendNotifMsg(hostId, ngamsCfgObj, type, subject, msg, recList)
     else:
         # There is nothing to send.
         pass
 
 
-def notify(ngamsCfgObj,
+def notify(hostId,
+           ngamsCfgObj,
            type,
            subject,
            dataRef,
@@ -225,9 +226,8 @@ def notify(ngamsCfgObj,
     """
     Send an Notification Email to the subscriber(s) about an event happening.
 
-    ngamsCfgObj:    Reference to object containing NG/AMS
-                    configuration file (ngamsConfig).
-    
+    srvObj:         Reference to NGAS server object (ngamsServer).
+
     type:           Type of Notification (See NGAMS_NOTIF_* in ngams).
     
     subject:        Subject of message (string).
@@ -265,7 +265,7 @@ def notify(ngamsCfgObj,
         notifSem_.acquire()
 
         # Load a possible pickled Retention Buffer.
-        pickleObjFile = _getNotifRetBufPickleFile(ngamsCfgObj)
+        pickleObjFile = _getNotifRetBufPickleFile(ngamsCfgObj, hostId)
         global retentionBuf_
         if (not retentionBuf_):
             # Check if pickled Retention Object exists.
@@ -292,7 +292,7 @@ def notify(ngamsCfgObj,
             # the Last Emission Time. This message will be sent out.
             retentionBuf_[msgId] = [timeNow, None, type, subject, recList, []]
             ngamsLib.createObjPickleFile(pickleObjFile, retentionBuf_)
-            _sendNotifMsg(ngamsCfgObj, type, subject, dataRef, recList,
+            _sendNotifMsg(hostId, ngamsCfgObj, type, subject, dataRef, recList,
                           contentType, attachmentName)
         elif (not force):
             info(4,"Appending Notification Message with ID: " + msgId +\
@@ -307,11 +307,11 @@ def notify(ngamsCfgObj,
             # Update the Notification Retention Buffer Pickle File and check
             # if there are messages to send out.
             ngamsLib.createObjPickleFile(pickleObjFile, retentionBuf_)
-            _checkSendNotifMsg(ngamsCfgObj, msgId, retentionBuf_)
+            _checkSendNotifMsg(hostId, ngamsCfgObj, msgId, retentionBuf_)
         else:
             # Emission of the Notification Message is forced. Just go ahead
             # and send it out.
-            _sendNotifMsg(ngamsCfgObj, type, subject, dataRef, recList,
+            _sendNotifMsg(hostId, ngamsCfgObj, type, subject, dataRef, recList,
                           contentType, attachmentName, dataInFile)
 
         # Release Notification Semaphore.
@@ -322,15 +322,15 @@ def notify(ngamsCfgObj,
         raise Exception, e
     
 
-def checkNotifRetBuf(ngamsCfgObj,
+def checkNotifRetBuf(hostId,
+                     ngamsCfgObj,
                      flush = 0,
                      flushMsg = None):
     """
     Check the Notification Retention Buffer if there are messages
     that should be send out.
 
-    ngamsCfgObj:    Reference to object containing NG/AMS
-                    configuration file (ngamsConfig).
+    srvObj:         Reference to NGAS server object (ngamsServer).
 
     flush:          Force a flush (emission) of all retained Notification
                     Messages (integer/0|1).
@@ -344,7 +344,7 @@ def checkNotifRetBuf(ngamsCfgObj,
 
     global notifSem_
     try:
-        pickleObjFile = _getNotifRetBufPickleFile(ngamsCfgObj)
+        pickleObjFile = _getNotifRetBufPickleFile(ngamsCfgObj, hostId)
 
         # Take Notification Semaphore.
         notifSem_.acquire()
@@ -361,7 +361,7 @@ def checkNotifRetBuf(ngamsCfgObj,
         # Loop over the entries in the Retention Buffer and send out
         # entries to be emitted.
         for msgId in retentionBuf_.keys():
-            _checkSendNotifMsg(ngamsCfgObj, msgId, retentionBuf_, flush,
+            _checkSendNotifMsg(hostId, ngamsCfgObj, msgId, retentionBuf_, flush,
                                flushMsg)
 
         # Release Notification Semaphore.

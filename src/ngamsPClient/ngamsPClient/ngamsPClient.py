@@ -857,15 +857,15 @@ class ngamsPClient:
             authVal = "Basic %s" % self.getAuthorization()
         else:
             authVal = ""
-        if (self.getTimeOut()):
-            timeout = self.getTimeOut()
-        else:
-            timeout = "-1"
+
         httpPars = []
-        for par in pars: httpPars.append(par)
+        for par in pars:
+            httpPars.append(par)
         httpPars += [["attachment; filename", os.path.basename(fileUri)],
-                     ["wait", str(wait)], ["no_versioning", str(noVersioning)],
-                     ["time_out", timeout]]
+                     ["wait", str(wait)], ["no_versioning", str(noVersioning)]]
+        if (self.getTimeOut()):
+            httpPars.append(["time_out", self.getTimeOut()])
+
         reply, msg, hdrs, data =\
                    self._httpPost(self.getHost(), self.getPort(), cmd, mt,
                                   fileUri, dataSource = "FILE",
@@ -953,7 +953,6 @@ class ngamsPClient:
         fileVersion      = -1
         filterPlugIn     = ""
         force            = 0
-#        host             = os.environ['HOSTNAME'] if os.environ.has_key('HOSTNAME') else getHostName()
         host             = '127.0.0.1'
         hostId           = ""
         internal         = ""
@@ -1249,7 +1248,7 @@ class ngamsPClient:
             except Exception, e:
                 # Problem contacting server.
                 deltaTime = (time.time() - startTime)
-                errors += " - Error/%s/%d: %s. Timeout/time: %ss/%.3fs" %\
+                errors += " - Error/%s/%d: %s. Timeout/time: %s/%.3f [s]" %\
                           (tmpHost, tmpPort, str(e), str(timeOut), deltaTime)
                 continue
 
@@ -1298,13 +1297,11 @@ class ngamsPClient:
         else:
             authHdrVal = ""
 
-        if (self.getTimeOut()):
-            timeout = self.getTimeOut()
-        else:
-            timeout = "-1"
         locPars = []
-        for par in pars: locPars.append(par)
-        locPars.append(["time_out", timeout])
+        for par in pars:
+            locPars.append(par)
+        if self.getTimeOut():
+            locPars.append(["time_out", self.getTimeOut()])
 
         host = host or self.getHost()
         port = port or self.getPort()

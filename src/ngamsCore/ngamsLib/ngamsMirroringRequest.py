@@ -35,8 +35,7 @@ Class to handle the information in connection with one Mirroring Request.
 
 import time
 
-from ngamsCore import getHostId, timeRef2Iso8601, trim, iso8601ToSecs,\
-    TRACE, setLogCond
+from ngamsCore import timeRef2Iso8601, trim, iso8601ToSecs, TRACE, setLogCond
 import ngamsLib
 
 
@@ -95,7 +94,7 @@ class ngamsMirroringRequest:
         Constructor method.
         """
         timeNow = time.time()
-        self.__instanceId       = getHostId()
+        self.__instanceId       = None
         self.__fileId           = None
         self.__fileVersion      = -1
         self.__ingestionDate    = None

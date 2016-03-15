@@ -69,7 +69,6 @@ def processHttpReply(http, basename, url):
     else:
         dataSize = 0
     
-    ngamsLib._waitForResp(http.getfile(), None)
     data = http.getfile().read(dataSize)
     
     stat = ngamsStatus.ngamsStatus()
@@ -123,16 +122,13 @@ def buildHttpClient(url,
         
     http.endheaders()
     info(4,"HTTP header sent")
-    
-    # Since we are using the default timeout set in the __init__.py in the ngams module
-    # no need to set it here anymore
-    # but just to ensure this is set (incase someone else set it)
-    ngamsLib._setSocketTimeout(None, http)
-    
+
+    # rtobar, 14/3/16: the default timeout here was 1 [hr]! I'm keeping it like
+    #                  that, but probably it's too much
+    http._conn.sock.settimeout(3600)
+
     return http
 
-
-        
 
 def saveFromHttpToHttp(reqPropsObj,
                        basename,

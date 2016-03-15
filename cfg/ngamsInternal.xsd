@@ -54,6 +54,11 @@
     <xs:attribute name="Id"/>
     <xs:attribute name="ArchiveName" use="required"/>
     <xs:attribute name="IpAddress"/>
+    <xs:attribute name="TimeOut" type="xs:unsignedInt">
+		<xs:annotation>
+		<xs:documentation>The timeout to apply to HTTP requests.
+The server will default to 60 seconds if this attribute is not specified.</xs:documentation>
+		</xs:annotation></xs:attribute>
     <xs:attribute name="PortNo" use="required">
       <xs:simpleType>
         <xs:restriction base="xs:integer">

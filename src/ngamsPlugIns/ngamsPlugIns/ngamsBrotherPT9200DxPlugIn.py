@@ -141,7 +141,7 @@ def ngamsBrotherPT9200DxPlugIn(srvObj,
                      "\" - in font definition file: " + parDic["font_file"] +\
                      " - cannot generate disk label: " + label
             error(errMsg)
-            ngamsPlugInApi.notify(srvObj.getCfg(), NGAMS_NOTIF_ERROR,
+            ngamsPlugInApi.notify(srvObj, NGAMS_NOTIF_ERROR,
                                   "ngamsBrotherPT9200DxPlugIn: " +\
                                   "ILLEGAL CHARACTER REQ. FOR PRINTING",
                                   errMsg)
@@ -152,7 +152,7 @@ def ngamsBrotherPT9200DxPlugIn(srvObj,
 
     # Generate printer file, write the printer control code.
     tmpDir = ngamsPlugInApi.getTmpDir(srvObj.getCfg())
-    ngasId = ngamsPlugInApi.genNgasId(srvObj.getCfg())
+    ngasId = srvObj.getHostId()
     printerFilename = os.path.normpath(tmpDir + "/ngamsLabel_" + ngasId+".prn")
     fo = open(printerFilename, "w")
     fo.write(printerCode)
@@ -165,7 +165,7 @@ def ngamsBrotherPT9200DxPlugIn(srvObj,
     if (stat != 0):
         errMsg = "Problem occurred printing label! Error: " + str(out)
         error(errMsg)
-        ngamsPlugInApi.notify(srvObj.getCfg(), NGAMS_NOTIF_ERROR,
+        ngamsPlugInApi.notify(srvObj, NGAMS_NOTIF_ERROR,
                               "ngamsBrotherPT9200DxPlugIn: " +\
                               "PROBLEM PRINTING LABEL", errMsg)
         raise Exception, errMsg    

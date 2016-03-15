@@ -52,7 +52,7 @@ file in the archive it is not taken into account.
 
 import os
 
-from ngamsLib.ngamsCore import getHostId, getHostName, genLog, rmFile, TRACE, \
+from ngamsLib.ngamsCore import getHostName, genLog, rmFile, TRACE, \
     NGAMS_DISCARD_CMD, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, error, NGAMS_FAILURE
 from ngamsLib import ngamsHighLevelLib, ngamsDbm, ngamsLib
 
@@ -85,7 +85,7 @@ def _delFile(srvObj,
 
     Returns:       Message with info about the execution (string).
     """
-    if (hostId and (hostId != getHostId())):
+    if (hostId and (hostId != srvObj.getHostId())):
         raise Exception, "DISCARD Command can only be executed locally!"
 
     # Handle the discard request locally.
@@ -162,14 +162,14 @@ def _discardFile(srvObj,
         fileInfo = fileListDbm.get("0")
         del fileListDbm
         hostId = fileInfo[-2]
-        if (hostId != getHostId()):
+        if (hostId != srvObj.getHostId()):
             raise Exception, "DISCARD Command can only be executed locally!"
         
         mtPt = fileInfo[-1]
         filename = os.path.normpath(mtPt + "/" + fileInfo[0].getFilename())
         _delFile(srvObj, filename, hostId, execute)
         if (execute):
-            srvObj.getDb().deleteFileInfo(diskId, fileId, fileVersion)
+            srvObj.getDb().deleteFileInfo(srvObj.getHostId(), diskId, fileId, fileVersion)
             msg = genLog("NGAMS_INFO_DISCARD_OK",
                          ["Disk ID: %s/File ID: %s/File Version: %s" %\
                           (str(diskId), str(fileId), str(fileVersion)),

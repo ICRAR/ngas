@@ -32,7 +32,7 @@ import daemon
 from lockfile.pidlockfile import PIDLockFile
 
 from ngamsLib import ngamsConfig
-from ngamsLib.ngamsCore import getIpAddress, getHostName
+from ngamsLib.ngamsCore import get_contact_ip
 from ngamsServer import ngamsServer
 
 
@@ -108,19 +108,14 @@ def status(configFile):
 
     cfgObj = ngamsConfig.ngamsConfig()
     cfgObj.load(configFile)
+    ipAddress = get_contact_ip(cfgObj)
     port = cfgObj.getPortNo()
 
-    # If the server is listening in all interfaces, connect to localhost
-    # when asking for the status; otherwise try with getHostName(CFG)
-    server = getHostName(cfgFile=configFile)
-    if getIpAddress() == '0.0.0.0':
-        server = 'localhost'
-
     # TODO: This creates a dependency on ngamsPClient
-    SCMD = "ngamsPClient -host {0} -port {1} -cmd STATUS -v 1 -timeout 1".format(server, port)
+    SCMD = "ngamsPClient -host {0} -port {1} -cmd STATUS -v 1 -timeout 1".format(ipAddress, port)
     return subprocess.call(SCMD,shell=True)
 
-def main(args=sys.argv):
+def main(argv=sys.argv):
     """
     Entry point function. It's mapped to two different scripts, which is why
     we can distinguish here between them and start different processes
@@ -150,11 +145,11 @@ def main(args=sys.argv):
     except OSError:
         pass
 
-    name = sys.argv[0]
-    if len(sys.argv) < 2:
+    name = argv[0]
+    if len(argv) < 2:
         print "usage: %s start|stop|restart|status" % (name,)
         sys.exit(2)
-    cmd = sys.argv[1]
+    cmd = argv[1]
 
     # Main command switch
     if 'start' == cmd:
@@ -172,6 +167,3 @@ def main(args=sys.argv):
         exitCode = 1
 
     sys.exit(exitCode)
-
-if __name__ == "__main__":
-    main()

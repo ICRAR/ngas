@@ -43,7 +43,7 @@ import re
 import time
 
 from pccUt import PccUtTime
-from ngamsCore import info, warning, error, getHostId, rmFile, getTestMode, notice, getUniqueNo, getNgamsVersion, timeRef2Iso8601
+from ngamsCore import info, warning, error, rmFile, getTestMode, notice, getUniqueNo, getNgamsVersion, timeRef2Iso8601
 from ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE, NGAMS_PICKLE_FILE_EXT, NGAMS_TMP_FILE_EXT
 import ngamsDbm, ngamsDbCore
 import ngamsLib
@@ -360,6 +360,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
 
     def deleteFileInfo(self,
+                       hostId,
                        diskId,
                        fileId,
                        fileVersion,
@@ -411,7 +412,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             if (self.getCreateDbSnapshot() and genSnapshot):
                 tmpFileObj = ngamsFileInfo.ngamsFileInfo().\
                              unpackSqlResult(dbFileInfo)
-                self.createDbFileChangeStatusDoc(NGAMS_DB_CH_FILE_DELETE,
+                self.createDbFileChangeStatusDoc(hostId, NGAMS_DB_CH_FILE_DELETE,
                                                  [tmpFileObj])
 
             # Now update the ngas_disks entry for the disk hosting the file.
@@ -466,6 +467,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
 
     def createDbFileChangeStatusDoc(self,
+                                    hostId,
                                     operation,
                                     fileInfoObjList,
                                     diskInfoObjList = []):
@@ -509,7 +511,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         # Get the mount points for the various disks concerned.
         mtPtDic = {}
         if (diskInfoObjList == []):
-            diskIdMtPtList = self.getDiskIdsMtPtsMountedDisks(getHostId())
+            diskIdMtPtList = self.getDiskIdsMtPtsMountedDisks(hostId)
             for diskId, mtPt in diskIdMtPtList:
                 mtPtDic[diskId] = mtPt
         else:
@@ -537,7 +539,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 tmpStatObj = ngamsStatus.ngamsStatus().\
                              setDate(timeStamp).\
                              setVersion(getNgamsVersion()).\
-                             setHostId(getHostId()).\
+                             setHostId(hostId).\
                              setMessage(dbId).\
                              addFileList(tmpFileList)
 

@@ -35,7 +35,7 @@ import os, re, sys, types, glob, pkg_resources
 
 from pccUt import PccUtTime
 from ngamsLib.ngamsCore import TRACE, info, NGAMS_HOST_LOCAL,\
-    getHostName, genLog, timeRef2Iso8601, genUniqueId, getHostId, mvFile, rmFile,\
+    getHostName, genLog, timeRef2Iso8601, genUniqueId, mvFile, rmFile,\
     error, compressFile, NGAMS_PROC_FILE, NGAMS_GZIP_XML_MT, getNgamsVersion,\
     NGAMS_SUCCESS, logFlush, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD,\
     NGAMS_HTTP_SUCCESS, NGAMS_XML_MT
@@ -247,7 +247,7 @@ def _handleFileList(srvObj,
     try:
         fileInfoDbmName = srvObj.getDb().\
                           dumpFileInfo2(fileInfoDbmBaseName,
-                                        hostId = getHostId(),
+                                        hostId = srvObj.getHostId(),
                                         ignore = 0,
                                         lowLimIngestDate = fromIngDate)
         
@@ -444,7 +444,7 @@ def handleCmdStatus(srvObj,
     status = ngamsStatus.ngamsStatus()
     status.\
              setDate(PccUtTime.TimeStamp().getTimeStamp()).\
-             setVersion(getNgamsVersion()).setHostId(getHostId()).\
+             setVersion(getNgamsVersion()).setHostId(srvObj.getHostId()).\
              setStatus(NGAMS_SUCCESS).\
              setMessage("Successfully handled command STATUS").\
              setState(srvObj.getState()).setSubState(srvObj.getSubState())
@@ -523,10 +523,10 @@ def handleCmdStatus(srvObj,
         global _help
         msg = _help
         help = 1
-    elif (hostId and (hostId != getHostId())):
+    elif (hostId and (hostId != srvObj.getHostId())):
         # Query the status for the host referenced.
         contactDic = ngamsHighLevelLib.\
-                     resolveHostAddress(srvObj.getDb(), srvObj.getCfg(),
+                     resolveHostAddress(srvObj.getHostId(), srvObj.getDb(), srvObj.getCfg(),
                                         [hostId])
         # Handle the request as follows:
         #
@@ -541,12 +541,12 @@ def handleCmdStatus(srvObj,
         #       back the reply received from this.
         hostObj = contactDic[hostId]
         cfgObj = srvObj.getCfg()
-        if ((hostObj.getHostId() == getHostId()) and 
+        if ((hostObj.getHostId() == srvObj.getHostId()) and 
             (hostObj.getSrvPort() == cfgObj.getPortNo())):
             info(2,"Send back status of this server/host to STATUS/host_id "+\
                  "request")
             msg = "Successfully handled command STATUS"
-        elif (((hostObj.getHostId() != getHostId()) or
+        elif (((hostObj.getHostId() != srvObj.getHostId()) or
                (hostObj.getSrvPort() != cfgObj.getPortNo())) and
               (not cfgObj.getProxyMode())):
             info(2,"Sending back re-direction HTTP response for host/port: "+\
@@ -585,7 +585,7 @@ def handleCmdStatus(srvObj,
     elif (fileId):
         if (not fileVersion): fileVersion = -1
         fileObj = ngamsFileInfo.ngamsFileInfo()
-        fileObj.read(srvObj.getDb(), fileId, fileVersion)
+        fileObj.read(srvObj.getHostId(), srvObj.getDb(), fileId, fileVersion)
         diskObj = ngamsDiskInfo.ngamsDiskInfo()
         try:
             diskObj.read(srvObj.getDb(), fileObj.getDiskId())
