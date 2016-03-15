@@ -1248,7 +1248,7 @@ class ngamsPClient:
             except Exception, e:
                 # Problem contacting server.
                 deltaTime = (time.time() - startTime)
-                errors += " - Error/%s/%d: %s. Timeout/time: %ss/%.3fs" %\
+                errors += " - Error/%s/%d: %s. Timeout/time: %s/%.3f [s]" %\
                           (tmpHost, tmpPort, str(e), str(timeOut), deltaTime)
                 continue
 

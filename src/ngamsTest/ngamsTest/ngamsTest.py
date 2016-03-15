@@ -119,17 +119,20 @@ def runAllTests(notifyemail = None,
         sys.stdout.write(line)
         sys.stdout.flush()
         suiteStartTime = time.time()
-        tstCmdLine = "python %s.py" % (mod)
-        stat, stdout, stderr = PccUtUtils.execCmd(tstCmdLine, NGAMS_TEST_MAX_TS_TIME)
-        testTime = (time.time() - suiteStartTime)
-        if (testTime >= NGAMS_TEST_MAX_TS_TIME):
+        tstCmdLine = (sys.executable, "%s.py" % (mod,))
+        try:
+            stat, stdout, stderr = PccUtUtils.execCmd(tstCmdLine, timeOut=NGAMS_TEST_MAX_TS_TIME, shell=False)
+            testTime = (time.time() - suiteStartTime)
+            if ((stdout.find("FAILED") != -1) or (stat != 0)):
+                failModDic[mod] = stdout + " --- " + stderr
+                stat = " - %-5.1fs - FAILURE!!\n" % testTime
+            else:
+                    stat = " - %-5.1fs - SUCCESS\n" % testTime
+        except Exception, e:
+            print e
+            testTime = (time.time() - suiteStartTime)
             failModDic[mod] = "TIME-OUT"
             stat = " - %-5.1fs - TIME-OUT!!\n" % testTime
-        elif ((stdout.find("FAILED") != -1) or (stat != 0)):
-            failModDic[mod] = stdout + " --- " + stderr
-            stat = " - %-5.1fs - FAILURE!!\n" % testTime
-        else:
-            stat = " - %-5.1fs - SUCCESS\n" % testTime
         sys.stdout.write(stat)
         sys.stdout.flush()
         testRep += stat
