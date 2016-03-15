@@ -423,6 +423,8 @@ def _httpHandleResp(fileObj,
                 if ((dataSize - dataRecv) < blockSize):
                     reqSize = (dataSize - dataRecv)
                 tmpData = fileObj.read(reqSize)
+                if len(tmpData) == 0:
+                    raise Exception("HTTP reply finished before expected. Received data is incomplete")
                 fd.write(tmpData)
                 dataRecv += len(tmpData)
 
