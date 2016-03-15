@@ -1272,8 +1272,7 @@ class ngamsTestSuite(unittest.TestCase):
         checkHostEntry(dbObj, hostId, domain, ipAddress, clusterName)
 
         # Update configuration.
-        tmpCfg = "tmp/CFG_%d_tmp.xml" %\
-                 int(time.time())
+        tmpCfg = genTmpFilename("CFG_") + ".xml"
         cfgObj.storeVal("NgamsCfg.Server[1].PortNo", str(portNo))
         cfgObj.save(tmpCfg, 0)
         info(3,"DB Name: %s" % cfgObj.getDbName())
@@ -1556,7 +1555,6 @@ class ngamsTestSuite(unittest.TestCase):
                 mtRtDir    = "/tmp/ngamsTest/NGAS:%d" % portNo
             else:
                 mtRtDir    = "/tmp/ngamsTest/NGAS"
-            locLogFile = mtRtDir + "/log/LogFile.nglog"
             tmpCfg.storeVal("NgamsCfg.Header[1].Type", "TEST CONFIG: %s" %\
                             srvId)
             tmpCfg.storeVal("NgamsCfg.Server[1].PortNo", portNo)
