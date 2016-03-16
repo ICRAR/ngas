@@ -472,10 +472,7 @@ def getMaxLogLevel():
 
     Returns:  Maximum level (integer).
     """
-    if (PccLog.getLogLevel() > PccLog.getVerboseLevel()):
-        return PccLog.getLogLevel()
-    else:
-        return PccLog.getVerboseLevel()
+    return max((getLogLevel(), getVerboseLevel()))
 
 
 def genLog(logId,
@@ -619,7 +616,7 @@ class Trace:
         self.__startTime = time.time()
         self.__id        = md5.new("%.16f" % self.__startTime).hexdigest()
         self.__location  = getLocation(level = -4)
-        PccLog.info(4, "TRACE:%s: Entering: %s ..." %
+        info(4, "TRACE:%s: Entering: %s ..." %
                     (self.__id, self.__location))
 
     def __del__(self):
@@ -629,7 +626,7 @@ class Trace:
         """
         stopTime = time.time()
         try:
-            PccLog.info(4, "TRACE:%s: Leaving: %s. Time: %.6fs" %
+            info(4, "TRACE:%s: Leaving: %s. Time: %.6fs" %
                         (self.__id, self.__location,
                          (stopTime - self.__startTime)))
         except:
@@ -653,11 +650,7 @@ def TRACE(logLevel = 4):
 
     Returns:     Temporary trace object (Trace).
     """
-    if ((PccLog.getLogLevel() >= logLevel) or
-        (PccLog.getVerboseLevel() >= logLevel)):
-        return Trace()
-    else:
-        return None
+    return Trace() if getMaxLogLevel() >= logLevel else None
 
 
 def sysLogInfo(level,
