@@ -14,7 +14,6 @@ Document.
 """
 
 import sys, exceptions, string, re, types, xml.dom.minidom
-from pccUt import PccUtString
 
 # Log types (from UNIX syslog)
 PCC_LOG_EMERGENCY = "EMERGENCY"
@@ -310,9 +309,7 @@ class PccLogDef:
                 text = ""
                 for nd in tmpNodeList[0].childNodes:
                     if (nd.nodeType == node.TEXT_NODE):
-                        text = text + " " +\
-                               PccUtString.trimString(nd.data, " \n")
-                #logDefEl.setLogText(PccUtString.trimString(text, " \n"))
+                        text = text + " " + nd.data.strip(" \n")
                 # Remove newline characters and ensure that there is no
                 # sequence of blanks.
                 text = text.replace("\n", "")
@@ -326,9 +323,8 @@ class PccLogDef:
                 text = ""
                 for nd in tmpNodeList[0].childNodes:
                     if (nd.nodeType == node.TEXT_NODE):
-                        text = text +\
-                               PccUtString.trimString(nd.data, " ")
-                logDefEl.setDescription(PccUtString.trimString(text, " \n"))
+                        text = text + nd.data.strip()
+                logDefEl.setDescription(text.strip(" \n"))
                  
                 logDefEl.setLogType(getAttribValue(node, "LogType"))
                 

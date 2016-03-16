@@ -31,7 +31,6 @@
 """
 This filter will keep  all already-decompressed image files from entering the job queue
 """
-from ngams import *
 
 def isGLEAM2ImageTar(fileId): #_images_v2.1.tar
     return (fileId.endswith('_images_v2.1.tar') and (len(fileId.split('_')) == 3))

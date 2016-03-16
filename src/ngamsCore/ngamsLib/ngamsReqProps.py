@@ -172,7 +172,7 @@ class ngamsReqProps:
                         if (par.strip() != ""): self.addHttpPar(par, uncVal)
             elif (keyTmp == "content-type"):
                 if (self.getMimeType() == ""):
-                    self.setMimeType(trim(val.split(";"), " \""))
+                    self.setMimeType(trim(val.split(";")[0], " \""))
             elif (keyTmp == "content-length"):
                 self.setSize(trim(val, " \""))
             elif (keyTmp == "authorization"):

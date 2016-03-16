@@ -111,7 +111,7 @@ import types
 import pkg_resources
 
 from pccLog import PccLog, PccLogDef
-from pccUt  import PccUtString, PccUtTime
+from pccUt  import PccUtTime
 
 
 # Debug flag.
@@ -349,20 +349,19 @@ def legalCmd(cmd):
         return 0
 
 
-def trim(str,
-         trimChars):
+def trim(s, trimChars):
     """
     Trim a string removing leading and trailing
     characters contained in the "trimChars" string.
 
-    str:        String to trim (string).
+    s:          String to trim (string).
 
     trimChars:  String containing characters to trim out of
                 the input string (string).
 
     Returns:    Trimmed string (string).
     """
-    return PccUtString.trimString(str, trimChars)
+    return s.strip(trimChars)
 
 
 def getNgamsVersion():

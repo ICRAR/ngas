@@ -38,6 +38,5 @@ setup(name='pcc',
       url='',
       license='',
       packages=find_packages(),
-      package_data={'.':['pccWeb/*']},
       zip_safe=True
 )

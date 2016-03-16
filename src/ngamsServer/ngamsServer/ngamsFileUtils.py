@@ -35,7 +35,6 @@ functions, to deal with archive files.
 import os
 import re
 
-from pccLog import PccLog
 from pccUt import PccUtTime
 import ngamsSrvUtils
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsDiskInfo, ngamsStatus, ngamsLib
