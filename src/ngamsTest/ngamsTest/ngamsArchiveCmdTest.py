@@ -1386,7 +1386,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         open('tmp/zerofile.fits', 'a').close()
         client = ngamsPClient.ngamsPClient(port = 8888)
-        status = client.archive('src/zerofile.fits', 'application/octet-stream', cmd = 'ARCHIVE')
+        status = client.archive('tmp/zerofile.fits', 'application/octet-stream', cmd = 'ARCHIVE')
         self.checkEqual(status.getStatus(), 'FAILURE', None)
         self.checkEqual('Content-Length is 0' in status.getMessage(), True, None)
 
