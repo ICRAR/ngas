@@ -309,8 +309,6 @@ class ngamsSqliteCursor:
         """
         Destructor method free'ing the internal DB connection + cursor objects.
         """
-        T = TRACE(5)
-
         if (self.__cursorObj):
             self.__cursorObj.close()
             del self.__cursorObj

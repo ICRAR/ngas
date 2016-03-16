@@ -164,8 +164,6 @@ class ngamsThreadGroup:
         """
         Destructor method. Unblocks possible blocked (paused) threads.
         """
-        T = TRACE()
-        
         self.__pauseEvent.set()
 
 

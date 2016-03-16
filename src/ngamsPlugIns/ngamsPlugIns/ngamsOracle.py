@@ -370,8 +370,6 @@ class ngamsOracleCursor:
         """
         Destructor method free'ing the internal DB connection + cursor objects.
         """
-        T = TRACE()
-
         if (self.__cursorObj): del self.__cursorObj
         if (self.__dbDrv): del self.__dbDrv
 

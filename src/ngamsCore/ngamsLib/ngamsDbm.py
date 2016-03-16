@@ -113,8 +113,6 @@ class ngamsDbm:
         """
         Destructor method cleaning up.
         """
-        T = TRACE()
-
         if (self.__dbmObj): self.__dbmObj.sync()
         if (self.__cleanUpOnDestr): rmFile(self.__dbmName)
 
@@ -491,8 +489,6 @@ class ngamsDbm2:
         """
         Destructor method cleaning up.
         """
-        T = TRACE()
-
         if (self.__dbmObj): self.__dbmObj.sync()
         if (self.__cleanUpOnDestr): rmFile(self.__dbmName)
 
