@@ -20,8 +20,8 @@ optionally the ``parent_container_id`` can be given, and the request must be
 performed using the ``GET`` method.
 To create multiple containers an XML document must be sent in the request body
 containing elements with a ``name`` attribute, and optionally a
-``parentContainerId`` attribute at the root level. Nested elements are allows to
-create a hierarchy of containers.
+``parentContainerId`` attribute at the root level. Nested elements are allowed
+to create a hierarchy of containers.
 
 .. _commands.carchive:
 
