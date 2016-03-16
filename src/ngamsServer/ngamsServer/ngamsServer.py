@@ -2164,7 +2164,6 @@ class ngamsServer:
             # to save our IP address in the database so it becomes visible to
             # external users
             # TODO: This still needs to be properly done
-            raise Exception()
 
             domain = ngamsLib.getDomain() or NGAMS_NOT_SET
             tmpHostInfoObj.\
