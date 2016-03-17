@@ -176,33 +176,6 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         """
         pass
 
-
-    def do_GET(self):
-        """
-        Serve a GET method request.
-
-        Returns:   Void.
-        """
-        self.reqHandle()
-
-
-    def do_POST(self):
-        """
-        Serve a POST method request.
-
-        Returns:    Void.
-        """
-        self.reqHandle()
-
-    def do_PUT(self):
-        """
-        Serve a PUT method request.
-
-        Returns:    Void.
-        """
-        self.reqHandle()
-
-
     def reqHandle(self):
         """
         Basic, generic request handler to handle an incoming HTTP request.
@@ -214,11 +187,26 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.ngasServer.reqCallBack(self, self.client_address, self.command, path,
                          self.request_version, self.headers,
                          self.wfile, self.rfile)
+        except socket.error:
+            # BaseHTTPRequestHandler.handle does wfile.flush() after this method
+            # returns. If there is a problem with the connection to the client
+            # there would be further exceptions because of this, which are
+            # meaningless at this point, so we don't want to know about them (or
+            # at least not print them).
+            # Our finish() method is already too late in the chain to catch this
+            # to-be exceptions, so instead we avoid them by emptying the buffer
+            # with our little trick here.
+            self.wfile._wbuf = []
+            self.wfile._wbuf_len = 0
         except Exception, e:
             error(str(e))
             sysLogInfo(1,str(e))
             raise
 
+    # The three methods we support
+    do_GET  = reqHandle
+    do_POST = reqHandle
+    do_PUT  = reqHandle
 
 class ngamsServer:
     """
@@ -1435,8 +1423,9 @@ class ngamsServer:
             error(errMsg)
             self.setSubState(NGAMS_IDLE_SUBSTATE)
 
-            # If we fail because of a timeout we give up sending any response
-            if isinstance(e, socket.timeout):
+            # If we fail because of a socket error there is no point on trying
+            # to write the response anymore, simply bail out
+            if isinstance(e, socket.error):
                 raise
 
             # Send a response if one hasn't been send yet. Use a shorter timeout
