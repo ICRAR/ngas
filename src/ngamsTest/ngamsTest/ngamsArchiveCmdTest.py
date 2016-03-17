@@ -41,7 +41,6 @@ import shutil
 import sys
 import urllib
 import httplib
-import base64
 from unittest.case import skip
 from contextlib import closing
 
@@ -1168,7 +1167,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         noOfNodes = len(naus.keys())
         nodeCount = 0
         for _ in xrange(100):
-            stat = sendPclCmd(getHostName(), 8000).\
+            stat = sendPclCmd(port=8000).\
                    archive("src/TinyTestFile.fits")
             self.assertEquals(stat.getStatus(), 'SUCCESS', "Didn't successfully archive file: %s / %s" % (stat.getStatus(), stat.getMessage()))
             if (naus[stat.getHostId()] == 0):
@@ -1233,7 +1232,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         noOfNodes = len(naus.keys())
         nodeCount = 0
         for n in range(100):
-            stat = sendPclCmd(getHostName(), 8000).\
+            stat = sendPclCmd(port=8000).\
                    archive("src/TinyTestFile.fits")
             if (naus[stat.getHostId()] == 0):
                 naus[stat.getHostId()] = 1
@@ -1287,14 +1286,14 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         dbObj.query("UPDATE ngas_disks SET completed=1 WHERE host_id='%s'" %\
                     "%s:8002" % getHostName())
         # Set <Host>:8004 to Offline.
-        stat = sendPclCmd(getHostName(), 8004).offline()
+        stat = sendPclCmd(port=8004).offline()
 
         del naus["%s:8002" % getHostName()]
         del naus["%s:8004" % getHostName()]
         noOfNodes = len(naus.keys())
         nodeCount = 0
         for n in range(100):
-            stat = sendPclCmd(getHostName(), 8000).\
+            stat = sendPclCmd(port=8000).\
                    archive("src/TinyTestFile.fits")
             if (naus[stat.getHostId()] == 0):
                 naus[stat.getHostId()] = 1

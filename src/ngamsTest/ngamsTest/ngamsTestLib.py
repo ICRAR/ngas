@@ -665,8 +665,7 @@ def checkHostEntry(dbObj,
     dbObj.query(sqlQuery)
 
 
-def sendPclCmd(host = None,
-               port = 8888,
+def sendPclCmd(port = 8888,
                auth = None,
                timeOut = 60.0):
     """
@@ -683,9 +682,7 @@ def sendPclCmd(host = None,
 
     Returns:       Created instance of Python Client (ngamsPClient).
     """
-    if host is None:
-        host = 'localhost'
-    return ngamsPClient.ngamsPClient(host, port).setAuthorization(auth).\
+    return ngamsPClient.ngamsPClient('localhost', port).setAuthorization(auth).\
            setTimeOut(timeOut)
 
 
@@ -1332,7 +1329,7 @@ class ngamsTestSuite(unittest.TestCase):
         """
 
         info(3,"Killing externally running NG/AMS Server. PID: %d, Port: %d " % (srvProcess.pid, port))
-        pCl = ngamsPClient.ngamsPClient('localhost', port)
+        pCl = ngamsPClient.ngamsPClient('localhost', port, timeOut=10)
         try:
             info(1,"Sending OFFLINE command to external server ...")
             stat = pCl.offline(1)
