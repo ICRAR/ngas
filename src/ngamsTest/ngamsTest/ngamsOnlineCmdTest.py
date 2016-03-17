@@ -35,7 +35,7 @@ import os
 import sys
 
 from ngamsLib import ngamsDiskInfo, ngamsStatus
-from ngamsLib.ngamsCore import getHostName, NGAMS_ONLINE_CMD
+from ngamsLib.ngamsCore import NGAMS_ONLINE_CMD
 from ngamsTestLib import filterDbStatus1, saveInFile, cmpFiles, \
     genErrMsg, loadFile, ngamsTestSuite, sendExtCmd, runTest
 
@@ -148,7 +148,7 @@ class ngamsOnlineCmdTest(ngamsTestSuite):
         TODO: Check that the server is Online (DB + STATUS Command).
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 0)
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_ONLINE_CMD,
+        tmpStatFile = sendExtCmd(8888, NGAMS_ONLINE_CMD,
                                  genStatFile = 1)
         refStatFile = "ref/ngamsOnlineCmdTest_test_OnlineCmd_1_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile,

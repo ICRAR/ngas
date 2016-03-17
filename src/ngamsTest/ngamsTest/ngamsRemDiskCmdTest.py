@@ -33,10 +33,10 @@ This module contains the Test Suite for the REMDISK Command.
 
 import sys
 
-from ngamsLib.ngamsCore import getHostName, NGAMS_REMDISK_CMD
-from ngamsPClient import ngamsPClient
+from ngamsLib.ngamsCore import NGAMS_REMDISK_CMD
 from ngamsTestLib import ngamsTestSuite, waitReqCompl, saveInFile, \
-    filterDbStatus1, getThreadId, getClusterName, sendExtCmd, runTest
+    filterDbStatus1, getThreadId, getClusterName, sendExtCmd, runTest, \
+    sendPclCmd
 
 
 class ngamsRemDiskCmdTest(ngamsTestSuite):
@@ -88,8 +88,8 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         TODO!: It is not checked that the contents on the disk and the info
                in the DB in ngas_files and ngas_disks is properly updated.
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(port=8888)
+        self.prepExtSrv(8888, 1, 1, 1)
+        client = sendPclCmd(port=8888)
 
         # Archive a file + clone it to be able to execute the REMDISK Command.
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
@@ -145,8 +145,8 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(port=8888)
+        self.prepExtSrv(8888, 1, 1, 1)
+        client = sendPclCmd(port=8888)
         client.archive("src/SmallFile.fits")
         
         # Remove the cloned disk (execute=0), should fail.
@@ -198,8 +198,8 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
               containing test data preceeded with a heading.
         """
         self.prepExtSrv(test=0, cfgProps=[["NgamsCfg.Log[1].LocalLogLevel","5"]])
-        client = ngamsPClient.ngamsPClient(port=8888)
-        for n in range(5): client.archive("src/SmallFile.fits")
+        client = sendPclCmd(port=8888)
+        for _ in range(5): client.archive("src/SmallFile.fits")
         client.clone("", "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)
         client.remDisk("tmp-ngamsTest-NGAS-FitsStorage2-Main-3", execute=0)
         client.offline()
@@ -239,8 +239,8 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(test=0, cfgProps=[["NgamsCfg.Log[1].LocalLogLevel","5"]])
-        client = ngamsPClient.ngamsPClient(port=8888)
-        for n in range(5): client.archive("src/SmallFile.fits")
+        client = sendPclCmd(port=8888)
+        for _ in range(5): client.archive("src/SmallFile.fits")
         client.clone("", "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)
         client.remDisk("tmp-ngamsTest-NGAS-FitsStorage2-Main-3", execute=1)
         client.offline()
@@ -286,8 +286,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         diskId  = "tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1"
         for execute in [0, 1]:
             httpPars=[["disk_id", diskId], ["execute", execute]]
-            tmpStatFile = sendExtCmd(getHostName(), 8000, NGAMS_REMDISK_CMD,
-                                     pars=httpPars)
+            tmpStatFile = sendExtCmd(8000, NGAMS_REMDISK_CMD, pars=httpPars)
             refStatFile = "ref/ngamsRemDiskCmdTest_test_ProxyMode_01_01_ref"
             self.checkFilesEq(refStatFile, tmpStatFile,
                               "Incorrect handling of REMDISK Command detected")

@@ -194,7 +194,7 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         fileVer = 2
         httpPars=[["disk_id", diskId], ["file_id", fileId],
                   ["file_version", fileVer]]
-        tmpStatFile = sendExtCmd(getHostName(), 8000, NGAMS_CHECKFILE_CMD,
+        tmpStatFile = sendExtCmd(8000, NGAMS_CHECKFILE_CMD,
                                  pars=httpPars, replaceLocalHost=1)
         refStatFile = "ref/ngamsCheckFileCmdTest_test_ProxyMode_01_01_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect handling of "+\

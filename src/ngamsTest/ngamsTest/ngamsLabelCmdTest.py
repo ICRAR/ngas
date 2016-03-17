@@ -99,7 +99,7 @@ class ngamsLabelCmdTest(ngamsTestSuite):
         if (getHostName() != "ngasdev2"): return
         
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_LABEL_CMD,
+        tmpStatFile = sendExtCmd(8888, NGAMS_LABEL_CMD,
                                  pars = [["slot_id", "1"],
                                          ["host_id", getHostName()]])
         refStatFile = "ref/ngamsLabelCmdTest_test_LabelCmd_1_1_ref"

@@ -33,7 +33,7 @@ This module contains the Test Suite for the INIT Command.
 
 import sys
 
-from ngamsLib.ngamsCore import info, getHostName, NGAMS_INIT_CMD
+from ngamsLib.ngamsCore import info, NGAMS_INIT_CMD
 from ngamsTestLib import ngamsTestSuite, sendExtCmd, runTest
 
 
@@ -75,7 +75,7 @@ class ngamsInitCmdTest(ngamsTestSuite):
         """
         self.prepExtSrv(8888, 1, 1, 1)
         info(1,"TODO: Change some cfg. parameter")
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_INIT_CMD)
+        tmpStatFile = sendExtCmd(8888, NGAMS_INIT_CMD)
         refStatFile = "ref/ngamsInitCmdTest_test_handleCmdInit_1_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status returned for INIT Command")

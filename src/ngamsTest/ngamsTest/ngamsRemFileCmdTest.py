@@ -36,7 +36,6 @@ import sys
 
 from ngamsLib import ngamsFileInfo
 from ngamsLib.ngamsCore import getHostName, NGAMS_REMFILE_CMD, NGAMS_CLONE_CMD
-from ngamsPClient import ngamsPClient
 from ngamsTestLib import ngamsTestSuite, waitReqCompl, saveInFile, \
     filterDbStatus1, getClusterName, sendPclCmd, sendExtCmd, runTest
 
@@ -86,7 +85,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
                removed from the DB and from the disk.
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(port=8888)
+        client = sendPclCmd()
 
         # Archive a file + clone it to be able to execute the REMFILE Command.
         client.archive("src/SmallFile.fits")
@@ -143,7 +142,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
                in less than 3 copies.
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(port=8888)
+        client = sendPclCmd()
 
         # Archive file.
         client.archive("src/SmallFile.fits")
@@ -204,16 +203,16 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
                          [[8000, None, None, getClusterName()],
                           [8011, None, None, getClusterName()]])
         sendPclCmd(port=8000).archive("src/SmallFile.fits")
-        stat = sendPclCmd(port=8011).archive("src/SmallFile.fits")
+        client8011 = sendPclCmd(port=8011)
+        stat = client8011.archive("src/SmallFile.fits")
         diskId  = "tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1"
         fileId  = "TEST.2001-05-08T15:25:00.123"
         fileVer = 2
-        sendPclCmd(port=8011).clone(fileId, diskId, fileVer)
+        client8011.clone(fileId, diskId, fileVer)
         for execute in [0, 1]:
             httpPars=[["disk_id", diskId], ["file_id", fileId],
                       ["file_version", fileVer], ["execute", execute]]
-            tmpStatFile = sendExtCmd(getHostName(), 8000, NGAMS_REMFILE_CMD,
-                                     pars=httpPars)
+            tmpStatFile = sendExtCmd(8000, NGAMS_REMFILE_CMD, pars=httpPars)
             refStatFile = "ref/ngamsRemFileCmdTest_test_ProxyMode_01_01_ref"
             self.checkFilesEq(refStatFile, tmpStatFile,
                               "Incorrect handling of REMFILE Command detected")
@@ -245,11 +244,12 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         ...
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        for n in range(3): stat = sendPclCmd().archive("src/SmallFile.fits")
+        client = sendPclCmd()
+        for n in range(3): stat = client.archive("src/SmallFile.fits")
         diskId1 = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         fileId  = "TEST.2001-05-08T15:25:00.123"
         fileVer = 2
-        status = sendPclCmd().sendCmd(NGAMS_CLONE_CMD, pars=[["disk_id", diskId1]])
+        status = client.sendCmd(NGAMS_CLONE_CMD, pars=[["disk_id", diskId1]])
         self.assertEquals('SUCCESS', status.getStatus())
 
         diskId2 = "tmp-ngamsTest-NGAS-FitsStorage2-Main-3"
@@ -258,7 +258,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         for execute in [0, 1]:
             httpPars=[["disk_id", diskId2], ["file_id", fileId],
                       ["file_version", fileVer], ["execute", execute]]
-            stat = sendPclCmd().sendCmd(NGAMS_REMFILE_CMD, pars=httpPars)
+            stat = client.sendCmd(NGAMS_REMFILE_CMD, pars=httpPars)
             self.assertStatus(stat)
 
             fileInfo = ngamsFileInfo.ngamsFileInfo()

@@ -33,9 +33,9 @@ This module contains the Test Suite for the CONFIG Command.
 
 import sys
 
-from ngamsLib.ngamsCore import getHostName, NGAMS_CONFIG_CMD
-from ngamsPClient import ngamsPClient
-from ngamsTestLib import ngamsTestSuite, saveInFile, filterOutLines, runTest
+from ngamsLib.ngamsCore import NGAMS_CONFIG_CMD
+from ngamsTestLib import ngamsTestSuite, saveInFile, filterOutLines, runTest, \
+    sendPclCmd
 
 
 class ngamsConfigCmdTest(ngamsTestSuite):
@@ -74,8 +74,8 @@ class ngamsConfigCmdTest(ngamsTestSuite):
         Remarks:
         TODO: Check in Log File that low level logs are produced.
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        statObj = ngamsPClient.ngamsPClient(port=8888).\
+        self.prepExtSrv(8888, 1, 1, 1)
+        statObj = sendPclCmd(port=8888).\
                   sendCmdGen(NGAMS_CONFIG_CMD,
                              pars = [["log_local_log_level", "4"]])
         tmpStatFile = "tmp/ngamsConfigCmdTest_test_ChangeLocLogLev_1_1_tmp"

@@ -35,8 +35,7 @@ import sys
 import time
 
 from ngamsLib import ngamsConfig
-from ngamsPClient import ngamsPClient
-from ngamsTestLib import ngamsTestSuite, runTest
+from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd
 
 
 class ngamsDataCheckingThreadTest(ngamsTestSuite):
@@ -93,7 +92,7 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
         cfg.storeVal("NgamsCfg.DataCheckThread[1].MinCycle", "0T00:00:00")
         cfg.save(tmpCfgFile, 0)
         self.prepExtSrv(8888, 1, 1, 1, tmpCfgFile)
-        client = ngamsPClient.ngamsPClient(port=8888)
+        client = sendPclCmd(port=8888)
         for _ in range(3):
             client.archive("src/SmallFile.fits")
 

@@ -33,7 +33,7 @@ This module contains the Test Suite for the EXIT Command.
 
 import sys
 
-from ngamsLib.ngamsCore import getHostName, NGAMS_EXIT_CMD, info
+from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, info
 from ngamsTestLib import ngamsTestSuite, sendExtCmd, runTest
 
 
@@ -74,7 +74,7 @@ class ngamsExitCmdTest(ngamsTestSuite):
         TODO!: Test that the server is no longer running.
         """
         self.prepExtSrv(8888, 1, 1, 0)
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_EXIT_CMD)
+        tmpStatFile = sendExtCmd(8888, NGAMS_EXIT_CMD)
         refStatFile = "ref/ngamsCmdHandlingTest_test_handleCmdExit_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, 
                           "Incorrect status returned for EXIT command")
@@ -104,7 +104,7 @@ class ngamsExitCmdTest(ngamsTestSuite):
         TODO!: Check that the server is still running after the EXIT Command.
         """
         self.prepExtSrv(8888, 1, 1, 1)
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_EXIT_CMD)
+        tmpStatFile = sendExtCmd(8888, NGAMS_EXIT_CMD)
         refStatFile = "ref/ngamsCmdHandlingTest_test_handleCmdExit_2_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, 
                           "Incorrect status returned for EXIT command")

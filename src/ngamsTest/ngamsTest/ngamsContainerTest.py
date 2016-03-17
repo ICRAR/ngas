@@ -21,12 +21,13 @@
 #
 
 import os, random, string, sys
-from ngamsLib.ngamsCore import rmFile, checkCreatePath, getFileSize
-from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE
-from ngamsPClient import ngamsPClient
-import ngamsTestLib
 
-class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
+from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE
+from ngamsLib.ngamsCore import rmFile, checkCreatePath, getFileSize
+from ngamsTestLib import sendPclCmd, ngamsTestSuite, runTest
+
+
+class ngamsContainerTest(ngamsTestSuite):
 
 	mydirs = [
 		"toplevel",
@@ -48,12 +49,12 @@ class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
 	]
 
 	def setUp(self):
-		ngamsTestLib.ngamsTestSuite.setUp(self)
+		ngamsTestSuite.setUp(self)
 		self._createDirectories()
 		self._createFiles()
 
 	def tearDown(self):
-		ngamsTestLib.ngamsTestSuite.tearDown(self)
+		ngamsTestSuite.tearDown(self)
 		rmFile("toplevel")
 
 	def _createDirectories(self):
@@ -75,7 +76,7 @@ class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
 
 		# Server and client
 		self.prepExtSrv(8888)
-		client = ngamsPClient.ngamsPClient(port=8888)
+		client = sendPclCmd(port=8888)
 
 		#------------------------------------------------------------------
 		# We start testing with a single container creation/deletion,
@@ -144,7 +145,7 @@ class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
 
 		# Server and client
 		self.prepExtSrv(8888)
-		client = ngamsPClient.ngamsPClient(port=8888)
+		client = sendPclCmd(port=8888)
 
 		# Create a container, shouldn't be a problem
 		containerName = "testing"
@@ -307,7 +308,7 @@ class ngamsContainerTest(ngamsTestLib.ngamsTestSuite):
 
 		# Server and client
 		self.prepExtSrv(8888)
-		client = ngamsPClient.ngamsPClient(port=8888)
+		client = sendPclCmd(port=8888)
 		containerName = "toplevel"
 
 		# Archive the top-level directory
@@ -347,12 +348,12 @@ def run():
 
 	Returns:   Void.
 	"""
-	ngamsTestLib.runTest(["ngamsContainerTest"])
+	runTest(["ngamsContainerTest"])
 
 if __name__ == "__main__":
 	"""
 	Main program executing the test cases of the module test.
 	"""
-	ngamsTestLib.runTest(sys.argv)
+	runTest(sys.argv)
 
 # EOF

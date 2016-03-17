@@ -33,8 +33,7 @@ This module contains the Test Suite for the SUBSCRIBE Command.
 
 import sys, pkg_resources
 
-from ngamsLib.ngamsCore import getHostName, NGAMS_DISCARD_CMD, info, cpFile
-from ngamsPClient import ngamsPClient
+from ngamsLib.ngamsCore import NGAMS_DISCARD_CMD, info, cpFile
 from ngamsTestLib import ngamsTestSuite, sendExtCmd, sendPclCmd, getClusterName, runTest
 
 
@@ -92,11 +91,11 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         mDiskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         pars = [["disk_id", mDiskId], ["file_id", "NonExistingFileId"],
                 ["file_version", "1"]]
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_DISCARD_CMD,
+        tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD,
                                  pars + [["execute", "0"]])
         refStatFile = "ref/ngamsDiscardCmdTest_test_NonExistingFile_1_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, illStatDoc % "1")
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_DISCARD_CMD,
+        tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD,
                                  pars + [["execute", "1"]])
         self.checkFilesEq(refStatFile, tmpStatFile, illStatDoc % "2")
 
@@ -130,11 +129,11 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
         pars = [["path", "/tmp/ngamsTest/NonExisting"]]
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_DISCARD_CMD,
+        tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD,
                                  pars + [["execute", "0"]])
         refStatFile = "ref/ngamsDiscardCmdTest_test_NonExistingFile_2_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, illStatDoc % "1")
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_DISCARD_CMD,
+        tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD,
                                  pars + [["execute", "1"]])
         self.checkFilesEq(refStatFile, tmpStatFile, illStatDoc % "2")
 
@@ -171,19 +170,19 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         ...
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        ngamsPClient.ngamsPClient(port=8888).pushFile(srcFitsFile)
+        sendPclCmd(port=8888).pushFile(srcFitsFile)
         mDiskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         pars = [["disk_id", mDiskId],
                 ["file_id", "TEST.2001-05-08T15:25:00.123"],
                 ["file_version", "1"]]
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_DISCARD_CMD,
+        tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD,
                                  pars + [["execute", "0"]])
         refStatFile = "ref/ngamsDiscardCmdTest_test_NormalExec_1_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, illStatDoc % "1")
         info(1,"TODO!: Check that file info is not removed from the DB")
         info(1,"TODO!: Check that file is not removed from the disk")
         refStatFile = "ref/ngamsDiscardCmdTest_test_NormalExec_1_2_ref"
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_DISCARD_CMD,
+        tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD,
                                  pars + [["execute", "1"]])
         self.checkFilesEq(refStatFile, tmpStatFile, illStatDoc % "2")
         info(1,"TODO!: Check that file info is removed from the DB")
@@ -228,11 +227,11 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
         trgFile = "/tmp/ngamsTest/NGAS/FitsStorage3-Main-5/saf/SmallFile.fits"
         cpFile(srcFitsFile, trgFile)
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_DISCARD_CMD,
+        tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD,
                                  [["path", trgFile], ["execute", "0"]])
         refStatFile = "ref/ngamsDiscardCmdTest_test_NormalExec_2_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, illStatDoc % "1")
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_DISCARD_CMD,
+        tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD,
                                  [["path", trgFile], ["execute", "1"]])
         refStatFile = "ref/ngamsDiscardCmdTest_test_NormalExec_2_2_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, illStatDoc % "2")
@@ -281,7 +280,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         for execute in [0, 1]:
             httpPars = [["disk_id", mDiskId], ["file_id", fileId],
                         ["file_version", "1"], ["execute", execute]]
-            tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_DISCARD_CMD,
+            tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD,
                                      pars=httpPars)
             refStatFile = "ref/ngamsDiscardCmdTest_test_NormalExec_3_%d_ref"%\
                           (execute + 1)
@@ -325,17 +324,17 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
         # Disk ID Missing:
         pars = [["file_id", "FileID"], ["file_version", "1"]]
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_DISCARD_CMD, pars)
+        tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD, pars)
         refStatFile = "ref/ngamsDiscardCmdTest_test_IllegalPars_1_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, illStatDoc % "1")
         # File ID Missing:
         pars = [["disk_id", "DiskID"], ["file_version", "1"]]
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_DISCARD_CMD, pars)
+        tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD, pars)
         refStatFile = "ref/ngamsDiscardCmdTest_test_IllegalPars_1_2_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, illStatDoc % "2")
         # File Version Missing:
         pars = [["file_id", "FileID"], ["disk_id", "DiskId"]]
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_DISCARD_CMD, pars)
+        tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD, pars)
         refStatFile = "ref/ngamsDiscardCmdTest_test_IllegalPars_1_3_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, illStatDoc % "3")
 
@@ -383,7 +382,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         for execute in [0, 1]:
             httpPars=[["disk_id", diskId], ["file_id", fileId],
                       ["file_version", fileVer], ["execute", execute]]
-            tmpStatFile = sendExtCmd(getHostName(), 8000, NGAMS_DISCARD_CMD,
+            tmpStatFile = sendExtCmd(8000, NGAMS_DISCARD_CMD,
                                      pars=httpPars)
             refStatFile = "ref/ngamsDiscardCmdTest_test_ProxyMode_01_01_ref"
             self.checkFilesEq(refStatFile, tmpStatFile,

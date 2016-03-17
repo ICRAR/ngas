@@ -42,7 +42,6 @@ from functools import partial
 from ngamsLib import ngamsConfig
 from ngamsLib.ngamsCore import getHostName, info, NGAMS_RETRIEVE_CMD, \
     checkCreatePath, rmFile
-from ngamsPClient import ngamsPClient
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
     getClusterName, getNcu11, getNmu, sendPclCmd, runTest, waitTillSuspended, \
     genTmpFilename
@@ -96,7 +95,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(port=8888)
+        client = sendPclCmd(port=8888)
         client.archive("src/SmallFile.fits")
 
         # Retrieve the file.
@@ -145,7 +144,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(port=8888)
+        client = sendPclCmd(port=8888)
         client.archive("src/SmallFile.fits")
 
         # Retrieve the file.
@@ -191,11 +190,11 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                          [[8000, None, None, getClusterName()],
                           [8011, None, None, getClusterName()]])
         # Archive file into sub-node (port=8011).
-        ngamsPClient.ngamsPClient(port=8011).pushFile("src/TinyTestFile.fits")
+        sendPclCmd(port=8011).pushFile("src/TinyTestFile.fits")
 
         # Retrieve a file.
         trgFile = "tmp/test_RetrieveCmd_3_1_tmp"
-        client = ngamsPClient.ngamsPClient(port=8000)
+        client = sendPclCmd(port=8000)
         status = client.retrieve2File("NCU.2003-11-11T11:11:11.111",1,trgFile)
 
         # Check reply.
@@ -243,7 +242,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         # Retrieve Log File from the Main-Node.
         trgFile = "tmp/test_RetrieveCmd_4_1_tmp"
-        client = ngamsPClient.ngamsPClient(port=8000)
+        client = sendPclCmd(port=8000)
         client.sendCmdGen("RETRIEVE",
                           1, trgFile, [["ng_log", ""]])
         logBuf = []
@@ -306,7 +305,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         # Retrieve Log File from the Main-Node.
         trgFile = "tmp/test_RetrieveCmd_5_1_tmp"
-        client = ngamsPClient.ngamsPClient(port=8000)
+        client = sendPclCmd(port=8000)
         client.sendCmdGen("RETRIEVE",
                           1, trgFile, [["cfg", ""]])
         logBuf = []
@@ -368,7 +367,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         # Retrieve Log File from the Main-Node.
         trgFile = "tmp/test_RetrieveCmd_5_1_tmp"
-        client = ngamsPClient.ngamsPClient(port=8000)
+        client = sendPclCmd(port=8000)
         client.sendCmdGen("RETRIEVE",
                           1, trgFile, [["internal", "/etc/hosts"]])
         logBuf = []
@@ -451,7 +450,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         sendPclCmd(port=8001).exit()
         subNode2 = nodes[2]
         waitTillSuspended(self, envDic[subNode2][1], subNode2, 45, nodes)
-        client = ngamsPClient.ngamsPClient(port=8000)
+        client = sendPclCmd(port=8000)
 
         # Retrieve file (File ID).
         fileId = "TEST.2001-05-08T15:25:00.123"
@@ -647,10 +646,10 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                    ["processing", "ngamsTest.ngamsTestDppi1"],
                    ["test_suite", "ngamsRetrieveCmdTest"],
                    ["test_case", "test_DppiProc_01"]]
-        stat = ngamsPClient.ngamsPClient(port=8888).sendCmdGen(
-                                                      NGAMS_RETRIEVE_CMD,
-                                                      outputFile=outFile,
-                                                      pars=cmdPars)
+        stat = sendPclCmd(port=8888).sendCmdGen(
+                                                NGAMS_RETRIEVE_CMD,
+                                                outputFile=outFile,
+                                                pars=cmdPars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_01_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, result in file")
@@ -697,10 +696,10 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                    ["processing", "ngamsTest.ngamsTestDppi1"],
                    ["test_suite", "ngamsRetrieveCmdTest"],
                    ["test_case", "test_DppiProc_02"]]
-        stat = ngamsPClient.ngamsPClient(port=8888).sendCmdGen(
-                                                      NGAMS_RETRIEVE_CMD,
-                                                      outputFile=outFile,
-                                                      pars=cmdPars)
+        stat = sendPclCmd(port=8888).sendCmdGen(
+                                                NGAMS_RETRIEVE_CMD,
+                                                outputFile=outFile,
+                                                pars=cmdPars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_02_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, result in buffer")
@@ -749,10 +748,10 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                    ["processing", "ngamsTest.ngamsTestDppi1"],
                    ["test_suite", "ngamsRetrieveCmdTest"],
                    ["test_case", "test_DppiProc_03"]]
-        stat = ngamsPClient.ngamsPClient(port=8000).sendCmdGen(
-                                                      NGAMS_RETRIEVE_CMD,
-                                                      outputFile=outFile,
-                                                      pars=cmdPars)
+        stat = sendPclCmd(port=8000).sendCmdGen(
+                                                NGAMS_RETRIEVE_CMD,
+                                                outputFile=outFile,
+                                                pars=cmdPars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_03_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, Proxy Mode, " +\
@@ -818,7 +817,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         trgFile = "tmp/test_VolumeDir_01_tmp"
         refFile = "src/SmallFile.fits"
         outFilePath = "tmp/SmallFile.fits"
-        client = ngamsPClient.ngamsPClient(port=8888)
+        client = sendPclCmd(port=8888)
         client.retrieve2File("TEST.2001-05-08T15:25:00.123", 1, trgFile)
         # unzip the the file and diff against original
         with nested(gzip.open(trgFile, 'rb'), open(outFilePath, 'w')) as (gz, out):

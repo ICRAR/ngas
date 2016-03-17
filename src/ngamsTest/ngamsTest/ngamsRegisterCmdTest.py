@@ -89,7 +89,7 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
                      "FitsStorage2-Main-3/saf/test/SmallFile.fits"
         checkCreatePath(os.path.dirname(tmpSrcFile))
         shutil.copy(srcFile, tmpSrcFile)
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_REGISTER_CMD,
+        tmpStatFile = sendExtCmd(8888, NGAMS_REGISTER_CMD,
                                  [["path", tmpSrcFile]])
         refStatFile = "ref/ngamsRegisterCmdTest_test_RegisterCmd_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile,

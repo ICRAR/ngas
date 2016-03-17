@@ -27,20 +27,19 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  20/11/2003  Created
 #
-import traceback
 """
 This module contains the Test Suite for the CLONE Command.
 """
 
 import getpass
 import sys
+import traceback
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_CLONE_CMD
 from ngamsLib import ngamsFileInfo, ngamsLib
-from ngamsPClient import ngamsPClient
 from ngamsTestLib import getClusterName, flushEmailQueue, saveInFile, \
     filterDbStatus1, getEmailMsg, ngamsTestSuite, waitReqCompl, genErrMsgVals, \
-    runTest
+    runTest, sendPclCmd
 
 # TODO: See how we can actually set this dynamically in the future
 _checkMail = False
@@ -135,10 +134,10 @@ def _execCloneTest(testObj,
         testObj.prepCluster("src/ngamsCfg.xml",
                             [[8000, None, None, getClusterName()],
                              [8011, None, None, getClusterName()]])
-        clNcu = ngamsPClient.ngamsPClient(port=8011)
+        clNcu = sendPclCmd(port=8011)
     else:
         testObj.prepExtSrv(8000)
-    clMnu = ngamsPClient.ngamsPClient(port=8000)
+    clMnu = sendPclCmd(port=8000)
     for n in range(5):
         statObj = clMnu.archive("src/SmallFile.fits")
         if (subNode): clNcu.archive("src/TinyTestFile.fits")
@@ -529,7 +528,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         """
         srcFile = "src/SmallFile.fits"        
         cfgObj, dbObj = self.prepExtSrv(test=1)
-        client = ngamsPClient.ngamsPClient(port=8888)
+        client = sendPclCmd(port=8888)
         for n in range(2): client.archive(srcFile)
         flushEmailQueue()
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
@@ -605,7 +604,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         """
         srcFile = "src/SmallFile.fits"
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(port=8888)
+        client = sendPclCmd(port=8888)
         for n in range(10): client.archive(srcFile)
         flushEmailQueue()
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()

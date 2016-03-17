@@ -686,8 +686,7 @@ def sendPclCmd(port = 8888,
            setTimeOut(timeOut)
 
 
-def sendExtCmd(host,
-               port,
+def sendExtCmd(port,
                cmd,
                pars = [],
                genStatFile = 1,
@@ -717,8 +716,7 @@ def sendExtCmd(host,
                    or ngamsStatus object (string|ngamsStatus).
     """
     try:
-        statObj = ngamsPClient.ngamsPClient(host=host, port=port).\
-                  sendCmdGen(cmd, 1, "", pars)
+        statObj = sendPclCmd(port=port).sendCmdGen(cmd, 1, "", pars)
         if (genStatFile):
             tmpStatFile = "tmp/%s_CmdStatus_%s_tmp" %\
                           (cmd, str(int(time.time())))
@@ -728,9 +726,9 @@ def sendExtCmd(host,
         else:
             return statObj
     except Exception, e:
-        errMsg = "Problem handling command to external server (%s/%d). " +\
+        errMsg = "Problem handling command to external server (localhost:%d). " +\
                  "Error: %s"
-        raise Exception, errMsg % (host, port, str(e))
+        raise Exception, errMsg % (port, str(e))
 
 
 def filterDbStatus1(statBuf,
@@ -1291,7 +1289,7 @@ class ngamsTestSuite(unittest.TestCase):
         srvProcess = subprocess.Popen(execCmd)
 
         # We have to wait until the server is serving.
-        pCl = ngamsPClient.ngamsPClient('localhost', portNo)
+        pCl = sendPclCmd(port=portNo)
         startTime = time.time()
         stat = None
         while ((time.time() - startTime) < 20):
@@ -1329,7 +1327,7 @@ class ngamsTestSuite(unittest.TestCase):
         """
 
         info(3,"Killing externally running NG/AMS Server. PID: %d, Port: %d " % (srvProcess.pid, port))
-        pCl = ngamsPClient.ngamsPClient('localhost', port, timeOut=10)
+        pCl = sendPclCmd(port=port, timeOut=10)
         try:
             info(1,"Sending OFFLINE command to external server ...")
             stat = pCl.offline(1)

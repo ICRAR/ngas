@@ -33,7 +33,7 @@ This module contains the Test Suite for the OFFLINE Command.
 
 import sys
 
-from ngamsLib.ngamsCore import getHostName, NGAMS_OFFLINE_CMD, info
+from ngamsLib.ngamsCore import NGAMS_OFFLINE_CMD, info
 from ngamsTestLib import ngamsTestSuite, sendExtCmd, runTest
 
 
@@ -76,7 +76,7 @@ class ngamsOfflineCmdTest(ngamsTestSuite):
         TODO: Check that the server is in Offline State.
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_OFFLINE_CMD,
+        tmpStatFile = sendExtCmd(8888, NGAMS_OFFLINE_CMD,
                                  genStatFile = 1)
         refStatFile = "ref/ngamsOfflineCmdTest_test_StdOffline_1_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile,

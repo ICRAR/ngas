@@ -38,10 +38,9 @@ import sys
 import time
 
 from ngamsLib import ngamsConfig
-from ngamsLib.ngamsCore import getHostName, NGAMS_CLONE_CMD, NGAMS_REMFILE_CMD, \
+from ngamsLib.ngamsCore import NGAMS_CLONE_CMD, NGAMS_REMFILE_CMD, \
     NGAMS_REMDISK_CMD, checkCreatePath, NGAMS_REGISTER_CMD, info
-from ngamsPClient import ngamsPClient
-from ngamsTestLib import saveInFile, ngamsTestSuite, runTest
+from ngamsTestLib import saveInFile, ngamsTestSuite, runTest, sendPclCmd
 
 
 NM2IDX = "___NM2ID___"
@@ -250,7 +249,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         
         """
         cfgObj, dbObj = _prepSrv(self)
-        client = ngamsPClient.ngamsPClient(port=8888)
+        client = sendPclCmd()
         for n in range(3): client.archive("src/SmallFile.fits")
         _checkContDbSnapshot(self, 2, ["FitsStorage1-Main-1",
                                        "FitsStorage1-Rep-2"])
@@ -281,7 +280,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         ...
         """
         cfgObj, dbObj = _prepSrv(self)
-        client = ngamsPClient.ngamsPClient(port=8888)
+        client = sendPclCmd()
         for n in range(3): client.archive("src/SmallFile.fits")
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         client.sendCmdGen(NGAMS_CLONE_CMD,
@@ -321,7 +320,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         ...      
         """
         cfgObj, dbObj = _prepSrv(self)
-        client = ngamsPClient.ngamsPClient(port=8888)
+        client = sendPclCmd()
         for n in range(3): client.archive("src/SmallFile.fits")
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         client.sendCmdGen(NGAMS_CLONE_CMD,
@@ -356,7 +355,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         ...           
         """
         cfgObj, dbObj = _prepSrv(self)
-        client = ngamsPClient.ngamsPClient(port=8888)
+        client = sendPclCmd()
         for n in range(3): client.archive("src/SmallFile.fits")
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         client.sendCmdGen(NGAMS_CLONE_CMD,
@@ -390,7 +389,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         ...       
         """
         cfgObj, dbObj = _prepSrv(self)
-        client = ngamsPClient.ngamsPClient(port=8888)
+        client = sendPclCmd()
         regTestDir = "/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/reg_test"
         checkCreatePath(regTestDir)
         for n in range(3):
@@ -430,7 +429,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
                in the DB, is not yet implemented.
         """
         cfgObj, dbObj = _prepSrv(self)
-        client = ngamsPClient.ngamsPClient(getHostName(), 8888)
+        client = sendPclCmd()
         for n in range(3): client.archive("src/SmallFile.fits")
         
         # Bring server Offline.

@@ -33,9 +33,8 @@ This module contains the Test Suite for the STATUS Command.
 
 import sys
 
-from ngamsLib.ngamsCore import getHostName
-from ngamsPClient import ngamsPClient
-from ngamsTestLib import ngamsTestSuite, getClusterName, getNcu11, runTest
+from ngamsTestLib import ngamsTestSuite, getClusterName, getNcu11, runTest, \
+    sendPclCmd
 
 
 class ngamsStatusCmdTest(ngamsTestSuite):
@@ -82,7 +81,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         ...
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        client = ngamsPClient.ngamsPClient(port=8888)
+        client = sendPclCmd(port=8888)
         status = client.status()
         if (status.getMessage().\
             find("Successfully handled command STATUS") == -1):
@@ -115,7 +114,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         self.prepCluster("src/ngamsCfg.xml",
                          [[8000, None, None, getClusterName()],
                           [8011, None, None, getClusterName()]])
-        statObj = ngamsPClient.ngamsPClient(port=8000).\
+        statObj = sendPclCmd(port=8000).\
                   sendCmdGen("STATUS",
                              1, "", [["host_id", getNcu11()]])        
         refMsg = "Successfully handled command STATUS"
@@ -155,7 +154,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
                          [[8000, None, None, getClusterName()],
                           [8011, None, None, getClusterName()]])
         srcFile = "src/TinyTestFile.fits"
-        client = ngamsPClient.ngamsPClient(port=8011)
+        client = sendPclCmd(port=8011)
         client.archive(srcFile,"", 1, 0)
         statObj = client.sendCmdGen("STATUS", 1, "",
                              [["file_access", "NCU.2003-11-11T11:11:11.111"],

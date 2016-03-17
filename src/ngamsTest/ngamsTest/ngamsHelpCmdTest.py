@@ -33,7 +33,7 @@ This module contains the Test Suite for the HELP Command.
 
 import sys
 
-from ngamsLib.ngamsCore import getHostName, NGAMS_HELP_CMD
+from ngamsLib.ngamsCore import NGAMS_HELP_CMD
 from ngamsTestLib import ngamsTestSuite, sendExtCmd, runTest
 
 
@@ -73,7 +73,7 @@ class ngamsHelpCmdTest(ngamsTestSuite):
         implemented.
         """
         self.prepExtSrv(8888, 1, 1, 0)
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_HELP_CMD)
+        tmpStatFile = sendExtCmd(8888, NGAMS_HELP_CMD)
         refStatFile = "ref/ngamsHelpCmdTest_test_NoPars_1_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status returned for HELP command")
@@ -102,7 +102,7 @@ class ngamsHelpCmdTest(ngamsTestSuite):
         implemented.
         """   
         self.prepExtSrv(8888, 1, 1, 1)
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_HELP_CMD)
+        tmpStatFile = sendExtCmd(8888, NGAMS_HELP_CMD)
         refStatFile = "ref/ngamsHelpCmdTest_test_NoPars_2_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status returned for HELP command")

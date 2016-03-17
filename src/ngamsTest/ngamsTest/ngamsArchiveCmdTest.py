@@ -46,7 +46,6 @@ from contextlib import closing
 
 from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile
 from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo
-from ngamsPClient import ngamsPClient
 from ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
     saveInFile, filterDbStatus1, sendPclCmd, pollForFile, getClusterName, \
     sendExtCmd, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, runTest, \
@@ -168,7 +167,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         cfg.save(tmpCfgFile, 0)
         cfgObj, dbObj = self.prepExtSrv(8888, cfgFile=tmpCfgFile)
         flushEmailQueue()
-        ngamsPClient.ngamsPClient(port=8888).archive("src/SmallFile.fits")
+        sendPclCmd(port=8888).archive("src/SmallFile.fits")
 
         # Check that Disk Change Notification message have been generated.
         if _checkMail:
@@ -253,7 +252,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         cfg.save(tmpCfgFile, 0)
         cfgObj, dbObj = self.prepExtSrv(8888, cfgFile=tmpCfgFile)
         flushEmailQueue()
-        ngamsPClient.ngamsPClient(port=8888).archive("src/SmallFile.fits")
+        sendPclCmd(port=8888).archive("src/SmallFile.fits")
 
         # Check that Disk Change Notification message have been generated.
         if _checkMail:
@@ -487,7 +486,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         self.prepExtSrv(8888)
         shutil.copyfile(srcFile, tmpSrcFile)
         srcFileUrl = "file:" + tmpSrcFile
-        statObj = ngamsPClient.ngamsPClient(port=8888).archive(srcFileUrl)
+        statObj = sendPclCmd(port=8888).archive(srcFileUrl)
         tmpStatFile = "tmp/ngamsArchiveCmdTest_test_ArchivePullReq_1_tmp"
         refStatFile = "ref/ngamsArchiveCmdTest_test_ArchivePullReq_1_ref"
         saveInFile(tmpStatFile, filterDbStatus1(statObj.dumpBuf()))
@@ -524,10 +523,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         self.prepCluster("src/ngamsCfg.xml",
                          [[8000, None, None, getClusterName()],
                           [8011, None, None, getClusterName()]])
-        ngamsPClient.ngamsPClient(port=8011).archive("src/SmallFile.fits")
+        sendPclCmd(port=8888).archive("src/SmallFile.fits")
         fileUri = "http://%s:8011/RETRIEVE?file_id=" +\
                   "TEST.2001-05-08T15:25:00.123&file_version=1"
-        tmpStatFile = sendExtCmd(getHostName(), 8000, NGAMS_ARCHIVE_CMD,
+        tmpStatFile = sendExtCmd(8000, NGAMS_ARCHIVE_CMD,
                                  [["filename", fileUri % getHostName()],
                                   ["mime_type", "application/x-gfits"]],
                                  filterTags = ["http://"])
@@ -633,7 +632,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         # Illegal File URI at Archive Pull.
         illFileUri = "http://unknown.domain.com/NonExistingFile.fits"
-        tmpStatFile = sendExtCmd(getHostName(), 8888, NGAMS_ARCHIVE_CMD,
+        tmpStatFile = sendExtCmd(8888, NGAMS_ARCHIVE_CMD,
                                  [["file_uri", illFileUri]])
         refStatFile = "ref/ngamsArchiveCmdTest_test_ErrHandling_1_5_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
@@ -1384,13 +1383,12 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         self.prepExtSrv(8888, cfgFile = 'src/ngamsCfg.xml')
 
         open('tmp/zerofile.fits', 'a').close()
-        client = ngamsPClient.ngamsPClient(port = 8888)
+        client = sendPclCmd(port=8888)
         status = client.archive('tmp/zerofile.fits', 'application/octet-stream', cmd = 'ARCHIVE')
         self.checkEqual(status.getStatus(), 'FAILURE', None)
         self.checkEqual('Content-Length is 0' in status.getMessage(), True, None)
 
         # Test QARCHIVE
-        client = ngamsPClient.ngamsPClient(port = 8888)
         status = client.archive('tmp/zerofile.fits', 'application/octet-stream', cmd = 'QARCHIVE')
         self.checkEqual(status.getStatus(), 'FAILURE', None)
         self.checkEqual('Content-Length is 0' in status.getMessage(), True, None)
