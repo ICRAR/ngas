@@ -47,7 +47,8 @@ setup(
     install_requires=[
         'pcc',
         'ngamsCore',
-        'python-daemon'
+        'python-daemon',
+        'pysendfile',
     ],
     # No spaces allowed between the '='s
     entry_points= {

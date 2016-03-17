@@ -35,6 +35,8 @@ from _socket import SOL_SOCKET, SO_SNDBUF
 from socket import timeout
 import glob, commands, time
 import os
+import sys
+import errno
 
 from ngamsLib import ngamsDppiStatus, ngamsStatus
 from ngamsLib import ngamsHighLevelLib, ngamsLib
@@ -49,6 +51,12 @@ from ngamsLib.ngamsCore import info, warning, NGAMS_TEXT_MT, error, getFileSize,
     NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint
 import ngamsSrvUtils, ngamsFileUtils
 
+USE_SENDFILE = False
+try:
+   from sendfile import sendfile
+   USE_SENDFILE = True
+except ImportError as e:
+   pass
 
 def performStaging(srvObj, reqPropsObj, httpRef, filename):
     """
@@ -68,13 +76,13 @@ def performStaging(srvObj, reqPropsObj, httpRef, filename):
     if not fspi:
         return
 
-    info(2,"Invoking FSPI.isFileOffline: " + fspi + " to check file: " + filename)
+    info(2, "Invoking FSPI.isFileOffline: %s to check file: %s" % (fspi, filename))
     isFileOffline = loadPlugInEntryPoint(fspi, 'isFileOffline')
 
     if isFileOffline(filename) == 0:
         return
 
-    info(2,"Invoking FSPI.stageFiles: " + fspi + " to stage file: " + filename)
+    info(2, "Invoking FSPI.stageFiles: %s to check file: %s" % (fspi, filename))
     stageFiles = loadPlugInEntryPoint(fspi, 'stageFiles')
 
     try:
@@ -127,11 +135,11 @@ def performProcessing(srvObj,
             errMsg = genLog("NGAMS_ER_ILL_DPPI", [dppi])
             raise Exception, errMsg
         # Invoke the DPPI.
-        info(2,"Invoking DPPI: " + dppi + " to process file: " + filename)
+        info(2, "Invoking DPPI: %s to process file: %s" % (dppi, filename))
         plugInMethod = loadPlugInEntryPoint(dppi)
         statusObj = plugInMethod(srvObj, reqPropsObj, filename)
     else:
-        info(2,"No processing requested - sending back file as is")
+        info(2, "No processing requested - sending back file as is")
         resultObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_FILE, mimeType,
                                                     filename, filename)
         statusObj = ngamsDppiStatus.ngamsDppiStatus().addResult(resultObj)
@@ -197,16 +205,16 @@ def genReplyRetrieve(srvObj,
         mimeType = resObj.getMimeType()
         dataSize = resObj.getDataSize()
         refFilename = resObj.getRefFilename()
-        info(3,"Sending data back to requestor. Reference filename: " +\
-             refFilename + ". Size: " + str(dataSize))
+        info(3, ("Sending data back to requestor. Reference filename: %s"
+                 ". Size: %s") % (refFilename, str(dataSize)))
         srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, None, 0,
                             mimeType, dataSize)
-        contDisp = "attachment; filename=\"" + refFilename + "\""
-        info(4,"Sending header: Content-Disposition: " + contDisp)
+        contDisp = "attachment; filename=\"%s\"" % refFilename
+        info(4, "Sending header: Content-Disposition: %s" % contDisp)
         httpRef.send_header('Content-Disposition', contDisp)
         httpRef.wfile.write("\n")
 
-        if (reqPropsObj.hasHttpPar("send_buffer")):
+        if reqPropsObj.hasHttpPar("send_buffer"):
             try:
                 sendBufSize = int(reqPropsObj.getHttpPar("send_buffer"))
                 httpRef.wfile._sock.setsockopt(SOL_SOCKET,SO_SNDBUF,sendBufSize)
@@ -215,23 +223,43 @@ def genReplyRetrieve(srvObj,
 
         # Send back data from the memory buffer, from the result file, or
         # from HTTP socket connection.
-        if (resObj.getObjDataType() == NGAMS_PROC_DATA):
-            info(3,"Sending data in buffer to requestor ...")
+        if resObj.getObjDataType() == NGAMS_PROC_DATA:
+            info(3, "Sending data in buffer to requestor ...")
             httpRef.wfile._sock.sendall(resObj.getDataRef())
-        elif (resObj.getObjDataType() == NGAMS_PROC_FILE):
-            info(3,"Reading data block-wise from file and sending " +\
-                 "to requestor ...")
-            with open(resObj.getDataRef()) as fd:
-                dataSent = 0
-                dataToSent = getFileSize(resObj.getDataRef())
+        elif resObj.getObjDataType() == NGAMS_PROC_FILE:
+            info(3, ("Reading data block-wise from file and sending "
+                    "to requestor ..."))
+            # use kernel zero-copy file send if available
+            dataSent = 0
+            dataref = resObj.getDataRef()
+            with open(dataref, 'rb') as fd:
                 st = time.time()
-                while (dataSent < dataToSent):
-                    tmpData = fd.read(blockSize)
-                    #os.write(httpRef.wfile.fileno(), tmpData)
-                    httpRef.wfile._sock.sendall(tmpData)
-                    dataSent += len(tmpData)
+                if USE_SENDFILE:
+                    while True:
+                        try:
+                            result = sendfile(httpRef.wfile._sock.fileno(),
+                                                fd.fileno(), dataSent, blockSize)
+                            if result <= 0:
+                                break
+                            dataSent += result
+                        except OSError:
+                            err = sys.exc_info()[1]
+                            # if the internal buffers are full just try again
+                            if err.errno in (errno.EAGAIN, errno.EBUSY):
+                                continue
+                            raise
+                else:
+                    # if there is no zero-copy capability then copy data into
+                    # userspace and send out of socket
+                    dataToSent = getFileSize(dataref)
+                    while (dataSent < dataToSent):
+                        tmpData = fd.read(blockSize)
+                        httpRef.wfile._sock.sendall(tmpData)
+                        dataSent += len(tmpData)
+
                 howlong = time.time() - st
-                info(3, "Retrieval transfer rate = %.0f Bytes/s for file %s" % (dataSent / howlong, refFilename))
+                info(3, "Retrieval transfer rate = %.0f Bytes/s for file %s" \
+                        % (dataSent / howlong, refFilename))
         else:
             # NGAMS_PROC_STREAM - read the data from the File Object in
             # blocks and send it directly to the requestor.
@@ -239,13 +267,11 @@ def genReplyRetrieve(srvObj,
             dataSent = 0
             dataToSent = dataSize
             while (dataSent < dataToSent):
-                tmpData = resObj.getDataRef().\
-                          read(blockSize)
-                #os.write(httpRef.wfile.fileno(), tmpData)
+                tmpData = resObj.getDataRef().read(blockSize)
                 httpRef.wfile._sock.sendall(tmpData)
                 dataSent += len(tmpData)
 
-        info(4,"HTTP reply sent to: " + str(httpRef.client_address))
+        info(4, "HTTP reply sent to: %s" % str(httpRef.client_address))
         reqPropsObj.setSentReply(1)
 
     finally:
@@ -496,7 +522,7 @@ def _handleCmdRetrieve(srvObj,
 
     if (location == NGAMS_HOST_LOCAL):
         # Get the file and send back the contents from this NGAS host.
-        srcFilename = os.path.normpath(mountPoint + "/" + filename)
+        srcFilename = os.path.normpath("{0}/{1}".format(mountPoint, filename))
 
         # Perform the possible file staging
         performStaging(srvObj, reqPropsObj, httpRef, srcFilename)
@@ -597,5 +623,3 @@ def handleCmdRetrieve(srvObj,
 
     _handleCmdRetrieve(srvObj, reqPropsObj, httpRef)
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
-
-# EOF
