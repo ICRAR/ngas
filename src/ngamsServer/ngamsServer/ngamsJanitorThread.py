@@ -52,6 +52,7 @@ from ngamsLib.ngamsCore import TRACE, info, NGAMS_JANITOR_THR, \
     loadPlugInEntryPoint
 from ngamsLib import ngamsFileInfo, ngamsNotification
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsEvent, ngamsHighLevelLib, ngamsLib
+from pccLog import PccLog
 from pccUt import PccUtTime
 
 try:
@@ -1195,14 +1196,14 @@ def janitorThread(srvObj,
                                          ".nglog"
                             rotLogFile = os.path.\
                                          normpath(logPath + "/" + rotLogFile)
-                            info(1, "Rotating log file: %s -> %s" %\
+                            PccLog.info(1, "Rotating log file: %s -> %s" %\
                                         (logFile, rotLogFile), getLocation())
                             logFlush()
                             commands.getstatusoutput("mv " + logFile + " " +\
                                                      rotLogFile)
                             open(logFile, "w").close()
                             msg = "NG/AMS Local Log File Rotated and archived (%s)"
-                            info(1,msg % hostId, getLocation())
+                            PccLog.info(1,msg % hostId, getLocation())
                     relLogSem()
                     if (line != "" and deltaTime >= logRotInt):
                             ngamsArchiveUtils.archiveFromFile(srvObj, rotLogFile, 0,

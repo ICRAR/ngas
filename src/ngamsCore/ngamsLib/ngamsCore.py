@@ -472,7 +472,7 @@ def getMaxLogLevel():
 
     Returns:  Maximum level (integer).
     """
-    return max((getLogLevel(), getVerboseLevel()))
+    return max(getLogLevel(), getVerboseLevel())
 
 
 def genLog(logId,
@@ -588,11 +588,10 @@ def info(level,
 
     Returns:  Void.
     """
+    takeLogSem()
     try:
-        takeLogSem()
         PccLog.info(level, msg, getLocation())
-        relLogSem()
-    except Exception, e:
+    finally:
         relLogSem()
 
 
@@ -616,7 +615,7 @@ class Trace:
         self.__startTime = time.time()
         self.__id        = md5.new("%.16f" % self.__startTime).hexdigest()
         self.__location  = getLocation(level = -4)
-        info(4, "TRACE:%s: Entering: %s ..." %
+        PccLog.info(4, "TRACE:%s: Entering: %s ..." %
                     (self.__id, self.__location))
 
     def __del__(self):
@@ -626,7 +625,7 @@ class Trace:
         """
         stopTime = time.time()
         try:
-            info(4, "TRACE:%s: Leaving: %s. Time: %.6fs" %
+            PccLog.info(4, "TRACE:%s: Leaving: %s. Time: %.6fs" %
                         (self.__id, self.__location,
                          (stopTime - self.__startTime)))
         except:
