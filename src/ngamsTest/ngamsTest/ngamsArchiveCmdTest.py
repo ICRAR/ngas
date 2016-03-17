@@ -523,7 +523,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         self.prepCluster("src/ngamsCfg.xml",
                          [[8000, None, None, getClusterName()],
                           [8011, None, None, getClusterName()]])
-        sendPclCmd(port=8888).archive("src/SmallFile.fits")
+        sendPclCmd(port=8011).archive("src/SmallFile.fits")
         fileUri = "http://%s:8011/RETRIEVE?file_id=" +\
                   "TEST.2001-05-08T15:25:00.123&file_version=1"
         tmpStatFile = sendExtCmd(8000, NGAMS_ARCHIVE_CMD,

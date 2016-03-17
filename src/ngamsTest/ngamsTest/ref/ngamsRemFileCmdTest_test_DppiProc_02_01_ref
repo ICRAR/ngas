@@ -34,5 +34,6 @@ initiator=RETRIEVE
 processing=ngamsTest.ngamsTestDppi1
 test_case=test_DppiProc_02
 test_suite=ngamsRetrieveCmdTest
+time_out=60.0
 
 EOF
