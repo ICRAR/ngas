@@ -137,7 +137,11 @@ def handleCmdArchive(srvObj,
 
     # Execute the init procedure for the ARCHIVE Command.
     mimeType = archiveInitHandling(srvObj, reqPropsObj, httpRef)
-    if (not mimeType): return
+    if (not mimeType):
+        # Set ourselves to IDLE; otherwise we'll stay in BUSY even though we
+        # are doing nothing
+        srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
+        return
 
     # Handle Archive Request Locally.
     if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
