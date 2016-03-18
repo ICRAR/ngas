@@ -157,6 +157,10 @@ class ngamsArchiveClientTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(8888, 1, 1, 1)
+
+        # Make sure the parent directory of the client exists before the launch
+        # the client; otherwise it might fail!
+        os.makedirs(os.path.abspath(os.path.join(arcCliDir(), "..")))
         startArchiveClient()
 
         # Archive a file as copy and link.
