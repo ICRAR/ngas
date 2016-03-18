@@ -108,7 +108,6 @@ def check_create_aws_sec_group(conn):
     ngassg.authorize('tcp', 80, 80, '0.0.0.0/0')
     ngassg.authorize('tcp', 5678, 5678, '0.0.0.0/0')
     ngassg.authorize('tcp', 7777, 7777, '0.0.0.0/0')
-    ngassg.authorize('tcp', 8888, 8888, '0.0.0.0/0')
     return ngassg.id
 
 
