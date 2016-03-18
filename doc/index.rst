@@ -12,6 +12,7 @@ Contents:
    :maxdepth: 2
 
    install
+   post_installation
    running
    server
    commands-index

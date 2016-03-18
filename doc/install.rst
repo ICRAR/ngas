@@ -41,7 +41,8 @@ Via Fabric
 A set of `fabric <http://www.fabfile.org/>`_ modules have been written to ease
 the installation of NGAS in more complex scenarios. Fabric is a tool that allows
 to perform commands in one or more hosts, local or remote. Using this we perform
-the installation of NGAS in any host, plus a few other things.
+not only the installation of NGAS in any host, but also the customization of the
+host as necessary, plus any other extra step required by other scenarios.
 
 Fabric's command-line allows users to specify the username and hosts where tasks
 will take place. For example::

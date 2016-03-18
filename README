@@ -1,11 +1,8 @@
-
-
 The Next Generation Archive System
 ==================================
 
 NOTE: This README file is not meant to describe the system in any detail.
-Please refer to the Installation Guide (./INSTALL) and the User Manual
-(./doc/VLT-MAN-19400-2739.pdf) for more details.
+Please refer to the documentation under the doc/ directory for more details.
 
 NGAS is a very feature rich, archive handling and management system.
 In its core it is a HTTP based object storage system. It can be deployed
@@ -34,63 +31,6 @@ adopted to deal with the much higher data rate of the Murchison Widefield
 Array (MWA) and quite some work went into the installation and automatic test
 features.
 
-1. Installation
-Please refer to the INSTALL document in the same folder as this README file.
-
-2. How to run the programs
-The NGAS installation comes with a default minimal DB based on SQLite. This
-DB is installed by default and is also used for software testing. While
-SQLite is perfectly fine for single host, single server installations, it
-is not possible to use it for situations where a whole cluster of servers
-need to connect to a central DB. This README just covers the minimal
-configuration using SQLite.
-
-3. In order to start the server you can use the ngamsDaemon command, which
-uses a standard double fork on Unix to fully daemonize the application.
-Assuming that you are logged in as the user where the software had been
-deployed you can start the server like this:
-
-source ~/ngas_rt/bin/activate
-~/ngas_rt/bin/ngamsDaemon start
-
-4. Post-Installation
-The following command can be used to just make sure that the whole
-installation is working fine.
-
-* run the NGAS C Client and archive the current Log-file:
-	$~/ngas_rt/bin/ngamsCClient -host localhost -port 7777 -cmd ARCHIVE -fileUri ~/NGAS/log/LogFile.nglog -mimeType application/octet-stream
-
-
-if localhost doesn't work, try the IP address of your computer, or try 127.0.1.1
-It should report as follows:
-----------------------------------------------------------------------------------------------
-Host:           icrar-dirp01
-Port:           7777
-Command:        ARCHIVE
-
-Date:           2010-12-10T16:58:40.759
-Error Code:     0
-Host ID:        icrar-dirp01
-Message:        Successfully handled Archive Push Request for data file with URI: LogFile.nglog
-Status:         SUCCESS
-State:          ONLINE
-Sub-State:      IDLE
-NG/AMS Version: v4.1-ALMA/2010-04-14T08:00:00
-----------------------------------------------------------------------------------------------
-* to run system test
-	$cd /.../installation/directory/src/ngamsTest/
-	$NGASTests -cfg ../../cfg/NgamsCfg.SQLite.mini.xml -NotifEmail <your.preferred@email.here>
-
-5. Known Issues
-* location of reference files are defined pointing to the previous build location.
-This may affect the some of the system tests including ngamsArchiveCmdTest, ngamsCClientTest,
-ngamsCloneCmdTest, ngamsDbSnapShotTest, ngamsIdleSuspensionTest, ngamsPClientTest etc.
-* pcfitsio is imported in /.../src/ngamsTest/ngamsTestLib.py as a python module, yet the
-new system hasn't build pcfitsio as an egg that can be imported within the program. This
-may result errors in system tests.
-
-
-
 
     ICRAR, International Centre for Radio Astronomy Research
     The University of Western Australia
@@ -98,7 +38,7 @@ may result errors in system tests.
     Perth WA 6009
     Australia
 
-    Copyright by UWA - The University of Western Australia, 2012
+    Copyright by UWA - The University of Western Australia, 2016
     in the framework of the ICRAR joint venture with Curtin University
     All rights reserved
 
@@ -117,5 +57,3 @@ may result errors in system tests.
     License along with this library; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston,
     MA 02111-1307  USA
-
-
