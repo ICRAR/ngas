@@ -2229,7 +2229,6 @@ class ngamsServer:
                 path = os.path.dirname(path)
             if not os.path.ismount(path):
                 continue
-            info(1, 'dave %s %s' % (dirInfo[0], path))
             if not self.__sysMtPtDic.has_key(path):
                 self.__sysMtPtDic[path] = []
             self.__sysMtPtDic[path].append(dirInfo)
