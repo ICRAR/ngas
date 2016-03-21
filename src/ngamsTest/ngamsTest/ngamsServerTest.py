@@ -31,8 +31,6 @@
 This module contains the Test Suite for the NG/AMS Server.
 """
 
-import errno
-import httplib
 import os
 import socket
 import sys
@@ -88,7 +86,7 @@ class ngamsServerTest(ngamsTestSuite):
         time.sleep(timeout + 2) # More than enough to provoke a server timeout
 
         data = s.recv(amount_of_data, socket.MSG_WAITALL)
-        self.assertEquals(len(data), amount_of_data, "Should have read less data")
+        self.assertLess(len(data), amount_of_data, "Should have read less data")
         self.assertEquals('', s.recv(amount_of_data - len(data)))
         s.close()
 

@@ -32,18 +32,17 @@ This module contains the Test Suite for the RETRIEVE Command.
 """
 
 import commands
-import os
-import sys
-import gzip
-import platform
 from contextlib import nested
 from functools import partial
+import gzip
+import os
+import sys
 
 from ngamsLib import ngamsConfig
 from ngamsLib.ngamsCore import getHostName, info, NGAMS_RETRIEVE_CMD, \
     checkCreatePath, rmFile
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
-    getClusterName, getNcu11, getNmu, sendPclCmd, runTest, waitTillSuspended, \
+    getClusterName, sendPclCmd, runTest, waitTillSuspended, \
     genTmpFilename
 
 

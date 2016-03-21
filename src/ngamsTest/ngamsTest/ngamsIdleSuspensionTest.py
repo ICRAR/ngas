@@ -35,7 +35,7 @@ import socket
 import sys
 import time
 
-from ngamsLib.ngamsCore import getHostName, info, NGAMS_STATUS_CMD, NGAMS_RETRIEVE_CMD, NGAMS_CHECKFILE_CMD, rmFile
+from ngamsLib.ngamsCore import getHostName, info, NGAMS_STATUS_CMD, NGAMS_CHECKFILE_CMD, rmFile
 from ngamsTestLib import getClusterName, ngamsTestSuite, sendPclCmd, \
     filterOutLines, saveInFile, loadFile, runTest, genTmpFilename
 
@@ -422,7 +422,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
             info(1,"TODO!: Check that the file has been properly returned")
 
 
-    def test_WakeUpRetrieve_2(self):
+    '''def test_WakeUpRetrieve_2(self):
         """
         Synopsis:
         Check that RETRIEVE?ng_log&host_id is correctly handled
@@ -567,8 +567,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
                     "host_id=%s" % subNode1,
                     "Sending header: Content-Disposition: attachment; " +\
                     "filename=hosts"]
-        self.checkTags(subNode1LogBuf, testTags, showBuf=0)
-       
+        self.checkTags(subNode1LogBuf, testTags, showBuf=0)'''
 
     def test_WakeUpCheckfile_1(self):
         """
