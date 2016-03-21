@@ -233,7 +233,7 @@ def compress(reqPropsObj,
         subprocess.check_call(['gzip', '--no-name', stFn], shell = False)
         reqPropsObj.setStagingFilename(gzip_name)
         mime = 'application/x-gfits'
-        compression = 'gzip'
+        compression = 'gzip --no-name'
         info(2, "File compressed: %s Time: %.3fs" % (gzip_name, compressTimer.stop()))
     else:
         compression = ''
