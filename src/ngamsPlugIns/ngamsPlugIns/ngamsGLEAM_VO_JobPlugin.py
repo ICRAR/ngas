@@ -47,16 +47,16 @@ mime = "images/fits"
 myhost = commands.getstatusoutput('hostname')[1]
 
 # maximum connection = 3
-g_db_pool = ThreadedConnectionPool(1, 3, database = 'gavo', user = 'zhl', 
-                            password = 'emhsZ2x5\n'.decode('base64'), 
+g_db_pool = ThreadedConnectionPool(1, 3, database = 'gavo', user = 'zhl',
+                            password = 'emhsZ2x5\n'.decode('base64'),
                             host = 'mwa-web.icrar.org')
 
-mc_db_pool = ThreadedConnectionPool(1, 3, database = 'mwa', user = 'mwa', 
-                            password = 'Qm93VGll\n'.decode('base64'), 
+mc_db_pool = ThreadedConnectionPool(1, 3, database = 'mwa', user = 'mwa',
+                            password = 'Qm93VGll\n'.decode('base64'),
                             host = 'ngas01.ivec.org')
 
 
-# decoded job uri: 
+# decoded job uri:
 #     ngasjob://ngamsGLEAM_Decompress_JobPlugin?redo_on_fail=0
 
 # originally encoded joburi (during subscribe command)
@@ -85,7 +85,7 @@ def getVODBSchema():
     -- Table: mwa.gleam
 
     -- DROP TABLE mwa.gleam;
-    
+
     CREATE TABLE mwa.gleam
     (
       centeralpha real,
@@ -114,21 +114,21 @@ def getVODBSchema():
     GRANT ALL ON TABLE mwa.gleam TO gavoadmin;
     GRANT SELECT ON TABLE mwa.gleam TO untrusted;
     GRANT SELECT ON TABLE mwa.gleam TO gavo;
-    
+
     -- Index: mwa.gleam_pgspos
-    
+
     -- DROP INDEX mwa.gleam_pgspos;
-    
+
     CREATE INDEX gleam_pgspos
       ON mwa.gleam
       USING gist
       (coverage);
-    
-    
+
+
     -- Rule: cleanupproducts ON mwa.gleam
-    
+
     -- DROP RULE cleanupproducts ON mwa.gleam;
-    
+
     CREATE OR REPLACE RULE cleanupproducts AS
         ON DELETE TO mwa.gleam DO  DELETE FROM dc.products
       WHERE products.accref = old.accref;
@@ -148,7 +148,7 @@ def getMCDBConn():
         return mc_db_pool.getconn()
     else:
         raise Exception('MC connection pool is None when get conn')
-    
+
 def putVODBConn(conn):
     if (g_db_pool):
         g_db_pool.putconn(conn)
@@ -198,16 +198,16 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
 
     plugInPars:    Parameters to take into account for the plug-in
                    execution (string).(e.g. scale_factor=4,threshold=1E-5)
-   
+
     fileId:        File ID for file to test (string).
 
     filename:      Filename of (complete) (string).
 
     fileVersion:   Version of file to test (integer).
- 
+
     Returns:       the return code of the compression plugin (integer).
     """
-    
+
     hdrs = fitsapi.getFitsHdrs(filename)
     ra = float(hdrs[0]['CRVAL1'][0][1])
     dec = float(hdrs[0]['CRVAL2'][0][1])
@@ -220,7 +220,7 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
     owner="MRO"
     accref_file =  "gleam/%s" % fileId
     file_url =  "http://%s:7777/RETRIEVE?file_id=%s" % (myhost, fileId)
-    
+
     gleam_phase = 1
     getf_frmfn = 0
     if (hdrs[0].has_key('ORIGIN')):
@@ -229,17 +229,17 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
             gleam_phase = 2
     else:
         getf_frmfn = 1
-    
+
     if (getf_frmfn == 1 and fileId.split('_v')[1].split('.')[0] == '2'): # filename pattern is brittle, only use it if no fits header key: ORIGIN
         gleam_phase = 2
-    
+
     #1068228616_095-103MHz_YY_r0.0_v2.0.fits
     """
     select cast((string_to_array((string_to_array((string_to_array(filename, '_r'))[2], '_'))[1], '.'))[1] as int) from mwa.gleam limit 10;
-    
+
     # update the robustness value for those already in the database (thus did not get to run this job plugin)
-    update mwa.gleam set robustness = cast((string_to_array((string_to_array((string_to_array(filename, '_r'))[2], '_'))[1], '.'))[1] as int) 
-    where position('escale' in filename) < 1 
+    update mwa.gleam set robustness = cast((string_to_array((string_to_array((string_to_array(filename, '_r'))[2], '_'))[1], '.'))[1] as int)
+    where position('escale' in filename) < 1
     and robustness is NULL;
     """
     #TODO - add robustness scheme (reading from the header and filename)
@@ -260,7 +260,7 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
             getr_frmfn = 1
     if (getr_frmfn == 1):
         robustness = int(float(fileId.split('_r')[1].split('_')[0]))
-    
+
     # get the correct DEC for phase 2
     if (2 == gleam_phase):
         if (hdrs[0].has_key('DEC_PNT')):
@@ -281,7 +281,7 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
                 if (cur_mc != None):
                     del cur_mc
                 putMCDBConn(conn_mc)
-            
+
             if (not res_mc or len(res_mc) == 0):
                 errMsg = "fail to obtain DEC from MC db"
                 error(errMsg)
@@ -290,8 +290,8 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
                 az = res_mc[0][0]
                 elv = res_mc[0][1]
                 ra1, dec = ephem_utils.azel2radec(az, elv, int(obsId))
-    
-    
+
+
     conn = getVODBConn()
     cur = conn.cursor()
     sqlStr = ''
@@ -304,14 +304,14 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
             error(errMsg)
             raise Exception(errMsg)
         coverage = res[0][0]
-    
+
         sqlStr = """INSERT INTO mwa.gleam(embargo,owner,centeralpha,centerdelta,accref,coverage,center_freq,band_width, mime,accsize,date_obs,stokes,filename, gleam_phase, robustness) VALUES('%s', '%s','%s', '%s', '%s','%s', '%s', '%s','%s','%s', '%s', '%s','%s', %d, %d)""" % (embargo,owner,str(ra), str(dec), accref_file, coverage, str(center_freq), str(band_width), mime, str(accsize), str(date_obs),str(stokes),fileId, gleam_phase, robustness)
         #info(3, sqlStr)
         cur.execute(sqlStr)
-          
+
         sqlStr = """INSERT INTO dc.products(embargo,owner,accref, mime,accesspath,sourcetable) VALUES('%s', '%s', '%s', '%s', '%s', '%s')""" % (embargo,owner,accref_file, mime, file_url, 'mwa.gleam')
         #info(3, sqlStr)
-        cur.execute(sqlStr)        
+        cur.execute(sqlStr)
         conn.commit()
         info(3, 'File %s added to VO database.' % fileId)
     except Exception, exp:
@@ -321,8 +321,7 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
         if (cur):
             del cur
         putVODBConn(conn)
-    
+
     return (0, 'Done')
-    
-    
-    
+
+

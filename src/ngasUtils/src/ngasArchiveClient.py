@@ -33,86 +33,86 @@
 
 _doc =\
 """
-The NG/AMS Archive Client is a small application, which can be used to 
-archive files into a remote NGAS Archive System in a safe and reliable  
-manner.  
-  
-Since the communication with NGAS takes place via HTTP, it is fairly easy  
-to set up such an archiving scenario, also if the data provider is located  
-at a geographically different location than the NGAS Archive. It must of  
-course be possible to build up an HTTP connection (TCP/IP socket connection)  
-between the two nodes involved. 
-  
-Archive Queue: 
-The archive client is running as a small daemon, which is polling an input 
-directory for files to be archived according to the polling time specified 
-with the command line parameter '--pollTime'. Files to be archived should be
-copied to this 'Archive Queue Directory'. The location of this is: 
-  
-  <Root Dir>/NGAS_ARCHIVE_CLIENT/queue 
-  
-It is also possible to create a link from the original file to the queue 
-directory if it is not desirable to copy the file. 
+The NG/AMS Archive Client is a small application, which can be used to
+archive files into a remote NGAS Archive System in a safe and reliable
+manner.
 
-  
-NOTE: IF FILES ARE COPIED INTO THE QUEUE DIRECTORY THIS SHOULD BE DONE BY 
-CREATING THE FILE UNDER A TEMPORARY NAME (STARTING WITH DOT) AND THEN  
-RENAMING IT WHEN IT HAS BEEN COPIED OVER COMPLETELY. 
+Since the communication with NGAS takes place via HTTP, it is fairly easy
+to set up such an archiving scenario, also if the data provider is located
+at a geographically different location than the NGAS Archive. It must of
+course be possible to build up an HTTP connection (TCP/IP socket connection)
+between the two nodes involved.
+
+Archive Queue:
+The archive client is running as a small daemon, which is polling an input
+directory for files to be archived according to the polling time specified
+with the command line parameter '--pollTime'. Files to be archived should be
+copied to this 'Archive Queue Directory'. The location of this is:
+
+  <Root Dir>/NGAS_ARCHIVE_CLIENT/queue
+
+It is also possible to create a link from the original file to the queue
+directory if it is not desirable to copy the file.
+
+
+NOTE: IF FILES ARE COPIED INTO THE QUEUE DIRECTORY THIS SHOULD BE DONE BY
+CREATING THE FILE UNDER A TEMPORARY NAME (STARTING WITH DOT) AND THEN
+RENAMING IT WHEN IT HAS BEEN COPIED OVER COMPLETELY.
 
 IN ADDITION, IN ORDER FOR THE TOOL TO WORK, THE NAMES OF THE FILES SCHEDULED
 INTO THE ACHIVE QUEUE MUST BE UNIQUE.
 
-  
-If a file cannot be archived, e.g. if it is not possible to connect to the 
-remote NGAS System, the archive client will retry periodically to archive it 
-with the given poll time until it succeeds. 
-  
-Archived Files: 
-When a file in the Archive Queue Directory has been archived, it is moved  
-to the 'Archived Files Directory'. The path of this is: 
-  
-  <Root Dir>/NGAS_ARCHIVE_CLIENT/archived 
-  
-The archived files will be kept in this directory until the timeout 
-specified by the command line parameter '--cleanUpTimeout=<Timeout>' (timeout 
-in seconds) expires for the file. 
+
+If a file cannot be archived, e.g. if it is not possible to connect to the
+remote NGAS System, the archive client will retry periodically to archive it
+with the given poll time until it succeeds.
+
+Archived Files:
+When a file in the Archive Queue Directory has been archived, it is moved
+to the 'Archived Files Directory'. The path of this is:
+
+  <Root Dir>/NGAS_ARCHIVE_CLIENT/archived
+
+The archived files will be kept in this directory until the timeout
+specified by the command line parameter '--cleanUpTimeout=<Timeout>' (timeout
+in seconds) expires for the file.
 
 Before removing any file from the Archived Files Directory, the archive client
 contacts the remote NG/AMS System and checks that the file is available in the
 NGAS Archive using the NG/AMS 'CHECKFILE' Command.
-  
+
 For each file archived, a file containing the associated Archive Request
 Object, which again contains all information needed to handle the request,
-is created. This is named: 
-   
+is created. This is named:
+
   <Timestamp>___<Filename>___STATUS.pickle
 
 This is used to be able to restore the internal data structures, in case
 the tool is interrupted while there are still unfinished requests in the
 queues.
-  
-Bad Files: 
-If files are rejected by the remote NG/AMS Server, if they are inconsistent, 
-these files are classified as 'Bad Files' and are moved to the Bad Files 
-Directory. The location of this is:  
-  
-  <Root Dir>/NGAS_ARCHIVE_CLIENT/bad 
-  
-The server will not try to clean up files in the Bad Files Directory. This 
-must be done by the operators of the NG/AMS Archive Client. Also in  
-connection with Bad Files, the pickled Archive Request Object will  
-be stored into a file in the Bad Files Directory with a name of the format: 
-  
+
+Bad Files:
+If files are rejected by the remote NG/AMS Server, if they are inconsistent,
+these files are classified as 'Bad Files' and are moved to the Bad Files
+Directory. The location of this is:
+
+  <Root Dir>/NGAS_ARCHIVE_CLIENT/bad
+
+The server will not try to clean up files in the Bad Files Directory. This
+must be done by the operators of the NG/AMS Archive Client. Also in
+connection with Bad Files, the pickled Archive Request Object will
+be stored into a file in the Bad Files Directory with a name of the format:
+
   <Timestamp>___<Filename>___STATUS.pickle
-  
+
 By studying the error message in the internal ngamsStatus object, it is
-possible to get an indication of the problem encountered for each file. 
-  
+possible to get an indication of the problem encountered for each file.
+
 Logging:
-If a Log Level higher than 0 is specified, the NG/AMS Archive Client will log 
-information about the actions carried out into the log file: 
-  
-  <Root Dir>/NGAS_ARCHIVE_CLIENT/log/ngasArchiveClient.log 
+If a Log Level higher than 0 is specified, the NG/AMS Archive Client will log
+information about the actions carried out into the log file:
+
+  <Root Dir>/NGAS_ARCHIVE_CLIENT/log/ngasArchiveClient.log
 
 The client supports log rotation by sending a SIGHUP signal to the client.
 
@@ -129,63 +129,63 @@ log files should be kept.
 The rotated log files have a name of the form:
 
   <Root Dir>/NGAS_ARCHIVE_CLIENT/log/ngasArchiveClient_<ISO8601 Time Stamp>.log
- 
-Checksum Checking: 
-It is possible to make the tool calculate a checksum of the files to be 
-archived before transferring them across to the NGAS Archive. This is done 
-using the '--checksum' command line parameter. Together with this parameter 
-a Checksum Plug-In must be specified. This is a small tool that can be  
-executed on the shell, giving the file to be archived as input parameter. 
-In case of success, the generated checksum must be written on stdout. In case 
-of errors, the tool exits with 1 and a message with the following format is  
-written on stderr: 
-  
-  ERROR: <Error Message> 
-  
-Together with the NG/AMS Archive Client, a Checksum Plug-In is delivered. 
-This is named 'ngamsCrc32'. It calculates the CRC-32 checksum of the file. 
-This Checksum Plug-In is compatible with the CRC-32 Checksum Plug-In  
-used internally by NG/AMS ('ngamsGenCrc32'). 
- 
-Configuration/Installation: 
-The NG/AMS Archive Client does not require much configuration. The steps to 
-carry out to install this application are: 
- 
-1. Compile the NG/AMS Archive Client if delivered in the form of source files: 
-  
-  $ cd ngasUtils/src 
+
+Checksum Checking:
+It is possible to make the tool calculate a checksum of the files to be
+archived before transferring them across to the NGAS Archive. This is done
+using the '--checksum' command line parameter. Together with this parameter
+a Checksum Plug-In must be specified. This is a small tool that can be
+executed on the shell, giving the file to be archived as input parameter.
+In case of success, the generated checksum must be written on stdout. In case
+of errors, the tool exits with 1 and a message with the following format is
+written on stderr:
+
+  ERROR: <Error Message>
+
+Together with the NG/AMS Archive Client, a Checksum Plug-In is delivered.
+This is named 'ngamsCrc32'. It calculates the CRC-32 checksum of the file.
+This Checksum Plug-In is compatible with the CRC-32 Checksum Plug-In
+used internally by NG/AMS ('ngamsGenCrc32').
+
+Configuration/Installation:
+The NG/AMS Archive Client does not require much configuration. The steps to
+carry out to install this application are:
+
+1. Compile the NG/AMS Archive Client if delivered in the form of source files:
+
+  $ cd ngasUtils/src
   $ make clean all [install]
-  
-2. Install the NG/AMS Archive Client ('ngasArchiveClient') in a directory  
-where it can be executed as a shell command. Probably set up the OS init  
-scripts to launch the archive client automatically when the machine boots up. 
-Also install the Checksum Plug-In ('ngamsCrc32') if the checksum checking 
-feature is used. 
-  
-3. Determine a proper location for the NG/AMS Archive Client Root Directory. 
-This should be big enough to hold the amount of data that might be buffered 
-here at any time. This directory must be writable for the archive client. 
-Note, the NG/AMS Archive Client will create the needed directory structure 
-automatically, the first time it is started up. This structure is: 
-  
-  <Root Dir>/NGAS_ARCHIVE_CLIENT/archived 
-                                /bad 
-                                /log 
-                                /queue 
-  
-4. Determine proper values for the other input parameters (Archive Queue 
+
+2. Install the NG/AMS Archive Client ('ngasArchiveClient') in a directory
+where it can be executed as a shell command. Probably set up the OS init
+scripts to launch the archive client automatically when the machine boots up.
+Also install the Checksum Plug-In ('ngamsCrc32') if the checksum checking
+feature is used.
+
+3. Determine a proper location for the NG/AMS Archive Client Root Directory.
+This should be big enough to hold the amount of data that might be buffered
+here at any time. This directory must be writable for the archive client.
+Note, the NG/AMS Archive Client will create the needed directory structure
+automatically, the first time it is started up. This structure is:
+
+  <Root Dir>/NGAS_ARCHIVE_CLIENT/archived
+                                /bad
+                                /log
+                                /queue
+
+4. Determine proper values for the other input parameters (Archive Queue
 Polling Time, Archived Files Directory Clean Up Timeout, number of possible
-parallel streams, log conditions, etc.). 
-  
-5. Launch the NG/AMS Archive Client (possibly by rebooting the host). 
-  
-6. Set up the data provider applications to deliver the files in the 
-Archive Queue Directory according to the requirements given above. 
-  
-7. Check the log output. In case of problem it is possible to temporarily  
-start the server with a higher Log Level to get more information about the  
-problem. 
-  
+parallel streams, log conditions, etc.).
+
+5. Launch the NG/AMS Archive Client (possibly by rebooting the host).
+
+6. Set up the data provider applications to deliver the files in the
+Archive Queue Directory according to the requirements given above.
+
+7. Check the log output. In case of problem it is possible to temporarily
+start the server with a higher Log Level to get more information about the
+problem.
+
 The input parameters defined for the tool are:
 
 %s
@@ -296,7 +296,7 @@ def logRotTimer(archCliObj):
     Returns:     Void.
     """
     T = TRACE()
-    
+
     info(1, "Log Rotation Timer carrying out log rotation ...")
     logFile = archCliObj.getPar(archCliObj.PAR_INT_LOG_FILE)
     rotateLog(logFile)
@@ -323,13 +323,13 @@ def ngasSignalHandler(signalNo,
        2. SIGINT/15. SIGTERM: Terminate server in a clean way.
 
     signalNo:    Signal number (integer).
-    
+
     frameObj:    Consult Python documentation for signal.signal().
-        
+
     Returns:     Void.
     """
     T = TRACE()
-    
+
     notice("Received signal: %d" % signalNo)
     if (signalNo == signal.SIGHUP):
         if (_archiveClient):
@@ -358,7 +358,7 @@ def qMonThread(threadGroupObj):
     archiveClientObj = threadGroupObj.getParameters()[0]
     archiveClientObj.qMonThread(threadGroupObj)
 
-    
+
 def archiveThread(threadGroupObj):
     """
     Function encapsulating the Archive Thread implementation in the
@@ -374,7 +374,7 @@ def archiveThread(threadGroupObj):
     archiveClientObj = threadGroupObj.getParameters()[0]
     archiveClientObj.archiveThread(threadGroupObj)
 
-        
+
 def cleanUpThread(threadGroupObj):
     """
     Function encapsulating the Clean-Up Thread implementation in the
@@ -418,7 +418,7 @@ class ngasArchiveRequest:
     Note, the object is pickable, which is used to implement persistency of
     the NGAS Archive Client.
     """
-    
+
     def __init__(self):
         """
         Constructor.
@@ -453,7 +453,7 @@ class ngasArchiveRequest:
         """
         self.__archiveQueueFilename = queueFilename
         return self
-        
+
     def getQueueFilename(self):
         """
         Get the staging filename of the file in the Queue Directory.
@@ -565,13 +565,13 @@ class ngasArchiveRequest:
         Returns:      NGAMS Status Object (ngamsStatus).
         """
         return self.__ngasStatObj
-    
+
 
 class ngasArchiveClient:
     """
     Class implementing all services of the NAGS Archive Client.
     """
-    
+
     # Constants.
     ARCHIVED_DIR             = "archived"
     ARCHIVE_THREAD_ID        = "ARCHIVE_THREAD"
@@ -585,7 +585,7 @@ class ngasArchiveClient:
     LOG_FILE                 = "ngasArchiveClient.log"
     QUEUE_DIR                = "queue"
     Q_MON_THREAD_ID          = "QUEUE_MON_THREAD"
-    
+
     # Parameters.
 
     # Internal parameters.
@@ -595,7 +595,7 @@ class ngasArchiveClient:
     PAR_INT_LOG_FILE         = "_log-file"
     PAR_INT_QUEUE_DIR        = "_queue-dir"
     PAR_INT_WORKING_DIR      = "_working-dir"
-    
+
     # Command line options.
     PAR_ARCHIVE_PAR          = "archivePar"
     PAR_AUTH                 = "auth"
@@ -621,7 +621,7 @@ class ngasArchiveClient:
 
         [PAR_INT_LOG_FILE, [], None, ngasUtilsLib.NGAS_OPT_INT, "",
          "Internal Parameter: Log file."],
- 
+
         # Command line options.
         [PAR_SERVERS, [], None, ngasUtilsLib.NGAS_OPT_MAN,
          "=<Server List>", "Comma separated list of constatc server " +\
@@ -712,7 +712,7 @@ class ngasArchiveClient:
         self.__qMonThreadGroup     = None
         self.__archiveThreadsGroup = None
         self.__cleanUpThreadsGroup = None
-        self.__janitorThreadGroup  = None    
+        self.__janitorThreadGroup  = None
         self.__logRotTimer         = None
 
         # Members to handle requests waiting for being ripe for deletion from
@@ -763,7 +763,7 @@ class ngasArchiveClient:
         for thrGr in (self.__qMonThreadGroup, self.__archiveThreadsGroup,
                       self.__cleanUpThreadsGroup, self.__janitorThreadGroup):
             if (thrGr): thrGr.stop()
-        
+
     def initialize(self,
                    argv,
                    optDic):
@@ -777,7 +777,7 @@ class ngasArchiveClient:
         Returns:  Void.
         """
         T = TRACE()
-                   
+
         self.__optDic = ngasUtilsLib.parseCmdLine(argv, optDic)
         self.__parDic = ngasUtilsLib.optDic2ParDic(self.__optDic)
 
@@ -826,7 +826,7 @@ class ngasArchiveClient:
                    space (boolean).
         """
         return self.__parDic.has_key(par)
-        
+
     def genWorkingDir(self):
         """
         Generate home directory structure of the tool.
@@ -901,7 +901,7 @@ class ngasArchiveClient:
         The file was classified as bad or as a file, which cannot be
         handled by the target system. It will be moved to the Bad Files
         Directory and de-queued.
-        
+
         archiveRequest:   Archive Request instance (ngasArchiveRequest).
 
         Returns:          Void.
@@ -926,7 +926,7 @@ class ngasArchiveClient:
         except Exception, e:
             msg = "Error generating NGAS Status pickle object file: %s"
             error(msg % ngasStatDocFile)
-            raise Exception, msg        
+            raise Exception, msg
         self.deQueueArchiveReq(archiveRequest, False)
 
     def move2ArchivedQueue(self,
@@ -937,7 +937,7 @@ class ngasArchiveClient:
         Request, is dumped into a file and stored in the Archive Queue as well.
 
         archiveRequest:    Instance of NGAS Archive Request associated to the
-                           file (ngasArchiveRequest). 
+                           file (ngasArchiveRequest).
 
         Returns:           Void.
         """
@@ -972,13 +972,13 @@ class ngasArchiveClient:
         Remove an Archive Request from the internal queuing system.
 
         archiveRequest:   Instance of NGAS Archive Request associated to the
-                          file (ngasArchiveRequest). 
-        
+                          file (ngasArchiveRequest).
+
         rmStatusDoc:      If True, remove also the the NG/AMS XML Status
                           information returned from the Archive Request, dumped
                           into a file and stored in the Archive Queue
                           (boolean).
-        
+
         Returns:          Void.
         """
         T = TRACE()
@@ -1023,7 +1023,7 @@ class ngasArchiveClient:
                 if (getDebug()):
                     # If debug mode, print out entire stack.
                     print e
-        
+
     def _qMonThread(self,
                     threadGroupObj):
         """
@@ -1033,7 +1033,7 @@ class ngasArchiveClient:
         threadGroupObj:   Reference to NG/AMS Thread Group Object
                           (ngamsThreadGroup).
 
-        Returns:          Void. 
+        Returns:          Void.
         """
         T = TRACE()
 
@@ -1153,7 +1153,7 @@ class ngasArchiveClient:
                          archiveRequest.getQueueFilename())
                     rmFile(archiveRequest.getQueueFilename())
                 else:
-                    self.move2ArchivedQueue(archiveRequest) 
+                    self.move2ArchivedQueue(archiveRequest)
             else:
                 # A failure occurred. One the following actions are taken:
                 #
@@ -1192,7 +1192,7 @@ class ngasArchiveClient:
                         ngasArchiveRequest | None).
         """
         T = TRACE()
-        
+
         try:
             self.__cleanUpSem.acquire()
             if (self.__cleanUpReqList == []):
@@ -1228,7 +1228,7 @@ class ngasArchiveClient:
 
         try:
             self.__cleanUpSem.acquire()
-            
+
             schedTime = archiveRequest.getSchedTime()
             while (True):
                 if (self.__cleanUpReqDic.has_key(schedTime)):
@@ -1486,7 +1486,7 @@ class ngasArchiveClient:
             qFile = archiveRequest.getQueueFilename()
             self.__queueMap[os.path.basename(qFile)] = archiveRequest
             self.__archivedQueue.put_nowait(archiveRequest)
-        
+
     def execute(self):
         """
         Carry out the tool execution.
@@ -1502,7 +1502,7 @@ class ngasArchiveClient:
             sys.exit(0)
 
         self.genWorkingDir()
-        
+
         # Set up log file in the working directory if the log level is given.
         if (self.getPar("logLevel")):
             self.setPar(self.PAR_INT_LOG_FILE,
@@ -1510,9 +1510,9 @@ class ngasArchiveClient:
                                          (self.getPar(self.PAR_INT_LOG_DIR),
                                           self.LOG_FILE)))
             setLogCond(0, "", int(self.getPar("logLevel")),
-                       self.getPar(self.PAR_INT_LOG_FILE), 
+                       self.getPar(self.PAR_INT_LOG_FILE),
                        int(self.getPar("verbose")))
-            
+
         # If a lock file exists, bail out.
         if (os.path.exists(self.getLockFile())):
             msg = "Seems that an instance of this tool is already running " +\
@@ -1591,7 +1591,7 @@ class ngasArchiveClient:
             rmFile(rmFile(self.getLockFile()))
         except:
             pass
-        
+
 
 # Generate the man-page
 _optDic, _optDoc = ngasUtilsLib.genOptDicAndDoc(ngasArchiveClient.PARAMETERS)
@@ -1615,7 +1615,7 @@ if __name__ == '__main__':
         signal.signal(signal.SIGHUP, ngasSignalHandler)
     except Exception, e:
         print "\nProblem executing the tool:\n\n%s\n" % str(e)
-        sys.exit(1) 
+        sys.exit(1)
     if (getDebug()):
         # Exexute such that the complete stack trace is printed out in case
         # an exception is thrown (mostly for debugging purpose).

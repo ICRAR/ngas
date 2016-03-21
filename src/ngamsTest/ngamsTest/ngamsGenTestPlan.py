@@ -29,7 +29,7 @@
 #
 """
 Small tool to generate a test plan from the contents of the Test Suite
-Python modules. 
+Python modules.
 """
 # TODO: Make index in the beginning of the report with which there can easily
 #       be jumped to Test Suites and Test Cases. In addition, links in
@@ -53,7 +53,7 @@ htmlHdr = """
   <tr>
     <td><a href="/NGAS"><img src="http://jewel1:8080/NGAS/NGAS_logo_small"
     alt="NGAS logo small" title="NGAS logo small" height="54" width="200"
-    border="0" /></a></td> 
+    border="0" /></a></td>
     <td align="right"><h2>The Next Generation Archive System</h2></td>
   </tr>
 </table>
@@ -80,7 +80,7 @@ testSuiteFormat="""\n
 testCaseFormat="""\n
 <h3><font color="#0000FF">Test Case: %s</font></h3>
 <h4><font color="#0000FF">Description:</font></h4>
-<pre>%s</pre> 
+<pre>%s</pre>
 """
 #"
 
@@ -174,12 +174,12 @@ def execute(argv):
         idx += 1
     print genTestPlan(title, testSuite, testCases)
 
-    
+
 if __name__ == '__main__':
     """
     Main program executing the test cases of the module test.
     """
     execute(sys.argv)
-    
+
 
 # EOF

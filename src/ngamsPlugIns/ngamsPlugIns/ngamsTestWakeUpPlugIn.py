@@ -45,7 +45,7 @@ def ngamsTestWakeUpPlugIn(srvObj,
     srvObj:         Reference to instance of the NG/AMS Server (ngamsServer).
 
     hostId:         Name of NGAS host to be woken up (string).
- 
+
     Returns:        Void.
     """
     T = TRACE(2)

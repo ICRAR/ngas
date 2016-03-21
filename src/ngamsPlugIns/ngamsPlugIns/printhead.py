@@ -79,7 +79,7 @@ class FitsHead:
         if skey != 'END': self.KKeys.append(skey)
         if type(file) == types.StringType:
             (self.fd, self.size) = self.openFile(file)
-            if self.size == -1: 
+            if self.size == -1:
                 errMsg = "*** File %s does not exists ****" % file
                 raise Exception, errMsg
         elif type(file) == types.FileType:  # if fd != 0 we assume that a file object is passed
@@ -95,7 +95,7 @@ class FitsHead:
             raise Exception, errMsg
         self.HEAD = []               # list of list(s) of header cards
         self.analyzeStruct()
-            
+
 
 
 
@@ -120,8 +120,8 @@ class FitsHead:
                     stmp = "# HDR  NAXIS  "
                     for na in range(1,3):
                         stmp += "NAXIS%2d  " % na
-                    stmp += '    POS            DATASUM' 
-                    self.STRUCT.append(stmp)                 
+                    stmp += '    POS            DATASUM'
+                    self.STRUCT.append(stmp)
                     self.STRUCT.append(70*'-')
                     headfl = 0
                 if self.check:
@@ -214,7 +214,7 @@ class FitsHead:
             self.POS[-1][1] = self.nbytes
 
         return HEAD
-            
+
 
     def skipData(self,header=-1):
         """
@@ -246,7 +246,7 @@ class FitsHead:
         self.datasum.append(checksum)
         self.SIZE.append(siz)
         return 0
-        
+
 
 
     def getData(self,header=0,ofile='',blfl=1):
@@ -262,7 +262,7 @@ class FitsHead:
             header = -1   # force header to be last one
         (siz,nblocks) = self.Extension[header].DATASIZE
         wfl = 0
-        if len(ofile) > 0:           
+        if len(ofile) > 0:
             try:
                 of = open(ofile,'w')
                 wfl = 1
@@ -307,7 +307,7 @@ class FitsHead:
                 fd.seek(0,0)
                 self.name = fd.name
                 self.ID = base
-        
+
         return (fd,size)
 
 
@@ -329,10 +329,10 @@ class FitsHead:
                                 'Comment':LineTuple[2],'Type':''}}}
                 else:
                     LineDict = HD.keyTuple2Dict(LineTuple)
-                if len(key) > 0: 
+                if len(key) > 0:
                     LineDict.update({'index':{ind/80:LineTuple[0]}})
                     HD.updateKeyword(LineDict)
-            
+
             HD.setNumber(ii)
             HD.setPos(self.Extension[ii].POS)
             HD.setDataSize()
@@ -345,11 +345,11 @@ class FitsHead:
 
         """
         Method parses self.HEAD into a list containing
-        tuples of the form (fileId, ext_ind, key_ind, key, value, comment, type). 
-        If abs(forceString) == 2 then the DBCM format is produced which contains 
+        tuples of the form (fileId, ext_ind, key_ind, key, value, comment, type).
+        If abs(forceString) == 2 then the DBCM format is produced which contains
         in addition for the numeric types a kw_value_numeric and for certain
         keywords a kw_value_datetime.
-        
+
         INPUT: forceString    int, optional parameter, if > 0 all entries are converted to strings
                               if < 0 the HISTORY and COMMENT and ESO-LOG keys are not converted.
                               if abs(forceString) == 1: standard format
@@ -390,11 +390,11 @@ class FitsHead:
                             tupleList[ii].append(tuple(LineList))
         return tupleList
 
-                
+
     def parseFitsCard(self,line, index=-1):
         """
         Method to parse a single FITS header card.
-        
+
         INPUT: string(80), One line of a FITS header
         RETURN: tuple, (key, value, comment, type, index)
         """
@@ -414,7 +414,7 @@ class FitsHead:
             if rest[0] == "'":
                 try:
                     m = qexpr.match(rest)
-                    value = m.group()[1:-1].strip()                    
+                    value = m.group()[1:-1].strip()
                     vind = m.end()
                     typ = 'C'
                 except Exception, e:
@@ -443,7 +443,7 @@ class FitsHead:
                 value = [rest[1].strip()]
             else:
                 value = ''
-        
+
         return self.getKeyType((key,value,comment,typ,index))
 
 
@@ -478,10 +478,10 @@ class FitsHead:
                            '"FITS"/>')
             XmlHead.append(level*indent + '<DESCRIPTION>')
             level +=1
-            
+
             XmlHead.append(level*indent + 'VOTable file created from FITS file')
             XmlHead.append(level*indent + self.name)
-    
+
             level -=1
             XmlHead.append(level*indent + '</DESCRIPTION>')
         elif format == 'xfits':
@@ -496,7 +496,7 @@ class FitsHead:
                 XmlHead.append(HD.VotableSerialize(level=level, indent=indent))
             else:
                 XmlHead.append(HD.XfitsSerialize(level=level, indent=indent))
-                   
+
 # close the root element
 
         if format == 'vo':
@@ -586,7 +586,7 @@ class FitsHead:
                     self.XHead = self.XHead + HD['ESO-LOG']
                     self.XHead.append('   </ESO-LOG>')
 
-                   
+
         self.XHead.append('</XFits>')
 
         if len(outfile) > 0:
@@ -625,7 +625,7 @@ class FitsHead:
         card.
         The value of the header parameter can be used to select a
         specific header (counted from 0).
-        
+
         INPUT:  key, string      Name of the keyword to be searched for
                 header,int       number of header to be searched (def. 0)
 
@@ -638,14 +638,14 @@ class FitsHead:
             return self.HEAD[header][ind*80:ind*80+80]
         else:
             return ''
-    
+
 
     def getKeyType(self,lineTuple):
         """
-        Method tries to guess the type of a keyword value, 
+        Method tries to guess the type of a keyword value,
         where <type> is one out of ['B','C','U', 'S', 'I','L','F','P', 'R','T']
         and updates the lineTuple on input.
-        
+
         types:
             'B':    boolean
             'C':    character
@@ -656,7 +656,7 @@ class FitsHead:
             'F':    float (if len(value) <= 10)
             'D':    double (if len(value) > 10)
             'T':    datetime string (ISO)
-        
+
         INPUT: tuple, lineTuple
         RETURN: lineTuple
         """
@@ -664,17 +664,17 @@ class FitsHead:
         dtRx = re.compile(\
           "(19\d{2}|2\d{3})\-(0\d|1[012])\-([012]\d|3[01])" + \
           "([T ]([01]\d|2[0-3])\:[0-5]\d\:[0-5]\d(\.\d+)?)?\s*$")
-        
+
         # deal with reserved words, which would lead to the wrong type...
         reserved = ['INFINITY', 'INF', 'NAN']
         val = lineTuple[1]
         typ = lineTuple[3]
-        
+
         # check if type is defined already or if one of the reserved words is used.
         if typ == 'C' or (type(val) == types.StringType and val.upper() in reserved):
             typ = 'C'
         else:
-            try: 
+            try:
               float(val)
               value = float(val)
               if value != 0 and (abs(value) > 1.0e15 or value < 1e-15):
@@ -694,7 +694,7 @@ class FitsHead:
                      typ = 'L'
               elif typ != 'R':
                   epos = val.upper().find('E')
-                  if epos == -1: 
+                  if epos == -1:
                      epos = len(val)
                   else:
                      ex = int(val[epos+1:])
@@ -736,12 +736,12 @@ class HeadDict(dict):
         {'index':{<index1>:<keyword1>,<index2>:<keyword2>,...},'nodes':{<keyword1>:{'Value':<value1>,'Comment':<comment1>,'Type':<type1>},
                                                                         <keyword2>:{'Value':<value2>,'Comment':<comment2>,'Type':<type2>},...}}
 
-    The 'index' dictionary keeps the sorting information of the keywords, where the key 
+    The 'index' dictionary keeps the sorting information of the keywords, where the key
     is the location of the keyword in the header and the value is the name of the keyword.
-    
+
     The 'nodes' dictionary contains the keyword name as the key. The value of a single node key
     is again a dictionary. For normal standard keywords the value contains another dictionary,
-    (keyval dictionary) which has the three keys 'Value', 'Comment' and 'Type'. For HIERARCH keywords it contains 
+    (keyval dictionary) which has the three keys 'Value', 'Comment' and 'Type'. For HIERARCH keywords it contains
     the next level in the hierarchy, where the leaf node contains finally a standard keyval
     dictionary as described above for normal keywords.
     """
@@ -755,12 +755,12 @@ class HeadDict(dict):
         self.HEADERSIZE = -1l
         self.DATASIZE = (-1l,-1l)
         self.XmlHead = []
-        
+
 
     def setHeaderSize(self, size=-1l):
         """
         Set the SIZE variable, which contains the size in bytes of the header.
-        
+
         INPUT:     size, long
         RETURN:    1 if successful, 0 else
         """
@@ -774,7 +774,7 @@ class HeadDict(dict):
     def setPos(self, position=-1l):
         """
         Set the POS variable, which contains the position in bytes of the header.
-        
+
         INPUT:     position, long
         RETURN:    1 if successful, 0 else
         """
@@ -788,7 +788,7 @@ class HeadDict(dict):
     def setNumber(self, number=0):
         """
         Set the POS variable, which contains the number of the header counted from 0.
-        
+
         INPUT:     number, int or long
         RETURN:    1 if successful, 0 else
         """
@@ -802,7 +802,7 @@ class HeadDict(dict):
     def setDataSize(self):
         """
         Calculate and set the DATASIZE variable.
-        
+
         INPUT:     none
         OUTPUT:    int tuple, (datasize, <number of blocks>)
         """
@@ -820,20 +820,20 @@ class HeadDict(dict):
 
             siz = siz * abs(int(self.getKeyword('BITPIX')[1]))/8     #calculate data size
             nblocks = long(siz/2880.+0.5)
-        
+
         self.DATASIZE = (siz,nblocks)
 
         return (siz,nblocks)
 
-        
+
 
 
     def keyTuple2Dict(self,keyTuple,force=0):
         """
         Method takes a keyTuple on input and returns a dictionary of the HeadDict
-        form for that keyword. If the keyword does not exist in self or 
+        form for that keyword. If the keyword does not exist in self or
         force=1 the dictionary is created from scratch.
-        
+
         INPUT:     keyTuple, defining a single keyword
         OUTPUT:    keyDictionary
         """
@@ -845,7 +845,7 @@ class HeadDict(dict):
             fullInd = ''
             for hk in hkeys:
                 fullInd += "['"+hk+"']"
-        
+
         except:
             return 0
 
@@ -876,7 +876,7 @@ class HeadDict(dict):
             eval("testKey['nodes']"+fullInd+".update({'Comment':comment,'Value':value,'Type':typ})")
         else:
             testKey = existKey
-            
+
 
         return testKey
 
@@ -884,7 +884,7 @@ class HeadDict(dict):
     def getNode(self,key=''):
         """
         Return node of HD dictionary for a certain keyword.
-        
+
         INPUT:     string, keyword
         OUTPUT:    node of HD dictionary.
         """
@@ -892,7 +892,7 @@ class HeadDict(dict):
         fullInd = ''
         node = self['nodes']
         for hk in hkeys:
-            node = node[hk]        
+            node = node[hk]
         return node
 
 
@@ -910,7 +910,7 @@ class HeadDict(dict):
     def getDescendantElements(self,key=''):
         """
         Method returns the names of the descendant elements of a <key> as a tuple.
-        
+
         INPUT:     string, keyword
         OUTPUT:    string tuple, list of descendant nodes
         """
@@ -922,10 +922,10 @@ class HeadDict(dict):
     def getKeyDict(self,key,desc=0,inst=0):
         """
         Method takes a keyword <key> and returns a dictionary of the HeadDict
-        form for that key only. 
+        form for that key only.
         If desc is different from 0 only the descendant nodes will be returned.
         If inst is different from 0 an HeadDict instance is returned.
-        
+
         INPUT:     string, keyword
                    int attribute desc, 0 or 1, 0 is default, optional
                    int attribute inst, 0 or 1, 0 is default, optional
@@ -952,7 +952,7 @@ class HeadDict(dict):
 #                        eval("keyDict['nodes']"+fullInd+".update({hk:node})")
                     else:
                         keyDict['nodes'].update(node)
-                    
+
             elif node.has_key(hk) and type(node[hk]) != type({}):
                 node = node[hk]
                 if desc == 0:
@@ -960,13 +960,13 @@ class HeadDict(dict):
 #                    eval("keyDict['nodes']"+fullInd+".update({hk:node})")
                 else:
                     keyDict['nodes'].update({hk:node})
-                
+
             else:
                 exists = 0
                 if hk == hkeys[-1]:
                     node = {hk:{'Comment':'','Value':'','Type':''}}
                 else:
-                    node = {hk:{}}        
+                    node = {hk:{}}
                 if desc == 0:
                     keyDict.getNode(curkey).update(node)
 #                    eval("keyDict['nodes']"+fullInd+".update(node)")
@@ -975,22 +975,22 @@ class HeadDict(dict):
 
             fullInd += "['"+hk+"']"
             curkey = (curkey+" "+hk).strip()
-        
-        if self.getKeyIndex(key) >=0:      
+
+        if self.getKeyIndex(key) >=0:
             keyDict['index'].update({self.getKeyIndex(key):key})
         else:
             keyDict['index'].update({-1:key})
-        
+
         if inst==1:
             return keyDict
         else:
-            return keyDict          
+            return keyDict
 
     def getRegexpKey(self,key):
         """
         Method takes a keyword regular expression string on input and returns
         a list of keywords matching the expression.
-        
+
         INPUT:     string, keyword regexp
         OUTPUT:    string list, keyword names
         """
@@ -1007,7 +1007,7 @@ class HeadDict(dict):
     def getKeyIndex(self,key):
         """
         Return the index of a keyword. Method tests for existence.
-        
+
         INPUT:    none
         OUTPUT    integer, index of the keyword or -1 if keyword does not exist
         """
@@ -1017,7 +1017,7 @@ class HeadDict(dict):
             self['index'].values().index(key)
             exist = 1
         except:
-            exist = 0           
+            exist = 0
 
         if exist:
             for ind in self['index'].keys():
@@ -1030,7 +1030,7 @@ class HeadDict(dict):
     def filter(self,keyexp):
         """
         Remove keywords matching the regular expression <keyexp>
-        
+
         INPUT:     keyword regular expression
         OUTPUT:    none
         """
@@ -1043,16 +1043,16 @@ class HeadDict(dict):
             self['index'].keys())
         indlist = map(lambda x:x-1,filter(lambda x:x>0, matchlist))
         map(lambda x:self['index'].pop(x), indlist)
-        
+
 
     def setKeyIndex(self,newind,key):
         """
-        Set the index of a <key> to <newind>. 
-        
+        Set the index of a <key> to <newind>.
+
         INPUT:     int, new index for key
                    string, keyword
         OUTPUT:    1 if succesful, 0 else
-        
+
         NOTE: This method is pretty destructive, i.e. it really sets the
               index to the keyword given no matter whether this index is
               already occupied or not. It should only be used when creating a
@@ -1073,7 +1073,7 @@ class HeadDict(dict):
         """
         Method takes a keyword <key> and deletes the index in the index
         dictionary of the HeadDict instance. It returns the deleted index.
-        
+
         INPUT:     string, keyword
         OUTPUT:    int, index of keyword
         """
@@ -1087,7 +1087,7 @@ class HeadDict(dict):
         """
         Method takes a keyword <key> and returns a tuple of the form
         (<key>,<value>,<comment>,<type>).
-        
+
         INPUT:  key, string      Name of the keyword to be searched for
         OUTPUT: tuple of strings: (<key>,<value>,<comment>,<type>)
 
@@ -1101,7 +1101,7 @@ class HeadDict(dict):
         fullInd = ''
         for hk in hkeys:
             fullInd += "['"+hk+"']"
-        
+
 
         try:
             val = eval("self['nodes']"+fullInd+"['Value']")
@@ -1145,10 +1145,10 @@ class HeadDict(dict):
             key = keys[ii]
             ind = inds[ii]
             hkeys = key.split()
-    
+
             fullInd = ''
             curkey = ''
-            
+
             node = keyDict['nodes']
             oDict = self.getKeyDict(key,inst=1)
             for hk in hkeys:
@@ -1166,19 +1166,19 @@ class HeadDict(dict):
                          append(keyDict['nodes'][key]['Value'][0])
                 fullInd += "['"+hk+"']"
                 curkey = (curkey+" "+hk).strip()
-            
+
             if self['index'].values().count(key):
                 dind = self.getKeyIndex(key)
                 del(self['index'][dind])
             self['index'].update({ind:key})
         return 1
 
-        
+
     def getKeyPos(self,key):
         """
         Method takes a keyword <key> and returns the position in the original FITS
         header.
-        
+
         INPUT:  key, string, Name of the keyword to be searched for
         OUTPUT: int, position of the keyword card in original header
 
@@ -1196,9 +1196,9 @@ class HeadDict(dict):
     def getKeyType(self,key):
         """
         Method updates the keyword dictionary with the derived type
-        {<key>:{'Value':<value>,'Comment':<comment>, 'Type':<type>}} 
+        {<key>:{'Value':<value>,'Comment':<comment>, 'Type':<type>}}
         where <type> is one out of ['B','C','I','L','F','P', 'R' 'T']
-        
+
         INPUT:     string, keyword
         OUTPUT:    string, derived type or blank string if type could not be derived
         """
@@ -1211,8 +1211,8 @@ class HeadDict(dict):
         fullInd = ''
         for hk in hkeys:
             fullInd += "['"+hk+"']"
-        
-        
+
+
         if eval("self['nodes']"+fullInd+".has_key('Type')"):
             typ = eval("self['nodes']"+fullInd+".has_key('Type')")
         else:
@@ -1223,7 +1223,7 @@ class HeadDict(dict):
             if typ == 'C' or (type(val) == types.StringType and val.upper() in reserved):
                 typ = 'C'
             else:
-                try: 
+                try:
                   float(val)
                   value = float(val)
                   if value != 0 and (abs(value) > 1.0e15 or abs(value) < 1e-15):
@@ -1243,7 +1243,7 @@ class HeadDict(dict):
                          typ = 'L'
                   elif typ != 'R':
                       epos = val.upper().find('E')
-                      if epos == -1: 
+                      if epos == -1:
                          epos = len(val)
                       else:
                          ex = int(val[epos+1:])
@@ -1265,7 +1265,7 @@ class HeadDict(dict):
             return typ
         else:
             exec("self['nodes']"+fullInd+".update({'Type':''})")
-            
+
             return ''
 
 
@@ -1285,7 +1285,7 @@ class HeadDict(dict):
         kind = -1
         hind = -1
         maxk = -1
-        
+
         for k in keys:
             if len(k) > 8:
                 hind += 1
@@ -1300,7 +1300,7 @@ class HeadDict(dict):
         for k in keys:
             if k != 'END':
                 if KeyDict[k][0] == -1: KeyDict[k][0] = KeyDict[k][1] + maxk
-                if KeyDict[k][0] == -2: KeyDict[k][0] = KeyDict[k][1] + kind + maxk 
+                if KeyDict[k][0] == -2: KeyDict[k][0] = KeyDict[k][1] + kind + maxk
                 self['index'].update({KeyDict[k][0]:k})
 
         maxk = max(self['index'].keys())
@@ -1311,7 +1311,7 @@ class HeadDict(dict):
     def Serialize(self,  dataFl=-1):
         """
         Method creates a list of FITS header cards from the HeadDict dictionary.
-        
+
         INPUT:     none
         OUTPUT:    string list, FITS header cards
 
@@ -1327,7 +1327,7 @@ class HeadDict(dict):
 
         newind = self['index'].keys()
         newind.sort()
-        
+
         for ind in newind:
 
                 key = self['index'][ind]
@@ -1338,20 +1338,20 @@ class HeadDict(dict):
                     value = str(self['nodes'][key]['Value'])
                     comment = self['nodes'][key]['Comment']
                     typ = self['nodes'][key]['Type']
-                    
+
                     if len(value) > 0:
                         fitsLine += '= '
                         if typ != 'C':
                             fitsLine = fitsLine + (30 - len(fitsLine) - \
                                                    len(value)) * ' '
-                        fitsLine = fitsLine + value 
+                        fitsLine = fitsLine + value
                         fitsLine = fitsLine + (39 - len(fitsLine)) * ' '
 
                     if len(comment) > 0 and len(fitsLine) + 3 < 80:
                         fitsLine = fitsLine + ' / ' + comment
 
                     if len(fitsLine) > 80: fitsLine = fitsLine[:80]
-                    
+
                     fitsLine = fitsLine + (80 - len(fitsLine)) * ' '
                     if key == 'END':
                         eInd = max(self['index'].keys())+1
@@ -1373,7 +1373,7 @@ class HeadDict(dict):
                         fitsLine = key + self['nodes'][key]['Value']
                         fitsLine = fitsLine + (80-len(fitsLine))*' '
                         FHead.append(fitsLine)
-                        
+
 
 
 # HIERARCH keywords are reconstructed from the hierarchy in the dict.
@@ -1382,7 +1382,7 @@ class HeadDict(dict):
 
                     hind = ""
                     hkeys = key.split()
-                    
+
                     fitsLine = key
                     fitsLine = fitsLine + (29 - len(fitsLine)) * ' ' + '= '
                     for hk in hkeys:
@@ -1397,7 +1397,7 @@ class HeadDict(dict):
                         if typ != 'C':
                             fitsLine = fitsLine + (43 - len(fitsLine) - \
                                                    len(value)) * ' '
-                        fitsLine = fitsLine + value 
+                        fitsLine = fitsLine + value
                         fitsLine = fitsLine + (43 - len(fitsLine)) * ' '
                         if len(fitsLine) + 3 < 80:
                             fitsLine = fitsLine + ' / ' + comment
@@ -1418,19 +1418,19 @@ class HeadDict(dict):
                     FHead.append('END' + 77*' ')
 
         return FHead
-        
-        
-        
-        
+
+
+
+
     def XfitsSerialize(self, level=0, indent='   ', pretty=1):
         """
         Method serializes the HD dictionary into a string array. The format is XFits.
-        
+
         INPUT:     none mandatory
                    int attribute level, >=0 defines the initial indentation level
                                         default 0, optional
                    string attribute indent, whitespace, defines the amount of indentation
-                                            per level. default '   ', optional                    
+                                            per level. default '   ', optional
         OUTPUT:    string list, XML (XFits) formatted header
         """
         if len(self.XmlHead) > 1 and self.XmlHead[0].strip()[:15] == "<HEADER number=":
@@ -1519,7 +1519,7 @@ class HeadDict(dict):
                         level -= 1
                         openTags = openTags[1:]
                     else:
-                        dum = hkeys.index(ot) 
+                        dum = hkeys.index(ot)
                         oind = max(oind,dum)
 
 
@@ -1550,19 +1550,19 @@ class HeadDict(dict):
         level -= 1
         XmlHead.append(level*indent + '</HEADER>')
 
-        
+
         return XmlHead
 
-        
+
 
     def VotableSerialize(self, level=0, indent='   ', pretty=1):
         """
-        Method serializes HeadDict and creates a list of XML strings. 
+        Method serializes HeadDict and creates a list of XML strings.
         If <pretty> is 1 (default) then the
         XML file is nicely indented.
 
         This version is intended to write VOImage output.
-        
+
         INPUT:     none mandatory
                    int attribute level, >=0 defines the initial indentation level
                                         default 0, optional
@@ -1604,7 +1604,7 @@ class HeadDict(dict):
                      openTags = ['']
                      hflag = 0
                  openTags = ['PARAM']
-                 
+
                  (keyword,val,comm,typ,flag) = self.getKeyword(key)
 
                  if typ == 'I':
@@ -1642,9 +1642,9 @@ class HeadDict(dict):
                         XmlHead.append((level+1)*indent +'<DESCRIPTION>'+\
                                     comm + '</DESCRIPTION>')
                         XmlHead.append(level*indent + '</PARAM>')
-                    
 
-    
+
+
 # HIERARCH keywords are placed in a real XML hierarchy
 
 #                elif key[0:8] == 'HIERARCH':
@@ -1675,7 +1675,7 @@ class HeadDict(dict):
                         level -= 1
                         openTags = openTags[1:]
                     else:
-                        dum = hkeys.index(ot) 
+                        dum = hkeys.index(ot)
                         oind = max(oind,dum)
 
 
@@ -1721,7 +1721,7 @@ class HeadDict(dict):
         level -= 1
         XmlHead.append(level*indent + '</RESOURCE>')
 
-                   
+
 # put the XML into the object
 
         return XmlHead
@@ -1820,7 +1820,7 @@ def tsvFunc(args,skey='END',header=0, mode=1):
         """
         Implements the loop around several files and opens either a
         pipe (compressed files) or the file directly.
-        
+
         INPUT:     string list, file name to process
                    string attribute skey, keyword to parse, default 'END', optional
                    int attribute header, >=0 number of header to return, default 0, optional
@@ -1852,25 +1852,25 @@ def tsvFunc(args,skey='END',header=0, mode=1):
 def ascii_load_lines(res, TABsep, RETsep):
     """
     Helper function takes a list of tuples, [(1,2,3,3,),(4,5,6,7)],
-    where each tuple represents a record to be loaded, and 
-    returns a string formated according to the syntax used by the IQ load command.  
+    where each tuple represents a record to be loaded, and
+    returns a string formated according to the syntax used by the IQ load command.
     """
 #    lines = RETsep.join(map(lambda x:TABsep.join(x),res))
     lines = map(lambda x:TABsep.join(x) + RETsep, res)
-    
+
 #    lines = ""
 #    for row in res:
 #       line =""
 #       for column in row[:-1]:
 #          # columns + Tab separator
 #          line = line + str(column) + TABsep
-#         
+#
 #       # Columns + Last column + Enter Separator
 #       line = line  + str(row[-1]) + RETsep
 #       lines = lines + line
     return(lines)
-    
-    
+
+
 def hdrExtract(name, xmlfl='', xtract=0, skey='END', show=0, struct=1, check=0, mode=1):
     """
     Extracts headers of all files found by glob(name) into
@@ -1883,20 +1883,20 @@ def hdrExtract(name, xmlfl='', xtract=0, skey='END', show=0, struct=1, check=0, 
 		oext = '.xml'
     else:
 		oext = '.hdr'
-    
+
     if len(file_list) == 0:
         return -1
     for file in file_list:
         (path,base) = os.path.split(file)
         (fileb,ext) = os.path.splitext(base)
         if path:
-            #last directory of orig-files will be used to order the 
+            #last directory of orig-files will be used to order the
             #extracted headers
 
-            night = os.path.split(path)[1]              
+            night = os.path.split(path)[1]
         else:
             night = ''
-         
+
         pH = FitsHead(file,skey = skey, show=show, struct=struct, \
                       check=check, mode=mode)
         pH.fd.close()
@@ -1906,7 +1906,7 @@ def hdrExtract(name, xmlfl='', xtract=0, skey='END', show=0, struct=1, check=0, 
         else:
             file_id = fileb
 
-         
+
         if night:
             if not os.path.isdir(night): os.mkdir(night)
             ofnm = night + '/' + file_id + oext
@@ -1916,12 +1916,12 @@ def hdrExtract(name, xmlfl='', xtract=0, skey='END', show=0, struct=1, check=0, 
 #            print 'extracting header of file ',file,' to ',ofnm
             o = open(ofnm,'w')
             o.write(pH.HEAD[0])
-            o.close()     
+            o.close()
         elif xmlfl != '':
 #            print 'extracting header of file ',file,' to ',ofnm
             pH.parseFitsHead()
             XmlHead = pH.xmlHead(format=xmlfl, head=show)
-            
+
             # if outfile is specified write the XML to it
 
             if len(ofnm) > 0:
@@ -1930,17 +1930,17 @@ def hdrExtract(name, xmlfl='', xtract=0, skey='END', show=0, struct=1, check=0, 
                 except:
                     print "ERROR: Unable to open ",outfile
                     return 1
-    
+
                 for xml in XmlHead:
                     if type(xml) == type(''):
                         o.write(xml + "\n")
                     elif type(xml) == type([]):
                         o.write('\n'.join(xml))
                 o.close()
-            
+
         else:
             pH.parseFitsHead()
-        
+
     fh = pH.Extension[0].Serialize()
 
     return pH
@@ -1955,11 +1955,11 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
     This is only possible if there is no original primary data part (NAXIS = 0)
     and if the data part of the extension is an image (XTENSION = 'IMAGE')
     """
-    
+
     pk = {'SIMPLE':0,'XTENSION':0,'BITPIX':1,'NAXIS':2,'NAXIS1':3,\
               'NAXIS2':4,'NAXIS3':5,'NAXIS4':6}
-    
-    
+
+
     pH = FitsHead(file, struct=1, show=99)
     pH.parseFitsHead()
 
@@ -1975,7 +1975,7 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
         return pH
 
     extHead = pH.Extension[extnum]
-    
+
 
     maxind = pH.Extension[0]['index'].keys()[-1]
 #    del(pH.Extension[0]['index'][maxind])   # get rid of the END keyword
@@ -1991,7 +1991,7 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
                 ind = max(pH.Extension[0]['index'].keys())
                 if pk.has_key(k):
                     ind = pk[k]
-            keyDict['index'].update({ind:k}) 
+            keyDict['index'].update({ind:k})
 
             print keyDict
             pH.Extension[0].updateKeyword(keyDict,force=1)
@@ -1999,14 +1999,14 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
 #            pH.Extension[0]['nodes'].update({k:extHead['nodes'][k]})
 #            print {k:extHead['nodes'][k]}
 #        elif k[0:8] == 'HIERARCH':
-#            
+#
 #            hind = "['nodes']"
 #            hkeys = k.split()
 #
 #            fullInd = ''
 #            for hk in hkeys:
 #                fullInd += "['"+hk+"']"
-#                    
+#
 #            fitsLine = k
 #            fitsLine = fitsLine + (29 - len(fitsLine)) * ' ' + '= '
 #            for hk in hkeys:
@@ -2016,9 +2016,9 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
 #                        vale = eval("extHead"+hind+"['Value']")
 #                        valo = eval("pH.Extension[0]"+hind+"['Value']")
 #                        if vale != valo:
-#                            eval("pH.Extension[0]"+hind+".update({'Value':" + vale +"})") 
+#                            eval("pH.Extension[0]"+hind+".update({'Value':" + vale +"})")
 #                            com = eval("extHead"+hind+"['Comment']")
-#                            eval("pH.Extension[0]"+hind+".update({'Comment':'" + com +"'})") 
+#                            eval("pH.Extension[0]"+hind+".update({'Comment':'" + com +"'})")
 #                        maxind = pH.Extension[0]['index'].keys()[-1]
 #                        pH.Extension[0]['index'].update({maxind+1:k})
 #                else:
@@ -2037,7 +2037,7 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
         outf = fileb + ".new" + ext
         outFd = open(outf,'w')
 
-            
+
     for dd in range(len(pH.Extension)):
         if dd != extnum:      # extnum header and data are with primary
                               # but keep other extensions.
@@ -2048,8 +2048,8 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
             else:
                 datapart = dd
             FitsHd = pH.Extension[dd].Serialize()
-            
-            
+
+
 # if outfile is specified write the FHead to it
 
         if outf != 0:
@@ -2074,13 +2074,13 @@ def mergeExtPrimary(file,extnum=1,outf=1,verb=1):
             del(data)
 
     if outf !=0: outFd.close()
-            
+
 
     del(FitsHd)
     return pH
 
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
 
         import getopt
         from commands import getstatusoutput
@@ -2123,7 +2123,7 @@ if __name__ == '__main__':
                         skeyfl = 1
                     if o in ("-t","--tsv"):
                         if hfl == 0: show = 99
-                        struct = 1                        
+                        struct = 1
                         tsv = 1
                     if o in ("-H","--header"):
                         hfl = 1
@@ -2169,7 +2169,7 @@ if __name__ == '__main__':
                     (pH, lines) = tsvFunc(args, skey=skey, header = head, mode=mode)
                     for l in lines:
                         print l[:-1]  # don't print the \n
-                    
+
                 elif xtract == 1:
                     if xmlfl != '':
                         xtract = 0
@@ -2193,13 +2193,13 @@ if __name__ == '__main__':
                                 print xml + "\n"
                             elif type(xml) == type([]):
                                 print '\n'.join(xml)
-                        
+
                 elif struct > 0:
                     if mergefl == 0:
                         for f in args:
                             pH = FitsHead(f, struct=struct, check=check, verbose=0, \
                                            show=show,mode=mode)
-                            if show == -99: 
+                            if show == -99:
                                 output = '\n'.join(pH.STRUCT)
                             elif show == 99:
                                 output = ''.join(pH.HEAD)

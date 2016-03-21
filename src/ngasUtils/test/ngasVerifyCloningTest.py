@@ -210,7 +210,7 @@ class ngasVerifyCloningTest(ngasUtilsTestSuite):
         """
         Synopsis:
         Normal operation, no missing files.
-        
+
         Description:
         Test the nominal (ideal) case, whereby a disk has been successfully
         cloned and all files are found on the target system and in the DB
@@ -238,14 +238,14 @@ class ngasVerifyCloningTest(ngasUtilsTestSuite):
         _prepTestEnv(self)
         _hideSrcDisks()
         _verifyEmailAndStdout(self, "test_NormalExec_1")
-    
+
 
     def test_NormalExec_2(self):
         """
         Synopsis:
         Missing files on disk, re-run with Auto Clone, re-run to verify
         recovering.
-        
+
         Description:
         The purpose of the test is to verify that the ngasVerifyCloning Tool
         detects, when files have not been properly cloned. In this case, all
@@ -254,13 +254,13 @@ class ngasVerifyCloningTest(ngasUtilsTestSuite):
 
         Expected Result:
         When executing the tool it should detect that files are missing.
-        
+
         When executing the tool again, with the Auto Clone parameter, the
         missing files should be cloned.
 
         Afterwards, when launching the tool again, no, problems should be
         reported.
-        
+
         Test Steps:
         - Start simluated cluster with two nodes.
         - Archive a set of files onto node 1.
@@ -293,7 +293,7 @@ class ngasVerifyCloningTest(ngasUtilsTestSuite):
                                                  ["file_id", fileId],
                                                  ["file_version", fileVer],
                                                  ["execute", 1]])
-            
+
         # Invoke ngasVerifyCloning(), check that missing files are detected.
         _hideSrcDisks()
         _verifyEmailAndStdout(self, "test_NormalExec_2_1")
@@ -313,7 +313,7 @@ class ngasVerifyCloningTest(ngasUtilsTestSuite):
         """
         Synopsis:
         Test handling of abnormal execution.
-        
+
         Description:
         The purpose of this test is to verify that the following cases are
         properly handled by the tool:
@@ -375,7 +375,7 @@ class ngasVerifyCloningTest(ngasUtilsTestSuite):
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect error " +\
                           "message produced by ngasVerifyCloning")
 
-    
+
     def test_AbnormalExec_2(self):
         """
         Synopsis:
@@ -384,7 +384,7 @@ class ngasVerifyCloningTest(ngasUtilsTestSuite):
         Description:
         The purpose of this test is to verify that the following cases are
         properly handled by the tool:
-        
+
         - Non-existing Disk ID given for verification.
         - Disk referred to by Disk ID inserted in same unit where the
           verification takes place.

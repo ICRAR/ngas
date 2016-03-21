@@ -65,7 +65,7 @@ def testCorrTaskOnNGAS():
     To run autoTest, need to start two servers
     1. an NGAS running on a Fornax compute node
     2. an NGAS running on a Fornax I/O node (JobMAN)
-    
+
     construct a localtask
     send this local task to an Fornax compute node running NGAS
     monitor if the JobMAN on Fornax I/O node has any responses
@@ -74,11 +74,11 @@ def testCorrTaskOnNGAS():
     obs_num = 1052803816
     corr_id = 4
     ngas_host = '192.168.222.96:7777'
-    
-    taskId = '%s__%d__%d' % (job_id, obs_num, corr_id)       
+
+    taskId = '%s__%d__%d' % (job_id, obs_num, corr_id)
     fileList = file_list.split(',')
     params = RTSJobParam()
-    
+
     localTask = CorrLocalTask(taskId, fileList, params)
     strLT = pickle.dumps(localTask)
     strRes = urllib2.urlopen('http://%s/RUNTASK' % ngas_host, data = strLT, timeout = 10).read()
@@ -88,13 +88,13 @@ def manualTest():
     job_id = 'cwu_20130605T171913.236'
     obs_num = 1052803816
     corr_id = 20
-    
-    
-    
+
+
+
     rts_tpl = 'regrid,simplecal'
-    
-    ngas_host = 'macbook46.icrar.org:7779'    
-    
+
+    ngas_host = 'macbook46.icrar.org:7779'
+
     cmd = '/home/cwu/ngas_rt/src/ngamsPlugIns/ngamsJob_MWA_RTS_Task.sh' +\
         ' -j %s -o %d -c %d -t %s -f %s -g N' % (job_id, obs_num, corr_id, rts_tpl, file_list)
     re = commands.getstatusoutput(cmd)

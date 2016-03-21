@@ -76,7 +76,7 @@ def execCmd(cmd, failonerror = True):
 def pingHost(url, timeout = 5):
     """
     To check if a host is successfully running
-    
+
     Return:
     0        Success
     1        Failure
@@ -105,32 +105,32 @@ def getMWADBConn():
     global g_db_conn
     if (g_db_conn and (not g_db_conn.closed)):
         return g_db_conn
-    
+
     config = ngamsJobMAN.getConfig()
     confSec = 'MWA DB'
     db_name = config.get(confSec, 'db')
     db_user = config.get(confSec, 'user')
     db_passwd = config.get(confSec, 'password')
     db_host = config.get(confSec, 'host')
-    try:        
+    try:
         """
-        g_db_conn = psycopg2.connect(database = db_name, user = db_user, 
-                            password = db_passwd.decode('base64'), 
+        g_db_conn = psycopg2.connect(database = db_name, user = db_user,
+                            password = db_passwd.decode('base64'),
                             host = db_host)
         """
-        g_db_conn = psycopg2.connect(database = 'mwa', user = 'mwa', 
-                            password = 'Qm93VGll\n'.decode('base64'), 
+        g_db_conn = psycopg2.connect(database = 'mwa', user = 'mwa',
+                            password = 'Qm93VGll\n'.decode('base64'),
                             host = 'ngas01.ivec.org')
-        return g_db_conn 
+        return g_db_conn
     except Exception, e:
         errStr = 'Cannot create MWA DB Connection: %s' % str(e)
         raise Exception, errStr
 
 def getFornaxDBConn():
-    global f_db_conn    
+    global f_db_conn
     if (f_db_conn and (not f_db_conn.closed)):
         return f_db_conn
-    
+
     config = ngamsJobMAN.getConfig()
     confSec = 'NGAS DB'
     fdb_name = config.get(confSec, 'db')
@@ -138,8 +138,8 @@ def getFornaxDBConn():
     fdb_passwd = config.get(confSec, 'password')
     fdb_host = config.get(confSec, 'host')
     try:
-        f_db_conn = psycopg2.connect(database = fdb_name, user= fdb_user, 
-                            password = fdb_passwd.decode('base64'), 
+        f_db_conn = psycopg2.connect(database = fdb_name, user= fdb_user,
+                            password = fdb_passwd.decode('base64'),
                             host = fdb_host)
         return f_db_conn
     except Exception, e:
@@ -150,7 +150,7 @@ def getLTADBConn():
     global l_db_conn
     if (l_db_conn and (not l_db_conn.closed)):
         return l_db_conn
-    
+
     config = ngamsJobMAN.getConfig()
     confSec = 'LTA DB'
     ldb_name = config.get(confSec, 'db')
@@ -158,8 +158,8 @@ def getLTADBConn():
     ldb_passwd = config.get(confSec, 'password')
     ldb_host = config.get(confSec, 'host')
     try:
-        l_db_conn = psycopg2.connect(database = ldb_name, user= ldb_user, 
-                            password = ldb_passwd.decode('base64'), 
+        l_db_conn = psycopg2.connect(database = ldb_name, user= ldb_user,
+                            password = ldb_passwd.decode('base64'),
                             host = ldb_host)
         return l_db_conn
     except Exception, e:
@@ -186,10 +186,10 @@ def getFileIdsByObsNum(obs_num):
     """
     Query the mwa database to get a list of files
     associated with this observation number
-    
+
     obs_num:        observation number (string)
     num_subband:    number of sub-bands, used to check if the num_corr is the same
-    
+
     Return:     A dictionary, key - correlator id (starting from 1, int), value - a list of file ids belong to that correlator
     """
     sqlQuery = "SELECT filename FROM data_files WHERE observation_num = '%s' ORDER BY SUBSTRING(filename, 27);" % str(obs_num)
@@ -223,12 +223,12 @@ def isValidObsNum(obs_num):
 def testIsValidObsNum():
     obs1 = '1055478504'
     obs2 = '1055695336'
-    
+
     if (isValidObsNum(obs1)):
         print 'Yes, obs %s is valid' % obs1
     else:
         print 'No, obs %s is not valid' % obs1
-    
+
     if (isValidObsNum(obs2)):
         print 'Yes, obs %s is valid' % obs2
     else:
@@ -251,34 +251,34 @@ def hasAllFilesInLTA(obs_num):
         return (count == count1)
     else:
         return False
-    
+
 def testHasFilesInLTA():
     obs1 = '1055478504'
     obs2 = '1055695336'
-    
+
     if (hasAllFilesInLTA(obs1)):
         print 'Yes, obs %s is in LTA' % obs1
     else:
         print 'No, obs %s is not in LTA' % obs1
-    
+
     if (hasAllFilesInLTA(obs2)):
         print 'Yes, obs %s is in LTA' % obs2
     else:
         print 'No, obs %s is not in LTA' % obs2
-    
+
 def testGetFileIds():
     print getFileIdsByObsNum('1052803816')[22][0]
     #print getFileIdsByObsNum('1052803816')[19][1] # this will raise key error
-    
+
 class FileLocation:
     """
     A class representing the location information on NGAS servers
-    Each Correlator has a at least one FileLocation 
+    Each Correlator has a at least one FileLocation
     """
     def __init__(self, svrHost, filePath, fileId = None):
         """
         Constructor
-        
+
         svrHost:      host/ip and port
         filePath:    local path on the Fornax compute node with svrUrl
         fileId:      the id of this file whose location is being queried
@@ -297,7 +297,7 @@ def getFileLocations(fileId):
     if (not fileId or len(fileId) == 0):
         return None
     conn = getFornaxDBConn()
-    # hardcoded based on PostGreSQL and 
+    # hardcoded based on PostGreSQL and
     # assumes multipleSrv options is turned on when launching these ngas servers
     sqlQuery = "SELECT a.host_id, a.mount_point || '/' || b.file_name FROM " +\
                "ngas_disks a, ngas_files b, ngas_hosts c where a.disk_id = b.disk_id AND b.file_id = '%s' " % fileId +\
@@ -314,7 +314,7 @@ def getFileLocations(fileId):
             continue
         floc = FileLocation(re[0], re[1], fileId)
         ret.append(floc)
-    
+
     return ret
 
 def testGetFileLocations():
@@ -328,16 +328,16 @@ def testGetFileLocations():
 
 def getBestHost(fileIds, blackList = None):
     """
-    This function tries to find out which host is most ideal to run a task 
+    This function tries to find out which host is most ideal to run a task
     if that task requires all files in fileIds to reside on that host
     e.g. A RTS task requires all files belong to a correlator on a single host
-    
-    Given a list of file ids, 
+
+    Given a list of file ids,
     Return:    A dict - key: file_id, value - FileLocation
                This dict is the "best" host that hosts
-               MOST of the files in the fileId list. For files that 
+               MOST of the files in the fileId list. For files that
                are not hosted on this host, they do not have key entries
-               in this dict, which means they should either 
+               in this dict, which means they should either
                (1) be staged from a remote server (i.e. cortex) to this host or
                (2) be staged from other hosts to this host
     """
@@ -348,11 +348,11 @@ def getBestHost(fileIds, blackList = None):
     if (len(fileIds) > 1):
         for fid in fileIds[1:]:
             file_list += ", '%s'" % fid
-        
+
     sqlQuery = "SELECT a.host_id, a.mount_point || '/' || b.file_name, b.file_id FROM " +\
                "ngas_disks a, ngas_files b, ngas_hosts c where a.disk_id = b.disk_id AND b.file_id in (%s) " % file_list +\
                "AND a.host_id = c.host_id AND c.srv_state = 'ONLINE'"
-    
+
     """
     blackList_sem.acquire()
     try:
@@ -362,18 +362,18 @@ def getBestHost(fileIds, blackList = None):
     finally:
         blackList_sem.release
     """
-    
+
     if (blackList and len(blackList)):
         for hh in blackList:
             sqlQuery += " AND a.host_id <> '%s'" % hh
-    
+
     res = executeQuery(conn, sqlQuery)
-    
+
     if (len(res) == 0):
         return {}
-    
-    dictHosts = {} # key - host_id, # value - a list of FileLocations 
-        
+
+    dictHosts = {} # key - host_id, # value - a list of FileLocations
+
     for re in res:
         if (not _isFileOnHost(re[0], re[1])):
             continue
@@ -383,7 +383,7 @@ def getBestHost(fileIds, blackList = None):
             dictHosts[re[0]].append(floc)
         else:
             dictHosts[re[0]] = [floc]
-    
+
     candidateList = []
     for (hostId, floclist) in dictHosts.items():
         #for each host, count up unique file ids
@@ -394,7 +394,7 @@ def getBestHost(fileIds, blackList = None):
             else:
                 dictFileIds[fl._fileId] = fl
         candidateList.append(dictFileIds)
-    
+
     candidateList.sort(key=_sortFunc)
     cc = -1
     found = 0
@@ -426,7 +426,7 @@ def _isFileOnHost(hostId, filePath):
     except Exception, err:
         logger.error('Fail to check file %s online status on host %s: %s' % (filePath, hostId, str(err)))
         return 0
-    
+
 def _sortFunc(dic):
     return -1 * len(dic.keys())
 
@@ -434,22 +434,22 @@ def testIsFileOnHost():
     hostId = 'cortex.ivec.org:7777'
     fileId1 = '/pbstore/astrofs/mwa/NGAS_MWA_RUNTIME/volume2/afa/2013-05-21/1053182656/1/1053182656_20130521144502_gpubox01_01.fits'
     fileId2 = '/pbstore/astrofs/mwa/NGAS_MWA_RUNTIME/volume2/afa/2013-05-21/1053182656/1/1053182656_20130521144502_gpubox08_02.fits'
-    
+
     if (_isFileOnHost(hostId, fileId1)):
         print 'File %s is on host %s' % (fileId1, hostId)
     else:
         print 'File %s is NOT on host %s' % (fileId1, hostId)
-        
+
     if (_isFileOnHost(hostId, fileId2)):
         print 'File %s is on host %s' % (fileId2, hostId)
     else:
         print 'File %s is NOT on host %s' % (fileId2, hostId)
-    
+
 def testGetBestHost():
-    # this test data works when 
+    # this test data works when
     #                             fdb_host = '192.102.251.250'
     """
-    fileList = ['1049201112_20130405124558_gpubox16_01.fits', '1049201112_20130405124559_gpubox23_01.fits', 
+    fileList = ['1049201112_20130405124558_gpubox16_01.fits', '1049201112_20130405124559_gpubox23_01.fits',
                 '1053182656_20130521144710_gpubox03_03.fits', '1028104360__gpubox01.rts.mwa128t.org.vis', '1053182656_20130521144711_gpubox06_03.fits']
                 """
     fileList = ['1054900032_20130610114655_gpubox02_00.fits', '1054900032_20130610114759_gpubox02_01.fits']
@@ -466,7 +466,7 @@ def getNextOnlineHost(blackList = None):
     gateways = getClusterGateway().split(',')
     for gw in gateways:
         sqlQuery += " AND host_id <> '%s'" % gw
-    
+
     """
     blackList_sem.acquire()
     try:
@@ -479,14 +479,14 @@ def getNextOnlineHost(blackList = None):
     if (blackList and len(blackList)):
         for hh in blackList:
             sqlQuery += " AND host_id <> '%s'" % hh
-    
+
     res = executeQuery(conn, sqlQuery)
     if (len(res) == 0):
         return None
-    shuffle(res)    
+    shuffle(res)
     for host in res:
         if (not pingHost('http://%s/STATUS' % host[0])):
-            return host[0]    
+            return host[0]
     return None
 
 def testGetNextOnlineHostUrl():
@@ -497,16 +497,16 @@ class StageRequest():
     def __init__(self, fileId, corrTask, toHost, frmHost = None):
         self._fileId = fileId
         self._toHost = toHost
-        self._corrTasks = [corrTask] # keep a reference for calling back 
+        self._corrTasks = [corrTask] # keep a reference for calling back
         if (frmHost):
             self._frmHost = frmHost
-    
+
     def merge(self, thatSR):
-       
+
      #    Merge two StateRequests if they both ask for the same file from the same EXTERNAL location
      #   Return:    1 - merge did occur, the newly merged SR is self
       #             0 - merge condition did not meet
-       
+
         if (self._frmHost != thatSR._frmHost or thatSR._fileId != self._fileId):
             return 0
         if (self._frmHost == None): # both external staging
@@ -527,7 +527,7 @@ def stageFile(fileIds, corrTask, toHost, frmHost = None):
                 this corrTask will be used for calling back
     frmHost:    host that file is staged from. If none, from a well-known outside host, i.e. Cortex
     toHost:      host that file is staged to
-    """      
+    """
     staged_by_others = 0
     deliverFileIds = [] # true file ids that will be staged
     stage_sem.acquire()
@@ -546,15 +546,15 @@ def stageFile(fileIds, corrTask, toHost, frmHost = None):
                 #stage_queue.append(fileId)
     finally:
         stage_sem.release()
-    
+
     if (0 == len(deliverFileIds)): # the whole list has already been requested to stage by others
         return 0
-    
+
     if (frmHost):
         toUrl = getPushURL(toHost)
     else:
         toUrl = getPushURL(toHost, getClusterGateway())
-        
+
     myReq = AsyncListRetrieveRequest(deliverFileIds, toUrl)
     if (frmHost):
         myReq.one_host = 1 #only ASYNCLISTRETRIEVE uses this option
@@ -574,7 +574,7 @@ def stageFile(fileIds, corrTask, toHost, frmHost = None):
                 request = urllib2.Request(stageUrl)
                 base64string = base64.encodestring('ngasmgr:ngas$dba').replace('\n', '')
                 request.add_header("Authorization", "Basic %s" % base64string)
-                strRes = urllib2.urlopen(request, data = strReq, timeout = socket_timeout).read() 
+                strRes = urllib2.urlopen(request, data = strReq, timeout = socket_timeout).read()
                 myRes = pickle.loads(strRes)
                 break
             except (UnpicklingError, socket.timeout) as uerr:
@@ -584,7 +584,7 @@ def stageFile(fileIds, corrTask, toHost, frmHost = None):
                     logger.info('Archive server is too busy to stage files, wait for 15 seconds......')
                     time.sleep(randint(9, 16)) # sleep for random seconds so that not all threads retry at the same time...
                     if (str(uerr).find('timed out') > -1):
-                        # this is socket read time out, which means connection is okay, 
+                        # this is socket read time out, which means connection is okay,
                         # but server is really slow or the server is rather busy, so give it a larger timeout
                         socket_timeout += 30
                         logger.info('Server is really slow or busy, set a larger timeout %d' % socket_timeout)
@@ -599,17 +599,17 @@ def stageFile(fileIds, corrTask, toHost, frmHost = None):
             return ERROR_ST_NONRESP
     except Exception, err:
         logger.error((str(err) + ':' + traceback.format_exc()))
-        
+
         if (str(err).find('urlopen error timed out') > -1):
             # urlopen timeout means the server is not reachable, this is different from socket timeout
             if (frmHost):
                 return ERROR_ST_HOSTDOWN
             else:
                 return ERROR_ST_LTADOWN
-       
+
         return ERROR_ST_GENERIC
-    
-        
+
+
 def getExternalArchiveURL(fileId = None):
     """
     Obtain the url of the external archive, which
@@ -617,7 +617,7 @@ def getExternalArchiveURL(fileId = None):
     This function behaves like a URI resolution service
     """
     # just a dummy implementation for now:
-    config = ngamsJobMAN.getConfig()    
+    config = ngamsJobMAN.getConfig()
     return 'http://%s' % config.get('Archive Servers', 'LTA')
 
 def getClusterGateway():
@@ -627,9 +627,9 @@ def getClusterGateway():
 def getPushURL(hostId, gateway = None):
     """
     Construct the push url based on the hostId in the cluster
-    
+
     hostId:    the host (e.g. 192.168.1.1:7777) that will receive the file
-    
+
     gateway:   a list of gateway hosts separated by comma
                The sequence of this list is from target to source
                e.g. if the dataflow is like:  source --> A --> B --> C --> target
@@ -646,7 +646,7 @@ def getPushURL(hostId, gateway = None):
         return 'http://%s/QAPLUS' % hostId
 
 def testGetPushURL():
-    print getPushURL('192.168.222.7:7777', getClusterGateway())   
+    print getPushURL('192.168.222.7:7777', getClusterGateway())
 
 """
 def scheduleForStaging(num_repeats = 0):
@@ -655,10 +655,10 @@ def scheduleForStaging(num_repeats = 0):
     \"""
     print 'Scheduling staging...'
     global stage_queue # since we will update it, need to declare as global
-    
+
     if (len(stage_queue) == 0):
         return 0
-    
+
     if (len(stage_queue) < ST_BATCH_SIZE and num_repeats < ST_RETRY_LIM):
         return 1
     #list = []
@@ -671,7 +671,7 @@ def scheduleForStaging(num_repeats = 0):
         except Empty, e:
             break
     \"""
-    
+
     stage_sem.acquire()
     filelist = list(stage_queue)
     stage_queue = []
@@ -680,10 +680,10 @@ def scheduleForStaging(num_repeats = 0):
     strReq = pickle.dumps(myReq)
     strRes = urllib.urlopen(ST_CORTEX_URL, strReq).read()
     myRes = pickle.loads(strRes)
-    
-    # TODO - handle exceptions (error code later)   
-    return 0  
-"""      
+
+    # TODO - handle exceptions (error code later)
+    return 0
+"""
 
 def fileFailToDeliver(fileId, toUrl, errMsg):
     targetHost = urlparse(toUrl)
@@ -700,26 +700,26 @@ def fileFailToDeliver(fileId, toUrl, errMsg):
         except Exception, err:
             logger.error('Fail to notify failToDeliver event to CorrTask, Exception: %s' % str(err))
             return
-        
+
     skey = '%s___%s' % (fileId, toHost)
     stage_sem.acquire()
     try:
         if (stage_dic.has_key(skey)):
             corrList = stage_dic.pop(skey)
-        else: 
+        else:
             logger.warning('File Ingested, but cannot find key %s' % skey)
             return
     finally:
         stage_sem.release()
     for corr in corrList:
         corr.fileFailToDeliver(fileId, LTA, toHost, errMsg)
-        
+
 
 def fileIngested(fileId, filePath, toHost, ingestRate):
     """
     This function is called by the Web server to notify
     jobs which are waiting for this file to be ingested
-    
+
     fileId:      The file that has just been ingested in Fornax
     filePath:    The local file path on that machine
     toHost:      The host that has just ingested this file
@@ -731,7 +731,7 @@ def fileIngested(fileId, filePath, toHost, ingestRate):
     try:
         if (stage_dic.has_key(skey)):
             corrList = stage_dic.pop(skey)
-        else: 
+        else:
             logger.warning('File Ingested, but cannot find key %s' % skey)
             return
     finally:
@@ -754,10 +754,10 @@ def fileIngestTimeout(fileId, toHost, corrObj):
             if (corrObj in corrList):
                 corrList.remove(corrObj)
                 if (len(corrList) == 0):
-                    stage_dic.pop(skey)        
+                    stage_dic.pop(skey)
     finally:
         stage_sem.release()
-    
+
 
 def registerLocalTask(taskId, mrTask):
     #LT_dic_sem.acquire()
@@ -777,7 +777,7 @@ def localTaskCompleted(localTaskResult):
     if LT_dic.has_key(taskId):
         corrTask = LT_dic.pop(taskId)
         corrTask.localTaskCompleted(localTaskResult)
-        loginfo = 'Notify task with a localTaskResult for taskId %s' % taskId            
+        loginfo = 'Notify task with a localTaskResult for taskId %s' % taskId
     else:
         loginfo = 'Local task %s completed, but cannot find its CorrelatorTask.' % taskId
     #finally:
@@ -798,7 +798,7 @@ def localTaskDequeued(taskId):
         loginfo = 'Local task %s dequeued, but cannot find its CorrelatorTask.' % taskId
     #finally:
         #LT_dic_sem.release()
-    logger.info(loginfo)  
+    logger.info(loginfo)
 
 def reportHostDown(fileId, toHost):
     """
@@ -814,7 +814,7 @@ def reportHostDown(fileId, toHost):
         if (stage_dic.has_key(skey)):
             corrList = stage_dic.pop(skey) # stop others from using this key-entry
             # but what about other files on this host?
-        else: 
+        else:
             logger.warning('Report host down, but cannot find key %s' % skey)
             return
     finally:
@@ -842,5 +842,5 @@ if __name__=="__main__":
     #testIsValidObsNum()
     closeConn(g_db_conn)
     closeConn(f_db_conn)
-    
-    
+
+

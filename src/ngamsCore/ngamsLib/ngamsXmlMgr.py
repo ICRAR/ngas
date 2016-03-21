@@ -79,7 +79,7 @@ class ngamsAttribute:
     """
     Class to hold information about a single attribute.
     """
-    
+
     def __init__(self,
                  name,
                  value = None,
@@ -91,7 +91,7 @@ class ngamsAttribute:
         name:     Name of attribute (string).
 
         value:    Value of attribute (boolean|integer|float|string|str-list).
-        
+
         comment:  Optional comment (string).
 
         context:  Context of element (string).
@@ -129,7 +129,7 @@ class ngamsAttribute:
         Returns:    Name (string).
         """
         return self.__name
-        
+
 
     def getValue(self):
         """
@@ -182,7 +182,7 @@ class ngamsAttribute:
         Returns:   Context (string|None).
         """
         return self.__context
-   
+
 
 class ngamsElement(ngamsAttribute):
     """
@@ -193,7 +193,7 @@ class ngamsElement(ngamsAttribute):
                  name,
                  value = None,
                  comment = None,
-                 context = None):   
+                 context = None):
         """
         Constructor method initializing the class.
         """
@@ -258,13 +258,13 @@ class ngamsElement(ngamsAttribute):
         for attrObj in self.getAttrList():
             if (attrObj.getName() == attrName): return attrObj.getValue()
         return None
-        
+
 
 class ngamsXmlMgr:
     """
     Generic class to handle XML documents.
     """
-    
+
     def __init__(self,
                  rootEl,
                  xmlDoc = None):
@@ -280,7 +280,7 @@ class ngamsXmlMgr:
         # Root el. of XML document + dict.s to refer to elements/attributes.
         self.__rootElObj = ngamsElement(rootEl)
         self.__xmlDic[rootEl] = self.__rootElObj
-        
+
         # Load XML document if specified.
         if (xmlDoc): self.load(xmlDoc)
 
@@ -293,7 +293,7 @@ class ngamsXmlMgr:
         """
         self.__xmlDic = {}
         return self
-        
+
 
     def getRootElObj(self):
         """
@@ -302,7 +302,7 @@ class ngamsXmlMgr:
         Returns:  Reference to root element object (ngamsElement).
         """
         return self.__rootElObj
-    
+
 
     def setXmlDoc(self,
                   xmlDoc):
@@ -325,7 +325,7 @@ class ngamsXmlMgr:
         """
         return self.__xmlDoc
 
-        
+
     def load(self,
              xmlDoc):
         """
@@ -343,14 +343,14 @@ class ngamsXmlMgr:
             fd.close()
         except Exception, e:
             errMsg = genLog("NGAMS_ER_LOAD_CFG", [xmlDoc, str(e)])
-            raise Exception, errMsg  
-        
+            raise Exception, errMsg
+
         # The Expat parser does not like XSL declarations. Can be removed if
         # a parser is used which conforms with the XML standards.
         doc = re.sub('<\?xml:stylesheet', '<!-- ?xml:stylesheet', doc)
         doc = re.sub('.xsl"\?>', '.xsl"? -->', doc)
-        
-        self.unpackXmlDoc(doc)        
+
+        self.unpackXmlDoc(doc)
         return self
 
 
@@ -417,7 +417,7 @@ class ngamsXmlMgr:
         for subElObj in elObj.getSubElList():
             subElDomObj = self._genXml(subElObj, critInfoNameList)
             elDomObj.appendChild(subElDomObj)
-  
+
         return elDomObj
 
 
@@ -443,7 +443,7 @@ class ngamsXmlMgr:
         this.
 
         docType:            Doctype of the document (string).
-        
+
         schema:             Schema used to verify the document (string).
 
         critInfoNameList:   List of names, which should be hidden in the
@@ -460,13 +460,13 @@ class ngamsXmlMgr:
         # with " ".
         xmlDoc = xmlDoc.replace('"None"', '" "')
         return xmlDoc
-        
-    
+
+
     def unpackXmlDoc(self,
                      xmlDoc):
         """
         Unpack the configuration file represented as the XML ASCII text.
-        
+
         xmlDoc:      XML ASCII document (string).
 
         Returns:     Reference to object itself.
@@ -501,14 +501,14 @@ class ngamsXmlMgr:
             if (domObj): domObj.unlink()
             raise e
         return self
-        
+
 
     def _unpack(self,
                 nodeObj,
                 elDicKey,
                 parElObj,
                 curId):
-        
+
         """
         Unpack configuration XML document starting from the node of the DOM.
 
@@ -538,7 +538,7 @@ class ngamsXmlMgr:
                                         context = curId)
             refEl.addAttr(tmpAttrObj)
             self._addAttrXmlDic(elDicKey, tmpAttrObj)
-        
+
         # Check if the element has sub-elements.
         for childNode in nodeObj.childNodes:
             strRep = str(childNode)
@@ -565,7 +565,7 @@ class ngamsXmlMgr:
         Add an element in the XML Dictionary.
 
         elDicKey:       Current key in the XML Dictionary (string).
-        
+
         elObj:          Reference to element object (ngamsElement).
 
         Returns:        Name of the key in the XML Dictionary (string).
@@ -596,7 +596,7 @@ class ngamsXmlMgr:
         Add an attribute element in the dictionary.
 
         elDicKey:       Current key in the XML Dictionary (string).
-        
+
         attrObj:        Reference to the attribute object in question
                         (ngamsAttribute).
         """
@@ -633,7 +633,7 @@ class ngamsXmlMgr:
             self.__xmlDic[parElPath].addAttr(obj)
         return self
 
-        
+
     def storeVal(self,
                  xmlDicKey,
                  value,
@@ -646,7 +646,7 @@ class ngamsXmlMgr:
                      Syntax). Could e.g. be:
 
                          NgamsCfg.Server[1].ArchiveName              (string).
-        
+
         value:       Value of the element/attribute (string).
 
         Returns:     Reference to object itself.
@@ -678,12 +678,12 @@ class ngamsXmlMgr:
         xmlDic:    XML Dictionary (dictionary).
 
         clear:     Clear the object before processing the XML dictionary
-                   (integer/0|1). 
+                   (integer/0|1).
 
         Returns:   Reference to object itself.
         """
         T = TRACE()
-        
+
         if (clear): self.clear()
         xmlDicKeys = xmlDic.keys()
         xmlDicKeys.sort()
@@ -726,7 +726,7 @@ class ngamsXmlMgr:
                     buf += "%-55s: %s\n" % (key, self.__xmlDic[key].getValue())
         return buf
 
-        
+
     def genXmlDic(self,
                   rmBlanks = 1):
         """
@@ -748,7 +748,7 @@ class ngamsXmlMgr:
                     dic[key] = self.__xmlDic[key].getValue()
         return dic
 
-    
+
 if __name__ == '__main__':
     """
     Main program.
@@ -762,6 +762,6 @@ if __name__ == '__main__':
     keyList.sort()
     for key in keyList:
         print "%s: %s" % (key, xmlDic[key])
-    
+
 
 # EOF

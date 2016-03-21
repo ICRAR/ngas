@@ -41,9 +41,9 @@ ipovib_prefix = '192.168.222.'
 io_ex_ip = {'io1':'202.8.39.136', 'io2':'202.8.39.137'}  # the two Copy Nodes external ip
 
 # the two Copy Nodes ib ip (this may not be useful since we run NGAS on external IPs to receive data from the outside world)
-io_ipovib = {'io1':'192.168.212.5', 'io2':'192.168.212.6'} 
-Non_Archive_Ngas = ['202.8.39.136', '202.8.39.137', '192.168.212.5', 
-                    '192.168.212.6', '192.168.222.97', '192.168.222.98', 
+io_ipovib = {'io1':'192.168.212.5', 'io2':'192.168.212.6'}
+Non_Archive_Ngas = ['202.8.39.136', '202.8.39.137', '192.168.212.5',
+                    '192.168.212.6', '192.168.222.97', '192.168.222.98',
                     '192.168.222.99', '192.168.222.100']
 ngas_src_root = '/home/cwu/ngas_rt'
 ngas_vol_tool = ngas_src_root + '/src/ngasUtils/src/ngasPrepareVolumeNoRoot.py'
@@ -75,7 +75,7 @@ def replacePathInFile(fr, to, file):
 def pingHost(url, timeout = 5):
     """
     To check if a host is successfully running
-    
+
     Return:
     0        Success
     1        Failure
@@ -85,7 +85,7 @@ def pingHost(url, timeout = 5):
         return execCmd(cmd)[0]
     except Exception, err:
         return 1
-    
+
 def isHeadNode():
     """
      to check if I am the head node
@@ -95,7 +95,7 @@ def isHeadNode():
 def getNGASNodeName():
     """
     Get the node where this NGAS is running
-    e.g. 'f001', 'f023', 'io1'  
+    e.g. 'f001', 'f023', 'io1'
     """
     cmd = "uname -a |awk '{print $2}'"
     re = execCmd(cmd)
@@ -104,14 +104,14 @@ def getNGASNodeName():
 def getNGASBindingIp(node):
     """
     Get the IP Address NGAS will bind to
-    
+
     node --  e.g. 'fornax101', 'fornax023', 'io1'
     return -- 192.168.222.101, 192.168.222.23, 202.8.39.136
-   
+
     """
     if (io_ex_ip.has_key(node)):
             return io_ex_ip[node]
-    for i in range(len(node)):        
+    for i in range(len(node)):
         if (node[i].isdigit()):
             return ipovib_prefix + str(int(node[i:]))
     raise Exception("IP address cannot be parsed out from %s" % node)
@@ -121,16 +121,16 @@ def createConfigFile(overwrite = False, localfs = True):
     Create the ngas configuration file
     based on the tempalte, but change to
     the binding IpAddress
-    
+
     Return    the path of the configuration file just created
-    """    
+    """
     # fornax.server.id, fornax.server.archivename,fornax.server.ipaddress
-    node = getNGASNodeName()    
+    node = getNGASNodeName()
     foraxCfgDir = ngas_src_root + '/cfg/fornax'
     if (not os.path.exists(foraxCfgDir)):
         cmd = 'mkdir -p %s' % foraxCfgDir
         execCmd(cmd)
-        
+
     cfgFile = ngas_src_root + '/cfg/fornax/' + node + '.xml'
     if (os.path.exists(cfgFile)):
         if (overwrite):
@@ -155,43 +155,43 @@ def createConfigFile(overwrite = False, localfs = True):
     replaceTextInFile('fornax.server.id', srvId, cfgFile)
     replaceTextInFile('fornax.server.archivename', archName, cfgFile)
     replaceTextInFile('fornax.server.ipaddress', ipAdd, cfgFile)
-    
+
     if (not localfs):
         replaceTextInFile('fornax.server.node', getNGASNodeName(), cfgFile)
-    
-    
+
+
     return cfgFile
 
 def createDiskVolumes(overwrite = False, num_volume = 1, localfs = 1):
     """
     Create local disk volumes on each Fornax compute node
     create the volume id if it is not there
-    
+
     overwrite       whether or not to overwrite (Boolean)
-                    an existing volume directory (if already there)    
+                    an existing volume directory (if already there)
     """
     for i in range(num_volume):
         if (localfs):
             vol_path = ngas_runtime_root + '/volume' + str(i + 1)
         else:
             vol_path = ngas_lustre_root + '/' + getNGASNodeName() + '/volume' + str(i + 1)
-            
+
         if (os.path.exists(vol_path)):
             if (overwrite):
                 cmd = 'rm -rf %s' % vol_path
                 execCmd(cmd, failonerror = False)
             else:
                 continue
-                              
+
         cmd = 'mkdir -p %s' % vol_path
         execCmd(cmd)
-        cmd = '%s %s --path=%s --silent' % (python_exec, ngas_vol_tool, vol_path) 
+        cmd = '%s %s --path=%s --silent' % (python_exec, ngas_vol_tool, vol_path)
         execCmd(cmd)
     """
     else:
-        create_new = False        
+        create_new = False
         vol_path = ngas_runtime_root + '/volume1'
-        if (os.path.exists(vol_path)): 
+        if (os.path.exists(vol_path)):
             if os.path.islink(vol_path):# was link for lustre
                 if (overwrite):
                     cmd = 'rm %s' % vol_path
@@ -207,7 +207,7 @@ def createDiskVolumes(overwrite = False, num_volume = 1, localfs = 1):
                     create_new = True
         else:
             create_new = True
-        
+
         if (create_new):
             node = getNGASNodeName()
             real_vol_path = ngas_lustre_root + '/' + node + '/volume1'
@@ -233,7 +233,7 @@ def cleanTaskQueue():
             continue
         cmd = 'kill -9 %s' % line.split()[0]
         execCmd(cmd)
-    
+
 def startServer(overwriteCfg = False, overwriteDisks = False, localFS = True):
     """
     Start the server, need to check
@@ -244,7 +244,7 @@ def startServer(overwriteCfg = False, overwriteDisks = False, localFS = True):
     cfgFile = createConfigFile(overwrite = overwriteCfg, localfs = localFS)
     if (not io_ex_ip.has_key(getNGASNodeName())): # for copy/proxy archive nodes, do not create local disks
         createDiskVolumes(overwrite = overwriteDisks, localfs = localFS)
-    
+
     cleanTaskQueue()
     cmd = '%s %s -cfg %s -autoOnline -force -multipleSrvs' % (python_exec, ngas_cache_server,cfgFile)
     #2>&1>/dev/null
@@ -258,7 +258,7 @@ def _sshStartServerThread(serverId, localFS):
         nodename = 'f0%s' % str(serverId)
     else:
         nodename = 'f00%s' % str(serverId)
-    
+
     cmd = 'ssh %s "/home/cwu/ngas_rt/bin/python /home/cwu/ngas_rt/src/ngamsStartup/ngamsFornaxMgr.py start 1 0 %d"' % (nodename, localFS)
     execCmd(cmd)
 
@@ -276,16 +276,16 @@ def sshStartServers(num = 24, localFS = 1):
     for ser in nowList:
         servId = int(ser.split(':')[0].split('.')[-1]) # 192.168.222.13:7777 --> 13
         totalList.remove(servId)
-        
+
     serverList = random.sample(totalList, toAdd)
     for sid in serverList:
         print 'SSH Starting Server %s' % sid
         args = (sid,localFS)
-        thrd = threading.Thread(None, _sshStartServerThread, 'NGAS_%d' % sid, args) 
+        thrd = threading.Thread(None, _sshStartServerThread, 'NGAS_%d' % sid, args)
         thrd.setDaemon(1) # it will exit immediately should the command exit
         thrd.start()
-        
-    
+
+
 def monitorServers(status = 'online', printRes = True):
     """
     Monitor NGAS servers on Fornax filtered by their status
@@ -296,14 +296,14 @@ def monitorServers(status = 'online', printRes = True):
         return
     sqlQuery = "select host_id, srv_state, installation_date from ngas_hosts where srv_state = '%s'" % host_status[status]
     sqlUpdate = "update ngas_hosts set srv_state = 'NOT-RUNNING' where host_id = '%s'"
-    conn = psycopg2.connect(database = 'ngas', user='ngas', 
-                            password = 'bmdhcyRkYmE=\n'.decode('base64'), 
-                            host = db_host)    
-    try:   
-        cur = conn.cursor()         
+    conn = psycopg2.connect(database = 'ngas', user='ngas',
+                            password = 'bmdhcyRkYmE=\n'.decode('base64'),
+                            host = db_host)
+    try:
+        cur = conn.cursor()
         cur.execute(sqlQuery)
-        res = cur.fetchall()    
-        
+        res = cur.fetchall()
+
         if ('online' == status):
             needToRefresh = 0
             for ho in res:
@@ -322,15 +322,15 @@ def monitorServers(status = 'online', printRes = True):
             if (needToRefresh):
                 cur.execute(sqlQuery)
                 res = cur.fetchall()
-        
+
         header = ()
         for i in range(len(cur.description)):
             header += (cur.description[i].name,)
-            
+
     finally:
         if (cur):
             del cur
-        if (conn):            
+        if (conn):
             del conn
     if (printRes):
         print ngamsCmd_QUERY.formatAsList([res], header)
@@ -354,7 +354,7 @@ def stopSingleServer(host_id):
 def stopServers(serverList = None):
     """
     shut down a list of NGAS servers
-    
+
     serverList:    comma separated host_id's (string)
                     e.g. server1:port, server2:port
     """
@@ -369,7 +369,7 @@ def stopServers(serverList = None):
             else:
                 serverList += ',%s' % re[0]
             c += 1
-    
+
     for host_id in serverList.split(','):
         try:
             host_name = host_id.split(':')[0]
@@ -382,20 +382,20 @@ def stopServers(serverList = None):
             print 'Fail to shut down server %s, Exception: %s' % (host_id, str(e))
             continue
 
-    
+
 def getAvailableArchiveServers():
     """
     Return a List of servers (string) (host:port)
-    
+
     This function is called by MPI-Rank 0
     """
     sqlQuery = "select host_id from ngas_hosts where srv_state = 'ONLINE'"
-    conn = psycopg2.connect(database = 'ngas', user='ngas', 
-                            password = 'bmdhcyRkYmE=\n'.decode('base64'), 
+    conn = psycopg2.connect(database = 'ngas', user='ngas',
+                            password = 'bmdhcyRkYmE=\n'.decode('base64'),
                             host = db_host)
     ret = []
     try:
-        cur = conn.cursor()         
+        cur = conn.cursor()
         cur.execute(sqlQuery)
         res = cur.fetchall()
         for ho in res:
@@ -407,15 +407,15 @@ def getAvailableArchiveServers():
     finally:
         if (cur):
             del cur
-        if (conn):            
-            del conn   
-    return ret  
+        if (conn):
+            del conn
+    return ret
 
 def cleanServerLogs(serverList = None, localFS = 1):
     """
     Remove logs for all servers in the serverList
     Current implemented as SSH and remove
-    
+
     serverList    [server1:port,server2:port,...](List)
     """
     listServer = None
@@ -423,7 +423,7 @@ def cleanServerLogs(serverList = None, localFS = 1):
         listServer = getAvailableArchiveServers()
     else:
         listServer = serverList
-    
+
     for server in listServer:
         ip = server.split(':')[0]
         if (localFS):
@@ -432,7 +432,7 @@ def cleanServerLogs(serverList = None, localFS = 1):
             node = int(ip.split('.')[-1])
             node_name = 'f%03d' % (node) #39 --> 'f039', 3 --> 'f003'
             logFile = '%s/%s/log/LogFile.nglog' % (ngas_lustre_root, node_name)
-            
+
         cmd = 'ssh %s rm %s' % (ip, logFile)
         print 'Cleaning log for host %s' % ip
         execCmd(cmd, failonerror = False)
@@ -440,35 +440,35 @@ def cleanServerLogs(serverList = None, localFS = 1):
 def getServerLogs(tgtDir, comment, analyse = True, serverList = None, localfs = 1):
     """
     This will create a directory like this:
-    
+
     tgtDir/comment/datetime/
-    
+
     It will then copy LogFile.nglog to the above directory with a new log name like this
-    
+
     f099.log
-    
+
     tgtDir        globally accessible directory on the Lustre file system (string)
     serverList    [server1:port,server2:port,...](List)
     comment       e.g. lu-8s-CRC-24c-32m (lustre file system, 8 servers, 24 clients, 32MB/s per client)
                        lo-4s-NoCRC-12c-64m (local file system, 4 servers, 12 clients, 64MB/s per client)
-    
+
     """
     if (not tgtDir or len(tgtDir) == 0):
         raise Exception('Invalid target directory')
-    
+
     listServer = None
     if (not serverList):
         listServer = getAvailableArchiveServers()
     else:
         listServer = serverList
-    
+
     allLogs = []
-    
+
     dt = datetime.datetime.now()
     tgtLogDir = '%s/%s/%s' % (tgtDir, comment, dt.strftime('%Y%m%dT%H%M%S'))
     cmd = 'mkdir -p %s' % tgtLogDir
     execCmd(cmd)
-    
+
     for server in listServer:
         ip = server.split(':')[0]
         node = int(ip.split('.')[-1])
@@ -483,7 +483,7 @@ def getServerLogs(tgtDir, comment, analyse = True, serverList = None, localfs = 
         ret = execCmd(cmd, failonerror = False)
         if (ret[0] == 0):
             allLogs.append(tgtLog)
-    
+
     if (analyse):
         print 'Analysing logs....'
         cmd = '%s/src/ngasUtils/src/analyseLog.sh' % ngas_src_root
@@ -491,10 +491,10 @@ def getServerLogs(tgtDir, comment, analyse = True, serverList = None, localfs = 
             cmd += ' %s' % tlog
         cmd += ' > %s/perf_%s.txt' % (tgtLogDir, comment)
         execCmd(cmd)
-    
+
     return tgtLogDir
-        
-    
+
+
 
 if __name__ == '__main__':
     #createConfigFile(overwrite = True)
@@ -505,15 +505,15 @@ if __name__ == '__main__':
     else:
         action = sys.argv[1].lower()
         if ('start' == action):
-            overwriteCfg = 1 # by default, always re-generate configuration file 
+            overwriteCfg = 1 # by default, always re-generate configuration file
             overwriteDisks = 0
             localFS = 1
             if (leng > 2): # get the start parameter (1 - overwriteCfg, 0 - otherwise)
                 overwriteCfg = int(sys.argv[2])
                 if (leng > 3): # get the second start parameter (1 - overwrite volumes, 0 - otherwise)
-                    overwriteDisks = int(sys.argv[3])    
+                    overwriteDisks = int(sys.argv[3])
                     if (leng > 4):
-                        localFS = int(sys.argv[4])            
+                        localFS = int(sys.argv[4])
             startServer(overwriteCfg, overwriteDisks, localFS)
         elif ('stop' == action):
             if (leng > 2):
@@ -535,4 +535,3 @@ if __name__ == '__main__':
         else:
             usage = 'usage: %s ngamsFornaxMgr.py [start[1|0 [1|0 [1|0]]] | stop [server1:port, server2:port] | monitor [online|offline|down]] ' % python_exec
             print '%s | ssh [num_server[1|0]]| cleanLog [server1:port,server2:port,] | getLog target comment [ analyse (1/0) [server1:port, server2:port]]' % usage
-        

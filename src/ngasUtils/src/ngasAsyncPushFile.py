@@ -45,7 +45,7 @@ def getMWADBConn():
     global g_db_conn
     if (g_db_conn and (not g_db_conn.closed)):
         return g_db_conn
-    
+
     """
     config = ngamsJobMAN.getConfig()
     confSec = 'MWA DB'
@@ -54,16 +54,16 @@ def getMWADBConn():
     db_passwd = config.get(confSec, 'password')
     db_host = config.get(confSec, 'host')
     """
-    try:        
+    try:
         """
-        g_db_conn = psycopg2.connect(database = db_name, user = db_user, 
-                            password = db_passwd.decode('base64'), 
+        g_db_conn = psycopg2.connect(database = db_name, user = db_user,
+                            password = db_passwd.decode('base64'),
                             host = db_host)
         """
-        g_db_conn = psycopg2.connect(database = 'mwa', user = 'mwa', 
-                            password = 'Qm93VGll\n'.decode('base64'), 
+        g_db_conn = psycopg2.connect(database = 'mwa', user = 'mwa',
+                            password = 'Qm93VGll\n'.decode('base64'),
                             host = 'ngas01.ivec.org')
-        return g_db_conn 
+        return g_db_conn
     except Exception, e:
         errStr = 'Cannot create MWA DB Connection: %s' % str(e)
         raise Exception, errStr
@@ -81,10 +81,10 @@ def getFileIdsByObsNum(obs_num):
     """
     Query the mwa database to get a list of files
     associated with this observation number
-    
+
     obs_num:        observation number (string)
     num_subband:    number of sub-bands, used to check if the num_corr is the same
-    
+
     Return:     A dictionary, key - correlator id (starting from 1, int), value - a list of file ids belong to that correlator
     """
     sqlQuery = "SELECT filename FROM data_files WHERE observation_num = '%s' ORDER BY SUBSTRING(filename, 27);" % str(obs_num)
@@ -93,17 +93,17 @@ def getFileIdsByObsNum(obs_num):
     ret = []
     for re in res:
         ret.append(re[0])
-    
+
     return ret
 
 def isValidURL(url):
     try:
         o = urlparse(url)
         if (not o):
-            return False 
+            return False
     except Exception, err:
           return False
-    
+
     return True
 
 def readObsFrmFile(fpath):
@@ -114,10 +114,10 @@ def readObsFrmFile(fpath):
             obses = line.split()
             for obs in obses:
                 obsList.append(obs)
-    
+
     return obsList
     #print len(obsList[1:].split(','))
-    
+
 
 def pushFile(src_url, dest_url, obs_list, file_list, fname):
     """
@@ -134,7 +134,7 @@ def pushFile(src_url, dest_url, obs_list, file_list, fname):
             fileList += flist
     if (file_list and len(file_list) > 0):
         fileList += file_list.split(',')
-        
+
     if (len(fileList)):
         myReq = AsyncListRetrieveRequest(fileList, dest_url)
         strReq = pickle.dumps(myReq)
@@ -152,7 +152,7 @@ def main():
     parser.add_option("-f", "--files", dest = "file_list", help = "file list separated by comma")
     parser.add_option("-n", "--fname", dest = "file_name", help = "path to a file containing obsIds separated by whitespace")
     (options, args) = parser.parse_args()
-    if (not options.src_url or 
+    if (not options.src_url or
         (not options.dest_url)):
         parser.print_help()
         exit(1)
@@ -160,7 +160,7 @@ def main():
         not isValidURL(options.dest_url)):
         print 'Please specify valid URLs'
         exit(1)
-    if (not options.obs_list and 
+    if (not options.obs_list and
         (not options.file_list) and
         (not options.file_name)):
         parser.print_help()

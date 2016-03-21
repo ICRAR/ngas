@@ -41,7 +41,7 @@ class ngamsPhysDiskInfo:
     Object to keep information about one of the disks mounted in the
     NGAS system.
     """
-    
+
     def __init__(self):
         """
         Constructor method.
@@ -89,9 +89,9 @@ class ngamsPhysDiskInfo:
 
         ignoreUndefFields:     Don't take fields, which have a length of 0
                                (integer/0|1).
-                            
+
         Returns:               String buffer with contents of object (string).
-        """        
+        """
         format = prFormat1()
         buf = "DiskStatus:\n"
         objStat = self.getObjStatus()
@@ -100,7 +100,7 @@ class ngamsPhysDiskInfo:
                 buf += format % (fieldName + ":", val)
         return buf
 
-    
+
     def setPortNo(self,
                   portNo):
         """
@@ -151,7 +151,7 @@ class ngamsPhysDiskInfo:
         Set mount point.
 
         mountPoint:   Mount point (string).
- 
+
         Returns:      Reference to object itself.
         """
         self.__mountPoint = mountPoint
@@ -165,7 +165,7 @@ class ngamsPhysDiskInfo:
         Returns:   Mount point (string).
         """
         return self.__mountPoint
-   
+
 
     def setStatus(self,
                   status):
@@ -187,7 +187,7 @@ class ngamsPhysDiskInfo:
         Returns:  Status of operation  (string).
         """
         return self.__status
-   
+
 
     def setCapacityGb(self,
                       capacityGb):
@@ -209,7 +209,7 @@ class ngamsPhysDiskInfo:
         Returns:  Capacity in GB (integer).
         """
         return self.__capacityGb
-   
+
 
     def setModel(self,
                  model):
@@ -231,7 +231,7 @@ class ngamsPhysDiskInfo:
         Returns:   Model (string).
         """
         return self.__model
-   
+
 
     def setSerialNo(self,
                     serialNo):
@@ -253,7 +253,7 @@ class ngamsPhysDiskInfo:
         Returns:  Serial number (string).
         """
         return self.__serialNo
-   
+
 
     def setType(self,
                 type):
@@ -319,7 +319,7 @@ class ngamsPhysDiskInfo:
         Returns:   Disk ID (string).
         """
         return self.__diskId
-   
+
 
     def setDeviceName(self,
                       deviceName):

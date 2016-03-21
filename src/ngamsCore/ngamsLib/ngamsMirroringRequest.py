@@ -88,7 +88,7 @@ class ngamsMirroringRequest:
     """
     Class to handle the information in connection with one Mirroring Request.
     """
-    
+
     def __init__(self):
         """
         Constructor method.
@@ -111,7 +111,7 @@ class ngamsMirroringRequest:
         """
         Convert a Mirroring Request Status from string to integer
         representation.
-        
+
         An exception is raised if the status is illegal.
 
         statusStr:   Mirroring Request Status as string (string).
@@ -132,7 +132,7 @@ class ngamsMirroringRequest:
         """
         Convert a Mirroring Request Status from integer to string
         representation.
-        
+
         An exception is raised if the status is illegal.
 
         statusNo:   Mirroring Request Status as number (integer).
@@ -156,9 +156,9 @@ class ngamsMirroringRequest:
 
         This will simply be the NGAS Node name or NGAS Node + port number
         if multiple instances of NGAS is running on the given node.
-        
+
         id:         Instance ID (string).
-        
+
         Returns:    Reference to object itself.
         """
         self.__instanceId = str(trim(id, "\" "))
@@ -172,7 +172,7 @@ class ngamsMirroringRequest:
 
         This will simply be the NGAS Node name or NGAS Node + port number
         if multiple instances of NGAS is running on the given node.
-        
+
         Returns:   Instance ID (string).
         """
         return self.__instanceId
@@ -182,9 +182,9 @@ class ngamsMirroringRequest:
                   id):
         """
         Set File ID.
-        
+
         id:         File ID (string).
-        
+
         Returns:    Reference to object itself.
         """
         self.__fileId = str(trim(id, "\" "))
@@ -194,7 +194,7 @@ class ngamsMirroringRequest:
     def getFileId(self):
         """
         Get File ID.
-        
+
         Returns:   File ID (string).
         """
         return self.__fileId
@@ -204,19 +204,19 @@ class ngamsMirroringRequest:
                        version):
         """
         Set File Version.
-        
+
         version:    File Version (integer).
-        
+
         Returns:    Reference to object itself.
         """
         if (str(version).strip()): self.__fileVersion = int(version)
         return self
 
-  
+
     def getFileVersion(self):
         """
         Get File Version.
-        
+
         Returns:   File Version (string).
         """
         return self.__fileVersion
@@ -228,7 +228,7 @@ class ngamsMirroringRequest:
         Set the ingestion date for the file (in the ISO 8601 format).
 
         date:       Ingestion date for file (string/ISO 8601|float/secs).
-        
+
         Returns:    Reference to object itself.
         """
         if (not date): return self
@@ -239,7 +239,7 @@ class ngamsMirroringRequest:
     def getIngestionDate(self):
         """
         Get the ingestion date.
-         
+
         Returns:   Ingestion data in ISO 8601 format (string).
         """
         return self.__ingestionDate
@@ -249,9 +249,9 @@ class ngamsMirroringRequest:
                      id):
         """
         Set server list ID.
-        
+
         id:         Server list ID (integer).
-        
+
         Returns:    Reference to object itself.
         """
         self.__srvListId = int(str(id).replace(" ", ""))
@@ -261,7 +261,7 @@ class ngamsMirroringRequest:
     def getSrvListId(self):
         """
         Get server list ID.
-        
+
         Returns:   Server list ID (integer).
         """
         return self.__srvListId
@@ -271,9 +271,9 @@ class ngamsMirroringRequest:
                        xmlFileInfo):
         """
         Set the XML file information for the file.
-        
+
         xmlFileInfo:  XML file information (string/XML).
-        
+
         Returns:      Reference to object itself.
         """
         self.__xmlFileInfo = xmlFileInfo
@@ -283,7 +283,7 @@ class ngamsMirroringRequest:
     def getXmlFileInfo(self):
         """
         Get the XML file information.
-        
+
         Returns:   XML file information (string/XML).
         """
         return self.__xmlFileInfo
@@ -293,9 +293,9 @@ class ngamsMirroringRequest:
                   status):
         """
         Set the status of the request in text representation or as a number.
-        
+
         status:       Status represented as text or number (string | integer).
-        
+
         Returns:      Reference to object itself.
         """
         # Check/convert, stored internally in number representation.
@@ -310,22 +310,22 @@ class ngamsMirroringRequest:
                 raise Exception, msg % str(status)
         self.__status = status
         return self
-    
+
 
     def getStatusAsNo(self):
         """
         Set the status of the request in number representation.
-        
+
         Returns:      Mirroring Request Status as number (integer).
         """
         return self.__status
-    
+
 
     def getStatusAsStr(self):
         """
         Get the status of the Mirroring Request as a string.
-        
-        Returns:  Status represented as string (string). 
+
+        Returns:  Status represented as string (string).
         """
         return self.statusNo2Str(self.__status)
 
@@ -334,9 +334,9 @@ class ngamsMirroringRequest:
                    msg):
         """
         Set message field of the Mirroring Request.
-        
+
         msg:        Message (string).
-        
+
         Returns:    Reference to object itself.
         """
         self.__message = msg
@@ -346,7 +346,7 @@ class ngamsMirroringRequest:
     def getMessage(self):
         """
         Get message in connection with the Mirroring Request.
-        
+
         Returns:   Message (string).
         """
         return self.__message
@@ -433,7 +433,7 @@ class ngamsMirroringRequest:
         Returns:   String buffer containing the ASCII dump (string).
         """
         T = TRACE()
-        
+
         buf = "Contents of ngamsMirroringRequest:%s:\n" % str(self)
         buf += "Instance ID:         %s\n" % self.getInstanceId()
         buf += "File ID:             %s\n" % self.getFileId()
@@ -454,7 +454,7 @@ class ngamsMirroringRequest:
         Returns:   Reference to string buffer with the object summary (string).
         """
         T = TRACE(5)
-        
+
         buf = "Summary of Mirroring Request Object: "
         buf += "Instance ID: %s" % self.getInstanceId()
         buf += ". File ID: %s" % self.getFileId()
@@ -481,6 +481,6 @@ if __name__ == '__main__':
     Main function.
     """
     setLogCond(0, 0, "", 5)
-        
+
 
 # EOF

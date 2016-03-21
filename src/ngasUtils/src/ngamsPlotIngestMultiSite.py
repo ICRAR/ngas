@@ -173,7 +173,7 @@ class throughputPlot():
             sum(uncompressed_file_size)/1024/1024/1024./1024. as volume
             from ngas_files where ingestion_date between {0} and {1}"""
             dbconn = dbdrv.connect(self.db)
-            
+
         if (file_version):
             hsql += " and file_version = %d" % file_version
         cur = dbconn.cursor()
@@ -225,16 +225,16 @@ class throughputPlot():
             ax1.set_xlim([0,self.loop+0.5])
             #ax1.bar(where(self.y>=0)[0]+0.1,self.y)
             ax1.xaxis.axes.set_autoscalex_on(False)
-        
+
         ax1.plot(where(self.y>=0)[0]+0.5,self.y, linestyle = lineStyle, color = lineColor, marker = markerShape, label=lineLabel, markersize=8, linewidth=3.0)
-        
+
         """
         if (setAxis):
             ax1.plot(where(self.y>=0)[0]+0.5,self.y,'r-', marker='o')
         else:
             ax1.plot(where(self.y>=0)[0]+0.5,self.y,'b-', marker='+')
         """
-        
+
         """
         ax1.plot([0,self.loop+0.5],[median(self.y[where(self.y > 0)]),
                                     median(self.y[where(self.y > 0)])])
@@ -268,7 +268,7 @@ class throughputPlot():
             tl.set_color('r')
         ax2.set_ylabel('Number of files',{'color':'r'})
 
-        
+
 
         pylab.text(0.99,0.95,'Total: %5.2f TB' % self.tvol,transform = ax1.transAxes,ha='right', va='bottom')
         pylab.text(0.99,0.95,'Total # files: %8d' % self.tfils,transform = ax1.transAxes,ha='right', va='top')
@@ -281,31 +281,31 @@ class throughputPlot():
 if __name__ == '__main__':
     fig = pylab.figure()
     ax1 = fig.add_subplot(111)
-    
+
     print "Getting ICRAR version 1"
     t = throughputPlot(sys.argv[1:], ax1)
     t.db = 'ICRAR'
     t.queryDb(file_version = 1)
     t.plot(setAxis = True, showFig = False, lineLabel = 'MWA Pawsey nodes')
-    
+
     del t
-    
+
     print "Getting ICRAR version 2"
     t = throughputPlot(sys.argv[1:], ax1)
     t.db = 'ICRAR'
     t.queryDb(file_version = 2)
     t.plot(setAxis = False, showFig = False, lineColor = 'b', markerShape = 'x', lineLabel = 'FE nodes')
-    
+
     del t
-    
+
     print "Getting MRO"
     t = throughputPlot(sys.argv[1:], ax1)
     t.db = 'MRO'
     t.queryDb(db_user = 'ngas')
     t.plot(setAxis = False, showFig = False, lineStyle = ':', lineColor = 'g', markerShape = 'v', lineLabel = 'MRO Arch nodes')
-    
+
     legend = ax1.legend(loc='upper right', shadow=True)
-    
+
     fig.show()
-    
+
     raw_input('Press ENTER to continue....')

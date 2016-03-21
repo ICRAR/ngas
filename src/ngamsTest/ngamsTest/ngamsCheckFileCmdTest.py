@@ -55,7 +55,7 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Normal execution of CHECKFILE Command.
-        
+
         Description:
         The purpose of this Text Case is to test the normal/standard
         execution of the CHECKFILE Command.
@@ -92,14 +92,14 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Check error handling in connection with CHECKFILE Command.
-        
+
         Description:
         The purpose of the Test Case is to check the correct behavior/handling
         of the NG/AMS Server when it comes to handle the following cases:
 
           - Disk not existing.
           - File not existing.
-          - File Version not existing. 
+          - File Version not existing.
 
         Expected Result:
         The NG/AMS Server should detect the invalid parameters and should
@@ -123,7 +123,7 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
 
         # 1) Disk not existing, 2) File not existing, 3) File Version
         # not existing.
-        testDataList = [["Disk ID Non-Existing", 
+        testDataList = [["Disk ID Non-Existing",
                          "___tmp-ngamsTest-NGAS-FitsStorage1-Main-1___",
                          "TEST.2001-05-08T15:25:00.123",
                          "1",
@@ -154,7 +154,7 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test that the proxy mode works for the CHECKFILE Command/cluster.
-        
+
         Description:
         The purpose of the test is to verify that the proxy mode works
         properly for the CHECKFILE Command.
@@ -199,7 +199,7 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         refStatFile = "ref/ngamsCheckFileCmdTest_test_ProxyMode_01_01_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect handling of "+\
                           "CHECKFILE Command detected")
-        
+
 
 def run():
     """

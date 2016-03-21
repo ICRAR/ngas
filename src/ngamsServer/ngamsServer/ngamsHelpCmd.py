@@ -43,15 +43,15 @@ def handleCmdHelp(srvObj,
                   httpRef):
     """
     Handle HELP command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
@@ -95,7 +95,7 @@ def handleCmdHelp(srvObj,
     #             setMessage("Successfully handled command HELP").\
     #             setState(srvObj.getState()).setSubState(srvObj.getSubState())
     #    msg = status.genXmlDoc()
-    #    
+    #
     #srvObj.httpReplyGen(reqPropsObj.setCompletionTime(), httpRef,
     #                    NGAMS_HTTP_SUCCESS, msg)
     #srvObj.updateRequestDb(reqPropsObj)

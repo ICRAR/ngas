@@ -56,7 +56,7 @@ _options = [\
      "Comma separated list of servers to contact (<Host>:<Port>,...)"],
     ["file-list", [], None, NGAS_OPT_MAN, "=<File List>",
      "write"],
-    ["threads", [], None, NGAS_OPT_MAN, "=<Threads>", 
+    ["threads", [], None, NGAS_OPT_MAN, "=<Threads>",
      "write"]]
 _optDic, _optDoc = genOptDicAndDoc(_options)
 __doc__ = _doc % _optDoc
@@ -103,7 +103,7 @@ class testClient(ngamsPClient.ngamsPClient):
                                                  pars=cmdPars, returnFileObj=1)
         hdrDic = ngamsLib.httpMsgObj2Dic(hdrs)
         return int(hdrDic["content-length"]), fileObj
-        
+
 
 def getOptDic():
     """
@@ -167,8 +167,8 @@ def __retrieveThread(optDic,
         fileSize = getFileSize(nextFileId)
         taskCtrl.incBytesRecv(fileSize)
         info(1,"Next File ID: %s" % nextFileId)
- 
-  
+
+
 def retrieveThread(optDic,
                    taskCtrl,
                    dummy):
@@ -195,8 +195,8 @@ def retrieveThread(optDic,
         except Exception, e:
             error("Error retrieving file with ID: %s - skipping. Error: %s" %\
                   (nextFileId, str(e)))
- 
- 
+
+
 def execTest(optDic):
     """
     Carry out the tool execution.
@@ -235,7 +235,7 @@ def execTest(optDic):
             if (not thrHandleDic[n].isAlive()):
                 del thrHandleDic[n]
                 thrFinishCount += 1
-                
+
     stopTime = time.time()
     statMsg = "Total time: %.3fs. Total rate: %.6f MB/s" %\
               ((stopTime - startTime),
@@ -252,7 +252,7 @@ if __name__ == '__main__':
     optDic = parseCmdLine(sys.argv, _optDic)
     setLogCond(0, "", 0, "", 1)
     execTest(optDic)
-    
+
     #try:
     #    optDic = parseCmdLine(sys.argv, _optDic)
     #except Exception, e:

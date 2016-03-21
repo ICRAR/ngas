@@ -51,7 +51,7 @@ def correctUsage():
     print "% ngasArchiveFileXTimes.py -f <filename> -n <# of times> " +\
           "-p <port #> [-h <host name>] | " +\
           "-servers '<Host>:<Port>, ...' | -targetDir <Directory>\n " +\
-          "[-inc] [-auth <Code>]\n" 
+          "[-inc] [-auth <Code>]\n"
 
 
 def archiveXTimes(filename,
@@ -66,11 +66,11 @@ def archiveXTimes(filename,
     Archive the given FITS file X times. Each time the file is archived the
     value of the ARCFILE keyword can be incremented to enforce a new
     File ID.
-    
+
     filename:      FITS file to archive (string).
-    
+
     number:        Number of times to archive the FITS file (integer).
-    
+
     hostName:      Host name of remote NG/AMS Server. Can also be
                    a list of servers (string).
 
@@ -78,9 +78,9 @@ def archiveXTimes(filename,
 
     targetDir:     If specified, the created files are merely dumped in the
                    given directory (string).
-   
+
     ouputFile:     Output log file (string).
-    
+
     increment:     If set to 1 the ARCFILE keyword is incremented 1ms for
                    each archiving to create a new File ID (integer/0|1).
 
@@ -92,7 +92,7 @@ def archiveXTimes(filename,
         # Carry out the archive session.
         client = ngamsPClient.ngamsPClient(hostName, port).\
                  setAuthorization(auth)
-    
+
         # Host list given?
         if (hostName.find(":") != -1): client.parseSrvList(hostName)
 
@@ -122,7 +122,7 @@ def archiveXTimes(filename,
             os.system("cp %s %s" % (tmpFilename, tmpTargetFilename))
             mvFile(tmpTargetFilename, targetFilename)
             reqTime = reqTimer.stop()
-            totTime += reqTime            
+            totTime += reqTime
         else:
             print "Archiving file: %s for the time number: %d." %\
                   (tmpFilename, (n+1))
@@ -159,11 +159,11 @@ def archiveXTimes(filename,
 if __name__ == '__main__':
     """
     Main program.
-    """    
+    """
     if (len(sys.argv) < 3):
         correctUsage()
         sys.exit(1)
-        
+
     # Parse input parameters.
     filename  = ""
     number    = 0
@@ -173,7 +173,7 @@ if __name__ == '__main__':
     ouputFile = ""
     increment = 0
     auth      = None
-    
+
     idx = 1
     while (idx < len(sys.argv)):
         par = sys.argv[idx].upper()

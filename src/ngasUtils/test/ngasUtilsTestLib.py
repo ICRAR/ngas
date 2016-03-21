@@ -57,17 +57,17 @@ def prepNgasResFile(cfgFile,
     Prepare the NGAS Utilities resource file for the test (~/.ngas).
 
     cfgFile:              Configuration file relevant for the test (string).
-    
+
     accessCode:           Access code (encrypted) used when authorizing
                           usage of the NGAS Utilities (string).
-    
+
     smtpHost:             SMTP host used to send email notification (string).
-    
+
     emailNotification:    Recipients of the email notification (string).
-    
+
     ngasHost:             NGAS host on which the NG/AMS Server concerned is
                           running (string).
-    
+
     ngasPort:             Port used by NG/AMS Server concerned (integer).
 
     Returns:              Void.
@@ -101,7 +101,7 @@ class ngasUtilsTestSuite(ngamsTestLib.ngamsTestSuite):
         Constructor method.
         """
         ngamsTestLib.ngamsTestSuite.__init__(self, methodName)
-        
+
 
     def tearDown(self):
         """

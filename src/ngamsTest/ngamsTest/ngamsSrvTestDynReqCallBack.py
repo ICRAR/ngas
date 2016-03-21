@@ -68,13 +68,13 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         request handler to execute in the file written by the test case.
         """
         T = TRACE(1)
-        
+
         reqHandleCode = loadFile("tmp/reqCallBack_tmp")
         eval("self." + reqHandleCode +\
              "(httpRef, clientAddress, method, path, "+\
              "requestVersion, headers, writeFd, readFd)")
 
-        
+
     def reqCallBack_BlockCmds1(self,
                                httpRef,
                                clientAddress,
@@ -88,7 +88,7 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         Allow to execute EXIT, OFFLINE, STATUS. Block other commands.
         """
         T = TRACE(1)
-        
+
         info(1,"Handling command: %s ..." % path.strip().split("?")[0])
         if ((path.strip().find(NGAMS_EXIT_CMD) == 0) or
             (path.strip().find(NGAMS_OFFLINE_CMD) == 0) or
@@ -115,7 +115,7 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         Block RETRIEVE Commands + other commands.
         """
         T = TRACE(1)
-        
+
         if ((path.strip().find(NGAMS_ARCHIVE_CMD) == 0) or
             (path.strip().find(NGAMS_EXIT_CMD) == 0) or
             (path.strip().find(NGAMS_OFFLINE_CMD) == 0) or
@@ -145,7 +145,7 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         Only commands that are handled are: EXIT, OFFLINE, STATUS.
         """
         T = TRACE(1)
-        
+
         if ((path.strip().find(NGAMS_EXIT_CMD) == 0) or
             (path.strip().find(NGAMS_OFFLINE_CMD) == 0) or
             (path.strip().find(NGAMS_STATUS_CMD) == 0)):
@@ -160,7 +160,7 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
             resp = loadFile("tmp/ngamsServerTestIllegalResp_tmp")
             writeFd.write(resp)
 
- 
+
     def reqCallBack_SrvCrash1(self,
                               httpRef,
                               clientAddress,
@@ -177,7 +177,7 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         Only command that is handled is: STATUS.
         """
         T = TRACE(1)
-        
+
         if (path.strip().find(NGAMS_STATUS_CMD) == 0):
             info(1,"Handling command: %s ..." % path.strip().split("?")[0])
             ngamsServer.ngamsServer.reqCallBack(self, httpRef, clientAddress,
@@ -222,7 +222,7 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
             sys.exit(0)
 
 
- 
+
 if __name__ == '__main__':
     """
     Main program executing the special test NG/AMS Server

@@ -41,13 +41,13 @@ def handleCmdOnline(srvObj,
                     httpRef):
     """
     Handle an ONLINE command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of
                     actions done during the request handling
                     (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
 

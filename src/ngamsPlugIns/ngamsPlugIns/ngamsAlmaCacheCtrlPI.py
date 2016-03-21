@@ -46,16 +46,16 @@ def ngamsAlmaCacheCtrlPI(srvObj,cacheEntryObj):
                     cached file (ngamsCacheEntry).
 
     Returns:        Returns True if the file can be deleted from the cache,
-                    otherwise False (boolean). 
+                    otherwise False (boolean).
     """
     T = TRACE()
-    
+
     plugInPars = srvObj.getCfg().getVal("Caching[1].CacheControlPlugInPars")
     plugInParDic = ngamsPlugInApi.parseRawPlugInPars(plugInPars)
     dblinks = plugInParDic["db_links_list"]
     dblinks_list = dblinks.split(":")
     info(3, "db links found: %s" % dblinks_list)
-    
+
     for dblink in dblinks_list:
         query = "select count(*) from ngas_files@" + dblink
         info(3, "Executing SQL query: %s" % query)

@@ -63,10 +63,10 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
         """
         Synopsis:
         REGISTER Command/register single file compl. path.
-        
+
         Description:
         Test handling of the REGISTER Command under normal circumstances.
-        
+
         Expected Result:
         The REGISTER Command should be accepted by the server and should
         be executed successfully.

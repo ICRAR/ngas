@@ -110,7 +110,7 @@ def runAllTests(notifyemail = None,
     testRep += line + "\n"
     line = "NG/AMS Version:   %s" % getNgamsVersion()
     print line
-    testRep += line + "\n"    
+    testRep += line + "\n"
     for mod in testModList:
         if (skipDic.has_key(mod)): continue
         testCount += 1
@@ -210,7 +210,7 @@ def getAllSrcFiles():
                     key = srcFile + ":" + str(lineNo) + "(" + fctName + ")"
                     fctDic[key] = (modName, srcFile, lineNo, fctName)
     return fctDic
-    
+
 
 # The methods and functions listed in the exempt list can either not be tested
 # or it cannot be registered that they have been executed for instance (seems
@@ -222,7 +222,7 @@ def methodInExemptList(srcFile,
     is contained in the exempt list.
 
     srcFile:      Name of Python source file (string).
-    
+
     method:       Name of method/function (string).
 
     Returns:      1 if the method/function is contained in the exempt list
@@ -240,7 +240,7 @@ def methodInExemptList(srcFile,
             return 0
     return 0
 
- 
+
 def genStatus():
     """
     Execute all the tests and generate a test status, indicating which
@@ -270,7 +270,7 @@ def genStatus():
             statObj.add(repFileDic[mod])
     for mod in repFileDic.keys():
         rmFile(repFileDic[mod])
-    statObj.strip_dirs() 
+    statObj.strip_dirs()
     #statObj.print_stats()
     proWidth, proList = statObj.get_print_list(())
     testedFctDic = {}
@@ -315,7 +315,7 @@ def genStatus():
             sepCtrlDic[tmpDic[key][1]] = 1
         report += subRep
     print "\n\n" + report + "\n"
-    
+
 
 def correctUsage():
     """
@@ -328,7 +328,7 @@ def correctUsage():
            "[-tests \"<mod>,...\"] [-skip \"<mod>[.<test case>],...\" " +\
            "-notifyEmail \"<Email List>\"\n"
     print ngamsCopyrightString()
-    
+
 
 def parseCommandLine(argv):
     """

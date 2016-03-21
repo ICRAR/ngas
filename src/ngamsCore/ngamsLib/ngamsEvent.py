@@ -40,7 +40,7 @@ class ngamsEvent:
     """
     Class to do event synchronization between threads.
     """
-    
+
     def __init__(self):
         """
         Constructor method.
@@ -65,7 +65,7 @@ class ngamsEvent:
     def getEventInfoList(self):
         """
         Get the event info to be transferred from one thread to the other.
-        
+
         Returns:      Event info (free format).
         """
         return self.__eventInfoList

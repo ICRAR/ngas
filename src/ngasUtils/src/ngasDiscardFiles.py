@@ -61,7 +61,7 @@ stored on disk, but not registered in the DB.
 
 
                           *** CAUTION ***
-                          
+
 THIS IS A VERY DANGEROUS TOOL TO USE, SINCE IT ALLOWS TO REMOVE ARCHIVED
 FILES FROM AN NGAS ARCHIVE ALSO IF THESE ARE AVAILABLE IN LESS THAN 3
 COPIES. SHOULD BE USED WITH GREAT CAUTION!!!
@@ -108,9 +108,9 @@ def discardFiles(fileListFile,
 
     fileListFile:   Name of file containing list with references to
                     files to remove (string).
-    
+
     execute:        Actual remove the files (integer/0|1).
-    
+
     notifEmail:     List of email addresses to inform about the
                     execution of the discation procedure (string).
 
@@ -181,7 +181,7 @@ def correctUsage():
           __doc__ + "\n"
     return buf
 
-  
+
 if __name__ == '__main__':
     """
     Main function to execute the tool.
@@ -216,7 +216,7 @@ if __name__ == '__main__':
             idx += 1
         except Exception, e:
             print "\nProblem executing the File Discard Tool: %s\n" % str(e)
-            print correctUsage()  
+            print correctUsage()
             sys.exit(1)
     if (notifEmail == None):
         notifEmail = ngasUtilsLib.\
@@ -227,7 +227,7 @@ if __name__ == '__main__':
         ngasUtilsLib.dccMsg2FileList(dccMsgFile, fileListFile)
     try:
         if (not fileListFile):
-            print correctUsage()  
+            print correctUsage()
             raise Exception, "Incorrect command line parameter(s) given!"
         if (not accessCode):
             accessCode = ngasUtilsLib.input("Enter Access Code:")

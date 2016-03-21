@@ -49,7 +49,7 @@ class ngamsSrvTestKillBeforeArchCleanUp(ngamsServer.ngamsServer):
         """
         ngamsServer.ngamsServer.__init__(self)
 
-    
+
     def test_BeforeArchCleanUp(self):
         """
         Tets method killing server.
@@ -59,7 +59,7 @@ class ngamsSrvTestKillBeforeArchCleanUp(ngamsServer.ngamsServer):
         self.killServer()
         raise Exception, "test_BeforeArchCleanUp: TEST METHOD KILLING SERVER"
 
- 
+
 if __name__ == '__main__':
     """
     Main program executing the test NG/AMS Server

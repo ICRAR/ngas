@@ -5,13 +5,13 @@
     Purpose:
         Retrieve the mapping of the SCSI device files to hardware controllers, channels and luns.
     Calling Sequence:
-	scsiDeviceMapping		
+	scsiDeviceMapping
     Inputs:
 	None
     Common blocks:
     Side effects:
 	This is using information of the /proc filesystem and certain files there. Thus
-	it only works on standard Linux and only if the /proc filesystem is enabled..    
+	it only works on standard Linux and only if the /proc filesystem is enabled..
     History:
 	2008-02-05: Created, Andreas Wicenec, ESO
 """

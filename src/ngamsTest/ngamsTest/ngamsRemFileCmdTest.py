@@ -62,7 +62,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test normal execution of the REMFILE Command.
-        
+
         Description:
         Test the normal execution of the REMFILE Command, whereby a file is
         requested to the REMFILE'd which is available in at least 3 copies.
@@ -99,7 +99,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         refStatFile = "ref/ngamsRemFileCmdTest_test_RemFileCmd_1_1_ref"
         tmpStatFile = "tmp/ngamsRemFileCmdTest_test_RemFileCmd_1_1_tmp"
         saveInFile(tmpStatFile, filterDbStatus1(status.dumpBuf(0, 1, 1)))
-        self.checkFilesEq(refStatFile, tmpStatFile, 
+        self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status for REMFILE Command/no execution")
 
         # Remove the cloned file (execute=1), should be successfull.
@@ -107,7 +107,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         refStatFile = "ref/ngamsRemFileCmdTest_test_RemFileCmd_1_2_ref"
         tmpStatFile = "tmp/ngamsRemFileCmdTest_test_RemFileCmd_1_2_tmp"
         saveInFile(tmpStatFile, filterDbStatus1(status.dumpBuf(0, 1, 1)))
-        self.checkFilesEq(refStatFile, tmpStatFile, 
+        self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status for REMFILE Command/execution")
 
 
@@ -115,7 +115,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Missing file copies, REMFILE Command rejected.
-        
+
         Description:
         The purpose of the Test Case is to verify that the REMFILE Command
         is rejected when it is attempted to remove files available in less
@@ -154,7 +154,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         refStatFile = "ref/ngamsRemFileCmdTest_test_RemFileCmd_2_1_ref"
         tmpStatFile = "tmp/ngamsRemFileCmdTest_test_RemFileCmd_2_1_tmp"
         saveInFile(tmpStatFile, filterDbStatus1(status.dumpBuf(0, 1, 1)))
-        self.checkFilesEq(refStatFile, tmpStatFile, 
+        self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status for REMFILE Command/no execution")
 
         # Remove the cloned file (execute=1), should fail.
@@ -162,7 +162,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         refStatFile = "ref/ngamsRemFileCmdTest_test_RemFileCmd_2_2_ref"
         tmpStatFile = "tmp/ngamsRemFileCmdTest_test_RemFileCmd_2_2_tmp"
         saveInFile(tmpStatFile, filterDbStatus1(status.dumpBuf(0, 1, 1)))
-        self.checkFilesEq(refStatFile, tmpStatFile, 
+        self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status for REMFILE Command/execution")
 
 
@@ -170,7 +170,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test that the proxy mode is not possible for the REMFILE Command.
-        
+
         Description:
         It is not possible to let a contacted NGAS Node act as proxy for the
         REMFILE Command (for security reasons). I.e., the node where data
@@ -222,7 +222,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test that REMFILE removes proper File Version.
-        
+
         Description:
         The purpose of the test is to verify that if several versions of a
         file are found in the archive, the proper version is deleted.
@@ -276,7 +276,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
             refStatFile = "ref/ngamsRemFileCmdTest_test_" +\
                           "FileVerHandling_01_0%d_ref" % (execute + 3)
             tmpStatFile = saveInFile(None, filterDbStatus1(fileInfo.dumpBuf()))
-            self.checkFilesEq(refStatFile, tmpStatFile, 
+            self.checkFilesEq(refStatFile, tmpStatFile,
                               "Incorrect status for REMFILE Command/execution")
 
 

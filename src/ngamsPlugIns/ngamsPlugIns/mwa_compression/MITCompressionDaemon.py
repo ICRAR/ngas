@@ -48,7 +48,7 @@ def execCmd(cmd, failonerror = False, okErr = []):
         errMsg = 'Fail to execute command: "%s". Exception: %s' % (cmd, re[1])
         if (failonerror):
             raise Exception(errMsg)
-            
+
     return re
 
 def getMITDBConn():
@@ -57,8 +57,8 @@ def getMITDBConn():
     """
     logger.info('Connecting to database')
     try:
-        l_db_conn = psycopg2.connect(database = 'ngas', user= 'ngas', 
-                            password = 'bmdhcyRkYmE=\n'.decode('base64'), 
+        l_db_conn = psycopg2.connect(database = 'ngas', user= 'ngas',
+                            password = 'bmdhcyRkYmE=\n'.decode('base64'),
                             host = 'ngas.mit.edu')
         return l_db_conn
     except Exception, e:
@@ -92,7 +92,7 @@ def _executeCompression(fileList, sqlite_file, thdname):
     #file_id, disk_id, file_version, obs_id, host_id, file_path
     thdname += ' - '
     logger.info(thdname + 'Thread started')
-    
+
     for fi in fileList:
         host = fi[4]
         u = 'http://%s/MWACOMPRESS?file_path=%s&file_id=%s&file_version=%d&disk_id=%s' % (host, fi[5], fi[0], fi[2], fi[1])
@@ -122,13 +122,13 @@ def _executeCompression(fileList, sqlite_file, thdname):
                 comment = str(exp)
                 warn_msg = 'Unexpected error: Compression %s on %s failed due to: %s, updating database...' % (fi[0], host, comment)
                 status = 3
-            
+
             if (len(comment) > 256):
                 comment = comment[0:255]
             dt = datetime.datetime.now()
             compress_date = dt.strftime('%Y-%m-%dT%H-%M-%S') # last attempted date for connecting to the server
             query = "update mitfile set status = %d, comment = '%s', compression_date = '%s' where host_id = '%s' and file_path = '%s'" % (status, comment, compress_date, host, fi[5])
-            logger.warning(thdname + warn_msg) 
+            logger.warning(thdname + warn_msg)
         finally:
             logger.info(thdname + query)
         if (query):
@@ -155,9 +155,9 @@ def _executeCompression(fileList, sqlite_file, thdname):
                 #pass
                 if (dbconn != None):
                     dbconn.close()
-                    
+
     logger.info(thdname + 'Thread stopped')
-        
+
 
 def compressObs(fileList, sqlite_file):
     """
@@ -168,15 +168,15 @@ def compressObs(fileList, sqlite_file):
     if (leng  < 1):
         logger.error('No files in the list')
         return
-    
+
     obsId = fileList[0][3]
     logger.info("Processing observation started %s with %d files" % (obsId, leng))
-    
+
     curList = []
     curKey = ''
     thdList = []
     timeout_perfile = 200
-    
+
     for fi in fileList:
         k = "%s" % (fi[4]) #host
         if (not curKey):
@@ -192,13 +192,13 @@ def compressObs(fileList, sqlite_file):
             thdList.append((tr, timeout_perfile * len(curList)))
             tr.setDaemon(0)
             tr.start()
-            
+
             del curList
             curList = [fi]
             curKey = k
         else:
             curList.append(fi)
-    
+
     if (curList != None and len(curList) > 0):
         k = curList[0][4]
         thdname = 'CompressThrd_' + k
@@ -208,7 +208,7 @@ def compressObs(fileList, sqlite_file):
         thdList.append((tr, timeout_perfile * len(curList)))
         tr.setDaemon(0)
         tr.start()
-    
+
     logger.debug("Get ready for joining...")
     #join all threads or until timed out
     for thd in thdList:
@@ -218,8 +218,8 @@ def compressObs(fileList, sqlite_file):
             logger.warning('Host Thread timed out: %s' % thd[0].name)
         else:
             logger.info("Host Thread completed: %s" % thd[0].name)
-    
-    # check if all files of that observation have been compressed, 
+
+    # check if all files of that observation have been compressed,
     logger.debug("Checking NGAS DB...")
     query = "select count(file_id) from mitfile where obs_id = '%s' and status <> 0" % obsId
     cc = None
@@ -239,7 +239,7 @@ def compressObs(fileList, sqlite_file):
         if (cur != None):
             cur.close()
         logger.info(query)
-        
+
     if ((cc != None) and (cc[0][0] == 0)):
         # if so, update the NGAS database (postgresql)
         dt = datetime.datetime.now()
@@ -257,12 +257,12 @@ def compressObs(fileList, sqlite_file):
                 cur.close()
             if (ngasconn != None):
                 ngasconn.close()
-                
+
             logger.info(query)
-    
+
     if (dbconn != None):
         dbconn.close()
-    
+
     logger.info("Processing observation completed %s" % obsId)
 
 def doIt(db_dir, pickupStatus = pickupStatus_NEW_ONLY):
@@ -273,8 +273,8 @@ def doIt(db_dir, pickupStatus = pickupStatus_NEW_ONLY):
     if (not os.path.exists(sqlite_file)):
         logger.error("Cannot locate local sqlite %s" % sqlite_file)
         raise Exception('Cannot find compress.sqlite in %s' % db_dir)
-    
-    
+
+
     dbconn = dbdrv.connect(sqlite_file)
     query = "select file_id, disk_id, file_version, obs_id, host_id, file_path from mitfile where status "
     if (pickupStatus == pickupStatus_FAIL_NEW):
@@ -284,14 +284,14 @@ def doIt(db_dir, pickupStatus = pickupStatus_NEW_ONLY):
     else: # failed only
         query += " > 0 "
     query += "order by obs_id, host_id"
-    
+
     logger.info(query)
-    
+
     cur = dbconn.cursor()
     cur.execute(query)
     allfiles = cur.fetchall() # this is ok for now, but not after we have millions of files
     cur.close()
-    
+
     curList = []
     curKey = ''
     for fi in allfiles:
@@ -300,7 +300,7 @@ def doIt(db_dir, pickupStatus = pickupStatus_NEW_ONLY):
             curKey = k
             curList.append(fi)
             continue
-        
+
         if (k != curKey): # new obs
             # compress all files belong to the last obs_id
             #if (len(curList) > 2):
@@ -310,18 +310,18 @@ def doIt(db_dir, pickupStatus = pickupStatus_NEW_ONLY):
             curList = [fi]
             curKey = k
         else:
-            curList.append(fi)  
-    
+            curList.append(fi)
+
     if (curList != None and len(curList) > 0):
         compressObs(curList, sqlite_file)
-    
+
     if (dbconn != None):
         dbconn.close()
 
 def pingHost(url, timeout = 5):
     """
     To check if a host is successfully running
-    
+
     Return:
     0        Success
     1        Failure
@@ -330,18 +330,18 @@ def pingHost(url, timeout = 5):
     try:
         return execCmd(cmd)[0]
     except Exception, err:
-        return 1 
+        return 1
 
 if __name__ == '__main__':
-    
+
     logfile = MIT_processing_root + '/compress.log'
     rotateLogFiles(logfile)
-    
+
     # setup run-time log file
     FORMAT = "%(asctime)-15s - %(name)s - %(levelname)s - %(message)s"
     logging.basicConfig(filename = logfile, level=logging.DEBUG, format = FORMAT)
     logger.info('MIT Compression Started.......')
-    
+
     # check if all servers are up running?
     logger.info("Checking if all NGAS servers are up running...")
     for ho in eor_host:
@@ -349,5 +349,5 @@ if __name__ == '__main__':
         if (ret != 0):
             logger.error("NGAS is not up running: %s, quit now" % ho)
             sys.exit(1)
-    
+
     doIt(MIT_processing_root)

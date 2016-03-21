@@ -179,5 +179,5 @@ class ngamsStream:
         """
         return self.__hostIdList
 
-        
+
 # EOF

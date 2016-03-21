@@ -49,7 +49,7 @@ class ngamsSrvTestKillAfterMvStgFile(ngamsServer.ngamsServer):
         """
         ngamsServer.ngamsServer.__init__(self)
 
-    
+
     def test_AfterMovingStagingFile(self):
         """
         Tets method killing server.
@@ -60,7 +60,7 @@ class ngamsSrvTestKillAfterMvStgFile(ngamsServer.ngamsServer):
         raise Exception, "test_AfterMovingStagingFile: TEST METHOD KILLING " +\
               "SERVER"
 
- 
+
 if __name__ == '__main__':
     """
     Main program executing the test NG/AMS Server

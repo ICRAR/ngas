@@ -57,7 +57,7 @@ class ngamsJanitorThreadTest(ngamsTestSuite):
         """
         Synopsis:
         ...
-        
+
         Description:
         ...
 

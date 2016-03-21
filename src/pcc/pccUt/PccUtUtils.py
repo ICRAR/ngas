@@ -26,16 +26,16 @@ def checkType(parameter,
     """
     Function to check if the type of a parameter corresponds to an expected
     type.
-                            
+
     parameter:   Name of parameter to check (string).
 
     value:       Value referred to by variable.
-    
+
     method:      Name of the method where this check is invoked from
                  (string: "<module>.<method>").
 
     type:        The supposed Python type of the instance.
-    
+
     Returns:     Void.
     """
     if (isinstance(value, type) == 0):
@@ -49,12 +49,12 @@ def raiseTypeException(parameter,
     Raise an "exceptions.Exception" indicating that the parameter given
     by "parameter" and called by the method/function "method" is not of
     the expected type given by \"type\" (reference to Python type).
-    
+
     parameter:    Name of parameter to test.
-    
+
     method:       Name of method/function to which the parameter was
                   given as input.
-    
+
     type:         Expected type of parameter ([<module>.]<class>).
 
     Returns:     Void.
@@ -108,9 +108,9 @@ def checkInList(value,
     value:        String value.
 
     refList:      List containing the defined/accepted values (as strings).
-    
+
     parameter:    Name of the input parameter to a method.
-    
+
     moduleClass:  Name of module+class.
 
     Returns:      Void.
@@ -133,7 +133,7 @@ def getDbPwd(dbSrv,
     DB user from the ~/.dbrc file. If not possible, None is returned.
 
     dbSrv:      Name of DB server (string).
-    
+
     user:       Db user (string).
 
     Returns:    Password or None (string|None).

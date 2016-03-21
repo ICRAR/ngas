@@ -264,7 +264,7 @@ def writeTestHTTP(dev, skip, testcount, iosize, blocksize, sessionId = None, snd
                     print("Set TCP SNDBUF to %d" % sndbufsize)
                 except Exception, eer:
                     print('Fail to set TCP SNDBUF to %d: %s' % (sndbufsize, str(eer)))
-            
+
             if (not parallel):
                 st=time.time()
                 status = myDD('/dev/zero', myblock, dev, \
@@ -535,7 +535,7 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
             tspeed.append((bsize/one_block_time, stt, one_block_time))
         if (Test == 'write'):
             print "Pure write throughput:  %6.2f MB/s" % (tsize/write_time)
-        elif (Test == 'read'): 
+        elif (Test == 'read'):
             print "Pure read throughput:  %6.2f MB/s" % (tsize/read_time)
         writelabel = 'write '
         if (Test == 'cpu'):

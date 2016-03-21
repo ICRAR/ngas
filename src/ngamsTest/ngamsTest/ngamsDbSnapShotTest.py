@@ -85,7 +85,7 @@ def _parseDbSnapshot(dbSnapshotDump):
                 (col.find("io_time") == -1)):
                 convDbSnapshot += "%-16s = %s\n" % (col, val)
     return convDbSnapshot
-            
+
 
 def _checkContDbSnapshot(testSuiteObj,
                          testCaseNo,
@@ -96,9 +96,9 @@ def _checkContDbSnapshot(testSuiteObj,
     Function to check the contents of a DB Snapshot file.
 
     testSuiteObj:   Reference to Test Suite Object (ngamsTestSuite).
-    
+
     testCaseNo:     Test Case number (integer).
-    
+
     dataDirList:    List of directories under the NGAS Root Mount Point
                     to check (list).
 
@@ -122,7 +122,7 @@ def _checkContDbSnapshot(testSuiteObj,
                 tmpDbSnapshot = glob.glob(cacheDir + "/*")
                 if (len(tmpDbSnapshot) == 0): break
                 time.sleep(0.200)
-        
+
         complName = dirPat % dataDir
         refFile = refFilePat % (testCaseNo, count)
         tmpFile = complName + ".dump"
@@ -197,7 +197,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         """
         Synopsis:
         Creation of DB Snapshot at server start-up.
-        
+
         Description:
         Test that DB Snapshot is created when a disk is initialized. This both
         for an empty DB and a DB with files registered where files are located
@@ -216,7 +216,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
           created.
 
         Remarks:
-        ...       
+        ...
         """
         cfgObj, dbObj = _prepSrv(self)
         _checkContDbSnapshot(self, 1,
@@ -228,7 +228,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         """
         Synopsis:
         Test that DB Snapshot is updated when files are archived.
-        
+
         Description:
         The purpose of this test is to verify that the DB Snapshot is updated
         'real-time' when files are archived onto a disk.
@@ -246,7 +246,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
 
         Remarks:
         ...
-        
+
         """
         cfgObj, dbObj = _prepSrv(self)
         client = sendPclCmd()
@@ -259,7 +259,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         """
         Synopsis:
         Test that DB Snapshot is updated correctly when files are removed.
-        
+
         Description:
         The purpose of this test is to verify that the DB Snapshot is updated
         'real-time' when files are removed from a disk.
@@ -284,7 +284,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         for n in range(3): client.archive("src/SmallFile.fits")
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         client.sendCmdGen(NGAMS_CLONE_CMD,
-                          pars = [["disk_id", diskId], ["wait", "1"]])         
+                          pars = [["disk_id", diskId], ["wait", "1"]])
         fileId = "TEST.2001-05-08T15:25:00.123"
         client.sendCmdGen(NGAMS_REMFILE_CMD,
                           pars = [["disk_id", diskId],
@@ -293,12 +293,12 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
                                   ["execute", "1"]])
         _checkContDbSnapshot(self, 3, ["FitsStorage1-Main-1"])
 
-         
+
     def test_DbSnapshot_4(self):
         """
         Synopsis:
         DB Snapshot is updated correctly when a disk is removed (REMDISK'ed).
-        
+
         Description:
         The purpose of this test is to verify that the DB Snapshot of a disk
         is correctly updated when the files contained and registered on the
@@ -317,7 +317,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
           Snapshot disappears.
 
         Remarks:
-        ...      
+        ...
         """
         cfgObj, dbObj = _prepSrv(self)
         client = sendPclCmd()
@@ -328,13 +328,13 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         client.sendCmdGen(NGAMS_REMDISK_CMD,
                           pars = [["disk_id", diskId], ["execute", "1"]])
         _checkContDbSnapshot(self, 4, ["FitsStorage1-Main-1"])
-        
-    
+
+
     def test_DbSnapshot_5(self):
         """
         Synopsis:
         Test that DB Snapshot is updated correctly when files are cloned.
-        
+
         Description:
         The purpose of the test is to verify that the DB Snapshot on a disk,
         is updated (on-the-fly) when files are being cloned onto it.
@@ -352,7 +352,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
           the information about the files cloned.
 
         Remarks:
-        ...           
+        ...
         """
         cfgObj, dbObj = _prepSrv(self)
         client = sendPclCmd()
@@ -368,7 +368,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         """
         Synopsis:
         Test that DB Snapshot is updated correctly when file are registered.
-        
+
         Description:
         The purpose of the test is to verify that the DB Snapshot of a disk
         on which files are being registered, is properly updated according
@@ -386,7 +386,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         - Check that the DB Snapshot is updated within a given period of time.
 
         Remarks:
-        ...       
+        ...
         """
         cfgObj, dbObj = _prepSrv(self)
         client = sendPclCmd()
@@ -399,12 +399,12 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
                           pars = [["path", regTestDir], ["wait", "1"]])
         _checkContDbSnapshot(self, 6, ["FitsStorage1-Main-1"], 1, 1)
 
-    
+
     def test_DbSnapshot_7(self):
         """
         Synopsis:
         Test that DB is updated correctly according to DB Snapshot.
-        
+
         Description:
         The purpose of the test is to verify that the DB is updated according
         to the information in the DB Snapshot. This goes both for adding
@@ -431,10 +431,10 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         cfgObj, dbObj = _prepSrv(self)
         client = sendPclCmd()
         for n in range(3): client.archive("src/SmallFile.fits")
-        
+
         # Bring server Offline.
         client.offline()
-    
+
         # Remove the file entries from the DB.
         dbObj.query("DELETE FROM ngas_files")
 
@@ -449,7 +449,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         """
         Synopsis:
         Test that lost files are properly detected and reported.
-        
+
         Description:
         The purpose of the test is to verify that files registered in the
         NGAS DB and in the DB Snapshot, but not available on the disk, are
@@ -482,8 +482,8 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         """
         Synopsis:
         Test if file on disk, DB and DB Snapshot up to date,
-        that the are no changes. 
-        
+        that the are no changes.
+
         Description:
         The purpose of the test is to verify that if the NGAS DB, the DB
         Snapshot and content of disk is found to be identical, no changes
@@ -497,7 +497,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
 
         Remarks:
         TODO!: Not yet implemented!
-     
+
         """
         info(1,"Test if file on disk, DB and DB Snapshot up to date, " +\
              "that the are no changes.")

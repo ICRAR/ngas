@@ -42,7 +42,7 @@ class ngamsCacheEntry(ngamsFileSummary1.ngamsFileSummary1):
     Class to handle the information in connection with one entry in the
     NGAS Cache.
     """
-    
+
     def __init__(self):
         """
         Constructor method.
@@ -88,7 +88,7 @@ class ngamsCacheEntry(ngamsFileSummary1.ngamsFileSummary1):
             self.__lastCheck = float(lastCheck)
         except:
             msg = "Wrong format of Last Check given: %s" % str(lastCheck)
-            raise Exception, msg   
+            raise Exception, msg
         return self
 
 
@@ -115,7 +115,7 @@ class ngamsCacheEntry(ngamsFileSummary1.ngamsFileSummary1):
             self.__cacheTime = float(cacheTime)
         except:
             msg = "Wrong format of Cache Time given: %s" % str(cacheTime)
-            raise Exception, msg   
+            raise Exception, msg
         return self
 
 
@@ -141,7 +141,7 @@ class ngamsCacheEntry(ngamsFileSummary1.ngamsFileSummary1):
         Returns: Reference to object itself.
         """
         T = TRACE(5)
-        
+
         self.__cacheEntryPars[par] = value
         return self
 
@@ -168,6 +168,6 @@ if __name__ == '__main__':
     Main function.
     """
     setLogCond(0, 0, "", 5)
-        
+
 
 # EOF

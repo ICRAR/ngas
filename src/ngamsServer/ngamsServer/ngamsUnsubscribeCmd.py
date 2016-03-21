@@ -52,7 +52,7 @@ def delSubscriber(srvObj,
     Returns:     Void.
     """
     T = TRACE()
-    
+
     err = 0
     errMsg = ''
     try:
@@ -64,51 +64,51 @@ def delSubscriber(srvObj,
         err += 1
         errMsg += estr
     # remove all entries associated with this subscriber from in-memory dictionaries
-    
-    numThreads = 0  
+
+    numThreads = 0
     if (srvObj.getSubscriberDic().has_key(subscrId)):
         subscriber = srvObj.getSubscriberDic()[subscrId]
         numThreads = subscriber.getConcurrentThreads()
         del srvObj.getSubscriberDic()[subscrId]
     else:
-        estr = " Cannot find Subscriber with an ID '%s' kept internally. " % subscrId 
+        estr = " Cannot find Subscriber with an ID '%s' kept internally. " % subscrId
         err += 1
         errMsg += estr
-        
+
     if (srvObj._subscrScheduledStatus.has_key(subscrId)):
         del srvObj._subscrScheduledStatus[subscrId]
     else:
-        estr = " Cannot find scheduled status for the subscriber '%s' kept internally. " % subscrId 
+        estr = " Cannot find scheduled status for the subscriber '%s' kept internally. " % subscrId
         err += 1
         errMsg += estr
-    
+
     if (srvObj._subscrSuspendDic.has_key(subscrId)):
         srvObj._subscrSuspendDic[subscrId].set() # resume all suspended deliveryThreads (if any) so they can know the subscriber is removed
         del srvObj._subscrDeliveryThreadDic[subscrId] # this does not kill those deliveryThreads, but only the list container
     else:
-        estr = " Cannot find delivery threads for the subscriber '%s' kept internally. " % subscrId 
+        estr = " Cannot find delivery threads for the subscriber '%s' kept internally. " % subscrId
         err += 1
         errMsg += estr
-    
+
     deliveryThreadRefDic = srvObj._subscrDeliveryThreadDicRef
     deliveryFileDic = srvObj._subscrDeliveryFileDic
-    for tid in range(int(numThreads)):    
+    for tid in range(int(numThreads)):
         thrdName = NGAMS_DELIVERY_THR + subscrId + str(tid)
         if (deliveryThreadRefDic.has_key(thrdName)):
             del deliveryThreadRefDic[thrdName]
         if (deliveryFileDic.has_key(thrdName)):
             del deliveryFileDic[thrdName]
-    
+
     fileDeliveryCountDic = srvObj._subscrFileCountDic
     fileDeliveryCountDic_Sem = srvObj._subscrFileCountDic_Sem
-    
+
     # reduce the file reference count by 1 for all files that are in the queue to be delivered
     # and in the meantime, clear the queue before deleting it
     if (srvObj._subscrQueueDic.has_key(subscrId)):
         if (srvObj.getCachingActive()):
             errOld = err
             qu = srvObj._subscrQueueDic[subscrId]
-            
+
             while (1):
                 fileinfo = None
                 try:
@@ -122,15 +122,15 @@ def delSubscriber(srvObj,
                 fileVersion = fileinfo[ngamsSubscriptionThread.FILE_VER]
                 err += _reduceRefCount(fileDeliveryCountDic, fileDeliveryCountDic_Sem, fileId, fileVersion)
             if ((err - errOld) > 0):
-                errMsg += ' Error reducing file reference count for some files in the queue, check NGAS log to find out which files'        
+                errMsg += ' Error reducing file reference count for some files in the queue, check NGAS log to find out which files'
         del srvObj._subscrQueueDic[subscrId]
     else:
-        estr = " Cannot find delivery queue for the subscriber '%s' kept internally. " % subscrId 
+        estr = " Cannot find delivery queue for the subscriber '%s' kept internally. " % subscrId
         err += 1
         errMsg += estr
-        
+
     filelist = srvObj.getDb().getSubscrBackLogBySubscrId(subscrId)
-    
+
     # Mark back-logged files that have been in the queue (but not yet dequeued)
     if (srvObj._subscrBlScheduledDic.has_key(subscrId)):
         errOld = err
@@ -149,8 +149,8 @@ def delSubscriber(srvObj,
             err += 1
             errMsg += estr
         finally:
-            srvObj._subscrBlScheduledDic_Sem.release()    
-    
+            srvObj._subscrBlScheduledDic_Sem.release()
+
     # reduce the file reference count by 1 for all files that are back logged for this subscriber
     if (srvObj.getCachingActive()):
         errOld = err
@@ -160,7 +160,7 @@ def delSubscriber(srvObj,
             err += _reduceRefCount(fileDeliveryCountDic, fileDeliveryCountDic_Sem, fileId, fileVersion)
         if ((err - errOld) > 0):
             errMsg += ' Error reducing file reference count for some files in the backlog, check NGAS log to find out which files'
-    
+
     # remove all backlog entries associated with this subscriber
     try:
         srvObj.getDb().delSubscrBackLogEntries(srvObj.getHostId(), srvObj.getCfg().getPortNo(), subscrId)
@@ -169,7 +169,7 @@ def delSubscriber(srvObj,
         warning(estr)
         err += 1
         errMsg += estr
-    if (not err):               
+    if (not err):
         info(2,"Subscriber with ID: " + subscrId +\
              " successfully unsubscribed")
     return [err, errMsg]
@@ -177,10 +177,10 @@ def delSubscriber(srvObj,
 def _reduceRefCount(fileDeliveryCountDic, fileDeliveryCountDic_Sem, fileId, fileVersion):
     """
     Reduce the reference count for files that have been scheduled for delivery
-    
+
     return: 0 success, 1 failed
     """
-    fkey = fileId + "/" + str(fileVersion) 
+    fkey = fileId + "/" + str(fileVersion)
     fileDeliveryCountDic_Sem.acquire()
     try:
         if (fileDeliveryCountDic.has_key(fkey)):
@@ -197,7 +197,7 @@ def _reduceRefCount(fileDeliveryCountDic, fileDeliveryCountDic_Sem, fileId, file
     finally:
         fileDeliveryCountDic_Sem.release()
     return 0
-    
+
 
 def handleCmdUnsubscribe(srvObj,
                          reqPropsObj,
@@ -209,14 +209,14 @@ def handleCmdUnsubscribe(srvObj,
 
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
 
     Returns:        Void.
     """
     T = TRACE()
-    
+
     # added by chen.wu@icrar.org
     if (reqPropsObj.hasHttpPar("subscr_id")):
         id = reqPropsObj.getHttpPar("subscr_id")

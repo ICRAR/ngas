@@ -72,7 +72,7 @@ def main():
       (options, args) = parser.parse_args()
 
       files = options.filename.split(',')
-      
+
       sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
       files = {'files' : files}

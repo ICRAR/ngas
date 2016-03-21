@@ -58,7 +58,7 @@ def ngamsTileCompress(filename):
     except Exception, e:
         rmFile(tmpFilename)
         raise Exception, e
-        
+
 
 if __name__ == '__main__':
     """

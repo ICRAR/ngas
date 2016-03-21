@@ -30,7 +30,7 @@ NGAS server
 
 WARNING - this only changes the in-memory XML doc, but not the actual
           configuration file!!
-          
+
 example usage:
 
 curl 146.118.84.67:7778/UPDATECONFIGPAR?config_param=NgamsCfg.Server%5B1%5D.BlockSize\&config_value=262144
@@ -44,33 +44,33 @@ from ngamsLib.ngamsCore import info, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
     Find out which threads are still dangling
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
-    if (reqPropsObj.hasHttpPar("config_param") and 
+    if (reqPropsObj.hasHttpPar("config_param") and
         reqPropsObj.hasHttpPar("config_value")):
-        
+
         config_param = reqPropsObj.getHttpPar('config_param') #e.g. NgamsCfg.Server[1].BlockSize
         config_value = reqPropsObj.getHttpPar('config_value')
-        
+
         info(3, 'config_param = %s' % config_param)
-        
-        try:      
-            srvObj.getCfg().storeVal(config_param, config_value)        
+
+        try:
+            srvObj.getCfg().storeVal(config_param, config_value)
             warnMsg = "WARNING - this only changes the in-memory XML doc, but not the actual configuration file!!"
             errMsg = "Successfully changed the parameter '%s' to its new value '%s'. %s \n" % (config_param, srvObj.getCfg().getVal(config_param), warnMsg)
-            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, errMsg, NGAMS_TEXT_MT)    
+            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, errMsg, NGAMS_TEXT_MT)
         except Exception, ee:
-            errMsg = traceback.format_exc()  
-            srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT) 
+            errMsg = traceback.format_exc()
+            srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
     else:
         errMsg = 'INVALID PARAMS, need both config_param and config_value\n'
         srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)

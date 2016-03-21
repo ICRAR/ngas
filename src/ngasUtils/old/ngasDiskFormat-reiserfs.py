@@ -56,7 +56,7 @@ def usage():
     import pydoc
     print pydoc.help('ngamsDiskFormat.usage')
     sys.exit()
-    
+
 
 def getKnownDevices(url):
     """
@@ -97,7 +97,7 @@ def checkPartitions(dev):
     command = '/sbin/sfdisk -l %s' % dev
     (status,result) = getstatusoutput(command)
     result = result.split('\n')
-    
+
     if status == 0:
         if result[5] == 'No partitions found':
             return 0
@@ -156,8 +156,8 @@ def tmpMountPartition(partition,tmpDir):
         return stat
     else:
         return 0
-    
-    
+
+
 def umountPartition(tmpDir):
     """
     Unmount <tmpDir> and remove the directory is unmount was successful.
@@ -191,7 +191,7 @@ def changeOwnerGroup(path):
     # get the entries for input user and group
     p = filter(lambda x:x[0:len(_user)+1]== _user+':',passwd)
     g = filter(lambda x:x[0:len(_group)+1]== _group+':',groups)
-    
+
     if len(p) != 1 or len(g) != 1:
         return 1
     else:
@@ -224,7 +224,7 @@ if __name__ == '__main__':
     print "ARE YOU SURE YOU WANT TO CONTINUE (y/n)?"
     answer = sys.stdin.readline()[0:-1].upper()
     if (answer != "Y"): sys.exit(0)
-    
+
 
     import getopt
 

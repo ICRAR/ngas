@@ -61,11 +61,11 @@ def printLabel(srvObj,
 
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-                    
+
     Returns:        Void.
     """
     T = TRACE()
-    
+
     label = srvObj.getDb().getLogicalNameFromDiskId(diskId)
     if (not label):
         errMsg = "Empty Logical Name returned for Disk ID: %s" % diskId
@@ -73,7 +73,7 @@ def printLabel(srvObj,
     info(2,"Generating label for disk with ID: " + str(diskId) +\
          " - Label text (Logical Name): " + str(label) + " ...")
     plugIn = srvObj.getCfg().getLabelPrinterPlugIn()
-    prStr = label + "   " + hostId + ":" + slotId 
+    prStr = label + "   " + hostId + ":" + slotId
     info(3,"Invoking Label Printer Plug-In: " + plugIn +\
          "(srvObj, " + prStr + ")")
 
@@ -96,19 +96,19 @@ def handleCmdLabel(srvObj,
                    httpRef):
     """
     Handle LABEL command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
-    
+
     srvObj.checkSetState("Command LABEL",
                          [NGAMS_OFFLINE_STATE, NGAMS_ONLINE_STATE],
                          [NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE])
@@ -136,7 +136,7 @@ def handleCmdLabel(srvObj,
             pass
         else:
             pass
-        
+
     # Check/interpret the parameters.
     if (diskId and (slotId or hostId)):
         errMsg = genLog("NGAMS_ER_REQ_HANDLING",

@@ -81,7 +81,7 @@ def monitorMemUsage(parDic):
         fo.flush()
         time.sleep(parDic["INTERVAL"])
     fo.close()
-    
+
 
 def correctUsage():
     """
@@ -91,13 +91,13 @@ def correctUsage():
     """
     return __doc__
 
-  
+
 if __name__ == '__main__':
     """
     Main function to execute the tool.
     """
     setDebug(1)
-    
+
     # Parse input parameters.
     parDic = parDic()
     idx = 1
@@ -116,7 +116,7 @@ if __name__ == '__main__':
             idx += 1
         except Exception, e:
             print "\nProblem executing the tool: %s\n" % str(e)
-            print correctUsage()  
+            print correctUsage()
             sys.exit(1)
     try:
         monitorMemUsage(parDic)

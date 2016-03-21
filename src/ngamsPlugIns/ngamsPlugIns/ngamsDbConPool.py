@@ -28,9 +28,9 @@
 # jknudstr  30/04/2008  Created
 #
 """
-The ngamsDbConPool is an NG/AMS DB Interface Driver, which implements a 
+The ngamsDbConPool is an NG/AMS DB Interface Driver, which implements a
 DB connection pool. The actual connections in the pool are 'normal' NG/AMS
-DB Driver Plug-Ins. The name of these should be given within the input 
+DB Driver Plug-Ins. The name of these should be given within the input
 parameters.
 """
 
@@ -47,14 +47,14 @@ def _getObjId(obj):
     Returns:  ID for the referenced object (string).
     """
     return str(obj).split(" ")[-1][:-2]
-    
-    
+
+
 
 class ngamsDbConPool:
     """
     Class to manage a pool of Db connections.
     """
-  
+
     def __init__(self,
                  server,
                  db,
@@ -68,9 +68,9 @@ class ngamsDbConPool:
         server:          DB server name (string).
 
         db:              DB name (string).
-        
+
         user:            DB user (string).
-        
+
         password:        DB password (string).
 
         application:     Name of application (ID string) (string).
@@ -99,9 +99,9 @@ class ngamsDbConPool:
         self.__conCount    = 0
         self.__poolSem     = threading.Lock()
         self.__idleCons    = Queue.Queue()
-        # Create and insert one connection in the queue, usually at least one 
+        # Create and insert one connection in the queue, usually at least one
         # connection will be needed. This connection is at the same time used
-        # as utility connection, although no queries are done through this 
+        # as utility connection, although no queries are done through this
         # connection. Amongst other, it is used as DB cursor factory.
         self.__utilDrvObj  = self._allocConnection()
 
@@ -115,7 +115,7 @@ class ngamsDbConPool:
         T = TRACE()
 
         return self.__utilDrvObj.getDriverId()
-    
+
 
     def connect(self,
                 server,
@@ -130,25 +130,25 @@ class ngamsDbConPool:
         server:          DB server name (string).
 
         db:              DB name (string).
-        
+
         user:            DB user (string).
-        
+
         password:        DB password (string).
 
         application:     Name of application (ID string) (string).
 
         parameters:      Parameters for the connection pool (string).
-  
+
         Returns:         Reference to object itself.
         """
         T = TRACE()
 
         # The connect() method does not have a meaning in the case of the
-        # connection pool class, as the connections are managed per 
+        # connection pool class, as the connections are managed per
         # DB connection and not globally.
         return self
 
-        
+
     def close(self):
         """
         Close the DB connection.
@@ -158,7 +158,7 @@ class ngamsDbConPool:
         T = TRACE()
 
         # The close() method does not have a meaning in the case of the
-        # connection pool class, as the connections are managed per 
+        # connection pool class, as the connections are managed per
         # DB connection and not globally.
         return self
 
@@ -169,7 +169,7 @@ class ngamsDbConPool:
         if the maximum specified number of connections have not already been
         allocated.
 
-        Returns:    Reference to the allocated connection object 
+        Returns:    Reference to the allocated connection object
                         (NG/AMS DB Driver Plug-In Class).
         """
         T = TRACE()
@@ -179,7 +179,7 @@ class ngamsDbConPool:
             self.__poolSem.acquire()
 
             # Check if the maximum number of connections have been created.
-            if (self.__conCount == self.__connections): 
+            if (self.__conCount == self.__connections):
                 self.__poolSem.release()
                 return None
 
@@ -202,9 +202,9 @@ class ngamsDbConPool:
 
     def _getConnection(self):
         """
-        Get a connection from the pool. If no connection is free, the 
+        Get a connection from the pool. If no connection is free, the
         method waits for the next connection to become available/
-        
+
         Returns:  Reference to next connection object (NG/AMS DB Driver
                       Object).
         """
@@ -221,11 +221,11 @@ class ngamsDbConPool:
 
     def _releaseConnection(self, conObj):
         """
-        Release a connection, previously given, to the pool, making it 
+        Release a connection, previously given, to the pool, making it
         available for other threads.
-        	
+
         conObj:    Connection object to be freed (NG/AMS DB Driver object).
-        	
+
         Returns:   Reference to object itself.
         """
         T = TRACE(5)
@@ -273,7 +273,7 @@ class ngamsDbConPool:
                 del conObj
                 raise Exception, e
 
- 
+
     def cursor(self,
                query):
         """
@@ -316,13 +316,13 @@ class ngamsDbConPool:
                              timeStamp):
         """
         Converts an ISO 8601 timestamp into an mx.DateTime object.
-        
+
         timeStamp:  ISO 8601 Datetime string (string/ISO 8601).
-        
+
         Returns:    Date time object (mx.DateTime).
         """
         T = TRACE(5)
-        
+
         return self.__utilDrvObj.convertTimeStampToMx(timeStamp)
 
 if __name__ == '__main__':

@@ -206,6 +206,6 @@ if __name__ == '__main__':
             exec testMod + ".run()"
     else:
         runAllTests(notifEmail, skip)
-        
+
 
 # EOF

@@ -86,7 +86,7 @@ def ngamsLinuxOnlinePlugIn(srvObj,
         else:
             devStartIdx = parDic["dev_start_idx"]
 
-        
+
         # AWI: added this to fix problem at the ATF
 
         # Get start index for NGAS disk devices
@@ -98,9 +98,9 @@ def ngamsLinuxOnlinePlugIn(srvObj,
 
         # Try first to umount possibly mounted disks (forced).
         ngamsLinuxSystemPlugInApi.umount(rootMtPt)
-            
+
         # Select between 3ware WEB Interface and 3ware Command Line Tool.
-        if (parDic["uri"].find("http") != -1):       
+        if (parDic["uri"].find("http") != -1):
             diskDic = ngamsEscaladeUtils.parseHtmlInfo(parDic["uri"], rootMtPt)
         else:
             diskDic = ngamsEscaladeUtils.\
@@ -130,13 +130,13 @@ if __name__ == '__main__':
     from ngamsLib import ngamsConfig, ngamsDb
 
     setLogCond(0, "", 0, "", 1)
-    
+
     if (len(sys.argv) != 2):
         print "\nCorrect usage is:\n"
         print "% python ngamsLinuxOnlinePlugIn <NGAMS cfg>\n"
         sys.exit(0)
 
-    srvObj = ngamsServer.ngamsServer()  
+    srvObj = ngamsServer.ngamsServer()
     ngamsCfgObj = ngamsConfig.ngamsConfig().load(sys.argv[1])
     dbConObj = ngamsDb.ngamsDb(ngamsCfgObj.getDbServer(),
                                ngamsCfgObj.getDbName(),

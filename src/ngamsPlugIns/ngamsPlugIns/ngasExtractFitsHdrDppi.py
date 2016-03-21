@@ -33,7 +33,7 @@ def constructCommand(file, head=0, struct=0, skey='END', tsv=0, \
     if xmlfl != '': extCmd += ' -x %s' % xmlfl
     if mode != 1: extCmd += ' -m %d' % mode
     if check != 0: extCmd += ' -c'
-    
+
     cmd = '%s %s %s' % (cmd, extCmd, file)
 
     return cmd
@@ -47,9 +47,9 @@ def ngasExtractFitsHdrDppi(srvObj,
 
     srvObj:        Reference to instance of the NG/AMS Server
                    class (ngamsServer).
-    
+
     reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
-    
+
     filename:      Name of file to process (string).
 
     Returns:       DPPI return status object (ngamsDppiStatus).
@@ -58,7 +58,7 @@ def ngasExtractFitsHdrDppi(srvObj,
                    read-only access.
 
     SPECIFIC DOCUMENTATION:
-    This DPPI controls the call to the printhead module. If the 
+    This DPPI controls the call to the printhead module. If the
 
     Example URL (single line):
 
@@ -66,7 +66,7 @@ def ngasExtractFitsHdrDppi(srvObj,
 		?file_id=MIDI.2004-02-11T04:16:04.528&
 		processing=ngasExtractFitsHdrDppi&
 		processing_pars=header%3D99
-	
+
     The header parameter is optional, if not specified the primary header
     is returned.
 
@@ -79,24 +79,24 @@ def ngasExtractFitsHdrDppi(srvObj,
     If 'xml=vo' is specified headers are returned using a slightly modified
     VOTable (XML) format. If 'xml=xfits' is specified headers are returned
     using the XFits (XML) format. struct=1 returns the structure of the FITS
-    file. tsv=1 returns the headers in a tab separated format suitable for 
+    file. tsv=1 returns the headers in a tab separated format suitable for
     direct ingest into the header repository.
     """
     info(4,"Entering ngasExtractFitsHdrDppi() ...")
 
     statusObj = ngamsDppiStatus.ngamsDppiStatus()
-    
-    if (reqPropsObj.hasHttpPar("processing_pars")): 
+
+    if (reqPropsObj.hasHttpPar("processing_pars")):
         pars = ngamsPlugInApi.\
                parseRawPlugInPars(reqPropsObj.getHttpPar("processing_pars"))
     else:
         # default is to extract the primary header
         pars = {'header':0}
-    
+
     info(2, "ngasExtractFitsHdrDppi: " + filename+"  " + pars.__repr__())
 
     PARS = Set(['header', 'xml', 'skey', 'struct', 'tsv', 'check'])
-    
+
     # initial settings for printhead
     xtract = 0
     parse = 0
@@ -111,12 +111,12 @@ def ngasExtractFitsHdrDppi(srvObj,
     mergefl = 0
     hfl = 0
     mode = 1
-    
+
     result = ''
     err = ''
     ext = 'hdr'
-    
-    
+
+
     if pars.has_key('header'):
         # extract a certain header: if value == 99 all headers are extracted,
         # for any other value that header is extracted. headers are
@@ -132,7 +132,7 @@ def ngasExtractFitsHdrDppi(srvObj,
         if head < 0 or head > 99:
             err = "ngasExtractFitsHdrDppi: Invalid value specified for " +\
                   "header parameter."
- 
+
     if pars.has_key('xml'):
         # if this key exists we do a conversion to XFits XML.
         struct = 0
@@ -142,7 +142,7 @@ def ngasExtractFitsHdrDppi(srvObj,
             err = "ngasExtractFitsHdrDppi: Invalid value for xml " +\
                   "parameter. Should be 'vo|xfits': "+ pars['xml']
         ext = 'xml'
-        
+
     if pars.has_key('skey'):
         # extract just one keyword. CAUTION: No checking done!
         skey = pars['skey'].strip()
@@ -180,7 +180,7 @@ def ngasExtractFitsHdrDppi(srvObj,
         check = 1
 
     # printhead supports a list of files, but here we only use one
-    fils = [filename] 
+    fils = [filename]
     base = os.path.basename(filename)
     pos = base.rfind('.fits')
     file_id = base[:pos]
@@ -215,18 +215,18 @@ def ngasExtractFitsHdrDppi(srvObj,
             if stat != 0:
                 errMsg = "Processing of header for file %s failed: %s" % (filename, result)
                 raise Exception, errMsg
-    
+
     resFilename = file_id + "." + ext
     try:
         # mime-type guessing does not work sometimes, we force it in that case.
         mimeType = ngamsPlugInApi.determineMimeType(srvObj.getCfg(),
                                                     resFilename)
     except:
-        if ext == 'xml': 
+        if ext == 'xml':
            mimeType = 'text/xml'
         else:
             mimeType = 'text/ascii'
-	
+
     resObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_DATA, mimeType,
                                              result, resFilename, '')
     statusObj.addResult(resObj)

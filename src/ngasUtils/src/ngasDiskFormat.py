@@ -113,7 +113,7 @@ def checkPartitions(dev):
     command = "/sbin/sfdisk -l %s" % dev
     (status,result) = getstatusoutput(command)
     result = result.split('\n')
-    
+
     if status == 0:
         if result[5] == 'No partitions found':
             return 0
@@ -143,11 +143,11 @@ def pollLogFile(logFile,
     0 is returned.
 
     logFile:     Log file to poll (string).
-    
+
     triggerStr:  String (event) to poll for (string).
-    
+
     timeOut:     Timeout to wait for the event to occur (integer).
-    
+
     Returns:     1 if the event was not logged, otherwise 0 (integr/0|1).
     """
     stat = 1
@@ -170,7 +170,7 @@ def pollLogFile(logFile,
         print "WARNING: Timeout waiting for command termination!!"
     fo.close()
     return stat
-            
+
 
 def createPartition(dev,
                     attempts = 10,
@@ -266,8 +266,8 @@ def tmpMountPartition(partition,
         return stat
     else:
         return 0
-    
-    
+
+
 def umountPartition(tmpDir):
     """
     Unmount <tmpDir> and remove the directory is unmount was successful.
@@ -313,7 +313,7 @@ def usage():
     print "\nCorrect usage is:" +\
           "$ sudo <...>ngasDiskFormat [-all] [-device <Device>] " +\
           "[-user <User>] [-group <Group>] [-force] [-help]\n"
-    
+
 
 
 if __name__ == '__main__':
@@ -365,12 +365,12 @@ if __name__ == '__main__':
             usage()
             sys.exit(1)
         idx += 1
-    
+
     print "\n\nWARNING: THIS TOOL MAY DELETE DATA ON DATA VOLUMES!!"
     print "ARE YOU SURE YOU WANT TO CONTINUE (y/n)?"
     answer = sys.stdin.readline()[0:-1].upper()
     if (answer != "Y"): sys.exit(0)
-    
+
     print "\nThe media will be formatted with ext3fs - is this desirable " +\
           "(y/n) [y]?"
     answer = sys.stdin.readline()[0:-1].upper()

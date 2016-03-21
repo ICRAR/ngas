@@ -82,7 +82,7 @@ _options = [\
      "Directory where the tool will scan for files to archive. " +\
      "If the 'recursive' option is specified, sub-directories will " +\
      "also be scanned."],
-    ["extensions", [], None, NGAS_OPT_MAN, "=<Ext List>", 
+    ["extensions", [], None, NGAS_OPT_MAN, "=<Ext List>",
      "File extensions to look for. For a FITS file this should be " +\
      "'fits'. For a compress'ed FITS file 'fits.Z'."],
     ["recursive", [], 0, NGAS_OPT_OPT, "",
@@ -90,7 +90,7 @@ _options = [\
      "specified 'srcDir'."],
     ["force", [], 0, NGAS_OPT_OPT, "",
      "Force execution of tool."],
-    ["list", [], 0, NGAS_OPT_OPT, "", 
+    ["list", [], 0, NGAS_OPT_OPT, "",
      "List the files selected to be archived."],
     ["archive", [], 0, NGAS_OPT_OPT, "",
      "Archive the files."],
@@ -101,7 +101,7 @@ _options = [\
     ["cleanUp", [], 0, NGAS_OPT_OPT, "",
      "Remove the files that have been successfully archived from the "+\
      "source location."],
-    ["workDir", [], "/tmp", NGAS_OPT_OPT, "=<Work Dir>", 
+    ["workDir", [], "/tmp", NGAS_OPT_OPT, "=<Work Dir>",
      "Working directory of the tool. The tool will create a " +\
      "directory '<Work Dir>/NGAS_ARCHIVE_TOOL' directory, where it will " +\
      "store its house-keeping files."],
@@ -178,7 +178,7 @@ def getDbmName(optDic):
     info(4,"Entering getDbmName() ...")
     dbmName = os.path.normpath("%s/%s/%s.bsddb" %\
                                (optDic["workDir"][NGAS_OPT_VAL],
-                                NGAS_ARCH_TOOL_WD, 
+                                NGAS_ARCH_TOOL_WD,
                                 optDic["id"][NGAS_OPT_VAL]))
     info(4,"Leaving getDbmName()")
     return dbmName
@@ -194,7 +194,7 @@ def _scanDir(srcDir,
     srcDir:         Directory to scan for matching files (string).
 
     recursive:      Traverse the directory tree recursively (integer/0|1).
-    
+
     fileExtList:    List with extensions to take into account (list).
 
     Returns:        List with ngamsFileInfo objects for matching files (list).
@@ -225,7 +225,7 @@ def _scanDir(srcDir,
     info(4,"Leaving _scanDir()")
     return fileInfoList
 
-    
+
 def scanDirs(srcDir,
              recursive,
              fileExts):
@@ -235,9 +235,9 @@ def scanDirs(srcDir,
     will traverse the directories recursively.
 
     srcDir:     Source directory (starting point for the scan) (string).
-    
+
     recursive:  Traverse the directories recursively (integer/0|1).
-    
+
     fileExts:   Comma separated list of file extensions to consider (string).
 
     Returns:    List with ngamsFileInfo objects containing info about the
@@ -249,7 +249,7 @@ def scanDirs(srcDir,
     fileExtList = _scanDir(srcDir, recursive, fileExtList)
     info(4,"Leaving scanDirs()")
     return fileExtList
-        
+
 
 def listFiles(optDic,
               fileInfoList):
@@ -293,10 +293,10 @@ def checkFile(dbmObj,
     is returned, otherwise 0 is returned.
 
     dbmObj:          DBM containing info about the processing (ngamsDbm).
-    
+
     clientObj:       Instance of ngamsPClient used to communicate with the
                      remote server (ngamsPClient).
-    
+
     fileInfoObj:     Instance of ngamsFileInfo containing the status of the
                      source file (ngamsFileInfo).
 
@@ -338,7 +338,7 @@ def checkFile(dbmObj,
             notice(1,msg % (diskId, fileId, fileVer, filename))
         dbmEntry[2] = checkStatObj
         dbmObj.add(filename, dbmEntry)
-        
+
     info(4,"Leaving checkFile()")
 
 
@@ -386,11 +386,11 @@ def genReport(dbmObj):
             removed = "NOT REMOVED"
         report += format % (filename, fileId, str(fileVer), checked, removed)
     report += 165 * "-" + "\n"
-           
+
     info(4,"Leaving genReport()")
     return report
- 
- 
+
+
 def execute(optDic):
     """
     Carry out the tool execution.
@@ -414,7 +414,7 @@ def execute(optDic):
 
     # Open the DBM.
     dbm = ngamsDbm.ngamsDbm(getDbmName(optDic), writePerm=1, autoSync=1)
-    
+
     # Scan source directory.
     fileInfoList = scanDirs(optDic["srcDir"][NGAS_OPT_VAL],
                             optDic["recursive"][NGAS_OPT_VAL],
@@ -439,7 +439,7 @@ def execute(optDic):
         (optDic["cleanUp"][NGAS_OPT_VAL])):
         client = ngamsPClient.ngamsPClient().\
                  parseSrvList(optDic["servers"][NGAS_OPT_VAL])
-    
+
     # Archive files?
     if (optDic["archive"][NGAS_OPT_VAL]):
         info(1,"Archiving the files found ...")
@@ -529,7 +529,7 @@ if __name__ == '__main__':
         checkCreateWorkDir(optDic)
     except Exception, e:
         print "\nProblem executing the tool:\n\n%s\n" % str(e)
-        sys.exit(1) 
+        sys.exit(1)
     if (getDebug()):
         execute(optDic)
         rmFile(getLockFile(optDic))
@@ -542,6 +542,6 @@ if __name__ == '__main__':
             if (str(e) == "0"): sys.exit(0)
             print "\nProblem executing the tool:\n\n%s\n" % str(e)
             sys.exit(1)
-                  
+
 
 # EOF

@@ -26,7 +26,7 @@
 # cwu      2013/02/25  Created
 #
 """
-This plug-in command  explicitly triggers subscriptionThread. 
+This plug-in command  explicitly triggers subscriptionThread.
 
 Existing triggering mechanisms include:
 1. ngas server startup
@@ -36,7 +36,7 @@ Existing triggering mechanisms include:
 However, the above three triggering methods cannot explicitly trigger files in the backlog.
 Backlog files are not re-tried unless other trigger mechanisms are used, which sometimes is
 not desirable. For example, after we fixed the problem preventing files from being delivered,
-we simply want to re-deliver these files from the backlog without having to 
+we simply want to re-deliver these files from the backlog without having to
 re-subscribe, re-archive, or re-start the server
 
 """
@@ -45,16 +45,16 @@ from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_TEXT_MT
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
-    Handle the trigger subscription Command. 
-        
+    Handle the trigger subscription Command.
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     if (reqPropsObj.hasHttpPar("subscr_id")):

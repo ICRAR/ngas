@@ -56,7 +56,7 @@ def correctUsage():
           "-port <NG/AMS port> -l <log file> " +\
           "-wd <working dir> [-v <level>]\n"
 
-        
+
 if __name__ == '__main__':
     """
     Main program archiving NG/AMS log files.
@@ -92,7 +92,7 @@ if __name__ == '__main__':
              os._exit(1)
         idx += 1
     setLogCond(0, "", 0, "", logLevel)
- 
+
     # Check input parameters.
     if ((host == "") or (port == -1) or (logFile == "") or (workingDir == "")):
         correctUsage()

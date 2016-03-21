@@ -51,9 +51,9 @@ Files Detected:             30
 
 File ID                          Version      Copies
 -------------------------------- -------      ------
-MIDI.2003-10-07T04:50:08.496     1            2     
-MIDI.2003-10-05T22:15:15.000     1            2     
-MIDI.2003-10-05T23:17:51.000     1            2     
+MIDI.2003-10-07T04:50:08.496     1            2
+MIDI.2003-10-05T22:15:15.000     1            2
+MIDI.2003-10-05T23:17:51.000     1            2
 MIDI.2003-10-06T07:09:49.662     1            2
 ...
 
@@ -88,11 +88,11 @@ def loadFileList(fileListName):
     fileBuf = fo.read()
     fo.close()
     fileLines = fileBuf.split("\n")
-   
+
     if (fileBuf.find("REMDISK STATUS ERROR REPORT") != -1):
         print "ERROR: Re-implement this part"
         return []
-        
+
         fileRefList = []
         idx = 0
         noOfLines = len(fileLines)
@@ -127,7 +127,7 @@ def cloneFileList(host,
                      informed about the actions carried out, or the actions
                      that would be carried out if executing the command
                      (integer/0|1).
-                   
+
     Returns:         Void.
     """
     fileRefList = loadFileList(fileListName)
@@ -138,7 +138,7 @@ def cloneFileList(host,
     for fileInfo in fileRefList:
         diskId  = fileInfo[0]
         fileId  = fileInfo[1]
-        fileVer = fileInfo[2] 
+        fileVer = fileInfo[2]
         msg = "Cloning file: %s/%s/%s" % (str(diskId),str(fileId),str(fileVer))
         sys.stdout.write(msg)
         tmpMsg = " - Status: "
@@ -183,8 +183,8 @@ def cloneFileList(host,
     if (notifEmail):
         ngasUtilsLib.sendEmail("ngasCloneFileList: FILE CLONE REPORT",
                                notifEmail, report)
-     
-        
+
+
 
 def correctUsage():
     """
@@ -198,7 +198,7 @@ def correctUsage():
            "[-accessCode <Code>] [-notifEmail <Email List>]\n"
     return buf
 
-  
+
 if __name__ == '__main__':
     """
     Main function to invoke the tool.
@@ -233,7 +233,7 @@ if __name__ == '__main__':
             idx += 1
         except Exception, e:
             print "\nProblem initializing Clone Tool: %s\n" %  str(e)
-            print correctUsage()  
+            print correctUsage()
             sys.exit(1)
 
     if (not notifEmail):
@@ -246,7 +246,7 @@ if __name__ == '__main__':
                    getParNgasRcFile(ngasUtilsLib.NGAS_RC_PAR_PORT))
     try:
         if (not fileListName):
-            print correctUsage()  
+            print correctUsage()
             raise Exception, "Incorrect command line parameter(s) given!"
         if (not accessCode):
             accessCode = ngasUtilsLib.input("Enter Access Code:")

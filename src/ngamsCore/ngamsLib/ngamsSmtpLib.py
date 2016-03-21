@@ -48,16 +48,16 @@ class ngamsSMTP(smtplib.SMTP):
                  port = 0):
         """
         Constructor method, invoking also the parent constructor.
-        
+
         host:    Host ID for the SMTP host (string).
-        
+
         port:    Port number for the SMTP host (integer).
         """
         smtplib.SMTP.__init__(self, host, port)
         self.__msgInFile = 0
         self.__dataFile  = None
 
-    
+
     def data(self,
              msg):
         """
@@ -96,7 +96,7 @@ class ngamsSMTP(smtplib.SMTP):
                     self.send(buf)
                 fo.close()
                 self.send(smtplib.CRLF + "." + smtplib.CRLF)
-                
+
             (code, msg) = self.getreply()
             if (self.debuglevel > 0): print "data:", (code, msg)
             return (code, msg)
@@ -123,15 +123,15 @@ class ngamsSMTP(smtplib.SMTP):
                 int(os.stat(self.__dataFile)[6])
                 options[i] = "size=" + str(os.stat(self.__dataFile)[6])
                 break
-        
+
         optionlist = ''
         if options and self.does_esmtp:
             optionlist = ' ' + ' '.join(options)
         self.putcmd("mail", "FROM:%s%s" % (smtplib.quoteaddr(sender),
                                            optionlist))
         return self.getreply()
-                
-                
+
+
     def sendMail(self,
                  fromAddr,
                  toAddrs,
@@ -144,17 +144,17 @@ class ngamsSMTP(smtplib.SMTP):
         a file, this can be indicated by setting msgInFile=1.
 
         fromAddr:      From mail address (string).
-        
+
         toAddrs:       To mail addresses as a comma separated list, or a list
                        of addresses (list/string).
-        
+
         msg:           Message to send or name of file where the data to send
                        is contained (string).
-        
+
         mailOptions:   Mail options - not used (list).
-        
+
         rcptOptions:   RCPT options - not used (list)
-        
+
         msgInFile:     Indicates if message to send is stored in a file
                        (integer/0|1).
 
@@ -173,7 +173,7 @@ if __name__ == '__main__':
     msg = "Subject:  TEST MESSAGE\n" +\
           "Content-Type: text/plain\n\n" +\
           "THIS IS A SMALL TEST!!"
-    
+
     srv = ngamsSMTP("smtphost.hq.eso.org")
     if (0):
         srv.sendMail("From: " + "jknudstr@eso.org",

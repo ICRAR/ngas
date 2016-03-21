@@ -57,7 +57,7 @@ def genReplyRetrieveFail(srvObj,
     indicated below with 'TEST:').
     """
     T = TRACE()
-    
+
     # Send back reply with the result queried.
     try:
         resObj = statusObjList[0].getResultObject(0)
@@ -105,7 +105,7 @@ class ngamsServerTestBrokSockRetrieve(ngamsServer.ngamsServer):
         from ngamsServer import ngamsRetrieveCmd
         ngamsRetrieveCmd.genReplyRetrieve = genReplyRetrieveFail
 
-        
+
 if __name__ == '__main__':
     """
     Main program executing the special test NG/AMS Server

@@ -119,16 +119,16 @@ class ngamsDbBase(ngamsDbCore.ngamsDbCore,
         server:              DB server name (string).
 
         db:                  DB name (string).
-        
+
         user:                DB user (string).
-        
+
         password:            DB password (string).
 
         createSnapshot:      Indicates if a DB Snapshot (temporary snapshot
                              files) should be created (integer/0|1).
 
         interface:           NG/AMS DB Interface Plug-In (string).
-        
+
         tmpDir:              Name of NGAS Temporary Directory (string).
 
         maxRetries:          Max. number of retries in case of failure
@@ -147,7 +147,7 @@ class ngamsDbBase(ngamsDbCore.ngamsDbCore,
                                          multipleConnections)
 
 
-    
+
 if __name__ == '__main__':
     """
     Main routine to make a connection to the DB.
@@ -163,5 +163,5 @@ if __name__ == '__main__':
     print "res1="+str(res1)
     #print db.diskInDb("DiskId-1-1--")
 
-    
+
 # EOF

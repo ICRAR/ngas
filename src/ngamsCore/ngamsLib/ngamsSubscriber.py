@@ -44,7 +44,7 @@ class ngamsSubscriber:
     """
     Class to handle/contain information about one Subscriber.
     """
-    
+
     def __init__(self,
                  hostId = "",
                  portNo = 0,
@@ -71,7 +71,7 @@ class ngamsSubscriber:
                setUrl(url).setId(url).setStartDate(startDate).\
                setFilterPi(filterPi).setFilterPiPars(filterPiPars).\
                setLastFileIngDate(lastFileIngDate)
-        
+
         self.setConcurrentThreads(1) # by default only uses 1 thread for each subscriber
         self._AND_DELIMIT = '____' # urllib.quote('&&')
         self._OR_DELIMIT = '----' # urllib.quote('||')
@@ -83,7 +83,7 @@ class ngamsSubscriber:
         Set the Host ID.
 
         id:         Host ID (string).
-        
+
         Returns:    Reference to object itself.
         """
         info(6,"Executing ngamsSubscriber.setHostId(): " + str(id))
@@ -94,7 +94,7 @@ class ngamsSubscriber:
     def getHostId(self):
         """
         Get the Host ID.
-        
+
         Returns:    Host ID (string).
         """
         return self.__hostId
@@ -129,7 +129,7 @@ class ngamsSubscriber:
         Set the Subscriber Priority.
 
         prio:       Priori (low number = high priority) (integer).
-        
+
         Returns:    Reference to object itself.
         """
         info(6,"Executing ngamsSubscriber.setPriority(): " + str(prio))
@@ -140,7 +140,7 @@ class ngamsSubscriber:
     def getPriority(self):
         """
         Get the Priority.
-        
+
         Returns:    Priority (integer).
         """
         return self.__priority
@@ -153,7 +153,7 @@ class ngamsSubscriber:
         up to the possible '?' is taken.
 
         id:         Subscriber ID or Subscriber URL (string).
-        
+
         Returns:    Reference to object itself.
         """
         info(6,"Executing ngamsSubscriber.setId(): " + str(id))
@@ -164,7 +164,7 @@ class ngamsSubscriber:
     def getId(self):
         """
         Get the Subscriber ID.
-        
+
         Returns:    Subscriber ID (string).
         """
         return self.__id
@@ -173,10 +173,10 @@ class ngamsSubscriber:
     def setUrl(self,
                url):
         """
-        Set the Subscriber URL. 
+        Set the Subscriber URL.
 
         url:        Subscriber URL (string).
-        
+
         Returns:    Reference to object itself.
         """
         info(6,"Executing ngamsSubscriber.setUrl(): " + str(url))
@@ -187,11 +187,11 @@ class ngamsSubscriber:
     def getUrl(self):
         """
         Get the Subscriber URL.
-        
+
         Returns:    Subscriber URL (string).
         """
         return self.__url
-    
+
     def getUrlList(self):
         """
         Get a list of URLs from self.__url, the order of list items depends on
@@ -201,13 +201,13 @@ class ngamsSubscriber:
         """
         url = self.getUrl()
         if (url.find(self._AND_DELIMIT) > -1):
-            urlList = url.split(self._AND_DELIMIT)    
+            urlList = url.split(self._AND_DELIMIT)
         elif (url.find(self._OR_DELIMIT) > -1):
             urlList = url.split(self._OR_DELIMIT)
             random.shuffle(urlList)
         else:
             urlList = [url]
-        
+
         return urlList
 
 
@@ -217,7 +217,7 @@ class ngamsSubscriber:
         Set the Subscription Start Date (ISO 8601).
 
         startDate:   Subscription start date (string).
-        
+
         Returns:     Reference to object itself.
         """
         info(6,"Executing ngamsSubscriber.setStartDate(): " + str(startDate))
@@ -234,7 +234,7 @@ class ngamsSubscriber:
         Set the  Subscription Start Date from seconds since epoch.
 
         startDateSecs:   Date in seconds since epoch (integer).
- 
+
         Returns:         Reference to object itself.
         """
         info(6,"Executing ngamsSubscriber.setStartDateFromSecs(): " +\
@@ -247,13 +247,13 @@ class ngamsSubscriber:
     def getStartDate(self):
         """
         Get the Subscription Start Date.
-        
+
         Returns:    Subscription Start Date (string).
         """
         return self.__startDate
-    
+
     def setConcurrentThreads(self, num_threads):
-        
+
         #info(3, "Got num_threads = %" % num_threads)
         if (num_threads == None or num_threads == ''):
             return self
@@ -261,7 +261,7 @@ class ngamsSubscriber:
         #if (num_threads > 0 and num_threads < 101):
         self.__concurthrds = num_threads
         return self
-    
+
     def getConcurrentThreads(self):
         return self.__concurthrds
 
@@ -272,7 +272,7 @@ class ngamsSubscriber:
         Set the Filter Plug-In.
 
         plugIn:      Filter Plug-In (string).
-        
+
         Returns:     Reference to object itself.
         """
         info(6,"Executing ngamsSubscriber.setFilterPi(): " + str(plugIn))
@@ -286,7 +286,7 @@ class ngamsSubscriber:
     def getFilterPi(self):
         """
         Get the Subscription Filter Plug-In.
-        
+
         Returns:    Name of Subscription Filter Plug-In (string).
         """
         return self.__plugIn
@@ -299,7 +299,7 @@ class ngamsSubscriber:
         '<par>=<val>,<par>=<val>,...'.
 
         plugInPars:    Filter Plug-In Parameters (string).
-        
+
         Returns:       Reference to object itself.
         """
         info(6,"Executing ngamsSubscriber.setFilterPiPars(): "+str(plugInPars))
@@ -313,7 +313,7 @@ class ngamsSubscriber:
     def getFilterPiPars(self):
         """
         Get the Subscription Filter Plug-In Parameters.
-        
+
         Returns:    Name of Subscription Filter Plug-In Parameters (string).
         """
         return self.__plugInPars
@@ -326,7 +326,7 @@ class ngamsSubscriber:
 
         lastFileIngDate:  File Ingestion Date of last file delivered
                           (string/ISO 8601).
-        
+
         Returns:          Reference to object itself.
         """
         info(6,"Executing ngamsSubscriber.setLastFileIngDate(): " +\
@@ -345,7 +345,7 @@ class ngamsSubscriber:
         Set the Last File Ingestion Date from seconds since epoch.
 
         dateSecs:  Date in seconds since epoch (integer).
- 
+
         Returns:   Reference to object itself.
         """
         info(6,"Executing ngamsSubscriber.setLastFileIngDateFromSecs(): " +\
@@ -362,13 +362,13 @@ class ngamsSubscriber:
     def getLastFileIngDate(self):
         """
         Get the the File Ingestion Date.
-        
+
         Returns:     File Ingestion Date of last file delivered
                      (string/ISO 8601).
         """
         return self.__lastFileIngDate
 
-    
+
     def unpackSqlResult(self,
                         sqlResult):
         """
@@ -381,7 +381,7 @@ class ngamsSubscriber:
         Returns:     Reference to object itself.
         """
         T = TRACE()
-        
+
         self.\
                setHostId(sqlResult[0]).\
                setPortNo(sqlResult[1]).\
@@ -488,6 +488,6 @@ class ngamsSubscriber:
         tmpSubscrEl.setAttribute("FilterPlugIn", self.getFilterPi())
         tmpSubscrEl.setAttribute("FilterPlugInPars", self.getFilterPiPars())
         return tmpSubscrEl
-        
+
 
 # EOF

@@ -53,7 +53,7 @@ import ngasUtils, ngasUtilsLib
 
 setLogCond(0, "NGASLog", 0, "", 0)
 
-     
+
 def checkFileList(host,
                   port,
                   fileListFile,
@@ -64,9 +64,9 @@ def checkFileList(host,
     Command to the specified NG/AMS Server.
 
     host:             Host name of remote NG/AMS Server (string).
-    
+
     port:             Port number used by remote NG/AMS Server (integer).
-    
+
     fileListFile:     File containing list of Files IDs for files
                       to check (string).
 
@@ -74,7 +74,7 @@ def checkFileList(host,
                       informed about the actions carried out, or the actions
                       that would be carried out if executing the command
                       (integer/0|1).
-                      
+
     ignoreDiskId:     Ignore the Disk ID of the file, just check that
                       one such file is available (integer/0|1).
 
@@ -109,11 +109,11 @@ def checkFileList(host,
         msg += status
         report += msg + "\n"
     report += 100 * "-" + "\n"
-    print 100 * "-" + "\n"    
+    print 100 * "-" + "\n"
     if (notifEmail):
         ngasUtilsLib.sendEmail("ngasCheckFileList: FILE CHECK REPORT",
                                notifEmail, report)
-       
+
 
 def correctUsage():
     """
@@ -156,7 +156,7 @@ if __name__ == '__main__':
         elif (par == "-IGNOREDISKID"):
             ignoreDiskId = 1
         else:
-            correctUsage()  
+            correctUsage()
             sys.exit(1)
         idx += 1
 
@@ -171,7 +171,7 @@ if __name__ == '__main__':
 
     try:
         if (not fileListFile):
-            print correctUsage()  
+            print correctUsage()
             raise Exception, "Incorrect command line parameter(s) given!"
         checkFileList(host, port, fileListFile, notifEmail, ignoreDiskId)
     except Exception, e:

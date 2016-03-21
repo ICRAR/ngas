@@ -63,7 +63,7 @@ _testPars = [["_startTime", time.time(), "BUILT-IN",
              ["DB", None, "OPTIONAL",
               "DB connection given in the format: <Srv>:<DB>:<User>:<Pwd>. " +\
               "If given, the files 'archived' will be registered in the " +\
-              "DB as well as in the DB Snapshot."],            
+              "DB as well as in the DB Snapshot."],
              ["MOUNTPOINT", None, "MANDATORY",
               "Mount point of the disk. The disk should be mounted when " +\
               "running the tool."],
@@ -157,7 +157,7 @@ def createFitsFiles(testParDic):
     Returns:   Void.
     """
     from ngamsPlugIns import ngamsFitsPlugIn
-    
+
     filesPerDay = 10000  # Max. number of files to generate per day.
     baseFile = testParDic["BASEFILE"]
     ext = baseFile.split(".")[-1]
@@ -234,7 +234,7 @@ def createFitsFiles(testParDic):
             fileId = "%s.%s" % (insId, PccUtTime.TimeStamp(baseTimeMjd).\
                                 getTimeStamp())
             isoTime = fileId[(fileId.find(".") + 1):]
-            dateDir = string.split(isoTime, "T")[0]            
+            dateDir = string.split(isoTime, "T")[0]
             relPath = "saf/%s/1" % dateDir
             relFilename = "%s/%s.fits" % (relPath, fileId)
             if (ext != "fits"): relFilename += "." + ext
@@ -253,8 +253,8 @@ def createFitsFiles(testParDic):
                 os.system("cp %s %s" % (baseFile, complFilename))
             else:
                 os.system("ln -s %s %s" % (baseFile, complFilename))
-            
-            # Update DB Snapshot Info.            
+
+            # Update DB Snapshot Info.
             fileInfoList = 16 * [None]
             fileInfoList[ngamsDb.NGAS_FILES_DISK_ID] = diskId
             fileInfoList[ngamsDb.NGAS_FILES_FILE_NAME] = relFilename
@@ -272,7 +272,7 @@ def createFitsFiles(testParDic):
             fileInfoList[ngamsDb.NGAS_FILES_CREATION_DATE] = ingestionTime
             updateDbSnapshot(dbSnapshotDbm, fileInfoList)
             del fileInfoList
-            
+
             # Update DB if requested.
             if (dbCon):
                 fileInfoObj = ngamsFileInfo.ngamsFileInfo().\
@@ -313,7 +313,7 @@ def createVolume(testParDic):
     Returns:     Void.
     """
     info(4,"Entering createVolume() ...")
-    
+
     # Check that <Disk Mt Pt>/NgasDiskInfo is found. I.e., that this is an
     # already registered NGAS Disk.
     ngasDiskInfo = os.path.normpath("%s/NgasDiskInfo" %
@@ -334,14 +334,14 @@ def createVolume(testParDic):
         raise Exception, "Unsupported file format!"
     info(4,"Leaving createVolume()")
 
-  
+
 if __name__ == '__main__':
     """
     Main function to execute the tool.
     """
     setDebug(1)
     setLogCond(0, "", 0, "", 1)
-                    
+
     # Parse input parameters.
     testParDic = testParDic()
     idx = 1
@@ -366,12 +366,12 @@ if __name__ == '__main__':
             idx += 1
         except Exception, e:
             print "\nProblem executing the tool: %s\n" % str(e)
-            print correctUsage()  
+            print correctUsage()
             sys.exit(1)
     try:
         if ((not testParDic["BASEFILE"]) or (not testParDic["MOUNTPOINT"]) or
             (not testParDic["NOOFFILES"])):
-            print correctUsage() 
+            print correctUsage()
             raise Exception, "Incorrect/missing command line parameter(s)!"
         startTime = time.time()
         createVolume(testParDic)

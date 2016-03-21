@@ -49,7 +49,7 @@ class ngamsSrvTestKillAfterTmpReqPropFile(ngamsServer.ngamsServer):
         """
         ngamsServer.ngamsServer.__init__(self)
 
-    
+
     def test_AfterCreateTmpPropFile(self):
         """
         Sub-class of ngamsServer killing itself after creating Temp. Req.
@@ -58,7 +58,7 @@ class ngamsSrvTestKillAfterTmpReqPropFile(ngamsServer.ngamsServer):
         self.killServer()
         sys.exit(0)
 
- 
+
 if __name__ == '__main__':
     """
     Main program executing the test NG/AMS Server

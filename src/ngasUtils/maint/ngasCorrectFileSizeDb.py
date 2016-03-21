@@ -122,7 +122,7 @@ def checkCorrectFileSizeDb(diskId,
         ngasUtilsLib.sendEmail("FILE SIZE CHECK/CORRECTION REPORT",
                                notifEmail, notifMsg, "text/plain",
                                "FILE-SIZE-CHECK-REP-%s" % diskId)
-                                                                     
+
 
 def correctUsage():
     """
@@ -135,7 +135,7 @@ def correctUsage():
            "[-accessCode <Code>] [-notifEmail <Email List>]\n"
     return buf
 
-  
+
 if __name__ == '__main__':
     """
     Main function to invoke the tool.
@@ -165,7 +165,7 @@ if __name__ == '__main__':
             idx += 1
         except Exception, e:
             print "\nProblem initializing tool: %s\n" %  str(e)
-            print correctUsage()  
+            print correctUsage()
             sys.exit(1)
     if (not notifEmail):
         notifEmail = ngasUtilsLib.\
@@ -173,7 +173,7 @@ if __name__ == '__main__':
     if (not accessCode): accessCode = ngasUtilsLib.input("Enter Access Code:")
     try:
         if (not diskId):
-            print correctUsage()  
+            print correctUsage()
             raise Exception, "Incorrect command line parameter(s) given!"
         ngasUtilsLib.checkAccessCode(accessCode)
         checkCorrectFileSizeDb(diskId, correct, notifEmail)

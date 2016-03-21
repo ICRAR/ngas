@@ -90,7 +90,7 @@ def changeDiskLabel(diskId,
         else:
             choice = ngasUtilsLib.input("Is this correct (Y/N) [N]?").upper()
             if (choice == "Y"): break
-            
+
     print "Changing Disk Label from %s to %s ..." %\
           (orgDiskLabel, newDiskLabel)
 
@@ -115,7 +115,7 @@ def changeDiskLabel(diskId,
     print("\nPut the given disk Online/reboot the host in " +\
           "which the disk is inserted."
           "\n\nCheck the disk info in the NGAS WEB Interfaces!\n")
-    
+
     notifEmail = ngasUtilsLib.\
                  getParNgasRcFile(ngasUtilsLib.NGAS_RC_PAR_NOTIF_EMAIL)
     if (notifEmail):
@@ -134,7 +134,7 @@ def correctUsage():
           "[-accessCode <Code>] [-newLabel <Label>] [-execute]\n\n"
     return buf
 
-  
+
 if __name__ == '__main__':
     """
     Main function to execute the tool.
@@ -170,14 +170,14 @@ if __name__ == '__main__':
             idx += 1
         except Exception, e:
             print "\nProblem executing the tool: %s\n" % str(e)
-            print correctUsage()  
+            print correctUsage()
             sys.exit(1)
     if (notifEmail == None):
         notifEmail = ngasUtilsLib.\
                      getParNgasRcFile(ngasUtilsLib.NGAS_RC_PAR_NOTIF_EMAIL)
     try:
         if (not diskId):
-            print correctUsage()  
+            print correctUsage()
             raise Exception, "Incorrect command line parameter(s) given!"
         if (not accessCode):
             accessCode = ngasUtilsLib.input("Enter Access Code:")

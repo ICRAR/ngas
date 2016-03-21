@@ -50,14 +50,14 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                        subscrId):
         """
         Check if the Subscriber with the given ID is registered in the DB.
-    
+
         subscrId:    Subscriber ID (string).
-        
+
         Returns:     1 = Subscriber registered, 0 = Subscriber not
                      registered (integer).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT subscr_id FROM ngas_subscribers WHERE " +\
                    "subscr_id='" + subscrId + "'"
         res = self.query(sqlQuery)
@@ -101,7 +101,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                     (list/list).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT " + ngamsDbCore.getNgasSubscribersCols() +\
                    " FROM ngas_subscribers ns"
         if ((subscrId != "") or (hostId != "")): sqlQuery += " WHERE "
@@ -180,7 +180,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                 self.relDbSem()
             except Exception, e:
                 self.relDbSem()
-                raise Exception, e                  
+                raise Exception, e
 
             # Check if the entry already exists. If yes update it, otherwise
             # insert a new element.
@@ -216,7 +216,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
             res = self.query(sqlQuery)
             self.triggerEvents()
             return addedEntry
-        except Exception, e:   
+        except Exception, e:
             raise e
 
 
@@ -230,14 +230,14 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         Returns:    Reference to object itself.
         """
         T = TRACE()
-        
+
         try:
             sqlQuery = "DELETE FROM ngas_subscribers WHERE subscr_id='" +\
                        subscrId + "'"
             self.query(sqlQuery)
             self.triggerEvents()
             return self
-        except Exception, e:   
+        except Exception, e:
             raise e
 
 
@@ -257,11 +257,11 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         hostId:         Host name of Subscriber host (string).
 
         portNo:         Port number used by Subscriber host (integer).
-                            
+
         Returns:        List with Subscriber status (list/tuple/string).
         """
         T = TRACE()
-        
+
         if (not subscrIds):
             return []
         sqlQuery = "SELECT subscr_id, last_file_ingestion_date " +\
@@ -307,15 +307,15 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         portNo:          Port number used by Data Provider concerned (integer).
 
         subscrId:        Subscriber ID (string).
-        
+
         fileId:          File ID (string).
-        
+
         fileVersion:     File Version (string).
 
         Returns:         1 = file found, 0 = file no found (integer).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT file_id FROM ngas_subscr_back_log " +\
                    "WHERE host_id='" + hostId + "' " +\
                    "AND srv_port=" + str(portNo) + " " +\
@@ -343,14 +343,14 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         Update the status (and comment) of a file in the persistent queue
         given its primary key
         """
-        
+
         sqlQuery = "UPDATE ngas_subscr_queue SET status = %d " % status
         sqlQuery += ", status_date = '%s' " % status_date
         if (comment):
             sqlQuery += ", comment = '%s' " % comment
         sqlQuery += "WHERE subscr_id = '%s' AND file_id = '%s' AND file_version = %d AND disk_id = '%s'" % (subscrId, fileId, fileVersion, diskId)
         self.query(sqlQuery)
-        
+
     def updateSubscrQueueEntryStatus(self, subscrId, oldStatus, newStatus):
         """
         change the status from old to new for files belonging to a subscriber
@@ -399,14 +399,14 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
 
         subscrUrl:       Susbcriber URl to where the files are delivered
                          (string).
-        
+
         subscrId:        Subscriber ID (string).
-        
+
         fileId:          File ID (string).
 
         fileName:        Filename, i.e., name of file as stored in the
                          Subscription Back-Log Area (string).
-        
+
         fileVersion:     File Version (integer).
 
         ingestionDate:   File Ingestion Date (string/ISO 8601).
@@ -424,7 +424,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                 self.relDbSem()
             except Exception, e:
                 self.relDbSem()
-                raise Exception, e             
+                raise Exception, e
             if (not self.subscrBackLogEntryInDb(hostId, portNo, subscrId,
                                                 fileId, fileVersion)):
                 sqlQuery = "INSERT INTO ngas_subscr_back_log " +\
@@ -439,21 +439,21 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                            ", '" + ingDate + "', '" + format + "')"
                 self.query(sqlQuery)
                 self.triggerEvents()
-        except Exception, e:   
+        except Exception, e:
             raise e
 
     def delSubscrBackLogEntries(self, hostId, portNo, subscrId):
         """
         Delete all entries to be delivered to a subscriber with subscrId
-        
+
         hostId:        Host ID for NGAS host where Data Provider concerned
                        is running (string).
         portNo:        Port number used by Data Provider concerned (integer).
         subscrId:      Subscriber ID (string).
-        
+
         """
         T = TRACE()
-        
+
         sqlQuery = "DELETE FROM ngas_subscr_back_log WHERE subscr_id = '%s' AND host_id = '%s' AND srv_port = %d" % (subscrId, hostId, portNo)
         try:
             res = self.query(sqlQuery)
@@ -474,20 +474,20 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                          is running (string).
 
         portNo:          Port number used by Data Provider concerned (integer).
- 
+
         subscrId:        Subscriber ID (string).
-        
+
         fileId:          File ID (string).
-        
+
         fileVersion:     File Version (string).
-        
+
         fileName:        Filename, i.e., name of file as stored in the
                          Subscription Back-Log Area (string).
 
         Returns:         Void.
         """
         T = TRACE()
-        
+
         try:
             if (self.subscrBackLogEntryInDb(hostId, portNo, subscrId, fileId,
                                             fileVersion)):
@@ -499,7 +499,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                            "AND file_version=" + str(fileVersion)
                 res = self.query(sqlQuery)
                 self.triggerEvents()
-        except Exception, e:   
+        except Exception, e:
             raise e
 
 
@@ -511,7 +511,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         Date of the last file ingested.
 
         subscrId:       Subscriber ID (string).
-        
+
         fileIngDate:    File Ingestion Date (string/ISO 8601).
 
         Returns:        Void.
@@ -532,21 +532,21 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                        "last_file_ingestion_date < '" + ingDate + "'"
             self.query(sqlQuery)
             self.triggerEvents()
-        except Exception, e:   
+        except Exception, e:
             raise e
 
     def getSubscrBackLogBySubscrId(self, subscrId):
         """
-        Get all entries in the Susbscriber Back-log Table  
+        Get all entries in the Susbscriber Back-log Table
         to be delivered to a specific subscriber
-        
+
         subscrId    Subscriber Id
-        
+
         Returns     List containing sublist with the following information:
                     [[<file_id>, <file_version>], ...]
         """
         T = TRACE()
-        
+
         # need to join ngas_file table to get the disk id!!!
         sqlQuery = "SELECT a.file_id, a.file_version, b.disk_id FROM ngas_subscr_back_log a, ngas_files b " + \
                     "WHERE a.subscr_id = '%s' AND a.file_id = b.file_id AND a.file_version = b.file_version" % subscrId
@@ -559,16 +559,16 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                 newItem = [fi[0]] + [fi[1]] + [fi[2]]
                 procList.append(newItem)
             return procList
-    
+
     def getSubscrBackLogCount(self, hostId, portNo):
         """
         Read the number of entries in the Subscriber Back-Log Table 'belonging'
         to a specific Data Provider/Mover
 
         hostId:      Host ID of Data Provider (string).
-        
+
         portNo:      Port number used by Data Provider (integer).
-        
+
         Returns:     The number of records (integer)
         """
         sqlQuery = "SELECT COUNT(*) FROM ngas_subscr_back_log WHERE host_id = '%s' AND srv_port = %d" % (hostId, portNo)
@@ -582,13 +582,13 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
     def getSubscrQueueStatus(self, subscrId, fileId, fileVersion, diskId):
         sqlQuery = "SELECT status, comment FROM ngas_subscr_queue " +\
                     "WHERE subscr_id = '%s' AND file_id = '%s' AND file_version = %d AND disk_id = '%s'" % (subscrId, fileId, fileVersion, diskId)
-        
+
         res = self.query(sqlQuery, ignoreEmptyRes=0)
         if (res == [[]] or len(res[0]) == 0):
             return None
         else:
             return res[0][0] #get the first row only
-        
+
     def getSubscrQueueEntriesByFileInfo(self, subscrId, fileId, fileVersion = None, diskId = None, status = None):
         """
         Get the full queue records by the file info
@@ -609,19 +609,19 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                     cc += 1
                 sqlQuery += ") "
             else:
-                sqlQuery += "AND status = %d " % status 
-        
+                sqlQuery += "AND status = %d " % status
+
         res = self.query(sqlQuery, ignoreEmptyRes=0)
         if (res == [[]]):
             return []
         else:
             return res[0]
-    
+
     def getSubscrQueue(self, subscrId, status = None):
         """
-        Read all entries in the ngas_subscr_queue table 'belonging' to a 
-        specific subscriber, and where the status meets the "status" condition 
-        
+        Read all entries in the ngas_subscr_queue table 'belonging' to a
+        specific subscriber, and where the status meets the "status" condition
+
         subscrId:    subscriber Id (string)
         status:      the status of current file delivery (int or None)
         """
@@ -630,7 +630,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
 
         sqlQuery = "SELECT a.file_id, a.file_name, a.file_version, a.ingestion_date, a.format, a.disk_id " +\
                     "FROM ngas_subscr_queue a WHERE a.subscr_id = '%s' " % subscrId
-        
+
         if (status):
             if (type(status) is list):
                 sqlQuery += "AND ("
@@ -643,15 +643,15 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                 sqlQuery += ") "
             else:
                 sqlQuery += "AND a.status = %d " % status
-        
+
         #sqlQuery += "AND a.disk_id = b.disk_id"
-        
+
         res = self.query(sqlQuery, ignoreEmptyRes=0)
         if (res == [[]]):
             return []
         else:
             return res[0]
-            
+
     def getSubscrBackLog(self,
                          hostId,
                          portNo,
@@ -661,7 +661,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         to a specific Data Provider, and return these in a list with sub-lists.
 
         hostId:      Host ID of Data Provider (string).
-        
+
         portNo:      Port number used by Data Provider (integer).
 
         Returns:     List containing sub-list with the following information:
@@ -675,7 +675,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                      (list/list).
         """
         T = TRACE()
-        
+
         if (selectDiskId):
             sqlQuery = "SELECT a.subscr_id, a.subscr_url, a.file_id, a.file_name, a.file_version, a.ingestion_date, a.format, b.disk_id " +\
                         "FROM ngas_subscr_back_log a, ngas_files b WHERE a.host_id = '"  + hostId + "' AND a.srv_port = " + str(portNo) +\
@@ -698,7 +698,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                 else:
                     ingDate = PccUtTime.TimeStamp().\
                               initFromSecsSinceEpoch(fi[5]).getTimeStamp()
-                newItem = list(fi[0:5]) + [ingDate] + [fi[6]] 
+                newItem = list(fi[0:5]) + [ingDate] + [fi[6]]
                 if (selectDiskId):
                     newItem += [fi[7]]
                 procList.append(newItem)
@@ -713,13 +713,13 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         Buffered file.
 
         fileId:       File ID (string).
-        
+
         fileVersion:  File Version (string).
 
         Returns:      List with Subscriber IDs (if any) (list/string).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT subscr_id FROM ngas_subscr_back_log " +\
                    "WHERE file_id='" + fileId + "' AND " +\
                    "file_version=" + str(fileVersion)

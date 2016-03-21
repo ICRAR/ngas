@@ -58,7 +58,7 @@ class ngas_test_tpl(ngasUtilsTestSuite):
         """
         Synopsis:
         ...
-        
+
         Description:
         ...
 

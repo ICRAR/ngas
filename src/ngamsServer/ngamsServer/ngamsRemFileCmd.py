@@ -87,7 +87,7 @@ def _remFile(srvObj,
                            tmpFileInfo[ngamsDbCore.SUM1_VERSION],
                            tmpFileInfo[ngamsDbCore.SUM1_DISK_ID]))
             fileListDbm.add(str(key), tmpFileInfo)
-    fileListDbm.sync()     
+    fileListDbm.sync()
     del tmpFileSumDbm
 
     # Check if the files selected for deletion are available within the NGAS
@@ -148,7 +148,7 @@ def _remFile(srvObj,
                     infoMsg = genLog("NGAMS_INFO_DEL_FILE",
                                      [diskId, fileId, fileVer])
                     info(3,infoMsg)
-                    successDelCount += 1                    
+                    successDelCount += 1
                 except Exception, e:
                     failedDelCount += 1
                     errMsg = genLog("NGAMS_ER_DEL_FILE_DB",
@@ -163,7 +163,7 @@ def _remFile(srvObj,
                 errMsg = genLog("NGAMS_ER_DEL_FILE_DISK",
                                 [diskId, fileId, fileVer, str(e)])
                 warning(errMsg)
- 
+
     # Generate status.
     filesSelected = fileListDbm.getCount()
     infoMsg = genLog("NGAMS_INFO_FILE_DEL_STAT",
@@ -199,7 +199,7 @@ def remFile(srvObj,
 
       o diskId=="", fileId!="", fileVersion==-1:
         Not allowed.
-    
+
       o diskId=="", fileId!="", fileVersion!=-1:
         Not allowed.
 
@@ -209,7 +209,7 @@ def remFile(srvObj,
       o diskId!="", fileId=="", fileVersion!=-1:
         Not allowed
 
-    
+
     The function will not carry out the actual deletion of the selected
     files if the 'execute' parameter is set to 0. In this case a report
     with the items selected for deletion will be generated.
@@ -224,26 +224,26 @@ def remFile(srvObj,
 
     reqPropsObj:     Request Property object to keep track of actions done
                      during the request handling (ngamsReqProps).
-                    
+
     diskId:          ID of disk. It is not possible to specify a pattern,
                      must be exact ID (string).
-    
+
     fileId:          ID of file. It is possible to specify a file pattern
                      using wild cards (string).
-    
+
     fileVersion:     Version of file to delete. If not specified, all
                      files matching the Disk ID + File ID will be selected.
                      Otherwise it is possible to specify a single file for
                      deletion (integer).
-    
+
     execute:         If set to 0, only a report of the information that has
                      been selected for deletion is generated (integer/0|1).
 
     Returns:         Status object with a list of disks and corresponding
-                     files deleted (ngamsStatus). 
+                     files deleted (ngamsStatus).
     """
     T = TRACE()
-    
+
     tmpFilePat = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),
                                                   "REMFILE_CMD")
     try:
@@ -261,19 +261,19 @@ def handleCmdRemFile(srvObj,
                      httpRef):
     """
     Handle REMFILE command. See also 'handleRemFile()'.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
-    
+
     if (not srvObj.getCfg().getAllowRemoveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Remove"])
         error(errMsg)
@@ -296,7 +296,7 @@ def handleCmdRemFile(srvObj,
             errMsg = genLog("NGAMS_ER_REQ_HANDLING", ["Must provide proper " +\
                             "value for parameter: execute (0|1)"])
             raise Exception, errMsg
-        
+
     # Carry out the command.
     status = remFile(srvObj, reqPropsObj, diskId, fileId, fileVersion, execute)
 

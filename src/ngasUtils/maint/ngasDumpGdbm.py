@@ -74,7 +74,7 @@ def correctUsage():
     """
     return __doc__
 
- 
+
 def execute(optDic):
     """
     Carry out the tool execution.
@@ -96,7 +96,7 @@ def execute(optDic):
         key, obj = dbm.getNext()
         if (not key): break
         print "%s: %s" % (str(key), str(obj))
-        
+
 
 if __name__ == '__main__':
     """
@@ -104,6 +104,6 @@ if __name__ == '__main__':
     """
     optDic = parseCmdLine(sys.argv, getOptDic())
     execute(optDic)
-                  
+
 
 # EOF

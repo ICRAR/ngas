@@ -103,7 +103,7 @@ if __name__ == '__main__':
                 else:
                     print "Skipping handling of file: " + complFilename
                     continue
-    
+
         print "Handling file:", complFilename
         path = os.path.dirname(complFilename)
         targPath = os.path.normpath(targDir + "/" + path)

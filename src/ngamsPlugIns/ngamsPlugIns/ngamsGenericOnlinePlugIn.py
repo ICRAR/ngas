@@ -111,7 +111,7 @@ def ngamsGenericOnlinePlugIn(srvObj,
                 diskType = NGAS_VOL_INFO_IGNORE
             if (volInfoDic.has_key(NGAS_VOL_INFO_MANUFACT)):
                 manufact = volInfoDic[NGAS_VOL_INFO_MANUFACT]
-            else:  
+            else:
                 manufact = NGAS_VOL_INFO_IGNORE
             msg = "Registering volume with parameters: Disk ID: %s, " +\
                   "Device: %s, Port No: %s, Slot ID: %s, Mount Point: %s, "+\
@@ -145,13 +145,13 @@ if __name__ == '__main__':
     from ngamsLib import ngamsConfig, ngamsDb
 
     setLogCond(0, "", 0, "", 1)
-    
+
     if (len(sys.argv) != 2):
         print "\nCorrect usage is:\n"
         print "% python ngamsGenericOnlinePlugIn <NGAMS Cfg.>\n"
         sys.exit(0)
 
-    srvObj = ngamsServer.ngamsServer()  
+    srvObj = ngamsServer.ngamsServer()
     ngamsCfgObj = ngamsConfig.ngamsConfig().load(sys.argv[1])
     dbConObj = ngamsDb.ngamsDb(ngamsCfgObj.getDbServer(),
                                ngamsCfgObj.getDbName(),

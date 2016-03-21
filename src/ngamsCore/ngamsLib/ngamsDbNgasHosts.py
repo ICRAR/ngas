@@ -171,7 +171,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         Returns:       Reference to object itself.
         """
         T = TRACE()
-        
+
         sqlQuery = "INSERT INTO ngas_hosts (%s) VALUES (%s)"
         columns = ""
         values = ""
@@ -253,9 +253,9 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
                 except:
                     pass
             self.triggerEvents()
-        except Exception, e:   
+        except Exception, e:
             raise e
-            
+
 
     def reqWakeUpCall(self,
                       localHostId,
@@ -263,10 +263,10 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
                       wakeUpTime):
         """
         Request a Wake-Up Call via the DB.
-        
+
         wakeUpHostId:  Name of host where the NG/AMS Server requested for
                        the Wake-Up Call is running (string).
-        
+
         wakeUpTime:    Absolute time for being woken up (seconds since
                        epoch) (integer).
 
@@ -290,7 +290,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
             self.query(sqlQuery)
             self.triggerEvents()
             return self
-        except Exception, e:   
+        except Exception, e:
             raise e
 
 
@@ -311,7 +311,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
             self.query(sqlQuery)
             self.triggerEvents()
             return self
-        except Exception, e:   
+        except Exception, e:
             raise e
 
 
@@ -335,7 +335,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
             self.query(sqlQuery)
             self.triggerEvents()
             return self
-        except Exception, e:   
+        except Exception, e:
             raise e
 
 
@@ -371,11 +371,11 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
                   to be woken up:
 
                     (({host id}, {wake-up time (secs since epoch)}), ...)
-                    
+
                                                                 (list/tuple)
         """
         T = TRACE(5)
-        
+
         sqlQuery = "SELECT host_id, srv_req_wake_up_time from ngas_hosts " +\
                    "WHERE srv_req_wake_up_srv='" + hostId + "' " +\
                    "AND srv_suspended=1"
@@ -427,26 +427,26 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         hostId:          ID of NGAS Host to update statistics for (string).
 
         start:           Start of checking in seconds since epoch (integer).
-        
+
         remain:          Estimated remaining time in seconds (integer).
 
         estimTime:       Estimated total time in seconds to complete the check
                          cycle (integer)
-        
+
         rate:            Rate of checking in MB/s (float).
-        
+
         checkMb:         Amount of data to check in MB (float).
-        
+
         checkedMb:       Amount checked in MB (float).
-        
+
         checkFiles:      Number of files to check (integer).
-        
+
         checkedFiles:    Number of files checked (integer).
 
         Returns:         Reference to object itself.
         """
         T = TRACE()
-        
+
         try:
             self.takeDbSem()
             startDbTime = self.convertTimeStamp(start)

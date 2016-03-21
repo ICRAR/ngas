@@ -43,7 +43,7 @@ __doc__ = "\nNG/AMS DB TABLES:\n\n" +\
           "is contained. Each column in the table is documented. Also\n" +\
           "the SQL table creation statement is shown. From this the\n" +\
           "type and the default value for each column can be seen.\n\n"
-          
+
 for sqlScript in sqlScriptList:
     fo = open(sqlScript)
     script = pkg_resources.resource_string(__name__, sqlScript)
@@ -67,7 +67,7 @@ for sqlScript in sqlScriptList:
             while (1):
                 __doc__ += script[idx]
                 if (script[idx].find(")") == 0): break
-                idx += 1            
+                idx += 1
         idx += 1
 
 # EOF

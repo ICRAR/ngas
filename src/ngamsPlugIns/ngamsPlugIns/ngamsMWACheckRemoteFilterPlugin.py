@@ -28,7 +28,7 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      25/09/2012  Created
 """
-Contains a Filter Plug-In used to filter on the files that have already been delivered 
+Contains a Filter Plug-In used to filter on the files that have already been delivered
  to the remote destination
 """
 
@@ -43,7 +43,7 @@ def ngamsMWACheckRemoteFilterPlugin(srvObj,
                           fileId,
                           fileVersion = -1,
                           reqPropsObj = None):
-    
+
     """
     Example Filter Plug-In used to filter on a given mime-type. In case the
     file referenced has the mime-type as specified in the plug-in parameters,
@@ -53,7 +53,7 @@ def ngamsMWACheckRemoteFilterPlugin(srvObj,
 
     plugInPars:    Parameters to take into account for the plug-in
                    execution (string).
-   
+
     fileId:        File ID for file to test (string).
 
     filename:      Filename of (complete) (string).
@@ -61,12 +61,12 @@ def ngamsMWACheckRemoteFilterPlugin(srvObj,
     fileVersion:   Version of file to test (integer).
 
     reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
- 
+
     Returns:       0 if the file does not match, 1 if it matches the
                    conditions (integer/0|1).
     """
     match = 0
-    
+
     # Parse plug-in parameters.
     parDic = []
     pars = ""
@@ -82,20 +82,20 @@ def ngamsMWACheckRemoteFilterPlugin(srvObj,
         #raise Exception, errMsg
         alert(errMsg)
         return 1 # matched as if the filter does not exist
-    
+
     host = parDic["remote_host"]
     sport = parDic["remote_port"]
-    
+
     if (not sport.isdigit()):
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Invalid port number: " + sport
         alert(errMsg)
         return 1 # matched as if the filter does not exist
-    
+
     port = int(sport)
-        
+
     # Perform the matching.
     client = ngamsPClient.ngamsPClient(host, port)
-    
+
     try:
         rest = client.sendCmd(NGAMS_STATUS_CMD, 1, "", [["file_id", fileId]])
     except Exception, e:
@@ -103,15 +103,15 @@ def ngamsMWACheckRemoteFilterPlugin(srvObj,
                      "ngamsMWACheckRemoteFilterPlugin. Exception: " + str(e)
         alert(errMsg)
         return 1 # matched as if the filter does not exist
-    
-    
+
+
     info(5, "filter return status = " + rest.getStatus())
-    
+
     if (rest.getStatus().find(NGAMS_FAILURE) != -1):
         match = 1
-    
-    info(4, "filter match = " + str(match))    
-    return match    
+
+    info(4, "filter match = " + str(match))
+    return match
 
 
 # EOF

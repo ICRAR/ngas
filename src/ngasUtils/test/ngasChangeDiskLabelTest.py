@@ -71,7 +71,7 @@ def _invokeChangeDiskLabel(diskId,
     if (recvNotifEmail): flushEmailQueue()
     prepNgasResFile(cfgFile)
     cmd = "/opsw/packages/bin/ngasChangeDiskLabel -accessCode %s -diskId %s "+\
-          "-newLabel %s" 
+          "-newLabel %s"
     if (execute): cmd += " -execute"
     cmd = cmd % (accessCode, diskId, newLabel)
     stat, out = commands.getstatusoutput(cmd)
@@ -126,7 +126,7 @@ def _verifyEmailAndStdout(testSuiteObj,
         testSuiteObj.checkFilesEq(refStatFile, tmpStatFile,
                                   "Incorrect/missing " +\
                                   "notification email msg")
-            
+
 
 class ngasChangeDiskLabelTest(ngamsTestSuite):
     """
@@ -145,7 +145,7 @@ class ngasChangeDiskLabelTest(ngamsTestSuite):
         """
         Synopsis:
         Normal execution of the tool, change a Disk Label.
-        
+
         Description:
         The purpose of the test is to verify the standard behavior of the
         tool usage.
@@ -177,13 +177,13 @@ class ngasChangeDiskLabelTest(ngamsTestSuite):
         self.checkEqual(refVal, labelName,
                         "Incorrect new Disk Label: %s, expected: %s" %\
                         (labelName, refVal))
-                    
-    
+
+
     def test_AbnormalExec_1(self):
         """
         Synopsis:
         Change label to existing label.
-        
+
         Description:
         The purpose of the test is to verify that the tool detects if it is
         attempted to change the label of a disk ti a name already existing.
@@ -213,7 +213,7 @@ class ngasChangeDiskLabelTest(ngamsTestSuite):
         """
         Synopsis:
         Change label to an invalid label.
-        
+
         Description:
         The purpose of the test is to verify that the tool detects if it is
         attempted to change the label of a disk to an invalid label.
@@ -243,7 +243,7 @@ class ngasChangeDiskLabelTest(ngamsTestSuite):
         """
         Synopsis:
         Refer to non-existing disk.
-        
+
         Description:
         The purpose of the test is to verify that the tool detects if it is
         attempted to change the label of a non-existing disk.

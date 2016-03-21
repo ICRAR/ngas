@@ -56,7 +56,7 @@ def _genPars(parValList):
     for par, val in parValList: tmpParDic[par] = val
     tmpParDic["-status"] = ""
     return tmpParDic
-    
+
 
 def _execCClient(unpackXmlStat = 1,
                  pars = []):
@@ -101,7 +101,7 @@ class ngamsCClientTest(ngamsTestSuite):
     """
     Synopsis:
     Tests of NG/AMS CClient + NG/AMS C-API.
-    
+
     Description:
     The purpose of this Test Suite is to exercise the NG/AMS C-Client
     and thereby also the NG/AMS C-API.
@@ -114,12 +114,12 @@ class ngamsCClientTest(ngamsTestSuite):
     exercising different combination of command line options for the
     NG/AMS C-Client are missing.
     """
-   
+
     def test_StatusCmd_1(self):
         """
         Synopsis:
         Issue STATUS Command/basic (no parameters).
-        
+
         Description:
         Issue a STATUS Command via the C-Client (on the shell).
 
@@ -135,7 +135,7 @@ class ngamsCClientTest(ngamsTestSuite):
 
         Remarks:
         ...
-       
+
         """
         cfgObj, dbObj = self.prepExtSrv(8000)
         statObj = _execCClient(pars=[["-port", "8000"],
@@ -204,7 +204,7 @@ class ngamsCClientTest(ngamsTestSuite):
 
         Remarks:
         ...
-        
+
         """
         self.prepCluster("src/ngamsCfg.xml",
                          [[8000, None, None, getClusterName()],
@@ -245,7 +245,7 @@ class ngamsCClientTest(ngamsTestSuite):
 
         Remarks:
         ...
-        
+
         """
         self.prepCluster("src/ngamsCfg.xml",
                          [[8000, None, None, getClusterName()],
@@ -266,7 +266,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         Synopsis:
         Issue STATUS Command/disk_id.
-        
+
         Description:
         Test that the C-Client/API can handle STATUS Command with -diskId.
 
@@ -300,7 +300,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         Synopsis:
         Issue ARCHIVE Command via C-Client/API.
-        
+
         Description:
         The purpose of the test is to verify that the C-Client/API can
         handle properly an ARCHIVE Command.
@@ -322,7 +322,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         Synopsis:
         Issue CLONE Command to server.
-        
+
         Description:
         The purpose of this test is to check the proper handling of the
         CLONE Command through the C-Client/API.
@@ -343,7 +343,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         Synopsis:
         Issue REMDISK Command.
-        
+
         Description:
         ...
 
@@ -357,13 +357,13 @@ class ngamsCClientTest(ngamsTestSuite):
         TODO: To be implemented.
         """
         info(1,"TODO: test_RemDiskCmd_1()")
-                
+
 
     def test_RemFileCmd_1(self):
         """
         Synopsis:
         Issue REMFILE Command.
-        
+
         Description:
         ...
 
@@ -383,7 +383,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         Synopsis:
         Issue CHECKFILE Command.
-        
+
         Description:
         ...
 
@@ -397,8 +397,8 @@ class ngamsCClientTest(ngamsTestSuite):
         TODO: To be implemented.
         """
         info(1,"TODO: test_CheckfileCmd_1()")
-   
-  
+
+
     def test_RetrieveCmd_1(self):
         """
         Synopsis:
@@ -423,7 +423,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         Synopsis:
         Issue ARCHIVE Command/request times out.
-        
+
         Description:
         The purpose of the test is to check that a request that times out
         is handled properly by the C-Client/API and a proper error message
@@ -460,7 +460,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         Synopsis:
         Issue ARCHIVE Command/server crashes (broken socket connection).
-        
+
         Description:
         The purpose of the test is to verify the correct handling/behavior
         of the C-Client/API in the case the socket connection to the server
@@ -480,7 +480,7 @@ class ngamsCClientTest(ngamsTestSuite):
 
         Remarks:
         ...
-        
+
         """
         rmFile("tmp/reqCallBack_tmp")
         saveInFile("tmp/reqCallBack_tmp", "reqCallBack_SrvCrash1")
@@ -493,13 +493,13 @@ class ngamsCClientTest(ngamsTestSuite):
         refStatFile = "ref/ngamsCClientTest_test_ArchiveCmd_Err_2_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect handling " +\
                           "of crash of server in C-Client/API")
-        
+
 
     def test_ArchiveCmd_Err_3_1(self):
         """
         Synopsis:
         Handling of corrupted HTTP response.
-        
+
         Description:
         The purpose of the test is test that a corrupted HTTP response is
         properly handled by the C-Client/API.
@@ -522,7 +522,7 @@ class ngamsCClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        
+
         # TODO: From V4.0, this test case produces the error:
         #
         # Error Code:     -4
@@ -556,7 +556,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         Synopsis:
         Issue ARCHIVE Command/server sends back an empty HTTP response (='').
-        
+
         Description:
         The purpose of the test is test that a corrupted HTTP response is
         properly handled by the C-Client/API.
@@ -595,7 +595,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         Synopsis:
         Issue ARCHIVE Command/server sends back a nonsense HTTP response.
-        
+
         Description:
         The purpose of the test is test that a corrupted HTTP response is
         properly handled by the C-Client/API.
@@ -634,7 +634,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         Synopsis:
         Correct HTTP response, but illegal NG/AMS XML status document.
-        
+
         Description:
         The purpose of the test is to verify that the C-Client/API handles
         correctly the situation where an incorrectly formatted XML status
@@ -697,7 +697,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         Synopsis:
         Issue ARCHIVE Command/socket breaks while writing data on it.
-        
+
         Description:
         The purpose of the test is to verify that the C-API handles
         properly the situation where the socket connection breaks while
@@ -714,7 +714,7 @@ class ngamsCClientTest(ngamsTestSuite):
         - Verify that the proper error response is produced by the C-API.
 
         Remarks:
-        ...        
+        ...
         """
         rmFile("tmp/reqCallBack_tmp")
         saveInFile("tmp/reqCallBack_tmp", "reqCallBack_SrvCrash1")
@@ -739,7 +739,7 @@ class ngamsCClientTest(ngamsTestSuite):
 
         Description:
         The purpose of the test is to verify that the situation where a
-        Retrieve Request times out is correctly handled by the C-API. 
+        Retrieve Request times out is correctly handled by the C-API.
 
         Expected Result:
         After the specified timeout is reached, the appropriate error code
@@ -775,7 +775,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         Synopsis:
         Issue RETRIEVE Command/server dies during initial handling.
-        
+
         Description:
         Check that the situation where the server dies during the initial
         handling of a Retrieve Request is correctly handled by the C-API.
@@ -792,9 +792,9 @@ class ngamsCClientTest(ngamsTestSuite):
         - Issue a RETRIEVE Command to retrieve the archived file.
         - Verify that the proper output is produced by ngamsCClient indicating
           the problem.
-        
+
         Remarks:
-        ...        
+        ...
         """
         rmFile("tmp/reqCallBack_tmp")
         saveInFile("tmp/reqCallBack_tmp", "reqCallBack_SrvCrash2")
@@ -816,7 +816,7 @@ class ngamsCClientTest(ngamsTestSuite):
         Synopsis:
         Issue RETRIEVE Command/server dies (connection broken)
         while the server is sending the data across.
-        
+
         Description:
         The purpose of the test is to verify that the C-Client/API handle
         properly the situation where the socket connection where the server
@@ -836,7 +836,7 @@ class ngamsCClientTest(ngamsTestSuite):
           ngamsCClient.
 
         Remarks:
-        ...       
+        ...
         """
         self.prepExtSrv(srvModule="ngamsSrvTestBrokSockRetrieve")
         sendPclCmd(port=8888).archive("src/SmallFile.fits")
@@ -855,7 +855,7 @@ class ngamsCClientTest(ngamsTestSuite):
         """
         Synopsis:
         Test server multiplexing feature of the C-API/Client.
-        
+
         Description:
         The purpose of the test is to verify the proper functioning of the
         server context switching (multiplexing) provided by the C-API/Client.

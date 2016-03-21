@@ -45,37 +45,37 @@ def addSubscriber(srvObj,
     the Subscriber is also updated in the DB.
 
     srvObj:      Reference to NG/AMS Server object (ngamsServer).
-    
+
     subscrObj:   Subscriber Object (ngamsSubscriber).
-    
+
     Returns:     Void.
     """
     T = TRACE()
-    
+
     subscrObj.write(srvObj.getDb())
     #srvObj.getSubscriberDic()[subscrObj.getId()] = subscrObj
     srvObj.registerSubscriber(subscrObj)
     info(2,"Sucessfully added Susbcriber with ID: " + subscrObj.getId())
 
- 
+
 def handleCmdSubscribe(srvObj,
                        reqPropsObj,
                        httpRef):
     """
     Handle SUBSCRIBE Command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
-    
+
     """
     if (srvObj.getDataMoverOnlyActive() and len(srvObj.getSubscriberDic()) > 0):
         srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
@@ -113,7 +113,7 @@ def handleCmdSubscribe(srvObj,
                                                 filterPi, filterPiPars, subscrId=id)
     # supports concurrent file transfer, added by chen.wu@icrar.org
     if (reqPropsObj.hasHttpPar("concurrent_threads")):
-        concurthrds = reqPropsObj.getHttpPar("concurrent_threads")   
+        concurthrds = reqPropsObj.getHttpPar("concurrent_threads")
         subscrObj.setConcurrentThreads(concurthrds)
 
     # If the Start Date given in before the Last Ingestion Date, we

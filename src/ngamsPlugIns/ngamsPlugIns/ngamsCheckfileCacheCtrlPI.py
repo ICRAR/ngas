@@ -60,7 +60,7 @@ For 3. the plug-in parameters should look like this:
           ['host1_2_1:port1_2_1'; 'host1_2_2:port1_2_2'; ...]];
          [['host2_1_1:port2_1_1'; 'host2_1_2:port2_1_2'; ...];
           ['host2_2_1:port2_2_1'; 'host2_2_2:port2_2_2'; ...]]]
-          
+
 In this example two sets of server list are specified:
 
 Set#1: [['host1_1_1:port1_1_1'; 'host1_1_2:port1_1_2'; ...];
@@ -124,7 +124,7 @@ def _unpackCheckPlugInPars(srvObj):
                   "Around parameter: %s. Error: %s"
             raise Exception, msg % (str(plugInPars), str(par), str(e))
     CheckfileCacheCtrlPI_initialized = True
-    
+
 
 def _sendCheckFileCmd(node,
                       fileId,
@@ -138,9 +138,9 @@ def _sendCheckFileCmd(node,
       3. Error:       FAILURE.
 
     node:        Node to be contacted (node:port) (string).
-    
+
     fileId:      ID of file to check (string).
-    
+
     fileVersion: Version of file to check (integer).
 
     Returns:     See above (NGAMS_INFO_FILE_OK | NGAMS_ER_FILE_NOK | FAILURE).
@@ -160,7 +160,7 @@ def _sendCheckFileCmd(node,
     except Exception, e:
         err = "Error contacting node: %s . Error: %s" % (str(node), str(e))
         info(4, "NOTICE: %s" % err)
-                                                         
+
     if (data):
         tmpStatObj = ngamsStatus.ngamsStatus().unpackXmlDoc(data)
         if (tmpStatObj.getMessage().find(NGAMS_INFO_FILE_OK) != -1):
@@ -211,7 +211,7 @@ def _fileAvailableInSet(set,
 
     return foundValidCopy
 
-    
+
 # Plug-in function.
 def ngamsCheckfileCacheCtrlPI(srvObj,
                               cacheEntryObj):
@@ -226,7 +226,7 @@ def ngamsCheckfileCacheCtrlPI(srvObj,
                     cached file (ngamsCacheEntry).
 
     Returns:        Returns True if the file can be deleted from the cache,
-                    otherwise False (boolean). 
+                    otherwise False (boolean).
     """
     T = TRACE()
 

@@ -44,7 +44,7 @@ def ngamsWakeUpPlugIn(srvObj,
     srvObj:         Reference to instance of the NG/AMS Server (ngamsServer).
 
     hostId:         Name of NGAS host to be woken up (string).
- 
+
     Returns:        Void.
     """
     T = TRACE(3)
@@ -68,7 +68,7 @@ def ngamsWakeUpPlugIn(srvObj,
             format = "ngamsWakeUpPlugIn: Problem waking up host: %s " +\
                      ". Error: %s."
             errMsg = format % (hostId, str(out).replace("\n", " "))
-            raise Exception, errMsg    
+            raise Exception, errMsg
 
 
 # EOF

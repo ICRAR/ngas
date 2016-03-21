@@ -64,7 +64,7 @@ def receiveData(srvObj,
     T = TRACE()
 
     # Note, this algorithm does not implement support for back-log buffering
-    # for speed optimization reasons. 
+    # for speed optimization reasons.
 
     # Unpack the file information contained in the HTTP header
     # (NGAS-File-Info).
@@ -75,7 +75,7 @@ def receiveData(srvObj,
         raise Exception, msg
     fileInfoXml = base64.b64decode(encFileInfo)
     fileInfoObj = ngamsFileInfo.ngamsFileInfo().unpackXmlDoc(fileInfoXml)
-    
+
     # Find the most suitable target Disk Set.
     trgDiskInfoObj = None
     diskExList = []
@@ -144,7 +144,7 @@ def receiveData(srvObj,
     # This sync is only relevant if back-log buffering is on.
     if (srvObj.getCfg().getBackLogBuffering()):
         ngamsFileUtils.syncCachesCheckFiles(srvObj, [stagingFilename])
-   
+
     return (fileInfoObj, trgDiskInfoObj)
 
 
@@ -162,10 +162,10 @@ def processRequest(srvObj,
 
     trgDiskInfoObj:  Disk Info Object for target disk (ngamsDiskInfo).
 
-    Returns:         Void.    
+    Returns:         Void.
     """
     T = TRACE()
-    
+
     # Check the consistency of the staging file via the provided DCPI and
     # checksum value.
     ngamsFileUtils.checkChecksum(srvObj, fileInfoObj,
@@ -175,7 +175,7 @@ def processRequest(srvObj,
     newFileInfoObj = fileInfoObj.clone().\
                      setDiskId(trgDiskInfoObj.getDiskId()).\
                      setCreationDateFromSecs(int(time.time() + 0.5))
-        
+
     # Generate the final storage location and move the file there.
     targetFilename = os.path.normpath("%s/%s" %\
                                       (trgDiskInfoObj.getMountPoint(),
@@ -200,29 +200,29 @@ def processRequest(srvObj,
                      setAvailableMb(diskSpace).setBytesStored(newSize).\
                      setTotalDiskWriteTime(ioTime).write(srvObj.getDb())
     # Ensure that the restored file is readonly.
-    ngamsLib.makeFileReadOnly(targetFilename)    
+    ngamsLib.makeFileReadOnly(targetFilename)
     # Add the file info object for the target file in the disk info object.
     trgDiskInfoObj.addFileObj(newFileInfoObj)
 
-    
+
 def handleCmdRearchive(srvObj,
                        reqPropsObj,
                        httpRef):
     """
     Handle REARCHIVE command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler object
                     (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
-    
+
     archiveTimer = PccUtTime.Timer()
 
     # Execute the init procedure for the ARCHIVE Command.
@@ -245,7 +245,7 @@ def handleCmdRearchive(srvObj,
         ngamsCacheControlThread.addEntryNewFilesDbm(srvObj,
                                                     trgDiskInfoObj.getDiskId(),
                                                     fileInfoObj.getFileId(),
-                                                    fileVer, 
+                                                    fileVer,
                                                     fileInfoObj.getFilename())
 
     # Create log/syslog entry for the successfulyl handled request.
@@ -253,10 +253,10 @@ def handleCmdRearchive(srvObj,
     msg = msg + ". Time: %.6fs" % (archiveTimer.stop())
     sysLogInfo(1, msg)
     info(1, msg)
-    
+
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
     srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                        NGAMS_SUCCESS, msg, trgDiskInfoObj)
-   
+
 
 # EOF

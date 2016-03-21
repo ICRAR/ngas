@@ -49,7 +49,7 @@ class ngamsSrvTestKillAfterStagingFile(ngamsServer.ngamsServer):
         """
         ngamsServer.ngamsServer.__init__(self)
 
-    
+
     def test_AfterSaveInStagingFile(self):
         """
         Sub-class of ngamsServer killing itself after receiving Staging File.
@@ -58,7 +58,7 @@ class ngamsSrvTestKillAfterStagingFile(ngamsServer.ngamsServer):
         raise Exception, "test_AfterCreateOrgStagingFile: TEST METHOD " +\
               "KILLING SERVER"
 
- 
+
 if __name__ == '__main__':
     """
     Main program executing the test NG/AMS Server

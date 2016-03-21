@@ -27,14 +27,14 @@
 """
 JobMAN manages NGAS MapReduce jobs by providing the following features:
 1. Maintain a job queue
-2. Receive job submission 
+2. Receive job submission
 3. Construct each job using MapReduce tasks (in a job-type-specific manner), and schedule each task to a different NGAS node
 4. Receive job monitor request
 5. Monitor job progress, including error handling
 
-For event: 
+For event:
 1. receive event requests and turn them into event object
-2. notify job/tasks related to these events 
+2. notify job/tasks related to these events
 
 This module relies on two external libs - Paste and Bottle
 To deploy (install) them:
@@ -138,7 +138,7 @@ def _responseMsg(msg):
     """
     show the msg as a response HTML page
     """
-    return template('ngamsJobMAN_response.html', ret_msg = msg)    
+    return template('ngamsJobMAN_response.html', ret_msg = msg)
 
 @post('/job/submit')
 def submit_job_post():
@@ -146,27 +146,27 @@ def submit_job_post():
     if invalidParam(name):
         return _responseMsg('Invalid user name')
     name = name.strip()
-    
+
     observations = request.forms.get('observations')
     if invalidParam(observations):
         return _responseMsg('Invalid observation numbers')
     jtype = request.forms.get('type')
     if ('MWA_RTS' != jtype):
         return _responseMsg('Sorry we currently only accept MWA RTS jobs, %s jobs will be supported soon' % jtype)
-    
+
     params = RTSJobParam()
     if ('GPU' == request.forms.get('processor')):
         params.use_gpu = True
     else:
         params.use_gpu = False
-    
+
     use_mytpl =  int(request.forms.get('use_mytpl'))
-    all_tpls = ''    
+    all_tpls = ''
     if (not use_mytpl):
         for i in range(len(predef_tpls)):
             tt = request.forms.get('template_%d' % i)
             if (tt):
-                all_tpls += ',%s' % tt            
+                all_tpls += ',%s' % tt
         if (len(all_tpls) < 1):
             return _responseMsg('No templates are selected.')
         else:
@@ -189,7 +189,7 @@ def submit_job_post():
         params.rts_tpl_name = tpl_files
         params.rts_tplpf = tmp_prefix
         params.rts_tplsf = tpl_suffix
-    
+
     lttimeout = request.forms.get('LT_timeout')
     if invalidParam(lttimeout):
         return _responseMsg('invalid Task execution timeout')
@@ -197,7 +197,7 @@ def submit_job_post():
         params.LT_timeout = int(lttimeout)
     except Exception, err:
         return _responseMsg('invalid Task execution timeout')
-    
+
     fitimeout = request.forms.get('FI_timeout')
     if invalidParam(fitimeout):
         return _responseMsg('invalid File ingestion timeout')
@@ -205,7 +205,7 @@ def submit_job_post():
         params.FI_timeout = int(fitimeout)
     except Exception, err:
         return _responseMsg('invalid File ingestion timeout')
-        
+
     obsNums = observations.replace(' ', '').split(',')
     try:
         for obsNum in obsNums:
@@ -217,14 +217,14 @@ def submit_job_post():
     except Exception, err:
         logger.error(traceback.format_exc())
         return _responseMsg('Fail to validate observation numbers, Exception: %s' % str(err))
-    
+
     dt = datetime.datetime.now()
     jobId = name + '_' + dt.strftime('%Y%m%dT%H%M%S') + '.' + str(dt.microsecond / 1000)
     params.obsList = obsNums
-    
+
     # launch thread to create and execute the job
     args = (jobId, params, jobDic)
-    thrd = threading.Thread(None, _jobThread, 'MR_THRD_%s' % jobId, args) 
+    thrd = threading.Thread(None, _jobThread, 'MR_THRD_%s' % jobId, args)
     thrd.setDaemon(1) # it will exit immediately should the server down
     thrd.start()
     return _responseMsg('Job %s has been submitted. <br/><ul>'  % jobId +\
@@ -237,7 +237,7 @@ def submit_job_post():
 def reportLocalTask():
     """
     Report the result of LocalTask to JobMAN
-    """ 
+    """
     try:
         localTaskResult = pickle.loads(request.body.read())
     except Exception, err:
@@ -278,8 +278,8 @@ def dequeueLocalTask():
         return 'OK'
     except Exception, err:
         logger.error(traceback.format_exc())
-        return 'Fail to notify jobman of task dequeue'   
-        
+        return 'Fail to notify jobman of task dequeue'
+
 def encode_decimal(obj):
     """
     Just a little helper function for JSON serialisation
@@ -304,7 +304,7 @@ def monitorJob():
     jobId = request.query.get('job_id')
     if (invalidParam(jobId) or (not jobDic.has_key(jobId))):
         return _responseMsg('Please provide an valid job_id as the parameter')
-    return template('ngamsJobMonitor.html', job_id = jobId) 
+    return template('ngamsJobMonitor.html', job_id = jobId)
 
 @get('/job/testmonitor')
 def testmonitorjob():
@@ -350,12 +350,12 @@ def listJobs():
         tpl_names = job.getParams().rts_tpl_name
         file_timeout = str(job.getParams().FI_timeout)
         task_timeout = str(job.getParams().LT_timeout)
-        
+
         jobList.append((job.getId(), job.getStatusString(), job.getWallTime(), obs_nums, tpl_names, file_timeout, task_timeout))
     jobList.sort(key = _jobSortFunc, reverse = True) # most recent first
     return template('ngamsJobMAN_listjob.html', jobList = jobList)
- 
-def _jobSortFunc(job):   
+
+def _jobSortFunc(job):
     return job[0].split('_')[1]
 
 @route('/static/<filepath:path>')
@@ -365,7 +365,7 @@ def server_static(filepath):
 def getHello():
     return "Hello World 001"
 
-def _jobThread(jobId, params, myjobDic):   
+def _jobThread(jobId, params, myjobDic):
     job = RTSJob(jobId, params)
     myjobDic[jobId] = job
     if (job):
@@ -377,11 +377,11 @@ def _jobThread(jobId, params, myjobDic):
             job.setFinalJobResult('Fail to start the Job %s, Exception: %s' % (jobId, str(traceback.format_exc())))
             logger.error(traceback.format_exc())
     else:
-        logger.error('Cannot initialise the job %s' % jobId)   
+        logger.error('Cannot initialise the job %s' % jobId)
 
 """
 def _scheduleStageThread(dummy):
-    
+
     retries = 0
     while (staging_run):
         ret = ngamsJobMWALib.scheduleForStaging(retries)
@@ -396,7 +396,7 @@ def startStagingThread():
     #signal.signal(signal.SIGTERM, exitHandler)
     #signal.signal(signal.SIGINT, exitHandler)
     args = (1, )
-    thrd = threading.Thread(None, _scheduleStageThread, 'STAGING_THRD', args) 
+    thrd = threading.Thread(None, _scheduleStageThread, 'STAGING_THRD', args)
     thrd.setDaemon(1) # it will exit immediately
     thrd.start()
 
@@ -424,10 +424,10 @@ def getConfig():
     if (not os.path.isfile(options.config_fname)):
         logger.warning('\nCannot access configuration file %s' % options.config_fname)
         return None
-    
+
     config = ConfigParser.ConfigParser()
     config.readfp(open(options.config_fname))
-    
+
     gconfig = config
     return config
 
@@ -436,17 +436,17 @@ def main():
     FORMAT = "%(asctime)-15s - %(name)s - %(levelname)s - %(message)s"
     logging.basicConfig(filename='/tmp/NGAS_MWA/log/ngamsJobMAN.log', level=logging.DEBUG, format = FORMAT)
     logger.info('ngamsJobMAN Started.......')
-    
+
     config = getConfig()
     if (not config):
         exit(1)
-    
+
     # start the web server supported by bottle and paste
-    run(host = config.get('Web Server', 'IpAddress'), 
-        server = 'paste', 
-        port = config.getint('Web Server', 'Port'), 
+    run(host = config.get('Web Server', 'IpAddress'),
+        server = 'paste',
+        port = config.getint('Web Server', 'Port'),
         debug = config.getboolean('Web Server', 'Debug'))
-    
+
     logger.info('ngamsJobMAN Shutdown.......')
 
 if __name__ == "__main__":

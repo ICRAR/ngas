@@ -66,7 +66,7 @@ def _cleanXmlDoc(xmlDicDump):
         if (val == ""): continue
         cleanXmlDoc += xmlDocLine + "\n"
     return cleanXmlDoc
-            
+
 class ngamsConfigHandlingTest(ngamsTestSuite):
     """
     Synopsis:
@@ -114,7 +114,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         dbObj = ngamsDb.ngamsDb(cfgObj.getDbServer(), cfgObj.getDbName(),
                                 cfgObj.getDbUser(), cfgObj.getDbPassword(),
                                 interface = cfgObj.getDbInterface(),
-                                parameters = cfgObj.getDbParameters(), 
+                                parameters = cfgObj.getDbParameters(),
                                 multipleConnections = multCons)
         if (delDbTbls): delNgasTbls(dbObj)
         cfgObj.writeToDb(dbObj)
@@ -131,7 +131,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         """
         Synopsis:
         Test Purpose: Load configuration into DB.
-        
+
         Description:
         The purpose of this Test Case is to test that the NG/AMS Configuration
         can be loaded properly from an XML configuration document into the
@@ -150,7 +150,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
           Dictionary format.
 
         Remarks:
-        ...        
+        ...
         """
         cfgObj1, dbObj = self.loadCfg("test_Load_1")
 
@@ -175,7 +175,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         Synopsis:
         Test that the NG/AMS Server is loading configuration from DB and
         initializing as expected.
-        
+
         Description:
         Test that the NG/AMS Server can load the configuration properly from
         the DB and initialize accordingly.
@@ -204,14 +204,14 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
                           "returned for Archive Push Request")
- 
+
 
     def test_ServerLoad_2(self):
         """
         Synopsis:
         Test that the NG/AMS Server is loading configuration from DB and
         initializing as expected.
-        
+
         Description:
         The purpose of this Test Case is to verify that the NG/AMS Server
         can be initialized properly by loading the configuration from the
@@ -233,7 +233,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         - Issue an Archive Request and verify that it is rejected.
 
         Remarks:
-        ...        
+        ...
         """
         cfgName = "test_ServerLoad_2"
         tmpCfg = ngamsConfig.ngamsConfig().load("src/ngamsCfg.xml").\
@@ -250,13 +250,13 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
                           "returned for Archive Push Request")
-        
+
 
     def test_ServerLoad_3(self):
         """
         Synopsis:
         Test loading of specific configuration from DB.
-        
+
         Description:
         Test that the NG/AMS Server is loading configuration from DB and
         initializing as expected without mixing up parameters from other

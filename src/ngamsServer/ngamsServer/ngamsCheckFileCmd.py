@@ -43,15 +43,15 @@ def handleCmdCheckFile(srvObj,
                        httpRef):
     """
     Handle CHECKFILE command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler object
                     (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     fileId      = ""
@@ -75,14 +75,14 @@ def handleCmdCheckFile(srvObj,
     # Get the info for the file matching the query.
     fileLocInfo = ngamsFileUtils.locateArchiveFile(srvObj, fileId, fileVersion,
                                                    diskId, hostId)
-    
+
     # Now carry out the check.
     checkReport   = []
     fileLocation  = fileLocInfo[0]
     fileHostId    = fileLocInfo[1]
     fileIpAddress = fileLocInfo[2]
     filePortNo    = fileLocInfo[3]
-    fileMtPt      = fileLocInfo[4] 
+    fileMtPt      = fileLocInfo[4]
     if (fileLocation == NGAMS_HOST_LOCAL):
         info(3,"File is located on local host - carrying out the check on " +\
              "the file locally")
@@ -146,6 +146,6 @@ def handleCmdCheckFile(srvObj,
         srvObj.updateRequestDb(reqPropsObj)
         srvObj.httpRedirReply(reqPropsObj, httpRef, fileHostId, filePortNo)
         return
-    
+
 
 # EOF

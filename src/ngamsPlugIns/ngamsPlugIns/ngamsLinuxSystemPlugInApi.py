@@ -108,7 +108,7 @@ def mountToMountpoint(devName,
     mntPt:      Mount point (string).
 
     readOnly:   0 if not read-only, 1 if read-only (integer).
-    
+
     fstype:     File system type (string).
 
     Returns:    Void.
@@ -125,7 +125,7 @@ def mountToMountpoint(devName,
 
 #     if (getMountedDev(mntPt)):   # already mounted
 #         warnMsg = "Device " + getMountedDev(mntPt) + ' already mounted ' + \
-#                   'to specified mountpoint: ' + mntPt 
+#                   'to specified mountpoint: ' + mntPt
 #         info(1,warnMsg)
 #     else:
 #         if not os.path.exists(mntPt):
@@ -134,7 +134,7 @@ def mountToMountpoint(devName,
 #             except exceptions.OSError,e:
 #                 errMsg = "Failed creating mountpoint " + mntPt + ":" + str(e)
 #                 error(errMsg)
-#                 raise Exception, errMsg            
+#                 raise Exception, errMsg
 #         stat, out = commands.getstatusoutput(command)
 #         if (stat != 0):
 #             errMsg = "Failed mounting device " + getMountedDev(mntPt) + \
@@ -147,7 +147,7 @@ def mountToMountpoint(devName,
         except exceptions.OSError,e:
             errMsg = "Failed creating mountpoint " + mntPt + ":" + str(e)
             error(errMsg)
-            raise Exception, errMsg            
+            raise Exception, errMsg
     stat, out = commands.getstatusoutput(command)
     if ((stat != 0) and (out.find("already mounted") == -1)):
         errMsg = "Failed mounting device. Device/mount point: %s/%s" %\
@@ -182,7 +182,7 @@ def checkModule(module):
     mtab[1] reports the load status of a module.
 
     NOTE: This is Linux specific and won't work on any other system
- 
+
     Synopsis:   checkModule(<module>)
 
     module:     Module name (string).
@@ -195,11 +195,11 @@ def checkModule(module):
                  "checkModule has invalid type (should be string)"
         error(errMsg)
         raise Exception, errMsg
-        
-    # command = "/sbin/modprobe -l | /bin/grep \"/" + module + ".o$\"" 
+
+    # command = "/sbin/modprobe -l | /bin/grep \"/" + module + ".o$\""
     command = "find /lib/modules -name " + module + ".*"
     (stat,out) = commands.getstatusoutput(command)
-    
+
     if stat > 0 or not out.strip():
         mex,ml = (0,0)    # there is no module like this
     else:
@@ -211,7 +211,7 @@ def checkModule(module):
         else:
             ml = 0  # module not loaded
 
-    mtup = (mex,ml)    
+    mtup = (mex,ml)
     return mtup
 
 
@@ -226,7 +226,7 @@ def insMod(module):
 
     module:     Module name (string).
 
-    Returns:    0 upon success or if module is already loaded (int).    
+    Returns:    0 upon success or if module is already loaded (int).
     """
     try:
         redHatVersionFile = "/etc/redhat-release"
@@ -237,7 +237,7 @@ def insMod(module):
         if (ver == "9"): return 0
     except:
         pass
-    
+
     stat = checkModule(module)
     istat = 0
     if stat == (1,0):
@@ -267,12 +267,12 @@ def rmMod(module):
     Wrapper around the rmmod program.
 
     NOTE: This is Linux specific and won't work on any other system.
- 
+
     Synopsis:   rmMod(<module>)
 
     module:     Module name (string).
 
-    Returns:    0 upon success or if module is not loaded (int).   
+    Returns:    0 upon success or if module is not loaded (int).
     """
     stat = checkModule(module)
     rstat = 0
@@ -300,7 +300,7 @@ def rmMod(module):
 #         errMsg = "Problem opening " + FSTAB_DEFAULT + ":" + str(e)
 #         error(errMsg)
 #         raise Exception, errMsg
-        
+
 #     for l in fstab:
 #         arr = l.split()
 #         if len(arr) > 1 and arr[1] == mntPt:
@@ -329,7 +329,7 @@ def rmMod(module):
 #         errMsg = "Problem opening " + FSTAB_DEFAULT + ":" + str(e)
 #         error(errMsg)
 #         raise Exception, errMsg
-        
+
 #     fil.write(join(fsList,'\t') + '\n')
 #     fil.close()
 
@@ -368,7 +368,7 @@ def rmMod(module):
 #         errMsg = "Problem opening " + FSTAB_DEFAULT + ":" + str(e)
 #         error(errMsg)
 #         raise Exception, errMsg
-        
+
 #     for l in fstab:
 #         arr = l.split()
 #         if len(arr) > 1 and arr[1] == mntPt:
@@ -377,7 +377,7 @@ def rmMod(module):
 #             pass                # don't write this line
 #         else:
 #             fil.write(l)        # rewrite this line
-    
+
 #     fil.truncate()              # close the file here, the rest is junk
 #     fil.close()
 #     return nl
@@ -392,7 +392,7 @@ def ngamsMount(srvObj,
 
     NOTE: This is NGAMS specific and relies on the structure of the
           NGAMS Disk Dictionary.
-    
+
     Synopsis:      ngamsMount(<diskDic>)
 
     srvObj:        Instance of the NG/AMS Server class (ngamsServer).
@@ -440,7 +440,7 @@ def ngamsMount(srvObj,
             continue
 
 
-   
+
 def ngamsUmount(diskDic,
                 slotIds):
     """
@@ -448,13 +448,13 @@ def ngamsUmount(diskDic,
 
     NOTE: This is NGAMS specific and relies on the structure of the
           NGAMS Disk Dictionary.
-    
+
     Synopsis:   ngamsMount(<diskDic>)
 
-    diskDic:    NGAMS specific disk info (dictionary). 
+    diskDic:    NGAMS specific disk info (dictionary).
 
     slotIds:    List of Slot IDs for the disk to consider (list/string).
- 
+
     Returns:    Void.
     """
     slotIds.sort()
@@ -484,7 +484,7 @@ def umount(mtRootPt):
         raise Exception, "Error in ngamsLinuxSystemPlugInApi.umount(): " +\
               "Mount Root Point cannot be \"\""
     mtPtList = glob.glob("%s/data*" % mtRootPt)
-    mtPtList += glob.glob("%s/volume*" % mtRootPt) 
+    mtPtList += glob.glob("%s/volume*" % mtRootPt)
     for mtPt in mtPtList:
         try:
             umountMountpoint(mtPt)

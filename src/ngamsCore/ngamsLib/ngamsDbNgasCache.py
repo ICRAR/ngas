@@ -54,9 +54,9 @@ class ngamsDbNgasCache(ngamsDbCore.ngamsDbCore):
         File Version) is found in the NGAS Cache Table.
 
         diskId:        Disk ID of the cache entry (string).
-        
+
         fileId:        File ID of the cache entry (string).
-        
+
         fileVersion:   File Version  of the cache entry (string).
 
         Returns:       Flag indicating if the entry is found in the table
@@ -70,7 +70,7 @@ class ngamsDbNgasCache(ngamsDbCore.ngamsDbCore):
         sqlQuery = sqlQuery % (diskId, fileId, fileVersion)
         res = self.query(sqlQuery, ignoreEmptyRes = 0)
         return (len(res[0]) == 1)
-        
+
 
     def insertCacheEntry(self,
                          diskId,
@@ -83,9 +83,9 @@ class ngamsDbNgasCache(ngamsDbCore.ngamsDbCore):
         Insert a new cache entry into the NGAS Cache Table.
 
         diskId:        Disk ID of the cache entry (string).
-        
+
         fileId:        File ID of the cache entry (string).
-        
+
         fileVersion:   File Version  of the cache entry (string).
 
         cacheTime:     Time the file entered in the cache
@@ -93,10 +93,10 @@ class ngamsDbNgasCache(ngamsDbCore.ngamsDbCore):
 
         delete:        Flag indicating if the entry is scheduled for
                        deletion (boolean).
-                       
+
         check:         Check if the entry is already in the table. In case yes,
                        just update it (boolean).
-                     
+
         Returns:       Reference to object itself.
         """
         T = TRACE()
@@ -105,8 +105,8 @@ class ngamsDbNgasCache(ngamsDbCore.ngamsDbCore):
             if (self.entryInCacheTable(diskId, fileId, fileVersion)):
                 self.updateCacheEntry(diskId, fileId, fileVersion, delete)
                 return self
-                
-        # The entry must be inserted.    
+
+        # The entry must be inserted.
         sqlQuery = "INSERT INTO ngas_cache (disk_id, file_id, " +\
                    "file_version, cache_time, cache_delete) VALUES " +\
                    "('%s', '%s', %d, %.6f, %d)"
@@ -116,9 +116,9 @@ class ngamsDbNgasCache(ngamsDbCore.ngamsDbCore):
             delete = 0
         sqlQuery = sqlQuery % (diskId, fileId, fileVersion, cacheTime, delete)
         self.query(sqlQuery, ignoreEmptyRes = 0)
-        
+
         return self
-    
+
 
     def updateCacheEntry(self,
                          diskId,
@@ -127,13 +127,13 @@ class ngamsDbNgasCache(ngamsDbCore.ngamsDbCore):
                          delete):
         """
         Update the online status of this cached data object.
-        
+
         diskId:        Disk ID for the cached data object (string).
-        
+
         fileId:        File ID for the cached data object (string).
-        
+
         fileVersion:   Version of the cached data object (integer).
-        
+
         delete:        Entry scheduled for deletion (integer/0|1).
 
         Returns:       Reference to object itself.
@@ -148,7 +148,7 @@ class ngamsDbNgasCache(ngamsDbCore.ngamsDbCore):
             delete = 0
         sqlQuery = sqlQuery % (delete, diskId, fileId, int(fileVersion))
         self.query(sqlQuery, ignoreEmptyRes = 0)
-        
+
         return self
 
 
@@ -160,11 +160,11 @@ class ngamsDbNgasCache(ngamsDbCore.ngamsDbCore):
         Delete an entry from the NGAS Cache Table.
 
         diskId:        Disk ID for the cached data object (string).
-        
+
         fileId:        File ID for the cached data object (string).
-        
+
         fileVersion:   Version of the cached data object (integer).
-        
+
         Returns:       Reference to object itself.
         """
         T = TRACE()

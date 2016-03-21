@@ -86,7 +86,7 @@ if __name__ == '__main__':
     """
     Main program.
     """
-    
+
     if (len(sys.argv) != 2):
         print "Correct usage is: \n"
         print "% ngasCreateAccountTarball.py <User ID>\n"

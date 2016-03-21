@@ -25,7 +25,7 @@
 # cwu      2013-12-21  Created
 #
 """
-Retain the latest (or earliest) version of files on this host, and purge all previous (or subsequent) versions 
+Retain the latest (or earliest) version of files on this host, and purge all previous (or subsequent) versions
 Does not support multiple threads
 
 Two important parameters:
@@ -36,13 +36,13 @@ keep_earliest    flag parameter (no value), if present, the command will keep ea
 pv_on_any_hosts  flag parameter (no value), this flag is only read if the flag keep_earliest is present (actually this should be changed)
                  if present, the command will consider all previous versions on all hosts within the NGAS cluster
                  Otherwise (default), the command only consider previous versions on the current host
-                 
+
                  For example, if a file has the first version on ngas_host_001, and a second version on ngas_host_002.
-                 
-                 Now if we issue a purge command to ngas_host_002 
+
+                 Now if we issue a purge command to ngas_host_002
                  Without pv_on_any_hosts by default, (e.g. http://ngas_host_002:7777/PURGE?keep_earliest)
                                                  the command will not remove the second version on ngas_host_002
-                 With pv_on_any_hosts, (e.g. http://ngas_host_002:7777/PURGE?keep_earliest&pv_on_any_hosts) 
+                 With pv_on_any_hosts, (e.g. http://ngas_host_002:7777/PURGE?keep_earliest&pv_on_any_hosts)
                                                  the command will remove the second version on ngas_host_002
 
 """
@@ -80,7 +80,7 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
     work_dir = srvObj.getCfg().getRootDirectory() + '/tmp/'
 
     hostId = srvObj.getHostId()
-    try:  
+    try:
         if (reqPropsObj.hasHttpPar("keep_earliest")): # early could be 1, or 2,...
             if (reqPropsObj.hasHttpPar("pv_on_any_hosts")):
                 resDel = srvObj.getDb().query(QUERY_LATER_VER_POAH % (hostId,)) # grab all later versions on this host to remove
@@ -110,24 +110,24 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
         is_purgeThrd_running = False
         total_todo = 0
         num_done = 0
-    
+
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
     Purge all old versions on this host given a file id
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     # need to check if an existing worker thread is running, if so, return an error
     # TODO - should provide an option to force stop the thread, if it is still running
-    
+
     global purgeThrd
     global is_purgeThrd_running
     if (is_purgeThrd_running):

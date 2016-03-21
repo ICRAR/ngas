@@ -31,7 +31,7 @@
 Decompression job plugin that will be called
 by the SubscriptionThread._deliveryThread
 """
-# decoded job uri: 
+# decoded job uri:
 #     ngasjob://ngamsGLEAM_Decompress_JobPlugin?redo_on_fail=0
 # originally encoded joburi (during subscribe command)
 #     url=ngasjob://ngamsGLEAM_Decompress_JobPlugin%3Fredo_on_fail%3D0
@@ -76,13 +76,13 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
 
     plugInPars:    Parameters to take into account for the plug-in
                    execution (string).(e.g. scale_factor=4,threshold=1E-5)
-   
+
     fileId:        File ID for file to test (string).
 
     filename:      Filename of (complete) (string).
 
     fileVersion:   Version of file to test (integer).
- 
+
     Returns:       the return code of the compression plugin (integer).
     """
     pars = ""
@@ -90,12 +90,12 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
     timeout = 600 # each command should not run more than 10 min, otherwise something is wrong
     if ((plugInPars != "") and (plugInPars != None)):
         pars = plugInPars
-    
-    parDic = ngamsPlugInApi.parseRawPlugInPars(pars)     
-    
+
+    parDic = ngamsPlugInApi.parseRawPlugInPars(pars)
+
     if (parDic.has_key('remove_uc')):
         remove_uc = int(parDic['remove_uc'])
-        
+
     if (parDic.has_key('timeout')):
         timeout = int(parDic['timeout'])
         if (timeout <= 0):
@@ -105,8 +105,8 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
 
     #cmd1 = "%s -host %s -port 7777 -fileUri %s -cmd QARCHIVE -mimeType application/octet-stream " % (archive_client, archive_host, newfn)
     cmd2 = "curl http://%s:7777/DISCARD?file_id=%s\\&file_version=%d\\&disk_id=%s\\&execute=1" % (archive_host, fileId, fileVersion, diskId)
-    
-    
+
+
     """
     if (debug):
         info(3, '*******************************************')
@@ -141,7 +141,7 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
                 errNo += 1
                 lasterrMsg = re[1]
                 #return (re[0], re[1])
-        
+
         if (remove_uc and errNo == 0):
             # remove the original file if necessary
             re = execCmd(cmd2, timeout)
@@ -150,14 +150,14 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
                 info(3, 'Successfully DISCARDED the tar file %s' % filename)
             else:
                 warning('Fail to DISCARD the tar file %s' % filename)
-        
+
         # remove the temp file
         cmd3 = "rm -rf %s/%s" % (work_dir, obsId)
         info(3, "Removing the temp directory %s/%s" % (work_dir, obsId))
         re = execCmd(cmd3, timeout)
         if (0 != re[0]):
             warning('Fail to remove the temp untarred directory %s/%s' % (work_dir, obsId))
-        
+
         if (errNo == 0):
             return (0, 'Done')
         else:
@@ -165,6 +165,5 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
     else:
         error('Fail to untar file %s: %s' % (filename, re[1]))
         return (re[0], re[1])
-    
-    
-    
+
+

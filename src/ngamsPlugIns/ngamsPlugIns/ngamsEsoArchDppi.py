@@ -45,9 +45,9 @@ def ngamsEsoArchDppi(srvObj,
 
     srvObj:        Reference to instance of the NG/AMS Server
                    class (ngamsServer).
-    
+
     reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
-    
+
     filename:      Name of file to process (string).
 
     Returns:       DPPI return status object (ngamsDppiStatus).

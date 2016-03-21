@@ -113,58 +113,58 @@ def loadVolInfoFile(volInfoFile):
         if ((line == "") or (line[0] == "#")): continue
         par, val = line.split("=")
         dic[par.strip()] = val.strip()
-    
+
     return dic
 
 def notifyRegistrationService(srvObj, svrStatus = 'online'):
     """
     to notify the ngas registration service that I am online now
-    
+
     svrStatus = online|offline
     """
-    
+
     parDicOnline = ngamsPlugInApi.\
                     parseRawPlugInPars(srvObj.getCfg().getOnlinePlugInPars())
     if (parDicOnline.has_key("regsvr_host")):
-        
+
         if (svrStatus == "online"):
             errTag = "NGAMS_ER_ONLINE_PLUGIN"
-        else: 
+        else:
             errTag = "NGAMS_ER_OFFLINE_PLUGIN"
-        
+
         regsvr_host = parDicOnline["regsvr_host"]
         regsvr_port = parDicOnline["regsvr_port"]
         regsvr_path = parDicOnline["regsvr_path"]
         host_name = getHostName()
         host_port = srvObj.getCfg().getPortNo()
-        
-        params = urllib.urlencode({'ngas_host': host_name, 'ngas_port': host_port, 'status': svrStatus}) 
+
+        params = urllib.urlencode({'ngas_host': host_name, 'ngas_port': host_port, 'status': svrStatus})
         headers = {"Content-Type": "application/x-www-form-urlencoded","Accept": "text/plain"}
         conn = httplib.HTTPConnection(regsvr_host+':'+regsvr_port)
         try:
             conn.request("POST", regsvr_path, params, headers)
-            response = conn.getresponse() 
+            response = conn.getresponse()
             #print response.status, response.reason
             if (response.status != 200):
-                errMsg = "Problem notifying registration service! Error " + response.reason                               
-                errMsg = genLog(errTag, [errMsg])    
+                errMsg = "Problem notifying registration service! Error " + response.reason
+                errMsg = genLog(errTag, [errMsg])
                 error(errMsg)
                 #raise Exception, errMsg
             else:
-                info(3, "Successfully notified registration service: %s" % svrStatus) 
+                info(3, "Successfully notified registration service: %s" % svrStatus)
                 data = response.read() #for debug
                 print data #for debug
         except Exception, e:
             errMsg = "Cannot connect to the registration service " +\
                          ": %s" % str(e)
-            errMsg = genLog(errTag, [errMsg])             
-            error(errMsg)             
+            errMsg = genLog(errTag, [errMsg])
+            error(errMsg)
         finally:
             if (conn is not None):
                 conn.close()
-                
-        
-    return    
+
+
+    return
 
 if __name__ == '__main__':
     """

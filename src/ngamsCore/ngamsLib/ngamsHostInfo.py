@@ -41,7 +41,7 @@ class ngamsHostInfo:
     """
     Contains information about one host from the NGAS DB.
     """
-    
+
     def __init__(self):
         """
         Constructor method.
@@ -66,7 +66,7 @@ class ngamsHostInfo:
         self.__srvSuspended     = -1
         self.__srvReqWakeUpSrv  = ""
         self.__srvReqWakeUpTime = ""
- 
+
         # Type of host NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN,
         # NGAMS_HOST_REMOTE.
         self.__hostType         = ""
@@ -168,7 +168,7 @@ class ngamsHostInfo:
                   domain):
         """
         Set the Domain Name.
-        
+
         domain:   Domain name (string).
 
         Returns:  Reference to object itself.
@@ -299,7 +299,7 @@ class ngamsHostInfo:
         Set the installation date from seconds since epoch.
 
         dateSecs:  Installation date in seconds since epoch (integer).
- 
+
         Returns:   Reference to object itself.
         """
         if (dateSecs == None): return self
@@ -323,8 +323,8 @@ class ngamsHostInfo:
         """
         Set the version ID of the server.
 
-        version:  Version ID of server running (string).      
-        
+        version:  Version ID of server running (string).
+
         Returns:  Reference to object itself.
         """
         if (version == None): return self
@@ -347,7 +347,7 @@ class ngamsHostInfo:
         Set the server port number.
 
         portNo:   Server port number (integer).
-        
+
         Returns:  Reference to object itself.
         """
         if (portNo == None): return self
@@ -357,7 +357,7 @@ class ngamsHostInfo:
 
     def getSrvPort(self):
         """
-        Return the server port number. 
+        Return the server port number.
 
         Returns:   Server port number (integer).
         """
@@ -371,7 +371,7 @@ class ngamsHostInfo:
 
         allowArchive:  A value of 1 indicates that archiving is
                        allowed (integer).
-        
+
         Returns:       Reference to object itself.
         """
         if (allowArchive == None): return self
@@ -395,7 +395,7 @@ class ngamsHostInfo:
 
         allowRetrieve:   A value of 1 indicates that file retrieval is
                          supported (integer/0|1).
-        
+
         Returns:         Reference to object itself.
         """
         if (allowRetrieve == None): return self
@@ -418,8 +418,8 @@ class ngamsHostInfo:
         Set the server allow processing flag.
 
         allowProc:   A value of 1 indicates that file processing is
-                     supported (integer/0|1).       
-        
+                     supported (integer/0|1).
+
         Returns:     Reference to object itself.
         """
         if (allowProc == None): return self
@@ -442,8 +442,8 @@ class ngamsHostInfo:
         Set the server Allow Remove Requests Flag.
 
         allowRem:    A value of 1 indicates that file processing is
-                     supported (integer/0|1).       
-        
+                     supported (integer/0|1).
+
         Returns:     Reference to object itself.
         """
         if (allowRem == None): return self
@@ -466,8 +466,8 @@ class ngamsHostInfo:
         Set the server data checking flag.
 
         dataChecking:  A value of 1 indicates that data checking is
-                       running (integer/0|1).            
-        
+                       running (integer/0|1).
+
         Returns:       Reference to object itself.
         """
         if (dataChecking == None): return self
@@ -491,7 +491,7 @@ class ngamsHostInfo:
 
         state:         Server state: 'NOT-RUNNING', 'OFFLINE',
                        'ONLINE' (string).
-        
+
         Returns:       Reference to object itself.
         """
         if (state == None): return self
@@ -514,7 +514,7 @@ class ngamsHostInfo:
         Set the Server Suspended Flag.
 
         suspended:     Server Suspended Flag (integer/0|1).
-        
+
         Returns:       Reference to object itself.
         """
         if (suspended == None): return self
@@ -526,7 +526,7 @@ class ngamsHostInfo:
         """
         Return the Server Suspended Flag.
 
-        Returns:       Server Suspended Flag (integer/0|1).   
+        Returns:       Server Suspended Flag (integer/0|1).
         """
         return self.__srvSuspended
 
@@ -538,7 +538,7 @@ class ngamsHostInfo:
 
         srv:           Name of server on which the NG/AMS Server requested
                        for the wake-up call is running (string).
-        
+
         Returns:       Reference to object itself.
         """
         if (srv == None): return self
@@ -562,7 +562,7 @@ class ngamsHostInfo:
         Set the wake-up time.
 
         wakeUpTime:    Requested Wake-Up Time (string/ISO 8601).
-        
+
         Returns:       Reference to object itself.
         """
         if (not wakeUpTime): return self
@@ -576,7 +576,7 @@ class ngamsHostInfo:
         Set the wake-up time date from seconds since epoch.
 
         dateSecs:  Wake-up time in seconds since epoch (integer).
- 
+
         Returns:   Reference to object itself.
         """
         if (dateSecs == None): return self
@@ -594,7 +594,7 @@ class ngamsHostInfo:
         """
         return self.__srvReqWakeUpTime
 
- 
+
     def setHostType(self,
                     type):
         """
@@ -602,7 +602,7 @@ class ngamsHostInfo:
         NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN and NGAMS_HOST_REMOTE.
 
         type:     Type of host (string).
-        
+
         Returns:  Reference to object itself.
         """
         if (type == None): return self
@@ -626,9 +626,9 @@ class ngamsHostInfo:
 
         ignoreUndefFields:     Don't take fields, which have a length of 0
                                (integer/0|1).
-                            
+
         Returns:               String buffer with contents of object (string).
-        """        
+        """
         format = prFormat1()
         buf = "HostStatus:\n"
         objStat = self.getObjStatus()
@@ -636,7 +636,7 @@ class ngamsHostInfo:
             if (not ignoreValue(ignoreUndefFields, val)):
                 buf += format % (fieldName + ":", val)
         return buf
-   
+
 
     def clone(self):
         """

@@ -27,7 +27,7 @@
 """
 NGAS Command Plug-In, implementing a Quick Archive PLUS Command
 
-This is an extension of the original QARCHIVE command, basically does 
+This is an extension of the original QARCHIVE command, basically does
 "post-archive" processing on the file
 
 """
@@ -43,15 +43,15 @@ def handleCmd(srvObj,
               httpRef):
     """
     Handle the Quick Archive PLUS (QAPLUS) Command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     (fileId, filePath, ingestRate) = ngamsCmd_QARCHIVE.handleCmd(srvObj, reqPropsObj, httpRef)
@@ -61,4 +61,3 @@ def handleCmd(srvObj,
         info('Reply from sending file %s ingestion event to server %s - %s' % (fileId, jobManHost, reply))
     except Exception, err:
         error('Fail to send file ingestion event to server %s, Exception: %s' %(jobManHost, str(err)))
-    

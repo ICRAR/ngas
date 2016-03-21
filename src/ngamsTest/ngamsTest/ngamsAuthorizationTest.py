@@ -59,7 +59,7 @@ class ngamsAuthorizationTest(ngamsTestSuite):
         """
         Synopsis:
         Issue a request with Authorization disabled.
-        
+
         Description:
         When HTTP Authorization is disabled requests can be submitted
         without issuing the authorization code.
@@ -85,16 +85,16 @@ class ngamsAuthorizationTest(ngamsTestSuite):
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
                           "returned for Status Request")
 
- 
+
     def test_UnAuthReq_1(self):
         """
         Synopsis:
         Request rejected when HTTP Auth. enabled and no Auth. Code issued
-        
+
         Description:
         This Test Cases exercises the case where HTTP Authorization is
         enabled in the NG/AMS Server, but where no HTTP Authorization code
-        is issued with a request. 
+        is issued with a request.
 
         Expected Result:
         The NG/AMS Server will return a 'failed authorization response'
@@ -115,13 +115,13 @@ class ngamsAuthorizationTest(ngamsTestSuite):
         tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
                           "returned for Status Request")
-       
+
 
     def test_UnAuthReq_2(self):
         """
         Synopsis:
         HTTP auth. enabled, illegal HTTP auth. code issued.
-        
+
         Description:
         The purpose of this test is to check that the NG/AMS Server
         rejects a request if HTTP auth. is enabled and in invalid HTTP
@@ -151,7 +151,7 @@ class ngamsAuthorizationTest(ngamsTestSuite):
         """
         Synopsis:
         Successful HTTP auth.
-        
+
         Description:
         Test that a request is accepted when Authorization is
         enabled and the proper Authorization Code is given with the query.

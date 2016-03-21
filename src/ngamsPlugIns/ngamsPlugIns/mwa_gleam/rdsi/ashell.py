@@ -121,7 +121,7 @@ def authenticate():
 	script += 'echo $sid'
 	out = run_command(script)
 
-# if empty -> bad username/password probably 
+# if empty -> bad username/password probably
 	if (len(out) < 1):
 		raise Exception("Authentication failed")
 	current['sid'] = out
@@ -142,7 +142,7 @@ def unsafe_authenticate(user, password):
 	script += 'echo $sid'
 	out = run_command(script)
 
-# if empty -> bad username/password probably 
+# if empty -> bad username/password probably
 	if (len(out) < 1):
 		raise Exception("Authentication failed")
 	current['sid'] = out
@@ -155,7 +155,7 @@ def unsafe_authenticate(user, password):
 # ---------------------
 
 
-# --- execute a mediaflux command using an existing auth token 
+# --- execute a mediaflux command using an existing auth token
 def execute(cmd):
 	global current, need_auth, client
 
@@ -187,7 +187,7 @@ class parser(cmd.Cmd):
 		else:
 			self.prompt = "%s:online>" % current['id']
         	return cmd.Cmd.precmd(self, line)
-    
+
 	def postcmd(self, stop, line):
 		global current
 
@@ -255,7 +255,7 @@ class parser(cmd.Cmd):
 	def do_list(self, line):
 		if (line):
 			try:
-				out = execute("asset.namespace.list :assets true :action get-name :size 3000 :namespace " + line)		
+				out = execute("asset.namespace.list :assets true :action get-name :size 3000 :namespace " + line)
 				print out
 			except:
 				print "No such namespace."
@@ -304,7 +304,7 @@ class parser(cmd.Cmd):
 			print "Downloading requires at least two arguments: <asset_id> and <destination>"
 			return
 
-		for i in range(0, nargs-1): 
+		for i in range(0, nargs-1):
 			try:
 				out = execute("asset.get :id " + tokens[i])
 				match = re.search(':name\s+"(.+?)"', out)
@@ -338,7 +338,7 @@ class parser(cmd.Cmd):
 	def do_mkfolder(self, line):
 		if (line):
 			try:
-				execute("asset.namespace.create :namespace " + line)		
+				execute("asset.namespace.create :namespace " + line)
 			except:
 				print "Failed to create namespace."
 		else:
@@ -352,7 +352,7 @@ class parser(cmd.Cmd):
 # TODO - are you sure prompt (if non empty)
 		if (line):
 			try:
-				execute("asset.namespace.destroy :namespace " + line)		
+				execute("asset.namespace.destroy :namespace " + line)
 			except:
 				print "Failed to dewstroy namespace."
 		else:
@@ -366,7 +366,7 @@ class parser(cmd.Cmd):
 		tokens = line.split()
 		n = len(tokens)
 		if n == 0:
-			authenticate()		
+			authenticate()
 		elif n == 2:
 			unsafe_authenticate(tokens[0], tokens[1])
 		else:
@@ -388,7 +388,7 @@ class parser(cmd.Cmd):
 		print_server()
 		print_user()
 
-# --- server settings 
+# --- server settings
 	def help_server(self):
 		print "View or change the current LiveARC remote server to connect to.\n"
 		print "Useage: if called with no arguments, returns the current server. If called with the server name and port, changes these values.\n"
@@ -441,12 +441,12 @@ class parser(cmd.Cmd):
 	def onecmd(self, s):
 #		print 'onecmd(%s)' % s
 		return cmd.Cmd.onecmd(self, s)
- 
+
 
 if __name__ == '__main__':
 	global client
 
-# check for java 
+# check for java
 #	code = os.system("java -version")
 #	if (code):
 #		exit(-1)

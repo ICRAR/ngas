@@ -47,7 +47,7 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
     This Test Suite exercises the Data Consistency Checking facility.
     It is verified that the various checks are properly functioning, and that
     the DCC Thread is robust towards various errors that might occur.
-    
+
     Missing Test Cases:
     This Test Suite is very basic. A thorough review should be done and the
     missing Test Cases added.
@@ -56,12 +56,12 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
     be added.
     """
 
-    
+
     def test_DataCheckThread_1(self):
         """
         Synopsis:
         Basic functioning of Data Checking Feature.
-        
+
         Description:
         Test Test the basic functioning of the Data Check Thread. The
         Data Check Thread is started and it is checked that it performs
@@ -82,7 +82,7 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
         - Check that the report is OK/that all files were checked.
 
         Remarks:
-        ...        
+        ...
         """
         baseCfgFile = "src/ngamsCfg.xml"
         tmpCfgFile = "tmp/test_DataCheckThread_1_tmp.xml"

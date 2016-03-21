@@ -157,7 +157,7 @@ class PccLogDefEl:
         buf = buf + "Log Description: \n" + self.getDescription()
         return buf
 
-        
+
     def dump(self):
         """
         Dump contents of object in ASCII format to stdout.
@@ -175,7 +175,7 @@ def getAttribValue(node,
 
     node:           DOM Node object containing the information for the
                     element (Node).
-    
+
     attributeName:  Name of attribute (string).
 
     Returns:        Value of attribute or "" if not found (string).
@@ -183,7 +183,7 @@ def getAttribValue(node,
     try:
         val = node._attrs[attributeName].nodeValue
         return str(val)
-    except exceptions.Exception, e:    
+    except exceptions.Exception, e:
         return ""
 
 
@@ -191,15 +191,15 @@ class PccLogDef:
     """
     Object to hold the information from an XML Log Definition File.
     It is possible to load, Log Definition Files, and to generate
-    the logs.    
+    the logs.
     """
-   
+
     def __init__(self):
         """
         Constructor method.
         """
         self.clear()
-        
+
 
     def clear(self):
         """
@@ -242,7 +242,7 @@ class PccLogDef:
         Load the given Log Definition XML file into the object.
 
         filename:     Name of Log Definition File to load (string).
-        
+
         Returns:      Reference to object itself (PccLogDef).
         """
         self.clear()
@@ -255,7 +255,7 @@ class PccLogDef:
         # which conforms with the XML standards (we comment it out).
         doc = re.sub('<\?xml:stylesheet', '<!-- ?xml:stylesheet', doc)
         doc = re.sub('.xsl"\?>', '.xsl"? -->', doc)
-        
+
         self.unpackXmlDoc(doc)
         self.check()
         return self
@@ -285,17 +285,17 @@ class PccLogDef:
                      self.getLogDefFilename() + ". " +\
                      "Probably around line number: " + str(lineNo) + ". " +\
                      "Exception: " + str(e)
-            raise exceptions.Exception, errMsg  
+            raise exceptions.Exception, errMsg
         nodeList = dom.getElementsByTagName("LogDef")
         if (len(nodeList) == 0):
             errMsg = "Log Definition XML Document, does not have the " +\
                      "proper root element: LogDef!"
-            raise exceptions.Exception, errMsg 
+            raise exceptions.Exception, errMsg
 
         # Unpack the document.
 
         # - IMPL.: We skip the XML header for the moment
-        
+
         # - Get the Log Definition Elements
         logDefList = nodeList[0].getElementsByTagName("LogDefEl")
         if (len(logDefList) > 0):
@@ -315,7 +315,7 @@ class PccLogDef:
                 text = text.replace("\n", "")
                 text = re.sub("\s *", " ", text)
                 logDefEl.setLogText(text)
-                 
+
                 logDefEl.setLogType(getAttribValue(node, "LogType"))
 
                 # Get the Log Description
@@ -325,11 +325,11 @@ class PccLogDef:
                     if (nd.nodeType == node.TEXT_NODE):
                         text = text + nd.data.strip()
                 logDefEl.setDescription(text.strip(" \n"))
-                 
+
                 logDefEl.setLogType(getAttribValue(node, "LogType"))
-                
+
                 self.addLogDefEl(logDefEl)
-        
+
         return self
 
 
@@ -339,14 +339,14 @@ class PccLogDef:
         Add a Log Definition Element in the object.
 
         logDefEl:   Log Definition Object (PccLogDefEl).
-        
+
         Returns:    Reference to object itself (PccLogDef).
         """
         self.__logDefs.append(logDefEl)
         self.__logIdDic[logDefEl.getLogId()] = logDefEl
         self.__logNoDic[logDefEl.getLogNumber()] = logDefEl
         return self
-    
+
 
     def check(self):
         """
@@ -388,7 +388,7 @@ class PccLogDef:
         Returns:   Resulting log line (string).
         """
         logEl = self.getLogDef(logId)
-        if (parList): 
+        if (parList):
             parStr = ""
             for par in parList:
                 if (isinstance(par, types.StringType)):
@@ -442,7 +442,7 @@ class PccLogDef:
         """
         Dump contents of buffer on stdout.
 
-        Returns:   Reference to object itself (PccLogDef).   
+        Returns:   Reference to object itself (PccLogDef).
         """
         print self.dumpBuf()
         return self
@@ -455,7 +455,7 @@ if __name__ == '__main__':
     """
     logDef = PccLogDef()
     if (len(sys.argv) > 1):
-        logDef.load(sys.argv[1])    
+        logDef.load(sys.argv[1])
 
     # Add an element
     logEl = PccLogDefEl().\

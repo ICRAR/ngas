@@ -117,7 +117,7 @@ def correctUsage():
           "\n\n"
     return buf
 
-  
+
 if __name__ == '__main__':
     """
     Main function to execute the tool.
@@ -161,7 +161,7 @@ if __name__ == '__main__':
             idx += 1
         except Exception, e:
             print "\nProblem executing the tool: %s\n" % str(e)
-            print correctUsage()  
+            print correctUsage()
             sys.exit(1)
     if (not fileList):
         print correctUsage()

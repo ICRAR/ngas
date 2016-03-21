@@ -62,7 +62,7 @@ class ngamsMirroringSource:
         # Parameters from the configuration.
         self.__id               = None
         self.__serverList       = None
-        self.__period           = 60.0 
+        self.__period           = 60.0
         self.__completeSync     = []
         self.__syncType         = NGAMS_MIR_TYPE_ING_DATE
         self.__targetNodes      = None
@@ -78,7 +78,7 @@ class ngamsMirroringSource:
               id):
         """
         Set the ID for the mirroring source.
-        
+
         id:        ID of mirroring source (string).
 
         Returns:   Reference to object itself.
@@ -100,7 +100,7 @@ class ngamsMirroringSource:
                       srvList):
         """
         Set the internal server list member.
-        
+
         srvList:   List of servers to add (string).
 
         Returns:   Reference to object itself.
@@ -123,9 +123,9 @@ class ngamsMirroringSource:
         """
         Set the period for checking for availability of new data objects
         at the associated source cluster.
-        
+
         period:    Period for checking for new data objects (float).
-        
+
         Returns:   Reference to object itself.
         """
         try:
@@ -135,8 +135,8 @@ class ngamsMirroringSource:
                   "Mirroring.Source.Period. Value given: %s"
             raise Exception, msg % str(period)
         return self
-    
-    
+
+
     def getPeriod(self):
         """
         Get the internal period member.
@@ -151,10 +151,10 @@ class ngamsMirroringSource:
         """
         Set the period for checking for availability of new data objects
         at the associated source cluster.
-        
+
         syncTimes:   List with ISO 8601 time references for when to make a
                      complete sync (string/ISO 8601).
-        
+
         Returns:     Reference to object itself.
         """
         try:
@@ -178,7 +178,7 @@ class ngamsMirroringSource:
             raise Exception, msg % (str(syncTimes), str(e))
         return self
 
-    
+
     def getCompleteSyncList(self):
         """
         Get the list with HH:MM:SS time stamps for when to carry out a complete
@@ -195,9 +195,9 @@ class ngamsMirroringSource:
                     syncType):
         """
         Set the synchronization type.
-        
+
         syncType:  Synchronization type:
-         
+
                      - NGAMS_MIR_TYPE_ING_DATE
                      - NGAMS_MIR_TYPE_FILTER_PI  (string).
 
@@ -233,7 +233,7 @@ class ngamsMirroringSource:
         """
         self.__targetNodes = ngamsDbCore.cleanSrvList(targetNodes)
         return self
-    
+
 
     def getTargetNodes(self):
         """
@@ -255,7 +255,7 @@ class ngamsMirroringSource:
         """
         self.__filterPlugIn = filterPlugIn
         return self
-    
+
 
     def getFilterPlugIn(self):
         """
@@ -278,7 +278,7 @@ class ngamsMirroringSource:
         """
         self.__filterPlugInPars = filterPlugInPars
         return self
-    
+
 
     def getFilterPlugInPars(self):
         """
@@ -300,7 +300,7 @@ class ngamsMirroringSource:
         """
         self.__lastSync = timeRef2Iso8601(lastSync)
         return self
-    
+
 
     def getLastSyncTime(self):
         """

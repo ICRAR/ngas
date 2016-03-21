@@ -110,7 +110,7 @@ def _parseDiskTestResult(resultf, perf = PERF_WRITE):
         raise Exception('File does not exist %s' % resultf)
     if (not perf_key_string.has_key(perf)):
         raise Exception('Invalid mode %s' % str(perf))
-    
+
     ks = perf_key_string[perf]
     cmd = 'grep "%s" %s' % (ks, resultf)
     re = execCmd(cmd, failonerror = False, okErr = [256])
@@ -119,7 +119,7 @@ def _parseDiskTestResult(resultf, perf = PERF_WRITE):
         for line in re[1].split('\n'):
             num = float(line.split(':')[1].split()[0])
             nums.append(num)
-        
+
     if (len(nums) == 0):
         nums.append(0)
     return np.array(nums)
@@ -127,14 +127,14 @@ def _parseDiskTestResult(resultf, perf = PERF_WRITE):
 def runTest(pybin, dtSrc, testDir, blocksize, mode, numoffiles, perfs, resultdir = None, iomode = 1, iosize = 1, runmode = RUN_TEST_ONLY):
     """
     perfs    a list of performance items (list)
-    
+
     Return    a dictionary (key: performance item, value: performance numarray
     """
     if (not resultdir):
         resultdir = os.getcwd()
     elif (not os.path.exists(resultdir)):
         raise Exception("Path %s does not exist" % resultdir)
-    
+
     resultf = "%s/%s.txt" % (resultdir, getResultFn(mode))
     cmd = "%s %s -d %s -b %d -m %s -t %d -i %ld %s > %s" % (pybin, dtSrc, testDir, blocksize, mode_key_string[mode], numoffiles, iosize * gigabytes, io_mode[iomode], resultf)
     print cmd
@@ -144,7 +144,7 @@ def runTest(pybin, dtSrc, testDir, blocksize, mode, numoffiles, perfs, resultdir
         dict_nums = {}
         for perf in perfs:
             dict_nums[perf] = _parseDiskTestResult(resultf, perf)
-    
+
     # move the pickle file as well
     spdfile = '%s/%s' % (os.getcwd(), DEFAULT_FNM)
     newspdfile = '%s/%s_%dM.pkl' % (resultdir, mode_key_label[mode].replace(' ', '_'), (blocksize / megabytes))
@@ -185,7 +185,7 @@ def buildDict_result(resultdir):
                 li = dict_result[perf][mode]
                 if (len(li) == 0):
                     li.append([])
-                    li.append([])                    
+                    li.append([])
                 li[0].append(np.mean(na))
                 li[1].append(np.std(na))
     return dict_result
@@ -198,8 +198,8 @@ def importPlotsLib():
         matplotlib.use('Agg')
         plotlib_imported = True
     import pylab as pl
-    return pl     
-            
+    return pl
+
 def plotThruputVsBlocksize(dict_result, resultdir, iomode = 1, iosize = 1):
     """
     Each performance item produces on plot, and each mode is a line
@@ -210,7 +210,7 @@ def plotThruputVsBlocksize(dict_result, resultdir, iomode = 1, iosize = 1):
     pl = importPlotsLib()
     if (dict_result == None):
         dict_result = buildDict_result(resultdir)
-        
+
     for perf in dict_result.keys(): # each perf item produces one plot
         fig = pl.figure()
         ax = fig.add_subplot(111)
@@ -224,17 +224,17 @@ def plotThruputVsBlocksize(dict_result, resultdir, iomode = 1, iosize = 1):
         ax.tick_params(axis='both', which='major', labelsize = 8)
         ax.tick_params(axis='both', which='minor', labelsize = 6)
         ax.set_xscale('log', basex = 2)
-        
+
         perfitem = dict_result[perf]
         i = 0
         for mode in perfitem.keys(): # each mode produces a line
             y = np.array(perfitem[mode][0])
             y_err = np.array(perfitem[mode][1])
-            ax.errorbar(x, y, y_err, ecolor = pl_c[i % len(pl_c)], marker = pl_m[i % len(pl_m)], 
-                    linestyle = pl_l[i % len(pl_l)], label = mode_key_label[mode], markersize = 5, 
+            ax.errorbar(x, y, y_err, ecolor = pl_c[i % len(pl_c)], marker = pl_m[i % len(pl_m)],
+                    linestyle = pl_l[i % len(pl_l)], label = mode_key_label[mode], markersize = 5,
                     markeredgecolor = pl_c[i % len(pl_c)], markerfacecolor = 'none', color = pl_c[i % len(pl_c)])
             i += 1
-        
+
         legend = ax.legend(loc = 'upper left', shadow=True, prop={'size':8})
         fgname = '%s/%s_%s.png' % (resultdir, io_mode_simlabel[iomode], perf_key_label[perf].replace(' ', '_'))
         fig.savefig(fgname)
@@ -251,13 +251,13 @@ def plotThruputBlocksizeReordering(dict_result, resultdir, iomode = 1, iosize = 
     pl = importPlotsLib()
     if (dict_result == None):
         dict_result = buildDict_result(resultdir)
-    
+
     # we need: [mode][perf]
     real_dict_result = dictOfDictOfList()
     for perf, k_mode_v_li in dict_result.iteritems():
         for mode, li in k_mode_v_li.iteritems():
             real_dict_result[mode][perf] = li
-    
+
     for mode in real_dict_result.keys(): # each mode products on plot
         fig = pl.figure()
         ax = fig.add_subplot(111)
@@ -267,22 +267,22 @@ def plotThruputBlocksizeReordering(dict_result, resultdir, iomode = 1, iosize = 
         ax.tick_params(axis='both', which='major', labelsize = 8)
         ax.tick_params(axis='both', which='minor', labelsize = 6)
         ax.set_xscale('log', basex = 2)
-        
+
         modeitem = real_dict_result[mode]
         i = 0
         for perf in modeitem.keys(): # each mode produces a line
             y = np.array(modeitem[perf][0])
             y_err = np.array(modeitem[perf][1])
-            ax.errorbar(x, y, y_err, ecolor = pl_c1[i % len(pl_c1)], marker = pl_m1[i % len(pl_m1)], 
-                    linestyle = pl_l1[i % len(pl_l1)], label = perf_key_label[perf], markersize = 5, 
+            ax.errorbar(x, y, y_err, ecolor = pl_c1[i % len(pl_c1)], marker = pl_m1[i % len(pl_m1)],
+                    linestyle = pl_l1[i % len(pl_l1)], label = perf_key_label[perf], markersize = 5,
                     markeredgecolor = pl_c1[i % len(pl_c1)], markerfacecolor = 'none', color = pl_c1[i % len(pl_c1)])
             i += 1
-        
+
         legend = ax.legend(loc = 'upper left', shadow=True, prop={'size':8})
         fgname = '%s/%s_%s.png' % (resultdir, io_mode_simlabel[iomode], mode_key_label[mode].replace(' ', '_'))
         fig.savefig(fgname)
         pl.close(fig)
-    
+
 
 def testThruoutVsBlocksize(pybin, dtSrc, testdir, resultdir, runmode = RUN_TEST_ONLY, iomode = 1, iosize = 1):
     """
@@ -292,18 +292,18 @@ def testThruoutVsBlocksize(pybin, dtSrc, testdir, resultdir, runmode = RUN_TEST_
     block_list_len = 10
     #x = 2 ** (np.array(range(block_list_len)))
     blockszlist = []
-    
+
     for i in range(block_list_len):
-        blockszlist.append(2 ** i) 
-    
+        blockszlist.append(2 ** i)
+
     if (runmode != RUN_PLOT_ONLY):
         sessionId = str(time.time()).split('.')[0]
         resultdir = resultdir + '/' + sessionId
         cmd = 'mkdir -p %s' % resultdir
         execCmd(cmd)
-        
+
         # ordering [perf][mode][type][time_step], (type - mean or std)
-        if (runmode == RUN_TEST_N_PLOT): 
+        if (runmode == RUN_TEST_N_PLOT):
             dict_result = dictOfDictOfList()
         """
         defaultdict(dict) # key is perf
@@ -320,7 +320,7 @@ def testThruoutVsBlocksize(pybin, dtSrc, testdir, resultdir, runmode = RUN_TEST_
                         li = dict_result[perf][mode]
                         if (len(li) == 0):
                             li.append([])
-                            li.append([])                    
+                            li.append([])
                         li[0].append(np.mean(na))
                         li[1].append(np.std(na))
     if (runmode != RUN_TEST_ONLY):
@@ -336,41 +336,41 @@ if __name__ == '__main__':
     parser.add_option("-i", "--iosize", action="store", type="int", dest="iosize", help = "File size in GB")
     parser.add_option("-m", "--iomode", action="store", type="int", dest="iomode", help = "types of io, 1:normal, 2:lowlevel-direct, 3:lowlevel-async, 4:lowlevel-sync")
     parser.add_option("-u", "--runmode", action="store", type="int", dest="runmode", help = "Running mode: 1 - Test only, 2 - Plot only, 3 - Test and Plot")
-      
+
     (options, args) = parser.parse_args()
-    
+
     if (options.runmode):
         run_mode = options.runmode
     else:
         run_mode = RUN_TEST_ONLY
-    
-    if ((run_mode != RUN_PLOT_ONLY) and (None == options.pybin or None == options.dtsrc or 
+
+    if ((run_mode != RUN_PLOT_ONLY) and (None == options.pybin or None == options.dtsrc or
         None == options.testdir or None == options.resultdir)):
-        
+
         parser.print_help()
         sys.exit(1)
-        
+
     if (run_mode == RUN_PLOT_ONLY and None == options.resultdir):
         parser.print_help()
-        sys.exit(1)    
-    
+        sys.exit(1)
+
     if (options.iosize):
         io_size = options.iosize
     else:
         io_size = 1
-        
+
     if (options.iomode):
         lio_mode = options.iomode
-    else:   
+    else:
         lio_mode = 1
-        
-    
-        
+
+
+
     testThruoutVsBlocksize(options.pybin, options.dtsrc, options.testdir, options.resultdir, runmode = run_mode, iomode = lio_mode, iosize = io_size)
 
 
-    
-    
-    
-    
+
+
+
+
 

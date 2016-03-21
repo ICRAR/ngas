@@ -43,10 +43,10 @@ def correctUsage():
     Print out correct usage of the tool on stdout.
 
     Returns:   Void.
-    """    
+    """
     print "\nCorrect usage is: "
     print "\n  % ngasConvertIngDateBsddb.py.py <Snapshot Filename>\n\n"
-    
+
 
 def converIngDateBsddb(dbSnapshotName):
     """
@@ -89,7 +89,7 @@ def converIngDateBsddb(dbSnapshotName):
 if __name__ == '__main__':
     """
     Main function invoking the function to convert the ingestion date.
-    """  
+    """
     if (len(sys.argv) != 2):
         correctUsage()
         sys.exit(1)

@@ -91,7 +91,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         sqlQuery = "UPDATE %s SET srv_list_id=%d, xml_file_info='%s', " +\
                    "status=%d, message='%s', last_activity_time='%s', " +\
                    "scheduling_time='%s' WHERE file_id='%s' " +\
-                   "AND file_version=%d"        
+                   "AND file_version=%d"
         sqlQuery = sqlQuery % (ngamsDbCore.NGAS_MIR_QUEUE,
                                mirReqObj.getSrvListId(),
                                mirReqObj.getXmlFileInfo(),
@@ -115,7 +115,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         fileId:       File ID (string).
 
         fileVersion:  File Version (integer).
-        
+
         newStatus:    New status for the Mirroring Request to write to the DB
                       (ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_SCHED, ...)
 
@@ -167,16 +167,16 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
             sqlQuery = sqlQuery % (ngamsDbCore.NGAS_MIR_QUEUE,
                                    mirReqObj.getInstanceId(),
                                    mirReqObj.getFileId(),
-                                   mirReqObj.getFileVersion(),      
-                                   mirReqObj.getIngestionDate(),      
-                                   mirReqObj.getSrvListId(),      
-                                   mirReqObj.getXmlFileInfo(),      
-                                   mirReqObj.getStatusAsNo(),      
+                                   mirReqObj.getFileVersion(),
+                                   mirReqObj.getIngestionDate(),
+                                   mirReqObj.getSrvListId(),
+                                   mirReqObj.getXmlFileInfo(),
+                                   mirReqObj.getStatusAsNo(),
                                    str(mirReqObj.getMessage()),
                                    mirReqObj.getLastActivityTime(),
                                    mirReqObj.getSchedulingTime())
             res = self.query(sqlQuery, ignoreEmptyRes = 0)
-            
+
         return self
 
 
@@ -207,7 +207,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         if (len(res[0]) == 0):
             res = []
         else:
-            res = res[0][0] 
+            res = res[0][0]
 
         return res
 
@@ -225,7 +225,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         Returns:     Mirroring Request Object (ngamsMirroringRequest).
         """
         T = TRACE()
-        
+
         res = sqlResult
         mirReqObj = \
                   ngamsMirroringRequest.ngamsMirroringRequest().\
@@ -260,10 +260,10 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
                       coordinating the mirroring (string).
 
         Returns:      Mirroring Request Object with information for that
-                      request (ngamsMirroringRequest|None).                
+                      request (ngamsMirroringRequest|None).
         """
         T = TRACE()
-        
+
         res = self.getMirReq(fileId, fileVersion, instanceId)
         if (len(res[0]) == 0): return None
         mirReqObj = unpackSqlResult(res[0][0])
@@ -296,7 +296,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         sqlQuery = "SELECT INTO %s SELECT %s FROM " +\
                    "%s WHERE file_id='%s' AND file_version=%d AND " +\
                    "instance_id='%s'"
-        sqlQuery = sqlQuery % (ngamsDbCore.NGAS_MIR_QUEUE, 
+        sqlQuery = sqlQuery % (ngamsDbCore.NGAS_MIR_QUEUE,
                                ngamsDbCore.getNgasMirQueueCols2(),
                                ngamsDbCore.NGAS_MIR_HIST, fileId, fileVersion,
                                instanceId)
@@ -308,7 +308,7 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         sqlQuery = sqlQuery % (ngamsDbCore.NGAS_MIR_QUEUE, fileId, fileVersion,
                                instanceId)
         self.query(sqlQuery)
-        
+
         return self
 
 

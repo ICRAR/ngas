@@ -36,7 +36,7 @@ import time
 from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_OFFLINE_STATE, \
     NGAMS_BUSY_SUBSTATE, info
-import ngamsSrvUtils 
+import ngamsSrvUtils
 
 
 def handleCmdOffline(srvObj,
@@ -44,16 +44,16 @@ def handleCmdOffline(srvObj,
                      httpRef):
     """
     Handle an OFFLINE command.
-        
+
     srvObj:       Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:  Request Property object to keep track of
                   actions done during the request handling
                   (ngamsReqProps).
-        
+
     httpRef:      Reference to the HTTP request handler
                   object (ngamsHttpRequestHandler).
-        
+
     Returns:      Void.
     """
     # If wait=1 is specified, send an immediate reply.

@@ -58,7 +58,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Update the NGAS Disks Table according to a new file archived.
 
         diskId:       Disk ID (string).
-        
+
         fileSize:     Size of file as stored on disk (integer).
 
         Returns:      Reference to object itself.
@@ -103,7 +103,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Check if disk with the given Disk ID is available in the DB.
 
         diskId:    Disk ID (string).
-        
+
         Returns:   1 = Disk ID was found, 0 = Disk ID not found (integer).
         """
         T = TRACE()
@@ -126,13 +126,13 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Change the Logical Name of the disk with the given Disk ID.
 
         diskId:        Disk ID (string).
-        
+
         logicalName:   New Logical Name (string).
 
         Returns:       Void.
         """
         T = TRACE()
-        
+
         sqlQuery = "UPDATE ngas_disks SET logical_name='" + logicalName +"' "+\
                    "WHERE disk_id='" + diskId + "'"
         self.query(sqlQuery)
@@ -143,9 +143,9 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         Query the Logical Name of a disk from the DB, based on
         the Disk ID of the disk.
-        
-        diskId:      Disk ID (string).    
-    
+
+        diskId:      Disk ID (string).
+
         Returns:     Logical Name or None if not found (string | None).
         """
         T = TRACE()
@@ -170,7 +170,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                    is not registered None is returned (integer).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT completed FROM ngas_disks WHERE " +\
                    "disk_id = '" + diskId + "'"
         res = self.query(sqlQuery, ignoreEmptyRes=0)
@@ -191,7 +191,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                    returned (string | None).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT slot_id FROM ngas_disks WHERE disk_id='" +\
                    diskId + "'"
         res = self.query(sqlQuery, ignoreEmptyRes=0)
@@ -217,7 +217,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                   not found (list).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT " + ngamsDbCore.getNgasDisksCols() + " " +\
                    "FROM ngas_disks nd WHERE disk_id='" + diskId + "'"
         res = self.query(sqlQuery, ignoreEmptyRes=0)
@@ -239,7 +239,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:      List with disk information (list/list).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT " + ngamsDbCore.getNgasDisksCols() + " " +\
                    "FROM ngas_disks nd WHERE disk_id IN ("
         if (len(diskIdList)):
@@ -271,7 +271,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                    be generated (integer).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT logical_name FROM ngas_disks"
         if (cat):
             sqlQuery += " WHERE logical_name LIKE '%" + cat + "-%'"
@@ -327,7 +327,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                          and 0 if an existing entry was updated (integer/0|1).
         """
         T = TRACE()
-        
+
         try:
             # Check if the entry already exists. If yes update it, otherwise
             # insert a new element.
@@ -366,8 +366,8 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                         self.relDbSem()
                     except Exception, e:
                         self.relDbSem()
-                        raise Exception, e      
-                        
+                        raise Exception, e
+
                     sqlQuery += ", last_check='" + lastCheckTmp + "'"
 
                 if (lastHostId != None):
@@ -410,17 +410,17 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                     self.relDbSem()
                 except Exception, e:
                     self.relDbSem()
-                    raise Exception, e                   
+                    raise Exception, e
                 sqlQuery = "UPDATE ngas_disks SET completion_date='" +\
                             complDate + "' " + "WHERE disk_id='" + diskId + "'"
                 self.query(sqlQuery)
 
             self.triggerEvents([diskId, mountPoint])
             return addDiskHistEntry
-        except Exception, e:   
+        except Exception, e:
             raise e
 
-            
+
     def getLogicalNamesMountedDisks(self,
                                     host):
         """
@@ -433,7 +433,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:   List with Logical Names (list).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT logical_name FROM ngas_disks WHERE host_id='" +\
                    host + "' AND mounted=1"
         res = self.query(sqlQuery, ignoreEmptyRes=0)
@@ -444,7 +444,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
             for disk in res[0]:
                 logNames.append(disk[0])
             return logNames
-  
+
 
     def getMtPtFromDiskId(self,
                           diskId):
@@ -457,7 +457,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                      not found (string|None)
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT mount_point FROM ngas_disks WHERE disk_id='" +\
                    diskId + "'"
         res = self.query(sqlQuery, ignoreEmptyRes=0)
@@ -480,7 +480,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                    Points (list/tuple).
         """
         T = TRACE(5)
-        
+
         sqlQuery = "SELECT disk_id, mount_point FROM ngas_disks " +\
                    "WHERE host_id='" + host + "' AND mounted=1"
         res = self.query(sqlQuery, ignoreEmptyRes=0)
@@ -501,7 +501,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:   List with Slot IDs (list).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT slot_id FROM ngas_disks WHERE host_id='" +\
                    host + "' AND mounted=1"
         res = self.query(sqlQuery, ignoreEmptyRes=0)
@@ -557,7 +557,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:  Disk ID or None if no match found (string).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT disk_id FROM ngas_disks WHERE slot_id='" +\
                    slotId + "' AND host_id='" + host + "'"
         res = self.query(sqlQuery, ignoreEmptyRes=0)
@@ -574,7 +574,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:    List with Disk IDs (list).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT disk_id FROM ngas_disks"
         res = self.query(sqlQuery, ignoreEmptyRes=0)
         if (res == [[]]):
@@ -602,7 +602,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                       were found (list/ngamsDiskInfo).
         """
         T = TRACE()
-        
+
         if (slotIdList):
             slotIds = "("
             for id in slotIdList: slotIds = slotIds + "'" + id + "',"
@@ -637,7 +637,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:     Disk ID or None if no matches were found (string)
         """
         T = TRACE()
-        
+
         # Create a list of IDs for the SQL statement.
         ids = "("
         for id in diskIds:
@@ -671,21 +671,21 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                   CANNOT BE RECOVERED!!
 
         diskId:        ID of disk for which to delete the entry (string).
-        
+
         delFileInfo:   If set to 1, the file information for the files
                        stored on the disk is deleted as well (integer/0|1).
-        
+
         Returns:       Reference to object itself.
         """
         T = TRACE()
-        
+
         fileInfoDbmName = fileInfoDbm = None
         try:
             if (delFileInfo and self.getCreateDbSnapshot()):
                 diskInfo = ngamsDiskInfo.ngamsDiskInfo().read(self, diskId)
             else:
                 diskInfo = None
-                
+
             if (delFileInfo):
                 # Get the information about the files on the disk (before this
                 # information is deleted).
@@ -698,11 +698,11 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                     fileInfoDbmName = self.dumpFileInfoList(diskId,
                                                             fileListDbmName=\
                                                             fileInfoDbmName)
-                                                            
+
             # Delete the disk info.
             sqlQuery = "DELETE FROM ngas_disks WHERE disk_id='" + diskId + "'"
             self.query(sqlQuery)
-            
+
             # Delete file info if requested.
             if (delFileInfo):
                 sqlQuery = "DELETE FROM ngas_files WHERE disk_id='"+diskId+"'"
@@ -719,7 +719,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                                      unpackSqlResult(fileSqlInfo)
                         self.createDbRemFileChangeStatusDoc(diskInfo,
                                                             tmpFileObj)
-                        
+
                         key, fileSqlInfo = fileInfoDbm.getNext()
 
             self.triggerEvents([diskInfo.getDiskId(),
@@ -761,7 +761,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                 elif (type(diskInfo[1]) == types.StringType):
                     # Expects an ISO 8601 timestamp.
                     timeSinceLastCheck = int(iso8601ToSecs(diskInfo[1]) + 0.5)
-                else:                   
+                else:
                     timeSinceLastCheck =\
                                        self.convertTimeStampToMx(diskInfo[1]).\
                                        ticks()
@@ -776,7 +776,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Update the Last Check Flag for a disk.
 
         diskId:           ID of disk for which to update record (string).
-        
+
         timeSecs:         Time in seconds to set for the disk (integer).
 
         Returns:          Reference to object itself.
@@ -794,7 +794,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
             self.query(sqlQuery)
             self.triggerEvents()
             return self
-        except Exception, e:   
+        except Exception, e:
             raise e
 
 
@@ -810,7 +810,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                   (integer).
         """
         T = TRACE()
-        
+
         sqlQuery = "SELECT min(last_check) FROM ngas_disks WHERE " +\
                    "host_id='" + hostId + "'"
         res = self.query(sqlQuery, ignoreEmptyRes=0)

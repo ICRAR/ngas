@@ -55,7 +55,7 @@ class TimeStamp:
         """
         return self.__status
 
-    
+
     def initFromNow(self):
         """
         Initialize with the current time.
@@ -68,7 +68,7 @@ class TimeStamp:
         self.__status = self.tmToMjd(tm,secs)
         return self
 
-    
+
     def initFromMjd(self,
                     val):
         """
@@ -118,7 +118,7 @@ class TimeStamp:
         self.__status = self.tmToMjd(timeTuple, secs)
         return self
 
-        
+
     def initFromSybaseTimeStamp(self,
                                 sybaseTime):
         """
@@ -160,15 +160,15 @@ class TimeStamp:
         tm = time.localtime(secs)
         self.__status = self.tmToMjd(tm,secs2)
         return self
- 
-        
+
+
     def mjdToTm(self,
                 mjd):
         """
         Convert the mjd (modified julian day) value to a tuple tm.
         (year, month, day, hour, minute, second, weekday, julian day,
         daylight savings flag).
-        
+
         Since the tuple tm doesn't contain the fractional seconds, a
         more exact value for seconds is returned in secs.
 
@@ -194,13 +194,13 @@ class TimeStamp:
         the tm struct. Returns 0 if OK.
 
         tm:         Time tuple (tuple_.
-        
+
         secs:       Fraction of seconds (integer).
 
         Returns:    Reference to object itself (TimeStamp).
         """
         (year,mon,day,hour,min,sec) = (tm[0],tm[1],tm[2],tm[3],tm[4],tm[5])
-        
+
         j = year
         jm = 0
         j = j - (12 - mon)/10
@@ -209,7 +209,7 @@ class TimeStamp:
         jd = jm
         jm  = (12 + hour) * 3600 + min * 60 + sec
         jd = jd + (jm/86400.)
-        
+
         self.__mjd = jd - 2400000.5
         self.__mjd = (self.__mjd - (sec/86400.)) + (secs/86400.)
 
@@ -373,7 +373,7 @@ class Timer:
             self.__startTime = startTime
         else:
             self.__startTime = time.time()
-    
+
 
     def start(self):
         """
@@ -407,7 +407,7 @@ class Timer:
         return (timeNow - self.__startTime)
 
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
     """
     """
     test()
@@ -421,7 +421,7 @@ def getIsoTime(onlyDate  = 0,
     any decimals.
 
     onlyDate:     Print only the date, i.e. no time information (integer/0|1).
-     
+
     precision:    Precision of the generated time stamp, i.e., the
                   number of decimals to put after the generated
                   time stamp (integer).
@@ -440,7 +440,7 @@ def getIsoTime(onlyDate  = 0,
             secDecs = tpl % math.fmod(timeNow, 1.)
             isoTimeNow += secDecs[1:(precision + 2)]
     else:
-        isoTimeNow = time.strftime("%Y-%m-%d", timeTuple) 
+        isoTimeNow = time.strftime("%Y-%m-%d", timeTuple)
     return isoTimeNow
 
 #

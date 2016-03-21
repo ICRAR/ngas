@@ -49,14 +49,14 @@ def isMWAVisFile(fileId):
     fileName, fileExtension = os.path.splitext(fileId)
     if ('.fits' != fileExtension.lower()):
         return False # only FITS file is considered
-    
+
     if (fileName.find('_gpubox') == -1):
         return False
-    
+
     ss = fileName.split('_')
     if (len(ss) != 4):
         return False
-    
+
     return True
 
 def fileOnHost(srvObj, fileId, hostId):
@@ -97,33 +97,33 @@ def getCRCFromDB(srvObj, fileId, fileVersion, diskId):
         fileChecksum = srvObj.getDb().getFileChecksum(diskId, fileId, fileVersion)
     except Exception, eyy:
         warning('Fail to get file checksum for file %s: %s' % (fileId, str(eyy)))
-    return fileChecksum    
+    return fileChecksum
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
     Compress the file based on file_path (file_id, disk_id, and file_version)
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     # target_host does not contain port
     required_params = ['file_path', 'file_id', 'file_version', 'disk_id', 'target_host', 'crc_db', 'debug']
-    
+
     filename = reqPropsObj.getHttpPar('file_path')
-    
+
     if (not os.path.exists(filename)):
         errMsg = 'File does not exist: %s' % filename
         warning(errMsg)
         srvObj.httpReply(reqPropsObj, httpRef, 501, errMsg, NGAMS_TEXT_MT)
         return
-    
+
     parDic = reqPropsObj.getHttpParsDic()
     for rp in required_params:
         if (not parDic.has_key(rp)):
@@ -131,14 +131,14 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             srvObj.httpReply(reqPropsObj, httpRef, 502, errMsg, NGAMS_TEXT_MT)
             return
     info(3, 'Moving file %s' % filename)
-    
+
     fileId = parDic['file_id']
     fileVersion = int(parDic['file_version'])
     diskId = parDic['disk_id']
     tgtHost = parDic['target_host']
     crcDb = parDic['crc_db']
     debug = int(parDic['debug'])
-    
+
     if (not isMWAVisFile(fileId)):
         errMsg = 'Not MWA visibilty file: %' % (fileId)
         warning(errMsg)
@@ -154,15 +154,15 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if (debug):
         info(3, 'Only for file movment debugging, return now')
         srvObj.httpReply(reqPropsObj, httpRef, 200, 'DEBUG ONLY', NGAMS_TEXT_MT)
-        return 
-    
+        return
+
     fileCRC = getCRCFromFile(filename)
     if (fileCRC != crcDb):
         errMsg = 'File %s on source host %s already corrupted, moving request rejected' % (filename, srvObj.getHostId().replace(':', '-'))
         warning(errMsg)
         srvObj.httpReply(reqPropsObj, httpRef, 504, errMsg, NGAMS_TEXT_MT)
         return
-    
+
     sendUrl = 'http://%s:7777/QARCHIVE' % tgtHost
     info(3, "Moving to %s" % sendUrl)
     fileMimeType = 'application/octet-stream'
@@ -194,23 +194,22 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             warning("Attempt %d failed: %s" % (i, str(hexp)))
             last_deliv_err = str(hexp).replace('\n', '--')
             continue
-    
+
     if (not deliver_success):
         errMsg = 'File %s failed to be moved to %s: %s' % (fileId, tgtHost, last_deliv_err)
         warning(errMsg)
         srvObj.httpReply(reqPropsObj, httpRef, 505, errMsg, NGAMS_TEXT_MT)
         return
-    
+
     try:
-        ngamsDiscardCmd._discardFile(srvObj, diskId, fileId, fileVersion, execute = 1, 
+        ngamsDiscardCmd._discardFile(srvObj, diskId, fileId, fileVersion, execute = 1,
                                      tmpFilePat = srvObj.getCfg().getRootDirectory() + '/tmp/')
     except Exception, e1:
         warning('Fail to remove file %s: %s' % (filename, str(e1)))
         srvObj.httpReply(reqPropsObj, httpRef, 200, 'Remove error: %s' % str(e1).replace('\n', '--'), NGAMS_TEXT_MT)
         return
-    
-    
+
+
     srvObj.httpReply(reqPropsObj, httpRef, 200, MOVE_SUCCESS, NGAMS_TEXT_MT)
-            
-    
-    
+
+

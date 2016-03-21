@@ -69,7 +69,7 @@ def _provokeErr(prop = 0.5):
     """
     Internal function to generate randomly an indication whether or not the
     DB Driver should provoke an error or not.
-   
+
     prop:     Probability for requesting to produce error (0.5 = 50%)
               (float/[0.0; 1.0]).
     Returns:  Indication if error should be produced or not (integer/0|1).
@@ -82,13 +82,13 @@ def _provokeErr(prop = 0.5):
     else:
         return 0
 
- 
+
 class ngamsSybase:
     """
     Class to handle the connection to the NGAS DB when Sybase ASE is
     used as DBMS.
     """
-  
+
     def __init__(self,
                  server,
                  db,
@@ -102,9 +102,9 @@ class ngamsSybase:
         server:          DB server name (string).
 
         db:              DB name (string).
-        
+
         user:            DB user (string).
-        
+
         password:        DB password (string).
 
         application:     Name of application (ID string) (string).
@@ -127,9 +127,9 @@ class ngamsSybase:
         Return:    Driver version (string).
         """
         T = TRACE()
-        
+
         return "NG/AMS_Sybase_" + self.__sybModVer
-    
+
 
     def connect(self,
                 server,
@@ -144,9 +144,9 @@ class ngamsSybase:
         server:          DB server name (string).
 
         db:              DB name (string).
-        
+
         user:            DB user (string).
-        
+
         password:        DB password (string).
 
         application:     Name of application (ID string) (string).
@@ -156,7 +156,7 @@ class ngamsSybase:
         Returns:         Reference to object itself.
         """
         T = TRACE()
-        
+
         # Provoke problem creating connection.
         if (_provokeErr(ERR_BROKEN_CON)):
             raise Exception, "Layer: 5, Origin: 3 ct_connect(): " +\
@@ -170,7 +170,7 @@ class ngamsSybase:
         self.__dbDrv.set_property(Sybase.CS_APPNAME, application)
         self.__dbDrv.connect()
         self.__dbDrv.execute("use " + db)
-               
+
         # Store connection parameters.
         self.__server      = server
         self.__db          = db
@@ -181,7 +181,7 @@ class ngamsSybase:
 
         return self
 
-        
+
     def close(self):
         """
         Close the DB connection.
@@ -189,7 +189,7 @@ class ngamsSybase:
         Returns:    Reference to object itself.
         """
         T = TRACE()
-        
+
         self.__dbDrv.close()
         return self
 
@@ -210,7 +210,7 @@ class ngamsSybase:
         Returns:       Result of SQL query (list).
         """
         T = TRACE(5)
-        
+
         try:
             # Provoke broken connection.
             if (_provokeErr(ERR_BROKEN_CON)):
@@ -238,7 +238,7 @@ class ngamsSybase:
                 break
             raise Exception, e
 
- 
+
     def cursor(self,
                query):
         """
@@ -276,7 +276,7 @@ class ngamsSybase:
                       'datetime' column of the DBMS (string).
         """
         T = TRACE(5)
-        
+
         if (str(timeStamp).find(":") != -1):
             if (timeStamp[10] != "T"): timeStamp[10] = "T"
             ts = PccUtTime.TimeStamp().\
@@ -292,9 +292,9 @@ class ngamsSybase:
         """
         The Sybase module uses the mx.DateTime module internally thus no
         need for any conversion.
-        
+
         timeStamp:    Date time object (mx.DateTime).
-        
+
         Returns:      Date time object (mx.DateTime).
         """
         T = TRACE(5)
@@ -319,11 +319,11 @@ class ngamsSybaseCursor:
         Constructor method creating a cursor connection to the DBMS.
 
         server:       DB server name (string).
- 
+
         db:           DB name (string).
-        
+
         user:         DB user (string).
-        
+
         password:     DB password (string).
 
         query:        Query to execute (string/SQL).
@@ -333,7 +333,7 @@ class ngamsSybaseCursor:
         parameters:   Parameters for the connection object (string).
         """
         T = TRACE()
-        
+
         info(5, "Creating cursor with SQL query: " + str(query))
         self.__cursorObj = None
         self.__dbDrv = None
@@ -353,8 +353,8 @@ class ngamsSybaseCursor:
         """
         if (self.__cursorObj): del self.__cursorObj
         if (self.__dbDrv): del self.__dbDrv
-        
-                     
+
+
     def fetch(self,
               maxEls):
         """
@@ -365,14 +365,14 @@ class ngamsSybaseCursor:
 
         An empty list ([]) may be returned if there were no matches to the
         SQL query.
-        
+
         maxEls:     Maximum number of elements/rows to return (integer).
 
         Return:     List containing tuples with the values queried
                     (list/list).
         """
         T = TRACE(5)
-        
+
         # Simulate error in DB communication:
         #   - Broken connection.
         if (_provokeErr(ERR_BROKEN_CON)):

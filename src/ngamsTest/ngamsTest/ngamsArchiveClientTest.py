@@ -129,10 +129,10 @@ class ngamsArchiveClientTest(ngamsTestSuite):
         """
         Synopsis:
         Test normal operation of the NG/AMS Archive Client.
-        
+
         Description:
         It is tested that a file can be archived via a link in the Archive
-        Queue. 
+        Queue.
 
         Expected Result:
         After the archiving the link is moved to the Archive Files
@@ -150,7 +150,7 @@ class ngamsArchiveClientTest(ngamsTestSuite):
         - Test that the XML Status Document from NG/AMS is stored in the
           Archived Files Area.
         - Check that after the given expiration time for the Archived Files
-          Area, that the archived file + the XML Status Document are removed. 
+          Area, that the archived file + the XML Status Document are removed.
         - Stop the Archive Client.
 
         Remarks:

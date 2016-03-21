@@ -12,7 +12,7 @@
 This module provides a very simple FITS reader, which parses a FITS file
 line per line, and delivers back a list containing dictionaries (one per
 extension - note, FITS extensions not yet supported) and having keywords as
-keys. 
+keys.
 """
 
 import sys
@@ -50,7 +50,7 @@ def getFitsHdrs(filename):
         buf = fo.read(blockSize)
         if (buf == ""): break
         buf2 = ""
-        
+
         # Parse the next block.
         idx = 0
         discard = 0
@@ -66,7 +66,7 @@ def getFitsHdrs(filename):
         for line in lines:
             line = line.strip()
             if (line == ""): continue
-            
+
             # Special handling of HISTORY and COMMENT.
             if ((line.find("HISTORY ") == 0) or
                 (line.find("COMMENT ") == 0) or
@@ -86,10 +86,10 @@ def getFitsHdrs(filename):
                 break
             else:
                 # Parse a normal FITS line or hierarchical FITS line.
-                # SIMPLE  =                    T          / Standard FITS 
+                # SIMPLE  =                    T          / Standard FITS
                 # HIERARCH ESO DET CHIP1 NX    =         4096 / # of pixels
                 # HIERARCH ESO CAT TST         = 'XX/YY/ZZ'   / Test
-                # CHECKSUM= 'ZOZAgNX7ZNXAfNX7'  / ASCII 1's complement checksum 
+                # CHECKSUM= 'ZOZAgNX7ZNXAfNX7'  / ASCII 1's complement checksum
                 lineEls = line.split("=")
 		if (len(lineEls) < 2): # avoid situations like "CONTINUE" keyword without a "=" sign
                     continue
@@ -116,7 +116,7 @@ def getFitsHdrs(filename):
                         # there were 's in the comment field.
                         if (len(lineEls) > 3):
                             for el in lineEls[3:]:
-                                com += "'" + el                        
+                                com += "'" + el
                     else:
                         com = ""
                 else:
@@ -134,7 +134,7 @@ def getFitsHdrs(filename):
                 else:
                     hdrDic[key] = [[key, val, com]]
     hdrList.append(hdrDic)
-        
+
     return hdrList
 
 

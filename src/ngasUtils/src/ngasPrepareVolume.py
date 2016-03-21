@@ -158,7 +158,7 @@ def dumpPars(optDic,
     Dump the parameters in a string buffer.
 
     optDic:      Options dictionary (dictionary).
-  
+
     volInfoDic:  Dictionary with parameters from the Volume Info File
                  (dictionary).
 
@@ -203,12 +203,12 @@ def execute(optDic):
         volInfoDic = loadVolInfoFile(volInfoFile)
     else:
         volInfoDic = {}
-    
+
     if optDic.has_key("type"):
         volInfoDic[NGAS_VOL_INFO_TYPE] = optDic["type"][NGAS_OPT_VAL]
     if optDic.has_key("manufacturer"):
         volInfoDic[NGAS_VOL_INFO_MANUFACT] = optDic["manufacturer"][NGAS_OPT_VAL]
-       
+
     # Generate/check parameters, get user confirmation.
     forceQuery = False
     while (True):
@@ -230,7 +230,7 @@ def execute(optDic):
     print "Wrote/updated NGAS Volume Info File: %s" %\
           optDic["path"][NGAS_OPT_VAL]
 
-    # Ensure ownership of volume is ngas:ngas and 
+    # Ensure ownership of volume is ngas:ngas and
     commands.getstatusoutput("chown root.root %s" % optDic["path"])
     commands.getstatusoutput("chmod 755 %s" % optDic["path"])
 

@@ -76,7 +76,7 @@ class ngamsLabelCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test basic handling of the LABEL Command.
-        
+
         Description:
         The purpose of the Test Case is to verify the normal execution of the
         LABEL Command when specifying to print out a label for a disk referring
@@ -97,7 +97,7 @@ class ngamsLabelCmdTest(ngamsTestSuite):
         # TODO: The host name is contained in the label, run only on
         #       ngasdev2 for the moment ...
         if (getHostName() != "ngasdev2"): return
-        
+
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
         tmpStatFile = sendExtCmd(8888, NGAMS_LABEL_CMD,
                                  pars = [["slot_id", "1"],

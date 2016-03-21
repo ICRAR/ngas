@@ -73,7 +73,7 @@ def archiveThread(testObj,
     else:
         filename = "src/TinyTestFile.fits"
     testStr = TST_STR1 % os.path.basename(filename)
-   
+
     for n in range(5):
         if (not RUN_TEST):
             THREAD_STAT[no] = "STOPPED"
@@ -99,14 +99,14 @@ class ngamsArchiveStressTest(ngamsTestSuite):
     HW is used.
 
     Missing Test Cases:
-    ...    
+    ...
     """
 
     def test_StressTest_1(self):
         """
         Synopsis:
         Archive a small file 20 times, sequentially
-        
+
         Description:
         The Test Case execises the situation where a (small) FITS file is
         archived sequentially for a certain number of times.

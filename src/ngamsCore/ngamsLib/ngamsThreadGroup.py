@@ -53,7 +53,7 @@ The body of the thread function should typically be of structured as follows:
 
         threadGroupObj.suspend()
 
-    
+
 If the business logic of the thread can be split into logical blocks, with
 a 'significant' execution time, it should be considered to call the
 checkPauseStop() method between such blocks.
@@ -76,7 +76,7 @@ code by calling the methods takeGenMux()/releaseGenMux(). Note, care should
 be taken not to exagerate the usage of this semaphore, as if used too
 frequently, the threads may block eachother unnecessarily.
 
-When the 
+When the
 """
 
 import time, threading
@@ -108,20 +108,20 @@ class ngamsThreadGroup:
         Constructor method initializing the object and starting the threads
 
         id:              ID of this group of threads (string).
-        
+
         function:        The function containing the code that will be executed
                          as the N threads within the context of the class
                          (Python function reference).
-        
+
         instances:       Number of instances (threads) to run internally
-                         (integer). 
-        
+                         (integer).
+
         parameters:      Parameters to hand over to the thread call-back
                          function (list).
 
         loopSuspension:  Loop suspension in seconds to carry out during each
                          iteration (float).
-                      
+
         loopPeriod:      The minimum time each iteration should take in
                          seconds. If an iteration takes shorter time to execute
                          than the loopPeriod specified, the execution is
@@ -159,7 +159,7 @@ class ngamsThreadGroup:
             thrObj.start()
             self.__threadHandles.append(thrObj)
 
-            
+
     def __del__(self):
         """
         Destructor method. Unblocks possible blocked (paused) threads.
@@ -175,10 +175,10 @@ class ngamsThreadGroup:
         Returns:  Reference to object itself.
         """
         T = TRACE(5)
-        
+
         self.__generalMux.acquire()
         return self
-    
+
 
     def releaseGenMux(self):
         """
@@ -187,7 +187,7 @@ class ngamsThreadGroup:
         Returns:  Reference to object itself.
         """
         T = TRACE(5)
-        
+
         self.__generalMux.release()
         return self
 
@@ -196,15 +196,15 @@ class ngamsThreadGroup:
         """
         Return the number of threads (apparently) running in the group.
 
-        Returns:   Number of active threads (integer).        
+        Returns:   Number of active threads (integer).
         """
         T = TRACE(5)
-        
+
         activeThreads = 0
         for threadHandle in self.__threadHandles:
             if (threadHandle.isAlive()): activeThreads += 1
         return activeThreads
-            
+
 
     def getThreadId(self):
         """
@@ -230,11 +230,11 @@ class ngamsThreadGroup:
         """
         Return reference to list containing the parameters registered for the
         thread group.
-        
+
         Returns:   Reference to list of parameters (list).
         """
         return self.__parameters
-        
+
 
     def __threadEncapsulator(self,
                              dummy1,
@@ -246,7 +246,7 @@ class ngamsThreadGroup:
         Returns:     Void.
         """
         T = TRACE()
-        
+
         self.checkPauseStop()
         try:
             self.__threadTiming[self.getThreadId()] = time.time()
@@ -273,11 +273,11 @@ class ngamsThreadGroup:
         wait:      Wait until all threads finishes execution (boolean).
 
         timeout:   Timeout in seconds to wait for thread termination (float).
-        
+
         Returns:   Reference to object itself.
         """
         T = TRACE()
-        
+
         self.__pauseEvent.set()
         if (wait): self.wait(timeout)
         return self
@@ -294,8 +294,8 @@ class ngamsThreadGroup:
         self.__execute = False
         self.__pauseEvent.set()
         return self
-    
-                
+
+
     def checkExecute(self):
         """
         Return value of Execution Flag.
@@ -303,7 +303,7 @@ class ngamsThreadGroup:
         Returns:   Value of Execution Flag (boolean).
         """
         return self.__execute
-    
+
 
     def checkPauseStop(self):
         """
@@ -329,7 +329,7 @@ class ngamsThreadGroup:
         Returns:   Reference to object itself.
         """
         T = TRACE()
-        
+
         # Make a constant suspension if requested.
         if (self.__loopSuspension): time.sleep(self.__loopSuspension)
 
@@ -355,7 +355,7 @@ class ngamsThreadGroup:
         Returns:   Reference to object itself.
         """
         T = TRACE()
-        
+
         startTime = time.time()
         thrWaitingList = []
         for thrHandle in self.__threadHandles:
@@ -372,7 +372,7 @@ class ngamsThreadGroup:
             if (not thrWaitingList[0].isAlive()): del thrWaitingList[0]
             if (thrWaitingList == []):
                 return self
-        
+
 
     def terminateNormal(self):
         """
@@ -382,11 +382,11 @@ class ngamsThreadGroup:
         Returns:   Void.
         """
         T = TRACE()
-        
+
         self.__pauseEvent.set()
         raise Exception, NGAMS_THR_GROUP_STOP_NORMAL
 
-    
+
     def terminateError(self,
                        error):
         """
@@ -396,7 +396,7 @@ class ngamsThreadGroup:
         Returns:   Void.
         """
         T = TRACE()
-        
+
         self.__pauseEvent.set()
         raise Exception, "%s: %s" % (NGAMS_THR_GROUP_STOP_ERROR, str(error))
 
@@ -410,12 +410,12 @@ def test1_thread_function(threadGroupObj):
 
     thrId:            Thread ID allocated to this thread (string).
 
-    Returns:          Void.                                                    
+    Returns:          Void.
     """
     for n in range(1, 21):
         info(1, "%s/%d" % (threadGroupObj.getThreadId(), n))
         threadGroupObj.checkPauseStop().suspend().checkPauseStop()
-       
+
 
 def test1(timeout):
     """
@@ -430,7 +430,7 @@ def test1(timeout):
         warning("Exception occurred waiting for threads to terminate: %s" %\
                 str(e))
 
-        
+
 if __name__ == '__main__':
     """
     Main function.
@@ -441,5 +441,5 @@ if __name__ == '__main__':
     # Start threads, provoke a timeout waiting for the threads to terminate.
     test1(1)
 
-    
+
 # EOF

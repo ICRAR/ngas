@@ -67,7 +67,7 @@ or
 
 path=(Path)[&host_id=(Host ID)]
 """[1:-1]
- 
+
 
 
 def _delFile(srvObj,
@@ -80,7 +80,7 @@ def _delFile(srvObj,
     srvObj:        Reference to NG/AMS server class object (ngamsServer).
 
     path:          Path of file (string).
-    
+
     hostId:        ID of host where file is stored (string).
 
     Returns:       Message with info about the execution (string).
@@ -121,16 +121,16 @@ def _discardFile(srvObj,
     given, the file must be stored on the contacted host in order to be
     executed.
 
-    srvObj:        Reference to NG/AMS server class object (ngamsServer).   
+    srvObj:        Reference to NG/AMS server class object (ngamsServer).
 
     diskId:        ID of disk hosting file or None (string|None).
-     
+
     fileId:        ID of file or None (string|None).
-    
+
     fileVersion:   File Version or None (integer|None).
 
     hostId:        ID of host where file is stored or None (string|None).
-    
+
     path:          Path of file or None (string|None).
 
     execute:       If set to 1 the specified filel will be removed
@@ -157,14 +157,14 @@ def _discardFile(srvObj,
                           (str(diskId), str(fileId), str(fileVersion)),
                           ngasHostId])
             return err
-  
+
         # Can only ewxecute the DISCARD Command locally.
         fileInfo = fileListDbm.get("0")
         del fileListDbm
         hostId = fileInfo[-2]
         if (hostId != srvObj.getHostId()):
             raise Exception, "DISCARD Command can only be executed locally!"
-        
+
         mtPt = fileInfo[-1]
         filename = os.path.normpath(mtPt + "/" + fileInfo[0].getFilename())
         _delFile(srvObj, filename, hostId, execute)
@@ -194,19 +194,19 @@ def handleCmdDiscard(srvObj,
                      httpRef):
     """
     Handle DISCARD Command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
-    
+
     if (reqPropsObj.hasHttpPar("help")):
         global _help
         srvObj.reply(reqPropsObj.setCompletionTime(), httpRef,

@@ -42,7 +42,7 @@ def extractData(result, resourceId, verbose=0):
     """
     INPUT:
         result:    list of strings containing multipart messages
-    
+
     RETURNS:
         xyData:    dictionary,
     """
@@ -73,7 +73,7 @@ def extractData(result, resourceId, verbose=0):
             errMsg = "email parsing failed: %s" % str(e)
             error( errMsg)
             raise Exception, errMsg
-    
+
         # get the first xml part of the email...
         xmlParts = MultipartHandler.getMimeParts(msg, 'text/xml')
         if len(xmlParts) == 0:
@@ -82,8 +82,8 @@ def extractData(result, resourceId, verbose=0):
             raise Exception, errMsg
         else:
             xml = xmlParts[0].get_payload()  # There should only be one!
-        
-    
+
+
         # ...and parse it
         try:
             root = MultipartHandler.VOTable.parseString(xml)
@@ -92,7 +92,7 @@ def extractData(result, resourceId, verbose=0):
             errMsg = "MonitorDataCli.extractData: XML parsing failed: %s " % str(e)
             error( errMsg)
             raise Exception, errMsg
-    
+
         try:
             (res, cidI, cids) = MultipartHandler.interpretVotable(root, selection=resourceId, verbose=verbose)
         except Exception, e:
@@ -107,7 +107,7 @@ def extractData(result, resourceId, verbose=0):
         elif len(cids) != 2:
             errMsg = "The reource %s has %d values. Expecting 2!" % (resourceId, len(cid))
             waring( errMsg)
-        
+
         else:
             xName = res[0].getTable()[0].getField()[0].getId()
             yName = res[0].getTable()[0].getField()[1].getId()
@@ -140,17 +140,17 @@ def extractData(result, resourceId, verbose=0):
                 xData += xDataPart
                 yData += yDataPart
 
-    if xData: 
+    if xData:
         xyData = {xName:xData, yName:yData, 'xName':xName, 'xUnit':xUnit, 'yName':yName, 'yUnit': yUnit}
     else:
         errMsg = "No x-axis data found!"
         error( errMsg)
         raise Exception, errMsg
-    
+
     info(4, "Leaving extractData")
 
     return xyData
- 
+
 
 
 def ngamsExtractAlmaMultipart(srvObj,
@@ -162,9 +162,9 @@ def ngamsExtractAlmaMultipart(srvObj,
 
     srvObj:        Reference to instance of the NG/AMS Server
                    class (ngamsServer).
-    
+
     reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
-    
+
     file_id:      Name of file to process (string).
 
     Returns:       DPPI return status object (ngamsDppiStatus).
@@ -177,7 +177,7 @@ def ngamsExtractAlmaMultipart(srvObj,
         This DPPI extracts one part of an ALMA multipart related message and
         returns a complete, self-consistent message containing a XML header
         and the requested cid. This version deals with VOTable headers and
-        returns a new VOTable header containing only the RESOURCE element 
+        returns a new VOTable header containing only the RESOURCE element
         describing the requested (by cid) part. If no XML header can be found
         or if the XML header is not a VOTable header this plugin returns just the
         requested part, without any header.
@@ -188,21 +188,21 @@ def ngamsExtractAlmaMultipart(srvObj,
         ?file_id=X01/X7/X42&
         processing=ngamsAlmaMultipart&
         processing_pars='cid=<cid>'
-    
+
 
     """
     statusObj = ngamsDppiStatus.ngamsDppiStatus()
 
     cpart = 1
     pars = 0    # initialize pars
-    if (reqPropsObj.hasHttpPar("processing_pars")): 
+    if (reqPropsObj.hasHttpPar("processing_pars")):
         pars = ngamsPlugInApi.parseRawPlugInPars(\
         reqPropsObj.getHttpPar("processing_pars"))
     if pars and not pars.has_key('cid'):
         ext = '.cid'
         cpart = 1    # first part only by default
     elif pars and pars.has_key('cid'):  # if processing_par 'cid' exists check its contents
-        
+
         pass
     else:
         pass
@@ -213,11 +213,11 @@ def ngamsExtractAlmaMultipart(srvObj,
          resFilename)
     except:
         pass
-    if ext == '.xml': 
+    if ext == '.xml':
         mimeType = 'text/xml'
     else:
         mimeType = 'multipart/related'
-    
+
     resObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_DATA, mimeType,
                                              head, resFilename, '')
     statusObj.addResult(resObj)
@@ -235,7 +235,7 @@ if __name__ == "__main__":
         print file_id, fileName, type
     except:
         raise
-                    
-    
+
+
 #
 # ___oOo___

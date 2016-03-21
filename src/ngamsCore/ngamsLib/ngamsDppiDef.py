@@ -45,9 +45,9 @@ class ngamsDppiDef:
         """
         Constructor method. set the name of the plug-in and possible
         parameters if defined.
-        
+
         plugInName:   Name of plug-in (string).
-        
+
         plugInPars:   Parameters for the plug-in (string).
         """
         self.setPlugInName(plugInName)
@@ -120,5 +120,5 @@ class ngamsDppiDef:
         """
         return self.__mimeTypeList
 
-        
+
 # EOF

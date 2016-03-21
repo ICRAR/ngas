@@ -34,7 +34,7 @@ This filter will keep  all already-decompressed image files from entering the jo
 
 def isGLEAMImage(fileId):
     return (fileId.lower().endswith('.fits') and (len(fileId.split('_')) == 5))
-    
+
 
 def ngamsGLEAM_VO_FilterPI(srvObj,
                           plugInPars,
@@ -42,13 +42,13 @@ def ngamsGLEAM_VO_FilterPI(srvObj,
                           fileId,
                           fileVersion = -1,
                           reqPropsObj = None):
-    
+
     """
     srvObj:        Reference to NG/AMS Server Object (ngamsServer).
 
     plugInPars:    Parameters to take into account for the plug-in
                    execution (string).
-   
+
     fileId:        File ID for file to test (string).
 
     filename:      Filename of (complete) (string).
@@ -56,7 +56,7 @@ def ngamsGLEAM_VO_FilterPI(srvObj,
     fileVersion:   Version of file to test (integer).
 
     reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
- 
+
     Returns:       0 if the file does not match, 1 if it matches the
                    conditions (integer/0|1).
     """

@@ -107,7 +107,7 @@ def genReport(regFileList):
       ((<Disk ID>, <File ID>, <File Version>), ...)
 
     regFileList:    List of files (list).
-    
+
     Returns:        Report (string).
     """
     # If execute is specified loop over the files and remove them one by one.
@@ -122,7 +122,7 @@ def genReport(regFileList):
     report += "\n"
     return report
 
- 
+
 def ingestExtFiles(fileListFile,
                    notifEmail):
     """
@@ -237,7 +237,7 @@ def correctUsage():
           "         -fileList <File List>\n"
     return buf
 
-  
+
 if __name__ == '__main__':
     """
     Main function to execute the tool.
@@ -266,14 +266,14 @@ if __name__ == '__main__':
             idx += 1
         except Exception, e:
             print "\nProblem executing the File Discard Tool: %s\n" % str(e)
-            print correctUsage()  
+            print correctUsage()
             sys.exit(1)
     if (notifEmail == None):
         notifEmail = ngasUtilsLib.\
                      getParNgasRcFile(ngasUtilsLib.NGAS_RC_PAR_NOTIF_EMAIL)
     try:
         if (not fileListFile):
-            print correctUsage()  
+            print correctUsage()
             raise Exception, "Incorrect command line parameter given!"
         if (not accessCode):
             accessCode = ngasUtilsLib.input("Enter Access Code:")

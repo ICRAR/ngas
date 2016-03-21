@@ -90,7 +90,7 @@ def genFontsDictionary(fnm):
         error(str(e))
         errMsg = "Problems opening CharDict file (" + str(e) + ") "
         raise Exception, errMsg
-    
+
     charArr = charArr.split('ZG')
     charDict = {}
     i = 0
@@ -98,7 +98,7 @@ def genFontsDictionary(fnm):
         errMsg = 'Wrong number of characters in CharDict file: ' + fnm
         error(str(e))
         raise Exception, errMsg
-    
+
     for k in keys:
         if k == 'Header' or k == 'Trailer':
             charDict.update({k:charArr[i]})
@@ -106,7 +106,7 @@ def genFontsDictionary(fnm):
             charDict.update({k:'G'+charArr[i]})   # put the G back
         charDict.update({' ':'ZZZZZZZZZZZZZ'})    # add a blank
         i = i + 1
-        
+
     return charDict
 
 
@@ -118,7 +118,7 @@ def ngamsBrotherPT9200DxPlugIn(srvObj,
 
     srvObj:           Reference to instance of the NG/AMS Server
                       class (ngamsServer).
-    
+
     label:            Label text to print (string).
 
     reqPropsObj:      NG/AMS request properties object (ngamsReqProps).
@@ -145,7 +145,7 @@ def ngamsBrotherPT9200DxPlugIn(srvObj,
                                   "ngamsBrotherPT9200DxPlugIn: " +\
                                   "ILLEGAL CHARACTER REQ. FOR PRINTING",
                                   errMsg)
-            raise Exception, errMsg   
+            raise Exception, errMsg
 
         printerCode = printerCode + fontDic[label[i]]
     printerCode = printerCode + fontDic["Trailer"]
@@ -168,12 +168,12 @@ def ngamsBrotherPT9200DxPlugIn(srvObj,
         ngamsPlugInApi.notify(srvObj, NGAMS_NOTIF_ERROR,
                               "ngamsBrotherPT9200DxPlugIn: " +\
                               "PROBLEM PRINTING LABEL", errMsg)
-        raise Exception, errMsg    
+        raise Exception, errMsg
 
     info(2,"Executed plug-in ngamsBrotherPT9200DxPlugIn with parameters: "+
          plugInPars + " - Label: " + label + " ...")
 
-       
+
 if __name__ == '__main__':
     """
     Main function.
@@ -182,10 +182,10 @@ if __name__ == '__main__':
     if (len(sys.argv) != 3):
         print "\nCorrect usage is:\n"
         print "% (python) ngamsBrotherPT9200DxPlugIn <NGAMS CFG> <text>\n"
-        sys.exit(1)    
+        sys.exit(1)
     cfg = ngamsConfig.ngamsConfig()
     cfg.load(sys.argv[1])
     ngamsBrotherPT9200DxPlugIn(cfg, sys.argv[2])
-    
+
 
 # EOF

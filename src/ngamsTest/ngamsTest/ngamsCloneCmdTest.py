@@ -51,7 +51,7 @@ def _sortRepFileList(report):
     The Clone Status Report has the following contents, e.g.:
 
     <Email Header>
-    
+
     CLONE STATUS REPORT:
 
     ==Summary:
@@ -65,7 +65,7 @@ def _sortRepFileList(report):
 
     ==File List:
 
-    Source File                        Target File                     Status 
+    Source File                        Target File                     Status
     ---------------------------------- ------------------------------- -------
     <File Clone Info>
     ...
@@ -120,7 +120,7 @@ def _execCloneTest(testObj,
 
                       [<Disk ID>, <File ID>, <File Ver>, <Trg Disk ID>,
                        <Subnode (0|1)>]                                 (list)
-                      
+
     refStatFile:    Name of reference file (string).
 
     Returns:        Void.
@@ -149,7 +149,7 @@ def _execCloneTest(testObj,
     cmdPars.append(["wait", "1"])
     cmdPars.append(["notif_email", getpass.getuser() + "@" +\
                     ngamsLib.getCompleteHostName()])
-    flushEmailQueue()   
+    flushEmailQueue()
     statObj = clMnu.sendCmdGen(NGAMS_CLONE_CMD,
                                pars = cmdPars)
 
@@ -218,7 +218,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Normal execution of CLONE Command specifying file_id.
-        
+
         Description:
         The Test Case exercises the Clone Command whereby a successfull
         Clone Request is executed, specifying the file_id of a file to clone.
@@ -250,7 +250,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Normal execution of CLONE Command specifying file_id/file_version.
-        
+
         Description:
         Check normal execution of the Clone Command specifying file_id and
         file_version.
@@ -265,7 +265,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
 
         Remarks:
         ...
-        
+
         """
         testData = [None, nmuFileId, "2", None, 0]
         _execCloneTest(self, testData, refFilePat1 % (2, 1))
@@ -276,7 +276,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         Synopsis:
         Normal execution of CLONE Command, specifying disk_id, file_id and
         file_version.
-        
+
         Description:
         Check normal execution of the Clone Command specifying disk_id,
         file_id and file_version.
@@ -289,7 +289,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         file_version also are given.
 
         Remarks:
-        ...       
+        ...
 
         """
         testData = [srcDiskId, nmuFileId, "1", None, 0]
@@ -300,7 +300,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Normal execution of CLONE Command specifying disk_id.
-        
+
         Description:
         The Test Case tests the CLONE Command when specifying a valid
         disk_id of a disk to be cloned.
@@ -312,7 +312,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         Same as test_NormalExec_1 but specifying disk_id.
 
         Remarks:
-        ...       
+        ...
         """
         testData = [srcDiskId, None, None, None, 0]
         _execCloneTest(self, testData, refFilePat1 % (4, 1))
@@ -323,7 +323,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         Synopsis:
         Normal execution of CLONE Command specifying disk_id, file_id,
         file_version and target_disk_id.
-        
+
         Description:
         Exercise a normal execution of the CLONE Command speciyfing a valid
         combination of disk_id, file_id, file_version and target_disk_id.
@@ -337,7 +337,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         disk_id, file_id, file_version and target_disk_id.
 
         Remarks:
-        ...        
+        ...
         """
         testData = [srcDiskId, nmuFileId, "3", trgDiskId, 0]
         _execCloneTest(self, testData, refFilePat1 % (5, 1))
@@ -348,7 +348,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         Synopsis:
         Normal execution of CLONE Command specifying disk_id and
         target_disk_id.
-        
+
         Description:
         Test Case to exercise proper handling of the CLONE Command when
         specifying a valid combination of disk_id and target_disk_id.
@@ -372,7 +372,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         Synopsis:
         Normal execution of CLONE Command specifying disk_id whereby Source
         Disk not in Target Node (Proxy Mode cloning).
-        
+
         Description:
         The purpose of the Test Case is to check the proper execution of the
         CLONE Command when th contacted node has to clone a disk registered
@@ -392,7 +392,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         - Check that the response from the NG/AMS Server is as expected.
         - Check that the Clone Status Report (sent via Email Notification)
           is as expected.
-          
+
         Remarks:
         Should also check that the files have been cloned (check copies on
         Target Disk + info in NGAS DB).
@@ -406,7 +406,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         Synopsis:
         Normal execution of CLONE Command specifying file_id and file_version
         (Proxy Mode cloning).
-        
+
         Description:
         Same as test_NormalExec_7 but where file_id and file_version are
         specified.
@@ -443,7 +443,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
 
         Remarks:
         Should also check that cloned file has arrived on the Target Disk
-        and is registered in the NGAS DB.    
+        and is registered in the NGAS DB.
         """
         testData = [ncuSrcDiskId, ncuFileId, "3", None, 1]
         _execCloneTest(self, testData, refFilePat1 % (9, 1))
@@ -476,7 +476,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         Synopsis:
         Error executing CLONE Command: file_id + file_version +
         target_disk_id => 2 files -> but only 1 disk.
-        
+
         Description:
         The purpose of the test is to exercise the case where there is
         insufficient space to carry out a Clone Request since the cloning
@@ -503,7 +503,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Normal execution of CLONE Command/clone one file/wait=0.
-        
+
         Description:
         Test normal execution of the CLONE Command whereby wait=0.
 
@@ -526,7 +526,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         Remarks:
         TODO: Re-implement using _execCloneTest().
         """
-        srcFile = "src/SmallFile.fits"        
+        srcFile = "src/SmallFile.fits"
         cfgObj, dbObj = self.prepExtSrv(test=1)
         client = sendPclCmd(port=8888)
         for n in range(2): client.archive(srcFile)
@@ -545,7 +545,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
 
         finalStatObj = waitReqCompl(client, statObj.getRequestId())
         complPer = str(finalStatObj.getCompletionPercent())
-        self.checkEqual("100.0", complPer, 
+        self.checkEqual("100.0", complPer,
                         genErrMsgVals("Incorrect Request Status for CLONE " +\
                                       "Command/Completion Percent", "100.0",
                                       complPer))
@@ -561,7 +561,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         tmpFitsFile = "/tmp/ngamsTest/NGAS/FitsStorage2-Main-3/saf/" +\
                       "2001-05-08/1/TEST.2001-05-08T15:25:00.123.fits.gz"
         refFitsFile = "ref/TEST.2001-05-08T15:25:00.123.fits.gz"
-        self.checkFilesEq(refFitsFile, tmpFitsFile, 
+        self.checkFilesEq(refFitsFile, tmpFitsFile,
                           "Incorrect cloned file generated")
 
         diskId = "tmp-ngamsTest-NGAS-FitsStorage2-Main-3"

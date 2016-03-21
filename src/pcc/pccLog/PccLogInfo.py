@@ -33,7 +33,7 @@ class PccLogInfo:
         self.__mod        = ""
         self.__proc       = ""
         self.__msg        = ""
-        
+
         # - Extended attributes.
         self.__locObj     = ""
         self.__locObjIdx  = ""
@@ -116,7 +116,7 @@ class PccLogInfo:
         prio:      Priority of the log entry in free format.
 
         Returns:   Reference to the object itself.
-        """        
+        """
         self.__prio = prio
         return self
 
@@ -129,7 +129,7 @@ class PccLogInfo:
         """
         return self.__prio
 
-    
+
     def setContext(self,
                    context):
         """
@@ -139,7 +139,7 @@ class PccLogInfo:
                        of the log entry.
 
         Returns:   Reference to the object itself.
-        """        
+        """
         self.__ctxt = context
         return self
 
@@ -231,7 +231,7 @@ class PccLogInfo:
 
         Returns:  Reference to the object itself.
         """
-        self.__locObj = locObj 
+        self.__locObj = locObj
         return self
 
 

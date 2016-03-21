@@ -61,7 +61,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test normal execution of STATUS Command/local.
-        
+
         Description:
         Test the execution of the STATUS Command when no parameters are
         specified. This just makes the server return the basic status about
@@ -92,7 +92,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test normal execution of STATUS Command/Proxy.
-        
+
         Description:
         If another node is specified than the contacted node, when submitting
         the STATUS Command, the contacted node should act as proxy and should
@@ -116,7 +116,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
                           [8011, None, None, getClusterName()]])
         statObj = sendPclCmd(port=8000).\
                   sendCmdGen("STATUS",
-                             1, "", [["host_id", getNcu11()]])        
+                             1, "", [["host_id", getNcu11()]])
         refMsg = "Successfully handled command STATUS"
         if ((statObj.getMessage().find(refMsg) == -1) or
             (statObj.getHostId() != getNcu11())):
@@ -127,7 +127,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test normal execution of STATUS Command/File Access/Proxy.
-        
+
         Description:
         It is possible to query the information about the accessibility of
         a file given by its File ID and/or corresponding Disk ID and/or

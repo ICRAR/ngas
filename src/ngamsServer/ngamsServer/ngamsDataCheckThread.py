@@ -51,7 +51,7 @@ def startDataCheckThread(srvObj):
     Start the Data Check Thread.
 
     srvObj:     Reference to server object (ngamsServer).
-    
+
     Returns:    Void.
     """
     T = TRACE()
@@ -65,14 +65,14 @@ def startDataCheckThread(srvObj):
     srvObj._dataCheckThread.setDaemon(0)
     srvObj._dataCheckThread.start()
     info(3,"Data Check Thread started")
-     
+
 
 def stopDataCheckThread(srvObj):
     """
     Stop the Data Check Thread.
 
     srvObj:     Reference to server object (ngamsServer).
-    
+
     Returns:    Void.
     """
     T = TRACE()
@@ -100,8 +100,8 @@ def _stopDataCheckThr(srvObj):
         srvObj.updateHostInfo(None, None, None, None, None, None, 0, None)
         srvObj._dataCheckRunSync.set()
         raise Exception, "_STOP_DATA_CHECK_THREAD_"
-  
- 
+
+
 # TODO: Variables used for the handling of the execution of the DCC within
 # this module. Could be made members of the ngamsServer class, but since they
 # are only used locally, they are defined as global within this module
@@ -132,7 +132,7 @@ def _getDiskDic():
     """
     Return refrence to the Disk Dictionary with information about the disks
     concerned.
-    
+
     Returns:    Disk Dictionary (dictionary).
     """
     global _diskDic
@@ -167,7 +167,7 @@ def _resetDbmObjDic():
     """
     global _dbmObjDic
     _dbmObjDic = {}
-    
+
 
 def _getDiskIdList():
     """
@@ -241,7 +241,7 @@ def _resetFileRefDbm():
     global _fileRefDbm
     if (_fileRefDbm): del _fileRefDbm
     _fileRefDbm = {}
-    
+
 
 def _takeReqFileInfoSem():
     """
@@ -272,13 +272,13 @@ def _initFileCheckStatus(srvObj,
     srvObj:         Reference to instance of ngamsServer object (ngamsServer).
 
     amountMb:       Amount of data to check (MB) (float).
-    
+
     noOfFiles:      Number of files to check (integer).
 
     Returns:        Void.
     """
     T = TRACE()
-    
+
     global _statCheckSem, _statLastDbUpdate, _statCheckStart,\
            _statCheckRemain, _statCheckRate, _statCheckMb, _statCheckedMb,\
            _statCheckFiles, _statCheckCount
@@ -292,7 +292,7 @@ def _initFileCheckStatus(srvObj,
         _statCheckedMb    = 0.0
         _statCheckFiles   = noOfFiles
         _statCheckCount   = 0
-        _statLastDbUpdate = 0 
+        _statLastDbUpdate = 0
         _statCheckSem.release()
     except Exception, e:
         _statCheckSem.release()
@@ -319,11 +319,11 @@ def _updateFileCheckStatus(srvObj,
     fileSize:     Size of file (in bytes) that was checked (integer)
 
     diskId:       ID of disk hosting file checked (string).
-    
+
     fileId:       ID of file concerned (string).
-    
+
     fileVersion:  Version of file concered (integer).
-    
+
     report:       List containing the result of the file checking.
                   Refer to documentation for ngamsFileUtils.checkFile()
                   for futher information (list).
@@ -333,7 +333,7 @@ def _updateFileCheckStatus(srvObj,
     Returns:      Void.
     """
     T = TRACE(5)
-    
+
     global _statCheckSem, _statLastDbUpdate, _statCheckStart,\
            _statCheckRemain, _statCheckRate, _statCheckMb, _statCheckedMb,\
            _statCheckFiles, _statCheckCount
@@ -369,17 +369,17 @@ def _updateFileCheckStatus(srvObj,
         if (diskId and report):
             fileKey = ngamsLib.genFileKey(None, fileId, fileVersion)
             _getDbmObjDic()[diskId][1].add(fileKey, report)
-            
+
         statFormat = "DCC Status: Time Remaining (s): %d, " +\
                      "Rate (MB/s): %.3f, " +\
                      "Volume/Checked (MB): %.3f/%.3f, Files/Checked: %d/%d"
-        info(4,statFormat % (_statCheckRemain, _statCheckRate, _statCheckMb, 
+        info(4,statFormat % (_statCheckRemain, _statCheckRate, _statCheckMb,
              _statCheckedMb, _statCheckFiles, _statCheckCount))
         _statCheckSem.release()
     except Exception, e:
         error("Data Consistency Checking: Encountered error: " + str(e))
         _statCheckSem.release()
-    
+
 
 def _setRunPermSubThread(perm):
     """
@@ -402,7 +402,7 @@ def _getRunPermSubThread():
     global _runSubThread
     return _runSubThread
 
-    
+
 def _stopCheckingSubThread():
     """
     Used by the Data Consistency Checking Sub-Threads to check if they are
@@ -429,7 +429,7 @@ def _suspend(srvObj,
     """
     suspTime = (srvObj.getCfg().getDataCheckPrio() * baseTime)
     time.sleep(suspTime)
-    
+
 
 def _dumpFileInfo(srvObj,
                   tmpFilePat):
@@ -454,7 +454,7 @@ def _dumpFileInfo(srvObj,
     The function handles the DBM files in the following way:
 
        1. Get the information about the disks in this system.
-       
+
        2. Check for each DBM file found, if this disk is still in the system.
           If not, the Queue and Error DBM files are removed.
 
@@ -465,11 +465,11 @@ def _dumpFileInfo(srvObj,
 
        4. Finally, build up a DBM with references to all files found
           on this system
- 
+
     srvObj:       Reference to server object (ngamsServer).
 
     tmpFilePat:   Pattern for temporary files (string).
-     
+
     Returns:      Void.
     """
     T = TRACE()
@@ -508,7 +508,7 @@ def _dumpFileInfo(srvObj,
             _getDiskDic()[tmpDiskInfoObj.getDiskId()] = tmpDiskInfoObj
     info(4,"Got information about all disks mounted in this system")
     ###########################################################################
-            
+
     ###########################################################################
     # Loop over the Queue/Error DBM files found, check if the disk is
     # still in the system/scheduled for checking.
@@ -544,7 +544,7 @@ def _dumpFileInfo(srvObj,
     for diskId in _getDiskDic().keys():
         _stopDataCheckThr(srvObj)
         if (_getDbmObjDic().has_key(diskId)): continue
-        
+
         # The disk is ripe for checking but still has no Queue/Error DBM
         # DBs allocated.
         queueDbmFile = "%s/%s_QUEUE_%s.bsddb" %\
@@ -566,7 +566,7 @@ def _dumpFileInfo(srvObj,
             errMsg = genLog("NGAMS_ER_DB_COM", [errMsg])
             raise Exception, errMsg
         expNoOfFiles = noOfFilesList[0]
-        
+
         # Now, retrieve the files on the given disk, and store the info
         # in the Queue DBM file.
         actNoOfFiles = 0
@@ -574,7 +574,7 @@ def _dumpFileInfo(srvObj,
         cursorObj = srvObj.getDb().getFileSummary1(None, [diskId], [],
                                                    ignore=0, fileStatus=[],
                                                    lowLimIngestDate=None,
-                                                   order=0)            
+                                                   order=0)
         fetchSize = 1000
         while (1):
             _stopDataCheckThr(srvObj)
@@ -588,7 +588,7 @@ def _dumpFileInfo(srvObj,
                 del queueDbm
                 rmFile(tmpQueueDbmFile)
                 raise Exception, genLog("NGAMS_ER_DB_COM", [errMsg])
-                
+
             if (not fileList): break
             actNoOfFiles += len(fileList)
             for fileInfo in fileList:
@@ -622,7 +622,7 @@ def _dumpFileInfo(srvObj,
                        (cacheDir, NGAMS_DATA_CHECK_THR, diskId)
         errorDbm = ngamsDbm.ngamsDbm(errorDbmFile, 0, 1)
         _getDbmObjDic()[diskId] = (queueDbm, errorDbm)
-        
+
         _stopDataCheckThr(srvObj)
     info(3,"Queried info for files to be checked from DB. Time: %.3fs" %\
          (time.time() - startDbFileRd))
@@ -754,14 +754,14 @@ def _schedNextFile(srvObj,
     srvObj:       Reference to server object (ngamsServer).
 
     threadId:     ID of the sub-thread (string).
-     
+
     Returns:      List with information (format see
                   ngamsDbCore.getFileSummary1()) for file to be checked. If
                   there are no more files to check, None is returned
                   (list/None).
     """
     T = TRACE()
-    
+
     try:
         _takeReqFileInfoSem()
         while (1):
@@ -786,7 +786,7 @@ def _schedNextFile(srvObj,
             else:
                 diskId = _getDiskSchedDic()[threadId]
                 fileKey, fileInfo = _getDbmObjDic()[diskId][0].getNext(0)
-                
+
             if (fileInfo):
                 # We got a file key + file info list, return the info.
                 break
@@ -810,7 +810,7 @@ def _schedNextFile(srvObj,
                     _getDiskSchedDic()[threadId] = nextDiskId
                 else:
                     break
-            
+
         _relReqFileInfoSem()
         return fileInfo
     except Exception, e:
@@ -834,7 +834,7 @@ def _dataCheckSubThread(srvObj,
     Returns:      Void.
     """
     T = TRACE()
-    
+
     dataCheckPrio = srvObj.getCfg().getDataCheckPrio()
     while (1):
         _stopCheckingSubThread()
@@ -878,7 +878,7 @@ def _dataCheckSubThread(srvObj,
                 error("Exception encountered in Data Check Sub-Thread: %s" %\
                       str(e))
                 time.sleep(2)
-            
+
 
 def _genReport(srvObj):
     """
@@ -906,7 +906,7 @@ def _genReport(srvObj):
         hdrForm   = "%-20s %s\n"
         format    = "%-60s %-32s %-9s %s\n"
         separator = 130 * "-" + "\n"
-       
+
         # Build up the report.
         report =  "DATA CHECKING REPORT:\n\n"
         report += hdrForm % ("Date", PccUtTime.TimeStamp().getTimeStamp())
@@ -963,7 +963,7 @@ def _genReport(srvObj):
                 if (fileInfo): report += repFormat % (fileInfo[0], unregFile)
             del unregFileList
             report += separator
-            
+
         # Send Notification Message if needed (only if disks where checked).
         if (len(_getDiskDic().keys())):
             ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_DATA_CHECK,
@@ -975,7 +975,7 @@ def _genReport(srvObj):
                      [_statCheckCount,unRegFiles,noOfProbs,
                       _statCheckedMb,_statCheckRate,checkTime])
         info(0,msg)
-        
+
     # Remove the various DBMs allocated.
     for diskId in _getDiskDic().keys():
         _getDbmObjDic()[diskId][1].cleanUp()
@@ -1006,7 +1006,7 @@ def _crossCheckNonRegFiles(srvObj):
     Returns:   None.
     """
     T = TRACE()
-    
+
     tmpFilePat = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),
                                                   NGAMS_DATA_CHECK_THR)
     crossCheckDbmName = None
@@ -1053,7 +1053,7 @@ def _crossCheckNonRegFiles(srvObj):
 
         # If files during cross-checking were found to be OK, we remove these
         # from the File Registration DBM.
-        
+
         #################################################################################################
         #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
         #          when iterating at the end of the table that are prone to corrupt the hash table object
@@ -1070,7 +1070,7 @@ def _crossCheckNonRegFiles(srvObj):
         #################################################################################################
 
         _getFileRefDbm().sync()
-        del crossCheckDbm 
+        del crossCheckDbm
         rmFile(crossCheckDbmName)
     except Exception, e:
         if (crossCheckDbm): del crossCheckDbm
@@ -1089,7 +1089,7 @@ def dataCheckThread(srvObj,
     check is performed only when NG/AMS is Online.
 
     srvObj:       Reference to server object (ngamsServer).
-     
+
     Returns:      Void.
     """
     minCycleTime = isoTime2Secs(srvObj.getCfg().getDataCheckMinCycle())
@@ -1126,7 +1126,7 @@ def dataCheckThread(srvObj,
             # dir - a DCC run may run for a longer period of time.
             rmFile("%s/%s/%s*" % (srvObj.getCfg().getRootDirectory(),
                                   NGAMS_CACHE_DIR, NGAMS_DATA_CHECK_THR))
- 
+
             # Get the information about the files to check.
             try:
                 tmpFilePat = ngamsHighLevelLib.\
@@ -1137,7 +1137,7 @@ def dataCheckThread(srvObj,
             except Exception, e:
                 rmFile(tmpFilePat + "*")
                 raise e
- 
+
             # According to the number of disks to be checked, a sub-thread
             # is allocated for each up to the limit defined in the
             # configuration.
@@ -1192,7 +1192,7 @@ def dataCheckThread(srvObj,
             # Check again for non-registered files.
             global _statCheckCount, _statCheckFiles
             if (_statCheckCount): _crossCheckNonRegFiles(srvObj)
-            
+
             # Send out check report if any discrepancies found + send
             # out notification message according to configuration.
             _genReport(srvObj)
@@ -1227,7 +1227,7 @@ def dataCheckThread(srvObj,
                      PccUtTime.TimeStamp().\
                      initFromSecsSinceEpoch(nextAbsCheckTime).\
                      getTimeStamp() + "/" + str(nextAbsCheckTime))
-                srvObj.setNextDataCheckTime(nextAbsCheckTime)            
+                srvObj.setNextDataCheckTime(nextAbsCheckTime)
                 tmpTimer = PccUtTime.Timer()
                 run = 1
                 while (run):
@@ -1240,7 +1240,7 @@ def dataCheckThread(srvObj,
                         run = 0
                     time.sleep(sleepTime)
             ###################################################################
-            
+
         except Exception, e:
             if (str(e).find("_STOP_DATA_CHECK_THREAD_") != -1):
                 thread.exit()

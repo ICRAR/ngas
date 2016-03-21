@@ -48,7 +48,7 @@ def ngamsMimeTypeFilterPI(srvObj,
 
     plugInPars:    Parameters to take into account for the plug-in
                    execution (string).
-   
+
     fileId:        File ID for file to test (string).
 
     filename:      Filename of (complete) (string).
@@ -56,7 +56,7 @@ def ngamsMimeTypeFilterPI(srvObj,
     fileVersion:   Version of file to test (integer).
 
     reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
- 
+
     Returns:       0 if the file does not match, 1 if it matches the
                    conditions (integer/0|1).
     """
@@ -75,7 +75,7 @@ def ngamsMimeTypeFilterPI(srvObj,
         errMsg = "ngamsMimeTypeFilterPI: Missing Plug-In Parameter: " +\
                  "mime_types"
         raise Exception, errMsg
-    
+
     # Perform the matching.
     refMimeTypes = parDic["mime_types"].split("|")
     actMimeType = ngamsPlugInApi.determineMimeType(srvObj.getCfg(), filename)

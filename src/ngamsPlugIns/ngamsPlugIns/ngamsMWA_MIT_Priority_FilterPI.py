@@ -28,7 +28,7 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      01/10/2012  Created
 """
-Contains a Filter Plug-In used to filter out those files that 
+Contains a Filter Plug-In used to filter out those files that
 (1) have already been delivered to the remote destination
 (2) belong to Solar observations with project_id 'c105' or 'c106'
 """
@@ -72,13 +72,13 @@ def ngamsMWA_MIT_Priority_FilterPI(srvObj,
                           fileId,
                           fileVersion = -1,
                           reqPropsObj = None):
-    
+
     """
     srvObj:        Reference to NG/AMS Server Object (ngamsServer).
 
     plugInPars:    Parameters to take into account for the plug-in
                    execution (string).
-   
+
     fileId:        File ID for file to test (string).
 
     filename:      Filename of (complete) (string).
@@ -86,7 +86,7 @@ def ngamsMWA_MIT_Priority_FilterPI(srvObj,
     fileVersion:   Version of file to test (integer).
 
     reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
- 
+
     Returns:       0 if the file does not match, 1 if it matches the
                    conditions (integer/0|1).
     """
@@ -94,7 +94,7 @@ def ngamsMWA_MIT_Priority_FilterPI(srvObj,
     obsId = fileId.split('_')[0]
     if (not obsId in obs_list):
         return 0
-    
+
     # Parse plug-in parameters.
     pars = ""
     if ((plugInPars != "") and (plugInPars != None)):
@@ -103,27 +103,27 @@ def ngamsMWA_MIT_Priority_FilterPI(srvObj,
         if (reqPropsObj.hasHttpPar("plug_in_pars")):
             pars = reqPropsObj.getHttpPar("plug_in_pars")
     parDic = ngamsPlugInApi.parseRawPlugInPars(pars)
-    if (not parDic.has_key("remote_host") or 
+    if (not parDic.has_key("remote_host") or
         not parDic.has_key("remote_port")):
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Missing Plug-In Parameter: " +\
                  "remote_host / remote_port"
         #raise Exception, errMsg
         alert(errMsg)
         return 1 # matched as if the filter did not exist
-    
+
     host = parDic["remote_host"]
     sport = parDic["remote_port"]
-    
+
     if (not sport.isdigit()):
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Invalid port number: " + sport
         alert(errMsg)
         return 1 # matched as if the filter does not exist
-    
+
     port = int(sport)
-        
+
     # Perform the matching.
     client = ngamsPClient.ngamsPClient(host, port, timeOut = NGAMS_SOCK_TIMEOUT_DEF)
-    
+
     try:
         rest = client.sendCmd(NGAMS_STATUS_CMD, 1, "", [["file_id", fileId]])
     except Exception, e:
@@ -131,16 +131,16 @@ def ngamsMWA_MIT_Priority_FilterPI(srvObj,
                      "ngamsMWACheckRemoteFilterPlugin. Exception: " + str(e)
         alert(errMsg)
         return 1 # matched as if the filter does not exist
-    
-    
+
+
     #info(5, "filter return status = " + rest.getStatus())
-    
+
     if (rest.getStatus().find(NGAMS_FAILURE) != -1):
         match = 1
-    
-    #info(4, "filter match = " + str(match))    
-    
-    return match    
+
+    #info(4, "filter match = " + str(match))
+
+    return match
 
 
 # EOF

@@ -61,7 +61,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Normal execution.
-        
+
         Description:
         Test the normal execution of the REMDISK Command, where a disk,
         containing files with at least 3 independent copies is request
@@ -102,7 +102,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         refStatFile = "ref/ngamsRemDiskCmdTest_test_RemDiskDisk_1_1_ref"
         tmpStatFile = "tmp/ngamsRemDiskCmdTest_test_RemDiskDisk_1_1_tmp"
         saveInFile(tmpStatFile, filterDbStatus1(status.dumpBuf(0, 1, 1)))
-        self.checkFilesEq(refStatFile, tmpStatFile, 
+        self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status for REMDISK Command/no execution")
 
         # Remove the cloned disk (execute=1), should be successfull.
@@ -110,7 +110,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         refStatFile = "ref/ngamsRemDiskCmdTest_test_RemDiskDisk_1_2_ref"
         tmpStatFile = "tmp/ngamsRemDiskCmdTest_test_RemDiskDisk_1_2_tmp"
         saveInFile(tmpStatFile, filterDbStatus1(status.dumpBuf(0, 1, 1)))
-        self.checkFilesEq(refStatFile, tmpStatFile, 
+        self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status for REMDISK Command/execution")
 
 
@@ -118,7 +118,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Missing file copies, REMDISK Command rejected.
-        
+
         Description:
         If there are not enough copies of files stored on a disk requested
         to be REMDISK'ed, the server should reject the request indicating
@@ -148,14 +148,14 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         self.prepExtSrv(8888, 1, 1, 1)
         client = sendPclCmd(port=8888)
         client.archive("src/SmallFile.fits")
-        
+
         # Remove the cloned disk (execute=0), should fail.
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         status = client.remDisk(diskId, 0)
         refStatFile = "ref/ngamsRemDiskCmdTest_test_RemDiskDisk_2_1_ref"
         tmpStatFile = "tmp/ngamsRemDiskCmdTest_test_RemDiskDisk_2_1_tmp"
         saveInFile(tmpStatFile, filterDbStatus1(status.dumpBuf(0, 1, 1)))
-        self.checkFilesEq(refStatFile, tmpStatFile, 
+        self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status for REMDISK Command/no execution")
 
         # Remove the cloned disk (execute=1), should fail.
@@ -163,7 +163,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         refStatFile = "ref/ngamsRemDiskCmdTest_test_RemDiskDisk_2_2_ref"
         tmpStatFile = "tmp/ngamsRemDiskCmdTest_test_RemDiskDisk_2_2_tmp"
         saveInFile(tmpStatFile, filterDbStatus1(status.dumpBuf(0, 1, 1)))
-        self.checkFilesEq(refStatFile, tmpStatFile, 
+        self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status for REMDISK Command/execution")
 
 
@@ -171,7 +171,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Check SQL query plan for a REMDISK?execute=0/normal case.
-        
+
         Description:
         The purpose of the test is to verify that the SQL query plan is
         as expected for the nominal case of the REMDISK Command when
@@ -213,7 +213,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Check SQL query plan for a REMDISK?execute=1/normal case.
-        
+
         Description:
         The purpose of the test is to verify that the SQL query plan is
         as expected for the nominal case of the REMDISK Command when
@@ -234,7 +234,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
 
         Remarks:
         ...
-        
+
         Test Data:
         ...
         """
@@ -254,7 +254,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test that the proxy mode is not possible for the REMDISK Command.
-        
+
         Description:
         It is not possible to let a contacted NGAS Node act as proxy for the
         REMDISK Command (for security reasons). I.e., the node where data

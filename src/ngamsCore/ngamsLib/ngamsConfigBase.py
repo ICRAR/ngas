@@ -43,7 +43,7 @@ class ngamsConfigBase:
     """
     Class to handle the NG/AMS Configuration
     """
-    
+
     def __init__(self,
                  xmlDoc = None,
                  dbObj = None):
@@ -89,7 +89,7 @@ class ngamsConfigBase:
         """
         self.__dbObj = dbObj
         return self
-    
+
 
     def getVal(self,
                xmlDicKey):
@@ -111,7 +111,7 @@ class ngamsConfigBase:
         else:
             return None
 
-        
+
     def storeVal(self,
                  xmlDicKey,
                  value,
@@ -124,7 +124,7 @@ class ngamsConfigBase:
                       Syntax). Could e.g. be:
 
                          NgamsCfg.Server[1].ArchiveName              (string).
-        
+
         value:        Value of the element/attribute (string).
 
         dbCfgGroupId: DB configuration group ID (string|None).
@@ -133,7 +133,7 @@ class ngamsConfigBase:
         """
         self.__xmlMgr.storeVal(xmlDicKey, value, dbCfgGroupId)
         return self
-        
+
 
     def load(self,
              xmlDoc):
@@ -145,13 +145,13 @@ class ngamsConfigBase:
         Returns:  Reference to object itself.
         """
         T = TRACE()
-        
+
         try:
             self.__xmlMgr.load(xmlDoc)
             self.setXmlDoc(xmlDoc)
         except Exception, e:
             errMsg = genLog("NGAMS_ER_LOAD_CFG", [xmlDoc, str(e)])
-            raise Exception, errMsg  
+            raise Exception, errMsg
         return self
 
 
@@ -171,7 +171,7 @@ class ngamsConfigBase:
         Returns:  Reference to object itself.
         """
         T = TRACE()
-        
+
         if (hideCritInfo):
             self.__xmlMgr.save("NgamsCfg", "ngamsCfg.dtd", xmlDoc,["Password"])
         else:
@@ -187,7 +187,7 @@ class ngamsConfigBase:
         Returns:    XML DOM Node (Node).
         """
         T = TRACE()
-        
+
         if (hideCritInfo):
             critInfoNameList = ["Password"]
         else:
@@ -204,10 +204,10 @@ class ngamsConfigBase:
 
         hideCritInfo:   Hide critical information (integer/0|1).
 
-        Returns:        XML document (string).        
+        Returns:        XML document (string).
         """
         T = TRACE()
-        
+
         xmlDoc = self.__xmlMgr.genXmlDoc("NgamsCfg", "ngamsCfg.dtd",
                                          hideCritInfo)
         return xmlDoc
@@ -254,8 +254,8 @@ class ngamsConfigBase:
             return self.getXmlDic()[objPath]
         else:
             return None
- 
-        
+
+
     def loadFromDb(self,
                    name,
                    clear = 0):
@@ -265,11 +265,11 @@ class ngamsConfigBase:
         name:       Name of the configuration in the DB (string).
 
         clear:      Clear the object before loading if set to 1 (integer/0|1).
-        
+
         Returns:    Reference to object itself.
         """
         T = TRACE()
-        
+
         if (not self.__dbObj):
             raise Exception, "No DB connection object associated to " +\
                   "ngamsConfigBase object. Cannot access DB!"
@@ -304,7 +304,7 @@ class ngamsConfigBase:
         Returns:   Reference to object itself.
         """
         T = TRACE()
-        
+
         if (not self.__dbObj):
             raise Exception, "No DB connection object associated to " +\
                   "ngamsConfigBase object. Cannot access DB!"
@@ -317,7 +317,7 @@ class ngamsConfigBase:
                                      obj.getValue(), obj.getComment())
         return self
 
-    
+
 if __name__ == '__main__':
     """
     Main program.
@@ -336,6 +336,6 @@ if __name__ == '__main__':
     xmlDicKeys.sort()
     for key in xmlDicKeys:
         print "%s = %s" % (key, xmlDic[key].getValue())
-        
+
 
 # EOF

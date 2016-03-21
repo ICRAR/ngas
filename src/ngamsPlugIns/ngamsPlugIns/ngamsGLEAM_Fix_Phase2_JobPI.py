@@ -69,7 +69,7 @@ def execCmd(cmd, failonerror = True):
     re = commands.getstatusoutput(cmd)
     if (failonerror and (not os.WIFEXITED(re[0]))):
         errMsg = 'Fail to execute command: "%s". Exception: %s' % (cmd, re[1])
-        raise Exception(errMsg)    
+        raise Exception(errMsg)
     return re
 
 def getFileCRC(filename):
@@ -94,26 +94,26 @@ def ngamsGLEAM_Fix_Phase2_JobPI(srvObj,
 
     plugInPars:    Parameters to take into account for the plug-in
                    execution (string).(e.g. scale_factor=4,threshold=1E-5)
-   
+
     fileId:        File ID for file to test (string).
 
     filename:      Filename of (complete) (string).
 
     fileVersion:   Version of file to test (integer).
- 
+
     Returns:       the return code of the compression plugin (integer).
     """
-    
+
     hdrs = fitsapi.getFitsHdrs(filename)
     date_obs = hdrs[0]['DATE-OBS'][0][1].replace("'", "").split('T')[0]
     if (not dict_dec.has_key(date_obs)):
         return (1, 'no date for %s' % filename)
-    
+
     # copy it to some tmp directory
     fndir = os.path.dirname(filename)
     bname = os.path.basename(filename)
     execCmd('cp %s %s/' % (filename, work_dir))
-    
+
     # add header keyword
     fn = '%s/%s' % (work_dir, bname)
     os.chmod(fn, 644) # owner writable
@@ -121,7 +121,7 @@ def ngamsGLEAM_Fix_Phase2_JobPI(srvObj,
     prihdr = hdulist[0].header
     prihdr['DEC_PNT'] = dict_dec[date_obs]
     hdulist.close()
-    
+
     # double check if the key is really added or the file is not corrupted
     hdrs = fitsapi.getFitsHdrs(fn)
     if (not hdrs[0].has_key('DEC_PNT')):
@@ -130,22 +130,22 @@ def ngamsGLEAM_Fix_Phase2_JobPI(srvObj,
         os.remove(fn)
         # raise error
         raise Exception('%s still does not have key DEC_PNT' % (fn))
-    
+
     # calculate the checksum, new filesize
     csum = getFileCRC(fn)
-    fsize = getFileSize(fn) 
-    
+    fsize = getFileSize(fn)
+
     # move the original file to a different name
     os.chmod(filename, 644)
     execCmd('mv %s %s/%s_origin' % (filename, fndir, bname))
-    
+
     # move the new file back under the original name
     execCmd('mv %s %s/' % (fn, fndir))
     os.chmod(filename, 444) # make it readonly
-    
+
     # if all fine, remove the original file (under the different name)
     # otherwise, remove the new file, and move the original file back to the original name
     os.remove('%s/%s_origin' % (fndir, bname))
-    
+
     # update database with new crc and file size
     #

@@ -61,21 +61,21 @@ def launchSimulator(obsId, data_rate = 16, num_obs = 1, max_num_hdus = 42, crc_e
     (rank, listSrvs) = getMyNGASHost(comm, num_server, localfs = localFS)
     num_servers = len(listSrvs)
     ngas_host = listSrvs[rank % num_servers]
-    
+
     # create working directory of the simulator based on the node id
     if (not os.path.exists(work_dir)):
-        os.makedirs(work_dir)    
-    
+        os.makedirs(work_dir)
+
     """
-    # copy dcconf file to the working directory 
+    # copy dcconf file to the working directory
     shutil.copy('%s/dcconf_tpl' % dc_root, work_conf)
-    
+
     # change hostId and port within the dcconf file
     ngamsFornaxMgr.replacePathInFile('\${root_dir}', work_dir, work_conf) # '\' is the escape for '$'
     ngamsFornaxMgr.replaceTextInFile('\${max_num_hdus}', str(max_num_hdus), work_conf)
     ngamsFornaxMgr.replaceTextInFile('\${server_and_port}', ngas_host, work_conf)
     ngamsFornaxMgr.replaceTextInFile('\${data_rate}', str(data_rate), work_conf)
-    ngamsFornaxMgr.replaceTextInFile('\${num_obs}', str(num_obs), work_conf)   
+    ngamsFornaxMgr.replaceTextInFile('\${num_obs}', str(num_obs), work_conf)
     cmd = "bash %s/rundc_tpl.sh %s %s %s" % (dc_root, nodeId, obsId, work_conf)
     """
     # launch the simulator
@@ -87,9 +87,9 @@ def launchSimulator(obsId, data_rate = 16, num_obs = 1, max_num_hdus = 42, crc_e
     cmd = "python %s/src/ngasUtils/src/diskTest.py -d http://%s/%s -b 1048576 -w -t 5 -r %d -f %s -e %s" % \
                (ngamsFornaxMgr.ngas_src_root, ngas_host, archive_cmd, data_rate, speedFile, obsId)
     ngamsFornaxMgr.execCmd(cmd)
-    
+
     comm.Barrier() #wait until all clients finishing archiving
-    
+
     if (rank == 0):
         # if rank0, I will get all server logs, analyse them, and record the final result
         num_clients = comm.Get_size()
@@ -101,44 +101,44 @@ def launchSimulator(obsId, data_rate = 16, num_obs = 1, max_num_hdus = 42, crc_e
             fs_comment = 'Lu'
         else:
             fs_comment = 'Lo'
-            
+
         comment = '%s-%ds-%s-%dc-%dm' % (fs_comment, num_servers, crc_comment, num_clients, data_rate)
         tgtLogDir = ngamsFornaxMgr.getServerLogs(tgtDir, comment, analyse = True, serverList = listSrvs, localfs = localFS)
     else:
         tgtLogDir = None
-    
+
     comm.Barrier() #wait until rank 0 finishes copying all the server logs
     tgtLogDir = comm.bcast(tgtLogDir, root = 0)
-    
+
     if (tgtLogDir):
         shutil.copy(speedFile, tgtLogDir + '/')
-    
+
     #cmd = 'rm -rf %s/*' % work_dir
     #ngamsFornaxMgr.execCmd(cmd, failonerror = False)
 
 def getMyNGASHost(comm, num_server, localfs = 1):
     """
-    clients_per_server    how many clients share the 
+    clients_per_server    how many clients share the
                           same server (integer)
-                          
-    calculate host_id and port number of 
+
+    calculate host_id and port number of
     the corresponding ngas server based on the node_id
     """
-    rank = comm.Get_rank()        
-    
+    rank = comm.Get_rank()
+
     if (rank == 0):
-        
+
         listSrvs = ngamsFornaxMgr.getAvailableArchiveServers()
         if (num_server and num_server < len(listSrvs)):
             listSrvs = listSrvs[0:num_server]
         ngamsFornaxMgr.cleanServerLogs(listSrvs, localFS = localfs)
     else:
         listSrvs = None
-        
+
     comm.Barrier() #wait until rank 0 finishes getting serverlist and cleaning the logs
     listSrvs = comm.bcast(listSrvs, root = 0)
     print 'List of available NGAS server = %s' % str(listSrvs)
-    
+
     return (rank, listSrvs)
 
 def main():
@@ -148,81 +148,81 @@ def main():
     parser.add_option("-n", "--nocrc",
                   action="store_false", dest="crc_enabled", default = True,
                   help="CRC on server is disabled")
-    
+
     parser.add_option("-g", "--globalfs",
                   action="store_true", dest="global_fs", default = False,
                   help="NGAS uses the lustre global file system")
-    
-    parser.add_option("-d", "--datarate", type="int", dest="data_rate", default=96, 
+
+    parser.add_option("-d", "--datarate", type="int", dest="data_rate", default=96,
                       help="Data rate per client (MB/s)")
-    
+
     parser.add_option("-o", "--obsId",
                   action="store", type="string", dest="obs_id")
-    
-    parser.add_option("-s", "--numservers", type="int", dest="num_server", 
+
+    parser.add_option("-s", "--numservers", type="int", dest="num_server",
                       help="Number of servers used")
-    
+
     (options, args) = parser.parse_args()
     if (None == options.obs_id):
         parser.print_help()
         exit(1)
-            
+
     speed_step = 128
     for i in range(7):
         dataRate = (i + 1) * speed_step
         #print dataRate
-        launchSimulator(options.obs_id + "_" + str(i), data_rate = dataRate, 
+        launchSimulator(options.obs_id + "_" + str(i), data_rate = dataRate,
                    crc_enabled = True, global_fs = options.global_fs, num_server = options.num_server)
-        launchSimulator(options.obs_id + "_" + str(i + 100), data_rate = dataRate, 
+        launchSimulator(options.obs_id + "_" + str(i + 100), data_rate = dataRate,
                    crc_enabled = False, global_fs = options.global_fs, num_server = options.num_server)
-    
+
     """
-    launchSimulator(options.obs_id, data_rate = 128, 
+    launchSimulator(options.obs_id, data_rate = 128,
                     crc_enabled = True, global_fs = False, num_server = options.num_server)
-    
-    launchSimulator(options.obs_id, data_rate = 128, 
+
+    launchSimulator(options.obs_id, data_rate = 128,
                     crc_enabled = False, global_fs = False, num_server = options.num_server)
-    
-    launchSimulator(options.obs_id, data_rate = 256, 
+
+    launchSimulator(options.obs_id, data_rate = 256,
                     crc_enabled = True, global_fs = False, num_server = options.num_server)
-    
-    launchSimulator(options.obs_id, data_rate = 256, 
+
+    launchSimulator(options.obs_id, data_rate = 256,
                     crc_enabled = False, global_fs = False, num_server = options.num_server)
-    
-    launchSimulator(options.obs_id, data_rate = 384, 
+
+    launchSimulator(options.obs_id, data_rate = 384,
                     crc_enabled = True, global_fs = False, num_server = options.num_server)
-    
-    launchSimulator(options.obs_id, data_rate = 384, 
+
+    launchSimulator(options.obs_id, data_rate = 384,
                     crc_enabled = False, global_fs = False, num_server = options.num_server)
-    
-    launchSimulator(options.obs_id, data_rate = 512, 
+
+    launchSimulator(options.obs_id, data_rate = 512,
                     crc_enabled = True, global_fs = False, num_server = options.num_server)
-    
-    launchSimulator(options.obs_id, data_rate = 512, 
+
+    launchSimulator(options.obs_id, data_rate = 512,
                     crc_enabled = False, global_fs = False, num_server = options.num_server)
-    
-    launchSimulator(options.obs_id, data_rate = 640, 
+
+    launchSimulator(options.obs_id, data_rate = 640,
                     crc_enabled = True, global_fs = False, num_server = options.num_server)
-    
-    launchSimulator(options.obs_id, data_rate = 640, 
+
+    launchSimulator(options.obs_id, data_rate = 640,
                     crc_enabled = False, global_fs = False, num_server = options.num_server)
-    
-    launchSimulator(options.obs_id, data_rate = 768, 
+
+    launchSimulator(options.obs_id, data_rate = 768,
                     crc_enabled = True, global_fs = False, num_server = options.num_server)
-    
-    launchSimulator(options.obs_id, data_rate = 768, 
+
+    launchSimulator(options.obs_id, data_rate = 768,
                     crc_enabled = False, global_fs = False, num_server = options.num_server)
-    
-    launchSimulator(options.obs_id, data_rate = 896, 
+
+    launchSimulator(options.obs_id, data_rate = 896,
                     crc_enabled = True, global_fs = False, num_server = options.num_server)
-    
-    launchSimulator(options.obs_id, data_rate = 896, 
+
+    launchSimulator(options.obs_id, data_rate = 896,
                     crc_enabled = False, global_fs = False, num_server = options.num_server)
     """
 if __name__=="__main__":
     main()
-    
-    
+
+
 
 
 

@@ -41,7 +41,7 @@ class ngamsTestPstats(pstats.Stats):
     """
     NG/AMS inherited profiling report generator.
     """
-    
+
     def __init__(self,
                  *args):
         """
@@ -51,7 +51,7 @@ class ngamsTestPstats(pstats.Stats):
         """
         pstats.Stats.__init__(self, args)
 
-       
+
     def get_print_list(self,
                        sel_list):
         """
@@ -77,6 +77,6 @@ class ngamsTestPstats(pstats.Stats):
                 if  len(pstats.func_std_string(func)) > width:
                     width = len(pstats.func_std_string(func))
         return width+2, list
-        
+
 
 # EOF

@@ -43,7 +43,7 @@ class ngamsDb(ngamsDbBase):
     """
     Class to handle the connection to the NGAS DB for the SQLite interface.
     """
-  
+
     def __init__(self,
                  server,
                  db,
@@ -60,16 +60,16 @@ class ngamsDb(ngamsDbBase):
         server:          DB server name (string).
 
         db:              DB name (string).
-        
+
         user:            DB user (string).
-        
+
         password:        DB password (string).
 
         createSnapshot:  Indicates if a DB Snapshot (temporary snapshot
                          files) should be created (integer/0|1).
 
         interface:       NG/AMS DB Interface Plug-In (string).
-        
+
         tmpDir:          Name of NGAS Temporary Directory (string).
 
         maxRetries:      Max. number of retries in case of failure (integer).
@@ -111,5 +111,5 @@ class ngamsDb(ngamsDbBase):
             logNames.sort()
             retVal = int(logNames[-1])
         return retVal
-  
+
 # EOF

@@ -54,7 +54,7 @@ class ngamsInitCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Normal execution of INIT Command/cfg. in file.
-        
+
         Description:
         The purpose of the Test Case is to verify that the server
         re-initializes and reloads the associated cfg. file when the INIT

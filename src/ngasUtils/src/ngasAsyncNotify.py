@@ -58,10 +58,10 @@ import psycopg2.extras
 def fileArrived(rowdata):
     # print file name and size
     print rowdata['file_id'], rowdata['file_size']
-    
-    # Update database(s) etc that the file has arrived. 
-    # Note: Be warry that this is executed in the same thread context as the connection select, 
-    # might be a good idea to put this in a threaded message queue. 
+
+    # Update database(s) etc that the file has arrived.
+    # Note: Be warry that this is executed in the same thread context as the connection select,
+    # might be a good idea to put this in a threaded message queue.
 
 
 if __name__ == "__main__":
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     curs = conn.cursor()
     # listen for table changes using trigger
     curs.execute("LISTEN ngas_files;")
-    
+
     while True:
         if select.select([conn],[],[],5) == ([],[],[]):
             continue

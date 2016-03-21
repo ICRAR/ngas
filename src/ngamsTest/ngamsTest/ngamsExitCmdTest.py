@@ -55,7 +55,7 @@ class ngamsExitCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Normal execution EXIT Command/Offline.
-        
+
         Description:
         Test that the server terminates if the EXIT Command is submitted
         while the server is in Offline State.
@@ -69,14 +69,14 @@ class ngamsExitCmdTest(ngamsTestSuite):
         - Submit EXIT Command.
         - Check that the response is as expected.
         - Check that the server is no longer running.
-        
+
         Remarks:
         TODO!: Test that the server is no longer running.
         """
         self.prepExtSrv(8888, 1, 1, 0)
         tmpStatFile = sendExtCmd(8888, NGAMS_EXIT_CMD)
         refStatFile = "ref/ngamsCmdHandlingTest_test_handleCmdExit_1_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, 
+        self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status returned for EXIT command")
         info(1,"TODO: Check that NG/AMS Server has terminated")
 
@@ -85,7 +85,7 @@ class ngamsExitCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Server in Online State -> EXIT Command rejected.
-        
+
         Description:
         Test that the EXIT Command is rejected when submitted when the
         server is in Online State.
@@ -106,7 +106,7 @@ class ngamsExitCmdTest(ngamsTestSuite):
         self.prepExtSrv(8888, 1, 1, 1)
         tmpStatFile = sendExtCmd(8888, NGAMS_EXIT_CMD)
         refStatFile = "ref/ngamsCmdHandlingTest_test_handleCmdExit_2_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile, 
+        self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status returned for EXIT command")
         info(1,"TODO: Check that NG/AMS Server is still running")
 

@@ -105,7 +105,7 @@ class ngamsStorageSet:
         label:    Disk label prefix (string).
 
         Returns:  Reference to the object itself.
-        """ 
+        """
         if (label == None): return self
         self.__diskLabel = str(label)
         return self
@@ -140,7 +140,7 @@ class ngamsStorageSet:
 
         Returns:       Slot ID for the Main Disk (string).
         """
-        return self.__mainDiskSlotId 
+        return self.__mainDiskSlotId
 
 
     def setRepDiskSlotId(self,
@@ -226,6 +226,6 @@ class ngamsStorageSet:
         buf += "Mutex Flag:               %s\n" % str(self.__mutex)
         buf += "Synchronize Flag:         %s"   % str(self.__synchronize)
         return buf
-        
+
 
 # EOF

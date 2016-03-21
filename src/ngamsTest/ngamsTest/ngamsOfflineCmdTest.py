@@ -57,7 +57,7 @@ class ngamsOfflineCmdTest(ngamsTestSuite):
         """
         Synopsis:
         test standard execution of OFFLINE Command.
-        
+
         Description:
         The purpose of the Test Case is to specify the normal execution of the
         OFFLINE Command when the server is Online/Idle and the command is
@@ -80,7 +80,7 @@ class ngamsOfflineCmdTest(ngamsTestSuite):
                                  genStatFile = 1)
         refStatFile = "ref/ngamsOfflineCmdTest_test_StdOffline_1_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect status returned for OFFLINE command") 
+                          "Incorrect status returned for OFFLINE command")
         info(1,"TODO: Check that NG/AMS Server is in Offline State")
 
 

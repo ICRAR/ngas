@@ -47,7 +47,7 @@ from ngamsLib.ngamsCore import info, logFlush, TRACE, rmFile,\
     loadPlugInEntryPoint
 from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib
 
-# An internal queue contains files that have been explicitly requested to be removed  
+# An internal queue contains files that have been explicitly requested to be removed
 explicitDelQueue = Queue()
 
 def _STOP_(srvObj,
@@ -107,22 +107,22 @@ def startCacheControlThread(srvObj):
     Start the Cache Control Thread.
 
     srvObj:     Reference to server object (ngamsServer).
-    
+
     Returns:    Void.
     """
     T = TRACE()
-    
+
     info(1, "Starting the Cache Control Thread ...")
-    
+
     global CHECK_CAN_BE_DELETED
-    
+
     try:
         CHECK_CAN_BE_DELETED = int(srvObj.getCfg().getVal("Caching[1].CheckCanBeDeleted"))
     except:
         CHECK_CAN_BE_DELETED = 0
-    
+
     info(1, "Cache Control - CHECK_CAN_BE_DELETED = %d" % CHECK_CAN_BE_DELETED)
-    
+
     args = (srvObj, None)
     srvObj._cacheControlThread = threading.Thread(None, cacheControlThread,
                                                   NGAMS_CACHE_CONTROL_THR_STOP,
@@ -138,11 +138,11 @@ def stopCacheControlThread(srvObj):
     Stop the Cache Control Thread.
 
     srvObj:     Reference to server object (ngamsServer).
-    
+
     Returns:    Void.
     """
     T = TRACE()
-    
+
     if (not srvObj.getCacheControlThreadRunning()): return
     info(1, "Stopping the Cache Control Thread ...")
     if (CHECK_CAN_BE_DELETED):
@@ -160,11 +160,11 @@ def checkStopCacheControlThread(srvObj,
     yes, to stop it.
 
     srvObj:     Reference to server object (ngamsServer).
-    
+
     Returns:    Void.
     """
     T = TRACE(5)
-    
+
     if (not srvObj.getThreadRunPermission()):
         srvObj.setCacheControlThreadRunning(0)
         info(2, "Stopping the Cache Control Service")
@@ -232,7 +232,7 @@ def createCacheDbms(srvObj):
     srvObj._cacheNewFilesDbm = ngamsDbm.ngamsDbm(newFilesDbmName,
                                                   cleanUpOnDestr = 0,
                                                   writePerm = 1)
-    
+
     # Create DBMs used by the Cache Control Plug-Ins.
     # - DBM used to schedule files for checking.
     cacheDir = ngamsHighLevelLib.getNgasChacheDir(srvObj.getCfg())
@@ -272,11 +272,11 @@ def addEntryNewFilesDbm(srvObj,
     Add a new entry in the New Files DBM.
 
     srvObj:       Reference to server object (ngamsServer).
-        
+
     diskId:       Disk ID for the cached data object (string).
-        
+
     fileId:       File ID for the cached data object (string).
-        
+
     fileVersion:  Version of the cached data object (integer).
 
     filename:     Name of file, relative to the volume root (string).
@@ -368,11 +368,11 @@ def entryInCacheDbms(srvObj,
     Check if a given entry is found in the local cache DBMS.
 
     srvObj:       Reference to server object (ngamsServer).
-        
+
     diskId:       Disk ID for the cached data object (string).
-        
+
     fileId:       File ID for the cached data object (string).
-        
+
     fileVersion:  Version of the cached data object (integer).
 
     Returns:      Flag indicating if the given entry is found in the
@@ -401,13 +401,13 @@ def getFilenameFromCacheDbms(srvObj,
                              fileVersion):
     """
     Return the value of the filename column from the NGAS Cache Table.
-    
+
     srvObj:       Reference to server object (ngamsServer).
-        
+
     diskId:       Disk ID for the cached data object (string).
-        
+
     fileId:       File ID for the cached data object (string).
-        
+
     fileVersion:  Version of the cached data object (integer).
 
     Returns:      Value of filename column or None if not set (string | None).
@@ -448,11 +448,11 @@ def addEntryInCacheDbms(srvObj,
     remote DBMS).
 
     srvObj:         Reference to server object (ngamsServer).
-        
+
     diskId:         Disk ID for the cached data object (string).
-        
+
     fileId:         File ID for the cached data object (string).
-        
+
     fileVersion:    Version of the cached data object (integer).
 
     filename:       Name of file, relative to the volume root (string).
@@ -460,15 +460,15 @@ def addEntryInCacheDbms(srvObj,
     fileSize:       Size in bytes of archived file (integer).
 
     delete:         Mark file for deletion (boolean).
-    
+
     lastCheck:      Time for last check (float).
 
     cacheTime:      Time when the file entered the cache (float).
-                        
+
     cacheEntryObj:  Cache Entry Object (ngamsCacheEntry).
 
     addInRdbms:     Add the entry also in the associated RDBMS (boolean).
-    
+
     Returns:        Void.
     """
     T = TRACE()
@@ -508,11 +508,11 @@ def setFilenameCacheDbms(srvObj,
     Set the filename field for a row in the local Cache Contents DBMS.
 
     srvObj:         Reference to server object (ngamsServer).
-        
+
     diskId:         Disk ID for the cached data object (string).
-        
+
     fileId:         File ID for the cached data object (string).
-        
+
     fileVersion:    Version of the cached data object (integer).
 
     filename:       Name of file, relative to the volume root (string).
@@ -529,7 +529,7 @@ def setFilenameCacheDbms(srvObj,
 _SET_FILE_SIZE_CACHE_DBMS = "UPDATE ngas_cache SET file_size = %d WHERE " +\
                             "disk_id = '%s' AND file_id = '%s' AND " +\
                             "file_version = %d"
-  
+
 def setFileSizeCacheDbms(srvObj,
                          diskId,
                          fileId,
@@ -539,11 +539,11 @@ def setFileSizeCacheDbms(srvObj,
     Set the file size field for a row in the local Cache Contents DBMS.
 
     srvObj:         Reference to server object (ngamsServer).
-        
+
     diskId:         Disk ID for the cached data object (string).
-        
+
     fileId:         File ID for the cached data object (string).
-        
+
     fileVersion:    Version of the cached data object (integer).
 
     fileSize:       Size of file (integer).
@@ -596,11 +596,11 @@ def delEntryFromCacheDbms(srvObj,
     Delete an entry from the Cache Contents DBMS'.
 
     srvObj:       Reference to server object (ngamsServer).
-        
+
     diskId:       Disk ID for the cached data object (string).
-        
+
     fileId:       File ID for the cached data object (string).
-        
+
     fileVersion:  Version of the cached data object (integer).
 
     Returns:      Void.
@@ -614,7 +614,7 @@ def delEntryFromCacheDbms(srvObj,
 
     # Remove from the Remote Cache Contents DBMS.
     srvObj.getDb().deleteCacheEntry(diskId, fileId, fileVersion)
-    
+
 
 def initCacheArchive(srvObj):
     """
@@ -626,8 +626,8 @@ def initCacheArchive(srvObj):
 
     Returns:    Void.
     """
-    T = TRACE()        
-    
+    T = TRACE()
+
     # Create/open the Cache Contents DBM.
     # Note: This DBMS is kept between sessions for efficiency reasons.
     createCacheDbms(srvObj)
@@ -648,7 +648,7 @@ def initCacheArchive(srvObj):
             # Set filename, file size and Cache Entry Object later.
             addEntryInCacheDbms(srvObj, diskId, fileId, fileVersion, "", -1,
                                 cacheEntryObj = "", addInRdbms = True)
-    
+
     # Update the local Cache Content DBMS with the information about files
     # online on this node.
     curObj = srvObj.getDb().getFileSummary1(hostId = srvObj.getHostId(),
@@ -699,7 +699,7 @@ def initCacheArchive(srvObj):
             addEntryInCacheDbms(srvObj, diskId, fileId, fileVersion,
                                 filename, fileSize, lastCheck = lastCheckTime,
                                 cacheTime = ingDateSecs,
-                                cacheEntryObj = cacheEntryObject) 
+                                cacheEntryObj = cacheEntryObject)
 
     # Start the Cache Control Plug-In helper threads if a Cache Control Plug-In
     # is specified.
@@ -729,14 +729,14 @@ def checkNewFilesDbm(srvObj):
     while (True):
         fileInfo = getEntryNewFilesDbm(srvObj)
         if (not fileInfo): break
-             
+
         # Get the rest of File Summary 1 info and create an ngamsCacheEntry
         # object.
         sqlFileInfo = srvObj.getDb().\
                       getFileSummary1SingleFile(fileInfo[NGAMS_CACHE_DISK_ID],
                                                 fileInfo[NGAMS_CACHE_FILE_ID],
                                                 fileInfo[NGAMS_CACHE_FILE_VER])
-        
+
         if (sqlFileInfo == []):
             msg = "No file found matching: %s/%s/%s" %\
                   (fileInfo[NGAMS_CACHE_DISK_ID],
@@ -775,7 +775,7 @@ def markFileChecked(srvObj,
     """
     Set the Last Check field for a cache to the current time to indicate
     that it was checked.
-    
+
     srvObj:       Reference to server object (ngamsServer).
 
     sqlFileInfo:  Information for one file as queried from the NGAS Cache
@@ -783,7 +783,7 @@ def markFileChecked(srvObj,
 
     Returns:      Void.
     """
-    T = TRACE()  
+    T = TRACE()
 
     sqlQuery = _LAST_CHECK_QUERY_TPL % (time.time(),
                                         sqlFileInfo[NGAMS_CACHE_DISK_ID],
@@ -811,8 +811,8 @@ def requestFileForDeletion(srvObj, sqlFileInfo):
     """
     #T = TRACE()
     explicitDelQueue.put(sqlFileInfo) # this is thread safe
-    
-    
+
+
 
 def scheduleFileForDeletion(srvObj,
                             sqlFileInfo):
@@ -837,7 +837,7 @@ def scheduleFileForDeletion(srvObj,
     sqlQuery = _SCHEDULE_DEL_TPL % (diskId, fileId, int(fileVersion))
     queryCacheDbms(srvObj, sqlQuery)
     srvObj.getDb().updateCacheEntry(diskId, fileId, fileVersion, 1)
-    
+
 
 def createTmpDbm(srvObj,
                  id,
@@ -855,7 +855,7 @@ def createTmpDbm(srvObj,
     Returns:      DBM object (ngamsDbm2).
     """
     T = TRACE()
-    
+
     dbmName = os.path.normpath(ngamsHighLevelLib.\
                                getNgasTmpDir(srvObj.getCfg()) +\
                                "/CACHE_%s_DBM" % id)
@@ -893,7 +893,7 @@ def _addEntryCacheCtrlPlugInDbm(srvObj,
 def _getEntryCacheCtrlPlugInDbm(srvObj):
     """
     Get an entry from the Cache Control Plug-In DBM.
-    
+
     srvObj:       Reference to server object (ngamsServer).
 
     Returns:      Next Sync. Request Object or None if there are no requests
@@ -910,7 +910,7 @@ def _getEntryCacheCtrlPlugInDbm(srvObj):
             readIdx = ((readIdx + 1) % NGAMS_CACHE_CTRL_PI_DBM_MAX)
             srvObj._cacheCtrlPiDbm.add(NGAMS_CACHE_CTRL_PI_DBM_RD, readIdx)
         srvObj._cacheCtrlPiThreadGr.releaseGenMux()
-        
+
         return cacheEntryObj
     except Exception, e:
         srvObj._cacheCtrlPiThreadGr.releaseGenMux()
@@ -919,8 +919,8 @@ def _getEntryCacheCtrlPlugInDbm(srvObj):
 
 def _getCountCacheCtrlPlugInDbm(srvObj):
     """
-    Get the current count (=number of elements in the 
-    
+    Get the current count (=number of elements in the
+
     srvObj:       Reference to server object (ngamsServer).
 
     Returns:      Next Sync. Request Object or None if there are no requests
@@ -932,13 +932,13 @@ def _getCountCacheCtrlPlugInDbm(srvObj):
         srvObj._cacheCtrlPiThreadGr.takeGenMux()
         noOfEls = srvObj._cacheCtrlPiDbm.getCount()
         srvObj._cacheCtrlPiThreadGr.releaseGenMux()
-        
+
         return noOfEls
     except Exception, e:
         srvObj._cacheCtrlPiThreadGr.releaseGenMux()
         raise Exception, e
 
-    
+
 def _cacheCtrlPlugInThread(threadGrObj):
     """
     Function to run as a thread to check if there are entries in the
@@ -946,7 +946,7 @@ def _cacheCtrlPlugInThread(threadGrObj):
 
     threadGrObj:  Reference to Thread Group Object to which this thread
                   belongs (ngamsThreadGroup).
-    
+
     Returns:      Void.
     """
     T = TRACE()
@@ -958,7 +958,7 @@ def _cacheCtrlPlugInThread(threadGrObj):
     plugInMethod = loadPlugInEntryPoint(cacheCtrlPlugIn)
 
     deleteMsg = "CACHE-CRITERIA: Plug-in Selected File for Deletion: %s/%s/%s"
-   
+
     # Loop until instructed to stop.
     while (True):
         checkStopCacheControlThread(srvObj, raiseEx = False)
@@ -969,7 +969,7 @@ def _cacheCtrlPlugInThread(threadGrObj):
             checkStopCacheControlThread(srvObj, raiseEx = False)
             cacheEntryObj = _getEntryCacheCtrlPlugInDbm(srvObj)
             if (not cacheEntryObj): break
-        
+
             # Invoke Cache Control Plug-In on the file.
             try:
                 deleteFile = plugInMethod(srvObj, cacheEntryObj)
@@ -1018,25 +1018,25 @@ def checkIfFileCanBeDeleted(srvObj, fileId, fileVersion, diskId):
     Check if the file can be deleted from its file_status flag
     """
     fileStatus = srvObj.getDb().getFileStatus(fileId, fileVersion, diskId)
-    
+
     re = bin(int(fileStatus, 2) & CACHE_DEL_BIT_MASK_INT)[2:] # logic AND, and remove the '0b', e.g '0b11001' --> '11001'
     re = re.zfill(8) # fill zeroes at the beginning, e.g. '100' --> '00000100'
-    
+
     return (CACHE_DEL_BIT_MASK == re)
-    
+
 
 def checkCacheContents(srvObj):
     """
     Go through the contents in the cache and check for each item not already
     marked for deletion, if it can be deleted. If it can be deleted, mark it
     for deletion.
-    
+
     srvObj:     Reference to server object (ngamsServer).
 
     Returns:    Void.
     """
     T = TRACE()
-    
+
     # If several methods for checking the cache contents is activated
     # these are applied sequentially. The first rule that matches on the
     # file tested, means that the checking stops and the file is scheduled
@@ -1109,7 +1109,7 @@ def checkCacheContents(srvObj):
         except Exception, e:
             srvObj._cacheContDbmsSem.release()
             raise Exception, e
-                    
+
         # Now, loop over the selected files and mark them for deletion.
         delFilesDbm.initKeyPtr()
         while (True):
@@ -1121,7 +1121,7 @@ def checkCacheContents(srvObj):
         del delFilesDbm
         delFilesDbm = None
         info(4, "Applied criteria: Expired files")
-          
+
     # 2. Remove files if there more files (in volume) in the cache than the
     #    specified threshold.
     if (srvObj.getCfg().getVal("Caching[1].MaxCacheSize")):
@@ -1134,12 +1134,12 @@ def checkCacheContents(srvObj):
             cacheSum = 0
         else:
             cacheSum = int(cacheSum)
-        
+
         msg = "Current size of cache: %.3f GB, " +\
                   "Maximum cache size: %.3f GB"
         info(3, msg % ((float(cacheSum) / 1e9),
                            (float(maxCacheSize) / 1e9)))
-        
+
         if (cacheSum > maxCacheSize):
             msg = "Current size of cache: %.6f MB exceeding specified " +\
                   "threshold: %.6f MB"
@@ -1157,7 +1157,7 @@ def checkCacheContents(srvObj):
             # the interaction with SQLite in case other threads would try to
             # access the DBMS.
             try:
-                srvObj._cacheContDbmsSem.acquire()                
+                srvObj._cacheContDbmsSem.acquire()
                 srvObj._cacheContDbmsCur.execute(sqlQuery)
                 while (cacheSum > maxCacheSize):
                     fileInfoList = srvObj._cacheContDbmsCur.fetchmany(10000)
@@ -1165,9 +1165,9 @@ def checkCacheContents(srvObj):
                     for sqlFileInfo in fileInfoList:
                         if (CHECK_CAN_BE_DELETED):
                             try:
-                                if (not checkIfFileCanBeDeleted(srvObj, 
-                                                                sqlFileInfo[NGAMS_CACHE_FILE_ID], 
-                                                                sqlFileInfo[NGAMS_CACHE_FILE_VER], 
+                                if (not checkIfFileCanBeDeleted(srvObj,
+                                                                sqlFileInfo[NGAMS_CACHE_FILE_ID],
+                                                                sqlFileInfo[NGAMS_CACHE_FILE_VER],
                                                                 sqlFileInfo[NGAMS_CACHE_DISK_ID])):
                                     info(2, "Cannot delete file from the cache: %s/%s/%s" %\
                                          (str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2])))
@@ -1178,7 +1178,7 @@ def checkCacheContents(srvObj):
                                             (str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2])))
                                 else:
                                     raise cee
-                        
+
                         msg = "CACHE-CRITERIA: Maximum Cache Size " +\
                               "Exceeded: %s/%s/%s"
                         info(2, msg %\
@@ -1194,7 +1194,7 @@ def checkCacheContents(srvObj):
             except Exception, e:
                 srvObj._cacheContDbmsSem.release()
                 raise Exception, e
-                    
+
             # Now, loop over the selected files and mark them for deletion.
             delFilesDbm.initKeyPtr()
             while (True):
@@ -1252,7 +1252,7 @@ def checkCacheContents(srvObj):
             except Exception, e:
                 srvObj._cacheContDbmsSem.release()
                 raise Exception, e
-                    
+
             # Now, marked the selected files for deletion.
             delFilesDbm.initKeyPtr()
             while (True):
@@ -1274,7 +1274,7 @@ def checkCacheContents(srvObj):
         #       file system.
         msg = "MINIMUM AVAILABLE CACHE SPACE AS CRITERIA IS NOT YET " +\
               "SUPPORTED"
-        notice(msg)    
+        notice(msg)
     if (0 and srvObj.getCfg().getVal("Caching[1].MinCacheSpace")):
         info(4, "Applying criteria: Minimum available cache space ...")
         minCacheSpace = int(srvObj.getCfg().getVal("Caching[1].MinCacheSpace"))
@@ -1316,7 +1316,7 @@ def checkCacheContents(srvObj):
             except Exception, e:
                 srvObj._cacheContDbmsSem.release()
                 raise Exception, e
-            
+
             # Now, loop over the selected files and mark them for deletion.
             delFilesDbm.initKeyPtr()
             while (True):
@@ -1357,7 +1357,7 @@ def checkCacheContents(srvObj):
         except Exception, e:
             srvObj._cacheContDbmsSem.release()
             raise Exception, e
-        
+
         # Wait for all entries in the Cache Control Plug-In DBM to be handled.
         while (True):
             checkStopCacheControlThread(srvObj)
@@ -1384,7 +1384,7 @@ def checkCacheContents(srvObj):
             markFileChecked(srvObj, sqlFileInfo)
             setCacheEntryObjectCacheDbms(srvObj, cacheEntryObj)
             srvObj._cacheCtrlPiFilesDbm.rem(key)
-        
+
         info(4, "Applied criteria: Cache Control Plug-In")
 
 
@@ -1399,17 +1399,17 @@ def removeFile(srvObj,
 
     diskInfoObj:    Disk info object for the disk, hosting the file
                     (ngamsDiskInfo).
-                    
+
     fileId:         ID for file to remove (string).
-    
+
     fileVersion:    Version of file to remove (integer).
-    
+
     filename:       Relative name of file to remove (string).
 
     Returns:        Void.
     """
     T = TRACE()
-    
+
     # Remove the entry from the DB. This includes updating the NGAS Disks
     # Table.
     try:
@@ -1471,7 +1471,7 @@ def cleanUpCache(srvObj):
     except Exception, e:
         srvObj._cacheContDbmsSem.release()
         raise Exception, e
-         
+
     # Now, loop over the entries to delete.
     diskInfoDic = {}
     cleanUpDbm.initKeyPtr()
@@ -1482,7 +1482,7 @@ def cleanUpCache(srvObj):
         fileId      = sqlFileInfo[1]
         fileVersion = sqlFileInfo[2]
         filename    = sqlFileInfo[3]
-        
+
         info(2, "Deleting entry from the cache: %s/%s/%s" %\
              (str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2])))
 
@@ -1499,7 +1499,7 @@ def cleanUpCache(srvObj):
             diskInfoDic[diskId] = ngamsDiskInfo.ngamsDiskInfo().\
                                   unpackSqlResult(diskInfo)
         diskInfoObj = diskInfoDic[diskId]
-            
+
         #   - Remove from ngas_files (+ update ngas_disks):
         try:
             removeFile(srvObj, diskInfoObj, fileId, fileVersion, filename)
@@ -1507,7 +1507,7 @@ def cleanUpCache(srvObj):
             msg = "Error removing file information from the RDBMS and the " +\
                   "file copy for file %s/%s/%s. Error: %s"
             notice(msg % (diskId, fileId, str(fileVersion), str(e)))
-        
+
         #   - Remove from Cache Content DBMS's:
         try:
             delEntryFromCacheDbms(srvObj, diskId, fileId, fileVersion)
@@ -1516,11 +1516,11 @@ def cleanUpCache(srvObj):
                   "the local DBMS and in the RDBMS for file " +\
                   "%s/%s/%s. Error: %s"
             notice(msg % (diskId, fileId, str(fileVersion), str(e)))
-        
+
         # TODO: Check if the volume concerned is set to completed and should
         # be marked as uncompleted.
 
-        
+
 def cacheControlThread(srvObj,
                        dummy):
     """
@@ -1530,8 +1530,8 @@ def cacheControlThread(srvObj,
 
     srvObj:      Reference to server object (ngamsServer).
 
-    dummy:       Needed by the thread handling ... 
-    
+    dummy:       Needed by the thread handling ...
+
     Returns:     Void.
     """
     T = TRACE()
@@ -1549,7 +1549,7 @@ def cacheControlThread(srvObj,
     period = srvObj.getCfg().getCachingPeriod()
     while (True):
         startTime = time.time()
-        
+
         # Incapsulate this whole block to avoid that the thread dies in
         # case a problem occurs, like e.g. a problem with the DB connection.
         try:
@@ -1560,7 +1560,7 @@ def cacheControlThread(srvObj,
             # Business logic of Cache Control Thread
             ###################################################################
 
-            # Check if there are new files to be inserted in the Cache 
+            # Check if there are new files to be inserted in the Cache
             # Contents DBMS.
             checkNewFilesDbm(srvObj)
 
@@ -1584,13 +1584,13 @@ def cacheControlThread(srvObj,
                 checkStopCacheControlThread(srvObj)
                 time.sleep(0.250)
             ###################################################################
-                    
+
         except Exception, e:
             if (str(e).find(NGAMS_CACHE_CONTROL_THR_STOP) != -1): thread.exit()
             errMsg = "Error occurred during execution of the Cache " +\
                      "Control Thread. Exception: " + str(e)
             alert(errMsg)
-            em = traceback.format_exc()    
+            em = traceback.format_exc()
             alert(em)
             # We make a small wait here to avoid that the process tries
             # too often to carry out the tasks that failed.

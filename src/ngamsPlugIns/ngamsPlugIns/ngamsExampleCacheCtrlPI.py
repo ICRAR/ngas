@@ -57,7 +57,7 @@ def ngamsExampleCacheCtrlPI(srvObj,
                     cached file (ngamsCacheEntry).
 
     Returns:        Returns True if the file can be deleted from the cache,
-                    otherwise False (boolean). 
+                    otherwise False (boolean).
     """
     T = TRACE()
 

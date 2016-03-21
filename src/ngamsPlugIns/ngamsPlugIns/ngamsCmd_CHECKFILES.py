@@ -44,7 +44,7 @@ def _checkFileThread(srvObj, reqPropsObj, httpRef):
     global num_checked, is_chkFileThrd_running, num_wrong
     is_chkFileThrd_running = True
     wrong_files = []
-    
+
     cursorObj = srvObj.getDb().getFileSummary2(hostId = srvObj.getHostId())
     while (1):
         fileList = cursorObj.fetch(100)
@@ -60,9 +60,9 @@ def _checkFileThread(srvObj, reqPropsObj, httpRef):
                 file_ver = fileInfo[ngamsDb.ngamsDbCore.SUM2_VERSION]
                 wrong_files.append((ing_date, complFileUri, fileId, diskId, file_ver))
                 num_wrong += 1
-            
+
             num_checked += 1
-    
+
     del cursorObj
     if (num_wrong):
         work_dir = srvObj.getCfg().getRootDirectory() + '/tmp'
@@ -74,22 +74,22 @@ def _checkFileThread(srvObj, reqPropsObj, httpRef):
             fsql.write("DELETE FROM ngas_files WHERE file_id = '%s' AND disk_id = '%s' AND file_version = %d;\n" % (item[2], item[3], item[4]))
         f.close()
         fsql.close()
-        
-            
-           
+
+
+
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
     Find out which threads are still dangling
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     global chkFileThrd
@@ -108,4 +108,3 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         chkFileThrd.setDaemon(0)
         chkFileThrd.start()
         srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'Thread %s is successfully launched to check files.\n' % thrdName, NGAMS_TEXT_MT)
-    

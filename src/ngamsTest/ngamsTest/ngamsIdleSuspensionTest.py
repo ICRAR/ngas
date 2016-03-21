@@ -131,7 +131,7 @@ def waitTillSuspended(testObj,
     testObj:     Reference to test case object (ngamsTestSuite).
 
     dbConObj:    DB connection object (ngamsDb).
-    
+
     node:        NGAS ID for node (string).
 
     timeOut:     Time-out in seconds to wait for the node to suspend itself
@@ -193,7 +193,7 @@ def waitTillWokenUp(testObj,
             testObj.fail("Sub-node not woken up within %ds" % timeOut)
     else:
         return (not nodeSusp)
-    
+
 
 class ngamsIdleSuspensionTest(ngamsTestSuite):
     """
@@ -229,7 +229,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         """
         Synopsis:
         Test that a node suspends itself within the specified period of time.
-        
+
         Description:
         The purpose of the test is to verify that the NG/AMS Server suspends
         itself when Idle Suspension is enabled within the specified period
@@ -253,14 +253,14 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         dbConObj = prepSimCluster(self)[masterNode][1]
         waitTillSuspended(self, dbConObj, subNode1, 20)
         markNodesAsUnsusp(dbConObj)
-        
+
 
     def test_WakeUpStatus_1(self):
         """
         Synopsis:
         Test that suspended server is woken up when
         STATUS?host_id=<Sub-Node> specifying that node is sent.
-        
+
         Description:
         If a STATUS Command is send to a node requesting status from another
         node (Proxy Mode), and the target is suspended, the contacted node
@@ -283,19 +283,19 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
           a STATUS Command directly to the sub-node.
 
         Remarks:
-        ...       
+        ...
         """
         cfgParDic = {"8001": [["%s.IdleSuspensionTime" % SUSP_EL, "5"]]}
         dbConObj = prepSimCluster(self, cfgParDic = cfgParDic)[masterNode][1]
         waitTillSuspended(self, dbConObj, subNode1, 10)
-        
+
         # Send STATUS Command to suspended sub-node using master node as proxy.
         # 1. Check that the sub-node is simulated suspended.
         statObj = sendPclCmd(port=8001, auth=AUTH).status()
         self.checkEqual("UNIT-TEST: This server is suspended",
                         statObj.getMessage(), "Sub-node didn't suspend " +\
                         "itself as expected")
-        
+
         # 2. Send STATUS Command to sub-node using master as proxy.
         statObj = sendPclCmd(port=8000, auth=AUTH).\
                       sendCmdGen(NGAMS_STATUS_CMD,
@@ -306,14 +306,14 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         refStatFile = saveInFile(None, loadFile(refStatFile) % getHostName())
         self.checkFilesEq(refStatFile, tmpStatFile,
                           "Sub-node not woken up as expected")
-        
+
         # 3. Double-check that sub-node is no longer suspended.
         statObj = sendPclCmd(port=8001, auth=AUTH).status()
         statBuf = filterOutLines(statObj.dumpBuf(), ["Date:", "Version:"])
         tmpStatFile = saveInFile(None, statBuf)
         self.checkFilesEq(refStatFile, tmpStatFile,
                           "Sub-node not woken up as expected")
-        
+
         # Clean up.
         markNodesAsUnsusp(dbConObj)
         sendPclCmd(port=8001, auth=AUTH).offline()
@@ -324,7 +324,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Synopsis:
         Test that suspended server is woken up when STATUS?file_access is
         issued, specifying a file on a suspended sub-node.
-        
+
         Description:
         The purpose of the test is to verify that a suspended sub-node is
         woken up by a master node acting as proxy if a STATUS?file_id is
@@ -343,9 +343,9 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         - Send a STATUS?file_id request to the Master Node specifying one
           of the files previously archived.
         - Check the result returned from the sub-node via the Master Node.
-        
+
         Remarks:
-        ...        
+        ...
         """
         cfgParDic = {"8001": [["%s.IdleSuspensionTime" % SUSP_EL, "5"]]}
         dbConObj = prepSimCluster(self, cfgParDic=cfgParDic)[masterNode][1]
@@ -356,7 +356,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         sendPclCmd(port=8000, auth=AUTH).archive("src/SmallFile.fits")
         sendPclCmd(port=8001, auth=AUTH).archive("src/SmallFile.fits")
         waitTillSuspended(self, dbConObj, subNode1, 10)
-        
+
         # Retrieve information about the file on the suspended sub-node.
         fileId = "TEST.2001-05-08T15:25:00.123"
         statObj = sendPclCmd(port=8000, auth=AUTH).\
@@ -376,7 +376,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Synopsis:
         Check that RETRIEVE?file_id and RETRIEVE?file_id&file_version are
         correctly handled when the file specified is stored on suspended node.
-        
+
         Description:
         The test verifies that a suspended sub-node is woken up when a
         RETRIEVE Request is send to the Master Node and the file properly
@@ -427,7 +427,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Synopsis:
         Check that RETRIEVE?ng_log&host_id is correctly handled
         when the file specified is stored on a suspended node.
-        
+
         Description:
         The purpose of the test is to verify that a suspended sub-node is
         woken up by a Master Node if a RETRIEVE?ng_log&host_id Request is
@@ -450,7 +450,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
 
         Remarks:
         TODO!: Check that the requested file has arrived on the destination.
-        """        
+        """
         cfgParDic = {"8001": [["%s.IdleSuspensionTime" % SUSP_EL, "5"]]}
         dbConObj = prepSimCluster(self, cfgParDic=cfgParDic)[masterNode][1]
         waitTillSuspended(self, dbConObj, subNode1, 10)
@@ -469,13 +469,13 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         logBuf = loadFile(targetFile)
         self.checkTags(logBuf, testStr, showBuf=0)
 
-            
+
     def test_WakeUpRetrieve_3(self):
         """
         Synopsis:
         Check that RETRIEVE?cfg&host_id is correctly handled when the file
         specified is stored on a suspended node.
-        
+
         Description:
         Check that a suspended sub-node is woken up if the NG/AMS Configuration
         used on that node is requested via a Master Node acting as proxy.
@@ -494,7 +494,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
 
         Remarks:
         ...
-        """        
+        """
         cfgParDic = {"8001": [["NgamsCfg.Server[1].ArchiveName", subNode1],
                               ["%s.IdleSuspensionTime" % SUSP_EL, "5"]]}
         dbConObj = prepSimCluster(self, cfgParDic=cfgParDic)[masterNode][1]
@@ -508,13 +508,13 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         logBuf = loadFile(targetFile)
         self.checkTags(logBuf, testStr, showBuf=1)
 
-            
+
     def test_WakeUpRetrieve_4(self):
         """
         Synopsis:
         Check that RETRIEVE?internal&host_id is correctly handled
         when the file specified is stored on a suspended node.
-        
+
         Description:
         Verify that an 'internal file' hosted on a suspended sub-node is
         correctly retrieved by a Master Node acting as proxy.
@@ -536,8 +536,8 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
           on the sub-node.
 
         Remarks:
-        ...        
-        """        
+        ...
+        """
         cfgParDic = {"8001": [["%s.IdleSuspensionTime" % SUSP_EL, "5"]]}
         dbConObj = prepSimCluster(self, cfgParDic=cfgParDic)[masterNode][1]
         waitTillSuspended(self, dbConObj, subNode1, 10)
@@ -574,12 +574,12 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Synopsis:
         Check that CHECKFILE?file_id&file_version correctly handled
         when the referenced file is stored on a suspended node.
-        
+
         Description:
         The purpose of the test is to verify that a CHECKFILE Command is
         properly handled by a Master node acting as a proxy and interacting
         with a suspended sub-node.
-        
+
         Expected Result:
         The contacted Master Node should identify that the sub-node hosting
         the specified file is suspended, and should wake it up before
@@ -626,12 +626,12 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
                                  (subNode1, subNode1))
         self.checkFilesEq(refStatFile, tmpStatFile,"CHECKFILE Command not " +\
                           "executed on sub-node as expected")
-        
+
         #tstStr = "NGAMS_INFO_FILE_OK:4056:INFO: Checked file with File ID: "+\
         #       "TEST.2001-05-08T15:25:00.123/File Version: 1/Disk ID"
         #if (statObj.getMessage().find(tstStr) == -1):
         #self.fail("CHECKFILE Command not executed on sub-node as expected")
-        
+
         # Check that expected log entries found in the Master Node Log File.
         refStatFile="ref/ngamsIdleSuspensionTest_test_WakeUpCheckfile_1_2_ref"
         ipAddr = socket.gethostbyname_ex(getHostName())[2][0]
@@ -654,7 +654,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Synopsis:
         Check that a suspended sub-node is woken up when DCC is due and that
         the DCC is executed as expected after the node has been woken up.
-        
+
         Description:
         Before suspending itself, a sub-node should request to be woken up
         when the time for executing the next DCC is due.

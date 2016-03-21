@@ -47,11 +47,11 @@ def startUserServiceThread(srvObj):
     Start the User Service Thread.
 
     srvObj:     Reference to server object (ngamsServer).
-    
+
     Returns:    Void.
     """
     T = TRACE()
-    
+
     # Start only if service is defined.
     userPlugPar = "NgamsCfg.SystemPlugIns[1].UserServicePlugIn"
     userServicePlugIn = srvObj.getCfg().getVal(userPlugPar)
@@ -81,7 +81,7 @@ def stopUserServiceThread(srvObj):
     Stop the User Service Thread.
 
     srvObj:     Reference to server object (ngamsServer).
-    
+
     Returns:    Void.
     """
     T = TRACE()
@@ -124,8 +124,8 @@ def userServiceThread(srvObj,
 
     srvObj:      Reference to server object (ngamsServer).
 
-    dummy:       Needed by the thread handling ... 
-    
+    dummy:       Needed by the thread handling ...
+
     Returns:     Void.
     """
     T = TRACE(1)

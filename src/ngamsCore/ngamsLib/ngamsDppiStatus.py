@@ -41,7 +41,7 @@ class ngamsDppiResult:
     """
     Class to handle a sub-result produced by a Data Processing Plug-In.
     """
-    
+
     def __init__(self,
                  dataType,
                  mimeType = "",
@@ -54,9 +54,9 @@ class ngamsDppiResult:
 
         dataType:         Type of data referred to by object - NGAMS_PROC_FILE,
                           NGAMS_PROC_DATA or NGAMS_PROC_STREAM (string).
-        
+
         mimeType:         Mime-type of data (string).
-        
+
         dataRef:          Data buffer, the name of the file produced by the
                           processing or File Object from where to read the
                           data (string|integer).
@@ -64,13 +64,13 @@ class ngamsDppiResult:
         refFilename:      The reference name of the file. This is e.g.
                           the name being written into the Content-Disposition
                           of the HTTP reply to a Retrieve Request (string).
-        
+
         procDir:          Name of temporary directory in which the
                           processing was carried (if created) (string).
 
         dataSize:         Size of the data. MUST BE SET FOR A STREAM!
                           (integer).
-        
+
         Returns:          Void.
         """
         T = TRACE()
@@ -170,7 +170,7 @@ class ngamsDppiResult:
         """
         self.__dataSize = int(size)
         return self
-    
+
 
     def getDataSize(self):
         """
@@ -200,11 +200,11 @@ class ngamsDppiResult:
         reFilename:   Reference Filename (string).
 
         Returns:      Reference to object itself.
-        """     
+        """
         self.__refFilename = os.path.basename(refFilename)
         return self
 
-    
+
     def getRefFilename(self):
         """
         Return the name of the Reference Filename. See also setRefFilename().
@@ -212,7 +212,7 @@ class ngamsDppiResult:
         Returns:    Name of Reference Filename (string).
         """
         return self.__refFilename
-    
+
 
     def setProcDir(self,
                    procDir):
@@ -231,16 +231,16 @@ class ngamsDppiResult:
         """
         Get the name of the directory used for the processing.
 
-        Returns:   
+        Returns:
         """
         return self.__procDir
-    
+
 
 class ngamsDppiStatus:
     """
     Handle the data (results) produced by a Data Processing Plug-In.
     """
-    
+
     def __init__(self):
         """
         Constructor method.
@@ -269,11 +269,11 @@ class ngamsDppiStatus:
         """
         return self.__resultObjList
 
-    
+
     def noOfResultObjs(self):
         """
         Return the number of result object contained in the object.
-        
+
         Returns:       Number of result objects (integer).
         """
         return len(self.__resultObjList)
@@ -286,7 +286,7 @@ class ngamsDppiStatus:
 
         no:         Number of the requested result object.
                     First object = 0 (integer).
-              
+
         Returns:    Reference to result object number (ngamsDppiResult).
         """
         return self.__resultObjList[no]

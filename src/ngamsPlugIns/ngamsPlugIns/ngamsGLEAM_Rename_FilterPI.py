@@ -38,13 +38,13 @@ def ngamsGLEAM_Rename_FilterPI(srvObj,
                           fileId,
                           fileVersion = -1,
                           reqPropsObj = None):
-    
+
     """
     srvObj:        Reference to NG/AMS Server Object (ngamsServer).
 
     plugInPars:    Parameters to take into account for the plug-in
                    execution (string).
-   
+
     fileId:        File ID for file to test (string).
 
     filename:      Filename of (complete) (string).
@@ -52,7 +52,7 @@ def ngamsGLEAM_Rename_FilterPI(srvObj,
     fileVersion:   Version of file to test (integer).
 
     reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
- 
+
     Returns:       0 if the file does not match, 1 if it matches the
                    conditions (integer/0|1).
     """
@@ -63,5 +63,5 @@ def ngamsGLEAM_Rename_FilterPI(srvObj,
         return 0
     if (len(ss[0]) != 10): # this also avoids duplicated efforts (if it has processed as "phase2")
         return 0
-    
+
     return 1

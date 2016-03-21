@@ -144,7 +144,7 @@ class ngamsFileList:
 
         delFileInfoObj:  Reference to File Info Object to be deleted
                          (ngamsFileInfo).
- 
+
         Returns:         Reference to object itself.
         """
         for idx in range(len(self.getFileInfoObjList())):
@@ -183,7 +183,7 @@ class ngamsFileList:
         """
         self.__fileListList.append(fileListObj)
         return self
-        
+
 
     def getFileListObjList(self):
         """
@@ -198,11 +198,11 @@ class ngamsFileList:
         """
         Generate an XML DOM Node object from the contents of this
         instance of the ngamsFileList class.
-         
+
         Returns:     XML DOM Node object (Node).
         """
         T = TRACE(5)
-        
+
         fileListEl = xml.dom.minidom.Document().createElement("FileList")
         fileListEl.setAttribute("Id", self.getId())
         if (self.getComment() != ""):
@@ -272,6 +272,6 @@ class ngamsFileList:
         for fileListObj in self.getFileListObjList():
             buf += fileListObj.dumpBuf(ignoreUndefFields)
         return buf
-        
+
 
 # EOF

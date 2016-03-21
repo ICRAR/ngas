@@ -39,19 +39,19 @@ def handleCmdConfig(srvObj,
                     httpRef):
     """
     Handle CONFIG command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
-    
+
     logSysLog        = None
     logSysLogPrefix  = None
     logLocalLogFile  = None

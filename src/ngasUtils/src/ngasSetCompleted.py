@@ -33,7 +33,7 @@
 
 _doc =\
 """
-The ngasSetCompleted Tool is used to control the 'completed flag' of NGAS 
+The ngasSetCompleted Tool is used to control the 'completed flag' of NGAS
 Disks. It is possible to mark a disk explictly as completed if needed.
 This is useful when it is desirable to treat a disk as completed, although
 in reality it is not completed.
@@ -111,7 +111,7 @@ def execute(optDic):
     sqlQuery = "UPDATE ngas_disks SET completed=%d WHERE disk_id='%s'" %\
                (completed, optDic["disk-id"][2])
     dbCon.query(sqlQuery)
-    
+
 #    # Restart server to update NgasDiskInfo file.
 #    host = ngasUtilsLib.getParNgasRcFile(ngasUtilsLib.NGAS_RC_PAR_HOST)
 #    port = int(ngasUtilsLib.getParNgasRcFile(ngasUtilsLib.NGAS_RC_PAR_PORT))

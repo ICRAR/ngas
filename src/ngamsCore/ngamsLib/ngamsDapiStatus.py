@@ -78,7 +78,7 @@ class ngamsDapiStatus:
         Returns:   Status (string).
         """
         return self.__status
-   
+
 
     def setDiskId(self,
                   diskId):
@@ -101,7 +101,7 @@ class ngamsDapiStatus:
         """
         return self.__diskId
 
-        
+
     def setRelFilename(self,
                        relFilename):
         """
@@ -122,7 +122,7 @@ class ngamsDapiStatus:
         Returns:      Relative Filename (string).
         """
         return self.__relFilename
-        
+
 
     def setFileId(self,
                   fileId):

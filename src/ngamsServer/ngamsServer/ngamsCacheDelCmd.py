@@ -47,7 +47,7 @@ def cacheDel(srvObj,
     Schedule the file referenced for deletion from the NGAS Cache, or act
     as proxy and forward the CACHEDEL Command to the node concerned, or
     return an HTTP re-direction response.
-    
+
     srvObj:       Reference to NG/AMS server class object (ngamsServer).
 
     reqPropsObj:  Request Property object to keep track of actions done
@@ -55,9 +55,9 @@ def cacheDel(srvObj,
 
     httpRef:      Reference to the HTTP request handler
                   object (ngamsHttpRequestHandler).
-                    
+
     diskId:       Disk ID of volume hosting the file (string).
- 
+
     fileId:       File ID for file to consider (string).
 
     fileVersion:  Version of file (integer).
@@ -77,7 +77,7 @@ def cacheDel(srvObj,
         sqlFileInfo = (diskId, fileId, fileVersion)
         ngamsCacheControlThread.scheduleFileForDeletion(srvObj, sqlFileInfo)
         srvObj.reply(reqPropsObj.setCompletionTime(), httpRef,
-                     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, 
+                     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,
                      "Handled CACHEDEL Command")
     elif (srvObj.getCfg().getProxyMode() or
           (fileLocInfo[0] == NGAMS_HOST_CLUSTER)):
@@ -105,19 +105,19 @@ def handleCmdCacheDel(srvObj,
                       httpRef):
     """
     Handle CACHEDEL Command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
-    
+
     diskId = None
     fileId = None
     fileVersion = None
@@ -136,5 +136,5 @@ def handleCmdCacheDel(srvObj,
         raise Exception, msg
 
     cacheDel(srvObj, reqPropsObj, httpRef, diskId, fileId, fileVersion)
-     
+
 # EOF

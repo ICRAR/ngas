@@ -26,7 +26,7 @@
 # chen.wu@icrar.org   6-Mar-2012    created
 """
 This command forwards the QARCHIVE request to another remote NGAS server C (where files
-MAY be physically stored, MAYBE not since C can forwards the request to another NGAS server. 
+MAY be physically stored, MAYBE not since C can forwards the request to another NGAS server.
 
 The URL of C is encoded in this command's URI parameter "nexturl"
 
@@ -50,11 +50,11 @@ def processHttpReply(http, basename, url):
     """
     After file is sent, collect the ngams status from the remote server
     parse error message, and log if necessary
-    
+
     http:        the HTTP Client
-    
+
     basename    Name of the file sent to the remote ngas server (used in the content disposition)
-    
+
     url:        the url of the remote ngas server that receives the file
     """
     info(4,"Waiting for reply ...")
@@ -68,9 +68,9 @@ def processHttpReply(http, basename, url):
         dataSize = int(hdrs["content-length"])
     else:
         dataSize = 0
-    
+
     data = http.getfile().read(dataSize)
-    
+
     stat = ngamsStatus.ngamsStatus()
     if (data.strip() != ""):
         stat.clear().unpackXmlDoc(data)
@@ -78,7 +78,7 @@ def processHttpReply(http, basename, url):
         # TODO: For the moment assume success in case no
         #       exception was thrown.
         stat.clear().setStatus(NGAMS_SUCCESS)
-    
+
     if ((reply != NGAMS_HTTP_SUCCESS) or
                 (stat.getStatus() == NGAMS_FAILURE)):
         errMsg = 'Error occurred while proxy quick archive file %s to %s' % (basename, url)
@@ -94,7 +94,7 @@ def buildHttpClient(url,
                     checksum = None):
     """
     construct the http client which sends file data to the remote next url
-    
+
     Returns:        httplib
     """
     # Separate the URL from the command.
@@ -102,24 +102,24 @@ def buildHttpClient(url,
     tmpUrl = url[7:idx]
     cmd    = url[(idx + 1):]
     http = httplib.HTTP(tmpUrl)
-    
+
     info(4,"Sending HTTP header ...")
     info(4,"HTTP Header: %s: %s" % (NGAMS_HTTP_POST, cmd))
     http.putrequest(NGAMS_HTTP_POST, cmd)
     info(4,"HTTP Header: %s: %s" % ("Content-Type", mimeType))
     http.putheader("Content-Type", mimeType)
-    
+
     info(4,"HTTP Header: %s: %s" % ("Content-Disposition", contentDisp))
     http.putheader("Content-Disposition", contentDisp)
     info(4,"HTTP Header: %s: %s" % ("Content-Length", str(contentLength)))
     http.putheader("Content-Length", str(contentLength))
-    
+
     info(4,"HTTP Header: %s: %s" % ("Host", getHostName()))
     http.putheader("Host", getHostName())
-        
+
     if (checksum):
         http.putheader(NGAMS_HTTP_HDR_CHECKSUM, checksum)
-        
+
     http.endheaders()
     info(4,"HTTP header sent")
 
@@ -137,37 +137,37 @@ def saveFromHttpToHttp(reqPropsObj,
                        checkCRC = 0):
     """
     Save the data available on an HTTP channel into the given file.
-    
+
     ngamsCfgObj:     NG/AMS Configuration object (ngamsConfig).
 
     reqPropsObj:     NG/AMS Request Properties object (ngamsReqProps).
-        
+
     basename:        filename that will be put into HTTP content disposition (string).
 
     blockSize:       Block size (bytes) to apply when reading the data
                      from the HTTP channel (integer).
-            
+
     Returns:         Tuple. Element 0: Time in took to write
                      file (s) (tuple).
     """
     T = TRACE()
-    
+
     mimeType = reqPropsObj.getMimeType()
-    nexturl = reqPropsObj.getHttpPar('nexturl') 
+    nexturl = reqPropsObj.getHttpPar('nexturl')
     if (reqPropsObj.hasHttpPar('reporturl')):
-        rpurl = reqPropsObj.getHttpPar('reporturl') 
+        rpurl = reqPropsObj.getHttpPar('reporturl')
     else:
-        rpurl = None 
+        rpurl = None
     #path = reqPropsObj.getHttpHdr('path')
-    #nexturl = path.split('=')[1]    
+    #nexturl = path.split('=')[1]
     contDisp = "attachment; filename=\"" + basename + "\""
     contDisp += "; no_versioning=1"
-    
+
     info(2,"Transferring data to : " + nexturl + " ...")
     timer = PccUtTime.Timer()
-    
+
     http = None
-    
+
     try:
         # Distinguish between Archive Pull and Push Request. By Archive
         # Pull we may simply read the file descriptor until it returns "".
@@ -193,9 +193,9 @@ def saveFromHttpToHttp(reqPropsObj,
             remSize = reqPropsObj.getSize()
             info(3,"Archive Push/Pull Request - Data size: %d" % remSize)
             sizeKnown = 1
-        
+
         http = buildHttpClient(nexturl, mimeType, contDisp, remSize, checksum = reqPropsObj.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM))
-        
+
         # Receive the data.
         buf = "-"
         rdSize = blockSize
@@ -218,7 +218,7 @@ def saveFromHttpToHttp(reqPropsObj,
             if (rdt > slow):
                 srb += 1
             rdtt += rdt
-            
+
             sizeRead = len(buf)
             remSize -= sizeRead
             tot_size += sizeRead
@@ -233,7 +233,7 @@ def saveFromHttpToHttp(reqPropsObj,
                 if wdt >= slow: swb += 1
 #                info(5,"Wrote %d bytes to file in %.3f s" % (sizeRead, wdt))
                 nb += 1
-                lastRecepTime = time.time()                
+                lastRecepTime = time.time()
             else:
                 info(4,"Unsuccessful read attempt from HTTP stream! Sleeping 50 ms")
                 nfailread += 1
@@ -241,8 +241,8 @@ def saveFromHttpToHttp(reqPropsObj,
 
         deltaTime = timer.stop()
         reqPropsObj.setBytesReceived(tot_size)
-        
-        info(4,"Data sent")                    
+
+        info(4,"Data sent")
         info(4,"Receiving transfer time: %.3f s; Sending transfer time %.3f s" % (rdtt, wdtt))
         msg = "Sent data in file: %s. Bytes received / sent: %d. Time: %.3f s. " +\
               "Rate: %.2f Bytes/s"
@@ -266,7 +266,7 @@ def saveFromHttpToHttp(reqPropsObj,
                          [reqPropsObj.getFileUri(), reqPropsObj.getSize(),
                           (reqPropsObj.getSize() - remSize)])
             raise Exception, msg
-        
+
         if (checkCRC):
             checksum = reqPropsObj.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM)
             if (checksum):
@@ -276,15 +276,15 @@ def saveFromHttpToHttp(reqPropsObj,
                     raise Exception, msg
                 else:
                     info(3, "%s CRC checked, OK!" % reqPropsObj.getFileUri())
-        
-        
+
+
         processHttpReply(http, basename, nexturl)
     except Exception, err:
         if (str(err).find('Connection refused') > -1):
-            # The host on the nexturl is probably down            
+            # The host on the nexturl is probably down
             error("Fail to connect to the nexturl '%s': %s" % (nexturl, str(err)))
             # report this incident if the reporturl is available
-            
+
             if (rpurl):
                 info(3, 'Reporing this error to %s' % rpurl)
                 urlreq = '%s?errorurl=%s&file_id=%s' % (rpurl, nexturl, basename)
@@ -292,14 +292,14 @@ def saveFromHttpToHttp(reqPropsObj,
                     urllib2.urlopen(urlreq)
                 except Exception, errin:
                     error("Cannot report the error of nexturl '%s' to reporturl '%s' either: %s" % (nexturl, rpurl, str(errin)))
-            
+
             if (reportHost):
                 try:
                     rereply = urllib2.urlopen('http://%s/report/hostdown?file_id=%s&next_url=%s' % (reportHost, basename, urllib2.quote(nexturl)), timeout = 15).read()
                     info('Reply from sending file %s host-down event to server %s - %s' % (basename, reportHost, rereply))
                 except Exception, s1err:
                     error('Fail to send host-down event to server %s, Exception: %s' %(reportHost, str(s1err)))
-            
+
         raise err
     finally:
         if (http != None):
@@ -311,15 +311,15 @@ def handleCmd(srvObj,
               httpRef):
     """
     Handle the Proxy Quick Archive (PROXYQARCHIVE) Command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
@@ -329,34 +329,34 @@ def handleCmd(srvObj,
         errMsg = genLog("NGAMS_ER_MISSING_URI")
         error(errMsg)
         raise Exception, errMsg
-    
+
     #path = reqPropsObj.getHttpHdr('path')
     if (not reqPropsObj.hasHttpPar('nexturl')):
         errMsg = "Paremeter 'nexturl' is missing."
         error(errMsg)
         raise Exception, errMsg
-    
+
     # Get mime-type (try to guess if not provided as an HTTP parameter).
     info(3, "Get mime-type (try to guess if not provided as an HTTP parameter).")
     if (reqPropsObj.getMimeType() == ""):
         mimeType = ngamsHighLevelLib.\
                    determineMimeType(srvObj.getCfg(), reqPropsObj.getFileUri())
         reqPropsObj.setMimeType(mimeType)
-       
+
     ## Set reference in request handle object to the read socket.
     info(3, "Set reference in request handle object to the read socket.")
     if reqPropsObj.getFileUri().startswith('http://'):
         fileUri = reqPropsObj.getFileUri()
         readFd = ngamsHighLevelLib.openCheckUri(fileUri)
         reqPropsObj.setReadFd(readFd)
-    
+
     info(3, "Generate basename filename from URI: %s" % reqPropsObj.getFileUri())
     if (reqPropsObj.getFileUri().find("file_id=") >= 0):
         file_id = reqPropsObj.getFileUri().split("file_id=")[1]
         baseName = os.path.basename(file_id)
     else:
         baseName = os.path.basename(reqPropsObj.getFileUri())
-    
+
     blockSize = srvObj.getCfg().getBlockSize()
     jobManHost = srvObj.getCfg().getNGASJobMANHost()
     doCRC = srvObj.getCfg().getProxyCRC()
@@ -364,7 +364,7 @@ def handleCmd(srvObj,
         saveFromHttpToHttp(reqPropsObj, baseName, blockSize, reportHost = jobManHost, checkCRC = doCRC)
     else:
         saveFromHttpToHttp(reqPropsObj, baseName, blockSize, checkCRC = doCRC)
-    
+
     # Request after-math ...
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
     msg = "Successfully handled Proxy (Quick) Archive Pull Request for data file " +\
@@ -373,6 +373,6 @@ def handleCmd(srvObj,
     targDiskInfo = ngamsDiskInfo.ngamsDiskInfo()
     srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                        NGAMS_SUCCESS, msg, targDiskInfo)
-    
+
     return
-    
+

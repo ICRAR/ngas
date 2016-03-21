@@ -57,7 +57,7 @@ def _saveSubscriptionInfoToDisk(srvObj):
         fileInfo = ngamsSubscriptionThread._convertFileInfo(fileInfo)
         li += [(fileInfo[idx_fileId], fileInfo[idx_filever])]
         info(3, '%s is added to the subscriptionInfoList' % fileInfo[idx_fileId])
-    
+
     # also add to files that have not yet been in the queue
     srvObj._subscriptionSem.acquire()
     srvObj._subscriptionFileList += li
@@ -65,12 +65,12 @@ def _saveSubscriptionInfoToDisk(srvObj):
         srvObj._subscriptionSem.release()
         info(3, "**** subscription list is empty!!")
         return
-    
+
     info(3, "Saving subscription info to disks ...")
     ngas_root_dir =  srvObj.getCfg().getRootDirectory()
     myDir = ngas_root_dir + "/SubscriptionInfo"
     saveFile = myDir + "/SubscriptionInfoObj"
-    
+
     try:
         if (os.path.exists(saveFile)):
             cmd = "rm " + saveFile
@@ -100,20 +100,20 @@ def ngamsMWAOfflinePlugIn(srvObj,
     """
     T = TRACE()
     notifyRegistrationService(srvObj, 'offline')
-    
+
     #cmdMod = "ngamsCmd_ngamsCmd_ASYNCLISTRETRIEVE"
     #srvObj.getDynCmdDic()[cmdMod] = 1
-    
+
     #host = getHostName()
     #port = srvObj.getCfg().getPortNo()
-    
+
     #startAsyncRetrListUrl = "http://" + host + ":" + str(port) + "/ASYNCLISTRETRIEVE?ngassystem=start"
     #info(3, "Sending system stopping request ")
     myRes = ngamsCmd_ASYNCLISTRETRIEVE.stopAsyncQService(srvObj, reqPropsObj)
     #strRes = urllib.urlopen(startAsyncRetrListUrl).read()
     #myRes = pickle.loads(strRes)
     info(3, "Stopping async retrieve list result - %s" % myRes)
-    
+
     _saveSubscriptionInfoToDisk(srvObj)
 
 if __name__ == '__main__':
@@ -125,13 +125,13 @@ if __name__ == '__main__':
     import ngamsServer
 
     setLogCond(0, "", 0, "", 1)
-    
+
     if (len(sys.argv) != 2):
         print "\nCorrect usage is:\n"
         print "% python ngamsMWAOfflinePlugIn <NGAMS Cfg.>\n"
         sys.exit(0)
 
-    srvObj = ngamsServer.ngamsServer()  
+    srvObj = ngamsServer.ngamsServer()
     ngamsCfgObj = ngamsConfig.ngamsConfig().load(sys.argv[1])
     dbConObj = ngamsDb.ngamsDb(ngamsCfgObj.getDbServer(),
                                ngamsCfgObj.getDbName(),

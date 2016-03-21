@@ -41,16 +41,16 @@ def handleCmdInit(srvObj,
                   httpRef):
     """
     Handle an INIT command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
-    Returns:        Void.   
+
+    Returns:        Void.
     """
     srvObj.checkSetState("Command INIT", [NGAMS_ONLINE_STATE],
                          [NGAMS_IDLE_SUBSTATE])

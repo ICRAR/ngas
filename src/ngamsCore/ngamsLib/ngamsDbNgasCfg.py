@@ -43,7 +43,7 @@ class ngamsDbNgasCfg(ngamsDbCore.ngamsDbCore):
     """
     Contains queries for accessing the NGAS Configuration Tables.
     """
-  
+
     def hasCfgPar(self,
                   groupId,
                   parName):
@@ -53,7 +53,7 @@ class ngamsDbNgasCfg(ngamsDbCore.ngamsDbCore):
         configuration table in the DB.
 
         groupId:      Group ID for the parameter (string).
-        
+
         parName:      Name of parameter (string).
 
         Returns:      1 = parameter defined, 0 = parameter not defined
@@ -68,7 +68,7 @@ class ngamsDbNgasCfg(ngamsDbCore.ngamsDbCore):
         else:
             return 1
 
-    
+
     def writeCfgPar(self,
                     groupId,
                     parName,
@@ -79,13 +79,13 @@ class ngamsDbNgasCfg(ngamsDbCore.ngamsDbCore):
         is already defined, the value/comment are updated.
 
         groupId:   Configuration Group ID (string).
-        
+
         parName:   Name of parameter (string).
-        
+
         value:     Value of parameter (string).
-        
+
         comment:   Comment for parameter (string).
-        
+
         Returns:   Reference to object itself.
         """
         if (self.hasCfgPar(groupId, parName)):

@@ -65,7 +65,7 @@ def getGLEAMPhase(filename):
             gleam_phase = 2
     else:
         getf_frmfn = 1
-    
+
     if (getf_frmfn == 1 and fileId.split('_v')[1].split('.')[0] == '2'): # filename pattern is brittle, only use it if no fits header key: ORIGIN
         gleam_phase = 2
     return gleam_phase
@@ -76,13 +76,13 @@ def ngamsGLEAM_Phase_FilterPI(srvObj,
                           fileId,
                           fileVersion = -1,
                           reqPropsObj = None):
-    
+
     """
     srvObj:        Reference to NG/AMS Server Object (ngamsServer).
 
     plugInPars:    Parameters to take into account for the plug-in
                    execution (string).
-   
+
     fileId:        File ID for file to test (string).
 
     filename:      Filename of (complete) (string).
@@ -90,16 +90,16 @@ def ngamsGLEAM_Phase_FilterPI(srvObj,
     fileVersion:   Version of file to test (integer).
 
     reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
- 
+
     Returns:       0 if the file does not match, 1 if it matches the
                    conditions (integer/0|1).
     """
     if (not isGLEAMImage(fileId)):
         return 0
-    
+
     if (not _isLatestVer(srvObj, fileId, fileVersion)):
         return 0
-    
+
     parDic = []
     pars = ""
     if ((plugInPars != "") and (plugInPars != None)):
@@ -108,21 +108,20 @@ def ngamsGLEAM_Phase_FilterPI(srvObj,
         if (reqPropsObj.hasHttpPar("plug_in_pars")):
             pars = reqPropsObj.getHttpPar("plug_in_pars")
     parDic = ngamsPlugInApi.parseRawPlugInPars(pars)
-    
+
     if (parDic.has_key('phase')):
         phase = int(parDic['phase'])
     else:
         return 1 # no need to check phase
-    
+
     img_phase = None
     try:
         img_phase = getGLEAMPhase(filename)
     except Exception, exp:
         warning("cannot get phase info from %s, file not added: %s" % (filename, str(exp)))
         return 0
-    
+
     if (phase == img_phase):
         return 1
     else:
         return 0
-    

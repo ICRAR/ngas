@@ -115,9 +115,9 @@ class PccLogMgr:
     CAUTIONS
     For performance reasons the Log Manager does not enforce any
     proper time sequence of the logs. The logs could be sorted off-line
-    with some tool.    
+    with some tool.
     """
-    
+
 
     def __init__(self,
                  logFile = ""):
@@ -136,7 +136,7 @@ class PccLogMgr:
         self.__localHost         = "<define>"
         self.__logFileFormat     = SIMPLE_LOG_FORMAT
         self.__logLocation       = 0
-     
+
         self.setLogFile(logFile)
 
 
@@ -201,7 +201,7 @@ class PccLogMgr:
         """
         return self.__logLevel
 
-    
+
     def setVerboseLevel(self,
                         level):
         """
@@ -234,7 +234,7 @@ class PccLogMgr:
         Specify which type of syslogs that should be produced. Types
         are: syslog.LOG_EMERG, syslog.LOG_ALERT, syslog.LOG_CRIT,
         syslog.LOG_ERR, syslog.LOG_WARNING, syslog.LOG_NOTICE,
-        syslog.LOG_INFO, syslog.LOG_DEBUG. 
+        syslog.LOG_INFO, syslog.LOG_DEBUG.
 
         prio:      Specifies the SysLog Priority. A value of "-1"
                    means off (integer).
@@ -344,9 +344,9 @@ class PccLogMgr:
         Method to generate a log entry whereby only a subset of the
         complete set of logging parameters are defined. The time stamp
         is automatically generated as the current time.
-        
+
         level:        Level indicator for this log entry (integer).
- 
+
         type:         The type of log (integer).
 
         location:     Place in code (file/class/method) from where the
@@ -363,16 +363,16 @@ class PccLogMgr:
         """
         Same as log() but logs only into the UNIX syslog if conditions
         are fulfilled.
-        
+
         level:        Level indicator for this log entry.
-     
+
         type:         The type of log.
-    
+
         location:     Place in code (file/class/method) from where the
                       log is generated.
-    
+
         logMessage:   Message to log.
-    
+
         Returns:      Void.
         """
         if ((level <= self.getSysLogLevel()) and sysLog()):
@@ -410,7 +410,7 @@ class PccLogMgr:
         date:         The time stamp for this log entry (string).
 
         msg:          The message to log (string).
- 
+
         type:         The type of log (from syslog) (integer).
 
         host:         The host from where this log is produced (string).
@@ -448,13 +448,13 @@ class PccLogMgr:
             logInFile = 1
         else:
             logInFile = 0
-    
+
         if ((type <= self.getSysLogPrio()) and \
             (level <= self.getSysLogLevel())):
             logInSysLog = 1
         else:
             logInSysLog = 0
-        
+
         if (logInFile or logInSysLog):
             logInfoObj = PccLogInfo.PccLogInfo()
             logInfoObj.\
@@ -478,14 +478,14 @@ class PccLogMgr:
                 syslog.syslog(logInfoObj.getType(),
                               self.genSysLogLine(logInfoObj))
 
-                
+
     def __getLogCache(self):
         """
         Return reference to the log cache used to cache logs for this
         Log Manager.
 
         Returns:    Reference to the log cache (list).
-        """    
+        """
         global _logCacheList
         if (_logCacheList.has_key(self.getLogFile()) == 0):
             _logCacheList[self.getLogFile()] = {}
@@ -516,7 +516,7 @@ class PccLogMgr:
         self.__takeSem()
         logCache = self.__getLogCache()
         fd = None
-        if (self.getLogFile() != ""):                            
+        if (self.getLogFile() != ""):
             if (self.getLogFormat() == XML_LOG_FORMAT):
                 print "IMPL.: Logging in XML"
             else:
@@ -534,7 +534,7 @@ class PccLogMgr:
         _logCacheList[self.getLogFile()] = {}
 
         if (fd != None): fd.close()
-        
+
 
     def genLogLine(self,
                    logInfoObj):
@@ -558,7 +558,7 @@ class PccLogMgr:
             print "IMPL.: Generate Extended Format"
         else:
             print "IMPL.: Generate XML logs!"
-            
+
         return logEntry
 
 
@@ -585,7 +585,7 @@ class PccLogMgr:
                    logInfoObj.getMessage()
         return logEntry
 
-    
+
     def setLogFormat(self,
                      format):
         """
@@ -598,15 +598,15 @@ class PccLogMgr:
                      SIMPLE_LOG_FORMAT   Logs in a format containing limited
                                          set of information. This is a plain
                                          file. One log per log entry.
-        
+
                      EXT_LOG_FORMAT      Log the information in a file
                                          containing all the fields specified.
                                          The format is a simple ASCII file,
                                          one line per log entry.
-        
+
                      XML_LOG_FORMAT      Log the information in the log entries
                                         in an XML file in the LOGML format.
-                      
+
         Returns: Reference to the object itself (PccLogMgr).
         """
         self.__logFileFormat = format
@@ -667,9 +667,9 @@ class PccLogMgr:
         Get the size of the internal log cache.
 
         Returns:   Size in logs of the internal log cache (integer).
-        """        
+        """
         return self.__logCacheFlushSize
-    
+
 
     def __takeSem(self):
         """
@@ -708,7 +708,7 @@ class PccLogMgr:
         PccLogInfo object.
 
         level:       Level tag for this log entry (integer).
- 
+
         logInfoObj:  PccLogInfo object containing the log information in
                      connection with this log entry (PccLogInfo).
 

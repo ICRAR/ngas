@@ -30,7 +30,7 @@ else:
         LOG_INFO    = 6
         LOG_DEBUG   = 7
 
-   
+
 # Global instance of the Log Manager.
 __logMgr = PccLogMgr.PccLogMgr()
 
@@ -44,13 +44,13 @@ def setLogCond(logLevel,
                sysLogProps = [-1, -1, ""],
                bufferSize = 100,
                logLocation = 0):
-    
+
     """
     Method used to set the basic logging conditions. This is the
     level of information to write into the log file, the name of the
     log file, and the level (intensity) for writing logs to stdout. "0"
     means that no logs are produced to the target.
-    
+
     logLevel:          The level with which there should be logged into the
                        specified log file. Level '0' means that no logs
                        are written into the log file (integer).
@@ -133,7 +133,7 @@ def setLogCond(logLevel,
 def takeLogSem():
     """
     Acquire the State Semaphore to request for permission to change it.
-    
+
     Returns:        Void.
     """
     global __logSem
@@ -143,7 +143,7 @@ def takeLogSem():
 def relLogSem():
     """
     Release the State Semaphore acquired with takeStateSem().
-    
+
     Returns:        Void.
     """
     global __logSem
@@ -161,14 +161,14 @@ def logGen_(fct,
 
     fct:            Function from where the logGen_() function is called
                     (string).
-    
+
     logType:        Type of log. See UNIX syslog types in PccLogMgr
                     (integer).
 
     level:          See description of PccLog.info() (integer).
-    
+
     msg:            Message to log (string).
-    
+
     location:       Location ID where the log was generated (string).
 
     Returns:        Log line (string).
@@ -178,13 +178,13 @@ def logGen_(fct,
         (__logMgr.getVerboseLevel() < level) and
         (__logMgr.getSysLogLevel() < level)):
         return
-    
+
     takeLogSem()
     try:
         msg = str(msg)
         PccUtUtils.checkType("level", level, fct, types.IntType)
         PccUtUtils.checkType("location", location, fct, types.StringType)
-                 
+
         __logMgr.log(level, logType, location, msg)
         relLogSem()
     except Exception, e:
@@ -212,7 +212,7 @@ def alert(msg,
 
     Parameters:      See description of PccLog.info().
 
-    Returns:         Always '1' (integer/FAILURE).    
+    Returns:         Always '1' (integer/FAILURE).
     """
     logGen_("PccLog.alert()", syslog.LOG_ALERT, 0, msg, location)
     return 1
@@ -238,7 +238,7 @@ def error(msg,
 
     Parameters:      See description of PccLog.info().
 
-    Returns:         Always '1' (integer/FAILURE).    
+    Returns:         Always '1' (integer/FAILURE).
     """
     logGen_("PccLog.error()", syslog.LOG_ERR, 0, msg, location)
     return 1
@@ -251,7 +251,7 @@ def warning(msg,
 
     Parameters:      See description of PccLog.info().
 
-    Returns:         Always '1' (integer/FAILURE).    
+    Returns:         Always '1' (integer/FAILURE).
     """
     logGen_("PccLog.warning()", syslog.LOG_WARNING, 0, msg, location)
     return 1
@@ -264,7 +264,7 @@ def notice(msg,
 
     Parameters:      See description of PccLog.info().
 
-    Returns:         Always "0" (SUCCESS).    
+    Returns:         Always "0" (SUCCESS).
     """
     logGen_("PccLog.notice()", syslog.LOG_NOTICE, 0, msg, location)
     return 0
@@ -304,15 +304,15 @@ def sysLogInfo(level,
     level:        Level allocated to this log (integer).
 
     msg:          Message to log (string).
-    
+
     location:     Optional location specifier (string).
 
     Returns:      Void.
-    """ 
+    """
     global __logMgr
     __logMgr.sysLog(level, syslog.LOG_INFO, location, msg)
 
-    
+
 def debug(level,
           msg,
           location = ""):
@@ -321,7 +321,7 @@ def debug(level,
 
     Parameters:      See description of PccLog.info().
 
-    Returns:         Always '0' (integer/SUCCESS).    
+    Returns:         Always '0' (integer/SUCCESS).
     """
     logGen_("PccLog.debug()", syslog.LOG_DEBUG, level, msg, location)
     return 0
@@ -395,7 +395,7 @@ def logFlush():
     """
     global __logMgr
     __logMgr.flush()
-    
+
 
 #
 # ___oOo___

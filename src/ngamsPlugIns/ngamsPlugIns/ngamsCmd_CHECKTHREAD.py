@@ -38,29 +38,29 @@ from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
     Find out which threads are still dangling
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     re = ''
     n = 0
     delete = 0
-    if (reqPropsObj.hasHttpPar("delete") and 
+    if (reqPropsObj.hasHttpPar("delete") and
         1 == int(reqPropsObj.getHttpPar("delete")) and
-        reqPropsObj.hasHttpPar("threadname")):        
+        reqPropsObj.hasHttpPar("threadname")):
         delete = 1
         threadname = int(reqPropsObj.getHttpPar("threadname"))
-        
+
     for thrObj in threading.enumerate():
         try:
-            if (thrObj.isAlive()): 
+            if (thrObj.isAlive()):
                 if (delete):
                     th = thrObj.getName().split('-')[0]
                     if (th == 'Thread'):
@@ -73,5 +73,5 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                 n += 1
         except Exception, e:
             re += str(e)
-    
+
     srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'In total ' + str(n) + ' threads\n: ' + re + '\n', NGAMS_TEXT_MT)

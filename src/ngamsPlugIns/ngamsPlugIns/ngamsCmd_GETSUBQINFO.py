@@ -35,15 +35,15 @@ from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
     Find out which threads are still dangling
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     retMsg = ''
@@ -55,4 +55,3 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     else:
         retMsg = 'Fail to find the queue dictionary!\n'
     srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, retMsg, NGAMS_TEXT_MT)
-        

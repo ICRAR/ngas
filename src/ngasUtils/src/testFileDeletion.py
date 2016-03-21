@@ -35,10 +35,10 @@ import time
 def _createFile(name):
     """
     Create a file with <name>
-    INPUTS:    
+    INPUTS:
         name:       string, the name of the file
-    
-    RETURNS:    
+
+    RETURNS:
         None
     """
     subprocess.call(["touch", name])
@@ -48,12 +48,12 @@ def _createFile(name):
 def generateFilesDirs(top, ndirs, nfils):
     """
     Generate N directories containing M files each.
-    INPUTS:    
+    INPUTS:
         top:         string, the top-level directory
         ndirs:       int, Number of directories to generate
         nfils:       int, Number of files to generate
-    
-    RETURNS:    
+
+    RETURNS:
         Duration in seconds to generate the files
     """
     dirFiles = itertools.product(range(1,ndirs+1,1),range(1,nfils+1,1))
@@ -65,7 +65,7 @@ def generateFilesDirs(top, ndirs, nfils):
             os.mkdir(top + '/' + str(dir))
         _createFile('/'.join([top,str(dir),str(dirFile[1])]))
     dur = time.time() - st
-    
+
     return dur
 
 if __name__ == '__main__':
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     parser.add_argument('nfils', metavar='N', type=int,
                         default=100,
                        help='Number of files per directory')
-    
+
     args = parser.parse_args()
     print "Generating %d files in %d directories" % (args.nfils, args.ndirs)
     top = 'tmp' + str(uuid.uuid1())

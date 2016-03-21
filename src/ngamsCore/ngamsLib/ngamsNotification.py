@@ -92,7 +92,7 @@ def _sendNotifMsg(hostId,
 
     lst = []
     if (recList):
-        lst = recList 
+        lst = recList
     elif (type == NGAMS_NOTIF_ALERT):
         lst = ngamsCfgObj.getAlertNotifList()
     elif (type == NGAMS_NOTIF_ERROR):
@@ -229,9 +229,9 @@ def notify(hostId,
     srvObj:         Reference to NGAS server object (ngamsServer).
 
     type:           Type of Notification (See NGAMS_NOTIF_* in ngams).
-    
+
     subject:        Subject of message (string).
-    
+
     dataRef:        Message to send or filename containing data (string).
 
     recList:        List with recipients that should receive the Notification
@@ -241,7 +241,7 @@ def notify(hostId,
                     this was disabled in the configuration (integer/0|1).
 
     contentType:    Mime-type of message (string).
-    
+
     attachmentName: Name of attachment in mail (string).
 
     dataInFile:     Indicates that data to be send is stored in a file
@@ -320,7 +320,7 @@ def notify(hostId,
         # Release Notification Semaphore.
         notifSem_.release()
         raise Exception, e
-    
+
 
 def checkNotifRetBuf(hostId,
                      ngamsCfgObj,
@@ -370,6 +370,6 @@ def checkNotifRetBuf(hostId,
         # Release Notification Semaphore.
         notifSem_.release()
         raise Exception, e
-            
+
 
 # EOF

@@ -44,7 +44,7 @@ An exemple of executing this tool is:
 % python ngamsTestExecTillFailure.py -cmd \
   'python ngamsCloneCmdTest.py -nocleanup -tests test_CloneCmd_2'
 % Executing command for the 1th time (Time difference: 0.0s/Total time: 0.0s
-% Executing command for the 2th time (Time difference: 20.7s/Total time: 20.7s 
+% Executing command for the 2th time (Time difference: 20.7s/Total time: 20.7s
 """
 
 import commands

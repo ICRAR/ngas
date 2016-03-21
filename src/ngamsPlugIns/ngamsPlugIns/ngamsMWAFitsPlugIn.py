@@ -51,13 +51,13 @@ def getComprExt(comprMethod):
     Returns:       Extension used by the given compression method (string).
     """
     T = TRACE()
-    
+
     if (comprMethod.find("compress") != -1):
         return "Z"
     elif (comprMethod.find("gzip") != -1):
         return "gz"
     elif (comprMethod.find("ngamsTileCompress") != -1):
-        return "" 
+        return ""
     elif (comprMethod == ""):
         return ""
     else:
@@ -176,10 +176,10 @@ def prepFile(reqPropsObj,
 
     Returns:      Tuple containing:
 
-                    (<DP ID>, <Date Obs. Night>, <Compr. Ext.>)   (tuple).   
+                    (<DP ID>, <Date Obs. Night>, <Compr. Ext.>)   (tuple).
     """
     T = TRACE()
-    
+
     # If the file is already compressed, we have to decompress it.
     tmpFn = reqPropsObj.getStagingFilename()
     if ((tmpFn.find(".Z") != -1) or (tmpFn.find(".gz") != -1)):
@@ -210,7 +210,7 @@ def compress(reqPropsObj,
 
     Returns:      Tupe containing uncompressed filesize, archived filesize
                   and the format (mime-type) of the resulting data file
-                  (tuple).   
+                  (tuple).
     """
     stFn = reqPropsObj.getStagingFilename()
 
@@ -239,7 +239,7 @@ def compress(reqPropsObj,
         info(2,"File compressed. Time: %.3fs" % compressTimer.stop())
     else:
         fmt = reqPropsObj.getMimeType()
-        
+
     archFileSize = ngamsPlugInApi.getFileSize(reqPropsObj.getStagingFilename())
     return uncomprSize, archFileSize, fmt
 
@@ -251,7 +251,7 @@ def ngamsMWAFitsPlugIn(srvObj,
     Data Archiving Plug-In to handle archiving of MWA FITS files.
 
     srvObj:       Reference to NG/AMS Server Object (ngamsServer).
-    
+
     reqPropsObj:  NG/AMS request properties object (ngamsReqProps).
 
     Returns:      Standard NG/AMS Data Archiving Plug-In Status as generated
@@ -262,7 +262,7 @@ def ngamsMWAFitsPlugIn(srvObj,
     diskInfo = reqPropsObj.getTargDiskInfo()
     parDic = ngamsPlugInApi.parseDapiPlugInPars(srvObj.getCfg(),
                                                 reqPropsObj.getMimeType())
-    
+
     # Check file (size + checksum) + extract information.
     ### not done for MWA
     # dpId, dateDirName, comprExt = prepFile(reqPropsObj, parDic)
@@ -274,7 +274,7 @@ def ngamsMWAFitsPlugIn(srvObj,
     checkFitsFileSize(reqPropsObj.getStagingFilename())
     fileName = os.path.basename(reqPropsObj.getFileUri())
     dpId = os.path.splitext(fileName)[0]
-    
+
     dateDirName = projectId
     fileVersion, relPath, relFilename,\
                  complFilename, fileExists =\
@@ -309,7 +309,7 @@ if __name__ == "__main__":
         fo.close()
     except:
         raise
-                    
+
 
 
 # EOF

@@ -40,14 +40,14 @@ def handleCmdExit(srvObj,
                   httpRef):
     """
     Handle an EXIT command.
-        
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler object
                     (ngamsHttpRequestHandler).
-        
-    Returns:        Void.   
+
+    Returns:        Void.
     """
     srvObj.checkSetState("Command EXIT", [NGAMS_OFFLINE_STATE],
                          [NGAMS_IDLE_SUBSTATE])

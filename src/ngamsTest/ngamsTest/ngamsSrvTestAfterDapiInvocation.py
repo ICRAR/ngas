@@ -48,7 +48,7 @@ class ngamsSrvTestAfterDapiInvocation(ngamsServer.ngamsServer):
         """
         ngamsServer.ngamsServer.__init__(self)
 
-    
+
     def test_AfterDapiInvocation(self):
         """
         Tets method killing server.
@@ -59,7 +59,7 @@ class ngamsSrvTestAfterDapiInvocation(ngamsServer.ngamsServer):
         raise Exception, "test_AfterDapiInvocation: TEST METHOD KILLING " +\
               "SERVER"
 
- 
+
 if __name__ == '__main__':
     """
     Main program executing the test NG/AMS Server

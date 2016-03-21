@@ -44,7 +44,7 @@ def parseHtmlInfo(url,
     Query the information about the disks as an HTML page, and parse the
     page and return the information in the format as defined for the
     NG/AMS Disk Dictionary.
-    
+
     url:         URL from where to query the disk status (string).
 
     rootMtPt:    Root mount point to be used (string)
@@ -56,14 +56,14 @@ def parseHtmlInfo(url,
                  the class ngamsPhysDiskInfo (dictionary).
     """
     T = TRACE()
-    
+
     # Check if the 3ware WEB server can be accessed.
     cmd = "wget -T 2 -t 1 %s" % url
     stat, out = commands.getstatusoutput(cmd)
     if (stat):
         warning("Problem contacting local 3ware WEB server via URL: " + url)
         return {}
-    
+
     fd = urllib.urlopen(url)
     #fd = open(url)
     buf = fd.read()
@@ -101,7 +101,7 @@ def parseHtmlInfo(url,
             # <ul>
             # <li>Status: <font color="#3333FF">OK</font>
             # <li>Capacity: 41.17 GB (80418240 blocks)
-            # <li>Model: IBM-DTLA-305040                         
+            # <li>Model: IBM-DTLA-305040
             # <li>Serial number: YJ0YJ070913
             # <li>Unit number: 7
             portNo = int(string.split(string.split(lines[idx], " ")[2],"<")[0])
@@ -134,7 +134,7 @@ def parseHtmlInfo(url,
             idx = idx + 1
             unitNo = int(string.split(string.split(lines[idx],">")[4], "<")[0])
             diskId = model + "-" + serialNo
-            mtPt = rootMtPt + "/data" + str(slotId)                 
+            mtPt = rootMtPt + "/data" + str(slotId)
             deviceName = "/dev/sd" + chr(97 + len(diskInfoDic)) + '1'
             diskInfoDic[str(slotId)] = ngamsPhysDiskInfo.ngamsPhysDiskInfo().\
                                        setPortNo(portNo).\
@@ -214,9 +214,9 @@ def parseGen1Controller(rootMtPt,
     Port  5: IBM-DTLA-307030 YKEYKNJ6131 30.73 GB (60036480 blocks): \
     OK (unit  5)
     Port  6: DRIVE NOT PRESENT
-    Port  7: DRIVE NOT PRESENT    
+    Port  7: DRIVE NOT PRESENT
 
-   
+
     The entries for each port can also be formatted in the following way:
 
 
@@ -290,7 +290,7 @@ def parseGen1Controller(rootMtPt,
 
     return diskInfoDic
 
-   
+
 def parseGen2Controller(rootMtPt,
                         contList,
                         devStartIdx,
@@ -317,8 +317,8 @@ def parseGen2Controller(rootMtPt,
 
     Unit  UnitType  Status      %Cmpl  Stripe  Size(GB)  Cache  AVerify  IgnECC
     ---------------------------------------------------------------------------
-    u0    RAID-1    OK           -      -       65.1826   ON     OFF      OFF  
-    u1    RAID-1    OK           -      -       372.519   ON     OFF      OFF  
+    u0    RAID-1    OK           -      -       65.1826   ON     OFF      OFF
+    u1    RAID-1    OK           -      -       372.519   ON     OFF      OFF
 
     Port   Status           Unit   Size        Blocks        Serial
     ---------------------------------------------------------------
@@ -331,17 +331,17 @@ def parseGen2Controller(rootMtPt,
     rootMtPt:     Root mount point (string).
 
     contList:     List with controllers in the system (list/integer).
-    
+
     devStartIdx:  Start index of disk array (string/a|b|c...).
-                        
+
     ngasStartIdx: Startindex of first disk to be used by NGAS (string/a|b|c...)
-    
+
     contOut:      Output from 3ware controller (string).
 
     Returns:      Dictionary with info about the disks (dictionary).
     """
     T = TRACE()
-  
+
     # Parse the output from the 3ware Command Line Tool.
     diskInfoDic = {}
     slotCount   = 0   # Not used for the moment.
@@ -458,7 +458,7 @@ def getContInfo(contList):
     Returns:      Accumulated ASCII output of info about controllers (string).
     """
     T = TRACE()
-    
+
     out = ""
     for contId in contList:
         cmd = "sudo /usr/local/sbin/tw_cli info c%s" % str(contId)
@@ -489,10 +489,10 @@ def exportCont(contId):
 
     # Unit  UnitType  Status         %Cmpl  Stripe  Size(GB)  Cache  AVerify  IgnECC
     # ------------------------------------------------------------------------------
-    # u0    RAID-5    OK             -      256K    1862.59   ON     OFF      OFF      
-    # u1    RAID-5    OK             -      256K    1490.07   ON     OFF      OFF      
-    # u2    SPARE     OK             -      -       372.603   -      OFF      -        
-    
+    # u0    RAID-5    OK             -      256K    1862.59   ON     OFF      OFF
+    # u1    RAID-5    OK             -      256K    1490.07   ON     OFF      OFF
+    # u2    SPARE     OK             -      -       372.603   -      OFF      -
+
     # Port   Status           Unit   Size        Blocks        Serial
     # ---------------------------------------------------------------
     # p0     OK               u0     372.61 GB   781422768     KRFS02RAGWWHKC
@@ -524,9 +524,9 @@ def rescanCont(contId):
     Returns:   Void.
     """
     return # Don't want to execute this
-    
+
     T = TRACE()
-    
+
     cmd = "sudo /usr/local/sbin/tw_cli /c%d rescan" % (int(contId))
     info(3,"Invoking command to rescan 3ware unit: %s ..." % cmd)
     stat, out = commands.getstatusoutput(cmd)
@@ -543,7 +543,7 @@ def parseCmdLineInfo(rootMtPt,
     """
     Execute the 3ware command line utility and extract the information
     about the disks connected to the system.
-                     
+
     rootMtPt:      Root mount point to be used (string)
 
     oldFormat:    Old format producing 'wrong' Disk ID for WDC/Maxtor disks
@@ -565,7 +565,7 @@ def parseCmdLineInfo(rootMtPt,
                   the class ngamsPhysDiskInfo (dictionary).
     """
     T = TRACE()
-    
+
     out = ""
     if (controllers):
         contList = controllers.split("/")
@@ -611,12 +611,12 @@ if __name__ == '__main__':
     PCB:      Rev4
     PCHIP:    1.30-66
     ACHIP:    3.20
-    
+
     # of units:  3
     Unit  1: JBOD 200.4 GB (390721968 blocks): OK
     Unit  2: JBOD 300.0 GB (585940320 blocks): OK
     Unit  3: JBOD 200.4 GB (390721968 blocks): OK
-    
+
     # of ports:  8
     Port  0: DRIVE NOT PRESENT
     Port  1: WDC WD2000JB-00EVA0 WD-WMAEH2143360 200.4 GB (390721968 blocks):\
@@ -634,7 +634,7 @@ if __name__ == '__main__':
     Unit  UnitType  Status         %Cmpl  Stripe  Size(GB)  Cache  AVerify  \
     IgnECC
     ---------------------------------------------------------------------------
-    
+
     Port   Status           Unit   Size        Blocks        Serial
     ---------------------------------------------------------------
     p0     NOT-PRESENT      -      -           -             -
@@ -648,8 +648,8 @@ if __name__ == '__main__':
 
     Unit  UnitType  Status      %Cmpl  Stripe  Size(GB)  Cache  AVerify  IgnECC
     ---------------------------------------------------------------------------
-    u0    RAID-1    OK             -      -       65.1826   ON     OFF    OFF  
-    u1    RAID-1    OK             -      -       372.519   ON     OFF    OFF  
+    u0    RAID-1    OK             -      -       65.1826   ON     OFF    OFF
+    u1    RAID-1    OK             -      -       372.519   ON     OFF    OFF
 
     Port   Status           Unit   Size        Blocks        Serial
     ---------------------------------------------------------------

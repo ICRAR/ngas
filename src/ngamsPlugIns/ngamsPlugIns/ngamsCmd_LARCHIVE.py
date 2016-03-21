@@ -165,7 +165,7 @@ def archiveFromFile(srvObj,
             if (os.path.exists(pickleObjFile)):
                 info(2,"Removing Back-Log Buffer Pickle File: "+pickleObjFile)
                 rmFile(pickleObjFile)
-            return [NGAMS_FAILURE, str(e), NGAMS_FAILURE] 
+            return [NGAMS_FAILURE, str(e), NGAMS_FAILURE]
 
     # If the file was handled successfully, we remove it from the
     # Back-Log Buffer Directory unless the local file was a log-file
@@ -231,7 +231,7 @@ def handleCmd(srvObj,
     else:
         reqPropsObj.setMimeType(parsDic['mimeType'])
         mimeType = reqPropsObj.getMimeType()
-        
+
     if (reqPropsObj.getMimeType() == ""):
         mimeType = ngamsHighLevelLib.\
                    determineMimeType(srvObj.getCfg(), reqPropsObj.getFileUri())
@@ -241,7 +241,7 @@ def handleCmd(srvObj,
 
     ioTime = 0
     reqPropsObj.incIoTime(ioTime)
-    
+
     (resDapi, targDiskInfo, iorate) = archiveFromFile(srvObj, fileUri, 0, mimeType, reqPropsObj)
     if (resDapi == NGAMS_FAILURE):
         errMsg = targDiskInfo
@@ -251,7 +251,7 @@ def handleCmd(srvObj,
     # Get crc info
 #     info(3, "Get checksum info")
 #     crc = None
-    
+
     # TODO: Investigate how CRC calculation could be performed best.
 #     checksumPlugIn = "ngamsGenCrc32"
 #     checksum = str(crc)
@@ -301,7 +301,7 @@ def handleCmd(srvObj,
     srvObj.triggerSubscriptionThread()
 
 
-    return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()), 
+    return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()),
             iorate)
 
 # EOF

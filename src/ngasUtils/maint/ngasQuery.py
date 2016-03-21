@@ -113,7 +113,7 @@ def execute(optDic):
     else:
         msg = "Error occurred executing query: %s" % stat.getMessage()
         raise Exception, msg
-    
+
     info(4,"Leaving execute()")
 
 

@@ -44,7 +44,7 @@ def ngamsKillSrvDapi(srvObj,
     DAPI to simulate server crash during DAPI execution.
 
     srvObj:       Reference to NG/AMS Server Object (ngamsServer).
-    
+
     reqPropsObj:  NG/AMS request properties object (ngamsReqProps).
 
     Returns:      Void.

@@ -48,9 +48,9 @@ def getStorageSetIdFromDiskId(dbConObj,
     Return a Storage Set ID from a Disk ID.
 
     dbConObj:       DB connection object (ngamsDb).
-    
+
     ngamsCfgObj:    NG/AMS Configuration object (ngamsConfig).
-    
+
     diskId:         Disk ID (string).
 
     Returns:        Storage Set ID for the disk referred to (string).
@@ -60,7 +60,7 @@ def getStorageSetIdFromDiskId(dbConObj,
     if (slotId == None):
         errMsg = genLog("NGAMS_ER_MISSING_DISK_ID", [diskId])
         error(errMsg)
-        raise Exception, errMsg  
+        raise Exception, errMsg
     set = ngamsCfgObj.getStorageSetFromSlotId(slotId)
     return set.getStorageSetId()
 
@@ -69,7 +69,7 @@ class ngamsDiskInfo:
     """
     Object to handle the information for an NGAS disk.
     """
-    
+
     def __init__(self):
         """
         Constructor method.
@@ -80,7 +80,7 @@ class ngamsDiskInfo:
         self.__installationDate   = ""
         self.__type               = ""
         self.__manufacturer       = ""
-        self.__logicalName        = ""        
+        self.__logicalName        = ""
         self.__hostId             = ""
         self.__slotId             = ""
         self.__mounted            = -1
@@ -137,7 +137,7 @@ class ngamsDiskInfo:
         archive:  Name of archive (string).
 
         Returns:  Reference to object itself.
-        
+
         """
         self.__archive = trim(archive, "\" ")
         return self
@@ -158,7 +158,7 @@ class ngamsDiskInfo:
         Set Disk ID.
 
         id:        Set Disk ID (string).
- 
+
         Returns:   Reference to object itself.
         """
         self.__diskId = trim(id, "\" ")
@@ -180,7 +180,7 @@ class ngamsDiskInfo:
         Set Logical Disk Name.
 
         name:      Logical Disk Name (string).
- 
+
         Returns:   Reference to object itself.
         """
         self.__logicalName = trim(name, "\" ")
@@ -202,7 +202,7 @@ class ngamsDiskInfo:
         Set Host ID.
 
         id:        Host ID (string).
- 
+
         Returns:   Reference to object itself.
         """
         if (id):
@@ -227,7 +227,7 @@ class ngamsDiskInfo:
         Set Slot ID.
 
         id:        Slot ID (string).
- 
+
         Returns:   Reference to object itself.
         """
         self.__slotId = trim(str(id), "\" ")
@@ -249,7 +249,7 @@ class ngamsDiskInfo:
         Set Disk Mounted Flag.
 
         mounted:   1 = mounted, 0 = not mounted (integer).
- 
+
         Returns:   Reference to object itself.
         """
         self.__mounted = int(mounted)
@@ -271,7 +271,7 @@ class ngamsDiskInfo:
         Set Mount Point.
 
         mountPoint:  Mount point (string).
- 
+
         Returns:     Reference to object itself.
         """
         if (mountPoint):
@@ -285,7 +285,7 @@ class ngamsDiskInfo:
     def getMountPoint(self):
         """
         Get Disk Mount Point.
- 
+
         Returns:   Mount point (string).
         """
         return self.__mountPoint
@@ -296,8 +296,8 @@ class ngamsDiskInfo:
         """
         Set number of files stored on disk.
 
-        no:        Number of files (integer).        
- 
+        no:        Number of files (integer).
+
         Returns:   Reference to object itself.
         """
         self.__numberOfFiles = int(no)
@@ -319,7 +319,7 @@ class ngamsDiskInfo:
         Set Available disk space (MB).
 
         mb:        Available disk space in MB (integer).
- 
+
         Returns:   Reference to object itself.
         """
         self.__availableMb = int(mb)
@@ -332,7 +332,7 @@ class ngamsDiskInfo:
 
         Returns:    Available disk space in MB (integer).
         """
-        return self.__availableMb 
+        return self.__availableMb
 
 
     def setBytesStored(self,
@@ -341,7 +341,7 @@ class ngamsDiskInfo:
         Set the number of bytes stored on the disk.
 
         bytes:     Bytes stored (string|float).
- 
+
         Returns:   Reference to object itself.
         """
         self.__bytesStored = float(bytes)
@@ -373,7 +373,7 @@ class ngamsDiskInfo:
         Set the Disk Completed Flag.
 
         completed:   1 = completed, 0 = not completed (integer).
- 
+
         Returns:     Reference to object itself.
         """
         self.__completed = int(completed)
@@ -393,9 +393,9 @@ class ngamsDiskInfo:
                           date):
         """
         Set completion date.
-        
+
         date:      Completion date (string).
- 
+
         Returns:   Reference to object itself.
         """
         self.__completionDate = timeRef2Iso8601(date)
@@ -408,7 +408,7 @@ class ngamsDiskInfo:
         Set the completion date from seconds since epoch.
 
         dateSecs:  Completion date in seconds since epoch (integer).
- 
+
         Returns:   Reference to object itself.
         """
         self.__completionDate = PccUtTime.TimeStamp().\
@@ -433,9 +433,9 @@ class ngamsDiskInfo:
                 type):
         """
         Set Disk Type.
-        
+
         type:      Disk Type (string).
- 
+
         Returns:   Reference to object itself.
         """
         self.__type = trim(type, "\" ")
@@ -455,9 +455,9 @@ class ngamsDiskInfo:
                         manufacturer):
         """
         Set Disk Manufacturer.
-        
+
         manufacturer:   Disk Manufacturer (string).
- 
+
         Returns:        Reference to object itself.
         """
         if (manufacturer == None): manufacturer = ""
@@ -478,9 +478,9 @@ class ngamsDiskInfo:
                             date):
         """
         Set installation date.
-        
+
         date:      Installation date (string).
- 
+
         Returns:   Reference to object itself.
         """
         self.__installationDate = timeRef2Iso8601(date)
@@ -493,7 +493,7 @@ class ngamsDiskInfo:
         Set the installation date from seconds since epoch.
 
         dateSecs:  Installation date in seconds since epoch (integer).
- 
+
         Returns:   Reference to object itself.
         """
         self.__installationDate = PccUtTime.TimeStamp().\
@@ -517,7 +517,7 @@ class ngamsDiskInfo:
         Set checksum value for disk.
 
         checksum:  Checksum value (string).
- 
+
         Returns:   Reference to object itself.
         """
         if (not checksum):
@@ -533,7 +533,7 @@ class ngamsDiskInfo:
 
         Returns:   Checksum value (string).
         """
-        return self.__checksum 
+        return self.__checksum
 
 
     def setTotalDiskWriteTime(self,
@@ -542,7 +542,7 @@ class ngamsDiskInfo:
         Set Total Disk Write Time.
 
         time:      Total Disk Write Time (float).
- 
+
         Returns:   Reference to object itself.
         """
         self.__totalDiskWriteTime = time
@@ -562,9 +562,9 @@ class ngamsDiskInfo:
                      date):
         """
         Set date for the last check.
-        
+
         date:      Date for last check (string).
- 
+
         Returns:   Reference to object itself.
         """
         self.__lastCheck = timeRef2Iso8601(date)
@@ -577,7 +577,7 @@ class ngamsDiskInfo:
         Set the last check date from seconds since epoch.
 
         dateSecs:  Last check date in seconds since epoch (integer).
- 
+
         Returns:   Reference to object itself.
         """
         self.__lastCheck = PccUtTime.TimeStamp().\
@@ -598,9 +598,9 @@ class ngamsDiskInfo:
                       host):
         """
         Set name of the last host in which the disk was installed.
-        
+
         host:      Name of host (string).
- 
+
         Returns:   Reference to object itself.
         """
         self.__lastHostId = host
@@ -652,7 +652,7 @@ class ngamsDiskInfo:
         Returns:   Reference to object itself.
         """
         T = TRACE(5)
-        
+
         self.\
                setDiskId(sqlResult[0]).\
                setArchive(sqlResult[1]).\
@@ -719,7 +719,7 @@ class ngamsDiskInfo:
                             object (integer\0|1).
 
         ignoreUndefFields:  Don't take fields, which have a length of 0
-                            (integer/0|1).                 
+                            (integer/0|1).
 
         Returns:            String buffer with disk info (string).
         """
@@ -748,7 +748,7 @@ class ngamsDiskInfo:
 
         ignoreUndefFields:  Don't take fields, which have a length of 0
                             (integer/0|1).
-                            
+
         Returns:            XML Dom Node (Node).
         """
         T = TRACE(5)
@@ -765,7 +765,7 @@ class ngamsDiskInfo:
             else:
                 if (not ignoreValue(ign, val)):
                     diskStatusEl.setAttribute(fieldName, str(val))
-        
+
         if (genFileStatus):
             for file in self.getFileObjList():
                 fileStatusEl = file.genXml(0, ignoreUndefFields)
@@ -790,7 +790,7 @@ class ngamsDiskInfo:
         Returns:            Reference to object itself.
         """
         T = TRACE()
-        
+
         self.setDiskId(getAttribValue(diskNode, "DiskId"))
         self.setArchive(getAttribValue(diskNode, "Archive"))
         self.setInstallationDate(getAttribValue(diskNode, "InstallationDate"))
@@ -858,11 +858,11 @@ class ngamsDiskInfo:
         object accordingly.
 
         dbConObj:       DB connection object (ngamsDb).
-        
+
         ngamsCfgObj:    Configuration object (ngamsConfig).
-        
+
         diskId:         Disk ID (string).
-        
+
         mimeType:       Mime-type (string).
 
         Returns:        Reference to object itself.
@@ -878,8 +878,8 @@ class ngamsDiskInfo:
         """
         Set Storage Set ID.
 
-        id:        Storage Set ID (string).        
- 
+        id:        Storage Set ID (string).
+
         Returns:   Reference to object itself.
         """
         self.__storageSetId = id
@@ -901,7 +901,7 @@ class ngamsDiskInfo:
         Add a File Info object to the disk info object.
 
         fileInfoObj:   File info object (ngamsFileInfo).
- 
+
         Returns:       Reference to object itself.
         """
         self.__fileList.append(fileInfoObj)

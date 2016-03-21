@@ -67,11 +67,11 @@ def _checkFileAccess(srvObj,
 
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-    
+
     fileId:         File ID (string).
-    
+
     fileVersion:    File Version (integer).
-    
+
     diskId:         Disk ID (string).
 
     Returns:        Returns message indicating if the file is available
@@ -112,10 +112,10 @@ def _getRefCounts():
 
     Taken from: http://www.nightmare.com/medusa/memory-leaks.html.
 
-    Returns:    
+    Returns:
     """
     T = TRACE()
-    
+
     d = {}
     sys.modules
     # Collect all classes
@@ -153,17 +153,17 @@ def _genRefCountRep():
         objList.append([refDic[obj], obj])
     return objList
 
-  
+
 def _genObjectStatus():
     """
     Generate a report with information about objects allocated, numbers of
     references to each object and other information that can be used to
     track down memory (object) leaks in the server.
-    
+
     Returns:  Object report (string).
     """
     T = TRACE()
-    
+
     rep = "NG/AMS SERVER OBJECT STATUS REPORT\n\n"
     import gc
     gc.set_debug(gc.DEBUG_COLLECTABLE | gc.DEBUG_UNCOLLECTABLE |
@@ -181,12 +181,12 @@ def _genObjectStatus():
     rep += "=Object Reference Counts:\n\n"
     for objInfo in _genRefCountRep():
         rep += "%-4d %s\n" % (objInfo[0], objInfo[1])
-        
+
     rep += "\n=EOF"
     return rep
 
 
-_fileListXmlHdr = """<?xml version="1.0" ?> 
+_fileListXmlHdr = """<?xml version="1.0" ?>
 
 <NgamsStatus>
 <FileList Id="%s" Status="REMAINING_DATA_OBJECTS: %s">
@@ -206,15 +206,15 @@ def _handleFileList(srvObj,
                     httpRef):
     """
     Handle STATUS?file_list... Command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        The File List ID allocated for this request (string).
     """
     T = TRACE()
@@ -250,7 +250,7 @@ def _handleFileList(srvObj,
                                         hostId = srvObj.getHostId(),
                                         ignore = 0,
                                         lowLimIngestDate = fromIngDate)
-        
+
         # If requested, make the result set unique by inserting the elements
         # with File ID/Version as key.
         if (unique):
@@ -270,7 +270,7 @@ def _handleFileList(srvObj,
                     # File with that ID/Version already registered.
                     continue
                 uniqueFileListDbm.add(fileKey, fileInfo)
-            fileInfoDbm.sync() 
+            fileInfoDbm.sync()
             fileInfoDbmName = fileInfoDbm.getDbmName()
             del fileInfoDbm
             uniqueFileListDbm.sync()
@@ -296,12 +296,12 @@ def _handleFileListReply(srvObj,
     """
     Extracts file information from a previously dumped file information
     in connection with a STATUS?file_list request.
-    
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler object
                     (ngamsHttpRequestHandler).
 
@@ -328,9 +328,9 @@ def _handleFileListReply(srvObj,
     elif (len(dbmMatches) > 1):
         msg = "Inconsistencies encountered in locating result set for " +\
               "STATUS/file_list for referenced File List ID: %s"
-        raise Exception, msg % fileListId    
+        raise Exception, msg % fileListId
     fileInfoDbmName = dbmMatches[0]
-    
+
     # Generate the NG/AMS Status Document, with a File List in it.
     # Compress it on the fly.
     fileListXmlDoc = ngamsHighLevelLib.\
@@ -388,7 +388,7 @@ def _handleFileListReply(srvObj,
         rmFile("%s*" % fileInfoDbmName)
         rmFile("%s*" % fileListXmlDoc)
         raise e
-    
+
     # Send the XML document back to the requestor.
     try:
         tmpDppiResult = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_FILE).\
@@ -408,7 +408,7 @@ def _handleFileListReply(srvObj,
         tmpFileListDbm.sync()
         del keyRefList
         keyRefList = []
-        
+
         # If there are no more entries, delete the DBM.
         dbmCount = tmpFileListDbm.getCount()
         del tmpFileListDbm
@@ -421,22 +421,22 @@ def _handleFileListReply(srvObj,
         msg = msg % str(e)
         error(msg)
         raise Exception, msg
-    
-        
+
+
 def handleCmdStatus(srvObj,
                     reqPropsObj,
                     httpRef):
     """
     Handle STATUS command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler object
                     (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
@@ -450,7 +450,7 @@ def handleCmdStatus(srvObj,
              setState(srvObj.getState()).setSubState(srvObj.getSubState())
 
     reqPropsObjRef = reqPropsObj
-        
+
     # Get the information requested.
     diskId            = ""
     fileId            = ""
@@ -541,7 +541,7 @@ def handleCmdStatus(srvObj,
         #       back the reply received from this.
         hostObj = contactDic[hostId]
         cfgObj = srvObj.getCfg()
-        if ((hostObj.getHostId() == srvObj.getHostId()) and 
+        if ((hostObj.getHostId() == srvObj.getHostId()) and
             (hostObj.getSrvPort() == cfgObj.getPortNo())):
             info(2,"Send back status of this server/host to STATUS/host_id "+\
                  "request")
@@ -628,7 +628,7 @@ def handleCmdStatus(srvObj,
         srvObj.updateRequestDb(reqPropsObj)
     if (genCfgStatus or genDiskStatus or genFileStatus or genRequestStatus):
         status.setReqStatFromReqPropsObj(reqPropsObjRef)
-        
+
         # Generate XML reply.
         xmlStat = status.genXmlDoc(genCfgStatus, genDiskStatus, genFileStatus,
                                    genStatesStatus)
@@ -640,7 +640,7 @@ def handleCmdStatus(srvObj,
     elif (not reqPropsObjRef.getSentReply()):
         srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,
                      msg)
-        
+
     if (msg and (not help)):
         info(1, msg)
     else:

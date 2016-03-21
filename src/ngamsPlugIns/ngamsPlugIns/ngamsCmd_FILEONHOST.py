@@ -37,15 +37,15 @@ from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
     Find out which threads are still dangling
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     errMsg = ''
@@ -60,4 +60,3 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     else:
         errMsg = 'INVALID PARAMS'
         srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
-        

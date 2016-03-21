@@ -63,7 +63,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         """
         Synopsis:
         File not existing +/-execute/Disk ID/File ID/File Version.
-        
+
         Description:
         The purpose of the test is to verify the behavior of the DISCARD
         Command, when it is tried to DISCARD a file, which is not available
@@ -85,7 +85,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         - Check that the error message from the NG/AMS Server is as expected.
 
         Remarks:
-        ...       
+        ...
         """
         cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
         mDiskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
@@ -104,7 +104,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         """
         Synopsis:
         File not existing referred to by path, +/- execute.
-        
+
         Description:
         The purpose of the test is to verify the behavior of the DISCARD
         Command when it is tried to DISCARD a file referred to by it path
@@ -137,12 +137,12 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
                                  pars + [["execute", "1"]])
         self.checkFilesEq(refStatFile, tmpStatFile, illStatDoc % "2")
 
-        
+
     def test_NormalExec_1(self):
         """
         Synopsis:
         File existing execute=0,1/Disk ID/File ID/File Version.
-        
+
         Description:
         The purpose of the test is to  verify that the normal functioning
         of the DISCARD Command when it is tried to DISCARD a file referred to
@@ -193,7 +193,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         """
         Synopsis:
         File existing, remove via path, +/-execute.
-        
+
         Description:
         The purpose of the test is to verify the normal functioning of the
         DISCARD Command when DISCARD'ing files referred to by their path.
@@ -219,7 +219,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         - Reissue the DISCARD Command specifying the copied file (execute=1).
         - Check that the response indicates that the file has been removed.
         - Check that the file has disappeared from the disk.
-        
+
         Remarks:
         TODO!: Implement check to verify that file has been removed from the
                disk.
@@ -243,7 +243,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         """
         Synopsis:
         File existing/3 copies execute=0,1/Disk ID/File ID/File Version.
-        
+
         Description:
         The purpose of the test is to  verify that the normal functioning
         of the DISCARD Command when it is tried to DISCARD a file referred to
@@ -292,7 +292,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Missing parameters 1) Disk ID, 2) File ID, 3) File Version missing.
-        
+
         Description:
         The purpose of the test is to verify the error handling when an
         illegal combination of parameters is submitted to the NG/AMS Server
@@ -343,7 +343,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test that the proxy mode is not possible for the DISCARD Command.
-        
+
         Description:
         It is not possible to let a contacted NGAS Node act as proxy for the
         DISCARD Command (for security reasons). I.e., the node where data

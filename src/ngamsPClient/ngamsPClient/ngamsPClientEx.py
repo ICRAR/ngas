@@ -49,7 +49,7 @@ if __name__ == '__main__':
     # Get the parameters for handling the archiving.
     host    = sys.argv[1]
     port    = sys.argv[2]
-    fileUri = sys.argv[3] 
+    fileUri = sys.argv[3]
 
     # Create instance of NG/AMS Python API.
     client = ngamsPClient.ngamsPClient(host, port)

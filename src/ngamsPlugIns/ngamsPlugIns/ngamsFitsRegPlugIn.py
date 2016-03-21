@@ -48,7 +48,7 @@ def ngamsFitsRegPlugIn(srvObj,
     Data Registration Plug-In to handle registration of FITS files.
 
     srvObj:       Reference to NG/AMS Server Object (ngamsServer).
-    
+
     reqPropsObj:  NG/AMS request properties object (ngamsReqProps).
 
     Returns:      Standard NG/AMS Data Archiving Plug-In Status as generated
@@ -59,7 +59,7 @@ def ngamsFitsRegPlugIn(srvObj,
     parDic = ngamsPlugInApi.parseRegPlugInPars(srvObj.getCfg(),
                                                reqPropsObj.getMimeType())
     stageFile = reqPropsObj.getStagingFilename()
- 
+
     # If the file is already compressed, we have to decompress it.
     procDir = ""
     if ((stageFile.find(".Z") != -1) or (stageFile.find(".gz") != -1)):
@@ -72,7 +72,7 @@ def ngamsFitsRegPlugIn(srvObj,
             workingFile = workingFile[:-3]
     else:
         workingFile = stageFile
-    
+
     # Check file (size + checksum).
     ngamsFitsPlugIn.checkFitsFileSize(workingFile)
     #ngamsFitsPlugIn.c_heckChecksum(parDic, workingFile)

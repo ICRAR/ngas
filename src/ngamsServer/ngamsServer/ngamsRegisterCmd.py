@@ -81,7 +81,7 @@ def _registerExec(srvObj,
       FAILED:      The file was selected for registration but could not
                    be properly registered because of inconsistencies.
                    The status will be of the format: 'FAILED[: <reason>]'.
-    
+
       REJECTED:    A file found under the specified path directory was
                    not accepted for cloning, usually because the mime-type
                    was not correct. The status will be of the format:
@@ -116,12 +116,12 @@ def _registerExec(srvObj,
 
     diskInfoDic:     Dictionary with Disk IDs as keys pointing to the info
                      about the disk (dictionary/ngamsDiskInfo).
-    
+
     reqPropsObj:     If an NG/AMS Request Properties Object is given, the
                      Request Status will be updated as the request is carried
                      out (ngamsReqProps).
-                   
-    Returns:         Void. 
+
+    Returns:         Void.
     """
     T = TRACE()
 
@@ -163,7 +163,7 @@ def _registerExec(srvObj,
         raise Exception, "Error executing command: %s. Error: %s" %\
               (shellCmd, str(out))
     rmFile(tmpFileList)
-        
+
     # Go through each file in the list, check if the mime-type is among the
     # ones, which apply for registration. If yes try to register the file
     # by invoking the corresponding DAPI on the file.
@@ -186,7 +186,7 @@ def _registerExec(srvObj,
         filename    = fileInfo[0]
         diskId      = fileInfo[1]
         mimeType    = fileInfo[2]
-                
+
         # Register the file. Check first, that exactly this file is
         # not already registered. In case it is, the file will be rejected.
         regPi = srvObj.getCfg().getRegPiFromMimeType(mimeType)
@@ -296,7 +296,7 @@ def _registerExec(srvObj,
                 ngamsCacheControlThread.addEntryNewFilesDbm(srvObj, diskId,
                                                             piRes.getFileId(),
                                                             fileVer, filename)
-            
+
             # Generate a confirmation log entry.
             msg = genLog("NGAMS_INFO_FILE_REGISTERED",
                          [filename, piRes.getFileId(), piRes.getFileVersion(),
@@ -322,7 +322,7 @@ def _registerExec(srvObj,
             # TODO (rtobar, 2016-01): Why don't we raise an exception here?
             #      Otherwise the command appears as successful on the
             #      client-side
-  
+
         # Add the file information in the registration report.
         if (emailNotif): regDbm.addIncKey(tmpFileObj)
 
@@ -340,7 +340,7 @@ def _registerExec(srvObj,
     rmFile(fileListDbmName + "*")
     del fileInfoDbm
     rmFile(fileInfoDbmName + "*")
-    
+
     # Final update of the Request Status.
     if (reqPropsObj):
         if (reqPropsObj.getExpectedCount() and reqPropsObj.getActualCount()):
@@ -351,8 +351,8 @@ def _registerExec(srvObj,
         reqPropsObj.setCompletionPercent(complPercent, 1)
         reqPropsObj.setCompletionTime(1)
         srvObj.updateRequestDb(reqPropsObj)
- 
-    # Send Register Report with list of files cloned to a possible 
+
+    # Send Register Report with list of files cloned to a possible
     # requestor(select) of this.
     if (emailNotif):
         xmlStat = 0
@@ -396,7 +396,7 @@ def _registerExec(srvObj,
                 path = reqPropsObj.getHttpPar("path")
             else:
                 path = "-----"
-            if (fileCount): 
+            if (fileCount):
                 timePerFile = (regTimeAccu / fileCount)
             else:
                 timePerFile = 0
@@ -431,7 +431,7 @@ def _registerExec(srvObj,
                         str(tmpFileObj.getFileVersion()),
                         tmpFileObj.getTag())
                 fo.write(line)
-                
+
             fo.write(128 * "-")
             fo.write("\n\n==END\n")
             fo.close()
@@ -442,9 +442,9 @@ def _registerExec(srvObj,
         attachmentName = "RegisterStatusReport"
         if (reqPropsObj.hasHttpPar("path")):
             attachmentName += "-" + reqPropsObj.getHttpPar("path").\
-                              replace("/", "_")       
+                              replace("/", "_")
         ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_INFO,
-                                 "REGISTER STATUS REPORT", statRep, 
+                                 "REGISTER STATUS REPORT", statRep,
                                  emailAdrList, 1, mimeType, attachmentName, 1)
         del regDbm
         rmFile(regDbmName + "*")
@@ -482,8 +482,8 @@ def _registerThread(srvObj,
         error("Exception raised in Register Sub-Thread: " + str(e))
         rmFile(tmpFilePat + "*")
         raise e
-    
-    
+
+
 def register(srvObj,
              path,
              mimeType = "",
@@ -497,10 +497,10 @@ def register(srvObj,
     back to the requestor if the 'httpRef' object is given.
 
     srvObj:       Instance of NG/AMS Server object (ngamsServer).
-    
+
     path:         The path name, which is used as starting point for
                   the searching for files (string).
-    
+
     mimeType:     Comma separated list of mime-types, which should be
                   considered for registration (string).
 
@@ -533,10 +533,10 @@ def register(srvObj,
                         [path, "File or path specified is not located on an "
                          "NGAS Disk."])
         raise Exception, errMsg
-        
+
     # Create file pattern for temporary files.
     tmpFilePat=ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),"REGISTER_CMD")
-   
+
     # Generate dictionary with mime-types to accept.
     mimeTypeDic = {}
     if (mimeType != ""):
@@ -564,7 +564,7 @@ def register(srvObj,
                               read(srvObj.getDb(), diskId)
         diskInfoDic[diskId] = tmpDiskInfo
         mtPt2DiskInfo[mtPt] = tmpDiskInfo
-     
+
     # Generate a list with all files found under the specified path, which
     # are candidates for being registered.
     fileListDbmName = tmpFilePat + "_FILE_LIST"
@@ -581,7 +581,7 @@ def register(srvObj,
         if (searchPath.find(mtPt2) == 0):
             foundVolume = True
             if os.path.isdir(searchPath):
-                for root, dirs, files in os.walk(searchPath):                
+                for root, dirs, files in os.walk(searchPath):
                     for nextFile in files:
                         if nextFile not in \
                         [NGAMS_DISK_INFO, \
@@ -608,8 +608,8 @@ def register(srvObj,
                                     mimeType]
                     fileListDbm.add(os.path.join(root,nextFile), tmpFileInfo)
         if foundVolume: break
-                
-                    
+
+
 #    pattern = ""
 #    # TODO: Portatibility issue. The usage of UNIX commands should be
 #    #       avoided if possible.
@@ -655,8 +655,8 @@ def register(srvObj,
 #    rmFile(tmpGlobFile)
     fileListDbm.sync()
     del fileListDbm
-     
-    # Send intermediate reply if the HTTP Reference object is given.  
+
+    # Send intermediate reply if the HTTP Reference object is given.
     if (httpRef and (not reqPropsObj.getWait())):
         info(3,"REGISTER command accepted - generating immediate " +\
              "confimation reply to REGISTER command")
@@ -670,7 +670,7 @@ def register(srvObj,
                                   "Accepted REGISTER command for execution").\
                                   setReqStatFromReqPropsObj(reqPropsObj).\
                                   setActualCount(0)
- 
+
     # Launch the register thread or run the command in foreground if wait=1
     if (not reqPropsObj.getWait()):
         args = (srvObj, fileListDbmName, tmpFilePat, diskInfoDic,
@@ -697,7 +697,7 @@ def register(srvObj,
                                    NGAMS_XML_STATUS_DTD)
         srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, xmlStat,
                             0, NGAMS_XML_MT, len(xmlStat), [], 1)
-    
+
 
 def handleCmdRegister(srvObj,
                       reqPropsObj,

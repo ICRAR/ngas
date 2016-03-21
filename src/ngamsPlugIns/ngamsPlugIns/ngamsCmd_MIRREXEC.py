@@ -49,7 +49,7 @@ EXAMPLES:
 	http://ngas05.hq.eso.org:7778/MIRREXEC?n_threads=4
 	- Carry out all pending mirroring tasks assigned to the local cluster using 2 threads per source node
 	http://ngas05.hq.eso.org:7778/MIRREXEC?mirror_cluster=1&n_threads=2
-    
+
 """
 
 from threading import Thread
@@ -65,16 +65,16 @@ def handleCmd(srvObj,
               httpRef):
     """
     Handle Command MIRRTABLE to populate bookkeeping table in target cluster
-    
+
     INPUT:
     	srvObj:         ngamsServer, Reference to NG/AMS server class object
-    
+
     	reqPropsObj:	ngamsReqProps, Request Property object to keep track
-                    	of actions done during the request handling 
-        
+                    	of actions done during the request handling
+
    	httpRef:        ngamsHttpRequestHandler, Reference to the HTTP request
                     	handler object
-        
+
     RETURNS:		Void.
     """
     T = TRACE()
@@ -82,9 +82,9 @@ def handleCmd(srvObj,
     # Get command parameters.
     mirror_cluster = 0
     n_threads = 2
-    order = 1 
+    order = 1
     if (reqPropsObj.hasHttpPar("mirror_cluster")):
-        mirror_cluster = int(reqPropsObj.getHttpPar("mirror_cluster")) 
+        mirror_cluster = int(reqPropsObj.getHttpPar("mirror_cluster"))
     if (reqPropsObj.hasHttpPar("n_threads")):
         n_threads = int(reqPropsObj.getHttpPar("n_threads"))
     if (reqPropsObj.hasHttpPar("order")):
@@ -119,19 +119,19 @@ def handleCmd(srvObj,
         info(3,"Performing mirroring tasks from (%s) to (%s) using %s threads per source node and target node" \
         % (str(active_source_nodes),str(active_target_nodes),str(n_threads)))
         multithreading_mirroring(active_source_nodes,active_target_nodes,n_threads,order,srvObj)
-        
 
-    # Return Void 
+
+    # Return Void
     return
 
 
 def get_cluster_name(srvObj):
     """
     Get cluster name corresponding to the processing NGAMS server
-    
+
     INPUT:
         srvObj          ngamsServer, Reference to NG/AMS server class object
-    
+
     RETURNS:
         cluster_name    string, name of the cluster corresponding to the input host_id
     """
@@ -151,10 +151,10 @@ def get_cluster_name(srvObj):
 def get_full_qualified_name(srvObj):
     """
     Get full qualified server name for the input NGAS server object
-    
+
     INPUT:
-        srvObj  ngamsServer, Reference to NG/AMS server class object 
-    
+        srvObj  ngamsServer, Reference to NG/AMS server class object
+
     RETURNS:
         fqdn    string, full qualified host name (host name + domain + port)
     """
@@ -180,7 +180,7 @@ def get_active_source_nodes(srvObj,cluster_name="none",full_qualified_name="none
 	cluster_name		string, Name of the cluster to process mirroring tasks
         full_qualified_name	string, Full qualified name of ngams server to process mirroring tasks
 	srvObj          	ngamsServer, Reference to NG/AMS server class object
-    
+
     RETURNS:
 	active_source_nodes	list[string], List of active source nodes with files to mirror
     """
@@ -200,12 +200,12 @@ def get_active_source_nodes(srvObj,cluster_name="none",full_qualified_name="none
     source_nodes = source_nodes[0]
     active_source_nodes = []
     for node in source_nodes:
-        if ngams_server_status(node[0]): active_source_nodes.append(node[0]) 
-    
+        if ngams_server_status(node[0]): active_source_nodes.append(node[0])
+
     # Return result
     return active_source_nodes
-    
-    
+
+
 def get_active_target_nodes(cluster_name,srvObj):
     """
     Get active target nodes ready to process mirroring tasks
@@ -213,7 +213,7 @@ def get_active_target_nodes(cluster_name,srvObj):
     INPUT:
         cluster_name		string, Name of the cluster to process mirroring tasks
 	srvObj          	ngamsServer, Reference to NG/AMS server class object
-    
+
     RETURNS:
         active_target_nodes	list[string], List of active target nodes with files to mirror
     """
@@ -229,7 +229,7 @@ def get_active_target_nodes(cluster_name,srvObj):
     target_nodes = target_nodes[0]
     active_target_nodes = []
     for node in target_nodes:
-        if ngams_server_status(node[0]): active_target_nodes.append(node[0]) 
+        if ngams_server_status(node[0]): active_target_nodes.append(node[0])
 
     # Log info
     info(3, "Active nodes found in cluster %s: %s" % (cluster_name,str(active_target_nodes)))
@@ -244,7 +244,7 @@ def ngams_server_status(ngams_server):
 
     INPUT:
         ngams_server    string, Full qualified name of ngams_server
-    
+
     RETURNS:
 	status 		bool, True if active False if unactive
     """
@@ -257,13 +257,13 @@ def ngams_server_status(ngams_server):
 def cutoff_file_size(target_node,srvObj):
     """
     INPUT:
-        target_node     string, Node target of the files to be mirrored 
+        target_node     string, Node target of the files to be mirrored
         srvObj          ngamsServer, Reference to NG/AMS server class object
-    
+
     RETURNS:
         cutoff_fs	float, Cutoff file_size to determin small-files threshold
     """
-   
+
     # Get file_size list
     query = "select file_size/(1024.0*1024.0) from ngas_mirroring_bookkeeping where target_host='" + target_node + "' order by file_size"
     info(4, "Executing SQL query to get sorted list of files to be mirrored to target_node=%s : %s" % (target_node,query))
@@ -298,9 +298,9 @@ def get_list_mirroring_tasks(source_node,target_node,srvObj):
 
     INPUT:
         source_node     string, Node source of the files to be mirrored
-        target_node     string, Node target of the files to be mirrored 
+        target_node     string, Node target of the files to be mirrored
         srvObj          ngamsServer, Reference to NG/AMS server class object
-    
+
     RETURNS:
         mirroring_tasks list[string], List of files to be mirrored from the source_node to the target_node
     """
@@ -331,7 +331,7 @@ def get_sublist_mirroring_tasks(list,n_threads,ith_thread,reverse_flag):
         n_threads	int, Number of threads
         ith_thread	int, pos-th to be selected
         reverse_flag	bool, True if the list has to be reversed
-    
+
     RETURNS:
         filtered_list   list, Filtered list
     """
@@ -358,15 +358,15 @@ def process_mirroring_tasks(mirroring_tasks,source_node,target_node,ith_thread,s
         mirroring_tasks	list[strings], List of the mirroring tasks assigned to the input server
         source_node	string, Full qualified name of the source node
 	target_node	string, Full qualified name of the target node
-	ith_thread	int, Thread number 
+	ith_thread	int, Thread number
 	srvObj          ngamsServer, Reference to NG/AMS server class object
-    
+
     RETURNS:		Void
     """
-    
+
     # Create target server connection
     target_node_conn = httplib.HTTPConnection(target_node)
-    
+
     # Loop mirroring_tasks list
     n_tasks = str(len(mirroring_tasks))
     i = 1
@@ -400,7 +400,7 @@ def process_mirroring_tasks(mirroring_tasks,source_node,target_node,ith_thread,s
         # Log message for mirroring task processed
         info(3, "Mirroring task %s/%s (%s to %s [thread %s]) processed in %ss (%s)" % (str(i),n_tasks,source_node,target_node,str(ith_thread),str(elapsed_time),status))
         i += 1
-        
+
     # Return Void
     return
 
@@ -408,7 +408,7 @@ def process_mirroring_tasks(mirroring_tasks,source_node,target_node,ith_thread,s
 def multithreading_mirroring(source_nodes_list,target_nodes_list,n_threads,total_sequence_order,srvObj):
     """
     Creates n threads per source node and target node to process the corresponding mirroring tasks
-    Each thread starts from big files or small files alternating 
+    Each thread starts from big files or small files alternating
 
     INPUT:
 	source_nodes_list	list[string], List of active source nodes in the source cluster
@@ -416,7 +416,7 @@ def multithreading_mirroring(source_nodes_list,target_nodes_list,n_threads,total
 	n_threads		int, Number of threads per source-target connection
         total_sequence_order	int, Mirroring sequence order
         srvObj          	ngamsServer, Reference to NG/AMS server class object
-    
+
     RETURNS:			Void
     """
 
@@ -447,7 +447,7 @@ def multithreading_mirroring(source_nodes_list,target_nodes_list,n_threads,total
         # Source nodes loop
         for source_node in source_nodes_list:
             # Get cut-off file_size for this source node
-            cutoff_fs_source_node = (delta_percent*source_i)*cutoff_fs 
+            cutoff_fs_source_node = (delta_percent*source_i)*cutoff_fs
             # Get complete list of mirroring tasks
             mirroring_tasks_list = get_list_mirroring_tasks(source_node,target_node,srvObj)
             # n-threads loop
@@ -468,8 +468,8 @@ def multithreading_mirroring(source_nodes_list,target_nodes_list,n_threads,total
                     inner_sequence_reverse_flag = True
                 # Increase source_i counter (for cut-off file_size)
                 source_i += 1
-    
-            
+
+
     # Join mirror_node threads
     for ith_thread in threads_list:
         ith_thread.join()
@@ -492,10 +492,10 @@ class mirror_worker(Thread):
 def sort_target_nodes(target_nodes_list):
     """
     Sort target_nodes_list to balance priority
-    
+
     INPUT:
         target_nodes_list       list[string], List of active target nodes in the target cluster
-    
+
     RETURNS:                    list[string], Sorted active target nodes list
     """
 
@@ -506,7 +506,7 @@ def sort_target_nodes(target_nodes_list):
         if (machines_list.count(machine)==0): machines_list.append(machine)
 
     sorted_target_nodes_list = []
-    
+
     # Add lower port (machines sort-ascending)
     machines_list.sort()
     target_nodes_list.sort()
@@ -516,7 +516,7 @@ def sort_target_nodes(target_nodes_list):
             if (node_machine==machine):
                 sorted_target_nodes_list.append(target_node)
                 break
-    
+
     # Add higher port (machines sort-descending)
     machines_list.reverse()
     target_nodes_list.reverse()
@@ -529,7 +529,7 @@ def sort_target_nodes(target_nodes_list):
 
     # Log info
     info(3, "Target nodes order to send MIRREXEC command: %s" % (str(sorted_target_nodes_list)))    # Add higher port (machines sort-descending)
-    
+
     # Return sorted target nodes list
     return sorted_target_nodes_list
 
@@ -538,18 +538,18 @@ def distributed_mirroring(target_nodes_list,n_threads):
     """
     Send MIRREXEC command to each nodes in the target nodes
     list in order to have a distributed mirroring process
-    
+
     INPUT:
         target_nodes_list	list[string], List of active target nodes in the target cluster
 	n_threads		int, Number of threads per source-target connection
-    
+
     RETURNS:            	Void
     """
 
     # Get sorted_target_nodes_list
     sorted_target_nodes_list = sort_target_nodes(target_nodes_list)
-    
-    
+
+
     threads_list = []
     sequence_order = 1
     machine_conf = []
@@ -574,7 +574,7 @@ def distributed_mirroring(target_nodes_list,n_threads):
         if (sequence_order == 0):
             sequence_order = 1
         else:
-            sequence_order = 0 
+            sequence_order = 0
 
     # Join mirror_node threads
     for ith_thread in threads_list:
@@ -582,16 +582,16 @@ def distributed_mirroring(target_nodes_list,n_threads):
 
     # Return Void
     return
- 
+
 def send_mirrexec_command(target_node,n_threads,sequence_order):
     """
     Send MIRREXEC command to the input source_node
-        
+
     INPUT:
         source_node	string, Target node to send MIRREXEC
         n_threads       int, Number of threads per source-target connection
         sequence_order	int, Mirroring sequence order
-    
+
     RETURNS:		Void
     """
 
@@ -627,6 +627,6 @@ class mirrexec_command_sender(Thread):
         self.sequence_order = sequence_order
     def run(self):
         send_mirrexec_command(self.source_node,self.n_threads,self.sequence_order)
-       
+
 
 # EOF

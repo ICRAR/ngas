@@ -29,7 +29,7 @@ This module builds the NGAS MapReduce job for the MWA RTS system running
 on a cluster of NGAS servers (e.g. iVEC Fornax)
 
 To implement this module, knowledge of MWA and RTS is hardcoded. So if you want
-to have another pipeline (e.g. CASA for VLA), write your own based on the generic MRTask 
+to have another pipeline (e.g. CASA for VLA), write your own based on the generic MRTask
 framework in ngamsJobProtocol.py
 """
 
@@ -67,7 +67,7 @@ class RTSJob(MapReduceTask):
     def __init__(self, jobId, rtsParam):
         """
         Constructor
-        
+
         JobId:    (string) identifier uniquely identify this RTSJob (e.g. RTS-cwu-2013-05-29H05:04:03.456)
         rtsParam:    RTS job parameters (class RTSJobParam)
         """
@@ -75,21 +75,21 @@ class RTSJob(MapReduceTask):
         self.__completedObsTasks = 0
         self.__hostAllocDict = {} # key: hostId that has been allocated, value: place_holder (e.g. CorrId)
         self.__obsRespQ = Queue()
-        self._rtsParam = rtsParam    
-        #self.__buildRTSTasks(rtsParam)       
-    
+        self._rtsParam = rtsParam
+        #self.__buildRTSTasks(rtsParam)
+
     def buildRTSTasks(self):
         if (self._rtsParam.obsList == None or len(self._rtsParam.obsList) == 0):
             errMsg = 'No observation numbers found in this RTS Job'
             raise Exception, errMsg
-        
+
         num_obs = len(self._rtsParam.obsList)
-        
+
         for j in range(num_obs):
             obs_num = self._rtsParam.obsList[j]
             obsTask = ObsTask(obs_num, self._rtsParam, self)
             self.addMapper(obsTask)
-            
+
             fileIds = ngamsJobMWALib.getFileIdsByObsNum(obs_num)
             if (len(fileIds.keys()) == 0):
                 raise Exception('Obs number %s does not appear to be valid. We require exact observation numbers rather than GPS ranges.' % obs_num)
@@ -100,38 +100,38 @@ class RTSJob(MapReduceTask):
                         errMsg = 'There are no online NGAS servers available'
                         raise Exception, errMsg
                     corrTask = CorrTask(str(k + 1), fileIds[k + 1], self._rtsParam, obsTask, exeHost, fileLocDict = fileLocaDic)
-                    obsTask.addMapper(corrTask)  
-                    if (self.__hostAllocDict.has_key(exeHost)):    
+                    obsTask.addMapper(corrTask)
+                    if (self.__hostAllocDict.has_key(exeHost)):
                         self.__hostAllocDict[exeHost] += 1
                     else:
-                        self.__hostAllocDict[exeHost] = 1   
-        
+                        self.__hostAllocDict[exeHost] = 1
+
     def _allocateHost(self, corrFileList):
         """
         Allocate host to a correlator based on two criteria:
         1. maximum of parallel processing (i.e. declustering)
         2. data locality
-        
+
         corrFileList:    A list of file ids belonging to a correlator (a List of strings)
         return:          A tuple, 0 - a host (hostId:port) (string), 1 - a dict, # key - fileId, value - FileLocation
-        
-        This function is not thread-safe, it must be sequentially called by a single thread,    
+
+        This function is not thread-safe, it must be sequentially called by a single thread,
         """
         fileLocDict = ngamsJobMWALib.getBestHost(corrFileList, self.__hostAllocDict.keys())
         if (not fileLocDict or len(fileLocDict.keys()) == 0):
             nextHost = ngamsJobMWALib.getNextOnlineHost(self.__hostAllocDict.keys())
-            if (not nextHost): 
+            if (not nextHost):
                 logger.warning('Cannot find a host that is different from what have been allocated for files %s' % str(corrFileList))
                 # try a random one that might have been allocated, thus compromising the maximum parallel processing
-                return (ngamsJobMWALib.getNextOnlineHost(), {}) 
+                return (ngamsJobMWALib.getNextOnlineHost(), {})
             else:
                 return (nextHost, {})
         else:
             return (fileLocDict.values()[0]._svrHost, fileLocDict)
-    
+
     def getParams(self):
         return self._rtsParam
-    
+
     def combine(self, mapOutput):
         """
         Hold each observation's result, thread safe
@@ -139,14 +139,14 @@ class RTSJob(MapReduceTask):
         dprint('Job %s is combined' % self.getId())
         if (mapOutput):
             self.__obsRespQ.put(mapOutput) # this is thread safe
-    
+
     def reduce(self):
         """
         Return urls of each tar file, each of which corresponds to an observation's images
         """
         dprint('Job %s is reduced' % self.getId())
         jobRe = JobResult(self.getId())
-        
+
         while (1):
             obsTaskRe = None
             try:
@@ -154,13 +154,13 @@ class RTSJob(MapReduceTask):
             except Empty, e:
                 break
             jobRe.merge(obsTaskRe)
-        
+
         self.setFinalJobResult(jobRe)
         return str(jobRe)
-    
+
     def setFinalJobResult(self, jobRe):
         self._jobRe = jobRe
-        
+
     def getFinalJobResult(self):
         return self._jobRe
 
@@ -172,7 +172,7 @@ class ObsTask(MapReduceTask):
     def __init__(self, obsNum, rtsParam, jobParent):
         """
         Constructor
-        
+
         obsNum:    (string) observation number/id, i.e. the GPS time of each MWA observation
         rtsParam:    RTS job parameters (class RTSJobParam)
         """
@@ -187,7 +187,7 @@ class ObsTask(MapReduceTask):
         self._timeOut4LT = rtsParam.LT_timeout
         self._progress = -1
         self._blackHostList = {}
-    
+
     def combine(self, mapOutput):
         """
         Hold each correlator's result, thread safe
@@ -195,7 +195,7 @@ class ObsTask(MapReduceTask):
         dprint('Observation %s is combined' % self.getId())
         if (mapOutput):
             self.__corrRespQ.put(mapOutput) # this is thread safe
-    
+
     def reduce(self):
         """
         Return results of each correlator, each of which corresponds to images of a subband
@@ -203,7 +203,7 @@ class ObsTask(MapReduceTask):
         dprint('Observation %s is reduced' % self.getId())
         obsTaskRe = ObsTaskResult(self.getId())
         timeout_retry = 0
-        
+
         imgurlList = []
         while (1):
             corrTaskRe = None
@@ -211,13 +211,13 @@ class ObsTask(MapReduceTask):
                 corrTaskRe = self.__corrRespQ.get_nowait()
                 if (corrTaskRe._errcode == 0):
                     imgurl = corrTaskRe._imgUrl
-                    imgurlList.append(imgurl)                                       
+                    imgurlList.append(imgurl)
                 else:
                     pass
             except Empty, e:
                 break
             obsTaskRe.merge(corrTaskRe)
-        
+
         if (len(imgurlList) < 1):
             errmsg = 'Fail to find any image urls from correlators'
             obsTaskRe._errmsg = errmsg
@@ -225,13 +225,13 @@ class ObsTask(MapReduceTask):
             self.setStatus(STATUS_EXCEPTION)
             dprint(obsTaskRe._errmsg)
             return obsTaskRe
-        
-        # 1. decide an exeHost to do the local reduction task    
+
+        # 1. decide an exeHost to do the local reduction task
         self._progress = 0
-        while (self._progress == 0):    
+        while (self._progress == 0):
             self._progress = 1
-            host = None        
-            
+            host = None
+
             # TODO
             # for loop the imgurllist until find one that is online
             # if cannot find, just get random one that is online
@@ -253,10 +253,10 @@ class ObsTask(MapReduceTask):
                         else:
                             urlError = 0
                             break
-                except Exception, err:                                       
+                except Exception, err:
                     urlError = 1
                     continue
-            
+
             if (urlError):
                 #try another random site
                 host = ngamsJobMWALib.getNextOnlineHost()
@@ -267,16 +267,16 @@ class ObsTask(MapReduceTask):
                     obsTaskRe._errmsg = 'Failed to find any host to execute local job'
                     self.setStatus(STATUS_EXCEPTION)
                     break
-            else:    
+            else:
                 self._taskExeHost = '%s:%d' % (host.hostname, host.port)
-            
+
             #  2. construct the local TaskId (jobId__obsNum)
             taskId = '%s__%s' % (self.getParent().getId(), self.getId())
             obsLT = ObsLocalTask(taskId, imgurlList, self.__rtsParam)
-            
+
             # 3. register the local task
             ngamsJobMWALib.registerLocalTask(taskId, self)
-            
+
             # 4. - do the real reduction work (i.e. combine all images from correlators into a single one) at a remote node
             strLT = pickle.dumps(obsLT)
             try:
@@ -297,12 +297,12 @@ class ObsTask(MapReduceTask):
                     obsTaskRe._errcode = 2
                     self.setStatus(STATUS_EXCEPTION)
                     dprint(obsTaskRe._errmsg)
-                    break       
-            
+                    break
+
             self._progress = 4.5
             self.setStatus(STATUS_QUEUEING)
-            self._ltDequeueEvent.wait() # no timeout            
-            
+            self._ltDequeueEvent.wait() # no timeout
+
             # 5. - wait until result comes back
             self.setStatus(STATUS_RUNNING)
             self._ltComltEvent.wait(self._timeOut4LT)
@@ -326,34 +326,34 @@ class ObsTask(MapReduceTask):
             else:
                 obsTaskRe._errcode = 0
                 obsTaskRe.setImgUrl(self._localTaskResult.getResultURL())
-        
+
         return obsTaskRe
-    
+
     def localTaskCompleted(self, localTaskResult):
         self._localTaskResult = localTaskResult
         self._ltDequeueEvent.set()
         self._ltComltEvent.set()
-    
+
     def localTaskDequeued(self, taskId):
         self._ltDequeueEvent.set()
-    
+
 
 class CorrTask(MapReduceTask):
     """
     MWA Correlator task, the third level of the RTS MRTask tree
-    It is where actual execution happens, and an ObsTask consists of 
+    It is where actual execution happens, and an ObsTask consists of
     multiple CorrTasks
     Each CorrTask processes all files generated by that
-    correlator 
+    correlator
     """
     def __init__(self, corrId, fileIds, rtsParam, obsParent, taskExeHost, fileLocDict = {}):
         """
         Constructor
-        
+
         corrId:    (string) Correlator identifier (e.g. 1, 2, ... , 24)
         fileIds:   (list) A list of file ids (string) to be processed by this correlator task
         rtsParam:    RTS job parameters (class RTSJobParam)
-        
+
         """
         MapReduceTask.__init__(self, str(corrId), parent = obsParent)
         self.__fileIds = fileIds
@@ -373,13 +373,13 @@ class CorrTask(MapReduceTask):
         self._failedLTExec = 0 # the number of failed local task executions
         self._blackList = []
         self._failedFileDelivery = []
-    
+
     def _stageFiles(self, cre):
         """
         cre - CorrTaskResult
         """
-        # 1 Check all files' locations, and determines the best host 
-        self._numIngested = len(self._fileLocDict.keys())  
+        # 1 Check all files' locations, and determines the best host
+        self._numIngested = len(self._fileLocDict.keys())
         if (not self._taskExeHost):  # this is re-try
             try:
                 self._fileLocDict = ngamsJobMWALib.getBestHost(self.__fileIds, self._blackList)
@@ -389,32 +389,32 @@ class CorrTask(MapReduceTask):
                 self.setStatus(STATUS_EXCEPTION)
                 dprint(cre._errmsg)
                 return cre
-            
+
             self._numIngested = len(self._fileLocDict.keys())
             if (self._numIngested > 0):
                 self._taskExeHost = self._fileLocDict.values()[0]._svrHost
             else:
                 self._taskExeHost = ngamsJobMWALib.getNextOnlineHost(self._blackList)
-            
+
             if (not self._taskExeHost):
                 cre._errcode = 7
-                cre._errmsg = 'There are no online NGAS servers available'   
+                cre._errmsg = 'There are no online NGAS servers available'
                 self.setStatus(STATUS_EXCEPTION)
                 dprint(cre._errmsg)
-                return cre     
-        
+                return cre
+
         # 2. For those files that are not on the best host, check if they are inside the cluster
         #    If so, stage them from an cluster node, otherwise, stage them from the external archive
         frmExtList = []
         for fid in self.__fileIds:
-            if (not self._fileLocDict.has_key(fid)):                
+            if (not self._fileLocDict.has_key(fid)):
                 try:
-                    fileLoc = ngamsJobMWALib.getFileLocations(fid)           
+                    fileLoc = ngamsJobMWALib.getFileLocations(fid)
                 except Exception, e:
                     cre._errmsg = "Fail to get location for file '%s': %s" % (fid, str(e))
                     cre._errcode = 2
                     dprint(cre._errmsg)
-                    # most likely a DB error                
+                    # most likely a DB error
                 if (len(fileLoc) == 0 or cre._errcode == 2):
                     # not in the cluster/or some db error , stage from outside
                     frmExtList.append(fid)
@@ -431,7 +431,7 @@ class CorrTask(MapReduceTask):
                     if (stageerr):
                         # if all cluster nodes failed, try the external archive
                         frmExtList.append(fid)
-                    
+
         if (len(frmExtList) > 0):
             logger.debug('Staging files %s from Cortex' % str(frmExtList))
             stageerr = ngamsJobMWALib.stageFile(frmExtList, self, self._taskExeHost)
@@ -444,14 +444,14 @@ class CorrTask(MapReduceTask):
                 self.setStatus(STATUS_EXCEPTION)
                 logger.error(cre._errmsg)
                 return cre
-        
+
         if (self._numIngested == len(self.__fileIds)): # all files are there
             self._fileIngEvent.set() # so do not block
         else:
             self._fileIngEvent.clear()
-            
+
         return cre
-    
+
     def map(self, mapInput = None):
         """
         Actual work for Correlator's file processing
@@ -464,9 +464,9 @@ class CorrTask(MapReduceTask):
             return cre # should raise exception here
         #TODO - deal with timeout!
         logger.debug('Correlator %s is being mapped' % self.getId())
-        self._progress = 0     
+        self._progress = 0
         taskId = '%s__%s__%s' % (self.getParent().getParent().getId(), self.getParent().getId(), self.getId())
-                
+
         while (self._progress == 0):
             self._progress = 1
             self.setStatus(STATUS_STAGING)
@@ -476,7 +476,7 @@ class CorrTask(MapReduceTask):
                 break
             # block if / while files are being ingested
             self._fileIngEvent.wait(timeout = self._timeOut4FileIng)
-            
+
             ret = ngamsJobMWALib.pingHost('http://%s/STATUS' % (self._taskExeHost))
             if (ret):
                 # host was down
@@ -487,7 +487,7 @@ class CorrTask(MapReduceTask):
                 if (self._localTaskResult):
                     self._localTaskResult = None
                 continue
-            
+
             """
             if (self._progress == 0):
                 # host was down (i.e. the function reportHostDown was called)
@@ -503,10 +503,10 @@ class CorrTask(MapReduceTask):
                 cre._errmsg = ''
                 for ff in self._failedFileDelivery:
                     #LTA file failure
-                    cre._errmsg += "\nFail to stage file %s from Long-Term Archive. Exception: %s." % (ff[0], ff[1])                    
+                    cre._errmsg += "\nFail to stage file %s from Long-Term Archive. Exception: %s." % (ff[0], ff[1])
                 break
-            
-            if (self._numIngested < len(self.__fileIds)):             
+
+            if (self._numIngested < len(self.__fileIds)):
                 cre._errmsg = "Timeout when waiting for file ingestion. Ingested %d out of %d." % (self._numIngested, len(self.__fileIds))
                 cre._errcode = 3
                 self.setStatus(STATUS_EXCEPTION)
@@ -516,18 +516,18 @@ class CorrTask(MapReduceTask):
                     if (not self._fileLocDict.has_key(fid)):
                         ngamsJobMWALib.fileIngestTimeout(fid, self._taskExeHost, self)
                 break
-            
+
             self._progress = 2
             # create local task and send them to remote servers
             #  1. construct the local TaskId (jobId__obsNum__corrId)
-            
+
             #  2. construct the file list
             fileLocList = []
             for flocs in self._fileLocDict.values():
                 fileLocList.append(flocs._filePath)
-            
+
             corrLT = CorrLocalTask(taskId, fileLocList, self.__rtsParam)
-            
+
             # 3. submit the local task to a remote host to run
             # but register itself to receive task complete event first
             ngamsJobMWALib.registerLocalTask(taskId, self)
@@ -553,7 +553,7 @@ class CorrTask(MapReduceTask):
                     dprint(cre._errmsg)
                     #return cre
                     break
-                
+
             # 3.5 Waiting for the task dequeue
             self._progress = 2.5
             self.setStatus(STATUS_QUEUEING)
@@ -569,11 +569,11 @@ class CorrTask(MapReduceTask):
                 self._ltComltEvent.clear()
                 self._localTaskResult = None
                 continue
-            
+
             # 4. Waiting for the result
             self._progress = 3
             self.setStatus(STATUS_RUNNING)
-            if (not self._localTaskResult): # just in case previously abandoned tasks got back some result so no need to wait again               
+            if (not self._localTaskResult): # just in case previously abandoned tasks got back some result so no need to wait again
                 logger.debug('Preparing for waiting on correlator %s' % self.getId())
                 self._ltComltEvent.wait(timeout = self._timeOut4LT)
                 logger.debug('Woke up on correlator %s' % self.getId())
@@ -630,13 +630,13 @@ class CorrTask(MapReduceTask):
                 cre._errcode = 0
                 cre._imgUrl = self._localTaskResult.getResultURL()
                 #TODO - cancel any pending local tasks since the final result is obtained
-        
+
         self.cleanTasks(taskId)
-        return cre 
-    
+        return cre
+
     def cleanTasks(self, taskId):
         """
-        stop all potentially running tasks on all involved hosts 
+        stop all potentially running tasks on all involved hosts
         """
         if (self._taskExeHost and (not (self._taskExeHost in self._blackList))):
             self._blackList.append(self._taskExeHost)
@@ -648,8 +648,8 @@ class CorrTask(MapReduceTask):
                     logger.debug('Submit task cancel request, acknowledgement received: %s' % strRes)
                 except urllib2.URLError, urlerr:
                     logger.error('Fail to submit task cancel request for task: %s, Exception: %s', (taskId, str(urlerr)))
-    
-    
+
+
     def fileFailToDeliver(self, fileId, isLTA, errHost, errMsg):
         """
         If failure from the internal cluster, stage again from the LTA
@@ -668,7 +668,7 @@ class CorrTask(MapReduceTask):
                 logger.error('But, again, fail to stage the file %s from the LTA' % fileId)
                 self._failedFileDelivery.append((fileId, errMsg))
                 self._fileIngEvent.set()
-    
+
     def fileIngested(self, fileId, filePath, ingestRate):
         logger.info('Obs %s corr %s received file %s' % (self.getParent().getId(), self.getId(), fileId))
         self._numIngSem.acquire()
@@ -679,39 +679,39 @@ class CorrTask(MapReduceTask):
         self._fileLocDict[fileId] = floc
         if (self._numIngested == len(self.__fileIds)):
             self._fileIngEvent.set()
-    
+
     def localTaskCompleted(self, localTaskResult):
         logger.debug('Received task result with an URL: %s on correlator %s, progress = %s, _ltComltEvent isset = %s' % (localTaskResult.getResultURL(), self.getId(), str(self._progress), str(self._ltComltEvent.isSet())))
         self._localTaskResult = localTaskResult
         self._ltDequeueEvent.set()
         self._ltComltEvent.set()
-        
-        
+
+
     def localTaskDequeued(self, taskId):
         self._ltDequeueEvent.set()
-    
+
     def reportHostDown(self, fileId, errorHost):
         """
         Notify the task of a failed host, indicating that re-staging is necessary
-        
-        this function deals with duplicated notifications of the same 
+
+        this function deals with duplicated notifications of the same
         failed hosts on the same correlator (for different files)
-        
+
         errorHost:    the host that is down (string)
         fileId:       the file which causes the detection of this error during ingestion
-            
+
         """
         # reschedule staging the file to another host
         logger.info('Obs %s corr %s received host down msg on %s' % (self.getParent().getId(), self.getId(), errorHost))
         self._hostErrSem.acquire()
         if (self._taskExeHost == errorHost and  # make sure the failed host is the current host
             self._progress == 1): # and make sure it is currently staging some files
-            
+
             self._progress = 0
             self._fileIngEvent.set() # wake up in case it is still waiting
-            
+
         self._hostErrSem.release()
-    
+
     def getHostNameFromHostId(self, hostId):
         """
         This function is cluster-specific
@@ -725,13 +725,13 @@ class CorrTask(MapReduceTask):
             return 'f0%s' % hostName
         else:
             return hostName
-    
+
     def toJSONObj(self):
         """
         Override the default impl
         to jsonise file ids
         """
-        
+
         jsobj = {}
         jsobj['name'] = self.getId() + '-' + self.getHostNameFromHostId(self._taskExeHost) + '-' + statusDic[self.getStatus()]
         jsobj['walltime'] = self.getWallTime()
@@ -763,32 +763,32 @@ class CorrTask(MapReduceTask):
             except Exception, jerr:
                 logger.info('Ingestion rate = %s. Exception: %s' % (str(ingR), str(jerr)))
                 fjsobj['name'] = '%s@%s-%.0fMB/s' % (fileId, floc, float(0.0))
-            
+
             children.append(fjsobj)
         jsobj['children'] = children
         return jsobj
-        
-        
+
+
     """
     def getMoreJSONAttr(self):
         moredic = {}
         name = self.getId()
-        
+
         for fileId in self.__fileIds:
             name += ',' + fileId[26:]
-        
-        moredic['name'] = name  
-        return moredic 
-    """ 
+
+        moredic['name'] = name
+        return moredic
+    """
 
 class CorrTaskResult:
     """
     A class hold all the results values produced by the correlator task
-    """    
+    """
     def __init__(self, corrId, fileIds, imgUrl = None):
         """
         Constructor
-        
+
         corrId:    correlator id (string)
         fileIds:   fileIds belong to this correlator (a list of string)
         imgUrl:    (optional) If successful, the url of the generated image zip file (string)
@@ -796,7 +796,7 @@ class CorrTaskResult:
         self.__corrId = corrId
         self._subbandId = int(corrId)
         self._fileIds = fileIds
-        # imgUrl will be used by the ObsTask reducer, which 
+        # imgUrl will be used by the ObsTask reducer, which
         # sends a job to imgUrl to aggregate all correlator zip files into one zip file
         self._imgUrl = imgUrl # e.g. 192.168.1.1:7777/RETRIEVE?file_id=job001_obs002_gpubox02.zip
         self._errcode = 0
@@ -814,7 +814,7 @@ class ObsTaskResult:
         self.bad_list = [] # a list of tuples (subbandId, errMsg)
         self._errcode = 0
         self._errmsg = ''
-    
+
     def merge(self, corrTaskResult):
         """
         Merge a correlator's result into this observation result
@@ -822,9 +822,9 @@ class ObsTaskResult:
         """
         if (not corrTaskResult):
             return
-        
+
         if (corrTaskResult._errcode): # error occured
-            re = (corrTaskResult._subbandId, 'errorcode:%d, errmsg:%s' % 
+            re = (corrTaskResult._subbandId, 'errorcode:%d, errmsg:%s' %
                   (corrTaskResult._errcode, corrTaskResult._errmsg))
             self.bad_list.append(re)
             self.bad_list.sort()
@@ -839,35 +839,35 @@ class ObsTaskResult:
             #        fids += ',%s' % fileId
             re = (corrTaskResult._subbandId, corrTaskResult._imgUrl) # at least print out successful img urls
             self.good_list.append(re)
-            self.good_list.sort()                    
-    
+            self.good_list.sort()
+
     def setImgUrl(self, imgUrl):
         """
         Set the final url to get all images of this observation
         """
         self._imgUrl = imgUrl
-        
+
     def __str__(self):
         sl = len(self.good_list)
         fl = len(self.bad_list)
         tt = sl + fl
-        
+
         re = ''
-        
+
         if (self._imgUrl):
             re += 'image_url = %s (accessible from within Fornax) \n %d successful subbands out of %d.\t\t\n\n' % (self._imgUrl, sl, tt)
 
         if (sl):
-            re += 'Details of %d successful subbands:\t\t\n' % sl 
+            re += 'Details of %d successful subbands:\t\t\n' % sl
             for subtuple in self.good_list:
                 re += '\t subbandId: %d, image urls (for this sub-band only): %s\n' % (subtuple[0], subtuple[1])
-        if (fl):           
+        if (fl):
             re += 'Details of %d failed subbands:\t\t\n' % fl
             for subtuple in self.bad_list:
                 re += '\t subbandId: %d, vis files failed: %s\n' % (subtuple[0], subtuple[1])
-        
-        return re + '\n'   
-        
+
+        return re + '\n'
+
 
 class JobResult:
     """
@@ -881,7 +881,7 @@ class JobResult:
         self.__obsBadList = []
         self.__pureGood = 0
         self.__totalObs = 0
-    
+
     def merge(self, obsTaskResult):
         """
         """
@@ -889,15 +889,15 @@ class JobResult:
             return
         self.__totalObs += 1
         if (len(obsTaskResult.bad_list) == 0):
-            self.__pureGood += 1        
+            self.__pureGood += 1
             self.__obsGoodList.append(obsTaskResult)
             self.__obsGoodList.sort()
         else:
             self.__obsBadList.append(obsTaskResult)
             self.__obsBadList.sort()
-    
+
     def __str__(self):
-        
+
         re = '# of successful observations: \t\t%d\n\n' % self.__pureGood
         for obsRT in self.__obsGoodList:
             re += 'Observation - %s\n%s\n' % (obsRT._obsNum, '-' * len('Observation - ' + obsRT._obsNum))
@@ -907,24 +907,24 @@ class JobResult:
             for obsRT in self.__obsBadList:
                 re += 'Observation - %s\n%s\n' % (obsRT._obsNum, '-' * len('Observation - ' + obsRT._obsNum))
                 re += str(obsRT)
-        
+
         re = re.replace('\t', '&nbsp;&nbsp;&nbsp;&nbsp;')
         re = re.replace('\n', '<br/>')
         #header = '<html><head><style>p.ex1{font:12px arial,sans-serif;}</style></head><body><p class="ex1">'
         #tail = '</p></body></html>'
-        return re 
+        return re
         #'%s%s%s' % (header, re, tail)
-    
+
     def toJSON(self):
         pass
-    
+
     def toText(self):
         return self.__str__()
 
 
 class RTSJobParam:
     """
-    A class contains essential/optional parameters to 
+    A class contains essential/optional parameters to
     run the RTS pipeline
     """
     def __init__(self):
@@ -937,7 +937,7 @@ class RTSJobParam:
         self.fine_channel = 40 # KHz
         self.num_subband = 24 # should be the same as coarse channel
         self.tile = '128T'
-        
+
         self.mwa_path = '/scratch/astronomy556/MWA'
         #RTS template prefix (optional, string)
         self.rts_tplpf = '%s/RTS/utils/templates/RTS_template_' % self.mwa_path
@@ -947,13 +947,13 @@ class RTSJobParam:
         self.ngas_processing_path = '/tmp/NGAS_MWA/processing'
         self.LT_timeout = 3600
         self.FI_timeout = 3600
-        
-        
+
+
         #RTS template names for this processing (optional, string - comma separated aliases, e.g.
-        #drift,regrid,snapshots, default = 'regrid'). Each name will be concatenated with 
-        #rts-tpl-pf and rts-tpl-sf to form the complete template file path, 
+        #drift,regrid,snapshots, default = 'regrid'). Each name will be concatenated with
+        #rts-tpl-pf and rts-tpl-sf to form the complete template file path,
         #e.g. /scratch/astronomy556/MWA/RTS/utils/templates/RTS_template_regrid.in
-        
+
         # this should get it from the job submission form
         self.rts_tpl_name = 'regrid,simplecal'
         self.use_gpu = False
@@ -966,38 +966,38 @@ class DummyLocalTask(MRLocalTask):
     def __init__(self, taskId):
         """
         Constructor
-        
+
         taskId      uniquely identify this CorrLocalTask
         """
-        MRLocalTask.__init__(self, taskId)                
-    
+        MRLocalTask.__init__(self, taskId)
+
     def execute(self):
         ret = MRLocalTaskResult(self._taskId, 0, 'everything is fine')
         time.sleep(10) #simulate work
         return ret
 
 class ObsLocalTask(MRLocalTask):
-    
+
     def __init__(self, taskId, imgurl_list, params):
         """
         Constructor
-        
+
         taksId        uniquely identify this ObsLocalTask (string)
-        imgurl_list   a list of img urls (List) 
+        imgurl_list   a list of img urls (List)
         params        RTSJobParam
         """
         MRLocalTask.__init__(self, taskId)
         self._imgurl_list = imgurl_list
         self._params = params
-    
+
     def stop(self):
         return (0, '')
-    
+
     def execute(self):
         """
         Task manager calls this function to
         execute the task.
-        
+
         Return:    MRLocalTaskResult
         """
         # create the working directory
@@ -1014,22 +1014,22 @@ class ObsLocalTask(MRLocalTask):
         ret = self._runBashCmd(cmd)
         if (ret):
             return ret
-        
+
         # cd working directory and download images
         if (not os.path.exists(work_dir)):
             ret = MRLocalTaskResult(self._taskId, ERROR_LT_FAILCREATEDIR, 'Fail to create directory %s' % work_dir, True)
             return ret
-        
+
         os.chdir(work_dir)
         for imgurl in self._imgurl_list:
             cmd = 'wget -O tmp.tar %s' % imgurl
             self._runBashCmd(cmd, False)
             cmd = 'tar -xf tmp.tar'
             self._runBashCmd(cmd, False)
-        
+
         cmd = 'rm tmp.tar'
         self._runBashCmd(cmd, False)
-        
+
         # go to the upper level directory, and pack all image files together
         upp_dir = '%s/%s' % (self._params.ngas_processing_path, self._taskId)
         os.chdir(upp_dir)
@@ -1037,13 +1037,13 @@ class ObsLocalTask(MRLocalTask):
         ret = self._runBashCmd(cmd)
         if (ret):
             return ret
-        
-        # record the image path so that cmd_RUNTASK can use it to archive it on the 
+
+        # record the image path so that cmd_RUNTASK can use it to archive it on the
         # same host
         complete_img_path = '%s/%s.tar' % (upp_dir, self._taskId)
         ret = MRLocalTaskResult(self._taskId, 0, complete_img_path, True)
         return ret
-    
+
     def _runBashCmd(self, cmd, failonerr = True):
         re = commands.getstatusoutput(cmd)
         if (failonerr and re[0]):
@@ -1051,29 +1051,29 @@ class ObsLocalTask(MRLocalTask):
             return ret
         else:
             return None
-        
-        
+
+
         # wget -O file_id imgurl
-    
+
 class CorrLocalTask(MRLocalTask):
-    
+
     def __init__(self, taskId, filelist, params):
         """
         Constructor
-        
+
         taskId      uniquely identify this CorrLocalTask (string)
         filelist    a list of file path (List)
-        params      RTSJobParam  
+        params      RTSJobParam
         """
         MRLocalTask.__init__(self, taskId)
         self._filelist = filelist
         self._params = params
         self._subproc = None # the running sub-process
-    
+
     def stop(self):
         """
         Terminate the current running sub-process
-        
+
         Return    0-Success, -1 - process does not exist, 1 - termination error
         """
         if (self._subproc):
@@ -1085,12 +1085,12 @@ class CorrLocalTask(MRLocalTask):
                 return (1, str(oserr))
         else:
             return (-1, 'process %s does not exist' % self._subproc.pid)
-           
+
     def execute(self):
         """
         Task manager calls this function to
         execute the task.
-        
+
         Return:    MRLocalTaskResult
         """
         #TODO - this cmd should be a member of the RTSJobParam class
@@ -1108,7 +1108,7 @@ class CorrLocalTask(MRLocalTask):
             #logger.error('Fail to launch RTS Task %s: %s' % (self._taskId, str(err)))
             ret = MRLocalTaskResult(self._taskId, -128, str(err), True)
             return ret
-        
+
         """
         cmd = '/scratch/astronomy556/MWA/ngas_rt/src/ngamsPlugIns/ngamsJob_MWA_RTS_Task.sh'
         args = self.paramsToArgs()
@@ -1116,11 +1116,11 @@ class CorrLocalTask(MRLocalTask):
         ret = MRLocalTaskResult(self._taskId, re[0], re[1], True)
         return ret
         """
-    
+
     def paramsToArgs(self):
         """
         Convert self._params to command line arguments
-        
+
         Return:    command line arguments (string)
         """
         #TODO - add tempalte customisation!
@@ -1134,7 +1134,7 @@ class CorrLocalTask(MRLocalTask):
             gpu_flag = 'N'
         args = '-j %s -o %d -c %d -t %s -f %s -g %s' % (job_id, obs_num, corr_id, self._params.rts_tpl_name, self._fileListToString(self._filelist), gpu_flag)
         return args
-    
+
     def _fileListToString(self, filelist):
         re = filelist[0]
         if (len(filelist) > 1):

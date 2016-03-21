@@ -36,7 +36,7 @@ Files can either be refernced to by:
 
   1. A Volume ID (NGAS Disk ID):
   All files registered on an NGAS Volume, will be considered for
-  synchronization. 
+  synchronization.
 
   2. An NGAS Host ID:
   All files registered on a given source node, will be considered for
@@ -220,7 +220,7 @@ _options = [\
 
     [PAR_CLUSTER_ID, [], None, ngasUtilsLib.NGAS_OPT_OPT, "=<Cluster ID>",
      "The NGAS Cluster ID as defined in the NGAS Hosts DB Table."],
-    
+
     [PAR_DISK_ID, [], None, ngasUtilsLib.NGAS_OPT_OPT, "=<Disk ID>",
      "ID for the volume to synchronize. If not given, the --fileList " +\
      "parameter must be used to specify the source files."],
@@ -241,10 +241,10 @@ _options = [\
      "=<Number of Streams to Execute>",
      "Number of streams to execute in parallel."],
 
-    [PAR_WORKING_DIR, [], "/tmp", ngasUtilsLib.NGAS_OPT_OPT, "=<Working Dir>", 
+    [PAR_WORKING_DIR, [], "/tmp", ngasUtilsLib.NGAS_OPT_OPT, "=<Working Dir>",
      "Working directory of the tool. The tool will create this " +\
      "directory, in which it will store its house-keeping files."],
-    
+
     [PAR_NOTIF_EMAIL, [], None, ngasUtilsLib.NGAS_OPT_OPT,
      "=<Email Recipients>", "Comma separated list of email addresses."],
 
@@ -276,7 +276,7 @@ class ngasSyncRequest:
         Constructor.
 
         diskId:          Disk ID of source disk (string).
- 
+
         fileId:          File ID of source file (string).
 
         fileVersion:     Version of source file (integer).
@@ -290,7 +290,7 @@ class ngasSyncRequest:
         self.__attempts    = 0
         self.__lastAttempt = 0.0
         self.__message     = ""
-        
+
 
     def incrAttemptCount(self):
         """
@@ -301,8 +301,8 @@ class ngasSyncRequest:
         self.__attempts += 1
         self.__lastAttempt = time.time()
         return self
-        
-        
+
+
     def getAttemptCount(self):
         """
         Get the value of the attempts counter.
@@ -319,7 +319,7 @@ class ngasSyncRequest:
         Returns:   Time for last attempt in seconds since epoch (float).
         """
         return self.__lastAttempt
-    
+
 
     def getDiskId(self):
         """
@@ -328,7 +328,7 @@ class ngasSyncRequest:
         Returns:  Disk ID (string).
         """
         return self.__diskId
-    
+
 
     def getFileId(self):
         """
@@ -386,8 +386,8 @@ class ngasSyncRequest:
         Returns: Filesize in bytes (integer).
         """
         return self.__fileSize
- 
-      
+
+
 def getOptDic():
     """
     Return reference to command line options dictionary.
@@ -430,7 +430,7 @@ def _addInFileDbm(curObj,
     Add the entries that can be retrieved via the given DB cursor.
 
     curObj:         Cursor object.
-    
+
     queueDbm:       DBM in which to add the file info (ngamsDbm).
 
     Returns:        Void.
@@ -469,7 +469,7 @@ def _getClusterNodes(dbCon,
         for node in res[0]:
             nodeList.append(node[0])
         return nodeList
- 
+
 
 def initialize(parDic):
     """
@@ -480,7 +480,7 @@ def initialize(parDic):
     Returns:  Void
     """
     info(4, "Entering initialize() ...")
-    
+
     # Extra checks of command line options.
     # =Rule 1: Can only specify one of: cluster-id, disk-id, host_id and
     #          file-list.
@@ -550,12 +550,12 @@ def initialize(parDic):
     checkCreatePath(wd)
 
     # Create DBMs.
-    tmpQueueDbmName = os.path.normpath("%s/%s" % (wd, TMP_QUEUE_DBM_NAME)) 
+    tmpQueueDbmName = os.path.normpath("%s/%s" % (wd, TMP_QUEUE_DBM_NAME))
     queueDbmName    = os.path.normpath("%s/%s" % (wd, QUEUE_DBM_NAME))
     procDbmName     = os.path.normpath("%s/%s" % (wd, PROC_DBM_NAME))
-    syncedDbmName   = os.path.normpath("%s/%s" % (wd, SYNCHED_DBM_NAME)) 
+    syncedDbmName   = os.path.normpath("%s/%s" % (wd, SYNCHED_DBM_NAME))
     failedDbmName   = os.path.normpath("%s/%s" % (wd, FAILED_DBM_NAME))
-    
+
     # If Queue DBM already exists, we resuming an interrupted session. In that
     # case, just open the existin DBMs, else build up the DBMs.
     if (not os.path.exists("%s.gdbm" % queueDbmName)):
@@ -582,7 +582,7 @@ def initialize(parDic):
             for clusterNode in clusterNodes:
                 curObj = parDic[PAR_DB_CON].\
                          getFileSummary1(hostId = clusterNode, order = 0)
-                _addInFileDbm(curObj, tmpQueueDbm) 
+                _addInFileDbm(curObj, tmpQueueDbm)
                 del curObj
         else:
             fileListEls = ngasUtilsLib.parseFileList(parDic[PAR_FILE_LIST])
@@ -677,14 +677,14 @@ def checkFile(parDic,
     Send a CHECKFILE to the target cluster.
 
     parDic:         Dictionary with parameters (dictionary).
-    
+
     client:         NG/AMS Python Client instance (ngamsPClient).
-    
+
     diskId:         ID of target disk to consider in the target cluster
                     (string).
-    
+
     fileId:         ID of file to check (string).
-    
+
     fileVersion:    Version of file (integer).
 
     Returns:        Status of the checking. Can be either of:
@@ -701,7 +701,7 @@ def checkFile(parDic,
         return statObj.getMessage()
     except Exception, e:
         return str(e)
-    
+
 
 def genIntermediateReport(threadGroupObj):
     """
@@ -712,7 +712,7 @@ def genIntermediateReport(threadGroupObj):
     Returns:          Report (string).
     """
     info(2, "Generating intermediate report ...")
-    
+
     reportFormat = "NGAS EXPRESS SYNCHRONIZATION TOOL - STATUS REPORT:\n\n" +\
                    "Time:                              %s\n" +\
                    "Host:                              %s\n" +\
@@ -733,7 +733,7 @@ def genIntermediateReport(threadGroupObj):
                    "Completion Percentage:             %.3f %%\n" +\
                    "Estimated Total Time:              %.2f hours (%.f s)\n" +\
                    "Estimated Completion Time:         %s\n"
-    
+
     parDic = threadGroupObj.getParameters()[0]
     try:
         threadGroupObj.takeGenMux()
@@ -830,7 +830,7 @@ def genIntermediateReport(threadGroupObj):
                              complPercentage,
                              totalTime, totalTimeSecs,
                              estimComplTime)
-                             
+
 
     # Add the command line options in the report.
     report += 128 * "-" + "\n"
@@ -847,9 +847,9 @@ def genIntermediateReport(threadGroupObj):
         except:
             pass
     report += 128 * "=" + "\n"
-                             
+
     return report
-        
+
 
 def genReport(threadGroupObj):
     """
@@ -860,7 +860,7 @@ def genReport(threadGroupObj):
     Returns:  Void.
     """
     info(4, "Entering genReport() ...")
-    
+
     parDic = threadGroupObj.getParameters()[0]
     report = genIntermediateReport(threadGroupObj)
 
@@ -880,7 +880,7 @@ def genReport(threadGroupObj):
         report += 128 * "-" + "\n"
         report += errorRep
         report += "\n" + 128 * "=" + "\n"
-        
+
     info(4, "Leaving genReport()")
     return report
 
@@ -916,13 +916,13 @@ def intermediateReportLoop(threadGroupObj):
         info(3, "Sending intermediate report ...")
         ngasUtilsLib.sendEmail(subject % parDic[PAR_SESSION_ID],
                                parDic[PAR_NOTIF_EMAIL], report, "text/plain")
-        
+
 
 def getNextSyncReq(threadGroupObj):
     """
     Get the next sync request. If there are no more in the queue, return None.
 
-    Returns:   Next sync request or None (ngasSyncRequest | None). 
+    Returns:   Next sync request or None (ngasSyncRequest | None).
     """
     parDic = threadGroupObj.getParameters()[0]
     try:
@@ -962,14 +962,14 @@ def moveReqFromProcToSyncQueue(threadGroupObj,
     Returns:          Void.
     """
     info(4, "Entering moveReqFromProcToSyncQueue() ...")
-    
+
     parDic = threadGroupObj.getParameters()[0]
     try:
         threadGroupObj.takeGenMux()
 
         key = ngamsLib.genFileKey(None, syncReq.getFileId(),
                                   syncReq.getFileVersion())
-                          
+
         # Insert the request object in the Sync. DBM.
         parDic[QUEUE_DBM_NAME].add(key, syncReq).sync()
 
@@ -978,7 +978,7 @@ def moveReqFromProcToSyncQueue(threadGroupObj,
             parDic[PROC_DBM_NAME].rem(key).sync()
         except:
             pass
-            
+
         threadGroupObj.releaseGenMux()
 
         return syncReq
@@ -1001,7 +1001,7 @@ def moveReqFromSyncToSynchedQueue(threadGroupObj,
     Returns:          Void.
     """
     info(4, "Entering moveReqFromSyncToSynchedQueue() ...")
-    
+
     parDic = threadGroupObj.getParameters()[0]
     try:
         threadGroupObj.takeGenMux()
@@ -1014,7 +1014,7 @@ def moveReqFromSyncToSynchedQueue(threadGroupObj,
 
         # Remove it from the Processing DBM.
         parDic[PROC_DBM_NAME].rem(key).sync()
-            
+
         threadGroupObj.releaseGenMux()
 
         return syncReq
@@ -1044,7 +1044,7 @@ def moveReqFromProcToFailedQueue(threadGroupObj,
 
         key = ngamsLib.genFileKey(None, syncReq.getFileId(),
                                   syncReq.getFileVersion())
-        
+
         # Insert it in the failed DBM.
         parDic[FAILED_DBM_NAME].add(key, syncReq).sync()
 
@@ -1054,13 +1054,13 @@ def moveReqFromProcToFailedQueue(threadGroupObj,
         except:
             pass
         # TODO: this block should not be needed.
-        try: 
+        try:
             parDic[QUEUE_DBM_NAME].rem(key).sync()
         except:
             pass
-            
+
         threadGroupObj.releaseGenMux()
-        
+
         return syncReq
     except Exception, e:
         threadGroupObj.releaseGenMux()
@@ -1073,7 +1073,7 @@ def cloneFile(threadGroupObj,
               client,
               syncReq):
     """
-    Clone a file. 
+    Clone a file.
 
     threadGroupObj:   Reference to the Thread Group Object (ngamsThreadGroup).
 
@@ -1084,7 +1084,7 @@ def cloneFile(threadGroupObj,
     Returns:          Status object (ngamsStatus).
     """
     info(4, "Entering cloneFile() ...")
-    
+
     try:
         fileVer = syncReq.getFileVersion()
         cmdPars = [["file_id", syncReq.getFileId()], ["file_version", fileVer]]
@@ -1098,7 +1098,7 @@ def cloneFile(threadGroupObj,
         statObj = ngamsStatus.ngamsStatus().setStatus(NGAMS_FAILURE).\
                   setMessage(str(e))
         return statObj
-    
+
 
 def getClusterReadyNaus(dbCon,
                         targetCluster):
@@ -1125,7 +1125,7 @@ def getClusterReadyNaus(dbCon,
             hostList.append("%s:%s" % (node[0], node[1]))
         return hostList
 
-    
+
 def getClusterNodes(dbCon,
                     targetCluster):
     """
@@ -1169,9 +1169,9 @@ def checkIfFileInTargetCluster(dbCon,
     dbCon:         DB connection (ngamsDb).
 
     clusterNodes:  List of nodes in the target cluster (list).
-     
+
     fileId:        ID of file to check for (string).
-    
+
     fileVersion:   Version of file (integer).
 
     Returns:       Information for file as tuple:
@@ -1179,7 +1179,7 @@ def checkIfFileInTargetCluster(dbCon,
                    if the file is not available in the cluster (tuple | None).
     """
     info(4, "Entering checkIfFileInTargetCluster() ...")
-    
+
     sqlQuery = "SELECT nf.disk_id, nf.file_id, nf.file_version " +\
                "FROM ngas_files nf, ngas_disks nd " +\
                "WHERE nf.file_id = '%s' AND nf.file_version = %d AND " +\
@@ -1214,7 +1214,7 @@ def syncLoop(threadGroupObj):
     while (True):
         # Check if the execution should continue before each iteration.
         threadGroupObj.checkPauseStop()
-        
+
         syncReq = getNextSyncReq(threadGroupObj)
 
         # If there are no more requests to handle, terminate the thread.
@@ -1228,7 +1228,7 @@ def syncLoop(threadGroupObj):
             # Time waiting for next retry has not expired. Put the request
             # back in the Sync. Queue.
             moveReqFromProcToSyncQueue(threadGroupObj, syncReq)
-        
+
         # Get list of archiving units in the Target Cluster
         timeNow = time.time()
         if ((timeNow - clusterNodeStatusTime) > 60):
@@ -1239,7 +1239,7 @@ def syncLoop(threadGroupObj):
                                           parDic[PAR_TARGET_CLUSTER])
             client.parseSrvList(clusterSrvList)
             clusterNauStatusTime = timeNow
-            
+
         # Check if file is already in target cluster.
         fileVer = syncReq.getFileVersion()
         targClusterDiskId, targClusterFileId, targClusterFileVersion =\
@@ -1262,7 +1262,7 @@ def syncLoop(threadGroupObj):
         if (res.find("FILE_OK") != -1):
             msg = "File: %s is available in the target cluster - skipping"
             info(1, msg % syncReq.getSummary())
-            
+
             # If the file is safely archived in the target cluster, insert
             # its handled into the synch'ed DBM and go to the next file.
             syncReq.setMessage(NGAS_ALREADY_SYNCHED)
@@ -1273,7 +1273,7 @@ def syncLoop(threadGroupObj):
         elif (res.find("ERROR") != -1):
             msg = "File: %s not available in the target cluster - restoring"
             info(1, msg % syncReq.getSummary())
-            
+
             # The file is not available in the target cluster. We have to
             # clone it to the target cluster.
             statObj = None
@@ -1324,7 +1324,7 @@ def syncLoop(threadGroupObj):
             parDic[PAR_STAT_FILE_COUNT] += 1
             parDic[PAR_STAT_VOL_ACCU] += syncReq.getFileSize()
 
- 
+
 def syncThread(threadGroupObj):
     """
     The Synchronization Thread running within an ngamsThreadGroup object.
@@ -1346,7 +1346,7 @@ def syncThread(threadGroupObj):
     else:
         syncLoop(thrGr)
 
- 
+
 def execute(parDic):
     """
     Carry out the tool execution.
@@ -1356,10 +1356,10 @@ def execute(parDic):
     Returns:   Void.
     """
     info(4, "Entering execute() ...")
-    
+
     if (parDic["help"]):
         print correctUsage()
-        sys.exit(0)        
+        sys.exit(0)
     ngasUtilsLib.getCheckAccessCode(getOptDic())
 
     initialize(parDic)
@@ -1402,7 +1402,7 @@ if __name__ == '__main__':
         parDic = ngasUtilsLib.optDic2ParDic(optDic)
     except Exception, e:
         print "\nProblem executing the tool:\n\n%s\n" % str(e)
-        sys.exit(1) 
+        sys.exit(1)
     if (getDebug()):
         execute(parDic)
         rmFile(getLockFile(parDic))
@@ -1415,6 +1415,6 @@ if __name__ == '__main__':
             if (str(e) == "0"): sys.exit(0)
             print "\nProblem executing the tool:\n\n%s\n" % str(e)
             sys.exit(1)
-                  
+
 
 # EOF

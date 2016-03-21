@@ -42,11 +42,11 @@ def correctUsage():
     Print out correct usage of the tool on stdout.
 
     Returns:   Void.
-    """    
+    """
     print "\nCorrect usage is: "
     print "\n  % ngasChangeDiskIdDbSnapshot.py <Snapshot Filename> " +\
           "<New Disk ID>\n\n"
-    
+
 
 def changeDiskIdDbSnapshot(dbSnapshotName,
                            diskId):
@@ -77,7 +77,7 @@ def changeDiskIdDbSnapshot(dbSnapshotName,
 if __name__ == '__main__':
     """
     Main function invoking the function to convert the ingestion date.
-    """  
+    """
     if (len(sys.argv) != 3):
         correctUsage()
         sys.exit(1)

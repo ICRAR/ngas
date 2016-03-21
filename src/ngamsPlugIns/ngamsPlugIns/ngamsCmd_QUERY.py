@@ -47,8 +47,8 @@ NGAMS_JSON_MT = "application/json"
 NGAMS_FILES_COLS = map(lambda x:x[1],ngamsDbCore._ngasFilesDef)
 NGAMS_DISKS_COLS = map(lambda x:x[1],ngamsDbCore._ngasDisksDef)
 
-#creation_date could be different from ingestion_date if it is a mirrored archive 
-# ingestion_date is when the original copy was ingested in the system, 
+#creation_date could be different from ingestion_date if it is a mirrored archive
+# ingestion_date is when the original copy was ingested in the system,
 # creation_date is when the replicated copy appears on the mirrored archive
 LASTVER_LOCATION = "SELECT a.host_id, a.mount_point || '/' || b.file_name as file_full_path, b.file_version, b.creation_date, b.ingestion_date FROM ngas_disks a, ngas_files b, " +\
                     "(SELECT file_id, MAX(file_version) AS max_ver FROM ngas_files WHERE file_id like '{0}' GROUP BY file_id) c " +\
@@ -58,7 +58,7 @@ LASTVER_LOCATION = "SELECT a.host_id, a.mount_point || '/' || b.file_name as fil
                     "order by b.file_id"
 
 valid_queries = {"files_list":"select * from ngas_files",
-                  "disks_list":"select * from ngas_disks", 
+                  "disks_list":"select * from ngas_disks",
                   "hosts_list":"select * from ngas_hosts",
                   "files_like":"select * from ngas_files where file_id like '{0}'",
                   "files_location":"select a.host_id, a.mount_point || '/' || b.file_name as file_full_path, b.file_version, b.ingestion_date from ngas_disks a, ngas_files b where a.disk_id = b.disk_id and b.file_id like '{0}' order by b.file_id",
@@ -80,7 +80,7 @@ def encode_decimal(obj):
 
 def createJsonObj(resultSet, queryKey):
     """
-    Format the query result as an object that is json friendly, 
+    Format the query result as an object that is json friendly,
 
     resultSet:      Result returned from the SQL interface (list).
 
@@ -138,7 +138,7 @@ def formatAsList(resultSet, header = None):
 
     # Now, generate the list.
     listBuf = ""
-    
+
     if (header):
         reList = [headers] + [header] + [headers] + reList[1:]
     for res in reList:
@@ -154,9 +154,9 @@ def formatAsList(resultSet, header = None):
 #def formatAsHTML(resultSet):
 #    """
 #    Format the result as an HTML table
-#    
+#
 #    resultSet:    (list) result returned from the SQL interface
-#    
+#
 #    Returns:      (string) Result formatted as HTML
 #    """
 #    resultHTML = resultSet
@@ -164,11 +164,11 @@ def formatAsList(resultSet, header = None):
 #    header = "Some information at the top, perhaps a menu."
 #    footer = "Dynamic page created by NGAS server: {0}".format(time.strftime('%Y-%M-%dT%H:%m:%S'))
 #    styles = ( 'layout.css', 'alt.css', 'images.css' )
-#    
+#
 #    page = markup.page( )
 #    page.init( css=styles, title=title, header=header, footer=footer )
 #    page.br( )
-#    
+#
 #    page.table(border="1")
 #    page.thead()
 #    page.th()
@@ -184,7 +184,7 @@ def formatAsList(resultSet, header = None):
 #        page.tr.close()
 #    page.tbody.close()
 #    page.table.close()
-#    
+#
 #    return page.__str__()
 
 
@@ -209,15 +209,15 @@ def handleCmd(srvObj,
               httpRef):
     """
     Handle Command QUERY to query the DB system used.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
@@ -233,7 +233,7 @@ def handleCmd(srvObj,
             msg = "Invalid query specified. Valid queries are: %s" %\
             valid_queries.keys()
             raise Exception, msg
-        
+
         if reqPropsObj.getHttpPar("query") == 'files_like' or reqPropsObj.getHttpPar("query") == 'files_location' or reqPropsObj.getHttpPar("query") == 'lastver_location':
             param = '%'
             if (reqPropsObj.hasHttpPar("like")):
@@ -258,7 +258,7 @@ def handleCmd(srvObj,
 
     out_format = None
     if (reqPropsObj.hasHttpPar("format")):
-        out_format = reqPropsObj.getHttpPar("format")    
+        out_format = reqPropsObj.getHttpPar("format")
     cursorId = None
     if (reqPropsObj.hasHttpPar("cursor_id")):
         cursorId = reqPropsObj.getHttpPar("cursor_id")
@@ -342,14 +342,14 @@ def handleCmd(srvObj,
             # If all entries have been fetched, we delete the cursor DBM.
             if (count < fetch):
                 rmFile(cursorDbmFilename + "*")
-            
+
             # Return the data.
             # TODO: Make it possible to return ASCII List + XML.
             srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                                 str(resSet), 0, NGAMS_PYTHON_LIST_MT)
         except Exception, e:
             msg = "Error fetching from cursor with ID: %s. Error: %s"
-            raise Exception, msg % (cursorId, str(e))                       
+            raise Exception, msg % (cursorId, str(e))
     elif (query and cursorId):
         info(4, "Creating new cursor with ID: %s, query: %s" %\
              (cursorId, query))

@@ -63,7 +63,7 @@ class ngamsEmailNotificationTest(ngamsTestSuite):
         """
         Synopsis:
         ...
-        
+
         Description:
         ...
 

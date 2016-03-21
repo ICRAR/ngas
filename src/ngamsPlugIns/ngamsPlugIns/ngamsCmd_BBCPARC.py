@@ -62,7 +62,7 @@ def bbcpFile(srcFilename, targFilename, bparam,
 
     NOTE: This requires remote access to the host as well as
          a bbcp installation on both the remote and local host.
-    """    
+    """
     info(3,"Copying file: " + srcFilename + " to filename: " + targFilename)
     try:
         # Make target file writable if existing.
@@ -72,22 +72,22 @@ def bbcpFile(srcFilename, targFilename, bparam,
         #checkAvailDiskSpace(targFilename, fileSize)
         timer = PccUtTime.Timer()
         if keyfile: keyfile = '-i {0}'.format(keyfile)
-        
+
         if bparam.port:
             pt = '-Z %d' % bparam.port
         else:
             pt = '-Z 5678'
-        
-        if bparam.winsize: 
+
+        if bparam.winsize:
             fw = '-w %s' % bparam.winsize
         else:
             fw = ''
-        
+
         if (bparam.num_streams):
             ns = '-s %d' % bparam.num_streams
         else:
             ns = ''
-        
+
         cmd = "bbcp -r -V -a %s %s -P 2 %s %s %s %s%s" %\
                 (fw, ns, pt, keyfile, srcFilename, ssh_prefix, targFilename)
         info(3, "Executing external command: {0}".format(cmd))
@@ -102,7 +102,7 @@ def bbcpFile(srcFilename, targFilename, bparam,
         raise Exception, errMsg
     info(3,"File: %s copied to filename: %s" % (srcFilename, targFilename))
     return deltaTime
-   
+
 
 def updateDiskInfo(srvObj,
                    resDapi):
@@ -137,7 +137,7 @@ def archiveFromFile(srvObj,
     srvObj:          Reference to NG/AMS Server Object (ngamsServer).
 
     filename:        Name of file to archive (string).
-    
+
     bparam:          BBCP parameter (named tuple)
 
     noReplication:   Flag to enable/disable replication (integer).
@@ -216,10 +216,10 @@ def archiveFromFile(srvObj,
                 info(3, "Checksum inconsistency, removing the file from the archive")
                 from ngamsServer import ngamsDiscardCmd
                 work_dir = srvObj.getCfg().getRootDirectory() + '/tmp/'
-                ngamsDiscardCmd._discardFile(srvObj, diskInfo.getDiskId(), fileObj.getFileId(), 
+                ngamsDiscardCmd._discardFile(srvObj, diskInfo.getDiskId(), fileObj.getFileId(),
                                              int(fileObj.getFileVersion()), execute = 1, tmpFilePat = work_dir)
                 raise Exception("Check sum error: remote CRC: %s, local CRC: %s" % (bparam.checksum, cal_checksum))
-        
+
     except Exception, e:
         # If another error occurs, than one qualifying for Back-Log
         # Buffering the file, we have to log an error.
@@ -232,7 +232,7 @@ def archiveFromFile(srvObj,
         else:
             error("Tried to archive local file: " + filename +\
                   ". Attempt failed with following error: " + str(e) + ".")
-            
+
             """
             # this will not work for bbcp files since they are often remote, cannot be moved like this
             notice("Moving local file: " +\
@@ -245,7 +245,7 @@ def archiveFromFile(srvObj,
             if (os.path.exists(pickleObjFile)):
                 info(2,"Removing Back-Log Buffer Pickle File: "+pickleObjFile)
                 rmFile(pickleObjFile)
-            return [NGAMS_FAILURE, str(e), NGAMS_FAILURE] 
+            return [NGAMS_FAILURE, str(e), NGAMS_FAILURE]
 
     # If the file was handled successfully, we remove it from the
     # Back-Log Buffer Directory unless the local file was a log-file
@@ -320,12 +320,12 @@ def handleCmd(srvObj,
 
     ioTime = 0
     reqPropsObj.incIoTime(ioTime)
-    
-    
+
+
     port = None
     winsize = None
-    num_streams = None   
-    checksum = None 
+    num_streams = None
+    checksum = None
     if (parsDic.has_key('bport')):
         port = int(parsDic['bport'])
     if (parsDic.has_key('bwinsize')):
@@ -334,10 +334,10 @@ def handleCmd(srvObj,
         num_streams = int(parsDic['bnum_streams'])
     if (parsDic.has_key('bchecksum')):
         checksum = parsDic['bchecksum']
-        
-    
+
+
     bparam = bbcp_param(port, winsize, num_streams, checksum)
-    
+
     (resDapi, targDiskInfo, iorate) = archiveFromFile(srvObj, fileUri, bparam, 0, mimeType, reqPropsObj)
     if (resDapi == NGAMS_FAILURE):
         errMsg = targDiskInfo
@@ -385,7 +385,7 @@ def handleCmd(srvObj,
     srvObj.triggerSubscriptionThread()
 
 
-    return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()), 
+    return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()),
             iorate)
 
 # EOF

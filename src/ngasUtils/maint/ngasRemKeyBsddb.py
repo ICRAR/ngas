@@ -43,10 +43,10 @@ def correctUsage():
     Print out correct usage of the tool on stdout.
 
     Returns:   Void.
-    """    
+    """
     print "\nCorrect usage is: "
     print "\n  % ngasRemKeyBsddb.py <Snapshot Filename> <Key>\n\n"
-    
+
 
 def remKeyBsddb(dbSnapshotName,
                 key):
@@ -66,7 +66,7 @@ def remKeyBsddb(dbSnapshotName,
             print "Removed key: %s from BSDDB: %s" % (dbSnapshotName, key)
         except Exception, e:
             errMsg = "Problem encountered removing key: %s from BSDDB: %s. " +\
-                     "Error: %s" 
+                     "Error: %s"
             print errMsg % (dbSnapshotName, key, str(e))
     else:
         print "Key: %s not found in BSDDB: %s" % (dbSnapshotName, key)
@@ -76,11 +76,11 @@ def remKeyBsddb(dbSnapshotName,
 if __name__ == '__main__':
     """
     Main function invoking the function to dump the DB Snapshot.
-    """  
+    """
     if (len(sys.argv) != 3):
         correctUsage()
         sys.exit(1)
     remKeyBsddb(sys.argv[1], sys.argv[2])
-    
+
 
 # EOF

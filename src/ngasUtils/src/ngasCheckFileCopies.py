@@ -37,7 +37,7 @@ system, which are registered on the referenced disk.
 
 For each file found on the disk, the following output is generated:
 
-<File ID> <File Version> <Total> <Good> 
+<File ID> <File Version> <Total> <Good>
 ...
 
 - whereby, Good Copies refer to copies marked as being OK in the DB.
@@ -58,7 +58,7 @@ def checkCopies(diskId,
     in the NGAS DB. Generate a report indicating the number of copies found.
 
     diskId:           ID of disk for which to check files (string).
-        
+
     notifEmail:       Comma separated list of recipients of the report
                       generated (string).
 
@@ -102,7 +102,7 @@ def checkCopies(diskId,
                 if (tmpList == []): break
                 globFileList += tmpList
             del dbCur
-            queryFileIds = []            
+            queryFileIds = []
             time.sleep(0.010)
             if ((len(globFileList) % 100) == 0):
                 sys.stdout.write(".")
@@ -164,11 +164,11 @@ def checkCopies(diskId,
     print "\n" + report
 
     if (notifEmail):
-        report 
+        report
         ngasUtilsLib.sendEmail("ngasCheckFileCopies: " +\
                                "FILE COPIES CHECK REPORT (%s)" % diskId,
                                notifEmail, report)
-        
+
 
 def correctUsage():
     """
@@ -181,7 +181,7 @@ def correctUsage():
           "[-notifEmail <Email List>]\n\n"
     return buf
 
-  
+
 if __name__ == '__main__':
     """
     Main function to execute the tool.
@@ -209,14 +209,14 @@ if __name__ == '__main__':
             idx += 1
         except Exception, e:
             print "\nProblem executing the tool: %s\n" % str(e)
-            print correctUsage()  
+            print correctUsage()
             sys.exit(1)
     if (notifEmail == None):
         notifEmail = ngasUtilsLib.\
                      getParNgasRcFile(ngasUtilsLib.NGAS_RC_PAR_NOTIF_EMAIL)
     try:
         if (not diskId):
-            print correctUsage()  
+            print correctUsage()
             raise Exception, "Incorrect command line parameter(s) given!"
         checkCopies(diskId, notifEmail)
     except Exception, e:

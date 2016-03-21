@@ -42,16 +42,16 @@ def isMWAVisFile(fileId):
     fileName, fileExtension = os.path.splitext(fileId)
     if ('.fits' != fileExtension.lower()):
         return False # only FITS file is considered
-    
+
     if (fileName.find('_gpubox') == -1):
         return False
-    
+
     ss = fileName.split('_')
     if (len(ss) != 4):
         return False
-    
+
     return True
-    
+
 
 def ngamsMWA_Compress_FilterPlugin(srvObj,
                           plugInPars,
@@ -59,13 +59,13 @@ def ngamsMWA_Compress_FilterPlugin(srvObj,
                           fileId,
                           fileVersion = -1,
                           reqPropsObj = None):
-    
+
     """
     srvObj:        Reference to NG/AMS Server Object (ngamsServer).
 
     plugInPars:    Parameters to take into account for the plug-in
                    execution (string).
-   
+
     fileId:        File ID for file to test (string).
 
     filename:      Filename of (complete) (string).
@@ -73,14 +73,14 @@ def ngamsMWA_Compress_FilterPlugin(srvObj,
     fileVersion:   Version of file to test (integer).
 
     reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
- 
+
     Returns:       0 if the file does not match, 1 if it matches the
                    conditions (integer/0|1).
     """
     if (not isMWAVisFile(fileId)):
         return 0  # only add MWA Vis FITS file
-    
-    cmd = 'head -c %d %s' % (1024 * 3, filename)    
+
+    cmd = 'head -c %d %s' % (1024 * 3, filename)
     try:
         #re = ngamsPlugInApi.execCmd(cmd, 60)
         re = commands.getstatusoutput(cmd)
@@ -90,15 +90,15 @@ def ngamsMWA_Compress_FilterPlugin(srvObj,
         else:
             error('Exception when checking FITS header %s: %s' % (cmd, str(ex)))
         return 0
-    
-    
+
+
     if (0 == re[0]):
         a = re[1].find("XTENSION= 'BINTABLE'")
         if (a > -1):
             return 0 # if the file is already compressed, do not add again
         else:
             info(3, "File %s added" % filename)
-            return 1 
+            return 1
     else:
         warning('Fail to check header for file %s: %s' % (filename, re[1]))
         return 0

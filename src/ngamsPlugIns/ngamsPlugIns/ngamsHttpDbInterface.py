@@ -47,7 +47,7 @@ class ngamsHttpDbInterface:
     Class to handle the connection to the NGAS DB via the NG/AMS HTTP
     based query interface (command: QUERY).
     """
-  
+
     def __init__(self,
                  server,
                  db = "",
@@ -61,9 +61,9 @@ class ngamsHttpDbInterface:
         server:          DB server name: <Node>:<Port> (string).
 
         db:              Ignored (string).
-        
+
         user:            Ignored (string).
-        
+
         password:        Ignored (string).
 
         application:     Name of application (ID string) (string).
@@ -71,7 +71,7 @@ class ngamsHttpDbInterface:
         parameters:      Parameters for the connection object (string).
         """
         T = TRACE()
-        
+
         if (not application):
             raise Exception, "Please specify an application name"
         try:
@@ -86,7 +86,7 @@ class ngamsHttpDbInterface:
         self.__password      = password
         self.__application   = application
         self.__parameters    = parameters
-        
+
 
     def getDriverId(self):
         """
@@ -95,7 +95,7 @@ class ngamsHttpDbInterface:
         Return:    Driver version (string).
         """
         return "NG/AMS_HTTP_DB_INTERFACE_" + self.__dbModVer
-    
+
 
     def connect(self,
                 db,
@@ -106,13 +106,13 @@ class ngamsHttpDbInterface:
         db:              DB name (string).
 
         application:     application name (string).
- 
+
         Returns:         Reference to object itself.
         """
         # Connect is not used.
         return self
 
-        
+
     def close(self):
         """
         Close the DB connection.
@@ -174,7 +174,7 @@ class ngamsHttpDbInterface:
             error(msg % str(e))
             raise e
 
- 
+
     def cursor(self,
                query):
         """
@@ -206,7 +206,7 @@ class ngamsHttpDbInterface:
                       'datetime' column of the DBMS (string).
         """
         T = TRACE(5)
-         
+
         if (str(timeStamp).find(":") != -1):
             if (timeStamp[10] != "T"): timeStamp[10] = "T"
             ts = timeStamp
@@ -217,7 +217,7 @@ class ngamsHttpDbInterface:
                  initFromSecsSinceEpoch(timeStamp).getTimeStamp()
         return ts
 
-        
+
 class ngamsHttpDbInterfaceCursor:
     """
     Cursor class used to fetch sequentially the result of an SQL query.
@@ -229,7 +229,7 @@ class ngamsHttpDbInterfaceCursor:
                  query = None):
         """
         Constructor method creating a cursor connection to the DBMS.
- 
+
         db:           DB name (string).
 
         query:        Query to execute (string/SQL).
@@ -248,7 +248,7 @@ class ngamsHttpDbInterfaceCursor:
 #             msg = "ngamsHttpDbInterfaceCursor: Error creating cursor on " +\
 #                   "server: %s, query: %s. Error: %s"
 #             raise Exception, msg % (db, query, stat.getMessage())
-        
+
         code, msg, hdrs, data = ngamsLib.httpGet(self.__host, self.__port,
                                                  "QUERY", pars = parameters,
                                                  timeOut = 30.0)
@@ -276,16 +276,16 @@ class ngamsHttpDbInterfaceCursor:
         #                                              "QUERY",
         #                                              pars=parameters)
         #return stat.getData()
-        
+
         code, msg, hdrs, data = ngamsLib.httpGet(self.__host, self.__port,
                                                  "QUERY", pars = parameters,
                                                  timeOut = 30.0)
         try:
-            return eval(data)        
+            return eval(data)
         except Exception, e:
             return []
 
-        
+
     def fetch(self,
               maxEls):
         """
@@ -296,7 +296,7 @@ class ngamsHttpDbInterfaceCursor:
 
         An empty list ([]) may be returned if there were no matches to the
         SQL query.
-        
+
         query:      string containing the SQL statement to be executed.
 
         maxEls:     Maximum number of elements/rows to return (integer).

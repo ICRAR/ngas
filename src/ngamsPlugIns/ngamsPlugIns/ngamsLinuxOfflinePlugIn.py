@@ -50,7 +50,7 @@ def ngamsLinuxOfflinePlugIn(srvObj,
 
     Returns:       Void.
     """
-    rootMtPt = srvObj.getCfg().getRootDirectory()    
+    rootMtPt = srvObj.getCfg().getRootDirectory()
     parDicOnline = ngamsPlugInApi.\
                    parseRawPlugInPars(srvObj.getCfg().getOnlinePlugInPars())
 
@@ -76,10 +76,10 @@ def ngamsLinuxOfflinePlugIn(srvObj,
     else:
         diskDic = ngamsEscaladeUtils.parseCmdLineInfo(rootMtPt, controllers,
                                                       oldFormat, rescan=0)
-        
+
     parDicOffline = ngamsPlugInApi.\
                     parseRawPlugInPars(srvObj.getCfg().getOfflinePlugInPars())
-    
+
     # This is only unmounting the NGAMS disks and may lead to problems
     # if someone mounts other disks off-line.
     if (parDicOffline.has_key("unmount")):
@@ -105,7 +105,7 @@ def ngamsLinuxOfflinePlugIn(srvObj,
                 info(1,msg)
         except Exception, e:
             pass
-        
+
         # Fallback umount.
         ngamsLinuxSystemPlugInApi.umount(rootMtPt)
 
@@ -122,8 +122,8 @@ if __name__ == '__main__':
     if (len(sys.argv) != 2):
         print "\nCorrect usage is:\n"
         print "% python ngamsLinuxOfflinePlugIn <NGAMS cfg>\n"
-        sys.exit(0)    
-    
+        sys.exit(0)
+
     ngamsCfgObj = ngamsConfig.ngamsConfig()
     ngamsCfgObj.load(sys.argv[1])
     dbConObj = ngamsDb.ngamsDb(ngamsCfgObj.getDbServer(),

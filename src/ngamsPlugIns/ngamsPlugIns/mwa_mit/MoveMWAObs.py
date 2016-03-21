@@ -25,17 +25,17 @@ To run this script, please ensure all NGAS servers in the cluster are up running
 from psycopg2.pool import ThreadedConnectionPool
 import sys, urllib2
 
-g_db_pool = ThreadedConnectionPool(1, 4, database = 'ngas', user = 'ngas_ro', 
-                            password = 'bmdhcyRybw==\n'.decode('base64'), 
+g_db_pool = ThreadedConnectionPool(1, 4, database = 'ngas', user = 'ngas_ro',
+                            password = 'bmdhcyRybw==\n'.decode('base64'),
                             host = 'ngas.mit.edu')
 MOVE_SUCCESS = 'MOVEALLOK'
 UNKNOWN_ERROR = 9999
 DEBUG = 0 # If set to 1, no changes (data movement or database updates) only print out information
 
-def _moveFile(srcHost,  
-              filePath, 
-              fileId, 
-              diskId, 
+def _moveFile(srcHost,
+              filePath,
+              fileId,
+              diskId,
               fileVersion,
               checkSum,
               tgtHost):
@@ -64,12 +64,12 @@ def _moveFile(srcHost,
             else:
                 msg = str(exp)
                 errCode = UNKNOWN_ERROR
-                
+
             errMsg = '%s' % (msg)
             print errMsg
             return (errCode, errMsg)
-            
-            
+
+
 def moveObs(obsId, tgtHost):
     """
     tgtHost:    string, e.g. eor-01
@@ -77,28 +77,28 @@ def moveObs(obsId, tgtHost):
     if (len(obsId) != 10):
         print 'Invalid MWA obsId %s' % obsId
         return 1
-    
+
     # exclude files already on the target host
     query = "SELECT b.host_id, b.mount_point || '/' || a.file_name, a.file_id, a.disk_id, a.file_version, a.checksum" +\
             " FROM ngas_files a, ngas_disks b WHERE a.disk_id = b.disk_id AND substring(a.file_id, 1,10) = '%s'" % obsId +\
             " AND b.host_id <> '%s:7777'" % tgtHost +\
             " ORDER BY file_id"
-    
+
     lfs = None
     conn = g_db_pool.getconn()
     try:
         cur = conn.cursor()
         cur.execute(query)
-        lfs = cur.fetchall() 
+        lfs = cur.fetchall()
     finally:
         if (cur):
             del cur
         g_db_pool.putconn(conn)
-    
+
     if (not lfs or (len(lfs) == 0)):
         print 'No files found for obs %s that could be moved' % obsId
         return 2
-    
+
     lastFileId = None
     lastSucceeded = False
     done_dict = {} # key - fileId, val - result
@@ -110,18 +110,18 @@ def moveObs(obsId, tgtHost):
         diskId = ff[3]
         fileVersion = ff[4]
         checkSum = ff[5]
-        
+
         if (fileId == lastFileId and lastSucceeded):
             continue
-        
+
         # do it
-        retcode, info = _moveFile(srcHost, filePath, 
-                                  fileId, diskId, fileVersion, 
+        retcode, info = _moveFile(srcHost, filePath,
+                                  fileId, diskId, fileVersion,
                                   checkSum, tgtHost)
         lastFileId = fileId
         lastSucceeded = (retcode == 0)
         done_dict[fileId] = (retcode, info, srcHost.split(':')[0]) # eor-11:7777 -> eor-11
-    
+
     # produce summary
     gt = 0
     wt = 0
@@ -141,26 +141,26 @@ def moveObs(obsId, tgtHost):
         else:
             blist.append(msg)
             bt += 1
-    
+
     # report it
     title = "Summary - moving observation %s to %s" % (obsId, tgtHost)
     print "=" * len(title)
     print title
     print "=" * len(title)
-    
+
     print "%d completely successful:" % gt
     for el in glist:
         print "\t" + el
-        
+
     print "%d succeeded with warnings:" % wt
     for el in wlist:
         print "\t" + el
-        
+
     print "%d failed:" % bt
     for el in blist:
         print "\t" + el
-    
-    print "-" * len(title)  
+
+    print "-" * len(title)
 
 def usage():
     print 'python MoveMWAObs.py <obsId> <targetHost>'
@@ -171,4 +171,3 @@ if __name__ == '__main__':
         usage()
         sys.exit(1)
     moveObs(sys.argv[1], sys.argv[2])
-    

@@ -165,17 +165,17 @@ def addTestResult(testId,
                  (dictionary).
 
     dbmObj:      Test report DBM (ngamsDbm).
-     
+
     srvNode:     Server (contacted) host (string).
-    
+
     srvPort:     Port of server (contacted) host (integer).
-    
+
     testNode:    Host tested (string).
-    
+
     testPort:    Port number for host tested (integer).
-    
+
     status:      Status of test (SUCCESS|FAILURE).
-    
+
     statusInfo:  Additional information in connection with the test. Could be
                  NG/AMS XML Status Document or some error message (string).
 
@@ -213,9 +213,9 @@ def sendCmd(testParDic,
               (dictionary).
 
     srvNode:  Server node (string).
-    
+
     srvPort:  Server port (integer).
-    
+
     cmd:      Command (string).
 
     cmdPars:  List of parameters to send (list).
@@ -253,19 +253,19 @@ def execTest(testId,
 
     testParDic: Dictionary with parameters for running the test
                 (dictionary).
-                   
+
     dbmObj:     Test Report DBM (ngamsDbm).
-    
+
     srvNode:    Server Host (string).
-    
+
     srvPort:    Server Port (integer).
 
     testNode:   Test node name (string).
 
     testPort:   Test port number (integer).
-      
+
     cmd:        Command (string).
-    
+
     cmdPars:    List with parameters (list).
 
     Returns:    Status (integer/SUCCESS=0,FAILURE=1).
@@ -294,21 +294,21 @@ def test_status_host_id(testParDic,
 
     testParDic:   Test parameter dictionary containing the parameters specified
                   for the test (dictionary).
-    
+
     dbConObj:     NG/AMS DB object connected to the DB (ngamsDb).
-    
+
     dbmObj:       NG/AMS DBM object associated to open DBM. This DBM contains
                   the contents for the tests. See also man-page for
                   ngamsUtils.ngamsCheckSystem (ngamsDbm).
-    
+
     srvNode:      Server node name of server contacted for the test (string).
-    
+
     srvPort:      Port of server node (integer).
-    
+
     testNode:     (Sub-)node to be tested (string).
 
     testPort:     Port number of sub-node (integer).
-    
+
     pars:         Parameters to pass on to System Check Plug-In (string).
 
     Returns:      Status of executing the test (integer/0=SUCCESS, 1=FAILURE).
@@ -354,17 +354,17 @@ def loadInvokeTest(testPlugIn,
     testParDic:   Dictionary with parameters for running the test (dictionary).
 
     dbConObj:     DB connection object (ngamsDb).
-    
+
     dbmObj:       DBM test object (ngamsDbm).
-    
+
     srvNode:      Server host (string).
-    
+
     srvPort:      Server port (integer).
-    
+
     testNode:     Test Node (string).
-    
+
     testPort:     Test node port (integer).
-    
+
     pars:         Parameters to transfer to Test Plug-In (string).
 
     Returns:      SUCCESS=0, FAILURE=1 (integer/0|1).
@@ -388,11 +388,11 @@ def serverLoop(testParDic,
 
     testParDic:    Dictionary with parameters for running the test
                    (dictionary).
-                   
+
     serverList:    List of node/ports to contact for the tests (list).
 
     ignoreSrvList: List of servers to ignore (list).
-    
+
     domainList:    List of domains to take into account (list).
 
     dbCon:         DB connection object (ngamsDb).
@@ -417,7 +417,7 @@ def serverLoop(testParDic,
             # Check if this server should be ignored.
             if (ngamsLib.elInList(ignoreSrvList, "%s:%s" %\
                                   (testNode, str(testPort)))): continue
-            
+
             info(2,"  - Test node: %s/port: %s" % (testNode, testPort))
             for testCase in ["test_status_host_id", "test_retrieve_files"]:
                 info(2,"    - Test: %s ..." % testCase)
@@ -446,12 +446,12 @@ def serverLoop(testParDic,
                 testNodePort = (testNode, testPort)
                 if (not ngamsLib.elInList(onlineNodeList, testNodePort)):
                     continue
-                
+
                 # Ignore this node?
                 testNodePort = "%s:%s" % (testNode, str(testPort))
                 if (ngamsLib.elInList(ignoreSrvList, "%s" % testNodePort)):
                     continue
-                
+
                 msg = "Retrying test case: %s on node: %s:%s using server: "+\
                       "%s:%s"
                 info(2, msg % (testCase, testNode, str(testPort), srvNode,
@@ -462,7 +462,7 @@ def serverLoop(testParDic,
                 if (stat): problemCount += 1
         # Make a small sleep if problems were found and we want to retry.
         if (problemCount and (n < 2)): time.sleep(10)
-            
+
     info(4,"Leaving serverLoop()")
     return problemCount
 
@@ -558,7 +558,7 @@ def genReport(testParDic,
                 report += 80 * "-" + "\n"
                 testRes[LAST_REP_TIME] = repTime
                 dbmObj.add(testId, testRes)
-            
+
     report += "\nEOF\n"
 
     if ((testParDic.has_key("NOTIF-EMAIL") and testCount) or
@@ -569,7 +569,7 @@ def genReport(testParDic,
 
 def checkSystem(testParDic):
     """
-    Carry out a system check for the given system 
+    Carry out a system check for the given system
 
     testParDic:   Dictionary with parameters for running the test (dictionary).
 
@@ -625,13 +625,13 @@ def correctUsage():
     """
     return __doc__
 
-  
+
 if __name__ == '__main__':
     """
     Main function to execute the tool.
     """
     setDebug(1)
-    
+
     # Parse input parameters.
     testParDic = testParDic()
     idx = 1
@@ -666,11 +666,11 @@ if __name__ == '__main__':
             idx += 1
         except Exception, e:
             print "\nProblem executing the tool: %s\n" % str(e)
-            print correctUsage()  
+            print correctUsage()
             sys.exit(1)
     if ((not testParDic["SERVERS"]) or (not testParDic["DOMAINS"]) or
         (not testParDic["NOTIF-EMAIL"]) or (not testParDic["WORKING-DIR"])):
-        print correctUsage()  
+        print correctUsage()
         raise Exception, "Incorrect/missing command line parameter(s)!"
     try:
         checkSystem(testParDic)

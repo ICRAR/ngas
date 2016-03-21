@@ -23,7 +23,7 @@
 #
 """
 This command add existing files to cache database. This command is useful
-when a normal NGAS server becomes a cache server 
+when a normal NGAS server becomes a cache server
 """
 
 import os, time
@@ -36,29 +36,29 @@ from ngamsServer import ngamsCacheControlThread
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
     Find out which threads are still dangling
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
-    
+
     """
     myhostId = srvObj.getHostId()
     if (not srvObj.getCachingActive()):
         srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, '%s is not a Cache Server!' % myhostId, NGAMS_TEXT_MT)
         return
-    
+
     srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'Adding files to the Cache db now\n', NGAMS_TEXT_MT)
-    
+
     up_until = '2013-08-22T21:56:04.284'
     cursorObj = srvObj.getDb().getFileSummary2(hostId = myhostId, upto_ing_date = up_until)
     c = 0
-    
+
     while (1):
         fileList = cursorObj.fetch(100)
         if (fileList == []): break
@@ -72,7 +72,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             ngamsCacheControlThread.addEntryNewFilesDbm(srvObj, diskId, fileId,
                                                    fileVersion, filename)
             c += 1
-        info(3, 'Added %d files into the DB. sleep another 100 ms now...' % c)    
+        info(3, 'Added %d files into the DB. sleep another 100 ms now...' % c)
         time.sleep(0.1)
     info(3, 'In total, added %d files into the DB. Done' % c)
     del cursorObj

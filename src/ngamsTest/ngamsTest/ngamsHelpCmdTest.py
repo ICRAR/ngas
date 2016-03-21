@@ -54,7 +54,7 @@ class ngamsHelpCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Issue HELP Command with no parameters/Offline State.
-        
+
         Description:
         Check that the response to the HELP Command is as expected (taking
         into account that the HELP Command is not yet implemented).
@@ -62,12 +62,12 @@ class ngamsHelpCmdTest(ngamsTestSuite):
         Expected Result:
         The server should send back an Error Response indicating that the
         HELP Command is not yet implemented.
-        
+
         Test Steps:
         - Start server.
         - Issue HELP Command.
         - Check that output is as expected (=command rejected).
-            
+
         Remarks:
         This Test Case should be modified when the HELP Command has been
         implemented.
@@ -83,11 +83,11 @@ class ngamsHelpCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Issue HELP Command with no parameters/Online State.
-        
+
         Description:
         Check that the response to the HELP Command is as expected (taking
         into account that the HELP Command is not yet implemented).
-        
+
         Expected Result:
         The server should send back an Error Response indicating that the
         HELP Command is not yet implemented.
@@ -96,11 +96,11 @@ class ngamsHelpCmdTest(ngamsTestSuite):
         - Start server.
         - Issue HELP Command.
         - Check that output is as expected (command rejected).
-            
+
         Remarks:
         This Test Case should be modified when the HELP Command has been
         implemented.
-        """   
+        """
         self.prepExtSrv(8888, 1, 1, 1)
         tmpStatFile = sendExtCmd(8888, NGAMS_HELP_CMD)
         refStatFile = "ref/ngamsHelpCmdTest_test_NoPars_2_1_ref"

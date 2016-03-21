@@ -46,7 +46,7 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
     """
     Contains queries for accessing the NGAS Disks History Table.
     """
-       
+
     def addDiskHistEntry(self,
                          hostId,
                          diskId,
@@ -60,7 +60,7 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
         indicating a major action or event occurring in the context of a disk.
 
         dbConObj:       Instance of NG/AMS DB class (ngamsDbBase).
-    
+
         diskId:         Disk ID for the disk concerned (string).
 
         synopsis:       A short description of the action
@@ -71,17 +71,17 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
                         given (string).
 
         descr:          An arbitrary long description of the action or event
-                        in the life-time of the disk (string). 
+                        in the life-time of the disk (string).
 
         origin:         Origin of the history log entry. Can either be the
                         name of an application or the name of an operator.
-                        If not specified (= None) it will be set to 
+                        If not specified (= None) it will be set to
                         'NG/AMS - <host name>' (string).
 
         date:           Date for adding the log entry. If not specified (set
                         to None), the function takes the current date and
                         writes this in the new entry (string/ISO 8601).
-    
+
         Returns:        Void.
         """
         T = TRACE()
@@ -98,7 +98,7 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
                 self.relDbSem()
             except Exception, e:
                 self.relDbSem()
-                raise Exception, e    
+                raise Exception, e
             if (descr != None):
                 if (descrMimeType == None):
                     errMsg = "Mime-type must be specified for entry in the "+\
@@ -129,9 +129,9 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
                  diskId + " - Date: " + tsObj.getTimeStamp() + " - Origin: " +\
                  origin + " - Synopsis: " + synopsis +\
                  " - Description Mime-type: " + str(mt) + " - Description: " +\
-                 str(descr))        
+                 str(descr))
             self.triggerEvents()
-        except Exception, e:   
+        except Exception, e:
             raise e
 
 

@@ -50,14 +50,14 @@ def _invokeRetireDisk(diskId,
     """
     Execute the ngasRetireDisk tool as a shell command.
 
-    diskId:            ID of disk to retire (string).   
-    
+    diskId:            ID of disk to retire (string).
+
     execute:           If set to 1 the -execute parameter is submitted to the
                        tool (integer/0|1).
 
     force:             If set to 1 the -force parameter is submitted to the
                        tool (integer/0|1).
-    
+
     recvNotifEmail:    Receive email notification (integer/0|1).
 
     cfgFile:           Configuration file used for the test (string).
@@ -97,14 +97,14 @@ def _verifyEmailAndStdout(testSuiteObj,
 
     testName:       Name of the test case (string).
 
-    diskId:         ID of disk to retire (string).   
+    diskId:         ID of disk to retire (string).
 
     execute:        If set to 1 the -execute parameter is submitted to the
                     tool (integer/0|1).
 
     force:          If set to 1 the -force parameter is submitted to the
                     tool (integer/0|1).
- 
+
     verifyEmail:    Verify also the contents of the email notification mail
                     (integer/0|1).
 
@@ -153,7 +153,7 @@ def _checkDbInfo(testSuiteObj,
     tmpStatFile = saveInFile(None, diskInfoBuf)
     testSuiteObj.checkFilesEq(refStatFile, tmpStatFile,
                               "Incorrect/missing info in ngas_disks")
-    
+
     # ngas_files:
     query = "SELECT %s FROM ngas_files nf WHERE disk_id='%s'" %\
             (ngamsDb._ngasFilesCols, diskId)
@@ -186,7 +186,7 @@ def _checkDbInfo(testSuiteObj,
     testSuiteObj.checkFilesEq(refStatFile, tmpStatFile,
                               "Incorrect/missing info in ngas_files")
 
- 
+
 class ngasRetireDiskTest(ngasUtilsTestSuite):
     """
     Synopsis:
@@ -204,7 +204,7 @@ class ngasRetireDiskTest(ngasUtilsTestSuite):
         """
         Synopsis:
         Normal execution of the tool, a disk is retired.
-        
+
         Description:
         The purpose of the test is to verify that the tool behaves as
         expected for a 'standard' disk retirement.
@@ -249,7 +249,7 @@ class ngasRetireDiskTest(ngasUtilsTestSuite):
         Synopsis:
         Normal execution of the tool, a disk is retired. Some files available
         in less than three copies (-force needed).
-        
+
         Description:
         The purpose of the test is to verify that if there are less than 3
         copies of files on a disk to be retired, the retirement can be enforced
@@ -296,7 +296,7 @@ class ngasRetireDiskTest(ngasUtilsTestSuite):
         """
         Synopsis:
         Disk to be retired is Online.
-        
+
         Description:
         The purpose of the test is to verify that the ngasRetireDisk Tool
         rejects a request to retire a disk when the disk is online.

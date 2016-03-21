@@ -57,7 +57,7 @@ class ngamsConfigCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Change the Local (Log File) Log Level Online.
-        
+
         Description:
         The purpose of this Test Case is to test that the Local Log Level
         can be changed while the NG/AMS Server is Online.
@@ -84,7 +84,7 @@ class ngamsConfigCmdTest(ngamsTestSuite):
                                                ["Date", "Version", "HostId"]))
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect info in " +\
                           "CONFIG Command XML Status " +
-                          "Document/log_local_log_level")        
+                          "Document/log_local_log_level")
 
 def run():
     """

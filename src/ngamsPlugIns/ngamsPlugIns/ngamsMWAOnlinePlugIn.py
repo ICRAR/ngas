@@ -72,7 +72,7 @@ def ngamsMWAOnlinePlugIn(srvObj,
     reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
 
     Returns:       Disk info dictionary (dictionary).
-    
+
     """
     T = TRACE()
 
@@ -108,7 +108,7 @@ def ngamsMWAOnlinePlugIn(srvObj,
                 diskType = NGAS_VOL_INFO_IGNORE
             if (volInfoDic.has_key(NGAS_VOL_INFO_MANUFACT)):
                 manufact = volInfoDic[NGAS_VOL_INFO_MANUFACT]
-            else:  
+            else:
                 manufact = NGAS_VOL_INFO_IGNORE
             msg = "Registering volume with parameters: Disk ID: %s, " +\
                   "Device: %s, Port No: %s, Slot ID: %s, Mount Point: %s, "+\
@@ -132,52 +132,52 @@ def ngamsMWAOnlinePlugIn(srvObj,
                                        setDeviceName(devName)
 
     notifyRegistrationService(srvObj)
-    
+
     cmdMod = "ngamsCmd_ASYNCLISTRETRIEVE"
     srvObj.getDynCmdDic()[cmdMod] = 1
-    
+
     #host = getHostName()
     #port = srvObj.getCfg().getPortNo()
-    
+
     #startAsyncRetrListUrl = "http://" + host + ":" + str(port) + "/ASYNCLISTRETRIEVE?ngassystem=start"
     info(3, "Sending system starting request ")
     myRes = ngamsCmd_ASYNCLISTRETRIEVE.startAsyncQService(srvObj, reqPropsObj)
     #strRes = urllib.urlopen(startAsyncRetrListUrl).read()
     #myRes = pickle.loads(strRes)
     info(3, "Starting async retrieve list result - %s" % myRes)
-    
+
     _restoreSubscriptionInfoFromDisk(srvObj)
-    
+
     return diskInfoDic
 
 def _restoreSubscriptionInfoFromDisk(srvObj):
     ngas_root_dir =  srvObj.getCfg().getRootDirectory()
-    myDir = ngas_root_dir + "/SubscriptionInfo" 
+    myDir = ngas_root_dir + "/SubscriptionInfo"
     if (not os.path.exists(myDir)):
         return
     saveFile = myDir + "/SubscriptionInfoObj"
     if (not os.path.exists(saveFile)):
         return
-    
+
     info(3, 'Restoring subscription info from disks ...')
     saveObj = None
     try:
         pkl_file = open(saveFile, 'rb')
-        saveObj = pickle.load(pkl_file)   
-        pkl_file.close() 
+        saveObj = pickle.load(pkl_file)
+        pkl_file.close()
     except Exception, e:
         ex = str(e)
         alert('Fail to restore subscription info from disks, Exception: %s' % ex)
-    
+
     if (saveObj == None or len(saveObj) == 0):
         return
-    
+
     info(3, 'Appending subscription info to info list kept internally ...')
-    try:  
+    try:
         srvObj._subscriptionSem.acquire()
-        srvObj._subscriptionFileList += saveObj  
+        srvObj._subscriptionFileList += saveObj
         cmd = "rm " + saveFile
-        ngamsPlugInApi.execCmd(cmd, -1)    
+        ngamsPlugInApi.execCmd(cmd, -1)
     except Exception, e:
         alert('Fail to append filelist to subscription info list, Exception: %s' % str(e))
     finally:
@@ -191,13 +191,13 @@ if __name__ == '__main__':
     from ngamsLib import ngamsConfig, ngamsDb
 
     setLogCond(0, "", 0, "", 1)
-    
+
     if (len(sys.argv) != 2):
         print "\nCorrect usage is:\n"
         print "% python ngamsMWAOnlinePlugIn <NGAMS Cfg.>\n"
         sys.exit(0)
 
-    srvObj = ngamsServer.ngamsServer()  
+    srvObj = ngamsServer.ngamsServer()
     ngamsCfgObj = ngamsConfig.ngamsConfig().load(sys.argv[1])
     dbConObj = ngamsDb.ngamsDb(ngamsCfgObj.getDbServer(),
                                ngamsCfgObj.getDbName(),

@@ -74,7 +74,7 @@ def _checkDiskInfo(testCaseObj,
     tmpStatFile = "tmp/ngamsCmdHandlingTest_" + testMethod + "_1_tmp"
     refStatFile = "ref/ngamsCmdHandlingTest_" + testMethod + "_1_ref"
     saveInFile(tmpStatFile, diskInfoBuf)
-    testCaseObj.checkEqual("", cmpFiles(refStatFile, tmpStatFile), 
+    testCaseObj.checkEqual("", cmpFiles(refStatFile, tmpStatFile),
                            genErrMsg("Disks incorrectly registered (Test: " +\
                            testMethod + ")", refStatFile, tmpStatFile))
 
@@ -88,7 +88,7 @@ def _checkDiskInfo(testCaseObj,
     tmpStatFile = "tmp/ngamsCmdHandlingTest_" + testMethod + "_2_tmp"
     refStatFile = "ref/ngamsCmdHandlingTest_" + testMethod + "_2_ref"
     saveInFile(tmpStatFile, diskInfoBuf)
-    testCaseObj.checkEqual("", cmpFiles(refStatFile, tmpStatFile), 
+    testCaseObj.checkEqual("", cmpFiles(refStatFile, tmpStatFile),
                            genErrMsg("Invalid NgasDiskInfo files found " +\
                                      "(Test: " + testMethod + ")",
                                      refStatFile, tmpStatFile))
@@ -109,7 +109,7 @@ class ngamsOnlineCmdTest(ngamsTestSuite):
     - Re-registration DB -> NgasDiskInfo (DB info newer).
     - Re-registration NgasDiskInfo -> DB (no DB info).
     - Re-registration NgasDiskInfo -> DB (NgasDiskInfo info newer).
- 
+
     - Make dummy Online Plug-In, which returns no physical disks, and check
       the SW behaves as expected (goes online, reports that there are no disks,
       ...).
@@ -128,7 +128,7 @@ class ngamsOnlineCmdTest(ngamsTestSuite):
         """
         Synopsis:
         Test basic handling of Online Command.
-        
+
         Description:
         The purpose of the test is to verify that the server goes Online
         initializing with the specified cfg. file when the ONLINE Command is

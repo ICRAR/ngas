@@ -27,7 +27,7 @@ from ngamsLib.ngamsCore import rmFile, genLog, error, info
 def checkTarball(filename):
     """
     Check that the tarball is correct
-    
+
     filename:  Name of tarball file (string).
 
     Returns:   Void.
@@ -51,7 +51,7 @@ def checkTarball(filename):
                         [filename, "ngasTarBallPlugIn", errMsg])
         error(errMsg)
         raise Exception, errMsg
-        
+
 
 # DAPI function.
 def ngasTarBallPlugIn(srvObj,
@@ -60,7 +60,7 @@ def ngasTarBallPlugIn(srvObj,
     Data Archiving Plug-In to handle archiving of tarballs.
 
     srvObj:       Reference to NG/AMS Server Object (ngamsServer).
-    
+
     reqPropsObj:  NG/AMS request properties object (ngamsReqProps).
 
     Returns:      Standard NG/AMS Data Archiving Plug-In Status

@@ -57,7 +57,7 @@ def _ngamsGenDocPage(srcFileLines):
                     docText += line
                 lineIdx += 1
             docDic[docCount] = docText
-            docCount += 1   
+            docCount += 1
         lineIdx += 1
 
     docPage = ""

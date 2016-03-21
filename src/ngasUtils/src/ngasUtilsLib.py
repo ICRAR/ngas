@@ -131,7 +131,7 @@ def encryptAccessCode(accessCode):
     Returns:        Encoded Access Code (string).
     """
     return base64.encodestring(accessCode)
-    
+
 
 def decryptAccessCode(encryptedAccessCode):
     """
@@ -142,7 +142,7 @@ def decryptAccessCode(encryptedAccessCode):
     Returns:                 Decoded Access Code (string).
     """
     return base64.decodestring(encryptedAccessCode)
-    
+
 
 def checkAccessCode(accessCode):
     """
@@ -194,21 +194,21 @@ def sendEmail(subject,
               attachmentName = None):
     """
     Send an e-mail to the recipient with the given subject.
-    
+
     smtpHost:       Mail server to use for sending the mail (string).
-    
+
     subject:        Subject of mail message (string).
-    
+
     to:             Recipient, e.g. user@test.com (string).
-        
+
     fromField:      Name for the from field (string).
-        
+
     msg:            Message to send (string).
 
     contentType:    Mime-type of message (string).
-    
+
     attachmentName: Name of attachment in mail (string).
-              
+
     Returns:        Void.
     """
     smtpHost = getParNgasRcFile(NGAS_RC_PAR_SMTP_HOST)
@@ -268,7 +268,7 @@ def dccMsg2FileList(dccMsgFile,
     <Complete Path 1>
     <Complete Path 2>
     ...
-    
+
 
     dccMsgFile:   File containing the DCC Inconsist. Msg. (string).
 
@@ -320,14 +320,14 @@ def dccMsg2FileList(dccMsgFile,
             fo.write("%s %s %s\n" % (diskId, fileId, fileVersion))
             lineIdx += 1
     fo.close()
-        
+
 
 def dccRep2FileList(dccRep):
     """
     Converts a DCC Report to a File List.
 
     dccRep:    DCC Report to convert (string).
-    
+
     Returns:   Corresponding File list (string).
     """
     # IMPL: Note: This function should replace dccMsg2FileList().
@@ -453,7 +453,7 @@ def secs2Iso(timeSecs):
            getTimeStamp()
 
 #############################################################################
-# Tools to handle command line options.    
+# Tools to handle command line options.
 #############################################################################
 # IMPL: Use a class (ngasOptions) to handle the options rather than a
 #       dictionary.
@@ -476,11 +476,11 @@ _stdOptions = [["help", [], 0, NGAS_OPT_OPT, "",
                 "Print out version."],
                ["verbose", [], 0, NGAS_OPT_OPT, "=<Verbose Level [0; 5]>",
                 "Switch verbose mode logging on ([0; 5])."],
-               ["logFile", [], None, NGAS_OPT_OPT, "=<Log File>", 
+               ["logFile", [], None, NGAS_OPT_OPT, "=<Log File>",
                 "Log file into which info will be logged during execution."],
-               ["logLevel", [], 0, NGAS_OPT_OPT, "=<Log Level [0; 5]>", 
+               ["logLevel", [], 0, NGAS_OPT_OPT, "=<Log Level [0; 5]>",
                 "Level applied when logging into the specified log file."],
-               ["notifEmail", [], None, NGAS_OPT_OPT, "=<Email Recep. List>", 
+               ["notifEmail", [], None, NGAS_OPT_OPT, "=<Email Recep. List>",
                 "Comma separated list of email recipients which will " +\
                 "receive status reports in connection with the tool " +\
                 "execution."],
@@ -507,14 +507,14 @@ def genOptDicAndDoc(toolOptions):
         optDic[optInfo[NGAS_OPT_NAME].upper()] = optInfo
         if (optInfo[NGAS_OPT_NAME][0] != "_"):
             optDoc += optFormat % (optInfo[NGAS_OPT_NAME],
-                                   optInfo[NGAS_OPT_SYN], 
+                                   optInfo[NGAS_OPT_SYN],
                                    str(optInfo[NGAS_OPT_VAL]),
                                    optInfo[NGAS_OPT_TYPE])
             optDoc += optInfo[NGAS_OPT_DOC] + "\n\n"
     optDoc += "\n" + NGAMS_COPYRIGHT_TEXT
     return (optDic, optDoc)
 
-    
+
 def parseCmdLine(argv,
                  optDic):
     """
@@ -522,7 +522,7 @@ def parseCmdLine(argv,
     Dictionary. Some basic checks are carried out.
 
     argv:        List with arguments as contained in sys.argv (list).
-    
+
     optDic:      Dictionary with information about options (dictionary).
 
     Returns:     Returns reference to updated Options Dictionary (dictionary).

@@ -35,7 +35,7 @@ import httplib
 import base64
 
 class NGASHttpArchive(object):
-   
+
    def __init__(self, url, command, username, password, mimetype):
       self.url = url
       self.command = command
@@ -45,9 +45,9 @@ class NGASHttpArchive(object):
 
    """
      Transfer a file using HTTP to an NGAS instance
-     
+
      fullpath: full path including filename
-     
+
      Returns: status, reason, NGAS XML response packet
    """
    def transferFile(self, fullpath):
@@ -55,17 +55,17 @@ class NGASHttpArchive(object):
       filename = os.path.basename(fullpath)
       if not filename:
          raise Exception('could not extract basename from %s' % fullpath)
-      
-      filesize = os.stat(fullpath).st_size   
-   
+
+      filesize = os.stat(fullpath).st_size
+
       file = None
       conn = None
-      
+
       try:
          conn = httplib.HTTPConnection(self.url)
-         
+
          conn.putrequest("POST", self.command)
-         
+
          base64string = base64.encodestring('%s:%s' % (self.username, self.password)).replace('\n', '')
          conn.putheader("Authorization", "Basic %s" % base64string)
          conn.putheader("Content-Disposition", "attachment; filename=%s" % filename)
@@ -73,11 +73,11 @@ class NGASHttpArchive(object):
          conn.putheader("Host", socket.gethostname())
          conn.putheader("Content-Type", self.mimetype)
          conn.endheaders()
-         
+
          blocksize = 65536
-   
+
          file = open(fullpath, "rb")
-         
+
          # send data
          sent = 0
          while True:
@@ -89,10 +89,10 @@ class NGASHttpArchive(object):
                sent += len(databuff)
             else:
                break
-      
+
          if sent != filesize:
             raise Exception("data sent does not match filesize: %s %s" % (str(sent), str(filesize)))
-            
+
          # read the response
          resp = conn.getresponse()
          data = ''
@@ -102,13 +102,13 @@ class NGASHttpArchive(object):
                data += buff
             else:
                break
-            
+
          return resp.status, resp.reason, data
-      
+
       finally:
          if file:
             file.close()
-            
+
          if conn:
             conn.close()
 

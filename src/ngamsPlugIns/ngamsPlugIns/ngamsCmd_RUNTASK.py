@@ -27,7 +27,7 @@
 """
 This module is responsible for running local tasks, i.e.
 1. Maintain a task queue (this is important for mutually-exclusve GPU resource access)
-2. Receive task execution request from the JobManager (running on another NGAS server) 
+2. Receive task execution request from the JobManager (running on another NGAS server)
 3. Execute the task on local machine using local I/O
 4. Receive task monitor request
 5. Monitor task progress, including error handling
@@ -73,8 +73,8 @@ def _queScanThread(jobManHost, ngas_hostId, ngas_client):
         if (cancelDict.has_key(g_mrLocalTask._taskId)):
             info(3, 'Task %s has been cancelled, skip it' % g_mrLocalTask._taskId)
             continue
-        
-        # before executing the task, inform JobMAN that 
+
+        # before executing the task, inform JobMAN that
         # this task is just dequeued and about to start...
         try:
             strRes = urllib2.urlopen(dqUrl + urllib2.quote(g_mrLocalTask._taskId), timeout = 15).read() #HTTP Get (need to encode url)
@@ -82,7 +82,7 @@ def _queScanThread(jobManHost, ngas_hostId, ngas_client):
                 error('Error when sending dequeue event to JobMAN: %s' % strRes)
         except urllib2.URLError, urlerr:
             error('Fail to send dequeue event to JobMAN: %s' % str(urlerr))
-        
+
         # execute the task
         localTaskResult = None
         try:
@@ -90,9 +90,9 @@ def _queScanThread(jobManHost, ngas_hostId, ngas_client):
         except Exception, execErr:
             error('Fail to execute task %s: Unexpected exception - %s' % (g_mrLocalTask._taskId, str(execErr)))
             localTaskResult = MRLocalTaskResult(g_mrLocalTask._taskId, ERROR_LT_UNEXPECTED, str(execErr), True)
-        
+
         # archive the file locally if required
-        if (localTaskResult.getErrCode() == 0 and 
+        if (localTaskResult.getErrCode() == 0 and
             localTaskResult.isResultAsFile()):
             fpath = localTaskResult.getInfo()
             #if (os.path.exists(fpath)):
@@ -100,7 +100,7 @@ def _queScanThread(jobManHost, ngas_hostId, ngas_client):
             _archiveFileLocal(fpath, localTaskResult, ngas_hostId, ngas_client)
             #else:
                 #warning('Cannot locate the image local path - %s' % fpath)
-                
+
         #send result back to the JobMAN
         strReq = pickle.dumps(localTaskResult)
         info(3, 'Sending local result back to JobMAN %s' % svrUrl)
@@ -144,9 +144,9 @@ def _scheduleQScanThread(srvObj, mrLocalTask):
 
         jobManHost = srvObj.getCfg().getNGASJobMANHost()
         args = (jobManHost,ngas_hostId, ngas_client)
-        queScanThread = threading.Thread(None, _queScanThread, 'QUESCAN_THRD', args) 
-        queScanThread.setDaemon(1) 
-        queScanThread.start()           
+        queScanThread = threading.Thread(None, _queScanThread, 'QUESCAN_THRD', args)
+        queScanThread.setDaemon(1)
+        queScanThread.start()
     queTasks.put(mrLocalTask)
 
 def handleCmd(srvObj,
@@ -154,15 +154,15 @@ def handleCmd(srvObj,
               httpRef):
     """
     Handle the RUN TASK (RUNTASK) Command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
@@ -181,12 +181,12 @@ def handleCmd(srvObj,
                         if (res[0]):
                             errMsg = 'Cancel result failed: %s\n' % str(res[1])
                 else:
-                    errMsg = 'task_id is missing'                   
+                    errMsg = 'task_id is missing'
             else:
                 errMsg = 'Unknown RUNTASK command action %s' % action_req
         else:
             errMsg = 'RUNTASK command needs action for GET request\n'
-        
+
         srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, errMsg, NGAMS_TEXT_MT)
     else:
         postContent = _getPostContent(srvObj, reqPropsObj)
@@ -196,19 +196,18 @@ def handleCmd(srvObj,
             errMsg = 'Cannot instantiate local task from POST'
             mrr = MRLocalTaskResult(None, -2, errMsg)
             srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(mrr), NGAMS_TEXT_MT)
-        else: 
-            info(3, 'Local task %s is submitted' % mrLocalTask._taskId)           
+        else:
+            info(3, 'Local task %s is submitted' % mrLocalTask._taskId)
             mrr = MRLocalTaskResult(mrLocalTask._taskId, 0, '')
             srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(mrr), NGAMS_TEXT_MT)
 
             args = (srvObj, mrLocalTask)
-            scheduleThread = threading.Thread(None, _scheduleQScanThread, 'SCHEDULE_THRD', args) 
-            scheduleThread.setDaemon(0) 
+            scheduleThread = threading.Thread(None, _scheduleQScanThread, 'SCHEDULE_THRD', args)
+            scheduleThread.setDaemon(0)
             scheduleThread.start()
-            
-            
-            
-            
-    
-    
-    
+
+
+
+
+
+

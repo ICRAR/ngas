@@ -54,7 +54,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         """
         Synopsis:
         ...
-        
+
         Description:
         ...
 

@@ -59,7 +59,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         Synopsis:
         Send Archive Push Request via P-Client.
-        
+
         Description:
         Check the handling of Archive Push Requests through the NG/AMS
         P-Client. No mime-type is submitted with the request.
@@ -73,7 +73,7 @@ class ngamsPClientTest(ngamsTestSuite):
         - Issue Archive Push Request (no mime-type).
         - Wait for handling to finish.
         - Check reply from server.
-       
+
         Remarks:
         It is not checked if the file has been properly cloned. The ARCHIVE
         Command is tested in the Test Suite ngamsArchiveCmdTest.py.
@@ -91,7 +91,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         Synopsis:
         Send Archive Pull Request via P-Client
-        
+
         Description:
         The purpose of the test is to test the handling of Archive Push
         Requests via the NG/AMS P-Client.
@@ -123,7 +123,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         Synopsis:
         Send CLONE Command via P-Client.
-        
+
         Description:
         Check the handling of CLONE Commands via the P-Client.
 
@@ -151,12 +151,12 @@ class ngamsPClientTest(ngamsTestSuite):
         self.checkEqual(refMsg, statObj.getMessage(), "Problem executing " +\
                         "Archive Pull Request")
 
-        
+
     def test_Clone_2(self):
         """
         Synopsis:
         Send CLONE Command via P-Client.
-        
+
         Description:
         Submit a CLONE Command via the P-Client. Disk ID, File ID and File
         Version given. Do not wait for termination (wait=0).
@@ -190,7 +190,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         Synopsis:
         Send CLONE Command via P-Client.
-        
+
         Description:
         Test the CLONE Command. Disk ID, File ID and File Version given.
         Wait for termination.
@@ -218,13 +218,13 @@ class ngamsPClientTest(ngamsTestSuite):
         refMsg = "Successfully handled command CLONE"
         self.checkEqual(refMsg, statObj.getMessage(), "Problem executing " +\
                         "Archive Pull Request")
-        
+
 
     def test_CorrectUsageBuf_1(self):
         """
         Synopsis:
         Test Online help feature of NG/AMS P-Client.
-        
+
         Description:
         Check that the man-page of the P-Client is displayed on stdout when
         the tool is invoked without command line parameters.
@@ -253,7 +253,7 @@ class ngamsPClientTest(ngamsTestSuite):
         Synopsis:
         Test that the INIT command is correctly handled via the NG/AMS
         Python API.
-        
+
         Description:
         Test that the INIT Command can be submitted via the P-Client.
 
@@ -268,7 +268,7 @@ class ngamsPClientTest(ngamsTestSuite):
 
         Remarks:
         ...
-       
+
         """
         self.prepExtSrv(8888, 1, 1, 1)
         status = ngamsPClient.ngamsPClient(port=8888).init()
@@ -287,7 +287,7 @@ class ngamsPClientTest(ngamsTestSuite):
 
         Expected Result:
         The LABEL Command should be send to the server and a label produced.
-        
+
         Test Steps:
         - Start server.
         - Submit LABEL Command specifying Slot ID/Host ID.
@@ -308,7 +308,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         Synopsis:
         Handling of ONLINE Command via P-Client.
-        
+
         Description:
         The purpose of the test is to test the handling of ONLINE Commands
         via the P-Client.
@@ -330,7 +330,7 @@ class ngamsPClientTest(ngamsTestSuite):
         self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "ONLINE Command")
 
-    
+
     def test_Register_1(self):
         """
         Synopsis:
@@ -368,7 +368,7 @@ class ngamsPClientTest(ngamsTestSuite):
         self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "REGISTER Command")
 
-        
+
     def test_Register_2(self):
         """
         Synopsis:
@@ -410,7 +410,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         Synopsis:
         Handling of REMDISK Command via P-Client (execute=1).
-        
+
         Description:
         Test that the REMDISK command is correctly handled via the NG/AMS
         Python API.
@@ -442,7 +442,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         Synopsis:
         Send REMFILE Command via P-Client.
-        
+
         Description:
         Test correct handling of the REMFILE command via the P-Client.
 
@@ -479,7 +479,7 @@ class ngamsPClientTest(ngamsTestSuite):
         """
         Synopsis:
         Handling of RETRIEVE Command via P-Client.
-        
+
         Description:
         Test correct handling of the RETRIEVE command from the NG/AMS
         Python API (no processing).
@@ -511,13 +511,13 @@ class ngamsPClientTest(ngamsTestSuite):
         tmpFile = "tmp/TEST.2001-05-08T15:25:00.123.fits.gz"
         refFile = "src/SmallFile.fits.gz"
         self.checkFilesEq(refFile, tmpFile, "Retrieved file incorrect")
-        
+
 
     def test_ServerMultiplexing_01(self):
         """
         Synopsis:
         Test server multiplexing feature of the Python-API/Client.
-        
+
         Description:
         The purpose of the test is to verify the proper functioning of the
         server context switching (multiplexing) provided by the Python-

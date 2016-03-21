@@ -54,7 +54,7 @@ class ngams_test_tpl(ngamsTestSuite):
         """
         Synopsis:
         ...
-        
+
         Description:
         ...
 

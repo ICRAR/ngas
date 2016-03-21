@@ -29,7 +29,7 @@ Retain only files look like this:
 
 OBSID_32MHZBW_XX/YY_r0.0_v1.0
 
-e.g. 
+e.g.
 1060792928_200-231MHz_XX_r0.0_v1.0.fits
 
 I estimate that we will need  67*2*30*24*7*5/1000 ~ 3.4 TB of disk space.
@@ -78,7 +78,7 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
     global is_purgeThrd_running, total_todo, num_done
     is_purgeThrd_running = True
     work_dir = srvObj.getCfg().getRootDirectory() + '/tmp/'
-    try:  
+    try:
         info(3, "host_id = %s" % srvObj.getHostId())
         query =  QUERY_ALL_FILES % srvObj.getHostId()
         info(3, "Executing query: %s" % query)
@@ -107,24 +107,24 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
         is_purgeThrd_running = False
         total_todo = 0
         num_done = 0
-    
+
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
     Purge all old versions on this host given a file id
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     # need to check if an existing worker thread is running, if so, return an error
     # TODO - should provide an option to force stop the thread, if it is still running
-    
+
     global purgeThrd
     global is_purgeThrd_running
     if (is_purgeThrd_running):

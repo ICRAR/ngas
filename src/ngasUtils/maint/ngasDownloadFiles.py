@@ -28,7 +28,7 @@
 # jknudstr  02/03/2005  Created
 #
 """
-The tool is used to download files from NGAS Nodes via 
+The tool is used to download files from NGAS Nodes via
 
   RETRIEVE?internal=<Filename>
 
@@ -66,7 +66,7 @@ def isNgasXmlStatusDoc(doc):
         return 1
     else:
         return 0
-        
+
 
 def storeFile(hdrs,
               data,
@@ -75,9 +75,9 @@ def storeFile(hdrs,
     Store data contained in HTTP response.
 
     hdrs:       HTTP headers (string).
-    
+
     data:       Data contained in HTTP response (string).
-    
+
     outDir:     Requested output directory (string).
 
     Returns:    Name of target file (string).
@@ -111,19 +111,19 @@ def downloadFiles(host,
     also kept.
 
     host:       Name of host to be contacted (string).
-    
+
     port:       Port number of NG/AMS Server (integer).
-    
+
     srcHost:    List of hosts to be contacted (<Host 1>,<Host 2>,...).
                 Can also be a single host, wildcards is allowed (string).
-    
+
     path:       File pattern of file(s) to be retrieved. If this is a
                 directory, the files in the directory will be retrieved
                 (string).
 
     outputDir:  Output directory. If not given, the current working point
                 will be chosen (string).
-                
+
     list:       If set to 1 and the path given is a directory, rather than
                 retrieving the file in the remote directory, the names of
                 the remote files are listed on stdout (integer/0|1).
@@ -207,7 +207,7 @@ def correctUsage():
           "--srcHost=<Source Host> --path=<Filename (Pattern)> --list\n\n"
     return buf
 
-  
+
 if __name__ == '__main__':
     """
     Main function to execute the tool.
@@ -243,10 +243,10 @@ if __name__ == '__main__':
             idx += 1
         except Exception, e:
             print "\nProblem executing the tool: %s\n" % str(e)
-            print correctUsage()  
+            print correctUsage()
             sys.exit(1)
     if ((not host) and (not port) or (not path)):
-        print correctUsage()  
+        print correctUsage()
         raise Exception, "Incorrect/missing command line parameter(s)!"
     if (not srcHost): srcHost = host
     try:
