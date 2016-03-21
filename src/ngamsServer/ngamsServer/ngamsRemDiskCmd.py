@@ -87,7 +87,7 @@ def _remDisk(srvObj,
     tmpDbm = ngamsDbm.ngamsDbm(fileListDbmName, writePerm = 0)
     noOfFiles = tmpDbm.getCount()
     del tmpDbm
-    kbsAvail = getDiskSpaceAvail(diskInfo.getMountPoint(), format="KB",float=1)
+    kbsAvail = getDiskSpaceAvail(diskInfo.getMountPoint(), format="KB")
     kbsReq = (kbPerFile * noOfFiles)
     msg = "Space required for REMDISK Command: %.1f KB, " +\
           "space available: %.1f KB"
@@ -131,7 +131,7 @@ def _remDisk(srvObj,
             del srvObj.getDiskDic()[diskInfo.getSlotId()]
         except:
             pass
-        
+
         infoMsg = genLog("NGAMS_INFO_DEL_DISK", [diskId])
         info(1,infoMsg)
 
@@ -140,15 +140,15 @@ def _remDisk(srvObj,
         srvObj.getDb().addDiskHistEntry(srvObj.getHostId(), diskId, "Disk Removed",
                                         NGAMS_XML_MT, ngasDiskInfo)
     elif (sqlDiskInfo != []):
-        infoMsg = genLog("NGAMS_INFO_DEL_DISK_SEL", [diskId]) 
+        infoMsg = genLog("NGAMS_INFO_DEL_DISK_SEL", [diskId])
     else:
         infoMsg = genLog("NGAMS_WA_DEL_DISK2", [srvObj.getHostId(), diskId])
- 
+
     # Generate status.
     status = srvObj.genStatus(NGAMS_SUCCESS, infoMsg)
     if (sqlDiskInfo): status.addDiskStatus(diskInfo)
     #########################################################################
-    
+
     return status
 
 
@@ -164,10 +164,10 @@ def remDisk(srvObj,
 
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     diskId:         ID of disk. Complete ID must be specified. I.e., no
                     wildcards are handled (string).
-    
+
     execute:        If set to 1 the information about the disk will be deleted.
                     Otherwise only the information about the disk selected for
                     deletion will be queried (integer/0|1).
@@ -176,7 +176,7 @@ def remDisk(srvObj,
                     selected for deletion/deleted (ngamsStatus).
     """
     T = TRACE()
-    
+
     tmpFilePat = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),
                                                   "REMDISK_CMD")
     try:
@@ -193,15 +193,15 @@ def handleCmdRemDisk(srvObj,
                      httpRef):
     """
     Handle REMDISK command. See also 'handleRemDisk()'.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     if (not srvObj.getCfg().getAllowRemoveReq()):
@@ -227,7 +227,7 @@ def handleCmdRemDisk(srvObj,
             errMsg = genLog("NGAMS_ER_REQ_HANDLING", ["Must provide proper " +\
                             "value for parameter: execute (0|1)"])
             raise Exception, errMsg
-        
+
     # Carry out the command.
     status = remDisk(srvObj, reqPropsObj, diskId, execute)
 

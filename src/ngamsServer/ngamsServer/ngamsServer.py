@@ -354,7 +354,7 @@ class ngamsServer:
         """
         Returns the proper NG/AMS Host ID according whether multiple servers
         can be executed on the same host, and this server is one of those.
-    
+
         If multiple servers can be executed on one node, the Host ID will be
         <Host Name>:<Port No>. Otherwise, the Host ID will be the hostname.
         """
@@ -2222,17 +2222,18 @@ class ngamsServer:
                     "Processing Directory (FileHandling:ProcessingDirectory"),
                    (self.getCfg().getLocalLogFile(),
                     "Local Log File (Log:LocalLogFile)")]
+
         for dirInfo in dirList:
-            stat, out = commands.getstatusoutput("df " + dirInfo[0])
-            if (stat == 0):
-                SunOS = 0
-                if (SunOS):
-                    mtPt = out.split(" ")[0].strip()
-                else:
-                    mtPt = out.split("\n")[-1].split("%")[-1].strip()
-                if (not self.__sysMtPtDic.has_key(mtPt)):
-                    self.__sysMtPtDic[mtPt] = []
-                self.__sysMtPtDic[mtPt].append(dirInfo)
+            path = os.path.abspath(dirInfo[0])
+            while not os.path.ismount(path):
+                path = os.path.dirname(path)
+            if not os.path.ismount(path):
+                continue
+            info(1, 'dave %s %s' % (dirInfo[0], path))
+            if not self.__sysMtPtDic.has_key(path):
+                self.__sysMtPtDic[path] = []
+            self.__sysMtPtDic[path].append(dirInfo)
+
         info(4,"Found NG/AMS System Directories to monitor for disk space")
 
         info(4,"Check/create NG/AMS Request Info DB ...")

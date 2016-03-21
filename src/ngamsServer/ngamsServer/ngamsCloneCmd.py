@@ -56,15 +56,15 @@ def handleCmdClone(srvObj,
                    httpRef):
     """
     Handle CLONE command.
-        
+
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
-    
+
     reqPropsObj:    Request Property object to keep track of actions done
                     during the request handling (ngamsReqProps).
-        
+
     httpRef:        Reference to the HTTP request handler
                     object (ngamsHttpRequestHandler).
-        
+
     Returns:        Void.
     """
     T = TRACE()
@@ -107,7 +107,7 @@ def cloneCheckDiskSpace(srvObj,
                         targetDiskId = ""):
     """
     Check if there is enough disk space available on this NGAS host for
-    carrying out the Clone Request. 
+    carrying out the Clone Request.
 
     srvObj:           Reference to instance of Server Object (ngamsServer).
 
@@ -117,26 +117,26 @@ def cloneCheckDiskSpace(srvObj,
                       This pickled information is
 
                         [<File Info Object>, <Host ID>, <Mount Point>]
-                       
+
                       (string)
-                     
+
     tmpFilePat:       File pattern to be used for generating temporary
                       files (string).
 
     targetDiskId:     ID of disk to where the files cloned should be
                       written (string).
-   
+
     Returns:          Void.
     """
     T = TRACE()
-    
+
     # Make a dictionary with the available amount of space per disk.
     info(4,"Generating dictionary with available space per disk")
     availDiskSpaceDic = {}
     mtRootDir = srvObj.getCfg().getRootDirectory()
     if (targetDiskId):
         tmpDiskInfoObjList = [ngamsDiskInfo.ngamsDiskInfo().\
-                              read(srvObj.getDb(), targetDiskId)]        
+                              read(srvObj.getDb(), targetDiskId)]
     else:
         tmpDiskInfoObjList = ngamsDiskUtils.\
                              getDiskInfoForMountedDisks(srvObj.getDb(),
@@ -145,8 +145,7 @@ def cloneCheckDiskSpace(srvObj,
     for diskInfoObj in tmpDiskInfoObjList:
         mtPt = diskInfoObj.getMountPoint()
         diskId = diskInfoObj.getDiskId()
-        availDiskSpaceDic[diskId] = getDiskSpaceAvail(mtPt, format="B",
-                                                      float=1)
+        availDiskSpaceDic[diskId] = getDiskSpaceAvail(mtPt, format="B")
 
     # Now simulate the execution of the clone job by going sequentially
     # through the files selected for cloning and subtract the required
@@ -235,7 +234,7 @@ def cloneCheckDiskSpace(srvObj,
                      (trgDiskInfo.getDiskId(), trgDiskInfo.getSlotId()))
                 cloneSucDbm.add(fileKey, "")
                 break
-            
+
         # We now subtract the size of the file from the available amount of
         # disk space for the selected Target Disk. When the amount of available
         # space goes below the threshold defined for this NG/AMS system that
@@ -281,9 +280,9 @@ def _checkFile(srvObj,
 
     fileInfoObj:      File info object with info about the file
                       (ngamsFileInfo).
-    
+
     stagFile:         Staging filename (string).
-    
+
     httpHeaders:      HTTP headers (mimetools.Message)
 
     checkChecksum:    Carry out checksum check (0|1/integer).
@@ -292,7 +291,7 @@ def _checkFile(srvObj,
     """
     # First ensure to flush file caches.
     ngamsFileUtils.syncCachesCheckFiles(srvObj, [stagFile])
-    
+
     # Check file size.
     fileSize = getFileSize(stagFile)
     if (fileSize != fileInfoObj.getFileSize()):
@@ -346,7 +345,7 @@ def _cloneExec(srvObj,
     to clean up properly when the processing is terminated.
     """
     T = TRACE(1)
-    
+
     cloneListDbm = cloneStatusDbm = None
 
     emailNotif = 0
@@ -358,7 +357,7 @@ def _cloneExec(srvObj,
 
     # Open clone list DB.
     cloneListDbm = ngamsDbm.ngamsDbm(cloneListDbmName)
-    
+
     # We have to get the port numbers of the hosts where the files to be
     # cloned are stored.
     hostInfoDic = {}
@@ -378,7 +377,7 @@ def _cloneExec(srvObj,
         cloneStatusDbmName = tmpFilePat + "_CLONE_STATUS_DB"
         cloneStatusDbm = ngamsDbm.ngamsDbm(cloneStatusDbmName,
                                            cleanUpOnDestr = 0, writePerm = 1)
-        
+
     successCloneCount = 0
     failedCloneCount  = 0
     abortCloneLoop    = 0
@@ -529,7 +528,7 @@ def _cloneExec(srvObj,
             complFilename = os.path.normpath(complTargPath + "/"+targFilename)
             mvTime = mvFile(stagingFilename, complFilename)
             ngamsLib.makeFileReadOnly(complFilename)
-          
+
             # Update status for new file in the DB.
             newFileInfo = fio.clone().setDiskId(trgDiskInfo.getDiskId()).\
                           setCreationDate(getFileCreationTime(complFilename))
@@ -547,7 +546,7 @@ def _cloneExec(srvObj,
                                setFileSize(fio.getFileSize()).setIoTime(mvTime)
             ngamsDiskUtils.updateDiskStatusDb(srvObj.getDb(), dummyDapiStatObj)
             ngamsArchiveUtils.checkDiskSpace(srvObj, trgDiskInfo.getDiskId())
-     
+
             # Update the clone file status list.
             if (emailNotif):
                 tmpFileList.setStatus(NGAMS_SUCCESS)
@@ -594,7 +593,7 @@ def _cloneExec(srvObj,
                     tmpFileList.addFileInfoObj(fio.setTag("SOURCE_FILE"))
                     cloneStatusDbm.addIncKey(tmpFileList)
                 failedCloneCount += 1
- 
+
             # Delete Staging File if already created.
             if ((stagingFilename != "") and (os.path.exists(stagingFilename))):
                 rmFile(stagingFilename)
@@ -603,7 +602,7 @@ def _cloneExec(srvObj,
         if (reqPropsObj):
             ngamsHighLevelLib.stdReqTimeStatUpdate(srvObj, reqPropsObj.\
                                                    incActualCount(1), timeAccu)
-        
+
     # Final update of the Request Status.
     if (reqPropsObj):
         complPercent = (100.0 * (float(reqPropsObj.getActualCount()) /
@@ -611,15 +610,15 @@ def _cloneExec(srvObj,
         reqPropsObj.setCompletionPercent(complPercent, 1)
         reqPropsObj.setCompletionTime(1)
         srvObj.updateRequestDb(reqPropsObj)
-    
-    # Send Clone Report with list of files cloned to a possible 
+
+    # Send Clone Report with list of files cloned to a possible
     # requestor(select) of this.
     totFiles = (successCloneCount + failedCloneCount)
     if (emailNotif):
         xmlStat = 0
         # TODO: Generation of XML status report is disabled since we cannot
         #       handle for the moment XML documents with 1000s of elements.
-        if (xmlStat):        
+        if (xmlStat):
             cloneStatusFileList = ngamsFileList.\
                                   ngamsFileList("FILE_CLONING_STATUS_REPORT",
                                                 "File Cloning Status Report")
@@ -627,7 +626,7 @@ def _cloneExec(srvObj,
             while (fileCount < cloneStatusDbm.getCount()):
                 tmpFileList = cloneStatusDbm.get(str(fileCount))
                 cloneStatusFileList.addFileListObj(tmpFileList)
-                
+
             # Make overall status.
             cloneStatusFileList.setStatus("SUCCESS: " +\
                                           str(successCloneCount) +\
@@ -741,7 +740,7 @@ def _cloneExplicit(srvObj,
     srvObj:           Reference to instance of Server Object (ngamsServer).
 
     fileInfoObj:      File info object with info about the file
-    
+
     diskId:           ID of disk hosting the file to be cloned (string).
 
     fileId:           ID of file to clone (string).
@@ -793,7 +792,7 @@ def _cloneExplicit(srvObj,
         storageSetId = srvObj.getCfg().getStorageSetFromSlotId(slotId).\
                        getStorageSetId()
         trgDiskInfo.setStorageSetId(storageSetId)
-    
+
     # Don't accept to clone onto the same disk (this would meann overwriting).
     if (trgDiskInfo.getDiskId() == diskId):
         err = "Source and target files are identical"
@@ -924,7 +923,7 @@ def _cloneThread(srvObj,
                  dummyPar = None):
     """
     Function that carried out the actual cloning process of the files
-    referenced to in the 'cloneList' 
+    referenced to in the 'cloneList'
 
     srvObj:           Reference to instance of Server Object (ngamsServer).
 
@@ -934,11 +933,11 @@ def _cloneThread(srvObj,
                       This pickled information is
 
                         [<File Info Object>, <Host ID>, <Mount Point>]
-                       
+
                       (string)
-                     
+
     tmpFilePat:       File pattern to be used for generating temporary
-                      files (string). 
+                      files (string).
 
     targetDiskId:     ID of disk to where the files cloned should be written
                       (string).
@@ -1007,7 +1006,7 @@ def _clone(srvObj,
                                      fileInfoDbmName=fileInfoDbmNm, order=0)
         fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmNm)
 
-        # Create a BSD DB with information about files to be cloned.       
+        # Create a BSD DB with information about files to be cloned.
         rmFile(cloneListDbmName + "*")
         cloneListDbm = ngamsDbm.ngamsDbm(cloneListDbmName, cleanUpOnDestr = 0,
                                          writePerm = 1)
@@ -1127,7 +1126,7 @@ def clone(srvObj,
       o diskId!="", fileId="", fileVersion!=-1:
       Clone all files with the given File Version from the disk with
       the ID given.
-   
+
       o diskId="", fileId="", fileVersion!=-1:
       Illegal. Not accepted to clone arbitrarily files given by only the
       File Version.
@@ -1138,9 +1137,9 @@ def clone(srvObj,
     srvObj:        Reference to instance of Server Object (ngamsServer).
 
     diskId:        ID of disk hosting file(s) to clone (string).
-    
+
     fileId:        ID of file to clone (string).
-     
+
     fileVersion:   Version of file(s) to clone (integer).
 
     targetDiskId:  ID of disk to where the files cloned should be written
@@ -1156,7 +1155,7 @@ def clone(srvObj,
     Returns:       Void.
     """
     T = TRACE()
-    
+
     tmpFilePat = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(), "CLONE_CMD")
     try:
         _clone(srvObj, diskId, fileId, fileVersion, targetDiskId,

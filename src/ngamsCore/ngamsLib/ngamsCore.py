@@ -107,6 +107,7 @@ import threading
 import time
 import traceback
 import types
+import subprocess
 
 import pkg_resources
 
@@ -436,7 +437,8 @@ def setLogCond(sysLog,
 
     # Set up the new log conditions.
     path = os.path.dirname(locLogFile)
-    if ((path != "") and (not os.path.exists(path))): os.makedirs(path)
+    if ((path != "") and (not os.path.exists(path))):
+        os.makedirs(path)
     if (sysLog == 0):
         sysLogPrio = -1
         sysLogLevel = -1
@@ -986,15 +988,9 @@ def createSortDicDump(dic):
     asciiDic = "{" + asciiDic[2:] + "}"
     return asciiDic
 
-
-_scale = {"B": 1024., "KB": 1., "MB": 1./1024.,
-          "GB": 1./1048576., "TB": 1./1073741824.}
-_diskSpaceDic = {}
-
-def getDiskSpaceAvail(mountPoint,
-                      format = "MB",
-                      float = 0,
-                      smart = True):
+_scale = {"B": 1.0, "KB": 1.0/1024.0, "MB": 1.0/1048576.0,
+          "GB": 1.0/1073741824.0, "TB": 1.0/1099511627776.0}
+def getDiskSpaceAvail(mountPoint, format = 'MB', smart = True):
     """
     Get the disk space available for the disk with the given mount point.
 
@@ -1009,53 +1005,16 @@ def getDiskSpaceAvail(mountPoint,
 
     Returns:     Returns available space in MB (integer).
     """
-    info(4,"Checking disk space available for path: " + mountPoint + " ...")
+    info(4, "Checking disk space available for path: %s" % mountPoint)
 
     startTime = time.time()
 
-    # If the space was checked for a given path less than 10s ago, and the
-    # smart flag is set, take the available disk space from the internal
-    # dictionary.
-    # This dictionary has the directory to check as key, pointing to pairs
-    # of [<time last check>, <space>].
-    diskSpace = None
-    if (smart):
-        if (_diskSpaceDic.has_key(mountPoint)):
-            if ((startTime - _diskSpaceDic[mountPoint][0]) < 10):
-                diskSpace = _diskSpaceDic[mountPoint][1]
+    st = os.statvfs(mountPoint)
+    diskSpace = (st.f_bavail * st.f_frsize) * _scale[format]
 
-    if (not diskSpace):
-        if (not os.path.exists(mountPoint)): 
-            try:
-                os.makedirs(mountPoint)
-            except:
-                # go on anyhow.
-                print "Illegal path encountered: " +\
-                  mountPoint + " - or path could not be created."            
-                # raise Exception, "Illegal path encountered: " +\
-                #      mountPoint + " - or path could not be created."
-        
-        # TODO: UNIX specific/make plug-in?
-    cmd = "df -k %s "
-    if os.uname()[0] == 'Darwin':
-        cmd = "df -kP %s "
-    exitCode, stdOut = commands.getstatusoutput(cmd % mountPoint)
-    if (exitCode):
-        raise Exception, "Illegal path encountered: " + mountPoint
-    cmd = str(cleanList(stdOut.replace("\n", " ").split(" "))[10]) + ".0"
-    info(5,'Executing command: {0}'.format(cmd))
-    diskSpace = eval(cmd)
-    # Update the disk space (cache) dictionary.
-    _diskSpaceDic[mountPoint] = (startTime, diskSpace)
-
-    # Scale etc. the disk space.
-    diskSpace = (diskSpace * _scale[format])
-
-    if (not float): diskSpace = int(diskSpace + 0.5)
-    msg = "Checked disk space available for path: %s - Result (%s): %s. " +\
-          "Time: %.3fs"
-    info(4,msg % (mountPoint, format, str(diskSpace),
-                  (time.time() - startTime)))
+    msg = ("Checked disk space available for path: %s - Result (MB): %.3f"
+           " Time: %.3fs")
+    info(4, msg % (mountPoint, diskSpace, (time.time() - startTime)))
 
     return diskSpace
 
@@ -1073,8 +1032,8 @@ def checkAvailDiskSpace(filename,
     Returns:    Void.
     """
     path = os.path.dirname(filename)
-    info(4,"Checking for disk space availability for path: " + path +\
-         " - Needed size: " + str(fileSize) + " ...")
+    info(4, "Checking for disk space availability for path: %s - Needed size: %s"\
+            % (path, str(fileSize)))
     if ((fileSize / 1024**2) > getDiskSpaceAvail(path, smart=True)):
         errMsg = genLog("NGAMS_ER_NO_DISK_SPACE", [filename, fileSize])
         error(errMsg)
@@ -1102,11 +1061,8 @@ def checkCreatePath(path):
             except Exception, e:
                 error("Error creating path: " + str(e))
                 raise e
+    finally:
         _pathHandleSem.release()
-    except Exception, e:
-        _pathHandleSem.release()
-        raise e
-
 
 def rmFile(filename):
     """
@@ -1138,7 +1094,8 @@ def mvFile(srcFilename,
     info(4,"Moving file: " + srcFilename + " to filename: " + trgFilename)
     try:
         # Make target file writable if existing.
-        if (os.path.exists(trgFilename)): os.chmod(trgFilename, 420)
+        if os.path.exists(trgFilename):
+            os.chmod(trgFilename, 420)
         checkCreatePath(os.path.dirname(trgFilename))
         fileSize = getFileSize(srcFilename)
         checkAvailDiskSpace(trgFilename, fileSize)
@@ -1146,8 +1103,6 @@ def mvFile(srcFilename,
 
         # Don't rely on executing separate OS commands to move files
         # Do it the python way instead
-        #stat, out = commands.getstatusoutput("mv %s %s" %\
-        #                                     (srcFilename, trgFilename))
         os.rename(srcFilename, trgFilename)
 
         # os.rename returns nothiing but throws OSErrors
@@ -1173,23 +1128,22 @@ def cpFile(srcFilename,
 
     Returns:      Time in took to move file (s) (float).
     """
-    info(4,"Copying file: " + srcFilename + " to filename: " + trgFilename)
+    info(4, "Copying file: %s to filename: %s" % (srcFilename, trgFilename))
     try:
         # Make target file writable if existing.
-        if (os.path.exists(trgFilename)): os.chmod(trgFilename, 420)
+        if os.path.exists(trgFilename):
+            os.chmod(trgFilename, 420)
         checkCreatePath(os.path.dirname(trgFilename))
         fileSize = getFileSize(srcFilename)
         checkAvailDiskSpace(trgFilename, fileSize)
         timer = PccUtTime.Timer()
-        stat, out = commands.getstatusoutput("cp %s %s" %\
-                                             (srcFilename, trgFilename))
-        if (stat): raise Exception, "Error executing copy command: " + str(out)
+        shutil.copyfile(srcFilename, trgFilename)
         deltaTime = timer.stop()
     except Exception, e:
         errMsg = genLog("NGAMS_AL_CP_FILE", [srcFilename, trgFilename, str(e)])
         alert(errMsg)
         raise Exception, errMsg
-    info(4,"File: %s copied to filename: %s" % (srcFilename, trgFilename))
+    info(4, "File: %s copied to filename: %s" % (srcFilename, trgFilename))
     return deltaTime
 
 
@@ -1211,16 +1165,11 @@ def compressFile(srcFilename,
     """
     T = TRACE()
 
-    compressCmd = "gzip -f %s" % srcFilename
-    stat, out = commands.getstatusoutput(compressCmd)
-    if (stat != 0):
-        msg = "Error compressing file: %s. Error: %s"
-        raise Exception, msg % (srcFilename, str(out).replace("\n", "   "))
-    trgFilename = srcFilename + ".gz"
-    if (os.path.exists(trgFilename)):
+    subprocess.check_call(['gzip', '-f', srcFilename])
+    trgFilename = '%s.gz' % srcFilename
+    if os.path.exists(trgFilename):
         return trgFilename
-    else:
-        return srcFilename
+    return srcFilename
 
 
 def decompressFile(srcFilename,
@@ -1238,17 +1187,11 @@ def decompressFile(srcFilename,
     """
     T = TRACE()
 
-    decompressCmd = "gunzip -f %s" % srcFilename
-    stat, out = commands.getstatusoutput(decompressCmd)
-    if (stat != 0):
-        msg = "Error decompressing file: %s. Error: %s"
-        raise Exception, msg % (srcFilename, str(out).replace("\n", "   "))
+    subprocess.check_call(['gunzip', '-f', srcFilename])
     trgFilename = srcFilename[:-3]
-    if (os.path.exists(trgFilename)):
+    if os.path.exists(trgFilename):
         return trgFilename
-    else:
-        msg = "Error decompressing file: %s" % srcFilename
-        raise Exception, msg
+    raise Exception, "Error decompressing file: %s" % srcFilename
 
 
 def timeRef2Iso8601(timeRef):

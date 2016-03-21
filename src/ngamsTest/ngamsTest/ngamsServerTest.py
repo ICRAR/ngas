@@ -88,7 +88,7 @@ class ngamsServerTest(ngamsTestSuite):
         time.sleep(timeout + 2) # More than enough to provoke a server timeout
 
         data = s.recv(amount_of_data, socket.MSG_WAITALL)
-        self.assertLess(len(data), amount_of_data, "Should have read less data")
+        self.assertEquals(len(data), amount_of_data, "Should have read less data")
         self.assertEquals('', s.recv(amount_of_data - len(data)))
         s.close()
 

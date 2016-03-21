@@ -486,12 +486,15 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         self.prepExtSrv(8888)
         shutil.copyfile(srcFile, tmpSrcFile)
         srcFileUrl = "file:" + tmpSrcFile
-        statObj = sendPclCmd(port=8888).archive(srcFileUrl)
-        tmpStatFile = "tmp/ngamsArchiveCmdTest_test_ArchivePullReq_1_tmp"
-        refStatFile = "ref/ngamsArchiveCmdTest_test_ArchivePullReq_1_ref"
-        saveInFile(tmpStatFile, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-                          "returned for Archive Push Request")
+        stat = sendPclCmd(port=8888).archive(srcFileUrl)
+        self.assertEquals(stat.getStatus(), 'SUCCESS', None)
+
+        srcFile = "src/SmallFile.fits.gz"
+        tmpSrcFile = "/tmp/ngamsTest/NGAS/SmallFile.fits.gz"
+        shutil.copyfile(srcFile, tmpSrcFile)
+        srcFileUrl = "file:" + tmpSrcFile
+        stat = sendPclCmd(port=8888).archive(srcFileUrl)
+        self.assertEquals(stat.getStatus(), 'SUCCESS', None)
 
 
     def test_ArchivePullReq_2(self):

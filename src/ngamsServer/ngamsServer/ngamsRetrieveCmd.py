@@ -37,6 +37,7 @@ import glob, commands, time
 import os
 import sys
 import errno
+import shutil
 
 from ngamsLib import ngamsDppiStatus, ngamsStatus
 from ngamsLib import ngamsHighLevelLib, ngamsLib
@@ -164,9 +165,10 @@ def cleanUpAfterProc(statusObjList):
     for statObj in statusObjList:
         for resObj in statObj.getResultList():
             if (resObj.getProcDir() != ""):
-                info(3,"Cleaning up processing directory: " +\
-                     resObj.getProcDir() + " after completed processing")
-                ngamsPlugInApi.execCmd("rm -rf " + resObj.getProcDir())
+                msg = ("Cleaning up processing directory: %s"
+                      " after completed processing") % resObj.getProcDir()
+                info(3, msg)
+                shutil.rmtree(resObj.getProcDir())
 
 
 def genReplyRetrieve(srvObj,
@@ -321,9 +323,15 @@ def _handleCmdRetrieve(srvObj,
     Returns:        Void.
     """
     T = TRACE()
+    # For data files, retrieval must be enabled otherwise the request is
+    # rejected.
+    if (not srvObj.getCfg().getAllowRetrieveReq()):
+        errMsg = genLog("NGAMS_ER_ILL_REQ", ["Retrieve"])
+        error(errMsg)
+        raise Exception, errMsg
 
     # Get query information.
-    if (reqPropsObj.hasHttpPar("ng_log")):
+    '''if (reqPropsObj.hasHttpPar("ng_log")):
         if (reqPropsObj.hasHttpPar("host_id")):
             if (reqPropsObj.getHttpPar("host_id") != srvObj.getHostId()):
                 _handleRemoteIntFile(srvObj, reqPropsObj, httpRef)
@@ -340,6 +348,8 @@ def _handleCmdRetrieve(srvObj,
             errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", ["ng_log: " + locLogFile])
             error(errMsg)
             raise Exception, errMsg
+
+    # This is a massive security risk and is not necessary
     elif (reqPropsObj.hasHttpPar("cfg")):
         if (reqPropsObj.hasHttpPar("host_id")):
             if (reqPropsObj.getHttpPar("host_id") != srvObj.getHostId()):
@@ -456,14 +466,7 @@ def _handleCmdRetrieve(srvObj,
         # Send back the file.
         srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                             complFilename, 1, mimeType)
-        return
-
-    # For data files, retrieval must be enabled otherwise the request is
-    # rejected.
-    if (not srvObj.getCfg().getAllowRetrieveReq()):
-        errMsg = genLog("NGAMS_ER_ILL_REQ", ["Retrieve"])
-        error(errMsg)
-        raise Exception, errMsg
+        return'''
 
     # At least file_id must be specified if not an internal file has been
     # requested.

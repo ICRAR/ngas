@@ -36,7 +36,7 @@ It accepts the following parameters:
 mime_type:          Indicates the type of data (mandatory).
 
 target_mime_type:   Mime-type, which will be written in the DB. If not given
-                    the DAPI will 'guess' the target mime-type (optional).     
+                    the DAPI will 'guess' the target mime-type (optional).
 
 file_id:            ID of the file in the NGAS archive. If not given, the
                     basename of the URI indicated in the Archive Request is
@@ -60,6 +60,7 @@ compression_ext:    Extension resulting from applying the specified compression
 # Parameters.
 
 import os
+import subprocess
 
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE, info, genLog, error
@@ -69,7 +70,7 @@ from pccUt import PccUtTime
 TARG_MIME_TYPE  = "target_mime_type"
 FILE_ID         = "file_id"
 VERSIONING      = "versioning"
-CHECKSUM        = "checksum"   
+CHECKSUM        = "checksum"
 CHECKSUM_CMD    = "checksum_cmd"
 COMPRESSION     = "compression"
 COMPRESSION_EXT = "compression_ext"
@@ -82,15 +83,15 @@ def handlePars(reqPropsObj,
                parDic):
     """
     Parse/handle the HTTP parameters.
-    
+
     reqPropsObj:  NG/AMS request properties object (ngamsReqProps).
 
     parDic:       Dictionary with the parameters (dictionary).
-    
+
     Returns:      Void.
     """
     T = TRACE()
-    
+
     # Get parameters.
     info(3,"Get request parameters")
     parDic[TARG_MIME_TYPE]  = None
@@ -103,7 +104,7 @@ def handlePars(reqPropsObj,
 
     if (reqPropsObj.hasHttpPar(TARG_MIME_TYPE)):
         parDic[TARG_MIME_TYPE] = reqPropsObj.getHttpPar(TARG_MIME_TYPE)
-    
+
     # If the file_id is not given, we derive it from the name of the URI.
     if (reqPropsObj.hasHttpPar(FILE_ID)):
         parDic[FILE_ID] = reqPropsObj.getHttpPar(FILE_ID)
@@ -151,20 +152,20 @@ def checkChecksum(stgFile,
     """
     Check the checksum of the file received according to the checksum
     scheme given.
-    
+
     stgFile:      Staging file to check (string).
 
     parDic:       Dictionary with the parameters (dictionary).
-    
+
     Returns:      Void.
     """
     T = TRACE()
-    
+
     # If checksum given, check it.
     if (parDic[CHECKSUM] and parDic[CHECKSUM_CMD]):
-        cmd = "%s %s" % (parDic[CHECKSUM_CMD], stgFile)
-        stat, out = ngamsPlugInApi.execCmd(cmd)
-        if (out.strip().find(parDic[CHECKSUM].strip()) == -1):
+        try:
+            subprocess.check_call([parDic[CHECKSUM_CMD], stgFile])
+        except subprocess.CalledProcessError:
             msg = genLog("NGAMS_ER_DAPI_BAD_FILE",
                          [stgFile, parDic[CHECKSUM_CMD], "Illegal CHECKSUM"])
             raise Exception, msg
@@ -187,10 +188,10 @@ def compressFile(srvObj,
                   and the format (mime-type) of the resulting data file and
                   the compression method (NONE if the file is not compressed),
                   finally, the extension added by the compression if any
-                  (tuple).   
+                  (tuple).
     """
     T = TRACE()
-    
+
     stFn = reqPropsObj.getStagingFilename()
 
     # If a compression application is specified, apply this.
@@ -201,11 +202,8 @@ def compressFile(srvObj,
         compCmd = "%s %s" % (parDic[COMPRESSION], stFn)
         compressTimer = PccUtTime.Timer()
         info(3,"Compressing file with command: %s" % compCmd)
-        exitCode, stdOut = ngamsPlugInApi.execCmd(compCmd)
-        #if (exitCode != 0):
-        #    msg ="Problems during archiving! Compressing the file failed. " +\
-        #          "Error: %s" % str(stdOut).replace("/n", "   ")
-        #    raise Exception, msg
+        with open(os.devnull, 'w') as f:
+            exitCode = subprocess.call([parDic[COMPRESSION], stFn], stdout = f, stderr = f)
         # If the compression fails, assume that it is because the file is not
         # compressible (although it could also be due to lack of disk space).
         if (exitCode == 0):
@@ -237,7 +235,7 @@ def compressFile(srvObj,
         else:
             format = reqPropsObj.getMimeType()
         compression = NO_COMPRESSION
-    
+
     archFileSize = ngamsPlugInApi.getFileSize(reqPropsObj.getStagingFilename())
     return uncomprSize, archFileSize, format, compression, comprExt
 
@@ -251,7 +249,7 @@ def checkForDblExt(complFilename,
     in case there are two.
 
     complFilename:    Complete filename (string).
-    
+
     relFilename:      Relative filename (string).
 
     Returns:          Tuple with complete filename and relative filename
@@ -268,16 +266,16 @@ def checkForDblExt(complFilename,
 
     return (complFilename, relFilename)
 
-  
+
 def ngamsGenDapi(srvObj,
                  reqPropsObj):
     """
     Generic Data Archiving Plug-In to handle archiving of any file.
 
     srvObj:       Reference to NG/AMS Server Object (ngamsServer).
-     
+
     reqPropsObj:  NG/AMS request properties object (ngamsReqProps).
- 
+
     Returns:      Standard NG/AMS Data Archiving Plug-In Status
                   as generated by: ngamsPlugInApi.genDapiSuccessStat()
                   (ngamsDapiStatus).
@@ -291,12 +289,12 @@ def ngamsGenDapi(srvObj,
          os.path.basename(reqPropsObj.getFileUri()))
     try:
         parDic = {}
-        handlePars(reqPropsObj, parDic)    
-        diskInfo = reqPropsObj.getTargDiskInfo() 
+        handlePars(reqPropsObj, parDic)
+        diskInfo = reqPropsObj.getTargDiskInfo()
         stgFile = reqPropsObj.getStagingFilename()
         ext = os.path.splitext(stgFile)[1][1:]
         checkChecksum(stgFile, parDic)
-     
+
         # Generate file information.
         info(3,"Generate file information")
         dateDir = PccUtTime.TimeStamp().getTimeStamp().split("T")[0]
@@ -327,7 +325,7 @@ def ngamsGenDapi(srvObj,
                                                  archFileSize, uncomprSize,
                                                  compression, relPath,
                                                  diskInfo.getSlotId(),
-                                                 fileExists, complFilename)    
+                                                 fileExists, complFilename)
     except Exception, e:
         msg = "Error occurred in DAPI: %s" % str(e)
         error(msg)

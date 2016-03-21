@@ -37,7 +37,9 @@ implemented and NG/AMS configured to use it.
 """
 
 from collections import defaultdict
-import commands, os, string
+import subprocess
+import os
+import string
 
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE, genLog, info, error
@@ -77,29 +79,6 @@ def getFitsKeys(fitsFile,
         errMsg = genLog("NGAMS_ER_RETRIEVE_KEYS", [str(keyList),
                                                    fitsFile + msg])
         error(errMsg)
-        raise Exception, errMsg
-
-def getComprExt(comprMethod):
-    """
-    Determine the extension for the given type of compression specified.
-
-    comprMethod:   Compression method e.g. 'compress' or 'gzip' (string).
-
-    Returns:       Extension used by the given compression method (string).
-    """
-    T = TRACE()
-    
-    if (comprMethod.find("compress") != -1):
-        return "Z"
-    elif (comprMethod.find("gzip") != -1):
-        return "gz"
-    elif (comprMethod.find("ngamsTileCompress") != -1):
-        return "" 
-    elif (comprMethod == ""):
-        return ""
-    else:
-        errMsg = "Unknown compression method specified: " + comprMethod
-        errMsg = genLog("NGAMS_ER_DAPI", [errMsg])
         raise Exception, errMsg
 
 
@@ -143,12 +122,11 @@ def checkFitsFileSize(filename):
 
     Returns:    Void.
     """
-    if (string.split(filename, ".")[-1] == "fits"):
+    if filename.lower().endswith('.fits'):
         size = ngamsPlugInApi.getFileSize(filename)
-        testVal = (size / 2880.0)
-        if (testVal != int(testVal)):
-            errMsg = "The size of the FITS file issued " +\
-                     "is not a multiple of 2880 (size: %d)! Rejecting file!"
+        if size % 2880 != 0:
+            errMsg = ("The size of the FITS file issued "
+                     "is not a multiple of 2880 (size: %d)! Rejecting file!")
             errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE",
                             [os.path.basename(filename),
                              "ngamsFitsPlugIn", errMsg % size])
@@ -192,23 +170,6 @@ def checkFitsChecksum(reqPropsObj,
     info(2,"File: %s checked with: %s. Result: OK" % (stgFile, chksumUtil))
 
 
-def addFitsCheckSum(filename):
-    """
-    Add the FITS CHECKSUM/DATASUM in the given file.
-
-    filename:  Complete name of the file to process (string).
-
-    Returns:   Void.
-    """
-    cmd = "chksumAddFitsChksum %s" % filename
-    stat, out = commands.getstatusoutput(cmd)
-    if (stat != 0):
-        errMsg = "Problem adding DATASUM/CHECKSUM keyword to file: " +\
-                 filename + ". Error: " + out
-        errMsg = genLog("NGAMS_ER_DAPI", [errMsg])
-        raise Exception, errMsg
-
-
 def prepFile(reqPropsObj,
              parDic):
     """
@@ -222,23 +183,25 @@ def prepFile(reqPropsObj,
 
     Returns:      Tuple containing:
 
-                    (<DP ID>, <Date Obs. Night>, <Compr. Ext.>)   (tuple).   
+                    (<DP ID>, <Date Obs. Night>, <Compr. Ext.>)   (tuple).
     """
     T = TRACE()
-    
+
     # If the file is already compressed, we have to decompress it.
+    comprExt = ''
+    compression = parDic["compression"]
+    if compression and 'gzip' in compression:
+        comprExt = 'gz'
+
     tmpFn = reqPropsObj.getStagingFilename()
-    if ((tmpFn.find(".Z") != -1) or (tmpFn.find(".gz") != -1)):
-        ngamsPlugInApi.execCmd("gunzip " + tmpFn)
-        reqPropsObj.setStagingFilename(os.path.splitext(tmpFn)[0])
+    if tmpFn.lower().endswith('.gz'):
+        newFn = os.path.splitext(tmpFn)[0]
+        info(2, "Decompressing file using gzip: %s" % tmpFn)
+        subprocess.check_call(['gunzip', '-f', tmpFn], shell = False)
+        info(2, "Decompression success: %s" % newFn)
+        reqPropsObj.setStagingFilename(newFn)
+
     checkFitsFileSize(reqPropsObj.getStagingFilename())
-    #checkChecksum(parDic, reqPropsObj.getStagingFilename())
-    if 'skip_checksum' not in parDic:
-        checkFitsChecksum(reqPropsObj, reqPropsObj.getStagingFilename())
-    if (parDic.has_key("compression")):
-        comprExt = getComprExt(parDic["compression"])
-    else:
-        comprExt = ""
     dpIdInfo = getDpIdInfo(reqPropsObj.getStagingFilename())
 
     return dpIdInfo[1], dpIdInfo[2], comprExt
@@ -256,38 +219,28 @@ def compress(reqPropsObj,
 
     Returns:      Tupe containing uncompressed filesize, archived filesize
                   and the format (mime-type) of the resulting data file
-                  (tuple).   
+                  (tuple).
     """
     stFn = reqPropsObj.getStagingFilename()
-
-    # If a compression application is specified, apply this.
     uncomprSize = ngamsPlugInApi.getFileSize(stFn)
-    if (parDic["compression"] != ""):
-        info(2,"Compressing file using: " + parDic["compression"] + " ...")
-        compressTimer = PccUtTime.Timer()
-        exitCode, stdOut =\
-                  ngamsPlugInApi.execCmd(parDic["compression"] + " " + stFn)
-        if (exitCode != 0):
-            errMsg = "ngamsFitsPlugIn: Problems during archiving! " +\
-                     "Compressing the file failed"
-            raise Exception, errMsg
+    mime = reqPropsObj.getMimeType()
+    compression = parDic["compression"]
 
-        comprExt = getComprExt(parDic["compression"])
-        if (comprExt != ""): stFn = stFn + "." + comprExt
-        # Remember to update Staging Filename in the Request Properties Object.
-        reqPropsObj.setStagingFilename(stFn)
-        if (parDic["compression"].find("compress") != -1):
-            format = "application/x-cfits"
-        elif (parDic["compression"].find("ngamsTileCompress") != -1):
-            format = "image/x-fits"
-        else:
-            format = "application/x-gfits"
-        info(2,"File compressed. Time: %.3fs" % compressTimer.stop())
+    if compression and 'gzip' in compression:
+        info(2, "Compressing file: %s using: %s" % (stFn, compression))
+        compressTimer = PccUtTime.Timer()
+        gzip_name = '%s.gz' % stFn
+        subprocess.check_call(['gzip', '--no-name', stFn], shell = False)
+        reqPropsObj.setStagingFilename(gzip_name)
+        mime = 'application/x-gfits'
+        compression = 'gzip'
+        info(2, "File compressed: %s Time: %.3fs" % (gzip_name, compressTimer.stop()))
     else:
-        format = reqPropsObj.getMimeType()
-        
+        compression = ''
+
     archFileSize = ngamsPlugInApi.getFileSize(reqPropsObj.getStagingFilename())
-    return uncomprSize, archFileSize, format
+
+    return uncomprSize, archFileSize, mime, compression
 
 
 # DAPI function.
@@ -297,18 +250,18 @@ def ngamsFitsPlugIn(srvObj,
     Data Archiving Plug-In to handle archiving of FITS files.
 
     srvObj:       Reference to NG/AMS Server Object (ngamsServer).
-    
+
     reqPropsObj:  NG/AMS request properties object (ngamsReqProps).
 
     Returns:      Standard NG/AMS Data Archiving Plug-In Status as generated
                   by: ngamsPlugInApi.genDapiSuccessStat() (ngamsDapiStatus).
     """
-    info(1,"Plug-In handling data for file with URI: " +
-         os.path.basename(reqPropsObj.getFileUri()))
+    info(1, "Plug-In handling data for file with URI: %s" %\
+            os.path.basename(reqPropsObj.getFileUri()))
     diskInfo = reqPropsObj.getTargDiskInfo()
     parDic = ngamsPlugInApi.parseDapiPlugInPars(srvObj.getCfg(),
                                                 reqPropsObj.getMimeType())
-    
+
     # Check file (size + checksum) + extract information.
     dpId, dateDirName, comprExt = prepFile(reqPropsObj, parDic)
 
@@ -325,16 +278,13 @@ def ngamsFitsPlugIn(srvObj,
                                             [comprExt])
 
     # If a compression application is specified, apply this.
-    uncomprSize, archFileSize, format = compress(reqPropsObj, parDic)
+    uncomprSize, archFileSize, mime, compression = compress(reqPropsObj, parDic)
 
     # Generate status + return.
     info(3,"DAPI finished processing of file - returning to main application")
     return ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(), relFilename,
-                                             dpId, fileVersion, format,
+                                             dpId, fileVersion, mime,
                                              archFileSize, uncomprSize,
-                                             parDic["compression"], relPath,
+                                             compression, relPath,
                                              diskInfo.getSlotId(), fileExists,
                                              complFilename)
-
-
-# EOF

@@ -35,6 +35,7 @@ types of NG/AMS plug-ins.
 """
 
 import os, commands
+import shutil
 from pccUt import PccUtUtils
 from ngamsCore import NGAMS_SUCCESS, TRACE, genLog, error, info, checkCreatePath, trim
 import ngamsHighLevelLib, ngamsNotification
@@ -58,27 +59,27 @@ def genDapiSuccessStat(diskId,
     Generates a plug-in status in a format expected by the NG/AMS Server.
 
     diskId:            Disk ID (string).
-    
+
     relFilename:       Filename relative to mount point (string).
-    
+
     fileId:            File ID (string).
 
     fileVersion:       Version of file (integer).
-    
+
     format:            Format of file (string).
-    
+
     fileSize:          File size in bytes (integer).
-    
+
     uncomprSize:       Uncompressed size of file (integer).
-    
+
     compression:       Compression applied on file if any (string).
-    
+
     relPath:           Relative path of file (string).
-    
+
     slotId:            Slot ID for disk where file was stored (string).
-    
+
     fileExists:        1 if file already existed otherwise 0 (integer).
-    
+
     completeFilename:  Complete name of file (string).
 
     Returns:           NG/AMS DAPI Status Object (ngamsDapiStatus).
@@ -109,27 +110,27 @@ def genRegPiSuccessStat(diskId,
     Generates a plug-in status in a format expected by the NG/AMS Server.
 
     diskId:            Disk ID (string).
-    
+
     relFilename:       Filename relative to mount point (string).
-    
+
     fileId:            File ID (string).
 
     fileVersion:       Version of file (integer).
-    
+
     format:            Format of file (string).
-    
+
     fileSize:          File size in bytes (integer).
-    
+
     uncomprSize:       Uncompressed size of file (integer).
-    
+
     compression:       Compression applied on file if any (string).
-    
+
     relPath:           Relative path of file (string).
-    
+
     slotId:            Slot ID for disk where file was stored (string).
-    
+
     fileExists:        1 if file already existed otherwise 0 (integer).
-    
+
     completeFilename:  Complete name of file (string).
 
     Returns:           NG/AMS DAPI Status Object (ngamsDapiStatus).
@@ -154,9 +155,9 @@ def parseDapiPlugInPars(ngamsCfgObj,
                         mimeType):
     """
     Get the plug-in parameters for a Data Archiving Plug-In.
-    
+
     ngamsCfgObj:  Instance of NG/AMS Configuration Class (ngamsConfig).
-     
+
     mimeType:     Mime-type of request being handled (string).
 
     Returns:      Dictionary containing the parameters from the
@@ -173,7 +174,7 @@ def parseRegPlugInPars(ngamsCfgObj,
     Get the plug-in parameters for a Register Plug-In.
 
     ngamsCfgObj:  Instance of NG/AMS Configuration Class (ngamsConfig).
-     
+
     mimeType:     Mime-type of request being handled (string).
 
     Returns:      Dictionary containing the parameters for the plug-in. Key
@@ -208,7 +209,7 @@ def execCmd(cmd,
     list with the cmd exit code and the output written on stdout and stderr.
 
     cmd:         Command to execute on the shell (string).
-    
+
     timeOut:     Timeout waiting for the command. A timeout of "-1" means
                  that no timeout is applied (float).
 
@@ -247,11 +248,11 @@ def notify(srvObj,
     Send a notification e-mail to a subscriber about an event happening.
 
     srvObj:        Reference to the NGAS server object (ngamsServer).
-    
+
     type:          Type of Notification (See NGAMS_NOTIF_* in ngams).
-    
+
     subject:       Subject of message (string).
-    
+
     msg:           Message to send (string).
 
     Returns:       Void.
@@ -279,14 +280,14 @@ def prepProcFile(ngamsCfgObj,
     """
     procDir = ngamsHighLevelLib.genProcDirName(ngamsCfgObj)
     checkCreatePath(procDir)
-    procFilename = os.path.normpath(procDir + "/" + os.path.basename(filename))
-    if (os.path.exists(filename)):
-        commands.getstatusoutput("cp " + filename + " " + procFilename)
+    procFilename = os.path.normpath("{0}/{1}".format(procDir, os.path.basename(filename)))
+    if os.path.exists(filename):
+        shutil.copyfile(filename, procFilename)
     else:
-        commands.getstatusoutput("touch %s" % procFilename)
+        open(procFilename, 'a').close()
     os.chmod(procFilename, 0775)
     return [procFilename, procDir]
-    
+
 
 def genFileInfo(dbConObj,
                 ngamsCfgObj,
@@ -306,45 +307,45 @@ def genFileInfo(dbConObj,
        <relative filename>, <complete filename>]
 
     dbConObj:          Instance of NG/AMS DB class (ngamsDb).
-    
+
     ngamsCfgObj:       Instance of NG/AMS Configuration class (ngamsConfig).
 
     reqPropsObj:       NG/AMS request properties object (ngamsReqProps).
-  
+
     diskDic:           Dictionary containing ngamsPhysDiskInfo
                        objects (dictionary).
 
     trgDiskInfoObj:    Disk Info Object for Target Disk (ngasmDiskInfo).
-    
+
     stagingFilename:   Name of Staging File (string).
-    
+
     fileId:            ID of file (string).
-    
+
     baseFilename:      Desired basename of file (string).
-    
+
     subDirs:           List of sub-directories to append after the
                        'mandatory' part of the path (list).
-    
+
     addExts:           Additional extensions to append to the final
                        filename (list).
-       
+
     Returns:           Tuple with information about file (tuple).
     """
     T = TRACE()
-    
+
     if (reqPropsObj.hasHttpPar("file_version")):
         paraFV = int(reqPropsObj.getHttpPar("file_version"))
     else:
         paraFV = -1
-    
+
     if (reqPropsObj.hasHttpPar("no_versioning")):
         noVersioning = int(reqPropsObj.getHttpPar("no_versioning"))
     else:
         noVersioning = 0
-        
+
     if (not noVersioning): # no_versioning = 0 means do not overwrite
         if (paraFV > 0):
-            # check if this version already exists 
+            # check if this version already exists
             if (dbConObj.checkFileVersion(fileId, paraFV)):
                 raise Exception("Version %d exists for file %s. Please use 'no_versioning=1' AND 'versioning=0' for overwrite." % (paraFV, fileId))
             fileVersion = paraFV
@@ -394,16 +395,16 @@ def genFileInfoReg(dbConObj,
        <relative filename>, <complete filename>]
 
     dbConObj:          Instance of NG/AMS DB class (ngamsDb).
-    
+
     ngamsCfgObj:       Instance of NG/AMS Configuration class (ngamsConfig).
 
     reqPropsObj:       NG/AMS request properties object (ngamsReqProps).
-  
+
     hostDiskInfoObj:   Disk Info Object for disk hosting the file
                        (ngamsDiskInfo).
-    
+
     filename:          Name of file (string).
-    
+
     fileId:            ID of file (string).
 
     Returns:           Tuple with information about file (tuple).
@@ -430,7 +431,7 @@ def genFileInfoReg(dbConObj,
                                    fileVersion, complFilename)
 
     return [fileVersion, relPath, relFilename, complFilename, fileExists]
-    
+
 
 def getDppiPars(ngamsCfgObj,
                 dppiName):
@@ -463,7 +464,7 @@ def getTmpDir(ngamsCfgObj):
     Get the NG/AMS Temporary Files Directory.
 
     ngamsCfgObj:   NG/AMS Configuration Object (ngamsConfig).
-    
+
     Returns:       Name of temporary directory (string).
     """
     return ngamsHighLevelLib.getTmpDir(ngamsCfgObj)

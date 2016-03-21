@@ -38,6 +38,7 @@ suspended NGAS hosts, suspending itself.
 import commands
 import os, time, thread, threading, glob, cPickle
 import types
+import shutil
 
 import ngamsArchiveUtils, ngamsSrvUtils
 from ngamsLib.ngamsCore import TRACE, info, NGAMS_JANITOR_THR, \
@@ -791,7 +792,7 @@ def checkUpdateDbSnapShots(srvObj):
             # End-Loop: Check DB Snapshot against DB. ###########################
             if (_updateSnapshot(srvObj.getCfg())):
                 snapshotDbm.sync()
-            
+
             # Make a small break between each disk/mount point.
             time.sleep(0.1)
 
@@ -965,7 +966,7 @@ def checkDbChangeCache(srvObj,
     finally:
         if snapshotDbm:
             snapshotDbm.close()
-       
+
 
 
 def updateDbSnapShots(srvObj,
@@ -1199,9 +1200,8 @@ def janitorThread(srvObj,
                             PccLog.info(1, "Rotating log file: %s -> %s" %\
                                         (logFile, rotLogFile), getLocation())
                             logFlush()
-                            commands.getstatusoutput("mv " + logFile + " " +\
-                                                     rotLogFile)
-                            open(logFile, "w").close()
+                            shutil.move(logFile, rotLogFile)
+                            open(logFile, 'a').close()
                             msg = "NG/AMS Local Log File Rotated and archived (%s)"
                             PccLog.info(1,msg % hostId, getLocation())
                     relLogSem()

@@ -33,7 +33,12 @@
 Contains utilities for handling the disk configuration.
 """
 
-import  sys, os, re, string, threading, commands
+import sys
+import os
+import re
+import string
+import threading
+import commands
 import time
 
 from pccUt import PccUtTime
@@ -62,7 +67,7 @@ def prepNgasDiskInfoFile(hostId,
     diskInfoObj:     NGAS Disk Info Object containing information about the
                      disk for which to generate the NgasDiskInfo file
                      (ngasDiskInfo).
-    
+
     yankNewlines:    If set to 1 newline characters will be removed from
                      the resulting XML document (integer/0|1).
 
@@ -90,7 +95,7 @@ def getDiskCompleted(dbConObj,
     0 is returned.
 
     dbConObj:   NGAS DB connection object (ngamsDb).
-    
+
     diskId:     Disk ID for the disk (string).
 
     Returns:    1 if disk is marked as completed, otherwise 0 (integer).
@@ -113,9 +118,9 @@ def isMainDisk(slotId,
                ngamsCfg):
     """
     Based on the mount point, return 1 if the disk is a Main Disk.
-    
+
     slotId:       Slot ID for the disk (string).
-    
+
     ngamsCfg:     Instance of NG/AMS Configuration Class (ngamsConfig).
 
     Returns:      1 if disk is a Main Disk, otherwise 0 (integer).
@@ -134,7 +139,7 @@ def checkDisks(hostId,
     """
     First it is checked if all HDDs marked in the DB as mounted in this
     NGAS system are actually mounted.
-    
+
     Check the HDDs currently installed and for each HDD it is checked
     if there is an entry for this. If not a new entry for this HDD is
     created.
@@ -150,16 +155,16 @@ def checkDisks(hostId,
     hostId:         The ID of this NGAS host
 
     dbConObj:       DB connection object (ngamsDb).
-    
+
     ngamsCfgObj:    Configuration object (ngamsConfig).
-    
+
     diskDic:        Dictionary containing ngamsPhysDiskInfo objects with the
                     information about the disk configuration (dictionary).
-    
+
     Returns:        Void.
     """
     T = TRACE()
-    
+
     diskList = getDiskInfoForMountedDisks(dbConObj, hostId,
                                           ngamsCfgObj.getRootDirectory())
     # The "mtDiskDic" dictionary contains information (ngasDiskInfo objects)
@@ -239,7 +244,7 @@ def checkDisks(hostId,
         for cfgSlotId in ngamsCfgObj.getSlotIds():
             cfgSlotIds.append(cfgSlotId)
         cfgSlotIds.sort()
-        
+
         notifInfo = []
         # Disks, which should not be updated/inserted in the DB are contained
         # in the "rmDiskDic" dictionary.
@@ -312,7 +317,7 @@ def checkDisks(hostId,
                     else:
                         prevMainDisk = 0
                     mainDisk = isMainDisk(slotId, ngamsCfgObj)
-                        
+
                     # Check: Disk was previously installed as a Main Disk,
                     # but is now installed in a Replication Slot.
                     if (prevMainDisk and not mainDisk):
@@ -336,7 +341,7 @@ def checkDisks(hostId,
                                           "MAIN DISK", errMsg])
                         rmDiskDic[slotId] = slotId
                         continue
-                                     
+
                     # Everything OK, update existing entry in the DB.
                     # If the associated disk is not already found to be
                     # wrong, we add an entry in the Update DB Dictionary.
@@ -387,7 +392,7 @@ def checkDisks(hostId,
                     if (dbUpdateDic.has_key(id)):
                         dbUpdateDic[id] = None
                         del dbUpdateDic[id]
-                        
+
         # Generate a Notification Message with the possible errors
         # accumulated so far and send out Error Notification Messages.
         if (len(notifInfo) > 0):
@@ -426,7 +431,7 @@ def checkDisks(hostId,
             else:
                 updateDiskInDb(hostId, dbConObj, ngamsCfgObj, slId, diskDic,
                                dbUpdateDic[slId][1])
-  
+
         info(2,"Archiving System: Check that there is at least one " +\
              "Storage Set available for each Stream defined ...")
         probMimeTypeList = []
@@ -475,7 +480,7 @@ def checkDisks(hostId,
                                    mtDiskDic[slotId])
                 else:
                     addDiskInDb(hostId, dbConObj, ngamsCfgObj, slotId, diskDic)
-            
+
 
 def checkStorageSetAvailability(hostId,
                                 dbConObj,
@@ -486,9 +491,9 @@ def checkStorageSetAvailability(hostId,
     a Storage Set are available.
 
     dbConObj:       DB connection object (ngamsDb).
-    
+
     ngamsCfgObj:    Instance of NG/AMS Configuration Class (ngamsConfig).
-    
+
     mimeType:       Mime-type to check for (string).
 
     Returns:        NGAMS_SUCCESS/NGAMS_FAILURE (string).
@@ -512,19 +517,19 @@ def checkDiskAccessibility(mountPoint):
 
     Returns:       0: OK, -1: Failure accessing disk (integer)
     """
-    testFile = os.path.normpath(mountPoint + "/NgamsTestFile")
-    info(4,"Testing disk accessibility - creating test file: " +\
-         testFile + " ...")
-    res = commands.getstatusoutput("touch " + testFile)
-    commands.getstatusoutput("rm -f " + testFile)
-    if (int(res[0]) != 0):
-        info(4,"Problem accessing disk with mount point: " + mountPoint)
+    testFile = os.path.normpath("{0}/NgamsTestFile".format(mountPoint))
+    info(4, "Testing disk accessibility - creating test file: %s" % testFile)
+
+    try:
+        open(testFile, 'a').close()
+        os.remove(testFile)
+        info(4, "Successfully accessed disk with mount point: %s" % mountPoint)
+        return 1
+    except OSError:
+        info(4, "Problem accessing disk with mount point: %s" % mountPoint)
         return -1
-    else:
-        info(4,"Successfully accessed disk with mount point: " + mountPoint)
-        return 0
-      
-        
+
+
 def genLogicalName(hostId,
                    dbConObj,
                    ngamsCfgObj,
@@ -536,13 +541,13 @@ def genLogicalName(hostId,
       <Disk Label>-M|R-<number>
 
     dbConObj:         DB connection object (ngamsDb).
-    
+
     ngamsCfgObj:      NG/AMS Configuration Object (ngamsConfig).
 
     diskId:           Disk ID (string).
-       
+
     slotId:           Slot ID (string).
-    
+
     Returns:          Logical name for disk (string).
     """
     info(4,"Generating Logical Name for disk with ID: " + diskId +\
@@ -588,12 +593,12 @@ def getNgasDiskInfoFile(diskDic,
     diskDic:     Dictionary containing ngamsPhysDiskInfo objects
                  with the information about the disk configuration
                  (dictionary).
-                 
+
     slotId:      Slot ID (string).
 
     Returns:     A Disk Info Object (ngamsDiskInfo) or None if no
                  NGAS Disk Info found for the disk.
-    """    
+    """
     T = TRACE()
 
     # Check if there is an NgasDiskInfo file for the disk. In case yes,
@@ -620,11 +625,11 @@ def addDiskInDb(hostId,
     hostId:         The ID of this NGAS host
 
     dbConObj:       DB connection object (ngamsDb).
-    
+
     ngamsCfgObj:    NG/AMS Configuration Object (ngamsConfig).
-    
+
     slotId:         Slot ID (string).
-    
+
     diskDic:        Dictionary containing ngamsPhysDiskInfo objects with the
                     information about the disk configuration (dictionary).
 
@@ -633,7 +638,7 @@ def addDiskInDb(hostId,
     T = TRACE()
 
     diskId = diskDic[slotId].getDiskId()
-   
+
     info(1,"Adding disk with ID: " + diskId + " - Slot ID: " + slotId +\
          " not registered in the NGAS DB ...")
 
@@ -691,11 +696,11 @@ def updateDiskInDb(hostId,
     hostId:         The ID of this NGAS host
 
     dbConObj:       DB connection object (ngamsDb).
-    
+
     ngamsCfgObj:    NG/AMS Configuration Object (ngamsConfig).
-    
+
     slotId:         Slot ID (string).
-    
+
     diskDic:        Dictionary containing ngamsPhysDiskInfo objects
                     with the information about the disk configuration
                     (dictionary).
@@ -724,15 +729,15 @@ def updateDiskInDb(hostId,
                   setBytesStored(bytesStored).setNumberOfFiles(numberOfFiles).\
                   setAvailableMb(availableMb)
     addedNewEntry = diskInfoObj.write(dbConObj)
-    
+
     # Add an entry in the NGAS Disks History Table.
     if (addedNewEntry):
         dbConObj.addDiskHistEntry(hostId, diskId, "Disk Registered", "text/xml",
                                   prepNgasDiskInfoFile(hostId, diskInfoObj, 1, 1))
-    
+
     info(4,"Updated information for disk with ID: " + diskId +\
          " in the NGAS DB")
-    
+
 
 def markDisksAsUnmountedInDb(hostId,
                              dbConObj,
@@ -743,7 +748,7 @@ def markDisksAsUnmountedInDb(hostId,
     dbConObj:       DB connection object (ngamsDb).
 
     ngamsCfgObj:    NG/AMS Configuration Object (ngamsConfig).
-  
+
     Returns:        Void.
     """
     diskList = getDiskInfoForMountedDisks(dbConObj, hostId,
@@ -759,7 +764,7 @@ def markDiskAsUmountedInDb(hostId,
     Mark a disk as unmounted in the NGAS DB.
 
     dbConObj:    DB connection object (ngamsDb).
-    
+
     diskId:      Disk ID (string).
 
     Returns:     Void.
@@ -782,9 +787,9 @@ def getAssociatedDiskId(diskId,
     given ID (if any).
 
     diskId:         Disk ID (string).
-    
+
     ngamsCfgObj:    Instance of NG/AMS Configuration Class (ngamsConfig).
-    
+
     diskDic:        Dictionary containing ngamsPhysDiskInfo objects
                     with the information about the disk configuration
                     (dictionary).
@@ -803,7 +808,7 @@ def getAssociatedDiskId(diskId,
     assocSlotId = ngamsCfgObj.getAssocSlotId(slotId)
     for id in diskDic.keys():
         if (id == assocSlotId): return diskDic[id].getDiskId()
-        
+
     return ""
 
 
@@ -817,7 +822,7 @@ def updateDiskStatusDb(dbConObj,
     Checksum not yet supported.
 
     dbConObj:       DB connection object (ngamsDb).
-    
+
     piStat:         Status as returned by the DAPIs (ngamsDapiStatus).
 
     Returns:        Disk Info Object (ngamsDiskInfo).
@@ -853,11 +858,11 @@ def getDiskInfoForMountedDisks(dbConObj,
     which appear to be mounted for this system.
 
     dbConObj:     DB connection object (ngamsDb).
-    
+
     host:         Host name (string).
 
     mtRootDir:    Base mount directory for NG/AMS (string).
-    
+
     Returns:      List containing the ngamsDiskInfo elements for the
                   disks registered as mounted in this system (list).
     """
@@ -883,9 +888,9 @@ def getDiskInfoObjsFromMimeType(hostId,
     mime-type/stream.
 
     dbConObj:           DB connection object (ngamsDb).
-    
+
     ngamsCfgObj:        NG/AMS Configuration Object (ngamsConfig).
-    
+
     mimeType:           Mime-type (string).
 
     sendNotification:   1 = send email notification message in case
@@ -912,7 +917,7 @@ def getDiskInfoObjsFromMimeType(hostId,
         if (sendNotification):
             ngamsNotification.notify(hostId, ngamsCfgObj, NGAMS_NOTIF_NO_DISKS,
                                      "NO STORAGE SET (DISKS) AVAILABLE",errMsg)
-        raise Exception, errMsg  
+        raise Exception, errMsg
 
     # Unpack the disk information into ngamsDiskInfo objects.
     diskInfoObjs = []
@@ -932,7 +937,7 @@ def dumpDiskInfoAllDisks(hostId,
     hostId:        The ID of this NGAS host
 
     dbConObj:       DB connection object (ngamsDb).
-    
+
     ngamsCfgObj:    NG/AMS Configuration Object (ngamsConfig).
 
     Returns:        Void.
@@ -961,7 +966,7 @@ def dumpDiskInfo(hostId,
     diskId:        Disk ID (string).
 
     mountPoint:    Mount point (string).
-    
+
     Returns:       NgasDiskInfo XML document (string/xml).
     """
     # Get disk info from DB
@@ -974,7 +979,7 @@ def dumpDiskInfo(hostId,
         ngamsNotification.notify(hostId, ngamsCfgObj, NGAMS_NOTIF_ERROR,
                                  "MISSING DISK IN DB", errMsg)
         return
-    
+
     # Create status object and save the XML in the status file
     ngasDiskInfo = prepNgasDiskInfoFile(hostId, diskInfo)
     filename = os.path.normpath(mountPoint + "/" + NGAMS_DISK_INFO)
@@ -982,7 +987,7 @@ def dumpDiskInfo(hostId,
     # Check if it is possible to write in the file if it exists.
     if (os.path.exists(filename) and (not ngamsLib.fileWritable(filename))):
         return
-    
+
     info(4,"Writing NGAS Disk Status for disk with ID: " + diskId +\
          " - into file: " + filename)
     info(5,"Contents of NgasDiskInfo: %s is: |%s|" %\
@@ -1022,14 +1027,14 @@ def findTargetDisk(hostId,
     Find a target disk for a file being received.
 
     dbConObj:          DB connection object (ngamsDb).
-    
+
     ngamsCfgObj:       Instance of NG/AMS Configuration Class (ngamsConfig).
-    
+
     mimeType:          Mime-type of file (string).
 
     sendNotification:  1 = send Email Notification Message (integer).
 
-    diskExemptList:    List with Disk IDs of disks, which it is not 
+    diskExemptList:    List with Disk IDs of disks, which it is not
                        desirable to consider (list/string).
 
     caching:           Used to increase the speed of this function
@@ -1063,7 +1068,7 @@ def findTargetDisk(hostId,
     for diskInfoObj in diskInfoObjs:
         diskIdDic[diskInfoObj.getDiskId()] = diskInfoObj
         slotIdDic[diskInfoObj.getSlotId()] = diskInfoObj
- 
+
     # If the disk is a Main Disk, and if it is not completed, and if there is
     # an associated Replication Disk and it is also not completed, we accept
     # the disk as a possible candidate disk.
@@ -1095,7 +1100,7 @@ def findTargetDisk(hostId,
                     if (reqSpace):
                         if (repDiskObj.getAvailableMb() <
                             (reqSpace / 1048576.)):
-                            continue                    
+                            continue
                     diskIds.append(diskInfoObj.getDiskId())
             else:
                 diskIds.append(diskInfoObj.getDiskId())
@@ -1145,7 +1150,7 @@ if __name__ == '__main__':
     """
     print "Available (MB)="+ str(getDiskSpaceAvail("/export/diskb"))
     sys.exit(0)
-    
+
     import ngamsDb, ngamsConfig
 
     setLogCond(0, 0, "", 5)
@@ -1153,6 +1158,6 @@ if __name__ == '__main__':
           load("/home/jknudstr/ngams/ngamsTest/NgamsCfg.xml")
     db = ngamsDb.ngamsDb("TESTSRV", "ngas_dev", "ngas_dbo", "ngas_dbo_pw")
     checkDisks(db, cfg)
-    
+
 
 # EOF

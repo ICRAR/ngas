@@ -41,6 +41,7 @@ import cPickle
 import os
 import re
 import time
+import shutil
 
 from pccUt import PccUtTime
 from ngamsCore import info, warning, error, rmFile, getTestMode, notice, getUniqueNo, getNgamsVersion, timeRef2Iso8601
@@ -544,16 +545,12 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                              addFileList(tmpFileList)
 
             info(4,"Creating Temporary DB Snapshot: " + statFilename)
-            pickleFo = None
-            try:
-                pickleFo = open(tmpStatFilename, "w")
+
+            with open(tmpStatFilename, "w") as pickleFo:
                 cPickle.dump(tmpStatObj, pickleFo, 1)
-                pickleFo.close()
-                commands.getstatusoutput("mv " + tmpStatFilename + " " +\
-                                         statFilename)
-            except Exception, e:
-                if (pickleFo): pickleFo.close()
-                raise e
+
+            shutil.move(tmpStatFilename, statFilename)
+
             del tmpStatObj
             tmpStatObj = None
             del tmpFileList
@@ -600,18 +597,18 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                                             NGAMS_TMP_FILE_EXT))
 
         info(4,"Creating Temporary DB Snapshot: %s" % statFilename)
-        pickleFo = None
+
         try:
             fileInfoList = [fileInfoObj.getDiskId()] +\
                            [fileInfoObj.getFileId()] +\
                            [fileInfoObj.getFileVersion()]
-            pickleFo = open(tmpStatFilename, "w")
-            cPickle.dump(fileInfoList, pickleFo, 1)
-            pickleFo.close()
-            commands.getstatusoutput("mv %s %s" % (tmpStatFilename,
-                                                   statFilename))
+
+            with open(tmpStatFilename, "w") as pickleFo:
+                cPickle.dump(fileInfoList, pickleFo, 1)
+
+            shutil.move(tmpStatFilename, statFilename)
+
         except Exception, e:
-            if (pickleFo): pickleFo.close()
             rmFile(tmpStatFilename)
             raise e
 

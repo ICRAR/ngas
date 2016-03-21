@@ -36,17 +36,24 @@ The script is used to dump the contents of an NG/AMS DB Snapshot File
 in a human readible (ASCII) format.
 """
 
-import sys, bsddb, cPickle
+import sys
+import cPickle
+
+try:
+    import bsddb
+except:
+    import bsddb3 as bsddb
+
 
 def correctUsage():
     """
     Print out correct usage of the tool on stdout.
 
     Returns:   Void.
-    """    
+    """
     print "\nCorrect usage is: "
     print "\n  % ngamsDumpDbSnapshot <Snapshot Filename>\n\n"
-    
+
 
 def dumpDbSnapshot(dbSnapshotName,
                    details = 0):
@@ -95,7 +102,7 @@ def dumpDbSnapshot(dbSnapshotName,
 def main(argv=sys.argv):
     """
     Main function invoking the function to dump the DB Snapshot.
-    """  
+    """
     if (len(argv) != 2):
         correctUsage()
         sys.exit(1)

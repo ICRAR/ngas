@@ -33,7 +33,15 @@
 Contains higher level common functions.
 """
 
-import os, re, string, threading, random, time, commands, urllib
+import os
+import re
+import string
+import threading
+import random
+import time
+import commands
+import urllib
+import shutil
 
 from pccUt import PccUtTime
 from ngamsCore import TRACE, genLog, NGAMS_HOST_LOCAL,\
@@ -669,8 +677,9 @@ def copyFile(ngamsCfgObj,
             checkAvailDiskSpace(trgFilename, fileSize)
             timer = PccUtTime.Timer()
             # Make target file writable if existing.
-            if (os.path.exists(trgFilename)): os.chmod(trgFilename, 420)
-            commands.getstatusoutput("cp " + srcFilename + " " + trgFilename)
+            if (os.path.exists(trgFilename)):
+                os.chmod(trgFilename, 420)
+            shutil.copyfile(srcFilename, trgFilename)
             deltaTime = timer.stop()
             info(3,"File: %s copied to filename: %s" %\
                  (srcFilename, trgFilename))
