@@ -36,6 +36,7 @@ The functions in this module can be used in all the NG/AMS code.
 
 import os, string, httplib, time, getpass, socket, urlparse
 import urllib, urllib2, re, cPickle
+from contextlib import closing
 
 import pkg_resources
 
@@ -377,13 +378,14 @@ def _httpHandleResp(fileObj,
     hdrs   = fileObj.headers
     hdrDic = httpMsgObj2Dic(hdrs)
 
-    # Handle the data.
-    if (hdrDic == {}): warning("No headers received from HTTP request!")
+    if not hdrDic:
+        warning("No headers received from HTTP request!")
+
+    dataSize = 0
     if (hdrDic.has_key("content-length")):
         dataSize = int(hdrDic["content-length"])
-    else:
-        dataSize = 0
-    info(5,"Size of data returned by remote host: %d" % dataSize)
+
+    info(5, "Size of data returned by remote host: %d" % dataSize)
     if ((not dataTargFile) and (not returnFileObj)):
         data = fileObj.read(dataSize)
         if (getMaxLogLevel() > 4):
@@ -393,15 +395,13 @@ def _httpHandleResp(fileObj,
         data = fileObj
 
     # It's a container
-    elif(NGAMS_CONT_MT == hdrDic['content-type']):
+    elif (NGAMS_CONT_MT == hdrDic['content-type']):
         handler = ngamsMIMEMultipart.FilesystemWriterHandler(1024, basePath=dataTargFile)
         parser = ngamsMIMEMultipart.MIMEMultipartParser(handler, fileObj, dataSize, 1024)
         parser.parse()
         data = handler.getRootSavingDirectory()
 
     else:
-        fd = None
-
         # If the 'target file' specified in fact is a directory, we take the
         # filename contained in the Content-Disposition of the HTTP header.
         if (os.path.isdir(dataTargFile)):
@@ -410,28 +410,25 @@ def _httpHandleResp(fileObj,
                 filename = string.split(string.split(tmpLine, ";")[1], "=")[1]
             else:
                 filename = genUniqueFilename("HTTP-RESPONSE-DATA")
-            trgFile = os.path.normpath(dataTargFile + "/"+trim(filename, ' "'))
+            trgFile = os.path.normpath(dataTargFile + "/" + trim(filename, ' "'))
         else:
             trgFile = dataTargFile
-        data = trgFile
 
-        # Get the data and save it to the file.
-        with open(trgFile, "w") as fd:
-            dataRecv = 0
-            reqSize = blockSize
-            while (dataRecv < dataSize):
-                if ((dataSize - dataRecv) < blockSize):
-                    reqSize = (dataSize - dataRecv)
-                tmpData = fileObj.read(reqSize)
-                if len(tmpData) == 0:
-                    raise Exception("HTTP reply finished before expected. Received data is incomplete")
-                fd.write(tmpData)
-                dataRecv += len(tmpData)
+        data = trgFile
+        toRead = dataSize
+        readIn = 0
+        with open(trgFile, 'wb') as fd:
+            while readIn < toRead:
+                buff = fileObj.read(toRead - readIn)
+                if not buff:
+                    raise Exception('error reading data')
+                fd.write(buff)
+                readIn += len(buff)
 
     # Dump HTTP headers if Verbose Level >= 4.
-    info(4,"HTTP Header: HTTP/1.0 " + str(code) + " " + msg)
+    info(4, "HTTP Header: HTTP/1.0 %s %s" % (str(code), msg))
     for hdr in hdrs.keys():
-        info(4,"HTTP Header: " + hdr + ": " + hdrs[hdr])
+        info(4, "HTTP Header: %s: %s" % (hdr, hdrs[hdr]))
 
     return code, msg, hdrs, data
 
@@ -495,94 +492,79 @@ def httpPostUrl(url,
     T = TRACE()
 
     urlres = urlparse.urlparse(url)
-    if (urlres.scheme.lower() == 'houdt'):
+
+    if urlres.scheme.lower() == 'houdt':
         import ngamsUDTSender
         return ngamsUDTSender.httpPostUrl(url, mimeType, contDisp, dataRef, dataSource, dataTargFile, blockSize, suspTime, timeOut, authHdrVal, dataSize)
 
-    # Separate the URL from the command.
-    idx = (url[7:].find("/") + 7)
-    tmpUrl = url[7:idx]
-    cmd    = url[(idx + 1):]
+    cmd = urlres.path.strip('/')
 
-    response = None
-    http = httplib.HTTPConnection(tmpUrl, timeout=timeOut)
+    with closing(httplib.HTTPConnection(urlres.netloc, timeout = timeOut)) as http:
+        info(4,"Sending HTTP header ...")
+        info(4,"HTTP Header: %s: %s" % (NGAMS_HTTP_POST, cmd))
+        http.putrequest(NGAMS_HTTP_POST, cmd)
 
-    info(4,"Sending HTTP header ...")
-    info(4,"HTTP Header: %s: %s" % (NGAMS_HTTP_POST, cmd))
-    http.putrequest(NGAMS_HTTP_POST, cmd)
+        info(4,"HTTP Header: %s: %s" % ("Content-Type", mimeType))
+        http.putheader("Content-Type", mimeType)
+        if (contDisp != ""):
+            info(4,"HTTP Header: %s: %s" % ("Content-Disposition", contDisp))
+            http.putheader("Content-Disposition", contDisp)
+        if (authHdrVal):
+            if (authHdrVal[-1] == "\n"):
+                authHdrVal = authHdrVal[:-1]
+            info(4,"HTTP Header: %s: %s" % ("Authorization", authHdrVal))
+            http.putheader("Authorization", authHdrVal)
+        if (fileInfoHdr):
+            http.putheader(NGAMS_HTTP_HDR_FILE_INFO, fileInfoHdr)
+        if (checkSum):
+            http.putheader(NGAMS_HTTP_HDR_CHECKSUM, checkSum)
 
-    # set the socket timeout for this socket only
-    info(4,"HTTP Header: %s: %s" % ("Content-Type", mimeType))
-    http.putheader("Content-Type", mimeType)
-    if (contDisp != ""):
-        info(4,"HTTP Header: %s: %s" % ("Content-Disposition", contDisp))
-        http.putheader("Content-Disposition", contDisp)
-    if (authHdrVal):
-        if (authHdrVal[-1] == "\n"): authHdrVal = authHdrVal[:-1]
-        info(4,"HTTP Header: %s: %s" % ("Authorization", authHdrVal))
-        http.putheader("Authorization", authHdrVal)
-    if (fileInfoHdr):
-        http.putheader(NGAMS_HTTP_HDR_FILE_INFO, fileInfoHdr)
-    if (checkSum):
-        http.putheader(NGAMS_HTTP_HDR_CHECKSUM, checkSum)
+        for mhd in moreHdrs:
+            kk = mhd[0]
+            vv = mhd[1]
+            http.putheader(kk, vv)
 
-    for mhd in moreHdrs:
-        kk = mhd[0]
-        vv = mhd[1]
-        http.putheader(kk, vv)
+        if dataSource == "FILE":
+            dataSize = getFileSize(dataRef)
+        elif dataSource == "BUFFER":
+            dataSize = len(dataRef)
 
-    if (dataSource == "FILE"):
-        dataSize = getFileSize(dataRef)
-    elif (dataSource == "BUFFER"):
-        dataSize = len(dataRef)
+        if dataSize == -1:
+            raise Exception('Could not determine length of content')
 
-    if (dataSize != -1):
         info(4,"HTTP Header: %s: %s" % ("Content-Length", str(dataSize)))
         http.putheader("Content-Length", str(dataSize))
-    info(4,"HTTP Header: %s: %s" % ("Host", getHostName()))
-    http.putheader("Host", getHostName())
-    http.endheaders()
-    info(4,"HTTP header sent")
+        info(4,"HTTP Header: %s: %s" % ("Host", getHostName()))
+        http.putheader("Host", getHostName())
+        http.endheaders()
+        info(4,"HTTP header sent")
 
-    # Send the data.
-    info(4,"Sending data ...")
-    if (sendBuffer and http.sock):
-        try:
-            info(3, "Set SNDBUF to %d" % sendBuffer)
-            http.sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, sendBuffer)
-        except Exception, eer:
-            warning('Fail to set socket SNDBUF to %s' % str(sendBuffer))
+        if dataSource == "FILE":
+            with open(dataRef) as fdIn:
+                toSend = dataSize
+                sent = 0
+                while sent < toSend:
+                    buff = fdIn.read(toSend - sent)
+                    http.sock.sendall(buff)
+                    sent += len(buff)
 
-    try:
-        if (dataSource == "FILE"):
-            fdIn = open(dataRef)
-            block = "-"
-            blockAccu = 0
-            while (block != ""):
-                block = fdIn.read(blockSize)
-                blockAccu += len(block)
-                http.send(block)
-                if (suspTime > 0.0): time.sleep(suspTime)
-            fdIn.close()
-        elif (dataSource == "FILESLIST"):
+        elif dataSource == "FILESLIST":
             writer = dataRef[0]
             allPaths = dataRef[1]
             writer.setOutput(http.sock.makefile("w"))
             writeDirContents(writer, allPaths[1], blockSize, suspTime)
-        elif (dataSource == "FD"):
-            fdIn = dataRef
-            dataRead = 0
-            while (dataRead < dataSize):
-                if ((dataSize - dataRead) < blockSize):
-                    rdSize = (dataSize - dataRead)
-                else:
-                    rdSize = blockSize
-                block = fdIn.read(rdSize)
-                http.send(block)
-                dataRead += len(block)
-                if (suspTime > 0.0): time.sleep(suspTime)
+
+        elif dataSource == "FD":
+            toSend = dataSize
+            sent = 0
+            while sent < toSend:
+                buff = dataRef.read(toSend - sent)
+                http.sock.sendall(buff)
+                sent += len(buff)
+
         elif dataSource == "BUFFER":
-            http.send(dataRef)
+            http.sock.sendall(dataRef)
+
         else:
             raise Exception('Unknown data source: ' + dataSource)
 
@@ -595,25 +577,39 @@ def httpPostUrl(url,
 
         hdrs = {h[0]: h[1] for h in hdrs}
 
+        dataSize = 0
         if (hdrs.has_key("content-length")):
             dataSize = int(hdrs["content-length"])
-        else:
-            dataSize = 0
-        if (dataTargFile == ""):
-            data = response.read(dataSize)
+
+        if not dataTargFile:
+            data = []
+            toRead = dataSize
+            readIn = 0
+            while readIn < toRead:
+                buff = response.read(toRead - readIn)
+                if not buff:
+                    raise Exception('error reading data')
+                data.append(buff)
+                readIn += len(buff)
+            data = ''.join(data)
         else:
             data = dataTargFile
-            with open(dataTargFile, "w") as fd:
-                fd.write(response.read(dataSize))
+            toRead = dataSize
+            readIn = 0
+            with open(dataTargFile, 'wb') as out:
+                while readIn < toRead:
+                    buff = response.read(toRead - readIn)
+                    if not buff:
+                        raise Exception('error reading data')
+                    out.write(buff)
+                    readIn += len(buff)
 
         # Dump HTTP headers if Verbose Level >= 4.
-        info(4,"HTTP Header: HTTP/1.0 " + str(reply) + " " + msg)
+        info(4, "HTTP Header: HTTP/1.0 %s %s" % (str(reply), msg))
         for hdr in hdrs.keys():
-            info(4,"HTTP Header: " + hdr + ": " + hdrs[hdr])
-    finally:
-        http.close()
+            info(4, "HTTP Header: %s: %s" % (hdr, hdrs[hdr]))
 
-    return [reply, msg, hdrs, data]
+        return [reply, msg, hdrs, data]
 
 def writeDirContents(writer, paths, blockSize, suspTime):
 
@@ -809,7 +805,8 @@ def httpGetUrl(url,
     info(4,"Issuing request with URL: " + url)
 
     reqObj = urllib2.Request(url)
-    if (authHdrVal): reqObj.add_header("Authorization", authHdrVal)
+    if authHdrVal:
+        reqObj.add_header("Authorization", authHdrVal)
     reqObj.add_header("Host", getHostName())
 
     # Send additional HTTP headers, if any.
@@ -1066,85 +1063,6 @@ def locateInternalFile(filename):
     return complFilename
 
 
-def getInternalFile(filename,
-                    returnList,
-                    recursiveCall):
-    """
-    Reads in the contents of a file contained in the ngams CVS module
-    and returns it to the caller. If the file is a DTD, possible references
-    to other DTDs are replaced with the actual contents before returning
-    the compiled DTD.
-
-    filename:         Name of internal file to return (string).
-
-    returnList:       If 1 a list with the lines of the file is returned,
-                      otherwise if 0 a string buffer with the file contents
-                      is returned (integer/0|1).
-
-    recursiveCall:    If 1 this indicates that this is a recursive
-                      call (integer).
-
-    Returns:          Contents of internal file, possibly compiled either as
-                      a list of as a string buffer (string|list).
-    """
-    locFilename = locateInternalFile(filename)
-    info(3,"Requesting resource: " + locFilename + " ...")
-    fo = None
-    try:
-        fo = urllib.urlopen(locFilename)
-        fileBuf = fo.read()
-        fo.close()
-        # For DTDs we merge them into one DTD if a DTD makes references to
-        # other DTDs. This is done recursively. This is a bit dirty, maybe
-        # some DTD/XML parser could do this better ...
-        if (filename.find(".dtd") != -1):
-            lineList = fileBuf.split("\n")
-            finalLineList = []
-            dtdDic = {}
-            for line in lineList:
-                # 1. Check for: "<?xml version="1.0" encoding="UTF-8"?>"
-                #     => These are skipped for now.
-                # 2. Check for: "<!ENTITY % XmlStd SYSTEM "XmlStd.dtd">"
-                #     => We load in the DTD referenced and put the
-                #        contents in a list, which is added in a dictionary.
-                # 3. Check for: "%XmlStd;"
-                #     => Substitute this statement with contents of the DTD.
-                if (line.find("<?xml version") != -1):
-                    newLineList = []
-                elif (line.find("<!ENTITY % ") != -1):
-                    dtdName = trim(line.split(" ")[-1], '">')
-                    dtdDicName = dtdName.split(".")[0].upper()
-                    dtdDic[dtdDicName] = getInternalFile(dtdName, 1, 1)
-                    newLineList = []
-                elif (re.search("\%*\;", line) != None):
-                    dtdDicName = trim(line, "%; ").upper()
-                    if (dtdDic.has_key(dtdDicName)):
-                        newLineList = dtdDic[dtdDicName]
-                else:
-                    newLineList = [line]
-                finalLineList += newLineList
-            if (not recursiveCall):
-                finalLineList = ['<?xml version="1.0" encoding="UTF-8"?>'] +\
-                                finalLineList
-        else:
-            # A bit silly to split if we return as string buffer ...
-            finalLineList = fileBuf.split("\n")
-        # Return a string buffer or a list with the lines from the file.
-        if (returnList):
-            return finalLineList
-        else:
-            fileBuf = ""
-            for line in finalLineList:
-                fileBuf += line + "\n"
-            return fileBuf
-    except Exception, e:
-        if (fo != None): fo.close()
-        errMsg = "Error occurred while accessing resource: " +\
-                 filename + ". Exception: " + str(e)
-        error(errMsg)
-        raise Exception, errMsg
-
-
 def detMimeType(mimeTypeMaps,
                 filename,
                 noException = 0):
@@ -1237,9 +1155,8 @@ def createObjPickleFile(filename,
 
     info(4, "createObjPickleFile() - creating pickle file %s ..." % filename)
     rmFile(filename)
-    pickleFo = open(filename, "w")
-    cPickle.dump(object, pickleFo)
-    pickleFo.close()
+    with open(filename, "w") as pickleFo:
+        cPickle.dump(object, pickleFo)
 
 
 def loadObjPickleFile(filename):
@@ -1250,11 +1167,8 @@ def loadObjPickleFile(filename):
 
     Returns:     Reconstructed object (<object>).
     """
-    pickleFo = open(filename, "r")
-    object = cPickle.load(pickleFo)
-    pickleFo.close()
-    return object
-
+    with open(filename, "r") as pickleFo:
+        return cPickle.load(pickleFo)
 
 def genFileKey(diskId,
                fileId,

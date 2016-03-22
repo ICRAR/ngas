@@ -716,13 +716,17 @@ def _deliveryThread(srvObj,
                 continue
 
             baseName = os.path.basename(filename)
-            contDisp = "attachment; filename=\"" + baseName + "\""
+            contDisp = []
+            contDisp.append("attachment; filename=\"{0}\"".format(baseName))
             # TODO: Note should not have no_versioning hardcoded in the
             # request send to the client/subscriber.
-            contDisp += "; no_versioning=1; file_id={0}".format(fileId)
-            info(3,"Thread [" + str(thread.get_ident()) + "] Delivering file: " + baseName + "/" +\
-                 str(fileVersion) + " - to Subscriber with ID: " +\
-                 subscrObj.getId() + " ...")
+            contDisp.append("; no_versioning=1; file_id={0}".format(fileId))
+
+            msg = "Thread [%s] Delivering file: %s/%s - to Subscriber with ID: %s" %\
+                    (str(thread.get_ident()), baseName, str(fileVersion), subscrObj.getId())
+
+            info(3, msg)
+
             ex = ""
             stat = ngamsStatus.ngamsStatus()
             # Calculate the suspension time for this thread based on the priority of this subscriber.
@@ -797,7 +801,7 @@ def _deliveryThread(srvObj,
                         #hdr2 = ('x-ddn-meta', '"file_id":"%s"' % fileId) # DDN WOS metadata header
                         reply, msg, hdrs, data = \
                                ngamsLib.httpPostUrl(sendUrl, fileMimeType,
-                                                    contDisp, filename, "FILE",
+                                                    ''.join(contDisp), filename, "FILE",
                                                     blockSize=\
                                                     srvObj.getCfg().getBlockSize(),
                                                     suspTime = suspenTime,
@@ -806,12 +810,16 @@ def _deliveryThread(srvObj,
                                                     sendBuffer = srvObj.getCfg().getArchiveSndBufSize(),
                                                     checkSum = fileChecksum)
                                                     #moreHdrs = [hdr1, hdr2])
-                        if (data.strip() != ""):
-                            stat.clear().unpackXmlDoc(data)
-                        else:
-                            # TODO: For the moment assume success in case no
-                            #       exception was thrown.
-                            stat.clear().setStatus(NGAMS_SUCCESS)
+                        stat.clear()
+
+                        if data:
+                            stat.unpackXmlDoc(data)
+
+                        if reply != 200:
+                            stat.setStatus(NGAMS_FAILURE)
+                            raise Exception('Error handling %s' % sendUrl)
+
+                        stat.setStatus(NGAMS_SUCCESS)
 
                         # this is only for DDN test
                         if (hdrs.has_key('x-ddn-oid')):
@@ -824,6 +832,7 @@ def _deliveryThread(srvObj,
                 except Exception, e:
                     ex = str(e)
                     trace_msg = traceback.format_exc()
+
                 if ((ex != "") or (reply != NGAMS_HTTP_SUCCESS) or
                     (stat.getStatus() == NGAMS_FAILURE)):
 

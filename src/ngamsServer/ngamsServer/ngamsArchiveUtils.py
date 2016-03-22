@@ -604,12 +604,12 @@ def backLogBufferFiles(srvObj,
                                 os.path.basename(reqPropsFile))
         # Have to change the name of the Staging File in the Req. Prop.
         # Object = name of Back-Log Buffering File.
-        fo = open(reqPropsFile, "r")
-        tmpReqPropObj = cPickle.load(fo).setStagingFilename(backLogBufFile)
-        fo.close()
-        fo = open(tmpBackLogBufReqFile, "w")
-        cPickle.dump(tmpReqPropObj, fo)
-        fo.close()
+        with open(reqPropsFile, "r") as fo:
+            tmpReqPropObj = cPickle.load(fo).setStagingFilename(backLogBufFile)
+
+        with open(tmpBackLogBufReqFile, "w") as fo:
+            cPickle.dump(tmpReqPropObj, fo)
+
         mvFile(tmpBackLogBufFile, backLogBufFile)
         mvFile(tmpBackLogBufReqFile, backLogBufReqFile)
         ngamsFileUtils.syncCachesCheckFiles(srvObj, [backLogBufFile,
@@ -647,12 +647,10 @@ def checkBackLogBuffer(srvObj):
             (file.find("." + NGAMS_PICKLE_FILE_EXT) == -1)):
             info(2,"Archiving Back-Log Buffered file: " + file)
             # Check if a pickled Request Object File is available.
-            pickleFo = None
             try:
                 pickleObjFile = file + "." + NGAMS_PICKLE_FILE_EXT
                 reqPropsObj = ngamsLib.loadObjPickleFile(pickleObjFile)
             except Exception, e:
-                if (pickleFo): pickleFo.close()
                 errMsg = "Error encountered trying to load pickled " +\
                          "Request Properties Object from file: " +\
                          pickleObjFile + ".  Error: " + str(e)
