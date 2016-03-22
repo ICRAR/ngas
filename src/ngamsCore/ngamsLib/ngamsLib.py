@@ -386,12 +386,20 @@ def _httpHandleResp(fileObj,
         dataSize = int(hdrDic["content-length"])
 
     info(5, "Size of data returned by remote host: %d" % dataSize)
-    if ((not dataTargFile) and (not returnFileObj)):
-        data = fileObj.read(dataSize)
-        if (getMaxLogLevel() > 4):
-            info(5,"Data received from remote host=|%s|" %\
-                 str(data).replace("\n", ""))
-    elif (returnFileObj):
+
+    if not dataTargFile and not returnFileObj:
+        data = []
+        toRead = dataSize
+        readIn = 0
+        while readIn < toRead:
+            buff = fileObj.read(toRead - readIn)
+            if not buff:
+                raise Exception('error reading data')
+            data.append(buff)
+            readIn += len(buff)
+        data = ''.join(data)
+
+    elif returnFileObj:
         data = fileObj
 
     # It's a container
@@ -545,6 +553,8 @@ def httpPostUrl(url,
                 sent = 0
                 while sent < toSend:
                     buff = fdIn.read(toSend - sent)
+                    if not buff:
+                        raise Exception('error reading data')
                     http.sock.sendall(buff)
                     sent += len(buff)
 
@@ -559,6 +569,8 @@ def httpPostUrl(url,
             sent = 0
             while sent < toSend:
                 buff = dataRef.read(toSend - sent)
+                if not buff:
+                    raise Exception('error reading data')
                 http.sock.sendall(buff)
                 sent += len(buff)
 
