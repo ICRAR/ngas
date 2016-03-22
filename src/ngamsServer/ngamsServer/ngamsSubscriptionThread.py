@@ -815,7 +815,7 @@ def _deliveryThread(srvObj,
                         if data:
                             stat.unpackXmlDoc(data)
 
-                        if reply != 200:
+                        if reply != NGAMS_HTTP_SUCCESS:
                             stat.setStatus(NGAMS_FAILURE)
                             raise Exception('Error handling %s' % sendUrl)
 
