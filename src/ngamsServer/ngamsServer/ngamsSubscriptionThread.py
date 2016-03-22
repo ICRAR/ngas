@@ -43,7 +43,7 @@ from ngamsLib.ngamsCore import TRACE, info, NGAMS_SUBSCRIPTION_THR, isoTime2Secs
     alert, NGAMS_SUBSCR_BACK_LOG, error, NGAMS_DELIVERY_THR,\
     NGAMS_HTTP_INT_AUTH_USER, NGAMS_REARCHIVE_CMD, warning, NGAMS_FAILURE,\
     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, getFileSize, rmFile, loadPlugInEntryPoint
-from ngamsLib import ngamsDbm, ngamsDb, ngamsStatus, ngamsHighLevelLib, ngamsFileInfo, ngamsLib
+from ngamsLib import ngamsDbm, ngamsDb, ngamsStatus, ngamsHighLevelLib, ngamsFileInfo, ngamsLib, ngamsDbCore
 
 # TODO:
 # - Should not hardcode no_versioning=1.
@@ -397,22 +397,21 @@ def _convertFileInfo(fileInfo):
     fileInfo:       File info in DB Summary 2 format or
     """
     # If element #4 is an integr (=file version), convert to internal format.
-    if (type(fileInfo[ngamsDb.ngamsDbCore.SUM2_VERSION]) == types.IntType):
+    if (type(fileInfo[ngamsDbCore.SUM2_VERSION]) == types.IntType):
         locFileInfo = 7 * [None]
-        locFileInfo[FILE_ID]   = fileInfo[ngamsDb.ngamsDbCore.SUM2_FILE_ID]
-        locFileInfo[FILE_NM]   = \
-                                 os.path.normpath(fileInfo[ngamsDb.ngamsDbCore.SUM2_MT_PT] +\
+        locFileInfo[FILE_ID] = fileInfo[ngamsDbCore.SUM2_FILE_ID]
+        locFileInfo[FILE_NM] = os.path.normpath(fileInfo[ngamsDbCore.SUM2_MT_PT] +\
                                                   os.sep +\
-                                                  fileInfo[ngamsDb.ngamsDbCore.SUM2_FILENAME])
-        #info(3, "\n\n** locFileInfo[FILE_NM] =% s  \n fileInfo[ngamsDb.ngamsDbCore.SUM2_FILENAME] = %s \n\n**" % (locFileInfo[FILE_NM], fileInfo[ngamsDb.ngamsDbCore.SUM2_FILENAME]))
+                                                  fileInfo[ngamsDbCore.SUM2_FILENAME])
 
-        locFileInfo[FILE_VER]  = fileInfo[ngamsDb.ngamsDbCore.SUM2_VERSION]
-        locFileInfo[FILE_DATE] = fileInfo[ngamsDb.ngamsDbCore.SUM2_ING_DATE]
-        locFileInfo[FILE_MIME] = fileInfo[ngamsDb.ngamsDbCore.SUM2_MIME_TYPE]
-        locFileInfo[FILE_DISK_ID]   = fileInfo[ngamsDb.ngamsDbCore.SUM2_DISK_ID]
+        locFileInfo[FILE_VER] = fileInfo[ngamsDbCore.SUM2_VERSION]
+        locFileInfo[FILE_DATE] = fileInfo[ngamsDbCore.SUM2_ING_DATE]
+        locFileInfo[FILE_MIME] = fileInfo[ngamsDbCore.SUM2_MIME_TYPE]
+        locFileInfo[FILE_DISK_ID] = fileInfo[ngamsDbCore.SUM2_DISK_ID]
     else:
         locFileInfo = fileInfo
-    if ((len(locFileInfo) == FILE_BL)): locFileInfo.append(None)
+    if len(locFileInfo) == FILE_BL:
+        locFileInfo.append(None)
     return locFileInfo
 
 
@@ -796,9 +795,7 @@ def _deliveryThread(srvObj,
                             fileChecksum = srvObj.getDb().getFileChecksum(diskId, fileId, fileVersion)
                         except Exception, eyy:
                             warning('Fail to get file checksum for file %s: %s' % (fileId, str(eyy)))
-                        #hdr1 = ('x-ddn-policy', 'Perth')
-                        #hdr1 = ('x-ddn-policy', 'Perth-search') # DDN WOS policy header
-                        #hdr2 = ('x-ddn-meta', '"file_id":"%s"' % fileId) # DDN WOS metadata header
+
                         reply, msg, hdrs, data = \
                                ngamsLib.httpPostUrl(sendUrl, fileMimeType,
                                                     ''.join(contDisp), filename, "FILE",

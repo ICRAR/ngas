@@ -32,10 +32,13 @@ This module contains the Test Suite for the SUBSCRIBE Command.
 """
 
 import sys
+import time
+import urllib
+import httplib
+from contextlib import closing
 
-from ngamsLib.ngamsCore import info
-from ngamsTestLib import ngamsTestSuite, runTest
-
+from ngamsLib.ngamsCore import *
+from ngamsTestLib import ngamsTestSuite, runTest, sendExtCmd, sendPclCmd
 
 class ngamsSubscriptionTest(ngamsTestSuite):
     """
@@ -50,25 +53,54 @@ class ngamsSubscriptionTest(ngamsTestSuite):
     - Test UNSUBSCRIBE Command.
     """
 
-    def test_1(self):
-        """
-        Synopsis:
-        ...
+    def test_basic_subscription(self):
+        self.prepExtSrv(8888)
+        self.prepExtSrv(8889)
 
-        Description:
-        ...
+        host = 'localhost:8888'
+        method = 'GET'
+        cmd = 'QARCHIVE'
 
-        Expected Result:
-        ...
+        test_file = 'src/SmallFile.fits'
+        params = {'filename': test_file,
+                  'mime_type': 'application/octet-stream'}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, open(test_file, 'rb'), {})
+            resp = conn.getresponse()
+            self.checkEqual(resp.status, 200, None)
 
-        Test Steps:
-        - ...
+        # Version 2 of the file should only exist after
+        # subscription transfer is successful.
+        client = sendPclCmd(port = 8889)
+        status = client.retrieve2File(fileId = 'SmallFile.fits',
+                                        fileVersion = 2,
+                                        targetFile = '/tmp/test.fits')
+        self.assertEquals(status.getStatus(), 'FAILURE', None)
 
-        Remarks:
-        ...
-        """
-        info(1,"TODO: Implement ngamsSubscriptionTest()!!!!")
+        method = 'GET'
+        cmd = 'SUBSCRIBE'
+        params = {'url': 'http://localhost:8889/QARCHIVE',
+                  'subscr_id': 'HERE-TO-THERE',
+                  'priority': 1,
+                  'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
+                  'concurrent_threads': 1}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, '', {})
+            resp = conn.getresponse()
+            self.checkEqual(resp.status, 200, None)
 
+        # Do not like sleeps but xfer should happen immediately.
+        time.sleep(7)
+
+        client = sendPclCmd(port = 8889)
+        status = client.retrieve2File(fileId = 'SmallFile.fits',
+                                        fileVersion = 2,
+                                        targetFile = '/tmp/test.fits')
+        self.assertEquals(status.getStatus(), 'SUCCESS', None)
 
 def run():
     """
