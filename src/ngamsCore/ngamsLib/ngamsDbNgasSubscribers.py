@@ -156,68 +156,63 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                              (integer/0|1).
         """
         T = TRACE()
-        try:
-            try:
-                self.takeDbSem()
-                if ((startDate == "") or (startDate == None)):
-                    startDate = "None"
-                else:
-                    startDate = "'" + self.convertTimeStamp(startDate) + "'"
-                if ((filterPlugIn == "") or (filterPlugIn == None)):
-                    filterPlugIn = "''"
-                else:
-                    filterPlugIn = "'" + filterPlugIn + "'"
-                if ((filterPlugInPars == "") or (filterPlugInPars == None)):
-                    filterPlugInPars = "''"
-                else:
-                    filterPlugInPars = "'" + filterPlugInPars + "'"
-                if ((lastFileIngDate == "") or (lastFileIngDate == None)):
-                    lastFileIngDate = "'" + self.convertTimeStamp(0) + "'"
-                else:
-                    lastFileIngDate = "'" +\
-                                      self.convertTimeStamp(lastFileIngDate) +\
-                                      "'"
-                self.relDbSem()
-            except Exception, e:
-                self.relDbSem()
-                raise Exception, e
 
-            # Check if the entry already exists. If yes update it, otherwise
-            # insert a new element.
-            if (self.subscriberInDb(subscrId)):
-                sqlQuery = "UPDATE ngas_subscribers SET " +\
-                           "host_id='" + hostId + "', " +\
-                           "srv_port=" + str(portNo) + ", " +\
-                           "subscr_prio=" + str(priority) + ", " +\
-                           "subscr_id='" + subscrId + "', " +\
-                           "subscr_url='" + subscrUrl + "', " +\
-                           "subscr_start_date=" + startDate + ", " +\
-                           "subscr_filter_plugin=" + filterPlugIn + ", " +\
-                           "subscr_filter_plugin_pars="+filterPlugInPars+", "+\
-                           "last_file_ingestion_date=" + lastFileIngDate+", " +\
-                           "concurrent_threads=" + str(concurrent_threads)+" " +\
-                           "WHERE subscr_id='" + subscrId + "' AND " +\
-                           "host_id='" + hostId + "' AND " +\
-                           "srv_port=" + str(portNo)
-                addedEntry = 0
+        try:
+            self.takeDbSem()
+            if ((startDate == "") or (startDate == None)):
+                startDate = "None"
             else:
-                sqlQuery = "INSERT INTO ngas_subscribers " +\
-                           "(host_id, srv_port, subscr_prio, subscr_id," +\
-                           " subscr_url, subscr_start_date," +\
-                           " subscr_filter_plugin,"+\
-                           " subscr_filter_plugin_pars," +\
-                           " last_file_ingestion_date, concurrent_threads) " +\
-                           " VALUES " +\
-                           "('" + hostId + "', " + str(portNo) + ", " +\
-                           str(priority) + ", '"+subscrId + "', '"+subscrUrl+\
-                           "', " + startDate + ", " + filterPlugIn + ", " +\
-                           filterPlugInPars + ", " + lastFileIngDate + ", " + str(concurrent_threads) + ")"
-                addedEntry = 1
-            res = self.query(sqlQuery)
-            self.triggerEvents()
-            return addedEntry
-        except Exception, e:
-            raise e
+                startDate = "'" + self.convertTimeStamp(startDate) + "'"
+            if ((filterPlugIn == "") or (filterPlugIn == None)):
+                filterPlugIn = "''"
+            else:
+                filterPlugIn = "'" + filterPlugIn + "'"
+            if ((filterPlugInPars == "") or (filterPlugInPars == None)):
+                filterPlugInPars = "''"
+            else:
+                filterPlugInPars = "'" + filterPlugInPars + "'"
+            if ((lastFileIngDate == "") or (lastFileIngDate == None)):
+                lastFileIngDate = "'" + self.convertTimeStamp(0) + "'"
+            else:
+                lastFileIngDate = "'" +\
+                                  self.convertTimeStamp(lastFileIngDate) +\
+                                  "'"
+        finally:
+            self.relDbSem()
+        # Check if the entry already exists. If yes update it, otherwise
+        # insert a new element.
+        if (self.subscriberInDb(subscrId)):
+            sqlQuery = "UPDATE ngas_subscribers SET " +\
+                       "host_id='" + hostId + "', " +\
+                       "srv_port=" + str(portNo) + ", " +\
+                       "subscr_prio=" + str(priority) + ", " +\
+                       "subscr_id='" + subscrId + "', " +\
+                       "subscr_url='" + subscrUrl + "', " +\
+                       "subscr_start_date=" + startDate + ", " +\
+                       "subscr_filter_plugin=" + filterPlugIn + ", " +\
+                       "subscr_filter_plugin_pars="+filterPlugInPars+", "+\
+                       "last_file_ingestion_date=" + lastFileIngDate+", " +\
+                       "concurrent_threads=" + str(concurrent_threads)+" " +\
+                       "WHERE subscr_id='" + subscrId + "' AND " +\
+                       "host_id='" + hostId + "' AND " +\
+                       "srv_port=" + str(portNo)
+            addedEntry = 0
+        else:
+            sqlQuery = "INSERT INTO ngas_subscribers " +\
+                       "(host_id, srv_port, subscr_prio, subscr_id," +\
+                       " subscr_url, subscr_start_date," +\
+                       " subscr_filter_plugin,"+\
+                       " subscr_filter_plugin_pars," +\
+                       " last_file_ingestion_date, concurrent_threads) " +\
+                       " VALUES " +\
+                       "('" + hostId + "', " + str(portNo) + ", " +\
+                       str(priority) + ", '"+subscrId + "', '"+subscrUrl+\
+                       "', " + startDate + ", " + filterPlugIn + ", " +\
+                       filterPlugInPars + ", " + lastFileIngDate + ", " + str(concurrent_threads) + ")"
+            addedEntry = 1
+        res = self.query(sqlQuery)
+        self.triggerEvents()
+        return addedEntry
 
 
     def deleteSubscriber(self,

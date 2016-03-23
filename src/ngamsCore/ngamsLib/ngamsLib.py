@@ -292,9 +292,9 @@ def makeFileReadOnly(completeFilename):
 
     Returns:             Void.
     """
-    info(4,"Making file: " + completeFilename + " read-only ...")
+    info(4, "Making file: %s read-only" % completeFilename)
     os.chmod(completeFilename, 0444)
-    info(3,"File: " + completeFilename + " made read-only")
+    info(3, "File: %s made read-only" % completeFilename)
 
 
 def makeFileRdWr(completeFilename):
@@ -305,9 +305,9 @@ def makeFileRdWr(completeFilename):
 
     Returns:             Void.
     """
-    info(4,"Making file: " + completeFilename + " read-write...")
+    info(4,"Making file: %s read-write" % completeFilename)
     os.chmod(completeFilename, 0664)
-    info(3,"File: " + completeFilename + " made read-write")
+    info(3,"File: %s made read-write" % completeFilename)
 
 
 def fileWritable(filename):
@@ -724,27 +724,22 @@ def httpPost(host,
         fileName = 'mimemessage'
         if pars[0][0] == 'attachment; filename': pars[0][0] = 'attachment'
 
-    contDisp = ""
+    contDisp = []
     for parInfo in pars:
-        if (parInfo[0] == "attachment"):
-            if (fileName != ""):
-                contDisp += 'attachment; filename="%s"; ' % fileName
+        if parInfo[0] == "attachment":
+            if fileName:
+                contDisp.append('attachment; filename="%s"; ' % fileName)
         else:
-            contDisp += parInfo[0] + '="'+urllib.quote(str(parInfo[1])) + '"; '
-    if (contDisp != ""): contDisp = contDisp[0:-1]
+            contDisp.append('%s="%s"; ' % (parInfo[0], urllib.quote(str(parInfo[1]))))
+    contDisp = ''.join(contDisp)
 
-    info(4,"Sending: " + cmd + " using HTTP POST with mime-type: " +\
-         mimeType + " to NG/AMS Server with host/port: " + host +\
-         "/" + str(port))
-    url = "http://" + host + ":" + str(port) + "/" + cmd
-    try:
-        return httpPostUrl(url, mimeType, contDisp, dataRef, dataSource,
-                           dataTargFile, 65536, 0, timeOut, authHdrVal,
-                           dataSize)
-    except Exception, e:
-        errMsg = "Problem occurred issuing request with URL: " + url +\
-                 ". Error: " + str(e)
-        raise Exception, errMsg
+    msg = ("Sending: %s using HTTP POST with mime-type: %s "
+            "to NG/AMS Server with host: %s:%s") % (cmd, mimeType, host, str(port))
+    info(4, msg)
+
+    url = "http://%s:%s/%s" % (host, str(port), cmd)
+    return httpPostUrl(url, mimeType, contDisp, dataRef, dataSource,
+                       dataTargFile, 65536, 0, timeOut, authHdrVal, dataSize)
 
 def collectFiles(absDirname):
 

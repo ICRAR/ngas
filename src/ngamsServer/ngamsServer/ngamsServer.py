@@ -1481,27 +1481,25 @@ class ngamsServer:
         self.setLastReqStartTime()
         reqTimer = PccUtTime.Timer()
         safePath = ngamsLib.hidePassword(path)
-        msg = "Handling HTTP request: client_address=" + str(clientAddress) +\
-              " - method=" + method + " - path=|" + safePath + "|"
-        #for key in headers.keys():
-        #    msg = msg + " - " + key + "=" + str(headers[key])
-        info(1,msg)
+        msg = "Handling HTTP request: client_address=%s - method=%s - path=|%s|" %\
+                (str(clientAddress), method, safePath)
+        info(1, msg)
+
         reqPropsObj.unpackHttpInfo(self.getCfg(), method, path, headers)
 
-        # Handle authorization.
         ngamsAuthUtils.authorize(self, reqPropsObj, httpRef)
 
-        # Request authorized - handle the command
         ngamsCmdHandling.cmdHandler(self, reqPropsObj, httpRef)
-        msg = "Total time for handling request: (" +\
-             reqPropsObj.getHttpMethod() + "," + reqPropsObj.getCmd() + "," +\
-             reqPropsObj.getMimeType() + "," +\
-             reqPropsObj.getFileUri() + "): " +\
-             str(int(1000.0 * reqTimer.stop()) / 1000.0) + "s"
+
+        msg = "Total time for handling request: (%s, %s ,%s, %s): %ss" %\
+                (reqPropsObj.getHttpMethod(), reqPropsObj.getCmd(),
+                reqPropsObj.getMimeType(), reqPropsObj.getFileUri(),
+                str(int(1000.0 * reqTimer.stop()) / 1000.0))
+
         if reqPropsObj.getIoTime() > 0:
-            msg += "; Transfer rate:" +\
-            str(reqPropsObj.getBytesReceived()/reqPropsObj.getIoTime()/1024./1024.) +\
-            "MB/s"
+            msg += "; Transfer rate: %s MB/s" % \
+            str(reqPropsObj.getBytesReceived() / reqPropsObj.getIoTime() / 1024.0 / 1024.0)
+
         info(2, msg)
         logFlush()
 

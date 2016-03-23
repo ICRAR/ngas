@@ -806,34 +806,21 @@ def _deliveryThread(srvObj,
                                                     fileInfoHdr = fileInfoObjHdr,
                                                     sendBuffer = srvObj.getCfg().getArchiveSndBufSize(),
                                                     checkSum = fileChecksum)
-                                                    #moreHdrs = [hdr1, hdr2])
                         stat.clear()
-
                         if data:
                             stat.unpackXmlDoc(data)
-
                         if reply != NGAMS_HTTP_SUCCESS:
                             stat.setStatus(NGAMS_FAILURE)
                             raise Exception('Error handling %s' % sendUrl)
-
                         stat.setStatus(NGAMS_SUCCESS)
 
-                        # this is only for DDN test
-                        if (hdrs.has_key('x-ddn-oid')):
-                            ddn_msg = "File %s as DDN obsid = %s" % (fileId, hdrs['x-ddn-oid'])
-                            if (hdrs.has_key('x-ddn-status')):
-                                ddn_msg += " is archived '%s'" % hdrs['x-ddn-status']
-                            info(3, ddn_msg)
-
-
-                except Exception, e:
+                except Exception as e:
                     ex = str(e)
-                    trace_msg = traceback.format_exc()
+                    error('%s Message: %s' % (ex, stat.getMessage()))
 
-                if ((ex != "") or (reply != NGAMS_HTTP_SUCCESS) or
-                    (stat.getStatus() == NGAMS_FAILURE)):
+                if ex or reply != NGAMS_HTTP_SUCCESS or stat.getStatus() == NGAMS_FAILURE:
 
-                    if (udx < urlListLen - 1): #try the next url
+                    if udx < urlListLen - 1: #try the next url
                         continue
                     # If an error occurred during data delivery, we should not update
                     # the Subscription Status table for this Subscriber, but should
@@ -862,10 +849,6 @@ def _deliveryThread(srvObj,
                                  " - to Subscriber/url: " + subscrObj.getId() + "/" + subscrObj.getUrl() +\
                                  " by Delivery Thread [" + str(thread.get_ident()) + "]"
 
-                    if (ex != ""): errMsg += " Exception: " + ex + trace_msg + "."
-                    if (stat.getMessage() != ""):
-                        errMsg += " Message: " + stat.getMessage()
-                    warning(errMsg)
                     if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
                         # remove bl record from the dict
                         if (srvObj._subscrBlScheduledDic.has_key(subscrbId)):

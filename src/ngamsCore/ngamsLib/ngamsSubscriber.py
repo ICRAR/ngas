@@ -179,7 +179,9 @@ class ngamsSubscriber:
 
         Returns:    Reference to object itself.
         """
-        info(6,"Executing ngamsSubscriber.setUrl(): " + str(url))
+        info(6, "Executing ngamsSubscriber.setUrl(): %s" % str(url))
+        if not url:
+            raise Exception('Invalid subscriber url: %s' % url)
         self.__url = url.strip()
         return self
 
@@ -253,12 +255,13 @@ class ngamsSubscriber:
         return self.__startDate
 
     def setConcurrentThreads(self, num_threads):
-
-        #info(3, "Got num_threads = %" % num_threads)
-        if (num_threads == None or num_threads == ''):
+        if not num_threads:
             return self
+
         num_threads = int(num_threads)
-        #if (num_threads > 0 and num_threads < 101):
+        if num_threads < 0:
+            raise Exception('Invalid concurrent threads: %s' % num_threads)
+
         self.__concurthrds = num_threads
         return self
 

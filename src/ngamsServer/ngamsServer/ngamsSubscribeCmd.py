@@ -52,10 +52,13 @@ def addSubscriber(srvObj,
     """
     T = TRACE()
 
-    subscrObj.write(srvObj.getDb())
-    #srvObj.getSubscriberDic()[subscrObj.getId()] = subscrObj
+    result = subscrObj.write(srvObj.getDb())
+    if result == 1:
+        info(2, "Sucessfully added Susbcriber with ID: %s" % subscrObj.getId())
+    else:
+        info(2, "Sucessfully updated Susbcriber with ID: %s" % subscrObj.getId())
+
     srvObj.registerSubscriber(subscrObj)
-    info(2,"Sucessfully added Susbcriber with ID: " + subscrObj.getId())
 
 
 def handleCmdSubscribe(srvObj,
@@ -121,11 +124,11 @@ def handleCmdSubscribe(srvObj,
     subscrStat = srvObj.getDb().getSubscriberStatus([subscrObj.getId()],
                                                     subscrObj.getHostId(),
                                                     subscrObj.getPortNo())
-    if (subscrStat != []):
+    if subscrStat:
         lastIngDate = subscrStat[0][1]
-        if ((startDate < lastIngDate) and lastIngDate and lastIngDate):
+        if startDate < lastIngDate and lastIngDate and lastIngDate:
             subscrObj.setLastFileIngDate(None)
-        elif (lastIngDate):
+        elif lastIngDate:
             subscrObj.setLastFileIngDate(lastIngDate)
 
     # Register the Subscriber.
@@ -137,6 +140,3 @@ def handleCmdSubscribe(srvObj,
 
     srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,
                  "Handled SUBSCRIBE command")
-
-
-# EOF

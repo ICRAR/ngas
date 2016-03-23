@@ -94,7 +94,130 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             self.checkEqual(resp.status, 200, None)
 
         # Do not like sleeps but xfer should happen immediately.
-        time.sleep(7)
+        time.sleep(5)
+
+        client = sendPclCmd(port = 8889)
+        status = client.retrieve2File(fileId = 'SmallFile.fits',
+                                        fileVersion = 2,
+                                        targetFile = '/tmp/test.fits')
+        self.assertEquals(status.getStatus(), 'SUCCESS', None)
+
+
+    def test_basic_subscription_fail(self):
+        self.prepExtSrv(8888)
+        self.prepExtSrv(8889)
+
+        host = 'localhost:8888'
+        method = 'GET'
+        cmd = 'QARCHIVE'
+
+        test_file = 'src/SmallFile.fits'
+        params = {'filename': test_file,
+                  'mime_type': 'application/octet-stream'}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, open(test_file, 'rb'), {})
+            resp = conn.getresponse()
+            self.checkEqual(resp.status, 200, None)
+
+        client = sendPclCmd(port = 8889)
+        status = client.retrieve2File(fileId = 'SmallFile.fits',
+                                        fileVersion = 2,
+                                        targetFile = '/tmp/test.fits')
+        self.assertEquals(status.getStatus(), 'FAILURE', None)
+
+        method = 'GET'
+        cmd = 'SUBSCRIBE'
+        params = {'url': 'http://localhost:8889/QARCHIVE',
+                  'subscr_id': 'TEST',
+                  'priority': 1,
+                  'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
+                  'concurrent_threads': -1}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, '', {})
+            resp = conn.getresponse()
+            print resp.read()
+            self.checkEqual(resp.status, 400, None)
+
+        params = {'url': 'http://localhost:8889/QARCHIVE',
+                  'subscr_id': 'TEST',
+                  'priority': 1,
+                  'start_date': 'ERRORT00:00:00.000',
+                  'concurrent_threads': 2}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, '', {})
+            resp = conn.getresponse()
+            print resp.read()
+            self.checkEqual(resp.status, 400, None)
+
+        params = {'url': 'http://localhost:8889/QARCHIVE',
+                  'subscr_id': 'TEST',
+                  'priority': 1,
+                  'start_date': '2010-20-02T00:00:00.000',
+                  'concurrent_threads': 2}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, '', {})
+            resp = conn.getresponse()
+            print resp.read()
+            self.checkEqual(resp.status, 400, None)
+
+        params = {'url': 'http://localhost:8889/QARCHIVE',
+                  'subscr_id': 'TEST',
+                  'priority': 1,
+                  'start_date': '2010-10-02TERROR',
+                  'concurrent_threads': 2}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, '', {})
+            resp = conn.getresponse()
+            print resp.read()
+            self.checkEqual(resp.status, 400, None)
+
+        params = {'url': '',
+                  'subscr_id': 'TEST',
+                  'priority': 1,
+                  'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
+                  'concurrent_threads': 2}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, '', {})
+            resp = conn.getresponse()
+            print resp.read()
+            self.checkEqual(resp.status, 400, None)
+
+        time.sleep(2)
+
+        # Check after all the failed subscriptions we don't have the file
+        client = sendPclCmd(port = 8889)
+        status = client.retrieve2File(fileId = 'SmallFile.fits',
+                                        fileVersion = 2,
+                                        targetFile = '/tmp/test.fits')
+        self.assertEquals(status.getStatus(), 'FAILURE', None)
+
+        # Successfully register
+        params = {'url': 'http://localhost:8889/QARCHIVE',
+                  'subscr_id': 'TEST',
+                  'priority': 1,
+                  'start_date': '%s 00:00:00.000' % time.strftime("%Y-%m-%d"),
+                  'concurrent_threads': 1}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, '', {})
+            resp = conn.getresponse()
+            print resp.read()
+            self.checkEqual(resp.status, 200, None)
+
+        time.sleep(2)
 
         client = sendPclCmd(port = 8889)
         status = client.retrieve2File(fileId = 'SmallFile.fits',

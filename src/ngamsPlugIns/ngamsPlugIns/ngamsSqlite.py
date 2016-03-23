@@ -263,7 +263,8 @@ class ngamsSqlite:
         T = TRACE(5)
 
         if (str(timeStamp).find(":") != -1):
-            if (timeStamp[10] != "T"): timeStamp[10] = "T"
+            # NO: python strings are immutable
+            #if (timeStamp[10] != "T"): timeStamp[10] = "T"
             ts = timeStamp
             ts = PccUtTime.TimeStamp().\
                  initFromTimeStamp(timeStamp).getTimeStamp()
