@@ -162,7 +162,8 @@ def handleCmd(srvObj,
                 err += 1
                 errMsg += msg
     try:
-        subscriber.write(srvObj.getDb())
+        srvObj.getDb().updateSubscriberEntry(subscriber)
+        srvObj.addSubscriptionInfo([], [subscriber]).triggerSubscriptionThread()
     except Exception, e:
         msg = " Update subscriber in DB exception: %s." % str(e)
         warning(msg)

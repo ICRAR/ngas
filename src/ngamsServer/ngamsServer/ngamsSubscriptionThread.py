@@ -673,7 +673,6 @@ def _deliveryThread(srvObj,
                     # But only the first thread does this to avoid repeated notifications, but what if the first thread is busy (i.e. sending a file)
                     srvObj.triggerSubscriptionThread()
                     remindMainThread = False # only notify once within each "empty session"
-
             if (fileInfo == None):
                 continue
             if (srvObj.getDataMoverOnlyActive() and firstThread):
@@ -795,7 +794,6 @@ def _deliveryThread(srvObj,
                             fileChecksum = srvObj.getDb().getFileChecksum(diskId, fileId, fileVersion)
                         except Exception, eyy:
                             warning('Fail to get file checksum for file %s: %s' % (fileId, str(eyy)))
-
                         reply, msg, hdrs, data = \
                                ngamsLib.httpPostUrl(sendUrl, fileMimeType,
                                                     ''.join(contDisp), filename, "FILE",
@@ -1414,5 +1412,3 @@ def subscriptionThread(srvObj,
             alert(errMsg)
             em = traceback.format_exc()
             alert(em)
-
-# EOF

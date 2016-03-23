@@ -104,7 +104,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
 
     def test_basic_subscription_fail(self):
-        self.prepExtSrv(8888)
+        self.prepExtSrv(8888, cfgProps=[["NgamsCfg.HostSuspension[1].SuspensionTime", '0T00:00:05']])
         self.prepExtSrv(8889)
 
         host = 'localhost:8888'
@@ -112,6 +112,16 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         cmd = 'QARCHIVE'
 
         test_file = 'src/SmallFile.fits'
+        params = {'filename': test_file,
+                  'mime_type': 'application/octet-stream'}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, open(test_file, 'rb'), {})
+            resp = conn.getresponse()
+            self.checkEqual(resp.status, 200, None)
+
+        test_file = 'src/TinyTestFile.fits'
         params = {'filename': test_file,
                   'mime_type': 'application/octet-stream'}
         params = urllib.urlencode(params)
@@ -139,7 +149,6 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
             conn.request(method, selector, '', {})
             resp = conn.getresponse()
-            print resp.read()
             self.checkEqual(resp.status, 400, None)
 
         params = {'url': 'http://localhost:8889/QARCHIVE',
@@ -152,7 +161,6 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
             conn.request(method, selector, '', {})
             resp = conn.getresponse()
-            print resp.read()
             self.checkEqual(resp.status, 400, None)
 
         params = {'url': 'http://localhost:8889/QARCHIVE',
@@ -165,7 +173,6 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
             conn.request(method, selector, '', {})
             resp = conn.getresponse()
-            print resp.read()
             self.checkEqual(resp.status, 400, None)
 
         params = {'url': 'http://localhost:8889/QARCHIVE',
@@ -178,7 +185,6 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
             conn.request(method, selector, '', {})
             resp = conn.getresponse()
-            print resp.read()
             self.checkEqual(resp.status, 400, None)
 
         params = {'url': '',
@@ -191,8 +197,19 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
             conn.request(method, selector, '', {})
             resp = conn.getresponse()
-            print resp.read()
             self.checkEqual(resp.status, 400, None)
+
+        params = {'url': 'http://localhost:8889/QARCHIV',
+                  'subscr_id': 'TEST',
+                  'priority': 1,
+                  'start_date': '%s 00:00:00.000' % time.strftime("%Y-%m-%d"),
+                  'concurrent_threads': 1}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, '', {})
+            resp = conn.getresponse()
+            self.checkEqual(resp.status, 200, None)
 
         time.sleep(2)
 
@@ -203,27 +220,73 @@ class ngamsSubscriptionTest(ngamsTestSuite):
                                         targetFile = '/tmp/test.fits')
         self.assertEquals(status.getStatus(), 'FAILURE', None)
 
-        # Successfully register
+        # USUBSCRIBE for update
+        # SUBSCRIBE for insert
+        cmd = 'USUBSCRIBE'
         params = {'url': 'http://localhost:8889/QARCHIVE',
                   'subscr_id': 'TEST',
                   'priority': 1,
-                  'start_date': '%s 00:00:00.000' % time.strftime("%Y-%m-%d"),
-                  'concurrent_threads': 1}
+                  'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
+                  'concurrent_threads': 2}
         params = urllib.urlencode(params)
         selector = '{0}?{1}'.format(cmd, params)
         with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
             conn.request(method, selector, '', {})
             resp = conn.getresponse()
-            print resp.read()
             self.checkEqual(resp.status, 200, None)
 
-        time.sleep(2)
+        time.sleep(5)
 
         client = sendPclCmd(port = 8889)
         status = client.retrieve2File(fileId = 'SmallFile.fits',
                                         fileVersion = 2,
                                         targetFile = '/tmp/test.fits')
         self.assertEquals(status.getStatus(), 'SUCCESS', None)
+
+        client = sendPclCmd(port = 8889)
+        status = client.retrieve2File(fileId = 'TinyTestFile.fits',
+                                        fileVersion = 2,
+                                        targetFile = '/tmp/test1.fits')
+        self.assertEquals(status.getStatus(), 'SUCCESS', None)
+
+        # UNSUBSCRIBE and check the newly archived file is not transfered
+        cmd = 'UNSUBSCRIBE'
+        params = {'subscr_id': 'TEST'}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, '', {})
+            resp = conn.getresponse()
+            self.checkEqual(resp.status, 200, None)
+
+        host = 'localhost:8888'
+        method = 'GET'
+        cmd = 'QARCHIVE'
+
+        test_file = 'src/SmallBadFile.fits'
+        params = {'filename': test_file,
+                  'mime_type': 'application/octet-stream'}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, open(test_file, 'rb'), {})
+            resp = conn.getresponse()
+            self.checkEqual(resp.status, 200, None)
+
+        time.sleep(5)
+
+        # Check after all the failed subscriptions we don't have the file
+        client = sendPclCmd(port = 8889)
+        status = client.retrieve2File(fileId = 'SmallBadFile.fits',
+                                        fileVersion = 1,
+                                        targetFile = '/tmp/test2.fits')
+        self.assertEquals(status.getStatus(), 'SUCCESS', None)
+
+        client = sendPclCmd(port = 8889)
+        status = client.retrieve2File(fileId = 'SmallBadFile.fits',
+                                        fileVersion = 2,
+                                        targetFile = '/tmp/test2.fits')
+        self.assertEquals(status.getStatus(), 'FAILURE', None)
 
 def run():
     """
@@ -239,6 +302,3 @@ if __name__ == '__main__':
     Main program executing the test cases of the module test.
     """
     runTest(sys.argv)
-
-
-# EOF

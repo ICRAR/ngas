@@ -38,8 +38,7 @@ from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, \
 from ngamsLib import ngamsSubscriber, ngamsLib
 from pccUt import PccUtTime
 
-def addSubscriber(srvObj,
-                  subscrObj):
+def addSubscriber(srvObj, subscrObj):
     """
     Add a Subscriber to the list of Subscribers. The information about
     the Subscriber is also updated in the DB.
@@ -52,11 +51,8 @@ def addSubscriber(srvObj,
     """
     T = TRACE()
 
-    result = subscrObj.write(srvObj.getDb())
-    if result == 1:
-        info(2, "Sucessfully added Susbcriber with ID: %s" % subscrObj.getId())
-    else:
-        info(2, "Sucessfully updated Susbcriber with ID: %s" % subscrObj.getId())
+    srvObj.getDb().insertSubscriberEntry(subscrObj)
+    #subscrObj.write(srvObj.getDb())
 
     srvObj.registerSubscriber(subscrObj)
 

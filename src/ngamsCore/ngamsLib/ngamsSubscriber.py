@@ -427,31 +427,6 @@ class ngamsSubscriber:
         return self
 
 
-    def write(self,
-              dbConObj):
-        """
-        Write the information contained in the object about a Subscriber
-        into the DB specified by the DB connection object.
-
-        dbConObj:     DB connection object (ngamsDb).
-
-        Returns:      Returns 1 if a new entry was created in the DB
-                      and 0 if an existing entry was updated (integer/0|1).
-        """
-        addedNewEntry = dbConObj.\
-                        writeSubscriberEntry(self.getHostId(),
-                                             self.getPortNo(),
-                                             self.getId(),
-                                             self.getUrl(),
-                                             self.getPriority(),
-                                             self.getStartDate(),
-                                             self.getFilterPi(),
-                                             self.getFilterPiPars(),
-                                             self.getLastFileIngDate(),
-                                             self.getConcurrentThreads())
-        return addedNewEntry
-
-
     def dumpBuf(self):
         """
         Dump contents of object into a string buffer.

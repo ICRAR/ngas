@@ -121,18 +121,60 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
             else:
                 return res[0]
 
+    def insertSubscriberEntry(self, sub_obj):
 
-    def writeSubscriberEntry(self,
-                             hostId,
-                             portNo,
-                             subscrId,
-                             subscrUrl,
-                             priority = 10,
-                             startDate = "",
-                             filterPlugIn = "",
-                             filterPlugInPars = "",
-                             lastFileIngDate = "",
-                             concurrent_threads = 1):
+        T = TRACE()
+
+        hostId = sub_obj.getHostId()
+        portNo = sub_obj.getPortNo()
+        subscrId = sub_obj.getId()
+        subscrUrl = sub_obj.getUrl()
+        priority = sub_obj.getPriority()
+        startDate = sub_obj.getStartDate()
+        filterPlugIn = sub_obj.getFilterPi()
+        filterPlugInPars = sub_obj.getFilterPiPars()
+        lastFileIngDate = sub_obj.getLastFileIngDate()
+        concurrent_threads = sub_obj.getConcurrentThreads()
+
+        if not startDate:
+            startDate = "None"
+        else:
+            startDate = "'" + self.convertTimeStamp(startDate) + "'"
+
+        if not filterPlugIn:
+            filterPlugIn = "''"
+        else:
+            filterPlugIn = "'" + filterPlugIn + "'"
+
+        if not filterPlugInPars:
+            filterPlugInPars = "''"
+        else:
+            filterPlugInPars = "'" + filterPlugInPars + "'"
+
+        if not lastFileIngDate:
+            lastFileIngDate = "'" + self.convertTimeStamp(0) + "'"
+        else:
+            lastFileIngDate = "'" +\
+                              self.convertTimeStamp(lastFileIngDate) +\
+                              "'"
+
+        sqlQuery = "INSERT INTO ngas_subscribers " +\
+                   "(host_id, srv_port, subscr_prio, subscr_id," +\
+                   " subscr_url, subscr_start_date," +\
+                   " subscr_filter_plugin,"+\
+                   " subscr_filter_plugin_pars," +\
+                   " last_file_ingestion_date, concurrent_threads) " +\
+                   " VALUES " +\
+                   "('" + hostId + "', " + str(portNo) + ", " +\
+                   str(priority) + ", '"+subscrId + "', '"+subscrUrl+\
+                   "', " + startDate + ", " + filterPlugIn + ", " +\
+                   filterPlugInPars + ", " + lastFileIngDate + ", " + str(concurrent_threads) + ")"
+
+        res = self.query(sqlQuery)
+        self.triggerEvents()
+
+
+    def updateSubscriberEntry(self, sub_obj):
         """
         The method writes the information in connection with a Subscriber
         in the NGAS DB. If an entry already exists for that disk, it is updated
@@ -157,62 +199,55 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        try:
-            self.takeDbSem()
-            if ((startDate == "") or (startDate == None)):
-                startDate = "None"
-            else:
-                startDate = "'" + self.convertTimeStamp(startDate) + "'"
-            if ((filterPlugIn == "") or (filterPlugIn == None)):
-                filterPlugIn = "''"
-            else:
-                filterPlugIn = "'" + filterPlugIn + "'"
-            if ((filterPlugInPars == "") or (filterPlugInPars == None)):
-                filterPlugInPars = "''"
-            else:
-                filterPlugInPars = "'" + filterPlugInPars + "'"
-            if ((lastFileIngDate == "") or (lastFileIngDate == None)):
-                lastFileIngDate = "'" + self.convertTimeStamp(0) + "'"
-            else:
-                lastFileIngDate = "'" +\
-                                  self.convertTimeStamp(lastFileIngDate) +\
-                                  "'"
-        finally:
-            self.relDbSem()
-        # Check if the entry already exists. If yes update it, otherwise
-        # insert a new element.
-        if (self.subscriberInDb(subscrId)):
-            sqlQuery = "UPDATE ngas_subscribers SET " +\
-                       "host_id='" + hostId + "', " +\
-                       "srv_port=" + str(portNo) + ", " +\
-                       "subscr_prio=" + str(priority) + ", " +\
-                       "subscr_id='" + subscrId + "', " +\
-                       "subscr_url='" + subscrUrl + "', " +\
-                       "subscr_start_date=" + startDate + ", " +\
-                       "subscr_filter_plugin=" + filterPlugIn + ", " +\
-                       "subscr_filter_plugin_pars="+filterPlugInPars+", "+\
-                       "last_file_ingestion_date=" + lastFileIngDate+", " +\
-                       "concurrent_threads=" + str(concurrent_threads)+" " +\
-                       "WHERE subscr_id='" + subscrId + "' AND " +\
-                       "host_id='" + hostId + "' AND " +\
-                       "srv_port=" + str(portNo)
-            addedEntry = 0
+        hostId = sub_obj.getHostId()
+        portNo = sub_obj.getPortNo()
+        subscrId = sub_obj.getId()
+        subscrUrl = sub_obj.getUrl()
+        priority = sub_obj.getPriority()
+        startDate = sub_obj.getStartDate()
+        filterPlugIn = sub_obj.getFilterPi()
+        filterPlugInPars = sub_obj.getFilterPiPars()
+        lastFileIngDate = sub_obj.getLastFileIngDate()
+        concurrent_threads = sub_obj.getConcurrentThreads()
+
+        if not startDate:
+            startDate = "None"
         else:
-            sqlQuery = "INSERT INTO ngas_subscribers " +\
-                       "(host_id, srv_port, subscr_prio, subscr_id," +\
-                       " subscr_url, subscr_start_date," +\
-                       " subscr_filter_plugin,"+\
-                       " subscr_filter_plugin_pars," +\
-                       " last_file_ingestion_date, concurrent_threads) " +\
-                       " VALUES " +\
-                       "('" + hostId + "', " + str(portNo) + ", " +\
-                       str(priority) + ", '"+subscrId + "', '"+subscrUrl+\
-                       "', " + startDate + ", " + filterPlugIn + ", " +\
-                       filterPlugInPars + ", " + lastFileIngDate + ", " + str(concurrent_threads) + ")"
-            addedEntry = 1
+            startDate = "'" + self.convertTimeStamp(startDate) + "'"
+
+        if not filterPlugIn:
+            filterPlugIn = "''"
+        else:
+            filterPlugIn = "'" + filterPlugIn + "'"
+
+        if not filterPlugInPars:
+            filterPlugInPars = "''"
+        else:
+            filterPlugInPars = "'" + filterPlugInPars + "'"
+
+        if not lastFileIngDate:
+            lastFileIngDate = "'" + self.convertTimeStamp(0) + "'"
+        else:
+            lastFileIngDate = "'" +\
+                              self.convertTimeStamp(lastFileIngDate) +\
+                              "'"
+        sqlQuery = "UPDATE ngas_subscribers SET " +\
+                   "host_id='" + hostId + "', " +\
+                   "srv_port=" + str(portNo) + ", " +\
+                   "subscr_prio=" + str(priority) + ", " +\
+                   "subscr_id='" + subscrId + "', " +\
+                   "subscr_url='" + subscrUrl + "', " +\
+                   "subscr_start_date=" + startDate + ", " +\
+                   "subscr_filter_plugin=" + filterPlugIn + ", " +\
+                   "subscr_filter_plugin_pars="+filterPlugInPars+", "+\
+                   "last_file_ingestion_date=" + lastFileIngDate+", " +\
+                   "concurrent_threads=" + str(concurrent_threads)+" " +\
+                   "WHERE subscr_id='" + subscrId + "' AND " +\
+                   "host_id='" + hostId + "' AND " +\
+                   "srv_port=" + str(portNo)
+
         res = self.query(sqlQuery)
         self.triggerEvents()
-        return addedEntry
 
 
     def deleteSubscriber(self,
@@ -371,7 +406,9 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                     "format, status, status_date, comment) " +\
                     "VALUES " +\
                     "('%s', '%s', %d, '%s', '%s', '%s', '%s', %d, '%s', '%s')" % (subscrId,fileId,fileVersion,diskId,fileName,ingestionDate,format,status,status_date,comment)
-        self.query(sqlQuery)
+        # *sigh* set maxRetries to -1 so we don't loop out of control trying
+        # to reconnect like crazy when there is a duplicate record!
+        self.query(sqlQuery, maxRetries = -1)
 
     def addSubscrBackLogEntry(self,
                               hostId,

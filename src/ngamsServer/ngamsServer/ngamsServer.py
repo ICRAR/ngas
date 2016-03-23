@@ -835,17 +835,18 @@ class ngamsServer:
         T = TRACE()
 
         try:
-            startTime = time.time()
             self._subscriptionSem.acquire()
-            if (fileRefs != []): self._subscriptionFileList += fileRefs
-            if (subscrObjs != []): self._subscriptionSubscrList += subscrObjs
-            self._subscriptionSem.release()
+            if (fileRefs != []):
+                self._subscriptionFileList += fileRefs
+            if (subscrObjs != []):
+                self._subscriptionSubscrList += subscrObjs
         except Exception, e:
-            self._subscriptionSem.release()
             errMsg = "Error occurred in ngamsServer." +\
                      "addSubscriptionInfo(). Exception: " + str(e)
             alert(errMsg)
             raise Exception, errMsg
+        finally:
+            self._subscriptionSem.release()
         return self
 
 
@@ -2638,5 +2639,3 @@ def main(argv=sys.argv):
 
 if __name__ == '__main__':
     main()
-
-# EOF
