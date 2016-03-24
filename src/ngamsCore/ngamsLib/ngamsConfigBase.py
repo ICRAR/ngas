@@ -33,8 +33,6 @@
 Contains the ngamsConfigBase class to handle the NG/AMS Configuration.
 """
 
-import sys
-
 from ngamsCore import TRACE, genLog
 import ngamsXmlMgr
 
@@ -316,26 +314,3 @@ class ngamsConfigBase:
             self.__dbObj.writeCfgPar(obj.getContext(), xmlDicKey,
                                      obj.getValue(), obj.getComment())
         return self
-
-
-if __name__ == '__main__':
-    """
-    Main program.
-    """
-    import ngamsDb
-    dbCon = ngamsDb.ngamsDb("TESTSRV", "ngastst1", "ngas", "ngas_pw")
-    trgXmlDoc = "/home/ngasmgr/NEW_ngamsConfig/ngamsConfigX-TEST.xml"
-    if (0):
-        cfg = ngamsConfigBase(sys.argv[1], dbCon)
-        cfg.save(trgXmlDoc)
-        cfg.writeToDb()
-    else:
-        cfg = ngamsConfigBase(None, dbCon).loadFromDb("GAR-AHU")
-    xmlDic = cfg.getXmlDic()
-    xmlDicKeys = xmlDic.keys()
-    xmlDicKeys.sort()
-    for key in xmlDicKeys:
-        print "%s = %s" % (key, xmlDic[key].getValue())
-
-
-# EOF

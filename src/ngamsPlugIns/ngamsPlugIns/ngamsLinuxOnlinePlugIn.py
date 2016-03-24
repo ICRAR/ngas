@@ -32,9 +32,8 @@ Module containing a System Online Plug-In used by the ESO NGAS installations.
 """
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, info, genLog, error, setLogCond
+from ngamsLib.ngamsCore import TRACE, info, genLog, error
 import ngamsLinuxSystemPlugInApi, ngamsEscaladeUtils
-from ngamsServer import ngamsServer
 
 
 def ngamsLinuxOnlinePlugIn(srvObj,
@@ -120,35 +119,3 @@ def ngamsLinuxOnlinePlugIn(srvObj,
         errMsg = genLog("NGAMS_ER_ONLINE_PLUGIN", [errMsg])
         error(errMsg)
         raise Exception, errMsg
-
-
-if __name__ == '__main__':
-    """
-    Main function.
-    """
-    import sys
-    from ngamsLib import ngamsConfig, ngamsDb
-
-    setLogCond(0, "", 0, "", 1)
-
-    if (len(sys.argv) != 2):
-        print "\nCorrect usage is:\n"
-        print "% python ngamsLinuxOnlinePlugIn <NGAMS cfg>\n"
-        sys.exit(0)
-
-    srvObj = ngamsServer.ngamsServer()
-    ngamsCfgObj = ngamsConfig.ngamsConfig().load(sys.argv[1])
-    dbConObj = ngamsDb.ngamsDb(ngamsCfgObj.getDbServer(),
-                               ngamsCfgObj.getDbName(),
-                               ngamsCfgObj.getDbUser(),
-                               ngamsCfgObj.getDbPassword())
-    srvObj.setCfg(ngamsCfgObj).setDb(dbConObj)
-    diskDic = ngamsLinuxOnlinePlugIn(srvObj)
-    slotIds = []
-    for slotId in diskDic.keys(): slotIds.append(int(slotId))
-    slotIds.sort()
-    for slotId in slotIds:
-        print "=Slot ID: %s:\n%s" % (str(slotId),
-                                     diskDic[str(slotId)].dumpBuf())
-
-# EOF

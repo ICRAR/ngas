@@ -33,9 +33,9 @@
 The ngamsConfig class is used to handle the NG/AMS Configuration.
 """
 
-import os, sys, types, base64
+import os, types, base64
 from   ngamsCore import info, error, warning, genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, getTestMode, isoTime2Secs, getNgamsVersionRaw, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
-import ngamsDbCore, ngamsDb, ngamsConfigBase, ngamsSubscriber
+import ngamsDbCore, ngamsConfigBase, ngamsSubscriber
 import ngamsLib
 import ngamsStorageSet, ngamsStream, ngamsDppiDef, ngamsMirroringSource
 
@@ -2555,111 +2555,3 @@ class ngamsConfig:
         """
         return os.path.normpath(self.getBackLogBufferDirectory() + "/" +\
                                 NGAMS_BACK_LOG_DIR)
-
-
-def usage():
-    """
-    Return usage/man-page when executing the Python module as a stand-alone
-    program.
-
-    Returns:    Buffer with usage (string).
-    """
-    buf = "Usage is:\n\n" +\
-          "% python ngamsConfig.py -cfg <XML Cfg. Document> " +\
-          "[-dumpXml] [-dumpXmlDic] [-save <Targ XML Doc>] [-storeDb] " +\
-          "[-dumpDb <DB ID>] [-dbCon <DB Server>/<DB Name>/<User>/<Pwd>] " +\
-          "[-method MethodToCall] [-listMethods]\n\n"
-    return buf
-
-
-if __name__ == '__main__':
-    """
-    Main program.
-    """
-    cfg = ""
-    save = ""
-    getNgamsPort = 0
-    dumpXml = 0
-    dumpXmlDic = 0
-    storeDb = 0
-    silent = mlist = 0
-    dbCon = ""
-    dumpDb = ""
-    method = ""
-    idx = 1
-    while idx < len(sys.argv):
-        par = sys.argv[idx].upper()
-        if (par == "-CFG"):
-            idx += 1
-            cfg = sys.argv[idx]
-        elif (par == "-DUMPXML"):
-            dumpXml = 1
-        elif (par == "-DUMPXMLDIC"):
-            dumpXmlDic = 1
-        elif (par == "-SAVE"):
-            idx += 1
-            save = sys.argv[idx]
-        elif (par == "-STOREDB"):
-            storeDb = 1
-        elif (par == "-DBCON"):
-            idx += 1
-            dbCon = sys.argv[idx]
-        elif (par == "-DUMPDB"):
-            idx += 1
-            dumpDb = sys.argv[idx].strip()
-        elif (par == "-METHOD"):
-            idx += 1
-            method = 'get' + sys.argv[idx].strip()
-        elif (par == "-SILENT"):
-            silent = 1
-            idx += 1
-        elif (par == "-LISTMETHODS"):
-            mlist = 1
-            idx += 1
-        idx += 1
-
-    if (((cfg == "") and (not dumpDb)) or
-        (storeDb and (dbCon == "")) or (dumpDb and (dbCon == ""))):
-        print usage()
-        sys.exit(1)
-
-    # Load the configuration file + parse input parameters
-    cfgObj = ngamsConfig()
-    if (cfg):
-        if not silent: print "Loading configuration: " + cfg
-        cfgObj.load(cfg)
-        if not silent: print "Configuration: " + cfg + " loaded!"
-    if (storeDb or dumpDb):
-        try:
-            dbSrv, db, user, pwd = dbCon.split("/")
-        except:
-            print "ERROR:\n"
-            print "Data for command line parameter -storeDb must be " +\
-                  "given as:\n"
-            print "<DB Server>/<DB Name>/<User>/<Pwd>\n"
-            sys.exit(1)
-    if (storeDb):
-        print "Loading configuration into the DB ..."
-        cfgObj.writeToDb(ngamsDb.ngamsDb(dbSrv, db, user, pwd))
-        print "Loaded configuration into the DB"
-    elif (dumpDb):
-        print "Downloading DB configuration with ID: %s from the DB ..." %\
-              dumpDb
-        cfgObj.loadFromDb(dumpDb, ngamsDb.ngamsDb(dbSrv, db, user, pwd))
-        print "Dumping configuration with ID: %s from the DB:\n\n" %\
-              dumpDb
-        print cfgObj.genXmlDoc(hideCritInfo=0) + "\n\n"
-    elif (dumpXml):
-        print cfgObj.genXmlDoc()
-    elif (dumpXmlDic):
-        print cfgObj.dumpXmlDic()
-    elif (save):
-        cfgObj.save(save)
-    elif (method):
-        if hasattr(cfgObj, method):
-            print getattr(cfgObj, method)()
-    elif (mlist):
-        for i in dir(cfgObj):
-            if i[0:3] == 'get': print i[3:]
-
-# EOF

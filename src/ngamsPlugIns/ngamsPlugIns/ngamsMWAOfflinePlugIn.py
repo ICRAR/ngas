@@ -37,7 +37,7 @@ import cPickle as pickle
 import ngamsCmd_ASYNCLISTRETRIEVE
 from ngamsGenericPlugInLib import notifyRegistrationService
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import info, alert, TRACE, setLogCond
+from ngamsLib.ngamsCore import info, alert, TRACE
 from ngamsServer import ngamsSubscriptionThread
 
 
@@ -115,31 +115,3 @@ def ngamsMWAOfflinePlugIn(srvObj,
     info(3, "Stopping async retrieve list result - %s" % myRes)
 
     _saveSubscriptionInfoToDisk(srvObj)
-
-if __name__ == '__main__':
-    """
-    Main function.
-    """
-    import sys
-    from ngamsLib import ngamsConfig, ngamsDb
-    import ngamsServer
-
-    setLogCond(0, "", 0, "", 1)
-
-    if (len(sys.argv) != 2):
-        print "\nCorrect usage is:\n"
-        print "% python ngamsMWAOfflinePlugIn <NGAMS Cfg.>\n"
-        sys.exit(0)
-
-    srvObj = ngamsServer.ngamsServer()
-    ngamsCfgObj = ngamsConfig.ngamsConfig().load(sys.argv[1])
-    dbConObj = ngamsDb.ngamsDb(ngamsCfgObj.getDbServer(),
-                               ngamsCfgObj.getDbName(),
-                               ngamsCfgObj.getDbUser(),
-                               ngamsCfgObj.getDbPassword(),
-                               interface=ngamsCfgObj.getDbInterface())
-    srvObj.setCfg(ngamsCfgObj).setDb(dbConObj)
-    ngamsMWAOfflinePlugIn(srvObj)
-
-
-# EOF

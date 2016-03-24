@@ -33,19 +33,17 @@
 Contains utilities for handling the disk configuration.
 """
 
-import sys
 import os
 import re
 import string
 import threading
-import commands
 import time
 
 from pccUt import PccUtTime
 from ngamsCore import info, TRACE, getNgamsVersion, genLog, error,\
     NGAMS_DB_DIR, checkCreatePath, NGAMS_DB_CH_CACHE, NGAMS_NOTIF_ERROR,\
     NGAMS_SUCCESS, warning, NGAMS_NOTIF_NO_DISKS, NGAMS_FAILURE, padString,\
-    NGAMS_DISK_INFO, getDiskSpaceAvail, alert, setLogCond
+    NGAMS_DISK_INFO, getDiskSpaceAvail, alert
 import ngamsNotification
 import ngamsLib
 import ngamsDiskInfo, ngamsStatus
@@ -1142,22 +1140,3 @@ def findTargetDisk(hostId,
             diskInfo = _diskInfoDic[key]
 
         return diskInfo
-
-
-if __name__ == '__main__':
-    """
-    Main function.
-    """
-    print "Available (MB)="+ str(getDiskSpaceAvail("/export/diskb"))
-    sys.exit(0)
-
-    import ngamsDb, ngamsConfig
-
-    setLogCond(0, 0, "", 5)
-    cfg = ngamsConfig.ngamsConfig().\
-          load("/home/jknudstr/ngams/ngamsTest/NgamsCfg.xml")
-    db = ngamsDb.ngamsDb("TESTSRV", "ngas_dev", "ngas_dbo", "ngas_dbo_pw")
-    checkDisks(db, cfg)
-
-
-# EOF

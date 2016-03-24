@@ -33,7 +33,7 @@ installations.
 """
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import genLog, error, info, setLogCond
+from ngamsLib.ngamsCore import genLog, error, info
 import ngamsLinuxSystemPlugInApi, ngamsEscaladeUtils
 
 
@@ -108,30 +108,3 @@ def ngamsLinuxOfflinePlugIn(srvObj,
 
         # Fallback umount.
         ngamsLinuxSystemPlugInApi.umount(rootMtPt)
-
-
-if __name__ == '__main__':
-    """
-    Main function.
-    """
-    import sys
-    from ngamsLib import ngamsConfig, ngamsDb
-
-    setLogCond(0, "", 0, "", 1)
-
-    if (len(sys.argv) != 2):
-        print "\nCorrect usage is:\n"
-        print "% python ngamsLinuxOfflinePlugIn <NGAMS cfg>\n"
-        sys.exit(0)
-
-    ngamsCfgObj = ngamsConfig.ngamsConfig()
-    ngamsCfgObj.load(sys.argv[1])
-    dbConObj = ngamsDb.ngamsDb(ngamsCfgObj.getDbServer(),
-                               ngamsCfgObj.getDbName(),
-                               ngamsCfgObj.getDbUser(),
-                               ngamsCfgObj.getDbPassword())
-    dbConObj.query("use " + ngamsCfgObj.getDbName())
-    ngamsLinuxOfflinePlugIn(dbConObj, ngamsCfgObj)
-
-
-# EOF

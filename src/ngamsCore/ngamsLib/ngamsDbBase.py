@@ -145,23 +145,3 @@ class ngamsDbBase(ngamsDbCore.ngamsDbCore,
                                          createSnapshot, interface, tmpDir,
                                          maxRetries, retryWait, parameters,
                                          multipleConnections)
-
-
-
-if __name__ == '__main__':
-    """
-    Main routine to make a connection to the DB.
-    """
-    setLogCond(0, "", 0, "", 5)
-    db = ngamsDbBase("TESTSRV", "ngas_dev", "ngas_dbo", "ngas_dbo_pw")
-    db.close()
-    res1 = []
-    try:
-        res1 = db.query("SELECT total_disk_write_time FROM ngas_disks")
-    except Exception, e:
-        print e
-    print "res1="+str(res1)
-    #print db.diskInDb("DiskId-1-1--")
-
-
-# EOF

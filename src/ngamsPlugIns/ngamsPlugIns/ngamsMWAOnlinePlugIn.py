@@ -53,11 +53,10 @@ import os, glob
 import cPickle as pickle
 import ngamsCmd_ASYNCLISTRETRIEVE
 from ngamsLib import ngamsPhysDiskInfo, ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, info, alert, setLogCond
+from ngamsLib.ngamsCore import TRACE, info, alert
 from ngamsPlugIns.ngamsGenericPlugInLib import NGAS_VOL_INFO_FILE, \
     loadVolInfoFile, NGAS_VOL_INFO_ID, NGAS_VOL_INFO_IGNORE, NGAS_VOL_INFO_TYPE, \
     NGAS_VOL_INFO_MANUFACT, notifyRegistrationService
-from ngamsServer import ngamsServer
 
 
 def ngamsMWAOnlinePlugIn(srvObj,
@@ -182,34 +181,3 @@ def _restoreSubscriptionInfoFromDisk(srvObj):
         alert('Fail to append filelist to subscription info list, Exception: %s' % str(e))
     finally:
         srvObj._subscriptionSem.release()
-
-if __name__ == '__main__':
-    """
-    Main function.
-    """
-    import sys
-    from ngamsLib import ngamsConfig, ngamsDb
-
-    setLogCond(0, "", 0, "", 1)
-
-    if (len(sys.argv) != 2):
-        print "\nCorrect usage is:\n"
-        print "% python ngamsMWAOnlinePlugIn <NGAMS Cfg.>\n"
-        sys.exit(0)
-
-    srvObj = ngamsServer.ngamsServer()
-    ngamsCfgObj = ngamsConfig.ngamsConfig().load(sys.argv[1])
-    dbConObj = ngamsDb.ngamsDb(ngamsCfgObj.getDbServer(),
-                               ngamsCfgObj.getDbName(),
-                               ngamsCfgObj.getDbUser(),
-                               ngamsCfgObj.getDbPassword(),
-                               interface=ngamsCfgObj.getDbInterface())
-    srvObj.setCfg(ngamsCfgObj).setDb(dbConObj)
-    diskDic = ngamsMWAOnlinePlugIn(srvObj)
-    slotIds = []
-    for slotId in diskDic.keys(): slotIds.append(slotId)
-    slotIds.sort()
-    for slotId in slotIds:
-        print "=Slot ID: %s:\n%s" % (slotId, diskDic[slotId].dumpBuf())
-
-# EOF
