@@ -33,7 +33,7 @@ This module contains the class ngamsServer that provides the
 services for the NG/AMS Server.
 """
 
-import os, sys, re, threading, time, commands, pkg_resources
+import os, sys, re, threading, time, pkg_resources
 import traceback
 import SocketServer, BaseHTTPServer, socket, signal
 
@@ -2386,16 +2386,20 @@ class ngamsServer:
 
         # Rotate the log file; it's called .unsaved because the next time NGAS
         # starts it will pick them up and save them into itself
-        try:
-            logFile = self.getCfg().getLocalLogFile()
-            logPath = os.path.dirname(logFile)
-            rotLogFile = "LOG-ROTATE-%s.nglog.unsaved" % (PccUtTime.TimeStamp().getTimeStamp(),)
-            rotLogFile = os.path.normpath(logPath + "/" + rotLogFile)
-            info(1, "Closing log file: %s -> %s" % (logFile, rotLogFile))
-            logFlush()
-            os.rename(logFile, rotLogFile)
-        except Exception, e:
-            error("Server encountered problem while terminating: " + str(e))
+        # logFile might be empty/None if self.getCfg() returns the empty config
+        # created at __init__ time, meaning that this _terminate is being called
+        # due to an error before or during self.loadCfg()
+        logFile = self.getCfg().getLocalLogFile()
+        if logFile:
+            try:
+                logPath = os.path.dirname(logFile)
+                rotLogFile = "LOG-ROTATE-%s.nglog.unsaved" % (PccUtTime.TimeStamp().getTimeStamp(),)
+                rotLogFile = os.path.normpath(logPath + "/" + rotLogFile)
+                info(1, "Closing log file: %s -> %s" % (logFile, rotLogFile))
+                logFlush()
+                os.rename(logFile, rotLogFile)
+            except Exception, e:
+                error("Server encountered problem while rotating logfile: " + str(e))
 
         # Avoid last logs going into the local file
         setLogCond(self.__sysLog, self.__sysLogPrefix, 0,

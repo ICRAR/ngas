@@ -1583,7 +1583,7 @@ class ngamsConfig:
         Returns:  Name of Local Log File (string).
         """
         logFile = self.getVal("Log[1].LocalLogFile")
-        if logFile[0] != '/':
+        if logFile and logFile[0] != '/':
             logFile = self.getRootDirectory() + '/' + logFile
         return logFile
 
