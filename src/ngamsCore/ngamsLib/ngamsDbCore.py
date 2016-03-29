@@ -31,11 +31,16 @@
 Core class for the NG/AMS DB interface.
 """
 
-import time, base64, random
-
-from ngamsCore import info, notice, error, warning, loadPlugInEntryPoint
-from ngamsCore import TRACE, getMaxLogLevel, getThreadName, genLog, getTestMode, timeRef2Iso8601
+import base64
+import contextlib
+import importlib
+import random
 import threading
+import time
+
+from ngamsCore import TRACE, getMaxLogLevel, genLog, timeRef2Iso8601
+from ngamsCore import info, notice, error, warning
+from pccUt import PccUtTime
 
 
 # Global DB Semaphore to protect critical, global DB interaction.
@@ -391,33 +396,21 @@ class ngamsDbTimer:
     Small timer class use to measure the time spent for DB access.
     """
 
-    def __init__(self,
-                 dbConObj,
-                 query):
-        """
-        Constructor.
-
-        dbConObj:  DB connection object (ngamsDbBase).
-        """
-        self.__startTime = time.time()
+    def __init__(self, dbConObj, query):
         self.__dbConObj = dbConObj
         self.__query = query
 
+    def __enter__(self):
+        self.__startTime = time.time()
+        return self
 
-    def __del__(self):
-        """
-        Destructor. Stop the timer and update the global timer in ngamsDbBase.
-        """
-        try:
-            stopTime = time.time()
-            deltaTime = (stopTime - self.__startTime)
-            self.__dbConObj.updateDbTime(deltaTime)
-            if (getMaxLogLevel() >= 4):
-                msg = "DB-TIME: Time spent for DB query: |%s|: %.6fs" %\
-                      (self.__query, deltaTime)
-                info(4, msg)
-        except:
-            pass
+    def __exit__(self, typ, value, traceback):
+        deltaTime = (time.time() - self.__startTime)
+        self.__dbConObj.updateDbTime(deltaTime)
+        if (getMaxLogLevel() >= 4):
+            msg = "DB-TIME: Time spent for DB query: |%s|: %.6fs" %\
+                  (self.__query, deltaTime)
+            info(4, msg)
 
 def cleanSrvList(srvList):
     """
@@ -444,6 +437,19 @@ def cleanSrvList(srvList):
 
     return srvList
 
+
+class ngamsDbCursor(object):
+    def __init__(self, db, conn, query):
+        self.db = db
+        self.conn = conn
+        self.cursor = self.conn.cursor()
+        self.cursor.execute(query)
+    def fetch(self, howmany):
+        self.db.takeDbSem()
+        try:
+            return self.cursor.fetchmany(howmany)
+        finally:
+            self.db.relDbSem()
 
 class ngamsDbCore:
     """
@@ -492,7 +498,9 @@ class ngamsDbCore:
         """
         T = TRACE()
 
-        self.__dbDrv = None
+        # The PEP-249 module and the single connection we hold to it
+        self.__dbModule = None
+        self.__dbConn = None
 
         # Semaphore to protect critical DB interaction.
         self.__dbSem = threading.Lock() # threading.Semaphore(1)
@@ -507,7 +515,7 @@ class ngamsDbCore:
         # Timer for analyzing time spent for DB access
         self.__dbAccessTime = 0.0
 
-        # Import the DB Interface Plug-In + create connection.
+        # Import the DB Interface Plug-In
         self.__dbServer            = server
         self.__dbName              = db
         self.__dbUser              = user
@@ -516,7 +524,13 @@ class ngamsDbCore:
         self.__multipleConnections = multipleConnections
         self.__dbSnapshot          = createSnapshot
         self.__dbInterface         = interface
-        self.connect(server, db, user, password, interface)
+
+        info(4, "Importing DB Module: %s" % (self.__dbInterface,))
+        self.__dbModule = importlib.import_module(self.__dbInterface)
+        info(3, "DB Module API Level: %s" % (self.__dbModule.apilevel))
+
+        # Automatically connect at DB creation time
+        self.connect()
 
         # Verification/Auto Recover.
         self.__dbVerify      = 1
@@ -579,8 +593,7 @@ class ngamsDbCore:
         _globalDbSem.release()
 
 
-    def updateDbTime(self,
-                     dbAccessTime):
+    def updateDbTime(self, dbAccessTime):
         """
         Update the DB access timer.
 
@@ -588,7 +601,7 @@ class ngamsDbCore:
 
         Returns:  Reference to object itself.
         """
-        self.__dbAccessTime += float(dbAccessTime)
+        self.__dbAccessTime += dbAccessTime
         return self
 
 
@@ -714,58 +727,25 @@ class ngamsDbCore:
         return self.__createSnapshot
 
 
-    def connect(self,
-                server,
-                db,
-                user,
-                password,
-                interface = "ngamsSybase"):
+    def connect(self):
         """
         Connect to the DB.
-
-        server:       DB server name (string).
-
-        db:           DB name (string).
-
-        user:         DB user (string).
-
-        password:     DB password (base 64 encoded) (string).
-
-        interface:    NG/AMS DB Interface Plug-In (string).
 
         Returns:      Void.
         """
         try:
             self.takeDbSem()
-            self._connect(server, db, user, password, interface, 0)
+            self._connect(0)
+        finally:
             self.relDbSem()
-        except Exception, e:
-            self.relDbSem()
-            raise Exception, e
 
 
-    def _connect(self,
-                 server,
-                 db,
-                 user,
-                 password,
-                 interface,
-                 recurseLevel):
+    def _connect(self, recurseLevel):
         """
         Connect to the DB. The method may do this in a recursive manner
         (re-trying) in case it fails in connecting.
 
         NOTE: The invocation of this method should be semaphore protected.
-
-        server:       DB server name (string).
-
-        db:           DB name (string).
-
-        user:         DB user (string).
-
-        password:     DB password (base 64 encoded) (string).
-
-        interface:    NG/AMS DB Interface Plug-In (string).
 
         recurseLevel: Recursive depth level (integer).
 
@@ -774,45 +754,36 @@ class ngamsDbCore:
         T = TRACE()
 
         try:
-            if (self.__dbDrv != None):
-                del self.__dbDrv
-                self.__dbDrv = None
+            if self.__dbConn is not None:
+                del self.__dbConn
+                self.__dbConn = None
 
             try:
-                decryptPassword = base64.decodestring(password)
+                decryptPassword = base64.decodestring(self.__dbPassword)
             except Exception, e:
-                errMsg = "Incorrect, encrypted DB password given. Error: " +\
-                         str(e)
+                errMsg = "Incorrect encoded DB password given. Error: " + str(e)
                 raise Exception, errMsg
 
-            info(4, "Importing DB Driver Interface: %s" % interface)
-            dbConstructor = loadPlugInEntryPoint(interface)
+            # TODO: We still need to be able to pass down any *args/**kwargs
+            # down to the connect method
             info(4, "Creating instance of DB Driver Interface/connecting ...")
-            self.__dbDrv = dbConstructor(server, db, user, decryptPassword, "NG/AMS:" + getThreadName(), self.__parameters)
-            info(3, "DB Driver Interface ID: " + self.__dbDrv.getDriverId())
+            self.__dbConn = self.__dbModule.connect(self.__dbName, check_same_thread=False)
         except Exception, e:
             errMsg = genLog("NGAMS_ER_DB_COM", ["Problem setting up " +\
-                                                "DB connection: " + str(e)])
+                                                "DB connection: %s" % (str(e))])
             errMsg = errMsg.replace("\n", "")
 
             # Retry up to 5 times.
             if (recurseLevel < 5):
                 warning(errMsg)
-                msg = "Reconnecting to DB server. Recursive depth: %d/" +\
-                      "Test Mode: %d ..."
-                notice(msg % (recurseLevel, getTestMode()))
-                if (getTestMode()):
-                    time.sleep(0.5)
-                else:
-                    time.sleep(5.0)
+                msg = "Reconnecting to DB server. Recursive depth: %d"
+                notice(msg % (recurseLevel,))
+                time.sleep(5.0)
                 recurseLevel += 1
-                self._connect(self.__dbServer, self.__dbName, self.__dbUser,
-                              self.__dbPassword, self.__dbInterface,
-                              recurseLevel)
+                self._connect(recurseLevel)
                 notice("Reconnected to DB server")
             else:
-                notice("Abandonned reconnectiong attempt. " +\
-                       "Recursive level: %d" % recurseLevel)
+                notice("Abandoned reconnection attempt")
                 raise Exception, errMsg
 
 
@@ -828,9 +799,8 @@ class ngamsDbCore:
 
         # Perform a simply query, the ngamsDbBase.query() method will reconnect
         # automatically if the DB connection is lost
-        sqlQuery = "SELECT * from ngas_hosts"
-        res = self.query(sqlQuery)
-
+        sqlQuery = "SELECT cluster_name FROM ngas_hosts WHERE host_id='abc'"
+        self.query(sqlQuery)
 
     def close(self):
         """
@@ -842,11 +812,10 @@ class ngamsDbCore:
 
         try:
             self.takeDbSem()
-            if (self.__dbDrv): self.__dbDrv.close()
+            if self.__dbConn:
+                self.__dbConn.close()
+        finally:
             self.relDbSem()
-        except Exception, e:
-            self.relDbSem()
-            raise Exception, e
 
 
     def addDbChangeEvt(self,
@@ -878,11 +847,9 @@ class ngamsDbCore:
             for evtObj in self.__dbChangeEvents:
                 if (eventInfo): evtObj.addEventInfo(eventInfo)
                 if (not evtObj.isSet()): evtObj.set()
-            self.relDbSem()
             return self
-        except Exception, e:
+        finally:
             self.relDbSem()
-            raise Exception, e
 
 
     def query(self,
@@ -907,19 +874,21 @@ class ngamsDbCore:
         if (not maxRetries): maxRetries = self.__maxRetries
         if (not retryWait): retryWait = self.__retryWait
 
-        dbTimer = ngamsDbTimer(self, sqlQuery)
-        try:
-            self.takeDbSem()
-            res = self._query(sqlQuery, ignoreEmptyRes, 0, maxRetries,
-                              retryWait)
-            self.relDbSem()
-            info(4, "Accumulated DB access time: %.6fs" % self.getDbTime())
-            return res
-        except Exception, e:
-            self.relDbSem()
-            raise Exception, e
+        with ngamsDbTimer(self, sqlQuery):
+            try:
+                self.takeDbSem()
+                res = self._query(sqlQuery, ignoreEmptyRes, 0, maxRetries,
+                                  retryWait)
+                info(4, "Accumulated DB access time: %.6fs" % self.getDbTime())
+                return res
+            finally:
+                self.relDbSem()
 
 
+    # rtobar, 24.3.16
+    # TODO: This method implements retries using a recursive strategy which is
+    #       not super nice; we could easily change it in the future to use a
+    #       loop and achieve the same effect
     def _query(self,
                sqlQuery,
                ignoreEmptyRes,
@@ -953,50 +922,29 @@ class ngamsDbCore:
         if (getMaxLogLevel() > 4):
             info(5, "Performing SQL query: " + str(sqlQuery))
 
-        #####################################################################
-        # Make it possible to control a simulated DB error externally if
-        # Test Mode is enabled.
-        #####################################################################
-        if (getTestMode()):
-            fo = None
-            try:
-                fo = open("/tmp/ngamsDbBaseError.tmp")
-                provokeDbErr = int(fo.read())
-                fo.close()
-            except:
-                try:
-                    if (fo): fo.close()
-                except:
-                    pass
-                provokeDbErr = 0
-            # Simulate a DB communication problem if requested.
-            if (provokeDbErr):
-                errMsg = genLog("NGAMS_ER_DB_COM",
-                                ["Error: connection is not open"])
-                raise Exception, errMsg
-        #####################################################################
-
         res = []
-        startTime = time.time()
         try:
-            res = self.__dbDrv.query(sqlQuery)
+            with contextlib.closing(self.__dbConn.cursor()) as cursor:
+                cursor.execute(sqlQuery)
+                res = [cursor.fetchall()]
+                self.__dbConn.commit()
         except Exception, e:
             errMsg = genLog("NGAMS_ER_DB_COM", [str(e)])
             error(errMsg)
 
             # In case of an exception: Try to reconnect if the Recursive
             # Level is not higher than maxRetries.
+            #
+            # rtobar, 24.3.16
+            # TODO: An Exception here doesn't necessarily mean that the
+            # connection to the DB was lost; we probably want to double-check
+            # this logic
             if (recurseLevel < maxRetries):
-                msg = "Reconnecting to DB server. Recursive depth: %d/" +\
-                      "Test Mode: %d ..."
-                notice(msg % (recurseLevel, getTestMode()))
-                if (getTestMode()):
-                    time.sleep(0.2)
-                else:
-                    time.sleep(retryWait)
+                msg = "Reconnecting to DB server. Recursive depth: %d"
+                notice(msg % (recurseLevel,))
+                time.sleep(retryWait)
                 recurseLevel += 1
-                self._connect(self.__dbServer, self.__dbName, self.__dbUser,
-                              self.__dbPassword, self.__dbInterface, 0)
+                self._connect(0)
                 notice("Reconnected to DB server")
                 notice("Query: %s" % sqlQuery)
                 res = self._query(sqlQuery, ignoreEmptyRes, recurseLevel,
@@ -1010,29 +958,29 @@ class ngamsDbCore:
         # with a 1s delay between each attempt. If all attempts to query the DB
         # fail, return an error in case the result was empty and such a result
         # should be reported as an error.
+        #
+        # rtobar, 24.3.16
+        # TODO: Again, we should revisit the logic of this; should we really
+        #       spend up to 5 seconds in this in the case of a real empty
+        #       result? I don't think so
         if (getMaxLogLevel() > 4):
-            info(5, "Result of SQL query (" + str(sqlQuery) + "): " + str(res))
+            info(5, "Result of SQL query (%s): %s" %(sqlQuery, res))
         if ((res == []) and (not ignoreEmptyRes) and
             (sqlQuery.find("SELECT ") != -1)):
-            msg = "Unexpected result returned from SQL query: %s: %s"
-            warning(msg % (str(sqlQuery), str(res)))
+            msg = "Unexpected empty result returned from SQL query: %s"
+            warning(msg % (str(sqlQuery),))
             if (recurseLevel < 10):
-                msg = "Retrying query: %s/Recursive depth: %d/" +\
-                      "Test Mode: %d ..."
-                notice(msg % (sqlQuery, recurseLevel, getTestMode()))
-                if (getTestMode()):
-                    time.sleep(0.1)
-                else:
-                    time.sleep(0.5)
+                msg = "Retrying query: %s/Recursive depth: %d"
+                notice(msg % (sqlQuery, recurseLevel))
+                time.sleep(0.5)
                 recurseLevel += 1
                 res = self._query(sqlQuery, ignoreEmptyRes, recurseLevel)
             else:
-                raise Exception, msg % (str(sqlQuery), str(res))
+                raise Exception, msg % (str(sqlQuery),)
         return res
 
 
-    def dbCursor(self,
-                 sqlQuery):
+    def dbCursor(self, sqlQuery):
         """
         Create a DB Cursor Object (defined in the NG/AMS DB Interface Plug-In)
         on the given query and return the cursor object.
@@ -1043,19 +991,17 @@ class ngamsDbCore:
         """
         T = TRACE()
 
+        if (getMaxLogLevel() > 4):
+            info(5, "Performing SQL query (using a cursor): %s" % (sqlQuery,))
         try:
-            if (getMaxLogLevel() > 4):
-                info(5, "Performing SQL query (using a cursor): " +\
-                     str(sqlQuery))
             self.takeDbSem()
-            curObj = self.__dbDrv.cursor(sqlQuery)
-            self.relDbSem()
+            return ngamsDbCursor(self, self.__dbConn, sqlQuery)
         except Exception, e:
-            self.relDbSem()
             errMsg = genLog("NGAMS_ER_DB_COM", [str(e)])
             error(errMsg)
             raise Exception, errMsg
-        return curObj
+        finally:
+            self.relDbSem()
 
 
     def getNgasFilesMap(self):
@@ -1067,9 +1013,7 @@ class ngamsDbCore:
         """
         return _ngasFilesNameMap
 
-
-    def convertTimeStamp(self,
-                         timeStamp):
+    def convertTimeStamp(self, timeStamp):
         """
         Convert a timestamp given in one of the following formats:
 
@@ -1087,7 +1031,19 @@ class ngamsDbCore:
         Returns:      Timestamp in format, which can be written into
                       'datetime' column of the DBMS (string).
         """
-        return self.__dbDrv.convertTimeStamp(timeStamp)
+        if isinstance(timeStamp, basestring) and ":" in timeStamp:
+            ts = PccUtTime.TimeStamp().initFromTimeStamp(timeStamp)
+        else:
+            ts = PccUtTime.TimeStamp().initFromSecsSinceEpoch(timeStamp)
+
+        # Not nice but it's the only way to reuse this stuff...
+        #((year, mon, mday, hour, mins, sec, _, _, _), _) = ts.mjdToTm(ts.getMjd())
+        #return self.__dbModule.Timestamp(year , mon , mday , hour , mins, sec)
+
+        # TODO: we can only start using the code above once we finish porting
+        # all the code that calls this method; until then we have to keep
+        # returning a simple string
+        return ts.getTimeStamp()
 
 
     def convertTimeStampToMx(self,
@@ -1101,7 +1057,7 @@ class ngamsDbCore:
         """
         T = TRACE()
 
-        return self.__dbDrv.convertTimeStampToMx()
+        raise Exception("Nobody is using this, right?")
 
 
     def addSrvList(self,

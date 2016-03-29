@@ -223,7 +223,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                               ngamsLib.genUniqueFilename("_FILE_INFO")
 
         # Retrieve/dump the files (up to 5 times).
-        curObj = None
         fileListDbm = None
         for n in range(5):
             try:
@@ -244,11 +243,8 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 fileListDbm.sync()
             except Exception, e:
                 rmFile(fileListDbmName + "*")
-                if (curObj): del curObj
                 if (fileListDbm): del fileListDbm
                 raise Exception, e
-
-            if (curObj): del dbCur
 
             # Print out DB Verification Warning if actual number of files
             # differs from expected number of files.
