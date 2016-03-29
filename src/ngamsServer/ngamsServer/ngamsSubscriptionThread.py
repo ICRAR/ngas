@@ -939,7 +939,7 @@ def _fileKey(fileId,
 
     Returns:       File identifier (string).
     """
-    return fileId + "___" + str(fileVersion)
+    return "%s___%s" % (str(fileId), str(fileVersion))
 
 def buildSubscrQueue(srvObj, subscrId, dataMoverOnly = False):
     """

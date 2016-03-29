@@ -181,11 +181,9 @@ def remDisk(srvObj,
                                                   "REMDISK_CMD")
     try:
         status = _remDisk(srvObj, reqPropsObj, diskId, execute, tmpFilePat)
-        rmFile(tmpFilePat + "*")
         return status
-    except Exception, e:
+    finally:
         rmFile(tmpFilePat + "*")
-        raise e
 
 
 def handleCmdRemDisk(srvObj,

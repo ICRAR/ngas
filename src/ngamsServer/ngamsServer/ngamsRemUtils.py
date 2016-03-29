@@ -565,7 +565,7 @@ def checkFileCopiesAndReg(srvObj,
             tmpFileInfo = tmpFileSumDbm.get(str(key))
             fileListDbm.addIncKey(tmpFileInfo)
             fileId = tmpFileInfo[ngamsDbCore.SUM1_FILE_ID]
-            fileIdDbm.add(fileId, "")
+            fileIdDbm.add(str(fileId), "")
             fileVersion = tmpFileInfo[ngamsDbCore.SUM1_VERSION]
             fileKey = ngamsLib.genFileKey(None, fileId, fileVersion)
             checkDicDbm.add(fileKey, {})
@@ -605,7 +605,7 @@ def checkFileCopiesAndReg(srvObj,
                              NGAMS_VOLUME_ID_FILE) and
                             (os.path.basename(filename) !=
                              NGAMS_VOLUME_INFO_FILE)):
-                            filesOnDiskDicDbm.add(filename, "")
+                            filesOnDiskDicDbm.add(str(filename), "")
                     pattern += "/*"
 
     # Generate File ID DBM in case a file list DBM is given.
@@ -618,7 +618,7 @@ def checkFileCopiesAndReg(srvObj,
 
             # Update the File ID DBM.
             fileId = tmpFileInfo[ngamsDbCore.SUM1_FILE_ID]
-            fileIdDbm.add(fileId, "")
+            fileIdDbm.add(str(fileId), "")
 
             # Update the DBM with references to File ID/Version sets.
             fileVersion = tmpFileInfo[ngamsDbCore.SUM1_VERSION]
@@ -712,7 +712,7 @@ def checkFileCopiesAndReg(srvObj,
                          setFileVersion(fileVersion).\
                          setTag("Independent copies: " + str(noOfCopies))
             fileKey = ngamsLib.genFileKey(None, fileId, fileVersion)
-            fileMisCopyDbm.add(fileKey, tmpFileObj)
+            fileMisCopyDbm.add(str(fileKey), tmpFileObj)
 
         # Remove this file from the Files On Disk DBM - do this only
         # if a Disk ID is specified.
@@ -722,6 +722,7 @@ def checkFileCopiesAndReg(srvObj,
                 filename = os.path.\
                            normpath(fileInfo[ngamsDbCore.SUM1_MT_PT] +\
                                     "/" + fileInfo[ngamsDbCore.SUM1_FILENAME])
+                filename = str(filename)
                 if (filesOnDiskDicDbm.hasKey(filename)):
                     filesOnDiskDicDbm.rem(filename)
 

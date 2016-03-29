@@ -96,7 +96,7 @@ def cleanUpAfterProc(statusObjList):
 
     statusObjList      = statusObjList[1]
     resObjList         = [obj[0].getResultObject(0) for obj in statusObjList if isinstance(obj[0], ngamsDppiStatus.ngamsDppiStatus)]
-    childStatusObjList = [obj                       for obj in statusObjList if isinstance(obj[0], str)]
+    childStatusObjList = [obj                       for obj in statusObjList if isinstance(obj[0], basestring)]
     for childStatusObj in childStatusObjList:
         cleanUpAfterProc(childStatusObj)
 
@@ -153,7 +153,7 @@ def genReplyRetrieve(srvObj,
             containerName      = statusObjList[0]
             statusObjList      = statusObjList[1]
             resObjList         = [obj[0].getResultObject(0) for obj in statusObjList if isinstance(obj[0], ngamsDppiStatus.ngamsDppiStatus)]
-            childStatusObjList = [obj                       for obj in statusObjList if isinstance(obj[0], str)]
+            childStatusObjList = [obj                       for obj in statusObjList if isinstance(obj[0], basestring)]
 
             filesInformation = [[obj.getMimeType(), obj.getRefFilename(), obj.getDataSize(), obj.getObjDataType(), obj.getDataRef()] for obj in resObjList]
             for childStatusObj in childStatusObjList:

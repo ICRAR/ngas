@@ -350,19 +350,15 @@ def locateArchiveFile(srvObj,
     """
     T = TRACE()
 
-    locTimer = PccUtTime.Timer()
-
     # Get a list with the candidate files matching the query conditions.
     fileDbmName = srvObj.getDb().dumpFileInfo(fileId, fileVersion, diskId,
                                               ignore=0)
     try:
         res = _locateArchiveFile(srvObj, fileId, fileVersion, diskId, hostId,
                                  reqPropsObj, fileDbmName)
-        rmFile(fileDbmName + "*")
         return res
-    except Exception, e:
+    finally:
         rmFile(fileDbmName + "*")
-        raise e
 
 
 def quickFileLocate(srvObj,

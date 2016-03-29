@@ -416,11 +416,11 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         if (ignore != None): sqlQuery += " AND nf.file_ignore=%d" % int(ignore)
         if (hostId): sqlQuery += " AND nd.host_id='" + hostId + "'"
         if (diskIds != []):
-            sqlQuery += " AND nd.disk_id IN (" + str(diskIds)[1:-1] + ")"
+            sqlQuery += " AND nd.disk_id IN (" + str([str(d) for d in diskIds])[1:-1] + ")"
         if (fileIds != []):
-            sqlQuery += " AND nf.file_id IN (" + str(fileIds)[1:-1] + ")"
+            sqlQuery += " AND nf.file_id IN (" + str([str(f) for f in fileIds])[1:-1] + ")"
         if (fileStatus != []):
-            sqlQuery += " AND nf.file_status IN (" + str(fileStatus)[1:-1]+ ")"
+            sqlQuery += " AND nf.file_status IN (" + str([str(f) for f in fileStatus])[1:-1]+ ")"
         if (lowLimIngestDate):
             try:
                 self.takeDbSem()

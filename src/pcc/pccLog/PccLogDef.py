@@ -391,8 +391,8 @@ class PccLogDef:
         if (parList):
             parStr = ""
             for par in parList:
-                if (isinstance(par, types.StringType)):
-                    par = re.sub("'", "", par)
+                if isinstance(par, basestring):
+                    par = re.sub("'", "", str(par))
                     parStr = parStr + "'" + par + "',"
                 else:
                     parStr = parStr + str(par) + ","

@@ -1749,11 +1749,11 @@ class ngamsTestSuite(unittest.TestCase):
         """
         queryVal = str(queryVal.strip().replace("$HOSTNAME", getHostName()))
         if ((queryVal.find("<DateTime object") != -1) or
-            checkIfIso8601(queryVal.strip("'"))):
+            checkIfIso8601(queryVal.lstrip('u').strip("'"))):
             queryVal = "_DATETIME_"
         elif (isFloat(queryVal)):
             queryVal = "_FLOAT_"
-        elif (queryVal == "' '"):
+        elif (queryVal == "u' '"):
             # A varchar with value null in Oracle produces None as result.
             # On Sybase ' ' is returned. We skip such results for the moment.
             queryVal = "_SKIP_"

@@ -35,7 +35,6 @@ suspended NGAS hosts, suspending itself.
 # TODO: Give overhaul to handling of the DB Snapshot: Use ngamsDbm instead
 #       of bsddb + simplify the algorithm.
 
-import commands
 import os, time, thread, threading, glob, cPickle
 import types
 import shutil

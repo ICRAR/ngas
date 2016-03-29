@@ -758,7 +758,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
             else:
                 if (type(diskInfo[1]) == types.IntType):
                     timeSinceLastCheck = int(diskInfo[1])
-                elif (type(diskInfo[1]) == types.StringType):
+                elif isinstance(diskInfo[1], basestring):
                     # Expects an ISO 8601 timestamp.
                     timeSinceLastCheck = int(iso8601ToSecs(diskInfo[1]) + 0.5)
                 else:
@@ -818,7 +818,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
             if (res[0][0][0]):
                 if (type(res[0][0][0]) == types.IntType):
                     return res[0][0][0]
-                elif (type(res[0][0][0]) == types.StringType):
+                elif isinstance(res[0][0][0], basestring):
                     # Expects an ISO 8601 timestamp.
                     return int(iso8601ToSecs(res[0][0][0]) + 0.5)
                 else:

@@ -249,11 +249,9 @@ def remFile(srvObj,
     try:
         status = _remFile(srvObj, reqPropsObj, diskId, fileId, fileVersion,
                           execute, tmpFilePat)
-        rmFile(tmpFilePat + "*")
         return status
-    except Exception, e:
+    finally:
         rmFile(tmpFilePat + "*")
-        raise e
 
 
 def handleCmdRemFile(srvObj,

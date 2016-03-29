@@ -851,6 +851,7 @@ def _dataCheckSubThread(srvObj,
             # indicate that the file is registered in the DB.
             filename = os.path.normpath(fileInfo[ngamsDbCore.SUM1_MT_PT]+"/" +\
                                         fileInfo[ngamsDbCore.SUM1_FILENAME])
+            filename = str(filename)
             if (_getFileRefDbm().hasKey(filename)):
                 _getFileRefDbm().rem(filename).sync()
 
@@ -1133,10 +1134,8 @@ def dataCheckThread(srvObj,
                              genTmpFilename(srvObj.getCfg(),
                                             NGAMS_DATA_CHECK_THR)
                 _dumpFileInfo(srvObj, tmpFilePat)
+            finally:
                 rmFile(tmpFilePat + "*")
-            except Exception, e:
-                rmFile(tmpFilePat + "*")
-                raise e
 
             # According to the number of disks to be checked, a sub-thread
             # is allocated for each up to the limit defined in the
