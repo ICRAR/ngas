@@ -76,7 +76,7 @@
 
   <Db Id="Db-Sqlite-Test"
       Server="localhost"
-      Interface="ngamsSqlite"
+      Interface="sqlite3"
       Name="ngas.sqlite"
       User="ngas"
       Password="bmdhcyRkYmE=\n"

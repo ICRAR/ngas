@@ -27,7 +27,7 @@ NgamsCfg.DataCheckThread[1].MinCycle                   : 00T00:03:00
 NgamsCfg.DataCheckThread[1].Prio                       : 25
 NgamsCfg.DataCheckThread[1].Scan                       : 0
 NgamsCfg.Db[1].Id                                      : Db-Sqlite-Test
-NgamsCfg.Db[1].Interface                               : ngamsSqlite
+NgamsCfg.Db[1].Interface                               : sqlite3
 NgamsCfg.Db[1].Password                                : bmdhcyRkYmE=\n
 NgamsCfg.Db[1].Server                                  : localhost
 NgamsCfg.Db[1].Snapshot                                : 1
