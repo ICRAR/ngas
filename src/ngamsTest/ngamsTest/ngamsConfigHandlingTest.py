@@ -110,12 +110,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         cfgObj.storeVal(revAttr, "TEST-REVISION", "ngamsCfg-Test")
 
         self.point_to_sqlite_database(cfgObj, getHostName(), createDatabase)
-        multCons = cfgObj.getDbMultipleCons()
-        dbObj = ngamsDb.ngamsDb(cfgObj.getDbServer(), cfgObj.getDbName(),
-                                cfgObj.getDbUser(), cfgObj.getDbPassword(),
-                                interface = cfgObj.getDbInterface(),
-                                parameters = cfgObj.getDbParameters(),
-                                multipleConnections = multCons)
+        dbObj = ngamsDb.from_config(cfgObj)
         if (delDbTbls): delNgasTbls(dbObj)
         cfgObj.writeToDb(dbObj)
 

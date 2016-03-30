@@ -39,6 +39,24 @@ import ngamsDbCore, ngamsConfigBase, ngamsSubscriber
 import ngamsLib
 import ngamsStorageSet, ngamsStream, ngamsDppiDef, ngamsMirroringSource
 
+def boolean_value(val):
+    if val.lower() == 'true':
+        return True
+    elif val.lower() == 'false':
+        return False
+    return None
+
+def int_value(val):
+    try:
+        return int(val)
+    except ValueError:
+        return None
+
+def float_value(val):
+    try:
+        return float(val)
+    except ValueError:
+        return None
 
 def getInt(property,
            val,
@@ -947,24 +965,6 @@ class ngamsConfig:
         return dbName
 
 
-    def getDbUser(self):
-        """
-        Get DB user name.
-
-        Returns:  DB user name (string).
-        """
-        return self.getVal("Db[1].User")
-
-
-    def getDbPassword(self):
-        """
-        Return the DB password.
-
-        Returns:    DB password (string).
-        """
-        return self.getVal("Db[1].Password")
-
-
     def getDbSnapshot(self):
         """
         Return the DB Snapshot Feature on/off.
@@ -1022,7 +1022,27 @@ class ngamsConfig:
 
         Returns:  DB connection parameters (string).
         """
-        return self.getVal("Db[1].Parameters")
+        dbEl = self.__cfgMgr.getXmlObj("Db[1]")
+        params = {}
+        for attr in dbEl.getAttrList():
+            name = attr.getName()
+            val = attr.getValue()
+            if name in ('Id', 'Interface', 'Snapshot'):
+                continue
+
+            # Simple casting before saving
+            bVal = boolean_value(val)
+            iVal = int_value(val)
+            fVal = float_value(val)
+            if bVal is not None:
+                val = bVal
+            elif iVal is not None:
+                val = iVal
+            elif fVal is not None:
+                val = fVal
+            params[name] = val
+
+        return params
 
 
     def getDbAutoRecover(self):
@@ -2277,8 +2297,6 @@ class ngamsConfig:
         info(4, "Checked ArchiveHandling Element")
 
         info(4, "Check Db Element ...")
-        #checkIfSetStr("Db.Name", self.getDbName(), self.getCheckRep())
-        #checkIfSetStr("Db.User", self.getDbUser(), self.getCheckRep())
         checkIfZeroOrOne("Db.Snapshot",self.getDbSnapshot(),self.getCheckRep())
         checkIfSetStr("Db.Interface",self.getDbInterface(), self.getCheckRep())
         info(4, "Checked Db Element")

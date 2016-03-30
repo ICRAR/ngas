@@ -195,52 +195,6 @@ def getNcu11():
     return "%s:8011" % getHostName()
 
 
-def cleanUp(cfgFile,
-            delDirs,
-            clearDb,
-            retCfgObj):
-    """
-    Clean up the NG/AMS environment. This comprises deleting DB tables
-    (ngas_disks, ngas_files) and to delete files and directories on the disk.
-
-    cfgFile:   Cfg. file to use (string).
-
-    delDirs:   If set to 1, the NG/AMS directories are deleted (integer/0|1).
-
-    clearDb:   If set to 1, the NG/AMS tables are deleted (integer/0|1).
-
-    Returns:   Void or tuple with cfg. object and DB object
-               (void | tuple/(ngamsConfig, ngamsDb)).
-    """
-    T = TRACE(3)
-
-    tmpCfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
-
-    # Delete NG/AMS directories if requested.
-    if (delDirs):
-        info(3,"Deleting NG/AMS directories ...")
-        delNgamsDirs(tmpCfgObj)
-
-    # Clear DB if requested.
-    if (clearDb):
-        info(3,"Clearing NGAS DB ...")
-        multCons = tmpCfgObj.getDbMultipleCons()
-        tmpDbObj = ngamsDb.\
-                   ngamsDb(tmpCfgObj.getDbServer(), tmpCfgObj.getDbName(),
-                           tmpCfgObj.getDbUser(), tmpCfgObj.getDbPassword(),
-                           interface = tmpCfgObj.getDbInterface(),
-                           parameters = tmpCfgObj.getDbParameters(),
-                           multipleConnections = multCons)
-        delNgasTbls(tmpDbObj)
-        del tmpDbObj
-        tmpDbObj = None
-
-    if (retCfgObj):
-        return tmpCfgObj
-    else:
-        pass
-
-
 def waitReqCompl(clientObj,
                  requestId,
                  timeOut = 10):
@@ -1197,16 +1151,7 @@ class ngamsTestSuite(unittest.TestCase):
             # extract the configuration information from the DB to
             # create a complete temporary cfg. file.
             cfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
-            multCons = cfgObj.getDbMultipleCons()
-            dbObj =\
-                  ngamsDb.ngamsDb(cfgObj.getDbServer(),
-                                  cfgObj.getDbName(),
-                                  cfgObj.getDbUser(),
-                                  cfgObj.getDbPassword(),
-                                  interface = cfgObj.getDbInterface(),
-                                  parameters = cfgObj.getDbParameters(),
-                                  multipleConnections = multCons)
-            logFlush()
+            dbObj = ngamsDb.from_config(cfgObj)
             cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, dbObj)
             del dbObj
             dbObj = None
@@ -1220,35 +1165,34 @@ class ngamsTestSuite(unittest.TestCase):
         else:
             hostId = "%s:%d" % (hostName, portNo)
 
-        tmpCfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
+        cfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
 
-        self.point_to_sqlite_database(tmpCfgObj, hostName, not multipleSrvs and not dbCfgName and not skip_database_creation)
-
-        # Clean up.
-        tmpCfgFile = saveInFile(None, tmpCfgObj.genXmlDoc(0))
-        cfgObj = cleanUp(tmpCfgFile, delDirs, clearDb, 1)
-
-        # If configuration parameters should be changed, do this.
+        # Change what needs to be changed, like the position of the Sqlite
+        # database file when necessary, the custom configuration items, and the
+        # port number
+        self.point_to_sqlite_database(cfgObj, hostName, not multipleSrvs and not dbCfgName and not skip_database_creation)
         if (cfgProps):
-            cfgObj = ngamsConfig.ngamsConfig().load(tmpCfgFile)
             for cfgProp in cfgProps:
                 # TODO: Handle Cfg. Group ID.
                 cfgObj.storeVal(cfgProp[0], cfgProp[1])
-            tmpCfgFile = saveInFile(None, cfgObj.genXmlDoc(0))
+        cfgObj.storeVal("NgamsCfg.Server[1].PortNo", str(portNo))
 
-        multCons = cfgObj.getDbMultipleCons()
-        dbObj = ngamsDb.ngamsDb(cfgObj.getDbServer(), cfgObj.getDbName(),
-                                cfgObj.getDbUser(), cfgObj.getDbPassword(),
-                                interface = tmpCfgObj.getDbInterface(),
-                                parameters = cfgObj.getDbParameters(),
-                                multipleConnections = multCons)
+        # Now connect to the database and perform any cleanups before we start
+        # the server, like removing existing NGAS dirs and clearing tables
+        dbObj = ngamsDb.from_config(cfgObj)
+        if (delDirs):
+            info(3,"Deleting NG/AMS directories ...")
+            delNgamsDirs(cfgObj)
+        if (clearDb):
+            info(3,"Clearing NGAS DB ...")
+            delNgasTbls(dbObj)
+
+        # Insert an entry for this server on the host table
         checkHostEntry(dbObj, hostId, domain, ipAddress, clusterName)
 
-        # Update configuration.
+        # Dump configuration into the filesystem so the server can pick it up
         tmpCfg = genTmpFilename("CFG_") + ".xml"
-        cfgObj.storeVal("NgamsCfg.Server[1].PortNo", str(portNo))
         cfgObj.save(tmpCfg, 0)
-        info(3,"DB Name: %s" % cfgObj.getDbName())
 
         # Execute the server as an external process.
         #srvModule = srvModule or 'ngamsServer.ngamsServer'
@@ -1498,7 +1442,6 @@ class ngamsTestSuite(unittest.TestCase):
 
         srvDic = {}
         multSrvs = (len(serverList) - 1)
-        cleanUp = 1     # Clean up first time prepSrcExt is called.
         for idx, srvInfo in enumerate(serverList):
             portNo      = int(srvInfo[0])
             domain      = srvInfo[1]
@@ -1548,17 +1491,10 @@ class ngamsTestSuite(unittest.TestCase):
             tmpCfg.save(tmpCfgFile, 0)
 
             # Check if server has entry in referenced DB. If not, create it.
-            multCons = tmpCfg.getDbMultipleCons()
-            tmpDbObj =\
-                     ngamsDb.ngamsDb(tmpCfg.getDbServer(),
-                                     tmpCfg.getDbName(),
-                                     tmpCfg.getDbUser(),
-                                     tmpCfg.getDbPassword(),
-                                     interface = tmpCfg.getDbInterface(),
-                                     parameters = tmpCfg.getDbParameters(),
-                                     multipleConnections = multCons)
+            tmpDbObj = ngamsDb.from_config(tmpCfg)
             checkHostEntry(tmpDbObj, srvDbHostId, domain, ipAddress,
                            clusterName)
+            del tmpDbObj
 
             # Start server + add reference to server configuration object and
             # server DB object.
@@ -1572,7 +1508,6 @@ class ngamsTestSuite(unittest.TestCase):
                                                   ipAddress = ipAddress,
                                                   clusterName = clusterName)
             srvDic[srvId] = [srvCfgObj, srvDbObj]
-            cleanUp = 0
 
         return srvDic
 
@@ -1585,7 +1520,7 @@ class ngamsTestSuite(unittest.TestCase):
             if create:
                 info(1,"Creating SQLite DB file under %s" % (sqliteDb,))
                 cpFile("src/ngas_Sqlite_db_template", sqliteDb)
-            cfgObj.storeVal("NgamsCfg.Db[1].Name", sqliteDb)
+            cfgObj.storeVal("NgamsCfg.Db[1].database", sqliteDb)
 
     def prepDiskCfg(self,
                     diskCfg,
@@ -1624,12 +1559,8 @@ class ngamsTestSuite(unittest.TestCase):
                         (string).
         """
         cfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
-        multCons = cfgObj.getDbMultipleCons()
-        dbObj  = ngamsDb.ngamsDb(cfgObj.getDbServer(), cfgObj.getDbName(),
-                                 cfgObj.getDbUser(), cfgObj.getDbPassword(),
-                                 interface = cfgObj.getDbInterface(),
-                                 parameters = cfgObj.getDbParameters(),
-                                 multipleConnections = multCons)
+        dbObj  = ngamsDb.from_config(cfgObj)
+
         stoSetIdx = 0
         xmlKeyPat = "NgamsCfg.StorageSets[1].StorageSet[%d]."
         for diskSetDic in diskCfg:

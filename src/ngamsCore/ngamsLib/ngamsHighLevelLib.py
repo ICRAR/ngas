@@ -39,7 +39,6 @@ import string
 import threading
 import random
 import time
-import commands
 import urllib
 import shutil
 

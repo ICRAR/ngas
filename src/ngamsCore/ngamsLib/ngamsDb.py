@@ -33,10 +33,11 @@
 Contains the ngamsDb class
 """
 
+from ngamsCore import info
 import ngamsDbCore, ngamsDbNgasCfg, ngamsDbNgasDisks, ngamsDbNgasDisksHist
-import ngamsDbNgasFiles, ngamsDbNgasHosts, ngamsDbNgasSubscribers
 import ngamsDbMirroring, ngamsDbNgasCache, ngamsDbJoin
 import ngamsDbNgasContainers
+import ngamsDbNgasFiles, ngamsDbNgasHosts, ngamsDbNgasSubscribers
 
 
 class ngamsDb(ngamsDbCore.ngamsDbCore,
@@ -57,3 +58,39 @@ class ngamsDb(ngamsDbCore.ngamsDbCore,
     ngamsDbCore), thus exposing to the rest of the software a single class that
     implements all the database logic.
     """
+
+
+def __params_for_log(params):
+    copy = {}
+    for k,v in params.items():
+        if k.lower() in ('pwd', 'password', 'passwd'):
+            v = '*****'
+        copy[k] = v
+    return copy
+
+def from_config(cfg):
+
+    driver   = cfg.getDbInterface()
+    creSnap  = cfg.getDbSnapshot()
+    multCon  = cfg.getDbMultipleCons()
+    drvPars  = cfg.getDbParameters()
+
+    # HACK, HACK, HACK
+    # The sqlite3 doesn't allow by default to make call to objects created on
+    # one thread from a different one because underneath sqlite doesn't support
+    # concurrency well enough. On NGAS we use semaphores already anyway to make
+    # sure only one thread is using a database object at a time, so we can avoid
+    # this check. Exposing this detail to the users is not nice though, so
+    # instead of forcing them to include this option in their configuration
+    # files we inject it ourselves.
+    # If we restructure the ngamsDbCore code to use a thread and a queue to make
+    # all the SQL calls from the same thread when necessary we wouldn't need
+    # this bit of code, which would be the ideal world.
+    if driver == 'sqlite3':
+        drvPars['check_same_thread'] = False
+
+    info(1, "Connecting to DB with module %s" % (driver,))
+    msg = "Additional DB parameters: snapshot: %d, multiconn: %d, params: %r"
+    info(2, msg % (creSnap, multCon, __params_for_log(drvPars)))
+    return ngamsDb(driver, parameters = drvPars, createSnapshot = creSnap,
+                   multipleConnections = multCon)

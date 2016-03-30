@@ -528,7 +528,10 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             if ((len(fileInfoObjList) == 1) and (diskInfoObjList == [])):
                 tmpStatObj = fileInfoObjList[0].setTag(operation)
             else:
-                dbId = self.getDbServer() + "." + self.getDbName()
+                # Apparently the dbId is used only as the ID of the file list,
+                # which is totally irrelevant (this object seems to be read on
+                # ngamsJanitorThread#checkDbChangeCache)
+                dbId = diskId + "." + timeStamp
                 tmpFileObjList = fileInfoObjDic[diskId]
                 tmpFileList = ngamsFileList.ngamsFileList(dbId, operation)
                 for fileObj in tmpFileObjList:

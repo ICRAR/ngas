@@ -61,11 +61,8 @@
           SwVersion=""/>
 
   <Db Id="Db-Sqlite-Test"
-      Server="localhost"
       Interface="sqlite3"
-      Name="ngas.sqlite"
-      User="ngas"
-      Password="bmdhcyRkYmE=\n"
+      database="ngas.sqlite"
       Snapshot="1"/>
 
   <JanitorThread Id="JanitorThread-Std"

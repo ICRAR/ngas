@@ -31,7 +31,6 @@
 Core class for the NG/AMS DB interface.
 """
 
-import base64
 import contextlib
 import importlib
 import random
@@ -468,16 +467,11 @@ class ngamsDbCore:
     """
 
     def __init__(self,
-                 server,
-                 db,
-                 user,
-                 password,
+                 interface,
+                 parameters = {},
                  createSnapshot = 1,
-                 interface = "ngamsSybase",
-                 tmpDir = "/tmp",
                  maxRetries = 10,
                  retryWait = 1.0,
-                 parameters = None,
                  multipleConnections = False):
         """
         Constructor method.
@@ -527,11 +521,7 @@ class ngamsDbCore:
         self.__dbAccessTime = 0.0
 
         # Import the DB Interface Plug-In
-        self.__dbServer            = server
-        self.__dbName              = db
-        self.__dbUser              = user
-        self.__dbPassword          = password
-        self.__parameters          = parameters
+        self.__dbParameters        = parameters
         self.__multipleConnections = multipleConnections
         self.__dbSnapshot          = createSnapshot
         self.__dbInterface         = interface
@@ -547,7 +537,7 @@ class ngamsDbCore:
         self.__dbVerify      = 1
         self.__dbAutoRecover = 0
 
-        self.__dbTmpDir      = tmpDir
+        self.__dbTmpDir      = "/tmp"
 
         self.__maxRetries    = maxRetries
         self.__retryWait     = retryWait
@@ -643,24 +633,6 @@ class ngamsDbCore:
         Returns:    Last DB access time in seconds as a string (string).
         """
         return str('%.' + str(prec) + 'fs') % self.__dbAccessTime
-
-
-    def getDbServer(self):
-        """
-        Returns the name of the DB server.
-
-        Returns:  Name of DB server (string).
-        """
-        return self.__dbServer
-
-
-    def getDbName(self):
-        """
-        Returns the name of the DB.
-
-        Returns:  Name of DB (string).
-        """
-        return self.__dbName
 
 
     def setDbVerify(self,
@@ -769,17 +741,11 @@ class ngamsDbCore:
                 del self.__dbConn
                 self.__dbConn = None
 
-            try:
-                decryptPassword = base64.b64decode(self.__dbPassword)
-            except Exception, e:
-                errMsg = "Incorrect encoded DB password given. Error: " + str(e)
-                raise Exception, errMsg
+            info(4, "Connecting to the database...")
+            self.__dbConn = self.__dbModule.connect(**self.__dbParameters)
+            info(4, "Database connection successful")
 
-            # TODO: We still need to be able to pass down any *args/**kwargs
-            # down to the connect method
-            info(4, "Creating instance of DB Driver Interface/connecting ...")
-            self.__dbConn = self.__dbModule.connect(self.__dbName, check_same_thread=False)
-        except Exception, e:
+        except self.__dbModule.Error, e:
             errMsg = genLog("NGAMS_ER_DB_COM", ["Problem setting up " +\
                                                 "DB connection: %s" % (str(e))])
             errMsg = errMsg.replace("\n", "")
@@ -951,7 +917,7 @@ class ngamsDbCore:
                     res = [[]]
 
                 self.__dbConn.commit()
-        except Exception, e:
+        except self.__dbModule.Error, e:
             errMsg = genLog("NGAMS_ER_DB_COM", [str(e)])
             error(errMsg)
 

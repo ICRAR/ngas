@@ -2039,55 +2039,27 @@ class ngamsServer:
 
         Returns:   Reference to object itself.
         """
+
+        cfg = self.getCfg()
         info(1,"Loading NG/AMS Configuration: " + self.getCfgFilename()+" ...")
-        self.getCfg().load(self.getCfgFilename())
+        cfg.load(self.getCfgFilename())
 
         # Connect to the DB.
-        if (not self.__ngasDb):
-            msg = "Connecting to DB (Server: %s - DB: %s - User: %s) ..."
-            info(1, msg % (str(self.getCfg().getDbServer()),
-                           str(self.getCfg().getDbName()),
-                           str(self.getCfg().getDbUser())))
-            creSnap  = self.getCfg().getDbSnapshot()
-            driver   = self.getCfg().getDbInterface()
-            multCon  = self.getCfg().getDbMultipleCons()
-            drvPars  = self.getCfg().getDbParameters()
-            msg = "-- additional DB parameters: Create Snapshot: %d, " +\
-                  "Driver: %s, Multiple Connections: %d, " +\
-                  "Driver Parameters: %s"
-            info(2, msg % (creSnap, str(driver), multCon, str(drvPars)))
-            self.__ngasDb = ngamsDb.ngamsDb(self.getCfg().getDbServer(),
-                                            self.getCfg().getDbName(),
-                                            self.getCfg().getDbUser(),
-                                            self.getCfg().getDbPassword(),
-                                            createSnapshot = creSnap,
-                                            interface = driver,
-                                            multipleConnections = multCon,
-                                            parameters = drvPars)
-        else:
-            msg = "Already established connection to DB %s"
-            info(1, msg % (self.__ngasDb.getDbName()))
-
-            msg = "-- additional DB parameters: Create Snapshot: %d, " +\
-                  "Driver: %s, Multiple Connections: %d, " +\
-                  "Driver Parameters: %s"
-            info(2, msg % (self.getCfg().getDbSnapshot(), \
-                  self.getCfg().getDbInterface(), \
-                  self.getCfg().getDbMultipleCons(), \
-                  self.getCfg().getDbParameters()))
-
+        db = self.getDb()
+        if not db:
+            db = ngamsDb.from_config(cfg)
+            self.setDb(db)
 
         # Check if we should load a configuration from the DB.
-        if (self.__dbCfgId): self.getCfg().loadFromDb(self.__dbCfgId,
-                                                      self.getDb())
-        ngasTmpDir = ngamsHighLevelLib.getNgasTmpDir(self.getCfg())
+        if (self.__dbCfgId):
+            cfg.loadFromDb(self.__dbCfgId, db)
+
+        cfg._check()
+
+        ngasTmpDir = ngamsHighLevelLib.getNgasTmpDir(cfg)
         self.__ngasDb.setDbTmpDir(ngasTmpDir)
 
-        # Check the configuration.
-        self.getCfg()._check()
-
         info(1,"Successfully loaded NG/AMS Configuration")
-        return self
 
 
     def handleStartUp(self):
@@ -2167,7 +2139,7 @@ class ngamsServer:
             self.getDb().writeHostInfo(tmpHostInfoObj)
 
         # Should be possible to execute several servers on one node.
-        self.__hostInfo.setHostId(self.getHostId())
+        self.getHostInfoObj().setHostId(self.getHostId())
 
         # Log some essential information.
         allowArchiveReq    = self.getCfg().getAllowArchiveReq()
