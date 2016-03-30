@@ -41,10 +41,10 @@ from contextlib import closing
 import pkg_resources
 
 from ngamsCore import genLog, info, TRACE, trim, getHostName, warning, \
-    NGAMS_HTTP_SUCCESS, getMaxLogLevel, NGAMS_CONT_MT, \
+    NGAMS_HTTP_SUCCESS, NGAMS_CONT_MT, \
     NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM, \
     getFileSize, NGAMS_ARCH_REQ_MT, getUniqueNo, \
-    NGAMS_MAX_FILENAME_LEN, error, NGAMS_UNKNOWN_MT, rmFile
+    NGAMS_MAX_FILENAME_LEN, NGAMS_UNKNOWN_MT, rmFile
 import ngamsMIMEMultipart
 from pccUt import PccUtTime
 
