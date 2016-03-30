@@ -447,7 +447,18 @@ class ngamsDbCursor(object):
     def fetch(self, howmany):
         self.db.takeDbSem()
         try:
-            return self.cursor.fetchmany(howmany)
+            rows = []
+            for row in self.cursor.fetchmany(howmany):
+                # This is a namedtuple, make a normal one instead
+                # TODO: We're doing this because some users of these results
+                # serialize them and are having problems while doing it; we ease
+                # their life this way, but they should take care of it actually.
+                # By users we mean ngamsDataCheckThread:598 for instance
+                if isinstance(row, tuple) and \
+                   hasattr(row, "_fields"):
+                    row = row[:]
+                rows.append(row)
+            return rows
         finally:
             self.db.relDbSem()
 
@@ -759,7 +770,7 @@ class ngamsDbCore:
                 self.__dbConn = None
 
             try:
-                decryptPassword = base64.decodestring(self.__dbPassword)
+                decryptPassword = base64.b64decode(self.__dbPassword)
             except Exception, e:
                 errMsg = "Incorrect encoded DB password given. Error: " + str(e)
                 raise Exception, errMsg
@@ -926,7 +937,19 @@ class ngamsDbCore:
         try:
             with contextlib.closing(self.__dbConn.cursor()) as cursor:
                 cursor.execute(sqlQuery)
-                res = [cursor.fetchall()]
+
+                # From PEP-249, regarding .description:
+                # This attribute will be None for operations that do not return
+                # rows [...]
+                # We thus use it to distinguish between those cases when there
+                # are results to fetch or not. This is important because fetch*
+                # calls can raise Errors if there are no results generated from
+                # the last call to .execute*
+                if cursor.description:
+                    res = [cursor.fetchall()]
+                else:
+                    res = [[]]
+
                 self.__dbConn.commit()
         except Exception, e:
             errMsg = genLog("NGAMS_ER_DB_COM", [str(e)])
@@ -964,9 +987,12 @@ class ngamsDbCore:
         #       spend up to 5 seconds in this in the case of a real empty
         #       result? I don't think so
         if (getMaxLogLevel() > 4):
-            info(5, "Result of SQL query (%s): %s" %(sqlQuery, res))
-        if ((res == []) and (not ignoreEmptyRes) and
-            (sqlQuery.find("SELECT ") != -1)):
+            info(5, "Result of SQL query (%s): %s" % (sqlQuery, res))
+
+        # Unexpected empty result
+        if res == [] and \
+           not ignoreEmptyRes and \
+           sqlQuery.find("SELECT ") != -1:
             msg = "Unexpected empty result returned from SQL query: %s"
             warning(msg % (str(sqlQuery),))
             if (recurseLevel < 10):

@@ -571,36 +571,14 @@ def delNgasTbls(dbObj):
 
     Returns:   Void.
     """
-    if ((dbObj.getDbServer().find("ESOECF") != -1) or
-        (dbObj.getDbServer().find("OLASLS") != -1) or
-        (dbObj.getDbServer().find("ASTOP") != -1)):
-        raise Exception, "Tests cannot be run using ESOECF/OLASLS!!!"
-
-    diskIdList = ('0ec67bec8ad4a744a2e5bbd472e50fa9',
-                  '1aca0ec15d89921fb9fb889ff83a88aa',
-                  '3334d27666faa151bf198ce0be574ffe',
-                  '3f05c85abc183ce3f0cc7ac2965ad669',
-                  'd8dbcece4572c9e31c9ef00dbc38751e',
-                  'e744f22fc78a83e309166aafed92b667')
-
-    dbObj.query("DELETE FROM ngas_disks WHERE " +\
-                "disk_id LIKE 'tmp-ngamsTest-NGAS%' OR " +\
-                "disk_id in %s" % str(diskIdList))
-
-    diskHistQuery = "DELETE FROM ngas_disks_hist WHERE hist_descr LIKE " +\
-                    "'%tmp-ngamsTest-NGAS%'"
-    for diskId in diskIdList:
-        diskHistQuery += " OR hist_descr LIKE '%%%s%%'" % diskId
-    dbObj.query(diskHistQuery)
-
-    dbObj.query("DELETE FROM ngas_files WHERE disk_id LIKE " +\
-                "'tmp-ngamsTest-NGAS%' OR " +\
-                "file_id='TEST.2001-05-08T15:25:00.123'")
-    #dbObj.query("DELETE FROM ngas_files_retired LIKE 'tmp-ngamsTest-NGAS%'")
-    dbObj.query("DELETE FROM ngas_subscr_back_log")  # TODO: Check if refine.
-    dbObj.query("DELETE FROM ngas_subscribers")      # TODO: Check if refine.
-    dbObj.query("DELETE FROM ngas_cfg_pars")         # TODO: Refine.
-    dbObj.query("DELETE FROM ngas_cfg")              # TODO: Refine.
+    dbObj.query("DELETE FROM ngas_disks")
+    dbObj.query("DELETE FROM ngas_disks_hist")
+    dbObj.query("DELETE FROM ngas_files")
+    dbObj.query("DELETE FROM ngas_subscr_back_log")
+    dbObj.query("DELETE FROM ngas_subscribers")
+    dbObj.query("DELETE FROM ngas_cfg_pars")
+    dbObj.query("DELETE FROM ngas_cfg")
+    dbObj.query("DELETE FROM ngas_containers")
 
 
 def delNgamsDirs(cfgObj):
