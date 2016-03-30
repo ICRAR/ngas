@@ -30,60 +30,30 @@
 #
 
 """
-Front-end class for the DB access module. It loads all DB sub-modules needed
-to expose only one class (module) to the rest of the SW.
+Contains the ngamsDb class
 """
 
-from ngamsDbBase import ngamsDbBase
+import ngamsDbCore, ngamsDbNgasCfg, ngamsDbNgasDisks, ngamsDbNgasDisksHist
+import ngamsDbNgasFiles, ngamsDbNgasHosts, ngamsDbNgasSubscribers
+import ngamsDbMirroring, ngamsDbNgasCache, ngamsDbJoin
+import ngamsDbNgasContainers
 
 
-class ngamsDb(ngamsDbBase):
+class ngamsDb(ngamsDbCore.ngamsDbCore,
+              ngamsDbNgasCache.ngamsDbNgasCache,
+              ngamsDbNgasCfg.ngamsDbNgasCfg,
+              ngamsDbNgasDisks.ngamsDbNgasDisks,
+              ngamsDbNgasDisksHist.ngamsDbNgasDisksHist,
+              ngamsDbNgasFiles.ngamsDbNgasFiles,
+              ngamsDbNgasHosts.ngamsDbNgasHosts,
+              ngamsDbNgasSubscribers.ngamsDbNgasSubscribers,
+              ngamsDbMirroring.ngamsDbMirroring,
+              ngamsDbJoin.ngamsDbJoin,
+              ngamsDbNgasContainers.ngamsDbNgasContainers):
     """
-    Class to handle the connection to the NGAS DB for the Sybase interface.
+    Front-end class for the DB access module.
+
+    This class inherits from all the DB sub-classes (which in turn inherit from
+    ngamsDbCore), thus exposing to the rest of the software a single class that
+    implements all the database logic.
     """
-
-    def __init__(self,
-                 server,
-                 db,
-                 user,
-                 password,
-                 createSnapshot = 1,
-                 interface = "ngamsSybase",
-                 tmpDir = "/tmp",
-                 maxRetries = 10,
-                 retryWait = 1.0,
-                 parameters = None,
-                 multipleConnections = False):
-        """
-        Constructor method.
-
-        server:              DB server name (string).
-
-        db:                  DB name (string).
-
-        user:                DB user (string).
-
-        password:            DB password (string).
-
-        createSnapshot:      Indicates if a DB Snapshot (temporary snapshot
-                             files) should be created (integer/0|1).
-
-        interface:           NG/AMS DB Interface Plug-In (string).
-
-        tmpDir:              Name of NGAS Temporary Directory (string).
-
-        maxRetries:          Max. number of retries in case of failure
-                             (integer).
-
-        retryWait:           Time in seconds to wait for next retry (float).
-
-        parameters:          Plug-in parameters for the connection (usually for
-                             the NG/AMS DB Driver Plug-In).
-
-        multipleConnections: Allow multiple connections or only one (boolean).
-        """
-        ngamsDbBase.__init__(self, server, db, user, password, createSnapshot,
-                             interface, tmpDir, maxRetries, retryWait,
-                             parameters, multipleConnections)
-
-# EOF
