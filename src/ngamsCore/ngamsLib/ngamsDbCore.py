@@ -528,6 +528,7 @@ class ngamsDbCore(object):
 
         info(4, "Importing DB Module: %s" % (self.__dbInterface,))
         self.__dbModule = importlib.import_module(self.__dbInterface)
+        self.__paramstyle = self.__dbModule.paramstyle
         info(3, "DB Module API Level: %s" % (self.__dbModule.apilevel))
 
         # Automatically connect at DB creation time
@@ -829,6 +830,74 @@ class ngamsDbCore(object):
             self.relDbSem()
 
 
+    def _params_to_bind(self, howMany):
+        # Depending on the different vendor, we need to write the parameters in
+        # the SQL calls using different notations. This method will produce an
+        # array containing all the parameter _references_ in the SQL statement
+        #
+        # qmark     Question mark style, e.g. ...WHERE name=?
+        # numeric   Numeric, positional style, e.g. ...WHERE name=:1
+        # named     Named style, e.g. ...WHERE name=:name
+        # format    ANSI C printf format codes, e.g. ...WHERE name=%s
+        # pyformat  Python extended format codes, e.g. ...WHERE name=%(name)s
+        #
+        s = self.__paramstyle
+        if s == 'qmark':    return ['?'            for i in xrange(howMany)]
+        if s == 'numeric':  return [':%d'%(i)      for i in xrange(howMany)]
+        if s == 'named':    return [':n%d'%(i)     for i in xrange(howMany)]
+        if s == 'format':   return ['%s'           for i in xrange(howMany)]
+        if s == 'pyformat': return ['%%(n%d)s'%(i) for i in xrange(howMany)]
+        raise Exception('Unknown paramstyle: %s' % (s))
+
+
+    def _data_to_bind(self, data):
+        if self.__paramstyle in ['named', 'pyformat']:
+            return {'n%d'%(i): d for i,d in enumerate(data)}
+        return data
+
+    def query2(self, sqlQuery, args = ()):
+        """
+        Simple query method that takes an SQL query and a tuple of arguments to
+        bind to the query.
+
+        Unlike self.query, this method doesn't perform automatic retries or
+        reconnections to the underlying database. It also returns a simpler
+        result list, consisting on a two-dimensional structure instead of the
+        three-dimensional one returned by self.query.
+        """
+
+        # If we are passing down parameters we need to sanitize both the query
+        # string (which should come with {0}-style formatting) and the parameter
+        # list to cope with the different parameter styles supported by PEP-249
+        if args:
+            sqlQuery = sqlQuery.format(*self._params_to_bind(len(args)))
+            args = self._data_to_bind(args)
+
+        self.takeDbSem()
+        with ngamsDbTimer(self, sqlQuery):
+            try:
+                with contextlib.closing(self.__dbConn.cursor()) as cursor:
+                    cursor.execute(sqlQuery, args)
+
+                    # From PEP-249, regarding .description:
+                    # This attribute will be None for operations that do not return
+                    # rows [...]
+                    # We thus use it to distinguish between those cases when there
+                    # are results to fetch or not. This is important because fetch*
+                    # calls can raise Errors if there are no results generated from
+                    # the last call to .execute*
+                    if cursor.description:
+                        res = cursor.fetchall()
+                    else:
+                        res = []
+
+                    self.__dbConn.commit()
+
+                info(4, "Accumulated DB access time: %.6fs" % self.getDbTime())
+                return res
+            finally:
+                self.relDbSem()
+
     def query(self,
               sqlQuery,
               ignoreEmptyRes = 1,
@@ -1037,6 +1106,27 @@ class ngamsDbCore(object):
         # returning a simple string
         return ts.getTimeStamp()
 
+    def asTimestamp(self, value):
+        """
+        Convert a timestamp given in one of the following formats:
+
+          1. ISO 8601:  YYYY-MM-DDTHH:MM:SS[.s]
+          2. ISO 8601': YYYY-MM-DD HH:MM:SS[.s]
+          3. Secs since epoc.
+
+        to a format which can be used to write into the associated RDBMS.
+        """
+        if value is None:
+            return None
+
+        if isinstance(value, basestring) and ":" in value:
+            ts = PccUtTime.TimeStamp().initFromTimeStamp(value)
+        else:
+            ts = PccUtTime.TimeStamp().initFromSecsSinceEpoch(value)
+
+        # Not nice but it's the only way to reuse this stuff...
+        ((year, mon, mday, hour, mins, sec, _, _, _), _) = ts.mjdToTm(ts.getMjd())
+        return self.__dbModule.Timestamp(year , mon , mday , hour , mins, sec)
 
     def convertTimeStampToMx(self,
                              timeStamp):

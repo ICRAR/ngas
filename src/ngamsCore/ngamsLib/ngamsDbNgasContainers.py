@@ -26,7 +26,7 @@ Module containing SQL queries against the ngas_containers table
 """
 
 import time, uuid
-from ngamsCore import info, error, timeRef2Iso8601, iso8601ToSecs
+from ngamsCore import info, error, iso8601ToSecs
 import ngamsDbCore
 import ngamsFileInfo, ngamsContainer
 
@@ -42,9 +42,9 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
 
         :param containerId: string
         """
-        sql = "SELECT container_id FROM ngas_containers WHERE container_id = '" + containerId + "'"
-        res = self.query(sql)
-        return bool(res[0])
+        sql = "SELECT container_id FROM ngas_containers WHERE container_id = {0}"
+        rows = self.query2(sql, args=(containerId,))
+        return bool(rows)
 
     def getContainerIdForUniqueName(self, containerName):
         """
@@ -55,17 +55,17 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
         :param containerName: string
         :return: string
         """
-        sql = "SELECT container_id FROM ngas_containers nc WHERE nc.container_name='" + containerName + "'"
-        cursor = self.query(sql)
-        if len(cursor[0]) == 0:
+        sql = "SELECT container_id FROM ngas_containers WHERE container_name = {0}"
+        rows = self.query2(sql, args=(containerName,))
+        if not rows:
             errMsg = 'No container found with name ' + containerName
             error(errMsg)
             raise Exception, errMsg
-        if len(cursor[0]) > 1:
+        if len(rows) > 1:
             errMsg = 'More than one container with name ' + containerName + ' found, cannot proceed with unique fetching'
             error(errMsg)
             raise Exception, errMsg
-        return cursor[0][0][0]
+        return rows[0][0]
 
     def getContainerName(self, containerId):
         """
@@ -74,13 +74,13 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
 
         :param containerId: string
         """
-        SQL = "SELECT container_name FROM ngas_containers nc WHERE nc.container_id='" + containerId + "'"
-        cursor = self.query(SQL)
-        if not cursor[0]:
+        sql = "SELECT container_name FROM ngas_containers nc WHERE nc.container_id = {0}"
+        rows = self.query2(sql, args=(containerId,))
+        if not rows:
             errMsg = 'No container found with id ' + containerId
             error(errMsg)
             raise Exception, errMsg
-        return cursor[0][0][0]
+        return rows[0][0]
 
     def read(self, containerId):
         """
@@ -90,22 +90,22 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
         :return ngamsContainer.ngamsContainer
         """
 
-        sql = "SELECT container_id, container_name, container_size, parent_container_id, ingestion_date FROM ngas_containers WHERE container_id = '" + containerId + "'"
-        res = self.query(sql)
-        if not res[0]:
+        sql = "SELECT container_name, container_size, parent_container_id, ingestion_date FROM ngas_containers WHERE container_id = {0}"
+        res = self.query2(sql, args=(containerId,))
+        if not res:
             return None
 
-        res = res[0][0]
+        res = res[0]
         cont = ngamsContainer.ngamsContainer()
-        cont.setContainerId(res[0])
-        cont.setContainerName(res[1])
-        cont.setContainerSize(res[2])
-        if res[3]:
+        cont.setContainerId(containerId)
+        cont.setContainerName(res[0])
+        cont.setContainerSize(res[1])
+        if res[2]:
             parentContainer = ngamsContainer.ngamsContainer()
-            parentContainer.setContainerId(res[3])
+            parentContainer.setContainerId(res[2])
             cont.setParentContainer(parentContainer)
-        if res[4]:
-            cont.setIngestionDate(iso8601ToSecs(res[4]))
+        if res[3]:
+            cont.setIngestionDate(iso8601ToSecs(res[3]))
         return cont
 
     def readHierarchy(self, containerId, includeFiles=False):
@@ -123,9 +123,9 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
             # Always get the latest version of the files
             # We do this on the software side to avoid any complex SQL query
             # that might not work in some engines
-            res = self.query("SELECT " + ngamsDbCore.getNgasFilesCols() + " FROM ngas_files nf WHERE container_id = '" + containerId + "' ORDER BY nf.file_id, nf.file_version DESC")
+            res = self.query2("SELECT " + ngamsDbCore.getNgasFilesCols() + " FROM ngas_files nf WHERE container_id = {0} ORDER BY nf.file_id, nf.file_version DESC", args=(containerId,))
             prevFileId = None
-            for r in res[0]:
+            for r in res:
                 fileId = r[ngamsDbCore.NGAS_FILES_FILE_ID]
                 if fileId == prevFileId:
                     continue
@@ -134,8 +134,8 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
                 container.addFileInfo(fileInfo)
 
         # Check if it contains children
-        res = self.query("select container_id FROM ngas_containers WHERE parent_container_id = '" + container.getContainerId() + "'")
-        for r in res[0]:
+        res = self.query2("SELECT container_id FROM ngas_containers WHERE parent_container_id = {0}", args=(containerId,))
+        for r in res:
             container.addContainer(self.readHierarchy(r[0], includeFiles))
         return container
 
@@ -159,29 +159,30 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
         :return: uuid.uuid4
         """
 
+        # Sanitize to None if string is empty
+        parentContainerId = parentContainerId or None
+
         # Check that the given parent container ID exists
         if parentContainerId and not parentKnownToExist:
-            sql = "SELECT container_id FROM ngas_containers WHERE container_id = '" + parentContainerId + "'"
-            res = self.query(sql)
-            if not res[0]:
+            sql = "SELECT container_id FROM ngas_containers WHERE container_id = {0}"
+            res = self.query2(sql, args=(parentContainerId,))
+            if not res:
                 raise Exception("No container with id '" + parentContainerId + "' exists, cannot use it as parent_container_id")
 
         # If we're associating the container to a parent, check
         # that the parent container doesn't have already a sub-container
         # with the given name
         if parentContainerId:
-            sql = "SELECT container_name FROM ngas_containers WHERE parent_container_id ='" + parentContainerId+ "' and container_name='" + containerName +"'"
-            res = self.query(sql)
-            if res[0]:
+            sql = "SELECT container_name FROM ngas_containers WHERE parent_container_id = {0} and container_name = {1}"
+            res = self.query2(sql, args=(parentContainerId, containerName))
+            if res:
                 msg = "A container with name '" + containerName + "' already exists as subcontainer of '" +\
                       parentContainerId + "', cannot add a new container with the same name"
                 raise Exception(msg)
 
         # Do the insert with a fresh new UUID, no clash should
         # exist with any existing container
-        containerId = uuid.uuid4()
-        parentContainerId = "'" + parentContainerId + "'" if parentContainerId else 'null'
-        ingestionDate = "'" + timeRef2Iso8601(ingestionDate) + "'" if ingestionDate else 'null'
+        containerId = str(uuid.uuid4())
 
         sql = "INSERT INTO ngas_containers (" +\
                     "container_id," +\
@@ -190,16 +191,10 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
                     "container_size," +\
                     "ingestion_date," +\
                     "container_type) " +\
-               "VALUES ('" +\
-                     str(containerId) + "'," +\
-                     parentContainerId + ",'" +\
-                     containerName + "'," +\
-                     str(containerSize) + "," +\
-                     ingestionDate + "," +\
-                     "'logical')"
-        res = self.query(sql)
+               "VALUES ({0},{1},{2},{3},{4},'logical')"
+        self.query2(sql, args=(containerId, parentContainerId, containerName, containerSize, self.asTimestamp(ingestionDate)))
 
-        info(3, "Created container '" + containerName + "' with id '" + str(containerId) + "'")
+        info(3, "Created container '" + containerName + "' with id '" + containerId + "'")
         return containerId
 
     def destroySingleContainer(self, containerId, checkForChildren):
@@ -218,34 +213,39 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
 
         # Check that the given parent container ID exists
         if checkForChildren:
-            sql = "SELECT container_id FROM ngas_containers WHERE parent_container_id = '" + containerId + "'"
-            res = self.query(sql)
-            if res[0]:
+            sql = "SELECT container_id FROM ngas_containers WHERE parent_container_id = {0}"
+            res = self.query2(sql, args=(containerId,))
+            if res:
                 raise Exception("Container with id '" + containerId + "' has sub-containers, use the recursive option to remove them")
 
         # Remove the files that are currently part of the container from it
-        sql = "UPDATE ngas_files SET container_id = null WHERE container_id = '" + containerId + "'"
-        self.query(sql)
+        sql = "UPDATE ngas_files SET container_id = null WHERE container_id = {0}"
+        self.query2(sql, args=(containerId,))
 
         # Remove the container
-        sql = "DELETE FROM ngas_containers WHERE container_id = '" + containerId + "'"
-        self.query(sql)
+        sql = "DELETE FROM ngas_containers WHERE container_id = {0}"
+        self.query2(sql, args=(containerId,))
         info(3, "Destroyed container '" + containerId + "'")
 
     def setContainerSize(self, containerId, containerSize):
         """
         Updates the size of the indicated container
         """
-        sql = "UPDATE ngas_containers SET container_size = " + str(containerSize) + " WHERE container_id = '" + containerId + "'"
-        self.query(sql)
+        sql = "UPDATE ngas_containers SET container_size = {0} WHERE container_id = {1}"
+        self.query2(sql, args=(containerSize, containerId))
 
     def addToContainerSize(self, containerId, amount):
         """
         Updates the size of the indicated container by the given amount
         """
-        amountSql = "+ " + str(amount) if amount >= 0 else "- " + str(-amount)
-        sql = "UPDATE ngas_containers SET container_size = (container_size " + amountSql + ") WHERE container_id = '" + containerId + "'"
-        self.query(sql)
+        sql = ["UPDATE ngas_containers SET container_size = (container_size "]
+        if amount >= 0:
+            sql.append("+")
+        else:
+            sql.append("-")
+            amount = -amount
+        sql.append(" {0}) WHERE container_id = {1}")
+        self.query2(''.join(sql), args=(amount, containerId))
 
     def closeContainer(self, containerId):
         """
@@ -253,7 +253,7 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
         ingestion date on it equals to the current time
         """
         ts = time.time()
-        sql = "UPDATE ngas_containers SET ingestion_date = '" + timeRef2Iso8601(ts) + "' WHERE container_id = '" + containerId + "'"
-        self.query(sql)
+        sql = "UPDATE ngas_containers SET ingestion_date = {0} WHERE container_id = {1}"
+        self.query2(sql, args=(self.asTimestamp(ts), containerId))
 
 # EOF
