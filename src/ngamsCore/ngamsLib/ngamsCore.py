@@ -1328,6 +1328,8 @@ def iso8601ToSecs(isoTimeStamp):
         else:
             ts = isoTimeStamp
             ms = ""
+        if ts.find(' ') != -1:
+            ts = ts.replace(' ', 'T')
         timeTuple = time.strptime(ts, "%Y-%m-%dT%H:%M:%S")
         secs = str(int(time.mktime(timeTuple)))
         if (ms): secs += "." + str(ms)
