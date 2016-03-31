@@ -34,14 +34,13 @@ Contains the ngamsDb class
 """
 
 from ngamsCore import info
-import ngamsDbCore, ngamsDbNgasCfg, ngamsDbNgasDisks, ngamsDbNgasDisksHist
+import ngamsDbNgasCfg, ngamsDbNgasDisks, ngamsDbNgasDisksHist
 import ngamsDbMirroring, ngamsDbNgasCache, ngamsDbJoin
 import ngamsDbNgasContainers
 import ngamsDbNgasFiles, ngamsDbNgasHosts, ngamsDbNgasSubscribers
 
 
-class ngamsDb(ngamsDbCore.ngamsDbCore,
-              ngamsDbNgasCache.ngamsDbNgasCache,
+class ngamsDb(ngamsDbNgasCache.ngamsDbNgasCache,
               ngamsDbNgasCfg.ngamsDbNgasCfg,
               ngamsDbNgasDisks.ngamsDbNgasDisks,
               ngamsDbNgasDisksHist.ngamsDbNgasDisksHist,

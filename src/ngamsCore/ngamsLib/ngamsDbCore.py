@@ -461,7 +461,7 @@ class ngamsDbCursor(object):
         finally:
             self.db.relDbSem()
 
-class ngamsDbCore:
+class ngamsDbCore(object):
     """
     Core class for the NG/AMS DB interface.
     """
