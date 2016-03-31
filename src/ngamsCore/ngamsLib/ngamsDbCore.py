@@ -438,12 +438,23 @@ def cleanSrvList(srvList):
 
 
 class ngamsDbCursor(object):
-    def __init__(self, db, conn, query):
+    """
+    A class representing a cursor over which a query is run and where results
+    are extracted from.
+    """
+
+    def __init__(self, db, conn, query, args):
         self.db = db
         self.conn = conn
         self.cursor = self.conn.cursor()
-        self.cursor.execute(query)
+        self.cursor.execute(query, args)
+
     def fetch(self, howmany):
+        """
+        Fetches at most ``howmany`` results from the database. If no more
+        results are available it returns an empty sequence
+        """
+
         self.db.takeDbSem()
         try:
             rows = []
@@ -1041,7 +1052,7 @@ class ngamsDbCore(object):
         return res
 
 
-    def dbCursor(self, sqlQuery):
+    def dbCursor(self, sqlQuery, args=()):
         """
         Create a DB Cursor Object (defined in the NG/AMS DB Interface Plug-In)
         on the given query and return the cursor object.
@@ -1054,9 +1065,17 @@ class ngamsDbCore(object):
 
         if (getMaxLogLevel() > 4):
             info(5, "Performing SQL query (using a cursor): %s" % (sqlQuery,))
+
+        # If we are passing down parameters we need to sanitize both the query
+        # string (which should come with {0}-style formatting) and the parameter
+        # list to cope with the different parameter styles supported by PEP-249
+        if args:
+            sqlQuery = sqlQuery.format(*self._params_to_bind(len(args)))
+            args = self._data_to_bind(args)
+
         try:
             self.takeDbSem()
-            return ngamsDbCursor(self, self.__dbConn, sqlQuery)
+            return ngamsDbCursor(self, self.__dbConn, sqlQuery, args)
         except Exception, e:
             errMsg = genLog("NGAMS_ER_DB_COM", [str(e)])
             error(errMsg)
