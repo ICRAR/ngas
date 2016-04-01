@@ -884,6 +884,9 @@ class ngamsDbCore(object):
             sqlQuery = sqlQuery.format(*self._params_to_bind(len(args)))
             args = self._data_to_bind(args)
 
+        if getMaxLogLevel() >= 5:
+            info(5, "Performing SQL query with parameters: %s / %r" % (sqlQuery, args))
+
         self.takeDbSem()
         with ngamsDbTimer(self, sqlQuery):
             try:
@@ -904,7 +907,11 @@ class ngamsDbCore(object):
 
                     self.__dbConn.commit()
 
-                info(4, "Accumulated DB access time: %.6fs" % self.getDbTime())
+                #if getMaxLogLevel() >= 4:
+                #    info(4, "Accumulated DB access time: %.6fs" % self.getDbTime())
+                if getMaxLogLevel() >= 5:
+                    info(5, "Result of SQL query %s / %r: %r" % (sqlQuery, args, res))
+
                 return res
             finally:
                 self.relDbSem()
