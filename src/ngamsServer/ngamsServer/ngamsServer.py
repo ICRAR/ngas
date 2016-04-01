@@ -1342,8 +1342,7 @@ class ngamsServer:
                                 setSrvDataChecking(dataChecking).\
                                 setSrvState(state)
         if (updateDb):
-            ngamsHighLevelLib.updateSrvHostInfo(self.getDb(),
-                                                self.getHostInfoObj(), 1)
+            ngamsHighLevelLib.updateSrvHostInfo(self.getDb(), self.getHostInfoObj())
         return self
 
 
