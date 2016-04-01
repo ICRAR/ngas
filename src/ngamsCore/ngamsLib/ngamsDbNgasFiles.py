@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDbNgasFiles.py,v 1.11 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  07/03/2008  Created
 #
-
 """
 Contains queries for accessing the NGAS Files Table.
 
@@ -36,21 +34,19 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
-import commands
 import cPickle
+import collections
 import os
 import re
-import time
 import shutil
+import time
 
-from pccUt import PccUtTime
-from ngamsCore import info, warning, error, rmFile, getTestMode, notice, getUniqueNo, getNgamsVersion, timeRef2Iso8601
 from ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE, NGAMS_PICKLE_FILE_EXT, NGAMS_TMP_FILE_EXT
+from ngamsCore import info, warning, error, rmFile, getTestMode, notice, getUniqueNo, getNgamsVersion, timeRef2Iso8601
 import ngamsDbm, ngamsDbCore
-import ngamsLib
-
-# TODO: Avoid using these classes in this module (mutual dependency):
 import ngamsFileInfo, ngamsStatus, ngamsFileList
+import ngamsLib
+from pccUt import PccUtTime
 
 
 class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
@@ -77,21 +73,16 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        if (fileVersion != -1):
-            sqlQuery = "SELECT file_id FROM ngas_files WHERE file_id='" +\
-                       fileId + "' AND disk_id='" + diskId + "' AND " +\
-                       "file_version=" + str(fileVersion)
-        else:
-            sqlQuery = "SELECT file_id FROM ngas_files WHERE file_id='" +\
-                       fileId + "' AND disk_id='" + diskId + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0]) == 1):
-            if (res[0][0][0] == fileId):
-                return 1
-            else:
-                return 0
-        else:
-            return 0
+        sql = ["SELECT file_id FROM ngas_files WHERE file_id={0} AND disk_id={1}"]
+        args = [fileId, diskId]
+        if fileVersion != -1:
+            sql.append(" AND file_version={2}")
+            args.append(fileVersion)
+
+        res = self.query2(''.join(sql), args=args)
+        if len(res) == 1:
+            return 1
+        return 0
 
 
     def getFileInfoFromDiskIdFilename(self,
@@ -113,15 +104,13 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         T = TRACE()
 
         # Query for the file.
-        sqlQuery = "SELECT %s FROM ngas_files nf WHERE nf.disk_id='%s' AND " +\
-                   "nf.file_name='%s'"
-        sqlQuery = sqlQuery % (ngamsDbCore.getNgasFilesCols(), diskId,
-                               filename)
+        sql = "SELECT %s FROM ngas_files nf WHERE nf.disk_id={0} AND nf.file_name={1}"
+        sql = sql % (ngamsDbCore.getNgasFilesCols(),)
 
         # Execute the query directly and return the result.
-        res = self.query(sqlQuery)
-        if ((len(res) > 0) and (res != [[]])):
-            return ngamsFileInfo.ngamsFileInfo().unpackSqlResult(res[0][0])
+        res = self.query2(sql, args=(diskId, filename))
+        if res:
+            return ngamsFileInfo.ngamsFileInfo().unpackSqlResult(res[0])
         else:
             return None
 
@@ -151,35 +140,28 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        fileId = re.sub("\*", "%", fileId)
-        sqlQuery = "SELECT " + ngamsDbCore.getNgasFilesCols() +\
-                   " FROM ngas_files nf WHERE"
+        cond_sql = collections.OrderedDict()
+        if fileId:
+            fileId = re.sub("\*", "%", fileId)
+            st = "nf.file_id LIKE {}" if '%' in fileId else "nf.file_id = {}"
+            cond_sql[st] = fileId
 
-        if (fileId.find("%") != -1):
-            fileIdStatement = " nf.file_id LIKE '" + fileId + "'"
-        elif (fileId != ""):
-            fileIdStatement = " nf.file_id='" + fileId + "'"
-        else:
-            fileIdStatement = ""
+        if diskId:
+            cond_sql["nf.disk_id = {}"] = diskId
 
-        if (diskId != ""):
-            diskIdStatement = " nf.disk_id='" + diskId + "'"
-        else:
-            diskIdStatement = ""
+        if fileVersion != -1:
+            cond_sql["nf.file_version = {}"] = fileVersion
 
-        if (fileIdStatement): sqlQuery += fileIdStatement
-        if (diskIdStatement and fileIdStatement):
-            sqlQuery += " AND" + diskIdStatement
-        elif (diskIdStatement):
-            sqlQuery += diskIdStatement
-        if (fileVersion != -1):
-            sqlQuery += " AND nf.file_version=" + str(fileVersion)
-        if (ignore != None): sqlQuery += " AND nf.file_ignore=%d" % int(ignore)
+        if ignore is not None:
+            cond_sql["nf.file_ignore = {}"] = ignore
 
         # Create a cursor and perform the query.
-        curObj = self.dbCursor(sqlQuery)
+        sql = ["SELECT %s FROM ngas_files nf" % (ngamsDbCore.getNgasFilesCols())]
+        if cond_sql:
+            sql.append(" WHERE ")
+            sql.append(" AND ".join(cond_sql.keys()))
 
-        return curObj
+        return self.dbCursor(''.join(sql), args=cond_sql.values())
 
 
     def dumpFileInfoList(self,
@@ -241,10 +223,10 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                         fileCount += 1
                     time.sleep(0.010)
                 fileListDbm.sync()
-            except Exception, e:
+            except:
                 rmFile(fileListDbmName + "*")
                 if (fileListDbm): del fileListDbm
-                raise Exception, e
+                raise
 
             # Print out DB Verification Warning if actual number of files
             # differs from expected number of files.
@@ -286,16 +268,13 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT max(file_version) FROM ngas_files WHERE "+\
-                   "file_id='" + fileId + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0])):
-            if (res[0][0][0] == None):
+        sql = "SELECT max(file_version) FROM ngas_files WHERE file_id={0}"
+        res = self.query2(sql, args=(fileId,))
+        if res:
+            if res[0][0] is None:
                 return -1
-            else:
-                return int(res[0][0][0])
-        else:
-            return -1
+            return int(res[0][0])
+        return -1
 
     def getFileStatus(self,
                       fileId,
@@ -314,16 +293,13 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
         """
         T = TRACE()
-        sqlQuery = "SELECT file_status FROM ngas_files WHERE file_id = '%s' AND disk_id = '%s' AND file_version = %d" % (fileId, diskId, fileVersion)
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0])):
-            if (res[0][0][0] == None):
+        sql = "SELECT file_status FROM ngas_files WHERE file_id = {0} AND disk_id = {1} AND file_version = {2}"
+        res = self.query2(sql, args=(fileId, diskId, fileVersion))
+        if (len(res)):
+            if res[0][0] is None:
                 return '00000000'
-            else:
-                return res[0][0][0]
-        else:
-            raise Exception('file not found in ngas db - %s,%s,%d' % (fileId, diskId, fileVersion))
-            #return '00000000'
+            return res[0][0]
+        raise Exception('File not found in ngas db - %s,%s,%d' % (fileId, diskId, fileVersion))
 
     def setFileStatus(self,
                       fileId,
@@ -345,15 +321,11 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE(5)
 
-        try:
-            sqlQuery = "UPDATE ngas_files SET file_status='" + status + "' " +\
-                       "WHERE file_id='" + fileId + "' AND file_version=" +\
-                       str(fileVersion) + " AND disk_id='" + diskId + "'"
-            res = self.query(sqlQuery)
-            self.triggerEvents()
-            return self
-        except Exception, e:
-            raise e
+        sql = "UPDATE ngas_files SET file_status={0} " +\
+              "WHERE file_id={1} AND file_version={2} AND disk_id={3}"
+        self.query2(sql, args=(status, fileId, fileVersion, diskId))
+        self.triggerEvents()
+        return self
 
 
     def deleteFileInfo(self,
@@ -396,14 +368,12 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             if (fileInfoDbm.getCount() > 0):
                 dbFileInfo = fileInfoDbm.get("0")
             else:
-                format = "Cannot remove file. File ID: %s, " +\
-                         "File Version: %d, Disk ID: %s"
-                errMsg = format % (fileId, fileVersion, diskId)
+                msg = "Cannot remove file. File ID: %s, " +\
+                      "File Version: %d, Disk ID: %s"
+                errMsg = msg % (fileId, fileVersion, diskId)
                 raise Exception, errMsg
-            sqlQuery = "DELETE FROM ngas_files WHERE disk_id='" +\
-                       diskId + "' AND file_id='" + fileId +\
-                       "' AND file_version=" + str(fileVersion)
-            self.query(sqlQuery)
+            sql = "DELETE FROM ngas_files WHERE disk_id={0} AND file_id={1} AND file_version={2}"
+            self.query2(sql, args=(diskId, fileId, fileVersion))
 
             # Create a File Removal Status Document.
             if (self.getCreateDbSnapshot() and genSnapshot):
@@ -424,19 +394,14 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                                              NGAS_DISKS_BYTES_STORED] -
                                   dbFileInfo[ngamsDbCore.NGAS_FILES_FILE_SIZE])
                 if (newBytesStored < 0): newBytesStored = 0
-                sqlQuery = "UPDATE ngas_disks SET" +\
-                           " number_of_files=" + str(newNumberOfFiles) + "," +\
-                           " available_mb=" + str(newAvailMb) + "," +\
-                           " bytes_stored=" + str(newBytesStored) +\
-                           " WHERE disk_id='" + diskId + "'"
-                self.query(sqlQuery)
+                sql = "UPDATE ngas_disks SET number_of_files={0}, " +\
+                      "available_mb={1}, bytes_stored={2} WHERE disk_id={3}"
+                self.query2(sql, args=(newNumberOfFiles, newAvailMb, newBytesStored, diskId))
 
             self.triggerEvents()
-            if (fileInfoDbmName): rmFile(fileInfoDbmName)
             return self
-        except Exception, e:
+        finally:
             if (fileInfoDbmName): rmFile(fileInfoDbmName)
-            raise e
 
 
     def getSumBytesStored(self,
@@ -451,16 +416,11 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT sum(file_size) from ngas_files WHERE " +\
-                   "disk_id='" + diskId + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0]) == 1):
-            if (res[0][0][0]):
-                return res[0][0][0]
-            else:
-                return 0
-        else:
-            return 0
+        sql = "SELECT sum(file_size) from ngas_files WHERE disk_id={0}"
+        res = self.query2(sql, args=(diskId,))
+        if res[0][0] is not None:
+            return res[0][0]
+        return 0
 
 
     def createDbFileChangeStatusDoc(self,
@@ -626,15 +586,11 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         Returns:        checksum (string | None).
         """
         T = TRACE()
-        sqlQuery = "SELECT checksum FROM ngas_files WHERE file_id = '%s' AND file_version = %d AND disk_id = '%s'" % (fileId, fileVersion, diskId)
-        res = self.query(sqlQuery, ignoreEmptyRes = 0) # throw exception if an empty record
-        if (len(res[0])):
-            if (res[0][0][0] == None):
-                return None
-            else:
-                return res[0][0][0]
-        else:
-            return None
+        sql = "SELECT checksum FROM ngas_files WHERE file_id={0} AND file_version={1} AND disk_id={2}"
+        res = self.query2(sql, args=(fileId, fileVersion, diskId)) # throw exception if an empty record
+        if res:
+            return res[0][0]
+        return None
 
 
     def getIngDate(self,
@@ -656,17 +612,13 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT ingestion_date FROM ngas_files WHERE "+\
-                   "disk_id = '%s' AND file_id = '%s' AND file_version = %d"
-        sqlQuery = sqlQuery % (diskId, fileId, fileVersion)
-        res = self.query(sqlQuery, ignoreEmptyRes = 0)
-        if (len(res[0])):
-            if (res[0][0][0] == None):
+        sql = "SELECT ingestion_date FROM ngas_files WHERE disk_id={0} AND file_id={1} AND file_version={2}"
+        res = self.query2(sql, args=(diskId, fileId, fileVersion))
+        if res:
+            if (res[0][0] == None):
                 return None
-            else:
-                return timeRef2Iso8601(res[0][0][0])
-        else:
-            return None
+            return timeRef2Iso8601(res[0][0])
+        return None
 
     def addFileToContainer(self, containerId, fileId, force):
         """
@@ -688,28 +640,28 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         # Check if the file exists, and if
         # it already is contained in another container
         # We take into account only the latest version of the file for this
-        sql = "SELECT container_id, uncompressed_file_size FROM ngas_files WHERE file_id = '" + fileId + "' ORDER BY file_version DESC"
-        res = self.query(sql)
-        if not res[0]:
-            msg = "No file with fileId '" + fileId + "' found, cannot append it to container"
+        sql = "SELECT container_id, uncompressed_file_size FROM ngas_files WHERE file_id = {0} ORDER BY file_version DESC"
+        res = self.query2(sql, args=(fileId,))
+        if not res:
+            msg = "No file with fileId '%s' found, cannot append it to container" % (fileId,)
             raise Exception(msg)
 
-        prevConatinerId = res[0][0][0]
-        fileSize = res[0][0][1]
+        prevConatinerId = res[0][0]
+        fileSize = res[0][1]
         if prevConatinerId:
             if prevConatinerId == containerId:
-                info(4, 'File ' + fileId + ' already belongs to container ' + containerId + ', skipping it')
+                info(4, 'File %s already belongs to container %s, skipping it' % (fileId, containerId))
                 return 0
 
             if not force:
-                msg = "File '" + fileId + "' is already associated to container '" + prevConatinerId + "'. To override the 'force' parameter must be given"
+                msg = "File '%s' is already associated to container '%s'. To override the 'force' parameter must be given" % (fileId, prevConatinerId)
                 raise Exception(msg)
 
         # Update all versions and copies of the file, since the grouping by container
         # is at fileId level
-        sql = "UPDATE ngas_files SET container_id = '" + containerId + "' WHERE file_id = '" + fileId + "'"
-        res = self.query(sql)
-        info(4, 'File ' + fileId + ' added to container ' + containerId)
+        sql = "UPDATE ngas_files SET container_id = {0} WHERE file_id = {1}"
+        self.query2(sql, args=(containerId,fileId))
+        info(4, 'File %s added to container %s' % (fileId,containerId))
 
         return fileSize
 
@@ -729,26 +681,26 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         :return integer
         """
 
-        sql = "SELECT container_id, uncompressed_file_size FROM ngas_files WHERE file_id = '" + fileId + "' ORDER BY file_version DESC"
-        res = self.query(sql)
-        if not res[0]:
-            msg = "No file with fileId '" + fileId + "' found, cannot append it to container"
+        sql = "SELECT container_id, uncompressed_file_size FROM ngas_files WHERE file_id = {0} ORDER BY file_version DESC"
+        res = self.query2(sql, args=(fileId,))
+        if not res:
+            msg = "No file with fileId '%s' found, cannot append it to container" % (fileId,)
             raise Exception(msg)
 
-        currentContainerId = res[0][0][0]
-        fileSize = res[0][0][1]
+        currentContainerId = res[0][0]
+        fileSize = res[0][1]
         if not currentContainerId:
-            info(3, "File with fileId '" + fileId +"' is part of no container, skipping it")
+            info(3, "File with fileId '%s' is part of no container, skipping it" % (fileId,))
             return 0
         elif currentContainerId != containerId:
-            msg = "File with fileId '" + fileId + "' is associated with a different container: " + currentContainerId
+            msg = "File with fileId '%s' is associated with a different container: %s" % (fileId,currentContainerId)
             raise Exception(msg)
 
         # Update all versions and copies of the file, since the grouping by container
         # is at fileId level
-        sql = "UPDATE ngas_files SET container_id = null WHERE file_id = '" + fileId + "'"
-        self.query(sql)
-        info(4, 'File ' + fileId + ' was removed from container ' + containerId)
+        sql = "UPDATE ngas_files SET container_id = null WHERE file_id = {0}"
+        self.query2(sql, args=(fileId,))
+        info(4, 'File %s was removed from container %s' % (fileId,containerId))
 
         return fileSize
 

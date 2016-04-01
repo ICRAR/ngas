@@ -789,11 +789,9 @@ def _deliveryThread(srvObj,
                         else:
                             raise Exception(str(jpiCode) + NGAS_JOB_DELIMIT + jpiResult)
                     else:
-                        fileChecksum = None
-                        try:
-                            fileChecksum = srvObj.getDb().getFileChecksum(diskId, fileId, fileVersion)
-                        except Exception, eyy:
-                            warning('Fail to get file checksum for file %s: %s' % (fileId, str(eyy)))
+                        fileChecksum = srvObj.getDb().getFileChecksum(diskId, fileId, fileVersion)
+                        if fileChecksum is None:
+                            warning('Fail to get file checksum for file %s' % (fileId,))
                         reply, msg, hdrs, data = \
                                ngamsLib.httpPostUrl(sendUrl, fileMimeType,
                                                     ''.join(contDisp), filename, "FILE",

@@ -82,21 +82,9 @@ def getCRCFromFile(filename):
     return str(crc)
 
 def getCRCFromDB(srvObj, fileId, fileVersion, diskId):
-    """
-    query = "SELECT checksum FROM ngas_files WHERE file_id = '%s' AND file_version = %d AND disk_id = '%s'" % (fileId, fileVersion, diskId)
-    info(3, "Executing SQL query for file moving: %s" % query)
-    res = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
-    reList = res[0]
-    if (len(reList) < 1):
-        return None
-    else:
-        return reList[0][0]
-    """
-    fileChecksum = None
-    try:
-        fileChecksum = srvObj.getDb().getFileChecksum(diskId, fileId, fileVersion)
-    except Exception, eyy:
-        warning('Fail to get file checksum for file %s: %s' % (fileId, str(eyy)))
+    fileChecksum = srvObj.getDb().getFileChecksum(diskId, fileId, fileVersion)
+    if fileChecksum is None:
+        warning('Fail to get file checksum for file %s' % (fileId,))
     return fileChecksum
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
