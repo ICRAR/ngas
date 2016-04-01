@@ -1994,22 +1994,23 @@ class ngamsServer:
         info(4,"Setting up signal handler for SIGINT ...")
         signal.signal(signal.SIGINT, self.ngamsExitHandler)
 
-        if (getDebug()):
+        try:
             self.handleStartUp()
-        else:
-            try:
-                self.handleStartUp()
-                if extlogger:
-                    extlogger("INFO", "Successfully returned from handleStartup")
-            except Exception, e:
-                errMsg = genLog("NGAMS_ER_INIT_SERVER", [str(e)])
-                if extlogger:
-                    extlogger("INFO", errMsg)
-                error(errMsg)
-                ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
-                                         "PROBLEMS INITIALIZING NG/AMS SERVER",
-                                         errMsg, [], 1)
-                self.terminate()
+            if extlogger:
+                extlogger("INFO", "Successfully returned from handleStartup")
+        except Exception, e:
+
+            # Let us know what went wrong exactly
+            traceback.print_exc(file = sys.stdout)
+
+            errMsg = genLog("NGAMS_ER_INIT_SERVER", [str(e)])
+            if extlogger:
+                extlogger("INFO", errMsg)
+            error(errMsg)
+            ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
+                                     "PROBLEMS INITIALIZING NG/AMS SERVER",
+                                     errMsg, [], 1)
+            self.terminate()
 
     def pidFile(self):
         """
@@ -2233,8 +2234,9 @@ class ngamsServer:
             info(2,"Auto Online requested - server going to Online State ...")
             try:
                 ngamsSrvUtils.handleOnline(self)
-            except Exception, e:
-                if (not self.getNoAutoExit()): raise e
+            except:
+                if (not self.getNoAutoExit()):
+                    raise
         else:
             info(2,"Auto Online not requested - " +\
                  "server remaining in Offline State")
