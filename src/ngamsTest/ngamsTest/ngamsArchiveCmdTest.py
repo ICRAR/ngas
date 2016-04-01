@@ -708,13 +708,11 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         ...
         """
         cfgObj, dbObj = self.prepExtSrv()
-        sqlQuery = "UPDATE ngas_disks SET completed=1 WHERE host_id='%s'" %\
-                   getHostName()
-        dbObj.query(sqlQuery)
+        sqlQuery = "UPDATE ngas_disks SET completed=1 WHERE host_id={0}"
+        dbObj.query2(sqlQuery, args=(getHostName(),))
         statObj = sendPclCmd().archive("src/SmallFile.fits")
-        sqlQuery = "UPDATE ngas_disks SET completed=0 WHERE host_id='%s'" %\
-                   getHostName()
-        dbObj.query(sqlQuery)
+        sqlQuery = "UPDATE ngas_disks SET completed=0 WHERE host_id={0}"
+        dbObj.query2(sqlQuery, args=(getHostName(),))
         refStatFile = "ref/ngamsArchiveCmdTest_test_ErrHandling_3_1_ref"
         tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
@@ -1285,8 +1283,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                           [8004, None, None, getHostName()]],
                           createDatabase = False)
         # Set all Disks in unit <Host>:8002 to completed.
-        dbObj.query("UPDATE ngas_disks SET completed=1 WHERE host_id='%s'" %\
-                    "%s:8002" % getHostName())
+        dbObj.query2("UPDATE ngas_disks SET completed=1 WHERE host_id={0}", args=("%s:8002" % getHostName(),))
         # Set <Host>:8004 to Offline.
         stat = sendPclCmd(port=8004).offline()
 
