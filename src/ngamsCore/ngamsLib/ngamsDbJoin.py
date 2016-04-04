@@ -117,7 +117,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                 "WHERE nd.disk_id=nf.disk_id AND "
                 "nd.disk_id={} AND nf.file_id={} AND "
                 "nf.file_version={}") % ngamsDbCore.getNgasSummary1Cols()
-        res = self.query(sql, args = (diskId, fileId, fileVersion))
+        res = self.query2(sql, args = (diskId, fileId, fileVersion))
         if not res:
             return []
         return res[0]
@@ -442,14 +442,14 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         if fileIds:
             params = []
-            for i in diskIds:
+            for i in fileIds:
                 params.append('{}')
                 vals.append(i)
             sql.append(" AND nf.file_id IN (%s)" % ','.join(params))
 
         if fileStatus:
             params = []
-            for i in diskIds:
+            for i in fileStatus:
                 params.append('{}')
                 vals.append(i)
             sql.append(" AND nf.file_status IN (%s)" % ','.join(params))
