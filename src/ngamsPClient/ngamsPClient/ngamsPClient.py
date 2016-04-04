@@ -1320,7 +1320,7 @@ class ngamsPClient:
                   "after %.3fs. Timeout: %s. Error: %s"
             notice(msg % (cmd, str(locPars), host, str(port), deltaTime,
                           str(self.getTimeOut()), str(e)))
-            raise e
+            raise
 
         # If we have received a redirection HTTP response, we
         # send the query again to the alternative location.
