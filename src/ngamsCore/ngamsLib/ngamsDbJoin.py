@@ -178,7 +178,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                 for i in hostId:
                     params.append('{}')
                     vals.append(i)
-                sql.append(" AND nd.host_id IN (%s)" % ''.join(params))
+                sql.append(" AND nd.host_id IN (%s)" % ','.join(params))
             else:
                 sql.append(" AND nd.host_id={}")
                 vals.append(hostId)
@@ -192,7 +192,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             for i in fileIds:
                 params.append('{}')
                 vals.append(i)
-            sql.append(" AND nf.file_id IN (%s)" % ''.join(params))
+            sql.append(" AND nf.file_id IN (%s)" % ','.join(params))
 
         if ing_date:
             sql.append(" AND nf.ingestion_date > {}")
@@ -438,21 +438,21 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             for i in diskIds:
                 params.append('{}')
                 vals.append(i)
-            sql.append(" AND nd.disk_id IN (%s)" % ''.join(params))
+            sql.append(" AND nd.disk_id IN (%s)" % ','.join(params))
 
         if fileIds:
             params = []
             for i in diskIds:
                 params.append('{}')
                 vals.append(i)
-            sql.append(" AND nf.file_id IN (%s)" % ''.join(params))
+            sql.append(" AND nf.file_id IN (%s)" % ','.join(params))
 
         if fileStatus:
             params = []
             for i in diskIds:
                 params.append('{}')
                 vals.append(i)
-            sql.append(" AND nf.file_status IN (%s)" % ''.join(params))
+            sql.append(" AND nf.file_status IN (%s)" % ','.join(params))
 
         if lowLimIngestDate:
             sql.append(" AND nf.ingestion_date >= {}")
