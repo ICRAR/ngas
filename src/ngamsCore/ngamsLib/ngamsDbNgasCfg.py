@@ -141,5 +141,5 @@ class ngamsDbNgasCfg(ngamsDbCore.ngamsDbCore):
             res = self.query2(sql, args = (groupId,))
             if not res:
                 raise Exception("Configuration Error: %s not found in the DB!" % groupId)
-            accuRes.append(res)
+            accuRes += res
         return accuRes
