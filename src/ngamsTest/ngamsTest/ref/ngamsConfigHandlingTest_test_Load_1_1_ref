@@ -29,6 +29,7 @@ NgamsCfg.DataCheckThread[1].Scan                       : 0
 NgamsCfg.Db[1].Id                                      : Db-Sqlite-Test
 NgamsCfg.Db[1].Interface                               : sqlite3
 NgamsCfg.Db[1].Snapshot                                : 1
+NgamsCfg.Db[1].database                                : tmp/ngas.sqlite
 NgamsCfg.Header[1].Context                             : NG/AMS
 NgamsCfg.Header[1].Name                                : ngamsCfg.xml
 NgamsCfg.Header[1].Release                             : 1.0

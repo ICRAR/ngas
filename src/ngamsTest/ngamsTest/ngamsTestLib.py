@@ -38,7 +38,7 @@ import os, sys, time, unittest, socket, getpass, commands, re, glob, subprocess,
 
 from ngamsLib.ngamsCore import getHostName, TRACE, info, \
     ngamsCopyrightString, rmFile, \
-    error, cleanList, setLogCond, getVerboseLevel, logFlush, \
+    error, cleanList, setLogCond, getVerboseLevel, \
     cpFile, getLogLevel, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
     checkIfIso8601
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
@@ -1512,12 +1512,8 @@ class ngamsTestSuite(unittest.TestCase):
         # Exceptional handling for SQLite.
         # TODO: It would probably be better if we simply run
         # the SQL script that creates the tables
-        if (cfgObj.getDbInterface().upper().find("SQLITE") != -1):
-            sqliteDb = os.path.abspath("tmp/" + hostName +".sqlite")
-            if create:
-                info(1,"Creating SQLite DB file under %s" % (sqliteDb,))
-                cpFile("src/ngas_Sqlite_db_template", sqliteDb)
-            cfgObj.storeVal("NgamsCfg.Db[1].database", sqliteDb)
+        if create and 'sqlite' in cfgObj.getDbInterface().lower():
+            cpFile("src/ngas_Sqlite_db_template", "tmp/ngas.sqlite")
 
     def prepDiskCfg(self,
                     diskCfg,
