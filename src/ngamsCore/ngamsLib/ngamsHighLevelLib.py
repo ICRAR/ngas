@@ -81,9 +81,7 @@ def getHostInfoFromHostIds(dbConObj,
     return hostDic
 
 
-def updateSrvHostInfo(dbConObj,
-                      hostInfoObj,
-                      ignoreErr = 0):
+def updateSrvHostInfo(dbConObj, hostInfoObj):
     """
     Update the information in the DB, which is managed by the server
     itself. All members of the ngamsHostInfo object starting with 'setSrv'
@@ -112,11 +110,7 @@ def updateSrvHostInfo(dbConObj,
                                 hostInfoObj.getSrvProcess(),
                                 hostInfoObj.getSrvRemove(),
                                 hostInfoObj.getSrvDataChecking(),
-                                hostInfoObj.getSrvState(),
-                                hostInfoObj.getSrvSuspended(),
-                                hostInfoObj.getSrvReqWakeUpSrv(),
-                                hostInfoObj.getSrvReqWakeUpTime()],
-                               ignoreErr)
+                                hostInfoObj.getSrvState()])
 
 
 def _addHostInDic(dbConObj,

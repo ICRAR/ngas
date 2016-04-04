@@ -786,8 +786,10 @@ class ngamsDbCore(object):
         """
         T = TRACE()
 
-        # Perform a simply query, the ngamsDbBase.query() method will reconnect
-        # automatically if the DB connection is lost
+        # TODO: Move the logic inside this method checkCon method up to where
+        # it is actually require (ngamsDataCheckThread#dataCheckThread)
+        # This current implementation relies on the self.query method which
+        # will reconnect automatically if the DB connection is lost
         sqlQuery = "SELECT cluster_name FROM ngas_hosts WHERE host_id='abc'"
         self.query(sqlQuery)
 
@@ -884,6 +886,9 @@ class ngamsDbCore(object):
             sqlQuery = sqlQuery.format(*self._params_to_bind(len(args)))
             args = self._data_to_bind(args)
 
+        if getMaxLogLevel() >= 5:
+            info(5, "Performing SQL query with parameters: %s / %r" % (sqlQuery, args))
+
         self.takeDbSem()
         with ngamsDbTimer(self, sqlQuery):
             try:
@@ -904,7 +909,11 @@ class ngamsDbCore(object):
 
                     self.__dbConn.commit()
 
-                info(4, "Accumulated DB access time: %.6fs" % self.getDbTime())
+                #if getMaxLogLevel() >= 4:
+                #    info(4, "Accumulated DB access time: %.6fs" % self.getDbTime())
+                if getMaxLogLevel() >= 5:
+                    info(5, "Result of SQL query %s / %r: %r" % (sqlQuery, args, res))
+
                 return res
             finally:
                 self.relDbSem()
@@ -1175,18 +1184,17 @@ class ngamsDbCore(object):
 
         # Find a free ID.
         srvListId = -1
-        while (True):
+        while True:
             srvListId = int(2**31 * random.random())
-            if (self.getSrvListFromId(srvListId) == None): break
+            if self.getSrvListFromId(srvListId) is None:
+                break
 
         # Write the new entry to the list.
         srvlist = cleanSrvList(srvList)
-        creationDate = self.convertTimeStamp(timeRef2Iso8601(time.time()))
-        sqlQuery = "INSERT INTO ngas_srv_list " +\
-                   "(srv_list_id, srv_list, creation_date) VALUES " +\
-                   "(%d, '%s', '%s')"
-        sqlQuery = sqlQuery % (srvListId, srvlist, creationDate)
-        res = self.query(sqlQuery)
+        creationDate = self.asTimestamp(time.time())
+        sql = "INSERT INTO ngas_srv_list (srv_list_id, srv_list, creation_date) " +\
+              "VALUES ({0}, {1}, {2})"
+        self.query2(sql, args=(srvListId, srvlist, creationDate))
         return srvListId
 
 
@@ -1202,43 +1210,30 @@ class ngamsDbCore(object):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT srv_list FROM ngas_srv_list WHERE " +\
-                   "srv_list_id=%d" % srvListId
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if ((len(res) > 0) and (res != [[]])):
-            srvList = res[0][0][0]
-        else:
-            srvList = None
-        return srvList
+        sql = "SELECT srv_list FROM ngas_srv_list WHERE srv_list_id={0}"
+        res = self.query2(sql, args=(srvListId,))
+        if res:
+            return res[0][0]
+        return None
 
 
-    def getSrvListIdFromSrvList(self,
-                                srvList,
-                                autoAlloc = True):
+    def getSrvListIdFromSrvList(self, srvList):
         """
         Get the server list ID associated with the server list. If not defined,
         a new can be allocated in the NGAS Servers Table automatically.
 
         srvList:     Server list ('<host>:<port>,...') (string).
 
-        autoAlloc:   If True and no entry was found, a new entry is
-                     automatically created for that server list (boolean).
-
         Returns:     Server list ID (integer).
         """
         T = TRACE()
 
         srvList = cleanSrvList(srvList)
-        sqlQuery = "SELECT srv_list_id FROM ngas_srv_list WHERE " +\
-                   "srv_list='%s'" % srvList
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if ((len(res) > 0) and (res != [[]])):
-            srvListId = int(res[0][0][0])
-        else:
-            srvListId = -1
-        if ((srvListId == -1) and autoAlloc):
-            srvListId = self.addSrvList(srvList)
-        return srvListId
+        sql = "SELECT srv_list_id FROM ngas_srv_list WHERE srv_list={0}"
+        res = self.query2(sql, args=(srvList,))
+        if res:
+            return int(res[0][0])
 
+        return self.addSrvList(srvList)
 
 # EOF

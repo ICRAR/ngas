@@ -491,8 +491,7 @@ def addEntryInCacheDbms(srvObj,
 
     if (addInRdbms):
         # Insert entry in the remote DBMS.
-        srvObj.getDb().insertCacheEntry(diskId, fileId, fileVersion, timeNow,
-                                        False)
+        srvObj.getDb().insertCacheEntry(diskId, fileId, fileVersion, timeNow)
 
 
 _SET_FILENAME_CACHE_DBMS = "UPDATE ngas_cache SET filename = '%s' WHERE " +\

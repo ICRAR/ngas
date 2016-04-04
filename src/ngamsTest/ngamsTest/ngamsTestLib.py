@@ -525,14 +525,14 @@ def delNgasTbls(dbObj):
 
     Returns:   Void.
     """
-    dbObj.query("DELETE FROM ngas_disks")
-    dbObj.query("DELETE FROM ngas_disks_hist")
-    dbObj.query("DELETE FROM ngas_files")
-    dbObj.query("DELETE FROM ngas_subscr_back_log")
-    dbObj.query("DELETE FROM ngas_subscribers")
-    dbObj.query("DELETE FROM ngas_cfg_pars")
-    dbObj.query("DELETE FROM ngas_cfg")
-    dbObj.query("DELETE FROM ngas_containers")
+    dbObj.query2("DELETE FROM ngas_disks")
+    dbObj.query2("DELETE FROM ngas_disks_hist")
+    dbObj.query2("DELETE FROM ngas_files")
+    dbObj.query2("DELETE FROM ngas_subscr_back_log")
+    dbObj.query2("DELETE FROM ngas_subscribers")
+    dbObj.query2("DELETE FROM ngas_cfg_pars")
+    dbObj.query2("DELETE FROM ngas_cfg")
+    dbObj.query2("DELETE FROM ngas_containers")
 
 
 def delNgamsDirs(cfgObj):
@@ -575,26 +575,23 @@ def checkHostEntry(dbObj,
     try:
         dbObj.getIpFromHostId(dbHostId)
         hostDefined = 1
-    except Exception, e:
+    except Exception:
         hostDefined = 0
     hostInfo = socket.gethostbyname_ex(dbHostId.split(":")[0])
     fullHostName = hostInfo[0]
-    #hostAlias = hostInfo[1][0]
-    hostAlias = hostInfo[0].split(".")[0]
     ip = hostInfo[2][0]
     if (not domain): domain = fullHostName[(fullHostName.find(".") + 1):]
     if (not ipAddress): ipAddress = ip
     if (not clusterName): clusterName = dbHostId
     if (not hostDefined):
-        sqlFormat = "INSERT INTO ngas_hosts (host_id, domain, ip_address, " +\
-                    "cluster_name, srv_suspended) VALUES " +\
-                    "('%s', '%s', '%s', '%s', 0)"
-        sqlQuery = sqlFormat % (dbHostId, domain, ipAddress, clusterName)
+        sql = "INSERT INTO ngas_hosts (host_id, domain, ip_address, " +\
+              "cluster_name, srv_suspended) VALUES ({0}, {1}, {2}, {3}, 0)"
+        args = (dbHostId, domain, ipAddress, clusterName)
     else:
-        sqlFormat = "UPDATE ngas_hosts SET domain='%s', ip_address='%s', " +\
-                    "cluster_name='%s', srv_suspended=0 WHERE host_id='%s'"
-        sqlQuery = sqlFormat % (domain, ipAddress, clusterName, dbHostId)
-    dbObj.query(sqlQuery)
+        sql = "UPDATE ngas_hosts SET domain={0}, ip_address={1}, " +\
+              "cluster_name={2}, srv_suspended=0 WHERE host_id={3}"
+        args = (domain, ipAddress, clusterName, dbHostId)
+    dbObj.query2(sql, args)
 
 
 def sendPclCmd(port = 8888,

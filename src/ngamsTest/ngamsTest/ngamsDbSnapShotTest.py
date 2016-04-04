@@ -431,7 +431,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         client.offline()
 
         # Remove the file entries from the DB.
-        dbObj.query("DELETE FROM ngas_files")
+        dbObj.query2("DELETE FROM ngas_files")
 
         # Bring server Online.
         client.online()

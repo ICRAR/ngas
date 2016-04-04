@@ -115,11 +115,8 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         cfgObj.writeToDb(dbObj)
 
         # Create a DB configuration association.
-        sqlQueryFormat = "INSERT INTO ngas_cfg (cfg_name, cfg_par_group_ids, " +\
-                         "cfg_comment) VALUES ('%s', '%s', 'Test Cfg')"
-        sqlQuery = sqlQueryFormat %\
-                   (dbCfgName, str(dbCfgGroupIds)[1:-1].replace("'", ""))
-        dbObj.query(sqlQuery)
+        sql = "INSERT INTO ngas_cfg (cfg_name, cfg_par_group_ids, cfg_comment) VALUES ({0}, {1}, 'Test Cfg')"
+        dbObj.query2(sql, args=(dbCfgName, ','.join([str(x) for x in dbCfgGroupIds])))
         return (cfgObj, dbObj)
 
     def test_Load_1(self):

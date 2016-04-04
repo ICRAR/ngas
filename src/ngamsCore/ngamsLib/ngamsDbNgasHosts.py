@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDbNgasHosts.py,v 1.13 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,13 +27,14 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  07/03/2008  Created
 #
-
 """
 Contains queries for accessing the NGAS Hosts Table.
 
 This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
+
+import collections
 
 from   ngamsCore import TRACE, timeRef2Iso8601, iso8601ToSecs
 import ngamsDbCore
@@ -59,14 +59,20 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        hostDic = {}
-        sqlQuery = "SELECT " + ngamsDbCore.getNgasHostsCols() +\
-                   " FROM ngas_hosts nh WHERE host_id IN ("
-        for host in hostList:
-            sqlQuery += "'" + host + "', "
-        sqlQuery = sqlQuery[0:-2] + ")"
-        res = self.query(sqlQuery, ignoreEmptyRes = 0)
-        return res[0]
+        sqlQuery = ["SELECT %s FROM ngas_hosts nh WHERE host_id IN (" % ngamsDbCore.getNgasHostsCols()]
+        for x in xrange(len(hostList)):
+            sqlQuery.append("{}")
+            if x < len(hostList) - 1:
+                sqlQuery.append(", ")
+        sqlQuery.append(")")
+        res = self.query2(''.join(sqlQuery), args=[str(h) for h in hostList])
+
+        # TODO: Check that this is the real intention here. Maybe it's OK if we
+        # return an empty result
+        # This applies to the rest of the methods in this class as well
+        if not res:
+            raise Exception("No host info found for host list %r" % (hostList,))
+        return res
 
 
     def getIpFromHostId(self,
@@ -78,11 +84,10 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
 
         Returns:    IP Address (string).
         """
-        sqlQuery = "SELECT ip_address FROM ngas_hosts " +\
-                   "WHERE host_id='" + hostId + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes = 0)
-        if (len(res[0]) == 1):
-            return res[0][0][0]
+        sqlQuery = "SELECT ip_address FROM ngas_hosts WHERE host_id={0}"
+        res = self.query2(sqlQuery, args=(hostId,))
+        if len(res) == 1:
+            return res[0][0]
         else:
             errMsg = "Error retrieving IP Address for host: " + hostId
             raise Exception, errMsg
@@ -97,11 +102,10 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
 
         Returns:    Cluster Name (string).
         """
-        sqlQuery = "SELECT cluster_name FROM ngas_hosts " +\
-                   "WHERE host_id='" + hostId + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes = 0)
-        if (len(res[0]) == 1):
-            return res[0][0][0]
+        sqlQuery = "SELECT cluster_name FROM ngas_hosts WHERE host_id={0}"
+        res = self.query2(sqlQuery, args=(hostId,))
+        if len(res) == 1:
+            return res[0][0]
         else:
             errMsg = "Error retrieving Cluster Name for host: " + hostId
             raise Exception, errMsg
@@ -119,16 +123,15 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         Returns:      Server suspension flag (integer/0|1).
         """
         if (ngasHostId):
-            sqlQuery = "SELECT srv_suspended FROM ngas_hosts " +\
-                       "WHERE host_id='" + ngasHostId + "'"
+            sqlQuery = "SELECT srv_suspended FROM ngas_hosts WHERE host_id={0}"
+            args = (ngasHostId,)
         else:
-            sqlQuery = "SELECT srv_suspended FROM ngas_hosts " +\
-                       "WHERE host_id='" + contactAddr + "' " +\
-                       "OR ip_address='" + contactAddr + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes = 0)
-        if (len(res[0]) == 1):
+            sqlQuery = "SELECT srv_suspended FROM ngas_hosts WHERE host_id={0} OR ip_address={1}"
+            args = (contactAddr, contactAddr)
+        res = self.query2(sqlQuery, args)
+        if len(res) == 1:
             try:
-                return int(res[0][0][0])
+                return int(res[0][0])
             except:
                 return 0
         else:
@@ -146,12 +149,11 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
 
         Returns:    Server suspension flag (integer/0|1).
         """
-        sqlQuery = "SELECT srv_data_checking FROM ngas_hosts " +\
-                   "WHERE host_id='" + hostId + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes = 0)
-        if (len(res[0]) == 1):
-            if (res[0][0][0]):
-                return int(res[0][0][0])
+        sqlQuery = "SELECT srv_data_checking FROM ngas_hosts WHERE host_id={0}"
+        res = self.query2(sqlQuery, args=(hostId,))
+        if len(res) == 1:
+            if res[0][0]:
+                return int(res[0][0])
             else:
                 return 0
         else:
@@ -172,50 +174,36 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "INSERT INTO ngas_hosts (%s) VALUES (%s)"
-        columns = ""
-        values = ""
-        if (hostInfoObj.getHostId()):
-            columns += "%s, " % ngamsDbCore.\
-                       getNgasHostsMap()[ngamsDbCore.NGAS_HOSTS_HOST_ID]
-            values += "'%s', " % hostInfoObj.getHostId()
-        if (hostInfoObj.getDomain()):
-            columns += "%s, " % ngamsDbCore.\
-                       getNgasHostsMap()[ngamsDbCore.NGAS_HOSTS_DOMAIN]
-            values += "'%s', " % hostInfoObj.getDomain()
-        if (hostInfoObj.getIpAddress()):
-            columns += "%s, " % ngamsDbCore.\
-                       getNgasHostsMap()[ngamsDbCore.NGAS_HOSTS_ADDRESS]
-            values += "'%s', " % hostInfoObj.getIpAddress()
-        if (hostInfoObj.getMacAddress()):
-            columns += "%s, " % ngamsDbCore.\
-                       getNgasHostsMap()[ngamsDbCore.NGAS_HOSTS_MAC_ADDRESS]
-            values += "'%s', " % hostInfoObj.getMacAddress()
-        if (hostInfoObj.getNSlots()):
-            if (hostInfoObj.getNSlots() == -1):
-                noOfSlots = 0
-            else:
-                noOfSlots = hostInfoObj.getNSlots()
-                columns += "%s, " % ngamsDbCore.\
-                           getNgasHostsMap()[ngamsDbCore.NGAS_HOSTS_N_SLOTS]
-                values += "%d, " % noOfSlots
-        if (hostInfoObj.getClusterName()):
-            columns += "%s, " % ngamsDbCore.\
-                       getNgasHostsMap()[ngamsDbCore.NGAS_HOSTS_CLUSTER_NAME]
-            values += "'%s', " % hostInfoObj.getClusterName()
-        if (hostInfoObj.getInstallationDate()):
-            columns += "%s, " % ngamsDbCore.\
-                       getNgasHostsMap()[ngamsDbCore.NGAS_HOSTS_INST_DATE]
-            values += "'%s', " % self.\
-                      convertTimeStamp(hostInfoObj.getInstallationDate())
-        sqlQuery = sqlQuery % (columns[:-2], values[:-2])
-        self.query(sqlQuery)
+        # Key: column index; value: value to be INSERTed
+        # It's ordered so we can iterate over it in the correct order later
+        args = collections.OrderedDict()
+        if hostInfoObj.getHostId():
+            args[ngamsDbCore.NGAS_HOSTS_HOST_ID] = hostInfoObj.getHostId()
+        if hostInfoObj.getDomain():
+            args[ngamsDbCore.NGAS_HOSTS_DOMAIN] = hostInfoObj.getDomain()
+        if hostInfoObj.getIpAddress():
+            args[ngamsDbCore.NGAS_HOSTS_ADDRESS] = hostInfoObj.getIpAddress()
+        if hostInfoObj.getMacAddress():
+            args[ngamsDbCore.NGAS_HOSTS_MAC_ADDRESS] = hostInfoObj.getMacAddress()
+        if hostInfoObj.getNSlots() and hostInfoObj.getNSlots() != -1:
+            args[ngamsDbCore.NGAS_HOSTS_N_SLOTS] = hostInfoObj.getNSlots()
+        if hostInfoObj.getClusterName():
+            args[ngamsDbCore.NGAS_HOSTS_CLUSTER_NAME] = hostInfoObj.getClusterName()
+        if hostInfoObj.getInstallationDate():
+            args[ngamsDbCore.NGAS_HOSTS_INST_DATE] = self.asTimestamp(hostInfoObj.getInstallationDate())
+
+        # Get column names and placeholder values to put into the SQL statement
+        table_columns = ngamsDbCore.getNgasHostsMap()
+        cols = ", ".join([table_columns[x] for x in args.keys()])
+        params = ", ".join("{%d}" % (i) for i in xrange(len(args)))
+        sql = "INSERT INTO ngas_hosts (%s) VALUES (%s)" % (cols, params)
+
+        self.query2(sql, args=args.values())
 
 
     def updateSrvHostInfo(self,
                           hostId,
-                          srvInfo,
-                          ignoreErr = 0):
+                          srvInfo):
         """
         Update the information in the DB, which is managed by the server
         itself. All columns starting with 'srv_' in the ngas_hosts tables
@@ -234,27 +222,15 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE(5)
 
-        try:
-            sqlQuery = "UPDATE ngas_hosts SET " +\
-                       "srv_version='" + srvInfo[0] + "', " +\
-                       "srv_port=" + str(srvInfo[1]) + ", " +\
-                       "srv_archive=" + str(srvInfo[2]) + ", " +\
-                       "srv_retrieve=" + str(srvInfo[3])+ ", " +\
-                       "srv_process=" + str(srvInfo[4]) + ", " +\
-                       "srv_remove=" + str(srvInfo[5]) + ", " +\
-                       "srv_data_checking=" + str(srvInfo[6]) + ", " +\
-                       "srv_state='" + srvInfo[7] + "' " +\
-                       "WHERE host_id='" + hostId + "'"
-            if (not ignoreErr):
-                self.query(sqlQuery)
-            else:
-                try:
-                    self.query(sqlQuery)
-                except:
-                    pass
-            self.triggerEvents()
-        except Exception, e:
-            raise e
+        sql = "UPDATE ngas_hosts SET " +\
+              "srv_version={0}, srv_port={1}, srv_archive={2}, " +\
+              "srv_retrieve={3}, srv_process={4}, srv_remove={5}, " +\
+              "srv_data_checking={6}, srv_state={7} WHERE host_id={8}"
+        args = list(srvInfo)
+        args.append(hostId)
+        self.query2(sql, args=args)
+
+        self.triggerEvents()
 
 
     def reqWakeUpCall(self,
@@ -274,24 +250,13 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        try:
-            try:
-                self.takeDbSem()
-                wakeUpTimeLoc = self.convertTimeStamp(wakeUpTime)
-                self.relDbSem()
-            except Exception, e:
-                self.relDbSem()
-                raise Exception, e
-            sqlQuery = "UPDATE ngas_hosts SET " +\
-                       "srv_suspended=1, " +\
-                       "srv_req_wake_up_srv='" + wakeUpHostId + "', " +\
-                       "srv_req_wake_up_time='" + wakeUpTimeLoc + "' " +\
-                       "WHERE host_id='" + localHostId + "'"
-            self.query(sqlQuery)
-            self.triggerEvents()
-            return self
-        except Exception, e:
-            raise e
+        wakeUpTimeLoc = self.asTimestamp(wakeUpTime)
+        sqlQuery = "UPDATE ngas_hosts SET srv_suspended=1, " +\
+                   "srv_req_wake_up_srv={0}, srv_req_wake_up_time={1} " +\
+                   "WHERE host_id={2}"
+        self.query2(sqlQuery, args=(wakeUpHostId, wakeUpTimeLoc, localHostId))
+        self.triggerEvents()
+        return self
 
 
     def markHostSuspended(self, hostId):
@@ -305,14 +270,10 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        try:
-            sqlQuery = "UPDATE ngas_hosts SET " + "srv_suspended=1 " +\
-                       "WHERE host_id='" + hostId + "'"
-            self.query(sqlQuery)
-            self.triggerEvents()
-            return self
-        except Exception, e:
-            raise e
+        sql = "UPDATE ngas_hosts SET srv_suspended=1 WHERE host_id={0}"
+        self.query2(sql, args=(hostId,))
+        self.triggerEvents()
+        return self
 
 
     def resetWakeUpCall(self,
@@ -328,15 +289,14 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        try:
-            sqlQuery = "UPDATE ngas_hosts SET srv_req_wake_up_srv=''"
-            if (resetSrvSusp): sqlQuery += ", srv_suspended=0"
-            sqlQuery += " WHERE host_id='" + hostId + "'"
-            self.query(sqlQuery)
-            self.triggerEvents()
-            return self
-        except Exception, e:
-            raise e
+        sql = ["UPDATE ngas_hosts SET srv_req_wake_up_srv=''"]
+        if (resetSrvSusp):
+            sql.append(", srv_suspended=0")
+        sql.append(" WHERE host_id={0}")
+        self.query2(''.join(sql), args=(hostId,))
+
+        self.triggerEvents()
+        return self
 
 
     def getHostIdsFromClusterName(self,
@@ -350,16 +310,9 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT host_id FROM ngas_hosts WHERE cluster_name='%s'" %\
-                   clusterName
-        res = self.query(sqlQuery)
-        if (res == [[]]):
-            return []
-        else:
-            hostIds = []
-            for hostId in res[0]:
-                hostIds.append(hostId[0])
-            return hostIds
+        sql = "SELECT host_id FROM ngas_hosts WHERE cluster_name={0}"
+        res = self.query2(sql, args=(clusterName,))
+        return [x[0] for x in res]
 
 
     def getWakeUpRequests(self, hostId):
@@ -376,20 +329,16 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE(5)
 
-        sqlQuery = "SELECT host_id, srv_req_wake_up_time from ngas_hosts " +\
-                   "WHERE srv_req_wake_up_srv='" + hostId + "' " +\
-                   "AND srv_suspended=1"
-        res = self.query(sqlQuery, ignoreEmptyRes = 0)
-        if (len(res[0]) >= 1):
-            wakeUpReqs = []
-            for req in res[0]:
-                suspHost = req[0]
-                tmpWakeUpTime = timeRef2Iso8601(req[1])
-                wakeUpTime = iso8601ToSecs(tmpWakeUpTime)
-                wakeUpReqs.append((suspHost, wakeUpTime))
-            return wakeUpReqs
-        else:
-            return []
+        sql = "SELECT host_id, srv_req_wake_up_time from ngas_hosts WHERE " +\
+              "srv_req_wake_up_srv={0} AND srv_suspended=1"
+        res = self.query2(sql, args=(hostId,))
+
+        def pack(row):
+            suspHost = row[0]
+            tmpWakeUpTime = timeRef2Iso8601(row[1])
+            wakeUpTime = iso8601ToSecs(tmpWakeUpTime)
+            return (suspHost, wakeUpTime)
+        return [pack(r) for r in res]
 
 
     def getPortNoFromHostId(self,
@@ -401,11 +350,10 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
 
         Return:    Port number (integer).
         """
-        sqlQuery = "SELECT srv_port from ngas_hosts where host_id='" +\
-                   hostId + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes = 0)
-        if (len(res[0]) == 1):
-            return int(res[0][0][0])
+        sql = "SELECT srv_port from ngas_hosts where host_id={0}"
+        res = self.query2(sql, args=(hostId,))
+        if len(res) == 1:
+            return int(res[0][0])
         else:
             errMsg = "Error retrieving port number for host: " + hostId
             raise Exception, errMsg
@@ -447,25 +395,16 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        try:
-            self.takeDbSem()
-            startDbTime = self.convertTimeStamp(start)
-            endDbTime = self.convertTimeStamp(start + estimTime)
-            self.relDbSem()
-        except Exception, e:
-            self.relDbSem()
-            raise Exception, e
-        sqlQuery = "UPDATE ngas_hosts SET " +\
-                   "srv_check_start='" + startDbTime + "', " +\
-                   "srv_check_remain=" + str(remain) + ", " +\
-                   "srv_check_end='" + endDbTime + "', " +\
-                   "srv_check_rate=" + str(rate) + ", " +\
-                   "srv_check_mb=" + str(checkMb) + ", " +\
-                   "srv_checked_mb=" + str(checkedMb) + ", " +\
-                   "srv_check_files=" + str(checkFiles) + ", " +\
-                   "srv_check_count=" + str(checkedFiles) + " " +\
-                   "WHERE host_id='" + hostId + "'"
-        self.query(sqlQuery)
+        startDbTime = self.asTimestamp(start)
+        endDbTime = self.asTimestamp(start + estimTime)
+        sql = "UPDATE ngas_hosts SET " +\
+              "srv_check_start={0}, srv_check_remain={1}, srv_check_end={2}, " +\
+              "srv_check_rate={3}, srv_check_mb={4}, srv_checked_mb={5}, " +\
+              "srv_check_files={6}, srv_check_count={7} WHERE host_id={8}"
+        args = (startDbTime, remain, endDbTime,
+                rate, checkMb, checkedMb,
+                checkFiles, checkedFiles, hostId)
+        self.query2(sql, args=args)
         return self
 
 
