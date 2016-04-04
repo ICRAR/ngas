@@ -385,8 +385,7 @@ class ngamsSubscriber:
         """
         T = TRACE()
 
-        self.\
-               setHostId(sqlResult[0]).\
+        self.setHostId(sqlResult[0]).\
                setPortNo(sqlResult[1]).\
                setPriority(sqlResult[2]).\
                setId(sqlResult[3]).\
@@ -423,7 +422,9 @@ class ngamsSubscriber:
         T = TRACE()
 
         res = dbConObj.getSubscriberInfo(subscrId, hostId, portNo)
-        self.unpackSqlResult(res)
+        if not res:
+            raise Exception('%s %s %s not found in DB' % (subscrId, hostId, portNo))
+        self.unpackSqlResult(res[0])
         return self
 
 

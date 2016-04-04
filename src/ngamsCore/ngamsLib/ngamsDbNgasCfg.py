@@ -59,15 +59,12 @@ class ngamsDbNgasCfg(ngamsDbCore.ngamsDbCore):
         Returns:      1 = parameter defined, 0 = parameter not defined
                       (integer/0|1).
         """
-        queryFormat = "SELECT cfg_par FROM ngas_cfg_pars WHERE " +\
-                   "cfg_group_id='%s' AND cfg_par='%s'"
-        sqlQuery = queryFormat % (groupId, parName)
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
-            return 0
-        else:
+        queryFormat = ("SELECT cfg_par FROM ngas_cfg_pars WHERE "
+                        "cfg_group_id={0} AND cfg_par={1}")
+        res = self.query2(queryFormat, args = (groupId, parName))
+        if res:
             return 1
-
+        return 0
 
     def writeCfgPar(self,
                     groupId,
@@ -88,23 +85,28 @@ class ngamsDbNgasCfg(ngamsDbCore.ngamsDbCore):
 
         Returns:   Reference to object itself.
         """
-        if (self.hasCfgPar(groupId, parName)):
-            queryFormat = "UPDATE ngas_cfg_pars SET cfg_val='%s'"
-            if (comment): queryFormat += ", cfg_comment='%s'"
-            queryFormat += " WHERE cfg_group_id='%s' AND cfg_par='%s'"
-            if (comment):
-                sqlQuery = queryFormat % (str(value), comment, groupId,
-                                          parName)
+        if self.hasCfgPar(groupId, parName):
+            if comment:
+                sql = ("UPDATE ngas_cfg_pars SET cfg_val={0}, cfg_comment={1}"
+                                "WHERE cfg_group_id={2} AND cfg_par={3}")
+                vals = (str(value), comment, groupId, parName)
             else:
-                sqlQuery = queryFormat % (str(value), groupId, parName)
+                sql = ("UPDATE ngas_cfg_pars SET cfg_val={0}"
+                                "WHERE cfg_group_id={1} AND cfg_par={2}")
+                vals = (str(value), groupId, parName)
         else:
-            if (not comment): comment = ""
-            if (not value): value = ""
-            queryFormat = "INSERT INTO ngas_cfg_pars (cfg_group_id, " +\
-                          "cfg_par, cfg_val, cfg_comment) " +\
-                          "VALUES ('%s', '%s', '%s', '%s')"
-            sqlQuery = queryFormat % (groupId, parName, value, comment)
-        self.query(sqlQuery)
+            if not comment:
+                comment = ''
+            if not value:
+                value = ''
+
+            sql = ("INSERT INTO ngas_cfg_pars (cfg_group_id, "
+                          "cfg_par, cfg_val, cfg_comment) "
+                          "VALUES ({0}, {1}, {2}, {3})")
+            vals = (groupId, parName, value, comment)
+
+        self.query2(sql, args = vals)
+
         return self
 
 
@@ -124,22 +126,20 @@ class ngamsDbNgasCfg(ngamsDbCore.ngamsDbCore):
         """
         # We should query the parameters according to the order in which
         # the Cfg. Group IDs are listed.
-        sqlQuery = "SELECT cfg_par_group_ids FROM ngas_cfg WHERE " +\
-                   "cfg_name='" + name + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
-            raise Exception, "Referenced configuration: " + name + " not " +\
-                  "found in the DB!"
-        groupIds = res[0][0][0].split(",")
+        sql = "SELECT cfg_par_group_ids FROM ngas_cfg WHERE cfg_name={0}"
+        res = self.query2(sql, args = (name,))
+        if not res:
+            raise Exception("Configuration Error: %s not found in the DB!" % name)
+        groupIds = res[0][0].split(",")
         accuRes = []
         for groupId in groupIds:
             groupId = groupId.strip()
-            if (not groupId): continue
-            sqlQuery = "SELECT cfg_group_id, cfg_par, cfg_val, cfg_comment " +\
-                       "FROM ngas_cfg_pars WHERE cfg_group_id='" + groupId +"'"
-            res = self.query(sqlQuery, ignoreEmptyRes=0)
-            accuRes += res[0]
+            if not groupId:
+                continue
+            sql = ("SELECT cfg_group_id, cfg_par, cfg_val, cfg_comment "
+                    "FROM ngas_cfg_pars WHERE cfg_group_id={0}")
+            res = self.query2(sql, args = (groupId,))
+            if not res:
+                raise Exception("Configuration Error: %s not found in the DB!" % groupId)
+            accuRes.append(res)
         return accuRes
-
-
-# EOF

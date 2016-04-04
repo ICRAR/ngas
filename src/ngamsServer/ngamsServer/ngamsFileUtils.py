@@ -392,8 +392,8 @@ def quickFileLocate(srvObj,
 
     res = srvObj.getDb().getFileSummary3(fileId, hostId, domain, diskId,
                                          fileVersion, cursor=False)
-    if (res != [[]]):
-        host_id = res[0][0][0]
+    if res:
+        host_id = res[0][0]
         host_id = host_id.split(':')[0]  # if the host_id contains a port remove that
         if (host_id == getHostName()):
             location = NGAMS_HOST_LOCAL

@@ -58,21 +58,16 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT subscr_id FROM ngas_subscribers WHERE " +\
-                   "subscr_id='" + subscrId + "'"
-        res = self.query(sqlQuery)
-        if (res == [[]]):
-            return 0
-        else:
-            if (res[0][0][0] == subscrId):
-                return 1
-            else:
-                return 0
+        sql = "SELECT subscr_id FROM ngas_subscribers WHERE subscr_id={0}"
+        res = self.query2(sql, args = (subscrId,))
+        if res:
+            return 1
+        return 0
 
 
     def getSubscriberInfo(self,
-                          subscrId = "",
-                          hostId = "",
+                          subscrId = None,
+                          hostId = None,
                           portNo = -1):
         """
         Get the information for one or more Subcribers from the
@@ -102,24 +97,36 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT " + ngamsDbCore.getNgasSubscribersCols() +\
-                   " FROM ngas_subscribers ns"
-        if ((subscrId != "") or (hostId != "")): sqlQuery += " WHERE "
-        if (subscrId != ""): sqlQuery += "subscr_id='" + subscrId + "'"
-        if ((hostId != "") and (subscrId != "")):
-            sqlQuery += " AND host_id='" + hostId + "'"
-        if ((hostId != "") and (subscrId == "")):
-            sqlQuery += " ns.host_id='" + hostId + "'"
-        if ((portNo != -1) and ((hostId != ""))):
-            sqlQuery += " AND ns.srv_port=" + str(portNo)
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
-            return []
-        else:
-            if (subscrId != ""):
-                return res[0][0]
+        where = False
+        vals = []
+        sql = []
+        sql.append("SELECT %s FROM ngas_subscribers ns" % ngamsDbCore.getNgasSubscribersCols())
+
+        if subscrId:
+            where = True
+            sql.append(" WHERE ")
+            sql.append("subscr_id = {}")
+            vals.append(subscrId)
+
+        if hostId:
+            if where == False:
+                where = True
+                sql.append(" WHERE ")
             else:
-                return res[0]
+                sql.append(" AND ")
+            sql.append("host_id = {}")
+            vals.append(hostId)
+
+        if portNo != -1:
+            if where == False:
+                sql.append(" WHERE ")
+            else:
+                sql.append(" AND ")
+            sql.append("srv_port = {}")
+            vals.append(str(portNo))
+
+        return self.query2(''.join(sql), args = vals)
+
 
     def insertSubscriberEntry(self, sub_obj):
 
@@ -136,41 +143,28 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         lastFileIngDate = sub_obj.getLastFileIngDate()
         concurrent_threads = sub_obj.getConcurrentThreads()
 
-        if not startDate:
-            startDate = "None"
-        else:
-            startDate = "'" + self.convertTimeStamp(startDate) + "'"
-
-        if not filterPlugIn:
-            filterPlugIn = "''"
-        else:
-            filterPlugIn = "'" + filterPlugIn + "'"
-
-        if not filterPlugInPars:
-            filterPlugInPars = "''"
-        else:
-            filterPlugInPars = "'" + filterPlugInPars + "'"
+        if startDate:
+            startDate = self.convertTimeStamp(startDate)
 
         if not lastFileIngDate:
-            lastFileIngDate = "'" + self.convertTimeStamp(0) + "'"
+            lastFileIngDate = self.convertTimeStamp(0)
         else:
-            lastFileIngDate = "'" +\
-                              self.convertTimeStamp(lastFileIngDate) +\
-                              "'"
+            lastFileIngDate = self.convertTimeStamp(lastFileIngDate)
 
-        sqlQuery = "INSERT INTO ngas_subscribers " +\
-                   "(host_id, srv_port, subscr_prio, subscr_id," +\
-                   " subscr_url, subscr_start_date," +\
-                   " subscr_filter_plugin,"+\
-                   " subscr_filter_plugin_pars," +\
-                   " last_file_ingestion_date, concurrent_threads) " +\
-                   " VALUES " +\
-                   "('" + hostId + "', " + str(portNo) + ", " +\
-                   str(priority) + ", '"+subscrId + "', '"+subscrUrl+\
-                   "', " + startDate + ", " + filterPlugIn + ", " +\
-                   filterPlugInPars + ", " + lastFileIngDate + ", " + str(concurrent_threads) + ")"
+        sql = ("INSERT INTO ngas_subscribers"
+               " (host_id, srv_port, subscr_prio, subscr_id,"
+               " subscr_url, subscr_start_date,"
+               " subscr_filter_plugin,"
+               " subscr_filter_plugin_pars,"
+               " last_file_ingestion_date, concurrent_threads) "
+               " VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})")
 
-        res = self.query(sqlQuery)
+        vals = (hostId, str(portNo), str(priority), \
+                subscrId, subscrUrl, startDate, \
+                filterPlugIn, filterPlugInPars, \
+                lastFileIngDate, str(concurrent_threads))
+
+        self.query2(sql, args = vals)
         self.triggerEvents()
 
 
@@ -210,43 +204,30 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         lastFileIngDate = sub_obj.getLastFileIngDate()
         concurrent_threads = sub_obj.getConcurrentThreads()
 
-        if not startDate:
-            startDate = "None"
-        else:
-            startDate = "'" + self.convertTimeStamp(startDate) + "'"
-
-        if not filterPlugIn:
-            filterPlugIn = "''"
-        else:
-            filterPlugIn = "'" + filterPlugIn + "'"
-
-        if not filterPlugInPars:
-            filterPlugInPars = "''"
-        else:
-            filterPlugInPars = "'" + filterPlugInPars + "'"
+        if startDate:
+            startDate = self.convertTimeStamp(startDate)
 
         if not lastFileIngDate:
-            lastFileIngDate = "'" + self.convertTimeStamp(0) + "'"
+            lastFileIngDate = self.convertTimeStamp(0)
         else:
-            lastFileIngDate = "'" +\
-                              self.convertTimeStamp(lastFileIngDate) +\
-                              "'"
-        sqlQuery = "UPDATE ngas_subscribers SET " +\
-                   "host_id='" + hostId + "', " +\
-                   "srv_port=" + str(portNo) + ", " +\
-                   "subscr_prio=" + str(priority) + ", " +\
-                   "subscr_id='" + subscrId + "', " +\
-                   "subscr_url='" + subscrUrl + "', " +\
-                   "subscr_start_date=" + startDate + ", " +\
-                   "subscr_filter_plugin=" + filterPlugIn + ", " +\
-                   "subscr_filter_plugin_pars="+filterPlugInPars+", "+\
-                   "last_file_ingestion_date=" + lastFileIngDate+", " +\
-                   "concurrent_threads=" + str(concurrent_threads)+" " +\
-                   "WHERE subscr_id='" + subscrId + "' AND " +\
-                   "host_id='" + hostId + "' AND " +\
-                   "srv_port=" + str(portNo)
+            lastFileIngDate = self.convertTimeStamp(lastFileIngDate)
 
-        res = self.query(sqlQuery)
+        sql = ("UPDATE ngas_subscribers SET "
+               "host_id={0}"
+               ", srv_port={1}"
+               ", subscr_prio={2}"
+               ", subscr_id={3}"
+               ", subscr_url={4}"
+               ", subscr_start_date={5}"
+               ", subscr_filter_plugin={6}"
+               ", subscr_filter_plugin_pars={7}"
+               ", last_file_ingestion_date={8}"
+               ", concurrent_threads={9} "
+               "WHERE subscr_id={10} AND host_id={11} AND srv_port={12}")
+        vals = (hostId, str(portNo), str(priority), subscrId, subscrUrl, \
+                startDate, filterPlugIn, filterPlugInPars, lastFileIngDate, \
+                str(concurrent_threads), subscrId, hostId, str(portNo))
+        self.query2(sql, args = vals)
         self.triggerEvents()
 
 
@@ -261,14 +242,10 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        try:
-            sqlQuery = "DELETE FROM ngas_subscribers WHERE subscr_id='" +\
-                       subscrId + "'"
-            self.query(sqlQuery)
-            self.triggerEvents()
-            return self
-        except Exception, e:
-            raise e
+        sql = "DELETE FROM ngas_subscribers WHERE subscr_id={0}"
+        self.query2(sql, args = (subscrId,))
+        self.triggerEvents()
+        return self
 
 
     def getSubscriberStatus(self,
@@ -292,33 +269,48 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        if (not subscrIds):
+        if not subscrIds:
             return []
-        sqlQuery = "SELECT subscr_id, last_file_ingestion_date " +\
-                   "FROM ngas_subscribers WHERE subscr_id IN (" +\
-                   str(subscrIds)[1:-1] + ")"
-        if (hostId != ""):
-            sqlQuery += " AND host_id='" + hostId + "'"
-            if (portNo != -1):
-                sqlQuery += " AND srv_port=" + str(portNo)
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
+
+        sql = []
+        vals = []
+        sql_tmp = ("SELECT subscr_id, last_file_ingestion_date "
+                    "FROM ngas_subscribers WHERE subscr_id IN (%s)")
+
+        params = []
+        for i in subscrIds:
+            params.append('{}')
+            vals.append(i)
+
+        sql_tmp = sql_tmp % ','.join(params)
+        sql.append(sql_tmp)
+
+        if hostId:
+            sql.append(" AND host_id = {}")
+            vals.append(hostId)
+
+        if portNo != -1:
+            sql.append(" AND srv_port = {}")
+            vals.append(portNo)
+
+        res = self.query2(''.join(sql), args = vals)
+        if not res:
             return []
-        else:
-            subscrStatus = []
-            for subscrInfo in res[0]:
-                if (subscrInfo[1]):
-                    if ((subscrInfo[1].find(":") != -1) and
-                        (subscrInfo[1].find("T") != -1)):
-                        lastIngDate = subscrInfo[1]
-                    else:
-                        lastIngDate = PccUtTime.TimeStamp().\
-                                      initFromSecsSinceEpoch(subscrInfo[1]).\
-                                      getTimeStamp()
+
+        subscrStatus = []
+        for subscrInfo in res:
+            if subscrInfo[1]:
+                if ((subscrInfo[1].find(":") != -1) and
+                    (subscrInfo[1].find("T") != -1)):
+                    lastIngDate = subscrInfo[1]
                 else:
-                    lastIngDate = None
-                subscrStatus.append((subscrInfo[0], lastIngDate))
-            return subscrStatus
+                    lastIngDate = PccUtTime.TimeStamp().\
+                                  initFromSecsSinceEpoch(subscrInfo[1]).\
+                                  getTimeStamp()
+            else:
+                lastIngDate = None
+            subscrStatus.append((subscrInfo[0], lastIngDate))
+        return subscrStatus
 
 
     def subscrBackLogEntryInDb(self,
@@ -346,20 +338,17 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT file_id FROM ngas_subscr_back_log " +\
-                   "WHERE host_id='" + hostId + "' " +\
-                   "AND srv_port=" + str(portNo) + " " +\
-                   "AND subscr_id='" + subscrId + "' " +\
-                   "AND file_id='" + fileId + "' " +\
-                   "AND file_version=" + str(fileVersion)
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0]) == 1):
-            if (res[0][0][0] == fileId):
-                return 1
-            else:
-                return 0
-        else:
-            return 0
+        sql = ("SELECT file_id FROM ngas_subscr_back_log "
+               "WHERE host_id={} "
+               "AND srv_port={} "
+               "AND subscr_id={} "
+               "AND file_id={} "
+               "AND file_version={}")
+        vals = (hostId, portNo, subscrId, fileId, fileVersion)
+        res = self.query2(sql, args = vals)
+        if res:
+            return 1
+        return 0
 
     def updateSubscrQueueEntry(self,
                             subscrId,
@@ -373,21 +362,23 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         Update the status (and comment) of a file in the persistent queue
         given its primary key
         """
-
-        sqlQuery = "UPDATE ngas_subscr_queue SET status = %d " % status
-        sqlQuery += ", status_date = '%s' " % status_date
-        if (comment):
-            sqlQuery += ", comment = '%s' " % comment
-        sqlQuery += "WHERE subscr_id = '%s' AND file_id = '%s' AND file_version = %d AND disk_id = '%s'" % (subscrId, fileId, fileVersion, diskId)
-        self.query(sqlQuery)
+        sql = []
+        sql.append("UPDATE ngas_subscr_queue SET status={}, status_date={} ")
+        vals = [status, status_date]
+        if comment:
+            sql.append(", comment={} ")
+            vals.append(comment)
+        sql.append("WHERE subscr_id={} AND file_id={} AND file_version={} AND disk_id={}")
+        vals += [subscrId, fileId, fileVersion, diskId]
+        self.query2(''.join(sql), args = vals)
 
     def updateSubscrQueueEntryStatus(self, subscrId, oldStatus, newStatus):
         """
         change the status from old to new for files belonging to a subscriber
         """
-        sqlQuery = "UPDATE ngas_subscr_queue SET status = %d " % newStatus
-        sqlQuery += "WHERE subscr_id = '%s' AND status = %d " % (subscrId, oldStatus)
-        self.query(sqlQuery)
+        sql = ("UPDATE ngas_subscr_queue SET status={} "
+                "WHERE subscr_id={} AND status={}")
+        self.query2(sql, args = (newStatus, subscrId, oldStatus))
 
     def addSubscrQueueEntry(self,
                             subscrId,
@@ -401,14 +392,15 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                             status_date,
                             comment = None
                             ):
-        sqlQuery = "INSERT INTO ngas_subscr_queue " +\
-                    "(subscr_id, file_id, file_version, disk_id, file_name, ingestion_date, " +\
-                    "format, status, status_date, comment) " +\
-                    "VALUES " +\
-                    "('%s', '%s', %d, '%s', '%s', '%s', '%s', %d, '%s', '%s')" % (subscrId,fileId,fileVersion,diskId,fileName,ingestionDate,format,status,status_date,comment)
-        # *sigh* set maxRetries to -1 so we don't loop out of control trying
-        # to reconnect like crazy when there is a duplicate record!
-        self.query(sqlQuery, maxRetries = -1)
+
+        sql = ("INSERT INTO ngas_subscr_queue "
+                "(subscr_id, file_id, file_version, "
+                "disk_id, file_name, ingestion_date, "
+                "format, status, status_date, comment) "
+                "VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {})")
+        vals = (subscrId, fileId, fileVersion, diskId, fileName, \
+                ingestionDate, format, status, status_date, comment)
+        self.query2(sql, args = vals)
 
     def addSubscrBackLogEntry(self,
                               hostId,
@@ -449,30 +441,21 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        try:
-            try:
-                self.takeDbSem()
-                ingDate = self.convertTimeStamp(ingestionDate)
-                self.relDbSem()
-            except Exception, e:
-                self.relDbSem()
-                raise Exception, e
-            if (not self.subscrBackLogEntryInDb(hostId, portNo, subscrId,
-                                                fileId, fileVersion)):
-                sqlQuery = "INSERT INTO ngas_subscr_back_log " +\
-                           "(host_id, srv_port, subscr_id, subscr_url, " +\
-                           "file_id, file_name, file_version, " +\
-                           "ingestion_date, format) " +\
-                           "VALUES " +\
-                           "('" + hostId + "', " + str(portNo) + ", '" +\
-                           subscrId + "', '" + subscrUrl + "', '" +\
-                           fileId + "', '" + fileName + "', " +\
-                           str(fileVersion) +\
-                           ", '" + ingDate + "', '" + format + "')"
-                self.query(sqlQuery)
-                self.triggerEvents()
-        except Exception, e:
-            raise e
+
+        ingDate = self.convertTimeStamp(ingestionDate)
+
+        if self.subscrBackLogEntryInDb(hostId, portNo, subscrId, fileId, fileVersion):
+            return
+
+        sql = ("INSERT INTO ngas_subscr_back_log "
+                "(host_id, srv_port, subscr_id, subscr_url, "
+                "file_id, file_name, file_version, ingestion_date, format) "
+                "VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {})")
+        vals = (hostId, portNo, subscrId, subscrUrl, \
+                fileId, fileName, fileVersion, ingDate, format)
+        self.query2(sql, args = vals)
+        self.triggerEvents()
+
 
     def delSubscrBackLogEntries(self, hostId, portNo, subscrId):
         """
@@ -486,12 +469,10 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "DELETE FROM ngas_subscr_back_log WHERE subscr_id = '%s' AND host_id = '%s' AND srv_port = %d" % (subscrId, hostId, portNo)
-        try:
-            res = self.query(sqlQuery)
-            self.triggerEvents()
-        except Exception, e:
-            raise e
+        sql = ("DELETE FROM ngas_subscr_back_log WHERE subscr_id = {}"
+                " AND host_id = {} AND srv_port = {}")
+        self.query2(sql, args = (subscrId, hostId, portNo))
+        self.triggerEvents()
 
     def delSubscrBackLogEntry(self,
                               hostId,
@@ -520,19 +501,18 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        try:
-            if (self.subscrBackLogEntryInDb(hostId, portNo, subscrId, fileId,
-                                            fileVersion)):
-                sqlQuery = "DELETE FROM ngas_subscr_back_log " +\
-                           "WHERE host_id='" + hostId + "' " +\
-                           "AND srv_port=" + str(portNo) + " " +\
-                           "AND subscr_id='" + subscrId + "' " +\
-                           "AND file_id='" + fileId + "' " +\
-                           "AND file_version=" + str(fileVersion)
-                res = self.query(sqlQuery)
-                self.triggerEvents()
-        except Exception, e:
-            raise e
+        if not self.subscrBackLogEntryInDb(hostId, portNo, subscrId, fileId,fileVersion):
+            return
+
+        sql = ("DELETE FROM ngas_subscr_back_log "
+               "WHERE host_id={} "
+               "AND srv_port={} "
+               "AND subscr_id={} "
+               "AND file_id={} "
+               "AND file_version={} ")
+        vals = (hostId, portNo, subscrId, fileId, fileVersion)
+        self.query2(sql, args = vals)
+        self.triggerEvents()
 
 
     def updateSubscrStatus(self,
@@ -550,22 +530,15 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        try:
-            try:
-                self.takeDbSem()
-                ingDate = self.convertTimeStamp(fileIngDate)
-                self.relDbSem()
-            except Exception, e:
-                self.relDbSem()
-                raise Exception, e
-            sqlQuery = "UPDATE ngas_subscribers SET " +\
-                       "last_file_ingestion_date='" +\
-                       ingDate + "' WHERE subscr_id='" + subscrId + "' AND " +\
-                       "last_file_ingestion_date < '" + ingDate + "'"
-            self.query(sqlQuery)
-            self.triggerEvents()
-        except Exception, e:
-            raise e
+        ingDate = self.convertTimeStamp(fileIngDate)
+
+        sql = ("UPDATE ngas_subscribers SET "
+               "last_file_ingestion_date = {} "
+               "WHERE subscr_id = {} AND last_file_ingestion_date < {}")
+        vals = (ingDate, subscrId, ingDate)
+        self.query2(sql, args = vals)
+        self.triggerEvents()
+
 
     def getSubscrBackLogBySubscrId(self, subscrId):
         """
@@ -580,17 +553,20 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         T = TRACE()
 
         # need to join ngas_file table to get the disk id!!!
-        sqlQuery = "SELECT a.file_id, a.file_version, b.disk_id FROM ngas_subscr_back_log a, ngas_files b " + \
-                    "WHERE a.subscr_id = '%s' AND a.file_id = b.file_id AND a.file_version = b.file_version" % subscrId
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
+        sql = ("SELECT a.file_id, a.file_version, b.disk_id "
+                "FROM ngas_subscr_back_log a, ngas_files b "
+                "WHERE a.subscr_id = {} AND a.file_id = b.file_id "
+                "AND a.file_version = b.file_version")
+        res = self.query2(sql, args = (subscrId,))
+        if not res:
             return []
-        else:
-            procList = []
-            for fi in res[0]:
-                newItem = [fi[0]] + [fi[1]] + [fi[2]]
-                procList.append(newItem)
-            return procList
+
+        procList = []
+        for fi in res:
+            newItem = [fi[0]] + [fi[1]] + [fi[2]]
+            procList.append(newItem)
+
+        return procList
 
     def getSubscrBackLogCount(self, hostId, portNo):
         """
@@ -603,51 +579,22 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
 
         Returns:     The number of records (integer)
         """
-        sqlQuery = "SELECT COUNT(*) FROM ngas_subscr_back_log WHERE host_id = '%s' AND srv_port = %d" % (hostId, portNo)
-        res = self.query(sqlQuery, ignoreEmptyRes=0) #impossible to return an empty record unless other exceptions
-        if (res == [[]]):
-            return 0
-        else:
-            #info(3, '\n\n ****** Backlog count returned %s with a type %s \n\n' % (res[0][0][0], str(type(res[0][0][0]))))
-            return int(res[0][0][0])
+        sql = ("SELECT COUNT(*) FROM ngas_subscr_back_log "
+                "WHERE host_id = {} AND srv_port = {}")
+        res = self.query2(sql, args = (hostId, portNo))
+        return int(res[0][0])
+
 
     def getSubscrQueueStatus(self, subscrId, fileId, fileVersion, diskId):
-        sqlQuery = "SELECT status, comment FROM ngas_subscr_queue " +\
-                    "WHERE subscr_id = '%s' AND file_id = '%s' AND file_version = %d AND disk_id = '%s'" % (subscrId, fileId, fileVersion, diskId)
-
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]] or len(res[0]) == 0):
+        sql = ("SELECT status, comment FROM ngas_subscr_queue "
+                "WHERE subscr_id = {} AND file_id = {} AND "
+                "file_version = {} AND disk_id = {}")
+        vals = (subscrId, fileId, fileVersion, diskId)
+        res = self.query2(sql, args = vals)
+        if not res:
             return None
-        else:
-            return res[0][0] #get the first row only
+        return res[0] #get the first row only
 
-    def getSubscrQueueEntriesByFileInfo(self, subscrId, fileId, fileVersion = None, diskId = None, status = None):
-        """
-        Get the full queue records by the file info
-        """
-        sqlQuery = "SELECT * FROM ngas_subscr_queue WHERE subscrId = '%s' AND file_id = '%s' " % (subscrId, fileId)
-        if (fileVersion):
-            sqlQuery += "AND file_version = %d " % fileVersion
-        if (diskId):
-            sqlQuery += "AND disk_id = '%s' " % diskId
-        if (status):
-            if (type(status) is list):
-                sqlQuery += "AND ("
-                cc = 0
-                for ho in status:
-                    if (cc > 0):
-                        sqlQuery += " OR "
-                    sqlQuery += "status = %d " % ho
-                    cc += 1
-                sqlQuery += ") "
-            else:
-                sqlQuery += "AND status = %d " % status
-
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
-            return []
-        else:
-            return res[0]
 
     def getSubscrQueue(self, subscrId, status = None):
         """
@@ -657,32 +604,19 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         subscrId:    subscriber Id (string)
         status:      the status of current file delivery (int or None)
         """
-        #sqlQuery = "SELECT a.file_id, b.mount_point || '/' || a.file_name, a.file_version, a.ingestion_date, a.format, a.disk_id " +\
-                #           "FROM ngas_subscr_queue a, ngas_disks b WHERE a.subscr_id = '%s' " % subscrId
+        sql = []
+        vals = [subscrId]
+        sql.append(("SELECT a.file_id, a.file_name, a.file_version, a.ingestion_date,"
+                    "a.format, a.disk_id FROM ngas_subscr_queue a "
+                    "WHERE a.subscr_id={}"))
+        if status:
+            sql.append(" AND a.status={}")
+            vals.append(status)
 
-        sqlQuery = "SELECT a.file_id, a.file_name, a.file_version, a.ingestion_date, a.format, a.disk_id " +\
-                    "FROM ngas_subscr_queue a WHERE a.subscr_id = '%s' " % subscrId
-
-        if (status):
-            if (type(status) is list):
-                sqlQuery += "AND ("
-                cc = 0
-                for ho in status:
-                    if (cc > 0):
-                        sqlQuery += " OR "
-                    sqlQuery += "a.status = %d " % ho
-                    cc += 1
-                sqlQuery += ") "
-            else:
-                sqlQuery += "AND a.status = %d " % status
-
-        #sqlQuery += "AND a.disk_id = b.disk_id"
-
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
+        res = self.query2(''.join(sql), args = vals)
+        if not res:
             return []
-        else:
-            return res[0]
+        return res
 
     def getSubscrBackLog(self,
                          hostId,
@@ -708,58 +642,34 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        if (selectDiskId):
-            sqlQuery = "SELECT a.subscr_id, a.subscr_url, a.file_id, a.file_name, a.file_version, a.ingestion_date, a.format, b.disk_id " +\
-                        "FROM ngas_subscr_back_log a, ngas_files b WHERE a.host_id = '"  + hostId + "' AND a.srv_port = " + str(portNo) +\
-                        " AND a.file_id = b.file_id AND a.file_version = b.file_version"
+        vals = [hostId, portNo]
+
+        if selectDiskId:
+            sql = ("SELECT a.subscr_id, a.subscr_url, a.file_id, a.file_name, "
+                    "a.file_version, a.ingestion_date, a.format, b.disk_id "
+                    "FROM ngas_subscr_back_log a, ngas_files b "
+                    "WHERE a.host_id={} AND a.srv_port={} AND a.file_id = "
+                    "b.file_id AND a.file_version = b.file_version")
         else:
-            sqlQuery = "SELECT subscr_id, subscr_url, file_id, file_name, " +\
-                   "file_version, ingestion_date, format " +\
-                   "FROM ngas_subscr_back_log WHERE " +\
-                   "host_id='" + hostId + "' AND srv_port=" + str(portNo)
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
+            sql = ("SELECT subscr_id, subscr_url, file_id, file_name, "
+                   "file_version, ingestion_date, format "
+                   "FROM ngas_subscr_back_log WHERE "
+                   "host_id={} AND srv_port={}")
+
+        res = self.query2(sql, args = vals)
+        if not res:
             return []
-        else:
-            # Convert the time into ISO 8601.
-            procList = []
-            for fi in res[0]:
-                if ((fi[5].find(":") != -1) and
-                    (fi[5].find("T") != -1)):
-                    ingDate = fi[5]
-                else:
-                    ingDate = PccUtTime.TimeStamp().\
-                              initFromSecsSinceEpoch(fi[5]).getTimeStamp()
-                newItem = list(fi[0:5]) + [ingDate] + [fi[6]]
-                if (selectDiskId):
-                    newItem += [fi[7]]
-                procList.append(newItem)
-            return procList
-
-
-    def getSubscrsOfBackLogFile(self,
-                                fileId,
-                                fileVersion):
-        """
-        Get a list of Subscribers (their IDs) interested in this Back-Log
-        Buffered file.
-
-        fileId:       File ID (string).
-
-        fileVersion:  File Version (string).
-
-        Returns:      List with Subscriber IDs (if any) (list/string).
-        """
-        T = TRACE()
-
-        sqlQuery = "SELECT subscr_id FROM ngas_subscr_back_log " +\
-                   "WHERE file_id='" + fileId + "' AND " +\
-                   "file_version=" + str(fileVersion)
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
-            return []
-        else:
-            return res[0]
-
-
-# EOF
+        # Convert the time into ISO 8601.
+        procList = []
+        for fi in res:
+            if ((fi[5].find(":") != -1) and
+                (fi[5].find("T") != -1)):
+                ingDate = fi[5]
+            else:
+                ingDate = PccUtTime.TimeStamp().\
+                          initFromSecsSinceEpoch(fi[5]).getTimeStamp()
+            newItem = list(fi[0:5]) + [ingDate] + [fi[6]]
+            if (selectDiskId):
+                newItem += [fi[7]]
+            procList.append(newItem)
+        return procList

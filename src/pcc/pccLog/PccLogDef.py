@@ -388,19 +388,9 @@ class PccLogDef:
         Returns:   Resulting log line (string).
         """
         logEl = self.getLogDef(logId)
-        if (parList):
-            parStr = ""
-            for par in parList:
-                if isinstance(par, basestring):
-                    par = re.sub("'", "", str(par))
-                    parStr = parStr + "'" + par + "',"
-                else:
-                    parStr = parStr + str(par) + ","
-            parStr = parStr[0:-1]
-            log = str(logEl.getLogText() % eval(parStr))
-        else:
-            log = str(logEl.getLogText())
-        return log
+        if parList:
+            return logEl.getLogText() % tuple(parList)
+        return logEl.getLogText()
 
 
     def genLogX(self,

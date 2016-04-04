@@ -87,7 +87,8 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
         T = TRACE()
 
         try:
-            if (origin == None): origin = "NG/AMS@" + hostId
+            if (origin == None):
+                origin = "NG/AMS@" + hostId
             tsObj = PccUtTime.TimeStamp()
             try:
                 self.takeDbSem()
@@ -95,10 +96,9 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
                     histDate = self.convertTimeStamp(tsObj.getTimeStamp())
                 else:
                     histDate = self.convertTimeStamp(date)
+            finally:
                 self.relDbSem()
-            except Exception, e:
-                self.relDbSem()
-                raise Exception, e
+
             if (descr != None):
                 if (descrMimeType == None):
                     errMsg = "Mime-type must be specified for entry in the "+\
@@ -108,23 +108,21 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
                     descr = re.sub("\n", "", descr)
                     descr = re.sub("> *<", "><", descr)
                     descr = re.sub(">\t*<", "><", descr)
-                descr = "'" + descr + "'"
+                descr = descr
             else:
                 descr = "None"
             if (descrMimeType != None):
-                mt = "'" + descrMimeType + "'"
+                mt = descrMimeType
             else:
                 mt = "None"
-            sqlQuery = "INSERT INTO ngas_disks_hist " +\
-                       "(disk_id, hist_date, hist_origin, hist_synopsis, " +\
-                       "hist_descr_mime_type, hist_descr) VALUES (" +\
-                       "'" + diskId + "', " +\
-                       "'" + histDate + "', " +\
-                       "'" + origin + "', " +\
-                       "'" + synopsis + "', " +\
-                       mt + ", " +\
-                       descr + ")"
-            res = self.query(sqlQuery)
+
+            sqlQuery = ("INSERT INTO ngas_disks_hist "
+                       "(disk_id, hist_date, hist_origin, hist_synopsis, "
+                       "hist_descr_mime_type, hist_descr) VALUES "
+                       "({0}, {1}, {2}, {3}, {4}, {5})")
+
+            self.query2(sqlQuery, args = (diskId, histDate, origin, synopsis, mt, descr))
+
             info(2,"Added entry in NGAS Disks History Table - Disk ID: " +\
                  diskId + " - Date: " + tsObj.getTimeStamp() + " - Origin: " +\
                  origin + " - Synopsis: " + synopsis +\
@@ -133,7 +131,3 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
             self.triggerEvents()
         except Exception, e:
             raise e
-
-
-
-# EOF

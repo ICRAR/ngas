@@ -51,9 +51,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
     Contains queries for accessing the NGAS Disks Table.
     """
 
-    def updateDiskFileStatus(self,
-                             diskId,
-                             fileSize):
+    def updateDiskFileStatus(self, diskId, fileSize):
         """
         Update the NGAS Disks Table according to a new file archived.
 
@@ -67,38 +65,31 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         try:
             self.takeGlobalDbSem()
-            sqlQuery = "SELECT number_of_files, available_mb, " +\
-                       "bytes_stored, mount_point " +\
-                       "FROM ngas_disks WHERE disk_id='" + diskId + "'"
-            res = self.query(sqlQuery, ignoreEmptyRes=0)
-
-            if (len(res[0]) != 1):
-                format = "Cannot find entry for disk with ID: %s."
-                errMsg = format % (diskId)
+            sql = ("SELECT number_of_files, available_mb, "
+                    "bytes_stored, mount_point "
+                    "FROM ngas_disks WHERE disk_id={}")
+            res = self.query2(sql, args = (diskId,))
+            if not res:
+                errMsg = "Cannot find entry for disk with ID: %s." % diskId
                 raise Exception, errMsg
 
-            # Generate new values.
-            numberOfFiles    = res[0][0][0]
-            bytesStored      = res[0][0][2]
-            mountPoint       = res[0][0][3]
-            newNumberOfFiles = (numberOfFiles  + 1)
-            newAvailMb       = getDiskSpaceAvail(mountPoint)
-            newBytesStored   = (bytesStored + fileSize)
-            sqlQuery = "UPDATE ngas_disks SET" +\
-                       " number_of_files=" + str(newNumberOfFiles) + "," +\
-                       " available_mb=" + str(newAvailMb) + "," +\
-                       " bytes_stored=" + str(newBytesStored) +\
-                       " WHERE disk_id='" + diskId + "'"
-            self.query(sqlQuery)
-            self.relGlobalDbSem()
+            numberOfFiles = res[0][0]
+            bytesStored = res[0][2]
+            mountPoint = res[0][3]
+            newNumberOfFiles = numberOfFiles + 1
+            newAvailMb = getDiskSpaceAvail(mountPoint)
+            newBytesStored = bytesStored + fileSize
+
+            sql = ("UPDATE ngas_disks SET number_of_files={}, available_mb={},"
+                   " bytes_stored={} WHERE disk_id={}")
+            vals = [newNumberOfFiles, newAvailMb, newBytesStored, diskId]
+            self.query2(sql, args = vals)
             self.triggerEvents()
-        except Exception, e:
+        finally:
             self.relGlobalDbSem()
-            raise e
 
 
-    def diskInDb(self,
-                 diskId):
+    def diskInDb(self, diskId):
         """
         Check if disk with the given Disk ID is available in the DB.
 
@@ -108,20 +99,14 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT disk_id FROM ngas_disks WHERE disk_id='"+diskId +"'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
+        sql = "SELECT disk_id FROM ngas_disks WHERE disk_id={}"
+        res = self.query2(sql, args = (diskId,))
+        if not res:
             return 0
-        else:
-            if (res[0][0][0] == diskId):
-                return 1
-            else:
-                return 0
+        return 1
 
 
-    def setLogicalNameForDiskId(self,
-                                diskId,
-                                logicalName):
+    def setLogicalNameForDiskId(self, diskId, logicalName):
         """
         Change the Logical Name of the disk with the given Disk ID.
 
@@ -133,13 +118,11 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "UPDATE ngas_disks SET logical_name='" + logicalName +"' "+\
-                   "WHERE disk_id='" + diskId + "'"
-        self.query(sqlQuery)
+        sql = "UPDATE ngas_disks SET logical_name={} WHERE disk_id={}"
+        self.query2(sql, args = (logicalName, diskId))
 
 
-    def getLogicalNameFromDiskId(self,
-                                 diskId):
+    def getLogicalNameFromDiskId(self, diskId):
         """
         Query the Logical Name of a disk from the DB, based on
         the Disk ID of the disk.
@@ -150,17 +133,14 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT logical_name FROM ngas_disks WHERE disk_id='" +\
-                   diskId + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0]) == 1):
-            return res[0][0][0]
-        else:
+        sql = "SELECT logical_name FROM ngas_disks WHERE disk_id={}"
+        res = self.query2(sql, args = (diskId,))
+        if not res:
             return None
+        return res[0][0]
 
 
-    def getDiskCompleted(self,
-                         diskId):
+    def getDiskCompleted(self, diskId):
         """
         Check if a disk is marked in the NGAS DB as completed.
 
@@ -171,17 +151,14 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT completed FROM ngas_disks WHERE " +\
-                   "disk_id = '" + diskId + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0]) == 0):
+        sql = "SELECT completed FROM ngas_disks WHERE disk_id={}"
+        res = self.query2(sql, args = (diskId,))
+        if not res:
             return None
-        else:
-            return res[0][0][0]
+        return res[0][0]
 
 
-    def getSlotIdFromDiskId(self,
-                            diskId):
+    def getSlotIdFromDiskId(self, diskId):
         """
         Get the Slot ID for a disk, given by the Disk ID for the disk.
 
@@ -192,17 +169,14 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT slot_id FROM ngas_disks WHERE disk_id='" +\
-                   diskId + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0]) == 0):
+        sql = "SELECT slot_id FROM ngas_disks WHERE disk_id={}"
+        res = self.query2(sql, args = (diskId,))
+        if not res:
             return None
-        else:
-            return res[0][0][0]
+        return res[0][0]
 
 
-    def getDiskInfoFromDiskId(self,
-                              diskId):
+    def getDiskInfoFromDiskId(self, diskId):
         """
         Query the information for one disk (referred to by its ID), and
         return this in raw format.
@@ -218,17 +192,15 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT " + ngamsDbCore.getNgasDisksCols() + " " +\
-                   "FROM ngas_disks nd WHERE disk_id='" + diskId + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
+        sql = "SELECT %s FROM ngas_disks nd WHERE disk_id={}" % \
+                ngamsDbCore.getNgasDisksCols()
+        res = self.query2(sql, args = (diskId,))
+        if not res:
             return []
-        else:
-            return res[0][0]
+        return res[0]
 
 
-    def getDiskInfoFromDiskIdList(self,
-                                  diskIdList):
+    def getDiskInfoFromDiskIdList(self, diskIdList):
         """
         Get disk information from a list of Disk IDs given. The result is
         returned in a list containing again lists with the field as described
@@ -240,27 +212,18 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT " + ngamsDbCore.getNgasDisksCols() + " " +\
-                   "FROM ngas_disks nd WHERE disk_id IN ("
-        if (len(diskIdList)):
-            tmpDiskIdDic = {}
-            for id in diskIdList:
-                tmpDiskIdDic[id] = 0
-            for diskId in tmpDiskIdDic.keys():
-                sqlQuery += "'" + diskId + "', "
-            sqlQuery = sqlQuery[0:-2]
-        else:
+        params = []
+        sql = "SELECT %s FROM ngas_disks nd WHERE disk_id IN (%s)"
+        for di in diskIdList:
+            params.append('{}')
+        sql = sql % (ngamsDbCore.getNgasDisksCols(), ','.join(params))
+        res = self.query2(sql, args = diskIdList)
+        if not res:
             return []
-        sqlQuery += ")"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
-            return []
-        else:
-            return res[0]
+        return res
 
 
-    def getMaxDiskNumber(self,
-                         cat = None):
+    def getMaxDiskNumber(self, cat = None):
         """
         Get the maximum disk index (number) in connection with the
         Logical Disk Names in the DB.
@@ -272,23 +235,26 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT logical_name FROM ngas_disks"
-        if (cat):
-            sqlQuery += " WHERE logical_name LIKE '%" + cat + "-%'"
+        sql = []
+        vals = []
+        sql.append("SELECT logical_name FROM ngas_disks")
+        if cat:
+            sql.append(" WHERE logical_name LIKE '%{}-%'")
+            vals.append(cat)
         else:
-            sqlQuery += " WHERE logical_name LIKE '%M-%' or " +\
-                        "logical_name LIKE '%R-%'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0]) == 0):
-            retVal = None
-        else:
-            logNameDic = {}
-            for subRes in res[0]:
-                tmpName = subRes[0]
-                logNameDic[tmpName[(len(tmpName) - 6):]] = 1
-            logNames = logNameDic.keys()
-            logNames.sort()
-            retVal = int(logNames[-1])
+            sql.append(" WHERE logical_name LIKE '%M-%' or logical_name LIKE '%R-%'")
+
+        res = self.query2(''.join(sql), args = vals)
+        if not res:
+            return None
+
+        logNameDic = {}
+        for subRes in res:
+            tmpName = subRes[0]
+            logNameDic[tmpName[(len(tmpName) - 6):]] = 1
+        logNames = logNameDic.keys()
+        logNames.sort()
+        retVal = int(logNames[-1])
         return retVal
 
 
@@ -328,101 +294,62 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        try:
-            # Check if the entry already exists. If yes update it, otherwise
-            # insert a new element.
-            try:
-                self.takeDbSem()
-                instDate = self.convertTimeStamp(installationDate)
-                self.relDbSem()
-            except Exception, e:
-                self.relDbSem()
-                raise Exception, e
+        sql = []
+        vals = []
 
-            #bytesStored = string.split(str(bytesStored), ".")[0]
-            bytesStored = "%.0f" % float(bytesStored)
-            if (self.diskInDb(diskId)):
-                sqlQuery = "UPDATE ngas_disks SET " +\
-                           "archive='" + archive + "', " +\
-                           "installation_date='" + instDate + "', " +\
-                           "type='" + type + "', " +\
-                           "manufacturer='" + manufacturer + "', " +\
-                           "logical_name='" + logicalName + "', " +\
-                           "host_id='" + hostId + "', " +\
-                           "slot_id='" + slotId + "', " +\
-                           "mounted=" + str(mounted) + ", " +\
-                           "mount_point='" + mountPoint + "', " +\
-                           "number_of_files=" + str(numberOfFiles) + ", "+\
-                           "available_mb=" + str(availableMb) + ", " +\
-                           "bytes_stored=" + str(bytesStored) + ", " +\
-                           "completed=" + str(completed) + ", " +\
-                           "checksum='" + checksum + "', " +\
-                           "total_disk_write_time=" + str(totalDiskWriteTime)
+        instDate = self.convertTimeStamp(installationDate)
+        bytesStored = "%.0f" % float(bytesStored)
+        addDiskHistEntry = 0
 
-                if (lastCheck != ""):
-                    try:
-                        self.takeDbSem()
-                        lastCheckTmp = self.convertTimeStamp(lastCheck)
-                        self.relDbSem()
-                    except Exception, e:
-                        self.relDbSem()
-                        raise Exception, e
+        if self.diskInDb(diskId):
+            sql.append(("UPDATE ngas_disks SET "
+                       "archive={},installation_date={},type={},manufacturer={},"
+                       "logical_name={},host_id={},slot_id={},mounted={},"
+                       "mount_point={},number_of_files={},available_mb={},"
+                       "bytes_stored={},completed={},checksum={},"
+                       "total_disk_write_time={}"))
+            vals = [archive, instDate, type, manufacturer, logicalName, hostId,\
+                    slotId, mounted, mountPoint, numberOfFiles, availableMb,\
+                    bytesStored, completed, checksum, totalDiskWriteTime]
 
-                    sqlQuery += ", last_check='" + lastCheckTmp + "'"
+            if lastCheck:
+                lastCheckTmp = self.convertTimeStamp(lastCheck)
+                sql.append(",last_check={}")
+                vals.append(lastCheckTmp)
 
-                if (lastHostId != None):
-                    sqlQuery += ", last_host_id='" + lastHostId + "'"
+            if lastHostId:
+                sql.append(",last_host_id={}")
+                vals.append(lastHostId)
 
-                sqlQuery += " WHERE disk_id='" + diskId + "'"
-                addDiskHistEntry = 0
-            else:
-                sqlQuery = "INSERT INTO ngas_disks " +\
-                           "(disk_id, archive, installation_date, " +\
-                           "type, manufacturer, logical_name, " +\
-                           "host_id, slot_id, mounted, mount_point, "+\
-                           "number_of_files, available_mb, bytes_stored, " +\
-                           "completed, checksum, total_disk_write_time, " +\
-                           "last_host_id) VALUES " +\
-                           "('" + diskId + "', " +\
-                           "'" + archive + "', " +\
-                           "'" + instDate + "', " +\
-                           "'" + type + "', " +\
-                           "'" + manufacturer + "', " +\
-                           "'" + logicalName + "', " +\
-                           "'" + hostId + "', " +\
-                           "'" + slotId + "', " +\
-                           str(mounted) + ", " +\
-                           "'" + mountPoint + "', " +\
-                           str(numberOfFiles) + ", " +\
-                           str(availableMb) + ", " +\
-                           str(bytesStored) + ", " +\
-                           str(completed) + ", " +\
-                           "'" + checksum + "', " +\
-                           str(totalDiskWriteTime) + ", " +\
-                           "'" + lastHostId + "')"
-                addDiskHistEntry = 1
-            res = self.query(sqlQuery)
+            sql.append(" WHERE disk_id={}")
+            vals.append(diskId)
+        else:
+            sql.append(("INSERT INTO ngas_disks "
+                       "(disk_id, archive, installation_date, "
+                       "type, manufacturer, logical_name, "
+                       "host_id, slot_id, mounted, mount_point, "
+                       "number_of_files, available_mb, bytes_stored, "
+                       "completed, checksum, total_disk_write_time, "
+                       "last_host_id) VALUES "
+                       "({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{})"))
+            vals = [diskId, archive, instDate, type, manufacturer, logicalName,\
+                    hostId, slotId, mounted, mountPoint, numberOfFiles,\
+                    availableMb, bytesStored, completed, checksum,\
+                    totalDiskWriteTime, lastHostId]
+            addDiskHistEntry = 1
 
-            if (completionDate != ""):
-                try:
-                    self.takeDbSem()
-                    complDate = self.convertTimeStamp(completionDate)
-                    self.relDbSem()
-                except Exception, e:
-                    self.relDbSem()
-                    raise Exception, e
-                sqlQuery = "UPDATE ngas_disks SET completion_date='" +\
-                            complDate + "' " + "WHERE disk_id='" + diskId + "'"
-                self.query(sqlQuery)
+        res = self.query2(''.join(sql), args = vals)
 
-            self.triggerEvents([diskId, mountPoint])
-            return addDiskHistEntry
-        except Exception, e:
-            raise e
+        if completionDate:
+            complDate = self.convertTimeStamp(completionDate)
+            sql = "UPDATE ngas_disks SET completion_date={} WHERE disk_id={}"
+            self.query2(sql, args = (complDate, diskId))
+
+        self.triggerEvents([diskId, mountPoint])
+        return addDiskHistEntry
 
 
-    def getLogicalNamesMountedDisks(self,
-                                    host):
+    def getLogicalNamesMountedDisks(self, host):
         """
         Get the Logical Names for the disks mounted on the given host.
         A list is returned, which contains the Logical Names of the disks
@@ -434,20 +361,17 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT logical_name FROM ngas_disks WHERE host_id='" +\
-                   host + "' AND mounted=1"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0]) == 0):
+        sql = "SELECT logical_name FROM ngas_disks WHERE host_id={} AND mounted=1"
+        res = self.query2(sql, args = (host,))
+        if not res:
             return []
-        else:
-            logNames = []
-            for disk in res[0]:
-                logNames.append(disk[0])
-            return logNames
+        logNames = []
+        for disk in res:
+            logNames.append(disk[0])
+        return logNames
 
 
-    def getMtPtFromDiskId(self,
-                          diskId):
+    def getMtPtFromDiskId(self, diskId):
         """
         Get the mount point for the disk referred to.
 
@@ -458,17 +382,14 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT mount_point FROM ngas_disks WHERE disk_id='" +\
-                   diskId + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0]) == 0):
+        sql = "SELECT mount_point FROM ngas_disks WHERE disk_id={}"
+        res = self.query2(sql, args = (diskId,))
+        if not res:
             return None
-        else:
-            return res[0][0][0]
+        return res[0][0]
 
 
-    def getDiskIdsMtPtsMountedDisks(self,
-                                    host):
+    def getDiskIdsMtPtsMountedDisks(self, host):
         """
         Get the mount points for the disks mounted on the given host.
         A list is returned, which contains the Logical Names of the disks
@@ -481,13 +402,12 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE(5)
 
-        sqlQuery = "SELECT disk_id, mount_point FROM ngas_disks " +\
-                   "WHERE host_id='" + host + "' AND mounted=1"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0]) == 0):
+        sql = ("SELECT disk_id, mount_point FROM ngas_disks "
+                "WHERE host_id={} AND mounted=1")
+        res = self.query2(sql, args = (host,))
+        if not res:
             return []
-        else:
-            return res[0]
+        return res
 
 
     def getSlotIdsMountedDisks(self,
@@ -502,21 +422,17 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT slot_id FROM ngas_disks WHERE host_id='" +\
-                   host + "' AND mounted=1"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0]) == 0):
+        sql = "SELECT slot_id FROM ngas_disks WHERE host_id={} AND mounted=1"
+        res = self.query2(sql, args = (host,))
+        if not res:
             return []
-        else:
-            slotIds = []
-            for disk in res[0]:
-                slotIds.append(disk[0])
-            return slotIds
+        slotIds = []
+        for disk in res:
+            slotIds.append(disk[0])
+        return slotIds
 
 
-    def getDiskIdsMountedDisks(self,
-                               host,
-                               mtRootDir):
+    def getDiskIdsMountedDisks(self, host, mtRootDir):
         """
         Get the Disk IDs for the disks mounted on the given host. A list is
         returned, which contains the Disk IDs of the disks mounted.
@@ -529,24 +445,21 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        if (mtRootDir[-1] != "/"): mtRootDir += "/"
+        if not mtRootDir.endswith('/'):
+            mtRootDir += "/"
         mtRootDir += "%"
-        sqlQuery = "SELECT disk_id FROM ngas_disks WHERE host_id='" +\
-                   host + "' AND mounted=1 AND mount_point LIKE '" +\
-                   mtRootDir + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
+        sql = ("SELECT disk_id FROM ngas_disks WHERE host_id={} AND mounted=1 "
+                "AND mount_point LIKE {}")
+        res = self.query2(sql, args = (host, mtRootDir))
+        if not res:
             return []
-        else:
-            diskIds = []
-            for disk in res[0]:
-                diskIds.append(disk[0])
-            return diskIds
+        diskIds = []
+        for disk in res:
+            diskIds.append(disk[0])
+        return diskIds
 
 
-    def getDiskIdFromSlotId(self,
-                            host,
-                            slotId):
+    def getDiskIdFromSlotId(self, host, slotId):
         """
         Get a Disk ID for corresponding Slot ID and host name.
 
@@ -558,13 +471,11 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT disk_id FROM ngas_disks WHERE slot_id='" +\
-                   slotId + "' AND host_id='" + host + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
+        sql = "SELECT disk_id FROM ngas_disks WHERE slot_id={} AND host_id={}"
+        res = self.query2(sql, args = (slotId, host))
+        if not res:
             return None
-        else:
-            return res[0][0][0]
+        return res[0][0]
 
 
     def getDiskIds(self):
@@ -575,20 +486,17 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT disk_id FROM ngas_disks"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
+        sql = "SELECT disk_id FROM ngas_disks"
+        res = self.query2(sql)
+        if not res:
             return []
-        else:
-            retList = []
-            for diskId in res[0]:
-                retList.append(diskId[0])
-            return retList
+        retList = []
+        for diskId in res:
+            retList.append(diskId[0])
+        return retList
 
 
-    def getDiskInfoForSlotsAndHost(self,
-                                   host,
-                                   slotIdList):
+    def getDiskInfoForSlotsAndHost(self, host, slotIdList):
         """
         From a given host and a given list of Slot IDs, the method
         returns a list with the disk info for the disks matching these.
@@ -602,25 +510,25 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                       were found (list/ngamsDiskInfo).
         """
         T = TRACE()
+        vals = []
+        params = []
+        sql = []
 
-        if (slotIdList):
-            slotIds = "("
-            for id in slotIdList: slotIds = slotIds + "'" + id + "',"
-            slotIds = slotIds[0:-1] + ")"
-        sqlQuery = "SELECT " + ngamsDbCore.getNgasDisksCols() +\
-                   " FROM ngas_disks nd WHERE "
-        if (slotIdList): sqlQuery += " nd.slot_id IN " + slotIds + " AND "
-        sqlQuery += "nd.host_id='" + host + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
+        sql.append("SELECT %s FROM ngas_disks nd WHERE " % ngamsDbCore.getNgasDisksCols())
+        if slotIdList:
+            for p in slotIdList:
+                params.append('{}')
+                vals.append(p)
+            sql.append(" nd.slot_id IN (%s) AND " % ','.join(params))
+        sql.append("nd.host_id={}")
+        vals.append(host)
+        res = self.query2(''.join(sql), args = vals)
+        if not res:
             return []
-        else:
-            return res[0]
+        return res
 
 
-    def getBestTargetDisk(self,
-                          diskIds,
-                          mtRootDir):
+    def getBestTargetDisk(self, diskIds, mtRootDir):
         """
         Find the best suitable target disk among a set of disks referred
         to by their Disk IDs. The condition is:
@@ -638,30 +546,28 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        # Create a list of IDs for the SQL statement.
-        ids = "("
-        for id in diskIds:
-            ids = ids + "'" + id + "',"
-        ids = ids[0:-1] + ")"
+        params = []
+        vals = []
+        for di in diskIds:
+            params.append('{}')
+            vals.append(di)
 
-        if (mtRootDir[-1] != "/"): mtRootDir += "/"
+        if not mtRootDir.endswith('/'):
+            mtRootDir += "/"
         mtRootDir += "%"
 
-        # Get ID for best suitable disk.
-        sqlQuery = "SELECT disk_id FROM ngas_disks WHERE " +\
-                   "completed=0 AND disk_id IN " + ids + " " +\
-                   "AND mount_point LIKE '" + mtRootDir + "' " +\
-                   "ORDER BY bytes_stored desc, installation_date asc"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (res == [[]]):
+        sql = ("SELECT disk_id FROM ngas_disks WHERE "
+               "completed=0 AND disk_id IN (%s) "
+               "AND mount_point LIKE {} "
+               "ORDER BY bytes_stored desc, installation_date asc") % ','.join(params)
+        vals.append(mtRootDir)
+        res = self.query2(sql, args = vals)
+        if not res:
             return None
-        else:
-            return res[0][0][0]
+        return res[0][0]
 
 
-    def deleteDiskInfo(self,
-                       diskId,
-                       delFileInfo = 1):
+    def deleteDiskInfo(self, diskId, delFileInfo = 1):
         """
         Delete a record for a certain disk in the NGAS DB.
 
@@ -679,17 +585,17 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        fileInfoDbmName = fileInfoDbm = None
+        fileInfoDbmName = None
+        fileInfoDbm = None
         try:
-            if (delFileInfo and self.getCreateDbSnapshot()):
+            diskInfo = None
+            if delFileInfo and self.getCreateDbSnapshot():
                 diskInfo = ngamsDiskInfo.ngamsDiskInfo().read(self, diskId)
-            else:
-                diskInfo = None
 
-            if (delFileInfo):
+            if delFileInfo:
                 # Get the information about the files on the disk (before this
                 # information is deleted).
-                if (self.getCreateDbSnapshot()):
+                if self.getCreateDbSnapshot():
                     ts = PccUtTime.TimeStamp().getTimeStamp()
                     fileName = ts + "_" + str(getUniqueNo()) + "_DISK_INFO"
                     fileInfoDbmName = os.path.\
@@ -700,13 +606,13 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                                                             fileInfoDbmName)
 
             # Delete the disk info.
-            sqlQuery = "DELETE FROM ngas_disks WHERE disk_id='" + diskId + "'"
-            self.query(sqlQuery)
+            sql = "DELETE FROM ngas_disks WHERE disk_id={}"
+            self.query2(sql, args = (diskId,))
 
             # Delete file info if requested.
-            if (delFileInfo):
-                sqlQuery = "DELETE FROM ngas_files WHERE disk_id='"+diskId+"'"
-                self.query(sqlQuery)
+            if delFileInfo:
+                sql = "DELETE FROM ngas_files WHERE disk_id={}"
+                self.query2(sql, args = (diskId,))
 
                 # Create a File Removal Status Document.
                 if (self.getCreateDbSnapshot()):
@@ -724,18 +630,18 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
             self.triggerEvents([diskInfo.getDiskId(),
                                 diskInfo.getMountPoint()])
-            del fileInfoDbm
-            rmFile(fileInfoDbmName + "*")
             return self
         except Exception, e:
             error("Error deleting disk info from DB: %s" % str(e))
-            if (fileInfoDbm): del fileInfoDbm
-            if (fileInfoDbmName): rmFile(fileInfoDbmName + "*")
             raise e
+        finally:
+            if fileInfoDbm:
+                del fileInfoDbm
+            if fileInfoDbmName:
+                rmFile(fileInfoDbmName + "*")
 
 
-    def getLastDiskCheck(self,
-                         hostId = ""):
+    def getLastDiskCheck(self, hostId = ""):
         """
         Queries all the Last Check Flags for all disks or for all disks
         currently mounted in a specific host. A Dictionary is returned
@@ -748,11 +654,15 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         Returns:   Dictionary with entry for each disk. Key is Disk
                    ID (dictionary).
         """
-        sqlQuery = "SELECT disk_id, last_check from ngas_disks"
-        if (hostId != ""): sqlQuery += " WHERE host_id = '" + hostId + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
+        sql = []
+        vals = []
+        sql.append("SELECT disk_id, last_check from ngas_disks")
+        if hostId:
+            sql.append(" WHERE host_id = {}")
+            vals.append(hostId)
+        res = self.query2(''.join(sql), args = vals)
         diskDic = {}
-        for diskInfo in res[0]:
+        for diskInfo in res:
             if (not diskInfo[1]):
                 timeSinceLastCheck = 0
             else:
@@ -769,9 +679,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         return diskDic
 
 
-    def setLastCheckDisk(self,
-                         diskId,
-                         timeSecs):
+    def setLastCheckDisk(self, diskId, timeSecs):
         """
         Update the Last Check Flag for a disk.
 
@@ -781,25 +689,14 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         Returns:          Reference to object itself.
         """
-        try:
-            try:
-                self.takeDbSem()
-                dbTime = self.convertTimeStamp(timeSecs)
-                self.relDbSem()
-            except Exception, e:
-                self.relDbSem()
-                raise Exception, e
-            sqlQuery = "UPDATE ngas_disks SET last_check = '" + dbTime +\
-                       "' WHERE disk_id='" + diskId + "'"
-            self.query(sqlQuery)
-            self.triggerEvents()
-            return self
-        except Exception, e:
-            raise e
+        dbTime = self.convertTimeStamp(timeSecs)
+        sql = "UPDATE ngas_disks SET last_check={} WHERE disk_id={}"
+        self.query2(sql, args = (dbTime, diskId))
+        self.triggerEvents()
+        return self
 
 
-    def getMinLastDiskCheck(self,
-                            hostId):
+    def getMinLastDiskCheck(self, hostId):
         """
         Get the timestamp for the disk that was checked longest time ago
         for all disks mounted in a specific NGAS Host.
@@ -811,23 +708,14 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT min(last_check) FROM ngas_disks WHERE " +\
-                   "host_id='" + hostId + "'"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0]) == 1):
-            if (res[0][0][0]):
-                if (type(res[0][0][0]) == types.IntType):
-                    return res[0][0][0]
-                elif isinstance(res[0][0][0], basestring):
-                    # Expects an ISO 8601 timestamp.
-                    return int(iso8601ToSecs(res[0][0][0]) + 0.5)
-                else:
-                    dt = self.convertTimeStampToMx(res[0][0][0])
-                    return int(dt.ticks() + 0.5)
-            else:
-                return None
-        else:
+        sql = "SELECT min(last_check) FROM ngas_disks WHERE host_id={}"
+        res = self.query2(sql, args = (hostId,))
+        if not res:
             return None
-
-
-# EOF
+        val = res[0][0]
+        if type(val) == types.IntType:
+            return val
+        elif isinstance(val, basestring):
+            return int(iso8601ToSecs(val) + 0.5)
+        dt = self.convertTimeStampToMx(val)
+        return int(dt.ticks() + 0.5)

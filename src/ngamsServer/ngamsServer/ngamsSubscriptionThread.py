@@ -601,22 +601,6 @@ def _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion,
 
     return deliverFile
 
-def fileDelivered(srvObj, subscrId, fileId, fileVersion, diskId, beingDelivered = False):
-    """
-    To check if this file has been delivered already
-
-    beingDelivered    including files that are currently being delivered (Boolean),
-                      by default, it is set to False
-    """
-    if (beingDelivered):
-        mstat = [0, -1] # both scheduled and being sent
-    else:
-        mstat = 0
-    files = srvObj.getDb().getSubscrQueueEntriesByFileInfo(subscrId, fileId, fileVersion, diskId, mstat)
-    if (files == [] or len(files) == 0):
-        return False
-    else:
-        return True
 
 def _deliveryThread(srvObj,
                     subscrObj,

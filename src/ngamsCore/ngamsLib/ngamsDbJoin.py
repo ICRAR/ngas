@@ -95,15 +95,11 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE(5)
 
-        sqlQuery = self.\
-                   buildFileSummary1Query(hostId, diskIds, fileIds,
-                                          ignore, fileStatus,
-                                          lowLimIngestDate,
-                                          order) %\
-                                          ngamsDbCore.getNgasSummary1Cols()
-        # Create a cursor and perform the query.
-        curObj = self.dbCursor(sqlQuery)
-        return curObj
+        sql, vals = self.buildFileSummary1Query(ngamsDbCore.getNgasSummary1Cols(),
+                                                hostId, diskIds, fileIds,
+                                                ignore, fileStatus,
+                                                lowLimIngestDate, order)
+        return self.dbCursor(sql, args = vals)
 
 
     def getFileSummary1SingleFile(self,
@@ -117,17 +113,14 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT %s FROM ngas_disks nd, ngas_files nf " +\
-                   "WHERE nd.disk_id=nf.disk_id AND " +\
-                   "nd.disk_id='%s' AND nf.file_id='%s' AND " +\
-                   "nf.file_version=%d"
-        sqlQuery = sqlQuery % (ngamsDbCore.getNgasSummary1Cols(), diskId,
-                               fileId, fileVersion)
-        res = self.query(sqlQuery)
-        if ((res == [[]]) or (res == [])):
+        sql = ("SELECT %s FROM ngas_disks nd, ngas_files nf "
+                "WHERE nd.disk_id=nf.disk_id AND "
+                "nd.disk_id={} AND nf.file_id={} AND "
+                "nf.file_version={}") % ngamsDbCore.getNgasSummary1Cols()
+        res = self.query(sql, args = (diskId, fileId, fileVersion))
+        if not res:
             return []
-        else:
-            return res[0][0]
+        return res[0]
 
 
     def getFileSummary2(self,
@@ -170,34 +163,52 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT " + ngamsDbCore.getNgasSummary2Cols() + " " +\
-                   "FROM ngas_disks nd, ngas_files nf " +\
-                   "WHERE nd.disk_id=nf.disk_id "
-        if (ignore != None): sqlQuery += "AND nf.file_ignore=%d" % int(ignore)
-        if (hostId):
-            if (type(hostId) is list):
-                sqlQuery += " AND ("
-                cc = 0
-                for ho in hostId:
-                    if (cc > 0):
-                        sqlQuery += " OR "
-                    sqlQuery += "nd.host_id='" + ho + "'"
-                    cc += 1
-                sqlQuery += ") "
-            else: #assume it is string
-                sqlQuery += " AND nd.host_id='" + hostId + "'"
-        if (diskId): sqlQuery += " AND nf.disk_id='" + diskId + "'"
-        if (fileIds != []):
-            sqlQuery += " AND nf.file_id IN (" + str(fileIds)[1:-1] + ")"
-        if (ing_date): sqlQuery += " AND nf.ingestion_date > '" + ing_date + "'"
-        if (upto_ing_date): sqlQuery += " AND nf.ingestion_date < '" + upto_ing_date + "'"
-        sqlQuery += " ORDER BY nf.ingestion_date"
-        if (max_num_records): sqlQuery += " LIMIT %d" % max_num_records
+        sql = []
+        vals = []
+        sql.append(("SELECT %s FROM ngas_disks nd, ngas_files nf "
+                    "WHERE nd.disk_id=nf.disk_id ") % ngamsDbCore.getNgasSummary2Cols())
 
-        # Create a cursor and perform the query.
-        curObj = self.dbCursor(sqlQuery)
+        if ignore:
+            sql.append(" AND nf.file_ignore={}")
+            vals.append(ignore)
 
-        return curObj
+        if hostId:
+            if type(hostId) is list:
+                params = []
+                for i in hostId:
+                    params.append('{}')
+                    vals.append(i)
+                sql.append(" AND nd.host_id IN (%s)" % ''.join(params))
+            else:
+                sql.append(" AND nd.host_id={}")
+                vals.append(hostId)
+
+        if diskId:
+            sql.append(" AND nf.disk_id={}")
+            vals.append(diskId)
+
+        if fileIds:
+            params = []
+            for i in fileIds:
+                params.append('{}')
+                vals.append(i)
+            sql.append(" AND nf.file_id IN (%s)" % ''.join(params))
+
+        if ing_date:
+            sql.append(" AND nf.ingestion_date > {}")
+            vals.append(ing_date)
+
+        if upto_ing_date:
+            sql.append(" AND nf.ingestion_date < {}")
+            vals.append(upto_ing_date)
+
+        sql.append(" ORDER BY nf.ingestion_date")
+
+        if max_num_records:
+            sql.append(" LIMIT {}")
+            vals.append(max_num_records)
+
+        return self.dbCursor(''.join(sql), args = vals)
 
 
     def getFileSummary3(self,
@@ -235,27 +246,30 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE(5)
 
-        sqlQuery = "SELECT nh.host_id, nh.ip_address, nh.srv_port, " +\
-                   "nd.mount_point, nf.file_name, nf.file_version, " +\
-                   "nf.format " +\
-                   "FROM ngas_files nf, ngas_disks nd, ngas_hosts nh " +\
-                   "WHERE nf.file_id='%s' AND nf.disk_id=nd.disk_id AND " +\
-                   "nd.host_id=nh.host_id AND nf.file_ignore=0 AND " +\
-                   "nf.file_status='00000000'"
-        sqlQuery = sqlQuery % fileId
-        if (hostId): sqlQuery += " AND nh.host_id='%s'" % hostId
-        if (domain): sqlQuery += " AND nh.domain='%s'" % domain
-        if (diskId): sqlQuery += " AND nd.disk_id='%s'" % diskId
-        if (fileVersion > 0):
-            sqlQuery += " AND nf.file_version=%d" % fileVersion
-        sqlQuery += " ORDER BY nf.file_version DESC"
+        sql = []
+        vals = []
+        sql.append(("SELECT nh.host_id, nh.ip_address, nh.srv_port, "
+                   "nd.mount_point, nf.file_name, nf.file_version, "
+                   "nf.format FROM ngas_files nf, ngas_disks nd, ngas_hosts nh "
+                   "WHERE nf.file_id={} AND nf.disk_id=nd.disk_id AND "
+                   "nd.host_id=nh.host_id AND nf.file_ignore=0 AND "
+                   "nf.file_status='00000000'"))
+        vals.append(fileId)
+        if hostId:
+            sql.append(" AND nh.host_id={}")
+            vals.append(hostId)
+        if domain:
+            sql.append(" AND nh.domain={}")
+            vals.append(domain)
+        if diskId:
+            sql.append(" AND nd.disk_id={}")
+            vals.append(diskId)
+        if fileVersion > 0:
+            sql.append(" AND nf.file_version={}")
+            vals.append(fileVersion)
+        sql.append(" ORDER BY nf.file_version DESC")
 
-        if (cursor):
-            # Create a cursor and perform the query.
-            retVal = self.dbCursor(sqlQuery)
-        else:
-            retVal = self.query(sqlQuery)
-        return retVal
+        return self.query2(''.join(sql), args = vals)
 
 
     def getFileSummarySpuriousFiles1(self,
@@ -287,22 +301,27 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         T = TRACE(5)
 
         fileStatusList = [NGAMS_FILE_STATUS_OK, NGAMS_FILE_CHK_ACTIVE]
-        sqlQuery = "SELECT " + ngamsDbCore.getNgasSummary1Cols() + " " +\
-                   "FROM ngas_disks nd, ngas_files nf " +\
-                   "WHERE nd.disk_id=nf.disk_id " +\
-                   "AND (nf.file_ignore=1 OR " +\
-                   "nf.file_status NOT IN (" + str(fileStatusList)[1:-1]+ "))"
+        sql = []
+        vals = []
+        sql.append(("SELECT %s FROM ngas_disks nd, ngas_files nf "
+                    "WHERE nd.disk_id=nf.disk_id AND (nf.file_ignore=1 OR "
+                    "nf.file_status NOT IN (%s))") \
+                    % (ngamsDbCore.getNgasSummary1Cols(), str(fileStatusList)[1:-1]))
 
-        if (hostId): sqlQuery += " AND nd.host_id='" + hostId + "'"
-        if (diskId): sqlQuery += " AND nd.disk_id='" + diskId + "'"
-        if (fileId): sqlQuery += " AND nf.file_id='" + fileId + "'"
-        if (fileVersion):
-            sqlQuery += " AND nf.file_version=" + str(fileVersion)
+        if hostId:
+            sql.append(" AND nd.host_id={}")
+            vals.append(hostId)
+        if diskId:
+            sql.append(" AND nd.disk_id={}")
+            vals.append(diskId)
+        if fileId:
+            sql.append(" AND nf.file_id={}")
+            vals.append(fileId)
+        if fileVersion:
+            sql.append(" AND nf.file_version={}")
+            vals.append(fileVersion)
 
-        # Create a cursor and perform the query.
-        curObj = self.dbCursor(sqlQuery)
-
-        return curObj
+        return self.dbCursor(''.join(sql), args = vals)
 
 
     def setFileChecksum(self,
@@ -333,11 +352,10 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         T = TRACE()
 
         try:
-            sqlQuery = "UPDATE ngas_files SET checksum='" + checksum + "', " +\
-                       "checksum_plugin='" + checksumPlugIn + "' " +\
-                       "WHERE file_id='" + fileId + "' AND file_version=" +\
-                       str(fileVersion) + " AND disk_id='" + diskId + "'"
-            res = self.query(sqlQuery)
+            sql = ("UPDATE ngas_files SET checksum={}, checksum_plugin={}"
+                   " WHERE file_id={} AND file_version={} AND disk_id={}")
+            vals = (checksum, checksumPlugIn, fileId, fileVersion, diskId)
+            self.query2(sql, args = vals)
 
             # Create a File Removal Status Document.
             if (self.getCreateSnapshot()):
@@ -375,21 +393,15 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = self.buildFileSummary1Query(hostId, diskIds, fileIds,
-                                               ignore, fileStatus,
-                                               lowLimIngestDate,
-                                               order=0) % "count(*)"
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0]) == 1):
-            if (res[0][0][0]):
-                return res[0][0][0]
-            else:
-                return 0
-        else:
-            return 0
+        sql, vals = self.buildFileSummary1Query("count(*)", hostId, diskIds,
+                                                fileIds, ignore, fileStatus,
+                                                lowLimIngestDate, order = 0)
+        res = self.query2(sql, args = vals)
+        return res[0][0]
 
 
     def buildFileSummary1Query(self,
+                               columns,
                                hostId = None,
                                diskIds = [],
                                fileIds = [],
@@ -408,31 +420,48 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE(5)
 
-        sqlQuery = "SELECT %s FROM ngas_disks nd, " +\
-                   "ngas_files nf " +\
-                   "WHERE nd.disk_id=nf.disk_id"
+        sql = []
+        vals = []
+        sql.append(("SELECT %s FROM ngas_disks nd, ngas_files nf "
+                    "WHERE nd.disk_id=nf.disk_id") % columns)
 
-        # Additional WHERE clauses.
-        if (ignore != None): sqlQuery += " AND nf.file_ignore=%d" % int(ignore)
-        if (hostId): sqlQuery += " AND nd.host_id='" + hostId + "'"
-        if (diskIds != []):
-            sqlQuery += " AND nd.disk_id IN (" + str([str(d) for d in diskIds])[1:-1] + ")"
-        if (fileIds != []):
-            sqlQuery += " AND nf.file_id IN (" + str([str(f) for f in fileIds])[1:-1] + ")"
-        if (fileStatus != []):
-            sqlQuery += " AND nf.file_status IN (" + str([str(f) for f in fileStatus])[1:-1]+ ")"
-        if (lowLimIngestDate):
-            try:
-                self.takeDbSem()
-                lowLimDate = self.convertTimeStamp(lowLimIngestDate)
-                self.relDbSem()
-            except Exception, e:
-                self.relDbSem()
-                raise Exception, e
-            sqlQuery += " AND nf.ingestion_date >= '" + lowLimDate + "'"
-        if (order): sqlQuery += " ORDER BY nd.slot_id, nf.ingestion_date"
+        if ignore:
+            sql.append(" AND nf.file_ignore={}")
+            vals.append(ignore)
 
-        return sqlQuery
+        if hostId:
+            sql.append(" AND nd.host_id={}")
+            vals.append(hostId)
+
+        if diskIds:
+            params = []
+            for i in diskIds:
+                params.append('{}')
+                vals.append(i)
+            sql.append(" AND nd.disk_id IN (%s)" % ''.join(params))
+
+        if fileIds:
+            params = []
+            for i in diskIds:
+                params.append('{}')
+                vals.append(i)
+            sql.append(" AND nf.file_id IN (%s)" % ''.join(params))
+
+        if fileStatus:
+            params = []
+            for i in diskIds:
+                params.append('{}')
+                vals.append(i)
+            sql.append(" AND nf.file_status IN (%s)" % ''.join(params))
+
+        if lowLimIngestDate:
+            sql.append(" AND nf.ingestion_date >= {}")
+            vals.append(self.convertTimeStamp(lowLimIngestDate))
+
+        if order:
+            sql.append(" ORDER BY nd.slot_id, nf.ingestion_date")
+
+        return ''.join(sql), vals
 
 
     def getFileInfoFromFileIdHostId(self,
@@ -469,20 +498,24 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT " + ngamsDbCore.getNgasFilesCols() + " " +\
-                   "FROM ngas_files nf, ngas_disks nd WHERE " +\
-                   "nf.file_id='" + fileId + "' AND " +\
-                   "nf.disk_id=nd.disk_id AND " +\
-                   "nd.host_id='" + hostId + "' AND nd.mounted=1 AND " +\
-                   "nf.file_version=" + str(fileVersion)
-        if (diskId): sqlQuery += " AND nd.disk_id='%s'" % diskId
-        if (ignore != None): sqlQuery += " AND nf.file_ignore=%d" % int(ignore)
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0]) == 0):
-            return []
-        else:
-            return res[0][0]
+        sql = []
+        vals = []
+        sql.append(("SELECT %s FROM ngas_files nf, ngas_disks nd WHERE "
+                   "nf.file_id={} AND nf.disk_id=nd.disk_id AND "
+                   "nd.host_id={} AND nd.mounted=1 AND nf.file_version={}") \
+                   % ngamsDbCore.getNgasFilesCols())
 
+        vals = [fileId, hostId, fileVersion]
+        if diskId:
+            sql.append(" AND nd.disk_id={}")
+            vals.append(diskId)
+        if ignore:
+            sqlQuery.append(" AND nf.file_ignore={}")
+            vals.append(ignore)
+        res = self.query2(''.join(sql), args = vals)
+        if not res:
+            return []
+        return res[0]
 
     def getFileInfoFromFileId(self,
                               fileId,
@@ -549,37 +582,39 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         except:
             raise Exception, "Illegal value for File Version specified: " +\
                   str(fileVersion)
-
+        sql = []
+        vals = []
         # Query for files being online.
-        sqlQuery = "SELECT " + ngamsDbCore.getNgasFilesCols() +\
-                   ", nd.host_id, " +\
-                   "nd.mount_point FROM ngas_files nf, ngas_disks nd, "+\
-                   "ngas_hosts nh WHERE nh.host_id=nd.host_id AND " +\
-                   "nf.disk_id=nd.disk_id"
-        if (ignore != None): sqlQuery != " AND nf.file_ignore=%d" % int(ignore)
+        sql.append(("SELECT %s, nd.host_id, "
+                   "nd.mount_point FROM ngas_files nf, ngas_disks nd, "
+                   "ngas_hosts nh WHERE nh.host_id=nd.host_id AND "
+                   "nf.disk_id=nd.disk_id") % ngamsDbCore.getNgasFilesCols())
+
+        if ignore:
+            sql.append(" AND nf.file_ignore={}")
+            vals.append(ignore)
         # File ID specified.
-        if (fileId): sqlQuery += " AND nf.file_id='%s'" % fileId
+        if fileId:
+            sql.append(" AND nf.file_id={}")
+            vals.append(fileId)
         # Do we want a specific File Version?
-        if (fileVersion != -1):
-            sqlQuery += " AND nf.file_version=" + str(fileVersion)
+        if fileVersion != -1:
+            sql.append(" AND nf.file_version={}")
+            vals.append(int(fileVersion))
         # Is a special disk referred?
-        if (diskId): sqlQuery += " AND nf.disk_id='%s'" % diskId
-
+        if diskId:
+            sql.append(" AND nf.disk_id={}")
+            vals.append(diskId)
         # Order the files according to the version.
-        if (order): sqlQuery += " ORDER BY nf.file_version desc, " +\
-                                "nd.disk_id desc"
+        if order:
+            sql.append(" ORDER BY nf.file_version desc, nd.disk_id desc")
 
-        if (dbCursor):
-            # Carry out query and return the DB cursor object.
-            curObj = self.dbCursor(sqlQuery)
-            return curObj
-        else:
-            # Execute the query directly and return the result.
-            res = self.query(sqlQuery)
-            if (len(res) > 0):
-                return res[0]
-            else:
-                return []
+        if dbCursor:
+            return self.dbCursor(''.join(sql), args = vals)
+        res = self.query2(''.join(sql), args = vals)
+        if not res:
+            return []
+        return res
 
 
     def _dumpFileInfo(self,
@@ -777,24 +812,22 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         T = TRACE()
 
         # Create a temporay File Info DBM.
-        if (not fileInfoDbmName):
+        if not fileInfoDbmName:
             fileInfoDbmName = "/tmp/" +\
                               ngamsLib.genUniqueFilename("FILE-SUMMARY1")
 
-        # Build query, create cursor.
-        sqlQuery = self.\
-                   buildFileSummary1Query(hostId, ignore=0,
-                                          lowLimIngestDate=lowLimIngestDate,
-                                          order=0)
-        sqlQuery = sqlQuery % ngamsDbCore.getNgasFilesCols()
-        curObj = None
+        sql, vals = self.buildFileSummary1Query(ngamsDbCore.getNgasFilesCols(),
+                                                hostId, ignore = 0,
+                                                lowLimIngestDate = lowLimIngestDate,
+                                                order = 0)
         try:
             fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName, 0, 1)
-            curObj = self.dbCursor(sqlQuery)
+            curObj = self.dbCursor(sql, args = vals)
             fileCount = 1
             while (1):
                 fileList = curObj.fetch(1000)
-                if (not fileList): break
+                if not fileList:
+                    break
                 for fileInfo in fileList:
                     fileInfoDbm.add(str(fileCount), fileInfo)
                     fileCount += 1
@@ -930,36 +963,37 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT count(file_id) from ngas_files nf"
+        sql = []
+        vals = []
+
+        sql.append("SELECT count(file_id) from ngas_files nf")
 
         # Build up the query, take only Online/Suspended files into
         # account if requested.
-        if (diskId or fileId or (fileVersion != -1) or (ignore != None) or
-            onlyOnlineFiles):
-            sqlQuery += ", ngas_disks nd WHERE nf.disk_id=nd.disk_id"
-        if (diskId): sqlQuery += " AND nf.disk_id='%s'" % diskId
-        if (fileId): sqlQuery += " AND nf.file_id='%s'" % fileId
-        if (fileVersion > 0): sqlQuery += " AND nf.file_version=%d" %\
-                                          int(fileVersion)
-        if (ignore != None): sqlQuery += " AND nf.file_ignore=%d" % int(ignore)
-        if (onlyOnlineFiles):
+        if diskId or fileId or fileVersion != -1 or ignore or onlyOnlineFiles:
+            sql.append(", ngas_disks nd WHERE nf.disk_id=nd.disk_id")
+        if diskId:
+            sql.append(" AND nf.disk_id={}")
+            vals.append(diskId)
+        if fileId:
+            sql.append(" AND nf.file_id={}")
+            vals.append(fileId)
+        if fileVersion > 0:
+            sql.append(" AND nf.file_version={}")
+            vals.append(int(fileVersion))
+        if ignore:
+            sql.append(" AND nf.file_ignore={}")
+            vals.append(int(ignore))
+        if onlyOnlineFiles:
             # We assume here that either Disk ID, File ID, File Version
             # or ignore=1 specified so that we can append and AND clause.
-            sqlQuery += " AND nf.disk_id IN (SELECT nd.disk_id " +\
-                        "FROM ngas_disks nd, ngas_hosts nh " +\
-                        "WHERE (nd.host_id=nh.host_id) OR " +\
-                        "((nd.last_host_id=nh.host_id) AND " +\
-                        "(nh.srv_suspended=1)))"
-
-        # Now, do the query.
-        res = self.query(sqlQuery, ignoreEmptyRes=0)
-        if (len(res[0]) == 1):
-            if (res[0][0][0]):
-                return res[0][0][0]
-            else:
-                return 0
-        else:
-            return 0
+            sql.append((" AND nf.disk_id IN (SELECT nd.disk_id "
+                        "FROM ngas_disks nd, ngas_hosts nh "
+                        "WHERE (nd.host_id=nh.host_id) OR "
+                        "((nd.last_host_id=nh.host_id) AND "
+                        "(nh.srv_suspended=1)))"))
+        res = self.query2(''.join(sql), args = vals)
+        return res[0][0]
 
 
     def dumpFileInfoCluster(self,
@@ -1016,16 +1050,14 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         clusterHostList = str(clusterHostList).strip()[1:-1]
         if (clusterHostList[-1] == ","): clusterHostList = clusterHostList[:-1]
 
-        # Build query, create cursor.
-        sqlQuery = "SELECT %s FROM ngas_files nf WHERE disk_id IN " +\
-                   "(SELECT disk_id FROM ngas_disks WHERE " +\
-                   "host_id IN (%s) OR last_host_id IN (%s))"
-        sqlQuery = sqlQuery % (ngamsDbCore.getNgasFilesCols(),
-                               clusterHostList, clusterHostList)
+        sql = ("SELECT %s FROM ngas_files nf WHERE disk_id IN "
+               "(SELECT disk_id FROM ngas_disks WHERE "
+               "host_id IN ({}) OR last_host_id IN ({}))") \
+               % ngamsDbCore.getNgasFilesCols()
         curObj = None
         try:
             fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName, 0, 1)
-            curObj = self.dbCursor(sqlQuery)
+            curObj = self.dbCursor(sql, args = (clusterHostList, clusterHostList))
             fileCount = 1
             while (1):
                 fileList = curObj.fetch(10000)
@@ -1100,65 +1132,48 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         # Check if the entry already exists. If yes update it, otherwise
         # insert a new element.
-        if (ignore == -1): ignore = 0
-        try:
-            self.takeDbSem()
-            ingDate = self.convertTimeStamp(ingestionDate)
-            creDate = self.convertTimeStamp(creationDate)
-        finally:
-            self.relDbSem()
+        if ignore == -1:
+            ignore = 0
+
+        ingDate = self.convertTimeStamp(ingestionDate)
+        creDate = self.convertTimeStamp(creationDate)
+
+        sql = []
+        vals = []
+        sql_str = None
 
         if (self.fileInDb(diskId, fileId, fileVersion)):
             # We only allow to modify a limited set of columns.
-            sqlQuery = "UPDATE ngas_files SET " +\
-                       "file_name='" + filename + "', " +\
-                       "format='" + format + "', " +\
-                       "file_size=" + str(fileSize) + ", " +\
-                       "uncompressed_file_size=" +\
-                       str(uncompressedFileSize) + ", " +\
-                       "compression='" + compression + "', " +\
-                       "file_ignore=" + str(ignore) + ", " +\
-                       "checksum='" + checksum + "', " +\
-                       "checksum_plugin='" + checksumPlugIn + "', " +\
-                       "file_status='" + fileStatus + "', " +\
-                       "creation_date='" + creDate + "', " +\
-                       "io_time=" + str(int(iotime*1000)) + ", " +\
-                       "ingestion_rate=" + str(ingestionRate) + " " +\
-                       "WHERE file_id='" + fileId + "' AND " +\
-                       "disk_id='" + diskId + "'"
-            if (int(fileVersion) != -1):
-                sqlQuery += " AND file_version=" + str(fileVersion)
+            sql.append(("UPDATE ngas_files SET "
+                       "file_name={}, format={}, file_size={}, "
+                       "uncompressed_file_size={}, compression={}, "
+                       "file_ignore={}, checksum={}, checksum_plugin='{}, "
+                       "file_status={}, creation_date={}, io_time={}, "
+                       "ingestion_rate={} WHERE file_id={} AND disk_id={}"))
+            vals = [filename, format, fileSize, uncompressedFileSize, compression,\
+                    ignore, checksum, checksumPlugIn, fileStatus, creDate,\
+                    int(iotime*1000), ingestionRate, fileId, diskId]
+
+            if int(fileVersion) != -1:
+                sql.append(" AND file_version={}")
+                vals.append(fileVersion)
+
             dbOperation = NGAMS_DB_CH_FILE_UPDATE
+            sql_str = ''.join(sql)
         else:
-            sqlQuery = "INSERT INTO ngas_files " +\
-                       "(disk_id, file_name, file_id, file_version, " +\
-                       "format, file_size, " +\
-                       "uncompressed_file_size, compression, " +\
-                       "ingestion_date, file_ignore, checksum, " +\
-                       "checksum_plugin, file_status, creation_date, io_time, " +\
-                       "ingestion_rate) "+\
-                       "VALUES " +\
-                       "('" + diskId + "', " +\
-                       "'" + filename + "', " +\
-                       "'" + fileId + "', " +\
-                       "" + str(fileVersion) + ", " +\
-                       "'" + format + "', " +\
-                       str(fileSize) + ", " +\
-                       str(uncompressedFileSize) + ", " +\
-                       "'" + compression + "', " +\
-                       "'" + ingDate + "', " +\
-                       str(ignore) + ", " +\
-                       "'" + checksum + "', " +\
-                       "'" + checksumPlugIn + "', " +\
-                       "'" + fileStatus + "', " +\
-                       "'" + creDate + "', " +\
-                       str(int(iotime*1000)) + ", " +\
-                       str(ingestionRate) +\
-                       ")"
+            sql_str = ("INSERT INTO ngas_files (disk_id, file_name, file_id,"
+                        "file_version, format, file_size, uncompressed_file_size,"
+                        " compression, ingestion_date, file_ignore, checksum, "
+                        "checksum_plugin, file_status, creation_date, io_time, "
+                        "ingestion_rate) VALUES ({}, {}, {}, {}, {}, {}, {}, {},"
+                        " {}, {}, {},{}, {}, {}, {}, {})")
+            vals = (diskId, filename, fileId, fileVersion, format, fileSize,\
+                    uncompressedFileSize, compression, ingDate, ignore,\
+                    checksum, checksumPlugIn, fileStatus, creDate,\
+                    int(iotime*1000), ingestionRate)
             dbOperation = NGAMS_DB_CH_FILE_INSERT
 
-        # Perform the main query.
-        self.query(sqlQuery)
+        self.query2(sql_str, args = vals)
 
         # Update the Disk Info of the disk concerned if requested and
         # if a new entry was added.
@@ -1167,6 +1182,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         #       and ngas_disks.bytes_stored should in principle be
         #       updated according to the actual size of the new
         #       version of the file.
+        #print "writeFileEntry".upper(), updateDiskInfo, dbOperation
         if (updateDiskInfo and (dbOperation == NGAMS_DB_CH_FILE_INSERT)):
             self.updateDiskFileStatus(diskId, fileSize)
 
@@ -1201,19 +1217,17 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT host_id, srv_port FROM ngas_hosts " +\
-                   "WHERE cluster_name='%s' AND host_id in " +\
-                   "(SELECT host_id FROM ngas_disks WHERE completed=0 " +\
-                   "AND mounted=1) ORDER BY host_id"
-        sqlQuery = sqlQuery % clusterName
-        res = self.query(sqlQuery)
-        if (res == [[]]):
+        sql = ("SELECT host_id, srv_port FROM ngas_hosts "
+               "WHERE cluster_name={} AND host_id in "
+               "(SELECT host_id FROM ngas_disks WHERE completed=0 "
+               "AND mounted=1) ORDER BY host_id")
+        res = self.query2(sql, args = (clusterName,))
+        if not res:
             return []
-        else:
-            hostList = []
-            for node in res[0]:
-                hostList.append("%s:%s" % (node[0], node[1]))
-            return hostList
+        hostList = []
+        for node in res:
+            hostList.append("%s:%s" % (node[0], node[1]))
+        return hostList
 
 
     def getSpaceAvailForHost(self, hostId):
@@ -1228,17 +1242,9 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT sum(available_mb) FROM ngas_disks WHERE " +\
-                   "host_id='%s'"
-        sqlQuery = sqlQuery % hostId
-        res = self.query(sqlQuery, ignoreEmptyRes = 0)
-        if (len(res[0]) == 1):
-            if (res[0][0][0]):
-                return float(res[0][0][0])
-            else:
-                return 0.0
-        else:
-            return 0.0
+        sql = "SELECT sum(available_mb) FROM ngas_disks WHERE host_id={}"
+        res = self.query2(sql, args = (hostId,))
+        return float(res[0][0])
 
 
     def getCacheContents(self, hostId):
@@ -1253,11 +1259,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        sqlQuery = "SELECT disk_id, file_id, file_version, " +\
-                   "cache_time, cache_delete FROM ngas_cache " +\
-                   "WHERE disk_id IN (SELECT disk_id FROM ngas_disks WHERE " +\
-                   "host_id = '%s') ORDER BY cache_time"
-        curObj = self.dbCursor(sqlQuery)
-        return curObj
-
-# EOF
+        sql = ("SELECT disk_id, file_id, file_version, "
+               "cache_time, cache_delete FROM ngas_cache "
+               "WHERE disk_id IN (SELECT disk_id FROM ngas_disks WHERE "
+               "host_id = {}) ORDER BY cache_time")
+        return self.dbCursor(sql, args = (hostId,))
