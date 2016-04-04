@@ -792,9 +792,6 @@ def checkUpdateDbSnapShots(srvObj):
             if (_updateSnapshot(srvObj.getCfg())):
                 snapshotDbm.sync()
 
-            # Make a small break between each disk/mount point.
-            time.sleep(0.1)
-
         finally:
             if snapshotDbm:
                 snapshotDbm.close()
