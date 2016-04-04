@@ -45,7 +45,8 @@ from unittest.case import skip
 from contextlib import closing
 
 from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile
-from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo
+from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo,\
+    ngamsCore
 from ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
     saveInFile, filterDbStatus1, sendPclCmd, pollForFile, getClusterName, \
     sendExtCmd, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, runTest, \
@@ -676,11 +677,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         commands.getstatusoutput("chmod -R a-rwx %s" % repDiskPath)
         statObj = sendPclCmd().archive("src/SmallFile.fits")
         commands.getstatusoutput("chmod -R a+rwx %s" % repDiskPath)
-        refStatFile = "ref/ngamsArchiveCmdTest_test_ErrHandling_2_1_ref"
-        tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-                          "returned for Archive Push Request/" +\
-                          "Replication Disk read-only")
+        self.assertEquals(ngamsCore.NGAMS_FAILURE, statObj.getStatus())
+        msg = "Incorrect status returned for Archive Push Request/Replication Disk read-only"
+        self.assertEquals(4011, int(statObj.getMessage().split(":")[1]), msg) # NGAMS_ER_ARCHIVE_PUSH_REQ:4011
 
 
     def test_ErrHandling_3(self):

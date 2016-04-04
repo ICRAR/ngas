@@ -1147,7 +1147,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             sql.append(("UPDATE ngas_files SET "
                        "file_name={}, format={}, file_size={}, "
                        "uncompressed_file_size={}, compression={}, "
-                       "file_ignore={}, checksum={}, checksum_plugin='{}, "
+                       "file_ignore={}, checksum={}, checksum_plugin={}, "
                        "file_status={}, creation_date={}, io_time={}, "
                        "ingestion_rate={} WHERE file_id={} AND disk_id={}"))
             vals = [filename, format, fileSize, uncompressedFileSize, compression,\

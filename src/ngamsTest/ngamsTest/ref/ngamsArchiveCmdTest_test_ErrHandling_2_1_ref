@@ -1,6 +1,0 @@
-Status:
-Status:                             FAILURE
-Message:                            NGAMS_ER_ARCHIVE_PUSH_REQ:4011:ERROR: Problem occurred handling Archive Push Request! URI: SmallFile.fits. Error: NGAMS_AL_CP_FILE:3025:ALERT: Could not copy file from location: /tmp/ngamsTest/NGAS/FitsStorage1-Main-1/saf/2001-05-08/1/TEST.2001-05-08T15:25:00.123.fits.gz to new location: /tmp/ngamsTest/NGAS/FitsStorage1-Rep-2/saf/2001-05-08/1/TEST.2001-05-08T15:25:00.123.fits.gz. Error: [Errno 13] Permission denied: /tmp/ngamsTest/NGAS/FitsStorage1-Rep-2/saf.
-State:                              ONLINE
-SubState:                           IDLE
-
