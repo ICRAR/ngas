@@ -33,8 +33,9 @@ This module contains the Test Suite for the EXIT Command.
 
 import sys
 
+from ngamsLib import ngamsCore
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, info
-from ngamsTestLib import ngamsTestSuite, sendExtCmd, runTest
+from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd
 
 
 class ngamsExitCmdTest(ngamsTestSuite):
@@ -73,11 +74,10 @@ class ngamsExitCmdTest(ngamsTestSuite):
         Remarks:
         TODO!: Test that the server is no longer running.
         """
-        self.prepExtSrv(8888, 1, 1, 0)
-        tmpStatFile = sendExtCmd(8888, NGAMS_EXIT_CMD)
-        refStatFile = "ref/ngamsCmdHandlingTest_test_handleCmdExit_1_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect status returned for EXIT command")
+        self.prepExtSrv(autoOnline=0)
+        client = sendPclCmd(timeOut=10)
+        stat = client.exit()
+        self.assertEquals(ngamsCore.NGAMS_SUCCESS, stat.getStatus())
         info(1,"TODO: Check that NG/AMS Server has terminated")
 
 
@@ -103,12 +103,15 @@ class ngamsExitCmdTest(ngamsTestSuite):
         Remarks:
         TODO!: Check that the server is still running after the EXIT Command.
         """
-        self.prepExtSrv(8888, 1, 1, 1)
-        tmpStatFile = sendExtCmd(8888, NGAMS_EXIT_CMD)
-        refStatFile = "ref/ngamsCmdHandlingTest_test_handleCmdExit_2_ref"
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect status returned for EXIT command")
-        info(1,"TODO: Check that NG/AMS Server is still running")
+        self.prepExtSrv(autoOnline=1)
+        client = sendPclCmd(timeOut=10)
+        stat = client.exit()
+        self.assertEquals(ngamsCore.NGAMS_FAILURE, stat.getStatus())
+        self.assertEquals(4015, int(stat.getMessage().split(":")[1])) # NGAMS_ER_IMPROPER_STATE
+
+        # The server is still running
+        stat = client.status()
+        self.assertEquals(ngamsCore.NGAMS_SUCCESS, stat.getStatus())
 
 
 def run():
