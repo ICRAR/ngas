@@ -52,7 +52,10 @@ from ngamsLib import ngamsHighLevelLib, ngamsLib
 from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
 import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
-import ngamsJanitorThread, ngamsDataCheckThread, ngamsUserServiceThread
+import ngamsJanitorThread
+import ngamsDataCheckThread
+import ngamsUserServiceThread
+import ngamsMirroringControlThread
 
 
 class ngamsSimpleRequest:
@@ -290,8 +293,8 @@ class ngamsServer:
         self._subscriptionStatusList  = []
 
         # Handling of the Mirroring Control Thread.
+        self._mirControlThreadStopEvt = threading.Event()
         self._mirControlThread        = None
-        self._mirControlThreadRunning = 0
         self.__mirControlTrigger      = threading.Event()
         self._pauseMirThreads         = False
         self._mirThreadsPauseCount    = 0
@@ -808,6 +811,37 @@ class ngamsServer:
         info(3,"Data Check Thread stopped")
 
 
+    def startMirControlThread(self):
+        """
+        Starts the Mirroring Control Thread.
+        """
+
+        if (not self.getCfg().getMirroringActive()):
+            info(1, "NGAS Mirroring not active - Mirroring Control Thread not started")
+            return
+
+        info(3, "Starting the Mirroring Control Thread ...")
+        self._mirControlThread = threading.Thread(target=ngamsMirroringControlThread.mirControlThread,
+                                                  name=ngamsMirroringControlThread.NGAMS_MIR_CONTROL_THR,
+                                                  args=(self, self._mirControlThreadStopEvt))
+        self._mirControlThread.start()
+        info(3, "Mirroring Control Thread started")
+
+
+    def stopMirControlThread(self):
+        """
+        Stops the Mirroring Control Thread.
+        """
+        if self._mirControlThread is None:
+            return
+
+        info(3, "Stopping the Mirroring Service ...")
+        self._mirControlThreadStopEvt.set()
+        self._mirControlThread.join(10)
+        self._mirControlThread = None
+        info(3, "Mirroring Control Thread stopped")
+
+
     def startUserServiceThread(self):
         """
         Start the User Service Thread.
@@ -992,30 +1026,6 @@ class ngamsServer:
         """
         self._subscriptionStatusList = []
         return self
-
-
-    def setMirControlThreadRunning(self,
-                                   running):
-        """
-        Set the Mirroring Control Thread Running Flag to indicate if the
-        thread.
-
-        running:     Mirroring Control Running Flag (integer/0|1).
-
-        Returns:     Reference to object itself.
-        """
-        self._mirControlThreadRunning = running
-        return self
-
-
-    def getMirControlThreadRunning(self):
-        """
-        Get the Mirroring Control Thread Running Flag to indicate if the
-        Mirroring Control Thread is running or not.
-
-        Returns:    Mirroring Control Thread Running Flag (integer/0|1).
-        """
-        return self._mirControlThreadRunning
 
 
     def triggerMirThreads(self):

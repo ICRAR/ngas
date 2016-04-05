@@ -75,42 +75,6 @@ NGAMS_MIR_ALL_LOCAL_SRVS     = "ALL"
 NGAMS_MIR_CONTROL_THR_STOP = "_STOP_MIR_CONTROL_THREAD_"
 
 
-def startMirControlThread(srvObj):
-    """
-    Start the Mirroring Control Thread.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
-    """
-    T = TRACE()
-
-    info(3, "Starting the Mirroring Control Thread ...")
-    args = (srvObj, None)
-    srvObj._mirControlThread = threading.Thread(None, mirControlThread,
-                                                NGAMS_MIR_CONTROL_THR, args)
-    srvObj._mirControlThread.setDaemon(0)
-    srvObj._mirControlThread.start()
-    srvObj.setMirControlThreadRunning(1)
-    info(3, "Mirroring Control Thread started")
-
-
-def stopMirControlThread(srvObj):
-    """
-    Stop the Mirroring Control Thread.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
-    """
-    T = TRACE()
-
-    if (not srvObj.getMirControlThreadRunning()): return
-    info(3, "Stopping the Mirroring Service ...")
-    srvObj._mirControlThread = None
-    info(3, "Mirroring Control Thread stopped")
-
-
 def checkStopMirControlThread(srvObj):
     """
     Used to check if the Mirroring Control Thread should be stopped and in case
@@ -123,7 +87,6 @@ def checkStopMirControlThread(srvObj):
     T = TRACE(5)
 
     if (not srvObj.getThreadRunPermission()):
-        srvObj.setMirControlThreadRunning(0)
         info(2, "Stopping the Mirroring Service")
         raise Exception, NGAMS_MIR_CONTROL_THR_STOP
 
@@ -1270,8 +1233,7 @@ def generateReport(srvObj):
                                         "text/plain")
 
 
-def mirControlThread(srvObj,
-                     dummy):
+def mirControlThread(srvObj, stopEvt):
     """
     The Mirroring Control Thread runs periodically when the NG/AMS Server is
     Online (if enabled) to synchronize the data holding of the local NGAS
@@ -1284,12 +1246,6 @@ def mirControlThread(srvObj,
     Returns:     Void.
     """
     T = TRACE()
-
-    # Don't execute the thread if deactivated in the configuration.
-    if (not srvObj.getCfg().getMirroringActive()):
-        info(1, "NGAS Mirroring not active - Mirroring Control Thread " +\
-             "terminating with no actions")
-        thread.exit()
 
     # Alma Mirroring Service
     if (srvObj.getCfg().getVal("Mirroring[1].AlmaMirroring")):
@@ -1394,11 +1350,9 @@ def mirControlThread(srvObj,
                 if (suspTime < 1): suspTime = 1
                 info(3, "Mirroring Control Thread executed - suspending for " +\
                       str(suspTime) + "s ...")
-                suspStartTime = time.time()
-                while ((time.time() - suspStartTime) < suspTime):
-                    checkStopMirControlThread(srvObj)
-                    time.sleep(0.250)
-                ###################################################################
+
+                if stopEvt.wait(suspTime):
+                    return
 
             except Exception, e:
                 if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): thread.exit()

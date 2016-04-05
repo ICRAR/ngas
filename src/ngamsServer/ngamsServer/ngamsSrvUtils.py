@@ -46,7 +46,6 @@ from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
 from ngamsLib import ngamsNotification
 import ngamsArchiveUtils
 import ngamsSubscriptionThread
-import ngamsUserServiceThread, ngamsMirroringControlThread
 
 
 def ngamsBaseExitHandler(srvObj):
@@ -358,7 +357,7 @@ def handleOnline(srvObj,
     srvObj.startDataCheckThread()
     ngamsSubscriptionThread.startSubscriptionThread(srvObj)
     srvObj.startUserServiceThread()
-    ngamsMirroringControlThread.startMirControlThread(srvObj)
+    srvObj.startMirControlThread()
     if (srvObj.getCachingActive()):
         import ngamsCacheControlThread
         ngamsCacheControlThread.startCacheControlThread(srvObj)
@@ -404,7 +403,7 @@ def handleOffline(srvObj,
     srvObj.stopDataCheckThread()
     ngamsSubscriptionThread.stopSubscriptionThread(srvObj)
     srvObj.stopUserServiceThread()
-    ngamsMirroringControlThread.stopMirControlThread(srvObj)
+    srvObj.stopMirControlThread()
     srvObj.setThreadRunPermission(0)
 
     info(3, "Prepare NG/AMS for Offline State ...")
