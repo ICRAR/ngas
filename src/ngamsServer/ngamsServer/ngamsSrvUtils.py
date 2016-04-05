@@ -354,7 +354,7 @@ def handleOnline(srvObj,
 
     # Start threads + inform threads that they are allowed to execute.
     srvObj.setThreadRunPermission(1)
-    ngamsJanitorThread.startJanitorThread(srvObj)
+    srvObj.startJanitorThread()
     ngamsDataCheckThread.startDataCheckThread(srvObj)
     ngamsSubscriptionThread.startSubscriptionThread(srvObj)
     ngamsUserServiceThread.startUserServiceThread(srvObj)
@@ -399,7 +399,8 @@ def handleOffline(srvObj,
     """
     # Stop/delete Janitor Thread + Data Check Thread + inform other
     # possible threads to stop execution (if running).
-    if (stopJanitorThr): ngamsJanitorThread.stopJanitorThread(srvObj)
+    if (stopJanitorThr):
+        srvObj.stopJanitorThread()
     ngamsDataCheckThread.stopDataCheckThread(srvObj)
     ngamsSubscriptionThread.stopSubscriptionThread(srvObj)
     ngamsUserServiceThread.stopUserServiceThread(srvObj)

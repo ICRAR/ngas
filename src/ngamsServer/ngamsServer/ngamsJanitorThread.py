@@ -35,8 +35,7 @@ suspended NGAS hosts, suspending itself.
 # TODO: Give overhaul to handling of the DB Snapshot: Use ngamsDbm instead
 #       of bsddb + simplify the algorithm.
 
-import commands
-import os, time, thread, threading, glob, cPickle
+import os, time, glob, cPickle
 import types
 import shutil
 
@@ -58,79 +57,28 @@ from pccUt import PccUtTime
 
 try:
     import bsddb3 as bsddb
-except Exception, e:
-    try:
-        import bsddb
-    except:
-        raise e
+except ImportError:
+    import bsddb
 
+class StopJanitorThreadException(Exception):
+    pass
 
-
-def startJanitorThread(srvObj):
+def checkStopJanitorThread(stopEvt):
     """
-    Start the Janitor Thread.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
+    Checks if the Janitor Thread should be stopped, raising an exception if needed
     """
-    T = TRACE()
+    if stopEvt.isSet():
+        info(2,"Exiting Janitor Thread")
+        raise StopJanitorThreadException()
 
-    info(3,"Starting Janitor Thread ...")
-    # The srvObj._janitorThreadRunSync threading.Event() object is
-    # used to synchronize the stopping of the Janitor Thread from
-    # the Python Main Thread. The Janitor Thread will run as long
-    # as the event is set (true), if it is set to false, the thread
-    # will stop. Before exiting, the thread will set the event back
-    # to true to acknowledge that it received the instruction to
-    # stop execution. The main thread will then set it to false.
-    srvObj._janitorThreadRunSync.set()
-    args = (srvObj, None)
-    srvObj._janitorThread = threading.Thread(None, janitorThread,
-                                             NGAMS_JANITOR_THR, args)
-    srvObj._janitorThread.setDaemon(0)
-    srvObj._janitorThread.start()
-    srvObj.setJanitorThreadRunning(1)
-    info(3,"Janitor Thread started")
-
-
-def stopJanitorThread(srvObj):
+def suspend(stopEvt, t):
     """
-    Stop the Janitor Thread.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
+    Sleeps for at maximum ``t`` seconds, or until the Janitor Thread is signaled
+    to stop
     """
-    T = TRACE()
-
-    if (not srvObj.getJanitorThreadRunning()): return
-    info(3,"Stopping Janitor Thread ...")
-    srvObj._janitorThreadRunSync.clear()
-    srvObj._janitorThreadRunSync.wait(10)
-    srvObj._janitorThreadRunSync.clear()
-    srvObj._janitorThread = None
-    srvObj.resetJanitorThreadRunCount()
-    info(3,"Janitor Thread stopped")
-
-
-def checkStopJanitorThread(srvObj):
-    """
-    Used to check if the Janitor Thread should be stopped and in case
-    yes, to stop it.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
-    """
-    T = TRACE(5)
-
-    if (not srvObj._janitorThreadRunSync.isSet()):
-        info(2,"Stopping Janitor Thread")
-        srvObj._janitorThreadRunSync.set()
-        srvObj.setJanitorThreadRunning(0)
-        raise Exception, "_STOP_JANITOR_THREAD_"
-
+    if stopEvt.wait(t):
+        info(2,"Exiting Janitor Thread")
+        raise StopJanitorThreadException()
 
 def checkCleanDirs(startDir,
                    dirExp,
@@ -490,7 +438,7 @@ def _delFileEntry(hostId,
             pass
 
 
-def checkUpdateDbSnapShots(srvObj):
+def checkUpdateDbSnapShots(srvObj, stopEvt):
     """
     Check if a DB Snapshot exists for the DB connected. If not, this is
     created according to the contents of the NGAS DB (if possible). During
@@ -540,6 +488,9 @@ def checkUpdateDbSnapShots(srvObj):
 
     # Carry out the check.
     for mtPt, diskId in diskIdMtPtList:
+
+        checkStopJanitorThread(stopEvt)
+
         info(2,"Check/create/update DB Snapshot for disk with " +\
              "mount point: " + mtPt)
 
@@ -585,7 +536,7 @@ def checkUpdateDbSnapShots(srvObj):
                     encFileInfoDic = _encFileInfo(srvObj.getDb(), tmpSnapshotDbm,
                                                   fileInfo)
                     _addInDbm(tmpSnapshotDbm, fileKey, encFileInfoDic)
-                    checkStopJanitorThread(srvObj)
+                    checkStopJanitorThread(stopEvt)
                     time.sleep(0.005)
                 tmpSnapshotDbm.sync()
             finally:
@@ -677,7 +628,7 @@ def checkUpdateDbSnapShots(srvObj):
                 count += 1
                 if ((count % 100) == 0):
                     if (_updateSnapshot(srvObj.getCfg())): snapshotDbm.sync()
-                    checkStopJanitorThread(srvObj)
+                    checkStopJanitorThread(stopEvt)
                     tmpSnapshotDbm.sync()
                     time.sleep(0.010)
                 else:
@@ -776,7 +727,7 @@ def checkUpdateDbSnapShots(srvObj):
                 count += 1
                 if ((count % 100) == 0):
                     if (_updateSnapshot(srvObj.getCfg())): snapshotDbm.sync()
-                    checkStopJanitorThread(srvObj)
+                    checkStopJanitorThread(stopEvt)
                     time.sleep(0.010)
                 else:
                     time.sleep(0.002)
@@ -851,7 +802,8 @@ def checkUpdateDbSnapShots(srvObj):
 
 def checkDbChangeCache(srvObj,
                        diskId,
-                       diskMtPt):
+                       diskMtPt,
+                       stopEvt):
     """
     The function merges the information in the DB Change Snapshot Documents
     in the DB cache area on the disk concerned, into the Main DB Snapshot
@@ -895,7 +847,7 @@ def checkDbChangeCache(srvObj,
         noOfCacheFiles = len(tmpCacheFiles)
         timer = PccUtTime.Timer()
         for cacheFile in tmpCacheFiles:
-            checkStopJanitorThread(srvObj)
+            checkStopJanitorThread(stopEvt)
             if os.lstat(cacheFile)[6] == 0:
                 os.remove(cacheFile)    # sometimes there are pickle files with 0 size.
                                         # we don't want to stop on them
@@ -946,7 +898,7 @@ def checkDbChangeCache(srvObj,
             count += 1
             if (count == 100):
                 snapshotDbm.sync()
-                checkStopJanitorThread(srvObj)
+                checkStopJanitorThread(stopEvt)
                 count = 0
 
         # Clean up, delete the temporary File Remove Status Document.
@@ -970,6 +922,7 @@ def checkDbChangeCache(srvObj,
 
 
 def updateDbSnapShots(srvObj,
+                      stopEvt,
                       diskInfo = None):
     """
     Check/update the DB Snapshot Documents for all disks.
@@ -995,7 +948,7 @@ def updateDbSnapShots(srvObj,
             notice("No mount point returned for Disk ID: %s" % diskId)
             return
         try:
-            checkDbChangeCache(srvObj, diskId, mtPt)
+            checkDbChangeCache(srvObj, diskId, mtPt, stopEvt)
         except Exception, e:
             msg = "Error checking DB Change Cache for " +\
                   "Disk ID:mountpoint: %s:%s. Error: %s"
@@ -1013,7 +966,7 @@ def updateDbSnapShots(srvObj,
             info(4,"Check/Update DB Snapshot Document for disk with " +\
                  "mount point: " + mtPt)
             try:
-                checkDbChangeCache(srvObj, diskId, mtPt)
+                checkDbChangeCache(srvObj, diskId, mtPt, stopEvt)
             except Exception, e:
                 msg = "Error checking DB Change Cache for " +\
                       "Disk ID:mountpoint: %s:%s. Error: %s"
@@ -1022,8 +975,7 @@ def updateDbSnapShots(srvObj,
                 raise Exception, msg
 
 
-def janitorThread(srvObj,
-                  dummy):
+def janitorThread(srvObj, stopEvt):
     """
     The Janitor Thread runs periodically when the NG/AMS Server is
     Online to 'clean up' the NG/AMS environment. Task performed are
@@ -1048,27 +1000,28 @@ def janitorThread(srvObj,
 
     # => Update NGAS DB + DB Snapshot Document for the DB connected.
     try:
-        checkUpdateDbSnapShots(srvObj)
+        checkUpdateDbSnapShots(srvObj, stopEvt)
+    except StopJanitorThreadException:
+        return
     except Exception, e:
-        if (str(e).find("_STOP_JANITOR_THREAD_") != -1): thread.exit()
         errMsg = "Problem updating DB Snapshot files: " + str(e)
         warning(errMsg)
         import traceback
         info(3, traceback.format_exc())
 
     suspendTime = isoTime2Secs(srvObj.getCfg().getJanitorSuspensionTime())
-    while (1):
+    while True:
         # Incapsulate this whole block to avoid that the thread dies in
         # case a problem occurs, like e.g. a problem with the DB connection.
         try:
-            checkStopJanitorThread(srvObj)
+            checkStopJanitorThread(stopEvt)
             info(4,"Janitor Thread running ...")
 
             ##################################################################
             # => Check if there are any Temporary DB Snapshot Files to handle.
             ##################################################################
             try:
-                updateDbSnapShots(srvObj)
+                updateDbSnapShots(srvObj, stopEvt)
             except Exception, e:
                 error("Error encountered updating DB Snapshots: " + str(e))
 
@@ -1107,7 +1060,7 @@ def janitorThread(srvObj,
                 reqIds = srvObj.getRequestIds()
                 for reqId in reqIds:
                     reqPropsObj = srvObj.getRequest(reqId)
-                    checkStopJanitorThread(srvObj)
+                    checkStopJanitorThread(stopEvt)
 
                     # Remove a Request Properties Object from the queue if
                     #
@@ -1131,6 +1084,8 @@ def janitorThread(srvObj,
                             srvObj.delRequest(reqId)
                             continue
                     time.sleep(0.020)
+            except StopJanitorThreadException:
+                return
             except Exception, e:
                 error("Exception encountered: %s" % str(e))
             info(4,"Request DB checked/cleaned up")
@@ -1317,11 +1272,9 @@ def janitorThread(srvObj,
             srvObj.incJanitorThreadRunCount()
 
             # Suspend the thread for the time indicated.
-            info(4,"Janitor Thread executed - suspending for " +\
-                 str(suspendTime) + "s ...")
+            info(4,"Janitor Thread executed - suspending for %d [s] ..." % (suspendTime,))
             startTime = time.time()
             while ((time.time() - startTime) < suspendTime):
-                checkStopJanitorThread(srvObj)
                 # Check if we should update the DB Snapshot.
                 if (dbChangeSync.isSet()):
                     time.sleep(0.5)
@@ -1331,7 +1284,7 @@ def janitorThread(srvObj,
                         diskInfo = None
                         if (tmpList):
                             for diskInfo in tmpList:
-                                updateDbSnapShots(srvObj, diskInfo)
+                                updateDbSnapShots(srvObj, stopEvt, diskInfo)
                     except Exception, e:
                         if (diskInfo):
                             msg = "Error encountered handling DB Snapshot " +\
@@ -1342,10 +1295,11 @@ def janitorThread(srvObj,
                                   "Exception: %s" % str(e)
                         error(msg)
                         time.sleep(5)
-                time.sleep(1.0)
+                suspend(stopEvt, 1.0)
 
+        except StopJanitorThreadException:
+            return
         except Exception, e:
-            if (str(e).find("_STOP_JANITOR_THREAD_") != -1): thread.exit()
             errMsg = "Error occurred during execution of the Janitor " +\
                      "Thread. Exception: " + str(e)
             alert(errMsg)

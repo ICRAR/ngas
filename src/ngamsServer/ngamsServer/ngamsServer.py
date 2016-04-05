@@ -33,7 +33,7 @@ This module contains the class ngamsServer that provides the
 services for the NG/AMS Server.
 """
 
-import os, sys, re, threading, time, commands, pkg_resources
+import os, sys, re, threading, time, pkg_resources
 import traceback
 import SocketServer, BaseHTTPServer, socket, signal
 
@@ -52,7 +52,7 @@ from ngamsLib.ngamsCore import \
 from ngamsLib import ngamsHighLevelLib, ngamsLib
 from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
-import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
+import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils, ngamsJanitorThread
 
 
 class ngamsSimpleRequest:
@@ -252,10 +252,9 @@ class ngamsServer:
         self._threadRunPermission     = 0
 
         # Handling of the Janitor Thread.
-        self._janitorThread           = None
-        self._janitorThreadRunning    = 0
-        self._janitorThreadRunSync    = threading.Event()
-        self._janitorThreadRunCount   = 0
+        self._janitorThread         = None
+        self._janitorThreadStopEvt  = threading.Event()
+        self._janitorThreadRunCount = 0
 
         # Handling of the Data Check Thread.
         self._dataCheckThread         = None
@@ -729,28 +728,33 @@ class ngamsServer:
         return self._threadRunPermission
 
 
-    def setJanitorThreadRunning(self,
-                                running):
+    def startJanitorThread(self):
         """
-        Set the Janitor Thread Running Flag to indicate if the Janitor
-        Thread is running or not.
-
-        running:     Janitor Thread Running Flag (integer/0|1).
-
-        Returns:     Reference to object itself.
+        Starts the Janitor Thread as a non-daemon thread. The thread receives
+        an event that, when set, indicates that no further work should be done
+        and that the thread should exit.
         """
-        self._janitorThreadRunning = running
-        return self
+        info(3,"Starting Janitor Thread ...")
+        self._janitorThread = threading.Thread(target=ngamsJanitorThread.janitorThread,
+                                               name=ngamsJanitorThread.NGAMS_JANITOR_THR,
+                                               args=(self,self._janitorThreadStopEvt))
+        self._janitorThread.daemon = False
+        self._janitorThread.start()
+        info(3,"Janitor Thread started")
 
 
-    def getJanitorThreadRunning(self):
+    def stopJanitorThread(self):
         """
-        Get the Janitor Thread Running Flag to indicate if the Janitor
-        Thread is running or not.
-
-        Returns:    Janitor Thread Running Flag (integer/0|1).
+        Stops the Janitor Thread.
         """
-        return self._janitorThreadRunning
+        if self._janitorThread is None:
+            return
+        info(3,"Stopping Janitor Thread ...")
+        self._janitorThreadStopEvt.set()
+        self._janitorThread.join(10)
+        self._janitorThread = None
+        self._janitorThreadRunCount = 0
+        info(3,"Janitor Thread stopped")
 
 
     def incJanitorThreadRunCount(self):
@@ -760,16 +764,6 @@ class ngamsServer:
         Returns:     Reference to object itself.
         """
         self._janitorThreadRunCount += 1
-        return self
-
-
-    def resetJanitorThreadRunCount(self):
-        """
-        Reset the Janitor Thread run count.
-
-        Returns:     Reference to object itself.
-        """
-        self._janitorThreadRunCount = 0
         return self
 
 

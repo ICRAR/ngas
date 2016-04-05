@@ -1096,7 +1096,7 @@ def dataCheckThread(srvObj,
     dataCheckThreadLoop = 1
     while (dataCheckThreadLoop):
 
-        # Incapsulate this whole block to avoid that the thread dies in
+        # Encapsulate this whole block to avoid that the thread dies in
         # case a problem occurs, like e.g. a problem with the DB connection.
         try:
             # Wait until we're sure that the Janitor Thread has executed
