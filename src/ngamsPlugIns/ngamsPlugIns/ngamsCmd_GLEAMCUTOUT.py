@@ -67,7 +67,7 @@ fits_copy_exec = "/home/ngas/software/fitscopy"
 """
 #-grid skyformat degrees
 cmd_ds9 = '{0}/ds9 -grid yes -grid numerics fontsize 14 -grid numerics fontweight bold -grid skyformat degrees -geometry 1250x1250  {1} -cmap Heat -zoom to fit -scale zscale -saveimage "{2}" -exit'
-qs = "SELECT a.mount_point || '/' || b.file_name AS file_full_path, a.host_id FROM ngas_disks a, ngas_files b WHERE a.disk_id = b.disk_id AND b.file_id = '%s' ORDER BY b.file_version DESC"
+qs = "SELECT a.mount_point || '/' || b.file_name AS file_full_path, a.host_id FROM ngas_disks a, ngas_files b WHERE a.disk_id = b.disk_id AND b.file_id = {0} ORDER BY b.file_version DESC"
 
 cmd_fits2jpg = "/mnt/gleam/software/bin/fits2jpeg -fits %s -jpeg %s -nonLinear" # % (fitsfname, jpegfname)
 psf_seq = ['BMAJ', 'BMIN', 'BPA']
@@ -333,10 +333,8 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if (reqPropsObj.hasHttpPar('fits_format') and '1' == reqPropsObj.getHttpPar("fits_format")):
         fits_format = True
     fileId = reqPropsObj.getHttpPar("file_id")
-    query = qs % fileId
-    info(3, "Executing SQL query for GLEAM CUTOUT: %s" % str(query))
-    res = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
-    reList = res[0]
+    info(3, "Executing SQL query for GLEAM CUTOUT: %s" % str(qs))
+    reList = srvObj.getDb().query2(qs, args=(fileId,))
     if (len(reList) < 1):
         srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
                      "Cannot find image file: '%s'" % fileId)
@@ -397,10 +395,8 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             cut_fitsnm = cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, cmd_cutout, use_montage=use_montage_cut, projection=projection)
             if (no_psf == False and fits_format):
                 psf_fileId = fileId.split('.fits')[0] + '_psf.fits'
-                query = qs % psf_fileId
-                info(3, "Executing SQL query for GLEAM PSF CUTOUT: %s" % str(query))
-                pres = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
-                psfList = pres[0]
+                info(3, "Executing SQL query for GLEAM PSF CUTOUT: %s" % str(qs))
+                psfList = srvObj.getDb().query2(qs, args=(psf_fileId,))
                 if (len(psfList) > 0):
                     psf_path = psfList[0][0]
 

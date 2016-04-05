@@ -48,16 +48,15 @@ simplified in a few ways:
 import binascii
 import os
 import random
-import socket
 import time
 from urlparse import urlparse, parse_qs
 
 from ngamsLib.ngamsCore import TRACE, genLog, error, checkCreatePath, \
-    info, warning, NGAMS_HTTP_HDR_CHECKSUM, NGAMS_ONLINE_STATE, \
+    info, NGAMS_HTTP_HDR_CHECKSUM, NGAMS_ONLINE_STATE, \
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_STAGING_DIR, genUniqueId, \
     getMaxLogLevel, mvFile, getFileCreationTime, NGAMS_FILE_STATUS_OK, \
     getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, loadPlugInEntryPoint
-from ngamsLib import ngamsDbCore, ngamsDiskInfo, ngamsHighLevelLib, ngamsFileInfo, ngamsLib
+from ngamsLib import ngamsDiskInfo, ngamsHighLevelLib, ngamsFileInfo
 from ngamsServer import ngamsCacheControlThread
 from pccUt import PccUtTime
 
@@ -74,38 +73,13 @@ def getTargetVolume(srvObj):
 
     Returns:        Target volume object or None (ngamsDiskInfo | None).
     """
-    T = TRACE()
-
-    sqlQuery = GET_AVAIL_VOLS_QUERY % (ngamsDbCore.getNgasDisksCols(),
-                                       srvObj.getHostId())
-    res = srvObj.getDb().query(sqlQuery, ignoreEmptyRes=0)
-    if (res == [[]]):
+    res = srvObj.getDb().getAvailableVolumes(srvObj.getHostId())
+    if not res:
         return None
-    else:
-        # Shuffle the results.
-        random.shuffle(res[0])
-        return ngamsDiskInfo.ngamsDiskInfo().unpackSqlResult(res[0][0])
+    # Shuffle the results.
+    random.shuffle(res)
+    return ngamsDiskInfo.ngamsDiskInfo().unpackSqlResult(res[0])
 
-
-def updateDiskInfo(srvObj,
-                   resDapi):
-    """
-    Update the row for the volume hosting the new file.
-
-    srvObj:    Reference to NG/AMS server class object (ngamsServer).
-
-    resDapi:   Result returned from the DAPI (ngamsDapiStatus).
-
-    Returns:   Void.
-    """
-    T = TRACE()
-
-    sqlQuery = "UPDATE ngas_disks SET " +\
-               "number_of_files=(number_of_files + 1), " +\
-               "bytes_stored=(bytes_stored + %d) WHERE " +\
-               "disk_id='%s'"
-    sqlQuery = sqlQuery % (resDapi.getFileSize(), resDapi.getDiskId())
-    srvObj.getDb().query(sqlQuery, ignoreEmptyRes=0)
 
 def saveInStagingFile(ngamsCfgObj,
                       reqPropsObj,
@@ -418,7 +392,7 @@ def handleCmd(srvObj,
 
     # Update disk info in NGAS Disks.
     info(3, "Update disk info in NGAS Disks.")
-    updateDiskInfo(srvObj, resDapi)
+    srvObj.getDb().updateDiskInfo(resDapi.getFileSize(), resDapi.getDiskId())
 
     # Check if the disk is completed.
     # We use an approximate extimate for the remaning disk space to avoid
@@ -439,8 +413,8 @@ def handleCmd(srvObj,
     srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                        NGAMS_SUCCESS, msg, targDiskInfo)
 
-     # Trigger Subscription Thread. This is a special version for MWA, in which we simply swapped MIRRARCHIVE and QARCHIVE
-     # chen.wu@icrar.org
+    # Trigger Subscription Thread. This is a special version for MWA, in which we simply swapped MIRRARCHIVE and QARCHIVE
+    # chen.wu@icrar.org
     msg = "triggering SubscriptionThread for file %s" % resDapi.getFileId()
     info(3, msg)
     srvObj.addSubscriptionInfo([(resDapi.getFileId(),

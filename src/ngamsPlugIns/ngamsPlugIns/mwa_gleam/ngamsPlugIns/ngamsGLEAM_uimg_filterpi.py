@@ -33,19 +33,9 @@ import re
 from ngamsLib.ngamsCore import warning
 
 
-QUERY_MAX_VER = "SELECT MAX(file_version) FROM ngas_files WHERE file_id = '%s'"
-
 done_list = ['2:1061472160_072-080MHz_XX_r-1.0_v1.0.fits',
 '2:1061472160_072-080MHz_XX_r0.0_v1.0.fits',
 '2:1061472160_072-080MHz_YY_r-1.0_v1.0.fits']
-
-def isLatestVer(srvObj, fileId, fileVersion):
-    res = srvObj.getDb().query(QUERY_MAX_VER % fileId)
-    if (res == [[]]):
-        return True
-    else:
-        max_ver = int(res[0][0][0])
-        return (fileVersion == max_ver)
 
 def isGLEAMImage(fileId):
     """
@@ -98,7 +88,7 @@ def ngamsGLEAM_uimg_filterpi(srvObj,
         return 0
 
     """
-    if (not (isLatestVer(srvObj, fileId, fileVersion))):
+    if not srvObj.getDb().isLastVersion(fileId, fileVersion):
         return 0
     """
     return 1

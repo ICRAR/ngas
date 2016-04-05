@@ -106,10 +106,10 @@ def ngamsGLEAM_Rename_JobPI(srvObj,
     partial_path = partial_path[0:partial_path.find(fileId)] # e.g. afa/2014-03-03/1/
 
     # then, update table
-    sqlquery = "UPDATE ngas_files SET file_id = '%s', file_name = '%s%s'" % (new_fileId, partial_path, new_fileId) +\
-               " WHERE file_id = '%s' AND file_version = %d AND disk_id = '%s'" % (fileId, fileVersion, diskId)
+    sqlquery = "UPDATE ngas_files SET file_id = {0}, file_name = {1}" % (new_fileId, partial_path, new_fileId) +\
+               " WHERE file_id = {2} AND file_version = {3} AND disk_id = {4}" % (fileId, fileVersion, diskId)
     info(3, sqlquery)
-    srvObj.getDb().query(sqlquery)
+    srvObj.getDb().query2(sqlquery, args=(new_fileId, "%s%s" % (partial_path, new_fileId), fileId, fileVersion, diskId))
     return (0, 'Done')
 
 

@@ -38,9 +38,9 @@ def destroyContainer(srvObj, containerId, recursive):
     @param recursive: bool
     """
     if recursive:
-        sql = "SELECT container_id FROM ngas_containers WHERE parent_container_id = '" + containerId + "'"
-        res = srvObj.getDb().query(sql)
-        for r in res[0]:
+        # TODO: move inside the ngamsDbNgasContainer class
+        sql = "SELECT container_id FROM ngas_containers WHERE parent_container_id={0}"
+        for r in srvObj.getDb().query2(sql, args=(containerId,)):
             destroyContainer(srvObj, r[0], recursive)
 
     # If we are recursive, we already ensure that

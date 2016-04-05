@@ -42,27 +42,6 @@ from ngamsServer import ngamsArchiveUtils, ngamsCacheControlThread
 from pccUt import PccUtTime
 
 
-def updateDiskInfo(srvObj,
-                   resDapi):
-    """
-    Update the row for the volume hosting the new file.
-
-    srvObj:    Reference to NG/AMS server class object (ngamsServer).
-
-    resDapi:   Result returned from the DAPI (ngamsDapiStatus).
-
-    Returns:   Void.
-    """
-    T = TRACE()
-
-    sqlQuery = "UPDATE ngas_disks SET " +\
-               "number_of_files=(number_of_files + 1), " +\
-               "bytes_stored=(bytes_stored + %d) WHERE " +\
-               "disk_id='%s'"
-    sqlQuery = sqlQuery % (resDapi.getFileSize(), resDapi.getDiskId())
-    srvObj.getDb().query(sqlQuery, ignoreEmptyRes=0)
-    return NGAMS_SUCCESS
-
 def archiveFromFile(srvObj,
                     filename,
                     noReplication = 0,
@@ -272,7 +251,7 @@ def handleCmd(srvObj,
 
     # Update disk info in NGAS Disks.
     info(3, "Update disk info in NGAS Disks.")
-    stat = updateDiskInfo(srvObj, resDapi)
+    srvObj.getDb().updateDiskInfo(resDapi.getFileSize(), resDapi.getDiskId())
 
     # Check if the disk is completed.
     # We use an approximate estimate for the remaning disk space to avoid

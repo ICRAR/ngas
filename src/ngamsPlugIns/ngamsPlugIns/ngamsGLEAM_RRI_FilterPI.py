@@ -38,8 +38,6 @@ from ngamsPClient import ngamsPClient
 
 file_ext = ['.fits', '.png']
 
-QUERY_MAX_VER = "SELECT MAX(file_version) FROM ngas_files WHERE file_id = '%s'"
-
 def _shouldSend(fileId):
     try:
         tokens = fileId.split('_')
@@ -61,14 +59,6 @@ def _shouldSend(fileId):
         errMsg = '_shouldRetain in rri purge thread failed: Exception %s' % str(e2)
         error(errMsg)
         return True
-
-def _isLatestVer(srvObj, fileId, fileVersion):
-    res = srvObj.getDb().query(QUERY_MAX_VER % fileId)
-    if (res == [[]]):
-        return True
-    else:
-        max_ver = int(res[0][0][0])
-        return (fileVersion == max_ver)
 
 def ngamsGLEAM_RRI_FilterPI(srvObj,
                           plugInPars,
@@ -98,7 +88,7 @@ def ngamsGLEAM_RRI_FilterPI(srvObj,
     fn, fext = os.path.splitext(fileId)
     if (fext.lower() in file_ext and # only send FITS files, no measurement sets
         _shouldSend(fileId) and # # only send files satisfying certain string pattern criteria
-        _isLatestVer(srvObj, fileId, fileVersion)): # only send the (known) latest version
+        srvObj.getDb().isLastVersion(fileId, fileVersion) ): # only send the (known) latest version
         parDic = []
         pars = ""
         if ((plugInPars != "") and (plugInPars != None)):

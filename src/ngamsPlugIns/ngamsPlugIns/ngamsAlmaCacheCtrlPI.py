@@ -59,6 +59,6 @@ def ngamsAlmaCacheCtrlPI(srvObj,cacheEntryObj):
     for dblink in dblinks_list:
         query = "select count(*) from ngas_files@" + dblink
         info(3, "Executing SQL query: %s" % query)
-        srvObj.getDb().query(query, maxRetries=1, retryWait=0)
+        srvObj.getDb().query2(query)
 
 # EOF

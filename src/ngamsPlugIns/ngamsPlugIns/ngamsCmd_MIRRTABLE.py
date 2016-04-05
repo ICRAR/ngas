@@ -239,19 +239,19 @@ def populate_mirroring_bookkeeping_table(diff_ngas_files_query,
     query += "'LOCKED',"
     # target_host: We can temporary use the name of the target cluster
     #              rather than the target host to lock the table entry
-    query += "'" + cluster_name + "', "
+    query += "{0}, "
     # archive_command: Direct from diff_ngas_files table
-    query += "'" + archive_command + "', "
+    query += "{1}, "
     # source_host: We concatenate host_id (without port)
     query += "substr(diff.host_id,0,instr(diff.host_id || ':',':')-1) || '.' || "
     #              With domain name and port number
     query += "diff.domain || ':' || diff.srv_port, "
     # retrieve_command: Direct from diff_ngas_files table
-    query += "'" + retrieve_command + "'" + " from " + diff_ngas_files_query + " diff"
+    query += "{2} from " + diff_ngas_files_query + " diff"
 
     # Execute query
     info(4, "Executing SQL query to generate new entries in ngas_mirroring_bookkeeping table: %s" % query)
-    res = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
+    srvObj.getDb().query2(query, args=(cluster_name, archive_command, retrieve_command))
 
     # Return void
     return
@@ -275,17 +275,16 @@ def get_cluster_active_nodes(db_link,
     # Construct query
     query = "select substr(host_id,0,instr(host_id || ':',':')-1) || '.' || domain || ':' || srv_port "
     query += "from ngas_hosts" + db_link + " where "
-    query += "cluster_name='" + cluster_name + "' and srv_state='ONLINE' and srv_archive=1"
+    query += "cluster_name={0} and srv_state='ONLINE' and srv_archive=1"
 
     # Execute query
     info(4, "Executing SQL query to get active nodes in target cluster: %s" % query)
-    active_nodes_object = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
+    active_nodes_object = srvObj.getDb().query2(query, args=(cluster_name,))
 
     # Re-dimension query results array
-    active_nodes_object = active_nodes_object[0]
     active_nodes = []
     for node in active_nodes_object:
-       active_nodes.append(node[0])
+        active_nodes.append(node[0])
 
     # Log info
     info(3, "Active nodes found in cluster %s: %s" % (cluster_name+db_link,str(active_nodes)))
@@ -310,23 +309,22 @@ def remove_empty_source_nodes(source_active_nodes,
     """
 
     # Construct query
-    query = "select source_host from ngas_mirroring_bookkeeping where target_cluster='" + cluster_name + "' "
+    query = "select source_host from ngas_mirroring_bookkeeping where target_cluster={0} "
     query += " and status='LOCKED' group by source_host"
 
     # Execute query
-    info(4, "Executing SQL query to get source nodes: %s" % query )
-    source_nodes_object = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
+    info(4, "Executing SQL query to get source nodes: %s" % query)
+    source_nodes_object = srvObj.getDb().query2(query, args=(cluster_name,))
 
     # Re-dimension query results array
-    source_nodes_object = source_nodes_object[0]
     source_nodes = []
     for node in source_nodes_object:
-       source_nodes.append(node[0])
+        source_nodes.append(node[0])
 
     # Compute the intersection of both lists
     working_nodes = []
     for node in source_active_nodes:
-       if (source_nodes.count(node)>0): working_nodes.append(node)
+        if (source_nodes.count(node)>0): working_nodes.append(node)
 
     # Return working nodes list
     return working_nodes
@@ -372,19 +370,19 @@ def assign_mirroring_bookkeeping_entries(target_cluster_active_nodes,
         # Target nodes loop
         for target_node in target_cluster_active_nodes:
             # Construct query, for every update the nodes left are n_nodes-i
-            query ="update ngas_mirroring_bookkeeping set status='READY',target_host='" + target_node + "' where rowid in "
+            query ="update ngas_mirroring_bookkeeping set status='READY',target_host={0} where rowid in "
             query +="(select rowid from ngas_mirroring_bookkeeping where (rowid,0) in "
-            query +="(select rowid,mod(rownum," + str(n_target_nodes-i) +") from "
-            query +="(select * from ngas_mirroring_bookkeeping where target_cluster='" + cluster_name + "' "
+            query +="(select rowid,mod(rownum,{1}) from "
+            query +="(select * from ngas_mirroring_bookkeeping where target_cluster={2} "
             query +="and target_host is null order by file_size)))"
             # Perform query
             info(4, "SQL to assing entries from source node %s to target node %s: %s" % (source_node,target_node,query))
-            srvObj.getDb().query(query, maxRetries=1, retryWait=0)
+            srvObj.getDb().query2(query, args=(target_node, (n_target_nodes-i), cluster_name))
             i += 1
             # Log info
             query = "select count(*),sum(file_size/(1024*1024)) from ngas_mirroring_bookkeeping where status='READY' "
-            query += "and source_host='" + source_node + "' and target_host='" + target_node + "' "
-            res =  (srvObj.getDb().query(query, maxRetries=1, retryWait=0))[0]
+            query += "and source_host={0} and target_host={1}"
+            res =  srvObj.getDb().query2(query, args=(source_node, target_node))
             n_files = str(res[0][0])
             total_load = str(res[0][1])
             info(3, "Mirroring tasks from source host %s assigned to target host %s: %s tasks, %s Mb" % (source_node,target_node,n_files,total_load))

@@ -38,16 +38,6 @@ from ngamsLib.ngamsCore import warning
 import pccFits.PccSimpleFitsReader as fitsapi
 
 
-QUERY_MAX_VER = "SELECT MAX(file_version) FROM ngas_files WHERE file_id = '%s'"
-
-def _isLatestVer(srvObj, fileId, fileVersion):
-    res = srvObj.getDb().query(QUERY_MAX_VER % fileId)
-    if (res == [[]]):
-        return True
-    else:
-        max_ver = int(res[0][0][0])
-        return (fileVersion == max_ver)
-
 def isGLEAMImage(fileId):
     return (fileId.lower().endswith('.fits') and (len(fileId.split('_')) == 5) and (fileId.find('mosaic') == -1))
 
@@ -97,10 +87,9 @@ def ngamsGLEAM_Phase_FilterPI(srvObj,
     if (not isGLEAMImage(fileId)):
         return 0
 
-    if (not _isLatestVer(srvObj, fileId, fileVersion)):
+    if (not srvObj.getDb().isLastVersion(fileId, fileVersion)):
         return 0
 
-    parDic = []
     pars = ""
     if ((plugInPars != "") and (plugInPars != None)):
         pars = plugInPars

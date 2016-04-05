@@ -64,10 +64,10 @@ def fileOnHost(srvObj, fileId, hostId):
     hostId:    string without port number, e.g. eor-01
     Return boolean
     """
-    query = "SELECT COUNT(a.file_id) FROM ngas_files a, ngas_disks b WHERE a.file_id = '%s' AND b.host_id = '%s:7777' AND a.disk_id = b.disk_id" % (fileId, hostId)
+    query = "SELECT COUNT(a.file_id) FROM ngas_files a, ngas_disks b WHERE a.file_id = {0} AND b.host_id = {1} AND a.disk_id = b.disk_id" 
     info(3, "Executing SQL query for checking file on target host: %s" % query)
-    res = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
-    c = int(res[0][0][0])
+    res = srvObj.getDb().query2(query, args=(fileId, '%s:7777' % (hostId,)))
+    c = int(res[0][0])
     return (c > 0)
 
 def getCRCFromFile(filename):

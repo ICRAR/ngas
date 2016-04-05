@@ -33,7 +33,7 @@ Update GLEAM image values (due to wrong scales used)
 
 import os, commands, binascii
 
-from ngamsLib.ngamsCore import getIpAddress, info, error
+from ngamsLib.ngamsCore import info, error
 
 
 host_name = os.uname()[1].split('.')[0]
@@ -45,8 +45,7 @@ ngas_path = {"store02":"/home/ngas/ngas_gleam",
 py_exec = "{0}/src/ngamsPlugIns/mwa_gleam/update_img_val.py".format(ngas_path[host_name])
 tmp_path = "/tmp"
 
-archive_host = getIpAddress()
-sql_crc = "UPDATE ngas_files SET checksum = '{0}' WHERE file_id = '{1}' AND file_version = {2} AND disk_id = '{3}'"
+sql_crc = "UPDATE ngas_files SET checksum = {0} WHERE file_id = {1} AND file_version = {2} AND disk_id = {3}"
 
 def getFileCRC(filename):
     block = "-"
@@ -102,9 +101,8 @@ def ngamsGLEAM_uimg_jobpi(srvObj,
     try:
         info(3, 'IMUPDATE - Executing: Getting crc from {0}'.format(outfilename))
         crc = getFileCRC(outfilename)
-        query = sql_crc.format(crc, fileId, fileVersion, diskId)
-        info(3, "IMUPDATE - Executing: " + query)
-        srvObj.getDb().query(query, maxRetries=1, retryWait=0)
+        info(3, "IMUPDATE - Executing: " + sql_crc)
+        srvObj.getDb().query2(sql_crc, args=(crc, fileId, fileVersion, diskId))
         cmd_cp = "cp {0} {1}".format(outfilename, filename)
         info(3, "IMUPDATE - Executing: " + cmd_cp)
         execCmd(cmd_cp)

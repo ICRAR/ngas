@@ -704,4 +704,11 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
         return fileSize
 
+    def isLastVersion(self, fileId, version):
+        sql = "SELECT MAX(file_version) FROM ngas_files WHERE file_id = {0}"
+        res = self.query2(sql, args=(fileId,))
+        if not res:
+            return True
+        return version == int(res[0][0])
+
 # EOF

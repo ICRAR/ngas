@@ -368,7 +368,7 @@ def handleCmd(srvObj,
 
         # Update disk info in NGAS Disks.
         info(3, "Update disk info in NGAS Disks.")
-        ngamsCmd_QARCHIVE.updateDiskInfo(srvObj, resDapi)
+        srvObj.getDb().updateDiskInfo(resDapi.getFileSize(), resDapi.getDiskId())
 
         resDapiList.append(resDapi)
 

@@ -38,16 +38,6 @@ from ngamsPClient import ngamsPClient
 
 file_ext = ['.fits', '.png']
 
-QUERY_MAX_VER = "SELECT MAX(file_version) FROM ngas_files WHERE file_id = '%s'"
-
-def _isLatestVer(srvObj, fileId, fileVersion):
-    res = srvObj.getDb().query(QUERY_MAX_VER % fileId)
-    if (res == [[]]):
-        return True
-    else:
-        max_ver = int(res[0][0][0])
-        return (fileVersion == max_ver)
-
 def ngamsGLEAM_VUW_FilterPI(srvObj,
                           plugInPars,
                           filename,
@@ -74,7 +64,7 @@ def ngamsGLEAM_VUW_FilterPI(srvObj,
     """
     match = 0
     fn, fext = os.path.splitext(fileId)
-    if (fext.lower() in file_ext and _isLatestVer(srvObj, fileId, fileVersion)): # only send FITS files, no measurement sets, only send the (known) latest version
+    if (fext.lower() in file_ext and srvObj.getDb().isLastVersion(fileId, fileVersion)): # only send FITS files, no measurement sets, only send the (known) latest version
         parDic = []
         pars = ""
         if ((plugInPars != "") and (plugInPars != None)):

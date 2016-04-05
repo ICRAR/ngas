@@ -51,19 +51,19 @@ NGAMS_DISKS_COLS = map(lambda x:x[1],ngamsDbCore._ngasDisksDef)
 # ingestion_date is when the original copy was ingested in the system,
 # creation_date is when the replicated copy appears on the mirrored archive
 LASTVER_LOCATION = "SELECT a.host_id, a.mount_point || '/' || b.file_name as file_full_path, b.file_version, b.creation_date, b.ingestion_date FROM ngas_disks a, ngas_files b, " +\
-                    "(SELECT file_id, MAX(file_version) AS max_ver FROM ngas_files WHERE file_id like '{0}' GROUP BY file_id) c " +\
+                    "(SELECT file_id, MAX(file_version) AS max_ver FROM ngas_files WHERE file_id like {0} GROUP BY file_id) c " +\
                     "WHERE a.disk_id = b.disk_id and " +\
-                    "b.file_id like '{0}' and " +\
+                    "b.file_id like {0} and " +\
                     "b.file_id = c.file_id and b.file_version = c.max_ver " +\
                     "order by b.file_id"
 
 valid_queries = {"files_list":"select * from ngas_files",
                   "disks_list":"select * from ngas_disks",
                   "hosts_list":"select * from ngas_hosts",
-                  "files_like":"select * from ngas_files where file_id like '{0}'",
-                  "files_location":"select a.host_id, a.mount_point || '/' || b.file_name as file_full_path, b.file_version, b.ingestion_date from ngas_disks a, ngas_files b where a.disk_id = b.disk_id and b.file_id like '{0}' order by b.file_id",
+                  "files_like":"select * from ngas_files where file_id like {0}",
+                  "files_location":"select a.host_id, a.mount_point || '/' || b.file_name as file_full_path, b.file_version, b.ingestion_date from ngas_disks a, ngas_files b where a.disk_id = b.disk_id and b.file_id like {0} order by b.file_id",
                   "lastver_location":LASTVER_LOCATION,
-                  "files_between":"select * from ngas_files where ingestion_date between '{0}' and '{1}'",
+                  "files_between":"select * from ngas_files where ingestion_date between {0} and {1}",
                   "files_stats":"select count(*),sum(uncompressed_file_size)/1048576. as MB from ngas_files",
                   "files_list_recent":"select file_id, file_name, file_size, ingestion_date from ngas_files order by ingestion_date desc limit 300",
                 }
@@ -88,7 +88,7 @@ def createJsonObj(resultSet, queryKey):
     """
     jsobj = {}
     listResult = []
-    for res in resultSet[0]:
+    for res in resultSet:
         col = 1
         record = {}
         for subRes in res:
@@ -224,6 +224,7 @@ def handleCmd(srvObj,
 
     # Get command parameters.
     query = None
+    args = ()
     if (reqPropsObj.hasHttpPar("query")):
         query = reqPropsObj.getHttpPar("query")
         qkey = query
@@ -238,7 +239,7 @@ def handleCmd(srvObj,
             param = '%'
             if (reqPropsObj.hasHttpPar("like")):
                 param = reqPropsObj.getHttpPar("like")
-            query = query.format(param)
+            args = (param,)
         if reqPropsObj.getHttpPar("query") == 'files_between':
             param1 = param2 = ''
             if (reqPropsObj.hasHttpPar("start")):
@@ -246,9 +247,10 @@ def handleCmd(srvObj,
             if (reqPropsObj.hasHttpPar("end")):
                 param2 = reqPropsObj.getHttpPar("end")
             if param1 and param2:
-                query = query.format(param1, param2)
+                args = (param1, param2)
             elif param1:
-                query = 'select * from ngas_files where ingestion_date >= "{0}"'.format(param1)
+                query = 'select * from ngas_files where ingestion_date >= {0}'
+                args = (param1,)
             else:
                 query = valid_queries['files_list']
     else:
@@ -269,7 +271,7 @@ def handleCmd(srvObj,
     # Execute the query.
     if (not cursorId):
         info(3, "Executing SQL query: %s" % str(query))
-        res = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
+        res = srvObj.getDb().query2(query, args=args)
 
         # TODO: Make possible to return an XML document
         # TODO: Potential problem with very large result sets.
@@ -301,14 +303,14 @@ def handleCmd(srvObj,
             """
             mimeType = NGAMS_TEXT_MT
         elif (out_format == "pickle"):
-            finalRes = cPickle.dumps(res)
+            finalRes = cPickle.dumps([res])
             mimeType = NGAMS_PYTHON_PICKLE_MT
         elif (out_format == "json"):
             jsobj = createJsonObj(res, qkey)
             finalRes = json.dumps(jsobj, default=encode_decimal)
             mimeType = NGAMS_JSON_MT
         else:
-            finalRes = str(res)
+            finalRes = str([res])
             mimeType = NGAMS_PYTHON_LIST_MT
 
         # Return the data.
@@ -358,7 +360,7 @@ def handleCmd(srvObj,
         cursorDbm = ngamsDbm.ngamsDbm(cursorDbmFilename, writePerm=1)
 
         # Make the query in a cursor and dump the results into the DBM.
-        curObj = srvObj.getDb().dbCursor(query)
+        curObj = srvObj.getDb().dbCursor(query, args=args)
         while (True):
             resSet = curObj.fetch(1000)
             if (not resSet): break

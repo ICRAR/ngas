@@ -270,13 +270,13 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
     # change the CRC in the database
     new_fs = getFileSize(filename)
-    query = "UPDATE ngas_files SET checksum = '%d', file_size = %d, compression = 'RICE', format = 'application/fits' WHERE file_id = '%s' AND disk_id = '%s' AND file_version = %d" % (crc, new_fs, fileId, diskId, fileVersion)
+    query = "UPDATE ngas_files SET checksum = {0}, file_size = {1}, compression = 'RICE', format = 'application/fits' WHERE file_id = {2} AND disk_id = {3} AND file_version = {4}" 
     info(3, "Updating CRC SQL: %s" % str(query))
     if (debug):
         pass
     else:
         try:
-            res = srvObj.getDb().query(query, maxRetries = 1, retryWait = 0)
+            srvObj.getDb().query2(query, args=(crc, new_fs, fileId, diskId, fileVersion))
         except Exception, ex:
             errMsg = 'Fail to update crc for file %s/%d/%s: %s' % (fileId, fileVersion, diskId, str(ex))
             error(errMsg)

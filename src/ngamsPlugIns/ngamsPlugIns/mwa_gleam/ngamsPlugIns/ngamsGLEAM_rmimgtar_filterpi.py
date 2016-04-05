@@ -36,7 +36,7 @@ from ngamsLib.ngamsCore import info
 
 
 sql_query = "SELECT status FROM ngas_subscr_queue WHERE"\
-            + " subscr_id = 'STORE04_UNTAR_IMAGE' AND file_id = '{0}'"\
+            + " subscr_id = 'STORE04_UNTAR_IMAGE' AND file_id = {0}"\
             + " AND file_version = {1} AND disk_id = 'b66b9398e32632132b298311f838f752'"
 
 def ngamsGLEAM_rmimgtar_filterpi(srvObj,
@@ -67,12 +67,11 @@ def ngamsGLEAM_rmimgtar_filterpi(srvObj,
     if (2 != len(parts)):
         return 0
     if (len(parts[0]) == 10 and "images.tar" == parts[1]):
-        query = sql_query.format(fileId, fileVersion)
-        info(3, "RMIMGTAR - Executing: " + query)
-        res = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
-        if (res == [[]]):
+        info(3, "RMIMGTAR - Executing: " + sql_query)
+        res = srvObj.getDb().query2(sql_query, args=(fileId, fileVersion))
+        if not res:
             return 0 # not even in the queue, do not remove it
-        status = res[0][0][0] # the first colummn at the first record
+        status = res[0][0] # the first colummn at the first record
         if (0 == int(status)):
             #info("RMIMGTAR - Filter returns true {0}/{1}".format(fileId, fileVersion))
             return 1 # untar is done successfully already

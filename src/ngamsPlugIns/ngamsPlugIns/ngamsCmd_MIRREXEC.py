@@ -126,26 +126,7 @@ def handleCmd(srvObj,
 
 
 def get_cluster_name(srvObj):
-    """
-    Get cluster name corresponding to the processing NGAMS server
-
-    INPUT:
-        srvObj          ngamsServer, Reference to NG/AMS server class object
-
-    RETURNS:
-        cluster_name    string, name of the cluster corresponding to the input host_id
-    """
-    # Construct query
-    query = "select cluster_name from ngas_hosts where host_id='" + getHostName() + "'"
-
-    # Execute query
-    info(4, "Executing SQL query to get local cluster name: %s" % query)
-    cluster_name = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
-    cluster_name = str(cluster_name[0][0][0])
-    info(3, "Local cluster name: %s" % cluster_name)
-
-    # Return cluster_name
-    return cluster_name
+    return srvObj.getDb().getClusterNameFromHostId(getHostName())
 
 
 def get_full_qualified_name(srvObj):
@@ -188,16 +169,17 @@ def get_active_source_nodes(srvObj,cluster_name="none",full_qualified_name="none
     # Construct query
     if (full_qualified_name == "none"):
         query = "select source_host from ngas_mirroring_bookkeeping where status='READY' and target_cluster='" + cluster_name +"' group by source_host"
+        args = (cluster_name,)
         info(4, "Executing SQL query to get active nodes with files to mirror for cluster %s: %s" % (cluster_name,query))
     else:
         query = "select source_host from ngas_mirroring_bookkeeping where status='READY' and target_host='" + full_qualified_name +"' group by source_host"
+        args = (full_qualified_name,)
         info(4, "Executing SQL query to get active nodes with files to mirror for local server %s: %s" % (full_qualified_name,query))
 
     # Execute query
-    source_nodes = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
+    source_nodes = srvObj.getDb().query2(query, args=args)
 
     # Re-dimension query results array and check status
-    source_nodes = source_nodes[0]
     active_source_nodes = []
     for node in source_nodes:
         if ngams_server_status(node[0]): active_source_nodes.append(node[0])
@@ -219,14 +201,13 @@ def get_active_target_nodes(cluster_name,srvObj):
     """
 
     # Construct query
-    query = "select target_host from ngas_mirroring_bookkeeping where status='READY' and target_cluster='" + cluster_name + "' group by target_host"
+    query = "select target_host from ngas_mirroring_bookkeeping where status='READY' and target_cluster={0} group by target_host"
     info(4, "Executing SQL query to get active nodes with files to mirror for cluster %s: %s" % (cluster_name,query))
 
     # Execute query
-    target_nodes = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
+    target_nodes = srvObj.getDb().query2(query, args=(cluster_name,))
 
     # Re-dimension query results array and check status
-    target_nodes = target_nodes[0]
     active_target_nodes = []
     for node in target_nodes:
         if ngams_server_status(node[0]): active_target_nodes.append(node[0])
@@ -265,16 +246,15 @@ def cutoff_file_size(target_node,srvObj):
     """
 
     # Get file_size list
-    query = "select file_size/(1024.0*1024.0) from ngas_mirroring_bookkeeping where target_host='" + target_node + "' order by file_size"
+    query = "select file_size/(1024.0*1024.0) from ngas_mirroring_bookkeeping where target_host={0} order by file_size"
     info(4, "Executing SQL query to get sorted list of files to be mirrored to target_node=%s : %s" % (target_node,query))
-    file_size_list = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
-    file_size_list = file_size_list[0]
+    file_size_list = srvObj.getDb().query2(query, args=(target_node,))
 
     # Get total load in mb
-    query = "select sum(file_size/(1024.0*1024.0)) from ngas_mirroring_bookkeeping where target_host='" + target_node + "'"
+    query = "select sum(file_size/(1024.0*1024.0)) from ngas_mirroring_bookkeeping where target_host={0}"
     info(4, "Executing SQL query to get total load to be mirrored to target_node=%s : %s" % (target_node,query))
-    total_load_mb = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
-    total_load_mb = float(total_load_mb[0][0][0])
+    total_load_mb = srvObj.getDb().query2(query, args=(target_node,))
+    total_load_mb = float(total_load_mb[0][0])
 
     # Find cutoff file_size
     cumsum = 0
@@ -309,13 +289,12 @@ def get_list_mirroring_tasks(source_node,target_node,srvObj):
     query = "select rowid,'/' || archive_command || '?mime_type=' || format || "
     query += "'&' || 'filename=http://' || source_host || '/' || retrieve_command || '?disk_id=' || disk_id || '&' || 'host_id=' || host_id || "
     query += "'&' || 'quick_location=1' || '&' || 'file_version=' || file_version || '&' || 'file_id=' || file_id "
-    query += "from ngas_mirroring_bookkeeping where source_host='" + source_node + "' and target_host='" + target_node
-    query += "' and status='READY' order by file_size"
+    query += "from ngas_mirroring_bookkeeping where source_host={0} and target_host={1} "
+    query += "and status='READY' order by file_size"
 
     # Execute query
     info(3, "Executing SQL query to get list of mirroring tasks from (%s) to (%s): %s" % (source_node,target_node,query))
-    mirroring_tasks = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
-    mirroring_tasks = mirroring_tasks[0]
+    mirroring_tasks = srvObj.getDb().query2(query, args=(source_node, target_node))
 
     # Return mirroring tasks list
     return mirroring_tasks
@@ -390,13 +369,13 @@ def process_mirroring_tasks(mirroring_tasks,source_node,target_node,ith_thread,s
         # Get time elapsed
         elapsed_time = (time() - start)
         # Construct query to update ingestion date, ingestion time and status
-        query = "update ngas_mirroring_bookkeeping set status='" + status + "',"
-        query += "ingestion_date='" + strftime("%Y-%m-%dT%H:%M:%S:000", gmtime()) + "',"
-        query += "ingestion_time='" + str(elapsed_time) + "' "
-        query += "where rowid='" + rowid + "'"
+        query = "update ngas_mirroring_bookkeeping set status={0},"
+        query += "ingestion_date={1},"
+        query += "ingestion_time={2} "
+        query += "where rowid={3}"
         # Execute query
         info(4, "Executing SQL query to update status of the mirroring task (%s): %s" % (full_http_cmd,query))
-        srvObj.getDb().query(query, maxRetries=1, retryWait=0)
+        srvObj.getDb().query2(query, args=(status, strftime("%Y-%m-%dT%H:%M:%S:000", gmtime()), str(elapsed_time), rowid))
         # Log message for mirroring task processed
         info(3, "Mirroring task %s/%s (%s to %s [thread %s]) processed in %ss (%s)" % (str(i),n_tasks,source_node,target_node,str(ith_thread),str(elapsed_time),status))
         i += 1

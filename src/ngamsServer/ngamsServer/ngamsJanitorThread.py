@@ -1174,13 +1174,11 @@ def janitorThread(srvObj,
                     takeLogSem()
 
                     # For some reason we cannot use the creation date ...
-                    logFo = open(logFile, "r")
-                    while (1):
-                        line = logFo.readline().strip()
-                        if ((line == "") or (line.find("[INFO]") != -1)): break
-                        time.sleep(0.005)
-                    logFo.close()
-                    if (line != ""):
+                    with open(logFile, "r") as logFo:
+                        for line in logFo:
+                            if not line or "[INFO]" in line:
+                                break
+                    if line:
                         creTime = line.split(" ")[0].split(".")[0]
                         logFileCreTime = iso8601ToSecs(creTime)
                         logRotInt = isoTime2Secs(srvObj.getCfg().\

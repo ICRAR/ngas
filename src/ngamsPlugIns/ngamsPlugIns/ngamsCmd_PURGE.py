@@ -54,20 +54,20 @@ from ngamsServer import ngamsDiscardCmd
 
 
 QUERY_PREV_VER = "SELECT a.disk_id, a.file_id, a.file_version FROM ngas_files a, "+\
-                 "(SELECT file_id, MAX(file_version) AS max_ver FROM ngas_files, ngas_disks WHERE ngas_files.disk_id = ngas_disks.disk_id AND ngas_disks.host_id = '%s' GROUP BY file_id) c, " +\
+                 "(SELECT file_id, MAX(file_version) AS max_ver FROM ngas_files, ngas_disks WHERE ngas_files.disk_id = ngas_disks.disk_id AND ngas_disks.host_id = {0} GROUP BY file_id) c, " +\
                  "ngas_disks b "+\
-                 "WHERE a.file_id = c.file_id AND a.file_version < c.max_ver AND a.disk_id = b.disk_id AND b.host_id = '%s'"
+                 "WHERE a.file_id = c.file_id AND a.file_version < c.max_ver AND a.disk_id = b.disk_id AND b.host_id = {1}"
 
 QUERY_LATER_VER = "SELECT a.disk_id, a.file_id, a.file_version FROM ngas_files a, "+\
-                 "(SELECT file_id, MIN(file_version) AS min_ver FROM ngas_files, ngas_disks WHERE ngas_files.disk_id = ngas_disks.disk_id AND ngas_disks.host_id = '%s' GROUP BY file_id) c, " +\
+                 "(SELECT file_id, MIN(file_version) AS min_ver FROM ngas_files, ngas_disks WHERE ngas_files.disk_id = ngas_disks.disk_id AND ngas_disks.host_id = {0} GROUP BY file_id) c, " +\
                  "ngas_disks b "+\
-                 "WHERE a.file_id = c.file_id AND a.file_version > c.min_ver AND a.disk_id = b.disk_id AND b.host_id = '%s'"
+                 "WHERE a.file_id = c.file_id AND a.file_version > c.min_ver AND a.disk_id = b.disk_id AND b.host_id = {1}"
 
 # the previous versions can be On any (valid) hosts
 QUERY_LATER_VER_POAH = "SELECT a.disk_id, a.file_id, a.file_version FROM ngas_files a, "+\
                  "(SELECT file_id, MIN(file_version) AS min_ver FROM ngas_files, ngas_disks WHERE ngas_files.disk_id = ngas_disks.disk_id AND ngas_disks.host_id <> '' GROUP BY file_id) c, " +\
                  "ngas_disks b "+\
-                 "WHERE a.file_id = c.file_id AND a.file_version > c.min_ver AND a.disk_id = b.disk_id AND b.host_id = '%s'"
+                 "WHERE a.file_id = c.file_id AND a.file_version > c.min_ver AND a.disk_id = b.disk_id AND b.host_id = {0}"
 
 purgeThrd = None
 is_purgeThrd_running = False
@@ -83,17 +83,16 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
     try:
         if (reqPropsObj.hasHttpPar("keep_earliest")): # early could be 1, or 2,...
             if (reqPropsObj.hasHttpPar("pv_on_any_hosts")):
-                resDel = srvObj.getDb().query(QUERY_LATER_VER_POAH % (hostId,)) # grab all later versions on this host to remove
+                resDel = srvObj.getDb().query2(QUERY_LATER_VER_POAH, args=(hostId,)) # grab all later versions on this host to remove
             else:
-                resDel = srvObj.getDb().query(QUERY_LATER_VER % (hostId, hostId)) # grab all later versions on this host to remove
+                resDel = srvObj.getDb().query2(QUERY_LATER_VER, args=(hostId, hostId)) # grab all later versions on this host to remove
         else: # by default, keep latest
-            resDel = srvObj.getDb().query(QUERY_PREV_VER % (hostId, hostId)) # grab all previous versions to remove
-        if (resDel == [[]]):
+            resDel = srvObj.getDb().query2(QUERY_PREV_VER, args=(hostId, hostId)) # grab all previous versions to remove
+        if not resDel:
             raise Exception('Could not find any files to discard / retain')
         else:
-            fileDelList = resDel[0]
-            total_todo = len(fileDelList)
-            for fileDelInfo in fileDelList:
+            total_todo = len(resDel)
+            for fileDelInfo in resDel:
                 try:
                     ngamsDiscardCmd._discardFile(srvObj, fileDelInfo[0], fileDelInfo[1], int(fileDelInfo[2]), execute = 1, tmpFilePat = work_dir)
                     num_done += 1

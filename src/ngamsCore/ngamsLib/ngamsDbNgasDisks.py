@@ -719,3 +719,23 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
             return int(iso8601ToSecs(val) + 0.5)
         dt = self.convertTimeStampToMx(val)
         return int(dt.ticks() + 0.5)
+
+    def getAvailableVolumes(self, hostId):
+        """
+        Returns a list of rows for all disks that are not marked as completed
+        on ``hostId``.
+        """
+        sql = "SELECT %s FROM ngas_disks nd WHERE completed=0 AND host_id={0}"
+        sql = sql % ngamsDbCore.getNgasDisksCols()
+        return self.query2(sql, args=(hostId,))
+
+    def updateDiskInfo(self, fileSize, diskId):
+        """
+        Update the row for the volume ``diskId`` hosting the new file of size
+        ``fileSize``.
+        """
+        sqlQuery = "UPDATE ngas_disks SET " +\
+                   "number_of_files=(number_of_files + 1), " +\
+                   "bytes_stored=(bytes_stored + {0}) WHERE " +\
+                   "disk_id={1}"
+        self.query2(sqlQuery, args=(fileSize, diskId))
