@@ -56,7 +56,7 @@ import ngamsJanitorThread
 import ngamsDataCheckThread
 import ngamsUserServiceThread
 import ngamsMirroringControlThread
-
+import ngamsCacheControlThread
 
 class ngamsSimpleRequest:
     """
@@ -335,7 +335,8 @@ class ngamsServer:
         # Handling of a Cache Archive.
         self._cacheArchive              = False
         self._cacheControlThread        = None
-        self._cacheControlThreadRunning = False
+        self._cacheControlThreadStopEvt = threading.Event()
+
         # - Cache Contents SQLite DBMS.
         self._cacheContDbms             = None
         self._cacheContDbmsCur          = None
@@ -878,6 +879,43 @@ class ngamsServer:
         info(3,"User Service Thread stopped")
 
 
+    def startCacheControlThread(self):
+        """
+        Starts the Cache Control Thread.
+        """
+
+        if not self.getCachingActive():
+            info(1, "NGAS Cache Service not active - will not start Cache Control Thread")
+            return
+
+        info(1, "Starting the Cache Control Thread ...")
+        try:
+            check_can_be_deleted = int(self.getCfg().getVal("Caching[1].CheckCanBeDeleted"))
+        except:
+            check_can_be_deleted = 0
+
+        info(1, "Cache Control - CHECK_CAN_BE_DELETED = %d" % check_can_be_deleted)
+
+        self._cacheControlThread = threading.Thread(target=ngamsCacheControlThread.cacheControlThread,
+                                                      name=ngamsCacheControlThread.NGAMS_CACHE_CONTROL_THR,
+                                                      args=(self, self._cacheControlThreadStopEvt, check_can_be_deleted))
+        self._cacheControlThread.start()
+        info(1, "Cache Control Thread started")
+
+
+    def stopCacheControlThread(self):
+        """
+        Stop the Cache Control Thread.
+        """
+        if self._cacheControlThread is None:
+            return
+        info(1, "Stopping the Cache Control Thread ...")
+        self._cacheControlThreadStopEvt.set()
+        self._cacheControlThread.join(10)
+        self._cacheControlThread = None
+        info(1, "Cache Control Thread stopped")
+
+
     def triggerSubscriptionThread(self):
         """
         Trigger the Data Subscription Thread so that it carries out a
@@ -1054,29 +1092,6 @@ class ngamsServer:
             self.__mirControlTrigger.wait()
         self.__mirControlTrigger.clear()
         return self
-
-
-    def setCacheControlThreadRunning(self,
-                                     running):
-        """
-        Set the Cache Control Thread Running Flag to indicate if the thread.
-
-        running:     Cache Control Running Flag (integer/0|1).
-
-        Returns:     Reference to object itself.
-        """
-        self._cacheControlThreadRunning = running
-        return self
-
-
-    def getCacheControlThreadRunning(self):
-        """
-        Get the Cache Control Thread Running Flag to indicate if the
-        Cache Control Thread is running or not.
-
-        Returns:    Cache Control Thread Running Flag (integer/0|1).
-        """
-        return self._cacheControlThreadRunning
 
 
     def setForce(self,

@@ -37,7 +37,7 @@ import sys
 
 import ngamsServer
 
-def main(argv):
+def main(argv=sys.argv):
     ngamsSrv = ngamsServer.ngamsServer()
     ngamsSrv._cacheArchive = True
     ngamsSrv._serverName   = "ngamsCacheServer"

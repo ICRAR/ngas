@@ -358,9 +358,7 @@ def handleOnline(srvObj,
     ngamsSubscriptionThread.startSubscriptionThread(srvObj)
     srvObj.startUserServiceThread()
     srvObj.startMirControlThread()
-    if (srvObj.getCachingActive()):
-        import ngamsCacheControlThread
-        ngamsCacheControlThread.startCacheControlThread(srvObj)
+    srvObj.startCacheControlThread()
 
     # Change state to Online.
     srvObj.setState(NGAMS_ONLINE_STATE)
@@ -404,6 +402,7 @@ def handleOffline(srvObj,
     ngamsSubscriptionThread.stopSubscriptionThread(srvObj)
     srvObj.stopUserServiceThread()
     srvObj.stopMirControlThread()
+    srvObj.stopCacheControlThread()
     srvObj.setThreadRunPermission(0)
 
     info(3, "Prepare NG/AMS for Offline State ...")
