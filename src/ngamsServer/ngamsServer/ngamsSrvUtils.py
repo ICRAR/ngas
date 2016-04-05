@@ -357,7 +357,7 @@ def handleOnline(srvObj,
     srvObj.startJanitorThread()
     srvObj.startDataCheckThread()
     ngamsSubscriptionThread.startSubscriptionThread(srvObj)
-    ngamsUserServiceThread.startUserServiceThread(srvObj)
+    srvObj.startUserServiceThread()
     ngamsMirroringControlThread.startMirControlThread(srvObj)
     if (srvObj.getCachingActive()):
         import ngamsCacheControlThread
@@ -403,7 +403,7 @@ def handleOffline(srvObj,
         srvObj.stopJanitorThread()
     srvObj.stopDataCheckThread()
     ngamsSubscriptionThread.stopSubscriptionThread(srvObj)
-    ngamsUserServiceThread.stopUserServiceThread(srvObj)
+    srvObj.stopUserServiceThread()
     ngamsMirroringControlThread.stopMirControlThread(srvObj)
     srvObj.setThreadRunPermission(0)
 

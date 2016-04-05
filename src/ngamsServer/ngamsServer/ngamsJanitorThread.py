@@ -40,7 +40,7 @@ import types
 import shutil
 
 import ngamsArchiveUtils, ngamsSrvUtils
-from ngamsLib.ngamsCore import TRACE, info, NGAMS_JANITOR_THR, \
+from ngamsLib.ngamsCore import TRACE, info, \
     getFileCreationTime, getFileModificationTime, getFileAccessTime, rmFile, \
     warning, NGAMS_DB_DIR, NGAMS_DB_NGAS_FILES, checkCreatePath, \
     NGAMS_DB_CH_CACHE, getMaxLogLevel, NGAMS_NOTIF_DATA_CHECK, \
@@ -59,6 +59,9 @@ try:
     import bsddb3 as bsddb
 except ImportError:
     import bsddb
+
+
+NGAMS_JANITOR_THR = "JANITOR-THREAD"
 
 class StopJanitorThreadException(Exception):
     pass

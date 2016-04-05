@@ -47,12 +47,12 @@ from ngamsLib.ngamsCore import \
     NGAMS_HTTP_BAD_REQ, NGAMS_HTTP_SERVICE_NA, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, NGAMS_DEF_LOG_PREFIX, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR, NGAMS_TEXT_MT,\
     NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_XML_STATUS_ROOT_EL,\
-    NGAMS_XML_STATUS_DTD, NGAMS_XML_MT
+    NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, loadPlugInEntryPoint
 from ngamsLib import ngamsHighLevelLib, ngamsLib
 from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
 import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
-import ngamsJanitorThread, ngamsDataCheckThread
+import ngamsJanitorThread, ngamsDataCheckThread, ngamsUserServiceThread
 
 
 class ngamsSimpleRequest:
@@ -309,8 +309,8 @@ class ngamsServer:
         self._srcArchInfoDbmSem = threading.Semaphore(1)
 
         # Handling of User Service Plug-In.
-        self._userServicePlugIn       = None
-        self._userServiceRunSync      = threading.Event()
+        self._userServiceThread  = None
+        self._userServiceStopEvt = threading.Event()
 
         # Handling of host info in ngas_hosts.
         self.__hostInfo               = ngamsHostInfo.ngamsHostInfo()
@@ -806,6 +806,42 @@ class ngamsServer:
         self._dataCheckThread.join(10)
         self._dataCheckThread = None
         info(3,"Data Check Thread stopped")
+
+
+    def startUserServiceThread(self):
+        """
+        Start the User Service Thread.
+        """
+        # Start only if service is defined.
+        cfg_item = "NgamsCfg.SystemPlugIns[1].UserServicePlugIn"
+        userServicePlugIn = self.getCfg().getVal(cfg_item)
+        info(4,"User Service Plug-In Defined: %s" % str(userServicePlugIn))
+        if not userServicePlugIn:
+            return
+
+        info(1,"Loading User Service Plug-In module: %s" % userServicePlugIn)
+        userServicePlugIn = loadPlugInEntryPoint(userServicePlugIn)
+
+        info(1,"Starting User Service Thread ...")
+        self._userServiceThread = threading.Thread(target=ngamsUserServiceThread.userServiceThread,
+                                                   name=ngamsUserServiceThread.NGAMS_USER_SERVICE_THR,
+                                                   args=(self, self._userServiceStopEvt, userServicePlugIn))
+        self._userServiceThread.start()
+        info(3,"User Service Thread started")
+
+
+    def stopUserServiceThread(self):
+        """
+        Stops the User Service Thread.
+        """
+        if not self._userServiceThread:
+            return
+
+        info(1,"Stopping User Service Thread ...")
+        self._userServiceStopEvt.set()
+        self._userServiceThread.join(10)
+        self._userServiceThread = None
+        info(3,"User Service Thread stopped")
 
 
     def triggerSubscriptionThread(self):
