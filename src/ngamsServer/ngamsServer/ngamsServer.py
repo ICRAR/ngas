@@ -27,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  07/05/2001  Created
 #
-
 """
 This module contains the class ngamsServer that provides the
 services for the NG/AMS Server.
@@ -52,7 +51,8 @@ from ngamsLib.ngamsCore import \
 from ngamsLib import ngamsHighLevelLib, ngamsLib
 from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
-import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils, ngamsJanitorThread
+import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
+import ngamsJanitorThread, ngamsDataCheckThread
 
 
 class ngamsSimpleRequest:
@@ -257,8 +257,8 @@ class ngamsServer:
         self._janitorThreadRunCount = 0
 
         # Handling of the Data Check Thread.
-        self._dataCheckThread         = None
-        self._dataCheckRunSync        = threading.Event()
+        self._dataCheckThread        = None
+        self._dataCheckThreadStopEvt = threading.Event()
 
         # Handling of the Data Subscription.
         self._subscriberDic           = {}
@@ -730,15 +730,12 @@ class ngamsServer:
 
     def startJanitorThread(self):
         """
-        Starts the Janitor Thread as a non-daemon thread. The thread receives
-        an event that, when set, indicates that no further work should be done
-        and that the thread should exit.
+        Starts the Janitor Thread.
         """
         info(3,"Starting Janitor Thread ...")
         self._janitorThread = threading.Thread(target=ngamsJanitorThread.janitorThread,
                                                name=ngamsJanitorThread.NGAMS_JANITOR_THR,
                                                args=(self,self._janitorThreadStopEvt))
-        self._janitorThread.daemon = False
         self._janitorThread.start()
         info(3,"Janitor Thread started")
 
@@ -774,6 +771,41 @@ class ngamsServer:
         Returns:     Janitor Thread Run Count (integer).
         """
         return self._janitorThreadRunCount
+
+
+    def startDataCheckThread(self):
+        """
+        Starts the Data Check Thread.
+        """
+        if not self.getCfg().getDataCheckActive():
+            return
+
+        info(3,"Starting Data Check Thread ...")
+        self._dataCheckThread = threading.Thread(target=ngamsDataCheckThread.dataCheckThread,
+                                                 name=ngamsDataCheckThread.NGAMS_DATA_CHECK_THR,
+                                                 args=(self, self._dataCheckThreadStopEvt))
+        self._dataCheckThread.start()
+        info(3,"Data Check Thread started")
+
+
+    def stopDataCheckThread(self):
+        """
+        Stop the Data Check Thread.
+
+        srvObj:     Reference to server object (ngamsServer).
+
+        Returns:    Void.
+        """
+        if not self.getCfg().getDataCheckActive():
+            return
+        if self._dataCheckThread is None:
+            return
+
+        info(3,"Stopping Data Check Thread ...")
+        self._dataCheckThreadStopEvt.set()
+        self._dataCheckThread.join(10)
+        self._dataCheckThread = None
+        info(3,"Data Check Thread stopped")
 
 
     def triggerSubscriptionThread(self):

@@ -45,7 +45,7 @@ from ngamsLib import ngamsSubscriber
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
 from ngamsLib import ngamsNotification
 import ngamsArchiveUtils
-import ngamsJanitorThread, ngamsDataCheckThread, ngamsSubscriptionThread
+import ngamsSubscriptionThread
 import ngamsUserServiceThread, ngamsMirroringControlThread
 
 
@@ -355,7 +355,7 @@ def handleOnline(srvObj,
     # Start threads + inform threads that they are allowed to execute.
     srvObj.setThreadRunPermission(1)
     srvObj.startJanitorThread()
-    ngamsDataCheckThread.startDataCheckThread(srvObj)
+    srvObj.startDataCheckThread()
     ngamsSubscriptionThread.startSubscriptionThread(srvObj)
     ngamsUserServiceThread.startUserServiceThread(srvObj)
     ngamsMirroringControlThread.startMirControlThread(srvObj)
@@ -401,7 +401,7 @@ def handleOffline(srvObj,
     # possible threads to stop execution (if running).
     if (stopJanitorThr):
         srvObj.stopJanitorThread()
-    ngamsDataCheckThread.stopDataCheckThread(srvObj)
+    srvObj.stopDataCheckThread()
     ngamsSubscriptionThread.stopSubscriptionThread(srvObj)
     ngamsUserServiceThread.stopUserServiceThread(srvObj)
     ngamsMirroringControlThread.stopMirControlThread(srvObj)
