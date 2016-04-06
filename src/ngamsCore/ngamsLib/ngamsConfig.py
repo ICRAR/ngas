@@ -1015,6 +1015,23 @@ class ngamsConfig:
         else:
             return False
 
+    def getDbMaxPoolCons(self):
+        """
+        Max number of DB Pool Connections.
+
+        NOTICE: 7 connections was chosen as a default to allow for all the NGAS
+        background services to have a long running db connection while allowing
+        user requests to be serviced. Anything less than 7 with all the services
+        enabled might cause user requests to block waiting for a db connection
+        to be placed back in the pool from a long running service. 
+
+        Returns: Max number of DB Pool Connections.
+        """
+        par = "Db[1].MaxPoolConnections"
+        val = getInt(par, self.getVal(par))
+        if not val:
+            return 7
+        return val
 
     def getDbParameters(self):
         """

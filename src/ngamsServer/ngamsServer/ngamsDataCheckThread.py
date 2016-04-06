@@ -1107,9 +1107,6 @@ def dataCheckThread(srvObj,
                 _stopDataCheckThr(srvObj)
                 time.sleep(0.5)
 
-            # Ensure that DB connection is active.
-            srvObj.getDb().checkCon()
-
             if (srvObj.getCfg().getDataCheckLogSummary()):
                 info(0,"Data Check Thread starting iteration ...")
 

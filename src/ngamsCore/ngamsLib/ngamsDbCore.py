@@ -31,7 +31,6 @@
 Core class for the NG/AMS DB interface.
 """
 
-import contextlib
 import importlib
 import random
 import threading
@@ -40,7 +39,8 @@ import time
 from ngamsCore import TRACE, getMaxLogLevel, genLog, timeRef2Iso8601
 from ngamsCore import info, notice, error, warning
 from pccUt import PccUtTime
-
+from contextlib import closing
+from DBUtils.PooledDB import PooledDB
 
 # Global DB Semaphore to protect critical, global DB interaction.
 _globalDbSem = threading.Semaphore(1)
@@ -443,34 +443,43 @@ class ngamsDbCursor(object):
     are extracted from.
     """
 
-    def __init__(self, db, conn, query, args):
-        self.db = db
-        self.conn = conn
-        self.cursor = self.conn.cursor()
-        self.cursor.execute(query, args)
+    def __init__(self, pool, query, args):
+        self.conn = None
+        self.cursor = None
+        try:
+            self.conn = pool.connection()
+            self.cursor = self.conn.cursor()
+            self.cursor.execute(query, args)
+        except:
+            self.close()
+            raise
+
+    def __del__(self):
+        self.close()
 
     def fetch(self, howmany):
         """
         Fetches at most ``howmany`` results from the database. If no more
         results are available it returns an empty sequence
         """
+        rows = []
+        for row in self.cursor.fetchmany(howmany):
+            # This is a namedtuple, make a normal one instead
+            # TODO: We're doing this because some users of these results
+            # serialize them and are having problems while doing it; we ease
+            # their life this way, but they should take care of it actually.
+            # By users we mean ngamsDataCheckThread:598 for instance
+            if isinstance(row, tuple) and hasattr(row, "_fields"):
+                row = row[:]
+            rows.append(row)
+        return rows
 
-        self.db.takeDbSem()
-        try:
-            rows = []
-            for row in self.cursor.fetchmany(howmany):
-                # This is a namedtuple, make a normal one instead
-                # TODO: We're doing this because some users of these results
-                # serialize them and are having problems while doing it; we ease
-                # their life this way, but they should take care of it actually.
-                # By users we mean ngamsDataCheckThread:598 for instance
-                if isinstance(row, tuple) and \
-                   hasattr(row, "_fields"):
-                    row = row[:]
-                rows.append(row)
-            return rows
-        finally:
-            self.db.relDbSem()
+    def close(self):
+        if self.cursor:
+            self.cursor.close()
+        if self.conn:
+            self.conn.close()
+
 
 class ngamsDbCore(object):
     """
@@ -483,7 +492,8 @@ class ngamsDbCore(object):
                  createSnapshot = 1,
                  maxRetries = 10,
                  retryWait = 1.0,
-                 multipleConnections = False):
+                 multipleConnections = False,
+                 maxpoolcons = 6):
         """
         Constructor method.
 
@@ -516,10 +526,8 @@ class ngamsDbCore(object):
 
         # The PEP-249 module and the single connection we hold to it
         self.__dbModule = None
-        self.__dbConn = None
 
-        # Semaphore to protect critical DB interaction.
-        self.__dbSem = threading.Lock() # threading.Semaphore(1)
+        self.__dbSem = threading.Lock()
 
         # Controls if the snapshot of the DB should be created.
         self.__createSnapshot = createSnapshot
@@ -532,50 +540,23 @@ class ngamsDbCore(object):
         self.__dbAccessTime = 0.0
 
         # Import the DB Interface Plug-In
-        self.__dbParameters        = parameters
-        self.__multipleConnections = multipleConnections
-        self.__dbSnapshot          = createSnapshot
-        self.__dbInterface         = interface
+        self.__dbParameters = parameters
+        self.__dbSnapshot = createSnapshot
+        self.__dbInterface = interface
 
         info(4, "Importing DB Module: %s" % (self.__dbInterface,))
-        self.__dbModule = importlib.import_module(self.__dbInterface)
+        self.__dbModule = importlib.import_module(interface)
         self.__paramstyle = self.__dbModule.paramstyle
+        self.__pool = PooledDB(self.__dbModule,
+                                maxconnections = maxpoolcons,
+                                blocking = True,
+                                **parameters)
         info(3, "DB Module API Level: %s" % (self.__dbModule.apilevel))
-
-        # Automatically connect at DB creation time
-        self.connect()
 
         # Verification/Auto Recover.
         self.__dbVerify      = 1
         self.__dbAutoRecover = 0
-
         self.__dbTmpDir      = "/tmp"
-
-        self.__maxRetries    = maxRetries
-        self.__retryWait     = retryWait
-
-
-    def takeDbSem(self):
-        """
-        Acquire access to a critical DB interaction.
-
-        Returns:   Reference to object itself.
-        """
-        if (not self.__multipleConnections):
-            if (getMaxLogLevel() > 4): info(5, "Taking DB Access Semaphore")
-            self.__dbSem.acquire()
-
-
-    def relDbSem(self):
-        """
-        Release acquired access to a critical DB interaction.
-
-        Returns:   Reference to object itself.
-        """
-        if (not self.__multipleConnections):
-            if (getMaxLogLevel() > 4):
-                info(5, "Releasing DB Access Semaphore")
-            self.__dbSem.release()
 
 
     def takeGlobalDbSem(self):
@@ -722,91 +703,14 @@ class ngamsDbCore(object):
         return self.__createSnapshot
 
 
-    def connect(self):
-        """
-        Connect to the DB.
-
-        Returns:      Void.
-        """
-        try:
-            self.takeDbSem()
-            self._connect(0)
-        finally:
-            self.relDbSem()
-
-
-    def _connect(self, recurseLevel):
-        """
-        Connect to the DB. The method may do this in a recursive manner
-        (re-trying) in case it fails in connecting.
-
-        NOTE: The invocation of this method should be semaphore protected.
-
-        recurseLevel: Recursive depth level (integer).
-
-        Returns:      Void.
-        """
-        T = TRACE()
-
-        try:
-            if self.__dbConn is not None:
-                del self.__dbConn
-                self.__dbConn = None
-
-            info(4, "Connecting to the database...")
-            self.__dbConn = self.__dbModule.connect(**self.__dbParameters)
-            info(4, "Database connection successful")
-
-        except self.__dbModule.Error, e:
-            errMsg = genLog("NGAMS_ER_DB_COM", ["Problem setting up " +\
-                                                "DB connection: %s" % (str(e))])
-            errMsg = errMsg.replace("\n", "")
-
-            # Retry up to 5 times.
-            if (recurseLevel < 5):
-                warning(errMsg)
-                msg = "Reconnecting to DB server. Recursive depth: %d"
-                notice(msg % (recurseLevel,))
-                time.sleep(5.0)
-                recurseLevel += 1
-                self._connect(recurseLevel)
-                notice("Reconnected to DB server")
-            else:
-                notice("Abandoned reconnection attempt")
-                raise Exception, errMsg
-
-
-    def checkCon(self):
-        """
-        Method that check if the DB connection seems to be OK. If it is
-        not, it will be tried to reconnect. If the connection is down, and
-        it cannot reconnect, an exception is raised.
-
-        Returns:    Void.
-        """
-        T = TRACE()
-
-        # TODO: Move the logic inside this method checkCon method up to where
-        # it is actually require (ngamsDataCheckThread#dataCheckThread)
-        # This current implementation relies on the self.query method which
-        # will reconnect automatically if the DB connection is lost
-        sqlQuery = "SELECT cluster_name FROM ngas_hosts WHERE host_id='abc'"
-        self.query(sqlQuery)
-
     def close(self):
         """
-        Close the DB connection.
+        Close the DB pool.
 
         Returns:    Void.
         """
         T = TRACE()
-
-        try:
-            self.takeDbSem()
-            if self.__dbConn:
-                self.__dbConn.close()
-        finally:
-            self.relDbSem()
+        self.__pool.close()
 
 
     def addDbChangeEvt(self,
@@ -834,13 +738,15 @@ class ngamsDbCore(object):
         Returns:      Reference to object itself.
         """
         try:
-            self.takeDbSem()
+            self.__dbSem.acquire()
             for evtObj in self.__dbChangeEvents:
-                if (eventInfo): evtObj.addEventInfo(eventInfo)
-                if (not evtObj.isSet()): evtObj.set()
+                if eventInfo:
+                    evtObj.addEventInfo(eventInfo)
+                if not evtObj.isSet():
+                    evtObj.set()
             return self
         finally:
-            self.relDbSem()
+            self.__dbSem.release()
 
 
     def _params_to_bind(self, howMany):
@@ -889,176 +795,32 @@ class ngamsDbCore(object):
         if getMaxLogLevel() >= 5:
             info(5, "Performing SQL query with parameters: %s / %r" % (sqlQuery, args))
 
-        self.takeDbSem()
-        with ngamsDbTimer(self, sqlQuery):
-            try:
-                with contextlib.closing(self.__dbConn.cursor()) as cursor:
-                    cursor.execute(sqlQuery, args)
+        with closing(self.__pool.connection()) as conn:
+            with closing(conn.cursor()) as cursor:
+                with ngamsDbTimer(self, sqlQuery):
+                    try:
+                        cursor.execute(sqlQuery, args)
 
-                    # From PEP-249, regarding .description:
-                    # This attribute will be None for operations that do not return
-                    # rows [...]
-                    # We thus use it to distinguish between those cases when there
-                    # are results to fetch or not. This is important because fetch*
-                    # calls can raise Errors if there are no results generated from
-                    # the last call to .execute*
-                    if cursor.description:
-                        res = cursor.fetchall()
-                    else:
-                        res = []
+                        # From PEP-249, regarding .description:
+                        # This attribute will be None for operations that do not return
+                        # rows [...]
+                        # We thus use it to distinguish between those cases when there
+                        # are results to fetch or not. This is important because fetch*
+                        # calls can raise Errors if there are no results generated from
+                        # the last call to .execute*
+                        if cursor.description:
+                            res = cursor.fetchall()
+                        else:
+                            res = []
+                        conn.commit()
 
-                    self.__dbConn.commit()
+                        if getMaxLogLevel() >= 5:
+                            info(5, "Result of SQL query %s / %r: %r" % (sqlQuery, args, res))
 
-                #if getMaxLogLevel() >= 4:
-                #    info(4, "Accumulated DB access time: %.6fs" % self.getDbTime())
-                if getMaxLogLevel() >= 5:
-                    info(5, "Result of SQL query %s / %r: %r" % (sqlQuery, args, res))
-
-                return res
-            finally:
-                self.relDbSem()
-
-    def query(self,
-              sqlQuery,
-              ignoreEmptyRes = 1,
-              maxRetries = None,
-              retryWait = None):
-        """
-        Perform a query in the DB and return the result.
-
-        sqlQuery:         SQL query (string).
-
-        ignoreEmptyRes:   If set to 1, no error will be assumed if a
-                          completely empty result is returned (integer/0|1).
-
-        maxRetries:       Max. number of retries in case of failure (integer).
-
-        retryWait:        Time in seconds to wait for next retry (float).
-
-        Returns:          Result of SQL query (list).
-        """
-        if (not maxRetries): maxRetries = self.__maxRetries
-        if (not retryWait): retryWait = self.__retryWait
-
-        with ngamsDbTimer(self, sqlQuery):
-            try:
-                self.takeDbSem()
-                res = self._query(sqlQuery, ignoreEmptyRes, 0, maxRetries,
-                                  retryWait)
-                info(4, "Accumulated DB access time: %.6fs" % self.getDbTime())
-                return res
-            finally:
-                self.relDbSem()
-
-
-    # rtobar, 24.3.16
-    # TODO: This method implements retries using a recursive strategy which is
-    #       not super nice; we could easily change it in the future to use a
-    #       loop and achieve the same effect
-    def _query(self,
-               sqlQuery,
-               ignoreEmptyRes,
-               recurseLevel,
-               maxRetries = 10,
-               retryWait = 1.0):
-        """
-        Perform a query in the DB and return the result. The method may do
-        this in a recursive manner (re-trying) in case it fails in executing
-        the query. Also, if the connection is lost, it will be tried
-        automatically to reconnect.
-
-        NOTE: The invocation of this method should be semaphore protected.
-
-        sqlQuery:         SQL query (string).
-
-        ignoreEmptyRes:   If set to 1, no error will be assumed if a
-                          completely empty result is returned (integer/0|1).
-
-        recurseLevel:     Indicates the number of times this method was
-                          called recursively (integer).
-
-        maxRetries:       Max. number of retries in case of failure (integer).
-
-        retryWait:        Time in seconds to wait for next retry (float).
-
-        Returns:          Result of SQL query (list).
-        """
-        T = TRACE(5)
-
-        if (getMaxLogLevel() > 4):
-            info(5, "Performing SQL query: " + str(sqlQuery))
-
-        res = []
-        try:
-            with contextlib.closing(self.__dbConn.cursor()) as cursor:
-                cursor.execute(sqlQuery)
-
-                # From PEP-249, regarding .description:
-                # This attribute will be None for operations that do not return
-                # rows [...]
-                # We thus use it to distinguish between those cases when there
-                # are results to fetch or not. This is important because fetch*
-                # calls can raise Errors if there are no results generated from
-                # the last call to .execute*
-                if cursor.description:
-                    res = [cursor.fetchall()]
-                else:
-                    res = [[]]
-
-                self.__dbConn.commit()
-        except self.__dbModule.Error, e:
-            errMsg = genLog("NGAMS_ER_DB_COM", [str(e)])
-            error(errMsg)
-
-            # In case of an exception: Try to reconnect if the Recursive
-            # Level is not higher than maxRetries.
-            #
-            # rtobar, 24.3.16
-            # TODO: An Exception here doesn't necessarily mean that the
-            # connection to the DB was lost; we probably want to double-check
-            # this logic
-            if (recurseLevel < maxRetries):
-                msg = "Reconnecting to DB server. Recursive depth: %d"
-                notice(msg % (recurseLevel,))
-                time.sleep(retryWait)
-                recurseLevel += 1
-                self._connect(0)
-                notice("Reconnected to DB server")
-                notice("Query: %s" % sqlQuery)
-                res = self._query(sqlQuery, ignoreEmptyRes, recurseLevel,
-                                  maxRetries, retryWait)
-            else:
-                notice("Abandonned reconnectiong attempt. " +\
-                       "Recursive level: %d" % recurseLevel)
-                raise Exception, errMsg
-
-        # Return the query result, or try up to 10 times to perform the query
-        # with a 1s delay between each attempt. If all attempts to query the DB
-        # fail, return an error in case the result was empty and such a result
-        # should be reported as an error.
-        #
-        # rtobar, 24.3.16
-        # TODO: Again, we should revisit the logic of this; should we really
-        #       spend up to 5 seconds in this in the case of a real empty
-        #       result? I don't think so
-        if (getMaxLogLevel() > 4):
-            info(5, "Result of SQL query (%s): %s" % (sqlQuery, res))
-
-        # Unexpected empty result
-        if res == [] and \
-           not ignoreEmptyRes and \
-           sqlQuery.find("SELECT ") != -1:
-            msg = "Unexpected empty result returned from SQL query: %s"
-            warning(msg % (str(sqlQuery),))
-            if (recurseLevel < 10):
-                msg = "Retrying query: %s/Recursive depth: %d"
-                notice(msg % (sqlQuery, recurseLevel))
-                time.sleep(0.5)
-                recurseLevel += 1
-                res = self._query(sqlQuery, ignoreEmptyRes, recurseLevel)
-            else:
-                raise Exception, msg % (str(sqlQuery),)
-        return res
+                        return res
+                    except:
+                        conn.rollback()
+                        raise
 
 
     def dbCursor(self, sqlQuery, args=()):
@@ -1082,16 +844,7 @@ class ngamsDbCore(object):
             sqlQuery = sqlQuery.format(*self._params_to_bind(len(args)))
             args = self._data_to_bind(args)
 
-        try:
-            self.takeDbSem()
-            return ngamsDbCursor(self, self.__dbConn, sqlQuery, args)
-        except Exception, e:
-            errMsg = genLog("NGAMS_ER_DB_COM", [str(e)])
-            error(errMsg)
-            raise Exception, errMsg
-        finally:
-            self.relDbSem()
-
+        return ngamsDbCursor(self.__pool, sqlQuery, args)
 
     def getNgasFilesMap(self):
         """
@@ -1235,5 +988,3 @@ class ngamsDbCore(object):
             return int(res[0][0])
 
         return self.addSrvList(srvList)
-
-# EOF

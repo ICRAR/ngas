@@ -28,7 +28,8 @@ with open('../../VERSION') as vfile:
             break
 
 install_requires = [
-    'pcc'
+    'pcc',
+    'DBUtils'
 ]
 try:
     import bsddb

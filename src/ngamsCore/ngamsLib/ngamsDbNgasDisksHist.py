@@ -90,14 +90,11 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
             if (origin == None):
                 origin = "NG/AMS@" + hostId
             tsObj = PccUtTime.TimeStamp()
-            try:
-                self.takeDbSem()
-                if (date == None):
-                    histDate = self.convertTimeStamp(tsObj.getTimeStamp())
-                else:
-                    histDate = self.convertTimeStamp(date)
-            finally:
-                self.relDbSem()
+
+            if (date == None):
+                histDate = self.convertTimeStamp(tsObj.getTimeStamp())
+            else:
+                histDate = self.convertTimeStamp(date)
 
             if (descr != None):
                 if (descrMimeType == None):
