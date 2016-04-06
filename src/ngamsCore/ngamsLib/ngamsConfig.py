@@ -1028,10 +1028,7 @@ class ngamsConfig:
         Returns: Max number of DB Pool Connections.
         """
         par = "Db[1].MaxPoolConnections"
-        val = getInt(par, self.getVal(par))
-        if not val:
-            return 7
-        return val
+        return getInt(par, self.getVal(par), 7)
 
     def getDbParameters(self):
         """
