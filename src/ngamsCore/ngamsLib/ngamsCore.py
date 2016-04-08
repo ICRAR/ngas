@@ -95,7 +95,6 @@ The source files contained in the sub-modules 'ngamsServer', 'ngamsPClient',
 sub-module contaning example plug-ins 'ngamsPlugIns' is not considered either.
 """
 
-import commands
 import glob
 import importlib
 import md5
@@ -312,15 +311,11 @@ NGAMS_DB_CH_FILE_DELETE = "FILE-DELETE"
 NGAMS_DISK_INFO          = "NgasDiskInfo"
 NGAMS_VOLUME_ID_FILE     = ".ngas_volume_id"
 NGAMS_VOLUME_INFO_FILE   = ".ngas_volume_info"
-NGAMS_JANITOR_THR        = "JANITOR-THREAD"
 NGAMS_DATA_CHECK_THR     = "DATA-CHECK-THREAD"
-NGAMS_USER_SERVICE_THR   = "USER-SERVICE-THREAD"
 NGAMS_SUBSCRIPTION_THR   = "SUBSCRIPTION-THREAD"
 NGAMS_SUBSCRIBER_THR     = "SUBSCRIBER-THREAD"
 NGAMS_DELIVERY_THR       = "DELIVERY-THREAD-"
 NGAMS_MIR_CONTROL_THR    = "MIRRORING-CONTROL-THREAD"
-NGAMS_CACHE_CONTROL_THR  = "CACHE-CONTROL-THREAD"
-NGAMS_CACHE_CLEAN_UP_THR = "CACHE-CLEAN-UP-THREAD"
 NGAMS_CLONE_THR          = "CLONE-THREAD-"
 NGAMS_REGISTER_THR       = "REGISTER-THREAD-"
 NGAMS_DEF_LOG_PREFIX     = "NGAS-LOG-PREFIX"

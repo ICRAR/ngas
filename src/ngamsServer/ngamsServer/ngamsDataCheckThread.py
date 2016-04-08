@@ -46,61 +46,27 @@ from ngamsLib import ngamsNotification, ngamsDiskInfo
 from ngamsLib import ngamsDbCore, ngamsDbm, ngamsHighLevelLib, ngamsLib
 
 
-def startDataCheckThread(srvObj):
+class StopDataCheckThreadException(Exception):
+    pass
+
+def _finishThread(srvObj):
+    info(2,"Stopping Data Check Thread")
+    srvObj.updateHostInfo(None, None, None, None, None, None, 0, None)
+    raise StopDataCheckThreadException()
+
+def _stopDataCheckThr(srvObj, stopEvt):
     """
-    Start the Data Check Thread.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
+    Checks whether the thread should finish or not
     """
-    T = TRACE()
+    if stopEvt.isSet():
+        _finishThread(srvObj)
 
-    if (not srvObj.getCfg().getDataCheckActive()): return
-    info(3,"Starting Data Check Thread ...")
-    srvObj._dataCheckRunSync.set()
-    args = (srvObj, None)
-    srvObj._dataCheckThread = threading.Thread(None, dataCheckThread,
-                                               NGAMS_DATA_CHECK_THR, args)
-    srvObj._dataCheckThread.setDaemon(0)
-    srvObj._dataCheckThread.start()
-    info(3,"Data Check Thread started")
-
-
-def stopDataCheckThread(srvObj):
+def suspend(srvObj, stopEvt, t):
     """
-    Stop the Data Check Thread.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
+    Sleeps for ``t`` seconds, unless the thread is signaled to stop
     """
-    T = TRACE()
-
-    if (not srvObj.getCfg().getDataCheckActive()): return
-    info(3,"Stopping Data Check Thread ...")
-    srvObj._dataCheckRunSync.clear()
-    srvObj._dataCheckRunSync.wait(10)
-    srvObj._dataCheckRunSync.clear()
-    srvObj._dataCheckThread = None
-    info(3,"Data Check Thread stopped")
-
-
-def _stopDataCheckThr(srvObj):
-    """
-    Convenience function used by the DCC Thread to check if it is allowed
-    to run and in case not, to stop itself.
-
-    srvObj:      Reference to instance of ngamsServer object (ngamsServer).
-
-    Returns:     Void.
-    """
-    if (not srvObj._dataCheckRunSync.isSet()):
-        info(2,"Stopping Data Check Thread")
-        srvObj.updateHostInfo(None, None, None, None, None, None, 0, None)
-        srvObj._dataCheckRunSync.set()
-        raise Exception, "_STOP_DATA_CHECK_THREAD_"
-
+    if stopEvt.wait(t):
+        _finishThread(srvObj)
 
 # TODO: Variables used for the handling of the execution of the DCC within
 # this module. Could be made members of the ngamsServer class, but since they
@@ -431,8 +397,7 @@ def _suspend(srvObj,
     time.sleep(suspTime)
 
 
-def _dumpFileInfo(srvObj,
-                  tmpFilePat):
+def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     """
     Function that dumps the information about the files. One DBM is created
     per disk. This is named:
@@ -489,7 +454,7 @@ def _dumpFileInfo(srvObj,
     _resetDiskDic()
     lastDiskCheckDic = {}
     for diskInfo in diskListRaw:
-        _stopDataCheckThr(srvObj)
+        _stopDataCheckThr(srvObj, stopEvt)
         tmpDiskInfoObj = ngamsDiskInfo.ngamsDiskInfo().\
                          unpackSqlResult(diskInfo)
         if (not tmpDiskInfoObj.getLastCheck()):
@@ -517,7 +482,7 @@ def _dumpFileInfo(srvObj,
     dbmFileList = glob.glob(cacheDir + "/" + NGAMS_DATA_CHECK_THR +\
                             "_QUEUE_*.bsddb")
     for dbmFile in dbmFileList:
-        _stopDataCheckThr(srvObj)
+        _stopDataCheckThr(srvObj, stopEvt)
         diskId = dbmFile.split("_")[-1].split(".")[0]
         if (not _getDiskDic().has_key(diskId)):
             filePat = "%s/%s*%s.bsddb" % (cacheDir,NGAMS_DATA_CHECK_THR,diskId)
@@ -542,7 +507,7 @@ def _dumpFileInfo(srvObj,
     info(4,"Create DBM files for disks to be checked ...")
     startDbFileRd = time.time()
     for diskId in _getDiskDic().keys():
-        _stopDataCheckThr(srvObj)
+        _stopDataCheckThr(srvObj, stopEvt)
         if (_getDbmObjDic().has_key(diskId)): continue
 
         # The disk is ripe for checking but still has no Queue/Error DBM
@@ -577,7 +542,7 @@ def _dumpFileInfo(srvObj,
                                                    order=0)
         fetchSize = 1000
         while (1):
-            _stopDataCheckThr(srvObj)
+            _stopDataCheckThr(srvObj, stopEvt)
             try:
                 fileList = cursorObj.fetch(fetchSize)
             except Exception, e:
@@ -623,7 +588,7 @@ def _dumpFileInfo(srvObj,
         errorDbm = ngamsDbm.ngamsDbm(errorDbmFile, 0, 1)
         _getDbmObjDic()[diskId] = (queueDbm, errorDbm)
 
-        _stopDataCheckThr(srvObj)
+        _stopDataCheckThr(srvObj, stopEvt)
     info(3,"Queried info for files to be checked from DB. Time: %.3fs" %\
          (time.time() - startDbFileRd))
     info(4,"Checked that disks scheduled for checking have DBM files")
@@ -646,7 +611,7 @@ def _dumpFileInfo(srvObj,
     _setFileRefDbm(ngamsDbm.ngamsDbm(fileRefDbm, 1, 1))
     tmpGlobFile = tmpFilePat + "_FILE_GLOB.glob"
     for diskId in _getDiskDic().keys():
-        _stopDataCheckThr(srvObj)
+        _stopDataCheckThr(srvObj, stopEvt)
         diskInfoObj = _getDiskDic()[diskId]
         pattern = ""
         while (1):
@@ -660,7 +625,7 @@ def _dumpFileInfo(srvObj,
             if (stat != 0): break
             fo = open(tmpGlobFile)
             while (1):
-                _stopDataCheckThr(srvObj)
+                _stopDataCheckThr(srvObj, stopEvt)
                 nextFile = fo.readline().strip()
                 if (not nextFile): break
                 # NGAS Disk Info file + files under the staging area on
@@ -674,7 +639,7 @@ def _dumpFileInfo(srvObj,
             fo.close()
             pattern += "/*"
         _getFileRefDbm().sync()
-        _stopDataCheckThr(srvObj)
+        _stopDataCheckThr(srvObj, stopEvt)
         rmFile(tmpGlobFile)
     info(4,"Created DBMs with references to all files on the storage disks")
     ###########################################################################
@@ -687,7 +652,7 @@ def _dumpFileInfo(srvObj,
     info(4,"Retrieve information about files to be ignored ...")
     spuFilesCur = srvObj.getDb().getFileSummarySpuriousFiles1(srvObj.getHostId())
     while (1):
-        _stopDataCheckThr(srvObj)
+        _stopDataCheckThr(srvObj, stopEvt)
         fileList = spuFilesCur.fetch(1000)
         if (not fileList): break
 
@@ -1082,8 +1047,7 @@ def _crossCheckNonRegFiles(srvObj):
         raise msg
 
 
-def dataCheckThread(srvObj,
-                    dummy):
+def dataCheckThread(srvObj, stopEvt):
     """
     The Data Check Thread is executed to run a periodic check of the
     consistency of the data files contained in an NG/AMS system. The periodic
@@ -1094,18 +1058,17 @@ def dataCheckThread(srvObj,
     Returns:      Void.
     """
     minCycleTime = isoTime2Secs(srvObj.getCfg().getDataCheckMinCycle())
-    dataCheckThreadLoop = 1
-    while (dataCheckThreadLoop):
 
-        # Incapsulate this whole block to avoid that the thread dies in
+    while True:
+
+        # Encapsulate this whole block to avoid that the thread dies in
         # case a problem occurs, like e.g. a problem with the DB connection.
         try:
             # Wait until we're sure that the Janitor Thread has executed
             # at least once, to ensure that the check is carried out in a
             # clean environment.
             while (not srvObj.getJanitorThreadRunCount()):
-                _stopDataCheckThr(srvObj)
-                time.sleep(0.5)
+                suspend(srvObj, stopEvt, 0.5)
 
             if (srvObj.getCfg().getDataCheckLogSummary()):
                 info(0,"Data Check Thread starting iteration ...")
@@ -1126,11 +1089,11 @@ def dataCheckThread(srvObj,
                                   NGAMS_CACHE_DIR, NGAMS_DATA_CHECK_THR))
 
             # Get the information about the files to check.
+            tmpFilePat = ngamsHighLevelLib.\
+                         genTmpFilename(srvObj.getCfg(),
+                                        NGAMS_DATA_CHECK_THR)
             try:
-                tmpFilePat = ngamsHighLevelLib.\
-                             genTmpFilename(srvObj.getCfg(),
-                                            NGAMS_DATA_CHECK_THR)
-                _dumpFileInfo(srvObj, tmpFilePat)
+                _dumpFileInfo(srvObj, tmpFilePat, stopEvt)
             finally:
                 rmFile(tmpFilePat + "*")
 
@@ -1153,12 +1116,13 @@ def dataCheckThread(srvObj,
                                                    threadId, args)
                 thrHandleDic[n].setDaemon(0)
                 thrHandleDic[n].start()
-            while (1):
+
+            while True:
                 time.sleep(0.500)
 
                 # Check if the DCC Thread is allowed to run, else stop all
                 # activities.
-                if (not srvObj._dataCheckRunSync.isSet()):
+                if stopEvt.isSet():
                     # Stop the sub-threads.
                     _setRunPermSubThread(0)
                     startTime = time.time()
@@ -1174,7 +1138,7 @@ def dataCheckThread(srvObj,
                     # Kill the possible remaining sub-threads.
                     for thrId in thrHandleDic.keys():
                         del thrHandleDic[thrId]
-                    _stopDataCheckThr(srvObj)
+                    _stopDataCheckThr(srvObj, stopEvt)
                 else:
                     # Check if all the sub-threads are still running
                     # or if the check cycle is completed.
@@ -1224,23 +1188,14 @@ def dataCheckThread(srvObj,
                      initFromSecsSinceEpoch(nextAbsCheckTime).\
                      getTimeStamp() + "/" + str(nextAbsCheckTime))
                 srvObj.setNextDataCheckTime(nextAbsCheckTime)
-                tmpTimer = PccUtTime.Timer()
-                run = 1
-                while (run):
-                    _stopDataCheckThr(srvObj)
-                    tmpTimeNow = tmpTimer.getLap()
-                    if ((waitTime - tmpTimeNow) >= 2):
-                        sleepTime = 2
-                    else:
-                        sleepTime = (waitTime - tmpTimeNow)
-                        run = 0
-                    time.sleep(sleepTime)
+
+                suspend(srvObj, stopEvt, waitTime)
             ###################################################################
 
+        except StopDataCheckThreadException:
+            return
         except Exception, e:
-            if (str(e).find("_STOP_DATA_CHECK_THREAD_") != -1):
-                thread.exit()
-            elif (str(e).find("NGAMS_ER_DB_COM") != -1):
+            if (str(e).find("NGAMS_ER_DB_COM") != -1):
                 if (getTestMode()):
                     waitTime = 1
                 else:

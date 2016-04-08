@@ -35,14 +35,15 @@ to manage the contents in the cache archive when running the NG/AMS Server
 as a cache archive.
 """
 
-import os, time, thread, threading, base64, cPickle, traceback
+import os, time, base64, cPickle, traceback
 from Queue import Queue, Empty
+
 try:
     from pysqlite2 import dbapi2 as sqlite
-except:
+except ImportError:
     import sqlite3 as sqlite
 
-from ngamsLib.ngamsCore import info, logFlush, TRACE, rmFile,\
+from ngamsLib.ngamsCore import info, TRACE, rmFile,\
     getMaxLogLevel, iso8601ToSecs, error, warning, notice, genLog, alert,\
     loadPlugInEntryPoint
 from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib
@@ -50,18 +51,10 @@ from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ng
 # An internal queue contains files that have been explicitly requested to be removed
 explicitDelQueue = Queue()
 
-def _STOP_(srvObj,
-           msg):
-    """
-    Function used for test/debugging purposes.
-    """
-    info(1, "STOPPING THREAD: %s" % msg)
-    logFlush()
-    os.system("sync")
-    time.sleep(3600)
-
 
 # Various definitions used within this module.
+
+NGAMS_CACHE_CONTROL_THR  = "CACHE-CONTROL-THREAD"
 
 # Name of DBMS (SQLite) used to hold the information about the contents of the
 # file cache.
@@ -99,80 +92,22 @@ NGAMS_CACHE_CONTROL_THR_STOP = "_STOP_CACHE_CONTROL_THREAD_"
 CACHE_DEL_BIT_MASK = "00000100"
 CACHE_DEL_BIT_MASK_INT = int(CACHE_DEL_BIT_MASK, 2)
 
-CHECK_CAN_BE_DELETED = 0 #whether or not check if a file can be deleted (has it been transferred to remote sites?) during file cleaning-up
 
+class StopCacheControlThreadEx(Exception):
+    pass
 
-def startCacheControlThread(srvObj):
-    """
-    Start the Cache Control Thread.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
-    """
-    T = TRACE()
-
-    info(1, "Starting the Cache Control Thread ...")
-
-    global CHECK_CAN_BE_DELETED
-
-    try:
-        CHECK_CAN_BE_DELETED = int(srvObj.getCfg().getVal("Caching[1].CheckCanBeDeleted"))
-    except:
-        CHECK_CAN_BE_DELETED = 0
-
-    info(1, "Cache Control - CHECK_CAN_BE_DELETED = %d" % CHECK_CAN_BE_DELETED)
-
-    args = (srvObj, None)
-    srvObj._cacheControlThread = threading.Thread(None, cacheControlThread,
-                                                  NGAMS_CACHE_CONTROL_THR_STOP,
-                                                  args)
-    srvObj._cacheControlThread.setDaemon(0)
-    srvObj._cacheControlThread.start()
-    srvObj.setCacheControlThreadRunning(1)
-    info(1, "Cache Control Thread started")
-
-
-def stopCacheControlThread(srvObj):
-    """
-    Stop the Cache Control Thread.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
-    """
-    T = TRACE()
-
-    if (not srvObj.getCacheControlThreadRunning()): return
-    info(1, "Stopping the Cache Control Thread ...")
-    if (CHECK_CAN_BE_DELETED):
-        info(1, "Marking any outstanding files in the delQueue")
-        markFileCanBeDeleted(srvObj) # so that files in the queue do not get lost after restart
-        info(1, "Done marking")
-    srvObj._cacheControlThread = None
-    info(1, "Cache Control Thread stopped")
-
-
-def checkStopCacheControlThread(srvObj,
-                                raiseEx = True):
+def checkStopCacheControlThread(stopEvt):
     """
     Used to check if the Cache Control Thread should be stopped and in case
     yes, to stop it.
-
-    srvObj:     Reference to server object (ngamsServer).
-
-    Returns:    Void.
     """
-    T = TRACE(5)
-
-    if (not srvObj.getThreadRunPermission()):
-        srvObj.setCacheControlThreadRunning(0)
+    if stopEvt.is_set():
         info(2, "Stopping the Cache Control Service")
-        if (raiseEx):
-            raise Exception, NGAMS_CACHE_CONTROL_THR_STOP
-        else:
-            thread.exit()
+        raise StopCacheControlThreadEx()
 
+def suspend(stopEvt, t):
+    if stopEvt.wait(t):
+        raise StopCacheControlThreadEx()
 
 def createCacheDbms(srvObj):
     """
@@ -615,7 +550,7 @@ def delEntryFromCacheDbms(srvObj,
     srvObj.getDb().deleteCacheEntry(diskId, fileId, fileVersion)
 
 
-def initCacheArchive(srvObj):
+def initCacheArchive(srvObj, stopEvt):
     """
     Initialize the NGAS Cache Archive Service. If there are requests in the
     Cache Table in the DB, these are read out and inserted in the local
@@ -706,7 +641,7 @@ def initCacheArchive(srvObj):
     if (cacheControlPi):
         noOfThreads = srvObj.getCfg().getVal("Caching[1].NumberOfPlugIns")
         if (noOfThreads):
-            parameters = [srvObj]
+            parameters = (srvObj, stopEvt)
             srvObj._cacheCtrlPiThreadGr = ngamsThreadGroup.\
                                           ngamsThreadGroup(\
                 "CACHE-CONTROL-PI-THREAD", _cacheCtrlPlugInThread,
@@ -950,7 +885,7 @@ def _cacheCtrlPlugInThread(threadGrObj):
     """
     T = TRACE()
 
-    srvObj      = threadGrObj.getParameters()[0]
+    srvObj, stopEvt = threadGrObj.getParameters()
 
     # Load the plug-in module.
     cacheCtrlPlugIn = srvObj.getCfg().getVal("Caching[1].CacheControlPlugIn")
@@ -959,31 +894,35 @@ def _cacheCtrlPlugInThread(threadGrObj):
     deleteMsg = "CACHE-CRITERIA: Plug-in Selected File for Deletion: %s/%s/%s"
 
     # Loop until instructed to stop.
-    while (True):
-        checkStopCacheControlThread(srvObj, raiseEx = False)
-        time.sleep(0.500)
+    while True:
+        try:
 
-        # Get the next Cache Entry Object (if there are any queued).
-        while (True):
-            checkStopCacheControlThread(srvObj, raiseEx = False)
-            cacheEntryObj = _getEntryCacheCtrlPlugInDbm(srvObj)
-            if (not cacheEntryObj): break
+            suspend(stopEvt, 0.5)
 
-            # Invoke Cache Control Plug-In on the file.
-            try:
-                deleteFile = plugInMethod(srvObj, cacheEntryObj)
-                if (deleteFile):
-                    info(2, deleteMsg % (cacheEntryObj.getDiskId(),
-                                         cacheEntryObj.getFileId(),
-                                         str(cacheEntryObj.getFileVersion())))
-                    srvObj._cacheCtrlPiDelDbm.addIncKey(cacheEntryObj)
-                else:
+            # Get the next Cache Entry Object (if there are any queued).
+            while True:
+                checkStopCacheControlThread(stopEvt)
+                cacheEntryObj = _getEntryCacheCtrlPlugInDbm(srvObj)
+                if not cacheEntryObj:
+                    break
+
+                # Invoke Cache Control Plug-In on the file.
+                try:
+                    deleteFile = plugInMethod(srvObj, cacheEntryObj)
+                    if (deleteFile):
+                        info(2, deleteMsg % (cacheEntryObj.getDiskId(),
+                                             cacheEntryObj.getFileId(),
+                                             str(cacheEntryObj.getFileVersion())))
+                        srvObj._cacheCtrlPiDelDbm.addIncKey(cacheEntryObj)
+                    else:
+                        srvObj._cacheCtrlPiFilesDbm.addIncKey(cacheEntryObj)
+                except Exception, e:
+                    warning("Error occurred in thread. Error: %s" % str(e))
+                    # Put the entry in the queue to make it stay in the system
+                    # still.
                     srvObj._cacheCtrlPiFilesDbm.addIncKey(cacheEntryObj)
-            except Exception, e:
-                warning("Error occurred in thread. Error: %s" % str(e))
-                # Put the entry in the queue to make it stay in the system
-                # still.
-                srvObj._cacheCtrlPiFilesDbm.addIncKey(cacheEntryObj)
+        except StopCacheControlThreadEx:
+            break
 
 def markFileCanBeDeleted(srvObj):
     """
@@ -1024,7 +963,7 @@ def checkIfFileCanBeDeleted(srvObj, fileId, fileVersion, diskId):
     return (CACHE_DEL_BIT_MASK == re)
 
 
-def checkCacheContents(srvObj):
+def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
     """
     Go through the contents in the cache and check for each item not already
     marked for deletion, if it can be deleted. If it can be deleted, mark it
@@ -1076,7 +1015,7 @@ def checkCacheContents(srvObj):
         scheduleFileForDeletion(srvObj, sqlFileInfo)
         markFileChecked(srvObj, sqlFileInfo)
     """
-    if (CHECK_CAN_BE_DELETED):
+    if (check_can_be_deleted):
         markFileCanBeDeleted(srvObj)
 
     # 1. Evaluate if there are files residing in the cache for more than
@@ -1162,7 +1101,7 @@ def checkCacheContents(srvObj):
                     fileInfoList = srvObj._cacheContDbmsCur.fetchmany(10000)
                     if (not fileInfoList): break
                     for sqlFileInfo in fileInfoList:
-                        if (CHECK_CAN_BE_DELETED):
+                        if (check_can_be_deleted):
                             try:
                                 if (not checkIfFileCanBeDeleted(srvObj,
                                                                 sqlFileInfo[NGAMS_CACHE_FILE_ID],
@@ -1359,10 +1298,10 @@ def checkCacheContents(srvObj):
 
         # Wait for all entries in the Cache Control Plug-In DBM to be handled.
         while (True):
-            checkStopCacheControlThread(srvObj)
             count = _getCountCacheCtrlPlugInDbm(srvObj)
-            if (count == 2): break
-            time.sleep(0.250)
+            if count == 2:
+                break
+            suspend(stopEvt, 0.25)
 
         # Mark the files to be deleted for deletion.
         while (True):
@@ -1520,39 +1459,25 @@ def cleanUpCache(srvObj):
         # be marked as uncompleted.
 
 
-def cacheControlThread(srvObj,
-                       dummy):
+def cacheControlThread(srvObj, stopEvt, check_can_be_deleted):
     """
     The Cache Control Thread runs periodically when the NG/AMS Server is
     Online (if enabled) to synchronize the data holding of the local NGAS
     Cluster against a set of remote NGAS Clusters.
-
-    srvObj:      Reference to server object (ngamsServer).
-
-    dummy:       Needed by the thread handling ...
-
-    Returns:     Void.
     """
-    T = TRACE()
-
-    # Don't execute the thread if deactivated in the configuration.
-    if (not srvObj.getCachingActive()):
-        info(1, "NGAS Cache Service not active - Cache Control Thread " +\
-             "terminating with no actions")
-        thread.exit()
 
     # Initialize the Cache Service.
-    initCacheArchive(srvObj)
+    initCacheArchive(srvObj, stopEvt)
 
     # Main loop.
     period = srvObj.getCfg().getCachingPeriod()
-    while (True):
+    while True:
         startTime = time.time()
 
-        # Incapsulate this whole block to avoid that the thread dies in
+        # Encapsulate this whole block to avoid that the thread dies in
         # case a problem occurs, like e.g. a problem with the DB connection.
         try:
-            checkStopCacheControlThread(srvObj)
+            checkStopCacheControlThread(stopEvt)
             info(5, "Cache Control Thread starting next iteration ...")
 
             ###################################################################
@@ -1565,7 +1490,7 @@ def cacheControlThread(srvObj,
 
             # Go through local Cache Contents DBMS. Check for each item if it
             # can be deleted.
-            checkCacheContents(srvObj)
+            checkCacheContents(srvObj, stopEvt, check_can_be_deleted)
 
             # Delete each item, marked for deletion.
             cleanUpCache(srvObj)
@@ -1576,16 +1501,12 @@ def cacheControlThread(srvObj,
             ###################################################################
             suspTime = (period - (time.time() - startTime))
             if (suspTime < 1): suspTime = 1
-            info(4, "Cache Control Thread executed - suspending for " +\
-                 str(suspTime) + "s ...")
-            suspStartTime = time.time()
-            while ((time.time() - suspStartTime) < suspTime):
-                checkStopCacheControlThread(srvObj)
-                time.sleep(0.250)
-            ###################################################################
+            info(4, "Cache Control Thread executed - suspending for %d s ..." % (suspTime,))
+            suspend(stopEvt, suspTime)
 
+        except StopCacheControlThreadEx:
+            break
         except Exception, e:
-            if (str(e).find(NGAMS_CACHE_CONTROL_THR_STOP) != -1): thread.exit()
             errMsg = "Error occurred during execution of the Cache " +\
                      "Control Thread. Exception: " + str(e)
             alert(errMsg)
@@ -1595,5 +1516,6 @@ def cacheControlThread(srvObj,
             # too often to carry out the tasks that failed.
             time.sleep(5.0)
 
-
+    if check_can_be_deleted:
+        markFileCanBeDeleted(srvObj)
 # EOF

@@ -45,8 +45,7 @@ from ngamsLib import ngamsSubscriber
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
 from ngamsLib import ngamsNotification
 import ngamsArchiveUtils
-import ngamsJanitorThread, ngamsDataCheckThread, ngamsSubscriptionThread
-import ngamsUserServiceThread, ngamsMirroringControlThread
+import ngamsSubscriptionThread
 
 
 def ngamsBaseExitHandler(srvObj):
@@ -354,14 +353,12 @@ def handleOnline(srvObj,
 
     # Start threads + inform threads that they are allowed to execute.
     srvObj.setThreadRunPermission(1)
-    ngamsJanitorThread.startJanitorThread(srvObj)
-    ngamsDataCheckThread.startDataCheckThread(srvObj)
+    srvObj.startJanitorThread()
+    srvObj.startDataCheckThread()
     ngamsSubscriptionThread.startSubscriptionThread(srvObj)
-    ngamsUserServiceThread.startUserServiceThread(srvObj)
-    ngamsMirroringControlThread.startMirControlThread(srvObj)
-    if (srvObj.getCachingActive()):
-        import ngamsCacheControlThread
-        ngamsCacheControlThread.startCacheControlThread(srvObj)
+    srvObj.startUserServiceThread()
+    srvObj.startMirControlThread()
+    srvObj.startCacheControlThread()
 
     # Change state to Online.
     srvObj.setState(NGAMS_ONLINE_STATE)
@@ -399,11 +396,13 @@ def handleOffline(srvObj,
     """
     # Stop/delete Janitor Thread + Data Check Thread + inform other
     # possible threads to stop execution (if running).
-    if (stopJanitorThr): ngamsJanitorThread.stopJanitorThread(srvObj)
-    ngamsDataCheckThread.stopDataCheckThread(srvObj)
+    if (stopJanitorThr):
+        srvObj.stopJanitorThread()
+    srvObj.stopDataCheckThread()
     ngamsSubscriptionThread.stopSubscriptionThread(srvObj)
-    ngamsUserServiceThread.stopUserServiceThread(srvObj)
-    ngamsMirroringControlThread.stopMirControlThread(srvObj)
+    srvObj.stopUserServiceThread()
+    srvObj.stopMirControlThread()
+    srvObj.stopCacheControlThread()
     srvObj.setThreadRunPermission(0)
 
     info(3, "Prepare NG/AMS for Offline State ...")

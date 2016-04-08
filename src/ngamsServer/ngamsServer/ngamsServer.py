@@ -27,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  07/05/2001  Created
 #
-
 """
 This module contains the class ngamsServer that provides the
 services for the NG/AMS Server.
@@ -48,12 +47,16 @@ from ngamsLib.ngamsCore import \
     NGAMS_HTTP_BAD_REQ, NGAMS_HTTP_SERVICE_NA, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, NGAMS_DEF_LOG_PREFIX, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR, NGAMS_TEXT_MT,\
     NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_XML_STATUS_ROOT_EL,\
-    NGAMS_XML_STATUS_DTD, NGAMS_XML_MT
+    NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, loadPlugInEntryPoint
 from ngamsLib import ngamsHighLevelLib, ngamsLib
 from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
 import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
-
+import ngamsJanitorThread
+import ngamsDataCheckThread
+import ngamsUserServiceThread
+import ngamsMirroringControlThread
+import ngamsCacheControlThread
 
 class ngamsSimpleRequest:
     """
@@ -252,14 +255,13 @@ class ngamsServer:
         self._threadRunPermission     = 0
 
         # Handling of the Janitor Thread.
-        self._janitorThread           = None
-        self._janitorThreadRunning    = 0
-        self._janitorThreadRunSync    = threading.Event()
-        self._janitorThreadRunCount   = 0
+        self._janitorThread         = None
+        self._janitorThreadStopEvt  = threading.Event()
+        self._janitorThreadRunCount = 0
 
         # Handling of the Data Check Thread.
-        self._dataCheckThread         = None
-        self._dataCheckRunSync        = threading.Event()
+        self._dataCheckThread        = None
+        self._dataCheckThreadStopEvt = threading.Event()
 
         # Handling of the Data Subscription.
         self._subscriberDic           = {}
@@ -291,8 +293,8 @@ class ngamsServer:
         self._subscriptionStatusList  = []
 
         # Handling of the Mirroring Control Thread.
+        self._mirControlThreadStopEvt = threading.Event()
         self._mirControlThread        = None
-        self._mirControlThreadRunning = 0
         self.__mirControlTrigger      = threading.Event()
         self._pauseMirThreads         = False
         self._mirThreadsPauseCount    = 0
@@ -310,8 +312,8 @@ class ngamsServer:
         self._srcArchInfoDbmSem = threading.Semaphore(1)
 
         # Handling of User Service Plug-In.
-        self._userServicePlugIn       = None
-        self._userServiceRunSync      = threading.Event()
+        self._userServiceThread  = None
+        self._userServiceStopEvt = threading.Event()
 
         # Handling of host info in ngas_hosts.
         self.__hostInfo               = ngamsHostInfo.ngamsHostInfo()
@@ -333,7 +335,8 @@ class ngamsServer:
         # Handling of a Cache Archive.
         self._cacheArchive              = False
         self._cacheControlThread        = None
-        self._cacheControlThreadRunning = False
+        self._cacheControlThreadStopEvt = threading.Event()
+
         # - Cache Contents SQLite DBMS.
         self._cacheContDbms             = None
         self._cacheContDbmsCur          = None
@@ -729,28 +732,30 @@ class ngamsServer:
         return self._threadRunPermission
 
 
-    def setJanitorThreadRunning(self,
-                                running):
+    def startJanitorThread(self):
         """
-        Set the Janitor Thread Running Flag to indicate if the Janitor
-        Thread is running or not.
-
-        running:     Janitor Thread Running Flag (integer/0|1).
-
-        Returns:     Reference to object itself.
+        Starts the Janitor Thread.
         """
-        self._janitorThreadRunning = running
-        return self
+        info(3,"Starting Janitor Thread ...")
+        self._janitorThread = threading.Thread(target=ngamsJanitorThread.janitorThread,
+                                               name=ngamsJanitorThread.NGAMS_JANITOR_THR,
+                                               args=(self,self._janitorThreadStopEvt))
+        self._janitorThread.start()
+        info(3,"Janitor Thread started")
 
 
-    def getJanitorThreadRunning(self):
+    def stopJanitorThread(self):
         """
-        Get the Janitor Thread Running Flag to indicate if the Janitor
-        Thread is running or not.
-
-        Returns:    Janitor Thread Running Flag (integer/0|1).
+        Stops the Janitor Thread.
         """
-        return self._janitorThreadRunning
+        if self._janitorThread is None:
+            return
+        info(3,"Stopping Janitor Thread ...")
+        self._janitorThreadStopEvt.set()
+        self._janitorThread.join(10)
+        self._janitorThread = None
+        self._janitorThreadRunCount = 0
+        info(3,"Janitor Thread stopped")
 
 
     def incJanitorThreadRunCount(self):
@@ -763,16 +768,6 @@ class ngamsServer:
         return self
 
 
-    def resetJanitorThreadRunCount(self):
-        """
-        Reset the Janitor Thread run count.
-
-        Returns:     Reference to object itself.
-        """
-        self._janitorThreadRunCount = 0
-        return self
-
-
     def getJanitorThreadRunCount(self):
         """
         Return the Janitor Thread run count.
@@ -780,6 +775,145 @@ class ngamsServer:
         Returns:     Janitor Thread Run Count (integer).
         """
         return self._janitorThreadRunCount
+
+
+    def startDataCheckThread(self):
+        """
+        Starts the Data Check Thread.
+        """
+        if not self.getCfg().getDataCheckActive():
+            return
+
+        info(3,"Starting Data Check Thread ...")
+        self._dataCheckThread = threading.Thread(target=ngamsDataCheckThread.dataCheckThread,
+                                                 name=ngamsDataCheckThread.NGAMS_DATA_CHECK_THR,
+                                                 args=(self, self._dataCheckThreadStopEvt))
+        self._dataCheckThread.start()
+        info(3,"Data Check Thread started")
+
+
+    def stopDataCheckThread(self):
+        """
+        Stop the Data Check Thread.
+
+        srvObj:     Reference to server object (ngamsServer).
+
+        Returns:    Void.
+        """
+        if not self.getCfg().getDataCheckActive():
+            return
+        if self._dataCheckThread is None:
+            return
+
+        info(3,"Stopping Data Check Thread ...")
+        self._dataCheckThreadStopEvt.set()
+        self._dataCheckThread.join(10)
+        self._dataCheckThread = None
+        info(3,"Data Check Thread stopped")
+
+
+    def startMirControlThread(self):
+        """
+        Starts the Mirroring Control Thread.
+        """
+
+        if (not self.getCfg().getMirroringActive()):
+            info(1, "NGAS Mirroring not active - Mirroring Control Thread not started")
+            return
+
+        info(3, "Starting the Mirroring Control Thread ...")
+        self._mirControlThread = threading.Thread(target=ngamsMirroringControlThread.mirControlThread,
+                                                  name=ngamsMirroringControlThread.NGAMS_MIR_CONTROL_THR,
+                                                  args=(self, self._mirControlThreadStopEvt))
+        self._mirControlThread.start()
+        info(3, "Mirroring Control Thread started")
+
+
+    def stopMirControlThread(self):
+        """
+        Stops the Mirroring Control Thread.
+        """
+        if self._mirControlThread is None:
+            return
+
+        info(3, "Stopping the Mirroring Service ...")
+        self._mirControlThreadStopEvt.set()
+        self._mirControlThread.join(10)
+        self._mirControlThread = None
+        info(3, "Mirroring Control Thread stopped")
+
+
+    def startUserServiceThread(self):
+        """
+        Start the User Service Thread.
+        """
+        # Start only if service is defined.
+        cfg_item = "NgamsCfg.SystemPlugIns[1].UserServicePlugIn"
+        userServicePlugIn = self.getCfg().getVal(cfg_item)
+        info(4,"User Service Plug-In Defined: %s" % str(userServicePlugIn))
+        if not userServicePlugIn:
+            return
+
+        info(1,"Loading User Service Plug-In module: %s" % userServicePlugIn)
+        userServicePlugIn = loadPlugInEntryPoint(userServicePlugIn)
+
+        info(1,"Starting User Service Thread ...")
+        self._userServiceThread = threading.Thread(target=ngamsUserServiceThread.userServiceThread,
+                                                   name=ngamsUserServiceThread.NGAMS_USER_SERVICE_THR,
+                                                   args=(self, self._userServiceStopEvt, userServicePlugIn))
+        self._userServiceThread.start()
+        info(3,"User Service Thread started")
+
+
+    def stopUserServiceThread(self):
+        """
+        Stops the User Service Thread.
+        """
+        if not self._userServiceThread:
+            return
+
+        info(1,"Stopping User Service Thread ...")
+        self._userServiceStopEvt.set()
+        self._userServiceThread.join(10)
+        self._userServiceThread = None
+        info(3,"User Service Thread stopped")
+
+
+    def startCacheControlThread(self):
+        """
+        Starts the Cache Control Thread.
+        """
+
+        if not self.getCachingActive():
+            info(1, "NGAS Cache Service not active - will not start Cache Control Thread")
+            return
+
+        info(1, "Starting the Cache Control Thread ...")
+        try:
+            check_can_be_deleted = int(self.getCfg().getVal("Caching[1].CheckCanBeDeleted"))
+        except:
+            check_can_be_deleted = 0
+
+        info(1, "Cache Control - CHECK_CAN_BE_DELETED = %d" % check_can_be_deleted)
+
+        self._cacheControlThread = threading.Thread(target=ngamsCacheControlThread.cacheControlThread,
+                                                      name=ngamsCacheControlThread.NGAMS_CACHE_CONTROL_THR,
+                                                      args=(self, self._cacheControlThreadStopEvt, check_can_be_deleted))
+        self._cacheControlThread.start()
+        info(1, "Cache Control Thread started")
+
+
+    def stopCacheControlThread(self):
+        """
+        Stop the Cache Control Thread.
+        """
+        if self._cacheControlThread is None:
+            return
+        info(1, "Stopping the Cache Control Thread ...")
+        self._cacheControlThreadStopEvt.set()
+        self._cacheControlThread.join(10)
+        self._cacheControlThread = None
+        info(1, "Cache Control Thread stopped")
 
 
     def triggerSubscriptionThread(self):
@@ -932,30 +1066,6 @@ class ngamsServer:
         return self
 
 
-    def setMirControlThreadRunning(self,
-                                   running):
-        """
-        Set the Mirroring Control Thread Running Flag to indicate if the
-        thread.
-
-        running:     Mirroring Control Running Flag (integer/0|1).
-
-        Returns:     Reference to object itself.
-        """
-        self._mirControlThreadRunning = running
-        return self
-
-
-    def getMirControlThreadRunning(self):
-        """
-        Get the Mirroring Control Thread Running Flag to indicate if the
-        Mirroring Control Thread is running or not.
-
-        Returns:    Mirroring Control Thread Running Flag (integer/0|1).
-        """
-        return self._mirControlThreadRunning
-
-
     def triggerMirThreads(self):
         """
         Set (trigger) the mirroring event to signal to the Mirroring
@@ -982,29 +1092,6 @@ class ngamsServer:
             self.__mirControlTrigger.wait()
         self.__mirControlTrigger.clear()
         return self
-
-
-    def setCacheControlThreadRunning(self,
-                                     running):
-        """
-        Set the Cache Control Thread Running Flag to indicate if the thread.
-
-        running:     Cache Control Running Flag (integer/0|1).
-
-        Returns:     Reference to object itself.
-        """
-        self._cacheControlThreadRunning = running
-        return self
-
-
-    def getCacheControlThreadRunning(self):
-        """
-        Get the Cache Control Thread Running Flag to indicate if the
-        Cache Control Thread is running or not.
-
-        Returns:    Cache Control Thread Running Flag (integer/0|1).
-        """
-        return self._cacheControlThreadRunning
 
 
     def setForce(self,
