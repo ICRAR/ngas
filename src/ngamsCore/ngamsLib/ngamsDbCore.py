@@ -455,7 +455,9 @@ class ngamsDbCursor(object):
             raise
 
     def __del__(self):
-        self.close()
+        try:
+            self.close()
+        except: pass
 
     def fetch(self, howmany):
         """
@@ -476,9 +478,13 @@ class ngamsDbCursor(object):
 
     def close(self):
         if self.cursor:
-            self.cursor.close()
+            try:
+                self.cursor.close()
+            except: pass
         if self.conn:
-            self.conn.close()
+            try:
+                self.conn.close()
+            except: pass
 
 
 class ngamsDbCore(object):
