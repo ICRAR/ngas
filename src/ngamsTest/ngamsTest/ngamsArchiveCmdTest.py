@@ -1030,7 +1030,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         reqPropStgFile = "/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/staging/" +\
                          "*-SmallFile.fits.pickle"
         pollForFile(reqPropStgFile, 1)
-        self.prepExtSrv(delDirs=0, clearDb=0)
+        self.prepExtSrv(delDirs=0, clearDb=0, force=True)
         reqPropBadFile = "/tmp/ngamsTest/NGAS/bad-files/BAD-FILE-*" +\
                          "-SmallFile.fits.pickle"
         pollForFile(reqPropBadFile, 1)

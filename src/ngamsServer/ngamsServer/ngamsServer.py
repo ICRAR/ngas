@@ -2252,6 +2252,7 @@ class ngamsServer:
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "CONFLICT STARTING NG/AMS SERVER", errMsg)
             self.terminate()
+            return
 
         # Store the PID of this process in a PID file.
         info(4,"Creating PID file for this session: {0}".format(self.pidFile()))
@@ -2464,6 +2465,13 @@ class ngamsServer:
         # Avoid last logs going into the local file
         setLogCond(self.__sysLog, self.__sysLogPrefix, 0,
                        self.__locLogFile, self.__verboseLevel)
+
+        # Remove PID file to allow future instances to be run
+        try:
+            os.unlink(self.pidFile())
+        except OSError:
+            error("Error while deleting PID file %s" % (self.pidFile(),))
+
         info(1,"Terminated NG/AMS Server")
 
     def killServer(self):

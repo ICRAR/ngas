@@ -1108,7 +1108,8 @@ class ngamsTestSuite(unittest.TestCase):
                    dbCfgName = None,
                    srvModule = None,
                    test = 1,
-                   skip_database_creation = False):
+                   skip_database_creation = False,
+                   force=False):
         """
         Prepare a standard server object, which runs as a separate process and
         serves via the standard HTTP interface.
@@ -1217,12 +1218,13 @@ class ngamsTestSuite(unittest.TestCase):
             execCmd = [sys.executable, '-m', srvModule]
         else:
             execCmd = ['ngamsServer']
-        execCmd += ["-cfg", tmpCfg, "-force"]
-        if (autoOnline):   execCmd.append("-autoOnline")
-        if (verbose):      execCmd.extend(["-v", str(verbose)])
-        if (multipleSrvs): execCmd.append("-multipleSrvs")
-        if (dbCfgName):    execCmd.extend(["-dbCfgId", dbCfgName])
-        if (test):         execCmd.append("-test")
+        execCmd += ["-cfg", tmpCfg]
+        if force:        execCmd.append('-force')
+        if autoOnline:   execCmd.append("-autoOnline")
+        if verbose:      execCmd.extend(["-v", str(verbose)])
+        if multipleSrvs: execCmd.append("-multipleSrvs")
+        if dbCfgName:    execCmd.extend(["-dbCfgId", dbCfgName])
+        if test:         execCmd.append("-test")
         info(3,"Starting external NG/AMS Server with shell command: " + " ".join(execCmd))
 
         srvProcess = subprocess.Popen(execCmd)
