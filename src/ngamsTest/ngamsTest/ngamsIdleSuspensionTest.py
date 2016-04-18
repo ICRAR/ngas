@@ -35,9 +35,10 @@ import socket
 import sys
 import time
 
-from ngamsLib.ngamsCore import getHostName, info, NGAMS_STATUS_CMD, NGAMS_CHECKFILE_CMD, rmFile
+from ngamsLib.ngamsCore import getHostName, info, NGAMS_STATUS_CMD, \
+    NGAMS_CHECKFILE_CMD, rmFile, NGAMS_SUCCESS
 from ngamsTestLib import getClusterName, ngamsTestSuite, sendPclCmd, \
-    filterOutLines, saveInFile, loadFile, runTest, genTmpFilename
+    filterOutLines, saveInFile, loadFile, runTest, genTmpFilename, unzip
 
 
 SUSP_EL = "NgamsCfg.HostSuspension[1]"
@@ -408,18 +409,19 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         # Retrieve the file as file_id, file_id/file_version.
         testParsList = [["TEST.2001-05-08T15:25:00.123", -1],
                         ["TEST.2001-05-08T15:25:00.123", 2]]
-        for testPars in testParsList:
+        for fileId, version in testParsList:
             waitTillSuspended(self, dbConObj, subNode1, 10)
-            tmpRetFile = genTmpFilename()
+
+            # different prefixes to avoid name clashes
+            tmpRetFile = genTmpFilename("original_")
+            unzippedRetFile = genTmpFilename("unzip_")
+
             statObj = sendPclCmd(port=8000, auth=AUTH).\
-                      retrieve2File(testPars[0], fileVersion=testPars[1],
+                      retrieve2File(fileId, fileVersion=version,
                                     targetFile=tmpRetFile)
-            self.checkEqual("Successfully handled request",
-                            statObj.getMessage(),
-                            "Unexpected return value for RETRIEVE Command")
-            self.checkFilesEq("src/SmallFile.fits.gz", tmpRetFile,
-                              "File retrieved incorrect")
-            info(1,"TODO!: Check that the file has been properly returned")
+            self.checkEqual(NGAMS_SUCCESS, statObj.getStatus(), "Unexpected return value for RETRIEVE Command")
+            unzip(tmpRetFile, unzippedRetFile)
+            self.checkFilesEq("src/SmallFile.fits", unzippedRetFile, "File retrieved incorrect")
 
 
     '''def test_WakeUpRetrieve_2(self):

@@ -43,7 +43,7 @@ from ngamsLib.ngamsCore import getHostName, info, NGAMS_RETRIEVE_CMD, \
     checkCreatePath, rmFile
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
     getClusterName, sendPclCmd, runTest, waitTillSuspended, \
-    genTmpFilename
+    genTmpFilename, unzip
 
 
 class ngamsRetrieveCmdTest(ngamsTestSuite):
@@ -99,7 +99,9 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         # Retrieve the file.
         trgFile = "tmp/test_RetrieveCmd_1_1_tmp"
+        outFilePath = "tmp/SmallFile.fits"
         status = client.retrieve2File("TEST.2001-05-08T15:25:00.123",1,trgFile)
+        unzip(trgFile, outFilePath)
 
         # Check reply.
         refStatFile = "ref/ngamsRetrieveCmdTest_test_RetrieveCmd_1_1_ref"
@@ -110,13 +112,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                           "Execution")
 
         # Check file retrieved.
-        refFile = "src/SmallFile.fits"
-        outFilePath = "tmp/SmallFile.fits"
-        with nested(gzip.open(trgFile, 'rb'), open(outFilePath, 'w')) as (gz, out):
-            for data in iter(partial(gz.read, 1024), ''):
-                out.write(data)
-
-        self.checkFilesEq(refFile, outFilePath, "Retrieved file incorrect")
+        self.checkFilesEq("src/SmallFile.fits", outFilePath, "Retrieved file incorrect")
 
 
     def test_RetrieveCmd_2(self):
@@ -823,11 +819,9 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         outFilePath = "tmp/SmallFile.fits"
         client = sendPclCmd(port=8888)
         client.retrieve2File("TEST.2001-05-08T15:25:00.123", 1, trgFile)
-        # unzip the the file and diff against original
-        with nested(gzip.open(trgFile, 'rb'), open(outFilePath, 'w')) as (gz, out):
-            for data in iter(partial(gz.read, 1024), ''):
-                out.write(data)
 
+        # unzip the the file and diff against original
+        unzip(trgFile, outFilePath)
         self.checkFilesEq(outFilePath, refFile, "Retrieved file incorrect")
 
 

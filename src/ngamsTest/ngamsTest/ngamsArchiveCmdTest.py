@@ -480,20 +480,14 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        # We copy the file to a fixed location because the reference file
-        # references that location
         srcFile = "src/SmallFile.fits"
-        tmpSrcFile = "/tmp/ngamsTest/NGAS/SmallFile.fits"
         self.prepExtSrv(8888)
-        shutil.copyfile(srcFile, tmpSrcFile)
-        srcFileUrl = "file:" + tmpSrcFile
+        srcFileUrl = "file:" + os.path.abspath(srcFile)
         stat = sendPclCmd(port=8888).archive(srcFileUrl)
         self.assertEquals(stat.getStatus(), 'SUCCESS', None)
 
-        srcFile = "src/SmallFile.fits.gz"
-        tmpSrcFile = "/tmp/ngamsTest/NGAS/SmallFile.fits.gz"
-        shutil.copyfile(srcFile, tmpSrcFile)
-        srcFileUrl = "file:" + tmpSrcFile
+        srcFile = "src/SmallFile.fits"
+        srcFileUrl = "file:" + os.path.abspath(srcFile)
         stat = sendPclCmd(port=8888).archive(srcFileUrl)
         self.assertEquals(stat.getStatus(), 'SUCCESS', None)
 

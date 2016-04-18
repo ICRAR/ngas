@@ -38,7 +38,7 @@ import pkg_resources
 
 from ngamsLib.ngamsCore import getHostName
 from ngamsPClient import ngamsPClient
-from ngamsTestLib import ngamsTestSuite, saveInFile, filterOutLines, waitReqCompl, runTest
+from ngamsTestLib import ngamsTestSuite, saveInFile, filterOutLines, waitReqCompl, runTest, unzip
 
 
 class ngamsPClientTest(ngamsTestSuite):
@@ -509,8 +509,9 @@ class ngamsPClientTest(ngamsTestSuite):
         self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "RETRIEVE Command")
         tmpFile = "tmp/TEST.2001-05-08T15:25:00.123.fits.gz"
-        refFile = "src/SmallFile.fits.gz"
-        self.checkFilesEq(refFile, tmpFile, "Retrieved file incorrect")
+        unzipedTmpFile = 'tmp/SmallFile.fits'
+        unzip(tmpFile, unzipedTmpFile)
+        self.checkFilesEq("src/SmallFile.fits", unzipedTmpFile, "Retrieved file incorrect")
 
 
     def test_ServerMultiplexing_01(self):

@@ -39,7 +39,7 @@ from ngamsLib.ngamsCore import getHostName, NGAMS_CLONE_CMD
 from ngamsLib import ngamsFileInfo, ngamsLib
 from ngamsTestLib import getClusterName, flushEmailQueue, saveInFile, \
     filterDbStatus1, getEmailMsg, ngamsTestSuite, waitReqCompl, genErrMsgVals, \
-    runTest, sendPclCmd
+    runTest, sendPclCmd, unzip, genTmpFilename
 
 # TODO: See how we can actually set this dynamically in the future
 _checkMail = False
@@ -560,9 +560,10 @@ class ngamsCloneCmdTest(ngamsTestSuite):
 
         tmpFitsFile = "/tmp/ngamsTest/NGAS/FitsStorage2-Main-3/saf/" +\
                       "2001-05-08/1/TEST.2001-05-08T15:25:00.123.fits.gz"
-        refFitsFile = "ref/TEST.2001-05-08T15:25:00.123.fits.gz"
-        self.checkFilesEq(refFitsFile, tmpFitsFile,
-                          "Incorrect cloned file generated")
+
+        unzippedTmp = genTmpFilename()
+        unzip(tmpFitsFile, unzippedTmp)
+        self.checkFilesEq(srcFile, unzippedTmp, "Incorrect cloned file generated")
 
         diskId = "tmp-ngamsTest-NGAS-FitsStorage2-Main-3"
         filePrefix = "ngamsCloneCmdTest_test_CloneCmd_1"

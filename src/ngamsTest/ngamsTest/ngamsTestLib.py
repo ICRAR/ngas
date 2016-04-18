@@ -33,19 +33,33 @@ This module contains test utilities used to build the NG/AMS Functional Tests.
 # TODO: Check for each function if it can be moved to the ngamsTestSuite Class.
 
 import collections
+import commands
+from contextlib import nested
+from functools import partial
+import getpass
+import glob
+import gzip
 import importlib
-import os, sys, time, unittest, socket, getpass, commands, re, glob, subprocess, shutil
+import os
+import re
+import shutil
+import socket
+import subprocess
+import sys
+import time
+import unittest
 
+import pyfits
+
+from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
 from ngamsLib.ngamsCore import getHostName, TRACE, info, \
     ngamsCopyrightString, rmFile, \
     error, cleanList, setLogCond, getVerboseLevel, \
     cpFile, getLogLevel, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
     checkIfIso8601
-from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
 from ngamsPClient import ngamsPClient
 from pccUt import PccUtUtils, PccUtTime
 
-import pyfits
 
 # Global parameters to control the test run.
 _noCleanUp   = 0
@@ -1039,6 +1053,12 @@ def getThreadId(logFile,
         grepCmd += " | grep %s" % tag
     stat, out = commands.getstatusoutput(grepCmd)
     return out.split(":")[-1][0:-1]
+
+def unzip(infile, outfile):
+    with nested(gzip.open(infile, 'rb'), open(outfile, 'w')) as (gz, out):
+        for data in iter(partial(gz.read, 1024), ''):
+            out.write(data)
+
 
 ###########################################################################
 # END: Utility functions
