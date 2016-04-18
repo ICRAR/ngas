@@ -2204,7 +2204,7 @@ class ngamsServer:
         # Check if there is an entry for this node in the ngas_hosts
         # table, if not create it.
         hostInfo = self.getDb().getHostInfoFromHostIds([self.getHostId()])
-        if (hostInfo == []):
+        if not hostInfo:
             tmpHostInfoObj = ngamsHostInfo.ngamsHostInfo()
 
             # If we specified a Proxy Name/IP in the configuration we use that

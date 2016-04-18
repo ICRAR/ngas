@@ -65,14 +65,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
             if x < len(hostList) - 1:
                 sqlQuery.append(", ")
         sqlQuery.append(")")
-        res = self.query2(''.join(sqlQuery), args=[str(h) for h in hostList])
-
-        # TODO: Check that this is the real intention here. Maybe it's OK if we
-        # return an empty result
-        # This applies to the rest of the methods in this class as well
-        if not res:
-            raise Exception("No host info found for host list %r" % (hostList,))
-        return res
+        return self.query2(''.join(sqlQuery), args=[str(h) for h in hostList])
 
 
     def getIpFromHostId(self,
