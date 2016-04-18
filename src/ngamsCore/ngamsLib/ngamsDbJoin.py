@@ -425,7 +425,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         sql.append(("SELECT %s FROM ngas_disks nd, ngas_files nf "
                     "WHERE nd.disk_id=nf.disk_id") % columns)
 
-        if ignore:
+        if ignore is not None:
             sql.append(" AND nf.file_ignore={}")
             vals.append(ignore)
 

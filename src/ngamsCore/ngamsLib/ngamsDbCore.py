@@ -840,15 +840,15 @@ class ngamsDbCore(object):
         """
         T = TRACE()
 
-        if (getMaxLogLevel() > 4):
-            info(5, "Performing SQL query (using a cursor): %s" % (sqlQuery,))
-
         # If we are passing down parameters we need to sanitize both the query
         # string (which should come with {0}-style formatting) and the parameter
         # list to cope with the different parameter styles supported by PEP-249
         if args:
             sqlQuery = sqlQuery.format(*self._params_to_bind(len(args)))
             args = self._data_to_bind(args)
+
+        if (getMaxLogLevel() > 4):
+            info(5, "Performing SQL query (using a cursor): %s / %r" % (sqlQuery, args))
 
         return ngamsDbCursor(self.__pool, sqlQuery, args)
 

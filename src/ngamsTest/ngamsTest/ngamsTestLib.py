@@ -1782,22 +1782,18 @@ class ngamsTestSuite(unittest.TestCase):
         """
         resTag1 = "Result of SQL query"
         resTag2 = "Performing SQL query (using a cursor):"
-        logLines = loadFile(logFile).split("\n")
-        tmpLogBuf = ""
-        for line in logLines:
-            if (line.find(threadId) != -1):
-                if ((line.find(resTag1) != -1) or (line.find(resTag2) != -1)):
-                    tmpLogBuf += line + "\n"
+        with open(logFile, 'r') as f:
+            queryLines = [l for l in f if threadId in l and (resTag1 in l or resTag2 in l)]
+
         tmpQueryPlan = genTmpFilename("QUERY_PLAN_")
-        saveInFile(tmpQueryPlan, tmpLogBuf)
-        queryLines = loadFile(tmpQueryPlan).split("\n")
+        saveInFile(tmpQueryPlan, '\n'.join(queryLines))
         queryPlan = ""
+
         for line in queryLines:
             line = line.strip()
-            if (line == ""): continue
-            if (line.find(resTag1) != -1):
+            if resTag1 in line:
                 sqlQuery, sqlRes = line.split(resTag1)[1].split(": ")
-                sqlQuery = sqlQuery.strip()[1:-1]
+                sqlQuery = sqlQuery.strip()
                 sqlRes = sqlRes.split("] [")[0] + "]"
             else:
                 sqlQuery = line.split(": ")[1].split(" [ngamsDb")[0]
