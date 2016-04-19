@@ -148,8 +148,8 @@ for line in iter(pkg_resources.resource_string('ngamsData', 'VERSION').splitline
 
 
 # Load Error Definition File
-NGAMS_ERR_DEF_FILE = pkg_resources.resource_filename('ngamsData', 'ngamsLogDef.xml')
-_logDef = PccLogDef.PccLogDef().load(NGAMS_ERR_DEF_FILE)
+NGAMS_ERR_DEF = pkg_resources.resource_string('ngamsData', 'ngamsLogDef.xml')  # @UndefinedVariable
+_logDef = PccLogDef.PccLogDef().load(NGAMS_ERR_DEF)
 
 
 # Flag used to suppress error logging on stderr.

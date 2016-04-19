@@ -452,7 +452,7 @@ if __name__ == '__main__':
 #		exit(-1)
 # check for aterm.jar
 
-	client = pkg_resources.resource_filename(__name__, 'aterm.jar')
+	client = 'aterm.jar'
 	if (os.path.isfile(client) == 0):
 		raise Exception("Error: aterm.jar not found")
 

@@ -31,7 +31,7 @@
 This module contains the Test Suite for the SUBSCRIBE Command.
 """
 
-import sys, pkg_resources
+import sys, os
 
 from ngamsLib.ngamsCore import NGAMS_DISCARD_CMD, info, cpFile
 from ngamsTestLib import ngamsTestSuite, sendExtCmd, sendPclCmd, getClusterName, runTest
@@ -39,7 +39,7 @@ from ngamsTestLib import ngamsTestSuite, sendExtCmd, sendPclCmd, getClusterName,
 
 try:
     illStatDoc  = "Incorrect info in DISCARD Command XML Status Document/%s."
-    srcFitsFile = pkg_resources.resource_filename(__name__, "src/SmallFile.fits")
+    srcFitsFile = os.path.abspath("src/SmallFile.fits")
 except:
     pass
 

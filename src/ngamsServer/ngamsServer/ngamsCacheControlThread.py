@@ -38,10 +38,7 @@ as a cache archive.
 import os, time, base64, cPickle, traceback
 from Queue import Queue, Empty
 
-try:
-    from pysqlite2 import dbapi2 as sqlite
-except ImportError:
-    import sqlite3 as sqlite
+import sqlite3 as sqlite
 
 from ngamsLib.ngamsCore import info, TRACE, rmFile,\
     getMaxLogLevel, iso8601ToSecs, error, warning, notice, genLog, alert,\

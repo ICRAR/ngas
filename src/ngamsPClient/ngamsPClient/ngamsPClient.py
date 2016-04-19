@@ -54,11 +54,9 @@ from xml.dom import minidom
 import pkg_resources
 
 
-manPage = pkg_resources.resource_filename(__name__, 'doc/ngamsPClient.txt')  # @UndefinedVariable
-fo = open(manPage)
+manPage = pkg_resources.resource_string(__name__, 'doc/ngamsPClient.txt')  # @UndefinedVariable
 __doc__ += "\n\n\nMan-Page for the NG/AMS Python Client Tool:\n\n"
-__doc__ += "ngamsPClient " + fo.read()
-fo.close()
+__doc__ += "ngamsPClient " + manPage
 
 
 def _exit(exitCode):
@@ -1393,8 +1391,7 @@ class ngamsPClient:
         global manPage
         buf = "\n"
         buf += "> ngamsPClient "
-        fo = open(manPage)
-        buf += fo.read()
+        buf += manPage
         return buf
 
 

@@ -236,19 +236,15 @@ class PccLogDef:
         return self.__logDefFile
 
 
-    def load(self,
-             filename):
+    def load(self, doc):
         """
         Load the given Log Definition XML file into the object.
 
-        filename:     Name of Log Definition File to load (string).
+        doc:     Log Definition contents (string).
 
         Returns:      Reference to object itself (PccLogDef).
         """
         self.clear()
-        fd = open(self.setLogDefFilename(filename).getLogDefFilename())
-        doc = fd.read()
-        fd.close()
 
         # The Expat parser does not like XSL declarations -- we
         # replace these. This can be removed if a parser is user later,

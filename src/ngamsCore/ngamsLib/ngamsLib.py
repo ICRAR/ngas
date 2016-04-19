@@ -1028,48 +1028,6 @@ def parseRawPlugInPars(rawPars):
     return parDic
 
 
-def locateInternalFile(filename):
-    """
-    Locate an internal file contained within the ngams module structure. The
-    first file matching is returned, if no file is found '' is returned.
-
-    filename:     Name of file (string).
-
-    Returns:      Name of file located (string).
-    """
-    T = TRACE()
-
-    info(4, "locateInternalFile() - locating resource " +\
-         "using pattern: " + filename + " ...")
-    # If the name already seems complete, return it as it is ...
-    complFilename = None
-    if ((filename.find("http://") == 0) or (filename.find("file:/") == 0) or
-        (filename.find("ftp:/") == 0) or (filename[0] == "/")):
-        complFilename = filename
-    elif (os.path.exists(filename)):
-        complFilename = filename
-    else:
-
-        # Locate via pkg_resources.resource_filename
-        # The full path (i.e., package1.package2.module.py) should be given
-        filenameParts = filename.split("/")
-        if len(filenameParts) > 1:
-            pkgName = filenameParts[0]
-            filename = '/'.join(filenameParts[1:])
-        else:
-            pkgName = __name__
-        try:
-            complFilename = pkg_resources.resource_filename(pkgName, filename)  # @UndefinedVariable
-        except Exception:
-            pass
-
-    if ((not complFilename) or (not os.path.exists(complFilename))):
-        errMsg = "Could not locate local file according to pattern: "+ filename
-        raise Exception, errMsg
-    info(4, "locateInternalFile() - located resource as: " + complFilename)
-    return complFilename
-
-
 def detMimeType(mimeTypeMaps,
                 filename,
                 noException = 0):

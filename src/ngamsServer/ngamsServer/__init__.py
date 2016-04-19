@@ -67,6 +67,6 @@ __all__ = ["ngamsArchiveCmd",
 ]
 
 import pkg_resources
-__doc__ = pkg_resources.resource_filename(__name__, 'README')
+__doc__ = pkg_resources.resource_string(__name__, 'README')  # @UndefinedVariable
 
 # EOF:
