@@ -72,16 +72,18 @@ class ngamsServerTest(ngamsTestSuite):
 
         # Now retrieve the data, but sloooooooooooowly and check that the server
         # times out and closes the connection, which in turn makes our receiving
-        # end finish earlier than expected (i.e., receiving less data than we
-        # ask for).
+        # end finish earlier than expected. This is detected on the client side
+        # because we receive less data than we ask for).
+        #
         # We have to make sure that the receiving buffer is tiny so the server
-        # really can't write any more data into the socket. We don't need to
+        # really can't write any more data into the socket. In the same spirit
+        # we specify a very small send buffer for the server. We don't need to
         # specify a timeout because the recv will return immediately if the
         # server has closed the connection.
         s = socket.socket()
         s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 256)
         s.connect(('localhost', 8888))
-        s.send('GET /RETRIEVE?file_id=some-file.data HTTP/1.0\r\n')
+        s.send('GET /RETRIEVE?file_id=some-file.data&send_buffer=1024 HTTP/1.0\r\n')
         s.send('\r\n')
         time.sleep(timeout + 2) # More than enough to provoke a server timeout
 
