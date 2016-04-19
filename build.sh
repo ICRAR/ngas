@@ -12,7 +12,7 @@ if [ -h $0 ]
 then
 	this=$(readlink -f $0)
 fi
-cd $(dirname $this)
+cd "$(dirname $this)"
 
 # And now...
 cd src
@@ -28,8 +28,8 @@ fi
 
 cd ngamsCClient
 ./bootstrap || fail "Failed to bootstrap ngamsCClient module"
-./configure $prefix || fail "Failed to ./configure $cModule"
-make clean all install || fail "Failed to compile $cModule"
+./configure "$prefix" || fail "Failed to ./configure ngamsCCLient"
+make clean all install || fail "Failed to compile ngamsCClient"
 cd ..
 
 # Build python setup.py-based modules
@@ -39,7 +39,7 @@ pip install numpy
 for pyModule in pcc ngamsCore ngamsPClient ngamsServer ngamsPlugIns
 do
 	prevDir=$(pwd -P)
-	cd $pyModule
+	cd "$pyModule"
 	python setup.py install || fail "Failed to setup.py $pyModule"
 	cd "$prevDir"
 done
