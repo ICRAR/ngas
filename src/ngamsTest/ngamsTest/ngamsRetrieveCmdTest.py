@@ -42,8 +42,7 @@ from ngamsLib import ngamsConfig
 from ngamsLib.ngamsCore import getHostName, info, NGAMS_RETRIEVE_CMD, \
     checkCreatePath, rmFile
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
-    getClusterName, sendPclCmd, runTest, waitTillSuspended, \
-    genTmpFilename, unzip
+    getClusterName, sendPclCmd, runTest, genTmpFilename, unzip
 
 
 class ngamsRetrieveCmdTest(ngamsTestSuite):
@@ -448,7 +447,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         sendPclCmd(port=8001).offline()
         sendPclCmd(port=8001).exit()
         subNode2 = nodes[2]
-        waitTillSuspended(self, envDic[subNode2][1], subNode2, 45, nodes)
+        self.waitTillSuspended(envDic[subNode2][1], subNode2, 45, nodes)
         client = sendPclCmd(port=8000)
 
         # Retrieve file (File ID).

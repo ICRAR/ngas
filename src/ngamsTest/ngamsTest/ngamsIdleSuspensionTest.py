@@ -35,7 +35,7 @@ import socket
 import sys
 import time
 
-from ngamsLib.ngamsCore import getHostName, info, NGAMS_STATUS_CMD, \
+from ngamsLib.ngamsCore import getHostName, NGAMS_STATUS_CMD, \
     NGAMS_CHECKFILE_CMD, rmFile, NGAMS_SUCCESS
 from ngamsTestLib import getClusterName, ngamsTestSuite, sendPclCmd, \
     filterOutLines, saveInFile, loadFile, runTest, genTmpFilename, unzip
@@ -45,12 +45,10 @@ SUSP_EL = "NgamsCfg.HostSuspension[1]"
 AUTH    = "bmdhczpuZ2Fz"
 
 # Simulated nodes in the cluster.
-try:
-    masterNode = getHostName() + ":8000"
-    subNode1   = getHostName() + ":8001"
-    subNode2   = getHostName() + ":8002"
-except:
-    pass
+masterNode = getHostName() + ":8000"
+subNode1   = getHostName() + ":8001"
+subNode2   = getHostName() + ":8002"
+susp_nodes = (subNode1, subNode2)
 
 # Log files.
 _logPat = "/tmp/ngamsTest/NGAS:%d/log/LogFile.nglog"
@@ -104,96 +102,6 @@ def prepSimCluster(testObj,
         srvs.append([int(portNo), None, None, getClusterName(),
                      locCfgParDic[portNo]])
     return testObj.prepCluster("src/ngamsCfg.xml", srvs)
-
-
-# TODO: Use from ngasTestLib.py.
-def markNodesAsUnsusp(dbConObj):
-    """
-    Mark the sub-nodes as not suspended.
-
-    Returns:   Void.
-    """
-    for subNode in [subNode1, subNode2]:
-        try:
-            dbConObj.resetWakeUpCall(subNode, 1)
-        except:
-            pass
-
-
-# TODO: Remove, contained in ngasTestLib.py.
-def waitTillSuspended(testObj,
-                      dbConObj,
-                      node,
-                      timeOut,
-                      fail = 1):
-    """
-    Wait till a node has suspended itself (marked as suspended).
-
-    testObj:     Reference to test case object (ngamsTestSuite).
-
-    dbConObj:    DB connection object (ngamsDb).
-
-    node:        NGAS ID for node (string).
-
-    timeOut:     Time-out in seconds to wait for the node to suspend itself
-                 (float).
-
-    fail:        Clean up + make a unit test fail if the host is not woken up
-                 within the given time-out (integr/0|1).
-
-    Returns:     1 if node suspended itself within the given timeout, otherwise
-                 0 is returned (integer/0|1).
-    """
-    startTime = time.time()
-    while ((time.time() - startTime) < timeOut):
-        nodeSusp = dbConObj.getSrvSuspended(node)
-        if (nodeSusp):
-            info(2,"Server suspended itself after: %.3fs" %\
-                 (time.time() - startTime))
-            break
-        else:
-            time.sleep(0.100)
-    if (fail):
-        if (nodeSusp):
-            return 1
-        else:
-            markNodesAsUnsusp(dbConObj)
-            testObj.fail("Sub-node did not suspend itself within %ds"%timeOut)
-    else:
-        return nodeSusp
-
-
-# TODO: Remove, contained in ngasTestLib.py.
-def waitTillWokenUp(testObj,
-                    dbConObj,
-                    node,
-                    timeOut,
-                    fail = 1):
-
-    """
-    Wait until a suspended node has been woken up.
-
-    See parameters for waitTillSuspended().
-
-    Returns:    1 if node was woken up within the given timeout, otherwise
-                0 is returned (integer/0|1).
-    """
-    startTime = time.time()
-    while ((time.time() - startTime) < timeOut):
-        nodeSusp = dbConObj.getSrvSuspended(node)
-        if (not nodeSusp):
-            info(2,"Server woken up after: %.3fs" % (time.time() - startTime))
-            break
-        else:
-            time.sleep(0.100)
-    if (fail):
-        if (not nodeSusp):
-            return 1
-        else:
-            markNodesAsUnsusp(dbConObj)
-            testObj.fail("Sub-node not woken up within %ds" % timeOut)
-    else:
-        return (not nodeSusp)
 
 
 class ngamsIdleSuspensionTest(ngamsTestSuite):
@@ -252,8 +160,8 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         ...
         """
         dbConObj = prepSimCluster(self)[masterNode][1]
-        waitTillSuspended(self, dbConObj, subNode1, 20)
-        markNodesAsUnsusp(dbConObj)
+        self.waitTillSuspended(dbConObj, subNode1, 20, susp_nodes)
+        self.markNodesAsUnsusp(dbConObj, susp_nodes)
 
 
     def test_WakeUpStatus_1(self):
@@ -276,7 +184,6 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         Test Steps:
         - Start simulated cluster specifying that one node can suspend itself.
         - Wait till sub-node has suspended itself.
-        - Send STATUS Command to suspended node to check that it is suspended.
         - Send STATUS Command to the simulated master requesting status from
           the suspended sub-node.
         - Check the response to the STATUS Command.
@@ -288,16 +195,9 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         """
         cfgParDic = {"8001": [["%s.IdleSuspensionTime" % SUSP_EL, "5"]]}
         dbConObj = prepSimCluster(self, cfgParDic = cfgParDic)[masterNode][1]
-        waitTillSuspended(self, dbConObj, subNode1, 10)
+        self.waitTillSuspended(dbConObj, subNode1, 10, susp_nodes)
 
-        # Send STATUS Command to suspended sub-node using master node as proxy.
-        # 1. Check that the sub-node is simulated suspended.
-        statObj = sendPclCmd(port=8001, auth=AUTH).status()
-        self.checkEqual("UNIT-TEST: This server is suspended",
-                        statObj.getMessage(), "Sub-node didn't suspend " +\
-                        "itself as expected")
-
-        # 2. Send STATUS Command to sub-node using master as proxy.
+        # 1. Send STATUS Command to sub-node using master as proxy.
         statObj = sendPclCmd(port=8000, auth=AUTH).\
                       sendCmdGen(NGAMS_STATUS_CMD,
                                  pars = [["host_id", subNode1]])
@@ -308,7 +208,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         self.checkFilesEq(refStatFile, tmpStatFile,
                           "Sub-node not woken up as expected")
 
-        # 3. Double-check that sub-node is no longer suspended.
+        # 2. Double-check that sub-node is no longer suspended.
         statObj = sendPclCmd(port=8001, auth=AUTH).status()
         statBuf = filterOutLines(statObj.dumpBuf(), ["Date:", "Version:"])
         tmpStatFile = saveInFile(None, statBuf)
@@ -316,7 +216,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
                           "Sub-node not woken up as expected")
 
         # Clean up.
-        markNodesAsUnsusp(dbConObj)
+        self.markNodesAsUnsusp(dbConObj, susp_nodes)
         sendPclCmd(port=8001, auth=AUTH).offline()
 
 
@@ -356,7 +256,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         sendPclCmd(port=8000, auth=AUTH).archive("src/TinyTestFile.fits")
         sendPclCmd(port=8000, auth=AUTH).archive("src/SmallFile.fits")
         sendPclCmd(port=8001, auth=AUTH).archive("src/SmallFile.fits")
-        waitTillSuspended(self, dbConObj, subNode1, 10)
+        self.waitTillSuspended(dbConObj, subNode1, 10, susp_nodes)
 
         # Retrieve information about the file on the suspended sub-node.
         fileId = "TEST.2001-05-08T15:25:00.123"
@@ -410,7 +310,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         testParsList = [["TEST.2001-05-08T15:25:00.123", -1],
                         ["TEST.2001-05-08T15:25:00.123", 2]]
         for fileId, version in testParsList:
-            waitTillSuspended(self, dbConObj, subNode1, 10)
+            self.waitTillSuspended(dbConObj, subNode1, 10, susp_nodes)
 
             # different prefixes to avoid name clashes
             tmpRetFile = genTmpFilename("original_")
@@ -610,7 +510,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         sendPclCmd(port=8001, auth=AUTH).archive("src/SmallFile.fits")
         sendPclCmd(port=8000, auth=AUTH).archive("src/TinyTestFile.fits")
         sendPclCmd(port=8000, auth=AUTH).archive("src/SmallFile.fits")
-        waitTillSuspended(self, dbConObj, subNode1, 10)
+        self.waitTillSuspended(dbConObj, subNode1, 10, susp_nodes)
 
         # Execute CHECKFILE Command on a file on the suspended sub-node.
         cmdPars = [["file_id", "TEST.2001-05-08T15:25:00.123"],
@@ -698,7 +598,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         dbConObj = prepSimCluster(self, cfgParDic=cfgParDic)[masterNode][1]
         sendPclCmd(port=8001, auth=AUTH).archive("src/TinyTestFile.fits")
         sendPclCmd(port=8001, auth=AUTH).archive("src/SmallFile.fits")
-        waitTillSuspended(self, dbConObj, subNode1, 30)
+        self.waitTillSuspended(dbConObj, subNode1, 30, susp_nodes)
         # Get timestamp for the log indicating that the node suspends itself.
         suspLog = "NG/AMS Server: %s suspending itself" % subNode1
         subNodeLog = loadFile(subNode1Log).split("\n")
@@ -712,7 +612,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
                       "log file: " + suspLog)
         suspLogTime = suspLogEntry.split(" ")[0]
         # Now we have to wait until the sub-node is woken up for DCC.
-        waitTillWokenUp(self, dbConObj, subNode1, 60)
+        self.waitTillWokenUp(dbConObj, subNode1, 60, susp_nodes)
         # Check log output in Master Log File.
         tagFormat = "Found suspended NG/AMS Server: %s that should be " +\
                     "woken up by this NG/AMS Server: %s"

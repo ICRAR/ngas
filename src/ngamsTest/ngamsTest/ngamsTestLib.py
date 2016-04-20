@@ -241,100 +241,6 @@ def waitReqCompl(clientObj,
     return res
 
 
-def markNodesAsUnsusp(dbConObj,
-                      nodes):
-    """
-    Mark the sub-nodes as not suspended.
-
-    Returns:   Void.
-    """
-    for subNode in nodes:
-        try:
-            dbConObj.resetWakeUpCall(subNode, 1)
-        except:
-            pass
-
-
-# TODO: Move into ngamsTestSuite.
-def waitTillSuspended(testObj,
-                      dbConObj,
-                      node,
-                      timeOut,
-                      nodes,
-                      fail = 1):
-    """
-    Wait till a node has suspended itself (marked as suspended).
-
-    testObj:     Reference to test case object (ngamsTestSuite).
-
-    dbConObj:    DB connection object (ngamsDb).
-
-    node:        NGAS ID for node (string).
-
-    timeOut:     Time-out in seconds to wait for the node to suspend itself
-                 (float).
-
-    nodes:       List of nodes in the cluster (list).
-
-    fail:        Clean up + make a unit test fail if the host is not woken up
-                 within the given time-out (integr/0|1).
-
-    Returns:     1 if node suspended itself within the given timeout, otherwise
-                 0 is returned (integer/0|1).
-    """
-    startTime = time.time()
-    while ((time.time() - startTime) < timeOut):
-        nodeSusp = dbConObj.getSrvSuspended(node)
-        if (nodeSusp):
-            info(2,"Server suspended itself after: %.3fs" %\
-                 (time.time() - startTime))
-            break
-        else:
-            time.sleep(0.100)
-    if (fail):
-        if (nodeSusp):
-            return 1
-        else:
-            markNodesAsUnsusp(dbConObj, nodes)
-            testObj.fail("Sub-node did not suspend itself within %ds"%timeOut)
-    else:
-        return nodeSusp
-
-
-# TODO: Move into ngamsTestSuite.
-def waitTillWokenUp(testObj,
-                    dbConObj,
-                    node,
-                    timeOut,
-                    nodes,
-                    fail = 1):
-
-    """
-    Wait until a suspended node has been woken up.
-
-    See parameters for waitTillSuspended().
-
-    Returns:    1 if node was woken up within the given timeout, otherwise
-                0 is returned (integer/0|1).
-    """
-    startTime = time.time()
-    while ((time.time() - startTime) < timeOut):
-        nodeSusp = dbConObj.getSrvSuspended(node)
-        if (not nodeSusp):
-            info(2,"Server woken up after: %.3fs" % (time.time() - startTime))
-            break
-        else:
-            time.sleep(0.100)
-    if (fail):
-        if (not nodeSusp):
-            return 1
-        else:
-            markNodesAsUnsusp(dbConObj, nodes)
-            testObj.fail("Sub-node not woken up within %ds" % timeOut)
-    else:
-        return (not nodeSusp)
-
-
 def setNoCleanUp(noCleanUp):
     """
     Set the No Clean Up Flag.
@@ -1803,6 +1709,49 @@ class ngamsTestSuite(unittest.TestCase):
         saveInFile(tmpQueryPlan2, queryPlan)
         self.checkQueryPlan(tmpQueryPlan2, refQueryPlan)
 
+    def markNodesAsUnsusp(self, dbConObj, nodes):
+        """
+        Mark the sub-nodes as not suspended.
+        """
+        for subNode in nodes:
+            try:
+                dbConObj.resetWakeUpCall(subNode, 1)
+            except:
+                pass
+
+    def waitTillSuspended(self, dbConObj, node, timeOut, nodes):
+        """
+        Wait until *node* has suspended itself (i.e., marked itself as
+        suspended in the database).
+        """
+        startTime = time.time()
+        while (time.time() - startTime) < timeOut:
+            nodeSusp = dbConObj.getSrvSuspended(node)
+            if nodeSusp:
+                info(2,"Server suspended itself after: %.3fs" %\
+                     (time.time() - startTime))
+                return 1
+            else:
+                time.sleep(0.1)
+
+        self.markNodesAsUnsusp(dbConObj, nodes)
+        self.fail("Sub-node did not suspend itself within %ds"%timeOut)
+
+    def waitTillWokenUp(self, dbConObj, node, timeOut, nodes):
+        """
+        Wait until a suspended node has been woken up.
+        """
+        startTime = time.time()
+        while (time.time() - startTime) < timeOut:
+            nodeSusp = dbConObj.getSrvSuspended(node)
+            if (not nodeSusp):
+                info(2,"Server woken up after: %.3fs" % (time.time() - startTime))
+                return 1
+            else:
+                time.sleep(0.1)
+
+        self.markNodesAsUnsusp(dbConObj, nodes)
+        self.fail("Sub-node not woken up within %ds" % timeOut)
 
 class ngamsTextTestResult(unittest._TextTestResult):
     """
