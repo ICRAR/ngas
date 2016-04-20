@@ -156,7 +156,7 @@ class ngamsArchiveClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepExtSrv(8888, 1, 1, 1)
+        self.prepExtSrv()
 
         # Make sure the parent directory of the client exists before the launch
         # the client; otherwise it might fail!

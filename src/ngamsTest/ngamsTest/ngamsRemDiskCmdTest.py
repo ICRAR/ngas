@@ -88,8 +88,8 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         TODO!: It is not checked that the contents on the disk and the info
                in the DB in ngas_files and ngas_disks is properly updated.
         """
-        self.prepExtSrv(8888, 1, 1, 1)
-        client = sendPclCmd(port=8888)
+        self.prepExtSrv()
+        client = sendPclCmd()
 
         # Archive a file + clone it to be able to execute the REMDISK Command.
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
@@ -145,8 +145,8 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepExtSrv(8888, 1, 1, 1)
-        client = sendPclCmd(port=8888)
+        self.prepExtSrv()
+        client = sendPclCmd()
         client.archive("src/SmallFile.fits")
 
         # Remove the cloned disk (execute=0), should fail.
@@ -198,7 +198,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
               containing test data preceeded with a heading.
         """
         self.prepExtSrv(cfgProps=[["NgamsCfg.Log[1].LocalLogLevel","5"]])
-        client = sendPclCmd(port=8888)
+        client = sendPclCmd()
         for _ in range(5): client.archive("src/SmallFile.fits")
         client.clone("", "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)
         client.remDisk("tmp-ngamsTest-NGAS-FitsStorage2-Main-3", execute=0)
@@ -239,7 +239,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(cfgProps=[["NgamsCfg.Log[1].LocalLogLevel","5"]])
-        client = sendPclCmd(port=8888)
+        client = sendPclCmd()
         for _ in range(5): client.archive("src/SmallFile.fits")
         client.clone("", "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)
         client.remDisk("tmp-ngamsTest-NGAS-FitsStorage2-Main-3", execute=1)

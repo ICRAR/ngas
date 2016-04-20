@@ -1095,7 +1095,7 @@ class ngamsTestSuite(unittest.TestCase):
         self.assertEquals(expectedStatus, status.getStatus())
 
     def prepExtSrv(self,
-                   portNo = 8888,
+                   port = 8888,
                    delDirs = 1,
                    clearDb = 1,
                    autoOnline = 1,
@@ -1113,7 +1113,7 @@ class ngamsTestSuite(unittest.TestCase):
         Prepare a standard server object, which runs as a separate process and
         serves via the standard HTTP interface.
 
-        portNo:        Port number to use by server (integer).
+        port:          Port number to use by server (integer).
 
         delDirs:       Delete NG/AMS dirs before executing (integer/0|1).
 
@@ -1180,7 +1180,7 @@ class ngamsTestSuite(unittest.TestCase):
         if (not multipleSrvs):
             hostId = hostName
         else:
-            hostId = "%s:%d" % (hostName, portNo)
+            hostId = "%s:%d" % (hostName, port)
 
         cfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
 
@@ -1192,7 +1192,7 @@ class ngamsTestSuite(unittest.TestCase):
             for cfgProp in cfgProps:
                 # TODO: Handle Cfg. Group ID.
                 cfgObj.storeVal(cfgProp[0], cfgProp[1])
-        cfgObj.storeVal("NgamsCfg.Server[1].PortNo", str(portNo))
+        cfgObj.storeVal("NgamsCfg.Server[1].PortNo", str(port))
 
         # Now connect to the database and perform any cleanups before we start
         # the server, like removing existing NGAS dirs and clearing tables
@@ -1228,7 +1228,7 @@ class ngamsTestSuite(unittest.TestCase):
         srvProcess = subprocess.Popen(execCmd)
 
         # We have to wait until the server is serving.
-        pCl = sendPclCmd(port=portNo)
+        pCl = sendPclCmd(port=port)
         startTime = time.time()
         stat = None
         while ((time.time() - startTime) < 20):
@@ -1243,11 +1243,11 @@ class ngamsTestSuite(unittest.TestCase):
                 time.sleep(0.2)
 
         if ((time.time() - startTime) >= 25):
-            self.termExtSrv(srvProcess, portNo)
+            self.termExtSrv(srvProcess, port)
             raise Exception,"NGAMS TEST LIB> NG/AMS Server did not start " +\
                   "correctly"
 
-        self.__extSrvInfo.append(ServerInfo(srvProcess, portNo, cfgObj.getRootDirectory()))
+        self.__extSrvInfo.append(ServerInfo(srvProcess, port, cfgObj.getRootDirectory()))
 
         return (cfgObj, dbObj)
 

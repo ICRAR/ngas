@@ -75,7 +75,7 @@ class ngamsOfflineCmdTest(ngamsTestSuite):
         Remarks:
         TODO: Check that the server is in Offline State.
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
+        self.prepExtSrv()
         tmpStatFile = sendExtCmd(8888, NGAMS_OFFLINE_CMD,
                                  genStatFile = 1)
         refStatFile = "ref/ngamsOfflineCmdTest_test_StdOffline_1_1_ref"

@@ -80,7 +80,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
+        self.prepExtSrv()
         client = sendPclCmd(port=8888)
         status = client.status()
         if (status.getMessage().\

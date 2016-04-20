@@ -31,68 +31,10 @@
 This module contains the Test Suite for the ONLINE Command.
 """
 
-import os
 import sys
 
-from ngamsLib import ngamsDiskInfo, ngamsStatus
 from ngamsLib.ngamsCore import NGAMS_ONLINE_CMD
-from ngamsTestLib import filterDbStatus1, saveInFile, cmpFiles, \
-    genErrMsg, loadFile, ngamsTestSuite, sendExtCmd, runTest
-
-
-def _checkDiskInfo(testCaseObj,
-                   srvObj,
-                   testMethod,
-                   mtPts = []):
-    """
-    Check info for disks in DB and in the NgasDiskInfo files.
-
-    testCaseObj:   Instance of NG/AMS Test Suite object (child of
-                   ngamsTestLib.ngamsTestSuite).
-
-    srvObj:        Server object (ngamsServer).
-
-    testMethod:    Test method name (string).
-
-    mtPts:         List with mount points (sorted) (list).
-
-    Returns:       List with mount points (sorted) (list).
-    """
-    # Check that disks have been properly inserted in DB.
-    diskIds = srvObj.getDb().getDiskIds()
-    diskIds.sort()
-    diskInfoBuf = ""
-    if (mtPts == []):
-        getMtPts = 1
-    else:
-        getMtPts = 0
-    for diskId in diskIds:
-        diskInfo = ngamsDiskInfo.ngamsDiskInfo()
-        diskInfo.unpackSqlResult(srvObj.getDb().getDiskInfoFromDiskId(diskId))
-        if (getMtPts): mtPts.append(diskInfo.getMountPoint())
-        diskInfoBuf += filterDbStatus1(diskInfo.dumpBuf()) + "\n"
-    tmpStatFile = "tmp/ngamsCmdHandlingTest_" + testMethod + "_1_tmp"
-    refStatFile = "ref/ngamsCmdHandlingTest_" + testMethod + "_1_ref"
-    saveInFile(tmpStatFile, diskInfoBuf)
-    testCaseObj.checkEqual("", cmpFiles(refStatFile, tmpStatFile),
-                           genErrMsg("Disks incorrectly registered (Test: " +\
-                           testMethod + ")", refStatFile, tmpStatFile))
-
-    # Check that NgasDiskInfo files have been properly created on the disks.
-    mtPts.sort()
-    diskInfoBuf = ""
-    for mtPt in mtPts:
-        statBuf = loadFile(os.path.normpath(mtPt + "/" + "NgasDiskInfo"))
-        tmpStat = ngamsStatus.ngamsStatus().unpackXmlDoc(statBuf, 0, 1)
-        diskInfoBuf += filterDbStatus1(tmpStat.dumpBuf(0, 0)) + "\n"
-    tmpStatFile = "tmp/ngamsCmdHandlingTest_" + testMethod + "_2_tmp"
-    refStatFile = "ref/ngamsCmdHandlingTest_" + testMethod + "_2_ref"
-    saveInFile(tmpStatFile, diskInfoBuf)
-    testCaseObj.checkEqual("", cmpFiles(refStatFile, tmpStatFile),
-                           genErrMsg("Invalid NgasDiskInfo files found " +\
-                                     "(Test: " + testMethod + ")",
-                                     refStatFile, tmpStatFile))
-    return mtPts
+from ngamsTestLib import ngamsTestSuite, sendExtCmd, runTest
 
 
 class ngamsOnlineCmdTest(ngamsTestSuite):
@@ -147,7 +89,7 @@ class ngamsOnlineCmdTest(ngamsTestSuite):
         Remarks:
         TODO: Check that the server is Online (DB + STATUS Command).
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 0)
+        self.prepExtSrv(autoOnline=0)
         tmpStatFile = sendExtCmd(8888, NGAMS_ONLINE_CMD,
                                  genStatFile = 1)
         refStatFile = "ref/ngamsOnlineCmdTest_test_OnlineCmd_1_1_ref"

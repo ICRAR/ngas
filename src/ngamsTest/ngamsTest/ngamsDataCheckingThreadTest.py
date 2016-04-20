@@ -91,8 +91,8 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
         cfg.storeVal("NgamsCfg.DataCheckThread[1].Prio", "1")
         cfg.storeVal("NgamsCfg.DataCheckThread[1].MinCycle", "0T00:00:00")
         cfg.save(tmpCfgFile, 0)
-        self.prepExtSrv(8888, 1, 1, 1, tmpCfgFile)
-        client = sendPclCmd(port=8888)
+        self.prepExtSrv(cfgFile=tmpCfgFile)
+        client = sendPclCmd()
         for _ in range(3):
             client.archive("src/SmallFile.fits")
 

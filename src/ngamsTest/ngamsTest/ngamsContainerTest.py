@@ -75,8 +75,8 @@ class ngamsContainerTest(ngamsTestSuite):
 	def test_CreateDestroy(self):
 
 		# Server and client
-		self.prepExtSrv(8888)
-		client = sendPclCmd(port=8888)
+		self.prepExtSrv()
+		client = sendPclCmd()
 
 		#------------------------------------------------------------------
 		# We start testing with a single container creation/deletion,
@@ -144,8 +144,8 @@ class ngamsContainerTest(ngamsTestSuite):
 	def test_AppendRemove(self):
 
 		# Server and client
-		self.prepExtSrv(8888)
-		client = sendPclCmd(port=8888)
+		self.prepExtSrv()
+		client = sendPclCmd()
 
 		# Create a container, shouldn't be a problem
 		containerName = "testing"
@@ -307,8 +307,8 @@ class ngamsContainerTest(ngamsTestSuite):
 	def test_ArchiveReceive(self):
 
 		# Server and client
-		self.prepExtSrv(8888)
-		client = sendPclCmd(port=8888)
+		self.prepExtSrv()
+		client = sendPclCmd()
 		containerName = "toplevel"
 
 		# Archive the top-level directory

@@ -93,8 +93,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepExtSrv(8888, 1, 1, 1)
-        client = sendPclCmd(port=8888)
+        self.prepExtSrv()
+        client = sendPclCmd()
         client.archive("src/SmallFile.fits")
 
         # Retrieve the file.
@@ -138,8 +138,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepExtSrv(8888, 1, 1, 1)
-        client = sendPclCmd(port=8888)
+        self.prepExtSrv()
+        client = sendPclCmd()
         client.archive("src/SmallFile.fits")
 
         # Retrieve the file.
@@ -637,8 +637,10 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].PlugInPars",
                      "TAG=test_DppiProc_01,TARGET=FILE")
         cfg.save(tmpCfgFile, 0)
-        self.prepExtSrv(8888, 1, 1, 1, cfgFile=tmpCfgFile)
-        stat = sendPclCmd(port=8888).archive("src/SmallFile.fits")
+        self.prepExtSrv(cfgFile=tmpCfgFile)
+        client = sendPclCmd()
+
+        stat = client.archive("src/SmallFile.fits")
         self.assertEquals(stat.getStatus(), 'SUCCESS', None)
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_01")
@@ -646,10 +648,9 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                    ["processing", "ngamsTest.ngamsTestDppi1"],
                    ["test_suite", "ngamsRetrieveCmdTest"],
                    ["test_case", "test_DppiProc_01"]]
-        stat = sendPclCmd(port=8888).sendCmdGen(
-                                                NGAMS_RETRIEVE_CMD,
-                                                outputFile=outFile,
-                                                pars=cmdPars)
+        stat = client.sendCmdGen(NGAMS_RETRIEVE_CMD,
+                                 outputFile=outFile,
+                                 pars=cmdPars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_01_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, result in file")
@@ -688,18 +689,19 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         cfg.storeVal("NgamsCfg.Processing[1].PlugIn[1].PlugInPars",
                      "TAG=test_DppiProc_02,TARGET=BUFFER")
         cfg.save(tmpCfgFile, 0)
-        self.prepExtSrv(8888, 1, 1, 1, cfgFile=tmpCfgFile)
-        sendPclCmd(port=8888).archive("src/SmallFile.fits")
+        self.prepExtSrv(cfgFile=tmpCfgFile)
+        client = sendPclCmd()
+
+        client.archive("src/SmallFile.fits")
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_02")
         cmdPars = [["file_id", "TEST.2001-05-08T15:25:00.123"],
                    ["processing", "ngamsTest.ngamsTestDppi1"],
                    ["test_suite", "ngamsRetrieveCmdTest"],
                    ["test_case", "test_DppiProc_02"]]
-        stat = sendPclCmd(port=8888).sendCmdGen(
-                                                NGAMS_RETRIEVE_CMD,
-                                                outputFile=outFile,
-                                                pars=cmdPars)
+        stat = client.sendCmdGen(NGAMS_RETRIEVE_CMD,
+                                 outputFile=outFile,
+                                 pars=cmdPars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_02_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, result in buffer")
@@ -797,9 +799,10 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         cwd = os.getcwd()
         configFile = os.path.normpath(cwd+"/src/ngamsCfg_VolumeDirectory.xml")
         self.prepExtSrv(delDirs=0, cfgFile=configFile)
+        client = sendPclCmd()
 
         # Archive a file.
-        stat = sendPclCmd().archive("src/SmallFile.fits")
+        stat = client.archive("src/SmallFile.fits")
 
         # dpallot: this will always fail on the mac as the tar sizes are different
         # to the hard coded test results in the old file:
@@ -817,7 +820,6 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         trgFile = "tmp/test_VolumeDir_01_tmp"
         refFile = "src/SmallFile.fits"
         outFilePath = "tmp/SmallFile.fits"
-        client = sendPclCmd(port=8888)
         client.retrieve2File("TEST.2001-05-08T15:25:00.123", 1, trgFile)
 
         # unzip the the file and diff against original

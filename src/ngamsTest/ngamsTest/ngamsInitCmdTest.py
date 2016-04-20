@@ -73,7 +73,7 @@ class ngamsInitCmdTest(ngamsTestSuite):
         TODO: Should change some parameters to verify that the cfg. file is
               actually re-loaded.
         """
-        self.prepExtSrv(8888, 1, 1, 1)
+        self.prepExtSrv()
         info(1,"TODO: Change some cfg. parameter")
         tmpStatFile = sendExtCmd(8888, NGAMS_INIT_CMD)
         refStatFile = "ref/ngamsInitCmdTest_test_handleCmdInit_1_1_ref"

@@ -53,8 +53,8 @@ class ngamsServerTest(ngamsTestSuite):
         timeout = 3
         amount_of_data = 10*1024*1024 # 10 MBs
         spaces = " " * amount_of_data
-        self.prepExtSrv(portNo=8888, cfgProps=[["NgamsCfg.Server[1].TimeOut",str(timeout)]])
-        client = sendPclCmd(port=8888)
+        self.prepExtSrv(cfgProps=[["NgamsCfg.Server[1].TimeOut",str(timeout)]])
+        client = sendPclCmd()
         _, _, _, data = client._httpPost(host='localhost',
                          port=8888,
                          cmd="ARCHIVE",

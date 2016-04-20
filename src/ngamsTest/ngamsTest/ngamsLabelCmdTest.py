@@ -81,6 +81,8 @@ class ngamsLabelCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
+
+
         # TODO: The host name is contained in the label, run only on
         #       ngasdev2 for the moment ...
         if (getHostName() != "ngasdev2"):

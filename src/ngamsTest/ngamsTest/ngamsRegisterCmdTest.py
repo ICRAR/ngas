@@ -83,7 +83,7 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
+        _, dbObj = self.prepExtSrv()
         srcFile = "src/SmallFile.fits"
         tmpSrcFile = "/tmp/ngamsTest/NGAS/" +\
                      "FitsStorage2-Main-3/saf/test/SmallFile.fits"

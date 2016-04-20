@@ -136,7 +136,7 @@ def _execCloneTest(testObj,
                              [8011, None, None, getClusterName()]])
         clNcu = sendPclCmd(port=8011)
     else:
-        testObj.prepExtSrv(8000)
+        testObj.prepExtSrv(port=8000)
     clMnu = sendPclCmd(port=8000)
     for n in range(5):
         statObj = clMnu.archive("src/SmallFile.fits")
@@ -528,7 +528,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         """
         srcFile = "src/SmallFile.fits"
         cfgObj, dbObj = self.prepExtSrv()
-        client = sendPclCmd(port=8888)
+        client = sendPclCmd()
         for n in range(2): client.archive(srcFile)
         flushEmailQueue()
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
@@ -604,8 +604,8 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         TODO: Re-implement using _execCloneTest().
         """
         srcFile = "src/SmallFile.fits"
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        client = sendPclCmd(port=8888)
+        self.prepExtSrv()
+        client = sendPclCmd()
         for n in range(10): client.archive(srcFile)
         flushEmailQueue()
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()

@@ -166,9 +166,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         cfg.storeVal("NgamsCfg.ArchiveHandling[1].FreeSpaceDiskChangeMb",
                      "100000")
         cfg.save(tmpCfgFile, 0)
-        cfgObj, dbObj = self.prepExtSrv(8888, cfgFile=tmpCfgFile)
+        cfgObj, dbObj = self.prepExtSrv(cfgFile=tmpCfgFile)
         flushEmailQueue()
-        sendPclCmd(port=8888).archive("src/SmallFile.fits")
+        sendPclCmd().archive("src/SmallFile.fits")
 
         # Check that Disk Change Notification message have been generated.
         if _checkMail:
@@ -251,9 +251,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         cfg.storeVal("NgamsCfg.ArchiveHandling[1].MinFreeSpaceWarningMb",
                      "100000")
         cfg.save(tmpCfgFile, 0)
-        cfgObj, dbObj = self.prepExtSrv(8888, cfgFile=tmpCfgFile)
+        cfgObj, dbObj = self.prepExtSrv(cfgFile=tmpCfgFile)
         flushEmailQueue()
-        sendPclCmd(port=8888).archive("src/SmallFile.fits")
+        sendPclCmd().archive("src/SmallFile.fits")
 
         # Check that Disk Change Notification message have been generated.
         if _checkMail:
@@ -294,7 +294,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv(8888)
+        cfgObj, dbObj = self.prepExtSrv()
         sendPclCmd().archive("src/SmallFile.fits")
         statObj = sendPclCmd().archive("src/SmallFile.fits", noVersioning=1)
         filePat = "ngamsArchiveCmdTest_test_NormalArchivePushReq"
@@ -481,14 +481,14 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         ...
         """
         srcFile = "src/SmallFile.fits"
-        self.prepExtSrv(8888)
+        self.prepExtSrv()
         srcFileUrl = "file:" + os.path.abspath(srcFile)
-        stat = sendPclCmd(port=8888).archive(srcFileUrl)
+        stat = sendPclCmd().archive(srcFileUrl)
         self.assertEquals(stat.getStatus(), 'SUCCESS', None)
 
         srcFile = "src/SmallFile.fits"
         srcFileUrl = "file:" + os.path.abspath(srcFile)
-        stat = sendPclCmd(port=8888).archive(srcFileUrl)
+        stat = sendPclCmd().archive(srcFileUrl)
         self.assertEquals(stat.getStatus(), 'SUCCESS', None)
 
 
@@ -583,7 +583,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         stgAreaPat = "/tmp/ngamsTest/NGAS/FitsStorage*-Main-*/staging/*"
         badFilesAreaPat = "/tmp/ngamsTest/NGAS/bad-files/*"
-        self.prepExtSrv(8888)
+        self.prepExtSrv()
 
         # Illegal size of FITS file (not a multiple of 2880).
         illSizeFile = "tmp/IllegalSize.fits"
@@ -1150,7 +1150,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         nmuCfg = self._genArchProxyCfg(self.__STREAM_LIST, naus.keys())
         #extProps = [["NgamsCfg.Log[1].LocalLogLevel", "5"]]
         extProps = []
-        self.prepExtSrv(8000, cfgFile=nmuCfg, cfgProps=extProps)
+        self.prepExtSrv(port=8000, cfgFile=nmuCfg, cfgProps=extProps)
         self.prepCluster("src/ngamsCfg.xml",
                          [[8001, None, None, getHostName()],
                           [8002, None, None, getHostName()],
@@ -1268,7 +1268,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         naus = {"%s:8001" % getHostName(): 0, "%s:8002" % getHostName(): 0,
                 "%s:8003" % getHostName(): 0, "%s:8004" % getHostName(): 0}
         ncuCfg = self._genArchProxyCfg(self.__STREAM_LIST, naus.keys())
-        cfgObj, dbObj = self.prepExtSrv(8000, cfgFile=ncuCfg)
+        cfgObj, dbObj = self.prepExtSrv(port=8000, cfgFile=ncuCfg)
         self.prepCluster("src/ngamsCfg.xml",
                          [[8001, None, None, getHostName()],
                           [8002, None, None, getHostName()],
@@ -1373,10 +1373,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
 
         # Test ARCHIVE
-        self.prepExtSrv(8888, cfgFile = 'src/ngamsCfg.xml')
+        self.prepExtSrv(cfgFile = 'src/ngamsCfg.xml')
 
         open('tmp/zerofile.fits', 'a').close()
-        client = sendPclCmd(port=8888)
+        client = sendPclCmd()
         status = client.archive('tmp/zerofile.fits', 'application/octet-stream', cmd = 'ARCHIVE')
         self.checkEqual(status.getStatus(), 'FAILURE', None)
         self.checkEqual('Content-Length is 0' in status.getMessage(), True, None)
@@ -1395,7 +1395,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Description:
             As above
         """
-        self.prepExtSrv(8888, cfgFile = 'src/ngamsCfg.xml')
+        self.prepExtSrv(cfgFile = 'src/ngamsCfg.xml')
 
         host = 'localhost:8888'
         method = 'GET'

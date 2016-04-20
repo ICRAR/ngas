@@ -87,7 +87,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
+        self.prepExtSrv()
         mDiskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         pars = [["disk_id", mDiskId], ["file_id", "NonExistingFileId"],
                 ["file_version", "1"]]
@@ -127,7 +127,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
+        self.prepExtSrv()
         pars = [["path", "/tmp/ngamsTest/NonExisting"]]
         tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD,
                                  pars + [["execute", "0"]])
@@ -169,8 +169,8 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
-        sendPclCmd(port=8888).pushFile(srcFitsFile)
+        self.prepExtSrv()
+        sendPclCmd().pushFile(srcFitsFile)
         mDiskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         pars = [["disk_id", mDiskId],
                 ["file_id", "TEST.2001-05-08T15:25:00.123"],
@@ -224,7 +224,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         TODO!: Implement check to verify that file has been removed from the
                disk.
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
+        self.prepExtSrv()
         trgFile = "/tmp/ngamsTest/NGAS/FitsStorage3-Main-5/saf/SmallFile.fits"
         cpFile(srcFitsFile, trgFile)
         tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD,
@@ -272,7 +272,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
+        self.prepExtSrv()
         sendPclCmd().archive("src/SmallFile.fits")
         mDiskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         fileId  = "TEST.2001-05-08T15:25:00.123"
@@ -321,7 +321,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
+        self.prepExtSrv()
         # Disk ID Missing:
         pars = [["file_id", "FileID"], ["file_version", "1"]]
         tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD, pars)

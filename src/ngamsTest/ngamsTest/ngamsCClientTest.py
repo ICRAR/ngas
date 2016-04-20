@@ -137,7 +137,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
 
         """
-        cfgObj, dbObj = self.prepExtSrv(8000)
+        cfgObj, dbObj = self.prepExtSrv(port=8000)
         statObj = _execCClient(pars=[["-port", "8000"],
                                      ["-cmd", "STATUS"]])[0]
         refStatFile = "ref/ngamsCClientTest_test_StatusCmd_1_1_ref"
@@ -283,7 +283,7 @@ class ngamsCClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv(8111)
+        cfgObj, dbObj = self.prepExtSrv(port=8111)
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         statObj = _execCClient(pars=[["-cmd", "STATUS"],
                                      ["-diskId", diskId],
@@ -839,7 +839,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
         """
         self.prepExtSrv(srvModule="ngamsSrvTestBrokSockRetrieve")
-        sendPclCmd(port=8888).archive("src/SmallFile.fits")
+        sendPclCmd().archive("src/SmallFile.fits")
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "RETRIEVE"],

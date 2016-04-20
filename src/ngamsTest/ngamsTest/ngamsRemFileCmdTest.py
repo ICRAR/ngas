@@ -84,7 +84,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         TODO!: It is not checked that the info for the file is actually
                removed from the DB and from the disk.
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
+        self.prepExtSrv()
         client = sendPclCmd()
 
         # Archive a file + clone it to be able to execute the REMFILE Command.
@@ -141,7 +141,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
                files, which could not be removed because they were available
                in less than 3 copies.
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
+        self.prepExtSrv()
         client = sendPclCmd()
 
         # Archive file.
@@ -243,7 +243,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv(8888, 1, 1, 1)
+        _, dbObj = self.prepExtSrv()
         client = sendPclCmd()
         for n in range(3): stat = client.archive("src/SmallFile.fits")
         diskId1 = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"

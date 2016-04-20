@@ -72,7 +72,7 @@ class ngamsHelpCmdTest(ngamsTestSuite):
         This Test Case should be modified when the HELP Command has been
         implemented.
         """
-        self.prepExtSrv(8888, 1, 1, 0)
+        self.prepExtSrv(autoOnline=0)
         tmpStatFile = sendExtCmd(8888, NGAMS_HELP_CMD)
         refStatFile = "ref/ngamsHelpCmdTest_test_NoPars_1_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile,
@@ -101,7 +101,7 @@ class ngamsHelpCmdTest(ngamsTestSuite):
         This Test Case should be modified when the HELP Command has been
         implemented.
         """
-        self.prepExtSrv(8888, 1, 1, 1)
+        self.prepExtSrv()
         tmpStatFile = sendExtCmd(8888, NGAMS_HELP_CMD)
         refStatFile = "ref/ngamsHelpCmdTest_test_NoPars_2_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile,
