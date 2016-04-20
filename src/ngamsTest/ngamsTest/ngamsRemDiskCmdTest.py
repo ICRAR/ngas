@@ -197,7 +197,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         TODO: Implement mechanism in ngamsGenTestReport to insert a file
               containing test data preceeded with a heading.
         """
-        self.prepExtSrv(test=0, cfgProps=[["NgamsCfg.Log[1].LocalLogLevel","5"]])
+        self.prepExtSrv(cfgProps=[["NgamsCfg.Log[1].LocalLogLevel","5"]])
         client = sendPclCmd(port=8888)
         for _ in range(5): client.archive("src/SmallFile.fits")
         client.clone("", "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)
@@ -238,7 +238,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        self.prepExtSrv(test=0, cfgProps=[["NgamsCfg.Log[1].LocalLogLevel","5"]])
+        self.prepExtSrv(cfgProps=[["NgamsCfg.Log[1].LocalLogLevel","5"]])
         client = sendPclCmd(port=8888)
         for _ in range(5): client.archive("src/SmallFile.fits")
         client.clone("", "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)

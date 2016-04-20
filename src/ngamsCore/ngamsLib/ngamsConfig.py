@@ -34,7 +34,7 @@ The ngamsConfig class is used to handle the NG/AMS Configuration.
 """
 
 import os, types, base64
-from   ngamsCore import info, error, warning, genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, getTestMode, isoTime2Secs, getNgamsVersionRaw, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
+from   ngamsCore import info, error, warning, genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, getNgamsVersionRaw, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
 import ngamsDbCore, ngamsConfigBase, ngamsSubscriber
 import ngamsLib
 import ngamsStorageSet, ngamsStream, ngamsDppiDef, ngamsMirroringSource
@@ -1829,11 +1829,11 @@ class ngamsConfig:
         """
         par = "HostSuspension[1].IdleSuspensionTime"
         suspTime = getInt(par, self.getVal(par))
+
         # Small security to avoid suspension time of 0s, we do not allow
         # a suspension time less than 60s.
-        if ((not getTestMode()) and (suspTime < 60) and
-            self.getIdleSuspension()):
-            msg = "Minimum allowed Suspension Timeout: 60s. " +\
+        if suspTime <= 0 and self.getIdleSuspension():
+            msg = "Suspension Timeout must be > 0. " +\
                   "Specified: %ds. Setting to minimum value."
             warning(msg % suspTime)
             suspTime = 60

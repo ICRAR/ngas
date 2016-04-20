@@ -37,7 +37,7 @@ It should be used as part of the ngamsDbBase parent classes.
 """
 
 import time
-from ngamsCore import TRACE, warning, error, notice, rmFile, getTestMode
+from ngamsCore import TRACE, warning, error, notice, rmFile
 from ngamsCore import NGAMS_FILE_STATUS_OK, NGAMS_FILE_CHK_ACTIVE,NGAMS_DB_CH_FILE_UPDATE, NGAMS_DB_CH_FILE_INSERT
 import ngamsDbm, ngamsDbCore
 import ngamsLib
@@ -775,10 +775,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                 rmFile(fileInfoDbmName + "*")
                 if (n < 4):
                     # We try again, after a small pause.
-                    if (getTestMode()):
-                        time.sleep(0.5)
-                    else:
-                        time.sleep(5)
+                    time.sleep(5)
                     notice("Retrying to dump file info ...")
                 else:
                     errMsg = "Giving up to auto recover dumping of file info!"
@@ -917,10 +914,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                 # Not all files were dumped.
                 if (n < 4):
                     # - retry after a small pause.
-                    if (getTestMode()):
-                        time.sleep(0.5)
-                    else:
-                        time.sleep(5)
+                    time.sleep(5)
                     notice("Retrying to dump file info ...")
                 else:
                     errMsg = "Giving up to auto recover dumping of file info!"

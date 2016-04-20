@@ -1,4 +1,3 @@
-#!/bin/env python
 #
 #    ICRAR - International Centre for Radio Astronomy Research
 #    (c) UWA - The University of Western Australia, 2012
@@ -49,7 +48,7 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NG
     NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, getNgamsLicense
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD
-from ngamsLib.ngamsCore import info, notice, getTestMode
+from ngamsLib.ngamsCore import info, notice
 from xml.dom import minidom
 import pkg_resources
 
@@ -57,15 +56,6 @@ import pkg_resources
 manPage = pkg_resources.resource_string(__name__, 'doc/ngamsPClient.txt')  # @UndefinedVariable
 __doc__ += "\n\n\nMan-Page for the NG/AMS Python Client Tool:\n\n"
 __doc__ += "ngamsPClient " + manPage
-
-
-def _exit(exitCode):
-    """
-    Internal function to perform an exit of the client (if allowed).
-
-    Returns:   Void.
-    """
-    if (not getTestMode()): sys.exit(exitCode)
 
 
 class ngamsPClient:
@@ -980,7 +970,6 @@ class ngamsPClient:
         # Control variables.
         parLen           = len(argv)
         idx              = 1
-        silentExit       = 0
         while idx < parLen:
             par = argv[idx].lower()
             try:
@@ -1051,8 +1040,7 @@ class ngamsPClient:
                     force = 1
                 elif (par == "-license"):
                     print getNgamsLicense()
-                    silentExit = 1
-                    _exit(0)
+                    sys.exit(0)
                 elif (par == "-mimetype"):
                     idx = idx + 1
                     mimeType = argv[idx]
@@ -1107,18 +1095,16 @@ class ngamsPClient:
                     parArray[parArrayIdx][1] = argv[idx]
                 elif (par == "-version"):
                     print getNgamsVersion()
-                    silentExit = 1
-                    _exit(0)
+                    sys.exit(0)
                 elif (par == "-url"):
                     idx = idx + 1
                     url = argv[idx]
                 else:
                     print self.correctUsageBuf()
-                    _exit(1)
-            except Exception as e:
-                if (not silentExit):
-                    print self.correctUsageBuf()
-                raise e
+                    sys.exit(1)
+            except Exception:
+                print self.correctUsageBuf()
+                raise
             idx = idx + 1
 
         self.verbosity = verboseLevel
@@ -1134,7 +1120,7 @@ class ngamsPClient:
         if not parArray and not cmd:
             print "Error: Neither a command (-cmd) nor parameters (-par/-val) have been given"
             print self.correctUsageBuf()
-            _exit(1)
+            sys.exit(1)
 
         # Invoke the proper operation.
         if (parArray):
@@ -1410,18 +1396,18 @@ def handleCmdLinePars(argv,
         ngamsStat = ngamsClient.handleCmd(argv)
         if ngamsClient.verbosity > 0 :
             pprintStatus(ngamsClient, ngamsStat)
-    except Exception, e:
+    except Exception:
         print(traceback.print_exc())
-        _exit(1)
+        sys.exit(1)
     if (ngamsClient.getStatus()):
         fo.write(ngamsStat.genXml(0, 1, 1, 1).toprettyxml('  ', '\n')[0:-1])
         print ngamsStat.getStatus()
     if (ngamsStat == None):
-        _exit(1)
+        sys.exit(1)
     elif (ngamsStat.getStatus() == NGAMS_FAILURE):
-        _exit(1)
+        sys.exit(1)
     else:
-        _exit(0)
+        sys.exit(0)
 
 def pprintStatus(client, stat):
     """

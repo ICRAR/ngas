@@ -527,7 +527,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         TODO: Re-implement using _execCloneTest().
         """
         srcFile = "src/SmallFile.fits"
-        cfgObj, dbObj = self.prepExtSrv(test=1)
+        cfgObj, dbObj = self.prepExtSrv()
         client = sendPclCmd(port=8888)
         for n in range(2): client.archive(srcFile)
         flushEmailQueue()

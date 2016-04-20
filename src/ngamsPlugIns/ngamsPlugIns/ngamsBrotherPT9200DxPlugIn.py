@@ -48,7 +48,7 @@ import os
 import sys
 
 from ngamsLib import ngamsPlugInApi, ngamsConfig
-from ngamsLib.ngamsCore import error, info, NGAMS_NOTIF_ERROR, getTestMode, setLogCond
+from ngamsLib.ngamsCore import error, info, NGAMS_NOTIF_ERROR, setLogCond
 
 
 def genFontsDictionary(fnm):
@@ -161,7 +161,13 @@ def ngamsBrotherPT9200DxPlugIn(srvObj,
     # Write the printer code file to the device.
     stat, out = ngamsPlugInApi.execCmd("cat " + printerFilename + " > " +\
                                        parDic["dev"])
-    if (not getTestMode()): os.system("rm -f " + printerFilename)
+
+    # This was previously excluded during the "test mode"; a proper way is by
+    # having a configurable parameter
+    print parDic
+    if not 'keep_printer_file' in parDic:
+        os.system("rm -f " + printerFilename)
+
     if (stat != 0):
         errMsg = "Problem occurred printing label! Error: " + str(out)
         error(errMsg)

@@ -42,7 +42,7 @@ import shutil
 import time
 
 from ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE, NGAMS_PICKLE_FILE_EXT, NGAMS_TMP_FILE_EXT
-from ngamsCore import info, warning, error, rmFile, getTestMode, notice, getUniqueNo, getNgamsVersion, timeRef2Iso8601
+from ngamsCore import info, warning, error, rmFile, notice, getUniqueNo, getNgamsVersion, timeRef2Iso8601
 import ngamsDbm, ngamsDbCore
 import ngamsFileInfo, ngamsStatus, ngamsFileList
 import ngamsLib
@@ -242,10 +242,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 if (fileListDbm): del fileListDbm
                 rmFile(fileListDbmName + "*")
                 if (n < 4):
-                    if (getTestMode()):
-                        time.sleep(0.5)
-                    else:
-                        time.sleep(5)
+                    time.sleep(5)
                     notice("Retrying to dump file info ...")
                 else:
                     errMsg = "Giving up to auto recover dumping of file info!"

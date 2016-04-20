@@ -40,7 +40,7 @@ from pccUt import PccUtTime
 
 from ngamsLib.ngamsCore import \
     genLog, error, info, alert, setLogCache, logFlush, sysLogInfo, TRACE,\
-    rmFile, trim, getNgamsVersion, getDebug, getTestMode, setDebug, setTestMode, \
+    rmFile, trim, getNgamsVersion, getDebug, setDebug, \
     getFileSize, getDiskSpaceAvail, setLogCond, checkCreatePath,\
     getHostName, ngamsCopyrightString, getNgamsLicense,\
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, NGAMS_HTTP_GET,\
@@ -1558,12 +1558,6 @@ class ngamsServer:
         """
         T = TRACE()
 
-        # If running in Unit Test Mode, check if the server is suspended.
-        # In case yes, raise an exception indicating this.
-        if (getTestMode()):
-            if (self.getDb().getSrvSuspended(self.getHostId())):
-                raise Exception, "UNIT-TEST: This server is suspended"
-
         # Handle the command.
         self.setLastReqStartTime()
         reqTimer = PccUtTime.Timer()
@@ -2592,9 +2586,6 @@ class ngamsServer:
                 elif (par == "-MULTIPLESRVS"):
                     info(1,"Running in Multiple Servers Mode")
                     self.setMultipleSrvs(1)
-                elif (par == "-TEST"):
-                    info(1,"Running server in Test Mode")
-                    setTestMode()
                 else:
                     self.correctUsage()
                     silentExit = 1

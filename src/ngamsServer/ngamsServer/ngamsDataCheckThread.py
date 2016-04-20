@@ -40,8 +40,7 @@ import ngamsFileUtils
 from ngamsLib.ngamsCore import TRACE, info, NGAMS_DATA_CHECK_THR, error, \
     NGAMS_CACHE_DIR, checkCreatePath, isoTime2Secs, iso8601ToSecs, \
     rmFile, genLog, mvFile, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
-    NGAMS_VOLUME_INFO_FILE, NGAMS_STAGING_DIR, warning, NGAMS_NOTIF_DATA_CHECK, \
-    getTestMode
+    NGAMS_VOLUME_INFO_FILE, NGAMS_STAGING_DIR, warning, NGAMS_NOTIF_DATA_CHECK
 from ngamsLib import ngamsNotification, ngamsDiskInfo
 from ngamsLib import ngamsDbCore, ngamsDbm, ngamsHighLevelLib, ngamsLib
 
@@ -1195,31 +1194,21 @@ def dataCheckThread(srvObj, stopEvt):
         except StopDataCheckThreadException:
             return
         except Exception, e:
-            if (str(e).find("NGAMS_ER_DB_COM") != -1):
-                if (getTestMode()):
-                    waitTime = 1
-                else:
-                    waitTime = 3600
+
+            waitTime = 1
+            if "NGAMS_ER_DB_COM" in str(e):
                 errMsg = "Problem communicating with DB. " +\
-                         "Suspending DCC %ds. Error : %s"
-                errMsg = errMsg % (waitTime, str(e))
-                error(errMsg)
-                startWaitTime = time.time()
-                while ((time.time() - startWaitTime) < waitTime):
-                    if (not srvObj._dataCheckRunSync.isSet()):
-                        info(2,"Stopping Data Check Thread")
-                        srvObj.updateHostInfo(None, None, None, None, None,
-                                              None, 0, None)
-                        srvObj._dataCheckRunSync.set()
-                        thread.exit()
-                    time.sleep(2)
+                        "Suspending DCC %ds. Error : %s" % (waitTime, str(e))
+                waitTime = 3600
             else:
                 errMsg = "Error occurred during execution of the " +\
                          "Data Check Thread. Exception: " + str(e)
-                error(errMsg)
-                # We make a small wait here to avoid that the process tries
-                # too often to carry out the tasks that failed.
-                time.sleep(1.0)
+            error(errMsg)
+
+            try:
+                suspend(srvObj, stopEvt, 1)
+            except StopDataCheckThreadException:
+                return
 
 
 # EOF

@@ -117,9 +117,6 @@ from pccUt  import PccUtTime
 # Debug flag.
 _debug = 0
 
-# Flag indicating if we're executing in Unit Test Mode.
-_testMode = 0
-
 
 # Semaphore + counter to ensure unique, temporary filenames.
 _uniqueNumberSem   = threading.Semaphore(1)
@@ -1354,28 +1351,6 @@ def padString(strBuf,
     for i in range(noMisChars):
         strBuf = prependChr + strBuf
     return strBuf
-
-
-def setTestMode():
-    """
-    Switch on the Test Mode Flag. When set, special conditions are applied
-    during execution of SW/server.
-
-    Returns:   Void.
-    """
-    global _testMode
-    _testMode = 1
-
-
-def getTestMode():
-    """
-    Return the value of the Test Mode Flag. When set to 1, the server will not
-    kill itself (as this would kill the test case).
-
-    Returns:     Test Mode Flag (integer/0|1).
-    """
-    global _testMode
-    return _testMode
 
 
 def getBoolean(val):

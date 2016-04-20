@@ -43,16 +43,15 @@ Note: A mechanism for simulating problems in the interaction with remote
         2. Problems creating connection (2.5%).
         3. Empty query result returned (10%).
 
-This feature is only enabled if the global Test Mode Flag is set to one.
-See functions setTestMode()/getTestMode() in the main NG/AMS module.
+This feature was only enabled if the global Test Mode Flag is set to one.
 """
 # Probability for different, simulated errors.
 
-import time, threading, random
+import time, threading
 
 import Sybase
 from pccUt import PccUtTime
-from ngamsLib.ngamsCore import getTestMode, TRACE, getHostName, info
+from ngamsLib.ngamsCore import TRACE, getHostName, info
 
 
 if (1):
@@ -74,13 +73,7 @@ def _provokeErr(prop = 0.5):
               (float/[0.0; 1.0]).
     Returns:  Indication if error should be produced or not (integer/0|1).
     """
-    if (getTestMode()):
-        if (random.randint(1, 10) <= (10 * prop)):
-            return 1
-        else:
-            return 0
-    else:
-        return 0
+    return 0
 
 
 class ngamsSybase:

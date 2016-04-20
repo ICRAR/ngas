@@ -52,7 +52,7 @@ from ngamsLib.ngamsCore import TRACE, info, NGAMS_MIR_CONTROL_THR, rmFile, \
     cleanList, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, \
     NGAMS_HTTP_HDR_CONTENT_TYPE, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_SUCCESS, notice, \
     warning, alert, NGAMS_STATUS_CMD, decompressFile, \
-    NGAMS_HTTP_PAR_FILE_LIST_ID, getAsciiTime, iso8601ToSecs, getTestMode, \
+    NGAMS_HTTP_PAR_FILE_LIST_ID, getAsciiTime, iso8601ToSecs, \
     NGAMS_HTTP_PAR_FILE_LIST, NGAMS_HTTP_PAR_UNIQUE, NGAMS_HTTP_PAR_MAX_ELS, \
     NGAMS_HTTP_PAR_FROM_ING_DATE, timeRef2Iso8601, get_contact_ip
 from ngamsLib import ngamsFileInfo, ngamsStatus, ngamsHighLevelLib, ngamsDbm, ngamsMirroringRequest, ngamsLib
@@ -988,10 +988,7 @@ def checkSourceArchives(srvObj):
         # Complete sync: Don't specify a lower limit ingestion date.
         # Partial sync:  Specify lower limit ingestion date.
         # TODO: For now only ingestion date is supported as selection criteria.
-        if (getTestMode()):
-            maxEls = 10
-        else:
-            maxEls = 100000
+        maxEls = 100000
         statusCmdPars = [[NGAMS_HTTP_PAR_FILE_LIST, 1],
                          [NGAMS_HTTP_PAR_UNIQUE, 1],
                          [NGAMS_HTTP_PAR_MAX_ELS, maxEls]]

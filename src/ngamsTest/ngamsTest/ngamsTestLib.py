@@ -1107,7 +1107,6 @@ class ngamsTestSuite(unittest.TestCase):
                    cfgProps = [],
                    dbCfgName = None,
                    srvModule = None,
-                   test = 1,
                    skip_database_creation = False,
                    force=False):
         """
@@ -1224,7 +1223,6 @@ class ngamsTestSuite(unittest.TestCase):
         if verbose:      execCmd.extend(["-v", str(verbose)])
         if multipleSrvs: execCmd.append("-multipleSrvs")
         if dbCfgName:    execCmd.extend(["-dbCfgId", dbCfgName])
-        if test:         execCmd.append("-test")
         info(3,"Starting external NG/AMS Server with shell command: " + " ".join(execCmd))
 
         srvProcess = subprocess.Popen(execCmd)
