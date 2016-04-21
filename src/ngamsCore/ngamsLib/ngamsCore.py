@@ -149,10 +149,6 @@ NGAMS_ERR_DEF = pkg_resources.resource_string('ngamsData', 'ngamsLogDef.xml')  #
 _logDef = PccLogDef.PccLogDef().load(NGAMS_ERR_DEF)
 
 
-# Flag used to suppress error logging on stderr.
-_suppresErrorLogging = 0
-
-
 # Log protection semaphore.
 _logSem = threading.Semaphore(1)
 
@@ -527,29 +523,6 @@ def getLocation(level = -3):
                ":" + str(os.getpid())
 
 
-def setSuppressErrLog(state):
-    """
-    Set the flag indicating that error logging on stderr should be suppressed.
-    Is used e.g. for the Unit Test.
-
-    state:    State of the Suppress Error Logging Flag (integer/0|1).
-
-    Returns:  Void.
-    """
-    global _suppresErrorLogging
-    _suppresErrorLogging = state
-
-
-def getSuppressErrLog():
-    """
-    Return the value of the Suppress Error Logging Flag.
-
-    Returns:   Value of Suppress Error Logging Flag (integer/0|1).
-    """
-    global _suppresErrorLogging
-    return _suppresErrorLogging
-
-
 def takeLogSem():
     """
     Take the log protection semaphore.
@@ -674,7 +647,6 @@ def notice(msg):
 
     Returns:  Void.
     """
-    if (getSuppressErrLog()): return
     try:
         takeLogSem()
         PccLog.notice(msg, getLocation())
@@ -691,7 +663,6 @@ def warning(msg):
 
     Returns:  Void.
     """
-    if (getSuppressErrLog()): return
     try:
         takeLogSem()
         PccLog.warning(msg, getLocation())
@@ -708,7 +679,6 @@ def error(msg):
 
     Returns:  Void.
     """
-    if (getSuppressErrLog()): return
     try:
         takeLogSem()
         PccLog.error(msg, getLocation())
@@ -725,7 +695,6 @@ def alert(msg):
 
     Returns:  Void.
     """
-    if (getSuppressErrLog()): return
     try:
         takeLogSem()
         PccLog.alert(msg, getLocation())
