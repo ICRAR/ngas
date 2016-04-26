@@ -86,6 +86,8 @@
     <MimeTypeMap Extension="hfits" MimeType="application/x-hfits"/>
     <MimeTypeMap Extension="hdr" MimeType="image/x-fitshdr"/>
     <MimeTypeMap Extension="tar" MimeType="application/x-tar"/>
+    <MimeTypeMap Extension="tar.gz" MimeType="application/x-gtar"/>
+    <MimeTypeMap Extension="pdf" MimeType="application/pdf"/>
     <MimeTypeMap Extension="msg" MimeType="multialma/related"/>
     <MimeTypeMap Extension="bin" MimeType="application/octet-stream"/>
   </MimeTypes>
@@ -190,6 +192,20 @@
     </Stream>
     <Stream MimeType="multialma/related"
             PlugIn="ngamsSdmMultipart"
+            PlugInPars="">
+      <StorageSetRef StorageSetId="volume1"/>
+      <StorageSetRef StorageSetId="volume2"/>
+      <StorageSetRef StorageSetId="volume3"/>
+    </Stream>
+	 <Stream MimeType="application/pdf"
+            PlugIn="ngamsGenDapi"
+            PlugInPars="">
+      <StorageSetRef StorageSetId="volume1"/>
+      <StorageSetRef StorageSetId="volume2"/>
+      <StorageSetRef StorageSetId="volume3"/>
+    </Stream>
+	 <Stream MimeType="application/x-gtar"
+            PlugIn="ngamsGenDapi"
             PlugInPars="">
       <StorageSetRef StorageSetId="volume1"/>
       <StorageSetRef StorageSetId="volume2"/>
