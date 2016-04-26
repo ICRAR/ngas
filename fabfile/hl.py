@@ -23,16 +23,23 @@
 Module with a few high-level fabric tasks users are likely to use
 """
 
+import os
+
 from fabric.decorators import task
+from fabric.operations import local
+from fabric.state import env
 from fabric.tasks import execute
 
 from aws import create_aws_instances
-from ngas import install_and_check
 from dockerContainer import create_stage1_docker_container, create_stage2_docker_image, create_final_docker_image
+from ngas import install_and_check, ngas_revision, \
+    create_sources_tarball, upload_to
+from utils import repo_root
 
 
 # Don't re-export the tasks imported from other modules, only ours
-__all__ = ['user_deploy', 'operations_deploy', 'aws_deploy', 'docker_image']
+__all__ = ['user_deploy', 'operations_deploy', 'aws_deploy', 'docker_image',
+           'prepare_release']
 
 @task
 def user_deploy(typ = 'archive'):
@@ -78,3 +85,26 @@ def docker_image(typ='archive'):
     if not create_final_docker_image(dockerState):
         # This is not really needed by included in case code is added below this point
         return
+
+@task
+def prepare_release():
+    """
+    Prepares an NGAS release (deploys NGAS into AWS serving its own source/doc)
+    """
+
+    # Create the AWS instance
+    aws_deploy()
+
+    # Create and upload the sources
+    sources = "ngas_src.tar.gz"
+    if os.path.exists(sources):
+        os.unlink(sources)
+    create_sources_tarball(sources, ngas_revision())
+    try:
+        upload_to(env.hosts[0], sources)
+    finally:
+        os.unlink(sources)
+
+    # Generate a PDF documentation and upload it too
+    local("make -C %s/doc latexpdf" % (repo_root()))
+    upload_to(env.hosts[0], '%s/doc/_build/latex/ngas.pdf' % (repo_root()))

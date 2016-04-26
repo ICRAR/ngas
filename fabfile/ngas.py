@@ -23,6 +23,9 @@
 Main module where NGAS-specific tasks are carried out, like copying its sources,
 installing it and making sure it works after starting it.
 """
+import contextlib
+import functools
+import httplib
 import os
 import tempfile
 import time
@@ -41,7 +44,6 @@ from system import check_dir, download, check_command, \
     postfix_config, create_user, get_linux_flavor, python_setup, check_python, \
     MACPORT_DIR
 from utils import to_boolean, is_localhost, home, default_if_empty, sudo, run
-
 
 # Don't re-export the tasks imported from other modules, only ours
 __all__ = [
@@ -405,3 +407,18 @@ def install_and_check(sys_install, user_install, init_install, typ):
     install(sys_install=sys_install, user_install=user_install, init_install=init_install, typ=typ)
     with settings(user=ngas_user()):
         start_ngas_and_check_status()
+
+def upload_to(host, filename, port=7777):
+    """
+    Simple method to upload a file into NGAS
+    """
+    with contextlib.closing(httplib.HTTPConnection(host, port)) as conn:
+        conn.putrequest('POST', '/QARCHIVE?filename=%s' % (urllib2.quote(os.path.basename(filename)),) )
+        conn.putheader('Content-Length', os.stat(filename).st_size)
+        conn.endheaders()
+        with open(filename) as f:
+            for data in iter(functools.partial(f.read, 4096), ''):
+                conn.send(data)
+        r = conn.getresponse()
+        if r.status != httplib.OK:
+            raise Exception("Error while QARCHIVE-ing %s to %s:%d:\nStatus: %d\n%s\n\n%s" % (filename, conn.host, conn.port, r.status, r.msg, r.read()))
