@@ -74,6 +74,10 @@ the installation in the local machine. This behavior can be overridden by
 providing a ``NGAS_USER`` fabric variable (set via the ``--set`` command line
 parameter).
 
+By default the current ``HEAD`` of the git repository will be installed. This
+can be overridden by providing a ``NGAS_REV`` fabric variable to indicate the
+revision that should be installed instead.
+
 The per-user installation doesn't take care of installing any dependencies
 needed by NGAS, assuming they all are met. For a more complete automatic
 procedure that takes care of that see `Total system setup`_.

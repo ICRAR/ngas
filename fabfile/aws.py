@@ -34,7 +34,7 @@ from fabric.state import env
 from fabric.tasks import execute
 from fabric.utils import puts, abort, fastprint
 
-from ngas import ngas_branch
+from ngas import ngas_revision
 from utils import default_if_empty, to_boolean, whatsmyip, check_ssh, \
     key_filename
 
@@ -197,9 +197,9 @@ def create_aws_instances(n_instances=1):
     the current public IP and username.
     """
 
-    branch = ngas_branch()
+    rev = ngas_revision()
     default_if_empty(env, 'AWS_KEY_NAME',   AWS_KEY_NAME)
-    default_if_empty(env, 'instance_name',  INSTANCE_NAME.format(branch))
+    default_if_empty(env, 'instance_name',  INSTANCE_NAME.format(rev))
 
     # Create the key pair and security group if necessary
     conn = connect()

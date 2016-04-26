@@ -104,9 +104,9 @@ def ngas_source_dir():
         env[key] = os.path.abspath(os.path.join(home(), NGAS_SRC_DIR_NAME))
     return env[key]
 
-def ngas_branch():
-    default_if_empty(env, 'NGAS_BRANCH', lambda: local('git rev-parse --abbrev-ref HEAD', capture=True))
-    return env.NGAS_BRANCH
+def ngas_revision():
+    default_if_empty(env, 'NGAS_REV', lambda: local('git rev-parse --abbrev-ref HEAD', capture=True))
+    return env.NGAS_REV
 
 def virtualenv(command, **kwargs):
     """
@@ -356,6 +356,12 @@ def init_deploy(nsd, nid, typ = 'archive'):
         sudo('chkconfig --add '.format(initLinkAbs))
 
 
+def create_sources_tarball(tarball_filename, rev):
+    # Make sure we are git-archivin'ing from the root of the repository,
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    local('cd {0}; git archive -o {1} {2}'.format(repo_root, tarball_filename, rev))
+
+
 @task
 def copy_sources():
     """
@@ -367,16 +373,13 @@ def copy_sources():
     # ssh to the remote host, where we expand it back
 
     nsd = ngas_source_dir()
-    branch = ngas_branch()
+    rev = ngas_revision()
 
     # Because this could be happening in parallel in various machines
     # we generate a tmpfile locally, but the target file is the same
     local_file = tempfile.mktemp(".tar.gz")
     target_tarfile = '/tmp/ngas_tmp.tar'
-
-    # Make sure we are git-archivin'ing from the root of the repository,
-    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    local('cd {0}; git archive -o {1} {2}'.format(repo_root, local_file, branch))
+    create_sources_tarball(local_file, rev)
 
     # transfer the tar file if not local
     if not is_localhost():
