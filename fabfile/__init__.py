@@ -19,7 +19,13 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+"""
+Fabric scripts for NGAS deployment and related activities.
 
+End users will likely use the hl.* tasks, a set of high-level tasks that perform
+common high-level deployments (e.g., deploying NGAS onto AWS). Lower-level tasks
+from the other modules can still be invoked.
+"""
 import aws
 import hl
 import ngas
