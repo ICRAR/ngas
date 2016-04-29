@@ -380,21 +380,24 @@ def copy_sources():
     # Because this could be happening in parallel in various machines
     # we generate a tmpfile locally, but the target file is the same
     local_file = tempfile.mktemp(".tar.gz")
-    target_tarfile = '/tmp/ngas_tmp.tar'
     create_sources_tarball(local_file, rev)
 
     # transfer the tar file if not local
     if not is_localhost():
+        target_tarfile = '/tmp/ngas_tmp.tar'
         put(local_file, target_tarfile)
+    else:
+        target_tarfile = local_file
 
     # unpack the tar file into the ngas_src_dir
     # (mind the "p", to preserve permissions)
     run('mkdir -p {0}'.format(nsd))
     with cd(nsd):
         run('tar xpf {0}'.format(target_tarfile))
+        if not is_localhost():
+            run('rm {0}'.format(target_tarfile))
 
     # Cleaning up now
-    run('rm {0}'.format(target_tarfile))
     local('rm {0}'.format(local_file))
 
 @task
