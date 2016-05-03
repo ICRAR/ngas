@@ -12,7 +12,8 @@ To install NGAS go to the ``src`` directory and run::
 
  ./build.sh
 
-The script will build and install the C NGAS client first, and then will build
+Run ``./build.sh -h`` to see the full set of options.
+The script will (optionally) build and install the C NGAS client first, and then will build
 and install each of the python modules (i.e., ``pcc``, ``ngamsCore``,
 ``ngamsPClient``, ``ngamsServer`` and ``ngamsPlugIns``). The python modules will
 automatically pull and install their dependencies.
@@ -45,12 +46,13 @@ not only the installation of NGAS in any host, but also the customization of the
 host as necessary, plus any other extra step required by other scenarios.
 
 Fabric's command-line allows users to specify the username and hosts where tasks
-will take place. For example::
+will take place, and a set of variables to be defined. For example::
 
- fab -H host.company.com -u ngas_user some_task
+ fab -H host.company.com -u ngas_user some_task --set VAR1=a,VAR2
 
 In the example the instructions of the task ``some_task`` will be carried out in
-host ``host.company.com`` with the user ``ngas_user``.
+host ``host.company.com`` with the user ``ngas_user``, and the ``VAR1`` variable
+will be set to the value ``a``, while variable ``VAR2`` will be marked as set.
 
 For a more complete manual visit Fabric's `documentation
 <http://docs.fabfile.org/en/1.10/>`_.
@@ -67,16 +69,17 @@ This will compile NGAS and install it under ``~/ngas_rt`` using a `virtual
 environment <https://virtualenv.readthedocs.org/en/latest/>`_ for that. A NGAS
 data directory will also be created under ``~/NGAS``, containing a valid
 configuration file with which an NGAS server can be started.
+To bypass the compilation and installation of the C client set the
+``NGAS_NO_CLIENT`` fabric variable.
 
 By default the per-user installation will be performed using the ``ngas`` user
 if connecting to a remote system, or using the current username if performing
 the installation in the local machine. This behavior can be overridden by
-providing a ``NGAS_USER`` fabric variable (set via the ``--set`` command line
-parameter).
+providing a value in the ``NGAS_USER`` fabric variable.
 
 By default the current ``HEAD`` of the git repository will be installed. This
-can be overridden by providing a ``NGAS_REV`` fabric variable to indicate the
-revision that should be installed instead.
+can be overridden by providing a value to the ``NGAS_REV`` fabric variable
+indicating the revision that should be installed instead.
 
 The per-user installation doesn't take care of installing any dependencies
 needed by NGAS, assuming they all are met. For a more complete automatic
@@ -120,8 +123,7 @@ machines. This is performed by running::
 This procedure will create and bring up the required AWS instances, and perform
 a fabric system installation
 
-Several fabric variables (passed down via the ``--set`` command-line parameter)
-control the deployment:
+Several fabric variables control the deployment:
 
 * ``AWS_PROFILE``, defaults to ``NGAS``, indicates the profile to use when
   connecting to AWS.

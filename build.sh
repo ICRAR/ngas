@@ -1,5 +1,31 @@
 #!/bin/bash
 
+function print_usage {
+	echo "$0 [-h?] [-c]"
+	echo
+	echo "-h, -?: Show this help"
+	echo "-c: Include the C client compilation"
+}
+
+# Command-line option parsing
+BUILD_CCLIENT=
+
+while getopts "ch?" opt
+do
+	case "$opt" in
+		c)
+			BUILD_CCLIENT=yes
+			;;
+		[h?])
+			print_usage
+			exit 0
+			;;
+		:)
+			print_usage
+			exit 1
+	esac
+done
+
 fail() {
 	echo "$1" > /dev/stderr
 	exit 1
@@ -17,7 +43,6 @@ cd "$(dirname $this)"
 # And now...
 cd src
 
-# Build the C autotools-based module
 # If we're using a virtualenv install it there
 prefix=
 if [ -n "$VIRTUAL_ENV" ]
@@ -26,11 +51,15 @@ then
 	echo "Will install NGAS under $VIRTUAL_ENV"
 fi
 
-cd ngamsCClient
-./bootstrap || fail "Failed to bootstrap ngamsCClient module"
-./configure "$prefix" || fail "Failed to ./configure ngamsCCLient"
-make clean all install || fail "Failed to compile ngamsCClient"
-cd ..
+# Build the C autotools-based module
+if [ -n "$BUILD_CCLIENT" ]
+then
+	cd ngamsCClient
+	./bootstrap || fail "Failed to bootstrap ngamsCClient module"
+	./configure "$prefix" || fail "Failed to ./configure ngamsCCLient"
+	make clean all install || fail "Failed to compile ngamsCClient"
+	cd ..
+fi
 
 # Build python setup.py-based modules
 # The ngamsPlugIns module eventually requires numpy which we need to install

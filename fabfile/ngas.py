@@ -106,6 +106,10 @@ def ngas_source_dir():
         env[key] = os.path.abspath(os.path.join(home(), NGAS_SRC_DIR_NAME))
     return env[key]
 
+def ngas_no_client():
+    key = 'NGAS_NO_CLIENT'
+    return key in env
+
 def ngas_revision():
     default_if_empty(env, 'NGAS_REV', lambda: local('git rev-parse --abbrev-ref HEAD', capture=True))
     return env.NGAS_REV
@@ -231,7 +235,7 @@ def install_user_profile():
         run('echo "export NGAS_PREFIX={0}" >> .bash_profile'.format(nrd))
         run('echo "source {0}/bin/activate" >> .bash_profile'.format(nid))
 
-def ngas_build_cmd():
+def ngas_build_cmd(no_client):
     # The installation of the bsddb package (needed by ngamsCore) is in
     # particular difficult because it requires some flags to be passed on
     # (particularly if using MacOSX's port
@@ -248,6 +252,8 @@ def ngas_build_cmd():
             build_cmd += MACPORT_DIR
         build_cmd += ' YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1 '
     build_cmd += './build.sh'
+    if not no_client:
+        build_cmd += " -c"
     return build_cmd
 
 @task
@@ -260,11 +266,13 @@ def ngas_buildout(typ='archive'):
     """
     nrd = ngas_root_dir()
     nsd = ngas_source_dir()
+    no_client = ngas_no_client()
 
     with cd(nsd):
 
         # Main NGAMs compilation routine
-        build_cmd = ngas_build_cmd()
+        build_cmd = ngas_build_cmd(no_client)
+        print build_cmd
         virtualenv(build_cmd)
 
         # Installing and initializing an NGAS_ROOT directory
