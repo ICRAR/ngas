@@ -34,7 +34,8 @@ install_requires = [
 try:
     import bsddb
 except ImportError:
-    install_requires.append('bsddb3')
+    # bsddb-6.2 doesn't support DB v6.0
+    install_requires.append('bsddb3<6.2.0')
 
 setup(
     name='ngamsCore',
