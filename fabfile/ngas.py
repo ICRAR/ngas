@@ -239,22 +239,27 @@ def ngas_build_cmd(no_client):
     # The installation of the bsddb package (needed by ngamsCore) is in
     # particular difficult because it requires some flags to be passed on
     # (particularly if using MacOSX's port
-    build_cmd = ''
+    build_cmd = []
     linux_flavor = get_linux_flavor()
     if linux_flavor == 'Darwin':
-        build_cmd = 'BERKELEYDB_DIR='
         pkgmgr = check_brew_port()
         if pkgmgr == 'brew':
             cellardir = check_brew_cellar()
             db_version = run('ls -tr1 {0}/berkeley-db'.format(cellardir)).split()[-1]
-            build_cmd += '{0}/berkeley-db/{1}'.format(cellardir, db_version)
+            build_cmd.append('BERKELEYDB_DIR={0}/berkeley-db/{1}'.format(cellardir, db_version))
         else:
-            build_cmd += MACPORT_DIR
-        build_cmd += ' YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1 '
-    build_cmd += './build.sh'
+            incdir = MACPORT_DIR + '/include/db60'
+            libdir = MACPORT_DIR + '/lib/db60'
+            build_cmd.append('BERKELEYDB_INCDIR=' + incdir)
+            build_cmd.append('BERKELEYDB_LIBDIR=' + libdir)
+            if not no_client:
+                build_cmd.append('CFLAGS=-I' + incdir)
+                build_cmd.append('LDFLAGS=-L' + libdir)
+        build_cmd.append('YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1')
+    build_cmd.append('./build.sh')
     if not no_client:
-        build_cmd += " -c"
-    return build_cmd
+        build_cmd.append(" -c")
+    return ' '.join(build_cmd)
 
 @task
 def ngas_buildout(typ='archive'):
