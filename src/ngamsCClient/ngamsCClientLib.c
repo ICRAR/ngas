@@ -499,7 +499,7 @@ int _pollFd(const int fd, const float timeOut) {
 				ngamsLogDebug(
 						"Error calling poll() (interrupted system call). Iteration: %d",
 						(n + 1));
-				sleep(0.005);
+				usleep(5000);
 				continue;
 			} else {
 				ngamsLogDebug("Error while polling(). errno(%d):%s", errno,
@@ -515,6 +515,10 @@ int _pollFd(const int fd, const float timeOut) {
 		goto errExit;
 	} else if (readyFds == 0) {
 		stat = ngamsERR_TIMEOUT;
+		goto errExit;
+	} else if (readyFds == 1 && fdStr.revents & POLLHUP ) {
+		/* Peer closed the connection */
+		stat = ngamsERR_COM;
 		goto errExit;
 	}
 	ngamsLogDebug("Leaving _pollFd()");
