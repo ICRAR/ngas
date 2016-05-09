@@ -239,7 +239,6 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
-#include <poll.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -252,6 +251,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <assert.h>
+#include <math.h>
 
 #ifndef S_IFMT
 #define S_IFMT   __S_IFMT
@@ -441,93 +441,6 @@ void ngamsSleep(const float sleepTime) {
 	nanosleep(&sleepT, &timeSlept);
 }
 
-void _setReplyTimeoutFromFloat(const float timeoutSecs) {
-	if (timeoutSecs <= 0)
-		_replyTimeout = 120;
-	else
-		_replyTimeout = timeoutSecs;
-}
-
-float _getTimeOut() {
-	float timeOut;
-	timeOut = _replyTimeout;
-	if (timeOut == 0)
-		timeOut = 120;
-	return timeOut;
-}
-
-/*
- int _pollFd(const int  fd,
- const float timeOut)
-
- Poll file descriptor with a timeout in seconds. If timeout is 0 (or less),
- the internal timeout in the C-API is taken.
-
- Returns:   ngamsSTAT_SUCCESS = OK
- ngamsERR_COM      = Problem with socket connection (broken).
- ngamsERR_TIMEOUT  = Timeout.
- */
-int _pollFd(const int fd, const float timeOut) {
-	int readyFds = 0, locTimeOut, stat;
-	//	struct pollfd* fds;
-	struct pollfd fdStr;
-
-	ngamsLogDebug("Entering _pollFd() ...");
-	memset(&fdStr, 0, sizeof(struct pollfd));
-	fdStr.fd = fd;
-	fdStr.events = POLLIN;
-	//	fds = &fdStr;
-	ngamsLogDebug("Requested timeout: %.6fs", timeOut);
-	if (timeOut > 0)
-		locTimeOut = (1000 * timeOut);
-	else if (timeOut == -1.0)
-		locTimeOut = -1;
-	else
-		locTimeOut = (1000 * _getTimeOut());
-	ngamsLogDebug("Polling for ready fd's. Timeout: %d ms", locTimeOut);
-	int n;
-	for (n = 0; n <= 3; n++) {
-		//		if ((readyFds = poll(fds, 1, locTimeOut)) <= -1) {
-		if ((readyFds = poll(&fdStr, 1, locTimeOut)) <= -1) {
-			/* If an EINTR error (= Interrupted system call) is encountered it
-			 * is retried to poll the file descriptor. Sometimes in
-			 * multithreaded applications this occurrs - TBI, maybe related to
-			 * usage within the ACE framework.
-			 */
-			int errNo = errno;
-			if (errNo == EINTR) {
-				ngamsLogDebug(
-						"Error calling poll() (interrupted system call). Iteration: %d",
-						(n + 1));
-				usleep(5000);
-				continue;
-			} else {
-				ngamsLogDebug("Error while polling(). errno(%d):%s", errno,
-						strerror(errno));
-				break;
-			}
-		} else {
-			break;
-		}
-	}
-	if (readyFds <= -1) {
-		stat = ngamsERR_COM;
-		goto errExit;
-	} else if (readyFds == 0) {
-		stat = ngamsERR_TIMEOUT;
-		goto errExit;
-	} else if (readyFds == 1 && fdStr.revents & POLLHUP ) {
-		/* Peer closed the connection */
-		stat = ngamsERR_COM;
-		goto errExit;
-	}
-	ngamsLogDebug("Leaving _pollFd()");
-	return ngamsSTAT_SUCCESS;
-
-	errExit: ngamsLogDebug("Leaving _pollFd()/FAILURE. Status: %d", stat);
-	return stat;
-}
-
 /**
  *******************************************************************************
  */
@@ -696,7 +609,6 @@ ngamsSTAT ngamsGenSendData(const char* host, const int port,
 	ngamsHUGE_BUF contDisp;
 
 	ngamsLogDebug("Entering ngamsGenSendData() ...");
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	memset(url, 0, sizeof(ngamsMED_BUF));
 
@@ -714,7 +626,7 @@ ngamsSTAT ngamsGenSendData(const char* host, const int port,
 			sprintf(tmpBuf, "&%s=\"%s\"", parArray->parArray[i], tmpEnc);
 			strcat(url, tmpBuf);
 		}
-		if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, url, 1,
+		if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, url, 1,
 				&repDataRef, &repDataLen, &httpResp, httpHdr))
 				!= ngamsSTAT_SUCCESS)
 			goto errExit;
@@ -734,7 +646,7 @@ ngamsSTAT ngamsGenSendData(const char* host, const int port,
 			strcpy(mtBuf, ngamsARHIVE_REQ_MT);
 		else
 			strcpy(mtBuf, mimeType);
-		if ((retCode = ngamsHttpPost(host, port, ngamsUSER_AGENT, cmd, mtBuf,
+		if ((retCode = ngamsHttpPost(host, port, timeoutSecs, ngamsUSER_AGENT, cmd, mtBuf,
 				contDisp, fileUri, "", 0, &repDataRef, &repDataLen, &httpResp,
 				httpHdr)) != ngamsSTAT_SUCCESS)
 			goto errExit;
@@ -950,7 +862,6 @@ ngamsSTAT ngamsArchiveFromMem(const char* host, const int port,
 	ngamsMED_BUF tmpUrl, contDisp, mtBuf, tmpFileUri;
 
 	ngamsLogDebug("Entering ngamsArchiveFromMem() ...");
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	if (*mimeType != '\0')
 		sprintf(mtBuf, "&mime_type=\"%s\"", mimeType);
@@ -967,7 +878,7 @@ ngamsSTAT ngamsArchiveFromMem(const char* host, const int port,
 			locTimeout);
 	if (*mimeType != '\0')
 		strcat(tmpUrl, mtBuf);
-	if ((retCode = ngamsHttpPost(host, port, ngamsUSER_AGENT, "ARCHIVE",
+	if ((retCode = ngamsHttpPost(host, port, timeoutSecs, ngamsUSER_AGENT, "ARCHIVE",
 			ngamsARHIVE_REQ_MT, contDisp, "", bufPtr, size, &repDataRef,
 			&repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
@@ -1018,7 +929,6 @@ ngamsSTAT ngamsClone(const char* host, const int port, const float timeoutSecs,
 	ngamsMED_BUF tmpUrl, tmpBuf;
 
 	ngamsLogDebug("Entering ngamsClone() ...");
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	sprintf(tmpUrl, "%s?wait=\"%d\"", ngamsCMD_CLONE_STR, wait);
 	if (*fileId != '\0') {
@@ -1037,7 +947,7 @@ ngamsSTAT ngamsClone(const char* host, const int port, const float timeoutSecs,
 		sprintf(tmpBuf, "&target_disk_id=\"%s\"", targetDiskId);
 		strcat(tmpUrl, tmpBuf);
 	}
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
@@ -1072,10 +982,9 @@ ngamsSTAT ngamsExit(const char* host, const int port, const float timeoutSecs,
 	ngamsMED_BUF tmpUrl;
 
 	ngamsLogDebug("Entering ngamsExit() ...");
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	sprintf(tmpUrl, "%s?wait=\"%d\"", ngamsCMD_EXIT_STR, wait);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
@@ -1111,11 +1020,10 @@ ngamsSTAT ngamsLabel(const char* host, const int port, const float timeoutSecs,
 	ngamsMED_BUF tmpUrl, tmpEnc;
 
 	ngamsLogDebug("Entering ngamsLabel() ...");
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	ngamsEncodeUrlVal(slotId, 1, tmpEnc);
 	sprintf(tmpUrl, "%s?slot_id=\"%s\"", ngamsCMD_LABEL_STR, tmpEnc);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
@@ -1149,10 +1057,9 @@ ngamsSTAT ngamsOnline(const char* host, const int port,
 	ngamsMED_BUF tmpUrl;
 
 	ngamsLogDebug("Entering ngamsOnline() ...");
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	sprintf(tmpUrl, "%s?wait=\"%d\"", ngamsCMD_ONLINE_STR, wait);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
@@ -1191,12 +1098,11 @@ ngamsSTAT ngamsOffline(const char* host, const int port,
 	ngamsMED_BUF tmpUrl;
 
 	ngamsLogDebug("Entering ngamsOffline() ...");
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	sprintf(tmpUrl, "%s?wait=\"%d\"", ngamsCMD_OFFLINE_STR, wait);
 	if (force)
 		strcat(tmpUrl, "&force=1");
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
@@ -1318,11 +1224,10 @@ ngamsSTAT ngamsRegister(const char* host, const int port,
 	ngamsMED_BUF tmpUrl;
 
 	ngamsLogDebug("Entering ngamsRegister() ...");
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	sprintf(tmpUrl, "%s?wait=\"%d\"&path=\"%s\"", ngamsCMD_REGISTER_STR, wait,
 			path);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
@@ -1368,12 +1273,11 @@ ngamsSTAT ngamsRemDisk(const char* host, const int port,
 	ngamsMED_BUF tmpUrl, tmpEnc;
 
 	ngamsLogDebug("Entering ngamsRemDisk() ...");
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	ngamsEncodeUrlVal(diskId, 1, tmpEnc);
 	sprintf(tmpUrl, "%s?disk_id=\"%s\"&execute=%d", ngamsCMD_REMDISK_STR,
 			tmpEnc, execute);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
@@ -1426,14 +1330,13 @@ ngamsSTAT ngamsRemFile(const char* host, const int port,
 	ngamsMED_BUF tmpUrl, encFileId, encDiskId;
 
 	ngamsLogDebug("Entering ngamsRemFile() ...");
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	ngamsEncodeUrlVal(fileId, 1, encFileId);
 	ngamsEncodeUrlVal(diskId, 1, encDiskId);
 	sprintf(tmpUrl, "%s?disk_id=\"%s\"&file_id=\"%s\"&file_version=%d"
 		"&execute=%d", ngamsCMD_REMFILE_STR, encDiskId, encFileId, fileVersion,
 			execute);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
@@ -1498,8 +1401,6 @@ ngamsSTAT ngamsRetrieve2Mem(const char* host, const int port,
 	ngamsHTTP_HDR httpHdr;
 	ngamsBIG_BUF tmpUrl;
 
-	_setReplyTimeoutFromFloat(timeoutSecs);
-
 	/* Perform the query */
 	if (strcmp(fileId, ngamsNG_LOG_REF) == 0)
 		sprintf(tmpUrl, "%s?ng_log", ngamsCMD_RETRIEVE_STR);
@@ -1533,7 +1434,7 @@ ngamsSTAT ngamsRetrieve2Mem(const char* host, const int port,
 		strcat(tmpUrl, tmpBuf);
 	}
 
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 0,
+	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 0,
 			repDataRef, repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 
@@ -1545,13 +1446,6 @@ ngamsSTAT ngamsRetrieve2Mem(const char* host, const int port,
 	return ngamsSTAT_SUCCESS;
 
 	errExit:
-	/* Flush the connection for data waiting to be picked up. */
-	if ((retCode != ngamsSRV_INV_QUERY) && (repDataRef->pdata == NULL)) {
-		while (bytesRead < *repDataLen) {
-			bytesRd = read(repDataRef->fd, tmpBuf, 10000);
-			bytesRead += bytesRd;
-		}
-	}
 
 	if (repDataRef->pdata)
 		ngamsUnpackStatus(repDataRef->pdata, status);
@@ -1573,7 +1467,7 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 	char* tmpP;
 	int retCode;
 	int fd = 0, bytesRd;
-	time_t timeOut, timeLastRec;
+	time_t timeLastRec;
 	ssize_t bytes_written;
 	ngamsDATA_LEN bytesRead = 0;
 	ngamsDATA_LEN repDataLen;
@@ -1584,7 +1478,6 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 	ngamsMED_BUF tmpTargetFilename, tmpEnc;
 
 	ngamsLogDebug("Entering _ngamsRetrieve2File() ...");
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	memset(&repDataRef, 0, sizeof(repDataRef));
 
@@ -1621,7 +1514,7 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 		strcat(tmpUrl, tmpBuf);
 	}
 
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 0,
+	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 0,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS) {
 		ngamsLogDebug("Error invoking ngamsHttpGet(). Host:port/URL: "
 			"%s:%d/%s", host, port, tmpUrl);
@@ -1665,14 +1558,12 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 		retCode = ngamsERR_INV_TARG_FILE;
 		goto errExit;
 	}
-	timeOut = _getTimeOut();
+
 	timeLastRec = time(NULL);
 	time_t startTime = time(NULL);
 	int count = 0;
 	while (bytesRead < repDataLen) {
-		if ((retCode = _pollFd(repDataRef.fd, _getTimeOut()))
-				!= ngamsSTAT_SUCCESS)
-			goto errExit;
+
 		bytesRd = read(repDataRef.fd, tmpBuf, 10000);
 		ngamsLogDebug("Read data block of size: %d. Bytes read: %.9E bytes",
 				bytesRd, (double) bytesRead);
@@ -1695,11 +1586,12 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 			}
 			timeLastRec = time(NULL);
 			count++;
-		} else {
-			if ((time(NULL) - timeLastRec) >= timeOut) {
-				retCode = ngamsERR_TIMEOUT;
-				goto errExit;
-			}
+		} else if( bytesRd == 0 ) {
+			retCode = ngamsERR_TIMEOUT;
+			goto errExit;
+		} else { /* bytesRd < 0 */
+			retCode = ngamsERR_COM;
+			goto errExit;
 		}
 	}
 	close(fd);
@@ -1713,20 +1605,6 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 	return ngamsSTAT_SUCCESS;
 
 	errExit:
-	/* Flush the connection for data waiting to be picked up. */
-	if ((retCode != ngamsSRV_INV_QUERY) && (retCode != ngamsERR_TIMEOUT)
-			&& (repDataRef.pdata == NULL)) {
-
-		while (bytesRead < repDataLen) {
-			bytesRd = read(repDataRef.fd, tmpBuf, 10000);
-			if( bytesRd == -1 ) {
-				perror("Error while reading from repDataRef.fd: ");
-				break;
-			}
-			bytesRead += bytesRd;
-		}
-	}
-
 	if (repDataRef.fd > 0)
 		close(repDataRef.fd);
 
@@ -1815,7 +1693,7 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port,
 	char* tmpP;
 	int retCode, i;
 	int fd = 0, bytesRd;
-	time_t timeOut, timeLastRec;
+	time_t timeLastRec;
 	ssize_t bytes_written;
 	ngamsDATA_LEN bytesRead = 0;
 	ngamsDATA_LEN repDataLen;
@@ -1826,7 +1704,6 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port,
 	ngamsMED_BUF tmpTargetFilename, cmd, tmpEnc;
 
 	ngamsLogDebug("Entering ngamsGenRetrieve2File() ...");
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	memset(&repDataRef, 0, sizeof(repDataRef));
 	ngamsCmd2Str(cmdCode, cmd);
@@ -1841,7 +1718,7 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port,
 		}
 		strcat(url, tmpBuf);
 	}
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, url, 0,
+	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, url, 0,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 
@@ -1875,12 +1752,10 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port,
 		retCode = ngamsERR_INV_TARG_FILE;
 		goto errExit;
 	}
-	timeOut = _getTimeOut();
+
 	timeLastRec = time(NULL);
 	while (bytesRead < repDataLen) {
-		if ((retCode = _pollFd(repDataRef.fd, _getTimeOut()))
-				!= ngamsSTAT_SUCCESS)
-			goto errExit;
+
 		bytesRd = read(repDataRef.fd, tmpBuf, 10000);
 		if (bytesRd > 0) {
 			bytes_written = write(fd, tmpBuf, bytesRd);
@@ -1891,11 +1766,12 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port,
 			}
 			bytesRead += bytesRd;
 			timeLastRec = time(NULL);
-		} else {
-			if ((time(NULL) - timeLastRec) >= timeOut) {
-				retCode = ngamsERR_TIMEOUT;
-				goto errExit;
-			}
+		} else if( bytesRd == 0 ) {
+			retCode = ngamsERR_TIMEOUT;
+			goto errExit;
+		} else { /* bytesRd < 0 */
+			retCode = ngamsERR_COM;
+			goto errExit;
 		}
 	}
 	close(fd);
@@ -1912,14 +1788,6 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port,
 	return ngamsSTAT_SUCCESS;
 
 	errExit:
-	/* Flush the connection for data waiting to be picked up. */
-	if ((retCode != ngamsSRV_INV_QUERY) && (retCode != ngamsERR_TIMEOUT)
-			&& (repDataRef.pdata == NULL)) {
-		while (bytesRead < repDataLen) {
-			bytesRd = read(repDataRef.fd, tmpBuf, 10000);
-			bytesRead += bytesRd;
-		}
-	}
 	if (repDataRef.pdata)
 		ngamsUnpackStatus(repDataRef.pdata, status);
 	else {
@@ -1953,10 +1821,9 @@ ngamsSTAT ngamsStatus(const char* host, const int port,
 	ngamsMED_BUF tmpUrl;
 
 	ngamsLogDebug("Entering ngamsStatus() ...");
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	sprintf(tmpUrl, "%s", ngamsCMD_STATUS_STR);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, tmpUrl, 1,
+	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
@@ -2010,7 +1877,6 @@ ngamsSTAT ngamsSubscribe(const char* host, const int port,
 	ngamsMED_BUF tmpUrl, reqUrl, tmpEnc;
 
 	ngamsLogDebug("Entering ngamsSubscribe() ...");
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	ngamsEncodeUrlVal(url, 1, tmpEnc);
 	sprintf(reqUrl, "%s?url=\"%s\"&priority=%d", ngamsCMD_SUBSCRIBE_STR,
@@ -2030,7 +1896,7 @@ ngamsSTAT ngamsSubscribe(const char* host, const int port,
 		sprintf(tmpUrl, "&plug_in_pars=\"%s\"", tmpEnc);
 		strcpy(reqUrl, tmpUrl);
 	}
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, reqUrl, 1,
+	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, reqUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
@@ -2065,11 +1931,10 @@ ngamsSTAT ngamsUnsubscribe(const char* host, const int port,
 	ngamsMED_BUF reqUrl, tmpEnc;
 
 	ngamsLogDebug("Entering ngamsUnsubscribe() ...");
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 	ngamsEncodeUrlVal(url, 1, tmpEnc);
 	sprintf(reqUrl, "%s?url=\"%s\"", ngamsCMD_UNSUBSCRIBE_STR, tmpEnc);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, reqUrl, 1,
+	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, reqUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
@@ -2229,28 +2094,30 @@ int ngamsReadLine(int* fd, char* ptr, int maxlen) {
  ngamsERR_ALLOC_MEM).
  */
 int ngamsRecvData(char** data, ngamsDATA_LEN dataLen, int* sockFd) {
-	int attempt = 0, stat = ngamsSTAT_SUCCESS;
-	ngamsDATA_LEN dataRem;
-	ngamsDATA_LEN dataRead = 0;
+	int stat = ngamsSTAT_SUCCESS;
+	ngamsDATA_LEN dataRem = dataLen;
+	ngamsDATA_LEN totalDataRead = 0, dataRead;
 
 	ngamsLogDebug("Entering ngamsRecvData() ...");
 	if (!(*data = malloc(dataLen + 1))) {
 		stat = ngamsERR_ALLOC_MEM;
 		goto errExit;
 	}
-	while (1) {
-		attempt += 1;
-		dataRem = (dataLen - dataRead);
-		dataRead += read(*sockFd, (*data + dataRead), dataRem);
-		if (dataRead < dataLen) {
-			if (attempt <= 10)
-				_pollFd(*sockFd, _getTimeOut());
-			else {
-				stat = ngamsERR_RD_DATA;
-				break;
-			}
-		} else
-			break;
+	while (dataRem > 0) {
+
+		dataRead = read(*sockFd, data + totalDataRead, dataRem);
+		if ( dataRead == 0 ) {
+			stat = ngamsERR_RD_DATA;
+			goto errExit;
+		}
+		else if ( dataRead == -1 ) {
+			stat = ngamsERR_CON;
+			goto errExit;
+		}
+
+		totalDataRead += dataRead;
+		dataRem -= dataRead;
+
 	}
 	*(*data + dataRead) = '\0';
 	close(*sockFd);
@@ -2515,7 +2382,7 @@ void _ngamsUnlockSocketGEN() {
 
  ngamsERR_HOST, ngamsERR_SOCK, ngamsERR_CON
  */
-int ngamsPrepSock(const char* host, const int port) {
+int ngamsPrepSock(const char* host, const int port, float timeout) {
 	int sockFd = 0, stat;
 	struct hostent* hostRef;
 	struct sockaddr_in servAddr;
@@ -2559,6 +2426,20 @@ int ngamsPrepSock(const char* host, const int port) {
 						sockFd);
 				continue;
 			}
+
+			/* Set a receive timeout on the socket, defaults to 2 minutes */
+			if( timeout < 0 ) {
+				timeout = 120;
+			}
+			struct timeval timeout_tv;
+			timeout_tv.tv_sec = (time_t)floorf(timeout);
+			timeout_tv.tv_usec = (long)((timeout_tv.tv_sec - timeout) * 1000);
+			if( setsockopt(sockFd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout_tv, sizeof(timeout_tv)) ) {
+				perror("Error while setting receiving timeout: ");
+				stat = ngamsERR_SOCK;
+				goto errExit;
+			}
+
 			if (registerSock(sockFd))
 				ngamsLogError("fail to register socket(%d) in the list", sockFd);
 			break;
@@ -2639,10 +2520,6 @@ int ngamsRecvHttpHdr(int* sockFd, ngamsHTTP_HDR httpHdr,
 	tmpData = NULL;
 	memset(httpResp, 0, sizeof(ngamsHTTP_RESP));
 	memset(recvLine, 0, sizeof(ngamsMAXLINE + 1));
-
-	/* Wait for the reply from the server. */
-	if ((retCode = _pollFd(*sockFd, _getTimeOut())) != ngamsSTAT_SUCCESS)
-		goto errExit;
 
 	/* Read the HTTP header: ends with a blank line. */
 	ngamsLogDebug("ReadLine from socket(%d)", *sockFd);
@@ -2738,7 +2615,7 @@ int ngamsRecvHttpHdr(int* sockFd, ngamsHTTP_HDR httpHdr,
 
  See ngamsHttpGet() for parameters and return value.
  */
-int _ngamsHttpGet(const char* host, const int port, const char* userAgent,
+int _ngamsHttpGet(const char* host, const int port, const float timeout, const char* userAgent,
 		const char* path, const int receiveData, ngamsHTTP_DATA* repDataRef,
 		ngamsDATA_LEN* dataLen, ngamsHTTP_RESP* httpResp, ngamsHTTP_HDR httpHdr) {
 	char* strP;
@@ -2756,7 +2633,7 @@ int _ngamsHttpGet(const char* host, const int port, const char* userAgent,
 	memset(repDataRef, 0, sizeof(ngamsHTTP_DATA));
 	memset(httpResp, 0, sizeof(ngamsHTTP_RESP));
 
-	if ((sockFd = ngamsPrepSock(host, port)) < 0) {
+	if ((sockFd = ngamsPrepSock(host, port, timeout)) < 0) {
 		ngamsLogDebug("Error calling ngamsPrepSock(). URL: %s:%d/%s", host,
 				port, path);
 		retCode = sockFd;
@@ -2833,7 +2710,7 @@ int _ngamsHttpGet(const char* host, const int port, const char* userAgent,
 		if (repDataRef->pdata)
 			free(repDataRef->pdata);
 		memset(repDataRef, 0, sizeof(ngamsHTTP_DATA));
-		return ngamsHttpGet(altHost, atoi(altPort), userAgent, path,
+		return ngamsHttpGet(altHost, atoi(altPort), timeout, userAgent, path,
 				receiveData, repDataRef, dataLen, httpResp, httpHdr);
 	}
 
@@ -2907,7 +2784,7 @@ int _ngamsHttpGet(const char* host, const int port, const char* userAgent,
 
  - or the following error coded: ngamsERR_WR_HD.
  */
-int ngamsHttpGet(const char* host, const int port, const char* userAgent,
+int ngamsHttpGet(const char* host, const int port, const float timeout, const char* userAgent,
 		const char* path, const int receiveData, ngamsHTTP_DATA* repDataRef,
 		ngamsDATA_LEN* dataLen, ngamsHTTP_RESP* httpResp, ngamsHTTP_HDR httpHdr) {
 	char* locHost;
@@ -2919,7 +2796,7 @@ int ngamsHttpGet(const char* host, const int port, const char* userAgent,
 
 	_ngamsGetSrvInfoObj(host, &foundList, &srvInfoP);
 	if (!foundList) {
-		stat = _ngamsHttpGet(host, port, userAgent, path, receiveData,
+		stat = _ngamsHttpGet(host, port, timeout, userAgent, path, receiveData,
 				repDataRef, dataLen, httpResp, httpHdr);
 		ngamsLogDebug("Leaving ngamsHttpGet(). Status: %d", stat);
 		return stat;
@@ -2931,7 +2808,7 @@ int ngamsHttpGet(const char* host, const int port, const char* userAgent,
 		int idx = -1;
 		while (tryCount < maxTries) {
 			_ngamsGetNextSrv(&idx, srvInfoP, &locHost, &locPort);
-			stat = _ngamsHttpGet(locHost, locPort, userAgent, path,
+			stat = _ngamsHttpGet(locHost, locPort, timeout, userAgent, path,
 					receiveData, repDataRef, dataLen, httpResp, httpHdr);
 			if (stat == ngamsSTAT_SUCCESS)
 				break;
@@ -2975,7 +2852,6 @@ ngamsSTAT ngamsGenSendCmd(const char* host, const int port,
 
 	ngamsLogDebug("Entering ngamsGenSendCmd() ...");
 
-	_setReplyTimeoutFromFloat(timeoutSecs);
 	ngamsInitStatus(status);
 
 	/* Prepare the URL */
@@ -2994,7 +2870,7 @@ ngamsSTAT ngamsGenSendCmd(const char* host, const int port,
 		strcat(url, tmpUrl);
 	}
 	ngamsLogInfo(LEV4, "Issuing command with URL: %s ...", urlRaw);
-	if ((retCode = ngamsHttpGet(host, port, ngamsUSER_AGENT, url, 1,
+	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, url, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
 	ngamsHandleStatus(retCode, &repDataRef, status);
@@ -3062,7 +2938,7 @@ ngamsSTAT ngamsGenSendCmd(const char* host, const int port,
 
  See man-page for ngamsHttpPost() for a description of the parameters.
  */
-int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
+int _ngamsHttpPost(const char* host, const int port, const float timeout, const char* userAgent,
 		const char* path, const char* mimeType, const char* contentDisp,
 		const char* srcFilename, const char* data, const int dataLen,
 		ngamsHTTP_DATA* repDataRef, ngamsDATA_LEN* repDataLen,
@@ -3096,7 +2972,7 @@ int _ngamsHttpPost(const char* host, const int port, const char* userAgent,
 		contLen = dataLen;
 
 	/* Open the socket connection to the server */
-	if ((sockFd = ngamsPrepSock(host, port)) < 0) {
+	if ((sockFd = ngamsPrepSock(host, port, timeout)) < 0) {
 		retCode = sockFd;
 		goto errExit;
 	}
@@ -3317,7 +3193,7 @@ readResp:
 
  ngamsERR_FILE, ngamsERR_WR_HD, ngamsERR_WR_DATA.
  */
-int ngamsHttpPost(const char* host, const int port, const char* userAgent,
+int ngamsHttpPost(const char* host, const int port, const float timeout, const char* userAgent,
 		const char* path, const char* mimeType, const char* contentDisp,
 		const char* srcFilename, const char* data, const ngamsDATA_LEN dataLen,
 		ngamsHTTP_DATA* repDataRef, ngamsDATA_LEN* repDataLen,
@@ -3331,7 +3207,7 @@ int ngamsHttpPost(const char* host, const int port, const char* userAgent,
 
 	_ngamsGetSrvInfoObj(host, &foundList, &srvInfoP);
 	if (!foundList) {
-		stat = _ngamsHttpPost(host, port, userAgent, path, mimeType,
+		stat = _ngamsHttpPost(host, port, timeout, userAgent, path, mimeType,
 				contentDisp, srcFilename, data, dataLen, repDataRef,
 				repDataLen, httpResp, httpHdr);
 		ngamsLogDebug("Leaving ngamsHttpPost(). Status: %d", stat);
@@ -3345,7 +3221,7 @@ int ngamsHttpPost(const char* host, const int port, const char* userAgent,
 		int idx = -1;
 		while (tryCount < maxTries) {
 			_ngamsGetNextSrv(&idx, srvInfoP, &locHost, &locPort);
-			stat = _ngamsHttpPost(locHost, locPort, userAgent, path, mimeType,
+			stat = _ngamsHttpPost(locHost, locPort, timeout, userAgent, path, mimeType,
 					contentDisp, srcFilename, data, dataLen, repDataRef,
 					repDataLen, httpResp, httpHdr);
 			if (stat == ngamsSTAT_SUCCESS)
@@ -3404,7 +3280,7 @@ int ngamsHttpPost(const char* host, const int port, const char* userAgent,
 
  ngamsERR_WR_HD
  */
-int ngamsHttpPostOpen(const char* host, const int port, const char* userAgent,
+int ngamsHttpPostOpen(const char* host, const int port, const float timeout, const char* userAgent,
 		const char* path, const char* mimeType, const char* contentDisp,
 		const ngamsDATA_LEN dataLen) {
 	char header[ngamsBUFSIZE];
@@ -3414,13 +3290,11 @@ int ngamsHttpPostOpen(const char* host, const int port, const char* userAgent,
 	ngamsBIG_BUF authHdr;
 	ngamsDATA_LEN contLen = 0;
 
-	_setReplyTimeoutFromFloat(-1); /* No timeout. */
-
 	if (dataLen >= 0)
 		contLen = dataLen;
 
 	/* Open the socket connection to the server */
-	if ((sockFd = ngamsPrepSock(host, port)) < 0) {
+	if ((sockFd = ngamsPrepSock(host, port, timeout)) < 0) {
 		retCode = sockFd;
 		goto errExit;
 	}
@@ -3567,12 +3441,6 @@ int ngamsHttpPostClose(int sockFd, ngamsHTTP_DATA* repDataRef,
 		ngamsDATA_LEN* repDataLen, ngamsHTTP_RESP* httpResp,
 		ngamsHTTP_HDR httpHdr) {
 	int retCode;
-
-	/* VWA: This line was commented out for some reason, but no one can
-	 * remember it now but without this line, the timeout value will be
-	 * unpredictable value result in waiting forever in poll function.
-	 * Andy: I've changed parameter for poll function so that it won't wait forever. */
-	//_setReplyTimeoutFromFloat(120); /* 120 secs timeout. */
 
 	memset(repDataRef, 0, sizeof(ngamsHTTP_DATA));
 	*repDataLen = 0;
