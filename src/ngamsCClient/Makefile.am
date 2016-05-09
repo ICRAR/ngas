@@ -63,7 +63,7 @@ ngamsMAN_PAGE.c:
 	@-(echo  "{" >> ngamsMAN_PAGE.c)
 	@-(echo  "static char buf[32768];" >> ngamsMAN_PAGE.c)
 	@-(echo  "char *txt[] = {" >> ngamsMAN_PAGE.c)
-	@-(awk -f ngamsFormatHdrFile.awk ngamsPClient/ngamsPClient/doc/ngamsPClient.txt >> ngamsMAN_PAGE.c)
+	@-(awk -f ngamsFormatHdrFile.awk ../ngamsPClient/ngamsPClient/doc/ngamsPClient.txt >> ngamsMAN_PAGE.c)
 	@-(echo  "\"*\"};" >> ngamsMAN_PAGE.c)
 	@-(echo  "int n;" >> ngamsMAN_PAGE.c)
 	@-(echo  "for (n = 0; *txt[n] != '*'; n++) {strcat(buf, txt[n]); strcat(buf, ngamsNEWLINE);}" >> ngamsMAN_PAGE.c)
