@@ -389,9 +389,6 @@ ngamsSTAT _ngamsGetNextSrv(int* idx, ngamsSRV_INFO* srvInfoP, char** host,
 /* Authorization user/password */
 char* _authorization = NULL;
 
-/* Time-out for poll() */
-float _replyTimeout;
-
 /* Log Conditions */
 ngamsMED_BUF _logFile;
 int _logLevel = 0;
@@ -539,7 +536,7 @@ ngamsSTAT ngamsUnpackStatus(const char* xmlDoc, ngamsSTATUS* status) {
 
  Returns:       ngamsSTAT_SUCCESS.
  */
-ngamsSTAT ngamsHandleStatus(int retCode, ngamsHTTP_DATA* repDataRef,
+ngamsSTAT ngamsHandleStatus(int retCode, float timeout, ngamsHTTP_DATA* repDataRef,
 		ngamsSTATUS* status) {
 	ngamsSMALL_BUF errBuf;
 
@@ -560,7 +557,10 @@ ngamsSTAT ngamsHandleStatus(int retCode, ngamsHTTP_DATA* repDataRef,
 	 * to the message for completenes.
 	 */
 	if (status->errorCode == ngamsERR_TIMEOUT) {
-		sprintf(errBuf, ". Timeout: %.3fs", (float) (_replyTimeout));
+		if( timeout < 0 ) {
+			timeout = ngamsDEFAULT_TIME_OUT;
+		}
+		sprintf(errBuf, ". Timeout: %.3fs", (float) (timeout));
 		strcat(status->message, errBuf);
 	}
 
@@ -651,12 +651,12 @@ ngamsSTAT ngamsGenSendData(const char* host, const int port,
 				httpHdr)) != ngamsSTAT_SUCCESS)
 			goto errExit;
 	}
-	ngamsHandleStatus(retCode, &repDataRef, status);
+	ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 
 	ngamsLogDebug("Leaving ngamsGenSendData()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsHandleStatus(retCode, &repDataRef, status);
+	errExit: ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 	ngamsLogDebug("Leaving ngamsGenSendData()/FAILURE. Status: %d", retCode);
 	return retCode;
 }
@@ -882,12 +882,12 @@ ngamsSTAT ngamsArchiveFromMem(const char* host, const int port,
 			ngamsARHIVE_REQ_MT, contDisp, "", bufPtr, size, &repDataRef,
 			&repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
-	ngamsHandleStatus(retCode, &repDataRef, status);
+	ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 
 	ngamsLogDebug("Leaving ngamsArchiveFromMem()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsHandleStatus(retCode, &repDataRef, status);
+	errExit: ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 	ngamsLogDebug("Leaving ngamsArchiveFromMem()/FAILURE. Status: %d", retCode);
 	return retCode;
 }
@@ -950,12 +950,12 @@ ngamsSTAT ngamsClone(const char* host, const int port, const float timeoutSecs,
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
-	ngamsHandleStatus(retCode, &repDataRef, status);
+	ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 
 	ngamsLogDebug("Leaving ngamsClone()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsHandleStatus(retCode, &repDataRef, status);
+	errExit: ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 	ngamsLogDebug("Leaving ngamsClone()/FAILURE. Status: %d", retCode);
 	return retCode;
 }
@@ -987,12 +987,12 @@ ngamsSTAT ngamsExit(const char* host, const int port, const float timeoutSecs,
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
-	ngamsHandleStatus(retCode, &repDataRef, status);
+	ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 
 	ngamsLogDebug("Leaving ngamsExit()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsHandleStatus(retCode, &repDataRef, status);
+	errExit: ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 	ngamsLogDebug("Leaving ngamsExit()/FAILURE. Status: %d", retCode);
 	return retCode;
 }
@@ -1026,12 +1026,12 @@ ngamsSTAT ngamsLabel(const char* host, const int port, const float timeoutSecs,
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
-	ngamsHandleStatus(retCode, &repDataRef, status);
+	ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 
 	ngamsLogDebug("Leaving ngamsLabel()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsHandleStatus(retCode, &repDataRef, status);
+	errExit: ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 	ngamsLogDebug("Leaving ngamsLabel()/FAILURE. Status: %d", retCode);
 	return retCode;
 }
@@ -1062,12 +1062,12 @@ ngamsSTAT ngamsOnline(const char* host, const int port,
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
-	ngamsHandleStatus(retCode, &repDataRef, status);
+	ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 
 	ngamsLogDebug("Leaving ngamsOnline()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsHandleStatus(retCode, &repDataRef, status);
+	errExit: ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 	ngamsLogDebug("Leaving ngamsOnline()/FAILURE. Status: %d", retCode);
 	return retCode;
 }
@@ -1105,12 +1105,12 @@ ngamsSTAT ngamsOffline(const char* host, const int port,
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
-	ngamsHandleStatus(retCode, &repDataRef, status);
+	ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 
 	ngamsLogDebug("Leaving ngamsOffline()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsHandleStatus(retCode, &repDataRef, status);
+	errExit: ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 	ngamsLogDebug("Leaving ngamsOffline()/FAILURE. Status: %d", retCode);
 	return retCode;
 }
@@ -1230,12 +1230,12 @@ ngamsSTAT ngamsRegister(const char* host, const int port,
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
-	ngamsHandleStatus(retCode, &repDataRef, status);
+	ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 
 	ngamsLogDebug("Leaving ngamsRegister()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsHandleStatus(retCode, &repDataRef, status);
+	errExit: ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 	ngamsLogDebug("Leaving ngamsRegister()/FAILURE. Status: %d", retCode);
 	return retCode;
 }
@@ -1280,12 +1280,12 @@ ngamsSTAT ngamsRemDisk(const char* host, const int port,
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
-	ngamsHandleStatus(retCode, &repDataRef, status);
+	ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 
 	ngamsLogDebug("Leaving ngamsRemDisk()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsHandleStatus(retCode, &repDataRef, status);
+	errExit: ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 	ngamsLogDebug("Leaving ngamsRemDisk()/FAILURE. Status: %d", retCode);
 	return retCode;
 }
@@ -1339,12 +1339,12 @@ ngamsSTAT ngamsRemFile(const char* host, const int port,
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
-	ngamsHandleStatus(retCode, &repDataRef, status);
+	ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 
 	ngamsLogDebug("Leaving ngamsRemFile()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsHandleStatus(retCode, &repDataRef, status);
+	errExit: ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 	ngamsLogDebug("Leaving ngamsRemFile()/FAILURE. Status: %d", retCode);
 	return retCode;
 }
@@ -1589,6 +1589,9 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 		} else if( bytesRd == 0 ) {
 			retCode = ngamsERR_TIMEOUT;
 			goto errExit;
+		} else if ( bytesRd == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) ) {
+			retCode = ngamsERR_TIMEOUT;
+			goto errExit;
 		} else { /* bytesRd < 0 */
 			retCode = ngamsERR_COM;
 			goto errExit;
@@ -1769,6 +1772,9 @@ ngamsSTAT ngamsGenRetrieve2File(const char* host, const int port,
 		} else if( bytesRd == 0 ) {
 			retCode = ngamsERR_TIMEOUT;
 			goto errExit;
+		} else if ( bytesRd == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) ) {
+			retCode = ngamsERR_TIMEOUT;
+			goto errExit;
 		} else { /* bytesRd < 0 */
 			retCode = ngamsERR_COM;
 			goto errExit;
@@ -1826,12 +1832,12 @@ ngamsSTAT ngamsStatus(const char* host, const int port,
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, tmpUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
-	ngamsHandleStatus(retCode, &repDataRef, status);
+	ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 
 	ngamsLogDebug("Leaving ngamsStatus()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsHandleStatus(retCode, &repDataRef, status);
+	errExit: ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 	ngamsLogDebug("Leaving ngamsStatus()/FAILURE. Status: %d", retCode);
 	return retCode;
 }
@@ -1899,12 +1905,12 @@ ngamsSTAT ngamsSubscribe(const char* host, const int port,
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, reqUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
-	ngamsHandleStatus(retCode, &repDataRef, status);
+	ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 
 	ngamsLogDebug("Leaving ngamsSubscribe()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsHandleStatus(retCode, &repDataRef, status);
+	errExit: ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 	ngamsLogDebug("Leaving ngamsSubscribe()/FAILURE. Status: %d", retCode);
 	return retCode;
 
@@ -1937,12 +1943,12 @@ ngamsSTAT ngamsUnsubscribe(const char* host, const int port,
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, reqUrl, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
-	ngamsHandleStatus(retCode, &repDataRef, status);
+	ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 
 	ngamsLogDebug("Leaving ngamsUnsubscribe()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsHandleStatus(retCode, &repDataRef, status);
+	errExit: ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 	ngamsLogDebug("Leaving ngamsUnsubscribe()/FAILURE. Status: %d", retCode);
 	return retCode;
 
@@ -2065,12 +2071,9 @@ int ngamsReadLine(int* fd, char* ptr, int maxlen) {
 			if (c == '\n')
 				break;
 		} else if (rc == 0) {
-			if (n == 1)
-				return 0; /* EOF, no data read */
-			else
-				break; /* EOF, some data was read */
+				break;
 		} else
-			return -1; /* error */
+			return rc; /* error */
 	}
 
 	*ptr = 0;
@@ -2105,9 +2108,13 @@ int ngamsRecvData(char** data, ngamsDATA_LEN dataLen, int* sockFd) {
 	}
 	while (dataRem > 0) {
 
-		dataRead = read(*sockFd, data + totalDataRead, dataRem);
+		dataRead = read(*sockFd, *data + totalDataRead, dataRem);
 		if ( dataRead == 0 ) {
 			stat = ngamsERR_RD_DATA;
+			goto errExit;
+		}
+		else if ( dataRead == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) ) {
+			stat = ngamsERR_TIMEOUT;
 			goto errExit;
 		}
 		else if ( dataRead == -1 ) {
@@ -2119,7 +2126,7 @@ int ngamsRecvData(char** data, ngamsDATA_LEN dataLen, int* sockFd) {
 		dataRem -= dataRead;
 
 	}
-	*(*data + dataRead) = '\0';
+	*(*data + totalDataRead) = '\0';
 	close(*sockFd);
 	if (unregisterSock(*sockFd))
 		ngamsLogError("fail to unregister socket(%d) in the list", *sockFd);
@@ -2427,9 +2434,9 @@ int ngamsPrepSock(const char* host, const int port, float timeout) {
 				continue;
 			}
 
-			/* Set a receive timeout on the socket, defaults to 2 minutes */
+			/* Set a receive timeout on the socket */
 			if( timeout < 0 ) {
-				timeout = 120;
+				timeout = ngamsDEFAULT_TIME_OUT;
 			}
 			struct timeval timeout_tv;
 			timeout_tv.tv_sec = (time_t)floorf(timeout);
@@ -2549,7 +2556,10 @@ int ngamsRecvHttpHdr(int* sockFd, ngamsHTTP_HDR httpHdr,
 
 	/* In case -1 is returned by ngamsReadLine() a problem occurred
 	 *  with the communication. */
-	if (bytesRead < 0) {
+	if ( bytesRead == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) ) {
+		retCode = ngamsERR_TIMEOUT;
+		goto errExit;
+	} else if ( bytesRead <= 0 ) {
 		retCode = ngamsERR_COM;
 		goto errExit;
 	}
@@ -2873,12 +2883,12 @@ ngamsSTAT ngamsGenSendCmd(const char* host, const int port,
 	if ((retCode = ngamsHttpGet(host, port, timeoutSecs, ngamsUSER_AGENT, url, 1,
 			&repDataRef, &repDataLen, &httpResp, httpHdr)) != ngamsSTAT_SUCCESS)
 		goto errExit;
-	ngamsHandleStatus(retCode, &repDataRef, status);
+	ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 
 	ngamsLogDebug("Leaving ngamsGenSendCmd()");
 	return ngamsSTAT_SUCCESS;
 
-	errExit: ngamsHandleStatus(retCode, &repDataRef, status);
+	errExit: ngamsHandleStatus(retCode, timeoutSecs, &repDataRef, status);
 	ngamsLogDebug("Leaving ngamsGenSendCmd()/FAILURE. Status: %d", retCode);
 	return retCode;
 }

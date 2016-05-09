@@ -47,7 +47,8 @@ extern "C" {
 #define ngamsNG_LOG_REF           "--NG--LOG--"
 #define ngamsHTTP_MAX_HDRS        32
 #define ngamsMAX_REPLY_DATA_BUFS  32
-#define ngamsNO_TIME_OUT          -1
+#define ngamsNO_TIME_OUT          0
+#define ngamsDEFAULT_TIME_OUT     120
 #define ngamsNEWLINE              "\n"
 #define ngamsSTD_PERMS            0644   /* rw-r--r-- */
 #define ngamsSTD_DIR_PERMS        0755   /* rwxr-xr-x */
