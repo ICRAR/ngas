@@ -1171,6 +1171,11 @@ class ngamsTestSuite(unittest.TestCase):
         Returns:   Void.
         """
 
+        if srvProcess.poll():
+            info(3, "Server process already dead x(, no need to terminate it again")
+            srvProcess.wait()
+            return
+
         info(3,"Killing externally running NG/AMS Server. PID: %d, Port: %d " % (srvProcess.pid, port))
         pCl = sendPclCmd(port=port, timeOut=10)
         try:
