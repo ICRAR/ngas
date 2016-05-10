@@ -439,8 +439,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         envDic = self.prepCluster("src/ngamsCfg.xml",
                                   [[8000, None, None, getClusterName()],
                                    [8001, None, None, getClusterName()],
-                                   [8002, None, None, getClusterName(),
-                                    suspPars]])
+                                   [8002, None, None, getClusterName(), suspPars]])
         for portNo in [8000, 8001, 8002]:
             for n in range(3):
                 sendPclCmd(port=portNo).archive("src/SmallFile.fits")

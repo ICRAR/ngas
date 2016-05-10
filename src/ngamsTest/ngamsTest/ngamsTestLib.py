@@ -1148,7 +1148,7 @@ class ngamsTestSuite(unittest.TestCase):
                 info(3,"Polled server - not yet running ...")
                 time.sleep(0.2)
 
-        if ((time.time() - startTime) >= 25):
+        if ((time.time() - startTime) >= 20):
             self.termExtSrv(srvProcess, port)
             raise Exception,"NGAMS TEST LIB> NG/AMS Server did not start " +\
                   "correctly"
@@ -1171,8 +1171,8 @@ class ngamsTestSuite(unittest.TestCase):
         Returns:   Void.
         """
 
-        if srvProcess.poll():
-            info(3, "Server process already dead x(, no need to terminate it again")
+        if srvProcess.poll() is not None:
+            info(3, "Server process %d (port %d) already dead x(, no need to terminate it again" % (srvProcess.pid, port))
             srvProcess.wait()
             return
 
@@ -1211,13 +1211,17 @@ class ngamsTestSuite(unittest.TestCase):
                 # ... or force it to die
                 kill9 = waitLoops == 20
 
-        if kill9:
-            srvProcess.kill()
-            srvProcess.wait()
-            info(3, "Server process had %d to be merciless killed, sorry :(" % (srvProcess.pid,))
-        else:
-            srvProcess.wait()
-            info(3, "Finished server process %d gracefully :)" % (srvProcess.pid,))
+        try:
+            if kill9:
+                srvProcess.kill()
+                srvProcess.wait()
+                info(3, "Server process had %d to be merciless killed, sorry :(" % (srvProcess.pid,))
+            else:
+                srvProcess.wait()
+                info(3, "Finished server process %d gracefully :)" % (srvProcess.pid,))
+        except Exception:
+            error("Error while finishing server process %d, port %d" % (srvProcess.pid, port))
+            raise
 
     def setUp(self):
         # Make sure there is a 'tmp' directory here, since most of the tests
