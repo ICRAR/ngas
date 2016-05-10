@@ -244,20 +244,21 @@ def handleCmd(srvObj,
     info(3, "Checking File URI scheme for %s" % uri)
     file_version_uri = None
     uri_res = urlparse(uri)
+
+    # work around https://bugs.python.org/issue9374 in python < 2.7.4
+    # where the query part is not parsed for all schemes (so we have to
+    # parse it out from the path ourselves)
+    query = uri_res.query
+    if not query:
+        idx = uri_res.path.find('?')
+        if idx != -1:
+            uri_res.query = uri_res.path[idx+1:]
+            uri_res.path = uri_res.path[:idx]
+
     base_name = uri_res.path
     if uri_res.scheme:
-
-        # work around https://bugs.python.org/issue9374 in python < 2.7.4
-        # where the query part is not parsed for all schemes (so we have to
-        # parse it out from the path ourselves)
-        query = uri_res.query
-        if not query:
-            idx = uri_res.path.find('?')
-            if idx != -1:
-                query = uri_res.path[idx+1:]
-
-        if query:
-            params = parse_qs(query)
+        if uri_res.query:
+            params = parse_qs(uri_res.query)
             try:
                 file_id = params['file_id'][0]
                 base_name = os.path.basename(file_id)
@@ -267,7 +268,6 @@ def handleCmd(srvObj,
                 file_version_uri = params['file_version'][0]
                 try:
                     file_version_uri = int(file_version_uri)
-                    print file_version_uri
                 except ValueError:
                     raise Exception('file_version is not an integer')
             except KeyError:
