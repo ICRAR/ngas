@@ -2060,18 +2060,19 @@ int ngamsReadLine(int* fd, char* ptr, int maxlen) {
 	char c;
 	int n, rc;
 
-	for (n = 1; n < maxlen; n++) {
+	for (n = 0; n < maxlen; n++) {
 		/* IMPL: If the remote server writes a line, which does not contain
 		 *       a newline character, read() blocks. Could maybe be improved
 		 *       by probing (using select with timeout defined) before
 		 *       trying to read from the socket.
 		 */
 		if ((rc = read(*fd, &c, 1)) == 1) {
+			n++;
 			*ptr++ = c;
 			if (c == '\n')
 				break;
 		} else if (rc == 0) {
-				break;
+			break;
 		} else
 			return rc; /* error */
 	}
