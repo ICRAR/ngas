@@ -3702,7 +3702,7 @@ void ngamsLogError(const char* format, ...) {
 
 	ngamsInitLogConds();
 	va_start(vaParList, format);
-	ngamsLog_v("ERROR", LEV0, format, vaParList);
+	ngamsLog_v("ERROR", LEV1, format, vaParList);
 	va_end(vaParList);
 }
 
@@ -3717,7 +3717,7 @@ void ngamsLogWarning(const char* format, ...) {
 
 	ngamsInitLogConds();
 	va_start(vaParList, format);
-	ngamsLog_v("WARNING", LEV0, format, vaParList);
+	ngamsLog_v("WARNING", LEV2, format, vaParList);
 	va_end(vaParList);
 }
 
@@ -3732,7 +3732,7 @@ void ngamsLogNotice(const char* format, ...) {
 
 	ngamsInitLogConds();
 	va_start(vaParList, format);
-	ngamsLog_v("NOTICE", LEV0, format, vaParList);
+	ngamsLog_v("NOTICE", LEV3, format, vaParList);
 	va_end(vaParList);
 }
 

@@ -72,7 +72,7 @@ def _execCClient(unpackXmlStat = 1,
                         [<stat obj>, ...]  or <stdout c-client>  (list|string).
     """
     cmdLineParsDic = _genPars(pars)
-    cmdLine = "ngamsCClient"
+    cmdLine = "NGAMS_VERBOSE_LEVEL=0 ngamsCClient"
     for cmdLineOpt in cmdLineParsDic.keys():
         if (cmdLineParsDic[cmdLineOpt] != None):
             cmdLine += " " + cmdLineOpt + " " + str(cmdLineParsDic[cmdLineOpt])
