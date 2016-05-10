@@ -49,7 +49,7 @@ import binascii
 import os
 import random
 import time
-from urlparse import urlparse, parse_qs
+import urlparse
 
 from ngamsLib.ngamsCore import TRACE, genLog, error, checkCreatePath, \
     info, NGAMS_HTTP_HDR_CHECKSUM, NGAMS_ONLINE_STATE, \
@@ -243,22 +243,24 @@ def handleCmd(srvObj,
     uri = reqPropsObj.getFileUri()
     info(3, "Checking File URI scheme for %s" % uri)
     file_version_uri = None
-    uri_res = urlparse(uri)
+    uri_res = urlparse.urlparse(uri)
 
     # work around https://bugs.python.org/issue9374 in python < 2.7.4
     # where the query part is not parsed for all schemes (so we have to
     # parse it out from the path ourselves)
-    query = uri_res.query
+    
+    scheme, netloc, path, params, query, fragment = uri_res
     if not query:
         idx = uri_res.path.find('?')
         if idx != -1:
-            uri_res.query = uri_res.path[idx+1:]
-            uri_res.path = uri_res.path[:idx]
+            query = uri_res.path[idx+1:]
+            path = uri_res.path[:idx]
+    uri_res = urlparse.ParseResult(scheme, netloc, path, params, query, fragment)
 
     base_name = uri_res.path
     if uri_res.scheme:
         if uri_res.query:
-            params = parse_qs(uri_res.query)
+            params = urlparse.parse_qs(uri_res.query)
             try:
                 file_id = params['file_id'][0]
                 base_name = os.path.basename(file_id)
