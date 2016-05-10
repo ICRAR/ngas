@@ -342,7 +342,7 @@ def handleOnline(srvObj,
         errMsg = "Error occurred while bringing the system Online: " + str(e)
         error(errMsg)
         handleOffline(srvObj)
-        raise e
+        raise
 
     # Check that there is enough disk space in the various system directories.
     srvObj.checkDiskSpaceSat()
