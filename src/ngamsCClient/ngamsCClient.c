@@ -386,7 +386,7 @@ int main (int argc, char*  argv[])
 	(*command == '\0'))
 	goto correctUsage;
     /* Send timeout with the request */
-    if (timeOut != -1)
+    if (timeOut != ngamsNO_TIME_OUT)
     	sprintf(tmpBuf, "%d", (int)(timeOut + 0.5));
     else
     	sprintf(tmpBuf, "-1");
