@@ -3548,6 +3548,11 @@ void ngamsLog_v(const char* type, const ngamsLOG_LEVEL level,
 			pthread_self());
 
 	_ngamsLockLogWR();
+
+	/* Log on stdout */
+	if (level <= _verboseLevel)
+		fputs(logMsg, stdout);
+
 	/* Log in log file */
 	if (level <= _logLevel) {
 		/* IMPL: Support buffering to avoid opening and closing the file all the time */
@@ -3564,9 +3569,6 @@ void ngamsLog_v(const char* type, const ngamsLOG_LEVEL level,
 			close(fd);
 	}
 
-	/* Log on stdout */
-	if (level <= _verboseLevel)
-		puts(logMsg);
 	errExit:
 	_ngamsUnlockLogWR();
 }
