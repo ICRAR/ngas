@@ -255,7 +255,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         sendPclCmd(port=8000, auth=AUTH).archive("src/TinyTestFile.fits")
         sendPclCmd(port=8000, auth=AUTH).archive("src/SmallFile.fits")
         sendPclCmd(port=8001, auth=AUTH).archive("src/SmallFile.fits")
-        self.waitTillSuspended(dbConObj, subNode1, 10, susp_nodes)
+        self.waitTillSuspended(dbConObj, subNode1, 20, susp_nodes)
 
         # Retrieve information about the file on the suspended sub-node.
         fileId = "TEST.2001-05-08T15:25:00.123"
