@@ -16,3 +16,4 @@ Contents:
    running
    server
    commands-index
+   configuration

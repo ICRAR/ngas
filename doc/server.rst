@@ -10,6 +10,13 @@ The NGAS server is the heart of NGAS.
 Configuration
 =============
 
+The NGAS server is configured via an XML configuration file,
+which is indicated to the server at startup time
+via the ``-cfg`` command-line flag
+(see under :doc:`running`).
+
+To see more details about the XML documentation
+go to the :doc:`configuration` section.
 
 .. _server.states:
 
