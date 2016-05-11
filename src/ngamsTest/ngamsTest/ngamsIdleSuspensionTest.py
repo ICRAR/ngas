@@ -160,7 +160,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         ...
         """
         dbConObj = prepSimCluster(self)[masterNode][1]
-        self.waitTillSuspended(dbConObj, subNode1, 20, susp_nodes)
+        self.waitTillSuspended(dbConObj, subNode1, 30, susp_nodes)
         self.markNodesAsUnsusp(dbConObj, susp_nodes)
 
 
@@ -195,7 +195,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         """
         cfgParDic = {"8001": [["%s.IdleSuspensionTime" % SUSP_EL, "5"]]}
         dbConObj = prepSimCluster(self, cfgParDic = cfgParDic)[masterNode][1]
-        self.waitTillSuspended(dbConObj, subNode1, 10, susp_nodes)
+        self.waitTillSuspended(dbConObj, subNode1, 20, susp_nodes)
 
         # 1. Send STATUS Command to sub-node using master as proxy.
         statObj = sendPclCmd(port=8000, auth=AUTH).\
@@ -217,7 +217,6 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
 
         # Clean up.
         self.markNodesAsUnsusp(dbConObj, susp_nodes)
-        sendPclCmd(port=8001, auth=AUTH).offline()
 
 
     def test_WakeUpStatus_2(self):
@@ -310,7 +309,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         testParsList = [["TEST.2001-05-08T15:25:00.123", -1],
                         ["TEST.2001-05-08T15:25:00.123", 2]]
         for fileId, version in testParsList:
-            self.waitTillSuspended(dbConObj, subNode1, 10, susp_nodes)
+            self.waitTillSuspended(dbConObj, subNode1, 20, susp_nodes)
 
             # different prefixes to avoid name clashes
             tmpRetFile = genTmpFilename("original_")
