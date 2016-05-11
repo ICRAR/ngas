@@ -2,7 +2,7 @@ Containers
 ==========
 
 The following commands deal with *logical containers*. For an explanation on
-containers see :ref:`features.containers`.
+containers see :ref:`server.logical_containers`.
 
 For container-related commands in general, when dealing with existing containers
 the following rule applies: if the container can be uniquely identified by name
