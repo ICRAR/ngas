@@ -33,7 +33,7 @@ import urllib2
 
 from fabric.colors import green, red
 from fabric.context_managers import settings, cd
-from fabric.contrib.files import exists
+from fabric.contrib.files import exists, sed
 from fabric.decorators import task, parallel
 from fabric.operations import local, put
 from fabric.state import env
@@ -93,6 +93,10 @@ def ngas_install_dir():
     if key not in env:
         env[key] = os.path.abspath(os.path.join(home(), NGAS_INSTALL_DIR_NAME))
     return env[key]
+
+def ngas_overwrite_installation():
+    key = 'NGAS_OVERWRITE_INSTALLATION'
+    return key in env
 
 def ngas_root_dir():
     key = 'NGAS_ROOT_DIR'
@@ -182,7 +186,11 @@ def virtualenv_setup(python_path = None):
     """
     ngasInstallDir = ngas_install_dir()
     if check_dir(ngasInstallDir):
-        abort('{0} directory exists already'.format(ngasInstallDir))
+        overwrite = ngas_overwrite_installation()
+        if not overwrite:
+            msg = "%s exists already. Specify NGAS_OVERWRITE_INSTALLATION to overwrite"
+            abort(msg % (ngasInstallDir,))
+        run("rm -rf %s" % (ngasInstallDir,))
 
     def venv_python():
         if python_path:
@@ -277,7 +285,6 @@ def ngas_buildout(typ='archive'):
 
         # Main NGAMs compilation routine
         build_cmd = ngas_build_cmd(no_client)
-        print build_cmd
         virtualenv(build_cmd)
 
         # Installing and initializing an NGAS_ROOT directory
@@ -286,10 +293,7 @@ def ngas_buildout(typ='archive'):
         run('mkdir -p {0}'.format(nrd))
         run('cp -R NGAS/* {0}'.format(nrd))
         run('cp cfg/{0} {1}'.format(cfg, ngasTargetCfg))
-        if env.linux_flavor == 'Darwin': # capture stupid difference in sed on Mac OSX
-            run("""sed -i '' 's/\*replaceRoot\*/{0}/g' {1}""".format(nrd.replace('/','\\/'), ngasTargetCfg))
-        else:
-            run("""sed -i 's/\*replaceRoot\*/{0}/g' {1}""".format(nrd.replace('/', '\\/'), ngasTargetCfg))
+        sed(ngasTargetCfg, '\*replaceRoot\*', nrd)
 
         # Initialize the SQlite database
         sql = "src/ngamsCore/ngamsSql/ngamsCreateTables-SQLite.sql"
