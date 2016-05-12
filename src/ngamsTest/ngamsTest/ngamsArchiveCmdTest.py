@@ -164,7 +164,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         cfg.storeVal("NgamsCfg.Notification[1].SmtpHost", "localhost")
         cfg.setDiskChangeNotifList([testUserEmail])
         cfg.storeVal("NgamsCfg.ArchiveHandling[1].FreeSpaceDiskChangeMb",
-                     "100000")
+                     "10000000") # 10 TB, hopefully enough for most systems
         cfg.save(tmpCfgFile, 0)
         cfgObj, dbObj = self.prepExtSrv(cfgFile=tmpCfgFile)
         flushEmailQueue()
