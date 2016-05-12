@@ -195,7 +195,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         """
         cfgParDic = {"8001": [["%s.IdleSuspensionTime" % SUSP_EL, "5"]]}
         dbConObj = prepSimCluster(self, cfgParDic = cfgParDic)[masterNode][1]
-        self.waitTillSuspended(dbConObj, subNode1, 20, susp_nodes)
+        self.waitTillSuspended(dbConObj, subNode1, 30, susp_nodes)
 
         # 1. Send STATUS Command to sub-node using master as proxy.
         statObj = sendPclCmd(port=8000, auth=AUTH).\
