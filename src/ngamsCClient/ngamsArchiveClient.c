@@ -1066,7 +1066,6 @@ ngamsSTAT ngamsCleanUpArchivedFiles(ngamsARCHIVE_CLIENT_REGISTRY*  regP)
 
  errExit:
     if (dirPtr != NULL) closedir(dirPtr);
-    if (dirEnt != NULL) free(dirEnt);
     return ngamsSTAT_FAILURE;
 }
 
