@@ -66,11 +66,13 @@ To install NGAS in a per-user installation run::
  fab hl.user_deploy
 
 This will compile NGAS and install it under ``~/ngas_rt`` using a `virtual
-environment <https://virtualenv.readthedocs.org/en/latest/>`_ for that. A NGAS
-data directory will also be created under ``~/NGAS``, containing a valid
-configuration file with which an NGAS server can be started.
+environment <https://virtualenv.readthedocs.org/en/latest/>`_ for that.
+The installation directory will not be overwritten if it exists,
+unless the ``NGAS_OVERWRITE_INSTALLATION`` variable is set.
 To bypass the compilation and installation of the C client set the
 ``NGAS_NO_CLIENT`` fabric variable.
+Finally, an NGAS data directory will also be created under ``~/NGAS``,
+containing a valid configuration file with which an NGAS server can be started.
 
 By default the per-user installation will be performed using the ``ngas`` user
 if connecting to a remote system, or using the current username if performing
