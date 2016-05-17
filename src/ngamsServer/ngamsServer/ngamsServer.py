@@ -33,6 +33,7 @@ services for the NG/AMS Server.
 """
 
 import os, sys, re, threading, time, pkg_resources
+import math
 import traceback
 import SocketServer, BaseHTTPServer, socket, signal
 
@@ -2448,7 +2449,11 @@ class ngamsServer:
         if logFile:
             try:
                 logPath = os.path.dirname(logFile)
-                rotLogFile = "LOG-ROTATE-%s.nglog.unsaved" % (PccUtTime.TimeStamp().getTimeStamp(),)
+                now = time.time()
+                ts = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(now))
+                ts += ".%03d" % ((now - math.floor(now)) * 1000.)
+                # It's time to rotate the current Local Log File.
+                rotLogFile = "LOG-ROTATE-%s.nglog.unsaved" % (ts,)
                 rotLogFile = os.path.normpath(logPath + "/" + rotLogFile)
                 info(1, "Closing log file: %s -> %s" % (logFile, rotLogFile))
                 logFlush()

@@ -36,6 +36,7 @@ suspended NGAS hosts, suspending itself.
 #       of bsddb + simplify the algorithm.
 
 import os, time, glob, cPickle
+import math
 import types
 import shutil
 
@@ -1144,10 +1145,11 @@ def janitorThread(srvObj, stopEvt):
                                                  getLogRotateInt())
                         deltaTime = (time.time() - logFileCreTime)
                         if (deltaTime >= logRotInt):
+                            now = time.time()
+                            ts = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(now))
+                            ts += ".%03d" % ((now - math.floor(now)) * 1000.)
                             # It's time to rotate the current Local Log File.
-                            rotLogFile = "LOG-ROTATE-" +\
-                                         PccUtTime.TimeStamp().getTimeStamp()+\
-                                         ".nglog"
+                            rotLogFile = "LOG-ROTATE-%s.nglog" % (ts,)
                             rotLogFile = os.path.\
                                          normpath(logPath + "/" + rotLogFile)
                             PccLog.info(1, "Rotating log file: %s -> %s" %\
