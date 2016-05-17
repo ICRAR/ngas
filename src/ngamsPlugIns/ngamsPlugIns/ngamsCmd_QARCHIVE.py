@@ -160,9 +160,10 @@ def saveFromHttpToFile(ngamsCfgObj,
         start = time.time()
         with open(trgFilename, 'wb') as fout:
             while readin < size:
-                buff = fin.read(size - readin)
+                left = size - readin
+                buff = fin.read(blockSize if left >= blockSize else left)
                 if not buff:
-                    break
+                    raise Exception('socket read error')
                 readin += len(buff)
 
                 wstart = time.time()

@@ -1464,6 +1464,21 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             resp = conn.getresponse()
             self.checkEqual(resp.status, 200, None)
 
+        # Archive large file
+        test_file = 'tmp/largefile'
+        with open(test_file, 'wb') as f:
+            f.seek((2**32)+12)
+            f.write('\0')
+
+        params = {'filename': test_file,
+                  'mime_type': 'application/octet-stream'}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, open(test_file, 'rb'), {})
+            resp = conn.getresponse()
+            self.checkEqual(resp.status, 200, None)
+
 
 def run():
     """
