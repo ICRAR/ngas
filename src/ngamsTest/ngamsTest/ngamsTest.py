@@ -173,6 +173,7 @@ def runAllTests(notifyemail = None,
                                     "ngas@%s" % ngamsLib.getCompleteHostName(),
                                     testRep)
 
+    return failModDic
 
 def getAllSrcFiles():
     """
@@ -370,7 +371,8 @@ def main():
             runMethod = getattr(testMod, 'run')
             runMethod()
     else:
-        runAllTests(notifyemail, skip)
+        failures = runAllTests(notifyemail, skip)
+        sys.exit(len(failures))
 
 if __name__ == '__main__':
     """
