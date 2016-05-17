@@ -1474,7 +1474,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                   'mime_type': 'application/octet-stream'}
         params = urllib.urlencode(params)
         selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+        with closing(httplib.HTTPConnection(host, timeout = 120)) as conn:
             conn.request(method, selector, open(test_file, 'rb'), {})
             resp = conn.getresponse()
             self.checkEqual(resp.status, 200, None)
