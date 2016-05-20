@@ -53,7 +53,6 @@
 #define SCALE_F 4
 #endif
 
-
 static uint32_t crc32c_intel_le_hw_byte(uint32_t crc, unsigned const char *data,
 										unsigned long length) {
 	while (length--) {
@@ -77,7 +76,7 @@ static uint32_t crc32c_intel(uint32_t crc, unsigned const char *data, unsigned l
 #else
     uint32_t *ptmp = (uint32_t *) data;
 #endif
-    
+
 	while (iquotient--) {
 		__asm__ __volatile__(
 			".byte 0xf2, " REX_PRE "0xf, 0x38, 0xf1, 0xf1;"
@@ -86,12 +85,53 @@ static uint32_t crc32c_intel(uint32_t crc, unsigned const char *data, unsigned l
 		);
 		ptmp++;
 	}
-    
+
 	if (iremainder)
 		crc = crc32c_intel_le_hw_byte(crc, (unsigned char *)ptmp,
 				 iremainder);
 
 	return crc;
+}
+
+static int read_write_crc(int fd_in, int fd_out,
+                          size_t buffsize, uint64_t total,
+                          int crc_type, uint32_t* crc)
+{
+	void* tmp_buff = malloc(buffsize);
+	if (tmp_buff == NULL) {
+		return -1;
+	}
+
+	uint64_t remainder = total;
+
+	while (remainder > 0) {
+		ssize_t readin = read(fd_in, tmp_buff, (remainder >= buffsize) ? buffsize : remainder);
+		if (readin == -1) {
+			free(tmp_buff);
+			return -1;
+		}
+		else if (readin == 0) {
+			free(tmp_buff);
+			return -2;
+		}
+
+		ssize_t writeout = write(fd_out, tmp_buff, readin);
+		if (writeout == -1) {
+			free(tmp_buff);
+			return -1;
+		}
+		else if (writeout != readin) {
+			free(tmp_buff);
+			return -2;
+		}
+
+		*crc = crc32c_intel(*crc, tmp_buff, readin);
+
+		remainder -= readin;
+	}
+
+	free(tmp_buff);
+	return 0;
 }
 
 static PyObject *
@@ -102,7 +142,7 @@ crc32c_crc32(PyObject *self, PyObject *args) {
 
 	if (!PyArg_ParseTuple(args, "s*|I:crc32", &pbin, &crc) )
 		return NULL;
-    
+
 	bin_data = pbin.buf;
 	uint32_t result = crc32c_intel(crc, bin_data, pbin.len);
 
@@ -121,5 +161,3 @@ PyMODINIT_FUNC
 initcrc32c(void) {
     (void) Py_InitModule("crc32c", CRC32CMethods);
 }
-
-

@@ -795,6 +795,17 @@ class ngamsConfig:
         return getInt(par, self.getVal(par))
 
 
+    def getCRCVariant(self):
+        """
+        Define CRC Variant
+
+        Returns:  0: crc32
+                  1: crc32c (Intel SSE42 variant)
+        """
+        par = "ArchiveHandling[1].getCRCVariant"
+        return getInt(par, self.getVal(par), 0)
+
+
     def getBlockSize(self):
         """
         Get HTTP data read/write block size.
