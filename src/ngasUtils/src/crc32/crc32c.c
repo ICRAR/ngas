@@ -111,7 +111,7 @@ static int read_write_crc(int fd_in, int fd_out,
 								  unsigned long *write_time)
 {
 
-	struct timespec start, end;
+	struct timeval start, end;
 	int stat;
 
 	uint64_t remainder = total;
@@ -174,10 +174,9 @@ static int read_write_crc(int fd_in, int fd_out,
 		}
 		remainder -= readin;
 
-#ifdef _POSIX_ASYNCHRONOUS_IO
+		gettimeofday(&start, NULL);
 
-		/* TODO: What to do?! */
-		clock_gettime(CLOCK_MONOTONIC, &start);
+#ifdef _POSIX_ASYNCHRONOUS_IO
 		if( wrote_something ) {
 			stat = aio_suspend(aio_list, 1, &one_sec);
 			if( stat ) {
@@ -199,7 +198,6 @@ static int read_write_crc(int fd_in, int fd_out,
 		write_cb.aio_buf = tmp_buff + (flip ? 0 : buffsize);
 		write_cb.aio_sigevent.sigev_notify = SIGEV_NONE;
 		stat = aio_write(&write_cb);
-		clock_gettime(CLOCK_MONOTONIC, &end);
 		if( stat ) {
 			stat = -3;
 			break;
@@ -207,27 +205,27 @@ static int read_write_crc(int fd_in, int fd_out,
 
 		flip = !flip;
 		wrote_something = true;
-#else
-		clock_gettime(CLOCK_MONOTONIC, &start);
+#else /* _POSIX_ASYNCHRONOUS_IO */
 		ssize_t writeout = write(fd_out, tmp_buff, readin);
-		clock_gettime(CLOCK_MONOTONIC, &end);
 		if (writeout < readin) {
 			stat = -3;
 			break;
 		}
-#endif
-		*write_time += (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec)/1000;
+#endif /* _POSIX_ASYNCHRONOUS_IO */
+
+		gettimeofday(&end, NULL);
+		*write_time += (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
 
 		/* Run the CRC32C and time it */
-		clock_gettime(CLOCK_MONOTONIC, &start);
+		gettimeofday(&start, NULL);
 		*crc = crc32c_intel(*crc, tmp_buff, readin);
-		clock_gettime(CLOCK_MONOTONIC, &end);
-		*crc_time += (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec)/1000;
+		gettimeofday(&end, NULL);
+		*crc_time += (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
 	}
 
 #ifdef _POSIX_ASYNCHRONOUS_IO
 	if( wrote_something ) {
-		clock_gettime(CLOCK_MONOTONIC, &start);
+		gettimeofday(&start, NULL);
 		stat = aio_suspend(aio_list, 1, &one_sec);
 		if( !stat ) {
 			stat = aio_error(&write_cb);
@@ -237,8 +235,8 @@ static int read_write_crc(int fd_in, int fd_out,
 			stat = -4;
 		}
 		written += aio_return(&write_cb);
-		clock_gettime(CLOCK_MONOTONIC, &end);
-		*write_time += (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec)/1000;
+		gettimeofday(&end, NULL);
+		*write_time += (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
 	}
 
 	if( written != total ) {
