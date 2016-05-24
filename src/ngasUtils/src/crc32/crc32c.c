@@ -141,33 +141,15 @@ static int read_write_crc(int fd_in, int fd_out,
 	}
 
 	stat = 0;
-#undef _POSIX_ASYNCHRONOUS_IO
-#ifdef _POSIX_ASYNCHRONOUS_IO
-	void* tmp_buff = malloc(2*buffsize);
-#else
 	void* tmp_buff = malloc(buffsize);
-#endif
 	if (tmp_buff == NULL) {
 		return -1;
 	}
 
-#ifdef _POSIX_ASYNCHRONOUS_IO
-	struct aiocb write_cb;
-	const struct aiocb *aio_list[] = {&write_cb};
-	memset(&write_cb, 0, sizeof(write_cb));
-	unsigned long written = 0;
-	unsigned int flip = 0;
-	bool wrote_something = false;
-	struct timespec one_sec = {1, 0};
-#endif
 	while (remainder) {
 
 		size_t count = remainder >= buffsize ? buffsize : remainder;
-#ifdef _POSIX_ASYNCHRONOUS_IO
-		ssize_t readin = read(fd_in, tmp_buff + (flip ? 0 : buffsize), count);
-#else
 		ssize_t readin = read(fd_in, tmp_buff, count);
-#endif
 		if (readin == -1 || readin == 0) {
 			stat = -2;
 			break;
@@ -176,42 +158,11 @@ static int read_write_crc(int fd_in, int fd_out,
 
 		gettimeofday(&start, NULL);
 
-#ifdef _POSIX_ASYNCHRONOUS_IO
-		if( wrote_something ) {
-			stat = aio_suspend(aio_list, 1, &one_sec);
-			if( stat ) {
-				errno = stat;
-				break;
-			}
-			stat = aio_error(&write_cb);
-			if( stat ) {
-				errno = stat;
-				break;
-			}
-			written += aio_return(&write_cb);
-		}
-
-		memset(&write_cb, 0, sizeof(write_cb));
-		write_cb.aio_nbytes = readin;
-		write_cb.aio_fildes = fd_out;
-		write_cb.aio_offset = written;
-		write_cb.aio_buf = tmp_buff + (flip ? 0 : buffsize);
-		write_cb.aio_sigevent.sigev_notify = SIGEV_NONE;
-		stat = aio_write(&write_cb);
-		if( stat ) {
-			stat = -3;
-			break;
-		}
-
-		flip = !flip;
-		wrote_something = true;
-#else /* _POSIX_ASYNCHRONOUS_IO */
 		ssize_t writeout = write(fd_out, tmp_buff, readin);
 		if (writeout < readin) {
 			stat = -3;
 			break;
 		}
-#endif /* _POSIX_ASYNCHRONOUS_IO */
 
 		gettimeofday(&end, NULL);
 		*write_time += (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
@@ -222,28 +173,6 @@ static int read_write_crc(int fd_in, int fd_out,
 		gettimeofday(&end, NULL);
 		*crc_time += (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
 	}
-
-#ifdef _POSIX_ASYNCHRONOUS_IO
-	if( wrote_something ) {
-		gettimeofday(&start, NULL);
-		stat = aio_suspend(aio_list, 1, &one_sec);
-		if( !stat ) {
-			stat = aio_error(&write_cb);
-		}
-		if( stat ) {
-			errno = stat;
-			stat = -4;
-		}
-		written += aio_return(&write_cb);
-		gettimeofday(&end, NULL);
-		*write_time += (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
-	}
-
-	if( written != total ) {
-		stat = -4;
-		printf("Didn't write all bytes? That's strange! Wrote %lu v/s %lu\n", written, total);
-	}
-#endif
 
 	// TODO: check these two
 	fcntl(fd_in, F_SETFL, orig_in_flags);
