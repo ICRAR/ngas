@@ -1223,6 +1223,14 @@ class ngamsTestSuite(unittest.TestCase):
             error("Error while finishing server process %d, port %d" % (srvProcess.pid, port))
             raise
 
+    def terminateAllServer(self):
+        for srvInfo in self.__extSrvInfo:
+            self.termExtSrv(srvInfo.pid, srvInfo.port)
+            # Remove NGAS Root Directories if clean-up requested.
+            if ((not getNoCleanUp()) and srvInfo.rootDir):
+                shutil.rmtree(srvInfo.rootDir, True)
+        self.__extSrvInfo = []
+
     def setUp(self):
         # Make sure there is a 'tmp' directory here, since most of the tests
         # depend on it
@@ -1241,12 +1249,7 @@ class ngamsTestSuite(unittest.TestCase):
             for d in self.__mountedDirs:
                 execCmd("sudo /bin/umount %s" % (d,), 0)
 
-        # Make an external servers terminate.
-        for srvInfo in self.__extSrvInfo:
-            self.termExtSrv(srvInfo.pid, srvInfo.port)
-            # Remove NGAS Root Directories if clean-up requested.
-            if ((not getNoCleanUp()) and srvInfo.rootDir):
-                shutil.rmtree(srvInfo.rootDir, True)
+        self.terminateAllServer()
 
         # Remove temporary files in ngams/ngamsTest/tmp.
         if (not getNoCleanUp()):

@@ -157,22 +157,37 @@ def saveFromHttpToFile(ngamsCfgObj,
         fin = reqPropsObj.getReadFd()
         checkCreatePath(os.path.dirname(trgFilename))
 
+        crc32 = None
+        if reqPropsObj.hasHttpPar('crc32'):
+            crc32 = binascii.crc32
+        elif reqPropsObj.hasHttpPar('crc32c'):
+            import crc32c
+            crc32 = crc32c.crc32
         start = time.time()
         with open(trgFilename, 'wb') as fout:
-            while readin < size:
-                left = size - readin
-                buff = fin.read(blockSize if left >= blockSize else left)
-                if not buff:
-                    raise Exception('socket read error')
-                readin += len(buff)
+            if crc32 or not hasattr(fin, '_rbuf'):
+                if not crc32:
+                    crc32 = binascii.crc32
+                while readin < size:
+                    left = size - readin
+                    buff = fin.read(blockSize if left >= blockSize else left)
+                    if not buff:
+                        raise Exception('socket read error')
+                    readin += len(buff)
 
-                wstart = time.time()
-                fout.write(buff)
-                wtime += time.time() - wstart
+                    wstart = time.time()
+                    fout.write(buff)
+                    wtime += time.time() - wstart
 
-                crcstart = time.time()
-                crc = binascii.crc32(buff, crc)
-                crctime += time.time() - crcstart
+                    crcstart = time.time()
+                    crc = crc32(buff, crc)
+                    crctime += time.time() - crcstart
+            else:
+                import crc32c
+                crc, crctime, wtime = crc32c.crc32_and_consume(fin.fileno(), fin._rbuf.getvalue(), fout.fileno(), fin._sock.gettimeout(), blockSize, size, 0)
+                crctime /= 1000000.
+                wtime /= 1000000.
+                readin = size
         deltaT = time.time() - start
 
         reqPropsObj.setBytesReceived(readin)

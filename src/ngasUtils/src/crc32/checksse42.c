@@ -27,6 +27,7 @@
  * cwu      1/July/2014  	Created python callable library
  */
 
+static inline
 void do_cpuid(unsigned int *eax, unsigned int *ebx, unsigned int *ecx,
 		     unsigned int *edx) {
 	int id = *eax;
