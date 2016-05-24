@@ -206,7 +206,7 @@ def saveFromHttpToFile(ngamsCfgObj,
             else:
                 info(3, "%s CRC checked, OK!" % reqPropsObj.getFileUri())
 
-        info(4, 'Transfer time: %.4f s; CRC time: %.4f s; write time %.4f s' % (deltaT, crctime, wtime))
+        info(4, 'Block size: %d; File size: %d; Transfer time: %.4f s; CRC time: %.4f s; write time %.4f s' % (blockSize, size, deltaT, crctime, wtime))
         info(2, 'Saved data in file: %s. Bytes received: %d. Time: %.4f s. Rate: %.2f Bytes/s' % (trgFilename, size, deltaT, ingestRate))
 
         return [deltaT, crc, ingestRate]
