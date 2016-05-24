@@ -28,6 +28,7 @@
 # jknudstr  23/04/2002  Created
 # jknudstr  18/11/2003  Overhaul
 #
+from multiprocessing.pool import ThreadPool
 """
 Contains the Test Suite for the ARCHIVE Command.
 """
@@ -1513,6 +1514,47 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                         os.unlink(test_file)
 
             self.terminateAllServer()
+
+
+    def test_performance_of_parallel_crc32(self):
+
+        kb = 2 ** 10
+        size = 4 * kb * kb * kb
+        test_file = 'tmp/largefile'
+        with open(test_file, 'wb') as f:
+            f.seek(size)
+            f.write('a')
+
+        for log_blockSize_kb in (2,3):
+
+            blockSize = (2**log_blockSize_kb) * kb
+
+            for nfiles in xrange(5):
+                nfiles += 1
+                tp = ThreadPool(nfiles)
+
+                self.prepExtSrv(cfgProps=[['NgamsCfg.Server[1].BlockSize', blockSize]])
+                for crc32_impl in ('crc32', 'crc32c', None):
+
+                    params = {'filename': test_file,
+                      'mime_type': 'application/octet-stream'}
+                    if crc32_impl is not None:
+                        params[crc32_impl] = 1
+                    params = urllib.urlencode(params)
+                    selector = '{0}?{1}'.format('QARCHIVE', params)
+
+                    def submit_file(test_file):
+                        with closing(httplib.HTTPConnection('localhost:8888', timeout = 120)) as conn:
+                            conn.request('GET', selector, open(test_file, 'rb'), {})
+                            resp = conn.getresponse()
+                            self.checkEqual(resp.status, 200, None)
+
+                    tp.map(submit_file, [test_file]*nfiles)
+
+                tp.close()
+                self.terminateAllServer()
+
+        os.unlink(test_file)
 
 def run():
     """
