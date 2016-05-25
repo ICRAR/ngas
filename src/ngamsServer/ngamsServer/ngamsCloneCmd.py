@@ -318,20 +318,10 @@ def _checkFile(srvObj,
 
     # The file size was correct.
     if (checkChecksum):
-        dcpi = fileInfoObj.getChecksumPlugIn()
-        if (dcpi):
-            try:
-                plugInMethod = loadPlugInEntryPoint(dcpi)
-                checksum = plugInMethod(srvObj, stagFile, 0)
-            except Exception, e:
-                errMsg = "Error checking checksum of file: " + str(e)
-                raise Exception, errMsg
-            if (checksum != fileInfoObj.getChecksum()):
-                errMsg = "Wrong checksum of cloned file"
-                raise Exception, errMsg
+        if ngamsFileUtils.check_checksum(srvObj, fileInfoObj, stagFile):
             info(4,"Checksum of cloned Staging File OK: " + stagFile)
         else:
-            info(4,"No Checksum Plug-In specified for file")
+            info(4,"No Checksum or Checksum Plug-In specified for file")
 
 
 def _cloneExec(srvObj,

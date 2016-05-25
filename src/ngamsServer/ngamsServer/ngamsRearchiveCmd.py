@@ -168,8 +168,7 @@ def processRequest(srvObj,
 
     # Check the consistency of the staging file via the provided DCPI and
     # checksum value.
-    ngamsFileUtils.checkChecksum(srvObj, fileInfoObj,
-                                 reqPropsObj.getStagingFilename())
+    ngamsFileUtils.check_checksum(srvObj, fileInfoObj, reqPropsObj.getStagingFilename())
 
     # Generate the DB File Information.
     newFileInfoObj = fileInfoObj.clone().\

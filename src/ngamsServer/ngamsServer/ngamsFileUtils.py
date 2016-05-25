@@ -32,6 +32,8 @@ Contains various utility functions used by the command handling callback
 functions, to deal with archive files.
 """
 
+import binascii
+import functools
 import os
 import re
 
@@ -45,6 +47,11 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
     NGAMS_DATA_CHECK_THR, getFileSize, logFlush, notice, info,\
     loadPlugInEntryPoint, getMaxLogLevel
 
+_crc32c_available = True
+try:
+    import crc32c
+except ImportError:
+    _crc32c_available = False
 
 def _locateArchiveFile(srvObj,
                        fileId,
@@ -446,7 +453,7 @@ def checkFile(srvObj,
         checksumDb = ""
     else:
         checksumDb = fileInfo[ngamsDbCore.SUM1_CHECKSUM].strip()
-    dcpi         = fileInfo[ngamsDbCore.SUM1_CHECKSUM_PI]
+    crc_variant  = fileInfo[ngamsDbCore.SUM1_CHECKSUM_PI]
     fileId       = fileInfo[ngamsDbCore.SUM1_FILE_ID]
     fileVersion  = fileInfo[ngamsDbCore.SUM1_VERSION]
     fileStatus   = fileInfo[ngamsDbCore.SUM1_FILE_STATUS]
@@ -500,11 +507,14 @@ def checkFile(srvObj,
 
         # Check checksum if this test should not be skipped.
         if ((not foundProblem) and (not skipCheckSum)):
-            if (dcpi == None): dcpi = srvObj.getCfg().getChecksumPlugIn()
-            if ((dcpi != None) and (dcpi != "")):
+            if crc_variant is None:
+                crc_variant = srvObj.getCfg().getCRCVariant()
+            if crc_variant is not None:
                 try:
-                    plugInMethod = loadPlugInEntryPoint(dcpi)
-                    checksumFile = plugInMethod(srvObj, filename, dataCheckPrio)
+                    blockSize = srvObj.getCfg().getBlockSize()
+                    if blockSize == -1:
+                        blockSize = 4096
+                    checksumFile, checksum_typ = get_checksum(blockSize, filename, crc_variant)
                 except Exception, e:
                     # We assume an IO error:
                     # "[Errno 2] No such file or directory"
@@ -514,19 +524,19 @@ def checkFile(srvObj,
                     return
             else:
                 checksumFile = ""
-            if ((checksumDb == "") and (checksumFile != "")):
+            if not checksumDb and checksumFile:
                 checkReport.append(["NOTICE: Missing checksum - generated",
                                     fileId, fileVersion, slotId, diskId,
                                     filename])
                 srvObj.getDb().setFileChecksum(srvObj.getHostId(),
                                                fileId, fileVersion, diskId,
-                                               checksumFile, dcpi)
-            elif ((checksumDb == "") and (checksumFile == "")):
+                                               checksumFile, checksum_typ)
+            elif not checksumDb and not checksumFile:
                 checkReport.append(["NOTICE: Missing checksum - " +\
                                     "cannot generate - update DB",
                                     fileId, fileVersion, slotId, diskId,
                                     filename])
-            elif (checksumDb != checksumFile):
+            elif str(checksumDb) != str(checksumFile):
                 checkReport.append(["ERROR: Inconsistent checksum found",
                                     fileId, fileVersion, slotId, diskId,
                                     filename])
@@ -583,9 +593,52 @@ def syncCachesCheckFiles(srvObj,
         raise Exception, errMsg
 
 
-def checkChecksum(srvObj,
-                  fileInfoObj,
-                  filename):
+def get_checksum_method(variant_or_name):
+    """
+    Given a CRC variant, this method returns the method that should be
+    continuously called to calculate the CRC of a given byte stream, and the
+    name of the algorithm it implements, lower-cased.
+
+    The variant_or_name argument can be a number, where 0 is python's binascii
+    crc32 implementation and 1 is Intel's SSE 4.2 CRC32c implementation, or a
+    name indicating one of the old NGAMS plug-in names for performing CRC.
+    """
+
+    variant = variant_or_name
+    if isinstance(variant, basestring):
+        # In NGAS versions <= 8 the CRC was calculated as a separate step after
+        # archiving a file, and therefore was loaded as a plugin that received a
+        # filename when invoked.
+        # These two are the names stored at the database of those plugins, although
+        # the second one is simply a dummy name
+        if variant in ['ngamsGenCrc32', 'StreamCrc32', 'crc32']:
+            variant = 0
+        elif variant == 'crc32c':
+            variant = 1
+        else:
+            variant = int(variant)
+
+    if variant == 0:
+        return binascii.crc32, 'crc32'
+    elif variant == 1:
+        if not _crc32c_available:
+            raise Exception('Intel SSE 4.2 CRC32c instruction is not available')
+        return crc32c.crc32, 'crc32c'
+
+    raise Exception('Unknown CRC variant: %r' % (variant,))
+
+def get_checksum(blocksize, filename, checksum_variant):
+    """
+    Returns the checksum of a file using the given checksum type
+    """
+    crc_m, name = get_checksum_method(checksum_variant)
+    crc = 0
+    with open(filename, 'rb') as f:
+        for block in iter(functools.partial(f.read, blocksize), ''):
+            crc = crc_m(block, crc)
+    return crc, name
+
+def check_checksum(srvObj, fio, filename):
     """
     Check the checksum of a file by applying the given checksum method and
     checksum value given in a File Info Object on the file.
@@ -603,22 +656,21 @@ def checkChecksum(srvObj,
     """
     # If a checksum value is available in NGAS Files, check the checksum
     # of the file.
-    if (fileInfoObj.getChecksumPlugIn() and fileInfoObj.getChecksum()):
-        dcpi = fileInfoObj.getChecksumPlugIn()
-        plugInMethod = loadPlugInEntryPoint(dcpi)
-        checksumStgFile = plugInMethod(srvObj, filename)
-        if (checksumStgFile != fileInfoObj.getChecksum()):
-            msg = "Illegal checksum for file to re-archive. Reference " +\
-                  "file: %s/%s/%s" % (fileInfoObj.getDiskId(),
-                                      fileInfoObj.getFileId(),
-                                      str(fileInfoObj.getFileVersion()))
+    crc_variant = fio.getChecksumPlugIn()
+    current_checksum = fio.getChecksum()
+    if crc_variant and current_checksum:
+        blockSize = srvObj.getCfg().getBlockSize()
+        if blockSize == -1:
+            blockSize = 4096
+        checksumFile = get_checksum(blockSize, filename, crc_variant)
+        if checksumFile != current_checksum:
+            msg = "Illegal checksum on file (found: %d, expected %d). Reference " +\
+                  "file: %s/%s/%d" % (fio.getDiskId(), fio.getFileId(), fio.getFileVersion())
             warning(msg)
             raise Exception, msg
     else:
-        msg = "No checksum or checksum plug-in specified for source " +\
-              "file: %s/%s/%s - skipping checksum check"
-        info(1, msg % (fileInfoObj.getDiskId(), fileInfoObj.getFileId(),
-                       str(fileInfoObj.getFileVersion())))
-
+        msg = "No checksum or checksum variant specified for file " +\
+              "%s/%s/%d - skipping checksum check"
+        info(1, msg % (fio.getDiskId(), fio.getFileId(), fio.getFileVersion()))
 
 # EOF

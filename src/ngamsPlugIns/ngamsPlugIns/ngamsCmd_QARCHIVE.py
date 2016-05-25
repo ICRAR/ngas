@@ -45,7 +45,6 @@ simplified in a few ways:
   - ngas_files data is 'cloned' from the source file
 """
 
-import binascii
 import os
 import random
 import time
@@ -57,7 +56,7 @@ from ngamsLib.ngamsCore import TRACE, genLog, error, checkCreatePath, \
     getMaxLogLevel, mvFile, getFileCreationTime, NGAMS_FILE_STATUS_OK, \
     getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, loadPlugInEntryPoint
 from ngamsLib import ngamsDiskInfo, ngamsHighLevelLib, ngamsFileInfo
-from ngamsServer import ngamsCacheControlThread
+from ngamsServer import ngamsCacheControlThread, ngamsFileUtils
 from pccUt import PccUtTime
 
 
@@ -157,37 +156,30 @@ def saveFromHttpToFile(ngamsCfgObj,
         fin = reqPropsObj.getReadFd()
         checkCreatePath(os.path.dirname(trgFilename))
 
-        crc32 = None
-        if reqPropsObj.hasHttpPar('crc32'):
-            crc32 = binascii.crc32
-        elif reqPropsObj.hasHttpPar('crc32c'):
-            import crc32c
-            crc32 = crc32c.crc32
+        # The CRC variant is configured in the server, but can be overriden
+        # in a per-request basis
+        if reqPropsObj.hasHttpPar('crc_variant'):
+            variant = reqPropsObj.getHttpPar('crc_variant')
+        else:
+            variant = ngamsCfgObj.getCRCVariant()
+        crc_m, crc_name = ngamsFileUtils.get_checksum_method(variant)
+
         start = time.time()
         with open(trgFilename, 'wb') as fout:
-            if crc32 or not hasattr(fin, '_rbuf'):
-                if not crc32:
-                    crc32 = binascii.crc32
-                while readin < size:
-                    left = size - readin
-                    buff = fin.read(blockSize if left >= blockSize else left)
-                    if not buff:
-                        raise Exception('socket read error')
-                    readin += len(buff)
+            while readin < size:
+                left = size - readin
+                buff = fin.read(blockSize if left >= blockSize else left)
+                if not buff:
+                    raise Exception('socket read error')
+                readin += len(buff)
 
-                    wstart = time.time()
-                    fout.write(buff)
-                    wtime += time.time() - wstart
+                wstart = time.time()
+                fout.write(buff)
+                wtime += time.time() - wstart
 
-                    crcstart = time.time()
-                    crc = crc32(buff, crc)
-                    crctime += time.time() - crcstart
-            else:
-                import crc32c
-                crc, crctime, wtime = crc32c.crc32_and_consume(fin.fileno(), fin._rbuf.getvalue(), fout.fileno(), fin._sock.gettimeout(), blockSize, size, 0)
-                crctime /= 1000000.
-                wtime /= 1000000.
-                readin = size
+                crcstart = time.time()
+                crc = crc_m(buff, crc)
+                crctime += time.time() - crcstart
         deltaT = time.time() - start
 
         reqPropsObj.setBytesReceived(readin)
@@ -209,7 +201,7 @@ def saveFromHttpToFile(ngamsCfgObj,
         info(4, 'Block size: %d; File size: %d; Transfer time: %.4f s; CRC time: %.4f s; write time %.4f s' % (blockSize, size, deltaT, crctime, wtime))
         info(2, 'Saved data in file: %s. Bytes received: %d. Time: %.4f s. Rate: %.2f Bytes/s' % (trgFilename, size, deltaT, ingestRate))
 
-        return [deltaT, crc, ingestRate]
+        return [deltaT, crc, crc_name, ingestRate]
     finally:
         if mutexDiskAccess:
             ngamsHighLevelLib.releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
@@ -360,10 +352,10 @@ def handleCmd(srvObj,
     # Get crc info
     info(3, "Get checksum info")
     crc = stagingInfo[1]
-    checksumPlugIn = "ngamsGenCrc32" # this is put into the DB for the DataCheck to pick the right plugin
+    crc_name = stagingInfo[2]
     checksum = str(crc)
-    info(3, "Invoked Checksum Plug-In: %s to handle file: %s. Result: %s" %\
-            (checksumPlugIn, resDapi.getCompleteFilename(), checksum))
+    info(3, "Checksum variant used: %s to handle file: %s. Result: %s" %\
+            (crc_name, resDapi.getCompleteFilename(), checksum))
 
     # Get source file version
     # e.g.: http://ngas03.hq.eso.org:7778/RETRIEVE?file_version=1&file_id=X90/X962a4/X1
@@ -383,7 +375,7 @@ def handleCmd(srvObj,
 
     # Check/generate remaining file info + update in DB.
     info(3, "Creating db entry")
-    ingestionRate = stagingInfo[2]
+    ingestionRate = stagingInfo[3]
     ts = PccUtTime.TimeStamp().getTimeStamp()
     creDate = getFileCreationTime(resDapi.getCompleteFilename())
     fileInfo = ngamsFileInfo.ngamsFileInfo().\
@@ -396,7 +388,7 @@ def handleCmd(srvObj,
                setUncompressedFileSize(resDapi.getUncomprSize()).\
                setCompression(resDapi.getCompression()).\
                setIngestionDate(ts).\
-               setChecksum(checksum).setChecksumPlugIn(checksumPlugIn).\
+               setChecksum(checksum).setChecksumPlugIn(crc_name).\
                setFileStatus(NGAMS_FILE_STATUS_OK).\
                setCreationDate(creDate).\
                setIoTime(reqPropsObj.getIoTime()).\

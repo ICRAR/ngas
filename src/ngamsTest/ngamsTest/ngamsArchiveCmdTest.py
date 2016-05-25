@@ -28,7 +28,6 @@
 # jknudstr  23/04/2002  Created
 # jknudstr  18/11/2003  Overhaul
 #
-from multiprocessing.pool import ThreadPool
 """
 Contains the Test Suite for the ARCHIVE Command.
 """
@@ -38,20 +37,22 @@ import commands
 import getpass
 import glob
 import os
-import shutil
 import sys
 import urllib
 import httplib
-from unittest.case import skip
+from multiprocessing.pool import ThreadPool
+from unittest.case import skip, skipIf
 from contextlib import closing
 
-from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile
+from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
+    NGAMS_SUCCESS
 from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo,\
     ngamsCore
 from ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
     saveInFile, filterDbStatus1, sendPclCmd, pollForFile, getClusterName, \
     sendExtCmd, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, runTest, \
     copyFile, genTmpFilename, execCmd
+from ngamsServer import ngamsFileUtils
 
 
 # TODO: See how we can actually set this dynamically in the future
@@ -59,7 +60,13 @@ _checkMail = False
 
 # FITS checksum-based unit tests are not run because the hardcoded checksum tool
 # used by the ngamsFitsPlugIn is nowhere to be found (even on the internet...)
-_check_checksums = False
+_check_fits_checksums = False
+
+_test_checksums = True
+try:
+    import crc32c
+except ImportError:
+    _test_checksums = False
 
 class ngamsArchiveCmdTest(ngamsTestSuite):
     """
@@ -597,7 +604,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         pollForFile(badFilesAreaPat, 0)
 
         # Missing CHECKSUM keyword.
-        if _check_checksums:
+        if _check_fits_checksums:
             noChecksumFile = "tmp/NoChecksum.fits"
             copyFile("src/SmallFile.fits", noChecksumFile)
             remFitsKey(noChecksumFile, "CHECKSUM")
@@ -1480,6 +1487,55 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             resp = conn.getresponse()
             self.checkEqual(resp.status, 200, None)
 
+    @skipIf(not _test_checksums, "crc32c not available in your platform")
+    def test_checksums(self):
+        """
+        Check that both the crc32 and crc32c checksums work as expected
+        """
+
+        file_id = "SmallFile.fits"
+        filename = "src/SmallFile.fits"
+        _, db = self.prepExtSrv()
+        client = sendPclCmd()
+        expected_checksum_crc32, _ = ngamsFileUtils.get_checksum(4096, "src/SmallFile.fits", 'crc32')
+        expected_checksum_crc32c, _ = ngamsFileUtils.get_checksum(4096, "src/SmallFile.fits", 'crc32c')
+
+        # By default the server is configured to do CRC32
+        stat = client.archive(filename, cmd="QARCHIVE", mimeType='application/octet-stream')
+        self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
+
+        # Try the different user overrides
+        stat = client.archive(filename, cmd="QARCHIVE", mimeType='application/octet-stream', pars=[['crc_variant', 'crc32c']])
+        self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
+        stat = client.archive(filename, cmd="QARCHIVE", mimeType='application/octet-stream', pars=[['crc_variant', 1]])
+        self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
+        stat = client.archive(filename, cmd="QARCHIVE", mimeType='application/octet-stream', pars=[['crc_variant', 0]])
+        self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
+
+        # And an old one, which uses the old CRC plugin infrastructure still
+        stat = client.archive(filename, mimeType='application/octet-stream')
+        self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
+
+        res = db.query2("SELECT checksum, checksum_plugin FROM ngas_files WHERE file_id = ? ORDER BY file_version ASC", (file_id,))
+        self.assertEquals(6, len(res))
+        for idx in (0, 3):
+            self.assertEquals(str(expected_checksum_crc32), str(res[idx][0]))
+            self.assertEquals('crc32', str(res[idx][1]))
+        for idx in (1, 2):
+            self.assertEquals(str(expected_checksum_crc32c), str(res[idx][0]))
+            self.assertEquals('crc32c', str(res[idx][1]))
+        for idx in (4, 5):
+            self.assertEquals(str(expected_checksum_crc32), str(res[idx][0]))
+            self.assertEquals('ngamsGenCrc32', str(res[idx][1]))
+
+        # Check that the CHECKFILE command works correctly
+        # (i.e., the checksums are correctly checked, both new and old ones)
+        for version in xrange(5):
+            stat = client.sendCmd('CHECKFILE', pars = [["file_id", file_id], ["file_version", version+1]])
+            self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
+            self.assertNotIn('NGAMS_ER_FILE_NOK', stat.getMessage())
+
+    @skip("Run manually when necessary")
     def test_performance_of_crc32(self):
 
         kb = 2 ** 10
@@ -1491,9 +1547,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             for log_fsize_mb in xrange(13):
                 size = (2**log_fsize_mb) * kb * kb
 
-                for crc32_impl in ('crc32', 'crc32c', None):
-
-                    print "Block size: %d CRC method: %s. File size: %d" % (blockSize, crc32_impl, size)
+                for crc32_variant in (0, 1):
 
                     test_file = 'tmp/largefile'
                     with open(test_file, 'wb') as f:
@@ -1502,8 +1556,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
                     params = {'filename': test_file,
                       'mime_type': 'application/octet-stream'}
-                    if crc32_impl is not None:
-                        params[crc32_impl] = 1
+                    if crc32_variant is not None:
+                        params['crc_variant'] = crc32_variant
                     params = urllib.urlencode(params)
                     selector = '{0}?{1}'.format('QARCHIVE', params)
                     with closing(httplib.HTTPConnection('localhost:8888', timeout = 120)) as conn:
@@ -1515,11 +1569,11 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
             self.terminateAllServer()
 
-
+    @skip("Run manually when necessary")
     def test_performance_of_parallel_crc32(self):
 
         kb = 2 ** 10
-        size = 4 * kb * kb * kb
+        size = 100 * kb * kb
         test_file = 'tmp/largefile'
         with open(test_file, 'wb') as f:
             f.seek(size)
@@ -1534,12 +1588,12 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                 tp = ThreadPool(nfiles)
 
                 self.prepExtSrv(cfgProps=[['NgamsCfg.Server[1].BlockSize', blockSize]])
-                for crc32_impl in ('crc32', 'crc32c', None):
+                for crc32_variant in (0, 1):
 
                     params = {'filename': test_file,
                       'mime_type': 'application/octet-stream'}
-                    if crc32_impl is not None:
-                        params[crc32_impl] = 1
+                    if crc32_variant is not None:
+                        params['crc_variant'] = crc32_variant
                     params = urllib.urlencode(params)
                     selector = '{0}?{1}'.format('QARCHIVE', params)
 
