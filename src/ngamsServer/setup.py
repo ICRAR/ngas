@@ -46,6 +46,7 @@ setup(
     },
     install_requires=[
         'pcc',
+        'crc32c',
         'ngamsCore',
         'python-daemon',
         'pysendfile',
