@@ -267,6 +267,19 @@ The server will default to 60 seconds if this attribute is not specified.</xs:do
     <xs:attribute name="BackLogBufferDirectory"/>
     <xs:attribute name="MinFreeSpaceWarningMb" use="required"/>
     <xs:attribute name="FreeSpaceDiskChangeMb" use="required"/>
+    <xs:attribute name="CRCVariant">
+      <xs:annotation>
+        <xs:documentation>The CRC variant to use.
+0: crc32 (using python's binascii implementation)
+1: crc32c (using Intel's SSE 4.2 implementation via our custom crc32c module)</xs:documentation>
+      </xs:annotation>
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
   </xs:attributeGroup>
   <!--
     The Db Element defines properties for the interaction with the NGAS DB.

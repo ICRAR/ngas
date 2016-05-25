@@ -71,7 +71,8 @@
                    FreeSpaceDiskChangeMb="20"
                    MinFreeSpaceWarningMb="0"
                    PathPrefix="saf"
-                   Replication="1"/>
+                   Replication="1"
+                   CRCVariant="0"/>
 
   <Db Id="Db-Sqlite-Test"
       Interface="sqlite3"

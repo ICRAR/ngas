@@ -797,12 +797,13 @@ class ngamsConfig:
 
     def getCRCVariant(self):
         """
-        Define CRC Variant
+        Defines the CRC Variant to use.
 
-        Returns:  0: crc32
-                  1: crc32c (Intel SSE42 variant)
+        Returns: 0: crc32 (using python's binascii implementation)
+                 1: crc32c (using Intel's SSE 4.2 implementation via our
+                    custom crc32c module)
         """
-        par = "ArchiveHandling[1].getCRCVariant"
+        par = "ArchiveHandling[1].CRCVariant"
         return getInt(par, self.getVal(par), 0)
 
 
