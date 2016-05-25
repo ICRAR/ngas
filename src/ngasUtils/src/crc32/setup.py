@@ -36,9 +36,9 @@ import os, inspect, sys
 from ctypes import cdll
 from setuptools import setup, Extension
 
-crcmod = Extension('crc32c', sources = ['crc32c.c', 'checksse42.c'], libraries=['rt'])
+crcmod = Extension('crc32c', sources = ['_crc32c.c', 'crc32c.c', 'checksse42.c', 'consume.c'])
 
-setup (name = 'crc32_SSE',
+setup (name = 'crc32c',
        version = '1.0',
        description = 'This is a CRC32C package using Intel SSE4.2 instruction set',
        ext_modules = [crcmod])
