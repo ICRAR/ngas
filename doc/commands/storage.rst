@@ -16,19 +16,21 @@ The QARCHIVE command will also calculate and store the CRC of the archived file 
 - ``filename``: a valid URI i.e. ``file://, http://, ftp://`` for Pull or filename ie. ``test.fits`` for Push.
 - ``mime_type``: describes the content-type of the file.
 - ``no-versioning``: used to switch the automatic versioning on/off. If file versioning is on, a file archived with a File ID already registered in the NGAS DB will get a new version number.
+- ``crc_variant``: used to explicitly choose which CRC variant will be used to checksum the file,
+  overriding the system-wide configuration. See :ref:`server.crc` for details
+
+**Archive Pull Example**
+
+In this case the NGAS server will attempt to retrieve and archive the file ``remote.fits`` from the remote http server::
+
+ curl http://<host>:<port>/QARCHIVE?filename=http://<remotehost>:<remoteport>/remote.fits
 
 
-**Archive Pull Example**::
+**Archive Push Example**
 
- http://<host>:<port>/QARCHIVE?filename=http://<remotehost>:<remoteport>/remote.fits
+In this example it is expected that the client uploads the file content as a byte stream to the NGAS server::
 
-In this case the NGAS server will attempt to retrieve and archive the file ``remote.fits`` from the remote http server.
-
-**Archive Push Example**::
-
-In this example it is expected that the client also uploads the file content as a byte stream to the NGAS server::
-
- curl -X POST -i -H "Content-Type: application/octet-stream" --data-binary "@/tmp/file.fits" http://<host>:<port>/QARCHIVE?filename=file.fits
+  curl -X POST -i -H "Content-Type: application/octet-stream" --data-binary "@/tmp/file.fits" http://<host>:<port>/QARCHIVE?filename=file.fits
 
 
 

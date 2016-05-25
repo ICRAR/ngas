@@ -18,6 +18,32 @@ via the ``-cfg`` command-line flag
 To see more details about the XML documentation
 go to the :doc:`configuration` section.
 
+.. _server.crc:
+
+CRC
+===
+
+When a file is being archived into NGAS
+the server will calculate its CRC as part of the archiving process.
+The CRC is saved into the database,
+and is used later to check the integrity of the file.
+
+Two CRC variants are currently supported by the NGAS server,
+which in the future might expand:
+
+* ``crc32``: This is the default implementation.
+  It uses python's ``binascii.crc32`` method to calculate the CRC,
+  and therefore it is fully implemented in software.
+* ``crc32c``: A hardware-based implementation available as part of Intel's
+  SSE 4.2 instruction set. A C module exposes this functionality to NGAS
+  via a ``crc32c.crc32c`` method.
+
+Depending on your environment choosing to use one method over the other
+might bring significant improvements on archiving times for large files.
+To configure which method should be used across an entire NGAS installation
+change the ``ArchiveHandling.CRCVariant`` setting
+on the :ref:`NGAS configuration <config.archivehandling>`.
+
 .. _server.states:
 
 States
