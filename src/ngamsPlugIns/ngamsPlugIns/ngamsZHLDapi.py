@@ -71,8 +71,6 @@ import pyfits
 TARG_MIME_TYPE  = "target_mime_type"
 FILE_ID         = "file_id"
 VERSIONING      = "versioning"
-CHECKSUM        = "checksum"
-CHECKSUM_CMD    = "checksum_cmd"
 COMPRESSION     = "compression"
 COMPRESSION_EXT = "compression_ext"
 
@@ -98,8 +96,6 @@ def handlePars(reqPropsObj,
     parDic[TARG_MIME_TYPE]  = None
     parDic[FILE_ID]         = None
     parDic[VERSIONING]      = 1
-    parDic[CHECKSUM]        = None
-    parDic[CHECKSUM_CMD]    = None
     parDic[COMPRESSION]     = None
     parDic[COMPRESSION_EXT] = None
 
@@ -126,16 +122,6 @@ def handlePars(reqPropsObj,
     else:
         reqPropsObj.addHttpPar("no_versioning", "1")
 
-    if (reqPropsObj.hasHttpPar(CHECKSUM)):
-        parDic[CHECKSUM] = reqPropsObj.getHttpPar(CHECKSUM)
-    if (reqPropsObj.hasHttpPar(CHECKSUM_CMD)):
-        parDic[CHECKSUM_CMD] = reqPropsObj.getHttpPar(CHECKSUM_CMD)
-    if ((parDic[CHECKSUM] and not parDic[CHECKSUM_CMD]) or
-        (not parDic[CHECKSUM] and parDic[CHECKSUM_CMD])):
-        raise Exception, genLog("NGAMS_ER_DAPI",
-                                ["Parameters checksum and checksum_cmd "
-                                 "must be given together."])
-
     if (reqPropsObj.hasHttpPar(COMPRESSION)):
         parDic[COMPRESSION] = reqPropsObj.getHttpPar(COMPRESSION)
     if (reqPropsObj.hasHttpPar(COMPRESSION_EXT)):
@@ -145,30 +131,6 @@ def handlePars(reqPropsObj,
         raise Exception, genLog("NGAMS_ER_DAPI",
                                 ["Parameters compression and compression_ext"
                                  "must be given together."])
-
-
-def checkChecksum(stgFile,
-                  parDic):
-    """
-    Check the checksum of the file received according to the checksum
-    scheme given.
-
-    stgFile:      Staging file to check (string).
-
-    parDic:       Dictionary with the parameters (dictionary).
-
-    Returns:      Void.
-    """
-    T = TRACE()
-
-    # If checksum given, check it.
-    if (parDic[CHECKSUM] and parDic[CHECKSUM_CMD]):
-        cmd = "%s %s" % (parDic[CHECKSUM_CMD], stgFile)
-        stat, out = ngamsPlugInApi.execCmd(cmd)
-        if (out.strip().find(parDic[CHECKSUM].strip()) == -1):
-            msg = genLog("NGAMS_ER_DAPI_BAD_FILE",
-                         [stgFile, parDic[CHECKSUM_CMD], "Illegal CHECKSUM"])
-            raise Exception, msg
 
 
 def compressFile(srvObj,
@@ -296,7 +258,6 @@ def ngamsZHLDapi(srvObj,
         diskInfo = reqPropsObj.getTargDiskInfo()
         stgFile = reqPropsObj.getStagingFilename()
         ext = os.path.splitext(stgFile)[1][1:]
-        checkChecksum(stgFile, parDic)
 
         # Generate file information.
         info(3,"Generate file information")
