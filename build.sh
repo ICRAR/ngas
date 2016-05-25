@@ -1,20 +1,25 @@
 #!/bin/bash
 
 function print_usage {
-	echo "$0 [-h?] [-c]"
+	echo "$0 [-h?] [-cd]"
 	echo
 	echo "-h, -?: Show this help"
 	echo "-c: Include the C client compilation"
+	echo "-d: Install Python egss as development eggs"
 }
 
 # Command-line option parsing
 BUILD_CCLIENT=
+SETUP_ACTION=install
 
-while getopts "ch?" opt
+while getopts "cdh?" opt
 do
 	case "$opt" in
 		c)
 			BUILD_CCLIENT=yes
+			;;
+		d)
+			SETUP_ACTION=develop
 			;;
 		[h?])
 			print_usage
@@ -69,6 +74,6 @@ for pyModule in pcc crc32c ngamsCore ngamsPClient ngamsServer ngamsPlugIns
 do
 	prevDir=$(pwd -P)
 	cd "$pyModule"
-	python setup.py install || fail "Failed to setup.py $pyModule"
+	python setup.py $SETUP_ACTION || fail "Failed to setup.py $pyModule"
 	cd "$prevDir"
 done
