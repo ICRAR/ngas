@@ -1497,8 +1497,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         filename = "src/SmallFile.fits"
         _, db = self.prepExtSrv()
         client = sendPclCmd()
-        expected_checksum_crc32, _ = ngamsFileUtils.get_checksum(4096, "src/SmallFile.fits", 'crc32')
-        expected_checksum_crc32c, _ = ngamsFileUtils.get_checksum(4096, "src/SmallFile.fits", 'crc32c')
+        expected_checksum_crc32 = ngamsFileUtils.get_checksum(4096, "src/SmallFile.fits", 'crc32')
+        expected_checksum_crc32c = ngamsFileUtils.get_checksum(4096, "src/SmallFile.fits", 'crc32c')
 
         # By default the server is configured to do CRC32
         stat = client.archive(filename, cmd="QARCHIVE", mimeType='application/octet-stream')

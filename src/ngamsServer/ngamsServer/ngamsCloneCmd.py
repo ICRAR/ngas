@@ -46,7 +46,7 @@ from ngamsLib.ngamsCore import TRACE, genLog, error, NGAMS_ONLINE_STATE, \
     mvFile, getFileCreationTime, NGAMS_SUCCESS, sysLogInfo, \
     NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_CLONE_CMD, NGAMS_CLONE_THR, getThreadName, \
-    NGAMS_HTTP_SUCCESS, loadPlugInEntryPoint
+    NGAMS_HTTP_SUCCESS
 from ngamsLib import ngamsDbm, ngamsFileList, ngamsStatus, ngamsDiskUtils, ngamsLib
 from pccUt import PccUtTime
 
@@ -319,7 +319,7 @@ def _checkFile(srvObj,
     # The file size was correct.
     if (checkChecksum):
         if ngamsFileUtils.check_checksum(srvObj, fileInfoObj, stagFile):
-            info(4,"Checksum of cloned Staging File OK: " + stagFile)
+            info(4,"Checksum of cloned Staging File OK: %s" % (stagFile,))
         else:
             info(4,"No Checksum or Checksum Plug-In specified for file")
 

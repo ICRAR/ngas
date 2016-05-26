@@ -162,7 +162,8 @@ def saveFromHttpToFile(ngamsCfgObj,
             variant = reqPropsObj.getHttpPar('crc_variant')
         else:
             variant = ngamsCfgObj.getCRCVariant()
-        crc_m, crc_name = ngamsFileUtils.get_checksum_method(variant)
+        crc_m = ngamsFileUtils.get_checksum_method(variant)
+        crc_name = ngamsFileUtils.get_checksum_name(variant)
 
         start = time.time()
         with open(trgFilename, 'wb') as fout:

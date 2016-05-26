@@ -514,7 +514,8 @@ def checkFile(srvObj,
                     blockSize = srvObj.getCfg().getBlockSize()
                     if blockSize == -1:
                         blockSize = 4096
-                    checksumFile, checksum_typ = get_checksum(blockSize, filename, crc_variant)
+                    checksum_typ = get_checksum_name(crc_variant)
+                    checksumFile = get_checksum(blockSize, filename, crc_variant)
                 except Exception, e:
                     # We assume an IO error:
                     # "[Errno 2] No such file or directory"
@@ -593,50 +594,67 @@ def syncCachesCheckFiles(srvObj,
         raise Exception, errMsg
 
 
-def get_checksum_method(variant_or_name):
-    """
-    Given a CRC variant, this method returns the method that should be
-    continuously called to calculate the CRC of a given byte stream, and the
-    name of the algorithm it implements, lower-cased.
 
-    The variant_or_name argument can be a number, where 0 is python's binascii
-    crc32 implementation and 1 is Intel's SSE 4.2 CRC32c implementation, or a
-    name indicating one of the old NGAMS plug-in names for performing CRC.
-    """
-
+def _normalize_variant(variant_or_name):
     variant = variant_or_name
     if isinstance(variant, basestring):
-        # In NGAS versions <= 8 the CRC was calculated as a separate step after
-        # archiving a file, and therefore was loaded as a plugin that received a
-        # filename when invoked.
-        # These two are the names stored at the database of those plugins, although
-        # the second one is simply a dummy name
+    # In NGAS versions <= 8 the CRC was calculated as a separate step after
+    # archiving a file, and therefore was loaded as a plugin that received a
+    # filename when invoked.
+    # These two are the names stored at the database of those plugins, although
+    # the second one is simply a dummy name
         if variant in ['ngamsGenCrc32', 'StreamCrc32', 'crc32']:
             variant = 0
         elif variant == 'crc32c':
             variant = 1
         else:
             variant = int(variant)
+    return variant
 
+def get_checksum_method(variant_or_name):
+    """
+    Given a CRC variant, this method returns the method that should be
+    continuously called to calculate the CRC of a given byte stream.
+
+    The variant_or_name argument can be a number, where 0 is python's binascii
+    crc32 implementation and 1 is Intel's SSE 4.2 CRC32c implementation, or a
+    name indicating one of the old NGAMS plug-in names for performing CRC.
+    """
+    variant = _normalize_variant(variant_or_name)
     if variant == 0:
-        return binascii.crc32, 'crc32'
+        return binascii.crc32
     elif variant == 1:
         if not _crc32c_available:
             raise Exception('Intel SSE 4.2 CRC32c instruction is not available')
-        return crc32c.crc32, 'crc32c'
+        return crc32c.crc32
+    raise Exception('Unknown CRC variant: %r' % (variant_or_name,))
 
-    raise Exception('Unknown CRC variant: %r' % (variant,))
+def get_checksum_name(variant_or_name):
+    """
+    Given a CRC variant, this method returns the name used to denote that
+    variant.
+
+    The variant_or_name argument can be a number, where 0 is python's binascii
+    crc32 implementation and 1 is Intel's SSE 4.2 CRC32c implementation, or a
+    name indicating one of the old NGAMS plug-in names for performing CRC.
+    """
+    variant = _normalize_variant(variant_or_name)
+    if variant == 0:
+        return 'crc32'
+    elif variant == 1:
+        return 'crc32c'
+    raise Exception('Unknown CRC variant: %d' % (variant_or_name,))
 
 def get_checksum(blocksize, filename, checksum_variant):
     """
     Returns the checksum of a file using the given checksum type
     """
-    crc_m, name = get_checksum_method(checksum_variant)
+    crc_m = get_checksum_method(checksum_variant)
     crc = 0
     with open(filename, 'rb') as f:
         for block in iter(functools.partial(f.read, blocksize), ''):
             crc = crc_m(block, crc)
-    return crc, name
+    return crc
 
 def check_checksum(srvObj, fio, filename):
     """
@@ -657,20 +675,21 @@ def check_checksum(srvObj, fio, filename):
     # If a checksum value is available in NGAS Files, check the checksum
     # of the file.
     crc_variant = fio.getChecksumPlugIn()
-    current_checksum = fio.getChecksum()
-    if crc_variant and current_checksum:
+    stored_checksum = fio.getChecksum()
+    if crc_variant and stored_checksum:
+        stored_checksum = str(stored_checksum)
         blockSize = srvObj.getCfg().getBlockSize()
         if blockSize == -1:
             blockSize = 4096
-        checksumFile = get_checksum(blockSize, filename, crc_variant)
-        if checksumFile != current_checksum:
-            msg = "Illegal checksum on file (found: %d, expected %d). Reference " +\
-                  "file: %s/%s/%d" % (fio.getDiskId(), fio.getFileId(), fio.getFileVersion())
+        current_checksum = str(get_checksum(blockSize, filename, crc_variant))
+        if current_checksum != stored_checksum:
+            msg = "Illegal checksum (found: %s, expected %s) on file %s/%s/%s" % \
+                  (current_checksum, stored_checksum, fio.getDiskId(), fio.getFileId(), fio.getFileVersion())
             warning(msg)
             raise Exception, msg
     else:
         msg = "No checksum or checksum variant specified for file " +\
-              "%s/%s/%d - skipping checksum check"
+              "%s/%s/%s - skipping checksum check"
         info(1, msg % (fio.getDiskId(), fio.getFileId(), fio.getFileVersion()))
 
 # EOF
