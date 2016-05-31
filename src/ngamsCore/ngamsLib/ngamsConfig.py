@@ -1053,7 +1053,7 @@ class ngamsConfig:
         for attr in dbEl.getAttrList():
             name = attr.getName()
             val = attr.getValue()
-            if name in ('Id', 'Interface', 'Snapshot'):
+            if name in ('Id', 'Interface', 'Snapshot', 'UseFileIgnore'):
                 continue
 
             # Simple casting before saving
@@ -1070,6 +1070,18 @@ class ngamsConfig:
 
         return params
 
+    def getDbUseFileIgnore(self):
+        """
+        Indicates whether to use "file_ignore" as the column name on the
+        "ngas_files" table as opposed to "ignore". For historical reasons
+        the same column has been referenced using two different names.
+        """
+        val = self.getVal("Db[1].UseFileIgnore")
+        if val is not None:
+            val = boolean_value(val)
+        if val is None:
+            return True
+        return val
 
     def getDbAutoRecover(self):
         """

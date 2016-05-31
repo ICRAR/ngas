@@ -123,7 +123,9 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
             # Always get the latest version of the files
             # We do this on the software side to avoid any complex SQL query
             # that might not work in some engines
-            res = self.query2("SELECT " + ngamsDbCore.getNgasFilesCols() + " FROM ngas_files nf WHERE container_id = {0} ORDER BY nf.file_id, nf.file_version DESC", args=(containerId,))
+            sql = "SELECT %s FROM ngas_files nf WHERE container_id = {0} ORDER BY nf.file_id, nf.file_version DESC"
+            sql = sql % (ngamsDbCore.getNgasFilesCols(self._file_ignore_columnname),)
+            res = self.query2(sql, args=(containerId,))
             prevFileId = None
             for r in res:
                 fileId = r[ngamsDbCore.NGAS_FILES_FILE_ID]
