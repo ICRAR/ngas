@@ -1516,7 +1516,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         stat = client.archive(filename, mimeType='application/octet-stream')
         self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
 
-        res = db.query2("SELECT checksum, checksum_plugin FROM ngas_files WHERE file_id = ? ORDER BY file_version ASC", (file_id,))
+        res = db.query2("SELECT checksum, checksum_plugin FROM ngas_files WHERE file_id = {} ORDER BY file_version ASC", (file_id,))
         self.assertEquals(6, len(res))
         for idx in (0, 3):
             self.assertEquals(str(expected_checksum_crc32), str(res[idx][0]))

@@ -1435,6 +1435,10 @@ class ngamsTestSuite(unittest.TestCase):
             tmpDbObj = ngamsDb.from_config(tmpCfg)
             checkHostEntry(tmpDbObj, srvDbHostId, domain, ipAddress,
                            clusterName)
+
+            # Make sure the database is empty
+            if createDatabase and idx == 0:
+                delNgasTbls(tmpDbObj)
             del tmpDbObj
 
             # Start server + add reference to server configuration object and
