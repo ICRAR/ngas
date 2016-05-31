@@ -117,25 +117,29 @@ _ngasFilesDef = [["nf.disk_id",                "NGAS_FILES_DISK_ID"],
                  ["nf.ingestion_rate",         "NGAS_FILES_INGEST_RATE"],
                  ["nf.container_id",           "NGAS_FILES_CONTAINER_ID"],
                  ]
-_ngasFilesCols = ""
 _ngasFilesNameMap = {}
 idx = 0
 for colDef in _ngasFilesDef:
-    if (_ngasFilesCols): _ngasFilesCols += ", "
-    _ngasFilesCols += colDef[0]
     exec(colDef[1] + "=%d" % idx)
     colName = colDef[0].split(".")[1]
     _ngasFilesNameMap[idx] = colName
     _ngasFilesNameMap[colName] = idx
     idx += 1
 
-def getNgasFilesCols():
+def getNgasFilesCols(file_ignore_columnname):
     """
     Return reference to a string defining the lay-out of the table.
 
     Returns:   Reference to string listing all columns (string).
     """
-    return _ngasFilesCols
+    colnames = []
+    for colDef in _ngasFilesDef:
+        colname = colDef[0]
+        if colname == 'nf.file_ignore':
+            colnames.append('nf.%s' % (file_ignore_columnname,))
+        else:
+            colnames.append(colname)
+    return ', '.join(colnames)
 
 def getNgasFilesDef():
     """
@@ -264,21 +268,25 @@ _sum1Def = [["nd.slot_id",         "SUM1_SLOT_ID"],
             ["nd.disk_id",         "SUM1_DISK_ID"],
             ["nf.file_ignore",     "SUM1_FILE_IGNORE"],
             ["nd.host_id",         "SUM1_HOST_ID"]]
-_sum1Cols = ""
 idx = 0
 for colDef in _sum1Def:
-    if (_sum1Cols): _sum1Cols += ", "
-    _sum1Cols += colDef[0]
     exec(colDef[1] + "=%d" % idx)
     idx += 1
 
-def getNgasSummary1Cols():
+def getNgasSummary1Cols(file_ignore_columnname):
     """
     Return reference to a string defining the lay-out of the table.
 
     Returns:   Reference to string listing all columns (string).
     """
-    return _sum1Cols
+    colnames = []
+    for colDef in _sum1Def:
+        colname = colDef[0]
+        if colname == 'nf.file_ignore':
+            colnames.append('nf.%s' % (file_ignore_columnname,))
+        else:
+            colnames.append(colname)
+    return ", ".join(colnames)
 
 def getNgasSummary1Def():
     """
@@ -499,7 +507,8 @@ class ngamsDbCore(object):
                  maxRetries = 10,
                  retryWait = 1.0,
                  multipleConnections = False,
-                 maxpoolcons = 6):
+                 maxpoolcons = 6,
+                 use_file_ignore=True):
         """
         Constructor method.
 
@@ -522,6 +531,9 @@ class ngamsDbCore(object):
                              (integer).
 
         retryWait:           Time in seconds to wait for next retry (float).
+
+        use_file_ignore:     Use "file_ignore" as the column name of the
+                             "ngas_files" table, as opposed to "ignore".
 
         parameters:          Plug-in parameters for the connection (usually for
                              the NG/AMS DB Driver Plug-In).
@@ -564,6 +576,8 @@ class ngamsDbCore(object):
         self.__dbAutoRecover = 0
         self.__dbTmpDir      = "/tmp"
 
+        self._use_file_ignore = use_file_ignore
+        self._file_ignore_columnname = 'file_ignore' if use_file_ignore else 'ignore'
 
     def takeGlobalDbSem(self):
         """

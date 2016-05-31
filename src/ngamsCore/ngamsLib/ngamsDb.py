@@ -74,6 +74,7 @@ def from_config(cfg):
     multCon  = cfg.getDbMultipleCons()
     drvPars  = cfg.getDbParameters()
     maxpool  = cfg.getDbMaxPoolCons()
+    use_file_ignore = cfg.getDbUseFileIgnore()
 
     # HACK, HACK, HACK
     # The sqlite3 doesn't allow by default to make call to objects created on
@@ -93,4 +94,5 @@ def from_config(cfg):
     msg = "Additional DB parameters: snapshot: %d, multiconn: %d, params: %r"
     info(2, msg % (creSnap, multCon, __params_for_log(drvPars)))
     return ngamsDb(driver, parameters = drvPars, createSnapshot = creSnap,
-                   multipleConnections = multCon, maxpoolcons = maxpool)
+                   multipleConnections = multCon, maxpoolcons = maxpool,
+                   use_file_ignore=use_file_ignore)
