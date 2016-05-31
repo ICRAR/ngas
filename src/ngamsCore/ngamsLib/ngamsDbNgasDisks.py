@@ -239,10 +239,12 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         vals = []
         sql.append("SELECT logical_name FROM ngas_disks")
         if cat:
-            sql.append(" WHERE logical_name LIKE '%{}-%'")
-            vals.append(cat)
+            sql.append(" WHERE logical_name LIKE {}")
+            vals.append('%%%s-%%' % (cat,))
         else:
-            sql.append(" WHERE logical_name LIKE '%M-%' or logical_name LIKE '%R-%'")
+            sql.append(" WHERE logical_name LIKE {} or logical_name LIKE {}")
+            vals.append('%M-%')
+            vals.append('%R-%')
 
         res = self.query2(''.join(sql), args = vals)
         if not res:
