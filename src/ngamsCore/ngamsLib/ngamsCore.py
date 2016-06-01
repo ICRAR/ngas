@@ -1062,12 +1062,10 @@ def mvFile(srcFilename,
         checkAvailDiskSpace(trgFilename, fileSize)
         timer = PccUtTime.Timer()
 
-        # Don't rely on executing separate OS commands to move files
-        # Do it the python way instead
-        os.rename(srcFilename, trgFilename)
+        # Don't rely on os.rename as it can cause issues when crossing 
+        # disk parition boundaries
+        shutil.move(srcFilename, trgFilename)
 
-        # os.rename returns nothiing but throws OSErrors
-        #if (stat): raise Exception, "Error executing move command: " + str(out)
         deltaTime = timer.stop()
     except Exception, e:
         errMsg = genLog("NGAMS_AL_MV_FILE", [srcFilename, trgFilename, str(e)])
