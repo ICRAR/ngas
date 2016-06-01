@@ -36,6 +36,7 @@ The functions in this module can be used in all the NG/AMS code.
 
 import os, string, httplib, time, getpass, socket, urlparse
 import urllib, urllib2, re, cPickle
+import shutil
 from contextlib import closing
 
 import pkg_resources
@@ -1098,8 +1099,8 @@ def fileRemovable(filename):
     tmpFilename = filename + "_tmp"
     try:
         if (not os.path.exists(filename)): return 2
-        os.rename(filename, tmpFilename)
-        os.rename(tmpFilename, filename)
+        shutil.move(filename, tmpFilename)
+        shutil.move(tmpFilename, filename)
         return 1
     except:
         return 0

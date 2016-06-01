@@ -33,6 +33,7 @@ The system must already have pigz installed
 """
 
 import os, commands, re
+import shutil
 
 from ngamsLib.ngamsCore import info
 
@@ -98,8 +99,7 @@ def ngamsGLEAM_Rename_JobPI(srvObj,
     new_fileId = "%s_%s.tar.gz" % (obsId, phase2_label)
 
     # change filename on the file system
-    os.rename(filename, "%s/%s" % (base_dir, new_fileId))
-
+    shutil.move(filename, "%s/%s" % (base_dir, new_fileId))
     # change DB
     # first, calculate the partial file name
     partial_path = filename[(len(mount_point) + 1):]

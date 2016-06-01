@@ -34,6 +34,7 @@ services for the NG/AMS Server.
 
 import os, sys, re, threading, time, pkg_resources
 import math
+import shutil
 import traceback
 import SocketServer, BaseHTTPServer, socket, signal
 
@@ -2457,7 +2458,7 @@ class ngamsServer:
                 rotLogFile = os.path.normpath(logPath + "/" + rotLogFile)
                 info(1, "Closing log file: %s -> %s" % (logFile, rotLogFile))
                 logFlush()
-                os.rename(logFile, rotLogFile)
+                shutil.move(logFile, rotLogFile)
             except Exception, e:
                 error("Server encountered problem while rotating logfile: " + str(e))
 

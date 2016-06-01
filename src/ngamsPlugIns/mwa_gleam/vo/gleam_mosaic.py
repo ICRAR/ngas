@@ -35,6 +35,7 @@ import ephem
 import astropy.io.fits as pyfits
 import multiprocessing as mp
 import numpy as np
+import shutil
 
 montage_cutout_exec = "/home/ngas/software/Montage_v3.3/bin/mSubimage"
 wcstools_cutout_exec = "/home/ngas/software/wcstools-3.9.2/bin/getfits -sv -o %s -d %s %s %s %s J2000 %d %d"
@@ -343,7 +344,7 @@ def check_dim(move_to=None, fix_to=None):
             if (l_bad == lr):
                 print
             if (move_to):
-                os.rename(l_bad[i], "%s/%s" % (move_to, os.path.basename(l_bad[i])))
+                shutil.move(l_bad[i], "%s/%s" % (move_to, os.path.basename(l_bad[i])))
             if (fix_to and os.path.exists(fix_to)):
                 a = bad_l[0].data
                 b = np.zeros(hb)

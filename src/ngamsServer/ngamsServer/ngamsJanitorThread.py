@@ -1122,7 +1122,7 @@ def janitorThread(srvObj, stopEvt):
                     info(3,"Archiving unsaved log-files ...")
                     for ulogFile in unsavedLogFiles:
                         ologFile = '.'.join(ulogFile.split('.')[:-1])
-                        os.rename(ulogFile, ologFile)
+                        shutil.move(ulogFile, ologFile)
                         ngamsArchiveUtils.archiveFromFile(srvObj, ologFile, 0,
                         'ngas/nglog', None)
 
