@@ -619,8 +619,12 @@ def get_checksum_method(variant_or_name):
     The variant_or_name argument can be a number, where 0 is python's binascii
     crc32 implementation and 1 is Intel's SSE 4.2 CRC32c implementation, or a
     name indicating one of the old NGAMS plug-in names for performing CRC.
+    The special value -1 means that no checksum is performed, and thus this
+    method returns None
     """
     variant = _normalize_variant(variant_or_name)
+    if variant == -1:
+        return None
     if variant == 0:
         return binascii.crc32
     elif variant == 1:
@@ -637,8 +641,12 @@ def get_checksum_name(variant_or_name):
     The variant_or_name argument can be a number, where 0 is python's binascii
     crc32 implementation and 1 is Intel's SSE 4.2 CRC32c implementation, or a
     name indicating one of the old NGAMS plug-in names for performing CRC.
+    The special value -1 means that no checksum is performed, and thus this
+    method returns 'nocrc'
     """
     variant = _normalize_variant(variant_or_name)
+    if variant == -1:
+        return None
     if variant == 0:
         return 'crc32'
     elif variant == 1:
@@ -647,9 +655,11 @@ def get_checksum_name(variant_or_name):
 
 def get_checksum(blocksize, filename, checksum_variant):
     """
-    Returns the checksum of a file using the given checksum type
+    Returns the checksum of a file using the given checksum type.
     """
     crc_m = get_checksum_method(checksum_variant)
+    if crc_m is None:
+        return None
     crc = 0
     with open(filename, 'rb') as f:
         for block in iter(functools.partial(f.read, blocksize), ''):
@@ -676,7 +686,7 @@ def check_checksum(srvObj, fio, filename):
     # of the file.
     crc_variant = fio.getChecksumPlugIn()
     stored_checksum = fio.getChecksum()
-    if crc_variant and stored_checksum:
+    if crc_variant is not None and stored_checksum is not None:
         stored_checksum = str(stored_checksum)
         blockSize = srvObj.getCfg().getBlockSize()
         if blockSize == -1:

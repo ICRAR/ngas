@@ -1511,29 +1511,39 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
         stat = client.archive(filename, cmd="QARCHIVE", mimeType='application/octet-stream', pars=[['crc_variant', 0]])
         self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
+        stat = client.archive(filename, cmd="QARCHIVE", mimeType='application/octet-stream', pars=[['crc_variant', -1]])
+        self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
 
         # And an old one, which uses the old CRC plugin infrastructure still
         stat = client.archive(filename, mimeType='application/octet-stream')
         self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
 
         res = db.query2("SELECT checksum, checksum_plugin FROM ngas_files WHERE file_id = {} ORDER BY file_version ASC", (file_id,))
-        self.assertEquals(6, len(res))
+        self.assertEquals(7, len(res))
         for idx in (0, 3):
             self.assertEquals(str(expected_checksum_crc32), str(res[idx][0]))
             self.assertEquals('crc32', str(res[idx][1]))
         for idx in (1, 2):
             self.assertEquals(str(expected_checksum_crc32c), str(res[idx][0]))
             self.assertEquals('crc32c', str(res[idx][1]))
-        for idx in (4, 5):
+        for idx in (4,):
+            self.assertEquals(None, res[idx][0])
+            self.assertEquals(None, res[idx][1])
+        for idx in (5, 6):
             self.assertEquals(str(expected_checksum_crc32), str(res[idx][0]))
             self.assertEquals('ngamsGenCrc32', str(res[idx][1]))
 
         # Check that the CHECKFILE command works correctly
         # (i.e., the checksums are correctly checked, both new and old ones)
-        for version in xrange(5):
-            stat = client.sendCmd('CHECKFILE', pars = [["file_id", file_id], ["file_version", version+1]])
+        # In the case we asked for no checksum (file_version==5)
+        # we check that the checksum is now calculated
+        for version in range(1, 6):
+            stat = client.sendCmd('CHECKFILE', pars = [["file_id", file_id], ["file_version", version]])
             self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
-            self.assertNotIn('NGAMS_ER_FILE_NOK', stat.getMessage())
+            if version == 5:
+                self.assertIn('NGAMS_ER_FILE_NOK', stat.getMessage())
+            else:
+                self.assertNotIn('NGAMS_ER_FILE_NOK', stat.getMessage())
 
     @skip("Run manually when necessary")
     def test_performance_of_crc32(self):
