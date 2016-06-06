@@ -556,11 +556,11 @@ def checkFile(srvObj,
 
         # Reset file indicating which data file is being checked.
         rmFile(fileChecked)
-    except Exception, e:
+    except Exception:
         if (fileCheckedFo): fileCheckedFo.close()
         # Reset file indicating which data file is being checked.
         rmFile(fileChecked)
-        raise e
+        raise
 
 
 def syncCachesCheckFiles(srvObj,
