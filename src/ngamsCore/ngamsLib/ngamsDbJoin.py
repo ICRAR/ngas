@@ -351,28 +351,25 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        try:
-            sql = ("UPDATE ngas_files SET checksum={}, checksum_plugin={}"
-                   " WHERE file_id={} AND file_version={} AND disk_id={}")
-            vals = (checksum, checksumPlugIn, fileId, fileVersion, diskId)
-            self.query2(sql, args = vals)
+        sql = ("UPDATE ngas_files SET checksum={}, checksum_plugin={}"
+               " WHERE file_id={} AND file_version={} AND disk_id={}")
+        vals = (checksum, checksumPlugIn, fileId, fileVersion, diskId)
+        self.query2(sql, args = vals)
 
-            # Create a File Removal Status Document.
-            if (self.getCreateSnapshot()):
-                dbFileInfo = self.getFileInfoFromFileIdHostId(hostId,
-                                                              fileId,
-                                                              fileVersion,
-                                                              diskId)
-                tmpFileObj = ngamsFileInfo.ngamsFileInfo().\
-                             unpackSqlResult(dbFileInfo)
-                self.createDbFileChangeStatusDoc(hostId,
-                                                 NGAMS_DB_CH_FILE_UPDATE,
-                                                 [tmpFileObj])
+        # Create a File Removal Status Document.
+        if (self.getCreateDbSnapshot()):
+            dbFileInfo = self.getFileInfoFromFileIdHostId(hostId,
+                                                          fileId,
+                                                          fileVersion,
+                                                          diskId)
+            tmpFileObj = ngamsFileInfo.ngamsFileInfo().\
+                         unpackSqlResult(dbFileInfo)
+            self.createDbFileChangeStatusDoc(hostId,
+                                             NGAMS_DB_CH_FILE_UPDATE,
+                                             [tmpFileObj])
 
-            self.triggerEvents()
-            return self
-        except Exception, e:
-            raise e
+        self.triggerEvents()
+        return self
 
 
     def getSummary1NoOfFiles(self,
