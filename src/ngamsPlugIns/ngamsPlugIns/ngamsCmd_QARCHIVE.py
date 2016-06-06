@@ -164,6 +164,8 @@ def saveFromHttpToFile(ngamsCfgObj,
             variant = ngamsCfgObj.getCRCVariant()
         crc_m = ngamsFileUtils.get_checksum_method(variant)
         crc_name = ngamsFileUtils.get_checksum_name(variant)
+        if crc_m is None:
+            crc = None
 
         start = time.time()
         with open(trgFilename, 'wb') as fout:
@@ -178,9 +180,10 @@ def saveFromHttpToFile(ngamsCfgObj,
                 fout.write(buff)
                 wtime += time.time() - wstart
 
-                crcstart = time.time()
-                crc = crc_m(buff, crc)
-                crctime += time.time() - crcstart
+                if crc_m:
+                    crcstart = time.time()
+                    crc = crc_m(buff, crc)
+                    crctime += time.time() - crcstart
         deltaT = time.time() - start
 
         reqPropsObj.setBytesReceived(readin)
@@ -191,7 +194,7 @@ def saveFromHttpToFile(ngamsCfgObj,
             raise Exception, msg
 
         checksum = reqPropsObj.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM)
-        if checksum:
+        if checksum and crc is not None:
             if checksum != str(crc):
                 msg = 'Checksum error for file %s, local crc = %s, but remote crc = %s' % (reqPropsObj.getFileUri(), str(crc), checksum)
                 error(msg)
@@ -354,9 +357,8 @@ def handleCmd(srvObj,
     info(3, "Get checksum info")
     crc = stagingInfo[1]
     crc_name = stagingInfo[2]
-    checksum = str(crc)
     info(3, "Checksum variant used: %s to handle file: %s. Result: %s" %\
-            (crc_name, resDapi.getCompleteFilename(), checksum))
+            (crc_name, resDapi.getCompleteFilename(), str(crc)))
 
     # Get source file version
     # e.g.: http://ngas03.hq.eso.org:7778/RETRIEVE?file_version=1&file_id=X90/X962a4/X1
@@ -389,7 +391,7 @@ def handleCmd(srvObj,
                setUncompressedFileSize(resDapi.getUncomprSize()).\
                setCompression(resDapi.getCompression()).\
                setIngestionDate(ts).\
-               setChecksum(checksum).setChecksumPlugIn(crc_name).\
+               setChecksum(crc).setChecksumPlugIn(crc_name).\
                setFileStatus(NGAMS_FILE_STATUS_OK).\
                setCreationDate(creDate).\
                setIoTime(reqPropsObj.getIoTime()).\

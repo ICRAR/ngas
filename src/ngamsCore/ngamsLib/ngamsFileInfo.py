@@ -372,8 +372,7 @@ class ngamsFileInfo:
 
         Returns:      Reference to object itself.
         """
-        if (checksum == None): checksum = ""
-        self.__checksum = str(checksum)
+        self.__checksum = checksum
         return self
 
 
@@ -395,7 +394,7 @@ class ngamsFileInfo:
 
         Returns:      Reference to object itself.
         """
-        self.__checksumPlugIn = str(plugIn)
+        self.__checksumPlugIn = plugIn
         return self
 
 

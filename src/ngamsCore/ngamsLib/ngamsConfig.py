@@ -799,7 +799,8 @@ class ngamsConfig:
         """
         Defines the CRC Variant to use.
 
-        Returns: 0: crc32 (using python's binascii implementation)
+        Returns: -1: Don't perform any CRC calculation at all
+                 0: crc32 (using python's binascii implementation)
                  1: crc32c (using Intel's SSE 4.2 implementation via our
                     custom crc32c module)
         """
