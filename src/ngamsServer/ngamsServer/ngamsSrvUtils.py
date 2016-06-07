@@ -316,8 +316,16 @@ def handleOnline(srvObj,
         srvObj.presetSubcrBackLogCount(num_bl)
 
     for subscrInfo in subscrList:
-        tmpSubscrObj = ngamsSubscriber.ngamsSubscriber().\
-                       unpackSqlResult(subscrInfo)
+        tmpSubscrObj = ngamsSubscriber.ngamsSubscriber(subscrInfo[0],
+                                                       subscrInfo[1],
+                                                       subscrInfo[2],
+                                                       subscrInfo[4],
+                                                       subscrInfo[5],
+                                                       subscrInfo[6],
+                                                       subscrInfo[7],
+                                                       subscrInfo[8],
+                                                       subscrInfo[3])
+        tmpSubscrObj.setConcurrentThreads(subscrInfo[9])
         # Take only subscribers for this NG/AMS Server.
         if ((tmpSubscrObj.getHostId() == hostId) and
             (tmpSubscrObj.getPortNo() == srvObj.getCfg().getPortNo())):
