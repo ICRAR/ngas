@@ -948,6 +948,7 @@ def buildSubscrQueue(srvObj, subscrId, dataMoverOnly = False):
         return quChunks
 
     for locFileInfo in files:
+        locFileInfo = list(locFileInfo)
         locFileInfo.append(None) # see function _convertFileInfo(fileInfo)
         quChunks.put(locFileInfo) # load them into the cache queue
 
