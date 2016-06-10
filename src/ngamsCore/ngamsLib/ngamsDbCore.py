@@ -566,6 +566,7 @@ class ngamsDbCore(object):
         self.__dbModule = importlib.import_module(interface)
         self.__paramstyle = self.__dbModule.paramstyle
         self.__pool = PooledDB(self.__dbModule,
+                                maxshared = maxpoolcons,
                                 maxconnections = maxpoolcons,
                                 blocking = True,
                                 **parameters)
