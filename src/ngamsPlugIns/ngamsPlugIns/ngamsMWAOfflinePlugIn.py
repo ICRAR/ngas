@@ -109,9 +109,9 @@ def ngamsMWAOfflinePlugIn(srvObj,
 
     #startAsyncRetrListUrl = "http://" + host + ":" + str(port) + "/ASYNCLISTRETRIEVE?ngassystem=start"
     #info(3, "Sending system stopping request ")
-    myRes = ngamsCmd_ASYNCLISTRETRIEVE.stopAsyncQService(srvObj, reqPropsObj)
+    #myRes = ngamsCmd_ASYNCLISTRETRIEVE.stopAsyncQService(srvObj, reqPropsObj)
     #strRes = urllib.urlopen(startAsyncRetrListUrl).read()
     #myRes = pickle.loads(strRes)
-    info(3, "Stopping async retrieve list result - %s" % myRes)
+    #info(3, "Stopping async retrieve list result - %s" % myRes)
 
-    _saveSubscriptionInfoToDisk(srvObj)
+    #_saveSubscriptionInfoToDisk(srvObj)
