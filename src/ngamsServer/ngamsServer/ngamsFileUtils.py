@@ -406,10 +406,9 @@ def quickFileLocate(srvObj,
             location = NGAMS_HOST_LOCAL
         else:
             location = NGAMS_HOST_REMOTE
-        retVal = [location] + list(res[0][0])
-    else:
-        retVal = eval("(" + (8 * ", None")[2:] + ")")
-    return retVal
+        return [location] + list(res[0][0])
+
+    return 8 * (None,)
 
 
 def checkFile(srvObj,
