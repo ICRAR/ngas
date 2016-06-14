@@ -39,8 +39,6 @@ import urllib, urllib2, re, cPickle
 import shutil
 from contextlib import closing
 
-import pkg_resources
-
 from ngamsCore import genLog, info, TRACE, trim, getHostName, warning, \
     NGAMS_HTTP_SUCCESS, NGAMS_CONT_MT, \
     NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM, \
