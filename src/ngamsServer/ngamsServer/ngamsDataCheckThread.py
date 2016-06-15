@@ -619,14 +619,10 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
             _stopDataCheckThr(srvObj, stopEvt)
 
             # Ignore staging and hidden directories
-            for d in dirs:
-                if d == NGAMS_STAGING_DIR or os.path.basename(d).startswith('.'):
-                    dirs.remove(d)
+            dirs[:] = [d for d in dirs if d != NGAMS_STAGING_DIR and not d.startswith('.')]
 
             # Ignore NGAS Disk Info files
-            for ignorefile in (NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, NGAMS_VOLUME_INFO_FILE):
-                if ignorefile in files:
-                    files.remove(ignorefile)
+            files[:] = [f for f in files if f not in (NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, NGAMS_VOLUME_INFO_FILE)]
 
             for filename in files:
                 filename = os.path.join(dirpath, filename)
