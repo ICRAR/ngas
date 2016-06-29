@@ -95,7 +95,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE(5)
 
-        sql, vals = self.buildFileSummary1Query(ngamsDbCore.getNgasSummary1Cols(),
+        sql, vals = self.buildFileSummary1Query(ngamsDbCore.getNgasSummary1Cols(self._file_ignore_columnname),
                                                 hostId, diskIds, fileIds,
                                                 ignore, fileStatus,
                                                 lowLimIngestDate, order)
@@ -116,7 +116,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         sql = ("SELECT %s FROM ngas_disks nd, ngas_files nf "
                 "WHERE nd.disk_id=nf.disk_id AND "
                 "nd.disk_id={} AND nf.file_id={} AND "
-                "nf.file_version={}") % ngamsDbCore.getNgasSummary1Cols()
+                "nf.file_version={}") % ngamsDbCore.getNgasSummary1Cols(self._file_ignore_columnname)
         res = self.query2(sql, args = (diskId, fileId, fileVersion))
         if not res:
             return []
@@ -169,7 +169,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                     "WHERE nd.disk_id=nf.disk_id ") % ngamsDbCore.getNgasSummary2Cols())
 
         if ignore:
-            sql.append(" AND nf.file_ignore={}")
+            sql.append(" AND nf.%s={}" % (self._file_ignore_columnname))
             vals.append(ignore)
 
         if hostId:
@@ -252,8 +252,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                    "nd.mount_point, nf.file_name, nf.file_version, "
                    "nf.format FROM ngas_files nf, ngas_disks nd, ngas_hosts nh "
                    "WHERE nf.file_id={} AND nf.disk_id=nd.disk_id AND "
-                   "nd.host_id=nh.host_id AND nf.file_ignore=0 AND "
-                   "nf.file_status='00000000'"))
+                   "nd.host_id=nh.host_id AND nf.%s=0 AND "
+                   "nf.file_status='00000000'") % (self._file_ignore_columnname,))
         vals.append(fileId)
         if hostId:
             sql.append(" AND nh.host_id={}")
@@ -304,9 +304,9 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         sql = []
         vals = []
         sql.append(("SELECT %s FROM ngas_disks nd, ngas_files nf "
-                    "WHERE nd.disk_id=nf.disk_id AND (nf.file_ignore=1 OR "
+                    "WHERE nd.disk_id=nf.disk_id AND (nf.%s=1 OR "
                     "nf.file_status NOT IN (%s))") \
-                    % (ngamsDbCore.getNgasSummary1Cols(), str(fileStatusList)[1:-1]))
+                    % (ngamsDbCore.getNgasSummary1Cols(self._file_ignore_columnname), self._file_ignore_columnname, str(fileStatusList)[1:-1]))
 
         if hostId:
             sql.append(" AND nd.host_id={}")
@@ -351,28 +351,25 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        try:
-            sql = ("UPDATE ngas_files SET checksum={}, checksum_plugin={}"
-                   " WHERE file_id={} AND file_version={} AND disk_id={}")
-            vals = (checksum, checksumPlugIn, fileId, fileVersion, diskId)
-            self.query2(sql, args = vals)
+        sql = ("UPDATE ngas_files SET checksum={}, checksum_plugin={}"
+               " WHERE file_id={} AND file_version={} AND disk_id={}")
+        vals = (checksum, checksumPlugIn, fileId, fileVersion, diskId)
+        self.query2(sql, args = vals)
 
-            # Create a File Removal Status Document.
-            if (self.getCreateSnapshot()):
-                dbFileInfo = self.getFileInfoFromFileIdHostId(hostId,
-                                                              fileId,
-                                                              fileVersion,
-                                                              diskId)
-                tmpFileObj = ngamsFileInfo.ngamsFileInfo().\
-                             unpackSqlResult(dbFileInfo)
-                self.createDbFileChangeStatusDoc(hostId,
-                                                 NGAMS_DB_CH_FILE_UPDATE,
-                                                 [tmpFileObj])
+        # Create a File Removal Status Document.
+        if (self.getCreateDbSnapshot()):
+            dbFileInfo = self.getFileInfoFromFileIdHostId(hostId,
+                                                          fileId,
+                                                          fileVersion,
+                                                          diskId)
+            tmpFileObj = ngamsFileInfo.ngamsFileInfo().\
+                         unpackSqlResult(dbFileInfo)
+            self.createDbFileChangeStatusDoc(hostId,
+                                             NGAMS_DB_CH_FILE_UPDATE,
+                                             [tmpFileObj])
 
-            self.triggerEvents()
-            return self
-        except Exception, e:
-            raise e
+        self.triggerEvents()
+        return self
 
 
     def getSummary1NoOfFiles(self,
@@ -426,7 +423,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                     "WHERE nd.disk_id=nf.disk_id") % columns)
 
         if ignore is not None:
-            sql.append(" AND nf.file_ignore={}")
+            sql.append(" AND nf.%s={}" % (self._file_ignore_columnname,))
             vals.append(ignore)
 
         if hostId:
@@ -499,18 +496,17 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         T = TRACE()
 
         sql = []
-        vals = []
         sql.append(("SELECT %s FROM ngas_files nf, ngas_disks nd WHERE "
                    "nf.file_id={} AND nf.disk_id=nd.disk_id AND "
                    "nd.host_id={} AND nd.mounted=1 AND nf.file_version={}") \
-                   % ngamsDbCore.getNgasFilesCols())
+                   % ngamsDbCore.getNgasFilesCols(self._file_ignore_columnname))
 
         vals = [fileId, hostId, fileVersion]
         if diskId:
             sql.append(" AND nd.disk_id={}")
             vals.append(diskId)
         if ignore:
-            sqlQuery.append(" AND nf.file_ignore={}")
+            sql.append(" AND nf.%s={}" % (self._file_ignore_columnname,))
             vals.append(ignore)
         res = self.query2(''.join(sql), args = vals)
         if not res:
@@ -588,10 +584,10 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         sql.append(("SELECT %s, nd.host_id, "
                    "nd.mount_point FROM ngas_files nf, ngas_disks nd, "
                    "ngas_hosts nh WHERE nh.host_id=nd.host_id AND "
-                   "nf.disk_id=nd.disk_id") % ngamsDbCore.getNgasFilesCols())
+                   "nf.disk_id=nd.disk_id") % ngamsDbCore.getNgasFilesCols(self._file_ignore_columnname))
 
         if ignore:
-            sql.append(" AND nf.file_ignore={}")
+            sql.append(" AND nf.%s={}" % (self._file_ignore_columnname,))
             vals.append(ignore)
         # File ID specified.
         if fileId:
@@ -813,7 +809,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             fileInfoDbmName = "/tmp/" +\
                               ngamsLib.genUniqueFilename("FILE-SUMMARY1")
 
-        sql, vals = self.buildFileSummary1Query(ngamsDbCore.getNgasFilesCols(),
+        sql, vals = self.buildFileSummary1Query(ngamsDbCore.getNgasFilesCols(self._file_ignore_columnname),
                                                 hostId, ignore = 0,
                                                 lowLimIngestDate = lowLimIngestDate,
                                                 order = 0)
@@ -976,7 +972,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             sql.append(" AND nf.file_version={}")
             vals.append(int(fileVersion))
         if ignore:
-            sql.append(" AND nf.file_ignore={}")
+            sql.append(" AND nf.%s={}" % (self._file_ignore_columnname,))
             vals.append(int(ignore))
         if onlyOnlineFiles:
             # We assume here that either Disk ID, File ID, File Version
@@ -1047,7 +1043,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         sql = ("SELECT %s FROM ngas_files nf WHERE disk_id IN "
                "(SELECT disk_id FROM ngas_disks WHERE "
                "host_id IN ({}) OR last_host_id IN ({}))") \
-               % ngamsDbCore.getNgasFilesCols()
+               % ngamsDbCore.getNgasFilesCols(self._file_ignore_columnname)
         curObj = None
         try:
             fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName, 0, 1)
@@ -1141,9 +1137,9 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             sql.append(("UPDATE ngas_files SET "
                        "file_name={}, format={}, file_size={}, "
                        "uncompressed_file_size={}, compression={}, "
-                       "file_ignore={}, checksum={}, checksum_plugin={}, "
+                       "%s={}, checksum={}, checksum_plugin={}, "
                        "file_status={}, creation_date={}, io_time={}, "
-                       "ingestion_rate={} WHERE file_id={} AND disk_id={}"))
+                       "ingestion_rate={} WHERE file_id={} AND disk_id={}" % (self._file_ignore_columnname,)))
             vals = [filename, format, fileSize, uncompressedFileSize, compression,\
                     ignore, checksum, checksumPlugIn, fileStatus, creDate,\
                     int(iotime*1000), ingestionRate, fileId, diskId]
@@ -1157,10 +1153,10 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         else:
             sql_str = ("INSERT INTO ngas_files (disk_id, file_name, file_id,"
                         "file_version, format, file_size, uncompressed_file_size,"
-                        " compression, ingestion_date, file_ignore, checksum, "
+                        " compression, ingestion_date, %s, checksum, "
                         "checksum_plugin, file_status, creation_date, io_time, "
                         "ingestion_rate) VALUES ({}, {}, {}, {}, {}, {}, {}, {},"
-                        " {}, {}, {},{}, {}, {}, {}, {})")
+                        " {}, {}, {},{}, {}, {}, {}, {})" % (self._file_ignore_columnname,))
             vals = (diskId, filename, fileId, fileVersion, format, fileSize,\
                     uncompressedFileSize, compression, ingDate, ignore,\
                     checksum, checksumPlugIn, fileStatus, creDate,\
