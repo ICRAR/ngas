@@ -105,7 +105,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
         # Query for the file.
         sql = "SELECT %s FROM ngas_files nf WHERE nf.disk_id={0} AND nf.file_name={1}"
-        sql = sql % (ngamsDbCore.getNgasFilesCols(),)
+        sql = sql % (ngamsDbCore.getNgasFilesCols(self._file_ignore_columnname),)
 
         # Execute the query directly and return the result.
         res = self.query2(sql, args=(diskId, filename))
@@ -153,10 +153,10 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             cond_sql["nf.file_version = {}"] = fileVersion
 
         if ignore is not None:
-            cond_sql["nf.file_ignore = {}"] = ignore
+            cond_sql["nf.%s = {}" % (self._file_ignore_columnname,)] = ignore
 
         # Create a cursor and perform the query.
-        sql = ["SELECT %s FROM ngas_files nf" % (ngamsDbCore.getNgasFilesCols())]
+        sql = ["SELECT %s FROM ngas_files nf" % (ngamsDbCore.getNgasFilesCols(self._file_ignore_columnname))]
         if cond_sql:
             sql.append(" WHERE ")
             sql.append(" AND ".join(cond_sql.keys()))

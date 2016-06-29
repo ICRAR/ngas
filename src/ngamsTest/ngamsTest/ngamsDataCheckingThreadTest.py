@@ -103,9 +103,19 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
             for line in open(cfg.getLocalLogFile(), "r"):
                 # The DCC finished
                 if (line.find("NGAMS_INFO_DATA_CHK_STAT") != -1):
+
+                    # Nasty...
+                    parts = line.split(" ")
+
                     # "6" is what comes after "Number of files checked"
                     # in the log statement
-                    self.assertEquals(6, int(line.split(" ")[7][:-1]))
+                    nfiles_checked = int(parts[7][:-1])
+                    nfiles_unregistered = int(parts[13][:-1])
+                    nfiles_bad = int(parts[19][:-1])
+
+                    self.assertEquals(6, nfiles_checked)
+                    self.assertEquals(0, nfiles_unregistered)
+                    self.assertEquals(0, nfiles_bad)
                     found = True
             time.sleep(1)
         if not found:

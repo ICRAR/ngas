@@ -132,20 +132,20 @@ def ngamsMWAOnlinePlugIn(srvObj,
 
     notifyRegistrationService(srvObj)
 
-    cmdMod = "ngamsCmd_ASYNCLISTRETRIEVE"
-    srvObj.getDynCmdDic()[cmdMod] = 1
+    #cmdMod = "ngamsCmd_ASYNCLISTRETRIEVE"
+    #srvObj.getDynCmdDic()[cmdMod] = 1
 
     #host = getHostName()
     #port = srvObj.getCfg().getPortNo()
 
     #startAsyncRetrListUrl = "http://" + host + ":" + str(port) + "/ASYNCLISTRETRIEVE?ngassystem=start"
-    info(3, "Sending system starting request ")
-    myRes = ngamsCmd_ASYNCLISTRETRIEVE.startAsyncQService(srvObj, reqPropsObj)
+    #info(3, "Sending system starting request ")
+    #myRes = ngamsCmd_ASYNCLISTRETRIEVE.startAsyncQService(srvObj, reqPropsObj)
     #strRes = urllib.urlopen(startAsyncRetrListUrl).read()
     #myRes = pickle.loads(strRes)
-    info(3, "Starting async retrieve list result - %s" % myRes)
+    #info(3, "Starting async retrieve list result - %s" % myRes)
 
-    _restoreSubscriptionInfoFromDisk(srvObj)
+    #_restoreSubscriptionInfoFromDisk(srvObj)
 
     return diskInfoDic
 

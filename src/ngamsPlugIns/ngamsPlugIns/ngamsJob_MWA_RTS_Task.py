@@ -41,6 +41,7 @@ Either the job itself or the job wrapper should do the additional tasks:
     3.1 Before being archived, the result must be zipped into a single file, whose id is: job_id_obs_id_corr_id.tar
 """
 import commands, os, fnmatch
+import shutil
 from optparse import OptionParser
 
 mwa_path = '/scratch/astronomy556/MWA'
@@ -305,7 +306,7 @@ def moveAllImgFiles(tgtPath):
     for file in os.listdir('.'):
         if (fnmatch.fnmatch(file, '*.fits') and
             (not os.path.islink(file))):
-            os.rename(file, '%s/%s' % (tgtPath, file))
+            shutil.move(file, '%s/%s' % (tgtPath, file))
 
 def moveLogFiles(corrId, tgtPath):
     """
@@ -323,7 +324,7 @@ def moveLogFiles(corrId, tgtPath):
         if fnmatch.fnmatch(file, 'rts*.log'):
             #first, change the file name from node001 to node020 (for example)
             newfn = file.replace('node001', node)
-            os.rename(file, '%s/%s' % (tgtPath, newfn))
+            shutil.move(file, '%s/%s' % (tgtPath, newfn))
 
 if __name__ == "__main__":
     main()

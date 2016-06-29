@@ -56,43 +56,6 @@ files being archived.
 For more detailed information about the project, consult the URL:
 
   http://www.eso.org/projects/ngas
-
-
-To use the NG/AMS classes, the following statement should be contained
-in the Python source files:
-
-from   ngams import *
-
-Subsequently the functions and variables defined in this module can be used
-without referring to the module. The NG/AMS modules can be imported in the
-standard way, e.g.:
-
-import ngamsLib, ngamsConfig, ngamsHttpPars
-
-
-HIERARCHY/STRUCTURE OF THE NG/AMS SOURCE CODE FILES:
-The following diagram indicates how the hierarchy is structured for the Python
-source code files contained within NG/AMS. The files (Python modules) should
-only be imported by other modules, which have a lower location in the diagram,
-never opposite, nor by files at the same level. This in principle is allowed by
-Python, but in general such circular dependencies should be avoided in order to
-keep a clear structure/architecture of the SW for maintability reasons.
-
-Source Code File Hierarchy:
-
-  o ngamsDb, ngamsLib, ngamsUrlLib
-  o ngamsConfig
-  o ngamsFileInfo, ngamsHostInfo
-  o ngamsDiskInfo, ngamsDapiStatus, ngamsDppiStatus, ngamsFileList,
-    ngamsPhysDiskInfo
-  o ngamsReqProps, ngamsStatus
-  o ngamsHighLevelLib
-  o ngamsDiskUtils
-  o ngamsPlugInApi
-
-The source files contained in the sub-modules 'ngamsServer', 'ngamsPClient',
-'ngamsTest' and 'ngamsCClient' are not considered in the list above. The
-sub-module contaning example plug-ins 'ngamsPlugIns' is not considered either.
 """
 
 import glob
@@ -1062,12 +1025,10 @@ def mvFile(srcFilename,
         checkAvailDiskSpace(trgFilename, fileSize)
         timer = PccUtTime.Timer()
 
-        # Don't rely on executing separate OS commands to move files
-        # Do it the python way instead
-        os.rename(srcFilename, trgFilename)
+        # Don't rely on os.rename as it can cause issues when crossing 
+        # disk parition boundaries
+        shutil.move(srcFilename, trgFilename)
 
-        # os.rename returns nothiing but throws OSErrors
-        #if (stat): raise Exception, "Error executing move command: " + str(out)
         deltaTime = timer.stop()
     except Exception, e:
         errMsg = genLog("NGAMS_AL_MV_FILE", [srcFilename, trgFilename, str(e)])

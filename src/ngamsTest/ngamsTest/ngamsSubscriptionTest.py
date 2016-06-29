@@ -54,8 +54,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
     """
 
     def test_basic_subscription(self):
-        self.prepExtSrv(port=8888)
-        self.prepExtSrv(port=8889)
+        self.prepCluster("src/ngamsCfg.xml", [[8888, None, None, None], [8889, None, None, None]])
 
         host = 'localhost:8888'
         method = 'GET'
@@ -104,8 +103,8 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
 
     def test_basic_subscription_fail(self):
-        self.prepExtSrv(port=8888, cfgProps=[["NgamsCfg.HostSuspension[1].SuspensionTime", '0T00:00:05']])
-        self.prepExtSrv(port=8889)
+        self.prepCluster("src/ngamsCfg.xml", [[8888, None, None, None, [["NgamsCfg.HostSuspension[1].SuspensionTime", '0T00:00:05']]],
+                                              [8889, None, None, None]])
 
         host = 'localhost:8888'
         method = 'GET'

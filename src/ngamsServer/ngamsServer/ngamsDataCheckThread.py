@@ -32,7 +32,6 @@ This module contains the code for the Data Check Thread, which is used
 to check the data holding in connection with one NGAS host.
 """
 
-import commands
 import os, time, thread, threading, random, glob, cPickle
 
 from pccUt import PccUtTime
@@ -601,46 +600,36 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     # The remaining entries in the dictionary, are thus files, which are not
     # registered in the DB.
     #
-    # We try with "<mt pt>/*", "<mt pt>/*/*", "<mt pt>/*/*/*", ...,
-    # - until no files are found.
+    # We walk recursively from the mount point downwards, ignoring disk info
+    # files and hidden directories, as well as the top-level staging directory
     ###########################################################################
     info(4,"Create DBM with references to all files on the storage disks ...")
     fileRefDbm = "%s/%s_FILES_%s.bsddb" %\
                  (cacheDir, NGAMS_DATA_CHECK_THR, srvObj.getHostId())
     rmFile(fileRefDbm)
     _setFileRefDbm(ngamsDbm.ngamsDbm(fileRefDbm, 1, 1))
-    tmpGlobFile = tmpFilePat + "_FILE_GLOB.glob"
     for diskId in _getDiskDic().keys():
         _stopDataCheckThr(srvObj, stopEvt)
         diskInfoObj = _getDiskDic()[diskId]
-        pattern = ""
-        while (1):
-            # Use a shell command here to avoid building up maybe huge
-            # lists in memory/in the Python interpreter. A better way could
-            # maybe be found avoiding to invoke a shell command.
-            rmFile(tmpGlobFile)
-            searchPath = os.path.normpath(diskInfoObj.getMountPoint()+pattern)
-            tmpCmd = "find " + searchPath + " -maxdepth 1 > " + tmpGlobFile
-            stat, out = commands.getstatusoutput(tmpCmd)
-            if (stat != 0): break
-            fo = open(tmpGlobFile)
-            while (1):
-                _stopDataCheckThr(srvObj, stopEvt)
-                nextFile = fo.readline().strip()
-                if (not nextFile): break
-                # NGAS Disk Info file + files under the staging area on
-                # the disks are ignored.
-                if (os.path.isfile(nextFile) and
-                    (os.path.basename(nextFile) != NGAMS_DISK_INFO) and
-                    (os.path.basename(nextFile) != NGAMS_VOLUME_ID_FILE) and
-                    (os.path.basename(nextFile) != NGAMS_VOLUME_INFO_FILE) and
-                    (nextFile.find("/" + NGAMS_STAGING_DIR + "/") == -1)):
-                    _getFileRefDbm().add(nextFile, [diskInfoObj.getDiskId()])
-            fo.close()
-            pattern += "/*"
+
+        # Walk over the mount point and collect all files
+        mount_pt = diskInfoObj.getMountPoint()
+        for dirpath, dirs, files in os.walk(mount_pt):
+
+            _stopDataCheckThr(srvObj, stopEvt)
+
+            # Ignore staging and hidden directories
+            dirs[:] = [d for d in dirs if d != NGAMS_STAGING_DIR and not d.startswith('.')]
+
+            # Ignore NGAS Disk Info files
+            files[:] = [f for f in files if f not in (NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, NGAMS_VOLUME_INFO_FILE)]
+
+            for filename in files:
+                filename = os.path.join(dirpath, filename)
+                _getFileRefDbm().add(str(filename), [diskInfoObj.getDiskId()])
+
         _getFileRefDbm().sync()
         _stopDataCheckThr(srvObj, stopEvt)
-        rmFile(tmpGlobFile)
     info(4,"Created DBMs with references to all files on the storage disks")
     ###########################################################################
 

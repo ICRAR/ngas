@@ -453,7 +453,7 @@ if __name__ == "__main__":
             print r
         sys.exit()
 
-    adict = getArchiveThreadsFromFile(fnm, dict=1, command='QARCHIVE')
+    adict = getArchiveThreadsFromFile(fnm, dict=1, command='ARCHIVE')
     astart = numpy.array(map(lambda x:adict[0][x].start,adict[1].keys()))
     ind = numpy.argsort(astart)
     astart.sort()
@@ -470,74 +470,75 @@ if __name__ == "__main__":
     print "SUMMARY:"
     print "--------"
     print "Number of archive requests: %d" % len(adict[0])
-    print "Total elapsed time: %9.2f seconds" % (aend.max()-astart.min()).seconds
-    print "Total volume: %5.2f GB" % (bytes.sum()/1024**3)
-    print "Overall rate: %5.2f +/- %3.2f MB/s" % \
-    (bytes.sum()/1024**2/(aend.max()-astart.min()).seconds, std)
+    if len(adict[0]) > 0:
+        print "Total elapsed time: %9.2f seconds" % (aend.max()-astart.min()).seconds
+        print "Total volume: %5.2f GB" % (bytes.sum()/1024**3)
+        print "Overall rate: %5.2f +/- %3.2f MB/s" % \
+            (bytes.sum()/1024**2/(aend.max()-astart.min()).seconds, std)
 
-    adur = (aend-astart).astype(float)
-
-    tdur = (tend-tstart).astype(float)
-    rate = bytes/1024**2/adur
-
-
-    step = 6
-    bins = len(range(0,len(astart),step))
-    dt = astart[1:] - astart[:-1]
-    dt = adur
-    md = pylab.zeros([bins])  # array for median request interval
-    mt = pylab.zeros([bins])  # array for median total time
-    smt = pylab.zeros([bins,2]) # standard deviation of mt elements
-    fd = pylab.zeros([bins])  # array for frequency of requests
-    mrr = pylab.zeros([bins]) # array for median transfer rate
-    ff = pylab.zeros([bins]) # multi-dim array holding various values
-    ft = pylab.zeros([bins]) # array holding timestamp of midpoint of interval
-    dur = pylab.zeros([bins]) # array holding archive durations
-    err = pylab.zeros([bins])
-    mtr = pylab.zeros([bins]) # array holding total rate
-    rr = bytes/(aend-astart).astype(float)/1024**2
-    di = map(lambda x,y:float(x-astart.min())+y/2.,astart,(aend-astart).astype(float))
-    di.sort()
-
-
-    for ii in range(0,len(astart),step):
-        li = ii+step-1
-        md[ii/step] = (pylab.median(dt[ii:li]))
-        if li > len(dt): li = len(dt)-1
-        if li != ii:
-            tmpdur = (aend[ii:li].max()-astart[ii:li].min())
-            dur[ii/step]=tmpdur+0.0001
-            err[ii/step]=(tmpdur+0.0001)/2.
-            fd[ii/step]=((li-ii)/(dur[ii/step]))
-            ft[ii/step]=(astart[ii]+dur[ii/step]/(2.*86400)-astart[0])
-        #           ff[ii/step]=([(li-ii),astart[ii],aend[li],fd[-1],adur[-1]])
-            mrr[ii/step]=(sum(rr[ii:li])/dur[ii/step])
-            mtr[ii/step]=(sum(bytes[ii:li])/dur[ii/step]/1024**2)
-        else:
-            fd[ii/step]=(0)
-            mrr[ii/step]=(rr[li])
-        mt[ii/step]=(pylab.median(adur[ii:li]))
-#       smt[0][ii/step]=((min(mt[-1],pylab.std(dur[-1])/2)))
-#       smt[1][ii/step]=(pylab.std(dur[-1])/2)
-
-
-    pylab.subplot(2,1,1)
-    pylab.errorbar(ft,mtr,xerr=err,fmt='b.')
-    pylab.plot([0,di[-1]+20],[mtr.mean(),mtr.mean()], 'r-')
-    pylab.errorbar([di[-1]+15], [mtr.mean()], yerr=mtr.std(), fmt='r.')
-    pylab.xlim(xmin=-0.01, xmax=di[-1]+20)
-    pylab.xlabel('Time since %s [s]' % (astart[0]))
-    pylab.ylabel('Accumulated transfer speed [MB/s]')
-
-    pylab.subplot(2,1,2)
-    pylab.errorbar(tstart-tstart.min(), rate, \
-          xerr=[pylab.zeros(len(tstart)),tdur], fmt='b.')
-    pylab.errorbar(astart-astart.min(), rate-0.005,
-          xerr=[pylab.zeros(len(astart)),adur], fmt='r.')
-    pylab.xlabel('Time since %s [s]' % (astart[0]))
-    pylab.ylabel('Transfer rate (single file) [MB/s]')
-    pylab.xlim(xmin=-0.01,xmax=di[-1]+20)
-
-#    logfnm = fnm + '.png'
-#    pylab.savefig(logfnm, dpi=200)
+        adur = (aend-astart).astype(float)
+    
+        tdur = (tend-tstart).astype(float)
+        rate = bytes/1024**2/adur
+    
+    
+        step = 6
+        bins = len(range(0,len(astart),step))
+        dt = astart[1:] - astart[:-1]
+        dt = adur
+        md = pylab.zeros([bins])  # array for median request interval
+        mt = pylab.zeros([bins])  # array for median total time
+        smt = pylab.zeros([bins,2]) # standard deviation of mt elements
+        fd = pylab.zeros([bins])  # array for frequency of requests
+        mrr = pylab.zeros([bins]) # array for median transfer rate
+        ff = pylab.zeros([bins]) # multi-dim array holding various values
+        ft = pylab.zeros([bins]) # array holding timestamp of midpoint of interval
+        dur = pylab.zeros([bins]) # array holding archive durations
+        err = pylab.zeros([bins])
+        mtr = pylab.zeros([bins]) # array holding total rate
+        rr = bytes/(aend-astart).astype(float)/1024**2
+        di = map(lambda x,y:float(x-astart.min())+y/2.,astart,(aend-astart).astype(float))
+        di.sort()
+    
+    
+        for ii in range(0,len(astart),step):
+            li = ii+step-1
+            md[ii/step] = (pylab.median(dt[ii:li]))
+            if li > len(dt): li = len(dt)-1
+            if li != ii:
+                tmpdur = (aend[ii:li].max()-astart[ii:li].min())
+                dur[ii/step]=tmpdur+0.0001
+                err[ii/step]=(tmpdur+0.0001)/2.
+                fd[ii/step]=((li-ii)/(dur[ii/step]))
+                ft[ii/step]=(astart[ii]+dur[ii/step]/(2.*86400)-astart[0])
+            #           ff[ii/step]=([(li-ii),astart[ii],aend[li],fd[-1],adur[-1]])
+                mrr[ii/step]=(sum(rr[ii:li])/dur[ii/step])
+                mtr[ii/step]=(sum(bytes[ii:li])/dur[ii/step]/1024**2)
+            else:
+                fd[ii/step]=(0)
+                mrr[ii/step]=(rr[li])
+            mt[ii/step]=(pylab.median(adur[ii:li]))
+    #       smt[0][ii/step]=((min(mt[-1],pylab.std(dur[-1])/2)))
+    #       smt[1][ii/step]=(pylab.std(dur[-1])/2)
+    
+    
+        pylab.subplot(2,1,1)
+        pylab.errorbar(ft,mtr,xerr=err,fmt='b.')
+        pylab.plot([0,di[-1]+20],[mtr.mean(),mtr.mean()], 'r-')
+        pylab.errorbar([di[-1]+15], [mtr.mean()], yerr=mtr.std(), fmt='r.')
+        pylab.xlim(xmin=-0.01, xmax=di[-1]+20)
+        pylab.xlabel('Time since %s [s]' % (astart[0]))
+        pylab.ylabel('Accumulated transfer speed [MB/s]')
+    
+        pylab.subplot(2,1,2)
+        pylab.errorbar(tstart-tstart.min(), rate, \
+              xerr=[pylab.zeros(len(tstart)),tdur], fmt='b.')
+        pylab.errorbar(astart-astart.min(), rate-0.005,
+              xerr=[pylab.zeros(len(astart)),adur], fmt='r.')
+        pylab.xlabel('Time since %s [s]' % (astart[0]))
+        pylab.ylabel('Transfer rate (single file) [MB/s]')
+        pylab.xlim(xmin=-0.01,xmax=di[-1]+20)
+    
+    #    logfnm = fnm + '.png'
+    #    pylab.savefig(logfnm, dpi=200)
 

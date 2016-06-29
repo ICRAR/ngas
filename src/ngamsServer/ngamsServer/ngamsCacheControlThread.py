@@ -45,10 +45,6 @@ from ngamsLib.ngamsCore import info, TRACE, rmFile,\
     loadPlugInEntryPoint
 from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib
 
-# An internal queue contains files that have been explicitly requested to be removed
-explicitDelQueue = Queue()
-
-
 # Various definitions used within this module.
 
 NGAMS_CACHE_CONTROL_THR  = "CACHE-CONTROL-THREAD"
@@ -423,7 +419,10 @@ def addEntryInCacheDbms(srvObj,
 
     if (addInRdbms):
         # Insert entry in the remote DBMS.
-        srvObj.getDb().insertCacheEntry(diskId, fileId, fileVersion, timeNow)
+        try:
+           srvObj.getDb().insertCacheEntry(diskId, fileId, fileVersion, timeNow, delete)
+        except:
+           pass
 
 
 _SET_FILENAME_CACHE_DBMS = "UPDATE ngas_cache SET filename = '%s' WHERE " +\
@@ -740,9 +739,25 @@ def requestFileForDeletion(srvObj, sqlFileInfo):
 
     Returns:      Void.
     """
-    #T = TRACE()
-    explicitDelQueue.put(sqlFileInfo) # this is thread safe
 
+    try:
+       check_can_be_deleted = int(srvObj.getCfg().getVal("Caching[1].CheckCanBeDeleted"))
+       if not check_can_be_deleted:
+          return
+    except:
+       return
+
+    diskId = sqlFileInfo[NGAMS_CACHE_DISK_ID]
+    fileId = sqlFileInfo[NGAMS_CACHE_FILE_ID]
+    fileVersion = int(sqlFileInfo[NGAMS_CACHE_FILE_VER])
+    #TODO - should get the original file_status from the remote db, and then do a bitmask OR operation,
+    # maybe too db resource intensive, since this file is about to be deleted, the original value is not that important
+    # moreover, it is most likely just ingested (when cache delete is triggered), so we can assume that it is "00000000"
+    try:
+       info(3, 'Set file_status for file %s' % fileId)
+       srvObj.getDb().setFileStatus(fileId, fileVersion, diskId, CACHE_DEL_BIT_MASK) # should be (CACHE_DEL_BIT_MASK | file_status)
+    except Exception, err:
+       error('Fail to set file status for file %s, Exception: %s' % (fileId, str(err)))
 
 
 def scheduleFileForDeletion(srvObj,
@@ -920,33 +935,7 @@ def _cacheCtrlPlugInThread(threadGrObj):
                     srvObj._cacheCtrlPiFilesDbm.addIncKey(cacheEntryObj)
         except StopCacheControlThreadEx:
             break
-
-def markFileCanBeDeleted(srvObj):
-    """
-    Go through the explicitDel queue to mark file deletion
-    using the file_status flag in the remote database
-    """
-    info(3, 'marking file can be deleted')
-    while (1):
-        sqlFileInfo = None
-        try:
-            sqlFileInfo = explicitDelQueue.get_nowait()
-        except Empty, e:
-            break
-        if (sqlFileInfo is None):
-            continue
-        diskId      = sqlFileInfo[NGAMS_CACHE_DISK_ID]
-        fileId      = sqlFileInfo[NGAMS_CACHE_FILE_ID]
-        fileVersion = int(sqlFileInfo[NGAMS_CACHE_FILE_VER])
-        #TODO - should get the original file_status from the remote db, and then do a bitmask OR operation,
-        # maybe too db resource intensive, since this file is about to be deleted, the original value is not that important
-        # moreover, it is most likely just ingested (when cache delete is triggered), so we can assume that it is "00000000"
-        try:
-            info(3, 'Set file_status for file %s' % fileId)
-            srvObj.getDb().setFileStatus(fileId, fileVersion, diskId, CACHE_DEL_BIT_MASK) # should be (CACHE_DEL_BIT_MASK | file_status)
-        except Exception, err:
-            error('Fail to set file status for file %s, Exception: %s' % (fileId, str(err)))
-            continue
+       
 
 def checkIfFileCanBeDeleted(srvObj, fileId, fileVersion, diskId):
     """
@@ -1000,20 +989,6 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
     #    configuration).
 
     # 0. Go through the explicitDel queue to remove files
-    """
-    while (1):
-        sqlFileInfo = None
-        try:
-            sqlFileInfo = explicitDelQueue.get_nowait()
-        except Empty, e:
-            break
-        if (sqlFileInfo is None):
-            continue
-        scheduleFileForDeletion(srvObj, sqlFileInfo)
-        markFileChecked(srvObj, sqlFileInfo)
-    """
-    if (check_can_be_deleted):
-        markFileCanBeDeleted(srvObj)
 
     # 1. Evaluate if there are files residing in the cache for more than
     #    the specified amount of time.
@@ -1108,7 +1083,7 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
                                          (str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2])))
                                     continue
                             except Exception, cee:
-                                if (str(cee).find('file not found in ngas db') > -1):
+                                if (str(cee).lower().find('file not found in ngas db') > -1):
                                     warning("file already gone, still mark for deletion: %s/%s/%s" %\
                                             (str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2])))
                                 else:
@@ -1512,7 +1487,3 @@ def cacheControlThread(srvObj, stopEvt, check_can_be_deleted):
             # We make a small wait here to avoid that the process tries
             # too often to carry out the tasks that failed.
             time.sleep(5.0)
-
-    if check_can_be_deleted:
-        markFileCanBeDeleted(srvObj)
-# EOF
