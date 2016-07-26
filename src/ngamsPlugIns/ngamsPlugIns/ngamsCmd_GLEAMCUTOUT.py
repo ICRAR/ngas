@@ -1,3 +1,4 @@
+
 #    ICRAR - International Centre for Radio Astronomy Research
 #    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
@@ -17,6 +18,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+
 #******************************************************************************
 #
 #
@@ -24,20 +26,31 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      2014/06/06  Created
 #
+
 """
 read fits header, get cdel1,2 and epoch information
 Cutout a gleam FITS image, convert it into png, and display in the browser, then remove the jpeg file
 """
 
-import math, time, commands, os, traceback, threading
+from ngams import *
+
+import math, time, commands, os, subprocess, traceback, threading
 import ephem
 import pyfits as pyfits_real
 import astropy.io.fits as pyfits
 import astropy.wcs as pywcs
+import astropy.units as u
+from astropy.coordinates import SkyCoord
+import numpy
 from string import Template
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, info, NGAMS_TEXT_MT
+week_date_dict = {
+'1':'2013-08-13', '2':'2013-11-15', '3':'2014-03-10', '4':'2014-06-13'
+}
 
+my_host = getHostId()
+if ("store04:7779" == my_host):
+    my_host = "store04:7777"
 
 """
 disk_host_dict = {"3bcfe8b4996a5c15d91e32f287a1a574":"store02:7777",
@@ -67,10 +80,12 @@ fits_copy_exec = "/home/ngas/software/fitscopy"
 """
 #-grid skyformat degrees
 cmd_ds9 = '{0}/ds9 -grid yes -grid numerics fontsize 14 -grid numerics fontweight bold -grid skyformat degrees -geometry 1250x1250  {1} -cmap Heat -zoom to fit -scale zscale -saveimage "{2}" -exit'
-qs = "SELECT a.mount_point || '/' || b.file_name AS file_full_path, a.host_id FROM ngas_disks a, ngas_files b WHERE a.disk_id = b.disk_id AND b.file_id = {0} ORDER BY b.file_version DESC"
-
+qs = "SELECT a.mount_point || '/' || b.file_name AS file_full_path, a.host_id, b.ingestion_date FROM ngas_disks a, ngas_files b WHERE a.disk_id = b.disk_id AND b.file_id = '%s' ORDER BY b.file_version DESC"
+cmd_cutout = "{0}/bin/getfits -sv -o %s -d %s %s %s %s J2000 %d %d".format(wcstools_path_dict[my_host]) # % (outputfname, outputdir, inputfname, ra, dec, width, height)
 cmd_fits2jpg = "/mnt/gleam/software/bin/fits2jpeg -fits %s -jpeg %s -nonLinear" # % (fitsfname, jpegfname)
 psf_seq = ['BMAJ', 'BMIN', 'BPA']
+completeness_path = '/home/ngas/NGAS/gleam_metadata'
+completeness_fnames = ['cmp_map_faint.fits', 'cmp_map_mid.fits', 'cmp_map_bright.fits']
 
 ds9_sem = threading.Semaphore(10)
 
@@ -113,6 +128,15 @@ ${html_content}
 </html>
 """
 
+lmc_info = (80.89417 - 4.22 / 2, 80.89417 + 4.22 / 2, -69.75611 - 4.22 / 2, -69.75611 + 4.22 / 2, 4.22 / 2) #ra, dec, diameter in degrees
+smc_info = (13.15833 - 3.492 / 2, 13.15833 + 3.492 / 2, -72.80028 - 3.492 / 2, -72.80028 + 3.492 / 2, 3.492 / 2)
+overlap_regions = [lmc_info, smc_info]
+overlap_names = ['LMC', 'SMC']
+wrong_sql = ['drop', 'delete', 'update']
+overlap_err = """The current publicly available GLEAM data does not include this region.
+Please see Hurley-Walker et al (2016) for details of currently published
+regions"""
+
 class AddPSFException(Exception):
     pass
 
@@ -122,6 +146,37 @@ To add:
 2. Load different paths based on host_id
 3. Perhaps using DS9 to convert
 """
+
+def sql_inject_test(query):
+    """
+    This is not desirable, but a quick fix for the cases of
+    drop table and delete/update records
+    """
+    lq = query.lower()
+    for ws in wrong_sql:
+        if (lq.find(ws) > -1):
+            err_msg = "Invalid query '{0}'".format(query)
+            error(err_msg)
+            raise Exception(err_msg)
+
+
+def overlap_check(ra, dec, radius):
+    """
+    A very rough implementation, not using any distance or coverage calculation
+    for efficiency
+    """
+    for i, re in enumerate(overlap_regions):
+        if (ra >= re[0] and ra <= re[1] and dec >= re[2] and dec <= re[3] and
+        radius <= re[4]):
+            #raise Exception("Sorry the region '{0}' does not contain any GLEAM sources".format(overlap_names[i]))
+            raise Exception(overlap_err)
+
+    icrs_coord = SkyCoord(ra * u.degree, dec * u.degree, frame='icrs')
+    gg = icrs_coord.galactic
+    b = float(str(gg.to_string().split(',')[0]).split()[1])
+    if (b < 9 and b > -9):
+        #raise Exception("Sorry Galactic Plane does not contain any GLEAM sources.")
+        raise Exception(overlap_err)
 
 def execCmd(cmd, failonerror = True, okErr=[]):
     """
@@ -192,7 +247,7 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir, projection="ZEA"):
     info(3, "Regridding {1} took {0} seconds".format((time.time() - st), dim))
     return hdr_tpl
 
-def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, cmd_cutout, use_montage=True, projection="ZEA"):
+def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, use_montage=True, projection="ZEA"):
     outfile_nm = "{0}/{1}".format(work_dir, cut_fitsnm)
     #factor = 2
     if (ra < 0):
@@ -249,33 +304,105 @@ def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, t
         to_be_removed.append(work_dir + '/' + cut_fitsnm)
     return cut_fitsnm
 
-def add_header(cut_fits_path, cut_psf_paths):
+def add_header(cut_fits_path, cut_psf_paths, ing_date, obs_date, completeness=None):
     """
     TODO
+    ing_date:
+        string (e.g. 2014-11-28T23:56:36.709)
     """
     output = pyfits.open(cut_fits_path, mode='update')
     for i, t in enumerate(psf_seq):
         #psflist = pyfits.open(cut_psf_paths[i])
         #output[0].header[t] = numpy.nanmean(psflist[0].data[0])
         output[0].header[t] = cut_psf_paths[i]
-
-    output[0].header['history'] = 'GLEAM-IDR2 11-Aug-2015'
+    yr = ing_date.split('-')[0]
+    if (yr == '2015'):
+        hdr_hist = 'GLEAM-IDR2 11-Aug-2015'
+    else:
+        if (ing_date.split('T')[0] == '2016-05-23'):
+            hdr_hist = 'GLEAM-IDR4 23-May-2016'
+        else:
+            hdr_hist = 'GLEAM-IDR3 14-Mar-2016'
+    output[0].header['history'] = hdr_hist
     #output.writeto(cut_fits_path, clobber=True)
+    #if (not output[0].header.has_key('BUNIT')):
+    output[0].header['BUNIT'] = ('JY/BEAM', 'Units are in Jansky per beam')
+    output[0].header['DATE-OBS'] = obs_date
+    hks = output[0].header.keys()
+    if (not 'ROBUST' in hks):
+        output[0].header['ROBUST'] = -1
+    if (not 'WSCWEIGH' in hks):
+        output[0].header['WSCWEIGH'] = 'Briggs(-1)'
+
+    if (completeness is not None):
+        ra = completeness[0]
+        dec = completeness[1]
+        for cf in completeness_fnames:
+            ffp = '%s/%s' % (completeness_path, cf)
+            if (not os.path.exists(ffp)):
+                error("Completeness map {0} does not exist".format(ffp))
+                continue
+            try:
+                compt_perctg = get_compt_perctg(ra, dec, ffp)
+            except Exception, exce:
+                error("fail to add completeness: {0}".format(exce))
+                info(3, traceback.format_exc())
+                continue
+            if (compt_perctg is None):
+                continue
+            for cpg in compt_perctg:
+                output[0].header['CMPL%04d' % (cpg[0])] = (cpg[1], 'Completeness of catalogue at {0}mJy (%)'.format(cpg[0]))
+
     output.close()
 
+def get_compt_perctg(ra, dec, compt_path):
     """
-    for cut_psf_path in cut_psf_paths:
-        psflist = pyfits.open(cut_psf_path)
-        bmaj = np.nanmean(psflist[0].data[0]) #is the array of major axis values
-        bmin = np.nanmean(psflist[0].data[1]) #is the array of minor axis values
-        bpa = np.nanmean(psflist[0].data[2]) #is the array of position angle values
+    Get the completeness percentage
 
+    Flux limit      keyword name     description
+    example value
+    25mJy           CMPL0025         # Completeness of catalogue at 25mJy (%)
+       12.1
+    100mJy          CMPL0100         # Completeness of catalogue at 100mJy (%)
+       76.4
+    1000mJy         CMPL1000         # Completeness of catalogue at 1000mJy (%)
+       99.3
 
-        output[0].header['BMAJ'] = bmaj
-        output[0].header['BMIN'] = bmin
-        output[0].header['BPA'] = bpa
-        output.writeto(cut_fits_path, clobber=True)
+    The examples are made-up but show the precision that would be sensible to
+    use. There are 20 flux limits; I'm only showing three examples here.
+
+    return:
+        A tuple of (completeness, percentage)
+
+    completeness_path = '/home/ngas/NGAS/gleam_metadata'
+    completeness_fnames = ['cmp_map_faint.fits', 'cmp_map_mid.fits', 'cmp_map_bright.fits']
     """
+    cplist = pyfits.open(compt_path)
+    header = cplist[0].header
+    w = pywcs.WCS(header, naxis=2)
+    num_intensity_level = int(header['NAXIS3'])
+    start_intensity = int(header['CRVAL3'])
+    step_width = int(header['CDELT3'])
+    pixcoords = w.wcs_world2pix([[ra, dec]], 0)[0]
+    pixcoords = [int(elem) for elem in pixcoords]
+    a = pixcoords[1]
+    b = pixcoords[0]
+    a_len = cplist[0].data[0].shape[0]
+    b_len = cplist[0].data[0].shape[1]
+
+    if (a >= a_len or b >= b_len):
+        error("Cutout centre is out of the completness map: {0} >= {1} or {2} >= {3} ".format(a, a_len, b, b_len))
+        return None
+
+    ret = []
+    for i in range(num_intensity_level):
+        il = start_intensity + i * step_width
+        pert = cplist[0].data[i][a][b]
+        pert = round(float("{0:.2f}".format(pert)), 2)
+        ret.append((il, pert))
+
+    return ret
+
 
 def get_bparam(ra, dec, psf_path):
     """
@@ -293,7 +420,7 @@ def get_bparam(ra, dec, psf_path):
     b_len = psflist[0].data[0].shape[1]
     if (a >= a_len):
         raise Exception("Cutout centre is out of the PSF map: {0} >= {1}".format(a, a_len))
-        a = a_len - (a_len - a + 1)
+        a = a_len - (a_len - a + 1) # a = a - 1?
     if (b >= b_len):
         raise Exception("Cutout centre is out of the PSF map: {0} >= {1}".format(b, b_len))
         b = b_len - (b_len - b + 1)
@@ -302,6 +429,13 @@ def get_bparam(ra, dec, psf_path):
     bpa = psflist[0].data[2][a][b]
     return (bmaj, bmin, bpa)
 
+def get_date_obs(file_id):
+    try:
+        week = file_id.split('_')[1][-1]
+        return week_date_dict[week]
+    except:
+        error("fail to get the obsdate for {0}".format(file_id))
+        return 'UNKNOWN'
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -319,22 +453,34 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     """
     attnm_list = ['file_id', 'radec', 'radius']
 
-    my_host = srvObj.getHostId()
-    if ("store04:7779" == my_host):
-        my_host = "store04:7777"
-    cmd_cutout = "{0}/bin/getfits -sv -o %s -d %s %s %s %s J2000 %d %d".format(wcstools_path_dict[my_host]) # % (outputfname, outputdir, inputfname, ra, dec, width, height)
-
     for attnm in attnm_list:
         if (not reqPropsObj.hasHttpPar(attnm)):
             srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, #let HTTP returns OK so that curl can continue printing XML code
                      "GLEAMCUTOUT command failed: '%s' is not specified" % attnm)
             return
+    coord = reqPropsObj.getHttpPar("radec").split(',')
+    check_overlap = True
+    if (reqPropsObj.hasHttpPar('gleamer') and '1' == reqPropsObj.getHttpPar("gleamer")):
+        check_overlap = False
+
+    if (check_overlap):
+        try:
+            overlap_check(float(coord[0]), float(coord[1]), float(reqPropsObj.getHttpPar("radius")))
+        except Exception, ex:
+            # srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
+            #              "GLEAMCUTOUT parameter validation failed: '%s'" % str(ex))
+            srvObj.httpReply(reqPropsObj, httpRef, 500, str(ex), NGAMS_TEXT_MT)
+            return
+
     fits_format = False
     if (reqPropsObj.hasHttpPar('fits_format') and '1' == reqPropsObj.getHttpPar("fits_format")):
         fits_format = True
     fileId = reqPropsObj.getHttpPar("file_id")
-    info(3, "Executing SQL query for GLEAM CUTOUT: %s" % str(qs))
-    reList = srvObj.getDb().query2(qs, args=(fileId,))
+    query = qs % fileId
+    sql_inject_test(query)
+    info(3, "Executing SQL query for GLEAM CUTOUT: %s" % str(query))
+    res = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
+    reList = res[0]
     if (len(reList) < 1):
         srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
                      "Cannot find image file: '%s'" % fileId)
@@ -351,7 +497,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         srvObj.httpRedirReply(reqPropsObj, httpRef, host_id_ip_dict[file_host], 7777)
         return
 
-    coord = reqPropsObj.getHttpPar("radec").split(',')
+
     try:
         if (not is_mosaic(fileId)):
             ra = str(ephem.hours(float(coord[0]) * math.pi / 180)).split('.')[0] # convert degree to hour:minute:second, and ignore decimal seconds
@@ -363,6 +509,11 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         return
 
     filePath = reList[0][0] #GET the latest version only
+    try:
+        ing_date = reList[0][2] # ingestion_date
+    except:
+        ing_date = '2016-03-14T23:56:36.709'
+        info(3, "ingestion date parse failure")
 
     work_dir = srvObj.getCfg().getRootDirectory() + '/processing'
     time_str = ('%f' % time.time()).replace('.', '_')
@@ -392,11 +543,14 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             if (reqPropsObj.hasHttpPar('use_montage') and '1' == reqPropsObj.getHttpPar("use_montage")):
                 use_montage_cut = True
 
-            cut_fitsnm = cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, cmd_cutout, use_montage=use_montage_cut, projection=projection)
+            cut_fitsnm = cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, use_montage=use_montage_cut, projection=projection)
             if (no_psf == False and fits_format):
                 psf_fileId = fileId.split('.fits')[0] + '_psf.fits'
-                info(3, "Executing SQL query for GLEAM PSF CUTOUT: %s" % str(qs))
-                psfList = srvObj.getDb().query2(qs, args=(psf_fileId,))
+                query = qs % psf_fileId
+                sql_inject_test(query)
+                info(3, "Executing SQL query for GLEAM PSF CUTOUT: %s" % str(query))
+                pres = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
+                psfList = pres[0]
                 if (len(psfList) > 0):
                     psf_path = psfList[0][0]
 
@@ -418,9 +572,8 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                         cut_psfnm_list.append(work_dir + '/' + cut_psfnm)
                         to_be_removed.append(psf_path_splitnm)
                     """
-                    #add_header(work_dir + '/' + cut_fitsnm, cut_psfnm_list)
                     try:
-                        add_header(work_dir + '/' + cut_fitsnm, get_bparam(ra, dec, psf_path))
+                        add_header(work_dir + '/' + cut_fitsnm, get_bparam(ra, dec, psf_path), ing_date, get_date_obs(fileId), completeness=(ra, dec))
                     except Exception, hdr_except:
                         if (reqPropsObj.hasHttpPar('skip_psf_err') and '1' == reqPropsObj.getHttpPar("skip_psf_err")):
                             info(3, "PSF error skipped: {0}".format(hdr_except))
@@ -491,7 +644,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         hdr_dataref = work_dir + '/' + jpfnm
         to_be_removed.append(hdr_dataref)
 
-    hdrInfo = ["Content-Disposition", "inline;filename={0}".format(hdr_fnm)]
+    hdrInfo = ["Content-disposition", "inline;filename={0}".format(hdr_fnm)]
 
     srvObj.httpReplyGen(reqPropsObj,
                      httpRef,
@@ -506,5 +659,3 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     for fn in to_be_removed:
         if (os.path.exists(fn)):
             os.remove(fn)
-
-
