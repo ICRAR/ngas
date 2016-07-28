@@ -1014,7 +1014,8 @@ class ngamsTestSuite(unittest.TestCase):
                    dbCfgName = None,
                    srvModule = None,
                    skip_database_creation = False,
-                   force=False):
+                   force=False,
+                   server_type = 'ngamsServer'):
         """
         Prepare a standard server object, which runs as a separate process and
         serves via the standard HTTP interface.
@@ -1122,7 +1123,7 @@ class ngamsTestSuite(unittest.TestCase):
         if srvModule:
             execCmd = [sys.executable, '-m', srvModule]
         else:
-            execCmd = ['ngamsServer']
+            execCmd = [server_type]
         execCmd += ["-cfg", tmpCfg]
         if force:        execCmd.append('-force')
         if autoOnline:   execCmd.append("-autoOnline")
