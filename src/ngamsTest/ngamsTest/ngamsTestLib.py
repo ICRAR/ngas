@@ -1177,12 +1177,15 @@ class ngamsTestSuite(unittest.TestCase):
             return
 
         info(3,"Killing externally running NG/AMS Server. PID: %d, Port: %d " % (srvProcess.pid, port))
-        pCl = sendPclCmd(port=port, timeOut=10)
         try:
-            info(1,"Sending OFFLINE command to external server ...")
-            stat = pCl.offline(1)
-            if getLogLevel() >= 3:
-                info(3, "Status OFFLINE command: " + re.sub("\n", "", str(stat.genXmlDoc())))
+            pCl = sendPclCmd(port=port, timeOut=10)
+            stat = pCl.status()
+            print(stat.getState())
+            if stat.getState() != "OFFLINE":
+                info(1,"Sending OFFLINE command to external server ...")
+                stat = pCl.offline(1)
+                if getLogLevel() >= 3:
+                    info(3, "Status OFFLINE command: " + re.sub("\n", "", str(stat.genXmlDoc())))
             status = stat.getStatus()
         except Exception, e:
             info(3,"Error encountered sending OFFLINE command: " + str(e))
