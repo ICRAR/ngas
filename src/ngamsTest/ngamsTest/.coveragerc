@@ -1,0 +1,10 @@
+[run]
+cover_pylib = True
+branch = True
+parallel = True
+timid = True
+data_file = .coverage
+source = ../../ngamsCore
+         ../../ngamsPClient
+         ../../ngamsPlugIns
+         ../../ngamsServer
