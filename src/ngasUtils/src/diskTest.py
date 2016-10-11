@@ -476,7 +476,7 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
             if (out):
                 out.close()
             return status
-        if Test == 'Write':
+        if Test == 'write':
             print "Writing {0} blocks to {1}".format(count, ofil)
         else:
             print "Reading {0} blocks from {1}".format(count, ifil)
@@ -664,18 +664,18 @@ if __name__ == '__main__':
                   "existing data!!!"
             print "Continue: Yes/No?"
             w = sys.stdin.readline()[0:-1]
-            while (re.match('[^q]',w)):
-                if w == 'Yes':
-                    bspeed = writeTestDD(dev,skip,testcount,iosize,\
-                          blocksize)
 
-                elif w == 'No':
-                    sys.exit()
-                else:
-                    print "You have entered: ",w
-                    print "Neither Yes or No!"
-                    print "Bailing out!!"
-                    sys.exit()
+            if w == 'Yes':
+                bspeed = writeTestDD(dev,skip,testcount,iosize,\
+                      blocksize)
+            elif w == 'No':
+                sys.exit()
+            else:
+                print "You have entered: ",w
+                print "Neither Yes or No!"
+                print "Bailing out!!"
+                sys.exit()
+
         else:
             if iosize > 1073741824l * 10:
                 print "You have selected a file for the "+\
