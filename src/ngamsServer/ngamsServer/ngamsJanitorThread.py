@@ -1113,6 +1113,10 @@ def janitorThread(srvObj, stopEvt):
             # => Check for retained Email Notification Messages to send out.
             ngamsNotification.checkNotifRetBuf(srvObj.getHostId(), srvObj.getCfg())
 
+            ##################################################################
+            # => Check LOG-file rotation and clean-up.
+            ##################################################################
+
             # => Check there are any unsaved log files from a shutdown and archive them.
             logFile = srvObj.getCfg().getLocalLogFile()
             logPath = os.path.dirname(logFile)

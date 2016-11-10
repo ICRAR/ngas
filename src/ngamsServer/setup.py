@@ -48,6 +48,7 @@ setup(
         'pcc',
         'crc32c',
         'ngamsCore',
+        'docutils',
         'python-daemon',
         'pysendfile',
     ],
