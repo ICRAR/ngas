@@ -48,10 +48,10 @@ setup(
         'pcc',
         'crc32c',
         'ngamsCore',
-        'docutils',
         'python-daemon',
         'pysendfile',
-    ],
+        'docutils',
+            ],
     # No spaces allowed between the '='s
     entry_points= {
         'console_scripts':[
