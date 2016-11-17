@@ -13,7 +13,32 @@ or :ref:`letting fabric do it for you <inst.fabric>`.
 Manual installation
 ===================
 
-To install NGAS go to the ``src`` directory and run::
+Preparing the installation area
+-------------------------------
+
+.. note::
+ This step is optional,
+ as you might have already a virtual environment
+ to install NGAS onto,
+ or you may want to have a system-wide installation instead.
+
+First of all, you may wish to create
+a `virtual environment <https://virtualenv.readthedocs.org/en/latest/>`_
+to install NGAS there on it.
+You can either do it manually yourself
+or go to the NGAS root directory and run::
+
+ ./boot.sh
+
+This command will check you have an appropriate python version,
+will get the ``virtualenv`` tool, create a virtual environment,
+install a set of basic packages needed later,
+and tell you to source the virtual environment.
+
+Installing
+----------
+
+To install NGAS go to the root directory and run::
 
  ./build.sh
 
