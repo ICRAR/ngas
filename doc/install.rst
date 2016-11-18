@@ -19,7 +19,7 @@ Preparing the installation area
 
 First of all, you may wish to create
 a `virtual environment <https://virtualenv.readthedocs.org/en/latest/>`_
-to install NGAS there on it.
+to install NGAS on it.
 You can either do it manually yourself
 or go to the NGAS root directory and run::
 
@@ -43,11 +43,16 @@ and install each of the python modules (i.e., ``pcc``, ``ngamsCore``,
 ``ngamsPClient``, ``ngamsServer`` and ``ngamsPlugIns``). The python modules will
 automatically pull and install their dependencies.
 
-In addition, the ``build.sh`` script recognizes when a `virtual environment
-<https://virtualenv.readthedocs.org/en/latest/>`_ is loaded, and will install
-the C client there, as well as the python modules.
+.. note::
+ If any step of the build fails the script will stop and notify the user.
+ It is the user's responsibility to install any missing build dependencies.
+ To avoid these issues you can also try
+ the :ref:`Fabric installation  <inst.fabric>`
 
-The C client is an autotools-based program, meaning that it can also be manually
+In addition, the ``build.sh`` script recognizes when a virtual environment is loaded,
+and will install the C client on it, as well as the python modules.
+
+The C client compilation is based on ``autotools``, meaning that it can also be manually
 compiled and installed easily via the usual::
 
  $> ./bootstrap
@@ -59,6 +64,9 @@ The Python modules are all setuptool-based packages, meaning that they can also
 be manually compiled and installed easily via the usual::
 
  $> python setup.py install
+
+
+.. _inst.fabric:
 
 Via Fabric
 ==========
@@ -79,8 +87,9 @@ In the example the instructions of the task ``some_task`` will be carried out in
 host ``host.company.com`` with the user ``ngas_user``, and the ``VAR1`` variable
 will be set to the value ``a``, while variable ``VAR2`` will be marked as set.
 
+For a complete list of tasks run ``fab -l``.
 For a more complete manual visit Fabric's `documentation
-<http://docs.fabfile.org/en/1.10/>`_.
+<http://docs.fabfile.org/en/latest/>`_.
 
 
 Basic per-user installation
