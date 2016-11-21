@@ -76,7 +76,7 @@ def bbcpFile(srcFilename, targFilename, bparam,
         if bparam.port:
             pt = '-Z %d' % bparam.port
         else:
-            pt = '-Z 5678'
+            pt = '-z'
 
         if bparam.winsize:
             fw = '-w %s' % bparam.winsize

@@ -8,7 +8,32 @@ installation: manually installing it, or letting fabric do it for you.
 Manual installation
 ===================
 
-To install NGAS go to the ``src`` directory and run::
+Preparing the installation area
+-------------------------------
+
+.. note::
+ This step is optional,
+ as you might have already a virtual environment
+ to install NGAS onto,
+ or you may want to have a system-wide installation instead.
+
+First of all, you may wish to create
+a `virtual environment <https://virtualenv.readthedocs.org/en/latest/>`_
+to install NGAS on it.
+You can either do it manually yourself
+or go to the NGAS root directory and run::
+
+ ./boot.sh
+
+This command will check you have an appropriate python version,
+will get the ``virtualenv`` tool, create a virtual environment,
+install a set of basic packages needed later,
+and tell you to source the virtual environment.
+
+Installing
+----------
+
+To install NGAS go to the root directory and run::
 
  ./build.sh
 
@@ -18,11 +43,16 @@ and install each of the python modules (i.e., ``pcc``, ``ngamsCore``,
 ``ngamsPClient``, ``ngamsServer`` and ``ngamsPlugIns``). The python modules will
 automatically pull and install their dependencies.
 
-In addition, the ``build.sh`` script recognizes when a `virtual environment
-<https://virtualenv.readthedocs.org/en/latest/>`_ is loaded, and will install
-the C client there, as well as the python modules.
+.. note::
+ If any step of the build fails the script will stop and notify the user.
+ It is the user's responsibility to install any missing build dependencies.
+ To avoid these issues you can also try
+ the :ref:`Fabric installation  <inst.fabric>`
 
-The C client is an autotools-based program, meaning that it can also be manually
+In addition, the ``build.sh`` script recognizes when a virtual environment is loaded,
+and will install the C client on it, as well as the python modules.
+
+The C client compilation is based on ``autotools``, meaning that it can also be manually
 compiled and installed easily via the usual::
 
  $> ./bootstrap
@@ -34,6 +64,9 @@ The Python modules are all setuptool-based packages, meaning that they can also
 be manually compiled and installed easily via the usual::
 
  $> python setup.py install
+
+
+.. _inst.fabric:
 
 Via Fabric
 ==========
@@ -54,8 +87,9 @@ In the example the instructions of the task ``some_task`` will be carried out in
 host ``host.company.com`` with the user ``ngas_user``, and the ``VAR1`` variable
 will be set to the value ``a``, while variable ``VAR2`` will be marked as set.
 
+For a complete list of tasks run ``fab -l``.
 For a more complete manual visit Fabric's `documentation
-<http://docs.fabfile.org/en/1.10/>`_.
+<http://docs.fabfile.org/en/latest/>`_.
 
 
 Basic per-user installation
