@@ -197,6 +197,7 @@ APT_PACKAGES = [
     'libreadline-dev',
     'libsqlite3-dev',
     'libssl-dev',
+    'openssh-server',
     'libtool',
     'libzlcore-dev',
     'make',
