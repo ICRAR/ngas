@@ -123,6 +123,8 @@ def sudo(*args, **kwargs):
     return res
 
 def is_localhost():
+    # ensure something is run in that host
+    run('echo')
     return env.host == 'localhost' or \
            env.host.startswith("127.0.") or \
            env.host == socket.gethostname()

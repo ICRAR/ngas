@@ -32,8 +32,7 @@ from fabric.tasks import execute
 
 from aws import create_aws_instances
 from dockerContainer import create_stage1_docker_container, create_stage2_docker_image, create_final_docker_image
-from ngas import install_and_check, ngas_revision, \
-    create_sources_tarball, upload_to
+from ngas import install_and_check, create_sources_tarball, upload_to
 from utils import repo_root
 
 
@@ -99,7 +98,7 @@ def prepare_release():
     sources = "ngas_src.tar.gz"
     if os.path.exists(sources):
         os.unlink(sources)
-    create_sources_tarball(sources, ngas_revision())
+    create_sources_tarball(sources)
     try:
         upload_to(env.hosts[0], sources)
     finally:
