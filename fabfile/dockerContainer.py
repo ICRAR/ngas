@@ -34,7 +34,6 @@ from fabric.state import env
 from fabric.tasks import execute
 from fabric.utils import puts
 
-from ngas import ngas_revision
 from utils import default_if_empty, check_ssh, get_public_key, sudo
 
 
@@ -215,8 +214,7 @@ def create_stage1_docker_container():
     from docker import errors
     from docker import tls
 
-    rev = ngas_revision()
-    default_if_empty(env, 'container_name',  STAGE1_BUILD_NAME.format(rev))
+    default_if_empty(env, 'container_name', STAGE1_BUILD_NAME)
 
     # Copy our current public SSH key into the to-be-built container so we
     # can connect to the root user afterwards
