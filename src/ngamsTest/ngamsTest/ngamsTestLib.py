@@ -49,6 +49,7 @@ import sys
 import time
 import unittest
 
+import pkg_resources
 import pyfits
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
@@ -1132,7 +1133,17 @@ class ngamsTestSuite(unittest.TestCase):
         if dbCfgName:    execCmd.extend(["-dbCfgId", dbCfgName])
         info(3,"Starting external NG/AMS Server with shell command: " + " ".join(execCmd))
 
-        srvProcess = subprocess.Popen(execCmd)
+        # TODO: kind of a hack really...
+        # Include this directory in the python path
+        # This way the server can load plug-ins that reside on this directory
+        # (which is required by some tests)
+        this_dir = pkg_resources.resource_filename(__name__, '.')  # @UndefinedVariable
+        parent_dir = os.path.normpath(os.path.join(this_dir, '..'))
+        env = dict(os.environ)
+        ppaths = env['PYTHONPATH'].split(os.pathsep) if 'PYTHONPATH' in env else []
+        ppaths.append(parent_dir)
+        env['PYTHONPATH'] = os.pathsep.join(ppaths)
+        srvProcess = subprocess.Popen(execCmd, env=env)
 
         # We have to wait until the server is serving.
         pCl = sendPclCmd(port=port)
@@ -1181,7 +1192,6 @@ class ngamsTestSuite(unittest.TestCase):
         try:
             pCl = sendPclCmd(port=port, timeOut=10)
             stat = pCl.status()
-            print(stat.getState())
             if stat.getState() != "OFFLINE":
                 info(1,"Sending OFFLINE command to external server ...")
                 stat = pCl.offline(1)
