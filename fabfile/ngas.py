@@ -253,8 +253,15 @@ def install_user_profile():
             run('cp .bash_profile .bash_profile_orig', warn_only=True)
         else:
             run('cp .bash_profile_orig .bash_profile')
-        run('echo "export NGAS_PREFIX={0}" >> .bash_profile'.format(nrd))
-        run('echo "source {0}/bin/activate" >> .bash_profile'.format(nid))
+
+        script = ('if [ -f "{0}/bin/activate" ]'.format(nid),
+                  'then',
+                  '   source "{0}/bin/activate"'.format(nid),
+                  'fi',
+                  'export NGAS_PREFIX="{0}"'.format(nrd))
+
+        for line in script:
+            run("echo -e '{0}' >> .bash_profile".format(line))
 
 def ngas_build_cmd(no_client):
     # The installation of the bsddb package (needed by ngamsCore) is in
