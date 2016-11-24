@@ -220,7 +220,7 @@ def create_aws_instances(n_instances=1):
 
     # Instances have started, but are not usable yet, make sure SSH has started
     puts('Started the instance(s) now waiting for the SSH daemon to start.')
-    execute(check_ssh)
+    execute(check_ssh, timeout=300)
 
 @task
 def list_instances():
