@@ -242,7 +242,8 @@ def install_user_profile():
 
     NOTE: This will be executed for the user running NGAS.
     """
-    if run('echo $NGAS_DONT_MODIFY_BASHPROFILE'):
+    if run('echo $NGAS_DONT_MODIFY_BASHPROFILE') or \
+       'NGAS_NO_BASH_PROFILE' in env:
         return
 
     nid = ngas_install_dir()
@@ -259,8 +260,7 @@ def install_user_profile():
                   'fi',
                   'export NGAS_PREFIX="{0}"'.format(nrd))
 
-        for line in script:
-            run("echo -e '{0}' >> .bash_profile".format(line))
+        run("echo '{0}' >> .bash_profile".format('\n'.join(script)))
 
 def ngas_build_cmd(no_client):
     # The installation of the bsddb package (needed by ngamsCore) is in
