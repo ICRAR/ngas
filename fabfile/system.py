@@ -257,8 +257,9 @@ def create_user(user, group=None):
     sudo('chown -R {0}:{1} /home/{0}/.ssh'.format(user,group))
 
     # Copy the public key of our SSH key if we're using one
+    public_key = None
     for key_filename in [env.key_filename, os.path.expanduser("~/.ssh/id_rsa")]:
-        if key_filename is not None:
+        if key_filename is not None and os.path.exists(key_filename):
             public_key = get_public_key(key_filename)
             if public_key:
                 break
