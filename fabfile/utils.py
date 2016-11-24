@@ -104,6 +104,7 @@ def check_ssh(timeout=60.):
             tries += 1
             puts(yellow("Cannot connect through SSH (%d/%d tries)" % (tries, ntries)))
             sleep_time = each_timeout - (time.time() - start)
+            sleep_time = max(sleep_time, 0)
 
     error = "No SSH connection could be established to %s after %.2f seconds.\n" % (env.host, timeout)
     if is_localhost():
