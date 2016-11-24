@@ -173,6 +173,7 @@ def check_brew_cellar():
 # Alpha-sorted packages per package manager
 YUM_PACKAGES = [
    'autoconf',
+   'bzip2-devel',
    'cfitsio-devel',
    'db4-devel',
    'gcc',
