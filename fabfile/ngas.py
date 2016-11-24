@@ -189,7 +189,7 @@ def test_ngas_status():
         puts(green('Response from {0} OK'.format(env.host)))
 
 @task
-def virtualenv_setup(python_path = None):
+def virtualenv_setup(python_install):
     """
     Creates a new virtualenv that will hold the NGAS installation
     """
@@ -201,24 +201,23 @@ def virtualenv_setup(python_path = None):
             abort(msg % (ngasInstallDir,))
         run("rm -rf %s" % (ngasInstallDir,))
 
-    def venv_python():
-        if python_path:
-            return python_path
-        else:
-            return "$(which python)"
+    # Check which python will be bound to the virtualenv
+    ppath = check_python()
+    if not ppath or str(python_install) == 'True':
+        ppath = python_setup(os.path.join(home(),'python'))
 
     # Get virtualenv if necessary and create the new NGAS virtualenv,
     # making sure the new virtualenv ends up using the python executable
     # we gave as argument (or the default one)
     if check_command('virtualenv'):
-        run('virtualenv {0} -p {1}'.format(ngasInstallDir, venv_python()))
+        run('virtualenv {0} -p {1}'.format(ngasInstallDir, ppath))
     else:
         with cd('/tmp'):
             f = download(VIRTUALENV_URL)
             vbase = f.split('.tar.gz')[0]
             run('tar -xzf {0}.tar.gz'.format(vbase))
             with cd(vbase):
-                run('python virtualenv.py -p {1} {0}'.format(ngasInstallDir, venv_python()))
+                run('{1} virtualenv.py -p {1} {0}'.format(ngasInstallDir, ppath))
             run('rm -rf virtualenv*')
 
     # Download this particular certifcate; otherwise pip complains
@@ -355,14 +354,7 @@ def install(sys_install=True, user_install=True,
     # This is possible because during create_user() we copy the public SSH
     # key we are using to the authorized_keys file of NGAS_USER
     with settings(user=user):
-
-        # If there is no suitable python, we get our own and install it on
-        # the user's home
-        ppath = check_python()
-        if not ppath or str(python_install) == 'True':
-            ppath = python_setup(os.path.join(home(),'python'))
-
-        virtualenv_setup(ppath)
+        virtualenv_setup(python_install)
         ngas_full_buildout(typ=typ)
 
         nsd = ngas_source_dir()
