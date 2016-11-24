@@ -229,6 +229,10 @@ def virtualenv_setup(python_path = None):
             download('http://curl.haxx.se/ca/cacert.pem')
     run('echo "[global]" > ~/.pip/pip.conf; echo "cert = {0}/.pip/cacert.pem" >> ~/.pip/pip.conf;'.format(home()))
 
+    # Update pip and install wheel; this way we can install binary wheels from
+    # PyPI if available (like numpy)
+    virtualenv('pip install -U pip wheel')
+
     puts(green("\n******** VIRTUALENV SETUP COMPLETED!********\n"))
 
 @task
