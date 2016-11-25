@@ -2,13 +2,17 @@
 Post-installation
 #################
 
+.. note::
+ If NGAS was installed in a virtual environment
+ remember to source it before proceeding.
+
 Trying out the server
 =====================
 
 The following command can be used to just make sure that the whole installation
 is working fine::
 
-	ngamsPClient -cmd ARCHIVE -fileUri $(which ngamsPClient) -mimeType application/octet-stream
+	ngamsPClient -cmd ARCHIVE -fileUri $(which ngamsPClient) -mimeType application/octet-stream -v 1
 
 What comes out should look as follows::
 
