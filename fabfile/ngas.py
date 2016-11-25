@@ -230,7 +230,13 @@ def virtualenv_setup(python_install):
 
     # Update pip and install wheel; this way we can install binary wheels from
     # PyPI if available (like numpy)
-    virtualenv('pip install -U pip wheel')
+    # TODO: setuptools and python-daemon are here only because
+    #       python-daemon 2.1.2 is having a problem to install via setuptools
+    #       but not via pip (see https://pagure.io/python-daemon/issue/2 and
+    #       https://pagure.io/python-daemon/issue/3).
+    #       When this problem is fixed we'll fix our dependency on python-daemo
+    #       to avoid this issue entirely
+    virtualenv('pip install -U pip wheel setuptools python-daemon')
 
     puts(green("\n******** VIRTUALENV SETUP COMPLETED!********\n"))
 
