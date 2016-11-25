@@ -1022,6 +1022,10 @@ def mvFile(srcFilename,
             os.chmod(trgFilename, 420)
         checkCreatePath(os.path.dirname(trgFilename))
         fileSize = getFileSize(srcFilename)
+
+        # TODO: only check for available disk space if we are crossing
+        #       filesystem boundaries; otherwise we unnecessarily fail
+        #       for file moves that would gracefully run
         checkAvailDiskSpace(trgFilename, fileSize)
         timer = PccUtTime.Timer()
 
