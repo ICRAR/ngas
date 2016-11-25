@@ -28,7 +28,7 @@ function print_usage {
 	echo
 	echo "-h, -?: Show this help"
 	echo "-c: Include the C client compilation"
-	echo "-d: Install Python egss as development eggs"
+	echo "-d: Install Python eggs as development eggs"
 }
 
 # Command-line option parsing
