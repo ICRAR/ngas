@@ -158,9 +158,10 @@ class ngamsArchiveClientTest(ngamsTestSuite):
         """
         self.prepExtSrv()
 
-        # Make sure the parent directory of the client exists before the launch
-        # the client; otherwise it might fail!
-        d = os.path.abspath(os.path.join(arcCliDir(), ".."))
+        # Make sure the the queue subdir exist before the launch the client;
+        # otherwise the client and this test might find themselves in a race
+        # condition and the test might fail
+        d = os.path.abspath(os.path.join(arcCliDir(), 'queue'))
         if not os.path.exists(d):
             os.makedirs(d)
 
@@ -168,7 +169,6 @@ class ngamsArchiveClientTest(ngamsTestSuite):
 
         # Archive a file as copy and link.
         # Make sure at least the quee dir is already created
-        os.makedirs(os.path.join(arcCliDir(), 'queue'))
         srcFile = os.path.abspath("src/SmallFile.fits")
         shutil.copy(srcFile, os.path.join(arcCliDir(), 'queue'))
         os.symlink(srcFile, os.path.join(arcCliDir(), 'queue', 'Test.fits'))
