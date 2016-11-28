@@ -713,6 +713,8 @@ def speedPlot(ifile=DEFAULT_FNM, timefl=1):
     """
     Produce a plot from the output produced by the internal Python
     dd implementation of diskTest.
+    The CRC throughput is shown in RED. The pure I/O in BLUE and the
+    total throughput (CRC+I/O) in GREEN.
 
     INPUT:
     ifile:    string, file name of the pickle file as produced by
