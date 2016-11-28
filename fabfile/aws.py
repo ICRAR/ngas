@@ -29,13 +29,12 @@ import time
 from fabric.colors import green, red, blue, yellow
 from fabric.contrib.console import confirm
 from fabric.decorators import task
-from fabric.operations import prompt
 from fabric.state import env
 from fabric.tasks import execute
 from fabric.utils import puts, abort, fastprint
 
 from ngas import ngas_revision
-from utils import default_if_empty, to_boolean, whatsmyip, check_ssh, \
+from utils import default_if_empty, whatsmyip, check_ssh, \
     key_filename
 
 # Don't re-export the tasks imported from other modules
@@ -52,22 +51,22 @@ AMI_IDs = {
            }
 
 # Instance creation defaults
-AMI_NAME = 'Amazon'
-INSTANCE_NAME = 'NGAS_{0}' # gets formatted with the git branch name
-INSTANCE_TYPE = 't1.micro'
-AWS_KEY_NAME = 'icrar_ngas'
-AWS_SEC_GROUP = 'NGAS' # Security group allows SSH and other ports
-USE_ELASTIC_IP = False
+DEFAULT_AWS_AMI_NAME = 'Amazon'
+DEFAULT_AWS_INSTANCES = 1
+DEFAULT_AWS_INSTANCE_NAME_TPL = 'NGAS_{0}' # gets formatted with the git branch name
+DEFAULT_AWS_INSTANCE_TYPE = 't1.micro'
+DEFAULT_AWS_KEY_NAME = 'icrar_ngas'
+DEFAULT_AWS_SEC_GROUP = 'NGAS' # Security group allows SSH and other ports
 
 # Connection defaults
-AWS_PROFILE = 'NGAS'
-AWS_REGION = 'us-east-1'
+DEFAULT_AWS_PROFILE = 'NGAS'
+DEFAULT_AWS_REGION = 'us-east-1'
 
 
 def connect():
     import boto.ec2
-    default_if_empty(env, 'AWS_PROFILE', AWS_PROFILE)
-    default_if_empty(env, 'AWS_REGION',  AWS_REGION)
+    default_if_empty(env, 'AWS_PROFILE', DEFAULT_AWS_PROFILE)
+    default_if_empty(env, 'AWS_REGION',  DEFAULT_AWS_REGION)
     return boto.ec2.connect_to_region(env.AWS_REGION, profile_name=env.AWS_PROFILE)
 
 def userAtHost():
@@ -93,17 +92,21 @@ def aws_create_key_pair(conn):
 
 def check_create_aws_sec_group(conn):
     """
-    Check whether default security group exists
+    Check whether the NGAS security group exists
     """
+
+    default_if_empty(env, 'AWS_SEC_GROUP', DEFAULT_AWS_SEC_GROUP)
+
+    ngas_secgroup = env.AWS_SEC_GROUP
     sec = conn.get_all_security_groups()
     conn.close()
     for sg in sec:
-        if sg.name.upper() == AWS_SEC_GROUP:
-            puts(green("AWS Security Group {0} exists ({1})".format(AWS_SEC_GROUP, sg.id)))
+        if sg.name.upper() == ngas_secgroup:
+            puts(green("AWS Security Group {0} exists ({1})".format(ngas_secgroup, sg.id)))
             return sg.id
 
     # Not found, create a new one
-    ngassg = conn.create_security_group(AWS_SEC_GROUP, 'NGAS default permissions')
+    ngassg = conn.create_security_group(ngas_secgroup, 'NGAS default permissions')
     ngassg.authorize('tcp', 22, 22, '0.0.0.0/0')
     ngassg.authorize('tcp', 80, 80, '0.0.0.0/0')
     ngassg.authorize('tcp', 5678, 5678, '0.0.0.0/0')
@@ -111,41 +114,39 @@ def check_create_aws_sec_group(conn):
     return ngassg.id
 
 
-def create_instances(conn, n_instances, sgid):
+def create_instances(conn, sgid):
     """
     Create one or more EC2 instances
     """
 
-    default_if_empty(env, 'AMI_NAME',       AMI_NAME)
-    default_if_empty(env, 'instance_type',  INSTANCE_TYPE)
-    default_if_empty(env, 'use_elastic_ip', USE_ELASTIC_IP)
+    default_if_empty(env, 'AWS_AMI_NAME',             DEFAULT_AWS_AMI_NAME)
+    default_if_empty(env, 'AWS_INSTANCE_TYPE',        DEFAULT_AWS_INSTANCE_TYPE)
+    default_if_empty(env, 'AWS_INSTANCES',            DEFAULT_AWS_INSTANCES)
 
-    n_instances = int(n_instances)
+    n_instances = int(env.AWS_INSTANCES)
     if n_instances > 1:
-        names = ["%s_%d" % (env.instance_name, i) for i in xrange(n_instances)]
+        names = ["%s_%d" % (env.AWS_INSTANCE_NAME, i) for i in xrange(n_instances)]
     else:
-        names = [env.instance_name]
+        names = [env.AWS_INSTANCE_NAME]
     puts('Creating instances {0}'.format(names))
 
-    use_elastic_ip = to_boolean(env.use_elastic_ip)
-    if use_elastic_ip:
-        if 'public_ip' in env:
-            public_ip = env.public_ip
-        else:
-            public_ip = prompt('What is the public IP address: ', 'public_ip')
-    else:
-        public_ips = [None] * n_instances
+    public_ips = None
+    if 'AWS_ELASTIC_IPS' in env:
 
-    if use_elastic_ip:
-        # Disassociate the public IP
+        public_ips = env.AWS_ELASTIC_IPS.split(',')
+        if len(public_ips) != n_instances:
+            abort("n_instances != #AWS_ELASTIC_IPS (%d != %d)" % (n_instances, len(public_ips)))
+
+        # Disassociate the public IPs
         for public_ip in public_ips:
             if not conn.disassociate_address(public_ip=public_ip):
                 abort('Could not disassociate the IP {0}'.format(public_ip))
 
-    reservations = conn.run_instances(AMI_IDs[env.AMI_NAME], instance_type=env.instance_type, \
+    reservations = conn.run_instances(AMI_IDs[env.AWS_AMI_NAME], instance_type=env.AWS_INSTANCE_TYPE, \
                                     key_name=env.AWS_KEY_NAME, security_group_ids=[sgid],\
                                     min_count=n_instances, max_count=n_instances)
     instances = reservations.instances
+
     # Sleep so Amazon recognizes the new instance
     for i in range(4):
         fastprint('.')
@@ -167,29 +168,32 @@ def create_instances(conn, n_instances, sgid):
     userAThost = userAtHost()
 
     # Tag the instance
-    for i in range(n_instances):
-        conn.create_tags([instances[i].id], {'Name': names[i],
-                                             'Created By':userAThost,
-                                             })
+    for name, instance in zip(names, instances):
+        conn.create_tags([instance.id], {'Name': name,
+                                         'Created By':userAThost,
+                                         })
 
     # Associate the IP if needed
-    if use_elastic_ip:
-        for i in range(n_instances):
-            puts('Current DNS name is {0}. About to associate the Elastic IP'.format(instances[i].dns_name))
-            if not conn.associate_address(instance_id=instances[i].id, public_ip=public_ips[i]):
-                abort('Could not associate the IP {0} to the instance {1}'.format(public_ips[i], instances[i].id))
+    if public_ips:
+        for instance, public_ip in zip(instances, public_ips):
+            puts('Current DNS name is {0}. About to associate the Elastic IP'.format(instance.dns_name))
+            if not conn.associate_address(instance_id=instance.id, public_ip=public_ip):
+                abort('Could not associate the IP {0} to the instance {1}'.format(public_ip, instance.id))
 
     # Load the new instance data as the dns_name may have changed
     host_names = []
-    for i in range(n_instances):
-        instances[i].update(True)
-        print_instance(instances[i])
-        host_names.append(str(instances[i].dns_name))
+    for instance in instances:
+        instance.update(True)
+        print_instance(instance)
+        host_names.append(str(instance.dns_name))
     return host_names
 
+def default_instance_name():
+    rev = ngas_revision()
+    return DEFAULT_AWS_INSTANCE_NAME_TPL.format(rev)
 
 @task
-def create_aws_instances(n_instances=1):
+def create_aws_instances():
     """
     Create AWS instances and let Fabric point to them
 
@@ -197,9 +201,8 @@ def create_aws_instances(n_instances=1):
     the current public IP and username.
     """
 
-    rev = ngas_revision()
-    default_if_empty(env, 'AWS_KEY_NAME',   AWS_KEY_NAME)
-    default_if_empty(env, 'instance_name',  INSTANCE_NAME.format(rev))
+    default_if_empty(env, 'AWS_KEY_NAME',      DEFAULT_AWS_KEY_NAME)
+    default_if_empty(env, 'AWS_INSTANCE_NAME', default_instance_name)
 
     # Create the key pair and security group if necessary
     conn = connect()
@@ -207,20 +210,20 @@ def create_aws_instances(n_instances=1):
     sgid = check_create_aws_sec_group(conn)
 
     # Create the instance in AWS
-    host_names = create_instances(conn, n_instances, sgid)
+    host_names = create_instances(conn, sgid)
 
     # Update our fabric environment so from now on we connect to the
     # AWS machine using the correct user and SSH private key
     env.hosts = host_names
     env.key_filename = key_filename(env.AWS_KEY_NAME)
-    if env.AMI_NAME in ['CentOS', 'SLES']:
+    if env.AWS_AMI_NAME in ['CentOS', 'SLES']:
         env.user = 'root'
     else:
         env.user = 'ec2-user'
 
     # Instances have started, but are not usable yet, make sure SSH has started
     puts('Started the instance(s) now waiting for the SSH daemon to start.')
-    execute(check_ssh)
+    execute(check_ssh, timeout=300)
 
 @task
 def list_instances():

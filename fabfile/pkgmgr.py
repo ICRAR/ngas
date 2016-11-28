@@ -67,7 +67,13 @@ def install_apt(packages):
     """
     Install packages using APT
     """
-    sudo('apt-get -qq -y install {0}'.format(' '.join(packages)))
+    # We need to iterate over each one because if at least one of them
+    # is actually not a package (misspelled, doesn't exist anymore, debian-
+    # or ubuntu-specific, etc) the whole install process would fail
+    # On the other hand there appears to be no flag to ignore these errors
+    # on apt-get (tested on Ubuntu 12.04)
+    for pkg in packages:
+        sudo('apt-get -qq -y install {0}'.format(pkg))
 
 
 def install_brew(package):
@@ -167,6 +173,7 @@ def check_brew_cellar():
 # Alpha-sorted packages per package manager
 YUM_PACKAGES = [
    'autoconf',
+   'bzip2-devel',
    'cfitsio-devel',
    'db4-devel',
    'gcc',
@@ -197,17 +204,18 @@ APT_PACKAGES = [
     'libreadline-dev',
     'libsqlite3-dev',
     'libssl-dev',
-    'openssh-server',
     'libtool',
     'libzlcore-dev',
     'make',
     'patch',
     'postgresql-client',
     'python-dev',
+    'python-setuptools',
     'tar',
     'sqlite3',
     'wget',
     'zlib1g-dbg',
+    'zlib1g-dev',
 ]
 
 SLES_PACKAGES = [

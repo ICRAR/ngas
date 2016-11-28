@@ -30,7 +30,7 @@ from fabric.context_managers import cd, settings
 from fabric.decorators import task
 from fabric.operations import prompt
 from fabric.state import env
-from fabric.utils import puts
+from fabric.utils import puts, abort
 import pkg_resources
 
 from utils import run, sudo, get_public_key
@@ -62,11 +62,11 @@ SUPPORTED_OS += SUPPORTED_OS_MAC
 MACPORT_DIR = '/opt/local'
 
 @task
-def check_command(command):
+def check_command(command, *args, **kwargs):
     """
     Check existence of command remotely
     """
-    res = run('if command -v {0} &> /dev/null ;then command -v {0};else echo ;fi'.format(command))
+    res = run('if command -v {0} &> /dev/null ;then command -v {0};else echo ;fi'.format(command), *args, **kwargs)
     return res
 
 @task
@@ -96,6 +96,16 @@ def check_user(user):
         return False
     else:
         return True
+
+@task
+def check_sudo():
+    '''
+    Checks if the sudo command is present.
+    Installing it via the package manager of choice is too late already,
+    because those (e.g., yum, apt-get, etc.) are invoked via sudo already.
+    '''
+    if not check_command('sudo', quiet=True):
+        abort('sudo is not installed in the target system')
 
 def get_linux_flavor():
     """
@@ -213,7 +223,7 @@ def download(url, target=None):
 
 
 APP_PYTHON_VERSION = '2.7'
-APP_PYTHON_URL = 'https://www.python.org/ftp/python/2.7.9/Python-2.7.9.tgz'
+APP_PYTHON_URL = 'https://www.python.org/ftp/python/2.7.12/Python-2.7.12.tgz'
 
 @task
 def check_python():
@@ -257,8 +267,21 @@ def create_user(user, group=None):
     sudo('chown -R {0}:{1} /home/{0}/.ssh'.format(user,group))
 
     # Copy the public key of our SSH key if we're using one
-    for key_filename in [env.key_filename, os.path.expanduser("~/.ssh/id_rsa")]:
-        if key_filename is not None:
+    # If the user specified a private key via "fab -i" we use that one;
+    # otherwise we use the default RSA key.
+    # env.key_filename can be a list, so make sure we handle it correctly
+    if 'key_filename' in env:
+        k_fname = env.key_filename
+        if not isinstance(k_fname, list):
+            fnames = [k_fname]
+        else:
+            fnames = k_fname
+    else:
+        fnames = [os.path.expanduser("~/.ssh/id_rsa")]
+
+    public_key = None
+    for key_filename in fnames:
+        if key_filename is not None and os.path.exists(key_filename):
             public_key = get_public_key(key_filename)
             if public_key:
                 break

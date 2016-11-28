@@ -2,6 +2,12 @@
 Running
 #######
 
+.. note::
+ If NGAS was installed in a virtual environment
+ remember to source it before proceeding.
+ Remember that the :ref:`fabric-based installation <inst.fabric>`
+ always installas NGAS in a virtualenv.
+
 .. _running.server:
 
 Server

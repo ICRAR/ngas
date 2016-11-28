@@ -22,6 +22,8 @@
 """
 Various utilities used throughout the rest of the modules
 """
+
+import math
 import os
 import socket
 import time
@@ -29,14 +31,13 @@ import types
 import urllib2
 
 from Crypto.PublicKey import RSA
-
-from fabric.colors import green, red
+from fabric.colors import green, red, yellow
 from fabric.context_managers import settings, hide
 from fabric.decorators import task, parallel
 from fabric.exceptions import NetworkError
 from fabric.operations import run as frun, sudo as fsudo
 from fabric.state import env
-from fabric.utils import puts
+from fabric.utils import puts, abort
 
 
 def to_boolean(choice, default=False):
@@ -82,27 +83,43 @@ def home():
 
 @task
 @parallel
-def check_ssh():
+def check_ssh(timeout=60.):
     """
     Check availability of SSH
     """
-    ssh_available = False
-    ntries = 30
+    each_timeout = 5.
+    ntries = math.ceil(timeout / each_timeout)
     tries = 0
-    test_period = 10
-    timeout = 3
-    t_sleep = test_period - timeout
-    while tries < ntries and not ssh_available:
-        try:
-            with settings(timeout=timeout, warn_only=True):
-                run("echo 'Is SSH working?'", combine_stderr=True)
-            ssh_available = True
-            puts(green("SSH is working!"))
-        except NetworkError:
-            puts(red("SSH is NOT working after {0} seconds!".format(str(tries*test_period))))
-            tries += 1
-            time.sleep(t_sleep)
 
+    sleep_time = 0
+    while tries < ntries:
+        time.sleep(sleep_time)
+        start = time.time()
+        try:
+            with settings(timeout=each_timeout, warn_only=True):
+                run('echo', quiet=True)
+                puts(green("SSH is working!"))
+            return
+        except NetworkError:
+            tries += 1
+            puts(yellow("Cannot connect through SSH (%d/%d tries)" % (tries, ntries)))
+            sleep_time = each_timeout - (time.time() - start)
+            sleep_time = max(sleep_time, 0)
+
+    error = "No SSH connection could be established to %s after %.2f seconds.\n" % (env.host, timeout)
+    if is_localhost():
+        error += ("Check that you have an SSH server installed and running.\n"
+                 "In most Linux distributions this is ensured by installing "
+                 "the openssh-server package.\n"
+                 "In MacOS you enable this by "
+                 "checking the 'Remote Login' preference in the 'Sharing' "
+                 "preference panel.")
+    else:
+        error += ("Check that you are connecting to the correct host with the "
+                 "correct user, and that an SSH server is running in the "
+                 "remote machine")
+
+    abort(error)
 
 # Replacement functions for running commands
 # They wrap up the command with useful things
@@ -110,8 +127,11 @@ def run(*args, **kwargs):
     with hide('running'):
         com = args[0]
         com = 'unset PYTHONPATH; {0}'.format(com)
-        puts('Executing: {0}'.format(com))
-        res = frun(com, quiet=False, **kwargs)
+        if 'quiet' not in kwargs or not kwargs['quiet']:
+            puts('Executing: {0}'.format(com))
+        if 'quiet' not in kwargs:
+            kwargs['quiet'] = False
+        res = frun(com, **kwargs)
     return res
 
 def sudo(*args, **kwargs):
@@ -124,7 +144,8 @@ def sudo(*args, **kwargs):
 
 def is_localhost():
     # ensure something is run in that host
-    run('echo')
+    if not env.host:
+        run('echo')
     return env.host == 'localhost' or \
            env.host.startswith("127.0.") or \
            env.host == socket.gethostname()
