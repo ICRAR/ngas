@@ -267,8 +267,20 @@ def create_user(user, group=None):
     sudo('chown -R {0}:{1} /home/{0}/.ssh'.format(user,group))
 
     # Copy the public key of our SSH key if we're using one
+    # If the user specified a private key via "fab -i" we use that one;
+    # otherwise we use the default RSA key.
+    # env.key_filename can be a list, so make sure we handle it correctly
+    if 'key_filename' in env:
+        k_fname = env.key_filename
+        if not isinstance(k_fname, list):
+            fnames = [k_fname]
+        else:
+            fnames = k_fname
+    else:
+        fnames = [os.path.expanduser("~/.ssh/id_rsa")]
+
     public_key = None
-    for key_filename in [env.key_filename, os.path.expanduser("~/.ssh/id_rsa")]:
+    for key_filename in fnames:
         if key_filename is not None and os.path.exists(key_filename):
             public_key = get_public_key(key_filename)
             if public_key:
