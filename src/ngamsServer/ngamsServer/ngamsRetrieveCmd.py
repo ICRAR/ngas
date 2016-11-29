@@ -276,7 +276,7 @@ def performStaging(srvObj, reqPropsObj, httpRef, filename):
 
     try:
         st = time.time()
-        stageFiles(filenameList = [filename],
+        stageFiles(filenames = [filename],
                     requestObj = reqPropsObj,
                     serverObj = srvObj)
         howlong = time.time() - st
