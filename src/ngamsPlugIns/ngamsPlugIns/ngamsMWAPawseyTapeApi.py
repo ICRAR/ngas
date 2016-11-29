@@ -158,6 +158,7 @@ def stageFiles(filenames, requestObj = None, serverObj = None):
     host = 'fe1.pawsey.ivec.org'
     port = 9898
 
+    '''
     if serverObj:
         phost = serverObj.getCfg().getFileStagingPlugHost()
         if phost:
@@ -166,7 +167,7 @@ def stageFiles(filenames, requestObj = None, serverObj = None):
         pport = serverObj.getCfg().getFileStagingPlugPort()
         if pport:
             port = int(pport)
-
+    '''
     filelist = filenames
 
     try:
