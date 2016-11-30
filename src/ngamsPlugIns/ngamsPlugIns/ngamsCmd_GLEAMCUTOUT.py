@@ -1,4 +1,3 @@
-
 #    ICRAR - International Centre for Radio Astronomy Research
 #    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
@@ -34,28 +33,21 @@ read fits header, get cdel1,2 and epoch information
 Cutout a gleam FITS image, convert it into png, and display in the browser, then remove the jpeg file
 """
 
-import math, time, commands, os, subprocess, traceback, threading
+import math, time, commands, os, traceback, threading
 import ephem
 import pyfits as pyfits_real
 import astropy.io.fits as pyfits
 import astropy.wcs as pywcs
 import astropy.units as u
 from astropy.coordinates import SkyCoord
-import numpy
 from string import Template
+
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_TEXT_MT,\
+    info, error
 
 week_date_dict = {
 '1':'2013-08-13', '2':'2013-11-15', '3':'2014-03-10', '4':'2014-06-13'
 }
-
-try:
-    from ngams import *
-    my_host = getHostId()
-except ImportError as ie:
-    my_host = None
-
-if ("store04:7779" == my_host):
-    my_host = "store04:7777"
 
 """
 disk_host_dict = {"3bcfe8b4996a5c15d91e32f287a1a574":"store02:7777",
@@ -502,9 +494,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                      "Cannot find image file: '%s'" % fileId)
         return
     file_host = reList[0][1]
-    global my_host
-    if (my_host is None):
-        my_host = srvObj.getHostId()
+    my_host = srvObj.getHostId()
     if (file_host != my_host):
         if (not host_id_ip_dict.has_key(file_host)):
             srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
