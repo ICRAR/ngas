@@ -171,6 +171,9 @@ are available to further customize the process:
 | NGAS_NO_CLIENT              | | Skip the compilation and           | | ``False``       |
 |                             | | installation of the NGAS C client  |                   |
 +-----------------------------+--------------------------------------+-------------------+
+| NGAS_DEVELOP                | | If specified, install the NGAS     | | Not specified   |
+|                             | | Python modules in development mode |                   |
++-----------------------------+--------------------------------------+-------------------+
 | NGAS_NO_BASH_PROFILE        | | If specified, skip the edition of  | | Not specified   |
 |                             | | the user's ``~/.bash_profile`` for |                   |
 |                             | | automatic virtualenv sourcing      |                   |
