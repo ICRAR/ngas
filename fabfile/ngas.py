@@ -76,6 +76,10 @@ NGAS_ROOT_DIR_NAME = 'NGAS'
 # This is relative to the NGAS_USER home directory
 NGAS_INSTALL_DIR_NAME = 'ngas_rt'
 
+# The type of server to configure after installation
+# Values are 'archive' and 'cache'
+NGAS_SERVER_TYPE = 'archive'
+
 VIRTUALENV_URL = 'https://pypi.python.org/packages/source/v/virtualenv/virtualenv-12.0.7.tar.gz'
 
 def ngas_user(check_localhost=True):
@@ -118,6 +122,10 @@ def ngas_develop():
     key = 'NGAS_DEVELOP'
     return key in env
 
+def ngas_server_type():
+    default_if_empty(env, 'NGAS_SERVER_TYPE', NGAS_SERVER_TYPE)
+    return env.NGAS_SERVER_TYPE
+
 def has_local_git_repo():
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     return os.path.exists(os.path.join(repo_root, '.git'))
@@ -138,19 +146,20 @@ def virtualenv(command, **kwargs):
     nid = ngas_install_dir()
     run('source {0}/bin/activate && {1}'.format(nid, command), **kwargs)
 
-def initName(typ='archive'):
+def initName():
     """
     Helper function to set the name of the link to the config file.
     """
+    typ = ngas_server_type()
     if typ == 'archive':
         initFile = 'ngamsServer.init.sh'
-        NGAS_DEF_CFG = 'NgamsCfg.SQLite.mini.xml'
-        NGAS_LINK_CFG = 'ngamsServer.conf'
+        cfgFile = 'ngamsServer.conf'
     elif typ == 'cache':
         initFile = 'ngamsCache.init.sh'
-        NGAS_DEF_CFG = 'NgamsCfg.SQLite.cache.xml'
-        NGAS_LINK_CFG = 'ngamsCacheServer.conf'
-    return (initFile, initFile.split('.')[0], NGAS_DEF_CFG, NGAS_LINK_CFG)
+        cfgFile = 'ngamsCacheServer.conf'
+    else:
+        raise Exception("Values for NGAS_SERVER_TYPE are 'archive' or 'cache'")
+    return (initFile, cfgFile)
 
 @task
 def start_ngas_and_check_status():
@@ -301,7 +310,7 @@ def ngas_build_cmd(no_client, develop):
     return ' '.join(build_cmd)
 
 @task
-def ngas_buildout(typ='archive'):
+def ngas_buildout():
     """
     Perform just the buildout and virtualenv config
 
@@ -320,11 +329,12 @@ def ngas_buildout(typ='archive'):
         virtualenv(build_cmd)
 
         # Installing and initializing an NGAS_ROOT directory
-        _,_,cfg,lcfg,  = initName(typ=typ)
-        ngasTargetCfg = os.path.join(nrd, 'cfg', lcfg)
+        src_cfg = 'NgamsCfg.SQLite.mini.xml'
+        _,tgt_cfg,  = initName()
+        ngasTargetCfg = os.path.join(nrd, 'cfg', tgt_cfg)
         run('mkdir -p {0}'.format(nrd))
         run('cp -R NGAS/* {0}'.format(nrd))
-        run('cp cfg/{0} {1}'.format(cfg, ngasTargetCfg))
+        run('cp cfg/{0} {1}'.format(src_cfg, ngasTargetCfg))
         sed(ngasTargetCfg, '\*replaceRoot\*', nrd)
 
         # Initialize the SQlite database
@@ -336,19 +346,17 @@ def ngas_buildout(typ='archive'):
 
 
 @task
-def ngas_full_buildout(typ='archive'):
+def ngas_full_buildout():
     """
     Perform the full install and buildout
     """
-
     copy_sources()
-    ngas_buildout(typ=typ)
+    ngas_buildout()
     install_user_profile()
 
 @task
 def install(sys_install=True, user_install=True,
-            init_install=True, typ='archive',
-            python_install=False, postfix=False):
+            init_install=True, python_install=False, postfix=False):
     """
     Install NGAS users and NGAS software on the host this task is being run on
     """
@@ -368,7 +376,7 @@ def install(sys_install=True, user_install=True,
     # key we are using to the authorized_keys file of NGAS_USER
     with settings(user=user):
         virtualenv_setup(python_install)
-        ngas_full_buildout(typ=typ)
+        ngas_full_buildout()
 
         nsd = ngas_source_dir()
         nid = ngas_install_dir()
@@ -381,12 +389,13 @@ def install(sys_install=True, user_install=True,
     puts(green("\n******** INSTALLATION COMPLETED!********\n"))
 
 
-def init_deploy(nsd, nid, typ = 'archive'):
+def init_deploy(nsd, nid):
     """
     Install the NGAS init script for an operational deployment
     """
 
-    initFile, initLinkName, _, _ = initName(typ = typ)
+    initFile, _ = initName()
+    initLinkName = initFile.split('.')[0]
     initLinkAbs = '/etc/init.d/' + initLinkName
 
     sudo('cp {0}/src/ngamsStartup/{1} {2}'.format(nsd, initFile, initLinkAbs))
@@ -446,12 +455,12 @@ def copy_sources():
 
 @task
 @parallel
-def install_and_check(sys_install, user_install, init_install, typ):
+def install_and_check(sys_install, user_install, init_install):
     """
     Runs the full installation procedure and checks that the NGAS server is up
     and running after finishing
     """
-    install(sys_install=sys_install, user_install=user_install, init_install=init_install, typ=typ)
+    install(sys_install=sys_install, user_install=user_install, init_install=init_install)
     with settings(user=ngas_user()):
         start_ngas_and_check_status()
 

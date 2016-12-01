@@ -178,6 +178,10 @@ are available to further customize the process:
 |                             | | the user's ``~/.bash_profile`` for |                   |
 |                             | | automatic virtualenv sourcing      |                   |
 +-----------------------------+--------------------------------------+-------------------+
+| NGAS_SERVER_TYPE            | | The server type configured after   | | ``archive``     |
+|                             | | installing NGAS (``archive``,      |                   |
+|                             | | ``cache``)                         |                   |
++-----------------------------+--------------------------------------+-------------------+
 
 For example,
 to install the tip of the ``v8`` branch
