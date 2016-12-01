@@ -41,6 +41,8 @@ from collections import namedtuple
 import commands
 import os
 import time
+import subprocess
+import struct
 
 from ngamsLib import ngamsHighLevelLib, ngamsPlugInApi
 from ngamsLib.ngamsCore import info, checkCreatePath, genLog, alert, TRACE, \
@@ -55,53 +57,58 @@ from pccUt import PccUtTime
 
 bbcp_param = namedtuple('bbcp_param', 'port, winsize, num_streams, checksum')
 
-def bbcpFile(srcFilename, targFilename, bparam,
-    keyfile='', ssh_prefix=''):
+def bbcpFile(srcFilename, targFilename, bparam):
     """
     Use bbcp tp copy file <srcFilename> to <targFilename>
 
     NOTE: This requires remote access to the host as well as
          a bbcp installation on both the remote and local host.
     """
-    info(3,"Copying file: " + srcFilename + " to filename: " + targFilename)
+    info(3, "Copying file: %s to filename: %s" % (srcFilename, targFilename))
     try:
         # Make target file writable if existing.
-        if (os.path.exists(targFilename)): os.chmod(targFilename, 420)
+        if (os.path.exists(targFilename)):
+            os.chmod(targFilename, 420)
+
         checkCreatePath(os.path.dirname(targFilename))
-        #fileSize = getFileSize(srcFilename)
-        #checkAvailDiskSpace(targFilename, fileSize)
-        timer = PccUtTime.Timer()
-        if keyfile: keyfile = '-i {0}'.format(keyfile)
 
         if bparam.port:
-            pt = '-Z %d' % bparam.port
+            pt = ['-Z', str(bparam.port)]
         else:
-            pt = '-z'
+            pt = ['-z']
 
+        fw = []
         if bparam.winsize:
-            fw = '-w %s' % bparam.winsize
-        else:
-            fw = ''
+            fw = ['-w', str(bparam.winsize)]
 
+        ns = []
         if (bparam.num_streams):
-            ns = '-s %d' % bparam.num_streams
-        else:
-            ns = ''
+            ns = ['-s', str(bparam.num_streams)]
 
-        cmd = "bbcp -r -V -a %s %s -P 2 %s %s %s %s%s" %\
-                (fw, ns, pt, keyfile, srcFilename, ssh_prefix, targFilename)
-        info(3, "Executing external command: {0}".format(cmd))
-        stat, out = commands.getstatusoutput(cmd)
-        if (stat): raise Exception, "Error executing copy command: %s: %s"%\
-                   (cmd, str(out))
-        deltaTime = timer.stop()
-        info(3, 'BBCP final message: ' + out.split('\n')[-1]) # e.g. "1 file copied at effectively 18.9 MB/s"
+        cmd_checksum = ['-E', 'c32z=/dev/stdout']
+        cmd_list = ['bbcp', '-f', '-V'] + cmd_checksum + fw + ns + ['-P', '2'] + pt + [srcFilename, targFilename]
+
+        info(3, "Executing external command: %s" % subprocess.list2cmdline(cmd_list))
+
+        p1 = subprocess.Popen(cmd_list, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+        checksum_out, out = p1.communicate()
+
+        if p1.returncode != 0:
+            raise Exception, "Error executing copy command: %s: %s" % \
+                            (subprocess.list2cmdline(cmd_list), str(out))
+
+        # extract c32 zip variant checksum from output and convert to signed 32 bit integer
+        bbcp_checksum = struct.unpack('!i', checksum_out.split(' ')[2].decode('hex'))
+
+        info(3, 'BBCP final message: %s' % out.split('\n')[-2]) # e.g. "1 file copied at effectively 18.9 MB/s"
+        info(3, "File: %s copied to filename: %s" % (srcFilename, targFilename))
+
+        return str(bbcp_checksum[0]), 'c32z'
+
     except Exception, e:
         errMsg = genLog("NGAMS_AL_CP_FILE", [srcFilename, targFilename, str(e)])
         alert(errMsg)
         raise Exception, errMsg
-    info(3,"File: %s copied to filename: %s" % (srcFilename, targFilename))
-    return deltaTime
 
 
 def archiveFromFile(srvObj,
@@ -128,7 +135,7 @@ def archiveFromFile(srvObj,
     """
     T = TRACE()
 
-    info(2,"Archiving file: " + filename + " ...")
+    info(2, "Archiving file: %s ..." % filename)
     if (reqPropsObj):
         info(3,"Request Properties Object given - using this")
         reqPropsObjLoc = reqPropsObj
@@ -148,23 +155,30 @@ def archiveFromFile(srvObj,
             reqPropsObjLoc.setStagingFilename(filename)
             reqPropsObjLoc.setHttpMethod(NGAMS_HTTP_GET)
             reqPropsObjLoc.setCmd(NGAMS_ARCHIVE_CMD)
-            reqPropsObjLoc.setSize(os.path.getsize(filename))
             reqPropsObjLoc.setFileUri(NGAMS_HTTP_FILE_URL + filename)
             reqPropsObjLoc.setNoReplication(noReplication)
 
+        bbcp_checksum = None
         # If no target disk is defined, find one suitable disk.
         if (not reqPropsObjLoc.getTargDiskInfo()):
             try:
                 trgDiskInfo = ngamsArchiveUtils.ngamsDiskUtils.\
                               findTargetDisk(srvObj.getHostId(),
                                              srvObj.getDb(), srvObj.getCfg(),
-                                             mimeType, 0,
-                                             reqSpace=reqPropsObjLoc.getSize())
+                                             mimeType, 0)
+
                 reqPropsObjLoc.setTargDiskInfo(trgDiskInfo)
                 # copy the file to the staging area of the target disk
                 stagingFile = trgDiskInfo.getMountPoint()+ '/staging/' + os.path.basename(filename)
-                bbcpFile(filename, stagingFile, bparam)
+
+                st = time.time()
+                bbcp_checksum = bbcpFile(filename, stagingFile, bparam)
+
+                reqPropsObjLoc.setSize(os.path.getsize(stagingFile))
                 reqPropsObjLoc.setStagingFilename(stagingFile)
+
+                iorate = reqPropsObjLoc.getSize()/(time.time() - st)
+
             except Exception, e:
                 errMsg = str(e) + ". Attempting to bbcp archive file: " +\
                          filename
@@ -173,20 +187,15 @@ def archiveFromFile(srvObj,
                                          "NO DISKS AVAILABLE", errMsg)
                 raise Exception, errMsg
 
-        # Set the log cache to 1 during the handling of the file.
-        setLogCache(1)
         plugIn = srvObj.getMimeTypeDic()[mimeType]
-        info(2,"Invoking DAPI: " + plugIn + " to handle file: " + stagingFile)
+        info(2, "Invoking DAPI: %s to handle file: %s" % (plugIn, stagingFile))
         plugInMethod = loadPlugInEntryPoint(plugIn)
         resMain = plugInMethod(srvObj, reqPropsObjLoc)
-        # Move the file to final destination.
-        st = time.time()
-        mvFile(reqPropsObjLoc.getStagingFilename(),
-               resMain.getCompleteFilename())
-        iorate = reqPropsObjLoc.getSize()/(time.time() - st)
-        setLogCache(10)
 
-        diskInfo = ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain)
+        # Move the file to final destination.
+        mvFile(reqPropsObjLoc.getStagingFilename(), resMain.getCompleteFilename())
+
+        diskInfo = ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain, bbcp_checksum)
         if (bparam.checksum):
             #info(3, "Checking the checksum")
             fileObj = diskInfo.getFileObj(0)
@@ -200,9 +209,10 @@ def archiveFromFile(srvObj,
                 raise Exception("Check sum error: remote CRC: %s, local CRC: %s" % (bparam.checksum, cal_checksum))
 
     except Exception, e:
+        raise e
         # If another error occurs, than one qualifying for Back-Log
         # Buffering the file, we have to log an error.
-        if (ngamsHighLevelLib.performBackLogBuffering(srvObj.getCfg(),
+        '''if (ngamsHighLevelLib.performBackLogBuffering(srvObj.getCfg(),
                                                       reqPropsObjLoc, e)):
             notice("Tried to archive local file: " + filename +\
                    ". Attempt failed with following error: " + str(e) +\
@@ -212,24 +222,17 @@ def archiveFromFile(srvObj,
             error("Tried to archive local file: " + filename +\
                   ". Attempt failed with following error: " + str(e) + ".")
 
-            """
-            # this will not work for bbcp files since they are often remote, cannot be moved like this
-            notice("Moving local file: " +\
-                   filename + " to Bad Files Directory -- cannot be handled.")
-            ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename,
-                                              filename)
-            """
             # Remove pickle file if available.
             pickleObjFile = filename + "." + NGAMS_PICKLE_FILE_EXT
             if (os.path.exists(pickleObjFile)):
                 info(2,"Removing Back-Log Buffer Pickle File: "+pickleObjFile)
                 rmFile(pickleObjFile)
-            return [NGAMS_FAILURE, str(e), NGAMS_FAILURE]
+            return [NGAMS_FAILURE, str(e), NGAMS_FAILURE]'''
 
     # If the file was handled successfully, we remove it from the
     # Back-Log Buffer Directory unless the local file was a log-file
     # in which case we leave the cleanup to the Janitor-Thread.
-    if stagingFile.find('LOG-ROTATE') > -1:
+    '''if stagingFile.find('LOG-ROTATE') > -1:
         info(2,"Successfully archived local file: " + filename)
     else:
         info(2,"Successfully archived local file: " + filename +\
@@ -238,7 +241,7 @@ def archiveFromFile(srvObj,
         rmFile(stagingFile + "." + NGAMS_PICKLE_FILE_EXT)
 
     info(2,"Archived local file: " + filename + ". Time (s): " +\
-         str(archiveTimer.stop()))
+         str(archiveTimer.stop()))'''
     return (resMain, trgDiskInfo, iorate)
 
 
@@ -318,10 +321,10 @@ def handleCmd(srvObj,
     bparam = bbcp_param(port, winsize, num_streams, checksum)
 
     (resDapi, targDiskInfo, iorate) = archiveFromFile(srvObj, fileUri, bparam, 0, mimeType, reqPropsObj)
-    if (resDapi == NGAMS_FAILURE):
+    '''if (resDapi == NGAMS_FAILURE):
         errMsg = targDiskInfo
         srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg + '\n')
-        return
+        raise Exception, "error"'''
 
     # Inform the caching service about the new file.
     info(3, "Inform the caching service about the new file.")

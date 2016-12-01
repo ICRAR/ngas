@@ -72,8 +72,7 @@ def updateFileInfoDb(srvObj,
 
     Returns:          Void.
     """
-    info(4,"Updating file info in NGAS DB for file with ID: " +\
-         piStat.getFileId() + " ...")
+    info(4, "Updating file info in NGAS DB for file with ID: %s ..." % piStat.getFileId())
 
     # Check that the file is really contained in the final location as
     # indicated by the information in the File Info Object.
@@ -107,8 +106,7 @@ def updateFileInfoDb(srvObj,
                setCreationDate(creDate).\
                setIoTime(piStat.getIoTime())
     fileInfo.write(srvObj.getHostId(), srvObj.getDb())
-    info(4,"Updated file info in NGAS DB for file with ID: " +\
-         piStat.getFileId())
+    info(4, "Updated file info in NGAS DB for file with ID: %s" % piStat.getFileId())
 
 
 def replicateFile(dbConObj,
@@ -355,7 +353,8 @@ def checkDiskSpace(srvObj,
 
 def postFileRecepHandling(srvObj,
                           reqPropsObj,
-                          resultPlugIn):
+                          resultPlugIn,
+                          cksum = None):
     """
     The function carries out the action needed after a file has been received
     for archiving. This consists of updating the information about the
@@ -368,24 +367,30 @@ def postFileRecepHandling(srvObj,
 
     resultPlugIn:   Result returned from DAPI (ngamsDapiStatus).
 
+    cksum:          Tuple containing checksum string value and algorithm
+
     Returns:        Disk info object containing the information about
                     the Main File (ngasDiskInfo).
     """
-    info(3,"Data returned from Data Archiving Plug-In: " +\
-         resultPlugIn.toString())
+    info(3, "Data returned from Data Archiving Plug-In: %s" % resultPlugIn.toString())
 
-    # Calculate checksum (if plug-in specified).
-    checksumPlugIn = srvObj.getCfg().getChecksumPlugIn()
-    if (checksumPlugIn != ""):
-        info(4,"Invoking Checksum Plug-In: " + checksumPlugIn +\
-             " to handle file: " + resultPlugIn.getCompleteFilename())
-        plugInMethod = loadPlugInEntryPoint(checksumPlugIn)
-        checksum = plugInMethod(srvObj, resultPlugIn.getCompleteFilename(), 0)
-        info(4,"Invoked Checksum Plug-In: " + checksumPlugIn +\
-             " to handle file: " + resultPlugIn.getCompleteFilename() +\
-             ". Result: " + checksum)
+    # if checksum is already supplied then do not calculate it from the plugin
+    if (cksum == None):
+        # Calculate checksum (if plug-in specified).
+        checksumPlugIn = srvObj.getCfg().getChecksumPlugIn()
+        if (checksumPlugIn != ""):
+            info(4,"Invoking Checksum Plug-In: " + checksumPlugIn +\
+                 " to handle file: " + resultPlugIn.getCompleteFilename())
+            plugInMethod = loadPlugInEntryPoint(checksumPlugIn)
+            checksum = plugInMethod(srvObj, resultPlugIn.getCompleteFilename(), 0)
+            info(4,"Invoked Checksum Plug-In: " + checksumPlugIn +\
+                 " to handle file: " + resultPlugIn.getCompleteFilename() +\
+                 ". Result: " + checksum)
+        else:
+            checksum = ''
+            checksumPlugIn = ''
     else:
-        checksum = checksumPlugIn = ""
+        checksum, checksumPlugIn = cksum
 
     # Update information for Main File/Disk in DB.
     updateFileInfoDb(srvObj, resultPlugIn, checksum, checksumPlugIn)
@@ -445,8 +450,7 @@ def postFileRecepHandling(srvObj,
     srvObj.addSubscriptionInfo([(resultPlugIn.getFileId(),
                                  resultPlugIn.getFileVersion())], [])
 
-    info(4,"Handled file with URI: " + reqPropsObj.getSafeFileUri() +\
-         " successfully")
+    info(4, "Handled file with URI: %s successfully" % reqPropsObj.getSafeFileUri())
     return mainDiskInfo
 
 
