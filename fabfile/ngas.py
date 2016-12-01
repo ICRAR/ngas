@@ -397,7 +397,7 @@ def init_deploy(nsd, nid, typ = 'archive'):
     if (get_linux_flavor() in ['Ubuntu', 'SUSE', 'Suse']):
         sudo('chkconfig --add {0}'.format(initLinkName))
     else:
-        sudo('chkconfig --add '.format(initLinkAbs))
+        sudo('chkconfig --add {0}'.format(initLinkAbs))
 
 
 def create_sources_tarball(tarball_filename):
