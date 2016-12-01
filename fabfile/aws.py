@@ -33,7 +33,7 @@ from fabric.state import env
 from fabric.tasks import execute
 from fabric.utils import puts, abort, fastprint
 
-from ngas import ngas_revision
+from ngas import ngas_revision, ngas_user
 from utils import default_if_empty, whatsmyip, check_ssh, \
     key_filename
 
@@ -167,10 +167,17 @@ def create_instances(conn, sgid):
     # Local user and host
     userAThost = userAtHost()
 
+    # We use check_localhost=False because we know that we won't install
+    # under localhost (and thus we also avoid calling is_localhost,
+    # which would prompt us to input a host for fab to connect to)
+    nuser = ngas_user(check_localhost=False)
+
     # Tag the instance
+    # We save the user under which we install NGAS for later display
     for name, instance in zip(names, instances):
         conn.create_tags([instance.id], {'Name': name,
                                          'Created By':userAThost,
+                                         'NGAS User': nuser,
                                          })
 
     # Associate the IP if needed
@@ -246,13 +253,17 @@ def print_instance(inst):
     tagdict    = inst.tags
     l_time     = inst.launch_time
     key_name   = inst.key_name
+    nuser = None
     puts('Instance {0} ({1}) is {2}'.format(inst_id, inst_type, color_ec2state(inst_state)))
     for k, val in tagdict.items():
         if k == 'Name':
             val = blue(val)
+        elif k == 'NGAS User':
+            nuser = val
         puts('{0}: {1}'.format(k,val))
     if inst_state == 'running':
-        puts("Connect:   ssh -i ~/.ssh/{0}.pem {1}".format(key_name, pub_name))
+        ssh_user = ' -l%s' % (nuser) if nuser else ''
+        puts("Connect:   ssh -i ~/.ssh/{0}.pem {1}{2}".format(key_name, pub_name, ssh_user))
         puts("Terminate: fab aws.terminate:instance_id={0}".format(inst_id))
     print 'Launch time: {0}'.format(l_time)
 

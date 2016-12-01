@@ -78,11 +78,11 @@ NGAS_INSTALL_DIR_NAME = 'ngas_rt'
 
 VIRTUALENV_URL = 'https://pypi.python.org/packages/source/v/virtualenv/virtualenv-12.0.7.tar.gz'
 
-def ngas_user():
+def ngas_user(check_localhost=True):
     key = 'NGAS_USER'
     if key not in env:
         # Sensible defaults
-        if is_localhost():
+        if check_localhost and is_localhost():
             env[key] = env.user
         else:
             env[key] = NGAS_USER
