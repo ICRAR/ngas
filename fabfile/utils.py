@@ -160,3 +160,16 @@ def get_public_key(key_filename):
 
 def repo_root():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+def success(msg):
+    puts(green("******** %s ********" % (msg,)))
+
+def failure(msg):
+    puts(red("******** %s ********" % (msg,)))
+
+def append_desc(t):
+    tname = t.__name__
+    desc = os.path.join(repo_root(), 'doc', '%s_desc.rst' % (tname,))
+    with open(desc, "rt") as f:
+        t.__doc__ += "\n\n" + f.read()
+    return t
