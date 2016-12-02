@@ -255,11 +255,15 @@ def python_setup(ppath):
     return ppath
 
 @task
-def create_user(user, group=None):
+def create_user(user):
     """
     Creates a user in the system.
     """
-    group = group or 'ngas'
+
+    # TODO: Check if the user exists
+    #       Also, these commands are linux-specific,
+    #       there are others that work on MacOS
+    group = 'ngas'
     sudo('groupadd ngas', warn_only=True)
     sudo('useradd -g {0} -m -s /bin/bash {1}'.format(group, user), warn_only=True)
     sudo('mkdir /home/{0}/.ssh'.format(user), warn_only=True)

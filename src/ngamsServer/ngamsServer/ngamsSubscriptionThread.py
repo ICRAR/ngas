@@ -1018,7 +1018,7 @@ def stageFile(srvObj, filename):
         if isFileOffline(filename) == 1:
             info(3, "File %s is offline, staging for delivery..." % filename)
             stageFiles = loadPlugInEntryPoint(fspi, 'stageFiles')
-            stageFiles(filenameList = [filename], serverObj = srvObj)
+            stageFiles(filenames = [filename], serverObj = srvObj)
             info(3, "File %s staging completed for delivery." % filename)
     except Exception as ex:
         error("File staging error: %s" % filename)

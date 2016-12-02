@@ -35,7 +35,9 @@ Checksum Plug-In to generate the checksum stored in the ngas_files tables
 in connection with each file archived into NGAS.
 """
 
-import sys, time, binascii
+import sys
+import time
+import binascii
 
 
 def ngamsGenCrc32(srvObj,
@@ -53,14 +55,17 @@ def ngamsGenCrc32(srvObj,
 
     Returns:      CRC-32 checksum for file (string).
     """
-    fo = open(filename, "r")
-    buf = fo.read(524288)
+
+    blocksize = srvObj.getCfg().getBlockSize()
+
     crc = 0
-    while (buf != ""):
-        crc = binascii.crc32(buf, crc)
-        if (priority): time.sleep(priority * 0.001)
-        buf = fo.read(524288)
-    fo.close()
+    with open(filename, 'rb') as fo:
+        while True:
+            buf = fo.read(blocksize)
+            if not buf:
+                break
+            crc = binascii.crc32(buf, crc)
+
     return str(crc)
 
 
@@ -79,6 +84,3 @@ if __name__ == '__main__':
         priority = 0
     checksum = ngamsGenCrc32(None, filename, priority)
     sys.stdout.write(checksum)
-
-
-# EOF

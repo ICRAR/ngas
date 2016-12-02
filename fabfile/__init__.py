@@ -22,9 +22,10 @@
 """
 Fabric scripts for NGAS deployment and related activities.
 
-End users will likely use the hl.* tasks, a set of high-level tasks that perform
-common high-level deployments (e.g., deploying NGAS onto AWS). Lower-level tasks
-from the other modules can still be invoked.
+For a detailed description of a task run "fab -d <task>"
+
+End users will likely use the hl.operations_deploy or hl.user_deploy tasks,
+Other tasks, including lower-level tasks, can also be invoked.
 """
 import aws
 import hl

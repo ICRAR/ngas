@@ -25,15 +25,15 @@ Module with a few high-level fabric tasks users are likely to use
 
 import os
 
-from fabric.decorators import task
+from fabric.decorators import task, parallel
 from fabric.operations import local
 from fabric.state import env
 from fabric.tasks import execute
 
 from aws import create_aws_instances
 from dockerContainer import create_stage1_docker_container, create_stage2_docker_image, create_final_docker_image
-from ngas import install_and_check, create_sources_tarball, upload_to
-from utils import repo_root, check_ssh
+from ngas import install_and_check, prepare_install_and_check, create_sources_tarball, upload_to
+from utils import repo_root, check_ssh, append_desc
 from system import check_sudo
 
 
@@ -42,32 +42,35 @@ __all__ = ['user_deploy', 'operations_deploy', 'aws_deploy', 'docker_image',
            'prepare_release']
 
 @task
-def user_deploy(typ = 'archive'):
-    """
-    Deploy the system as a normal user without sudo access
-    """
+@parallel
+@append_desc
+def user_deploy():
+    """Compiles and installs NGAS in a user-owned directory."""
     check_ssh()
-    install_and_check(sys_install=False, user_install=False, init_install=False, typ=typ)
+    install_and_check()
 
 @task
-def operations_deploy(typ = 'archive'):
-    """
-    Deploy the full NGAS operational environment.
-    """
+@parallel
+@append_desc
+def operations_deploy():
+    """Performs a system-level setup on a host and installs NGAS on it"""
     check_ssh()
     check_sudo()
-    install_and_check(sys_install=True, user_install=True, init_install=True, typ=typ)
+    prepare_install_and_check()
 
 @task
-def aws_deploy(typ='archive'):
-    """
-    Deploy NGAS into a fresh EC2 instance.
-    """
+@append_desc
+def aws_deploy():
+    """Deploy NGAS on fresh AWS EC2 instances."""
+    # This task doesn't have @parallel because its initial work
+    # (actually *creating* the target host(s)) is serial.
+    # After that it modifies the env.hosts to point to the target hosts
+    # and then calls execute(prepare_install_and_check) which will be parallel
     create_aws_instances()
-    execute(install_and_check, sys_install=True, user_install=True, init_install=True, typ=typ)
+    execute(prepare_install_and_check)
 
 @task
-def docker_image(typ='archive'):
+def docker_image():
     """
     Create a Docker image running NGAS.
     """
@@ -78,7 +81,7 @@ def docker_image(typ='archive'):
 
     # Now install into the docker container.
     # We assume above has set the environment host IP address to install into
-    execute(install_and_check, sys_install=True, user_install=True, init_install=True, typ=typ)
+    execute(prepare_install_and_check)
 
     # Now that NGAS is istalled in container do cleanup on it and build final image.
     if not create_stage2_docker_image(dockerState):

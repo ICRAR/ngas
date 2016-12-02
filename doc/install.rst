@@ -4,9 +4,13 @@ Installation
 
 Installing NGAS is pretty straight-forward.
 There are two ways of running the installation:
-:ref:`manually installing it <inst.manual>`,
-or :ref:`letting fabric do it for you <inst.fabric>`.
 
+* :ref:`Manually installing it <inst.manual>`.
+* :ref:`Via Fabric <inst.fabric>`.
+  This is the recommended way, if possible, as it automates most of the
+  installation steps.
+
+Each of the steps is described in detail below.
 
 .. _inst.manual:
 
@@ -93,13 +97,14 @@ plus any other extra step required by other scenarios.
 Fabric's command-line allows users to specify the username and hosts where tasks
 will take place, and a set of variables to be defined. For example::
 
- fab -H host.company.com -u ngas_user some_task --set VAR1=a,VAR2
+ fab -H host.company.com -u user some_task --set VAR1=a,VAR2
 
 In the example the instructions of the task ``some_task`` will be carried out in
-host ``host.company.com`` with the user ``ngas_user``, and the ``VAR1`` variable
+host ``host.company.com`` with the user ``user``, and the ``VAR1`` variable
 will be set to the value ``a``, while variable ``VAR2`` will be marked as set.
 
 For a complete list of tasks run ``fab -l``.
+For a detailed description of a task run ``fab -d <task>``.
 For a more complete manual visit Fabric's `documentation
 <http://docs.fabfile.org/en/latest/>`_.
 
@@ -118,63 +123,11 @@ The two main fabric tasks NGAS provides are:
 Basic per-user installation
 ---------------------------
 
-To install NGAS in a per-user installation run::
+To compile and install NGAS in a user-owned directory run::
 
  fab hl.user_deploy
 
-This will first that SSH is working on the target host,
-then copy the NGAS sources to the target host,
-compile and install NGAS into a virtualenv,
-create a default NGAS data directory
-with a valid configuration file with which an NGAS server can be started,
-and finally modify the user's ``~/.bash_profile`` file
-to automatically load the virtualenv when entering a shell.
-The per-user installation doesn't take care of installing any dependencies
-needed by NGAS, assuming they all are met. For a more complete automatic
-procedure that takes care of that see :ref:`inst.fabric.system`.
-
-The following fabric variables (set via the ``--set`` command-line switch)
-are available to further customize the process:
-
-.. The auxiliary | are there to allow linebraking in individual cells.
-   Cells with one line still have them for nice alignment
-
-+-----------------------------+--------------------------------------+-------------------+
-| Variable                    | Description                          | Default value     |
-+=============================+======================================+===================+
-| NGAS_SRC_DIR                | | The directory where the NGAS       | | ``~/ngas_src``  |
-|                             | | sources will be extracted on the   |                   |
-|                             | | target host                        |                   |
-+-----------------------------+--------------------------------------+-------------------+
-| NGAS_INSTALL_DIR            | | The directory where the virtualenv | | ``~/ngas_rt``   |
-|                             | | will be created and NGAS           |                   |
-|                             | | installed                          |                   |
-+-----------------------------+--------------------------------------+-------------------+
-| NGAS_ROOT_DIR               | | The NGAS data directory created by | | ``~/NGAS``      |
-|                             | | default by the installation        |                   |
-|                             | | procedure                          |                   |
-+-----------------------------+--------------------------------------+-------------------+
-| NGAS_USER                   | | The user under which the NGAS      | | ``ngas`` in     |
-|                             | | installation will take place       | | remote systems, |
-|                             |                                      | | current user in |
-|                             |                                      | | localhost       |
-+-----------------------------+--------------------------------------+-------------------+
-| NGAS_REV                    | | The git revision of the sources    | | ``HEAD``        |
-|                             | | used to compile and install NGAS   |                   |
-|                             | | (only for sources from a git       |                   |
-|                             | | repository)                        |                   |
-+-----------------------------+--------------------------------------+-------------------+
-| NGAS_OVERWRITE_INSTALLATION | | Whether an existing installation   | | ``False``       |
-|                             | | directory should be overwritten    |                   |
-|                             | | or not                             |                   |
-+-----------------------------+--------------------------------------+-------------------+
-| NGAS_NO_CLIENT              | | Skip the compilation and           | | ``False``       |
-|                             | | installation of the NGAS C client  |                   |
-+-----------------------------+--------------------------------------+-------------------+
-| NGAS_NO_BASH_PROFILE        | | If specified, skip the edition of  | | Not specified   |
-|                             | | the user's ``~/.bash_profile`` for |                   |
-|                             | | automatic virtualenv sourcing      |                   |
-+-----------------------------+--------------------------------------+-------------------+
+.. include:: user_deploy_desc.rst
 
 For example,
 to install the tip of the ``v8`` branch
@@ -182,7 +135,7 @@ as user ``foo`` in hosts ``bar1`` and ``bar2``,
 and without compiling the C client,
 the following command would do::
 
- fab hl.user_deploy -H bar1,bar2 --set NGAS_USER=foo,NGAS_NO_CLIENT,NGAS_REV=v8
+ fab hl.user_deploy -u foo -H bar1,bar2 --set NGAS_NO_CLIENT,NGAS_REV=v8
 
 .. _inst.fabric.system:
 
@@ -192,27 +145,14 @@ Total system setup
 .. note::
  ``sudo`` must be installed and configured in the target host
  for this task to work properly.
+ Also, the user used with fab (``fab -u <user>``) needs to be properly configured
+ on the target host to use ``sudo`` commands.
 
 To perform a system-wide setup and NGAS install run::
 
  fab hl.operations_deploy
 
-System-wide installation first checks
-that SSH is working on the target host
-and that ``sudo`` is installed
-(``sudo`` is used to run commands as root).
-It then installs all necessary system packages
-(using the OS-specific package manager)
-for compiling NGAS and its dependencies,
-creates the ``NGAS_USER`` if necessary
-and then proceeds with the rest of the installation
-as explained in :ref:`per-user installation <inst.fabric.user>`.
-
-The fabric options from :ref:`per-user installation <inst.fabric.user>`
-also apply to the system-wide setup.
-
-Currently supported OSs are Ubuntu, Debian, Fedora, CentOS, and MacOSX Darwin,
-but more might work or could be added in the future.
+.. include:: operations_deploy_desc.rst
 
 AWS deployment
 --------------
@@ -226,46 +166,7 @@ machines. This is performed by running::
 
  fab hl.aws_deploy
 
-This procedure will create and bring up the required AWS instances, and perform
-a fabric :ref:`system installation <inst.fabric.system>`.
-
-On top of the normal fabric variables that control the NGAS installation,
-these additional variables control the AWS-related aspects of the script:
-
-.. The auxiliary | are there to allow linebraking in individual cells.
-   Cells with one line still have them for nice alignment
-
-+-----------------------------+--------------------------------------+-------------------+
-| Variable                    | Description                          | Default value     |
-+=============================+======================================+===================+
-| AWS_PROFILE                 | | The profile to use when connecting | | ``NGAS``        |
-|                             | | to AWS                             |                   |
-+-----------------------------+--------------------------------------+-------------------+
-| AWS_REGION                  | | The AWS region to connect to       | | ``us-east-1``   |
-+-----------------------------+--------------------------------------+-------------------+
-| AWS_KEY_NAME                | | The private SSH key to be used to  | | ``icrar_ngas``  |
-|                             | | create the instances, and later to |                   |
-|                             | | connect to them                    |                   |
-+-----------------------------+--------------------------------------+-------------------+
-| AWS_AMI_NAME                | | The name associated to an AMI      | | ``Amazon``      |
-|                             | | (from a predetermined set of AMI   |                   |
-|                             | | IDs) which will be used to create  |                   |
-|                             | | the instance                       |                   |
-+-----------------------------+--------------------------------------+-------------------+
-| AWS_INSTANCES               | | The number of instances to create  | | ``1``           |
-+-----------------------------+--------------------------------------+-------------------+
-| AWS_INSTANCE_TYPE           | | The type of instances to create    | | ``t1.micro``    |
-+-----------------------------+--------------------------------------+-------------------+
-| AWS_INSTANCE_NAME           | | The name of instances to create    | | ``NGAS_<rev>``  |
-+-----------------------------+--------------------------------------+-------------------+
-| AWS_SEC_GROUP               | | The name of the security group to  | | ``NGAS``        |
-|                             | | attach to the instances (will be   |                   |
-|                             | | created if it doesn't exist)       |                   |
-+-----------------------------+--------------------------------------+-------------------+
-| AWS_ELASTIC_IPS             | | A comma-separated list of public   | | Not specified   |
-|                             | | IPs to associate with the new      |                   |
-|                             | | instances, if specified.           |                   |
-+-----------------------------+--------------------------------------+-------------------+
+.. include:: aws_deploy_desc.rst
 
 For example, to create 3 instances of type ``t3.micro`` on region ``us-east-2``
 one would run::

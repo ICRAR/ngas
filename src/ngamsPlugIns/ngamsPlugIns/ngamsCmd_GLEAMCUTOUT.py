@@ -1,4 +1,3 @@
-
 #    ICRAR - International Centre for Radio Astronomy Research
 #    Copyright by UWA (in the framework of the ICRAR)
 #    All rights reserved
@@ -26,31 +25,29 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      2014/06/06  Created
 #
+# This is for new NGAS only
+#
 
 """
 read fits header, get cdel1,2 and epoch information
 Cutout a gleam FITS image, convert it into png, and display in the browser, then remove the jpeg file
 """
 
-from ngams import *
-
-import math, time, commands, os, subprocess, traceback, threading
+import math, time, commands, os, traceback, threading
 import ephem
 import pyfits as pyfits_real
 import astropy.io.fits as pyfits
 import astropy.wcs as pywcs
 import astropy.units as u
 from astropy.coordinates import SkyCoord
-import numpy
 from string import Template
+
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_TEXT_MT,\
+    info, error
 
 week_date_dict = {
 '1':'2013-08-13', '2':'2013-11-15', '3':'2014-03-10', '4':'2014-06-13'
 }
-
-my_host = getHostId()
-if ("store04:7779" == my_host):
-    my_host = "store04:7777"
 
 """
 disk_host_dict = {"3bcfe8b4996a5c15d91e32f287a1a574":"store02:7777",
@@ -60,15 +57,25 @@ disk_host_dict = {"3bcfe8b4996a5c15d91e32f287a1a574":"store02:7777",
 
 # cache for "select host_id, ip_address from ngas_hosts"
 host_id_ip_dict = {"store02:7777":"180.149.251.184",
-"store04:7777":"180.149.251.176", "store06:7777":"180.149.251.151"}
+"store04:7777":"180.149.251.176",
+"store06:7777":"180.149.251.151",
+"ip-172-31-3-243:7777":"13.54.25.105"}
 
+"""
 wcstools_path_dict = {"store02:7777":"/mnt/gleam/software/wcstools-3.8.7",
 "store04:7777":"/home/ngas/software/wcstools-3.9.2",
 "store06:7777":"/home/ngas/software/wcstools-3.9.2"}
+"""
 
+wcstools_path = "/home/ngas/software/wcstools-3.9.2"
+
+"""
 ds9_path_dict = {"store02:7777":"/mnt/gleam/software/bin",
 "store04:7777":"/home/ngas/software",
 "store06:7777":"/home/ngas/software"}
+"""
+
+ds9_path = "/home/ngas/software"
 
 montage_reproj_exec = "/home/ngas/software/Montage_v3.3/bin/mProject"
 montage_cutout_exec = "/home/ngas/software/Montage_v3.3/bin/mSubimage"
@@ -80,8 +87,8 @@ fits_copy_exec = "/home/ngas/software/fitscopy"
 """
 #-grid skyformat degrees
 cmd_ds9 = '{0}/ds9 -grid yes -grid numerics fontsize 14 -grid numerics fontweight bold -grid skyformat degrees -geometry 1250x1250  {1} -cmap Heat -zoom to fit -scale zscale -saveimage "{2}" -exit'
-qs = "SELECT a.mount_point || '/' || b.file_name AS file_full_path, a.host_id, b.ingestion_date FROM ngas_disks a, ngas_files b WHERE a.disk_id = b.disk_id AND b.file_id = '%s' ORDER BY b.file_version DESC"
-cmd_cutout = "{0}/bin/getfits -sv -o %s -d %s %s %s %s J2000 %d %d".format(wcstools_path_dict[my_host]) # % (outputfname, outputdir, inputfname, ra, dec, width, height)
+qs = "SELECT a.mount_point || '/' || b.file_name AS file_full_path, a.host_id, b.ingestion_date FROM ngas_disks a, ngas_files b WHERE a.disk_id = b.disk_id AND b.file_id = {0} ORDER BY b.file_version DESC"
+cmd_cutout = "{0}/bin/getfits -sv -o %s -d %s %s %s %s J2000 %d %d".format(wcstools_path) # % (outputfname, outputdir, inputfname, ra, dec, width, height)
 cmd_fits2jpg = "/mnt/gleam/software/bin/fits2jpeg -fits %s -jpeg %s -nonLinear" # % (fitsfname, jpegfname)
 psf_seq = ['BMAJ', 'BMIN', 'BPA']
 completeness_path = '/home/ngas/NGAS/gleam_metadata'
@@ -351,7 +358,7 @@ def add_header(cut_fits_path, cut_psf_paths, ing_date, obs_date, completeness=No
             if (compt_perctg is None):
                 continue
             for cpg in compt_perctg:
-                output[0].header['CMPL%04d' % (cpg[0])] = (cpg[1], 'Completeness of catalogue at {0}mJy (%)'.format(cpg[0]))
+                output[0].header['CMPL%04d' % (cpg[0])] = (cpg[1], 'Completeness of 200MHz catalogue at {0}mJy (%)'.format(cpg[0]))
 
     output.close()
 
@@ -397,8 +404,8 @@ def get_compt_perctg(ra, dec, compt_path):
     ret = []
     for i in range(num_intensity_level):
         il = start_intensity + i * step_width
-        pert = cplist[0].data[i][a][b]
-        pert = round(float("{0:.2f}".format(pert)), 2)
+        pert = int(cplist[0].data[i][a][b])
+        #pert = round(float("{0:.2f}".format(pert)), 2)
         ret.append((il, pert))
 
     return ret
@@ -476,21 +483,24 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if (reqPropsObj.hasHttpPar('fits_format') and '1' == reqPropsObj.getHttpPar("fits_format")):
         fits_format = True
     fileId = reqPropsObj.getHttpPar("file_id")
-    query = qs % fileId
+    query = qs.format("'%s'" % fileId)
     sql_inject_test(query)
     info(3, "Executing SQL query for GLEAM CUTOUT: %s" % str(query))
-    res = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
-    reList = res[0]
+    #res = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
+    #reList = res[0]
+    reList = srvObj.getDb().query2(qs, args=(fileId,))
     if (len(reList) < 1):
         srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
                      "Cannot find image file: '%s'" % fileId)
         return
     file_host = reList[0][1]
+    my_host = srvObj.getHostId()
     if (file_host != my_host):
         if (not host_id_ip_dict.has_key(file_host)):
             srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
                      "Invalid file_host: '%s'" % file_host)
             return
+
         """
         redirect to file_host
         """
@@ -546,11 +556,12 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             cut_fitsnm = cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, use_montage=use_montage_cut, projection=projection)
             if (no_psf == False and fits_format):
                 psf_fileId = fileId.split('.fits')[0] + '_psf.fits'
-                query = qs % psf_fileId
+                query = qs.format("'%s'" % psf_fileId)
                 sql_inject_test(query)
                 info(3, "Executing SQL query for GLEAM PSF CUTOUT: %s" % str(query))
-                pres = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
-                psfList = pres[0]
+                #pres = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
+                #psfList = pres[0]
+                psfList = srvObj.getDb().query2(qs, args=(psf_fileId,))
                 if (len(psfList) > 0):
                     psf_path = psfList[0][0]
 
@@ -627,7 +638,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         ds9_sem.acquire()
         ttt = time.time()
         jpfnm = ('%f' % ttt).replace('.', '_') + '.jpg'
-        cmd2 = cmd_ds9.format(ds9_path_dict[my_host], work_dir + '/' + cut_fitsnm, work_dir + '/' + jpfnm)
+        cmd2 = cmd_ds9.format(ds9_path, work_dir + '/' + cut_fitsnm, work_dir + '/' + jpfnm)
         try:
             os.environ['DISPLAY'] = ":7777"
             info(3, "Executing command: %s" % cmd2)
@@ -644,7 +655,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         hdr_dataref = work_dir + '/' + jpfnm
         to_be_removed.append(hdr_dataref)
 
-    hdrInfo = ["Content-disposition", "inline;filename={0}".format(hdr_fnm)]
+    hdrInfo = ["Content-Disposition", "inline;filename={0}".format(hdr_fnm)]
 
     srvObj.httpReplyGen(reqPropsObj,
                      httpRef,
