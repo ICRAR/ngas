@@ -424,6 +424,8 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
     bspeed = []
     cspeed = []
     tspeed = []
+    tsize = 0
+    bsize = blocksize/one_mb
     crc = 0
     sleepTime = None
     ifil_not_zero = (ifil != '/dev/zero')
@@ -445,7 +447,8 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
     # print "myDD(ifil='{0}', block = {1}, ofil='{2}',skip={3},blocksize={4},count={5},seek={6}, httpobj={7})".\
     # format(ifil, block, ofil, skip, blocksize, count, seek, httpobj)
 
-    if ofil != '/dev/null' and ofil != None:
+#    if ofil != '/dev/null' and ofil != None:
+    if ofil != None:
         try:
             out = None
             if (httpobj):
@@ -478,34 +481,50 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
             return status
         if Test == 'write':
             print "Writing {0} blocks to {1}".format(count, ofil)
+            tsize = count * bsize
         else:
             print "Reading {0} blocks from {1}".format(count, ifil)
+            tsize = 0
         crctime = 0.0
-        bsize = blocksize/one_mb
-        tsize = bsize * count
+        ebsize = bsize = blocksize/one_mb # block size in MB
 
         write_time = 0.0
         read_time = 0.0
+        zcount = 0
+        short_read = 0
         sti = time.time()
         if dioflag:
             m = mmap.mmap(-1, blocksize)
         for ii in range(count):
             stt = time.time()
             if ifil_not_zero:
+                if (Test == 'read' or ifil != '/dev/zero'):
+                    stb = time.time() # start time for reading block
                 block = inputf.read(blocksize)
-                if (Test == 'read'):
-                    read_time += time.time() - stt
+                if (Test == 'read' or ifil != '/dev/zero'):
+                    one_block_time = time.time() - stb
+                    read_time += one_block_time
+                    if ebsize != len(block)/one_mb: # full block?
+# NOTE: On Mac OSX reading from a partion block device results in just a few
+#       blocks being read correctly. Thus always read from the actual block
+#       device, e.g. /dev/rdisk0 instead of /dev/rdisk0s1. Linux does not create
+#       character devices, i.e. the 'r' version of the block devices is not
+#       available. The O_DIRECT flag achieves the same behaviour, but is not
+#       implemented in this program for read tests.
+                        short_read += 1
+                        bsize = len(block)/one_mb 
+                    tsize += bsize
             if crcfl:
-                stc = time.time()
+                stc = time.time() # start time for CRC calc
                 crc = crc32(block, crc)
                 crct = time.time() - stc
                 if crct == 0: crct = 10**-6
                 cspeed.append((bsize/(crct), stc,crct))
                 crctime += crct
             else:
-                cspeed.append((-1,time.time(), -1))
+                cspeed.append((-1,time.time(), -1)) # dummy values
             if (Test == 'write'):
-                stb = time.time()
+                stb = time.time() # start time for writing block
                 if (httpobj):
                     httpobj._conn.sock.sendall(block)
                 else:
@@ -518,26 +537,30 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
                             os.write(fd, block)
                     else:
                         out.write(block)
+                one_block_time = time.time() - stb
+                write_time += one_block_time
             tend = time.time()
-            one_block_time = tend - stt
             if one_block_time == 0:
                 one_block_time = 10**-10
+                zcount += 1
             if (sleepTime and sleepTime > one_block_time):
                 time.sleep(sleepTime - one_block_time)
-            if (Test == 'write'):
-                bwt = tend - stb
-                if bwt == 0: bwt = 10**-10
-                bspeed.append((bsize / bwt, stb, bwt))
-                write_time += bwt
-            else:
-                bspeed.append((-1,time.time(), -1)) # cpu only
-            #tspeed.append((bsize/(tend - stt), stt))
-            tspeed.append((bsize/one_block_time, stt, one_block_time))
+            if (bsize > 0):
+                bspeed.append((bsize / one_block_time, stb, one_block_time))
+                total_block_time = tend -stt 
+                tspeed.append((bsize/total_block_time, stt,total_block_time))
+                #tspeed.append((bsize/one_block_time, stt, one_block_time))
         if (Test == 'write'):
             print "Pure write throughput:  %6.2f MB/s" % (tsize/write_time)
-        elif (Test == 'read'):
+        elif (Test == 'read' or ifil != '/dev/zero'):
             print "Pure read throughput:  %6.2f MB/s" % (tsize/read_time)
-        writelabel = 'write '
+        print "Zero time blocks:  %6d" % (zcount)
+        if (Test == 'read' and short_read != 0): 
+            print "Short reads:  %6d" % (short_read)
+            print "CAUTION: short reads usually means that the test did not"
+            print "work correctly. On Mac OSX please either use a file to read"
+            print "from or the plain character device, e.g. /dev/rdisk0"
+        writelabel = Test+' '
         if (Test == 'cpu'):
             writelabel = ''
         print "Internal throughput (%s[+crc]): %6.2f MB/s" % \
@@ -562,7 +585,7 @@ def myDD(ifil='/dev/zero', block = None, ofil='/dev/null',skip=0,blocksize=1024,
             else:
                 # out.flush()
                 out.close()
-        ste = time.time() - sti  # elapsed time of this write test
+        ste = time.time() - sti  # elapsed time of this test
         print "File closing time: %5.2f s" % (time.time()-fst)
         if (crcfl):
             print "CRC throughput: %6.2f MB/s (%5.2f s)" % \
@@ -648,7 +671,7 @@ if __name__ == '__main__':
     if dev == None: usage()
 
     if Test == 'read':
-        readTest(dev,skip,testcount,iosize,blocksize)
+        bspeed = readTest(dev,skip,testcount,iosize,blocksize)
     elif Test == 'write' or Test == 'cpu':
         if dev[0:4].lower() == 'http':
             print "To test writing to a remote NGAS disk"
@@ -723,6 +746,7 @@ def speedPlot(ifile=DEFAULT_FNM, timefl=1):
               else it will use block numbers.
     """
     import pylab  # This requires pylab for the plotting...
+    import matplotlib.patches as mpatches
     f = open(ifile)
     p=pickle.Unpickler(f)
     (bspeed,cspeed,tspeed) = p.load()
@@ -733,19 +757,34 @@ def speedPlot(ifile=DEFAULT_FNM, timefl=1):
     tzero = tspeed[0,1]
     if timefl:
         pylab.plot(bspeed[:,1] - tzero, bspeed[:,0],'b+')
-        pylab.plot(cspeed[:,1] - tzero, cspeed[:,0],'r+')
         pylab.xlabel('Time since start [s]')
         pylab.ylabel('Throughput[MB/s]')
-        pylab.plot(tspeed[:,1] - tzero, tspeed[:,0], 'g+')
+        plt = pylab.plot(tspeed[:,1] - tzero, tspeed[:,0], 'bx', mfc='none')
+        if cspeed[0:,0].max() != -1:  # plot only if not dummy
+            plt = pylab.plot(cspeed[:,1] - tzero, cspeed[:,0],'r+')
+            red_patch = mpatches.Patch(color='red', label='CRC performance')
     else:
         pylab.plot(bspeed[:,0],'b+')
-        pylab.plot(cspeed[:,0],'r+')
         pylab.xlabel('Block #')
         pylab.ylabel('Throughput[MB/s]')
-        pylab.plot(tspeed[:,0], 'g+')
+        plt = pylab.plot(tspeed[:,0], 'bx', mfc='none')
+        if cspeed[0:,0].max() != -1:  # plot only if not dummy
+            plt = pylab.plot(cspeed[:,0],'r+')
+            red_patch = mpatches.Patch(color='red', label='CRC performance')
 
     totalSize = (tspeed[:,0] * tspeed[:,2]).sum()
     totalTime = tspeed[-1][1]-tspeed[0][1]
     pylab.plot([0,totalTime],[totalSize/totalTime,totalSize/totalTime], 'g')
+    blue_patch = mpatches.Patch(color='blue', label='Block I/O')
+    green_patch = mpatches.Patch(color='green', label='Total I/O')
+    if cspeed[0:,0].max() != -1:  # plot only if not dummy
+        pylab.legend(handles=[red_patch, blue_patch, green_patch])
+    else:
+        pylab.legend(handles=[blue_patch, green_patch])
+
 
     pylab.title(os.path.basename(ifile))
+    ymax = plt[0].axes.get_ylim()[1] # get current maximum
+    plt[0].axes.set_ylim([0,ymax])
+    
+    return
