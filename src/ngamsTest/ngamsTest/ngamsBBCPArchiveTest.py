@@ -64,10 +64,12 @@ class ngamsBBCPArchiveTest(ngamsTestSuite):
         bbcpurl = 'http://%s/BBCPARC?%s' % (host, urllib.urlencode(query_args))
 
         request = urllib2.Request(bbcpurl)
-        with closing(urllib2.urlopen(request, timeout = 50)) as resp:
-            self.checkEqual(resp.getcode(), 200, None)
-
-
+        try:
+            with closing(urllib2.urlopen(request, timeout = 50)) as resp:
+                self.checkEqual(resp.getcode(), 200, None)
+        except urllib2.HTTPError as e:
+            print e.read()
+            raise e
 
 def run():
     """
