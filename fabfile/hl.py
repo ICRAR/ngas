@@ -33,7 +33,7 @@ from fabric.tasks import execute
 from aws import create_aws_instances
 from dockerContainer import create_stage1_docker_container, create_stage2_docker_image, create_final_docker_image
 from ngas import install_and_check, prepare_install_and_check, create_sources_tarball, upload_to
-from utils import repo_root, check_ssh
+from utils import repo_root, check_ssh, append_desc
 from system import check_sudo
 
 
@@ -42,27 +42,24 @@ __all__ = ['user_deploy', 'operations_deploy', 'aws_deploy', 'docker_image',
            'prepare_release']
 
 @task
+@append_desc
 def user_deploy():
-    """
-    Deploy the system as a normal user without sudo access
-    """
+    """Compiles and installs NGAS in a user-owned directory."""
     check_ssh()
     install_and_check()
 
 @task
+@append_desc
 def operations_deploy():
-    """
-    Deploy the full NGAS operational environment.
-    """
+    """Performs a system-level setup on a host and installs NGAS on it"""
     check_ssh()
     check_sudo()
     prepare_install_and_check()
 
 @task
+@append_desc
 def aws_deploy():
-    """
-    Deploy NGAS into a fresh EC2 instance.
-    """
+    """Deploy NGAS on fresh AWS EC2 instances."""
     create_aws_instances()
     execute(prepare_install_and_check)
 

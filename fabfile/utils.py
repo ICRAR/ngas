@@ -166,3 +166,10 @@ def success(msg):
 
 def failure(msg):
     puts(red("******** %s ********" % (msg,)))
+
+def append_desc(t):
+    tname = t.__name__
+    desc = os.path.join(repo_root(), 'doc', '%s_desc.rst' % (tname,))
+    with open(desc, "rt") as f:
+        t.__doc__ += "\n\n" + f.read()
+    return t
