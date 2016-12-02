@@ -32,7 +32,7 @@ from fabric.tasks import execute
 
 from aws import create_aws_instances
 from dockerContainer import create_stage1_docker_container, create_stage2_docker_image, create_final_docker_image
-from ngas import install_and_check, create_sources_tarball, upload_to
+from ngas import install_and_check, prepare_install_and_check, create_sources_tarball, upload_to
 from utils import repo_root, check_ssh
 from system import check_sudo
 
@@ -47,7 +47,7 @@ def user_deploy():
     Deploy the system as a normal user without sudo access
     """
     check_ssh()
-    install_and_check(sys_install=False, user_install=False, init_install=False)
+    install_and_check()
 
 @task
 def operations_deploy():
@@ -56,7 +56,7 @@ def operations_deploy():
     """
     check_ssh()
     check_sudo()
-    install_and_check(sys_install=True, user_install=True, init_install=True)
+    prepare_install_and_check()
 
 @task
 def aws_deploy():
@@ -64,7 +64,7 @@ def aws_deploy():
     Deploy NGAS into a fresh EC2 instance.
     """
     create_aws_instances()
-    execute(install_and_check, sys_install=True, user_install=True, init_install=True)
+    execute(prepare_install_and_check)
 
 @task
 def docker_image():
@@ -78,7 +78,7 @@ def docker_image():
 
     # Now install into the docker container.
     # We assume above has set the environment host IP address to install into
-    execute(install_and_check, sys_install=True, user_install=True, init_install=True)
+    execute(prepare_install_and_check)
 
     # Now that NGAS is istalled in container do cleanup on it and build final image.
     if not create_stage2_docker_image(dockerState):

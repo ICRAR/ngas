@@ -93,13 +93,14 @@ plus any other extra step required by other scenarios.
 Fabric's command-line allows users to specify the username and hosts where tasks
 will take place, and a set of variables to be defined. For example::
 
- fab -H host.company.com -u ngas_user some_task --set VAR1=a,VAR2
+ fab -H host.company.com -u user some_task --set VAR1=a,VAR2
 
 In the example the instructions of the task ``some_task`` will be carried out in
-host ``host.company.com`` with the user ``ngas_user``, and the ``VAR1`` variable
+host ``host.company.com`` with the user ``user``, and the ``VAR1`` variable
 will be set to the value ``a``, while variable ``VAR2`` will be marked as set.
 
 For a complete list of tasks run ``fab -l``.
+For a detailed description of a task run ``fab -d <task>``.
 For a more complete manual visit Fabric's `documentation
 <http://docs.fabfile.org/en/latest/>`_.
 
@@ -118,18 +119,25 @@ The two main fabric tasks NGAS provides are:
 Basic per-user installation
 ---------------------------
 
-To install NGAS in a per-user installation run::
+To compile and install NGAS in a user-owned directory run::
 
  fab hl.user_deploy
 
-This will first that SSH is working on the target host,
-then copy the NGAS sources to the target host,
-compile and install NGAS into a virtualenv,
-create a default NGAS data directory
-with a valid configuration file with which an NGAS server can be started,
-and finally modify the user's ``~/.bash_profile`` file
-to automatically load the virtualenv when entering a shell.
-The per-user installation doesn't take care of installing any dependencies
+This task will:
+
+* Check that SSH is working on the target host
+* Copy the NGAS sources to the target host
+* Compile and install NGAS into a virtualenv on the target host
+* Create a minimal NGAS data directory with a valid configuration file,
+  and a valid SQLite database, with which an NGAS server can be started
+* Finally, modify the corresponding ``~/.bash_profile`` file to automatically
+  load the NGAS virtualenv when the user enters a ``bash`` shell.
+
+The user on the target host used for running these tasks
+is the SSH user given to fabric
+via the command line (``fab -u <user>``).
+
+This task doesn't take care of installing any dependencies
 needed by NGAS, assuming they all are met. For a more complete automatic
 procedure that takes care of that see :ref:`inst.fabric.system`.
 
@@ -153,11 +161,6 @@ are available to further customize the process:
 | NGAS_ROOT_DIR               | | The NGAS data directory created by | | ``~/NGAS``      |
 |                             | | default by the installation        |                   |
 |                             | | procedure                          |                   |
-+-----------------------------+--------------------------------------+-------------------+
-| NGAS_USER                   | | The user under which the NGAS      | | ``ngas`` in     |
-|                             | | installation will take place       | | remote systems, |
-|                             |                                      | | current user in |
-|                             |                                      | | localhost       |
 +-----------------------------+--------------------------------------+-------------------+
 | NGAS_REV                    | | The git revision of the sources    | | ``HEAD``        |
 |                             | | used to compile and install NGAS   |                   |
@@ -189,7 +192,7 @@ as user ``foo`` in hosts ``bar1`` and ``bar2``,
 and without compiling the C client,
 the following command would do::
 
- fab hl.user_deploy -H bar1,bar2 --set NGAS_USER=foo,NGAS_NO_CLIENT,NGAS_REV=v8
+ fab hl.user_deploy -u foo -H bar1,bar2 --set NGAS_NO_CLIENT,NGAS_REV=v8
 
 .. _inst.fabric.system:
 
@@ -199,24 +202,42 @@ Total system setup
 .. note::
  ``sudo`` must be installed and configured in the target host
  for this task to work properly.
+ Also, the user used with fab (``fab -u <user>``) needs to be properly configured
+ on the target host to use ``sudo`` commands.
 
 To perform a system-wide setup and NGAS install run::
 
  fab hl.operations_deploy
 
-System-wide installation first checks
-that SSH is working on the target host
-and that ``sudo`` is installed
-(``sudo`` is used to run commands as root).
-It then installs all necessary system packages
-(using the OS-specific package manager)
-for compiling NGAS and its dependencies,
-creates the ``NGAS_USER`` if necessary
-and then proceeds with the rest of the installation
-as explained in :ref:`per-user installation <inst.fabric.user>`.
+The user on the target host used for running the ``sudo`` commands
+is the SSH user given to fabric
+via the command line (``fab -u <user>``).
 
-The fabric options from :ref:`per-user installation <inst.fabric.user>`
-also apply to the system-wide setup.
+This task will:
+
+* Check that SSH is working on the target host
+* Check that ``sudo`` is installed (``sudo`` is used to run commands as root).
+* Install all necessary system packages (using the OS-specific package manager)
+  for compiling NGAS and its dependencies
+* Compile and install a suitable version of python (2.7) if necessary
+* Create the ``NGAS_USER`` if necessary
+* Proceed with the rest of the installation as explained in :ref:`per-user installation <inst.fabric.user>`.
+* Install an ``/etc/init.d`` script for automatic startup of the server.
+
+On top of the normal fabric variables used
+in the :ref:`user installation <inst.fabric.user>`
+the following additional variables control
+this script:
+
+.. The auxiliary | are there to allow linebraking in individual cells.
+   Cells with one line still have them for nice alignment
+
++-----------------------------+--------------------------------------+-------------------+
+| Variable                    | Description                          | Default value     |
++=============================+======================================+===================+
+| NGAS_USER                   | | The user under which the NGAS      | | ``ngas``        |
+|                             | | installation will take place       |                   |
++-----------------------------+--------------------------------------+-------------------+
 
 Currently supported OSs are Ubuntu, Debian, Fedora, CentOS, and MacOSX Darwin,
 but more might work or could be added in the future.
@@ -233,11 +254,16 @@ machines. This is performed by running::
 
  fab hl.aws_deploy
 
-This procedure will create and bring up the required AWS instances, and perform
-a fabric :ref:`system installation <inst.fabric.system>`.
+This procedure will:
+* Create and bring up the required AWS instances
+* Wait until they are fully operational, and
+* Perform a fabric :ref:`system installation <inst.fabric.system>`.
 
-On top of the normal fabric variables that control the NGAS installation,
-these additional variables control the AWS-related aspects of the script:
+On top of the normal fabric variables used
+in the `system installation <inst.fabric.system>`
+and in the `user installation <inst.fabric.user>`
+the following additional variables control
+the AWS-related aspects of the script:
 
 .. The auxiliary | are there to allow linebraking in individual cells.
    Cells with one line still have them for nice alignment

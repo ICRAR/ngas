@@ -167,13 +167,10 @@ def create_instances(conn, sgid):
     # Local user and host
     userAThost = userAtHost()
 
-    # We use check_localhost=False because we know that we won't install
-    # under localhost (and thus we also avoid calling is_localhost,
-    # which would prompt us to input a host for fab to connect to)
-    nuser = ngas_user(check_localhost=False)
+    # We save the user under which we install NGAS for later display
+    nuser = ngas_user()
 
     # Tag the instance
-    # We save the user under which we install NGAS for later display
     for name, instance in zip(names, instances):
         conn.create_tags([instance.id], {'Name': name,
                                          'Created By':userAThost,
