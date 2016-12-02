@@ -53,7 +53,6 @@ __all__ = [
     'install_user_profile',
     'ngas_buildout',
     'ngas_full_buildout',
-    'install',
     'copy_sources',
     'install_and_check'
 ]
@@ -354,41 +353,6 @@ def ngas_full_buildout():
     ngas_buildout()
     install_user_profile()
 
-@task
-def install(sys_install=True, user_install=True,
-            init_install=True, python_install=False, postfix=False):
-    """
-    Install NGAS users and NGAS software on the host this task is being run on
-    """
-
-    user = ngas_user()
-
-    # Prepare the system before doing anything
-    if to_boolean(sys_install):
-        install_system_packages()
-    if to_boolean(postfix):
-        postfix_config()
-    if to_boolean(user_install):
-        create_user(user)
-
-    # Switch to the NGAS_USER for the rest of the installation procedure
-    # This is possible because during create_user() we copy the public SSH
-    # key we are using to the authorized_keys file of NGAS_USER
-    with settings(user=user):
-        virtualenv_setup(python_install)
-        ngas_full_buildout()
-
-        nsd = ngas_source_dir()
-        nid = ngas_install_dir()
-
-    # The NGAS_USER probably doesn't have sudo access, so we need to run this
-    # bit using our original user
-    if to_boolean(init_install):
-        init_deploy(nsd, nid)
-
-    puts(green("\n******** INSTALLATION COMPLETED!********\n"))
-
-
 def init_deploy(nsd, nid):
     """
     Install the NGAS init script for an operational deployment
@@ -455,12 +419,38 @@ def copy_sources():
 
 @task
 @parallel
-def install_and_check(sys_install, user_install, init_install):
+def install_and_check(sys_install, user_install, init_install, postfix=False):
     """
     Runs the full installation procedure and checks that the NGAS server is up
     and running after finishing
     """
-    install(sys_install=sys_install, user_install=user_install, init_install=init_install)
+
+    user = ngas_user()
+
+    # Prepare the system before doing anything
+    if to_boolean(sys_install):
+        install_system_packages()
+    if to_boolean(postfix):
+        postfix_config()
+    if to_boolean(user_install):
+        create_user(user)
+
+    # Switch to the NGAS_USER for the rest of the installation procedure
+    # This is possible because during create_user() we copy the public SSH
+    # key we are using to the authorized_keys file of NGAS_USER
+    with settings(user=user):
+        virtualenv_setup()
+        ngas_full_buildout()
+        nsd = ngas_source_dir()
+        nid = ngas_install_dir()
+
+    # The NGAS_USER probably doesn't have sudo access, so we need to run this
+    # bit using our original user
+    if to_boolean(init_install):
+        init_deploy(nsd, nid)
+
+    puts(green("\n******** INSTALLATION COMPLETED!********\n"))
+
     with settings(user=ngas_user()):
         start_ngas_and_check_status()
 
