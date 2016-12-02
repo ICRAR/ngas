@@ -30,11 +30,7 @@ wget -O BARCHIVE.xml "http://ngas.ddns.net:7777/BBCPARC?fileUri=/home/ngas/NGAS/
 
 Usage example with curl to send file from Pawsey to MIT:
 
-(without checksum)
 curl --connect-timeout 7200 eor-12.mit.edu:7777/BBCPARC?fileUri=ngas%40146.118.84.67%3A/mnt/mwa01fs/MWA/testfs/KNOPPIX_V7.2.0DVD-2013-06-16-EN.iso\&bport=7790\&bwinsize=%3D32m\&bnum_streams=12\&mimeType=application/octet-stream
-
-(with checksum)
-curl --connect-timeout 7200 eor-12.mit.edu:7777/BBCPARC?fileUri=ngas%40146.118.84.67%3A/mnt/mwa01fs/MWA/testfs/output_320M_001.dat\&bport=7790\&bwinsize=%3D32m\&bnum_streams=12\&mimeType=application/octet-stream\&bchecksum=-354041269
 """
 
 from collections import namedtuple
@@ -85,7 +81,8 @@ def bbcpFile(srcFilename, targFilename, bparam):
     if (bparam.num_streams):
         ns = ['-s', str(bparam.num_streams)]
 
-    cmd_checksum = ['-E', 'c32z=/dev/stdout']
+    # perform checksum on host and compare to target. If it's different bbcp will fail.
+    cmd_checksum = ['-e', '-E', 'c32z=/dev/stdout']
     cmd_list = ['bbcp', '-f', '-V'] + cmd_checksum + fw + ns + ['-P', '2'] + pt + [srcFilename, targFilename]
 
     info(3, "Executing external command: %s" % subprocess.list2cmdline(cmd_list))
@@ -162,7 +159,6 @@ def archiveFromFile(srvObj,
     plugInMethod = loadPlugInEntryPoint(plugIn)
     resMain = plugInMethod(srvObj, reqPropsObjLoc)
 
-    # Move the file to final destination.
     mvFile(reqPropsObjLoc.getStagingFilename(), resMain.getCompleteFilename())
 
     diskInfo = ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain, bbcp_checksum)
@@ -231,6 +227,7 @@ def handleCmd(srvObj,
                          updateDb=False)
 
     reqPropsObj.incIoTime(0)
+    reqPropsObj.setNoReplication(1)
 
     port = None
     winsize = None
