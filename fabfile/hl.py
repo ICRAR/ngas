@@ -25,7 +25,7 @@ Module with a few high-level fabric tasks users are likely to use
 
 import os
 
-from fabric.decorators import task
+from fabric.decorators import task, parallel
 from fabric.operations import local
 from fabric.state import env
 from fabric.tasks import execute
@@ -42,6 +42,7 @@ __all__ = ['user_deploy', 'operations_deploy', 'aws_deploy', 'docker_image',
            'prepare_release']
 
 @task
+@parallel
 @append_desc
 def user_deploy():
     """Compiles and installs NGAS in a user-owned directory."""
@@ -49,6 +50,7 @@ def user_deploy():
     install_and_check()
 
 @task
+@parallel
 @append_desc
 def operations_deploy():
     """Performs a system-level setup on a host and installs NGAS on it"""
@@ -60,6 +62,10 @@ def operations_deploy():
 @append_desc
 def aws_deploy():
     """Deploy NGAS on fresh AWS EC2 instances."""
+    # This task doesn't have @parallel because its initial work
+    # (actually *creating* the target host(s)) is serial.
+    # After that it modifies the env.hosts to point to the target hosts
+    # and then calls execute(prepare_install_and_check) which will be parallel
     create_aws_instances()
     execute(prepare_install_and_check)
 

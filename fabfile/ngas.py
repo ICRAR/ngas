@@ -51,7 +51,6 @@ __all__ = [
     'test_ngas_status',
     'virtualenv_setup',
     'install_user_profile',
-    'prepare_install_and_check',
     'copy_sources',
 ]
 
@@ -403,7 +402,6 @@ def copy_sources():
 
     success("NGAS sources copied")
 
-@task
 @parallel
 def prepare_install_and_check():
 
@@ -420,6 +418,7 @@ def prepare_install_and_check():
     # Install the /etc/init.d script for automatic start
     init_deploy(nsd, nid)
 
+@parallel
 def install_and_check():
     """
     Creates a virtualenv, installs NGAS on it,
