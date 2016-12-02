@@ -209,7 +209,8 @@ def virtualenv_setup(python_install):
     if check_dir(ngasInstallDir):
         overwrite = ngas_overwrite_installation()
         if not overwrite:
-            msg = "%s exists already. Specify NGAS_OVERWRITE_INSTALLATION to overwrite"
+            msg = ("%s exists already. Specify NGAS_OVERWRITE_INSTALLATION to overwrite, "
+                   "or a different NGAS_INSTALL_DIR location")
             abort(msg % (ngasInstallDir,))
         run("rm -rf %s" % (ngasInstallDir,))
 
