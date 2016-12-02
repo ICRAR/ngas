@@ -160,3 +160,9 @@ def get_public_key(key_filename):
 
 def repo_root():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+def success(msg):
+    puts(green("******** %s ********" % (msg,)))
+
+def failure(msg):
+    puts(red("******** %s ********" % (msg,)))
