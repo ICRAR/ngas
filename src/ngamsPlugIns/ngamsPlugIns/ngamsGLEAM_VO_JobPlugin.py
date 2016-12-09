@@ -37,10 +37,11 @@ import commands, os
 import datetime
 
 import ephem_utils
+from psycopg2.pool import ThreadedConnectionPool
+import pyfits
+
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import error, info
-import pccFits.PccSimpleFitsReader as fitsapi
-from psycopg2.pool import ThreadedConnectionPool
 
 
 mime = "images/fits"
@@ -208,13 +209,13 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
     Returns:       the return code of the compression plugin (integer).
     """
 
-    hdrs = fitsapi.getFitsHdrs(filename)
-    ra = float(hdrs[0]['CRVAL1'][0][1])
-    dec = float(hdrs[0]['CRVAL2'][0][1])
-    date_obs = hdrs[0]['DATE-OBS'][0][1].replace("'", "").split('T')[0]
-    center_freq = int(float(hdrs[0]['CRVAL3'][0][1])) / 1000000
-    band_width = round(float(hdrs[0]['CDELT3'][0][1]) / 1000000, 2)
-    stokes = int(float(hdrs[0]['CRVAL4'][0][1]))
+    hdrs = pyfits.getheader(filename)
+    ra = float(hdrs['CRVAL1'])
+    dec = float(hdrs['CRVAL2'])
+    date_obs = hdrs['DATE-OBS'].split('T')[0]
+    center_freq = int(float(hdrs['CRVAL3'])) / 1000000
+    band_width = round(float(hdrs['CDELT3']) / 1000000, 2)
+    stokes = int(float(hdrs['CRVAL4']))
     accsize = os.path.getsize(filename)
     embargo = datetime.date.today() - datetime.timedelta(days = 1)
     owner="MRO"
@@ -223,8 +224,8 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
 
     gleam_phase = 1
     getf_frmfn = 0
-    if (hdrs[0].has_key('ORIGIN')):
-        fits_origin = hdrs[0]['ORIGIN'][0][1]
+    if 'ORIGIN' in hdrs:
+        fits_origin = hdrs['ORIGIN']
         if (fits_origin.find('WSClean') > -1):
             gleam_phase = 2
     else:
@@ -246,14 +247,16 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
     robustness = 0
     getr_frmfn = 0
     if (gleam_phase == 1):
-        if (hdrs[0].has_key('ROBUST')):
-            robustness = int(float(hdrs[0]['ROBUST'][0][1]))
+        if 'ROBUST' in hdrs:
+            robustness = int(float(hdrs['ROBUST']))
         else:
             getr_frmfn = 1
     elif (gleam_phase == 2):
-        if (hdrs[0].has_key('WSCWEIGH')):
-            if (hdrs[0]['WSCWEIGH'][0][1] == "'Briggs'"):
-                robustness = int(float(hdrs[0]['WSCWEIGH'][0][2].replace("'(", "").replace(")'","")))
+        if 'WSCWEIGH' in hdrs:
+            wscweigh = hdrs['WSCWEIGH']
+            if wscweigh.startswith("Briggs"):
+                # value is, for example, "Briggs'(0.5)"
+                robustness = int(float(wscweigh[8:-1]))
             else:
                 getr_frmfn = 1
         else:
@@ -263,8 +266,8 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
 
     # get the correct DEC for phase 2
     if (2 == gleam_phase):
-        if (hdrs[0].has_key('DEC_PNT')):
-            dec = float(hdrs[0]['DEC_PNT'][0][1])
+        if 'DEC_PNT' in hdrs:
+            dec = float(hdrs['DEC_PNT'])
         elif (dict_dec.has_key(date_obs)): # see if we have cached
             dec = dict_dec[date_obs]
         else: # have to query MC database

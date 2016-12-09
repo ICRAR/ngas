@@ -35,13 +35,12 @@ Contains a Filter Plug-In used to filter out those files that
 
 import os, threading
 
+import pyfits
+
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import genLog, alert, info, NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, NGAMS_FAILURE
 from ngamsPClient import ngamsPClient
-import pccFits.PccSimpleFitsReader as fitsapi
 
-
-g_db_conn = None # MWA metadata database connection
 
 #eor_list = ["'G0001'", "'G0004'", "'G0009'", "'G0008'", "'G0010'"] # EOR scientists are only interested in these projects
 eor_list = [] # this has become a parameter of the plug-in
@@ -73,12 +72,9 @@ def ngamsMWA_MIT_NoTape_FilterPI(srvObj,
     """
     match = 0
     projectId = ''
-    onTape = 0
 
     try:
-        fh = fitsapi.getFitsHdrs(filename)
-        projectId = fh[0]['PROJID'][0][1]
-
+        projectId = pyfits.getval(filename, 'PROJID')
     except:
         err = "Did not find keyword PROJID in FITS file or PROJID illegal"
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
@@ -91,8 +87,7 @@ def ngamsMWA_MIT_NoTape_FilterPI(srvObj,
         return 0
     """
 
-     # Parse plug-in parameters.
-    parDic = []
+    # Parse plug-in parameters.
     pars = ""
     if ((plugInPars != "") and (plugInPars != None)):
         pars = plugInPars

@@ -54,11 +54,11 @@ Contains a Filter Plug-In used to filter out those files that
 
 import os
 
+from psycopg2.pool import ThreadedConnectionPool
+import pyfits
+
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import alert, info, genLog, loadPlugInEntryPoint
-import pccFits.PccSimpleFitsReader as fitsapi
-import psycopg2  # used to connect to MWA M&C database
-from psycopg2.pool import ThreadedConnectionPool
 
 
 g_db_pool = ThreadedConnectionPool(1, 5, database = 'mwa', user = 'mwa',
@@ -198,8 +198,7 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
                 return 0
             projectId = "'%s'" % projId # add single quote to be consistent with FITS header keywords
         else:
-            fh = fitsapi.getFitsHdrs(filename)
-            projectId = fh[0]['PROJID'][0][1]
+            projectId = pyfits.getval(filename, 'PROJID')
     except:
         err = "Did not find keyword PROJID in FITS file or PROJID illegal"
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
