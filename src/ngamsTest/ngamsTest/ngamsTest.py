@@ -43,8 +43,8 @@ import pstats
 import cProfile as profile
 from ngamsLib.ngamsCore import getHostName, getNgamsVersion, trim, \
     ngamsCopyrightString, rmFile
-from ngamsLib import ngamsConfig, ngamsHighLevelLib, ngamsLib
-from pccUt import PccUtTime, PccUtUtils
+from ngamsLib import ngamsConfig, ngamsHighLevelLib, ngamsLib, ngamsCore
+from pccUt import PccUtTime
 
 
 
@@ -121,7 +121,7 @@ def runAllTests(notifyemail = None,
         suiteStartTime = time.time()
         tstCmdLine = (sys.executable, "%s.py" % (mod,))
         try:
-            stat, stdout, stderr = PccUtUtils.execCmd(tstCmdLine, timeOut=NGAMS_TEST_MAX_TS_TIME, shell=False)
+            stat, stdout, stderr = ngamsCore.execCmd(tstCmdLine, timeOut=NGAMS_TEST_MAX_TS_TIME, shell=False)
             testTime = (time.time() - suiteStartTime)
             if ((stdout.find("FAILED") != -1) or (stat != 0)):
                 failModDic[mod] = stdout + " --- " + stderr
@@ -196,7 +196,7 @@ def getAllSrcFiles():
     fctDic = {}
     for mod in modules:
         modDir = os.path.normpath("FIXME_PLEASE/" + mod + "/*.py")
-        exitCode, stdOut, stdErr = PccUtUtils.execCmd("grep -n def " + modDir)
+        _, stdOut, _ = ngamsCore.execCmd("grep -n def " + modDir)
         fcts = stdOut.split("\n")
         for fct in fcts:
             fct = trim(fct, " :")

@@ -1347,4 +1347,35 @@ def get_contact_ip(cfgObj):
         return 'localhost'
     return ipAddress
 
+def execCmd(cmd, timeOut = -1, shell=True):
+    """
+    Executes the command given on the UNIX command line and returns a
+    list with the cmd exit code and the output written on stdout and stderr.
+
+    timeOut:     Timeout waiting for the command in seconds. A timeout of
+                 -1 means that no timeout is applied (float).
+
+    Returns:     List with the exit code and output on stdout and stderr:
+
+                     [<exit code>, <stdout>, <stderr>]  (list).
+    """
+
+    p = subprocess.Popen(cmd, bufsize=1, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    if timeOut != -1:
+        killed = threading.Event()
+        def _kill():
+            p.kill()
+            killed.set()
+        startTime = time.time()
+        timer = threading.Timer(timeOut, _kill)
+        timer.daemon = True
+        timer.start()
+    stdout, stderr = p.communicate()
+    if timeOut != -1:
+        timer.cancel()
+        if killed.is_set():
+            raise Exception('Command %s timed out after %.2f [s]' % (cmd, time.time() - startTime))
+
+    return p.poll(), stdout, stderr
 # EOF

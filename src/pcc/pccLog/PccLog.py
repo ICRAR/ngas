@@ -12,9 +12,10 @@
 Module that provides a convenient API to the PCC Log Manager.
 """
 
-import types, threading
+import threading
+
 import PccLogMgr
-from pccUt import PccUtUtils
+
 
 # Remove this when going to v2.1 and import syslog only.
 if (PccLogMgr.sysLog()):
@@ -110,16 +111,6 @@ def setLogCond(logLevel,
 
     Returns:           Void.
     """
-    # Check types of input parameters.
-    PccUtUtils.checkType("logLevel", logLevel,"PccLog.setLogCond()",
-                         types.IntType)
-    PccUtUtils.checkType("logFile", logFile, "PccLog.setLogCond()",
-                         types.StringType)
-    PccUtUtils.checkType("verboseLevel", verboseLevel, "PccLog.setLogCond()",
-                         types.IntType)
-    PccUtUtils.checkType("bufferSize", bufferSize, "PccLog.setLogCond()",
-                         types.IntType)
-
     global __logMgr
     __logMgr.setLogLevel(logLevel)
     __logMgr.setLogFile(logFile)
@@ -182,9 +173,6 @@ def logGen_(fct,
     takeLogSem()
     try:
         msg = str(msg)
-        PccUtUtils.checkType("level", level, fct, types.IntType)
-        PccUtUtils.checkType("location", location, fct, types.StringType)
-
         __logMgr.log(level, logType, location, msg)
         relLogSem()
     except Exception, e:

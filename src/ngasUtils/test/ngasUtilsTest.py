@@ -43,10 +43,10 @@ import os
 import sys
 import time
 
-from ngamsLib import ngamsConfig, ngamsHighLevelLib, ngamsLib
+from ngamsLib import ngamsConfig, ngamsHighLevelLib, ngamsLib, ngamsCore
 from ngamsLib.ngamsCore import ngamsGetSrcDir, getHostName, getNgamsVersion
 from ngamsTest.ngamsTest import genStatus
-from pccUt import PccUtTime, PccUtUtils
+from pccUt import PccUtTime
 
 
 NGAMS_TEST_MAX_TS_TIME = 800
@@ -119,7 +119,7 @@ def runAllTests(notifEmail = None,
         sys.stdout.write(line)
         sys.stdout.flush()
         suiteStartTime = time.time()
-        stat, stdout, stderr = PccUtUtils.execCmd("python " + mod + ".py",
+        stat, stdout, stderr = ngamsCore.execCmd("python " + mod + ".py",
                                                   NGAMS_TEST_MAX_TS_TIME)
         testTime = (time.time() - suiteStartTime)
         if (testTime >= NGAMS_TEST_MAX_TS_TIME):
