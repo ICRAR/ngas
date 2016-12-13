@@ -62,6 +62,7 @@ except ImportError:
     import bsddb
 
 
+
 NGAMS_JANITOR_THR = "JANITOR-THREAD"
 
 class StopJanitorThreadException(Exception):
@@ -975,313 +976,6 @@ def updateDbSnapShots(srvObj,
                 error(msg)
                 raise Exception, msg
 
-def Handle_TempDB_SnapShot_Files(srvObj, stopEvt):
-    """
-    Check if there are any Temporary DB Snapshot Files to handle.
-
-    srvObj:            Reference to NG/AMS server class object (ngamsServer).
-
-    Returns:           Void.
-    """
-    try:
-        updateDbSnapShots(srvObj, stopEvt)
-    except Exception, e:
-        error("Error encountered updating DB Snapshots: " + str(e))
-
-    # => Check Back-Log Buffer (if appropriate).
-    if (srvObj.getCfg().getAllowArchiveReq() and \
-                srvObj.getCfg().getBackLogBuffering()):
-        info(4, "Checking Back-Log Buffer ...")
-        try:
-            ngamsArchiveUtils.checkBackLogBuffer(srvObj)
-        except Exception, e:
-            errMsg = genLog("NGAMS_ER_ARCH_BACK_LOG_BUF", [str(e)])
-            error(errMsg)
-
-def Check_Processing_Directory(srvObj, stopEvt):
-    """
-    Check and clean up Processing Directory 
-
-    srvObj:            Reference to NG/AMS server class object (ngamsServer).
-
-    Returns:           Void.
-    """
-    info(4, "Checking/cleaning up Processing Directory ...")
-    procDir = os.path.normpath(srvObj.getCfg(). \
-                               getProcessingDirectory() + \
-                               "/" + NGAMS_PROC_DIR)
-    checkCleanDirs(procDir, 1800, 1800, 0)
-    info(4, "Processing Directory checked/cleaned up")
-
-def Check_Old_RequestsinDBM(srvObj, stopEvt):
-    """
-    Check and if needs be clean up old requests.
-	
-    Remove a Request Properties Object from the queue if	
-     1. The request handling is completed for more than 24 hours (86400s).
-     2. The request status has not been updated for more than 24 hours (86400s).    
-   
-   srvObj:            Reference to NG/AMS server class object (ngamsServer).
-   
-   Returns:           Void.
-   """
-    info(4, "Checking/cleaning up Request DB ...")
-    # reqTimeOut = 10
-    reqTimeOut = 86400
-    try:
-        reqIds = srvObj.getRequestIds()
-        for reqId in reqIds:
-            reqPropsObj = srvObj.getRequest(reqId)
-            checkStopJanitorThread(stopEvt)
-
-            # Remove a Request Properties Object from the queue if
-            #
-            # 1. The request handling is completed for more than
-            #    24 hours (86400s).
-            # 2. The request status has not been updated for more
-            #    than 24 hours (86400s).
-            timeNow = time.time()
-            if (reqPropsObj.getCompletionTime() != None):
-                complTime = reqPropsObj.getCompletionTime()
-                if ((timeNow - complTime) >= reqTimeOut):
-                    info(4, "Removing request with ID from " + \
-                         "Request DBM: %s" % str(reqId))
-                    srvObj.delRequest(reqId)
-                    continue
-            if (reqPropsObj.getLastRequestStatUpdate() != None):
-                lastReq = reqPropsObj.getLastRequestStatUpdate()
-                if ((timeNow - lastReq) >= reqTimeOut):
-                    info(4, "Removing request with ID from " + \
-                         "Request DBM: %s" % str(reqId))
-                    srvObj.delRequest(reqId)
-                    continue
-            time.sleep(0.020)
-    except StopJanitorThreadException:
-        return
-    except Exception, e:
-        error("Exception encountered: %s" % str(e))
-    info(4, "Request DB checked/cleaned up")
-
-
-def Check_Subscr_Backlog_n_Temp_Dir(srvObj, stopEvt):
-    """
-	Checks/cleans up Subscription Back-Log Buffer and 
-    Checks/cleans up NG/AMS Temp Directory of any leftover files.
-	
-   srvObj:            Reference to NG/AMS server class object (ngamsServer).
-   
-   Returns:           Void.
-   """
-    info(4, "Checking/cleaning up Subscription Back-Log Buffer ...")
-    backLogDir = os.path. \
-        normpath(srvObj.getCfg().getBackLogBufferDirectory() + \
-                 "/" + NGAMS_SUBSCR_BACK_LOG_DIR)
-    expTime = isoTime2Secs(srvObj.getCfg().getBackLogExpTime())
-    checkCleanDirs(backLogDir, expTime, expTime, 0)
-    info(4, "Subscription Back-Log Buffer checked/cleaned up")
-
-    # => Check if there are left-over files in the NG/AMS Temp. Dir.
-    info(4, "Checking/cleaning up NG/AMS Temp Directory ...")
-    tmpDir = ngamsHighLevelLib.getTmpDir(srvObj.getCfg())
-    expTime = (12 * 3600)
-    checkCleanDirs(tmpDir, expTime, expTime, 1)
-    info(4, "NG/AMS Temp Directory checked/cleaned up")
-
-
-def CheckUnsavedLogFile(srvObj, stopEvt):
-    """
-	Checks to see if we have an unsaved log file after a shutdown and
-    archives them.	
-	
-   srvObj:            Reference to NG/AMS server class object (ngamsServer).
-   
-   Returns:           Void.
-   """
-    info(4, "Checking if we have unsaved Log File ")
-    logFile = srvObj.getCfg().getLocalLogFile()
-    logPath = os.path.dirname(logFile)
-    if (os.path.exists(srvObj.getCfg().getLocalLogFile())):
-        unsavedLogFiles = glob.glob(logPath + '/*.unsaved')
-        if (len(unsavedLogFiles) > 0):
-            info(3, "Archiving unsaved log-files ...")
-            for ulogFile in unsavedLogFiles:
-                ologFile = '.'.join(ulogFile.split('.')[:-1])
-                shutil.move(ulogFile, ologFile)
-                ngamsArchiveUtils.archiveFromFile(srvObj, ologFile, 0,
-                                                  'ngas/nglog', None)
-
-def Log_Rot_Chk(srvObj, stopEvt):
-    """
-	Checks to see if its time to rotate the log file.
-	
-   srvObj:            Reference to NG/AMS server class object (ngamsServer).
-   
-   Returns:           Void.
-   """
-    info(4, "Checking if a Local Log File rotate is due ...")
-    logFile = srvObj.getCfg().getLocalLogFile()
-    logPath = os.path.dirname(logFile)
-    hostId = srvObj.getHostId()
-    #
-    logFo = None
-    try:
-        takeLogSem()
-
-        # For some reason we cannot use the creation date ...
-        # Log file starts off empty - so set null value for line
-        line = None
-        with open(logFile, "r") as logFo:
-            for line in logFo:
-                if not line or "[INFO]" in line:
-                    break
-        if line:     #we have a non null value for line ?
-            creTime = line.split(" ")[0].split(".")[0]
-            logFileCreTime = iso8601ToSecs(creTime)
-            logRotInt = isoTime2Secs(srvObj.getCfg(). \
-                                     getLogRotateInt())
-            deltaTime = (time.time() - logFileCreTime)
-            if (deltaTime >= logRotInt):
-                now = time.time()
-                ts = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(now))
-                ts += ".%03d" % ((now - math.floor(now)) * 1000.)
-                # It's time to rotate the current Local Log File.
-                rotLogFile = "LOG-ROTATE-%s.nglog" % (ts,)
-                rotLogFile = os.path. \
-                    normpath(logPath + "/" + rotLogFile)
-                PccLog.info(1, "Rotating log file: %s -> %s" % \
-                            (logFile, rotLogFile), getLocation())
-                logFlush()
-                shutil.move(logFile, rotLogFile)
-                open(logFile, 'a').close()
-                msg = "NG/AMS Local Log File Rotated and archived (%s)"
-                PccLog.info(1, msg % hostId, getLocation())
-        relLogSem()
-        if (line != "" and deltaTime >= logRotInt):
-            ngamsArchiveUtils.archiveFromFile(srvObj, rotLogFile, 0,
-                                              'ngas/nglog', None)
-    except Exception, e:
-        relLogSem()
-        if (logFo): logFo.close()
-        raise e
-    info(4, "Checked for Local Log File rotatation")
-
-def Rotated_Log_FilestoRemove(srvObj, stopEvt):
-    """
-	Check if there are expired or rotated Local Log Files to remove.
-	
-   srvObj:            Reference to NG/AMS server class object (ngamsServer).
-   
-   Returns:           Void.
-   """
-    info(4, "Check if there are rotated Local Log Files to remove ...")
-    logFile = srvObj.getCfg().getLocalLogFile()
-    logPath = os.path.dirname(logFile)
-
-    rotLogFilePat = os.path.normpath(logPath + "/LOG-ROTATE-*.nglog")
-    rotLogFileList = glob.glob(rotLogFilePat)
-    delLogFiles = (len(rotLogFileList) - \
-                   srvObj.getCfg().getLogRotateCache())
-    if (delLogFiles > 0):
-        rotLogFileList.sort()
-        for n in range(delLogFiles):
-            info(1, "Removing Rotated Local Log File: " + \
-                 rotLogFileList[n])
-            rmFile(rotLogFileList[n])
-    info(4, "Checked for expired, rotated Local Log Files")
-
-def Check_Disk_Space(srvObj, stopEvt):
-    """
-	Check if there is enough disk space for the various
-    directories defined.
-	
-   srvObj:            Reference to NG/AMS server class object (ngamsServer).
-   
-   Returns:           Void.
-   """
-    try:
-        srvObj.checkDiskSpaceSat()
-    except Exception, e:
-        alert(str(e))
-        alert("Bringing the system to Offline State ...")
-        # We use a small trick here: We send an Offline Command to
-        # the process itself.
-        #
-        # If authorization is on, fetch a key of a defined user.
-        if (srvObj.getCfg().getAuthorize()):
-            authHdrVal = srvObj.getCfg(). \
-                getAuthHttpHdrVal(NGAMS_HTTP_INT_AUTH_USER)
-        else:
-            authHdrVal = ""
-        ngamsLib.httpGet(getHostName(), srvObj.getCfg().getPortNo(),
-                         NGAMS_OFFLINE_CMD, 0,
-                         [["force", "1"], ["wait", "0"]],
-                         "", 65536, 30, 0, authHdrVal)
-
-def Check_to_Wakeup_OtherNGAS_Host(srvObj, stopEvt):
-    """
-	Check if this NG/AMS Server is requested to wake up another/other NGAS Host(s).
-	
-   srvObj:            Reference to NG/AMS server class object (ngamsServer).
-   
-   Returns:           Void.
-   """
-    hostId = srvObj.getHostId()
-    timeNow = time.time()
-    for wakeUpReq in srvObj.getDb().getWakeUpRequests(srvObj.getHostId()):
-        # Check if the individual host is 'ripe' for being woken up.
-        suspHost = wakeUpReq[0]
-        if (timeNow > wakeUpReq[1]):
-            info(2, "Found suspended NG/AMS Server: " + suspHost + " " + \
-                 "that should be woken up by this NG/AMS Server: " + \
-                 hostId + " ...")
-            ngamsSrvUtils.wakeUpHost(srvObj, suspHost)
-
-def Check_to_Suspend_NGAS_Host(srvObj, stopEvt):
-    """
-	Check if the conditions for suspending this NGAS Host are met.
-	
-   srvObj:            Reference to NG/AMS server class object (ngamsServer).
-   
-   Returns:           Void.
-   """
-    hostId = srvObj.getHostId()
-    srvDataChecking = srvObj.getDb().getSrvDataChecking(hostId)
-    if ((not srvDataChecking) and
-            (srvObj.getCfg().getIdleSuspension()) and
-            (not srvObj.getHandlingCmd())):
-        timeNow = time.time()
-        # Conditions are that the time since the last request was
-        # handled exceeds the time for suspension defined.
-        if ((timeNow - srvObj.getLastReqEndTime()) >=
-                srvObj.getCfg().getIdleSuspensionTime()):
-            # Conditions are met for suspending this NGAS host.
-            info(2, "NG/AMS Server: %s suspending itself ..." % \
-                 hostId)
-
-            # If Data Checking is on, we request a wake-up call.
-            if (srvObj.getCfg().getDataCheckActive()):
-                wakeUpSrv = srvObj.getCfg().getWakeUpServerHost()
-                nextDataCheck = srvObj.getNextDataCheckTime()
-                srvObj.reqWakeUpCall(wakeUpSrv, nextDataCheck)
-
-            # Now, suspend this host.
-            srvObj.getDb().markHostSuspended(srvObj.getHostId())
-            suspPi = srvObj.getCfg().getSuspensionPlugIn()
-            info(3, "Invoking Suspension Plug-In: " + suspPi + " to " + \
-                 "suspend NG/AMS Server: " + hostId + " ...")
-            logFlush()
-            try:
-                plugInMethod = loadPlugInEntryPoint(suspPi)
-                plugInMethod(srvObj)
-            except Exception, e:
-                errMsg = "Error suspending NG/AMS Server: " + \
-                         hostId + " using Suspension Plug-In: " + \
-                         suspPi + ". Error: " + str(e)
-                error(errMsg)
-                ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(),
-                                         NGAMS_NOTIF_ERROR,
-                                         "ERROR INVOKING SUSPENSION " + \
-                                         "PLUG-IN", errMsg)
 
 def janitorThread(srvObj, stopEvt):
     """
@@ -1328,7 +1022,8 @@ def janitorThread(srvObj, stopEvt):
             ##################################################################
             # => Check if there are any Temporary DB Snapshot Files to handle.
             ##################################################################
-            Handle_TempDB_SnapShot_Files(srvObj, stopEvt)
+            from ngamsPlugIns import ngamsJanitorHandleTempDBSnapshotFiles
+            ngamsJanitorHandleTempDBSnapshotFiles.Handle_TempDB_SnapShot_Files(srvObj, stopEvt,updateDbSnapShots)
 
 
             ##################################################################
@@ -1336,21 +1031,24 @@ def janitorThread(srvObj, stopEvt):
             #    appropriate). If a Processing Directory is more than
             #    30 minutes old, it is deleted.
             ##################################################################
-            Check_Processing_Directory(srvObj, stopEvt)
+            from ngamsPlugIns import ngamsJanitorCheckProcessingDirectory
+            ngamsJanitorCheckProcessingDirectory.Check_Processing_Directory(srvObj, stopEvt,checkCleanDirs)
 
 
             ##################################################################
             # => Check if there are old Requests in the Request DBM, which
             #    should be removed.
             ##################################################################
-            Check_Old_RequestsinDBM(srvObj, stopEvt)
+            from ngamsPlugIns import ngamsJanitorCheckOldRequestsinDBM
+            ngamsJanitorCheckOldRequestsinDBM.Check_Old_RequestsinDBM(srvObj, stopEvt,checkStopJanitorThread)
 
 
             ##################################################################
             # => Check if we need to clean up Subscription Back-Log Buffer.
             #     and check if there are left-over files in the NG/AMS Temp. Dir.
             ##################################################################
-            Check_Subscr_Backlog_n_Temp_Dir(srvObj, stopEvt)
+            from ngamsPlugIns import ngamsJanitorCheckSubscrBacklognTempDir
+            ngamsJanitorCheckSubscrBacklognTempDir.Check_Subscr_Backlog_n_Temp_Dir(srvObj, stopEvt,checkCleanDirs)
 
             # => Check for retained Email Notification Messages to send out.
             ngamsNotification.checkNotifRetBuf(srvObj.getHostId(), srvObj.getCfg())
@@ -1360,37 +1058,43 @@ def janitorThread(srvObj, stopEvt):
             ##################################################################
 
             # => Check there are any unsaved log files from a shutdown and archive them.
-            CheckUnsavedLogFile(srvObj, stopEvt)
+            from ngamsPlugIns import ngamsJanitorCheckUnsavedLogFile
+            ngamsJanitorCheckUnsavedLogFile.CheckUnsavedLogFile(srvObj, stopEvt)
 
 
             # => Check if its time to carry out a rotation of the log file.
-            Log_Rot_Chk(srvObj, stopEvt)
+            from ngamsPlugIns import ngamsJanitorLogRotChk
+            ngamsJanitorLogRotChk.Log_Rot_Chk(srvObj, stopEvt)
 
 
             ##################################################################
             # => Check if there are rotated Local Log Files to remove.
             ##################################################################
-            Rotated_Log_FilestoRemove(srvObj, stopEvt)
+            from ngamsPlugIns import ngamsJanitorRotatedLogFilestoRemove
+            ngamsJanitorRotatedLogFilestoRemove.Rotated_Log_FilestoRemove(srvObj, stopEvt)
 
 
             ##################################################################
             # => Check if there is enough disk space for the various
             #    directories defined.
             ##################################################################
-            Check_Disk_Space(srvObj, stopEvt)
+            from ngamsPlugIns import ngamsJanitorCheckDiskSpace
+            ngamsJanitorCheckDiskSpace.Check_Disk_Space(srvObj, stopEvt)
 
 
             ##################################################################
             # => Check if this NG/AMS Server is requested to wake up
             #    another/other NGAS Host(s).
             ##################################################################
-            Check_to_Wakeup_OtherNGAS_Host(srvObj, stopEvt)
+            from ngamsPlugIns import ngamsJanitorChecktoWakeupOtherNGASHost
+            ngamsJanitorChecktoWakeupOtherNGASHost.Check_to_Wakeup_OtherNGAS_Host(srvObj, stopEvt)
 
 
             ##################################################################
             # => Check if the conditions for suspending this NGAS Host are met.
             ##################################################################
-            Check_to_Suspend_NGAS_Host(srvObj, stopEvt)
+            from ngamsPlugIns import ngamsJanitorChecktoSuspendNGASHost
+            ngamsJanitorChecktoSuspendNGASHost.Check_to_Suspend_NGAS_Host(srvObj, stopEvt)
 
 
             # Update the Janitor Thread run count.
