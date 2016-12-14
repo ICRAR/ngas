@@ -77,8 +77,6 @@ from pccLog import PccLog, PccLogDef
 from pccUt  import PccUtTime
 
 
-# Debug flag.
-_debug = 0
 
 
 # Semaphore + counter to ensure unique, temporary filenames.
@@ -666,43 +664,8 @@ def alert(msg):
         relLogSem()
 
 
-def setDebug(debug):
-    """
-    Set Global Debug Flag.
-
-    debug:    Debug flag. 1 = debug mode (integer).
-
-    Returns:  Void.
-    """
-    global _debug
-    _debug = debug
-
-
 def getDebug():
-    """
-    Return Global Debug Flag.
-
-    Returns:  Debug flag. 1 = debug mode (integer).
-    """
-    global _debug
-    return _debug
-
-
-def DEBUG(msg = ""):
-    """
-    Function to use for debugging purposes. Print a message on stdout.
-
-    msg:       Message to print (string).
-
-    Returns:   Void.
-    """
-    if (getDebug()):
-        stackInfo = traceback.extract_stack()[-2]
-        module = stackInfo[0].split("/")[-1]
-        lineNo = stackInfo[1]
-        method = stackInfo[2]
-        print "##### DEBUG: Module: " + module + " - Line No: " +\
-              str(lineNo) + " - Method: " + method + " - Message: " + str(msg)
+    return getMaxLogLevel() > 4
 
 
 def logFlush():

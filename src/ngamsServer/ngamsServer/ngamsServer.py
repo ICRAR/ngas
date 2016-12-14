@@ -42,7 +42,7 @@ from pccUt import PccUtTime
 
 from ngamsLib.ngamsCore import \
     genLog, error, info, alert, setLogCache, logFlush, sysLogInfo, TRACE,\
-    rmFile, trim, getNgamsVersion, getDebug, setDebug, \
+    rmFile, trim, getNgamsVersion, getDebug, \
     getFileSize, getDiskSpaceAvail, setLogCond, checkCreatePath,\
     getHostName, ngamsCopyrightString, getNgamsLicense,\
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, NGAMS_HTTP_GET,\
@@ -2577,9 +2577,6 @@ class ngamsServer:
                     exitValue = 0
                     silentExit = 1
                     sys.exit(0)
-                elif (par == "-D"):
-                    info(1,"Debug Mode enabled")
-                    setDebug(1)
                 elif (par == "-FORCE"):
                     info(1,"Forced Mode requested")
                     self.setForce(1)

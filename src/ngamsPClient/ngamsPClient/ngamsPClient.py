@@ -44,7 +44,7 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NG
     NGAMS_LABEL_CMD, NGAMS_ONLINE_CMD, NGAMS_OFFLINE_CMD, NGAMS_REMDISK_CMD,\
     NGAMS_REMFILE_CMD, NGAMS_REGISTER_CMD, NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD,\
     NGAMS_FAILURE, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD, NGAMS_ARCH_REQ_MT,\
-    setLogCond, setDebug, NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,\
+    setLogCond, NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,\
     NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, getNgamsLicense
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD
@@ -991,8 +991,6 @@ class ngamsPClient:
                 elif (par == "-cmd"):
                     idx = idx + 1
                     cmd = argv[idx]
-                elif (par == "-d"):
-                    setDebug(1)
                 elif (par == "-diskid"):
                     idx = idx + 1
                     diskId = argv[idx]
