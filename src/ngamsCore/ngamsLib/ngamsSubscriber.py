@@ -37,7 +37,7 @@ import random
 import xml.dom.minidom
 
 from pccUt import PccUtTime
-from ngamsCore import info, timeRef2Iso8601, TRACE, prFormat1
+from ngamsCore import timeRef2Iso8601, TRACE, prFormat1
 
 
 class ngamsSubscriber:
@@ -86,7 +86,6 @@ class ngamsSubscriber:
 
         Returns:    Reference to object itself.
         """
-        info(6,"Executing ngamsSubscriber.setHostId(): " + str(id))
         self.__hostId = id.strip()
         return self
 
@@ -109,7 +108,6 @@ class ngamsSubscriber:
 
         Returns:    Reference to object itself.
         """
-        info(6,"Executing ngamsSubscriber.setPortNo(): " + str(portNo))
         self.__portNo = int(portNo)
         return self
 
@@ -132,7 +130,6 @@ class ngamsSubscriber:
 
         Returns:    Reference to object itself.
         """
-        info(6,"Executing ngamsSubscriber.setPriority(): " + str(prio))
         self.__priority = int(prio)
         return self
 
@@ -156,7 +153,6 @@ class ngamsSubscriber:
 
         Returns:    Reference to object itself.
         """
-        info(6,"Executing ngamsSubscriber.setId(): " + str(id))
         self.__id = id.split("?")[0].strip()
         return self
 
@@ -179,7 +175,6 @@ class ngamsSubscriber:
 
         Returns:    Reference to object itself.
         """
-        info(6, "Executing ngamsSubscriber.setUrl(): %s" % str(url))
         if not url:
             raise Exception('Invalid subscriber url: %s' % url)
         self.__url = url.strip()
@@ -222,7 +217,6 @@ class ngamsSubscriber:
 
         Returns:     Reference to object itself.
         """
-        info(6,"Executing ngamsSubscriber.setStartDate(): " + str(startDate))
         if (not startDate):
             self.__startDate = ""
         else:
@@ -239,8 +233,6 @@ class ngamsSubscriber:
 
         Returns:         Reference to object itself.
         """
-        info(6,"Executing ngamsSubscriber.setStartDateFromSecs(): " +\
-             str(startDateSecs))
         self.__startDate = PccUtTime.TimeStamp().\
                            initFromSecsSinceEpoch(startDateSecs).getTimeStamp()
         return self
@@ -278,7 +270,6 @@ class ngamsSubscriber:
 
         Returns:     Reference to object itself.
         """
-        info(6,"Executing ngamsSubscriber.setFilterPi(): " + str(plugIn))
         if (not plugIn):
             self.__plugIn = ""
         else:
@@ -305,7 +296,6 @@ class ngamsSubscriber:
 
         Returns:       Reference to object itself.
         """
-        info(6,"Executing ngamsSubscriber.setFilterPiPars(): "+str(plugInPars))
         if (not plugInPars):
             self.__plugInPars = ""
         else:
@@ -332,8 +322,6 @@ class ngamsSubscriber:
 
         Returns:          Reference to object itself.
         """
-        info(6,"Executing ngamsSubscriber.setLastFileIngDate(): " +\
-             str(lastFileIngDate))
         if (not lastFileIngDate):
             self.__lastFileIngDate = ""
         else:
@@ -351,8 +339,6 @@ class ngamsSubscriber:
 
         Returns:   Reference to object itself.
         """
-        info(6,"Executing ngamsSubscriber.setLastFileIngDateFromSecs(): " +\
-             str(dateSecs))
         if (not dateSecs):
             self.__lastFileIngDate = ""
         else:
