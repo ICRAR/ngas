@@ -60,11 +60,11 @@ For more detailed information about the project, consult the URL:
 
 import glob
 import importlib
+import logging
 import md5
 import os
 import shutil
 import socket
-import syslog
 import threading
 import time
 import traceback
@@ -77,6 +77,7 @@ from pccLog import PccLog, PccLogDef
 from pccUt  import PccUtTime
 
 
+logger = logging.getLogger(__name__)
 
 
 # Semaphore + counter to ensure unique, temporary filenames.
@@ -403,23 +404,8 @@ def getLocation(level = -3):
                ":" + str(os.getpid())
 
 
-def info(level,
-         msg):
-    """
-    Generate an Information Log entry in the log targets.
-    This is not written to UNIX syslog.
-
-    level:    Level indicator for this log entry.
-
-    msg:      Message to log (string).
-
-    Returns:  Void.
-    """
-    takeLogSem()
-    try:
-        PccLog.info(level, msg, getLocation())
-    finally:
-        relLogSem()
+def info(level, msg):
+    logger.info(msg);
 
 
 def TRACE(logLevel = 4):
@@ -443,67 +429,16 @@ def TRACE(logLevel = 4):
 
 
 def notice(msg):
-    """
-    Log a Notice Log into the specified log targets.
-
-    msg:      Message to log.
-
-    Returns:  Void.
-    """
-    try:
-        takeLogSem()
-        PccLog.notice(msg, getLocation())
-        relLogSem()
-    except Exception, e:
-        relLogSem()
-
+    logger.log(25, msg);
 
 def warning(msg):
-    """
-    Log a Warning Log into the specified log targets.
-
-    msg:      Message to log.
-
-    Returns:  Void.
-    """
-    try:
-        takeLogSem()
-        PccLog.warning(msg, getLocation())
-        relLogSem()
-    except Exception, e:
-        relLogSem()
-
+    logger.warning(msg)
 
 def error(msg):
-    """
-    Log an Error Log into the specified log targets.
-
-    msg:      Message to log (string).
-
-    Returns:  Void.
-    """
-    try:
-        takeLogSem()
-        PccLog.error(msg, getLocation())
-        relLogSem()
-    except Exception, e:
-        relLogSem()
-
+    logger.error(msg)
 
 def alert(msg):
-    """
-    Log an Alert Log into the specified log targets.
-
-    msg:      Message to log (string).
-
-    Returns:  Void.
-    """
-    try:
-        takeLogSem()
-        PccLog.alert(msg, getLocation())
-        relLogSem()
-    except Exception, e:
-        relLogSem()
+    logger.critical(msg)
 
 
 def logFlush():
