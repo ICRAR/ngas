@@ -34,16 +34,18 @@ This module contains the code for the Cache Control Thread, which is used
 to manage the contents in the cache archive when running the NG/AMS Server
 as a cache archive.
 """
-
+import logging
 import os, time, base64, cPickle, traceback
-from Queue import Queue, Empty
 
 import sqlite3 as sqlite
 
 from ngamsLib.ngamsCore import info, TRACE, rmFile,\
-    getMaxLogLevel, iso8601ToSecs, error, warning, notice, genLog, alert,\
+    iso8601ToSecs, error, warning, notice, genLog, alert,\
     loadPlugInEntryPoint
 from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib
+
+
+logger = logging.getLogger(__name__)
 
 # Various definitions used within this module.
 
@@ -269,15 +271,12 @@ def queryCacheDbms(srvObj,
     try:
         srvObj._cacheContDbmsSem.acquire()
         sqlQuery += ";"
-        if (getMaxLogLevel() > 4):
-            info(5, "Performing SQL query (Cache DBMS): " + str(sqlQuery))
+        logger.debug("Performing SQL query (Cache DBMS): ", sqlQuery)
         srvObj._cacheContDbmsCur.execute(sqlQuery)
         srvObj._cacheContDbms.commit() # TODO: Investigate this.
         res = srvObj._cacheContDbmsCur.fetchall()
         srvObj._cacheContDbmsSem.release()
-        if (getMaxLogLevel() > 4):
-            info(5, "Result of SQL query  (Cache DBMS) (" +\
-                 str(sqlQuery) + "): " + str(res))
+        logger.debug("Result of SQL query  (Cache DBMS) (%s): %s", sqlQuery, str(res))
         return res
     except Exception, e:
         srvObj._cacheContDbmsSem.release()

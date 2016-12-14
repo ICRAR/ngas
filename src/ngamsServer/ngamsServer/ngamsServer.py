@@ -33,6 +33,7 @@ services for the NG/AMS Server.
 """
 
 import os, sys, re, threading, time, pkg_resources
+import logging
 import math
 import shutil
 import traceback
@@ -42,7 +43,7 @@ from pccUt import PccUtTime
 
 from ngamsLib.ngamsCore import \
     genLog, error, info, alert, setLogCache, logFlush, sysLogInfo, TRACE,\
-    rmFile, trim, getNgamsVersion, getDebug, \
+    rmFile, trim, getNgamsVersion, \
     getFileSize, getDiskSpaceAvail, checkCreatePath,\
     getHostName, ngamsCopyrightString, getNgamsLicense,\
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, NGAMS_HTTP_GET,\
@@ -59,6 +60,9 @@ import ngamsDataCheckThread
 import ngamsUserServiceThread
 import ngamsMirroringControlThread
 import ngamsCacheControlThread
+
+
+logger = logging.getLogger(__name__)
 
 class ngamsSimpleRequest:
     """
@@ -1558,11 +1562,12 @@ class ngamsServer:
             # (although it should be a 5xx code)
             # Before we were consuming the whole input stream here before
             # sending the response which wasted resources unnecessarily
-            if getDebug():
-                traceback.print_exc(file = sys.stdout)
-
             errMsg = str(e)
-            error(errMsg)
+            if logger.level <= logging.DEBUG:
+                logger.exception("Error while serving request")
+            else:
+                logger.error(errMsg)
+
             self.setSubState(NGAMS_IDLE_SUBSTATE)
 
             # If we fail because of a socket error there is no point on trying

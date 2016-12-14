@@ -45,6 +45,7 @@ simplified in a few ways:
   - ngas_files data is 'cloned' from the source file
 """
 
+import logging
 import os
 import random
 import time
@@ -53,7 +54,7 @@ import urlparse
 from ngamsLib.ngamsCore import TRACE, genLog, error, checkCreatePath, \
     info, NGAMS_HTTP_HDR_CHECKSUM, NGAMS_ONLINE_STATE, \
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_STAGING_DIR, genUniqueId, \
-    getMaxLogLevel, mvFile, getFileCreationTime, NGAMS_FILE_STATUS_OK, \
+    mvFile, getFileCreationTime, NGAMS_FILE_STATUS_OK, \
     getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, loadPlugInEntryPoint
 from ngamsLib import ngamsDiskInfo, ngamsHighLevelLib, ngamsFileInfo
 from ngamsServer import ngamsCacheControlThread, ngamsFileUtils
@@ -63,6 +64,8 @@ from pccUt import PccUtTime
 GET_AVAIL_VOLS_QUERY = "SELECT %s FROM ngas_disks nd WHERE completed=0 AND " +\
                        "host_id='%s'"
 
+
+logger = logging.getLogger(__name__)
 
 def getTargetVolume(srvObj):
     """
@@ -337,15 +340,14 @@ def handleCmd(srvObj,
         errMsg = "Error loading DAPI: %s. Error: %s" % (plugIn, str(e))
         raise Exception, errMsg
 
-    info(2, "Invoking DAPI: %s to handle data for file with URI: %s" % (plugIn, base_name))
+    logger.info("Invoking DAPI: %s to handle data for file with URI: %s" % (plugIn, base_name))
 
     timeBeforeDapi = time.time()
     resDapi = plugInMethod(srvObj, reqPropsObj)
 
-    if getMaxLogLevel() > 4:
-        info(3, "Invoked DAPI: %s. Time: %.3fs." %\
-             (plugIn, (time.time() - timeBeforeDapi)))
-        info(3, "Result DAPI: %s" % str(resDapi.toString()))
+    if logger.level <= logging.DEBUG:
+        logger.debug("Invoked DAPI: %s. Time: %.3fs.", plugIn, (time.time() - timeBeforeDapi))
+        logger.debug("Result DAPI: %s", str(resDapi.toString()))
 
     # Move file to final destination.
     info(3, "Moving file to final destination")

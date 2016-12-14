@@ -32,12 +32,12 @@ Core class for the NG/AMS DB interface.
 """
 
 import importlib
+import logging
 import random
 import threading
 import time
 
-from ngamsCore import TRACE, getMaxLogLevel, genLog, timeRef2Iso8601
-from ngamsCore import info, notice, error, warning
+from ngamsCore import TRACE
 from pccUt import PccUtTime
 from contextlib import closing
 from DBUtils.PooledDB import PooledDB
@@ -45,6 +45,7 @@ from DBUtils.PooledDB import PooledDB
 # Global DB Semaphore to protect critical, global DB interaction.
 _globalDbSem = threading.Semaphore(1)
 
+logger = logging.getLogger(__name__)
 
 # Define lay-out of ngas_disks table
 _ngasDisksDef = [["nd.disk_id",               "NGAS_DISKS_DISK_ID"],
@@ -414,10 +415,7 @@ class ngamsDbTimer:
     def __exit__(self, typ, value, traceback):
         deltaTime = (time.time() - self.__startTime)
         self.__dbConObj.updateDbTime(deltaTime)
-        if (getMaxLogLevel() >= 4):
-            msg = "DB-TIME: Time spent for DB query: |%s|: %.6fs" %\
-                  (self.__query, deltaTime)
-            info(4, msg)
+        logger.debug("DB-TIME: Time spent for DB query: |%s|: %.6fs", self.__query, deltaTime)
 
 def cleanSrvList(srvList):
     """
@@ -562,7 +560,7 @@ class ngamsDbCore(object):
         self.__dbSnapshot = createSnapshot
         self.__dbInterface = interface
 
-        info(4, "Importing DB Module: %s" % (self.__dbInterface,))
+        logger.info("Importing DB Module: %s", self.__dbInterface)
         self.__dbModule = importlib.import_module(interface)
         self.__paramstyle = self.__dbModule.paramstyle
         self.__pool = PooledDB(self.__dbModule,
@@ -570,7 +568,7 @@ class ngamsDbCore(object):
                                 maxconnections = maxpoolcons,
                                 blocking = True,
                                 **parameters)
-        info(3, "DB Module API Level: %s" % (self.__dbModule.apilevel))
+        logger.info("DB Module API Level: %s", self.__dbModule.apilevel)
 
         # Verification/Auto Recover.
         self.__dbVerify      = 1
@@ -588,8 +586,7 @@ class ngamsDbCore(object):
         """
         # TODO: Check if really needed with a Global DB Semaphore (if yes
         #       write the reason in the documentation).
-        if (getMaxLogLevel() > 4):
-            info(5, "Taking Global DB Access Semaphore")
+        logger.debug("Taking Global DB Access Semaphore")
         global _globalDbSem
         _globalDbSem.acquire()
 
@@ -602,8 +599,7 @@ class ngamsDbCore(object):
         """
         # TODO: Check if really needed with a Global DB Semaphore (if yes
         #       write the reason in the documentation).
-        if (getMaxLogLevel() > 4):
-            info(5, "Releasing Global DB Access Semaphore")
+        logger.debug("Releasing Global DB Access Semaphore")
         global _globalDbSem
         _globalDbSem.release()
 
@@ -813,8 +809,7 @@ class ngamsDbCore(object):
             sqlQuery = sqlQuery.format(*self._params_to_bind(len(args)))
             args = self._data_to_bind(args)
 
-        if getMaxLogLevel() >= 5:
-            info(5, "Performing SQL query with parameters: %s / %r" % (sqlQuery, args))
+        logger.debug("Performing SQL query with parameters: %s / %r", sqlQuery, args)
 
         with closing(self.__pool.connection()) as conn:
             with closing(conn.cursor()) as cursor:
@@ -835,8 +830,7 @@ class ngamsDbCore(object):
                             res = []
                         conn.commit()
 
-                        if getMaxLogLevel() >= 5:
-                            info(5, "Result of SQL query %s / %r: %r" % (sqlQuery, args, res))
+                        logger.debug("Result of SQL query %s / %r: %r", sqlQuery, args, res)
 
                         return res
                     except:
@@ -862,8 +856,7 @@ class ngamsDbCore(object):
             sqlQuery = sqlQuery.format(*self._params_to_bind(len(args)))
             args = self._data_to_bind(args)
 
-        if (getMaxLogLevel() > 4):
-            info(5, "Performing SQL query (using a cursor): %s / %r" % (sqlQuery, args))
+        logger.debug("Performing SQL query (using a cursor): %s / %r", sqlQuery, args)
 
         return ngamsDbCursor(self.__pool, sqlQuery, args)
 

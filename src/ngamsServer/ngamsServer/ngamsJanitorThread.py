@@ -36,6 +36,7 @@ suspended NGAS hosts, suspending itself.
 #       of bsddb + simplify the algorithm.
 
 import os, time, glob, cPickle
+import logging
 import math
 import types
 import shutil
@@ -44,7 +45,7 @@ import ngamsArchiveUtils, ngamsSrvUtils
 from ngamsLib.ngamsCore import TRACE, info, \
     getFileCreationTime, getFileModificationTime, getFileAccessTime, rmFile, \
     warning, NGAMS_DB_DIR, NGAMS_DB_NGAS_FILES, checkCreatePath, \
-    NGAMS_DB_CH_CACHE, getMaxLogLevel, NGAMS_NOTIF_DATA_CHECK, \
+    NGAMS_DB_CH_CACHE, NGAMS_NOTIF_DATA_CHECK, \
     NGAMS_TEXT_MT, NGAMS_PICKLE_FILE_EXT, NGAMS_DB_CH_FILE_DELETE, \
     NGAMS_DB_CH_FILE_INSERT, NGAMS_DB_CH_FILE_UPDATE, notice, error, \
     isoTime2Secs, genLog, NGAMS_PROC_DIR, NGAMS_SUBSCR_BACK_LOG_DIR, \
@@ -63,6 +64,8 @@ except ImportError:
 
 
 NGAMS_JANITOR_THR = "JANITOR-THREAD"
+
+logger = logging.getLogger(__name__)
 
 class StopJanitorThreadException(Exception):
     pass
@@ -617,10 +620,9 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                             tmpSnapshotDbm[key] = pickleValue
                         else:
                             # Remove this entry from the DB Snapshot.
-                            if (getMaxLogLevel() >= 5):
-                                msg = "Scheduling entry: %s in DB Snapshot " +\
-                                      "for disk with ID: %s for removal"
-                                info(4,msg % (diskId, key))
+                            msg = "Scheduling entry: %s in DB Snapshot " +\
+                                  "for disk with ID: %s for removal"
+                            logger.debug(msg, diskId, key)
                             # Add entry in the DB Snapshot Deletion DBM marking
                             # the entry for deletion.
                             if (_updateSnapshot(srvObj.getCfg())):
@@ -661,10 +663,8 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                 # jagonzal: We need to reformat the values and skip administrative elements #################
                 if (str(key).find("__") != -1): continue
                 #############################################################################################
-                if (getMaxLogLevel() >= 4):
-                    msg = "Removing entry: %s from DB Snapshot for " +\
-                          "disk with ID: %s"
-                    info(4,msg % (key, diskId))
+                msg = "Removing entry: %s from DB Snapshot for disk with ID: %s"
+                logger.debug(msg, key, diskId)
                 del snapshotDbm[key]
             #################################################################################################
             del snapshotDelDbm

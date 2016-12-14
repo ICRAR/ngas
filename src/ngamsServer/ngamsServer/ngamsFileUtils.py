@@ -34,6 +34,7 @@ functions, to deal with archive files.
 
 import binascii
 import functools
+import logging
 import os
 import re
 
@@ -45,13 +46,15 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
     NGAMS_HOST_DOMAIN, rmFile, NGAMS_HOST_REMOTE, NGAMS_RETRIEVE_CMD, genLog, \
     warning, NGAMS_STATUS_CMD, getHostName, NGAMS_CACHE_DIR, \
     NGAMS_DATA_CHECK_THR, getFileSize, logFlush, notice, info,\
-    loadPlugInEntryPoint, getMaxLogLevel
+    loadPlugInEntryPoint
 
 _crc32c_available = True
 try:
     import crc32c
 except ImportError:
     _crc32c_available = False
+
+logger = logging.getLogger(__name__)
 
 def _locateArchiveFile(srvObj,
                        fileId,
@@ -168,7 +171,7 @@ def _locateArchiveFile(srvObj,
     fileVerList = candFileDic.keys()
     fileVerList.sort()
     fileVerList.reverse()
-    if getMaxLogLevel() >= 4:
+    if logger.level <= logging.DEBUG:
         msg = ""
         count = 1
         for fileVer in fileVerList:
@@ -177,7 +180,7 @@ def _locateArchiveFile(srvObj,
                        ", Host:" + fi[2] + ", Version:" +\
                        str(fi[1].getFileVersion()) + ") "
                 count += 1
-        info(4,"File list to check: " + msg)
+        logger.debug("File list to check: " + msg)
 
     # If no files were found we raise an exception.
     if (len(candFileDic) == 0):

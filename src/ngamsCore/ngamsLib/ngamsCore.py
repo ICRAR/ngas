@@ -345,34 +345,6 @@ def ngamsCopyrightString():
     """
     return NGAMS_COPYRIGHT_TEXT
 
-
-def getVerboseLevel():
-    """
-    Get the Verbose Level.
-
-    Returns:   Verbose Level (integer).
-    """
-    return PccLog.getVerboseLevel()
-
-
-def getLogLevel():
-    """
-    Get the Log Level.
-
-    Returns:   Log Level (integer).
-    """
-    return PccLog.getLogLevel()
-
-
-def getMaxLogLevel():
-    """
-    Returns the highest level of the Log and Verbose Levels.
-
-    Returns:  Maximum level (integer).
-    """
-    return max(getLogLevel(), getVerboseLevel())
-
-
 def genLog(logId,
            parList = []):
     """
@@ -552,10 +524,6 @@ def alert(msg):
         relLogSem()
     except Exception, e:
         relLogSem()
-
-
-def getDebug():
-    return getMaxLogLevel() > 4
 
 
 def logFlush():

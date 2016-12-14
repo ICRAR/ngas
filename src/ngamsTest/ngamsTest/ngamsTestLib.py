@@ -40,6 +40,7 @@ import getpass
 import glob
 import gzip
 import importlib
+import logging
 import os
 import re
 import shutil
@@ -55,12 +56,14 @@ import pyfits
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
 from ngamsLib.ngamsCore import getHostName, TRACE, info, \
     ngamsCopyrightString, rmFile, \
-    error, cleanList, getVerboseLevel, \
-    cpFile, getLogLevel, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
+    error, cleanList, \
+    cpFile, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
     checkIfIso8601, execCmd as ngamsCoreExecCmd
 from ngamsPClient import ngamsPClient
 from pccUt import PccUtTime
 
+
+logger = logging.getLogger(__name__)
 
 # Global parameters to control the test run.
 _noCleanUp   = 0
@@ -769,8 +772,8 @@ def runTest(argv):
     testModuleName = argv[0].split(".")[0]
     tests = []
     silentExit = 0
-    verboseLevel = -1
-    logFile = ""
+    verboseLevel = 0
+    logFile = None
     logLevel = 0
     skip = None
     idx = 1
@@ -985,7 +988,6 @@ class ngamsTestSuite(unittest.TestCase):
         methodName:    Name of method to run to run test case (string_.
         """
         unittest.TestCase.__init__(self, methodName)
-        self.__verboseLevel  = getVerboseLevel()
         self.__extSrvInfo    = []
 
         # TODO: Get rid of these.
@@ -1068,7 +1070,8 @@ class ngamsTestSuite(unittest.TestCase):
         """
         T = TRACE(3)
 
-        verbose = getVerboseLevel()
+        levels = {logging.CRITICAL: 0, logging.ERROR: 1, logging.WARN: 2, 25: 3, logging.INFO: 4, logging.DEBUG: 5, logging.NOTSET: 6}
+        verbose = levels[logger.getEffectiveLevel()]
 
         if (dbCfgName):
             # If a DB Configuration Name is specified, we first have to
@@ -1124,10 +1127,9 @@ class ngamsTestSuite(unittest.TestCase):
             execCmd = [sys.executable, '-m', srvModule]
         else:
             execCmd = [server_type]
-        execCmd += ["-cfg", tmpCfg]
+        execCmd += ["-cfg", tmpCfg, "-v", str(verbose)]
         if force:        execCmd.append('-force')
         if autoOnline:   execCmd.append("-autoOnline")
-        if verbose:      execCmd.extend(["-v", str(verbose)])
         if multipleSrvs: execCmd.append("-multipleSrvs")
         if dbCfgName:    execCmd.extend(["-dbCfgId", dbCfgName])
         info(3,"Starting external NG/AMS Server with shell command: " + " ".join(execCmd))
@@ -1194,8 +1196,7 @@ class ngamsTestSuite(unittest.TestCase):
             if stat.getState() != "OFFLINE":
                 info(1,"Sending OFFLINE command to external server ...")
                 stat = pCl.offline(1)
-                if getLogLevel() >= 3:
-                    info(3, "Status OFFLINE command: " + re.sub("\n", "", str(stat.genXmlDoc())))
+                info(3, "Status OFFLINE command: " + re.sub("\n", "", str(stat.genXmlDoc())))
             status = stat.getStatus()
         except Exception, e:
             info(3,"Error encountered sending OFFLINE command: " + str(e))
@@ -1210,8 +1211,7 @@ class ngamsTestSuite(unittest.TestCase):
                  "sending EXIT command ...")
             try:
                 stat = pCl.exit()
-                if getLogLevel() >= 3:
-                    info(3, "Status EXIT command: " + re.sub("\n", "", str(stat.genXmlDoc())))
+                info(3, "Status EXIT command: " + re.sub("\n", "", str(stat.genXmlDoc())))
             except Exception, e:
                 info(3,"Error encountered sending EXIT command: " + str(e))
             else:
