@@ -103,7 +103,6 @@ class ngamsStatus:
         self.__message        = ""
         self.__state          = ""
         self.__subState       = ""
-        self.__logList        = []
         self.__data           = None
 
 
@@ -616,28 +615,6 @@ class ngamsStatus:
                setLastRequestStatUpdate(lastReqUpdate).\
                setCompletionTime(reqPropsObj.getCompletionTime())
         return self
-
-
-    def addLogObj(self,
-                  logObj):
-        """
-        Add a log object containing a log entry to the status report.
-
-        logObj:    Log object (PccLogObj).
-
-        Returns:   Reference to object itself.
-        """
-        self.__logList.append(logObj)
-        return self
-
-
-    def getLogList(self):
-        """
-        Get list of log objects.
-
-        Returns:   Tuple containing log objects ([PccLogObj, ...]).
-        """
-        return self.__logList
 
 
     def addDiskStatus(self,
