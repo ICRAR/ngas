@@ -40,7 +40,6 @@ from ngamsLib.ngamsCore import TRACE, info, NGAMS_DATA_CHECK_THR, error, \
     NGAMS_CACHE_DIR, checkCreatePath, isoTime2Secs, iso8601ToSecs, \
     rmFile, genLog, mvFile, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
     NGAMS_VOLUME_INFO_FILE, NGAMS_STAGING_DIR, warning, NGAMS_NOTIF_DATA_CHECK, \
-    logFlush
 from ngamsLib import ngamsNotification, ngamsDiskInfo
 from ngamsLib import ngamsDbCore, ngamsDbm, ngamsHighLevelLib, ngamsLib
 
@@ -1152,7 +1151,7 @@ def dataCheckThread(srvObj, stopEvt):
 
             # FLush the log; otherwise we might not notice that this has
             # finished until it's too late
-            logFlush()
+            #logFlush()
 
             srvObj.updateHostInfo(None, None, None, None, None, None, 0, None)
             ###################################################################

@@ -37,7 +37,7 @@ from pccUt import PccUtTime
 from ngamsLib.ngamsCore import TRACE, info, NGAMS_HOST_LOCAL,\
     getHostName, genLog, timeRef2Iso8601, genUniqueId, mvFile, rmFile,\
     error, compressFile, NGAMS_PROC_FILE, NGAMS_GZIP_XML_MT, getNgamsVersion,\
-    NGAMS_SUCCESS, logFlush, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD,\
+    NGAMS_SUCCESS, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD,\
     NGAMS_HTTP_SUCCESS, NGAMS_XML_MT
 from ngamsLib import ngamsDbCore, ngamsDbm, ngamsStatus, ngamsDiskInfo
 from ngamsLib import ngamsDppiStatus
@@ -492,10 +492,9 @@ def handleCmdStatus(srvObj,
         dbTimeReset = True
 
     if (reqPropsObj.hasHttpPar("flush_log")):
-        try:
-            logFlush()
-        except:
-            pass
+        # in the past this called flushLog()
+        # do we really want to keep that functionality? I doubt it
+        pass
 
     if (reqPropsObj.hasHttpPar("file_list")):
         fileList = int(reqPropsObj.getHttpPar("file_list"))

@@ -45,7 +45,7 @@ from ngamsLib import ngamsHighLevelLib
 from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
     NGAMS_HOST_DOMAIN, rmFile, NGAMS_HOST_REMOTE, NGAMS_RETRIEVE_CMD, genLog, \
     warning, NGAMS_STATUS_CMD, getHostName, NGAMS_CACHE_DIR, \
-    NGAMS_DATA_CHECK_THR, getFileSize, logFlush, notice, info,\
+    NGAMS_DATA_CHECK_THR, getFileSize, notice, info,\
     loadPlugInEntryPoint
 
 _crc32c_available = True
@@ -585,7 +585,6 @@ def syncCachesCheckFiles(srvObj,
             plugInMethod = loadPlugInEntryPoint(diskSyncPlugIn)
             plugInMethod(srvObj)
             info(3,"Invoked Disk Sync Plug-In: %s" % diskSyncPlugIn)
-            logFlush()
         else:
             notice("No Disk Sync Plug-In defined - consider to provide one!")
         #commands.getstatusoutput("sync")

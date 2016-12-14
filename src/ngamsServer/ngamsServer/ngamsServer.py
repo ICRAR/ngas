@@ -42,7 +42,7 @@ import SocketServer, BaseHTTPServer, socket, signal
 from pccUt import PccUtTime
 
 from ngamsLib.ngamsCore import \
-    genLog, error, info, alert, logFlush, TRACE,\
+    genLog, error, info, alert, TRACE,\
     rmFile, trim, getNgamsVersion, \
     getFileSize, getDiskSpaceAvail, checkCreatePath,\
     getHostName, ngamsCopyrightString, getNgamsLicense,\
@@ -160,17 +160,6 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         if timeout is None:
             timeout = 60
         self.connection.settimeout(timeout)
-
-    def finish(self):
-        """
-        Finish the handling of the HTTP request.
-
-        Returns:    Void.
-        """
-        try:
-            BaseHTTPServer.BaseHTTPRequestHandler.finish(self)
-        finally:
-            logFlush()
 
     def log_message(self, fmt, *args):
         """
@@ -1641,7 +1630,6 @@ class ngamsServer:
             str(reqPropsObj.getBytesReceived() / reqPropsObj.getIoTime() / 1024.0 / 1024.0)
 
         info(2, msg)
-        logFlush()
 
 
     def httpReplyGen(self,
@@ -2511,7 +2499,6 @@ class ngamsServer:
                 rotLogFile = "LOG-ROTATE-%s.nglog.unsaved" % (ts,)
                 rotLogFile = os.path.normpath(logPath + "/" + rotLogFile)
                 info(1, "Closing log file: %s -> %s" % (logFile, rotLogFile))
-                logFlush()
                 shutil.move(logFile, rotLogFile)
             except Exception, e:
                 error("Server encountered problem while rotating logfile: " + str(e))
@@ -2635,12 +2622,10 @@ class ngamsServer:
                     sys.exit(1)
                 idx = idx + 1
                 if extlogger: extlogger("INFO", "Parser parsed {0}".format(par))
-                logFlush()
             except Exception, e:
                 if (str(e) == "0"):
                     if extlogger: extlogger("INFO",\
                          "Problem encountered parsing command line ")
-                    logFlush()
                     sys.exit(0)
                 if (str(1) != "1"):
                     if extlogger: extlogger("INFO",\

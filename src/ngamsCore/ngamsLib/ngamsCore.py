@@ -73,7 +73,7 @@ import subprocess
 
 import pkg_resources
 
-from pccLog import PccLog, PccLogDef
+from pccLog import PccLogDef
 from pccUt  import PccUtTime
 
 
@@ -439,15 +439,6 @@ def error(msg):
 
 def alert(msg):
     logger.critical(msg)
-
-
-def logFlush():
-    """
-    Flush the logs cached in the log manager.
-
-    Returns:    Void.
-    """
-    PccLog.__logMgr.flush()
 
 def getAttribValue(node,
                    attributeName,

@@ -49,7 +49,7 @@ from ngamsLib.ngamsCore import TRACE, info, \
     NGAMS_TEXT_MT, NGAMS_PICKLE_FILE_EXT, NGAMS_DB_CH_FILE_DELETE, \
     NGAMS_DB_CH_FILE_INSERT, NGAMS_DB_CH_FILE_UPDATE, notice, error, \
     isoTime2Secs, genLog, NGAMS_PROC_DIR, NGAMS_SUBSCR_BACK_LOG_DIR, \
-    iso8601ToSecs, getLocation, logFlush, alert, \
+    iso8601ToSecs, getLocation, alert, \
     NGAMS_HTTP_INT_AUTH_USER, getHostName, NGAMS_OFFLINE_CMD, NGAMS_NOTIF_ERROR,\
     loadPlugInEntryPoint
 from ngamsLib import ngamsFileInfo, ngamsNotification
@@ -1157,7 +1157,6 @@ def janitorThread(srvObj, stopEvt):
                                          normpath(logPath + "/" + rotLogFile)
                             PccLog.info(1, "Rotating log file: %s -> %s" %\
                                         (logFile, rotLogFile), getLocation())
-                            logFlush()
                             shutil.move(logFile, rotLogFile)
                             open(logFile, 'a').close()
                             msg = "NG/AMS Local Log File Rotated and archived (%s)"
@@ -1254,7 +1253,6 @@ def janitorThread(srvObj, stopEvt):
                     suspPi = srvObj.getCfg().getSuspensionPlugIn()
                     info(3,"Invoking Suspension Plug-In: " + suspPi + " to " +\
                          "suspend NG/AMS Server: " + hostId + " ...")
-                    logFlush()
                     try:
                         plugInMethod = loadPlugInEntryPoint(suspPi)
                         plugInMethod(srvObj)
