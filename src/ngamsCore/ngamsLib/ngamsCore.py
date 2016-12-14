@@ -110,10 +110,6 @@ NGAMS_ERR_DEF = pkg_resources.resource_string('ngamsData', 'ngamsLogDef.xml')  #
 _logDef = PccLogDef.PccLogDef().load(NGAMS_ERR_DEF)
 
 
-# Log protection semaphore.
-_logSem = threading.Semaphore(1)
-
-
 def getNgamsLicense():
     """
     Read in and return the NG/AMS License Agreement.
@@ -433,26 +429,6 @@ def getLocation(level = -3):
     else:
         return module + ":" + method + ":" + str(lineNo) +\
                ":" + str(os.getpid())
-
-
-def takeLogSem():
-    """
-    Take the log protection semaphore.
-
-    Returns:   Void.
-    """
-    global _logSem
-    _logSem.acquire()
-
-
-def relLogSem():
-    """
-    Release the log protection semaphore.
-
-    Returns:  Void.
-    """
-    global _logSem
-    _logSem.release()
 
 
 def info(level,

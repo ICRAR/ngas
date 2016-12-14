@@ -47,8 +47,8 @@ from ngamsLib.ngamsCore import TRACE, info, \
     NGAMS_DB_CH_CACHE, getMaxLogLevel, NGAMS_NOTIF_DATA_CHECK, \
     NGAMS_TEXT_MT, NGAMS_PICKLE_FILE_EXT, NGAMS_DB_CH_FILE_DELETE, \
     NGAMS_DB_CH_FILE_INSERT, NGAMS_DB_CH_FILE_UPDATE, notice, error, \
-    isoTime2Secs, genLog, NGAMS_PROC_DIR, NGAMS_SUBSCR_BACK_LOG_DIR, takeLogSem, \
-    iso8601ToSecs, getLocation, logFlush, relLogSem, alert, \
+    isoTime2Secs, genLog, NGAMS_PROC_DIR, NGAMS_SUBSCR_BACK_LOG_DIR, \
+    iso8601ToSecs, getLocation, logFlush, alert, \
     NGAMS_HTTP_INT_AUTH_USER, getHostName, NGAMS_OFFLINE_CMD, NGAMS_NOTIF_ERROR,\
     loadPlugInEntryPoint
 from ngamsLib import ngamsFileInfo, ngamsNotification
@@ -1135,7 +1135,6 @@ def janitorThread(srvObj, stopEvt):
                 info(4,"Checking if a Local Log File rotate is due ...")
                 logFo = None
                 try:
-                    takeLogSem()
 
                     # For some reason we cannot use the creation date ...
                     with open(logFile, "r") as logFo:
@@ -1163,12 +1162,10 @@ def janitorThread(srvObj, stopEvt):
                             open(logFile, 'a').close()
                             msg = "NG/AMS Local Log File Rotated and archived (%s)"
                             PccLog.info(1,msg % hostId, getLocation())
-                    relLogSem()
                     if (line != "" and deltaTime >= logRotInt):
                             ngamsArchiveUtils.archiveFromFile(srvObj, rotLogFile, 0,
                                                     'ngas/nglog', None)
                 except Exception, e:
-                    relLogSem()
                     if (logFo): logFo.close()
                     raise e
                 info(4,"Checked for Local Log File rotatation")
