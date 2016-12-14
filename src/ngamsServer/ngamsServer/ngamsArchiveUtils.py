@@ -43,7 +43,7 @@ from ngamsLib.ngamsCore import info, NGAMS_FAILURE, getFileCreationTime,\
     NGAMS_HTTP_GET, NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile,\
     NGAMS_NOTIF_NO_DISKS, setLogCache, mvFile, error, NGAMS_PICKLE_FILE_EXT,\
     rmFile, NGAMS_SUCCESS, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BACK_LOG_DIR,\
-    warning, sysLogInfo, getHostName, alert, loadPlugInEntryPoint
+    warning, getHostName, alert, loadPlugInEntryPoint
 from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsPlugInApi, ngamsLib
 from ngamsLib import ngamsReqProps, ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsDiskUtils
 import ngamsFileUtils
@@ -53,6 +53,7 @@ import ngamsCacheControlThread
 # Dictionary to keep track of disk space warnings issued.
 _diskSpaceWarningDic = {}
 
+logger = logging.getLogger(__name__)
 
 def updateFileInfoDb(srvObj,
                      piStat,
@@ -732,8 +733,7 @@ def dataHandler(srvObj,
     """
     T = TRACE()
 
-    sysLogInfo(1, genLog("NGAMS_INFO_ARCHIVING_FILE",
-                         [reqPropsObj.getFileUri()]))
+    logger.info(genLog("NGAMS_INFO_ARCHIVING_FILE", [reqPropsObj.getFileUri()]), extra={'to_syslog': True})
 
     if reqPropsObj.getSize() <= 0:
         raise Exception('Content-Length is 0')
@@ -871,14 +871,12 @@ def dataHandler(srvObj,
             cleanUpStagingArea(srvObj, reqPropsObj, tmpStagingFilename,
                                stagingFilename, tmpReqPropsFilename,
                                reqPropsFilename)
-        setLogCache(10)
         raise Exception, errMsg
 
     diskInfo = postFileRecepHandling(srvObj, reqPropsObj, resMain)
     msg = genLog("NGAMS_INFO_FILE_ARCHIVED", [reqPropsObj.getSafeFileUri()])
     msg = msg + ". Time: %.3fs" % (archiveTimer.stop())
-    sysLogInfo(1, msg)
-    info(1,msg)
+    logger.info(msg, extra={'to_syslog': True})
 
     # Remove back-up files (Original Staging File + Request Properties File.
     srvObj.test_BeforeArchCleanUp()

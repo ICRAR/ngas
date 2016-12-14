@@ -36,6 +36,7 @@ former, the data of the file is provided in the request, using the second,
 the file is pulled via a provided URL from the remote, host node.
 """
 
+import logging
 import os
 import time, base64
 
@@ -45,9 +46,11 @@ from ngamsLib import ngamsStatus, ngamsLib
 from ngamsLib import ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
 from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_GET, \
-    NGAMS_HTTP_SUCCESS, info, mvFile, getDiskSpaceAvail, genLog, sysLogInfo, \
+    NGAMS_HTTP_SUCCESS, info, mvFile, getDiskSpaceAvail, genLog, \
     NGAMS_IDLE_SUBSTATE, NGAMS_SUCCESS
 
+
+logger = logging.getLogger(__name__)
 
 def receiveData(srvObj,
                 reqPropsObj,
@@ -250,8 +253,7 @@ def handleCmdRearchive(srvObj,
     # Create log/syslog entry for the successfulyl handled request.
     msg = genLog("NGAMS_INFO_FILE_ARCHIVED", [reqPropsObj.getSafeFileUri()])
     msg = msg + ". Time: %.6fs" % (archiveTimer.stop())
-    sysLogInfo(1, msg)
-    info(1, msg)
+    logger.info(msg, extra={'to_syslog': True})
 
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
     srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,

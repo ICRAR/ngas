@@ -31,6 +31,7 @@
 Contains utilities used in connection with the cloning of files.
 """
 
+import logging
 import os
 import threading
 import time
@@ -43,13 +44,14 @@ from ngamsLib import ngamsReqProps, ngamsHighLevelLib, ngamsDapiStatus
 from ngamsLib.ngamsCore import TRACE, genLog, error, NGAMS_ONLINE_STATE, \
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, info, getDiskSpaceAvail, \
     rmFile, getFileSize, NGAMS_XML_MT, NGAMS_FAILURE, warning, checkCreatePath, \
-    mvFile, getFileCreationTime, NGAMS_SUCCESS, sysLogInfo, \
+    mvFile, getFileCreationTime, NGAMS_SUCCESS, \
     NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_CLONE_CMD, NGAMS_CLONE_THR, getThreadName, \
     NGAMS_HTTP_SUCCESS
 from ngamsLib import ngamsDbm, ngamsFileList, ngamsStatus, ngamsDiskUtils, ngamsLib
 from pccUt import PccUtTime
 
+logger = logging.getLogger(__name__)
 
 def handleCmdClone(srvObj,
                    reqPropsObj,
@@ -557,15 +559,14 @@ def _cloneExec(srvObj,
                                                             filename)
 
             # Generate a confirmation log entry.
+            cloneTime = cloneTimer.stop()
+            timeAccu += cloneTime
             msg = genLog("NGAMS_INFO_FILE_CLONED",
                          [fio.getFileId(), fio.getFileVersion(),
                           fio.getDiskId(), hostId])
-            sysLogInfo(1,msg)
-            cloneTime = cloneTimer.stop()
-            timeAccu += cloneTime
             msg = msg + ". Time: %.3fs. Total time: %.3fs." %\
                   (cloneTime, timeAccu)
-            info(1,msg)
+            logger.info(msg, extra={'to_syslog': True})
         except Exception, e:
             cloneTime = cloneTimer.stop()
             timeAccu += cloneTime
@@ -573,8 +574,7 @@ def _cloneExec(srvObj,
                             [fio.getFileId(), fio.getFileVersion(),
                              fio.getDiskId(), hostId, str(e)])
             if (abortCloneLoop):
-                sysLogInfo(1,errMsg)
-                error(errMsg)
+                logger.error(errMsg, extra={'to_syslog': True})
                 thread.exit()
             else:
                 warning(errMsg)
@@ -894,8 +894,7 @@ def _cloneExplicit(srvObj,
         # Generate a confirmation log entry.
         msg = genLog("NGAMS_INFO_FILE_CLONED",
                      [fileId, fileVersion, diskId, hostId])
-        sysLogInfo(1, msg)
-        info(1, msg)
+        logger.info(msg, extra={'to_syslog': True})
     except Exception, e:
         # Delete Staging File if already created.
         if (os.path.exists(stagingFilename)): rmFile(stagingFilename)

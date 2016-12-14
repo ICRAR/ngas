@@ -32,6 +32,7 @@ Contains functions for handling the REGISTER command.
 """
 
 import commands
+import logging
 import os
 import thread
 import threading
@@ -40,7 +41,7 @@ import time
 from pccUt import PccUtTime
 from ngamsLib.ngamsCore import TRACE, rmFile, info, NGAMS_HTTP_GET, \
     NGAMS_REGISTER_CMD, notice, mvFile, getFileCreationTime, \
-    NGAMS_FILE_STATUS_OK, genLog, sysLogInfo, error, NGAMS_SUCCESS, \
+    NGAMS_FILE_STATUS_OK, genLog, error, NGAMS_SUCCESS, \
     NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
     NGAMS_VOLUME_INFO_FILE, NGAMS_REGISTER_THR, getThreadName, \
@@ -51,6 +52,7 @@ from ngamsLib import ngamsDbm, ngamsReqProps, ngamsFileInfo, ngamsDbCore, \
     ngamsNotification, ngamsDiskInfo
 import ngamsArchiveUtils, ngamsCacheControlThread
 
+logger = logging.getLogger(__name__)
 
 def _registerExec(srvObj,
                   fileListDbmName,
@@ -301,11 +303,10 @@ def _registerExec(srvObj,
             msg = genLog("NGAMS_INFO_FILE_REGISTERED",
                          [filename, piRes.getFileId(), piRes.getFileVersion(),
                           piRes.getFormat()])
-            sysLogInfo(1,msg)
             time.sleep(0.005)
             regTime = regTimer.stop()
             msg = msg + ". Time: %.3fs." % (regTime)
-            info(1,msg)
+            logger.info(msg, extra={'to_syslog': 1})
         except Exception, e:
             try:
                 if (cursorObj): del cursorObj

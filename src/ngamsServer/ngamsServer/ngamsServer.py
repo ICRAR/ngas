@@ -42,7 +42,7 @@ import SocketServer, BaseHTTPServer, socket, signal
 from pccUt import PccUtTime
 
 from ngamsLib.ngamsCore import \
-    genLog, error, info, alert, setLogCache, logFlush, sysLogInfo, TRACE,\
+    genLog, error, info, alert, setLogCache, logFlush, TRACE,\
     rmFile, trim, getNgamsVersion, \
     getFileSize, getDiskSpaceAvail, checkCreatePath,\
     getHostName, ngamsCopyrightString, getNgamsLicense,\
@@ -207,9 +207,8 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             # with our little trick here.
             self.wfile._wbuf = []
             self.wfile._wbuf_len = 0
-        except Exception, e:
-            error(str(e))
-            sysLogInfo(1,str(e))
+        except Exception:
+            logger.exception("Error while handling request", extra={'to_syslog': True})
             raise
 
     # The three methods we support
@@ -2351,12 +2350,13 @@ class ngamsServer:
                                               writePerm = 1)
         info(4,"Checked/created NG/AMS Request Info DB")
 
-        if (self.getCfg().getLogBufferSize() != -1):
-            setLogCache(self.getCfg().getLogBufferSize())
+        #if (self.getCfg().getLogBufferSize() != -1):
+        #    setLogCache(self.getCfg().getLogBufferSize())
 
-        sysLogInfo(1, genLog("NGAMS_INFO_STARTING_SRV",
-                             [getNgamsVersion(), self.getHostId(),
-                              self.getCfg().getPortNo()]))
+        msg = genLog("NGAMS_INFO_STARTING_SRV",
+                     [getNgamsVersion(), self.getHostId(),
+                     self.getCfg().getPortNo()])
+        logger.info(msg, extra={'to_syslog': True})
 
         # Reset the parameters for the suspension.
         self.getDb().resetWakeUpCall(self.getHostId(), 1)
@@ -2490,8 +2490,7 @@ class ngamsServer:
     def _terminate(self):
         msg = genLog("NGAMS_INFO_TERM_SRV", [getNgamsVersion(), getHostName(),
                                              self.getCfg().getPortNo()])
-        sysLogInfo(1, msg)
-        info(1,msg)
+        logger.info(msg, extra={'to_syslog': True})
 
         self.stopServer()
         ngamsSrvUtils.ngamsBaseExitHandler(self)

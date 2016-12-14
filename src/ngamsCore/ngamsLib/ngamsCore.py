@@ -442,26 +442,6 @@ def TRACE(logLevel = 4):
     return None
 
 
-def sysLogInfo(level,
-               msg,
-               location = ""):
-    """
-    Generate a log entry in the UNIX syslog.
-
-    msg:      Message to log (string).
-
-    location: Optional location specifier (string).
-
-    Returns:  Void.
-    """
-    try:
-        takeLogSem()
-        PccLog.sysLogInfo(level, msg, location)
-        relLogSem()
-    except Exception, e:
-        relLogSem()
-
-
 def notice(msg):
     """
     Log a Notice Log into the specified log targets.
