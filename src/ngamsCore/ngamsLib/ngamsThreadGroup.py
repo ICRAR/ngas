@@ -81,7 +81,7 @@ When the
 
 import time, threading
 
-from ngamsCore import TRACE, info, warning, setLogCond
+from ngamsCore import TRACE, info, warning
 
 # Constants.
 # - Used to signal that the thread has terminated execution. This will be
@@ -435,7 +435,6 @@ if __name__ == '__main__':
     """
     Main function.
     """
-    setLogCond(False, "", 0, "", 4)
     # Start threads, wait until all terminate (no timeout).
     test1(None)
     # Start threads, provoke a timeout waiting for the threads to terminate.

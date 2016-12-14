@@ -55,7 +55,7 @@ import pyfits
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
 from ngamsLib.ngamsCore import getHostName, TRACE, info, \
     ngamsCopyrightString, rmFile, \
-    error, cleanList, setLogCond, getVerboseLevel, \
+    error, cleanList, getVerboseLevel, \
     cpFile, getLogLevel, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
     checkIfIso8601, execCmd as ngamsCoreExecCmd
 from ngamsPClient import ngamsPClient
@@ -766,7 +766,6 @@ def runTest(argv):
 
     Returns:  Void.
     """
-    setLogCond(0, "", 0, "", -1)
     testModuleName = argv[0].split(".")[0]
     tests = []
     silentExit = 0
@@ -806,7 +805,7 @@ def runTest(argv):
                 correctUsage()
             sys.exit(1)
 
-    setLogCond(0, "", logLevel, logFile, verboseLevel)
+    #setLogCond(False, None, logLevel, logFile, verboseLevel)
 
     skipDic = {}
     if (skip):
@@ -1274,12 +1273,6 @@ class ngamsTestSuite(unittest.TestCase):
         fname = 'TEST.2001-05-08T15:25:00.123.fits.gz'
         if os.path.exists(fname):
             os.unlink(fname)
-
-        # Have to reset the log conditions, to avoid that some class created in
-        # a subsequent test tries to access this before new log environment
-        # has been set up.
-        setLogCond(0, "", 0, "", self.__verboseLevel)
-
 
     def checkEqual(self,
                    refValue,

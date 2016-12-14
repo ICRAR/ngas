@@ -44,7 +44,7 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NG
     NGAMS_LABEL_CMD, NGAMS_ONLINE_CMD, NGAMS_OFFLINE_CMD, NGAMS_REMDISK_CMD,\
     NGAMS_REMFILE_CMD, NGAMS_REGISTER_CMD, NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD,\
     NGAMS_FAILURE, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD, NGAMS_ARCH_REQ_MT,\
-    setLogCond, NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,\
+    NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,\
     NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, getNgamsLicense
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD
@@ -979,7 +979,6 @@ class ngamsPClient:
                 elif (par == "-v"):
                     idx = idx + 1
                     verboseLevel = int(argv[idx])
-                    setLogCond(0, "", 0, "", verboseLevel)
                 elif (par == "-cfg"):
                     fileId = "--CFG--"
                 elif (par == "-host"):
@@ -1106,6 +1105,7 @@ class ngamsPClient:
             idx = idx + 1
 
         self.verbosity = verboseLevel
+        # TODO: configure logging
 
         # Check generic input parameters.
         self.setHost(host)

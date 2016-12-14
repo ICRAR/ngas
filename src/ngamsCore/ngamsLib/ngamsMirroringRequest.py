@@ -35,7 +35,7 @@ Class to handle the information in connection with one Mirroring Request.
 
 import time
 
-from ngamsCore import timeRef2Iso8601, trim, iso8601ToSecs, TRACE, setLogCond
+from ngamsCore import timeRef2Iso8601, trim, iso8601ToSecs, TRACE
 import ngamsLib
 
 
@@ -474,13 +474,6 @@ class ngamsMirroringRequest:
         """
         return ngamsLib.genFileKey(None, self.getFileId(),
                                    self.getFileVersion())
-
-
-if __name__ == '__main__':
-    """
-    Main function.
-    """
-    setLogCond(0, 0, "", 5)
 
 
 # EOF

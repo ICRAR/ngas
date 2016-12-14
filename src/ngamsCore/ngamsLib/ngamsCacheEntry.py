@@ -33,7 +33,7 @@
 Class to handle the information in connection with one entry in the NGAS Cache.
 """
 
-from ngamsCore import TRACE, setLogCond
+from ngamsCore import TRACE
 import ngamsFileSummary1
 
 
@@ -161,13 +161,5 @@ class ngamsCacheEntry(ngamsFileSummary1.ngamsFileSummary1):
             return self.__cacheEntryPars[par]
         else:
             return None
-
-
-if __name__ == '__main__':
-    """
-    Main function.
-    """
-    setLogCond(0, 0, "", 5)
-
 
 # EOF

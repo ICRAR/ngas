@@ -31,7 +31,7 @@
 Contains code for handling the CONFIG command.
 """
 
-from ngamsLib.ngamsCore import TRACE, setLogCond, setLogCache, \
+from ngamsLib.ngamsCore import TRACE, setLogCache \ 
     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS
 
 def handleCmdConfig(srvObj,
@@ -78,8 +78,10 @@ def handleCmdConfig(srvObj,
     if ((logSysLog != None) or (logSysLogPrefix != None) or
         (logLocalLogFile != None) or (logLocalLogLevel != None) or
         (logVerboseLevel != None)):
-        setLogCond(logSysLog, logSysLogPrefix, logLocalLogLevel,
-                   logLocalLogFile, logVerboseLevel)
+        # TODO: 
+        #setLogCond(logSysLog, logSysLogPrefix, logLocalLogLevel,
+        #           logLocalLogFile, logVerboseLevel)
+        pass
     if (logBufferSize != None):
         setLogCache(int(logBufferSize))
 

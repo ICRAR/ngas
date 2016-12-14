@@ -43,7 +43,7 @@ from pccUt import PccUtTime
 from ngamsLib.ngamsCore import \
     genLog, error, info, alert, setLogCache, logFlush, sysLogInfo, TRACE,\
     rmFile, trim, getNgamsVersion, getDebug, \
-    getFileSize, getDiskSpaceAvail, setLogCond, checkCreatePath,\
+    getFileSize, getDiskSpaceAvail, checkCreatePath,\
     getHostName, ngamsCopyrightString, getNgamsLicense,\
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, NGAMS_HTTP_GET,\
     NGAMS_HTTP_BAD_REQ, NGAMS_HTTP_SERVICE_NA, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
@@ -213,6 +213,14 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     do_POST = reqHandle
     do_PUT  = reqHandle
 
+class logging_config(object):
+    def __init__(self, stdout_level, file_level, logfile, syslog, syslog_prefix):
+        self.stdout_level = stdout_level
+        self.file_level = file_level
+        self.logfile = logfile
+        self.syslog = syslog
+        self.syslog_prefix = syslog_prefix
+
 class ngamsServer:
     """
     Class providing the functionality of the NG/AMS Server.
@@ -226,11 +234,6 @@ class ngamsServer:
         self.__ngamsCfg               = ""
         self.__ngamsCfgObj            = ngamsConfig.ngamsConfig()
         self.__dbCfgId                = ""
-        self.__verboseLevel           = -1
-        self.__locLogLevel            = -1
-        self.__locLogFile             = None
-        self.__sysLog                 = -1
-        self.__sysLogPrefix           = NGAMS_DEF_LOG_PREFIX
         self.__force                  = 0
         self.__autoOnline             = 0
         self.__noAutoExit             = 0
@@ -245,6 +248,11 @@ class ngamsServer:
         self.__subStateSem            = threading.Semaphore(1)
         self.__busyCount              = 0
         self.__sysMtPtDic             = {}
+
+        # Empty logging configuration.
+        # It is later initialised both from the cmdline
+        # and from the configuration file
+        self.logcfg = logging_config(None, None, None, None, None)
 
         # Server list handling.
         self.__srvListDic             = {}
@@ -368,13 +376,58 @@ class ngamsServer:
             return hostname + ":" + str(self.portNo)
         return hostname
 
-    def getLogFilename(self):
+    def setup_logging(self):
         """
-        Return the filename of the Local Log File.
+        Sets up logging for the process this ngams server is running on
+        """
 
-        Returns:   Name of the Local Log File (string).
-        """
-        return self.__locLogFile
+        logcfg = self.logcfg
+        log_to_stdout = logcfg.stdout_level > 0
+        log_to_file = logcfg.file_level > 0 and logcfg.logfile
+
+        # 0 means off, but from now on we use the values for indexing
+        stdout_level = logcfg.stdout_level - 1
+        file_level = logcfg.file_level - 1
+
+        levels = [logging.CRITICAL, logging.ERROR, logging.WARN, logging.INFO, logging.DEBUG]
+        root_level = levels[max(stdout_level, file_level, 0)]
+        stdout_level = levels[max(stdout_level, 0)]
+        file_level = levels[max(file_level, 0)]
+
+        if logcfg.syslog:
+            from logging.handlers import SysLogHandler
+            prefix = '%s: ' % logcfg.syslog_prefix if logcfg.syslog_prefix else ''
+            fmt = '{0}[%(levelname)6.6s] %(message)s'.format(prefix)
+            fmt = logging.Formatter(fmt)
+            hnd = SysLogHandler(address='/dev/log')
+            hnd.setFormatter(fmt)
+
+            class to_syslog_filter(logging.Filter):
+                def filter(self, record):
+                    return hasattr(record, 'to_syslog') and record.to_syslog
+            hnd.addFilter(to_syslog_filter())
+            logging.root.addHandler(hnd)
+
+        # We use the same format for both file and stdout
+        fmt = '%(asctime)-15s.%(msecs)03d [%(levelname)6.6s] %(name)s#%(funcName)s:%(lineno)s %(message)s'
+        datefmt = '%Y-%m-%dT%H:%M:%S'
+        formatter = logging.Formatter(fmt, datefmt=datefmt)
+        formatter.converter = time.gmtime
+
+        if log_to_file:
+            hnd = logging.FileHandler(logcfg.logfile)
+            hnd.setLevel(file_level)
+            hnd.setFormatter(formatter)
+            logging.root.addHandler(hnd)
+
+        if log_to_stdout:
+            hnd = logging.StreamHandler(sys.stdout)
+            hnd.setFormatter(formatter)
+            hnd.setLevel(stdout_level)
+            logging.root.addHandler(hnd)
+
+        logging.root.setLevel(root_level)
+
 
 
     def setDb(self,
@@ -2171,31 +2224,28 @@ class ngamsServer:
         portNo = self.getCfg().getPortNo()
         self.portNo = portNo if portNo != -1 else 7777
 
-        # Set up final logging conditions.
-        if (self.__locLogLevel == -1):
-            self.__locLogLevel = self.getCfg().getLocalLogLevel()
-        if ((self.__locLogFile != "") and (self.getCfg().getLocalLogFile())):
-            self.__locLogFile = self.getCfg().getLocalLogFile()
-        if (self.__sysLog == -1):
-            self.__sysLog = self.getCfg().getSysLog()
-        if (self.__sysLogPrefix == NGAMS_DEF_LOG_PREFIX):
-            self.__sysLogPrefix = self.getCfg().getSysLogPrefix()
+        # Set up missing logging conditions from configuration file
+        logcfg = self.logcfg
+        if logcfg.file_level is None:
+            logcfg.file_level = self.getCfg().getLocalLogLevel()
+        if logcfg.logfile is None:
+            logcfg.logfile = self.getCfg().getLocalLogFile()
+        if logcfg.syslog is None:
+            logcfg.syslog = self.getCfg().getSysLog()
+        if logcfg.syslog_prefix is None:
+            logcfg.syslog_prefix = self.getCfg().getSysLogPrefix()
+        if logcfg.stdout_level is None:
+            logcfg.stdout_level = 0
+
         try:
-            setLogCond(self.__sysLog, self.__sysLogPrefix, self.__locLogLevel,
-                       self.__locLogFile, self.__verboseLevel)
-            msg = "Logging properties for NGAS Node: %s " +\
-                  "defined as: Sys Log: %s " +\
-                  "- Sys Log Prefix: %s  - Local Log File: %s " +\
-                  "- Local Log Level: %s - Verbose Level: %s"
-            info(1, msg % (self.getHostId(), str(self.__sysLog),
-                           self.__sysLogPrefix, self.__locLogFile,
-                           str(self.__locLogLevel), str(self.__verboseLevel)))
+            self.setup_logging()
         except Exception, e:
-            errMsg = genLog("NGAMS_ER_INIT_LOG", [self.__locLogFile, str(e)])
-            error(errMsg)
+            errMsg = genLog("NGAMS_ER_INIT_LOG", [logcfg.logfile, str(e)])
+            # can't use logger here, we failed to set it up in the first place
+            print(errMsg)
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM SETTING UP LOGGING", errMsg)
-            raise Exception, errMsg
+            raise
 
         # Check if there is an entry for this node in the ngas_hosts
         # table, if not create it.
@@ -2463,8 +2513,9 @@ class ngamsServer:
                 error("Server encountered problem while rotating logfile: " + str(e))
 
         # Avoid last logs going into the local file
-        setLogCond(self.__sysLog, self.__sysLogPrefix, 0,
-                       self.__locLogFile, self.__verboseLevel)
+        # TODO: replace with logging.shutdown() or self.shutdown_logging()
+        #setLogCond(self.__sysLog, self.__sysLogPrefix, 0,
+        #               self.__locLogFile, self.__verboseLevel)
 
         # Remove PID file to allow future instances to be run
         try:
@@ -2539,34 +2590,19 @@ class ngamsServer:
                     self.__dbCfgId = argv[idx]
                 elif (par == "-V"):
                     idx = self._incCheckIdx(idx, argv)
-                    self.__verboseLevel = int(argv[idx])
-                    setLogCond(self.__sysLog, self.__sysLogPrefix,
-                               self.__locLogLevel, self.__locLogFile,
-                               self.__verboseLevel)
+                    self.logcfg.stdout_level = int(argv[idx])
                 elif (par == "-LOCLOGFILE"):
                     idx = self._incCheckIdx(idx, argv)
-                    self.__locLogFile = argv[idx]
-                    setLogCond(self.__sysLog, self.__sysLogPrefix,
-                               self.__locLogLevel, self.__locLogFile,
-                               self.__verboseLevel)
+                    self.logcfg.logfile = argv[idx]
                 elif (par == "-LOCLOGLEVEL"):
                     idx = self._incCheckIdx(idx, argv)
-                    self.__locLogLevel = int(argv[idx])
-                    setLogCond(self.__sysLog, self.__sysLogPrefix,
-                               self.__locLogLevel, self.__locLogFile,
-                               self.__verboseLevel)
+                    self.logcfg.file_level = int(argv[idx])
                 elif (par == "-SYSLOG"):
                     idx = self._incCheckIdx(idx, argv)
-                    self.__sysLogLevel = argv[idx]
-                    setLogCond(self.__sysLog, self.__sysLogPrefix,
-                               self.__locLogLevel, self.__locLogFile,
-                               self.__verboseLevel)
+                    self.logcfg.syslog = bool(argv[idx])
                 elif (par == "-SYSLOGPREFIX"):
                     idx = self._incCheckIdx(idx, argv)
-                    self.__sysLogPrefix = argv[idx]
-                    setLogCond(self.__sysLog, self.__sysLogPrefix,
-                               self.__locLogLevel, self.__locLogFile,
-                               self.__verboseLevel)
+                    self.logcfg.syslog_prefix = argv[idx]
                 elif (par == "-VERSION"):
                     print getNgamsVersion()
                     exitValue = 0

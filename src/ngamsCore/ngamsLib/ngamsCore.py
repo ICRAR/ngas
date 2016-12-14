@@ -350,55 +350,6 @@ def ngamsCopyrightString():
     return NGAMS_COPYRIGHT_TEXT
 
 
-def setLogCond(sysLog,
-               sysLogPrefix,
-               locLogLevel,
-               locLogFile,
-               verboseLevel):
-    """
-    Set the global log conditions to be used by NG/AMS.
-
-    sysLog:         Switch logging in UNIX syslgo on/off (1/0) (integer).
-
-    sysLogPrefix:   Prefix (tag) to be used in syslog entries (string).
-
-    locLogLevel:    Level applied for logging into local log file (integer).
-
-    locLogFile:     Name of local log file (string).
-
-    verboseLevel:   Level to apply to logs written on stdout (integer).
-
-    Note: If any of the input parameters are None, the present value will
-    be maintained.
-
-    Returns:        Void.
-    """
-    # If any of the parameters are None - take the present value.
-    if (sysLog == None):
-        if (PccLog.getSysLogLogLevel() == -1):
-            sysLog = 0
-        else:
-            sysLog = PccLog.getSysLogLogLevel()
-    if (sysLogPrefix == None): sysLogPrefix = PccLog.getSysLogPrefix()
-    if (locLogLevel == None): locLogLevel = PccLog.getLogLevel()
-    if (locLogFile == None): locLogFile = PccLog.getLogFile()
-    if (verboseLevel == None): verboseLevel = PccLog.getVerboseLevel()
-
-    # Set up the new log conditions.
-    path = os.path.dirname(locLogFile)
-    if ((path != "") and (not os.path.exists(path))):
-        os.makedirs(path)
-    if (sysLog == 0):
-        sysLogPrio = -1
-        sysLogLevel = -1
-    else:
-        sysLogPrio = syslog.LOG_NOTICE
-        sysLogLevel = 1
-    sysLogProps = [sysLogPrio, sysLogLevel, sysLogPrefix]
-    PccLog.setLogCond(int(locLogLevel), locLogFile, int(verboseLevel),
-                      sysLogProps, 25, 1)
-
-
 def getVerboseLevel():
     """
     Get the Verbose Level.

@@ -33,7 +33,7 @@
 Class to handle the information in connection with one entry in the NGAS Cache.
 """
 
-from ngamsCore import setLogCond, TRACE, getBoolean
+from ngamsCore import TRACE, getBoolean
 import ngamsDbCore
 
 
@@ -356,13 +356,5 @@ class ngamsFileSummary1:
                setHostId(sqlInfo[ngamsDbCore.SUM1_HOST_ID])
 
         return self
-
-
-if __name__ == '__main__':
-    """
-    Main function.
-    """
-    setLogCond(0, 0, "", 5)
-
 
 # EOF

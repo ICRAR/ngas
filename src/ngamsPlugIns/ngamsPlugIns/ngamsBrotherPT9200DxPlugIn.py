@@ -48,7 +48,7 @@ import os
 import sys
 
 from ngamsLib import ngamsPlugInApi, ngamsConfig
-from ngamsLib.ngamsCore import error, info, NGAMS_NOTIF_ERROR, setLogCond
+from ngamsLib.ngamsCore import error, info, NGAMS_NOTIF_ERROR
 
 
 def genFontsDictionary(fnm):
@@ -184,7 +184,6 @@ if __name__ == '__main__':
     """
     Main function.
     """
-    setLogCond(0, "", 0, "", 5)
     if (len(sys.argv) != 3):
         print "\nCorrect usage is:\n"
         print "% (python) ngamsBrotherPT9200DxPlugIn <NGAMS CFG> <text>\n"

@@ -34,7 +34,7 @@ For now the 'imcopy' utility of the CFITSIO package is invoked for this.
 
 import sys, commands
 
-from ngamsLib.ngamsCore import info, mvFile, rmFile, setLogCond
+from ngamsLib.ngamsCore import info, mvFile, rmFile
 
 def ngamsTileCompress(filename):
     """
@@ -64,7 +64,6 @@ if __name__ == '__main__':
     """
     Main routine to calculate checksum for a file given as input parameter.
     """
-    setLogCond(0, "", 0, "", 3)
     if (len(sys.argv) != 2):
         print "\nCorrect usage is:\n"
         print "% ngamsTileCompress.py <filename>\n"
