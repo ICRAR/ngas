@@ -44,7 +44,7 @@ from urlparse import urlparse
 from ngamsLib import ngamsHighLevelLib, ngamsPlugInApi
 from ngamsLib.ngamsCore import info, checkCreatePath, genLog, alert, TRACE, \
     NGAMS_SUCCESS, NGAMS_HTTP_GET, NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, \
-    NGAMS_NOTIF_NO_DISKS, setLogCache, mvFile, notice, NGAMS_FAILURE, error, \
+    NGAMS_NOTIF_NO_DISKS, mvFile, notice, NGAMS_FAILURE, error, \
     NGAMS_PICKLE_FILE_EXT, rmFile, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
     NGAMS_BUSY_SUBSTATE, getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_STAGING_DIR, \
     loadPlugInEntryPoint, genUniqueId

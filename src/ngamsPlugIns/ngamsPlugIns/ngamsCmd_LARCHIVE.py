@@ -35,7 +35,7 @@ import time
 from ngamsLib import ngamsHighLevelLib, ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE, NGAMS_SUCCESS, info, NGAMS_HTTP_GET, \
     NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile, NGAMS_NOTIF_NO_DISKS, \
-    setLogCache, mvFile, notice, NGAMS_FAILURE, error, NGAMS_PICKLE_FILE_EXT, \
+    mvFile, notice, NGAMS_FAILURE, error, NGAMS_PICKLE_FILE_EXT, \
     rmFile, genLog, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, \
     getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, loadPlugInEntryPoint
 from ngamsServer import ngamsArchiveUtils, ngamsCacheControlThread
@@ -110,7 +110,6 @@ def archiveFromFile(srvObj,
                 raise Exception, errMsg
 
         # Set the log cache to 1 during the handling of the file.
-        setLogCache(1)
         plugIn = srvObj.getMimeTypeDic()[mimeType]
         info(2,"Invoking DAPI: " + plugIn + " to handle file: " + stagingFile)
         plugInMethod = loadPlugInEntryPoint(plugIn)
@@ -120,7 +119,6 @@ def archiveFromFile(srvObj,
         mvFile(reqPropsObjLoc.getStagingFilename(),
                resMain.getCompleteFilename())
         iorate = reqPropsObjLoc.getSize()/(time.time() - st)
-        setLogCache(10)
 
         ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain)
     except Exception, e:

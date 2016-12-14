@@ -449,18 +449,6 @@ def logFlush():
     """
     PccLog.__logMgr.flush()
 
-
-def setLogCache(size):
-    """
-    Set the log cache to a specific size.
-
-    size:     Number of log entries to cache before flushing (int).
-
-    Returns:  Void.
-    """
-    PccLog.__logMgr.setLogCacheFlushSize(size)
-
-
 def getAttribValue(node,
                    attributeName,
                    ignoreFailure = 0):

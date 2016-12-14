@@ -42,7 +42,7 @@ import SocketServer, BaseHTTPServer, socket, signal
 from pccUt import PccUtTime
 
 from ngamsLib.ngamsCore import \
-    genLog, error, info, alert, setLogCache, logFlush, TRACE,\
+    genLog, error, info, alert, logFlush, TRACE,\
     rmFile, trim, getNgamsVersion, \
     getFileSize, getDiskSpaceAvail, checkCreatePath,\
     getHostName, ngamsCopyrightString, getNgamsLicense,\
@@ -2577,7 +2577,6 @@ class ngamsServer:
         """
         if extlogger: extlogger("INFO", "Entering parseInputPars")
         if extlogger: extlogger("INFO", "Arguments: {0}".format(' '.join(argv)))
-        setLogCache(10)
         exitValue = 1
         silentExit = 0
         idx = 1

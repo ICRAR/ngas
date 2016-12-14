@@ -41,7 +41,7 @@ from ngamsLib.ngamsCore import info, NGAMS_FAILURE, getFileCreationTime,\
     NGAMS_FILE_STATUS_OK, TRACE, notice, NGAMS_NOTIF_DISK_SPACE,\
     getDiskSpaceAvail, NGAMS_XML_MT, NGAMS_NOTIF_DISK_CHANGE, genLog,\
     NGAMS_HTTP_GET, NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile,\
-    NGAMS_NOTIF_NO_DISKS, setLogCache, mvFile, error, NGAMS_PICKLE_FILE_EXT,\
+    NGAMS_NOTIF_NO_DISKS, mvFile, error, NGAMS_PICKLE_FILE_EXT,\
     rmFile, NGAMS_SUCCESS, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BACK_LOG_DIR,\
     warning, getHostName, alert, loadPlugInEntryPoint
 from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsPlugInApi, ngamsLib
@@ -520,7 +520,6 @@ def archiveFromFile(srvObj,
                 raise Exception, errMsg
 
         # Set the log cache to 1 during the handling of the file.
-        setLogCache(1)
         plugIn = srvObj.getMimeTypeDic()[mimeType]
         info(2,"Invoking DAPI: " + plugIn + " to handle file: " + stagingFile)
         plugInMethod = loadPlugInEntryPoint(plugIn)
@@ -528,7 +527,6 @@ def archiveFromFile(srvObj,
         # Move the file to final destination.
         mvFile(reqPropsObjLoc.getStagingFilename(),
                resMain.getCompleteFilename())
-        setLogCache(10)
 
         postFileRecepHandling(srvObj, reqPropsObjLoc, resMain)
     except Exception, e:
@@ -747,8 +745,6 @@ def dataHandler(srvObj,
     tmpStagingFilename = stagingFilename = tmpReqPropsFilename =\
                          reqPropsFilename = None
     try:
-        # Set the log cache to 1 during the handling of the file.
-        setLogCache(1)
 
         # Generate target filename. Remember to set this in the Request Object.
         try:
@@ -833,8 +829,6 @@ def dataHandler(srvObj,
         # Remember to set the final IO time in the plug-in status object.
         resMain.setIoTime(reqPropsObj.getIoTime())
 
-        # Set back the logging level to normal level.
-        setLogCache(10)
     except Exception, e:
         if (str(e).find("NGAMS_ER_DAPI_BAD_FILE") != -1):
             errMsg = "Problems during archiving! URI: " +\
