@@ -474,43 +474,6 @@ def info(level,
         relLogSem()
 
 
-class Trace:
-    """
-    Small class that can be instantiated while entering a name space.
-    Upon instantiating the class, a log message is produced (from log level 4):
-
-    TRACE: Entering (location) ...
-
-    When leaving the name space/scope, the instantiated class is deleted. The
-    destructor creates a log output as follows:
-
-    TRACE: Leaving (location). Time: (execution time)s
-    """
-    def __init__(self):
-        """
-        Constructor method, which logs a message indicating that the current
-        name space is being entered.
-        """
-        self.__startTime = time.time()
-        self.__id        = md5.new("%.16f" % self.__startTime).hexdigest()
-        self.__location  = getLocation(level = -4)
-        PccLog.info(4, "TRACE:%s: Entering: %s ..." %
-                    (self.__id, self.__location))
-
-    def __del__(self):
-        """
-        Destructor, which logs a message indicating that there is now being
-        returned from the associated name space.
-        """
-        stopTime = time.time()
-        try:
-            PccLog.info(4, "TRACE:%s: Leaving: %s. Time: %.6fs" %
-                        (self.__id, self.__location,
-                         (stopTime - self.__startTime)))
-        except:
-            pass
-
-
 def TRACE(logLevel = 4):
     """
     Convenience function to use the tracing in the code.
@@ -528,7 +491,7 @@ def TRACE(logLevel = 4):
 
     Returns:     Temporary trace object (Trace).
     """
-    return Trace() if getMaxLogLevel() >= logLevel else None
+    return None
 
 
 def sysLogInfo(level,
