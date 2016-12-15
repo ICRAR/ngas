@@ -379,31 +379,6 @@ def getThreadName():
     return threadName
 
 
-def getLocation(level = -3):
-    """
-    Get location of the current position in a source file of the Python
-    interpreter.
-
-    level:    Level in the stack to use as location (integer).
-
-    Returns:  Location in the format: '<mod>:<method>:<ln no>' (string).
-    """
-    stackInfo =traceback.extract_stack()
-    if len(stackInfo) < abs(level):
-        level = -len(stackInfo)
-    stackInfo = stackInfo[level]
-    module = stackInfo[0].split("/")[-1]
-    lineNo = stackInfo[1]
-    method = stackInfo[2]
-    threadName = getThreadName()
-    if (threadName != ""):
-        return module + ":" + method + ":" + str(lineNo) +\
-               ":" + str(os.getpid()) + ":" + threadName
-    else:
-        return module + ":" + method + ":" + str(lineNo) +\
-               ":" + str(os.getpid())
-
-
 def info(level, msg):
     logger.info(msg);
 
