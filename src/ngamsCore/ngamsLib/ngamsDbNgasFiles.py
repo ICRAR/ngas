@@ -36,18 +36,21 @@ It should be used as part of the ngamsDbBase parent classes.
 
 import cPickle
 import collections
+import logging
 import os
 import re
 import shutil
 import time
 
 from ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE, NGAMS_PICKLE_FILE_EXT, NGAMS_TMP_FILE_EXT
-from ngamsCore import info, warning, error, rmFile, notice, getUniqueNo, getNgamsVersion, timeRef2Iso8601
+from ngamsCore import info, rmFile, getUniqueNo, getNgamsVersion, timeRef2Iso8601
 import ngamsDbm, ngamsDbCore
 import ngamsFileInfo, ngamsStatus, ngamsFileList
 import ngamsLib
 from pccUt import PccUtTime
 
+
+logger = logging.getLogger(__name__)
 
 class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
     """
@@ -234,7 +237,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 errMsg = "Problem dumping file info! Expected number of "+\
                          "files: %d, actual number of files: %d"
                 errMsg = errMsg % (expNoOfFiles, fileCount)
-                warning(errMsg)
+                logger.warning(errMsg)
 
             # Try to Auto Recover if requested.
             if ((self.getDbVerify() and self.getDbAutoRecover()) and
@@ -243,11 +246,10 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 rmFile(fileListDbmName + "*")
                 if (n < 4):
                     time.sleep(5)
-                    notice("Retrying to dump file info ...")
+                    logger.warning("Retrying to dump file info ...")
                 else:
                     errMsg = "Giving up to auto recover dumping of file info!"
-                    error(errMsg)
-                    raise Exception, errMsg
+                    raise Exception(errMsg)
             else:
                 break
         return fileListDbmName

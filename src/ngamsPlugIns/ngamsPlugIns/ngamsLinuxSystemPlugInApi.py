@@ -83,11 +83,18 @@ for Linux.
 #         if k == mntPt: return mntDict[k]
 #     return ""
 
-import os, posix, commands, exceptions, glob
+import commands
+import exceptions
+import glob
+import logging
+import os
+import posix
 
 from ngamsLib import ngamsHostInfo
-from ngamsLib.ngamsCore import info, error, warning, getHostName
+from ngamsLib.ngamsCore import info, getHostName
 
+
+logger = logging.getLogger(__name__)
 
 def mountToMountpoint(devName,
                       mntPt,
@@ -146,14 +153,13 @@ def mountToMountpoint(devName,
             posix.mkdir(mntPt)
         except exceptions.OSError,e:
             errMsg = "Failed creating mountpoint " + mntPt + ":" + str(e)
-            error(errMsg)
-            raise Exception, errMsg
+            logger.exception(errMsg)
+            raise
     stat, out = commands.getstatusoutput(command)
     if ((stat != 0) and (out.find("already mounted") == -1)):
         errMsg = "Failed mounting device. Device/mount point: %s/%s" %\
                  (devName, mntPt)
-        warning(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
 def umountMountpoint(mntPt):
@@ -170,8 +176,7 @@ def umountMountpoint(mntPt):
     stat, out = commands.getstatusoutput(command)
     if ((stat != 0) and (out.find("not mounted") == -1)):
         errMsg = "Failed unmounting. Mount point: %s" % mntPt
-        warning(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
 # TODO: Needed?
@@ -193,8 +198,7 @@ def checkModule(module):
     if type(module) != type(""):
         errMsg = "Parameter module passed to " + __name__ + "." + \
                  "checkModule has invalid type (should be string)"
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # command = "/sbin/modprobe -l | /bin/grep \"/" + module + ".o$\""
     command = "find /lib/modules -name " + module + ".*"
@@ -247,16 +251,14 @@ def insMod(module):
         pass
     elif stat == (0,0):
         errMsg = "Module " + module + " does not exists"
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
     elif stat == (1,1):
         errMsg = "Module " + module + " already loaded"
         info(1,errMsg)
         return 0
     if istat > 0:
         errMsg = "Problem while inserting module " + module + ":" + str(stat)
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     return 0
 
@@ -434,9 +436,9 @@ def ngamsMount(srvObj,
             mountToMountpoint(diskDic[slotId].getDeviceName(),
                               diskDic[slotId].getMountPoint(),
                               readOnly, fstype = "")
-        except Exception, e:
+        except Exception:
             del diskDic[slotId]
-            error(str(e))
+            logger.exception("Error while mounting")
             continue
 
 

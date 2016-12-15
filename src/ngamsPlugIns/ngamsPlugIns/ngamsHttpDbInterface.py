@@ -37,7 +37,7 @@ the NG/AMS Cursor Object API definition.
 """
 
 from ngamsLib import ngamsStatus, ngamsLib
-from ngamsLib.ngamsCore import TRACE, getNgamsVersion, error, genUniqueId, \
+from ngamsLib.ngamsCore import TRACE, getNgamsVersion, genUniqueId, \
     NGAMS_HTTP_SUCCESS
 from pccUt import PccUtTime
 
@@ -169,10 +169,8 @@ class ngamsHttpDbInterface:
         try:
             res = self._execute(query)
             return res
-        except Exception, e:
-            msg = "Exception in ngamsHttpDbInterface DB Driver Interface: %s"
-            error(msg % str(e))
-            raise e
+        except Exception:
+            raise
 
 
     def cursor(self,

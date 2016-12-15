@@ -46,7 +46,7 @@ import time, re
 import pgdb
 
 from   mx import DateTime
-from ngamsLib.ngamsCore import TRACE, info, error
+from ngamsLib.ngamsCore import TRACE, info
 from pccUt import PccUtTime
 
 
@@ -188,10 +188,10 @@ class ngamsPostgreSQL:
                 self.__dbConn.commit()
             else:
                 errMsg = "PostgreSQL DB Exception: '%s' after executing [ %s ]" % (str(e), str(query))
-                error(errMsg)
+                logger.error(errMsg)
                 if ("can't commit" != ex):
                     self.__dbConn.rollback()
-                raise e
+                raise
 
         """
         try:

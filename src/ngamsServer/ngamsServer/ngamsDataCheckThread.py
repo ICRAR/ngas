@@ -32,17 +32,26 @@ This module contains the code for the Data Check Thread, which is used
 to check the data holding in connection with one NGAS host.
 """
 
-import os, time, thread, threading, random, glob, cPickle
+import cPickle
+import glob
+import logging
+import os
+import random
+import time
+import thread
+import threading
 
 from pccUt import PccUtTime
 import ngamsFileUtils
-from ngamsLib.ngamsCore import TRACE, info, NGAMS_DATA_CHECK_THR, error, \
+from ngamsLib.ngamsCore import TRACE, info, NGAMS_DATA_CHECK_THR, \
     NGAMS_CACHE_DIR, checkCreatePath, isoTime2Secs, iso8601ToSecs, \
     rmFile, genLog, mvFile, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
-    NGAMS_VOLUME_INFO_FILE, NGAMS_STAGING_DIR, warning, NGAMS_NOTIF_DATA_CHECK, \
+    NGAMS_VOLUME_INFO_FILE, NGAMS_STAGING_DIR, NGAMS_NOTIF_DATA_CHECK
 from ngamsLib import ngamsNotification, ngamsDiskInfo
 from ngamsLib import ngamsDbCore, ngamsDbm, ngamsHighLevelLib, ngamsLib
 
+
+logger = logging.getLogger(__name__)
 
 class StopDataCheckThreadException(Exception):
     pass
@@ -258,9 +267,9 @@ def _initFileCheckStatus(srvObj,
         _statCheckCount   = 0
         _statLastDbUpdate = 0
         _statCheckSem.release()
-    except Exception, e:
+    except Exception:
         _statCheckSem.release()
-        error("Exception caught in Data Checking Thread: " + str(e))
+        logger.exception("Exception caught in Data Checking Thread")
     srvObj.getDb().updateDataCheckStat(srvObj.getHostId(), _statCheckStart,
                                        _statCheckRemain, statEstimTime,
                                        _statCheckRate, _statCheckMb,
@@ -340,8 +349,8 @@ def _updateFileCheckStatus(srvObj,
         info(4,statFormat % (_statCheckRemain, _statCheckRate, _statCheckMb,
              _statCheckedMb, _statCheckFiles, _statCheckCount))
         _statCheckSem.release()
-    except Exception, e:
-        error("Data Consistency Checking: Encountered error: " + str(e))
+    except Exception:
+        logger.exception("Data Consistency Checking: Encountered error")
         _statCheckSem.release()
 
 
@@ -547,10 +556,10 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
                 # Assume a problem like e.g. a broken DB connection.
                 errMsg = "Problem encountered while dumping file info. " +\
                          "Error: " + str(e)
-                error(errMsg)
+                logger.error(errMsg)
                 del queueDbm
                 rmFile(tmpQueueDbmFile)
-                raise Exception, genLog("NGAMS_ER_DB_COM", [errMsg])
+                raise Exception(genLog("NGAMS_ER_DB_COM", [errMsg]))
 
             if (not fileList): break
             actNoOfFiles += len(fileList)
@@ -570,10 +579,10 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
             errMsg = "Number of files dumped for disk: %s: %d, differs " +\
                      "from expected number: %d"
             errMsg = errMsg % (diskId, actNoOfFiles, expNoOfFiles)
-            error(errMsg)
+            logger.error(errMsg)
             rmFile(tmpQueueDbmFile)
             del queueDbm
-            raise Exception, genLog("NGAMS_ER_DB_COM", [errMsg])
+            raise Exception(genLog("NGAMS_ER_DB_COM", [errMsg]))
 
         # Rename DCC Queue DBM from the temporary to the final name.
         del queueDbm
@@ -766,10 +775,10 @@ def _schedNextFile(srvObj,
 
         _relReqFileInfoSem()
         return fileInfo
-    except Exception, e:
-        warning("Exception in _schedNextFile(): %s" % str(e))
+    except Exception:
+        logger.exception("Exception in _schedNextFile()")
         _relReqFileInfoSem()
-        raise e
+        raise
 
 
 def _dataCheckSubThread(srvObj,
@@ -829,8 +838,7 @@ def _dataCheckSubThread(srvObj,
             if (str(e).find("_STOP_DATA_CHECK_SUB_THREAD_") != -1):
                 thread.exit()
             else:
-                error("Exception encountered in Data Check Sub-Thread: %s" %\
-                      str(e))
+                logger.exception("Exception encountered in Data Check Sub-Thread")
                 time.sleep(2)
 
 
@@ -985,7 +993,7 @@ def _crossCheckNonRegFiles(srvObj):
             #############################################################################################
             diskId = fileInfo[0]
             if (not _getDiskDic().has_key(diskId)):
-                warning("Unknown Disk ID: %s encountered" % diskId)
+                logger.warning("Unknown Disk ID: %s encountered", diskId)
                 break
             mtPt = _getDiskDic()[diskId].getMountPoint()
             ngasFilename = filename[(len(mtPt) + 1):]
@@ -1031,8 +1039,8 @@ def _crossCheckNonRegFiles(srvObj):
         if (crossCheckDbmName): rmFile(crossCheckDbmName)
         msg = "Error encountered in _crossCheckNonRegFiles(). Error: %s" %\
               str(e)
-        error(msg)
-        raise msg
+        logger.error(msg)
+        raise
 
 
 def dataCheckThread(srvObj, stopEvt):
@@ -1196,7 +1204,7 @@ def dataCheckThread(srvObj, stopEvt):
             else:
                 errMsg = "Error occurred during execution of the " +\
                          "Data Check Thread. Exception: " + str(e)
-            error(errMsg)
+            logger.error(errMsg)
 
             try:
                 suspend(srvObj, stopEvt, 1)

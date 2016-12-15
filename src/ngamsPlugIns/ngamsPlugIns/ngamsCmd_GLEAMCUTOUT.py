@@ -33,17 +33,27 @@ read fits header, get cdel1,2 and epoch information
 Cutout a gleam FITS image, convert it into png, and display in the browser, then remove the jpeg file
 """
 
-import math, time, commands, os, traceback, threading
+import commands
+import logging
+import math
+import os
+from string import Template
+import threading
+import time
+import traceback
+
+from astropy.coordinates import SkyCoord
+import astropy.io.fits as pyfits
+import astropy.units as u
+import astropy.wcs as pywcs
 import ephem
 import pyfits as pyfits_real
-import astropy.io.fits as pyfits
-import astropy.wcs as pywcs
-import astropy.units as u
-from astropy.coordinates import SkyCoord
-from string import Template
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_TEXT_MT,\
-    info, error
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_TEXT_MT, \
+    info
+
+
+logger = logging.getLogger(__name__)
 
 week_date_dict = {
 '1':'2013-08-13', '2':'2013-11-15', '3':'2014-03-10', '4':'2014-06-13'
@@ -163,7 +173,6 @@ def sql_inject_test(query):
     for ws in wrong_sql:
         if (lq.find(ws) > -1):
             err_msg = "Invalid query '{0}'".format(query)
-            error(err_msg)
             raise Exception(err_msg)
 
 
@@ -347,13 +356,12 @@ def add_header(cut_fits_path, cut_psf_paths, ing_date, obs_date, completeness=No
         for cf in completeness_fnames:
             ffp = '%s/%s' % (completeness_path, cf)
             if (not os.path.exists(ffp)):
-                error("Completeness map {0} does not exist".format(ffp))
+                logger.error("Completeness map %s does not exist", ffp)
                 continue
             try:
                 compt_perctg = get_compt_perctg(ra, dec, ffp)
-            except Exception, exce:
-                error("fail to add completeness: {0}".format(exce))
-                info(3, traceback.format_exc())
+            except Exception:
+                logger.exception("fail to add completeness")
                 continue
             if (compt_perctg is None):
                 continue
@@ -398,7 +406,7 @@ def get_compt_perctg(ra, dec, compt_path):
     b_len = cplist[0].data[0].shape[1]
 
     if (a >= a_len or b >= b_len):
-        error("Cutout centre is out of the completness map: {0} >= {1} or {2} >= {3} ".format(a, a_len, b, b_len))
+        logger.error("Cutout centre is out of the completness map: %d >= %d or %d >= %d ", a, a_len, b, b_len)
         return None
 
     ret = []
@@ -441,7 +449,7 @@ def get_date_obs(file_id):
         week = file_id.split('_')[1][-1]
         return week_date_dict[week]
     except:
-        error("fail to get the obsdate for {0}".format(file_id))
+        logger.error("fail to get the obsdate for %s", file_id)
         return 'UNKNOWN'
 
 def handleCmd(srvObj, reqPropsObj, httpRef):

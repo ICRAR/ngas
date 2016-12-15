@@ -34,16 +34,26 @@ This module contains the code for the (Data) Subscription Thread, which is
 used to handle the delivery of data to Subscribers.
 """
 
-import thread, threading, time, types, traceback, os, base64, urlparse
+import logging
+import thread
+import threading
+import time
+import types
+import os
+import base64
+import urlparse
 from Queue import Queue, Empty, PriorityQueue
 
 from pccUt import PccUtTime
 import ngamsCacheControlThread
 from ngamsLib.ngamsCore import TRACE, info, NGAMS_SUBSCRIPTION_THR, isoTime2Secs,\
-    alert, NGAMS_SUBSCR_BACK_LOG, error, NGAMS_DELIVERY_THR,\
-    NGAMS_HTTP_INT_AUTH_USER, NGAMS_REARCHIVE_CMD, warning, NGAMS_FAILURE,\
+    NGAMS_SUBSCR_BACK_LOG, NGAMS_DELIVERY_THR,\
+    NGAMS_HTTP_INT_AUTH_USER, NGAMS_REARCHIVE_CMD, NGAMS_FAILURE,\
     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, getFileSize, rmFile, loadPlugInEntryPoint
-from ngamsLib import ngamsDbm, ngamsDb, ngamsStatus, ngamsHighLevelLib, ngamsFileInfo, ngamsLib, ngamsDbCore
+from ngamsLib import ngamsDbm, ngamsStatus, ngamsHighLevelLib, ngamsFileInfo, ngamsLib, ngamsDbCore
+
+
+logger = logging.getLogger(__name__)
 
 # TODO:
 # - Should not hardcode no_versioning=1.
@@ -187,7 +197,7 @@ def _waitForScheduling(srvObj):
     except Exception, e:
         errMsg = "Error occurred in ngamsSubscriptionThread." +\
                   "_waitForScheduling(). Exception: " + str(e)
-        alert(errMsg)
+        logger.warning(errMsg)
         return ([], [])
     finally:
         srvObj._subscriptionSem.release()
@@ -476,11 +486,10 @@ def _genSubscrBackLogFile(srvObj,
         # Subscription Thread that it should only suspend itself temporarily.
         srvObj.incSubcrBackLogCount()
         srvObj._backLogAreaSem.release()
-    except Exception, e:
+    except Exception:
         srvObj._backLogAreaSem.release()
-        error("Error generating Subscription Back-Log File. " +\
-              "Exception: " + str(e))
-        raise e
+        logger.exception("Error generating Subscription Back-Log File")
+        raise
 
 
 def _delFromSubscrBackLog(srvObj,
@@ -555,7 +564,7 @@ def _backupQueueToBacklog(srvObj):
         if (subscrbDict.has_key(subscrbId)):
             subscrObj = subscrbDict[subscrbId]
         else:
-            alert('Cannot find the file queue for subscriber %s during backing up' % subscrbId)
+            logger.warning('Cannot find the file queue for subscriber %s during backing up', subscrbId)
             break
         while (1):
             fileInfo = None
@@ -673,11 +682,11 @@ def _deliveryThread(srvObj,
 
             if (fileIngDate < subscrObj.getStartDate() and fileBackLogged != NGAMS_SUBSCR_BACK_LOG): #but backlog files will be sent regardless
                 # subscr_start_date is changed (through USUBSCRIBE command) in order to skip unchechked files
-                alert('File %s skipped, ingestion date %s < %s' %  (fileId, fileIngDate, subscrObj.getStartDate()))
+                logger.warning('File %s skipped, ingestion date %s < %s', fileId, fileIngDate, subscrObj.getStartDate())
                 continue
 
             if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not diskId)):
-                alert('File %s has invalid diskid, removing it from the backlog' %  filename)
+                logger.warning('File %s has invalid diskid, removing it from the backlog', filename)
                 _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename)
                 continue
 
@@ -686,7 +695,7 @@ def _deliveryThread(srvObj,
                 mtPt = srvObj.getDb().getMtPtFromDiskId(diskId)
                 if (os.path.exists(mtPt)):
                     # the mount point is still there, but not the file, which means the file was removed by external agents
-                    alert('File %s is no longer available, removing it from the backlog' %  filename)
+                    logger.warning('File %s is no longer available, removing it from the backlog', filename)
                     _delFromSubscrBackLog(srvObj, subscrObj.getId(), fileId, fileVersion, filename)
                 continue
 
@@ -755,8 +764,9 @@ def _deliveryThread(srvObj,
                         fileInfoObj = ngamsFileInfo.ngamsFileInfo().read(srvObj.getHostId(),
                                                                          srvObj.getDb(), fileId, fileVersion, diskId)
                         fileInfoObjHdr = base64.b64encode(fileInfoObj.genXml().toxml())
-                    except Exception, e12:
-                        warning('%s - Fail to obtain fileInfo from DB: fileId/version/diskId - %s / %d / %s' % (str(e12), fileId, fileVersion, diskId))
+                    except Exception:
+                        logger.exception('Fail to obtain fileInfo from DB: fileId/version/diskId - %s / %d / %s',
+                                       fileId, fileVersion, diskId)
                 updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, -1)
                 st = time.time()
                 try:
@@ -775,7 +785,7 @@ def _deliveryThread(srvObj,
                     else:
                         fileChecksum = srvObj.getDb().getFileChecksum(diskId, fileId, fileVersion)
                         if fileChecksum is None:
-                            warning('Fail to get file checksum for file %s' % (fileId,))
+                            logger.warning('Fail to get file checksum for file %s', fileId)
                         reply, msg, hdrs, data = \
                                ngamsLib.httpPostUrl(sendUrl, fileMimeType,
                                                     ''.join(contDisp), filename, "FILE",
@@ -796,7 +806,7 @@ def _deliveryThread(srvObj,
 
                 except Exception as e:
                     ex = str(e)
-                    error('%s Message: %s' % (ex, stat.getMessage()))
+                    logger.error('%s Message: %s' % (ex, stat.getMessage()))
 
                 if ex or reply != NGAMS_HTTP_SUCCESS or stat.getStatus() == NGAMS_FAILURE:
 
@@ -869,7 +879,7 @@ def _deliveryThread(srvObj,
                                     # but they did not create entries in refcount dic when they are queued
                                     _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
                                 else:
-                                    alert("Fail to find %s/%d in the fileDeliveryCountDic" % (fileId, fileVersion))
+                                    logger.warning("Fail to find %s/%d in the fileDeliveryCountDic", fileId, fileVersion)
                         finally:
                             fileDeliveryCountDic_Sem.release()
 
@@ -884,7 +894,7 @@ def _deliveryThread(srvObj,
                         # but at least remaining files can be delivered continuously, the database may be back in sync upon delivering remaining files
                         errMsg = "Error occurred during update the ngas_subscriber table " +\
                              "_devliveryThread [" + str(thread.get_ident()) + "] Exception: " + str(e)
-                        alert(errMsg)
+                        logger.warning(errMsg)
 
                     # If the file is back-log buffered, we check if we can delete it.
                     if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG):
@@ -906,8 +916,7 @@ def _deliveryThread(srvObj,
                 # Stop delivery thread.
                 info(3, 'Delivery thread [' + str(thread.get_ident()) + '] is exiting.')
                 thread.exit()
-            errMsg = "Error occurred during file delivery: " + str(be) + ': ' + traceback.format_exc()
-            alert(errMsg)
+            logger.exception("Error occurred during file delivery: %s", str(be))
 
 
 def _fileKey(fileId,
@@ -944,7 +953,7 @@ def buildSubscrQueue(srvObj, subscrId, dataMoverOnly = False):
         #grab those files that have been scheduled from the persistent queue
         files = srvObj.getDb().getSubscrQueue(subscrId, status = -2)
     except Exception, ee:
-        error('Failed db operation when building subscriber cache queue: %s' % str(ee))
+        logger.error('Failed db operation when building subscriber cache queue: %s', str(ee))
         return quChunks
 
     for locFileInfo in files:
@@ -972,7 +981,7 @@ def updateSubscrQueueStatus(srvObj, subscrId, fileId, fileVersion, diskId, statu
         else:
             srvObj.getDb().updateSubscrQueueEntry(subscrId, fileId, fileVersion, diskId, status, ts, comment)
     except Exception, eee:
-        error("Fail to update persistent queue: %s" % str(eee))
+        logger.error("Fail to update persistent queue: %s", str(eee))
 
 def getSubscrQueueStatus(srvObj, subscrId, fileId, fileVersion, diskId):
     """
@@ -981,7 +990,7 @@ def getSubscrQueueStatus(srvObj, subscrId, fileId, fileVersion, diskId):
     try:
         return srvObj.getDb().getSubscrQueueStatus(subscrId, fileId, fileVersion, diskId)
     except Exception, ex:
-        error("Fail to query persistent queue: %s" % str(ex))
+        logger.error("Fail to query persistent queue: %s", str(ex))
         return None
 
 def addToSubscrQueue(srvObj, subscrId, fileInfo, quChunks):
@@ -1004,7 +1013,7 @@ def addToSubscrQueue(srvObj, subscrId, fileInfo, quChunks):
         quChunks.put(fileInfo)
     except Exception, ee:
         # most likely error - key duplication, that will prevent cache queue from adding this entry, which is correct
-        error('Subscriber %s failed to add to the persistent subscription queue file %s due to %s' % (subscrId, filename, str(ee)))
+        logger.error('Subscriber %s failed to add to the persistent subscription queue file %s due to %s', subscrId, filename, str(ee))
         if (fileInfo[FILE_BL] == NGAMS_SUBSCR_BACK_LOG):
             quChunks.put(fileInfo)
 
@@ -1021,7 +1030,7 @@ def stageFile(srvObj, filename):
             stageFiles(filenames = [filename], serverObj = srvObj)
             info(3, "File %s staging completed for delivery." % filename)
     except Exception as ex:
-        error("File staging error: %s" % filename)
+        logger.error("File staging error: %s", filename)
         raise ex
 
 def subscriptionThread(srvObj,
@@ -1264,7 +1273,7 @@ def subscriptionThread(srvObj,
                     errMsg = "File Scheduled for delivery to Subscribers " +\
                              "(File ID: " + fileId + "/File Version: " +\
                              str(fileVersion) + ") not registered in the NGAS DB"
-                    warning(errMsg)
+                    logger.warning(errMsg)
                     continue
 
                 # Loop to determine for each Subscriber whether to deliver
@@ -1391,7 +1400,5 @@ def subscriptionThread(srvObj,
             rmFile(fileDicDbmName + "*")
             if (str(e).find("_STOP_SUBSCRIPTION_THREAD_") != -1): thread.exit()
             errMsg = "Error occurred during execution of the Data " +\
-                     "Subscription Thread. Exception: " + str(e)
-            alert(errMsg)
-            em = traceback.format_exc()
-            alert(em)
+                     "Subscription Thread."
+            logger.exception(errMsg)

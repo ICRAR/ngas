@@ -40,8 +40,8 @@ import time
 
 from pccUt import PccUtTime
 from ngamsLib.ngamsCore import TRACE, rmFile, info, NGAMS_HTTP_GET, \
-    NGAMS_REGISTER_CMD, notice, mvFile, getFileCreationTime, \
-    NGAMS_FILE_STATUS_OK, genLog, error, NGAMS_SUCCESS, \
+    NGAMS_REGISTER_CMD, mvFile, getFileCreationTime, \
+    NGAMS_FILE_STATUS_OK, genLog, NGAMS_SUCCESS, \
     NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
     NGAMS_VOLUME_INFO_FILE, NGAMS_REGISTER_THR, getThreadName, \
@@ -239,7 +239,7 @@ def _registerExec(srvObj,
                 tmpMsg = tmpMsgForm % (piRes.getFileId(),
                                        piRes.getFileVersion(), filename,
                                        piRes.getDiskId())
-                notice(tmpMsg + ". File is not registered again.")
+                logger.warning(tmpMsg + ". File is not registered again.")
                 if (emailNotif):
                     tmpFileObj.\
                                  setDiskId(diskId).setFilename(filename).\
@@ -313,7 +313,7 @@ def _registerExec(srvObj,
             except:
                 pass
             errMsg = genLog("NGAMS_ER_FILE_REG_FAILED", [filename, str(e)])
-            error(errMsg)
+            logger.error(errMsg)
             if (emailNotif):
                 tmpFileObj.\
                              setDiskId(diskId).setFilename(filename).\
@@ -479,10 +479,10 @@ def _registerThread(srvObj,
                       reqPropsObj)
         rmFile(tmpFilePat + "*")
         thread.exit()
-    except Exception, e:
-        error("Exception raised in Register Sub-Thread: " + str(e))
+    except Exception:
+        logger.exception("Exception raised in Register Sub-Thread")
         rmFile(tmpFilePat + "*")
-        raise e
+        raise
 
 
 def register(srvObj,
@@ -722,8 +722,7 @@ def handleCmdRegister(srvObj,
     # Is this NG/AMS permitted to handle Archive Requests?
     if (not srvObj.getCfg().getAllowArchiveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Register"])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Check if State/Sub-State correct for perfoming the cloning.
     srvObj.checkSetState("Command REGISTER", [NGAMS_ONLINE_STATE],

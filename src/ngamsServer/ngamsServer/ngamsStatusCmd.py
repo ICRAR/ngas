@@ -31,12 +31,18 @@
 """
 Function + code to handle the STATUS command.
 """
-import os, re, sys, types, glob, pkg_resources
+import glob
+import logging
+import os
+import pkg_resources
+import re
+import sys
+import types
 
 from pccUt import PccUtTime
 from ngamsLib.ngamsCore import TRACE, info, NGAMS_HOST_LOCAL,\
     getHostName, genLog, timeRef2Iso8601, genUniqueId, mvFile, rmFile,\
-    error, compressFile, NGAMS_PROC_FILE, NGAMS_GZIP_XML_MT, getNgamsVersion,\
+    compressFile, NGAMS_PROC_FILE, NGAMS_GZIP_XML_MT, getNgamsVersion,\
     NGAMS_SUCCESS, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD,\
     NGAMS_HTTP_SUCCESS, NGAMS_XML_MT
 from ngamsLib import ngamsDbCore, ngamsDbm, ngamsStatus, ngamsDiskInfo
@@ -45,6 +51,8 @@ from ngamsLib import ngamsFileInfo, ngamsHighLevelLib
 import ngamsFileUtils
 import ngamsSrvUtils, ngamsRetrieveCmd
 
+
+logger = logging.getLogger(__name__)
 
 # Man-page for the command.
 _help = pkg_resources.resource_string(__name__, 'ngamsStatusCmd.txt')
@@ -282,8 +290,7 @@ def _handleFileList(srvObj,
         msg = "Problem generating file list for STATUS Command. " +\
               "Parameters: from_ingestion_date=%s. Error: %s" %\
               (str(fromIngDate), str(e))
-        error(msg)
-        raise Exception, msg
+        raise Exception(msg)
 
     return fileListId
 
@@ -375,8 +382,8 @@ def _handleFileListReply(srvObj,
             except Exception, e:
                 msg = "Error creating STATUS/File List XML Document. " +\
                       "Error: %s" % str(e)
-                error(msg)
-                raise Exception, e
+                logger.error(msg)
+                raise
             keyRefList.append(key)
             elCount += 1
         # Finish up the XML document, close the file.
@@ -419,8 +426,7 @@ def _handleFileListReply(srvObj,
         rmFile("%s*" % fileListXmlDoc)
         msg = "Error returning response to STATUS?file_list request. Error: %s"
         msg = msg % str(e)
-        error(msg)
-        raise Exception, msg
+        raise Exception(msg)
 
 
 def handleCmdStatus(srvObj,

@@ -34,13 +34,16 @@ This module contains the code for the Cache Control Thread, which is used
 to manage the contents in the cache archive when running the NG/AMS Server
 as a cache archive.
 """
+import base64
+import cPickle
 import logging
-import os, time, base64, cPickle, traceback
+import os
+import time
 
 import sqlite3 as sqlite
 
 from ngamsLib.ngamsCore import info, TRACE, rmFile,\
-    iso8601ToSecs, error, warning, notice, genLog, alert,\
+    iso8601ToSecs, genLog,\
     loadPlugInEntryPoint
 from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib
 
@@ -671,7 +674,7 @@ def checkNewFilesDbm(srvObj):
                   (fileInfo[NGAMS_CACHE_DISK_ID],
                    fileInfo[NGAMS_CACHE_FILE_ID],
                    str(fileInfo[NGAMS_CACHE_FILE_VER]))
-            error(msg)
+            logger.error(msg)
 
         # Add the new entry.
         info(3, "Adding new entry in Cache DBMS: %s/%s/%s" %\
@@ -756,7 +759,7 @@ def requestFileForDeletion(srvObj, sqlFileInfo):
        info(3, 'Set file_status for file %s' % fileId)
        srvObj.getDb().setFileStatus(fileId, fileVersion, diskId, CACHE_DEL_BIT_MASK) # should be (CACHE_DEL_BIT_MASK | file_status)
     except Exception, err:
-       error('Fail to set file status for file %s, Exception: %s' % (fileId, str(err)))
+       logger.error('Fail to set file status for file %s, Exception: %s', fileId, str(err))
 
 
 def scheduleFileForDeletion(srvObj,
@@ -927,8 +930,8 @@ def _cacheCtrlPlugInThread(threadGrObj):
                         srvObj._cacheCtrlPiDelDbm.addIncKey(cacheEntryObj)
                     else:
                         srvObj._cacheCtrlPiFilesDbm.addIncKey(cacheEntryObj)
-                except Exception, e:
-                    warning("Error occurred in thread. Error: %s" % str(e))
+                except Exception:
+                    logger.exception("Error occurred in thread")
                     # Put the entry in the queue to make it stay in the system
                     # still.
                     srvObj._cacheCtrlPiFilesDbm.addIncKey(cacheEntryObj)
@@ -1017,7 +1020,7 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
             srvObj._cacheContDbmsSem.release()
         except Exception, e:
             srvObj._cacheContDbmsSem.release()
-            raise Exception, e
+            raise
 
         # Now, loop over the selected files and mark them for deletion.
         delFilesDbm.initKeyPtr()
@@ -1083,10 +1086,10 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
                                     continue
                             except Exception, cee:
                                 if (str(cee).lower().find('file not found in ngas db') > -1):
-                                    warning("file already gone, still mark for deletion: %s/%s/%s" %\
-                                            (str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2])))
+                                    logger.warning("file already gone, still mark for deletion: %s/%s/%s",
+                                            str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2]))
                                 else:
-                                    raise cee
+                                    raise
 
                         msg = "CACHE-CRITERIA: Maximum Cache Size " +\
                               "Exceeded: %s/%s/%s"
@@ -1183,7 +1186,7 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
         #       file system.
         msg = "MINIMUM AVAILABLE CACHE SPACE AS CRITERIA IS NOT YET " +\
               "SUPPORTED"
-        notice(msg)
+        logger.warning(msg)
     if (0 and srvObj.getCfg().getVal("Caching[1].MinCacheSpace")):
         info(4, "Applying criteria: Minimum available cache space ...")
         minCacheSpace = int(srvObj.getCfg().getVal("Caching[1].MinCacheSpace"))
@@ -1332,7 +1335,7 @@ def removeFile(srvObj,
     except Exception, e:
         msg = genLog("NGAMS_ER_DEL_FILE_DB", [diskInfoObj.getDiskId(),
                                               fileId, fileVersion, str(e)])
-        error(msg)
+        logger.error(msg)
     # Remove copy on disk.
     try:
         info(2, "Removing copy on disk, file: %s/%s/%s" %\
@@ -1343,10 +1346,10 @@ def removeFile(srvObj,
         info(2, msg % (diskInfoObj.getDiskId(), fileId, str(fileVersion),
                        complFilename))
         rmFile(complFilename)
-    except Exception, e:
+    except Exception:
         msg = "Error removing archived file: %s/%s/%s/%s. Error: %s"
-        error(msg % (diskInfoObj.getDiskId(), fileId, str(fileVersion),
-                     complFilename), str(e))
+        logger.exception(msg, diskInfoObj.getDiskId(), fileId, str(fileVersion),
+                     complFilename)
 
 
 def cleanUpCache(srvObj):
@@ -1402,7 +1405,7 @@ def cleanUpCache(srvObj):
             if (not diskInfo):
                 msg = "Illegal Disk ID referenced in Cache Contents " +\
                       "DBMS: %s - ignoring entry"
-                warning(msg % diskId)
+                logger.warning(msg, diskId)
                 delEntryFromCacheDbms(srvObj, diskId, fileId, fileVersion)
                 continue
             diskInfoDic[diskId] = ngamsDiskInfo.ngamsDiskInfo().\
@@ -1414,8 +1417,8 @@ def cleanUpCache(srvObj):
             removeFile(srvObj, diskInfoObj, fileId, fileVersion, filename)
         except Exception, e:
             msg = "Error removing file information from the RDBMS and the " +\
-                  "file copy for file %s/%s/%s. Error: %s"
-            notice(msg % (diskId, fileId, str(fileVersion), str(e)))
+                  "file copy for file %s/%s/%s"
+            logger.exception(msg, diskId, fileId, str(fileVersion))
 
         #   - Remove from Cache Content DBMS's:
         try:
@@ -1423,8 +1426,8 @@ def cleanUpCache(srvObj):
         except Exception, e:
             msg = "Error removing file information from the Cache Table in " +\
                   "the local DBMS and in the RDBMS for file " +\
-                  "%s/%s/%s. Error: %s"
-            notice(msg % (diskId, fileId, str(fileVersion), str(e)))
+                  "%s/%s/%s"
+            logger.exception(msg, diskId, fileId, str(fileVersion))
 
         # TODO: Check if the volume concerned is set to completed and should
         # be marked as uncompleted.
@@ -1477,12 +1480,10 @@ def cacheControlThread(srvObj, stopEvt, check_can_be_deleted):
 
         except StopCacheControlThreadEx:
             break
-        except Exception, e:
+        except Exception:
             errMsg = "Error occurred during execution of the Cache " +\
-                     "Control Thread. Exception: " + str(e)
-            alert(errMsg)
-            em = traceback.format_exc()
-            alert(em)
+                     "Control Thread"
+            logger.exception(errMsg)
             # We make a small wait here to avoid that the process tries
             # too often to carry out the tasks that failed.
             time.sleep(5.0)

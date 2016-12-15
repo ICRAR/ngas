@@ -35,7 +35,7 @@ import time
 from ngamsLib import ngamsHighLevelLib, ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE, NGAMS_SUCCESS, info, NGAMS_HTTP_GET, \
     NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile, NGAMS_NOTIF_NO_DISKS, \
-    mvFile, notice, NGAMS_FAILURE, error, NGAMS_PICKLE_FILE_EXT, \
+    mvFile, NGAMS_FAILURE, NGAMS_PICKLE_FILE_EXT, \
     rmFile, genLog, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, \
     getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, loadPlugInEntryPoint
 from ngamsServer import ngamsArchiveUtils, ngamsCacheControlThread
@@ -126,15 +126,12 @@ def archiveFromFile(srvObj,
         # Buffering the file, we have to log an error.
         if (ngamsHighLevelLib.performBackLogBuffering(srvObj.getCfg(),
                                                       reqPropsObjLoc, e)):
-            notice("Tried to archive local file: " + filename +\
-                   ". Attempt failed with following error: " + str(e) +\
-                   ". Keeping original file.")
+            logger.exception("Tried to archive local file %s, keeping original file", filename)
             return [NGAMS_FAILURE, str(e), NGAMS_FAILURE]
         else:
-            error("Tried to archive local file: " + filename +\
-                  ". Attempt failed with following error: " + str(e) + ".")
-            notice("Moving local file: " +\
-                   filename + " to Bad Files Directory -- cannot be handled.")
+            logger.exception("Tried to archive local file %s, " + \
+                             "moving it to Bad Files Directory " + \
+                             "-- cannot be handled", filename)
             ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename,
                                               filename)
             # Remove pickle file if available.
@@ -185,8 +182,7 @@ def handleCmd(srvObj,
     parsDic = reqPropsObj.getHttpParsDic()
     if (not parsDic.has_key('fileUri') or parsDic['fileUri'] == ""):
         errMsg = genLog("NGAMS_ER_MISSING_URI")
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
     else:
         reqPropsObj.setFileUri(parsDic['fileUri'])
         fileUri = reqPropsObj.getFileUri()

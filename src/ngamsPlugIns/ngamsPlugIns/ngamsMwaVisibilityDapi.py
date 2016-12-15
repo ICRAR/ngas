@@ -64,7 +64,7 @@ import os
 
 from pccUt import PccUtTime
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, info, genLog, error
+from ngamsLib.ngamsCore import TRACE, info, genLog
 
 
 TARG_MIME_TYPE  = "target_mime_type"
@@ -290,9 +290,7 @@ def ngamsMwaVisibilityDapi(srvObj,
                                                  compression, relPath,
                                                  diskInfo.getSlotId(),
                                                  fileExists, complFilename)
-    except Exception, e:
-        msg = "Error occurred in DAPI: %s" % str(e)
-        error(msg)
-        raise Exception, genLog("NGAMS_ER_DAPI_RM", [msg])
+    except Exception:
+        raise
 
 # EOF

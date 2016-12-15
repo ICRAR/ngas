@@ -33,11 +33,15 @@
 The ngamsConfig class is used to handle the NG/AMS Configuration.
 """
 
+import logging
 import os, types, base64
-from   ngamsCore import info, error, warning, genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, getNgamsVersionRaw, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
+from   ngamsCore import info, genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, getNgamsVersionRaw, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
 import ngamsDbCore, ngamsConfigBase, ngamsSubscriber
 import ngamsLib
 import ngamsStorageSet, ngamsStream, ngamsDppiDef, ngamsMirroringSource
+
+
+logger = logging.getLogger(__name__)
 
 def boolean_value(val):
     if val.lower() == 'true':
@@ -101,15 +105,14 @@ def checkIfSetStr(property,
     if ((not isinstance(value, types.StringType))):
         errMsg = "Must define a proper string value for property: " + property
         errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
-        error(errMsg)
+        logger.error(errMsg)
         if (checkRep != None):
             checkRep.append(errMsg)
             return 0
         else:
             raise Exception, errMsg
     elif value == "":
-        msg = "Value of property %s is an empty string" % property
-        warning(msg)
+        logger.warning("Value of property %s is an empty string", property)
     else:
         return 1
 
@@ -134,7 +137,7 @@ def checkIfSetInt(property,
     if ((not isinstance(value, types.IntType)) or (value == -1)):
         errMsg = "Must define a proper integer value for property: " + property
         errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
-        error(errMsg)
+        logger.error(errMsg)
         if (checkRep != None):
             checkRep.append(errMsg)
             return 0
@@ -164,7 +167,7 @@ def checkIfZeroOrOne(property,
         ((value != 0) and (value != 1))):
         errMsg = "Value must be 0 or 1 (integer) for property: " + property
         errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
-        error(errMsg)
+        logger.error(errMsg)
         if (checkRep != None):
             checkRep.append(errMsg)
             return 0
@@ -196,7 +199,7 @@ def checkDuplicateValue(checkDic,
         errMsg = "Duplicate value for property: " + property + ". Value: " +\
                  str(value)
         errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
-        error(errMsg)
+        logger.error(errMsg)
         if (checkRep != None):
             checkRep.append(errMsg)
         else:
@@ -1224,7 +1227,6 @@ class ngamsConfig:
                 return set
         # Raise exception.
         errMsg = genLog("NGAMS_ER_NO_STORAGE_SET", [slotId, self.getCfg()])
-        error(errMsg)
         raise Exception, errMsg
 
 
@@ -1860,7 +1862,7 @@ class ngamsConfig:
         if suspTime <= 0 and self.getIdleSuspension():
             msg = "Suspension Timeout must be > 0. " +\
                   "Specified: %ds. Setting to minimum value."
-            warning(msg % suspTime)
+            logger.warning(msg, suspTime)
             suspTime = 60
         return suspTime
 
@@ -2292,7 +2294,7 @@ class ngamsConfig:
                 except:
                     errMsg = genLog("NGAMS_ER_ILL_ROOT_DIR",
                                     [self.getCfg(), self.getRootDirectory()])
-                    error(errMsg)
+                    logger.exception(errMsg)
                     self.getCheckRep().append(errMsg)
         checkIfZeroOrOne("Server.ProxyMode", self.getProxyMode(),
                          self.getCheckRep())
@@ -2343,7 +2345,7 @@ class ngamsConfig:
         info(4, "Check MimeTypes Element ...")
         if (len(self.getMimeTypeMappings()) == 0):
             errMsg = genLog("NGAMS_ER_NO_MIME_TYPES", [self.getCfg()])
-            error(errMsg)
+            logger.error(errMsg)
             self.getCheckRep().append(errMsg)
         else:
             for map in self.getMimeTypeMappings():
@@ -2386,7 +2388,7 @@ class ngamsConfig:
                     errMsg = "Must specify at least one Target Storage Set " +\
                              "or Archiving Unit for each Stream!"
                     errMsg = genLog("NGAMS_ER_CONF_FILE", [errMsg])
-                    error(errMsg)
+                    logger.error(errMsg)
                     self.getCheckRep().append(errMsg)
                 for setId in stream.getStorageSetIdList():
                     if (not storageSetDic.has_key(setId)):
@@ -2395,7 +2397,7 @@ class ngamsConfig:
                                  "Storage Set for Stream with mime-type: " +\
                                  stream.getMimeType()
                         errMsg = genLog("NGAMS_ER_CONF_FILE", [errMsg])
-                        error(errMsg)
+                        logger.error(errMsg)
                         self.getCheckRep().append(errMsg)
         info(4, "Checked Stream Definitions")
 
@@ -2413,7 +2415,7 @@ class ngamsConfig:
                         errMsg = genLog("NGAMS_ER_ILL_PROC_DIR",
                                         [self.getCfg(),
                                          self.getProcessingDirectory()])
-                        error(errMsg)
+                        logger.error(errMsg)
                         self.getCheckRep().append(errMsg)
         for dppiEl in self.getDppiDefs():
             checkIfSetStr("Processing.PlugIn.Name", dppiEl.getPlugInName(),

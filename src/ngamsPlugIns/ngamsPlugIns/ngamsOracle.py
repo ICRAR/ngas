@@ -38,14 +38,18 @@ The ngamsOracleCursor class, which implements a cursor object based on
 the NG/AMS Cursor Object API definition.
 """
 
+import logging
+import re
 import threading
-import time, re
+import time
 
 import cx_Oracle
 from mx import DateTime
 from pccUt import PccUtTime
-from ngamsLib.ngamsCore import TRACE, info, genLog, error
+from ngamsLib.ngamsCore import TRACE, info, genLog
 
+
+logger = logging.getLogger(__name__)
 
 class ngamsOracle:
     """
@@ -162,9 +166,9 @@ class ngamsOracle:
         except Exception, e:
             if str(e).find('ORA-00001'): #unique constraint violated
               errMsg = genLog("NGAMS_ER_DB_UNIQUE", [str(e)])
-              error(errMsg)
+              logger.error(errMsg)
             else:
-                error(str(e))
+                logger.error(str(e))
         res = self._fetchAll(cur)
         del(cur)
         if (len(res) > 0):

@@ -33,6 +33,7 @@
 Contains utilities for handling the disk configuration.
 """
 
+import logging
 import os
 import re
 import string
@@ -40,14 +41,16 @@ import threading
 import time
 
 from pccUt import PccUtTime
-from ngamsCore import info, TRACE, getNgamsVersion, genLog, error,\
+from ngamsCore import info, TRACE, getNgamsVersion, genLog, \
     NGAMS_DB_DIR, checkCreatePath, NGAMS_DB_CH_CACHE, NGAMS_NOTIF_ERROR,\
-    NGAMS_SUCCESS, warning, NGAMS_NOTIF_NO_DISKS, NGAMS_FAILURE, padString,\
-    NGAMS_DISK_INFO, getDiskSpaceAvail, alert
+    NGAMS_SUCCESS, NGAMS_NOTIF_NO_DISKS, NGAMS_FAILURE, padString,\
+    NGAMS_DISK_INFO, getDiskSpaceAvail
 import ngamsNotification
 import ngamsLib
 import ngamsDiskInfo, ngamsStatus
 
+
+logger = logging.getLogger(__name__)
 
 # Semaphore to protect critical operations done on the ngas_disk table.
 _ngamsDisksSem = threading.Semaphore(1)
@@ -272,7 +275,7 @@ def checkDisks(hostId,
                 info(1,"Checking for accessibility of disk: " + diskRef+" ...")
                 if (checkDiskAccessibility(diskInfo.getMountPoint()) == -1):
                     errMsg = genLog("NGAMS_ER_DISK_INACCESSIBLE", [diskRef])
-                    error(errMsg)
+                    logger.error(errMsg)
                     rmDiskDic[slotId] = slotId
                     notifInfo.append(["DISK INACCESSIBLE", errMsg])
                     if (dbUpdateDic.has_key(assocSlotId)):
@@ -322,7 +325,7 @@ def checkDisks(hostId,
                         errMsg = genLog("NGAMS_ER_MAIN_DISK_WRONGLY_USED",
                                         [str(slotId),
                                          tmpDiskInfo.getLogicalName()])
-                        error(errMsg)
+                        logger.error(errMsg)
                         notifInfo.append(["MAIN DISK USED AS " +\
                                           "REPLICATION DISK", errMsg])
                         rmDiskDic[slotId] = slotId
@@ -334,7 +337,7 @@ def checkDisks(hostId,
                         errMsg = genLog("NGAMS_ER_REP_DISK_WRONGLY_USED",
                                         [str(slotId),
                                          tmpDiskInfo.getLogicalName()])
-                        error(errMsg)
+                        logger.error(errMsg)
                         notifInfo.append(["REPLICATION DISK USED AS " +\
                                           "MAIN DISK", errMsg])
                         rmDiskDic[slotId] = slotId
@@ -446,7 +449,7 @@ def checkDisks(hostId,
             for mimeType in probMimeTypeList:
                 errMsg = errMsg + " " + mimeType
             errMsg = genLog("NGAMS_WA_NO_TARG_DISKS", [errMsg])
-            warning(errMsg)
+            logger.warning(errMsg)
             ngamsNotification.notify(hostId, ngamsCfgObj, NGAMS_NOTIF_NO_DISKS,
                                      "DISK SPACE INAVAILABILITY", errMsg)
     else:
@@ -501,7 +504,7 @@ def checkStorageSetAvailability(hostId,
         findTargetDisk(hostId, dbConObj, ngamsCfgObj, mimeType, 0)
         return NGAMS_SUCCESS
     except Exception, e:
-        warning("Error encountered checking for storage set availability: " +
+        logger.warning("Error encountered checking for storage set availability: " +
                 str(e))
         return NGAMS_FAILURE
 
@@ -911,7 +914,7 @@ def getDiskInfoObjsFromMimeType(hostId,
     diskInfo = dbConObj.getDiskInfoForSlotsAndHost(hostId, slotIds)
     if (diskInfo == []):
         errMsg = genLog("NGAMS_AL_NO_STO_SETS", [mimeType])
-        alert(errMsg)
+        logger.warning(errMsg)
         if (sendNotification):
             ngamsNotification.notify(hostId, ngamsCfgObj, NGAMS_NOTIF_NO_DISKS,
                                      "NO STORAGE SET (DISKS) AVAILABLE",errMsg)
@@ -973,7 +976,7 @@ def dumpDiskInfo(hostId,
         diskInfo.read(dbConObj, diskId)
     except:
         errMsg = genLog("NGAMS_ER_DISK_STATUS", [diskId])
-        error(errMsg)
+        logger.error(errMsg)
         ngamsNotification.notify(hostId, ngamsCfgObj, NGAMS_NOTIF_ERROR,
                                  "MISSING DISK IN DB", errMsg)
         return
@@ -1106,7 +1109,7 @@ def findTargetDisk(hostId,
     # If no storage sets found, generate a log message.
     if (diskIds == []):
         errMsg = genLog("NGAMS_AL_NO_STO_SETS", [mimeType])
-        alert(errMsg)
+        logger.warning(errMsg)
         if (sendNotification):
             ngamsNotification.notify(hostId, ngamsCfgObj, NGAMS_NOTIF_NO_DISKS,
                                      "NO DISKS AVAILABLE", errMsg)
@@ -1124,7 +1127,7 @@ def findTargetDisk(hostId,
 
     if (diskId == None):
         errMsg = genLog("NGAMS_AL_NO_STO_SETS", [mimeType])
-        alert(errMsg)
+        logger.warning(errMsg)
         if (sendNotification):
             ngamsNotification.notify(hostId, ngamsCfgObj, NGAMS_NOTIF_NO_DISKS,
                                      "NO DISKS AVAILABLE", errMsg)

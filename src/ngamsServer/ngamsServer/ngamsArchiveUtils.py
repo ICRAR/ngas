@@ -33,17 +33,21 @@
 Contains utility functions used in connection with the handling of
 the file archiving.
 """
-
-import os, glob, cPickle, random, time
+import cPickle
+import glob
+import logging
+import os
+import random
+import time
 
 from pccUt import PccUtTime
 from ngamsLib.ngamsCore import info, NGAMS_FAILURE, getFileCreationTime,\
-    NGAMS_FILE_STATUS_OK, TRACE, notice, NGAMS_NOTIF_DISK_SPACE,\
+    NGAMS_FILE_STATUS_OK, TRACE, NGAMS_NOTIF_DISK_SPACE,\
     getDiskSpaceAvail, NGAMS_XML_MT, NGAMS_NOTIF_DISK_CHANGE, genLog,\
     NGAMS_HTTP_GET, NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile,\
-    NGAMS_NOTIF_NO_DISKS, mvFile, error, NGAMS_PICKLE_FILE_EXT,\
+    NGAMS_NOTIF_NO_DISKS, mvFile, NGAMS_PICKLE_FILE_EXT,\
     rmFile, NGAMS_SUCCESS, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BACK_LOG_DIR,\
-    warning, getHostName, alert, loadPlugInEntryPoint
+    getHostName, loadPlugInEntryPoint
 from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsPlugInApi, ngamsLib
 from ngamsLib import ngamsReqProps, ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsDiskUtils
 import ngamsFileUtils
@@ -220,7 +224,7 @@ def issueDiskSpaceWarning(srvObj,
               diskInfo.getLogicalName() + " - Slot No.: " +\
               str(diskInfo.getSlotId()) + " - running low in "+\
               "available space (" + str(diskInfo.getAvailableMb())+" MB)!"
-        notice(msg)
+        logger.warning(msg)
         _diskSpaceWarningDic[diskId] = 1
         ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_DISK_SPACE,
                                  "NOTICE: DISK SPACE RUNNING LOW",
@@ -301,7 +305,7 @@ def checkDiskSpace(srvObj,
         # - Mark Main Disk as Completed.
         mainDiskInfo.setCompleted(1).setCompletionDate(complDate)
         mainDiskInfo.write(srvObj.getDb())
-        notice("Marked Main Disk with ID: " + mainDiskId + " - Name: " +\
+        logger.warning("Marked Main Disk with ID: " + mainDiskId + " - Name: " +\
                mainDiskInfo.getLogicalName() + " - Slot No.: " +\
                str(mainDiskInfo.getSlotId()) + " - as 'completed' " +\
                "- PLEASE CHANGE!")
@@ -320,7 +324,7 @@ def checkDiskSpace(srvObj,
     if (repDiskCompl):
         repDiskInfo.setCompleted(1).setCompletionDate(complDate)
         repDiskInfo.write(srvObj.getDb())
-        notice("Marked Replication Disk with ID: " + repDiskInfo.getDiskId() +\
+        logger.warning("Marked Replication Disk with ID: " + repDiskInfo.getDiskId() +\
                " - Name: " + repDiskInfo.getLogicalName() +\
                " - Slot No.: " + str(repDiskInfo.getSlotId()) +\
                " - as 'completed' - PLEASE CHANGE!")
@@ -413,7 +417,7 @@ def postFileRecepHandling(srvObj,
     if (resultPlugIn.getFileExists()):
         msg = genLog("NGAMS_NOTICE_FILE_REINGESTED",
                      [reqPropsObj.getSafeFileUri()])
-        notice(msg)
+        logger.warning(msg)
 
     # Now handle the Replication Disk - if there is a corresponding Replication
     # Disk for the Main Disk and if not replication was disabled by the DAPI.
@@ -534,14 +538,14 @@ def archiveFromFile(srvObj,
         # Buffering the file, we have to log an error.
         if (ngamsHighLevelLib.performBackLogBuffering(srvObj.getCfg(),
                                                       reqPropsObjLoc, e)):
-            notice("Tried to archive local file: " + filename +\
+            logger.warning("Tried to archive local file: " + filename +\
                    ". Attempt failed with following error: " + str(e) +\
                    ". Keeping original file.")
             return NGAMS_FAILURE
         else:
-            error("Tried to archive local file: " + filename +\
-                  ". Attempt failed with following error: " + str(e) + ".")
-            notice("Moving local file: " +\
+            logger.exception("Tried to archive local file: %s" +\
+                  ". Attempt failed with following error", filename)
+            logger.warning("Moving local file: " +\
                    filename + " to Bad Files Directory -- cannot be handled.")
             ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename,
                                               filename)
@@ -622,8 +626,8 @@ def backLogBufferFiles(srvObj,
     except Exception, e:
         errMsg = genLog("NGAMS_ER_PROB_BACK_LOG_BUF",
                         [ngamsLib.hidePassword(stagingFile),backLogDir,str(e)])
-        error(errMsg)
-        raise Exception, errMsg
+        logger.exception(errMsg)
+        raise
 
 
 def checkBackLogBuffer(srvObj):
@@ -658,7 +662,7 @@ def checkBackLogBuffer(srvObj):
                          "Request Properties Object from file: " +\
                          pickleObjFile + ".  Error: " + str(e)
                 if (str(e).find("[Errno 2]") != -1):
-                    warning(errMsg)
+                    logger.warning(errMsg)
                     reqPropsObj = None
                 else:
                     raise Exception, errMsg
@@ -707,7 +711,7 @@ def cleanUpStagingArea(srvObj,
                 reqPropsFilename]
     for stgFile in stgFiles:
         if (stgFile):
-            notice("Removing Staging File: " + stgFile)
+            logger.warning("Removing Staging File: %s", stgFile)
             rmFile(stgFile)
 
 
@@ -840,11 +844,11 @@ def dataHandler(srvObj,
             errMsg = "DAPI: " + plugIn + " encountered problem handling " +\
                      "the file with URI: " + reqPropsObj.getFileUri() +\
                      ". Removal of Staging Files requested by DAPI."
-            notice(errMsg)
+            logger.warning(errMsg)
             stgFiles = [tmpStagingFilename, stagingFilename,
                         tmpReqPropsFilename, reqPropsFilename]
             for stgFile in stgFiles:
-                notice("Removing Staging File: " + stgFile)
+                logger.warning("Removing Staging File: %s", stgFile)
                 rmFile(stgFile)
             errMsg += " Error from DAPI: " + str(e)
         elif (ngamsHighLevelLib.performBackLogBuffering(srvObj.getCfg(),
@@ -852,16 +856,16 @@ def dataHandler(srvObj,
             backLogBufferFiles(srvObj, stagingFilename, reqPropsFilename)
             errMsg = genLog("NGAMS_WA_BUF_DATA",
                             [reqPropsObj.getFileUri(), str(e)])
-            error(errMsg)
+            logger.error(errMsg)
             stgFiles = [tmpStagingFilename, stagingFilename,
                         tmpReqPropsFilename]
             for stgFile in stgFiles:
-                notice("Removing Staging File: " + stgFile)
+                logger.warning("Removing Staging File: %s", stgFile)
                 rmFile(stgFile)
         else:
             # Another error ocurred.
             errMsg = "Error encountered handling file: " + str(e)
-            error(errMsg)
+            logger.error(errMsg)
             cleanUpStagingArea(srvObj, reqPropsObj, tmpStagingFilename,
                                stagingFilename, tmpReqPropsFilename,
                                reqPropsFilename)
@@ -1027,8 +1031,7 @@ def findTargetNode(hostId,
 
     if (targNode == None):
         errMsg = genLog("NGAMS_AL_NO_STO_SETS", [mimeType])
-        alert(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     return (nodeInfo, targNode, targPort, targDiskObj)
 

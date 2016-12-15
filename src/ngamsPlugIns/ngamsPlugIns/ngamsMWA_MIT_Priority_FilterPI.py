@@ -33,11 +33,15 @@ Contains a Filter Plug-In used to filter out those files that
 (2) belong to Solar observations with project_id 'c105' or 'c106'
 """
 
+import logging
+
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import alert, NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, \
+from ngamsLib.ngamsCore import NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, \
     NGAMS_FAILURE
 from ngamsPClient import ngamsPClient
 
+
+logger = logging.getLogger(__name__)
 
 g_db_conn = None # MWA metadata database connection
 
@@ -108,7 +112,7 @@ def ngamsMWA_MIT_Priority_FilterPI(srvObj,
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Missing Plug-In Parameter: " +\
                  "remote_host / remote_port"
         #raise Exception, errMsg
-        alert(errMsg)
+        logger.error(errMsg)
         return 1 # matched as if the filter did not exist
 
     host = parDic["remote_host"]
@@ -116,7 +120,7 @@ def ngamsMWA_MIT_Priority_FilterPI(srvObj,
 
     if (not sport.isdigit()):
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Invalid port number: " + sport
-        alert(errMsg)
+        logger.error(errMsg)
         return 1 # matched as if the filter does not exist
 
     port = int(sport)
@@ -126,10 +130,10 @@ def ngamsMWA_MIT_Priority_FilterPI(srvObj,
 
     try:
         rest = client.sendCmd(NGAMS_STATUS_CMD, 1, "", [["file_id", fileId]])
-    except Exception, e:
+    except Exception:
         errMsg = "Error occurred during checking remote file status " +\
-                     "ngamsMWACheckRemoteFilterPlugin. Exception: " + str(e)
-        alert(errMsg)
+                     "ngamsMWACheckRemoteFilterPlugin"
+        logger.exception(errMsg)
         return 1 # matched as if the filter does not exist
 
 

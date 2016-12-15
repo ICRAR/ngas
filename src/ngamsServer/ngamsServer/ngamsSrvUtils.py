@@ -32,12 +32,19 @@
 This module contains various utilities used by the NG/AMS Server.
 """
 
-import os, re, string, thread, threading, time, glob
+import glob
+import logging
+import os
+import re
+import string
+import thread
+import threading
+import time
 
 from ngamsLib.ngamsCore import info, NGAMS_NOT_RUN_STATE,\
-    NGAMS_ONLINE_STATE, NGAMS_DEFINE, warning, NGAMS_SUBSCRIBE_CMD,\
-    NGAMS_SUCCESS, TRACE, genLog, notice, NGAMS_DISK_INFO, checkCreatePath,\
-    error, NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
+    NGAMS_ONLINE_STATE, NGAMS_DEFINE, NGAMS_SUBSCRIBE_CMD,\
+    NGAMS_SUCCESS, TRACE, genLog, NGAMS_DISK_INFO, checkCreatePath,\
+    NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
     loadPlugInEntryPoint
 from ngamsLib import ngamsStatus, ngamsLib
 from ngamsLib import ngamsPhysDiskInfo
@@ -47,6 +54,8 @@ from ngamsLib import ngamsNotification
 import ngamsArchiveUtils
 import ngamsSubscriptionThread
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsBaseExitHandler(srvObj):
     """
@@ -120,8 +129,8 @@ def _subscriberThread(srvObj,
             # Check that the server is not subscribing to itself.
             if ((myPort == subscrObj.getPortNo()) and \
                 (myHost == subscrObj.getHostId())):
-                warning("NG/AMS cannot subscribe to itself - ignoring " +\
-                        "subscription (host/port): " + hostPort)
+                logger.warning("NG/AMS cannot subscribe to itself - ignoring " +\
+                        "subscription (host/port): %s", hostPort)
                 del subscrList[idx]
                 break
 
@@ -209,7 +218,7 @@ def getDiskInfo(srvObj,
                 errMsg = genLog("NGAMS_NOTICE_NO_DISKS_AVAIL",
                                 [srvObj.getHostId(),
                                  srvObj.getHostId()])
-                notice(errMsg)
+                logger.warning(errMsg)
     else:
         if (srvObj.getCfg().getAllowArchiveReq()):
             info(3,"Running as a simulated archiving system - generating " +\
@@ -346,9 +355,9 @@ def handleOnline(srvObj,
         # Write status file on disk.
         ngamsDiskUtils.dumpDiskInfoAllDisks(srvObj.getHostId(),
                                             srvObj.getDb(), srvObj.getCfg())
-    except Exception, e:
-        errMsg = "Error occurred while bringing the system Online: " + str(e)
-        error(errMsg)
+    except Exception:
+        errMsg = "Error occurred while bringing the system Online"
+        logger.exception(errMsg)
         handleOffline(srvObj)
         raise
 
@@ -424,11 +433,11 @@ def handleOffline(srvObj,
                                        subscrObj.getPortNo(),
                                        NGAMS_UNSUBSCRIBE_CMD, 1,
                                        [["url", subscrObj.getId()]])
-            except Exception, e:
-                warning("Problem occurred while cancelling subscription " +\
-                        "(host/port):" + subscrObj.getHostId() + "/" +\
-                        str(subscrObj.getPortNo()) + ". Subscriber ID: " +\
-                        subscrObj.getId() + ". Exception: " + str(e))
+            except Exception:
+                msg = "Problem occurred while cancelling subscription " +\
+                      "(host/port): %s/%d. Subscriber ID: %s"
+                logger.exception(msg, subscrObj.getHostId(),
+                                 subscrObj.getPortNo(), subscrObj.getId())
         srvObj.resetSubscrStatusList()
 
     # Check if there are files located in the Staging Areas of the
@@ -484,10 +493,9 @@ def wakeUpHost(srvObj,
         ipAddress = srvObj.getDb().getIpFromHostId(suspHost)
         ngamsHighLevelLib.pingServer(suspHost, ipAddress, portNo,
                                      srvObj.getCfg().getWakeUpCallTimeOut())
-    except Exception, e:
-        errMsg = "Error waking up host: " + suspHost + ". Error: " + str(e)
-        notice(errMsg)
-        raise Exception, errMsg
+    except Exception:
+        logger.exception("Error waking up host %s", suspHost)
+        raise
 
 
 def checkStagingAreas(srvObj):

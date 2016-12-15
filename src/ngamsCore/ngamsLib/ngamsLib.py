@@ -34,12 +34,22 @@ NG/AMS implementation.
 The functions in this module can be used in all the NG/AMS code.
 """
 
-import os, string, httplib, time, getpass, socket, urlparse
-import urllib, urllib2, re, cPickle
-import shutil
+import cPickle
 from contextlib import closing
+import getpass
+import httplib
+import logging
+import os
+import re
+import shutil
+import socket
+import string
+import time
+import urllib
+import urllib2
+import urlparse
 
-from ngamsCore import genLog, info, TRACE, trim, getHostName, warning, \
+from ngamsCore import genLog, info, TRACE, trim, getHostName, \
     NGAMS_HTTP_SUCCESS, NGAMS_CONT_MT, \
     NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM, \
     getFileSize, NGAMS_ARCH_REQ_MT, getUniqueNo, \
@@ -47,6 +57,8 @@ from ngamsCore import genLog, info, TRACE, trim, getHostName, warning, \
 import ngamsMIMEMultipart
 from pccUt import PccUtTime
 
+
+logger = logging.getLogger(__name__)
 
 def hidePassword(fileUri):
     """
@@ -378,7 +390,7 @@ def _httpHandleResp(fileObj,
     hdrDic = httpMsgObj2Dic(hdrs)
 
     if not hdrDic:
-        warning("No headers received from HTTP request!")
+        logger.warning("No headers received from HTTP request!")
 
     dataSize = 0
     if (hdrDic.has_key("content-length")):

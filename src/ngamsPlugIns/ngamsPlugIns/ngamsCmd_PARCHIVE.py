@@ -35,16 +35,20 @@ instead of saveFromHttpToFile, it saveFromHttpToAnotherHttp
 """
 
 import binascii
-import httplib, urllib2
+import httplib
+import logging
 import os
 import time
+import urllib2
 
 from ngamsLib.ngamsCore import info, NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, \
-    NGAMS_FAILURE, warning, NGAMS_HTTP_POST, getHostName, \
-    NGAMS_HTTP_HDR_CHECKSUM, TRACE, genLog, error, NGAMS_IDLE_SUBSTATE
+    NGAMS_FAILURE, NGAMS_HTTP_POST, getHostName, \
+    NGAMS_HTTP_HDR_CHECKSUM, TRACE, genLog, NGAMS_IDLE_SUBSTATE
 from ngamsLib import ngamsStatus, ngamsHighLevelLib, ngamsDiskInfo, ngamsLib
 from pccUt import PccUtTime
 
+
+logger = logging.getLogger(__name__)
 
 def processHttpReply(http, basename, url):
     """
@@ -84,8 +88,7 @@ def processHttpReply(http, basename, url):
         errMsg = 'Error occurred while proxy quick archive file %s to %s' % (basename, url)
         if (stat.getMessage() != ""):
             errMsg += " Message: " + stat.getMessage()
-        warning(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 def buildHttpClient(url,
                     mimeType,
@@ -252,14 +255,14 @@ def saveFromHttpToHttp(reqPropsObj,
         # Raise a special info message if the transfer speed to disk or over network was
         # slower than 512 kB/s
         if srb > 0:
-            warning("Number of slow network reads during this transfer: %d out of %d blocks. \
-            Consider checking the upstream network link!" % (srb, nb))
+            logger.warning("Number of slow network reads during this transfer: %d out of %d blocks. \
+            Consider checking the upstream network link!", srb, nb)
         if swb > 0:
-            warning("Number of slow network sends during this transfer: %d out of %d blocks. \
-            Consider checking your downstream network link!" % (swb, nb))
+            logger.warning("Number of slow network sends during this transfer: %d out of %d blocks. \
+            Consider checking your downstream network link!", swb, nb)
         if nfailread > 0:
-            warning("Number of failed reads during this transfer: %d out of %d blocks. \
-            Consider checking your upstream network!" % (nfailread, nb))
+            logger.warning("Number of failed reads during this transfer: %d out of %d blocks. \
+            Consider checking your upstream network!", nfailread, nb)
         # Raise exception if less byes were received as expected.
         if (sizeKnown and (remSize > 0)):
             msg = genLog("NGAMS_ER_ARCH_RECV",
@@ -272,8 +275,7 @@ def saveFromHttpToHttp(reqPropsObj,
             if (checksum):
                 if (checksum != str(crc)):
                     msg = 'Checksum error for file %s, proxy crc = %s, but remote crc = %s' % (reqPropsObj.getFileUri(), str(crc), checksum)
-                    error(msg)
-                    raise Exception, msg
+                    raise Exception(msg)
                 else:
                     info(3, "%s CRC checked, OK!" % reqPropsObj.getFileUri())
 
@@ -282,7 +284,7 @@ def saveFromHttpToHttp(reqPropsObj,
     except Exception, err:
         if (str(err).find('Connection refused') > -1):
             # The host on the nexturl is probably down
-            error("Fail to connect to the nexturl '%s': %s" % (nexturl, str(err)))
+            logger.exception("Fail to connect to the nexturl '%s'", nexturl)
             # report this incident if the reporturl is available
 
             if (rpurl):
@@ -290,15 +292,15 @@ def saveFromHttpToHttp(reqPropsObj,
                 urlreq = '%s?errorurl=%s&file_id=%s' % (rpurl, nexturl, basename)
                 try:
                     urllib2.urlopen(urlreq)
-                except Exception, errin:
-                    error("Cannot report the error of nexturl '%s' to reporturl '%s' either: %s" % (nexturl, rpurl, str(errin)))
+                except Exception:
+                    logger.exception("Cannot report the error of nexturl '%s' to reporturl '%s' either", nexturl, rpurl)
 
             if (reportHost):
                 try:
                     rereply = urllib2.urlopen('http://%s/report/hostdown?file_id=%s&next_url=%s' % (reportHost, basename, urllib2.quote(nexturl)), timeout = 15).read()
                     info('Reply from sending file %s host-down event to server %s - %s' % (basename, reportHost, rereply))
-                except Exception, s1err:
-                    error('Fail to send host-down event to server %s, Exception: %s' %(reportHost, str(s1err)))
+                except Exception:
+                    logger.exception('Fail to send host-down event to server %s', reportHost)
 
         raise err
     finally:
@@ -327,14 +329,12 @@ def handleCmd(srvObj,
     info(3, "Check if the URI is correctly set.")
     if (reqPropsObj.getFileUri() == ""):
         errMsg = genLog("NGAMS_ER_MISSING_URI")
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     #path = reqPropsObj.getHttpHdr('path')
     if (not reqPropsObj.hasHttpPar('nexturl')):
         errMsg = "Paremeter 'nexturl' is missing."
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Get mime-type (try to guess if not provided as an HTTP parameter).
     info(3, "Get mime-type (try to guess if not provided as an HTTP parameter).")

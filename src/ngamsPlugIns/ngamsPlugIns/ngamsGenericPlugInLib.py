@@ -32,12 +32,16 @@ Contains various utilities for building NGAS Plug-Ins.
 """
 
 import base64
-import httplib, urllib  # this is only used for notifying the registration service
+import logging
+import httplib
 import os
+import urllib
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, getHostName, genLog, error, info
+from ngamsLib.ngamsCore import TRACE, getHostName, genLog, info
 
+
+logger = logging.getLogger(__name__)
 
 NGAS_VOL_INFO_FILE      = ".ngas_volume_info"
 NGAS_VOL_INFO_IGNORE    = "IGNORE"
@@ -148,7 +152,7 @@ def notifyRegistrationService(srvObj, svrStatus = 'online'):
             if (response.status != 200):
                 errMsg = "Problem notifying registration service! Error " + response.reason
                 errMsg = genLog(errTag, [errMsg])
-                error(errMsg)
+                logger.error(errMsg)
                 #raise Exception, errMsg
             else:
                 info(3, "Successfully notified registration service: %s" % svrStatus)
@@ -158,7 +162,7 @@ def notifyRegistrationService(srvObj, svrStatus = 'online'):
             errMsg = "Cannot connect to the registration service " +\
                          ": %s" % str(e)
             errMsg = genLog(errTag, [errMsg])
-            error(errMsg)
+            logger.error(errMsg)
         finally:
             if (conn is not None):
                 conn.close()

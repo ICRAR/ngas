@@ -36,11 +36,14 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
+import logging
 import os, types
 from pccUt import PccUtTime
-from ngamsCore import TRACE, getDiskSpaceAvail, iso8601ToSecs, rmFile, error, getUniqueNo, NGAMS_DB_CH_FILE_DELETE
+from ngamsCore import TRACE, getDiskSpaceAvail, iso8601ToSecs, rmFile, getUniqueNo, NGAMS_DB_CH_FILE_DELETE
 import ngamsDbm, ngamsDbCore
 
+
+logger = logging.getLogger(__name__)
 
 # TODO: Avoid using these classes in this module (mutual dependency):
 import ngamsFileInfo, ngamsDiskInfo
@@ -633,9 +636,9 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
             self.triggerEvents([diskInfo.getDiskId(),
                                 diskInfo.getMountPoint()])
             return self
-        except Exception, e:
-            error("Error deleting disk info from DB: %s" % str(e))
-            raise e
+        except Exception:
+            logger.exception("Error deleting disk info from DB")
+            raise
         finally:
             if fileInfoDbm:
                 del fileInfoDbm

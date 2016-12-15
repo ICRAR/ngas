@@ -32,10 +32,14 @@ Contains a Filter Plug-In used to filter on the files that have already been del
  to the remote destination
 """
 
+import logging
+
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import alert, NGAMS_STATUS_CMD, info, NGAMS_FAILURE
+from ngamsLib.ngamsCore import NGAMS_STATUS_CMD, info, NGAMS_FAILURE
 from ngamsPClient import ngamsPClient
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsMWACheckRemoteFilterPlugin(srvObj,
                           plugInPars,
@@ -80,7 +84,7 @@ def ngamsMWACheckRemoteFilterPlugin(srvObj,
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Missing Plug-In Parameter: " +\
                  "remote_host and/or remote_port"
         #raise Exception, errMsg
-        alert(errMsg)
+        logger.error(errMsg)
         return 1 # matched as if the filter does not exist
 
     host = parDic["remote_host"]
@@ -88,7 +92,7 @@ def ngamsMWACheckRemoteFilterPlugin(srvObj,
 
     if (not sport.isdigit()):
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Invalid port number: " + sport
-        alert(errMsg)
+        logger.error(errMsg)
         return 1 # matched as if the filter does not exist
 
     port = int(sport)
@@ -98,10 +102,10 @@ def ngamsMWACheckRemoteFilterPlugin(srvObj,
 
     try:
         rest = client.sendCmd(NGAMS_STATUS_CMD, 1, "", [["file_id", fileId]])
-    except Exception, e:
+    except Exception:
         errMsg = "Error occurred during checking remote file status " +\
-                     "ngamsMWACheckRemoteFilterPlugin. Exception: " + str(e)
-        alert(errMsg)
+                     "ngamsMWACheckRemoteFilterPlugin"
+        logger.exception(errMsg)
         return 1 # matched as if the filter does not exist
 
 

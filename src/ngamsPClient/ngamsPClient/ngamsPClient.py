@@ -37,7 +37,14 @@ The NG/AMS Python Client is implemented as a class, ngamsPClient, which
 can be used to build up Python applications communicating with NG/AMS.
 """
 
-import os, sys, random, time, traceback, base64
+import base64
+import logging
+import os
+import random
+import sys
+import time
+import traceback
+
 from pccUt import PccUtTime
 from ngamsLib import ngamsLib, ngamsFileInfo, ngamsStatus
 from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CONTENT_TYPE,\
@@ -48,7 +55,7 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NG
     NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, getNgamsLicense
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD
-from ngamsLib.ngamsCore import info, notice
+from ngamsLib.ngamsCore import info
 from xml.dom import minidom
 import pkg_resources
 
@@ -257,8 +264,7 @@ class ngamsPClient:
                                   additionalHdrs = httpHdrs)
         else:
             msg = "Rearchive Push is not yet supported!"
-            notice(msg)
-            raise Exception, msg
+            raise Exception(msg)
         info(1,"Re-archive request of file: " + baseName + " issued.")
         return res
 
@@ -1296,12 +1302,12 @@ class ngamsPClient:
             deltaTime = (time.time() - startTime)
             info(3,"Command: %s/%s to %s:%s handled in %.3fs" %\
                  (cmd, str(locPars), host, str(port), deltaTime))
-        except Exception, e:
+        except Exception:
             deltaTime = (time.time() - startTime)
-            msg = "Exception raised handling command %s/%s to %s:%s " +\
-                  "after %.3fs. Timeout: %s. Error: %s"
-            notice(msg % (cmd, str(locPars), host, str(port), deltaTime,
-                          str(self.getTimeOut()), str(e)))
+            logger.exception("Exception raised handling command %s/%s to %s:%s " +\
+                             "after %.3fs. Timeout: %s",
+                             cmd, str(locPars), host, str(port),
+                             deltaTime, str(self.getTimeOut()))
             raise
 
         # If we have received a redirection HTTP response, we

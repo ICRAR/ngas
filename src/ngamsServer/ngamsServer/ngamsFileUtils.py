@@ -44,8 +44,8 @@ from ngamsLib import ngamsDbm, ngamsDbCore, ngamsDiskInfo, ngamsStatus, ngamsLib
 from ngamsLib import ngamsHighLevelLib
 from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
     NGAMS_HOST_DOMAIN, rmFile, NGAMS_HOST_REMOTE, NGAMS_RETRIEVE_CMD, genLog, \
-    warning, NGAMS_STATUS_CMD, getHostName, NGAMS_CACHE_DIR, \
-    NGAMS_DATA_CHECK_THR, getFileSize, notice, info,\
+    NGAMS_STATUS_CMD, getHostName, NGAMS_CACHE_DIR, \
+    NGAMS_DATA_CHECK_THR, getFileSize, info,\
     loadPlugInEntryPoint
 
 _crc32c_available = True
@@ -264,9 +264,9 @@ def _locateArchiveFile(srvObj,
                         ngamsSrvUtils.wakeUpHost(srvObj, host)
                         info(3,"Suspended server hosting requested file (" +\
                              host + "/" + str(port) + ") has been woken up")
-                    except Exception, e:
-                        warning("Error waking up server hosting selected " +\
-                                "file. Error: " + str(e))
+                    except Exception:
+                        logger.exception("Error waking up server hosting selected " +\
+                                "file")
                         continue
 
                 # The file is hosted on a host, which is not suspended or
@@ -586,7 +586,7 @@ def syncCachesCheckFiles(srvObj,
             plugInMethod(srvObj)
             info(3,"Invoked Disk Sync Plug-In: %s" % diskSyncPlugIn)
         else:
-            notice("No Disk Sync Plug-In defined - consider to provide one!")
+            logger.warning("No Disk Sync Plug-In defined - consider to provide one!")
         #commands.getstatusoutput("sync")
         for file in filenames: os.stat(file)
     except Exception, e:
@@ -696,8 +696,7 @@ def check_checksum(srvObj, fio, filename):
         if current_checksum != stored_checksum:
             msg = "Illegal checksum (found: %s, expected %s) on file %s/%s/%s" % \
                   (current_checksum, stored_checksum, fio.getDiskId(), fio.getFileId(), fio.getFileVersion())
-            warning(msg)
-            raise Exception, msg
+            raise Exception(msg)
     else:
         msg = "No checksum or checksum variant specified for file " +\
               "%s/%s/%s - skipping checksum check"

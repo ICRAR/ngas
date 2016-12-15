@@ -35,7 +35,7 @@ Function to handle the ARCHIVE command.
 
 from ngamsLib.ngamsCore import TRACE, genLog, NGAMS_ONLINE_STATE,\
     NGAMS_BUSY_SUBSTATE, NGAMS_IDLE_SUBSTATE, getHostName, NGAMS_HTTP_SUCCESS,\
-    NGAMS_SUCCESS, error, info, NGAMS_NOTIF_ERROR, NGAMS_HTTP_GET
+    NGAMS_SUCCESS, info, NGAMS_NOTIF_ERROR, NGAMS_HTTP_GET
 from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsDiskUtils
 import ngamsArchiveUtils
 
@@ -89,8 +89,7 @@ def archiveInitHandling(srvObj,
     # Check if the URI is correctly set.
     if (reqPropsObj.getFileUri() == ""):
         errMsg = genLog("NGAMS_ER_MISSING_URI")
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Act possibly as proxy for the Achive Request?
     try:
@@ -169,11 +168,10 @@ def handleCmdArchive(srvObj,
         except Exception, e:
             errMsg = genLog("NGAMS_ER_ARCHIVE_PULL_REQ",
                             [reqPropsObj.getSafeFileUri(), str(e)])
-            error(errMsg)
             ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM HANDLING ARCHIVE PULL REQUEST",
                                      errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
     else:
         info(1,"Handling Archive Push Request ...")
         try:
@@ -192,10 +190,9 @@ def handleCmdArchive(srvObj,
         except Exception, e:
             errMsg = genLog("NGAMS_ER_ARCHIVE_PUSH_REQ",
                             [reqPropsObj.getSafeFileUri(), str(e)])
-            error(errMsg)
             ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM ARCHIVE HANDLING", errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
     # Trigger Subscription Thread.
     srvObj.triggerSubscriptionThread()

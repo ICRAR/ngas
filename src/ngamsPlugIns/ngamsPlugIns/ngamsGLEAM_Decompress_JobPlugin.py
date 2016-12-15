@@ -38,10 +38,13 @@ by the SubscriptionThread._deliveryThread
 
 import commands
 from glob import glob
+import logging
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import info, error, warning, get_contact_ip
+from ngamsLib.ngamsCore import info, get_contact_ip
 
+
+logger = logging.getLogger(__name__)
 
 debug = 0
 work_dir = '/mnt/gleam2/tmp'
@@ -137,7 +140,7 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
             if (0 == re[0] and (re[1].count('Successfully handled Archive Pull Request') > 0)):
                 info(3, 'Successfully re-archived the untarred FITS file %s' % imgfile)
             else:
-                error('Fail to re-archive the untarred FITS file  %s: %s' % (imgfile, re[1]))
+                logger.error('Fail to re-archive the untarred FITS file  %s: %s', imgfile, re[1])
                 errNo += 1
                 lasterrMsg = re[1]
                 #return (re[0], re[1])
@@ -149,21 +152,21 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
             if (0 == re[0]):
                 info(3, 'Successfully DISCARDED the tar file %s' % filename)
             else:
-                warning('Fail to DISCARD the tar file %s' % filename)
+                logger.warning('Fail to DISCARD the tar file %s', filename)
 
         # remove the temp file
         cmd3 = "rm -rf %s/%s" % (work_dir, obsId)
         info(3, "Removing the temp directory %s/%s" % (work_dir, obsId))
         re = execCmd(cmd3, timeout)
         if (0 != re[0]):
-            warning('Fail to remove the temp untarred directory %s/%s' % (work_dir, obsId))
+            logger.warning('Fail to remove the temp untarred directory %s/%s', work_dir, obsId)
 
         if (errNo == 0):
             return (0, 'Done')
         else:
             return (errNo, lasterrMsg.replace("'", ""))
     else:
-        error('Fail to untar file %s: %s' % (filename, re[1]))
+        logger.error('Fail to untar file %s: %s', filename, re[1])
         return (re[0], re[1])
 
 

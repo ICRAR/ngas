@@ -53,7 +53,7 @@ file in the archive it is not taken into account.
 import os
 
 from ngamsLib.ngamsCore import getHostName, genLog, rmFile, TRACE, \
-    NGAMS_DISCARD_CMD, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, error, NGAMS_FAILURE
+    NGAMS_DISCARD_CMD, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, NGAMS_FAILURE
 from ngamsLib import ngamsHighLevelLib, ngamsDbm, ngamsLib
 
 
@@ -215,8 +215,7 @@ def handleCmdDiscard(srvObj,
 
     if (not srvObj.getCfg().getAllowRemoveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Discard File"])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     diskId      = None
     fileId      = None

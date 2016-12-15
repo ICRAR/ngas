@@ -31,14 +31,17 @@
 Functions to handle the REMFILE Command.
 """
 
+import logging
 import os
 
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsHighLevelLib
-from ngamsLib.ngamsCore import genLog, NGAMS_REMFILE_CMD, warning, \
-    info, rmFile, NGAMS_SUCCESS, TRACE, error, NGAMS_XML_STATUS_ROOT_EL, \
+from ngamsLib.ngamsCore import genLog, NGAMS_REMFILE_CMD, \
+    info, rmFile, NGAMS_SUCCESS, TRACE, NGAMS_XML_STATUS_ROOT_EL, \
     NGAMS_XML_STATUS_DTD, NGAMS_HTTP_SUCCESS
 import ngamsRemUtils
 
+
+logger = logging.getLogger(__name__)
 
 def _remFile(srvObj,
              reqPropsObj,
@@ -55,8 +58,7 @@ def _remFile(srvObj,
         errMsg = "Disk ID: %s, File ID: %s, File Version: %d" %\
                  (diskId, fileId, fileVersion)
         errMsg = genLog("NGAMS_ER_CMD_SYNTAX", [NGAMS_REMFILE_CMD, errMsg])
-        warning(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Temporary DBM to contain SQL info about files concerned by the query.
     fileListDbmName   = os.path.normpath(tmpFilePat + "_FILE_LIST")
@@ -153,7 +155,7 @@ def _remFile(srvObj,
                     failedDelCount += 1
                     errMsg = genLog("NGAMS_ER_DEL_FILE_DB",
                                     [diskId, fileId, fileVer, str(e)])
-                    warning(errMsg)
+                    logger.warning(errMsg)
                 # Removing the DB info was successful, remove the copy on disk.
                 msg = "Deleting copy of file: %s/%s/%d: %s"
                 info(2,msg % (diskId, fileId, fileVer, complFilename))
@@ -162,7 +164,7 @@ def _remFile(srvObj,
                 failedDelCount += 1
                 errMsg = genLog("NGAMS_ER_DEL_FILE_DISK",
                                 [diskId, fileId, fileVer, str(e)])
-                warning(errMsg)
+                logger.warning(errMsg)
 
     # Generate status.
     filesSelected = fileListDbm.getCount()
@@ -274,8 +276,7 @@ def handleCmdRemFile(srvObj,
 
     if (not srvObj.getCfg().getAllowRemoveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Remove"])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     diskId      = ""
     fileId      = ""
@@ -293,7 +294,7 @@ def handleCmdRemFile(srvObj,
         except:
             errMsg = genLog("NGAMS_ER_REQ_HANDLING", ["Must provide proper " +\
                             "value for parameter: execute (0|1)"])
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
     # Carry out the command.
     status = remFile(srvObj, reqPropsObj, diskId, fileId, fileVersion, execute)

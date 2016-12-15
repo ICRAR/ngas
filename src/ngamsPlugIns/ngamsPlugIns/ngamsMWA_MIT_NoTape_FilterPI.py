@@ -33,14 +33,18 @@ Contains a Filter Plug-In used to filter out those files that
 (2) belong to Solar observations with project_id 'c105' or 'c106'
 """
 
-import os, threading
+import logging
+import os
+import threading
 
 import pyfits
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import genLog, alert, info, NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, NGAMS_FAILURE
+from ngamsLib.ngamsCore import genLog, info, NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, NGAMS_FAILURE
 from ngamsPClient import ngamsPClient
 
+
+logger = logging.getLogger(__name__)
 
 #eor_list = ["'G0001'", "'G0004'", "'G0009'", "'G0008'", "'G0010'"] # EOR scientists are only interested in these projects
 eor_list = [] # this has become a parameter of the plug-in
@@ -101,7 +105,7 @@ def ngamsMWA_MIT_NoTape_FilterPI(srvObj,
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Missing Plug-In Parameter: " +\
                  "remote_host / remote_port / project_id"
         #raise Exception, errMsg
-        alert(errMsg)
+        logger.error(errMsg)
         return 1 # matched as if the filter did not exist
 
     host = parDic["remote_host"]
@@ -118,7 +122,7 @@ def ngamsMWA_MIT_NoTape_FilterPI(srvObj,
 
     if (not sport.isdigit()):
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Invalid port number: " + sport
-        alert(errMsg)
+        logger.error(errMsg)
         return 1 # matched as if the filter does not exist
 
     port = int(sport)
@@ -128,10 +132,10 @@ def ngamsMWA_MIT_NoTape_FilterPI(srvObj,
 
     try:
         rest = client.sendCmd(NGAMS_STATUS_CMD, 1, "", [["file_id", fileId]])
-    except Exception, e:
+    except Exception:
         errMsg = "Error occurred during checking remote file status " +\
-                     "ngamsMWACheckRemoteFilterPlugin. Exception: " + str(e)
-        alert(errMsg)
+                     "ngamsMWACheckRemoteFilterPlugin"
+        logger.exception(errMsg)
         return 1 # matched as if the filter does not exist
 
     #info(5, "filter return status = " + rest.getStatus())

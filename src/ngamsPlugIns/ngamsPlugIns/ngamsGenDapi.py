@@ -59,13 +59,16 @@ compression_ext:    Extension resulting from applying the specified compression
 """
 # Parameters.
 
+import logging
 import os
 import subprocess
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, info, genLog, error
+from ngamsLib.ngamsCore import TRACE, info, genLog
 from pccUt import PccUtTime
 
+
+logger = logging.getLogger(__name__)
 
 TARG_MIME_TYPE  = "target_mime_type"
 FILE_ID         = "file_id"
@@ -289,7 +292,7 @@ def ngamsGenDapi(srvObj,
                                                  fileExists, complFilename)
     except Exception, e:
         msg = "Error occurred in DAPI: %s" % str(e)
-        error(msg)
-        raise Exception, genLog("NGAMS_ER_DAPI_RM", [msg])
+        logger.error(msg)
+        raise Exception(genLog("NGAMS_ER_DAPI_RM", [msg]))
 
 # EOF

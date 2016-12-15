@@ -8,9 +8,12 @@
 #
 """ A python wrapper that interacts with tape libraries using command line """
 
-from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import alert
+import logging
 
+from ngamsLib import ngamsPlugInApi
+
+
+logger = logging.getLogger(__name__)
 
 def isFileOffline(filename):
     """
@@ -28,8 +31,7 @@ def isFileOnTape(filename):
     t = ngamsPlugInApi.execCmd(cmd, -1)
     exitCode = t[0]
     if (exitCode != 0 or len(t) != 2):
-        errMsg = "Fail to query the online/offline status for file " + filename
-        alert(errMsg)
+        logger.error("Fail to query the online/offline status for file %s", filename)
         #print errMsg
         return -1 #raise error
 
@@ -57,16 +59,13 @@ def stageFiles(filenameList):
     t = ngamsPlugInApi.execCmd(cmd1, -1)
     exitCode = t[0]
     if (exitCode != 0):
-        errMsg = "Staging problem: " + str(exitCode) + ", cmd: " + cmd1
-        alert(errMsg)
-        #print errMsg
+        logger.error("Staging problem: %s, cmd: %s", str(exitCode), cmd1)
         return -1
 
     t = ngamsPlugInApi.execCmd(cmd2, -1)
     exitCode = t[0]
     if (exitCode != 0):
-        errMsg = "Staging problem: " + str(exitCode) + ", cmd: " + cmd2
-        alert(errMsg)
+        logger.error("Staging problem: %s, cmd: %s", str(exitCode), cmd2)
         return -1
 
     return num_staged

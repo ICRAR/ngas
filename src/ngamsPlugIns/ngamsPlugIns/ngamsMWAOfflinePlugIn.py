@@ -31,15 +31,17 @@
 Module that contains a generic Offline Plug-In for NGAS.
 """
 
+import logging
 import os
 
 import cPickle as pickle
-import ngamsCmd_ASYNCLISTRETRIEVE
 from ngamsGenericPlugInLib import notifyRegistrationService
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import info, alert, TRACE
+from ngamsLib.ngamsCore import info, TRACE
 from ngamsServer import ngamsSubscriptionThread
 
+
+logger = logging.getLogger(__name__)
 
 def _saveSubscriptionInfoToDisk(srvObj):
     """
@@ -80,9 +82,8 @@ def _saveSubscriptionInfoToDisk(srvObj):
         output = open(saveFile, 'wb')
         pickle.dump(srvObj._subscriptionFileList, output)
         output.close()
-    except Exception, e:
-        ex = str(e)
-        alert('Fail to save subscription info to disks, Exception: %s' % ex)
+    except Exception:
+        logger.exception('Fail to save subscription info to disks')
     finally:
         srvObj._subscriptionSem.release()
 

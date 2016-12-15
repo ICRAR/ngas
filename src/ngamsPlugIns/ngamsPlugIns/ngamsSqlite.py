@@ -41,7 +41,7 @@ the NG/AMS Cursor Object API definition.
 import os
 
 from mx import DateTime
-from ngamsLib.ngamsCore import TRACE, alert, getMaxLogLevel, info, error
+from ngamsLib.ngamsCore import TRACE, info
 from pccUt import PccUtTime
 
 
@@ -107,8 +107,7 @@ class ngamsSqlite:
         if (not os.path.exists(db)):
             msg = "The specified SQLite NGAS DB: %s does not exist!"
             msg = msg % str(db)
-            alert(msg)
-            raise Exception, msg
+            raise Exception(msg)
 
         try:
             self.__dbModVer = str(sqlite.version)
@@ -224,9 +223,8 @@ class ngamsSqlite:
             res = self._execute(query)
             #self.postQueryAction(query)
             return res
-        except Exception, e:
-            error("Exception in ngamsSqlite DB Driver Interface: %s" % str(e))
-            raise e
+        except Exception:
+            raise
 
 
     def cursor(self,
@@ -297,11 +295,9 @@ class ngamsSqliteCursor:
         self.__dbDrv = None
         self.__cursorObj = None
 
-        if (getMaxLogLevel() > 4):
-            info(5, "Creating cursor in NGAS SQLite DB ...")
+        info(5, "Creating cursor in NGAS SQLite DB ...")
         self.__dbDrv = sqlite.connect(db)
-        if (getMaxLogLevel() > 4):
-            info(5, "Created cursor in NGAS SQLite DB ...")
+        info(5, "Created cursor in NGAS SQLite DB ...")
         self.__cursorObj = self.__dbDrv.cursor()
         if ((query != None) and (len(query) > 0)): self._init(query + ";")
 
@@ -331,7 +327,7 @@ class ngamsSqliteCursor:
         T = TRACE(5)
 
         query = _queryRewrite(query)
-        if (getMaxLogLevel() > 3): info(4, "Executing query: %s" % query)
+        info(4, "Executing query: %s" % query)
         type = self.__cursorObj.execute(query)
         return self
 

@@ -37,7 +37,7 @@ Contains definition of class for handling a DBM DB (BSDDB).
 
 import sys, os, cPickle, random, threading
 
-from ngamsCore import warning, TRACE, NGAMS_DBM_EXT, info, NGAMS_FILE_DB_COUNTER, rmFile
+from ngamsCore import TRACE, NGAMS_DBM_EXT, info, NGAMS_FILE_DB_COUNTER, rmFile
 
 try:
     import bsddb
@@ -45,13 +45,13 @@ except:
     try:
         import bsddb3 as bsddb
     except:
-        warning('No BSDDB module found! BSDDB based functionality will not work')
+        print('No BSDDB module found! BSDDB based functionality will not work')
         raise
 
 try:
     import dbm
 except:
-    warning('dbm module no available! ngamsDbm2 based utilities will not work')
+    print('dbm module no available! ngamsDbm2 based utilities will not work')
 
 
 class ngamsDbm:

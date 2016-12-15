@@ -46,7 +46,7 @@ from pccUt import PccUtTime
 from ngamsCore import TRACE, genLog, NGAMS_HOST_LOCAL,\
     NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN, NGAMS_HOST_REMOTE, info, getUniqueNo,\
     NGAMS_PROC_DIR, NGAMS_UNKNOWN_MT, NGAMS_STAGING_DIR, NGAMS_TMP_FILE_PREFIX,\
-    NGAMS_PICKLE_FILE_EXT, checkCreatePath, error, checkAvailDiskSpace,\
+    NGAMS_PICKLE_FILE_EXT, checkCreatePath, checkAvailDiskSpace,\
     getFileSize, NGAMS_BAD_FILES_DIR, NGAMS_BAD_FILE_PREFIX, NGAMS_STATUS_CMD,\
     mvFile, rmFile
 import ngamsSmtpLib
@@ -606,8 +606,7 @@ def saveInStagingFile(ngamsCfgObj,
                                   blockSize, 1, diskInfoObj)[0]
     except Exception, e:
         errMsg = genLog("NGAMS_ER_PROB_STAGING_AREA", [stagingFilename,str(e)])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
 def checkIfFileExists(dbConObj,
@@ -999,8 +998,7 @@ def sendEmail(ngamsCfgObj,
             if (dataInFile): rmFile(data)
             errMsg = genLog("NGAMS_ER_EMAIL_NOTIF",
                             [emailAdr, fromField, smtpHost,str(e)])
-            error(errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
     if (dataInFile): rmFile(data)
 
 

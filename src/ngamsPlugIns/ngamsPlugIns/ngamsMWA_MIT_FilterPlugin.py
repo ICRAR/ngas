@@ -52,14 +52,17 @@ Contains a Filter Plug-In used to filter out those files that
 """
 # maximum connection = 5
 
+import logging
 import os
 
 from psycopg2.pool import ThreadedConnectionPool
 import pyfits
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import alert, info, genLog, loadPlugInEntryPoint
+from ngamsLib.ngamsCore import info, genLog, loadPlugInEntryPoint
 
+
+logger = logging.getLogger(__name__)
 
 g_db_pool = ThreadedConnectionPool(1, 5, database = 'mwa', user = 'mwa',
                             password = 'Qm93VGll\n'.decode('base64'),
@@ -169,7 +172,7 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
         not parDic.has_key("project_id")):
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Missing Plug-In Parameter: " +\
                  "remote_host / remote_port / project_id"
-        alert(errMsg)
+        logger.error(errMsg)
         return 0
 
     proj_ids = parDic["project_id"]
@@ -194,7 +197,7 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
             info(3, 'File %s appears on Tape, connect to MWA DB to check' % filename)
             projId = getProjectIdFromMWADB(fileId)
             if (not projId or projId == ''):
-                alert('Cannot get project id from MWA DB for file %s' % fileId)
+                logger.error('Cannot get project id from MWA DB for file %s', fileId)
                 return 0
             projectId = "'%s'" % projId # add single quote to be consistent with FITS header keywords
         else:

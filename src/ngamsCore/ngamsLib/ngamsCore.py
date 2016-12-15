@@ -403,18 +403,6 @@ def TRACE(logLevel = 4):
     return None
 
 
-def notice(msg):
-    logger.log(25, msg);
-
-def warning(msg):
-    logger.warning(msg)
-
-def error(msg):
-    logger.error(msg)
-
-def alert(msg):
-    logger.critical(msg)
-
 def getAttribValue(node,
                    attributeName,
                    ignoreFailure = 0):
@@ -672,9 +660,9 @@ def checkCreatePath(path):
             try:
                 os.makedirs(path)
                 os.chmod(path, 0775)
-            except Exception, e:
-                error("Error creating path: " + str(e))
-                raise e
+            except Exception:
+                logger.exception("Error creating path")
+                raise
     finally:
         _pathHandleSem.release()
 
@@ -726,8 +714,7 @@ def mvFile(srcFilename,
         deltaTime = timer.stop()
     except Exception, e:
         errMsg = genLog("NGAMS_AL_MV_FILE", [srcFilename, trgFilename, str(e)])
-        alert(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
     info(4,"File: " + srcFilename + " moved to filename: " + trgFilename)
 
     return deltaTime
@@ -757,8 +744,7 @@ def cpFile(srcFilename,
         deltaTime = timer.stop()
     except Exception, e:
         errMsg = genLog("NGAMS_AL_CP_FILE", [srcFilename, trgFilename, str(e)])
-        alert(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
     info(4, "File: %s copied to filename: %s" % (srcFilename, trgFilename))
     return deltaTime
 

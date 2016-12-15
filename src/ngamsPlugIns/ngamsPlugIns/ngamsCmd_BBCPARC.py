@@ -34,7 +34,6 @@ curl --connect-timeout 7200 eor-12.mit.edu:7777/BBCPARC?fileUri=ngas%40146.118.8
 """
 
 from collections import namedtuple
-import commands
 import os
 import time
 import subprocess
@@ -42,9 +41,9 @@ import struct
 from urlparse import urlparse
 
 from ngamsLib import ngamsHighLevelLib, ngamsPlugInApi
-from ngamsLib.ngamsCore import info, checkCreatePath, genLog, alert, TRACE, \
+from ngamsLib.ngamsCore import info, checkCreatePath, genLog, TRACE, \
     NGAMS_SUCCESS, NGAMS_HTTP_GET, NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, \
-    NGAMS_NOTIF_NO_DISKS, mvFile, notice, NGAMS_FAILURE, error, \
+    NGAMS_NOTIF_NO_DISKS, mvFile, NGAMS_FAILURE, \
     NGAMS_PICKLE_FILE_EXT, rmFile, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
     NGAMS_BUSY_SUBSTATE, getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_STAGING_DIR, \
     loadPlugInEntryPoint, genUniqueId
@@ -196,8 +195,7 @@ def handleCmd(srvObj,
 
     if not parsDic.has_key('fileUri') or not parsDic['fileUri']:
         errMsg = genLog("NGAMS_ER_MISSING_URI")
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # exclude pulling files from these locations
     invalid_paths = ('/dev', '/var', '/usr', '/opt', '/etc')
@@ -216,8 +214,7 @@ def handleCmd(srvObj,
     if uri_parsed.path.lower().startswith(invalid_paths):
         errMsg = genLog("NGAMS_ER_ILL_URI", [file_uri,
                                             "Archive Pull Request"])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     reqPropsObj.setFileUri(file_uri)
 

@@ -24,7 +24,7 @@
 Function + code to handle the CRETRIEVE Command.
 """
 import os
-from ngamsLib.ngamsCore import TRACE, genLog, info, error, rmFile, getFileSize, checkCreatePath,\
+from ngamsLib.ngamsCore import TRACE, genLog, info, rmFile, getFileSize, checkCreatePath,\
     loadPlugInEntryPoint
 from ngamsLib.ngamsCore import NGAMS_PROC_FILE, NGAMS_PROC_DATA, NGAMS_PROC_STREAM
 from ngamsLib.ngamsCore import NGAMS_CONT_MT, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE
@@ -364,8 +364,7 @@ def _handleCmdCRetrieve(srvObj,
     # rejected.
     if (not srvObj.getCfg().getAllowRetrieveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Retrieve"])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # At least container_id or container_name must be specified
     containerName = containerId = None
@@ -375,8 +374,7 @@ def _handleCmdCRetrieve(srvObj,
         containerName = reqPropsObj.getHttpPar("container_name").strip()
     if not containerId and not containerName:
         errMsg = genLog("NGAMS_ER_RETRIEVE_CMD")
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # If container_name is specified, and maps to more than one container,
     # an error is issued
@@ -432,9 +430,8 @@ def handleCmd(srvObj,
     if (reqPropsObj.hasHttpPar("processing") and \
         (not srvObj.getCfg().getAllowProcessingReq())):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Retrieve+Processing"])
-        error(errMsg)
         srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
     _handleCmdCRetrieve(srvObj, reqPropsObj, httpRef)

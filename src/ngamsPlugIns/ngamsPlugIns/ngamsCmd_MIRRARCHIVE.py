@@ -53,7 +53,7 @@ import time
 
 from ngamsLib import ngamsDiskInfo, ngamsHighLevelLib, ngamsLib, \
     ngamsFileInfo
-from ngamsLib.ngamsCore import TRACE, genLog, error, \
+from ngamsLib.ngamsCore import TRACE, genLog, \
     checkCreatePath, info, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
     NGAMS_BUSY_SUBSTATE, NGAMS_STAGING_DIR, genUniqueId, mvFile, \
     getFileCreationTime, NGAMS_FILE_STATUS_OK, getDiskSpaceAvail, \
@@ -108,8 +108,7 @@ def saveInStagingFile(ngamsCfgObj,
                                   blockSize, 1, diskInfoObj)
     except Exception, e:
         errMsg = genLog("NGAMS_ER_PROB_STAGING_AREA", [stagingFilename,str(e)])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
 def saveFromHttpToFile(ngamsCfgObj,
@@ -245,8 +244,7 @@ def handleCmd(srvObj,
     info(3, "Check if the URI is correctly set.")
     if (reqPropsObj.getFileUri() == ""):
         errMsg = genLog("NGAMS_ER_MISSING_URI")
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Is this NG/AMS permitted to handle Archive Requests?
     info(3, "Is this NG/AMS permitted to handle Archive Requests?")

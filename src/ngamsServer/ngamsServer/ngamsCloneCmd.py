@@ -41,9 +41,9 @@ import ngamsArchiveUtils, ngamsSrvUtils, ngamsFileUtils
 import ngamsCacheControlThread
 from ngamsLib import ngamsNotification, ngamsFileInfo, ngamsDiskInfo
 from ngamsLib import ngamsReqProps, ngamsHighLevelLib, ngamsDapiStatus
-from ngamsLib.ngamsCore import TRACE, genLog, error, NGAMS_ONLINE_STATE, \
+from ngamsLib.ngamsCore import TRACE, genLog, NGAMS_ONLINE_STATE, \
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, info, getDiskSpaceAvail, \
-    rmFile, getFileSize, NGAMS_XML_MT, NGAMS_FAILURE, warning, checkCreatePath, \
+    rmFile, getFileSize, NGAMS_XML_MT, NGAMS_FAILURE, checkCreatePath, \
     mvFile, getFileCreationTime, NGAMS_SUCCESS, \
     NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_CLONE_CMD, NGAMS_CLONE_THR, getThreadName, \
@@ -74,8 +74,7 @@ def handleCmdClone(srvObj,
     # Is this NG/AMS permitted to handle Archive Requests?
     if (not srvObj.getCfg().getAllowArchiveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Clone"])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Check if State/Sub-State correct for perfoming the cloning.
     srvObj.checkSetState("Command CLONE", [NGAMS_ONLINE_STATE],
@@ -451,7 +450,7 @@ def _cloneExec(srvObj,
                       "/Version: " + str(fio.getFileVersion()) +\
                       " on disk with ID: " + fio.getDiskId() +\
                       " on host: " + hostId + ". Reason: " + err
-                warning(msg)
+                logger.warning(msg)
                 if (emailNotif):
                     tmpFileList.setStatus(NGAMS_FAILURE + ": " + err)
                     tmpFileList.addFileInfoObj(fio.setTag("SOURCE_FILE"))
@@ -505,7 +504,7 @@ def _cloneExec(srvObj,
                              "via URL: " + fileUrl + " - Error: " + str(e)
                     if (attempt < 4):
                         errMsg += " - Retrying in 5s ..."
-                        error(errMsg)
+                        logger.error(errMsg)
                         time.sleep(5)
                     else:
                         raise Exception, errMsg
@@ -577,7 +576,7 @@ def _cloneExec(srvObj,
                 logger.error(errMsg, extra={'to_syslog': True})
                 thread.exit()
             else:
-                warning(errMsg)
+                logger.warning(errMsg)
                 if (emailNotif):
                     tmpFileList.setStatus(NGAMS_FAILURE + ": Error: " + errMsg)
                     tmpFileList.addFileInfoObj(fio.setTag("SOURCE_FILE"))
@@ -851,7 +850,7 @@ def _cloneExplicit(srvObj,
                          "via URL: " + fileUrl + " - Error: " + str(e)
                 if (attempt < 4):
                     errMsg += " - Retrying in 5s ..."
-                    error(errMsg)
+                    logger.error(errMsg)
                     time.sleep(0.5)
                 else:
                     raise Exception, errMsg

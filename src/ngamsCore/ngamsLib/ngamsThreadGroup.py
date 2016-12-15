@@ -79,9 +79,14 @@ frequently, the threads may block eachother unnecessarily.
 When the
 """
 
-import time, threading
+import logging
+import threading
+import time
 
-from ngamsCore import TRACE, info, warning
+from ngamsCore import TRACE, info
+
+
+logger = logging.getLogger(__name__)
 
 # Constants.
 # - Used to signal that the thread has terminated execution. This will be
@@ -426,9 +431,8 @@ def test1(timeout):
                                    loopSuspension = 0.010, loopPeriod = 0.200)
     try:
         thrGroupObj.start(wait = True, timeout = timeout)
-    except Exception, e:
-        warning("Exception occurred waiting for threads to terminate: %s" %\
-                str(e))
+    except Exception:
+        logger.exception("Exception occurred waiting for threads to terminate")
 
 
 if __name__ == '__main__':

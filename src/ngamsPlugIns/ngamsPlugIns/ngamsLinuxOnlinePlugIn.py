@@ -32,7 +32,7 @@ Module containing a System Online Plug-In used by the ESO NGAS installations.
 """
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, info, genLog, error
+from ngamsLib.ngamsCore import TRACE, info, genLog
 import ngamsLinuxSystemPlugInApi, ngamsEscaladeUtils
 
 
@@ -117,5 +117,4 @@ def ngamsLinuxOnlinePlugIn(srvObj,
     else:
         errMsg = "Problem executing ngamsLinuxOnlinePlugIn"
         errMsg = genLog("NGAMS_ER_ONLINE_PLUGIN", [errMsg])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)

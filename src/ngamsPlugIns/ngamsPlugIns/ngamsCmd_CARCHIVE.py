@@ -28,18 +28,21 @@ in the NGAS database. Because of this reason this module reuses
 methods defined in the ngamsCmd_QARCHIVE module
 """
 
+import logging
 import os
 import time
 
 import ngamsCmd_QARCHIVE
 from pccUt import PccUtTime
-from ngamsLib.ngamsCore import TRACE, genLog, error, checkCreatePath, info, \
+from ngamsLib.ngamsCore import TRACE, genLog, checkCreatePath, info, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, \
     NGAMS_STAGING_DIR, genUniqueId, mvFile, getFileCreationTime, \
     NGAMS_FILE_STATUS_OK, getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS
 from ngamsLib import ngamsMIMEMultipart, ngamsHighLevelLib, ngamsFileInfo, ngamsLib
 from ngamsServer import ngamsCacheControlThread
 
+
+logger = logging.getLogger(__name__)
 
 def saveInStagingFile(ngamsCfgObj,
                       reqPropsObj,
@@ -69,8 +72,8 @@ def saveInStagingFile(ngamsCfgObj,
                                   blockSize, 1, diskInfoObj)
     except Exception, e:
         errMsg = genLog("NGAMS_ER_PROB_STAGING_AREA", [stagingFilename,str(e)])
-        error(errMsg)
-        raise Exception, errMsg
+        logger.exception(errMsg)
+        raise
 
 
 def saveFromHttpToFile(ngamsCfgObj,
@@ -229,8 +232,7 @@ def handleCmd(srvObj,
     targDiskInfo = ngamsCmd_QARCHIVE.getTargetVolume(srvObj)
     if (targDiskInfo == None):
         errMsg = "No disk volumes are available for ingesting any files."
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
     reqPropsObj.setTargDiskInfo(targDiskInfo)
 
     # Generate staging filename.

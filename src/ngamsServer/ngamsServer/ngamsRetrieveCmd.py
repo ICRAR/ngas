@@ -33,6 +33,7 @@ Function + code to handle the RETRIEVE Command.
 
 import errno
 import io
+import logging
 import os
 import select
 import shutil
@@ -41,7 +42,7 @@ import time
 
 from ngamsLib import ngamsDppiStatus, ngamsStatus
 from ngamsLib import ngamsHighLevelLib, ngamsLib
-from ngamsLib.ngamsCore import info, warning, NGAMS_TEXT_MT, error, getFileSize, \
+from ngamsLib.ngamsCore import info, NGAMS_TEXT_MT, getFileSize, \
     TRACE, genLog, NGAMS_PROC_FILE, NGAMS_HTTP_SUCCESS, NGAMS_PROC_DATA, \
     NGAMS_HOST_LOCAL, \
     NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE, checkCreatePath, NGAMS_RETRIEVE_CMD, \
@@ -50,6 +51,8 @@ from ngamsLib.ngamsCore import info, warning, NGAMS_TEXT_MT, error, getFileSize,
 import ngamsSrvUtils, ngamsFileUtils
 
 
+
+logger = logging.getLogger(__name__)
 
 ################################################################################
 # SENDFILE BEGINS
@@ -283,11 +286,11 @@ def performStaging(srvObj, reqPropsObj, httpRef, filename):
         fileSize = getFileSize(filename)
         info(3, 'Staging rate = %.0f Bytes/s (%.0f seconds) for file %s' % (fileSize / howlong, howlong, filename))
 
-    except socket.timeout as t:
+    except socket.timeout:
         errMsg = 'Staging timed out: %s' % filename
-        warning(errMsg)
+        logger.warning(errMsg)
         srvObj.httpReply(reqPropsObj, httpRef, 504, errMsg, NGAMS_TEXT_MT)
-        raise t
+        raise
 
 
 
@@ -409,7 +412,7 @@ def genReplyRetrieve(srvObj,
                 sendBufSize = int(reqPropsObj.getHttpPar("send_buffer"))
                 httpRef.wfile._sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF,sendBufSize)
             except Exception, ee:
-                warning('Fail to reset the send_buffer size: %s' % str(ee))
+                logger.warning('Fail to reset the send_buffer size: %s', str(ee))
 
         # Send back data from the memory buffer, from the result file, or
         # from HTTP socket connection.
@@ -493,8 +496,7 @@ def _handleCmdRetrieve(srvObj,
     # rejected.
     if (not srvObj.getCfg().getAllowRetrieveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Retrieve"])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Get query information.
     '''if (reqPropsObj.hasHttpPar("ng_log")):
@@ -644,8 +646,7 @@ def _handleCmdRetrieve(srvObj,
             issueRetCmdErr = 1
     if (issueRetCmdErr):
         errMsg = genLog("NGAMS_ER_RETRIEVE_CMD")
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
     fileId = reqPropsObj.getHttpPar("file_id")
     info(3,"Handling request for file with ID: " + fileId)
     fileVer = -1
@@ -786,9 +787,8 @@ def handleCmdRetrieve(srvObj,
     if (reqPropsObj.hasHttpPar("processing") and \
         (not srvObj.getCfg().getAllowProcessingReq())):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Retrieve+Processing"])
-        error(errMsg)
         srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     _handleCmdRetrieve(srvObj, reqPropsObj, httpRef)
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)

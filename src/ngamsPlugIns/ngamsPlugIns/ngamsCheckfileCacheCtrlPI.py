@@ -77,11 +77,15 @@ in Set#2, the file is signalled for removal from the cache.
 # Compiled list with the nodes to contact for check for availability of
 # the given file.
 
-import random, time
+import logging
+import random
+import time
 
 from ngamsLib.ngamsCore import TRACE, info, NGAMS_CHECKFILE_CMD, NGAMS_FAILURE, error
 from ngamsLib import ngamsLib, ngamsStatus
 
+
+logger = logging.getLogger(__name__)
 
 CheckfileCacheCtrlPI_initialized    = False
 CheckfileCacheCtrlPI_sets           = None
@@ -276,8 +280,8 @@ def ngamsCheckfileCacheCtrlPI(srvObj,
     except Exception, e:
         msg = "Error ocurred executing Cache Control Plug-In. Error: %s" %\
               str(e)
-        error(msg)
-        raise Exception, msg
+        logger.error(msg)
+        raise
 
 
 # EOF

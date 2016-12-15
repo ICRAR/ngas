@@ -37,14 +37,17 @@ implemented and NG/AMS configured to use it.
 """
 
 from collections import defaultdict
-import subprocess
+import logging
 import os
 import string
+import subprocess
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, genLog, info, error
+from ngamsLib.ngamsCore import TRACE, genLog, info
 from pccUt import PccUtTime
 
+
+logger = logging.getLogger(__name__)
 
 def getFitsKeys(fitsFile,
                 keyList):
@@ -78,8 +81,8 @@ def getFitsKeys(fitsFile,
         msg = ". Error: %s" % str(e)
         errMsg = genLog("NGAMS_ER_RETRIEVE_KEYS", [str(keyList),
                                                    fitsFile + msg])
-        error(errMsg)
-        raise Exception, errMsg
+        logger.exception(errMsg)
+        raise
 
 
 def getDpIdInfo(filename):

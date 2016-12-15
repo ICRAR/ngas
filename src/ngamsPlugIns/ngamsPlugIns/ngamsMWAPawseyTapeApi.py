@@ -8,14 +8,18 @@
 #
 """ A python wrapper that interacts with DMF using command line """
 
-import os
-import time
 import json
+import logging
+import os
 import socket
 import struct
 from subprocess import Popen, PIPE
-from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import alert, info
+import time
+
+from ngamsLib.ngamsCore import info
+
+
+logger = logging.getLogger(__name__)
 
 TAPE_ONLY_STATUS = ['NMG', 'OFL', 'PAR'] # these states tell us there are only complete copies of the file currently on tape (no copies on disks)
 ERROR_STATUS = ['INV']
@@ -130,17 +134,15 @@ def pawseyMWAdmget(filelist, host, port, retries = 3, backoff = 5, timeout = 180
             # success so exit retry loop
             break
 
-        except Exception as e:
+        except Exception:
             if retries > 0:
                 retries -= 1
                 timeout /= 2
-                alert('pawseyMWAdmget raised an error: %s, \
-                        retrying...' % (str(e)))
+                logger.exception('pawseyMWAdmget raised an error, retrying...')
                 time.sleep(backoff)
             else:
-                alert('pawseyMWAdmget raised an error: %s, \
-                        no more retries, raising exception!' % (str(e)))
-                raise e
+                logger.exception('pawseyMWAdmget raised an error, re-raising')
+                raise
 
         finally:
             if sock:
@@ -183,7 +185,7 @@ def stageFiles(filenames, requestObj = None, serverObj = None):
                 # make sure the file that is being asked for is also
                 # in the prestage list of paths
                 if not any(requestedfile in s for s in prestageList):
-                    alert('ngamsMWAPawseyTapeAPI stageFiles: requested file \
+                    logger.warning('ngamsMWAPawseyTapeAPI stageFiles: requested file \
                             %s is not in prestage list' % requestedfile)
                     filelist = list(filenames)
                     filelist.append(prestageList)
@@ -195,8 +197,8 @@ def stageFiles(filenames, requestObj = None, serverObj = None):
             info(3, 'ngamsMWAPawseyTapeAPI stageFiles: prestagefilelist \
                     not found in http header, ignoring')
 
-    except Exception as exp:
-        alert('ngamsMWAPawseyTapeAPI stageFiles: prestagefilelist error %s' % (str(exp)))
+    except Exception:
+        logger.exception('ngamsMWAPawseyTapeAPI stageFiles: prestagefilelist error')
 
     pawseyMWAdmget(filelist, host, port)
     return len(filelist)

@@ -32,11 +32,14 @@ This is an extension of the original QARCHIVE command, basically does
 
 """
 
+import logging
 import urllib2
 
 import ngamsCmd_QARCHIVE
-from ngamsLib.ngamsCore import info, error
+from ngamsLib.ngamsCore import info
 
+
+logger = logging.getLogger(__name__)
 
 def handleCmd(srvObj,
               reqPropsObj,
@@ -59,5 +62,5 @@ def handleCmd(srvObj,
     try:
         reply = urllib2.urlopen('http://%s/ingest?file_id=%s&file_path=%s&to_host=%s&ingest_rate=%.2f' % (jobManHost, fileId, filePath, srvObj.getHostId(), ingestRate), timeout = 15).read()
         info('Reply from sending file %s ingestion event to server %s - %s' % (fileId, jobManHost, reply))
-    except Exception, err:
-        error('Fail to send file ingestion event to server %s, Exception: %s' %(jobManHost, str(err)))
+    except Exception:
+        logger.exception('Fail to send file ingestion event to server %s', jobManHost)

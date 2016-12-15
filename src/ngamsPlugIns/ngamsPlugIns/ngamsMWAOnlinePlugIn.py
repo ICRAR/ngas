@@ -48,16 +48,19 @@ mounted at boot time.
 
 """
 
-import os, glob
+import glob
+import logging
+import os
 
 import cPickle as pickle
-import ngamsCmd_ASYNCLISTRETRIEVE
 from ngamsLib import ngamsPhysDiskInfo, ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, info, alert
+from ngamsLib.ngamsCore import TRACE, info
 from ngamsPlugIns.ngamsGenericPlugInLib import NGAS_VOL_INFO_FILE, \
     loadVolInfoFile, NGAS_VOL_INFO_ID, NGAS_VOL_INFO_IGNORE, NGAS_VOL_INFO_TYPE, \
     NGAS_VOL_INFO_MANUFACT, notifyRegistrationService
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsMWAOnlinePlugIn(srvObj,
                              reqPropsObj = None):
@@ -164,9 +167,8 @@ def _restoreSubscriptionInfoFromDisk(srvObj):
         pkl_file = open(saveFile, 'rb')
         saveObj = pickle.load(pkl_file)
         pkl_file.close()
-    except Exception, e:
-        ex = str(e)
-        alert('Fail to restore subscription info from disks, Exception: %s' % ex)
+    except Exception:
+        logger.exception('Fail to restore subscription info from disks')
 
     if (saveObj == None or len(saveObj) == 0):
         return
@@ -177,7 +179,7 @@ def _restoreSubscriptionInfoFromDisk(srvObj):
         srvObj._subscriptionFileList += saveObj
         cmd = "rm " + saveFile
         ngamsPlugInApi.execCmd(cmd, -1)
-    except Exception, e:
-        alert('Fail to append filelist to subscription info list, Exception: %s' % str(e))
+    except Exception:
+        logger.exception('Fail to append filelist to subscription info list')
     finally:
         srvObj._subscriptionSem.release()

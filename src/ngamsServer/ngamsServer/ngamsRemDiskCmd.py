@@ -34,7 +34,7 @@ Functions to handle the REMDISK command.
 import os
 
 from ngamsLib import ngamsDiskInfo, ngamsDbm, ngamsDiskUtils, ngamsHighLevelLib
-from ngamsLib.ngamsCore import getHostName, error, info, \
+from ngamsLib.ngamsCore import getHostName, info, \
     getDiskSpaceAvail, genLog, NGAMS_XML_MT, NGAMS_SUCCESS, TRACE, rmFile, \
     NGAMS_REMDISK_CMD, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, \
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_BAD_REQ
@@ -62,8 +62,7 @@ def _remDisk(srvObj,
         errMsg = "Disk referred to by Disk ID: %s seems not to be mounted " +\
                  "in this unit: %s -- rejecting REMDISK Command"
         errMsg = errMsg % (diskId, getHostName())
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Check that execution of the request can be granted.
     filesMisCopyDbmName, filesNotRegDbmName, fileListDbmName =\
@@ -98,8 +97,7 @@ def _remDisk(srvObj,
                  "Required disk space: %.3f MB"
         errMsg = errMsg % (getHostName(), diskInfo.getDiskId(),
                            diskInfo.getMountPoint(), (kbsReq / 1024.))
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     #########################################################################
     # Execute the deletion if execute = 1 and a matching disk was found.
@@ -117,15 +115,13 @@ def _remDisk(srvObj,
             srvObj.getDb().deleteDiskInfo(diskId, 1)
         except Exception, e:
             errMsg = genLog("NGAMS_ER_DEL_DISK_DB", [diskId, str(e)])
-            error(errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
         info(1,"Deleting contents on disk with ID: " + diskId + " ...")
         try:
             rmFile(os.path.normpath(diskInfo.getMountPoint() + "/*"))
         except Exception, e:
             errMsg = genLog("NGAMS_ER_DEL_DISK", [diskId, str(e)])
-            error(errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
         try:
             # Remember to remove entry for disk from the Physical Disk Dic.
             del srvObj.getDiskDic()[diskInfo.getSlotId()]
@@ -204,8 +200,7 @@ def handleCmdRemDisk(srvObj,
     """
     if (not srvObj.getCfg().getAllowRemoveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Remove"])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     diskId      = ""
     execute     = 0

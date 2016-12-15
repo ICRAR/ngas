@@ -25,10 +25,14 @@ Module containing SQL queries against the ngas_containers table
 @author rtobar, May 2015
 """
 
+import logging
 import time, uuid
-from ngamsCore import info, error, iso8601ToSecs
+from ngamsCore import iso8601ToSecs
 import ngamsDbCore
 import ngamsFileInfo, ngamsContainer
+
+
+logger = logging.getLogger(__name__)
 
 class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
     """
@@ -59,12 +63,10 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
         rows = self.query2(sql, args=(containerName,))
         if not rows:
             errMsg = 'No container found with name ' + containerName
-            error(errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
         if len(rows) > 1:
             errMsg = 'More than one container with name ' + containerName + ' found, cannot proceed with unique fetching'
-            error(errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
         return rows[0][0]
 
     def getContainerName(self, containerId):
@@ -78,8 +80,7 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
         rows = self.query2(sql, args=(containerId,))
         if not rows:
             errMsg = 'No container found with id ' + containerId
-            error(errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
         return rows[0][0]
 
     def read(self, containerId):
@@ -196,7 +197,7 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
                "VALUES ({0},{1},{2},{3},{4},'logical')"
         self.query2(sql, args=(containerId, parentContainerId, containerName, containerSize, self.asTimestamp(ingestionDate)))
 
-        info(3, "Created container '" + containerName + "' with id '" + containerId + "'")
+        logger.debug("Created container '%s' with id '%s'", containerName, containerId)
         return containerId
 
     def destroySingleContainer(self, containerId, checkForChildren):
@@ -227,7 +228,7 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
         # Remove the container
         sql = "DELETE FROM ngas_containers WHERE container_id = {0}"
         self.query2(sql, args=(containerId,))
-        info(3, "Destroyed container '" + containerId + "'")
+        logger.debug("Destroyed container '%s'", containerId)
 
     def setContainerSize(self, containerId, containerSize):
         """

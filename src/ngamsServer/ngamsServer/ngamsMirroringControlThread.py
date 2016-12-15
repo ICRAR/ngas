@@ -42,6 +42,7 @@ consume soo many resources for the general command handling.
 import base64
 import copy
 import httplib
+import logging
 import os
 import random
 import thread
@@ -50,13 +51,15 @@ import time
 
 from ngamsLib.ngamsCore import TRACE, info, NGAMS_MIR_CONTROL_THR, rmFile, \
     cleanList, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, \
-    NGAMS_HTTP_HDR_CONTENT_TYPE, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_SUCCESS, notice, \
-    warning, alert, NGAMS_STATUS_CMD, decompressFile, \
+    NGAMS_HTTP_HDR_CONTENT_TYPE, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_SUCCESS, \
+    NGAMS_STATUS_CMD, decompressFile, \
     NGAMS_HTTP_PAR_FILE_LIST_ID, getAsciiTime, iso8601ToSecs, \
     NGAMS_HTTP_PAR_FILE_LIST, NGAMS_HTTP_PAR_UNIQUE, NGAMS_HTTP_PAR_MAX_ELS, \
     NGAMS_HTTP_PAR_FROM_ING_DATE, timeRef2Iso8601, get_contact_ip
 from ngamsLib import ngamsFileInfo, ngamsStatus, ngamsHighLevelLib, ngamsDbm, ngamsMirroringRequest, ngamsLib
 
+
+logger = logging.getLogger(__name__)
 
 NGAMS_MIR_QUEUE_DBM          = "MIR_QUEUE"
 NGAMS_MIR_ERR_QUEUE_DBM      = "MIR_ERROR_QUEUE"
@@ -570,7 +573,7 @@ def handleMirRequest(srvObj,
                       "Error message: %s"
                 msg = msg % (nextLocalSrv, nextLocalPort, srcHostName,
                              srcPortNo, tmpStatObj.getMessage())
-                notice(msg)
+                logger.warning(msg)
                 errMsg = "Last error encountered: %s" % msg
                 continue
 
@@ -644,7 +647,7 @@ def mirroringThread(srvObj,
                 if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): raise e
                 msg = "Error handling Mirroring Request. Putting in Error " +\
                       "Queue. Error: %s" % str(e)
-                warning(msg)
+                logger.warning(msg)
                 # Put the request in the Error Queue DBM.
                 statNo = ngamsMirroringRequest.\
                          NGAMS_MIR_REQ_STAT_ERR_RETRY_NO
@@ -660,8 +663,8 @@ def mirroringThread(srvObj,
         except Exception, e:
             if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): thread.exit()
             errMsg = "Error occurred during execution of the Mirroring " +\
-                     "Control Thread. Exception: " + str(e)
-            alert(errMsg)
+                     "Control Thread"
+            logger.exception(errMsg)
             # We make a small wait here to avoid that the process tries
             # too often to carry out the tasks that failed.
             time.sleep(5.0)
@@ -1024,7 +1027,7 @@ def checkSourceArchives(srvObj):
                 # Mirroring Source Archive in that case.
                 msg = "Error sending STATUS/file_list to Mirroring Source " +\
                       "Archive with ID: %s (%s:%d). Error: %s"
-                notice(msg % (mirSrcObj.getId(), nextSrv, nextPort, str(e)))
+                logger.error(msg, mirSrcObj.getId(), nextSrv, nextPort, str(e))
                 # Try the next contact node specified in the cfg.
                 continue
 
@@ -1108,7 +1111,7 @@ def checkErrorQueue(srvObj):
                 except Exception, e:
                     msg = "Error moving Mirroring Request from Error DBM " +\
                           "Queue to the Mirroring DBM Queue: %s"
-                    notice(msg % str(e))
+                    logger.error(msg, str(e))
         else:
             # NGAMS_MIR_REQ_STAT_ERR_ABANDON_NO: Do nothing.
             pass
@@ -1162,7 +1165,7 @@ def generateReport(srvObj):
         except Exception, e:
             msg = "Error popping Mirroring Request from the Completed " +\
                   "DBM Queue: %s"
-            notice(msg % str(e))
+            logger.error(msg, str(e))
     summary += "Completed Requests:    %d\n" % completedCount
 
     # Go through Error Queue.
@@ -1186,7 +1189,7 @@ def generateReport(srvObj):
             except Exception, e:
                 msg = "Error popping Mirroring Request from Error DBM " +\
                       "Queue: %s"
-                notice(msg % str(e))
+                logger.error(msg, str(e))
         elif ((time.time() - iso8601ToSecs(mirReqObj.getSchedulingTime())) >
               srvObj.getCfg().getMirroringErrorRetryPeriod()):
             try:
@@ -1197,7 +1200,7 @@ def generateReport(srvObj):
             except Exception, e:
                 msg = "Error popping Mirroring Request from Error DBM " +\
                       "Queue: %s"
-                notice(msg % str(e))
+                logger.error(msg, str(e))
         else:
             errRetryCount += 1
     summary += "Error Request/Retry:   %d\n" % errRetryCount
@@ -1285,8 +1288,8 @@ def mirControlThread(srvObj, stopEvt):
             except Exception, e:
                 if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): thread.exit()
                 errMsg = "Error occurred during execution of the ALMA Mirroring " +\
-                         "Control Thread. Exception: " + str(e)
-                alert(errMsg)
+                         "Control Thread"
+                logger.exception(errMsg)
                 # We make a small wait here to avoid that the process tries
                 # too often to carry out the tasks that failed.
                 time.sleep(5.0)
@@ -1351,11 +1354,11 @@ def mirControlThread(srvObj, stopEvt):
                 if stopEvt.wait(suspTime):
                     return
 
-            except Exception, e:
+            except Exception:
                 if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): thread.exit()
                 errMsg = "Error occurred during execution of the Mirroring " +\
-                         "Control Thread. Exception: " + str(e)
-                alert(errMsg)
+                         "Control Thread"
+                logger.exception(errMsg)
                 # We make a small wait here to avoid that the process tries
                 # too often to carry out the tasks that failed.
                 time.sleep(5.0)

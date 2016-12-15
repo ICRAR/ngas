@@ -35,21 +35,24 @@ suspended NGAS hosts, suspending itself.
 # TODO: Give overhaul to handling of the DB Snapshot: Use ngamsDbm instead
 #       of bsddb + simplify the algorithm.
 
-import os, time, glob, cPickle
+import cPickle
+import glob
 import logging
 import math
-import types
+import os
 import shutil
+import time
+import types
 
 import ngamsArchiveUtils, ngamsSrvUtils
 from ngamsLib.ngamsCore import TRACE, info, \
     getFileCreationTime, getFileModificationTime, getFileAccessTime, rmFile, \
-    warning, NGAMS_DB_DIR, NGAMS_DB_NGAS_FILES, checkCreatePath, \
+    NGAMS_DB_DIR, NGAMS_DB_NGAS_FILES, checkCreatePath, \
     NGAMS_DB_CH_CACHE, NGAMS_NOTIF_DATA_CHECK, \
     NGAMS_TEXT_MT, NGAMS_PICKLE_FILE_EXT, NGAMS_DB_CH_FILE_DELETE, \
-    NGAMS_DB_CH_FILE_INSERT, NGAMS_DB_CH_FILE_UPDATE, notice, error, \
+    NGAMS_DB_CH_FILE_INSERT, NGAMS_DB_CH_FILE_UPDATE, \
     isoTime2Secs, genLog, NGAMS_PROC_DIR, NGAMS_SUBSCR_BACK_LOG_DIR, \
-    iso8601ToSecs, alert, \
+    iso8601ToSecs, \
     NGAMS_HTTP_INT_AUTH_USER, getHostName, NGAMS_OFFLINE_CMD, NGAMS_NOTIF_ERROR,\
     loadPlugInEntryPoint
 from ngamsLib import ngamsFileInfo, ngamsNotification
@@ -339,7 +342,7 @@ def _encFileInfo2Obj(dbConObj,
     for idx in idxKeys:
         kid = NGAMS_SN_SH_ID2NM_TAG + str(idx)
         if (not dbSnapshot.has_key(kid)):
-            warning("dbSnapshot has no key '{0}', is it corrupted?".format(kid))
+            logger.warning("dbSnapshot has no key '%s', is it corrupted?", str(kid))
             return None
         colName = _readDb(dbSnapshot, kid)
         sqlFileInfoIdx = dbConObj.getNgasFilesMap()[colName]
@@ -945,16 +948,15 @@ def updateDbSnapShots(srvObj,
         else:
             mtPt = srvObj.getDb().getMtPtFromDiskId(diskId)
         if (not mtPt):
-            notice("No mount point returned for Disk ID: %s" % diskId)
+            logger.warning("No mount point returned for Disk ID: %s", diskId)
             return
         try:
             checkDbChangeCache(srvObj, diskId, mtPt, stopEvt)
-        except Exception, e:
+        except Exception:
             msg = "Error checking DB Change Cache for " +\
-                  "Disk ID:mountpoint: %s:%s. Error: %s"
-            msg = msg % (diskId, str(mtPt), str(e))
-            error(msg)
-            raise Exception, msg
+                  "Disk ID:mountpoint: %s:%s"
+            logger.exception(msg, diskId, str(mtPt))
+            raise
     else:
         tmpDiskIdMtPtList = srvObj.getDb().\
                             getDiskIdsMtPtsMountedDisks(srvObj.getHostId())
@@ -967,12 +969,11 @@ def updateDbSnapShots(srvObj,
                  "mount point: " + mtPt)
             try:
                 checkDbChangeCache(srvObj, diskId, mtPt, stopEvt)
-            except Exception, e:
+            except Exception:
                 msg = "Error checking DB Change Cache for " +\
-                      "Disk ID:mountpoint: %s:%s. Error: %s"
-                msg = msg % (diskId, str(mtPt), str(e))
-                error(msg)
-                raise Exception, msg
+                      "Disk ID:mountpoint: %s:%s"
+                logger.exception(msg, diskId, str(mtPt))
+                raise
 
 
 def janitorThread(srvObj, stopEvt):
@@ -1004,10 +1005,7 @@ def janitorThread(srvObj, stopEvt):
     except StopJanitorThreadException:
         return
     except Exception, e:
-        errMsg = "Problem updating DB Snapshot files: " + str(e)
-        warning(errMsg)
-        import traceback
-        info(3, traceback.format_exc())
+        logger.exception("Problem updating DB Snapshot files")
 
     suspendTime = isoTime2Secs(srvObj.getCfg().getJanitorSuspensionTime())
     while True:
@@ -1022,8 +1020,8 @@ def janitorThread(srvObj, stopEvt):
             ##################################################################
             try:
                 updateDbSnapShots(srvObj, stopEvt)
-            except Exception, e:
-                error("Error encountered updating DB Snapshots: " + str(e))
+            except Exception:
+                logger.exception("Error encountered updating DB Snapshots")
 
             # => Check Back-Log Buffer (if appropriate).
             if (srvObj.getCfg().getAllowArchiveReq() and \
@@ -1033,7 +1031,7 @@ def janitorThread(srvObj, stopEvt):
                     ngamsArchiveUtils.checkBackLogBuffer(srvObj)
                 except Exception, e:
                     errMsg = genLog("NGAMS_ER_ARCH_BACK_LOG_BUF", [str(e)])
-                    error(errMsg)
+                    logger.error(errMsg)
             ##################################################################
 
             ##################################################################
@@ -1087,7 +1085,7 @@ def janitorThread(srvObj, stopEvt):
             except StopJanitorThreadException:
                 return
             except Exception, e:
-                error("Exception encountered: %s" % str(e))
+                logger.exception("Exception encountered")
             info(4,"Request DB checked/cleaned up")
             ##################################################################
 
@@ -1190,8 +1188,8 @@ def janitorThread(srvObj, stopEvt):
             try:
                 srvObj.checkDiskSpaceSat()
             except Exception, e:
-                alert(str(e))
-                alert("Bringing the system to Offline State ...")
+                logger.exception("Not enough disk space, " + \
+                                 "bringing the system to Offline State ...")
                 # We use a small trick here: We send an Offline Command to
                 # the process itself.
                 #
@@ -1256,7 +1254,7 @@ def janitorThread(srvObj, stopEvt):
                         errMsg = "Error suspending NG/AMS Server: " +\
                                  hostId + " using Suspension Plug-In: "+\
                                  suspPi + ". Error: " + str(e)
-                        error(errMsg)
+                        logger.error(errMsg)
                         ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(),
                                                  NGAMS_NOTIF_ERROR,
                                                  "ERROR INVOKING SUSPENSION "+\
@@ -1283,21 +1281,19 @@ def janitorThread(srvObj, stopEvt):
                     except Exception, e:
                         if (diskInfo):
                             msg = "Error encountered handling DB Snapshot " +\
-                                  "for disk: %s/%s. Exception: %s"
-                            msg = msg % (diskInfo[0], diskInfo[1], str(e))
+                                  "for disk: %s/%s"
+                            args = (diskInfo[0], diskInfo[1])
                         else:
-                            msg = "Error encountered handling DB Snapshot. " +\
-                                  "Exception: %s" % str(e)
-                        error(msg)
+                            msg, args = "Error encountered handling DB Snapshot", ()
+                        logger.exception(msg, *args)
                         time.sleep(5)
                 suspend(stopEvt, 1.0)
 
         except StopJanitorThreadException:
             return
         except Exception, e:
-            errMsg = "Error occurred during execution of the Janitor " +\
-                     "Thread. Exception: " + str(e)
-            alert(errMsg)
+            errMsg = "Error occurred during execution of the Janitor Thread"
+            logger.exception(errMsg)
             # We make a small wait here to avoid that the process tries
             # too often to carry out the tasks that failed.
             time.sleep(2.0)

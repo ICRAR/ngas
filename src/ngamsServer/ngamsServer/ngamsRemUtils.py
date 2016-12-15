@@ -31,16 +31,21 @@
 Contains common functions used for the REMFILE and REMDISK commands.
 """
 
-import os, time, glob
+import glob
+import logging
+import os
+import time
 
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsLib
 from ngamsLib import ngamsDiskInfo, ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsNotification
 from ngamsLib.ngamsCore import TRACE, NGAMS_NOTIF_INFO, NGAMS_TEXT_MT, \
-    genLog, NGAMS_FAILURE, warning, info, rmFile, NGAMS_DISK_INFO, \
+    genLog, NGAMS_FAILURE, info, rmFile, NGAMS_DISK_INFO, \
     NGAMS_VOLUME_ID_FILE, NGAMS_VOLUME_INFO_FILE, NGAMS_MAX_SQL_QUERY_SZ
 from pccUt import PccUtTime
 
+
+logger = logging.getLogger(__name__)
 
 def checkSpuriousFiles(srvObj,
                        tmpFilePat = None,
@@ -271,7 +276,7 @@ def _remStatErrReport(srvObj,
         status.setMessage(status.getMessage() +\
                           " Cannot remove item: %s/%s/%s" %
                           (str(diskId), str(fileId), str(fileVersion)))
-        warning(errMsg)
+        logger.warning(errMsg)
         return status
     #########################################################################
 
@@ -330,7 +335,7 @@ def _remStatErrReport(srvObj,
     # Generate error message if spurious files were found.
     if (spuriousFiles):
         errMsg = genLog("NGAMS_WA_FILE_NON_REM")
-        warning(errMsg)
+        logger.warning(errMsg)
         status = srvObj.genStatus(NGAMS_FAILURE, errMsg)
         msg = status.getMessage() + " Cannot delete specified files"
         if (srvDataChecking):
@@ -382,7 +387,7 @@ def _remStatErrReport(srvObj,
     # Generate error message if non-registered files found.
     if (unRegFilesFound):
         errMsg = genLog("NGAMS_WA_FILES_NOT_REG")
-        warning(errMsg)
+        logger.warning(errMsg)
         status = srvObj.genStatus(NGAMS_FAILURE, errMsg)
         status.setMessage(status.getMessage() +\
                           " Cannot remove volume: %s/%s/%s" %
@@ -439,7 +444,7 @@ def _remStatErrReport(srvObj,
     # deleted.
     if (nonRemFiles):
         errMsg = genLog("NGAMS_WA_FILE_NON_REM")
-        warning(errMsg)
+        logger.warning(errMsg)
         status = srvObj.genStatus(NGAMS_FAILURE, errMsg)
         status.setMessage(status.getMessage() +\
                           " Cannot delete specified files")
@@ -509,7 +514,7 @@ def checkFileCopiesAndReg(srvObj,
     if ((not fileListDbmName) and (not diskId)):
         errMsg = "ngamsSrvUtils.checkFileCopiesAndReg(): Must specify " +\
                  "either a DBM with files to be checked or a Disk ID"
-        warning(errMsg)
+        logger.warning(errMsg)
         raise Exception, errMsg
 
     # Create DBMs:

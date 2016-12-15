@@ -59,14 +59,17 @@ compression_ext:    Extension resulting from applying the specified compression
 """
 # Parameters.
 
-import os, traceback
+import logging
+import os
 
 from pccUt import PccUtTime
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, info, genLog, alert, error
+from ngamsLib.ngamsCore import TRACE, info, genLog
 import psycopg2
 import pyfits
 
+
+logger = logging.getLogger(__name__)
 
 TARG_MIME_TYPE  = "target_mime_type"
 FILE_ID         = "file_id"
@@ -291,13 +294,9 @@ def ngamsZHLDapi(srvObj,
                                                  compression, relPath,
                                                  diskInfo.getSlotId(),
                                                  fileExists, complFilename)
-    except Exception, e:
-        em = traceback.format_exc()
-        alert(em)
-        msg = "Error occurred in DAPI: %s" % str(e)
-        error(msg)
-
-        raise Exception, genLog("NGAMS_ER_DAPI_RM", [msg])
+    except Exception:
+        logger.exception("Error occurred in DAPI")
+        raise
 
 
 def insertFitsRecords(srvObj,reqPropsObj, complFileUri):
@@ -328,8 +327,8 @@ def insertFitsRecords(srvObj,reqPropsObj, complFileUri):
             conn = psycopg2.connect("dbname='gavo' user='zhl' host='mwa-web.icrar.org' password='zhlgly'")
         except:
             errMsg = "Unable to connect to the GLEAM VO database at mwa-web.icrar.org"
-            error(errMsg)
-            raise Exception(errMsg)
+            logger.exception(errMsg)
+            raise
         # Create a Cursor object and call its execute() method to perform SQL commands:
         cur = conn.cursor()
         sql = "SELECT scircle '< (%10fd, %10fd), 20d>'" % (ra, dec)
@@ -337,7 +336,6 @@ def insertFitsRecords(srvObj,reqPropsObj, complFileUri):
         res = cur.fetchall()
         if (not res or len(res) == 0):
             errMsg = "fail to calculate scircle"
-            error(errMsg)
             raise Exception(errMsg)
         coverage = res[0][0]
         try:
@@ -345,13 +343,13 @@ def insertFitsRecords(srvObj,reqPropsObj, complFileUri):
             info(3, sqlStr)
             cur.execute(sqlStr)
         except:
-            error(" Unable to insert the table mwa.gleam...")
+            logger.exception(" Unable to insert the table mwa.gleam...")
         try:
             sqlStr = """INSERT INTO dc.products(embargo,owner,accref, mime,accesspath,sourcetable) VALUES('%s', '%s', '%s', '%s', '%s', '%s')""" % (embargo,owner,accref_file, mime, file_url, 'mwa.gleam')
             info(3, sqlStr)
             cur.execute(sqlStr)
         except:
-            error(" I am unable to insert the table dc.product...")
+            logger.exception(" I am unable to insert the table dc.product...")
 
         # Make the changes to the database persistent
         conn.commit()

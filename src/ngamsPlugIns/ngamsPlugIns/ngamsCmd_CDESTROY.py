@@ -23,7 +23,7 @@
 Module implementing the CDESTROY command
 """
 
-from ngamsLib.ngamsCore import genLog, error
+from ngamsLib.ngamsCore import genLog
 
 def destroyContainer(srvObj, containerId, recursive):
     """
@@ -65,8 +65,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         containerName = reqPropsObj.getHttpPar("container_name").strip()
     if not containerId and not containerName:
         errMsg = genLog("NGAMS_ER_RETRIEVE_CMD")
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Check if we have been asked to be recursive
     recursive = False

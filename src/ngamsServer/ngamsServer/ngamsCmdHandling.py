@@ -36,7 +36,7 @@ import sys
 import ngamsArchiveCmd, ngamsCacheDelCmd, ngamsCheckFileCmd, ngamsDiscardCmd
 import ngamsConfigCmd, ngamsCloneCmd
 import ngamsExitCmd, ngamsHelpCmd, ngamsInitCmd, ngamsLabelCmd, ngamsOfflineCmd
-from ngamsLib.ngamsCore import info, warning, genLog, error, TRACE, \
+from ngamsLib.ngamsCore import info, genLog, TRACE, \
     NGAMS_RETRIEVE_CMD, NGAMS_ARCHIVE_CMD, NGAMS_CACHEDEL_CMD, \
     NGAMS_CHECKFILE_CMD, NGAMS_CLONE_CMD, NGAMS_CONFIG_CMD, NGAMS_DISCARD_CMD, \
     NGAMS_EXIT_CMD, NGAMS_HELP_CMD, NGAMS_INIT_CMD, NGAMS_LABEL_CMD, \
@@ -137,12 +137,9 @@ def cmdHandler(srvObj,
                 info(2,"Using loaded dynamic command module: %s" % cmdMod)
 
             srvObj.getDynCmdDic()[cmdMod] = 1
-        except Exception, e:
-            warning("Error encountered loading dynamic command module: %s" %\
-                    str(e))
+        except Exception:
             errMsg = genLog("NGAMS_ER_ILL_CMD", [cmd])
-            error(errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
         mod.handleCmd(srvObj, reqPropsObj, httpRef)
 
 # EOF

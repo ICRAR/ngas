@@ -55,8 +55,7 @@ import pyfits
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
 from ngamsLib.ngamsCore import getHostName, TRACE, info, \
-    ngamsCopyrightString, rmFile, \
-    error, cleanList, \
+    ngamsCopyrightString, rmFile, cleanList, \
     cpFile, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
     checkIfIso8601, execCmd as ngamsCoreExecCmd
 from ngamsPClient import ngamsPClient
@@ -471,8 +470,8 @@ def delNgamsDirs(cfgObj):
         for d in [cfgObj.getRootDirectory(), "/tmp/ngamsTest"]:
             info(3,"Removing directory: %s" + d)
             shutil.rmtree(d, True)
-    except Exception, e:
-        error("Error encountered removing NG/AMS directories: " + str(e))
+    except Exception:
+        logger.exception("Error encountered removing NG/AMS directories")
 
 
 def checkHostEntry(dbObj,
@@ -1233,7 +1232,7 @@ class ngamsTestSuite(unittest.TestCase):
                 srvProcess.wait()
                 info(3, "Finished server process %d gracefully :)" % (srvProcess.pid,))
         except Exception:
-            error("Error while finishing server process %d, port %d" % (srvProcess.pid, port))
+            logger.exception("Error while finishing server process %d, port %d", srvProcess.pid, port)
             raise
 
     def terminateAllServer(self):

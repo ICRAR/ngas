@@ -51,7 +51,7 @@ import random
 import time
 import urlparse
 
-from ngamsLib.ngamsCore import TRACE, genLog, error, checkCreatePath, \
+from ngamsLib.ngamsCore import TRACE, genLog, checkCreatePath, \
     info, NGAMS_HTTP_HDR_CHECKSUM, NGAMS_ONLINE_STATE, \
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_STAGING_DIR, genUniqueId, \
     mvFile, getFileCreationTime, NGAMS_FILE_STATUS_OK, \
@@ -111,8 +111,8 @@ def saveInStagingFile(ngamsCfgObj,
                                   blockSize, 1, diskInfoObj)
     except Exception, e:
         errMsg = genLog("NGAMS_ER_PROB_STAGING_AREA", [stagingFilename,str(e)])
-        error(errMsg)
-        raise Exception, errMsg
+        logger.exception(errMsg)
+        raise
 
 
 def saveFromHttpToFile(ngamsCfgObj,
@@ -200,8 +200,7 @@ def saveFromHttpToFile(ngamsCfgObj,
         if checksum and crc is not None:
             if checksum != str(crc):
                 msg = 'Checksum error for file %s, local crc = %s, but remote crc = %s' % (reqPropsObj.getFileUri(), str(crc), checksum)
-                error(msg)
-                raise Exception, msg
+                raise Exception(msg)
             else:
                 info(3, "%s CRC checked, OK!" % reqPropsObj.getFileUri())
 
@@ -235,8 +234,7 @@ def handleCmd(srvObj,
     info(3, "Check if the URI is correctly set.")
     if not reqPropsObj.getFileUri():
         errMsg = genLog("NGAMS_ER_MISSING_URI")
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     info(3, "Is this NG/AMS permitted to handle Archive Requests?")
     if not srvObj.getCfg().getAllowArchiveReq():
@@ -301,15 +299,13 @@ def handleCmd(srvObj,
     if reqPropsObj.getSize() <= 0:
         errMsg = genLog("NGAMS_ER_ARCHIVE_PULL_REQ",
                         [reqPropsObj.getSafeFileUri(), 'Content-Length is 0'])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     info(3, "Determine the target volume, ignoring the stream concept.")
     targDiskInfo = getTargetVolume(srvObj)
     if targDiskInfo is None:
         errMsg = "No disk volumes are available for ingesting any files."
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     reqPropsObj.setTargDiskInfo(targDiskInfo)
 

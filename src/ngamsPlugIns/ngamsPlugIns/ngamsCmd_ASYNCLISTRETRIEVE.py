@@ -59,13 +59,17 @@ src/ngamsTest/ngamsTestAsyncListRetrieve.py
 
 """
 
+import httplib
+import logging
 import os
-import thread, threading, urllib2, httplib, time
+import thread
+import threading
+import time
+import urllib2
 
 import cPickle as pickle
 from ngamsLib.ngamsCore import info, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT, TRACE, \
-    NGAMS_HTTP_POST, getFileSize, getHostName, NGAMS_SUCCESS, NGAMS_FAILURE, \
-    warning, error
+    NGAMS_HTTP_POST, getFileSize, getHostName, NGAMS_SUCCESS, NGAMS_FAILURE
 from ngamsLib import ngamsDbCore, ngamsStatus, ngamsPlugInApi, ngamsLib
 import ngamsMWACortexTapeApi
 from ngamsPlugIns.ngamsMWAAsyncProtocol import AsyncListRetrieveResponse, \
@@ -73,6 +77,8 @@ from ngamsPlugIns.ngamsMWAAsyncProtocol import AsyncListRetrieveResponse, \
     AsyncListRetrieveSuspendResponse, AsyncListRetrieveResumeResponse, \
     AsyncListRetrieveStatusResponse, FileInfo
 
+
+logger = logging.getLogger(__name__)
 
 asyncReqDic = {} #key - uuid, value - AsyncListRetrieveRequest (need to remember the original request in case of cancel/suspend/resume or server shutting down)
 statusResDic = {} #key - uuid, value - AsyncListRetrieveStatusResponse
@@ -468,7 +474,7 @@ def _httpPost(srvObj, url, filename, sessionId):
         if (ex != ""): errMsg += " Exception: " + ex + "."
         if (stat.getMessage() != ""):
             errMsg += " Message: " + stat.getMessage()
-        warning(errMsg)
+        logger.warning(errMsg)
         jobManHost = srvObj.getCfg().getNGASJobMANHost()
         if (jobManHost):
             try:
@@ -477,7 +483,7 @@ def _httpPost(srvObj, url, filename, sessionId):
                 rereply = urllib2.urlopen('http://%s/failtodeliverfile?file_id=%s&to_url=%s&err_msg=%s' % (jobManHost, baseName, urllib2.quote(url), urllib2.quote(ex)), timeout = 15).read()
                 info('Reply from sending file %s failtodeliver event to server %s - %s' % (baseName, jobManHost, rereply))
             except Exception, err:
-                error('Fail to send fail-to-deliver event to server %s, Exception: %s' %(jobManHost, str(err)))
+                logger.error('Fail to send fail-to-deliver event to server %s, Exception: %s', jobManHost, str(err))
 
         return 1
     else:

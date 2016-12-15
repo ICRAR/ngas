@@ -33,12 +33,17 @@
 This module contains functions used in connection with the
 UNSUBSCRIBE Command.
 """
+
+import logging
 import Queue
 import ngamsSubscriptionThread
-from ngamsLib.ngamsCore import TRACE, warning, NGAMS_DELIVERY_THR, \
+from ngamsLib.ngamsCore import TRACE, NGAMS_DELIVERY_THR, \
     info, genLog, NGAMS_SUBSCRIBE_CMD, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,\
     NGAMS_FAILURE
 from ngamsLib import ngamsLib
+
+
+logger = logging.getLogger(__name__)
 
 def delSubscriber(srvObj,
                   subscrId):
@@ -57,10 +62,10 @@ def delSubscriber(srvObj,
     errMsg = ''
     try:
         srvObj.getDb().deleteSubscriber(subscrId)
-    except Exception, e:
+    except Exception:
         estr = " Error deleting Subscriber information from the DB. " +\
-                "Subscriber ID: " + subscrId + ". Exception: " + str(e)
-        warning(estr)
+                "Subscriber ID: %s"
+        logger.exception(estr, str(subscrId))
         err += 1
         errMsg += estr
     # remove all entries associated with this subscriber from in-memory dictionaries
@@ -144,8 +149,8 @@ def delSubscriber(srvObj,
                 if (myDic.has_key(k)):
                     del myDic[k]
         except Exception, e:
-            estr = " Error marking back-logged files that have been in the queue for subscriber %s, Exception: %s" % (subscrId, str(e))
-            warning(estr)
+            estr = " Error marking back-logged files that have been in the queue for subscriber %s"
+            logger.exception(estr, subscrId)
             err += 1
             errMsg += estr
         finally:
@@ -164,9 +169,9 @@ def delSubscriber(srvObj,
     # remove all backlog entries associated with this subscriber
     try:
         srvObj.getDb().delSubscrBackLogEntries(srvObj.getHostId(), srvObj.getCfg().getPortNo(), subscrId)
-    except Exception, e:
-        estr = " Error deleting entries from the subscr_back_log table for subscriber %s, Exception: %s" % (subscrId, str(e))
-        warning(estr)
+    except Exception:
+        estr = " Error deleting entries from the subscr_back_log table for subscriber %s"
+        logger.exception(estr, subscrId)
         err += 1
         errMsg += estr
     if (not err):
@@ -191,8 +196,8 @@ def _reduceRefCount(fileDeliveryCountDic, fileDeliveryCountDic_Sem, fileId, file
                 # diskId = fi[2]
                 # sqlFileInfo = (diskId, fileId, fileVersion)
                 # ngamsCacheControlThread.scheduleFileForDeletion(srvObj, sqlFileInfo)
-    except Exception, e:
-        warning(" Error reducing the reference count by 1 for file: %s, Exception: %s" % (fileId, str(e)))
+    except Exception:
+        logger.exception(" Error reducing the reference count by 1 for file: %s", fileId)
         return 1
     finally:
         fileDeliveryCountDic_Sem.release()

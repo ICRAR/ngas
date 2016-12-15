@@ -32,11 +32,15 @@ Contains a DDPI which is used to extract one part of a multipart/related
 message file.
 """
 
+import logging
+
 from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, error, info, NGAMS_PROC_DATA
+from ngamsLib.ngamsCore import TRACE, info, NGAMS_PROC_DATA
 from ngamsPlugIns.ngamsAlmaMultipart import specificTreatment
 from ngamsPlugIns.printhead import head
 
+
+logger = logging.getLogger(__name__)
 
 def extractData(result, resourceId, verbose=0):
     """
@@ -58,28 +62,25 @@ def extractData(result, resourceId, verbose=0):
     xyData = {}
     if len(result) == 0:
         errMsg = "[ERROR]: No data returned. Check whether resourceId is correct: %s" % resourceId
-        error( errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
     resultClean = []
     for res in result:
         if len(res) != 0:
             resultClean.append(res)
         else:
-            waring( "Empty document detected and ignored!")
+            logger.warning( "Empty document detected and ignored!")
     for res in resultClean:
         try:
             msg = eP.parsestr(res) # and parse the string
-        except Exception, e:
-            errMsg = "email parsing failed: %s" % str(e)
-            error( errMsg)
-            raise Exception, errMsg
+        except Exception:
+            logger.exception("email parsing failed")
+            raise
 
         # get the first xml part of the email...
         xmlParts = MultipartHandler.getMimeParts(msg, 'text/xml')
         if len(xmlParts) == 0:
             errMsg = "MonitorDataCli.extractData: No text/xml part found!"
-            error( errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
         else:
             xml = xmlParts[0].get_payload()  # There should only be one!
 
@@ -90,23 +91,21 @@ def extractData(result, resourceId, verbose=0):
         except Exception, e:
     #        print xml
             errMsg = "MonitorDataCli.extractData: XML parsing failed: %s " % str(e)
-            error( errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         try:
             (res, cidI, cids) = MultipartHandler.interpretVotable(root, selection=resourceId, verbose=verbose)
         except Exception, e:
             errMsg = "ERROR interpreting VOTABLE: %s" % str(e)
-            error( errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
         if len(res) != 1:
             errMsg = "The resource with ID %s has been found %d times! Expecting 1!" \
                 % (resourceId, len(res))
-            waring( errMsg)
+            logger.warning(errMsg)
 
         elif len(cids) != 2:
-            errMsg = "The reource %s has %d values. Expecting 2!" % (resourceId, len(cid))
-            waring( errMsg)
+            errMsg = "The reource %s has %d values. Expecting 2!" % (resourceId, len(cids))
+            logger.warning( errMsg)
 
         else:
             xName = res[0].getTable()[0].getField()[0].getId()
@@ -116,16 +115,14 @@ def extractData(result, resourceId, verbose=0):
 
             try:
                 xPart = MultipartHandler.getPartId(msg, cids[0])[0]
-            except Exception, e:
-                errMsg = "ERROR: Interpretation of x-part failed: %s" % str(e)
-                error( errMsg)
-                raise Exception, errMsg
+            except Exception:
+                logger.exception("Interpretation of x-part failed")
+                raise
             try:
                 yPart = MultipartHandler.getPartId(msg, cids[1])[0]
-            except Exception, e:
-                errMsg = "ERROR: Interpretation of y-part failed: %s" % str(e)
-                error( errMsg)
-                raise Exception, errMsg
+            except Exception:
+                logger.exception("Interpretation of y-part failed")
+                raise
 
             xDataPart = list(MultipartHandler.\
                              interpretBinary(xPart, cidI[cids[0]], endian='>'))
@@ -135,7 +132,7 @@ def extractData(result, resourceId, verbose=0):
             if len(xDataPart) != len(yDataPart):
                 errMsg = "The number of x and y datapoints differs (x,y): (%d,%d)" % (len(xData), len(yData))
                 errMsg += "\nData skipped!"
-                error( errMsg)
+                logger.error(errMsg)
             else:
                 xData += xDataPart
                 yData += yDataPart
@@ -144,8 +141,7 @@ def extractData(result, resourceId, verbose=0):
         xyData = {xName:xData, yName:yData, 'xName':xName, 'xUnit':xUnit, 'yName':yName, 'yUnit': yUnit}
     else:
         errMsg = "No x-axis data found!"
-        error( errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     info(4, "Leaving extractData")
 

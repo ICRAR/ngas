@@ -21,7 +21,7 @@ import os, commands
 
 from pccUt import PccUtTime
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import rmFile, genLog, error, info
+from ngamsLib.ngamsCore import rmFile, genLog, info
 
 
 def checkTarball(filename):
@@ -49,8 +49,7 @@ def checkTarball(filename):
         errMsg = "Error checking tarball: " + errMsg
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE",
                         [filename, "ngasTarBallPlugIn", errMsg])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
 # DAPI function.
