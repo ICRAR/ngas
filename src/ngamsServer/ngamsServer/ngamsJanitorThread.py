@@ -952,6 +952,8 @@ def updateDbSnapShots(srvObj,
             return
         try:
             checkDbChangeCache(srvObj, diskId, mtPt, stopEvt)
+        except StopJanitorThreadException:
+            raise
         except Exception:
             msg = "Error checking DB Change Cache for " +\
                   "Disk ID:mountpoint: %s:%s"
@@ -969,6 +971,8 @@ def updateDbSnapShots(srvObj,
                  "mount point: " + mtPt)
             try:
                 checkDbChangeCache(srvObj, diskId, mtPt, stopEvt)
+            except StopJanitorThreadException:
+                raise
             except Exception:
                 msg = "Error checking DB Change Cache for " +\
                       "Disk ID:mountpoint: %s:%s"
@@ -1020,6 +1024,8 @@ def janitorThread(srvObj, stopEvt):
             ##################################################################
             try:
                 updateDbSnapShots(srvObj, stopEvt)
+            except StopJanitorThreadException:
+                raise
             except Exception:
                 logger.exception("Error encountered updating DB Snapshots")
 
@@ -1127,41 +1133,6 @@ def janitorThread(srvObj, stopEvt):
                         ngamsArchiveUtils.archiveFromFile(srvObj, ologFile, 0,
                         'ngas/nglog', None)
 
-            # => Check if its time to carry out a rotation of the log file.
-
-                info(4,"Checking if a Local Log File rotate is due ...")
-                logFo = None
-                try:
-
-                    # For some reason we cannot use the creation date ...
-                    with open(logFile, "r") as logFo:
-                        for line in logFo:
-                            if not line or "[INFO]" in line:
-                                break
-                    if line:
-                        creTime = line.split(" ")[0].split(".")[0]
-                        logFileCreTime = iso8601ToSecs(creTime)
-                        logRotInt = isoTime2Secs(srvObj.getCfg().\
-                                                 getLogRotateInt())
-                        deltaTime = (time.time() - logFileCreTime)
-                        if (deltaTime >= logRotInt):
-                            now = time.time()
-                            ts = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(now))
-                            ts += ".%03d" % ((now - math.floor(now)) * 1000.)
-                            # It's time to rotate the current Local Log File.
-                            rotLogFile = "LOG-ROTATE-%s.nglog" % (ts,)
-                            rotLogFile = os.path.\
-                                         normpath(logPath + "/" + rotLogFile)
-                            shutil.move(logFile, rotLogFile)
-                            open(logFile, 'a').close()
-                            msg = "NG/AMS Local Log File Rotated and archived (%s)"
-                    if (line != "" and deltaTime >= logRotInt):
-                            ngamsArchiveUtils.archiveFromFile(srvObj, rotLogFile, 0,
-                                                    'ngas/nglog', None)
-                except Exception, e:
-                    if (logFo): logFo.close()
-                    raise e
-                info(4,"Checked for Local Log File rotatation")
             ##################################################################
 
             ##################################################################
@@ -1278,6 +1249,8 @@ def janitorThread(srvObj, stopEvt):
                         if (tmpList):
                             for diskInfo in tmpList:
                                 updateDbSnapShots(srvObj, stopEvt, diskInfo)
+                    except StopJanitorThreadException:
+                        raise
                     except Exception, e:
                         if (diskInfo):
                             msg = "Error encountered handling DB Snapshot " +\
