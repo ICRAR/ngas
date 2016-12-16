@@ -386,6 +386,11 @@ class ngamsServer:
         stdout_level = levels[max(stdout_level, 0)]
         file_level = levels[max(file_level, 0)]
 
+        # Remove all currently present handlers from the root logger
+        # just in case somebody logged something before now
+        for h in list(logging.root.handlers):
+            logging.root.removeHandler(h)
+
         if logcfg.syslog:
             from logging.handlers import SysLogHandler
             prefix = '%s: ' % logcfg.syslog_prefix if logcfg.syslog_prefix else ''
@@ -2103,6 +2108,7 @@ class ngamsServer:
         # Parse input parameters, set up signal handlers, connect to DB,
         # load NGAMS configuration, start NG/AMS HTTP server.
         self.parseInputPars(argv)
+
         logger.info("NG/AMS Server version: %s", getNgamsVersion())
         logger.info("Python version: %s", re.sub("\n", "", sys.version))
 
