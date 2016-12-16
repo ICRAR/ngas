@@ -32,7 +32,6 @@ Test WakeUp Plug-In to simulate the NGAS host suspension.
 
 This must be used together with the ngamsTestSuspensionPlugIn.
 """
-# TODO: Move this module to ngams/ngamsTest!
 
 from ngamsLib.ngamsCore import TRACE
 

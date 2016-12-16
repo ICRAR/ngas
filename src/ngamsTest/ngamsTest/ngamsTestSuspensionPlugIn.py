@@ -39,7 +39,6 @@ This is done in the following way:
 
 See also ngamsTestWakeUpPlugIn.py.
 """
-# TODO: Move this module to ngams/ngamsTest!
 
 import logging
 import time
