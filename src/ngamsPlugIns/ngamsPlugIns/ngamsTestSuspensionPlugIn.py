@@ -41,10 +41,13 @@ See also ngamsTestWakeUpPlugIn.py.
 """
 # TODO: Move this module to ngams/ngamsTest!
 
+import logging
 import time
 
 from ngamsLib.ngamsCore import TRACE
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsTestSuspensionPlugIn(srvObj):
     """
@@ -59,7 +62,10 @@ def ngamsTestSuspensionPlugIn(srvObj):
     T = TRACE()
 
     hostId = srvObj.getHostId()
+    startTime = time.time()
     while (srvObj.getDb().getSrvSuspended(hostId)): time.sleep(0.250)
+    logger.debug("NGAS Node: %s woken up after %.3fs of suspension",
+                 hostId, (time.time() - startTime))
 
 
 # EOF
