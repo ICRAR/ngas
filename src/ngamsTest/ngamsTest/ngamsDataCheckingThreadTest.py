@@ -90,6 +90,7 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
         cfg.storeVal("NgamsCfg.DataCheckThread[1].Active", "1")
         cfg.storeVal("NgamsCfg.DataCheckThread[1].Prio", "1")
         cfg.storeVal("NgamsCfg.DataCheckThread[1].MinCycle", "0T00:00:00")
+        cfg.storeVal("NgamsCfg.Log[1].LocalLogLevel", "4")
         cfg.save(tmpCfgFile, 0)
         self.prepExtSrv(cfgFile=tmpCfgFile)
         client = sendPclCmd()
@@ -99,19 +100,21 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
         # Wait a while to be sure that one check cycle has been completed.
         startTime = time.time()
         found = False
+        looking_for = "NGAMS_INFO_DATA_CHK_STAT"
         while not found and ((time.time() - startTime) < 60):
             for line in open(cfg.getLocalLogFile(), "r"):
                 # The DCC finished
-                if (line.find("NGAMS_INFO_DATA_CHK_STAT") != -1):
+                if looking_for in line:
 
                     # Nasty...
-                    parts = line.split(" ")
+                    parts = line.split("NGAMS_INFO_DATA_CHK_STAT")
+                    parts = parts[1].split(" ")
 
                     # "6" is what comes after "Number of files checked"
                     # in the log statement
-                    nfiles_checked = int(parts[7][:-1])
-                    nfiles_unregistered = int(parts[13][:-1])
-                    nfiles_bad = int(parts[19][:-1])
+                    nfiles_checked = int(parts[5][:-1])
+                    nfiles_unregistered = int(parts[11][:-1])
+                    nfiles_bad = int(parts[17][:-1])
 
                     self.assertEquals(6, nfiles_checked)
                     self.assertEquals(0, nfiles_unregistered)

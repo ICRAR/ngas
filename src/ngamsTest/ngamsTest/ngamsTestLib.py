@@ -960,7 +960,8 @@ def getThreadId(logFile,
     for tag in tagList[1:]:
         grepCmd += " | grep %s" % tag
     stat, out = commands.getstatusoutput(grepCmd)
-    return out.split(":")[-1][0:-1]
+    tid =  out.split("[")[1].split("]")[0].strip()
+    return tid
 
 def unzip(infile, outfile):
     with nested(gzip.open(infile, 'rb'), open(outfile, 'w')) as (gz, out):
@@ -1728,7 +1729,7 @@ class ngamsTestSuite(unittest.TestCase):
             if resTag1 in line:
                 sqlQuery, sqlRes = line.split(resTag1)[1].split(": ")
                 sqlQuery = sqlQuery.strip()
-                sqlRes = sqlRes.split("] [")[0] + "]"
+                sqlRes = sqlRes.strip()
             else:
                 sqlQuery = line.split(": ")[1].split(" [ngamsDb")[0]
                 sqlRes = ""
