@@ -2468,13 +2468,15 @@ class ngamsServer:
         self.stopServer()
         ngamsSrvUtils.ngamsBaseExitHandler(self)
 
-        # Rotate the log file; it's called .unsaved because the next time NGAS
-        # starts it will pick them up and save them into itself
-        # logFile might be empty/None if self.getCfg() returns the empty config
-        # created at __init__ time, meaning that this _terminate is being called
-        # due to an error before or during self.loadCfg()
+        # Finish logging and rename the logging file
+        # The log file is renamed in such a way that the next time the server
+        # starts it will pick it up and automatically archive it into itself
+        # Because we do logging.shutdown() here we don't perform any more
+        # logging
+        logging.shutdown()
+
         logFile = self.getCfg().getLocalLogFile()
-        if logFile:
+        if logFile and os.path.isfile(logFile):
             try:
                 logPath = os.path.dirname(logFile)
                 now = time.time()
@@ -2482,24 +2484,18 @@ class ngamsServer:
                 ts += ".%03d" % ((now - math.floor(now)) * 1000.)
                 # It's time to rotate the current Local Log File.
                 rotLogFile = "LOG-ROTATE-%s.nglog.unsaved" % (ts,)
-                rotLogFile = os.path.normpath(logPath + "/" + rotLogFile)
-                logger.info("Closing log file: %s -> %s" % (logFile, rotLogFile))
+                rotLogFile = os.path.normpath(os.path.join(logPath, rotLogFile))
                 shutil.move(logFile, rotLogFile)
             except Exception:
-                logger.exception("Server encountered problem while rotating logfile")
-
-        # Avoid last logs going into the local file
-        # TODO: replace with logging.shutdown() or self.shutdown_logging()
-        #setLogCond(self.__sysLog, self.__sysLogPrefix, 0,
-        #               self.__locLogFile, self.__verboseLevel)
+                print("Server encountered problem while rotating logfile")
+                traceback.print_exc()
 
         # Remove PID file to allow future instances to be run
         try:
             os.unlink(self.pidFile())
         except OSError:
-            logger.error("Error while deleting PID file %s", self.pidFile())
-
-        logger.info("Terminated NG/AMS Server")
+            print("Error while deleting PID file %s", self.pidFile())
+            traceback.print_exc()
 
     def killServer(self):
         """
