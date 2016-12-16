@@ -806,7 +806,8 @@ def runTest(argv):
                 correctUsage()
             sys.exit(1)
 
-    #setLogCond(False, None, logLevel, logFile, verboseLevel)
+    # TODO: properly setup logging depending on the cmdline args
+    logging.root.addHandler(logging.NullHandler())
 
     skipDic = {}
     if (skip):
