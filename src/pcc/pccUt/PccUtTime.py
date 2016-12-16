@@ -359,31 +359,17 @@ class Timer:
     Timer class used to measure the time between two events.
     """
 
-    def __init__(self,
-                 startTime = None):
+    def __init__(self):
         """
-        Contructor method. Initializing object and taking the
-        time at creation as reference.
-
-        startTime:   Set a start time different than the present time. Must
-                     be given as time since epoch as returned by
-                     time.time() (integer).
+        Contructor method.
         """
-        if (startTime != None):
-            self.__startTime = startTime
-        else:
-            self.__startTime = time.time()
-
+        self.__startTime = time.time()
 
     def start(self):
         """
         Start the timer.
-
-        Returns:   Reference to object itself (Timer).
         """
         self.__startTime = time.time()
-        return self
-
 
     def stop(self):
         """
@@ -391,20 +377,7 @@ class Timer:
 
         Returns:   Time elapsed since timer was started (s).
         """
-        timeNow = time.time()
-        return (timeNow - self.__startTime)
-
-
-    def getLap(self):
-        """
-        Get a lap time.
-
-        Returns:   Time elapsed since timer was started (s).
-        """
-        # Actually the same as stop(), however, the name stop() was not
-        # well chosen.
-        timeNow = time.time()
-        return (timeNow - self.__startTime)
+        return time.time() - self.__startTime
 
 
 if __name__ == '__main__':
@@ -412,36 +385,6 @@ if __name__ == '__main__':
     """
     test()
 
-
-def getIsoTime(onlyDate  = 0,
-               precision = 0):
-    """
-    Generates the current ISO-8601 time with the precision specified.
-    If 0 is given as precision, the generated time stamp will not have
-    any decimals.
-
-    onlyDate:     Print only the date, i.e. no time information (integer/0|1).
-
-    precision:    Precision of the generated time stamp, i.e., the
-                  number of decimals to put after the generated
-                  time stamp (integer).
-
-    Returns:      The ISO-8601 time stamp (string).
-    """
-    timeNow = time.time()
-    timeTuple = time.gmtime(timeNow)
-    if (onlyDate == 0):
-        isoTimeNow = time.strftime("%Y-%m-%dT%H:%M:%S", timeTuple)
-        # Get the decimals.
-        if (precision):
-            #secDecs = str(math.fmod(timeNow, .99999999))
-            #isoTimeNow = isoTimeNow + secDecs[1:(precision + 2)]
-            tpl = "%{0}.{1}f".format(precision + 2, precision)
-            secDecs = tpl % math.fmod(timeNow, 1.)
-            isoTimeNow += secDecs[1:(precision + 2)]
-    else:
-        isoTimeNow = time.strftime("%Y-%m-%d", timeTuple)
-    return isoTimeNow
 
 #
 # ___oOo___

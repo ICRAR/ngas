@@ -36,11 +36,11 @@ types of NG/AMS plug-ins.
 
 import os, commands
 import shutil
-from pccUt import PccUtUtils
-from ngamsCore import NGAMS_SUCCESS, TRACE, genLog, error, info, checkCreatePath, trim
+
+from ngamsCore import NGAMS_SUCCESS, TRACE, info, checkCreatePath, trim, execCmd as ngamsCoreExecCmd
+import ngamsDapiStatus
 import ngamsHighLevelLib, ngamsNotification
 import ngamsLib
-import ngamsDapiStatus
 
 
 def genDapiSuccessStat(diskId,
@@ -221,7 +221,7 @@ def execCmd(cmd,
     if (timeOut == -1):
         return commands.getstatusoutput(cmd)
     else:
-        exitCode, stdout, stderr = PccUtUtils.execCmd(cmd, timeOut)
+        exitCode, stdout, stderr = ngamsCoreExecCmd(cmd, timeOut)
         return [exitCode, stdout]
 
 

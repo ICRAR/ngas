@@ -39,6 +39,7 @@ import os
 import time
 import subprocess
 import struct
+from urlparse import urlparse
 
 from ngamsLib import ngamsHighLevelLib, ngamsPlugInApi
 from ngamsLib.ngamsCore import info, checkCreatePath, genLog, alert, TRACE, \
@@ -81,9 +82,12 @@ def bbcpFile(srcFilename, targFilename, bparam):
     if (bparam.num_streams):
         ns = ['-s', str(bparam.num_streams)]
 
+    # bypass password prompt with -oBatchMode=yes this implies you need keys
+    ssh_src = ['-S', 'ssh -x -a -oBatchMode=yes -oFallBackToRsh=no %4 %I -l %U %H bbcp']
+
     # perform checksum on host and compare to target. If it's different bbcp will fail.
     cmd_checksum = ['-e', '-E', 'c32z=/dev/stdout']
-    cmd_list = ['bbcp', '-f', '-V'] + cmd_checksum + fw + ns + ['-P', '2'] + pt + [srcFilename, targFilename]
+    cmd_list = ['bbcp', '-f', '-V'] + ssh_src + cmd_checksum + fw + ns + ['-P', '2'] + pt + [srcFilename, targFilename]
 
     info(3, "Executing external command: %s" % subprocess.list2cmdline(cmd_list))
 
@@ -195,11 +199,21 @@ def handleCmd(srvObj,
         error(errMsg)
         raise Exception, errMsg
 
-    # should not be allowed to pull files from these base locations
+    # exclude pulling files from these locations
     invalid_paths = ('/dev', '/var', '/usr', '/opt', '/etc')
     file_uri = parsDic['fileUri']
+    uri = file_uri
 
-    if file_uri.lower().startswith(invalid_paths):
+    if uri.lower().startswith('ssh://'):
+        uri = uri[6:]
+    elif uri.lower().startswith('ssh:/'):
+        uri = uri[5:]
+    elif uri.lower().startswith('ssh:'):
+        uri = uri[4:]
+
+    uri = 'ssh://' + uri
+    uri_parsed = urlparse(uri)
+    if uri_parsed.path.lower().startswith(invalid_paths):
         errMsg = genLog("NGAMS_ER_ILL_URI", [file_uri,
                                             "Archive Pull Request"])
         error(errMsg)

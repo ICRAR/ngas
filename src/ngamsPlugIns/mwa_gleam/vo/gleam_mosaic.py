@@ -29,7 +29,6 @@ This module provides functions to manipulate gleam mosaics
 """
 import os, sys, math, commands, time
 from os import listdir
-#import pccFits.PccSimpleFitsReader as fitsapi
 from optparse import OptionParser
 import ephem
 import astropy.io.fits as pyfits

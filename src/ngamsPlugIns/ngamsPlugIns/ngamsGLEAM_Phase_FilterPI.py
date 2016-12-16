@@ -33,25 +33,25 @@ Pick images based on its GLEAM phase (phase 1 or 2?)
 
 import os
 
+import pyfits
+
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import warning
-import pccFits.PccSimpleFitsReader as fitsapi
 
 
 def isGLEAMImage(fileId):
     return (fileId.lower().endswith('.fits') and (len(fileId.split('_')) == 5) and (fileId.find('mosaic') == -1))
 
 def getGLEAMPhase(filename):
-    fileId = os.path.basename(filename)
-    hdrs = fitsapi.getFitsHdrs(filename)
     """
     copied from ngamsGLEAM_VO_JobPlugin
     """
+    fileId = os.path.basename(filename)
+    hdrs = pyfits.getheader(filename)
     gleam_phase = 1
     getf_frmfn = 0
-    if (hdrs[0].has_key('ORIGIN')):
-        fits_origin = hdrs[0]['ORIGIN'][0][1]
-        if (fits_origin.find('WSClean') > -1):
+    if 'ORIGIN' in hdrs:
+        if 'WSClean' in hdrs['ORIGIN']:
             gleam_phase = 2
     else:
         getf_frmfn = 1

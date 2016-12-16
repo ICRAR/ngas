@@ -57,9 +57,9 @@ from ngamsLib.ngamsCore import getHostName, TRACE, info, \
     ngamsCopyrightString, rmFile, \
     error, cleanList, setLogCond, getVerboseLevel, \
     cpFile, getLogLevel, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
-    checkIfIso8601
+    checkIfIso8601, execCmd as ngamsCoreExecCmd
 from ngamsPClient import ngamsPClient
-from pccUt import PccUtUtils, PccUtTime
+from pccUt import PccUtTime
 
 
 # Global parameters to control the test run.
@@ -181,7 +181,7 @@ def execCmd(cmd,
 
     Returns:   Tuple with exit status + stdout/stderr output (string).
     """
-    exitCode, stdOut, stdErr = PccUtUtils.execCmd(cmd, timeOut)
+    exitCode, stdOut, stdErr = ngamsCoreExecCmd(cmd, timeOut)
     out = stdOut + stdErr
     if (exitCode and raiseEx):
         errMsg = "Error executing shell command. Exit status: %d, ouput: %s"

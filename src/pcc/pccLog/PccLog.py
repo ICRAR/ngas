@@ -12,23 +12,10 @@
 Module that provides a convenient API to the PCC Log Manager.
 """
 
-import types, threading
-import PccLogMgr
-from pccUt import PccUtUtils
+import syslog
+import threading
 
-# Remove this when going to v2.1 and import syslog only.
-if (PccLogMgr.sysLog()):
-    import syslog
-else:
-    class syslog:
-        LOG_EMERG   = 0
-        LOG_ALERT   = 1
-        LOG_CRIT    = 2
-        LOG_ERR     = 3
-        LOG_WARNING = 4
-        LOG_NOTICE  = 5
-        LOG_INFO    = 6
-        LOG_DEBUG   = 7
+import PccLogMgr
 
 
 # Global instance of the Log Manager.
@@ -110,16 +97,6 @@ def setLogCond(logLevel,
 
     Returns:           Void.
     """
-    # Check types of input parameters.
-    PccUtUtils.checkType("logLevel", logLevel,"PccLog.setLogCond()",
-                         types.IntType)
-    PccUtUtils.checkType("logFile", logFile, "PccLog.setLogCond()",
-                         types.StringType)
-    PccUtUtils.checkType("verboseLevel", verboseLevel, "PccLog.setLogCond()",
-                         types.IntType)
-    PccUtUtils.checkType("bufferSize", bufferSize, "PccLog.setLogCond()",
-                         types.IntType)
-
     global __logMgr
     __logMgr.setLogLevel(logLevel)
     __logMgr.setLogFile(logFile)
@@ -182,9 +159,6 @@ def logGen_(fct,
     takeLogSem()
     try:
         msg = str(msg)
-        PccUtUtils.checkType("level", level, fct, types.IntType)
-        PccUtUtils.checkType("location", location, fct, types.StringType)
-
         __logMgr.log(level, logType, location, msg)
         relLogSem()
     except Exception, e:

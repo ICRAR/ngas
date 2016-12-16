@@ -16,37 +16,14 @@ class PccLogMgr.
 See also documentation for class PccLogMgr and module PccLog.
 """
 
-import sys, os, threading, string
-
-##################################################################
-# Remove all this handling when syslog is supported (from v2.1)
-##################################################################
-ver = string.split(sys.version, " ")[0]
-if (string.find(ver, "1.5") == 0):
-    sysLog_ = 0
-else:
-    sysLog_ = 1
-
-def sysLog():
-    global sysLog_
-    return sysLog_
-
-if sysLog():
-    import syslog
-else:
-    class syslog:
-        LOG_EMERG   = 0
-        LOG_ALERT   = 1
-        LOG_CRIT    = 2
-        LOG_ERR     = 3
-        LOG_WARNING = 4
-        LOG_NOTICE  = 5
-        LOG_INFO    = 6
-        LOG_DEBUG   = 7
-##################################################################
+import math
+import os
+import syslog
+import threading
+import time
 
 import PccLogInfo
-from pccUt import PccUtTime
+
 
 # Log Levels.
 LOG0 = 0
@@ -89,6 +66,28 @@ _logCacheList = {}
 # Used to protect the access e.g. to log files, when flushing out
 # cached logs into the log file associated to the Log Manager.
 _logSemList = {}
+
+def getIsoTime():
+    """
+    Generates the current ISO-8601 time with the precision specified.
+    If 0 is given as precision, the generated time stamp will not have
+    any decimals.
+
+    onlyDate:     Print only the date, i.e. no time information (integer/0|1).
+
+    precision:    Precision of the generated time stamp, i.e., the
+                  number of decimals to put after the generated
+                  time stamp (integer).
+
+    Returns:      The ISO-8601 time stamp (string).
+    """
+    timeNow = time.time()
+    timeTuple = time.gmtime(timeNow)
+    isoTimeNow = time.strftime("%Y-%m-%dT%H:%M:%S.", timeTuple)
+    # Get the decimals.
+    millis = int(math.fmod(timeNow, 1.) * 1000)
+    isoTimeNow += "%03d" % millis
+    return isoTimeNow
 
 class PccLogMgr:
     """
@@ -356,7 +355,7 @@ class PccLogMgr:
 
         Returns:      Void.
         """
-        self.logAll(level, "", logMessage, type, self.__localHost, location)
+        self.logAll(level, logMessage, type, self.__localHost, location)
 
 
     def sysLog(self, level, type, location, logMessage):
@@ -375,8 +374,8 @@ class PccLogMgr:
 
         Returns:      Void.
         """
-        if ((level <= self.getSysLogLevel()) and sysLog()):
-            date = PccUtTime.getIsoTime(0, 3)
+        if ((level <= self.getSysLogLevel())):
+            date = getIsoTime()
             logInfoObj = PccLogInfo.PccLogInfo()
             logInfoObj.\
                          setDate(date).\
@@ -388,7 +387,6 @@ class PccLogMgr:
 
     def logAll(self,
                level,
-               date,
                msg,
                type = "",
                host = "",
@@ -440,7 +438,7 @@ class PccLogMgr:
 
         Returns:      Void.
         """
-        if (date == ""): date = PccUtTime.getIsoTime(0, 3)
+        date = getIsoTime()
         self.verboseLog(level, date, locObj, type, msg)
 
         # Generate the log for the log file.
@@ -474,7 +472,7 @@ class PccLogMgr:
             logCache[len(logCache)] = logInfoObj
             self.autoFlush()
 
-            if (logInSysLog and sysLog()):
+            if (logInSysLog):
                 syslog.syslog(logInfoObj.getType(),
                               self.genSysLogLine(logInfoObj))
 
