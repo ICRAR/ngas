@@ -35,7 +35,7 @@ a plug-in provided by the user periodically.
 import logging
 import time
 
-from ngamsLib.ngamsCore import info, isoTime2Secs
+from ngamsLib.ngamsCore import isoTime2Secs
 
 
 logger = logging.getLogger(__name__)
@@ -67,14 +67,14 @@ def userServiceThread(srvObj, stopEvt, userServicePlugin):
         try:
             startTime = time.time()
 
-            info(5,"Executing User Service Plug-In")
+            logger.debug("Executing User Service Plug-In")
             userServicePlugin(srvObj, plugin_pars)
             stopTime = time.time()
             sleepTime = (period - (stopTime - startTime))
 
             if (sleepTime > 0):
                 msg = "Executed User Service Plug-In: %s. Sleeping: %.3fs"
-                info(4,msg % (plugin_name, sleepTime))
+                logger.debug(msg, plugin_name, sleepTime)
 
             # If signaled, return
             if stopEvt.wait(sleepTime):

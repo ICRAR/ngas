@@ -49,7 +49,7 @@ import os
 import sys
 
 from ngamsLib import ngamsPlugInApi, ngamsConfig
-from ngamsLib.ngamsCore import info, NGAMS_NOTIF_ERROR
+from ngamsLib.ngamsCore import NGAMS_NOTIF_ERROR
 
 
 logger = logging.getLogger(__name__)
@@ -129,8 +129,8 @@ def ngamsBrotherPT9200DxPlugIn(srvObj,
     Returns:          Void.
     """
     plugInPars = srvObj.getCfg().getLabelPrinterPlugInPars()
-    info(2,"Executing plug-in ngamsBrotherPT9200DxPlugIn with parameters: "+
-         plugInPars + " - Label: " + label + " ...")
+    logger.info("Executing plug-in ngamsBrotherPT9200DxPlugIn with parameters: " + \
+                "%s - Label: %s ...", plugInPars, label)
     parDic = ngamsPlugInApi.parseRawPlugInPars(plugInPars)
 
     # Get the font bit pattern dictionary.
@@ -176,9 +176,6 @@ def ngamsBrotherPT9200DxPlugIn(srvObj,
                               "ngamsBrotherPT9200DxPlugIn: " +\
                               "PROBLEM PRINTING LABEL", errMsg)
         raise Exception(errMsg)
-
-    info(2,"Executed plug-in ngamsBrotherPT9200DxPlugIn with parameters: "+
-         plugInPars + " - Label: " + label + " ...")
 
 
 if __name__ == '__main__':

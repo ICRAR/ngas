@@ -35,7 +35,7 @@ Contains a Filter Plug-In used to filter on the files that have already been del
 import logging
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import NGAMS_STATUS_CMD, info, NGAMS_FAILURE
+from ngamsLib.ngamsCore import NGAMS_STATUS_CMD, NGAMS_FAILURE
 from ngamsPClient import ngamsPClient
 
 
@@ -109,12 +109,12 @@ def ngamsMWACheckRemoteFilterPlugin(srvObj,
         return 1 # matched as if the filter does not exist
 
 
-    info(5, "filter return status = " + rest.getStatus())
+    logger.debug("filter return status = %s", rest.getStatus())
 
     if (rest.getStatus().find(NGAMS_FAILURE) != -1):
         match = 1
 
-    info(4, "filter match = " + str(match))
+    logger.debug("filter match = %s", str(match))
     return match
 
 

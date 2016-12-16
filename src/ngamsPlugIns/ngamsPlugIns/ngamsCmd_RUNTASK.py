@@ -40,7 +40,7 @@ import os
 import threading
 import urllib2
 
-from ngamsLib.ngamsCore import info, TRACE, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 from ngamsPClient import ngamsPClient
 from ngamsPlugIns.ngamsJobProtocol import MRLocalTaskResult, ERROR_LT_UNEXPECTED
 
@@ -75,7 +75,7 @@ def _queScanThread(jobManHost, ngas_hostId, ngas_client):
         g_mrLocalTask = queTasks.get()
         # skip tasks that have been cancelled
         if (cancelDict.has_key(g_mrLocalTask._taskId)):
-            info(3, 'Task %s has been cancelled, skip it' % g_mrLocalTask._taskId)
+            logger.debug('Task %s has been cancelled, skip it', g_mrLocalTask._taskId)
             continue
 
         # before executing the task, inform JobMAN that
@@ -107,10 +107,10 @@ def _queScanThread(jobManHost, ngas_hostId, ngas_client):
 
         #send result back to the JobMAN
         strReq = pickle.dumps(localTaskResult)
-        info(3, 'Sending local result back to JobMAN %s' % svrUrl)
+        logger.debug('Sending local result back to JobMAN %s', svrUrl)
         try:
             strRes = urllib2.urlopen(svrUrl, data = strReq, timeout = 15).read() #HTTP Post
-            info(3, "Got result from JobMAN: '%s'" % strRes)
+            logger.debug("Got result from JobMAN: '%s'", strRes)
         except urllib2.URLError:
             logger.exception('Fail to send local result to JobMAN')
 
@@ -137,9 +137,9 @@ def _scheduleQScanThread(srvObj, mrLocalTask):
     global queScanThread
     if (queScanThread == None or (not queScanThread.isAlive())):
         if (not queScanThread):
-            info(3, 'queScanThread is None !!! Create it')
+            logger.debug('queScanThread is None !!! Create it')
         else:
-            info(3, 'queScanThread is Dead !!! Re-launch it')
+            logger.debug('queScanThread is Dead !!! Re-launch it')
 
         ngas_hostId = srvObj.getHostId()
         ngas_host = ngas_hostId.split(':')[0]
@@ -194,14 +194,13 @@ def handleCmd(srvObj,
         srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, errMsg, NGAMS_TEXT_MT)
     else:
         postContent = _getPostContent(srvObj, reqPropsObj)
-        #info(3, '---- post content = %s' % postContent)
         mrLocalTask = pickle.loads(postContent)
         if (not mrLocalTask):
             errMsg = 'Cannot instantiate local task from POST'
             mrr = MRLocalTaskResult(None, -2, errMsg)
             srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(mrr), NGAMS_TEXT_MT)
         else:
-            info(3, 'Local task %s is submitted' % mrLocalTask._taskId)
+            logger.debug('Local task %s is submitted', mrLocalTask._taskId)
             mrr = MRLocalTaskResult(mrLocalTask._taskId, 0, '')
             srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(mrr), NGAMS_TEXT_MT)
 

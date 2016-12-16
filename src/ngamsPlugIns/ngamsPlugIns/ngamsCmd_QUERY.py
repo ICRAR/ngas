@@ -37,7 +37,7 @@ import logging
 import os
 
 from ngamsLib import ngamsDbm, ngamsDbCore
-from ngamsLib.ngamsCore import NGAMS_TMP_FILE_EXT, TRACE, info, NGAMS_TEXT_MT, \
+from ngamsLib.ngamsCore import NGAMS_TMP_FILE_EXT, TRACE, NGAMS_TEXT_MT, \
     NGAMS_HTTP_SUCCESS, rmFile
 
 
@@ -273,7 +273,6 @@ def handleCmd(srvObj,
 
     # Execute the query.
     if (not cursorId):
-        info(3, "Executing SQL query: %s" % str(query))
         res = srvObj.getDb().query2(query, args=args)
 
         # TODO: Make possible to return an XML document
@@ -354,8 +353,8 @@ def handleCmd(srvObj,
             msg = "Error fetching from cursor with ID: %s. Error: %s"
             raise Exception, msg % (cursorId, str(e))
     elif (query and cursorId):
-        info(4, "Creating new cursor with ID: %s, query: %s" %\
-             (cursorId, query))
+        logger.debug("Creating new cursor with ID: %s, query: %s",
+                     cursorId, query)
         cursorDbmFilename = genCursorDbmName(srvObj.getCfg().\
                                              getRootDirectory(), cursorId)
         cursorDbm = ngamsDbm.ngamsDbm(cursorDbmFilename, writePerm=1)

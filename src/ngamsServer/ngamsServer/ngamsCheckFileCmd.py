@@ -33,10 +33,14 @@
 Contains the functions to handle the CHECKFILE command.
 """
 
+import logging
+
 import ngamsFileUtils
 from ngamsLib import ngamsDbCore
-from ngamsLib.ngamsCore import info, NGAMS_HOST_LOCAL, genLog,\
+from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, genLog,\
     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, NGAMS_HOST_CLUSTER
+
+logger = logging.getLogger(__name__)
 
 def handleCmdCheckFile(srvObj,
                        reqPropsObj,
@@ -84,7 +88,7 @@ def handleCmdCheckFile(srvObj,
     filePortNo    = fileLocInfo[3]
     fileMtPt      = fileLocInfo[4]
     if (fileLocation == NGAMS_HOST_LOCAL):
-        info(3,"File is located on local host - carrying out the check on " +\
+        logger.debug("File is located on local host - carrying out the check on " +\
              "the file locally")
         # Get the Disk ID if not defined.
         if (not diskId):
@@ -121,7 +125,7 @@ def handleCmdCheckFile(srvObj,
             msg = genLog("NGAMS_ER_FILE_NOK", [fileId, int(fileVersion),
                                                diskId, fileSlotId, fileHostId,
                                                discrepancies])
-        info(3,msg)
+        logger.debug(msg)
         reqPropsObj.setCompletionTime(1)
         srvObj.updateRequestDb(reqPropsObj)
         srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
@@ -129,19 +133,19 @@ def handleCmdCheckFile(srvObj,
         return
     elif (srvObj.getCfg().getProxyMode() or
           (fileLocInfo[0] == NGAMS_HOST_CLUSTER)):
-        info(3,"File is remote or located within the private network of " +\
-             "the contacted NGAS system -- this server acting as proxy " +\
-             "and forwarding request to remote NGAS system: %s/%d" %\
-             (fileHostId, filePortNo))
+        logger.debug("File is remote or located within the private network of " +\
+                     "the contacted NGAS system -- this server acting as proxy " +\
+                     "and forwarding request to remote NGAS system: %s/%d",
+                     fileHostId, filePortNo)
         httpStatCode, httpStatMsg, httpHdrs, data =\
                       srvObj.forwardRequest(reqPropsObj, httpRef,
                                             fileHostId, filePortNo)
         return
     else:
         # Send back an HTTP re-direction response to the requestor.
-        info(3,"File to be checked is stored on a remote host not within " +\
-             "private network, Proxy Mode is off - sending back HTTP " +\
-             "re-direction response")
+        logger.debug("File to be checked is stored on a remote host not within " +\
+                     "private network, Proxy Mode is off - sending back HTTP " +\
+                     "re-direction response")
         reqPropsObj.setCompletionTime(1)
         srvObj.updateRequestDb(reqPropsObj)
         srvObj.httpRedirReply(reqPropsObj, httpRef, fileHostId, filePortNo)

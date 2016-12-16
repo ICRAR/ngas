@@ -31,13 +31,16 @@
 Function + code to handle the OFFLINE command.
 """
 
+import logging
 import time
 
 from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_OFFLINE_STATE, \
-    NGAMS_BUSY_SUBSTATE, info
+    NGAMS_BUSY_SUBSTATE
 import ngamsSrvUtils
 
+
+logger = logging.getLogger(__name__)
 
 def handleCmdOffline(srvObj,
                      reqPropsObj,
@@ -74,7 +77,7 @@ def handleCmdOffline(srvObj,
     srvObj.reply(reqPropsObj.setCompletionTime(), httpRef, NGAMS_HTTP_SUCCESS,
                  NGAMS_SUCCESS, "Successfully handled command OFFLINE")
     srvObj.updateRequestDb(reqPropsObj)
-    info(1,"Successfully handled command OFFLINE!")
+    logger.info("Successfully handled command OFFLINE!")
 
 
 # EOF

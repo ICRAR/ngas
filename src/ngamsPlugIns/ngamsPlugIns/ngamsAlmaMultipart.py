@@ -36,12 +36,15 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
+import logging
 import os
 
 from mx import DateTime
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import genLog, info
+from ngamsLib.ngamsCore import genLog
 
+
+logger = logging.getLogger(__name__)
 
 _PLUGIN_ID = __name__
 
@@ -136,7 +139,7 @@ def ngamsAlmaMultipart(srvObj,
     # For now the exception handling is pretty basic:
     # If something goes wrong during the handling it is tried to
     # move the temporary file to the Bad Files Area of the disk.
-    info(1,"Plug-In handling data for file: " +
+    logger.info("Plug-In handling data for file: " +
          os.path.basename(reqPropsObj.getFileUri()))
     diskInfo = reqPropsObj.getTargDiskInfo()
     stagingFilename = reqPropsObj.getStagingFilename()
@@ -177,7 +180,7 @@ def ngamsAlmaMultipart(srvObj,
                                                 finalName, [date])
 
         # Generate status.
-        info(4,"Generating status ...")
+        logger.debug("Generating status ...")
         if not format:
             format = ngamsPlugInApi.determineMimeType(srvObj.getCfg(),
                                                   stagingFilename)

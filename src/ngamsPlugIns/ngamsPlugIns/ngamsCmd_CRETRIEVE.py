@@ -23,8 +23,10 @@
 """
 Function + code to handle the CRETRIEVE Command.
 """
+import logging
 import os
-from ngamsLib.ngamsCore import TRACE, genLog, info, rmFile, getFileSize, checkCreatePath,\
+
+from ngamsLib.ngamsCore import TRACE, genLog, rmFile, getFileSize, checkCreatePath,\
     loadPlugInEntryPoint
 from ngamsLib.ngamsCore import NGAMS_PROC_FILE, NGAMS_PROC_DATA, NGAMS_PROC_STREAM
 from ngamsLib.ngamsCore import NGAMS_CONT_MT, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE
@@ -33,6 +35,9 @@ from ngamsLib.ngamsCore import NGAMS_RETRIEVE_CMD, NGAMS_ONLINE_STATE, NGAMS_IDL
 from ngamsLib import ngamsHighLevelLib, ngamsDppiStatus, ngamsStatus
 from ngamsLib import ngamsLib, ngamsMIMEMultipart
 from ngamsServer import ngamsSrvUtils, ngamsFileUtils
+
+
+logger = logging.getLogger(__name__)
 
 def performProcessing(srvObj,
                       reqPropsObj,
@@ -68,11 +73,11 @@ def performProcessing(srvObj,
             raise Exception, errMsg
 
         # Invoke the DPPI.
-        info(2,"Invoking DPPI: " + dppi + " to process file: " + filename)
+        logger.debug("Invoking DPPI: %s to process file: %s", dppi, filename)
         plugInMethod = loadPlugInEntryPoint(dppi)
         statusObj = plugInMethod(srvObj, reqPropsObj, filename)
     else:
-        info(2,"No processing requested - sending back file as is")
+        logger.debug("No processing requested - sending back file as is")
         resultObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_FILE, mimeType,
                                                     filename, filename)
         statusObj = ngamsDppiStatus.ngamsDppiStatus().addResult(resultObj)
@@ -102,7 +107,7 @@ def cleanUpAfterProc(statusObjList):
 
     for resObj in resObjList:
         if (resObj.getProcDir() != ""):
-            info(3,"Cleaning up processing directory: " + resObj.getProcDir() + " after completed processing")
+            logger.debug("Cleaning up processing directory: %s after completed processing", resObj.getProcDir())
             rmFile(resObj.getProcDir())
 
 
@@ -194,10 +199,10 @@ def genReplyRetrieve(srvObj,
                 # supported in python 2.7 though, but there are backported versions
                 # that do support it (and it's been in Linux since 2.4)
                 if (dataType == NGAMS_PROC_DATA):
-                    info(3,"Sending data in buffer to requestor ...")
+                    logger.debug("Sending data in buffer to requestor ...")
                     writer.writeData(dataRef)
                 elif (dataType == NGAMS_PROC_FILE):
-                    info(3,"Reading data block-wise from file and sending to requestor ...")
+                    logger.debug("Reading data block-wise from file and sending to requestor ...")
                     fd = open(dataRef)
                     dataSent = 0
                     dataToSent = getFileSize(dataRef)
@@ -209,7 +214,7 @@ def genReplyRetrieve(srvObj,
                 else:
                     # NGAMS_PROC_STREAM - read the data from the File Object in
                     # blocks and send it directly to the requestor.
-                    info(3,"Routing data from foreign location to requestor ...")
+                    logger.debug("Routing data from foreign location to requestor ...")
                     dataSent = 0
                     dataToSent = dataSize
                     while (dataSent < dataToSent):
@@ -221,7 +226,7 @@ def genReplyRetrieve(srvObj,
 
         writeContainer(writer, fileInformation[1], blockSize)
 
-        info(4,"HTTP reply sent to: " + str(httpRef.client_address))
+        logger.debug("HTTP reply sent to: %s", httpRef.client_address)
         reqPropsObj.setSentReply(1)
 
     finally:
@@ -290,12 +295,12 @@ def collectProcResults(srvObj, reqPropsObj, fileVer, diskId, hostId, container):
         elif location == NGAMS_HOST_CLUSTER or location == NGAMS_HOST_REMOTE:
 
             if srvObj.getCfg().getProxyMode():
-                info(3, 'Ignoring proxy mode, still collecting whole contents of containers locally')
+                logger.debug('Ignoring proxy mode, still collecting whole contents of containers locally')
                 pass
 
-            info(3,"NG/AMS Server acting as proxy - requesting file with ID: " +\
-                 fileId + " from NG/AMS Server on host/port: " + host + "/" +\
-                 str(port) + " ...")
+            logger.debug("NG/AMS Server acting as proxy - requesting file with ID: %s " + \
+                         "from NG/AMS Server on host/port: %s/%s",
+                         fileId, host, str(port))
 
             # Act as proxy - get the file from the NGAS host specified and
             # send back the contents. The file is temporarily stored in the
@@ -381,7 +386,7 @@ def _handleCmdCRetrieve(srvObj,
     if not containerId:
         containerId = srvObj.getDb().getContainerIdForUniqueName(containerName)
 
-    info(4,"Handling request for file with containerId: " + containerId)
+    logger.debug("Handling request for file with containerId: %s", containerId)
     fileVer = -1
     if (reqPropsObj.hasHttpPar("file_version")):
         fileVer = int(reqPropsObj.getHttpPar("file_version"))

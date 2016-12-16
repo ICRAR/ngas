@@ -38,7 +38,7 @@ It simply deletes files from the cache after a given expiration time.
 import time
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, info
+from ngamsLib.ngamsCore import TRACE
 
 
 ngamsExampleCacheCtrlPI_maxCacheTime = None
@@ -75,9 +75,6 @@ def ngamsExampleCacheCtrlPI(srvObj,
 
         # Check if the cache time is exceeded.
         if ((time.time() - cacheEntryObj.getCacheTime()) > _maxCacheTime):
-            info(1, "Scheduling entry for deletion from cache: %s/%s/%d" %\
-                 (cacheEntryObj.getDiskId(), cacheEntryObj.getFileId(),
-                  cacheEntryObj.getFileVersion()))
             return True
 
         return False

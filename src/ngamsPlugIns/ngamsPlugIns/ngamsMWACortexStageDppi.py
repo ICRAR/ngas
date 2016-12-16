@@ -11,7 +11,7 @@
 import logging
 
 from ngamsLib import ngamsPlugInApi, ngamsDppiStatus
-from ngamsLib.ngamsCore import NGAMS_PROC_FILE, info
+from ngamsLib.ngamsCore import NGAMS_PROC_FILE
 
 
 logger = logging.getLogger(__name__)
@@ -48,9 +48,9 @@ def ngamsMWACortexStageDppi(srvObj,
     offline = t[1].find('offline;')
 
     if (offline != -1): # the file is offline, i.e. it is on tape
-        info(3, "File " + filename + " is currently on tapes, staging it for retrieval...")
+        logger.debug("File %s is currently on tapes, staging it for retrieval...", filename)
         cmd = "stage -w " + filename
         t = ngamsPlugInApi.execCmd(cmd, -1) #stage it back to disk cache
-        info(3, "File " + filename + " staging completed.")
+        logger.debug("File %s staging completed.", filename)
 
     return statusObj

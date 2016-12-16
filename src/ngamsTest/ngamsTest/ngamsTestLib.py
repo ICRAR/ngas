@@ -42,7 +42,6 @@ import gzip
 import importlib
 import logging
 import os
-import re
 import shutil
 import socket
 import subprocess
@@ -54,7 +53,7 @@ import pkg_resources
 import pyfits
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
-from ngamsLib.ngamsCore import getHostName, TRACE, info, \
+from ngamsLib.ngamsCore import getHostName, TRACE, \
     ngamsCopyrightString, rmFile, cleanList, \
     cpFile, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
     checkIfIso8601, execCmd as ngamsCoreExecCmd
@@ -468,7 +467,7 @@ def delNgamsDirs(cfgObj):
     """
     try:
         for d in [cfgObj.getRootDirectory(), "/tmp/ngamsTest"]:
-            info(3,"Removing directory: %s" + d)
+            logger.debug("Removing directory: %s", d)
             shutil.rmtree(d, True)
     except Exception:
         logger.exception("Error encountered removing NG/AMS directories")
@@ -1082,7 +1081,7 @@ class ngamsTestSuite(unittest.TestCase):
             cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, dbObj)
             del dbObj
             dbObj = None
-            info(2, "Successfully read configuration from database, root dir is %s" % (cfgObj2.getRootDirectory()))
+            logger.debug("Successfully read configuration from database, root dir is %s", cfgObj2.getRootDirectory())
             cfgFile = saveInFile(None, cfgObj2.genXmlDoc(0))
 
         # Derive NG/AMS Server name for this instance.
@@ -1108,10 +1107,10 @@ class ngamsTestSuite(unittest.TestCase):
         # the server, like removing existing NGAS dirs and clearing tables
         dbObj = ngamsDb.from_config(cfgObj)
         if (delDirs):
-            info(3,"Deleting NG/AMS directories ...")
+            logger.debug("Deleting NG/AMS directories ...")
             delNgamsDirs(cfgObj)
         if (clearDb):
-            info(3,"Clearing NGAS DB ...")
+            logger.debug("Clearing NGAS DB ...")
             delNgasTbls(dbObj)
 
         # Insert an entry for this server on the host table
@@ -1132,7 +1131,7 @@ class ngamsTestSuite(unittest.TestCase):
         if autoOnline:   execCmd.append("-autoOnline")
         if multipleSrvs: execCmd.append("-multipleSrvs")
         if dbCfgName:    execCmd.extend(["-dbCfgId", dbCfgName])
-        info(3,"Starting external NG/AMS Server with shell command: " + " ".join(execCmd))
+        logger.info("Starting external NG/AMS Server with shell command: %s", " ".join(execCmd))
 
         # TODO: kind of a hack really...
         # Include this directory in the python path
@@ -1153,12 +1152,12 @@ class ngamsTestSuite(unittest.TestCase):
         while ((time.time() - startTime) < 20):
             if (stat):
                 state = "ONLINE" if autoOnline else "OFFLINE"
-                info(2,"Test server running - State: %s" % (state))
+                logger.debug("Test server running - State: %s", state)
                 if stat.getState() == state: break
             try:
                 stat = pCl.status()
             except Exception:
-                info(3,"Polled server - not yet running ...")
+                logger.debug("Polled server - not yet running ...")
                 time.sleep(0.2)
 
         if ((time.time() - startTime) >= 20):
@@ -1185,21 +1184,20 @@ class ngamsTestSuite(unittest.TestCase):
         """
 
         if srvProcess.poll() is not None:
-            info(3, "Server process %d (port %d) already dead x(, no need to terminate it again" % (srvProcess.pid, port))
+            logger.debug("Server process %d (port %d) already dead x(, no need to terminate it again", srvProcess.pid, port)
             srvProcess.wait()
             return
 
-        info(3,"Killing externally running NG/AMS Server. PID: %d, Port: %d " % (srvProcess.pid, port))
+        logger.debug("Killing externally running NG/AMS Server. PID: %d, Port: %d ", srvProcess.pid, port)
         try:
             pCl = sendPclCmd(port=port, timeOut=10)
             stat = pCl.status()
             if stat.getState() != "OFFLINE":
-                info(1,"Sending OFFLINE command to external server ...")
+                logger.info("Sending OFFLINE command to external server ...")
                 stat = pCl.offline(1)
-                info(3, "Status OFFLINE command: " + re.sub("\n", "", str(stat.genXmlDoc())))
             status = stat.getStatus()
         except Exception, e:
-            info(3,"Error encountered sending OFFLINE command: " + str(e))
+            logger.info("Error encountered sending OFFLINE command: %s", str(e))
             status = NGAMS_FAILURE
 
         # If OFFLINE was successfully handled, try to
@@ -1207,13 +1205,11 @@ class ngamsTestSuite(unittest.TestCase):
         # Otherwise, kill it with -9
         kill9 = True
         if (status == NGAMS_SUCCESS):
-            info(1,"External server in Offline State - " +\
-                 "sending EXIT command ...")
+            logger.info("External server in Offline State - sending EXIT command ...")
             try:
                 stat = pCl.exit()
-                info(3, "Status EXIT command: " + re.sub("\n", "", str(stat.genXmlDoc())))
             except Exception, e:
-                info(3,"Error encountered sending EXIT command: " + str(e))
+                logger.info("Error encountered sending EXIT command: %s", str(e))
             else:
                 # Wait for the server to be definitively terminated.
                 waitLoops = 0
@@ -1228,10 +1224,10 @@ class ngamsTestSuite(unittest.TestCase):
             if kill9:
                 srvProcess.kill()
                 srvProcess.wait()
-                info(3, "Server process had %d to be merciless killed, sorry :(" % (srvProcess.pid,))
+                logger.info("Server process had %d to be merciless killed, sorry :(", srvProcess.pid)
             else:
                 srvProcess.wait()
-                info(3, "Finished server process %d gracefully :)" % (srvProcess.pid,))
+                logger.info("Finished server process %d gracefully :)", srvProcess.pid)
         except Exception:
             logger.exception("Error while finishing server process %d, port %d", srvProcess.pid, port)
             raise
@@ -1346,7 +1342,7 @@ class ngamsTestSuite(unittest.TestCase):
             else:
                 errMsg += "Status Buffer:\n|<Contents of buffer too big to " +\
                           "be shown>|"
-            info(1,"Error encountered: %s" % errMsg.replace("\n", " | "))
+            logger.info("Error encountered: %s", errMsg.replace("\n", " | "))
             self.fail(errMsg)
 
 
@@ -1757,8 +1753,8 @@ class ngamsTestSuite(unittest.TestCase):
         while (time.time() - startTime) < timeOut:
             nodeSusp = dbConObj.getSrvSuspended(node)
             if nodeSusp:
-                info(2,"Server suspended itself after: %.3fs" %\
-                     (time.time() - startTime))
+                logger.info("Server suspended itself after: %.3fs",
+                            (time.time() - startTime))
                 return 1
             else:
                 time.sleep(0.1)
@@ -1774,7 +1770,7 @@ class ngamsTestSuite(unittest.TestCase):
         while (time.time() - startTime) < timeOut:
             nodeSusp = dbConObj.getSrvSuspended(node)
             if (not nodeSusp):
-                info(2,"Server woken up after: %.3fs" % (time.time() - startTime))
+                logger.info("Server woken up after: %.3fs", (time.time() - startTime))
                 return 1
             else:
                 time.sleep(0.1)

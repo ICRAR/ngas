@@ -38,21 +38,19 @@ suspended NGAS hosts, suspending itself.
 import cPickle
 import glob
 import logging
-import math
 import os
 import shutil
 import time
 import types
 
 import ngamsArchiveUtils, ngamsSrvUtils
-from ngamsLib.ngamsCore import TRACE, info, \
+from ngamsLib.ngamsCore import TRACE, \
     getFileCreationTime, getFileModificationTime, getFileAccessTime, rmFile, \
     NGAMS_DB_DIR, NGAMS_DB_NGAS_FILES, checkCreatePath, \
     NGAMS_DB_CH_CACHE, NGAMS_NOTIF_DATA_CHECK, \
     NGAMS_TEXT_MT, NGAMS_PICKLE_FILE_EXT, NGAMS_DB_CH_FILE_DELETE, \
     NGAMS_DB_CH_FILE_INSERT, NGAMS_DB_CH_FILE_UPDATE, \
     isoTime2Secs, genLog, NGAMS_PROC_DIR, NGAMS_SUBSCR_BACK_LOG_DIR, \
-    iso8601ToSecs, \
     NGAMS_HTTP_INT_AUTH_USER, getHostName, NGAMS_OFFLINE_CMD, NGAMS_NOTIF_ERROR,\
     loadPlugInEntryPoint
 from ngamsLib import ngamsFileInfo, ngamsNotification
@@ -77,7 +75,7 @@ def checkStopJanitorThread(stopEvt):
     Checks if the Janitor Thread should be stopped, raising an exception if needed
     """
     if stopEvt.isSet():
-        info(2,"Exiting Janitor Thread")
+        logger.info("Exiting Janitor Thread")
         raise StopJanitorThreadException()
 
 def suspend(stopEvt, t):
@@ -86,7 +84,7 @@ def suspend(stopEvt, t):
     to stop
     """
     if stopEvt.wait(t):
-        info(2,"Exiting Janitor Thread")
+        logger.info("Exiting Janitor Thread")
         raise StopJanitorThreadException()
 
 def checkCleanDirs(startDir,
@@ -137,12 +135,12 @@ def checkCleanDirs(startDir,
             tmpGlobRes = glob.glob(entry + "/*")
             if (tmpGlobRes == []):
                 if ((timeNow - refTime) > dirExp):
-                    info(4,"Deleting temporary directory: " + entry)
+                    logger.debug("Deleting temporary directory: %s", entry)
                     rmFile(entry)
         else:
             if (fileExp):
                 if ((timeNow - refTime) > fileExp):
-                    info(4,"Deleting temporary file: " + entry)
+                    logger.debug("Deleting temporary file: %s", entry)
                     rmFile(entry)
 
 
@@ -466,16 +464,16 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
     tmpSnapshotDbm = None
 
     if (not srvObj.getCfg().getDbSnapshot()):
-        info(3,"NOTE: DB Snapshot Feature is switched off")
+        logger.debug("NOTE: DB Snapshot Feature is switched off")
         return
 
-    info(4,"Generate list of disks to check ...")
+    logger.debug("Generate list of disks to check ...")
     tmpDiskIdMtPtList = srvObj.getDb().getDiskIdsMtPtsMountedDisks(srvObj.getHostId())
     diskIdMtPtList = []
     for diskId, mtPt in tmpDiskIdMtPtList:
         diskIdMtPtList.append([mtPt, diskId])
     diskIdMtPtList.sort()
-    info(4,"Generated list of disks to check: " + str(diskIdMtPtList))
+    logger.debug("Generated list of disks to check: %s", str(diskIdMtPtList))
 
     # Generate temporary snapshot filename.
     ngasId = srvObj.getHostId()
@@ -488,20 +486,19 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
     # Temporary DBM to contain information about 'lost files', i.e. files,
     # which are registered in the DB and found in the DB Snapshot, but
     # which are not found on the disk.
-    info(4,"Create DBM to hold information about lost files ...")
+    logger.debug("Create DBM to hold information about lost files ...")
     lostFileRefsDbmName = os.path.normpath(tmpDir + "/" + ngasId +\
                                            "_LOST_FILES")
     rmFile(lostFileRefsDbmName + "*")
     lostFileRefsDbm = ngamsDbm.ngamsDbm(lostFileRefsDbmName, writePerm=1)
-    info(4,"Created DBM to hold information about lost files")
 
     # Carry out the check.
     for mtPt, diskId in diskIdMtPtList:
 
         checkStopJanitorThread(stopEvt)
 
-        info(2,"Check/create/update DB Snapshot for disk with " +\
-             "mount point: " + mtPt)
+        logger.debug("Check/create/update DB Snapshot for disk with " +\
+             "mount point: %s", mtPt)
 
         try:
             snapshotDbm = _openDbSnapshot(srvObj.getCfg(), mtPt)
@@ -558,14 +555,14 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
             # Loop over the possible entries in the DB Snapshot and compare
             # these against the DB.
             #####################################################################
-            info(4,"Loop over file entries in the DB Snapshot - %s ..." % diskId)
+            logger.debug("Loop over file entries in the DB Snapshot - %s ...", diskId)
             count = 0
             try:
                 key, pickleValue = snapshotDbm.first()
             except Exception, e:
                 msg = "Exception raised accessing DB Snapshot for disk: %s. " +\
                       "Error: %s"
-                info(4,msg % (diskId, str(e)))
+                logger.debug(msg, diskId, str(e))
                 key = None
                 snapshotDbm.dbc = None
 
@@ -671,19 +668,18 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
             #################################################################################################
             del snapshotDelDbm
 
-            info(4,"Looped over file entries in the DB Snapshot - %s" % diskId)
+            logger.debug("Looped over file entries in the DB Snapshot - %s", diskId)
             # End-Loop: Check DB against DB Snapshot. ###########################
             if (_updateSnapshot(srvObj.getCfg())): snapshotDbm.sync()
             tmpSnapshotDbm.sync()
 
-            info(2,"Checked/created/updated DB Snapshot for disk with " +\
-                 "mount point: " + mtPt)
+            logger.info("Checked/created/updated DB Snapshot for disk with mount point: %s", mtPt)
 
             #####################################################################
             # Loop over the entries in the DB and compare these against the
             # DB Snapshot.
             #####################################################################
-            info(4,"Loop over the entries in the DB - %s ..." % diskId)
+            logger.debug("Loop over the entries in the DB - %s ...", diskId)
             count = 0
             try:
                 key, pickleValue = tmpSnapshotDbm.first()
@@ -745,7 +741,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                 #except:
                 #    key = None
                 #################################################################################################
-            info(4,"Checked DB Snapshot against DB - %s" % diskId)
+            logger.debug("Checked DB Snapshot against DB - %s", diskId)
             # End-Loop: Check DB Snapshot against DB. ###########################
             if (_updateSnapshot(srvObj.getCfg())):
                 snapshotDbm.sync()
@@ -758,7 +754,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                 tmpSnapshotDbm.close()
 
     # Check if lost files found.
-    info(4,"Check if there are Lost Files ...")
+    logger.debug("Check if there are Lost Files ...")
     noOfLostFiles = lostFileRefsDbm.getCount()
     if (noOfLostFiles):
         statRep = os.path.normpath(tmpDir + "/" + ngasId +\
@@ -795,8 +791,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                                  [], 1, NGAMS_TEXT_MT,
                                  NGAMS_JANITOR_THR + "_LOST_FILES", 1)
         rmFile(statRep)
-    info(4,"Checked if there are Lost Files. Number of lost files: %d" %\
-         noOfLostFiles)
+    logger.debug("Number of lost files found: %d", noOfLostFiles)
 
     # Clean up.
     del lostFileRefsDbm
@@ -913,11 +908,11 @@ def checkDbChangeCache(srvObj,
 
         tmpMsg = "Handled DB Snapshot Cache Files. Mount point: %s. " +\
                  "Number of Cache Files handled: %d."
-        tmpMsg = tmpMsg % (diskMtPt, fileCount)
+        args = [diskMtPt, fileCount]
         if (fileCount):
-            tmpMsg += "Total time: %.3fs. Time per file: %.3fs." %\
-                      (totTime, (totTime / fileCount))
-        info(4, tmpMsg)
+            tmpMsg += "Total time: %.3fs. Time per file: %.3fs."
+            args += (totTime, (totTime / fileCount))
+        logger.debug(tmpMsg, *args)
     finally:
         if snapshotDbm:
             snapshotDbm.close()
@@ -967,8 +962,8 @@ def updateDbSnapShots(srvObj,
             diskIdMtPtList.append([mtPt, diskId])
         diskIdMtPtList.sort()
         for mtPt, diskId in diskIdMtPtList:
-            info(4,"Check/Update DB Snapshot Document for disk with " +\
-                 "mount point: " + mtPt)
+            logger.debug("Check/Update DB Snapshot Document for disk with " +\
+                 "mount point: %s", mtPt)
             try:
                 checkDbChangeCache(srvObj, diskId, mtPt, stopEvt)
             except StopJanitorThreadException:
@@ -1017,7 +1012,7 @@ def janitorThread(srvObj, stopEvt):
         # case a problem occurs, like e.g. a problem with the DB connection.
         try:
             checkStopJanitorThread(stopEvt)
-            info(4,"Janitor Thread running ...")
+            logger.debug("Janitor Thread running ...")
 
             ##################################################################
             # => Check if there are any Temporary DB Snapshot Files to handle.
@@ -1032,7 +1027,7 @@ def janitorThread(srvObj, stopEvt):
             # => Check Back-Log Buffer (if appropriate).
             if (srvObj.getCfg().getAllowArchiveReq() and \
                 srvObj.getCfg().getBackLogBuffering()):
-                info(4,"Checking Back-Log Buffer ...")
+                logger.debug("Checking Back-Log Buffer ...")
                 try:
                     ngamsArchiveUtils.checkBackLogBuffer(srvObj)
                 except Exception, e:
@@ -1045,19 +1040,19 @@ def janitorThread(srvObj, stopEvt):
             #    appropriate). If a Processing Directory is more than
             #    30 minutes old, it is deleted.
             ##################################################################
-            info(4,"Checking/cleaning up Processing Directory ...")
+            logger.debug("Checking/cleaning up Processing Directory ...")
             procDir = os.path.normpath(srvObj.getCfg().\
                                        getProcessingDirectory() +\
                                        "/" + NGAMS_PROC_DIR)
             checkCleanDirs(procDir, 1800, 1800, 0)
-            info(4,"Processing Directory checked/cleaned up")
+            logger.debug("Processing Directory checked/cleaned up")
             ##################################################################
 
             ##################################################################
             # => Check if there are old Requests in the Request DBM, which
             #    should be removed.
             ##################################################################
-            info(4,"Checking/cleaning up Request DB ...")
+            logger.debug("Checking/cleaning up Request DB ...")
             #reqTimeOut = 10
             reqTimeOut = 86400
             try:
@@ -1076,15 +1071,15 @@ def janitorThread(srvObj, stopEvt):
                     if (reqPropsObj.getCompletionTime() != None):
                         complTime = reqPropsObj.getCompletionTime()
                         if ((timeNow - complTime) >= reqTimeOut):
-                            info(4,"Removing request with ID from " +\
-                                 "Request DBM: %s" % str(reqId))
+                            logger.debug("Removing request with ID from " +\
+                                 "Request DBM: %s", str(reqId))
                             srvObj.delRequest(reqId)
                             continue
                     if (reqPropsObj.getLastRequestStatUpdate() != None):
                         lastReq = reqPropsObj.getLastRequestStatUpdate()
                         if ((timeNow - lastReq) >= reqTimeOut):
-                            info(4,"Removing request with ID from " +\
-                                 "Request DBM: %s" % str(reqId))
+                            logger.debug("Removing request with ID from " +\
+                                 "Request DBM: %s", str(reqId))
                             srvObj.delRequest(reqId)
                             continue
                     time.sleep(0.020)
@@ -1092,26 +1087,26 @@ def janitorThread(srvObj, stopEvt):
                 return
             except Exception, e:
                 logger.exception("Exception encountered")
-            info(4,"Request DB checked/cleaned up")
+            logger.debug("Request DB checked/cleaned up")
             ##################################################################
 
             ##################################################################
             # => Check if we need to clean up Subscription Back-Log Buffer.
             ##################################################################
-            info(4,"Checking/cleaning up Subscription Back-Log Buffer ...")
+            logger.debug("Checking/cleaning up Subscription Back-Log Buffer ...")
             backLogDir = os.path.\
                          normpath(srvObj.getCfg().getBackLogBufferDirectory()+\
                                   "/" + NGAMS_SUBSCR_BACK_LOG_DIR)
             expTime = isoTime2Secs(srvObj.getCfg().getBackLogExpTime())
             checkCleanDirs(backLogDir, expTime, expTime, 0)
-            info(4,"Subscription Back-Log Buffer checked/cleaned up")
+            logger.debug("Subscription Back-Log Buffer checked/cleaned up")
 
             # => Check if there are left-over files in the NG/AMS Temp. Dir.
-            info(4,"Checking/cleaning up NG/AMS Temp Directory ...")
+            logger.debug("Checking/cleaning up NG/AMS Temp Directory ...")
             tmpDir = ngamsHighLevelLib.getTmpDir(srvObj.getCfg())
             expTime = (12 * 3600)
             checkCleanDirs(tmpDir, expTime, expTime, 1)
-            info(4,"NG/AMS Temp Directory checked/cleaned up")
+            logger.debug("NG/AMS Temp Directory checked/cleaned up")
 
             # => Check for retained Email Notification Messages to send out.
             ngamsNotification.checkNotifRetBuf(srvObj.getHostId(), srvObj.getCfg())
@@ -1126,7 +1121,7 @@ def janitorThread(srvObj, stopEvt):
             if (os.path.exists(srvObj.getCfg().getLocalLogFile())):
                 unsavedLogFiles = glob.glob(logPath + '/*.unsaved')
                 if (len(unsavedLogFiles) > 0):
-                    info(3,"Archiving unsaved log-files ...")
+                    logger.debug("Archiving unsaved log-files ...")
                     for ulogFile in unsavedLogFiles:
                         ologFile = '.'.join(ulogFile.split('.')[:-1])
                         shutil.move(ulogFile, ologFile)
@@ -1138,7 +1133,7 @@ def janitorThread(srvObj, stopEvt):
             ##################################################################
             # => Check if there are rotated Local Log Files to remove.
             ##################################################################
-            info(4,"Check if there are rotated Local Log Files to remove ...")
+            logger.debug("Check if there are rotated Local Log Files to remove ...")
             rotLogFilePat = os.path.normpath(logPath + "/LOG-ROTATE-*.nglog")
             rotLogFileList = glob.glob(rotLogFilePat)
             delLogFiles = (len(rotLogFileList) -\
@@ -1146,10 +1141,10 @@ def janitorThread(srvObj, stopEvt):
             if (delLogFiles > 0):
                 rotLogFileList.sort()
                 for n in range(delLogFiles):
-                    info(1,"Removing Rotated Local Log File: " +\
+                    logger.debug("Removing Rotated Local Log File: " +\
                          rotLogFileList[n])
                     rmFile(rotLogFileList[n])
-            info(4,"Checked for expired, rotated Local Log Files")
+            logger.debug("Checked for expired, rotated Local Log Files")
             ##################################################################
 
             ##################################################################
@@ -1185,9 +1180,9 @@ def janitorThread(srvObj, stopEvt):
                 # Check if the individual host is 'ripe' for being woken up.
                 suspHost = wakeUpReq[0]
                 if (timeNow > wakeUpReq[1]):
-                    info(2,"Found suspended NG/AMS Server: "+ suspHost + " " +\
-                         "that should be woken up by this NG/AMS Server: " +\
-                         hostId + " ...")
+                    logger.info("Found suspended NG/AMS Server: %s " +\
+                         "that should be woken up by this NG/AMS Server: %s",
+                         suspHost, hostId)
                     ngamsSrvUtils.wakeUpHost(srvObj, suspHost)
             ##################################################################
 
@@ -1204,8 +1199,7 @@ def janitorThread(srvObj, stopEvt):
                 if ((timeNow - srvObj.getLastReqEndTime()) >=
                     srvObj.getCfg().getIdleSuspensionTime()):
                     # Conditions are met for suspending this NGAS host.
-                    info(2,"NG/AMS Server: %s suspending itself ..." %\
-                         hostId)
+                    logger.info("NG/AMS Server: %s suspending itself ...", hostId)
 
                     # If Data Checking is on, we request a wake-up call.
                     if (srvObj.getCfg().getDataCheckActive()):
@@ -1216,8 +1210,8 @@ def janitorThread(srvObj, stopEvt):
                     # Now, suspend this host.
                     srvObj.getDb().markHostSuspended(srvObj.getHostId())
                     suspPi = srvObj.getCfg().getSuspensionPlugIn()
-                    info(3,"Invoking Suspension Plug-In: " + suspPi + " to " +\
-                         "suspend NG/AMS Server: " + hostId + " ...")
+                    logger.debug("Invoking Suspension Plug-In: %s to " +\
+                         "suspend NG/AMS Server: %s", suspPi, hostId)
                     try:
                         plugInMethod = loadPlugInEntryPoint(suspPi)
                         plugInMethod(srvObj)
@@ -1236,7 +1230,7 @@ def janitorThread(srvObj, stopEvt):
             srvObj.incJanitorThreadRunCount()
 
             # Suspend the thread for the time indicated.
-            info(4,"Janitor Thread executed - suspending for %d [s] ..." % (suspendTime,))
+            logger.debug("Janitor Thread executed - suspending for %d [s] ...", suspendTime)
             startTime = time.time()
             while ((time.time() - startTime) < suspendTime):
                 # Check if we should update the DB Snapshot.

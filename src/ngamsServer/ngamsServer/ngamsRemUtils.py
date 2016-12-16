@@ -40,7 +40,7 @@ from ngamsLib import ngamsDbm, ngamsDbCore, ngamsLib
 from ngamsLib import ngamsDiskInfo, ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsNotification
 from ngamsLib.ngamsCore import TRACE, NGAMS_NOTIF_INFO, NGAMS_TEXT_MT, \
-    genLog, NGAMS_FAILURE, info, rmFile, NGAMS_DISK_INFO, \
+    genLog, NGAMS_FAILURE, rmFile, NGAMS_DISK_INFO, \
     NGAMS_VOLUME_ID_FILE, NGAMS_VOLUME_INFO_FILE, NGAMS_MAX_SQL_QUERY_SZ
 from pccUt import PccUtTime
 
@@ -559,7 +559,7 @@ def checkFileCopiesAndReg(srvObj,
     # A Disk ID but no file references are given. Retrieve information
     # about files concerned from the DB.
     if (diskId):
-        info(4,"Retrieving information about files on disk with ID: " + diskId)
+        logger.debug("Retrieving information about files on disk with ID: %s", diskId)
         tmpFileSumDbmName = os.path.normpath(dbFilePat + "_TMP_FILE_SUM")
         tmpFileSumDbmName = srvObj.getDb().\
                             dumpFileSummary1(tmpFileSumDbmName,
@@ -585,7 +585,7 @@ def checkFileCopiesAndReg(srvObj,
         # further down in this method.
         #
         # Key in this dictionary is the complete filename of the file.
-        info(4,"Get list of files stored on disk ...")
+        logger.debug("Get list of files stored on disk ...")
         tmpDiskInfo = srvObj.getDb().getDiskInfoFromDiskId(diskId)
         diskInfoObj = ngamsDiskInfo.ngamsDiskInfo().\
                       unpackSqlResult(tmpDiskInfo)
@@ -596,8 +596,7 @@ def checkFileCopiesAndReg(srvObj,
         if (not ignoreMounted):
             basePath = os.path.normpath(diskInfoObj.getMountPoint())
             pattern = "/*"
-            info(4,"Generating list with files on disk with base path: " +\
-                 basePath)
+            logger.debug("Generating list with files on disk with base path: %s", basePath)
             while (1):
                 tmpFileList = glob.glob(basePath + pattern)
                 if (len(tmpFileList) == 0):
@@ -615,7 +614,7 @@ def checkFileCopiesAndReg(srvObj,
 
     # Generate File ID DBM in case a file list DBM is given.
     if (fileListDbmName):
-        info(4,"Handling file list DBM given in the function call ...")
+        logger.debug("Handling file list DBM given in the function call ...")
         fileListDbm.initKeyPtr()
         while (1):
             key, tmpFileInfo = fileListDbm.getNext()
@@ -634,7 +633,7 @@ def checkFileCopiesAndReg(srvObj,
 
     # We need to generate a list with all files available in the system
     # with the given File ID/File Version.
-    info(4,"Retrieving information about all files available with the " +\
+    logger.debug("Retrieving information about all files available with the " +\
          "File ID/File Version as defined by the query")
 
     # Due to the limitation of the size of SQL queries, we have to split up
@@ -686,7 +685,7 @@ def checkFileCopiesAndReg(srvObj,
     # It is the intention to figure out how many copies we have of each file
     # identified by File ID + File Version stored ON DIFFERENT STORAGE MEDIAS
     # + on different hosts.
-    info(4,"Generate DBM DB with info about independent file copies ...")
+    logger.debug("Generate DBM DB with info about independent file copies ...")
     complFileListDbm.initKeyPtr()
     while (1):
         fileKey, fileInfo = complFileListDbm.getNext()
@@ -700,7 +699,7 @@ def checkFileCopiesAndReg(srvObj,
 
     # Check if there are at least minReqCopies occurrences of the files +
     # check that all files are registered (if a Disk ID is specified).
-    info(4,"Check for files with less copies than: " + str(minReqCopies))
+    logger.debug("Check for files with less copies than: %s", str(minReqCopies))
     checkDicDbm.initKeyPtr()
     while (1):
         checkDicKey, tmpDic = checkDicDbm.getNext()

@@ -42,7 +42,7 @@ import time
 
 import sqlite3 as sqlite
 
-from ngamsLib.ngamsCore import info, TRACE, rmFile,\
+from ngamsLib.ngamsCore import TRACE, rmFile,\
     iso8601ToSecs, genLog,\
     loadPlugInEntryPoint
 from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib
@@ -100,7 +100,7 @@ def checkStopCacheControlThread(stopEvt):
     yes, to stop it.
     """
     if stopEvt.is_set():
-        info(2, "Stopping the Cache Control Service")
+        logger.info("Stopping the Cache Control Service")
         raise StopCacheControlThreadEx()
 
 def suspend(stopEvt, t):
@@ -139,7 +139,7 @@ def createCacheDbms(srvObj):
         srvObj._cacheContDbmsCur.execute(sqlQuery)
     except Exception, e:
         if (str(e) == "no such table: ngas_cache"):
-            info(2, "Table ngas_cache not found in local Cache DBMS - " +\
+            logger.info("Table ngas_cache not found in local Cache DBMS - " +\
                  "creating")
             # Create table
             sqlQuery = "CREATE TABLE ngas_cache (" +\
@@ -677,9 +677,9 @@ def checkNewFilesDbm(srvObj):
             logger.error(msg)
 
         # Add the new entry.
-        info(3, "Adding new entry in Cache DBMS: %s/%s/%s" %\
-             (fileInfo[NGAMS_CACHE_DISK_ID], fileInfo[NGAMS_CACHE_FILE_ID],
-              fileInfo[NGAMS_CACHE_FILE_VER]))
+        logger.debug("Adding new entry in Cache DBMS: %s/%s/%s",
+                     fileInfo[NGAMS_CACHE_DISK_ID], fileInfo[NGAMS_CACHE_FILE_ID],
+                     fileInfo[NGAMS_CACHE_FILE_VER])
         timeNow = time.time()
         cacheEntryObject = ngamsCacheEntry.ngamsCacheEntry().\
                            unpackSqlInfo(sqlFileInfo).\
@@ -756,8 +756,8 @@ def requestFileForDeletion(srvObj, sqlFileInfo):
     # maybe too db resource intensive, since this file is about to be deleted, the original value is not that important
     # moreover, it is most likely just ingested (when cache delete is triggered), so we can assume that it is "00000000"
     try:
-       info(3, 'Set file_status for file %s' % fileId)
-       srvObj.getDb().setFileStatus(fileId, fileVersion, diskId, CACHE_DEL_BIT_MASK) # should be (CACHE_DEL_BIT_MASK | file_status)
+        logger.debug('Set file_status for file %s', fileId)
+        srvObj.getDb().setFileStatus(fileId, fileVersion, diskId, CACHE_DEL_BIT_MASK) # should be (CACHE_DEL_BIT_MASK | file_status)
     except Exception, err:
        logger.error('Fail to set file status for file %s, Exception: %s', fileId, str(err))
 
@@ -781,7 +781,7 @@ def scheduleFileForDeletion(srvObj,
     fileVersion = int(sqlFileInfo[NGAMS_CACHE_FILE_VER])
     msg = "Scheduling entry %s/%s/%s for deletion from the " +\
           "NGAS Cache Archive"
-    info(2, msg % (diskId, fileId, str(fileVersion)))
+    logger.info(msg, diskId, fileId, str(fileVersion))
     sqlQuery = _SCHEDULE_DEL_TPL % (diskId, fileId, int(fileVersion))
     queryCacheDbms(srvObj, sqlQuery)
     srvObj.getDb().updateCacheEntry(diskId, fileId, fileVersion, 1)
@@ -924,9 +924,9 @@ def _cacheCtrlPlugInThread(threadGrObj):
                 try:
                     deleteFile = plugInMethod(srvObj, cacheEntryObj)
                     if (deleteFile):
-                        info(2, deleteMsg % (cacheEntryObj.getDiskId(),
+                        logger.info(deleteMsg, cacheEntryObj.getDiskId(),
                                              cacheEntryObj.getFileId(),
-                                             str(cacheEntryObj.getFileVersion())))
+                                             str(cacheEntryObj.getFileVersion()))
                         srvObj._cacheCtrlPiDelDbm.addIncKey(cacheEntryObj)
                     else:
                         srvObj._cacheCtrlPiFilesDbm.addIncKey(cacheEntryObj)
@@ -995,7 +995,7 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
     # 1. Evaluate if there are files residing in the cache for more than
     #    the specified amount of time.
     if (srvObj.getCfg().getVal("Caching[1].MaxTime")):
-        info(4, "Applying criteria: Expired files ...")
+        logger.debug("Applying criteria: Expired files ...")
         maxCacheTime = int(srvObj.getCfg().getVal("Caching[1].MaxTime"))
         sqlQuery = "SELECT * FROM ngas_cache WHERE cache_time < %.6f" %\
                    (time.time() - maxCacheTime)
@@ -1011,10 +1011,10 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
                 fileInfoList = srvObj._cacheContDbmsCur.fetchmany(10000)
                 if (not fileInfoList): break
                 for sqlFileInfo in fileInfoList:
-                    info(2, "CACHE-CRITERIA: Maximum Time Expired: %s/%s/%s" %\
-                         (sqlFileInfo[NGAMS_CACHE_DISK_ID],
+                    logger.info("CACHE-CRITERIA: Maximum Time Expired: %s/%s/%s",
+                          sqlFileInfo[NGAMS_CACHE_DISK_ID],
                           sqlFileInfo[NGAMS_CACHE_FILE_ID],
-                          str(sqlFileInfo[NGAMS_CACHE_FILE_VER])))
+                          str(sqlFileInfo[NGAMS_CACHE_FILE_VER]))
                     delFilesDbm.addIncKey(sqlFileInfo)
             srvObj._cacheContDbms.commit()
             srvObj._cacheContDbmsSem.release()
@@ -1032,12 +1032,11 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
 
         del delFilesDbm
         delFilesDbm = None
-        info(4, "Applied criteria: Expired files")
 
     # 2. Remove files if there more files (in volume) in the cache than the
     #    specified threshold.
     if (srvObj.getCfg().getVal("Caching[1].MaxCacheSize")):
-        info(4, "Applying criteria: Maximum cache size ...")
+        logger.debug("Applying criteria: Maximum cache size ...")
         maxCacheSize = int(srvObj.getCfg().getVal("Caching[1].MaxCacheSize"))
         # Check if the size of the cache content exceeds the specified limit.
         sqlQuery = "SELECT sum(file_size) FROM ngas_cache"
@@ -1049,14 +1048,14 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
 
         msg = "Current size of cache: %.3f GB, " +\
                   "Maximum cache size: %.3f GB"
-        info(3, msg % ((float(cacheSum) / 1e9),
-                           (float(maxCacheSize) / 1e9)))
+        logger.debug(msg, (float(cacheSum) / 1e9),
+                           (float(maxCacheSize) / 1e9))
 
         if (cacheSum > maxCacheSize):
             msg = "Current size of cache: %.6f MB exceeding specified " +\
                   "threshold: %.6f MB"
-            info(3, msg % ((float(cacheSum) / 1e6),
-                           (float(maxCacheSize) / 1e6)))
+            logger.debug(msg, (float(cacheSum) / 1e6),
+                           (float(maxCacheSize) / 1e6))
             # Reduce the size of the cache to 10% below the threshold
             # to avoid having to clean-up constantly due to this rule.
             maxCacheSize *= 0.9
@@ -1081,8 +1080,8 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
                                                                 sqlFileInfo[NGAMS_CACHE_FILE_ID],
                                                                 sqlFileInfo[NGAMS_CACHE_FILE_VER],
                                                                 sqlFileInfo[NGAMS_CACHE_DISK_ID])):
-                                    info(2, "Cannot delete file from the cache: %s/%s/%s" %\
-                                         (str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2])))
+                                    logger.info("Cannot delete file from the cache: %s/%s/%s",
+                                          str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2]))
                                     continue
                             except Exception, cee:
                                 if (str(cee).lower().find('file not found in ngas db') > -1):
@@ -1093,10 +1092,10 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
 
                         msg = "CACHE-CRITERIA: Maximum Cache Size " +\
                               "Exceeded: %s/%s/%s"
-                        info(2, msg %\
-                             (sqlFileInfo[NGAMS_CACHE_DISK_ID],
+                        logger.info(msg,
+                              sqlFileInfo[NGAMS_CACHE_DISK_ID],
                               sqlFileInfo[NGAMS_CACHE_FILE_ID],
-                              str(sqlFileInfo[NGAMS_CACHE_FILE_VER])))
+                              str(sqlFileInfo[NGAMS_CACHE_FILE_VER]))
                         delFilesDbm.addIncKey(sqlFileInfo)
                         fileSize = int(sqlFileInfo[NGAMS_CACHE_FILE_SIZE])
                         cacheSum -= fileSize
@@ -1117,12 +1116,11 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
 
             del delFilesDbm
             delFilesDbm = None
-        info(4, "Applied criteria: Maximum cache size")
 
     # 3. Remove files if there are more files in the cache than the
     #    specified threshold.
     if (srvObj.getCfg().getVal("Caching[1].MaxFiles")):
-        info(4, "Applying criteria: Maximum number of files ...")
+        logger.debug("Applying criteria: Maximum number of files ...")
         maxFiles = int(srvObj.getCfg().getVal("Caching[1].MaxFiles"))
         sqlQuery = "SELECT count(*) FROM ngas_cache"
         numberOfFiles = queryCacheDbms(srvObj, sqlQuery)[0][0]
@@ -1152,10 +1150,10 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
                     for sqlFileInfo in fileInfoList:
                         msg = "CACHE-CRITERIA: Maximum Number of Files in " +\
                               "Cache Exceeded: %s/%s/%s"
-                        info(2, msg %\
-                             (sqlFileInfo[NGAMS_CACHE_DISK_ID],
+                        logger.info(msg,
+                              sqlFileInfo[NGAMS_CACHE_DISK_ID],
                               sqlFileInfo[NGAMS_CACHE_FILE_ID],
-                              str(sqlFileInfo[NGAMS_CACHE_FILE_VER])))
+                              str(sqlFileInfo[NGAMS_CACHE_FILE_VER]))
                         delFilesDbm.addIncKey(sqlFileInfo)
                         count += 1
                         if (count >= noOfFilesToRemove): break
@@ -1174,7 +1172,6 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
                 markFileChecked(srvObj, sqlFileInfo)
             del delFilesDbm
             delFilesDbm = None
-        info(4, "Applied criteria: Maximum number of files")
 
     # 4. Check if the minimum space that should be available in the cache
     #    is exhausted.
@@ -1188,13 +1185,13 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
               "SUPPORTED"
         logger.warning(msg)
     if (0 and srvObj.getCfg().getVal("Caching[1].MinCacheSpace")):
-        info(4, "Applying criteria: Minimum available cache space ...")
+        logger.debug("Applying criteria: Minimum available cache space ...")
         minCacheSpace = int(srvObj.getCfg().getVal("Caching[1].MinCacheSpace"))
         spaceAvailMb = srvObj.getDb().getSpaceAvailForHost(srvObj.getHostId())
         msg = "Space Available=%.6f MB, Min. Cache Space=%.6f MB, " +\
               "Availability till Threshold: %.6f MB"
-        info(4, msg % (spaceAvailMb, minCacheSpace,
-                       (spaceAvailMb - (1.1 * minCacheSpace))))
+        logger.debug(msg, spaceAvailMb, minCacheSpace,
+                       (spaceAvailMb - (1.1 * minCacheSpace)))
         if (spaceAvailMb < minCacheSpace):
             # Reduce the size of the cache to 10% below the threshold
             # to avoid having to clean-up constantly due to this rule.
@@ -1215,10 +1212,10 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
                     for sqlFileInfo in fileInfoList:
                         msg = "CACHE-CRITERIA: Minimum Cache Space " +\
                               "Exhausted: %s/%s/%s"
-                        info(2, msg %\
-                             (sqlFileInfo[NGAMS_CACHE_DISK_ID],
+                        logger.info(msg,
+                              sqlFileInfo[NGAMS_CACHE_DISK_ID],
                               sqlFileInfo[NGAMS_CACHE_FILE_ID],
-                              str(sqlFileInfo[NGAMS_CACHE_FILE_VER])))
+                              str(sqlFileInfo[NGAMS_CACHE_FILE_VER]))
                         delFilesDbm.addIncKey(sqlFileInfo)
                         fileSize = sqlFileInfo[NGAMS_CACHE_FILE_SIZE]
                         spaceAvailMb += fileSize
@@ -1239,11 +1236,10 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
 
             del delFilesDbm
             delFilesDbm = None
-        info(4, "Applied criteria: Minimum available cache space")
 
     # 5. Invoke the Cache Control Plug-In (if specified) on the files.
     if (srvObj.getCfg().getVal("Caching[1].CacheControlPlugIn")):
-        info(4, "Applying criteria: Cache Control Plug-In ...")
+        logger.debug("Applying criteria: Cache Control Plug-In ...")
 
         # Query the files from the DB and process them.
         sqlQuery = "SELECT * FROM ngas_cache"
@@ -1297,8 +1293,6 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
             setCacheEntryObjectCacheDbms(srvObj, cacheEntryObj)
             srvObj._cacheCtrlPiFilesDbm.rem(key)
 
-        info(4, "Applied criteria: Cache Control Plug-In")
-
 
 def removeFile(srvObj,
                diskInfoObj,
@@ -1325,26 +1319,23 @@ def removeFile(srvObj,
     # Remove the entry from the DB. This includes updating the NGAS Disks
     # Table.
     try:
-        info(3, "Deleting file information from DB for file: %s/%s/%s" %\
-             (diskInfoObj.getDiskId(), fileId, str(fileVersion)))
+        logger.debug("Deleting file information from DB for file: %s/%s/%s",
+             diskInfoObj.getDiskId(), fileId, str(fileVersion))
         srvObj.getDb().deleteFileInfo(srvObj.getHostId(), diskInfoObj.getDiskId(), fileId,
                                       fileVersion)
-        msg = "Deleted file from DB: %s/%s/%s" %\
-              (diskInfoObj.getDiskId(), fileId, str(fileVersion))
-        info(2, msg)
     except Exception, e:
         msg = genLog("NGAMS_ER_DEL_FILE_DB", [diskInfoObj.getDiskId(),
                                               fileId, fileVersion, str(e)])
         logger.error(msg)
     # Remove copy on disk.
     try:
-        info(2, "Removing copy on disk, file: %s/%s/%s" %\
-             (diskInfoObj.getDiskId(), fileId, str(fileVersion)))
+        logger.debug("Removing copy on disk, file: %s/%s/%s",
+             diskInfoObj.getDiskId(), fileId, str(fileVersion))
         complFilename = os.path.normpath(diskInfoObj.getMountPoint() + "/" +\
                                          filename)
         msg = "Deleting copy of file: %s/%s/%s: %s"
-        info(2, msg % (diskInfoObj.getDiskId(), fileId, str(fileVersion),
-                       complFilename))
+        logger.debug(msg, diskInfoObj.getDiskId(), fileId, str(fileVersion),
+                       complFilename)
         rmFile(complFilename)
     except Exception:
         msg = "Error removing archived file: %s/%s/%s/%s. Error: %s"
@@ -1395,8 +1386,8 @@ def cleanUpCache(srvObj):
         fileVersion = sqlFileInfo[2]
         filename    = sqlFileInfo[3]
 
-        info(2, "Deleting entry from the cache: %s/%s/%s" %\
-             (str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2])))
+        logger.info("Deleting entry from the cache: %s/%s/%s",
+             str(sqlFileInfo[0]), str(sqlFileInfo[1]), str(sqlFileInfo[2]))
 
         # Remove the entry from the cache:
         # - First get the information for the disk hosting the file.
@@ -1452,7 +1443,7 @@ def cacheControlThread(srvObj, stopEvt, check_can_be_deleted):
         # case a problem occurs, like e.g. a problem with the DB connection.
         try:
             checkStopCacheControlThread(stopEvt)
-            info(5, "Cache Control Thread starting next iteration ...")
+            logger.debug( "Cache Control Thread starting next iteration ...")
 
             ###################################################################
             # Business logic of Cache Control Thread
@@ -1475,7 +1466,7 @@ def cacheControlThread(srvObj, stopEvt, check_can_be_deleted):
             ###################################################################
             suspTime = (period - (time.time() - startTime))
             if (suspTime < 1): suspTime = 1
-            info(4, "Cache Control Thread executed - suspending for %d s ..." % (suspTime,))
+            logger.debug("Cache Control Thread executed - suspending for %d s ...", suspTime)
             suspend(stopEvt, suspTime)
 
         except StopCacheControlThreadEx:

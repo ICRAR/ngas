@@ -35,8 +35,6 @@ import commands
 import logging
 import os
 
-from ngamsLib.ngamsCore import info
-
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +100,7 @@ def ngamsMWA_Compress_FilterPlugin(srvObj,
         if (a > -1):
             return 0 # if the file is already compressed, do not add again
         else:
-            info(3, "File %s added" % filename)
+            logger.info("File %s added", filename)
             return 1
     else:
         logger.warning('Fail to check header for file %s: %s', filename, re[1])

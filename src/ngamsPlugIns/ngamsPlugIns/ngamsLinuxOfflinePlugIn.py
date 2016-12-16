@@ -32,10 +32,14 @@ Module that contains a System Offline Plug-In used by the ESO NGAS
 installations.
 """
 
+import logging
+
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import genLog, info
+from ngamsLib.ngamsCore import genLog
 import ngamsLinuxSystemPlugInApi, ngamsEscaladeUtils
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsLinuxOfflinePlugIn(srvObj,
                             reqPropsObj = None):
@@ -100,8 +104,7 @@ def ngamsLinuxOfflinePlugIn(srvObj,
                 errMsg = genLog("NGAMS_ER_OFFLINE_PLUGIN", [errMsg])
                 raise Exception(errMsg)
             if (parDicOffline.has_key("module")):
-                msg = "Kernel module " + parDicOnline["module"] + " unloaded"
-                info(1,msg)
+                logger.info("Kernel module %s unloaded", parDicOnline["module"])
         except Exception, e:
             pass
 

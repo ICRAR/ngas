@@ -64,7 +64,7 @@ import os
 
 from pccUt import PccUtTime
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, info, genLog
+from ngamsLib.ngamsCore import TRACE, genLog
 import psycopg2
 import pyfits
 
@@ -95,7 +95,7 @@ def handlePars(reqPropsObj,
     T = TRACE()
 
     # Get parameters.
-    info(3,"Get request parameters")
+    logger.debug("Get request parameters")
     parDic[TARG_MIME_TYPE]  = None
     parDic[FILE_ID]         = None
     parDic[VERSIONING]      = 1
@@ -112,10 +112,10 @@ def handlePars(reqPropsObj,
         if (reqPropsObj.getFileUri().find("file_id=") > 0):
             file_id = reqPropsObj.getFileUri().split("file_id=")[1]
             parDic[FILE_ID] = file_id
-            info(1,"No file_id given, but found one in the URI: %s" % parDic[FILE_ID])
+            logger.info("No file_id given, but found one in the URI: %s", parDic[FILE_ID])
         else:
             parDic[FILE_ID] = os.path.basename(reqPropsObj.getFileUri())
-            info(1,"No file_id given, using basename of URI: %s" % parDic[FILE_ID])
+            logger.info("No file_id given, using basename of URI: %s", parDic[FILE_ID])
 
     if (reqPropsObj.hasHttpPar(VERSIONING)):
         parDic[VERSIONING] = int(reqPropsObj.getHttpPar(VERSIONING))
@@ -163,10 +163,10 @@ def compressFile(srvObj,
     uncomprSize = ngamsPlugInApi.getFileSize(stFn)
     comprExt = ""
     if (parDic[COMPRESSION]):
-        info(2,"Compressing file using: %s ..." % parDic[COMPRESSION])
+        logger.debug("Compressing file using: %s ...", parDic[COMPRESSION])
         compCmd = "%s %s" % (parDic[COMPRESSION], stFn)
         compressTimer = PccUtTime.Timer()
-        info(3,"Compressing file with command: %s" % compCmd)
+        logger.debug("Compressing file with command: %s", compCmd)
         exitCode, stdOut = ngamsPlugInApi.execCmd(compCmd)
         #if (exitCode != 0):
         #    msg ="Problems during archiving! Compressing the file failed. " +\
@@ -190,7 +190,7 @@ def compressFile(srvObj,
                                                           stFn)
             compression = parDic[COMPRESSION]
 
-            info(2,"File compressed. Time: %.3fs" % compressTimer.stop())
+            logger.debug("File compressed. Time: %.3fs", compressTimer.stop())
         else:
             # Carry on with the original file. We take the original mime-type
             # as the target mime-type.
@@ -253,7 +253,7 @@ def ngamsZHLDapi(srvObj,
     # For now the exception handling is pretty basic:
     # If something goes wrong during the handling it is tried to
     # move the temporary file to the Bad Files Area of the disk.
-    info(1,"Plug-In handling data for file: " +
+    logger.debug("Plug-In handling data for file: %s",
          os.path.basename(reqPropsObj.getFileUri()))
     try:
         parDic = {}
@@ -263,7 +263,7 @@ def ngamsZHLDapi(srvObj,
         ext = os.path.splitext(stgFile)[1][1:]
 
         # Generate file information.
-        info(3,"Generate file information")
+        logger.debug("Generate file information")
         dateDir = PccUtTime.TimeStamp().getTimeStamp().split("T")[0]
         fileVersion, relPath, relFilename,\
                      complFilename, fileExists =\
@@ -284,7 +284,7 @@ def ngamsZHLDapi(srvObj,
             complFilename += ".%s" % comprExt
             relFilename += ".%s" % comprExt
 
-        info(3,"DAPI finished processing file - returning to host application")
+        logger.debug("DAPI finished processing file - returning to host application")
         insertFitsRecords(srvObj, reqPropsObj, stgFile)
         return ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(),
                                                  relFilename,
@@ -340,13 +340,13 @@ def insertFitsRecords(srvObj,reqPropsObj, complFileUri):
         coverage = res[0][0]
         try:
             sqlStr = """INSERT INTO mwa.gleam(embargo,owner,centeralpha,centerdelta,accref,coverage,center_freq,band_width, mime,accsize,date_obs,stokes,filename ) VALUES('%s', '%s','%s', '%s', '%s','%s', '%s', '%s','%s','%s', '%s', '%s','%s' )""" % (embargo,owner,str(ra), str(dec), accref_file, coverage, str(center_freq), str(band_width), mime, str(accsize), str(date_obs),str(stokes),filename )
-            info(3, sqlStr)
+            logger.debug(sqlStr)
             cur.execute(sqlStr)
         except:
             logger.exception(" Unable to insert the table mwa.gleam...")
         try:
             sqlStr = """INSERT INTO dc.products(embargo,owner,accref, mime,accesspath,sourcetable) VALUES('%s', '%s', '%s', '%s', '%s', '%s')""" % (embargo,owner,accref_file, mime, file_url, 'mwa.gleam')
-            info(3, sqlStr)
+            logger.debug(sqlStr)
             cur.execute(sqlStr)
         except:
             logger.exception(" I am unable to insert the table dc.product...")

@@ -35,9 +35,6 @@ server crashes during the execution of the DAPI.
 
 import sys
 
-from ngamsLib.ngamsCore import info
-
-
 def ngamsKillSrvDapi(srvObj,
                      reqPropsObj):
     """
@@ -49,7 +46,6 @@ def ngamsKillSrvDapi(srvObj,
 
     Returns:      Void.
     """
-    info(1,"DAPI invoked - killing server ...")
     srvObj.killServer()
     sys.exit(0)
 

@@ -52,8 +52,12 @@ EXAMPLES:
 
 """
 
-from ngamsLib.ngamsCore import TRACE, info
+import logging
 
+from ngamsLib.ngamsCore import TRACE
+
+
+logger = logging.getLogger(__name__)
 
 def handleCmd(srvObj,
               reqPropsObj,
@@ -99,19 +103,19 @@ def handleCmd(srvObj,
 
     # Construct sub-query for source cluster
     source_query = generate_extended_ngas_files_query(source_dbl,source_cluster,all_versions)
-    info(4, "SQL sub-query to get source cluster files-hosts information: %s" % source_query)
+    logger.debug("SQL sub-query to get source cluster files-hosts information: %s", source_query)
 
     # Construct sub-query for target cluster
     target_query = generate_extended_ngas_files_query(target_dbl,target_cluster,all_versions)
-    info(4, "SQL sub-query to get target cluster files-hosts information: %s" % target_query)
+    logger.debug("SQL sub-query to get target cluster files-hosts information: %s", target_query)
 
     # Construct sub-query for diff table
     diff_query = generate_diff_ngas_files_query(source_query,target_query)
-    info(4, "SQL sub-query to get diff between source and target files: %s" % diff_query)
+    logger.debug("SQL sub-query to get diff between source and target files: %s", diff_query)
 
     # Populate book keeping table
-    info(3,"Populating ngas_mirroring_bookkeeping_table, source_cluster=%s , target_cluster=%s, all_versions=%s, archive_cmd=%s, retrieve_cmd=%s" \
-    % (source_cluster+source_dbl,target_cluster+target_dbl,str(all_versions),archive_cmd,retrieve_cmd))
+    logger.debug("Populating ngas_mirroring_bookkeeping_table, source_cluster=%s , target_cluster=%s, all_versions=%s, archive_cmd=%s, retrieve_cmd=%s",
+                 source_cluster+source_dbl,target_cluster+target_dbl,str(all_versions),archive_cmd,retrieve_cmd)
     populate_mirroring_bookkeeping_table(diff_query,archive_cmd,retrieve_cmd,target_dbl,target_cluster,srvObj)
 
     # Get target cluster active nodes
@@ -124,7 +128,7 @@ def handleCmd(srvObj,
     working_source_nodes = remove_empty_source_nodes(source_active_nodes,target_cluster,srvObj)
 
     # Assign book keeping table entries
-    info(3,"Updating entries in ngas_mirroring_bookkeeping_table to assing target nodes")
+    logger.debug("Updating entries in ngas_mirroring_bookkeeping_table to assing target nodes")
     assign_mirroring_bookkeeping_entries(target_active_nodes,working_source_nodes,target_dbl,target_cluster,srvObj)
 
     return
@@ -162,7 +166,7 @@ def generate_extended_ngas_files_query(db_link,
     query += "' group by nf.file_id,nf.file_version,nf.disk_id)"
 
     # Lof info
-    info(4, "SQL sub-query to generate extended ngas_files table: %s" % query)
+    logger.debug("SQL sub-query to generate extended ngas_files table: %s", query)
 
     # Return query
     return query
@@ -250,7 +254,7 @@ def populate_mirroring_bookkeeping_table(diff_ngas_files_query,
     query += "{2} from " + diff_ngas_files_query + " diff"
 
     # Execute query
-    info(4, "Executing SQL query to generate new entries in ngas_mirroring_bookkeeping table: %s" % query)
+    logger.debug("Executing SQL query to generate new entries in ngas_mirroring_bookkeeping table: %s", query)
     srvObj.getDb().query2(query, args=(cluster_name, archive_command, retrieve_command))
 
     # Return void
@@ -278,7 +282,7 @@ def get_cluster_active_nodes(db_link,
     query += "cluster_name={0} and srv_state='ONLINE' and srv_archive=1"
 
     # Execute query
-    info(4, "Executing SQL query to get active nodes in target cluster: %s" % query)
+    logger.debug("Executing SQL query to get active nodes in target cluster: %s", query)
     active_nodes_object = srvObj.getDb().query2(query, args=(cluster_name,))
 
     # Re-dimension query results array
@@ -287,7 +291,7 @@ def get_cluster_active_nodes(db_link,
         active_nodes.append(node[0])
 
     # Log info
-    info(3, "Active nodes found in cluster %s: %s" % (cluster_name+db_link,str(active_nodes)))
+    logger.debug("Active nodes found in cluster %s: %s", cluster_name+db_link,str(active_nodes))
 
     # Return active nodes list
     return active_nodes
@@ -313,7 +317,7 @@ def remove_empty_source_nodes(source_active_nodes,
     query += " and status='LOCKED' group by source_host"
 
     # Execute query
-    info(4, "Executing SQL query to get source nodes: %s" % query)
+    logger.debug("Executing SQL query to get source nodes: %s", query)
     source_nodes_object = srvObj.getDb().query2(query, args=(cluster_name,))
 
     # Re-dimension query results array
@@ -376,7 +380,7 @@ def assign_mirroring_bookkeeping_entries(target_cluster_active_nodes,
             query +="(select * from ngas_mirroring_bookkeeping where target_cluster={2} "
             query +="and target_host is null order by file_size)))"
             # Perform query
-            info(4, "SQL to assing entries from source node %s to target node %s: %s" % (source_node,target_node,query))
+            logger.debug("SQL to assing entries from source node %s to target node %s: %s", source_node,target_node,query)
             srvObj.getDb().query2(query, args=(target_node, (n_target_nodes-i), cluster_name))
             i += 1
             # Log info
@@ -385,7 +389,7 @@ def assign_mirroring_bookkeeping_entries(target_cluster_active_nodes,
             res =  srvObj.getDb().query2(query, args=(source_node, target_node))
             n_files = str(res[0][0])
             total_load = str(res[0][1])
-            info(3, "Mirroring tasks from source host %s assigned to target host %s: %s tasks, %s Mb" % (source_node,target_node,n_files,total_load))
+            logger.debug("Mirroring tasks from source host %s assigned to target host %s: %s tasks, %s Mb", source_node,target_node,n_files,total_load)
 
     # Return void
     return

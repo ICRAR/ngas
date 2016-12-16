@@ -43,7 +43,7 @@ See also ngamsTestWakeUpPlugIn.py.
 
 import time
 
-from ngamsLib.ngamsCore import TRACE, info
+from ngamsLib.ngamsCore import TRACE
 
 
 def ngamsTestSuspensionPlugIn(srvObj):
@@ -58,12 +58,8 @@ def ngamsTestSuspensionPlugIn(srvObj):
     """
     T = TRACE()
 
-    info(3, "Polling DB until server marked as not being suspended ...")
-    startTime = time.time()
     hostId = srvObj.getHostId()
     while (srvObj.getDb().getSrvSuspended(hostId)): time.sleep(0.250)
-    info(3, "NGAS Node: %s woken up after %.3fs of suspension" %\
-         (hostId, (time.time() - startTime)))
 
 
 # EOF

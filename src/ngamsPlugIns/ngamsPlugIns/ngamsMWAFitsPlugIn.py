@@ -33,14 +33,17 @@ implemented and NG/AMS configured to use it.
 """
 
 import commands
+import logging
 import os
 import string
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, genLog, info
+from ngamsLib.ngamsCore import TRACE, genLog
 from ngamsPlugIns import ngamsFitsPlugIn
 from pccUt import PccUtTime
 
+
+logger = logging.getLogger(__name__)
 
 def getComprExt(comprMethod):
     """
@@ -143,7 +146,7 @@ def checkFitsChecksum(reqPropsObj,
         chksumUtil = "chksumGenChecksum"
     else:
         chksumUtil = "chksumVerFitsChksum"
-    info(2,"File: %s checked with: %s. Result: OK" % (stgFile, chksumUtil))
+    logger.debug("File: %s checked with: %s. Result: OK", stgFile, chksumUtil)
 
 
 def addFitsCheckSum(filename):
@@ -217,7 +220,7 @@ def compress(reqPropsObj,
     # If a compression application is specified, apply this.
     uncomprSize = ngamsPlugInApi.getFileSize(stFn)
     if (parDic["compression"] != ""):
-        info(2,"Compressing file using: " + parDic["compression"] + " ...")
+        logger.debug("Compressing file using: %s", parDic["compression"])
         compressTimer = PccUtTime.Timer()
         exitCode, stdOut =\
                   ngamsPlugInApi.execCmd(parDic["compression"] + " " + stFn)
@@ -236,7 +239,7 @@ def compress(reqPropsObj,
             fmt = "image/x-fits"
         else:
             fmt = "application/x-gfits"
-        info(2,"File compressed. Time: %.3fs" % compressTimer.stop())
+        logger.debug("File compressed. Time: %.3fs", compressTimer.stop())
     else:
         fmt = reqPropsObj.getMimeType()
 
@@ -257,7 +260,7 @@ def ngamsMWAFitsPlugIn(srvObj,
     Returns:      Standard NG/AMS Data Archiving Plug-In Status as generated
                   by: ngamsPlugInApi.genDapiSuccessStat() (ngamsDapiStatus).
     """
-    info(1,"Plug-In handling data for file with URI: " +
+    logger.info("Plug-In handling data for file with URI: %s",
          os.path.basename(reqPropsObj.getFileUri()))
     diskInfo = reqPropsObj.getTargDiskInfo()
     parDic = ngamsPlugInApi.parseDapiPlugInPars(srvObj.getCfg(),
@@ -288,7 +291,7 @@ def ngamsMWAFitsPlugIn(srvObj,
     uncomprSize, archFileSize, fmt = compress(reqPropsObj, parDic)
 
     # Generate status + return.
-    info(3,"DAPI finished processing of file - returning to main application")
+    logger.debug("DAPI finished processing of file - returning to main application")
     return ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(), relFilename,
                                              dpId, fileVersion, fmt,
                                              archFileSize, uncomprSize,

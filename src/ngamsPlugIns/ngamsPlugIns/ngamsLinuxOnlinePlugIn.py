@@ -31,10 +31,14 @@
 Module containing a System Online Plug-In used by the ESO NGAS installations.
 """
 
+import logging
+
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, info, genLog
+from ngamsLib.ngamsCore import TRACE, genLog
 import ngamsLinuxSystemPlugInApi, ngamsEscaladeUtils
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsLinuxOnlinePlugIn(srvObj,
                            reqPropsObj = None):
@@ -61,7 +65,7 @@ def ngamsLinuxOnlinePlugIn(srvObj,
     if (stat == 0):
         if (parDic.has_key("module")):
             msg = "Kernel module " + parDic["module"] + " loaded"
-            info(1, msg)
+            logger.info(msg)
 
         # Old format = unfortunately some Disk IDs of WDC/Maxtor were
         # generated wrongly due to a mistake by IBM, which lead to a wrong

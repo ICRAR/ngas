@@ -43,7 +43,7 @@ import string
 import subprocess
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, genLog, info
+from ngamsLib.ngamsCore import TRACE, genLog
 from pccUt import PccUtTime
 
 
@@ -170,7 +170,7 @@ def checkFitsChecksum(reqPropsObj,
         chksumUtil = "chksumGenChecksum"
     else:
         chksumUtil = "chksumVerFitsChksum"
-    info(2,"File: %s checked with: %s. Result: OK" % (stgFile, chksumUtil))
+    logger.debug("File: %s checked with: %s. Result: OK", stgFile, chksumUtil)
 
 
 def prepFile(reqPropsObj,
@@ -199,9 +199,9 @@ def prepFile(reqPropsObj,
     tmpFn = reqPropsObj.getStagingFilename()
     if tmpFn.lower().endswith('.gz'):
         newFn = os.path.splitext(tmpFn)[0]
-        info(2, "Decompressing file using gzip: %s" % tmpFn)
+        logger.debug("Decompressing file using gzip: %s", tmpFn)
         subprocess.check_call(['gunzip', '-f', tmpFn], shell = False)
-        info(2, "Decompression success: %s" % newFn)
+        logger.debug("Decompression success: %s", newFn)
         reqPropsObj.setStagingFilename(newFn)
 
     checkFitsFileSize(reqPropsObj.getStagingFilename())
@@ -230,14 +230,14 @@ def compress(reqPropsObj,
     compression = parDic["compression"]
 
     if compression and 'gzip' in compression:
-        info(2, "Compressing file: %s using: %s" % (stFn, compression))
+        logger.debug("Compressing file: %s using: %s", stFn, compression)
         compressTimer = PccUtTime.Timer()
         gzip_name = '%s.gz' % stFn
         subprocess.check_call(['gzip', '--no-name', stFn], shell = False)
         reqPropsObj.setStagingFilename(gzip_name)
         mime = 'application/x-gfits'
         compression = 'gzip --no-name'
-        info(2, "File compressed: %s Time: %.3fs" % (gzip_name, compressTimer.stop()))
+        logger.debug("File compressed: %s Time: %.3fs", gzip_name, compressTimer.stop())
     else:
         compression = ''
 
@@ -259,7 +259,7 @@ def ngamsFitsPlugIn(srvObj,
     Returns:      Standard NG/AMS Data Archiving Plug-In Status as generated
                   by: ngamsPlugInApi.genDapiSuccessStat() (ngamsDapiStatus).
     """
-    info(1, "Plug-In handling data for file with URI: %s" %\
+    logger.info("Plug-In handling data for file with URI: %s",
             os.path.basename(reqPropsObj.getFileUri()))
     diskInfo = reqPropsObj.getTargDiskInfo()
     parDic = ngamsPlugInApi.parseDapiPlugInPars(srvObj.getCfg(),
@@ -284,7 +284,7 @@ def ngamsFitsPlugIn(srvObj,
     uncomprSize, archFileSize, mime, compression = compress(reqPropsObj, parDic)
 
     # Generate status + return.
-    info(3,"DAPI finished processing of file - returning to main application")
+    logger.debug("DAPI finished processing of file - returning to main application")
     return ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(), relFilename,
                                              dpId, fileVersion, mime,
                                              archFileSize, uncomprSize,

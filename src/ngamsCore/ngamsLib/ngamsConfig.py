@@ -33,9 +33,12 @@
 The ngamsConfig class is used to handle the NG/AMS Configuration.
 """
 
+import base64
 import logging
-import os, types, base64
-from   ngamsCore import info, genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, getNgamsVersionRaw, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
+import os
+import types
+
+from   ngamsCore import genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, getNgamsVersionRaw, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
 import ngamsDbCore, ngamsConfigBase, ngamsSubscriber
 import ngamsLib
 import ngamsStorageSet, ngamsStream, ngamsDppiDef, ngamsMirroringSource
@@ -101,7 +104,7 @@ def checkIfSetStr(property,
     Returns:   1 is returned if string checked is OK. 0 is returned
                if the string was not properly formatted (integer/0|1).
     """
-    info(4, "Checking if property: " + property + " is properly set ...")
+    logging.debug("Checking if property: %s is properly set ...", property)
     if ((not isinstance(value, types.StringType))):
         errMsg = "Must define a proper string value for property: " + property
         errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
@@ -132,7 +135,7 @@ def checkIfSetInt(property,
     Returns:   1 is returned if value checked is OK. 0 is returned
                if the value was not properly formatted (integer/0|1).
     """
-    info(4, "Checking if property: " + property + " is properly set ...")
+    logger.debug("Checking if property: %s is properly set ...", property)
     value = int(value)
     if ((not isinstance(value, types.IntType)) or (value == -1)):
         errMsg = "Must define a proper integer value for property: " + property
@@ -162,7 +165,7 @@ def checkIfZeroOrOne(property,
     Returns:    1 is returned if value checked is OK. 0 is returned
                 if the value was not properly formatted (integer/0|1).
     """
-    info(4, "Checking if property: " + property + " is properly set ...")
+    logger.debug("Checking if property: %s is properly set ...", property)
     if ((not isinstance(value, types.IntType)) or
         ((value != 0) and (value != 1))):
         errMsg = "Value must be 0 or 1 (integer) for property: " + property
@@ -399,7 +402,7 @@ class ngamsConfig:
         # Get Mime-types.
         mimeTypesObj = self.__cfgMgr.getXmlObj("MimeTypes[1]")
         if (mimeTypesObj):
-            info(3, "Unpacking MimeTypes Element ...")
+            logger.debug("Unpacking MimeTypes Element ...")
             attrFormat = "MimeTypes[1].MimeTypeMap[%d].%s"
             for idx in range(1, (len(mimeTypesObj.getSubElList()) + 1)):
                 ext  = self.getVal(attrFormat % (idx, "Extension"))
@@ -409,7 +412,7 @@ class ngamsConfig:
         # Get Storage Sets.
         stoSetsObj = self.__cfgMgr.getXmlObj("StorageSets[1]")
         if (stoSetsObj):
-            info(3, "Unpacking StorageSets Element ...")
+            logger.debug("Unpacking StorageSets Element ...")
             attrFormat = "StorageSets[1].StorageSet[%d]"
             for idx in range(1, (len(stoSetsObj.getSubElList()) + 1)):
                 nm = attrFormat % idx + ".%s"
@@ -425,7 +428,7 @@ class ngamsConfig:
         # Handle Streams.
         streamsObj = self.__cfgMgr.getXmlObj("Streams[1]")
         if (streamsObj):
-            info(3, "Unpacking Streams Element ...")
+            logger.debug("Unpacking Streams Element ...")
             attrFormat1 = "Streams[1].Stream[%d]"
             attrFormat2 = attrFormat1 + ".StorageSetRef[%d].StorageSetId"
             attrFormat3 = attrFormat1 + ".ArchivingUnit[%d].HostId"
@@ -456,7 +459,7 @@ class ngamsConfig:
         # Get information about DPPIs.
         procObj = self.__cfgMgr.getXmlObj("Processing[1]")
         if (procObj):
-            info(3, "Unpacking Processing Element ...")
+            logger.debug("Unpacking Processing Element ...")
             attrFormat1 = "Processing[1].PlugIn[%d]"
             attrFormat2 = attrFormat1 + ".MimeType[%d]"
             for idx1 in range(1, (len(procObj.getSubElList()) + 1)):
@@ -472,7 +475,7 @@ class ngamsConfig:
         # Get info about Register Plug-Ins.
         regObj = self.__cfgMgr.getXmlObj("Register[1]")
         if (regObj):
-            info(3, "Unpacking Register Element ...")
+            logger.debug("Unpacking Register Element ...")
             attrFormat1 = "Register[1].PlugIn[%d]"
             attrFormat2 = attrFormat1 + ".MimeType[%d].Name"
             for idx1 in range(1, (len(regObj.getSubElList()) + 1)):
@@ -494,7 +497,7 @@ class ngamsConfig:
                     ["NoDiskSpaceNotification", self.__noDiskSpaceNotif],
                     ["DataCheckNotification",   self.__dataCheckNotif]]
         attrFormat = "Notification[1].%s[1].EmailRecipient[%s].Address"
-        info(3, "Unpacking Email Notification Recipients ...")
+        logger.debug("Unpacking Email Notification Recipients ...")
         for attr in attrList:
             idx = 1
             while (1):
@@ -508,7 +511,7 @@ class ngamsConfig:
         # Get info about the subscribers.
         subscrDefObj = self.__cfgMgr.getXmlObj("SubscriptionDef[1]")
         if (subscrDefObj):
-            info(3, "Unpacking SubscriptionDef Element ...")
+            logger.debug("Unpacking SubscriptionDef Element ...")
             fm = "SubscriptionDef[1].Subscription[%d].%s"
             for idx in range(1, (len(subscrDefObj.getSubElList()) + 1)):
                 subscr_id = self.getVal(fm % (idx, "SubscriberId"))
@@ -528,7 +531,7 @@ class ngamsConfig:
         # Process the Authentication Users.
         authObj = self.__cfgMgr.getXmlObj("Authorization[1]")
         if (authObj):
-            info(3, "Unpacking Authorization Element ...")
+            logger.debug("Unpacking Authorization Element ...")
             fm = "Authorization[1].User[%d].%s"
             for idx in range(1, (len(authObj.getSubElList()) + 1)):
                 userName = self.getVal(fm % (idx, "Name"))
@@ -541,7 +544,7 @@ class ngamsConfig:
         srcArchIdDic = {}
         mirElObj = self.__cfgMgr.getXmlObj("Mirroring[1]")
         if (mirElObj):
-            info(3, "Unpacking Mirroring Element ...")
+            logger.debug("Unpacking Mirroring Element ...")
             attrFormat = "Mirroring[1].MirroringSource[%d]"
             for idx in range(1, (len(mirElObj.getSubElList()) + 1)):
                 nm = attrFormat % idx + ".%s"
@@ -1200,7 +1203,7 @@ class ngamsConfig:
         """
         T = TRACE()
 
-        info(4, "Finding storage set for ID: " + storageSetId + " ...")
+        logger.debug("Finding storage set for ID: %s ...", storageSetId)
         reqSet = None
         for set in self.__storageSetList:
             if (set.getStorageSetId() == storageSetId):
@@ -1576,7 +1579,7 @@ class ngamsConfig:
         """
         T = TRACE()
 
-        info(4, "Finding stream for  mime-type: " + mimeType + " ...")
+        logger.debug("Finding stream for  mime-type: %s ...", mimeType)
         for stream in self.getStreamList():
             if (stream.getMimeType() == mimeType):
                 return stream
@@ -2262,7 +2265,7 @@ class ngamsConfig:
         """
         T = TRACE()
 
-        info(4, "Check Server Element ...")
+        logger.debug("Check Server Element ...")
         checkIfSetStr("Server.ArchiveName", self.getArchiveName(),
                       self.getCheckRep())
         checkIfSetInt("Server.MaxSimReqs", self.getMaxSimReqs(),
@@ -2298,16 +2301,16 @@ class ngamsConfig:
                     self.getCheckRep().append(errMsg)
         checkIfZeroOrOne("Server.ProxyMode", self.getProxyMode(),
                          self.getCheckRep())
-        info(4, "Checked Server Element")
+        logger.debug("Checked Server Element")
 
-        info(4, "Check SystemPlugIns Element ...")
+        logger.debug("Check SystemPlugIns Element ...")
         checkIfSetStr("SystemPlugIns.OnlinePlugIn",
                       self.getOnlinePlugIn(), self.getCheckRep())
         checkIfSetStr("SystemPlugIns.OfflinePlugIn", self.getOfflinePlugIn(),
                       self.getCheckRep())
-        info(4, "Checked SystemPlugIns Element")
+        logger.debug("Checked SystemPlugIns Element")
 
-        info(4, "Check Permissions Element ...")
+        logger.debug("Check Permissions Element ...")
         checkIfZeroOrOne("Permissions.AllowArchiveReq",
                          self.getAllowArchiveReq(), self.getCheckRep())
         checkIfZeroOrOne("Permissions.AllowRetrieveReq",
@@ -2316,14 +2319,14 @@ class ngamsConfig:
                          self.getAllowProcessingReq(), self.getCheckRep())
         checkIfZeroOrOne("Permissions.AllowRemoveReq",
                          self.getAllowRemoveReq(), self.getCheckRep())
-        info(4, "Checked Permissions Element")
+        logger.debug("Checked Permissions Element")
 
-        info(4, "Check JanitorThread Element ...")
+        logger.debug("Check JanitorThread Element ...")
         checkIfSetStr("JanitorThread.SuspensionTime",
                       self.getJanitorSuspensionTime(), self.getCheckRep())
-        info(4, "Checked JanitorThread Element")
+        logger.debug("Checked JanitorThread Element")
 
-        info(4, "Check ArchiveHandling Element ...")
+        logger.debug("Check ArchiveHandling Element ...")
         if (self.getAllowArchiveReq()):
             checkIfSetStr("ArchiveHandling.PathPrefix", self.getPathPrefix(),
                           self.getCheckRep())
@@ -2335,14 +2338,14 @@ class ngamsConfig:
                           self.getMinFreeSpaceWarningMb(), self.getCheckRep())
             checkIfSetInt("ArchiveHandling.FreeSpaceDiskChangeMb",
                           self.getFreeSpaceDiskChangeMb(), self.getCheckRep())
-        info(4, "Checked ArchiveHandling Element")
+        logger.debug("Checked ArchiveHandling Element")
 
-        info(4, "Check Db Element ...")
+        logger.debug("Check Db Element ...")
         checkIfZeroOrOne("Db.Snapshot",self.getDbSnapshot(),self.getCheckRep())
         checkIfSetStr("Db.Interface",self.getDbInterface(), self.getCheckRep())
-        info(4, "Checked Db Element")
+        logger.debug("Checked Db Element")
 
-        info(4, "Check MimeTypes Element ...")
+        logger.debug("Check MimeTypes Element ...")
         if (len(self.getMimeTypeMappings()) == 0):
             errMsg = genLog("NGAMS_ER_NO_MIME_TYPES", [self.getCfg()])
             logger.error(errMsg)
@@ -2352,9 +2355,9 @@ class ngamsConfig:
                 checkIfSetStr("MimeTypeMap.MimeType",map[0],self.getCheckRep())
                 checkIfSetStr("MimeTypeMap.Extension", map[1],
                               self.getCheckRep())
-        info(4, "Checked MimeTypes Element")
+        logger.debug("Checked MimeTypes Element")
 
-        info(4, "Check Storage Sets ...")
+        logger.debug("Check Storage Sets ...")
         storageSetDic = {}
         mainDiskMtPtDic = {}
         repDiskMtPtDic = {}
@@ -2373,9 +2376,9 @@ class ngamsConfig:
                                     self.getCheckRep())
             checkIfZeroOrOne("StorageSet.Mutex", set.getMutex(),
                              self.getCheckRep())
-        info(4, "Checked Storage Sets")
+        logger.debug("Checked Storage Sets")
 
-        info(4, "Check Stream Definitions ...")
+        logger.debug("Check Stream Definitions ...")
         if (self.getAllowArchiveReq()):
             mimeTypeDic = {}
             for stream in self.getStreamList():
@@ -2399,9 +2402,9 @@ class ngamsConfig:
                         errMsg = genLog("NGAMS_ER_CONF_FILE", [errMsg])
                         logger.error(errMsg)
                         self.getCheckRep().append(errMsg)
-        info(4, "Checked Stream Definitions")
+        logger.debug("Checked Stream Definitions")
 
-        info(4, "Check Processing Element ...")
+        logger.debug("Check Processing Element ...")
         if (self.getAllowProcessingReq()):
             checkIfSetStr("Processing.ProcessingDirectory",
                           self.getProcessingDirectory(), self.getCheckRep())
@@ -2423,18 +2426,18 @@ class ngamsConfig:
             for mimeType in dppiEl.getMimeTypeList():
                 checkIfSetStr("Processing.PlugIn.MimeType.Name", mimeType,
                               self.getCheckRep())
-        info(4, "Checked Processing Element")
+        logger.debug("Checked Processing Element")
 
-        info(4, "Check Register Element ...")
+        logger.debug("Check Register Element ...")
         for regPiEl in self.__registerPlugIns:
             checkIfSetStr("Register.PlugIn.Name", regPiEl.getPlugInName(),
                           self.getCheckRep())
             for mimeType in regPiEl.getMimeTypeList():
                 checkIfSetStr("Register.PlugIn.MimeType.Name", mimeType,
                               self.getCheckRep())
-        info(4, "Checked Register Element")
+        logger.debug("Checked Register Element")
 
-        info(4, "Check DataCheckThread Element ...")
+        logger.debug("Check DataCheckThread Element ...")
         checkIfZeroOrOne("DataCheckThread.DataCheckActive",
                          self.getDataCheckActive(), self.getCheckRep())
         if (self.getDataCheckActive()):
@@ -2452,9 +2455,9 @@ class ngamsConfig:
                           self.getDataCheckMinCycle(), self.getCheckRep())
             checkIfZeroOrOne("DataCheckThread.DataCheckLogSummary",
                              self.getDataCheckLogSummary(), self.getCheckRep())
-        info(4, "Checked DataCheckThread Element")
+        logger.debug("Checked DataCheckThread Element")
 
-        info(4, "Check Log Element ...")
+        logger.debug("Check Log Element ...")
         checkIfZeroOrOne("Log.SysLog", self.getSysLog(), self.getCheckRep())
         checkIfSetStr("Log.SysLogPrefix", self.getSysLogPrefix(),
                       self.getCheckRep())
@@ -2466,9 +2469,9 @@ class ngamsConfig:
                       self.getCheckRep())
         checkIfSetInt("Log.LogRotateCache", self.getLogRotateCache(),
                       self.getCheckRep())
-        info(4, "Checked Log Element")
+        logger.debug("Checked Log Element")
 
-        info(4, "Check Notification Element ...")
+        logger.debug("Check Notification Element ...")
         checkIfSetStr("Notification.SmtpHost", self.getNotifSmtpHost(),
                       self.getCheckRep())
         checkIfSetStr("Notification.Sender", self.getSender(),
@@ -2479,9 +2482,9 @@ class ngamsConfig:
                       self.getMaxRetentionTime(), self.getCheckRep())
         checkIfSetInt("Notification.MaxRetentionSize",
                       self.getMaxRetentionSize(), self.getCheckRep())
-        info(4, "Checked Notification Element")
+        logger.debug("Checked Notification Element")
 
-        info(4, "Check HostSuspension Element ...")
+        logger.debug("Check HostSuspension Element ...")
         checkIfZeroOrOne("HostSuspension.IdleSuspension",
                          self.getIdleSuspension(), self.getCheckRep())
         checkIfSetInt("HostSuspension.IdleSuspensionTime",
@@ -2497,9 +2500,9 @@ class ngamsConfig:
         if (self.getIdleSuspension()):
             checkIfSetStr("HostSuspension.WakeUpServerHost",
                           self.getWakeUpServerHost(), self.getCheckRep())
-        info(4, "Checked HostSuspension Element")
+        logger.debug("Checked HostSuspension Element")
 
-        info(4, "Check SubscriptionDef Element ...")
+        logger.debug("Check SubscriptionDef Element ...")
         checkIfZeroOrOne("SubscriptionDef.AutoUnsubscribe",
                          self.getAutoUnsubscribe(), self.getCheckRep())
         checkIfSetStr("SubscriptionDef.SuspensionTime",
@@ -2508,20 +2511,20 @@ class ngamsConfig:
                       self.getBackLogExpTime(), self.getCheckRep())
         checkIfZeroOrOne("SubscriptionDef.Enable", self.getSubscrEnable(),
                          self.getCheckRep())
-        info(4, "Checked SubscriptionDef Element")
+        logger.debug("Checked SubscriptionDef Element")
 
-        info(4, "Check Mirroring Element ...")
+        logger.debug("Check Mirroring Element ...")
         # TODO: Implement.
-        info(4, "Checked Mirroring Element")
+        logger.debug("Checked Mirroring Element")
 
-        info(4, "Check Caching Element ...")
+        logger.debug("Check Caching Element ...")
         # Cannot have Remove Requests disabled and Cahcing
         if ((not self.getAllowRemoveReq()) and (self.getCachingActive())):
             msg = "Permission to execute Remove Requests must be switched " +\
                   "on in order to enable the Caching Service"
             raise Exception, msg
         # TODO: More checks.
-        info(4,"Checked Caching Element")
+        logger.debug("Checked Caching Element")
 
         # Any errors found?
         if (len(self.getCheckRep()) > 0):

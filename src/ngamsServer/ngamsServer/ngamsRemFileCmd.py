@@ -36,7 +36,7 @@ import os
 
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsHighLevelLib
 from ngamsLib.ngamsCore import genLog, NGAMS_REMFILE_CMD, \
-    info, rmFile, NGAMS_SUCCESS, TRACE, NGAMS_XML_STATUS_ROOT_EL, \
+    rmFile, NGAMS_SUCCESS, TRACE, NGAMS_XML_STATUS_ROOT_EL, \
     NGAMS_XML_STATUS_DTD, NGAMS_HTTP_SUCCESS
 import ngamsRemUtils
 
@@ -85,9 +85,9 @@ def _remFile(srvObj,
             (tmpFileInfo[ngamsDbCore.SUM1_VERSION] == fileVersion)):
             msg = "Scheduling file with ID: %s/%d on disk with ID: %s for " +\
                   "deletion"
-            info(2, msg % (tmpFileInfo[ngamsDbCore.SUM1_FILE_ID],
+            logger.debug(msg, tmpFileInfo[ngamsDbCore.SUM1_FILE_ID],
                            tmpFileInfo[ngamsDbCore.SUM1_VERSION],
-                           tmpFileInfo[ngamsDbCore.SUM1_DISK_ID]))
+                           tmpFileInfo[ngamsDbCore.SUM1_DISK_ID])
             fileListDbm.add(str(key), tmpFileInfo)
     fileListDbm.sync()
     del tmpFileSumDbm
@@ -139,7 +139,7 @@ def _remFile(srvObj,
                 filename = fileInfo[ngamsDbCore.SUM1_FILENAME]
                 complFilename = os.path.normpath(mtPt + "/" + filename)
                 msg = "Deleting DB info for file: %s/%s/%d"
-                info(2,msg % (diskId, fileId, fileVer))
+                logger.debug(msg, diskId, fileId, fileVer)
                 # We remove first the DB info and afterwards the file on the
                 # disk. The reason for this is that it is considered worse
                 # to have an entry for a file in the DB, which is not on disk
@@ -149,7 +149,7 @@ def _remFile(srvObj,
                     srvObj.getDb().deleteFileInfo(srvObj.getHostId(), diskId, fileId, fileVer)
                     infoMsg = genLog("NGAMS_INFO_DEL_FILE",
                                      [diskId, fileId, fileVer])
-                    info(3,infoMsg)
+                    logger.debug(infoMsg)
                     successDelCount += 1
                 except Exception, e:
                     failedDelCount += 1
@@ -158,7 +158,7 @@ def _remFile(srvObj,
                     logger.warning(errMsg)
                 # Removing the DB info was successful, remove the copy on disk.
                 msg = "Deleting copy of file: %s/%s/%d: %s"
-                info(2,msg % (diskId, fileId, fileVer, complFilename))
+                logger.debug(msg, diskId, fileId, fileVer, complFilename)
                 rmFile(complFilename)
             except Exception, e:
                 failedDelCount += 1

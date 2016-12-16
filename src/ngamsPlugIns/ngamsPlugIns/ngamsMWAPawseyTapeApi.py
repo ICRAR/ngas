@@ -16,8 +16,6 @@ import struct
 from subprocess import Popen, PIPE
 import time
 
-from ngamsLib.ngamsCore import info
-
 
 logger = logging.getLogger(__name__)
 
@@ -190,11 +188,11 @@ def stageFiles(filenames, requestObj = None, serverObj = None):
                     filelist = list(filenames)
                     filelist.append(prestageList)
                 else:
-                    info(3, 'ngamsMWAPawseyTapeAPI stageFiles: requested file \
-                        %s is in prestage list, prestaging files now' % requestedfile)
+                    logger.debug('ngamsMWAPawseyTapeAPI stageFiles: requested file \
+                        %s is in prestage list, prestaging files now', requestedfile)
                     filelist = prestageList
         else:
-            info(3, 'ngamsMWAPawseyTapeAPI stageFiles: prestagefilelist \
+            logger.debug('ngamsMWAPawseyTapeAPI stageFiles: prestagefilelist \
                     not found in http header, ignoring')
 
     except Exception:

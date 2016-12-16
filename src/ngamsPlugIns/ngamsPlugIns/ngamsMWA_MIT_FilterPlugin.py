@@ -59,7 +59,7 @@ from psycopg2.pool import ThreadedConnectionPool
 import pyfits
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import info, genLog, loadPlugInEntryPoint
+from ngamsLib.ngamsCore import genLog, loadPlugInEntryPoint
 
 
 logger = logging.getLogger(__name__)
@@ -187,14 +187,14 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
     if (not fspi):
         offline = -1
     else:
-        info(2,"Invoking FSPI.isFileOffline: " + fspi + " to check file: " + filename)
+        logger.info("Invoking FSPI.isFileOffline: %s to check file: %s", fspi, filename)
         isFileOffline = loadPlugInEntryPoint(fspi, 'isFileOffline')
         offline = isFileOffline(filename)
 
     try:
         if (offline == 1 or offline == -1):
             # if the file is on Tape or query error, query db instead, otherwise implicit tape staging will block all other threads!!
-            info(3, 'File %s appears on Tape, connect to MWA DB to check' % filename)
+            logger.debug('File %s appears on Tape, connect to MWA DB to check', filename)
             projId = getProjectIdFromMWADB(fileId)
             if (not projId or projId == ''):
                 logger.error('Cannot get project id from MWA DB for file %s', fileId)
@@ -209,7 +209,7 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
         return 0
 
     if (projectId in eor_list):
-        info(3, 'File %s added' % fileId)
+        logger.debug('File %s added', fileId)
         return 1
     else:
         return 0

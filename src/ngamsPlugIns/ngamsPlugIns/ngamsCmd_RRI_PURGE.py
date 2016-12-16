@@ -41,7 +41,7 @@ import datetime
 import logging
 import threading
 
-from ngamsLib.ngamsCore import info, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 from ngamsServer import ngamsDiscardCmd
 
 
@@ -82,7 +82,7 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
     is_purgeThrd_running = True
     work_dir = srvObj.getCfg().getRootDirectory() + '/tmp/'
     try:
-        info(3, "host_id = %s" % srvObj.getHostId())
+        logger.debug("host_id = %s", srvObj.getHostId())
         resDel = srvObj.getDb().query2(QUERY_ALL_FILES, args=(srvObj.getHostId(),))
         if not resDel:
             raise Exception('Could not find any files to discard / retain')

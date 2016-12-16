@@ -43,7 +43,6 @@ from psycopg2.pool import ThreadedConnectionPool
 import pyfits
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import info
 
 
 logger = logging.getLogger(__name__)
@@ -177,7 +176,7 @@ def executeQuery(conn, sqlQuery):
         putVODBConn(conn)
 
 def execCmd(cmd, timeout):
-    info(3, 'Executing command: %s' % cmd)
+    logger.debug('Executing command: %s', cmd)
     try:
         ret = ngamsPlugInApi.execCmd(cmd, timeout)
     except Exception, ex:
@@ -316,7 +315,7 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
         #info(3, sqlStr)
         cur.execute(sqlStr)
         conn.commit()
-        info(3, 'File %s added to VO database.' % fileId)
+        logger.debug('File %s added to VO database.', fileId)
     except Exception, exp:
         logger.exception("Unable to execute %s", sqlStr)
         return (1, str(exp))

@@ -34,13 +34,20 @@ Contains definition of class to handle the properties (parameters) in
 connection with a request.
 """
 
-import time, urllib, types, copy, os
+import copy
+import logging
+import os
+import time
+import types
+import urllib
 
-from ngamsCore import TRACE, info, trim, NGAMS_HTTP_GET, NGAMS_HTTP_PUT,\
+from ngamsCore import TRACE, trim, NGAMS_HTTP_GET, NGAMS_HTTP_PUT,\
     NGAMS_HTTP_POST, NGAMS_ARCHIVE_CMD, NGAMS_ARCH_REQ_MT, genLog,\
     NGAMS_UNKNOWN_MT, createSortDicDump, ignoreValue, prFormat1
 import ngamsLib
 
+
+logger = logging.getLogger(__name__)
 
 class ngamsReqProps:
     """
@@ -152,7 +159,7 @@ class ngamsReqProps:
         for key in headers.keys():
             keyTmp = key.lower()
             val = urllib.unquote(headers[key])
-            info(5, "Parsing HTTP header key: %s with value: %s" % (key, val))
+            logger.debug("Parsing HTTP header key: %s with value: %s", key, val)
             self.__httpHdrDic[key] = val
             if (keyTmp == "content-disposition"):
                 # NOTE: Parse on URL encoded value!
@@ -185,7 +192,7 @@ class ngamsReqProps:
                 # For some reason '+' is not converted back to ' ' ...
                 tmpVal = el[1].replace("+", " ")
                 val = urllib.unquote(str(tmpVal))
-                info(4, "Found parameter: " + el[0] + " with value: " + val)
+                logger.debug("Found parameter: %s with value: %s", el[0], val)
                 if (el[0] == "initiator"): self.setCmd(val)
                 if (httpMethod in [NGAMS_HTTP_GET, NGAMS_HTTP_PUT, NGAMS_HTTP_POST]):
                     # Subscription file delivery is always POST, but sometimes we want it behave like GET (e.g. proxy qrchive) to pass on parametres in url string.
@@ -569,8 +576,6 @@ class ngamsReqProps:
         Returns:     Reference to object itself.
         """
         T = TRACE()
-        msg = "Increasing IO_TIME by: %10.3f s" % incrValue
-        info(4,msg)
         self.__ioTime += float(incrValue)
         return self
 

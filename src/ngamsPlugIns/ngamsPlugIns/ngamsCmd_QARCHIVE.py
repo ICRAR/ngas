@@ -52,7 +52,7 @@ import time
 import urlparse
 
 from ngamsLib.ngamsCore import TRACE, genLog, checkCreatePath, \
-    info, NGAMS_HTTP_HDR_CHECKSUM, NGAMS_ONLINE_STATE, \
+    NGAMS_HTTP_HDR_CHECKSUM, NGAMS_ONLINE_STATE, \
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_STAGING_DIR, genUniqueId, \
     mvFile, getFileCreationTime, NGAMS_FILE_STATUS_OK, \
     getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, loadPlugInEntryPoint
@@ -144,7 +144,7 @@ def saveFromHttpToFile(ngamsCfgObj,
     """
     T = TRACE()
 
-    info(2, "Saving data in file: {0}".format(trgFilename))
+    logger.debug("Saving data in file: %s", trgFilename)
 
     try:
         # Make mutual exclusion on disk access (if requested).
@@ -202,10 +202,10 @@ def saveFromHttpToFile(ngamsCfgObj,
                 msg = 'Checksum error for file %s, local crc = %s, but remote crc = %s' % (reqPropsObj.getFileUri(), str(crc), checksum)
                 raise Exception(msg)
             else:
-                info(3, "%s CRC checked, OK!" % reqPropsObj.getFileUri())
+                logger.debug("%s CRC checked, OK!", reqPropsObj.getFileUri())
 
-        info(4, 'Block size: %d; File size: %d; Transfer time: %.4f s; CRC time: %.4f s; write time %.4f s' % (blockSize, size, deltaT, crctime, wtime))
-        info(2, 'Saved data in file: %s. Bytes received: %d. Time: %.4f s. Rate: %.2f Bytes/s' % (trgFilename, size, deltaT, ingestRate))
+        logger.debug('Block size: %d; File size: %d; Transfer time: %.4f s; CRC time: %.4f s; write time %.4f s', blockSize, size, deltaT, crctime, wtime)
+        logger.info('Saved data in file: %s. Bytes received: %d. Time: %.4f s. Rate: %.2f Bytes/s', trgFilename, size, deltaT, ingestRate)
 
         return [deltaT, crc, crc_name, ingestRate]
     finally:
@@ -231,12 +231,12 @@ def handleCmd(srvObj,
     """
     T = TRACE()
 
-    info(3, "Check if the URI is correctly set.")
+    logger.debug("Check if the URI is correctly set.")
     if not reqPropsObj.getFileUri():
         errMsg = genLog("NGAMS_ER_MISSING_URI")
         raise Exception(errMsg)
 
-    info(3, "Is this NG/AMS permitted to handle Archive Requests?")
+    logger.debug("Is this NG/AMS permitted to handle Archive Requests?")
     if not srvObj.getCfg().getAllowArchiveReq():
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Archive"])
         raise Exception, errMsg
@@ -246,7 +246,7 @@ def handleCmd(srvObj,
                          NGAMS_ONLINE_STATE, NGAMS_BUSY_SUBSTATE,
                          updateDb=False)
 
-    info(3, "Get mime-type (try to guess if not provided as an HTTP parameter).")
+    logger.debug("Get mime-type (try to guess if not provided as an HTTP parameter).")
     mimeType = reqPropsObj.getMimeType()
     if not mimeType:
         mimeType = ngamsHighLevelLib.determineMimeType(srvObj.getCfg(),
@@ -254,7 +254,7 @@ def handleCmd(srvObj,
         reqPropsObj.setMimeType(mimeType)
 
     uri = reqPropsObj.getFileUri()
-    info(3, "Checking File URI scheme for %s" % uri)
+    logger.debug("Checking File URI scheme for %s", uri)
     file_version_uri = None
     uri_res = urlparse.urlparse(uri)
 
@@ -301,7 +301,7 @@ def handleCmd(srvObj,
                         [reqPropsObj.getSafeFileUri(), 'Content-Length is 0'])
         raise Exception(errMsg)
 
-    info(3, "Determine the target volume, ignoring the stream concept.")
+    logger.debug("Determine the target volume, ignoring the stream concept.")
     targDiskInfo = getTargetVolume(srvObj)
     if targDiskInfo is None:
         errMsg = "No disk volumes are available for ingesting any files."
@@ -316,7 +316,7 @@ def handleCmd(srvObj,
     if stgFilename.count('.') == 0:  #make sure there is at least one extension
         stgFilename = ngamsHighLevelLib.checkAddExt(srvObj.getCfg(), reqPropsObj.getMimeType(), stgFilename)
 
-    info(3, "Staging filename is: %s" % stgFilename)
+    logger.debug("Staging filename is: %s", stgFilename)
     reqPropsObj.setStagingFilename(stgFilename)
 
     # Retrieve file contents (from URL, archive pull, or by storing the body
@@ -324,8 +324,7 @@ def handleCmd(srvObj,
     stagingInfo = saveInStagingFile(srvObj.getCfg(), reqPropsObj,
                                     stgFilename, targDiskInfo)
     ioTime = stagingInfo[0]
-    msg = "IO_TIME: %10.3f s" % ioTime
-    info(4,msg)
+    logger.debug("IO_TIME: %10.3f s", ioTime)
     reqPropsObj.incIoTime(ioTime)
 
     # Invoke DAPI.
@@ -346,21 +345,21 @@ def handleCmd(srvObj,
         logger.debug("Result DAPI: %s", str(resDapi.toString()))
 
     # Move file to final destination.
-    info(3, "Moving file to final destination")
+    logger.debug("Moving file to final destination")
     ioTime = mvFile(reqPropsObj.getStagingFilename(),
                     resDapi.getCompleteFilename())
     reqPropsObj.incIoTime(ioTime)
 
     # Get crc info
-    info(3, "Get checksum info")
+    logger.debug("Get checksum info")
     crc = stagingInfo[1]
     crc_name = stagingInfo[2]
-    info(3, "Checksum variant used: %s to handle file: %s. Result: %s" %\
-            (crc_name, resDapi.getCompleteFilename(), str(crc)))
+    logger.debug("Checksum variant used: %s to handle file: %s. Result: %s",
+            crc_name, resDapi.getCompleteFilename(), str(crc))
 
     # Get source file version
     # e.g.: http://ngas03.hq.eso.org:7778/RETRIEVE?file_version=1&file_id=X90/X962a4/X1
-    info(3, "Get file version")
+    logger.debug("Get file version")
     file_version = resDapi.getFileVersion()
     if file_version_uri:
         file_version = file_version_uri
@@ -375,7 +374,7 @@ def handleCmd(srvObj,
         prevSize = fileInfo.getUncompressedFileSize()
 
     # Check/generate remaining file info + update in DB.
-    info(3, "Creating db entry")
+    logger.debug("Creating db entry")
     ingestionRate = stagingInfo[3]
     ts = PccUtTime.TimeStamp().getTimeStamp()
     creDate = getFileCreationTime(resDapi.getCompleteFilename())
@@ -403,7 +402,7 @@ def handleCmd(srvObj,
         srvObj.getDb().addToContainerSize(containerId, (newSize - prevSize))
 
     # Inform the caching service about the new file.
-    info(3, "Inform the caching service about the new file.")
+    logger.debug("Inform the caching service about the new file.")
     if (srvObj.getCachingActive()):
         diskId      = resDapi.getDiskId()
         fileId      = resDapi.getFileId()
@@ -413,13 +412,13 @@ def handleCmd(srvObj,
                                                    fileVersion, filename)
 
     # Update disk info in NGAS Disks.
-    info(3, "Update disk info in NGAS Disks.")
+    logger.debug("Update disk info in NGAS Disks.")
     srvObj.getDb().updateDiskInfo(resDapi.getFileSize(), resDapi.getDiskId())
 
     # Check if the disk is completed.
     # We use an approximate extimate for the remaning disk space to avoid
     # to read the DB.
-    info(3, "Check available space in disk")
+    logger.debug("Check available space in disk")
     availSpace = getDiskSpaceAvail(targDiskInfo.getMountPoint(), smart=False)
     if (availSpace < srvObj.getCfg().getFreeSpaceDiskChangeMb()):
         complDate = PccUtTime.TimeStamp().getTimeStamp()
@@ -430,15 +429,14 @@ def handleCmd(srvObj,
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
     msg = "Successfully handled Archive Pull Request for data file with URI: %s" %\
             reqPropsObj.getSafeFileUri()
-    info(1, msg)
+    logger.info(msg)
 
     srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                        NGAMS_SUCCESS, msg, targDiskInfo)
 
     # Trigger Subscription Thread. This is a special version for MWA, in which we simply swapped MIRRARCHIVE and QARCHIVE
     # chen.wu@icrar.org
-    msg = "triggering SubscriptionThread for file %s" % resDapi.getFileId()
-    info(3, msg)
+    logger.debug("triggering SubscriptionThread for file %s", resDapi.getFileId())
     srvObj.addSubscriptionInfo([(resDapi.getFileId(),
                                  resDapi.getFileVersion())], [])
     srvObj.triggerSubscriptionThread()

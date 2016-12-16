@@ -40,7 +40,6 @@ import os
 import urllib2
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import info
 
 
 logger = logging.getLogger(__name__)
@@ -173,7 +172,7 @@ def ngamsJob_MITDeliveryPlugin(srvObj,
                 resp = urllib2.urlopen(bbcpurl, timeout = 7200)
                 retstr = resp.read()
                 if (retstr.find("Successfully handled Archive") > -1):
-                    info(3, 'Successfully compressed and sent the file %s' % newfn)
+                    logger.debug('Successfully compressed and sent the file %s', newfn)
                 else:
                     logger.error('Fail to sent the file %s: %s', newfn, retstr)
                     return (500, retstr.replace("'",""))
@@ -222,7 +221,7 @@ def ngamsJob_MITDeliveryPlugin(srvObj,
             resp = urllib2.urlopen(bbcpurl, timeout = 7200)
             retstr = resp.read()
             if (retstr.find("Successfully handled Archive") > -1):
-                info(3, 'Successfully sent the uncompressed file %s' % filename)
+                logger.debug('Successfully sent the uncompressed file %s', filename)
                 return (0, retstr.replace("'",""))
             else:
                 logger.error('Fail to sent the file %s: %s', filename, retstr)

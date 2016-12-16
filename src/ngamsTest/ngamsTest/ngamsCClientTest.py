@@ -37,7 +37,7 @@ import sys
 import time
 
 from ngamsLib import ngamsStatus
-from ngamsLib.ngamsCore import getHostName, info, rmFile, cpFile
+from ngamsLib.ngamsCore import getHostName, rmFile, cpFile
 from ngamsTestLib import ngamsTestSuite, saveInFile, loadFile, \
     filterOutLines, getClusterName, sendPclCmd, STD_DISK_STAT_FILT, runTest
 
@@ -78,7 +78,6 @@ def _execCClient(unpackXmlStat = 1,
             cmdLine += " " + cmdLineOpt + " " + str(cmdLineParsDic[cmdLineOpt])
     if (cmdLine.find("-servers") == -1):
         cmdLine += " -host %s" % getHostName()
-    info(1,"Invoking NG/AMS C-Client with command: " + cmdLine)
     _, out = commands.getstatusoutput(cmdLine)
     if (unpackXmlStat):
         statObjList = []
@@ -294,129 +293,6 @@ class ngamsCClientTest(ngamsTestSuite):
                                                STD_DISK_STAT_FILT))
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect info in " +\
                           "STATUS Command XML Status Document/disk_id")
-
-
-    def test_ArchiveCmd_1(self):
-        """
-        Synopsis:
-        Issue ARCHIVE Command via C-Client/API.
-
-        Description:
-        The purpose of the test is to verify that the C-Client/API can
-        handle properly an ARCHIVE Command.
-
-        Expected Result:
-        The ARCHIVE Command + the data of the specified file should be
-        transferred to the server and the file archived successfully.
-
-        Test Steps:
-        - ...
-
-        Remarks:
-        TODO: To be implemented.
-        """
-        info(1,"TODO: test_ArchiveCmd_1()")
-
-
-    def test_CloneCmd_1(self):
-        """
-        Synopsis:
-        Issue CLONE Command to server.
-
-        Description:
-        The purpose of this test is to check the proper handling of the
-        CLONE Command through the C-Client/API.
-
-        Expected Result:
-        ...
-
-        Test Steps:
-        - ...
-
-        Remarks:
-        TODO: Not yet implemented.
-        """
-        info(1,"TODO: test_CloneCmd_1()")
-
-
-    def test_RemDiskCmd_1(self):
-        """
-        Synopsis:
-        Issue REMDISK Command.
-
-        Description:
-        ...
-
-        Expected Result:
-        ...
-
-        Test Steps:
-        - ...
-
-        Remarks:
-        TODO: To be implemented.
-        """
-        info(1,"TODO: test_RemDiskCmd_1()")
-
-
-    def test_RemFileCmd_1(self):
-        """
-        Synopsis:
-        Issue REMFILE Command.
-
-        Description:
-        ...
-
-        Expected Result:
-        ...
-
-        Test Steps:
-        - ...
-
-        Remarks:
-        TODO: To be implemented.
-        """
-        info(1,"TODO: test_RemFileCmd_1()")
-
-
-    def test_CheckfileCmd_1(self):
-        """
-        Synopsis:
-        Issue CHECKFILE Command.
-
-        Description:
-        ...
-
-        Expected Result:
-        ...
-
-        Test Steps:
-        - ...
-
-        Remarks:
-        TODO: To be implemented.
-        """
-        info(1,"TODO: test_CheckfileCmd_1()")
-
-
-    def test_RetrieveCmd_1(self):
-        """
-        Synopsis:
-        Issue RETRIEVE Command.
-
-        Description:
-        ...
-
-        Expected Result:
-        ...
-
-        Test Steps:
-        - ...
-
-        Remarks:
-        TODO: To be implemented.
-        """
-        info(1,"TODO: test_RetrieveCmd_1()")
 
 
     def test_ArchiveCmd_Err_1(self):

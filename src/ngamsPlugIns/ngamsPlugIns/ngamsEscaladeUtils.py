@@ -31,11 +31,16 @@
 This module contains tools for interacting with the Escalade 6800 controller.
 """
 
-import string, urllib, commands
+import commands
+import logging
+import string
+import urllib
 
-from ngamsLib.ngamsCore import TRACE, warning, trim, info, cleanList
+from ngamsLib.ngamsCore import TRACE, trim, cleanList
 from ngamsLib import ngamsPhysDiskInfo, ngamsLib
 
+
+logger = logging.getLogger(__name__)
 
 def parseHtmlInfo(url,
                   rootMtPt,
@@ -61,7 +66,7 @@ def parseHtmlInfo(url,
     cmd = "wget -T 2 -t 1 %s" % url
     stat, out = commands.getstatusoutput(cmd)
     if (stat):
-        warning("Problem contacting local 3ware WEB server via URL: " + url)
+        logger.warning("Problem contacting local 3ware WEB server via URL: %s", url)
         return {}
 
     fd = urllib.urlopen(url)
@@ -355,7 +360,7 @@ def parseGen2Controller(rootMtPt,
     bufLen      = len(bufLines)
     while (idx < bufLen):
         line = bufLines[idx].strip()
-        info(5,"Parsing 3ware status line: %s" % line)
+        logger.debug("Parsing 3ware status line: %s", line)
         # Next controller?
         if ((line.find("Unit ") != -1) and (line.find("UnitType ") != -1)):
             unitTypeDic = {}
@@ -385,7 +390,7 @@ def parseGen2Controller(rootMtPt,
             idx += 1
             while (idx < bufLen):
                 line = bufLines[idx].strip()
-                info(5,"Parsing 3ware status line: %s" % line)
+                logger.debug("Parsing 3ware status line: %s", line)
                 if (line == ""):
                     idx += 1
                     continue
@@ -462,9 +467,9 @@ def getContInfo(contList):
     out = ""
     for contId in contList:
         cmd = "sudo /usr/local/sbin/tw_cli info c%s" % str(contId)
-        info(4,"Executing 3ware client tool: %s" % cmd)
+        logger.debug("Executing 3ware client tool: %s", cmd)
         stat, outTmp = commands.getstatusoutput(cmd)
-        info(4,"Executed 3ware client tool. Status: %d" % stat)
+        logger.debug("Executed 3ware client tool. Status: %d", stat)
         if (stat):
             raise Exception, "Error invoking 3ware Command Line Tool: " +\
                   str(out)
@@ -510,9 +515,9 @@ def exportCont(contId):
     for unit in unitList:
         cmd = "sudo /usr/local/sbin/tw_cli /c%d/%s export quiet" %\
               (int(contId), unit)
-        info(4,"Invoking command to export 3ware unit: %s ..." % cmd)
+        logger.debug("Invoking command to export 3ware unit: %s ...", cmd)
         stat, out = commands.getstatusoutput(cmd)
-        info(4,"Result of command: %s to export 3ware unit: %d" % (cmd, stat))
+        logger.debug("Result of command: %s to export 3ware unit: %d", cmd, stat)
 
 
 def rescanCont(contId):
@@ -528,9 +533,9 @@ def rescanCont(contId):
     T = TRACE()
 
     cmd = "sudo /usr/local/sbin/tw_cli /c%d rescan" % (int(contId))
-    info(3,"Invoking command to rescan 3ware unit: %s ..." % cmd)
+    logger.debug("Invoking command to rescan 3ware unit: %s ...", cmd)
     stat, out = commands.getstatusoutput(cmd)
-    info(3,"Result of command: %s to rescan 3ware unit: %d" % (cmd, stat))
+    logger.debug("Result of command: %s to rescan 3ware unit: %d", cmd, stat)
 
 
 def parseCmdLineInfo(rootMtPt,

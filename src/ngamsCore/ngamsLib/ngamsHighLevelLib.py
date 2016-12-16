@@ -33,18 +33,19 @@
 Contains higher level common functions.
 """
 
+import logging
 import os
 import re
+import shutil
 import string
 import threading
 import random
 import time
 import urllib
-import shutil
 
 from pccUt import PccUtTime
 from ngamsCore import TRACE, genLog, NGAMS_HOST_LOCAL,\
-    NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN, NGAMS_HOST_REMOTE, info, getUniqueNo,\
+    NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN, NGAMS_HOST_REMOTE, getUniqueNo,\
     NGAMS_PROC_DIR, NGAMS_UNKNOWN_MT, NGAMS_STAGING_DIR, NGAMS_TMP_FILE_PREFIX,\
     NGAMS_PICKLE_FILE_EXT, checkCreatePath, checkAvailDiskSpace,\
     getFileSize, NGAMS_BAD_FILES_DIR, NGAMS_BAD_FILE_PREFIX, NGAMS_STATUS_CMD,\
@@ -53,6 +54,8 @@ import ngamsSmtpLib
 import ngamsLib
 import ngamsHostInfo, ngamsStatus
 
+
+logger = logging.getLogger(__name__)
 
 # Dictionary with semaphores to ensure mutual exclusion on disk access
 _diskMutexSems = {}
@@ -284,11 +287,10 @@ def acquireDiskResource(ngamsCfgObj,
     if (not _diskMutexSems.has_key(slotId)):
         _diskMutexSems[slotId] = threading.Semaphore(1)
     code = string.split(str(abs(random.gauss(10000000,10000000))), ".")[0]
-    info(4,"Requesting access to disk resource with Slot ID: " +\
-         slotId + " (Code: " + str(code) + ") ...")
+    logger.debug("Requesting access to disk resource with Slot ID: %s (Code: %s)",
+                 slotId, str(code))
     _diskMutexSems[slotId].acquire()
-    info(4,"Access to disk resource with Slot ID " + slotId +\
-         " granted (Code: " + str(code) + ").")
+    logger.debug("Access granted")
 
 
 def releaseDiskResource(ngamsCfgObj,
@@ -311,7 +313,7 @@ def releaseDiskResource(ngamsCfgObj,
     global _diskMutexSems
     if (not _diskMutexSems.has_key(slotId)):
         _diskMutexSems[slotId] = threading.Semaphore(1)
-    info(4,"Releasing disk resource with Slot ID: " + slotId)
+    logger.debug("Releasing disk resource with Slot ID: %s", slotId)
     _diskMutexSems[slotId].release()
 
 
@@ -352,20 +354,20 @@ def checkAddExt(ngamsCfgObj,
     if (expExt == NGAMS_UNKNOWN_MT):
         msg = "Mime-type specified: %s is not defined in the mime-type " +\
               "mappings in the configuration"
-        info(2, msg % mimeType)
+        logger.info(msg, mimeType)
         return filename
     elif len(expExt) == 0:
         msg = "No extension added to filename due to configuration mapping."
-        info(3, msg)
+        logger.debug(msg)
         return filename
     if ((filename.rfind(expExt) + len(expExt)) != len(filename)):
         filename = "%s.%s" % (filename, expExt)
-        info(4,"New filename: %s" % filename)
+        logger.debug("New filename: %s", filename)
     elif filename.rfind(expExt) == -1: # this fixes the case where len(filename)==2
         filename = "%s.%s" % (filename, expExt)
-        info(4,"New filename: %s" % filename)
+        logger.debug("New filename: %s", filename)
     else:
-        info(4,"No extension added to filename")
+        logger.debug("No extension added to filename")
     return filename
 
 
@@ -402,8 +404,8 @@ def genStagingFilename(ngamsCfgObj,
                     administrative staging files as described above
                     (string|tuple).
     """
-    info(4,"Generating staging filename - Storage Set ID: " +\
-         storageSetId + " - URI: " + filename)
+    logger.debug("Generating staging filename - Storage Set ID: %s - URI: %s",
+                 storageSetId, filename)
     try:
         tmpFilename = re.sub("\?|=|&", "_", os.path.basename(filename))
 
@@ -428,7 +430,7 @@ def genStagingFilename(ngamsCfgObj,
                                             NGAMS_PICKLE_FILE_EXT)
             reqPropFilename = "%s.%s" % (stagingFilename,NGAMS_PICKLE_FILE_EXT)
 
-        info(4,"Generated staging filename: " + stagingFilename)
+        logger.debug("Generated staging filename: %s", stagingFilename)
         checkCreatePath(os.path.dirname(stagingFilename))
         if (genTmpFiles):
             return (tmpStagingFilename, stagingFilename, tmpReqPropFilename,
@@ -453,7 +455,7 @@ def openCheckUri(uri):
     """
     T = TRACE()
 
-    info(4,"Opening URL: " + uri)
+    logger.debug("Opening URL: %s", uri)
     err = ""
     retStat = None
     try:
@@ -506,7 +508,7 @@ def saveFromHttpToFile(ngamsCfgObj,
 
     checkCreatePath(os.path.dirname(trgFilename))
 
-    info(2,"Saving data in file: " + trgFilename + " ...")
+    logger.info("Saving data in file: %s", trgFilename)
     timer = PccUtTime.Timer()
 
     with open(trgFilename, "w") as fdOut:
@@ -522,22 +524,22 @@ def saveFromHttpToFile(ngamsCfgObj,
                 not reqPropsObj.getFileUri().startswith('http://')):
                 # (reqPropsObj.getSize() == -1)):
                 # Just specify something huge.
-                info(4,"It is an Archive Pull Request/data with unknown size")
+                logger.debug("It is an Archive Pull Request/data with unknown size")
                 remSize = int(1e11)
             elif reqPropsObj.getFileUri().startswith('http://'):
-                info(4,"It is an HTTP Archive Pull Request: trying to get Content-Length")
+                logger.debug("It is an HTTP Archive Pull Request: trying to get Content-Length")
                 httpInfo = reqPropsObj.getReadFd().info()
                 headers = httpInfo.headers
                 hdrsDict = ngamsLib.httpMsgObj2Dic(''.join(headers))
                 if hdrsDict.has_key('content-length'):
                     remSize = int(hdrsDict['content-length'])
                 else:
-                    info(4,"No HTTP header parameter Content-Length!")
+                    logger.debug("No HTTP header parameter Content-Length!")
                     remSize = int(1e11)
-                    info(5,"Header keys: %s" % hdrsDict.keys())
+                    logger.debug("Header keys: %s", hdrsDict.keys())
             else:
                 remSize = reqPropsObj.getSize()
-                info(4,"Archive Push/Pull Request - Data size: %d" % remSize)
+                logger.debug("Archive Push/Pull Request - Data size: %d", remSize)
                 sizeKnown = 1
 
             # Receive the data.
@@ -560,9 +562,9 @@ def saveFromHttpToFile(ngamsCfgObj,
 
             msg = "Saved data in file: %s. Bytes received: %d. Time: %.3f s. " +\
                   "Rate: %.2f Bytes/s"
-            info(2,msg % (trgFilename, int(reqPropsObj.getBytesReceived()),
-                          deltaTime, (float(reqPropsObj.getBytesReceived()) /
-                                      deltaTime)))
+            logger.debug(msg, trgFilename, int(reqPropsObj.getBytesReceived()),
+                         deltaTime,
+                         float(reqPropsObj.getBytesReceived())/deltaTime)
 
             # Raise exception if less byes were received as expected.
             if (sizeKnown and (remSize > 0)):
@@ -656,8 +658,8 @@ def copyFile(ngamsCfgObj,
     Returns:            Tuple. Element 0: Time in took to move
                         file (s) (tuple).
     """
-    info(4,"Copying file: %s to filename: %s ..." %\
-         (srcFilename, trgFilename))
+    logger.debug("Copying file: %s to filename: %s ...",
+                 srcFilename, trgFilename)
     try:
         # Make mutual exclusion on disk access (if requested).
         acquireDiskResource(ngamsCfgObj, srcFileSlotId)
@@ -673,8 +675,8 @@ def copyFile(ngamsCfgObj,
                 os.chmod(trgFilename, 420)
             shutil.copyfile(srcFilename, trgFilename)
             deltaTime = timer.stop()
-            info(3,"File: %s copied to filename: %s" %\
-                 (srcFilename, trgFilename))
+            logger.debug("File: %s copied to filename: %s",
+                         srcFilename, trgFilename)
         except Exception, e:
             errMsg = genLog("NGAMS_AL_CP_FILE",
                             [srcFilename, trgFilename, str(e)])
@@ -727,8 +729,8 @@ def moveFile2BadDir(ngamsCfgObj,
 
     Returns:         Name of filename in Bad Files Area (string).
     """
-    info(2,"Moving file to Bad Files Area: %s->%s ..." %\
-         (srcFilename, orgFilename))
+    logger.debug("Moving file to Bad Files Area: %s->%s ...",
+                 srcFilename, orgFilename)
     count = getUniqueNo()
     badFilesDir = os.path.normpath(ngamsCfgObj.getRootDirectory() + "/" +\
                                    NGAMS_BAD_FILES_DIR)
@@ -743,8 +745,7 @@ def moveFile2BadDir(ngamsCfgObj,
     if ((fileEls[-1] == "Z") or (fileEls[-1] == "gz")):
         trgFilename = trgFilename + "." + fileEls[-1]
     mvFile(srcFilename, trgFilename)
-    info(2,"Moved file to Bad Files Area: %s->%s ..." %\
-         (srcFilename, orgFilename))
+    logger.debug("Moved file to Bad Files Area")
     return trgFilename
 
 
@@ -810,8 +811,8 @@ def pingServer(hostId,
 
     Returns:      Void.
     """
-    info(3,"Pinging NG/AMS Server: " + hostId + "/" + str(portNo) +\
-         ". Timeout: " + str(timeOut) + " ...")
+    logger.debug("Pinging NG/AMS Server: %s/%s. Timeout: %s",
+                 hostId, str(portNo), str(timeOut))
     startTime = time.time()
     gotResponse = 0
     resp = stat = ""
@@ -836,8 +837,7 @@ def pingServer(hostId,
                  "using port number: " + str(portNo) + " did not respond " +\
                  "within: " + str(timeOut) + "s"
         raise Exception, errMsg
-    info(3,"Successfully pinged NG/AMS Server: %s/%d. Poll time: %.3fs." %\
-         (hostId, portNo, (time.time() - startTime)))
+    logger.debug("Successfully pinged NG/AMS Server")
 
 
 def stdReqTimeStatUpdate(srvObj,

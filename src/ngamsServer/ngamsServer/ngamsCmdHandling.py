@@ -31,12 +31,13 @@
 Contains various functions for handling commands.
 """
 
+import logging
 import sys
 
 import ngamsArchiveCmd, ngamsCacheDelCmd, ngamsCheckFileCmd, ngamsDiscardCmd
 import ngamsConfigCmd, ngamsCloneCmd
 import ngamsExitCmd, ngamsHelpCmd, ngamsInitCmd, ngamsLabelCmd, ngamsOfflineCmd
-from ngamsLib.ngamsCore import info, genLog, TRACE, \
+from ngamsLib.ngamsCore import genLog, TRACE, \
     NGAMS_RETRIEVE_CMD, NGAMS_ARCHIVE_CMD, NGAMS_CACHEDEL_CMD, \
     NGAMS_CHECKFILE_CMD, NGAMS_CLONE_CMD, NGAMS_CONFIG_CMD, NGAMS_DISCARD_CMD, \
     NGAMS_EXIT_CMD, NGAMS_HELP_CMD, NGAMS_INIT_CMD, NGAMS_LABEL_CMD, \
@@ -47,6 +48,8 @@ import ngamsOnlineCmd, ngamsRearchiveCmd, ngamsRegisterCmd, ngamsRemDiskCmd
 import ngamsRemFileCmd, ngamsRetrieveCmd, ngamsStatusCmd, ngamsSubscribeCmd
 import ngamsUnsubscribeCmd
 
+
+logger = logging.getLogger(__name__)
 
 def cmdHandler(srvObj,
                reqPropsObj,
@@ -69,7 +72,7 @@ def cmdHandler(srvObj,
 
     # Interpret the command + parameters.
     cmd = reqPropsObj.getCmd()
-    info(1,"Received command: " + cmd)
+    logger.info("Received command: %s", cmd)
     if (cmd == "ngamsInternal.dtd"):
         # Special handling.
         reqPropsObj.setCmd(NGAMS_RETRIEVE_CMD).addHttpPar("internal", cmd)
@@ -127,14 +130,14 @@ def cmdHandler(srvObj,
                 if (int(reqPropsObj.getHttpPar("reload")) == 1):
                     reloadMod = 1
             if not sys.modules.has_key(cmdMod):
-                info(2,"Importing dynamic command module: %s" % cmdMod)
+                logger.debug("Importing dynamic command module: %s", cmdMod)
                 mod = __import__(cmdMod, fromlist=[__name__])
             elif reloadMod == 1:
-                info(2,"Re-loading dynamic command module: %s" % cmdMod)
+                logger.debug("Re-loading dynamic command module: %s", cmdMod)
                 mod = reload(sys.modules[cmdMod])
             else:
                 mod = __import__(cmdMod, fromlist=[__name__]) # just make sure that mod is initialized
-                info(2,"Using loaded dynamic command module: %s" % cmdMod)
+                logger.debug("Using loaded dynamic command module: %s", cmdMod)
 
             srvObj.getDynCmdDic()[cmdMod] = 1
         except Exception:

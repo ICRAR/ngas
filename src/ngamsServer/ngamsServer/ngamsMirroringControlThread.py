@@ -49,7 +49,7 @@ import thread
 import threading
 import time
 
-from ngamsLib.ngamsCore import TRACE, info, NGAMS_MIR_CONTROL_THR, rmFile, \
+from ngamsLib.ngamsCore import TRACE, NGAMS_MIR_CONTROL_THR, rmFile, \
     cleanList, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, \
     NGAMS_HTTP_HDR_CONTENT_TYPE, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_SUCCESS, \
     NGAMS_STATUS_CMD, decompressFile, \
@@ -90,7 +90,7 @@ def checkStopMirControlThread(srvObj):
     T = TRACE(5)
 
     if (not srvObj.getThreadRunPermission()):
-        info(2, "Stopping the Mirroring Service")
+        logger.info("Stopping the Mirroring Service")
         raise Exception, NGAMS_MIR_CONTROL_THR_STOP
 
 
@@ -113,8 +113,8 @@ def addEntryMirQueue(srvObj,
 
     try:
         srvObj._mirQueueDbmSem.acquire()
-        info(4, "Adding entry in Mirroring Queue: %s/%d" %\
-             (mirReqObj.getFileId(), mirReqObj.getFileVersion()))
+        logger.debug("Adding entry in Mirroring Queue: %s/%d",
+             mirReqObj.getFileId(), mirReqObj.getFileVersion())
         newKey = ((srvObj._mirQueueDbm.get(NGAMS_MIR_DBM_COUNTER) + 1) %\
                   NGAMS_MIR_DBM_MAX_LIMIT)
         srvObj._mirQueueDbm.\
@@ -148,8 +148,8 @@ def addEntryErrQueue(srvObj,
 
     try:
         srvObj._errQueueDbmSem.acquire()
-        info(4, "Adding entry in Mirroring Error Queue: %s/%d" %\
-             (mirReqObj.getFileId(), mirReqObj.getFileVersion()))
+        logger.debug("Adding entry in Mirroring Error Queue: %s/%d",
+             mirReqObj.getFileId(), mirReqObj.getFileVersion())
         srvObj._errQueueDbm.add(mirReqObj.genFileKey(), mirReqObj).sync()
         if (updateDb): srvObj.getDb().updateMirReq(mirReqObj)
         srvObj._errQueueDbmSem.release()
@@ -261,8 +261,8 @@ def addEntryComplQueue(srvObj,
 
     try:
         srvObj._complQueueDbmSem.acquire()
-        info(4, "Adding entry in Mirroring Completed Queue: %s/%d" %\
-             (mirReqObj.getFileId(), mirReqObj.getFileVersion()))
+        logger.debug("Adding entry in Mirroring Completed Queue: %s/%d",
+             mirReqObj.getFileId(), mirReqObj.getFileVersion())
         srvObj._complQueueDbm.add(mirReqObj.genFileKey(), mirReqObj).sync()
         if (updateDb): srvObj.getDb().updateMirReq(mirReqObj)
         srvObj._complQueueDbmSem.release()
@@ -311,7 +311,7 @@ def scheduleMirReq(srvObj,
                 setSrvListId(srvListId).\
                 setStatus(ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_SCHED).\
                 setXmlFileInfo(xmlFileInfo)
-    info(3, "Scheduling data object for mirroring: %s" %\
+    logger.debug("Scheduling data object for mirroring: %s",
          mirReqObj.genSummary())
     srvObj.getDb().writeMirReq(mirReqObj)
     addEntryMirQueue(srvObj, mirReqObj, updateDb = False)
@@ -365,7 +365,7 @@ def startMirroringThreads(srvObj):
     for thrNo in range(1, (srvObj.getCfg().getMirroringThreads() + 1)):
         threadId = NGAMS_MIR_CONTROL_THR + "-" + str(thrNo)
         args = (srvObj, None)
-        info(4,"Starting Mirroring Thread: %s" % threadId)
+        logger.debug("Starting Mirroring Thread: %s", threadId)
         thrHandle = threading.Thread(None, mirroringThread, threadId, args)
         thrHandle.setDaemon(0)
         thrHandle.start()
@@ -388,7 +388,7 @@ def pauseMirThreads(srvObj):
     while (True):
         checkStopMirControlThread(srvObj)
         if (srvObj._mirThreadsPauseCount == noOfMirThreads):
-            info(3, "All Mirroring Threads entered paused mode")
+            logger.debug("All Mirroring Threads entered paused mode")
             return
         else:
             time.sleep(1.0)
@@ -411,7 +411,7 @@ def resumeMirThreads(srvObj):
     while (srvObj._mirThreadsPauseCount > 0):
         checkStopMirControlThread(srvObj)
         time.sleep(1.0)
-    info(3, "All Mirroring Threads resumed service")
+    logger.debug("All Mirroring Threads resumed service")
 
 
 def pauseMirThread(srvObj):
@@ -427,12 +427,12 @@ def pauseMirThread(srvObj):
     T = TRACE(5)
 
     if (srvObj._pauseMirThreads):
-        info(3, "Mirroring Thread suspending itself ...")
+        logger.debug("Mirroring Thread suspending itself ...")
         srvObj._mirThreadsPauseCount += 1
         while (srvObj._pauseMirThreads):
             checkStopMirControlThread(srvObj)
             time.sleep(1.0)
-        info(3, "Mirroring Thread resuming service ...")
+        logger.debug("Mirroring Thread resuming service ...")
         srvObj._mirThreadsPauseCount -= 1
 
 
@@ -593,7 +593,7 @@ def handleMirRequest(srvObj,
         raise Exception, msg
     else:
         msg = "Successfully handled Mirroring Request: %s"
-        info(3, msg % mirReqObj.genSummary())
+        logger.debug(msg, mirReqObj.genSummary())
 
 
 def mirroringThread(srvObj,
@@ -619,7 +619,7 @@ def mirroringThread(srvObj,
             checkStopMirControlThread(srvObj)
             pauseMirThread(srvObj)
 
-            info(5, "Mirroring Thread starting next iteration ...")
+            logger.debug("Mirroring Thread starting next iteration ...")
 
             ###################################################################
             # Business logic of Mirroring Thread
@@ -753,7 +753,7 @@ def initMirroring(srvObj):
         if (not mirReqInfoList): break
         for mirReqInfo in mirReqInfoList:
             mirReqObj = srvObj.getDb().unpackMirReqSqlResult(mirReqInfo)
-            info(4, "Restoring Mirroring Request: %s" % mirReqObj.genSummary())
+            logger.debug("Restoring Mirroring Request: %s", mirReqObj.genSummary())
             # Add entry in the Mirroring DBM Queue?
             if (mirReqObj.getStatusAsNo() in
                 (ngamsMirroringRequest.NGAMS_MIR_REQ_STAT_SCHED_NO,
@@ -856,7 +856,7 @@ def retrieveFileList(srvObj,
                 count += 1
             msg = "Retrieving File List. File List ID: %s. " +\
                   "Remaining Elements: %d"
-            info(4, msg % (fileListId, remainingEls))
+            logger.debug(msg, fileListId, remainingEls)
             if (count == 100):
                 msg = "Illegal file list received as response to " +\
                       "STATUS?file_list Request"
@@ -887,8 +887,8 @@ def retrieveFileList(srvObj,
                     # Are there enough local copies in the cluster name space?
                     msg = "Checking whether to schedule file: %s/%d for " +\
                           "mirroring ..."
-                    info(4, msg % (tmpFileObj.getFileId(),
-                                   tmpFileObj.getFileVersion()))
+                    logger.debug(msg, tmpFileObj.getFileId(),
+                                   tmpFileObj.getFileVersion())
                     if (srvObj._mirQueueDbm.hasKey(fileKey)):
                         continue
                     elif (srvObj._errQueueDbm.hasKey(fileKey)):
@@ -1014,7 +1014,7 @@ def checkSourceArchives(srvObj):
             else:
                 msg += ". Partial synchronization from date: %s" %\
                        dbmMirSrcObj.getLastSyncTime()
-            info(4, msg % (mirSrcObj.getId(), nextSrv, nextPort))
+            logger.debug(msg, mirSrcObj.getId(), nextSrv, nextPort)
             try:
                 retrieveFileList(srvObj, mirSrcObj, nextSrv, nextPort,
                                  statusCmdPars, clusterFilesDbmName)
@@ -1249,24 +1249,24 @@ def mirControlThread(srvObj, stopEvt):
 
     # Alma Mirroring Service
     if (srvObj.getCfg().getVal("Mirroring[1].AlmaMirroring")):
-        info(1, "ALMA Mirroring is enabled")
-        info(3, "ALMA Mirroring configuration: all_versions=%s,source_cluster=%s,source_dbl=%s,target_cluster=%s,target_db=%s,n_threads=%s" % ( \
-                 srvObj.getCfg().getVal("Mirroring[1].all_versions"), \
-                 srvObj.getCfg().getVal("Mirroring[1].source_cluster"), \
-                 srvObj.getCfg().getVal("Mirroring[1].source_dbl"), \
-                 srvObj.getCfg().getVal("Mirroring[1].target_cluster"), \
-                 srvObj.getCfg().getVal("Mirroring[1].target_dbl"), \
-                 srvObj.getCfg().getVal("Mirroring[1].n_threads")))
+        logger.debug("ALMA Mirroring is enabled")
+        logger.debug("ALMA Mirroring configuration: all_versions=%s,source_cluster=%s,source_dbl=%s,target_cluster=%s,target_db=%s,n_threads=%s",
+                 srvObj.getCfg().getVal("Mirroring[1].all_versions"),
+                 srvObj.getCfg().getVal("Mirroring[1].source_cluster"),
+                 srvObj.getCfg().getVal("Mirroring[1].source_dbl"),
+                 srvObj.getCfg().getVal("Mirroring[1].target_cluster"),
+                 srvObj.getCfg().getVal("Mirroring[1].target_dbl"),
+                 srvObj.getCfg().getVal("Mirroring[1].n_threads"))
 
-        info(3, "ALMA Mirroring Control Thread entering main server loop")
+        logger.debug("ALMA Mirroring Control Thread entering main server loop")
         while (True):
             # Incapsulate this whole block to avoid that the thread dies in
             try:
                 checkStopMirControlThread(srvObj)
-                info(3, "ALMA Mirroring Control Thread starting next iteration ...")
+                logger.debug("ALMA Mirroring Control Thread starting next iteration ...")
 
                 # Update mirroring book keeping table
-                info(3, "ALMA Mirroring Control Thread updating book keeping table ...")
+                logger.debug("ALMA Mirroring Control Thread updating book keeping table ...")
                 local_server_contact_ip = get_contact_ip(srvObj.getCfg())
                 target_node_conn = httplib.HTTPConnection(local_server_contact_ip)
                 target_node_conn.request("GET","MIRRTABLE?"+\
@@ -1279,7 +1279,7 @@ def mirControlThread(srvObj, stopEvt):
                 response = target_node_conn.getresponse()
 
                 # Perform mirroring tasks
-                info(3, "ALMA Mirroring Control Thread performing mirroring tasks ...")
+                logger.debug("ALMA Mirroring Control Thread performing mirroring tasks ...")
                 target_node_conn.request("GET","MIRREXEC?"+\
                                                "mirror_cluster=2"+\
                                                "&n_threads="+srvObj.getCfg().getVal("Mirroring[1].n_threads"))
@@ -1309,7 +1309,7 @@ def mirControlThread(srvObj, stopEvt):
             tmpPeriod = float(mirSrcObj.getPeriod())
             if (tmpPeriod < period): period = tmpPeriod
 
-        info(3, "Mirroring Control Thread entering main server loop")
+        logger.debug("Mirroring Control Thread entering main server loop")
         while (True):
             startTime = time.time()
 
@@ -1317,7 +1317,7 @@ def mirControlThread(srvObj, stopEvt):
             # case a problem occurs, like e.g. a problem with the DB connection.
             try:
                 checkStopMirControlThread(srvObj)
-                info(5, "Mirroring Control Thread starting next iteration ...")
+                logger.debug("Mirroring Control Thread starting next iteration ...")
 
                 ###################################################################
                 # Business logic of Mirroring Control Thread
@@ -1348,8 +1348,8 @@ def mirControlThread(srvObj, stopEvt):
                 ###################################################################
                 suspTime = (period - (time.time() - startTime))
                 if (suspTime < 1): suspTime = 1
-                info(3, "Mirroring Control Thread executed - suspending for " +\
-                      str(suspTime) + "s ...")
+                logger.debug("Mirroring Control Thread executed - suspending for %s [s]",
+                      str(suspTime))
 
                 if stopEvt.wait(suspTime):
                     return

@@ -91,7 +91,7 @@ import os
 import posix
 
 from ngamsLib import ngamsHostInfo
-from ngamsLib.ngamsCore import info, getHostName
+from ngamsLib.ngamsCore import getHostName
 
 
 logger = logging.getLogger(__name__)
@@ -128,7 +128,7 @@ def mountToMountpoint(devName,
         rdOnly = ""
     #command = 'mount ' + rdOnly + ' ' + fstype + ' ' + devName + ' ' + mntPt
     command = "sudo mount %s %s %s" % (rdOnly, devName, mntPt)
-    info(4,"Command to mount disk: " + command)
+    logger.debug("Command to mount disk: %s", command)
 
 #     if (getMountedDev(mntPt)):   # already mounted
 #         warnMsg = "Device " + getMountedDev(mntPt) + ' already mounted ' + \
@@ -253,8 +253,7 @@ def insMod(module):
         errMsg = "Module " + module + " does not exists"
         raise Exception(errMsg)
     elif stat == (1,1):
-        errMsg = "Module " + module + " already loaded"
-        info(1,errMsg)
+        logger.info("Module %s already loaded", module)
         return 0
     if istat > 0:
         errMsg = "Problem while inserting module " + module + ":" + str(stat)
@@ -423,7 +422,7 @@ def ngamsMount(srvObj,
         #####         diskDic[slotId].getMountPoint(),
         #####         "auto", "noauto,user", "0", "0"]
         #####createFstabEntry(entry)
-        info(1,"Mounting: " + diskDic[slotId].getMountPoint())
+        logger.debug("Mounting: %s", diskDic[slotId].getMountPoint())
         if (srvObj.getCfg().getAllowRemoveReq() or
             srvObj.getCfg().getAllowArchiveReq()):
             readOnly = 0
@@ -464,7 +463,7 @@ def ngamsUmount(diskDic,
         if (not diskDic.has_key(slotId)):
             continue
         else:
-            info(1, "Unmounting disk with mount point: " +\
+            logger.info("Unmounting disk with mount point: %s",
                  diskDic[slotId].getMountPoint())
             umountMountpoint(diskDic[slotId].getMountPoint())
             #####removeFstabEntry(diskDic[slotId].getMountPoint())

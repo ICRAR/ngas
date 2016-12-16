@@ -35,7 +35,7 @@ message file.
 import logging
 
 from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, info, NGAMS_PROC_DATA
+from ngamsLib.ngamsCore import TRACE, NGAMS_PROC_DATA
 from ngamsPlugIns.ngamsAlmaMultipart import specificTreatment
 from ngamsPlugIns.printhead import head
 
@@ -143,7 +143,7 @@ def extractData(result, resourceId, verbose=0):
         errMsg = "No x-axis data found!"
         raise Exception(errMsg)
 
-    info(4, "Leaving extractData")
+    logger.debug("Leaving extractData")
 
     return xyData
 

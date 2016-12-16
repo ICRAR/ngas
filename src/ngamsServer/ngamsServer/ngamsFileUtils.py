@@ -45,8 +45,7 @@ from ngamsLib import ngamsHighLevelLib
 from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
     NGAMS_HOST_DOMAIN, rmFile, NGAMS_HOST_REMOTE, NGAMS_RETRIEVE_CMD, genLog, \
     NGAMS_STATUS_CMD, getHostName, NGAMS_CACHE_DIR, \
-    NGAMS_DATA_CHECK_THR, getFileSize, info,\
-    loadPlugInEntryPoint
+    NGAMS_DATA_CHECK_THR, getFileSize, loadPlugInEntryPoint
 
 _crc32c_available = True
 try:
@@ -71,7 +70,7 @@ def _locateArchiveFile(srvObj,
 
     format = "_locateArchiveFile() - Disk ID: %s - File ID: " +\
              "%s - File Version: %d ..."
-    info(4, format % (str(diskId), fileId, int(fileVersion)))
+    logger.debug(format, str(diskId), fileId, int(fileVersion))
     locTimer = PccUtTime.Timer()
     fileDbm = ngamsDbm.ngamsDbm(dbFilename)
 
@@ -202,14 +201,14 @@ def _locateArchiveFile(srvObj,
     for diskInfo in sqlDiskInfo:
         diskInfoObj = ngamsDiskInfo.ngamsDiskInfo().unpackSqlResult(diskInfo)
         diskInfoDic[diskInfoObj.getDiskId()] = diskInfoObj
-    info(5,"Disk Info Objects Dictionary: " + str(diskInfoDic))
+    logger.debug("Disk Info Objects Dictionary: %s", str(diskInfoDic))
 
     # Check if the files are accessible - when the first accessible file
     # in the fileList is found, the information is returned as the file wanted.
     # To check the file accessibility, it is also checked if the NG/AMS
     # 'responsible' for the file, allows for Retrieve Requests (only done
     # in connection with a Retrieve Request).
-    info(4,"Checking which of the candidate files should be selected ...")
+    logger.debug("Checking which of the candidate files should be selected ...")
     srcFileInfo = None
     foundFile   = 0
     for fileVer in fileVerList:
@@ -222,9 +221,9 @@ def _locateArchiveFile(srvObj,
             diskInfoObj = diskInfoDic[fileInfoObj.getDiskId()]
             port        = hostDic[host].getSrvPort()
 
-            info(5,"Checking candidate file with ID: " +\
-                 fileInfoObj.getFileId() + " on host/port: " +\
-                 host + "/" + str(port) + ". Location: " + location)
+            logger.debug("Checking candidate file with ID: %s on host/port: %s/%s. " + \
+                         "Location: %s",
+                         fileInfoObj.getFileId(), host, str(port), location)
 
             # If the file is stored locally we check if it is accessible,
             # otherwise we send a STATUS/file_access request to the
@@ -240,30 +239,30 @@ def _locateArchiveFile(srvObj,
                 # Check if the file is accessible.
                 filename = os.path.normpath(diskInfoObj.getMountPoint()+"/" +\
                                             fileInfoObj.getFilename())
-                info(3,"Checking if local file with name: " + filename +\
-                     " is available ...")
+                logger.debug("Checking if local file with name: %s is available", filename)
                 if (not os.path.exists(filename)):
-                    info(3,genLog("NGAMS_INFO_FILE_NOT_AVAIL", [fileId, host]))
+                    logger.debug(genLog("NGAMS_INFO_FILE_NOT_AVAIL", [fileId, host]))
                 else:
-                    info(3,genLog("NGAMS_INFO_FILE_AVAIL", [fileId, host]))
+                    logger.debug(genLog("NGAMS_INFO_FILE_AVAIL", [fileId, host]))
                     foundFile = 1
                     break
             else:
-                info(3,"Checking if file with ID/Version: "+\
-                     fileInfoObj.getFileId() + "/" +\
-                     str(fileInfoObj.getFileVersion()) +\
-                     " is available on host/port: " + host + "/" + str(port) +\
-                     " ...")
+                logger.debug("Checking if file with ID/Version: %s/%s " +\
+                             "is available on host/port: %s/%s",
+                             fileInfoObj.getFileId(), str(fileInfoObj.getFileVersion()),
+                             host, str(port))
 
                 # If a server hosting a file is suspended, it is woken up
                 # to be able to check if the file is really accessible.
                 if (hostDic[host].getSrvSuspended() == 1):
-                    info(3,"Server hosting requested file (" + host + "/" +\
-                         str(port) + ") is suspended - waking up server ...")
+                    logger.debug("Server hosting requested file (%s/%s) is suspended " + \
+                                 "- waking up server ...",
+                                 host, str(port))
                     try:
                         ngamsSrvUtils.wakeUpHost(srvObj, host)
-                        info(3,"Suspended server hosting requested file (" +\
-                             host + "/" + str(port) + ") has been woken up")
+                        logger.debug("Suspended server hosting requested file (%s/%s) " +\
+                                     "has been woken up",
+                                     host, str(port))
                     except Exception:
                         logger.exception("Error waking up server hosting selected " +\
                                 "file")
@@ -281,14 +280,15 @@ def _locateArchiveFile(srvObj,
                                               authHdrVal = authHdr)
                 statusObj = ngamsStatus.ngamsStatus().\
                             unpackXmlDoc(statusInfo[3], 1)
-                info(5,"Result of File Access Query: " +\
-                     re.sub("\n", "", str(statusObj.genXml().\
-                                          toprettyxml('  ', '\n'))))
+
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug("Result of File Access Query: %s",
+                                 re.sub("\n", "", str(statusObj.genXml().toprettyxml('  ', '\n'))))
                 if ((statusObj.getMessage().\
                      find("NGAMS_INFO_FILE_AVAIL") == -1)):
-                    info(3,genLog("NGAMS_INFO_FILE_NOT_AVAIL", [fileId, host]))
+                    logger.debug(genLog("NGAMS_INFO_FILE_NOT_AVAIL", [fileId, host]))
                 else:
-                    info(3,genLog("NGAMS_INFO_FILE_AVAIL", [fileId, host]))
+                    logger.debug(genLog("NGAMS_INFO_FILE_AVAIL", [fileId, host]))
                     foundFile = 1
                     break
 
@@ -307,9 +307,9 @@ def _locateArchiveFile(srvObj,
              "Info for file found - Location: %s - Host ID/IP: %s/%s - " +\
              "Port Number: %s - File Version: %d - Filename: %s - " +\
              "Mime-type: %s"
-    info(2,format % (fileId, location, host, ipAddress, port,
+    logger.debug(format, fileId, location, host, ipAddress, port,
                      fileInfoObj.getFileVersion(), fileInfoObj.getFilename(),
-                     fileInfoObj.getFormat()))
+                     fileInfoObj.getFormat())
     reqTime = locTimer.stop()
     return srcFileInfo
 
@@ -460,8 +460,8 @@ def checkFile(srvObj,
     fileVersion  = fileInfo[ngamsDbCore.SUM1_VERSION]
     fileStatus   = fileInfo[ngamsDbCore.SUM1_FILE_STATUS]
     dbFileSize   = fileInfo[ngamsDbCore.SUM1_FILE_SIZE]
-    info(6,"Checking file with ID: " + fileId + " and filename: " + filename +\
-         " on NGAS host: " + srvObj.getHostId() + " ...")
+    logger.debug("Checking file with ID: %s and filename: %s on NGAS host: %s",
+                 fileId, filename, srvObj.getHostId())
 
     ## Set the file status "checking bit" temporary to 1.
     #tmpFileStatus = fileStatus[0] + "1" + fileStatus[2:]
@@ -581,10 +581,10 @@ def syncCachesCheckFiles(srvObj,
     try:
         diskSyncPlugIn = srvObj.getCfg().getDiskSyncPlugIn()
         if (diskSyncPlugIn):
-            info(3,"Invoking Disk Sync Plug-In: %s ..." % diskSyncPlugIn)
+            logger.debug("Invoking Disk Sync Plug-In: %s ...", diskSyncPlugIn)
             plugInMethod = loadPlugInEntryPoint(diskSyncPlugIn)
             plugInMethod(srvObj)
-            info(3,"Invoked Disk Sync Plug-In: %s" % diskSyncPlugIn)
+            logger.debug("Invoked Disk Sync Plug-In: %s", diskSyncPlugIn)
         else:
             logger.warning("No Disk Sync Plug-In defined - consider to provide one!")
         #commands.getstatusoutput("sync")
@@ -700,6 +700,6 @@ def check_checksum(srvObj, fio, filename):
     else:
         msg = "No checksum or checksum variant specified for file " +\
               "%s/%s/%s - skipping checksum check"
-        info(1, msg % (fio.getDiskId(), fio.getFileId(), fio.getFileVersion()))
+        logger.info(msg, fio.getDiskId(), fio.getFileId(), fio.getFileVersion())
 
 # EOF

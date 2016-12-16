@@ -42,7 +42,7 @@ import ngamsCacheControlThread
 from ngamsLib import ngamsNotification, ngamsFileInfo, ngamsDiskInfo
 from ngamsLib import ngamsReqProps, ngamsHighLevelLib, ngamsDapiStatus
 from ngamsLib.ngamsCore import TRACE, genLog, NGAMS_ONLINE_STATE, \
-    NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, info, getDiskSpaceAvail, \
+    NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, getDiskSpaceAvail, \
     rmFile, getFileSize, NGAMS_XML_MT, NGAMS_FAILURE, checkCreatePath, \
     mvFile, getFileCreationTime, NGAMS_SUCCESS, \
     NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_TEXT_MT, \
@@ -132,7 +132,7 @@ def cloneCheckDiskSpace(srvObj,
     T = TRACE()
 
     # Make a dictionary with the available amount of space per disk.
-    info(4,"Generating dictionary with available space per disk")
+    logger.debug("Generating dictionary with available space per disk")
     availDiskSpaceDic = {}
     mtRootDir = srvObj.getCfg().getRootDirectory()
     if (targetDiskId):
@@ -196,8 +196,8 @@ def cloneCheckDiskSpace(srvObj,
 
         text = "Simulating cloning of file - File ID: %s/%d, on disk " +\
                "with ID: %s on host: %s"
-        info(3,text % (fio.getFileId(), fio.getFileVersion(),
-                       fio.getDiskId(), hostName))
+        logger.debug(text, fio.getFileId(), fio.getFileVersion(),
+                       fio.getDiskId(), hostName)
 
         diskExemptList = cloneSimDiskCompl + [fio.getDiskId()]
         trgDiskInfo = None
@@ -231,8 +231,8 @@ def cloneCheckDiskSpace(srvObj,
             else:
                 # OK, this disk should be OK, stop looking for a
                 # suitable Target Disk.
-                info(3,"Found suitable disk with ID: %s/Slot ID: %s" %\
-                     (trgDiskInfo.getDiskId(), trgDiskInfo.getSlotId()))
+                logger.debug("Found suitable disk with ID: %s/Slot ID: %s",
+                             trgDiskInfo.getDiskId(), trgDiskInfo.getSlotId())
                 cloneSucDbm.add(fileKey, "")
                 break
 
@@ -315,14 +315,14 @@ def _checkFile(srvObj,
             # The file seems not to have been transferred completely.
             errMsg = "Size of cloned file wrong (expected: %d/actual: %d)"
             raise Exception, errMsg % (fileInfoObj.getFileSize(), fileSize)
-    info(4,"Size of cloned Staging File OK: " + stagFile)
+    logger.debug("Size of cloned Staging File OK: %s", stagFile)
 
     # The file size was correct.
     if (checkChecksum):
         if ngamsFileUtils.check_checksum(srvObj, fileInfoObj, stagFile):
-            info(4,"Checksum of cloned Staging File OK: %s" % (stagFile,))
+            logger.debug("Checksum of cloned Staging File OK: %s", stagFile)
         else:
-            info(4,"No Checksum or Checksum Plug-In specified for file")
+            logger.debug("No Checksum or Checksum Plug-In specified for file")
 
 
 def _cloneExec(srvObj,
@@ -395,8 +395,8 @@ def _cloneExec(srvObj,
         hostId = fileInfo[1]
         text = "Cloning file - File ID: %s/%d, on disk " +\
                "with ID: %s on host: %s"
-        info(3,text % (fio.getFileId(), fio.getFileVersion(),
-                       fio.getDiskId(), hostId))
+        logger.debug(text, fio.getFileId(), fio.getFileVersion(),
+                       fio.getDiskId(), hostId)
 
         # We generate a local Staging File and archive this.
         stagingFilename = ""
@@ -481,13 +481,13 @@ def _cloneExec(srvObj,
 
                 # Check if host is suspended, if yes, wake it up.
                 if (srvObj.getDb().getSrvSuspended(hostId)):
-                    info(3,"Clone Request - Waking up suspended " +\
-                         "NGAS Host: " + hostId)
+                    logger.debug("Clone Request - Waking up suspended " +\
+                         "NGAS Host: %s", hostId)
                     ngamsSrvUtils.wakeUpHost(srvObj, hostId)
             else:
                 fileUrl = "file:" + mtPt + "/" + fio.getFilename()
-            info(3,"Receiving file via URI: " + fileUrl + " into " +\
-                 "staging filename: " + stagingFilename)
+            logger.debug("Receiving file via URI: %s into staging filename: %s",
+                         fileUrl, stagingFilename)
             # We try up to 5 times to retrieve the file in case a problem is
             # encountered during cloning.
             for attempt in range(5):
@@ -711,8 +711,8 @@ def _cloneExec(srvObj,
 
     if (cloneListDbm): del cloneListDbm
     rmFile(cloneListDbmName + "*")
-    info(1, "_cloneExec(). Total time: %.3fs. Average time per file: %.3fs." %\
-         (timeAccu, (timeAccu / totFiles)))
+    logger.info("_cloneExec(). Total time: %.3fs. Average time per file: %.3fs.",
+                timeAccu, (timeAccu / totFiles))
 
 
 def _cloneExplicit(srvObj,
@@ -823,14 +823,14 @@ def _cloneExplicit(srvObj,
 
             # Check if host is suspended, if yes, wake it up.
             if (srvObj.getDb().getSrvSuspended(hostId)):
-                info(3,"Clone Request - Waking up suspended " +\
-                     "NGAS Host: " + hostId)
+                logger.debug("Clone Request - Waking up suspended " +\
+                     "NGAS Host: %s", hostId)
                 ngamsSrvUtils.wakeUpHost(srvObj, hostId)
         else:
             # TODO: a time-bomb waiting to explode....
             fileUrl = "file:" + mtPt + "/" + filename
-        info(3,"Receiving file via URI: " + fileUrl + " into " +\
-             "staging filename: " + stagingFilename)
+        logger.debug("Receiving file via URI: %s into staging filename: %s",
+                     fileUrl, stagingFilename)
         # We try up to 5 times to retrieve the file in case a problem is
         # encountered during cloning.
         for attempt in range(5):
@@ -936,12 +936,12 @@ def _cloneThread(srvObj,
 
     Returns:          Void.
     """
-    info(1,"Cloning Thread carrying out Clone Request ...")
+    logger.info("Cloning Thread carrying out Clone Request ...")
     try:
         _cloneExec(srvObj, cloneListDbmName, tmpFilePat, targetDiskId,
                    reqPropsObj)
         rmFile(tmpFilePat + "*")
-        info(1,"Processing of Clone Request completed")
+        logger.info("Processing of Clone Request completed")
         thread.exit()
     except Exception, e:
         rmFile(tmpFilePat + "*")
@@ -961,9 +961,9 @@ def _clone(srvObj,
     cloning. See documentation for ngamsCloneCmd.clone().
     """
     targetDiskId = targetDiskId.strip()
-    info(4,"Handling file cloning with parameters - File ID: " + fileId +\
-         " - Disk ID: " + diskId + " - File Version: " + str(fileVersion) +\
-         " - Target Disk ID: |" + targetDiskId + "|")
+    logger.debug("Handling file cloning with parameters - File ID: %s -" + \
+                 "Disk ID: %s - File Version: %s - Target Disk ID: |%s|",
+                 fileId, diskId, str(fileVersion), targetDiskId)
     if (((fileId == "") and (diskId == "") and (fileVersion != -1)) or
         ((fileId == "") and (diskId == "") and (fileVersion == -1))):
         errMsg = genLog("NGAMS_ER_CMD_SYNTAX",
@@ -980,7 +980,7 @@ def _clone(srvObj,
     if (False and diskId and fileId and (fileVersion > 0)):
         _cloneExplicit(srvObj, reqPropsObj, diskId, fileId, fileVersion,
                        targetDiskId)
-        info(1, "Successfully handled command CLONE")
+        logger.info("Successfully handled command CLONE")
         return
 
     # Handling cloning of more files.
@@ -1030,7 +1030,7 @@ def _clone(srvObj,
         rmFile(fileInfoDbmNm + "*")
         rmFile(cloneListDbmName + "*")
         raise Exception, e
-    info(3,"Found: " + str(noOfCloneFiles) + " file(s) for cloning ...")
+    logger.debug("Found: %d file(s) for cloning ...", noOfCloneFiles)
     del cloneListDbm
 
     # Check available amount of disk space.
@@ -1048,7 +1048,7 @@ def _clone(srvObj,
     if (not reqPropsObj.getWait()):
         # Send intermediate reply if the HTTP Reference object is given
         # whenever send an auto reply now.
-        info(3,"CLONE command accepted - generating immediate " +
+        logger.debug("CLONE command accepted - generating immediate " +
              "confimation reply to CLONE command")
         status = srvObj.genStatus(NGAMS_SUCCESS,
                                   "Accepted CLONE command for execution").\
@@ -1068,7 +1068,7 @@ def _clone(srvObj,
         _cloneExec(srvObj, cloneListDbmName, tmpFilePat, targetDiskId,
                    reqPropsObj)
         msg = "Successfully handled command CLONE"
-        info(3,msg)
+        logger.debug(msg)
         status = srvObj.genStatus(NGAMS_SUCCESS, msg).\
                  setReqStatFromReqPropsObj(reqPropsObj).setActualCount(0)
         rmFile(cloneListDbmName + "*")

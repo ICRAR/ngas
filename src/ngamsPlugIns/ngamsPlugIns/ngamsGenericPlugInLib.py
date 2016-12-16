@@ -38,7 +38,7 @@ import os
 import urllib
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, getHostName, genLog, info
+from ngamsLib.ngamsCore import TRACE, getHostName, genLog
 
 
 logger = logging.getLogger(__name__)
@@ -155,7 +155,7 @@ def notifyRegistrationService(srvObj, svrStatus = 'online'):
                 logger.error(errMsg)
                 #raise Exception, errMsg
             else:
-                info(3, "Successfully notified registration service: %s" % svrStatus)
+                logger.debug("Successfully notified registration service: %s", svrStatus)
                 data = response.read() #for debug
                 print data #for debug
         except Exception, e:

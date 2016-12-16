@@ -43,7 +43,7 @@ import shutil
 import time
 
 from ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE, NGAMS_PICKLE_FILE_EXT, NGAMS_TMP_FILE_EXT
-from ngamsCore import info, rmFile, getUniqueNo, getNgamsVersion, timeRef2Iso8601
+from ngamsCore import rmFile, getUniqueNo, getNgamsVersion, timeRef2Iso8601
 import ngamsDbm, ngamsDbCore
 import ngamsFileInfo, ngamsStatus, ngamsFileList
 import ngamsLib
@@ -502,7 +502,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                              setMessage(dbId).\
                              addFileList(tmpFileList)
 
-            info(4,"Creating Temporary DB Snapshot: " + statFilename)
+            logger.debug("Creating Temporary DB Snapshot: %s", statFilename)
 
             with open(tmpStatFilename, "w") as pickleFo:
                 cPickle.dump(tmpStatObj, pickleFo, 1)
@@ -554,7 +554,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                                             NGAMS_PICKLE_FILE_EXT,
                                             NGAMS_TMP_FILE_EXT))
 
-        info(4,"Creating Temporary DB Snapshot: %s" % statFilename)
+        logger.debug("Creating Temporary DB Snapshot: %s", statFilename)
 
         try:
             fileInfoList = [fileInfoObj.getDiskId()] +\
@@ -649,7 +649,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         fileSize = res[0][1]
         if prevConatinerId:
             if prevConatinerId == containerId:
-                info(4, 'File %s already belongs to container %s, skipping it' % (fileId, containerId))
+                logger.debug('File %s already belongs to container %s, skipping it', fileId, containerId)
                 return 0
 
             if not force:
@@ -660,7 +660,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         # is at fileId level
         sql = "UPDATE ngas_files SET container_id = {0} WHERE file_id = {1}"
         self.query2(sql, args=(containerId,fileId))
-        info(4, 'File %s added to container %s' % (fileId,containerId))
+        logger.debug('File %s added to container %s', fileId,containerId)
 
         return fileSize
 
@@ -689,7 +689,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         currentContainerId = res[0][0]
         fileSize = res[0][1]
         if not currentContainerId:
-            info(3, "File with fileId '%s' is part of no container, skipping it" % (fileId,))
+            logger.debug("File with fileId '%s' is part of no container, skipping it", fileId)
             return 0
         elif currentContainerId != containerId:
             msg = "File with fileId '%s' is associated with a different container: %s" % (fileId,currentContainerId)
@@ -699,7 +699,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         # is at fileId level
         sql = "UPDATE ngas_files SET container_id = null WHERE file_id = {0}"
         self.query2(sql, args=(fileId,))
-        info(4, 'File %s was removed from container %s' % (fileId,containerId))
+        logger.debug('File %s was removed from container %s', fileId,containerId)
 
         return fileSize
 

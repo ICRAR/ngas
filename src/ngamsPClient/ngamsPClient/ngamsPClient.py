@@ -55,10 +55,11 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NG
     NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, getNgamsLicense
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD
-from ngamsLib.ngamsCore import info
 from xml.dom import minidom
 import pkg_resources
 
+
+logger = logging.getLogger(__name__)
 
 manPage = pkg_resources.resource_string(__name__, 'doc/ngamsPClient.txt')  # @UndefinedVariable
 __doc__ += "\n\n\nMan-Page for the NG/AMS Python Client Tool:\n\n"
@@ -210,7 +211,7 @@ class ngamsPClient:
         Returns:       NG/AMS Status object (ngamsStatus).
         """
         T = TRACE()
-        info(1,"Archiving file with URI: " + fileUri)
+        logger.info("Archiving file with URI: %s", fileUri)
         locPars = []
         for par in pars: locPars.append(par)
         if (ngamsLib.isArchivePull(fileUri)):
@@ -220,7 +221,6 @@ class ngamsPClient:
             res = self.sendCmd(cmd, wait, "", locPars)
         else:
             res = self.pushFile(fileUri, mimeType, wait, noVersioning, locPars, cmd=cmd)
-        info(1,"Archive request for file: " + fileUri + " issued.")
         return res
 
 
@@ -250,7 +250,7 @@ class ngamsPClient:
         Returns:       NG/AMS Status object (ngamsStatus).
         """
         baseName = os.path.basename(fileUri)
-        info(1, "Re-archiving file with URI: " + baseName)
+        logger.info("Re-archiving file with URI: %s", baseName)
         locPars = []
         for par in pars: locPars.append(par)
         if (ngamsLib.isArchivePull(fileUri)):
@@ -265,7 +265,6 @@ class ngamsPClient:
         else:
             msg = "Rearchive Push is not yet supported!"
             raise Exception(msg)
-        info(1,"Re-archive request of file: " + baseName + " issued.")
         return res
 
 
@@ -669,7 +668,7 @@ class ngamsPClient:
         elif (fileId == "--NG--LOG--"):
             pars = [["ng_log", ""]]
         else:
-            info(4, 'Requesting data with cmd={0}, fileId={1}, containerId={2}, containerName={3}'.format(cmd, fileId, containerId, containerName))
+            logger.debug('Requesting data with cmd=%s, fileId=%s, containerId=%s, containerName=%s', cmd, fileId, containerId, containerName)
             pars = []
             if cmd == NGAMS_RETRIEVE_CMD:
                 if fileId: pars.append(["file_id", fileId])
@@ -1216,21 +1215,21 @@ class ngamsPClient:
             serverList = [(host, port)]
         # For now we try the serves in random order.
         random.shuffle(serverList)
-        info(5,"Server list: %s" % str(serverList))
+        logger.debug("Server list: %s", str(serverList))
 
         # Very simple algorithm, should maybe be refined.
         success = 0
         errors = ""
         for tmpHost, tmpPort in serverList:
             try:
-                info(5,"Trying server: %s:%s ..." % (tmpHost, str(tmpPort)))
+                logger.debug("Trying server: %s:%s ...", tmpHost, str(tmpPort))
                 startTime = time.time()
                 reply, msg, hdrs, data =\
                        ngamsLib.httpGet(tmpHost, tmpPort, cmd, wait, pars,
                                         dataTargFile, blockSize, timeOut,
                                         returnFileObj, authHdrVal,
                                         additionalHdrs)
-                info(5,"Server: %s:%s OK" % (tmpHost, str(tmpPort)))
+                logger.debug("Server: %s:%s OK", tmpHost, str(tmpPort))
                 success = 1
                 break
             except Exception, e:
@@ -1300,8 +1299,8 @@ class ngamsPClient:
                                  None, self.getTimeOut(), 0, authHdrVal,
                                  additionalHdrs)
             deltaTime = (time.time() - startTime)
-            info(3,"Command: %s/%s to %s:%s handled in %.3fs" %\
-                 (cmd, str(locPars), host, str(port), deltaTime))
+            logger.debug("Command: %s/%s to %s:%s handled in %.3fs",
+                         cmd, str(locPars), host, str(port), deltaTime)
         except Exception:
             deltaTime = (time.time() - startTime)
             logger.exception("Exception raised handling command %s/%s to %s:%s " +\
@@ -1317,8 +1316,9 @@ class ngamsPClient:
             # the same query again.
             hdrDic = ngamsLib.httpMsgObj2Dic(hdrs)
             host, port = hdrDic["location"].split("/")[2].split(":")
-            info(4,"Redirect to NG/AMS running on host: " + host + " using "+\
-                 "port: " + str(port) + " is carried out")
+            logger.debug("Redirect to NG/AMS running on host: %s using "+\
+                         "port: %s is carried out",
+                         host, str(port))
             return self.sendCmdGen(cmd, wait, outputFile, locPars, host=host, port=port)
         else:
             if ((data != "") and (data.find("<?xml") != -1)):
@@ -1336,7 +1336,7 @@ class ngamsPClient:
                             setSubState(NGAMS_IDLE_SUBSTATE)
                 if (data != ""): ngamsStat.setData(data)
 
-            info(4, "Returning successfully from ngamsPClient.sendCmdGen()")
+            logger.debug("Returning successfully from ngamsPClient.sendCmdGen()")
             return ngamsStat
 
 

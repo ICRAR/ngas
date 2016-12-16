@@ -39,7 +39,7 @@ import threading
 import time
 
 from pccUt import PccUtTime
-from ngamsLib.ngamsCore import TRACE, rmFile, info, NGAMS_HTTP_GET, \
+from ngamsLib.ngamsCore import TRACE, rmFile, NGAMS_HTTP_GET, \
     NGAMS_REGISTER_CMD, mvFile, getFileCreationTime, \
     NGAMS_FILE_STATUS_OK, genLog, NGAMS_SUCCESS, \
     NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, NGAMS_TEXT_MT, \
@@ -192,7 +192,7 @@ def _registerExec(srvObj,
         # Register the file. Check first, that exactly this file is
         # not already registered. In case it is, the file will be rejected.
         regPi = srvObj.getCfg().getRegPiFromMimeType(mimeType)
-        info(3,"Plugin found for %s: %s" % (mimeType, regPi))
+        logger.debug("Plugin found for %s: %s", mimeType, regPi)
         tmpReqPropsObj = ngamsReqProps.ngamsReqProps().\
                          setMimeType(mimeType).\
                          setStagingFilename(filename).\
@@ -255,8 +255,8 @@ def _registerExec(srvObj,
 
             # Calculate checksum (if plug-in specified).
             if (checksumPlugIn != ""):
-                info(3,"Invoking Checksum Plug-In: " + checksumPlugIn +\
-                     " to handle file: " + filename)
+                logger.debug("Invoking Checksum Plug-In: %s to handle file: %s",
+                             checksumPlugIn, filename)
                 plugInMethod = loadPlugInEntryPoint(checksumPlugIn)
                 checksum = plugInMethod(srvObj, filename, 0)
             else:
@@ -452,14 +452,15 @@ def _registerExec(srvObj,
         rmFile(statRep)
 
     # Generate final status log + exit.
-    format = "Files handled: %d. Total time: %.3fs. " +\
-             "Average time per file: %.3fs."
     if (fileCount > 0):
         timePerFile = (regTimeAccu / fileCount)
     else:
         timePerFile = 0.0
-    info(3,"Registration procedure finished processing Register Request - " +\
-         "terminating. " + format % (fileCount, regTimeAccu, timePerFile))
+
+    msg = "Registration procedure finished processing Register Request - " + \
+          "terminating. Files handled: %d. Total time: %.3fs. " + \
+          "Average time per file: %.3fs."
+    logger.debug(msg, fileCount, regTimeAccu, timePerFile)
 
 
 def _registerThread(srvObj,
@@ -659,7 +660,7 @@ def register(srvObj,
 
     # Send intermediate reply if the HTTP Reference object is given.
     if (httpRef and (not reqPropsObj.getWait())):
-        info(3,"REGISTER command accepted - generating immediate " +\
+        logger.debug("REGISTER command accepted - generating immediate " +\
              "confimation reply to REGISTER command")
 
         # Update the request status in the Request Properties Object.
@@ -686,7 +687,7 @@ def register(srvObj,
         _registerExec(srvObj, fileListDbmName, tmpFilePat, diskInfoDic,
                       reqPropsObj)
         msg = "Successfully handled command REGISTER"
-        info(3,msg)
+        logger.debug(msg)
         status = srvObj.genStatus(NGAMS_SUCCESS, msg).\
                  setReqStatFromReqPropsObj(reqPropsObj).setActualCount(0)
 

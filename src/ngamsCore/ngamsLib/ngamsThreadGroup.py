@@ -79,14 +79,11 @@ frequently, the threads may block eachother unnecessarily.
 When the
 """
 
-import logging
 import threading
 import time
 
-from ngamsCore import TRACE, info
+from ngamsCore import TRACE
 
-
-logger = logging.getLogger(__name__)
 
 # Constants.
 # - Used to signal that the thread has terminated execution. This will be
@@ -404,45 +401,6 @@ class ngamsThreadGroup:
 
         self.__pauseEvent.set()
         raise Exception, "%s: %s" % (NGAMS_THR_GROUP_STOP_ERROR, str(error))
-
-
-def test1_thread_function(threadGroupObj):
-    """
-    Test thread function for the test1() test case.
-
-    threadGroupObj:   Thread Group Object instance (ngamsThreadGroup
-                                                    (or child of)).
-
-    thrId:            Thread ID allocated to this thread (string).
-
-    Returns:          Void.
-    """
-    for n in range(1, 21):
-        info(1, "%s/%d" % (threadGroupObj.getThreadId(), n))
-        threadGroupObj.checkPauseStop().suspend().checkPauseStop()
-
-
-def test1(timeout):
-    """
-    Small test that creates a Thread Group and runs a simple set of threads
-    counting from 1 to 100 and printing out the counts on stdout.
-    """
-    thrGroupObj = ngamsThreadGroup("test1", test1_thread_function, 5,
-                                   loopSuspension = 0.010, loopPeriod = 0.200)
-    try:
-        thrGroupObj.start(wait = True, timeout = timeout)
-    except Exception:
-        logger.exception("Exception occurred waiting for threads to terminate")
-
-
-if __name__ == '__main__':
-    """
-    Main function.
-    """
-    # Start threads, wait until all terminate (no timeout).
-    test1(None)
-    # Start threads, provoke a timeout waiting for the threads to terminate.
-    test1(1)
 
 
 # EOF

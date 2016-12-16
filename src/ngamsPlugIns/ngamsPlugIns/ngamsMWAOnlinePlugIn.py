@@ -54,7 +54,7 @@ import os
 
 import cPickle as pickle
 from ngamsLib import ngamsPhysDiskInfo, ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, info
+from ngamsLib.ngamsCore import TRACE
 from ngamsPlugIns.ngamsGenericPlugInLib import NGAS_VOL_INFO_FILE, \
     loadVolInfoFile, NGAS_VOL_INFO_ID, NGAS_VOL_INFO_IGNORE, NGAS_VOL_INFO_TYPE, \
     NGAS_VOL_INFO_MANUFACT, notifyRegistrationService
@@ -116,9 +116,9 @@ def ngamsMWAOnlinePlugIn(srvObj,
                   "Device: %s, Port No: %s, Slot ID: %s, Mount Point: %s, "+\
                   "Status: %s, Capacity (GB): %s, Model: %s, Serial#: %s, " +\
                   "Type: %s, Manufacturer: %s"
-            info(3, msg % (diskId, devName, str(portNo), slotId, mtPt,
+            logger.debug(msg, diskId, devName, str(portNo), slotId, mtPt,
                            status, str(capGb), model, serialNo, diskType,
-                           manufact))
+                           manufact)
             diskInfoDic[str(slotId)] = ngamsPhysDiskInfo.\
                                        ngamsPhysDiskInfo().\
                                        setPortNo(portNo).\
@@ -161,7 +161,7 @@ def _restoreSubscriptionInfoFromDisk(srvObj):
     if (not os.path.exists(saveFile)):
         return
 
-    info(3, 'Restoring subscription info from disks ...')
+    logger.debug('Restoring subscription info from disks ...')
     saveObj = None
     try:
         pkl_file = open(saveFile, 'rb')
@@ -173,7 +173,7 @@ def _restoreSubscriptionInfoFromDisk(srvObj):
     if (saveObj == None or len(saveObj) == 0):
         return
 
-    info(3, 'Appending subscription info to info list kept internally ...')
+    logger.debug('Appending subscription info to info list kept internally ...')
     try:
         srvObj._subscriptionSem.acquire()
         srvObj._subscriptionFileList += saveObj

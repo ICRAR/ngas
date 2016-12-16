@@ -31,15 +31,18 @@
 Functions to handle the REMDISK command.
 """
 
+import logging
 import os
 
 from ngamsLib import ngamsDiskInfo, ngamsDbm, ngamsDiskUtils, ngamsHighLevelLib
-from ngamsLib.ngamsCore import getHostName, info, \
+from ngamsLib.ngamsCore import getHostName, \
     getDiskSpaceAvail, genLog, NGAMS_XML_MT, NGAMS_SUCCESS, TRACE, rmFile, \
     NGAMS_REMDISK_CMD, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, \
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_BAD_REQ
 import ngamsRemUtils
 
+
+logger = logging.getLogger(__name__)
 
 def _remDisk(srvObj,
              reqPropsObj,
@@ -75,9 +78,9 @@ def _remDisk(srvObj,
                                              fileListDbmName, diskId)
     misCopiesDbm = ngamsDbm.ngamsDbm(filesMisCopyDbmName)
     if (misCopiesDbm.getCount() == 0):
-        info(1,"Disk with ID: %s approved for deletion" % diskId)
+        logger.info("Disk with ID: %s approved for deletion", diskId)
     else:
-        info(1,"Disk with ID: %s rejected for deletion" % diskId)
+        logger.info("Disk with ID: %s rejected for deletion", diskId)
     if (status): return status
 
     # Check if there is enough space on the disk to store the file info
@@ -90,7 +93,7 @@ def _remDisk(srvObj,
     kbsReq = (kbPerFile * noOfFiles)
     msg = "Space required for REMDISK Command: %.1f KB, " +\
           "space available: %.1f KB"
-    info(3,msg % (kbsReq, kbsAvail))
+    logger.debug(msg, kbsReq, kbsAvail)
     if (kbsReq > kbsAvail):
         errMsg = "Not enough space on disk to carry out REMDISK Command. " +\
                  "Host: %s, Disk ID: %s, Mount Point: %s. " +\
@@ -109,14 +112,14 @@ def _remDisk(srvObj,
         # it is considered worse having entries for files in the DB which are
         # not available on the disk since NGAS uses the info in the DB to check
         # for the number of available copies.
-        info(1,"Removing DB record for disk with ID: " + diskId + " ...")
+        logger.info("Removing DB record for disk with ID: %s", diskId)
         try:
             tmpDir = os.path.dirname(tmpFilePat)
             srvObj.getDb().deleteDiskInfo(diskId, 1)
         except Exception, e:
             errMsg = genLog("NGAMS_ER_DEL_DISK_DB", [diskId, str(e)])
             raise Exception(errMsg)
-        info(1,"Deleting contents on disk with ID: " + diskId + " ...")
+        logger.info("Deleting contents on disk with ID: %s", diskId)
         try:
             rmFile(os.path.normpath(diskInfo.getMountPoint() + "/*"))
         except Exception, e:
@@ -129,7 +132,7 @@ def _remDisk(srvObj,
             pass
 
         infoMsg = genLog("NGAMS_INFO_DEL_DISK", [diskId])
-        info(1,infoMsg)
+        logger.info(infoMsg)
 
         # Add entry in the NGAS Disks History Table.
         ngasDiskInfo = ngamsDiskUtils.prepNgasDiskInfoFile(srvObj.getHostId(), diskInfo, 1, 1)

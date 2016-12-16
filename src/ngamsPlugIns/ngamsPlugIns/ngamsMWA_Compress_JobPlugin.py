@@ -41,7 +41,7 @@ import logging
 import os
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import info, get_contact_ip
+from ngamsLib.ngamsCore import get_contact_ip
 
 
 logger = logging.getLogger(__name__)
@@ -117,13 +117,13 @@ def ngamsMWA_Compress_JobPlugin(srvObj,
     cmd3 = "rm %s" % newfn
 
     if (debug):
-        info(3, '*******************************************')
-        info(3, cmd)
-        info(3, cmd1)
+        logger.debug('*******************************************')
+        logger.debug(cmd)
+        logger.debug(cmd1)
         if (remove_uc):
-            info(3, cmd2)
-        info(3, cmd3)
-        info(3, '*******************************************')
+            logger.debug(cmd2)
+        logger.debug(cmd3)
+        logger.debug('*******************************************')
         return (0, 'Compressed OK')
     else:
         re = commands.getstatusoutput(cmd)
@@ -137,7 +137,7 @@ def ngamsMWA_Compress_JobPlugin(srvObj,
             # TODO - enable time out!!
             re = commands.getstatusoutput(cmd1)
             if (0 == re[0]):
-                info(3, 'Successfully re-archived the compressed file %s' % newfn)
+                logger.debug('Successfully re-archived the compressed file %s', newfn)
             else:
                 logger.error('Fail to re-archive compressed file %s: %s', newfn, re[1])
                 return (re[0], re[1])
@@ -146,7 +146,7 @@ def ngamsMWA_Compress_JobPlugin(srvObj,
                 # remove the uncompressed file if necessary
                 re = commands.getstatusoutput(cmd2)
                 if (0 == re[0]):
-                    info(3, 'Successfully DISCARDED the uncompressed file %s' % filename)
+                    logger.debug('Successfully DISCARDED the uncompressed file %s', filename)
                 else:
                     logger.warning('Fail to DISCARD the uncompressed file %s', filename)
 

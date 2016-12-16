@@ -33,12 +33,15 @@ Functions to handle the LABEL Command.
 # Semaphore to avoid that the server tries to access with several threads
 # simulating the label printer (maybe only needed for the Brother printer).
 
+import logging
 import threading
 
-from ngamsLib.ngamsCore import TRACE, info, NGAMS_OFFLINE_STATE, \
+from ngamsLib.ngamsCore import TRACE, NGAMS_OFFLINE_STATE, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, genLog, \
     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, loadPlugInEntryPoint
 
+
+logger = logging.getLogger(__name__)
 
 _labelPrinterSem = threading.Semaphore(1)
 
@@ -70,12 +73,11 @@ def printLabel(srvObj,
     if (not label):
         errMsg = "Empty Logical Name returned for Disk ID: %s" % diskId
         raise Exception, errMsg
-    info(2,"Generating label for disk with ID: " + str(diskId) +\
-         " - Label text (Logical Name): " + str(label) + " ...")
+    logger.debug("Generating label for disk with ID: %s - Label text (Logical Name): %s",
+                diskId, label)
     plugIn = srvObj.getCfg().getLabelPrinterPlugIn()
     prStr = label + "   " + hostId + ":" + slotId
-    info(3,"Invoking Label Printer Plug-In: " + plugIn +\
-         "(srvObj, " + prStr + ")")
+    logger.debug("Invoking Label Printer Plug-In: %s(srvObj, %s)", plugIn, prStr)
 
     global _labelPrinterSem
     _labelPrinterSem.acquire()
@@ -87,8 +89,8 @@ def printLabel(srvObj,
         raise e
     _labelPrinterSem.release()
 
-    info(2,"Generated label for disk with ID: " + diskId +\
-         " - Label text (Logical Name): " + label + " ...")
+    logger.info("Generated label for disk with ID: %s - Label text (Logical Name): %s",
+                diskId, label)
 
 
 def handleCmdLabel(srvObj,
@@ -181,7 +183,7 @@ def handleCmdLabel(srvObj,
     srvObj.reply(reqPropsObj.setCompletionTime(), httpRef, NGAMS_HTTP_SUCCESS,
                  NGAMS_SUCCESS, msg)
     srvObj.updateRequestDb(reqPropsObj)
-    info(1,msg)
+    logger.info(msg)
 
 
 # EOF

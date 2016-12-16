@@ -17,12 +17,16 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
-import os, commands
+import commands
+import logging
+import os
 
 from pccUt import PccUtTime
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import rmFile, genLog, info
+from ngamsLib.ngamsCore import rmFile, genLog
 
+
+logger = logging.getLogger(__name__)
 
 def checkTarball(filename):
     """
@@ -67,7 +71,7 @@ def ngasTarBallPlugIn(srvObj,
                   (ngamsDapiStatus).
     """
     stagingFilename = reqPropsObj.getStagingFilename()
-    info(1,"Plug-In handling data for file with URI: " +
+    logger.info("Plug-In handling data for file with URI: %s",
          os.path.basename(reqPropsObj.getFileUri()))
     diskInfo = reqPropsObj.getTargDiskInfo()
 
@@ -88,10 +92,10 @@ def ngasTarBallPlugIn(srvObj,
                                             baseFilename, [dateDirName], [])
 
     # Generate status.
-    info(4,"Generating status ...")
+    logger.debug("Generating status ...")
     format       = "application/x-tar"
     fileSize     = ngamsPlugInApi.getFileSize(stagingFilename)
-    info(3,"DAPI finished processing of file")
+    logger.debug("DAPI finished processing of file")
     return ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(), relFilename,
                                              fileId, fileVersion, format,
                                              fileSize, fileSize, "NONE",

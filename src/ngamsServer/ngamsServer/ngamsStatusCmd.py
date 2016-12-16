@@ -40,7 +40,7 @@ import sys
 import types
 
 from pccUt import PccUtTime
-from ngamsLib.ngamsCore import TRACE, info, NGAMS_HOST_LOCAL,\
+from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL,\
     getHostName, genLog, timeRef2Iso8601, genUniqueId, mvFile, rmFile,\
     compressFile, NGAMS_PROC_FILE, NGAMS_GZIP_XML_MT, getNgamsVersion,\
     NGAMS_SUCCESS, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD,\
@@ -87,7 +87,7 @@ def _checkFileAccess(srvObj,
     """
     T = TRACE()
 
-    info(4,"Checking for access to file with ID: " + fileId + " ...")
+    logger.debug("Checking for access to file with ID: %s", fileId)
 
     # Check if the file is located on this host, or if the request should be
     # forwarded (if this server should act as proxy).
@@ -548,15 +548,15 @@ def handleCmdStatus(srvObj,
         cfgObj = srvObj.getCfg()
         if ((hostObj.getHostId() == srvObj.getHostId()) and
             (hostObj.getSrvPort() == cfgObj.getPortNo())):
-            info(2,"Send back status of this server/host to STATUS/host_id "+\
+            logger.info("Send back status of this server/host to STATUS/host_id "+\
                  "request")
             msg = "Successfully handled command STATUS"
         elif (((hostObj.getHostId() != srvObj.getHostId()) or
                (hostObj.getSrvPort() != cfgObj.getPortNo())) and
               (not cfgObj.getProxyMode())):
-            info(2,"Sending back re-direction HTTP response for host/port: "+\
-                 "%s/%d to STATUS/host_id request" %
-                 (hostObj.getHostId(), hostObj.getSrvPort()))
+            logger.info("Sending back re-direction HTTP response for host/port: "+\
+                        "%s/%d to STATUS/host_id request",
+                        hostObj.getHostId(), hostObj.getSrvPort())
             srvObj.httpRedirReply(reqPropsObj, httpRef, hostObj.getHostId(),
                                   hostObj.getSrvPort())
             return
@@ -564,8 +564,8 @@ def handleCmdStatus(srvObj,
             try:
                 # Check if host is suspended, if yes, wake it up.
                 if (srvObj.getDb().getSrvSuspended(hostObj.getHostId())):
-                    info(3,"Status Request - Waking up suspended " +\
-                         "NGAS Host: " + hostObj.getHostId())
+                    logger.debug("Status Request - Waking up suspended " +\
+                         "NGAS Host: %s", hostObj.getHostId())
                     ngamsSrvUtils.wakeUpHost(srvObj, hostObj.getHostId())
                 srvObj.forwardRequest(reqPropsObj, httpRef,hostObj.getHostId(),
                                       hostObj.getSrvPort(), autoReply = 1)
@@ -603,7 +603,7 @@ def handleCmdStatus(srvObj,
         genDiskStatus = 1
         genFileStatus = 1
     elif (requestId):
-        info(3,"Checking status of request with ID: " + requestId)
+        logger.debug("Checking status of request with ID: %s", requestId)
         reqPropsObjRef = srvObj.getRequest(requestId)
         if (not reqPropsObjRef):
             errMsg = genLog("NGAMS_ER_ILL_REQ_ID", [requestId])
@@ -619,11 +619,11 @@ def handleCmdStatus(srvObj,
         msg = _checkFileAccess(srvObj, reqPropsObj, httpRef, fileId,
                                fileVersion, diskId)
     elif (dbTime):
-        info(3, "Querying total DB time")
+        logger.debug("Querying total DB time")
         msg = "Total DB time: %.6fs" % srvObj.getDb().getDbTime()
     elif (dbTimeReset):
         msg = "Resetting DB timer"
-        info(3, msg)
+        logger.debug(msg)
         srvObj.getDb().resetDbTime()
     else:
         msg = "Successfully handled command STATUS"
@@ -647,9 +647,9 @@ def handleCmdStatus(srvObj,
                      msg)
 
     if (msg and (not help)):
-        info(1, msg)
+        logger.info(msg)
     else:
-        info(1, "Successfully handled command STATUS")
+        logger.info("Successfully handled command STATUS")
 
 
 # EOF

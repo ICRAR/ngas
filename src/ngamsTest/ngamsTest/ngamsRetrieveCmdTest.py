@@ -39,7 +39,7 @@ import os
 import sys
 
 from ngamsLib import ngamsConfig
-from ngamsLib.ngamsCore import getHostName, info, NGAMS_RETRIEVE_CMD, \
+from ngamsLib.ngamsCore import getHostName, NGAMS_RETRIEVE_CMD, \
     checkCreatePath, rmFile
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
     getClusterName, sendPclCmd, runTest, genTmpFilename, unzip
@@ -464,7 +464,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                           "Unexpected response returned to RETRIEVE Command")
 
         # Retrieve file (Disk ID + File ID + File Version).
-        info(1,"TODO: Implement this case.")
+        # TODO: Implement this case
 
 
     '''def test_IntFolder_01(self):

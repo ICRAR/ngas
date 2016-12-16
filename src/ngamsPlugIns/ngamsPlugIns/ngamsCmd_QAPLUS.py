@@ -36,7 +36,6 @@ import logging
 import urllib2
 
 import ngamsCmd_QARCHIVE
-from ngamsLib.ngamsCore import info
 
 
 logger = logging.getLogger(__name__)
@@ -61,6 +60,6 @@ def handleCmd(srvObj,
     jobManHost = srvObj.getCfg().getNGASJobMANHost()
     try:
         reply = urllib2.urlopen('http://%s/ingest?file_id=%s&file_path=%s&to_host=%s&ingest_rate=%.2f' % (jobManHost, fileId, filePath, srvObj.getHostId(), ingestRate), timeout = 15).read()
-        info('Reply from sending file %s ingestion event to server %s - %s' % (fileId, jobManHost, reply))
+        logger.info('Reply from sending file %s ingestion event to server %s - %s', fileId, jobManHost, reply)
     except Exception:
         logger.exception('Fail to send file ingestion event to server %s', jobManHost)

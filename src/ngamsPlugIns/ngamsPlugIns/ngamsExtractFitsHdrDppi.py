@@ -33,12 +33,16 @@ Contains a DDPI which is used to extract the main header from FITS files.
 """
 
 from commands import getstatusoutput
-import os, re
+import logging
+import os
+import re
 from sets import Set
 
 from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
-from ngamsLib.ngamsCore import info, TRACE, NGAMS_PROC_DATA
+from ngamsLib.ngamsCore import TRACE, NGAMS_PROC_DATA
 
+
+logger = logging.getLogger(__name__)
 
 def constructCommand(file, head=0, struct=0, skey='END', tsv=0, \
                      xmlfl='', mode=1, check=0):
@@ -102,7 +106,7 @@ def ngasExtractFitsHdrDppi(srvObj,
     file. tsv=1 returns the headers in a tab separated format suitable for
     direct ingest into the header repository.
     """
-    info(4,"Entering ngasExtractFitsHdrDppi() ...")
+    logger.debug("Entering ngasExtractFitsHdrDppi() ...")
 
     T = TRACE()
 
@@ -115,7 +119,7 @@ def ngasExtractFitsHdrDppi(srvObj,
         # default is to extract the primary header
         pars = {'header':0}
 
-    info(2, "ngasExtractFitsHdrDppi: " + filename+"  " + pars.__repr__())
+    logger.debug("ngasExtractFitsHdrDppi: %s %r", filename, pars)
 
     PARS = Set(['header', 'xml', 'skey', 'struct', 'tsv', 'check'])
 
@@ -232,7 +236,7 @@ def ngasExtractFitsHdrDppi(srvObj,
     if result == '':
         for f in fils:
             cmd = constructCommand(f, head, struct, skey, tsv, xmlfl, mode, check)
-            info(4,'Executing command: %s' % cmd)
+            logger.debug('Executing command: %s', cmd)
             (stat, result) = getstatusoutput(cmd)
             if stat != 0:
                 errMsg = "Processing of header for file %s failed: %s" % (filename, result)
@@ -253,7 +257,7 @@ def ngasExtractFitsHdrDppi(srvObj,
                                              result, resFilename, '')
     statusObj.addResult(resObj)
 
-    info(4,"Leaving ngasExtractFitsHdrDppi() ...")
+    logger.debug("Leaving ngasExtractFitsHdrDppi() ...")
 
     return statusObj
 

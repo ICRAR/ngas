@@ -36,11 +36,15 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
+import logging
 import re
+
 from pccUt import PccUtTime
-from ngamsCore import TRACE, NGAMS_XML_MT, info
+from ngamsCore import TRACE, NGAMS_XML_MT
 import ngamsDbCore
 
+
+logger = logging.getLogger(__name__)
 
 class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
     """
@@ -120,11 +124,9 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
 
             self.query2(sqlQuery, args = (diskId, histDate, origin, synopsis, mt, descr))
 
-            info(2,"Added entry in NGAS Disks History Table - Disk ID: " +\
-                 diskId + " - Date: " + tsObj.getTimeStamp() + " - Origin: " +\
-                 origin + " - Synopsis: " + synopsis +\
-                 " - Description Mime-type: " + str(mt) + " - Description: " +\
-                 str(descr))
+            logger.info("Added entry in NGAS Disks History Table - Disk ID: %s - Date: %s - " + \
+                        "Origin: %s - Synopsis: %s - Description Mime-type: %s - Description: %s",
+                        diskId, tsObj.getTimeStamp(), origin, synopsis, str(mt), str(descr))
             self.triggerEvents()
         except Exception, e:
             raise e

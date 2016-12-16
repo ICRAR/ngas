@@ -46,7 +46,7 @@ from ngamsLib import ngamsStatus, ngamsLib
 from ngamsLib import ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
 from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_GET, \
-    NGAMS_HTTP_SUCCESS, info, mvFile, getDiskSpaceAvail, genLog, \
+    NGAMS_HTTP_SUCCESS, mvFile, getDiskSpaceAvail, genLog, \
     NGAMS_IDLE_SUBSTATE, NGAMS_SUCCESS
 
 
@@ -182,14 +182,14 @@ def processRequest(srvObj,
     targetFilename = os.path.normpath("%s/%s" %\
                                       (trgDiskInfoObj.getMountPoint(),
                                        newFileInfoObj.getFilename()))
-    info(3,"Move Restore Staging File to final destination: %s->%s ..." %\
-         (reqPropsObj.getStagingFilename(), targetFilename))
+    logger.debug("Move Restore Staging File to final destination: %s->%s ...",
+                 reqPropsObj.getStagingFilename(), targetFilename)
     timer = PccUtTime.Timer()
     mvFile(reqPropsObj.getStagingFilename(), targetFilename)
     ioTime = timer.stop()
     reqPropsObj.incIoTime(ioTime)
-    info(3,"Moved Restore Staging File to final destination: %s->%s" %\
-         (reqPropsObj.getStagingFilename(), targetFilename))
+    logger.debug("Moved Restore Staging File to final destination: %s->%s",
+                 reqPropsObj.getStagingFilename(), targetFilename)
 
     # Update the DB with the information about the new file.
     # Update information for Main File/Disk in DB.
@@ -233,8 +233,8 @@ def handleCmdRearchive(srvObj,
     # If mime-type is None, the request has been handled, i.e., it might have
     # been a probe request or the server acting as proxy.
     if (not mimeType): return
-    info(1, "Archiving file: " + reqPropsObj.getSafeFileUri() +\
-         " with mime-type: " + mimeType + " ...")
+    logger.debug("Archiving file: %s with mime-type: %s",
+                 reqPropsObj.getSafeFileUri(), mimeType)
 
     fileInfoObj, trgDiskInfoObj = receiveData(srvObj, reqPropsObj, httpRef)
 

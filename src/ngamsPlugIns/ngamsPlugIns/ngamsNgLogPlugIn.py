@@ -36,11 +36,13 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
+import logging
 import os
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import info
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsNgLogPlugIn(srvObj,
                      reqPropsObj):
@@ -59,7 +61,7 @@ def ngamsNgLogPlugIn(srvObj,
     # For now the exception handling is pretty basic:
     # If something goes wrong during the handling it is tried to
     # move the temporary file to the Bad Files Area of the disk.
-    info(1,"Plug-In handling data for file: " +
+    logger.debug("Plug-In handling data for file: %s",
          os.path.basename(reqPropsObj.getFileUri()))
     diskInfo = reqPropsObj.getTargDiskInfo()
     stagingFilename = reqPropsObj.getStagingFilename()
@@ -88,7 +90,7 @@ def ngamsNgLogPlugIn(srvObj,
         # Compress the log file.
         uncomprSize = ngamsPlugInApi.getFileSize(stagingFilename)
         compression = "gzip"
-        info(2,"Compressing file using: %s ..." % compression)
+        logger.debug("Compressing file using: %s ...", compression)
         exitCode, stdOut = ngamsPlugInApi.execCmd("%s %s" %\
                                                   (compression,
                                                    stagingFilename))
@@ -100,7 +102,7 @@ def ngamsNgLogPlugIn(srvObj,
         # Remember to update the Temporary Filename in the Request
         # Properties Object.
         reqPropsObj.setStagingFilename(stagingFilename)
-        info(2,"Log file compressed")
+        logger.debug("Log file compressed")
 
         # Parse first line of the log file.
         timeStamp = firstLine.split(" ")[0]
@@ -121,10 +123,10 @@ def ngamsNgLogPlugIn(srvObj,
                                                 fileId, [date])
 
         # Generate status.
-        info(4,"Generating status ...")
+        logger.debug("Generating status ...")
         fformat = ngamsPlugInApi.determineMimeType(srvObj.getCfg(),
                                                   stagingFilename)
-        info(4,"Determining file size ...")
+        logger.debug("Determining file size ...")
         fileSize = ngamsPlugInApi.getFileSize(stagingFilename)
         return ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(),
                                                  relFilename,
@@ -133,7 +135,7 @@ def ngamsNgLogPlugIn(srvObj,
                                                  compression, relPath,
                                                  diskInfo.getSlotId(),
                                                  fileExists, complFilename)
-    except Exception, e:
+    except Exception:
         raise Exception, "ngamsNgLogPlugIn: Error handling log file: " +\
               stagingFilename + ". Rejecting."
 

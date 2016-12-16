@@ -49,7 +49,7 @@ import urllib
 import urllib2
 import urlparse
 
-from ngamsCore import genLog, info, TRACE, trim, getHostName, \
+from ngamsCore import genLog, TRACE, trim, getHostName, \
     NGAMS_HTTP_SUCCESS, NGAMS_CONT_MT, \
     NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM, \
     getFileSize, NGAMS_ARCH_REQ_MT, getUniqueNo, \
@@ -92,7 +92,7 @@ def isArchivePull(fileUri):
     """
     T = TRACE()
 
-    info(4, "isArchivePull() - File URI is: " + fileUri + " ...")
+    logger.debug("isArchivePull() - File URI is: %s", fileUri)
     if ((string.find(fileUri, "http:") != -1) or
         (string.find(fileUri, "ftp:") != -1) or
         (string.find(fileUri, "file:") != -1)):
@@ -303,9 +303,8 @@ def makeFileReadOnly(completeFilename):
 
     Returns:             Void.
     """
-    info(4, "Making file: %s read-only" % completeFilename)
     os.chmod(completeFilename, 0444)
-    info(3, "File: %s made read-only" % completeFilename)
+    logger.debug("File: %s made read-only", completeFilename)
 
 
 def makeFileRdWr(completeFilename):
@@ -316,9 +315,8 @@ def makeFileRdWr(completeFilename):
 
     Returns:             Void.
     """
-    info(4,"Making file: %s read-write" % completeFilename)
     os.chmod(completeFilename, 0664)
-    info(3,"File: %s made read-write" % completeFilename)
+    logger.debug("File: %s made read-write", completeFilename)
 
 
 def fileWritable(filename):
@@ -396,7 +394,7 @@ def _httpHandleResp(fileObj,
     if (hdrDic.has_key("content-length")):
         dataSize = int(hdrDic["content-length"])
 
-    info(5, "Size of data returned by remote host: %d" % dataSize)
+    logger.debug("Size of data returned by remote host: %d", dataSize)
 
     if not dataTargFile and not returnFileObj:
         data = []
@@ -445,9 +443,10 @@ def _httpHandleResp(fileObj,
                 readIn += len(buff)
 
     # Dump HTTP headers if Verbose Level >= 4.
-    info(4, "HTTP Header: HTTP/1.0 %s %s" % (str(code), msg))
-    for hdr in hdrs.keys():
-        info(4, "HTTP Header: %s: %s" % (hdr, hdrs[hdr]))
+    logger.debug("HTTP Header: HTTP/1.0 %s %s", str(code), msg)
+    if logger.isEnabledFor(logging.DEBUG):
+        for hdr in hdrs.keys():
+            logger.debug("HTTP Header: %s: %s", hdr, hdrs[hdr])
 
     return code, msg, hdrs, data
 
@@ -519,19 +518,19 @@ def httpPostUrl(url,
     cmd = urlres.path.strip('/')
 
     with closing(httplib.HTTPConnection(urlres.netloc, timeout = timeOut)) as http:
-        info(4,"Sending HTTP header ...")
-        info(4,"HTTP Header: %s: %s" % (NGAMS_HTTP_POST, cmd))
+        logger.debug("Sending HTTP header ...")
+        logger.debug("HTTP Header: %s: %s", NGAMS_HTTP_POST, cmd)
         http.putrequest(NGAMS_HTTP_POST, cmd)
 
-        info(4,"HTTP Header: %s: %s" % ("Content-Type", mimeType))
+        logger.debug("HTTP Header: Content-Type: %s", mimeType)
         http.putheader("Content-Type", mimeType)
         if (contDisp != ""):
-            info(4,"HTTP Header: %s: %s" % ("Content-Disposition", contDisp))
+            logger.debug("HTTP Header: Content-Disposition: %s", contDisp)
             http.putheader("Content-Disposition", contDisp)
         if (authHdrVal):
             if (authHdrVal[-1] == "\n"):
                 authHdrVal = authHdrVal[:-1]
-            info(4,"HTTP Header: %s: %s" % ("Authorization", authHdrVal))
+            logger.debug("HTTP Header: Authorization: %s", authHdrVal)
             http.putheader("Authorization", authHdrVal)
         if (fileInfoHdr):
             http.putheader(NGAMS_HTTP_HDR_FILE_INFO, fileInfoHdr)
@@ -551,12 +550,12 @@ def httpPostUrl(url,
         if dataSize == -1:
             raise Exception('Could not determine length of content')
 
-        info(4,"HTTP Header: %s: %s" % ("Content-Length", str(dataSize)))
+        logger.debug("HTTP Header: Content-Length: %s", str(dataSize))
         http.putheader("Content-Length", str(dataSize))
-        info(4,"HTTP Header: %s: %s" % ("Host", getHostName()))
+        logger.debug("HTTP Header: Host: %s", getHostName())
         http.putheader("Host", getHostName())
         http.endheaders()
-        info(4,"HTTP header sent")
+        logger.debug("HTTP header sent")
 
         if dataSource == "FILE":
             with open(dataRef) as fdIn:
@@ -591,10 +590,9 @@ def httpPostUrl(url,
         else:
             raise Exception('Unknown data source: ' + dataSource)
 
-        info(4,"Data sent")
+        logger.debug("Data sent, waiting for reply")
 
         # Receive + unpack reply.
-        info(4,"Waiting for reply ...")
         response = http.getresponse()
         reply, msg, hdrs = response.status, response.reason, response.getheaders()
 
@@ -628,9 +626,10 @@ def httpPostUrl(url,
                     readIn += len(buff)
 
         # Dump HTTP headers if Verbose Level >= 4.
-        info(4, "HTTP Header: HTTP/1.0 %s %s" % (str(reply), msg))
-        for hdr in hdrs.keys():
-            info(4, "HTTP Header: %s: %s" % (hdr, hdrs[hdr]))
+        logger.debug("HTTP Header: HTTP/1.0 %s %s", str(reply), msg)
+        if logger.isEnabledFor(logging.DEBUG):
+            for hdr in hdrs.keys():
+                logger.debug("HTTP Header: %s: %s", hdr, hdrs[hdr])
 
         return [reply, msg, hdrs, data]
 
@@ -718,7 +717,7 @@ def httpPost(host,
     if isinstance(dataRef, basestring) and os.path.isdir(dataRef):
 
         absDirname = os.path.abspath(dataRef)
-        info(4, 'Request is to archive directory ' + absDirname)
+        logger.debug('Request is to archive directory %s', absDirname)
         mimeType = NGAMS_CONT_MT
 
         # Recursively collect all files
@@ -744,9 +743,9 @@ def httpPost(host,
             contDisp.append('%s="%s"; ' % (parInfo[0], urllib.quote(str(parInfo[1]))))
     contDisp = ''.join(contDisp)
 
-    msg = ("Sending: %s using HTTP POST with mime-type: %s "
-            "to NG/AMS Server with host: %s:%s") % (cmd, mimeType, host, str(port))
-    info(4, msg)
+    msg = "Sending: %s using HTTP POST with mime-type: %s " + \
+          "to NG/AMS Server with host: %s:%s"
+    logger.debug(msg, cmd, mimeType, host, str(port))
 
     url = "http://%s:%s/%s" % (host, str(port), cmd)
     return httpPostUrl(url, mimeType, contDisp, dataRef, dataSource,
@@ -766,11 +765,11 @@ def collectFiles(absDirname):
             filesInfo.append(childrenFiles)
             absPaths.append(childrenPaths)
         elif os.path.isfile(path):
-            info(4, 'Including \'' + path + '\' in the to-be-generated container')
+            logger.debug('Including "%s" in the to-be-generated container', path)
             absPaths.append(path)
             filesInfo.append([NGAMS_ARCH_REQ_MT, filename, os.path.getsize(path), path])
         else:
-            info(4, 'Not including \'' + path + '\' because it\'s neither a file nor a directory')
+            logger.debug('Not including "%s" because it\'s neither a file nor a directory', path)
 
     return [[dirname, filesInfo], [absDirname, absPaths]]
 
@@ -820,7 +819,7 @@ def httpGetUrl(url,
     """
 
     # Issue request + handle result.
-    info(4,"Issuing request with URL: " + url)
+    logger.debug("Issuing request with URL: %s", url)
 
     reqObj = urllib2.Request(url)
     if authHdrVal:
@@ -840,7 +839,7 @@ def httpGetUrl(url,
     except urllib2.HTTPError, e:
         code, msg, hdrs, data = e.code, str(e).split(":")[1].strip(),\
                                 e.headers, e.read()
-        info(4,"httpGetUrl() - Exception: urllib2.HTTPError: %s" % str(e))
+        logger.debug("httpGetUrl() - Exception: urllib2.HTTPError: %s", str(e))
         return (code, msg, hdrs, data)
     except Exception, e:
         errMsg = "Problem occurred issuing request with URL: " + url +\
@@ -1030,12 +1029,12 @@ def parseRawPlugInPars(rawPars):
                 parVal = string.split(par, "=")
                 par = trim(parVal[0],"\n ")
                 parDic[par] = trim(parVal[1], "\n ")
-                info(4,"Found plug-in parameter: " + par + " with value: " +\
-                     parDic[par])
+                logger.debug("Found plug-in parameter: %s with value: %s",
+                             par, parDic[par])
             except:
                 errMsg = genLog("NGAMS_ER_PLUGIN_PAR", [rawPars])
                 raise Exception, errMsg
-    info(5,"Generated parameter dictionary: " + str(parDic))
+    logger.debug("Generated parameter dictionary: %s", str(parDic))
     return parDic
 
 
@@ -1060,7 +1059,7 @@ def detMimeType(mimeTypeMaps,
 
     # Check if the extension as ".<ext>" is found in the filename as
     # the last part of the filename.
-    info(4, "Determining mime-type for file with URI: %s ..." % filename)
+    logger.debug("Determining mime-type for file with URI: %s ...", filename)
     found = 0
     mimeType = ""
     for map in mimeTypeMaps:
@@ -1076,8 +1075,8 @@ def detMimeType(mimeTypeMaps,
         errMsg = genLog("NGAMS_ER_UNKNOWN_MIME_TYPE1", [filename])
         raise Exception, errMsg
     else:
-        info(4,"Mime-type of file with URI: %s determined: %s" %\
-             (filename, mimeType))
+        logger.debug("Mime-type of file with URI: %s determined: %s",
+                     filename, mimeType)
 
     return mimeType
 
@@ -1129,7 +1128,7 @@ def createObjPickleFile(filename,
     """
     T = TRACE()
 
-    info(4, "createObjPickleFile() - creating pickle file %s ..." % filename)
+    logger.debug("createObjPickleFile() - creating pickle file %s ...", filename)
     rmFile(filename)
     with open(filename, "w") as pickleFo:
         cPickle.dump(object, pickleFo)

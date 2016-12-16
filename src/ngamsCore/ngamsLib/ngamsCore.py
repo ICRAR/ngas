@@ -67,7 +67,6 @@ import shutil
 import socket
 import threading
 import time
-import traceback
 import types
 import subprocess
 
@@ -379,10 +378,6 @@ def getThreadName():
     return threadName
 
 
-def info(level, msg):
-    logger.info(msg);
-
-
 def TRACE(logLevel = 4):
     """
     Convenience function to use the tracing in the code.
@@ -607,7 +602,7 @@ def getDiskSpaceAvail(mountPoint, format = 'MB', smart = True):
 
     Returns:     Returns available space in MB (integer).
     """
-    info(4, "Checking disk space available for path: %s" % mountPoint)
+    logger.debug("Checking disk space available for path: %s", mountPoint)
 
     startTime = time.time()
 
@@ -616,7 +611,7 @@ def getDiskSpaceAvail(mountPoint, format = 'MB', smart = True):
 
     msg = ("Checked disk space available for path: %s - Result (MB): %.3f"
            " Time: %.3fs")
-    info(4, msg % (mountPoint, diskSpace, (time.time() - startTime)))
+    logger.debug(msg,  mountPoint, diskSpace, (time.time() - startTime))
 
     return diskSpace
 
@@ -634,12 +629,11 @@ def checkAvailDiskSpace(filename,
     Returns:    Void.
     """
     path = os.path.dirname(filename)
-    info(4, "Checking for disk space availability for path: %s - Needed size: %s"\
-            % (path, str(fileSize)))
+    logger.debug("Checking for disk space availability for path: %s - Needed size: %s",
+                 path, str(fileSize))
     if ((fileSize / 1024**2) > getDiskSpaceAvail(path, smart=True)):
         errMsg = genLog("NGAMS_ER_NO_DISK_SPACE", [filename, fileSize])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
 _pathHandleSem = threading.Semaphore(1)
@@ -656,7 +650,7 @@ def checkCreatePath(path):
     try:
         _pathHandleSem.acquire()
         if (os.path.exists(path) == 0):
-            info(4,"Creating non-existing path: " + path)
+            logger.debug("Creating non-existing path: %s", path)
             try:
                 os.makedirs(path)
                 os.chmod(path, 0775)
@@ -674,7 +668,7 @@ def rmFile(filename):
 
     Returns:    Void.
     """
-    info(4,"Removing file(s): %s" % filename)
+    logger.debug("Removing file(s): %s", filename)
     for f in glob.glob(filename):
         if os.path.isdir(f):
             shutil.rmtree(f, True)
@@ -693,7 +687,7 @@ def mvFile(srcFilename,
 
     Returns:      Time in took to move file (s) (float).
     """
-    info(4,"Moving file: " + srcFilename + " to filename: " + trgFilename)
+    logger.debug("Moving file: %s to filename: %s", srcFilename, trgFilename)
     try:
         # Make target file writable if existing.
         if os.path.exists(trgFilename):
@@ -715,7 +709,7 @@ def mvFile(srcFilename,
     except Exception, e:
         errMsg = genLog("NGAMS_AL_MV_FILE", [srcFilename, trgFilename, str(e)])
         raise Exception(errMsg)
-    info(4,"File: " + srcFilename + " moved to filename: " + trgFilename)
+    logger.debug("File: %s moved to filename: %s", srcFilename, trgFilename)
 
     return deltaTime
 
@@ -731,7 +725,7 @@ def cpFile(srcFilename,
 
     Returns:      Time in took to move file (s) (float).
     """
-    info(4, "Copying file: %s to filename: %s" % (srcFilename, trgFilename))
+    logger.debug("Copying file: %s to filename: %s", srcFilename, trgFilename)
     try:
         # Make target file writable if existing.
         if os.path.exists(trgFilename):
@@ -745,7 +739,7 @@ def cpFile(srcFilename,
     except Exception, e:
         errMsg = genLog("NGAMS_AL_CP_FILE", [srcFilename, trgFilename, str(e)])
         raise Exception(errMsg)
-    info(4, "File: %s copied to filename: %s" % (srcFilename, trgFilename))
+    logger.debug("File: %s copied to filename: %s", srcFilename, trgFilename)
     return deltaTime
 
 
@@ -993,15 +987,15 @@ def loadPlugInEntryPoint(plugInName, entryPointMethodName=None):
     if not entryPointMethodName:
         entryPointMethodName = plugInName.split('.')[-1]
 
-    info(3, "Looking for %s plug-in module" % (plugInName,))
+    logger.debug("Looking for %s plug-in module", plugInName)
     try:
-        info(4, "Trying with module ngamsPlugIns.%s " % (plugInName,))
+        logger.debug("Trying with module ngamsPlugIns.%s", plugInName)
         plugInModule = importlib.import_module('ngamsPlugIns.' + plugInName)
     except ImportError:
-        info(4, "Trying with module %s " % (plugInName,))
+        logger.debug("Trying with module %s", plugInName)
         plugInModule = importlib.import_module(plugInName)
 
-    info(3, "Loading entry-point method %s from module %s " % (entryPointMethodName,plugInModule.__name__))
+    logger.debug("Loading entry-point method %s from module %s ", entryPointMethodName,plugInModule.__name__)
     return getattr(plugInModule, entryPointMethodName)
 
 def is_localhost(host_or_ip):

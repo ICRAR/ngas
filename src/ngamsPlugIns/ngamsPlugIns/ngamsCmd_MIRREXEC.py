@@ -52,13 +52,17 @@ EXAMPLES:
 
 """
 
+import logging
 from threading import Thread
 from time import time, strftime, gmtime
-import urllib, httplib
+import urllib
+import httplib
 
 from ngamsLib import ngamsLib
-from ngamsLib.ngamsCore import TRACE, info, getHostName
+from ngamsLib.ngamsCore import TRACE, getHostName
 
+
+logger = logging.getLogger(__name__)
 
 def handleCmd(srvObj,
               reqPropsObj,
@@ -116,8 +120,8 @@ def handleCmd(srvObj,
 
     if (mirror_cluster != 2):
         # Start mirroring
-        info(3,"Performing mirroring tasks from (%s) to (%s) using %s threads per source node and target node" \
-        % (str(active_source_nodes),str(active_target_nodes),str(n_threads)))
+        logger.debug("Performing mirroring tasks from (%s) to (%s) using %s threads per source node and target node",
+                     str(active_source_nodes),str(active_target_nodes),str(n_threads))
         multithreading_mirroring(active_source_nodes,active_target_nodes,n_threads,order,srvObj)
 
 
@@ -170,11 +174,11 @@ def get_active_source_nodes(srvObj,cluster_name="none",full_qualified_name="none
     if (full_qualified_name == "none"):
         query = "select source_host from ngas_mirroring_bookkeeping where status='READY' and target_cluster='" + cluster_name +"' group by source_host"
         args = (cluster_name,)
-        info(4, "Executing SQL query to get active nodes with files to mirror for cluster %s: %s" % (cluster_name,query))
+        logger.debug("Executing SQL query to get active nodes with files to mirror for cluster %s: %s", cluster_name,query)
     else:
         query = "select source_host from ngas_mirroring_bookkeeping where status='READY' and target_host='" + full_qualified_name +"' group by source_host"
         args = (full_qualified_name,)
-        info(4, "Executing SQL query to get active nodes with files to mirror for local server %s: %s" % (full_qualified_name,query))
+        logger.debug("Executing SQL query to get active nodes with files to mirror for local server %s: %s", full_qualified_name,query)
 
     # Execute query
     source_nodes = srvObj.getDb().query2(query, args=args)
@@ -202,7 +206,7 @@ def get_active_target_nodes(cluster_name,srvObj):
 
     # Construct query
     query = "select target_host from ngas_mirroring_bookkeeping where status='READY' and target_cluster={0} group by target_host"
-    info(4, "Executing SQL query to get active nodes with files to mirror for cluster %s: %s" % (cluster_name,query))
+    logger.debug("Executing SQL query to get active nodes with files to mirror for cluster %s: %s", cluster_name,query)
 
     # Execute query
     target_nodes = srvObj.getDb().query2(query, args=(cluster_name,))
@@ -213,7 +217,7 @@ def get_active_target_nodes(cluster_name,srvObj):
         if ngams_server_status(node[0]): active_target_nodes.append(node[0])
 
     # Log info
-    info(3, "Active nodes found in cluster %s: %s" % (cluster_name,str(active_target_nodes)))
+    logger.debug("Active nodes found in cluster %s: %s", cluster_name,str(active_target_nodes))
 
     # Return result
     return active_target_nodes
@@ -247,12 +251,12 @@ def cutoff_file_size(target_node,srvObj):
 
     # Get file_size list
     query = "select file_size/(1024.0*1024.0) from ngas_mirroring_bookkeeping where target_host={0} order by file_size"
-    info(4, "Executing SQL query to get sorted list of files to be mirrored to target_node=%s : %s" % (target_node,query))
+    logger.debug("Executing SQL query to get sorted list of files to be mirrored to target_node=%s : %s", target_node,query)
     file_size_list = srvObj.getDb().query2(query, args=(target_node,))
 
     # Get total load in mb
     query = "select sum(file_size/(1024.0*1024.0)) from ngas_mirroring_bookkeeping where target_host={0}"
-    info(4, "Executing SQL query to get total load to be mirrored to target_node=%s : %s" % (target_node,query))
+    logger.debug("Executing SQL query to get total load to be mirrored to target_node=%s : %s", target_node,query)
     total_load_mb = srvObj.getDb().query2(query, args=(target_node,))
     total_load_mb = float(total_load_mb[0][0])
 
@@ -265,7 +269,7 @@ def cutoff_file_size(target_node,srvObj):
             break
 
     # Log info
-    info(3, "Target node %s cut-off file_size: %s" % (target_node,str(cutoff_fs)))
+    logger.debug("Target node %s cut-off file_size: %s", target_node,str(cutoff_fs))
 
     # Return cutoff file_size
     return cutoff_fs
@@ -293,7 +297,7 @@ def get_list_mirroring_tasks(source_node,target_node,srvObj):
     query += "and status='READY' order by file_size"
 
     # Execute query
-    info(3, "Executing SQL query to get list of mirroring tasks from (%s) to (%s): %s" % (source_node,target_node,query))
+    logger.debug("Executing SQL query to get list of mirroring tasks from (%s) to (%s): %s", source_node,target_node,query)
     mirroring_tasks = srvObj.getDb().query2(query, args=(source_node, target_node))
 
     # Return mirroring tasks list
@@ -356,7 +360,7 @@ def process_mirroring_tasks(mirroring_tasks,source_node,target_node,ith_thread,s
         # URL-encode RETRIEVE command (query to the source cluster)
         http_cmd_urlcoded = (http_cmd.split("http://"))[0] + "http://" + urllib.pathname2url((http_cmd.split("http://"))[1])
         full_http_cmd = "http://" + target_node + http_cmd_urlcoded
-        info(3,"Processing %s/%s mirroring task [thread %s] http command: %s" % (str(i),n_tasks,str(ith_thread),full_http_cmd))
+        logger.debug("Processing %s/%s mirroring task [thread %s] http command: %s", str(i),n_tasks,str(ith_thread),full_http_cmd)
         # Start clock
         start = time()
         # Send request to target node
@@ -374,10 +378,10 @@ def process_mirroring_tasks(mirroring_tasks,source_node,target_node,ith_thread,s
         query += "ingestion_time={2} "
         query += "where rowid={3}"
         # Execute query
-        info(4, "Executing SQL query to update status of the mirroring task (%s): %s" % (full_http_cmd,query))
+        logger.debug("Executing SQL query to update status of the mirroring task (%s): %s", full_http_cmd,query)
         srvObj.getDb().query2(query, args=(status, strftime("%Y-%m-%dT%H:%M:%S:000", gmtime()), str(elapsed_time), rowid))
         # Log message for mirroring task processed
-        info(3, "Mirroring task %s/%s (%s to %s [thread %s]) processed in %ss (%s)" % (str(i),n_tasks,source_node,target_node,str(ith_thread),str(elapsed_time),status))
+        logger.debug("Mirroring task %s/%s (%s to %s [thread %s]) processed in %ss (%s)", str(i),n_tasks,source_node,target_node,str(ith_thread),str(elapsed_time),status)
         i += 1
 
     # Return Void
@@ -507,7 +511,7 @@ def sort_target_nodes(target_nodes_list):
                 break
 
     # Log info
-    info(3, "Target nodes order to send MIRREXEC command: %s" % (str(sorted_target_nodes_list)))    # Add higher port (machines sort-descending)
+    logger.debug("Target nodes order to send MIRREXEC command: %s", str(sorted_target_nodes_list))    # Add higher port (machines sort-descending)
 
     # Return sorted target nodes list
     return sorted_target_nodes_list
@@ -575,7 +579,7 @@ def send_mirrexec_command(target_node,n_threads,sequence_order):
     """
 
     # Print log info
-    info(3, "MIRREXEC command sent to %s with (n_threads=%s,sequence_order=%s)" % (target_node,str(n_threads),str(sequence_order)))
+    logger.debug("MIRREXEC command sent to %s with (n_threads=%s,sequence_order=%s)", target_node,str(n_threads),str(sequence_order))
 
     # Create target server connection
     target_node_conn = httplib.HTTPConnection(target_node)
@@ -592,7 +596,7 @@ def send_mirrexec_command(target_node,n_threads,sequence_order):
     elapsed_time = (time() - start)
 
     # Print log info
-    info(3, "MIRREXEC command sent to %s with (n_threads=%s,sequence_order=%s) was handled  with status %s in %ss" % (target_node,str(n_threads),str(sequence_order),status,str(elapsed_time)))
+    logger.debug("MIRREXEC command sent to %s with (n_threads=%s,sequence_order=%s) was handled  with status %s in %ss", target_node,str(n_threads),str(sequence_order),status,str(elapsed_time))
 
     # Return Void
     return

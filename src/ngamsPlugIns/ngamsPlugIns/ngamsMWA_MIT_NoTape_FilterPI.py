@@ -40,7 +40,7 @@ import threading
 import pyfits
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import genLog, info, NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, NGAMS_FAILURE
+from ngamsLib.ngamsCore import genLog, NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, NGAMS_FAILURE
 from ngamsPClient import ngamsPClient
 
 
@@ -117,7 +117,7 @@ def ngamsMWA_MIT_NoTape_FilterPI(srvObj,
             eor_list.append("'%s'" % proj_id)
 
         if (not (projectId in eor_list)):
-            info(4, 'File %s is not EOR project' % fileId)
+            logger.debug('File %s is not EOR project', fileId)
             return 0
 
     if (not sport.isdigit()):

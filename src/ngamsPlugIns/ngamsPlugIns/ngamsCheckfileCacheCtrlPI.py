@@ -81,7 +81,7 @@ import logging
 import random
 import time
 
-from ngamsLib.ngamsCore import TRACE, info, NGAMS_CHECKFILE_CMD, NGAMS_FAILURE, error
+from ngamsLib.ngamsCore import TRACE, NGAMS_CHECKFILE_CMD, NGAMS_FAILURE
 from ngamsLib import ngamsLib, ngamsStatus
 
 
@@ -156,14 +156,13 @@ def _sendCheckFileCmd(node,
     data = None
     try:
         host, port = node.split(":")
-        info(4, "Sending CHECKFILE Command for file: %s/%s to node: %s:%s" %\
-             (fileId, str(fileVersion), host, str(port)))
+        logger.debug("Sending CHECKFILE Command for file: %s/%s to node: %s:%s",
+                     fileId, str(fileVersion), host, str(port))
         code, msg, hdrs, data = ngamsLib.httpGet(host, port,
                                                  NGAMS_CHECKFILE_CMD,
                                                  pars = cmdPars)
-    except Exception, e:
-        err = "Error contacting node: %s . Error: %s" % (str(node), str(e))
-        info(4, "NOTICE: %s" % err)
+    except Exception:
+        logger.exception("Error contacting node %s", node)
 
     if (data):
         tmpStatObj = ngamsStatus.ngamsStatus().unpackXmlDoc(data)

@@ -64,7 +64,7 @@ import os
 import subprocess
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, info, genLog
+from ngamsLib.ngamsCore import TRACE, genLog
 from pccUt import PccUtTime
 
 
@@ -94,7 +94,7 @@ def handlePars(reqPropsObj,
     T = TRACE()
 
     # Get parameters.
-    info(3,"Get request parameters")
+    logger.debug("Get request parameters")
     parDic[TARG_MIME_TYPE]  = None
     parDic[FILE_ID]         = None
     parDic[VERSIONING]      = 1
@@ -111,11 +111,11 @@ def handlePars(reqPropsObj,
         if (reqPropsObj.getFileUri().find("file_id=") > 0):
             file_id = reqPropsObj.getFileUri().split("file_id=")[1]
             parDic[FILE_ID] = os.path.basename(file_id)
-            info(1,"No file_id given, but found one in the URI: %s" % parDic[FILE_ID])
+            logger.info("No file_id given, but found one in the URI: %s", parDic[FILE_ID])
         else:
             parDic[FILE_ID] = os.path.basename(reqPropsObj.getFileUri())
-            info(1,"No file_id given, using basename of fileUri: %s" \
-                 % parDic[FILE_ID])
+            logger.info("No file_id given, using basename of fileUri: %s", 
+                 parDic[FILE_ID])
 
     if (reqPropsObj.hasHttpPar(VERSIONING)):
         parDic[VERSIONING] = int(reqPropsObj.getHttpPar(VERSIONING))
@@ -163,10 +163,10 @@ def compressFile(srvObj,
     uncomprSize = ngamsPlugInApi.getFileSize(stFn)
     comprExt = ""
     if (parDic[COMPRESSION]):
-        info(2,"Compressing file using: %s ..." % parDic[COMPRESSION])
+        logger.debug("Compressing file using: %s ...", parDic[COMPRESSION])
         compCmd = "%s %s" % (parDic[COMPRESSION], stFn)
         compressTimer = PccUtTime.Timer()
-        info(3,"Compressing file with command: %s" % compCmd)
+        logger.debug("Compressing file with command: %s", compCmd)
         with open(os.devnull, 'w') as f:
             exitCode = subprocess.call([parDic[COMPRESSION], stFn], stdout = f, stderr = f)
         # If the compression fails, assume that it is because the file is not
@@ -187,7 +187,7 @@ def compressFile(srvObj,
                                                           stFn)
             compression = parDic[COMPRESSION]
 
-            info(2,"File compressed. Time: %.3fs" % compressTimer.stop())
+            logger.debug("File compressed. Time: %.3fs", compressTimer.stop())
         else:
             # Carry on with the original file. We take the original mime-type
             # as the target mime-type.
@@ -250,7 +250,7 @@ def ngamsGenDapi(srvObj,
     # For now the exception handling is pretty basic:
     # If something goes wrong during the handling it is tried to
     # move the temporary file to the Bad Files Area of the disk.
-    info(1,"Plug-In handling data for file: " +
+    logger.debug("Plug-In handling data for file: %s",
          os.path.basename(reqPropsObj.getFileUri()))
     try:
         parDic = {}
@@ -260,7 +260,7 @@ def ngamsGenDapi(srvObj,
         ext = os.path.splitext(stgFile)[1][1:]
 
         # Generate file information.
-        info(3,"Generate file information")
+        logger.debug("Generate file information")
         dateDir = PccUtTime.TimeStamp().getTimeStamp().split("T")[0]
         fileVersion, relPath, relFilename,\
                      complFilename, fileExists =\
@@ -281,7 +281,7 @@ def ngamsGenDapi(srvObj,
             complFilename += ".%s" % comprExt
             relFilename += ".%s" % comprExt
 
-        info(3,"DAPI finished processing file - returning to host application")
+        logger.debug("DAPI finished processing file - returning to host application")
         return ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(),
                                                  relFilename,
                                                  parDic[FILE_ID],

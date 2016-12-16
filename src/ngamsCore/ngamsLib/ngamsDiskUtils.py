@@ -41,7 +41,7 @@ import threading
 import time
 
 from pccUt import PccUtTime
-from ngamsCore import info, TRACE, getNgamsVersion, genLog, \
+from ngamsCore import TRACE, getNgamsVersion, genLog, \
     NGAMS_DB_DIR, checkCreatePath, NGAMS_DB_CH_CACHE, NGAMS_NOTIF_ERROR,\
     NGAMS_SUCCESS, NGAMS_NOTIF_NO_DISKS, NGAMS_FAILURE, padString,\
     NGAMS_DISK_INFO, getDiskSpaceAvail
@@ -101,17 +101,16 @@ def getDiskCompleted(dbConObj,
 
     Returns:    1 if disk is marked as completed, otherwise 0 (integer).
     """
-    info(4,"Checking if disk with ID: " + diskId+" is marked as completed ...")
+    logger.debug("Checking if disk with ID: %s is marked as completed ...",  diskId)
     completed = dbConObj.getDiskCompleted(diskId)
     if (completed == None):
-        info(4,"Disk with ID: " + diskId +\
-             " is not marked as completed (is not registered)")
+        logger.debug("Disk with ID: %s is not registered", diskId)
         return 0
     else:
         if (completed):
-            info(4,"Disk with ID: " + diskId + " is completed")
+            logger.debug("Disk with ID: %s is completed", diskId)
         else:
-            info(4,"Disk with ID: " + diskId + " is not completed")
+            logger.debug("Disk with ID: %s is not completed", diskId)
         return completed
 
 
@@ -171,12 +170,11 @@ def checkDisks(hostId,
     # The "mtDiskDic" dictionary contains information (ngasDiskInfo objects)
     # for each disk mounted on this system.
     if (diskList != []):
-        info(1,"All System Types: Checking if disks registered in the " +\
-             "DB as mounted on this system really are mounted physically ...")
+        logger.debug("All System Types: Checking if disks registered in the " +\
+                     "DB as mounted on this system really are mounted physically ...")
     mtDiskDic = {}
     for disk in diskList:
-        info(1,"Checking for availability of disk with ID: " +\
-             disk.getDiskId() + " ...")
+        logger.info("Checking for availability of disk with ID: %s", disk.getDiskId())
         found = 0
         for slotId in diskDic.keys():
             if (diskDic[slotId].getDiskId() == disk.getDiskId()):
@@ -184,15 +182,14 @@ def checkDisks(hostId,
                 mtDiskDic[slotId] = disk
                 break
         if (found == 0):
-            info(1,"Disk with ID: " + disk.getDiskId() +\
-                 " not available anymore - modifying entry in DB.")
+            logger.info("Disk with ID: %s not available anymore - modifying entry in DB.", disk.getDiskId())
             disk.setHostId("")
             disk.setSlotId("")
             disk.setMountPoint("")
             disk.setMounted(0)
             disk.write(dbConObj)
         else:
-            info(1,"Disk with ID: " + disk.getDiskId() + " available.")
+            logger.info("Disk with ID: %s available.", disk.getDiskId())
 
     # Ensure we have the information available for each disk, either from the
     # DB or from the NGAS Disk Info files (if one of these are available).
@@ -226,17 +223,17 @@ def checkDisks(hostId,
             # recent one.
             if (ngasDiskInfoFile.getInstallationDate() >
                 dbDiskInfo.getInstallationDate()):
-                info(1,"Disk information in NgasDiskInfo File for disk with "+\
-                     "ID: " + ngasDiskInfoFile.getDiskId() + "/Slot ID: " +\
-                     slotId + ", is more recent than the one found in the " +\
+                logger.info("Disk information in NgasDiskInfo File for disk with "+\
+                     "ID: %s / Slot ID: %s, is more recent than the one found in the " +\
                      "NGAS DB for that disk. Taking information for disk " +\
-                     "from NgasDiskInfo File.")
+                     "from NgasDiskInfo File.",
+                     ngasDiskInfoFile.getDiskId(), slotId)
                 mtDiskDic[slotId] = ngasDiskInfoFile
         else:
             mtDiskDic[slotId] = None
 
     if (ngamsCfgObj.getAllowArchiveReq() and (diskDic != {})):
-        info(1,"Archiving System: Checking that all disks defined in the " +\
+        logger.info("Archiving System: Checking that all disks defined in the " +\
              "configuration and which are mounted and not completed, can be "+\
              "accessed. Check that installed disks, have entries in the " +\
              "NGAS DB ...")
@@ -263,16 +260,16 @@ def checkDisks(hostId,
                 # NGAS Disk Info File, we simply update its entry in the DB.
                 if (mtDiskDic[slotId]):
                     if (mtDiskDic[slotId].getCompleted()):
-                        info(2,"Disk in Slot with ID: " + slotId + " " +\
+                        logger.info("Disk in Slot with ID: %s " +\
                              "is marked as 'completed' - just updating " +\
-                             "info in DB")
+                             "info in DB", slotId)
                         dbUpdateDic[slotId] = ["UPDATE", mtDiskDic[slotId]]
                         continue
 
                 # Check for disk accessibility
                 diskRef = "Slot ID: " + str(diskInfo.getSlotId()) +\
                           " - Disk ID: " + diskInfo.getDiskId()
-                info(1,"Checking for accessibility of disk: " + diskRef+" ...")
+                logger.info("Checking for accessibility of disk: %s", diskRef)
                 if (checkDiskAccessibility(diskInfo.getMountPoint()) == -1):
                     errMsg = genLog("NGAMS_ER_DISK_INACCESSIBLE", [diskRef])
                     logger.error(errMsg)
@@ -283,10 +280,9 @@ def checkDisks(hostId,
                         del dbUpdateDic[assocSlotId]
                     continue
                 else:
-                    info(1,"Disk: " + diskRef + " is accessible")
+                    logger.info("Disk: %s is accessible", diskRef)
 
-                info(2,"Check if the disk with ID: " + diskInfo.getDiskId() +\
-                     " already has an entry in the DB ...")
+                logger.info("Check if the disk with ID: %s already has an entry in the DB", diskInfo.getDiskId())
                 tmpDiskInfo = mtDiskDic[slotId]
 
                 # Check the disk information or simply mark the disk
@@ -297,11 +293,11 @@ def checkDisks(hostId,
                     if (not rmDiskDic.has_key(assocSlotId)):
                         dbUpdateDic[slotId] = ["ADD"]
                 else:
-                    info(2,"Entry found in DB for disk with ID: " +\
-                         diskInfo.getDiskId())
+                    logger.info("Entry found in DB for disk with ID: %s",
+                                diskInfo.getDiskId())
 
-                    info(2,"Check that this disk already registered " +\
-                         "is used correctly as Main or Replication Disk ...")
+                    logger.info("Check that this disk already registered " +\
+                                "is used correctly as Main or Replication Disk ...")
                     # From the Logical Name of the disk, we can identify
                     # if it was previously used as a Main or as a Replication
                     # Disk (e.g.: "LS-FitsStorage3-M-000003"). From the Slot
@@ -363,8 +359,8 @@ def checkDisks(hostId,
 
         # Check that each disk accepted so far has an associated disk if this
         # is specified like this in the configuration.
-        info(2,"Check if each disk has an associated disk if the " +\
-             "configuration specifies this ...")
+        logger.info("Check if each disk has an associated disk if the " +\
+                    "configuration specifies this ...")
         for slotId in dbUpdateDic.keys():
             # We do not consider disks that are already completed.
             if (mtDiskDic[slotId]):
@@ -374,7 +370,7 @@ def checkDisks(hostId,
                 if (not dbUpdateDic.has_key(assocSlotId)):
                     msg = "Disk in slot: %s has no associated " +\
                           "disk in slot: %s - rejecting disk in slot: %s"
-                    info(2,msg % (slotId, assocSlotId, slotId))
+                    logger.info(msg, slotId, assocSlotId, slotId)
                     del dbUpdateDic[slotId]
                     rmDiskDic[slotId] = slotId
 
@@ -382,12 +378,11 @@ def checkDisks(hostId,
         for slId in rmDiskDic.keys():
             for id in [slId, ngamsCfgObj.getAssocSlotId(slId)]:
                 if (diskDic.has_key(id)):
-                    info(1,"Removing invalid disk info object from Disk " +\
-                         "Dictionary -" +\
-                         " Port No: " + str(diskDic[id].getPortNo()) +\
-                         " Mount Point: " +\
-                         str(diskDic[id].getMountPoint()) +\
-                         " Disk ID: " + diskDic[id].getDiskId())
+                    logger.info("Removing invalid disk info object from Disk " +\
+                         "Dictionary - Port No: %s Mount Point: %s Disk ID: %s",
+                         str(diskDic[id].getPortNo()),
+                         str(diskDic[id].getMountPoint()),
+                         diskDic[id].getDiskId())
                     diskDic[id] = None
                     del diskDic[id]
                     if (dbUpdateDic.has_key(id)):
@@ -433,12 +428,12 @@ def checkDisks(hostId,
                 updateDiskInDb(hostId, dbConObj, ngamsCfgObj, slId, diskDic,
                                dbUpdateDic[slId][1])
 
-        info(2,"Archiving System: Check that there is at least one " +\
+        logger.info("Archiving System: Check that there is at least one " +\
              "Storage Set available for each Stream defined ...")
         probMimeTypeList = []
         for stream in ngamsCfgObj.getStreamList():
-            info(1,"Checking for target disks availability for mime-type: " +\
-                 stream.getMimeType())
+            logger.info("Checking for target disks availability for mime-type: %s",
+                        stream.getMimeType())
             if (checkStorageSetAvailability(hostId, dbConObj, ngamsCfgObj,
                                             stream.getMimeType()) !=
                 NGAMS_SUCCESS):
@@ -456,7 +451,7 @@ def checkDisks(hostId,
         # It is not an Archiving System: Check if the disks in the Disk Dic
         # (the disks mounted, are registered in the DB. If yes, the info
         # for the disk is updated, if no, a new entry is added.
-        info(2,"Non Archiving System: Check if the disks mounted are " +\
+        logger.info("Non Archiving System: Check if the disks mounted are " +\
              "registered in the DB ...")
         slotIds = diskDic.keys()
         slotIds.sort()
@@ -465,14 +460,14 @@ def checkDisks(hostId,
             diskInfo = ngamsDiskInfo.ngamsDiskInfo()
             try:
                 diskInfo.read(dbConObj, diskId)
-                info(2,"Marking disk with ID: " + diskId +\
-                     " and mount point: " + diskDic[slotId].getMountPoint() +\
-                     " as mounted in the DB.")
+                logger.info("Marking disk with ID: %s and mount point: %s " +\
+                            "as mounted in the DB.",
+                            diskId, diskDic[slotId].getMountPoint())
                 updateDiskInDb(hostId, dbConObj, ngamsCfgObj, slotId, diskDic,diskInfo)
             except:
-                info(2,"Creating new entry for disk with ID: " + diskId +\
-                     " and mount point: " +  diskDic[slotId].getMountPoint() +\
-                     " in the DB.")
+                logger.info("Creating new entry for disk with ID: %s " + \
+                            "and mount point: %s in the DB.",
+                            diskId, diskDic[slotId].getMountPoint())
                 hasDiskInfo = 0
                 if (mtDiskDic.has_key(slotId)):
                     if (mtDiskDic[slotId]): hasDiskInfo = 1
@@ -519,15 +514,15 @@ def checkDiskAccessibility(mountPoint):
     Returns:       0: OK, -1: Failure accessing disk (integer)
     """
     testFile = os.path.normpath("{0}/NgamsTestFile".format(mountPoint))
-    info(4, "Testing disk accessibility - creating test file: %s" % testFile)
+    logger.debug("Testing disk accessibility - creating test file: %s", testFile)
 
     try:
         open(testFile, 'a').close()
         os.remove(testFile)
-        info(4, "Successfully accessed disk with mount point: %s" % mountPoint)
+        logger.debug("Successfully accessed disk with mount point: %s", mountPoint)
         return 1
     except OSError:
-        info(4, "Problem accessing disk with mount point: %s" % mountPoint)
+        logger.debug("Problem accessing disk with mount point: %s", mountPoint)
         return -1
 
 
@@ -551,8 +546,8 @@ def genLogicalName(hostId,
 
     Returns:          Logical name for disk (string).
     """
-    info(4,"Generating Logical Name for disk with ID: " + diskId +\
-         " - in slot: " + str(slotId))
+    logger.debug("Generating Logical Name for disk with ID: %s in slot: %s",
+                 diskId, str(slotId))
     set = ngamsCfgObj.getStorageSetFromSlotId(slotId)
     if (set.getMainDiskSlotId() == slotId):
         cat = "M"
@@ -580,8 +575,7 @@ def genLogicalName(hostId,
         number = padString(str(maxDiskNumber + 1), 6, "0")
 
     logName = idPrefix + "-" + number
-    info(4,"Generated Logical Name for disk with ID: " + diskId +\
-         " - in slot: " + str(slotId) + ": " + logName)
+    logger.debug("Generated Logical Name: %s", logName)
     return logName
 
 
@@ -606,10 +600,10 @@ def getNgasDiskInfoFile(diskDic,
     # load this and use these values for adding the entry in the DB.
     diskInfoFile = os.path.normpath(diskDic[slotId].getMountPoint() + "/" +\
                                     NGAMS_DISK_INFO)
-    info(4,"Checking if NGAS Disk Info file available: " + diskInfoFile)
+    logger.debug("Checking if NGAS Disk Info file available: %s", diskInfoFile)
     retVal = None
     if (os.path.exists(diskInfoFile)):
-        info(2,"Found Disk Info File for disk in slot: " + slotId)
+        logger.info("Found Disk Info File for disk in slot: %s", slotId)
         statusObj = ngamsStatus.ngamsStatus().load(diskInfoFile, 1)
         retVal = statusObj.getDiskStatusList()[0]
     return retVal
@@ -640,11 +634,9 @@ def addDiskInDb(hostId,
 
     diskId = diskDic[slotId].getDiskId()
 
-    info(1,"Adding disk with ID: " + diskId + " - Slot ID: " + slotId +\
-         " not registered in the NGAS DB ...")
+    logger.info("Adding disk with ID: %s - Slot ID: %s, not registered in the NGAS DB",
+                diskId, slotId)
 
-    info(2,"Creating a new entry in the NGAS DB for disk with ID: " +\
-         diskId + " ...")
     # In the following the assumption is made that if a disk doesn't have an
     # entry in the NGAS DB, this means that the disk is 'clean', i.e. doesn't
     # contain files already, or if, then these are not taken into account.
@@ -682,7 +674,7 @@ def addDiskInDb(hostId,
         dbConObj.addDiskHistEntry(hostId, diskId, "Disk Registered", "text/xml",
                                   prepNgasDiskInfoFile(hostId, diskEntry, 1, 1))
 
-    info(1,"Added disk with ID: " + diskId + " in the NGAS DB")
+    logger.info("Added disk with ID: %s in the NGAS DB", diskId)
 
 
 def updateDiskInDb(hostId,
@@ -714,8 +706,7 @@ def updateDiskInDb(hostId,
     T = TRACE()
 
     diskId = diskDic[slotId].getDiskId()
-    info(4,"Updating information for disk with ID: " + diskId +\
-         " in the NGAS DB ...")
+    logger.debug("Updating information for disk with ID: %s in the NGAS DB", diskId)
     archive            = ngamsCfgObj.getArchiveName()
     mountPoint         = diskDic[slotId].getMountPoint()
     mounted            = 1
@@ -736,8 +727,7 @@ def updateDiskInDb(hostId,
         dbConObj.addDiskHistEntry(hostId, diskId, "Disk Registered", "text/xml",
                                   prepNgasDiskInfoFile(hostId, diskInfoObj, 1, 1))
 
-    info(4,"Updated information for disk with ID: " + diskId +\
-         " in the NGAS DB")
+    logger.debug("Updated information for disk with ID: %s in the NGAS DB", diskId)
 
 
 def markDisksAsUnmountedInDb(hostId,
@@ -770,14 +760,13 @@ def markDiskAsUmountedInDb(hostId,
 
     Returns:     Void.
     """
-    info(1,"Marking disk with ID: " + diskId +\
-         " as unmounted in the NGAS DB ...")
+    logger.info("Marking disk with ID: %s as unmounted in the NGAS DB", diskId)
     diskInfoObj = ngamsDiskInfo.ngamsDiskInfo()
     diskInfoObj.read(dbConObj, diskId).\
                                setHostId("").setSlotId("").setMounted(0).\
                                setMountPoint("").setLastHostId(hostId).\
                                write(dbConObj)
-    info(1,"Marked disk with ID: " + diskId+" as unmounted in the NGAS DB ...")
+    logger.info("Marked disk with ID: %s as unmounted in the NGAS DB ...", diskId)
 
 
 def getAssociatedDiskId(diskId,
@@ -828,7 +817,7 @@ def updateDiskStatusDb(dbConObj,
 
     Returns:        Disk Info Object (ngamsDiskInfo).
     """
-    info(4,"Updating disk status for disk with ID: "+piStat.getDiskId()+" ...")
+    logger.debug("Updating disk status for disk with ID: %s", piStat.getDiskId())
 
     global _ngamsDisksSem
     _ngamsDisksSem.acquire()
@@ -846,7 +835,7 @@ def updateDiskStatusDb(dbConObj,
     diskInfo.write(dbConObj)
 
     _ngamsDisksSem.release()
-    info(4,"Updated disk status for disk with ID: " + piStat.getDiskId())
+    logger.debug("Updated disk status for disk with ID: %s", piStat.getDiskId())
 
     return diskInfo
 
@@ -989,10 +978,7 @@ def dumpDiskInfo(hostId,
     if (os.path.exists(filename) and (not ngamsLib.fileWritable(filename))):
         return
 
-    info(4,"Writing NGAS Disk Status for disk with ID: " + diskId +\
-         " - into file: " + filename)
-    info(5,"Contents of NgasDiskInfo: %s is: |%s|" %\
-         (filename, str(ngasDiskInfo).replace("\n", "   ")))
+    logger.debug("Writing NGAS Disk Status for disk with ID: %s into file: %s", diskId, filename)
     fd = open(filename, "w")
     fd.write(ngasDiskInfo)
     fd.close()
@@ -1052,7 +1038,7 @@ def findTargetDisk(hostId,
     startTime = time.time()
 
     # Get Disk IDs matching the mime-type.
-    info(3, "Finding target disks - mime-type is: " + mimeType)
+    logger.debug("Finding target disks - mime-type is: %s", mimeType)
     global _diskInfoObjsDic
     if ((not caching) or (not _diskInfoObjsDic.has_key(mimeType))):
         diskInfoObjs = getDiskInfoObjsFromMimeType(hostId, dbConObj, ngamsCfgObj,

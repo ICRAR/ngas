@@ -33,12 +33,16 @@
 Function to handle the ARCHIVE command.
 """
 
+import logging
+
 from ngamsLib.ngamsCore import TRACE, genLog, NGAMS_ONLINE_STATE,\
     NGAMS_BUSY_SUBSTATE, NGAMS_IDLE_SUBSTATE, getHostName, NGAMS_HTTP_SUCCESS,\
-    NGAMS_SUCCESS, info, NGAMS_NOTIF_ERROR, NGAMS_HTTP_GET
+    NGAMS_SUCCESS, NGAMS_NOTIF_ERROR, NGAMS_HTTP_GET
 from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsDiskUtils
 import ngamsArchiveUtils
 
+
+logger = logging.getLogger(__name__)
 
 def archiveInitHandling(srvObj,
                         reqPropsObj,
@@ -144,7 +148,7 @@ def handleCmdArchive(srvObj,
 
     # Handle Archive Request Locally.
     if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
-        info(1,"Handling Archive Pull Request ...")
+        logger.info("Handling Archive Pull Request ...")
         try:
             if (reqPropsObj.getFileUri() == ""):
                 raise Exception, "No File URI/Filename specified!"
@@ -159,7 +163,7 @@ def handleCmdArchive(srvObj,
             srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
             msg = "Successfully handled Archive Pull Request for data file " +\
                   "with URI: " + reqPropsObj.getSafeFileUri()
-            info(1,msg)
+            logger.info(msg)
             # If it is specified not to reply immediately (= to wait), we
             # send back a reply now.
             if (reqPropsObj.getWait()):
@@ -173,13 +177,13 @@ def handleCmdArchive(srvObj,
                                      errMsg)
             raise Exception(errMsg)
     else:
-        info(1,"Handling Archive Push Request ...")
+        logger.info("Handling Archive Push Request ...")
         try:
             diskinfoObj = ngamsArchiveUtils.dataHandler(srvObj, reqPropsObj,
                                                         httpRef)
             msg = "Successfully handled Archive Push Request for " +\
                   "data file with URI: " + reqPropsObj.getSafeFileUri()
-            info(4, msg)
+            logger.debug(msg)
             srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
 
             # If it was specified not to reply immediately (= to wait),

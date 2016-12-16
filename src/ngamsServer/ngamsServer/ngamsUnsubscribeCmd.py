@@ -38,7 +38,7 @@ import logging
 import Queue
 import ngamsSubscriptionThread
 from ngamsLib.ngamsCore import TRACE, NGAMS_DELIVERY_THR, \
-    info, genLog, NGAMS_SUBSCRIBE_CMD, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,\
+    genLog, NGAMS_SUBSCRIBE_CMD, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,\
     NGAMS_FAILURE
 from ngamsLib import ngamsLib
 
@@ -175,8 +175,7 @@ def delSubscriber(srvObj,
         err += 1
         errMsg += estr
     if (not err):
-        info(2,"Subscriber with ID: " + subscrId +\
-             " successfully unsubscribed")
+        logger.info("Subscriber with ID: %s successfully unsubscribed", subscrId)
     return [err, errMsg]
 
 def _reduceRefCount(fileDeliveryCountDic, fileDeliveryCountDic_Sem, fileId, fileVersion):
