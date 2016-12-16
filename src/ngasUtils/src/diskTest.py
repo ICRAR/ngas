@@ -67,7 +67,7 @@ def usage():
     than devices directly.
 
     Synopsis: diskTest.py [-d device] [-s skip] [-t testcount] [-i iosize]
-                          [-b blocksize] [-c {b|z}] [-f file] [-m] [-w] [-l] [-o]
+                          [-b blocksize] [-c {b|z|c}] [-f file] [-m] [-w] [-l] [-o]
                           [-p] [-h]
 
                   long arguments are allowed as well, e.g. --device
@@ -86,7 +86,8 @@ def usage():
           sndbufsi[z]e:the TCP send buffer size. This parameter
                        is used only when the device is a URL (HTTP
                        write test)
-          [c]rc:       string, if 'b' binascii is used, if 'z' zlib.
+          [c]rc:       string, if 'b' binascii is used, if 'z' zlib, if 'c' 
+                       crc32c is used.
           [m]ethod:    flag, if set a python implementation of dd
                        will be used.
           [l]owio:     [direct, async], this will switch to lower level I/O
