@@ -63,6 +63,21 @@ from pccUt import PccUtTime
 
 logger = logging.getLogger(__name__)
 
+logging_levels = {
+    logging.CRITICAL: 0,
+    logging.ERROR: 1,
+    logging.WARN: 2,
+    logging.INFO: 3,
+    logging.DEBUG: 4,
+    logging.NOTSET: 5,
+    0: logging.CRITICAL,
+    1: logging.ERROR,
+    2: logging.WARNING,
+    3: logging.INFO,
+    4: logging.DEBUG,
+    5: logging.NOTSET
+}
+
 # Global parameters to control the test run.
 _noCleanUp   = 0
 
@@ -806,8 +821,10 @@ def runTest(argv):
                 correctUsage()
             sys.exit(1)
 
-    # TODO: properly setup logging depending on the cmdline args
     logging.root.addHandler(logging.NullHandler())
+    if verboseLevel:
+        logging.root.addHandler(logging.StreamHandler(stream=sys.stdout))
+        logging.root.setLevel(logging_levels[verboseLevel-1])
 
     skipDic = {}
     if (skip):
@@ -1070,8 +1087,7 @@ class ngamsTestSuite(unittest.TestCase):
         """
         T = TRACE(3)
 
-        levels = {logging.CRITICAL: 0, logging.ERROR: 1, logging.WARN: 2, 25: 3, logging.INFO: 4, logging.DEBUG: 5, logging.NOTSET: 6}
-        verbose = levels[logger.getEffectiveLevel()]
+        verbose = logging_levels[logger.getEffectiveLevel()] + 1
 
         if (dbCfgName):
             # If a DB Configuration Name is specified, we first have to
