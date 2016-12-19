@@ -315,8 +315,7 @@ def collectProcResults(srvObj, reqPropsObj, fileVer, diskId, hostId, container):
             httpStatCode, httpStatMsg, httpHdrs, data =\
                           ngamsLib.httpGet(ipAddress, port, NGAMS_RETRIEVE_CMD, 1,
                                            pars,"",srvObj.getCfg().getBlockSize(),
-                                           timeOut = None, returnFileObj = 1,
-                                           authHdrVal = authHdr)
+                                           timeOut = None, authHdrVal = authHdr)
             httpHdrDic = ngamsLib.httpMsgObj2Dic(httpHdrs)
             dataSize = int(httpHdrDic["content-length"])
 

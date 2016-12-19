@@ -1198,7 +1198,6 @@ class ngamsPClient:
                  dataTargFile = "",
                  blockSize = 65536,
                  timeOut = None,
-                 returnFileObj = 0,
                  authHdrVal = "",
                  additionalHdrs = []):
         """
@@ -1227,8 +1226,7 @@ class ngamsPClient:
                 reply, msg, hdrs, data =\
                        ngamsLib.httpGet(tmpHost, tmpPort, cmd, wait, pars,
                                         dataTargFile, blockSize, timeOut,
-                                        returnFileObj, authHdrVal,
-                                        additionalHdrs)
+                                        authHdrVal, additionalHdrs)
                 logger.debug("Server: %s:%s OK", tmpHost, str(tmpPort))
                 success = 1
                 break
@@ -1296,7 +1294,7 @@ class ngamsPClient:
             startTime = time.time()
             reply, msg, hdrs, data =\
                    self._httpGet(host, port, cmd, wait, locPars, outputFile,
-                                 None, self.getTimeOut(), 0, authHdrVal,
+                                 None, self.getTimeOut(), authHdrVal,
                                  additionalHdrs)
             deltaTime = (time.time() - startTime)
             logger.debug("Command: %s/%s to %s:%s handled in %.3fs",

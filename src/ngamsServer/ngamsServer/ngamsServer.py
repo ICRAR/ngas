@@ -1981,7 +1981,6 @@ class ngamsServer:
                                                reqPropsObj.getCmd(), 1, pars,
                                                "",self.getCfg().getBlockSize(),
                                                timeOut=reqTimeOut,
-                                               returnFileObj=0,
                                                authHdrVal=authHttpHdrVal)
             else:
                 # It's a POST request, forward request + possible data.

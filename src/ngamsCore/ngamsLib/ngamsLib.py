@@ -35,7 +35,7 @@ The functions in this module can be used in all the NG/AMS code.
 """
 
 import cPickle
-from contextlib import closing
+import contextlib
 import getpass
 import httplib
 import logging
@@ -352,8 +352,7 @@ def httpTimeStamp():
 def _httpHandleResp(fileObj,
                     dataTargFile,
                     blockSize,
-                    timeOut = None,
-                    returnFileObj = 0):
+                    timeOut = None):
     """
     Handle the response to an HTTP request. If specified, the data returned
     will be either returned in a buffer or stored in a target file specified.
@@ -369,11 +368,6 @@ def _httpHandleResp(fileObj,
 
     timeOut:          Timeout to wait for reply from the server seconds
                       (double).
-
-    returnFileObj:    If set to 1, a File Object is returned by using which
-                      it is possible to receive the data in the HTTP
-                      response. I.e., the data is not received by the
-                      function (integer/0|1).
 
     Returns:          List with information from reply from contacted
                       NG/AMS Server (reply, msg, hdrs, data|File Object)
@@ -396,7 +390,7 @@ def _httpHandleResp(fileObj,
 
     logger.debug("Size of data returned by remote host: %d", dataSize)
 
-    if not dataTargFile and not returnFileObj:
+    if not dataTargFile:
         data = []
         toRead = dataSize
         readIn = 0
@@ -407,9 +401,6 @@ def _httpHandleResp(fileObj,
             data.append(buff)
             readIn += len(buff)
         data = ''.join(data)
-
-    elif returnFileObj:
-        data = fileObj
 
     # It's a container
     elif (NGAMS_CONT_MT == hdrDic['content-type']):
@@ -517,7 +508,7 @@ def httpPostUrl(url,
 
     cmd = urlres.path.strip('/')
 
-    with closing(httplib.HTTPConnection(urlres.netloc, timeout = timeOut)) as http:
+    with contextlib.closing(httplib.HTTPConnection(urlres.netloc, timeout = timeOut)) as http:
         logger.debug("Sending HTTP header ...")
         logger.debug("HTTP Header: %s: %s", NGAMS_HTTP_POST, cmd)
         http.putrequest(NGAMS_HTTP_POST, cmd)
@@ -778,7 +769,6 @@ def httpGetUrl(url,
                dataTargFile = "",
                blockSize = 65536,
                timeOut = None,
-               returnFileObj = 0,
                authHdrVal = "",
                additionalHdrs = []):
     """
@@ -800,11 +790,6 @@ def httpGetUrl(url,
 
     timeOut:          Timeout to apply when communicating with the server in
                       seconds (double).
-
-    returnFileObj:    If set to 1, a File Object is returned by using which
-                      it is possible to receive the data in the HTTP
-                      response. I.e., the data is not received by the
-                      function (integer/0|1).
 
     authHdrVal:       Authorization HTTP header value as it should be sent in
                       the query (string).
@@ -830,25 +815,13 @@ def httpGetUrl(url,
     for addHdr in additionalHdrs:
         reqObj.add_header(addHdr[0], addHdr[1])
 
-    fileObj = None
     try:
-        fileObj = urllib2.urlopen(reqObj, timeout=timeOut)
-        code, msg, hdrs, data = _httpHandleResp(fileObj, dataTargFile, blockSize,
-                                                timeOut, returnFileObj)
-        return (code, msg, hdrs, data)
+        with contextlib.closing(urllib2.urlopen(reqObj, timeout=timeOut)) as f:
+            return _httpHandleResp(f, dataTargFile, blockSize, timeOut)
     except urllib2.HTTPError, e:
-        code, msg, hdrs, data = e.code, str(e).split(":")[1].strip(),\
-                                e.headers, e.read()
-        logger.debug("httpGetUrl() - Exception: urllib2.HTTPError: %s", str(e))
-        return (code, msg, hdrs, data)
-    except Exception, e:
-        errMsg = "Problem occurred issuing request with URL: " + url +\
-                 ". Error: " + re.sub("<|>", "", str(e))
-        raise Exception, errMsg
-    finally:
-        # If we are returning the fileObj then we cannot return it closed
-        if fileObj and not returnFileObj:
-            fileObj.close()
+        logger.exception("error while sending GET request")
+        code, msg, hdrs, data = e.code, str(e), e.headers, e.read()
+        return code, msg, hdrs, data
 
 
 def httpGet(host,
@@ -859,7 +832,6 @@ def httpGet(host,
             dataTargFile = "",
             blockSize = 65536,
             timeOut = None,
-            returnFileObj = 0,
             authHdrVal = "",
             additionalHdrs = []):
     """
@@ -897,11 +869,6 @@ def httpGet(host,
     timeOut:          Timeout to apply when communicating with the server in
                       seconds (double).
 
-    returnFileObj:    If set to 1, a File Object is returned by using which
-                      it is possible to receive the data in the HTTP
-                      response. I.e., the data is not received by the
-                      function (integer/0|1).
-
     authHdrVal:       Authorization HTTP header value as it should be sent in
                       the query (string).
 
@@ -919,25 +886,41 @@ def httpGet(host,
 
     # Prepare URL + parameters.
     url = "http://" + host + ":" + str(port) + "/" + cmd
-    urlCompl = url
-    parDic = {}
-    count = 0
-    for par in pars:
-        if (count):
-            urlCompl += "&" + par[0] + "=" + str(par[1])
-        else:
-            urlCompl += "?" + par[0] + "=" + str(par[1])
-        parDic[par[0]] = par[1]
-        count += 1
-    parsEnc = urllib.urlencode(parDic)
+    parDic = {p[0]: p[1] for p in pars}
+    pars = urllib.urlencode(parDic)
+    if pars:
+        url += '?' + pars
 
     # Submit the request.
-    code, msg, hdrs, data = httpGetUrl((url + "?" + parsEnc), dataTargFile,
-                                       blockSize, timeOut, returnFileObj,
+    code, msg, hdrs, data = httpGetUrl(url, dataTargFile,
+                                       blockSize, timeOut,
                                        authHdrVal, additionalHdrs)
 
     return (code, msg, hdrs, data)
 
+def httpGetConnection(host, port, cmd, pars = [], blockSize = 65536,
+                      timeOut=None, authHdrVal = "",
+                      additionalHdrs = []):
+    """
+    Similar to httpGet but returns the HTTP connection directly
+    """
+
+    # Prepare URL + parameters.
+    parDic = {p[0]: p[1] for p in pars}
+    url = "http://" + host + ":" + str(port) + "/" + cmd
+    pars = urllib.urlencode(parDic)
+    if pars:
+        url += '?' + pars
+
+    logger.debug("Issuing request with URL: %s", url)
+    reqObj = urllib2.Request(url)
+    reqObj.add_header("Host", getHostName())
+    if authHdrVal:
+        reqObj.add_header("Authorization", authHdrVal)
+    for addHdr in additionalHdrs:
+        reqObj.add_header(addHdr[0], addHdr[1])
+
+    return urllib2.urlopen(reqObj, timeout=timeOut)
 
 def quoteUrlField(field):
     """

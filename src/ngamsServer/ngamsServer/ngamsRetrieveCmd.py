@@ -716,32 +716,21 @@ def _handleCmdRetrieve(srvObj,
             if (par != "initiator"):
                 pars.append([par, reqPropsObj.getHttpPar(par)])
         authHdr = ngamsSrvUtils.genIntAuthHdr(srvObj)
-        httpStatCode, httpStatMsg, httpHdrs, data =\
-                      ngamsLib.httpGet(ipAddress, port, NGAMS_RETRIEVE_CMD, 1,
-                                       pars,"",srvObj.getCfg().getBlockSize(),
-                                       timeOut = None, returnFileObj = 1,
-                                       authHdrVal = authHdr)
-        httpHdrDic = ngamsLib.httpMsgObj2Dic(httpHdrs)
-        dataSize = int(httpHdrDic["content-length"])
+        conn = ngamsLib.httpGetConnection(ipAddress, port,
+                                          cmd=NGAMS_RETRIEVE_CMD, pars=pars,
+                                          blockSize=srvObj.getCfg().getBlockSize(),
+                                          timeOut = None, authHdrVal = authHdr)
 
-        # Check that the Retrieve Request was successful.
-        try:
-            tmpStatObj = ngamsStatus.ngamsStatus().\
-                         unpackXmlDoc(data, getStatus=1)
-        except Exception, e:
-            # Data was not a NG/AMS XML Status Document.
-            tmpStatObj = None
-            pass
-        if (tmpStatObj):
-            if (tmpStatObj.getStatus() == NGAMS_FAILURE):
-                raise Exception, tmpStatObj.getMessage()
+        hdrs = conn.headers
+        httpHdrDic = ngamsLib.httpMsgObj2Dic(hdrs)
+        dataSize = int(httpHdrDic["content-length"])
 
         tmpPars = ngamsLib.parseHttpHdr(httpHdrDic["content-disposition"])
         dataFilename = tmpPars["filename"]
 
         # Generate fake ngamsDppiStatus object.
         resultObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_STREAM,
-                                                    mimeType, data,
+                                                    mimeType, conn,
                                                     dataFilename, procDir,
                                                     dataSize)
         procResult = [ngamsDppiStatus.ngamsDppiStatus().addResult(resultObj)]

@@ -1168,7 +1168,7 @@ def janitorThread(srvObj, stopEvt):
                 ngamsLib.httpGet(getHostName(), srvObj.getCfg().getPortNo(),
                                  NGAMS_OFFLINE_CMD, 0,
                                  [["force", "1"], ["wait", "0"]],
-                                 "", 65536, 30, 0, authHdrVal)
+                                 "", 65536, 30, authHdrVal)
             ##################################################################
 
             ##################################################################
