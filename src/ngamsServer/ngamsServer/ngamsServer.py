@@ -50,7 +50,7 @@ from ngamsLib.ngamsCore import \
     NGAMS_HTTP_BAD_REQ, NGAMS_HTTP_SERVICE_NA, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR, NGAMS_TEXT_MT,\
     NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_XML_STATUS_ROOT_EL,\
-    NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, loadPlugInEntryPoint
+    NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs
 from ngamsLib import ngamsHighLevelLib, ngamsLib
 from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
@@ -206,12 +206,71 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     do_PUT  = reqHandle
 
 class logging_config(object):
-    def __init__(self, stdout_level, file_level, logfile, syslog, syslog_prefix):
+    def __init__(self, stdout_level, file_level, logfile, logfile_rot_interval,
+                 syslog, syslog_prefix):
         self.stdout_level = stdout_level
         self.file_level = file_level
         self.logfile = logfile
+        self.logfile_rot_interval = logfile_rot_interval
         self.syslog = syslog
         self.syslog_prefix = syslog_prefix
+
+
+from logging.handlers import BaseRotatingHandler
+
+class NgasRotatingFileHandler(BaseRotatingHandler):
+    """
+    Logging handler that rotates periodically the NGAS logfile into
+    LOG-ROTATE-<date>.nglog.unsaved.
+    These rotated files are later on picked up by the Janitor Thread,
+    archived into this server, and re-renamed into LOG-ROTATE-<date>.nglog.
+    At close() time it also makes sure the current logfile is also rotated,
+    whatever its size.
+
+    This class is basically a strip-down version of TimedRotatingFileHandler,
+    without all the complexities of different when/interval combinations, etc.
+    """
+
+    def __init__(self, fname, interval):
+        BaseRotatingHandler.__init__(self, fname, mode='a')
+        self.interval = interval
+        self.rolloverAt = self.interval + time.time()
+        pass
+
+    def shouldRollover(self, record):
+        return time.time() >= self.rolloverAt
+
+    def _rollover(self):
+        if not os.path.exists(self.baseFilename):
+            return
+
+        if self.stream:
+            self.stream.close()
+
+        # Put up to the millisecons here
+        now = time.time()
+        ts = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(now))
+        ts += ".%03d" % ((now - math.floor(now)) * 1000.)
+
+        # It's time to rotate the current Local Log File.
+        dirname = os.path.dirname(self.baseFilename)
+        rotated_name = "LOG-ROTATE-%s.nglog.unsaved" % (ts,)
+        rotated_name = os.path.normpath(os.path.join(dirname, rotated_name))
+        shutil.move(self.baseFilename, rotated_name)
+
+    def doRollover(self):
+        self._rollover()
+        self.stream = self._open()
+        self.rolloverAt = time.time() + self.interval
+
+    def close(self):
+        logging.handlers.BaseRotatingHandler.close(self)
+        self.stream = None
+        self.acquire()
+        try:
+            self._rollover()
+        finally:
+            self.release()
 
 class ngamsServer:
     """
@@ -244,7 +303,7 @@ class ngamsServer:
         # Empty logging configuration.
         # It is later initialised both from the cmdline
         # and from the configuration file
-        self.logcfg = logging_config(None, None, None, None, None)
+        self.logcfg = logging_config(None, None, None, None, None, None)
 
         # Server list handling.
         self.__srvListDic             = {}
@@ -412,7 +471,7 @@ class ngamsServer:
         formatter.converter = time.gmtime
 
         if log_to_file:
-            hnd = logging.FileHandler(logcfg.logfile)
+            hnd = NgasRotatingFileHandler(logcfg.logfile, logcfg.logfile_rot_interval)
             hnd.setLevel(file_level)
             hnd.setFormatter(formatter)
             logging.root.addHandler(hnd)
@@ -2220,6 +2279,10 @@ class ngamsServer:
             logcfg.syslog_prefix = self.getCfg().getSysLogPrefix()
         if logcfg.stdout_level is None:
             logcfg.stdout_level = 0
+        if logcfg.logfile_rot_interval is None:
+            logcfg.logfile_rot_interval = isoTime2Secs(self.getCfg().getLogRotateInt())
+            if not logcfg.logfile_rot_interval:
+                logcfg.logfile_rot_interval = 600
 
         try:
             self.setup_logging()
@@ -2474,27 +2537,9 @@ class ngamsServer:
         self.stopServer()
         ngamsSrvUtils.ngamsBaseExitHandler(self)
 
-        # Finish logging and rename the logging file
-        # The log file is renamed in such a way that the next time the server
-        # starts it will pick it up and automatically archive it into itself
-        # Because we do logging.shutdown() here we don't perform any more
-        # logging
+        # Shut down logging. This will flush all pending logs in the system
+        # and will ensure that the last logfile gets rotated
         logging.shutdown()
-
-        logFile = self.getCfg().getLocalLogFile()
-        if logFile and os.path.isfile(logFile):
-            try:
-                logPath = os.path.dirname(logFile)
-                now = time.time()
-                ts = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(now))
-                ts += ".%03d" % ((now - math.floor(now)) * 1000.)
-                # It's time to rotate the current Local Log File.
-                rotLogFile = "LOG-ROTATE-%s.nglog.unsaved" % (ts,)
-                rotLogFile = os.path.normpath(os.path.join(logPath, rotLogFile))
-                shutil.move(logFile, rotLogFile)
-            except Exception:
-                print("Server encountered problem while rotating logfile")
-                traceback.print_exc()
 
         # Remove PID file to allow future instances to be run
         try:
