@@ -935,28 +935,6 @@ def iso8601ToSecs(isoTimeStamp):
     return float(secs)
 
 
-def padString(strBuf,
-              reqLen,
-              prependChr):
-    """
-    Prepend a certain character to generate a string of a certain length.
-    E.g. if strBuf='12', reqLen=6 and prependChr='0', the resulting string
-    will be '000012'.
-
-    strBuf:         String buffer to check/change (string).
-
-    reqLen:         Desired lenght of string (integer).
-
-    prependChr:     Character to prepend (string/length=1).
-
-    Returns:        Resulting string with the characters prepended (string).
-    """
-    noMisChars = (reqLen - len(strBuf))
-    for i in range(noMisChars):
-        strBuf = prependChr + strBuf
-    return strBuf
-
-
 def getBoolean(val):
     """
     Return value of something that might be a boolean. If the given value

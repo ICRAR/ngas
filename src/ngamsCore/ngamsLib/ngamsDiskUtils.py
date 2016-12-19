@@ -43,7 +43,7 @@ import time
 from pccUt import PccUtTime
 from ngamsCore import TRACE, getNgamsVersion, genLog, \
     NGAMS_DB_DIR, checkCreatePath, NGAMS_DB_CH_CACHE, NGAMS_NOTIF_ERROR,\
-    NGAMS_SUCCESS, NGAMS_NOTIF_NO_DISKS, NGAMS_FAILURE, padString,\
+    NGAMS_SUCCESS, NGAMS_NOTIF_NO_DISKS, NGAMS_FAILURE,\
     NGAMS_DISK_INFO, getDiskSpaceAvail
 import ngamsNotification
 import ngamsLib
@@ -572,7 +572,7 @@ def genLogicalName(hostId,
         number = "000001"
     else:
         # The logical name could e.g. be: "Fits-M-000001"
-        number = padString(str(maxDiskNumber + 1), 6, "0")
+        number = "%06d" % (maxDiskNumber + 1)
 
     logName = idPrefix + "-" + number
     logger.debug("Generated Logical Name: %s", logName)
