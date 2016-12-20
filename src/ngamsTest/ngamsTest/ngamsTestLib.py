@@ -56,7 +56,7 @@ from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
 from ngamsLib.ngamsCore import getHostName, TRACE, \
     ngamsCopyrightString, rmFile, cleanList, \
     cpFile, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
-    checkIfIso8601, execCmd as ngamsCoreExecCmd
+    execCmd as ngamsCoreExecCmd, fromiso8601
 from ngamsPClient import ngamsPClient
 from pccUt import PccUtTime
 
@@ -181,6 +181,13 @@ if (not ignoreCClient):
 ###########################################################################
 # START: Utility functions:
 ###########################################################################
+def checkIfIso8601(timestamp):
+    try:
+        fromiso8601(timestamp)
+        return True
+    except ValueError:
+        return False
+
 def execCmd(cmd,
             raiseEx = 1,
             timeOut = 30.0):

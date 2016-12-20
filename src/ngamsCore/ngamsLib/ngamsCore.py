@@ -828,26 +828,6 @@ def timeRef2Iso8601(timeRef):
     return timeRefConv
 
 
-def checkIfIso8601(timestamp):
-    """
-    Check if value is properly formatted according to ISO 8601.
-
-    timestamp:    Timestamp to check (string).
-
-    Returns:      True if ISO 8601 timestamp, otherwise False (boolean).
-    """
-    try:
-        if ((timestamp.find("-") == -1) or
-            (timestamp.find("T") == -1) or
-            (timestamp.find(":") == -1)):
-            raise Exception, "not a timestamp"
-        convTimeStamp = timeRef2Iso8601(timestamp)
-        PccUtTime.TimeStamp().initFromTimeStamp(convTimeStamp)
-        return True
-    except Exception, e:
-        return False
-
-
 def getAsciiTime(timeSinceEpoch = time.time(),
                  precision = 3):
     """
