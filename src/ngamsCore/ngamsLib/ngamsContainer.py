@@ -93,7 +93,7 @@ class ngamsContainer(object):
         self._ingestionDate = ingestionDate
 
     def isClosed(self):
-        return bool(self._ingestionDate)
+        return self._ingestionDate != None
 
     def isOpened(self):
         return not self.isClosed()

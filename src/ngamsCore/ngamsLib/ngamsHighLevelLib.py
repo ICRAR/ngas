@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsHighLevelLib.py,v 1.11 2010/04/13 19:13:23 awicenec Exp $"
@@ -43,13 +42,12 @@ import random
 import time
 import urllib
 
-from pccUt import PccUtTime
 from ngamsCore import TRACE, genLog, NGAMS_HOST_LOCAL,\
     NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN, NGAMS_HOST_REMOTE, getUniqueNo,\
     NGAMS_PROC_DIR, NGAMS_UNKNOWN_MT, NGAMS_STAGING_DIR, NGAMS_TMP_FILE_PREFIX,\
     NGAMS_PICKLE_FILE_EXT, checkCreatePath, checkAvailDiskSpace,\
     getFileSize, NGAMS_BAD_FILES_DIR, NGAMS_BAD_FILE_PREFIX, NGAMS_STATUS_CMD,\
-    mvFile, rmFile
+    mvFile, rmFile, toiso8601
 import ngamsSmtpLib
 import ngamsLib
 import ngamsHostInfo, ngamsStatus
@@ -327,7 +325,7 @@ def genProcDirName(ngamsCfgObj):
     """
     procDir = os.path.normpath(ngamsCfgObj.getProcessingDirectory() + "/" +\
                                NGAMS_PROC_DIR + "/" +\
-                               PccUtTime.TimeStamp().getTimeStamp() + "-" +\
+                               toiso8601() + "-" +\
                                str(getUniqueNo()))
     return procDir
 
@@ -509,7 +507,7 @@ def saveFromHttpToFile(ngamsCfgObj,
     checkCreatePath(os.path.dirname(trgFilename))
 
     logger.info("Saving data in file: %s", trgFilename)
-    timer = PccUtTime.Timer()
+    start = time.time()
 
     with open(trgFilename, "w") as fdOut:
         try:
@@ -558,7 +556,7 @@ def saveFromHttpToFile(ngamsCfgObj,
                 fdOut.write(buf)
                 lastRecepTime = time.time()
 
-            deltaTime = timer.stop()
+            deltaTime = time.time() - start
 
             msg = "Saved data in file: %s. Bytes received: %d. Time: %.3f s. " +\
                   "Rate: %.2f Bytes/s"
@@ -669,12 +667,14 @@ def copyFile(ngamsCfgObj,
             checkCreatePath(os.path.dirname(trgFilename))
             fileSize = getFileSize(srcFilename)
             checkAvailDiskSpace(trgFilename, fileSize)
-            timer = PccUtTime.Timer()
+
+            start = time.time()
             # Make target file writable if existing.
             if (os.path.exists(trgFilename)):
                 os.chmod(trgFilename, 420)
             shutil.copyfile(srcFilename, trgFilename)
-            deltaTime = timer.stop()
+            deltaTime = time.time() - start
+
             logger.debug("File: %s copied to filename: %s",
                          srcFilename, trgFilename)
         except Exception, e:
@@ -739,7 +739,7 @@ def moveFile2BadDir(ngamsCfgObj,
                   normpath(os.path.join(badFilesDir,
                                         NGAMS_BAD_FILE_PREFIX + str(count) +\
                                         "-" +\
-                                        PccUtTime.TimeStamp().getTimeStamp() +\
+                                        toiso8601() +\
                                         "-" + os.path.basename(orgFilename)))
     fileEls = string.split(srcFilename, ".")
     if ((fileEls[-1] == "Z") or (fileEls[-1] == "gz")):

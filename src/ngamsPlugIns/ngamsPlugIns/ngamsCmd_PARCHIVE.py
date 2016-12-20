@@ -45,7 +45,6 @@ from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, \
     NGAMS_FAILURE, NGAMS_HTTP_POST, getHostName, \
     NGAMS_HTTP_HDR_CHECKSUM, TRACE, genLog, NGAMS_IDLE_SUBSTATE
 from ngamsLib import ngamsStatus, ngamsHighLevelLib, ngamsDiskInfo, ngamsLib
-from pccUt import PccUtTime
 
 
 logger = logging.getLogger(__name__)
@@ -167,7 +166,8 @@ def saveFromHttpToHttp(reqPropsObj,
     contDisp += "; no_versioning=1"
 
     logger.debug("Transferring data to : %s", nexturl)
-    timer = PccUtTime.Timer()
+
+    start = time.time()
 
     http = None
 
@@ -241,7 +241,7 @@ def saveFromHttpToHttp(reqPropsObj,
                 nfailread += 1
                 time.sleep(0.050)
 
-        deltaTime = timer.stop()
+        deltaTime = time.time() -start
         reqPropsObj.setBytesReceived(tot_size)
 
         logger.debug("Data sent")

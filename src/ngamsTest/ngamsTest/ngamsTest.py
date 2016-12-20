@@ -42,9 +42,8 @@ import pstats
 
 import cProfile as profile
 from ngamsLib.ngamsCore import getHostName, getNgamsVersion, trim, \
-    ngamsCopyrightString, rmFile
+    ngamsCopyrightString, rmFile, toiso8601
 from ngamsLib import ngamsConfig, ngamsHighLevelLib, ngamsLib, ngamsCore
-from pccUt import PccUtTime
 
 
 
@@ -102,7 +101,7 @@ def runAllTests(notifyemail = None,
     line = "\nNG/AMS FUNCTIONAL TESTS - TEST REPORT\n"
     print line
     testRep = line + "\n"
-    line = "Date:             %s" % PccUtTime.TimeStamp().getTimeStamp()
+    line = "Date:             %s" % toiso8601()
     print line
     testRep += line + "\n"
     line = "Host:             %s" % getHostName()

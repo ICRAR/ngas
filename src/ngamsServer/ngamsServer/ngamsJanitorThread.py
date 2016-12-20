@@ -52,10 +52,9 @@ from ngamsLib.ngamsCore import TRACE, \
     NGAMS_DB_CH_FILE_INSERT, NGAMS_DB_CH_FILE_UPDATE, \
     isoTime2Secs, genLog, NGAMS_PROC_DIR, NGAMS_SUBSCR_BACK_LOG_DIR, \
     NGAMS_HTTP_INT_AUTH_USER, getHostName, NGAMS_OFFLINE_CMD, NGAMS_NOTIF_ERROR,\
-    loadPlugInEntryPoint
+    loadPlugInEntryPoint, toiso8601
 from ngamsLib import ngamsFileInfo, ngamsNotification
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsEvent, ngamsHighLevelLib, ngamsLib
-from pccUt import PccUtTime
 
 try:
     import bsddb3 as bsddb
@@ -760,7 +759,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
         statRep = os.path.normpath(tmpDir + "/" + ngasId +\
                                    "_LOST_FILES_NOTIF_EMAIL.txt")
         fo = open(statRep, "w")
-        timeStamp = PccUtTime.TimeStamp().getTimeStamp()
+        timeStamp = toiso8601()
         tmpFormat = "JANITOR THREAD - LOST FILES DETECTED:\n\n" +\
                     "==Summary:\n\n" +\
                     "Date:                       %s\n" +\
@@ -843,7 +842,7 @@ def checkDbChangeCache(srvObj,
         count = 0
         fileCount = 0
         noOfCacheFiles = len(tmpCacheFiles)
-        timer = PccUtTime.Timer()
+        start = time.time()
         for cacheFile in tmpCacheFiles:
             checkStopJanitorThread(stopEvt)
             if os.lstat(cacheFile)[6] == 0:
@@ -904,7 +903,7 @@ def checkDbChangeCache(srvObj,
 
         for cacheFile in tmpCacheFiles:
             rmFile(cacheFile)
-        totTime = timer.stop()
+        totTime = time.time() - start
 
         tmpMsg = "Handled DB Snapshot Cache Files. Mount point: %s. " +\
                  "Number of Cache Files handled: %d."

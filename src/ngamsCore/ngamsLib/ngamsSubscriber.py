@@ -36,7 +36,6 @@ the complete set of Subscribers.
 import random
 import xml.dom.minidom
 
-from pccUt import PccUtTime
 from ngamsCore import timeRef2Iso8601, TRACE, prFormat1
 
 
@@ -224,20 +223,6 @@ class ngamsSubscriber:
         return self
 
 
-    def setStartDateFromSecs(self,
-                             startDateSecs):
-        """
-        Set the  Subscription Start Date from seconds since epoch.
-
-        startDateSecs:   Date in seconds since epoch (integer).
-
-        Returns:         Reference to object itself.
-        """
-        self.__startDate = PccUtTime.TimeStamp().\
-                           initFromSecsSinceEpoch(startDateSecs).getTimeStamp()
-        return self
-
-
     def getStartDate(self):
         """
         Get the Subscription Start Date.
@@ -327,24 +312,6 @@ class ngamsSubscriber:
         else:
             ###self.__lastFileIngDate = lastFileIngDate.strip()
             self.__lastFileIngDate = timeRef2Iso8601(lastFileIngDate)
-        return self
-
-
-    def setLastFileIngDateFromSecs(self,
-                                   dateSecs):
-        """
-        Set the Last File Ingestion Date from seconds since epoch.
-
-        dateSecs:  Date in seconds since epoch (integer).
-
-        Returns:   Reference to object itself.
-        """
-        if (not dateSecs):
-            self.__lastFileIngDate = ""
-        else:
-            self.__lastFileIngDate = PccUtTime.TimeStamp().\
-                                     initFromSecsSinceEpoch(dateSecs).\
-                                     getTimeStamp()
         return self
 
 

@@ -40,7 +40,6 @@ import logging
 import os
 import time, base64
 
-from pccUt import PccUtTime
 import ngamsArchiveCmd, ngamsFileUtils, ngamsCacheControlThread
 from ngamsLib import ngamsStatus, ngamsLib
 from ngamsLib import ngamsFileInfo
@@ -115,11 +114,11 @@ def receiveData(srvObj,
     # Save the data into the Staging File.
     # If it is an Rearchive Pull Request, open the URL.
     if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
-        timer = PccUtTime.Timer()
+        io_start = time.time()
         code, msg, hdrs, data = ngamsLib.\
                                 httpGetUrl(reqPropsObj.getFileUri(),
                                            dataTargFile = stagingFilename)
-        reqPropsObj.incIoTime(timer.stop())
+        reqPropsObj.incIoTime(time.time() - io_start)
 
         # Check if the retrival was successfull.
         if (int(code) != NGAMS_HTTP_SUCCESS):
@@ -176,7 +175,7 @@ def processRequest(srvObj,
     # Generate the DB File Information.
     newFileInfoObj = fileInfoObj.clone().\
                      setDiskId(trgDiskInfoObj.getDiskId()).\
-                     setCreationDateFromSecs(int(time.time() + 0.5))
+                     setCreationDate(time.time())
 
     # Generate the final storage location and move the file there.
     targetFilename = os.path.normpath("%s/%s" %\
@@ -184,9 +183,10 @@ def processRequest(srvObj,
                                        newFileInfoObj.getFilename()))
     logger.debug("Move Restore Staging File to final destination: %s->%s ...",
                  reqPropsObj.getStagingFilename(), targetFilename)
-    timer = PccUtTime.Timer()
+
+    io_start = time.time()
     mvFile(reqPropsObj.getStagingFilename(), targetFilename)
-    ioTime = timer.stop()
+    ioTime = time.time() - io_start
     reqPropsObj.incIoTime(ioTime)
     logger.debug("Moved Restore Staging File to final destination: %s->%s",
                  reqPropsObj.getStagingFilename(), targetFilename)
@@ -225,7 +225,7 @@ def handleCmdRearchive(srvObj,
     """
     T = TRACE()
 
-    archiveTimer = PccUtTime.Timer()
+    archive_start = time.time()
 
     # Execute the init procedure for the ARCHIVE Command.
     mimeType = ngamsArchiveCmd.archiveInitHandling(srvObj, reqPropsObj,
@@ -252,7 +252,7 @@ def handleCmdRearchive(srvObj,
 
     # Create log/syslog entry for the successfulyl handled request.
     msg = genLog("NGAMS_INFO_FILE_ARCHIVED", [reqPropsObj.getSafeFileUri()])
-    msg = msg + ". Time: %.6fs" % (archiveTimer.stop())
+    msg = msg + ". Time: %.6fs" % (time.time() - archive_start)
     logger.info(msg, extra={'to_syslog': True})
 
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)

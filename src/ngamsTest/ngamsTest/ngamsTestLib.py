@@ -56,9 +56,8 @@ from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
 from ngamsLib.ngamsCore import getHostName, TRACE, \
     ngamsCopyrightString, rmFile, cleanList, \
     cpFile, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
-    execCmd as ngamsCoreExecCmd, fromiso8601
+    execCmd as ngamsCoreExecCmd, fromiso8601, toiso8601
 from ngamsPClient import ngamsPClient
-from pccUt import PccUtTime
 
 
 logger = logging.getLogger(__name__)
@@ -669,31 +668,6 @@ def recvEmail(no):
     return out
 
 
-def supprVerbLogPreamb(logBuf):
-    """
-    Supress the first part of a log line as written on stdout, e.g.:
-
-    2005-09-07T10:44:54.703:<mod>:<fct>:169:2074:MainThread:INFO> <text>
-
-    - is converted into:
-
-    -----> <text>
-
-    logLine:   Log line to process (string).
-
-    Returns:   Processed log line (string).
-    """
-    procLogBuf = ""
-    year = PccUtTime.TimeStamp().getTimeStamp().split("-")[0].strip()
-    for logLine in logBuf.split("\n"):
-        if (logLine.strip().find("%s-" % year) == 0):
-            procLogBuf += "-----> %s\n" % logLine[(logLine.find(">") + 1):].\
-                          strip()
-        else:
-            procLogBuf += logLine + "\n"
-    return procLogBuf
-
-
 def filterOutLines(buf,
                    discardTags = [],
                    matchStart = 1):
@@ -937,14 +911,13 @@ def incArcfile(filename,
 
     Returns:     Void.
     """
-    arcFile = str(pyfits.getval(filename, 'ARCFILE'))
-    idx = arcFile.find(".")
-    insId = arcFile[0:idx]
-    ts = arcFile[(idx + 1):]
-    newMjd = PccUtTime.TimeStamp().initFromTimeStamp(ts).getMjd() +\
-             (float(step) / 86400.0)
-    newArcFile = insId + "." + PccUtTime.TimeStamp(newMjd).getTimeStamp()
-    pyfits.setval(filename, 'ARCFILE', value=newArcFile)
+    # ARCFILE looks like SOMEID.YYYY-mm-DDTHH:MM:SS.sss
+    arcFile = pyfits.getval(filename, 'ARCFILE')
+    idx = arcFile.find('.')
+    insId = arcFile[:idx]
+    ts = arcFile[idx+1:]
+    ts = toiso8601(fromiso8601(ts) + step)
+    pyfits.setval(filename, 'ARCFILE', value="%s.%s" % (insId, ts))
     # TODO: Use PCFITSIO to reprocess the checksum.
     commands.getstatusoutput("add_chksum " + filename)
 
@@ -1578,7 +1551,7 @@ class ngamsTestSuite(unittest.TestCase):
                 # Generate NgasDiskInfo XML documents for the slot to simulate
                 # that the disk is already registered as an NGAS Disk.
                 ngasDiskInfo = loadFile("src/NgasDiskInfoTemplate")
-                isoDate = PccUtTime.TimeStamp().getTimeStamp()
+                isoDate = toiso8601()
                 diskId = diskDir[1:].replace("/", "-")
                 ngasDiskInfo = ngasDiskInfo % (isoDate, getHostName(),
                                                getNgamsVersion(), availMb,

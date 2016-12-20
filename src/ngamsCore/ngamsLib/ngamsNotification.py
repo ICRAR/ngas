@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsNotification.py,v 1.7 2008/08/19 20:51:50 jknudstr Exp $"
@@ -38,11 +37,10 @@ import os
 import threading
 import time
 
-from pccUt import PccUtTime
 from ngamsCore import NGAMS_PICKLE_FILE_EXT, TRACE, NGAMS_NOTIF_ALERT,\
     NGAMS_NOTIF_ERROR, NGAMS_NOTIF_DISK_SPACE, NGAMS_NOTIF_DISK_CHANGE,\
     NGAMS_NOTIF_NO_DISKS, NGAMS_NOTIF_DATA_CHECK, NGAMS_DEFINE,\
-    isoTime2Secs
+    isoTime2Secs, toiso8601
 import ngamsHighLevelLib
 import ngamsLib
 
@@ -305,8 +303,7 @@ def notify(hostId,
             if (not retentionBuf_[msgId][1]): retentionBuf_[msgId][1] = timeNow
             # Append the new element containing the information about the
             # message to be retained.
-            isoTime = PccUtTime.TimeStamp().initFromSecsSinceEpoch(timeNow).\
-                      getTimeStamp()
+            isoTime = toiso8601(timeNow)
             retentionBuf_[msgId][5].append([isoTime, dataRef])
             # Update the Notification Retention Buffer Pickle File and check
             # if there are messages to send out.

@@ -35,7 +35,6 @@ an archived file.
 """
 
 import xml.dom.minidom
-from pccUt import PccUtTime
 from ngamsCore import timeRef2Iso8601, ignoreValue, getAttribValue, prFormat1, TRACE, trim, genLog
 
 # TODO:
@@ -303,20 +302,6 @@ class ngamsFileInfo:
         return self.__compression
 
 
-    def setIngestionDateFromSecs(self,
-                                 dateSecs):
-        """
-        Set ingestion date for file in seconds since epoch.
-
-        dateSecs:   Set the ingestion date from seconds since epoch (integer).
-
-        Returns:    Reference to object itself.
-        """
-        self.__ingestionDate = PccUtTime.TimeStamp().\
-                               initFromSecsSinceEpoch(dateSecs).getTimeStamp()
-        return self
-
-
     def setIngestionDate(self,
                          date):
         """
@@ -428,20 +413,6 @@ class ngamsFileInfo:
         Returns:   File Status (string).
         """
         return self.__fileStatus
-
-
-    def setCreationDateFromSecs(self,
-                                dateSecs):
-        """
-        Set Creation Date for file in seconds since epoch.
-
-        dateSecs:   Set the Creation Date from seconds since epoch (integer).
-
-        Returns:    Reference to object itself.
-        """
-        self.__creationDate = PccUtTime.TimeStamp().\
-                              initFromSecsSinceEpoch(dateSecs).getTimeStamp()
-        return self
 
 
     def setCreationDate(self,
@@ -558,20 +529,6 @@ class ngamsFileInfo:
         return self.__group
 
 
-    def setModDateFromSecs(self,
-                           dateSecs):
-        """
-        Set Modification Date for file in seconds since epoch.
-
-        dateSecs:   Set Modification Date from seconds since epoch (integer).
-
-        Returns:    Reference to object itself.
-        """
-        self.__modDate = PccUtTime.TimeStamp().\
-                         initFromSecsSinceEpoch(dateSecs).getTimeStamp()
-        return self
-
-
     def setModDate(self,
                    date):
         """
@@ -593,20 +550,6 @@ class ngamsFileInfo:
         Returns:   Modification Date (string).
         """
         return self.__modDate
-
-
-    def setAccDateFromSecs(self,
-                           dateSecs):
-        """
-        Set Access Date for file in seconds since epoch.
-
-        dateSecs:   Set Access Date from seconds since epoch (integer).
-
-        Returns:    Reference to object itself.
-        """
-        self.__accDate = PccUtTime.TimeStamp().\
-                         initFromSecsSinceEpoch(dateSecs).getTimeStamp()
-        return self
 
 
     def setAccDate(self,

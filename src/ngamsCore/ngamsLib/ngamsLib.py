@@ -53,9 +53,8 @@ from ngamsCore import genLog, TRACE, trim, getHostName, \
     NGAMS_HTTP_SUCCESS, NGAMS_CONT_MT, \
     NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM, \
     getFileSize, NGAMS_ARCH_REQ_MT, getUniqueNo, \
-    NGAMS_MAX_FILENAME_LEN, NGAMS_UNKNOWN_MT, rmFile
+    NGAMS_MAX_FILENAME_LEN, NGAMS_UNKNOWN_MT, rmFile, toiso8601
 import ngamsMIMEMultipart
-from pccUt import PccUtTime
 
 
 logger = logging.getLogger(__name__)
@@ -954,7 +953,7 @@ def genUniqueFilename(filename):
     Returns:    Unique filename (string).
     """
     # Generate a unique ID: <time stamp>-<unique index>
-    ts = PccUtTime.TimeStamp().getTimeStamp()
+    ts = toiso8601()
     tmpFilename = ts + "-" + str(getUniqueNo()) + "-" +\
                   os.path.basename(filename)
     tmpFilename = re.sub("\?|=|&", "_", tmpFilename)

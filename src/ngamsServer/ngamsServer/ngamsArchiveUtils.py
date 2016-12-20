@@ -40,7 +40,6 @@ import os
 import random
 import time
 
-from pccUt import PccUtTime
 from ngamsLib.ngamsCore import NGAMS_FAILURE, getFileCreationTime,\
     NGAMS_FILE_STATUS_OK, TRACE, NGAMS_NOTIF_DISK_SPACE,\
     getDiskSpaceAvail, NGAMS_XML_MT, NGAMS_NOTIF_DISK_CHANGE, genLog,\
@@ -94,7 +93,7 @@ def updateFileInfoDb(srvObj,
         raise Exception, errMsg
 
     if (piStat.getStatus() == NGAMS_FAILURE): return
-    ts = PccUtTime.TimeStamp().getTimeStamp()
+    now = time.time()
     creDate = getFileCreationTime(piStat.getCompleteFilename())
     fileInfo = ngamsFileInfo.ngamsFileInfo().\
                setDiskId(piStat.getDiskId()).\
@@ -105,7 +104,7 @@ def updateFileInfoDb(srvObj,
                setFileSize(piStat.getFileSize()).\
                setUncompressedFileSize(piStat.getUncomprSize()).\
                setCompression(piStat.getCompression()).\
-               setIngestionDate(ts).\
+               setIngestionDate(now).\
                setChecksum(checksum).setChecksumPlugIn(checksumPlugIn).\
                setFileStatus(NGAMS_FILE_STATUS_OK).\
                setCreationDate(creDate).\
@@ -297,7 +296,7 @@ def checkDiskSpace(srvObj,
     else:
         repDiskCompl  = 0
     if (mainDiskCompl or repDiskCompl):
-        complDate = PccUtTime.TimeStamp().getTimeStamp()
+        complDate = time.time()
 
     # Mark Main Disk as completed if required.
     if (mainDiskCompl):
@@ -486,7 +485,8 @@ def archiveFromFile(srvObj,
         if (mimeType == None):
             mimeType = ngamsHighLevelLib.determineMimeType(srvObj.getCfg(),
                                                            filename)
-        archiveTimer = PccUtTime.Timer()
+
+        archiving_start = time.time()
 
         # Prepare dummy ngamsReqProps object (if an object was not given).
         if (not reqPropsObj):
@@ -562,7 +562,7 @@ def archiveFromFile(srvObj,
         rmFile(filename)
         rmFile(filename + "." + NGAMS_PICKLE_FILE_EXT)
 
-    logger.debug("Archived local file: %s. Time (s): %s", filename, str(archiveTimer.stop()))
+    logger.debug("Archived local file: %s. Time (s): %.3f", filename, time.time() - archiving_start)
     return NGAMS_SUCCESS
 
 
@@ -735,7 +735,7 @@ def dataHandler(srvObj,
 
     baseName = os.path.basename(reqPropsObj.getFileUri())
     mimeType = reqPropsObj.getMimeType()
-    archiveTimer = PccUtTime.Timer()
+    archiving_start = time.time()
 
     logger.info("Archiving file: %s with mime-type: %s",
                 reqPropsObj.getSafeFileUri(), mimeType)
@@ -859,7 +859,7 @@ def dataHandler(srvObj,
 
     diskInfo = postFileRecepHandling(srvObj, reqPropsObj, resMain)
     msg = genLog("NGAMS_INFO_FILE_ARCHIVED", [reqPropsObj.getSafeFileUri()])
-    msg = msg + ". Time: %.3fs" % (archiveTimer.stop())
+    msg = msg + ". Time: %.3fs" % (time.time() - archiving_start)
     logger.info(msg, extra={'to_syslog': True})
 
     # Remove back-up files (Original Staging File + Request Properties File.

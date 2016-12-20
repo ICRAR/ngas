@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDiskUtils.py,v 1.8 2008/08/19 20:51:50 jknudstr Exp $"
@@ -40,11 +39,10 @@ import string
 import threading
 import time
 
-from pccUt import PccUtTime
 from ngamsCore import TRACE, getNgamsVersion, genLog, \
     NGAMS_DB_DIR, checkCreatePath, NGAMS_DB_CH_CACHE, NGAMS_NOTIF_ERROR,\
     NGAMS_SUCCESS, NGAMS_NOTIF_NO_DISKS, NGAMS_FAILURE,\
-    NGAMS_DISK_INFO, getDiskSpaceAvail
+    NGAMS_DISK_INFO, getDiskSpaceAvail, toiso8601
 import ngamsNotification
 import ngamsLib
 import ngamsDiskInfo, ngamsStatus
@@ -78,7 +76,7 @@ def prepNgasDiskInfoFile(hostId,
     """
     status = ngamsStatus.ngamsStatus()
     status.\
-             setDate(PccUtTime.TimeStamp().getTimeStamp()).\
+             setDate(toiso8601()).\
              setVersion(getNgamsVersion()).setHostId(hostId).\
              setMessage("Disk status file").addDiskStatus(diskInfoObj)
     xmlDoc = status.genXml(0, 1, 0, 0, 1).toprettyxml()
@@ -640,7 +638,7 @@ def addDiskInDb(hostId,
     # In the following the assumption is made that if a disk doesn't have an
     # entry in the NGAS DB, this means that the disk is 'clean', i.e. doesn't
     # contain files already, or if, then these are not taken into account.
-    installationDate   = PccUtTime.TimeStamp().initFromNow().getTimeStamp()
+    installationDate   = time.time()
     logicalName        = genLogicalName(hostId, dbConObj, ngamsCfgObj, diskId, slotId)
     mountPoint         = diskDic[slotId].getMountPoint()
 

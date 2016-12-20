@@ -41,12 +41,11 @@ import time
 import thread
 import threading
 
-from pccUt import PccUtTime
 import ngamsFileUtils
 from ngamsLib.ngamsCore import TRACE, NGAMS_DATA_CHECK_THR, \
     NGAMS_CACHE_DIR, checkCreatePath, isoTime2Secs, iso8601ToSecs, \
     rmFile, genLog, mvFile, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
-    NGAMS_VOLUME_INFO_FILE, NGAMS_STAGING_DIR, NGAMS_NOTIF_DATA_CHECK
+    NGAMS_VOLUME_INFO_FILE, NGAMS_STAGING_DIR, NGAMS_NOTIF_DATA_CHECK, toiso8601
 from ngamsLib import ngamsNotification, ngamsDiskInfo
 from ngamsLib import ngamsDbCore, ngamsDbm, ngamsHighLevelLib, ngamsLib
 
@@ -871,11 +870,9 @@ def _genReport(srvObj):
 
         # Build up the report.
         report =  "DATA CHECKING REPORT:\n\n"
-        report += hdrForm % ("Date", PccUtTime.TimeStamp().getTimeStamp())
+        report += hdrForm % ("Date", toiso8601())
         report += hdrForm % ("NGAS Host ID", srvObj.getHostId())
-        report += hdrForm % ("Start Time", PccUtTime.TimeStamp().\
-                             initFromSecsSinceEpoch(_statCheckStart).\
-                             getTimeStamp())
+        report += hdrForm % ("Start Time", toiso8601(_statCheckStart))
         report += hdrForm % ("Total Time (s)", "%.3f" % checkTime)
         report += hdrForm % ("Total Time (hours)", "%.3f" % (checkTime / 3600))
         report += hdrForm % ("Rate (MB/s)", "%.3f" % _statCheckRate)
@@ -1054,6 +1051,7 @@ def dataCheckThread(srvObj, stopEvt):
     Returns:      Void.
     """
     minCycleTime = isoTime2Secs(srvObj.getCfg().getDataCheckMinCycle())
+    logger.info("Data checker thread period is %f", minCycleTime)
 
     while True:
 
@@ -1180,13 +1178,9 @@ def dataCheckThread(srvObj, stopEvt):
                     waitTime = (minCycleTime - execTime)
             if (waitTime):
                 waitTime += 1
-                logger.debug("Suspending Data Checking Thread for: %s [s]",
-                     str(waitTime))
+                logger.info("Suspending Data Checking Thread for %.3f [s]", waitTime)
                 nextAbsCheckTime = int(time.time() + waitTime + 0.5)
-                logger.debug("Next Data Checking scheduled for: %s/%s",
-                     PccUtTime.TimeStamp().\
-                     initFromSecsSinceEpoch(nextAbsCheckTime).\
-                     getTimeStamp(), str(nextAbsCheckTime))
+                logger.info("Next Data Checking scheduled for %s", toiso8601(nextAbsCheckTime))
                 srvObj.setNextDataCheckTime(nextAbsCheckTime)
 
                 suspend(srvObj, stopEvt, waitTime)
@@ -1194,17 +1188,10 @@ def dataCheckThread(srvObj, stopEvt):
 
         except StopDataCheckThreadException:
             return
-        except Exception, e:
-
+        except Exception:
             waitTime = 1
-            if "NGAMS_ER_DB_COM" in str(e):
-                errMsg = "Problem communicating with DB. " +\
-                        "Suspending DCC %ds. Error : %s" % (waitTime, str(e))
-                waitTime = 3600
-            else:
-                errMsg = "Error occurred during execution of the " +\
-                         "Data Check Thread. Exception: " + str(e)
-            logger.error(errMsg)
+            errMsg = "Error occurred during execution of the Data Check Thread"
+            logger.exception(errMsg)
 
             try:
                 suspend(srvObj, stopEvt, 1)

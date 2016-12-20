@@ -40,7 +40,6 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_SUCCESS, NGAMS_HTTP_GET, \
     rmFile, genLog, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, \
     getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, loadPlugInEntryPoint
 from ngamsServer import ngamsArchiveUtils, ngamsCacheControlThread
-from pccUt import PccUtTime
 
 
 logger = logging.getLogger(__name__)
@@ -79,7 +78,7 @@ def archiveFromFile(srvObj,
         if (mimeType == None):
             mimeType = ngamsHighLevelLib.determineMimeType(srvObj.getCfg(),
                                                            filename)
-        archiveTimer = PccUtTime.Timer()
+        archive_start = time.time()
 
         # Prepare dummy ngamsReqProps object (if an object was not given).
         if (not reqPropsObj):
@@ -154,8 +153,8 @@ def archiveFromFile(srvObj,
         rmFile(stagingFile)
         rmFile(stagingFile + "." + NGAMS_PICKLE_FILE_EXT)
 
-    logger.debug("Archived local file: %s. Time (s): %s",
-                 filename, str(archiveTimer.stop()))
+    logger.debug("Archived local file: %s. Time (s): %.3f",
+                 filename, time.time() - archive_start)
     return (resMain, trgDiskInfo, iorate)
 
 
@@ -255,8 +254,7 @@ def handleCmd(srvObj,
     logger.debug("Check available space in disk")
     availSpace = getDiskSpaceAvail(targDiskInfo.getMountPoint(), smart=False)
     if (availSpace < srvObj.getCfg().getFreeSpaceDiskChangeMb()):
-        complDate = PccUtTime.TimeStamp().getTimeStamp()
-        targDiskInfo.setCompleted(1).setCompletionDate(complDate)
+        targDiskInfo.setCompleted(1).setCompletionDate(time.time())
         targDiskInfo.write(srvObj.getDb())
 
     # Request after-math ...

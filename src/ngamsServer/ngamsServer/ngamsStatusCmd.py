@@ -39,12 +39,11 @@ import re
 import sys
 import types
 
-from pccUt import PccUtTime
 from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL,\
-    getHostName, genLog, timeRef2Iso8601, genUniqueId, mvFile, rmFile,\
+    getHostName, genLog, genUniqueId, mvFile, rmFile,\
     compressFile, NGAMS_PROC_FILE, NGAMS_GZIP_XML_MT, getNgamsVersion,\
     NGAMS_SUCCESS, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD,\
-    NGAMS_HTTP_SUCCESS, NGAMS_XML_MT
+    NGAMS_HTTP_SUCCESS, NGAMS_XML_MT, fromiso8601, toiso8601
 from ngamsLib import ngamsDbCore, ngamsDbm, ngamsStatus, ngamsDiskInfo
 from ngamsLib import ngamsDppiStatus
 from ngamsLib import ngamsFileInfo, ngamsHighLevelLib
@@ -231,13 +230,7 @@ def _handleFileList(srvObj,
     fromIngDate = None
     if (reqPropsObj.hasHttpPar("from_ingestion_date")):
         tmpTromIngDate = reqPropsObj.getHttpPar("from_ingestion_date")
-        # Ensure representation is ISO 8601.
-        try:
-            fromIngDate = timeRef2Iso8601(tmpTromIngDate)
-        except Exception, e:
-            msg = "from_ingestion_date should be given as an ISO 8601 time " +\
-                  "stamp or seconds since epoch. Value given: %s. Error: %s"
-            raise Exception, msg % (str(tmpTromIngDate), str(e))
+        fromIngDate = fromiso8601(tmpTromIngDate)
 
     # Handle the unique flag. If this is specified, only information for unique
     # File ID/Version pairs are returned.
@@ -449,7 +442,7 @@ def handleCmdStatus(srvObj,
 
     status = ngamsStatus.ngamsStatus()
     status.\
-             setDate(PccUtTime.TimeStamp().getTimeStamp()).\
+             setDate(toiso8601()).\
              setVersion(getNgamsVersion()).setHostId(srvObj.getHostId()).\
              setStatus(NGAMS_SUCCESS).\
              setMessage("Successfully handled command STATUS").\

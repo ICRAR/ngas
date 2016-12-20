@@ -39,8 +39,6 @@ import shutil
 import traceback
 import SocketServer, BaseHTTPServer, socket, signal
 
-from pccUt import PccUtTime
-
 from ngamsLib.ngamsCore import \
     genLog, TRACE,\
     rmFile, trim, getNgamsVersion, \
@@ -50,7 +48,8 @@ from ngamsLib.ngamsCore import \
     NGAMS_HTTP_BAD_REQ, NGAMS_HTTP_SERVICE_NA, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR, NGAMS_TEXT_MT,\
     NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_XML_STATUS_ROOT_EL,\
-    NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs
+    NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs,\
+    toiso8601
 from ngamsLib import ngamsHighLevelLib, ngamsLib
 from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
@@ -1666,7 +1665,7 @@ class ngamsServer:
 
         # Handle the command.
         self.setLastReqStartTime()
-        reqTimer = PccUtTime.Timer()
+        req_start = time.time()
         safePath = ngamsLib.hidePassword(path)
         msg = "Handling HTTP request: client_address=%s - method=%s - path=|%s|"
         logger.info(msg, str(clientAddress), method, safePath)
@@ -1677,10 +1676,10 @@ class ngamsServer:
 
         ngamsCmdHandling.cmdHandler(self, reqPropsObj, httpRef)
 
-        msg = "Total time for handling request: (%s, %s ,%s, %s): %ss"
+        msg = "Total time for handling request: (%s, %s ,%s, %s): %.3f [s]"
         args = [reqPropsObj.getHttpMethod(), reqPropsObj.getCmd(),
                 reqPropsObj.getMimeType(), reqPropsObj.getFileUri(),
-                str(int(1000.0 * reqTimer.stop()) / 1000.0)]
+                time.time() - req_start]
 
         if reqPropsObj.getIoTime() > 0:
             msg += "; Transfer rate: %s MB/s"
@@ -2038,7 +2037,7 @@ class ngamsServer:
         Returns:  Status object (ngamsStatus).
         """
         return ngamsStatus.ngamsStatus().\
-               setDate(PccUtTime.TimeStamp().getTimeStamp()).\
+               setDate(toiso8601()).\
                setVersion(getNgamsVersion()).setHostId(self.getHostId()).\
                setStatus(status).setMessage(msg).setState(self.getState()).\
                setSubState(self.getSubState())
@@ -2312,7 +2311,7 @@ class ngamsServer:
                              setMacAddress(NGAMS_NOT_SET).\
                              setNSlots(-1).\
                              setClusterName(self.getHostId()).\
-                             setInstallationDateFromSecs(time.time())
+                             setInstallationDate(toiso8601(local=True))
             logger.info("Creating entry in NGAS Hosts Table for this node: %s" %\
                  self.getHostId())
             self.getDb().writeHostInfo(tmpHostInfoObj)

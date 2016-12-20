@@ -75,7 +75,6 @@ import subprocess
 import pkg_resources
 
 from pccLog import PccLogDef
-from pccUt  import PccUtTime
 
 
 logger = logging.getLogger(__name__)
@@ -701,13 +700,13 @@ def mvFile(srcFilename,
         #       filesystem boundaries; otherwise we unnecessarily fail
         #       for file moves that would gracefully run
         checkAvailDiskSpace(trgFilename, fileSize)
-        timer = PccUtTime.Timer()
 
         # Don't rely on os.rename as it can cause issues when crossing 
         # disk parition boundaries
+        start = time.time()
         shutil.move(srcFilename, trgFilename)
+        deltaTime = time.time() - start
 
-        deltaTime = timer.stop()
     except Exception, e:
         errMsg = genLog("NGAMS_AL_MV_FILE", [srcFilename, trgFilename, str(e)])
         raise Exception(errMsg)
@@ -735,9 +734,9 @@ def cpFile(srcFilename,
         checkCreatePath(os.path.dirname(trgFilename))
         fileSize = getFileSize(srcFilename)
         checkAvailDiskSpace(trgFilename, fileSize)
-        timer = PccUtTime.Timer()
+        start = time.time()
         shutil.copyfile(srcFilename, trgFilename)
-        deltaTime = timer.stop()
+        deltaTime = time.time() - start
     except Exception, e:
         errMsg = genLog("NGAMS_AL_CP_FILE", [srcFilename, trgFilename, str(e)])
         raise Exception(errMsg)
@@ -794,38 +793,27 @@ def decompressFile(srcFilename,
 
 def timeRef2Iso8601(timeRef):
     """
-    Convert a time reference into ISO 8601. This can be given as
-
-      o ISO 8601.
-      o Seconds since epoch.
-      o DateTime time stamp.
+    Convert a time reference into ISO 8601. The time reference can be a string
+    or a number of seconds since epoch.
 
     If None or an empty string is given, an empty string is returned.
 
-    timeRef:    The reference to the time (string|int|DateTime).
+    timeRef:    The reference to the time (string|number).
 
     Returns:    ISO 8601 timestamp (string).
     """
-    if ((timeRef == None) or (timeRef == "")):
-        timeRefConv = ""
-    elif (str(timeRef).find(":") != -1):
-        timeRef = str(timeRef)
-        # Assume ISO 8601 format or "YYYY-MM-DD HH:MM:SS[.sss]".
-        if (timeRef.find("T") == -1):
-            idx = timeRef.find(" ")
-            timeRefConv = timeRef[0:idx] + "T" + timeRef[(idx + 1):]
-        else:
-            timeRefConv = timeRef
-    elif (type(timeRef) in (types.IntType, types.FloatType)):
-        # Assume seconds from epoch.
-        timeRefConv = toiso8601(timeRef, local=True)
-    else:
-        # Assume DateTime object.
-        timeRefConv = PccUtTime.TimeStamp().\
-                      initFromSecsSinceEpoch(timeRef.ticks()).\
-                      getTimeStamp()
 
-    return timeRefConv
+    if timeRef is None or timeRef == "":
+        return ""
+
+    elif isinstance(timeRef, basestring):
+        # Assume ISO 8601 format or "YYYY-MM-DD HH:MM:SS[.sss]".
+        if 'T' not in timeRef:
+            idx = timeRef.find(" ")
+            return timeRef[0:idx] + "T" + timeRef[(idx + 1):]
+        return timeRef
+
+    return toiso8601(timeRef, local=True)
 
 
 def getAsciiTime(timeSinceEpoch = time.time(),

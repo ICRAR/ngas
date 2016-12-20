@@ -62,10 +62,10 @@ compression_ext:    Extension resulting from applying the specified compression
 
 import logging
 import os
+import time
 
-from pccUt import PccUtTime
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, genLog
+from ngamsLib.ngamsCore import TRACE, genLog, toiso8601, FMT_DATE_ONLY
 
 
 logger = logging.getLogger(__name__)
@@ -164,7 +164,7 @@ def compressFile(srvObj,
     if (parDic[COMPRESSION]):
         logger.debug("Compressing file using: %s ...", parDic[COMPRESSION])
         compCmd = "%s %s" % (parDic[COMPRESSION], stFn)
-        compressTimer = PccUtTime.Timer()
+        compress_start = time.time()
         logger.debug("Compressing file with command: %s", compCmd)
         exitCode, stdOut = ngamsPlugInApi.execCmd(compCmd)
         #if (exitCode != 0):
@@ -189,7 +189,7 @@ def compressFile(srvObj,
                                                           stFn)
             compression = parDic[COMPRESSION]
 
-            logger.debug("File compressed. Time: %.3fs", compressTimer.stop())
+            logger.debug("File compressed. Time: %.3fs", time.time() - compress_start)
         else:
             # Carry on with the original file. We take the original mime-type
             # as the target mime-type.
@@ -263,7 +263,7 @@ def ngamsMwaVisibilityDapi(srvObj,
 
         # Generate file information.
         logger.debug("Generate file information")
-        dateDir = PccUtTime.TimeStamp().getTimeStamp().split("T")[0]
+        dateDir = toiso8601(fmt=FMT_DATE_ONLY)
         obsId = parDic[FILE_ID].split("_")[0];
         fileVersion, relPath, relFilename,\
                      complFilename, fileExists =\

@@ -45,7 +45,6 @@ import sys
 import time
 import traceback
 
-from pccUt import PccUtTime
 from ngamsLib import ngamsLib, ngamsFileInfo, ngamsStatus
 from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CONTENT_TYPE,\
     NGAMS_LABEL_CMD, NGAMS_ONLINE_CMD, NGAMS_OFFLINE_CMD, NGAMS_REMDISK_CMD,\
@@ -53,7 +52,7 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NG
     NGAMS_FAILURE, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD, NGAMS_ARCH_REQ_MT,\
     NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,\
     NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE,\
-    NGAMS_IDLE_SUBSTATE, getNgamsLicense
+    NGAMS_IDLE_SUBSTATE, getNgamsLicense, toiso8601, FMT_TIME_ONLY
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD
 from xml.dom import minidom
 import pkg_resources
@@ -1326,7 +1325,7 @@ class ngamsPClient:
                 # sends back a multipart message which always contains the
                 # NG/AMS Status apart from the data at a RETRIEVE Request.
                 ngamsStat = ngamsStatus.ngamsStatus().\
-                            setDate(PccUtTime.TimeStamp().getTimeStamp()).\
+                            setDate(toiso8601()).\
                             setVersion(getNgamsVersion()).setHostId(host).\
                             setStatus(NGAMS_SUCCESS).\
                             setMessage("Successfully handled request").\
@@ -1432,11 +1431,14 @@ State:          {7}
 Sub-State:      {8}
 NG/AMS Version: {9}
     """
+    req_time = ""
+    if stat.getRequestTime() is not None:
+        req_time = toiso8601(stat.getRequestTime(), fmt=FMT_TIME_ONLY)
     print message.format(
                          client.getHost(),
                          client.getPort(),
                          client.getStatus(),
-                         stat.getRequestTimeIso(),
+                         req_time,
                          stat.getHostId(),
                          stat.getMessage(),
                          stat.getStatus(),

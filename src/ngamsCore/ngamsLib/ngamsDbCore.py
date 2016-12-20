@@ -37,8 +37,7 @@ import random
 import threading
 import time
 
-from ngamsCore import TRACE
-from pccUt import PccUtTime
+from ngamsCore import TRACE, toiso8601
 from contextlib import closing
 from DBUtils.PooledDB import PooledDB
 
@@ -824,7 +823,7 @@ class ngamsDbCore(object):
                         # are results to fetch or not. This is important because fetch*
                         # calls can raise Errors if there are no results generated from
                         # the last call to .execute*
-                        if cursor.description:
+                        if cursor.description is not None:
                             res = cursor.fetchall()
                         else:
                             res = []
@@ -872,56 +871,25 @@ class ngamsDbCore(object):
     def convertTimeStamp(self, timeStamp):
         """
         Convert a timestamp given in one of the following formats:
-
-          1. ISO 8601:  YYYY-MM-DDTHH:MM:SS[.s]
-          2. ISO 8601': YYYY-MM-DD HH:MM:SS[.s]
-          3. Secs since epoc.
-
-        to a format which can be used to write into the associated RDBMS.
-
-        The actual conversion must be done by the loaded NGAMS DB Driver
-        Plug-In.
-
-        timeStamp:    Timestamp (string|integer|float).
-
-        Returns:      Timestamp in format, which can be written into
-                      'datetime' column of the DBMS (string).
         """
-        if isinstance(timeStamp, basestring) and ":" in timeStamp:
-            ts = PccUtTime.TimeStamp().initFromTimeStamp(timeStamp)
+        if isinstance(timeStamp, basestring):
+            return timeStamp
         else:
-            ts = PccUtTime.TimeStamp().initFromSecsSinceEpoch(timeStamp)
+            return toiso8601(timeStamp, local=True)
 
-        # Not nice but it's the only way to reuse this stuff...
+        # TODO: we can only start using the code below once we finish porting
+        # all the code that calls this method; until then we have to keep
+        # returning a simple string
         #((year, mon, mday, hour, mins, sec, _, _, _), _) = ts.mjdToTm(ts.getMjd())
         #return self.__dbModule.Timestamp(year , mon , mday , hour , mins, sec)
 
-        # TODO: we can only start using the code above once we finish porting
-        # all the code that calls this method; until then we have to keep
-        # returning a simple string
-        return ts.getTimeStamp()
-
-    def asTimestamp(self, value):
+    def asTimestamp(self, timestamp):
         """
-        Convert a timestamp given in one of the following formats:
-
-          1. ISO 8601:  YYYY-MM-DDTHH:MM:SS[.s]
-          2. ISO 8601': YYYY-MM-DD HH:MM:SS[.s]
-          3. Secs since epoc.
-
-        to a format which can be used to write into the associated RDBMS.
+        Returns `None` if timestamp is `None`, otherwise calls convertTimeStamp
         """
-        if value is None:
+        if timestamp is None:
             return None
-
-        if isinstance(value, basestring) and ":" in value:
-            ts = PccUtTime.TimeStamp().initFromTimeStamp(value)
-        else:
-            ts = PccUtTime.TimeStamp().initFromSecsSinceEpoch(value)
-
-        # Not nice but it's the only way to reuse this stuff...
-        ((year, mon, mday, hour, mins, sec, _, _, _), _) = ts.mjdToTm(ts.getMjd())
-        return self.__dbModule.Timestamp(year , mon , mday , hour , mins, sec)
+        return self.convertTimeStamp(timestamp)
 
     def convertTimeStampToMx(self,
                              timeStamp):

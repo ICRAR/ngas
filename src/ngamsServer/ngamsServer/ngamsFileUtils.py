@@ -38,7 +38,6 @@ import logging
 import os
 import re
 
-from pccUt import PccUtTime
 import ngamsSrvUtils
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsDiskInfo, ngamsStatus, ngamsLib
 from ngamsLib import ngamsHighLevelLib
@@ -71,7 +70,6 @@ def _locateArchiveFile(srvObj,
     format = "_locateArchiveFile() - Disk ID: %s - File ID: " +\
              "%s - File Version: %d ..."
     logger.debug(format, str(diskId), fileId, int(fileVersion))
-    locTimer = PccUtTime.Timer()
     fileDbm = ngamsDbm.ngamsDbm(dbFilename)
 
     # Filter out files not on specified host if host ID is given.
@@ -310,7 +308,6 @@ def _locateArchiveFile(srvObj,
     logger.debug(format, fileId, location, host, ipAddress, port,
                      fileInfoObj.getFileVersion(), fileInfoObj.getFilename(),
                      fileInfoObj.getFormat())
-    reqTime = locTimer.stop()
     return srcFileInfo
 
 

@@ -39,12 +39,12 @@ implemented and NG/AMS configured to use it.
 from collections import defaultdict
 import logging
 import os
-import string
 import subprocess
+import time
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, genLog
-from pccUt import PccUtTime
+from ngamsLib.ngamsCore import TRACE, genLog, fromiso8601, tomjd, frommjd,\
+    toiso8601, FMT_DATE_ONLY
 
 
 logger = logging.getLogger(__name__)
@@ -98,22 +98,23 @@ def getDpIdInfo(filename):
     try:
         keyDic  = getFitsKeys(filename, ["ARCFILE"])
         arcFile = keyDic["ARCFILE"][0]
-        els     = string.split(arcFile, ".")
+        els     = arcFile.split(".")
         dpId    = els[0] + "." + els[1] + "." + els[2]
-        date    = string.split(els[1], "T")[0]
+        date    = els[1].split("T")[0]
         # Make sure that the files are stored according to JD
         # (one night is 12am -> 12am).
-        isoTime = els[1]
-        ts1 = PccUtTime.TimeStamp(isoTime)
-        ts2 = PccUtTime.TimeStamp(ts1.getMjd() - 0.5)
-        dateDirName = string.split(ts2.getTimeStamp(), "T")[0]
+        isoTime = '.'.join(els[1:])
+        ts1 = fromiso8601(isoTime)
+        ts2 = tomjd(ts1) - 0.5
+        dateDirName = toiso8601(frommjd(ts2), fmt=FMT_DATE_ONLY)
 
         return [arcFile, dpId, dateDirName]
     except:
         err = "Did not find keyword ARCFILE in FITS file or ARCFILE illegal"
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
                                                    "ngamsFitsPlugIn", err])
-        raise Exception, errMsg
+        logger.exception(errMsg)
+        raise
 
 
 def checkFitsFileSize(filename):
@@ -231,13 +232,13 @@ def compress(reqPropsObj,
 
     if compression and 'gzip' in compression:
         logger.debug("Compressing file: %s using: %s", stFn, compression)
-        compressTimer = PccUtTime.Timer()
+        compress_start = time.time()
         gzip_name = '%s.gz' % stFn
         subprocess.check_call(['gzip', '--no-name', stFn], shell = False)
         reqPropsObj.setStagingFilename(gzip_name)
         mime = 'application/x-gfits'
         compression = 'gzip --no-name'
-        logger.debug("File compressed: %s Time: %.3fs", gzip_name, compressTimer.stop())
+        logger.debug("File compressed: %s Time: %.3fs", gzip_name, time.time() - compress_start)
     else:
         compression = ''
 

@@ -21,9 +21,9 @@ import commands
 import logging
 import os
 
-from pccUt import PccUtTime
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import rmFile, genLog
+from ngamsLib.ngamsCore import rmFile, genLog, toiso8601, FMT_DATE_ONLY,\
+    fromiso8601, tomjd
 
 
 logger = logging.getLogger(__name__)
@@ -80,9 +80,9 @@ def ngasTarBallPlugIn(srvObj,
 
     # Get various information about the file being handled.
     fileId       = os.path.basename(reqPropsObj.getFileUri())
-    obsDay = (PccUtTime.TimeStamp(fileId[fileId.find(".") + 1:]).getMjd()-0.5)
-    obsDayTime = PccUtTime.TimeStamp(obsDay).getTimeStamp()
-    dateDirName = obsDayTime.split("T")[0]
+    timestamp = fileId[fileId.find(".")+1:]
+    obsDay = tomjd(fromiso8601(timestamp)) - 0.5
+    dateDirName = toiso8601(obsDay, fmt=FMT_DATE_ONLY)
     baseFilename = fileId[0:-4]
     fileVersion, relPath, relFilename,\
                  complFilename, fileExists =\

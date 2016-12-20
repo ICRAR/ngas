@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsSubscribeCmd.py,v 1.5 2009/11/26 12:23:42 awicenec Exp $"
@@ -33,10 +32,15 @@
 This module contains functions used in connection with the SUBSCRIBE Command.
 """
 
+import logging
+import time
+
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, \
-    genLog, NGAMS_SUBSCRIBE_CMD, TRACE
+    genLog, NGAMS_SUBSCRIBE_CMD, TRACE, fromiso8601, toiso8601
 from ngamsLib import ngamsSubscriber, ngamsLib
-from pccUt import PccUtTime
+
+
+logger = logging.getLogger(__name__)
 
 def addSubscriber(srvObj, subscrObj):
     """
@@ -83,7 +87,7 @@ def handleCmdSubscribe(srvObj,
     """
     priority      = 10
     url           = ""
-    startDate     = PccUtTime.TimeStamp().getTimeStamp()
+    startDate     = time.time()
     filterPi      = ""
     filterPiPars  = ""
     if (reqPropsObj.hasHttpPar("priority")):
@@ -95,8 +99,9 @@ def handleCmdSubscribe(srvObj,
                         [NGAMS_SUBSCRIBE_CMD, "Missing parameter: url"])
         raise Exception, errMsg
     if (reqPropsObj.hasHttpPar("start_date")):
-        tmpStartDate = reqPropsObj.getHttpPar("start_date")
-        if (tmpStartDate.strip() != ""): startDate = tmpStartDate.strip()
+        tmpStartDate = reqPropsObj.getHttpPar("start_date").strip()
+        if tmpStartDate:
+            startDate = fromiso8601(tmpStartDate, local=True)
     if (reqPropsObj.hasHttpPar("filter_plug_in")):
         filterPi = reqPropsObj.getHttpPar("filter_plug_in")
     if (reqPropsObj.hasHttpPar("plug_in_pars")):
@@ -106,9 +111,10 @@ def handleCmdSubscribe(srvObj,
     else:
         id = ngamsLib.getSubscriberId(url)
 
+    logger.info("Creating subscription for files >= %s", toiso8601(startDate, local=True))
     subscrObj = ngamsSubscriber.ngamsSubscriber(srvObj.getHostId(),
                                                 srvObj.getCfg().getPortNo(),
-                                                priority, url, startDate,
+                                                priority, url, toiso8601(startDate, local=True),
                                                 filterPi, filterPiPars, subscrId=id)
     # supports concurrent file transfer, added by chen.wu@icrar.org
     if (reqPropsObj.hasHttpPar("concurrent_threads")):
@@ -122,10 +128,11 @@ def handleCmdSubscribe(srvObj,
                                                     subscrObj.getPortNo())
     if subscrStat:
         lastIngDate = subscrStat[0][1]
-        if startDate < lastIngDate and lastIngDate and lastIngDate:
-            subscrObj.setLastFileIngDate(None)
-        elif lastIngDate:
-            subscrObj.setLastFileIngDate(lastIngDate)
+        if lastIngDate:
+            if toiso8601(startDate, local=True) < lastIngDate:
+                subscrObj.setLastFileIngDate(None)
+            else:
+                subscrObj.setLastFileIngDate(lastIngDate)
 
     # Register the Subscriber.
     addSubscriber(srvObj, subscrObj)

@@ -47,7 +47,6 @@ from ngamsLib.ngamsCore import checkCreatePath, genLog, TRACE, \
     NGAMS_BUSY_SUBSTATE, getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_STAGING_DIR, \
     loadPlugInEntryPoint, genUniqueId
 from ngamsServer import ngamsArchiveUtils, ngamsCacheControlThread
-from pccUt import PccUtTime
 
 
 logger = logging.getLogger(__name__)
@@ -282,8 +281,7 @@ def handleCmd(srvObj,
     logger.debug("Check available space in disk")
     availSpace = getDiskSpaceAvail(targDiskInfo.getMountPoint(), smart=False)
     if (availSpace < srvObj.getCfg().getFreeSpaceDiskChangeMb()):
-        complDate = PccUtTime.TimeStamp().getTimeStamp()
-        targDiskInfo.setCompleted(1).setCompletionDate(complDate)
+        targDiskInfo.setCompleted(1).setCompletionDate(time.time())
         targDiskInfo.write(srvObj.getDb())
 
     # Request after-math ...

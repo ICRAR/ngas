@@ -59,7 +59,6 @@ from ngamsLib.ngamsCore import TRACE, genLog, \
     getFileCreationTime, NGAMS_FILE_STATUS_OK, getDiskSpaceAvail, \
     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, loadPlugInEntryPoint
 from ngamsServer import ngamsCacheControlThread
-from pccUt import PccUtTime
 
 
 logger = logging.getLogger(__name__)
@@ -143,7 +142,8 @@ def saveFromHttpToFile(ngamsCfgObj,
     checkCreatePath(os.path.dirname(trgFilename))
     fdOut = open(trgFilename, "w")
     logger.debug("Saving data in file: %s", trgFilename)
-    timer = PccUtTime.Timer()
+
+    start = time.time()
     try:
         # Make mutual exclusion on disk access (if requested).
         if (mutexDiskAccess):
@@ -194,7 +194,7 @@ def saveFromHttpToFile(ngamsCfgObj,
             else:
                 time.sleep(0.050)
 
-        deltaTime = timer.stop()
+        deltaTime = time.time() - start
         fdOut.close()
         msg = "Saved data in file: %s. Bytes received: %d. Time: %.3f s. " +\
               "Rate: %.2f Bytes/s"
@@ -335,7 +335,6 @@ def handleCmd(srvObj,
 
     # Check/generate remaining file info + update in DB.
     logger.debug("Creating db entry")
-    ts = PccUtTime.TimeStamp().getTimeStamp()
     creDate = getFileCreationTime(resDapi.getCompleteFilename())
     fileInfo = ngamsFileInfo.ngamsFileInfo().\
                setDiskId(resDapi.getDiskId()).\
@@ -346,7 +345,7 @@ def handleCmd(srvObj,
                setFileSize(resDapi.getFileSize()).\
                setUncompressedFileSize(resDapi.getUncomprSize()).\
                setCompression(resDapi.getCompression()).\
-               setIngestionDate(ts).\
+               setIngestionDate(time.time()).\
                setChecksum(checksum).setChecksumPlugIn(checksumPlugIn).\
                setFileStatus(NGAMS_FILE_STATUS_OK).\
                setCreationDate(creDate)
@@ -372,8 +371,7 @@ def handleCmd(srvObj,
     logger.debug("Check available space in disk")
     availSpace = getDiskSpaceAvail(targDiskInfo.getMountPoint(), smart=False)
     if (availSpace < srvObj.getCfg().getFreeSpaceDiskChangeMb()):
-        complDate = PccUtTime.TimeStamp().getTimeStamp()
-        targDiskInfo.setCompleted(1).setCompletionDate(complDate)
+        targDiskInfo.setCompleted(1).setCompletionDate(time.time())
         targDiskInfo.write(srvObj.getDb())
 
     # Request after-math ...

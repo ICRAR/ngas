@@ -20,7 +20,6 @@
 #    MA 02111-1307  USA
 #
 from ngamsCore import timeRef2Iso8601, prFormat1, ignoreValue
-from pccUt import PccUtTime
 
 #******************************************************************************
 #
@@ -293,22 +292,6 @@ class ngamsHostInfo:
         return self
 
 
-    def setInstallationDateFromSecs(self,
-                                    dateSecs):
-        """
-        Set the installation date from seconds since epoch.
-
-        dateSecs:  Installation date in seconds since epoch (integer).
-
-        Returns:   Reference to object itself.
-        """
-        if (dateSecs == None): return self
-        self.__installationDate = PccUtTime.TimeStamp().\
-                                  initFromSecsSinceEpoch(dateSecs).\
-                                  getTimeStamp()
-        return self
-
-
     def getInstallationDate(self):
         """
         Return the installation date
@@ -567,22 +550,6 @@ class ngamsHostInfo:
         """
         if (not wakeUpTime): return self
         self.__srvReqWakeUpTime = timeRef2Iso8601(wakeUpTime)
-        return self
-
-
-    def setSrvReqWakeUpTimeFromSecs(self,
-                                    dateSecs):
-        """
-        Set the wake-up time date from seconds since epoch.
-
-        dateSecs:  Wake-up time in seconds since epoch (integer).
-
-        Returns:   Reference to object itself.
-        """
-        if (dateSecs == None): return self
-        self.__srvReqWakeUpTime = PccUtTime.TimeStamp().\
-                                  initFromSecsSinceEpoch(dateSecs).\
-                                  getTimeStamp()
         return self
 
 

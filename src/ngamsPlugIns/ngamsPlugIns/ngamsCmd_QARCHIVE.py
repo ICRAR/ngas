@@ -58,7 +58,6 @@ from ngamsLib.ngamsCore import TRACE, genLog, checkCreatePath, \
     getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, loadPlugInEntryPoint
 from ngamsLib import ngamsDiskInfo, ngamsHighLevelLib, ngamsFileInfo
 from ngamsServer import ngamsCacheControlThread, ngamsFileUtils
-from pccUt import PccUtTime
 
 
 GET_AVAIL_VOLS_QUERY = "SELECT %s FROM ngas_disks nd WHERE completed=0 AND " +\
@@ -376,7 +375,6 @@ def handleCmd(srvObj,
     # Check/generate remaining file info + update in DB.
     logger.debug("Creating db entry")
     ingestionRate = stagingInfo[3]
-    ts = PccUtTime.TimeStamp().getTimeStamp()
     creDate = getFileCreationTime(resDapi.getCompleteFilename())
     fileInfo = ngamsFileInfo.ngamsFileInfo().\
                setDiskId(resDapi.getDiskId()).\
@@ -387,7 +385,7 @@ def handleCmd(srvObj,
                setFileSize(resDapi.getFileSize()).\
                setUncompressedFileSize(resDapi.getUncomprSize()).\
                setCompression(resDapi.getCompression()).\
-               setIngestionDate(ts).\
+               setIngestionDate(time.time()).\
                setChecksum(crc).setChecksumPlugIn(crc_name).\
                setFileStatus(NGAMS_FILE_STATUS_OK).\
                setCreationDate(creDate).\
@@ -421,8 +419,7 @@ def handleCmd(srvObj,
     logger.debug("Check available space in disk")
     availSpace = getDiskSpaceAvail(targDiskInfo.getMountPoint(), smart=False)
     if (availSpace < srvObj.getCfg().getFreeSpaceDiskChangeMb()):
-        complDate = PccUtTime.TimeStamp().getTimeStamp()
-        targDiskInfo.setCompleted(1).setCompletionDate(complDate)
+        targDiskInfo.setCompleted(1).setCompletionDate(time.time())
         targDiskInfo.write(srvObj.getDb())
 
     # Request after-math ...

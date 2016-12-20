@@ -41,8 +41,8 @@ from ngamsLib import ngamsDiskInfo, ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsNotification
 from ngamsLib.ngamsCore import TRACE, NGAMS_NOTIF_INFO, NGAMS_TEXT_MT, \
     genLog, NGAMS_FAILURE, rmFile, NGAMS_DISK_INFO, \
-    NGAMS_VOLUME_ID_FILE, NGAMS_VOLUME_INFO_FILE, NGAMS_MAX_SQL_QUERY_SZ
-from pccUt import PccUtTime
+    NGAMS_VOLUME_ID_FILE, NGAMS_VOLUME_INFO_FILE, NGAMS_MAX_SQL_QUERY_SZ,\
+    toiso8601
 
 
 logger = logging.getLogger(__name__)
@@ -236,7 +236,6 @@ def _remStatErrReport(srvObj,
         else:
             statRep = tmpFilePat + "_NOTIF_EMAIL.txt"
             fo = open(statRep, "w")
-            timeStamp = PccUtTime.TimeStamp().getTimeStamp()
             tmpFormat = cmd + " STATUS REPORT - " +\
                         "MISSING FILE COPIES:\n\n" +\
                         "==Summary:\n\n" +\
@@ -245,7 +244,7 @@ def _remStatErrReport(srvObj,
                         "Disk ID:                    %s\n" +\
                         "Files Detected:             %d\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (timeStamp, hostId, diskId,misFileCopies))
+            fo.write(tmpFormat % (toiso8601(), hostId, diskId,misFileCopies))
             tmpFormat = "%-32s %-12s %-6s\n"
             fo.write(tmpFormat % ("File ID", "Version", "Copies"))
             fo.write(tmpFormat % (32 * "-", 7 * "-", 6 * "-"))
@@ -296,14 +295,13 @@ def _remStatErrReport(srvObj,
         else:
             statRep = tmpFilePat + "_NOTIF_EMAIL.txt"
             fo = open(statRep, "w")
-            timeStamp = PccUtTime.TimeStamp().getTimeStamp()
             tmpFormat = cmd + " STATUS REPORT - SPURIOUS FILES:\n\n" +\
                         "==Summary:\n\n" +\
                         "Date:                       %s\n" +\
                         "NGAS Host ID:               %s\n" +\
                         "Disk ID:                    %s\n" +\
                         "Spurious Files:             %d\n"
-            fo.write(tmpFormat % (timeStamp,hostId,diskId,spuriousFiles))
+            fo.write(tmpFormat % (toiso8601(),hostId,diskId,spuriousFiles))
             if (srvDataChecking):
                 fo.write("Note: NGAS Host is performing Data Consistency " +\
                          "Checking - consider to switch off!\n")
@@ -358,7 +356,6 @@ def _remStatErrReport(srvObj,
         else:
             statRep = tmpFilePat + "_NOTIF_EMAIL.txt"
             fo = open(statRep, "w")
-            timeStamp = PccUtTime.TimeStamp().getTimeStamp()
             tmpFormat = cmd + " STATUS REPORT - " +\
                         "NON-REGISTERED FILES:\n\n" +\
                         "==Summary:\n\n" +\
@@ -367,7 +364,7 @@ def _remStatErrReport(srvObj,
                         "Disk ID:                    %s\n" +\
                         "Non-Registered Files:       %d\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (timeStamp, hostId, diskId,
+            fo.write(tmpFormat % (toiso8601(), hostId, diskId,
                                   unRegFilesFound))
 
             # Loop over the files an generate the report.
@@ -409,7 +406,6 @@ def _remStatErrReport(srvObj,
         else:
             statRep = tmpFilePat + "_NOTIF_EMAIL.txt"
             fo = open(statRep, "w")
-            timeStamp = PccUtTime.TimeStamp().getTimeStamp()
             tmpFormat = cmd + " STATUS REPORT - " +\
                         "NON-REMOVABLE FILES:\n\n" +\
                         "==Summary:\n\n" +\
@@ -418,7 +414,7 @@ def _remStatErrReport(srvObj,
                         "Disk ID:                    %s\n" +\
                         "Non-Removable Files:        %d\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (timeStamp, hostId, diskId, nonRemFiles))
+            fo.write(tmpFormat % (toiso8601(), hostId, diskId, nonRemFiles))
 
             tmpFormat = "%-32s %-12s %-32s\n"
             fo.write(tmpFormat % ("File ID", "File Version", "Filename"))

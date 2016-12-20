@@ -43,11 +43,10 @@ import shutil
 import time
 
 from ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE, NGAMS_PICKLE_FILE_EXT, NGAMS_TMP_FILE_EXT
-from ngamsCore import rmFile, getUniqueNo, getNgamsVersion, timeRef2Iso8601
+from ngamsCore import rmFile, getUniqueNo, getNgamsVersion, timeRef2Iso8601, toiso8601
 import ngamsDbm, ngamsDbCore
 import ngamsFileInfo, ngamsStatus, ngamsFileList
 import ngamsLib
-from pccUt import PccUtTime
 
 
 logger = logging.getLogger(__name__)
@@ -455,7 +454,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
         # TODO: Potential memory bottleneck.
 
-        timeStamp = PccUtTime.TimeStamp().getTimeStamp()
+        timeStamp = toiso8601()
 
         # Sort the File Info Objects according to disks.
         fileInfoObjDic = {}
@@ -541,7 +540,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         # of these classes in the ngamsDbBase class should be analyzed.
         # Probably these classes should be made base classes for this class.
 
-        timeStamp = PccUtTime.TimeStamp().getTimeStamp()
+        timeStamp = toiso8601()
         mtPt = diskInfoObj.getMountPoint()
         statFilePath = os.path.normpath("%s/%s" % (mtPt, NGAMS_DB_CH_CACHE))
         statFilename = os.path.normpath("%s/%s_%s.%s" %\

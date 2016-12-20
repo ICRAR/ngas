@@ -36,7 +36,6 @@ Contains tools for handling the disk configuration.
 import os
 import xml.dom.minidom
 
-from pccUt import PccUtTime
 from ngamsCore import genLog, getAttribValue, trim, timeRef2Iso8601, prFormat1, ignoreValue
 from ngamsCore import TRACE, NGAMS_STAGING_DIR
 import ngamsFileInfo
@@ -401,21 +400,6 @@ class ngamsDiskInfo:
         return self
 
 
-    def setCompletionDateFromSecs(self,
-                                  dateSecs):
-        """
-        Set the completion date from seconds since epoch.
-
-        dateSecs:  Completion date in seconds since epoch (integer).
-
-        Returns:   Reference to object itself.
-        """
-        self.__completionDate = PccUtTime.TimeStamp().\
-                                initFromSecsSinceEpoch(dateSecs).\
-                                getTimeStamp()
-        return self
-
-
     def getCompletionDate(self):
         """
         Return the completion date as ISO 8601 time stamp.
@@ -486,21 +470,6 @@ class ngamsDiskInfo:
         return self
 
 
-    def setInstallationDateFromSecs(self,
-                                    dateSecs):
-        """
-        Set the installation date from seconds since epoch.
-
-        dateSecs:  Installation date in seconds since epoch (integer).
-
-        Returns:   Reference to object itself.
-        """
-        self.__installationDate = PccUtTime.TimeStamp().\
-                                  initFromSecsSinceEpoch(dateSecs).\
-                                  getTimeStamp()
-        return self
-
-
     def getInstallationDate(self):
         """
         Return the installation date as ISO 8601 time stamp.
@@ -567,20 +536,6 @@ class ngamsDiskInfo:
         Returns:   Reference to object itself.
         """
         self.__lastCheck = timeRef2Iso8601(date)
-        return self
-
-
-    def setLastCheckFromSecs(self,
-                             dateSecs):
-        """
-        Set the last check date from seconds since epoch.
-
-        dateSecs:  Last check date in seconds since epoch (integer).
-
-        Returns:   Reference to object itself.
-        """
-        self.__lastCheck = PccUtTime.TimeStamp().\
-                           initFromSecsSinceEpoch(dateSecs).getTimeStamp()
         return self
 
 

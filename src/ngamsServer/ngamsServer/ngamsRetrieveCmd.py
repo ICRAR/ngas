@@ -575,8 +575,8 @@ def _handleCmdRetrieve(srvObj,
                              setPermissions(dirDic[filename][0]).\
                              setOwner(dirDic[filename][2]).\
                              setGroup(dirDic[filename][3]).\
-                             setAccDateFromSecs(statInfo[7]).\
-                             setModDateFromSecs(statInfo[8]).\
+                             setAccDate(statInfo[7]).\
+                             setModDate(statInfo[8]).\
                              setCreationDate(statInfo[9]).\
                              setFileSize(statInfo[6])
                 fileListObj.addFileInfoObj(tmpFileObj)

@@ -38,8 +38,7 @@ It should be used as part of the ngamsDbBase parent classes.
 
 import logging
 import os, types
-from pccUt import PccUtTime
-from ngamsCore import TRACE, getDiskSpaceAvail, iso8601ToSecs, rmFile, getUniqueNo, NGAMS_DB_CH_FILE_DELETE
+from ngamsCore import TRACE, getDiskSpaceAvail, iso8601ToSecs, rmFile, getUniqueNo, NGAMS_DB_CH_FILE_DELETE, toiso8601
 import ngamsDbm, ngamsDbCore
 
 
@@ -601,7 +600,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                 # Get the information about the files on the disk (before this
                 # information is deleted).
                 if self.getCreateDbSnapshot():
-                    ts = PccUtTime.TimeStamp().getTimeStamp()
+                    ts = toiso8601()
                     fileName = ts + "_" + str(getUniqueNo()) + "_DISK_INFO"
                     fileInfoDbmName = os.path.\
                                       normpath(self.getDbTmpDir() + "/" +\

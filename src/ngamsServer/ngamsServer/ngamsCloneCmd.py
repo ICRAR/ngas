@@ -47,9 +47,8 @@ from ngamsLib.ngamsCore import TRACE, genLog, NGAMS_ONLINE_STATE, \
     mvFile, getFileCreationTime, NGAMS_SUCCESS, \
     NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_CLONE_CMD, NGAMS_CLONE_THR, getThreadName, \
-    NGAMS_HTTP_SUCCESS
+    NGAMS_HTTP_SUCCESS, toiso8601
 from ngamsLib import ngamsDbm, ngamsFileList, ngamsStatus, ngamsDiskUtils, ngamsLib
-from pccUt import PccUtTime
 
 logger = logging.getLogger(__name__)
 
@@ -372,11 +371,12 @@ def _cloneExec(srvObj,
     successCloneCount = 0
     failedCloneCount  = 0
     abortCloneLoop    = 0
-    cloneTimer        = PccUtTime.Timer()
     timeAccu          = 0.0
     key = 0
     while (1):
-        cloneTimer.start()
+
+        clone_start = time.time()
+
         if (not cloneListDbm.hasKey(str(key))): break
         fileInfo = cloneListDbm.get(str(key))
         key += 1
@@ -558,7 +558,7 @@ def _cloneExec(srvObj,
                                                             filename)
 
             # Generate a confirmation log entry.
-            cloneTime = cloneTimer.stop()
+            cloneTime = time.time() - clone_start
             timeAccu += cloneTime
             msg = genLog("NGAMS_INFO_FILE_CLONED",
                          [fio.getFileId(), fio.getFileVersion(),
@@ -567,7 +567,7 @@ def _cloneExec(srvObj,
                   (cloneTime, timeAccu)
             logger.info(msg, extra={'to_syslog': True})
         except Exception, e:
-            cloneTime = cloneTimer.stop()
+            cloneTime = time.time() - clone_start
             timeAccu += cloneTime
             errMsg = genLog("NGAMS_ER_FILE_CLONE_FAILED",
                             [fio.getFileId(), fio.getFileVersion(),
@@ -638,7 +638,6 @@ def _cloneExec(srvObj,
             # Generate a 'simple' ASCII report.
             statRep = tmpFilePat + "_NOTIF_EMAIL.txt"
             fo = open(statRep, "w")
-            timeStamp = PccUtTime.TimeStamp().getTimeStamp()
             if (reqPropsObj.hasHttpPar("disk_id")):
                 diskId = reqPropsObj.getHttpPar("disk_id")
             else:
@@ -664,7 +663,7 @@ def _cloneExec(srvObj,
                         "Total processing time (s):  %.3f\n" +\
                         "Handling time per file (s): %.3f\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (timeStamp, srvObj.getHostId(), diskId, fileId,
+            fo.write(tmpFormat % (toiso8601, srvObj.getHostId(), diskId, fileId,
                                   str(fileVersion), totFiles,
                                   successCloneCount, failedCloneCount,
                                   timeAccu, (timeAccu / totFiles)))

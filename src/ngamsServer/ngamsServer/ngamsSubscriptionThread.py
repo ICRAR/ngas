@@ -44,7 +44,6 @@ import base64
 import urlparse
 from Queue import Queue, Empty, PriorityQueue
 
-from pccUt import PccUtTime
 import ngamsCacheControlThread
 from ngamsLib.ngamsCore import TRACE, NGAMS_SUBSCRIPTION_THR, isoTime2Secs,\
     NGAMS_SUBSCR_BACK_LOG, NGAMS_DELIVERY_THR,\
@@ -963,7 +962,7 @@ def buildSubscrQueue(srvObj, subscrId, dataMoverOnly = False):
 
 
 def updateSubscrQueueStatus(srvObj, subscrId, fileId, fileVersion, diskId, status, comment = None):
-    ts = PccUtTime.TimeStamp().getTimeStamp()
+    ts = time.time()
     if (comment and len(comment) > 255):
         comment = comment[0:255]
     try:
@@ -1006,7 +1005,7 @@ def addToSubscrQueue(srvObj, subscrId, fileInfo, quChunks):
     fileMimeType   = fileInfo[FILE_MIME]
     diskId = fileInfo[FILE_DISK_ID]
     try:
-        ts = PccUtTime.TimeStamp().getTimeStamp()
+        ts = time.time()
         srvObj.getDb().addSubscrQueueEntry(subscrId, fileId, fileVersion, diskId, filename, fileIngDate, fileMimeType, -2, ts)
         quChunks.put(fileInfo)
     except Exception, ee:

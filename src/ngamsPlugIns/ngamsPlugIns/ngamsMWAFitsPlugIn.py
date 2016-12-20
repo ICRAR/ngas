@@ -36,11 +36,11 @@ import commands
 import logging
 import os
 import string
+import time
 
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE, genLog
 from ngamsPlugIns import ngamsFitsPlugIn
-from pccUt import PccUtTime
 
 
 logger = logging.getLogger(__name__)
@@ -221,7 +221,7 @@ def compress(reqPropsObj,
     uncomprSize = ngamsPlugInApi.getFileSize(stFn)
     if (parDic["compression"] != ""):
         logger.debug("Compressing file using: %s", parDic["compression"])
-        compressTimer = PccUtTime.Timer()
+        compress_start = time.time()
         exitCode, stdOut =\
                   ngamsPlugInApi.execCmd(parDic["compression"] + " " + stFn)
         if (exitCode != 0):
@@ -239,7 +239,7 @@ def compress(reqPropsObj,
             fmt = "image/x-fits"
         else:
             fmt = "application/x-gfits"
-        logger.debug("File compressed. Time: %.3fs", compressTimer.stop())
+        logger.debug("File compressed. Time: %.3fs", time.time() - compress_start)
     else:
         fmt = reqPropsObj.getMimeType()
 

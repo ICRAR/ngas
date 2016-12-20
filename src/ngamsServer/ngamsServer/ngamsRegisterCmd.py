@@ -38,7 +38,6 @@ import thread
 import threading
 import time
 
-from pccUt import PccUtTime
 from ngamsLib.ngamsCore import TRACE, rmFile, NGAMS_HTTP_GET, \
     NGAMS_REGISTER_CMD, mvFile, getFileCreationTime, \
     NGAMS_FILE_STATUS_OK, genLog, NGAMS_SUCCESS, \
@@ -46,7 +45,7 @@ from ngamsLib.ngamsCore import TRACE, rmFile, NGAMS_HTTP_GET, \
     NGAMS_NOTIF_INFO, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
     NGAMS_VOLUME_INFO_FILE, NGAMS_REGISTER_THR, getThreadName, \
     NGAMS_HTTP_SUCCESS, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
-    NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint
+    NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint, toiso8601
 from ngamsLib import ngamsDbm, ngamsReqProps, ngamsFileInfo, ngamsDbCore, \
     ngamsHighLevelLib, ngamsDiskUtils, ngamsLib, ngamsFileList, \
     ngamsNotification, ngamsDiskInfo
@@ -173,13 +172,12 @@ def _registerExec(srvObj,
     fileRegCount    = 0
     fileFailCount   = 0
     fileRejectCount = 0
-    regTimer        = PccUtTime.Timer()
     regTimeAccu     = 0.0
     fileCount       = 0
     fo = open(sortFileList)
     run = 1
     while (run):
-        regTimer.start()
+        reg_start = time.time()
         dbmKey = fo.readline()
         if (dbmKey.strip() == ""):
             run = 0
@@ -249,7 +247,7 @@ def _registerExec(srvObj,
                     reqPropsObj.incActualCount(1)
                     ngamsHighLevelLib.stdReqTimeStatUpdate(srvObj, reqPropsObj,
                                                            regTimeAccu)
-                regTimeAccu += regTimer.stop()
+                regTimeAccu += time.time() - reg_start
                 fileCount += 1
                 continue
 
@@ -271,7 +269,7 @@ def _registerExec(srvObj,
 
             if (emailNotif):
                 uncomprSize = piRes.getUncomprSize()
-                ingestDate  = PccUtTime.TimeStamp().getTimeStamp()
+                ingestDate  = time.time()
                 creDateSecs = getFileCreationTime(filename)
                 tmpFileObj.\
                              setDiskId(diskId).\
@@ -304,7 +302,7 @@ def _registerExec(srvObj,
                          [filename, piRes.getFileId(), piRes.getFileVersion(),
                           piRes.getFormat()])
             time.sleep(0.005)
-            regTime = regTimer.stop()
+            regTime = time.time() - reg_start
             msg = msg + ". Time: %.3fs." % (regTime)
             logger.info(msg, extra={'to_syslog': 1})
         except Exception, e:
@@ -319,7 +317,7 @@ def _registerExec(srvObj,
                              setDiskId(diskId).setFilename(filename).\
                              setTag(errMsg)
             fileFailCount += 1
-            regTime = regTimer.stop()
+            regTime = time.time() - reg_start
             # TODO (rtobar, 2016-01): Why don't we raise an exception here?
             #      Otherwise the command appears as successful on the
             #      client-side
@@ -392,7 +390,6 @@ def _registerExec(srvObj,
             # Generate a 'simple' ASCII report.
             statRep = tmpFilePat + "_NOTIF_EMAIL.txt"
             fo = open(statRep, "w")
-            timeStamp = PccUtTime.TimeStamp().getTimeStamp()
             if (reqPropsObj):
                 path = reqPropsObj.getHttpPar("path")
             else:
@@ -413,7 +410,7 @@ def _registerExec(srvObj,
                         "Total processing time (s):  %.3f\n" +\
                         "Handling time per file (s): %.3f\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (timeStamp, srvObj.getHostId(), path, fileCount,
+            fo.write(tmpFormat % (toiso8601(), srvObj.getHostId(), path, fileCount,
                                   fileRegCount, fileFailCount, fileRejectCount,
                                   regTimeAccu, timePerFile))
             tmpFormat = "%-80s %-32s %-3s %-10s\n"
