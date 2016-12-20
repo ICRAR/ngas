@@ -201,7 +201,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         params = {'url': 'http://localhost:8889/QARCHIV',
                   'subscr_id': 'TEST',
                   'priority': 1,
-                  'start_date': '%s 00:00:00.000' % time.strftime("%Y-%m-%d"),
+                  'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
                   'concurrent_threads': 1}
         params = urllib.urlencode(params)
         selector = '{0}?{1}'.format(cmd, params)
