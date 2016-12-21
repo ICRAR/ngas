@@ -1219,8 +1219,7 @@ def subscriptionThread(srvObj,
                         # Take only the file if the File ID + File Version are
                         # explicitly specified.
                         fileInfo = _convertFileInfo(fileInfo)
-                        if (ngamsLib.elInList(fileRefDic[fileInfo[FILE_ID]],
-                                              fileInfo[FILE_VER])):
+                        if fileInfo[FILE_VER] in fileRefDic[fileInfo[FILE_ID]]:
                             fileDicDbm.add(_fileKey(fileInfo[FILE_ID],
                                                     fileInfo[FILE_VER]),
                                            fileInfo)

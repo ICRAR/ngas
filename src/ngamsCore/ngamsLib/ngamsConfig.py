@@ -40,7 +40,6 @@ import types
 
 from   ngamsCore import genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, getNgamsVersionRaw, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
 import ngamsDbCore, ngamsConfigBase, ngamsSubscriber
-import ngamsLib
 import ngamsStorageSet, ngamsStream, ngamsDppiDef, ngamsMirroringSource
 
 
@@ -1278,7 +1277,7 @@ class ngamsConfig:
 
         Returns:           1 if Slot ID is defined, otherwise 0 (integer/0|1).
         """
-        return ngamsLib.elInList(self.getSlotIds(), slotId)
+        return slotId in self.getSlotIds()
 
 
     def getPathPrefix(self):

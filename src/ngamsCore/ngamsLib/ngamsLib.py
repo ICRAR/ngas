@@ -204,24 +204,6 @@ def getNgamsUser():
     return getpass.getuser()
 
 
-def elInList(list,
-             el):
-    """
-    Returns 1 if the element given is found in the list.
-
-    list:     List (list).
-
-    el:       Element (object).
-
-    Returns:  1 = found, 0 = not found (int)
-    """
-    try:
-        list.index(el)
-        return 1
-    except:
-        return 0
-
-
 def log2Int(value):
     """
     Convert an logical value to integer:

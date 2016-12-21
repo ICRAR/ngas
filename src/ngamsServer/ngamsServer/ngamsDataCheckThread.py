@@ -759,7 +759,7 @@ def _schedNextFile(srvObj,
                 _getDbmObjDic()[diskId][0].cleanUp()
                 rmFile(_getDbmObjDic()[diskId][0].getDbmName())
                 srvObj.getDb().setLastCheckDisk(diskId, time.time())
-                if (ngamsLib.elInList(_getDiskIdList(), diskId)):
+                if diskId in _getDiskIdList():
                     idx = _getDiskIdList().index(diskId)
                     del _getDiskIdList()[idx]
                 for thrId in _getDiskSchedDic().keys():

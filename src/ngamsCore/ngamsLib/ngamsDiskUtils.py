@@ -250,7 +250,7 @@ def checkDisks(hostId,
         dbUpdateDic = {}
         for slotId in cfgSlotIds:
             slotId = str(slotId)
-            if (ngamsLib.elInList(mtSlotIds, slotId)):
+            if slotId in mtSlotIds:
                 diskInfo = diskDic[slotId]
                 assocSlotId = ngamsCfgObj.getAssocSlotId(slotId)
 
@@ -1060,7 +1060,7 @@ def findTargetDisk(hostId,
     diskIds = []
     for diskInfoObj in diskInfoObjs:
         # We disregard disks listed in the exemptlist.
-        if (ngamsLib.elInList(diskExemptList, diskInfoObj.getDiskId())):
+        if diskInfoObj.getDiskId() in diskExemptList:
             continue
 
         # Only a Main Disk (not completed) can be considered.

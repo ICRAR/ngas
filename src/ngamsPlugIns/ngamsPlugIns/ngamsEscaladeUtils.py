@@ -37,7 +37,7 @@ import string
 import urllib
 
 from ngamsLib.ngamsCore import TRACE, trim, cleanList
-from ngamsLib import ngamsPhysDiskInfo, ngamsLib
+from ngamsLib import ngamsPhysDiskInfo
 
 
 logger = logging.getLogger(__name__)
@@ -115,7 +115,7 @@ def parseHtmlInfo(url,
             # current Slot ID is in the list given as input to the function.
             slotId = str(int(portNo) + 1)
             if ((not takeAllSlots) and
-                (not ngamsLib.elInList(slotIds, slotId))):
+                slotId not in slotIds):
                 idx = idx + 1
                 continue
 
