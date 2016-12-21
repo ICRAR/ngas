@@ -891,20 +891,6 @@ class ngamsDbCore(object):
             return None
         return self.convertTimeStamp(timestamp)
 
-    def convertTimeStampToMx(self,
-                             timeStamp):
-        """
-        Converts an ISO 8601 timestamp into an mx.DateTime object.
-
-        timeStamp:  ISO 8601 datetime string (string).
-
-        Returns:    Date time object (mx.DateTime).
-        """
-        T = TRACE()
-
-        raise Exception("Nobody is using this, right?")
-
-
     def addSrvList(self,
                    srvList):
         """

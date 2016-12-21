@@ -670,15 +670,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
             if (not diskInfo[1]):
                 timeSinceLastCheck = 0
             else:
-                if (type(diskInfo[1]) == types.IntType):
-                    timeSinceLastCheck = int(diskInfo[1])
-                elif isinstance(diskInfo[1], basestring):
-                    # Expects an ISO 8601 timestamp.
-                    timeSinceLastCheck = int(iso8601ToSecs(diskInfo[1]) + 0.5)
-                else:
-                    timeSinceLastCheck =\
-                                       self.convertTimeStampToMx(diskInfo[1]).\
-                                       ticks()
+                timeSinceLastCheck = int(iso8601ToSecs(diskInfo[1]) + 0.5)
             diskDic[diskInfo[0]] = timeSinceLastCheck
         return diskDic
 
@@ -717,12 +709,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         if not res:
             return None
         val = res[0][0]
-        if type(val) == types.IntType:
-            return val
-        elif isinstance(val, basestring):
-            return int(iso8601ToSecs(val) + 0.5)
-        dt = self.convertTimeStampToMx(val)
-        return int(dt.ticks() + 0.5)
+        return int(iso8601ToSecs(val) + 0.5)
 
     def getAvailableVolumes(self, hostId):
         """

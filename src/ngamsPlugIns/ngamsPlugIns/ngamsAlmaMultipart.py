@@ -39,9 +39,8 @@ implemented and NG/AMS configured to use it.
 import logging
 import os
 
-from mx import DateTime
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import genLog
+from ngamsLib.ngamsCore import genLog, toiso8601, FMT_DATE_ONLY
 
 
 logger = logging.getLogger(__name__)
@@ -170,7 +169,7 @@ def ngamsAlmaMultipart(srvObj,
         # ToDo: Handling of non-existing fileId
 #        if (fileId == -1):
 #            fileId = ngamsPlugInApi.genNgasId(srvObj.getCfg())
-        date = DateTime.now().date
+        date = toiso8601(local=True, fmt=FMT_DATE_ONLY)
         fileVersion, relPath, relFilename,\
                      complFilename, fileExists =\
                      ngamsPlugInApi.genFileInfo(srvObj.getDb(),
