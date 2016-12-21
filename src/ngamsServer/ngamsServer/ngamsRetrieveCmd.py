@@ -40,13 +40,13 @@ import shutil
 import socket
 import time
 
-from ngamsLib import ngamsDppiStatus, ngamsStatus
+from ngamsLib import ngamsDppiStatus
 from ngamsLib import ngamsHighLevelLib, ngamsLib
 from ngamsLib.ngamsCore import NGAMS_TEXT_MT, getFileSize, \
     TRACE, genLog, NGAMS_PROC_FILE, NGAMS_HTTP_SUCCESS, NGAMS_PROC_DATA, \
     NGAMS_HOST_LOCAL, \
     NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE, checkCreatePath, NGAMS_RETRIEVE_CMD, \
-    NGAMS_FAILURE, NGAMS_PROC_STREAM, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
+    NGAMS_PROC_STREAM, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
     NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint
 import ngamsSrvUtils, ngamsFileUtils
 
