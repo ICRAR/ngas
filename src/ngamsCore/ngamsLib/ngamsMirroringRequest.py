@@ -35,7 +35,7 @@ Class to handle the information in connection with one Mirroring Request.
 
 import time
 
-from ngamsCore import timeRef2Iso8601, trim, iso8601ToSecs, TRACE
+from ngamsCore import timeRef2Iso8601, trim, TRACE
 import ngamsLib
 
 
@@ -376,18 +376,6 @@ class ngamsMirroringRequest:
         return  self.__lastActivityTime
 
 
-    def getLastActivityTimeSecs(self):
-        """
-        Return the time for the last activity in seconds since epoch.
-
-        Returns:   Last time for activity in seconds (integer|None).
-        """
-        if (not self.__lastActivityTime):
-            return None
-        else:
-            return iso8601ToSecs(self.__lastActivityTime)
-
-
     def setSchedulingTime(self,
                           timeStamp):
         """
@@ -410,19 +398,6 @@ class ngamsMirroringRequest:
                    (string/ISO 8601|None).
         """
         return  self.__schedulingTime
-
-
-    def getSchedulingTimeSecs(self):
-        """
-        Return the time for scheduling the request in seconds since epoch.
-
-        Returns:   Last time for scheduling the request in seconds
-                   (integer|None).
-        """
-        if (not self.__schedulingTime):
-            return None
-        else:
-            return iso8601ToSecs(self.__schedulingTime)
 
 
     def dump(self):

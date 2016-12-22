@@ -863,10 +863,10 @@ def stdReqTimeStatUpdate(srvObj,
         reqPropsObj.setCompletionPercent(complPercent, 1)
         avgTimePerFile = (accumulatedTime/float(reqPropsObj.getActualCount()))
         totTime = (float(reqPropsObj.getExpectedCount()) * avgTimePerFile)
-        reqPropsObj.setEstTotalTime(int(totTime + 0.5))
+        reqPropsObj.setEstTotalTime(totTime)
         remainTime = (float(reqPropsObj.getExpectedCount() -
                             reqPropsObj.getActualCount()) * avgTimePerFile)
-        reqPropsObj.setRemainingTime(int(remainTime + 0.5))
+        reqPropsObj.setRemainingTime(remainTime)
         srvObj.updateRequestDb(reqPropsObj)
     return reqPropsObj
 

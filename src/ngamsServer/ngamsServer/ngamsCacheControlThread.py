@@ -42,9 +42,7 @@ import time
 
 import sqlite3 as sqlite
 
-from ngamsLib.ngamsCore import TRACE, rmFile,\
-    iso8601ToSecs, genLog,\
-    loadPlugInEntryPoint
+from ngamsLib.ngamsCore import TRACE, rmFile, genLog, loadPlugInEntryPoint
 from ngamsLib import ngamsDbCore, ngamsHighLevelLib, ngamsDbm, ngamsDiskInfo, ngamsCacheEntry, ngamsThreadGroup, ngamsLib
 
 
@@ -608,9 +606,8 @@ def initCacheArchive(srvObj, stopEvt):
                     fileSize = sqlFileInfo[ngamsDbCore.SUM1_FILE_SIZE]
                     setFileSizeCacheDbms(srvObj, diskId, fileId,
                                          fileVersion, fileSize)
-                    ingDate8601 = srvObj.getDb().\
+                    ingDateSecs = srvObj.getDb().\
                                   getIngDate(diskId, fileId, fileVersion)
-                    ingDateSecs = iso8601ToSecs(ingDate8601)
                     cacheEntryObj = ngamsCacheEntry.ngamsCacheEntry().\
                                     unpackSqlInfo(sqlFileInfo).\
                                     setLastCheck(time.time()).\
@@ -619,9 +616,8 @@ def initCacheArchive(srvObj, stopEvt):
                     continue
 
             # Add new entry in the DBMS'.
-            ingDate8601 = srvObj.getDb().\
+            ingDateSecs = srvObj.getDb().\
                           getIngDate(diskId, fileId, fileVersion)
-            ingDateSecs = iso8601ToSecs(ingDate8601)
             lastCheckTime = time.time()
             cacheEntryObject = ngamsCacheEntry.ngamsCacheEntry().\
                                unpackSqlInfo(sqlFileInfo).\

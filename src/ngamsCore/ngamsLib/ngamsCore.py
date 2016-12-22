@@ -28,7 +28,6 @@
 # jknudstr  12/04/2001  Created
 # awicenec  29/05/2001  Added path extension
 # jknudstr  11/06/2001  Added proper version + implemented getNgamsVersion()
-_doc =\
 """
              #     #  #####        #    #    #     #  #####
              ##    # #     #      #    # #   ##   ## #     #
@@ -87,7 +86,7 @@ _uniqueNumberCount = 0
 
 # Import COPYRIGHT statement into doc page.
 NGAMS_COPYRIGHT_TEXT = pkg_resources.resource_string('ngamsData', 'COPYRIGHT')
-__doc__ = _doc % NGAMS_COPYRIGHT_TEXT
+__doc__ = __doc__ % NGAMS_COPYRIGHT_TEXT
 
 
 # Handle NG/AMS Version.
@@ -816,29 +815,6 @@ def timeRef2Iso8601(timeRef):
     return toiso8601(timeRef, local=True)
 
 
-def getAsciiTime(timeSinceEpoch = time.time(),
-                 precision = 3):
-    """
-    Get the time stamp on digital/ASCII form: HH:MM:SS.
-
-    timeSinceEpoch:   Seconds since epoch (integer).
-
-    precision:        Number of digits after the comma (integer)
-
-    Returns:          ASCII time stamp (string).
-    """
-    T = TRACE()
-
-    timeStamp = cleanList(str(time.asctime(time.gmtime(timeSinceEpoch))).\
-                          split(" "))[3]
-    if (precision > 0):
-        decimals = (".%s" % ("%.12f" % timeSinceEpoch).\
-                    split(".")[1])[0:(precision + 1)]
-        timeStamp += decimals
-    return timeStamp
-
-
-# TODO: Consider to extend iso8601ToSecs() to handle this case.
 def isoTime2Secs(isoTime):
     """
     Converts a semi ISO 8601 style time stamp like:
@@ -851,8 +827,6 @@ def isoTime2Secs(isoTime):
 
     Returns:    Corresponding time in seconds (float).
     """
-    T = TRACE()
-
     if (isoTime.find("T") != -1):
         datePart, timePart = isoTime.split("T")
         days = datePart
@@ -877,31 +851,6 @@ def isoTime2Secs(isoTime):
         msg = "Illegal ISO 8601 time-stamp: %s. Error: %s"
         raise Exception, msg % (str(isoTime), str(e))
     return totalTime
-
-
-def iso8601ToSecs(isoTimeStamp):
-    """
-    Convert an ISO 8601 time stamp to seconds (local time).
-
-    isoTimeStamp:    ISO 8601 time stamp (string).
-
-    Returns:         Seconds (float).
-    """
-    try:
-        if (isoTimeStamp.find(".") != -1):
-            ts, ms = isoTimeStamp.split(".")
-        else:
-            ts = isoTimeStamp
-            ms = ""
-        if ts.find(' ') != -1:
-            ts = ts.replace(' ', 'T')
-        timeTuple = time.strptime(ts, "%Y-%m-%dT%H:%M:%S")
-        secs = str(int(time.mktime(timeTuple)))
-        if (ms): secs += "." + str(ms)
-    except Exception, e:
-        msg = "Illegal ISO 8601 time-stamp: %s" % isoTimeStamp
-        raise Exception, msg
-    return float(secs)
 
 
 def getBoolean(val):

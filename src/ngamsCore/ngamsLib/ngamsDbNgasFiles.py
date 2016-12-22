@@ -43,7 +43,7 @@ import shutil
 import time
 
 from ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE, NGAMS_PICKLE_FILE_EXT, NGAMS_TMP_FILE_EXT
-from ngamsCore import rmFile, getUniqueNo, getNgamsVersion, timeRef2Iso8601, toiso8601
+from ngamsCore import rmFile, getUniqueNo, getNgamsVersion, toiso8601, fromiso8601
 import ngamsDbm, ngamsDbCore
 import ngamsFileInfo, ngamsStatus, ngamsFileList
 import ngamsLib
@@ -615,7 +615,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         if res:
             if (res[0][0] == None):
                 return None
-            return timeRef2Iso8601(res[0][0])
+            return fromiso8601(res[0][0], local=True)
         return None
 
     def addFileToContainer(self, containerId, fileId, force):

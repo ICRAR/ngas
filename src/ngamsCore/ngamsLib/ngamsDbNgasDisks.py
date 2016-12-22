@@ -37,8 +37,9 @@ It should be used as part of the ngamsDbBase parent classes.
 """
 
 import logging
-import os, types
-from ngamsCore import TRACE, getDiskSpaceAvail, iso8601ToSecs, rmFile, getUniqueNo, NGAMS_DB_CH_FILE_DELETE, toiso8601
+import os
+
+from ngamsCore import TRACE, getDiskSpaceAvail, rmFile, getUniqueNo, NGAMS_DB_CH_FILE_DELETE, toiso8601, fromiso8601
 import ngamsDbm, ngamsDbCore
 
 
@@ -670,7 +671,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
             if (not diskInfo[1]):
                 timeSinceLastCheck = 0
             else:
-                timeSinceLastCheck = int(iso8601ToSecs(diskInfo[1]) + 0.5)
+                timeSinceLastCheck = fromiso8601(diskInfo[1], local=True)
             diskDic[diskInfo[0]] = timeSinceLastCheck
         return diskDic
 
@@ -709,7 +710,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         if not res:
             return None
         val = res[0][0]
-        return int(iso8601ToSecs(val) + 0.5)
+        return fromiso8601(val, local=True)
 
     def getAvailableVolumes(self, hostId):
         """

@@ -53,9 +53,10 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_MIR_CONTROL_THR, rmFile, \
     cleanList, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, \
     NGAMS_HTTP_HDR_CONTENT_TYPE, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_SUCCESS, \
     NGAMS_STATUS_CMD, decompressFile, \
-    NGAMS_HTTP_PAR_FILE_LIST_ID, getAsciiTime, iso8601ToSecs, \
+    NGAMS_HTTP_PAR_FILE_LIST_ID, \
     NGAMS_HTTP_PAR_FILE_LIST, NGAMS_HTTP_PAR_UNIQUE, NGAMS_HTTP_PAR_MAX_ELS, \
-    NGAMS_HTTP_PAR_FROM_ING_DATE, timeRef2Iso8601, get_contact_ip
+    NGAMS_HTTP_PAR_FROM_ING_DATE, get_contact_ip, fromiso8601,\
+    toiso8601, FMT_TIME_ONLY_NOMSEC
 from ngamsLib import ngamsFileInfo, ngamsStatus, ngamsHighLevelLib, ngamsDbm, ngamsMirroringRequest, ngamsLib
 
 
@@ -953,8 +954,7 @@ def checkSourceArchives(srvObj):
         doComplSync = False
         if (mirSrcObj.getCompleteSyncList()):
             # OK, it is specified to do complete sync's in the configuration.
-            timeNowTag = "%s_TIME_NOW" % getAsciiTime(timeSinceEpoch = timeNow,
-                                                      precision = 0)
+            timeNowTag = "%s_TIME_NOW" % toiso8601(timeNow, fmt=FMT_TIME_ONLY_NOMSEC)
             # Find the last time stamp compared to now.
             tmpComplSyncList = copy.deepcopy(mirSrcObj.getCompleteSyncList())
             tmpComplSyncList.append(timeNowTag)
@@ -980,7 +980,7 @@ def checkSourceArchives(srvObj):
         # Figure out if a partial sync should be done if not a complete sync
         # should be carried out.
         if (not doComplSync):
-            lastPartialSyncSecs = iso8601ToSecs(dbmMirSrcObj.getLastSyncTime())
+            lastPartialSyncSecs = fromiso8601(dbmMirSrcObj.getLastSyncTime(), local=True)
             if ((timeNow - lastPartialSyncSecs) >= dbmMirSrcObj.getPeriod()):
                 doPartialSync = True
 
@@ -1035,7 +1035,7 @@ def checkSourceArchives(srvObj):
         if (doComplSync):
             dbmMirSrcObj.\
                            getLastCompleteSyncDic()[relevantSyncTime] =\
-                           timeRef2Iso8601(timeNow)
+                           toiso8601(timeNow, local=True)
             # Fair enough to consider that a partial sync been done when a
             # complete sync has been carried out.
             dbmMirSrcObj.setLastSyncTime(timeNow)
@@ -1101,7 +1101,7 @@ def checkErrorQueue(srvObj):
             # If the time since last activity is longer than ErrorRetryPeriod
             # reschedule the request into the Mirroring Queue.
             timeNow = time.time()
-            if ((timeNow - iso8601ToSecs(mirReqObj.getLastActivityTime())) >
+            if ((timeNow - fromiso8601(mirReqObj.getLastActivityTime(), local=True)) >
                 srvObj.getCfg().getMirroringErrorRetryPeriod()):
                 try:
                     mirReqObj = popEntryQueue(srvObj, mirReqObj,
@@ -1137,10 +1137,8 @@ def generateReport(srvObj):
 
     reportHdr = "Date:         %s\n" +\
                 "Control Node: %s\n\n"
-    reportHdr = reportHdr % (timeRef2Iso8601(time.time()), srvObj.getHostId())
+    reportHdr = reportHdr % (toiso8601(), srvObj.getHostId())
     summary   = "NGAS MIRRORING - SUMMARY REPORT\n\n" + reportHdr
-    # TODO: Generate detailed report in file.
-    report    = "NGAS MIRRORING - SUMMARY\n\n" + reportHdr
 
     # Go through the various queue DBMs.
     dbmName = "%s/%s_%s" %\
@@ -1190,7 +1188,7 @@ def generateReport(srvObj):
                 msg = "Error popping Mirroring Request from Error DBM " +\
                       "Queue: %s"
                 logger.error(msg, str(e))
-        elif ((time.time() - iso8601ToSecs(mirReqObj.getSchedulingTime())) >
+        elif ((time.time() - fromiso8601(mirReqObj.getSchedulingTime(), local=True)) >
               srvObj.getCfg().getMirroringErrorRetryPeriod()):
             try:
                 mirReqObj = popEntryQueue(srvObj, mirReqObj,

@@ -1433,7 +1433,7 @@ NG/AMS Version: {9}
     """
     req_time = ""
     if stat.getRequestTime() is not None:
-        req_time = toiso8601(stat.getRequestTime(), fmt=FMT_TIME_ONLY)
+        req_time = toiso8601(stat.getRequestTime())
     print message.format(
                          client.getHost(),
                          client.getPort(),

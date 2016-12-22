@@ -913,8 +913,9 @@ class ngamsReqProps:
 
         Returns:      Reference to object itself.
         """
-        if (estTime): self.__estTotalTime = int(estTime)
-        if (updateTime): self.setLastRequestStatUpdate()
+        self.__estTotalTime = estTime
+        if updateTime:
+            self.setLastRequestStatUpdate()
         return self
 
 
@@ -941,7 +942,7 @@ class ngamsReqProps:
 
         Returns:          Current number of iterations done (integer).
         """
-        if (remainingTime): self.__remainingTime = int(remainingTime)
+        self.__remainingTime = remainingTime
         if (updateTime): self.setLastRequestStatUpdate()
         return self
 
