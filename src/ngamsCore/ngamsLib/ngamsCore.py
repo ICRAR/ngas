@@ -73,8 +73,7 @@ import subprocess
 
 import pkg_resources
 
-from pccLog import PccLogDef
-
+import logdefs
 
 logger = logging.getLogger(__name__)
 
@@ -103,11 +102,6 @@ for line in iter(pkg_resources.resource_string('ngamsData', 'VERSION').splitline
     elif ((_NGAMS_CVS_ID != "") and (_NGAMS_SW_VER != "") and
           (_NGAMS_VER_DATE != "")):
         break
-
-
-# Load Error Definition File
-NGAMS_ERR_DEF = pkg_resources.resource_string('ngamsData', 'ngamsLogDef.xml')  # @UndefinedVariable
-_logDef = PccLogDef.PccLogDef().load(NGAMS_ERR_DEF)
 
 
 def getNgamsLicense():
@@ -345,8 +339,9 @@ def ngamsCopyrightString():
     """
     return NGAMS_COPYRIGHT_TEXT
 
-def genLog(logId,
-           parList = []):
+
+_logDef = logdefs.LogDefHolder(pkg_resources.resource_stream('ngamsData', 'ngamsLogDef.xml'))# @UndefinedVariable
+def genLog(logId, parList = []):
     """
     Generate a log line and return this.
 
@@ -356,13 +351,7 @@ def genLog(logId,
 
     Returns:  Generated log line (string).
     """
-    global _logDef
-    for idx in range(len(parList)):
-        par = parList[idx]
-        if (type(par) == types.StringType):
-            parList[idx] = par.replace("\n", " ")
-    logMsg = _logDef.genLogX(logId, parList)
-    return logMsg
+    return _logDef.generate_log(logId, *parList)
 
 
 def getThreadName():
