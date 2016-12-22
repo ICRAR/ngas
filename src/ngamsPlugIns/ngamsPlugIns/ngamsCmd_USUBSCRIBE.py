@@ -30,7 +30,8 @@ including priority, url, start_date, and num_concurrent_threads
 import logging
 import threading
 
-from ngamsLib.ngamsCore import NGAMS_DELIVERY_THR, TRACE, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_SUCCESS
+from ngamsLib.ngamsCore import NGAMS_DELIVERY_THR, TRACE, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_SUCCESS,\
+    fromiso8601
 from ngamsServer import ngamsSubscriptionThread
 
 
@@ -127,13 +128,11 @@ def handleCmd(srvObj,
         subscriber.setUrl(url)
 
     if (reqPropsObj.hasHttpPar("start_date")):
-        tmpStartDate = reqPropsObj.getHttpPar("start_date")
-        if (tmpStartDate.strip() != ""): startDate = tmpStartDate.strip()
+        startDate = reqPropsObj.getHttpPar("start_date").strip()
         if (startDate):
-            subscriber.setStartDate(startDate)
+            subscriber.setStartDate(fromiso8601(startDate))
             lastIngDate = subscriber.getLastFileIngDate()
-            #if (startDate < lastIngDate and lastIngDate): # prepare for re-delivering files that have been previously delivered
-            if (lastIngDate): # either re-check past files or skip unchecked files
+            if lastIngDate is not None: # either re-check past files or skip unchecked files
                 subscriber.setLastFileIngDate(None)
             if (srvObj._subscrScheduledStatus.has_key(subscrId)):
                 #if (startDate < srvObj._subscrScheduledStatus[subscrId] and srvObj._subscrScheduledStatus[subscrId]): # enables trigger re-delivering files that have been previously delivered

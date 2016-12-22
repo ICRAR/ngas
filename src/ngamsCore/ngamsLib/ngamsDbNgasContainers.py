@@ -26,8 +26,9 @@ Module containing SQL queries against the ngas_containers table
 """
 
 import logging
-import time, uuid
-from ngamsCore import fromiso8601
+import time
+import uuid
+
 import ngamsDbCore
 import ngamsFileInfo, ngamsContainer
 
@@ -106,7 +107,7 @@ class ngamsDbNgasContainers(ngamsDbCore.ngamsDbCore):
             parentContainer.setContainerId(res[2])
             cont.setParentContainer(parentContainer)
         if res[3]:
-            cont.setIngestionDate(fromiso8601(res[3], local=True))
+            cont.setIngestionDate(self.fromTimestamp(res[3]))
         return cont
 
     def readHierarchy(self, containerId, includeFiles=False):

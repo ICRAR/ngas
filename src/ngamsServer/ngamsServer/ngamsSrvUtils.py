@@ -45,7 +45,7 @@ from ngamsLib.ngamsCore import NGAMS_NOT_RUN_STATE,\
     NGAMS_ONLINE_STATE, NGAMS_DEFINE, NGAMS_SUBSCRIBE_CMD,\
     NGAMS_SUCCESS, TRACE, genLog, NGAMS_DISK_INFO, checkCreatePath,\
     NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
-    loadPlugInEntryPoint
+    loadPlugInEntryPoint, toiso8601
 from ngamsLib import ngamsStatus, ngamsLib
 from ngamsLib import ngamsPhysDiskInfo
 from ngamsLib import ngamsSubscriber
@@ -139,8 +139,8 @@ def _subscriberThread(srvObj,
                     ["url",      subscrObj.getUrl()]]
             if (subscrObj.getId()):
                 pars.append(["subscr_id", subscrObj.getId()])
-            if (subscrObj.getStartDate()):
-                pars.append(["start_date", subscrObj.getStartDate()])
+            if (subscrObj.getStartDate() is not None):
+                pars.append(["start_date", toiso8601(subscrObj.getStartDate())])
             if (subscrObj.getFilterPi()):
                 pars.append(["filter_plug_in", subscrObj.getFilterPi()])
             if (subscrObj.getFilterPiPars()):

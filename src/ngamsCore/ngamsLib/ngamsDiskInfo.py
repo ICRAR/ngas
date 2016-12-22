@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDiskInfo.py,v 1.8 2008/08/19 20:51:50 jknudstr Exp $"
@@ -36,7 +35,7 @@ Contains tools for handling the disk configuration.
 import os
 import xml.dom.minidom
 
-from ngamsCore import genLog, getAttribValue, trim, timeRef2Iso8601, prFormat1, ignoreValue
+from ngamsCore import genLog, getAttribValue, trim, prFormat1, ignoreValue, toiso8601, fromiso8601
 from ngamsCore import TRACE, NGAMS_STAGING_DIR
 import ngamsFileInfo
 
@@ -87,10 +86,10 @@ class ngamsDiskInfo:
         self.__availableMb        = -1
         self.__bytesStored        = -1.0
         self.__completed          = 0
-        self.__completionDate     = ""
+        self.__completionDate     = None
         self.__checksum           = ""
         self.__totalDiskWriteTime = 0.0
-        self.__lastCheck          = ""
+        self.__lastCheck          = None
         self.__lastHostId         = None
 
         # Additional information for a disk.
@@ -107,9 +106,12 @@ class ngamsDiskInfo:
 
         Returns:    List with object status (list/list).
         """
+        compDate = "" if self.__completionDate is None else toiso8601(self.__completionDate)
+        instDate = "" if self.__installationDate is None else toiso8601(self.__installationDate)
+        lastCheck = "" if self.__lastCheck is None else toiso8601(self.__lastCheck)
         return [["DiskId", self.getDiskId()],
                 ["Archive", self.getArchive()],
-                ["InstallationDate", self.getInstallationDate()],
+                ["InstallationDate", instDate],
                 ["Type", self.getType()],
                 ["Manufacturer", self.getManufacturer()],
                 ["LogicalName", self.getLogicalName()],
@@ -121,10 +123,10 @@ class ngamsDiskInfo:
                 ["AvailableMb", self.getAvailableMb()],
                 ["BytesStored", self.getBytesStoredStr()],
                 ["Completed", self.getCompleted()],
-                ["CompletionDate", self.getCompletionDate()],
+                ["CompletionDate", compDate],
                 ["Checksum", self.getChecksum()],
                 ["TotalDiskWriteTime", self.getTotalDiskWriteTime()],
-                ["LastCheck", self.getLastCheck()]]
+                ["LastCheck", lastCheck]]
 
 
     def setArchive(self,
@@ -392,24 +394,21 @@ class ngamsDiskInfo:
         """
         Set completion date.
 
-        date:      Completion date (string).
+        date:      Completion date (number).
 
         Returns:   Reference to object itself.
         """
-        self.__completionDate = timeRef2Iso8601(date)
+        self.__completionDate = date
         return self
 
 
     def getCompletionDate(self):
         """
-        Return the completion date as ISO 8601 time stamp.
+        Return the completion date
 
-        Returns:    Completion date (string).
+        Returns:    Completion date (number).
         """
-        if (not self.getCompleted()):
-            return ""
-        else:
-            return self.__completionDate
+        return self.__completionDate
 
 
     def setType(self,
@@ -462,19 +461,19 @@ class ngamsDiskInfo:
         """
         Set installation date.
 
-        date:      Installation date (string).
+        date:      Installation date (number).
 
         Returns:   Reference to object itself.
         """
-        self.__installationDate = timeRef2Iso8601(date)
+        self.__installationDate = date
         return self
 
 
     def getInstallationDate(self):
         """
-        Return the installation date as ISO 8601 time stamp.
+        Return the installation date
 
-        Returns:    Installation date (string).
+        Returns:    Installation date (number).
         """
         return self.__installationDate
 
@@ -531,19 +530,19 @@ class ngamsDiskInfo:
         """
         Set date for the last check.
 
-        date:      Date for last check (string).
+        date:      Date for last check (number).
 
         Returns:   Reference to object itself.
         """
-        self.__lastCheck = timeRef2Iso8601(date)
+        self.__lastCheck = date
         return self
 
 
     def getLastCheck(self):
         """
-        Return the last check date as ISO 8601 time stamp.
+        Return the last check date
 
-        Returns:    Last check date (string).
+        Returns:    Last check date (number).
         """
         return self.__lastCheck
 
@@ -620,13 +619,13 @@ class ngamsDiskInfo:
                setBytesStored(sqlResult[9]).\
                setType(sqlResult[10]).\
                setManufacturer(sqlResult[12]).\
-               setInstallationDate(sqlResult[13]).\
                setChecksum(sqlResult[14]).\
                setTotalDiskWriteTime(sqlResult[15]).\
                setCompleted(sqlResult[16])
-        if (sqlResult[17]): self.setCompletionDate(sqlResult[17])
-        if (sqlResult[18]): self.setLastCheck(sqlResult[18])
-        if (sqlResult[19]): self.setLastHostId(sqlResult[19])
+        if sqlResult[13]: self.setInstallationDate(fromiso8601(sqlResult[13], local=True))
+        if sqlResult[17]: self.setCompletionDate(fromiso8601(sqlResult[17], local=True))
+        if sqlResult[18]: self.setLastCheck(fromiso8601(sqlResult[18], local=True))
+        if sqlResult[19]: self.setLastHostId(sqlResult[19])
         return self
 
 
@@ -747,7 +746,11 @@ class ngamsDiskInfo:
 
         self.setDiskId(getAttribValue(diskNode, "DiskId"))
         self.setArchive(getAttribValue(diskNode, "Archive"))
-        self.setInstallationDate(getAttribValue(diskNode, "InstallationDate"))
+
+        instDate = getAttribValue(diskNode, "InstallationDate")
+        if instDate:
+            self.setInstallationDate(fromiso8601(instDate))
+
         self.setType(getAttribValue(diskNode, "Type"))
         self.setManufacturer(getAttribValue(diskNode, "Manufacturer", 1))
         self.setLogicalName(getAttribValue(diskNode, "LogicalName"))
@@ -764,7 +767,11 @@ class ngamsDiskInfo:
         self.setAvailableMb(getAttribValue(diskNode, "AvailableMb"))
         self.setBytesStored(getAttribValue(diskNode, "BytesStored"))
         self.setCompleted(getAttribValue(diskNode, "Completed"))
-        self.setCompletionDate(getAttribValue(diskNode, "CompletionDate", 1))
+
+        compDate = getAttribValue(diskNode, "CompletionDate", 1)
+        if compDate:
+            self.setCompletionDate(fromiso8601(compDate))
+
         self.setChecksum(getAttribValue(diskNode, "Checksum"))
         self.setTotalDiskWriteTime(getAttribValue(diskNode,
                                                   "TotalDiskWriteTime"))

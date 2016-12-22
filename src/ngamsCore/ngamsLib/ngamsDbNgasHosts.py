@@ -36,7 +36,7 @@ It should be used as part of the ngamsDbBase parent classes.
 
 import collections
 
-from   ngamsCore import TRACE, fromiso8601
+from   ngamsCore import TRACE
 import ngamsDbCore
 
 
@@ -325,7 +325,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         sql = "SELECT host_id, srv_req_wake_up_time from ngas_hosts WHERE " +\
               "srv_req_wake_up_srv={0} AND srv_suspended=1"
         res = self.query2(sql, args=(hostId,))
-        return [(r[0], fromiso8601(r[1], local=True)) for r in res]
+        return [(r[0], self.fromTimestamp(r[1])) for r in res]
 
 
     def getPortNoFromHostId(self,

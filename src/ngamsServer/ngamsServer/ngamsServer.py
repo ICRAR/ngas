@@ -2311,7 +2311,7 @@ class ngamsServer:
                              setMacAddress(NGAMS_NOT_SET).\
                              setNSlots(-1).\
                              setClusterName(self.getHostId()).\
-                             setInstallationDate(toiso8601(local=True))
+                             setInstallationDate(time.time())
             logger.info("Creating entry in NGAS Hosts Table for this node: %s" %\
                  self.getHostId())
             self.getDb().writeHostInfo(tmpHostInfoObj)

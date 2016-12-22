@@ -48,7 +48,8 @@ import ngamsCacheControlThread
 from ngamsLib.ngamsCore import TRACE, NGAMS_SUBSCRIPTION_THR, isoTime2Secs,\
     NGAMS_SUBSCR_BACK_LOG, NGAMS_DELIVERY_THR,\
     NGAMS_HTTP_INT_AUTH_USER, NGAMS_REARCHIVE_CMD, NGAMS_FAILURE,\
-    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, getFileSize, rmFile, loadPlugInEntryPoint
+    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, getFileSize, rmFile, loadPlugInEntryPoint,\
+    toiso8601
 from ngamsLib import ngamsDbm, ngamsStatus, ngamsHighLevelLib, ngamsFileInfo, ngamsLib, ngamsDbCore
 
 
@@ -319,7 +320,6 @@ def _checkIfDeliverFile(srvObj,
     """
     T = TRACE()
 
-    deliverFile         = 0
     lastDelivery        = deliveredStatus[subscrObj.getId()]
     if (scheduledStatus.has_key(subscrObj.getId())):
         lastSchedule = scheduledStatus[subscrObj.getId()]
@@ -332,31 +332,22 @@ def _checkIfDeliverFile(srvObj,
     fileVersion         = fileInfo[FILE_VER]
     fileIngDate         = fileInfo[FILE_DATE]
     fileBackLogBuffered = fileInfo[FILE_BL]
+    subs_start = subscrObj.getStartDate()
 
-    if (lastSchedule != None and lastSchedule > lastDelivery):
+    if lastSchedule is not None and lastSchedule > lastDelivery:
         # assume what have been scheduled are already delivered, this avoids multiple schedules for the same file across multiple main thread iterations
         # (so that we do not have to block the main iteration anymore)
         # if a file is scheduled but fail to deliver, it will be picked up by backlog in the future
         lastDelivery = lastSchedule
-    if (
-        ((lastDelivery == None) and (subscrObj.getStartDate() == "")) or
 
-        ((lastDelivery == None) and
-         (fileIngDate >= subscrObj.getStartDate())) or
-
-        ((lastDelivery != None) and
-         (fileIngDate >= subscrObj.getStartDate()) and
-         (fileIngDate >= lastDelivery)) or
-
-        ((lastDelivery != None) and
-         (fileIngDate >= subscrObj.getStartDate()) and
-         explicitFileDelivery)
-
-        ):
-        deliverFile = 1
+    deliverFile = False
+    if subs_start is None:
+        deliverFile = True
+    elif fileIngDate >= subs_start:
+        deliverFile = explicitFileDelivery or lastDelivery is None or fileIngDate >= lastDelivery
 
     # Register the file if we should deliver this file to the Subscriber.
-    if (deliverFile):
+    if deliverFile:
         filterMatched = _checkIfFilterPluginSayYes(srvObj, subscrObj, filename, fileId, fileVersion, fpiMode = FPI_MODE_METADATA_ONLY)
         if (filterMatched):
             _addFileDeliveryDic(subscrObj.getId(), fileInfo,
@@ -364,7 +355,7 @@ def _checkIfDeliverFile(srvObj,
         #debug_chen
         logger.debug('File %s is accepted to delivery list', fileId)
     else:
-        logger.debug('File %s is out, ingDate = %s, lastDelivery = %s', fileId, fileIngDate, lastDelivery)
+        logger.debug('File %s is out, ingDate = %s, lastDelivery = %s', fileId, toiso8601(fileIngDate), toiso8601(lastDelivery))
 
 
 def _compFct(fileInfo1,
@@ -681,7 +672,7 @@ def _deliveryThread(srvObj,
 
             if (fileIngDate < subscrObj.getStartDate() and fileBackLogged != NGAMS_SUBSCR_BACK_LOG): #but backlog files will be sent regardless
                 # subscr_start_date is changed (through USUBSCRIBE command) in order to skip unchechked files
-                logger.warning('File %s skipped, ingestion date %s < %s', fileId, fileIngDate, subscrObj.getStartDate())
+                logger.warning('File %s skipped, ingestion date %s < %s', fileId, fileIngDate, toiso8601(subscrObj.getStartDate()))
                 continue
 
             if (fileBackLogged == NGAMS_SUBSCR_BACK_LOG and (not diskId)):
@@ -1136,9 +1127,9 @@ def subscriptionThread(srvObj,
                     """
                     if (checkedStatus.has_key(subscrId) and checkedStatus[subscrId]):
                         start_date = checkedStatus[subscrId]
-                    elif (subscrObj.getLastFileIngDate() and '1970-01-01' != subscrObj.getLastFileIngDate().split('T')[0]):
+                    elif subscrObj.getLastFileIngDate():
                         start_date = subscrObj.getLastFileIngDate()
-                    elif (subscrObj.getStartDate()):
+                    elif (subscrObj.getStartDate() is not None):
                         start_date = subscrObj.getStartDate()
 
                     logger.debug('Data mover %s start_date = %s', subscrId, start_date)
@@ -1167,20 +1158,24 @@ def subscriptionThread(srvObj,
                     else:
                         logger.debug('Data mover %s will examine %d files for delivery', subscrId, count)
             elif (subscrObjs != []):
+
                 min_date = None # the "earliest" last_ingestion_date or start_date amongst all explicitly referenced subscribers.
                 # The min_date is used to exclude files that have been delivered (<= min_date) during previous NGAS sessions
                 for subscriber in subscrObjs:
                     myMinDate = subscriber.getStartDate()
 
                     myIngDate = subscriber.getLastFileIngDate()
-                    if (myIngDate and '1970-01-01' != myIngDate.split('T')[0]):
+                    if myIngDate:
                         myMinDate = myIngDate
 
-                    if (not min_date or min_date > myMinDate):
+                    if min_date is None or min_date > myMinDate:
                         min_date = myMinDate
 
                 cursorObj = srvObj.getDb().getFileSummary2(srvObj.getHostId(), ing_date = min_date)
-                logger.debug('Fetching files ingested after %s', min_date)
+                if min_date is not None:
+                    logger.debug('Fetching files ingested after %s', toiso8601(min_date))
+                else:
+                    logger.debug('Fetching all ingested files')
                 while (1):
                     fileList = cursorObj.fetch(100)
                     if (fileList == []): break

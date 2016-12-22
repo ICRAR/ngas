@@ -782,31 +782,6 @@ def decompressFile(srcFilename,
     raise Exception, "Error decompressing file: %s" % srcFilename
 
 
-def timeRef2Iso8601(timeRef):
-    """
-    Convert a time reference into ISO 8601. The time reference can be a string
-    or a number of seconds since epoch.
-
-    If None or an empty string is given, an empty string is returned.
-
-    timeRef:    The reference to the time (string|number).
-
-    Returns:    ISO 8601 timestamp (string).
-    """
-
-    if timeRef is None or timeRef == "":
-        return ""
-
-    elif isinstance(timeRef, basestring):
-        # Assume ISO 8601 format or "YYYY-MM-DD HH:MM:SS[.sss]".
-        if 'T' not in timeRef:
-            idx = timeRef.find(" ")
-            return timeRef[0:idx] + "T" + timeRef[(idx + 1):]
-        return timeRef
-
-    return toiso8601(timeRef, local=True)
-
-
 def isoTime2Secs(isoTime):
     """
     Converts a semi ISO 8601 style time stamp like:

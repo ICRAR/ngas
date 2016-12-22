@@ -37,7 +37,7 @@ import random
 import threading
 import time
 
-from ngamsCore import TRACE, toiso8601
+from ngamsCore import TRACE, toiso8601, fromiso8601
 from contextlib import closing
 from DBUtils.PooledDB import PooledDB
 
@@ -868,14 +868,14 @@ class ngamsDbCore(object):
         """
         return _ngasFilesNameMap
 
-    def convertTimeStamp(self, timeStamp):
+    def convertTimeStamp(self, t):
         """
         Convert a timestamp given in one of the following formats:
         """
-        if isinstance(timeStamp, basestring):
-            return timeStamp
+        if isinstance(t, basestring):
+            return t
         else:
-            return toiso8601(timeStamp, local=True)
+            return toiso8601(t, local=True)
 
         # TODO: we can only start using the code below once we finish porting
         # all the code that calls this method; until then we have to keep
@@ -883,13 +883,22 @@ class ngamsDbCore(object):
         #((year, mon, mday, hour, mins, sec, _, _, _), _) = ts.mjdToTm(ts.getMjd())
         #return self.__dbModule.Timestamp(year , mon , mday , hour , mins, sec)
 
-    def asTimestamp(self, timestamp):
+    def asTimestamp(self, t):
         """
         Returns `None` if timestamp is `None`, otherwise calls convertTimeStamp
         """
+        if t is None:
+            return None
+        return self.convertTimeStamp(t)
+
+    def fromTimestamp(self, timestamp):
+        """
+        Converts a database timestamp into a number of seconds from the epoch.
+        This is the reverse of `asTimestamp`.
+        """
         if timestamp is None:
             return None
-        return self.convertTimeStamp(timestamp)
+        return fromiso8601(timestamp, local=True)
 
     def addSrvList(self,
                    srvList):

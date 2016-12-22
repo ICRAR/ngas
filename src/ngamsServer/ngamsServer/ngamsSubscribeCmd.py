@@ -111,10 +111,10 @@ def handleCmdSubscribe(srvObj,
     else:
         id = ngamsLib.getSubscriberId(url)
 
-    logger.info("Creating subscription for files >= %s", toiso8601(startDate, local=True))
+    logger.info("Creating subscription for files >= %s", toiso8601(startDate))
     subscrObj = ngamsSubscriber.ngamsSubscriber(srvObj.getHostId(),
                                                 srvObj.getCfg().getPortNo(),
-                                                priority, url, toiso8601(startDate, local=True),
+                                                priority, url, startDate,
                                                 filterPi, filterPiPars, subscrId=id)
     # supports concurrent file transfer, added by chen.wu@icrar.org
     if (reqPropsObj.hasHttpPar("concurrent_threads")):
@@ -128,11 +128,10 @@ def handleCmdSubscribe(srvObj,
                                                     subscrObj.getPortNo())
     if subscrStat:
         lastIngDate = subscrStat[0][1]
-        if lastIngDate:
-            if toiso8601(startDate, local=True) < lastIngDate:
-                subscrObj.setLastFileIngDate(None)
-            else:
-                subscrObj.setLastFileIngDate(lastIngDate)
+        if startDate < lastIngDate:
+            subscrObj.setLastFileIngDate(None)
+        else:
+            subscrObj.setLastFileIngDate(lastIngDate)
 
     # Register the Subscriber.
     addSubscriber(srvObj, subscrObj)

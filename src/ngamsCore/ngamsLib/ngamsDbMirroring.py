@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDbMirroring.py,v 1.12 2008/08/19 20:51:50 jknudstr Exp $"
@@ -92,7 +91,8 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
                    "AND file_version={7}"
         args = (mirReqObj.getSrvListId(),  mirReqObj.getXmlFileInfo(),
                 mirReqObj.getStatusAsNo(), mirReqObj.getMessage(),
-                mirReqObj.getLastActivityTime(), mirReqObj.getSchedulingTime(),
+                self.asTimestamp(mirReqObj.getLastActivityTime()),
+                self.asTimestamp(mirReqObj.getSchedulingTime()),
                 mirReqObj.getFileId(), mirReqObj.getFileVersion())
         self.query2(sqlQuery, args=args)
         return self
@@ -155,10 +155,11 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
                      "last_activity_time, scheduling_time) " +\
                      "VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})"
             args = (mirReqObj.getInstanceId(),       mirReqObj.getFileId(),
-                    mirReqObj.getFileVersion(),      mirReqObj.getIngestionDate(),
+                    mirReqObj.getFileVersion(),      self.asTimestamp(mirReqObj.getIngestionDate()),
                     mirReqObj.getSrvListId(),        mirReqObj.getXmlFileInfo(),
                     mirReqObj.getStatusAsNo(),       str(mirReqObj.getMessage()),
-                    mirReqObj.getLastActivityTime(), mirReqObj.getSchedulingTime())
+                    self.asTimestamp(mirReqObj.getLastActivityTime()),
+                    self.asTimestamp(mirReqObj.getSchedulingTime()))
             self.query2(sqlQuery, args=args)
 
         return self
@@ -184,14 +185,14 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
                   setInstanceId(res[ngamsDbCore.NGAS_MIR_Q_INST_ID]).\
                   setFileId(res[ngamsDbCore.NGAS_MIR_Q_FILE_ID]).\
                   setFileVersion(res[ngamsDbCore.NGAS_MIR_Q_FILE_VERSION]).\
-                  setIngestionDate(res[ngamsDbCore.NGAS_MIR_Q_ING_DATE]).\
+                  setIngestionDate(self.fromTimestamp(res[ngamsDbCore.NGAS_MIR_Q_ING_DATE])).\
                   setSrvListId(res[ngamsDbCore.NGAS_MIR_Q_SRV_LIST_ID]).\
                   setXmlFileInfo(res[ngamsDbCore.NGAS_MIR_Q_XML_FILE_INFO]).\
                   setStatus(res[ngamsDbCore.NGAS_MIR_Q_STATUS]).\
                   setMessage(res[ngamsDbCore.NGAS_MIR_Q_MESSAGE]).\
-                  setLastActivityTime(res[ngamsDbCore.\
-                                          NGAS_MIR_Q_LAST_ACT_TIME]).\
-                  setSchedulingTime(res[ngamsDbCore.NGAS_MIR_Q_SCHED_TIME])
+                  setLastActivityTime(self.fromTimestamp(res[ngamsDbCore.\
+                                          NGAS_MIR_Q_LAST_ACT_TIME])).\
+                  setSchedulingTime(self.fromTimestamp(res[ngamsDbCore.NGAS_MIR_Q_SCHED_TIME]))
 
         return mirReqObj
 

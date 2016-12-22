@@ -55,7 +55,7 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_MIR_CONTROL_THR, rmFile, \
     NGAMS_STATUS_CMD, decompressFile, \
     NGAMS_HTTP_PAR_FILE_LIST_ID, \
     NGAMS_HTTP_PAR_FILE_LIST, NGAMS_HTTP_PAR_UNIQUE, NGAMS_HTTP_PAR_MAX_ELS, \
-    NGAMS_HTTP_PAR_FROM_ING_DATE, get_contact_ip, fromiso8601,\
+    NGAMS_HTTP_PAR_FROM_ING_DATE, get_contact_ip,\
     toiso8601, FMT_TIME_ONLY_NOMSEC
 from ngamsLib import ngamsFileInfo, ngamsStatus, ngamsHighLevelLib, ngamsDbm, ngamsMirroringRequest, ngamsLib
 
@@ -293,7 +293,7 @@ def scheduleMirReq(srvObj,
 
     fileVersion:    NGAS version of file (integer).
 
-    ingestionDate:  NGAS ingestion date reference for file (string/ISO 8601).
+    ingestionDate:  NGAS ingestion date reference for file (number).
 
     srvListId:      Server list ID for this request indicating the nodes to
                     contact to obtain this file (string).
@@ -980,7 +980,7 @@ def checkSourceArchives(srvObj):
         # Figure out if a partial sync should be done if not a complete sync
         # should be carried out.
         if (not doComplSync):
-            lastPartialSyncSecs = fromiso8601(dbmMirSrcObj.getLastSyncTime(), local=True)
+            lastPartialSyncSecs = dbmMirSrcObj.getLastSyncTime()
             if ((timeNow - lastPartialSyncSecs) >= dbmMirSrcObj.getPeriod()):
                 doPartialSync = True
 
@@ -997,7 +997,7 @@ def checkSourceArchives(srvObj):
                          [NGAMS_HTTP_PAR_MAX_ELS, maxEls]]
         if (doPartialSync):
             statusCmdPars.append([NGAMS_HTTP_PAR_FROM_ING_DATE,
-                                  dbmMirSrcObj.getLastSyncTime()])
+                                  toiso8601(dbmMirSrcObj.getLastSyncTime())])
 
         # Go through the list, we shuffle it to get some kind of load balancing
         srvListIndexes = range(len(srvObj.getSrvListDic()[mirSrcObj.getId()]))
@@ -1013,7 +1013,7 @@ def checkSourceArchives(srvObj):
                 msg += ". Complete synchronization"
             else:
                 msg += ". Partial synchronization from date: %s" %\
-                       dbmMirSrcObj.getLastSyncTime()
+                       toiso8601(dbmMirSrcObj.getLastSyncTime())
             logger.debug(msg, mirSrcObj.getId(), nextSrv, nextPort)
             try:
                 retrieveFileList(srvObj, mirSrcObj, nextSrv, nextPort,
@@ -1101,7 +1101,7 @@ def checkErrorQueue(srvObj):
             # If the time since last activity is longer than ErrorRetryPeriod
             # reschedule the request into the Mirroring Queue.
             timeNow = time.time()
-            if ((timeNow - fromiso8601(mirReqObj.getLastActivityTime(), local=True)) >
+            if ((timeNow - mirReqObj.getLastActivityTime()) >
                 srvObj.getCfg().getMirroringErrorRetryPeriod()):
                 try:
                     mirReqObj = popEntryQueue(srvObj, mirReqObj,
@@ -1188,7 +1188,7 @@ def generateReport(srvObj):
                 msg = "Error popping Mirroring Request from Error DBM " +\
                       "Queue: %s"
                 logger.error(msg, str(e))
-        elif ((time.time() - fromiso8601(mirReqObj.getSchedulingTime(), local=True)) >
+        elif ((time.time() - mirReqObj.getSchedulingTime()) >
               srvObj.getCfg().getMirroringErrorRetryPeriod()):
             try:
                 mirReqObj = popEntryQueue(srvObj, mirReqObj,

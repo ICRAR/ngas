@@ -1175,12 +1175,12 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         # Create a Temporary DB Change Snapshot Document if requested.
         if (self.getCreateDbSnapshot() and genSnapshot):
             tmpFileObj = ngamsFileInfo.ngamsFileInfo().\
-                         unpackSqlResult([diskId, filename, fileId,
-                                          fileVersion, format, fileSize,
-                                          uncompressedFileSize,compression,
-                                          ingestionDate, ignore, checksum,
-                                          checksumPlugIn, fileStatus, creationDate,
-                                          iotime, ingestionRate, None])
+                            setDiskId(diskId).setFilename(filename).setFileId(fileId).\
+                            setFileVersion(fileVersion).setFormat(format).setFileSize(fileSize).\
+                            setUncompressedFileSize(uncompressedFileSize).setCompression(compression).\
+                            setIngestionDate(ingestionDate).setIgnore(ignore).setChecksum(checksum).\
+                            setChecksumPlugIn(checksumPlugIn).setFileStatus(fileStatus).setCreationDate(creationDate).\
+                            setIoTime(iotime).setIngestionRate(ingestionRate)
             self.createDbFileChangeStatusDoc(hostId, dbOperation, [tmpFileObj])
             del tmpFileObj
 

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsFileInfo.py,v 1.11 2008/08/19 20:51:50 jknudstr Exp $"
@@ -35,7 +34,9 @@ an archived file.
 """
 
 import xml.dom.minidom
-from ngamsCore import timeRef2Iso8601, ignoreValue, getAttribValue, prFormat1, TRACE, trim, genLog
+
+from ngamsCore import ignoreValue, getAttribValue, prFormat1, TRACE, trim, genLog, fromiso8601, toiso8601
+
 
 # TODO:
 #
@@ -67,12 +68,12 @@ class ngamsFileInfo:
         self.__fileSize             = -1
         self.__uncompressedFileSize = -1
         self.__compression          = ""
-        self.__ingestionDate        = ""
+        self.__ingestionDate        = None
         self.__ignore               = -1
         self.__checksum             = ""
         self.__checksumPlugIn       = ""
         self.__fileStatus           = ""
-        self.__creationDate         = ""
+        self.__creationDate         = None
 
         self.__tag                  = ""
         self.__ioTime               = -1.
@@ -83,8 +84,8 @@ class ngamsFileInfo:
         self.__permissions          = ""
         self.__owner                = ""
         self.__group                = ""
-        self.__modDate              = ""
-        self.__accDate              = ""
+        self.__modDate              = None
+        self.__accDate              = None
 
 
     def getObjStatus(self):
@@ -97,6 +98,19 @@ class ngamsFileInfo:
         Returns:    List with object status (list/list).
         """
         # Fields in XML document/ASCII dump
+        ing_date = ''
+        creation_date = ''
+        mod_date = ''
+        acc_date = ''
+        if self.__ingestionDate is not None:
+            ing_date = toiso8601(self.__ingestionDate)
+        if self.__creationDate is not None:
+            creation_date = toiso8601(self.__creationDate)
+        if self.__modDate is not None:
+            mod_date = toiso8601(self.__modDate)
+        if self.__accDate is not None:
+            acc_date = toiso8601(self.__accDate)
+
         return [["DiskId", self.getDiskId()],
                 ["FileName", self.getFilename()],
                 ["FileId", self.getFileId()],
@@ -105,18 +119,18 @@ class ngamsFileInfo:
                 ["FileSize", self.getFileSize()],
                 ["UncompressedFileSize", self.getUncompressedFileSize()],
                 ["Compression", self.getCompression()],
-                ["IngestionDate", self.getIngestionDate()],
+                ["IngestionDate", ing_date],
                 ["Ignore", self.getIgnore()],
                 ["Checksum", self.getChecksum()],
                 ["ChecksumPlugIn",self.getChecksumPlugIn()],
                 ["FileStatus", self.getFileStatus()],
-                ["CreationDate", self.getCreationDate()],
+                ["CreationDate", creation_date],
                 ["Tag", self.getTag()],
                 ["Permissions", self.getPermissions()],
                 ["Owner", self.getOwner()],
                 ["Group", self.getGroup()],
-                ["ModificationDate", self.getModDate()],
-                ["AccessDate", self.getAccDate()],
+                ["ModificationDate", mod_date],
+                ["AccessDate", acc_date],
                 ["TotalIoTime", self.getIoTime()],
                 ["IngestionRate", self.getIngestionRate()],
                 ["ContainerId", self.getContainerId()]
@@ -305,14 +319,13 @@ class ngamsFileInfo:
     def setIngestionDate(self,
                          date):
         """
-        Set the ingestion date for the file (in the ISO 8601 format).
+        Set the ingestion date for the file.
 
-        date:       Ingestion date for file (string/ISO 8601|float/secs).
+        date:       Ingestion date for file (number).
 
         Returns:    Reference to object itself.
         """
-        if (not date): return self
-        self.__ingestionDate = timeRef2Iso8601(date)
+        self.__ingestionDate = date
         return self
 
 
@@ -320,7 +333,7 @@ class ngamsFileInfo:
         """
         Get the ingestion date.
 
-        Returns:   Ingestion data in ISO 8601 format (string).
+        Returns:   Ingestion date (number).
         """
         return self.__ingestionDate
 
@@ -418,14 +431,13 @@ class ngamsFileInfo:
     def setCreationDate(self,
                         date):
         """
-        Set the Creation Date for the file (in the ISO 8601 format).
+        Set the Creation Date for the file
 
-        date:       Creation Date for file (string/ISO 8601|float/secs).
+        date:       Creation Date for file (number).
 
         Returns:    Reference to object itself.
         """
-        if (not date): return self
-        self.__creationDate = timeRef2Iso8601(date)
+        self.__creationDate = date
         return self
 
 
@@ -532,14 +544,13 @@ class ngamsFileInfo:
     def setModDate(self,
                    date):
         """
-        Set the Modification Date for the file (in the ISO 8601 format).
+        Set the Modification Date for the file.
 
-        date:       Modification Date for file (string/ISO 8601|float/secs).
+        date:       Modification Date for file (number).
 
         Returns:    Reference to object itself.
         """
-        if (not date): return self
-        self.__modDate = timeRef2Iso8601(date)
+        self.__modDate = date
         return self
 
 
@@ -547,7 +558,7 @@ class ngamsFileInfo:
         """
         Get the Modification Date for the file.
 
-        Returns:   Modification Date (string).
+        Returns:   Modification Date (number).
         """
         return self.__modDate
 
@@ -555,14 +566,13 @@ class ngamsFileInfo:
     def setAccDate(self,
                    date):
         """
-        Set the Access Date for the file (in the ISO 8601 format).
+        Set the Access Date for the file.
 
-        date:       Access Date for file (string/ISO 8601|float/secs).
+        date:       Access Date for file (number).
 
         Returns:    Reference to object itself.
         """
-        if (not date): return self
-        self.__accDate = timeRef2Iso8601(date)
+        self.__accDate = date
         return self
 
 
@@ -570,9 +580,10 @@ class ngamsFileInfo:
         """
         Get the Access Date for the file.
 
-        Returns:   Access Date (string).
+        Returns:   Access Date (number).
         """
         return self.__accDate
+
 
     def setIoTime(self,
                    ioTime):
@@ -665,12 +676,12 @@ class ngamsFileInfo:
         uncomprSz = sqlQueryRes[6]
         self.setUncompressedFileSize(uncomprSz)
         self.setCompression(sqlQueryRes[7])
-        self.setIngestionDate(sqlQueryRes[8])
+        if sqlQueryRes[8]: self.setIngestionDate(fromiso8601(sqlQueryRes[8], local=True))
         self.setIgnore(sqlQueryRes[9])
         self.setChecksum(sqlQueryRes[10])
         self.setChecksumPlugIn(sqlQueryRes[11])
         self.setFileStatus(sqlQueryRes[12])
-        self.setCreationDate(sqlQueryRes[13])
+        if sqlQueryRes[13]: self.setCreationDate(fromiso8601(sqlQueryRes[13], local=True))
         self.setIoTime(sqlQueryRes[14])
         self.setIngestionRate(sqlQueryRes[15])
         self.setContainerId(sqlQueryRes[16])
@@ -684,13 +695,20 @@ class ngamsFileInfo:
 
         Returns:   List with information from one row of ngas_files (list).
         """
+        ing_date = ''
+        creation_date = ''
+        if self.__ingestionDate is not None:
+            ing_date = toiso8601(self.__ingestionDate, local=True)
+        if self.__creationDate is not None:
+            creation_date = toiso8601(self.__creationDate, local=True)
+
         return [self.getDiskId(), self.getFilename(), self.getFileId(),
                 int(self.getFileVersion()), self.getFormat(),
                 int(self.getFileSize()), int(self.getUncompressedFileSize()),
-                self.getCompression(), self.getIngestionDate(),
+                self.getCompression(), ing_date,
                 int(self.getIgnore()), self.getChecksum(),
                 self.getChecksumPlugIn(), self.getFileStatus(),
-                self.getCreationDate(), self.getIoTime(), self.getIngestionRate(),
+                creation_date, self.getIoTime(), self.getIngestionRate(),
                 self.getContainerId()]
 
 
@@ -802,11 +820,9 @@ class ngamsFileInfo:
         uncomprSize = getAttribValue(fileNode, "UncompressedFileSize", 1)
         checksumPi  = getAttribValue(fileNode, "ChecksumPlugIn", 1)
         self.\
-               setAccDate(getAttribValue(fileNode,    "AccessDate", 1)).\
                setChecksum(getAttribValue(fileNode,      "Checksum", 1)).\
                setChecksumPlugIn(checksumPi).\
                setCompression(getAttribValue(fileNode,   "Compression", 1)).\
-               setCreationDate(getAttribValue(fileNode,  "CreationDate", 1)).\
                setFileId(getAttribValue(fileNode,        "FileId", 1)).\
                setFilename(getAttribValue(fileNode,      "FileName", 1)).\
                setUncompressedFileSize(uncomprSize).\
@@ -815,15 +831,26 @@ class ngamsFileInfo:
                setFileVersion(getAttribValue(fileNode,   "FileVersion", 1)).\
                setFormat(getAttribValue(fileNode,        "Format", 1)).\
                setGroup(getAttribValue(fileNode,         "Group", 1)).\
-               setIngestionDate(getAttribValue(fileNode, "IngestionDate", 1)).\
                setIgnore(getAttribValue(fileNode,        "Ignore", 1)).\
-               setModDate(getAttribValue(fileNode,       "ModificationDate", 1)).\
                setOwner(getAttribValue(fileNode,         "Owner", 1)).\
                setPermissions(getAttribValue(fileNode,   "Permissions", 1)).\
                setTag(getAttribValue(fileNode,           "Tag", 1)).\
                setIoTime(getAttribValue(fileNode,        "TotalIoTime", 1)).\
                setIngestionRate(getAttribValue(fileNode, "IngestionRate", 1)).\
                setContainerId(getAttribValue(fileNode,   "ContainerId", 1))
+
+        creation_date = getAttribValue(fileNode, "CreationDate", 1)
+        if creation_date:
+            self.setCreationDate(fromiso8601(creation_date))
+        ingestion_date = getAttribValue(fileNode, "IngestionDate", 1)
+        if ingestion_date:
+            self.setIngestionDate(fromiso8601(ingestion_date))
+        mod_date = getAttribValue(fileNode, "ModificationDate", 1)
+        if mod_date:
+            self.setModDate(fromiso8601(mod_date))
+        acc_date = getAttribValue(fileNode,       "ModificationDate", 1)
+        if acc_date:
+            self.setAccDate(fromiso8601(acc_date))
 
         return self
 

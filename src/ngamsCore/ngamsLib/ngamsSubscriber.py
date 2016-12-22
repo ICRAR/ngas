@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsSubscriber.py,v 1.6 2009/11/26 11:46:57 awicenec Exp $"
@@ -36,7 +35,7 @@ the complete set of Subscribers.
 import random
 import xml.dom.minidom
 
-from ngamsCore import timeRef2Iso8601, TRACE, prFormat1
+from ngamsCore import fromiso8601, toiso8601, TRACE, prFormat1
 
 
 class ngamsSubscriber:
@@ -49,7 +48,7 @@ class ngamsSubscriber:
                  portNo = 0,
                  priority = 10,
                  url = "",
-                 startDate = "",
+                 startDate = None,
                  filterPi = "",
                  filterPiPars = "",
                  lastFileIngDate = "",
@@ -207,19 +206,15 @@ class ngamsSubscriber:
         return urlList
 
 
-    def setStartDate(self,
-                     startDate):
+    def setStartDate(self, startDate):
         """
-        Set the Subscription Start Date (ISO 8601).
+        Set the Subscription Start Date
 
-        startDate:   Subscription start date (string).
+        startDate:   Subscription start date (number).
 
         Returns:     Reference to object itself.
         """
-        if (not startDate):
-            self.__startDate = ""
-        else:
-            self.__startDate = timeRef2Iso8601(startDate)
+        self.__startDate = startDate
         return self
 
 
@@ -297,21 +292,15 @@ class ngamsSubscriber:
         return self.__plugInPars
 
 
-    def setLastFileIngDate(self,
-                           lastFileIngDate):
+    def setLastFileIngDate(self, lastFileIngDate):
         """
         Set the File Ingestion Date of last file delivered.
 
-        lastFileIngDate:  File Ingestion Date of last file delivered
-                          (string/ISO 8601).
+        lastFileIngDate:  File Ingestion Date of last file delivered (number).
 
         Returns:          Reference to object itself.
         """
-        if (not lastFileIngDate):
-            self.__lastFileIngDate = ""
-        else:
-            ###self.__lastFileIngDate = lastFileIngDate.strip()
-            self.__lastFileIngDate = timeRef2Iso8601(lastFileIngDate)
+        self.__lastFileIngDate = lastFileIngDate
         return self
 
 
@@ -319,8 +308,7 @@ class ngamsSubscriber:
         """
         Get the the File Ingestion Date.
 
-        Returns:     File Ingestion Date of last file delivered
-                     (string/ISO 8601).
+        Returns:     File Ingestion Date of last file delivered (number).
         """
         return self.__lastFileIngDate
 
@@ -343,11 +331,14 @@ class ngamsSubscriber:
                setPriority(sqlResult[2]).\
                setId(sqlResult[3]).\
                setUrl(sqlResult[4]).\
-               setStartDate(sqlResult[5]).\
                setFilterPi(sqlResult[6]).\
                setFilterPiPars(sqlResult[7]).\
                setLastFileIngDate(sqlResult[8]).\
                setConcurrentThreads(sqlResult[9])
+        if sqlResult[5]:
+            self.setStartDate(fromiso8601(sqlResult[5], local=True))
+        else:
+            self.setStartDate(None)
         return self
 
 
@@ -395,10 +386,12 @@ class ngamsSubscriber:
         buf += format % ("Priority:", str(self.getPriority()))
         buf += format % ("Subscriber ID:", self.getId())
         buf += format % ("Subscriber URL:", self.getUrl())
-        buf += format % ("Start Date:", self.getStartDate())
+        if self.__startDate is not None:
+            buf += format % ("Start Date:", toiso8601(self.__startDate))
         buf += format % ("Filter Plug-In:", self.getFilterPi())
         buf += format % ("Filter Plug-In Par.s:", self.getFilterPiPars())
-        buf += format % ("Last File Ing. Date:",str(self.getLastFileIngDate()))
+        if self.__lastFileIngDate is not None:
+            buf += format % ("Last File Ing. Date:", toiso8601(self.__lastFileIngDate))
         return buf
 
 
@@ -415,8 +408,8 @@ class ngamsSubscriber:
             tmpSubscrEl.setAttribute("PortNo", str(self.getPortNo()))
         tmpSubscrEl.setAttribute("Priority", str(self.getPriority()))
         tmpSubscrEl.setAttribute("SubscriberUrl", self.getUrl())
-        if (self.getStartDate() != ""):
-            tmpSubscrEl.setAttribute("StartDate", self.getStartDate())
+        if self.__startDate is not None:
+            tmpSubscrEl.setAttribute("StartDate", toiso8601(self.__startDate))
         tmpSubscrEl.setAttribute("FilterPlugIn", self.getFilterPi())
         tmpSubscrEl.setAttribute("FilterPlugInPars", self.getFilterPiPars())
         return tmpSubscrEl

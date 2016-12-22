@@ -19,8 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-from ngamsCore import timeRef2Iso8601, prFormat1, ignoreValue
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsHostInfo.py,v 1.4 2008/08/19 20:51:50 jknudstr Exp $"
@@ -29,11 +27,12 @@ from ngamsCore import timeRef2Iso8601, prFormat1, ignoreValue
 # --------  ----------  -------------------------------------------------------
 # jknudstr  25/03/2002  Created
 #
-
 """
 Contains definition of class for handling information in connection with
 one NGAS host.
 """
+
+from ngamsCore import prFormat1, ignoreValue, toiso8601, fromiso8601
 
 
 class ngamsHostInfo:
@@ -51,7 +50,7 @@ class ngamsHostInfo:
         self.__macAddress       = ""
         self.__nSlots           = -1
         self.__clusterName      = ""
-        self.__installationDate = ""
+        self.__installationDate = None
 
         self.__srvVersion       = ""
         self.__srvPort          = -1
@@ -64,7 +63,7 @@ class ngamsHostInfo:
 
         self.__srvSuspended     = -1
         self.__srvReqWakeUpSrv  = ""
-        self.__srvReqWakeUpTime = ""
+        self.__srvReqWakeUpTime = None
 
         # Type of host NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN,
         # NGAMS_HOST_REMOTE.
@@ -81,13 +80,19 @@ class ngamsHostInfo:
         Returns:    List with object status (list/list).
         """
         # Fields in XML document/ASCII dump
+        wakeup_time = ""
+        inst_date = ""
+        if self.__srvReqWakeUpTime is not None:
+            wakeup_time = toiso8601(self.__srvReqWakeUpTime)
+        if self.__installationDate is not None:
+            inst_date = toiso8601(self.__installationDate)
         return [["Host ID",                 self.getHostId()],
                 ["Domain",                  self.getDomain()],
                 ["IP Address",              self.getIpAddress()],
                 ["MAC Address",             self.getMacAddress()],
                 ["Number of Slots",         self.getNSlots()],
                 ["Cluster Name",            self.getClusterName()],
-                ["Installation Date",       self.getInstallationDate()],
+                ["Installation Date",       inst_date],
                 ["Server Version",          self.getSrvVersion()],
                 ["Server Port",             self.getSrvPort()],
                 ["Server Allow Archiving",  self.getSrvArchive()],
@@ -98,7 +103,7 @@ class ngamsHostInfo:
                 ["Server State",            self.getSrvState()],
                 ["Server Suspended",        self.getSrvSuspended()],
                 ["Server Wake-Up Request",  self.getSrvReqWakeUpSrv()],
-                ["Server Wake-Up Time",     self.getSrvReqWakeUpTime()]]
+                ["Server Wake-Up Time",     wakeup_time]]
 
 
     def unpackFromSqlQuery(self,
@@ -120,7 +125,8 @@ class ngamsHostInfo:
         self.setMacAddress(res[3])
         self.setNSlots(res[4])
         self.setClusterName(res[5])
-        self.setInstallationDate(res[6])
+        if res[6]:
+            self.setInstallationDate(fromiso8601(res[6], local=True))
 
         # Host information set by server.
         self.setSrvVersion(res[7])
@@ -283,12 +289,11 @@ class ngamsHostInfo:
         """
         Set the date for installing this NGAS system.
 
-        date:    Installation date (string/ISO 8601).
+        date:    Installation date (number).
 
         Returns:  Reference to object itself.
         """
-        if (not date): return self
-        self.__installationDate = timeRef2Iso8601(date)
+        self.__installationDate = date
         return self
 
 
@@ -296,7 +301,7 @@ class ngamsHostInfo:
         """
         Return the installation date
 
-        Returns:    Installation date (string/ISO 8601).
+        Returns:    Installation date (number).
         """
         return self.__installationDate
 
@@ -544,12 +549,11 @@ class ngamsHostInfo:
         """
         Set the wake-up time.
 
-        wakeUpTime:    Requested Wake-Up Time (string/ISO 8601).
+        wakeUpTime:    Requested Wake-Up Time (number)
 
         Returns:       Reference to object itself.
         """
-        if (not wakeUpTime): return self
-        self.__srvReqWakeUpTime = timeRef2Iso8601(wakeUpTime)
+        self.__srvReqWakeUpTime = wakeUpTime
         return self
 
 
@@ -557,7 +561,7 @@ class ngamsHostInfo:
         """
         Return the wake-up time.
 
-        Returns:      Requested Wake-Up Time (string/ISO 8601).
+        Returns:      Requested Wake-Up Time (number).
         """
         return self.__srvReqWakeUpTime
 

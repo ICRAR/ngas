@@ -317,7 +317,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                     slotId, mounted, mountPoint, numberOfFiles, availableMb,\
                     bytesStored, completed, checksum, totalDiskWriteTime]
 
-            if lastCheck:
+            if lastCheck is not None:
                 lastCheckTmp = self.convertTimeStamp(lastCheck)
                 sql.append(",last_check={}")
                 vals.append(lastCheckTmp)
@@ -345,7 +345,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         res = self.query2(''.join(sql), args = vals)
 
-        if completionDate:
+        if completionDate is not None:
             complDate = self.convertTimeStamp(completionDate)
             sql = "UPDATE ngas_disks SET completion_date={} WHERE disk_id={}"
             self.query2(sql, args = (complDate, diskId))
