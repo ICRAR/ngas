@@ -414,19 +414,11 @@ def getAttribValue(node,
 
     Returns:         Value of attribute (string).
     """
-    if (not ignoreFailure):
-        try:
-            return str(node._attrs[attributeName].nodeValue)
-        except Exception, e:
-            errMsg = "Error retrieving value for attribute: " + attributeName+\
-                     " from node: " + node.nodeName + ". Error: " + str(e)
-            raise Exception, errMsg
-    else:
-        try:
-            return str(node._attrs[attributeName].nodeValue)
-        except:
-            return ""
+    if not ignoreFailure and not node.hasAttribute(attributeName):
+        errMsg = "Error retrieving value for attribute: %s from node: %s"
+        raise Exception(errMsg % (attributeName, node.nodeName))
 
+    return node.getAttribute(attributeName)
 
 def ngamsGetChildNodes(parentNode,
                        childNodeName):
@@ -827,30 +819,21 @@ def isoTime2Secs(isoTime):
 
     Returns:    Corresponding time in seconds (float).
     """
-    if (isoTime.find("T") != -1):
-        datePart, timePart = isoTime.split("T")
-        days = datePart
-    else:
-        days = 0
-        timePart = isoTime
+
+    days = 0
+    timePart = isoTime
+    if "T" in isoTime:
+        days, timePart = isoTime.split("T")
+        days = int(days)
+
     timeVector = timePart.split(":")
-    hours = timeVector[0]
-    mins = timeVector[1]
-    secsDec = -1
-    if (len(timeVector) > 2):
-        secs = timeVector[2]
-        if (secs.find(".") != -1):
-            secs, secsDec = secs.split(".")
-    else:
-        secs = 0
-    try:
-        totalTime = ((int(days) * 24 * 3600) + (int(hours) * 3600) +\
-                     (int(mins) * 60) + int(secs))
-        if (secsDec != -1): totalTime += float(".%s" % secsDec)
-    except Exception, e:
-        msg = "Illegal ISO 8601 time-stamp: %s. Error: %s"
-        raise Exception, msg % (str(isoTime), str(e))
-    return totalTime
+    hours = int(timeVector[0])
+    mins = int(timeVector[1])
+    secs = 0
+    if len(timeVector) > 2:
+        secs = float(timeVector[2])
+
+    return days*24*3600 + hours*3600 + mins*60 + secs
 
 
 def getBoolean(val):

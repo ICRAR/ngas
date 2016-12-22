@@ -255,8 +255,8 @@ def _initFileCheckStatus(srvObj,
     global _statCheckSem, _statLastDbUpdate, _statCheckStart,\
            _statCheckRemain, _statCheckRate, _statCheckMb, _statCheckedMb,\
            _statCheckFiles, _statCheckCount
-    try:
-        _statCheckSem.acquire()
+
+    with _statCheckSem:
         _statCheckStart   = time.time()
         _statCheckRemain  = 0
         statEstimTime     = 0
@@ -266,10 +266,7 @@ def _initFileCheckStatus(srvObj,
         _statCheckFiles   = noOfFiles
         _statCheckCount   = 0
         _statLastDbUpdate = 0
-        _statCheckSem.release()
-    except Exception:
-        _statCheckSem.release()
-        logger.exception("Exception caught in Data Checking Thread")
+
     srvObj.getDb().updateDataCheckStat(srvObj.getHostId(), _statCheckStart,
                                        _statCheckRemain, statEstimTime,
                                        _statCheckRate, _statCheckMb,

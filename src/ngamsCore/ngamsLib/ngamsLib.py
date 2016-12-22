@@ -509,10 +509,8 @@ def httpPostUrl(url,
         if (checkSum):
             http.putheader(NGAMS_HTTP_HDR_CHECKSUM, checkSum)
 
-        for mhd in moreHdrs:
-            kk = mhd[0]
-            vv = mhd[1]
-            http.putheader(kk, vv)
+        for k,v in moreHdrs:
+            http.putheader(k, v)
 
         if dataSource == "FILE":
             dataSize = getFileSize(dataRef)
@@ -716,10 +714,10 @@ def httpPost(host,
     contDisp = ''.join(contDisp)
 
     msg = "Sending: %s using HTTP POST with mime-type: %s " + \
-          "to NG/AMS Server with host: %s:%s"
-    logger.debug(msg, cmd, mimeType, host, str(port))
+          "to NG/AMS Server with host: %s:%d"
+    logger.debug(msg, cmd, mimeType, host, port)
 
-    url = "http://%s:%s/%s" % (host, str(port), cmd)
+    url = "http://%s:%d/%s" % (host, port, cmd)
     return httpPostUrl(url, mimeType, contDisp, dataRef, dataSource,
                        dataTargFile, 65536, 0, timeOut, authHdrVal, dataSize)
 

@@ -698,9 +698,8 @@ def _handleCmdRetrieve(srvObj,
 
         # Perform the possible processing requested.
         procResult = performProcessing(srvObj,reqPropsObj,srcFilename,mimeType)
-    elif (((location == NGAMS_HOST_CLUSTER) or \
-           (location == NGAMS_HOST_REMOTE)) and \
-           srvObj.getCfg().getProxyMode()):
+    elif location in (NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE) and \
+         srvObj.getCfg().getProxyMode():
 
         logger.debug("NG/AMS Server acting as proxy - requesting file with ID: %s " +\
                      "from NG/AMS Server on host/port: %s/%s",
