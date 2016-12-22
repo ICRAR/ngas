@@ -45,7 +45,6 @@ setup(
         ],
     },
     install_requires=[
-        'pcc',
         'ngamsCore',
         'ngamsPlugIns',
         'ngamsServer',
