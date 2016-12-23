@@ -533,21 +533,6 @@ def genUniqueId():
     return md5.new("%.12f-%s" % (time.time(), getHostName())).hexdigest()
 
 
-def cleanList(lst):
-    """
-    Remove empty elements from a list containing strings
-    (elements of length 0).
-
-    lst:      List to be cleaned (list).
-
-    Returns:  Cleaned list (list).
-    """
-    cleanLst = []
-    for el in lst:
-        if (len(el) > 0): cleanLst.append(el)
-    return cleanLst
-
-
 def createSortDicDump(dic):
     """
     Create a sorted ASCII representation of a dictionary. The order is sorted

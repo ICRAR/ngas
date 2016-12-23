@@ -39,7 +39,7 @@ import os
 import types
 
 from   ngamsCore import genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, getNgamsVersionRaw, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
-import ngamsDbCore, ngamsConfigBase, ngamsSubscriber
+import ngamsConfigBase, ngamsSubscriber
 import ngamsStorageSet, ngamsStream, ngamsDppiDef, ngamsMirroringSource
 
 
@@ -2206,8 +2206,7 @@ class ngamsConfig:
 
 
     def getMirroringSrcObjFromSrvList(self,
-                                      srvList,
-                                      cleanList = False):
+                                      srvList):
         """
         Return the Mirroring Source Object associated to the given
         Server List.
@@ -2216,14 +2215,11 @@ class ngamsConfig:
 
                        '<Node>:<Port,...'                          (string).
 
-        cleanList:   Clean up the server list of not already done (boolean).
-
         Returns:     Reference to Mirroring Source Object associated to the
                      given server list (ngamsMirroringSource).
         """
         T = TRACE()
 
-        if (cleanList): srvList = ngamsDbCore.cleanSrvList(srvList)
         if (not self.__mirSrcObjDic.has_key(srvList)):
             msg = "No Mirroring Source Object found for Server List: %s"
             raise Exception, msg % srvList

@@ -50,7 +50,7 @@ import threading
 import time
 
 from ngamsLib.ngamsCore import TRACE, NGAMS_MIR_CONTROL_THR, rmFile, \
-    cleanList, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, \
+    NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, \
     NGAMS_HTTP_HDR_CONTENT_TYPE, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_SUCCESS, \
     NGAMS_STATUS_CMD, decompressFile, \
     NGAMS_HTTP_PAR_FILE_LIST_ID, \
@@ -493,7 +493,7 @@ def getLocalNauList(srvObj,
         tmpSrvList = _localSrvList
     else:
         # A specific list is given.
-        tmpSrvList = cleanList(localSrvListCfg.split(","))
+        tmpSrvList = filter(None, localSrvListCfg.split(","))
 
     # Create copy of list and shuffle it.
     srvList = copy.deepcopy(tmpSrvList)
@@ -847,12 +847,12 @@ def retrieveFileList(srvObj,
             while (count < 100):
                 nextLine = fo.readline()
                 if (nextLine.find("FileList Id=") != -1):
-                    lineEls = cleanList(nextLine.strip().split(" "))
+                    lineEls = filter(None, nextLine.strip().split(" "))
                     if (not fileListId):
                         fileListId = lineEls[1].split("=")[1].strip('"')
                         statusCmdPars.append([NGAMS_HTTP_PAR_FILE_LIST_ID,
                                               fileListId])
-                    remainingEls = int(cleanList(lineEls)[-1].split('"')[0])
+                    remainingEls = int(filter(None, lineEls)[-1].split('"')[0])
                     break
                 count += 1
             msg = "Retrieving File List. File List ID: %s. " +\

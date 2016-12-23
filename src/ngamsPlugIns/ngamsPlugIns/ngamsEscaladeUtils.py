@@ -36,7 +36,7 @@ import logging
 import string
 import urllib
 
-from ngamsLib.ngamsCore import TRACE, trim, cleanList
+from ngamsLib.ngamsCore import TRACE, trim
 from ngamsLib import ngamsPhysDiskInfo
 
 
@@ -379,7 +379,7 @@ def parseGen2Controller(rootMtPt,
                         (line.find("Status") != -1)):
                         break
                     elif (line[0].strip() == "u"):
-                        cfg = cleanList(line.split(" "))
+                        cfg = filter(None, line.split(" "))
                         if (cfg[1].find("RAID") != -1):
                             unitTypeDic[cfg[0]] = "RAID"
                         else:
@@ -400,7 +400,7 @@ def parseGen2Controller(rootMtPt,
                 # Take the line if it contains disk info.
                 if (line[0] == "p"):
                     tmpPorts += 1
-                    diskInfo = cleanList(line.split(" "))
+                    diskInfo = filter(None, line.split(" "))
                     if ((diskInfo[1] != "NOT-PRESENT") and
                         (unitTypeDic[diskInfo[2]] == "JBOD")):
                         # A disk is found, get the info.
@@ -413,10 +413,10 @@ def parseGen2Controller(rootMtPt,
                         cmd = cmd % (int(contNo), int(portNo))
                         stat, out = commands.getstatusoutput(cmd)
                         outLines = out.split("\n")
-                        status   = cleanList(outLines[0].split(" "))[3]
-                        model    = cleanList(outLines[1].split(" "))[3]
-                        serialNo = cleanList(outLines[2].split(" "))[3]
-                        capGb    = int(float(cleanList(outLines[3].\
+                        status   = filter(None, outLines[0].split(" "))[3]
+                        model    = filter(None, outLines[1].split(" "))[3]
+                        serialNo = filter(None, outLines[2].split(" "))[3]
+                        capGb    = int(float(filter(None, outLines[3].\
                                                        split(" "))[3]) + 0.5)
                         diskType = "MAGNETIC DISK/ATA"
                         if (model.find("HDS") == 0):

@@ -54,7 +54,7 @@ import pyfits
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
 from ngamsLib.ngamsCore import getHostName, TRACE, \
-    ngamsCopyrightString, rmFile, cleanList, \
+    ngamsCopyrightString, rmFile, \
     cpFile, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
     execCmd as ngamsCoreExecCmd, fromiso8601, toiso8601
 from ngamsPClient import ngamsPClient
@@ -740,7 +740,7 @@ def flushEmailQueue():
     for line in stdOut.split("\n"):
         line = line.strip()
         if (line != ""):
-            lineEls = cleanList(line.split(" "))
+            lineEls = filter(None, line.split(" "))
             try:
                 mailDic[int(lineEls[1])] = 1
             except:
