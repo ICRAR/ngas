@@ -54,7 +54,7 @@ do
 	esac
 done
 
-fail() {
+function fail {
 	echo "$1" > /dev/stderr
 	exit 1
 }
