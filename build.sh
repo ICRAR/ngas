@@ -92,7 +92,7 @@ fi
 # Build python setup.py-based modules
 # The ngamsPlugIns module eventually requires numpy which we need to install
 # manually outside the setuptools world
-pip install numpy
+pip --no-cache-dir install numpy
 for pyModule in pcc crc32c ngamsCore ngamsPClient ngamsServer ngamsPlugIns
 do
 	prevDir=$(pwd -P)
