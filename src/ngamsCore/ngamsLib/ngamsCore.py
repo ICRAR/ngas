@@ -78,11 +78,6 @@ import logdefs
 logger = logging.getLogger(__name__)
 
 
-# Semaphore + counter to ensure unique, temporary filenames.
-_uniqueNumberSem   = threading.Semaphore(1)
-_uniqueNumberCount = 0
-
-
 # Import COPYRIGHT statement into doc page.
 NGAMS_COPYRIGHT_TEXT = pkg_resources.resource_string('ngamsData', 'COPYRIGHT')
 __doc__ = __doc__ % NGAMS_COPYRIGHT_TEXT
@@ -497,6 +492,9 @@ def getFileModificationTime(filename):
     return int(os.stat(filename)[8])
 
 
+# Semaphore + counter to ensure unique, temporary filenames.
+_uniqueNumberSem   = threading.Semaphore(1)
+_uniqueNumberCount = 0
 def getUniqueNo():
     """
     Generate a unique number (unique for this session of NG/AMS).
