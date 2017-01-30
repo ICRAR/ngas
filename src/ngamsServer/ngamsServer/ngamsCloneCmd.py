@@ -46,7 +46,7 @@ from ngamsLib.ngamsCore import TRACE, genLog, NGAMS_ONLINE_STATE, \
     rmFile, getFileSize, NGAMS_XML_MT, NGAMS_FAILURE, checkCreatePath, \
     mvFile, getFileCreationTime, NGAMS_SUCCESS, \
     NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_TEXT_MT, \
-    NGAMS_NOTIF_INFO, NGAMS_CLONE_CMD, NGAMS_CLONE_THR, getThreadName, \
+    NGAMS_NOTIF_INFO, NGAMS_CLONE_CMD, NGAMS_CLONE_THR, \
     NGAMS_HTTP_SUCCESS, toiso8601
 from ngamsLib import ngamsDbm, ngamsFileList, ngamsStatus, ngamsDiskUtils, ngamsLib
 
@@ -1057,7 +1057,7 @@ def _clone(srvObj,
         # Do the actual cloning in a thread
         args = (srvObj, cloneListDbmName, tmpFilePat, targetDiskId,
                 reqPropsObj, None)
-        thrName = NGAMS_CLONE_THR + getThreadName()
+        thrName = NGAMS_CLONE_THR + threading.current_thread().getName()
         cloneThread = threading.Thread(None, _cloneThread, thrName, args)
         cloneThread.setDaemon(0)
         cloneThread.start()

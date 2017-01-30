@@ -354,19 +354,6 @@ def genLog(logId, parList = []):
     return _logDef.generate_log(logId, *parList)
 
 
-def getThreadName():
-    """
-    Return the name of the thread or '' if this cannot be determined.
-
-    Returns:    The name of the thread (string).
-    """
-    try:
-        threadName = threading.currentThread().getName()
-    except:
-        threadName = ""
-    return threadName
-
-
 def TRACE(logLevel = 4):
     """
     Convenience function to use the tracing in the code.
