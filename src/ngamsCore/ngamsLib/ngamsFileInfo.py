@@ -35,7 +35,7 @@ an archived file.
 
 import xml.dom.minidom
 
-from ngamsCore import ignoreValue, getAttribValue, prFormat1, TRACE, trim, genLog, fromiso8601, toiso8601
+from ngamsCore import ignoreValue, getAttribValue, prFormat1, TRACE, genLog, fromiso8601, toiso8601
 
 
 # TODO:
@@ -146,7 +146,7 @@ class ngamsFileInfo:
 
         Returns:   Reference to object itself.
         """
-        self.__diskId = trim(id, "\" ")
+        self.__diskId = id.strip("\" ")
         return self
 
 
@@ -168,7 +168,7 @@ class ngamsFileInfo:
 
         Returns:    Reference to object itself.
         """
-        self.__filename = trim(filename, "\" ")
+        self.__filename = filename.strip("\" ")
         return self
 
 
@@ -190,7 +190,7 @@ class ngamsFileInfo:
 
         Returns:    Reference to object itself.
         """
-        self.__fileId = str(trim(id, "\" "))
+        self.__fileId = id.strip("\" ")
         return self
 
 
@@ -234,7 +234,7 @@ class ngamsFileInfo:
 
         Returns:    Reference to object itself.
         """
-        self.__format = trim(format, "\" ")
+        self.__format = format.strip("\" ")
         return self
 
 
@@ -303,7 +303,7 @@ class ngamsFileInfo:
         if ((not compression) or (compression == "None")):
             self.__compression = ""
         else:
-            self.__compression = trim(compression, "\" ")
+            self.__compression = compression.strip("\" ")
         return self
 
 

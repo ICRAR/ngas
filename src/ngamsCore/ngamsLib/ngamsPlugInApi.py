@@ -39,7 +39,7 @@ import logging
 import os
 import shutil
 
-from ngamsCore import NGAMS_SUCCESS, TRACE, checkCreatePath, trim, execCmd as ngamsCoreExecCmd
+from ngamsCore import NGAMS_SUCCESS, TRACE, checkCreatePath, execCmd as ngamsCoreExecCmd
 import ngamsDapiStatus
 import ngamsHighLevelLib, ngamsNotification
 import ngamsLib
@@ -364,7 +364,7 @@ def genFileInfo(dbConObj,
     relPath = ngamsCfgObj.getPathPrefix()
     for subDir in subDirs:
         if (relPath != ""): relPath += "/" + subDir
-    relPath = trim(relPath + "/" + str(fileVersion), "/")
+    relPath = str(relPath + "/" + str(fileVersion)).strip("/")
     complPath = os.path.normpath(trgDiskInfoObj.getMountPoint()+"/"+relPath)
     newFilename = ngamsHighLevelLib.checkAddExt(ngamsCfgObj, reqPropsObj.getMimeType(),
                                   baseFilename)

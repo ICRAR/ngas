@@ -36,7 +36,7 @@ import logging
 import string
 import urllib
 
-from ngamsLib.ngamsCore import TRACE, trim
+from ngamsLib.ngamsCore import TRACE
 from ngamsLib import ngamsPhysDiskInfo
 
 
@@ -134,10 +134,9 @@ def parseHtmlInfo(url,
             manufacturer = string.split(model, "-")[0]
             if (manufacturer[0:2] == "IC"): manufacturer = "IBM"
             idx = idx + 1
-            serialNo = trim(string.split(string.split(lines[idx],
-                                                      ">")[4], "<")[0], " ")
+            serialNo = lines[idx].split(">")[4].split("<")[0].strip()
             idx = idx + 1
-            unitNo = int(string.split(string.split(lines[idx],">")[4], "<")[0])
+            unitNo = int(lines[idx].split(">")[4].split("<")[0])
             diskId = model + "-" + serialNo
             mtPt = rootMtPt + "/data" + str(slotId)
             deviceName = "/dev/sd" + chr(97 + len(diskInfoDic)) + '1'

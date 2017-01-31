@@ -41,7 +41,7 @@ import SocketServer, BaseHTTPServer, socket, signal
 
 from ngamsLib.ngamsCore import \
     genLog, TRACE,\
-    rmFile, trim, getNgamsVersion, \
+    rmFile, getNgamsVersion, \
     getFileSize, getDiskSpaceAvail, checkCreatePath,\
     getHostName, ngamsCopyrightString, getNgamsLicense,\
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, NGAMS_HTTP_GET,\
@@ -179,7 +179,7 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         Returns:    Void.
         """
-        path = trim(self.path, "?/ ")
+        path = self.path.strip("?/ ")
         try:
             self.ngasServer.reqCallBack(self, self.client_address, self.command, path,
                          self.request_version, self.headers,

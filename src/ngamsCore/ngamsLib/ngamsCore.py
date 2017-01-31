@@ -284,21 +284,6 @@ def legalCmd(cmd):
         return 0
 
 
-def trim(s, trimChars):
-    """
-    Trim a string removing leading and trailing
-    characters contained in the "trimChars" string.
-
-    s:          String to trim (string).
-
-    trimChars:  String containing characters to trim out of
-                the input string (string).
-
-    Returns:    Trimmed string (string).
-    """
-    return s.strip(trimChars)
-
-
 def getNgamsVersion():
     """
     Return version identifier for NG/AMS.

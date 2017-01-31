@@ -35,7 +35,7 @@ Contains tools for handling the disk configuration.
 import os
 import xml.dom.minidom
 
-from ngamsCore import genLog, getAttribValue, trim, prFormat1, ignoreValue, toiso8601, fromiso8601
+from ngamsCore import genLog, getAttribValue, prFormat1, ignoreValue, toiso8601, fromiso8601
 from ngamsCore import TRACE, NGAMS_STAGING_DIR
 import ngamsFileInfo
 
@@ -139,7 +139,7 @@ class ngamsDiskInfo:
         Returns:  Reference to object itself.
 
         """
-        self.__archive = trim(archive, "\" ")
+        self.__archive = archive.strip("\" ")
         return self
 
 
@@ -161,7 +161,7 @@ class ngamsDiskInfo:
 
         Returns:   Reference to object itself.
         """
-        self.__diskId = trim(id, "\" ")
+        self.__diskId = id.strip("\" ")
         return self
 
 
@@ -183,7 +183,7 @@ class ngamsDiskInfo:
 
         Returns:   Reference to object itself.
         """
-        self.__logicalName = trim(name, "\" ")
+        self.__logicalName = name.strip("\" ")
         return self
 
 
@@ -206,7 +206,7 @@ class ngamsDiskInfo:
         Returns:   Reference to object itself.
         """
         if (id):
-            self.__hostId = str(trim(id, "\" "))
+            self.__hostId = id.strip("\" ")
         else:
             self.__hostId = ""
         return self
@@ -230,7 +230,7 @@ class ngamsDiskInfo:
 
         Returns:   Reference to object itself.
         """
-        self.__slotId = trim(str(id), "\" ")
+        self.__slotId = id.strip("\" ")
         return self
 
 
@@ -275,7 +275,7 @@ class ngamsDiskInfo:
         Returns:     Reference to object itself.
         """
         if (mountPoint):
-            mntPt = trim(mountPoint, "\" ")
+            mntPt = mountPoint.strip("\" ")
             self.__mountPoint = mntPt
         else:
             self.__mountPoint = ""
@@ -420,7 +420,7 @@ class ngamsDiskInfo:
 
         Returns:   Reference to object itself.
         """
-        self.__type = trim(type, "\" ")
+        self.__type = type.strip("\" ")
         return self
 
 
@@ -443,7 +443,7 @@ class ngamsDiskInfo:
         Returns:        Reference to object itself.
         """
         if (manufacturer == None): manufacturer = ""
-        self.__manufacturer = trim(manufacturer, "\" ")
+        self.__manufacturer = manufacturer.strip("\" ")
         return self
 
 

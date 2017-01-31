@@ -34,7 +34,7 @@ Class to handle the information in connection with one Mirroring Request.
 
 import time
 
-from ngamsCore import trim, TRACE, toiso8601
+from ngamsCore import TRACE, toiso8601
 import ngamsLib
 
 
@@ -160,7 +160,7 @@ class ngamsMirroringRequest:
 
         Returns:    Reference to object itself.
         """
-        self.__instanceId = str(trim(id, "\" "))
+        self.__instanceId = id.strip("\" ")
         return self
 
 
@@ -186,7 +186,7 @@ class ngamsMirroringRequest:
 
         Returns:    Reference to object itself.
         """
-        self.__fileId = str(trim(id, "\" "))
+        self.__fileId = id.strip("\" ")
         return self
 
 

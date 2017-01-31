@@ -41,7 +41,7 @@ import time
 import types
 import urllib
 
-from ngamsCore import TRACE, trim, NGAMS_HTTP_GET, NGAMS_HTTP_PUT,\
+from ngamsCore import TRACE, NGAMS_HTTP_GET, NGAMS_HTTP_PUT,\
     NGAMS_HTTP_POST, NGAMS_ARCHIVE_CMD, NGAMS_ARCH_REQ_MT, genLog,\
     NGAMS_UNKNOWN_MT, createSortDicDump, ignoreValue, prFormat1
 import ngamsLib
@@ -179,11 +179,11 @@ class ngamsReqProps:
                         if (par.strip() != ""): self.addHttpPar(par, uncVal)
             elif (keyTmp == "content-type"):
                 if (self.getMimeType() == ""):
-                    self.setMimeType(trim(val.split(";")[0], " \""))
+                    self.setMimeType(val.split(";")[0].strip(" \""))
             elif (keyTmp == "content-length"):
-                self.setSize(trim(val, " \""))
+                self.setSize(val.strip(" \""))
             elif (keyTmp == "authorization"):
-                self.setAuthorization(urllib.unquote(trim(val, " ")))
+                self.setAuthorization(urllib.unquote(val.strip()))
 
         # Handle the information in the path.
         if (path):

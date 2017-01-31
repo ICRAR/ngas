@@ -41,7 +41,7 @@ import os, sys, getpass, time, pkg_resources, importlib
 import pstats
 
 import cProfile as profile
-from ngamsLib.ngamsCore import getHostName, getNgamsVersion, trim, \
+from ngamsLib.ngamsCore import getHostName, getNgamsVersion, \
     ngamsCopyrightString, rmFile, toiso8601
 from ngamsLib import ngamsConfig, ngamsHighLevelLib, ngamsLib, ngamsCore
 
@@ -198,7 +198,7 @@ def getAllSrcFiles():
         _, stdOut, _ = ngamsCore.execCmd("grep -n def " + modDir)
         fcts = stdOut.split("\n")
         for fct in fcts:
-            fct = trim(fct, " :")
+            fct = fct.strip(" :")
             if ((fct != "") and (fct.find("def ") != -1)):
                 fctEls  = fct.split(":")
                 complSrcFile = fctEls[0].split("/")

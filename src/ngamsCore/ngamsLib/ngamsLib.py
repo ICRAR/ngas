@@ -49,7 +49,7 @@ import urllib
 import urllib2
 import urlparse
 
-from ngamsCore import genLog, TRACE, trim, getHostName, \
+from ngamsCore import genLog, TRACE, getHostName, \
     NGAMS_HTTP_SUCCESS, NGAMS_CONT_MT, \
     NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM, \
     getFileSize, NGAMS_ARCH_REQ_MT, getUniqueNo, \
@@ -117,9 +117,9 @@ def parseHttpHdr(httpHdr):
     els = string.split(httpHdr, ";")
     for el in els:
         subEls = string.split(el, "=")
-        key = trim(subEls[0], "\" ")
+        key = subEls[0].strip("\" ")
         if (len(subEls) > 1):
-            value = trim(subEls[1], "\" ")
+            value = subEls[1].strip("\" ")
         else:
             value = ""
         retDic[key] = value
@@ -147,9 +147,9 @@ def parseUrlRequest(urlReq):
         els = string.split(elsTmp[1], "&")
         for parVal in els:
             tmp = string.split(parVal, "=")
-            par = trim(tmp[0], " \"")
+            par = tmp[0].strip(" \"")
             if (len(tmp) > 1):
-                val = trim(tmp[1], " \"")
+                val = tmp[1].strip(" \"")
             else:
                 val = ""
             parList.append([par, val])
@@ -399,7 +399,7 @@ def _httpHandleResp(fileObj,
                 filename = string.split(string.split(tmpLine, ";")[1], "=")[1]
             else:
                 filename = genUniqueFilename("HTTP-RESPONSE-DATA")
-            trgFile = os.path.normpath(dataTargFile + "/" + trim(filename, ' "'))
+            trgFile = os.path.normpath(dataTargFile + "/" + filename.strip(' "'))
         else:
             trgFile = dataTargFile
 
@@ -989,8 +989,8 @@ def parseRawPlugInPars(rawPars):
         if (par != ""):
             try:
                 parVal = string.split(par, "=")
-                par = trim(parVal[0],"\n ")
-                parDic[par] = trim(parVal[1], "\n ")
+                par = parVal[0].strip()
+                parDic[par] = parVal[1].strip()
                 logger.debug("Found plug-in parameter: %s with value: %s",
                              par, parDic[par])
             except:
