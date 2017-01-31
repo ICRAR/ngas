@@ -44,8 +44,7 @@ import time
 import types
 
 import ngamsArchiveUtils, ngamsSrvUtils
-from ngamsLib.ngamsCore import TRACE, \
-    getFileCreationTime, getFileModificationTime, getFileAccessTime, rmFile, \
+from ngamsLib.ngamsCore import TRACE, rmFile, \
     NGAMS_DB_DIR, NGAMS_DB_NGAS_FILES, checkCreatePath, \
     NGAMS_DB_CH_CACHE, NGAMS_NOTIF_DATA_CHECK, \
     NGAMS_TEXT_MT, NGAMS_PICKLE_FILE_EXT, NGAMS_DB_CH_FILE_DELETE, \
@@ -120,11 +119,12 @@ def checkCleanDirs(startDir,
     # directories are not deleted during this run because they have contents,
     # they might be deleted during one of the following runs.
     for entry in entryList:
+        stat = os.stat(entry)
         if (not useLastAccess):
-            refTime = getFileCreationTime(entry)
+            refTime = stat.st_ctime # creation time
         else:
-            refTime1 = getFileModificationTime(entry)
-            refTime2 = getFileAccessTime(entry)
+            refTime1 = stat.st_mtime # modification time
+            refTime2 = stat.st_atime # access time
             if (refTime1 > refTime2):
                 refTime = refTime1
             else:

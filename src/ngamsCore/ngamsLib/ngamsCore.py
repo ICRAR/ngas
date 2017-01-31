@@ -266,24 +266,6 @@ NGAMS_MAX_SQL_QUERY_SZ   = 2048
 NGAMS_SOCK_TIMEOUT_DEF   = 3600
 
 
-def legalCmd(cmd):
-    """
-    Check that command given is a legal (recognized) command.
-
-    cmd:       Command to check existence of (string).
-
-    Returns:   1 if command is legal, 0 if not (integer).
-    """
-    if (cmd in [NGAMS_ARCHIVE_CMD, NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,
-                NGAMS_EXIT_CMD, NGAMS_INIT_CMD, NGAMS_LABEL_CMD,
-                NGAMS_OFFLINE_CMD, NGAMS_ONLINE_CMD, NGAMS_REARCHIVE_CMD,
-                NGAMS_REGISTER_CMD, NGAMS_REGISTER_CMD, NGAMS_REMDISK_CMD,
-                NGAMS_REMFILE_CMD, NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD]):
-        return 1
-    else:
-        return 0
-
-
 def getNgamsVersion():
     """
     Return version identifier for NG/AMS.
@@ -441,18 +423,6 @@ def getFileSize(filename):
     return os.path.getsize(filename)
 
 
-def getFileAccessTime(filename):
-    """
-    Get last access time of file referred.
-
-    filename:   Filename - complete path (string).
-
-    Returns:    Last access time (seconds since epoch) (integer).
-    """
-    # TODO: Use this: return os.path.getatime(filename)
-    return int(os.stat(filename)[7])
-
-
 def getFileCreationTime(filename):
     """
     Get creation time of file referred.
@@ -463,18 +433,6 @@ def getFileCreationTime(filename):
     """
     # TODO: Use this: return os.path.getctime(filename)
     return int(os.stat(filename)[9])
-
-
-def getFileModificationTime(filename):
-    """
-    Get the last modification date of the file (seconds since epch).
-
-    filename:   Filename - complete path (string).
-
-    Returns:    File modification date (integer).
-    """
-    # TODO: Use this: return os.path.getmtime(filename)
-    return int(os.stat(filename)[8])
 
 
 # Semaphore + counter to ensure unique, temporary filenames.
