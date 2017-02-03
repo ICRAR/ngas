@@ -133,7 +133,7 @@ def checkGenPars(optDic,
         else:
             type = NGAS_VOL_INFO_UNDEF
         msg = "Enter disk type [%s]" % type
-        newType = input(msg)
+        newType = raw_input(msg)
         if (newType != ""): type = newType
         volInfoDic[NGAS_VOL_INFO_TYPE] = type
 
@@ -147,7 +147,7 @@ def checkGenPars(optDic,
         else:
             manufact = NGAS_VOL_INFO_UNDEF
         msg = "Enter manufacturer [%s]" % manufact
-        newManufact = input(msg)
+        newManufact = raw_input(msg)
         if (newManufact != ""): manufact = newManufact
         volInfoDic[NGAS_VOL_INFO_MANUFACT] = manufact
 
@@ -217,7 +217,7 @@ def execute(optDic):
         if optDic["silent"][NGAS_OPT_VAL]:
             break
         else:
-            choice = input("Are these parameters correct (Y(es)/N(o)) [N]?")
+            choice = raw_input("Are these parameters correct (Y(es)/N(o)) [N]?")
             if ((choice.upper() == "YES") or (choice.upper() == "Y")):
                 break
             print "\n"
