@@ -36,11 +36,15 @@ by the SubscriptionThread._deliveryThread
 # originally encoded joburi (during subscribe command)
 #     url=ngasjob://ngamsMWA_Compress_JobPlugin%3Fredo_on_fail%3D0%26plugin_params%3Dscale_factor%3D4%2Cthreshold%3D1E-5%2Cbins%3D30%2Cremove_uc%3D1
 
-import commands, os
+import commands
+import logging
+import os
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import info, error, warning, get_contact_ip
+from ngamsLib.ngamsCore import get_contact_ip
 
+
+logger = logging.getLogger(__name__)
 
 debug = 1
 work_dir = '/tmp'
@@ -113,13 +117,13 @@ def ngamsMWA_Compress_JobPlugin(srvObj,
     cmd3 = "rm %s" % newfn
 
     if (debug):
-        info(3, '*******************************************')
-        info(3, cmd)
-        info(3, cmd1)
+        logger.debug('*******************************************')
+        logger.debug(cmd)
+        logger.debug(cmd1)
         if (remove_uc):
-            info(3, cmd2)
-        info(3, cmd3)
-        info(3, '*******************************************')
+            logger.debug(cmd2)
+        logger.debug(cmd3)
+        logger.debug('*******************************************')
         return (0, 'Compressed OK')
     else:
         re = commands.getstatusoutput(cmd)
@@ -133,28 +137,28 @@ def ngamsMWA_Compress_JobPlugin(srvObj,
             # TODO - enable time out!!
             re = commands.getstatusoutput(cmd1)
             if (0 == re[0]):
-                info(3, 'Successfully re-archived the compressed file %s' % newfn)
+                logger.debug('Successfully re-archived the compressed file %s', newfn)
             else:
-                error('Fail to re-archive compressed file %s: %s' % (newfn, re[1]))
+                logger.error('Fail to re-archive compressed file %s: %s', newfn, re[1])
                 return (re[0], re[1])
 
             if (remove_uc):
                 # remove the uncompressed file if necessary
                 re = commands.getstatusoutput(cmd2)
                 if (0 == re[0]):
-                    info(3, 'Successfully DISCARDED the uncompressed file %s' % filename)
+                    logger.debug('Successfully DISCARDED the uncompressed file %s', filename)
                 else:
-                    warning('Fail to DISCARD the uncompressed file %s' % filename)
+                    logger.warning('Fail to DISCARD the uncompressed file %s', filename)
 
             # remove the temp file
             re = commands.getstatusoutput(cmd3)
             if (0 != re[0]):
-                warning('Fail to remove the temp compressed file %s' % newfn)
+                logger.warning('Fail to remove the temp compressed file %s', newfn)
 
             return (0, retstr)
 
         else:
-            error('Fail to compress file %s: %s' % (filename, re[1]))
+            logger.error('Fail to compress file %s: %s', filename, re[1])
             return (re[0], re[1])
 
 

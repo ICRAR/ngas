@@ -48,14 +48,18 @@ mounted at boot time.
 
 """
 
-import os, glob
+import glob
+import logging
+import os
 
 from ngamsLib import ngamsPhysDiskInfo
-from ngamsLib.ngamsCore import TRACE, info
+from ngamsLib.ngamsCore import TRACE
 from ngamsPlugIns.ngamsGenericPlugInLib import NGAS_VOL_INFO_FILE, \
     loadVolInfoFile, NGAS_VOL_INFO_ID, NGAS_VOL_INFO_IGNORE, NGAS_VOL_INFO_TYPE, \
     NGAS_VOL_INFO_MANUFACT
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsGenericOnlinePlugIn(srvObj,
                              reqPropsObj = None):
@@ -85,7 +89,7 @@ def ngamsGenericOnlinePlugIn(srvObj,
         ngasVolDir = os.path.normpath(rootDir + os.sep + volumeDir)
     dirList = glob.glob(ngasVolDir + os.sep + "*")
     diskInfoDic = {}
-    info(3, 'Will check the following directories for rootDir/volumeDir %s/%s: %r' % (rootDir, volumeDir, dirList))
+    logger.debug('Will check the following directories for rootDir/volumeDir %s/%s: %r', rootDir, volumeDir, dirList)
     for dir in dirList:
         # Check if a '.ngas_volume_id' is found under the directory.
         volInfoFile = os.path.\
@@ -116,9 +120,9 @@ def ngamsGenericOnlinePlugIn(srvObj,
                   "Device: %s, Port No: %s, Slot ID: %s, Mount Point: %s, "+\
                   "Status: %s, Capacity (GB): %s, Model: %s, Serial#: %s, " +\
                   "Type: %s, Manufacturer: %s"
-            info(3, msg % (diskId, devName, str(portNo), slotId, mtPt,
+            logger.debug(msg, diskId, devName, str(portNo), slotId, mtPt,
                            status, str(capGb), model, serialNo, diskType,
-                           manufact))
+                           manufact)
             diskInfoDic[str(slotId)] = ngamsPhysDiskInfo.\
                                        ngamsPhysDiskInfo().\
                                        setPortNo(portNo).\

@@ -37,9 +37,13 @@ curl 146.118.84.67:7778/UPDATECONFIGPAR?config_param=NgamsCfg.Server%5B1%5D.Bloc
 
 """
 
+import logging
 import traceback
 
-from ngamsLib.ngamsCore import info, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+
+
+logger = logging.getLogger(__name__)
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -61,7 +65,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         config_param = reqPropsObj.getHttpPar('config_param') #e.g. NgamsCfg.Server[1].BlockSize
         config_value = reqPropsObj.getHttpPar('config_value')
 
-        info(3, 'config_param = %s' % config_param)
+        logger.debug('config_param = %s', config_param)
 
         try:
             srvObj.getCfg().storeVal(config_param, config_value)

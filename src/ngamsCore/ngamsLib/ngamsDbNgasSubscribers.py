@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDbNgasSubscribers.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -36,8 +35,7 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
-from pccUt import PccUtTime
-from ngamsCore import TRACE
+from ngamsCore import TRACE, fromiso8601
 import ngamsDbCore
 
 
@@ -137,19 +135,11 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         subscrId = sub_obj.getId()
         subscrUrl = sub_obj.getUrl()
         priority = sub_obj.getPriority()
-        startDate = sub_obj.getStartDate()
+        startDate = self.asTimestamp(sub_obj.getStartDate())
         filterPlugIn = sub_obj.getFilterPi()
         filterPlugInPars = sub_obj.getFilterPiPars()
-        lastFileIngDate = sub_obj.getLastFileIngDate()
+        lastFileIngDate = self.asTimestamp(sub_obj.getLastFileIngDate())
         concurrent_threads = sub_obj.getConcurrentThreads()
-
-        if startDate:
-            startDate = self.convertTimeStamp(startDate)
-
-        if not lastFileIngDate:
-            lastFileIngDate = self.convertTimeStamp(0)
-        else:
-            lastFileIngDate = self.convertTimeStamp(lastFileIngDate)
 
         sql = ("INSERT INTO ngas_subscribers"
                " (host_id, srv_port, subscr_prio, subscr_id,"
@@ -198,19 +188,11 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         subscrId = sub_obj.getId()
         subscrUrl = sub_obj.getUrl()
         priority = sub_obj.getPriority()
-        startDate = sub_obj.getStartDate()
+        startDate = self.asTimestamp(sub_obj.getStartDate())
         filterPlugIn = sub_obj.getFilterPi()
         filterPlugInPars = sub_obj.getFilterPiPars()
-        lastFileIngDate = sub_obj.getLastFileIngDate()
+        lastFileIngDate = self.asTimestamp(sub_obj.getLastFileIngDate())
         concurrent_threads = sub_obj.getConcurrentThreads()
-
-        if startDate:
-            startDate = self.convertTimeStamp(startDate)
-
-        if not lastFileIngDate:
-            lastFileIngDate = self.convertTimeStamp(0)
-        else:
-            lastFileIngDate = self.convertTimeStamp(lastFileIngDate)
 
         sql = ("UPDATE ngas_subscribers SET "
                "host_id={0}"
@@ -300,13 +282,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         subscrStatus = []
         for subscrInfo in res:
             if subscrInfo[1]:
-                if ((subscrInfo[1].find(":") != -1) and
-                    (subscrInfo[1].find("T") != -1)):
-                    lastIngDate = subscrInfo[1]
-                else:
-                    lastIngDate = PccUtTime.TimeStamp().\
-                                  initFromSecsSinceEpoch(subscrInfo[1]).\
-                                  getTimeStamp()
+                lastIngDate = fromiso8601(subscrInfo[1], local=True)
             else:
                 lastIngDate = None
             subscrStatus.append((subscrInfo[0], lastIngDate))
@@ -364,7 +340,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         """
         sql = []
         sql.append("UPDATE ngas_subscr_queue SET status={}, status_date={} ")
-        vals = [status, status_date]
+        vals = [status, self.convertTimeStamp(status_date)]
         if comment:
             sql.append(", comment={} ")
             vals.append(comment)
@@ -399,7 +375,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                 "format, status, status_date, comment) "
                 "VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {})")
         vals = (subscrId, fileId, fileVersion, diskId, fileName, \
-                ingestionDate, format, status, status_date, comment)
+                ingestionDate, format, status, self.convertTimeStamp(status_date), comment)
         self.query2(sql, args = vals)
 
     def addSubscrBackLogEntry(self,
@@ -659,17 +635,10 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         res = self.query2(sql, args = vals)
         if not res:
             return []
-        # Convert the time into ISO 8601.
+
         procList = []
         for fi in res:
-            if ((fi[5].find(":") != -1) and
-                (fi[5].find("T") != -1)):
-                ingDate = fi[5]
-            else:
-                ingDate = PccUtTime.TimeStamp().\
-                          initFromSecsSinceEpoch(fi[5]).getTimeStamp()
-            newItem = list(fi[0:5]) + [ingDate] + [fi[6]]
-            if (selectDiskId):
-                newItem += [fi[7]]
-            procList.append(newItem)
+            if not selectDiskId:
+                fi = fi[0:7]
+            procList.append(fi)
         return procList

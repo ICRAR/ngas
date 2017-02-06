@@ -26,12 +26,16 @@ This command add existing files to cache database. This command is useful
 when a normal NGAS server becomes a cache server
 """
 
-import os, time
+import logging
+import os
+import time
 
 from ngamsLib import ngamsDb
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT, info
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 from ngamsServer import ngamsCacheControlThread
 
+
+logger = logging.getLogger(__name__)
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -72,7 +76,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             ngamsCacheControlThread.addEntryNewFilesDbm(srvObj, diskId, fileId,
                                                    fileVersion, filename)
             c += 1
-        info(3, 'Added %d files into the DB. sleep another 100 ms now...' % c)
+        logger.debug('Added %d files into the DB. sleep another 100 ms now...', c)
         time.sleep(0.1)
-    info(3, 'In total, added %d files into the DB. Done' % c)
+    logger.debug('In total, added %d files into the DB. Done', c)
     del cursorObj

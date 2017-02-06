@@ -31,15 +31,17 @@
 Module that contains a generic Offline Plug-In for NGAS.
 """
 
+import logging
 import os
 
 import cPickle as pickle
-import ngamsCmd_ASYNCLISTRETRIEVE
 from ngamsGenericPlugInLib import notifyRegistrationService
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import info, alert, TRACE
+from ngamsLib.ngamsCore import TRACE
 from ngamsServer import ngamsSubscriptionThread
 
+
+logger = logging.getLogger(__name__)
 
 def _saveSubscriptionInfoToDisk(srvObj):
     """
@@ -56,17 +58,17 @@ def _saveSubscriptionInfoToDisk(srvObj):
             continue
         fileInfo = ngamsSubscriptionThread._convertFileInfo(fileInfo)
         li += [(fileInfo[idx_fileId], fileInfo[idx_filever])]
-        info(3, '%s is added to the subscriptionInfoList' % fileInfo[idx_fileId])
+        logger.debug('%s is added to the subscriptionInfoList', fileInfo[idx_fileId])
 
     # also add to files that have not yet been in the queue
     srvObj._subscriptionSem.acquire()
     srvObj._subscriptionFileList += li
     if (len(srvObj._subscriptionFileList) == 0):
         srvObj._subscriptionSem.release()
-        info(3, "**** subscription list is empty!!")
+        logger.debug("**** subscription list is empty!!")
         return
 
-    info(3, "Saving subscription info to disks ...")
+    logger.debug("Saving subscription info to disks ...")
     ngas_root_dir =  srvObj.getCfg().getRootDirectory()
     myDir = ngas_root_dir + "/SubscriptionInfo"
     saveFile = myDir + "/SubscriptionInfoObj"
@@ -80,9 +82,8 @@ def _saveSubscriptionInfoToDisk(srvObj):
         output = open(saveFile, 'wb')
         pickle.dump(srvObj._subscriptionFileList, output)
         output.close()
-    except Exception, e:
-        ex = str(e)
-        alert('Fail to save subscription info to disks, Exception: %s' % ex)
+    except Exception:
+        logger.exception('Fail to save subscription info to disks')
     finally:
         srvObj._subscriptionSem.release()
 

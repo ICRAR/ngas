@@ -29,18 +29,20 @@ Usgae example with wget:
 wget -O LARCHIVE.xml "http://192.168.1.123:7777/LARCHIVE?fileUri=/home/ngas/NGAS/log/LogFile.nglog"
 """
 
+import logging
 import os
 import time
 
 from ngamsLib import ngamsHighLevelLib, ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, NGAMS_SUCCESS, info, NGAMS_HTTP_GET, \
+from ngamsLib.ngamsCore import TRACE, NGAMS_SUCCESS, NGAMS_HTTP_GET, \
     NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile, NGAMS_NOTIF_NO_DISKS, \
-    setLogCache, mvFile, notice, NGAMS_FAILURE, error, NGAMS_PICKLE_FILE_EXT, \
+    mvFile, NGAMS_FAILURE, NGAMS_PICKLE_FILE_EXT, \
     rmFile, genLog, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, \
     getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, loadPlugInEntryPoint
 from ngamsServer import ngamsArchiveUtils, ngamsCacheControlThread
-from pccUt import PccUtTime
 
+
+logger = logging.getLogger(__name__)
 
 def archiveFromFile(srvObj,
                     filename,
@@ -63,20 +65,20 @@ def archiveFromFile(srvObj,
     """
     T = TRACE()
 
-    info(2,"Archiving file: " + filename + " ...")
-    info(3, "Mimetype used is %s" % mimeType)
+    logger.debug("Archiving file: %s", filename)
+    logger.debug("Mimetype used is %s", mimeType)
     if (reqPropsObj):
-        info(3,"Request Properties Object given - using this")
+        logger.debug("Request Properties Object given - using this")
         reqPropsObjLoc = reqPropsObj
     else:
-        info(3,"No Request Properties Object given - creating one")
+        logger.debug("No Request Properties Object given - creating one")
         reqPropsObjLoc = ngamsArchiveUtils.ngamsReqProps.ngamsReqProps()
     stagingFile = filename
     try:
         if (mimeType == None):
             mimeType = ngamsHighLevelLib.determineMimeType(srvObj.getCfg(),
                                                            filename)
-        archiveTimer = PccUtTime.Timer()
+        archive_start = time.time()
 
         # Prepare dummy ngamsReqProps object (if an object was not given).
         if (not reqPropsObj):
@@ -110,9 +112,8 @@ def archiveFromFile(srvObj,
                 raise Exception, errMsg
 
         # Set the log cache to 1 during the handling of the file.
-        setLogCache(1)
         plugIn = srvObj.getMimeTypeDic()[mimeType]
-        info(2,"Invoking DAPI: " + plugIn + " to handle file: " + stagingFile)
+        logger.debug("Invoking DAPI: %s to handle file: %s", plugIn, stagingFile)
         plugInMethod = loadPlugInEntryPoint(plugIn)
         resMain = plugInMethod(srvObj, reqPropsObjLoc)
         # Move the file to final destination.
@@ -120,7 +121,6 @@ def archiveFromFile(srvObj,
         mvFile(reqPropsObjLoc.getStagingFilename(),
                resMain.getCompleteFilename())
         iorate = reqPropsObjLoc.getSize()/(time.time() - st)
-        setLogCache(10)
 
         ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain)
     except Exception, e:
@@ -128,21 +128,18 @@ def archiveFromFile(srvObj,
         # Buffering the file, we have to log an error.
         if (ngamsHighLevelLib.performBackLogBuffering(srvObj.getCfg(),
                                                       reqPropsObjLoc, e)):
-            notice("Tried to archive local file: " + filename +\
-                   ". Attempt failed with following error: " + str(e) +\
-                   ". Keeping original file.")
+            logger.exception("Tried to archive local file %s, keeping original file", filename)
             return [NGAMS_FAILURE, str(e), NGAMS_FAILURE]
         else:
-            error("Tried to archive local file: " + filename +\
-                  ". Attempt failed with following error: " + str(e) + ".")
-            notice("Moving local file: " +\
-                   filename + " to Bad Files Directory -- cannot be handled.")
+            logger.exception("Tried to archive local file %s, " + \
+                             "moving it to Bad Files Directory " + \
+                             "-- cannot be handled", filename)
             ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename,
                                               filename)
             # Remove pickle file if available.
             pickleObjFile = filename + "." + NGAMS_PICKLE_FILE_EXT
             if (os.path.exists(pickleObjFile)):
-                info(2,"Removing Back-Log Buffer Pickle File: "+pickleObjFile)
+                logger.debug("Removing Back-Log Buffer Pickle File: %s", pickleObjFile)
                 rmFile(pickleObjFile)
             return [NGAMS_FAILURE, str(e), NGAMS_FAILURE]
 
@@ -150,15 +147,14 @@ def archiveFromFile(srvObj,
     # Back-Log Buffer Directory unless the local file was a log-file
     # in which case we leave the cleanup to the Janitor-Thread.
     if stagingFile.find('LOG-ROTATE') > -1:
-        info(2,"Successfully archived local file: " + filename)
+        logger.debug("Successfully archived local file: %s", filename)
     else:
-        info(2,"Successfully archived local file: " + filename +\
-         ". Removing staging file.")
+        logger.debug("Successfully archived local file: %s. Removing staging file.", filename)
         rmFile(stagingFile)
         rmFile(stagingFile + "." + NGAMS_PICKLE_FILE_EXT)
 
-    info(2,"Archived local file: " + filename + ". Time (s): " +\
-         str(archiveTimer.stop()))
+    logger.debug("Archived local file: %s. Time (s): %.3f",
+                 filename, time.time() - archive_start)
     return (resMain, trgDiskInfo, iorate)
 
 
@@ -182,18 +178,17 @@ def handleCmd(srvObj,
     T = TRACE()
 
     # Check if the URI is correctly set.
-    info(3, "Check if the URI is correctly set.")
-    info(3,"ReqPropsObj status: {0}".format(reqPropsObj.getObjStatus()))
+    logger.debug("Check if the URI is correctly set.")
+    logger.debug("ReqPropsObj status: %s", reqPropsObj.getObjStatus())
     parsDic = reqPropsObj.getHttpParsDic()
     if (not parsDic.has_key('fileUri') or parsDic['fileUri'] == ""):
         errMsg = genLog("NGAMS_ER_MISSING_URI")
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
     else:
         reqPropsObj.setFileUri(parsDic['fileUri'])
         fileUri = reqPropsObj.getFileUri()
     # Is this NG/AMS permitted to handle Archive Requests?
-    info(3, "Is this NG/AMS permitted to handle Archive Requests?")
+    logger.debug("Is this NG/AMS permitted to handle Archive Requests?")
     if (not srvObj.getCfg().getAllowArchiveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Archive"])
         raise Exception, errMsg
@@ -203,7 +198,7 @@ def handleCmd(srvObj,
                          updateDb=False)
 
     # Get mime-type (try to guess if not provided as an HTTP parameter).
-    info(3, "Get mime-type (try to guess if not provided as an HTTP parameter).")
+    logger.debug("Get mime-type (try to guess if not provided as an HTTP parameter).")
     if (not parsDic.has_key('mimeType') or parsDic['mimeType'] == ""):
         mimeType = ""
         reqPropsObj.setMimeType("")
@@ -240,7 +235,7 @@ def handleCmd(srvObj,
 
 
     # Inform the caching service about the new file.
-    info(3, "Inform the caching service about the new file.")
+    logger.debug("Inform the caching service about the new file.")
     if (srvObj.getCachingActive()):
         diskId      = resDapi.getDiskId()
         fileId      = resDapi.getFileId()
@@ -250,31 +245,29 @@ def handleCmd(srvObj,
                                                    fileVersion, filename)
 
     # Update disk info in NGAS Disks.
-    info(3, "Update disk info in NGAS Disks.")
+    logger.debug("Update disk info in NGAS Disks.")
     srvObj.getDb().updateDiskInfo(resDapi.getFileSize(), resDapi.getDiskId())
 
     # Check if the disk is completed.
     # We use an approximate estimate for the remaning disk space to avoid
     # to read the DB.
-    info(3, "Check available space in disk")
+    logger.debug("Check available space in disk")
     availSpace = getDiskSpaceAvail(targDiskInfo.getMountPoint(), smart=False)
     if (availSpace < srvObj.getCfg().getFreeSpaceDiskChangeMb()):
-        complDate = PccUtTime.TimeStamp().getTimeStamp()
-        targDiskInfo.setCompleted(1).setCompletionDate(complDate)
+        targDiskInfo.setCompleted(1).setCompletionDate(time.time())
         targDiskInfo.write(srvObj.getDb())
 
     # Request after-math ...
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
     msg = "Successfully handled Archive Pull Request for data file " +\
           "with URI: " + reqPropsObj.getSafeFileUri()
-    info(1, msg)
+    logger.info(msg)
     srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                        NGAMS_SUCCESS, msg, targDiskInfo)
 
     # Trigger Subscription Thread. This is a special version for MWA, in which we simply swapped MIRRARCHIVE and QARCHIVE
     # chen.wu@icrar.org
-    msg = "triggering SubscriptionThread for file %s" % resDapi.getFileId()
-    info(3, msg)
+    logger.debug("triggering SubscriptionThread for file %s", resDapi.getFileId())
     srvObj.addSubscriptionInfo([(resDapi.getFileId(),
                                  resDapi.getFileVersion())], [])
     srvObj.triggerSubscriptionThread()

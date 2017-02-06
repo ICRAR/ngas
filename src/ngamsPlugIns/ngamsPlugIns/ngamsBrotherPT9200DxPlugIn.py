@@ -44,12 +44,15 @@ the Brother PT-9200DX label printer.
 #       Implementing this, the _labelPrinterSem semaphore can be removed
 #       from the ngamsLabelCmd.py module.
 
+import logging
 import os
 import sys
 
 from ngamsLib import ngamsPlugInApi, ngamsConfig
-from ngamsLib.ngamsCore import error, info, NGAMS_NOTIF_ERROR, setLogCond
+from ngamsLib.ngamsCore import NGAMS_NOTIF_ERROR
 
+
+logger = logging.getLogger(__name__)
 
 def genFontsDictionary(fnm):
 
@@ -87,17 +90,17 @@ def genFontsDictionary(fnm):
         charArr = f.read()
         f.close()
     except Exception, e:
-        error(str(e))
-        errMsg = "Problems opening CharDict file (" + str(e) + ") "
-        raise Exception, errMsg
+        errMsg = "Problems opening CharDict file"
+        logger.error(errMsg)
+        raise
 
     charArr = charArr.split('ZG')
     charDict = {}
     i = 0
     if len(charArr) != len(keys):
         errMsg = 'Wrong number of characters in CharDict file: ' + fnm
-        error(str(e))
-        raise Exception, errMsg
+        logger.error(errMsg)
+        raise Exception(errMsg)
 
     for k in keys:
         if k == 'Header' or k == 'Trailer':
@@ -126,8 +129,8 @@ def ngamsBrotherPT9200DxPlugIn(srvObj,
     Returns:          Void.
     """
     plugInPars = srvObj.getCfg().getLabelPrinterPlugInPars()
-    info(2,"Executing plug-in ngamsBrotherPT9200DxPlugIn with parameters: "+
-         plugInPars + " - Label: " + label + " ...")
+    logger.info("Executing plug-in ngamsBrotherPT9200DxPlugIn with parameters: " + \
+                "%s - Label: %s ...", plugInPars, label)
     parDic = ngamsPlugInApi.parseRawPlugInPars(plugInPars)
 
     # Get the font bit pattern dictionary.
@@ -140,12 +143,11 @@ def ngamsBrotherPT9200DxPlugIn(srvObj,
             errMsg = "No font defintion for character: \"" + label[i] +\
                      "\" - in font definition file: " + parDic["font_file"] +\
                      " - cannot generate disk label: " + label
-            error(errMsg)
             ngamsPlugInApi.notify(srvObj, NGAMS_NOTIF_ERROR,
                                   "ngamsBrotherPT9200DxPlugIn: " +\
                                   "ILLEGAL CHARACTER REQ. FOR PRINTING",
                                   errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         printerCode = printerCode + fontDic[label[i]]
     printerCode = printerCode + fontDic["Trailer"]
@@ -170,21 +172,16 @@ def ngamsBrotherPT9200DxPlugIn(srvObj,
 
     if (stat != 0):
         errMsg = "Problem occurred printing label! Error: " + str(out)
-        error(errMsg)
         ngamsPlugInApi.notify(srvObj, NGAMS_NOTIF_ERROR,
                               "ngamsBrotherPT9200DxPlugIn: " +\
                               "PROBLEM PRINTING LABEL", errMsg)
-        raise Exception, errMsg
-
-    info(2,"Executed plug-in ngamsBrotherPT9200DxPlugIn with parameters: "+
-         plugInPars + " - Label: " + label + " ...")
+        raise Exception(errMsg)
 
 
 if __name__ == '__main__':
     """
     Main function.
     """
-    setLogCond(0, "", 0, "", 5)
     if (len(sys.argv) != 3):
         print "\nCorrect usage is:\n"
         print "% (python) ngamsBrotherPT9200DxPlugIn <NGAMS CFG> <text>\n"

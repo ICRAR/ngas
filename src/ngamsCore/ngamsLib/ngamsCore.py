@@ -28,7 +28,6 @@
 # jknudstr  12/04/2001  Created
 # awicenec  29/05/2001  Added path extension
 # jknudstr  11/06/2001  Added proper version + implemented getNgamsVersion()
-_doc =\
 """
              #     #  #####        #    #    #     #  #####
              ##    # #     #      #    # #   ##   ## #     #
@@ -58,37 +57,30 @@ For more detailed information about the project, consult the URL:
   http://www.eso.org/projects/ngas
 """
 
+import calendar
+import collections
 import glob
 import importlib
+import logging
 import md5
 import os
 import shutil
 import socket
-import syslog
 import threading
 import time
-import traceback
 import types
 import subprocess
 
 import pkg_resources
 
-from pccLog import PccLog, PccLogDef
-from pccUt  import PccUtTime
+import logdefs
 
-
-# Debug flag.
-_debug = 0
-
-
-# Semaphore + counter to ensure unique, temporary filenames.
-_uniqueNumberSem   = threading.Semaphore(1)
-_uniqueNumberCount = 0
+logger = logging.getLogger(__name__)
 
 
 # Import COPYRIGHT statement into doc page.
 NGAMS_COPYRIGHT_TEXT = pkg_resources.resource_string('ngamsData', 'COPYRIGHT')
-__doc__ = _doc % NGAMS_COPYRIGHT_TEXT
+__doc__ = __doc__ % NGAMS_COPYRIGHT_TEXT
 
 
 # Handle NG/AMS Version.
@@ -105,15 +97,6 @@ for line in iter(pkg_resources.resource_string('ngamsData', 'VERSION').splitline
     elif ((_NGAMS_CVS_ID != "") and (_NGAMS_SW_VER != "") and
           (_NGAMS_VER_DATE != "")):
         break
-
-
-# Load Error Definition File
-NGAMS_ERR_DEF = pkg_resources.resource_string('ngamsData', 'ngamsLogDef.xml')  # @UndefinedVariable
-_logDef = PccLogDef.PccLogDef().load(NGAMS_ERR_DEF)
-
-
-# Log protection semaphore.
-_logSem = threading.Semaphore(1)
 
 
 def getNgamsLicense():
@@ -283,39 +266,6 @@ NGAMS_MAX_SQL_QUERY_SZ   = 2048
 NGAMS_SOCK_TIMEOUT_DEF   = 3600
 
 
-def legalCmd(cmd):
-    """
-    Check that command given is a legal (recognized) command.
-
-    cmd:       Command to check existence of (string).
-
-    Returns:   1 if command is legal, 0 if not (integer).
-    """
-    if (cmd in [NGAMS_ARCHIVE_CMD, NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,
-                NGAMS_EXIT_CMD, NGAMS_INIT_CMD, NGAMS_LABEL_CMD,
-                NGAMS_OFFLINE_CMD, NGAMS_ONLINE_CMD, NGAMS_REARCHIVE_CMD,
-                NGAMS_REGISTER_CMD, NGAMS_REGISTER_CMD, NGAMS_REMDISK_CMD,
-                NGAMS_REMFILE_CMD, NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD]):
-        return 1
-    else:
-        return 0
-
-
-def trim(s, trimChars):
-    """
-    Trim a string removing leading and trailing
-    characters contained in the "trimChars" string.
-
-    s:          String to trim (string).
-
-    trimChars:  String containing characters to trim out of
-                the input string (string).
-
-    Returns:    Trimmed string (string).
-    """
-    return s.strip(trimChars)
-
-
 def getNgamsVersion():
     """
     Return version identifier for NG/AMS.
@@ -352,84 +302,8 @@ def ngamsCopyrightString():
     return NGAMS_COPYRIGHT_TEXT
 
 
-def setLogCond(sysLog,
-               sysLogPrefix,
-               locLogLevel,
-               locLogFile,
-               verboseLevel):
-    """
-    Set the global log conditions to be used by NG/AMS.
-
-    sysLog:         Switch logging in UNIX syslgo on/off (1/0) (integer).
-
-    sysLogPrefix:   Prefix (tag) to be used in syslog entries (string).
-
-    locLogLevel:    Level applied for logging into local log file (integer).
-
-    locLogFile:     Name of local log file (string).
-
-    verboseLevel:   Level to apply to logs written on stdout (integer).
-
-    Note: If any of the input parameters are None, the present value will
-    be maintained.
-
-    Returns:        Void.
-    """
-    # If any of the parameters are None - take the present value.
-    if (sysLog == None):
-        if (PccLog.getSysLogLogLevel() == -1):
-            sysLog = 0
-        else:
-            sysLog = PccLog.getSysLogLogLevel()
-    if (sysLogPrefix == None): sysLogPrefix = PccLog.getSysLogPrefix()
-    if (locLogLevel == None): locLogLevel = PccLog.getLogLevel()
-    if (locLogFile == None): locLogFile = PccLog.getLogFile()
-    if (verboseLevel == None): verboseLevel = PccLog.getVerboseLevel()
-
-    # Set up the new log conditions.
-    path = os.path.dirname(locLogFile)
-    if ((path != "") and (not os.path.exists(path))):
-        os.makedirs(path)
-    if (sysLog == 0):
-        sysLogPrio = -1
-        sysLogLevel = -1
-    else:
-        sysLogPrio = syslog.LOG_NOTICE
-        sysLogLevel = 1
-    sysLogProps = [sysLogPrio, sysLogLevel, sysLogPrefix]
-    PccLog.setLogCond(int(locLogLevel), locLogFile, int(verboseLevel),
-                      sysLogProps, 25, 1)
-
-
-def getVerboseLevel():
-    """
-    Get the Verbose Level.
-
-    Returns:   Verbose Level (integer).
-    """
-    return PccLog.getVerboseLevel()
-
-
-def getLogLevel():
-    """
-    Get the Log Level.
-
-    Returns:   Log Level (integer).
-    """
-    return PccLog.getLogLevel()
-
-
-def getMaxLogLevel():
-    """
-    Returns the highest level of the Log and Verbose Levels.
-
-    Returns:  Maximum level (integer).
-    """
-    return max(getLogLevel(), getVerboseLevel())
-
-
-def genLog(logId,
-           parList = []):
+_logDef = logdefs.LogDefHolder(pkg_resources.resource_stream('ngamsData', 'ngamsLogDef.xml'))# @UndefinedVariable
+def genLog(logId, parList = []):
     """
     Generate a log line and return this.
 
@@ -439,127 +313,7 @@ def genLog(logId,
 
     Returns:  Generated log line (string).
     """
-    global _logDef
-    for idx in range(len(parList)):
-        par = parList[idx]
-        if (type(par) == types.StringType):
-            parList[idx] = par.replace("\n", " ")
-    logMsg = _logDef.genLogX(logId, parList)
-    return logMsg
-
-
-def getThreadName():
-    """
-    Return the name of the thread or '' if this cannot be determined.
-
-    Returns:    The name of the thread (string).
-    """
-    try:
-        threadName = threading.currentThread().getName()
-    except:
-        threadName = ""
-    return threadName
-
-
-def getLocation(level = -3):
-    """
-    Get location of the current position in a source file of the Python
-    interpreter.
-
-    level:    Level in the stack to use as location (integer).
-
-    Returns:  Location in the format: '<mod>:<method>:<ln no>' (string).
-    """
-    stackInfo =traceback.extract_stack()
-    if len(stackInfo) < abs(level):
-        level = -len(stackInfo)
-    stackInfo = stackInfo[level]
-    module = stackInfo[0].split("/")[-1]
-    lineNo = stackInfo[1]
-    method = stackInfo[2]
-    threadName = getThreadName()
-    if (threadName != ""):
-        return module + ":" + method + ":" + str(lineNo) +\
-               ":" + str(os.getpid()) + ":" + threadName
-    else:
-        return module + ":" + method + ":" + str(lineNo) +\
-               ":" + str(os.getpid())
-
-
-def takeLogSem():
-    """
-    Take the log protection semaphore.
-
-    Returns:   Void.
-    """
-    global _logSem
-    _logSem.acquire()
-
-
-def relLogSem():
-    """
-    Release the log protection semaphore.
-
-    Returns:  Void.
-    """
-    global _logSem
-    _logSem.release()
-
-
-def info(level,
-         msg):
-    """
-    Generate an Information Log entry in the log targets.
-    This is not written to UNIX syslog.
-
-    level:    Level indicator for this log entry.
-
-    msg:      Message to log (string).
-
-    Returns:  Void.
-    """
-    takeLogSem()
-    try:
-        PccLog.info(level, msg, getLocation())
-    finally:
-        relLogSem()
-
-
-class Trace:
-    """
-    Small class that can be instantiated while entering a name space.
-    Upon instantiating the class, a log message is produced (from log level 4):
-
-    TRACE: Entering (location) ...
-
-    When leaving the name space/scope, the instantiated class is deleted. The
-    destructor creates a log output as follows:
-
-    TRACE: Leaving (location). Time: (execution time)s
-    """
-    def __init__(self):
-        """
-        Constructor method, which logs a message indicating that the current
-        name space is being entered.
-        """
-        self.__startTime = time.time()
-        self.__id        = md5.new("%.16f" % self.__startTime).hexdigest()
-        self.__location  = getLocation(level = -4)
-        PccLog.info(4, "TRACE:%s: Entering: %s ..." %
-                    (self.__id, self.__location))
-
-    def __del__(self):
-        """
-        Destructor, which logs a message indicating that there is now being
-        returned from the associated name space.
-        """
-        stopTime = time.time()
-        try:
-            PccLog.info(4, "TRACE:%s: Leaving: %s. Time: %.6fs" %
-                        (self.__id, self.__location,
-                         (stopTime - self.__startTime)))
-        except:
-            pass
+    return _logDef.generate_log(logId, *parList)
 
 
 def TRACE(logLevel = 4):
@@ -579,150 +333,7 @@ def TRACE(logLevel = 4):
 
     Returns:     Temporary trace object (Trace).
     """
-    return Trace() if getMaxLogLevel() >= logLevel else None
-
-
-def sysLogInfo(level,
-               msg,
-               location = ""):
-    """
-    Generate a log entry in the UNIX syslog.
-
-    msg:      Message to log (string).
-
-    location: Optional location specifier (string).
-
-    Returns:  Void.
-    """
-    try:
-        takeLogSem()
-        PccLog.sysLogInfo(level, msg, location)
-        relLogSem()
-    except Exception, e:
-        relLogSem()
-
-
-def notice(msg):
-    """
-    Log a Notice Log into the specified log targets.
-
-    msg:      Message to log.
-
-    Returns:  Void.
-    """
-    try:
-        takeLogSem()
-        PccLog.notice(msg, getLocation())
-        relLogSem()
-    except Exception, e:
-        relLogSem()
-
-
-def warning(msg):
-    """
-    Log a Warning Log into the specified log targets.
-
-    msg:      Message to log.
-
-    Returns:  Void.
-    """
-    try:
-        takeLogSem()
-        PccLog.warning(msg, getLocation())
-        relLogSem()
-    except Exception, e:
-        relLogSem()
-
-
-def error(msg):
-    """
-    Log an Error Log into the specified log targets.
-
-    msg:      Message to log (string).
-
-    Returns:  Void.
-    """
-    try:
-        takeLogSem()
-        PccLog.error(msg, getLocation())
-        relLogSem()
-    except Exception, e:
-        relLogSem()
-
-
-def alert(msg):
-    """
-    Log an Alert Log into the specified log targets.
-
-    msg:      Message to log (string).
-
-    Returns:  Void.
-    """
-    try:
-        takeLogSem()
-        PccLog.alert(msg, getLocation())
-        relLogSem()
-    except Exception, e:
-        relLogSem()
-
-
-def setDebug(debug):
-    """
-    Set Global Debug Flag.
-
-    debug:    Debug flag. 1 = debug mode (integer).
-
-    Returns:  Void.
-    """
-    global _debug
-    _debug = debug
-
-
-def getDebug():
-    """
-    Return Global Debug Flag.
-
-    Returns:  Debug flag. 1 = debug mode (integer).
-    """
-    global _debug
-    return _debug
-
-
-def DEBUG(msg = ""):
-    """
-    Function to use for debugging purposes. Print a message on stdout.
-
-    msg:       Message to print (string).
-
-    Returns:   Void.
-    """
-    if (getDebug()):
-        stackInfo = traceback.extract_stack()[-2]
-        module = stackInfo[0].split("/")[-1]
-        lineNo = stackInfo[1]
-        method = stackInfo[2]
-        print "##### DEBUG: Module: " + module + " - Line No: " +\
-              str(lineNo) + " - Method: " + method + " - Message: " + str(msg)
-
-
-def logFlush():
-    """
-    Flush the logs cached in the log manager.
-
-    Returns:    Void.
-    """
-    PccLog.__logMgr.flush()
-
-
-def setLogCache(size):
-    """
-    Set the log cache to a specific size.
-
-    size:     Number of log entries to cache before flushing (int).
-
-    Returns:  Void.
-    """
-    PccLog.__logMgr.setLogCacheFlushSize(size)
+    return None
 
 
 def getAttribValue(node,
@@ -741,19 +352,11 @@ def getAttribValue(node,
 
     Returns:         Value of attribute (string).
     """
-    if (not ignoreFailure):
-        try:
-            return str(node._attrs[attributeName].nodeValue)
-        except Exception, e:
-            errMsg = "Error retrieving value for attribute: " + attributeName+\
-                     " from node: " + node.nodeName + ". Error: " + str(e)
-            raise Exception, errMsg
-    else:
-        try:
-            return str(node._attrs[attributeName].nodeValue)
-        except:
-            return ""
+    if not ignoreFailure and not node.hasAttribute(attributeName):
+        errMsg = "Error retrieving value for attribute: %s from node: %s"
+        raise Exception(errMsg % (attributeName, node.nodeName))
 
+    return node.getAttribute(attributeName)
 
 def ngamsGetChildNodes(parentNode,
                        childNodeName):
@@ -820,18 +423,6 @@ def getFileSize(filename):
     return os.path.getsize(filename)
 
 
-def getFileAccessTime(filename):
-    """
-    Get last access time of file referred.
-
-    filename:   Filename - complete path (string).
-
-    Returns:    Last access time (seconds since epoch) (integer).
-    """
-    # TODO: Use this: return os.path.getatime(filename)
-    return int(os.stat(filename)[7])
-
-
 def getFileCreationTime(filename):
     """
     Get creation time of file referred.
@@ -844,18 +435,9 @@ def getFileCreationTime(filename):
     return int(os.stat(filename)[9])
 
 
-def getFileModificationTime(filename):
-    """
-    Get the last modification date of the file (seconds since epch).
-
-    filename:   Filename - complete path (string).
-
-    Returns:    File modification date (integer).
-    """
-    # TODO: Use this: return os.path.getmtime(filename)
-    return int(os.stat(filename)[8])
-
-
+# Semaphore + counter to ensure unique, temporary filenames.
+_uniqueNumberSem   = threading.Semaphore(1)
+_uniqueNumberCount = 0
 def getUniqueNo():
     """
     Generate a unique number (unique for this session of NG/AMS).
@@ -877,21 +459,6 @@ def genUniqueId():
     Returns:  Unique ID (string).
     """
     return md5.new("%.12f-%s" % (time.time(), getHostName())).hexdigest()
-
-
-def cleanList(lst):
-    """
-    Remove empty elements from a list containing strings
-    (elements of length 0).
-
-    lst:      List to be cleaned (list).
-
-    Returns:  Cleaned list (list).
-    """
-    cleanLst = []
-    for el in lst:
-        if (len(el) > 0): cleanLst.append(el)
-    return cleanLst
 
 
 def createSortDicDump(dic):
@@ -929,7 +496,7 @@ def getDiskSpaceAvail(mountPoint, format = 'MB', smart = True):
 
     Returns:     Returns available space in MB (integer).
     """
-    info(4, "Checking disk space available for path: %s" % mountPoint)
+    logger.debug("Checking disk space available for path: %s", mountPoint)
 
     startTime = time.time()
 
@@ -938,7 +505,7 @@ def getDiskSpaceAvail(mountPoint, format = 'MB', smart = True):
 
     msg = ("Checked disk space available for path: %s - Result (MB): %.3f"
            " Time: %.3fs")
-    info(4, msg % (mountPoint, diskSpace, (time.time() - startTime)))
+    logger.debug(msg,  mountPoint, diskSpace, (time.time() - startTime))
 
     return diskSpace
 
@@ -956,12 +523,11 @@ def checkAvailDiskSpace(filename,
     Returns:    Void.
     """
     path = os.path.dirname(filename)
-    info(4, "Checking for disk space availability for path: %s - Needed size: %s"\
-            % (path, str(fileSize)))
+    logger.debug("Checking for disk space availability for path: %s - Needed size: %s",
+                 path, str(fileSize))
     if ((fileSize / 1024**2) > getDiskSpaceAvail(path, smart=True)):
         errMsg = genLog("NGAMS_ER_NO_DISK_SPACE", [filename, fileSize])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
 _pathHandleSem = threading.Semaphore(1)
@@ -978,13 +544,13 @@ def checkCreatePath(path):
     try:
         _pathHandleSem.acquire()
         if (os.path.exists(path) == 0):
-            info(4,"Creating non-existing path: " + path)
+            logger.debug("Creating non-existing path: %s", path)
             try:
                 os.makedirs(path)
                 os.chmod(path, 0775)
-            except Exception, e:
-                error("Error creating path: " + str(e))
-                raise e
+            except Exception:
+                logger.exception("Error creating path")
+                raise
     finally:
         _pathHandleSem.release()
 
@@ -996,7 +562,7 @@ def rmFile(filename):
 
     Returns:    Void.
     """
-    info(4,"Removing file(s): %s" % filename)
+    logger.debug("Removing file(s): %s", filename)
     for f in glob.glob(filename):
         if os.path.isdir(f):
             shutil.rmtree(f, True)
@@ -1015,7 +581,7 @@ def mvFile(srcFilename,
 
     Returns:      Time in took to move file (s) (float).
     """
-    info(4,"Moving file: " + srcFilename + " to filename: " + trgFilename)
+    logger.debug("Moving file: %s to filename: %s", srcFilename, trgFilename)
     try:
         # Make target file writable if existing.
         if os.path.exists(trgFilename):
@@ -1027,18 +593,17 @@ def mvFile(srcFilename,
         #       filesystem boundaries; otherwise we unnecessarily fail
         #       for file moves that would gracefully run
         checkAvailDiskSpace(trgFilename, fileSize)
-        timer = PccUtTime.Timer()
 
         # Don't rely on os.rename as it can cause issues when crossing 
         # disk parition boundaries
+        start = time.time()
         shutil.move(srcFilename, trgFilename)
+        deltaTime = time.time() - start
 
-        deltaTime = timer.stop()
     except Exception, e:
         errMsg = genLog("NGAMS_AL_MV_FILE", [srcFilename, trgFilename, str(e)])
-        alert(errMsg)
-        raise Exception, errMsg
-    info(4,"File: " + srcFilename + " moved to filename: " + trgFilename)
+        raise Exception(errMsg)
+    logger.debug("File: %s moved to filename: %s", srcFilename, trgFilename)
 
     return deltaTime
 
@@ -1054,7 +619,7 @@ def cpFile(srcFilename,
 
     Returns:      Time in took to move file (s) (float).
     """
-    info(4, "Copying file: %s to filename: %s" % (srcFilename, trgFilename))
+    logger.debug("Copying file: %s to filename: %s", srcFilename, trgFilename)
     try:
         # Make target file writable if existing.
         if os.path.exists(trgFilename):
@@ -1062,14 +627,13 @@ def cpFile(srcFilename,
         checkCreatePath(os.path.dirname(trgFilename))
         fileSize = getFileSize(srcFilename)
         checkAvailDiskSpace(trgFilename, fileSize)
-        timer = PccUtTime.Timer()
+        start = time.time()
         shutil.copyfile(srcFilename, trgFilename)
-        deltaTime = timer.stop()
+        deltaTime = time.time() - start
     except Exception, e:
         errMsg = genLog("NGAMS_AL_CP_FILE", [srcFilename, trgFilename, str(e)])
-        alert(errMsg)
-        raise Exception, errMsg
-    info(4, "File: %s copied to filename: %s" % (srcFilename, trgFilename))
+        raise Exception(errMsg)
+    logger.debug("File: %s copied to filename: %s", srcFilename, trgFilename)
     return deltaTime
 
 
@@ -1120,86 +684,6 @@ def decompressFile(srcFilename,
     raise Exception, "Error decompressing file: %s" % srcFilename
 
 
-def timeRef2Iso8601(timeRef):
-    """
-    Convert a time reference into ISO 8601. This can be given as
-
-      o ISO 8601.
-      o Seconds since epoch.
-      o DateTime time stamp.
-
-    If None or an empty string is given, an empty string is returned.
-
-    timeRef:    The reference to the time (string|int|DateTime).
-
-    Returns:    ISO 8601 timestamp (string).
-    """
-    if ((timeRef == None) or (timeRef == "")):
-        timeRefConv = ""
-    elif (str(timeRef).find(":") != -1):
-        timeRef = str(timeRef)
-        # Assume ISO 8601 format or "YYYY-MM-DD HH:MM:SS[.sss]".
-        if (timeRef.find("T") == -1):
-            idx = timeRef.find(" ")
-            timeRefConv = timeRef[0:idx] + "T" + timeRef[(idx + 1):]
-        else:
-            timeRefConv = timeRef
-    elif (type(timeRef) in (types.IntType, types.FloatType)):
-        # Assume seconds from epoch.
-        timeRefConv = PccUtTime.TimeStamp().initFromSecsSinceEpoch(timeRef).\
-                      getTimeStamp()
-    else:
-        # Assume DateTime object.
-        timeRefConv = PccUtTime.TimeStamp().\
-                      initFromSecsSinceEpoch(timeRef.ticks()).\
-                      getTimeStamp()
-
-    return timeRefConv
-
-
-def checkIfIso8601(timestamp):
-    """
-    Check if value is properly formatted according to ISO 8601.
-
-    timestamp:    Timestamp to check (string).
-
-    Returns:      True if ISO 8601 timestamp, otherwise False (boolean).
-    """
-    try:
-        if ((timestamp.find("-") == -1) or
-            (timestamp.find("T") == -1) or
-            (timestamp.find(":") == -1)):
-            raise Exception, "not a timestamp"
-        convTimeStamp = timeRef2Iso8601(timestamp)
-        PccUtTime.TimeStamp().initFromTimeStamp(convTimeStamp)
-        return True
-    except Exception, e:
-        return False
-
-
-def getAsciiTime(timeSinceEpoch = time.time(),
-                 precision = 3):
-    """
-    Get the time stamp on digital/ASCII form: HH:MM:SS.
-
-    timeSinceEpoch:   Seconds since epoch (integer).
-
-    precision:        Number of digits after the comma (integer)
-
-    Returns:          ASCII time stamp (string).
-    """
-    T = TRACE()
-
-    timeStamp = cleanList(str(time.asctime(time.gmtime(timeSinceEpoch))).\
-                          split(" "))[3]
-    if (precision > 0):
-        decimals = (".%s" % ("%.12f" % timeSinceEpoch).\
-                    split(".")[1])[0:(precision + 1)]
-        timeStamp += decimals
-    return timeStamp
-
-
-# TODO: Consider to extend iso8601ToSecs() to handle this case.
 def isoTime2Secs(isoTime):
     """
     Converts a semi ISO 8601 style time stamp like:
@@ -1212,79 +696,21 @@ def isoTime2Secs(isoTime):
 
     Returns:    Corresponding time in seconds (float).
     """
-    T = TRACE()
 
-    if (isoTime.find("T") != -1):
-        datePart, timePart = isoTime.split("T")
-        days = datePart
-    else:
-        days = 0
-        timePart = isoTime
+    days = 0
+    timePart = isoTime
+    if "T" in isoTime:
+        days, timePart = isoTime.split("T")
+        days = int(days)
+
     timeVector = timePart.split(":")
-    hours = timeVector[0]
-    mins = timeVector[1]
-    secsDec = -1
-    if (len(timeVector) > 2):
-        secs = timeVector[2]
-        if (secs.find(".") != -1):
-            secs, secsDec = secs.split(".")
-    else:
-        secs = 0
-    try:
-        totalTime = ((int(days) * 24 * 3600) + (int(hours) * 3600) +\
-                     (int(mins) * 60) + int(secs))
-        if (secsDec != -1): totalTime += float(".%s" % secsDec)
-    except Exception, e:
-        msg = "Illegal ISO 8601 time-stamp: %s. Error: %s"
-        raise Exception, msg % (str(isoTime), str(e))
-    return totalTime
+    hours = int(timeVector[0])
+    mins = int(timeVector[1])
+    secs = 0
+    if len(timeVector) > 2:
+        secs = float(timeVector[2])
 
-
-def iso8601ToSecs(isoTimeStamp):
-    """
-    Convert an ISO 8601 time stamp to seconds (local time).
-
-    isoTimeStamp:    ISO 8601 time stamp (string).
-
-    Returns:         Seconds (float).
-    """
-    try:
-        if (isoTimeStamp.find(".") != -1):
-            ts, ms = isoTimeStamp.split(".")
-        else:
-            ts = isoTimeStamp
-            ms = ""
-        if ts.find(' ') != -1:
-            ts = ts.replace(' ', 'T')
-        timeTuple = time.strptime(ts, "%Y-%m-%dT%H:%M:%S")
-        secs = str(int(time.mktime(timeTuple)))
-        if (ms): secs += "." + str(ms)
-    except Exception, e:
-        msg = "Illegal ISO 8601 time-stamp: %s" % isoTimeStamp
-        raise Exception, msg
-    return float(secs)
-
-
-def padString(strBuf,
-              reqLen,
-              prependChr):
-    """
-    Prepend a certain character to generate a string of a certain length.
-    E.g. if strBuf='12', reqLen=6 and prependChr='0', the resulting string
-    will be '000012'.
-
-    strBuf:         String buffer to check/change (string).
-
-    reqLen:         Desired lenght of string (integer).
-
-    prependChr:     Character to prepend (string/length=1).
-
-    Returns:        Resulting string with the characters prepended (string).
-    """
-    noMisChars = (reqLen - len(strBuf))
-    for i in range(noMisChars):
-        strBuf = prependChr + strBuf
-    return strBuf
+    return days*24*3600 + hours*3600 + mins*60 + secs
 
 
 def getBoolean(val):
@@ -1317,15 +743,15 @@ def loadPlugInEntryPoint(plugInName, entryPointMethodName=None):
     if not entryPointMethodName:
         entryPointMethodName = plugInName.split('.')[-1]
 
-    info(3, "Looking for %s plug-in module" % (plugInName,))
+    logger.debug("Looking for %s plug-in module", plugInName)
     try:
-        info(4, "Trying with module ngamsPlugIns.%s " % (plugInName,))
+        logger.debug("Trying with module ngamsPlugIns.%s", plugInName)
         plugInModule = importlib.import_module('ngamsPlugIns.' + plugInName)
     except ImportError:
-        info(4, "Trying with module %s " % (plugInName,))
+        logger.debug("Trying with module %s", plugInName)
         plugInModule = importlib.import_module(plugInName)
 
-    info(3, "Loading entry-point method %s from module %s " % (entryPointMethodName,plugInModule.__name__))
+    logger.debug("Loading entry-point method %s from module %s ", entryPointMethodName,plugInModule.__name__)
     return getattr(plugInModule, entryPointMethodName)
 
 def is_localhost(host_or_ip):
@@ -1378,4 +804,75 @@ def execCmd(cmd, timeOut = -1, shell=True):
             raise Exception('Command %s timed out after %.2f [s]' % (cmd, time.time() - startTime))
 
     return p.poll(), stdout, stderr
-# EOF
+
+
+_formatspec = collections.namedtuple('_formatspec', 'format msecs')
+FMT_DATE_ONLY        = _formatspec('%Y-%m-%d',          False)
+FMT_TIME_ONLY        = _formatspec('%H:%M:%S',          True)
+FMT_TIME_ONLY_NOMSEC = _formatspec('%H:%M:%S',          False)
+FMT_DATETIME         = _formatspec('%Y-%m-%dT%H:%M:%S', True)
+
+def fromiso8601(s, local=False, fmt=FMT_DATETIME):
+    """
+    Converts string `s` to the number of seconds since the epoch,
+    as returned by time.time.
+
+    `s` should be expressed in the ISO 8601 extended format indicated by the
+    `fmt` flag.
+
+    If `local` is False then `s` is assumed to represent time at UTC,
+    otherwise it is interpreted as local time. In either case `s` should contain
+    neither time-zone information nor the 'Z' suffix.
+    """
+
+    ms = 0.
+    if fmt.msecs:
+        s, ms = s.split(".")
+        ms = float(ms)/1000.
+
+    totime = calendar.timegm if not local else time.mktime
+    t = totime(time.strptime(s, fmt.format))
+    return t + ms
+
+def toiso8601(t=None, local=False, fmt=FMT_DATETIME):
+    """
+    Converts the time value `t` to a string formatted using the ISO 8601
+    extended format indicated by the `fmt` flag.
+
+    `t` is expressed in numbers of seconds since the epoch, as returned by
+    time.time. If `t` is not given, the current time is used instead.
+
+    If `local` is False then the resulting string represents the time at UTC.
+    If `local` is True then the resulting string represents the local time.
+    In either case the string contains neither time-zone information nor the 'Z'
+    suffix.
+    """
+
+    if t is None:
+        t = time.time()
+
+    totuple = time.gmtime if not local else time.localtime
+    timeStamp = time.strftime(fmt.format, totuple(t))
+    if fmt.msecs:
+        t = (t - long(t)) * 1000
+        timeStamp += '.%03d' % int(t)
+
+    return timeStamp
+
+_UNIX_EPOCH_AS_MJD = 40587.
+def tomjd(t=None):
+    """
+    Returns the Modified Julian Date for the given Unix time.
+    """
+    if t is None:
+        t = time.time()
+    return t/86400. + _UNIX_EPOCH_AS_MJD
+
+def frommjd(mjd):
+    """
+    Returns the Unix time for the given Modified Julian Date.
+
+    This algorithm is suitable at least for dates after the Unix Epoch.
+    """
+    # 40587 is the MJD for the Unix Epoch
+    return (mjd - _UNIX_EPOCH_AS_MJD)*86400.

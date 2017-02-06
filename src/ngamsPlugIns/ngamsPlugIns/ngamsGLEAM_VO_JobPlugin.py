@@ -33,16 +33,19 @@ by the SubscriptionThread._deliveryThread
 """
 # used to connect to MWA M&C database
 
-import commands, os
+import commands
 import datetime
+import logging
+import os
 
 import ephem_utils
 from psycopg2.pool import ThreadedConnectionPool
 import pyfits
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import error, info
 
+
+logger = logging.getLogger(__name__)
 
 mime = "images/fits"
 myhost = commands.getstatusoutput('hostname')[1]
@@ -154,14 +157,12 @@ def putVODBConn(conn):
     if (g_db_pool):
         g_db_pool.putconn(conn)
     else:
-        error("Fail to get VO DB connection pool")
         raise Exception('VO connection pool is None when put conn')
 
 def putMCDBConn(conn):
     if (mc_db_pool):
         mc_db_pool.putconn(conn)
     else:
-        error("Fail to get MC DB connection pool")
         raise Exception('MC connection pool is None when put conn')
 
 def executeQuery(conn, sqlQuery):
@@ -175,7 +176,7 @@ def executeQuery(conn, sqlQuery):
         putVODBConn(conn)
 
 def execCmd(cmd, timeout):
-    info(3, 'Executing command: %s' % cmd)
+    logger.debug('Executing command: %s', cmd)
     try:
         ret = ngamsPlugInApi.execCmd(cmd, timeout)
     except Exception, ex:
@@ -278,16 +279,15 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
             try:
                 cur_mc.execute("SELECT azimuth, elevation FROM rf_stream WHERE starttime = %s" % obsId)
                 res_mc = cur_mc.fetchall()
-            except Exception, dbdex:
-                error("Fail to query DEC from DB: %s" % str(dbdex))
+            except Exception:
+                logger.exception("Fail to query DEC from DB")
             finally:
                 if (cur_mc != None):
                     del cur_mc
                 putMCDBConn(conn_mc)
 
             if (not res_mc or len(res_mc) == 0):
-                errMsg = "fail to obtain DEC from MC db"
-                error(errMsg)
+                logger.error("fail to obtain DEC from MC db")
                 #raise Exception(errMsg)
             else:
                 az = res_mc[0][0]
@@ -304,7 +304,6 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
         res = cur.fetchall()
         if (not res or len(res) == 0):
             errMsg = "fail to calculate scircle"
-            error(errMsg)
             raise Exception(errMsg)
         coverage = res[0][0]
 
@@ -316,9 +315,9 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
         #info(3, sqlStr)
         cur.execute(sqlStr)
         conn.commit()
-        info(3, 'File %s added to VO database.' % fileId)
+        logger.debug('File %s added to VO database.', fileId)
     except Exception, exp:
-        error("Unable to execute %s: %s" % (sqlStr, str(exp)))
+        logger.exception("Unable to execute %s", sqlStr)
         return (1, str(exp))
     finally:
         if (cur):

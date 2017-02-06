@@ -35,16 +35,19 @@ instead of saveFromHttpToFile, it saveFromHttpToAnotherHttp
 """
 
 import binascii
-import httplib, urllib2
+import httplib
+import logging
 import os
 import time
+import urllib2
 
-from ngamsLib.ngamsCore import info, NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, \
-    NGAMS_FAILURE, warning, NGAMS_HTTP_POST, getHostName, \
-    NGAMS_HTTP_HDR_CHECKSUM, TRACE, genLog, error, NGAMS_IDLE_SUBSTATE
+from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, \
+    NGAMS_FAILURE, NGAMS_HTTP_POST, getHostName, \
+    NGAMS_HTTP_HDR_CHECKSUM, TRACE, genLog, NGAMS_IDLE_SUBSTATE
 from ngamsLib import ngamsStatus, ngamsHighLevelLib, ngamsDiskInfo, ngamsLib
-from pccUt import PccUtTime
 
+
+logger = logging.getLogger(__name__)
 
 def processHttpReply(http, basename, url):
     """
@@ -57,7 +60,7 @@ def processHttpReply(http, basename, url):
 
     url:        the url of the remote ngas server that receives the file
     """
-    info(4,"Waiting for reply ...")
+    logger.debug("Waiting for reply ...")
     # ngamsLib._setSocketTimeout(None, http)
     reply, msg, hdrs = http.getreply()
     if (hdrs == None):
@@ -84,8 +87,7 @@ def processHttpReply(http, basename, url):
         errMsg = 'Error occurred while proxy quick archive file %s to %s' % (basename, url)
         if (stat.getMessage() != ""):
             errMsg += " Message: " + stat.getMessage()
-        warning(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 def buildHttpClient(url,
                     mimeType,
@@ -103,25 +105,25 @@ def buildHttpClient(url,
     cmd    = url[(idx + 1):]
     http = httplib.HTTP(tmpUrl)
 
-    info(4,"Sending HTTP header ...")
-    info(4,"HTTP Header: %s: %s" % (NGAMS_HTTP_POST, cmd))
+    logger.debug("Sending HTTP header ...")
+    logger.debug("HTTP Header: %s: %s", NGAMS_HTTP_POST, cmd)
     http.putrequest(NGAMS_HTTP_POST, cmd)
-    info(4,"HTTP Header: %s: %s" % ("Content-Type", mimeType))
+    logger.debug("HTTP Header: Content-Type: %s", mimeType)
     http.putheader("Content-Type", mimeType)
 
-    info(4,"HTTP Header: %s: %s" % ("Content-Disposition", contentDisp))
+    logger.debug("HTTP Header: Content-Disposition: %s", contentDisp)
     http.putheader("Content-Disposition", contentDisp)
-    info(4,"HTTP Header: %s: %s" % ("Content-Length", str(contentLength)))
+    logger.debug("HTTP Header: Content-Length: %s", str(contentLength))
     http.putheader("Content-Length", str(contentLength))
 
-    info(4,"HTTP Header: %s: %s" % ("Host", getHostName()))
+    logger.debug("HTTP Header: Host: %s", getHostName())
     http.putheader("Host", getHostName())
 
     if (checksum):
         http.putheader(NGAMS_HTTP_HDR_CHECKSUM, checksum)
 
     http.endheaders()
-    info(4,"HTTP header sent")
+    logger.debug("HTTP header sent")
 
     # rtobar, 14/3/16: the default timeout here was 1 [hr]! I'm keeping it like
     #                  that, but probably it's too much
@@ -163,8 +165,9 @@ def saveFromHttpToHttp(reqPropsObj,
     contDisp = "attachment; filename=\"" + basename + "\""
     contDisp += "; no_versioning=1"
 
-    info(2,"Transferring data to : " + nexturl + " ...")
-    timer = PccUtTime.Timer()
+    logger.debug("Transferring data to : %s", nexturl)
+
+    start = time.time()
 
     http = None
 
@@ -176,22 +179,22 @@ def saveFromHttpToHttp(reqPropsObj,
             not reqPropsObj.getFileUri().startswith('http://')):
             # (reqPropsObj.getSize() == -1)):
             # Just specify something huge.
-            info(3,"It is an Archive Pull Request/data with unknown size")
+            logger.debug("It is an Archive Pull Request/data with unknown size")
             remSize = int(1e11)
         elif reqPropsObj.getFileUri().startswith('http://'):
-            info(3,"It is an HTTP Archive Pull Request: trying to get Content-Length")
+            logger.debug("It is an HTTP Archive Pull Request: trying to get Content-Length")
             httpInfo = reqPropsObj.getReadFd().info()
             headers = httpInfo.headers
             hdrsDict = ngamsLib.httpMsgObj2Dic(''.join(headers))
             if hdrsDict.has_key('content-length'):
                 remSize = int(hdrsDict['content-length'])
             else:
-                info(3,"No HTTP header parameter Content-Length!")
-                info(3,"Header keys: %s" % hdrsDict.keys())
+                logger.debug("No HTTP header parameter Content-Length!")
+                logger.debug("Header keys: %s",hdrsDict.keys())
                 remSize = int(1e11)
         else:
             remSize = reqPropsObj.getSize()
-            info(3,"Archive Push/Pull Request - Data size: %d" % remSize)
+            logger.debug("Archive Push/Pull Request - Data size: %d", remSize)
             sizeKnown = 1
 
         http = buildHttpClient(nexturl, mimeType, contDisp, remSize, checksum = reqPropsObj.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM))
@@ -231,35 +234,34 @@ def saveFromHttpToHttp(reqPropsObj,
                 wdt = time.time() - wdt
                 wdtt += wdt
                 if wdt >= slow: swb += 1
-#                info(5,"Wrote %d bytes to file in %.3f s" % (sizeRead, wdt))
                 nb += 1
                 lastRecepTime = time.time()
             else:
-                info(4,"Unsuccessful read attempt from HTTP stream! Sleeping 50 ms")
+                logger.debug("Unsuccessful read attempt from HTTP stream! Sleeping 50 ms")
                 nfailread += 1
                 time.sleep(0.050)
 
-        deltaTime = timer.stop()
+        deltaTime = time.time() -start
         reqPropsObj.setBytesReceived(tot_size)
 
-        info(4,"Data sent")
-        info(4,"Receiving transfer time: %.3f s; Sending transfer time %.3f s" % (rdtt, wdtt))
+        logger.debug("Data sent")
+        logger.debug("Receiving transfer time: %.3f s; Sending transfer time %.3f s", rdtt, wdtt)
         msg = "Sent data in file: %s. Bytes received / sent: %d. Time: %.3f s. " +\
               "Rate: %.2f Bytes/s"
-        info(2,msg % (basename, int(reqPropsObj.getBytesReceived()),
+        logger.debug(msg, basename, int(reqPropsObj.getBytesReceived()),
                       deltaTime, (float(reqPropsObj.getBytesReceived()) /
-                                  deltaTime)))
+                                  deltaTime))
         # Raise a special info message if the transfer speed to disk or over network was
         # slower than 512 kB/s
         if srb > 0:
-            warning("Number of slow network reads during this transfer: %d out of %d blocks. \
-            Consider checking the upstream network link!" % (srb, nb))
+            logger.warning("Number of slow network reads during this transfer: %d out of %d blocks. \
+            Consider checking the upstream network link!", srb, nb)
         if swb > 0:
-            warning("Number of slow network sends during this transfer: %d out of %d blocks. \
-            Consider checking your downstream network link!" % (swb, nb))
+            logger.warning("Number of slow network sends during this transfer: %d out of %d blocks. \
+            Consider checking your downstream network link!", swb, nb)
         if nfailread > 0:
-            warning("Number of failed reads during this transfer: %d out of %d blocks. \
-            Consider checking your upstream network!" % (nfailread, nb))
+            logger.warning("Number of failed reads during this transfer: %d out of %d blocks. \
+            Consider checking your upstream network!", nfailread, nb)
         # Raise exception if less byes were received as expected.
         if (sizeKnown and (remSize > 0)):
             msg = genLog("NGAMS_ER_ARCH_RECV",
@@ -272,33 +274,32 @@ def saveFromHttpToHttp(reqPropsObj,
             if (checksum):
                 if (checksum != str(crc)):
                     msg = 'Checksum error for file %s, proxy crc = %s, but remote crc = %s' % (reqPropsObj.getFileUri(), str(crc), checksum)
-                    error(msg)
-                    raise Exception, msg
+                    raise Exception(msg)
                 else:
-                    info(3, "%s CRC checked, OK!" % reqPropsObj.getFileUri())
+                    logger.debug("%s CRC checked, OK!", reqPropsObj.getFileUri())
 
 
         processHttpReply(http, basename, nexturl)
     except Exception, err:
         if (str(err).find('Connection refused') > -1):
             # The host on the nexturl is probably down
-            error("Fail to connect to the nexturl '%s': %s" % (nexturl, str(err)))
+            logger.exception("Fail to connect to the nexturl '%s'", nexturl)
             # report this incident if the reporturl is available
 
             if (rpurl):
-                info(3, 'Reporing this error to %s' % rpurl)
+                logger.debug('Reporing this error to %s', rpurl)
                 urlreq = '%s?errorurl=%s&file_id=%s' % (rpurl, nexturl, basename)
                 try:
                     urllib2.urlopen(urlreq)
-                except Exception, errin:
-                    error("Cannot report the error of nexturl '%s' to reporturl '%s' either: %s" % (nexturl, rpurl, str(errin)))
+                except Exception:
+                    logger.exception("Cannot report the error of nexturl '%s' to reporturl '%s' either", nexturl, rpurl)
 
             if (reportHost):
                 try:
                     rereply = urllib2.urlopen('http://%s/report/hostdown?file_id=%s&next_url=%s' % (reportHost, basename, urllib2.quote(nexturl)), timeout = 15).read()
-                    info('Reply from sending file %s host-down event to server %s - %s' % (basename, reportHost, rereply))
-                except Exception, s1err:
-                    error('Fail to send host-down event to server %s, Exception: %s' %(reportHost, str(s1err)))
+                    logger.info('Reply from sending file %s host-down event to server %s - %s', basename, reportHost, rereply)
+                except Exception:
+                    logger.exception('Fail to send host-down event to server %s', reportHost)
 
         raise err
     finally:
@@ -324,33 +325,31 @@ def handleCmd(srvObj,
     """
     T = TRACE()
     # Check if the URI is correctly set.
-    info(3, "Check if the URI is correctly set.")
+    logger.debug("Check if the URI is correctly set.")
     if (reqPropsObj.getFileUri() == ""):
         errMsg = genLog("NGAMS_ER_MISSING_URI")
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     #path = reqPropsObj.getHttpHdr('path')
     if (not reqPropsObj.hasHttpPar('nexturl')):
         errMsg = "Paremeter 'nexturl' is missing."
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Get mime-type (try to guess if not provided as an HTTP parameter).
-    info(3, "Get mime-type (try to guess if not provided as an HTTP parameter).")
+    logger.debug("Get mime-type (try to guess if not provided as an HTTP parameter).")
     if (reqPropsObj.getMimeType() == ""):
         mimeType = ngamsHighLevelLib.\
                    determineMimeType(srvObj.getCfg(), reqPropsObj.getFileUri())
         reqPropsObj.setMimeType(mimeType)
 
     ## Set reference in request handle object to the read socket.
-    info(3, "Set reference in request handle object to the read socket.")
+    logger.debug("Set reference in request handle object to the read socket.")
     if reqPropsObj.getFileUri().startswith('http://'):
         fileUri = reqPropsObj.getFileUri()
         readFd = ngamsHighLevelLib.openCheckUri(fileUri)
         reqPropsObj.setReadFd(readFd)
 
-    info(3, "Generate basename filename from URI: %s" % reqPropsObj.getFileUri())
+    logger.debug("Generate basename filename from URI: %s", reqPropsObj.getFileUri())
     if (reqPropsObj.getFileUri().find("file_id=") >= 0):
         file_id = reqPropsObj.getFileUri().split("file_id=")[1]
         baseName = os.path.basename(file_id)
@@ -369,7 +368,7 @@ def handleCmd(srvObj,
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
     msg = "Successfully handled Proxy (Quick) Archive Pull Request for data file " +\
           "with URI: " + reqPropsObj.getSafeFileUri()
-    info(1, msg)
+    logger.info(msg)
     targDiskInfo = ngamsDiskInfo.ngamsDiskInfo()
     srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                        NGAMS_SUCCESS, msg, targDiskInfo)

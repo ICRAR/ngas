@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsStatus.py,v 1.8 2008/08/19 20:51:50 jknudstr Exp $"
@@ -28,53 +27,18 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  29/05/2001  Created
 #
-
 """
 Module that contains the ngamsStatus class used to handle
 the NG/AMS Status Report.
 """
 
-import sys, xml.dom.minidom, types
+import sys
+import xml.dom.minidom
 
-from pccUt import PccUtTime
-from ngamsCore import iso8601ToSecs, isoTime2Secs, getAsciiTime,\
-     ngamsGetChildNodes, NGAMS_XML_STATUS_ROOT_EL, getAttribValue, TRACE,\
-     prFormat1
+from ngamsCore import ngamsGetChildNodes, NGAMS_XML_STATUS_ROOT_EL, \
+    getAttribValue, TRACE, prFormat1, toiso8601, fromiso8601
 import ngamsConfig, ngamsDiskInfo, ngamsFileList
 import ngamsContainer
-
-
-def _time2SecsSinceEpoch(timeStamp):
-    """
-    Convert a time reference, which can be given as a string in seconds
-    since epoch, or as an ISO 8601 time stamp, and return the corresponding
-    seconds since epoch.
-
-    timeStamp:    Time stamp as string, float or integer, in seconds since
-                  epoch, or ISO 8601 time stamp (string|float|integer).
-
-    Returns:      Seconds since epoch (float).
-    """
-    if (isinstance(timeStamp, types.StringType)):
-        if (timeStamp.find(":") != -1):
-            timeStamp = iso8601ToSecs(timeStamp)
-    return float(timeStamp)
-
-
-def _time2Secs(timeStamp):
-    """
-    Convert a time reference, which can be given as a string in seconds
-    or as an ISO 8601 time stamp, and return the corresponding seconds.
-
-    timeStamp:    Time stamp as string, float or integer, in seconds,
-                  or ISO 8601 time stamp (string|float|integer).
-
-    Returns:      Seconds (float).
-    """
-    if (isinstance(timeStamp, types.StringType)):
-        if (timeStamp.find(":") != -1):
-            timeStamp = isoTime2Secs(timeStamp)
-    return float(timeStamp)
 
 
 class ngamsStatus:
@@ -103,7 +67,6 @@ class ngamsStatus:
         self.__message        = ""
         self.__state          = ""
         self.__subState       = ""
-        self.__logList        = []
         self.__data           = None
 
 
@@ -316,10 +279,7 @@ class ngamsStatus:
 
         Returns:    Reference to object itself.
         """
-        if (reqTime):
-            self.__requestTime = _time2SecsSinceEpoch(reqTime)
-        else:
-            self.__requestTime = None
+        self.__requestTime = reqTime
         return self
 
 
@@ -330,17 +290,6 @@ class ngamsStatus:
         Returns:    Time for receiving request in seconds since epoch (float).
         """
         return self.__requestTime
-
-
-    def getRequestTimeIso(self):
-        """
-        Return the time for receiving the request (as an ISO 8601 time stamp)
-
-        Returns:    Time for receiving request ISO 8601 (string).
-        """
-        if (self.__requestTime == None): return ""
-        return PccUtTime.TimeStamp().\
-               initFromSecsSinceEpoch(self.__requestTime).getTimeStamp()
 
 
     def setCompletionPercent(self,
@@ -430,10 +379,7 @@ class ngamsStatus:
 
         Returns:    Reference to object itself.
         """
-        if (estTime):
-            self.__estTotalTime = int(_time2Secs(estTime))
-        else:
-            self.__estTotalTime = None
+        self.__estTotalTime = estTime
         return self
 
 
@@ -447,17 +393,6 @@ class ngamsStatus:
         return self.__estTotalTime
 
 
-    def getEstTotalTimeIso(self):
-        """
-        Return the estimated total time for handling the request.
-
-        Returns:    Estimated time for completing the request as ISO 8601
-                    (string).
-        """
-        if (self.__estTotalTime == None): return ""
-        return getAsciiTime(self.__estTotalTime)
-
-
     def setRemainingTime(self,
                          remainingTime):
         """
@@ -467,10 +402,7 @@ class ngamsStatus:
 
         Returns:          Current number of iterations done (integer).
         """
-        if ((remainingTime != None) and (remainingTime != "")):
-            self.__remainingTime = int(_time2Secs(remainingTime))
-        else:
-            self.__remainingTime = None
+        self.__remainingTime = remainingTime
         return self
 
 
@@ -483,16 +415,6 @@ class ngamsStatus:
         return self.__remainingTime
 
 
-    def getRemainingTimeIso(self):
-        """
-        Get the estimated remaining time for handling the request.
-
-        Returns:     The remaining time as ISO 8601 (string).
-        """
-        if (self.__remainingTime == None): return ""
-        return getAsciiTime(self.__remainingTime)
-
-
     def setLastRequestStatUpdate(self,
                                  lastUpdateTime):
         """
@@ -501,10 +423,7 @@ class ngamsStatus:
 
         Returns:    Reference to object itself.
         """
-        if (lastUpdateTime):
-            self.__lastRequestStatUpdate = _time2SecsSinceEpoch(lastUpdateTime)
-        else:
-            self.__lastRequestStatUpdate = None
+        self.__lastRequestStatUpdate = lastUpdateTime
         return self
 
 
@@ -519,20 +438,6 @@ class ngamsStatus:
         return self.__lastRequestStatUpdate
 
 
-    def getLastRequestStatUpdateIso(self):
-        """
-        Get the time for performing the last update of the request
-        handling status.
-
-        Returns:   Last time for updating the request handling status.
-                   Given as ISO 8601 (string).
-        """
-        if (self.__lastRequestStatUpdate == None): return ""
-        return PccUtTime.TimeStamp().\
-               initFromSecsSinceEpoch(self.__lastRequestStatUpdate).\
-               getTimeStamp()
-
-
     def setCompletionTime(self,
                           completionTime):
         """
@@ -543,10 +448,7 @@ class ngamsStatus:
 
         Returns:         Reference to object itself.
         """
-        if (completionTime):
-            self.__completionTime = _time2SecsSinceEpoch(completionTime)
-        else:
-            self.__completionTime = None
+        self.__completionTime = completionTime
         return self
 
 
@@ -559,18 +461,6 @@ class ngamsStatus:
         """
         return self.__completionTime
 
-
-    def getCompletionTimeIso(self):
-        """
-        Get the time for completing the request. Given as ISO 8601 time stamp.
-
-        Returns:    Time in seconds since epoch for when the request handling
-                    finished (string).
-        """
-        if (self.__completionTime == None): return ""
-        return PccUtTime.TimeStamp().\
-               initFromSecsSinceEpoch(self.__completionTime).\
-               getTimeStamp()
 
     def setData(self,
                 data):
@@ -616,28 +506,6 @@ class ngamsStatus:
                setLastRequestStatUpdate(lastReqUpdate).\
                setCompletionTime(reqPropsObj.getCompletionTime())
         return self
-
-
-    def addLogObj(self,
-                  logObj):
-        """
-        Add a log object containing a log entry to the status report.
-
-        logObj:    Log object (PccLogObj).
-
-        Returns:   Reference to object itself.
-        """
-        self.__logList.append(logObj)
-        return self
-
-
-    def getLogList(self):
-        """
-        Get list of log objects.
-
-        Returns:   Tuple containing log objects ([PccLogObj, ...]).
-        """
-        return self.__logList
 
 
     def addDiskStatus(self,
@@ -784,7 +652,7 @@ class ngamsStatus:
         requestId = getAttribValue(nodeList[0], "RequestId", 1)
         if (requestId): self.setRequestId(requestId)
         requestTime = getAttribValue(nodeList[0], "RequestTime", 1)
-        if (requestTime): self.setRequestTime(requestTime)
+        if (requestTime): self.setRequestTime(fromiso8601(requestTime))
         completionPercent = getAttribValue(nodeList[0], "CompletionPercent", 1)
         if (completionPercent): self.setCompletionPercent(completionPercent)
         expectedCount = getAttribValue(nodeList[0], "ExpectedCount", 1)
@@ -792,15 +660,15 @@ class ngamsStatus:
         actualCount = getAttribValue(nodeList[0], "ActualCount", 1)
         if (actualCount): self.setActualCount(actualCount)
         estTotalTime = getAttribValue(nodeList[0], "EstTotalTime", 1)
-        if (estTotalTime): self.setEstTotalTime(estTotalTime)
+        if (estTotalTime): self.setEstTotalTime(float(estTotalTime))
         remainingTime = getAttribValue(nodeList[0], "RemainingTime", 1)
-        if (remainingTime): self.setRemainingTime(remainingTime)
+        if (remainingTime): self.setRemainingTime(float(remainingTime))
         lastRequestStatUpdate = getAttribValue(nodeList[0],
                                                "LastRequestStatUpdate", 1)
         if (lastRequestStatUpdate):
-            self.setLastRequestStatUpdate(lastRequestStatUpdate)
+            self.setLastRequestStatUpdate(fromiso8601(lastRequestStatUpdate))
         completionTime = getAttribValue(nodeList[0], "CompletionTime", 1)
-        if (completionTime): self.setCompletionTime(completionTime)
+        if (completionTime): self.setCompletionTime(fromiso8601(completionTime))
 
         # Unpack the NG/AMS Configuration information.
         ngamsCfgRootNode = dom.getElementsByTagName("NgamsCfg")
@@ -916,8 +784,8 @@ class ngamsStatus:
         # Add the request handling status (if defined).
         if (self.getRequestId()):
             statusEl.setAttribute("RequestId", str(self.getRequestId()))
-        if (self.getRequestTime()):
-            statusEl.setAttribute("RequestTime", self.getRequestTimeIso())
+        if self.__requestTime is not None:
+            statusEl.setAttribute("RequestTime", toiso8601(self.__requestTime))
         if (self.getCompletionPercent()):
             statusEl.setAttribute("CompletionPercent",
                                   "%.2f" % self.getCompletionPercent())
@@ -925,15 +793,14 @@ class ngamsStatus:
             statusEl.setAttribute("ExpectedCount",str(self.getExpectedCount()))
         if (self.getActualCount() != None):
             statusEl.setAttribute("ActualCount", str(self.getActualCount()))
-        if (self.getEstTotalTime()):
-            statusEl.setAttribute("EstTotalTime", self.getEstTotalTimeIso())
-        if (self.getRemainingTime()):
-            statusEl.setAttribute("RemainingTime", self.getRemainingTimeIso())
-        if (self.getLastRequestStatUpdate()):
-            statusEl.setAttribute("LastRequestStatUpdate",
-                                  self.getLastRequestStatUpdateIso())
-        if (self.getCompletionTime()):
-            statusEl.setAttribute("CompletionTime",self.getCompletionTimeIso())
+        if self.__estTotalTime is not None:
+            statusEl.setAttribute("EstTotalTime", str(self.__estTotalTime))
+        if self.__remainingTime is not None:
+            statusEl.setAttribute("RemainingTime", str(self.__remainingTime))
+        if self.__lastRequestStatUpdate is not None:
+            statusEl.setAttribute("LastRequestStatUpdate", toiso8601(self.__lastRequestStatUpdate))
+        if self.__completionTime is not None:
+            statusEl.setAttribute("CompletionTime", toiso8601(self.__completionTime))
 
         ngamsStatusEl.appendChild(statusEl)
 
@@ -1002,7 +869,7 @@ class ngamsStatus:
 
         # Dump File Lists.
         for fileList in self.getFileListList():
-             buf += fileList.dumpBuf(ignoreUndefFields)
+            buf += fileList.dumpBuf(ignoreUndefFields)
 
         return buf
 

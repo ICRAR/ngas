@@ -45,7 +45,6 @@ setup(
         'ngamsStartup' : ['*.sh']
     },
     install_requires=[
-        'pcc',
         'crc32c',
         'ngamsCore',
         'python-daemon',

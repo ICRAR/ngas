@@ -32,11 +32,9 @@ Special version of the NG/AMS Server class used to send back a non-sense
 (corrupted/illegal) HTTP response.
 """
 
-import os
 import sys
 
-from ngamsLib.ngamsCore import TRACE, info, NGAMS_HTTP_SUCCESS, NGAMS_PROC_DATA, \
-    NGAMS_PROC_FILE, getFileSize
+from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_SUCCESS
 from ngamsServer import ngamsServer
 
 
@@ -65,12 +63,9 @@ def genReplyRetrieveFail(srvObj,
         mimeType = resObj.getMimeType()
         dataSize = resObj.getDataSize()
         refFilename = resObj.getRefFilename()
-        info(3,"Sending data back to requestor. Reference filename: " +\
-             refFilename + ". Size: " + str(dataSize))
         srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, None, 0,
                             mimeType, dataSize)
         contDisp = "attachment; filename=\"" + refFilename + "\""
-        info(4,"Sending header: Content-Disposition: " + contDisp)
         httpRef.send_header('Content-Disposition', contDisp)
         httpRef.wfile.write("\n")
 
@@ -78,7 +73,6 @@ def genReplyRetrieveFail(srvObj,
         # TEST: SIMULATE BROKEN SOCKET BY TERMINATING WHEN HALF OF
         #       THE DATA HAS BEEN SENT.
         #############################################################
-        info(2, "Simulating crash on server, which will screw up all connections")
         srvObj.killServer()
         sys.exit(0)
         #############################################################

@@ -28,13 +28,15 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      20/09/2013  Created
 
-
+import logging
 import os
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import alert, NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, NGAMS_FAILURE
+from ngamsLib.ngamsCore import NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, NGAMS_FAILURE
 from ngamsPClient import ngamsPClient
 
+
+logger = logging.getLogger(__name__)
 
 file_ext = ['.fits', '.png']
 
@@ -78,7 +80,7 @@ def ngamsGLEAM_VUW_FilterPI(srvObj,
             errMsg = "ngamsGLEAM_VUW_FilterPI: Missing Plug-In Parameter: " +\
                      "remote_host / remote_port"
             #raise Exception, errMsg
-            alert(errMsg)
+            logger.error(errMsg)
             return 1 # matched as if the remote checking is done
 
         host = parDic["remote_host"]
@@ -86,7 +88,7 @@ def ngamsGLEAM_VUW_FilterPI(srvObj,
 
         if (not sport.isdigit()):
             errMsg = "ngamsGLEAM_VUW_FilterPI: Invalid port number: " + sport
-            alert(errMsg)
+            logger.error(errMsg)
             return 1 # matched as if the filter does not exist
 
         port = int(sport)
@@ -121,10 +123,10 @@ def ngamsGLEAM_VUW_FilterPI(srvObj,
                 match = 1 # if no CRC information can be found, send the file regardless
             """
 
-        except Exception, e:
+        except Exception:
             errMsg = "Error occurred during checking remote file status " +\
-                         "ngamsGLEAM_VUW_FilterPI. Exception: " + str(e)
-            alert(errMsg)
+                         "ngamsGLEAM_VUW_FilterPI"
+            logger.exception(errMsg)
             return 1 # matched as if the filter does not exist
         #info(5, "filter return status = " + rest.getStatus())
         #info(4, "filter match = " + str(match))

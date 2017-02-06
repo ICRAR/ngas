@@ -43,7 +43,6 @@ setup(
         'ngamsPClient' : ['README', 'doc/*']
     },
     install_requires=[
-        'pcc',
         'ngamsCore'
     ],
     # No spaces allowed between the '='s

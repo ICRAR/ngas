@@ -35,7 +35,7 @@ import os, base64, getpass, smtplib, glob, commands
 import time
 
 from ngamsLib.ngamsCore import getHostName, cleanList, getFileCreationTime, \
-    NGAMS_STATUS_CMD, NGAMS_NOT_RUN_STATE, NGAMS_COPYRIGHT_TEXT, info, setDebug, \
+    NGAMS_STATUS_CMD, NGAMS_NOT_RUN_STATE, NGAMS_COPYRIGHT_TEXT, info, \
     setLogCond
 from ngamsPClient import ngamsPClient
 from pccUt import PccUtTime
@@ -545,7 +545,6 @@ def parseCmdLine(argv,
         optDic[parUp][NGAS_OPT_VAL] = parVal
         if (parUp.find("HELP") != -1): return optDic
         idx += 1
-    setDebug(optDic["debug"][NGAS_OPT_VAL])
     setLogCond(0, "",
                int(optDic["logLevel"][NGAS_OPT_VAL]),
                optDic["logFile"][NGAS_OPT_VAL],

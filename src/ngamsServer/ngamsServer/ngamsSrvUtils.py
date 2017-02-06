@@ -32,13 +32,20 @@
 This module contains various utilities used by the NG/AMS Server.
 """
 
-import os, re, string, thread, threading, time, glob
+import glob
+import logging
+import os
+import re
+import string
+import thread
+import threading
+import time
 
-from ngamsLib.ngamsCore import info, NGAMS_NOT_RUN_STATE,\
-    NGAMS_ONLINE_STATE, NGAMS_DEFINE, warning, NGAMS_SUBSCRIBE_CMD,\
-    NGAMS_SUCCESS, TRACE, genLog, notice, NGAMS_DISK_INFO, checkCreatePath,\
-    error, NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
-    loadPlugInEntryPoint
+from ngamsLib.ngamsCore import NGAMS_NOT_RUN_STATE,\
+    NGAMS_ONLINE_STATE, NGAMS_DEFINE, NGAMS_SUBSCRIBE_CMD,\
+    NGAMS_SUCCESS, TRACE, genLog, NGAMS_DISK_INFO, checkCreatePath,\
+    NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
+    loadPlugInEntryPoint, toiso8601
 from ngamsLib import ngamsStatus, ngamsLib
 from ngamsLib import ngamsPhysDiskInfo
 from ngamsLib import ngamsSubscriber
@@ -47,6 +54,8 @@ from ngamsLib import ngamsNotification
 import ngamsArchiveUtils
 import ngamsSubscriptionThread
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsBaseExitHandler(srvObj):
     """
@@ -67,7 +76,7 @@ def ngamsBaseExitHandler(srvObj):
 
     Returns:     Void.
     """
-    info(1,"NG/AMS Exit Handler - cleaning up ...")
+    logger.info("NG/AMS Exit Handler - cleaning up ...")
 
     if (srvObj.getState() == NGAMS_ONLINE_STATE):
         handleOffline(srvObj)
@@ -104,11 +113,11 @@ def _subscriberThread(srvObj,
     statObj = ngamsStatus.ngamsStatus()
     while (1):
         if (not srvObj.getThreadRunPermission()):
-            info(2,"Terminating Subscriber thread ...")
+            logger.info("Terminating Subscriber thread ...")
             thread.exit()
         for idx in range(len(subscrList)):
             if (not srvObj.getThreadRunPermission()):
-                info(2,"Terminating Subscriber thread ...")
+                logger.info("Terminating Subscriber thread ...")
                 thread.exit()
 
             subscrObj = subscrList[idx]
@@ -120,19 +129,18 @@ def _subscriberThread(srvObj,
             # Check that the server is not subscribing to itself.
             if ((myPort == subscrObj.getPortNo()) and \
                 (myHost == subscrObj.getHostId())):
-                warning("NG/AMS cannot subscribe to itself - ignoring " +\
-                        "subscription (host/port): " + hostPort)
+                logger.warning("NG/AMS cannot subscribe to itself - ignoring " +\
+                        "subscription (host/port): %s", hostPort)
                 del subscrList[idx]
                 break
 
-            info(4,"Attempting to subscribe to Data Provider (host/port): " +\
-                 hostPort + " ...")
+            logger.debug("Attempting to subscribe to Data Provider (host/port): %s", hostPort)
             pars = [["priority", subscrObj.getPriority()],
                     ["url",      subscrObj.getUrl()]]
             if (subscrObj.getId()):
                 pars.append(["subscr_id", subscrObj.getId()])
-            if (subscrObj.getStartDate()):
-                pars.append(["start_date", subscrObj.getStartDate()])
+            if (subscrObj.getStartDate() is not None):
+                pars.append(["start_date", toiso8601(subscrObj.getStartDate())])
             if (subscrObj.getFilterPi()):
                 pars.append(["filter_plug_in", subscrObj.getFilterPi()])
             if (subscrObj.getFilterPiPars()):
@@ -149,9 +157,8 @@ def _subscriberThread(srvObj,
                 ex = "Exception: " + str(e)
             if (statObj.getStatus() == NGAMS_SUCCESS):
                 subscrCount += 1
-                info(1,"Successfully subscribed to Data Provider " +\
-                     "(host/port): " + subscrObj.getHostId() + "/" +\
-                     str(subscrObj.getPortNo()))
+                logger.info("Successfully subscribed to Data Provider (host/port): %s/%s",
+                            subscrObj.getHostId(), str(subscrObj.getPortNo()))
                 # Add this reference in the Subscription Status List to make it
                 # possible to unsubscribe the subscriptions when going Offline.
                 # Should be semaphore protected to avoid conflicts.
@@ -164,19 +171,18 @@ def _subscriberThread(srvObj,
                          str(subscrObj.getPortNo())
                 if (ex != ""): errMsg += ". " + ex
                 errMsg += ". Retrying later."
-                info(3,errMsg)
+                logger.debug(errMsg)
         if (not len(subscrList)): break
         for n in range(20):
             time.sleep(0.5)
             if (not srvObj.getThreadRunPermission()):
-                info(2,"Terminating Subscriber Thread ...")
+                logger.info("Terminating Subscriber Thread ...")
                 thread.exit()
 
     if (subscrCount):
-        info(2,"Successfully established " + str(subscrCount) +\
-             " Subscription(s)")
+        logger.info("Successfully established %d Subscription(s)", subscrCount)
     else:
-        info(2,"No Subscriptions established")
+        logger.info("No Subscriptions established")
     thread.exit()
 
 
@@ -201,7 +207,7 @@ def getDiskInfo(srvObj,
 
     plugIn = srvObj.getCfg().getOnlinePlugIn()
     if (not srvObj.getCfg().getSimulation()):
-        info(3,"Invoking System Online Plug-In: " + plugIn + "(srvObj)")
+        logger.info("Invoking System Online Plug-In: %s(srvObj)", plugIn)
         plugInMethod = loadPlugInEntryPoint(plugIn)
         diskInfoDic = plugInMethod(srvObj, reqPropsObj)
         if (len(diskInfoDic) == 0):
@@ -209,10 +215,10 @@ def getDiskInfo(srvObj,
                 errMsg = genLog("NGAMS_NOTICE_NO_DISKS_AVAIL",
                                 [srvObj.getHostId(),
                                  srvObj.getHostId()])
-                notice(errMsg)
+                logger.warning(errMsg)
     else:
         if (srvObj.getCfg().getAllowArchiveReq()):
-            info(3,"Running as a simulated archiving system - generating " +\
+            logger.debug("Running as a simulated archiving system - generating " +\
                  "simulated disk info ...")
             portNo = 0
             slotIdLst = srvObj.getCfg().getSlotIds()
@@ -256,7 +262,7 @@ def getDiskInfo(srvObj,
             dirList = glob.glob(os.path.normpath(baseDir + "/*"))
             for mtPt in dirList:
                 checkPath = os.path.normpath(mtPt + "/" + NGAMS_DISK_INFO)
-                info(5,"Checking if path exists: " + checkPath + " ...")
+                logger.debug("Checking if path exists: %s", checkPath)
                 if (os.path.exists(checkPath)):
                     slotId = string.split(mtPt, "-")[-1]
                     portNo = (int(slotId) - 1)
@@ -275,7 +281,7 @@ def getDiskInfo(srvObj,
                                          setDiskId(diskId).\
                                          setDeviceName("/dev/dummy" + slotId)
 
-    info(5,"Disk Dictionary: " + str(diskInfoDic))
+    logger.debug("Disk Dictionary: %s", str(diskInfoDic))
     return diskInfoDic
 
 
@@ -292,7 +298,7 @@ def handleOnline(srvObj,
 
     Returns:        Void.
     """
-    info(3,"Prepare NGAS and NG/AMS for Online State ...")
+    logger.debug("Prepare NGAS and NG/AMS for Online State ...")
 
     # Re-load Configuration + check disk configuration.
     srvObj.loadCfg()
@@ -312,7 +318,7 @@ def handleOnline(srvObj,
     num_bl =  srvObj.getDb().getSubscrBackLogCount(hostId, srvObj.getCfg().getPortNo())
     #debug_chen
     if (num_bl > 0):
-        info(3, 'Preset the backlog count to %d' % num_bl)
+        logger.debug('Preset the backlog count to %d', num_bl)
         srvObj.presetSubcrBackLogCount(num_bl)
 
     for subscrInfo in subscrList:
@@ -346,9 +352,9 @@ def handleOnline(srvObj,
         # Write status file on disk.
         ngamsDiskUtils.dumpDiskInfoAllDisks(srvObj.getHostId(),
                                             srvObj.getDb(), srvObj.getCfg())
-    except Exception, e:
-        errMsg = "Error occurred while bringing the system Online: " + str(e)
-        error(errMsg)
+    except Exception:
+        errMsg = "Error occurred while bringing the system Online"
+        logger.exception(errMsg)
         handleOffline(srvObj)
         raise
 
@@ -382,7 +388,7 @@ def handleOnline(srvObj,
             thrObj.setDaemon(0)
             thrObj.start()
 
-    info(3,"NG/AMS prepared for Online State")
+    logger.info("NG/AMS prepared for Online State")
 
 
 def handleOffline(srvObj,
@@ -413,7 +419,7 @@ def handleOffline(srvObj,
     srvObj.stopCacheControlThread()
     srvObj.setThreadRunPermission(0)
 
-    info(3, "Prepare NG/AMS for Offline State ...")
+    logger.debug("Prepare NG/AMS for Offline State ...")
 
     # Unsubscribe possible subscriptions. This is only tried once.
     if (srvObj.getCfg().getAutoUnsubscribe()):
@@ -424,11 +430,11 @@ def handleOffline(srvObj,
                                        subscrObj.getPortNo(),
                                        NGAMS_UNSUBSCRIBE_CMD, 1,
                                        [["url", subscrObj.getId()]])
-            except Exception, e:
-                warning("Problem occurred while cancelling subscription " +\
-                        "(host/port):" + subscrObj.getHostId() + "/" +\
-                        str(subscrObj.getPortNo()) + ". Subscriber ID: " +\
-                        subscrObj.getId() + ". Exception: " + str(e))
+            except Exception:
+                msg = "Problem occurred while cancelling subscription " +\
+                      "(host/port): %s/%d. Subscriber ID: %s"
+                logger.exception(msg, subscrObj.getHostId(),
+                                 subscrObj.getPortNo(), subscrObj.getId())
         srvObj.resetSubscrStatusList()
 
     # Check if there are files located in the Staging Areas of the
@@ -442,8 +448,7 @@ def handleOffline(srvObj,
                                         srvObj.getDb(), srvObj.getCfg())
     plugIn = srvObj.getCfg().getOfflinePlugIn()
     if (srvObj.getCfg().getSimulation() == 0):
-        info(3, "Invoking System Offline Plug-In: " + plugIn +\
-             "(srvObj, reqPropsObj)")
+        logger.info("Invoking System Offline Plug-In: %s(srvObj, reqPropsObj)", plugIn)
         plugInMethod = loadPlugInEntryPoint(plugIn)
         plugInRes = plugInMethod(srvObj, reqPropsObj)
     else:
@@ -455,7 +460,7 @@ def handleOffline(srvObj,
                "forced at Offline"
     ngamsNotification.checkNotifRetBuf(srvObj.getHostId(), srvObj.getCfg(), 1, flushMsg)
 
-    info(3,"NG/AMS prepared for Offline State")
+    logger.info("NG/AMS prepared for Offline State")
 
 
 def wakeUpHost(srvObj,
@@ -484,10 +489,9 @@ def wakeUpHost(srvObj,
         ipAddress = srvObj.getDb().getIpFromHostId(suspHost)
         ngamsHighLevelLib.pingServer(suspHost, ipAddress, portNo,
                                      srvObj.getCfg().getWakeUpCallTimeOut())
-    except Exception, e:
-        errMsg = "Error waking up host: " + suspHost + ". Error: " + str(e)
-        notice(errMsg)
-        raise Exception, errMsg
+    except Exception:
+        logger.exception("Error waking up host %s", suspHost)
+        raise
 
 
 def checkStagingAreas(srvObj):

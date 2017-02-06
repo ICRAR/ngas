@@ -37,9 +37,8 @@ import os
 import sys
 import time
 
-from ngamsLib import ngamsConfig
 from ngamsLib.ngamsCore import NGAMS_CLONE_CMD, NGAMS_REMFILE_CMD, \
-    NGAMS_REMDISK_CMD, checkCreatePath, NGAMS_REGISTER_CMD, info
+    NGAMS_REMDISK_CMD, checkCreatePath, NGAMS_REGISTER_CMD
 from ngamsTestLib import saveInFile, ngamsTestSuite, runTest, sendPclCmd
 
 
@@ -436,66 +435,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         # Bring server Online.
         client.online()
 
-        # Check that the file entries are now in the DB.
-        info(1,"TODO!: Check that the file entries are now in the DB.")
-
-
-    def test_DbSnapshot_8(self):
-        """
-        Synopsis:
-        Test that lost files are properly detected and reported.
-
-        Description:
-        The purpose of the test is to verify that files registered in the
-        NGAS DB and in the DB Snapshot, but not available on the disk, are
-        registered as 'Lost Files'.
-
-        Expected Result:
-        After going Online the Janitor Thread should detect that there are
-        files that are not found on the disk as expected. An Email Notification
-        Message should be sent to the subscribers of Data Error Messages
-        informing about this.
-
-        Test Steps:
-        - Start NG/AMS Server specifying the test user as receiver of
-          Data Error Notification Messages.
-        - Archive a small FITS test file 5 times.
-        - Bring the server Offline.
-        - Remove 3 of the archived files.
-        - Bring server Online.
-        - Check that after a while an Email Notification Message is sent out
-          to indicate the problem encountered.
-
-        Remarks:
-        TODO!: Not yet implemented!
-        """
-        info(1,"TODO: Test that lost files are properly detected and " +\
-             "reported.")
-
-
-    def test_DbSnapshot_9(self):
-        """
-        Synopsis:
-        Test if file on disk, DB and DB Snapshot up to date,
-        that the are no changes.
-
-        Description:
-        The purpose of the test is to verify that if the NGAS DB, the DB
-        Snapshot and content of disk is found to be identical, no changes
-        are made to the DB Snapshot/NGAS DB.
-
-        Expected Result:
-        ...
-
-        Test Steps:
-        - ...
-
-        Remarks:
-        TODO!: Not yet implemented!
-
-        """
-        info(1,"Test if file on disk, DB and DB Snapshot up to date, " +\
-             "that the are no changes.")
+        # TODO: Check that the file entries are now in the DB.
 
 
 def run():

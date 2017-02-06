@@ -33,12 +33,15 @@ Dynamic loadable command to query the DB associated with the NG/AMS instance.
 # import markup TODO: This is for HTML formatting
 
 import cPickle, json, decimal
+import logging
 import os
 
 from ngamsLib import ngamsDbm, ngamsDbCore
-from ngamsLib.ngamsCore import NGAMS_TMP_FILE_EXT, TRACE, info, NGAMS_TEXT_MT, \
-    NGAMS_HTTP_SUCCESS, getMaxLogLevel, notice, rmFile
+from ngamsLib.ngamsCore import NGAMS_TMP_FILE_EXT, TRACE, NGAMS_TEXT_MT, \
+    NGAMS_HTTP_SUCCESS, rmFile
 
+
+logger = logging.getLogger(__name__)
 
 CURSOR_IDX           = "__CURSOR_IDX__"
 NGAMS_PYTHON_LIST_MT = "application/python-list"
@@ -270,7 +273,6 @@ def handleCmd(srvObj,
 
     # Execute the query.
     if (not cursorId):
-        info(3, "Executing SQL query: %s" % str(query))
         res = srvObj.getDb().query2(query, args=args)
 
         # TODO: Make possible to return an XML document
@@ -320,9 +322,7 @@ def handleCmd(srvObj,
         cursorDbmFilename = genCursorDbmName(srvObj.getCfg().\
                                              getRootDirectory(), cursorId)
         if (not os.path.exists(cursorDbmFilename)):
-            if (getMaxLogLevel() >= 4):
-                msg = "Illegal Cursor ID: %s or cursor expired" % cursorId
-                notice(msg)
+            logger.error("Illegal Cursor ID: %s or cursor expired", cursorId)
             return []
         try:
             cursorDbm = ngamsDbm.ngamsDbm(cursorDbmFilename, writePerm=1)
@@ -353,8 +353,8 @@ def handleCmd(srvObj,
             msg = "Error fetching from cursor with ID: %s. Error: %s"
             raise Exception, msg % (cursorId, str(e))
     elif (query and cursorId):
-        info(4, "Creating new cursor with ID: %s, query: %s" %\
-             (cursorId, query))
+        logger.debug("Creating new cursor with ID: %s, query: %s",
+                     cursorId, query)
         cursorDbmFilename = genCursorDbmName(srvObj.getCfg().\
                                              getRootDirectory(), cursorId)
         cursorDbm = ngamsDbm.ngamsDbm(cursorDbmFilename, writePerm=1)

@@ -22,7 +22,7 @@
 
 import os, random, string, sys
 
-from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE
+from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE, toiso8601
 from ngamsLib.ngamsCore import rmFile, checkCreatePath, getFileSize
 from ngamsTestLib import sendPclCmd, ngamsTestSuite, runTest
 
@@ -302,7 +302,7 @@ class ngamsContainerTest(ngamsTestSuite):
 		self.assertEquals(containerName, container.getContainerName())
 
 		# Containers are closed when they have an ingestion date
-		self.assertEquals(isClosed, container.isClosed(), "Container's ingestion date is: '" + str(container.getIngestionDate()) + "'; expected isClosed=" + str(isClosed))
+		self.assertEquals(isClosed, container.isClosed(), "Container's ingestion date is: '" + toiso8601(container.getIngestionDate()) + "'; expected isClosed=" + str(isClosed))
 
 	def test_ArchiveReceive(self):
 

@@ -36,18 +36,20 @@ It should be used as part of the ngamsDbBase parent classes.
 
 import cPickle
 import collections
+import logging
 import os
 import re
 import shutil
 import time
 
 from ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE, NGAMS_PICKLE_FILE_EXT, NGAMS_TMP_FILE_EXT
-from ngamsCore import info, warning, error, rmFile, notice, getUniqueNo, getNgamsVersion, timeRef2Iso8601
+from ngamsCore import rmFile, getUniqueNo, getNgamsVersion, toiso8601, fromiso8601
 import ngamsDbm, ngamsDbCore
 import ngamsFileInfo, ngamsStatus, ngamsFileList
 import ngamsLib
-from pccUt import PccUtTime
 
+
+logger = logging.getLogger(__name__)
 
 class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
     """
@@ -234,7 +236,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 errMsg = "Problem dumping file info! Expected number of "+\
                          "files: %d, actual number of files: %d"
                 errMsg = errMsg % (expNoOfFiles, fileCount)
-                warning(errMsg)
+                logger.warning(errMsg)
 
             # Try to Auto Recover if requested.
             if ((self.getDbVerify() and self.getDbAutoRecover()) and
@@ -243,11 +245,10 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 rmFile(fileListDbmName + "*")
                 if (n < 4):
                     time.sleep(5)
-                    notice("Retrying to dump file info ...")
+                    logger.warning("Retrying to dump file info ...")
                 else:
                     errMsg = "Giving up to auto recover dumping of file info!"
-                    error(errMsg)
-                    raise Exception, errMsg
+                    raise Exception(errMsg)
             else:
                 break
         return fileListDbmName
@@ -453,7 +454,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
         # TODO: Potential memory bottleneck.
 
-        timeStamp = PccUtTime.TimeStamp().getTimeStamp()
+        timeStamp = toiso8601()
 
         # Sort the File Info Objects according to disks.
         fileInfoObjDic = {}
@@ -500,7 +501,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                              setMessage(dbId).\
                              addFileList(tmpFileList)
 
-            info(4,"Creating Temporary DB Snapshot: " + statFilename)
+            logger.debug("Creating Temporary DB Snapshot: %s", statFilename)
 
             with open(tmpStatFilename, "w") as pickleFo:
                 cPickle.dump(tmpStatObj, pickleFo, 1)
@@ -539,7 +540,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         # of these classes in the ngamsDbBase class should be analyzed.
         # Probably these classes should be made base classes for this class.
 
-        timeStamp = PccUtTime.TimeStamp().getTimeStamp()
+        timeStamp = toiso8601()
         mtPt = diskInfoObj.getMountPoint()
         statFilePath = os.path.normpath("%s/%s" % (mtPt, NGAMS_DB_CH_CACHE))
         statFilename = os.path.normpath("%s/%s_%s.%s" %\
@@ -552,7 +553,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                                             NGAMS_PICKLE_FILE_EXT,
                                             NGAMS_TMP_FILE_EXT))
 
-        info(4,"Creating Temporary DB Snapshot: %s" % statFilename)
+        logger.debug("Creating Temporary DB Snapshot: %s", statFilename)
 
         try:
             fileInfoList = [fileInfoObj.getDiskId()] +\
@@ -614,7 +615,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         if res:
             if (res[0][0] == None):
                 return None
-            return timeRef2Iso8601(res[0][0])
+            return fromiso8601(res[0][0], local=True)
         return None
 
     def addFileToContainer(self, containerId, fileId, force):
@@ -647,7 +648,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         fileSize = res[0][1]
         if prevConatinerId:
             if prevConatinerId == containerId:
-                info(4, 'File %s already belongs to container %s, skipping it' % (fileId, containerId))
+                logger.debug('File %s already belongs to container %s, skipping it', fileId, containerId)
                 return 0
 
             if not force:
@@ -658,7 +659,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         # is at fileId level
         sql = "UPDATE ngas_files SET container_id = {0} WHERE file_id = {1}"
         self.query2(sql, args=(containerId,fileId))
-        info(4, 'File %s added to container %s' % (fileId,containerId))
+        logger.debug('File %s added to container %s', fileId,containerId)
 
         return fileSize
 
@@ -687,7 +688,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         currentContainerId = res[0][0]
         fileSize = res[0][1]
         if not currentContainerId:
-            info(3, "File with fileId '%s' is part of no container, skipping it" % (fileId,))
+            logger.debug("File with fileId '%s' is part of no container, skipping it", fileId)
             return 0
         elif currentContainerId != containerId:
             msg = "File with fileId '%s' is associated with a different container: %s" % (fileId,currentContainerId)
@@ -697,7 +698,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         # is at fileId level
         sql = "UPDATE ngas_files SET container_id = null WHERE file_id = {0}"
         self.query2(sql, args=(fileId,))
-        info(4, 'File %s was removed from container %s' % (fileId,containerId))
+        logger.debug('File %s was removed from container %s', fileId,containerId)
 
         return fileSize
 

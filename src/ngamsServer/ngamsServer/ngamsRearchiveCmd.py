@@ -36,18 +36,20 @@ former, the data of the file is provided in the request, using the second,
 the file is pulled via a provided URL from the remote, host node.
 """
 
+import logging
 import os
 import time, base64
 
-from pccUt import PccUtTime
 import ngamsArchiveCmd, ngamsFileUtils, ngamsCacheControlThread
 from ngamsLib import ngamsStatus, ngamsLib
 from ngamsLib import ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
 from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_GET, \
-    NGAMS_HTTP_SUCCESS, info, mvFile, getDiskSpaceAvail, genLog, sysLogInfo, \
+    NGAMS_HTTP_SUCCESS, mvFile, getDiskSpaceAvail, genLog, \
     NGAMS_IDLE_SUBSTATE, NGAMS_SUCCESS
 
+
+logger = logging.getLogger(__name__)
 
 def receiveData(srvObj,
                 reqPropsObj,
@@ -112,11 +114,11 @@ def receiveData(srvObj,
     # Save the data into the Staging File.
     # If it is an Rearchive Pull Request, open the URL.
     if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
-        timer = PccUtTime.Timer()
+        io_start = time.time()
         code, msg, hdrs, data = ngamsLib.\
                                 httpGetUrl(reqPropsObj.getFileUri(),
                                            dataTargFile = stagingFilename)
-        reqPropsObj.incIoTime(timer.stop())
+        reqPropsObj.incIoTime(time.time() - io_start)
 
         # Check if the retrival was successfull.
         if (int(code) != NGAMS_HTTP_SUCCESS):
@@ -173,20 +175,21 @@ def processRequest(srvObj,
     # Generate the DB File Information.
     newFileInfoObj = fileInfoObj.clone().\
                      setDiskId(trgDiskInfoObj.getDiskId()).\
-                     setCreationDateFromSecs(int(time.time() + 0.5))
+                     setCreationDate(time.time())
 
     # Generate the final storage location and move the file there.
     targetFilename = os.path.normpath("%s/%s" %\
                                       (trgDiskInfoObj.getMountPoint(),
                                        newFileInfoObj.getFilename()))
-    info(3,"Move Restore Staging File to final destination: %s->%s ..." %\
-         (reqPropsObj.getStagingFilename(), targetFilename))
-    timer = PccUtTime.Timer()
+    logger.debug("Move Restore Staging File to final destination: %s->%s ...",
+                 reqPropsObj.getStagingFilename(), targetFilename)
+
+    io_start = time.time()
     mvFile(reqPropsObj.getStagingFilename(), targetFilename)
-    ioTime = timer.stop()
+    ioTime = time.time() - io_start
     reqPropsObj.incIoTime(ioTime)
-    info(3,"Moved Restore Staging File to final destination: %s->%s" %\
-         (reqPropsObj.getStagingFilename(), targetFilename))
+    logger.debug("Moved Restore Staging File to final destination: %s->%s",
+                 reqPropsObj.getStagingFilename(), targetFilename)
 
     # Update the DB with the information about the new file.
     # Update information for Main File/Disk in DB.
@@ -222,7 +225,7 @@ def handleCmdRearchive(srvObj,
     """
     T = TRACE()
 
-    archiveTimer = PccUtTime.Timer()
+    archive_start = time.time()
 
     # Execute the init procedure for the ARCHIVE Command.
     mimeType = ngamsArchiveCmd.archiveInitHandling(srvObj, reqPropsObj,
@@ -230,8 +233,8 @@ def handleCmdRearchive(srvObj,
     # If mime-type is None, the request has been handled, i.e., it might have
     # been a probe request or the server acting as proxy.
     if (not mimeType): return
-    info(1, "Archiving file: " + reqPropsObj.getSafeFileUri() +\
-         " with mime-type: " + mimeType + " ...")
+    logger.debug("Archiving file: %s with mime-type: %s",
+                 reqPropsObj.getSafeFileUri(), mimeType)
 
     fileInfoObj, trgDiskInfoObj = receiveData(srvObj, reqPropsObj, httpRef)
 
@@ -249,9 +252,8 @@ def handleCmdRearchive(srvObj,
 
     # Create log/syslog entry for the successfulyl handled request.
     msg = genLog("NGAMS_INFO_FILE_ARCHIVED", [reqPropsObj.getSafeFileUri()])
-    msg = msg + ". Time: %.6fs" % (archiveTimer.stop())
-    sysLogInfo(1, msg)
-    info(1, msg)
+    msg = msg + ". Time: %.6fs" % (time.time() - archive_start)
+    logger.info(msg, extra={'to_syslog': True})
 
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
     srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,

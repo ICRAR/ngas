@@ -37,21 +37,28 @@ The NG/AMS Python Client is implemented as a class, ngamsPClient, which
 can be used to build up Python applications communicating with NG/AMS.
 """
 
-import os, sys, random, time, traceback, base64
-from pccUt import PccUtTime
+import base64
+import logging
+import os
+import random
+import sys
+import time
+import traceback
+
 from ngamsLib import ngamsLib, ngamsFileInfo, ngamsStatus
 from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CONTENT_TYPE,\
     NGAMS_LABEL_CMD, NGAMS_ONLINE_CMD, NGAMS_OFFLINE_CMD, NGAMS_REMDISK_CMD,\
     NGAMS_REMFILE_CMD, NGAMS_REGISTER_CMD, NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD,\
     NGAMS_FAILURE, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD, NGAMS_ARCH_REQ_MT,\
-    setLogCond, setDebug, NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,\
+    NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,\
     NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE,\
-    NGAMS_IDLE_SUBSTATE, getNgamsLicense
+    NGAMS_IDLE_SUBSTATE, getNgamsLicense, toiso8601, FMT_TIME_ONLY
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD
-from ngamsLib.ngamsCore import info, notice
 from xml.dom import minidom
 import pkg_resources
 
+
+logger = logging.getLogger(__name__)
 
 manPage = pkg_resources.resource_string(__name__, 'doc/ngamsPClient.txt')  # @UndefinedVariable
 __doc__ += "\n\n\nMan-Page for the NG/AMS Python Client Tool:\n\n"
@@ -203,7 +210,7 @@ class ngamsPClient:
         Returns:       NG/AMS Status object (ngamsStatus).
         """
         T = TRACE()
-        info(1,"Archiving file with URI: " + fileUri)
+        logger.info("Archiving file with URI: %s", fileUri)
         locPars = []
         for par in pars: locPars.append(par)
         if (ngamsLib.isArchivePull(fileUri)):
@@ -213,7 +220,6 @@ class ngamsPClient:
             res = self.sendCmd(cmd, wait, "", locPars)
         else:
             res = self.pushFile(fileUri, mimeType, wait, noVersioning, locPars, cmd=cmd)
-        info(1,"Archive request for file: " + fileUri + " issued.")
         return res
 
 
@@ -243,7 +249,7 @@ class ngamsPClient:
         Returns:       NG/AMS Status object (ngamsStatus).
         """
         baseName = os.path.basename(fileUri)
-        info(1, "Re-archiving file with URI: " + baseName)
+        logger.info("Re-archiving file with URI: %s", baseName)
         locPars = []
         for par in pars: locPars.append(par)
         if (ngamsLib.isArchivePull(fileUri)):
@@ -257,9 +263,7 @@ class ngamsPClient:
                                   additionalHdrs = httpHdrs)
         else:
             msg = "Rearchive Push is not yet supported!"
-            notice(msg)
-            raise Exception, msg
-        info(1,"Re-archive request of file: " + baseName + " issued.")
+            raise Exception(msg)
         return res
 
 
@@ -663,7 +667,7 @@ class ngamsPClient:
         elif (fileId == "--NG--LOG--"):
             pars = [["ng_log", ""]]
         else:
-            info(4, 'Requesting data with cmd={0}, fileId={1}, containerId={2}, containerName={3}'.format(cmd, fileId, containerId, containerName))
+            logger.debug('Requesting data with cmd=%s, fileId=%s, containerId=%s, containerName=%s', cmd, fileId, containerId, containerName)
             pars = []
             if cmd == NGAMS_RETRIEVE_CMD:
                 if fileId: pars.append(["file_id", fileId])
@@ -979,7 +983,6 @@ class ngamsPClient:
                 elif (par == "-v"):
                     idx = idx + 1
                     verboseLevel = int(argv[idx])
-                    setLogCond(0, "", 0, "", verboseLevel)
                 elif (par == "-cfg"):
                     fileId = "--CFG--"
                 elif (par == "-host"):
@@ -991,8 +994,6 @@ class ngamsPClient:
                 elif (par == "-cmd"):
                     idx = idx + 1
                     cmd = argv[idx]
-                elif (par == "-d"):
-                    setDebug(1)
                 elif (par == "-diskid"):
                     idx = idx + 1
                     diskId = argv[idx]
@@ -1108,6 +1109,7 @@ class ngamsPClient:
             idx = idx + 1
 
         self.verbosity = verboseLevel
+        # TODO: configure logging
 
         # Check generic input parameters.
         self.setHost(host)
@@ -1195,7 +1197,6 @@ class ngamsPClient:
                  dataTargFile = "",
                  blockSize = 65536,
                  timeOut = None,
-                 returnFileObj = 0,
                  authHdrVal = "",
                  additionalHdrs = []):
         """
@@ -1212,21 +1213,20 @@ class ngamsPClient:
             serverList = [(host, port)]
         # For now we try the serves in random order.
         random.shuffle(serverList)
-        info(5,"Server list: %s" % str(serverList))
+        logger.debug("Server list: %s", str(serverList))
 
         # Very simple algorithm, should maybe be refined.
         success = 0
         errors = ""
         for tmpHost, tmpPort in serverList:
             try:
-                info(5,"Trying server: %s:%s ..." % (tmpHost, str(tmpPort)))
+                logger.debug("Trying server: %s:%s ...", tmpHost, str(tmpPort))
                 startTime = time.time()
                 reply, msg, hdrs, data =\
                        ngamsLib.httpGet(tmpHost, tmpPort, cmd, wait, pars,
                                         dataTargFile, blockSize, timeOut,
-                                        returnFileObj, authHdrVal,
-                                        additionalHdrs)
-                info(5,"Server: %s:%s OK" % (tmpHost, str(tmpPort)))
+                                        authHdrVal, additionalHdrs)
+                logger.debug("Server: %s:%s OK", tmpHost, str(tmpPort))
                 success = 1
                 break
             except Exception, e:
@@ -1293,17 +1293,17 @@ class ngamsPClient:
             startTime = time.time()
             reply, msg, hdrs, data =\
                    self._httpGet(host, port, cmd, wait, locPars, outputFile,
-                                 None, self.getTimeOut(), 0, authHdrVal,
+                                 None, self.getTimeOut(), authHdrVal,
                                  additionalHdrs)
             deltaTime = (time.time() - startTime)
-            info(3,"Command: %s/%s to %s:%s handled in %.3fs" %\
-                 (cmd, str(locPars), host, str(port), deltaTime))
-        except Exception, e:
+            logger.debug("Command: %s/%s to %s:%s handled in %.3fs",
+                         cmd, str(locPars), host, str(port), deltaTime)
+        except Exception:
             deltaTime = (time.time() - startTime)
-            msg = "Exception raised handling command %s/%s to %s:%s " +\
-                  "after %.3fs. Timeout: %s. Error: %s"
-            notice(msg % (cmd, str(locPars), host, str(port), deltaTime,
-                          str(self.getTimeOut()), str(e)))
+            logger.exception("Exception raised handling command %s/%s to %s:%s " +\
+                             "after %.3fs. Timeout: %s",
+                             cmd, str(locPars), host, str(port),
+                             deltaTime, str(self.getTimeOut()))
             raise
 
         # If we have received a redirection HTTP response, we
@@ -1313,8 +1313,9 @@ class ngamsPClient:
             # the same query again.
             hdrDic = ngamsLib.httpMsgObj2Dic(hdrs)
             host, port = hdrDic["location"].split("/")[2].split(":")
-            info(4,"Redirect to NG/AMS running on host: " + host + " using "+\
-                 "port: " + str(port) + " is carried out")
+            logger.debug("Redirect to NG/AMS running on host: %s using "+\
+                         "port: %s is carried out",
+                         host, str(port))
             return self.sendCmdGen(cmd, wait, outputFile, locPars, host=host, port=port)
         else:
             if ((data != "") and (data.find("<?xml") != -1)):
@@ -1324,7 +1325,7 @@ class ngamsPClient:
                 # sends back a multipart message which always contains the
                 # NG/AMS Status apart from the data at a RETRIEVE Request.
                 ngamsStat = ngamsStatus.ngamsStatus().\
-                            setDate(PccUtTime.TimeStamp().getTimeStamp()).\
+                            setDate(toiso8601()).\
                             setVersion(getNgamsVersion()).setHostId(host).\
                             setStatus(NGAMS_SUCCESS).\
                             setMessage("Successfully handled request").\
@@ -1332,7 +1333,7 @@ class ngamsPClient:
                             setSubState(NGAMS_IDLE_SUBSTATE)
                 if (data != ""): ngamsStat.setData(data)
 
-            info(4, "Returning successfully from ngamsPClient.sendCmdGen()")
+            logger.debug("Returning successfully from ngamsPClient.sendCmdGen()")
             return ngamsStat
 
 
@@ -1430,11 +1431,14 @@ State:          {7}
 Sub-State:      {8}
 NG/AMS Version: {9}
     """
+    req_time = ""
+    if stat.getRequestTime() is not None:
+        req_time = toiso8601(stat.getRequestTime())
     print message.format(
                          client.getHost(),
                          client.getPort(),
                          client.getStatus(),
-                         stat.getRequestTimeIso(),
+                         req_time,
                          stat.getHostId(),
                          stat.getMessage(),
                          stat.getStatus(),

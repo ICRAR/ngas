@@ -33,23 +33,26 @@ Function + code to handle the RETRIEVE Command.
 
 import errno
 import io
+import logging
 import os
 import select
 import shutil
 import socket
 import time
 
-from ngamsLib import ngamsDppiStatus, ngamsStatus
+from ngamsLib import ngamsDppiStatus
 from ngamsLib import ngamsHighLevelLib, ngamsLib
-from ngamsLib.ngamsCore import info, warning, NGAMS_TEXT_MT, error, getFileSize, \
+from ngamsLib.ngamsCore import NGAMS_TEXT_MT, getFileSize, \
     TRACE, genLog, NGAMS_PROC_FILE, NGAMS_HTTP_SUCCESS, NGAMS_PROC_DATA, \
     NGAMS_HOST_LOCAL, \
     NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE, checkCreatePath, NGAMS_RETRIEVE_CMD, \
-    NGAMS_FAILURE, NGAMS_PROC_STREAM, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
+    NGAMS_PROC_STREAM, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
     NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint
 import ngamsSrvUtils, ngamsFileUtils
 
 
+
+logger = logging.getLogger(__name__)
 
 ################################################################################
 # SENDFILE BEGINS
@@ -265,13 +268,13 @@ def performStaging(srvObj, reqPropsObj, httpRef, filename):
     if not fspi:
         return
 
-    info(2, "Invoking FSPI.isFileOffline: %s to check file: %s" % (fspi, filename))
+    logger.info("Invoking FSPI.isFileOffline: %s to check file: %s", fspi, filename)
     isFileOffline = loadPlugInEntryPoint(fspi, 'isFileOffline')
 
     if isFileOffline(filename) == 0:
         return
 
-    info(2, "Invoking FSPI.stageFiles: %s to check file: %s" % (fspi, filename))
+    logger.info("Invoking FSPI.stageFiles: %s to check file: %s", fspi, filename)
     stageFiles = loadPlugInEntryPoint(fspi, 'stageFiles')
 
     try:
@@ -281,13 +284,13 @@ def performStaging(srvObj, reqPropsObj, httpRef, filename):
                     serverObj = srvObj)
         howlong = time.time() - st
         fileSize = getFileSize(filename)
-        info(3, 'Staging rate = %.0f Bytes/s (%.0f seconds) for file %s' % (fileSize / howlong, howlong, filename))
+        logger.debug('Staging rate = %.0f Bytes/s (%.0f seconds) for file %s', fileSize / howlong, howlong, filename)
 
-    except socket.timeout as t:
+    except socket.timeout:
         errMsg = 'Staging timed out: %s' % filename
-        warning(errMsg)
+        logger.warning(errMsg)
         srvObj.httpReply(reqPropsObj, httpRef, 504, errMsg, NGAMS_TEXT_MT)
-        raise t
+        raise
 
 
 
@@ -324,11 +327,11 @@ def performProcessing(srvObj,
             errMsg = genLog("NGAMS_ER_ILL_DPPI", [dppi])
             raise Exception, errMsg
         # Invoke the DPPI.
-        info(2, "Invoking DPPI: %s to process file: %s" % (dppi, filename))
+        logger.info("Invoking DPPI: %s to process file: %s", dppi, filename)
         plugInMethod = loadPlugInEntryPoint(dppi)
         statusObj = plugInMethod(srvObj, reqPropsObj, filename)
     else:
-        info(2, "No processing requested - sending back file as is")
+        logger.info("No processing requested - sending back file as is")
         resultObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_FILE, mimeType,
                                                     filename, filename)
         statusObj = ngamsDppiStatus.ngamsDppiStatus().addResult(resultObj)
@@ -354,8 +357,8 @@ def cleanUpAfterProc(statusObjList):
         for resObj in statObj.getResultList():
             if (resObj.getProcDir() != ""):
                 msg = ("Cleaning up processing directory: %s"
-                      " after completed processing") % resObj.getProcDir()
-                info(3, msg)
+                      " after completed processing")
+                logger.debug(msg, resObj.getProcDir())
                 shutil.rmtree(resObj.getProcDir())
 
 
@@ -395,12 +398,12 @@ def genReplyRetrieve(srvObj,
         mimeType = resObj.getMimeType()
         dataSize = resObj.getDataSize()
         refFilename = resObj.getRefFilename()
-        info(3, ("Sending data back to requestor. Reference filename: %s"
-                 ". Size: %s") % (refFilename, str(dataSize)))
+        logger.debug("Sending data back to requestor. Reference filename: %s. Size: %s",
+                     refFilename, str(dataSize))
         srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, None, 0,
                             mimeType, dataSize)
         contDisp = "attachment; filename=\"%s\"" % refFilename
-        info(4, "Sending header: Content-Disposition: %s" % contDisp)
+        logger.debug("Sending header: Content-Disposition: %s", contDisp)
         httpRef.send_header('Content-Disposition', contDisp)
         httpRef.wfile.write("\n")
 
@@ -409,28 +412,27 @@ def genReplyRetrieve(srvObj,
                 sendBufSize = int(reqPropsObj.getHttpPar("send_buffer"))
                 httpRef.wfile._sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF,sendBufSize)
             except Exception, ee:
-                warning('Fail to reset the send_buffer size: %s' % str(ee))
+                logger.warning('Fail to reset the send_buffer size: %s', str(ee))
 
         # Send back data from the memory buffer, from the result file, or
         # from HTTP socket connection.
         if resObj.getObjDataType() == NGAMS_PROC_DATA:
-            info(3, "Sending data in buffer to requestor ...")
+            logger.debug("Sending data in buffer to requestor ...")
             httpRef.wfile.write(resObj.getDataRef())
         elif resObj.getObjDataType() == NGAMS_PROC_FILE:
-            info(3, ("Reading data block-wise from file and sending "
-                    "to requestor ..."))
+            logger.debug("Reading data block-wise from file and sending to requestor ...")
             # use kernel zero-copy file send if available
             dataref = resObj.getDataRef()
             with open(dataref, 'rb') as fd:
                 st = time.time()
                 sendfile(httpRef.wfile._sock, fd)
                 howlong = time.time() - st
-                info(3, "Retrieval transfer rate = %.0f Bytes/s for file %s" \
-                        % (dataSize / howlong, refFilename))
+                logger.debug("Retrieval transfer rate = %.0f Bytes/s for file %s",
+                             dataSize / howlong, refFilename)
         else:
             # NGAMS_PROC_STREAM - read the data from the File Object in
             # blocks and send it directly to the requestor.
-            info(3,"Routing data from foreign location to requestor ...")
+            logger.debug("Routing data from foreign location to requestor ...")
             dataSent = 0
             dataToSent = dataSize
             while (dataSent < dataToSent):
@@ -438,7 +440,7 @@ def genReplyRetrieve(srvObj,
                 httpRef.wfile.write(tmpData)
                 dataSent += len(tmpData)
 
-        info(4, "HTTP reply sent to: %s" % str(httpRef.client_address))
+        logger.debug("HTTP reply sent to: %s", str(httpRef.client_address))
         reqPropsObj.setSentReply(1)
 
     finally:
@@ -492,8 +494,7 @@ def _handleCmdRetrieve(srvObj,
     # rejected.
     if (not srvObj.getCfg().getAllowRetrieveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Retrieve"])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Get query information.
     '''if (reqPropsObj.hasHttpPar("ng_log")):
@@ -573,8 +574,8 @@ def _handleCmdRetrieve(srvObj,
                              setPermissions(dirDic[filename][0]).\
                              setOwner(dirDic[filename][2]).\
                              setGroup(dirDic[filename][3]).\
-                             setAccDateFromSecs(statInfo[7]).\
-                             setModDateFromSecs(statInfo[8]).\
+                             setAccDate(statInfo[7]).\
+                             setModDate(statInfo[8]).\
                              setCreationDate(statInfo[9]).\
                              setFileSize(statInfo[6])
                 fileListObj.addFileInfoObj(tmpFileObj)
@@ -643,10 +644,9 @@ def _handleCmdRetrieve(srvObj,
             issueRetCmdErr = 1
     if (issueRetCmdErr):
         errMsg = genLog("NGAMS_ER_RETRIEVE_CMD")
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
     fileId = reqPropsObj.getHttpPar("file_id")
-    info(3,"Handling request for file with ID: " + fileId)
+    logger.debug("Handling request for file with ID: %s", fileId)
     fileVer = -1
     if (reqPropsObj.hasHttpPar("file_version")):
         fileVer = int(reqPropsObj.getHttpPar("file_version"))
@@ -697,13 +697,12 @@ def _handleCmdRetrieve(srvObj,
 
         # Perform the possible processing requested.
         procResult = performProcessing(srvObj,reqPropsObj,srcFilename,mimeType)
-    elif (((location == NGAMS_HOST_CLUSTER) or \
-           (location == NGAMS_HOST_REMOTE)) and \
-           srvObj.getCfg().getProxyMode()):
+    elif location in (NGAMS_HOST_CLUSTER, NGAMS_HOST_REMOTE) and \
+         srvObj.getCfg().getProxyMode():
 
-        info(3,"NG/AMS Server acting as proxy - requesting file with ID: " +\
-             fileId + " from NG/AMS Server on host/port: " + host + "/" +\
-             str(port) + " ...")
+        logger.debug("NG/AMS Server acting as proxy - requesting file with ID: %s " +\
+                     "from NG/AMS Server on host/port: %s/%s",
+                     fileId, host, str(port))
 
         # Act as proxy - get the file from the NGAS host specified and
         # send back the contents. The file is temporarily stored in the
@@ -715,32 +714,21 @@ def _handleCmdRetrieve(srvObj,
             if (par != "initiator"):
                 pars.append([par, reqPropsObj.getHttpPar(par)])
         authHdr = ngamsSrvUtils.genIntAuthHdr(srvObj)
-        httpStatCode, httpStatMsg, httpHdrs, data =\
-                      ngamsLib.httpGet(ipAddress, port, NGAMS_RETRIEVE_CMD, 1,
-                                       pars,"",srvObj.getCfg().getBlockSize(),
-                                       timeOut = None, returnFileObj = 1,
-                                       authHdrVal = authHdr)
-        httpHdrDic = ngamsLib.httpMsgObj2Dic(httpHdrs)
-        dataSize = int(httpHdrDic["content-length"])
+        conn = ngamsLib.httpGetConnection(ipAddress, port,
+                                          cmd=NGAMS_RETRIEVE_CMD, pars=pars,
+                                          blockSize=srvObj.getCfg().getBlockSize(),
+                                          timeOut = None, authHdrVal = authHdr)
 
-        # Check that the Retrieve Request was successful.
-        try:
-            tmpStatObj = ngamsStatus.ngamsStatus().\
-                         unpackXmlDoc(data, getStatus=1)
-        except Exception, e:
-            # Data was not a NG/AMS XML Status Document.
-            tmpStatObj = None
-            pass
-        if (tmpStatObj):
-            if (tmpStatObj.getStatus() == NGAMS_FAILURE):
-                raise Exception, tmpStatObj.getMessage()
+        hdrs = conn.headers
+        httpHdrDic = ngamsLib.httpMsgObj2Dic(hdrs)
+        dataSize = int(httpHdrDic["content-length"])
 
         tmpPars = ngamsLib.parseHttpHdr(httpHdrDic["content-disposition"])
         dataFilename = tmpPars["filename"]
 
         # Generate fake ngamsDppiStatus object.
         resultObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_STREAM,
-                                                    mimeType, data,
+                                                    mimeType, conn,
                                                     dataFilename, procDir,
                                                     dataSize)
         procResult = [ngamsDppiStatus.ngamsDppiStatus().addResult(resultObj)]
@@ -785,9 +773,8 @@ def handleCmdRetrieve(srvObj,
     if (reqPropsObj.hasHttpPar("processing") and \
         (not srvObj.getCfg().getAllowProcessingReq())):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Retrieve+Processing"])
-        error(errMsg)
         srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     _handleCmdRetrieve(srvObj, reqPropsObj, httpRef)
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)

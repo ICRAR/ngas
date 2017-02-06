@@ -39,10 +39,10 @@ NgamsCfg.Header[1].Type                                : NGAMS-TEST-BASE-CONFIGU
 NgamsCfg.HostSuspension[1].Id                          : HostSuspension-Test
 NgamsCfg.HostSuspension[1].IdleSuspension              : 0
 NgamsCfg.HostSuspension[1].IdleSuspensionTime          : 10
-NgamsCfg.HostSuspension[1].SuspensionPlugIn            : ngamsTestSuspensionPlugIn
+NgamsCfg.HostSuspension[1].SuspensionPlugIn            : ngamsTest.ngamsTestSuspensionPlugIn
 NgamsCfg.HostSuspension[1].SuspensionPlugInPars        : SUSPENSION,PI,PARS
 NgamsCfg.HostSuspension[1].WakeUpCallTimeOut           : 10
-NgamsCfg.HostSuspension[1].WakeUpPlugIn                : ngamsTestWakeUpPlugIn
+NgamsCfg.HostSuspension[1].WakeUpPlugIn                : ngamsTest.ngamsTestWakeUpPlugIn
 NgamsCfg.HostSuspension[1].WakeUpPlugInPars            : WAKE-UP,PI,PARS
 NgamsCfg.HostSuspension[1].WakeUpServerHost            : DEFINE
 NgamsCfg.Id                                            : ngamsCfg-Test

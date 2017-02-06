@@ -34,7 +34,6 @@ This module contains the Test Suite for the EXIT Command.
 import sys
 
 from ngamsLib import ngamsCore
-from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, info
 from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd
 
 
@@ -78,7 +77,7 @@ class ngamsExitCmdTest(ngamsTestSuite):
         client = sendPclCmd(timeOut=10)
         stat = client.exit()
         self.assertEquals(ngamsCore.NGAMS_SUCCESS, stat.getStatus())
-        info(1,"TODO: Check that NG/AMS Server has terminated")
+        # TODO: Check that NG/AMS Server has terminated
 
 
     def test_ExitCmd_2(self):

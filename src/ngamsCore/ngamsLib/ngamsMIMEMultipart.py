@@ -26,13 +26,15 @@ ngams/container
 """
 
 import binascii
+import logging
 import random
 import string
 import time
 from email.parser import Parser
-from ngamsCore import error, info, checkCreatePath
+from ngamsCore import checkCreatePath
 import ngamsContainer, ngamsFileInfo
 
+logger = logging.getLogger(__name__)
 CRLF = '\r\n'
 
 class MIMEMultipartHandler(object):
@@ -92,7 +94,7 @@ class ContainerBuilderHandler(MIMEMultipartHandler):
 		self._container = None
 
 	def startContainer(self, containerName):
-		info(4, 'Found container: ' + containerName)
+		logger.debug('Found container: %s', containerName)
 		MIMEMultipartHandler.startContainer(self, containerName)
 		prevContainer = self._container
 		self._container = ngamsContainer.ngamsContainer(containerName)
@@ -103,7 +105,7 @@ class ContainerBuilderHandler(MIMEMultipartHandler):
 
 	def startFile(self, filename):
 		MIMEMultipartHandler.startFile(self, filename)
-		info(4, 'Found file: ' + filename)
+		logger.debug('Found file: %s', filename)
 		fileInfo = ngamsFileInfo.ngamsFileInfo()
 		fileInfo.setFileId(filename)
 		self._container.addFileInfo(fileInfo)
@@ -136,7 +138,7 @@ class FilesystemWriterHandler(ContainerBuilderHandler):
 
 	def startContainer(self, containerName):
 		ContainerBuilderHandler.startContainer(self, containerName)
-		info(4, 'Receiving a container with container_name=' + containerName)
+		logger.debug('Receiving a container with container_name=%s', containerName)
 		self._containerName = containerName
 		self._containerNames.append(containerName)
 		checkCreatePath(self._curSavingDir())
@@ -144,12 +146,12 @@ class FilesystemWriterHandler(ContainerBuilderHandler):
 	def endContainer(self):
 		ContainerBuilderHandler.endContainer(self)
 		self._containerNames.pop()
-		info(4, 'Finished receiving container')
+		logger.debug('Finished receiving container')
 
 	def startFile(self, filename):
 		ContainerBuilderHandler.startFile(self, filename)
 		path = self._curSavingDir() + '/' + filename
-		info(4, 'Opening new file ' + path)
+		logger.debug('Opening new file %s', path)
 		self._fdOut = open(path, 'w')
 		self._filename = path
 		self._crc = 0
@@ -183,7 +185,7 @@ class FilesystemWriterHandler(ContainerBuilderHandler):
 			self._crcTime += (time.time() - t)
 
 	def endFile(self):
-		info(4, 'Closing file ' + self._filename)
+		logger.debug('Closing file %s', self._filename)
 		self._fdOut.close()
 		if self._calculateCRC:
 			self._fileDataList.append([self._container, self._filename, self._crc])
@@ -269,7 +271,7 @@ class MIMEMultipartParser(object):
 		careful about it
 		"""
 		self._recurse()
-		info(4, 'Bytes expected/bytes received: ' + str(self._totalSize) + '/' + str(self._bytesRead))
+		logger.debug('Bytes expected/bytes received: %d/%d', self._totalSize, self._bytesRead)
 
 	def _recurse(self):
 
@@ -308,7 +310,7 @@ class MIMEMultipartParser(object):
 			if state == self._ReadingState.headers:
 				idx = buf.find(CRLF + CRLF)
 				if idx != -1:
-					info(5, 'Processing headers')
+					logger.debug('Processing headers')
 					headers  = buf[:idx+4]
 					buf      = buf[idx+4:]
 					msg      = Parser().parsestr(headers, headersonly=True)
@@ -323,13 +325,12 @@ class MIMEMultipartParser(object):
 
 						boundary      = msg.get_param('boundary')
 						containerName = msg.get_param('container_name')
-						info(5, 'MIME multipart boundary: ' + boundary)
+						logger.debug('MIME multipart boundary: ' + boundary)
 
 						# Fail if we're missing any of these
 						if not boundary or not containerName:
 							msg = 'Either \'boundary\' or \'container_name\' are not specified in the Content-Type header'
-							error(msg)
-							raise Exception, msg
+							raise Exception(msg)
 
 						self._handler.startContainer(containerName)
 						state = self._ReadingState.delimiter
@@ -338,7 +339,7 @@ class MIMEMultipartParser(object):
 					else:
 						filename = msg.get_filename()
 						if not filename:
-							raise Exception, 'No filename found in internal multipart part header'
+							raise Exception('No filename found in internal multipart part header')
 						state = self._ReadingState.data
 						self._handler.startFile(filename)
 						readingFile = True
@@ -364,14 +365,14 @@ class MIMEMultipartParser(object):
 				if delIdx != -1:
 					# We don't actually need the delimiter itself
 					# delimiter = buf[:delIdx + 4 + len(boundary) + 2]
-					info(5, 'File delimiter found')
+					logger.debug('File delimiter found')
 					buf       = buf[delIdx + 4 + len(boundary) + 2:]
 					state     = self._ReadingState.headers
 					prevBuf = buf
 					continue
 				elif fDelIdx != -1:
 					# delimiter = buf[:fDelIdx + 4 + len(boundary) + 2]
-					info(5, 'Final delimiter found')
+					logger.debug('Final delimiter found')
 					# Take out the final delimiter and start
 					# using the previous boundary
 					self._handler.endContainer()
@@ -393,7 +394,7 @@ class MIMEMultipartParser(object):
 			if state == self._ReadingState.data:
 				delIdx  = buf.find(CRLF + '--' + boundary)
 				if delIdx != -1:
-					info(5, 'Found end of file ' + filename + ' because we found boundary: ' + boundary)
+					logger.debug('Found end of file %s because we found boundary: %s', filename, boundary)
 					state = self._ReadingState.delimiter
 					prevBuf = buf[delIdx:]
 					buf = buf[:delIdx]
@@ -492,7 +493,7 @@ class MIMEMultipartWriter(object):
 		containerName = contInfo[0]
 		self._filesInfoIt = iter(contInfo[1])
 		self._boundary = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(self._boundLen))
-		info(4, "Writing container's MIME multipart headers")
+		logger.debug("Writing container's MIME multipart headers")
 		self.writeData('MIME-Version: 1.0' + CRLF)
 		self.writeData('Content-Type: multipart/mixed; ' + \
 		               'container_name="' + containerName +'"; ' + \
@@ -509,7 +510,7 @@ class MIMEMultipartWriter(object):
 		except StopIteration:
 			raise Exception('More files requested for writing than informed at construction time')
 
-		info(4, 'Writing file ' + fileInfo[1])
+		logger.debug('Writing file %s', fileInfo[1])
 		self._writeBoundary()
 		self.writeData('Content-Type: ' + fileInfo[0] + CRLF)
 		self.writeData('Content-Disposition: attachment; filename="' + fileInfo[1] + '"' + CRLF + CRLF)
@@ -530,7 +531,7 @@ class MIMEMultipartWriter(object):
 		Writes the final delimiter into the output file object.
 		After calling this method no further writing should occur
 		"""
-		info(4, 'Writing final delimiter')
+		logger.debug('Writing final delimiter')
 		self.writeData(CRLF + '--' + self._boundary + '--')
 		self._outputFd.flush()
 		if  self._progress:

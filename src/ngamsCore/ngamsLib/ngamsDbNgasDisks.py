@@ -36,11 +36,14 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
-import os, types
-from pccUt import PccUtTime
-from ngamsCore import TRACE, getDiskSpaceAvail, iso8601ToSecs, rmFile, error, getUniqueNo, NGAMS_DB_CH_FILE_DELETE
+import logging
+import os
+
+from ngamsCore import TRACE, getDiskSpaceAvail, rmFile, getUniqueNo, NGAMS_DB_CH_FILE_DELETE, toiso8601, fromiso8601
 import ngamsDbm, ngamsDbCore
 
+
+logger = logging.getLogger(__name__)
 
 # TODO: Avoid using these classes in this module (mutual dependency):
 import ngamsFileInfo, ngamsDiskInfo
@@ -314,7 +317,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                     slotId, mounted, mountPoint, numberOfFiles, availableMb,\
                     bytesStored, completed, checksum, totalDiskWriteTime]
 
-            if lastCheck:
+            if lastCheck is not None:
                 lastCheckTmp = self.convertTimeStamp(lastCheck)
                 sql.append(",last_check={}")
                 vals.append(lastCheckTmp)
@@ -342,7 +345,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
         res = self.query2(''.join(sql), args = vals)
 
-        if completionDate:
+        if completionDate is not None:
             complDate = self.convertTimeStamp(completionDate)
             sql = "UPDATE ngas_disks SET completion_date={} WHERE disk_id={}"
             self.query2(sql, args = (complDate, diskId))
@@ -598,7 +601,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
                 # Get the information about the files on the disk (before this
                 # information is deleted).
                 if self.getCreateDbSnapshot():
-                    ts = PccUtTime.TimeStamp().getTimeStamp()
+                    ts = toiso8601()
                     fileName = ts + "_" + str(getUniqueNo()) + "_DISK_INFO"
                     fileInfoDbmName = os.path.\
                                       normpath(self.getDbTmpDir() + "/" +\
@@ -633,9 +636,9 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
             self.triggerEvents([diskInfo.getDiskId(),
                                 diskInfo.getMountPoint()])
             return self
-        except Exception, e:
-            error("Error deleting disk info from DB: %s" % str(e))
-            raise e
+        except Exception:
+            logger.exception("Error deleting disk info from DB")
+            raise
         finally:
             if fileInfoDbm:
                 del fileInfoDbm
@@ -668,15 +671,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
             if (not diskInfo[1]):
                 timeSinceLastCheck = 0
             else:
-                if (type(diskInfo[1]) == types.IntType):
-                    timeSinceLastCheck = int(diskInfo[1])
-                elif isinstance(diskInfo[1], basestring):
-                    # Expects an ISO 8601 timestamp.
-                    timeSinceLastCheck = int(iso8601ToSecs(diskInfo[1]) + 0.5)
-                else:
-                    timeSinceLastCheck =\
-                                       self.convertTimeStampToMx(diskInfo[1]).\
-                                       ticks()
+                timeSinceLastCheck = fromiso8601(diskInfo[1], local=True)
             diskDic[diskInfo[0]] = timeSinceLastCheck
         return diskDic
 
@@ -715,12 +710,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         if not res:
             return None
         val = res[0][0]
-        if type(val) == types.IntType:
-            return val
-        elif isinstance(val, basestring):
-            return int(iso8601ToSecs(val) + 0.5)
-        dt = self.convertTimeStampToMx(val)
-        return int(dt.ticks() + 0.5)
+        return fromiso8601(val, local=True)
 
     def getAvailableVolumes(self, hostId):
         """

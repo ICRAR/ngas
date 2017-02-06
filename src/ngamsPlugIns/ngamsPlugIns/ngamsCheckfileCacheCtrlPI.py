@@ -77,11 +77,15 @@ in Set#2, the file is signalled for removal from the cache.
 # Compiled list with the nodes to contact for check for availability of
 # the given file.
 
-import random, time
+import logging
+import random
+import time
 
-from ngamsLib.ngamsCore import TRACE, info, NGAMS_CHECKFILE_CMD, NGAMS_FAILURE, error
+from ngamsLib.ngamsCore import TRACE, NGAMS_CHECKFILE_CMD, NGAMS_FAILURE
 from ngamsLib import ngamsLib, ngamsStatus
 
+
+logger = logging.getLogger(__name__)
 
 CheckfileCacheCtrlPI_initialized    = False
 CheckfileCacheCtrlPI_sets           = None
@@ -152,14 +156,13 @@ def _sendCheckFileCmd(node,
     data = None
     try:
         host, port = node.split(":")
-        info(4, "Sending CHECKFILE Command for file: %s/%s to node: %s:%s" %\
-             (fileId, str(fileVersion), host, str(port)))
+        logger.debug("Sending CHECKFILE Command for file: %s/%s to node: %s:%s",
+                     fileId, str(fileVersion), host, str(port))
         code, msg, hdrs, data = ngamsLib.httpGet(host, port,
                                                  NGAMS_CHECKFILE_CMD,
                                                  pars = cmdPars)
-    except Exception, e:
-        err = "Error contacting node: %s . Error: %s" % (str(node), str(e))
-        info(4, "NOTICE: %s" % err)
+    except Exception:
+        logger.exception("Error contacting node %s", node)
 
     if (data):
         tmpStatObj = ngamsStatus.ngamsStatus().unpackXmlDoc(data)
@@ -276,8 +279,8 @@ def ngamsCheckfileCacheCtrlPI(srvObj,
     except Exception, e:
         msg = "Error ocurred executing Cache Control Plug-In. Error: %s" %\
               str(e)
-        error(msg)
-        raise Exception, msg
+        logger.error(msg)
+        raise
 
 
 # EOF

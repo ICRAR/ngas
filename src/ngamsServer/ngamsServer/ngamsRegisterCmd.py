@@ -32,25 +32,26 @@ Contains functions for handling the REGISTER command.
 """
 
 import commands
+import logging
 import os
 import thread
 import threading
 import time
 
-from pccUt import PccUtTime
-from ngamsLib.ngamsCore import TRACE, rmFile, info, NGAMS_HTTP_GET, \
-    NGAMS_REGISTER_CMD, notice, mvFile, getFileCreationTime, \
-    NGAMS_FILE_STATUS_OK, genLog, sysLogInfo, error, NGAMS_SUCCESS, \
+from ngamsLib.ngamsCore import TRACE, rmFile, NGAMS_HTTP_GET, \
+    NGAMS_REGISTER_CMD, mvFile, getFileCreationTime, \
+    NGAMS_FILE_STATUS_OK, genLog, NGAMS_SUCCESS, \
     NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
-    NGAMS_VOLUME_INFO_FILE, NGAMS_REGISTER_THR, getThreadName, \
+    NGAMS_VOLUME_INFO_FILE, NGAMS_REGISTER_THR, \
     NGAMS_HTTP_SUCCESS, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
-    NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint
+    NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint, toiso8601
 from ngamsLib import ngamsDbm, ngamsReqProps, ngamsFileInfo, ngamsDbCore, \
     ngamsHighLevelLib, ngamsDiskUtils, ngamsLib, ngamsFileList, \
     ngamsNotification, ngamsDiskInfo
 import ngamsArchiveUtils, ngamsCacheControlThread
 
+logger = logging.getLogger(__name__)
 
 def _registerExec(srvObj,
                   fileListDbmName,
@@ -171,13 +172,12 @@ def _registerExec(srvObj,
     fileRegCount    = 0
     fileFailCount   = 0
     fileRejectCount = 0
-    regTimer        = PccUtTime.Timer()
     regTimeAccu     = 0.0
     fileCount       = 0
     fo = open(sortFileList)
     run = 1
     while (run):
-        regTimer.start()
+        reg_start = time.time()
         dbmKey = fo.readline()
         if (dbmKey.strip() == ""):
             run = 0
@@ -190,7 +190,7 @@ def _registerExec(srvObj,
         # Register the file. Check first, that exactly this file is
         # not already registered. In case it is, the file will be rejected.
         regPi = srvObj.getCfg().getRegPiFromMimeType(mimeType)
-        info(3,"Plugin found for %s: %s" % (mimeType, regPi))
+        logger.debug("Plugin found for %s: %s", mimeType, regPi)
         tmpReqPropsObj = ngamsReqProps.ngamsReqProps().\
                          setMimeType(mimeType).\
                          setStagingFilename(filename).\
@@ -237,7 +237,7 @@ def _registerExec(srvObj,
                 tmpMsg = tmpMsgForm % (piRes.getFileId(),
                                        piRes.getFileVersion(), filename,
                                        piRes.getDiskId())
-                notice(tmpMsg + ". File is not registered again.")
+                logger.warning(tmpMsg + ". File is not registered again.")
                 if (emailNotif):
                     tmpFileObj.\
                                  setDiskId(diskId).setFilename(filename).\
@@ -247,14 +247,14 @@ def _registerExec(srvObj,
                     reqPropsObj.incActualCount(1)
                     ngamsHighLevelLib.stdReqTimeStatUpdate(srvObj, reqPropsObj,
                                                            regTimeAccu)
-                regTimeAccu += regTimer.stop()
+                regTimeAccu += time.time() - reg_start
                 fileCount += 1
                 continue
 
             # Calculate checksum (if plug-in specified).
             if (checksumPlugIn != ""):
-                info(3,"Invoking Checksum Plug-In: " + checksumPlugIn +\
-                     " to handle file: " + filename)
+                logger.debug("Invoking Checksum Plug-In: %s to handle file: %s",
+                             checksumPlugIn, filename)
                 plugInMethod = loadPlugInEntryPoint(checksumPlugIn)
                 checksum = plugInMethod(srvObj, filename, 0)
             else:
@@ -269,7 +269,7 @@ def _registerExec(srvObj,
 
             if (emailNotif):
                 uncomprSize = piRes.getUncomprSize()
-                ingestDate  = PccUtTime.TimeStamp().getTimeStamp()
+                ingestDate  = time.time()
                 creDateSecs = getFileCreationTime(filename)
                 tmpFileObj.\
                              setDiskId(diskId).\
@@ -301,24 +301,23 @@ def _registerExec(srvObj,
             msg = genLog("NGAMS_INFO_FILE_REGISTERED",
                          [filename, piRes.getFileId(), piRes.getFileVersion(),
                           piRes.getFormat()])
-            sysLogInfo(1,msg)
             time.sleep(0.005)
-            regTime = regTimer.stop()
+            regTime = time.time() - reg_start
             msg = msg + ". Time: %.3fs." % (regTime)
-            info(1,msg)
+            logger.info(msg, extra={'to_syslog': 1})
         except Exception, e:
             try:
                 if (cursorObj): del cursorObj
             except:
                 pass
             errMsg = genLog("NGAMS_ER_FILE_REG_FAILED", [filename, str(e)])
-            error(errMsg)
+            logger.error(errMsg)
             if (emailNotif):
                 tmpFileObj.\
                              setDiskId(diskId).setFilename(filename).\
                              setTag(errMsg)
             fileFailCount += 1
-            regTime = regTimer.stop()
+            regTime = time.time() - reg_start
             # TODO (rtobar, 2016-01): Why don't we raise an exception here?
             #      Otherwise the command appears as successful on the
             #      client-side
@@ -391,7 +390,6 @@ def _registerExec(srvObj,
             # Generate a 'simple' ASCII report.
             statRep = tmpFilePat + "_NOTIF_EMAIL.txt"
             fo = open(statRep, "w")
-            timeStamp = PccUtTime.TimeStamp().getTimeStamp()
             if (reqPropsObj):
                 path = reqPropsObj.getHttpPar("path")
             else:
@@ -412,7 +410,7 @@ def _registerExec(srvObj,
                         "Total processing time (s):  %.3f\n" +\
                         "Handling time per file (s): %.3f\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (timeStamp, srvObj.getHostId(), path, fileCount,
+            fo.write(tmpFormat % (toiso8601(), srvObj.getHostId(), path, fileCount,
                                   fileRegCount, fileFailCount, fileRejectCount,
                                   regTimeAccu, timePerFile))
             tmpFormat = "%-80s %-32s %-3s %-10s\n"
@@ -451,14 +449,15 @@ def _registerExec(srvObj,
         rmFile(statRep)
 
     # Generate final status log + exit.
-    format = "Files handled: %d. Total time: %.3fs. " +\
-             "Average time per file: %.3fs."
     if (fileCount > 0):
         timePerFile = (regTimeAccu / fileCount)
     else:
         timePerFile = 0.0
-    info(3,"Registration procedure finished processing Register Request - " +\
-         "terminating. " + format % (fileCount, regTimeAccu, timePerFile))
+
+    msg = "Registration procedure finished processing Register Request - " + \
+          "terminating. Files handled: %d. Total time: %.3fs. " + \
+          "Average time per file: %.3fs."
+    logger.debug(msg, fileCount, regTimeAccu, timePerFile)
 
 
 def _registerThread(srvObj,
@@ -478,10 +477,10 @@ def _registerThread(srvObj,
                       reqPropsObj)
         rmFile(tmpFilePat + "*")
         thread.exit()
-    except Exception, e:
-        error("Exception raised in Register Sub-Thread: " + str(e))
+    except Exception:
+        logger.exception("Exception raised in Register Sub-Thread")
         rmFile(tmpFilePat + "*")
-        raise e
+        raise
 
 
 def register(srvObj,
@@ -658,7 +657,7 @@ def register(srvObj,
 
     # Send intermediate reply if the HTTP Reference object is given.
     if (httpRef and (not reqPropsObj.getWait())):
-        info(3,"REGISTER command accepted - generating immediate " +\
+        logger.debug("REGISTER command accepted - generating immediate " +\
              "confimation reply to REGISTER command")
 
         # Update the request status in the Request Properties Object.
@@ -675,7 +674,7 @@ def register(srvObj,
     if (not reqPropsObj.getWait()):
         args = (srvObj, fileListDbmName, tmpFilePat, diskInfoDic,
                 reqPropsObj, None)
-        thrName = NGAMS_REGISTER_THR + getThreadName()
+        thrName = NGAMS_REGISTER_THR + threading.current_thread().getName()
         regThread = threading.Thread(None, _registerThread, thrName, args)
         regThread.setDaemon(0)
         regThread.start()
@@ -685,7 +684,7 @@ def register(srvObj,
         _registerExec(srvObj, fileListDbmName, tmpFilePat, diskInfoDic,
                       reqPropsObj)
         msg = "Successfully handled command REGISTER"
-        info(3,msg)
+        logger.debug(msg)
         status = srvObj.genStatus(NGAMS_SUCCESS, msg).\
                  setReqStatFromReqPropsObj(reqPropsObj).setActualCount(0)
 
@@ -721,8 +720,7 @@ def handleCmdRegister(srvObj,
     # Is this NG/AMS permitted to handle Archive Requests?
     if (not srvObj.getCfg().getAllowArchiveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Register"])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Check if State/Sub-State correct for perfoming the cloning.
     srvObj.checkSetState("Command REGISTER", [NGAMS_ONLINE_STATE],

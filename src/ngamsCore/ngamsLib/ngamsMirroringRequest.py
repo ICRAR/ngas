@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsMirroringRequest.py,v 1.11 2008/08/19 20:51:50 jknudstr Exp $"
@@ -35,7 +34,7 @@ Class to handle the information in connection with one Mirroring Request.
 
 import time
 
-from ngamsCore import timeRef2Iso8601, trim, iso8601ToSecs, TRACE, setLogCond
+from ngamsCore import TRACE, toiso8601
 import ngamsLib
 
 
@@ -102,8 +101,8 @@ class ngamsMirroringRequest:
         self.__xmlFileInfo      = None
         self.__status           = None
         self.__message          = None
-        self.__lastActivityTime = timeRef2Iso8601(timeNow)
-        self.__schedulingTime   = timeRef2Iso8601(timeNow)
+        self.__lastActivityTime = timeNow
+        self.__schedulingTime   = timeNow
 
 
     def statusStr2No(self,
@@ -161,7 +160,7 @@ class ngamsMirroringRequest:
 
         Returns:    Reference to object itself.
         """
-        self.__instanceId = str(trim(id, "\" "))
+        self.__instanceId = id.strip("\" ")
         return self
 
 
@@ -187,7 +186,7 @@ class ngamsMirroringRequest:
 
         Returns:    Reference to object itself.
         """
-        self.__fileId = str(trim(id, "\" "))
+        self.__fileId = id.strip("\" ")
         return self
 
 
@@ -225,14 +224,13 @@ class ngamsMirroringRequest:
     def setIngestionDate(self,
                          date):
         """
-        Set the ingestion date for the file (in the ISO 8601 format).
+        Set the ingestion date for the file
 
-        date:       Ingestion date for file (string/ISO 8601|float/secs).
+        date:       Ingestion date for file (number)
 
         Returns:    Reference to object itself.
         """
-        if (not date): return self
-        self.__ingestionDate = timeRef2Iso8601(date)
+        self.__ingestionDate = date
         return self
 
 
@@ -240,7 +238,7 @@ class ngamsMirroringRequest:
         """
         Get the ingestion date.
 
-        Returns:   Ingestion data in ISO 8601 format (string).
+        Returns:   Ingestion data (number or None)
         """
         return self.__ingestionDate
 
@@ -357,12 +355,11 @@ class ngamsMirroringRequest:
         """
         Set the last activity field of the Mirroring Request.
 
-        timeStamp:   Time for last activity as seconds since epoch or as an
-                     ISO 8601 time stamp (string/integer).
+        timeStamp:   Time for last activity as seconds since epoch
 
         Returns:     Reference to object itself.
         """
-        self.__lastActivityTime = timeRef2Iso8601(timeStamp)
+        self.__lastActivityTime = timeStamp
         return self
 
 
@@ -370,22 +367,9 @@ class ngamsMirroringRequest:
         """
         Return the time for the last activity as an ISO 8601 timestamp.
 
-        Returns:   Last time for activity/ISO 8601 or None
-                   (string/ISO 8601|None).
+        Returns:   Last time for activity (number or None)
         """
         return  self.__lastActivityTime
-
-
-    def getLastActivityTimeSecs(self):
-        """
-        Return the time for the last activity in seconds since epoch.
-
-        Returns:   Last time for activity in seconds (integer|None).
-        """
-        if (not self.__lastActivityTime):
-            return None
-        else:
-            return iso8601ToSecs(self.__lastActivityTime)
 
 
     def setSchedulingTime(self,
@@ -393,12 +377,11 @@ class ngamsMirroringRequest:
         """
         Set the scheduling of the Mirroring Request.
 
-        timeStamp:   Time for scheduling as seconds since epoch or as an
-                     ISO 8601 time stamp (string/integer).
+        timeStamp:   Time for scheduling as seconds since epoch
 
         Returns:     Reference to object itself.
         """
-        self.__schedulingTime = timeRef2Iso8601(timeStamp)
+        self.__schedulingTime = timeStamp
         return self
 
 
@@ -406,23 +389,9 @@ class ngamsMirroringRequest:
         """
         Return the time for scheduling the request as an ISO 8601 timestamp.
 
-        Returns:   Last time for scheduling the request/ISO 8601 or None
-                   (string/ISO 8601|None).
+        Returns:   Last time for scheduling the request (number or None)
         """
         return  self.__schedulingTime
-
-
-    def getSchedulingTimeSecs(self):
-        """
-        Return the time for scheduling the request in seconds since epoch.
-
-        Returns:   Last time for scheduling the request in seconds
-                   (integer|None).
-        """
-        if (not self.__schedulingTime):
-            return None
-        else:
-            return iso8601ToSecs(self.__schedulingTime)
 
 
     def dump(self):
@@ -438,12 +407,13 @@ class ngamsMirroringRequest:
         buf += "Instance ID:         %s\n" % self.getInstanceId()
         buf += "File ID:             %s\n" % self.getFileId()
         buf += "File Version:        %d\n" % self.getFileVersion()
-        buf += "Ingestion Date:      %s\n" % self.getIngestionDate()
+        if self.__ingestionDate is not None:
+            buf += "Ingestion Date:      %s\n" % toiso8601(self.__ingestionDate)
         buf += "Server List ID:      %d\n" % self.getSrvListId()
         buf += "XML File Info:\n%s\n" % self.getXmlFileInfo()
         buf += "Status:              %s\n" % self.getStatusAsStr()
         buf += "Message:             %s\n" % str(self.getMessage())
-        buf += "Last Activity Date:  %s\n" % self.getLastActivityTime()
+        buf += "Last Activity Date:  %s\n" % toiso8601(self.getLastActivityTime())
         return buf
 
 
@@ -461,7 +431,7 @@ class ngamsMirroringRequest:
         buf += ". File Version: %d" % self.getFileVersion()
         buf += ". Status: %s" % self.getStatusAsStr()
         buf += ". Message: %s" % str(self.getMessage())
-        buf += ". Last Activity Date: %s" % self.getLastActivityTime()
+        buf += ". Last Activity Date: %s" % toiso8601(self.getLastActivityTime())
         return buf
 
 
@@ -474,13 +444,6 @@ class ngamsMirroringRequest:
         """
         return ngamsLib.genFileKey(None, self.getFileId(),
                                    self.getFileVersion())
-
-
-if __name__ == '__main__':
-    """
-    Main function.
-    """
-    setLogCond(0, 0, "", 5)
 
 
 # EOF

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?xml:stylesheet type="text/xsl" 
+<?xml-stylesheet type="text/xsl"
                  href="http://www.eso.org/~jknudstr/LogDef.xsl"?>
 <!-- http://www.eso.org/projects/esoxml/LogDef.xsl -->
 <!DOCTYPE LogDef SYSTEM "http://www.eso.org/~jknudstr/LogDef.dtd">

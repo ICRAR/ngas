@@ -33,7 +33,7 @@ This module contains the Test Suite for the SUBSCRIBE Command.
 
 import sys, os
 
-from ngamsLib.ngamsCore import NGAMS_DISCARD_CMD, info, cpFile
+from ngamsLib.ngamsCore import NGAMS_DISCARD_CMD, cpFile
 from ngamsTestLib import ngamsTestSuite, sendExtCmd, sendPclCmd, getClusterName, runTest
 
 
@@ -179,14 +179,14 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
                                  pars + [["execute", "0"]])
         refStatFile = "ref/ngamsDiscardCmdTest_test_NormalExec_1_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, illStatDoc % "1")
-        info(1,"TODO!: Check that file info is not removed from the DB")
-        info(1,"TODO!: Check that file is not removed from the disk")
+        # TODO!: Check that file info is not removed from the DB
+        # TODO!: Check that file is not removed from the disk
         refStatFile = "ref/ngamsDiscardCmdTest_test_NormalExec_1_2_ref"
         tmpStatFile = sendExtCmd(8888, NGAMS_DISCARD_CMD,
                                  pars + [["execute", "1"]])
         self.checkFilesEq(refStatFile, tmpStatFile, illStatDoc % "2")
-        info(1,"TODO!: Check that file info is removed from the DB")
-        info(1,"TODO!: Check that file is removed from the disk")
+        # TODO!: Check that file info is removed from the DB
+        # TODO!: Check that file is removed from the disk
 
 
     def test_NormalExec_2(self):
@@ -235,7 +235,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
                                  [["path", trgFile], ["execute", "1"]])
         refStatFile = "ref/ngamsDiscardCmdTest_test_NormalExec_2_2_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, illStatDoc % "2")
-        info(1,"TODO!: Check that file disappeared from the disk!")
+        # TODO!: Check that file disappeared from the disk!
 
 
 

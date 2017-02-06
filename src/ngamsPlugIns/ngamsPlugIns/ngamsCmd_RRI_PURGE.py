@@ -37,11 +37,15 @@ I estimate that we will need  67*2*30*24*7*5/1000 ~ 3.4 TB of disk space.
 
 """
 
-import threading, datetime
+import datetime
+import logging
+import threading
 
-from ngamsLib.ngamsCore import error, info, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 from ngamsServer import ngamsDiscardCmd
 
+
+logger = logging.getLogger(__name__)
 
 QUERY_ALL_FILES = "SELECT a.disk_id, a.file_id, a.file_version FROM ngas_files a, "+\
                  "ngas_disks b WHERE a.disk_id = b.disk_id AND b.host_id = {0}"
@@ -68,9 +72,9 @@ def _shouldRetain(fileId):
                 return False
         else:
             return False
-    except Exception, e2:
-        errMsg = '_shouldRetain in rri purge thread failed: Exception %s' % str(e2)
-        error(errMsg)
+    except Exception:
+        errMsg = '_shouldRetain in rri purge thread failed'
+        logger.exception(errMsg)
         return True
 
 def _purgeThread(srvObj, reqPropsObj, httpRef):
@@ -78,7 +82,7 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
     is_purgeThrd_running = True
     work_dir = srvObj.getCfg().getRootDirectory() + '/tmp/'
     try:
-        info(3, "host_id = %s" % srvObj.getHostId())
+        logger.debug("host_id = %s", srvObj.getHostId())
         resDel = srvObj.getDb().query2(QUERY_ALL_FILES, args=(srvObj.getHostId(),))
         if not resDel:
             raise Exception('Could not find any files to discard / retain')
@@ -96,9 +100,9 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
                         continue
                     else:
                         raise e1
-    except Exception, eee:
-        errMsg = 'Fail to execute the rri purge thread: Exception %s' % str(eee)
-        error(errMsg)
+    except Exception:
+        errMsg = 'Fail to execute the rri purge thread'
+        logger.exception(errMsg)
     finally:
         is_purgeThrd_running = False
         total_todo = 0

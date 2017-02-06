@@ -41,14 +41,20 @@ src/ngamsTest/ngamsTestAsyncListRetrieve.py
 
 """
 
+import cPickle as pickle
+import httplib
+import logging
+import os
 from Queue import Queue, Empty
-import os, socket
-import thread, threading, httplib, time, traceback
+import socket
+import thread
+import threading
+import time
+import traceback
 from urlparse import urlparse
 
-import cPickle as pickle
 from ngamsLib import ngamsDbCore, ngamsStatus, ngamsPlugInApi, ngamsLib
-from ngamsLib.ngamsCore import info, warning, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT, \
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT, \
     TRACE, NGAMS_HTTP_POST, getFileSize, getHostName, NGAMS_SUCCESS, \
     NGAMS_FAILURE
 import ngamsMWACortexTapeApi
@@ -57,6 +63,8 @@ from ngamsPlugIns.ngamsMWAAsyncProtocol import AsyncListRetrieveResponse, \
     AsyncListRetrieveSuspendResponse, AsyncListRetrieveResumeResponse, \
     AsyncListRetrieveStatusResponse, FileInfo
 
+
+logger = logging.getLogger(__name__)
 
 asyncReqDic = {} #key - uuid, value - AsyncListRetrieveRequest (need to remember the original request in case of cancel/suspend/resume or server shutting down)
 statusResDic = {} #key - uuid, value - AsyncListRetrieveStatusResponse
@@ -92,12 +100,12 @@ def createPushThread(srvObj, url, numPT = 1):
         pushQSem.release()
 
 def enPushQueue(srvObj, filename, asyncListReqObj, baseNameDic):
-    info(3, 'Get signal to pushi file %s, url = %s' % (filename, str(asyncListReqObj.url)))
+    logger.debug('Get signal to pushi file %s, url = %s', filename, str(asyncListReqObj.url))
     o = urlparse(asyncListReqObj.url)
     hostname = o.hostname
-    info(3, 'Pushing file %s in the queue for host %s' % (filename, hostname))
+    logger.debug('Pushing file %s in the queue for host %s', filename, hostname)
     if (not pushQDic.has_key(hostname)):
-        warning('Cannot find hostname %s in the pushQDic' % hostname)
+        logger.warning('Cannot find hostname %s in the pushQDic', hostname)
         return
     pushQueue = pushQDic[hostname]
 
@@ -186,18 +194,18 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         else:
             asyncListReqObj = pickle.loads(postContent)
         """
-        info(3,"push url: %s" % asyncListReqObj.url)
+        logger.debug("push url: %s", asyncListReqObj.url)
         createPushThread(srvObj, asyncListReqObj.url, numPT = 6)
         filelist = list(set(asyncListReqObj.file_id)) #remove duplicates
         asyncListReqObj.file_id = filelist
 
         sessionId = asyncListReqObj.session_uuid
-        info(3,"uuid : %s" % sessionId)
+        logger.debug("uuid : %s", sessionId)
         asyncReqDic[sessionId] = asyncListReqObj
 
         # 2. generate response (i.e. status reports)
         res = genInstantResponse(srvObj, asyncListReqObj)
-        info(3,"response uuid : %s" % res.session_uuid)
+        logger.debug("response uuid : %s", res.session_uuid)
 
         # 3. launch a thread to process the list
         _startThread(srvObj, sessionId)
@@ -395,17 +403,16 @@ def _httpPostUrl(url,
     tmpUrl = url[7:idx]
     cmd    = url[(idx + 1):]
     http = httplib.HTTP(tmpUrl)
-    info(4,"Sending HTTP header ...")
-    info(4,"HTTP Header: %s: %s" % (NGAMS_HTTP_POST, cmd))
+    logger.debug("HTTP Header: %s: %s", NGAMS_HTTP_POST, cmd)
     http.putrequest(NGAMS_HTTP_POST, cmd)
-    info(4,"HTTP Header: %s: %s" % ("Content-Type", mimeType))
+    logger.debug("HTTP Header: Content-Type: %s", mimeType)
     http.putheader("Content-Type", mimeType)
     if (contDisp != ""):
-        info(4,"HTTP Header: %s: %s" % ("Content-Disposition", contDisp))
+        logger.debug("HTTP Header: Content-Disposition: %s", contDisp)
         http.putheader("Content-Disposition", contDisp)
     if (authHdrVal):
         if (authHdrVal[-1] == "\n"): authHdrVal = authHdrVal[:-1]
-        info(4,"HTTP Header: %s: %s" % ("Authorization", authHdrVal))
+        logger.debug("HTTP Header: Authorization: %s", authHdrVal)
         http.putheader("Authorization", authHdrVal)
     if (dataSource == "FILE"):
         dataSize = getFileSize(dataRef)
@@ -413,17 +420,17 @@ def _httpPostUrl(url,
         dataSize = len(dataRef)
 
     if (dataSize != -1):
-        info(4,"HTTP Header: %s: %s" % ("Content-Length", str(dataSize)))
+        logger.debug("HTTP Header: Content-Length: %s", str(dataSize))
         http.putheader("Content-Length", str(dataSize))
-    info(4,"HTTP Header: %s: %s" % ("Host", getHostName()))
+    logger.debug("HTTP Header: Host: %s", getHostName())
     http.putheader("Host", getHostName())
     http.endheaders()
-    info(4,"HTTP header sent")
+    logger.debug("HTTP header sent")
 
     http._conn.sock.settimeout(timeOut)
 
     # Send the data.
-    info(4,"Sending data ...")
+    logger.debug("Sending data ...")
     if (dataSource == "FILE"):
         fdIn = open(dataRef)
         block = "-"
@@ -455,15 +462,15 @@ def _httpPostUrl(url,
     else:
         # dataSource == "BUFFER"
         http.send(dataRef)
-    info(4,"Data sent")
+    logger.debug("Data sent")
     if (threadRunDic.has_key(session_uuid) and threadRunDic[session_uuid] == 0):
-        info(3, "Received cancel/suspend request, close HTTP connection and return None values")
+        logger.debug("Received cancel/suspend request, close HTTP connection and return None values")
         if (http != None):
             http.close()
             del http
         return [None, None, None, None]
     # Receive + unpack reply.
-    info(4,"Waiting for reply ...")
+    logger.debug("Waiting for reply ...")
 
     reply, msg, hdrs = http.getreply()
 
@@ -489,9 +496,10 @@ def _httpPostUrl(url,
             raise e
 
     # Dump HTTP headers if Verbose Level >= 4.
-    info(4,"HTTP Header: HTTP/1.0 " + str(reply) + " " + msg)
-    for hdr in hdrs.keys():
-        info(4,"HTTP Header: " + hdr + ": " + hdrs[hdr])
+    logger.debug("HTTP Header: HTTP/1.0 " + str(reply) + " " + msg)
+    if logger.isEnabledFor(logging.DEBUG):
+        for hdr in hdrs.keys():
+            logger.debug("HTTP Header: %s: %s", hdr, hdrs[hdr])
 
     if (http != None):
         http.close()
@@ -513,7 +521,8 @@ def _httpPost(srvObj, url, filename, sessionId = None):
     baseName = os.path.basename(filename)
     contDisp = "attachment; filename=\"" + baseName + "\""
     contDisp += "; no_versioning=1"
-    info(3,"Async Delivery Thread [" + str(thread.get_ident()) + "] Delivering file: " + baseName + " - to: " + url + " ...")
+    logger.debug("Async Delivery Thread [%s] Delivering file: %s - to: %s ...",
+                 str(thread.get_ident()), baseName, url)
     ex = ""
     try:
 
@@ -542,11 +551,11 @@ def _httpPost(srvObj, url, filename, sessionId = None):
         if (ex != ""): errMsg += " Exception: " + ex + "."
         if (stat.getMessage() != ""):
             errMsg += " Message: " + stat.getMessage()
-        warning(errMsg + '\n' + traceback.format_exc())
+        logger.warning(errMsg + '\n' + traceback.format_exc())
         return 1
     else:
-        info(3,"File: " + baseName +\
-                " - delivered to url: " + url + " by Async Delivery Thread [" + str(thread.get_ident()) + "]")
+        logger.debug("File: %s delivered to url: %s by Async Delivery Thread [%s]",
+                     baseName, url, str(thread.get_ident()))
         return 0
 
 def genInstantResponse(srvObj, asyncListReqObj):
@@ -571,7 +580,6 @@ def genInstantResponse(srvObj, asyncListReqObj):
     for f in fileInfoList:
         file_id = f[ngamsDbCore.SUM1_FILE_ID]
         if (baseNameDic.has_key(file_id)):
-            #info(3, "duplication detected %s" % basename)
             continue #get rid of multiple versions
         else:
             baseNameDic[file_id] = 1
@@ -665,14 +673,14 @@ def _deliveryThread(srvObj, asyncListReqObj):
         if (not baseNameDic.has_key(ff)):
             asyncListReqObj.file_id.remove(ff)
 
-    info(3, '** Length of allFiles = %d' % (len(allfiles)))
+    logger.debug('** Length of allFiles = %d', len(allfiles))
     for filename in allfiles:
         basename = os.path.basename(filename)
         nextFileDic[sessionId] = basename
         if (threadRunDic.has_key(sessionId) and threadRunDic[sessionId] == 0):
-            info(3, "transfer cancelled/suspended before transferring file '%s'" % basename)
+            logger.debug("transfer cancelled/suspended before transferring file '%s'", basename)
             break
-        info(3, 'Preparing to push file %s to the queue' % filename)
+        logger.debug('Preparing to push file %s to the queue', filename)
         enPushQueue(srvObj, filename, asyncListReqObj, baseNameDic)
         # the following code is for parallel stream (i.e. for each async request, there is a delivery thread)
         # this may cause performance issue if a client issues a lot of async requests. In the new scheme,
@@ -819,10 +827,10 @@ def _stopThread(sessionId):
         counter = counter + 1
 
     if (counter > THREAD_STOP_TIME_OUT and deliveryThrRef.isAlive()):
-        info(3, "thread stopping timeout for session %s" % sessionId)
+        logger.debug("thread stopping timeout for session %s", sessionId)
         return AsyncListRetrieveProtocolError.THREAD_STOP_TIMEOUT
     else:
-        info(3, "thread stopped successfully for session %s" % sessionId)
+        logger.debug("thread stopped successfully for session %s", sessionId)
         return AsyncListRetrieveProtocolError.OK
 
 
@@ -840,7 +848,7 @@ def _startThread(srvObj, sessionId):
         del threadDic[sessionId]
 
     args = (srvObj, asyncReqDic.get(sessionId))
-    info(3,"starting thread for uuid : %s" % sessionId)
+    logger.info("starting thread for uuid : %s", sessionId)
     deliveryThrRef = threading.Thread(None, _deliveryThread, ASYNC_DELIVERY_THR+sessionId, args)
     threadDic[sessionId] = deliveryThrRef
     deliveryThrRef.setDaemon(0)

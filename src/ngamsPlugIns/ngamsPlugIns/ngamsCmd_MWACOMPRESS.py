@@ -35,10 +35,15 @@ Deploy this command on all EOR machines
 This command wil be invoked by a central processing client
 """
 
-import os, commands, binascii
+import binascii
+import commands
+import logging
+import os
 
-from ngamsLib.ngamsCore import error, info, warning, NGAMS_TEXT_MT, NGAMS_HTTP_SUCCESS, getFileSize
+from ngamsLib.ngamsCore import NGAMS_TEXT_MT, NGAMS_HTTP_SUCCESS, getFileSize
 
+
+logger = logging.getLogger(__name__)
 
 debug = 0
 uvcompress = '/home/ngas/ngas_rt/bin/uvcompress'
@@ -93,9 +98,9 @@ def hasCompressed(filename):
         re = commands.getstatusoutput(cmd)
     except Exception, ex:
         if (str(ex).find('timed out') != -1):
-            error('Timed out when checking FITS header %s' % cmd)
+            logger.error('Timed out when checking FITS header %s', cmd)
         else:
-            error('Exception when checking FITS header %s: %s' % (cmd, str(ex)))
+            logger.error('Exception when checking FITS header %s: %s', cmd, str(ex))
         return 1
 
     if (0 == re[0]):
@@ -103,10 +108,10 @@ def hasCompressed(filename):
         if (a > -1):
             return 1 # if the file is already compressed, do not add again
         else:
-            info(3, "File %s added to be compressed" % filename)
+            logger.debug("File %s added to be compressed", filename)
             return 0
     else:
-        warning('Fail to check header for file %s: %s' % (filename, re[1]))
+        logger.warning('Fail to check header for file %s: %s', filename, re[1])
         return 1
 
 def getFileCRC(filename):
@@ -144,10 +149,10 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             return
 
     filename = reqPropsObj.getHttpPar('file_path')
-    info(3, 'Compressing file %s' % filename)
+    logger.debug('Compressing file %s', filename)
     if (not os.path.exists(filename)):
         errMsg = 'File Not found: %s' % filename
-        error(errMsg)
+        logger.error(errMsg)
         srvObj.httpReply(reqPropsObj, httpRef, 404, errMsg, NGAMS_TEXT_MT)
         return
 
@@ -157,13 +162,13 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
     if (not isMWAVisFile(fileId)):
         errMsg = 'Not MWA visibilty file: %' % (fileId)
-        warning(errMsg)
+        logger.warning(errMsg)
         srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
         return
 
     if (hasCompressed(filename)):
         errMsg = 'OK'
-        info(3, 'File compressed %s already, return now' % (filename))
+        logger.debug('File compressed %s already, return now', filename)
         srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, errMsg, NGAMS_TEXT_MT)
         return
 
@@ -204,19 +209,19 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
     # do compression
     cmd = "%s -d %d %s %s %s" % (uvcompress, sf, binstr, filename, newfn)
-    info(3, 'Compression: %s' % cmd)
+    logger.debug('Compression: %s', cmd)
     if (debug):
         pass
     else:
         ret = execCmd(cmd)
         if (ret[0] != 0):
             errMsg = 'Failed to compress %s' % ret[1]
-            error(errMsg)
+            logger.error(errMsg)
             srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
             return
 
     # calculate the CRC code
-    info(3, 'Calculating CRC for file %s' % newfn)
+    logger.debug('Calculating CRC for file %s', newfn)
     if (debug):
         crc = 1234567
     else:
@@ -224,7 +229,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             crc = getFileCRC(newfn)
         except Exception, exp:
             errMsg = 'Failed to calculate the CRC for file %s: %s' % (newfn, str(exp))
-            error(errMsg)
+            logger.error(errMsg)
             srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
             # remove the temp compressed file
             cmd1 = 'rm %s' % newfn
@@ -233,14 +238,14 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
     # rename the uncompressed file (under the same directory)
     cmd1 = 'mv %s %s/%s_uncompressed' % (filename, fndir, bname)
-    info(3, 'Renaming the uncompressed file: %s' % cmd1)
+    logger.debug('Renaming the uncompressed file: %s', cmd1)
     if (debug):
         pass
     else:
         ret = execCmd(cmd1)
         if (ret[0] != 0):
             errMsg = 'Failed to move/rename uncompressed file %s: %s' % (filename, ret[1])
-            error(errMsg)
+            logger.error(errMsg)
             srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
             # remove the temp compressed file
             cmd1 = 'rm %s' % newfn
@@ -249,14 +254,14 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
     # move the compressed file to replace the uncompressed file
     cmd2 = 'mv %s %s' % (newfn, filename)
-    info(3, 'Moving the compressed file to NGAS volume: %s' % cmd2)
+    logger.debug('Moving the compressed file to NGAS volume: %s', cmd2)
     if (debug):
         pass
     else:
         ret = execCmd(cmd2)
         if (ret[0] != 0):
             errMsg = 'Failed to move the compressed file to NGAS volume: %s' % ret[1]
-            error(errMsg)
+            logger.error(errMsg)
             srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
             # remove the temp compressed file
             cmd2 = 'rm %s' % newfn
@@ -265,13 +270,13 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             cmd2 = 'mv %s/%s_uncompressed %s' % (fndir, bname, filename)
             ret = execCmd(cmd2)
             if (ret[0] != 0):
-                error('Fail to recover from a failed compression: %s' % cmd2)
+                logger.error('Fail to recover from a failed compression: %s', cmd2)
             return
 
     # change the CRC in the database
     new_fs = getFileSize(filename)
     query = "UPDATE ngas_files SET checksum = {0}, file_size = {1}, compression = 'RICE', format = 'application/fits' WHERE file_id = {2} AND disk_id = {3} AND file_version = {4}" 
-    info(3, "Updating CRC SQL: %s" % str(query))
+    logger.debug("Updating CRC SQL: %s", str(query))
     if (debug):
         pass
     else:
@@ -279,7 +284,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             srvObj.getDb().query2(query, args=(crc, new_fs, fileId, diskId, fileVersion))
         except Exception, ex:
             errMsg = 'Fail to update crc for file %s/%d/%s: %s' % (fileId, fileVersion, diskId, str(ex))
-            error(errMsg)
+            logger.error(errMsg)
             srvObj.httpReply(reqPropsObj, httpRef, 500, errMsg, NGAMS_TEXT_MT)
             # remove the compressed file that have been copied in
             cmd2 = 'rm %s' % filename
@@ -288,7 +293,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             cmd2 = 'mv %s/%s_uncompressed %s' % (fndir, bname, filename)
             ret = execCmd(cmd2)
             if (ret[0] != 0):
-                error('Fail to recover from a failed compression: %s' % cmd2)
+                logger.error('Fail to recover from a failed compression: %s', cmd2)
             return
 
     # remove the uncompressed file
@@ -299,8 +304,8 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         ret = execCmd(cmd3)
         if (ret[0] != 0):
             errMsg += '. But fail to remove the uncompressed file %s/%s: %s' % (fndir, bname, ret[1])
-            warning(errMsg)
-        info(3, errMsg + '\. Result: %d - %d = %d, compress ratio: %.2f' % (old_fs, new_fs, (old_fs - new_fs), new_fs * 1.0 / old_fs))
+            logger.warning(errMsg)
+        logger.debug(errMsg + '\. Result: %d - %d = %d, compress ratio: %.2f' % (old_fs, new_fs, (old_fs - new_fs), new_fs * 1.0 / old_fs))
     else:
-        info(3, errMsg)
+        logger.debug(errMsg)
     srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, errMsg + '\n', NGAMS_TEXT_MT)

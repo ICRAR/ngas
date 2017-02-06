@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsNotification.py,v 1.7 2008/08/19 20:51:50 jknudstr Exp $"
@@ -33,16 +32,20 @@
 Contains functions to handle the Email Notification.
 """
 
-import os, threading, time
+import logging
+import os
+import threading
+import time
 
-from pccUt import PccUtTime
 from ngamsCore import NGAMS_PICKLE_FILE_EXT, TRACE, NGAMS_NOTIF_ALERT,\
     NGAMS_NOTIF_ERROR, NGAMS_NOTIF_DISK_SPACE, NGAMS_NOTIF_DISK_CHANGE,\
-    NGAMS_NOTIF_NO_DISKS, NGAMS_NOTIF_DATA_CHECK, NGAMS_DEFINE, info, padString,\
-    isoTime2Secs
+    NGAMS_NOTIF_NO_DISKS, NGAMS_NOTIF_DATA_CHECK, NGAMS_DEFINE,\
+    isoTime2Secs, toiso8601
 import ngamsHighLevelLib
 import ngamsLib
 
+
+logger = logging.getLogger(__name__)
 
 # Internal reference to Notification Message Retain Buffer. This is a global
 # variable. The format is:
@@ -118,8 +121,8 @@ def _sendNotifMsg(hostId,
             # Small trick to avoid to distribute emails when default values
             # contained in the configuration.
             if (recipient.find(NGAMS_DEFINE) != -1): continue
-            info(2, "Sending Notification Message to: " + recipient + ". " +\
-                 "Subject: " + subject)
+            logger.info("Sending Notification Message to: %s. Subject: %s",
+                        recipient, subject)
             try:
                 smtpHost = ngamsCfgObj.getNotifSmtpHost()
                 ngamsHighLevelLib.sendEmail(ngamsCfgObj, smtpHost, subject,
@@ -176,19 +179,18 @@ def _checkSendNotifMsg(hostId,
     format     = "Check if Retention Buffer with ID: %s should be emptied. " +\
                  "Retention Buffer Size/Maximum Size: %d/%d. " +\
                  "Retention Time/Maximum Time: %.0fs/%.0fs"
-    info(4, format % (msgId, retBufLen, maxRetNo, retTime, maxRetTime))
+    logger.debug(format, msgId, retBufLen, maxRetNo, retTime)
     if ((retBufLen >= maxRetNo) or ((retTime >= maxRetTime) and retBufLen) or
         (retBufLen and flush)):
-        info(3,"Sending out retained Notification Messages for Message ID: " +\
-             msgId + ". Number of messages retained: " + str(retBufLen))
+        logger.debug("Sending out retained Notification Messages for Message ID: %s. " + \
+                     "Number of messages retained: %s", msgId, str(retBufLen))
 
         # Generate message with all messages retained.
         msgCount = 1
         msg = "\nACCUMULATED NOTIFICATION MESSAGES:\n"
         if (flushMsg): msg += "\n" + flushMsg + "\n"
         for m in retBuf[msgId][5]:
-            countStr = padString(str(msgCount), 6, "0")
-            msg += "\n--MESSAGE#%s/%s----------\n" % (countStr, m[0])
+            msg += "\n--MESSAGE#%06d/%s----------\n" % (msgCount, m[0])
             msg += str(str(m[1]))
             msgCount += 1
         msg += "\n--END-----------------------------------------"
@@ -252,7 +254,7 @@ def notify(hostId,
     T = TRACE()
 
     if ((not force) or (ngamsCfgObj.getNotifActive() != 1)):
-        info(4, "Leaving notify() with no action (disabled/force=0)")
+        logger.debug("Leaving notify() with no action (disabled/force=0)")
         return
 
     # Force emission if data is contained in a file and the (Notification
@@ -295,14 +297,13 @@ def notify(hostId,
             _sendNotifMsg(hostId, ngamsCfgObj, type, subject, dataRef, recList,
                           contentType, attachmentName)
         elif (not force):
-            info(4,"Appending Notification Message with ID: " + msgId +\
-                 " in Notification Retention Buffer")
+            logger.debug("Appending Notification Message with ID: %s " +  +\
+                         "in Notification Retention Buffer", msgId)
             # Set the Retention Start Time if not set.
             if (not retentionBuf_[msgId][1]): retentionBuf_[msgId][1] = timeNow
             # Append the new element containing the information about the
             # message to be retained.
-            isoTime = PccUtTime.TimeStamp().initFromSecsSinceEpoch(timeNow).\
-                      getTimeStamp()
+            isoTime = toiso8601(timeNow)
             retentionBuf_[msgId][5].append([isoTime, dataRef])
             # Update the Notification Retention Buffer Pickle File and check
             # if there are messages to send out.

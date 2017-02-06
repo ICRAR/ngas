@@ -37,14 +37,17 @@ implemented and NG/AMS configured to use it.
 """
 
 from collections import defaultdict
-import subprocess
+import logging
 import os
-import string
+import subprocess
+import time
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import TRACE, genLog, info, error
-from pccUt import PccUtTime
+from ngamsLib.ngamsCore import TRACE, genLog, fromiso8601, tomjd, frommjd,\
+    toiso8601, FMT_DATE_ONLY
 
+
+logger = logging.getLogger(__name__)
 
 def getFitsKeys(fitsFile,
                 keyList):
@@ -78,8 +81,8 @@ def getFitsKeys(fitsFile,
         msg = ". Error: %s" % str(e)
         errMsg = genLog("NGAMS_ER_RETRIEVE_KEYS", [str(keyList),
                                                    fitsFile + msg])
-        error(errMsg)
-        raise Exception, errMsg
+        logger.exception(errMsg)
+        raise
 
 
 def getDpIdInfo(filename):
@@ -95,22 +98,23 @@ def getDpIdInfo(filename):
     try:
         keyDic  = getFitsKeys(filename, ["ARCFILE"])
         arcFile = keyDic["ARCFILE"][0]
-        els     = string.split(arcFile, ".")
+        els     = arcFile.split(".")
         dpId    = els[0] + "." + els[1] + "." + els[2]
-        date    = string.split(els[1], "T")[0]
+        date    = els[1].split("T")[0]
         # Make sure that the files are stored according to JD
         # (one night is 12am -> 12am).
-        isoTime = els[1]
-        ts1 = PccUtTime.TimeStamp(isoTime)
-        ts2 = PccUtTime.TimeStamp(ts1.getMjd() - 0.5)
-        dateDirName = string.split(ts2.getTimeStamp(), "T")[0]
+        isoTime = '.'.join(els[1:])
+        ts1 = fromiso8601(isoTime)
+        ts2 = tomjd(ts1) - 0.5
+        dateDirName = toiso8601(frommjd(ts2), fmt=FMT_DATE_ONLY)
 
         return [arcFile, dpId, dateDirName]
     except:
         err = "Did not find keyword ARCFILE in FITS file or ARCFILE illegal"
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
                                                    "ngamsFitsPlugIn", err])
-        raise Exception, errMsg
+        logger.exception(errMsg)
+        raise
 
 
 def checkFitsFileSize(filename):
@@ -167,7 +171,7 @@ def checkFitsChecksum(reqPropsObj,
         chksumUtil = "chksumGenChecksum"
     else:
         chksumUtil = "chksumVerFitsChksum"
-    info(2,"File: %s checked with: %s. Result: OK" % (stgFile, chksumUtil))
+    logger.debug("File: %s checked with: %s. Result: OK", stgFile, chksumUtil)
 
 
 def prepFile(reqPropsObj,
@@ -196,9 +200,9 @@ def prepFile(reqPropsObj,
     tmpFn = reqPropsObj.getStagingFilename()
     if tmpFn.lower().endswith('.gz'):
         newFn = os.path.splitext(tmpFn)[0]
-        info(2, "Decompressing file using gzip: %s" % tmpFn)
+        logger.debug("Decompressing file using gzip: %s", tmpFn)
         subprocess.check_call(['gunzip', '-f', tmpFn], shell = False)
-        info(2, "Decompression success: %s" % newFn)
+        logger.debug("Decompression success: %s", newFn)
         reqPropsObj.setStagingFilename(newFn)
 
     checkFitsFileSize(reqPropsObj.getStagingFilename())
@@ -227,14 +231,14 @@ def compress(reqPropsObj,
     compression = parDic["compression"]
 
     if compression and 'gzip' in compression:
-        info(2, "Compressing file: %s using: %s" % (stFn, compression))
-        compressTimer = PccUtTime.Timer()
+        logger.debug("Compressing file: %s using: %s", stFn, compression)
+        compress_start = time.time()
         gzip_name = '%s.gz' % stFn
         subprocess.check_call(['gzip', '--no-name', stFn], shell = False)
         reqPropsObj.setStagingFilename(gzip_name)
         mime = 'application/x-gfits'
         compression = 'gzip --no-name'
-        info(2, "File compressed: %s Time: %.3fs" % (gzip_name, compressTimer.stop()))
+        logger.debug("File compressed: %s Time: %.3fs", gzip_name, time.time() - compress_start)
     else:
         compression = ''
 
@@ -256,7 +260,7 @@ def ngamsFitsPlugIn(srvObj,
     Returns:      Standard NG/AMS Data Archiving Plug-In Status as generated
                   by: ngamsPlugInApi.genDapiSuccessStat() (ngamsDapiStatus).
     """
-    info(1, "Plug-In handling data for file with URI: %s" %\
+    logger.info("Plug-In handling data for file with URI: %s",
             os.path.basename(reqPropsObj.getFileUri()))
     diskInfo = reqPropsObj.getTargDiskInfo()
     parDic = ngamsPlugInApi.parseDapiPlugInPars(srvObj.getCfg(),
@@ -281,7 +285,7 @@ def ngamsFitsPlugIn(srvObj,
     uncomprSize, archFileSize, mime, compression = compress(reqPropsObj, parDic)
 
     # Generate status + return.
-    info(3,"DAPI finished processing of file - returning to main application")
+    logger.debug("DAPI finished processing of file - returning to main application")
     return ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(), relFilename,
                                              dpId, fileVersion, mime,
                                              archFileSize, uncomprSize,

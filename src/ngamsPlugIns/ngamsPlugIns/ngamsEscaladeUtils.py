@@ -31,11 +31,16 @@
 This module contains tools for interacting with the Escalade 6800 controller.
 """
 
-import string, urllib, commands
+import commands
+import logging
+import string
+import urllib
 
-from ngamsLib.ngamsCore import TRACE, warning, trim, info, cleanList
-from ngamsLib import ngamsPhysDiskInfo, ngamsLib
+from ngamsLib.ngamsCore import TRACE
+from ngamsLib import ngamsPhysDiskInfo
 
+
+logger = logging.getLogger(__name__)
 
 def parseHtmlInfo(url,
                   rootMtPt,
@@ -61,7 +66,7 @@ def parseHtmlInfo(url,
     cmd = "wget -T 2 -t 1 %s" % url
     stat, out = commands.getstatusoutput(cmd)
     if (stat):
-        warning("Problem contacting local 3ware WEB server via URL: " + url)
+        logger.warning("Problem contacting local 3ware WEB server via URL: %s", url)
         return {}
 
     fd = urllib.urlopen(url)
@@ -110,7 +115,7 @@ def parseHtmlInfo(url,
             # current Slot ID is in the list given as input to the function.
             slotId = str(int(portNo) + 1)
             if ((not takeAllSlots) and
-                (not ngamsLib.elInList(slotIds, slotId))):
+                slotId not in slotIds):
                 idx = idx + 1
                 continue
 
@@ -129,10 +134,9 @@ def parseHtmlInfo(url,
             manufacturer = string.split(model, "-")[0]
             if (manufacturer[0:2] == "IC"): manufacturer = "IBM"
             idx = idx + 1
-            serialNo = trim(string.split(string.split(lines[idx],
-                                                      ">")[4], "<")[0], " ")
+            serialNo = lines[idx].split(">")[4].split("<")[0].strip()
             idx = idx + 1
-            unitNo = int(string.split(string.split(lines[idx],">")[4], "<")[0])
+            unitNo = int(lines[idx].split(">")[4].split("<")[0])
             diskId = model + "-" + serialNo
             mtPt = rootMtPt + "/data" + str(slotId)
             deviceName = "/dev/sd" + chr(97 + len(diskInfoDic)) + '1'
@@ -355,7 +359,7 @@ def parseGen2Controller(rootMtPt,
     bufLen      = len(bufLines)
     while (idx < bufLen):
         line = bufLines[idx].strip()
-        info(5,"Parsing 3ware status line: %s" % line)
+        logger.debug("Parsing 3ware status line: %s", line)
         # Next controller?
         if ((line.find("Unit ") != -1) and (line.find("UnitType ") != -1)):
             unitTypeDic = {}
@@ -374,7 +378,7 @@ def parseGen2Controller(rootMtPt,
                         (line.find("Status") != -1)):
                         break
                     elif (line[0].strip() == "u"):
-                        cfg = cleanList(line.split(" "))
+                        cfg = filter(None, line.split(" "))
                         if (cfg[1].find("RAID") != -1):
                             unitTypeDic[cfg[0]] = "RAID"
                         else:
@@ -385,7 +389,7 @@ def parseGen2Controller(rootMtPt,
             idx += 1
             while (idx < bufLen):
                 line = bufLines[idx].strip()
-                info(5,"Parsing 3ware status line: %s" % line)
+                logger.debug("Parsing 3ware status line: %s", line)
                 if (line == ""):
                     idx += 1
                     continue
@@ -395,7 +399,7 @@ def parseGen2Controller(rootMtPt,
                 # Take the line if it contains disk info.
                 if (line[0] == "p"):
                     tmpPorts += 1
-                    diskInfo = cleanList(line.split(" "))
+                    diskInfo = filter(None, line.split(" "))
                     if ((diskInfo[1] != "NOT-PRESENT") and
                         (unitTypeDic[diskInfo[2]] == "JBOD")):
                         # A disk is found, get the info.
@@ -408,10 +412,10 @@ def parseGen2Controller(rootMtPt,
                         cmd = cmd % (int(contNo), int(portNo))
                         stat, out = commands.getstatusoutput(cmd)
                         outLines = out.split("\n")
-                        status   = cleanList(outLines[0].split(" "))[3]
-                        model    = cleanList(outLines[1].split(" "))[3]
-                        serialNo = cleanList(outLines[2].split(" "))[3]
-                        capGb    = int(float(cleanList(outLines[3].\
+                        status   = filter(None, outLines[0].split(" "))[3]
+                        model    = filter(None, outLines[1].split(" "))[3]
+                        serialNo = filter(None, outLines[2].split(" "))[3]
+                        capGb    = int(float(filter(None, outLines[3].\
                                                        split(" "))[3]) + 0.5)
                         diskType = "MAGNETIC DISK/ATA"
                         if (model.find("HDS") == 0):
@@ -462,9 +466,9 @@ def getContInfo(contList):
     out = ""
     for contId in contList:
         cmd = "sudo /usr/local/sbin/tw_cli info c%s" % str(contId)
-        info(4,"Executing 3ware client tool: %s" % cmd)
+        logger.debug("Executing 3ware client tool: %s", cmd)
         stat, outTmp = commands.getstatusoutput(cmd)
-        info(4,"Executed 3ware client tool. Status: %d" % stat)
+        logger.debug("Executed 3ware client tool. Status: %d", stat)
         if (stat):
             raise Exception, "Error invoking 3ware Command Line Tool: " +\
                   str(out)
@@ -510,9 +514,9 @@ def exportCont(contId):
     for unit in unitList:
         cmd = "sudo /usr/local/sbin/tw_cli /c%d/%s export quiet" %\
               (int(contId), unit)
-        info(4,"Invoking command to export 3ware unit: %s ..." % cmd)
+        logger.debug("Invoking command to export 3ware unit: %s ...", cmd)
         stat, out = commands.getstatusoutput(cmd)
-        info(4,"Result of command: %s to export 3ware unit: %d" % (cmd, stat))
+        logger.debug("Result of command: %s to export 3ware unit: %d", cmd, stat)
 
 
 def rescanCont(contId):
@@ -528,9 +532,9 @@ def rescanCont(contId):
     T = TRACE()
 
     cmd = "sudo /usr/local/sbin/tw_cli /c%d rescan" % (int(contId))
-    info(3,"Invoking command to rescan 3ware unit: %s ..." % cmd)
+    logger.debug("Invoking command to rescan 3ware unit: %s ...", cmd)
     stat, out = commands.getstatusoutput(cmd)
-    info(3,"Result of command: %s to rescan 3ware unit: %d" % (cmd, stat))
+    logger.debug("Result of command: %s to rescan 3ware unit: %d", cmd, stat)
 
 
 def parseCmdLineInfo(rootMtPt,
