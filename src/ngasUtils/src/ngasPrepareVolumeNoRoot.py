@@ -19,8 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-from ngamsLib.ngamsCore import setLogCond
-
 #******************************************************************************
 #
 # "@(#) $Id: ngasPrepareVolume.py,v 1.4 2008/12/12 14:28:33 awicenec Exp $"
@@ -67,7 +65,6 @@ if __name__ == '__main__':
     except Exception, e:
         print "\nProblem executing the tool:\n\n%s\n" % str(e)
         sys.exit(1)
-    setLogCond(0, "", 0, "", 1)
     ngasPrepareVolume.execute(optDic)
 
 # EOF
