@@ -104,7 +104,7 @@ class ngamsPawseyStageTest(ngamsTestLib.ngamsTestSuite):
                 self.assertTrue(False)
             except:
                 pass
-        except:
+        except socket.error:
             pass #ingore
 
 def run():
