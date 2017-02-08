@@ -454,7 +454,11 @@ class ngamsServer:
             prefix = '%s: ' % logcfg.syslog_prefix if logcfg.syslog_prefix else ''
             fmt = '{0}[%(levelname)6.6s] %(message)s'.format(prefix)
             fmt = logging.Formatter(fmt)
-            hnd = SysLogHandler(address='/dev/log')
+            from sys import platform
+            syslog_addr = '/dev/log'
+            if platform == 'darwin':
+                syslog_addr = '/var/run/syslog'
+            hnd = SysLogHandler(address=syslog_addr)
             hnd.setFormatter(fmt)
 
             class to_syslog_filter(logging.Filter):
