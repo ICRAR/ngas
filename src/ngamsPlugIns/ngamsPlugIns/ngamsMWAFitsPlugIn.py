@@ -41,13 +41,13 @@ def split_file(filename):
         file = os.path.basename(filename)
         if '.fits' not in file:
             raise Exception('fits extension not found')
-        
+
         part = file.split('_')
         if 'gpubox' not in part[2]:
             raise Exception('gpubox not found in 3rd part')
-        
+
         return (int(part[0]), int(part[1]), part[2])
-    
+
     except Exception as e:
        raise Exception('invalid correlator data filename %s' % file)
 
@@ -60,12 +60,20 @@ def ngamsMWAFitsPlugIn(srvObj, reqPropsObj):
     mime = reqPropsObj.getMimeType()
     parDic = ngamsPlugInApi.parseDapiPlugInPars(srvObj.getCfg(), mime)
 
+    try:
+        dbhost = parDic['dbhost']
+        dbname = parDic['dbname']
+        dbuser = parDic['dbuser']
+        dbpass = parDic['dbpassword']
+    except Exception as e:
+        raise Exception('Must specify parameters dbhost, dbname, dbuser and dbpassword')
+
     diskInfo = reqPropsObj.getTargDiskInfo()
     stageFilename = reqPropsObj.getStagingFilename()
     uncomprSize = ngamsPlugInApi.getFileSize(stageFilename)
     fileName = os.path.basename(reqPropsObj.getFileUri())
     dpId = os.path.splitext(fileName)[0]
-    
+
     obsid, obstime, box = split_file(fileName)
 
     fileVersion, relPath, relFilename, complFilename, fileExists = \
@@ -81,29 +89,32 @@ def ngamsMWAFitsPlugIn(srvObj, reqPropsObj):
 
     sql = ('INSERT INTO data_files (observation_num, filetype, size, filename, site_path, host)'
            ' VALUES (%s, %s, %s, %s, %s, %s)')
-   
+
     uri = 'http://mwangas/RETRIEVE?file_id=%s' % (fileName)
-    
+
     logging.info('Inserting: %s', sql % (obsid, 8, uncomprSize, fileName, uri, box))
-    
-    with psycopg2.connect(host = parDic['dbhost'],
-                          dbname = parDic['dbname'],
-                          user = parDic['dbuser'], 
-                          password = parDic['dbpassword']) as conn:
 
-        conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED)
+    try:
+        with psycopg2.connect(host = dbhost,
+                              dbname = dbname,
+                              user = dbuser,
+                              password = dbpass) as conn:
 
-        with conn.cursor() as cur:
-            try:
-                cur.execute(sql, [obsid, 8, uncomprSize, fileName, uri, box])
-            except Exception as e:
-                ''' Do not want to raise an exception here because the sky data is more important than the metadata
-                    i.e. we want to keep the sky data even if there is a database problem.
-                    If there is an issue with an INSERT then go through and add it manually later (very unlikely to happen)'''
-                conn.rollback()
-                logging.error('Insert error: %s Message: %s', sql % (obsid, 8, uncomprSize, fileName, uri, box), str(e))
-            else:
-                conn.commit()
+            conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED)
+
+            with conn.cursor() as cur:
+                try:
+                    cur.execute(sql, [obsid, 8, uncomprSize, fileName, uri, box])
+                except Exception as e:
+                    ''' Do not want to raise an exception here because the sky data is more important than the metadata
+                        i.e. we want to keep the sky data even if there is a database problem.
+                        If there is an issue with an INSERT then go through and add it manually later (very unlikely to happen)'''
+                    conn.rollback()
+                    logging.error('Insert error: %s Message: %s', sql % (obsid, 8, uncomprSize, fileName, uri, box), str(e))
+                else:
+                    conn.commit()
+    except Exception as f:
+        logging.error('Insert error: %s Message: %s', sql % (obsid, 8, uncomprSize, fileName, uri, box), str(f))
 
     return ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(), 
                                              relFilename,
