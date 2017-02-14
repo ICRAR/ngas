@@ -24,11 +24,7 @@
 #    MA 02111-1307  USA
 #
 import os
-import time
-import commands
 import logging
-import string
-import datetime
 import psycopg2
 
 from ngamsLib import ngamsPlugInApi
@@ -38,18 +34,18 @@ logger = logging.getLogger(__name__)
 def split_file(filename):
     try:
         # Example: 1096202392_20141001123939_gpubox13_00.fits
-        file = os.path.basename(filename)
-        if '.fits' not in file:
+        filename = os.path.basename(filename)
+        if '.fits' not in filename:
             raise Exception('fits extension not found')
 
-        part = file.split('_')
+        part = filename.split('_')
         if 'gpubox' not in part[2]:
             raise Exception('gpubox not found in 3rd part')
 
         return (int(part[0]), int(part[1]), part[2])
 
     except Exception:
-       raise Exception('invalid correlator data filename %s' % file)
+        raise Exception('invalid correlator data filename %s' % filename)
 
 
 def ngamsMWAFitsPlugIn(srvObj, reqPropsObj):
