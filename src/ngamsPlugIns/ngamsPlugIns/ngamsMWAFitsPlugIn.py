@@ -48,7 +48,7 @@ def split_file(filename):
 
         return (int(part[0]), int(part[1]), part[2])
 
-    except Exception as e:
+    except Exception:
        raise Exception('invalid correlator data filename %s' % file)
 
 
@@ -92,7 +92,7 @@ def ngamsMWAFitsPlugIn(srvObj, reqPropsObj):
 
     uri = 'http://mwangas/RETRIEVE?file_id=%s' % (fileName)
 
-    logging.info('Inserting: %s', sql % (obsid, 8, uncomprSize, fileName, uri, box))
+    logger.info('Inserting: %s', sql % (obsid, 8, uncomprSize, fileName, uri, box))
 
     try:
         with psycopg2.connect(host = dbhost,
@@ -110,11 +110,11 @@ def ngamsMWAFitsPlugIn(srvObj, reqPropsObj):
                         i.e. we want to keep the sky data even if there is a database problem.
                         If there is an issue with an INSERT then go through and add it manually later (very unlikely to happen)'''
                     conn.rollback()
-                    logging.error('Insert error: %s Message: %s', sql % (obsid, 8, uncomprSize, fileName, uri, box), str(e))
+                    logger.error('Insert error: %s Message: %s', sql % (obsid, 8, uncomprSize, fileName, uri, box), str(e))
                 else:
                     conn.commit()
-    except Exception as f:
-        logging.error('Insert error: %s Message: %s', sql % (obsid, 8, uncomprSize, fileName, uri, box), str(f))
+    except Exception:
+        logger.exception('Insert error: %s', sql % (obsid, 8, uncomprSize, fileName, uri, box))
 
     return ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(), 
                                              relFilename,
