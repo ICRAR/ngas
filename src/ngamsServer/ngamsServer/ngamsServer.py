@@ -862,9 +862,11 @@ class ngamsServer:
         logger.debug("Starting Janitor Thread ...")
 
         # Create the child process and kick it off
-        self._JanQue = Queue()
-        self._janitorThread = Process(target=ngamsJanitorThread.janitorThread,
-                                        args=(self, self._janitorProcStopEvt, self._JanQue))
+        self._serv_to_jan_queue = Queue()
+        self._jan_to_serv_queue = Queue()
+        self._janitorThread = multiprocessing.Process(
+                                target=ngamsJanitorThread.janitorThread,
+                                args=(self, self._janitorProcStopEvt, self._serv_to_jan_queue, self._jan_to_serv_queue))
         self._janitorThread.start()
 
         # Subscribe to db-change events (which we pass down to the janitor proc)
@@ -884,48 +886,80 @@ class ngamsServer:
         """
         if self._janitorThread is None:
             return
-        logger.debug("Stopping Janitor Thread ...")
-        #self._janitorThreadStopEvt.set()
+
+        code = self._janitorThread.exitcode
+        if code is not None:
+            logger.warning("Janitor process already exited with code %d"  % (code,))
+
+        # Set the event regardless, because our own thread also uses it
         self._janitorProcStopEvt.set()
-        self._janitorThread.join(10)
+        if not code:
+            logger.debug("Stopping Janitor Thread ...")
+            self._janitorThread.join(10)
+            code = self._janitorThread.exitcode
+            if code is None:
+                logger.warning("Janitor process didn't exit cleanly, killing it")
+                os.kill(self._janitorThread.pid, signal.SIGKILL)
         self._janitorThread = None
         self._janitorThreadRunCount = 0
-
-        self._janitorQueThreadStopEvt.set()
-        self._janitorQueThread.join(10)
-        self._janitorQueThread = None
-
         logger.info("Janitor Thread stopped")
+
+        self._janitorQueThread.join(10)
+        if self._janitorQueThread.is_alive():
+            logger.error("Janitor queue thread is still alive")
+        self._janitorQueThread = None
+        logger.info("Janitor Queue thread stopped")
 
 
     def janitorQueThread(self):
-         """
-         The queue is used to:
-          1) update the Janitor thread run count parm for the server side
-          2) place events on the Queue (E.g. dbChangeSync) for the Janitor // process to use
+        """
+        This method runs in a separate thread, and implements the protocol
+        which this parent process uses to communicate with the janitor process
 
-         """
-         from ngamsLib.ngamsCore import isoTime2Secs
-         import Queue
-         #suspendTime = isoTime2Secs(self.getCfg().getJanitorSuspensionTime())
-         #startTime = time.time()
-         while True:    #((time.time() - startTime) < suspendTime+120) or (self._janitorThreadRunCount == 0):
-           #Keep the run count uptodate.
-           try:
-             self._janitorThreadRunCount = self._JanQue.get(timeout=1)
-             info = None
-             if self._janitordbChangeSync.isSet():
-                 info = self._janitordbChangeSync.getEventInfoList()
-                 self._janitordbChangeSync.clear()
-             self._JanQue.put(info)
-             #print("============================Janitor thread run count is ",self._janitorThreadRunCount, " Time diff ",(time.time() - startTime))
-           except Queue.Empty:
-             pass
-           if self._janitorQueThreadStopEvt.is_set():
-               break
-           #time.sleep(120)
+        The protocol (so far) is simple:
 
+         * Keep reading anything the child process sends to us. If there's
+           nothing to be read keep trying until there is something.
+         * If something is read, do something with it, and also check if
+           a reply should be sent (and send it if required).
+         * Continue like this until the janitor process is signaled to stop.
+        """
 
+        while not self._janitorProcStopEvt.is_set():
+
+            # Reading on our end
+            try:
+                x = self._jan_to_serv_queue.get(timeout=0.01)
+            except Queue.Empty:
+                continue
+
+            # See what we got
+            inspect_db_changes = False
+            name, item = x
+            if name == 'log-record':
+                logger.handle(item)
+            elif name == 'janitor-run-count':
+                # Get the thread count and send back
+                # the information from the dbChangeEvent
+                self._janitorThreadRunCount = item
+                inspect_db_changes = True
+            else:
+                raise ValueError("Unknown item in queue: name=%s, item=%r" % (name,item))
+
+            # Writing on our end if needed
+            x = None
+            if inspect_db_changes:
+                info = None
+                if self._janitordbChangeSync.isSet():
+                    info = self._janitordbChangeSync.getEventInfoList()
+                    self._janitordbChangeSync.clear()
+                x = ('db-change-info', info)
+
+            if x is not None:
+                try:
+                    self._serv_to_jan_queue.put(x, timeout=0.01)
+                except:
+                    logger.exception("Problem when writing to the queue")
 
 
     def incJanitorThreadRunCount(self):

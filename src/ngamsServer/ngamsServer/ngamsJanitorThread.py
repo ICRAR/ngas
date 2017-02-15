@@ -33,7 +33,9 @@ various background activities as cleaning up after processing, waking up
 suspended NGAS hosts, suspending itself.
 """
 
+import Queue
 import logging
+import signal
 import time
 
 from ngamsDbSnapshotUtils import checkUpdateDbSnapShots, updateDbSnapShots
@@ -44,7 +46,7 @@ from ngamsLib.ngamsCore import isoTime2Secs, loadPlugInEntryPoint
 logger = logging.getLogger(__name__)
 
 
-def JanitorCycle(plugins, srvObj, stopEvt, suspendTime, JanQue):
+def JanitorCycle(plugins, srvObj, stopEvt):
     """
     A single run of all the janitor plug-ins
     """
@@ -54,42 +56,12 @@ def JanitorCycle(plugins, srvObj, stopEvt, suspendTime, JanQue):
 
     for p in plugins:
         try:
+            logger.debug("Executing plugin %s", p.__name__)
             p(srvObj, stopEvt)
         except StopJanitorThreadException:
             raise
         except:
             logger.exception("Unexpected error in janitor plug-in %s", p.__name__)
-
-    # Suspend the thread for the time indicated.
-    # Update the Janitor Thread run count.
-    srvObj.incJanitorThreadRunCount()
-    JanQue.put(srvObj.getJanitorThreadRunCount())
-
-    # Suspend the thread for the time indicated.
-    logger.debug("Janitor Thread executed - suspending for %d [s] ...", suspendTime)
-    startTime = time.time()
-    event_info_list = JanQue.get()  #==================================================
-    while ((time.time() - startTime) < suspendTime):
-        # Check if we should update the DB Snapshot.
-        if (event_info_list):
-            time.sleep(0.5)
-            try:
-                diskInfo = None
-                if (event_info_list):
-                    for diskInfo in event_info_list:
-                        updateDbSnapShots(srvObj, stopEvt, diskInfo)
-            except StopJanitorThreadException:
-                raise
-            except Exception:
-                if (diskInfo):
-                    msg = "Error encountered handling DB Snapshot " +\
-                          "for disk: %s/%s"
-                    args = (diskInfo[0], diskInfo[1])
-                else:
-                    msg, args = "Error encountered handling DB Snapshot", ()
-                logger.exception(msg, *args)
-                time.sleep(5)
-        suspend(stopEvt, 1.0)
 
 
 def get_plugins(srvObj):
@@ -117,39 +89,100 @@ def get_plugins(srvObj):
     # TODO: add configuration item on server for user-provided plugins
     return plugins
 
-def janitorThread(srvObj, stopEvt, JanQue):
+
+class ForwarderHandler(logging.Handler):
+
+    def __init__(self, queue):
+        super(ForwarderHandler, self).__init__()
+        self.queue = queue
+
+    def _format_record(self, record):
+        # ensure that exc_info and args
+        # have been stringified. Removes any chance of
+        # unpickleable things inside and possibly reduces
+        # message size sent over the pipe.
+        if record.args:
+            record.msg = record.msg % record.args
+            record.args = None
+        if record.exc_info:
+            self.format(record)
+            record.exc_info = None
+        record.threadName = 'JANITOR-PROC'
+        return record
+
+    def emit(self, record):
+        try:
+            self.queue.put_nowait(('log-record', self._format_record(record)))
+        except:
+            self.handleError(record)
+
+def janitorThread(srvObj, stopEvt, srv_to_jan_queue, jan_to_srv_queue):
     """
-    The Janitor Thread runs periodically when the NG/AMS Server is
-    Online to 'clean up' the NG/AMS environment. Task performed are
-    checking if any data is available in the Back-Log Buffer, and
-    archiving of these in case yes, checking if there are any Processing
-    Directories to be deleted.
-
-    srvObj:      Reference to server object (ngamsServer).
-
-    dummy:       Needed by the thread handling ...
-
-    Returns:     Void.
+    Entry point for the janitor process. It checks which plug-ins should be run,
+    how frequently, and runs them in an infinite loop.
     """
 
-    suspendTime = isoTime2Secs(srvObj.getCfg().getJanitorSuspensionTime())
-    plugins = get_plugins(srvObj)
+    # No need to shut down anything on this process
+    def noop(*args):
+        pass
+    signal.signal(signal.SIGTERM, noop)
+    signal.signal(signal.SIGINT, noop)
+
+    # Set up the logging so it outputs the records into the jan->srv queue
+    for h in list(logging.root.handlers):
+        logging.root.removeHandler(h)
+    logging.root.addHandler(ForwarderHandler(jan_to_srv_queue))
 
     # => Update NGAS DB + DB Snapshot Document for the DB connected.
     try:
         checkUpdateDbSnapShots(srvObj, stopEvt)
     except StopJanitorThreadException:
         return
-    except Exception:
+    except:
         logger.exception("Problem updating DB Snapshot files")
 
-    #==========================================================
-    #=== Move contents of while loop to JanitorCycle method
-    #===========================================================
-
+    # Main loop
+    suspendTime = isoTime2Secs(srvObj.getCfg().getJanitorSuspensionTime())
+    plugins = get_plugins(srvObj)
+    run_count = 0
     try:
         while True:
-            JanitorCycle(plugins, srvObj, stopEvt, suspendTime, JanQue)
+
+            JanitorCycle(plugins, srvObj, stopEvt)
+
+            # Suspend the thread for the time indicated.
+            # Update the Janitor Thread run count.
+            run_count += 1
+            jan_to_srv_queue.put(('janitor-run-count', run_count), timeout=0.1)
+
+            # Suspend the thread for the time indicated.
+            logger.info("Janitor Thread executed - suspending for %d [s] ...", suspendTime)
+            startTime = time.time()
+            while (time.time() - startTime) < suspendTime:
+
+                # Check if we should update the DB Snapshot.
+                try:
+                    event_info_list = srv_to_jan_queue.get(timeout=0.1)[1]
+                except Queue.Empty:
+                    event_info_list = None
+
+                if event_info_list is not None:
+                    try:
+                        diskInfo = None
+                        for diskInfo in event_info_list:
+                            updateDbSnapShots(srvObj, stopEvt, diskInfo)
+                    except:
+                        if (diskInfo):
+                            msg = "Error encountered handling DB Snapshot " +\
+                                  "for disk: %s/%s"
+                            args = (diskInfo[0], diskInfo[1])
+                        else:
+                            msg, args = "Error encountered handling DB Snapshot", ()
+                        logger.exception(msg, *args)
+                        suspend(stopEvt, 5)
+
+                suspend(stopEvt, 1.0)
+
     except StopJanitorThreadException:
         return
 
