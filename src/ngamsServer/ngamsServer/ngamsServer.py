@@ -2568,6 +2568,8 @@ class ngamsServer:
         exitValue = 1
         silentExit = 0
         idx = 1
+        extra_paths = []
+
         while idx < len(argv):
             par = argv[idx].upper()
             try:
@@ -2610,6 +2612,9 @@ class ngamsServer:
                     self.setNoAutoExit(1)
                 elif (par == "-MULTIPLESRVS"):
                     self.setMultipleSrvs(1)
+                elif par == "-PATH":
+                    idx = self._incCheckIdx(idx, argv)
+                    extra_paths = set(filter(None, argv[idx].split(os.pathsep)))
                 else:
                     self.correctUsage()
                     silentExit = 1
@@ -2623,6 +2628,12 @@ class ngamsServer:
         if (self.getCfgFilename() == ""):
             self.correctUsage()
             sys.exit(1)
+
+        for p in extra_paths:
+            p = os.path.expanduser(p)
+            if not os.path.exists(p):
+                raise ValueError("Path %s doesn't exist" % (p,))
+            sys.path.append(p)
 
     ########################################################################
     # The following methods are used for the NG/AMS Unit Tests.
