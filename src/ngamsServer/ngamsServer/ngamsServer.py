@@ -257,9 +257,20 @@ class ngamsServer:
         self._threadRunPermission     = 0
 
         # Handling of the Janitor Thread.
+        from ngamsLib import ngamsEvent
         self._janitorThread         = None
         self._janitorThreadStopEvt  = threading.Event()
         self._janitorThreadRunCount = 0
+        self._janitordbChangeSync = ngamsEvent.ngamsEvent()
+
+        # Handling of the Janitor Queue reader Thread.
+        self._janitorQueThread         = None
+        self._janitorQueThreadStopEvt  = threading.Event()
+        #self._janitorQueThreadRunCount = 0
+
+        # Handling of the Janitor // Processs
+        import multiprocessing
+        self._janitorProcStopEvt     = multiprocessing.Event()
 
         # Handling of the Data Check Thread.
         self._dataCheckThread        = None
@@ -738,12 +749,27 @@ class ngamsServer:
         """
         Starts the Janitor Thread.
         """
+        from multiprocessing import Process, Queue
         info(3,"Starting Janitor Thread ...")
-        self._janitorThread = threading.Thread(target=ngamsJanitorThread.janitorThread,
-                                               name=ngamsJanitorThread.NGAMS_JANITOR_THR,
-                                               args=(self,self._janitorThreadStopEvt))
+        self._JanQue = Queue()
+        self._janitorThread = Process(target=ngamsJanitorThread.janitorThread,
+                                        args=(self, self._janitorProcStopEvt, self._JanQue))
         self._janitorThread.start()
+
+        self.getDb().addDbChangeEvt(self._janitordbChangeSync)
+        #self._janitorThread = threading.Thread(target=ngamsJanitorThread.janitorThread,
+        #                                      name=ngamsJanitorThread.NGAMS_JANITOR_THR,
+        #                                      args=(self,self._janitorThreadStopEvt))
+        #self._janitorThread.start()
         info(3,"Janitor Thread started")
+        info(3, "Starting Janitor Queue Reader Thread ...")
+        self._janitorQueThread = threading.Thread(target=self.janitorQueThread,
+                                              name="JanitorQueReaderThread")
+                                              #args=(self._suspendTime))
+        self._janitorQueThread.start()
+        info(3,"Janitor Queue Reader Thread started")
+
+
 
 
     def stopJanitorThread(self):
@@ -753,11 +779,47 @@ class ngamsServer:
         if self._janitorThread is None:
             return
         info(3,"Stopping Janitor Thread ...")
-        self._janitorThreadStopEvt.set()
+        #self._janitorThreadStopEvt.set()
+        self._janitorProcStopEvt.set()
         self._janitorThread.join(10)
         self._janitorThread = None
         self._janitorThreadRunCount = 0
+
+        self._janitorQueThreadStopEvt.set()
+        self._janitorQueThread.join(10)
+        self._janitorQueThread = None
+
         info(3,"Janitor Thread stopped")
+
+
+    def janitorQueThread(self):
+         """
+         The queue is used to:
+          1) update the Janitor thread run count parm for the server side
+          2) place events on the Queue (E.g. dbChangeSync) for the Janitor // process to use
+
+         """
+         from ngamsLib.ngamsCore import isoTime2Secs
+         import Queue
+         #suspendTime = isoTime2Secs(self.getCfg().getJanitorSuspensionTime())
+         #startTime = time.time()
+         while True:    #((time.time() - startTime) < suspendTime+120) or (self._janitorThreadRunCount == 0):
+           #Keep the run count uptodate.
+           try:
+             self._janitorThreadRunCount = self._JanQue.get(timeout=1)
+             info = None
+             if self._janitordbChangeSync.isSet():
+                 info = self._janitordbChangeSync.getEventInfoList()
+                 self._janitordbChangeSync.clear()
+             self._JanQue.put(info)
+             #print("============================Janitor thread run count is ",self._janitorThreadRunCount, " Time diff ",(time.time() - startTime))
+           except Queue.Empty:
+             pass
+           if self._janitorQueThreadStopEvt.is_set():
+               break
+           #time.sleep(120)
+
+
 
 
     def incJanitorThreadRunCount(self):
@@ -2479,6 +2541,15 @@ class ngamsServer:
         Kills this process with SIGKILL
         """
         info(1,"About to commit suicide... good-by cruel world")
+
+        #First kill the janitor // process created by this ngamsServer
+        if self._janitorThread is not None:
+         try:
+          os.kill(self._janitorThread.pid, signal.SIGKILL)
+         except Exception, e:
+            msg = "No Janitor // process was found: %s. "
+            info(4, msg)
+        #Now kill the server itself
         pid = os.getpid()
         os.kill(pid, signal.SIGKILL)
 
