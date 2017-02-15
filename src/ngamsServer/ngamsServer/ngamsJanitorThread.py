@@ -1023,7 +1023,7 @@ def janitorThread(srvObj, stopEvt):
             # => Check if there are any Temporary DB Snapshot Files to handle.
             ##################################################################
             from ngamsPlugIns import ngamsJanitorHandleTempDBSnapshotFiles
-            ngamsJanitorHandleTempDBSnapshotFiles.Handle_TempDB_SnapShot_Files(srvObj, stopEvt,updateDbSnapShots)
+            ngamsJanitorHandleTempDBSnapshotFiles.ngamsJanitorHandleTempDBSnapshotFiles(srvObj, stopEvt,updateDbSnapShots)
 
 
             ##################################################################
@@ -1032,7 +1032,7 @@ def janitorThread(srvObj, stopEvt):
             #    30 minutes old, it is deleted.
             ##################################################################
             from ngamsPlugIns import ngamsJanitorCheckProcessingDirectory
-            ngamsJanitorCheckProcessingDirectory.Check_Processing_Directory(srvObj, stopEvt,checkCleanDirs)
+            ngamsJanitorCheckProcessingDirectory.ngamsJanitorCheckProcessingDirectory(srvObj, stopEvt,checkCleanDirs)
 
 
             ##################################################################
@@ -1040,7 +1040,7 @@ def janitorThread(srvObj, stopEvt):
             #    should be removed.
             ##################################################################
             from ngamsPlugIns import ngamsJanitorCheckOldRequestsinDBM
-            ngamsJanitorCheckOldRequestsinDBM.Check_Old_RequestsinDBM(srvObj, stopEvt,checkStopJanitorThread)
+            ngamsJanitorCheckOldRequestsinDBM.ngamsJanitorCheckOldRequestsinDBM(srvObj, stopEvt,checkStopJanitorThread)
 
 
             ##################################################################
@@ -1048,7 +1048,7 @@ def janitorThread(srvObj, stopEvt):
             #     and check if there are left-over files in the NG/AMS Temp. Dir.
             ##################################################################
             from ngamsPlugIns import ngamsJanitorCheckSubscrBacklognTempDir
-            ngamsJanitorCheckSubscrBacklognTempDir.Check_Subscr_Backlog_n_Temp_Dir(srvObj, stopEvt,checkCleanDirs)
+            ngamsJanitorCheckSubscrBacklognTempDir.ngamsJanitorCheckSubscrBacklognTempDir(srvObj, stopEvt,checkCleanDirs)
 
             # => Check for retained Email Notification Messages to send out.
             ngamsNotification.checkNotifRetBuf(srvObj.getHostId(), srvObj.getCfg())
@@ -1059,19 +1059,19 @@ def janitorThread(srvObj, stopEvt):
 
             # => Check there are any unsaved log files from a shutdown and archive them.
             from ngamsPlugIns import ngamsJanitorCheckUnsavedLogFile
-            ngamsJanitorCheckUnsavedLogFile.CheckUnsavedLogFile(srvObj, stopEvt)
+            ngamsJanitorCheckUnsavedLogFile.ngamsJanitorCheckUnsavedLogFile(srvObj, stopEvt)
 
 
             # => Check if its time to carry out a rotation of the log file.
             from ngamsPlugIns import ngamsJanitorLogRotChk
-            ngamsJanitorLogRotChk.Log_Rot_Chk(srvObj, stopEvt)
+            ngamsJanitorLogRotChk.ngamsJanitorLogRotChk(srvObj, stopEvt)
 
 
             ##################################################################
             # => Check if there are rotated Local Log Files to remove.
             ##################################################################
             from ngamsPlugIns import ngamsJanitorRotatedLogFilestoRemove
-            ngamsJanitorRotatedLogFilestoRemove.Rotated_Log_FilestoRemove(srvObj, stopEvt)
+            ngamsJanitorRotatedLogFilestoRemove.ngamsJanitorRotatedLogFilestoRemove(srvObj, stopEvt)
 
 
             ##################################################################
@@ -1079,7 +1079,7 @@ def janitorThread(srvObj, stopEvt):
             #    directories defined.
             ##################################################################
             from ngamsPlugIns import ngamsJanitorCheckDiskSpace
-            ngamsJanitorCheckDiskSpace.Check_Disk_Space(srvObj, stopEvt)
+            ngamsJanitorCheckDiskSpace.ngamsJanitorCheckDiskSpace(srvObj, stopEvt)
 
 
             ##################################################################
@@ -1087,14 +1087,14 @@ def janitorThread(srvObj, stopEvt):
             #    another/other NGAS Host(s).
             ##################################################################
             from ngamsPlugIns import ngamsJanitorChecktoWakeupOtherNGASHost
-            ngamsJanitorChecktoWakeupOtherNGASHost.Check_to_Wakeup_OtherNGAS_Host(srvObj, stopEvt)
+            ngamsJanitorChecktoWakeupOtherNGASHost.ngamsJanitorChecktoWakeupOtherNGASHost(srvObj, stopEvt)
 
 
             ##################################################################
             # => Check if the conditions for suspending this NGAS Host are met.
             ##################################################################
             from ngamsPlugIns import ngamsJanitorChecktoSuspendNGASHost
-            ngamsJanitorChecktoSuspendNGASHost.Check_to_Suspend_NGAS_Host(srvObj, stopEvt)
+            ngamsJanitorChecktoSuspendNGASHost.ngamsJanitorChecktoSuspendNGASHost(srvObj, stopEvt)
 
 
             # Update the Janitor Thread run count.
