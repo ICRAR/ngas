@@ -34,14 +34,18 @@ This module is responsible for running local tasks, i.e.
 """
 
 import cPickle as pickle
+import logging
 from Queue import Queue
-import os, urllib2
+import os
 import threading
+import urllib2
 
-from ngamsLib.ngamsCore import info, error, TRACE, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 from ngamsPClient import ngamsPClient
 from ngamsPlugIns.ngamsJobProtocol import MRLocalTaskResult, ERROR_LT_UNEXPECTED
 
+
+logger = logging.getLogger(__name__)
 
 queScanThread = None
 queTasks = Queue()
@@ -71,7 +75,7 @@ def _queScanThread(jobManHost, ngas_hostId, ngas_client):
         g_mrLocalTask = queTasks.get()
         # skip tasks that have been cancelled
         if (cancelDict.has_key(g_mrLocalTask._taskId)):
-            info(3, 'Task %s has been cancelled, skip it' % g_mrLocalTask._taskId)
+            logger.debug('Task %s has been cancelled, skip it', g_mrLocalTask._taskId)
             continue
 
         # before executing the task, inform JobMAN that
@@ -79,16 +83,16 @@ def _queScanThread(jobManHost, ngas_hostId, ngas_client):
         try:
             strRes = urllib2.urlopen(dqUrl + urllib2.quote(g_mrLocalTask._taskId), timeout = 15).read() #HTTP Get (need to encode url)
             if (strRes.find('Error response') > -1):
-                error('Error when sending dequeue event to JobMAN: %s' % strRes)
+                logger.error('Error when sending dequeue event to JobMAN: %s', strRes)
         except urllib2.URLError, urlerr:
-            error('Fail to send dequeue event to JobMAN: %s' % str(urlerr))
+            logger.error('Fail to send dequeue event to JobMAN: %s', str(urlerr))
 
         # execute the task
         localTaskResult = None
         try:
             localTaskResult = g_mrLocalTask.execute()
         except Exception, execErr:
-            error('Fail to execute task %s: Unexpected exception - %s' % (g_mrLocalTask._taskId, str(execErr)))
+            logger.exception('Fail to execute task %s: Unexpected exception', g_mrLocalTask._taskId)
             localTaskResult = MRLocalTaskResult(g_mrLocalTask._taskId, ERROR_LT_UNEXPECTED, str(execErr), True)
 
         # archive the file locally if required
@@ -103,19 +107,19 @@ def _queScanThread(jobManHost, ngas_hostId, ngas_client):
 
         #send result back to the JobMAN
         strReq = pickle.dumps(localTaskResult)
-        info(3, 'Sending local result back to JobMAN %s' % svrUrl)
+        logger.debug('Sending local result back to JobMAN %s', svrUrl)
         try:
             strRes = urllib2.urlopen(svrUrl, data = strReq, timeout = 15).read() #HTTP Post
-            info(3, "Got result from JobMAN: '%s'" % strRes)
-        except urllib2.URLError, urlerr:
-            error('Fail to send local result to JobMAN: %s' % str(urlerr))
+            logger.debug("Got result from JobMAN: '%s'", strRes)
+        except urllib2.URLError:
+            logger.exception('Fail to send local result to JobMAN')
 
 def _archiveFileLocal(fpath, localTaskResult, ngas_hostId, ngas_client):
     try:
         stat = ngas_client.pushFile(fpath, mime_type, cmd = 'QARCHIVE')
     except Exception as e:
         errmsg = "Exception '%s' occurred while archiving file %s" % (str(e), fpath)
-        error(errmsg)
+        logger.exception(errmsg)
         localTaskResult.setErrCode(1)
         localTaskResult.setInfo(errmsg)
         return
@@ -123,7 +127,7 @@ def _archiveFileLocal(fpath, localTaskResult, ngas_hostId, ngas_client):
     if (msg != 'Successfully'):
         #raise Exception('Fail to archive \"%s\"' % fileUri)
         errmsg = "Exception '%s' occurred while archiving file %s" % (stat.getMessage(), fpath)
-        error(errmsg)
+        logger.exception(errmsg)
         localTaskResult.setErrCode(1)
         localTaskResult.setInfo(errmsg)
     else:
@@ -133,9 +137,9 @@ def _scheduleQScanThread(srvObj, mrLocalTask):
     global queScanThread
     if (queScanThread == None or (not queScanThread.isAlive())):
         if (not queScanThread):
-            info(3, 'queScanThread is None !!! Create it')
+            logger.debug('queScanThread is None !!! Create it')
         else:
-            info(3, 'queScanThread is Dead !!! Re-launch it')
+            logger.debug('queScanThread is Dead !!! Re-launch it')
 
         ngas_hostId = srvObj.getHostId()
         ngas_host = ngas_hostId.split(':')[0]
@@ -190,14 +194,13 @@ def handleCmd(srvObj,
         srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, errMsg, NGAMS_TEXT_MT)
     else:
         postContent = _getPostContent(srvObj, reqPropsObj)
-        #info(3, '---- post content = %s' % postContent)
         mrLocalTask = pickle.loads(postContent)
         if (not mrLocalTask):
             errMsg = 'Cannot instantiate local task from POST'
             mrr = MRLocalTaskResult(None, -2, errMsg)
             srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(mrr), NGAMS_TEXT_MT)
         else:
-            info(3, 'Local task %s is submitted' % mrLocalTask._taskId)
+            logger.debug('Local task %s is submitted', mrLocalTask._taskId)
             mrr = MRLocalTaskResult(mrLocalTask._taskId, 0, '')
             srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(mrr), NGAMS_TEXT_MT)
 

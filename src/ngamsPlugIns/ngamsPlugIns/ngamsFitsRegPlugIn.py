@@ -37,10 +37,14 @@ implemented and NG/AMS configured to use it.
 """
 # Data Registration Function.
 
+import logging
+
 import ngamsFitsPlugIn
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import info, rmFile
+from ngamsLib.ngamsCore import rmFile
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsFitsRegPlugIn(srvObj,
                        reqPropsObj):
@@ -54,7 +58,7 @@ def ngamsFitsRegPlugIn(srvObj,
     Returns:      Standard NG/AMS Data Archiving Plug-In Status as generated
                   by: ngamsPlugInApi.genDapiSuccessStat() (ngamsDapiStatus).
     """
-    info(1,"Plug-In registering file with URI: " + reqPropsObj.getFileUri())
+    logger.info("Plug-In registering file with URI: %s", reqPropsObj.getFileUri())
     diskInfo = reqPropsObj.getTargDiskInfo()
     parDic = ngamsPlugInApi.parseRegPlugInPars(srvObj.getCfg(),
                                                reqPropsObj.getMimeType())
@@ -88,7 +92,7 @@ def ngamsFitsRegPlugIn(srvObj,
                                                stageFile, dpId)
 
     # Generate status.
-    info(4,"Generating status ...")
+    logger.debug("Generating status ...")
     fileSize = ngamsPlugInApi.getFileSize(stageFile)
     if (stageFile.find(".Z") != -1):
         format = "application/x-cfits"
@@ -105,7 +109,7 @@ def ngamsFitsRegPlugIn(srvObj,
     # Janitor Thread, but it is better to clean up explicitly).
     if (procDir): rmFile(procDir)
 
-    info(3,"Register Plug-In finished processing of file")
+    logger.debug("Register Plug-In finished processing of file")
     return ngamsPlugInApi.genRegPiSuccessStat(diskInfo.getDiskId(),relFilename,
                                               dpId, fileVersion, format,
                                               fileSize, uncomprSize,compresion,

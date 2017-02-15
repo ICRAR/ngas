@@ -47,11 +47,15 @@ pv_on_any_hosts  flag parameter (no value), this flag is only read if the flag k
 
 """
 
-import threading, datetime
+import datetime
+import logging
+import threading
 
-from ngamsLib.ngamsCore import error, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 from ngamsServer import ngamsDiscardCmd
 
+
+logger = logging.getLogger(__name__)
 
 QUERY_PREV_VER = "SELECT a.disk_id, a.file_id, a.file_version FROM ngas_files a, "+\
                  "(SELECT file_id, MAX(file_version) AS max_ver FROM ngas_files, ngas_disks WHERE ngas_files.disk_id = ngas_disks.disk_id AND ngas_disks.host_id = {0} GROUP BY file_id) c, " +\
@@ -102,9 +106,9 @@ def _purgeThread(srvObj, reqPropsObj, httpRef):
                         continue
                     else:
                         raise e1
-    except Exception, eee:
-        errMsg = 'Fail to execute the retainThread: Exception %s' % str(eee)
-        error(errMsg)
+    except Exception:
+        errMsg = 'Fail to execute the retainThread'
+        logger.exception(errMsg)
     finally:
         is_purgeThrd_running = False
         total_todo = 0

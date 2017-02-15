@@ -31,8 +31,7 @@
 Contains code for handling the CONFIG command.
 """
 
-from ngamsLib.ngamsCore import TRACE, setLogCond, setLogCache, \
-    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS
+from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS
 
 def handleCmdConfig(srvObj,
                     reqPropsObj,
@@ -57,7 +56,6 @@ def handleCmdConfig(srvObj,
     logLocalLogFile  = None
     logLocalLogLevel = None
     logVerboseLevel  = None
-    logBufferSize    = None
     for httpPar in reqPropsObj.getHttpParNames():
         if (httpPar == "log_sys_Log"):
             logSysLog = reqPropsObj.getHttpPar("log_sys_Log")
@@ -69,8 +67,6 @@ def handleCmdConfig(srvObj,
             logLocalLogLevel = reqPropsObj.getHttpPar("log_local_log_level")
         elif (httpPar == "log_verbose_level"):
             logVerboseLevel = reqPropsObj.getHttpPar("log_verbose_level")
-        elif (httpPar == "log_buffer_size"):
-            logBufferSize = reqPropsObj.getHttpPar("log_buffer_size")
         else:
             pass
 
@@ -78,10 +74,11 @@ def handleCmdConfig(srvObj,
     if ((logSysLog != None) or (logSysLogPrefix != None) or
         (logLocalLogFile != None) or (logLocalLogLevel != None) or
         (logVerboseLevel != None)):
-        setLogCond(logSysLog, logSysLogPrefix, logLocalLogLevel,
-                   logLocalLogFile, logVerboseLevel)
-    if (logBufferSize != None):
-        setLogCache(int(logBufferSize))
+
+        # TODO: 
+        #setLogCond(logSysLog, logSysLogPrefix, logLocalLogLevel,
+        #           logLocalLogFile, logVerboseLevel)
+        pass
 
     srvObj.reply(reqPropsObj.setCompletionTime(), httpRef, NGAMS_HTTP_SUCCESS,
                  NGAMS_SUCCESS, "Handled CONFIG command")

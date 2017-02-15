@@ -39,7 +39,7 @@ import os
 import sys
 
 from ngamsLib import ngamsConfig
-from ngamsLib.ngamsCore import getHostName, info, NGAMS_RETRIEVE_CMD, \
+from ngamsLib.ngamsCore import getHostName, NGAMS_RETRIEVE_CMD, \
     checkCreatePath, rmFile
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
     getClusterName, sendPclCmd, runTest, genTmpFilename, unzip
@@ -464,7 +464,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                           "Unexpected response returned to RETRIEVE Command")
 
         # Retrieve file (Disk ID + File ID + File Version).
-        info(1,"TODO: Implement this case.")
+        # TODO: Implement this case
 
 
     '''def test_IntFolder_01(self):
@@ -582,7 +582,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        nmuCfgPars = [["NgamsCfg.Server[1].ProxyMode", "0"]]
+        nmuCfgPars = [["NgamsCfg.Server[1].ProxyMode", "0"],
+                      ["NgamsCfg.Log[1].LocalLogLevel", "4"]]
         self.prepCluster("src/ngamsCfg.xml",
                          [[8000, None, None, getClusterName(), nmuCfgPars],
                           [8011, None, None, getClusterName()]])
@@ -596,7 +597,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status for " +\
                           "RETRIEVE Command/HTTP redirection")
         # Check that a log entry in the log file of the NMU is found.
-        grepCmd = "grep '\[INFO\] NGAMS_INFO_REDIRECT' " +\
+        grepCmd = "grep 'NGAMS_INFO_REDIRECT' " +\
                   "/tmp/ngamsTest/NGAS:8000/log/LogFile.nglog"
         stat, out = commands.getstatusoutput(grepCmd)
         if (out.find("Redirection URL:") == -1):

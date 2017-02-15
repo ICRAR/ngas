@@ -35,7 +35,7 @@ with DPPI processing.
 import commands
 
 from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
-from ngamsLib.ngamsCore import info, NGAMS_PROC_FILE, NGAMS_PROC_DATA
+from ngamsLib.ngamsCore import NGAMS_PROC_FILE, NGAMS_PROC_DATA
 
 
 def ngamsTestDppi1(srvObj,
@@ -108,11 +108,9 @@ def ngamsTestDppi1(srvObj,
         outFile = procFile + "_ngamsTestDppi1"
         with open(outFile, "a") as fo:
             fo.write(buf)
-        info(3,"Storing result data in file: %s" % outFile)
         resObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_FILE, mimeType,
                                                  outFile, filename, procDir)
     else:
-        info(3,"Keeping result data in buffer")
         resObj = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_DATA, mimeType,
                                                  buf, filename)
     statusObj.addResult(resObj)

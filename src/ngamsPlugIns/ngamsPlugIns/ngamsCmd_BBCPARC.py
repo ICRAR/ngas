@@ -34,23 +34,22 @@ curl --connect-timeout 7200 eor-12.mit.edu:7777/BBCPARC?fileUri=ngas%40146.118.8
 """
 
 from collections import namedtuple
-import commands
+import logging
 import os
 import time
 import subprocess
 import struct
 from urlparse import urlparse
 
-from ngamsLib import ngamsHighLevelLib, ngamsPlugInApi
-from ngamsLib.ngamsCore import info, checkCreatePath, genLog, alert, TRACE, \
-    NGAMS_SUCCESS, NGAMS_HTTP_GET, NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, \
-    NGAMS_NOTIF_NO_DISKS, setLogCache, mvFile, notice, NGAMS_FAILURE, error, \
-    NGAMS_PICKLE_FILE_EXT, rmFile, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
+from ngamsLib import ngamsHighLevelLib
+from ngamsLib.ngamsCore import checkCreatePath, genLog, TRACE, \
+    NGAMS_SUCCESS, mvFile, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
     NGAMS_BUSY_SUBSTATE, getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_STAGING_DIR, \
     loadPlugInEntryPoint, genUniqueId
 from ngamsServer import ngamsArchiveUtils, ngamsCacheControlThread
-from pccUt import PccUtTime
 
+
+logger = logging.getLogger(__name__)
 
 bbcp_param = namedtuple('bbcp_param', 'port, winsize, num_streams, checksum')
 
@@ -61,7 +60,7 @@ def bbcpFile(srcFilename, targFilename, bparam):
     NOTE: This requires remote access to the host as well as
          a bbcp installation on both the remote and local host.
     """
-    info(3, "Copying file: %s to filename: %s" % (srcFilename, targFilename))
+    logger.debug("Copying file: %s to filename: %s", srcFilename, targFilename)
 
     # Make target file writable if existing.
     if (os.path.exists(targFilename)):
@@ -89,7 +88,7 @@ def bbcpFile(srcFilename, targFilename, bparam):
     cmd_checksum = ['-e', '-E', 'c32z=/dev/stdout']
     cmd_list = ['bbcp', '-f', '-V'] + ssh_src + cmd_checksum + fw + ns + ['-P', '2'] + pt + [srcFilename, targFilename]
 
-    info(3, "Executing external command: %s" % subprocess.list2cmdline(cmd_list))
+    logger.debug("Executing external command: %s", subprocess.list2cmdline(cmd_list))
 
     p1 = subprocess.Popen(cmd_list, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     checksum_out, out = p1.communicate()
@@ -100,8 +99,8 @@ def bbcpFile(srcFilename, targFilename, bparam):
     # extract c32 zip variant checksum from output and convert to signed 32 bit integer
     bbcp_checksum = struct.unpack('!i', checksum_out.split(' ')[2].decode('hex'))
 
-    info(3, 'BBCP final message: %s' % out.split('\n')[-2]) # e.g. "1 file copied at effectively 18.9 MB/s"
-    info(3, "File: %s copied to filename: %s" % (srcFilename, targFilename))
+    logger.debug('BBCP final message: %s', out.split('\n')[-2]) # e.g. "1 file copied at effectively 18.9 MB/s"
+    logger.debug("File: %s copied to filename: %s", srcFilename, targFilename)
 
     return str(bbcp_checksum[0]), 'ngamsGenCrc32'
 
@@ -128,7 +127,7 @@ def archiveFromFile(srvObj,
     reqPropsObjLoc = reqPropsObj
     filename = reqPropsObj.getFileUri()
 
-    info(2, "Archiving file: %s" % filename)
+    logger.info("Archiving file: %s", filename)
 
     # If no target disk is defined, find one suitable disk.
     if reqPropsObjLoc.getTargDiskInfo() is None:
@@ -159,7 +158,7 @@ def archiveFromFile(srvObj,
     iorate = reqPropsObjLoc.getSize()/(time.time() - st)
 
     plugIn = srvObj.getMimeTypeDic()[reqPropsObjLoc.getMimeType()]
-    info(2, "Invoking DAPI: %s to handle file: %s" % (plugIn, stagingFile))
+    logger.info("Invoking DAPI: %s to handle file: %s", plugIn, stagingFile)
     plugInMethod = loadPlugInEntryPoint(plugIn)
     resMain = plugInMethod(srvObj, reqPropsObjLoc)
 
@@ -189,15 +188,14 @@ def handleCmd(srvObj,
     T = TRACE()
 
     # Check if the URI is correctly set.
-    info(3, "Check if the URI is correctly set.")
-    info(3,"ReqPropsObj status: {0}".format(reqPropsObj.getObjStatus()))
+    logger.debug("Check if the URI is correctly set.")
+    logger.debug("ReqPropsObj status: %s", reqPropsObj.getObjStatus())
 
     parsDic = reqPropsObj.getHttpParsDic()
 
     if not parsDic.has_key('fileUri') or not parsDic['fileUri']:
         errMsg = genLog("NGAMS_ER_MISSING_URI")
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # exclude pulling files from these locations
     invalid_paths = ('/dev', '/var', '/usr', '/opt', '/etc')
@@ -216,8 +214,7 @@ def handleCmd(srvObj,
     if uri_parsed.path.lower().startswith(invalid_paths):
         errMsg = genLog("NGAMS_ER_ILL_URI", [file_uri,
                                             "Archive Pull Request"])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     reqPropsObj.setFileUri(file_uri)
 
@@ -229,7 +226,7 @@ def handleCmd(srvObj,
         reqPropsObj.setMimeType(parsDic['mimeType'])
 
     # Is this NG/AMS permitted to handle Archive Requests?
-    info(3, "Is this NG/AMS permitted to handle Archive Requests?")
+    logger.debug("Is this NG/AMS permitted to handle Archive Requests?")
 
     if not srvObj.getCfg().getAllowArchiveReq():
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Archive"])
@@ -265,7 +262,7 @@ def handleCmd(srvObj,
     (resDapi, targDiskInfo, iorate) = archiveFromFile(srvObj, bparam, reqPropsObj)
 
     # Inform the caching service about the new file.
-    info(3, "Inform the caching service about the new file.")
+    logger.debug("Inform the caching service about the new file.")
     if (srvObj.getCachingActive()):
         diskId      = resDapi.getDiskId()
         fileId      = resDapi.getFileId()
@@ -275,31 +272,29 @@ def handleCmd(srvObj,
                                                    fileVersion, filename)
 
     # Update disk info in NGAS Disks.
-    info(3, "Update disk info in NGAS Disks.")
+    logger.debug("Update disk info in NGAS Disks.")
     srvObj.getDb().updateDiskInfo(resDapi.getFileSize(), resDapi.getDiskId())
 
     # Check if the disk is completed.
     # We use an approximate estimate for the remaning disk space to avoid
     # to read the DB.
-    info(3, "Check available space in disk")
+    logger.debug("Check available space in disk")
     availSpace = getDiskSpaceAvail(targDiskInfo.getMountPoint(), smart=False)
     if (availSpace < srvObj.getCfg().getFreeSpaceDiskChangeMb()):
-        complDate = PccUtTime.TimeStamp().getTimeStamp()
-        targDiskInfo.setCompleted(1).setCompletionDate(complDate)
+        targDiskInfo.setCompleted(1).setCompletionDate(time.time())
         targDiskInfo.write(srvObj.getDb())
 
     # Request after-math ...
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
     msg = "Successfully handled Archive Pull Request for data file " +\
-          "with URI: " + reqPropsObj.getSafeFileUri()
-    info(1, msg)
+          "with URI: %s"
+    logger.info(msg, reqPropsObj.getSafeFileUri())
     srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                        NGAMS_SUCCESS, msg, targDiskInfo)
 
     # Trigger Subscription Thread. This is a special version for MWA, in which we simply swapped MIRRARCHIVE and QARCHIVE
     # chen.wu@icrar.org
-    msg = "triggering SubscriptionThread for file %s" % resDapi.getFileId()
-    info(3, msg)
+    logger.debug("triggering SubscriptionThread for file %s", resDapi.getFileId())
     srvObj.addSubscriptionInfo([(resDapi.getFileId(),
                                  resDapi.getFileVersion())], [])
     srvObj.triggerSubscriptionThread()

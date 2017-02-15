@@ -19,9 +19,13 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+import logging
+import time
 
-from ngamsLib.ngamsCore import error, info, time
+from ngamsServer.ngamsJanitorThread import StopJanitorThreadException
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsJanitorCheckOldRequestsinDBM(srvObj, stopEvt, checkStopJanitorThread):
     """
@@ -35,8 +39,8 @@ def ngamsJanitorCheckOldRequestsinDBM(srvObj, stopEvt, checkStopJanitorThread):
 
    Returns:           Void.
    """
-    info(4, "Checking/cleaning up Request DB ...")
-    # reqTimeOut = 10
+    logger.debug("Checking/cleaning up Request DB ...")
+    #reqTimeOut = 10
     reqTimeOut = 86400
     try:
         reqIds = srvObj.getRequestIds()
@@ -54,19 +58,20 @@ def ngamsJanitorCheckOldRequestsinDBM(srvObj, stopEvt, checkStopJanitorThread):
             if (reqPropsObj.getCompletionTime() != None):
                 complTime = reqPropsObj.getCompletionTime()
                 if ((timeNow - complTime) >= reqTimeOut):
-                    info(4, "Removing request with ID from " + \
-                         "Request DBM: %s" % str(reqId))
+                    logger.debug("Removing request with ID from " +\
+                         "Request DBM: %s", str(reqId))
                     srvObj.delRequest(reqId)
                     continue
             if (reqPropsObj.getLastRequestStatUpdate() != None):
                 lastReq = reqPropsObj.getLastRequestStatUpdate()
                 if ((timeNow - lastReq) >= reqTimeOut):
-                    info(4, "Removing request with ID from " + \
-                         "Request DBM: %s" % str(reqId))
+                    logger.debug("Removing request with ID from " +\
+                         "Request DBM: %s", str(reqId))
                     srvObj.delRequest(reqId)
                     continue
             time.sleep(0.020)
-
-    except Exception, e:
-        error("Exception encountered: %s" % str(e))
-    info(4, "Request DB checked/cleaned up")
+    except StopJanitorThreadException:
+        return
+    except Exception:
+        logger.exception("Exception encountered")
+    logger.debug("Request DB checked/cleaned up")

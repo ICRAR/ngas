@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDbNgasDisksHist.py,v 1.5 2008/08/19 20:51:50 jknudstr Exp $"
@@ -36,11 +35,15 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
+import logging
 import re
-from pccUt import PccUtTime
-from ngamsCore import TRACE, NGAMS_XML_MT, info
+import time
+
+from ngamsCore import TRACE, NGAMS_XML_MT, toiso8601
 import ngamsDbCore
 
+
+logger = logging.getLogger(__name__)
 
 class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
     """
@@ -89,10 +92,10 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
         try:
             if (origin == None):
                 origin = "NG/AMS@" + hostId
-            tsObj = PccUtTime.TimeStamp()
 
+            now = time.time()
             if (date == None):
-                histDate = self.convertTimeStamp(tsObj.getTimeStamp())
+                histDate = self.convertTimeStamp(now)
             else:
                 histDate = self.convertTimeStamp(date)
 
@@ -120,11 +123,9 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
 
             self.query2(sqlQuery, args = (diskId, histDate, origin, synopsis, mt, descr))
 
-            info(2,"Added entry in NGAS Disks History Table - Disk ID: " +\
-                 diskId + " - Date: " + tsObj.getTimeStamp() + " - Origin: " +\
-                 origin + " - Synopsis: " + synopsis +\
-                 " - Description Mime-type: " + str(mt) + " - Description: " +\
-                 str(descr))
+            logger.info("Added entry in NGAS Disks History Table - Disk ID: %s - Date: %s - " + \
+                        "Origin: %s - Synopsis: %s - Description Mime-type: %s - Description: %s",
+                        diskId, toiso8601(now, local=True), origin, synopsis, str(mt), str(descr))
             self.triggerEvents()
         except Exception, e:
             raise e

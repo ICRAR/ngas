@@ -19,34 +19,39 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-from ngamsLib.ngamsCore import NGAMS_OFFLINE_CMD, NGAMS_HTTP_INT_AUTH_USER, alert, getHostName
-from ngamsLib import ngamsLib
+import logging
 
+from ngamsLib import ngamsLib
+from ngamsLib.ngamsCore import NGAMS_OFFLINE_CMD, NGAMS_HTTP_INT_AUTH_USER, getHostName
+
+
+logger = logging.getLogger(__name__)
 
 def ngamsJanitorCheckDiskSpace(srvObj, stopEvt):
     """
-	Check if there is enough disk space for the various
+    Check if there is enough disk space for the various
     directories defined.
 
-   srvObj:            Reference to NG/AMS server class object (ngamsServer).
+    srvObj:            Reference to NG/AMS server class object (ngamsServer).
 
-   Returns:           Void.
-   """
+    Returns:           Void.
+    """
+
     try:
         srvObj.checkDiskSpaceSat()
-    except Exception, e:
-        alert(str(e))
-        alert("Bringing the system to Offline State ...")
+    except Exception:
+        logger.exception("Not enough disk space, " + \
+                         "bringing the system to Offline State ...")
         # We use a small trick here: We send an Offline Command to
         # the process itself.
         #
         # If authorization is on, fetch a key of a defined user.
         if (srvObj.getCfg().getAuthorize()):
-            authHdrVal = srvObj.getCfg(). \
-                getAuthHttpHdrVal(NGAMS_HTTP_INT_AUTH_USER)
+            authHdrVal = srvObj.getCfg().\
+                         getAuthHttpHdrVal(NGAMS_HTTP_INT_AUTH_USER)
         else:
             authHdrVal = ""
         ngamsLib.httpGet(getHostName(), srvObj.getCfg().getPortNo(),
                          NGAMS_OFFLINE_CMD, 0,
                          [["force", "1"], ["wait", "0"]],
-                         "", 65536, 30, 0, authHdrVal)
+                         "", 65536, 30, authHdrVal)

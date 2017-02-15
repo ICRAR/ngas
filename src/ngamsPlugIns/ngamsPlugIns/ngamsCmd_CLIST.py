@@ -20,7 +20,7 @@
 #    MA 02111-1307  USA
 #
 
-from ngamsLib.ngamsCore import error, NGAMS_HTTP_SUCCESS, NGAMS_XML_MT, NGAMS_SUCCESS
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_XML_MT, NGAMS_SUCCESS
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -40,8 +40,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         containerName = reqPropsObj.getHttpPar("container_name").strip()
     if not containerId and not containerName:
         errMsg = "Either container_id or container_name should be given to indicate a unique container"
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # If container_name is specified, and maps to more than one container,
     # (or to none) an error is issued
@@ -54,7 +53,6 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if not containerIdKnownToExist:
         if not srvObj.getDb().containerExists(containerId):
             msg = "No container with containerId '" + containerId + "' found, cannot append files to it"
-            error(msg)
             raise Exception(msg)
 
     # Do it!

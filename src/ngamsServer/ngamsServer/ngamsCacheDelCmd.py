@@ -33,9 +33,13 @@
 Contains code for handling the CACHEDEL Command.
 """
 
-import ngamsFileUtils, ngamsCacheControlThread
-from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, info, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, NGAMS_HOST_CLUSTER, TRACE
+import logging
 
+import ngamsFileUtils, ngamsCacheControlThread
+from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, NGAMS_HOST_CLUSTER, TRACE
+
+
+logger = logging.getLogger(__name__)
 
 def cacheDel(srvObj,
              reqPropsObj,
@@ -73,7 +77,7 @@ def cacheDel(srvObj,
     if (fileLocation == NGAMS_HOST_LOCAL):
         msg = "Scheduling file for deletion from the cache according to " +\
               "CACHEDEL Command: %s/%s/%s"
-        info(2, msg % (diskId, fileId, str(fileVersion)))
+        logger.info(msg, diskId, fileId, str(fileVersion))
         sqlFileInfo = (diskId, fileId, fileVersion)
         ngamsCacheControlThread.scheduleFileForDeletion(srvObj, sqlFileInfo)
         srvObj.reply(reqPropsObj.setCompletionTime(), httpRef,
@@ -81,16 +85,16 @@ def cacheDel(srvObj,
                      "Handled CACHEDEL Command")
     elif (srvObj.getCfg().getProxyMode() or
           (fileLocInfo[0] == NGAMS_HOST_CLUSTER)):
-        info(3, "File is remote or located within the private network of " +\
+        logger.debug("File is remote or located within the private network of " +\
              "the contacted NGAS system -- this server acting as proxy " +\
-             "and forwarding request to remote NGAS system: %s/%d" %\
-             (fileHostId, filePortNo))
+             "and forwarding request to remote NGAS system: %s/%d",
+             fileHostId, filePortNo)
         httpStatCode, httpStatMsg, httpHdrs, data =\
                       srvObj.forwardRequest(reqPropsObj, httpRef,
                                             fileHostId, filePortNo)
     else:
         # Send back an HTTP re-direction response to the requestor.
-        info(3, "File to be deleted from the NGAS Cache is stored on a " +\
+        logger.debug("File to be deleted from the NGAS Cache is stored on a " +\
              "remote host not within private network, Proxy Mode is off " +\
              "- sending back HTTP re-direction response")
         reqPropsObj.setCompletionTime(1)

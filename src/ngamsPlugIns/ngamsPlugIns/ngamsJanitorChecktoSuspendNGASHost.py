@@ -19,9 +19,14 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-from ngamsLib import ngamsNotification
-from ngamsLib.ngamsCore import error, info, logFlush, NGAMS_NOTIF_ERROR, loadPlugInEntryPoint
+import logging
 import time
+
+from ngamsLib import ngamsNotification
+from ngamsLib.ngamsCore import NGAMS_NOTIF_ERROR, loadPlugInEntryPoint
+
+
+logger = logging.getLogger(__name__)
 
 def ngamsJanitorChecktoSuspendNGASHost(srvObj, stopEvt):
     """
@@ -35,16 +40,15 @@ def ngamsJanitorChecktoSuspendNGASHost(srvObj, stopEvt):
     hostId = srvObj.getHostId()
     srvDataChecking = srvObj.getDb().getSrvDataChecking(hostId)
     if ((not srvDataChecking) and
-            (srvObj.getCfg().getIdleSuspension()) and
-            (not srvObj.getHandlingCmd())):
+        (srvObj.getCfg().getIdleSuspension()) and
+        (not srvObj.getHandlingCmd())):
         timeNow = time.time()
         # Conditions are that the time since the last request was
         # handled exceeds the time for suspension defined.
         if ((timeNow - srvObj.getLastReqEndTime()) >=
-                srvObj.getCfg().getIdleSuspensionTime()):
+            srvObj.getCfg().getIdleSuspensionTime()):
             # Conditions are met for suspending this NGAS host.
-            info(2, "NG/AMS Server: %s suspending itself ..." % \
-                 hostId)
+            logger.info("NG/AMS Server: %s suspending itself ...", hostId)
 
             # If Data Checking is on, we request a wake-up call.
             if (srvObj.getCfg().getDataCheckActive()):
@@ -55,18 +59,17 @@ def ngamsJanitorChecktoSuspendNGASHost(srvObj, stopEvt):
             # Now, suspend this host.
             srvObj.getDb().markHostSuspended(srvObj.getHostId())
             suspPi = srvObj.getCfg().getSuspensionPlugIn()
-            info(3, "Invoking Suspension Plug-In: " + suspPi + " to " + \
-                 "suspend NG/AMS Server: " + hostId + " ...")
-            logFlush()
+            logger.debug("Invoking Suspension Plug-In: %s to " +\
+                 "suspend NG/AMS Server: %s", suspPi, hostId)
             try:
                 plugInMethod = loadPlugInEntryPoint(suspPi)
                 plugInMethod(srvObj)
             except Exception, e:
-                errMsg = "Error suspending NG/AMS Server: " + \
-                         hostId + " using Suspension Plug-In: " + \
+                errMsg = "Error suspending NG/AMS Server: " +\
+                         hostId + " using Suspension Plug-In: "+\
                          suspPi + ". Error: " + str(e)
-                error(errMsg)
+                logger.error(errMsg)
                 ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(),
                                          NGAMS_NOTIF_ERROR,
-                                         "ERROR INVOKING SUSPENSION " + \
+                                         "ERROR INVOKING SUSPENSION "+\
                                          "PLUG-IN", errMsg)

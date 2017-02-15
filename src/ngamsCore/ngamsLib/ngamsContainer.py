@@ -25,8 +25,9 @@ Contains classes related to the handling of Containers in ngams
 @author: rtobar
 '''
 
-from ngamsCore import timeRef2Iso8601
 from xml.dom import minidom
+
+from ngamsCore import toiso8601, fromiso8601
 import ngamsFileInfo
 
 class ngamsContainer(object):
@@ -93,7 +94,7 @@ class ngamsContainer(object):
         self._ingestionDate = ingestionDate
 
     def isClosed(self):
-        return bool(self._ingestionDate)
+        return self._ingestionDate != None
 
     def isOpened(self):
         return not self.isClosed()
@@ -121,8 +122,8 @@ class ngamsContainer(object):
         contEl.setAttribute('id', str(self.getContainerId())) # might be an uuid.uuid4 object
         contEl.setAttribute('name', self.getContainerName())
         contEl.setAttribute('size', str(self.getContainerSize()))
-        if self.getIngestionDate():
-            contEl.setAttribute('ingestionDate', timeRef2Iso8601(self.getIngestionDate()))
+        if self._ingestionDate is not None:
+            contEl.setAttribute('ingestionDate', toiso8601(self._ingestionDate))
         for fileInfo in self._filesInfo:
             contEl.appendChild( fileInfo.genXml() )
         for childCont in self._containers:
@@ -145,7 +146,7 @@ class ngamsContainer(object):
         self.setContainerSize(int(contEl.getAttribute('size')))
 
         ingDate = contEl.getAttribute('ingestionDate')
-        self.setIngestionDate(ingDate if ingDate else None)
+        self.setIngestionDate(fromiso8601(ingDate) if ingDate else None)
 
         subContEls = [n for n in contEl.childNodes \
                       if n.nodeType == minidom.Node.ELEMENT_NODE

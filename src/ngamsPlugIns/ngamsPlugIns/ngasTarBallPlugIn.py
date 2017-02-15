@@ -17,12 +17,16 @@ contexts, a dedicated plug-in matching the individual context should be
 implemented and NG/AMS configured to use it.
 """
 
-import os, commands
+import commands
+import logging
+import os
 
-from pccUt import PccUtTime
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import rmFile, genLog, error, info
+from ngamsLib.ngamsCore import rmFile, genLog, toiso8601, FMT_DATE_ONLY,\
+    fromiso8601, tomjd
 
+
+logger = logging.getLogger(__name__)
 
 def checkTarball(filename):
     """
@@ -49,8 +53,7 @@ def checkTarball(filename):
         errMsg = "Error checking tarball: " + errMsg
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE",
                         [filename, "ngasTarBallPlugIn", errMsg])
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
 # DAPI function.
@@ -68,7 +71,7 @@ def ngasTarBallPlugIn(srvObj,
                   (ngamsDapiStatus).
     """
     stagingFilename = reqPropsObj.getStagingFilename()
-    info(1,"Plug-In handling data for file with URI: " +
+    logger.info("Plug-In handling data for file with URI: %s",
          os.path.basename(reqPropsObj.getFileUri()))
     diskInfo = reqPropsObj.getTargDiskInfo()
 
@@ -77,9 +80,9 @@ def ngasTarBallPlugIn(srvObj,
 
     # Get various information about the file being handled.
     fileId       = os.path.basename(reqPropsObj.getFileUri())
-    obsDay = (PccUtTime.TimeStamp(fileId[fileId.find(".") + 1:]).getMjd()-0.5)
-    obsDayTime = PccUtTime.TimeStamp(obsDay).getTimeStamp()
-    dateDirName = obsDayTime.split("T")[0]
+    timestamp = fileId[fileId.find(".")+1:]
+    obsDay = tomjd(fromiso8601(timestamp)) - 0.5
+    dateDirName = toiso8601(obsDay, fmt=FMT_DATE_ONLY)
     baseFilename = fileId[0:-4]
     fileVersion, relPath, relFilename,\
                  complFilename, fileExists =\
@@ -89,10 +92,10 @@ def ngasTarBallPlugIn(srvObj,
                                             baseFilename, [dateDirName], [])
 
     # Generate status.
-    info(4,"Generating status ...")
+    logger.debug("Generating status ...")
     format       = "application/x-tar"
     fileSize     = ngamsPlugInApi.getFileSize(stagingFilename)
-    info(3,"DAPI finished processing of file")
+    logger.debug("DAPI finished processing of file")
     return ngamsPlugInApi.genDapiSuccessStat(diskInfo.getDiskId(), relFilename,
                                              fileId, fileVersion, format,
                                              fileSize, fileSize, "NONE",

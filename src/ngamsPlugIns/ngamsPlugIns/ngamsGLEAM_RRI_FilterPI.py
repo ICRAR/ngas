@@ -28,13 +28,15 @@
 # --------  ----------  -------------------------------------------------------
 # cwu      20/09/2013  Created
 
-
+import logging
 import os
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import error, alert, NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, NGAMS_FAILURE
+from ngamsLib.ngamsCore import NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, NGAMS_FAILURE
 from ngamsPClient import ngamsPClient
 
+
+logger = logging.getLogger(__name__)
 
 file_ext = ['.fits', '.png']
 
@@ -55,9 +57,9 @@ def _shouldSend(fileId):
                 return False
         else:
             return False
-    except Exception, e2:
-        errMsg = '_shouldRetain in rri purge thread failed: Exception %s' % str(e2)
-        error(errMsg)
+    except Exception:
+        errMsg = '_shouldRetain in rri purge thread failed'
+        logger.exception(errMsg)
         return True
 
 def ngamsGLEAM_RRI_FilterPI(srvObj,
@@ -102,7 +104,7 @@ def ngamsGLEAM_RRI_FilterPI(srvObj,
             errMsg = "ngamsGLEAM_VUW_FilterPI: Missing Plug-In Parameter: " +\
                      "remote_host / remote_port"
             #raise Exception, errMsg
-            alert(errMsg)
+            logger.error(errMsg)
             return 1 # matched as if the remote checking is done
 
         host = parDic["remote_host"]
@@ -110,7 +112,7 @@ def ngamsGLEAM_RRI_FilterPI(srvObj,
 
         if (not sport.isdigit()):
             errMsg = "ngamsGLEAM_VUW_FilterPI: Invalid port number: " + sport
-            alert(errMsg)
+            logger.error(errMsg)
             return 1 # matched as if the filter does not exist
 
         port = int(sport)
@@ -129,7 +131,7 @@ def ngamsGLEAM_RRI_FilterPI(srvObj,
         except Exception, e:
             errMsg = "Error occurred during checking remote file status " +\
                          "ngamsGLEAM_VUW_FilterPI. Exception: " + str(e)
-            alert(errMsg)
+            logger.error(errMsg)
             return 1 # matched as if the filter does not exist
         #info(5, "filter return status = " + rest.getStatus())
         #info(4, "filter match = " + str(match))

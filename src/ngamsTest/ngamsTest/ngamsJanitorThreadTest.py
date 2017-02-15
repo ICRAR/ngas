@@ -33,7 +33,6 @@ This module contains the Test Suite for the NG/AMS Janitor Thread.
 
 import sys
 
-from ngamsLib.ngamsCore import info
 from ngamsTestLib import ngamsTestSuite, runTest
 
 
@@ -70,7 +69,7 @@ class ngamsJanitorThreadTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        info(1,"TODO: Implement ngamsJanitorThreadTest()!!!!")
+        # TODO: Implement ngamsJanitorThreadTest()!!!!
 
 
 def run():

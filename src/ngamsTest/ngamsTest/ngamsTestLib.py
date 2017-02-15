@@ -40,8 +40,8 @@ import getpass
 import glob
 import gzip
 import importlib
+import logging
 import os
-import re
 import shutil
 import socket
 import subprocess
@@ -53,14 +53,29 @@ import pkg_resources
 import pyfits
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
-from ngamsLib.ngamsCore import getHostName, TRACE, info, \
+from ngamsLib.ngamsCore import getHostName, TRACE, \
     ngamsCopyrightString, rmFile, \
-    error, cleanList, setLogCond, getVerboseLevel, \
-    cpFile, getLogLevel, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
-    checkIfIso8601
+    cpFile, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
+    execCmd as ngamsCoreExecCmd, fromiso8601, toiso8601
 from ngamsPClient import ngamsPClient
-from pccUt import PccUtUtils, PccUtTime
 
+
+logger = logging.getLogger(__name__)
+
+logging_levels = {
+    logging.CRITICAL: 0,
+    logging.ERROR: 1,
+    logging.WARN: 2,
+    logging.INFO: 3,
+    logging.DEBUG: 4,
+    logging.NOTSET: 5,
+    0: logging.CRITICAL,
+    1: logging.ERROR,
+    2: logging.WARNING,
+    3: logging.INFO,
+    4: logging.DEBUG,
+    5: logging.NOTSET
+}
 
 # Global parameters to control the test run.
 _noCleanUp   = 0
@@ -165,6 +180,13 @@ if (not ignoreCClient):
 ###########################################################################
 # START: Utility functions:
 ###########################################################################
+def checkIfIso8601(timestamp):
+    try:
+        fromiso8601(timestamp)
+        return True
+    except ValueError:
+        return False
+
 def execCmd(cmd,
             raiseEx = 1,
             timeOut = 30.0):
@@ -181,7 +203,7 @@ def execCmd(cmd,
 
     Returns:   Tuple with exit status + stdout/stderr output (string).
     """
-    exitCode, stdOut, stdErr = PccUtUtils.execCmd(cmd, timeOut)
+    exitCode, stdOut, stdErr = ngamsCoreExecCmd(cmd, timeOut)
     out = stdOut + stdErr
     if (exitCode and raiseEx):
         errMsg = "Error executing shell command. Exit status: %d, ouput: %s"
@@ -466,10 +488,10 @@ def delNgamsDirs(cfgObj):
     """
     try:
         for d in [cfgObj.getRootDirectory(), "/tmp/ngamsTest"]:
-            info(3,"Removing directory: %s" + d)
+            logger.debug("Removing directory: %s", d)
             shutil.rmtree(d, True)
-    except Exception, e:
-        error("Error encountered removing NG/AMS directories: " + str(e))
+    except Exception:
+        logger.exception("Error encountered removing NG/AMS directories")
 
 
 def checkHostEntry(dbObj,
@@ -646,31 +668,6 @@ def recvEmail(no):
     return out
 
 
-def supprVerbLogPreamb(logBuf):
-    """
-    Supress the first part of a log line as written on stdout, e.g.:
-
-    2005-09-07T10:44:54.703:<mod>:<fct>:169:2074:MainThread:INFO> <text>
-
-    - is converted into:
-
-    -----> <text>
-
-    logLine:   Log line to process (string).
-
-    Returns:   Processed log line (string).
-    """
-    procLogBuf = ""
-    year = PccUtTime.TimeStamp().getTimeStamp().split("-")[0].strip()
-    for logLine in logBuf.split("\n"):
-        if (logLine.strip().find("%s-" % year) == 0):
-            procLogBuf += "-----> %s\n" % logLine[(logLine.find(">") + 1):].\
-                          strip()
-        else:
-            procLogBuf += logLine + "\n"
-    return procLogBuf
-
-
 def filterOutLines(buf,
                    discardTags = [],
                    matchStart = 1):
@@ -743,7 +740,7 @@ def flushEmailQueue():
     for line in stdOut.split("\n"):
         line = line.strip()
         if (line != ""):
-            lineEls = cleanList(line.split(" "))
+            lineEls = filter(None, line.split(" "))
             try:
                 mailDic[int(lineEls[1])] = 1
             except:
@@ -766,12 +763,11 @@ def runTest(argv):
 
     Returns:  Void.
     """
-    setLogCond(0, "", 0, "", -1)
     testModuleName = argv[0].split(".")[0]
     tests = []
     silentExit = 0
-    verboseLevel = -1
-    logFile = ""
+    verboseLevel = 0
+    logFile = None
     logLevel = 0
     skip = None
     idx = 1
@@ -806,7 +802,10 @@ def runTest(argv):
                 correctUsage()
             sys.exit(1)
 
-    setLogCond(0, "", logLevel, logFile, verboseLevel)
+    logging.root.addHandler(logging.NullHandler())
+    if verboseLevel:
+        logging.root.addHandler(logging.StreamHandler(stream=sys.stdout))
+        logging.root.setLevel(logging_levels[verboseLevel-1])
 
     skipDic = {}
     if (skip):
@@ -914,14 +913,13 @@ def incArcfile(filename,
 
     Returns:     Void.
     """
-    arcFile = str(pyfits.getval(filename, 'ARCFILE'))
-    idx = arcFile.find(".")
-    insId = arcFile[0:idx]
-    ts = arcFile[(idx + 1):]
-    newMjd = PccUtTime.TimeStamp().initFromTimeStamp(ts).getMjd() +\
-             (float(step) / 86400.0)
-    newArcFile = insId + "." + PccUtTime.TimeStamp(newMjd).getTimeStamp()
-    pyfits.setval(filename, 'ARCFILE', value=newArcFile)
+    # ARCFILE looks like SOMEID.YYYY-mm-DDTHH:MM:SS.sss
+    arcFile = pyfits.getval(filename, 'ARCFILE')
+    idx = arcFile.find('.')
+    insId = arcFile[:idx]
+    ts = arcFile[idx+1:]
+    ts = toiso8601(fromiso8601(ts) + step)
+    pyfits.setval(filename, 'ARCFILE', value="%s.%s" % (insId, ts))
     # TODO: Use PCFITSIO to reprocess the checksum.
     commands.getstatusoutput("add_chksum " + filename)
 
@@ -961,7 +959,8 @@ def getThreadId(logFile,
     for tag in tagList[1:]:
         grepCmd += " | grep %s" % tag
     stat, out = commands.getstatusoutput(grepCmd)
-    return out.split(":")[-1][0:-1]
+    tid =  out.split("[")[1].split("]")[0].strip()
+    return tid
 
 def unzip(infile, outfile):
     with nested(gzip.open(infile, 'rb'), open(outfile, 'w')) as (gz, out):
@@ -988,7 +987,6 @@ class ngamsTestSuite(unittest.TestCase):
         methodName:    Name of method to run to run test case (string_.
         """
         unittest.TestCase.__init__(self, methodName)
-        self.__verboseLevel  = getVerboseLevel()
         self.__extSrvInfo    = []
 
         # TODO: Get rid of these.
@@ -1071,7 +1069,7 @@ class ngamsTestSuite(unittest.TestCase):
         """
         T = TRACE(3)
 
-        verbose = getVerboseLevel()
+        verbose = logging_levels[logger.getEffectiveLevel()] + 1
 
         if (dbCfgName):
             # If a DB Configuration Name is specified, we first have to
@@ -1082,7 +1080,7 @@ class ngamsTestSuite(unittest.TestCase):
             cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, dbObj)
             del dbObj
             dbObj = None
-            info(2, "Successfully read configuration from database, root dir is %s" % (cfgObj2.getRootDirectory()))
+            logger.debug("Successfully read configuration from database, root dir is %s", cfgObj2.getRootDirectory())
             cfgFile = saveInFile(None, cfgObj2.genXmlDoc(0))
 
         # Derive NG/AMS Server name for this instance.
@@ -1108,10 +1106,10 @@ class ngamsTestSuite(unittest.TestCase):
         # the server, like removing existing NGAS dirs and clearing tables
         dbObj = ngamsDb.from_config(cfgObj)
         if (delDirs):
-            info(3,"Deleting NG/AMS directories ...")
+            logger.debug("Deleting NG/AMS directories ...")
             delNgamsDirs(cfgObj)
         if (clearDb):
-            info(3,"Clearing NGAS DB ...")
+            logger.debug("Clearing NGAS DB ...")
             delNgasTbls(dbObj)
 
         # Insert an entry for this server on the host table
@@ -1127,13 +1125,12 @@ class ngamsTestSuite(unittest.TestCase):
             execCmd = [sys.executable, '-m', srvModule]
         else:
             execCmd = [server_type]
-        execCmd += ["-cfg", tmpCfg]
+        execCmd += ["-cfg", tmpCfg, "-v", str(verbose)]
         if force:        execCmd.append('-force')
         if autoOnline:   execCmd.append("-autoOnline")
-        if verbose:      execCmd.extend(["-v", str(verbose)])
         if multipleSrvs: execCmd.append("-multipleSrvs")
         if dbCfgName:    execCmd.extend(["-dbCfgId", dbCfgName])
-        info(3,"Starting external NG/AMS Server with shell command: " + " ".join(execCmd))
+        logger.info("Starting external NG/AMS Server with shell command: %s", " ".join(execCmd))
 
         # TODO: kind of a hack really...
         # Include this directory in the python path
@@ -1154,12 +1151,12 @@ class ngamsTestSuite(unittest.TestCase):
         while ((time.time() - startTime) < 20):
             if (stat):
                 state = "ONLINE" if autoOnline else "OFFLINE"
-                info(2,"Test server running - State: %s" % (state))
+                logger.debug("Test server running - State: %s", state)
                 if stat.getState() == state: break
             try:
                 stat = pCl.status()
             except Exception:
-                info(3,"Polled server - not yet running ...")
+                logger.debug("Polled server - not yet running ...")
                 time.sleep(0.2)
 
         if ((time.time() - startTime) >= 20):
@@ -1186,7 +1183,7 @@ class ngamsTestSuite(unittest.TestCase):
         """
 
         if srvProcess.poll() is not None:
-            info(3, "Server process %d (port %d) already dead x(, no need to terminate it again" % (srvProcess.pid, port))
+            logger.debug("Server process %d (port %d) already dead x(, no need to terminate it again", srvProcess.pid, port)
             srvProcess.wait()
             return
 
@@ -1194,18 +1191,16 @@ class ngamsTestSuite(unittest.TestCase):
         parent = psutil.Process(srvProcess.pid)
         childrenb4 = parent.children(recursive=True)
 
-        info(3,"Killing externally running NG/AMS Server. PID: %d, Port: %d " % (srvProcess.pid, port))
+        logger.debug("Killing externally running NG/AMS Server. PID: %d, Port: %d ", srvProcess.pid, port)
         try:
             pCl = sendPclCmd(port=port, timeOut=10)
             stat = pCl.status()
             if stat.getState() != "OFFLINE":
-                info(1,"Sending OFFLINE command to external server ...")
+                logger.info("Sending OFFLINE command to external server ...")
                 stat = pCl.offline(1)
-                if getLogLevel() >= 3:
-                    info(3, "Status OFFLINE command: " + re.sub("\n", "", str(stat.genXmlDoc())))
             status = stat.getStatus()
         except Exception, e:
-            info(3,"Error encountered sending OFFLINE command: " + str(e))
+            logger.info("Error encountered sending OFFLINE command: %s", str(e))
             status = NGAMS_FAILURE
 
         # If OFFLINE was successfully handled, try to
@@ -1213,14 +1208,11 @@ class ngamsTestSuite(unittest.TestCase):
         # Otherwise, kill it with -9
         kill9 = True
         if (status == NGAMS_SUCCESS):
-            info(1,"External server in Offline State - " +\
-                 "sending EXIT command ...")
+            logger.info("External server in Offline State - sending EXIT command ...")
             try:
                 stat = pCl.exit()
-                if getLogLevel() >= 3:
-                    info(3, "Status EXIT command: " + re.sub("\n", "", str(stat.genXmlDoc())))
             except Exception, e:
-                info(3,"Error encountered sending EXIT command: " + str(e))
+                logger.info("Error encountered sending EXIT command: %s", str(e))
             else:
                 # Wait for the server to be definitively terminated.
                 waitLoops = 0
@@ -1246,14 +1238,14 @@ class ngamsTestSuite(unittest.TestCase):
                     print("******************No parent process***********************")
                 srvProcess.kill()
                 srvProcess.wait()
-                info(3, "Server process had %d to be merciless killed, sorry :(" % (srvProcess.pid,))
+                logger.info("Server process had %d to be merciless killed, sorry :(", srvProcess.pid)
                 #Check that parent and children are gone for sure
                 for process in children:
                     print("Children of the TestLib srvSetup after parent killed are : ", process.pid)
                     print("****************************************************")
             else:
                 srvProcess.wait()
-                info(3, "Finished server process %d gracefully :)" % (srvProcess.pid,))
+                logger.info("Finished server process %d gracefully :)", srvProcess.pid)
                 #Check that children are gone - parent has probably gone
                 #parent = psutil.Process(srvProcess.pid)
                 for orphan in childrenb4:
@@ -1263,7 +1255,7 @@ class ngamsTestSuite(unittest.TestCase):
                     if orphan.is_running():
                         orphan.kill()
         except Exception:
-            error("Error while finishing server process %d, port %d" % (srvProcess.pid, port))
+            logger.exception("Error while finishing server process %d, port %d", srvProcess.pid, port)
             raise
 
     def terminateAllServer(self):
@@ -1303,12 +1295,6 @@ class ngamsTestSuite(unittest.TestCase):
         fname = 'TEST.2001-05-08T15:25:00.123.fits.gz'
         if os.path.exists(fname):
             os.unlink(fname)
-
-        # Have to reset the log conditions, to avoid that some class created in
-        # a subsequent test tries to access this before new log environment
-        # has been set up.
-        setLogCond(0, "", 0, "", self.__verboseLevel)
-
 
     def checkEqual(self,
                    refValue,
@@ -1382,7 +1368,7 @@ class ngamsTestSuite(unittest.TestCase):
             else:
                 errMsg += "Status Buffer:\n|<Contents of buffer too big to " +\
                           "be shown>|"
-            info(1,"Error encountered: %s" % errMsg.replace("\n", " | "))
+            logger.info("Error encountered: %s", errMsg.replace("\n", " | "))
             self.fail(errMsg)
 
 
@@ -1594,7 +1580,7 @@ class ngamsTestSuite(unittest.TestCase):
                 # Generate NgasDiskInfo XML documents for the slot to simulate
                 # that the disk is already registered as an NGAS Disk.
                 ngasDiskInfo = loadFile("src/NgasDiskInfoTemplate")
-                isoDate = PccUtTime.TimeStamp().getTimeStamp()
+                isoDate = toiso8601()
                 diskId = diskDir[1:].replace("/", "-")
                 ngasDiskInfo = ngasDiskInfo % (isoDate, getHostName(),
                                                getNgamsVersion(), availMb,
@@ -1765,7 +1751,7 @@ class ngamsTestSuite(unittest.TestCase):
             if resTag1 in line:
                 sqlQuery, sqlRes = line.split(resTag1)[1].split(": ")
                 sqlQuery = sqlQuery.strip()
-                sqlRes = sqlRes.split("] [")[0] + "]"
+                sqlRes = sqlRes.strip()
             else:
                 sqlQuery = line.split(": ")[1].split(" [ngamsDb")[0]
                 sqlRes = ""
@@ -1793,8 +1779,8 @@ class ngamsTestSuite(unittest.TestCase):
         while (time.time() - startTime) < timeOut:
             nodeSusp = dbConObj.getSrvSuspended(node)
             if nodeSusp:
-                info(2,"Server suspended itself after: %.3fs" %\
-                     (time.time() - startTime))
+                logger.info("Server suspended itself after: %.3fs",
+                            (time.time() - startTime))
                 return 1
             else:
                 time.sleep(0.1)
@@ -1810,7 +1796,7 @@ class ngamsTestSuite(unittest.TestCase):
         while (time.time() - startTime) < timeOut:
             nodeSusp = dbConObj.getSrvSuspended(node)
             if (not nodeSusp):
-                info(2,"Server woken up after: %.3fs" % (time.time() - startTime))
+                logger.info("Server woken up after: %.3fs", (time.time() - startTime))
                 return 1
             else:
                 time.sleep(0.1)

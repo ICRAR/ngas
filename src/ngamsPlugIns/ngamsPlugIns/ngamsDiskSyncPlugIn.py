@@ -32,9 +32,11 @@ Module that contains a generic Disk Dync Plug-In for Linux.
 """
 
 import commands
+import logging
 
-from ngamsLib.ngamsCore import TRACE, info, logFlush
+from ngamsLib.ngamsCore import TRACE
 
+logger = logging.getLogger(__name__)
 
 def ngamsDiskSyncPlugIn(srvObj):
     """
@@ -48,10 +50,8 @@ def ngamsDiskSyncPlugIn(srvObj):
 
     # Sync filesystem to ensure file received on disk.
     # TODO: Set log levels to 4 when 'sync problem' has been solved.
-    info(3,"Performing OS sync command ...")
+    logger.debug("Performing OS sync command ...")
     commands.getstatusoutput("sync")
-    info(3,"Performed OS sync command")
-    logFlush()   # TODO: Remove this line when 'sync problem' solved.
 
 
 if __name__ == '__main__':

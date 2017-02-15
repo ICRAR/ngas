@@ -103,7 +103,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
 
     def test_basic_subscription_fail(self):
-        self.prepCluster("src/ngamsCfg.xml", [[8888, None, None, None, [["NgamsCfg.HostSuspension[1].SuspensionTime", '0T00:00:05']]],
+        self.prepCluster("src/ngamsCfg.xml", [[8888, None, None, None, [["NgamsCfg.HostSuspension[1].SuspensionTime", '0T00:00:05'], ["NgamsCfg.Log[1].LocalLogLevel", '4']]],
                                               [8889, None, None, None]])
 
         host = 'localhost:8888'
@@ -201,7 +201,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         params = {'url': 'http://localhost:8889/QARCHIV',
                   'subscr_id': 'TEST',
                   'priority': 1,
-                  'start_date': '%s 00:00:00.000' % time.strftime("%Y-%m-%d"),
+                  'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
                   'concurrent_threads': 1}
         params = urllib.urlencode(params)
         selector = '{0}?{1}'.format(cmd, params)

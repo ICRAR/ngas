@@ -35,26 +35,25 @@ suspended NGAS hosts, suspending itself.
 # TODO: Give overhaul to handling of the DB Snapshot: Use ngamsDbm instead
 #       of bsddb + simplify the algorithm.
 
-import os, time, glob, cPickle
-import math
-import types
+import cPickle
+import glob
+import logging
+import os
 import shutil
+import time
+import types
 
 import ngamsArchiveUtils, ngamsSrvUtils
-from ngamsLib.ngamsCore import TRACE, info, \
-    getFileCreationTime, getFileModificationTime, getFileAccessTime, rmFile, \
-    warning, NGAMS_DB_DIR, NGAMS_DB_NGAS_FILES, checkCreatePath, \
-    NGAMS_DB_CH_CACHE, getMaxLogLevel, NGAMS_NOTIF_DATA_CHECK, \
+from ngamsLib.ngamsCore import TRACE, rmFile, \
+    NGAMS_DB_DIR, NGAMS_DB_NGAS_FILES, checkCreatePath, \
+    NGAMS_DB_CH_CACHE, NGAMS_NOTIF_DATA_CHECK, \
     NGAMS_TEXT_MT, NGAMS_PICKLE_FILE_EXT, NGAMS_DB_CH_FILE_DELETE, \
-    NGAMS_DB_CH_FILE_INSERT, NGAMS_DB_CH_FILE_UPDATE, notice, error, \
-    isoTime2Secs, genLog, NGAMS_PROC_DIR, NGAMS_SUBSCR_BACK_LOG_DIR, takeLogSem, \
-    iso8601ToSecs, getLocation, logFlush, relLogSem, alert, \
+    NGAMS_DB_CH_FILE_INSERT, NGAMS_DB_CH_FILE_UPDATE, \
+    isoTime2Secs, genLog, NGAMS_PROC_DIR, NGAMS_SUBSCR_BACK_LOG_DIR, \
     NGAMS_HTTP_INT_AUTH_USER, getHostName, NGAMS_OFFLINE_CMD, NGAMS_NOTIF_ERROR,\
-    loadPlugInEntryPoint
+    loadPlugInEntryPoint, toiso8601
 from ngamsLib import ngamsFileInfo, ngamsNotification
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsEvent, ngamsHighLevelLib, ngamsLib
-from pccLog import PccLog
-from pccUt import PccUtTime
 
 try:
     import bsddb3 as bsddb
@@ -65,6 +64,8 @@ except ImportError:
 
 NGAMS_JANITOR_THR = "JANITOR-THREAD"
 
+logger = logging.getLogger(__name__)
+
 class StopJanitorThreadException(Exception):
     pass
 
@@ -73,7 +74,7 @@ def checkStopJanitorThread(stopEvt):
     Checks if the Janitor Thread should be stopped, raising an exception if needed
     """
     if stopEvt.is_set():
-        info(2,"Exiting Janitor Thread")
+        logger.info("Exiting Janitor Thread")
         raise StopJanitorThreadException()
 
 def suspend(stopEvt, t):
@@ -82,7 +83,7 @@ def suspend(stopEvt, t):
     to stop
     """
     if stopEvt.wait(t):
-        info(2,"Exiting Janitor Thread")
+        logger.info("Exiting Janitor Thread")
         raise StopJanitorThreadException()
 
 def checkCleanDirs(startDir,
@@ -119,11 +120,12 @@ def checkCleanDirs(startDir,
     # directories are not deleted during this run because they have contents,
     # they might be deleted during one of the following runs.
     for entry in entryList:
+        stat = os.stat(entry)
         if (not useLastAccess):
-            refTime = getFileCreationTime(entry)
+            refTime = stat.st_ctime # creation time
         else:
-            refTime1 = getFileModificationTime(entry)
-            refTime2 = getFileAccessTime(entry)
+            refTime1 = stat.st_mtime # modification time
+            refTime2 = stat.st_atime # access time
             if (refTime1 > refTime2):
                 refTime = refTime1
             else:
@@ -133,12 +135,12 @@ def checkCleanDirs(startDir,
             tmpGlobRes = glob.glob(entry + "/*")
             if (tmpGlobRes == []):
                 if ((timeNow - refTime) > dirExp):
-                    info(4,"Deleting temporary directory: " + entry)
+                    logger.debug("Deleting temporary directory: %s", entry)
                     rmFile(entry)
         else:
             if (fileExp):
                 if ((timeNow - refTime) > fileExp):
-                    info(4,"Deleting temporary file: " + entry)
+                    logger.debug("Deleting temporary file: %s", entry)
                     rmFile(entry)
 
 
@@ -338,7 +340,7 @@ def _encFileInfo2Obj(dbConObj,
     for idx in idxKeys:
         kid = NGAMS_SN_SH_ID2NM_TAG + str(idx)
         if (not dbSnapshot.has_key(kid)):
-            warning("dbSnapshot has no key '{0}', is it corrupted?".format(kid))
+            logger.warning("dbSnapshot has no key '%s', is it corrupted?", str(kid))
             return None
         colName = _readDb(dbSnapshot, kid)
         sqlFileInfoIdx = dbConObj.getNgasFilesMap()[colName]
@@ -462,16 +464,16 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
     tmpSnapshotDbm = None
 
     if (not srvObj.getCfg().getDbSnapshot()):
-        info(3,"NOTE: DB Snapshot Feature is switched off")
+        logger.debug("NOTE: DB Snapshot Feature is switched off")
         return
 
-    info(4,"Generate list of disks to check ...")
+    logger.debug("Generate list of disks to check ...")
     tmpDiskIdMtPtList = srvObj.getDb().getDiskIdsMtPtsMountedDisks(srvObj.getHostId())
     diskIdMtPtList = []
     for diskId, mtPt in tmpDiskIdMtPtList:
         diskIdMtPtList.append([mtPt, diskId])
     diskIdMtPtList.sort()
-    info(4,"Generated list of disks to check: " + str(diskIdMtPtList))
+    logger.debug("Generated list of disks to check: %s", str(diskIdMtPtList))
 
     # Generate temporary snapshot filename.
     ngasId = srvObj.getHostId()
@@ -484,20 +486,19 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
     # Temporary DBM to contain information about 'lost files', i.e. files,
     # which are registered in the DB and found in the DB Snapshot, but
     # which are not found on the disk.
-    info(4,"Create DBM to hold information about lost files ...")
+    logger.debug("Create DBM to hold information about lost files ...")
     lostFileRefsDbmName = os.path.normpath(tmpDir + "/" + ngasId +\
                                            "_LOST_FILES")
     rmFile(lostFileRefsDbmName + "*")
     lostFileRefsDbm = ngamsDbm.ngamsDbm(lostFileRefsDbmName, writePerm=1)
-    info(4,"Created DBM to hold information about lost files")
 
     # Carry out the check.
     for mtPt, diskId in diskIdMtPtList:
 
         checkStopJanitorThread(stopEvt)
 
-        info(2,"Check/create/update DB Snapshot for disk with " +\
-             "mount point: " + mtPt)
+        logger.debug("Check/create/update DB Snapshot for disk with " +\
+             "mount point: %s", mtPt)
 
         try:
             snapshotDbm = _openDbSnapshot(srvObj.getCfg(), mtPt)
@@ -554,14 +555,14 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
             # Loop over the possible entries in the DB Snapshot and compare
             # these against the DB.
             #####################################################################
-            info(4,"Loop over file entries in the DB Snapshot - %s ..." % diskId)
+            logger.debug("Loop over file entries in the DB Snapshot - %s ...", diskId)
             count = 0
             try:
                 key, pickleValue = snapshotDbm.first()
             except Exception, e:
                 msg = "Exception raised accessing DB Snapshot for disk: %s. " +\
                       "Error: %s"
-                info(4,msg % (diskId, str(e)))
+                logger.debug(msg, diskId, str(e))
                 key = None
                 snapshotDbm.dbc = None
 
@@ -618,10 +619,9 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                             tmpSnapshotDbm[key] = pickleValue
                         else:
                             # Remove this entry from the DB Snapshot.
-                            if (getMaxLogLevel() >= 5):
-                                msg = "Scheduling entry: %s in DB Snapshot " +\
-                                      "for disk with ID: %s for removal"
-                                info(4,msg % (diskId, key))
+                            msg = "Scheduling entry: %s in DB Snapshot " +\
+                                  "for disk with ID: %s for removal"
+                            logger.debug(msg, diskId, key)
                             # Add entry in the DB Snapshot Deletion DBM marking
                             # the entry for deletion.
                             if (_updateSnapshot(srvObj.getCfg())):
@@ -662,27 +662,24 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                 # jagonzal: We need to reformat the values and skip administrative elements #################
                 if (str(key).find("__") != -1): continue
                 #############################################################################################
-                if (getMaxLogLevel() >= 4):
-                    msg = "Removing entry: %s from DB Snapshot for " +\
-                          "disk with ID: %s"
-                    info(4,msg % (key, diskId))
+                msg = "Removing entry: %s from DB Snapshot for disk with ID: %s"
+                logger.debug(msg, key, diskId)
                 del snapshotDbm[key]
             #################################################################################################
             del snapshotDelDbm
 
-            info(4,"Looped over file entries in the DB Snapshot - %s" % diskId)
+            logger.debug("Looped over file entries in the DB Snapshot - %s", diskId)
             # End-Loop: Check DB against DB Snapshot. ###########################
             if (_updateSnapshot(srvObj.getCfg())): snapshotDbm.sync()
             tmpSnapshotDbm.sync()
 
-            info(2,"Checked/created/updated DB Snapshot for disk with " +\
-                 "mount point: " + mtPt)
+            logger.info("Checked/created/updated DB Snapshot for disk with mount point: %s", mtPt)
 
             #####################################################################
             # Loop over the entries in the DB and compare these against the
             # DB Snapshot.
             #####################################################################
-            info(4,"Loop over the entries in the DB - %s ..." % diskId)
+            logger.debug("Loop over the entries in the DB - %s ...", diskId)
             count = 0
             try:
                 key, pickleValue = tmpSnapshotDbm.first()
@@ -744,7 +741,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                 #except:
                 #    key = None
                 #################################################################################################
-            info(4,"Checked DB Snapshot against DB - %s" % diskId)
+            logger.debug("Checked DB Snapshot against DB - %s", diskId)
             # End-Loop: Check DB Snapshot against DB. ###########################
             if (_updateSnapshot(srvObj.getCfg())):
                 snapshotDbm.sync()
@@ -757,13 +754,13 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                 tmpSnapshotDbm.close()
 
     # Check if lost files found.
-    info(4,"Check if there are Lost Files ...")
+    logger.debug("Check if there are Lost Files ...")
     noOfLostFiles = lostFileRefsDbm.getCount()
     if (noOfLostFiles):
         statRep = os.path.normpath(tmpDir + "/" + ngasId +\
                                    "_LOST_FILES_NOTIF_EMAIL.txt")
         fo = open(statRep, "w")
-        timeStamp = PccUtTime.TimeStamp().getTimeStamp()
+        timeStamp = toiso8601()
         tmpFormat = "JANITOR THREAD - LOST FILES DETECTED:\n\n" +\
                     "==Summary:\n\n" +\
                     "Date:                       %s\n" +\
@@ -794,8 +791,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                                  [], 1, NGAMS_TEXT_MT,
                                  NGAMS_JANITOR_THR + "_LOST_FILES", 1)
         rmFile(statRep)
-    info(4,"Checked if there are Lost Files. Number of lost files: %d" %\
-         noOfLostFiles)
+    logger.debug("Number of lost files found: %d", noOfLostFiles)
 
     # Clean up.
     del lostFileRefsDbm
@@ -847,7 +843,7 @@ def checkDbChangeCache(srvObj,
         count = 0
         fileCount = 0
         noOfCacheFiles = len(tmpCacheFiles)
-        timer = PccUtTime.Timer()
+        start = time.time()
         for cacheFile in tmpCacheFiles:
             checkStopJanitorThread(stopEvt)
             if os.lstat(cacheFile)[6] == 0:
@@ -908,15 +904,15 @@ def checkDbChangeCache(srvObj,
 
         for cacheFile in tmpCacheFiles:
             rmFile(cacheFile)
-        totTime = timer.stop()
+        totTime = time.time() - start
 
         tmpMsg = "Handled DB Snapshot Cache Files. Mount point: %s. " +\
                  "Number of Cache Files handled: %d."
-        tmpMsg = tmpMsg % (diskMtPt, fileCount)
+        args = [diskMtPt, fileCount]
         if (fileCount):
-            tmpMsg += "Total time: %.3fs. Time per file: %.3fs." %\
-                      (totTime, (totTime / fileCount))
-        info(4, tmpMsg)
+            tmpMsg += "Total time: %.3fs. Time per file: %.3fs."
+            args += (totTime, (totTime / fileCount))
+        logger.debug(tmpMsg, *args)
     finally:
         if snapshotDbm:
             snapshotDbm.close()
@@ -947,16 +943,17 @@ def updateDbSnapShots(srvObj,
         else:
             mtPt = srvObj.getDb().getMtPtFromDiskId(diskId)
         if (not mtPt):
-            notice("No mount point returned for Disk ID: %s" % diskId)
+            logger.warning("No mount point returned for Disk ID: %s", diskId)
             return
         try:
             checkDbChangeCache(srvObj, diskId, mtPt, stopEvt)
-        except Exception, e:
+        except StopJanitorThreadException:
+            raise
+        except Exception:
             msg = "Error checking DB Change Cache for " +\
-                  "Disk ID:mountpoint: %s:%s. Error: %s"
-            msg = msg % (diskId, str(mtPt), str(e))
-            error(msg)
-            raise Exception, msg
+                  "Disk ID:mountpoint: %s:%s"
+            logger.exception(msg, diskId, str(mtPt))
+            raise
     else:
         tmpDiskIdMtPtList = srvObj.getDb().\
                             getDiskIdsMtPtsMountedDisks(srvObj.getHostId())
@@ -965,16 +962,17 @@ def updateDbSnapShots(srvObj,
             diskIdMtPtList.append([mtPt, diskId])
         diskIdMtPtList.sort()
         for mtPt, diskId in diskIdMtPtList:
-            info(4,"Check/Update DB Snapshot Document for disk with " +\
-                 "mount point: " + mtPt)
+            logger.debug("Check/Update DB Snapshot Document for disk with " +\
+                 "mount point: %s", mtPt)
             try:
                 checkDbChangeCache(srvObj, diskId, mtPt, stopEvt)
-            except Exception, e:
+            except StopJanitorThreadException:
+                raise
+            except Exception:
                 msg = "Error checking DB Change Cache for " +\
-                      "Disk ID:mountpoint: %s:%s. Error: %s"
-                msg = msg % (diskId, str(mtPt), str(e))
-                error(msg)
-                raise Exception, msg
+                      "Disk ID:mountpoint: %s:%s"
+                logger.exception(msg, diskId, str(mtPt))
+                raise
 
 def JanitorCycle(srvObj, stopEvt, suspendTime, JanQue):
     """
@@ -982,7 +980,7 @@ def JanitorCycle(srvObj, stopEvt, suspendTime, JanQue):
     """
 
     checkStopJanitorThread(stopEvt)
-    info(4, "Janitor Thread running-Janitor Cycle.. ")
+    logger.debug("Janitor Thread running-Janitor Cycle.. ")
 
     # jobs=[] #a list we may use to keep track of jobs forked from main process
     #
@@ -1079,7 +1077,7 @@ def JanitorCycle(srvObj, stopEvt, suspendTime, JanQue):
     JanQue.put(srvObj.getJanitorThreadRunCount())
 
     # Suspend the thread for the time indicated.
-    info(4, "Janitor Thread executed - suspending for %d [s] ..." % (suspendTime,))
+    logger.debug("Janitor Thread executed - suspending for %d [s] ...", suspendTime)
     startTime = time.time()
     event_info_list = JanQue.get()  #==================================================
     while ((time.time() - startTime) < suspendTime):
@@ -1091,15 +1089,16 @@ def JanitorCycle(srvObj, stopEvt, suspendTime, JanQue):
                 if (event_info_list):
                     for diskInfo in event_info_list:
                         updateDbSnapShots(srvObj, stopEvt, diskInfo)
-            except Exception, e:
+            except StopJanitorThreadException:
+                raise
+            except Exception:
                 if (diskInfo):
-                    msg = "Error encountered handling DB Snapshot " + \
-                          "for disk: %s/%s. Exception: %s"
-                    msg = msg % (diskInfo[0], diskInfo[1], str(e))
+                    msg = "Error encountered handling DB Snapshot " +\
+                          "for disk: %s/%s"
+                    args = (diskInfo[0], diskInfo[1])
                 else:
-                    msg = "Error encountered handling DB Snapshot. " + \
-                          "Exception: %s" % str(e)
-                error(msg)
+                    msg, args = "Error encountered handling DB Snapshot", ()
+                logger.exception(msg, *args)
                 time.sleep(5)
         suspend(stopEvt, 1.0)
 
@@ -1124,11 +1123,8 @@ def janitorThread(srvObj, stopEvt, JanQue):
         checkUpdateDbSnapShots(srvObj, stopEvt)
     except StopJanitorThreadException:
         return
-    except Exception, e:
-        errMsg = "Problem updating DB Snapshot files: " + str(e)
-        warning(errMsg)
-        import traceback
-        info(3, traceback.format_exc())
+    except Exception:
+        logger.exception("Problem updating DB Snapshot files")
 
     suspendTime = isoTime2Secs(srvObj.getCfg().getJanitorSuspensionTime())
     #==========================================================
@@ -1141,9 +1137,11 @@ def janitorThread(srvObj, stopEvt, JanQue):
             # case a problem occurs, like e.g. a problem with the DB connection.
             try:
                 JanitorCycle(srvObj, stopEvt, suspendTime, JanQue)
+            except StopJanitorThreadException:
+                raise
             except Exception:
-                errMsg = "Error occurred during execution of the Janitor Cycle"
-                alert(errMsg)
+                errMsg = "Error occurred during execution of the Janitor Thread"
+                logger.exception(errMsg)
                 # We make a small wait here to avoid that the process tries
                 # too often to carry out the tasks that failed.
                 time.sleep(2.0)

@@ -33,7 +33,7 @@ This module contains the Test Suite for the OFFLINE Command.
 
 import sys
 
-from ngamsLib.ngamsCore import NGAMS_OFFLINE_CMD, info
+from ngamsLib.ngamsCore import NGAMS_OFFLINE_CMD
 from ngamsTestLib import ngamsTestSuite, sendExtCmd, runTest
 
 
@@ -81,7 +81,6 @@ class ngamsOfflineCmdTest(ngamsTestSuite):
         refStatFile = "ref/ngamsOfflineCmdTest_test_StdOffline_1_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status returned for OFFLINE command")
-        info(1,"TODO: Check that NG/AMS Server is in Offline State")
 
 
 def run():

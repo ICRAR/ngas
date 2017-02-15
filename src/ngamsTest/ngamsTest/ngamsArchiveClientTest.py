@@ -39,7 +39,7 @@ import sys
 import time
 
 from ngamsLib import ngamsStatus
-from ngamsLib.ngamsCore import getHostName, info
+from ngamsLib.ngamsCore import getHostName
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, runTest
 
 
@@ -98,7 +98,6 @@ def startArchiveClient():
         if (cmdLineParsDic[cmdLineOpt]):
             cmdLine += " " + cmdLineOpt + " " + cmdLineParsDic[cmdLineOpt]
     cmdLine += " &"
-    info(1,"Running NG/AMS Archive Client with command: " + cmdLine)
     os.system(cmdLine)
 
 

@@ -31,9 +31,12 @@
 This filter will keep  all already-compressed FITS file from entering the job queue
 """
 
-import os, commands
+import commands
+import logging
+import os
 
-from ngamsLib.ngamsCore import error, info, warning
+
+logger = logging.getLogger(__name__)
 
 BINTB_STR = "XTENSION= 'BINTABLE'" # used to decide if a FITS file is compressed or not (only works for MWA visibility files)
 
@@ -86,9 +89,9 @@ def ngamsMWA_Compress_FilterPlugin(srvObj,
         re = commands.getstatusoutput(cmd)
     except Exception, ex:
         if (str(ex).find('timed out') != -1):
-            error('Timed out when checking FITS header %s' % cmd)
+            logger.error('Timed out when checking FITS header %s', cmd)
         else:
-            error('Exception when checking FITS header %s: %s' % (cmd, str(ex)))
+            logger.error('Exception when checking FITS header %s: %s', cmd, str(ex))
         return 0
 
 
@@ -97,8 +100,8 @@ def ngamsMWA_Compress_FilterPlugin(srvObj,
         if (a > -1):
             return 0 # if the file is already compressed, do not add again
         else:
-            info(3, "File %s added" % filename)
+            logger.info("File %s added", filename)
             return 1
     else:
-        warning('Fail to check header for file %s: %s' % (filename, re[1]))
+        logger.warning('Fail to check header for file %s: %s', filename, re[1])
         return 0

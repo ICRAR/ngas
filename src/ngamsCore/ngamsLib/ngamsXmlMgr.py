@@ -69,11 +69,14 @@ NgamsCfg.Authorization[1].Id = Authorization-Std
 Using this scheme, a 1:1 mapping between the two representations is obtained.
 """
 
+import logging
 import re
 import xml.dom.minidom
 
-from ngamsCore import TRACE, genLog, rmFile, info
+from ngamsCore import TRACE, genLog, rmFile
 
+
+logger = logging.getLogger(__name__)
 
 class ngamsAttribute:
     """
@@ -691,7 +694,7 @@ class ngamsXmlMgr:
         self.__rootElObj = xmlDic[xmlDicKeys[0]]
         self.__xmlDic[xmlDicKeys[0]] = xmlDic[xmlDicKeys[0]]
         for xmlDicKey in xmlDicKeys[1:]:
-            info(5,"Handling configuration parameter with key: %s" % xmlDicKey)
+            logger.debug("Handling configuration parameter with key: %s", xmlDicKey)
             self.addElOrAttr(xmlDicKey, xmlDic[xmlDicKey])
         return self
 

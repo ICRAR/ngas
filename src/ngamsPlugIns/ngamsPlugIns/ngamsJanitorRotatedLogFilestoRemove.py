@@ -20,10 +20,13 @@
 #    MA 02111-1307  USA
 #
 import glob
+import logging
 import os
 
-from ngamsLib.ngamsCore import info, rmFile
+from ngamsLib.ngamsCore import rmFile
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsJanitorRotatedLogFilestoRemove(srvObj, stopEvt):
     """
@@ -33,18 +36,18 @@ def ngamsJanitorRotatedLogFilestoRemove(srvObj, stopEvt):
 
    Returns:           Void.
    """
-    info(4, "Check if there are rotated Local Log Files to remove ...")
+    logger.debug("Check if there are rotated Local Log Files to remove ...")
     logFile = srvObj.getCfg().getLocalLogFile()
     logPath = os.path.dirname(logFile)
 
     rotLogFilePat = os.path.normpath(logPath + "/LOG-ROTATE-*.nglog")
     rotLogFileList = glob.glob(rotLogFilePat)
-    delLogFiles = (len(rotLogFileList) - \
+    delLogFiles = (len(rotLogFileList) -\
                    srvObj.getCfg().getLogRotateCache())
     if (delLogFiles > 0):
         rotLogFileList.sort()
         for n in range(delLogFiles):
-            info(1, "Removing Rotated Local Log File: " + \
+            logger.debug("Removing Rotated Local Log File: " +\
                  rotLogFileList[n])
             rmFile(rotLogFileList[n])
-    info(4, "Checked for expired, rotated Local Log Files")
+    logger.debug("Checked for expired, rotated Local Log Files")

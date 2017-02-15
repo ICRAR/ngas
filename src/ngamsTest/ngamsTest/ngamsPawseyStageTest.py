@@ -20,11 +20,13 @@
 #    MA 02111-1307  USA
 #
 
-import sys
 import os
 import socket
+import sys
 import ngamsTestLib
-from ngamsPlugIns.ngamsMWAPawseyTapeApi import *
+
+from ngamsPlugIns.ngamsMWAPawseyTapeApi import isFileOffline, readDMFStatus,\
+    pawseyMWAdmget, releaseFiles
 
 os.environ['PATH'] += ':' + os.path.join(os.path.dirname(__file__)) + '/bin'
 
@@ -102,7 +104,7 @@ class ngamsPawseyStageTest(ngamsTestLib.ngamsTestSuite):
                 self.assertTrue(False)
             except:
                 pass
-        except:
+        except socket.error:
             pass #ingore
 
 def run():

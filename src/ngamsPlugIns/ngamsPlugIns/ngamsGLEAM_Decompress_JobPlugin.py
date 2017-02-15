@@ -38,10 +38,13 @@ by the SubscriptionThread._deliveryThread
 
 import commands
 from glob import glob
+import logging
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import info, error, warning, get_contact_ip
+from ngamsLib.ngamsCore import get_contact_ip
 
+
+logger = logging.getLogger(__name__)
 
 debug = 0
 work_dir = '/mnt/gleam2/tmp'
@@ -52,7 +55,7 @@ archive_client = '/home/ngas/ngas_rt/bin/ngamsCClient'
 #archive_client = '/Users/chen/proj/ngas_buildout/bin/ngamsCClient'
 
 def execCmd(cmd, timeout):
-    info(3, 'Executing command: %s' % cmd)
+    logger.debug('Executing command: %s', cmd)
     try:
         ret = ngamsPlugInApi.execCmd(cmd, timeout)
     except Exception, ex:
@@ -121,7 +124,7 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
     """
         #re = commands.getstatusoutput(cmd)
     cmd = "tar xf %s -C %s" % (filename, work_dir)
-    info(3, "Extracting %s to %s" % (filename, work_dir))
+    logger.debug("Extracting %s to %s", filename, work_dir)
     re = execCmd(cmd, timeout)
     if (0 == re[0]):
         # archive it back
@@ -132,12 +135,12 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
         for imgfile in imglist:
             url = 'http://%s:7777/LARCHIVE?fileUri=%s\&mimeType=application/octet-stream\&file_version=%d\&no_versioning=1\&versioning=0' % (archive_host, imgfile, fileVersion)
             cmd1 = 'curl --connect-timeout %d %s' % (timeout, url)
-            info(3, 'Local archiving %s' % cmd1)
+            logger.debug('Local archiving %s', cmd1)
             re = commands.getstatusoutput(cmd1)
             if (0 == re[0] and (re[1].count('Successfully handled Archive Pull Request') > 0)):
-                info(3, 'Successfully re-archived the untarred FITS file %s' % imgfile)
+                logger.debug('Successfully re-archived the untarred FITS file %s', imgfile)
             else:
-                error('Fail to re-archive the untarred FITS file  %s: %s' % (imgfile, re[1]))
+                logger.error('Fail to re-archive the untarred FITS file  %s: %s', imgfile, re[1])
                 errNo += 1
                 lasterrMsg = re[1]
                 #return (re[0], re[1])
@@ -145,25 +148,25 @@ def ngamsGLEAM_Decompress_JobPlugin(srvObj,
         if (remove_uc and errNo == 0):
             # remove the original file if necessary
             re = execCmd(cmd2, timeout)
-            info(3, 'Removing the tar file %s' % filename)
+            logger.debug('Removing the tar file %s', filename)
             if (0 == re[0]):
-                info(3, 'Successfully DISCARDED the tar file %s' % filename)
+                logger.debug('Successfully DISCARDED the tar file %s', filename)
             else:
-                warning('Fail to DISCARD the tar file %s' % filename)
+                logger.warning('Fail to DISCARD the tar file %s', filename)
 
         # remove the temp file
         cmd3 = "rm -rf %s/%s" % (work_dir, obsId)
-        info(3, "Removing the temp directory %s/%s" % (work_dir, obsId))
+        logger.debug("Removing the temp directory %s/%s", work_dir, obsId)
         re = execCmd(cmd3, timeout)
         if (0 != re[0]):
-            warning('Fail to remove the temp untarred directory %s/%s' % (work_dir, obsId))
+            logger.warning('Fail to remove the temp untarred directory %s/%s', work_dir, obsId)
 
         if (errNo == 0):
             return (0, 'Done')
         else:
             return (errNo, lasterrMsg.replace("'", ""))
     else:
-        error('Fail to untar file %s: %s' % (filename, re[1]))
+        logger.error('Fail to untar file %s: %s', filename, re[1])
         return (re[0], re[1])
 
 

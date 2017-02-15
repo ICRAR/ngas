@@ -20,17 +20,22 @@
 #    MA 02111-1307  USA
 #
 import commands
+import logging
+import md5
 import os
 import sys
-import time, md5
+import time
 
-from ngamsLib.ngamsCore import getHostName, info, rmFile, setLogCond
+from ngamsLib.ngamsCore import getHostName, rmFile
 from ngamsPlugIns.ngamsGenericPlugInLib import NGAS_VOL_INFO_ID, \
     NGAS_VOL_INFO_TYPE, NGAS_VOL_INFO_UNDEF, NGAS_VOL_INFO_MANUFACT, \
     NGAS_VOL_INFO_FILE, loadVolInfoFile, writeVolInfoFile
 from ngasUtilsLib import NGAS_OPT_MAN, NGAS_OPT_OPT, genOptDicAndDoc, \
     NGAS_OPT_VAL, parseCmdLine
 
+
+
+logger = logging.getLogger(__name__)
 
 #******************************************************************************
 #
@@ -133,7 +138,7 @@ def checkGenPars(optDic,
         else:
             type = NGAS_VOL_INFO_UNDEF
         msg = "Enter disk type [%s]" % type
-        newType = input(msg)
+        newType = raw_input(msg)
         if (newType != ""): type = newType
         volInfoDic[NGAS_VOL_INFO_TYPE] = type
 
@@ -147,7 +152,7 @@ def checkGenPars(optDic,
         else:
             manufact = NGAS_VOL_INFO_UNDEF
         msg = "Enter manufacturer [%s]" % manufact
-        newManufact = input(msg)
+        newManufact = raw_input(msg)
         if (newManufact != ""): manufact = newManufact
         volInfoDic[NGAS_VOL_INFO_MANUFACT] = manufact
 
@@ -182,7 +187,7 @@ def execute(optDic):
 
     Returns:   Void.
     """
-    info(4,"Entering execute() ...")
+    logger.debug("Entering execute() ...")
     if (optDic["help"][NGAS_OPT_VAL]):
         print correctUsage()
         sys.exit(0)
@@ -217,7 +222,7 @@ def execute(optDic):
         if optDic["silent"][NGAS_OPT_VAL]:
             break
         else:
-            choice = input("Are these parameters correct (Y(es)/N(o)) [N]?")
+            choice = raw_input("Are these parameters correct (Y(es)/N(o)) [N]?")
             if ((choice.upper() == "YES") or (choice.upper() == "Y")):
                 break
             print "\n"
@@ -239,7 +244,7 @@ def execute(optDic):
     commands.getstatusoutput("chown root.root %s" % volInfoFile)
     commands.getstatusoutput("chmod 644 %s" % volInfoFile)
 
-    info(4,"Leaving execute()")
+    logger.debug("Leaving execute()")
 
 
 if __name__ == '__main__':
@@ -253,7 +258,6 @@ if __name__ == '__main__':
     except Exception, e:
         print "\nProblem executing the tool:\n\n%s\n" % str(e)
         sys.exit(1)
-    setLogCond(0, "", 0, "", 1)
     execute(optDic)
 
 # EOF

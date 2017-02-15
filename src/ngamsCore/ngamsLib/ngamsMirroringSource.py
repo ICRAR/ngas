@@ -34,7 +34,7 @@ Contains the implementation of the Mirroring Source Class, used to handle
 the information for one Mirroring Source.
 """
 
-from ngamsCore import timeRef2Iso8601, isoTime2Secs
+from ngamsCore import isoTime2Secs
 import ngamsDbCore
 
 
@@ -70,7 +70,7 @@ class ngamsMirroringSource:
         self.__filterPlugInPars = None
 
         # Parameters used to manage a source archive.
-        self.__lastSync         = timeRef2Iso8601(0)
+        self.__lastSync         = 0
         self.__lastComplSyncDic = {}
 
 
@@ -294,11 +294,11 @@ class ngamsMirroringSource:
         """
         Set the time for the last synchronization.
 
-        lastSync:     ISO 8601 time stamp for last sync (string/ISO 8601).
+        lastSync:     ISO 8601 time stamp for last sync (number)
 
         Returns:      Reference to object itself.
         """
-        self.__lastSync = timeRef2Iso8601(lastSync)
+        self.__lastSync = lastSync
         return self
 
 
@@ -306,7 +306,7 @@ class ngamsMirroringSource:
         """
         Get the time for the last synchronization.
 
-        Returns:     ISO 8601 time stamp for last sync (string/ISO 8601).
+        Returns:     time stamp for last sync (number).
         """
         return self.__lastSync
 

@@ -33,17 +33,26 @@ read fits header, get cdel1,2 and epoch information
 Cutout a gleam FITS image, convert it into png, and display in the browser, then remove the jpeg file
 """
 
-import math, time, commands, os, traceback, threading
+import commands
+import logging
+import math
+import os
+from string import Template
+import threading
+import time
+import traceback
+
+from astropy.coordinates import SkyCoord
+import astropy.io.fits as pyfits
+import astropy.units as u
+import astropy.wcs as pywcs
 import ephem
 import pyfits as pyfits_real
-import astropy.io.fits as pyfits
-import astropy.wcs as pywcs
-import astropy.units as u
-from astropy.coordinates import SkyCoord
-from string import Template
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_TEXT_MT,\
-    info, error
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_TEXT_MT
+
+
+logger = logging.getLogger(__name__)
 
 week_date_dict = {
 '1':'2013-08-13', '2':'2013-11-15', '3':'2014-03-10', '4':'2014-06-13'
@@ -163,7 +172,6 @@ def sql_inject_test(query):
     for ws in wrong_sql:
         if (lq.find(ws) > -1):
             err_msg = "Invalid query '{0}'".format(query)
-            error(err_msg)
             raise Exception(err_msg)
 
 
@@ -248,10 +256,10 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir, projection="ZEA"):
     hdr_tpl = '{0}/{1}_temp_montage.hdr'.format(work_dir, st)
     head.toTxtFile(hdr_tpl, clobber=True)
     cmd = "{0} {1} {2} {3}".format(montage_reproj_exec,infile, outfile,hdr_tpl)
-    info(3, "Executing regridding {0}".format(cmd))
+    logger.debug("Executing regridding %s", cmd)
     st = time.time()
     execCmd(cmd)
-    info(3, "Regridding {1} took {0} seconds".format((time.time() - st), dim))
+    logger.debug("Regridding %s took %s seconds", dim, time.time() - st)
     return hdr_tpl
 
 def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, to_be_removed, use_montage=True, projection="ZEA"):
@@ -283,7 +291,7 @@ def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, t
         hdulist.close()
         cmd1 = cmd_cutout % (cut_fitsnm, work_dir, filePath, ra0, dec0, width, height)
 
-    info(3, "Executing command: %s" % cmd1)
+    logger.debug("Executing command: %s", cmd1)
     execCmd(cmd1)
     to_be_removed.append(work_dir + '/' + cut_fitsnm)
 
@@ -347,13 +355,12 @@ def add_header(cut_fits_path, cut_psf_paths, ing_date, obs_date, completeness=No
         for cf in completeness_fnames:
             ffp = '%s/%s' % (completeness_path, cf)
             if (not os.path.exists(ffp)):
-                error("Completeness map {0} does not exist".format(ffp))
+                logger.error("Completeness map %s does not exist", ffp)
                 continue
             try:
                 compt_perctg = get_compt_perctg(ra, dec, ffp)
-            except Exception, exce:
-                error("fail to add completeness: {0}".format(exce))
-                info(3, traceback.format_exc())
+            except Exception:
+                logger.exception("fail to add completeness")
                 continue
             if (compt_perctg is None):
                 continue
@@ -398,7 +405,7 @@ def get_compt_perctg(ra, dec, compt_path):
     b_len = cplist[0].data[0].shape[1]
 
     if (a >= a_len or b >= b_len):
-        error("Cutout centre is out of the completness map: {0} >= {1} or {2} >= {3} ".format(a, a_len, b, b_len))
+        logger.error("Cutout centre is out of the completness map: %d >= %d or %d >= %d ", a, a_len, b, b_len)
         return None
 
     ret = []
@@ -441,7 +448,7 @@ def get_date_obs(file_id):
         week = file_id.split('_')[1][-1]
         return week_date_dict[week]
     except:
-        error("fail to get the obsdate for {0}".format(file_id))
+        logger.error("fail to get the obsdate for %s", file_id)
         return 'UNKNOWN'
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
@@ -485,7 +492,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     fileId = reqPropsObj.getHttpPar("file_id")
     query = qs.format("'%s'" % fileId)
     sql_inject_test(query)
-    info(3, "Executing SQL query for GLEAM CUTOUT: %s" % str(query))
+    logger.debug("Executing SQL query for GLEAM CUTOUT: %s", str(query))
     #res = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
     #reList = res[0]
     reList = srvObj.getDb().query2(qs, args=(fileId,))
@@ -523,7 +530,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         ing_date = reList[0][2] # ingestion_date
     except:
         ing_date = '2016-03-14T23:56:36.709'
-        info(3, "ingestion date parse failure")
+        logger.debug("ingestion date parse failure")
 
     work_dir = srvObj.getCfg().getRootDirectory() + '/processing'
     time_str = ('%f' % time.time()).replace('.', '_')
@@ -536,7 +543,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             height = abs(int(2 * radius / float(hdulist[0].header['CDELT2'])))
             hdulist.close()
             cmd1 = cmd_cutout % (cut_fitsnm, work_dir, filePath, ra, dec, width, height)
-            info(3, "Executing command: %s" % cmd1)
+            logger.debug("Executing command: %s", cmd1)
             execCmd(cmd1)
             to_be_removed.append(work_dir + '/' + cut_fitsnm)
         else:
@@ -558,7 +565,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                 psf_fileId = fileId.split('.fits')[0] + '_psf.fits'
                 query = qs.format("'%s'" % psf_fileId)
                 sql_inject_test(query)
-                info(3, "Executing SQL query for GLEAM PSF CUTOUT: %s" % str(query))
+                logger.debug("Executing SQL query for GLEAM PSF CUTOUT: %s", str(query))
                 #pres = srvObj.getDb().query(query, maxRetries=1, retryWait=0)
                 #psfList = pres[0]
                 psfList = srvObj.getDb().query2(qs, args=(psf_fileId,))
@@ -587,7 +594,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
                         add_header(work_dir + '/' + cut_fitsnm, get_bparam(ra, dec, psf_path), ing_date, get_date_obs(fileId), completeness=(ra, dec))
                     except Exception, hdr_except:
                         if (reqPropsObj.hasHttpPar('skip_psf_err') and '1' == reqPropsObj.getHttpPar("skip_psf_err")):
-                            info(3, "PSF error skipped: {0}".format(hdr_except))
+                            logger.debug("PSF error skipped: %s", hdr_except)
                         else:
                             raise AddPSFException(str(hdr_except))
 
@@ -618,7 +625,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             else:
                 err_msg = "Cutout failed: '%s'" % str(excmd1)
             srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, err_msg, NGAMS_TEXT_MT)
-        info(3, traceback.format_exc())
+        logger.debug(traceback.format_exc())
         for fn in to_be_removed:
             if (os.path.exists(fn)):
                 os.remove(fn)
@@ -641,7 +648,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         cmd2 = cmd_ds9.format(ds9_path, work_dir + '/' + cut_fitsnm, work_dir + '/' + jpfnm)
         try:
             os.environ['DISPLAY'] = ":7777"
-            info(3, "Executing command: %s" % cmd2)
+            logger.debug("Executing command: %s", cmd2)
             execCmd(cmd2)
         except Exception, excmd2:
             srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,

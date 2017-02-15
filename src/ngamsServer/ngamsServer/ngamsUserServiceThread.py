@@ -32,10 +32,13 @@ This module contains the code for the User Service Thread, which execute
 a plug-in provided by the user periodically.
 """
 
+import logging
 import time
 
-from ngamsLib.ngamsCore import info, alert, isoTime2Secs
+from ngamsLib.ngamsCore import isoTime2Secs
 
+
+logger = logging.getLogger(__name__)
 
 NGAMS_USER_SERVICE_THR = "USER-SERVICE-THREAD"
 
@@ -64,14 +67,14 @@ def userServiceThread(srvObj, stopEvt, userServicePlugin):
         try:
             startTime = time.time()
 
-            info(5,"Executing User Service Plug-In")
+            logger.debug("Executing User Service Plug-In")
             userServicePlugin(srvObj, plugin_pars)
             stopTime = time.time()
             sleepTime = (period - (stopTime - startTime))
 
             if (sleepTime > 0):
                 msg = "Executed User Service Plug-In: %s. Sleeping: %.3fs"
-                info(4,msg % (plugin_name, sleepTime))
+                logger.debug(msg, plugin_name, sleepTime)
 
             # If signaled, return
             if stopEvt.wait(sleepTime):
@@ -79,8 +82,8 @@ def userServiceThread(srvObj, stopEvt, userServicePlugin):
 
         except Exception, e:
             errMsg = "Error occurred during execution of the User " +\
-                     "Service Thread. Exception: " + str(e)
-            alert(errMsg)
+                     "Service Thread"
+            logger.exception(errMsg)
             # We make a small wait here to avoid that the process tries
             # too often to carry out the tasks that failed.
             time.sleep(2.0)

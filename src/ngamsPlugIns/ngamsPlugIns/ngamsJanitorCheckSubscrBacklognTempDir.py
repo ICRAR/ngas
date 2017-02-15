@@ -20,12 +20,15 @@
 #    MA 02111-1307  USA
 #
 
+import logging
 import os
 
 from ngamsLib import ngamsHighLevelLib
 from ngamsLib.ngamsCore import NGAMS_SUBSCR_BACK_LOG_DIR
-from ngamsLib.ngamsCore import info, isoTime2Secs
+from ngamsLib.ngamsCore import isoTime2Secs
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsJanitorCheckSubscrBacklognTempDir(srvObj, stopEvt,checkCleanDirs):
     """
@@ -36,17 +39,17 @@ def ngamsJanitorCheckSubscrBacklognTempDir(srvObj, stopEvt,checkCleanDirs):
 
    Returns:           Void.
    """
-    info(4, "Checking/cleaning up Subscription Back-Log Buffer ...")
-    backLogDir = os.path. \
-        normpath(srvObj.getCfg().getBackLogBufferDirectory() + \
-                 "/" + NGAMS_SUBSCR_BACK_LOG_DIR)
+    logger.debug("Checking/cleaning up Subscription Back-Log Buffer ...")
+    backLogDir = os.path.\
+                 normpath(srvObj.getCfg().getBackLogBufferDirectory()+\
+                          "/" + NGAMS_SUBSCR_BACK_LOG_DIR)
     expTime = isoTime2Secs(srvObj.getCfg().getBackLogExpTime())
     checkCleanDirs(backLogDir, expTime, expTime, 0)
-    info(4, "Subscription Back-Log Buffer checked/cleaned up")
+    logger.debug("Subscription Back-Log Buffer checked/cleaned up")
 
     # => Check if there are left-over files in the NG/AMS Temp. Dir.
-    info(4, "Checking/cleaning up NG/AMS Temp Directory ...")
+    logger.debug("Checking/cleaning up NG/AMS Temp Directory ...")
     tmpDir = ngamsHighLevelLib.getTmpDir(srvObj.getCfg())
     expTime = (12 * 3600)
     checkCleanDirs(tmpDir, expTime, expTime, 1)
-    info(4, "NG/AMS Temp Directory checked/cleaned up")
+    logger.debug("NG/AMS Temp Directory checked/cleaned up")

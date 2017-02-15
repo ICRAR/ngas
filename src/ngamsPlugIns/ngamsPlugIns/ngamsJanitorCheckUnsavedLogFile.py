@@ -21,12 +21,14 @@
 #
 
 import glob
+import logging
 import os
 import shutil
 
-from ngamsLib.ngamsCore import info
-import ngamsServer
+from ngamsServer import ngamsArchiveUtils
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsJanitorCheckUnsavedLogFile(srvObj, stopEvt):
     """
@@ -37,15 +39,15 @@ def ngamsJanitorCheckUnsavedLogFile(srvObj, stopEvt):
 
    Returns:           Void.
    """
-    info(4, "Checking if we have unsaved Log File ")
+    logger.debug("Checking if we have unsaved Log File ")
     logFile = srvObj.getCfg().getLocalLogFile()
     logPath = os.path.dirname(logFile)
     if (os.path.exists(srvObj.getCfg().getLocalLogFile())):
         unsavedLogFiles = glob.glob(logPath + '/*.unsaved')
         if (len(unsavedLogFiles) > 0):
-            info(3, "Archiving unsaved log-files ...")
+            logger.debug("Archiving unsaved log-files ...")
             for ulogFile in unsavedLogFiles:
                 ologFile = '.'.join(ulogFile.split('.')[:-1])
                 shutil.move(ulogFile, ologFile)
-                ngamsServer.ngamsArchiveUtils.archiveFromFile(srvObj, ologFile, 0,
-                                                  'ngas/nglog', None)
+                ngamsArchiveUtils.archiveFromFile(srvObj, ologFile, 0,
+                'ngas/nglog', None)

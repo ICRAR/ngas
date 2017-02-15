@@ -31,15 +31,21 @@
 Utility functions used by the tool in the NGAS Utils module.
 """
 
-import os, base64, getpass, smtplib, glob, commands
+import base64
+import commands
+import getpass
+import glob
+import logging
+import os
+import smtplib
 import time
 
-from ngamsLib.ngamsCore import getHostName, cleanList, getFileCreationTime, \
-    NGAMS_STATUS_CMD, NGAMS_NOT_RUN_STATE, NGAMS_COPYRIGHT_TEXT, info, setDebug, \
-    setLogCond
+from ngamsLib.ngamsCore import getHostName, getFileCreationTime, \
+    NGAMS_STATUS_CMD, NGAMS_NOT_RUN_STATE, NGAMS_COPYRIGHT_TEXT
 from ngamsPClient import ngamsPClient
-from pccUt import PccUtTime
 
+
+logger = logging.getLogger(__name__)
 
 NGAS_RC_FILE            = "~/.ngas"
 
@@ -313,7 +319,7 @@ def dccMsg2FileList(dccMsgFile,
         while (1):
             if (dccMsgLines[lineIdx].find("-----") != -1): break
             lineEls = dccMsgLines[lineIdx][fileIdIdx:].split(" ")
-            elList = cleanList(lineEls)
+            elList = filter(None, lineEls)
             fileId = elList[0]
             fileVersion = elList[1]
             diskId = elList[2].split(":")[1]
@@ -337,7 +343,7 @@ def dccRep2FileList(dccRep):
     for line in dccRep.split("\n"):
         if ((line.find("ERROR: File in DB missing on disk") != -1) or
             (line.find("ERROR: Inconsistent checksum found") != -1)):
-            cleanLst = cleanList(line.split(" "))
+            cleanLst = filter(None, line.split(" "))
             diskId  = cleanLst[-1].split(":")[-1]
             fileId  = cleanLst[-3]
             fileVer = cleanLst[-2]
@@ -441,17 +447,6 @@ def checkSrvRunning(host = None,
     return status
 
 
-def secs2Iso(timeSecs):
-    """
-    Convert a time, given in seconds since epoch to an ISO8601 timestamp.
-
-    timeSecs:   Seconds since epoch (integer).
-
-    Returns:    ISO8601 timestamp (string).
-    """
-    return PccUtTime.TimeStamp().initFromSecsSinceEpoch(timeSecs).\
-           getTimeStamp()
-
 #############################################################################
 # Tools to handle command line options.
 #############################################################################
@@ -530,7 +525,7 @@ def parseCmdLine(argv,
     # Parse input parameters.
     idx = 1
     while idx < len(argv):
-        info(2,"Parsing option: %s" % argv[idx])
+        logger.info("Parsing option: %s" % argv[idx])
         tmpInfo = argv[idx].split("=")
         if (len(tmpInfo) >= 2):
             eqIdx = argv[idx].find("=")
@@ -545,11 +540,6 @@ def parseCmdLine(argv,
         optDic[parUp][NGAS_OPT_VAL] = parVal
         if (parUp.find("HELP") != -1): return optDic
         idx += 1
-    setDebug(optDic["debug"][NGAS_OPT_VAL])
-    setLogCond(0, "",
-               int(optDic["logLevel"][NGAS_OPT_VAL]),
-               optDic["logFile"][NGAS_OPT_VAL],
-               int(optDic["verbose"][NGAS_OPT_VAL]))
 
     # Check if mandatory options are all specified.
     for opt in optDic.keys():

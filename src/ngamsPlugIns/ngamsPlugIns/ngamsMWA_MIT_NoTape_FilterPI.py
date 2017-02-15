@@ -33,15 +33,18 @@ Contains a Filter Plug-In used to filter out those files that
 (2) belong to Solar observations with project_id 'c105' or 'c106'
 """
 
-import os, threading
+import logging
+import os
+import threading
+
+import pyfits
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import genLog, alert, info, NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, NGAMS_FAILURE
+from ngamsLib.ngamsCore import genLog, NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, NGAMS_FAILURE
 from ngamsPClient import ngamsPClient
-import pccFits.PccSimpleFitsReader as fitsapi
 
 
-g_db_conn = None # MWA metadata database connection
+logger = logging.getLogger(__name__)
 
 #eor_list = ["'G0001'", "'G0004'", "'G0009'", "'G0008'", "'G0010'"] # EOR scientists are only interested in these projects
 eor_list = [] # this has become a parameter of the plug-in
@@ -73,12 +76,9 @@ def ngamsMWA_MIT_NoTape_FilterPI(srvObj,
     """
     match = 0
     projectId = ''
-    onTape = 0
 
     try:
-        fh = fitsapi.getFitsHdrs(filename)
-        projectId = fh[0]['PROJID'][0][1]
-
+        projectId = pyfits.getval(filename, 'PROJID')
     except:
         err = "Did not find keyword PROJID in FITS file or PROJID illegal"
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
@@ -91,8 +91,7 @@ def ngamsMWA_MIT_NoTape_FilterPI(srvObj,
         return 0
     """
 
-     # Parse plug-in parameters.
-    parDic = []
+    # Parse plug-in parameters.
     pars = ""
     if ((plugInPars != "") and (plugInPars != None)):
         pars = plugInPars
@@ -106,7 +105,7 @@ def ngamsMWA_MIT_NoTape_FilterPI(srvObj,
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Missing Plug-In Parameter: " +\
                  "remote_host / remote_port / project_id"
         #raise Exception, errMsg
-        alert(errMsg)
+        logger.error(errMsg)
         return 1 # matched as if the filter did not exist
 
     host = parDic["remote_host"]
@@ -118,12 +117,12 @@ def ngamsMWA_MIT_NoTape_FilterPI(srvObj,
             eor_list.append("'%s'" % proj_id)
 
         if (not (projectId in eor_list)):
-            info(4, 'File %s is not EOR project' % fileId)
+            logger.debug('File %s is not EOR project', fileId)
             return 0
 
     if (not sport.isdigit()):
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Invalid port number: " + sport
-        alert(errMsg)
+        logger.error(errMsg)
         return 1 # matched as if the filter does not exist
 
     port = int(sport)
@@ -133,10 +132,10 @@ def ngamsMWA_MIT_NoTape_FilterPI(srvObj,
 
     try:
         rest = client.sendCmd(NGAMS_STATUS_CMD, 1, "", [["file_id", fileId]])
-    except Exception, e:
+    except Exception:
         errMsg = "Error occurred during checking remote file status " +\
-                     "ngamsMWACheckRemoteFilterPlugin. Exception: " + str(e)
-        alert(errMsg)
+                     "ngamsMWACheckRemoteFilterPlugin"
+        logger.exception(errMsg)
         return 1 # matched as if the filter does not exist
 
     #info(5, "filter return status = " + rest.getStatus())

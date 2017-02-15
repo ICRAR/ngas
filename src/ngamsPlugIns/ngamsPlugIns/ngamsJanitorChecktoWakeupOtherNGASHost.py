@@ -20,11 +20,13 @@
 #    MA 02111-1307  USA
 #
 
+import logging
 import time
 
-from ngamsLib.ngamsCore import info
-import ngamsServer
+from ngamsServer import ngamsSrvUtils
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsJanitorChecktoWakeupOtherNGASHost(srvObj, stopEvt):
     """
@@ -40,7 +42,7 @@ def ngamsJanitorChecktoWakeupOtherNGASHost(srvObj, stopEvt):
         # Check if the individual host is 'ripe' for being woken up.
         suspHost = wakeUpReq[0]
         if (timeNow > wakeUpReq[1]):
-            info(2, "Found suspended NG/AMS Server: " + suspHost + " " + \
-                 "that should be woken up by this NG/AMS Server: " + \
-                 hostId + " ...")
-            ngamsServer.ngamsSrvUtils.wakeUpHost(srvObj, suspHost)
+            logger.info("Found suspended NG/AMS Server: %s " +\
+                 "that should be woken up by this NG/AMS Server: %s",
+                 suspHost, hostId)
+            ngamsSrvUtils.wakeUpHost(srvObj, suspHost)

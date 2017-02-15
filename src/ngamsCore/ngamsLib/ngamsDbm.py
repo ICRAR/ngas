@@ -35,9 +35,17 @@ Contains definition of class for handling a DBM DB (BSDDB).
 
 # TODO: Stop using dbm. Use only bsddb and remove ngamsDbm2
 
-import sys, os, cPickle, random, threading
+import cPickle
+import logging
+import os
+import random
+import sys
+import threading
 
-from ngamsCore import warning, TRACE, NGAMS_DBM_EXT, info, NGAMS_FILE_DB_COUNTER, rmFile
+from ngamsCore import TRACE, NGAMS_DBM_EXT, NGAMS_FILE_DB_COUNTER, rmFile
+
+
+logger = logging.getLogger(__name__)
 
 try:
     import bsddb
@@ -45,13 +53,13 @@ except:
     try:
         import bsddb3 as bsddb
     except:
-        warning('No BSDDB module found! BSDDB based functionality will not work')
+        print('No BSDDB module found! BSDDB based functionality will not work')
         raise
 
 try:
     import dbm
 except:
-    warning('dbm module no available! ngamsDbm2 based utilities will not work')
+    print('dbm module no available! ngamsDbm2 based utilities will not work')
 
 
 class ngamsDbm:
@@ -92,21 +100,21 @@ class ngamsDbm:
         self.__autoSync       = autoSync
         self.__changeCount    = 0
         if (not os.path.exists(dbmName)):
-            info(4,"DBM file: %s does not exist - creating ..." % dbmName)
+            logger.debug("DBM file: %s does not exist - creating ...", dbmName)
             perm = "c"
         elif (writePerm):
-            info(4,"DBM file: %s being opened for writing ..." % dbmName)
+            logger.debug("DBM file: %s being opened for writing ...", dbmName)
             perm = "w"
         else:
-            info(4,"DBM file: %s being opened for reading ..." % dbmName)
+            logger.debug("DBM file: %s being opened for reading ...", dbmName)
             perm = "r"
-        info(4,"Opening/creating DBM: " + dbmName)
+        logger.debug("Opening/creating DBM: %s", dbmName)
         self.__dbmObj = bsddb.hashopen(dbmName, perm)
         if (perm == "c"):
             self.__dbmObj[NGAMS_FILE_DB_COUNTER] = cPickle.dumps(0, 1)
             self.__dbmObj.sync()
         self.__dbmOpen = 1
-        info(4,"Opened/created DBM: " + dbmName)
+        logger.debug("Opened/created DBM: %s", dbmName)
 
 
     def __del__(self):
@@ -468,21 +476,21 @@ class ngamsDbm2:
         self.__autoSync       = autoSync
         self.__changeCount    = 0
         if (not os.path.exists(dbmName)):
-            info(4,"DBM file: %s does not exist - creating ..." % dbmName)
+            logger.debug("DBM file: %s does not exist - creating ...", dbmName)
             perm = "c"
         elif (writePerm):
-            info(4,"DBM file: %s being opened for writing ..." % dbmName)
+            logger.debug("DBM file: %s being opened for writing ...", dbmName)
             perm = "w"
         else:
-            info(4,"DBM file: %s being opened for reading ..." % dbmName)
+            logger.debug("DBM file: %s being opened for reading ...", dbmName)
             perm = "r"
-        info(4,"Opening/creating DBM: " + dbmName)
+        logger.debug("Opening/creating DBM: %s", dbmName)
         self.__dbmObj = dbm.open(dbmName, perm)
         if (perm == "c"):
             self.__dbmObj[NGAMS_FILE_DB_COUNTER] = cPickle.dumps(0, 1)
             self.__dbmObj.sync()
         self.__dbmOpen = 1
-        info(4,"Opened/created DBM: " + dbmName)
+        logger.debug("Opened/created DBM: %s", dbmName)
 
 
     def __del__(self):

@@ -32,11 +32,14 @@ This job plugin rename all phase 2 measurementset files
 The system must already have pigz installed
 """
 
-import os, commands, re
+import commands
+import logging
+import os
+import re
 import shutil
 
-from ngamsLib.ngamsCore import info
 
+logger = logging.getLogger(__name__)
 
 phase2_line = "solutions.bin"
 phase2_label = "phase2"
@@ -75,7 +78,7 @@ def ngamsGLEAM_Rename_JobPI(srvObj,
         raise Exception('filename %s is not part of the mount_point %s' % (filename, mount_point))
 
     cmd = "tar -tf %s --use-compress-program=pigz" % filename
-    info(3, cmd)
+    logger.debug(cmd)
     ret = execCmd(cmd)
     obsId = fileId.split('.')[0]
     #sline = '%s/%s' % (obsId, phase2_line)
@@ -108,7 +111,6 @@ def ngamsGLEAM_Rename_JobPI(srvObj,
     # then, update table
     sqlquery = "UPDATE ngas_files SET file_id = {0}, file_name = {1}" % (new_fileId, partial_path, new_fileId) +\
                " WHERE file_id = {2} AND file_version = {3} AND disk_id = {4}" % (fileId, fileVersion, diskId)
-    info(3, sqlquery)
     srvObj.getDb().query2(sqlquery, args=(new_fileId, "%s%s" % (partial_path, new_fileId), fileId, fileVersion, diskId))
     return (0, 'Done')
 

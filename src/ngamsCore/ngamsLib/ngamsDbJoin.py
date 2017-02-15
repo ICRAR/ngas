@@ -36,8 +36,10 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
+import logging
 import time
-from ngamsCore import TRACE, warning, error, notice, rmFile
+
+from ngamsCore import TRACE, rmFile
 from ngamsCore import NGAMS_FILE_STATUS_OK, NGAMS_FILE_CHK_ACTIVE,NGAMS_DB_CH_FILE_UPDATE, NGAMS_DB_CH_FILE_INSERT
 import ngamsDbm, ngamsDbCore
 import ngamsLib
@@ -45,6 +47,7 @@ import ngamsLib
 # TODO: Avoid using these classes in this module (mutual dependency):
 import ngamsFileInfo
 
+logger = logging.getLogger(__name__)
 
 class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
     """
@@ -669,12 +672,11 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                 fileInfoDbm.sync()
             del fileInfoDbm
             return fileInfoDbmName
-        except Exception, e:
-            error("Exception: " + str(e))
+        except Exception:
+            rmFile(fileInfoDbmName + "*")
             del fileInfoDbm
             del dbCur
-            rmFile(fileInfoDbmName + "*")
-            raise e
+            raise
 
 
     def dumpFileInfo(self,
@@ -762,8 +764,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             if (self.getDbVerify() and (dumpedNoOfFiles != expNoOfFiles)):
                 errMsg = "Problem dumping file info! Expected number of "+\
                          "files: %d, actual number of files: %d"
-                errMsg = errMsg % (expNoOfFiles, dumpedNoOfFiles)
-                warning(errMsg)
+                logger.warning(errMsg, expNoOfFiles, dumpedNoOfFiles)
 
             # Try to Auto Recover if requested.
             if ((self.getDbVerify() and self.getDbAutoRecover()) and
@@ -772,11 +773,10 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                 if (n < 4):
                     # We try again, after a small pause.
                     time.sleep(5)
-                    notice("Retrying to dump file info ...")
+                    logger.warning("Retrying to dump file info ...")
                 else:
                     errMsg = "Giving up to auto recover dumping of file info!"
-                    error(errMsg)
-                    raise Exception, errMsg
+                    raise Exception(errMsg)
             else:
                 # All files were dumped, we stop.
                 break
@@ -826,13 +826,11 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                     fileCount += 1
             del curObj
             del fileInfoDbm
-        except Exception, e:
+        except Exception:
             rmFile(fileInfoDbmName)
             if (curObj): del curObj
-            msg = "dumpFileInfo2(): Failed in dumping file info. Error: %s" %\
-                  str(e)
-            error(msg)
-            raise Exception, msg
+            logger.error("dumpFileInfo2(): Failed in dumping file info")
+            raise
 
         return fileInfoDbmName
 
@@ -899,8 +897,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             if (self.getDbVerify() and (fileCount != expNoOfFiles)):
                 errMsg = "Problem dumping file info! Expected number of "+\
                          "files: %d, actual number of files: %d"
-                errMsg = errMsg % (expNoOfFiles, fileCount)
-                warning(errMsg)
+                logger.warning(errMsg, expNoOfFiles, fileCount)
 
             # Try to Auto Recover if requested.
             if ((self.getDbVerify() and self.getDbAutoRecover()) and
@@ -911,11 +908,10 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                 if (n < 4):
                     # - retry after a small pause.
                     time.sleep(5)
-                    notice("Retrying to dump file info ...")
+                    logger.warning("Retrying to dump file info ...")
                 else:
                     errMsg = "Giving up to auto recover dumping of file info!"
-                    error(errMsg)
-                    raise Exception, errMsg
+                    raise Exception(errMsg)
             else:
                 del fileInfoDbm
                 break
@@ -1179,12 +1175,12 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         # Create a Temporary DB Change Snapshot Document if requested.
         if (self.getCreateDbSnapshot() and genSnapshot):
             tmpFileObj = ngamsFileInfo.ngamsFileInfo().\
-                         unpackSqlResult([diskId, filename, fileId,
-                                          fileVersion, format, fileSize,
-                                          uncompressedFileSize,compression,
-                                          ingestionDate, ignore, checksum,
-                                          checksumPlugIn, fileStatus, creationDate,
-                                          iotime, ingestionRate, None])
+                            setDiskId(diskId).setFilename(filename).setFileId(fileId).\
+                            setFileVersion(fileVersion).setFormat(format).setFileSize(fileSize).\
+                            setUncompressedFileSize(uncompressedFileSize).setCompression(compression).\
+                            setIngestionDate(ingestionDate).setIgnore(ignore).setChecksum(checksum).\
+                            setChecksumPlugIn(checksumPlugIn).setFileStatus(fileStatus).setCreationDate(creationDate).\
+                            setIoTime(iotime).setIngestionRate(ingestionRate)
             self.createDbFileChangeStatusDoc(hostId, dbOperation, [tmpFileObj])
             del tmpFileObj
 

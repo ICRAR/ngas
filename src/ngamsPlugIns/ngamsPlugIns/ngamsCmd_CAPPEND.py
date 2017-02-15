@@ -27,7 +27,7 @@ Created on 20 May 2015
 :author: rtobar
 '''
 
-from ngamsLib.ngamsCore import error, genLog, NGAMS_HTTP_GET
+from ngamsLib.ngamsCore import genLog, NGAMS_HTTP_GET
 from xml.dom import minidom
 
 def addFileToContainer(srvObj, containerId, fileId, force):
@@ -109,8 +109,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         containerName = reqPropsObj.getHttpPar("container_name").strip()
     if not containerId and not containerName:
         errMsg = genLog("NGAMS_ER_RETRIEVE_CMD")
-        error(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Check if we have been asked to force the operation
     force = False
@@ -133,7 +132,6 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if not containerIdKnownToExist:
         if not srvObj.getDb().containerExists(containerId):
             msg = "No container with containerId '" + containerId + "' found, cannot append files to it"
-            error(msg)
             raise Exception(msg)
 
     # If a single fileId has been given via URL parameters

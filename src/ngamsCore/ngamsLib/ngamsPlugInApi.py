@@ -34,14 +34,18 @@ Module containing functions to be used for implementing the different
 types of NG/AMS plug-ins.
 """
 
-import os, commands
+import commands
+import logging
+import os
 import shutil
-from pccUt import PccUtUtils
-from ngamsCore import NGAMS_SUCCESS, TRACE, genLog, error, info, checkCreatePath, trim
+
+from ngamsCore import NGAMS_SUCCESS, TRACE, checkCreatePath, execCmd as ngamsCoreExecCmd
+import ngamsDapiStatus
 import ngamsHighLevelLib, ngamsNotification
 import ngamsLib
-import ngamsDapiStatus
 
+
+logger = logging.getLogger(__name__)
 
 def genDapiSuccessStat(diskId,
                        relFilename,
@@ -217,11 +221,11 @@ def execCmd(cmd,
 
                    [<exit code>, <stdout>]
     """
-    info(4,"Executing command: " + cmd)
+    logger.debug("Executing command: %s", cmd)
     if (timeOut == -1):
         return commands.getstatusoutput(cmd)
     else:
-        exitCode, stdout, stderr = PccUtUtils.execCmd(cmd, timeOut)
+        exitCode, stdout, stderr = ngamsCoreExecCmd(cmd, timeOut)
         return [exitCode, stdout]
 
 
@@ -360,7 +364,7 @@ def genFileInfo(dbConObj,
     relPath = ngamsCfgObj.getPathPrefix()
     for subDir in subDirs:
         if (relPath != ""): relPath += "/" + subDir
-    relPath = trim(relPath + "/" + str(fileVersion), "/")
+    relPath = str(relPath + "/" + str(fileVersion)).strip("/")
     complPath = os.path.normpath(trgDiskInfoObj.getMountPoint()+"/"+relPath)
     newFilename = ngamsHighLevelLib.checkAddExt(ngamsCfgObj, reqPropsObj.getMimeType(),
                                   baseFilename)
@@ -368,14 +372,14 @@ def genFileInfo(dbConObj,
         if (addExt.strip() != ""): newFilename += "." + addExt
     complFilename = os.path.normpath(complPath + "/" + newFilename)
     relFilename = os.path.normpath(relPath + "/" + newFilename)
-    info(2, "Target name for file is: " + complFilename)
+    logger.debug("Target name for file is: %s", complFilename)
 
-    info(4, "Checking if file exists ...")
+    logger.debug("Checking if file exists ...")
     fileExists = ngamsHighLevelLib.\
                  checkIfFileExists(dbConObj, fileId,
                                    trgDiskInfoObj.getDiskId(),
                                    fileVersion, complFilename)
-    info(3," File existance (1 = existed): " + str(fileExists))
+    logger.debug(" File existance (1 = existed): %s", str(fileExists))
 
     return [fileVersion, relPath, relFilename, complFilename, fileExists]
 

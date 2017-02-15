@@ -35,7 +35,7 @@ are handled.
 import sys
 import time
 
-from ngamsLib.ngamsCore import TRACE, info, NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, \
+from ngamsLib.ngamsCore import TRACE, NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, \
     NGAMS_STATUS_CMD, NGAMS_ARCHIVE_CMD
 from ngamsServer import ngamsServer
 from ngamsTestLib import loadFile
@@ -89,7 +89,6 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         """
         T = TRACE(1)
 
-        info(1,"Handling command: %s ..." % path.strip().split("?")[0])
         if ((path.strip().find(NGAMS_EXIT_CMD) == 0) or
             (path.strip().find(NGAMS_OFFLINE_CMD) == 0) or
             (path.strip().find(NGAMS_STATUS_CMD) == 0)):
@@ -97,7 +96,6 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
                                                 method, path, requestVersion,
                                                 headers, writeFd, readFd)
         else:
-            info(1,"Blocking request ...")
             time.sleep(10e6)
 
 
@@ -120,12 +118,10 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
             (path.strip().find(NGAMS_EXIT_CMD) == 0) or
             (path.strip().find(NGAMS_OFFLINE_CMD) == 0) or
             (path.strip().find(NGAMS_STATUS_CMD) == 0)):
-            info(1,"Handling command: %s ..." % path.strip().split("?")[0])
             ngamsServer.ngamsServer.reqCallBack(self, httpRef, clientAddress,
                                                 method, path, requestVersion,
                                                 headers, writeFd, readFd)
         else:
-            info(1,"Blocking request ...")
             time.sleep(10e6)
 
 
@@ -149,12 +145,11 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         if ((path.strip().find(NGAMS_EXIT_CMD) == 0) or
             (path.strip().find(NGAMS_OFFLINE_CMD) == 0) or
             (path.strip().find(NGAMS_STATUS_CMD) == 0)):
-            info(1,"Handling command: %s ..." % path.strip().split("?")[0])
             ngamsServer.ngamsServer.reqCallBack(self, httpRef, clientAddress,
                                                 method, path, requestVersion,
                                                 headers, writeFd, readFd)
         else:
-            info(1,"Sending back illegal HTTP response ...")
+            # Sending back illegal HTTP response
             time.sleep(0.500)
             readFd.flush()
             resp = loadFile("tmp/ngamsServerTestIllegalResp_tmp")
@@ -179,12 +174,10 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         T = TRACE(1)
 
         if (path.strip().find(NGAMS_STATUS_CMD) == 0):
-            info(1,"Handling command: %s ..." % path.strip().split("?")[0])
             ngamsServer.ngamsServer.reqCallBack(self, httpRef, clientAddress,
                                                 method, path, requestVersion,
                                                 headers, writeFd, readFd)
         else:
-            info(1,"Server killing itself ...")
             time.sleep(0.250)
             readFd.flush()
             self.killServer()
@@ -210,12 +203,10 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
 
         if ((path.strip().find(NGAMS_ARCHIVE_CMD) == 0) or
             (path.strip().find(NGAMS_STATUS_CMD) == 0)):
-            info(1,"Handling command: %s ..." % path.strip().split("?")[0])
             ngamsServer.ngamsServer.reqCallBack(self, httpRef, clientAddress,
                                                 method, path, requestVersion,
                                                 headers, writeFd, readFd)
         else:
-            info(1,"Server killing itself ...")
             time.sleep(0.250)
             readFd.flush()
             self.killServer()

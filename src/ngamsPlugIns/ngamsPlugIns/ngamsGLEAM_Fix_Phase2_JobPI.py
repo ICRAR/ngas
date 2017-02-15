@@ -43,7 +43,6 @@ by the SubscriptionThread._deliveryThread
 import os, commands, binascii
 
 from ngamsLib.ngamsCore import getFileSize
-import pccFits.PccSimpleFitsReader as fitsapi
 import pyfits
 
 
@@ -104,8 +103,7 @@ def ngamsGLEAM_Fix_Phase2_JobPI(srvObj,
     Returns:       the return code of the compression plugin (integer).
     """
 
-    hdrs = fitsapi.getFitsHdrs(filename)
-    date_obs = hdrs[0]['DATE-OBS'][0][1].replace("'", "").split('T')[0]
+    date_obs = pyfits.getval(filename, 'DATE-OBS').split('T')[0]
     if (not dict_dec.has_key(date_obs)):
         return (1, 'no date for %s' % filename)
 
@@ -123,8 +121,7 @@ def ngamsGLEAM_Fix_Phase2_JobPI(srvObj,
     hdulist.close()
 
     # double check if the key is really added or the file is not corrupted
-    hdrs = fitsapi.getFitsHdrs(fn)
-    if (not hdrs[0].has_key('DEC_PNT')):
+    if 'DEC_PNT' not in pyfits.getheader(filename):
         # header is not added
         # remove the temp file
         os.remove(fn)

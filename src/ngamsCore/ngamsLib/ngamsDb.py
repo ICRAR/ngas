@@ -33,12 +33,15 @@
 Contains the ngamsDb class
 """
 
-from ngamsCore import info
+import logging
+
 import ngamsDbNgasCfg, ngamsDbNgasDisks, ngamsDbNgasDisksHist
 import ngamsDbMirroring, ngamsDbNgasCache, ngamsDbJoin
 import ngamsDbNgasContainers
 import ngamsDbNgasFiles, ngamsDbNgasHosts, ngamsDbNgasSubscribers
 
+
+logger = logging.getLogger(__name__)
 
 class ngamsDb(ngamsDbNgasCache.ngamsDbNgasCache,
               ngamsDbNgasCfg.ngamsDbNgasCfg,
@@ -90,9 +93,9 @@ def from_config(cfg):
     if driver == 'sqlite3':
         drvPars['check_same_thread'] = False
 
-    info(1, "Connecting to DB with module %s" % (driver,))
+    logger.info("Connecting to DB with module %s", driver)
     msg = "Additional DB parameters: snapshot: %d, multiconn: %d, params: %r"
-    info(2, msg % (creSnap, multCon, __params_for_log(drvPars)))
+    logger.debug(msg, creSnap, multCon, __params_for_log(drvPars))
     return ngamsDb(driver, parameters = drvPars, createSnapshot = creSnap,
                    multipleConnections = multCon, maxpoolcons = maxpool,
                    use_file_ignore=use_file_ignore)

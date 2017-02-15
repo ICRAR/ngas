@@ -33,9 +33,9 @@ Contains code for handling the HELP command.
 TODO: The HELP command is not yet implemented!
 """
 
-from pccUt import PccUtTime
 from ngamsLib import ngamsStatus
-from ngamsLib.ngamsCore import TRACE, getNgamsVersion, NGAMS_FAILURE, NGAMS_HTTP_SUCCESS
+from ngamsLib.ngamsCore import TRACE, getNgamsVersion, NGAMS_FAILURE, NGAMS_HTTP_SUCCESS,\
+    toiso8601
 
 
 def handleCmdHelp(srvObj,
@@ -61,7 +61,7 @@ def handleCmdHelp(srvObj,
     ##########################################################################
     status = ngamsStatus.ngamsStatus()
     status.\
-             setDate(PccUtTime.TimeStamp().getTimeStamp()).\
+             setDate(toiso8601()).\
              setVersion(getNgamsVersion()).\
              setHostId(srvObj.getHostId()).setStatus(NGAMS_FAILURE).\
              setMessage("Command HELP not implemented").\
@@ -89,7 +89,7 @@ def handleCmdHelp(srvObj,
     #else:
     #    status = ngamsStatus.ngamsStatus()
     #    status.\
-    #             setDate(PccUtTime.TimeStamp().getTimeStamp()).\
+    #             setDate(toiso8601()).\
     #             setVersion(getNgamsVersion()).\
     #             setHostId(srvObj.getHostId()).setStatus(NGAMS_SUCCESS).\
     #             setMessage("Successfully handled command HELP").\

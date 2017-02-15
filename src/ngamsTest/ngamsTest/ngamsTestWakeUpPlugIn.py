@@ -32,9 +32,8 @@ Test WakeUp Plug-In to simulate the NGAS host suspension.
 
 This must be used together with the ngamsTestSuspensionPlugIn.
 """
-# TODO: Move this module to ngams/ngamsTest!
 
-from ngamsLib.ngamsCore import TRACE, info
+from ngamsLib.ngamsCore import TRACE
 
 
 def ngamsTestWakeUpPlugIn(srvObj,
@@ -49,12 +48,7 @@ def ngamsTestWakeUpPlugIn(srvObj,
     Returns:        Void.
     """
     T = TRACE(2)
-
-    info(2,"Waking up host with ID: %s ..." % hostId)
-    info(3,"Resetting the Wake-Up Call Parameters set by the other " +\
-         "process ...")
     srvObj.getDb().resetWakeUpCall(hostId, 1)
-    info(3,"Wake-Up Call Parameters set by the other process reset")
 
 
 # EOF

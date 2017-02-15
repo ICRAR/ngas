@@ -19,11 +19,13 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+import logging
 import os
 
 from ngamsLib.ngamsCore import NGAMS_PROC_DIR
-from ngamsLib.ngamsCore import info
 
+
+logger = logging.getLogger(__name__)
 
 def ngamsJanitorCheckProcessingDirectory(srvObj, stopEvt, checkCleanDirs):
     """
@@ -33,9 +35,9 @@ def ngamsJanitorCheckProcessingDirectory(srvObj, stopEvt, checkCleanDirs):
 
     Returns:           Void.
     """
-    info(4, "Checking/cleaning up Processing Directory ...")
-    procDir = os.path.normpath(srvObj.getCfg(). \
-                               getProcessingDirectory() + \
+    logger.debug("Checking/cleaning up Processing Directory ...")
+    procDir = os.path.normpath(srvObj.getCfg().\
+                               getProcessingDirectory() +\
                                "/" + NGAMS_PROC_DIR)
     checkCleanDirs(procDir, 1800, 1800, 0)
-    info(4, "Processing Directory checked/cleaned up")
+    logger.debug("Processing Directory checked/cleaned up")

@@ -160,11 +160,10 @@ def insert_db(conn, filename):
 	mosaic_20130822_162-170MHz_YY_r-1.0.fits
 	mosaic_20130822_162-170MHz_XX_r-1.0.fits
 	"""
-	import pccFits.PccSimpleFitsReader as fitsapi
-	hdr = fitsapi.getFitsHdrs(filename)[0]
+	hdrs = pyfits.getheader(filename)
 	required_hdrs = ['CRVAL1', 'CRVAL2']
 	for rhdr in required_hdrs:
-		if (not hdr.has_key(rhdr)):
+		if rhdr not in hdrs:
 			print "Missing header keyword {0}".format(rhdr)
 			return
 

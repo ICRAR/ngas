@@ -31,16 +31,21 @@
 Contains common functions used for the REMFILE and REMDISK commands.
 """
 
-import os, time, glob
+import glob
+import logging
+import os
+import time
 
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsLib
 from ngamsLib import ngamsDiskInfo, ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsNotification
 from ngamsLib.ngamsCore import TRACE, NGAMS_NOTIF_INFO, NGAMS_TEXT_MT, \
-    genLog, NGAMS_FAILURE, warning, info, rmFile, NGAMS_DISK_INFO, \
-    NGAMS_VOLUME_ID_FILE, NGAMS_VOLUME_INFO_FILE, NGAMS_MAX_SQL_QUERY_SZ
-from pccUt import PccUtTime
+    genLog, NGAMS_FAILURE, rmFile, NGAMS_DISK_INFO, \
+    NGAMS_VOLUME_ID_FILE, NGAMS_VOLUME_INFO_FILE, NGAMS_MAX_SQL_QUERY_SZ,\
+    toiso8601
 
+
+logger = logging.getLogger(__name__)
 
 def checkSpuriousFiles(srvObj,
                        tmpFilePat = None,
@@ -231,7 +236,6 @@ def _remStatErrReport(srvObj,
         else:
             statRep = tmpFilePat + "_NOTIF_EMAIL.txt"
             fo = open(statRep, "w")
-            timeStamp = PccUtTime.TimeStamp().getTimeStamp()
             tmpFormat = cmd + " STATUS REPORT - " +\
                         "MISSING FILE COPIES:\n\n" +\
                         "==Summary:\n\n" +\
@@ -240,7 +244,7 @@ def _remStatErrReport(srvObj,
                         "Disk ID:                    %s\n" +\
                         "Files Detected:             %d\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (timeStamp, hostId, diskId,misFileCopies))
+            fo.write(tmpFormat % (toiso8601(), hostId, diskId,misFileCopies))
             tmpFormat = "%-32s %-12s %-6s\n"
             fo.write(tmpFormat % ("File ID", "Version", "Copies"))
             fo.write(tmpFormat % (32 * "-", 7 * "-", 6 * "-"))
@@ -271,7 +275,7 @@ def _remStatErrReport(srvObj,
         status.setMessage(status.getMessage() +\
                           " Cannot remove item: %s/%s/%s" %
                           (str(diskId), str(fileId), str(fileVersion)))
-        warning(errMsg)
+        logger.warning(errMsg)
         return status
     #########################################################################
 
@@ -291,14 +295,13 @@ def _remStatErrReport(srvObj,
         else:
             statRep = tmpFilePat + "_NOTIF_EMAIL.txt"
             fo = open(statRep, "w")
-            timeStamp = PccUtTime.TimeStamp().getTimeStamp()
             tmpFormat = cmd + " STATUS REPORT - SPURIOUS FILES:\n\n" +\
                         "==Summary:\n\n" +\
                         "Date:                       %s\n" +\
                         "NGAS Host ID:               %s\n" +\
                         "Disk ID:                    %s\n" +\
                         "Spurious Files:             %d\n"
-            fo.write(tmpFormat % (timeStamp,hostId,diskId,spuriousFiles))
+            fo.write(tmpFormat % (toiso8601(),hostId,diskId,spuriousFiles))
             if (srvDataChecking):
                 fo.write("Note: NGAS Host is performing Data Consistency " +\
                          "Checking - consider to switch off!\n")
@@ -330,7 +333,7 @@ def _remStatErrReport(srvObj,
     # Generate error message if spurious files were found.
     if (spuriousFiles):
         errMsg = genLog("NGAMS_WA_FILE_NON_REM")
-        warning(errMsg)
+        logger.warning(errMsg)
         status = srvObj.genStatus(NGAMS_FAILURE, errMsg)
         msg = status.getMessage() + " Cannot delete specified files"
         if (srvDataChecking):
@@ -353,7 +356,6 @@ def _remStatErrReport(srvObj,
         else:
             statRep = tmpFilePat + "_NOTIF_EMAIL.txt"
             fo = open(statRep, "w")
-            timeStamp = PccUtTime.TimeStamp().getTimeStamp()
             tmpFormat = cmd + " STATUS REPORT - " +\
                         "NON-REGISTERED FILES:\n\n" +\
                         "==Summary:\n\n" +\
@@ -362,7 +364,7 @@ def _remStatErrReport(srvObj,
                         "Disk ID:                    %s\n" +\
                         "Non-Registered Files:       %d\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (timeStamp, hostId, diskId,
+            fo.write(tmpFormat % (toiso8601(), hostId, diskId,
                                   unRegFilesFound))
 
             # Loop over the files an generate the report.
@@ -382,7 +384,7 @@ def _remStatErrReport(srvObj,
     # Generate error message if non-registered files found.
     if (unRegFilesFound):
         errMsg = genLog("NGAMS_WA_FILES_NOT_REG")
-        warning(errMsg)
+        logger.warning(errMsg)
         status = srvObj.genStatus(NGAMS_FAILURE, errMsg)
         status.setMessage(status.getMessage() +\
                           " Cannot remove volume: %s/%s/%s" %
@@ -404,7 +406,6 @@ def _remStatErrReport(srvObj,
         else:
             statRep = tmpFilePat + "_NOTIF_EMAIL.txt"
             fo = open(statRep, "w")
-            timeStamp = PccUtTime.TimeStamp().getTimeStamp()
             tmpFormat = cmd + " STATUS REPORT - " +\
                         "NON-REMOVABLE FILES:\n\n" +\
                         "==Summary:\n\n" +\
@@ -413,7 +414,7 @@ def _remStatErrReport(srvObj,
                         "Disk ID:                    %s\n" +\
                         "Non-Removable Files:        %d\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (timeStamp, hostId, diskId, nonRemFiles))
+            fo.write(tmpFormat % (toiso8601(), hostId, diskId, nonRemFiles))
 
             tmpFormat = "%-32s %-12s %-32s\n"
             fo.write(tmpFormat % ("File ID", "File Version", "Filename"))
@@ -439,7 +440,7 @@ def _remStatErrReport(srvObj,
     # deleted.
     if (nonRemFiles):
         errMsg = genLog("NGAMS_WA_FILE_NON_REM")
-        warning(errMsg)
+        logger.warning(errMsg)
         status = srvObj.genStatus(NGAMS_FAILURE, errMsg)
         status.setMessage(status.getMessage() +\
                           " Cannot delete specified files")
@@ -509,7 +510,7 @@ def checkFileCopiesAndReg(srvObj,
     if ((not fileListDbmName) and (not diskId)):
         errMsg = "ngamsSrvUtils.checkFileCopiesAndReg(): Must specify " +\
                  "either a DBM with files to be checked or a Disk ID"
-        warning(errMsg)
+        logger.warning(errMsg)
         raise Exception, errMsg
 
     # Create DBMs:
@@ -554,7 +555,7 @@ def checkFileCopiesAndReg(srvObj,
     # A Disk ID but no file references are given. Retrieve information
     # about files concerned from the DB.
     if (diskId):
-        info(4,"Retrieving information about files on disk with ID: " + diskId)
+        logger.debug("Retrieving information about files on disk with ID: %s", diskId)
         tmpFileSumDbmName = os.path.normpath(dbFilePat + "_TMP_FILE_SUM")
         tmpFileSumDbmName = srvObj.getDb().\
                             dumpFileSummary1(tmpFileSumDbmName,
@@ -580,7 +581,7 @@ def checkFileCopiesAndReg(srvObj,
         # further down in this method.
         #
         # Key in this dictionary is the complete filename of the file.
-        info(4,"Get list of files stored on disk ...")
+        logger.debug("Get list of files stored on disk ...")
         tmpDiskInfo = srvObj.getDb().getDiskInfoFromDiskId(diskId)
         diskInfoObj = ngamsDiskInfo.ngamsDiskInfo().\
                       unpackSqlResult(tmpDiskInfo)
@@ -591,8 +592,7 @@ def checkFileCopiesAndReg(srvObj,
         if (not ignoreMounted):
             basePath = os.path.normpath(diskInfoObj.getMountPoint())
             pattern = "/*"
-            info(4,"Generating list with files on disk with base path: " +\
-                 basePath)
+            logger.debug("Generating list with files on disk with base path: %s", basePath)
             while (1):
                 tmpFileList = glob.glob(basePath + pattern)
                 if (len(tmpFileList) == 0):
@@ -610,7 +610,7 @@ def checkFileCopiesAndReg(srvObj,
 
     # Generate File ID DBM in case a file list DBM is given.
     if (fileListDbmName):
-        info(4,"Handling file list DBM given in the function call ...")
+        logger.debug("Handling file list DBM given in the function call ...")
         fileListDbm.initKeyPtr()
         while (1):
             key, tmpFileInfo = fileListDbm.getNext()
@@ -629,7 +629,7 @@ def checkFileCopiesAndReg(srvObj,
 
     # We need to generate a list with all files available in the system
     # with the given File ID/File Version.
-    info(4,"Retrieving information about all files available with the " +\
+    logger.debug("Retrieving information about all files available with the " +\
          "File ID/File Version as defined by the query")
 
     # Due to the limitation of the size of SQL queries, we have to split up
@@ -681,7 +681,7 @@ def checkFileCopiesAndReg(srvObj,
     # It is the intention to figure out how many copies we have of each file
     # identified by File ID + File Version stored ON DIFFERENT STORAGE MEDIAS
     # + on different hosts.
-    info(4,"Generate DBM DB with info about independent file copies ...")
+    logger.debug("Generate DBM DB with info about independent file copies ...")
     complFileListDbm.initKeyPtr()
     while (1):
         fileKey, fileInfo = complFileListDbm.getNext()
@@ -695,7 +695,7 @@ def checkFileCopiesAndReg(srvObj,
 
     # Check if there are at least minReqCopies occurrences of the files +
     # check that all files are registered (if a Disk ID is specified).
-    info(4,"Check for files with less copies than: " + str(minReqCopies))
+    logger.debug("Check for files with less copies than: %s", str(minReqCopies))
     checkDicDbm.initKeyPtr()
     while (1):
         checkDicKey, tmpDic = checkDicDbm.getNext()

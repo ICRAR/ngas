@@ -32,9 +32,12 @@ Test WakeUp Plug-In to simulate the NGAS host suspension.
 """
 
 import commands
+import logging
 
 from ngamsLib import ngamsHighLevelLib
-from ngamsLib.ngamsCore import TRACE, info
+from ngamsLib.ngamsCore import TRACE
+
+logger = logging.getLogger(__name__)
 
 def ngamsWakeUpPlugIn(srvObj,
                       hostId):
@@ -59,10 +62,10 @@ def ngamsWakeUpPlugIn(srvObj,
     networkDevs = srvObj.getCfg().getWakeUpPlugInPars()
     cmdFormat = "sudo /sbin/ether-wake -i %s -b " +\
                 hostDic[hostId].getMacAddress()
-    info(3,"Waking up suspended host: %s" % hostId)
+    logger.debug("Waking up suspended host: %s", hostId)
     for dev in networkDevs.split(","):
         cmd = cmdFormat % dev
-        info(3,"Broadcasting wake-up package - command: %s" % cmd)
+        logger.debug("Broadcasting wake-up package - command: %s", cmd)
         stat, out = commands.getstatusoutput(cmd)
         if (stat != 0):
             format = "ngamsWakeUpPlugIn: Problem waking up host: %s " +\

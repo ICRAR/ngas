@@ -8,9 +8,13 @@
 #
 """ Contains a DDPI which stage the file from Tape to the disk (only if the file is offline). """
 
-from ngamsLib import ngamsPlugInApi, ngamsDppiStatus
-from ngamsLib.ngamsCore import NGAMS_PROC_FILE, alert, info
+import logging
 
+from ngamsLib import ngamsPlugInApi, ngamsDppiStatus
+from ngamsLib.ngamsCore import NGAMS_PROC_FILE
+
+
+logger = logging.getLogger(__name__)
 
 def ngamsMWACortexStageDppi(srvObj,
                            reqPropsObj,
@@ -38,16 +42,15 @@ def ngamsMWACortexStageDppi(srvObj,
     t = ngamsPlugInApi.execCmd(cmd, -1)
     exitCode = t[0]
     if (exitCode != 0 or len(t) != 2):
-        errMsg = "Fail to query the online/offline status for file " + filename
-        alert(errMsg)
+        logger.error("Fail to query the online/offline status for file %s", filename)
         return statusObj #the sls -D command failed to execute, but retrieval might still go on, so just simply return empty result
 
     offline = t[1].find('offline;')
 
     if (offline != -1): # the file is offline, i.e. it is on tape
-        info(3, "File " + filename + " is currently on tapes, staging it for retrieval...")
+        logger.debug("File %s is currently on tapes, staging it for retrieval...", filename)
         cmd = "stage -w " + filename
         t = ngamsPlugInApi.execCmd(cmd, -1) #stage it back to disk cache
-        info(3, "File " + filename + " staging completed.")
+        logger.debug("File %s staging completed.", filename)
 
     return statusObj

@@ -33,15 +33,19 @@ by the SubscriptionThread._deliveryThread
 """
 # used to connect to MWA M&C database
 
-import commands, os
+import commands
 import datetime
+import logging
+import os
 
 import ephem_utils
-from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import error, info
-import pccFits.PccSimpleFitsReader as fitsapi
 from psycopg2.pool import ThreadedConnectionPool
+import pyfits
 
+from ngamsLib import ngamsPlugInApi
+
+
+logger = logging.getLogger(__name__)
 
 mime = "images/fits"
 myhost = commands.getstatusoutput('hostname')[1]
@@ -153,14 +157,12 @@ def putVODBConn(conn):
     if (g_db_pool):
         g_db_pool.putconn(conn)
     else:
-        error("Fail to get VO DB connection pool")
         raise Exception('VO connection pool is None when put conn')
 
 def putMCDBConn(conn):
     if (mc_db_pool):
         mc_db_pool.putconn(conn)
     else:
-        error("Fail to get MC DB connection pool")
         raise Exception('MC connection pool is None when put conn')
 
 def executeQuery(conn, sqlQuery):
@@ -174,7 +176,7 @@ def executeQuery(conn, sqlQuery):
         putVODBConn(conn)
 
 def execCmd(cmd, timeout):
-    info(3, 'Executing command: %s' % cmd)
+    logger.debug('Executing command: %s', cmd)
     try:
         ret = ngamsPlugInApi.execCmd(cmd, timeout)
     except Exception, ex:
@@ -208,13 +210,13 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
     Returns:       the return code of the compression plugin (integer).
     """
 
-    hdrs = fitsapi.getFitsHdrs(filename)
-    ra = float(hdrs[0]['CRVAL1'][0][1])
-    dec = float(hdrs[0]['CRVAL2'][0][1])
-    date_obs = hdrs[0]['DATE-OBS'][0][1].replace("'", "").split('T')[0]
-    center_freq = int(float(hdrs[0]['CRVAL3'][0][1])) / 1000000
-    band_width = round(float(hdrs[0]['CDELT3'][0][1]) / 1000000, 2)
-    stokes = int(float(hdrs[0]['CRVAL4'][0][1]))
+    hdrs = pyfits.getheader(filename)
+    ra = float(hdrs['CRVAL1'])
+    dec = float(hdrs['CRVAL2'])
+    date_obs = hdrs['DATE-OBS'].split('T')[0]
+    center_freq = int(float(hdrs['CRVAL3'])) / 1000000
+    band_width = round(float(hdrs['CDELT3']) / 1000000, 2)
+    stokes = int(float(hdrs['CRVAL4']))
     accsize = os.path.getsize(filename)
     embargo = datetime.date.today() - datetime.timedelta(days = 1)
     owner="MRO"
@@ -223,8 +225,8 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
 
     gleam_phase = 1
     getf_frmfn = 0
-    if (hdrs[0].has_key('ORIGIN')):
-        fits_origin = hdrs[0]['ORIGIN'][0][1]
+    if 'ORIGIN' in hdrs:
+        fits_origin = hdrs['ORIGIN']
         if (fits_origin.find('WSClean') > -1):
             gleam_phase = 2
     else:
@@ -246,14 +248,16 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
     robustness = 0
     getr_frmfn = 0
     if (gleam_phase == 1):
-        if (hdrs[0].has_key('ROBUST')):
-            robustness = int(float(hdrs[0]['ROBUST'][0][1]))
+        if 'ROBUST' in hdrs:
+            robustness = int(float(hdrs['ROBUST']))
         else:
             getr_frmfn = 1
     elif (gleam_phase == 2):
-        if (hdrs[0].has_key('WSCWEIGH')):
-            if (hdrs[0]['WSCWEIGH'][0][1] == "'Briggs'"):
-                robustness = int(float(hdrs[0]['WSCWEIGH'][0][2].replace("'(", "").replace(")'","")))
+        if 'WSCWEIGH' in hdrs:
+            wscweigh = hdrs['WSCWEIGH']
+            if wscweigh.startswith("Briggs"):
+                # value is, for example, "Briggs'(0.5)"
+                robustness = int(float(wscweigh[8:-1]))
             else:
                 getr_frmfn = 1
         else:
@@ -263,8 +267,8 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
 
     # get the correct DEC for phase 2
     if (2 == gleam_phase):
-        if (hdrs[0].has_key('DEC_PNT')):
-            dec = float(hdrs[0]['DEC_PNT'][0][1])
+        if 'DEC_PNT' in hdrs:
+            dec = float(hdrs['DEC_PNT'])
         elif (dict_dec.has_key(date_obs)): # see if we have cached
             dec = dict_dec[date_obs]
         else: # have to query MC database
@@ -275,16 +279,15 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
             try:
                 cur_mc.execute("SELECT azimuth, elevation FROM rf_stream WHERE starttime = %s" % obsId)
                 res_mc = cur_mc.fetchall()
-            except Exception, dbdex:
-                error("Fail to query DEC from DB: %s" % str(dbdex))
+            except Exception:
+                logger.exception("Fail to query DEC from DB")
             finally:
                 if (cur_mc != None):
                     del cur_mc
                 putMCDBConn(conn_mc)
 
             if (not res_mc or len(res_mc) == 0):
-                errMsg = "fail to obtain DEC from MC db"
-                error(errMsg)
+                logger.error("fail to obtain DEC from MC db")
                 #raise Exception(errMsg)
             else:
                 az = res_mc[0][0]
@@ -301,7 +304,6 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
         res = cur.fetchall()
         if (not res or len(res) == 0):
             errMsg = "fail to calculate scircle"
-            error(errMsg)
             raise Exception(errMsg)
         coverage = res[0][0]
 
@@ -313,9 +315,9 @@ def ngamsGLEAM_VO_JobPlugin(srvObj,
         #info(3, sqlStr)
         cur.execute(sqlStr)
         conn.commit()
-        info(3, 'File %s added to VO database.' % fileId)
+        logger.debug('File %s added to VO database.', fileId)
     except Exception, exp:
-        error("Unable to execute %s: %s" % (sqlStr, str(exp)))
+        logger.exception("Unable to execute %s", sqlStr)
         return (1, str(exp))
     finally:
         if (cur):

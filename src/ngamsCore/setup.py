@@ -28,7 +28,6 @@ with open('../../VERSION') as vfile:
             break
 
 install_requires = [
-    'pcc',
     'DBUtils'
 ]
 try:

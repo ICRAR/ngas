@@ -52,14 +52,17 @@ Contains a Filter Plug-In used to filter out those files that
 """
 # maximum connection = 5
 
+import logging
 import os
 
-from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import alert, info, genLog, loadPlugInEntryPoint
-import pccFits.PccSimpleFitsReader as fitsapi
-import psycopg2  # used to connect to MWA M&C database
 from psycopg2.pool import ThreadedConnectionPool
+import pyfits
 
+from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import genLog, loadPlugInEntryPoint
+
+
+logger = logging.getLogger(__name__)
 
 g_db_pool = ThreadedConnectionPool(1, 5, database = 'mwa', user = 'mwa',
                             password = 'Qm93VGll\n'.decode('base64'),
@@ -169,7 +172,7 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
         not parDic.has_key("project_id")):
         errMsg = "ngamsMWACheckRemoteFilterPlugin: Missing Plug-In Parameter: " +\
                  "remote_host / remote_port / project_id"
-        alert(errMsg)
+        logger.error(errMsg)
         return 0
 
     proj_ids = parDic["project_id"]
@@ -184,22 +187,21 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
     if (not fspi):
         offline = -1
     else:
-        info(2,"Invoking FSPI.isFileOffline: " + fspi + " to check file: " + filename)
+        logger.info("Invoking FSPI.isFileOffline: %s to check file: %s", fspi, filename)
         isFileOffline = loadPlugInEntryPoint(fspi, 'isFileOffline')
         offline = isFileOffline(filename)
 
     try:
         if (offline == 1 or offline == -1):
             # if the file is on Tape or query error, query db instead, otherwise implicit tape staging will block all other threads!!
-            info(3, 'File %s appears on Tape, connect to MWA DB to check' % filename)
+            logger.debug('File %s appears on Tape, connect to MWA DB to check', filename)
             projId = getProjectIdFromMWADB(fileId)
             if (not projId or projId == ''):
-                alert('Cannot get project id from MWA DB for file %s' % fileId)
+                logger.error('Cannot get project id from MWA DB for file %s', fileId)
                 return 0
             projectId = "'%s'" % projId # add single quote to be consistent with FITS header keywords
         else:
-            fh = fitsapi.getFitsHdrs(filename)
-            projectId = fh[0]['PROJID'][0][1]
+            projectId = pyfits.getval(filename, 'PROJID')
     except:
         err = "Did not find keyword PROJID in FITS file or PROJID illegal"
         errMsg = genLog("NGAMS_ER_DAPI_BAD_FILE", [os.path.basename(filename),
@@ -207,7 +209,7 @@ def ngamsMWA_MIT_FilterPlugin(srvObj,
         return 0
 
     if (projectId in eor_list):
-        info(3, 'File %s added' % fileId)
+        logger.debug('File %s added', fileId)
         return 1
     else:
         return 0

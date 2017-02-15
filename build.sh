@@ -54,7 +54,7 @@ do
 	esac
 done
 
-fail() {
+function fail {
 	echo "$1" > /dev/stderr
 	exit 1
 }
@@ -92,8 +92,8 @@ fi
 # Build python setup.py-based modules
 # The ngamsPlugIns module eventually requires numpy which we need to install
 # manually outside the setuptools world
-pip install numpy
-for pyModule in pcc crc32c ngamsCore ngamsPClient ngamsServer ngamsPlugIns
+pip --no-cache-dir install numpy
+for pyModule in crc32c ngamsCore ngamsPClient ngamsServer ngamsPlugIns
 do
 	prevDir=$(pwd -P)
 	cd "$pyModule"

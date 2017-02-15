@@ -20,9 +20,14 @@
 #    MA 02111-1307  USA
 #
 
-from ngamsLib.ngamsCore import error, info, genLog
-import ngamsServer
+import logging
 
+from ngamsLib.ngamsCore import genLog
+from ngamsServer import ngamsArchiveUtils
+from ngamsServer.ngamsJanitorThread import StopJanitorThreadException
+
+
+logger = logging.getLogger(__name__)
 
 def ngamsJanitorHandleTempDBSnapshotFiles(srvObj, stopEvt, updateDbSnapShots):
     """
@@ -32,18 +37,19 @@ def ngamsJanitorHandleTempDBSnapshotFiles(srvObj, stopEvt, updateDbSnapShots):
 
     Returns:           Void.
     """
-
     try:
         updateDbSnapShots(srvObj, stopEvt)
-    except Exception, e:
-        error("Error encountered updating DB Snapshots: " + str(e))
+    except StopJanitorThreadException:
+        raise
+    except Exception:
+        logger.exception("Error encountered updating DB Snapshots")
 
     # => Check Back-Log Buffer (if appropriate).
     if (srvObj.getCfg().getAllowArchiveReq() and \
-                srvObj.getCfg().getBackLogBuffering()):
-        info(4, "Checking Back-Log Buffer ...")
+        srvObj.getCfg().getBackLogBuffering()):
+        logger.debug("Checking Back-Log Buffer ...")
         try:
-            ngamsServer.ngamsArchiveUtils.checkBackLogBuffer(srvObj)
+            ngamsArchiveUtils.checkBackLogBuffer(srvObj)
         except Exception, e:
             errMsg = genLog("NGAMS_ER_ARCH_BACK_LOG_BUF", [str(e)])
-            error(errMsg)
+            logger.error(errMsg)

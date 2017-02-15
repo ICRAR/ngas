@@ -33,11 +33,16 @@ nohup /home/ngas/ngas_rt/bin/python /home/ngas/ngas_rt/src/ngamsServer/ngamsData
 
 """
 
-import commands, os, binascii, urllib2
+import binascii
+import commands
+import logging
+import os
+import urllib2
 
 from ngamsLib import ngamsPlugInApi
-from ngamsLib.ngamsCore import error, info, warning
 
+
+logger = logging.getLogger(__name__)
 
 uvcompress = '/home/ngas/ngas_rt/bin/uvcompress'
 
@@ -159,7 +164,7 @@ def ngamsJob_MITDeliveryPlugin(srvObj,
                     crc32 = getFileCRC(newfn)
                     bbcpurl += "&bchecksum=%s" % str(crc32)
                 except Exception, crcexp:
-                    error('Fail to calculate the file CRC %s: %s' % (newfn, str(crcexp)))
+                    logger.exception('Fail to calculate the file CRC %s', newfn)
                     return (500, str(crcexp).replace("'",""))
 
             # send it thru bbcp
@@ -167,9 +172,9 @@ def ngamsJob_MITDeliveryPlugin(srvObj,
                 resp = urllib2.urlopen(bbcpurl, timeout = 7200)
                 retstr = resp.read()
                 if (retstr.find("Successfully handled Archive") > -1):
-                    info(3, 'Successfully compressed and sent the file %s' % newfn)
+                    logger.debug('Successfully compressed and sent the file %s', newfn)
                 else:
-                    error('Fail to sent the file %s: %s' % (newfn, retstr))
+                    logger.error('Fail to sent the file %s: %s', newfn, retstr)
                     return (500, retstr.replace("'",""))
             except Exception, exp:
                 warn_msg = ''
@@ -183,20 +188,20 @@ def ngamsJob_MITDeliveryPlugin(srvObj,
                 else:
                     warn_msg = 'Unexpected error: %s' % (str(exp))
 
-                warning('Fail to sent the file %s: %s' % (newfn, warn_msg))
+                logger.warning('Fail to sent the file %s: %s', newfn, warn_msg)
                 return (500, warn_msg.replace("'",""))
             finally:
                 # remove the temp file THIS IS DANGEROUS!!
                 re = execCmd(cmd3) #be cautious when copying this line!!
                 if (0 != re[0]):
-                    warning('Fail to remove the temp compressed file %s' % newfn)
+                    logger.warning('Fail to remove the temp compressed file %s', newfn)
 
             return (0, retstr.replace("'",""))
         else:
-            error('Fail to compress file %s: %s' % (filename, re[1]))
+            logger.error('Fail to compress file %s: %s', filename, re[1])
             re = execCmd(cmd3)
             if (0 != re[0]):
-                warning('Fail to remove the temp compressed file %s' % newfn)
+                logger.warning('Fail to remove the temp compressed file %s', newfn)
             sendRawFile = True
 
     if ((not mwaFits) or sendRawFile):
@@ -208,7 +213,7 @@ def ngamsJob_MITDeliveryPlugin(srvObj,
                 crc32 = getFileCRC(filename)
                 bbcpurl += "&bchecksum=%s" % str(crc32)
             except Exception, crcexp:
-                error('Fail to calculate the file CRC %s: %s' % (filename, str(crcexp)))
+                logger.exception('Fail to calculate the file CRC %s', filename)
                 return (500, str(crcexp).replace("'",""))
 
         # send it thru bbcp
@@ -216,10 +221,10 @@ def ngamsJob_MITDeliveryPlugin(srvObj,
             resp = urllib2.urlopen(bbcpurl, timeout = 7200)
             retstr = resp.read()
             if (retstr.find("Successfully handled Archive") > -1):
-                info(3, 'Successfully sent the uncompressed file %s' % filename)
+                logger.debug('Successfully sent the uncompressed file %s', filename)
                 return (0, retstr.replace("'",""))
             else:
-                error('Fail to sent the file %s: %s' % (filename, retstr))
+                logger.error('Fail to sent the file %s: %s', filename, retstr)
                 return (500, retstr.replace("'",""))
         except Exception, exp:
             warn_msg = ''
@@ -233,5 +238,5 @@ def ngamsJob_MITDeliveryPlugin(srvObj,
             else:
                 warn_msg = 'Unexpected error: %s' % (str(exp))
 
-            warning('Fail to sent the file %s: %s' % (filename, warn_msg))
+            logger.warning('Fail to sent the file %s: %s', filename, warn_msg)
             return (500, warn_msg.replace("'",""))
