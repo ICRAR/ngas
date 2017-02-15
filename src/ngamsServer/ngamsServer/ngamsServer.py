@@ -832,8 +832,8 @@ class ngamsServer:
         logger.debug("Starting Janitor Thread ...")
 
         # Create the child process and kick it off
-        self._serv_to_jan_queue = Queue()
-        self._jan_to_serv_queue = Queue()
+        self._serv_to_jan_queue = multiprocessing.Queue()
+        self._jan_to_serv_queue = multiprocessing.Queue()
         self._janitorThread = multiprocessing.Process(
                                 target=ngamsJanitorThread.janitorThread,
                                 args=(self, self._janitorProcStopEvt, self._serv_to_jan_queue, self._jan_to_serv_queue))
