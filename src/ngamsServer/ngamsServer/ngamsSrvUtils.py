@@ -392,8 +392,7 @@ def handleOnline(srvObj,
 
 
 def handleOffline(srvObj,
-                  reqPropsObj = None,
-                  stopJanitorThr = 1):
+                  reqPropsObj = None):
     """
     Carry out the actions to put the system in Offline state (Standby).
 
@@ -410,8 +409,7 @@ def handleOffline(srvObj,
     """
     # Stop/delete Janitor Thread + Data Check Thread + inform other
     # possible threads to stop execution (if running).
-    if (stopJanitorThr):
-        srvObj.stopJanitorThread()
+    srvObj.stopJanitorThread()
     srvObj.stopDataCheckThread()
     ngamsSubscriptionThread.stopSubscriptionThread(srvObj)
     srvObj.stopUserServiceThread()
