@@ -32,12 +32,20 @@ This module contains the class ngamsServer that provides the
 services for the NG/AMS Server.
 """
 
-import os, sys, re, threading, time, pkg_resources
+import BaseHTTPServer
+import SocketServer
 import logging
-import math
+import os
+import re
 import shutil
+import signal
+import socket
+import sys
+import threading
+import time
 import traceback
-import SocketServer, BaseHTTPServer, socket, signal
+
+import pkg_resources
 
 from ngamsLib.ngamsCore import \
     genLog, TRACE,\
@@ -62,38 +70,6 @@ import ngamsCacheControlThread
 
 
 logger = logging.getLogger(__name__)
-
-class ngamsSimpleRequest:
-    """
-    Small class to provide minimal HTTP Request Handler functionality.
-    """
-
-    def __init__(self,
-                 request,
-                 clientAddress):
-        """
-        Constructor method.
-        """
-        self.rbufsize = -1
-        self.wbufsize = 0
-        self.connection = request
-        self.client_address = clientAddress
-        self.rfile = self.connection.makefile('rb', self.rbufsize)
-        self.wfile = self.wfile = self.connection.makefile('wb', self.wbufsize)
-
-
-    def send_header(self,
-                    keyword,
-                    value):
-        """
-        Send an HTTP header.
-
-        keyword:    HTTP header keyword (string).
-
-        value:      Value for the HTTP header keyword (string).
-        """
-        self.wfile.write("%s: %s\r\n" % (keyword, value))
-
 
 class ngamsHttpServer(SocketServer.ThreadingMixIn,
                       BaseHTTPServer.HTTPServer):
@@ -216,7 +192,6 @@ class logging_config(object):
 
 
 from logging.handlers import BaseRotatingHandler
-
 class NgasRotatingFileHandler(BaseRotatingHandler):
     """
     Logging handler that rotates periodically the NGAS logfile into
@@ -246,14 +221,9 @@ class NgasRotatingFileHandler(BaseRotatingHandler):
         if self.stream:
             self.stream.close()
 
-        # Put up to the millisecons here
-        now = time.time()
-        ts = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(now))
-        ts += ".%03d" % ((now - math.floor(now)) * 1000.)
-
         # It's time to rotate the current Local Log File.
         dirname = os.path.dirname(self.baseFilename)
-        rotated_name = "LOG-ROTATE-%s.nglog.unsaved" % (ts,)
+        rotated_name = "LOG-ROTATE-%s.nglog.unsaved" % (toiso8601(),)
         rotated_name = os.path.normpath(os.path.join(dirname, rotated_name))
         shutil.move(self.baseFilename, rotated_name)
 
