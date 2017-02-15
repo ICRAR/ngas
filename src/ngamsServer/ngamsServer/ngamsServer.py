@@ -860,19 +860,18 @@ class ngamsServer:
         Starts the Janitor Thread.
         """
         logger.debug("Starting Janitor Thread ...")
+
+        # Create the child process and kick it off
         self._JanQue = Queue()
         self._janitorThread = Process(target=ngamsJanitorThread.janitorThread,
                                         args=(self, self._janitorProcStopEvt, self._JanQue))
         self._janitorThread.start()
 
+        # Subscribe to db-change events (which we pass down to the janitor proc)
         self.getDb().addDbChangeEvt(self._janitordbChangeSync)
-        #self._janitorThread = threading.Thread(target=ngamsJanitorThread.janitorThread,
-        #                                      name=ngamsJanitorThread.NGAMS_JANITOR_THR,
-        #                                      args=(self,self._janitorThreadStopEvt))
-        #self._janitorThread.start()
         logger.info("Janitor Thread started")
 
-        logger.debug("Starting Janitor Queue Reader Thread ...")
+        # Kick off the thread that takes care of communicating back and forth
         self._janitorQueThread = threading.Thread(target=self.janitorQueThread,
                                               name="JanitorQueReaderThread")
         self._janitorQueThread.start()
@@ -2585,7 +2584,7 @@ class ngamsServer:
 
         Returns:     Void.
         """
-        t = threading.Thread(target=self._terminate)
+        t = threading.Thread(target=self._terminate, name="Shutdown")
         t.start()
 
     def _terminate(self):
@@ -2613,12 +2612,13 @@ class ngamsServer:
         """
         logger.warning("About to commit suicide... good-by cruel world")
 
-        #First kill the janitor // process created by this ngamsServer
+        #First kill the janitor process created by this ngamsServer
         if self._janitorThread is not None:
-         try:
-          os.kill(self._janitorThread.pid, signal.SIGKILL)
-         except Exception:
-            logger.warning("No Janitor // process was found: %s. ")
+            try:
+                os.kill(self._janitorThread.pid, signal.SIGKILL)
+            except:
+                logger.warning("No Janitor process was found: %s. ")
+
         #Now kill the server itself
         pid = os.getpid()
         os.kill(pid, signal.SIGKILL)
