@@ -32,9 +32,11 @@ This module contains the class ngamsServer that provides the
 services for the NG/AMS Server.
 """
 
+import Queue
 import os, sys, re, threading, time, pkg_resources
 import logging
 import math
+import multiprocessing
 import shutil
 import traceback
 import SocketServer, BaseHTTPServer, socket, signal
@@ -50,7 +52,7 @@ from ngamsLib.ngamsCore import \
     NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_XML_STATUS_ROOT_EL,\
     NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs,\
     toiso8601
-from ngamsLib import ngamsHighLevelLib, ngamsLib
+from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent
 from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
 import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
@@ -315,7 +317,6 @@ class ngamsServer:
         self._threadRunPermission     = 0
 
         # Handling of the Janitor Thread.
-        from ngamsLib import ngamsEvent
         self._janitorThread         = None
         self._janitorThreadStopEvt  = threading.Event()
         self._janitorThreadRunCount = 0
@@ -323,11 +324,8 @@ class ngamsServer:
 
         # Handling of the Janitor Queue reader Thread.
         self._janitorQueThread         = None
-        self._janitorQueThreadStopEvt  = threading.Event()
-        #self._janitorQueThreadRunCount = 0
 
         # Handling of the Janitor // Processs
-        import multiprocessing
         self._janitorProcStopEvt     = multiprocessing.Event()
 
         # Handling of the Data Check Thread.
@@ -861,7 +859,6 @@ class ngamsServer:
         """
         Starts the Janitor Thread.
         """
-        from multiprocessing import Process, Queue
         logger.debug("Starting Janitor Thread ...")
         self._JanQue = Queue()
         self._janitorThread = Process(target=ngamsJanitorThread.janitorThread,
