@@ -72,7 +72,7 @@ def checkStopJanitorThread(stopEvt):
     """
     Checks if the Janitor Thread should be stopped, raising an exception if needed
     """
-    if stopEvt.isSet():
+    if stopEvt.is_set():
         info(2,"Exiting Janitor Thread")
         raise StopJanitorThreadException()
 
@@ -976,8 +976,194 @@ def updateDbSnapShots(srvObj,
                 error(msg)
                 raise Exception, msg
 
+def JanitorCycle(srvObj, stopEvt, suspendTime, JanQue):
+    """
 
-def janitorThread(srvObj, stopEvt):
+
+    srvObj:      Reference to server object (ngamsServer).
+
+    dummy:       Needed by the thread handling ...
+
+    Returns:     Void.
+    """
+    #import multiprocessing
+
+
+    #pool=multiprocessing.Pool(processes=2,maxtasksperchild=1)
+
+
+    try:
+        checkStopJanitorThread(stopEvt)
+        info(4, "Janitor Thread running-Janitor Cycle.. ")
+        print('Inside Janitor cycle proc id is ', os.getpid())
+
+        # jobs=[] #a list we may use to keep track of jobs forked from main process
+        #
+        # ##################################################################
+        # # => Check if there are any Temporary DB Snapshot Files to handle.
+        # ##################################################################
+        from ngamsPlugIns import ngamsJanitorHandleTempDBSnapshotFiles
+        ngamsJanitorHandleTempDBSnapshotFiles.Handle_TempDB_SnapShot_Files(srvObj, stopEvt, updateDbSnapShots)
+        # from ngamsPlugIns import ngamsJanitorHandleTempDBSnapshotFiles
+        #
+        # pool.proc1 = multiprocessing.Process(target=ngamsJanitorHandleTempDBSnapshotFiles.Handle_TempDB_SnapShot_Files, args=(srvObj, stopEvt, updateDbSnapShots))
+        # jobs.append(pool.proc1)
+        # pool.proc1.start()
+        # ##################################################################
+        # # => Check if we need to clean up Processing Directory (if
+        # #    appropriate). If a Processing Directory is more than
+        # #    30 minutes old, it is deleted.
+        # ##################################################################
+        from ngamsPlugIns import ngamsJanitorCheckProcessingDirectory
+        ngamsJanitorCheckProcessingDirectory.Check_Processing_Directory(srvObj, stopEvt, checkCleanDirs)
+        # from ngamsPlugIns import ngamsJanitorCheckProcessingDirectory
+        #
+        # pool.proc2 = multiprocessing.Process(target=ngamsJanitorCheckProcessingDirectory.Check_Processing_Directory, args=(srvObj, stopEvt, checkCleanDirs))
+        # jobs.append(pool.proc2)
+        # pool.proc2.start()
+        #
+        # ##################################################################
+        # # => Check if there are old Requests in the Request DBM, which
+        # #    should be removed.
+        # ##################################################################
+        from ngamsPlugIns import ngamsJanitorCheckOldRequestsinDBM
+        ngamsJanitorCheckOldRequestsinDBM.Check_Old_RequestsinDBM(srvObj, stopEvt, checkStopJanitorThread)
+        # from ngamsPlugIns import ngamsJanitorCheckOldRequestsinDBM
+        #
+        # pool.proc3 = multiprocessing.Process(target=ngamsJanitorCheckOldRequestsinDBM.Check_Old_RequestsinDBM, args=(srvObj, stopEvt, checkStopJanitorThread))
+        # jobs.append(pool.proc3)
+        # pool.proc3.start()
+        #
+        # ##################################################################
+        # # => Check if we need to clean up Subscription Back-Log Buffer.
+        # #     and check if there are left-over files in the NG/AMS Temp. Dir.
+        # ##################################################################
+        from ngamsPlugIns import ngamsJanitorCheckSubscrBacklognTempDir
+        ngamsJanitorCheckSubscrBacklognTempDir.Check_Subscr_Backlog_n_Temp_Dir(srvObj, stopEvt, checkCleanDirs)
+        # from ngamsPlugIns import ngamsJanitorCheckSubscrBacklognTempDir
+        #
+        # pool.proc4 = multiprocessing.Process(target=ngamsJanitorCheckSubscrBacklognTempDir.Check_Subscr_Backlog_n_Temp_Dir, args=(srvObj, stopEvt, checkCleanDirs))
+        # jobs.append(pool.proc4)
+        # pool.proc4.start()
+        #
+        # => Check for retained Email Notification Messages to send out.
+        ngamsNotification.checkNotifRetBuf(srvObj.getHostId(), srvObj.getCfg())
+        #
+        # ##################################################################
+        # # => Check LOG-file rotation and clean-up.
+        # ##################################################################
+        #
+        # => Check there are any unsaved log files from a shutdown and archive them.
+        from ngamsPlugIns import ngamsJanitorCheckUnsavedLogFile
+        ngamsJanitorCheckUnsavedLogFile.CheckUnsavedLogFile(srvObj, stopEvt)
+        # from ngamsPlugIns import ngamsJanitorCheckUnsavedLogFile
+        #
+        # pool.proc5 = multiprocessing.Process(target=ngamsJanitorCheckUnsavedLogFile.CheckUnsavedLogFile, args=(srvObj, stopEvt))
+        # jobs.append(pool.proc5)
+        # pool.proc5.start()
+        # => Check if its time to carry out a rotation of the log file.
+        from ngamsPlugIns import ngamsJanitorLogRotChk
+        ngamsJanitorLogRotChk.Log_Rot_Chk(srvObj, stopEvt)
+        # from ngamsPlugIns import ngamsJanitorLogRotChk
+        #
+        # pool.proc6 = multiprocessing.Process(target=ngamsJanitorLogRotChk.Log_Rot_Chk, args=(srvObj, stopEvt))
+        # jobs.append(pool.proc6)
+        # pool.proc6.start()
+        #
+        # ##################################################################
+        # # => Check if there are rotated Local Log Files to remove.
+        # ##################################################################
+        from ngamsPlugIns import ngamsJanitorRotatedLogFilestoRemove
+        ngamsJanitorRotatedLogFilestoRemove.Rotated_Log_FilestoRemove(srvObj, stopEvt)
+        # from ngamsPlugIns import ngamsJanitorRotatedLogFilestoRemove
+        #
+        # pool.proc7 = multiprocessing.Process(target=ngamsJanitorRotatedLogFilestoRemove.Rotated_Log_FilestoRemove, args=(srvObj, stopEvt))
+        # jobs.append(pool.proc7)
+        # pool.proc7.start()
+        #
+        # ##################################################################
+        # # => Check if there is enough disk space for the various
+        # #    directories defined.
+        # ##################################################################
+        from ngamsPlugIns import ngamsJanitorCheckDiskSpace
+        ngamsJanitorCheckDiskSpace.Check_Disk_Space(srvObj, stopEvt)
+        # from ngamsPlugIns import ngamsJanitorCheckDiskSpace
+        #
+        # pool.proc8 = multiprocessing.Process(target=ngamsJanitorCheckDiskSpace.Check_Disk_Space, args=(srvObj, stopEvt))
+        # jobs.append(pool.proc8)
+        # pool.proc8.start()
+        #
+        # ##################################################################
+        # # => Check if this NG/AMS Server is requested to wake up
+        # #    another/other NGAS Host(s).
+        # ##################################################################
+        from ngamsPlugIns import ngamsJanitorChecktoWakeupOtherNGASHost
+        ngamsJanitorChecktoWakeupOtherNGASHost.Check_to_Wakeup_OtherNGAS_Host(srvObj, stopEvt)
+        # from ngamsPlugIns import ngamsJanitorChecktoWakeupOtherNGASHost
+        #
+        # pool.proc9 = multiprocessing.Process(target=ngamsJanitorChecktoWakeupOtherNGASHost.Check_to_Wakeup_OtherNGAS_Host, args=(srvObj, stopEvt))
+        # jobs.append(pool.proc9)
+        # pool.proc9.start()
+        #
+        # ##################################################################
+        # # => Check if the conditions for suspending this NGAS Host are met.
+        # ##################################################################
+        from ngamsPlugIns import ngamsJanitorChecktoSuspendNGASHost
+        ngamsJanitorChecktoSuspendNGASHost.Check_to_Suspend_NGAS_Host(srvObj, stopEvt)
+        # from ngamsPlugIns import ngamsJanitorChecktoSuspendNGASHost
+        #
+        # pool.proc10 = multiprocessing.Process(target=ngamsJanitorChecktoSuspendNGASHost.Check_to_Suspend_NGAS_Host, args=(srvObj, stopEvt))
+        # jobs.append(pool.proc10)
+        # pool.proc10.start()
+        #
+
+        #
+        # pool.close()
+        # pool.join()
+
+        # Suspend the thread for the time indicated.
+        # Update the Janitor Thread run count.
+        srvObj.incJanitorThreadRunCount()
+        JanQue.put(srvObj.getJanitorThreadRunCount())
+        print("==============================Thread count in Jan is ", srvObj.getJanitorThreadRunCount())
+
+        # Suspend the thread for the time indicated.
+        info(4, "Janitor Thread executed - suspending for %d [s] ..." % (suspendTime,))
+        startTime = time.time()
+        event_info_list = JanQue.get()  #==================================================
+        while ((time.time() - startTime) < suspendTime):
+            # Check if we should update the DB Snapshot.
+            if (event_info_list):
+                time.sleep(0.5)
+                try:
+                    diskInfo = None
+                    if (event_info_list):
+                        for diskInfo in event_info_list:
+                            updateDbSnapShots(srvObj, stopEvt, diskInfo)
+                except Exception, e:
+                    if (diskInfo):
+                        msg = "Error encountered handling DB Snapshot " + \
+                              "for disk: %s/%s. Exception: %s"
+                        msg = msg % (diskInfo[0], diskInfo[1], str(e))
+                    else:
+                        msg = "Error encountered handling DB Snapshot. " + \
+                              "Exception: %s" % str(e)
+                    error(msg)
+                    time.sleep(5)
+            suspend(stopEvt, 1.0)
+
+    except StopJanitorThreadException:
+        raise
+    except Exception, e:
+        errMsg = "Error occurred during execution of the Janitor " + \
+                 "Thread. Exception: " + str(e)
+        alert(errMsg)
+        # We make a small wait here to avoid that the process tries
+        # too often to carry out the tasks that failed.
+        time.sleep(2.0)
+
+
+def janitorThread(srvObj, stopEvt, JanQue):    #dbChangeSync = ngamsEvent.ngamsEvent()
     """
     The Janitor Thread runs periodically when the NG/AMS Server is
     Online to 'clean up' the NG/AMS environment. Task performed are
@@ -995,8 +1181,12 @@ def janitorThread(srvObj, stopEvt):
 
     # Make the event object to synchronize DB Snapshot updates available
     # for the ngamsDb class.
-    dbChangeSync = ngamsEvent.ngamsEvent()
-    srvObj.getDb().addDbChangeEvt(dbChangeSync)
+
+
+    #janitordbChangeSync= ngamsEvent.ngamsEvent()
+    #srvObj.getDb().addDbChangeEvt(dbChangeSync)
+    info(4, "=====Janitor Thread ===== into it ...")
+    print("============================================Janitor Thread ===== into it ...")
 
     hostId = srvObj.getHostId()
 
@@ -1012,129 +1202,29 @@ def janitorThread(srvObj, stopEvt):
         info(3, traceback.format_exc())
 
     suspendTime = isoTime2Secs(srvObj.getCfg().getJanitorSuspensionTime())
-    while True:
-        # Incapsulate this whole block to avoid that the thread dies in
-        # case a problem occurs, like e.g. a problem with the DB connection.
-        try:
-            checkStopJanitorThread(stopEvt)
-            info(4,"Janitor Thread running ...")
+    #==========================================================
+    #=== Move contents of while loop to JanitorCycle method
+    #===========================================================
 
-            ##################################################################
-            # => Check if there are any Temporary DB Snapshot Files to handle.
-            ##################################################################
-            from ngamsPlugIns import ngamsJanitorHandleTempDBSnapshotFiles
-            ngamsJanitorHandleTempDBSnapshotFiles.Handle_TempDB_SnapShot_Files(srvObj, stopEvt,updateDbSnapShots)
+    try:
+        while True:
+            # Incapsulate this whole block to avoid that the thread dies in
+            # case a problem occurs, like e.g. a problem with the DB connection.
+            #
 
-
-            ##################################################################
-            # => Check if we need to clean up Processing Directory (if
-            #    appropriate). If a Processing Directory is more than
-            #    30 minutes old, it is deleted.
-            ##################################################################
-            from ngamsPlugIns import ngamsJanitorCheckProcessingDirectory
-            ngamsJanitorCheckProcessingDirectory.Check_Processing_Directory(srvObj, stopEvt,checkCleanDirs)
-
-
-            ##################################################################
-            # => Check if there are old Requests in the Request DBM, which
-            #    should be removed.
-            ##################################################################
-            from ngamsPlugIns import ngamsJanitorCheckOldRequestsinDBM
-            ngamsJanitorCheckOldRequestsinDBM.Check_Old_RequestsinDBM(srvObj, stopEvt,checkStopJanitorThread)
-
-
-            ##################################################################
-            # => Check if we need to clean up Subscription Back-Log Buffer.
-            #     and check if there are left-over files in the NG/AMS Temp. Dir.
-            ##################################################################
-            from ngamsPlugIns import ngamsJanitorCheckSubscrBacklognTempDir
-            ngamsJanitorCheckSubscrBacklognTempDir.Check_Subscr_Backlog_n_Temp_Dir(srvObj, stopEvt,checkCleanDirs)
-
-            # => Check for retained Email Notification Messages to send out.
-            ngamsNotification.checkNotifRetBuf(srvObj.getHostId(), srvObj.getCfg())
-
-            ##################################################################
-            # => Check LOG-file rotation and clean-up.
-            ##################################################################
-
-            # => Check there are any unsaved log files from a shutdown and archive them.
-            from ngamsPlugIns import ngamsJanitorCheckUnsavedLogFile
-            ngamsJanitorCheckUnsavedLogFile.CheckUnsavedLogFile(srvObj, stopEvt)
-
-
-            # => Check if its time to carry out a rotation of the log file.
-            from ngamsPlugIns import ngamsJanitorLogRotChk
-            ngamsJanitorLogRotChk.Log_Rot_Chk(srvObj, stopEvt)
-
-
-            ##################################################################
-            # => Check if there are rotated Local Log Files to remove.
-            ##################################################################
-            from ngamsPlugIns import ngamsJanitorRotatedLogFilestoRemove
-            ngamsJanitorRotatedLogFilestoRemove.Rotated_Log_FilestoRemove(srvObj, stopEvt)
-
-
-            ##################################################################
-            # => Check if there is enough disk space for the various
-            #    directories defined.
-            ##################################################################
-            from ngamsPlugIns import ngamsJanitorCheckDiskSpace
-            ngamsJanitorCheckDiskSpace.Check_Disk_Space(srvObj, stopEvt)
-
-
-            ##################################################################
-            # => Check if this NG/AMS Server is requested to wake up
-            #    another/other NGAS Host(s).
-            ##################################################################
-            from ngamsPlugIns import ngamsJanitorChecktoWakeupOtherNGASHost
-            ngamsJanitorChecktoWakeupOtherNGASHost.Check_to_Wakeup_OtherNGAS_Host(srvObj, stopEvt)
-
-
-            ##################################################################
-            # => Check if the conditions for suspending this NGAS Host are met.
-            ##################################################################
-            from ngamsPlugIns import ngamsJanitorChecktoSuspendNGASHost
-            ngamsJanitorChecktoSuspendNGASHost.Check_to_Suspend_NGAS_Host(srvObj, stopEvt)
-
-
+            JanitorCycle(srvObj, stopEvt, suspendTime, JanQue)
             # Update the Janitor Thread run count.
-            srvObj.incJanitorThreadRunCount()
+            #srvObj.incJanitorThreadRunCount()
+            #JanQue.put(srvObj.getJanitorThreadRunCount())
+            #print("==============================Thread count in Jan is ",srvObj.getJanitorThreadRunCount())
 
-            # Suspend the thread for the time indicated.
-            info(4,"Janitor Thread executed - suspending for %d [s] ..." % (suspendTime,))
-            startTime = time.time()
-            while ((time.time() - startTime) < suspendTime):
-                # Check if we should update the DB Snapshot.
-                if (dbChangeSync.isSet()):
-                    time.sleep(0.5)
-                    try:
-                        tmpList = dbChangeSync.getEventInfoList()
-                        dbChangeSync.clear()
-                        diskInfo = None
-                        if (tmpList):
-                            for diskInfo in tmpList:
-                                updateDbSnapShots(srvObj, stopEvt, diskInfo)
-                    except Exception, e:
-                        if (diskInfo):
-                            msg = "Error encountered handling DB Snapshot " +\
-                                  "for disk: %s/%s. Exception: %s"
-                            msg = msg % (diskInfo[0], diskInfo[1], str(e))
-                        else:
-                            msg = "Error encountered handling DB Snapshot. " +\
-                                  "Exception: %s" % str(e)
-                        error(msg)
-                        time.sleep(5)
-                suspend(stopEvt, 1.0)
-
-        except StopJanitorThreadException:
-            return
-        except Exception, e:
-            errMsg = "Error occurred during execution of the Janitor " +\
-                     "Thread. Exception: " + str(e)
-            alert(errMsg)
-            # We make a small wait here to avoid that the process tries
-            # too often to carry out the tasks that failed.
-            time.sleep(2.0)
+            # pool.proc1 = multiprocessing.Process(target=JanitorCycle, args=(srvObj, stopEvt, suspendTime, dbChangeSync))
+            # pool.proc1.start()
+            #
+            # pool.close()
+            # pool.join()
+    except StopJanitorThreadException:
+        return
 
 
 # EOF

@@ -831,7 +831,9 @@ def runTest(argv):
         testSuite = unittest.TestSuite()
         for testCase in tests:
             testSuite.addTest(testClass(testCase))
-    ngamsTextTestRunner(sys.stdout, 1, 0).run(testSuite)
+    result = ngamsTextTestRunner(sys.stdout, 1, 0).run(testSuite)
+    if not result.wasSuccessful():
+        sys.exit(1)
 
 
 def writeFitsKey(filename,
@@ -1188,6 +1190,10 @@ class ngamsTestSuite(unittest.TestCase):
             srvProcess.wait()
             return
 
+        import psutil, signal
+        parent = psutil.Process(srvProcess.pid)
+        childrenb4 = parent.children(recursive=True)
+
         info(3,"Killing externally running NG/AMS Server. PID: %d, Port: %d " % (srvProcess.pid, port))
         try:
             pCl = sendPclCmd(port=port, timeOut=10)
@@ -1225,14 +1231,37 @@ class ngamsTestSuite(unittest.TestCase):
                 # ... or force it to die
                 kill9 = waitLoops == 20
 
+
+
         try:
             if kill9:
+                try:
+                    parent = psutil.Process(srvProcess.pid)
+                    children = parent.children(recursive=True)
+                    for process in children:
+                        os.kill(process.pid, signal.SIGKILL)
+                        print("Parent is ", parent.pid, "Children of the TestLib srvSetup are : ", process.pid)
+                        print("****************************************************")
+                except psutil.NoSuchProcess:
+                    print("******************No parent process***********************")
                 srvProcess.kill()
                 srvProcess.wait()
                 info(3, "Server process had %d to be merciless killed, sorry :(" % (srvProcess.pid,))
+                #Check that parent and children are gone for sure
+                for process in children:
+                    print("Children of the TestLib srvSetup after parent killed are : ", process.pid)
+                    print("****************************************************")
             else:
                 srvProcess.wait()
                 info(3, "Finished server process %d gracefully :)" % (srvProcess.pid,))
+                #Check that children are gone - parent has probably gone
+                #parent = psutil.Process(srvProcess.pid)
+                for orphan in childrenb4:
+                #for process in children:
+                    print("Children of the TestLib srvSetup after graceful stop of parent are : ", orphan.pid)
+                    print("****************************************************")
+                    if orphan.is_running():
+                        orphan.kill()
         except Exception:
             error("Error while finishing server process %d, port %d" % (srvProcess.pid, port))
             raise
