@@ -32,14 +32,22 @@ This module contains the class ngamsServer that provides the
 services for the NG/AMS Server.
 """
 
+import BaseHTTPServer
 import Queue
-import os, sys, re, threading, time, pkg_resources
+import SocketServer
 import logging
-import math
 import multiprocessing
+import os
+import re
 import shutil
+import signal
+import socket
+import sys
+import threading
+import time
 import traceback
-import SocketServer, BaseHTTPServer, socket, signal
+
+import pkg_resources
 
 from ngamsLib.ngamsCore import \
     genLog, TRACE,\
@@ -64,38 +72,6 @@ import ngamsCacheControlThread
 
 
 logger = logging.getLogger(__name__)
-
-class ngamsSimpleRequest:
-    """
-    Small class to provide minimal HTTP Request Handler functionality.
-    """
-
-    def __init__(self,
-                 request,
-                 clientAddress):
-        """
-        Constructor method.
-        """
-        self.rbufsize = -1
-        self.wbufsize = 0
-        self.connection = request
-        self.client_address = clientAddress
-        self.rfile = self.connection.makefile('rb', self.rbufsize)
-        self.wfile = self.wfile = self.connection.makefile('wb', self.wbufsize)
-
-
-    def send_header(self,
-                    keyword,
-                    value):
-        """
-        Send an HTTP header.
-
-        keyword:    HTTP header keyword (string).
-
-        value:      Value for the HTTP header keyword (string).
-        """
-        self.wfile.write("%s: %s\r\n" % (keyword, value))
-
 
 class ngamsHttpServer(SocketServer.ThreadingMixIn,
                       BaseHTTPServer.HTTPServer):
@@ -218,7 +194,6 @@ class logging_config(object):
 
 
 from logging.handlers import BaseRotatingHandler
-
 class NgasRotatingFileHandler(BaseRotatingHandler):
     """
     Logging handler that rotates periodically the NGAS logfile into
@@ -248,14 +223,9 @@ class NgasRotatingFileHandler(BaseRotatingHandler):
         if self.stream:
             self.stream.close()
 
-        # Put up to the millisecons here
-        now = time.time()
-        ts = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(now))
-        ts += ".%03d" % ((now - math.floor(now)) * 1000.)
-
         # It's time to rotate the current Local Log File.
         dirname = os.path.dirname(self.baseFilename)
-        rotated_name = "LOG-ROTATE-%s.nglog.unsaved" % (ts,)
+        rotated_name = "LOG-ROTATE-%s.nglog.unsaved" % (toiso8601(),)
         rotated_name = os.path.normpath(os.path.join(dirname, rotated_name))
         shutil.move(self.baseFilename, rotated_name)
 
@@ -2697,6 +2667,8 @@ class ngamsServer:
         exitValue = 1
         silentExit = 0
         idx = 1
+        extra_paths = []
+
         while idx < len(argv):
             par = argv[idx].upper()
             try:
@@ -2739,6 +2711,9 @@ class ngamsServer:
                     self.setNoAutoExit(1)
                 elif (par == "-MULTIPLESRVS"):
                     self.setMultipleSrvs(1)
+                elif par == "-PATH":
+                    idx = self._incCheckIdx(idx, argv)
+                    extra_paths = set(filter(None, argv[idx].split(os.pathsep)))
                 else:
                     self.correctUsage()
                     silentExit = 1
@@ -2752,6 +2727,12 @@ class ngamsServer:
         if (self.getCfgFilename() == ""):
             self.correctUsage()
             sys.exit(1)
+
+        for p in extra_paths:
+            p = os.path.expanduser(p)
+            if not os.path.exists(p):
+                raise ValueError("Path %s doesn't exist" % (p,))
+            sys.path.append(p)
 
     ########################################################################
     # The following methods are used for the NG/AMS Unit Tests.
