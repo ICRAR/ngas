@@ -26,11 +26,12 @@ import os
 from ngamsLib import ngamsHighLevelLib
 from ngamsLib.ngamsCore import NGAMS_SUBSCR_BACK_LOG_DIR
 from ngamsLib.ngamsCore import isoTime2Secs
+from ngamsServer.ngamsJanitorCommon import checkCleanDirs
 
 
 logger = logging.getLogger(__name__)
 
-def ngamsJanitorCheckSubscrBacklognTempDir(srvObj, stopEvt,checkCleanDirs):
+def ngamsJanitorCheckSubscrBacklognTempDir(srvObj, stopEvt):
     """
 	Checks/cleans up Subscription Back-Log Buffer and
     Checks/cleans up NG/AMS Temp Directory of any leftover files.

@@ -19,26 +19,11 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-import logging
-import os
-
-from ngamsLib.ngamsCore import NGAMS_PROC_DIR
-from ngamsServer.ngamsJanitorCommon import checkCleanDirs
+from ngamsLib import ngamsNotification
 
 
-logger = logging.getLogger(__name__)
-
-def ngamsJanitorCheckProcessingDirectory(srvObj, stopEvt):
+def ngamsJanitorCheckRetainedNotificationMsgs(srvObj, stopEvt):
     """
-    Check and clean up Processing Directory
-
-    srvObj:            Reference to NG/AMS server class object (ngamsServer).
-
-    Returns:           Void.
+    Check that there are no notifications retained for sending
     """
-    logger.debug("Checking/cleaning up Processing Directory ...")
-    procDir = os.path.normpath(srvObj.getCfg().\
-                               getProcessingDirectory() +\
-                               "/" + NGAMS_PROC_DIR)
-    checkCleanDirs(procDir, 1800, 1800, 0)
-    logger.debug("Processing Directory checked/cleaned up")
+    ngamsNotification.checkNotifRetBuf(srvObj.getHostId(), srvObj.getCfg())

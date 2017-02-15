@@ -24,12 +24,13 @@ import logging
 
 from ngamsLib.ngamsCore import genLog
 from ngamsServer import ngamsArchiveUtils
-from ngamsServer.ngamsJanitorThread import StopJanitorThreadException
+from ngamsServer.ngamsDbSnapshotUtils import updateDbSnapShots
+from ngamsServer.ngamsJanitorCommon import StopJanitorThreadException
 
 
 logger = logging.getLogger(__name__)
 
-def ngamsJanitorHandleTempDBSnapshotFiles(srvObj, stopEvt, updateDbSnapShots):
+def ngamsJanitorHandleTempDBSnapshotFiles(srvObj, stopEvt):
     """
     Check if there are any Temporary DB Snapshot Files to handle.
 

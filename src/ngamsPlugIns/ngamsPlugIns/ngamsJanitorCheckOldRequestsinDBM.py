@@ -22,12 +22,12 @@
 import logging
 import time
 
-from ngamsServer.ngamsJanitorThread import StopJanitorThreadException
+from ngamsServer.ngamsJanitorCommon import checkStopJanitorThread, StopJanitorThreadException
 
 
 logger = logging.getLogger(__name__)
 
-def ngamsJanitorCheckOldRequestsinDBM(srvObj, stopEvt, checkStopJanitorThread):
+def ngamsJanitorCheckOldRequestsinDBM(srvObj, stopEvt):
     """
     Check and if needs be clean up old requests.
 
@@ -71,7 +71,7 @@ def ngamsJanitorCheckOldRequestsinDBM(srvObj, stopEvt, checkStopJanitorThread):
                     continue
             time.sleep(0.020)
     except StopJanitorThreadException:
-        return
+        raise
     except Exception:
         logger.exception("Exception encountered")
     logger.debug("Request DB checked/cleaned up")
