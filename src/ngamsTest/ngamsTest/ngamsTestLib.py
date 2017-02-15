@@ -1223,8 +1223,6 @@ class ngamsTestSuite(unittest.TestCase):
                 # ... or force it to die
                 kill9 = waitLoops == 20
 
-
-
         try:
             if kill9:
                 try:
@@ -1250,9 +1248,8 @@ class ngamsTestSuite(unittest.TestCase):
                 #parent = psutil.Process(srvProcess.pid)
                 for orphan in childrenb4:
                 #for process in children:
-                    print("Children of the TestLib srvSetup after graceful stop of parent are : ", orphan.pid)
-                    print("****************************************************")
                     if orphan.is_running():
+                        logger.warning("Killing orphan child process %d", orphan.pid)
                         orphan.kill()
         except Exception:
             logger.exception("Error while finishing server process %d, port %d", srvProcess.pid, port)
