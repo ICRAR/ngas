@@ -223,6 +223,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                         fileListDbm.add(str(fileCount), fileInfo)
                         fileCount += 1
                 fileListDbm.sync()
+                logger.debug("Dumped information about %d files", fileCount)
             except:
                 rmFile(fileListDbmName + "*")
                 if (fileListDbm): del fileListDbm

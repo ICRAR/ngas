@@ -827,7 +827,9 @@ class ngamsServer:
         """
         Stops the Janitor Thread.
         """
+
         if self._janitorThread is None:
+            logger.debug("No janitor process to stop")
             return
 
         code = self._janitorThread.exitcode
