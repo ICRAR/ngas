@@ -576,7 +576,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                 tmpFileListDbmName = srvObj.getDb().dumpFileInfoList(diskId,
                                                                      ignore=None)
                 tmpFileListDbm = ngamsDbm.ngamsDbm(tmpFileListDbmName)
-                while (1):
+                while True:
                     key, fileInfo = tmpFileListDbm.getNext()
                     if (not key): break
                     fileKey = _genFileKey(fileInfo)
@@ -584,7 +584,6 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                                                   fileInfo)
                     _addInDbm(tmpSnapshotDbm, fileKey, encFileInfoDic)
                     checkStopJanitorThread(stopEvt)
-                    time.sleep(0.005)
                 tmpSnapshotDbm.sync()
             finally:
                 rmFile(tmpSnapshotDbmName)
@@ -670,15 +669,14 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
 
                         del tmpFileObj
 
-                # Be friendly, make a break every now and then + sync the DB file.
+                # Be friendly and sync the DB file every now and then
                 count += 1
-                if ((count % 100) == 0):
-                    if (_updateSnapshot(srvObj.getCfg())): snapshotDbm.sync()
+                if (count % 100) == 0:
+                    if _updateSnapshot(srvObj.getCfg()):
+                        snapshotDbm.sync()
                     checkStopJanitorThread(stopEvt)
                     tmpSnapshotDbm.sync()
-                    time.sleep(0.010)
-                else:
-                    time.sleep(0.002)
+
                 #################################################################################################
                 #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
                 #          when iterating at the end of the table that are prone to corrupt the hash table object
@@ -765,15 +763,13 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                         if (_updateSnapshot(srvObj.getCfg())):
                             snapshotDbm[key] = pickleValue
 
-                # Be friendly and make a break every now and then +
-                # sync the DB file.
+                # Be friendly and sync the DB file every now and then
                 count += 1
-                if ((count % 100) == 0):
-                    if (_updateSnapshot(srvObj.getCfg())): snapshotDbm.sync()
+                if (count % 100) == 0:
+                    if _updateSnapshot(srvObj.getCfg()):
+                        snapshotDbm.sync()
                     checkStopJanitorThread(stopEvt)
-                    time.sleep(0.010)
-                else:
-                    time.sleep(0.002)
+
                 #################################################################################################
                 #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
                 #          when iterating at the end of the table that are prone to corrupt the hash table object

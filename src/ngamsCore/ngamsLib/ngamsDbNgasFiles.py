@@ -199,7 +199,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 noOfFiles = self.getNumberOfFiles(diskId, fileId, fileVersion,
                                                   ignore)
                 if (noOfFiles > expNoOfFiles): expNoOfFiles = noOfFiles
-                time.sleep(0.050)
 
         # Generate final name of DBM + create DBM.
         if (not fileListDbmName):
@@ -223,7 +222,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                     for fileInfo in res:
                         fileListDbm.add(str(fileCount), fileInfo)
                         fileCount += 1
-                    time.sleep(0.010)
                 fileListDbm.sync()
             except:
                 rmFile(fileListDbmName + "*")
