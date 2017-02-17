@@ -51,10 +51,10 @@ def JanitorCycle(plugins, srvObj, stopEvt, jan_to_srv_queue):
     A single run of all the janitor plug-ins
     """
 
-    checkStopJanitorThread(stopEvt)
     logger.debug("Janitor Thread running-Janitor Cycle.. ")
 
     for p in plugins:
+        checkStopJanitorThread(stopEvt)
         try:
             logger.debug("Executing plugin %s", p.__name__)
             p(srvObj, stopEvt, jan_to_srv_queue)
