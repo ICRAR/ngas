@@ -28,7 +28,7 @@ from ngamsLib.ngamsCore import rmFile
 
 logger = logging.getLogger(__name__)
 
-def ngamsJanitorRotatedLogFilestoRemove(srvObj, stopEvt):
+def ngamsJanitorRotatedLogFilestoRemove(srvObj, stopEvt, jan_to_srv_queue):
     """
 	Check if there are expired or rotated Local Log Files to remove.
 

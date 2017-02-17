@@ -28,7 +28,7 @@ from ngamsServer.ngamsJanitorCommon import checkCleanDirs
 
 logger = logging.getLogger(__name__)
 
-def ngamsJanitorCheckProcessingDirectory(srvObj, stopEvt):
+def ngamsJanitorCheckProcessingDirectory(srvObj, stopEvt, jan_to_srv_queue):
     """
     Check and clean up Processing Directory
 

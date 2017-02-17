@@ -27,7 +27,7 @@ from ngamsServer.ngamsJanitorCommon import checkStopJanitorThread, StopJanitorTh
 
 logger = logging.getLogger(__name__)
 
-def ngamsJanitorCheckOldRequestsinDBM(srvObj, stopEvt):
+def ngamsJanitorCheckOldRequestsinDBM(srvObj, stopEvt, jan_to_srv_queue):
     """
     Check and if needs be clean up old requests.
 

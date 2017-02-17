@@ -22,7 +22,7 @@
 from ngamsLib import ngamsNotification
 
 
-def ngamsJanitorCheckRetainedNotificationMsgs(srvObj, stopEvt):
+def ngamsJanitorCheckRetainedNotificationMsgs(srvObj, stopEvt, jan_to_srv_queue):
     """
     Check that there are no notifications retained for sending
     """

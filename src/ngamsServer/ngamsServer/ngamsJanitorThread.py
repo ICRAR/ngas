@@ -46,7 +46,7 @@ from ngamsLib.ngamsCore import isoTime2Secs, loadPlugInEntryPoint
 logger = logging.getLogger(__name__)
 
 
-def JanitorCycle(plugins, srvObj, stopEvt):
+def JanitorCycle(plugins, srvObj, stopEvt, jan_to_srv_queue):
     """
     A single run of all the janitor plug-ins
     """
@@ -57,7 +57,7 @@ def JanitorCycle(plugins, srvObj, stopEvt):
     for p in plugins:
         try:
             logger.debug("Executing plugin %s", p.__name__)
-            p(srvObj, stopEvt)
+            p(srvObj, stopEvt, jan_to_srv_queue)
         except StopJanitorThreadException:
             raise
         except:
@@ -148,7 +148,7 @@ def janitorThread(srvObj, stopEvt, srv_to_jan_queue, jan_to_srv_queue):
     try:
         while True:
 
-            JanitorCycle(plugins, srvObj, stopEvt)
+            JanitorCycle(plugins, srvObj, stopEvt, jan_to_srv_queue)
 
             # Suspend the thread for the time indicated.
             # Update the Janitor Thread run count.
