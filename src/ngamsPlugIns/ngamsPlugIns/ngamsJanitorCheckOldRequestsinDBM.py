@@ -22,10 +22,15 @@
 import logging
 import time
 
-from ngamsServer.ngamsJanitorCommon import checkStopJanitorThread, StopJanitorThreadException
+from ngamsServer.ngamsJanitorCommon import checkStopJanitorThread
+from ngamsLib import ngamsDbm
 
 
 logger = logging.getLogger(__name__)
+
+def timed_out(t, timeout):
+    now = time.time()
+    return t is not None and (now - t) >= timeout
 
 def ngamsJanitorCheckOldRequestsinDBM(srvObj, stopEvt, jan_to_srv_queue):
     """
@@ -42,36 +47,28 @@ def ngamsJanitorCheckOldRequestsinDBM(srvObj, stopEvt, jan_to_srv_queue):
     logger.debug("Checking/cleaning up Request DB ...")
     #reqTimeOut = 10
     reqTimeOut = 86400
-    try:
-        reqIds = srvObj.getRequestIds()
-        for reqId in reqIds:
-            reqPropsObj = srvObj.getRequest(reqId)
-            checkStopJanitorThread(stopEvt)
 
-            # Remove a Request Properties Object from the queue if
-            #
-            # 1. The request handling is completed for more than
-            #    24 hours (86400s).
-            # 2. The request status has not been updated for more
-            #    than 24 hours (86400s).
-            timeNow = time.time()
-            if (reqPropsObj.getCompletionTime() != None):
-                complTime = reqPropsObj.getCompletionTime()
-                if ((timeNow - complTime) >= reqTimeOut):
-                    logger.debug("Removing request with ID from " +\
-                         "Request DBM: %s", str(reqId))
-                    srvObj.delRequest(reqId)
-                    continue
-            if (reqPropsObj.getLastRequestStatUpdate() != None):
-                lastReq = reqPropsObj.getLastRequestStatUpdate()
-                if ((timeNow - lastReq) >= reqTimeOut):
-                    logger.debug("Removing request with ID from " +\
-                         "Request DBM: %s", str(reqId))
-                    srvObj.delRequest(reqId)
-                    continue
-            time.sleep(0.020)
-    except StopJanitorThreadException:
-        raise
-    except Exception:
-        logger.exception("Exception encountered")
+    requestDbm = ngamsDbm.ngamsDbm(srvObj.getReqDbName())
+    reqIds = requestDbm.keys()
+
+    to_delete = []
+    for reqId in reqIds:
+        reqPropsObj = requestDbm.get(reqId)
+        checkStopJanitorThread(stopEvt)
+
+        # Remove a Request Properties Object from the queue if
+        #
+        # 1. The request handling is completed for more than
+        #    24 hours (86400s).
+        # 2. The request status has not been updated for more
+        #    than 24 hours (86400s).
+        comp_time = reqPropsObj.getCompletionTime()
+        last_update = reqPropsObj.getLastRequestStatUpdate()
+        if timed_out(comp_time, reqTimeOut) or timed_out(last_update, reqTimeOut):
+            logger.debug("Scheduling removal of request with ID from Request DBM: %s", reqId)
+            to_delete.append(reqId)
+
+    if to_delete:
+        jan_to_srv_queue.put_nowait(('delete-requests', to_delete))
+
     logger.debug("Request DB checked/cleaned up")

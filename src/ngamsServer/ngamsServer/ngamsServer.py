@@ -598,15 +598,6 @@ class ngamsServer:
             raise e
 
 
-    def getRequestIds(self):
-        """
-        Return a list with the Request IDs.
-
-        Returns:    List with Request IDs (list).
-        """
-        return self.__requestDbm.keys()
-
-
     def getRequest(self,
                    requestId):
         """
@@ -632,8 +623,7 @@ class ngamsServer:
             raise e
 
 
-    def delRequest(self,
-                   requestId):
+    def delRequests(self, requestIds):
         """
         Delete the Request Properties Object associated to the given
         Request ID.
@@ -642,17 +632,14 @@ class ngamsServer:
 
         Returns:       Reference to object itself.
         """
-        try:
-            self.__requestDbmSem.acquire()
-            if (self.__requestDbm.hasKey(str(requestId))):
-                self.__requestDbm.rem(str(requestId))
+        with self.__requestDbmSem:
+            try:
+                for req_id in requestIds:
+                    if self.__requestDbm.hasKey(str(req_id)):
+                        self.__requestDbm.rem(str(req_id))
                 self.__requestDbm.sync()
-            self.__requestDbmSem.release()
-            return self
-        except Exception, e:
-            self.recoveryRequestDb(str(e))
-            self.__requestDbmSem.release()
-            raise e
+            except Exception, e:
+                self.recoveryRequestDb(str(e))
 
 
     def takeStateSem(self):
@@ -913,6 +900,8 @@ class ngamsServer:
                 # the information from the dbChangeEvent
                 self._janitorThreadRunCount = item
                 inspect_db_changes = True
+            elif name == 'delete-requests':
+                self.delRequests(item)
             else:
                 raise ValueError("Unknown item in queue: name=%s, item=%r" % (name,item))
 
