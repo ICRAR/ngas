@@ -548,30 +548,15 @@ class ngamsServer:
             self.__requestDbmSem.release()
             raise e
 
-    def recoveryRequestDb(self, err):
+    def recoveryRequestDb(self):
         """
-        If the bsddb needs recover, i.e. err is something like
-         (-30974, 'DB_RUNRECOVERY: Fatal error, run database recovery -- PANIC: fatal region error detected; run recovery')
-
-        then remove and recreate the request bsddb
-
-        err:    the error message (string)
-        return: 0 - the error is not about recovery
-                1 - the error is about recovery, which succeeded
-               -1 - the error is about recovery, which failed
+        Remove and recreate the request bsddb
         """
-        T = TRACE()
-
-        if (err.find('DB_RUNRECOVERY') > -1):
-            reqDbmName = self.getReqDbName()
-            rmFile(reqDbmName + "*")
-            logger.debug("Recover (Check/create) NG/AMS Request Info DB ...")
-            self.__requestDbm = ngamsDbm.ngamsDbm(reqDbmName, cleanUpOnDestr = 0,
-                                                  writePerm = 1)
-            logger.debug("Recovered (Checked/created) NG/AMS Request Info DB")
-            return 1
-        else:
-            return 0
+        reqDbmName = self.getReqDbName()
+        rmFile(reqDbmName + "*")
+        self.__requestDbm = ngamsDbm.ngamsDbm(reqDbmName, cleanUpOnDestr = 0,
+                                              writePerm = 1)
+        logger.debug("Recovered (Checked/created) NG/AMS Request Info DB")
 
     def updateRequestDb(self,
                         reqPropsObj):
@@ -592,10 +577,10 @@ class ngamsServer:
             self.__requestDbm.sync()
             self.__requestDbmSem.release()
             return self
-        except Exception, e:
-            self.recoveryRequestDb(str(e)) # this will ensure next time the same error will not appear again, but this time, it will still throw
+        except ngamsDbm.DbRunRecoveryError:
+            self.recoveryRequestDb() # this will ensure next time the same error will not appear again, but this time, it will still throw
             self.__requestDbmSem.release()
-            raise e
+            raise
 
 
     def getRequest(self,
@@ -617,10 +602,10 @@ class ngamsServer:
                 retVal = None
             self.__requestDbmSem.release()
             return retVal
-        except Exception, e:
-            self.recoveryRequestDb(str(e))
+        except ngamsDbm.DbRunRecoveryError:
+            self.recoveryRequestDb()
             self.__requestDbmSem.release()
-            raise e
+            raise
 
 
     def delRequests(self, requestIds):
@@ -638,8 +623,9 @@ class ngamsServer:
                     if self.__requestDbm.hasKey(str(req_id)):
                         self.__requestDbm.rem(str(req_id))
                 self.__requestDbm.sync()
-            except Exception, e:
-                self.recoveryRequestDb(str(e))
+            except ngamsDbm.DbRunRecoveryError:
+                self.recoveryRequestDb()
+                raise
 
 
     def takeStateSem(self):
