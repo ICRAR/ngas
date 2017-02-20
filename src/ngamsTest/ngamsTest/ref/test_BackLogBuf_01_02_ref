@@ -6,8 +6,8 @@ Size:                               69120
 Wait:                               1
 FileUri:                            SmallFile.fits
 SafeFileUri:                        SmallFile.fits
-HttpParsDic:                        {'attachment': '', 'initiator': 'ARCHIVE', 'no_versioning': '0', 'time_out': '60.0'}
-HttpParNames:                       ['attachment', 'initiator', 'no_versioning', 'time_out']
+HttpParsDic:                        {'attachment': '', 'no_versioning': '0', 'time_out': '60.0'}
+HttpParNames:                       ['attachment', 'no_versioning', 'time_out']
 SentReply:                          0
 BytesReceived:                      69120
 IoTime:                             0

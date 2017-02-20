@@ -636,8 +636,7 @@ def checkBackLogBuffer(srvObj):
     logger.debug("Checking if data available in Back-Log Buffer Directory ...")
 
     # Generate Back Log Buffering Directory
-    backLogDir = ngamsLib.genDir([srvObj.getCfg().getBackLogBufferDirectory(),
-                                  NGAMS_BACK_LOG_DIR])
+    backLogDir = os.path.join(srvObj.getCfg().getBackLogBufferDirectory(), NGAMS_BACK_LOG_DIR)
 
     # Get file list. Take only files which do not have the
     # NGAMS_BACK_LOG_TMP_PREFIX as prefix.

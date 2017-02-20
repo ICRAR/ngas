@@ -711,8 +711,7 @@ def _handleCmdRetrieve(srvObj,
         checkCreatePath(procDir)
         pars = []
         for par in reqPropsObj.getHttpParNames():
-            if (par != "initiator"):
-                pars.append([par, reqPropsObj.getHttpPar(par)])
+            pars.append([par, reqPropsObj.getHttpPar(par)])
         authHdr = ngamsSrvUtils.genIntAuthHdr(srvObj)
         conn = ngamsLib.httpGetConnection(ipAddress, port,
                                           cmd=NGAMS_RETRIEVE_CMD, pars=pars,

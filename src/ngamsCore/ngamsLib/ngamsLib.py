@@ -36,7 +36,6 @@ The functions in this module can be used in all the NG/AMS code.
 
 import cPickle
 import contextlib
-import getpass
 import httplib
 import logging
 import os
@@ -49,7 +48,7 @@ import urllib
 import urllib2
 import urlparse
 
-from ngamsCore import genLog, TRACE, getHostName, \
+from ngamsCore import genLog, getHostName, \
     NGAMS_HTTP_SUCCESS, NGAMS_CONT_MT, \
     NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM, \
     getFileSize, NGAMS_ARCH_REQ_MT, getUniqueNo, \
@@ -83,22 +82,14 @@ def hidePassword(fileUri):
     return retVal
 
 
-def isArchivePull(fileUri):
+def isArchivePull(uri):
     """
     Return 1 if the request is referring to an Archive Pull Request.
 
     Returns:    1 = Archive Pull Request, 0 otherwise (integer).
     """
-    T = TRACE()
-
-    logger.debug("isArchivePull() - File URI is: %s", fileUri)
-    if ((string.find(fileUri, "http:") != -1) or
-        (string.find(fileUri, "ftp:") != -1) or
-        (string.find(fileUri, "file:") != -1)):
-        status = 1
-    else:
-        status = 0
-    return status
+    logger.debug("isArchivePull() - File URI is: %s", uri)
+    return 'http:' in uri or 'ftp:' in uri or 'file:' in uri
 
 
 def parseHttpHdr(httpHdr):
@@ -124,36 +115,6 @@ def parseHttpHdr(httpHdr):
             value = ""
         retDic[key] = value
     return retDic
-
-
-def parseUrlRequest(urlReq):
-    """
-    Parse a URL request of the format:
-
-      <field>[?<par>=<val>&<par>=<val>...]
-
-    and return the information in a tuple. The tuple has the contents:
-
-      [['initiator', <field>], [<par>, <val>], ...]
-
-    urlReq:   URL to parse (string).
-
-    Returns:  Tuple with information from URL (dictionary).
-    """
-    elsTmp = string.split(urlReq, "?")
-    parList = []
-    parList.append(["initiator", elsTmp[0]])
-    if (len(elsTmp) > 1):
-        els = string.split(elsTmp[1], "&")
-        for parVal in els:
-            tmp = string.split(parVal, "=")
-            par = tmp[0].strip(" \"")
-            if (len(tmp) > 1):
-                val = tmp[1].strip(" \"")
-            else:
-                val = ""
-            parList.append([par, val])
-    return parList
 
 
 def httpMsgObj2Dic(httpMessageObj):
@@ -195,87 +156,6 @@ def getDomain():
     return '.'.join(fqdn.split('.')[1:])
 
 
-def getNgamsUser():
-    """
-    Return the name of the NG/AMS user under which the NG/AMS SW is running.
-
-    Returns:   User name for NG/AMS user (string).
-    """
-    return getpass.getuser()
-
-
-def log2Int(value):
-    """
-    Convert an logical value to integer:
-
-      Y/T -> 1, N/F -> 0
-
-    Returns:   Logical value as 0 or 1 (integer).
-    """
-    if (value == "Y"):
-        return 1
-    elif (value == "N"):
-        return 0
-    if (value == "T"):
-        return 1
-    elif (value == "F"):
-        return 0
-    else:
-        return int(value)
-
-
-def int2LogTF(value):
-    """
-    Convert an integer value to T or F:
-
-      1 -> T, 0 -> F, != 0, 1 -> -
-
-    Returns:    Converted logical value (string).
-    """
-    if (value == 1):
-        return "T"
-    elif (value == 0):
-        return "F"
-    else:
-        return "-"
-
-
-def int2LogYN(value):
-    """
-    Convert an integer logical value to a string:
-
-      1 -> T, 0 -> F, else -
-
-    Returns:  Converted logical value as string (string).
-    """
-    if (value == "1"):
-        return "Y"
-    elif (value == "0"):
-        return "N"
-    else:
-        return "-"
-
-
-def searchList(lst,
-               str):
-    """
-    Search a list for a string element and return index containing this
-    string.
-
-    lst:       List to search (string).
-
-    str:       String to search for (string).
-
-    Returns:   Index of the element containing the string or -1 if
-               not found (string|integer).
-    """
-    try:
-        idx = lst.index(str)
-        return idx
-    except:
-        return -1
-
-
 def makeFileReadOnly(completeFilename):
     """
     Make a file read-only.
@@ -286,18 +166,6 @@ def makeFileReadOnly(completeFilename):
     """
     os.chmod(completeFilename, 0444)
     logger.debug("File: %s made read-only", completeFilename)
-
-
-def makeFileRdWr(completeFilename):
-    """
-    Make a file read/write.
-
-    completeFilename:    Complete name of file (string).
-
-    Returns:             Void.
-    """
-    os.chmod(completeFilename, 0664)
-    logger.debug("File: %s made read-write", completeFilename)
 
 
 def fileWritable(filename):
@@ -311,6 +179,7 @@ def fileWritable(filename):
     return os.access(filename, os.W_OK)
 
 
+_http_fmt = "%a, %d %b %Y %H:%M:%S GMT"
 def httpTimeStamp():
     """
     Generate a time stamp in the 'HTTP format', e.g.:
@@ -319,15 +188,7 @@ def httpTimeStamp():
 
     Returns:  Timestamp (string).
     """
-    tsList = list(string.split(time.asctime(time.gmtime(time.time())), " "))
-    # ['Mon', 'Sep', '17', '09:32:34', '2001']
-    idx = 0
-    for comp in tsList:
-        comp = comp.strip()
-        if (comp == ""): del tsList[idx]
-        idx += 1
-    return tsList[0] + ", " + tsList[2] + " " + tsList[1] + " " +\
-           tsList[4] + " " + tsList[3] + " GMT"
+    return time.strftime(_http_fmt, time.gmtime(time.time()))
 
 
 def _httpHandleResp(fileObj,
@@ -354,8 +215,6 @@ def _httpHandleResp(fileObj,
                       NG/AMS Server (reply, msg, hdrs, data|File Object)
                       (list).
     """
-    T = TRACE()
-
     # Handle the response + data.
     code   = NGAMS_HTTP_SUCCESS
     msg    = "OK"
@@ -479,8 +338,6 @@ def httpPostUrl(url,
     Returns:      List with information from reply from contacted
                   NG/AMS Server (reply, msg, hdrs, data) (list).
     """
-    T = TRACE()
-
     urlres = urlparse.urlparse(url)
 
     if urlres.scheme.lower() == 'houdt':
@@ -678,8 +535,6 @@ def httpPost(host,
     Returns:      List with information from reply from contacted
                   NG/AMS Server (reply, msg, hdrs, data) (list).
     """
-    T = TRACE()
-
     # If the dataRef is a directory, scan the directory
     # and build up a list of files contained directly within
     # Start preparing a mutipart MIME message that will contain
@@ -783,25 +638,43 @@ def httpGetUrl(url,
     """
 
     # Issue request + handle result.
-    logger.debug("Issuing request with URL: %s", url)
-
-    reqObj = urllib2.Request(url)
-    if authHdrVal:
-        reqObj.add_header("Authorization", authHdrVal)
-    reqObj.add_header("Host", getHostName())
-
-    # Send additional HTTP headers, if any.
-    for addHdr in additionalHdrs:
-        reqObj.add_header(addHdr[0], addHdr[1])
+    req = create_request(url, authHdrVal, additionalHdrs)
 
     try:
-        with contextlib.closing(urllib2.urlopen(reqObj, timeout=timeOut)) as f:
+        with contextlib.closing(urllib2.urlopen(req, timeout=timeOut)) as f:
             return _httpHandleResp(f, dataTargFile, blockSize, timeOut)
     except urllib2.HTTPError, e:
         logger.exception("error while sending GET request")
         code, msg, hdrs, data = e.code, str(e), e.headers, e.read()
         return code, msg, hdrs, data
 
+
+def get_url(host, port, cmd, pars):
+    """
+    Creates the URL for the given combination of inputs
+    """
+    parDic = {p[0]: p[1] for p in pars}
+    url = "http://" + host + ":" + str(port) + "/" + cmd
+    pars = urllib.urlencode(parDic)
+    if pars:
+        url += '?' + pars
+    return url
+
+def create_request(url, auth, hdrs):
+    """
+    Creates a request for the given combination of inputs
+    """
+    logger.debug("Issuing request with URL: %s", url)
+    req = urllib2.Request(url)
+    if auth:
+        req.add_header("Authorization", auth)
+    req.add_header("Host", getHostName())
+
+    # Send additional HTTP headers, if any.
+    for hdr in hdrs:
+        req.add_header(hdr[0], hdr[1])
+
+    return req
 
 def httpGet(host,
             port,
@@ -859,16 +732,10 @@ def httpGet(host,
     Returns:          List with information from reply from contacted
                       NG/AMS Server (list).
     """
-    T = TRACE()
-
     if (not blockSize): blockSize = 65536
 
     # Prepare URL + parameters.
-    url = "http://" + host + ":" + str(port) + "/" + cmd
-    parDic = {p[0]: p[1] for p in pars}
-    pars = urllib.urlencode(parDic)
-    if pars:
-        url += '?' + pars
+    url = get_url(host, port, cmd, pars)
 
     # Submit the request.
     code, msg, hdrs, data = httpGetUrl(url, dataTargFile,
@@ -883,43 +750,9 @@ def httpGetConnection(host, port, cmd, pars = [], blockSize = 65536,
     """
     Similar to httpGet but returns the HTTP connection directly
     """
-
-    # Prepare URL + parameters.
-    parDic = {p[0]: p[1] for p in pars}
-    url = "http://" + host + ":" + str(port) + "/" + cmd
-    pars = urllib.urlencode(parDic)
-    if pars:
-        url += '?' + pars
-
-    logger.debug("Issuing request with URL: %s", url)
-    reqObj = urllib2.Request(url)
-    reqObj.add_header("Host", getHostName())
-    if authHdrVal:
-        reqObj.add_header("Authorization", authHdrVal)
-    for addHdr in additionalHdrs:
-        reqObj.add_header(addHdr[0], addHdr[1])
-
-    return urllib2.urlopen(reqObj, timeout=timeOut)
-
-def quoteUrlField(field):
-    """
-    Function to encode a field (value) of a URL so that special
-    characters are replaced before sending the value within a URL.
-
-    field:    Field from URL to encode (string).
-
-    Returns:  Encoded field (string).
-    """
-    T = TRACE()
-
-    field = str(field)
-    if ((field.find("http:") != -1) or (field.find("file:") != -1)):
-        idx = 5
-    elif (field.find("ftp:") != -1):
-        idx = 4
-    else:
-        idx = 0
-    return field[0:idx] + urllib.quote(field[idx:])
+    url = get_url(host, port, cmd, pars)
+    req = create_request(url, authHdrVal, additionalHdrs)
+    return urllib2.urlopen(req, timeout=timeOut)
 
 
 def genUniqueFilename(filename):
@@ -949,24 +782,6 @@ def genUniqueFilename(filename):
                       tmpFilename[(nameLen - (NGAMS_MAX_FILENAME_LEN / 2)):]
 
     return tmpFilename
-
-
-def genDir(comps):
-    """
-    Generate a directory name from the components given in the list.
-
-    comps:     List containing the path components to assemble (list).
-
-    Returns:   Normalized (cleaned) directory (string).
-    """
-    tmpPath = ""
-    for comp in comps:
-        tmpPath = tmpPath + "/" + comp
-    tmpPath = tmpPath[1:]
-    if ((tmpPath[0] == "/") and (tmpPath[1] == "/")):
-        tmpPath = tmpPath[1:]
-    tmpPath = os.path.normpath(tmpPath)
-    return tmpPath
 
 
 def parseRawPlugInPars(rawPars):
@@ -1017,8 +832,6 @@ def detMimeType(mimeTypeMaps,
 
     Returns:       Mime-type (string).
     """
-    T = TRACE()
-
     # Check if the extension as ".<ext>" is found in the filename as
     # the last part of the filename.
     logger.debug("Determining mime-type for file with URI: %s ...", filename)
@@ -1064,8 +877,6 @@ def fileRemovable(filename):
 
     Returns:      Indication if file can be removed or not (integer/0|1|2).
     """
-    T = TRACE(5)
-
     # We simply carry out a temporary move of the file.
     tmpFilename = filename + "_tmp"
     try:
@@ -1088,8 +899,6 @@ def createObjPickleFile(filename,
 
     Returns:     Void.
     """
-    T = TRACE()
-
     logger.debug("createObjPickleFile() - creating pickle file %s ...", filename)
     rmFile(filename)
     with open(filename, "w") as pickleFo:
@@ -1143,8 +952,6 @@ def trueArchiveProxySrv(cfgObj):
 
     Returns:   1 if the server is a True Archive Proxy Server (integer/0|1).
     """
-    T = TRACE()
-
     trueArchProxySrv = 1
     if (cfgObj.getStorageSetList() != []):
         trueArchProxySrv = 0
@@ -1177,24 +984,9 @@ def logicalStrListSort(strList):
 
     Returns:   Sorted list (list).
     """
-    # Find maximum length.
-    maxLen = 0
-    for el in strList:
-        if (len(el) > maxLen): maxLen = len(el)
-
-    # Build up dictionary with padded (sortable) keys.
-    dic = {}
-    for el in strList:
-        key = (maxLen - len(el)) * " " + el
-        dic[key] = el
-
-    # Now sort the sortable keys and create a new list.
-    sortedKeys = dic.keys()
-    sortedKeys.sort()
-    sortedList = []
-    for key in sortedKeys:
-        sortedList.append(key)
-
-    return sortedList
+    maxLen = max(map(len, strList))
+    estretched_strings = [(maxLen - len(s)) * " " + s for s in strList]
+    estretched_strings.sort()
+    return estretched_strings
 
 # EOF

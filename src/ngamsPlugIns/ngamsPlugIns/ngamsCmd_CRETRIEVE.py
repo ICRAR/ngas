@@ -309,8 +309,7 @@ def collectProcResults(srvObj, reqPropsObj, fileVer, diskId, hostId, container):
             checkCreatePath(procDir)
             pars = [['file_id', fileId], ['file_version', fileVer]]
             for par in reqPropsObj.getHttpParNames():
-                if (par != "initiator"):
-                    pars.append([par, reqPropsObj.getHttpPar(par)])
+                pars.append([par, reqPropsObj.getHttpPar(par)])
             authHdr = ngamsSrvUtils.genIntAuthHdr(srvObj)
             httpStatCode, httpStatMsg, httpHdrs, data =\
                           ngamsLib.httpGet(ipAddress, port, NGAMS_RETRIEVE_CMD, 1,

@@ -122,7 +122,6 @@ def handleCmdLabel(srvObj,
     reLabel  = ""
     newLabel = ""
     for httpPar in reqPropsObj.getHttpParNames():
-        if (httpPar == "initiator"): continue
         if (httpPar == "disk_id"):
             diskId = reqPropsObj.getHttpPar("disk_id")
         elif (httpPar == "slot_id"):

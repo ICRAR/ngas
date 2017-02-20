@@ -779,8 +779,8 @@ class ngamsServer:
         T = TRACE()
 
         self.takeStateSem()
-        if ((ngamsLib.searchList(allowedStates, self.getState()) == -1) or
-            (ngamsLib.searchList(allowedSubStates, self.getSubState()) == -1)):
+        if ( self.getState() not in allowedStates or
+             self.getSubState() not in allowedSubStates):
             errMsg = [action, self.getState(), self.getSubState(),
                       str(allowedStates), str(allowedSubStates)]
             errMsg = genLog("NGAMS_ER_IMPROPER_STATE", errMsg)
@@ -1855,8 +1855,7 @@ class ngamsServer:
 
         pars = ""
         for par in reqPropsObj.getHttpParNames():
-            if (par != "initiator"):
-                pars += par + "=" + reqPropsObj.getHttpPar(par) + "&"
+            pars += par + "=" + reqPropsObj.getHttpPar(par) + "&"
         pars = pars[0:-1]
         redirectUrl = "http://" + redirHost + ":" + str(redirPort) + "/" +\
                       reqPropsObj.getCmd() + "?" + pars
@@ -1918,9 +1917,8 @@ class ngamsServer:
             contactPort = forwardPort
         pars = []
         for par in reqPropsObj.getHttpParNames():
-            if (par != "initiator"):
-                val = reqPropsObj.getHttpPar(par)
-                pars.append([par, val])
+            val = reqPropsObj.getHttpPar(par)
+            pars.append([par, val])
         cmdInfo = reqPropsObj.getCmd() + "/Parameters: " +\
                   str(pars)[1:-1] + " to server defined " +\
                   "by host/port: %s/%s." % (forwardHost, str(forwardPort))

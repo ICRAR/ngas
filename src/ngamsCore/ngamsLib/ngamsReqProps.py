@@ -40,6 +40,7 @@ import os
 import time
 import types
 import urllib
+import urlparse
 
 from ngamsCore import TRACE, NGAMS_HTTP_GET, NGAMS_HTTP_PUT,\
     NGAMS_HTTP_POST, NGAMS_ARCHIVE_CMD, NGAMS_ARCH_REQ_MT, genLog,\
@@ -186,14 +187,15 @@ class ngamsReqProps:
                 self.setAuthorization(urllib.unquote(val.strip()))
 
         # Handle the information in the path.
-        if (path):
-            parList = ngamsLib.parseUrlRequest(path)
+        path,query = urllib.splitquery(path)
+        self.setCmd(path.lstrip('/'))
+        if (query):
+            parList = urlparse.parse_qsl(query)
             for el in parList:
-                # For some reason '+' is not converted back to ' ' ...
-                tmpVal = el[1].replace("+", " ")
-                val = urllib.unquote(str(tmpVal))
+                # Previous code stripped spaces and double quotes,
+                # so we need keep doing it to keep them happy
+                val = el[1].strip(" \"")
                 logger.debug("Found parameter: %s with value: %s", el[0], val)
-                if (el[0] == "initiator"): self.setCmd(val)
                 if (httpMethod in [NGAMS_HTTP_GET, NGAMS_HTTP_PUT, NGAMS_HTTP_POST]):
                     # Subscription file delivery is always POST, but sometimes we want it behave like GET (e.g. proxy qrchive) to pass on parametres in url string.
                     if (el[0] == "filename"):
