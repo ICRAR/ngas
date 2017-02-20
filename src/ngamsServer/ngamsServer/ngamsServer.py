@@ -33,8 +33,10 @@ services for the NG/AMS Server.
 """
 
 import BaseHTTPServer
+import Queue
 import SocketServer
 import logging
+import multiprocessing
 import os
 import re
 import shutil
@@ -58,7 +60,7 @@ from ngamsLib.ngamsCore import \
     NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_XML_STATUS_ROOT_EL,\
     NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs,\
     toiso8601
-from ngamsLib import ngamsHighLevelLib, ngamsLib
+from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent
 from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
 import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
@@ -288,6 +290,13 @@ class ngamsServer:
         self._janitorThread         = None
         self._janitorThreadStopEvt  = threading.Event()
         self._janitorThreadRunCount = 0
+        self._janitordbChangeSync = ngamsEvent.ngamsEvent()
+
+        # Handling of the Janitor Queue reader Thread.
+        self._janitorQueThread         = None
+
+        # Handling of the Janitor // Processs
+        self._janitorProcStopEvt     = multiprocessing.Event()
 
         # Handling of the Data Check Thread.
         self._dataCheckThread        = None
@@ -539,30 +548,15 @@ class ngamsServer:
             self.__requestDbmSem.release()
             raise e
 
-    def recoveryRequestDb(self, err):
+    def recoveryRequestDb(self):
         """
-        If the bsddb needs recover, i.e. err is something like
-         (-30974, 'DB_RUNRECOVERY: Fatal error, run database recovery -- PANIC: fatal region error detected; run recovery')
-
-        then remove and recreate the request bsddb
-
-        err:    the error message (string)
-        return: 0 - the error is not about recovery
-                1 - the error is about recovery, which succeeded
-               -1 - the error is about recovery, which failed
+        Remove and recreate the request bsddb
         """
-        T = TRACE()
-
-        if (err.find('DB_RUNRECOVERY') > -1):
-            reqDbmName = self.getReqDbName()
-            rmFile(reqDbmName + "*")
-            logger.debug("Recover (Check/create) NG/AMS Request Info DB ...")
-            self.__requestDbm = ngamsDbm.ngamsDbm(reqDbmName, cleanUpOnDestr = 0,
-                                                  writePerm = 1)
-            logger.debug("Recovered (Checked/created) NG/AMS Request Info DB")
-            return 1
-        else:
-            return 0
+        reqDbmName = self.getReqDbName()
+        rmFile(reqDbmName + "*")
+        self.__requestDbm = ngamsDbm.ngamsDbm(reqDbmName, cleanUpOnDestr = 0,
+                                              writePerm = 1)
+        logger.debug("Recovered (Checked/created) NG/AMS Request Info DB")
 
     def updateRequestDb(self,
                         reqPropsObj):
@@ -583,19 +577,10 @@ class ngamsServer:
             self.__requestDbm.sync()
             self.__requestDbmSem.release()
             return self
-        except Exception, e:
-            self.recoveryRequestDb(str(e)) # this will ensure next time the same error will not appear again, but this time, it will still throw
+        except ngamsDbm.DbRunRecoveryError:
+            self.recoveryRequestDb() # this will ensure next time the same error will not appear again, but this time, it will still throw
             self.__requestDbmSem.release()
-            raise e
-
-
-    def getRequestIds(self):
-        """
-        Return a list with the Request IDs.
-
-        Returns:    List with Request IDs (list).
-        """
-        return self.__requestDbm.keys()
+            raise
 
 
     def getRequest(self,
@@ -617,14 +602,13 @@ class ngamsServer:
                 retVal = None
             self.__requestDbmSem.release()
             return retVal
-        except Exception, e:
-            self.recoveryRequestDb(str(e))
+        except ngamsDbm.DbRunRecoveryError:
+            self.recoveryRequestDb()
             self.__requestDbmSem.release()
-            raise e
+            raise
 
 
-    def delRequest(self,
-                   requestId):
+    def delRequests(self, requestIds):
         """
         Delete the Request Properties Object associated to the given
         Request ID.
@@ -633,17 +617,15 @@ class ngamsServer:
 
         Returns:       Reference to object itself.
         """
-        try:
-            self.__requestDbmSem.acquire()
-            if (self.__requestDbm.hasKey(str(requestId))):
-                self.__requestDbm.rem(str(requestId))
+        with self.__requestDbmSem:
+            try:
+                for req_id in requestIds:
+                    if self.__requestDbm.hasKey(str(req_id)):
+                        self.__requestDbm.rem(str(req_id))
                 self.__requestDbm.sync()
-            self.__requestDbmSem.release()
-            return self
-        except Exception, e:
-            self.recoveryRequestDb(str(e))
-            self.__requestDbmSem.release()
-            raise e
+            except ngamsDbm.DbRunRecoveryError:
+                self.recoveryRequestDb()
+                raise
 
 
     def takeStateSem(self):
@@ -821,25 +803,110 @@ class ngamsServer:
         Starts the Janitor Thread.
         """
         logger.debug("Starting Janitor Thread ...")
-        self._janitorThread = threading.Thread(target=ngamsJanitorThread.janitorThread,
-                                               name=ngamsJanitorThread.NGAMS_JANITOR_THR,
-                                               args=(self,self._janitorThreadStopEvt))
+
+        # Create the child process and kick it off
+        self._serv_to_jan_queue = multiprocessing.Queue()
+        self._jan_to_serv_queue = multiprocessing.Queue()
+        self._janitorThread = multiprocessing.Process(
+                                target=ngamsJanitorThread.janitorThread,
+                                args=(self, self._janitorProcStopEvt, self._serv_to_jan_queue, self._jan_to_serv_queue))
         self._janitorThread.start()
+
+        # Subscribe to db-change events (which we pass down to the janitor proc)
+        self.getDb().addDbChangeEvt(self._janitordbChangeSync)
         logger.info("Janitor Thread started")
+
+        # Kick off the thread that takes care of communicating back and forth
+        self._janitorQueThread = threading.Thread(target=self.janitorQueThread,
+                                              name="JanitorQueReaderThread")
+        self._janitorQueThread.start()
+        logger.info("Janitor Queue Reader Thread started")
 
 
     def stopJanitorThread(self):
         """
         Stops the Janitor Thread.
         """
+
         if self._janitorThread is None:
+            logger.debug("No janitor process to stop")
             return
-        logger.debug("Stopping Janitor Thread ...")
-        self._janitorThreadStopEvt.set()
-        self._janitorThread.join(10)
+
+        code = self._janitorThread.exitcode
+        if code is not None:
+            logger.warning("Janitor process already exited with code %d"  % (code,))
+
+        # Set the event regardless, because our own thread also uses it
+        self._janitorProcStopEvt.set()
+        if not code:
+            logger.debug("Stopping Janitor Thread ...")
+            self._janitorThread.join(10)
+            code = self._janitorThread.exitcode
+            if code is None:
+                logger.warning("Janitor process didn't exit cleanly, killing it")
+                os.kill(self._janitorThread.pid, signal.SIGKILL)
         self._janitorThread = None
         self._janitorThreadRunCount = 0
         logger.info("Janitor Thread stopped")
+
+        self._janitorQueThread.join(10)
+        if self._janitorQueThread.is_alive():
+            logger.error("Janitor queue thread is still alive")
+        self._janitorQueThread = None
+        logger.info("Janitor Queue thread stopped")
+
+
+    def janitorQueThread(self):
+        """
+        This method runs in a separate thread, and implements the protocol
+        which this parent process uses to communicate with the janitor process
+
+        The protocol (so far) is simple:
+
+         * Keep reading anything the child process sends to us. If there's
+           nothing to be read keep trying until there is something.
+         * If something is read, do something with it, and also check if
+           a reply should be sent (and send it if required).
+         * Continue like this until the janitor process is signaled to stop.
+        """
+
+        while not self._janitorProcStopEvt.is_set():
+
+            # Reading on our end
+            try:
+                x = self._jan_to_serv_queue.get(timeout=0.01)
+            except Queue.Empty:
+                continue
+
+            # See what we got
+            inspect_db_changes = False
+            name, item = x
+            if name == 'log-record':
+                logger.handle(item)
+            elif name == 'janitor-run-count':
+                # Get the thread count and send back
+                # the information from the dbChangeEvent
+                self._janitorThreadRunCount = item
+                inspect_db_changes = True
+            elif name == 'delete-requests':
+                self.delRequests(item)
+            else:
+                raise ValueError("Unknown item in queue: name=%s, item=%r" % (name,item))
+
+            # Writing on our end if needed
+            x = None
+            if inspect_db_changes:
+                info = None
+                if self._janitordbChangeSync.isSet():
+                    info = self._janitordbChangeSync.getEventInfoList()
+                    self._janitordbChangeSync.clear()
+                x = ('db-change-info', info)
+
+            if x is not None:
+                try:
+                    self._serv_to_jan_queue.put(x, timeout=0.01)
+                except:
+                    logger.exception("Problem when writing to the queue")
 
 
     def incJanitorThreadRunCount(self):
@@ -2498,7 +2565,7 @@ class ngamsServer:
 
         Returns:     Void.
         """
-        t = threading.Thread(target=self._terminate)
+        t = threading.Thread(target=self._terminate, name="Shutdown")
         t.start()
 
     def _terminate(self):
@@ -2525,6 +2592,15 @@ class ngamsServer:
         Kills this process with SIGKILL
         """
         logger.warning("About to commit suicide... good-by cruel world")
+
+        #First kill the janitor process created by this ngamsServer
+        if self._janitorThread is not None:
+            try:
+                os.kill(self._janitorThread.pid, signal.SIGKILL)
+            except:
+                logger.warning("No Janitor process was found: %s. ")
+
+        #Now kill the server itself
         pid = os.getpid()
         os.kill(pid, signal.SIGKILL)
 
