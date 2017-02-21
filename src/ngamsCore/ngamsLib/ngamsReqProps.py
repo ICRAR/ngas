@@ -187,21 +187,18 @@ class ngamsReqProps:
         self.setCmd(path.lstrip('/'))
         if (query):
             parList = urlparse.parse_qsl(query)
-            for el in parList:
-                # Previous code stripped spaces and double quotes,
-                # so we need keep doing it to keep them happy
-                val = el[1].strip(" \"")
-                logger.debug("Found parameter: %s with value: %s", el[0], val)
+            for name,val in parList:
+                logger.debug("Found parameter: %s with value: %s", name, val)
                 if (httpMethod in [NGAMS_HTTP_GET, NGAMS_HTTP_PUT, NGAMS_HTTP_POST]):
                     # Subscription file delivery is always POST, but sometimes we want it behave like GET (e.g. proxy qrchive) to pass on parametres in url string.
-                    if (el[0] == "filename"):
+                    if name == "filename":
                         self.setFileUri(val)
-                    elif (el[0] == "mime_type"):
+                    elif name == "mime_type":
                         self.setMimeType(val)
-                    elif (el[0] == "authorization"):
+                    elif name == "authorization":
                         self.setAuthorization(val)
                     else:
-                        self.addHttpPar(el[0], val)
+                        self.addHttpPar(name, val)
 
         # Small trick to set the mime-type in case not defined by the
         # Content-Type HTTP header.

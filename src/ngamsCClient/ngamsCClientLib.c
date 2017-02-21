@@ -1488,24 +1488,24 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 		sprintf(tmpUrl, "%s?cfg", ngamsCMD_RETRIEVE_STR);
 	else if (internal) {
 		ngamsEncodeUrlVal(fileRef, 1, tmpEnc);
-		sprintf(tmpUrl, "%s?internal=\"%s\"", ngamsCMD_RETRIEVE_STR, tmpEnc);
+		sprintf(tmpUrl, "%s?internal=%s", ngamsCMD_RETRIEVE_STR, tmpEnc);
 	} else {
 		ngamsEncodeUrlVal(fileRef, 1, tmpEnc);
-		sprintf(tmpUrl, "%s?file_id=\"%s\"", ngamsCMD_RETRIEVE_STR, tmpEnc);
+		sprintf(tmpUrl, "%s?file_id=%s", ngamsCMD_RETRIEVE_STR, tmpEnc);
 	}
 	if ((processing != NULL) && (*processing != '\0')) {
 		ngamsEncodeUrlVal(processing, 1, tmpEnc);
-		sprintf(tmpBuf, "&processing=\"%s\"", tmpEnc);
+		sprintf(tmpBuf, "&processing=%s", tmpEnc);
 		strcat(tmpUrl, tmpBuf);
 		if ((processingPars != NULL) && (*processingPars != '\0')) {
 			ngamsEncodeUrlVal(processingPars, 1, tmpEnc);
-			sprintf(tmpBuf, "&processing_pars=\"%s\"", tmpEnc);
+			sprintf(tmpBuf, "&processing_pars=%s", tmpEnc);
 			strcat(tmpUrl, tmpBuf);
 		}
 	}
 
 	if (fileVersion != -1) {
-		sprintf(tmpBuf, "&file_version=\"%d\"", fileVersion);
+		sprintf(tmpBuf, "&file_version=%d", fileVersion);
 		strcat(tmpUrl, tmpBuf);
 	}
 
@@ -2872,7 +2872,7 @@ ngamsSTAT ngamsGenSendCmd(const char* host, const int port,
 	for (i = 0; i < parArray->idx; i++) {
 		ngamsEncodeUrlVal(parArray->parArray[i], 1, tmpPar);
 		ngamsEncodeUrlVal(parArray->valArray[i], 1, tmpVal);
-		sprintf(tmpUrl, "%s=\"%s\"", tmpPar, tmpVal);
+		sprintf(tmpUrl, "%s=%s", tmpPar, tmpVal);
 
 		if (i)
 			strcat(url, "&");
