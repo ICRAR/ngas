@@ -180,7 +180,7 @@ class ngamsPClientTest(ngamsTestSuite):
         client.archive("src/SmallFile.fits")
         statObj = client.clone("TEST.2001-05-08T15:25:00.123",
                                "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1,
-                               wait = 0)
+                               async = 1)
         refMsg = "Accepted CLONE command for execution"
         self.checkEqual(refMsg, statObj.getMessage(), "Problem executing " +\
                         "Archive Pull Request")
@@ -214,7 +214,7 @@ class ngamsPClientTest(ngamsTestSuite):
         client.archive("src/SmallFile.fits")
         statObj = client.clone("TEST.2001-05-08T15:25:00.123",
                                "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1,
-                               wait = 1)
+                               async = 0)
         refMsg = "Successfully handled command CLONE"
         self.checkEqual(refMsg, statObj.getMessage(), "Problem executing " +\
                         "Archive Pull Request")
@@ -400,7 +400,7 @@ class ngamsPClientTest(ngamsTestSuite):
         trgFile = "/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/SmallFile.fits"
         shutil.copy("src/SmallFile.fits", trgFile)
         status = ngamsPClient.ngamsPClient(port=8888).\
-                 register(trgFile, wait = 1)
+                 register(trgFile)
         refMsg = "Successfully handled command REGISTER"
         self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "REGISTER Command")

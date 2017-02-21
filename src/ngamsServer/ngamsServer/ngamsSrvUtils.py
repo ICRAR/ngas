@@ -151,7 +151,7 @@ def _subscriberThread(srvObj,
                 resp, stat, msgObj, data = \
                       ngamsLib.httpGet(subscrObj.getHostId(),
                                        subscrObj.getPortNo(),
-                                       NGAMS_SUBSCRIBE_CMD, 1, pars)
+                                       NGAMS_SUBSCRIBE_CMD, pars)
                 statObj.unpackXmlDoc(data, 1)
             except Exception, e:
                 ex = "Exception: " + str(e)
@@ -428,7 +428,7 @@ def handleOffline(srvObj,
                 resp, stat, msgObj, data = \
                       ngamsLib.httpGet(subscrObj.getHostId(),
                                        subscrObj.getPortNo(),
-                                       NGAMS_UNSUBSCRIBE_CMD, 1,
+                                       NGAMS_UNSUBSCRIBE_CMD,
                                        [["url", subscrObj.getId()]])
             except Exception:
                 msg = "Problem occurred while cancelling subscription " +\

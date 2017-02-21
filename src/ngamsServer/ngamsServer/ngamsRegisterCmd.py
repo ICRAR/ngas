@@ -656,7 +656,8 @@ def register(srvObj,
     del fileListDbm
 
     # Send intermediate reply if the HTTP Reference object is given.
-    if (httpRef and (not reqPropsObj.getWait())):
+    async = 'async' in reqPropsObj and int(reqPropsObj['async'])
+    if httpRef and async:
         logger.debug("REGISTER command accepted - generating immediate " +\
              "confimation reply to REGISTER command")
 
@@ -671,7 +672,7 @@ def register(srvObj,
                                   setActualCount(0)
 
     # Launch the register thread or run the command in foreground if wait=1
-    if (not reqPropsObj.getWait()):
+    if async:
         args = (srvObj, fileListDbmName, tmpFilePat, diskInfoDic,
                 reqPropsObj, None)
         thrName = NGAMS_REGISTER_THR + threading.current_thread().getName()

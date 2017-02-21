@@ -27,12 +27,12 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  18/11/2003  Created
 #
-import shutil
 """
 This module contains the Test Suite for the REGISTER Command.
 """
 
 import os
+import shutil
 import sys
 import time
 

@@ -1047,7 +1047,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
     def test_NoDapi_01(self):
         """
         Synopsis:
-        No DAPI installed to handled request/Archive Push/wait=1.
+        No DAPI installed to handled request/Archive Push/async=1.
 
         Description:
         If the specified DAPI cannot be loaded during the Archive Request
@@ -1056,13 +1056,13 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         Expected Result:
         The Archive Request handling should be interrupted and an error
-        reply sent back to the client since wait=1. The files in connection
+        reply sent back to the client since async=1. The files in connection
         with the request should be removed from the Staging Area.
 
         Test Steps:
         - Start server with configuration specifying a non-existing DAPI
           to handle FITS files.
-        - Archive FITS file (wait=1).
+        - Archive FITS file (async=1).
         - Check error reply from server.
         - Check that Staging Area is cleaned up.
         - Check that no files were archived.

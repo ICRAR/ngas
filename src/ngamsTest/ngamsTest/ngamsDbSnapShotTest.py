@@ -278,7 +278,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         for n in range(3): client.archive("src/SmallFile.fits")
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         client.sendCmdGen(NGAMS_CLONE_CMD,
-                          pars = [["disk_id", diskId], ["wait", "1"]])
+                          pars = [["disk_id", diskId]])
         fileId = "TEST.2001-05-08T15:25:00.123"
         client.sendCmdGen(NGAMS_REMFILE_CMD,
                           pars = [["disk_id", diskId],
@@ -318,7 +318,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         for n in range(3): client.archive("src/SmallFile.fits")
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         client.sendCmdGen(NGAMS_CLONE_CMD,
-                          pars = [["disk_id", diskId], ["wait", "1"]])
+                          pars = [["disk_id", diskId]])
         client.sendCmdGen(NGAMS_REMDISK_CMD,
                           pars = [["disk_id", diskId], ["execute", "1"]])
         _checkContDbSnapshot(self, 4, ["FitsStorage1-Main-1"])
@@ -353,7 +353,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         for n in range(3): client.archive("src/SmallFile.fits")
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         client.sendCmdGen(NGAMS_CLONE_CMD,
-                          pars = [["disk_id", diskId], ["wait", "1"]])
+                          pars = [["disk_id", diskId]])
         time.sleep(5)
         _checkContDbSnapshot(self, 5, ["FitsStorage2-Main-3"])
 
@@ -390,7 +390,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
             os.system("cp src/SmallFile.fits " + regTestDir +\
                       "/" + str(n) + ".fits")
         client.sendCmdGen(NGAMS_REGISTER_CMD,
-                          pars = [["path", regTestDir], ["wait", "1"]])
+                          pars = [["path", regTestDir]])
         _checkContDbSnapshot(self, 6, ["FitsStorage1-Main-1"], 1, 1)
 
 

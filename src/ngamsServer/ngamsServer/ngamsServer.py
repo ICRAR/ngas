@@ -1949,7 +1949,7 @@ class ngamsServer:
             if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
                 httpStatCode, httpStatMsg, httpHdrs, data =\
                               ngamsLib.httpGet(contactAddr, contactPort,
-                                               reqPropsObj.getCmd(), 1, pars,
+                                               reqPropsObj.getCmd(), pars,
                                                "",self.getCfg().getBlockSize(),
                                                timeOut=reqTimeOut,
                                                authHdrVal=authHttpHdrVal)

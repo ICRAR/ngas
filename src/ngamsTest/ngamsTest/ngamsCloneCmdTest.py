@@ -112,7 +112,7 @@ def _execCloneTest(testObj,
     Execute the Clone Command Test based on the given input data. There is
     always waited for command execution.
 
-    A more thorough test (using wait=0) is implemented in test_CloneCmd_1 and
+    A more thorough test (using async=1) is implemented in test_CloneCmd_1 and
     test_CloneCmd_2 (testing also the Email Notification in connection with the
     CLONE Command).
 
@@ -146,7 +146,7 @@ def _execCloneTest(testObj,
     if (fileId):  cmdPars.append(["file_id", fileId])
     if (fileVer): cmdPars.append(["file_version", fileVer])
     if (trgDisk): cmdPars.append(["target_disk_id", trgDisk])
-    cmdPars.append(["wait", "1"])
+    cmdPars.append(["async", "0"])
     cmdPars.append(["notif_email", getpass.getuser() + "@" +\
                     ngamsLib.getCompleteHostName()])
     flushEmailQueue()
@@ -388,7 +388,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         - Archive a file 5 times onto one of the NGAS Systems.
         - Flush email queue no the node.
         - Clone the disk onto the other NGAS System, by specifying the
-          disk hosting the files in the other NGAS System (wait=1).
+          disk hosting the files in the other NGAS System (async=0).
         - Check that the response from the NG/AMS Server is as expected.
         - Check that the Clone Status Report (sent via Email Notification)
           is as expected.
@@ -502,10 +502,10 @@ class ngamsCloneCmdTest(ngamsTestSuite):
     def test_CloneCmd_1(self):
         """
         Synopsis:
-        Normal execution of CLONE Command/clone one file/wait=0.
+        Normal execution of CLONE Command/clone one file/async=1.
 
         Description:
-        Test normal execution of the CLONE Command whereby wait=0.
+        Test normal execution of the CLONE Command whereby async=1.
 
         Expected Result:
         An immediate response should be returned indicating that the
@@ -515,7 +515,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         Test Steps:
         - Start 1 NG/AMS Server.
         - Archive file 2 times.
-        - Clone one file specifying disk_id, file_id and file_version + wait=0.
+        - Clone one file specifying disk_id, file_id and file_version + async=1.
         - Check that the immediate response is correctly returned.
         - Wait for the execution of the CLONE Command to finish.
         - Check that the Request Info in the NG/AMS Server indicates that the
@@ -536,7 +536,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
                                     pars = [["disk_id", srcDiskId],
                                             ["file_id", nmuFileId],
                                             ["file_version", "1"],
-                                            ["wait", "0"],
+                                            ["async", "1"],
                                             ["notif_email", testUserEmail]])
         refStatFile = "ref/ngamsCloneCmdTest_test_CloneCmd_1_1_ref"
         tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
@@ -581,7 +581,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
     def test_CloneCmd_2(self):
         """
         Synopsis:
-        Normal execution of CLONE Command specifying disk_id (wait=0).
+        Normal execution of CLONE Command specifying disk_id (async=1).
 
         Description:
         Clone an entire disk and check that the Clone Request was successfully
@@ -612,7 +612,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         statObj = client.sendCmdGen(NGAMS_CLONE_CMD,
                                     pars = [["disk_id", diskId],
-                                            ["wait", "0"],
+                                            ["async", "1"],
                                             ["notif_email", testUserEmail]])
         waitReqCompl(client, statObj.getRequestId(), 20)
 

@@ -116,7 +116,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
                           [8011, None, None, getClusterName()]])
         statObj = sendPclCmd(port=8000).\
                   sendCmdGen("STATUS",
-                             1, "", [["host_id", getNcu11()]])
+                             "", [["host_id", getNcu11()]])
         refMsg = "Successfully handled command STATUS"
         if ((statObj.getMessage().find(refMsg) == -1) or
             (statObj.getHostId() != getNcu11())):
@@ -155,8 +155,8 @@ class ngamsStatusCmdTest(ngamsTestSuite):
                           [8011, None, None, getClusterName()]])
         srcFile = "src/TinyTestFile.fits"
         client = sendPclCmd(port=8011)
-        client.archive(srcFile,"", 1, 0)
-        statObj = client.sendCmdGen("STATUS", 1, "",
+        client.archive(srcFile)
+        statObj = client.sendCmdGen("STATUS", "",
                              [["file_access", "NCU.2003-11-11T11:11:11.111"],
                               ["file_version", "1"]])
         refMsg = "NGAMS_INFO_FILE_AVAIL:4029:INFO: File with File ID: " +\

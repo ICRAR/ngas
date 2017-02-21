@@ -274,7 +274,7 @@ def _locateArchiveFile(srvObj,
                 ipAddress = hostDic[host].getIpAddress()
                 authHdr = ngamsSrvUtils.genIntAuthHdr(srvObj)
                 statusInfo = ngamsLib.httpGet(ipAddress, port,
-                                              NGAMS_STATUS_CMD, 1, pars,
+                                              NGAMS_STATUS_CMD, pars,
                                               authHdrVal = authHdr)
                 statusObj = ngamsStatus.ngamsStatus().\
                             unpackXmlDoc(statusInfo[3], 1)

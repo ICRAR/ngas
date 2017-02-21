@@ -66,7 +66,6 @@ class ngamsReqProps:
         # Used to store the HTTP header in 'raw' condition.
         self.__httpHdrDic      = {}
         self.__cmd             = ""
-        self.__wait            = 1
         self.__mimeType        = ""
         self.__size            = -1
         self.__fileUri         = ""
@@ -109,7 +108,6 @@ class ngamsReqProps:
                 ["Cmd", self.getCmd()],
                 ["MimeType", self.getMimeType()],
                 ["Size", self.getSize()],
-                ["Wait", self.getWait()],
                 ["FileUri", self.getFileUri()],
                 ["SafeFileUri", self.getSafeFileUri()],
                 ["HttpParsDic", self.getHttpParsDic()],
@@ -171,8 +169,6 @@ class ngamsReqProps:
                     uncVal = urllib.unquote(tmpVal)
                     if (par == "filename"):
                         self.setFileUri(os.path.basename(uncVal))
-                    elif (par == "wait"):
-                        self.setWait(uncVal)
                     elif (par == "mime_type"):
                         if (self.getMimeType() == ""):
                             self.setMimeType(uncVal)
@@ -200,8 +196,6 @@ class ngamsReqProps:
                     # Subscription file delivery is always POST, but sometimes we want it behave like GET (e.g. proxy qrchive) to pass on parametres in url string.
                     if (el[0] == "filename"):
                         self.setFileUri(val)
-                    elif (el[0] == "wait"):
-                        self.setWait(val)
                     elif (el[0] == "mime_type"):
                         self.setMimeType(val)
                     elif (el[0] == "authorization"):
@@ -239,6 +233,12 @@ class ngamsReqProps:
 
         return self
 
+    # Container interface
+    def __contains__(self, k):
+        return k in self.__httpPars
+
+    def __getitem__(self, k):
+        return self.__httpPars[k]
 
     def hasHttpHdr(self,
                    httpHdr):
@@ -366,28 +366,6 @@ class ngamsReqProps:
         return self.__size
 
 
-    def setWait(self,
-                wait):
-        """
-        Set the Wait Flag.
-
-        wait:      1 = wait, 0 = immediate reply (integer).
-
-        Returns:   Reference to object itself.
-        """
-        self.__wait = int(wait)
-        return self
-
-
-    def getWait(self):
-        """
-        Get Wait Flag.
-
-        Returns:  Wait Flag (integer).
-        """
-        return self.__wait
-
-
     def setFileUri(self,
                    fileUri):
         """
@@ -435,7 +413,7 @@ class ngamsReqProps:
 
         Returns:   Reference to object itself.
         """
-        self.__httpPars[httpPar] = urllib.unquote(str(val))
+        self.__httpPars[httpPar] = val
         return self
 
 
@@ -713,7 +691,6 @@ class ngamsReqProps:
                 setCmd(self.getCmd()).\
                 setMimeType(self.getMimeType()).\
                 setSize(self.getSize()).\
-                setWait(self.getWait()).\
                 setFileUri(self.getFileUri()).\
                 setSentReply(self.getSentReply()).\
                 setBytesReceived(self.getBytesReceived()).\

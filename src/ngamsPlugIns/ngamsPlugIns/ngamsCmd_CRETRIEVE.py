@@ -312,7 +312,7 @@ def collectProcResults(srvObj, reqPropsObj, fileVer, diskId, hostId, container):
                 pars.append([par, reqPropsObj.getHttpPar(par)])
             authHdr = ngamsSrvUtils.genIntAuthHdr(srvObj)
             httpStatCode, httpStatMsg, httpHdrs, data =\
-                          ngamsLib.httpGet(ipAddress, port, NGAMS_RETRIEVE_CMD, 1,
+                          ngamsLib.httpGet(ipAddress, port, NGAMS_RETRIEVE_CMD,
                                            pars,"",srvObj.getCfg().getBlockSize(),
                                            timeOut = None, authHdrVal = authHdr)
             httpHdrDic = ngamsLib.httpMsgObj2Dic(httpHdrs)

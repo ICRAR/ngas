@@ -679,7 +679,6 @@ def create_request(url, auth, hdrs):
 def httpGet(host,
             port,
             cmd,
-            wait = 1,
             pars = [],
             dataTargFile = "",
             blockSize = 65536,
