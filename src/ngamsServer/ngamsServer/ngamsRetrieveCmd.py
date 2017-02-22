@@ -496,153 +496,15 @@ def _handleCmdRetrieve(srvObj,
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Retrieve"])
         raise Exception(errMsg)
 
+    # Previously this command allowed to retrieve the current logging file,
+    # the configuration file and any internal file. We don't do this anymore
     # Get query information.
-    '''if (reqPropsObj.hasHttpPar("ng_log")):
-        if (reqPropsObj.hasHttpPar("host_id")):
-            if (reqPropsObj.getHttpPar("host_id") != srvObj.getHostId()):
-                _handleRemoteIntFile(srvObj, reqPropsObj, httpRef)
-                return
-
-        # If there is a Local Log File, send it back.
-        locLogFile = srvObj.getCfg().getLocalLogFile()
-        if (os.path.exists(locLogFile)):
-            mimeType = NGAMS_TEXT_MT
-            srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                                locLogFile, 1, mimeType)
-            return
-        else:
-            errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", ["ng_log: " + locLogFile])
-            error(errMsg)
-            raise Exception, errMsg
-
-    # This is a massive security risk and is not necessary
-    elif (reqPropsObj.hasHttpPar("cfg")):
-        if (reqPropsObj.hasHttpPar("host_id")):
-            if (reqPropsObj.getHttpPar("host_id") != srvObj.getHostId()):
-                _handleRemoteIntFile(srvObj, reqPropsObj, httpRef)
-                return
-
-        # Send back the file.
-        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                            srvObj.getCfg().getCfg(), 1, "text/xml")
-        return
-    elif (reqPropsObj.hasHttpPar("internal")):
-        if (reqPropsObj.hasHttpPar("host_id")):
-            if (reqPropsObj.getHttpPar("host_id") != srvObj.getHostId()):
-                _handleRemoteIntFile(srvObj, reqPropsObj, httpRef)
-                return
-
-        # Handle internal (local) non-archive file or send back directory
-        # contents info.
-        intPath = reqPropsObj.getHttpPar("internal")
-        if (intPath.strip() == ""):
-            raise Exception, "Illegal path specified for RETRIEVE?internal"
-
-        # If specified path is a directory, return contents of the directory.
-        if (os.path.isdir(intPath) or (intPath == "/")):
-            info(2,"Querying info about directory: %s" % intPath)
-            comment = "Info about folder: %s" % intPath
-            fileListObj = ngamsFileList.ngamsFileList("DIR-INFO", comment,
-                                                      NGAMS_SUCCESS)
-            if (intPath[-1] != "/"): intPath += "/"
-            globFileList = glob.glob(os.path.normpath(intPath + "*"))
-
-            # To get the permissions, owner, group, access and modification
-            # time we use 'ls -l' for now.
-            # TODO: PORTABILITY ISSUE: Avoid usage of UNIX commands.
-            # dpallot: use os.walk functionality
-            lsCmd = "ls -l %s" % intPath
-            stat, lsBuf = commands.getstatusoutput(lsCmd)
-            dirInfoList = lsBuf.split("\n")
-            dirDic = {}
-            for dirInfo in dirInfoList[1:]:
-                dirInfo = dirInfo.strip()
-                dirEls = cleanList(dirInfo.split(" "))
-                if (len(dirEls) != 9): continue
-                # Example:
-                # -rw-r----- 1 ngas ngas 102 2007-03-30 13:10:38.000 +0200 XX
-                # -rw-rw-r-- 1 ngas ngas 488 Oct 26     14:50              YY
-                entryName = os.path.normpath(intPath + dirEls[8])
-                dirDic[entryName] = dirEls
-
-            # Unpack the information about each entry.
-            for filename in globFileList:
-                if (filename[:-1] == intPath): continue
-                statInfo = os.stat(filename)
-                tmpFileObj = ngamsFileInfo.ngamsFileInfo().\
-                             setFilename(os.path.normpath(filename)).\
-                             setPermissions(dirDic[filename][0]).\
-                             setOwner(dirDic[filename][2]).\
-                             setGroup(dirDic[filename][3]).\
-                             setAccDate(statInfo[7]).\
-                             setModDate(statInfo[8]).\
-                             setCreationDate(statInfo[9]).\
-                             setFileSize(statInfo[6])
-                fileListObj.addFileInfoObj(tmpFileObj)
-            statObj = srvObj.genStatus(NGAMS_SUCCESS, "Successfully handled " +
-                                       "RETRIEVE Command").\
-                                       addFileList(fileListObj)
-            xmlStat = ngamsHighLevelLib.\
-                      addDocTypeXmlDoc(srvObj, statObj.genXmlDoc(0, 0, 1),
-                                       NGAMS_XML_STATUS_ROOT_EL,
-                                       NGAMS_XML_STATUS_DTD)
-            srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                                xmlStat, 0, NGAMS_XML_MT, len(xmlStat), [], 1)
-            return
-
-        # Check that it is not tried to retrieve a data file in this way.
-        # This is done by checking if the file is located in one of the
-        # storage areas. Certain files like NgasDiskInfo, DB Snapshot Files,
-        # ect., can be retrieved.
-        complFilename = ngamsLib.locateInternalFile(intPath)
-        diskIdsMtPts = srvObj.getDb().getDiskIdsMtPtsMountedDisks(srvObj.getHostId())
-        mountRtDir = srvObj.getCfg().getRootDirectory()
-        for diskInfo in diskIdsMtPts:
-            tmpDir   = os.path.normpath(diskInfo[1] + "/tmp/")
-            cacheDir = os.path.normpath(diskInfo[1] + "/cache/")
-            dbDir    = os.path.normpath(diskInfo[1] + "/.db/")
-            if ((os.path.basename(complFilename) != NGAMS_DISK_INFO) and
-                (os.path.basename(complFilename) != NGAMS_VOLUME_ID_FILE) and
-                (os.path.basename(complFilename) != NGAMS_VOLUME_INFO_FILE) and
-                (complFilename.find(tmpDir) == -1) and
-                (complFilename.find(cacheDir) == -1) and
-                (complFilename.find(dbDir) == -1) and
-                (complFilename.find(diskInfo[1]) == 0)):
-                errMsg = genLog("NGAMS_ER_ILL_RETRIEVE_REQ",
-                                ["File requested appears to be an archived " +\
-                                "data file. Retrieve these using the " +\
-                                "RETRIEVE command + a combination of " +\
-                                "File ID, File Version and Disk ID"])
-                raise Exception, errMsg
-
-        # OK, get the file and send it back.
-        if ((complFilename.find(".xml") != -1) or
-            (complFilename.find(".dtd") != -1) or
-            (complFilename.find(NGAMS_DISK_INFO) != -1)):
-            mimeType = "text/xml"
-        elif (complFilename.find(".html") != -1):
-            mimeType = "text/html"
-        else:
-            mimeType = ngamsHighLevelLib.\
-                       determineMimeType(srvObj.getCfg(), complFilename, 1)
-            if (mimeType == NGAMS_UNKNOWN_MT):
-                # ".py", ...
-                mimeType = NGAMS_TEXT_MT
-
-        # Send back the file.
-        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                            complFilename, 1, mimeType)
-        return'''
+    if 'ng_log' in reqPropsObj or 'cfg' in reqPropsObj or 'internal' in reqPropsObj:
+        raise Exception("ng_log, cfg and internal parameters not supported anymore")
 
     # At least file_id must be specified if not an internal file has been
     # requested.
-    issueRetCmdErr = 0
-    if (not reqPropsObj.hasHttpPar("file_id")):
-        issueRetCmdErr = 1
-    else:
-        if (reqPropsObj.getHttpPar("file_id").strip() == ""):
-            issueRetCmdErr = 1
-    if (issueRetCmdErr):
+    if 'file_id' not in reqPropsObj or not reqPropsObj['file_id']:
         errMsg = genLog("NGAMS_ER_RETRIEVE_CMD")
         raise Exception(errMsg)
     fileId = reqPropsObj.getHttpPar("file_id")
@@ -759,14 +621,9 @@ def handleCmdRetrieve(srvObj,
     """
     T = TRACE()
 
-    # If an internal file is retrieved we allow to handle the request also
-    # when the system is Offline (for trouble-shooting purposes).
-    if ((not reqPropsObj.hasHttpPar("internal")) and
-        (not reqPropsObj.hasHttpPar("ng_log")) and
-        (not reqPropsObj.hasHttpPar("cfg"))):
-        srvObj.checkSetState("Command RETRIEVE", [NGAMS_ONLINE_STATE],
-                             [NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE],
-                             "", NGAMS_BUSY_SUBSTATE)
+    srvObj.checkSetState("Command RETRIEVE", [NGAMS_ONLINE_STATE],
+                         [NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE],
+                         "", NGAMS_BUSY_SUBSTATE)
 
     # Check if processing is requested if this systems allows processing.
     if (reqPropsObj.hasHttpPar("processing") and \
