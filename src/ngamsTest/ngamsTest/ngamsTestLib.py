@@ -763,7 +763,7 @@ def runTest(argv):
 
     Returns:  Void.
     """
-    testModuleName = argv[0].split(".")[0]
+    testModuleName = argv[0].split('/')[-1].split(".")[0]
     tests = []
     silentExit = 0
     verboseLevel = 0
