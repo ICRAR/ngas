@@ -7,7 +7,6 @@ DiskId:                             tmp-ngamsTest-NGAS:8000-FitsStorage1-Main-1
 Archive:                            ESO-ARCHIVE
 Type:                               TEST-TYPE
 Manufacturer:                       TEST-MANUFACTURER
-LogicalName:                        FITS-M-000001
 SlotId:                             1
 Mounted:                            1
 MountPoint:                         /tmp/ngamsTest/NGAS:8000/FitsStorage1-Main-1

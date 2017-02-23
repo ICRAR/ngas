@@ -109,7 +109,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         revAttr = "NgamsCfg.Header[1].Revision"
         cfgObj.storeVal(revAttr, "TEST-REVISION", "ngamsCfg-Test")
 
-        self.point_to_sqlite_database(cfgObj, getHostName(), createDatabase)
+        self.point_to_sqlite_database(cfgObj, createDatabase)
         dbObj = ngamsDb.from_config(cfgObj)
         if (delDbTbls): delNgasTbls(dbObj)
         cfgObj.writeToDb(dbObj)

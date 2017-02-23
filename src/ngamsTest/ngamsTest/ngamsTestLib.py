@@ -34,8 +34,8 @@ This module contains test utilities used to build the NG/AMS Functional Tests.
 
 import collections
 import commands
-from contextlib import nested
-from functools import partial
+import contextlib
+import functools
 import getpass
 import glob
 import gzip
@@ -49,6 +49,7 @@ import subprocess
 import sys
 import time
 import unittest
+import uuid
 
 import pkg_resources
 import pyfits
@@ -441,7 +442,7 @@ def genTmpFilename(prefix = ""):
 
     Returns:   Returns unique, temporary filename (string).
     """
-    return "tmp/%s%.5f_tmp" % (prefix, time.time())
+    return "tmp/%s%s_tmp" % (prefix, str(uuid.uuid4()))
 
 
 def saveInFile(filename,
@@ -962,8 +963,8 @@ def getThreadId(logFile,
     return tid
 
 def unzip(infile, outfile):
-    with nested(gzip.open(infile, 'rb'), open(outfile, 'w')) as (gz, out):
-        for data in iter(partial(gz.read, 1024), ''):
+    with contextlib.nested(gzip.open(infile, 'rb'), open(outfile, 'w')) as (gz, out):
+        for data in iter(functools.partial(gz.read, 1024), ''):
             out.write(data)
 
 
@@ -1093,7 +1094,7 @@ class ngamsTestSuite(unittest.TestCase):
         # Change what needs to be changed, like the position of the Sqlite
         # database file when necessary, the custom configuration items, and the
         # port number
-        self.point_to_sqlite_database(cfgObj, hostName, not multipleSrvs and not dbCfgName and not skip_database_creation)
+        self.point_to_sqlite_database(cfgObj, not multipleSrvs and not dbCfgName and not skip_database_creation)
         if (cfgProps):
             for cfgProp in cfgProps:
                 # TODO: Handle Cfg. Group ID.
@@ -1325,6 +1326,66 @@ class ngamsTestSuite(unittest.TestCase):
             logger.info("Error encountered: %s", errMsg.replace("\n", " | "))
             self.fail(errMsg)
 
+    def start_srv_in_cluster(self, multSrvs, comCfgFile, srvInfo):
+        """
+        Starts a given server which is part of a cluster of servers
+        """
+
+        portNo      = int(srvInfo[0])
+        domain      = srvInfo[1]
+        ipAddress   = srvInfo[2]
+        clusterName = srvInfo[3]
+        if (len(srvInfo) > 4):
+            cfgParList = srvInfo[4]
+        else:
+            cfgParList = []
+
+        # Set port number in configuration and allocate a mount root
+        hostName = getHostName()
+        srvId = "%s:%d" % (hostName, portNo)
+        if (multSrvs):
+            mtRtDir = "/tmp/ngamsTest/NGAS:%d" % portNo
+            rmFile("/tmp/ngamsTest/NGAS:%d" %(portNo,))
+            srvDbHostId = srvId
+        else:
+            mtRtDir = "/tmp/ngamsTest/NGAS"
+            srvDbHostId = hostName
+        rmFile(mtRtDir)
+
+        # Set up our server-specific configuration
+        cfg = ngamsConfig.ngamsConfig().load(comCfgFile)
+        cfg.storeVal("NgamsCfg.Header[1].Type", "TEST CONFIG: %s" % srvId)
+        cfg.storeVal("NgamsCfg.Server[1].PortNo", portNo)
+        cfg.storeVal("NgamsCfg.Server[1].RootDirectory", mtRtDir)
+        cfg.storeVal("NgamsCfg.ArchiveHandling[1].BackLogBufferDirectory", mtRtDir)
+        cfg.storeVal("NgamsCfg.Processing[1].ProcessingDirectory", mtRtDir)
+        cfg.storeVal("NgamsCfg.Log[1].LocalLogFile", os.path.normpath(mtRtDir + "/log/LogFile.nglog"))
+
+        # Set special values if so specified.
+        for cfgPar in cfgParList:
+            cfg.storeVal(cfgPar[0], cfgPar[1])
+
+        # And dump it into our server-specific configuration file
+        tmpCfgFile = "tmp/%s_tmp.xml" % srvId
+        cfg.save(tmpCfgFile, 0)
+
+        # Check if server has entry in referenced DB. If not, create it.
+        db = ngamsDb.from_config(cfg)
+        checkHostEntry(db, srvDbHostId, domain, ipAddress, clusterName)
+        db.close()
+
+        # Start server + add reference to server configuration object and
+        # server DB object.
+        srvCfgObj, srvDbObj = self.prepExtSrv(portNo,
+                                              delDirs = 0,
+                                              clearDb = 0,
+                                              autoOnline = 1,
+                                              cfgFile = tmpCfgFile,
+                                              multipleSrvs = multSrvs,
+                                              domain = domain,
+                                              ipAddress = ipAddress,
+                                              clusterName = clusterName)
+        return [srvId, srvCfgObj, srvDbObj]
 
     def prepCluster(self,
                     comCfgFile,
@@ -1362,84 +1423,24 @@ class ngamsTestSuite(unittest.TestCase):
 
                                                                  (dictionary).
         """
-        # Delete all NGAS Mount Root Directories.
 
-        srvDic = {}
-        multSrvs = (len(serverList) - 1)
-        for idx, srvInfo in enumerate(serverList):
-            portNo      = int(srvInfo[0])
-            domain      = srvInfo[1]
-            ipAddress   = srvInfo[2]
-            clusterName = srvInfo[3]
-            if (len(srvInfo) > 4):
-                cfgParList = srvInfo[4]
-            else:
-                cfgParList = []
+        # Create the shared database first of all
+        tmpCfg = ngamsConfig.ngamsConfig().load(comCfgFile)
+        self.point_to_sqlite_database(tmpCfg, createDatabase)
+        if createDatabase:
+            db = ngamsDb.from_config(tmpCfg)
+            delNgasTbls(db)
+            db.close()
 
-            tmpCfg = ngamsConfig.ngamsConfig().load(comCfgFile)
+        multSrvs = len(serverList) > 1
 
-            # Set port number in configuration and allocate a mount root
-            # directory + other directories + generate new, temporary
-            # configuration file based on this information.
-            hostName = getHostName()
-            srvId = "%s:%d" % (hostName, portNo)
-            if (multSrvs):
-                rmFile("/tmp/ngamsTest/NGAS:%d" %(portNo,))
-                srvDbHostId = srvId
-            else:
-                rmFile("/tmp/ngamsTest/NGAS")
-                srvDbHostId = hostName
+        # Start them in parallel now that we have all set up for it
+        res = srv_mgr_pool.map(functools.partial(self.start_srv_in_cluster, multSrvs, comCfgFile), serverList)
 
-            # Create directories.
-            if (multSrvs):
-                mtRtDir    = "/tmp/ngamsTest/NGAS:%d" % portNo
-            else:
-                mtRtDir    = "/tmp/ngamsTest/NGAS"
-            tmpCfg.storeVal("NgamsCfg.Header[1].Type", "TEST CONFIG: %s" %\
-                            srvId)
-            tmpCfg.storeVal("NgamsCfg.Server[1].PortNo", portNo)
-            tmpCfg.storeVal("NgamsCfg.Server[1].RootDirectory", mtRtDir)
-            tmpCfg.storeVal("NgamsCfg.ArchiveHandling[1]." +\
-                            "BackLogBufferDirectory", mtRtDir)
-            tmpCfg.storeVal("NgamsCfg.Processing[1].ProcessingDirectory",
-                            mtRtDir)
-            tmpCfg.storeVal("NgamsCfg.Log[1].LocalLogFile",
-                            os.path.normpath(mtRtDir + "/log/LogFile.nglog"))
-            # Set special values if so specified.
-            for cfgPar in cfgParList: tmpCfg.storeVal(cfgPar[0], cfgPar[1])
-            tmpCfgFile = "tmp/%s_tmp.xml" % srvId
+        # srvId: (cfgObj, dbObj)
+        return {r[0]: (r[1], r[2]) for r in res}
 
-            # Create a common database only once
-            self.point_to_sqlite_database(tmpCfg, hostName, createDatabase and idx == 0)
-
-            tmpCfg.save(tmpCfgFile, 0)
-
-            # Check if server has entry in referenced DB. If not, create it.
-            tmpDbObj = ngamsDb.from_config(tmpCfg)
-            checkHostEntry(tmpDbObj, srvDbHostId, domain, ipAddress,
-                           clusterName)
-
-            # Make sure the database is empty
-            if createDatabase and idx == 0:
-                delNgasTbls(tmpDbObj)
-            del tmpDbObj
-
-            # Start server + add reference to server configuration object and
-            # server DB object.
-            srvCfgObj, srvDbObj = self.prepExtSrv(portNo,
-                                                  delDirs = 0,
-                                                  clearDb = 0,
-                                                  autoOnline = 1,
-                                                  cfgFile = tmpCfgFile,
-                                                  multipleSrvs = multSrvs,
-                                                  domain = domain,
-                                                  ipAddress = ipAddress,
-                                                  clusterName = clusterName)
-            srvDic[srvId] = [srvCfgObj, srvDbObj]
-
-        return srvDic
-
-    def point_to_sqlite_database(self, cfgObj, hostName, create):
+    def point_to_sqlite_database(self, cfgObj, create):
         # Exceptional handling for SQLite.
         # TODO: It would probably be better if we simply run
         # the SQL script that creates the tables

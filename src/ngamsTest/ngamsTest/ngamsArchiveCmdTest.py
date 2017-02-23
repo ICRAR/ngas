@@ -535,7 +535,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         tmpStatFile = sendExtCmd(8000, NGAMS_ARCHIVE_CMD,
                                  [["filename", fileUri % getHostName()],
                                   ["mime_type", "application/x-gfits"]],
-                                 filterTags = ["http://"])
+                                 filterTags = ["http://", "LogicalName:"])
         refStatFile = "ref/ngamsArchiveCmdTest_test_ArchivePullReq_2_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
                           "returned for Archive Push Request/HTTP")
