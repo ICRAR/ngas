@@ -41,6 +41,7 @@ import glob
 import gzip
 import importlib
 import logging
+import multiprocessing.pool
 import os
 import shutil
 import socket
@@ -79,6 +80,9 @@ logging_levels = {
 
 # Global parameters to control the test run.
 _noCleanUp   = 0
+
+# Pool used to start/shutdown servers in parallel
+srv_mgr_pool = multiprocessing.pool.ThreadPool(5)
 
 # Constants.
 STD_DISK_STAT_FILT = ["AccessDate", "AvailableMb", "CreationDate", "Date",
@@ -967,7 +971,7 @@ def unzip(infile, outfile):
 # END: Utility functions
 ###########################################################################
 
-ServerInfo = collections.namedtuple('ServerInfo', ['pid', 'port', 'rootDir'])
+ServerInfo = collections.namedtuple('ServerInfo', ['proc', 'port', 'rootDir'])
 
 class ngamsTestSuite(unittest.TestCase):
     """
@@ -1153,18 +1157,12 @@ class ngamsTestSuite(unittest.TestCase):
         return (cfgObj, dbObj)
 
 
-    def termExtSrv(self,
-                   srvProcess,
-                   port):
+    def termExtSrv(self, srvInfo):
         """
         Terminate an externally running server.
-
-        pid:       PID of server (integer).
-
-        port:      Port number used by externally running server (integer).
-
-        Returns:   Void.
         """
+
+        srvProcess, port, rootDir = srvInfo
 
         if srvProcess.poll() is not None:
             logger.debug("Server process %d (port %d) already dead x(, no need to terminate it again", srvProcess.pid, port)
@@ -1214,13 +1212,12 @@ class ngamsTestSuite(unittest.TestCase):
         except Exception:
             logger.exception("Error while finishing server process %d, port %d", srvProcess.pid, port)
             raise
+        finally:
+            if ((not getNoCleanUp()) and rootDir):
+                shutil.rmtree(rootDir, True)
 
     def terminateAllServer(self):
-        for srvInfo in self.__extSrvInfo:
-            self.termExtSrv(srvInfo.pid, srvInfo.port)
-            # Remove NGAS Root Directories if clean-up requested.
-            if ((not getNoCleanUp()) and srvInfo.rootDir):
-                shutil.rmtree(srvInfo.rootDir, True)
+        srv_mgr_pool.map(self.termExtSrv, self.__extSrvInfo)
         self.__extSrvInfo = []
 
     def setUp(self):
