@@ -33,13 +33,13 @@ class ngamsQueryCmdTest(ngamsTestSuite):
         client = sendPclCmd()
 
         # No files archived, there was an error on the previous implementation
-        stat = client.sendCmdGen("QUERY", pars = [['query', 'files_list'], ['format', 'list']])
+        stat = client.sendCmd("QUERY", pars = [['query', 'files_list'], ['format', 'list']])
         self.assertEquals(ngamsCore.NGAMS_SUCCESS, stat.getStatus())
 
         # One file archived, let's see what happens now
         stat = client.archive("src/SmallFile.fits")
         self.assertEquals(ngamsCore.NGAMS_SUCCESS, stat.getStatus())
-        stat = client.sendCmdGen("QUERY", pars = [['query', 'files_list'], ['format', 'list']])
+        stat = client.sendCmd("QUERY", pars = [['query', 'files_list'], ['format', 'list']])
         self.assertEquals(ngamsCore.NGAMS_SUCCESS, stat.getStatus())
 
         # Check that the archived file is listed

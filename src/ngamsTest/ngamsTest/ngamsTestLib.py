@@ -251,8 +251,7 @@ def waitReqCompl(clientObj,
     """
     startTime = time.time()
     while ((time.time() - startTime) < timeOut):
-        res = clientObj.sendCmdGen("STATUS",
-                         "", [["request_id", str(requestId)]])
+        res = clientObj.sendCmd("STATUS", pars=[["request_id", str(requestId)]])
         if (res.getCompletionPercent() != None):
             if (float(res.getCompletionPercent()) >= 99.9):
                 break
@@ -554,9 +553,7 @@ def sendPclCmd(port = 8888,
 
     Returns:       Created instance of Python Client (ngamsPClient).
     """
-    return ngamsPClient.ngamsPClient('localhost', port).setAuthorization(auth).\
-           setTimeOut(timeOut)
-
+    return ngamsPClient.ngamsPClient('localhost', port, timeout=timeOut, auth=auth)
 
 def sendExtCmd(port,
                cmd,
@@ -588,7 +585,7 @@ def sendExtCmd(port,
                    or ngamsStatus object (string|ngamsStatus).
     """
     try:
-        statObj = sendPclCmd(port=port).sendCmdGen(cmd, "", pars)
+        statObj = sendPclCmd(port=port).sendCmd(cmd, pars=pars)
         if (genStatFile):
             tmpStatFile = "tmp/%s_CmdStatus_%s_tmp" %\
                           (cmd, str(int(time.time())))

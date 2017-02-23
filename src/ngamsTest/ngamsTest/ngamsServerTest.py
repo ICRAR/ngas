@@ -36,7 +36,6 @@ import socket
 import sys
 import time
 
-from ngamsLib import ngamsStatus
 from ngamsLib.ngamsCore import NGAMS_SUCCESS
 from ngamsTestLib import ngamsTestSuite, runTest
 from ngamsTestLib import sendPclCmd
@@ -55,15 +54,8 @@ class ngamsServerTest(ngamsTestSuite):
         spaces = " " * amount_of_data
         self.prepExtSrv(cfgProps=[["NgamsCfg.Server[1].TimeOut",str(timeout)]])
         client = sendPclCmd()
-        _, _, _, data = client._httpPost(host='localhost',
-                         port=8888,
-                         cmd="ARCHIVE",
-                         mimeType='application/octet-stream',
-                         dataRef = spaces,
-                         dataSource = "BUFFER",
-                         pars = [["attachment; filename", "some-file.data"]])
-
-        status = ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
+        pars = [["attachment; filename", "some-file.data"]]
+        status = client.post_data("ARCHIVE", 'application/octet-stream', pars, spaces)
         self.assertEquals(NGAMS_SUCCESS, status.getStatus())
 
         # Normal retrieval works fine

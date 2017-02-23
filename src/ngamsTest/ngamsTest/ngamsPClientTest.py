@@ -31,14 +31,13 @@
 This module contains the Test Suite for the Python Client.
 """
 
-import commands
 import os
 import shutil
 import sys
 
 from ngamsLib.ngamsCore import getHostName
 from ngamsPClient import ngamsPClient
-from ngamsTestLib import ngamsTestSuite, saveInFile, filterOutLines, waitReqCompl, runTest, unzip
+from ngamsTestLib import ngamsTestSuite, waitReqCompl, runTest, unzip
 
 
 class ngamsPClientTest(ngamsTestSuite):
@@ -218,34 +217,6 @@ class ngamsPClientTest(ngamsTestSuite):
         refMsg = "Successfully handled command CLONE"
         self.checkEqual(refMsg, statObj.getMessage(), "Problem executing " +\
                         "Archive Pull Request")
-
-
-    def test_CorrectUsageBuf_1(self):
-        """
-        Synopsis:
-        Test Online help feature of NG/AMS P-Client.
-
-        Description:
-        Check that the man-page of the P-Client is displayed on stdout when
-        the tool is invoked without command line parameters.
-
-        Expected Result:
-        When the tool it invoked on the shell without parameters it should
-        print out the online help opn stdout.
-
-        Test Steps:
-        - Invoke P-Client on the shell + capture output from stdout.
-        - Filter output + check that output is as expected.
-
-        Remarks:
-        ...
-        """
-        _, out = commands.getstatusoutput("ngamsPClient")
-        refStatFile = "ref/ngamsPClientTest_test_CorrectUsageBuf_1_1_ref"
-        tmpStatFile = "tmp/ngamsPClientTest_test_CorrectUsageBuf_1_1_tmp"
-        saveInFile(tmpStatFile, filterOutLines(out, ["(c) ALMA"]))
-        self.checkFilesEq(refStatFile, tmpStatFile,
-                          "Incorrect man-page generated")
 
 
     def test_Init_1(self):
@@ -543,17 +514,17 @@ class ngamsPClientTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        nodeDic = {}
-        for n in range(5): nodeDic["%s:%d" % (getHostName(), (8000 + n))] = 0
-        nodeList = []
-        for node in nodeDic.keys():
-            nodeList.append([8000 + len(nodeList), None, None, getHostName()])
+
+        hostname = getHostName()
+        nodeList = [(8000+n, None, None, hostname) for n in range(5)]
         self.prepCluster("src/ngamsCfg.xml", nodeList)
+
+        srvList = [(hostname, 8000+n) for n in range(5)]
+        client = ngamsPClient.ngamsPClient(servers=srvList)
+
+        nodeDic = {"%s:%d" % (hostname, 8000+n): 0 for n in range(5)}
         noOfNodes = len(nodeDic.keys())
         nodeCount = 0
-        srvList = ""
-        for node in nodeDic.keys(): srvList += "%s," % node
-        client = ngamsPClient.ngamsPClient().parseSrvList(srvList[:-1])
         for n in range(100):
             status = client.status()
             if (nodeDic[status.getHostId()] == 0):

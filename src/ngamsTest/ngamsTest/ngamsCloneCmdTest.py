@@ -150,7 +150,7 @@ def _execCloneTest(testObj,
     cmdPars.append(["notif_email", getpass.getuser() + "@" +\
                     ngamsLib.getCompleteHostName()])
     flushEmailQueue()
-    statObj = clMnu.sendCmdGen(NGAMS_CLONE_CMD,
+    statObj = clMnu.sendCmd(NGAMS_CLONE_CMD,
                                pars = cmdPars)
 
     # Check returned status.
@@ -532,7 +532,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         for n in range(2): client.archive(srcFile)
         flushEmailQueue()
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
-        statObj = client.sendCmdGen(NGAMS_CLONE_CMD,
+        statObj = client.sendCmd(NGAMS_CLONE_CMD,
                                     pars = [["disk_id", srcDiskId],
                                             ["file_id", nmuFileId],
                                             ["file_version", "1"],
@@ -610,7 +610,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         flushEmailQueue()
         testUserEmail = getpass.getuser()+"@"+ngamsLib.getCompleteHostName()
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
-        statObj = client.sendCmdGen(NGAMS_CLONE_CMD,
+        statObj = client.sendCmd(NGAMS_CLONE_CMD,
                                     pars = [["disk_id", diskId],
                                             ["async", "1"],
                                             ["notif_email", testUserEmail]])
