@@ -1013,8 +1013,7 @@ class ngamsTestSuite(unittest.TestCase):
                    dbCfgName = None,
                    srvModule = None,
                    skip_database_creation = False,
-                   force=False,
-                   server_type = 'ngamsServer'):
+                   force=False):
         """
         Prepare a standard server object, which runs as a separate process and
         serves via the standard HTTP interface.
@@ -1118,29 +1117,19 @@ class ngamsTestSuite(unittest.TestCase):
         cfgObj.save(tmpCfg, 0)
 
         # Execute the server as an external process.
-        #srvModule = srvModule or 'ngamsServer.ngamsServer'
-        if srvModule:
-            execCmd = [sys.executable, '-m', srvModule]
-        else:
-            execCmd = [server_type]
-        execCmd += ["-cfg", tmpCfg, "-v", str(verbose)]
+        srvModule = srvModule or 'ngamsServer.ngamsServer'
+        this_dir = os.path.normpath(pkg_resources.resource_filename(__name__, '.'))  # @UndefinedVariable
+        parent_dir = os.path.dirname(this_dir)
+        execCmd  = [sys.executable, '-m', srvModule]
+        execCmd += ["-cfg", os.path.abspath(tmpCfg), "-v", str(verbose)]
+        execCmd += ['-path', parent_dir]
         if force:        execCmd.append('-force')
         if autoOnline:   execCmd.append("-autoOnline")
         if multipleSrvs: execCmd.append("-multipleSrvs")
         if dbCfgName:    execCmd.extend(["-dbCfgId", dbCfgName])
-        logger.info("Starting external NG/AMS Server with shell command: %s", " ".join(execCmd))
 
-        # TODO: kind of a hack really...
-        # Include this directory in the python path
-        # This way the server can load plug-ins that reside on this directory
-        # (which is required by some tests)
-        this_dir = pkg_resources.resource_filename(__name__, '.')  # @UndefinedVariable
-        parent_dir = os.path.normpath(os.path.join(this_dir, '..'))
-        env = dict(os.environ)
-        ppaths = env['PYTHONPATH'].split(os.pathsep) if 'PYTHONPATH' in env else []
-        ppaths.append(parent_dir)
-        env['PYTHONPATH'] = os.pathsep.join(ppaths)
-        srvProcess = subprocess.Popen(execCmd, env=env)
+        logger.info("Starting external NG/AMS Server with shell command: %s", " ".join(execCmd))
+        srvProcess = subprocess.Popen(execCmd)
 
         # We have to wait until the server is serving.
         pCl = sendPclCmd(port=port)
