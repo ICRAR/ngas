@@ -2627,11 +2627,12 @@ class ngamsServer:
             self.correctUsage()
             sys.exit(1)
 
+        # Add extra paths at the beginning of the sys.path
         for p in extra_paths:
             p = os.path.expanduser(p)
             if not os.path.exists(p):
                 raise ValueError("Path %s doesn't exist" % (p,))
-            sys.path.append(p)
+            sys.path.insert(0,p)
 
     ########################################################################
     # The following methods are used for the NG/AMS Unit Tests.
