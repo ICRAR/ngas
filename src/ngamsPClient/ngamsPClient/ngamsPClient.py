@@ -132,11 +132,12 @@ class ngamsPClient:
         """
         T = TRACE()
         logger.info("Archiving file with URI: %s", fileUri)
-        pars = pars + [('async', str(async))]
+        if async:
+            pars.append(('async', '1'))
         if (ngamsLib.isArchivePull(fileUri)):
             pars += [["filename", fileUri],
                         ["no_versioning", str(noVersioning)]]
-            if (mimeType != ""):
+            if mimeType:
                 pars.append(["mime_type", mimeType])
             res = self.sendCmd(cmd, "", pars)
         else:
@@ -820,7 +821,7 @@ def main():
     cparser = parser.add_argument_group('Connection options')
     cparser.add_argument('-H', '--host',    help='Host to connect to', default="127.0.0.1")
     cparser.add_argument('-p', '--port',    help='Port to connect to', default=7777, type=int)
-    cparser.add_argument('-t', '--timeout', help='Connection timeout, in sec.', default=0, type=float)
+    cparser.add_argument('-t', '--timeout', help='Connection timeout, in sec.', default=None, type=float)
     cparser.add_argument(      '--servers', help='A comma-separated list of host:server addresses')
 
     parser.add_argument('-P', '--param',        help='Additional HTTP parameters in the form of param=value, can be specified more than once', action='append', default=[])
