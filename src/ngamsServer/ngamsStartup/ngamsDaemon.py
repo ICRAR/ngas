@@ -45,7 +45,7 @@ def start(cmdline_name, cfgFile, pidfile):
     # This is because deep inside the NGAS code directly reads sometimes the
     # sys.argv variable (big TODO: remove that hidden dependency)
     srv = 'ngamsServer'
-    if cmdline_name == 'ngamsCacheDaemon': #check how we are called
+    if cmdline_name.endswith('ngamsCacheDaemon'): #check how we are called
         srv = 'ngamsCacheServer'
     sys.argv = [srv, '-cfg', cfgFile, '-force', '-autoOnline', '-multiplesrvs', '-v', '3']
 
@@ -56,7 +56,11 @@ def start(cmdline_name, cfgFile, pidfile):
 
     print 'Starting: %s' % (' '.join(sys.argv),)
     with daemon.DaemonContext(pidfile=PIDLockFile(pidfile, timeout=1)):
-        ngamsServer.ngamsServer().init(sys.argv)
+        ngamsSrv = ngamsServer.ngamsServer()
+        if srv == 'ngamsCacheServer':
+            ngamsSrv._cacheArchive = True
+            ngamsSrv._serverName   = "ngamsCacheServer"
+        ngamsSrv.init(sys.argv)
 
     return 0
 
