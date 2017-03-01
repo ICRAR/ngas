@@ -199,11 +199,11 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         if ing_date:
             sql.append(" AND nf.ingestion_date > {}")
-            vals.append(ing_date)
+            vals.append(self.convertTimeStamp(ing_date))
 
         if upto_ing_date:
             sql.append(" AND nf.ingestion_date < {}")
-            vals.append(upto_ing_date)
+            vals.append(self.convertTimeStamp(upto_ing_date))
 
         sql.append(" ORDER BY nf.ingestion_date")
 
