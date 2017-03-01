@@ -132,8 +132,7 @@ class ngamsPClient:
         """
         T = TRACE()
         logger.info("Archiving file with URI: %s", fileUri)
-        if async:
-            pars.append(('async', '1'))
+        pars.append(('async', '1' if async else '0'))
         if (ngamsLib.isArchivePull(fileUri)):
             pars += [["filename", fileUri],
                         ["no_versioning", str(noVersioning)]]
