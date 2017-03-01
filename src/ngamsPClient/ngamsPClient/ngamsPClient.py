@@ -664,8 +664,8 @@ class ngamsPClient:
         Returns:       NG/AMS Status Object (ngamsStatus).
         """
         mt = mimeType or NGAMS_ARCH_REQ_MT
-        pars += [("attachment; filename", os.path.basename(fileUri))]
-        pars += [("no_versioning", str(noVersioning))]
+        pars += [["attachment; filename", os.path.basename(fileUri)]]
+        pars += [["no_versioning", str(noVersioning)]]
         return self.post_file(cmd, mt, pars, fileUri)
 
 
@@ -758,7 +758,7 @@ class ngamsPClient:
             auth = "Basic %s" % self.auth
 
         if self.timeout:
-            pars.append(("time_out", str(self.timeout)))
+            pars.append(["time_out", str(self.timeout)] )
 
         start = time.time()
         res = ngamsLib.httpPost(host, port, cmd, mimeType,
