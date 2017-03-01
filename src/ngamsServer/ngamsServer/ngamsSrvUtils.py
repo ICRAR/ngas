@@ -45,7 +45,7 @@ from ngamsLib.ngamsCore import NGAMS_NOT_RUN_STATE,\
     NGAMS_ONLINE_STATE, NGAMS_DEFINE, NGAMS_SUBSCRIBE_CMD,\
     NGAMS_SUCCESS, TRACE, genLog, NGAMS_DISK_INFO, checkCreatePath,\
     NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
-    loadPlugInEntryPoint, toiso8601
+    loadPlugInEntryPoint, toiso8601, fromiso8601
 from ngamsLib import ngamsStatus, ngamsLib
 from ngamsLib import ngamsPhysDiskInfo
 from ngamsLib import ngamsSubscriber
@@ -326,10 +326,10 @@ def handleOnline(srvObj,
                                                        subscrInfo[1],
                                                        subscrInfo[2],
                                                        subscrInfo[4],
-                                                       subscrInfo[5],
+                                                       fromiso8601(subscrInfo[5], local=True),
                                                        subscrInfo[6],
                                                        subscrInfo[7],
-                                                       subscrInfo[8],
+                                                       fromiso8601(subscrInfo[8], local=True),
                                                        subscrInfo[3])
         tmpSubscrObj.setConcurrentThreads(subscrInfo[9])
         # Take only subscribers for this NG/AMS Server.
