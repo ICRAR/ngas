@@ -272,7 +272,7 @@ def queryCacheDbms(srvObj,
     try:
         srvObj._cacheContDbmsSem.acquire()
         sqlQuery += ";"
-        logger.debug("Performing SQL query (Cache DBMS): ", sqlQuery)
+        logger.debug("Performing SQL query (Cache DBMS): %s", sqlQuery)
         srvObj._cacheContDbmsCur.execute(sqlQuery)
         srvObj._cacheContDbms.commit() # TODO: Investigate this.
         res = srvObj._cacheContDbmsCur.fetchall()
