@@ -333,7 +333,7 @@ class ngamsSubscriber:
                setUrl(sqlResult[4]).\
                setFilterPi(sqlResult[6]).\
                setFilterPiPars(sqlResult[7]).\
-               setLastFileIngDate(fromiso8601(sqlResult[8]), local=True).\
+               setLastFileIngDate(fromiso8601(sqlResult[8], local=True)).\
                setConcurrentThreads(sqlResult[9])
         if sqlResult[5]:
             self.setStartDate(fromiso8601(sqlResult[5], local=True))
