@@ -29,7 +29,7 @@ import sys
 import time
 
 import daemon
-from lockfile.pidlockfile import PIDLockFile
+import lockfile.pidlockfile
 
 from ngamsLib import ngamsConfig
 from ngamsLib.ngamsCore import get_contact_ip
@@ -51,11 +51,12 @@ def start(cmdline_name, cfgFile, pidfile):
 
     # Go!
     if os.path.isfile(pidfile):
-        err('PID file already exists, not overwriting possibly existing instance')
+        pid = lockfile.pidlockfile.read_pid_from_pidfile(pidfile)
+        err('PID file %s already exists (pid=%d), not overwriting possibly existing instance' % (pidfile, pid,))
         return 1
 
     print 'Starting: %s' % (' '.join(sys.argv),)
-    with daemon.DaemonContext(pidfile=PIDLockFile(pidfile, timeout=1)):
+    with daemon.DaemonContext(pidfile=lockfile.pidlockfile.PIDLockFile(pidfile, timeout=1)):
         ngamsSrv = ngamsServer.ngamsServer()
         if srv == 'ngamsCacheServer':
             ngamsSrv._cacheArchive = True
@@ -65,7 +66,7 @@ def start(cmdline_name, cfgFile, pidfile):
     return 0
 
 def stop(pidfile):
-    pid = PIDLockFile(pidfile).read_pid()
+    pid = lockfile.pidlockfile.read_pid_from_pidfile(pidfile)
     if pid is None:
         err('Cannot read PID file, is there an instance running?')
         return 1
@@ -80,30 +81,52 @@ def stop(pidfile):
 
 def kill_and_wait(pid, pidfile):
 
+    # The NGAS server should nicely shut down itself after receiving this signal
     os.kill(pid, signal.SIGTERM)
 
+    # We previously checked that the pidfile was gone, but this is not enough
+    # In some cases the main thread finished correctly, but there are other
+    # threads (e.g., HTTP servicing threads) that are still running,
+    # and thus the PID file disappears but the process is still ongoing
     tries = 0
     max_tries = 20
     sleep_period = 1
-
     start = time.time()
     while tries < max_tries:
-        if not os.path.exists(pidfile):
-            break
+
+        # SIGCONT can be sent many times without fear of side effects
+        # If we get ESRCH then the process has finished
+        try:
+            os.kill(pid, signal.SIGCONT)
+        except OSError as e:
+            if e.errno == errno.ESRCH:
+                # Bingo! the process is gone
+                break
+
         tries += 1
         time.sleep(sleep_period)
         sys.stdout.write('.')
         sys.stdout.flush()
+
     sys.stdout.write('\n')
     sys.stdout.flush()
     end = time.time()
 
+    ret = 0x00
+
+    # We waited a lot but the process is still there, kill it with 9
     if tries == max_tries:
         err("Process didn't die after %.2f [s], killing it with -9" % (end-start))
         os.kill(pid, signal.SIGKILL)
-        return 1
+        ret += 0x01
 
-    return 0
+    # The process should have removed its own pidfile...
+    if os.path.exists(pidfile):
+        err("Removing PID file manually, the daemon process didn't remove it by itself")
+        os.unlink(pidfile)
+        ret += 0x02
+
+    return ret
 
 def status(configFile):
     """
