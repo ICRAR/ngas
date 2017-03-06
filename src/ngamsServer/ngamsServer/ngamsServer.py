@@ -2550,7 +2550,6 @@ class ngamsServer:
         Returns:    Void.
         """
         manPage = pkg_resources.resource_string(__name__, 'ngamsServer.txt')  # @UndefinedVariable
-        manPage = manPage.replace("ngamsServer", self._serverName)
         print manPage
         print ngamsCopyrightString()
 
@@ -2574,6 +2573,10 @@ class ngamsServer:
                 if (par == "-CFG"):
                     idx = self._incCheckIdx(idx, argv)
                     self.setCfgFilename(argv[idx])
+                elif (par == "-CACHE"):
+                    self._cacheArchive = True
+                elif par == '-DATAMOVER':
+                    self._dataMoverOnly = True
                 elif (par == "-DBCFGID"):
                     idx = self._incCheckIdx(idx, argv)
                     self.__dbCfgId = argv[idx]

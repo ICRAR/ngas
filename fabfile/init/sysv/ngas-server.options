@@ -10,10 +10,27 @@
 USER=ngas
 
 #
-# The name of the script that controls the server daemon
-# The following options are currently available
+# The location of the configuration file
 #
-#  ngamsDaemon      Starts a normal server
-#  ngamsCacheDaemon Starts an NGAS server in cache mode
+CFGFILE=/home/ngas/NGAS/cfg/ngamsServer.conf
+
 #
-DAEMON=ngamsDaemon
+# Bring the server automatically to ONLINE state during start? YES/NO
+#
+AUTOONLINE=YES
+
+#
+# Colon-separated list of directories or egg files containing code
+# (e.g., plug-ins) that can be loaded by NGAS
+#
+NGAS_PATH=
+
+#
+# Is this a cache server? YES/NO
+#
+CACHE=NO
+
+#
+# Is this a data mover server? YES/NO
+#
+DATA_MOVER=NO

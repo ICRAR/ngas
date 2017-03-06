@@ -39,29 +39,23 @@ from ngamsServer import ngamsServer
 def err(s):
     sys.stderr.write(s + '\n')
 
-def start(cmdline_name, cfgFile, pidfile):
+def start(args, cfg, pidfile):
 
-    # Build up a fake command-line before launching the NGAS server
-    # This is because deep inside the NGAS code directly reads sometimes the
-    # sys.argv variable (big TODO: remove that hidden dependency)
-    srv = 'ngamsServer'
-    if cmdline_name.endswith('ngamsCacheDaemon'): #check how we are called
-        srv = 'ngamsCacheServer'
-    sys.argv = [srv, '-cfg', cfgFile, '-force', '-autoOnline', '-multiplesrvs', '-v', '3']
+    # Ensure the directory is there to keep the PID file
+    try:
+        os.makedirs(os.path.join(cfg.getRootDirectory(), 'var', 'run'))
+    except OSError:
+        pass
 
-    # Go!
     if os.path.isfile(pidfile):
         pid = lockfile.pidlockfile.read_pid_from_pidfile(pidfile)
         err('PID file %s already exists (pid=%d), not overwriting possibly existing instance' % (pidfile, pid,))
         return 1
 
-    print 'Starting: %s' % (' '.join(sys.argv),)
+    # Go, go, go!
     with daemon.DaemonContext(pidfile=lockfile.pidlockfile.PIDLockFile(pidfile, timeout=1)):
         ngamsSrv = ngamsServer.ngamsServer()
-        if srv == 'ngamsCacheServer':
-            ngamsSrv._cacheArchive = True
-            ngamsSrv._serverName   = "ngamsCacheServer"
-        ngamsSrv.init(sys.argv)
+        ngamsSrv.init(args)
 
     return 0
 
@@ -128,69 +122,67 @@ def kill_and_wait(pid, pidfile):
 
     return ret
 
-def status(configFile):
+def status(cfg):
     """
     Send a STATUS command to server
     """
 
-    cfgObj = ngamsConfig.ngamsConfig()
-    cfgObj.load(configFile)
-    ipAddress = get_contact_ip(cfgObj)
-    port = cfgObj.getPortNo()
+    ipAddress = get_contact_ip(cfg)
+    port = cfg.getPortNo()
 
     # TODO: This creates a dependency on ngamsPClient
     SCMD = "ngamsPClient STATUS --host {0} --port {1} -v --timeout 1".format(ipAddress, port)
     return subprocess.call(SCMD,shell=True)
 
-def main(argv=sys.argv):
+def print_usage(name):
+    err("usage: %s [start|stop|restart|status] <ngamsServer options>" % (name,))
+
+def main(args=sys.argv):
     """
     Entry point function. It's mapped to two different scripts, which is why
     we can distinguish here between them and start different processes
     """
 
-    # Check the NGAS_PREFIX environment variable, which, if present, points to
-    # our NGAS installation
-    if os.environ.has_key('NGAS_PREFIX'):
-        NGAS_PREFIX = os.path.abspath(os.environ['NGAS_PREFIX'])
-    else:
-        HOME = os.environ['HOME']
-        NGAS_PREFIX = '{0}/NGAS'.format(HOME)
-    if not NGAS_PREFIX or not os.path.exists(NGAS_PREFIX):
-        raise Exception("NGAS_PREFIX not found or not defined")
+    # A minimum of 4 because we require at least -cfg <file>
+    name = args[0]
+    if len(args) < 4:
+        print_usage(name)
+        sys.exit(1)
 
-    # The default configuration file
-    configFile = os.path.join(NGAS_PREFIX, 'cfg', 'ngamsServer.conf')
-    if not os.path.exists(configFile):
-        msg = "Configuration file not found: {0}".format(configFile)
-        raise ValueError(msg)
+    cmd = args[1]
+    args = args[0:1] + args[2:]
 
-    # The daemon PID file, prepare its playground
-    pidfile = os.path.join(NGAS_PREFIX, 'var', 'run', 'ngamsDaemon.pid')
-    try:
-        os.makedirs(os.path.join(NGAS_PREFIX, 'var', 'run'))
-        os.makedirs(os.path.join(NGAS_PREFIX, 'var', 'log'))
-    except OSError:
-        pass
-
-    name = argv[0]
-    if len(argv) < 2:
-        print "usage: %s start|stop|restart|status" % (name,)
+    # We need to load the configuration file to know the root directory
+    # and the IP address the server is listening on
+    largs = [x.lower() for x in args]
+    if '-cfg' not in largs:
+        err('At least -cfg <file> should be specified')
         sys.exit(2)
-    cmd = argv[1]
+    cfg_idx = largs.index('-cfg')
+    if cfg_idx == len(largs) - 1:
+        err('At least -cfg <file> should be specified')
+        sys.exit(2)
+
+    cfgfile = args[cfg_idx + 1]
+    cfg = ngamsConfig.ngamsConfig()
+    cfg.load(cfgfile)
+
+    # The daemon PID file
+    pidfile = os.path.join(cfg.getRootDirectory(), 'var', 'run', 'ngamsDaemon.pid')
 
     # Main command switch
     if 'start' == cmd:
-        exitCode = start(name, configFile, pidfile)
+        exitCode = start(args, cfg, pidfile)
     elif 'stop' == cmd:
         exitCode = stop(pidfile)
     elif 'restart' == cmd:
         stop(pidfile)
-        exitCode = start(name, configFile, pidfile)
+        exitCode = start(args, cfg, pidfile)
     elif 'status' == cmd:
-        exitCode = status(configFile)
+        exitCode = status(cfg)
     else:
         print "Unknown command: %s" % (cmd,)
-        print "usage: %s start|stop|restart|status" % (name,)
+        print_usage(name)
         exitCode = 1
 
     sys.exit(exitCode)

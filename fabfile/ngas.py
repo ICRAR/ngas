@@ -136,29 +136,14 @@ def virtualenv(command, **kwargs):
     nid = ngas_install_dir()
     run('source {0}/bin/activate && {1}'.format(nid, command), **kwargs)
 
-def initName():
-    """
-    Helper function to set the name of the link to the config file.
-    """
-    typ = ngas_server_type()
-    if typ == 'archive':
-        initFile = 'ngamsServer.init.sh'
-        cfgFile = 'ngamsServer.conf'
-    elif typ == 'cache':
-        initFile = 'ngamsCache.init.sh'
-        cfgFile = 'ngamsCacheServer.conf'
-    else:
-        raise Exception("Values for NGAS_SERVER_TYPE are 'archive' or 'cache'")
-    return (initFile, cfgFile)
-
 @task
-def start_ngas_and_check_status():
+def start_ngas_and_check_status(tgt_cfg):
     """
     Starts the ngamsDaemon process and checks that the server is up and running
     """
     # We sleep 2 here as it was found on Mac deployment to docker container that the
     # shell would exit before the ngasDaemon could detach, thus resulting in no startup.
-    virtualenv('ngamsDaemon start && sleep 2')
+    virtualenv('ngamsDaemon start -cfg {0} && sleep 2'.format(tgt_cfg))
 
     # Give it a few seconds to make sure it started
     success("NGAS server started")
@@ -321,21 +306,21 @@ def prepare_ngas_data_dir():
     with cd(ngas_source_dir()):
         # Installing and initializing an NGAS_ROOT directory
         src_cfg = 'NgamsCfg.SQLite.mini.xml'
-        _,tgt_cfg,  = initName()
-        ngasTargetCfg = os.path.join(nrd, 'cfg', tgt_cfg)
+        tgt_cfg = os.path.join(nrd, 'cfg', 'ngamsServer.conf')
         run('mkdir -p {0}'.format(nrd))
         run('cp -R NGAS/* {0}'.format(nrd))
-        run('cp cfg/{0} {1}'.format(src_cfg, ngasTargetCfg))
-        sed(ngasTargetCfg, '\*replaceRoot\*', nrd)
+        run('cp cfg/{0} {1}'.format(src_cfg, tgt_cfg))
+        sed(tgt_cfg, '\*replaceRoot\*', nrd, backup='')
 
         # Initialize the SQlite database
         sql = "src/ngamsCore/ngamsSql/ngamsCreateTables-SQLite.sql"
         run('sqlite3 {0}/ngas.sqlite < {1}'.format(nrd, sql))
 
     success("NGAS data directory ready")
+    return tgt_cfg
 
 
-def install_sysv_init_script(nsd, nid, nuser):
+def install_sysv_init_script(nsd, nuser, cfgfile):
     """
     Install the NGAS init script for an operational deployment.
     The init script is an old System V init system.
@@ -356,14 +341,14 @@ def install_sysv_init_script(nsd, nid, nuser):
 
     # Options file installation and edition
     ntype = ngas_server_type()
-    ndaemon = 'ngamsDaemon'
-    if ntype == 'cache':
-        ndaemon = 'ngamsCacheDaemon'
-
     sudo('cp %s/fabfile/init/sysv/ngas-server.options %s' % (nsd, opt_file))
     sudo('chmod 644 %s' % (opt_file,))
-    sed(opt_file, '^USER=.*', 'USER=%s' % (nuser,), use_sudo=True)
-    sed(opt_file, '^DAEMON=.*', 'DAEMON=%s' % (ndaemon,), use_sudo=True)
+    sed(opt_file, '^USER=.*', 'USER=%s' % (nuser,), use_sudo=True, backup='')
+    sed(opt_file, '^CFGFILE=.*', 'CFGFILE=%s' % (cfgfile,), use_sudo=True, backup='')
+    if ntype == 'cache':
+        sed(opt_file, '^CACHE=.*', 'CACHE=YES', use_sudo=True, backup='')
+    elif ntype == 'data-mover':
+        sed(opt_file, '^DATA_MOVER=.*', 'DATA_MOVER=YES', use_sudo=True, backup='')
 
     # Enabling init file on boot
     if check_command('update-rc.d'):
@@ -430,10 +415,10 @@ def prepare_install_and_check():
 
     # Go, go, go!
     with settings(user=nuser):
-        nsd, nid = install_and_check()
+        nsd, cfgfile = install_and_check()
 
     # Install the /etc/init.d script for automatic start
-    install_sysv_init_script(nsd, nid, nuser)
+    install_sysv_init_script(nsd, nuser, cfgfile)
 
 @parallel
 def install_and_check():
@@ -444,10 +429,10 @@ def install_and_check():
     virtualenv_setup()
     copy_sources()
     build_ngas()
-    prepare_ngas_data_dir()
+    tgt_cfg = prepare_ngas_data_dir()
     install_user_profile()
-    start_ngas_and_check_status()
-    return ngas_source_dir(), ngas_install_dir()
+    start_ngas_and_check_status(tgt_cfg)
+    return ngas_source_dir(), tgt_cfg
 
 def upload_to(host, filename, port=7777):
     """
