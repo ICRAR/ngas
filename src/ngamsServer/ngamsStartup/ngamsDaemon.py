@@ -139,7 +139,7 @@ def status(configFile):
     port = cfgObj.getPortNo()
 
     # TODO: This creates a dependency on ngamsPClient
-    SCMD = "ngamsPClient -host {0} -port {1} -cmd STATUS -v 1 -timeout 1".format(ipAddress, port)
+    SCMD = "ngamsPClient STATUS --host {0} --port {1} -v --timeout 1".format(ipAddress, port)
     return subprocess.call(SCMD,shell=True)
 
 def main(argv=sys.argv):
