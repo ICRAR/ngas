@@ -335,26 +335,43 @@ def prepare_ngas_data_dir():
     success("NGAS data directory ready")
 
 
-def init_deploy(nsd, nid):
+def install_sysv_init_script(nsd, nid, nuser):
     """
-    Install the NGAS init script for an operational deployment
+    Install the NGAS init script for an operational deployment.
+    The init script is an old System V init system.
+    In the presence of a systemd-enabled system we use the update-rc.d tool
+    to enable the script as part of systemd (instead of the System V chkconfig
+    tool which we use instead). The script is prepared to deal with both tools.
     """
 
-    initFile, _ = initName()
-    initLinkName = initFile.split('.')[0]
-    initLinkAbs = '/etc/init.d/' + initLinkName
+    # Different distros place it in different directories
+    # The init script is prepared for both
+    opt_file = '/etc/sysconfig/ngas'
+    if get_linux_flavor() in ('Ubuntu', 'Debian'):
+        opt_file = '/etc/default/ngas'
 
-    sudo('cp {0}/src/ngamsStartup/{1} {2}'.format(nsd, initFile, initLinkAbs))
-    sudo("sed -i 's/NGAS_USER=\"ngas\"/NGAS_USER=\"{0}\"/g' {1}".format(env.NGAS_USER, initLinkAbs))
-    sudo("sed -i 's/NGAS_ROOT=\"\/home\/$NGAS_USER\/ngas_rt\"/NGAS_ROOT=\"{0}\"/g' {1}".\
-         format(nid.replace('/', '\/'), initLinkAbs))
-    sudo('chmod a+x {0}'.format(initLinkAbs))
-    if (get_linux_flavor() in ['Ubuntu', 'SUSE', 'Suse']):
-        sudo('chkconfig --add {0}'.format(initLinkName))
+    # Script file installation
+    sudo('cp %s/fabfile/init/sysv/ngas-server.sh /etc/init.d/' % (nsd,))
+    sudo('chmod 755 /etc/init.d/ngas-server.sh')
+
+    # Options file installation and edition
+    ntype = ngas_server_type()
+    ndaemon = 'ngamsDaemon'
+    if ntype == 'cache':
+        ndaemon = 'ngamsCacheDaemon'
+
+    sudo('cp %s/fabfile/init/sysv/ngas-server.options %s' % (nsd, opt_file))
+    sudo('chmod 644 %s' % (opt_file,))
+    sed(opt_file, '^USER=.*', 'USER=%s' % (nuser,), use_sudo=True)
+    sed(opt_file, '^DAEMON=.*', 'DAEMON=%s' % (ndaemon,), use_sudo=True)
+
+    # Enabling init file on boot
+    if check_command('update-rc.d'):
+        sudo('update-rc.d ngams-server.sh defaults')
     else:
-        sudo('chkconfig --add {0}'.format(initLinkAbs))
+        sudo('chkconfig --add ngams-server')
 
-    success("/etc/init.d script setup")
+    success("NGAS init script installed")
 
 def create_sources_tarball(tarball_filename):
     # Make sure we are git-archivin'ing from the root of the repository,
@@ -416,7 +433,7 @@ def prepare_install_and_check():
         nsd, nid = install_and_check()
 
     # Install the /etc/init.d script for automatic start
-    init_deploy(nsd, nid)
+    install_sysv_init_script(nsd, nid, nuser)
 
 @parallel
 def install_and_check():
