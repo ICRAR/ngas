@@ -274,7 +274,7 @@ def create_user(user):
     # If the user specified a private key via "fab -i" we use that one;
     # otherwise we use the default RSA key.
     # env.key_filename can be a list, so make sure we handle it correctly
-    if 'key_filename' in env:
+    if 'key_filename' in env and env.key_filename:
         k_fname = env.key_filename
         if not isinstance(k_fname, list):
             fnames = [k_fname]
@@ -286,8 +286,10 @@ def create_user(user):
     public_key = None
     for key_filename in fnames:
         if key_filename is not None and os.path.exists(key_filename):
+            puts("Obtaining public key for private file %s" % (key_filename,))
             public_key = get_public_key(key_filename)
             if public_key:
+                puts("Public key obtained")
                 break
 
     if public_key:
