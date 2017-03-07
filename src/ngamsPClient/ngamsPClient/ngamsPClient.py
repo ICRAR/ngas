@@ -60,15 +60,6 @@ from xml.dom import minidom
 
 logger = logging.getLogger(__name__)
 
-logging_levels = {
-    0: logging.CRITICAL,
-    1: logging.ERROR,
-    2: logging.WARNING,
-    3: logging.INFO,
-    4: logging.DEBUG,
-    5: logging.NOTSET
-}
-
 class ngamsPClient:
     """
     Class providing services for sending and receiving commands to/from
@@ -801,6 +792,29 @@ class ngamsPClient:
                 if i == len(servers) - 1:
                     raise
 
+def setup_logging(opts):
+
+    logging.root.addHandler(logging.NullHandler())
+
+    if opts.verbose:
+        logging_levels = {
+            0:logging.CRITICAL,
+            1:logging.ERROR,
+            2:logging.WARNING,
+            3:logging.INFO,
+            4:logging.DEBUG,
+            5:logging.NOTSET
+        }
+
+        fmt = '%(asctime)-15s.%(msecs)03d [%(threadName)10.10s] [%(levelname)6.6s] %(name)s#%(funcName)s:%(lineno)s %(message)s'
+        datefmt = '%Y-%m-%dT%H:%M:%S'
+        formatter = logging.Formatter(fmt, datefmt=datefmt)
+        formatter.converter = time.gmtime
+        hnd = logging.StreamHandler(stream=sys.stdout)
+        hnd.setFormatter(formatter)
+        logging.root.addHandler(hnd)
+        logging.root.setLevel(logging_levels[opts.verbose - 1])
+
 def main():
     """
     Entry point for the ngamsPClient script
@@ -859,17 +873,7 @@ def main():
     cparser.add_argument(      '--recursive',           help='Recursively remove containers', action='store_true')
 
     opts = parser.parse_args()
-
-    logging.root.addHandler(logging.NullHandler())
-    if opts.verbose:
-        fmt = '%(asctime)-15s.%(msecs)03d [%(threadName)10.10s] [%(levelname)6.6s] %(name)s#%(funcName)s:%(lineno)s %(message)s'
-        datefmt = '%Y-%m-%dT%H:%M:%S'
-        formatter = logging.Formatter(fmt, datefmt=datefmt)
-        formatter.converter = time.gmtime
-        hnd = logging.StreamHandler(stream=sys.stdout)
-        hnd.setFormatter(formatter)
-        logging.root.addHandler(hnd)
-        logging.root.setLevel(logging_levels[opts.verbose-1])
+    setup_logging(opts)
 
     if opts.version:
         print getNgamsVersion()
