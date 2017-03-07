@@ -88,8 +88,9 @@ def isArchivePull(uri):
 
     Returns:    1 = Archive Pull Request, 0 otherwise (integer).
     """
-    logger.debug("isArchivePull() - File URI is: %s", uri)
-    return 'http:' in uri or 'ftp:' in uri or 'file:' in uri
+    return uri.startswith('http://') or \
+           uri.startswith('ftp://') or \
+           uri.startswith('file://')
 
 
 def parseHttpHdr(httpHdr):
