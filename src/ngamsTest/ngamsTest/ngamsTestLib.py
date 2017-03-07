@@ -1134,6 +1134,7 @@ class ngamsTestSuite(unittest.TestCase):
         srvProcess = subprocess.Popen(execCmd)
 
         # We have to wait until the server is serving.
+        server_info = ServerInfo(srvProcess, port, cfgObj.getRootDirectory())
         pCl = sendPclCmd(port=port)
         startTime = time.time()
         stat = None
@@ -1149,11 +1150,11 @@ class ngamsTestSuite(unittest.TestCase):
                 time.sleep(0.2)
 
         if ((time.time() - startTime) >= 20):
-            self.termExtSrv(srvProcess, port)
+            self.termExtSrv(server_info)
             raise Exception,"NGAMS TEST LIB> NG/AMS Server did not start " +\
                   "correctly"
 
-        self.__extSrvInfo.append(ServerInfo(srvProcess, port, cfgObj.getRootDirectory()))
+        self.__extSrvInfo.append(server_info)
 
         return (cfgObj, dbObj)
 
