@@ -162,29 +162,29 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     contDisp += "; no_versioning=1"
     deliver_success = False
     last_deliv_err = ''
+
+    stat = ngamsStatus.ngamsStatus()
     for i in range(3): # total trials - 3 times
-        stat = ngamsStatus.ngamsStatus()
-        try:
-            reply, msg, hdrs, data = ngamsLib.httpPostUrl(sendUrl, fileMimeType,
-                                                            contDisp, filename, "FILE",
-                                                            blockSize=\
-                                                            srvObj.getCfg().getBlockSize(),
-                                                            checkSum = fileCRC)
-            if (data.strip() != ""):
-                stat.clear().unpackXmlDoc(data)
-            else:
-                stat.clear().setStatus(NGAMS_SUCCESS)
-            if (reply != NGAMS_HTTP_SUCCESS or stat.getStatus() == NGAMS_FAILURE):
-                logger.warning("Attempt %d failed: %s", i, stat.getMessage())
-                last_deliv_err = stat.getMessage()
+        with open(filename, "rb") as f:
+            try:
+                reply, msg, hdrs, data = ngamsLib.httpPostUrl(sendUrl, fileMimeType,
+                                                              contDisp, f,
+                                                              checkSum = fileCRC)
+                if (data.strip() != ""):
+                    stat.clear().unpackXmlDoc(data)
+                else:
+                    stat.clear().setStatus(NGAMS_SUCCESS)
+                if (reply != NGAMS_HTTP_SUCCESS or stat.getStatus() == NGAMS_FAILURE):
+                    logger.warning("Attempt %d failed: %s", i, stat.getMessage())
+                    last_deliv_err = stat.getMessage()
+                    continue
+                else:
+                    deliver_success = True
+                    break
+            except Exception, hexp:
+                logger.warning("Attempt %d failed: %s", i, str(hexp))
+                last_deliv_err = str(hexp).replace('\n', '--')
                 continue
-            else:
-                deliver_success = True
-                break
-        except Exception, hexp:
-            logger.warning("Attempt %d failed: %s", i, str(hexp))
-            last_deliv_err = str(hexp).replace('\n', '--')
-            continue
 
     if (not deliver_success):
         errMsg = 'File %s failed to be moved to %s: %s' % (fileId, tgtHost, last_deliv_err)

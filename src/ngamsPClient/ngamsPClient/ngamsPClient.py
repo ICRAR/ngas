@@ -46,14 +46,14 @@ import socket
 import sys
 import time
 
-from ngamsLib import ngamsLib, ngamsFileInfo, ngamsStatus
+from ngamsLib import ngamsLib, ngamsFileInfo, ngamsStatus, ngamsMIMEMultipart
 from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CONTENT_TYPE,\
     NGAMS_LABEL_CMD, NGAMS_ONLINE_CMD, NGAMS_OFFLINE_CMD, NGAMS_REMDISK_CMD,\
     NGAMS_REMFILE_CMD, NGAMS_REGISTER_CMD, NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD,\
     NGAMS_FAILURE, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD, NGAMS_ARCH_REQ_MT,\
     NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,\
     NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE,\
-    NGAMS_IDLE_SUBSTATE, getNgamsLicense, toiso8601
+    NGAMS_IDLE_SUBSTATE, getNgamsLicense, toiso8601, NGAMS_CONT_MT
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD
 from xml.dom import minidom
 
@@ -124,18 +124,26 @@ class ngamsPClient:
 
         Returns:       NG/AMS Status object (ngamsStatus).
         """
-        T = TRACE()
+
         logger.info("Archiving file with URI: %s", fileUri)
+
+        pars = pars or []
         pars.append(('async', '1' if async else '0'))
-        if (ngamsLib.isArchivePull(fileUri)):
-            pars += [["filename", fileUri],
-                        ["no_versioning", str(noVersioning)]]
+        pars.append(("no_versioning", str(noVersioning)))
+
+        # Archive pulls (fileUri is a URL) are GETs
+        if ngamsLib.isArchivePull(fileUri):
+            pars.append(('filename', fileUri))
             if mimeType:
                 pars.append(["mime_type", mimeType])
             return self.sendCmd(cmd, pars=pars)
-        else:
-            res = self.pushFile(fileUri, mimeType, noVersioning, pars, cmd=cmd)
-        return res
+
+        # pushes are POSTs
+        # fileUri is simply a file path
+        mt = mimeType or NGAMS_ARCH_REQ_MT
+        pars.append(("filename", os.path.basename(fileUri)))
+        with open(fileUri, "rb") as f:
+            return self.post(cmd, mt, f, pars=pars)
 
 
     def reArchive(self,
@@ -208,14 +216,24 @@ class ngamsPClient:
         if (targetDiskId): pars.append(["target_disk_id", targetDiskId])
         return self.sendCmd(NGAMS_CLONE_CMD, pars=pars)
 
-    def carchive(self, fileUri):
+    def carchive(self, dirname):
         """
         Sends a CARCHIVE command to the NG/AMS Server to archive
         a full hierarchy of files, effectively creating a hierarchy of
         containers with all the files within
         """
-        pars = []
-        return self.archive(fileUri, pars=pars, cmd="CARCHIVE")
+
+        # If the dataRef is a directory, scan the directory
+        # and build up a list of files contained directly within
+        # Start preparing a mutipart MIME message that will contain
+        # all of them
+        dirname = os.path.abspath(dirname)
+        logger.debug('Archiving directory %s as a container', dirname)
+
+        # Recursively collect all files
+        stream = ngamsMIMEMultipart.MIMEMultipartStream(dirname)
+
+        return self.post('CARCHIVE', NGAMS_CONT_MT, stream, is_container=True)
 
     def cappend(self, fileId, fileIdList='', containerId=None, containerName=None, force=False, closeContainer=False):
         """
@@ -254,7 +272,7 @@ class ngamsPClient:
             fileListXml = doc.toxml(encoding='utf-8')
 
             # And send it out!
-            return self.post_data('CAPPEND', 'text/xml', pars, fileListXml)
+            return self.post('CAPPEND', 'text/xml', fileListXml, pars=pars)
 
     def ccreate(self, containerName, parentContainerId=None, containerHierarchy=None):
         """
@@ -272,7 +290,7 @@ class ngamsPClient:
             return self.sendCmd('CCREATE', pars=pars)
         else:
             contHierarchyXml = containerHierarchy
-            return self.post_data('CCREATE', 'text/xml', pars, contHierarchyXml)
+            return self.post('CCREATE', 'text/xml', contHierarchyXml, pars=pars)
 
     def cdestroy(self, containerName, containerId=None, recursive=False):
         """
@@ -345,7 +363,7 @@ class ngamsPClient:
             fileListXml = doc.toxml(encoding='utf-8')
 
             # And send it out!
-            return self.post_data('CREMOVE', 'text/xml', pars, fileListXml)
+            return self.post('CREMOVE', 'text/xml', fileListXml, pars=pars)
 
 
     def cretrieve(self, containerName, containerId=None, targetDir='.'):
@@ -611,40 +629,6 @@ class ngamsPClient:
         return self.sendCmd(NGAMS_UNSUBSCRIBE_CMD, pars=pars)
 
 
-    def pushFile(self,
-                 fileUri,
-                 mimeType = "",
-                 noVersioning = 0,
-                 pars = [],
-                 cmd = NGAMS_ARCHIVE_CMD):
-        """
-        Handle an Archive Push Request.
-
-        fileUri:       URI of file to archive (string).
-
-        mimeType:      Mime-type of the data. Must be given if it is not
-                       possible to determine the mime-type of the data
-                       file to be archived from its filename (string).
-
-        noVersioning:  If 1 no new version number will be generated for
-                       the file being archived (integer).
-
-        pars:          Extra parameters to submit with the request. Must be
-                       in the format:
-
-                         [[<Par>, <Val>], [<Par>, <Val>], ...]    (list).
-
-        cmd:           Command to issue with the request if different from
-                       a normal ARCHIVE Command (string).
-
-        Returns:       NG/AMS Status Object (ngamsStatus).
-        """
-        mt = mimeType or NGAMS_ARCH_REQ_MT
-        pars += [["attachment; filename", os.path.basename(fileUri)]]
-        pars += [["no_versioning", str(noVersioning)]]
-        return self.post_file(cmd, mt, pars, fileUri)
-
-
     def sendCmd(self, cmd, outputFile=None, pars=[], additional_hdrs=[]):
         """
         Send a command to the NG/AMS Server and receives the reply.
@@ -723,28 +707,27 @@ class ngamsPClient:
         return res
 
 
-    def do_post(self, host, port, cmd, mimeType,
-                dataRef = "",
-                dataSource = "BUFFER",
-                pars = [],
-                dataTargFile = "",
-                fileName = "",
-                dataSize = -1):
+    def do_post(self, host, port, cmd, mimeType, data, pars, is_container):
 
         auth = None
         if self.auth is not None:
             auth = "Basic %s" % self.auth
 
         start = time.time()
-        res = ngamsLib.httpPost(host, port, cmd, mimeType,
-                                dataRef, dataSource, pars,
-                                dataTargFile, self.timeout, auth,
-                                fileName, dataSize)
+        res = ngamsLib.httpPost(host, port, cmd, mimeType, data,
+                                pars=pars, timeOut=self.timeout, authHdrVal=auth,
+                                is_container=is_container)
         delta = time.time() - start
         logger.info("Successfully completed command %s in %.3f [s]", cmd, delta)
         return res
 
-    def post_file(self, cmd, mime_type, pars, fname):
+
+    def post(self, cmd, mime_type, data, pars=[], is_container=False):
+
+        if self.timeout:
+            pars.append(["time_out", str(self.timeout)] )
+        if self.reload_mod:
+            pars.append(["reload", "1"])
 
         # For now we try the serves in random order.
         servers = self.servers
@@ -753,32 +736,12 @@ class ngamsPClient:
         for i,host_port in enumerate(servers):
             host, port = host_port
             try:
-                _,_,_,data = self.do_post(host, port, cmd, mime_type,
-                                          dataRef = fname,
-                                          dataSource = 'FILE',
-                                          pars = pars)
+                _,_,_,data = self.do_post(host, port, cmd, mime_type, data, pars, is_container)
                 return ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
             except socket.error:
                 if i == len(servers) - 1:
                     raise
 
-    def post_data(self, cmd, mime_type, pars, data):
-
-        # For now we try the serves in random order.
-        servers = self.servers
-        random.shuffle(servers)
-
-        for i,host_port in enumerate(servers):
-            host, port = host_port
-            try:
-                _,_,_,data = self.do_post(host, port, cmd, mime_type,
-                                          dataRef = data,
-                                          dataSource = 'BUFFER',
-                                          pars = pars)
-                return ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
-            except socket.error:
-                if i == len(servers) - 1:
-                    raise
 
 def setup_logging(opts):
 
@@ -917,11 +880,10 @@ def main():
     elif (cmd == NGAMS_ONLINE_CMD):
         stat = client.online()
     elif (cmd == NGAMS_REARCHIVE_CMD):
-        if (not opts.file_info_xml):
-            msg = "Must specify parameter -fileInfoXml for " +\
-                  "a REARCHIVE Command"
-            raise Exception, msg
-        stat = client.reArchive(opts.file_u, opts.file_info_xml, pars) # no parArray in noDebug()
+        if not opts.file_info_xml:
+            msg = "Must specify parameter -fileInfoXml for a REARCHIVE Command"
+            raise Exception(msg)
+        stat = client.reArchive(opts.file_uri, opts.file_info_xml, pars)
     elif (cmd == NGAMS_REGISTER_CMD):
         stat = client.register(opts.path, opts.async)
     elif (cmd == NGAMS_REMDISK_CMD):

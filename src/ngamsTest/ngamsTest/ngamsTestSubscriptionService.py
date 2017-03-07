@@ -130,7 +130,7 @@ def _archiveThread(pclient, fileUriList, interval, clientIdx, my_bar):
         print 'Archiving file %s' % fileUri
         stat = None
         try:
-            stat = pclient.pushFile(fileUri, mime_type, cmd = 'QARCHIVE')
+            stat = pclient.archive(fileUri, mime_type, cmd = 'QARCHIVE')
         except Exception as e:
             print "Exception '%s' occurred while archiving file %s" % (str(e), fileUri)
             continue
@@ -710,7 +710,7 @@ def TestCase03(num_files, base_name = None):
     for num in range(num_files):
         fileUri = '%s/%s-%s%s' % (tmpDir, base_name, str(num), file_ext)
         print 'Archiving file %s' % fileUri
-        stat = clientA.pushFile(fileUri, mime_type, cmd = 'QARCHIVE')
+        stat = clientA.archive(fileUri, mime_type, cmd = 'QARCHIVE')
         msg = stat.getMessage().split()[0]
         if (msg != 'Successfully'):
             raise Exception('Fail to archive \"%s\"' % fileUri)
@@ -736,7 +736,7 @@ def TestCase02(num_files, base_name = None):
         for num in range(num_files):
             fileUri = '%s/%s-%s%s' % (tmpDir, base_name, str(num), file_ext)
             print 'Archiving file %s' % fileUri
-            stat = clientA.pushFile(fileUri, mime_type, cmd = 'QARCHIVE')
+            stat = clientA.archive(fileUri, mime_type, cmd = 'QARCHIVE')
             msg = stat.getMessage().split()[0]
             if (msg != 'Successfully'):
                 raise Exception('Fail to archive \"%s\"' % fileUri)

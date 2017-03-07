@@ -188,7 +188,7 @@ def handleCmd(srvObj,
               reqPropsObj,
               httpRef):
     """
-    Handle the Quick Archive (QARCHIVE) Command.
+    Handle the CARCHIVE Command.
 
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
 

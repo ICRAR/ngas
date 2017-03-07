@@ -51,7 +51,7 @@ import urlparse
 from ngamsCore import genLog, getHostName, \
     NGAMS_HTTP_SUCCESS, NGAMS_CONT_MT, \
     NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM, \
-    getFileSize, NGAMS_ARCH_REQ_MT, getUniqueNo, \
+    NGAMS_ARCH_REQ_MT, getUniqueNo, \
     NGAMS_MAX_FILENAME_LEN, NGAMS_UNKNOWN_MT, rmFile, toiso8601
 import ngamsMIMEMultipart
 
@@ -285,21 +285,20 @@ def _httpHandleResp(fileObj,
 
 def httpPostUrl(url,
                 mimeType,
-                contDisp = "",
-                dataRef = "",
-                dataSource = "BUFFER",
-                dataTargFile = "",
+                contDisp,
+                data,
+                is_container = False,
+                dataTargFile = None,
                 blockSize = 65536,
                 suspTime = 0.0,
                 timeOut = None,
-                authHdrVal = "",
+                authHdrVal = None,
                 dataSize = -1,
                 fileInfoHdr = None,
-                sendBuffer = None,
                 checkSum = None,
-                moreHdrs = []):
+                moreHdrs = {}):
     """
-    Post the the data referenced on the given URL.
+    Post `data` onto the given URL.
 
     The data send back from the remote server + the HTTP header information
     is return in a list with the following contents:
@@ -308,14 +307,14 @@ def httpPostUrl(url,
 
     url:          URL to where data is posted (string).
 
-    mimeType:     Mime-type of message (string).
+    mimeType:     Mime-type of data (string).
 
     contDisp:     Content-Disposition of the data (string).
 
     dataRef:      Data to post or name of file containing data to send
                   (string).
 
-    dataSource:   Source where to pick up the data (string/BUFFER|FILE|FD|FILESLIST).
+    dataSource:   Source where to pick up the data (string/FILESLIST|whatever-else).
 
     dataTargFile: If a filename is specified with this parameter, the
                   data received is stored into a file of that name (string).
@@ -339,84 +338,47 @@ def httpPostUrl(url,
     Returns:      List with information from reply from contacted
                   NG/AMS Server (reply, msg, hdrs, data) (list).
     """
+
+    logger.debug("About to POST to %s", url)
     urlres = urlparse.urlparse(url)
 
-    if urlres.scheme.lower() == 'houdt':
-        import ngamsUDTSender
-        return ngamsUDTSender.httpPostUrl(url, mimeType, contDisp, dataRef, dataSource, dataTargFile, blockSize, suspTime, timeOut, authHdrVal, dataSize)
-
-    cmd = urlres.path.strip('/')
-
     with contextlib.closing(httplib.HTTPConnection(urlres.netloc, timeout = timeOut)) as http:
-        logger.debug("Sending HTTP header ...")
-        logger.debug("HTTP Header: %s: %s", NGAMS_HTTP_POST, cmd)
-        http.putrequest(NGAMS_HTTP_POST, cmd)
 
-        logger.debug("HTTP Header: Content-Type: %s", mimeType)
-        http.putheader("Content-Type", mimeType)
-        if (contDisp != ""):
-            logger.debug("HTTP Header: Content-Disposition: %s", contDisp)
-            http.putheader("Content-Disposition", contDisp)
-        if (authHdrVal):
-            if (authHdrVal[-1] == "\n"):
-                authHdrVal = authHdrVal[:-1]
-            logger.debug("HTTP Header: Authorization: %s", authHdrVal)
-            http.putheader("Authorization", authHdrVal)
-        if (fileInfoHdr):
-            http.putheader(NGAMS_HTTP_HDR_FILE_INFO, fileInfoHdr)
-        if (checkSum):
-            http.putheader(NGAMS_HTTP_HDR_CHECKSUM, checkSum)
+        # Prepare all headers that need to be sent
+        hdrs = {}
+        hdrs["Content-Type"] = mimeType
+        hdrs["Host"] = getHostName()
 
-        for k,v in moreHdrs:
-            http.putheader(k, v)
+        if contDisp:
+            hdrs["Content-Disposition"] = contDisp
+        if authHdrVal:
+            hdrs["Authorization"] = authHdrVal.strip()
+        if fileInfoHdr:
+            hdrs[NGAMS_HTTP_HDR_FILE_INFO] = fileInfoHdr
+        if checkSum:
+            hdrs[NGAMS_HTTP_HDR_CHECKSUM] = checkSum
+        if dataSize != -1:
+            hdrs['Content-Length'] = dataSize
+        hdrs.update(moreHdrs)
 
-        if dataSource == "FILE":
-            dataSize = getFileSize(dataRef)
-        elif dataSource == "BUFFER":
-            dataSize = len(dataRef)
+        # Reconstruct the full path + query where we are sending data to
+        url = urlres.path
+        if urlres.query:
+            url = url + '?' + urlres.query
 
-        if dataSize == -1:
-            raise Exception('Could not determine length of content')
-
-        logger.debug("HTTP Header: Content-Length: %s", str(dataSize))
-        http.putheader("Content-Length", str(dataSize))
-        logger.debug("HTTP Header: Host: %s", getHostName())
-        http.putheader("Host", getHostName())
-        http.endheaders()
-        logger.debug("HTTP header sent")
-
-        if dataSource == "FILE":
-            with open(dataRef) as fdIn:
-                toSend = dataSize
-                sent = 0
-                while sent < toSend:
-                    buff = fdIn.read(toSend - sent)
-                    if not buff:
-                        raise Exception('error reading data')
-                    http.sock.sendall(buff)
-                    sent += len(buff)
-
-        elif dataSource == "FILESLIST":
-            writer = dataRef[0]
-            allPaths = dataRef[1]
+        if is_container:
+            # We do this by hand still, will change soon
+            http.putrequest(NGAMS_HTTP_POST, url)
+            for k,v in hdrs:
+                http.putheader(k,v)
+            http.endheaders()
+            writer = data[0]
+            allPaths = data[1]
             writer.setOutput(http.sock.makefile("w"))
             writeDirContents(writer, allPaths[1], blockSize, suspTime)
-
-        elif dataSource == "FD":
-            toSend = dataSize
-            sent = 0
-            while sent < toSend:
-                buff = dataRef.read(toSend - sent)
-                if not buff:
-                    raise Exception('error reading data')
-                http.sock.sendall(buff)
-                sent += len(buff)
-
-        elif dataSource == "BUFFER":
-            http.sock.sendall(dataRef)
-
         else:
-            raise Exception('Unknown data source: ' + dataSource)
+            # Go, go, go!
+            http.request(NGAMS_HTTP_POST, url, body=data, headers=hdrs)
 
         logger.debug("Data sent, waiting for reply")
 
@@ -427,7 +389,7 @@ def httpPostUrl(url,
         hdrs = {h[0]: h[1] for h in hdrs}
 
         dataSize = 0
-        if (hdrs.has_key("content-length")):
+        if "content-length" in hdrs:
             dataSize = int(hdrs["content-length"])
 
         if not dataTargFile:
@@ -454,7 +416,7 @@ def httpPostUrl(url,
                     readIn += len(buff)
 
         # Dump HTTP headers if Verbose Level >= 4.
-        logger.debug("HTTP Header: HTTP/1.0 %s %s", str(reply), msg)
+        logger.debug("HTTP Header: HTTP/1.0 %d %s", reply, msg)
         if logger.isEnabledFor(logging.DEBUG):
             for hdr in hdrs.keys():
                 logger.debug("HTTP Header: %s: %s", hdr, hdrs[hdr])
@@ -482,14 +444,14 @@ def httpPost(host,
              port,
              cmd,
              mimeType,
-             dataRef = "",
-             dataSource = "BUFFER",
+             data,
              pars = [],
              dataTargFile = "",
              timeOut = None,
              authHdrVal = "",
              fileName = "",
-             dataSize = -1):
+             dataSize = -1,
+             is_container = False):
     """
     Sends an HTTP POST command with the given mime-type and the given
     data to the NG/AMS Server with the host + port given.
@@ -507,10 +469,8 @@ def httpPost(host,
 
     mimeType:     Mime-type of message (string).
 
-    dataRef:      Data to send to remote NG/AMS Server or name of
+    data:         Data to send to remote NG/AMS Server or name of
                   file/directory containing data to send (string).
-
-    dataSource:   Source where to pick up the data (string/BUFFER|FILE|FD).
 
     pars:         List of sub-lists containing parameters + values.
                   Format is:
@@ -536,45 +496,20 @@ def httpPost(host,
     Returns:      List with information from reply from contacted
                   NG/AMS Server (reply, msg, hdrs, data) (list).
     """
-    # If the dataRef is a directory, scan the directory
-    # and build up a list of files contained directly within
-    # Start preparing a mutipart MIME message that will contain
-    # all of them
-    if isinstance(dataRef, basestring) and os.path.isdir(dataRef):
 
-        absDirname = os.path.abspath(dataRef)
-        logger.debug('Request is to archive directory %s', absDirname)
-        mimeType = NGAMS_CONT_MT
-
-        # Recursively collect all files
-        # TODO: Probably here we can reuse the filesInformation
-        # structure instead of having the absPaths separately
-        filesInformation, absPaths = collectFiles(absDirname)
-
-        writer = ngamsMIMEMultipart.MIMEMultipartWriter(filesInformation)
-        dataSize = writer.getTotalSize()
-
-        dataRef = [writer, absPaths]
-        dataSource = 'FILESLIST'
-
-        fileName = 'mimemessage'
-        if pars[0][0] == 'attachment; filename': pars[0][0] = 'attachment'
-
-    contDisp = []
+    contDisp = None
     for parInfo in pars:
         if parInfo[0] == "attachment":
             if fileName:
-                contDisp.append('attachment; filename="%s"; ' % fileName)
+                contDisp = 'attachment; filename="%s"; ' % fileName
         else:
-            contDisp.append('%s="%s"; ' % (parInfo[0], urllib.quote(str(parInfo[1]))))
-    contDisp = ''.join(contDisp)
+            contDisp = '%s="%s"; ' % (parInfo[0], urllib.quote(str(parInfo[1])))
 
-    msg = "Sending: %s using HTTP POST with mime-type: %s " + \
-          "to NG/AMS Server with host: %s:%d"
+    msg = "Sending: %s using HTTP POST with mime-type: %s to %s:%d"
     logger.debug(msg, cmd, mimeType, host, port)
 
-    url = "http://%s:%d/%s" % (host, port, cmd)
-    return httpPostUrl(url, mimeType, contDisp, dataRef, dataSource,
+    url = get_url(host, port, cmd, pars=pars)
+    return httpPostUrl(url, mimeType, contDisp, data, is_container,
                        dataTargFile, 65536, 0, timeOut, authHdrVal, dataSize)
 
 def collectFiles(absDirname):
@@ -654,10 +589,10 @@ def get_url(host, port, cmd, pars):
     """
     Creates the URL for the given combination of inputs
     """
-    parDic = {p[0]: p[1] for p in pars}
-    url = "http://" + host + ":" + str(port) + "/" + cmd
-    pars = urllib.urlencode(parDic)
+    url = "http://%s:%d/%s" % (host, port, cmd)
     if pars:
+        parDic = {p[0]: p[1] for p in pars}
+        pars = urllib.urlencode(parDic)
         url += '?' + pars
     return url
 

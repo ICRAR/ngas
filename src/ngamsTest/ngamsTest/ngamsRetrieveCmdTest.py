@@ -184,7 +184,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                          [[8000, None, None, getClusterName()],
                           [8011, None, None, getClusterName()]])
         # Archive file into sub-node (port=8011).
-        sendPclCmd(port=8011).pushFile("src/TinyTestFile.fits")
+        sendPclCmd(port=8011).archive("src/TinyTestFile.fits")
 
         # Retrieve a file.
         trgFile = "tmp/test_RetrieveCmd_3_1_tmp"

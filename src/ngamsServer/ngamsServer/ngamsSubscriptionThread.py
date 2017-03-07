@@ -702,6 +702,7 @@ def _deliveryThread(srvObj,
             # TODO: Note should not have no_versioning hardcoded in the
             # request send to the client/subscriber.
             contDisp.append("; no_versioning=1; file_id={0}".format(fileId))
+            contDisp = ''.join(contDisp)
 
             msg = "Thread [%s] Delivering file: %s/%s - to Subscriber with ID: %s"
             logger.info(msg, str(thread.get_ident()), baseName, str(fileVersion), subscrObj.getId())
@@ -774,16 +775,15 @@ def _deliveryThread(srvObj,
                         fileChecksum = srvObj.getDb().getFileChecksum(diskId, fileId, fileVersion)
                         if fileChecksum is None:
                             logger.warning('Fail to get file checksum for file %s', fileId)
-                        reply, msg, hdrs, data = \
-                               ngamsLib.httpPostUrl(sendUrl, fileMimeType,
-                                                    ''.join(contDisp), filename, "FILE",
-                                                    blockSize=\
-                                                    srvObj.getCfg().getBlockSize(),
-                                                    suspTime = suspenTime,
-                                                    authHdrVal = authHdr,
-                                                    fileInfoHdr = fileInfoObjHdr,
-                                                    sendBuffer = srvObj.getCfg().getArchiveSndBufSize(),
-                                                    checkSum = fileChecksum)
+
+                        with open(filename, "rb") as f:
+                            reply, msg, hdrs, data = \
+                                   ngamsLib.httpPostUrl(sendUrl, fileMimeType,
+                                                        contDisp, f,
+                                                        suspTime = suspenTime,
+                                                        authHdrVal = authHdr,
+                                                        fileInfoHdr = fileInfoObjHdr,
+                                                        checkSum = fileChecksum)
                         stat.clear()
                         if data:
                             stat.unpackXmlDoc(data)

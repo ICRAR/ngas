@@ -1966,7 +1966,7 @@ class ngamsServer:
                                                     reqPropsObj.getCmd(),
                                                     mimeType,
                                                     reqPropsObj.getReadFd(),
-                                                    "FD", pars,
+                                                    pars=pars,
                                                     authHdrVal=authHttpHdrVal,
                                                     fileName=fn,
                                                     dataSize=contLen,

@@ -55,7 +55,7 @@ class ngamsServerTest(ngamsTestSuite):
         self.prepExtSrv(cfgProps=[["NgamsCfg.Server[1].TimeOut",str(timeout)]])
         client = sendPclCmd()
         pars = [["attachment; filename", "some-file.data"]]
-        status = client.post_data("ARCHIVE", 'application/octet-stream', pars, spaces)
+        status = client.post("ARCHIVE", 'application/octet-stream', spaces, pars)
         self.assertEquals(NGAMS_SUCCESS, status.getStatus())
 
         # Normal retrieval works fine
