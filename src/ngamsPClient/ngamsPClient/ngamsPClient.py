@@ -102,7 +102,7 @@ class ngamsPClient:
     def archive(self,
                 fileUri,
                 mimeType = "",
-                async = 0,
+                async = False,
                 noVersioning = 0,
                 pars = [],
                 cmd = NGAMS_ARCHIVE_CMD):
@@ -138,7 +138,7 @@ class ngamsPClient:
                         ["no_versioning", str(noVersioning)]]
             if mimeType:
                 pars.append(["mime_type", mimeType])
-            res = self.sendCmd(cmd, "", pars)
+            return self.sendCmd(cmd, pars=pars)
         else:
             res = self.pushFile(fileUri, mimeType, noVersioning, pars, cmd=cmd)
         return res
@@ -188,7 +188,7 @@ class ngamsPClient:
               diskId,
               fileVersion,
               targetDiskId = "",
-              async = 0):
+              async = False):
         """
         Send an CLONE command to the NG/AMS Server associated to the object.
 
@@ -207,13 +207,12 @@ class ngamsPClient:
 
         Returns:       NG/AMS Status object (ngamsStatus).
         """
-        pars = []
+        pars = [('async', '1' if async else '0')]
         if (fileId): pars.append(["file_id", fileId])
         if (diskId): pars.append(["disk_id", diskId])
         if (fileVersion > 0): pars.append(["file_version", fileVersion])
         if (targetDiskId): pars.append(["target_disk_id", targetDiskId])
-        pars.append(('async', str(async)))
-        return self.sendCmd(NGAMS_CLONE_CMD, "", pars)
+        return self.sendCmd(NGAMS_CLONE_CMD, pars=pars)
 
     def carchive(self, fileUri, reloadMod=False):
         """
@@ -411,8 +410,8 @@ class ngamsPClient:
 
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_LABEL_CMD, "", [["slot_id", slotId],
-                                                     ["host_id", hostId]])
+        pars = [("slot_id", slotId), ("host_id", hostId)]
+        return self.sendCmd(NGAMS_LABEL_CMD, pars=pars)
 
 
     def online(self):
@@ -424,20 +423,17 @@ class ngamsPClient:
         return self.sendCmd(NGAMS_ONLINE_CMD)
 
 
-    def offline(self, force=0):
+    def offline(self, force=False):
         """
         Send an OFFLINE command to the NG/AMS Server associated to the object.
 
         force:     If set to 1 the NG/AMS Server will be forced to
                    go Offline (integer).
 
-        async:     Whether the registration should be carried out asynchronously
-                   or not.
-
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        pars = [('force', str(force))]
-        return self.sendCmd(NGAMS_OFFLINE_CMD, "", pars)
+        pars = [('force', "1" if force else "0")]
+        return self.sendCmd(NGAMS_OFFLINE_CMD, pars=pars)
 
 
     def remDisk(self,
@@ -454,15 +450,15 @@ class ngamsPClient:
 
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_REMDISK_CMD, "",
-                            [["disk_id", diskId], ["execute", execute]])
+        pars = [("disk_id", diskId), ("execute", execute)]
+        return self.sendCmd(NGAMS_REMDISK_CMD, pars=pars)
 
 
     def remFile(self,
                 diskId,
                 fileId,
                 fileVersion = -1,
-                execute = 0):
+                execute = False):
         """
         Send an REMFILE command to the NG/AMS Server associated to the object.
 
@@ -480,13 +476,15 @@ class ngamsPClient:
 
         Returns:      NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_REMFILE_CMD, "",
-                            [["disk_id", diskId], ["file_id", fileId],
-                             ["file_version", fileVersion],
-                             ["execute", execute]])
+        pars = [("disk_id", diskId),
+                ("file_id", fileId),
+                ("execute", "1" if execute else "0")]
+        if fileVersion != -1:
+            pars.append(("file_version", fileVersion))
+        return self.sendCmd(NGAMS_REMFILE_CMD, pars=pars)
 
 
-    def register(self, path, async=0):
+    def register(self, path, async=False):
         """
         Send an REGISTER command to the NG/AMS Server associated to the object.
 
@@ -498,8 +496,8 @@ class ngamsPClient:
 
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        pars = [("path", path), ('async', str(async))]
-        return self.sendCmd(NGAMS_REGISTER_CMD, "", pars)
+        pars = [("path", path), ('async', '1' if async else '0')]
+        return self.sendCmd(NGAMS_REGISTER_CMD, pars=pars)
 
 
     def retrieve2File(self,
@@ -609,15 +607,14 @@ class ngamsPClient:
 
         Returns:            NG/AMS Status object (ngamsStatus).
         """
-        pars = [["url", url], ["priority", priority]]
-        if (startDate != ""): pars += ["start_date", startDate]
-        if (filterPlugIn != ""): pars += ["filter_plug_in", filterPlugIn]
-        if (filterPlugInPars != ""): pars += ["plug_in_pars", filterPlugInPars]
-        stat = self.sendCmd(NGAMS_SUBSCRIBE_CMD, "", pars)
-        if (stat.getStatus() == NGAMS_FAILURE): return stat
-
-        # Act as HTTP daemon ready to receive data.
-        # TODO: Implement!
+        pars = [("url", url), ("priority", priority)]
+        if startDate:
+            pars.append(("start_date", startDate))
+        if filterPlugIn:
+            pars.append(("filter_plug_in", filterPlugIn))
+        if filterPlugInPars:
+            pars.append(("plug_in_pars", filterPlugInPars))
+        return self.sendCmd(NGAMS_SUBSCRIBE_CMD, pars=pars)
 
 
     def unsubscribe(self,
@@ -630,8 +627,8 @@ class ngamsPClient:
 
         Returns:            NG/AMS Status object (ngamsStatus).
         """
-        pars = [["url", url]]
-        return self.sendCmd(NGAMS_UNSUBSCRIBE_CMD, "", pars)
+        pars = [("url", url)]
+        return self.sendCmd(NGAMS_UNSUBSCRIBE_CMD, pars=pars)
 
 
     def pushFile(self,
