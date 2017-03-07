@@ -66,7 +66,9 @@ class ngamsPClient:
     the NG/AMS Server.
     """
 
-    def __init__(self, host=None, port=None, servers=None, timeout=None, auth=None):
+    def __init__(self,
+                 host=None, port=None, servers=None, timeout=None, auth=None,
+                 reload_mod=False):
         """
         Constructor.
 
@@ -88,6 +90,7 @@ class ngamsPClient:
 
         self.timeout = timeout
         self.auth = auth
+        self.reload_mod = reload_mod
 
 
     def archive(self,
@@ -205,18 +208,16 @@ class ngamsPClient:
         if (targetDiskId): pars.append(["target_disk_id", targetDiskId])
         return self.sendCmd(NGAMS_CLONE_CMD, pars=pars)
 
-    def carchive(self, fileUri, reloadMod=False):
+    def carchive(self, fileUri):
         """
         Sends a CARCHIVE command to the NG/AMS Server to archive
         a full hierarchy of files, effectively creating a hierarchy of
         containers with all the files within
         """
         pars = []
-        if reloadMod:
-            pars.append(['reload', 1])
         return self.archive(fileUri, pars=pars, cmd="CARCHIVE")
 
-    def cappend(self, fileId, fileIdList='', containerId=None, containerName=None, force=False, closeContainer=False, reloadMod=False):
+    def cappend(self, fileId, fileIdList='', containerId=None, containerName=None, force=False, closeContainer=False):
         """
         Sends a CAPPEND command to the NG/AMS Server to append the
         given file/s to the container indicated either by containerId
@@ -233,8 +234,6 @@ class ngamsPClient:
             pars.append(['container_id', containerId])
         if containerName:
             pars.append(['container_name', containerName])
-        if reloadMod:
-            pars.append(['reload', 1])
         if force:
             pars.append(['force', 1])
         if closeContainer:
@@ -257,7 +256,7 @@ class ngamsPClient:
             # And send it out!
             return self.post_data('CAPPEND', 'text/xml', pars, fileListXml)
 
-    def ccreate(self, containerName, parentContainerId=None, containerHierarchy=None, reloadMod=False):
+    def ccreate(self, containerName, parentContainerId=None, containerHierarchy=None):
         """
         Sends a CCREATE command to the NG/AMS Server to create a container
         or a container hierarchy
@@ -266,9 +265,6 @@ class ngamsPClient:
             raise Exception('Either a container name or container hierarchy must be indicated to create container/s')
 
         pars = []
-        if reloadMod:
-            pars.append(['reload', reloadMod])
-
         if containerName:
             pars.append(['container_name', containerName])
             if parentContainerId:
@@ -278,7 +274,7 @@ class ngamsPClient:
             contHierarchyXml = containerHierarchy
             return self.post_data('CCREATE', 'text/xml', pars, contHierarchyXml)
 
-    def cdestroy(self, containerName, containerId=None, recursive=False, reloadMod=None):
+    def cdestroy(self, containerName, containerId=None, recursive=False):
         """
         Sends a CDESTROY command to the NG/AMS Server to destroy a container
         or a container hierarchy
@@ -291,14 +287,12 @@ class ngamsPClient:
             pars.append(['container_id', containerId])
         if containerName:
             pars.append(['container_name', containerName])
-        if reloadMod:
-            pars.append(['reload', 1])
         if recursive:
             pars.append(['recursive', 1])
 
         return self.sendCmd('CDESTROY', pars=pars)
 
-    def clist(self, containerName, containerId=None, reloadMod=False):
+    def clist(self, containerName, containerId=None):
         """
         Sends a CLIST command to the NG/AMS Server to get information about
         a particular container and its recursive hierarchy
@@ -315,12 +309,10 @@ class ngamsPClient:
             pars.append(['container_id', containerId])
         if containerName:
             pars.append(['container_name', containerName])
-        if reloadMod:
-            pars.append(['reload', 1])
 
         return self.sendCmd('CLIST', pars=pars)
 
-    def cremove(self, fileId, fileIdList='', containerId=None, containerName=None, reloadMod=False):
+    def cremove(self, fileId, fileIdList='', containerId=None, containerName=None):
         """
         Sends a CAPPEND command to the NG/AMS Server to append the
         given file/s to the container indicated either by containerId
@@ -337,8 +329,6 @@ class ngamsPClient:
             pars.append(['container_id', containerId])
         if containerName:
             pars.append(['container_name', containerName])
-        if reloadMod:
-            pars.append(['reload', 1])
 
         if fileId:
             pars.append(['file_id', fileId])
@@ -358,7 +348,7 @@ class ngamsPClient:
             return self.post_data('CREMOVE', 'text/xml', pars, fileListXml)
 
 
-    def cretrieve(self, containerName, containerId=None, targetDir='.', reloadMod=False):
+    def cretrieve(self, containerName, containerId=None, targetDir='.'):
         """
         Sends a CRETRIEVE command to NG/AMS to retrieve the full contents of a
         container and dumps them into the file system.
@@ -369,7 +359,8 @@ class ngamsPClient:
             raise Exception, msg
         if not targetDir:
             targetDir = '.'
-        return self.retrieve2File(None, targetFile=targetDir, containerName=containerName, containerId=containerId, cmd="CRETRIEVE", reloadMod=reloadMod)
+        return self.retrieve2File(None, targetFile=targetDir, containerName=containerName, containerId=containerId, cmd="CRETRIEVE")
+
 
     def exit(self):
         """
@@ -499,8 +490,7 @@ class ngamsPClient:
                       processingPars = "",
                       containerName = None,
                       containerId = None,
-                      cmd = NGAMS_RETRIEVE_CMD,
-                      reloadMod = False):
+                      cmd = NGAMS_RETRIEVE_CMD):
         """
         Request a file from the NG/AMS Server associated to the object.
         The file will be stored under the name given by the 'targetFile'
@@ -552,7 +542,6 @@ class ngamsPClient:
             pars.append(["processing", processing])
             if (processingPars != ""):
                 pars.append(["processingPars", processingPars])
-        if reloadMod: pars.append(['reload', 1])
 
         return self.sendCmd(cmd, targetFile, pars)
 
@@ -663,6 +652,8 @@ class ngamsPClient:
 
         if self.timeout:
             pars.append(["time_out", str(self.timeout)])
+        if self.reload_mod:
+            pars.append(["reload", "1"])
 
         # For now we try the serves in random order.
         serverList = list(self.servers)
@@ -743,9 +734,6 @@ class ngamsPClient:
         auth = None
         if self.auth is not None:
             auth = "Basic %s" % self.auth
-
-        if self.timeout:
-            pars.append(["time_out", str(self.timeout)] )
 
         start = time.time()
         res = ngamsLib.httpPost(host, port, cmd, mimeType,
@@ -835,6 +823,7 @@ def main():
     cparser.add_argument(      '--servers', help='A comma-separated list of host:server addresses')
 
     parser.add_argument('-P', '--param',        help='Additional HTTP parameters in the form of param=value, can be specified more than once', action='append', default=[])
+    parser.add_argument('-r', '--reload',       help='Reload the module implementing the command', action='store_true')
 
     parser.add_argument('-m', '--mime-type',    help='The mime-type', default='application/octet-stream')
     parser.add_argument('-s', '--show-status',  help='Display the status of the command', action='store_true')
@@ -851,7 +840,6 @@ def main():
     parser.add_argument('-n', '--no-versioning', help='Do not increase the file version', action='store_true')
     parser.add_argument('-d', '--disk-id',       help='Indicates a Disk ID')
     parser.add_argument('-e', '--execute',       help='Executes the action', action='store_true')
-    parser.add_argument('-r', '--reload',        help='Reload the module implementing the command', action='store_true')
     parser.add_argument(      '--path',          help='File path')
     parser.add_argument(      '--slot-id',       help='The Slot ID for the label')
     parser.add_argument(      '--p-plugin',      help='Processing plug-in to apply before retrieving data')
@@ -885,31 +873,32 @@ def main():
 
     if opts.servers:
         servers = [(host, int(port)) for s in opts.servers.split(',') for host,port in s.split(':')]
-        client = ngamsPClient(servers=servers, timeout=opts.timeout, auth=opts.auth)
+        client = ngamsPClient(servers=servers, timeout=opts.timeout,
+                              auth=opts.auth, reload_mod=opts.reload)
     else:
-        client = ngamsPClient(opts.host, opts.port, timeout=opts.timeout, auth=opts.auth)
+        client = ngamsPClient(opts.host, opts.port, timeout=opts.timeout,
+                              auth=opts.auth, reload_mod=opts.reload)
 
     # Invoke the proper operation.
     cmd = opts.cmd
     mtype = opts.mime_type
-    reload_mod = opts.reload
     pars = [(name, val) for p in opts.param for name,val in p.split('=')]
     if cmd in [NGAMS_ARCHIVE_CMD, 'QARCHIVE']:
-        stat = client.archive(opts.file_uri, mtype, opts.async, opts.no_versioning, cmd=cmd, pars=[['reload', reload_mod]])
+        stat = client.archive(opts.file_uri, mtype, opts.async, opts.no_versioning, cmd=cmd)
     elif cmd == "CARCHIVE":
-        stat = client.carchive(opts.file_uri, reload_mod)
+        stat = client.carchive(opts.file_uri)
     elif cmd == "CAPPEND":
-        stat = client.cappend(opts.file_id, opts.file_id_list, opts.container_id, opts.container_name, opts.force, opts.close, reload_mod)
+        stat = client.cappend(opts.file_id, opts.file_id_list, opts.container_id, opts.container_name, opts.force, opts.close)
     elif cmd == "CCREATE":
-        stat = client.ccreate(opts.container_name, opts.parent_container_id, opts.container_hierarchy, reload_mod)
+        stat = client.ccreate(opts.container_name, opts.parent_container_id, opts.container_hierarchy)
     elif cmd == "CDESTROY":
-        stat = client.cdestroy(opts.container_name, opts.container_id, opts.recursive, reload_mod)
+        stat = client.cdestroy(opts.container_name, opts.container_id, opts.recursive)
     elif cmd == "CLIST":
-        stat = client.clist(opts.container_name, opts.container_id, reload_mod)
+        stat = client.clist(opts.container_name, opts.container_id)
     elif cmd == "CREMOVE":
-        stat = client.cremove(opts.file_id, opts.file_id_list, opts.container_id, opts.container_name, reload_mod)
+        stat = client.cremove(opts.file_id, opts.file_id_list, opts.container_id, opts.container_name)
     elif cmd == 'CRETRIEVE':
-        stat = client.cretrieve(opts.container_name, opts.container_id, opts.output, reload_mod)
+        stat = client.cretrieve(opts.container_name, opts.container_id, opts.output)
     elif (cmd == NGAMS_CACHEDEL_CMD):
         pars.append(["disk_id", opts.disk_id])
         pars.append(["file_id", opts.file_id])
