@@ -329,7 +329,7 @@ def handleOnline(srvObj,
                                                        fromiso8601(subscrInfo[5], local=True),
                                                        subscrInfo[6],
                                                        subscrInfo[7],
-                                                       fromiso8601(subscrInfo[8], local=True),
+                                                       fromiso8601(subscrInfo[8], local=True) if subscrInfo[8] else None,
                                                        subscrInfo[3])
         tmpSubscrObj.setConcurrentThreads(subscrInfo[9])
         # Take only subscribers for this NG/AMS Server.
