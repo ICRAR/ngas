@@ -61,11 +61,11 @@ def handleCmdInit(srvObj,
     logger.info("Handling INIT command - re-initializing NG/AMS ...")
     ngamsSrvUtils.handleOffline(srvObj, reqPropsObj)
     ngamsSrvUtils.handleOnline(srvObj, reqPropsObj)
-    logger.info(1,"NG/AMS initialized!")
+    logger.info("NG/AMS initialized!")
     srvObj.reply(reqPropsObj.setCompletionTime(), httpRef, NGAMS_HTTP_SUCCESS,
                  NGAMS_SUCCESS, "Successfully handled command INIT")
     srvObj.updateRequestDb(reqPropsObj)
-    logger.info(1,"Successfully handled command INIT!")
+    logger.info("Successfully handled command INIT!")
 
 
 # EOF
