@@ -704,7 +704,7 @@ def _deliveryThread(srvObj,
             contDisp.append("; no_versioning=1; file_id={0}".format(fileId))
 
             msg = "Thread [%s] Delivering file: %s/%s - to Subscriber with ID: %s"
-            logger.debug(msg, str(thread.get_ident()), baseName, str(fileVersion), subscrObj.getId())
+            logger.info(msg, str(thread.get_ident()), baseName, str(fileVersion), subscrObj.getId())
 
             ex = ""
             stat = ngamsStatus.ngamsStatus()
@@ -840,14 +840,14 @@ def _deliveryThread(srvObj,
                 else:
                     if (runJob):
                         updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 0, jpiResult)
-                        logger.debug("File: %s/%s executed by %s for Subscriber: %s by Job Thread [%s]",
+                        logger.info("File: %s/%s executed by %s for Subscriber: %s by Job Thread [%s]",
                                      baseName, str(fileVersion), plugIn, subscrObj.getId(), str(thread.get_ident()))
                     else:
                         howlong = time.time() - st
                         fileSize = getFileSize(filename)
                         transfer_rate = '%.0f Bytes/s' % (fileSize / howlong)
                         updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 0, transfer_rate)
-                        logger.debug("File: %s/%s delivered to Subscriber: %s by Delivery Thread [%s]",
+                        logger.info("File: %s/%s delivered to Subscriber: %s by Delivery Thread [%s]",
                                      baseName, str(fileVersion), subscrObj.getId(), str(thread.get_ident()))
 
                     if (srvObj.getCachingActive()):
