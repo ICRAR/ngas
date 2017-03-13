@@ -780,6 +780,7 @@ def _deliveryThread(srvObj,
                                                     blockSize=\
                                                     srvObj.getCfg().getBlockSize(),
                                                     suspTime = suspenTime,
+                                                    timeOut = 120,
                                                     authHdrVal = authHdr,
                                                     fileInfoHdr = fileInfoObjHdr,
                                                     sendBuffer = srvObj.getCfg().getArchiveSndBufSize(),
