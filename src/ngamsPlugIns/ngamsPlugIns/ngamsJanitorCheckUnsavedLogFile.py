@@ -26,9 +26,12 @@ import os
 import shutil
 
 from ngamsServer import ngamsArchiveUtils
+from ngamsLib import ngamsNotification
 
 
 logger = logging.getLogger(__name__)
+
+ArchDestination = "user@example.com:/some/dir/" #Needs to be changed to a realistic Host for analysis work
 
 def ngamsJanitorCheckUnsavedLogFile(srvObj, stopEvt, jan_to_srv_queue):
     """
@@ -39,6 +42,19 @@ def ngamsJanitorCheckUnsavedLogFile(srvObj, stopEvt, jan_to_srv_queue):
 
    Returns:           Void.
    """
+
+    def SndArchFileForAnalysis(srvObj, filename):
+        if filename is not None:
+            try:
+                simpleFilenm = filename.split("/")
+                os.system("scp " + filename + " " + ArchDestination + simpleFilenm[-1])
+            except Exception, e:
+                errMsg = str(e) + ". Attempting to send to another host archive file: " + \
+                         filename
+                ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), "REMOTE HOST NOT AVAILABLE", errMsg)
+                raise Exception, errMsg
+
+
     logger.debug("Checking if we have unsaved Log File ")
     logFile = srvObj.getCfg().getLocalLogFile()
     logPath = os.path.dirname(logFile)
@@ -51,3 +67,6 @@ def ngamsJanitorCheckUnsavedLogFile(srvObj, stopEvt, jan_to_srv_queue):
                 shutil.move(ulogFile, ologFile)
                 ngamsArchiveUtils.archiveFromFile(srvObj, ologFile, 0,
                 'ngas/nglog', None)
+                SndArchFileForAnalysis(srvObj,ologFile)
+
+#EOF
