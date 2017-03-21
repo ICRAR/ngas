@@ -54,7 +54,7 @@ author = u'ICRAR'
 # built documents.
 #
 # The short X.Y version.
-version = u'8.1'
+version = u'9.0'
 # The full version, including alpha/beta/rc tags.
 release = version
 
