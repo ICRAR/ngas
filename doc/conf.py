@@ -54,7 +54,11 @@ author = u'ICRAR'
 # built documents.
 #
 # The short X.Y version.
-version = u'9.0'
+with open(os.path.join(os.path.dirname(__file__),'..','VERSION')) as vfile:
+    for line in vfile.readlines():
+        if "ngamsNGAMS_SW_VER" in line:
+            version = line.split("NGAMS_SW_VER ")[1].strip()[1:-1]
+            break
 # The full version, including alpha/beta/rc tags.
 release = version
 
