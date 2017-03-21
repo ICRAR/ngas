@@ -32,14 +32,14 @@ from fabric.tasks import execute
 
 from aws import create_aws_instances
 from dockerContainer import create_stage1_docker_container, create_stage2_docker_image, create_final_docker_image
-from ngas import install_and_check, prepare_install_and_check, create_sources_tarball, upload_to
+from ngas import install_and_check, prepare_install_and_check, create_sources_tarball, upload_to, ngas_revision
 from utils import repo_root, check_ssh, append_desc
 from system import check_sudo
 
 
 # Don't re-export the tasks imported from other modules, only ours
 __all__ = ['user_deploy', 'operations_deploy', 'aws_deploy', 'docker_image',
-           'prepare_release']
+           'prepare_release', 'upload_release']
 
 @task
 @parallel
@@ -100,9 +100,15 @@ def prepare_release():
 
     # Create the AWS instance
     aws_deploy()
+    upload_release()
 
+@task
+def upload_release():
+    """
+    Uploads sources and documentation to AWS instance.
+    """
     # Create and upload the sources
-    sources = "ngas_src.tar.gz"
+    sources = "ngas_src-{0}.tar.gz".format(ngas_revision())
     if os.path.exists(sources):
         os.unlink(sources)
     create_sources_tarball(sources)
@@ -114,3 +120,4 @@ def prepare_release():
     # Generate a PDF documentation and upload it too
     local("make -C %s/doc latexpdf" % (repo_root()))
     upload_to(env.hosts[0], '%s/doc/_build/latex/ngas.pdf' % (repo_root()))
+    

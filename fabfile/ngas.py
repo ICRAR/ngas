@@ -448,3 +448,5 @@ def upload_to(host, filename, port=7777):
         r = conn.getresponse()
         if r.status != httplib.OK:
             raise Exception("Error while QARCHIVE-ing %s to %s:%d:\nStatus: %d\n%s\n\n%s" % (filename, conn.host, conn.port, r.status, r.msg, r.read()))
+        else:
+            success("{0} successfully archived to {1}!".format(filename, host))
