@@ -1451,6 +1451,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             resp = conn.getresponse()
             self.checkEqual(resp.status, 200, None)
 
+        # Invalid file_version parameter, is not a number
         test_file = 'file:/bin/cp'
         params = {'filename': '{0}/?file_version={1}'.format(test_file, 'test'),
                   'mime_type': 'application/octet-stream'}
@@ -1462,6 +1463,21 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             self.checkEqual(resp.status, 400, None)
             self.checkEqual('file_version is not an integer' in resp.read(), True, None)
 
+        # The same as above, but file_version is a normal HTTP parameters
+        # instead of being embedded as part of the filename parameter
+        test_file = 'file:/bin/cp'
+        params = {'filename': test_file,
+                  'file_version': 'test',
+                  'mime_type': 'application/octet-stream'}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, '', {})
+            resp = conn.getresponse()
+            self.assertEqual(400, resp.status)
+            self.assertIn('invalid literal for int() with base 10', resp.read())
+
+        # Archive file with a different name
         test_file = 'file:/bin/cp'
         params = {'filename': '{0}?file_id={1}'.format(test_file, 'test'),
                   'mime_type': 'application/octet-stream'}
