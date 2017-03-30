@@ -287,7 +287,6 @@ def httpPostUrl(url,
                 mimeType,
                 contDisp,
                 data,
-                is_container = False,
                 dataTargFile = None,
                 blockSize = 65536,
                 suspTime = 0.0,
@@ -366,19 +365,8 @@ def httpPostUrl(url,
         if urlres.query:
             url = url + '?' + urlres.query
 
-        if is_container:
-            # We do this by hand still, will change soon
-            http.putrequest(NGAMS_HTTP_POST, url)
-            for k,v in hdrs:
-                http.putheader(k,v)
-            http.endheaders()
-            writer = data[0]
-            allPaths = data[1]
-            writer.setOutput(http.sock.makefile("w"))
-            writeDirContents(writer, allPaths[1], blockSize, suspTime)
-        else:
-            # Go, go, go!
-            http.request(NGAMS_HTTP_POST, url, body=data, headers=hdrs)
+        # Go, go, go!
+        http.request(NGAMS_HTTP_POST, url, body=data, headers=hdrs)
 
         logger.debug("Data sent, waiting for reply")
 
@@ -450,8 +438,7 @@ def httpPost(host,
              timeOut = None,
              authHdrVal = "",
              fileName = "",
-             dataSize = -1,
-             is_container = False):
+             dataSize = -1):
     """
     Sends an HTTP POST command with the given mime-type and the given
     data to the NG/AMS Server with the host + port given.
@@ -509,30 +496,8 @@ def httpPost(host,
     logger.debug(msg, cmd, mimeType, host, port)
 
     url = get_url(host, port, cmd, pars=pars)
-    return httpPostUrl(url, mimeType, contDisp, data, is_container,
+    return httpPostUrl(url, mimeType, contDisp, data,
                        dataTargFile, 65536, 0, timeOut, authHdrVal, dataSize)
-
-def collectFiles(absDirname):
-
-    dirname = os.path.basename(os.path.abspath(absDirname))
-    absPaths = []
-    filesInfo = []
-
-    for filename in os.listdir(absDirname):
-        # Include only files for the time being
-        path = os.path.join(absDirname, filename)
-        if os.path.isdir(path):
-            childrenFiles, childrenPaths = collectFiles(path)
-            filesInfo.append(childrenFiles)
-            absPaths.append(childrenPaths)
-        elif os.path.isfile(path):
-            logger.debug('Including "%s" in the to-be-generated container', path)
-            absPaths.append(path)
-            filesInfo.append([NGAMS_ARCH_REQ_MT, filename, os.path.getsize(path), path])
-        else:
-            logger.debug('Not including "%s" because it\'s neither a file nor a directory', path)
-
-    return [[dirname, filesInfo], [absDirname, absPaths]]
 
 
 def httpGetUrl(url,

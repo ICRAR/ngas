@@ -216,7 +216,7 @@ class ngamsPClient:
         if (targetDiskId): pars.append(["target_disk_id", targetDiskId])
         return self.sendCmd(NGAMS_CLONE_CMD, pars=pars)
 
-    def carchive(self, dirname):
+    def carchive(self, dirname, files_mtype):
         """
         Sends a CARCHIVE command to the NG/AMS Server to archive
         a full hierarchy of files, effectively creating a hierarchy of
@@ -231,9 +231,10 @@ class ngamsPClient:
         logger.debug('Archiving directory %s as a container', dirname)
 
         # Recursively collect all files
-        stream = ngamsMIMEMultipart.MIMEMultipartStream(dirname)
+        cinfo = ngamsMIMEMultipart.collect_container_info(dirname, files_mtype)
+        stream = ngamsMIMEMultipart.ContainerReader(cinfo)
 
-        return self.post('CARCHIVE', NGAMS_CONT_MT, stream, is_container=True)
+        return self.post('CARCHIVE', NGAMS_CONT_MT, stream)
 
     def cappend(self, fileId, fileIdList='', containerId=None, containerName=None, force=False, closeContainer=False):
         """
@@ -707,7 +708,7 @@ class ngamsPClient:
         return res
 
 
-    def do_post(self, host, port, cmd, mimeType, data, pars, is_container):
+    def do_post(self, host, port, cmd, mimeType, data, pars):
 
         auth = None
         if self.auth is not None:
@@ -715,14 +716,13 @@ class ngamsPClient:
 
         start = time.time()
         res = ngamsLib.httpPost(host, port, cmd, mimeType, data,
-                                pars=pars, timeOut=self.timeout, authHdrVal=auth,
-                                is_container=is_container)
+                                pars=pars, timeOut=self.timeout, authHdrVal=auth)
         delta = time.time() - start
         logger.info("Successfully completed command %s in %.3f [s]", cmd, delta)
         return res
 
 
-    def post(self, cmd, mime_type, data, pars=[], is_container=False):
+    def post(self, cmd, mime_type, data, pars=[]):
 
         if self.timeout:
             pars.append(["time_out", str(self.timeout)] )
@@ -736,7 +736,7 @@ class ngamsPClient:
         for i,host_port in enumerate(servers):
             host, port = host_port
             try:
-                _,_,_,data = self.do_post(host, port, cmd, mime_type, data, pars, is_container)
+                _,_,_,data = self.do_post(host, port, cmd, mime_type, data, pars)
                 return ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
             except socket.error:
                 if i == len(servers) - 1:
@@ -849,7 +849,7 @@ def main():
     if cmd in [NGAMS_ARCHIVE_CMD, 'QARCHIVE']:
         stat = client.archive(opts.file_uri, mtype, opts.async, opts.no_versioning, cmd=cmd)
     elif cmd == "CARCHIVE":
-        stat = client.carchive(opts.file_uri)
+        stat = client.carchive(opts.file_uri, mtype)
     elif cmd == "CAPPEND":
         stat = client.cappend(opts.file_id, opts.file_id_list, opts.container_id, opts.container_name, opts.force, opts.close)
     elif cmd == "CCREATE":

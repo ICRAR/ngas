@@ -312,7 +312,7 @@ class ngamsContainerTest(ngamsTestSuite):
 		containerName = "toplevel"
 
 		# Archive the top-level directory
-		self.assertEquals(client.carchive(containerName).getStatus(), NGAMS_SUCCESS)
+		self.assertEquals(client.carchive(containerName, 'application/octet-stream').getStatus(), NGAMS_SUCCESS)
 		self._checkFilesAndContainerSize(client, containerName, len(self.myfiles), self._filesSize(), 1)
 
 		# Retrieve it

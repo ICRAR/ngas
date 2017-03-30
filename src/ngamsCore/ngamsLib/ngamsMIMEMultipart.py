@@ -26,16 +26,25 @@ ngams/container
 """
 
 import binascii
+import codecs
+import collections
+from email.parser import Parser
+import functools
 import logging
+import os
 import random
 import string
 import time
-from email.parser import Parser
-from ngamsCore import checkCreatePath
+
 import ngamsContainer, ngamsFileInfo
+from ngamsCore import checkCreatePath
+
 
 logger = logging.getLogger(__name__)
-CRLF = '\r\n'
+CRLF = b'\r\n'
+
+file_info = collections.namedtuple('file_info', 'mimetype name size opener')
+container_info = collections.namedtuple('container_info', 'name files')
 
 class MIMEMultipartHandler(object):
     """
@@ -536,3 +545,141 @@ class MIMEMultipartWriter(object):
         self._outputFd.flush()
         if  self._progress:
             self._boundary, self._filesInfoIt = self._progress.pop()
+
+class BufferedReader(object):
+
+    def __init__(self):
+        self.buf = b''
+
+    def read(self, n):
+        if len(self.buf) < n:
+            self.accumulate(n)
+        if not self.buf:
+            return b''
+
+        n = min(n, len(self.buf))
+        ret = self.buf[:n]
+        self.buf = self.buf[n:]
+        return ret
+
+class FileReader(BufferedReader):
+
+    def __init__(self, finfo):
+        super(FileReader, self).__init__()
+        self.finfo = finfo
+        self.f = None
+
+    def __len__(self):
+        finfo = self.finfo
+        #      strings   vars                                                 CLRFs
+        return 14 + 44 + len(finfo.name) + len(finfo.mimetype) + finfo.size + 6
+
+    def accumulate(self, n):
+
+        if self.f is None:
+            finfo = self.finfo
+            self.buf += 'Content-Type: ' + finfo.mimetype + CRLF
+            self.buf += 'Content-Disposition: attachment; filename="' + finfo.name + '"' + CRLF + CRLF
+            self.f = finfo.opener()
+            return
+
+        buf = self.f.read(n)
+        if not buf:
+            self.f.close()
+        else:
+            self.buf += buf
+
+class ContainerReader(BufferedReader):
+
+    def __init__(self, cinfo):
+        super(ContainerReader, self).__init__()
+        self.cinfo = cinfo
+        self.boundary = codecs.encode(os.urandom(10), 'base64')[:-1]
+        self.infoit = None
+        self.reader = None
+
+    # See the individual methods to understand these numbers
+    # and change accordingly if some of the fixed content changes
+    # initial headers and final delimiter
+    def __len__(self):
+
+        #      strings       vars              boundaries             CLRFs
+        size = 17 + 61 + 4 + len(self.cinfo.name) + 2*len(self.boundary) + 8
+
+        # fileInfo can now either be a list with simple elements (str, str, int)
+        # or a list containing a container name and a filesInformation list (str, list)
+        # We thus differentiate on the second element
+        for finfo in self.cinfo.files:
+            # Boundary   strings   boundary         CRLFs
+            size +=       2       + len(self.boundary) + 4
+            if isinstance(finfo, file_info):
+                size += len(FileReader(finfo))
+            else:
+                size += len(ContainerReader(finfo))
+        return size
+
+    # container_info = collections.namedtuple('container_info', 'name files')
+    def accumulate(self, n):
+
+        if self.infoit is None:
+            cinfo = self.cinfo
+            self.buf += b'MIME-Version: 1.0' + CRLF
+            self.buf += b'Content-Type: multipart/mixed; ' + \
+                        b'container_name="' + cinfo.name + b'"; ' + \
+                        b'boundary="' + self.boundary + b'"' + CRLF + CRLF
+            self.infoit = iter(cinfo.files)
+            return
+
+        try:
+            if self.reader is None:
+                self.advance_reader()
+        except StopIteration:
+            # We have finished already with all files/containers
+            return
+
+        try:
+            buf = self.reader.read(n)
+            if not buf:
+                self.advance_reader()
+                buf = self.reader.read(n)
+            self.buf += buf
+        except StopIteration:
+            # We finished. Write the boundary and trigger
+            # the quick returns above for next time
+            self.buf += CRLF + b'--' + self.boundary + b'--'
+            self.reader = None
+
+    def advance_reader(self):
+        finfo = next(self.infoit)
+        if isinstance(finfo, file_info):
+            self.buf += CRLF + b'--' + self.boundary + CRLF
+            self.reader = FileReader(finfo)
+        elif isinstance(finfo, container_info):
+            self.buf += CRLF + b'--' + self.boundary + CRLF
+            self.reader = ContainerReader(finfo)
+        else:
+            raise ValueError("Unknown file info object %r" % (finfo,))
+
+def opener(path):
+    return functools.partial(open, path, 'rb')
+
+def collect_container_info(path, file_mimetype):
+
+    if not os.path.isdir(path):
+        raise ValueError("%s is not a directory, cannot traverse it")
+
+    abs_dirname = os.path.abspath(path)
+    dirname = os.path.basename(abs_dirname)
+
+    finfos = []
+    for filename in os.listdir(path):
+        path = os.path.join(abs_dirname, filename)
+        if os.path.isdir(path):
+            finfos.append(collect_container_info(path, file_mimetype))
+        elif os.path.isfile(path):
+            logger.debug('Including "%s" in the to-be-generated container', path)
+            finfos.append(file_info(file_mimetype, filename, os.path.getsize(path), opener(path)))
+        else:
+            logger.debug('Not including "%s" because it\'s neither a file nor a directory', path)
+
+    return container_info(dirname, finfos)
