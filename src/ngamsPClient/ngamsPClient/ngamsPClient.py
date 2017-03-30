@@ -134,7 +134,7 @@ class ngamsPClient:
 
         pars = pars or []
         pars.append(('async', '1' if async else '0'))
-        pars.append(("no_versioning", str(noVersioning)))
+        pars.append(("no_versioning", '1' if noVersioning else '0'))
 
         # Archive pulls (fileUri is a URL) are GETs
         if is_known_pull_url(fileUri):
@@ -801,7 +801,7 @@ def main():
     parser.add_argument('-A', '--auth',          help='BASIC authorization string')
     parser.add_argument('-F', '--force',         help='Force the action', action='store_true')
     parser.add_argument('-f', '--file-id',       help='Indicates a File ID')
-    parser.add_argument(      '--file-version',  help='A file version')
+    parser.add_argument(      '--file-version',  help='A file version', type=int)
     parser.add_argument(      '--file-id-list',  help='A list of File IDs')
     parser.add_argument(      '--file-uri',      help='A File URI')
     parser.add_argument(      '--file-info-xml', help='An XML File Info string')
@@ -852,7 +852,8 @@ def main():
     mtype = opts.mime_type
     pars = [(name, val) for p in opts.param for name,val in p.split('=')]
     if cmd in [NGAMS_ARCHIVE_CMD, 'QARCHIVE']:
-        stat = client.archive(opts.file_uri, mtype, opts.async, opts.no_versioning, cmd=cmd)
+        pars += [('file_version', opts.file_version)] if opts.file_version is not None else []
+        stat = client.archive(opts.file_uri, mtype, opts.async, opts.no_versioning, cmd=cmd, pars=pars)
     elif cmd == "CARCHIVE":
         stat = client.carchive(opts.file_uri, mtype)
     elif cmd == "CAPPEND":
