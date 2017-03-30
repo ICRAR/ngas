@@ -48,6 +48,7 @@ simplified in a few ways:
 import logging
 import os
 import random
+import sys
 import time
 import urlparse
 
@@ -55,7 +56,8 @@ from ngamsLib.ngamsCore import TRACE, genLog, checkCreatePath, \
     NGAMS_HTTP_HDR_CHECKSUM, NGAMS_ONLINE_STATE, \
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_STAGING_DIR, genUniqueId, \
     mvFile, getFileCreationTime, NGAMS_FILE_STATUS_OK, \
-    getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, loadPlugInEntryPoint
+    getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, loadPlugInEntryPoint,\
+    NGAMS_HTTP_GET
 from ngamsLib import ngamsDiskInfo, ngamsHighLevelLib, ngamsFileInfo
 from ngamsServer import ngamsCacheControlThread, ngamsFileUtils
 
@@ -253,47 +255,50 @@ def handleCmd(srvObj,
         reqPropsObj.setMimeType(mimeType)
 
     uri = reqPropsObj.getFileUri()
+    base_name = uri
     logger.debug("Checking File URI scheme for %s", uri)
     file_version_uri = None
-    uri_res = urlparse.urlparse(uri)
 
-    # work around https://bugs.python.org/issue9374 in python < 2.7.4
-    # where the query part is not parsed for all schemes (so we have to
-    # parse it out from the path ourselves)
-    
-    scheme, netloc, path, params, query, fragment = uri_res
-    if not query:
-        idx = uri_res.path.find('?')
-        if idx != -1:
-            query = uri_res.path[idx+1:]
-            path = uri_res.path[:idx]
-    uri_res = urlparse.ParseResult(scheme, netloc, path, params, query, fragment)
+    if reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET:
 
-    base_name = uri_res.path
-    if uri_res.scheme:
-        if uri_res.query:
-            params = urlparse.parse_qs(uri_res.query)
-            try:
-                file_id = params['file_id'][0]
-                base_name = os.path.basename(file_id)
-            except KeyError:
-                pass
-            try:
-                file_version_uri = params['file_version'][0]
+        # work around https://bugs.python.org/issue9374 in python < 2.7.4
+        # where the query part is not parsed for all schemes (so we have to
+        # parse it out from the path ourselves)
+        uri_res = urlparse.urlparse(uri)
+        if sys.version < (2,7,4):
+            scheme, netloc, path, params, query, fragment = uri_res
+            if not query:
+                idx = uri_res.path.find('?')
+                if idx != -1:
+                    query = uri_res.path[idx+1:]
+                    path = uri_res.path[:idx]
+            uri_res = urlparse.ParseResult(scheme, netloc, path, params, query, fragment)
+
+        base_name = uri_res.path
+        if uri_res.scheme:
+            if uri_res.query:
+                params = urlparse.parse_qs(uri_res.query)
                 try:
-                    file_version_uri = int(file_version_uri)
-                except ValueError:
-                    raise Exception('file_version is not an integer')
-            except KeyError:
-                pass
+                    file_id = params['file_id'][0]
+                    base_name = os.path.basename(file_id)
+                except KeyError:
+                    pass
+                try:
+                    file_version_uri = params['file_version'][0]
+                    try:
+                        file_version_uri = int(file_version_uri)
+                    except ValueError:
+                        raise Exception('file_version is not an integer')
+                except KeyError:
+                    pass
 
-        uri_open = uri
-        if 'file' in uri_res.scheme:
-            uri_open = uri_res.path
+            uri_open = uri
+            if 'file' in uri_res.scheme:
+                uri_open = uri_res.path
 
-        handle = ngamsHighLevelLib.openCheckUri(uri_open)
-        reqPropsObj.setSize(handle.info()['Content-Length'])
-        reqPropsObj.setReadFd(handle)
+            handle = ngamsHighLevelLib.openCheckUri(uri_open)
+            reqPropsObj.setSize(handle.info()['Content-Length'])
+            reqPropsObj.setReadFd(handle)
 
     if reqPropsObj.getSize() <= 0:
         errMsg = genLog("NGAMS_ER_ARCHIVE_PULL_REQ",
