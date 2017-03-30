@@ -150,6 +150,15 @@ class ngamsPClient:
         with open(fileUri, "rb") as f:
             return self.post(cmd, mt, f, pars=pars)
 
+    def archive_data(self, data, filename, mimeType,
+                     async=False, noVersioning=0,
+                     pars=[], cmd=NGAMS_ARCHIVE_CMD):
+        """
+        Like `archive`, but the data to sent is in memory instead of in a file.
+        Thus, a filename to be used for storing on the server side must be given.
+        """
+        pars.append(("filename", os.path.basename(filename)))
+        return self.post(cmd, mimeType, data, pars=pars)
 
     def reArchive(self,
                   fileUri,
