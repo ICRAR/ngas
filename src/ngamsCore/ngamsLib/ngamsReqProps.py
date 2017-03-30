@@ -296,6 +296,11 @@ class ngamsReqProps:
         """
         return self.__httpMethod
 
+    def is_GET(self):
+        return self.__httpMethod == "GET"
+
+    def is_POST(self):
+        return self.__httpMethod == "POST"
 
     def setCmd(self,
                cmd):

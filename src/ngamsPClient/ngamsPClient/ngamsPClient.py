@@ -28,7 +28,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  08/05/2001  Created
 #
-
 """
 This module contains the class ngamsPClient that provides a command
 interface to the NG/AMS Server.
@@ -45,20 +44,26 @@ import random
 import socket
 import sys
 import time
+from xml.dom import minidom
 
 from ngamsLib import ngamsLib, ngamsFileInfo, ngamsStatus, ngamsMIMEMultipart
-from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CONTENT_TYPE,\
-    NGAMS_LABEL_CMD, NGAMS_ONLINE_CMD, NGAMS_OFFLINE_CMD, NGAMS_REMDISK_CMD,\
-    NGAMS_REMFILE_CMD, NGAMS_REGISTER_CMD, NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD,\
-    NGAMS_FAILURE, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD, NGAMS_ARCH_REQ_MT,\
-    NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,\
-    NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE,\
-    NGAMS_IDLE_SUBSTATE, getNgamsLicense, toiso8601, NGAMS_CONT_MT
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD
-from xml.dom import minidom
+from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CONTENT_TYPE, \
+    NGAMS_LABEL_CMD, NGAMS_ONLINE_CMD, NGAMS_OFFLINE_CMD, NGAMS_REMDISK_CMD, \
+    NGAMS_REMFILE_CMD, NGAMS_REGISTER_CMD, NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD, \
+    NGAMS_FAILURE, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD, NGAMS_ARCH_REQ_MT, \
+    NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD, \
+    NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE, \
+    NGAMS_IDLE_SUBSTATE, getNgamsLicense, toiso8601, NGAMS_CONT_MT
 
 
 logger = logging.getLogger(__name__)
+
+def is_known_pull_url(s):
+    return s.startswith('file:') or \
+           s.startswith('http:') or \
+           s.startswith('https:') or \
+           s.startswith('ftp:')
 
 class ngamsPClient:
     """
@@ -132,7 +137,7 @@ class ngamsPClient:
         pars.append(("no_versioning", str(noVersioning)))
 
         # Archive pulls (fileUri is a URL) are GETs
-        if ngamsLib.isArchivePull(fileUri):
+        if is_known_pull_url(fileUri):
             pars.append(('filename', fileUri))
             if mimeType:
                 pars.append(["mime_type", mimeType])
@@ -171,7 +176,7 @@ class ngamsPClient:
         logger.info("Re-archiving file with URI: %s", baseName)
         locPars = []
         for par in pars: locPars.append(par)
-        if (ngamsLib.isArchivePull(fileUri)):
+        if is_known_pull_url(fileUri):
             tmpFileInfo = ngamsFileInfo.ngamsFileInfo().\
                           unpackXmlDoc(fileInfoXml)
             encFileInfo = base64.b64encode(fileInfoXml)

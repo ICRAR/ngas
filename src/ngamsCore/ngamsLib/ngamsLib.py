@@ -82,17 +82,6 @@ def hidePassword(fileUri):
     return retVal
 
 
-def isArchivePull(uri):
-    """
-    Return 1 if the request is referring to an Archive Pull Request.
-
-    Returns:    1 = Archive Pull Request, 0 otherwise (integer).
-    """
-    return uri.startswith('http://') or \
-           uri.startswith('ftp://') or \
-           uri.startswith('file://')
-
-
 def parseHttpHdr(httpHdr):
     """
     Parse an HTTP header like this:
