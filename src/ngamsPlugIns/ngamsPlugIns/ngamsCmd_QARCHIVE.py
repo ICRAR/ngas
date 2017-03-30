@@ -255,7 +255,6 @@ def handleCmd(srvObj,
         reqPropsObj.setMimeType(mimeType)
 
     uri = reqPropsObj.getFileUri()
-    base_name = uri
     logger.debug("Checking File URI scheme for %s", uri)
     file_version_uri = None
 
@@ -299,6 +298,8 @@ def handleCmd(srvObj,
             handle = ngamsHighLevelLib.openCheckUri(uri_open)
             reqPropsObj.setSize(handle.info()['Content-Length'])
             reqPropsObj.setReadFd(handle)
+    else:
+        base_name = os.path.basename(uri)
 
     if reqPropsObj.getSize() <= 0:
         errMsg = genLog("NGAMS_ER_ARCHIVE_PULL_REQ",
@@ -361,12 +362,7 @@ def handleCmd(srvObj,
     logger.debug("Checksum variant used: %s to handle file: %s. Result: %s",
             crc_name, resDapi.getCompleteFilename(), str(crc))
 
-    # Get source file version
-    # e.g.: http://ngas03.hq.eso.org:7778/RETRIEVE?file_version=1&file_id=X90/X962a4/X1
-    logger.debug("Get file version")
     file_version = resDapi.getFileVersion()
-    if file_version_uri:
-        file_version = file_version_uri
 
     # If there was a previous version of this file, and it had a container associated with it
     # associte the new version with the container too

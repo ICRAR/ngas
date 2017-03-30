@@ -1496,6 +1496,24 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             resp = conn.getresponse()
             self.checkEqual(resp.status, 200, None)
 
+    def test_filename_with_colons(self):
+
+        self.prepExtSrv()
+        client = sendPclCmd()
+
+        test_file = 'name:with:colons'
+        with open(test_file, 'wb') as f:
+            f.write(b'   ')
+
+        try:
+            for cmd in 'ARCHIVE', 'QARCHIVE':
+                for fname in (test_file, 'file:' + os.path.abspath(test_file)):
+                    status = client.archive(fname, mimeType="application/octet-stream", cmd=cmd)
+                    self.assertEqual(NGAMS_SUCCESS, status.getStatus(), '%s command failed with fname %s: %s' % (cmd, fname, status.getMessage()))
+        finally:
+            os.unlink(test_file)
+
+
     @skipIf(not _test_checksums, "crc32c not available in your platform")
     def test_checksums(self):
         """
