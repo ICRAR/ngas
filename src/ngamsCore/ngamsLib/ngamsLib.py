@@ -489,8 +489,8 @@ def httpPost(host,
         if parInfo[0] == "attachment":
             if fileName:
                 contDisp = 'attachment; filename="%s"; ' % fileName
-        else:
-            contDisp = '%s="%s"; ' % (parInfo[0], urllib.quote(str(parInfo[1])))
+            else:
+                contDisp = '%s="%s"; ' % (parInfo[0], urllib.quote(str(parInfo[1])))
 
     msg = "Sending: %s using HTTP POST with mime-type: %s to %s:%d"
     logger.debug(msg, cmd, mimeType, host, port)
