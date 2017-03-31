@@ -31,14 +31,14 @@
 This module contains the Test Suite for the SUBSCRIBE Command.
 """
 
+from contextlib import closing
+import httplib
 import sys
 import time
 import urllib
-import httplib
-from contextlib import closing
 
-from ngamsLib.ngamsCore import *
-from ngamsTestLib import ngamsTestSuite, runTest, sendExtCmd, sendPclCmd
+from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd
+
 
 class ngamsSubscriptionTest(ngamsTestSuite):
     """
