@@ -697,21 +697,13 @@ def _deliveryThread(srvObj,
                 continue
 
             baseName = os.path.basename(filename)
-            contDisp = []
-            contDisp.append("attachment; filename=\"{0}\"".format(baseName))
-            # TODO: Note should not have no_versioning hardcoded in the
-            # request send to the client/subscriber.
-            contDisp.append("; no_versioning=1; file_id={0}".format(fileId))
-            contDisp = ''.join(contDisp)
+            contDisp = 'attachment; filename="{0}"; file_id={1}'.format(baseName, fileId)
 
             msg = "Thread [%s] Delivering file: %s/%s - to Subscriber with ID: %s"
             logger.info(msg, str(thread.get_ident()), baseName, str(fileVersion), subscrObj.getId())
 
             ex = ""
             stat = ngamsStatus.ngamsStatus()
-            # Calculate the suspension time for this thread based on the priority of this subscriber.
-            # Dynamically calculated for each file so that the priority can be changed on the fly (no re-subscribe or server restart is needed)
-            suspenTime = (0.005 * (subscrObj.getPriority() - 1)) # so that the top priority (level 1) does not suspend at all
 
             # If the target does not turn on the authentication (or even not an NGAS), this still works
             # as long as there is a user named "ngas-int" in the configuration file for the current server
@@ -780,7 +772,6 @@ def _deliveryThread(srvObj,
                             reply, msg, hdrs, data = \
                                    ngamsLib.httpPostUrl(sendUrl, fileMimeType,
                                                         contDisp, f,
-                                                        suspTime = suspenTime,
                                                         authHdrVal = authHdr,
                                                         fileInfoHdr = fileInfoObjHdr,
                                                         checkSum = fileChecksum)
