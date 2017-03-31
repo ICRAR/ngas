@@ -190,6 +190,7 @@ class ngamsReqProps:
             for name,val in parList:
                 logger.debug("Found parameter: %s with value: %s", name, val)
                 if (httpMethod in [NGAMS_HTTP_GET, NGAMS_HTTP_PUT, NGAMS_HTTP_POST]):
+                    self.addHttpPar(name, val)
                     # Subscription file delivery is always POST, but sometimes we want it behave like GET (e.g. proxy qrchive) to pass on parametres in url string.
                     if name == "filename":
                         self.setFileUri(val)
@@ -197,8 +198,6 @@ class ngamsReqProps:
                         self.setMimeType(val)
                     elif name == "authorization":
                         self.setAuthorization(val)
-                    else:
-                        self.addHttpPar(name, val)
 
         # Small trick to set the mime-type in case not defined by the
         # Content-Type HTTP header.

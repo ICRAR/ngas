@@ -35,6 +35,7 @@ The functions in this module can be used in all the NG/AMS code.
 """
 
 import cPickle
+import cStringIO
 import contextlib
 import httplib
 import logging
@@ -51,8 +52,7 @@ import urlparse
 from ngamsCore import genLog, getHostName, \
     NGAMS_HTTP_SUCCESS, NGAMS_CONT_MT, \
     NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM, \
-    NGAMS_ARCH_REQ_MT, getUniqueNo, \
-    NGAMS_MAX_FILENAME_LEN, NGAMS_UNKNOWN_MT, rmFile, toiso8601
+    NGAMS_MAX_FILENAME_LEN, NGAMS_UNKNOWN_MT, rmFile, toiso8601, getUniqueNo
 import ngamsMIMEMultipart
 
 
@@ -276,12 +276,9 @@ def httpPostUrl(url,
                 mimeType,
                 contDisp,
                 data,
-                dataTargFile = None,
                 blockSize = 65536,
-                suspTime = 0.0,
                 timeOut = None,
                 authHdrVal = None,
-                dataSize = -1,
                 fileInfoHdr = None,
                 checkSum = None,
                 moreHdrs = {}):
@@ -299,25 +296,16 @@ def httpPostUrl(url,
 
     contDisp:     Content-Disposition of the data (string).
 
-    dataRef:      Data to post or name of file containing data to send
-                  (string).
-
-    dataSource:   Source where to pick up the data (string/FILESLIST|whatever-else).
-
-    dataTargFile: If a filename is specified with this parameter, the
-                  data received is stored into a file of that name (string).
+    data:         The data to post. Either a string/bytes or a read()-able object
+                  with a length
 
     blockSize:    Block size (in bytes) used when sending the data (integer).
-
-    suspTime:     Time in seconds to suspend between each block (double).
 
     timeOut:      Timeout in seconds to wait for replies from the server
                   (double).
 
     authHdrVal:   Authorization HTTP header value as it should be sent in
                   the query (string).
-
-    dataSize:     Size of data to send if read from a socket (integer).
 
     fileInfoHdr:  File info serialised as an XML doc for command REARCHIVE (string)
 
@@ -345,8 +333,6 @@ def httpPostUrl(url,
             hdrs[NGAMS_HTTP_HDR_FILE_INFO] = fileInfoHdr
         if checkSum:
             hdrs[NGAMS_HTTP_HDR_CHECKSUM] = checkSum
-        if dataSize != -1:
-            hdrs['Content-Length'] = dataSize
         hdrs.update(moreHdrs)
 
         # Reconstruct the full path + query where we are sending data to
@@ -363,40 +349,29 @@ def httpPostUrl(url,
         response = http.getresponse()
         reply, msg, hdrs = response.status, response.reason, response.getheaders()
 
-        hdrs = {h[0]: h[1] for h in hdrs}
-
-        dataSize = 0
-        if "content-length" in hdrs:
-            dataSize = int(hdrs["content-length"])
-
-        if not dataTargFile:
-            data = []
-            toRead = dataSize
-            readIn = 0
-            while readIn < toRead:
-                buff = response.read(toRead - readIn)
-                if not buff:
-                    raise Exception('error reading data')
-                data.append(buff)
-                readIn += len(buff)
-            data = ''.join(data)
-        else:
-            data = dataTargFile
-            toRead = dataSize
-            readIn = 0
-            with open(dataTargFile, 'wb') as out:
-                while readIn < toRead:
-                    buff = response.read(toRead - readIn)
-                    if not buff:
-                        raise Exception('error reading data')
-                    out.write(buff)
-                    readIn += len(buff)
-
         # Dump HTTP headers if Verbose Level >= 4.
+        hdrs = {h[0]: h[1] for h in hdrs}
         logger.debug("HTTP Header: HTTP/1.0 %d %s", reply, msg)
         if logger.isEnabledFor(logging.DEBUG):
             for hdr in hdrs.keys():
                 logger.debug("HTTP Header: %s: %s", hdr, hdrs[hdr])
+
+        # How much do we need to read?
+        size = 0
+        if "content-length" in hdrs:
+            size = int(hdrs["content-length"])
+
+        # Accumulate the incoming stream and return it whole in `data`
+        with contextlib.closing(cStringIO.StringIO()) as out:
+            readin = 0
+            while readin < size:
+                left = size - readin
+                buff = response.read(blockSize if left >= blockSize else left)
+                if not buff:
+                    raise Exception('error reading data')
+                out.write(buff)
+                readin += len(buff)
+            data = out.getvalue()
 
         return [reply, msg, hdrs, data]
 
@@ -423,11 +398,8 @@ def httpPost(host,
              mimeType,
              data,
              pars = [],
-             dataTargFile = "",
              timeOut = None,
-             authHdrVal = "",
-             fileName = "",
-             dataSize = -1):
+             authHdrVal = ""):
     """
     Sends an HTTP POST command with the given mime-type and the given
     data to the NG/AMS Server with the host + port given.
@@ -456,37 +428,21 @@ def httpPost(host,
                   These are send as 'Content-Disposition' in the HTTP
                   command (list).
 
-    dataTargFile: If a filename is specified with this parameter, the
-                  data received is stored into a file of that name (string).
-
     timeOut:      Timeout in seconds to wait for replies from the server
                   (double).
 
     authHdrVal:   Authorization HTTP header value as it should be sent in
                   the query (string).
 
-    fileName:     Filename if data sent within the request (string).
-
-    dataSize:     Size of data to send if read from a socket (integer).
-
     Returns:      List with information from reply from contacted
                   NG/AMS Server (reply, msg, hdrs, data) (list).
     """
-
-    contDisp = None
-    for parInfo in pars:
-        if parInfo[0] == "attachment":
-            if fileName:
-                contDisp = 'attachment; filename="%s"; ' % fileName
-            else:
-                contDisp = '%s="%s"; ' % (parInfo[0], urllib.quote(str(parInfo[1])))
 
     msg = "Sending: %s using HTTP POST with mime-type: %s to %s:%d"
     logger.debug(msg, cmd, mimeType, host, port)
 
     url = get_url(host, port, cmd, pars=pars)
-    return httpPostUrl(url, mimeType, contDisp, data,
-                       dataTargFile, 65536, 0, timeOut, authHdrVal, dataSize)
+    return httpPostUrl(url, mimeType, None, data, 65536, timeOut, authHdrVal)
 
 
 def httpGetUrl(url,

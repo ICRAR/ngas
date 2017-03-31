@@ -5,8 +5,8 @@ MimeType:                           image/x-fits
 Size:                               69120
 FileUri:                            SmallFile.fits
 SafeFileUri:                        SmallFile.fits
-HttpParsDic:                        {'async': '0', 'attachment': '', 'no_versioning': '0', 'time_out': '60.0'}
-HttpParNames:                       ['async', 'attachment', 'no_versioning', 'time_out']
+HttpParsDic:                        {'async': '0', 'filename': 'SmallFile.fits', 'no_versioning': '0', 'time_out': '60.0'}
+HttpParNames:                       ['async', 'filename', 'no_versioning', 'time_out']
 SentReply:                          0
 BytesReceived:                      69120
 IoTime:                             0
