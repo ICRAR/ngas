@@ -515,46 +515,19 @@ def saveFromHttpToFile(ngamsCfgObj,
             if (mutexDiskAccess):
                 acquireDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
 
-            # Distinguish between Archive Pull and Push Request. By Archive
-            # Pull we may simply read the file descriptor until it returns "".
-            sizeKnown = 0
-            if (reqPropsObj.is_GET() and
-                not reqPropsObj.getFileUri().startswith('http://')):
-                # (reqPropsObj.getSize() == -1)):
-                # Just specify something huge.
-                logger.debug("It is an Archive Pull Request/data with unknown size")
-                remSize = int(1e11)
-            elif reqPropsObj.getFileUri().startswith('http://'):
-                logger.debug("It is an HTTP Archive Pull Request: trying to get Content-Length")
-                httpInfo = reqPropsObj.getReadFd().info()
-                headers = httpInfo.headers
-                hdrsDict = ngamsLib.httpMsgObj2Dic(''.join(headers))
-                if hdrsDict.has_key('content-length'):
-                    remSize = int(hdrsDict['content-length'])
-                else:
-                    logger.debug("No HTTP header parameter Content-Length!")
-                    remSize = int(1e11)
-                    logger.debug("Header keys: %s", hdrsDict.keys())
-            else:
-                remSize = reqPropsObj.getSize()
-                logger.debug("Archive Push/Pull Request - Data size: %d", remSize)
-                sizeKnown = 1
-
             # Receive the data.
-            rdSize = blockSize
-            lastRecepTime = time.time()
-            while ((remSize > 0) and ((time.time() - lastRecepTime) < 30.0)):
-                if (remSize < rdSize):
-                    rdSize = remSize
-                buf = reqPropsObj.getReadFd().read(rdSize)
-                if not buf:
-                    break
-                sizeRead = len(buf)
-                remSize -= sizeRead
-                reqPropsObj.setBytesReceived(reqPropsObj.getBytesReceived() + \
-                                             sizeRead)
-                fdOut.write(buf)
-                lastRecepTime = time.time()
+            fin = reqPropsObj.getReadFd()
+            size = reqPropsObj.getSize()
+            readin = 0
+            while readin < size:
+                left = size - readin
+                buff = fin.read(blockSize if left >= blockSize else left)
+                if not buff:
+                    raise Exception('No bytes found in stream, at least %d expected' % left)
+                readin += len(buff)
+                logger.info("Received %d bytes of data", readin)
+                reqPropsObj.setBytesReceived(readin)
+                fdOut.write(buff)
 
             deltaTime = time.time() - start
 
@@ -563,13 +536,6 @@ def saveFromHttpToFile(ngamsCfgObj,
             logger.debug(msg, trgFilename, int(reqPropsObj.getBytesReceived()),
                          deltaTime,
                          float(reqPropsObj.getBytesReceived())/deltaTime)
-
-            # Raise exception if less byes were received as expected.
-            if (sizeKnown and (remSize > 0)):
-                msg = genLog("NGAMS_ER_ARCH_RECV",
-                             [reqPropsObj.getFileUri(), reqPropsObj.getSize(),
-                              (reqPropsObj.getSize() - remSize)])
-                raise Exception, msg
 
             return [deltaTime]
 
@@ -600,13 +566,9 @@ def saveInStagingFile(ngamsCfgObj,
     """
     T = TRACE()
 
-    try:
-        blockSize = ngamsCfgObj.getBlockSize()
-        return saveFromHttpToFile(ngamsCfgObj, reqPropsObj, stagingFilename,
-                                  blockSize, 1, diskInfoObj)[0]
-    except Exception, e:
-        errMsg = genLog("NGAMS_ER_PROB_STAGING_AREA", [stagingFilename,str(e)])
-        raise Exception(errMsg)
+    blockSize = ngamsCfgObj.getBlockSize()
+    return saveFromHttpToFile(ngamsCfgObj, reqPropsObj, stagingFilename,
+                              blockSize, 1, diskInfoObj)[0]
 
 
 def checkIfFileExists(dbConObj,
