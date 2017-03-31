@@ -946,6 +946,7 @@ def findTargetNode(hostId,
     for nodeInfo in nodeList:
         if (nodeInfo.find(":") != -1):
             node, port = nodeInfo.split(":")
+            port = int(port)
         else:
             node = nodeInfo
             port = None
@@ -987,31 +988,30 @@ def findTargetNode(hostId,
                                                 pars=[["probe", "1"],
                                                       ["mime_type", mimeType]],
                                                 timeOut=10)
-            except Exception, e:
-                code = "__ERROR__"
-            if (str(code) == "200"):
+
                 # OK, request was successfully handled. We assume that
                 # the data is an NG/AMS XML Status Document.
                 statObj = ngamsStatus.ngamsStatus().unpackXmlDoc(data)
                 if (statObj.getMessage().find("NGAMS_INFO_ARCH_REQ_OK") != -1):
-                    logMsg = "Found remote Archiving Unit: %s:%s to handle " +\
+                    logMsg = "Found remote Archiving Unit: %s:%d to handle " +\
                              "Archive Request for data file with mime-type: %s"
-                    logger.debug(logMsg, node, str(port), mimeType)
+                    logger.debug(logMsg, node, port, mimeType)
                     targNode = node
                     targPort = port
                     break
                 else:
-                    logMsg = "Remote Archiving Unit: %s:%s rejected to/" +\
+                    logMsg = "Remote Archiving Unit: %s:%d rejected to/" +\
                              "could not handle Archive Request for data " +\
                              "file with mime-type: %s"
-                    logger.debug(logMsg, node, str(port), mimeType)
+                    logger.debug(logMsg, node, port, mimeType)
                     continue
-            else:
+
+            except Exception, e:
                 # The request handling failed for some reason, give up this
                 # host for now.
-                logMsg = "Problem contacting remote Archiving Unit: %s:%s. " +\
+                logMsg = "Problem contacting remote Archiving Unit: %s:%d: %s." +\
                          "Skipping node."
-                logger.debug(logMsg, node, str(port))
+                logger.warning(logMsg, node, port, str(e))
                 continue
 
     if (targNode == None):
