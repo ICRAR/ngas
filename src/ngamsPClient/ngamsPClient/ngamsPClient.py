@@ -245,7 +245,7 @@ class ngamsPClient:
         logger.debug('Archiving directory %s as a container', dirname)
 
         # Recursively collect all files
-        cinfo = ngamsMIMEMultipart.collect_container_info(dirname, files_mtype)
+        cinfo = ngamsMIMEMultipart.cinfo_from_filesystem(dirname, files_mtype)
         stream = ngamsMIMEMultipart.ContainerReader(cinfo)
 
         return self.post('CARCHIVE', NGAMS_CONT_MT, stream)

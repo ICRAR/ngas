@@ -98,7 +98,7 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
         if not onlyDirs:
             self._createFiles()
 
-        cinfo = ngamsMIMEMultipart.collect_container_info('toplevel', 'application/octet-stream')
+        cinfo = ngamsMIMEMultipart.cinfo_from_filesystem('toplevel', 'application/octet-stream')
         bs = 65536
         output = StringIO.StringIO()
         reader = ngamsMIMEMultipart.ContainerReader(cinfo)

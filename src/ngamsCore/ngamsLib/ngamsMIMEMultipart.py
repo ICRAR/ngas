@@ -673,7 +673,12 @@ class ContainerReader(BufferedReader):
 def opener(path):
     return functools.partial(open, path, 'rb')
 
-def collect_container_info(path, file_mimetype):
+def cinfo_from_filesystem(path, file_mimetype):
+    """
+    Recursively traverses `path` (a directory), and constructs the
+    corresponding `container_info` (for directories) and `file_info` (for files)
+    objects. Returns a `container_info` object corresponding to `path`.
+    """
 
     if not os.path.isdir(path):
         raise ValueError("%s is not a directory, cannot traverse it")
@@ -685,7 +690,7 @@ def collect_container_info(path, file_mimetype):
     for filename in os.listdir(path):
         path = os.path.join(abs_dirname, filename)
         if os.path.isdir(path):
-            finfos.append(collect_container_info(path, file_mimetype))
+            finfos.append(cinfo_from_filesystem(path, file_mimetype))
         elif os.path.isfile(path):
             logger.debug('Including "%s" in the to-be-generated container', path)
             finfos.append(file_info(file_mimetype, filename, os.path.getsize(path), opener(path)))
