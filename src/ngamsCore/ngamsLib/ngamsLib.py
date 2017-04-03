@@ -375,22 +375,6 @@ def httpPostUrl(url,
 
         return [reply, msg, hdrs, data]
 
-def writeDirContents(writer, paths, blockSize, suspTime):
-
-    writer.startContainer()
-    for absPath in paths:
-        if isinstance(absPath, list):
-            writeDirContents(writer, absPath[1], blockSize, suspTime)
-        else:
-            writer.startNextFile()
-            fdIn = open(absPath)
-            block = '-'
-            while (block != ""):
-                block = fdIn.read(blockSize)
-                writer.writeData(block)
-                if (suspTime > 0.0): time.sleep(suspTime)
-            fdIn.close()
-    writer.endContainer()
 
 def httpPost(host,
              port,
