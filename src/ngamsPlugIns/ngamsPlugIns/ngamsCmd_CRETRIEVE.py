@@ -233,31 +233,6 @@ def genReplyRetrieve(srvObj,
         cleanUpAfterProc(statusObjList)
 
 
-def _handleRemoteIntFile(srvObj,
-                         reqPropsObj,
-                         httpRef):
-    """
-    Retrieve the remote, internal file and send it back to the requestor.
-
-    srvObj:        Reference to NG/AMS server class object (ngamsServer).
-
-    reqPropsObj:   Request Property object to keep track of actions done
-                   during the request handling (ngamsReqProps).
-
-    httpRef:       Reference to the HTTP request handler object
-                   (ngamsHttpRequestHandler).
-
-    Returns:       Void.
-    """
-    T = TRACE()
-
-    forwardHost = reqPropsObj.getHttpPar("host_id")
-    forwardPort = srvObj.getDb().getPortNoFromHostId(forwardHost)
-    httpStatCode, httpStatMsg, httpHdrs, data =\
-                  srvObj.forwardRequest(reqPropsObj, httpRef, forwardHost,
-                                        forwardPort, autoReply = 1)
-
-
 def collectProcResults(srvObj, reqPropsObj, fileVer, diskId, hostId, container):
 
     # Collect inner containers
