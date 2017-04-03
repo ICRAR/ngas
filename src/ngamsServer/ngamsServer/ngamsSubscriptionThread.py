@@ -646,7 +646,7 @@ def _deliveryThread(srvObj,
 
             # block for up to 1 minute if the queue is empty.
             try:
-                fileInfo = quChunks.get(timeout = 60)
+                fileInfo = quChunks.get(timeout = 1)
                 srvObj._subscrDeliveryFileDic[tname] = fileInfo # once it is dequeued, it is no longer safe, so need to record it in case server shut down.
             except Empty, e:
                 logger.debug("Data delivery thread [%s] block timeout", str(thread.get_ident()))
