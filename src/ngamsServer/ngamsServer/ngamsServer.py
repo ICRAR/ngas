@@ -35,6 +35,7 @@ services for the NG/AMS Server.
 import BaseHTTPServer
 import SocketServer
 import logging
+import math
 import os
 import re
 import shutil
@@ -264,6 +265,24 @@ class NgasRotatingFileHandler(BaseRotatingHandler):
             self._rollover()
         finally:
             self.release()
+
+
+def show_threads():
+    """
+    Log the name, ident and daemon flag of all alive threads in DEBUG level
+    """
+    if logger.isEnabledFor(logging.DEBUG):
+
+        all_threads = threading.enumerate()
+        max_name  = reduce(max, map(len, [t.name for t in all_threads]))
+        max_ident = reduce(max, map(int, map(math.ceil, map(math.log10, [t.ident for t in all_threads]))))
+
+        msg = ['Name' + ' '*(max_name-2) + 'Ident' + ' '*(max_ident-3) + 'Daemon',
+               '='*max_name + '  ' + '=' * max_ident + '  ======']
+        fmt = '%{0}.{0}s  %{1}d  %d'.format(max_name, max_ident)
+        for t in threading.enumerate():
+            msg.append(fmt % (t.name, t.ident, t.daemon))
+        logger.debug("Threads currently alive on process %d:\n%s", os.getpid(), '\n'.join(msg))
 
 class ngamsServer:
     """
@@ -2527,8 +2546,12 @@ class ngamsServer:
                                              self.getCfg().getPortNo()])
         logger.info(msg, extra={'to_syslog': True})
 
+        # show+threads is useful to know if there are any hanging threads
+        # after we stop the server
+        show_threads()
         self.stopServer()
         ngamsSrvUtils.ngamsBaseExitHandler(self)
+        show_threads()
 
         # Shut down logging. This will flush all pending logs in the system
         # and will ensure that the last logfile gets rotated
