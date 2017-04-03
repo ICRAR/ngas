@@ -581,7 +581,6 @@ class FileReader(BufferedReader):
             self.buf += 'Content-Type: ' + finfo.mimetype + CRLF
             self.buf += 'Content-Disposition: attachment; filename="' + finfo.name + '"' + CRLF + CRLF
             self.f = finfo.opener()
-            return
 
         buf = self.f.read(n)
         if not buf:
@@ -597,6 +596,7 @@ class ContainerReader(BufferedReader):
         self.boundary = codecs.encode(os.urandom(10), 'base64')[:-1]
         self.infoit = None
         self.reader = None
+        self.finished = False
 
     # See the individual methods to understand these numbers
     # and change accordingly if some of the fixed content changes
@@ -621,6 +621,9 @@ class ContainerReader(BufferedReader):
     # container_info = collections.namedtuple('container_info', 'name files')
     def accumulate(self, n):
 
+        if self.finished:
+            return
+
         if self.infoit is None:
             cinfo = self.cinfo
             self.buf += b'MIME-Version: 1.0' + CRLF
@@ -628,35 +631,42 @@ class ContainerReader(BufferedReader):
                         b'container_name="' + cinfo.name + b'"; ' + \
                         b'boundary="' + self.boundary + b'"' + CRLF + CRLF
             self.infoit = iter(cinfo.files)
-            return
 
+        # Read from the current reader
+        # If the read yields no data try with the next reader
+        # until one yields data; then break
+        # If we run out of readers there's nothing else to do
+        reader = self.reader
         try:
-            if self.reader is None:
-                self.advance_reader()
+            buf = '-'
+            while True:
+                if reader is None or not buf:
+                    reader = self.advance_reader()
+                buf = reader.read(n)
+                if buf:
+                    self.buf += buf
+                    break
+            self.reader = reader
         except StopIteration:
             # We have finished already with all files/containers
             return
 
-        try:
-            buf = self.reader.read(n)
-            if not buf:
-                self.advance_reader()
-                buf = self.reader.read(n)
-            self.buf += buf
-        except StopIteration:
-            # We finished. Write the boundary and trigger
-            # the quick returns above for next time
-            self.buf += CRLF + b'--' + self.boundary + b'--'
-            self.reader = None
-
     def advance_reader(self):
-        finfo = next(self.infoit)
+
+        try:
+            finfo = next(self.infoit)
+        except StopIteration:
+            # No more readers, write final bondary and go out
+            self.buf += CRLF + b'--' + self.boundary + b'--'
+            self.finished = True
+            raise
+
         if isinstance(finfo, file_info):
             self.buf += CRLF + b'--' + self.boundary + CRLF
-            self.reader = FileReader(finfo)
+            return FileReader(finfo)
         elif isinstance(finfo, container_info):
             self.buf += CRLF + b'--' + self.boundary + CRLF
-            self.reader = ContainerReader(finfo)
+            return ContainerReader(finfo)
         else:
             raise ValueError("Unknown file info object %r" % (finfo,))
 
