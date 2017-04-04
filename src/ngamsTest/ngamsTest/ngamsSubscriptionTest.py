@@ -73,9 +73,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         # Version 2 of the file should only exist after
         # subscription transfer is successful.
         client = sendPclCmd(port = 8889)
-        status = client.retrieve(fileId = 'SmallFile.fits',
-                                        fileVersion = 2,
-                                        targetFile = '/tmp/test.fits')
+        status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
         self.assertEquals(status.getStatus(), 'FAILURE', None)
 
         method = 'GET'
@@ -96,9 +94,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         time.sleep(5)
 
         client = sendPclCmd(port = 8889)
-        status = client.retrieve(fileId = 'SmallFile.fits',
-                                        fileVersion = 2,
-                                        targetFile = '/tmp/test.fits')
+        status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
         self.assertEquals(status.getStatus(), 'SUCCESS', None)
 
 
@@ -131,9 +127,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             self.checkEqual(resp.status, 200, None)
 
         client = sendPclCmd(port = 8889)
-        status = client.retrieve(fileId = 'SmallFile.fits',
-                                        fileVersion = 2,
-                                        targetFile = '/tmp/test.fits')
+        status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
         self.assertEquals(status.getStatus(), 'FAILURE', None)
 
         method = 'GET'
@@ -214,9 +208,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         # Check after all the failed subscriptions we don't have the file
         client = sendPclCmd(port = 8889)
-        status = client.retrieve(fileId = 'SmallFile.fits',
-                                        fileVersion = 2,
-                                        targetFile = '/tmp/test.fits')
+        status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
         self.assertEquals(status.getStatus(), 'FAILURE', None)
 
         # USUBSCRIBE for update
@@ -237,15 +229,11 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         time.sleep(5)
 
         client = sendPclCmd(port = 8889)
-        status = client.retrieve(fileId = 'SmallFile.fits',
-                                        fileVersion = 2,
-                                        targetFile = '/tmp/test.fits')
+        status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
         self.assertEquals(status.getStatus(), 'SUCCESS', None)
 
         client = sendPclCmd(port = 8889)
-        status = client.retrieve(fileId = 'TinyTestFile.fits',
-                                        fileVersion = 2,
-                                        targetFile = '/tmp/test1.fits')
+        status = client.retrieve('TinyTestFile.fits', fileVersion=2, targetFile='tmp')
         self.assertEquals(status.getStatus(), 'SUCCESS', None)
 
         # UNSUBSCRIBE and check the newly archived file is not transfered
@@ -276,15 +264,11 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         # Check after all the failed subscriptions we don't have the file
         client = sendPclCmd(port = 8889)
-        status = client.retrieve(fileId = 'SmallBadFile.fits',
-                                        fileVersion = 1,
-                                        targetFile = '/tmp/test2.fits')
+        status = client.retrieve('SmallBadFile.fits', fileVersion=1, targetFile='tmp')
         self.assertEquals(status.getStatus(), 'SUCCESS', None)
 
         client = sendPclCmd(port = 8889)
-        status = client.retrieve(fileId = 'SmallBadFile.fits',
-                                        fileVersion = 2,
-                                        targetFile = '/tmp/test2.fits')
+        status = client.retrieve('SmallBadFile.fits', fileVersion=2, targetFile='tmp')
         self.assertEquals(status.getStatus(), 'FAILURE', None)
 
 def run():

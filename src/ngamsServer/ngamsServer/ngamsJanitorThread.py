@@ -1165,8 +1165,8 @@ def janitorThread(srvObj, stopEvt):
                 else:
                     authHdrVal = ""
                 ngamsLib.httpGet(getHostName(), srvObj.getCfg().getPortNo(),
-                                 NGAMS_OFFLINE_CMD, [["force", "1"]],
-                                 "", 65536, 30, authHdrVal)
+                                 NGAMS_OFFLINE_CMD, pars=[["force", "1"]],
+                                 auth=authHdrVal)
             ##################################################################
 
             ##################################################################

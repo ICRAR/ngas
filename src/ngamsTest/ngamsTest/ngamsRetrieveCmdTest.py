@@ -40,7 +40,7 @@ import sys
 
 from ngamsLib import ngamsConfig
 from ngamsLib.ngamsCore import getHostName, NGAMS_RETRIEVE_CMD, \
-    checkCreatePath, rmFile
+    checkCreatePath, rmFile, NGAMS_SUCCESS
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
     getClusterName, sendPclCmd, runTest, genTmpFilename, unzip
 
@@ -99,7 +99,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         # Retrieve the file.
         trgFile = "tmp/test_RetrieveCmd_1_1_tmp"
         outFilePath = "tmp/SmallFile.fits"
-        status = client.retrieve("TEST.2001-05-08T15:25:00.123",1,trgFile)
+        status = client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
         unzip(trgFile, outFilePath)
 
         # Check reply.
@@ -143,7 +143,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         # Retrieve the file.
         trgFile = "tmp/test_RetrieveCmd_1_1_tmp"
-        status = client.retrieve("TEST.2001-05-08T15:25:00.123",2,trgFile)
+        status = client.retrieve("TEST.2001-05-08T15:25:00.123",
+                                 fileVersion=2, targetFile=trgFile)
 
         # Check reply.
         refStatFile = "ref/ngamsRetrieveCmdTest_test_RetrieveCmd_2_1_ref"
@@ -189,7 +190,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         # Retrieve a file.
         trgFile = "tmp/test_RetrieveCmd_3_1_tmp"
         client = sendPclCmd(port=8000)
-        status = client.retrieve("NCU.2003-11-11T11:11:11.111",1,trgFile)
+        status = client.retrieve("NCU.2003-11-11T11:11:11.111", targetFile=trgFile)
 
         # Check reply.
         refStatFile = "ref/ngamsRetrieveCmdTest_test_RetrieveCmd_3_1_ref"
@@ -367,11 +368,12 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         self.assertEquals(stat.getStatus(), 'SUCCESS', None)
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_01")
-        cmdPars = [["file_id", "TEST.2001-05-08T15:25:00.123"],
-                   ["processing", "ngamsTest.ngamsTestDppi1"],
-                   ["test_suite", "ngamsRetrieveCmdTest"],
-                   ["test_case", "test_DppiProc_01"]]
-        stat = client.get_status(NGAMS_RETRIEVE_CMD, outputFile=outFile, pars=cmdPars)
+        pars = [["test_suite", "ngamsRetrieveCmdTest"],
+                ["test_case", "test_DppiProc_01"]]
+        stat = client.retrieve("TEST.2001-05-08T15:25:00.123",
+                               targetFile=outFile,
+                               processing="ngamsTest.ngamsTestDppi1",
+                               pars=pars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_01_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, result in file")
@@ -416,11 +418,12 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         client.archive("src/SmallFile.fits")
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_02")
-        cmdPars = [["file_id", "TEST.2001-05-08T15:25:00.123"],
-                   ["processing", "ngamsTest.ngamsTestDppi1"],
-                   ["test_suite", "ngamsRetrieveCmdTest"],
-                   ["test_case", "test_DppiProc_02"]]
-        stat = client.get_status(NGAMS_RETRIEVE_CMD, outputFile=outFile, pars=cmdPars)
+        pars = [["test_suite", "ngamsRetrieveCmdTest"],
+                ["test_case", "test_DppiProc_02"]]
+        stat = client.retrieve("TEST.2001-05-08T15:25:00.123",
+                               targetFile=outFile,
+                               processing="ngamsTest.ngamsTestDppi1",
+                               pars=pars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_02_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, result in buffer")
@@ -465,13 +468,12 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         self.assertEquals('SUCCESS', stat.getStatus())
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_03")
-        cmdPars = [["file_id", "TEST.2001-05-08T15:25:00.123"],
-                   ["processing", "ngamsTest.ngamsTestDppi1"],
-                   ["test_suite", "ngamsRetrieveCmdTest"],
-                   ["test_case", "test_DppiProc_03"]]
-        stat = sendPclCmd(port=8000).get_status(NGAMS_RETRIEVE_CMD,
-                                             outputFile=outFile,
-                                             pars=cmdPars)
+        pars = [["test_suite", "ngamsRetrieveCmdTest"],
+                ["test_case", "test_DppiProc_03"]]
+        stat = sendPclCmd(port=8000).retrieve("TEST.2001-05-08T15:25:00.123",
+                                              targetFile=outFile,
+                                              processing="ngamsTest.ngamsTestDppi1",
+                                              pars=pars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_03_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, Proxy Mode, " +\
@@ -538,7 +540,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         trgFile = "tmp/test_VolumeDir_01_tmp"
         refFile = "src/SmallFile.fits"
         outFilePath = "tmp/SmallFile.fits"
-        client.retrieve("TEST.2001-05-08T15:25:00.123", 1, trgFile)
+        stat = client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
+        self.assertEqual(NGAMS_SUCCESS, stat.getStatus(), stat.getMessage())
 
         # unzip the the file and diff against original
         unzip(trgFile, outFilePath)
