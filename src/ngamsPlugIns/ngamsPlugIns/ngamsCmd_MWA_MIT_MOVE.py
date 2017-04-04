@@ -33,7 +33,7 @@ import logging
 import os
 
 from ngamsLib.ngamsCore import NGAMS_TEXT_MT, \
-    NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE
+    NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_HTTP_HDR_CHECKSUM
 from ngamsLib import ngamsStatus, ngamsLib
 from ngamsServer import ngamsDiscardCmd
 
@@ -159,17 +159,18 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     fileMimeType = 'application/octet-stream'
     baseName = os.path.basename(filename)
     contDisp = "attachment; filename=\"" + baseName + "\""
-    contDisp += "; no_versioning=1"
     deliver_success = False
     last_deliv_err = ''
 
     stat = ngamsStatus.ngamsStatus()
+    hdrs = {NGAMS_HTTP_HDR_CHECKSUM: fileCRC}
+
     for i in range(3): # total trials - 3 times
         with open(filename, "rb") as f:
             try:
-                reply, msg, hdrs, data = ngamsLib.httpPostUrl(sendUrl, fileMimeType,
-                                                              contDisp, f,
-                                                              checkSum = fileCRC)
+                reply, msg, hdrs, data = ngamsLib.httpPostUrl(sendUrl, f, fileMimeType,
+                                                              contDisp=contDisp,
+                                                              hdrs=hdrs)
                 if (data.strip() != ""):
                     stat.clear().unpackXmlDoc(data)
                 else:

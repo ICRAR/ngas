@@ -2010,9 +2010,10 @@ class ngamsServer:
                 httpStatCode, httpStatMsg, httpHdrs, data =\
                                   ngamsLib.httpPost(contactAddr, contactPort,
                                                     reqPropsObj.getCmd(),
-                                                    mimeType, data, pars=pars,
-                                                    authHdrVal=authHttpHdrVal,
-                                                    timeOut=reqTimeOut)
+                                                    data, mimeType,
+                                                    pars=pars,
+                                                    auth=authHttpHdrVal,
+                                                    timeout=reqTimeOut)
 
             # If auto-reply is selected, the reply from the remote server
             # is send back to the originator of the request.

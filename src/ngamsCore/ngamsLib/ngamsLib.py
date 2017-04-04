@@ -271,79 +271,43 @@ def _httpHandleResp(fileObj,
 
     return code, msg, hdrs, data
 
-
-def httpPostUrl(url,
-                mimeType,
-                contDisp,
-                data,
-                blockSize = 65536,
-                timeOut = None,
-                authHdrVal = None,
-                fileInfoHdr = None,
-                checkSum = None,
-                moreHdrs = {}):
+def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
+             timeout=None, contDisp=None, auth=None):
     """
-    Post `data` onto the given URL.
+    Sends `data` via HTTP POST to http://host:port/cmd.
 
-    The data send back from the remote server + the HTTP header information
-    is return in a list with the following contents:
-
-      [<HTTP status code>, <HTTP status msg>, <HTTP headers (list)>, <data>]
-
-    url:          URL to where data is posted (string).
-
-    mimeType:     Mime-type of data (string).
-
-    contDisp:     Content-Disposition of the data (string).
-
-    data:         The data to post. Either a string/bytes or a read()-able object
-                  with a length
-
-    blockSize:    Block size (in bytes) used when sending the data (integer).
-
-    timeOut:      Timeout in seconds to wait for replies from the server
-                  (double).
-
-    authHdrVal:   Authorization HTTP header value as it should be sent in
-                  the query (string).
-
-    fileInfoHdr:  File info serialised as an XML doc for command REARCHIVE (string)
-
-    moreHdrs:     A list of key-value pairs, each kv pair is a tuple with two elements (k and v)
-
-    Returns:      List with information from reply from contacted
-                  NG/AMS Server (reply, msg, hdrs, data) (list).
+    If a `timeout` is specified, it is applied to the HTTP connection; otherwise
+    the system-wide default timeout will apply.
+    `mimeType` is the value for the 'Content-Type` header, and is required.
+    `auth` and `contDisp` are the (optional) values for the 'Authentication' and
+    'Content-Disposition' headers respectively.
+    Additional HTTP parameters can be passed as a list of 2-elements tuples
+    via `pars`.
+    Additional headers can be passed as a dictionary via `hdrs`.
     """
 
-    logger.debug("About to POST to %s", url)
-    urlres = urlparse.urlparse(url)
+    logger.debug("About to POST to %s:%d/%s", host, port, cmd)
 
-    with contextlib.closing(httplib.HTTPConnection(urlres.netloc, timeout = timeOut)) as http:
+    with contextlib.closing(httplib.HTTPConnection(host, port, timeout = timeout)) as http:
 
         # Prepare all headers that need to be sent
-        hdrs = {}
+        hdrs = dict(hdrs)
         hdrs["Content-Type"] = mimeType
         hdrs["Host"] = getHostName()
 
         if contDisp:
             hdrs["Content-Disposition"] = contDisp
-        if authHdrVal:
-            hdrs["Authorization"] = authHdrVal.strip()
-        if fileInfoHdr:
-            hdrs[NGAMS_HTTP_HDR_FILE_INFO] = fileInfoHdr
-        if checkSum:
-            hdrs[NGAMS_HTTP_HDR_CHECKSUM] = checkSum
-        hdrs.update(moreHdrs)
+        if auth:
+            hdrs["Authorization"] = auth.strip()
 
-        # Reconstruct the full path + query where we are sending data to
-        url = urlres.path
-        if urlres.query:
-            url = url + '?' + urlres.query
+        url = cmd
+        if pars:
+            pars = urllib.urlencode(pars)
+            url += '?' + pars
 
         # Go, go, go!
         http.request(NGAMS_HTTP_POST, url, body=data, headers=hdrs)
-
-        logger.debug("Data sent, waiting for reply")
+        logger.info("POST data sent, waiting for reply")
 
         # Receive + unpack reply.
         response = http.getresponse()
@@ -362,11 +326,12 @@ def httpPostUrl(url,
             size = int(hdrs["content-length"])
 
         # Accumulate the incoming stream and return it whole in `data`
+        bs = 65536
         with contextlib.closing(cStringIO.StringIO()) as out:
             readin = 0
             while readin < size:
                 left = size - readin
-                buff = response.read(blockSize if left >= blockSize else left)
+                buff = response.read(bs if left >= bs else left)
                 if not buff:
                     raise Exception('error reading data')
                 out.write(buff)
@@ -376,57 +341,17 @@ def httpPostUrl(url,
         return [reply, msg, hdrs, data]
 
 
-def httpPost(host,
-             port,
-             cmd,
-             mimeType,
-             data,
-             pars = [],
-             timeOut = None,
-             authHdrVal = ""):
+def httpPostUrl(url, data, mimeType, pars=[], hdrs={},
+                timeout=None, contDisp=None, auth=None):
     """
-    Sends an HTTP POST command with the given mime-type and the given
-    data to the NG/AMS Server with the host + port given.
-
-    The data send back from the remote server + the HTTP header information
-    is return in a list with the following contents:
-
-      [<HTTP status code>, <HTTP status msg>, <HTTP headers (list)>, <data>]
-
-    host:         Host where remote NG/AMS Server is running (string).
-
-    port:         Port number used by remote NG/AMS Server (integer).
-
-    cmd:          NG/AMS command to send (string).
-
-    mimeType:     Mime-type of message (string).
-
-    data:         Data to send to remote NG/AMS Server or name of
-                  file/directory containing data to send (string).
-
-    pars:         List of sub-lists containing parameters + values.
-                  Format is:
-
-                    [[<par 1>, <val par 1>], ...]
-
-                  These are send as 'Content-Disposition' in the HTTP
-                  command (list).
-
-    timeOut:      Timeout in seconds to wait for replies from the server
-                  (double).
-
-    authHdrVal:   Authorization HTTP header value as it should be sent in
-                  the query (string).
-
-    Returns:      List with information from reply from contacted
-                  NG/AMS Server (reply, msg, hdrs, data) (list).
+    Like `httpPost` but specifies a HTTP url instead of a combination of
+    host, port and command.
     """
-
-    msg = "Sending: %s using HTTP POST with mime-type: %s to %s:%d"
-    logger.debug(msg, cmd, mimeType, host, port)
-
-    url = get_url(host, port, cmd, pars=pars)
-    return httpPostUrl(url, mimeType, None, data, 65536, timeOut, authHdrVal)
+    url = urlparse.urlparse(url)
+    pars = [] if not url.query else urlparse.parse_qs(url.query)
+    return httpPost(url.hostname, url.port, url.path, data, mimeType,
+                    pars=pars, hdrs=hdrs, timeout=timeout,
+                    contDisp=contDisp, auth=auth)
 
 
 def httpGetUrl(url,

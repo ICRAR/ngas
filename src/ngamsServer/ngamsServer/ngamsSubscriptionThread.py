@@ -49,7 +49,7 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_SUBSCRIPTION_THR, isoTime2Secs,\
     NGAMS_SUBSCR_BACK_LOG, NGAMS_DELIVERY_THR,\
     NGAMS_HTTP_INT_AUTH_USER, NGAMS_REARCHIVE_CMD, NGAMS_FAILURE,\
     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, getFileSize, rmFile, loadPlugInEntryPoint,\
-    toiso8601
+    toiso8601, NGAMS_HTTP_HDR_CHECKSUM, NGAMS_HTTP_HDR_FILE_INFO
 from ngamsLib import ngamsDbm, ngamsStatus, ngamsHighLevelLib, ngamsFileInfo, ngamsLib, ngamsDbCore
 
 
@@ -768,13 +768,15 @@ def _deliveryThread(srvObj,
                         if fileChecksum is None:
                             logger.warning('Fail to get file checksum for file %s', fileId)
 
+                        hdrs = {NGAMS_HTTP_HDR_CHECKSUM: fileChecksum,
+                                NGAMS_HTTP_HDR_FILE_INFO: fileInfoObjHdr}
                         with open(filename, "rb") as f:
                             reply, msg, hdrs, data = \
-                                   ngamsLib.httpPostUrl(sendUrl, fileMimeType,
-                                                        contDisp, f,
-                                                        authHdrVal = authHdr,
-                                                        fileInfoHdr = fileInfoObjHdr,
-                                                        checkSum = fileChecksum)
+                                   ngamsLib.httpPostUrl(sendUrl, f, fileMimeType,
+                                                        contDisp=contDisp,
+                                                        auth=authHdr,
+                                                        hdrs=hdrs,
+                                                        timeout=120)
                         stat.clear()
                         if data:
                             stat.unpackXmlDoc(data)

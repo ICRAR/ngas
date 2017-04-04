@@ -729,8 +729,8 @@ class ngamsPClient:
             auth = "Basic %s" % self.auth
 
         start = time.time()
-        res = ngamsLib.httpPost(host, port, cmd, mimeType, data,
-                                pars=pars, timeOut=self.timeout, authHdrVal=auth)
+        res = ngamsLib.httpPost(host, port, cmd, data, mimeType,
+                                pars=pars, timeout=self.timeout, auth=auth)
         delta = time.time() - start
         logger.info("Successfully completed command %s in %.3f [s]", cmd, delta)
         return res
