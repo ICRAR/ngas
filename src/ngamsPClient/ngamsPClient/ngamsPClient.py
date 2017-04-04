@@ -179,7 +179,7 @@ class ngamsPClient:
         pars.append(("filename", os.path.basename(filename)))
         return self.post(cmd, mimeType, data, pars=pars)
 
-    def reArchive(self,
+    def rearchive(self,
                   fileUri,
                   fileInfoXml,
                   pars = []):
@@ -949,7 +949,7 @@ def main():
         if not opts.file_info_xml:
             msg = "Must specify parameter -fileInfoXml for a REARCHIVE Command"
             raise Exception(msg)
-        stat = client.reArchive(opts.file_uri, opts.file_info_xml, pars)
+        stat = client.rearchive(opts.file_uri, opts.file_info_xml, pars)
     elif (cmd == NGAMS_REGISTER_CMD):
         stat = client.register(opts.path, opts.async)
     elif (cmd == NGAMS_REMDISK_CMD):
