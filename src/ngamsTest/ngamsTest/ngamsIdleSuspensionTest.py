@@ -314,7 +314,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
             unzippedRetFile = genTmpFilename("unzip_")
 
             statObj = sendPclCmd(port=8000, auth=AUTH).\
-                      retrieve2File(fileId, fileVersion=version,
+                      retrieve(fileId, fileVersion=version,
                                     targetFile=tmpRetFile)
             self.checkEqual(NGAMS_SUCCESS, statObj.getStatus(), "Unexpected return value for RETRIEVE Command")
             unzip(tmpRetFile, unzippedRetFile)

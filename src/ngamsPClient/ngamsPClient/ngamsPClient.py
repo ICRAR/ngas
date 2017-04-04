@@ -550,40 +550,19 @@ class ngamsPClient:
         return self.get_status(NGAMS_REGISTER_CMD, pars=pars)
 
 
-    def retrieve2File(self,
-                      fileId,
-                      fileVersion = -1,
-                      targetFile = "",
-                      processing = "",
-                      processingPars = "",
-                      containerName = None,
-                      containerId = None,
-                      cmd = NGAMS_RETRIEVE_CMD):
+    def retrieve(self, fileId, fileVersion=-1,
+                 targetFile=None, processing=None, processingPars=None):
         """
-        Request a file from the NG/AMS Server associated to the object.
-        The file will be stored under the name given by the 'targetFile'
-        parameter, or in the current working directory with the name
-        as received from NG/AMS.
+        Request file `fileId` from the NG/AMS Server, store it locally
+        in `targetFile`, and return the result of the operation as an
+        ngamsStatus object. If `targetFile` is a directory, the name of the
+        retrieved file is appended to the directory name.
 
-        fileId:          NG/AMS File ID of file to retrieve (string).
-
-        fileVersion:     Specific version of the file to retrieve (integer)
-
-        targetFile:      Name of file or directory where to store the file
-                         retrieved. If "" is specified, the file will be
-                         stored in the current working directory under the
-                         same name as on NG/AMS (string).
-
-        processing:      Name of DPPI to be invoked by NG/AMS to process the
-                         data being retrieved (strings).
-
-        processingPars:  Optional parameters to hand over to the DDPI. The
-                         format of these is usually:
-
-                           par1=val1,par2=val2,...
-
-                         - but it is up to the DPPI to interpret
-                         these (string).
+        If `file_version` is given then that specific of the version will be
+        retrieved.
+        If `processing` and `processingPars` are given, they are passed down
+        as the processing plug-in name and parameters to be applied to the
+        retrieved data *on the server side*, respectively.
         """
         pars = [("file_id", fileId)]
         if fileVersion != -1:
@@ -861,7 +840,7 @@ def main():
     parser.add_argument('-A', '--auth',          help='BASIC authorization string')
     parser.add_argument('-F', '--force',         help='Force the action', action='store_true')
     parser.add_argument('-f', '--file-id',       help='Indicates a File ID')
-    parser.add_argument(      '--file-version',  help='A file version', type=int)
+    parser.add_argument(      '--file-version',  help='A file version', type=int, default=-1)
     parser.add_argument(      '--file-id-list',  help='A list of File IDs')
     parser.add_argument(      '--file-uri',      help='A File URI')
     parser.add_argument(      '--file-info-xml', help='An XML File Info string')
@@ -910,7 +889,7 @@ def main():
     # Invoke the proper operation.
     cmd = opts.cmd
     mtype = opts.mime_type
-    pars = [(name, val) for p in opts.param for name,val in p.split('=')]
+    pars = [p.split('=') for p in opts.param]
     if cmd in [NGAMS_ARCHIVE_CMD, 'QARCHIVE']:
         pars += [('file_version', opts.file_version)] if opts.file_version is not None else []
         stat = client.archive(opts.file_uri, mtype, opts.async, opts.no_versioning, cmd=cmd, pars=pars)
@@ -957,10 +936,8 @@ def main():
     elif (cmd == NGAMS_REMFILE_CMD):
         stat = client.remFile(opts.disk_id, opts.file_id, opts.file_version, opts.execute)
     elif (cmd == NGAMS_RETRIEVE_CMD):
-        stat = client.retrieve2File(opts.file_id, opts.file_version, opts.output,
-                                  opts.p_processing, opts.p_processing_pars,
-                                  containerName=opts.container_name,
-                                  containerId=opts.container_id, cmd=cmd)
+        stat = client.retrieve(opts.file_id, opts.file_version, opts.output,
+                               opts.p_plugin, opts.p_plugin_pars)
     elif (cmd == NGAMS_STATUS_CMD):
         stat = client.status()
     elif (cmd == NGAMS_SUBSCRIBE_CMD):
@@ -972,6 +949,8 @@ def main():
 
     if opts.verbose > 3:
         printStatus(stat)
+        if opts.verbose > 4 and stat.getData():
+            print(stat.getData())
 
     if opts.show_status:
         print stat.genXml(0, 1, 1, 1).toprettyxml('  ', '\n')[0:-1]

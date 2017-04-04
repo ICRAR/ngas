@@ -59,7 +59,7 @@ class ngamsServerTest(ngamsTestSuite):
         self.assertEquals(NGAMS_SUCCESS, status.getStatus())
 
         # Normal retrieval works fine
-        self.assertEquals(NGAMS_SUCCESS, client.retrieve2File(fileId='some-file.data').getStatus())
+        self.assertEquals(NGAMS_SUCCESS, client.retrieve(fileId='some-file.data').getStatus())
         os.unlink('some-file.data')
 
         # Now retrieve the data, but sloooooooooooowly and check that the server

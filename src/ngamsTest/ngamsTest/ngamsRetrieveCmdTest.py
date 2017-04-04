@@ -99,7 +99,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         # Retrieve the file.
         trgFile = "tmp/test_RetrieveCmd_1_1_tmp"
         outFilePath = "tmp/SmallFile.fits"
-        status = client.retrieve2File("TEST.2001-05-08T15:25:00.123",1,trgFile)
+        status = client.retrieve("TEST.2001-05-08T15:25:00.123",1,trgFile)
         unzip(trgFile, outFilePath)
 
         # Check reply.
@@ -143,7 +143,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         # Retrieve the file.
         trgFile = "tmp/test_RetrieveCmd_1_1_tmp"
-        status = client.retrieve2File("TEST.2001-05-08T15:25:00.123",2,trgFile)
+        status = client.retrieve("TEST.2001-05-08T15:25:00.123",2,trgFile)
 
         # Check reply.
         refStatFile = "ref/ngamsRetrieveCmdTest_test_RetrieveCmd_2_1_ref"
@@ -189,7 +189,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         # Retrieve a file.
         trgFile = "tmp/test_RetrieveCmd_3_1_tmp"
         client = sendPclCmd(port=8000)
-        status = client.retrieve2File("NCU.2003-11-11T11:11:11.111",1,trgFile)
+        status = client.retrieve("NCU.2003-11-11T11:11:11.111",1,trgFile)
 
         # Check reply.
         refStatFile = "ref/ngamsRetrieveCmdTest_test_RetrieveCmd_3_1_ref"
@@ -262,14 +262,14 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         # Retrieve file (File ID).
         fileId = "TEST.2001-05-08T15:25:00.123"
-        statObj = client.retrieve2File(fileId)
+        statObj = client.retrieve(fileId)
         refStatFile = "ref/ngamsRetrieveCmdTest_test_RetrieveCmd_7_1_ref"
         tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
         self.checkFilesEq(refStatFile, tmpStatFile,
                           "Unexpected response returned to RETRIEVE Command")
 
         # Retrieve file (File ID + File Version).
-        statObj = client.retrieve2File(fileId, fileVersion=2)
+        statObj = client.retrieve(fileId, fileVersion=2)
         tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
         self.checkFilesEq(refStatFile, tmpStatFile,
                           "Unexpected response returned to RETRIEVE Command")
@@ -538,7 +538,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         trgFile = "tmp/test_VolumeDir_01_tmp"
         refFile = "src/SmallFile.fits"
         outFilePath = "tmp/SmallFile.fits"
-        client.retrieve2File("TEST.2001-05-08T15:25:00.123", 1, trgFile)
+        client.retrieve("TEST.2001-05-08T15:25:00.123", 1, trgFile)
 
         # unzip the the file and diff against original
         unzip(trgFile, outFilePath)

@@ -475,7 +475,7 @@ class ngamsPClientTest(ngamsTestSuite):
         client = ngamsPClient.ngamsPClient(port=8888)
         client.archive("src/SmallFile.fits")
         trgDir = "tmp"
-        status = client.retrieve2File("TEST.2001-05-08T15:25:00.123",1,trgDir)
+        status = client.retrieve("TEST.2001-05-08T15:25:00.123",1,trgDir)
         refMsg = "Successfully handled request"
         self.checkEqual(refMsg, status.getMessage(), "Problem executing " +\
                         "RETRIEVE Command")

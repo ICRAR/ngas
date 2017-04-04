@@ -59,7 +59,7 @@ def retrieveFiles(diskIdList):
                 print "Retrieving file with File ID/Version: %s/%d" %\
                       (fileId, fileVersion)
                 startTime = time.time()
-                res = client.retrieve2File(fileId, fileVersion,"/tmp/TestFile")
+                res = client.retrieve(fileId, fileVersion,"/tmp/TestFile")
                 deltaTime = (time.time() - startTime)
                 if (res.getStatus() == NGAMS_SUCCESS):
                     format = "  - Successfully retrieved file with " +\
