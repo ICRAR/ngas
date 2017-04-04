@@ -46,12 +46,11 @@ import socket
 import string
 import time
 import urllib
-import urllib2
 import urlparse
 
 from ngamsCore import genLog, getHostName, \
     NGAMS_HTTP_SUCCESS, NGAMS_CONT_MT, \
-    NGAMS_HTTP_POST, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CHECKSUM, \
+    NGAMS_HTTP_POST, NGAMS_HTTP_GET, \
     NGAMS_MAX_FILENAME_LEN, NGAMS_UNKNOWN_MT, rmFile, toiso8601, getUniqueNo
 import ngamsMIMEMultipart
 
@@ -181,6 +180,38 @@ def httpTimeStamp():
     return time.strftime(_http_fmt, time.gmtime(time.time()))
 
 
+def http_response(host, port, method, cmd,
+                 data=None, timeout=None,
+                 pars=[], hdrs={}):
+
+    # Prepare all headers that need to be sent
+    hdrs = dict(hdrs)
+    hdrs["Host"] = getHostName()
+
+    url = cmd
+    if pars:
+        # urlib.urlencode expects tuple elements (if pars is a list)
+        if not hasattr(pars, 'items'):
+            pars = [(p[0], p[1]) for p in pars]
+        pars = urllib.urlencode(pars)
+        url += '?' + pars
+
+    # Go, go, go!
+    logger.debug("About to %s to %s:%d/%s", method, host, port, url)
+    conn = httplib.HTTPConnection(host, port, timeout = timeout)
+    try:
+        conn.request(method, url, body=data, headers=hdrs)
+        logger.debug("%s request sent to, waiting for a response", method)
+    except socket.error:
+        try:
+            conn.close()
+        except:
+            pass
+        raise
+
+    return conn.getresponse()
+
+
 def _httpHandleResp(fileObj,
                     dataTargFile,
                     blockSize,
@@ -288,33 +319,19 @@ def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
 
     logger.debug("About to POST to %s:%d/%s", host, port, cmd)
 
-    with contextlib.closing(httplib.HTTPConnection(host, port, timeout = timeout)) as http:
+    # Prepare all headers that need to be sent
+    hdrs = dict(hdrs)
+    hdrs["Content-Type"] = mimeType
+    if contDisp:
+        hdrs["Content-Disposition"] = contDisp
+    if auth:
+        hdrs["Authorization"] = auth.strip()
 
-        # Prepare all headers that need to be sent
-        hdrs = dict(hdrs)
-        hdrs["Content-Type"] = mimeType
-        hdrs["Host"] = getHostName()
-
-        if contDisp:
-            hdrs["Content-Disposition"] = contDisp
-        if auth:
-            hdrs["Authorization"] = auth.strip()
-
-        url = cmd
-        if pars:
-            # urlib.urlencode expects tuple elements (if pars is a list)
-            if not hasattr(pars, 'items'):
-                pars = [(p[0], p[1]) for p in pars]
-            pars = urllib.urlencode(pars)
-            url += '?' + pars
-
-        # Go, go, go!
-        http.request(NGAMS_HTTP_POST, url, body=data, headers=hdrs)
-        logger.info("POST data sent, waiting for reply")
+    resp = http_response(host, port, NGAMS_HTTP_POST, cmd, data, timeout, pars, hdrs)
+    with contextlib.closing(resp):
 
         # Receive + unpack reply.
-        response = http.getresponse()
-        reply, msg, hdrs = response.status, response.reason, response.getheaders()
+        reply, msg, hdrs = resp.status, resp.reason, resp.getheaders()
 
         # Dump HTTP headers if Verbose Level >= 4.
         hdrs = {h[0]: h[1] for h in hdrs}
@@ -334,7 +351,7 @@ def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
             readin = 0
             while readin < size:
                 left = size - readin
-                buff = response.read(bs if left >= bs else left)
+                buff = resp.read(bs if left >= bs else left)
                 if not buff:
                     raise Exception('error reading data')
                 out.write(buff)
@@ -357,159 +374,30 @@ def httpPostUrl(url, data, mimeType, hdrs={},
                     contDisp=contDisp, auth=auth)
 
 
-def httpGetUrl(url,
-               dataTargFile = "",
-               blockSize = 65536,
-               timeOut = None,
-               authHdrVal = "",
-               additionalHdrs = []):
+def httpGet(host, port, cmd, pars=[], hdrs={},
+            timeout=None, auth=None):
     """
-    Sends an HTTP GET request to the server specified by the URL.
-
-    The data send back from the remote server + the HTTP header information
-    is return in a list with the following contents:
-
-      [<HTTP status code>, <HTTP status msg>, <HTTP headers (list)>, <data>]
-
-    url:              URL to query (string/URL).
-
-    dataTargFile:     If a filename is specified with this parameter, the
-                      data received is stored into a file of that name
-                      (string).
-
-    blockSize:        Block size in bytes used when handling the data
-                      (integer).
-
-    timeOut:          Timeout to apply when communicating with the server in
-                      seconds (double).
-
-    authHdrVal:       Authorization HTTP header value as it should be sent in
-                      the query (string).
-
-    additionalHdrs:   Additional HTTP headers to send with the request. Must
-                      be formatted as:
-
-                        [[<hdr>, <val>], ...]                      (list).
-
-    Returns:          List with information from reply from contacted
-                      NG/AMS Server (list).
+    Performs an HTTP GET request to http://host:port/cmd and
+    returns an HTTP response object from which the response can be read.
+    It is the callers' responsibility to close the response object,
+    which in turn will close the HTTP connection.
     """
-
-    # Issue request + handle result.
-    req = create_request(url, authHdrVal, additionalHdrs)
-
-    try:
-        with contextlib.closing(urllib2.urlopen(req, timeout=timeOut)) as f:
-            return _httpHandleResp(f, dataTargFile, blockSize, timeOut)
-    except urllib2.HTTPError, e:
-        logger.exception("error while sending GET request")
-        code, msg, hdrs, data = e.code, str(e), e.headers, e.read()
-        return code, msg, hdrs, data
-
-
-def get_url(host, port, cmd, pars):
-    """
-    Creates the URL for the given combination of inputs
-    """
-    url = "http://%s:%d/%s" % (host, port, cmd)
-    if pars:
-        parDic = {p[0]: p[1] for p in pars}
-        pars = urllib.urlencode(parDic)
-        url += '?' + pars
-    return url
-
-def create_request(url, auth, hdrs):
-    """
-    Creates a request for the given combination of inputs
-    """
-    logger.debug("Issuing request with URL: %s", url)
-    req = urllib2.Request(url)
+    hdrs = dict(hdrs)
     if auth:
-        req.add_header("Authorization", auth)
-    req.add_header("Host", getHostName())
+        hdrs['Authorization'] = auth.strip()
+    return http_response(host, port, NGAMS_HTTP_GET, cmd, None, timeout, pars, hdrs)
 
-    # Send additional HTTP headers, if any.
-    for hdr in hdrs:
-        req.add_header(hdr[0], hdr[1])
 
-    return req
-
-def httpGet(host,
-            port,
-            cmd,
-            pars = [],
-            dataTargFile = "",
-            blockSize = 65536,
-            timeOut = None,
-            authHdrVal = "",
-            additionalHdrs = []):
+def httpGetUrl(url, pars=[], hdrs={}, timeout=None, auth=None):
     """
-    Sends an HTTP GET command to the NG/AMS Server with the
-    host + port given.
-
-    The data send back from the remote server + the HTTP header information
-    is return in a list with the following contents:
-
-      [<HTTP status code>, <HTTP status msg>, <HTTP headers (list)>, <data>]
-
-    host:             Host where remote NG/AMS Server is running (string).
-
-    port:             Port number used by remote NG/AMS Server (integer).
-
-    cmd:              NG/AMS command to send (string).
-
-    wait:             Wait for the command to finish execution (integer).
-
-    pars:             List of sub-lists containing parameters + values.
-                      Format is:
-
-                        [[<par 1>, <val par 1>], ...]
-
-                      These are send as 'Content-Disposition' in the HTTP
-                      command (list).
-
-    dataTargFile:     If a filename is specified with this parameter, the
-                      data received is stored into a file of that name
-                      (string).
-
-    blockSize:        Block size in bytes used when handling the data
-                      (integer).
-
-    timeOut:          Timeout to apply when communicating with the server in
-                      seconds (double).
-
-    authHdrVal:       Authorization HTTP header value as it should be sent in
-                      the query (string).
-
-    additionalHdrs:   Additional HTTP headers to send with the request. Must
-                      be formatted as:
-
-                        [[<hdr>, <val>], ...]                      (list).
-
-    Returns:          List with information from reply from contacted
-                      NG/AMS Server (list).
+    Like `httpGet`, but specifies a HTTP url instead of a combination of
+    host, port and command.
     """
-    if (not blockSize): blockSize = 65536
-
-    # Prepare URL + parameters.
-    url = get_url(host, port, cmd, pars)
-
-    # Submit the request.
-    code, msg, hdrs, data = httpGetUrl(url, dataTargFile,
-                                       blockSize, timeOut,
-                                       authHdrVal, additionalHdrs)
-
-    return (code, msg, hdrs, data)
-
-def httpGetConnection(host, port, cmd, pars = [], blockSize = 65536,
-                      timeOut=None, authHdrVal = "",
-                      additionalHdrs = []):
-    """
-    Similar to httpGet but returns the HTTP connection directly
-    """
-    url = get_url(host, port, cmd, pars)
-    req = create_request(url, authHdrVal, additionalHdrs)
-    return urllib2.urlopen(req, timeout=timeOut)
+    url = urlparse.urlparse(url)
+    pars = [] if not url.query else urlparse.parse_qsl(url.query)
+    return httpGet(url.hostname, url.port, url.path,
+                   pars=pars, hdrs=hdrs, timeout=timeout,
+                   auth=auth)
 
 
 def genUniqueFilename(filename):

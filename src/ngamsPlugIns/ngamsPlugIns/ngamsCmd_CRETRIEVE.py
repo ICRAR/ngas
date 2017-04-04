@@ -43,10 +43,8 @@ def fopener(fname):
 def http_opener(host, port, file_id, file_version, srvObj):
     pars = [('file_id', file_id), ('file_version', file_version)]
     authHdr = ngamsSrvUtils.genIntAuthHdr(srvObj)
-    conn = ngamsLib.httpGetConnection(host, port, NGAMS_RETRIEVE_CMD, pars,
-                                   blockSize=srvObj.getCfg().getBlockSize(),
-                                   timeOut=None, authHdrVal=authHdr)
-    return conn.getresponse()
+    return ngamsLib.httpGet(host, port, NGAMS_RETRIEVE_CMD, pars,
+                            timeout=30, auth=authHdr)
 
 def finfo_from_database(fileInfo, srvObj, reqPropsObj):
 

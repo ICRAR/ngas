@@ -574,17 +574,16 @@ def _handleCmdRetrieve(srvObj,
         pars = []
         for par in reqPropsObj.getHttpParNames():
             pars.append([par, reqPropsObj.getHttpPar(par)])
+
         authHdr = ngamsSrvUtils.genIntAuthHdr(srvObj)
-        conn = ngamsLib.httpGetConnection(ipAddress, port,
-                                          cmd=NGAMS_RETRIEVE_CMD, pars=pars,
-                                          blockSize=srvObj.getCfg().getBlockSize(),
-                                          timeOut = None, authHdrVal = authHdr)
+        timeout = float(reqPropsObj['timeout']) if 'timeout' in reqPropsObj else 60
+        conn = ngamsLib.httpGet(ipAddress, port, NGAMS_RETRIEVE_CMD, pars=pars,
+                                timeout=timeout, auth=authHdr)
 
-        hdrs = conn.headers
-        httpHdrDic = ngamsLib.httpMsgObj2Dic(hdrs)
-        dataSize = int(httpHdrDic["content-length"])
+        hdrs = {h[0]: h[1] for h in conn.getheaders()}
+        dataSize = int(hdrs["content-length"])
 
-        tmpPars = ngamsLib.parseHttpHdr(httpHdrDic["content-disposition"])
+        tmpPars = ngamsLib.parseHttpHdr(hdrs["content-disposition"])
         dataFilename = tmpPars["filename"]
 
         # Generate fake ngamsDppiStatus object.

@@ -38,6 +38,8 @@ can be used to build up Python applications communicating with NG/AMS.
 
 import argparse
 import base64
+import contextlib
+import functools
 import logging
 import os
 import random
@@ -392,8 +394,24 @@ class ngamsPClient:
             raise Exception, msg
         if not targetDir:
             targetDir = '.'
-        return self.retrieve2File(None, targetFile=targetDir, containerName=containerName, containerId=containerId, cmd="CRETRIEVE")
 
+        pars = []
+        if containerId:
+            pars.append(("container_id", containerId))
+        if containerName:
+            pars.append(("container_name", containerName))
+
+        resp, host, port = self.get('CRETRIEVE', pars=pars)
+        host_id = "%s:%d" % (host, port)
+        with contextlib.closing(resp):
+            if resp.status != NGAMS_HTTP_SUCCESS:
+                return ngamsStatus.ngamsStatus().unpackXmlDoc(resp.read(), 1)
+
+            size = int(resp.getheader('Content-Length'))
+            handler = ngamsMIMEMultipart.FilesystemWriterHandler(1024, basePath=targetDir)
+            parser = ngamsMIMEMultipart.MIMEMultipartParser(handler, resp, size, 65536)
+            parser.parse()
+            return _dummy_success_stat(host_id)
 
     def exit(self):
         """
@@ -549,34 +567,42 @@ class ngamsPClient:
 
                          - but it is up to the DPPI to interpret
                          these (string).
-
-        containerName:   Name of a container to retrieve
-                         (string).
-
-        cmd:             The actual command to send.
-                         (string).
-
-        Returns:         NG/AMS Status object (ngamsStatus).
         """
-        # If the target file is not specified, we give the
-        # current working directory as target.
-        pars = []
-        if (targetFile == ""): targetFile = os.path.abspath(os.curdir)
+        pars = [("file_id", fileId)]
+        if fileVersion != -1:
+            pars.append(("file_version", str(fileVersion)))
+        if processing:
+            pars.append(("processing", processing))
+            if processingPars:
+                pars.append(("processingPars", processingPars))
 
-        logger.debug('Requesting data with cmd=%s, fileId=%s, containerId=%s, containerName=%s', cmd, fileId, containerId, containerName)
-        if cmd == NGAMS_RETRIEVE_CMD:
-            if fileId: pars.append(["file_id", fileId])
-        elif cmd == 'CRETRIEVE':
-            if containerId: pars.append(["container_id", containerId])
-            if containerName: pars.append(["container_name", containerName])
+        targetFile = targetFile or '.'
 
-        if (fileVersion != -1): pars.append(["file_version", str(fileVersion)])
-        if (processing != ""):
-            pars.append(["processing", processing])
-            if (processingPars != ""):
-                pars.append(["processingPars", processingPars])
+        resp, host, port = self.get('RETRIEVE', pars)
+        host_id = "%s:%d" % (host, port)
+        with contextlib.closing(resp):
 
-        return self.sendCmd(cmd, targetFile, pars)
+            if resp.status != NGAMS_HTTP_SUCCESS:
+                return ngamsStatus.ngamsStatus().unpackXmlDoc(resp.read(), 1)
+
+            # If the target path is a directory, take the filename
+            # of the incoming data as the filename
+            fname = targetFile
+            if os.path.isdir(fname):
+                cdisp = resp.getheader('Content-Disposition')
+                parts = ngamsLib.parseHttpHdr(cdisp)
+                if 'filename' not in parts:
+                    msg = "Missing or invalid Content-Disposition header in HTTP response"
+                    raise Exception(msg)
+                fname = os.path.join(fname, os.path.basename(parts['filename']))
+
+            # Dump the data into the target file
+            readf = functools.partial(resp.read, 65536)
+            with open(fname, 'wb') as f:
+                for buf in iter(readf, ''):
+                    f.write(buf)
+
+            return _dummy_success_stat(host_id)
 
 
     def status(self):
@@ -675,50 +701,33 @@ class ngamsPClient:
         while redirects < 5:
 
             # Last result was not a redirect, return
-            if reply != NGAMS_HTTP_REDIRECT:
-
-                # Prepare the 
-                if data and "<?xml" in data:
-                    return ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
-
-                # Create a dummy reply. This can be removed when the server
-                # sends back a multipart message which always contains the
-                # NG/AMS Status apart from the data at a RETRIEVE Request.
-                stat = ngamsStatus.ngamsStatus().\
-                       setDate(toiso8601()).\
-                       setVersion(getNgamsVersion()).setHostId(host).\
-                       setStatus(NGAMS_SUCCESS).\
-                       setMessage("Successfully handled request").\
-                       setState(NGAMS_ONLINE_STATE).\
-                       setSubState(NGAMS_IDLE_SUBSTATE)
-                if data:
-                    stat.setData(data)
-
-                return stat
+            if resp.status != NGAMS_HTTP_REDIRECT:
+                return resp, host, port
 
             # Get the host + port of the alternative URL, and send
             # the same query again.
-            hdrDic = ngamsLib.httpMsgObj2Dic(hdrs)
-            host, port = hdrDic["location"].split("/")[2].split(":")
+            location = resp.getheaders()['Location']
+            host, port = location.split("/")[2].split(":")
             port = int(port)
             logger.info("Redirecting to NG/AMS running on %s:%d", host, port)
 
             redirects += 1
-            reply, msg, hdrs, data = self.do_get(host, port, cmd, pars, outputFile, additional_hdrs)
+            resp = self.do_get(host, port, cmd, pars, hdrs)
 
         raise Exception("Too many redirections, aborting")
 
 
-    def do_get(self, host, port, cmd, pars, output, additional_hdrs):
+    def do_get(self, host, port, cmd, pars, hdrs):
 
         auth = None
         if self.auth is not None:
             auth = "Basic %s" % self.auth
 
         start = time.time()
-        res = ngamsLib.httpGet(host, port, cmd, pars, output, None, self.timeout, auth, additional_hdrs)
+        res = ngamsLib.httpGet(host, port, cmd, pars=pars, hdrs=hdrs,
+                               timeout=self.timeout, auth=auth)
         delta = time.time() - start
-        logger.debug("Command: %s/%s to %s:%d handled in %.3fs", cmd, str(pars), host, port, delta)
+        logger.debug("Command: %s to %s:%d handled in %.3f [s]", cmd, host, port, delta)
         return res
 
 
