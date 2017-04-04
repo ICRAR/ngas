@@ -618,6 +618,32 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             return fromiso8601(res[0][0], local=True)
         return None
 
+    def getFileSize(self,
+                   fileId,
+                   fileVersion):
+        """
+        Get the ingestion date for the file.
+
+        diskId:         ID of disk hosting the file (string).
+
+        fileId:         ID of file to be deleted. No wildcards accepted
+                        (string).
+
+        fileVersion:    Version of file to delete (integer)
+
+        Returns:        Ingestion date for file or None if file not found
+                        (string/ISO 8601 | None).
+        """
+        T = TRACE()
+
+        sql = "SELECT file_size FROM ngas_files WHERE file_id={0} AND file_version={1}"
+        res = self.query2(sql, args=(fileId, fileVersion))
+        if res:
+            if (res[0][0] == None):
+                return None
+            return res[0][0]
+        return None
+
     def addFileToContainer(self, containerId, fileId, force):
         """
         Adds the file pointed by fileId to the container
