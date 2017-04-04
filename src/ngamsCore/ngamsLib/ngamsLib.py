@@ -302,6 +302,9 @@ def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
 
         url = cmd
         if pars:
+            # urlib.urlencode expects tuple elements (if pars is a list)
+            if not hasattr(pars, 'items'):
+                pars = [(p[0], p[1]) for p in pars]
             pars = urllib.urlencode(pars)
             url += '?' + pars
 
@@ -341,14 +344,14 @@ def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
         return [reply, msg, hdrs, data]
 
 
-def httpPostUrl(url, data, mimeType, pars=[], hdrs={},
+def httpPostUrl(url, data, mimeType, hdrs={},
                 timeout=None, contDisp=None, auth=None):
     """
     Like `httpPost` but specifies a HTTP url instead of a combination of
     host, port and command.
     """
     url = urlparse.urlparse(url)
-    pars = [] if not url.query else urlparse.parse_qs(url.query)
+    pars = [] if not url.query else urlparse.parse_qsl(url.query)
     return httpPost(url.hostname, url.port, url.path, data, mimeType,
                     pars=pars, hdrs=hdrs, timeout=timeout,
                     contDisp=contDisp, auth=auth)

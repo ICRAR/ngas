@@ -140,7 +140,7 @@ class ngamsPClient:
         if is_known_pull_url(fileUri):
             pars.append(('filename', fileUri))
             if mimeType:
-                pars.append(["mime_type", mimeType])
+                pars.append(("mime_type", mimeType))
             return self.sendCmd(cmd, pars=pars)
 
         # pushes are POSTs
