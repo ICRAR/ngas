@@ -1145,7 +1145,7 @@ class ngamsTestSuite(unittest.TestCase):
                 if stat.getState() == state: break
             try:
                 stat = pCl.status()
-            except Exception:
+            except socket.error:
                 logger.debug("Polled server - not yet running ...")
                 time.sleep(0.2)
 
