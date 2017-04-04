@@ -68,17 +68,20 @@ def is_known_pull_url(s):
            s.startswith('https:') or \
            s.startswith('ftp:')
 
-def _dummy_stat(host_id, status, msg):
-    return ngamsStatus.ngamsStatus().\
+def _dummy_stat(host_id, status, msg, data=None):
+    stat = ngamsStatus.ngamsStatus().\
            setDate(toiso8601()).\
            setVersion(getNgamsVersion()).setHostId(host_id).\
            setStatus(status).\
            setMessage(msg).\
            setState(NGAMS_ONLINE_STATE).\
            setSubState(NGAMS_IDLE_SUBSTATE)
+    if data:
+        stat.setData(data)
+    return stat
 
-def _dummy_success_stat(host_id):
-    return _dummy_stat(host_id, NGAMS_SUCCESS, "Successfully handled request")
+def _dummy_success_stat(host_id, data=None):
+    return _dummy_stat(host_id, NGAMS_SUCCESS, "Successfully handled request", data)
 
 def _dummy_failure_stat(host_id, cmd):
     logger.debug("HTTP status != 200, creating dummy NGAS_FAILURE status")
@@ -151,7 +154,7 @@ class ngamsPClient:
 
         logger.info("Archiving file with URI: %s", fileUri)
 
-        pars = pars or []
+        pars = list(pars)
         pars.append(('async', '1' if async else '0'))
         pars.append(("no_versioning", '1' if noVersioning else '0'))
 
@@ -176,6 +179,7 @@ class ngamsPClient:
         Like `archive`, but the data to sent is in memory instead of in a file.
         Thus, a filename to be used for storing on the server side must be given.
         """
+        pars = list(pars)
         pars.append(("filename", os.path.basename(filename)))
         return self.post(cmd, mimeType, data, pars=pars)
 
@@ -202,16 +206,16 @@ class ngamsPClient:
         """
         baseName = os.path.basename(fileUri)
         logger.info("Re-archiving file with URI: %s", baseName)
-        locPars = []
-        for par in pars: locPars.append(par)
+
+        pars = list(pars)
         if is_known_pull_url(fileUri):
             tmpFileInfo = ngamsFileInfo.ngamsFileInfo().\
                           unpackXmlDoc(fileInfoXml)
             encFileInfo = base64.b64encode(fileInfoXml)
-            locPars.append([NGAMS_HTTP_PAR_FILENAME, fileUri])
+            pars.append([NGAMS_HTTP_PAR_FILENAME, fileUri])
             httpHdrs = {NGAMS_HTTP_HDR_FILE_INFO: encFileInfo,
                         NGAMS_HTTP_HDR_CONTENT_TYPE: tmpFileInfo.getFormat()}
-            res = self.get_status(NGAMS_REARCHIVE_CMD, pars=locPars, hdrs=httpHdrs)
+            res = self.get_status(NGAMS_REARCHIVE_CMD, pars=pars, hdrs=httpHdrs)
         else:
             msg = "Rearchive Push is not yet supported!"
             raise Exception(msg)
@@ -550,7 +554,7 @@ class ngamsPClient:
         return self.get_status(NGAMS_REGISTER_CMD, pars=pars)
 
 
-    def retrieve(self, fileId, fileVersion=-1,
+    def retrieve(self, fileId, fileVersion=-1, pars=[],
                  targetFile=None, processing=None, processingPars=None):
         """
         Request file `fileId` from the NG/AMS Server, store it locally
@@ -564,7 +568,9 @@ class ngamsPClient:
         as the processing plug-in name and parameters to be applied to the
         retrieved data *on the server side*, respectively.
         """
-        pars = [("file_id", fileId)]
+
+        pars = list(pars)
+        pars.append(("file_id", fileId))
         if fileVersion != -1:
             pars.append(("file_version", str(fileVersion)))
         if processing:
@@ -665,17 +671,14 @@ class ngamsPClient:
         return self.get_status(NGAMS_UNSUBSCRIBE_CMD, pars=pars)
 
 
-    def get_status(self, cmd, outputFile=None, pars=[], hdrs=[]):
+    def get_status(self, cmd, pars=[], hdrs=[]):
         """
         Sends a GET command to the NGAS server, receives the reply
         and returns it as a ngamsStatus object.
         """
 
-        resp, host, port = self.get(cmd, outputFile, pars, hdrs)
+        resp, host, port = self.get(cmd, list(pars), hdrs)
         host_id = "%s:%d" % (host, port)
-
-        if resp.status != NGAMS_HTTP_SUCCESS:
-            return _dummy_failure_stat(host_id, cmd)
 
         # If the reply is a ngamsStatus document read it and return it
         data = resp.read()
@@ -683,12 +686,11 @@ class ngamsPClient:
             logger.debug("Parsing incoming HTTP data as ngamsStatus")
             return ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
 
-        # Create a dummy success
-        logger.debug("Creating dummy NGAS_SUCCESS status")
-        stat = _dummy_success_stat(host_id)
-        if data:
-            stat.setData(data)
-        return stat
+        # Otherwise, and depending on the HTTP code, we create either
+        # a dummy successful or failed status object
+        if resp.status != NGAMS_HTTP_SUCCESS:
+            return _dummy_failure_stat(host_id, cmd)
+        return _dummy_success_stat(host_id, data)
 
     def get(self, cmd, pars=[], hdrs=[]):
         """
@@ -727,7 +729,7 @@ class ngamsPClient:
 
             # Get the host + port of the alternative URL, and send
             # the same query again.
-            location = resp.getheaders()['Location']
+            location = resp.getheader('Location')
             host, port = location.split("/")[2].split(":")
             port = int(port)
             logger.info("Redirecting to NG/AMS running on %s:%d", host, port)
