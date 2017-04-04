@@ -170,7 +170,7 @@ class ngamsPClient:
         mt = mimeType or NGAMS_ARCH_REQ_MT
         pars.append(("filename", os.path.basename(fileUri)))
         with open(fileUri, "rb") as f:
-            return self.post(cmd, mt, f, pars=pars)
+            return self._post(cmd, mt, f, pars=pars)
 
     def archive_data(self, data, filename, mimeType,
                      async=False, noVersioning=0,
@@ -181,7 +181,7 @@ class ngamsPClient:
         """
         pars = list(pars)
         pars.append(("filename", os.path.basename(filename)))
-        return self.post(cmd, mimeType, data, pars=pars)
+        return self._post(cmd, mimeType, data, pars=pars)
 
     def rearchive(self,
                   fileUri,
@@ -271,7 +271,7 @@ class ngamsPClient:
         cinfo = ngamsMIMEMultipart.cinfo_from_filesystem(dirname, files_mtype)
         stream = ngamsMIMEMultipart.ContainerReader(cinfo)
 
-        return self.post('CARCHIVE', NGAMS_CONT_MT, stream)
+        return self._post('CARCHIVE', NGAMS_CONT_MT, stream)
 
     def cappend(self, fileId, fileIdList='', containerId=None, containerName=None, force=False, closeContainer=False):
         """
@@ -310,7 +310,7 @@ class ngamsPClient:
             fileListXml = doc.toxml(encoding='utf-8')
 
             # And send it out!
-            return self.post('CAPPEND', 'text/xml', fileListXml, pars=pars)
+            return self._post('CAPPEND', 'text/xml', fileListXml, pars=pars)
 
     def ccreate(self, containerName, parentContainerId=None, containerHierarchy=None):
         """
@@ -328,7 +328,7 @@ class ngamsPClient:
             return self.get_status('CCREATE', pars=pars)
         else:
             contHierarchyXml = containerHierarchy
-            return self.post('CCREATE', 'text/xml', contHierarchyXml, pars=pars)
+            return self._post('CCREATE', 'text/xml', contHierarchyXml, pars=pars)
 
     def cdestroy(self, containerName, containerId=None, recursive=False):
         """
@@ -401,7 +401,7 @@ class ngamsPClient:
             fileListXml = doc.toxml(encoding='utf-8')
 
             # And send it out!
-            return self.post('CREMOVE', 'text/xml', fileListXml, pars=pars)
+            return self._post('CREMOVE', 'text/xml', fileListXml, pars=pars)
 
 
     def cretrieve(self, containerName, containerId=None, targetDir='.'):
@@ -422,7 +422,7 @@ class ngamsPClient:
         if containerName:
             pars.append(("container_name", containerName))
 
-        resp, host, port = self.get('CRETRIEVE', pars=pars)
+        resp, host, port = self._get('CRETRIEVE', pars=pars)
         host_id = "%s:%d" % (host, port)
         with contextlib.closing(resp):
             if resp.status != NGAMS_HTTP_SUCCESS:
@@ -580,7 +580,7 @@ class ngamsPClient:
 
         targetFile = targetFile or '.'
 
-        resp, host, port = self.get('RETRIEVE', pars)
+        resp, host, port = self._get('RETRIEVE', pars)
         host_id = "%s:%d" % (host, port)
         with contextlib.closing(resp):
 
@@ -677,7 +677,7 @@ class ngamsPClient:
         and returns it as a ngamsStatus object.
         """
 
-        resp, host, port = self.get(cmd, list(pars), hdrs)
+        resp, host, port = self._get(cmd, list(pars), hdrs)
         host_id = "%s:%d" % (host, port)
 
         # If the reply is a ngamsStatus document read it and return it
@@ -692,7 +692,7 @@ class ngamsPClient:
             return _dummy_failure_stat(host_id, cmd)
         return _dummy_success_stat(host_id, data)
 
-    def get(self, cmd, pars=[], hdrs=[]):
+    def _get(self, cmd, pars=[], hdrs=[]):
         """
         Send a command to the NG/AMS Server and receives the reply.
         """
@@ -711,7 +711,7 @@ class ngamsPClient:
         for i,host_port in enumerate(serverList):
             host, port = host_port
             try:
-                resp = self.do_get(host, port, cmd, pars, hdrs)
+                resp = self._do_get(host, port, cmd, pars, hdrs)
                 break
             except socket.error:
                 if i == len(serverList) - 1:
@@ -735,12 +735,12 @@ class ngamsPClient:
             logger.info("Redirecting to NG/AMS running on %s:%d", host, port)
 
             redirects += 1
-            resp = self.do_get(host, port, cmd, pars, hdrs)
+            resp = self._do_get(host, port, cmd, pars, hdrs)
 
         raise Exception("Too many redirections, aborting")
 
 
-    def do_get(self, host, port, cmd, pars, hdrs):
+    def _do_get(self, host, port, cmd, pars, hdrs):
 
         auth = None
         if self.auth is not None:
@@ -754,7 +754,7 @@ class ngamsPClient:
         return res
 
 
-    def do_post(self, host, port, cmd, mimeType, data, pars):
+    def _do_post(self, host, port, cmd, mimeType, data, pars):
 
         auth = None
         if self.auth is not None:
@@ -768,7 +768,7 @@ class ngamsPClient:
         return res
 
 
-    def post(self, cmd, mime_type, data, pars=[]):
+    def _post(self, cmd, mime_type, data, pars=[]):
 
         if self.timeout:
             pars.append(["time_out", str(self.timeout)] )
@@ -782,7 +782,7 @@ class ngamsPClient:
         for i,host_port in enumerate(servers):
             host, port = host_port
             try:
-                _,_,_,data = self.do_post(host, port, cmd, mime_type, data, pars)
+                _,_,_,data = self._do_post(host, port, cmd, mime_type, data, pars)
                 return ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
             except socket.error:
                 if i == len(servers) - 1:
