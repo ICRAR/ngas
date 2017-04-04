@@ -96,6 +96,9 @@ class MIMEMultipartHandler(object):
 
 
 class ContainerBuilderHandler(MIMEMultipartHandler):
+    """
+    A MIMEMultipartHandler that builds a hierarchy of ngamsContainer objects
+    """
 
     def __init__(self):
         self._container = None
@@ -126,6 +129,10 @@ class ContainerBuilderHandler(MIMEMultipartHandler):
         return self._root
 
 class FilesystemWriterHandler(ContainerBuilderHandler):
+    """
+    A ContainerBuilderHandler that also writes the contents of the incoming
+    stream into the filesystem following the hierarchy of containers/files
+    """
 
     def __init__(self, writeBlockSize, calculateCRC=False, basePath="."):
         ContainerBuilderHandler.__init__(self)
@@ -419,6 +426,10 @@ class MIMEMultipartParser(object):
 
 
 class BufferedReader(object):
+    """
+    Base class for readers that accumulate contents before returning them
+    via `read`.
+    """
 
     def __init__(self):
         self.buf = b''
@@ -435,6 +446,10 @@ class BufferedReader(object):
         return ret
 
 class FileReader(BufferedReader):
+    """
+    Class that returns a MIME message from an existing `file_information`
+    object through its `read` method.
+    """
 
     def __init__(self, finfo):
         super(FileReader, self).__init__()
@@ -461,6 +476,10 @@ class FileReader(BufferedReader):
             self.buf += buf
 
 class ContainerReader(BufferedReader):
+    """
+    Class that returns a MIME Multipart message from an existing
+    `container_information` object through its `read` method.
+    """
 
     def __init__(self, cinfo):
         super(ContainerReader, self).__init__()
