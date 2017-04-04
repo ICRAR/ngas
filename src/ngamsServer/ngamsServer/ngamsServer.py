@@ -34,6 +34,7 @@ services for the NG/AMS Server.
 
 import BaseHTTPServer
 import SocketServer
+import contextlib
 import logging
 import math
 import os
@@ -1990,12 +1991,12 @@ class ngamsServer:
                 reqTimeOut = float(reqTimeOut) if reqTimeOut else def_timeout
                 reqTimeOut = reqTimeOut if reqTimeOut >= 0 else def_timeout
             if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
-                httpStatCode, httpStatMsg, httpHdrs, data =\
-                              ngamsLib.httpGet(contactAddr, contactPort,
-                                               reqPropsObj.getCmd(), pars,
-                                               "",self.getCfg().getBlockSize(),
-                                               timeOut=reqTimeOut,
-                                               authHdrVal=authHttpHdrVal)
+                resp = ngamsLib.httpGet(contactAddr, contactPort, reqPropsObj.getCmd(),
+                                       pars=pars, timeout=reqTimeOut,
+                                       auth=authHttpHdrVal)
+                with contextlib.closing(resp):
+                    httpStatCode, httpStatMsg, data = resp.status, resp.reason, resp.read()
+                httpHdrs = {h[0]: h[1] for h in resp.getheaders()}
             else:
                 # It's a POST request, forward request + possible data.
                 contLen = reqPropsObj.getSize()
@@ -2033,10 +2034,9 @@ class ngamsServer:
                                mimeType, httpHdrs)
 
             return httpStatCode, httpStatMsg, httpHdrs, data
-        except Exception, e:
-            errMsg = "Problem occurred forwarding command: " + cmdInfo +\
-                     ". Error: " + str(e)
-            raise Exception, errMsg
+        except Exception:
+            logger.exception("Problem occurred forwarding command %s", reqPropsObj.getCmd())
+            raise
 
 
     def genStatus(self,

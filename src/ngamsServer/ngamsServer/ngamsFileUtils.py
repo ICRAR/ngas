@@ -33,6 +33,7 @@ functions, to deal with archive files.
 """
 
 import binascii
+import contextlib
 import functools
 import logging
 import os
@@ -273,11 +274,11 @@ def _locateArchiveFile(srvObj,
                     pars.append(["file_version", fileInfoObj.getFileVersion()])
                 ipAddress = hostDic[host].getIpAddress()
                 authHdr = ngamsSrvUtils.genIntAuthHdr(srvObj)
-                statusInfo = ngamsLib.httpGet(ipAddress, port,
-                                              NGAMS_STATUS_CMD, pars,
-                                              authHdrVal = authHdr)
-                statusObj = ngamsStatus.ngamsStatus().\
-                            unpackXmlDoc(statusInfo[3], 1)
+                resp = ngamsLib.httpGet(ipAddress, port, NGAMS_STATUS_CMD,
+                                        pars=pars, auth=authHdr)
+                with contextlib.closing(resp):
+                    data = resp.read()
+                statusObj = ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
 
                 if logger.isEnabledFor(logging.DEBUG):
                     logger.debug("Result of File Access Query: %s",

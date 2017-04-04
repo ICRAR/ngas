@@ -32,10 +32,12 @@
 Contains higher level common functions.
 """
 
+import contextlib
 import logging
 import os
 import re
 import shutil
+import socket
 import string
 import threading
 import random
@@ -47,7 +49,7 @@ from ngamsCore import TRACE, genLog, NGAMS_HOST_LOCAL,\
     NGAMS_PROC_DIR, NGAMS_UNKNOWN_MT, NGAMS_STAGING_DIR, NGAMS_TMP_FILE_PREFIX,\
     NGAMS_PICKLE_FILE_EXT, checkCreatePath, checkAvailDiskSpace,\
     getFileSize, NGAMS_BAD_FILES_DIR, NGAMS_BAD_FILE_PREFIX, NGAMS_STATUS_CMD,\
-    mvFile, rmFile, toiso8601
+    mvFile, rmFile, toiso8601, NGAMS_HTTP_UNAUTH, NGAMS_HTTP_SUCCESS
 import ngamsSmtpLib
 import ngamsLib
 import ngamsHostInfo, ngamsStatus
@@ -755,51 +757,28 @@ def performBackLogBuffering(ngamsCfgObj,
 def pingServer(hostId,
                ipAddress,
                portNo,
-               timeOut):
+               timeout):
     """
     The function tries to ping (sends STATUS command) to the NG/AMS Server
     running on the given host using the given port number.
-
-    hostId:       Name of host where the NG/AMS Server to ping is
-                  running (string).
-
-    ipAddress:    IP Address of the host to wake up (string).
-
-    portNo:       Port number used by NG/AMS Server to ping (integer).
-
-    timeOut:      Time-out in seconds to apply waiting for the server to
-                  respond. If this is exhausted an exception is
-                  thrown (integer).
-
-    Returns:      Void.
     """
-    logger.debug("Pinging NG/AMS Server: %s/%s. Timeout: %s",
-                 hostId, str(portNo), str(timeOut))
+    logger.debug("Pinging NG/AMS Server: %s/%d. Timeout: .3f [s]", hostId, portNo, timeout)
+
     startTime = time.time()
-    gotResponse = 0
-    resp = stat = ""
-    while (1):
+    while True:
         try:
-            resp, stat, msgObj, data =\
-                  ngamsLib.httpGet(ipAddress, portNo, NGAMS_STATUS_CMD)
-        except Exception, e:
-            stat = "ERROR"
-        # If we get a "HTTP Error 401: Unauthorized" from the remote server,
-        # we also consider it as 'woken up'.
-        if (((str(stat) == "OK") and (str(resp) == "200")) or
-            (str(resp) == "401")):
-            gotResponse = 1
-            break
-        elif ((time.time() - startTime) >= timeOut):
-            break
-        else:
+            resp = ngamsLib.httpGet(ipAddress, portNo, NGAMS_STATUS_CMD)
+            with contextlib.closing(resp):
+                if resp.status in (NGAMS_HTTP_SUCCESS, NGAMS_HTTP_UNAUTH):
+                    logger.debug("Successfully pinged NG/AMS Server")
+                    return
+        except socket.error:
+            if (time.time() - startTime) >= timeout:
+                break
             time.sleep(0.2)
-    if (not gotResponse):
-        errMsg = "Error: NG/AMS Server running on host: " + hostId + " " +\
-                 "using port number: " + str(portNo) + " did not respond " +\
-                 "within: " + str(timeOut) + "s"
-        raise Exception, errMsg
-    logger.debug("Successfully pinged NG/AMS Server")
+
+    errMsg = "NGAS Server running on %s:%d did not respond within %.3f [s]"
+    raise Exception(errMsg % (ipAddress, portNo, timeout))
 
 
 def stdReqTimeStatUpdate(srvObj,

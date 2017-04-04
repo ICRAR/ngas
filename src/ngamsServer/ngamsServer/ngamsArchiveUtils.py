@@ -33,6 +33,7 @@
 Contains utility functions used in connection with the handling of
 the file archiving.
 """
+import contextlib
 import cPickle
 import glob
 import logging
@@ -982,12 +983,11 @@ def findTargetNode(hostId,
                      "data file with mime-type: %s ..."
             logger.debug(logMsg, node, str(port), mimeType)
             try:
-                code, msg, hdrs, data = ngamsLib.\
-                                        httpGet(node, port,
-                                                NGAMS_ARCHIVE_CMD,
-                                                pars=[["probe", "1"],
-                                                      ["mime_type", mimeType]],
-                                                timeOut=10)
+                pars = [("probe", "1"), ("mime_type", mimeType)]
+                resp =  ngamsLib.httpGet(node, port, NGAMS_ARCHIVE_CMD,
+                                         pars=pars, timeout=10)
+                with contextlib.closing(resp):
+                    data = resp.read()
 
                 # OK, request was successfully handled. We assume that
                 # the data is an NG/AMS XML Status Document.
