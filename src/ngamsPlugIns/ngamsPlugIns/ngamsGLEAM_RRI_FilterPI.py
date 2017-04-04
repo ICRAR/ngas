@@ -122,7 +122,7 @@ def ngamsGLEAM_RRI_FilterPI(srvObj,
         try:
             if (fileVersion == -1):
                 fileVersion = 1
-            rest = client.sendCmd(NGAMS_STATUS_CMD, 1, "", [["file_id", fileId], ["file_version", fileVersion]])
+            rest = client.get_status(NGAMS_STATUS_CMD, pars=[["file_id", fileId], ["file_version", fileVersion]])
             # since the queue will be sorted based on ingestion date, this will ensure the versions are sent by order:
             # e.g. version1, version2, version3, otherwise, this method will have disordered versions sent
             if (rest.getStatus().find(NGAMS_FAILURE) != -1):

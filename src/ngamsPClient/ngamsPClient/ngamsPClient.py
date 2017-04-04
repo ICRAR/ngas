@@ -49,7 +49,8 @@ import time
 from xml.dom import minidom
 
 from ngamsLib import ngamsLib, ngamsFileInfo, ngamsStatus, ngamsMIMEMultipart
-from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD
+from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD,\
+    NGAMS_HTTP_SUCCESS
 from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CONTENT_TYPE, \
     NGAMS_LABEL_CMD, NGAMS_ONLINE_CMD, NGAMS_OFFLINE_CMD, NGAMS_REMDISK_CMD, \
     NGAMS_REMFILE_CMD, NGAMS_REGISTER_CMD, NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD, \
@@ -66,6 +67,22 @@ def is_known_pull_url(s):
            s.startswith('http:') or \
            s.startswith('https:') or \
            s.startswith('ftp:')
+
+def _dummy_stat(host_id, status, msg):
+    return ngamsStatus.ngamsStatus().\
+           setDate(toiso8601()).\
+           setVersion(getNgamsVersion()).setHostId(host_id).\
+           setStatus(status).\
+           setMessage(msg).\
+           setState(NGAMS_ONLINE_STATE).\
+           setSubState(NGAMS_IDLE_SUBSTATE)
+
+def _dummy_success_stat(host_id):
+    return _dummy_stat(host_id, NGAMS_SUCCESS, "Successfully handled request")
+
+def _dummy_failure_stat(host_id, cmd):
+    logger.debug("HTTP status != 200, creating dummy NGAS_FAILURE status")
+    return _dummy_stat(host_id, NGAMS_FAILURE, "Failed to handle command %s" % (cmd,))
 
 class ngamsPClient:
     """
@@ -143,7 +160,7 @@ class ngamsPClient:
             pars.append(('filename', fileUri))
             if mimeType:
                 pars.append(("mime_type", mimeType))
-            return self.sendCmd(cmd, pars=pars)
+            return self.get_status(cmd, pars=pars)
 
         # pushes are POSTs
         # fileUri is simply a file path
@@ -192,9 +209,9 @@ class ngamsPClient:
                           unpackXmlDoc(fileInfoXml)
             encFileInfo = base64.b64encode(fileInfoXml)
             locPars.append([NGAMS_HTTP_PAR_FILENAME, fileUri])
-            httpHdrs = [[NGAMS_HTTP_HDR_FILE_INFO, encFileInfo],
-                        [NGAMS_HTTP_HDR_CONTENT_TYPE, tmpFileInfo.getFormat()]]
-            res = self.sendCmd(NGAMS_REARCHIVE_CMD, pars=locPars, hdrs=httpHdrs)
+            httpHdrs = {NGAMS_HTTP_HDR_FILE_INFO: encFileInfo,
+                        NGAMS_HTTP_HDR_CONTENT_TYPE: tmpFileInfo.getFormat()}
+            res = self.get_status(NGAMS_REARCHIVE_CMD, pars=locPars, hdrs=httpHdrs)
         else:
             msg = "Rearchive Push is not yet supported!"
             raise Exception(msg)
@@ -230,7 +247,7 @@ class ngamsPClient:
         if (diskId): pars.append(["disk_id", diskId])
         if (fileVersion > 0): pars.append(["file_version", fileVersion])
         if (targetDiskId): pars.append(["target_disk_id", targetDiskId])
-        return self.sendCmd(NGAMS_CLONE_CMD, pars=pars)
+        return self.get_status(NGAMS_CLONE_CMD, pars=pars)
 
     def carchive(self, dirname, files_mtype):
         """
@@ -276,7 +293,7 @@ class ngamsPClient:
 
         if fileId:
             pars.append(['file_id', fileId])
-            return self.sendCmd('CAPPEND', pars=pars)
+            return self.get_status('CAPPEND', pars=pars)
         else:
             # Convert the list of file IDs to an XML document
             doc = minidom.Document()
@@ -304,7 +321,7 @@ class ngamsPClient:
             pars.append(['container_name', containerName])
             if parentContainerId:
                 pars.append(['parent_container_id', parentContainerId])
-            return self.sendCmd('CCREATE', pars=pars)
+            return self.get_status('CCREATE', pars=pars)
         else:
             contHierarchyXml = containerHierarchy
             return self.post('CCREATE', 'text/xml', contHierarchyXml, pars=pars)
@@ -325,7 +342,7 @@ class ngamsPClient:
         if recursive:
             pars.append(['recursive', 1])
 
-        return self.sendCmd('CDESTROY', pars=pars)
+        return self.get_status('CDESTROY', pars=pars)
 
     def clist(self, containerName, containerId=None):
         """
@@ -345,7 +362,7 @@ class ngamsPClient:
         if containerName:
             pars.append(['container_name', containerName])
 
-        return self.sendCmd('CLIST', pars=pars)
+        return self.get_status('CLIST', pars=pars)
 
     def cremove(self, fileId, fileIdList='', containerId=None, containerName=None):
         """
@@ -367,7 +384,7 @@ class ngamsPClient:
 
         if fileId:
             pars.append(['file_id', fileId])
-            return self.sendCmd('CREMOVE', pars=pars)
+            return self.get_status('CREMOVE', pars=pars)
         else:
             # Convert the list of file IDs to an XML document
             doc = minidom.Document()
@@ -419,7 +436,7 @@ class ngamsPClient:
 
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_EXIT_CMD)
+        return self.get_status(NGAMS_EXIT_CMD)
 
 
     def init(self):
@@ -428,7 +445,7 @@ class ngamsPClient:
 
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_INIT_CMD)
+        return self.get_status(NGAMS_INIT_CMD)
 
 
     def label(self,
@@ -444,7 +461,7 @@ class ngamsPClient:
         Returns:   NG/AMS Status object (ngamsStatus).
         """
         pars = [("slot_id", slotId), ("host_id", hostId)]
-        return self.sendCmd(NGAMS_LABEL_CMD, pars=pars)
+        return self.get_status(NGAMS_LABEL_CMD, pars=pars)
 
 
     def online(self):
@@ -453,7 +470,7 @@ class ngamsPClient:
 
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_ONLINE_CMD)
+        return self.get_status(NGAMS_ONLINE_CMD)
 
 
     def offline(self, force=False):
@@ -466,7 +483,7 @@ class ngamsPClient:
         Returns:   NG/AMS Status object (ngamsStatus).
         """
         pars = [('force', "1" if force else "0")]
-        return self.sendCmd(NGAMS_OFFLINE_CMD, pars=pars)
+        return self.get_status(NGAMS_OFFLINE_CMD, pars=pars)
 
 
     def remDisk(self,
@@ -484,7 +501,7 @@ class ngamsPClient:
         Returns:   NG/AMS Status object (ngamsStatus).
         """
         pars = [("disk_id", diskId), ("execute", execute)]
-        return self.sendCmd(NGAMS_REMDISK_CMD, pars=pars)
+        return self.get_status(NGAMS_REMDISK_CMD, pars=pars)
 
 
     def remFile(self,
@@ -514,7 +531,7 @@ class ngamsPClient:
                 ("execute", "1" if execute else "0")]
         if fileVersion != -1:
             pars.append(("file_version", fileVersion))
-        return self.sendCmd(NGAMS_REMFILE_CMD, pars=pars)
+        return self.get_status(NGAMS_REMFILE_CMD, pars=pars)
 
 
     def register(self, path, async=False):
@@ -530,7 +547,7 @@ class ngamsPClient:
         Returns:   NG/AMS Status object (ngamsStatus).
         """
         pars = [("path", path), ('async', '1' if async else '0')]
-        return self.sendCmd(NGAMS_REGISTER_CMD, pars=pars)
+        return self.get_status(NGAMS_REGISTER_CMD, pars=pars)
 
 
     def retrieve2File(self,
@@ -614,8 +631,7 @@ class ngamsPClient:
         """
         T = TRACE()
 
-        stat = self.sendCmd(NGAMS_STATUS_CMD)
-        return stat
+        return self.get_status(NGAMS_STATUS_CMD)
 
 
     def subscribe(self,
@@ -653,7 +669,7 @@ class ngamsPClient:
             pars.append(("filter_plug_in", filterPlugIn))
         if filterPlugInPars:
             pars.append(("plug_in_pars", filterPlugInPars))
-        return self.sendCmd(NGAMS_SUBSCRIBE_CMD, pars=pars)
+        return self.get_status(NGAMS_SUBSCRIBE_CMD, pars=pars)
 
 
     def unsubscribe(self,
@@ -667,10 +683,35 @@ class ngamsPClient:
         Returns:            NG/AMS Status object (ngamsStatus).
         """
         pars = [("url", url)]
-        return self.sendCmd(NGAMS_UNSUBSCRIBE_CMD, pars=pars)
+        return self.get_status(NGAMS_UNSUBSCRIBE_CMD, pars=pars)
 
 
-    def sendCmd(self, cmd, outputFile=None, pars=[], additional_hdrs=[]):
+    def get_status(self, cmd, outputFile=None, pars=[], hdrs=[]):
+        """
+        Sends a GET command to the NGAS server, receives the reply
+        and returns it as a ngamsStatus object.
+        """
+
+        resp, host, port = self.get(cmd, outputFile, pars, hdrs)
+        host_id = "%s:%d" % (host, port)
+
+        if resp.status != NGAMS_HTTP_SUCCESS:
+            return _dummy_failure_stat(host_id, cmd)
+
+        # If the reply is a ngamsStatus document read it and return it
+        data = resp.read()
+        if data and "<?xml" in data:
+            logger.debug("Parsing incoming HTTP data as ngamsStatus")
+            return ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
+
+        # Create a dummy success
+        logger.debug("Creating dummy NGAS_SUCCESS status")
+        stat = _dummy_success_stat(host_id)
+        if data:
+            stat.setData(data)
+        return stat
+
+    def get(self, cmd, pars=[], hdrs=[]):
         """
         Send a command to the NG/AMS Server and receives the reply.
         """
@@ -689,7 +730,8 @@ class ngamsPClient:
         for i,host_port in enumerate(serverList):
             host, port = host_port
             try:
-                reply, msg, hdrs, data = self.do_get(host, port, cmd, pars, outputFile, additional_hdrs)
+                resp = self.do_get(host, port, cmd, pars, hdrs)
+                break
             except socket.error:
                 if i == len(serverList) - 1:
                     raise
@@ -887,10 +929,10 @@ def main():
     elif cmd == 'CRETRIEVE':
         stat = client.cretrieve(opts.container_name, opts.container_id, opts.output)
     elif (cmd == NGAMS_CACHEDEL_CMD):
-        pars.append(["disk_id", opts.disk_id])
-        pars.append(["file_id", opts.file_id])
-        pars.append(["file_version", str(opts.file_version)])
-        stat = client.sendCmd(cmd, pars=pars)
+        pars.append(("disk_id", opts.disk_id))
+        pars.append(("file_id", opts.file_id))
+        pars.append(("file_version", str(opts.file_version)))
+        stat = client.get_status(cmd, pars=pars)
     elif (cmd == NGAMS_CLONE_CMD):
         stat = client.clone(opts.file_id, opts.disk_id, opts.file_version, opts.async)
     elif (cmd == NGAMS_EXIT_CMD):
@@ -926,7 +968,7 @@ def main():
     elif (cmd == NGAMS_UNSUBSCRIBE_CMD):
         stat = client.unsubscribe(opts.url)
     else:
-        stat = client.sendCmd(cmd, pars=pars)
+        stat = client.get_status(cmd, pars=pars)
 
     if opts.verbose > 3:
         printStatus(stat)

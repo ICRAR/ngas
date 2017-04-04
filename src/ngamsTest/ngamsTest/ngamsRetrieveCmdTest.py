@@ -314,7 +314,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         sendPclCmd(port=8000).archive("src/SmallFile.fits")
         stat = sendPclCmd(port=8011).archive("src/SmallFile.fits")
         fileId = "TEST.2001-05-08T15:25:00.123"
-        stat = sendPclCmd(port=8000).sendCmd(NGAMS_RETRIEVE_CMD,
+        stat = sendPclCmd(port=8000).get_status(NGAMS_RETRIEVE_CMD,
                                              pars=[["file_id", fileId]])
         refStatFile = "ref/ngamsRemFileCmdTest_test_HttpRedirection_01_ref"
         tmpStatFile = saveInFile(None, filterDbStatus1(stat.dumpBuf()))
@@ -371,7 +371,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                    ["processing", "ngamsTest.ngamsTestDppi1"],
                    ["test_suite", "ngamsRetrieveCmdTest"],
                    ["test_case", "test_DppiProc_01"]]
-        stat = client.sendCmd(NGAMS_RETRIEVE_CMD, outputFile=outFile, pars=cmdPars)
+        stat = client.get_status(NGAMS_RETRIEVE_CMD, outputFile=outFile, pars=cmdPars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_01_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, result in file")
@@ -420,7 +420,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                    ["processing", "ngamsTest.ngamsTestDppi1"],
                    ["test_suite", "ngamsRetrieveCmdTest"],
                    ["test_case", "test_DppiProc_02"]]
-        stat = client.sendCmd(NGAMS_RETRIEVE_CMD, outputFile=outFile, pars=cmdPars)
+        stat = client.get_status(NGAMS_RETRIEVE_CMD, outputFile=outFile, pars=cmdPars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_02_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, result in buffer")
@@ -469,7 +469,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                    ["processing", "ngamsTest.ngamsTestDppi1"],
                    ["test_suite", "ngamsRetrieveCmdTest"],
                    ["test_case", "test_DppiProc_03"]]
-        stat = sendPclCmd(port=8000).sendCmd(NGAMS_RETRIEVE_CMD,
+        stat = sendPclCmd(port=8000).get_status(NGAMS_RETRIEVE_CMD,
                                              outputFile=outFile,
                                              pars=cmdPars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_03_01_ref"

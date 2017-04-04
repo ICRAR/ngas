@@ -129,7 +129,7 @@ def ngamsMWA_MIT_Priority_FilterPI(srvObj,
     client = ngamsPClient.ngamsPClient(host, port, timeOut = NGAMS_SOCK_TIMEOUT_DEF)
 
     try:
-        rest = client.sendCmd(NGAMS_STATUS_CMD, 1, "", [["file_id", fileId]])
+        rest = client.get_status(NGAMS_STATUS_CMD, pars=[["file_id", fileId]])
     except Exception:
         errMsg = "Error occurred during checking remote file status " +\
                      "ngamsMWACheckRemoteFilterPlugin"

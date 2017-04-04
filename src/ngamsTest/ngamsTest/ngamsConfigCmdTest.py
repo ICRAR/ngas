@@ -75,7 +75,7 @@ class ngamsConfigCmdTest(ngamsTestSuite):
         TODO: Check in Log File that low level logs are produced.
         """
         self.prepExtSrv()
-        statObj = sendPclCmd().sendCmd(NGAMS_CONFIG_CMD, pars = [["log_local_log_level", "4"]])
+        statObj = sendPclCmd().get_status(NGAMS_CONFIG_CMD, pars = [["log_local_log_level", "4"]])
         tmpStatFile = "tmp/ngamsConfigCmdTest_test_ChangeLocLogLev_1_1_tmp"
         refStatFile = "ref/ngamsConfigCmdTest_test_ChangeLocLogLev_1_1_ref"
         saveInFile(tmpStatFile, filterOutLines(statObj.dumpBuf(),

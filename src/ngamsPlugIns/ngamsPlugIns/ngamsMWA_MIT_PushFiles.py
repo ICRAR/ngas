@@ -139,7 +139,7 @@ def parseOptions():
 
 def hasMITGotIt(client, fileId):
     try:
-        rest = client.sendCmd(NGAMS_STATUS_CMD, 1, "", [["file_id", fileId]])
+        rest = client.get_status(NGAMS_STATUS_CMD, pars=[["file_id", fileId]])
     except Exception, e:
         errMsg = "Error occurred during checking remote file status " +\
                      "Exception: " + str(e)

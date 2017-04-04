@@ -1581,7 +1581,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # In the case we asked for no checksum (file_version==5)
         # we check that the checksum is now calculated
         for version in range(1, 6):
-            stat = client.sendCmd('CHECKFILE', pars = [["file_id", file_id], ["file_version", version]])
+            stat = client.get_status('CHECKFILE', pars=[("file_id", file_id), ("file_version", version)])
             self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
             if version == 5:
                 self.assertIn('NGAMS_ER_FILE_NOK', stat.getMessage())
