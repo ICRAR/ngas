@@ -116,6 +116,7 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
         # Create a new thread to handle the request.
         t = threading.Thread(target = self.finish_request,
                              args = (request, client_address))
+        t.daemon = True
         t.start()
 
 
