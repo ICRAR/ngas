@@ -1,0 +1,162 @@
+<button id="Refresh">Refresh</button>
+<button id="Suspend">Suspend</button>
+<button id="UpdateConcurrentThreads">Update Concurrent Threads</button>
+<button id="UpdateThreadPriority">Update Subscription Priority</button>
+<button id="UpdateURL">Update URL</button>
+<button id="UnSuspend">UnSuspend</button>
+<button id="CreateSubscription">Create Subscription</button>
+<button id="Unsubscribe">Unsubscribe</button>
+
+<p class="hideme">Enter names in the fields, then click "Submit" to submit the form <b>(Note-Fields with an * are mandatory)</b>:</p>
+
+<form id="frm1" style="width: 500px" class="hideme">
+
+<label for="subscr_prio">Subscriber Priority:</label> <input type="text" name="subscr_prio" id="subscr_prio"><br>
+<label for="subscr_id"><b>* Subscriber Id:</b></label> <input type="text" name="subscr_id" id="subscr_id"><br>
+<label for="subscr_url"><b>* Subscriber URL:</b></label> <input type="text" name="subscr_url" id="subscr_url"><br>
+<label for="subscr_start_date">Subscription start date:</label> <input type="text" name="subscr_start_date" id="subscr_start_date"><br>
+<label for="subscr_filter_plugin">Subscriber filter plugin:</label> <input type="text" name="subscr_filter_plugin" id="subscr_filter_plugin"><br>
+<label for="subscr_filter_plugin_pars">Subscriber filter plugin pars:</label> <input type="text" name="subscr_filter_plugin_pars" id="subscr_filter_plugin_pars"><br>
+<label for="concurrent_threads">Concurrent threads:</label> <input type="text" name="concurrent_threads" id="concurrent_threads"><br><br>
+
+  <input type="button" id="Submit" value="Submit"/>
+</form>
+
+
+</html>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<script>
+
+$(document).ready(function() {
+    $(".hideme").hide();
+});
+
+$('tr').click(function () {
+    $('tr').removeClass('selected');
+    $(this).addClass('selected');
+
+    selectedRow = $(this);
+
+});
+
+
+$("#Unsubscribe").click(function () {
+     var td = $(selectedRow).children('td');
+     var mytxt = 'UNSUBSCRIBE?';
+     var refcmd = 'SubscriberUI?reload=1';
+       {
+       TargetHostid = mytxt + 'subscr_id=' + td[3].innerText ;
+       $.post(TargetHostid) ;
+       }
+});
+
+$('#Refresh').click(function () {
+     var refcmd = 'SubscriberUI?reload=1';
+     document.location.href=refcmd;
+});
+
+$('#UpdateConcurrentThreads').on('click', function(){
+         var td = $(selectedRow).children('td');
+         var mycmd = 'USUBSCRIBE?';
+       {UpdThrds = mycmd + 'subscr_id=' + td[3].innerText + '\&concurrent_threads=' + td[9].innerText  ;
+       $.post(UpdThrds) ; }
+});
+
+$('#Suspend').on('click', function(){
+    var td = $(selectedRow).children('td');
+    //USUBSCRIBE?subscr_id=ngashost-01-to-ngashost-02\&suspend=1
+     var myCmd = 'USUBSCRIBE?';
+       {
+       SuspendHostid = myCmd + 'subscr_id=' + td[3].innerText + '\&suspend=1';
+       $.post(SuspendHostid) ; }
+});
+
+$('#UnSuspend').on('click', function(){
+    var td = $(selectedRow).children('td');
+
+     var myCmd = 'USUBSCRIBE?';
+       {
+       UnSuspendHostid = myCmd + 'subscr_id=' + td[3].innerText + '\&suspend=0';
+       $.post(UnSuspendHostid) ; }
+});
+
+$('#UpdateThreadPriority').on('click', function(){
+         var td = $(selectedRow).children('td');
+         var mycmd = 'USUBSCRIBE?';
+       {UpdThrdPrty = mycmd + 'subscr_id=' + td[3].innerText + '\&priority=' + td[2].innerText  ;
+       $.post(UpdThrdPrty) ; }
+});
+
+$('#UpdateURL').on('click', function(){
+         var td = $(selectedRow).children('td');
+         var mycmd = 'USUBSCRIBE?';
+       {UpdThrdPrty = mycmd + 'subscr_id=' + td[3].innerText + '\&url=' + td[4].innerText  ;
+       $.post(UpdThrdPrty) ; }
+});
+
+function addZero(i) {
+    if (i < 10) {
+        i = "0" + i;
+    }
+    return i;
+}
+
+$('#CreateSubscription').on('click', function() {
+   $(".hideme").show();
+   document.getElementById('subscr_prio').value='1' ;
+   document.getElementById('concurrent_threads').value='1' ;
+   document.getElementById('subscr_url').value='http://';
+
+   var d = new Date();
+   var day = addZero(d.getDate()).toString();
+   var month = addZero(d.getMonth()+1).toString();
+   var year = addZero(d.getFullYear()).toString();
+   var h = addZero(d.getHours()).toString();
+   var m = addZero(d.getMinutes()).toString();
+   var s = addZero(d.getSeconds()).toString();
+   document.getElementById('subscr_start_date').value=year + "-" + month + "-" + day + "T" + h + ":" + m + ":" + s + ".000";
+});
+
+$('#Submit').on('click', function(){
+     var mycmd = 'SUBSCRIBE?';
+     var ok = 1;
+     if (document.getElementById('subscr_id').value === '')
+     {
+        alert('Subscriber Id cannot be Empty!');
+        ok = 0;
+     }
+     if (document.getElementById('subscr_url').value === 'http://')
+     {
+        alert('Subscriber URL is incomplete !');
+        ok = 0;
+     }
+
+     subscr_cmd = mycmd + 'subscr_id=' + document.getElementById('subscr_id').value + '&url=' +
+       document.getElementById('subscr_url').value + '/QARCHIVE&priority=' + document.getElementById('subscr_prio').value + '&start_date=' +
+        document.getElementById('subscr_start_date').value;
+
+     if (document.getElementById('subscr_filter_plugin').value !== '')
+      {
+            subscr_cmd = subscr_cmd + '&filter_plug_in=' + document.getElementById('subscr_filter_plugin').value;
+            if (document.getElementById('subscr_filter_plugin_pars').value !== '')
+                 subscr_cmd = subscr_cmd + document.getElementById('subscr_filter_plugin_pars').value;
+      }
+     //Chen - can we have no filter-plug_in AND a plugin_pars ? - would think not
+     if (ok == 1) $.ajax({
+       type: "POST",
+       url: subscr_cmd,
+       async: false
+       }).done(function(data) {
+          alert("Subscribe successful");
+       }).fail(function(xhr)  {
+         alert("Subscribe unsuccesful")
+     });
+
+
+});
+
+
+</script>
+
