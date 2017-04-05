@@ -67,12 +67,10 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         Override ngamsServer.reqCallBack(). Simply load the name of the
         request handler to execute in the file written by the test case.
         """
-        T = TRACE(1)
-
         reqHandleCode = loadFile("tmp/reqCallBack_tmp")
-        eval("self." + reqHandleCode +\
-             "(httpRef, clientAddress, method, path, "+\
-             "requestVersion, headers, writeFd, readFd)")
+        callback = getattr(self, reqHandleCode)
+        callback(httpRef, clientAddress, method, path, requestVersion,
+                 headers, writeFd, readFd)
 
 
     def reqCallBack_BlockCmds1(self,
@@ -87,11 +85,8 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         """
         Allow to execute EXIT, OFFLINE, STATUS. Block other commands.
         """
-        T = TRACE(1)
-
-        if ((path.strip().find(NGAMS_EXIT_CMD) == 0) or
-            (path.strip().find(NGAMS_OFFLINE_CMD) == 0) or
-            (path.strip().find(NGAMS_STATUS_CMD) == 0)):
+        cmd = path.strip().split('?')[0]
+        if cmd in (NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, NGAMS_STATUS_CMD):
             ngamsServer.ngamsServer.reqCallBack(self, httpRef, clientAddress,
                                                 method, path, requestVersion,
                                                 headers, writeFd, readFd)
@@ -112,12 +107,8 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         Allow to execute ARCHIVE Commands (+ EXIT, OFFLINE, STATUS).
         Block RETRIEVE Commands + other commands.
         """
-        T = TRACE(1)
-
-        if ((path.strip().find(NGAMS_ARCHIVE_CMD) == 0) or
-            (path.strip().find(NGAMS_EXIT_CMD) == 0) or
-            (path.strip().find(NGAMS_OFFLINE_CMD) == 0) or
-            (path.strip().find(NGAMS_STATUS_CMD) == 0)):
+        cmd = path.strip().split('?')[0]
+        if cmd in (NGAMS_ARCHIVE_CMD, NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, NGAMS_STATUS_CMD):
             ngamsServer.ngamsServer.reqCallBack(self, httpRef, clientAddress,
                                                 method, path, requestVersion,
                                                 headers, writeFd, readFd)
