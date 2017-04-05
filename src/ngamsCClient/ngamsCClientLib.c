@@ -2441,7 +2441,7 @@ int ngamsPrepSock(const char* host, const int port, float timeout) {
 			}
 			struct timeval timeout_tv;
 			timeout_tv.tv_sec = (time_t)floorf(timeout);
-			timeout_tv.tv_usec = (long)((timeout_tv.tv_sec - timeout) * 1000);
+			timeout_tv.tv_usec = (long)((timeout - timeout_tv.tv_sec) * 1000000);
 			if( setsockopt(sockFd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout_tv, sizeof(timeout_tv)) ) {
 				perror("Error while setting receiving timeout: ");
 				stat = ngamsERR_SOCK;
@@ -2608,7 +2608,6 @@ int ngamsRecvHttpHdr(int* sockFd, ngamsHTTP_HDR httpHdr,
 	errExit: if (tmpData)
 		free(tmpData);
 	ngamsLogDebug("Leaving ngamsRecvHttpHdr()/FAILURE. Status: %d", retCode);
-	sleep(5); //server might be too busy. slow down a bit
 	return retCode;
 }
 
