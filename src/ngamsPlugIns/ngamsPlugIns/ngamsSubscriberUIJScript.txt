@@ -49,6 +49,7 @@ $("#Unsubscribe").click(function () {
        {
        TargetHostid = mytxt + 'subscr_id=' + td[3].innerText ;
        $.post(TargetHostid) ;
+       document.location.href=refcmd;
        }
 });
 
@@ -92,8 +93,12 @@ $('#UpdateThreadPriority').on('click', function(){
 $('#UpdateURL').on('click', function(){
          var td = $(selectedRow).children('td');
          var mycmd = 'USUBSCRIBE?';
+         var refcmd = 'SubscriberUI?reload=1';
+
        {UpdThrdPrty = mycmd + 'subscr_id=' + td[3].innerText + '\&url=' + td[4].innerText  ;
-       $.post(UpdThrdPrty) ; }
+       $.post(UpdThrdPrty) ;
+       document.location.href=refcmd;
+       }
 });
 
 function addZero(i) {
