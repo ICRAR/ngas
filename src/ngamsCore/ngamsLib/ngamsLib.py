@@ -71,7 +71,7 @@ def hidePassword(fileUri):
     tmpUri = urllib.unquote(fileUri)
     if (string.find(tmpUri, "ftp://") != -1):
         # ARCHIVE?filename="ftp://jknudstr:*****@arcus2.hq.eso.org//home/...
-        lst1 = string.split(tmpUri,"@")
+        lst1 = string.split(tmpUri, "@")
         if (len(lst1) == 1):
             errMsg = genLog("NGAMS_ER_ILL_URI", [fileUri,
                                                  "Archive Pull Request"])
@@ -326,14 +326,14 @@ def httpTimeStamp():
         comp = comp.strip()
         if (comp == ""): del tsList[idx]
         idx += 1
-    return tsList[0] + ", " + tsList[2] + " " + tsList[1] + " " +\
+    return tsList[0] + ", " + tsList[2] + " " + tsList[1] + " " + \
            tsList[4] + " " + tsList[3] + " GMT"
 
 
 def _httpHandleResp(fileObj,
                     dataTargFile,
                     blockSize,
-                    timeOut = None):
+                    timeOut=None):
     """
     Handle the response to an HTTP request. If specified, the data returned
     will be either returned in a buffer or stored in a target file specified.
@@ -357,9 +357,9 @@ def _httpHandleResp(fileObj,
     T = TRACE()
 
     # Handle the response + data.
-    code   = NGAMS_HTTP_SUCCESS
-    msg    = "OK"
-    hdrs   = fileObj.headers
+    code = NGAMS_HTTP_SUCCESS
+    msg = "OK"
+    hdrs = fileObj.headers
     hdrDic = httpMsgObj2Dic(hdrs)
 
     if not hdrDic:
@@ -425,19 +425,19 @@ def _httpHandleResp(fileObj,
 
 def httpPostUrl(url,
                 mimeType,
-                contDisp = "",
-                dataRef = "",
-                dataSource = "BUFFER",
-                dataTargFile = "",
-                blockSize = 65536,
-                suspTime = 0.0,
-                timeOut = None,
-                authHdrVal = "",
-                dataSize = -1,
-                fileInfoHdr = None,
-                sendBuffer = None,
-                checkSum = None,
-                moreHdrs = []):
+                contDisp="",
+                dataRef="",
+                dataSource="BUFFER",
+                dataTargFile="",
+                blockSize=65536,
+                suspTime=0.0,
+                timeOut=None,
+                authHdrVal="",
+                dataSize=-1,
+                fileInfoHdr=None,
+                sendBuffer=None,
+                checkSum=None,
+                moreHdrs=[]):
     """
     Post the the data referenced on the given URL.
 
@@ -489,7 +489,7 @@ def httpPostUrl(url,
 
     cmd = urlres.path.strip('/')
 
-    with contextlib.closing(httplib.HTTPConnection(urlres.netloc, timeout = timeOut)) as http:
+    with contextlib.closing(httplib.HTTPConnection(urlres.netloc, timeout=timeOut)) as http:
         logger.debug("Sending HTTP header ...")
         logger.debug("HTTP Header: %s: %s", NGAMS_HTTP_POST, cmd)
         http.putrequest(NGAMS_HTTP_POST, cmd)
@@ -509,7 +509,7 @@ def httpPostUrl(url,
         if (checkSum):
             http.putheader(NGAMS_HTTP_HDR_CHECKSUM, checkSum)
 
-        for k,v in moreHdrs:
+        for k, v in moreHdrs:
             http.putheader(k, v)
 
         if dataSource == "FILE":
@@ -532,7 +532,8 @@ def httpPostUrl(url,
                 toSend = dataSize
                 sent = 0
                 while sent < toSend:
-                    buff = fdIn.read(toSend - sent)
+                    left = tosend - sent
+                    buff = fdIn.read(blockSize if left >= blockSize else left)
                     if not buff:
                         raise Exception('error reading data')
                     http.sock.sendall(buff)
@@ -548,7 +549,8 @@ def httpPostUrl(url,
             toSend = dataSize
             sent = 0
             while sent < toSend:
-                buff = dataRef.read(toSend - sent)
+                left = tosend - sent
+                buff = dataRef.read(blockSize if left >= blockSize else left)
                 if not buff:
                     raise Exception('error reading data')
                 http.sock.sendall(buff)
@@ -624,14 +626,14 @@ def httpPost(host,
              port,
              cmd,
              mimeType,
-             dataRef = "",
-             dataSource = "BUFFER",
-             pars = [],
-             dataTargFile = "",
-             timeOut = None,
-             authHdrVal = "",
-             fileName = "",
-             dataSize = -1):
+             dataRef="",
+             dataSource="BUFFER",
+             pars=[],
+             dataTargFile="",
+             timeOut=None,
+             authHdrVal="",
+             fileName="",
+             dataSize=-1):
     """
     Sends an HTTP POST command with the given mime-type and the given
     data to the NG/AMS Server with the host + port given.
@@ -745,11 +747,11 @@ def collectFiles(absDirname):
 
 
 def httpGetUrl(url,
-               dataTargFile = "",
-               blockSize = 65536,
-               timeOut = None,
-               authHdrVal = "",
-               additionalHdrs = []):
+               dataTargFile="",
+               blockSize=65536,
+               timeOut=None,
+               authHdrVal="",
+               additionalHdrs=[]):
     """
     Sends an HTTP GET request to the server specified by the URL.
 
@@ -806,13 +808,13 @@ def httpGetUrl(url,
 def httpGet(host,
             port,
             cmd,
-            wait = 1,
-            pars = [],
-            dataTargFile = "",
-            blockSize = 65536,
-            timeOut = None,
-            authHdrVal = "",
-            additionalHdrs = []):
+            wait=1,
+            pars=[],
+            dataTargFile="",
+            blockSize=65536,
+            timeOut=None,
+            authHdrVal="",
+            additionalHdrs=[]):
     """
     Sends an HTTP GET command to the NG/AMS Server with the
     host + port given.
@@ -877,9 +879,9 @@ def httpGet(host,
 
     return (code, msg, hdrs, data)
 
-def httpGetConnection(host, port, cmd, pars = [], blockSize = 65536,
-                      timeOut=None, authHdrVal = "",
-                      additionalHdrs = []):
+def httpGetConnection(host, port, cmd, pars=[], blockSize=65536,
+                      timeOut=None, authHdrVal="",
+                      additionalHdrs=[]):
     """
     Similar to httpGet but returns the HTTP connection directly
     """
@@ -934,7 +936,7 @@ def genUniqueFilename(filename):
     """
     # Generate a unique ID: <time stamp>-<unique index>
     ts = toiso8601()
-    tmpFilename = ts + "-" + str(getUniqueNo()) + "-" +\
+    tmpFilename = ts + "-" + str(getUniqueNo()) + "-" + \
                   os.path.basename(filename)
     tmpFilename = re.sub("\?|=|&", "_", tmpFilename)
 
@@ -943,9 +945,9 @@ def genUniqueFilename(filename):
     nameLen = len(tmpFilename)
     if (nameLen > NGAMS_MAX_FILENAME_LEN):
         lenDif = (nameLen - NGAMS_MAX_FILENAME_LEN)
-        tmpFilename = tmpFilename[0:(nameLen - lenDif -\
-                                     (NGAMS_MAX_FILENAME_LEN / 2))] +\
-                      "__" +\
+        tmpFilename = tmpFilename[0:(nameLen - lenDif - \
+                                     (NGAMS_MAX_FILENAME_LEN / 2))] + \
+                      "__" + \
                       tmpFilename[(nameLen - (NGAMS_MAX_FILENAME_LEN / 2)):]
 
     return tmpFilename
@@ -1002,7 +1004,7 @@ def parseRawPlugInPars(rawPars):
 
 def detMimeType(mimeTypeMaps,
                 filename,
-                noException = 0):
+                noException=0):
     """
     Determine mime-type of a file, based on the information in the
     NG/AMS Configuration and the filename (extension) of the file.
