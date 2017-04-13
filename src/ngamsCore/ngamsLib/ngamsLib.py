@@ -532,7 +532,7 @@ def httpPostUrl(url,
                 toSend = dataSize
                 sent = 0
                 while sent < toSend:
-                    left = tosend - sent
+                    left = toSend - sent
                     buff = fdIn.read(blockSize if left >= blockSize else left)
                     if not buff:
                         raise Exception('error reading data')
@@ -549,7 +549,7 @@ def httpPostUrl(url,
             toSend = dataSize
             sent = 0
             while sent < toSend:
-                left = tosend - sent
+                left = toSend - sent
                 buff = dataRef.read(blockSize if left >= blockSize else left)
                 if not buff:
                     raise Exception('error reading data')
