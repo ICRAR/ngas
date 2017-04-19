@@ -50,7 +50,8 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_SUBSCRIPTION_THR, isoTime2Secs,\
     NGAMS_HTTP_INT_AUTH_USER, NGAMS_REARCHIVE_CMD, NGAMS_FAILURE,\
     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, getFileSize, rmFile, loadPlugInEntryPoint,\
     toiso8601, NGAMS_HTTP_HDR_CHECKSUM, NGAMS_HTTP_HDR_FILE_INFO
-from ngamsLib import ngamsDbm, ngamsStatus, ngamsHighLevelLib, ngamsFileInfo, ngamsLib, ngamsDbCore
+from ngamsLib import ngamsDbm, ngamsStatus, ngamsHighLevelLib, ngamsFileInfo, ngamsDbCore,\
+    ngamsHttpUtils
 
 
 logger = logging.getLogger(__name__)
@@ -772,7 +773,7 @@ def _deliveryThread(srvObj,
                                 NGAMS_HTTP_HDR_FILE_INFO: fileInfoObjHdr}
                         with open(filename, "rb") as f:
                             reply, msg, hdrs, data = \
-                                   ngamsLib.httpPostUrl(sendUrl, f, fileMimeType,
+                                   ngamsHttpUtils.httpPostUrl(sendUrl, f, fileMimeType,
                                                         contDisp=contDisp,
                                                         auth=authHdr,
                                                         hdrs=hdrs,

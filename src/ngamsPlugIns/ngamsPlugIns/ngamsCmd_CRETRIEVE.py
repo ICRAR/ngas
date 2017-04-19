@@ -31,7 +31,7 @@ from ngamsLib.ngamsCore import genLog, getFileSize
 from ngamsLib.ngamsCore import NGAMS_CONT_MT, NGAMS_HTTP_SUCCESS
 from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, NGAMS_HOST_REMOTE, NGAMS_HOST_CLUSTER
 from ngamsLib.ngamsCore import NGAMS_RETRIEVE_CMD, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE
-from ngamsLib import ngamsLib, ngamsMIMEMultipart
+from ngamsLib import ngamsMIMEMultipart, ngamsHttpUtils
 from ngamsServer import ngamsSrvUtils, ngamsFileUtils
 
 
@@ -43,7 +43,7 @@ def fopener(fname):
 def http_opener(host, port, file_id, file_version, srvObj):
     pars = [('file_id', file_id), ('file_version', file_version)]
     authHdr = ngamsSrvUtils.genIntAuthHdr(srvObj)
-    return ngamsLib.httpGet(host, port, NGAMS_RETRIEVE_CMD, pars=pars,
+    return ngamsHttpUtils.httpGet(host, port, NGAMS_RETRIEVE_CMD, pars=pars,
                             timeout=30, auth=authHdr)
 
 def finfo_from_database(fileInfo, srvObj, reqPropsObj):

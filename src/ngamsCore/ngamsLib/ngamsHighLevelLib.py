@@ -27,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  25/03/2002  Created
 #
-
 """
 Contains higher level common functions.
 """
@@ -53,6 +52,7 @@ from ngamsCore import TRACE, genLog, NGAMS_HOST_LOCAL,\
 import ngamsSmtpLib
 import ngamsLib
 import ngamsHostInfo, ngamsStatus
+import ngamsHttpUtils
 
 
 logger = logging.getLogger(__name__)
@@ -767,7 +767,7 @@ def pingServer(hostId,
     startTime = time.time()
     while True:
         try:
-            resp = ngamsLib.httpGet(ipAddress, portNo, NGAMS_STATUS_CMD)
+            resp = ngamsHttpUtils.httpGet(ipAddress, portNo, NGAMS_STATUS_CMD)
             with contextlib.closing(resp):
                 if resp.status in (NGAMS_HTTP_SUCCESS, NGAMS_HTTP_UNAUTH):
                     logger.debug("Successfully pinged NG/AMS Server")

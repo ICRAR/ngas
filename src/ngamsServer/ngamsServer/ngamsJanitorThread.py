@@ -52,7 +52,7 @@ from ngamsLib.ngamsCore import TRACE, rmFile, \
     isoTime2Secs, genLog, NGAMS_PROC_DIR, NGAMS_SUBSCR_BACK_LOG_DIR, \
     NGAMS_HTTP_INT_AUTH_USER, getHostName, NGAMS_OFFLINE_CMD, NGAMS_NOTIF_ERROR,\
     loadPlugInEntryPoint, toiso8601
-from ngamsLib import ngamsFileInfo, ngamsNotification
+from ngamsLib import ngamsFileInfo, ngamsNotification, ngamsHttpUtils
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsEvent, ngamsHighLevelLib, ngamsLib
 
 try:
@@ -1164,7 +1164,7 @@ def janitorThread(srvObj, stopEvt):
                                  getAuthHttpHdrVal(NGAMS_HTTP_INT_AUTH_USER)
                 else:
                     authHdrVal = ""
-                ngamsLib.httpGet(getHostName(), srvObj.getCfg().getPortNo(),
+                ngamsHttpUtils.httpGet(getHostName(), srvObj.getCfg().getPortNo(),
                                  NGAMS_OFFLINE_CMD, pars=[["force", "1"]],
                                  auth=authHdrVal)
             ##################################################################

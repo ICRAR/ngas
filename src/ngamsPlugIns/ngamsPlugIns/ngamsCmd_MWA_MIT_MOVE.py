@@ -34,7 +34,7 @@ import os
 
 from ngamsLib.ngamsCore import NGAMS_TEXT_MT, \
     NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_HTTP_HDR_CHECKSUM
-from ngamsLib import ngamsStatus, ngamsLib
+from ngamsLib import ngamsStatus, ngamsHttpUtils
 from ngamsServer import ngamsDiscardCmd
 
 
@@ -168,7 +168,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     for i in range(3): # total trials - 3 times
         with open(filename, "rb") as f:
             try:
-                reply, msg, hdrs, data = ngamsLib.httpPostUrl(sendUrl, f, fileMimeType,
+                reply, msg, hdrs, data = ngamsHttpUtils.httpPostUrl(sendUrl, f, fileMimeType,
                                                               contDisp=contDisp,
                                                               hdrs=hdrs)
                 if (data.strip() != ""):

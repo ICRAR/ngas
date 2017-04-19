@@ -83,7 +83,7 @@ import random
 import time
 
 from ngamsLib.ngamsCore import TRACE, NGAMS_CHECKFILE_CMD, NGAMS_FAILURE
-from ngamsLib import ngamsLib, ngamsStatus
+from ngamsLib import ngamsLib, ngamsStatus, ngamsHttpUtils
 
 
 logger = logging.getLogger(__name__)
@@ -159,7 +159,7 @@ def _sendCheckFileCmd(node,
         host, port = node.split(":")
         logger.debug("Sending CHECKFILE Command for file: %s/%s to node: %s:%s",
                      fileId, str(fileVersion), host, str(port))
-        resp = ngamsLib.httpGet(host, port, NGAMS_CHECKFILE_CMD, pars=cmdPars)
+        resp = ngamsHttpUtils.httpGet(host, port, NGAMS_CHECKFILE_CMD, pars=cmdPars)
 
         with contextlib.closing(resp):
             data = resp.read()

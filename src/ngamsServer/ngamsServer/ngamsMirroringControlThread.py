@@ -59,7 +59,8 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_MIR_CONTROL_THR, rmFile, \
     NGAMS_HTTP_PAR_FILE_LIST, NGAMS_HTTP_PAR_UNIQUE, NGAMS_HTTP_PAR_MAX_ELS, \
     NGAMS_HTTP_PAR_FROM_ING_DATE, get_contact_ip,\
     toiso8601, FMT_TIME_ONLY_NOMSEC
-from ngamsLib import ngamsFileInfo, ngamsStatus, ngamsHighLevelLib, ngamsDbm, ngamsMirroringRequest, ngamsLib
+from ngamsLib import ngamsFileInfo, ngamsStatus, ngamsHighLevelLib, ngamsDbm, \
+    ngamsMirroringRequest, ngamsLib, ngamsHttpUtils
 
 
 logger = logging.getLogger(__name__)
@@ -558,7 +559,7 @@ def handleMirRequest(srvObj,
             pars = [[NGAMS_HTTP_PAR_FILENAME, fileUri]]
             hdrs = [[NGAMS_HTTP_HDR_FILE_INFO, encFileInfo],
                     [NGAMS_HTTP_HDR_CONTENT_TYPE, fileInfoObj.getFormat()]]
-            resp = ngamsLib.httpGet(nextLocalSrv, nextLocalPort,
+            resp = ngamsHttpUtils.httpGet(nextLocalSrv, nextLocalPort,
                                     NGAMS_REARCHIVE_CMD, pars=pars, hdrs=hdrs,
                                     timeout=600)
 
@@ -820,7 +821,7 @@ def retrieveFileList(srvObj,
         remainingEls = None
         while (True):
             rmFile("%s*" % rawFileListCompr[:-3])
-            resp = ngamsLib.httpGet(node, port, NGAMS_STATUS_CMD,
+            resp = ngamsHttpUtils.httpGet(node, port, NGAMS_STATUS_CMD,
                                     pars=statusCmdPars,
                                     timeout=1800)
 

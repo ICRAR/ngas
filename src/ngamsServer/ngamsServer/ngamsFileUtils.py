@@ -40,7 +40,8 @@ import os
 import re
 
 import ngamsSrvUtils
-from ngamsLib import ngamsDbm, ngamsDbCore, ngamsDiskInfo, ngamsStatus, ngamsLib
+from ngamsLib import ngamsDbm, ngamsDbCore, ngamsDiskInfo, ngamsStatus, \
+    ngamsHttpUtils
 from ngamsLib import ngamsHighLevelLib
 from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
     NGAMS_HOST_DOMAIN, rmFile, NGAMS_HOST_REMOTE, NGAMS_RETRIEVE_CMD, genLog, \
@@ -274,7 +275,7 @@ def _locateArchiveFile(srvObj,
                     pars.append(["file_version", fileInfoObj.getFileVersion()])
                 ipAddress = hostDic[host].getIpAddress()
                 authHdr = ngamsSrvUtils.genIntAuthHdr(srvObj)
-                resp = ngamsLib.httpGet(ipAddress, port, NGAMS_STATUS_CMD,
+                resp = ngamsHttpUtils.httpGet(ipAddress, port, NGAMS_STATUS_CMD,
                                         pars=pars, auth=authHdr)
                 with contextlib.closing(resp):
                     data = resp.read()

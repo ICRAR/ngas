@@ -48,7 +48,8 @@ import sys
 import time
 from xml.dom import minidom
 
-from ngamsLib import ngamsLib, ngamsFileInfo, ngamsStatus, ngamsMIMEMultipart
+from ngamsLib import ngamsLib, ngamsFileInfo, ngamsStatus, ngamsMIMEMultipart,\
+    ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD,\
     NGAMS_HTTP_SUCCESS
 from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CONTENT_TYPE, \
@@ -747,7 +748,7 @@ class ngamsPClient:
             auth = "Basic %s" % self.auth
 
         start = time.time()
-        res = ngamsLib.httpGet(host, port, cmd, pars=pars, hdrs=hdrs,
+        res = ngamsHttpUtils.httpGet(host, port, cmd, pars=pars, hdrs=hdrs,
                                timeout=self.timeout, auth=auth)
         delta = time.time() - start
         logger.debug("Command: %s to %s:%d handled in %.3f [s]", cmd, host, port, delta)
@@ -761,7 +762,7 @@ class ngamsPClient:
             auth = "Basic %s" % self.auth
 
         start = time.time()
-        res = ngamsLib.httpPost(host, port, cmd, data, mimeType,
+        res = ngamsHttpUtils.httpPost(host, port, cmd, data, mimeType,
                                 pars=pars, timeout=self.timeout, auth=auth)
         delta = time.time() - start
         logger.info("Successfully completed command %s in %.3f [s]", cmd, delta)

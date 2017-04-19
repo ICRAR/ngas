@@ -40,7 +40,7 @@ import shutil
 import socket
 import time
 
-from ngamsLib import ngamsDppiStatus
+from ngamsLib import ngamsDppiStatus, ngamsHttpUtils
 from ngamsLib import ngamsHighLevelLib, ngamsLib
 from ngamsLib.ngamsCore import NGAMS_TEXT_MT, getFileSize, \
     TRACE, genLog, NGAMS_PROC_FILE, NGAMS_HTTP_SUCCESS, NGAMS_PROC_DATA, \
@@ -577,7 +577,7 @@ def _handleCmdRetrieve(srvObj,
 
         authHdr = ngamsSrvUtils.genIntAuthHdr(srvObj)
         timeout = float(reqPropsObj['timeout']) if 'timeout' in reqPropsObj else 60
-        conn = ngamsLib.httpGet(ipAddress, port, NGAMS_RETRIEVE_CMD, pars=pars,
+        conn = ngamsHttpUtils.httpGet(ipAddress, port, NGAMS_RETRIEVE_CMD, pars=pars,
                                 timeout=timeout, auth=authHdr)
 
         hdrs = {h[0]: h[1] for h in conn.getheaders()}

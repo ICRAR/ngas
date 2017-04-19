@@ -48,7 +48,8 @@ from ngamsLib.ngamsCore import NGAMS_FAILURE, getFileCreationTime,\
     NGAMS_NOTIF_NO_DISKS, mvFile, NGAMS_PICKLE_FILE_EXT,\
     rmFile, NGAMS_SUCCESS, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BACK_LOG_DIR,\
     getHostName, loadPlugInEntryPoint
-from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsPlugInApi, ngamsLib
+from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsPlugInApi, ngamsLib,\
+    ngamsHttpUtils
 from ngamsLib import ngamsReqProps, ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsDiskUtils
 import ngamsFileUtils
 import ngamsCacheControlThread
@@ -984,7 +985,7 @@ def findTargetNode(hostId,
             logger.debug(logMsg, node, str(port), mimeType)
             try:
                 pars = [("probe", "1"), ("mime_type", mimeType)]
-                resp =  ngamsLib.httpGet(node, port, NGAMS_ARCHIVE_CMD,
+                resp =  ngamsHttpUtils.httpGet(node, port, NGAMS_ARCHIVE_CMD,
                                          pars=pars, timeout=10)
                 with contextlib.closing(resp):
                     data = resp.read()
