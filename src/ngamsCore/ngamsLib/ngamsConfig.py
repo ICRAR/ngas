@@ -251,6 +251,9 @@ class ngamsConfig:
         # Data Processing Plug-Ins
         self.__dppiList                = []
 
+        # Janitor process Plug-Ins
+        self.__janitorPlugIns          = []
+
         # Register Plug-Ins.
         self.__registerPlugIns         = []
 
@@ -487,6 +490,15 @@ class ngamsConfig:
                     mimeType = self.getVal(attrFormat2 % (idx1, idx2))
                     tmpPlugInObj.addMimeType(mimeType)
                 self.addRegPiDef(tmpPlugInObj)
+
+        # Get info about Jantiro Plug-Ins.
+        janitorObj = self.__cfgMgr.getXmlObj("JanitorThread[1]")
+        if janitorObj:
+            logger.debug("Unpacking JanitorThread Element ...")
+            name_path = "JanitorThread[1].PlugIn[%d].Name"
+            for idx1 in range(1, (len(janitorObj.getSubElList()) + 1)):
+                name = self.getVal(name_path % (idx1,))
+                self.__janitorPlugIns.append(name)
 
         # Process the information about subscribers to Notification Emails.
         attrList = [["AlertNotification",       self.__alertNotif],
@@ -936,6 +948,13 @@ class ngamsConfig:
         """
         return self.getVal("JanitorThread[1].SuspensionTime")
 
+    def getJanitorPlugins(self):
+        """
+        Get the list of Janitor Plug-in names.
+
+        Returns:   Janitor Service Suspension Time (string).
+        """
+        return self.__janitorPlugIns
 
     def getBackLogBuffering(self):
         """

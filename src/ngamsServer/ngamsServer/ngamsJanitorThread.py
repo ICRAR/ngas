@@ -82,12 +82,8 @@ def get_plugins(srvObj):
         'ngamsJanitorChecktoSuspendNGASHost',
     ]
 
-    plugins = []
-    for h in hardcoded:
-        plugins.append(loadPlugInEntryPoint(h))
-
-    # TODO: add configuration item on server for user-provided plugins
-    return plugins
+    user_plugins = srvObj.getCfg().getJanitorPlugins()
+    return [loadPlugInEntryPoint(n) for n in hardcoded + user_plugins]
 
 
 class ForwarderHandler(logging.Handler):

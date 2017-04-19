@@ -809,6 +809,7 @@ class ngamsServer:
         self._jan_to_serv_queue = multiprocessing.Queue()
         self._janitorThread = multiprocessing.Process(
                                 target=ngamsJanitorThread.janitorThread,
+                                name="Janitor",
                                 args=(self, self._janitorProcStopEvt, self._serv_to_jan_queue, self._jan_to_serv_queue))
         self._janitorThread.start()
 
