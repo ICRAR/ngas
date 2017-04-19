@@ -51,7 +51,7 @@ from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo,\
 from ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
     saveInFile, filterDbStatus1, sendPclCmd, pollForFile, getClusterName, \
     sendExtCmd, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, runTest, \
-    copyFile, genTmpFilename, execCmd
+    copyFile, genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp
 from ngamsServer import ngamsFileUtils
 
 
@@ -392,8 +392,11 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                           tmpReqPropObj.getStagingFilename(),
                           "Illegal Back-Log Buffered File: %s" %\
                           tmpReqPropObj.getStagingFilename())
-        sendPclCmd().offline()
-        sendPclCmd().exit()
+        old_cleanup = getNoCleanUp()
+        setNoCleanUp(True)
+        self.termExtSrv(self.extSrvInfo.pop())
+        setNoCleanUp(old_cleanup)
+
         cfgPars = [["NgamsCfg.Permissions[1].AllowArchiveReq", "1"],
                    ["NgamsCfg.ArchiveHandling[1].BackLogBuffering", "1"],
                    ["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:00:05"]]

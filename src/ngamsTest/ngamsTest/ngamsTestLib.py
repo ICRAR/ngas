@@ -987,14 +987,7 @@ class ngamsTestSuite(unittest.TestCase):
         methodName:    Name of method to run to run test case (string_.
         """
         unittest.TestCase.__init__(self, methodName)
-        self.__extSrvInfo    = []
-
-        # TODO: Get rid of these.
-        self.__srvObj        = None
-        self.__cfgObj        = None
-        self.__fromSrv       = ""
-        self.__toSrv         = ""
-        self.__foList        = []
+        self.extSrvInfo    = []
         self.__mountedDirs   = []
 
     def assertStatus(self, status, expectedStatus='SUCCESS'):
@@ -1154,7 +1147,7 @@ class ngamsTestSuite(unittest.TestCase):
             raise Exception,"NGAMS TEST LIB> NG/AMS Server did not start " +\
                   "correctly"
 
-        self.__extSrvInfo.append(server_info)
+        self.extSrvInfo.append(server_info)
 
         return (cfgObj, dbObj)
 
@@ -1219,8 +1212,8 @@ class ngamsTestSuite(unittest.TestCase):
                 shutil.rmtree(rootDir, True)
 
     def terminateAllServer(self):
-        srv_mgr_pool.map(self.termExtSrv, self.__extSrvInfo)
-        self.__extSrvInfo = []
+        srv_mgr_pool.map(self.termExtSrv, self.extSrvInfo)
+        self.extSrvInfo = []
 
     def setUp(self):
         # Make sure there is a 'tmp' directory here, since most of the tests

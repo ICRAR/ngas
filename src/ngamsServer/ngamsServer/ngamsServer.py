@@ -60,7 +60,7 @@ from ngamsLib.ngamsCore import \
     NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_XML_STATUS_ROOT_EL,\
     NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs,\
     toiso8601
-from ngamsLib import ngamsHighLevelLib, ngamsLib
+from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsHttpUtils
 from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
 import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
@@ -1765,7 +1765,7 @@ class ngamsServer:
             srvInfo = "NGAMS/%s" % getNgamsVersion()
             logger.debug("Sending header: Server: %s", srvInfo)
             httpRef.send_header("Server", srvInfo)
-            httpTimeStamp = ngamsLib.httpTimeStamp()
+            httpTimeStamp = ngamsHttpUtils.httpTimeStamp()
             logger.debug("Sending header: Date: %s", httpTimeStamp)
             httpRef.send_header("Date", httpTimeStamp)
             # Expires HTTP reponse header field, e.g.:
@@ -1992,7 +1992,7 @@ class ngamsServer:
                 reqTimeOut = float(reqTimeOut) if reqTimeOut else def_timeout
                 reqTimeOut = reqTimeOut if reqTimeOut >= 0 else def_timeout
             if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
-                resp = ngamsLib.httpGet(contactAddr, contactPort, reqPropsObj.getCmd(),
+                resp = ngamsHttpUtils.httpGet(contactAddr, contactPort, reqPropsObj.getCmd(),
                                        pars=pars, timeout=reqTimeOut,
                                        auth=authHttpHdrVal)
                 with contextlib.closing(resp):
@@ -2010,7 +2010,7 @@ class ngamsServer:
                 # read()-able object
                 data = sizeaware_socketfile(reqPropsObj.getReadFd(), contLen)
                 httpStatCode, httpStatMsg, httpHdrs, data =\
-                                  ngamsLib.httpPost(contactAddr, contactPort,
+                            ngamsHttpUtils.httpPost(contactAddr, contactPort,
                                                     reqPropsObj.getCmd(),
                                                     data, mimeType,
                                                     pars=pars,
@@ -2541,6 +2541,7 @@ class ngamsServer:
         Returns:     Void.
         """
         t = threading.Thread(target=self._terminate)
+        t.daemon = False
         t.start()
 
     def _terminate(self):
