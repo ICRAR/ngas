@@ -2308,6 +2308,14 @@ class ngamsServer:
                                      "PROBLEM SETTING UP LOGGING", errMsg)
             raise
 
+        # Extend the system path to include anything specified in the config
+        plugins_path = self.getCfg().getPluginsPath()
+        if plugins_path:
+            if not os.path.exists(plugins_path):
+                raise ValueError("Plugins path %s doesn't exist, check your configuration" % (plugins_path,))
+            sys.path.insert(0, plugins_path)
+            logger.info("Added %s to the system path", plugins_path)
+
         # Check if there is an entry for this node in the ngas_hosts
         # table, if not create it.
         hostInfo = self.getDb().getHostInfoFromHostIds([self.getHostId()])

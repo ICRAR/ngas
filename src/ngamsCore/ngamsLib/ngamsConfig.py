@@ -717,6 +717,12 @@ class ngamsConfig:
         else:
             return swVersion
 
+    def getPluginsPath(self):
+        """
+        Get the directory where plug-ins are placed.
+        """
+        return self.getVal("Server[1].PluginsPath")
+
 
     def getOnlinePlugIn(self):
         """
