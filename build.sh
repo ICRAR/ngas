@@ -24,18 +24,20 @@
 #
 
 function print_usage {
-	echo "$0 [-h?] [-cd]"
+	echo "$0 [-h?] [-cdD]"
 	echo
 	echo "-h, -?: Show this help"
 	echo "-c: Include the C client compilation"
 	echo "-d: Install Python eggs as development eggs"
+	echo "-D: Install Python packages needed to build the docs"
 }
 
 # Command-line option parsing
 BUILD_CCLIENT=
+INSTALL_DOC_DEPS=
 SETUP_ACTION=install
 
-while getopts "cdh?" opt
+while getopts "cdDh?" opt
 do
 	case "$opt" in
 		c)
@@ -43,6 +45,9 @@ do
 			;;
 		d)
 			SETUP_ACTION=develop
+			;;
+		D)
+			INSTALL_DOC_DEPS=yes
 			;;
 		[h?])
 			print_usage
@@ -100,3 +105,9 @@ do
 	python setup.py $SETUP_ACTION || fail "Failed to setup.py $pyModule"
 	cd "$prevDir"
 done
+
+# Install additional dependencies needed to build the docs
+if [ -n "${INSTALL_DOC_DEPS}" ]
+then
+	pip install sphinx sphinx-rtd-theme
+fi
