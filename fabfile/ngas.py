@@ -296,6 +296,7 @@ def ngas_build_cmd(no_client, develop):
                 build_cmd.append('LDFLAGS=-L' + libdir)
         build_cmd.append('YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1')
     build_cmd.append('./build.sh')
+    build_cmd.append('-D')
     if not no_client:
         build_cmd.append("-c")
     if develop:
