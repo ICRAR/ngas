@@ -210,7 +210,7 @@ def create_stage1_docker_container():
     to the docker container we create as we likely don't have a route to the IP address used.
     """
 
-    from docker.client import AutoVersionClient
+    from docker.client import DockerClient
     from docker import errors
     from docker import tls
 
@@ -241,11 +241,11 @@ def create_stage1_docker_container():
     puts(green('URL is ' + base_url + ' for connection to docker daemon'))
 
     # The main connection for testing the deployment and use of our own docker registry.
-    cli = AutoVersionClient(base_url=base_url, timeout=10, tls=tls_config)
-
+    cli = DockerClient(base_url=base_url, timeout=10, tls=tls_config, version='auto')
     if cli is None:
         puts(red("\n******** FAILED TO INSTALL CREATE CONNECTION TO DOCKER DAEMON ********\n"))
         return None
+    cli = cli.api
 
     # Build the stage1 docker container to deploy NGAS into
     print 'do build'
@@ -256,7 +256,11 @@ def create_stage1_docker_container():
         puts(red("\n******** FAILED TO BUILD STAGE1 DOCKER IMAGE ********\n"))
         return None
 
-    container = cli.create_container(image=STAGE1_BUILD_NAME, detach=True, name="ngas")
+    hconfig_args = {'publish_all_ports': True}
+    if base_url is not None:
+        hconfig_args['port_bindings'] = {7777: ('0.0.0.0', 7777)}
+    host_config = cli.create_host_config(**hconfig_args)
+    container = cli.create_container(image=STAGE1_BUILD_NAME, detach=True, name="ngas", host_config=host_config)
 
     if not check_if_successful_create_container(container):
         puts(red("\n******** FAILED TO CREATE STAGE1 DOCKER CONTAINER FROM IMAGE ********\n"))
@@ -265,10 +269,7 @@ def create_stage1_docker_container():
         return None
 
     try:
-        if base_url is None:
-            cli.start(container=container, publish_all_ports=True)
-        else:
-            cli.start(container=container, publish_all_ports=True, port_bindings={7777: ('0.0.0.0', 7777)})
+        cli.start(container)
     except errors.APIError as e:
         print e.explanation
         print e.message
