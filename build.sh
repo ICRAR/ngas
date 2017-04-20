@@ -76,17 +76,18 @@ cd "$(dirname $this)"
 # And now...
 cd src
 
-# If we're using a virtualenv install it there
-prefix=
-if [ -n "$VIRTUAL_ENV" ]
-then
-	prefix="--prefix=$VIRTUAL_ENV"
-	echo "Will install NGAS under $VIRTUAL_ENV"
-fi
-
 # Build the C autotools-based module
 if [ -n "$BUILD_CCLIENT" ]
 then
+
+	# If we're using a virtualenv install it there
+	prefix=
+	if [ -n "$VIRTUAL_ENV" ]
+	then
+		prefix="--prefix=$VIRTUAL_ENV"
+		echo "Will install NGAS under $VIRTUAL_ENV"
+	fi
+
 	cd ngamsCClient
 	./bootstrap || fail "Failed to bootstrap ngamsCClient module"
 	./configure "$prefix" || fail "Failed to ./configure ngamsCCLient"
