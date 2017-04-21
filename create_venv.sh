@@ -1,6 +1,7 @@
 #!/bin/bash
 #
-# Script to bootstrap the installation process of NGAMs
+# Script to create a virtual environment suitable for
+# developing/installing NGAS, or to use the fabric scripts
 #
 # ICRAR - International Centre for Radio Astronomy Research
 # (c) UWA - The University of Western Australia, 2016
@@ -23,12 +24,12 @@
 # MA 02111-1307  USA
 #
 
-# NGAMs is usually installed in a virtualenv environment, where all its (python)
-# dependencies are also installed.
-# The installation procedure is driven by the fabfile scripts.
-# This bootstrap script creates a virtual environment for installing NGAS on it
-# and installs the minimum dependencies on it to run the Fabric-based
-# installation procedure
+#
+# This script creates a virtual environment.
+# This new venv can be then used both to install NGAS on it
+# (either normally, or in development mode)
+# or to locally support the fabric-based remote installation procedure.
+#
 
 error() {
 	echo "ERROR: $1" > /dev/stderr
@@ -84,20 +85,28 @@ fi
 # Create a virtual environment for the NGAMS installation procedure to begin
 # and source it
 $veCommand $veDir
-$sourceCommand
 if [[ ! -z "$removeVE" ]]
 then
 	$removeVE
 fi
 
-# Install Fabric and Boto
-for pkg in boto Fabric
-do
-	pip install $pkg
-done
+# Install initial packages into the new venv
+# Fabric is needed to allow using the fab scripts in the first place.
+# pycrypto is needed by the SSH pubkey-related bits in the fab scripts.
+# boto is needed to support the aws-related fab tasks.
+$sourceCommand
+pip install boto Fabric pycrypto
 
 echo
 echo
-echo    "----------------------------------------------------------------------------"
-echo -e "Now run the following command on your shell to load the virtual environment:\n$sourceCommand"
+echo "----------------------------------------------------------------------------"
+echo "Virtual Environment successfully created!"
+echo "Now run the following command on your shell to load the virtual environment:"
+echo
+echo "$sourceCommand"
+echo
+echo "You can now use this virtual environment to either locally install NGAS"
+echo "(normally or in development mode, see ./build.sh -h), or to run the remote"
+echo "installation procedures via fabric scripts (run fab -l for more information)"
+echo "----------------------------------------------------------------------------"
 echo

@@ -21,17 +21,14 @@ For a full list of all command-line flags run ``ngamsServer -h``.
 
 To start the NGAS server as a daemon run instead::
 
- ngamsDaemon start
+ ngamsDaemon start <params>
 
-The NGAS daemon accepts also the ``stop`` and ``status`` commands. The NGAS
-daemon uses the ``NGAS_PREFIX`` environment variable to determine the root of
-the NGAS data directory; otherwise it defaults to ``${HOME}/NGAS``. Inside this
-directory it will look for the ``cfg/ngamsServer.conf`` file, which will use to
-start the NGAS server.
+The NGAS daemon accepts also the ``stop`` and ``status`` commands.
+Any parameters given in ``<params>`` will be passed down verbatim
+to the ``ngamsServer`` being started,
+and thus should include at least the configuration file flag.
 
-Additionally the ``ngamsCacheServer`` and ``ngamsCacheDaemon`` commands are
-available, which start the NGAS server in cache mode.
-
+.. _running.client:
 
 Client
 ======
