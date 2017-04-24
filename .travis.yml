@@ -34,6 +34,7 @@ addons:
  apt:
   packages:
    - libdb-dev
+   - python-bsddb3
 
 #
 # To install we should simply run the build script
