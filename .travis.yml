@@ -33,15 +33,16 @@ python:
 addons:
  apt:
   packages:
+   - libdb-5.1
    - libdb-dev
-   - python-bsddb3
 
 #
 # To install we should simply run the build script
 # and include the C client in the compilation
 #
 install:
- - python -c 'import bsddb; import bsddb3'
+ - dpkg-query -l
+ - python -v -c 'import bsddb' && echo 'bsddb imported correctly'
  - ./build.sh -c
 
 #
