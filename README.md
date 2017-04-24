@@ -1,5 +1,7 @@
 # NGAS
 
+[![Docs](https://readthedocs.org/projects/ngas/badge/?version=latest)](https://ngas.readthedocs.io/en/latest/)
+
 The Next Generation Archive System (NGAS) is a very feature rich, archive
 handling and management system.
 In its core it is a HTTP based object storage system. It can be deployed
@@ -17,16 +19,12 @@ against a central database.
 
 # Installation
 
-Please refer to the doc/install.rst file for instructions on how to compile and
-install NGAS either manually or automatically.
+Please refer to the Installation section of our documentation for instructions
+on how to compile and install NGAS either manually or automatically.
 
 # Documentation
 
-See the doc/ directory for more information.
-Live documentation will be coming soon via RTD.
-For the time being an online PDF version of the documentation is available at:
-
-http://ngas.ddns.net:7777/RETRIEVE?file_id=ngas.pdf
+Our documentation is [online](https://ngas.readthedocs.io/).
 
 # History
 
