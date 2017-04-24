@@ -41,6 +41,7 @@ addons:
 # and include the C client in the compilation
 #
 install:
+ - python -c 'import bsddb; import bsddb3'
  - ./build.sh -c
 
 #
