@@ -55,7 +55,7 @@ NgamsCfg.Log[1].LocalLogLevel                          : 1
 NgamsCfg.Log[1].LogBufferSize                          : 10
 NgamsCfg.Log[1].LogRotateCache                         : 30
 NgamsCfg.Log[1].LogRotateInt                           : 01T00:00:00
-NgamsCfg.Log[1].SysLog                                 : 1
+NgamsCfg.Log[1].SysLog                                 : 0
 NgamsCfg.Log[1].SysLogPrefix                           : NGASLog
 NgamsCfg.MimeTypes[1].Id                               : MimeTypes-Std
 NgamsCfg.MimeTypes[1].MimeTypeMap[1].Extension         : fits
