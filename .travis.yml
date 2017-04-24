@@ -40,7 +40,7 @@ addons:
 # and include the C client in the compilation
 #
 install:
- - ./build.sh -C
+ - ./build.sh -c
 
 #
 # Now go for the tests
