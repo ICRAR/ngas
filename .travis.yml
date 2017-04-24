@@ -41,7 +41,6 @@ addons:
 #
 install:
  - pip install bsddb3
- - echo -e "try:\n    import bsddb\n    print('imported bsddb')\nexcept ImportError:\n    import bsddb3\n    print('imported bsddb3')" | python -v
  - ./build.sh -c
 
 #
