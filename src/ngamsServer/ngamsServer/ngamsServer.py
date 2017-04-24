@@ -464,23 +464,29 @@ class ngamsServer:
         for h in list(logging.root.handlers):
             logging.root.removeHandler(h)
 
+        # If we cannot setup a syslog handler we log this
+        # (after setting up all the logging)
+        syslog_setup_failed = False
         if logcfg.syslog:
             from logging.handlers import SysLogHandler
             prefix = '%s: ' % logcfg.syslog_prefix if logcfg.syslog_prefix else ''
             fmt = '{0}[%(levelname)6.6s] %(message)s'.format(prefix)
             fmt = logging.Formatter(fmt)
-            from sys import platform
             syslog_addr = '/dev/log'
-            if platform == 'darwin':
+            if sys.platform == 'darwin':
                 syslog_addr = '/var/run/syslog'
-            hnd = SysLogHandler(address=syslog_addr)
-            hnd.setFormatter(fmt)
 
-            class to_syslog_filter(logging.Filter):
-                def filter(self, record):
-                    return hasattr(record, 'to_syslog') and record.to_syslog
-            hnd.addFilter(to_syslog_filter())
-            logging.root.addHandler(hnd)
+            try:
+                hnd = SysLogHandler(address=syslog_addr)
+                hnd.setFormatter(fmt)
+
+                class to_syslog_filter(logging.Filter):
+                    def filter(self, record):
+                        return hasattr(record, 'to_syslog') and record.to_syslog
+                hnd.addFilter(to_syslog_filter())
+                logging.root.addHandler(hnd)
+            except socket.error:
+                syslog_setup_failed = True
 
         # We use the same format for both file and stdout
         fmt = '%(asctime)-15s.%(msecs)03d [%(threadName)10.10s] [%(levelname)6.6s] %(name)s#%(funcName)s:%(lineno)s %(message)s'
@@ -502,6 +508,9 @@ class ngamsServer:
 
         logging.root.setLevel(root_level)
 
+        # Our first potential logging statement
+        if syslog_setup_failed:
+            logger.warning("Syslog handler setup failed, no syslog messages will arrive")
 
 
     def setDb(self,
