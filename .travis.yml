@@ -35,6 +35,7 @@ addons:
   packages:
    - libdb5.1
    - libdb-dev
+   - python-bsddb3
 
 #
 # To install we should simply run the build script
@@ -42,7 +43,7 @@ addons:
 #
 install:
  - dpkg-query -l
- - python -v -c 'import bsddb' && echo 'bsddb imported correctly'
+ - python -v -c 'import bsddb; import bsddb3' && echo 'bsddb imported correctly'
  - ./build.sh -c
 
 #
