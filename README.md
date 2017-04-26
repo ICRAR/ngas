@@ -1,5 +1,6 @@
 # NGAS
 
+[![Build Status](https://travis-ci.org/ICRAR/ngas.svg?branch=master)](https://travis-ci.org/ICRAR/ngas)
 [![Docs](https://readthedocs.org/projects/ngas/badge/?version=latest)](https://ngas.readthedocs.io/en/latest/)
 
 The Next Generation Archive System (NGAS) is a very feature rich, archive
