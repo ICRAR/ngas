@@ -2002,15 +2002,15 @@ class ngamsServer:
             else:
                 authHttpHdrVal = ""
 
-            # Forward GET or POST request.
             # Make sure the time_out parameters is positive if given; otherwise
             # a sane default
             def_timeout = 300 # 3 [min]
             reqTimeOut = def_timeout
-            if reqPropsObj.hasHttpPar('time_out'):
-                reqTimeOut = reqPropsObj.getHttpPar("time_out")
-                reqTimeOut = float(reqTimeOut) if reqTimeOut else def_timeout
+            if 'time_out' in reqPropsObj and reqPropsObj['time_out']:
+                reqTimeOut = float(reqPropsObj.getHttpPar("time_out"))
                 reqTimeOut = reqTimeOut if reqTimeOut >= 0 else def_timeout
+
+            # Forward GET or POST request.
             if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
                 resp = ngamsHttpUtils.httpGet(host, port, reqPropsObj.getCmd(),
                                        pars=pars, timeout=reqTimeOut,
