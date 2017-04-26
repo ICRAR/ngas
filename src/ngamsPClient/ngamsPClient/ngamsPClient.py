@@ -852,6 +852,7 @@ def main():
     parser.add_argument('-e', '--execute',       help='Executes the action', action='store_true')
     parser.add_argument(      '--path',          help='File path')
     parser.add_argument(      '--slot-id',       help='The Slot ID for the label')
+    parser.add_argument(      '--host-id',       help='The Host ID')
     parser.add_argument(      '--p-plugin',      help='Processing plug-in to apply before retrieving data')
     parser.add_argument(      '--p-plugin-pars', help='Parameters for the processing plug-in, can be specified more than once', action='append')
 
@@ -922,7 +923,7 @@ def main():
     elif (cmd == NGAMS_INIT_CMD):
         stat = client.init()
     elif (cmd == NGAMS_LABEL_CMD):
-        stat = client.label(opts.slot_id)
+        stat = client.label(opts.slot_id, opts.host_id)
     elif (cmd == NGAMS_OFFLINE_CMD):
         stat = client.offline(opts.force)
     elif (cmd == NGAMS_ONLINE_CMD):
