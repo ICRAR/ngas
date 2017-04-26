@@ -428,18 +428,15 @@ class ngamsServer:
         self.ipAddress = None
         self.portNo    = None
 
+        # Defined as <hostname>:<port>
+        self.host_id   = None
+
     def getHostId(self):
         """
-        Returns the proper NG/AMS Host ID according whether multiple servers
-        can be executed on the same host, and this server is one of those.
-
-        If multiple servers can be executed on one node, the Host ID will be
-        <Host Name>:<Port No>. Otherwise, the Host ID will be the hostname.
+        Returns the NG/AMS Host ID for this server.
+        It has the form <hostname>:<port>
         """
-        hostname = getHostName()
-        if self.__multipleSrvs:
-            return hostname + ":" + str(self.portNo)
-        return hostname
+        return self.host_id
 
     def setup_logging(self):
         """
@@ -2289,6 +2286,7 @@ class ngamsServer:
         # Port number defaults to 7777
         portNo = self.getCfg().getPortNo()
         self.portNo = portNo if portNo != -1 else 7777
+        self.host_id = "%s:%d" % (getHostName(), self.portNo)
 
         # Set up missing logging conditions from configuration file
         logcfg = self.logcfg
