@@ -112,7 +112,7 @@ class ngamsPClient:
                 raise ValueError("Empty server list")
             self.servers = servers
         else:
-            host = host or 'localhost'
+            host = host or '127.0.0.1'
             port = port or 7777
             self.servers = [(host, port)]
 

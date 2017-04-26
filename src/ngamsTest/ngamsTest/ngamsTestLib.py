@@ -515,7 +515,7 @@ def sendPclCmd(port = 8888,
 
     Returns:       Created instance of Python Client (ngamsPClient).
     """
-    return ngamsPClient.ngamsPClient('localhost', port, timeout=timeOut, auth=auth)
+    return ngamsPClient.ngamsPClient('127.0.0.1', port, timeout=timeOut, auth=auth)
 
 def sendExtCmd(port,
                cmd,
