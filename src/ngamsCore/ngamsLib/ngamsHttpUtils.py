@@ -66,7 +66,7 @@ def _http_response(host, port, method, cmd,
         url += '?' + pars
 
     # Go, go, go!
-    logger.debug("About to %s to %s:%d/%s", method, host, port, url)
+    logger.info("About to %s to %s:%d/%s", method, host, port, url)
     conn = httplib.HTTPConnection(host, port, timeout = timeout)
     try:
         conn.request(method, url, body=data, headers=hdrs)
