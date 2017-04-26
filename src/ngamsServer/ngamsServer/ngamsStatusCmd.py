@@ -96,7 +96,7 @@ def _checkFileAccess(srvObj,
     if (location != NGAMS_HOST_LOCAL):
         host, port = srvObj.get_remote_server_endpoint(fileHost)
         httpStatCode, httpStatMsg, httpHdrs, data =\
-                      srvObj.forwardRequest(reqPropsObj, httpRef, host, port,
+                      srvObj.forwardRequest(reqPropsObj, httpRef, fileHost, host, port,
                                             autoReply = 0)
         tmpStat = ngamsStatus.ngamsStatus().unpackXmlDoc(data)
         return tmpStat.getMessage()
