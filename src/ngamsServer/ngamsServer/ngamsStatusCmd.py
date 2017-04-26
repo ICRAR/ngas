@@ -18,7 +18,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsStatusCmd.py,v 1.11 2008/08/19 20:51:50 jknudstr Exp $"
@@ -48,7 +47,7 @@ from ngamsLib import ngamsDbCore, ngamsDbm, ngamsStatus, ngamsDiskInfo
 from ngamsLib import ngamsDppiStatus
 from ngamsLib import ngamsFileInfo, ngamsHighLevelLib
 import ngamsFileUtils
-import ngamsSrvUtils, ngamsRetrieveCmd
+import ngamsRetrieveCmd
 
 
 logger = logging.getLogger(__name__)
@@ -95,9 +94,10 @@ def _checkFileAccess(srvObj,
               ngamsFileUtils.locateArchiveFile(srvObj, fileId, fileVersion,
                                                diskId)
     if (location != NGAMS_HOST_LOCAL):
+        host, port = srvObj.get_remote_server_endpoint(fileHost)
         httpStatCode, httpStatMsg, httpHdrs, data =\
-                      srvObj.forwardRequest(reqPropsObj, httpRef, fileHost,
-                                            filePortNo, autoReply = 0)
+                      srvObj.forwardRequest(reqPropsObj, httpRef, host, port,
+                                            autoReply = 0)
         tmpStat = ngamsStatus.ngamsStatus().unpackXmlDoc(data)
         return tmpStat.getMessage()
     else:
@@ -521,51 +521,22 @@ def handleCmdStatus(srvObj,
         global _help
         msg = _help
         help = 1
-    elif (hostId and (hostId != srvObj.getHostId())):
-        # Query the status for the host referenced.
-        contactDic = ngamsHighLevelLib.\
-                     resolveHostAddress(srvObj.getHostId(), srvObj.getDb(), srvObj.getCfg(),
-                                        [hostId])
-        # Handle the request as follows:
-        #
-        # 1. Resolved host/port = local host/port:
-        #    => Generate standard reply to STATUS command.
-        #
-        # 2. Resolved host/port != local host/port + !Proxy Mode:
-        #    => Send back Re-Direction HTTP Response.
-        #
-        # 3. Resolved host/port != local host/port + Proxy Mode:
-        #    => Forward the request to the host indicated, and send
-        #       back the reply received from this.
-        hostObj = contactDic[hostId]
+
+    elif hostId and hostId != srvObj.getHostId():
+
+        host, port = srvObj.get_remote_server_endpoint(hostId)
         cfgObj = srvObj.getCfg()
-        if ((hostObj.getHostId() == srvObj.getHostId()) and
-            (hostObj.getSrvPort() == cfgObj.getPortNo())):
-            logger.info("Send back status of this server/host to STATUS/host_id "+\
-                 "request")
-            msg = "Successfully handled command STATUS"
-        elif (((hostObj.getHostId() != srvObj.getHostId()) or
-               (hostObj.getSrvPort() != cfgObj.getPortNo())) and
-              (not cfgObj.getProxyMode())):
-            logger.info("Sending back re-direction HTTP response for host/port: "+\
-                        "%s/%d to STATUS/host_id request",
-                        hostObj.getHostId(), hostObj.getSrvPort())
-            srvObj.httpRedirReply(reqPropsObj, httpRef, hostObj.getHostId(),
-                                  hostObj.getSrvPort())
+        if not cfgObj.getProxyMode():
+            srvObj.httpRedirReply(reqPropsObj, httpRef, host, port)
             return
         else:
             try:
-                # Check if host is suspended, if yes, wake it up.
-                if (srvObj.getDb().getSrvSuspended(hostObj.getHostId())):
-                    logger.debug("Status Request - Waking up suspended " +\
-                         "NGAS Host: %s", hostObj.getHostId())
-                    ngamsSrvUtils.wakeUpHost(srvObj, hostObj.getHostId())
-                srvObj.forwardRequest(reqPropsObj, httpRef,hostObj.getHostId(),
-                                      hostObj.getSrvPort(), autoReply = 1)
+                srvObj.forwardRequest(reqPropsObj, httpRef, hostId, host, port,
+                                      autoReply = 1)
             except Exception, e:
                 ex = re.sub("<|>", "", str(e))
                 errMsg = genLog("NGAMS_ER_COM",
-                                [hostObj.getHostId(),hostObj.getSrvPort(),ex])
+                                [host, port,ex])
                 raise Exception, errMsg
             return
     elif (fileList):
