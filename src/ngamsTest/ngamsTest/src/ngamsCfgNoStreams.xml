@@ -54,7 +54,7 @@
           BlockSize="65536"
           MaxSimReqs="30" 
           RootDirectory="/tmp/ngamsTest/NGAS" 
-          IpAddress="0.0.0.0"
+          IpAddress="127.0.0.1"
           PortNo="8888" 
           ProxyMode="1"
           Simulation="1"

@@ -115,7 +115,7 @@ NgamsCfg.Register[1].PlugIn[1].PlugInPars              : checksum_util=utilFitsC
 NgamsCfg.Server[1].ArchiveName                         : ESO-ARCHIVE
 NgamsCfg.Server[1].BlockSize                           : 65536
 NgamsCfg.Server[1].Id                                  : Server-Sim
-NgamsCfg.Server[1].IpAddress                           : 0.0.0.0
+NgamsCfg.Server[1].IpAddress                           : 127.0.0.1
 NgamsCfg.Server[1].MaxSimReqs                          : 30
 NgamsCfg.Server[1].PortNo                              : 8888
 NgamsCfg.Server[1].ProxyMode                           : 1
