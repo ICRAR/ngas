@@ -2338,7 +2338,7 @@ class ngamsServer:
             tmpHostInfoObj.\
                              setHostId(self.getHostId()).\
                              setDomain(domain).\
-                             setIpAddress(ipAddress).\
+                             setIpAddress(self.ipAddress).\
                              setMacAddress(NGAMS_NOT_SET).\
                              setNSlots(-1).\
                              setClusterName(self.getHostId()).\
