@@ -61,10 +61,10 @@ def _remDisk(srvObj,
 
     # Check that the disk is mounted in this unit (no proxy for the REMDISK
     # Command ...).
-    if (diskInfo.getHostId() != getHostName()):
+    if (diskInfo.getHostId() != srvObj.getHostId()):
         errMsg = "Disk referred to by Disk ID: %s seems not to be mounted " +\
                  "in this unit: %s -- rejecting REMDISK Command"
-        errMsg = errMsg % (diskId, getHostName())
+        errMsg = errMsg % (diskId, srvObj.getHostId())
         raise Exception(errMsg)
 
     # Check that execution of the request can be granted.
