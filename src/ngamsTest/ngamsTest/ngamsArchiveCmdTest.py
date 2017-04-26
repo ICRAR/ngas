@@ -45,7 +45,7 @@ from unittest.case import skip, skipIf
 from contextlib import closing
 
 from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
-    NGAMS_SUCCESS
+    NGAMS_SUCCESS, getDiskSpaceAvail
 from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo,\
     ngamsCore
 from ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
@@ -67,6 +67,11 @@ try:
     import crc32c
 except ImportError:
     _test_checksums = False
+
+try:
+    _space_available_for_big_file_test = getDiskSpaceAvail('/tmp', format="GB") >= 4.1
+except:
+    _space_available_for_big_file_test = False
 
 class ngamsArchiveCmdTest(ngamsTestSuite):
     """
@@ -1492,6 +1497,16 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             conn.request(method, selector, '', {})
             resp = conn.getresponse()
             self.checkEqual(resp.status, 200, None)
+
+    @skipIf(not _space_available_for_big_file_test,
+            "Not enough disk space available to run this test " + \
+            "(4 GB are required under /tmp)")
+    def test_QArchive_big_file(self):
+
+        self.prepExtSrv()
+        cmd = 'QARCHIVE'
+        host = '127.0.0.1:8888'
+        method = 'POST'
 
         # Archive large file
         class generated_file(object):
