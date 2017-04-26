@@ -1562,6 +1562,35 @@ class ngamsServer:
             ngamsHighLevelLib.updateSrvHostInfo(self.getDb(), self.getHostInfoObj())
         return self
 
+    def get_remote_server_endpoint(self, hostId):
+        """
+        Return the IP address to which this server `srvObj` should connect to to
+        contact ngams server `hostId`.
+        """
+
+        local_name = getHostName()
+        listening_ip = self.getDb().getIpFromHostId(hostId)
+
+        if ':' in hostId:
+            remote_name, remote_port = hostId.split(':')
+            remote_port = int(remote_port)
+        else:
+            remote_name = hostId
+            remote_port = self.getDb().getPortNoFromHostId(hostId)
+
+        # remote server is not our same machine
+        if remote_name != local_name:
+            host = listening_ip if listening_ip != '0.0.0.0' else remote_name
+
+        # remote server is in the same machine
+        # We always prefer the loopback interface unless it's not opened
+        else:
+            if listening_ip not in ('127.0.0.1', '0.0.0.0'):
+                host = listening_ip
+            else:
+                host = '127.0.0.1'
+
+        return host, remote_port
 
     def getSubscriberDic(self):
         """
