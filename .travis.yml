@@ -48,7 +48,7 @@ install:
 #
 script:
  - cd ${TRAVIS_BUILD_DIR}/src/ngamsTest/ngamsTest
- - python ngamsTest.py -skip ngamsArchiveCmdTest,ngamsCClientTest
+ - python ngamsTest.py
 
 #
 # Run only on the master branch
