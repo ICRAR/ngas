@@ -46,6 +46,7 @@ import sys
 import threading
 import time
 import traceback
+import urllib
 
 import pkg_resources
 
@@ -1946,13 +1947,9 @@ class ngamsServer:
                    msg, addHttpHdrs)
 
 
-    def forwardRequest(self,
-                       reqPropsObj,
-                       httpRefOrg,
-                       forwardHost,
-                       forwardPort,
-                       autoReply = 1,
-                       mimeType = ""):
+    def forwardRequest(self, reqPropsObj, httpRefOrg,
+                       host_id, host, port,
+                       autoReply = 1, mimeType = ""):
         """
         Forward an HTTP request to the given host + port and handle the reply
         from the remotely, contacted NGAS node. If the host to contact for
@@ -1982,32 +1979,20 @@ class ngamsServer:
                           (<HTTP Status>, <HTTP Status Msg>, <HTTP Hdrs>,
                            <Data>)  (tuple).
         """
-        T = TRACE()
 
-        # Resolve the proper contact host/port if needed/possible.
-        hostDic = ngamsHighLevelLib.\
-                  resolveHostAddress(self.getHostId(), self.getDb(),self.getCfg(),[forwardHost])
-        if (hostDic[forwardHost] != None):
-            contactHost = hostDic[forwardHost].getHostId()
-            contactAddr = hostDic[forwardHost].getIpAddress()
-            contactPort = hostDic[forwardHost].getSrvPort()
-        else:
-            contactHost = forwardHost
-            contactAddr = forwardHost
-            contactPort = forwardPort
         pars = []
         for par in reqPropsObj.getHttpParNames():
-            val = reqPropsObj.getHttpPar(par)
-            pars.append([par, val])
-        cmdInfo = reqPropsObj.getCmd() + "/Parameters: " +\
-                  str(pars)[1:-1] + " to server defined " +\
-                  "by host/port: %s/%s." % (forwardHost, str(forwardPort))
-        cmdInfo += " Contact address: %s/%s." % (contactAddr, str(contactPort))
-        logger.info("Forwarding command: %s", cmdInfo)
+            pars.append((par, reqPropsObj.getHttpPar(par)))
+
+        if logger.isEnabledFor(logging.INFO):
+            msg = "Forwarding %s?%s to %s:%d (corresponding to hostId %s)"
+            urlpars = urllib.urlencode(pars, doseq=1)
+            logger.info(msg, reqPropsObj.getCmd(), urlpars, host, port, host_id)
+
         try:
             # If target host is suspended, wake it up.
-            if (self.getDb().getSrvSuspended(contactHost)):
-                ngamsSrvUtils.wakeUpHost(self, contactHost)
+            if (self.getDb().getSrvSuspended(host_id)):
+                ngamsSrvUtils.wakeUpHost(self, host_id)
 
             # If the NGAS Internal Authorization User is defined generate
             # an internal Authorization Code.
@@ -2027,7 +2012,7 @@ class ngamsServer:
                 reqTimeOut = float(reqTimeOut) if reqTimeOut else def_timeout
                 reqTimeOut = reqTimeOut if reqTimeOut >= 0 else def_timeout
             if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
-                resp = ngamsHttpUtils.httpGet(contactAddr, contactPort, reqPropsObj.getCmd(),
+                resp = ngamsHttpUtils.httpGet(host, port, reqPropsObj.getCmd(),
                                        pars=pars, timeout=reqTimeOut,
                                        auth=authHttpHdrVal)
                 with contextlib.closing(resp):
@@ -2045,7 +2030,7 @@ class ngamsServer:
                 # read()-able object
                 data = sizeaware_socketfile(reqPropsObj.getReadFd(), contLen)
                 httpStatCode, httpStatMsg, httpHdrs, data =\
-                            ngamsHttpUtils.httpPost(contactAddr, contactPort,
+                            ngamsHttpUtils.httpPost(host, port,
                                                     reqPropsObj.getCmd(),
                                                     data, mimeType,
                                                     pars=pars,
