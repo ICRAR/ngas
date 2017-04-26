@@ -533,10 +533,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                          [[8000, None, None, getClusterName()],
                           [8011, None, None, getClusterName()]])
         sendPclCmd(port=8011).archive("src/SmallFile.fits")
-        fileUri = "http://%s:8011/RETRIEVE?file_id=" +\
+        fileUri = "http://127.0.0.1:8011/RETRIEVE?file_id=" +\
                   "TEST.2001-05-08T15:25:00.123&file_version=1"
         tmpStatFile = sendExtCmd(8000, NGAMS_ARCHIVE_CMD,
-                                 [["filename", fileUri % getHostName()],
+                                 [["filename", fileUri],
                                   ["mime_type", "application/x-gfits"]],
                                  filterTags = ["http://", "LogicalName:"])
         refStatFile = "ref/ngamsArchiveCmdTest_test_ArchivePullReq_2_1_ref"
@@ -711,12 +711,13 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv()
+        cfgObj, dbObj = self.prepExtSrv(port=8888)
+        host_id = getHostName() + ":8888"
         sqlQuery = "UPDATE ngas_disks SET completed=1 WHERE host_id={0}"
-        dbObj.query2(sqlQuery, args=(getHostName(),))
+        dbObj.query2(sqlQuery, args=(host_id,))
         statObj = sendPclCmd().archive("src/SmallFile.fits")
         sqlQuery = "UPDATE ngas_disks SET completed=0 WHERE host_id={0}"
-        dbObj.query2(sqlQuery, args=(getHostName(),))
+        dbObj.query2(sqlQuery, args=(host_id,))
         refStatFile = "ref/ngamsArchiveCmdTest_test_ErrHandling_3_1_ref"
         tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
@@ -1102,7 +1103,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
     def _genArchProxyCfg(self,
                          streamElList,
-                         nauList):
+                         ports):
         """
         Generate a cfg. file.
         """
@@ -1114,9 +1115,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             for strAttrEl, attrVal in streamEl:
                 nextAttr = strAttrEl % strEl
                 cfg.storeVal(nextAttr, attrVal)
-            for hostIdx, nau in enumerate(nauList,1):
+            for hostIdx, port in enumerate(ports, 1):
                 nauAttr = self.__ARCH_UNIT_ATR % (strEl, hostIdx)
-                cfg.storeVal(nauAttr, nau)
+                cfg.storeVal(nauAttr, "%s:%d" % (getHostName(), port))
                 hostIdx += 1
             idx += 1
         cfg.save(tmpCfgFile, 0)
@@ -1156,9 +1157,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        naus = {"%s:8001" % getHostName(): 0, "%s:8002" % getHostName(): 0,
-                "%s:8003" % getHostName(): 0, "%s:8004" % getHostName(): 0}
-        nmuCfg = self._genArchProxyCfg(self.__STREAM_LIST, naus.keys())
+        ports = range(8001, 8005)
+        nmuCfg = self._genArchProxyCfg(self.__STREAM_LIST, ports)
         #extProps = [["NgamsCfg.Log[1].LocalLogLevel", "5"]]
         extProps = []
         self.prepExtSrv(port=8000, cfgFile=nmuCfg, cfgProps=extProps)
@@ -1168,14 +1168,16 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                           [8003, None, None, getHostName()],
                           [8004, None, None, getHostName()]],
                          createDatabase = False)
-        noOfNodes = len(naus.keys())
+        noOfNodes = len(ports)
         nodeCount = 0
+        counts = {p: 0 for p in ports}
         for _ in xrange(100):
             stat = sendPclCmd(port=8000).\
                    archive("src/TinyTestFile.fits")
             self.assertEquals(stat.getStatus(), 'SUCCESS', "Didn't successfully archive file: %s / %s" % (stat.getStatus(), stat.getMessage()))
-            if (naus[stat.getHostId()] == 0):
-                naus[stat.getHostId()] = 1
+            port = int(stat.getHostId().split(':')[1])
+            if (counts[port] == 0):
+                counts[port] = 1
                 nodeCount += 1
                 if (nodeCount == noOfNodes): break
         if (nodeCount != noOfNodes):
@@ -1215,16 +1217,15 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        naus = {"%s:8000" % getHostName(): 0, "%s:8001" % getHostName(): 0,
-                "%s:8002" % getHostName(): 0, "%s:8003" % getHostName(): 0}
+        ports = range(8000, 8004)
         baseCfgFile = "src/ngamsCfg.xml"
         tmpCfgFile = genTmpFilename("test_cfg_") + ".xml"
         cfg = ngamsConfig.ngamsConfig().load(baseCfgFile)
         idx = 1
-        for nau in naus.keys():
+        for port in ports:
             attr = "NgamsCfg.Streams[1].Stream[2].ArchivingUnit[%d].HostId" %\
                    (idx)
-            cfg.storeVal(attr, nau)
+            cfg.storeVal(attr, "%s:%d" % (getHostName(), port))
             idx += 1
         cfg.save(tmpCfgFile, 0)
         self.prepCluster(tmpCfgFile,
@@ -1233,13 +1234,15 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                           [8002, None, None, getClusterName()],
                           [8003, None, None, getClusterName()]])
 
-        noOfNodes = len(naus.keys())
+        noOfNodes = len(ports)
         nodeCount = 0
-        for n in range(100):
+        counts = {p: 0 for p in ports}
+        for _ in range(100):
             stat = sendPclCmd(port=8000).\
                    archive("src/TinyTestFile.fits")
-            if (naus[stat.getHostId()] == 0):
-                naus[stat.getHostId()] = 1
+            port = int(stat.getHostId().split(':')[1])
+            if (counts[port] == 0):
+                counts[port] = 1
                 nodeCount += 1
                 if (nodeCount == noOfNodes): break
         if (nodeCount != noOfNodes):
@@ -1276,10 +1279,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        naus = {"%s:8001" % getHostName(): 0, "%s:8002" % getHostName(): 0,
-                "%s:8003" % getHostName(): 0, "%s:8004" % getHostName(): 0}
-        ncuCfg = self._genArchProxyCfg(self.__STREAM_LIST, naus.keys())
-        cfgObj, dbObj = self.prepExtSrv(port=8000, cfgFile=ncuCfg)
+        ports = range(8001, 8005)
+        ncuCfg = self._genArchProxyCfg(self.__STREAM_LIST, ports)
+        _, dbObj = self.prepExtSrv(port=8000, cfgFile=ncuCfg)
         self.prepCluster("src/ngamsCfg.xml",
                          [[8001, None, None, getHostName()],
                           [8002, None, None, getHostName()],
@@ -1291,15 +1293,15 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # Set <Host>:8004 to Offline.
         stat = sendPclCmd(port=8004).offline()
 
-        del naus["%s:8002" % getHostName()]
-        del naus["%s:8004" % getHostName()]
-        noOfNodes = len(naus.keys())
+        counts = {8001: 0, 8003: 0}
+        noOfNodes = len(counts)
         nodeCount = 0
-        for n in range(100):
+        for _ in range(100):
             stat = sendPclCmd(port=8000).\
                    archive("src/TinyTestFile.fits")
-            if (naus[stat.getHostId()] == 0):
-                naus[stat.getHostId()] = 1
+            port = int(stat.getHostId().split(':')[1])
+            if (counts[port] == 0):
+                counts[port] = 1
                 nodeCount += 1
                 if (nodeCount == noOfNodes): break
         if (nodeCount != noOfNodes):

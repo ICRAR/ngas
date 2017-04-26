@@ -47,6 +47,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import threading
 import time
 import unittest
 import uuid
@@ -931,6 +932,11 @@ class ngamsTestSuite(unittest.TestCase):
     Test Case class for the NG/AMS Functional Tests.
     """
 
+    # Used to serialize the startup of server processes
+    # due to the subprocess module not handling threaded code well
+    # in python 2.7
+    _proc_startup_lock = threading.Lock()
+
     def __init__(self,
                  methodName = "runTest"):
         """
@@ -1056,8 +1062,9 @@ class ngamsTestSuite(unittest.TestCase):
         if multipleSrvs: execCmd.append("-multipleSrvs")
         if dbCfgName:    execCmd.extend(["-dbCfgId", dbCfgName])
 
-        logger.info("Starting external NG/AMS Server with shell command: %s", " ".join(execCmd))
-        srvProcess = subprocess.Popen(execCmd)
+        logger.info("Starting external NG/AMS Server in port %d with command: %s", port, " ".join(execCmd))
+        with self._proc_startup_lock:
+            srvProcess = subprocess.Popen(execCmd, shell=False)
 
         # We have to wait until the server is serving.
         server_info = ServerInfo(srvProcess, port, cfgObj.getRootDirectory())
@@ -1499,7 +1506,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:      Substituted query value (string).
         """
-        queryVal = str(queryVal.strip().replace("$HOSTNAME", getHostName()))
+        queryVal = str(queryVal.strip().replace("$HOSTNAME", getHostName() + ":8888"))
         if ((queryVal.find("<DateTime object") != -1) or
             checkIfIso8601(queryVal.lstrip('u').strip("'"))):
             queryVal = "_DATETIME_"

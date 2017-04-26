@@ -82,7 +82,7 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
                                                   ["file_id", fileId],
                                                   ["file_version", "1"]])
         refStatFile = "ref/ngamsCheckFileCmdTest_test_NormalExec_1_1_ref"
-        refStatFile = saveInFile(None, loadFile(refStatFile) % getHostName())
+        refStatFile = saveInFile(None, loadFile(refStatFile) % ("%s:%d" % (getHostName(), 8888)))
         tmpStatFile = saveInFile(None, statObj.getMessage())
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect info in " +\
                           "STATUS Command XML Status Document")

@@ -100,9 +100,10 @@ class ngamsRegisterCmdTest(ngamsTestSuite):
         fileInfoTmp = "tmp/" + filePrefix + "_FileInfo_tmp"
         fileId = "TEST.2001-05-08T15:25:00.123"
         startTime = time.time()
+
+        host_id = getHostName() + ":8888"
         while ((time.time() - startTime) < 10):
-            tmpFileRes = dbObj.getFileInfoFromFileIdHostId(getHostName(),
-                                                           fileId, 1, diskId)
+            tmpFileRes = dbObj.getFileInfoFromFileIdHostId(host_id, fileId, 1, diskId)
             if (tmpFileRes): break
         if not tmpFileRes:
             self.fail("Couldn't get fileInfo result from database within 10 seconds")

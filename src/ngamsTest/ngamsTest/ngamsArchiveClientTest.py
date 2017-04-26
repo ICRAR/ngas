@@ -39,7 +39,6 @@ import sys
 import time
 
 from ngamsLib import ngamsStatus
-from ngamsLib.ngamsCore import getHostName
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, runTest
 
 
@@ -86,7 +85,7 @@ def startArchiveClient():
     """
     stopArchiveClient(0, 1)
 
-    cmdLineParsDic = {"-host": getHostName(), "-port": "8888",
+    cmdLineParsDic = {"-host": '127.0.0.1', "-port": "8888",
                       "-rootDir": "/tmp/ngamsTest", "-pollTime": "5",
                       "-checksum": "ngamsCrc32", "-cleanUpTimeOut": "10",
                       "-logLevel": "3", "-logRotate": "0", "-logHistory": "2",
