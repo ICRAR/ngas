@@ -164,7 +164,8 @@ def httpGet(host, port, cmd, pars=[], hdrs={},
     hdrs = dict(hdrs)
     if auth:
         hdrs['Authorization'] = auth.strip()
-    return _http_response(host, port, NGAMS_HTTP_GET, cmd, None, timeout, pars, hdrs)
+    return _http_response(host, port, NGAMS_HTTP_GET, cmd,
+                          pars=pars, hdrs=hdrs, timeout=timeout)
 
 
 def httpGetUrl(url, pars=[], hdrs={}, timeout=None, auth=None):
@@ -175,5 +176,4 @@ def httpGetUrl(url, pars=[], hdrs={}, timeout=None, auth=None):
     url = urlparse.urlparse(url)
     pars = [] if not url.query else urlparse.parse_qsl(url.query)
     return httpGet(url.hostname, url.port, url.path,
-                   pars=pars, hdrs=hdrs, timeout=timeout,
-                   auth=auth)
+                   pars=pars, hdrs=hdrs, timeout=timeout)
