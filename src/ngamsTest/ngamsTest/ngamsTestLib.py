@@ -498,49 +498,6 @@ def delNgamsDirs(cfgObj):
         logger.exception("Error encountered removing NG/AMS directories")
 
 
-def checkHostEntry(dbObj,
-                   dbHostId,
-                   domain = None,
-                   ipAddress = None,
-                   clusterName = None):
-    """
-    Check that the given host has an entry in the DB. If this is not the case,
-    create it.
-
-    dbObj:               DB connection object (ngamsDb).
-
-    dbHostId:            DB Host ID in to check for (string).
-
-    domain:              Domain name of NGAS Node (string).
-
-    ipAddress:           IP address of the node (string|None).
-
-    clusterName:         Cluster name of NGAS Node (string).
-
-    Returns:             Void.
-    """
-    try:
-        dbObj.getIpFromHostId(dbHostId)
-        hostDefined = 1
-    except Exception:
-        hostDefined = 0
-    hostInfo = socket.gethostbyname_ex(dbHostId.split(":")[0])
-    fullHostName = hostInfo[0]
-    ip = hostInfo[2][0]
-    if (not domain): domain = fullHostName[(fullHostName.find(".") + 1):]
-    if (not ipAddress): ipAddress = ip
-    if (not clusterName): clusterName = dbHostId
-    if (not hostDefined):
-        sql = "INSERT INTO ngas_hosts (host_id, domain, ip_address, " +\
-              "cluster_name, srv_suspended) VALUES ({0}, {1}, {2}, {3}, 0)"
-        args = (dbHostId, domain, ipAddress, clusterName)
-    else:
-        sql = "UPDATE ngas_hosts SET domain={0}, ip_address={1}, " +\
-              "cluster_name={2}, srv_suspended=0 WHERE host_id={3}"
-        args = (domain, ipAddress, clusterName, dbHostId)
-    dbObj.query2(sql, args)
-
-
 def sendPclCmd(port = 8888,
                auth = None,
                timeOut = 60.0):
@@ -589,20 +546,15 @@ def sendExtCmd(port,
     Returns:       Filename of file containing filtered ASCII dump of status
                    or ngamsStatus object (string|ngamsStatus).
     """
-    try:
-        statObj = sendPclCmd(port=port).get_status(cmd, pars=pars)
-        if (genStatFile):
-            tmpStatFile = "tmp/%s_CmdStatus_%s_tmp" %\
-                          (cmd, str(int(time.time())))
-            buf = statObj.dumpBuf().replace(getHostName(), "___LOCAL_HOST___")
-            saveInFile(tmpStatFile, filterDbStatus1(buf, filterTags))
-            return tmpStatFile
-        else:
-            return statObj
-    except Exception, e:
-        errMsg = "Problem handling command to external server (localhost:%d). " +\
-                 "Error: %s"
-        raise Exception, errMsg % (port, str(e))
+    statObj = sendPclCmd(port=port).get_status(cmd, pars=pars)
+    if (genStatFile):
+        tmpStatFile = "tmp/%s_CmdStatus_%s_tmp" %\
+                      (cmd, str(int(time.time())))
+        buf = statObj.dumpBuf().replace(getHostName(), "___LOCAL_HOST___")
+        saveInFile(tmpStatFile, filterDbStatus1(buf, filterTags))
+        return tmpStatFile
+    else:
+        return statObj
 
 
 def filterDbStatus1(statBuf,
@@ -987,6 +939,7 @@ class ngamsTestSuite(unittest.TestCase):
         methodName:    Name of method to run to run test case (string_.
         """
         unittest.TestCase.__init__(self, methodName)
+        logger.info("Starting test %s" % (methodName,))
         self.extSrvInfo    = []
         self.__mountedDirs   = []
 
@@ -1001,9 +954,6 @@ class ngamsTestSuite(unittest.TestCase):
                    autoOnline = 1,
                    cfgFile = "src/ngamsCfg.xml",
                    multipleSrvs = 0,
-                   domain = None,
-                   ipAddress = None,
-                   clusterName = None,
                    cfgProps = [],
                    dbCfgName = None,
                    srvModule = None,
@@ -1026,13 +976,6 @@ class ngamsTestSuite(unittest.TestCase):
 
         multipleSrvs:  If set to 1, this means that multiple servers might
                        be running on the node (integer/0|1).
-
-        domain:        Domain for server (string).
-
-        ipAddress:     IP address for the host where the server is
-                       running (string).
-
-        clusterName:   Name of cluster to which this node belongs (string).
 
         cfgProps:      With this parameter it is possible to set specific
                        cfg. parameters before starting the server. This
@@ -1075,13 +1018,6 @@ class ngamsTestSuite(unittest.TestCase):
             logger.debug("Successfully read configuration from database, root dir is %s", cfgObj2.getRootDirectory())
             cfgFile = saveInFile(None, cfgObj2.genXmlDoc(0))
 
-        # Derive NG/AMS Server name for this instance.
-        hostName = getHostName()
-        if (not multipleSrvs):
-            hostId = hostName
-        else:
-            hostId = "%s:%d" % (hostName, port)
-
         cfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
 
         # Change what needs to be changed, like the position of the Sqlite
@@ -1103,9 +1039,6 @@ class ngamsTestSuite(unittest.TestCase):
         if (clearDb):
             logger.debug("Clearing NGAS DB ...")
             delNgasTbls(dbObj)
-
-        # Insert an entry for this server on the host table
-        checkHostEntry(dbObj, hostId, domain, ipAddress, clusterName)
 
         # Dump configuration into the filesystem so the server can pick it up
         tmpCfg = genTmpFilename("CFG_") + ".xml"
@@ -1326,9 +1259,6 @@ class ngamsTestSuite(unittest.TestCase):
         """
 
         portNo      = int(srvInfo[0])
-        domain      = srvInfo[1]
-        ipAddress   = srvInfo[2]
-        clusterName = srvInfo[3]
         if (len(srvInfo) > 4):
             cfgParList = srvInfo[4]
         else:
@@ -1340,10 +1270,8 @@ class ngamsTestSuite(unittest.TestCase):
         if (multSrvs):
             mtRtDir = "/tmp/ngamsTest/NGAS:%d" % portNo
             rmFile("/tmp/ngamsTest/NGAS:%d" %(portNo,))
-            srvDbHostId = srvId
         else:
             mtRtDir = "/tmp/ngamsTest/NGAS"
-            srvDbHostId = hostName
         rmFile(mtRtDir)
 
         # Set up our server-specific configuration
@@ -1365,7 +1293,6 @@ class ngamsTestSuite(unittest.TestCase):
 
         # Check if server has entry in referenced DB. If not, create it.
         db = ngamsDb.from_config(cfg)
-        checkHostEntry(db, srvDbHostId, domain, ipAddress, clusterName)
         db.close()
 
         # Start server + add reference to server configuration object and
@@ -1375,10 +1302,7 @@ class ngamsTestSuite(unittest.TestCase):
                                               clearDb = 0,
                                               autoOnline = 1,
                                               cfgFile = tmpCfgFile,
-                                              multipleSrvs = multSrvs,
-                                              domain = domain,
-                                              ipAddress = ipAddress,
-                                              clusterName = clusterName)
+                                              multipleSrvs = multSrvs)
         return [srvId, srvCfgObj, srvDbObj]
 
     def prepCluster(self,
