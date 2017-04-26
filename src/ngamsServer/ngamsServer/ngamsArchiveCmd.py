@@ -96,25 +96,17 @@ def archiveInitHandling(srvObj,
         raise Exception(errMsg)
 
     # Act possibly as proxy for the Achive Request?
+    # TODO: Support maybe HTTP redirection also for Archive Requests.
     try:
         archUnits = srvObj.getCfg().getStreamFromMimeType(mimeType).\
                     getHostIdList()
-    except Exception, e:
+    except Exception:
         archUnits = []
-    if (len(archUnits) > 0):
-        targNodeName, targNode, targPort, targDiskObj =\
-                      ngamsArchiveUtils.\
-                      findTargetNode(srvObj.getHostId(), srvObj.getDb(), srvObj.getCfg(),
-                                     reqPropsObj.getMimeType())
-        if ((targNodeName != getHostName()) or
-            (int(targPort) != int(srvObj.getCfg().getPortNo()))):
-            # Act as proxy, forward the request to the specified node.
-            # TODO: Support maybe HTTP redirection also for Archive Requests.
-            httpStatCode, httpStatMsg, httpHdrs, data =\
-                          srvObj.forwardRequest(reqPropsObj, httpRef,
-                                                targNodeName, targPort, 1,
-                                                mimeType)
-            # Request handled at remote host and reply sent to client.
+
+    if archUnits:
+        host_id, host, port = ngamsArchiveUtils.findTargetNode(srvObj, mimeType)
+        if host_id != srvObj.getHostId():
+            srvObj.forwardRequest(reqPropsObj, httpRef, host_id, host, port, mimeType=mimeType)
             return None
 
     return mimeType
