@@ -762,7 +762,7 @@ def pingServer(hostId,
     The function tries to ping (sends STATUS command) to the NG/AMS Server
     running on the given host using the given port number.
     """
-    logger.debug("Pinging NG/AMS Server: %s/%d. Timeout: .3f [s]", hostId, portNo, timeout)
+    logger.debug("Pinging NG/AMS Server: %s/%d. Timeout: %.3f [s]", hostId, portNo, timeout)
 
     startTime = time.time()
     while True:
