@@ -58,7 +58,7 @@ case "$1" in
 		;;
 	status)
 		echo "Status of $DAEMON: "
-		su - $USER -c "$DAEMON status $OPTS"
+		su - $USER -c "$DAEMON status $OPTS" &> /dev/null
 		RETVAL=$?
 		;;
 	restart)
