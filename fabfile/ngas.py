@@ -353,9 +353,9 @@ def install_sysv_init_script(nsd, nuser, cfgfile):
 
     # Enabling init file on boot
     if check_command('update-rc.d'):
-        sudo('update-rc.d ngams-server.sh defaults')
+        sudo('update-rc.d ngas-server defaults')
     else:
-        sudo('chkconfig --add ngams-server')
+        sudo('chkconfig --add ngas-server')
 
     success("NGAS init script installed")
 
