@@ -131,7 +131,10 @@ def status(cfg):
     port = cfg.getPortNo()
 
     # TODO: This creates a dependency on ngamsPClient
-    cmd = "ngamsPClient STATUS --host {0} --port {1} -v --timeout 10".format(ipAddress, port)
+    cmd = ["ngamsPClient", "STATUS", "-v",
+           "--host", ipAddress,
+           "--port", str(port),
+           "--timeout", "10"]
     return subprocess.call(cmd)
 
 def print_usage(name):
