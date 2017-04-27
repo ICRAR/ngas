@@ -337,8 +337,8 @@ def install_sysv_init_script(nsd, nuser, cfgfile):
         opt_file = '/etc/default/ngas'
 
     # Script file installation
-    sudo('cp %s/fabfile/init/sysv/ngas-server.sh /etc/init.d/' % (nsd,))
-    sudo('chmod 755 /etc/init.d/ngas-server.sh')
+    sudo('cp %s/fabfile/init/sysv/ngas-server /etc/init.d/' % (nsd,))
+    sudo('chmod 755 /etc/init.d/ngas-server')
 
     # Options file installation and edition
     ntype = ngas_server_type()
