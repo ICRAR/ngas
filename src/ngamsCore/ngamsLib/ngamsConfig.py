@@ -966,29 +966,6 @@ class ngamsConfig:
         return bbufDir
 
 
-    def getDbServer(self):
-        """
-        Return DB server name.
-
-        Returns:  DB server name (string).
-        """
-        return self.getVal("Db[1].Server")
-
-
-    def getDbName(self):
-        """
-        Get DB name.
-
-        Returns:  DB name (string).
-        """
-        dbName = self.getVal("Db[1].Name")
-        if self.getDbInterface() == "ngamsSqlite":
-            if dbName[0] != '/':
-                dbName = self.getRootDirectory() + '/' + dbName
-
-        return dbName
-
-
     def getDbSnapshot(self):
         """
         Return the DB Snapshot Feature on/off.
@@ -1008,37 +985,6 @@ class ngamsConfig:
         return self.getVal("Db[1].Interface")
 
 
-    def getDbVerify(self):
-        """
-        Return value of the DB Verification Flag. If not defined, 1
-        is returned.
-
-        If DB Verification is enabled, for most DB queries it will be checked
-        if the expected number of rows have been retrieved. If this is not
-        the case, a warning message will be logged.
-
-        Returns:   DB Verification Flag (integer/0|1).
-        """
-        par = "Db[1].Verify"
-        try:
-            return getInt(par, self.getVal(par))
-        except:
-            return 1
-
-
-    def getDbMultipleCons(self):
-        """
-        Return flag indicating if multiple DB connections are allowed.
-
-        Returns:  Multiple connections allowed (boolean).
-        """
-        par = "Db[1].MultipleConnections"
-        val = getInt(par, self.getVal(par))
-        if (val == 1):
-            return True
-        else:
-            return False
-
     def getDbMaxPoolCons(self):
         """
         Max number of DB Pool Connections.
@@ -1053,6 +999,7 @@ class ngamsConfig:
         """
         par = "Db[1].MaxPoolConnections"
         return getInt(par, self.getVal(par), 7)
+
 
     def getDbParameters(self):
         """
@@ -1094,23 +1041,6 @@ class ngamsConfig:
         if val is None:
             return True
         return val
-
-    def getDbAutoRecover(self):
-        """
-        Return value of the DB Auto Recover Flag. If not defined, 0
-        is returned.
-
-        If DB Auto Recovering is enabled, for most DB queries it will be
-        checked if the expected number of rows have been retrieved. If this
-        is not the case, it will be retried to execute the query.
-
-        Returns:   DB Auto Recover Flag (integer/0|1).
-        """
-        par = "Db[1].AutoRecover"
-        try:
-            return getInt(par, self.getVal(par))
-        except:
-            return 0
 
 
     def addMimeTypeMap(self,
