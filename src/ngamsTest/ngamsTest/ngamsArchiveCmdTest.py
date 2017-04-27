@@ -397,6 +397,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                           tmpReqPropObj.getStagingFilename(),
                           "Illegal Back-Log Buffered File: %s" %\
                           tmpReqPropObj.getStagingFilename())
+
+        # Cleanly shut down the server, and wait until it's completely down
         old_cleanup = getNoCleanUp()
         setNoCleanUp(True)
         self.termExtSrv(self.extSrvInfo.pop())
@@ -1006,8 +1008,13 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             fo = open("%s.%s" % (stgFile, NGAMS_PICKLE_FILE_EXT), "w")
             fo.write("TEST/DUMMY REQUEST PROPERTIES FILE: %s" % diskName)
             fo.close()
-        sendPclCmd().offline()
-        sendPclCmd().exit()
+
+        # Cleanly shut down the server, and wait until it's completely down
+        old_cleanup = getNoCleanUp()
+        setNoCleanUp(True)
+        self.termExtSrv(self.extSrvInfo.pop())
+        setNoCleanUp(old_cleanup)
+
         self.prepExtSrv(delDirs=0, clearDb=0)
         badDirPat = "/tmp/ngamsTest/NGAS/bad-files/BAD-FILE-*-%s.fits"
         for diskName in diskList:
