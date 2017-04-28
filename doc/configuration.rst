@@ -107,3 +107,5 @@ contains the details to configure the server logging output.
 * *SysLog*: An integer indicating whether syslog logging is enabled
   (``1``) or disabled (``0``).
 * *SysLogPrefix*: The string used as prefix for all syslog messages.
+* *SysLogAddress*: The address where the syslog messages should be sent to.
+  If not specified a platform-dependent default value is used.

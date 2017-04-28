@@ -1575,6 +1575,16 @@ class ngamsConfig:
         return self.getVal("Log[1].SysLogPrefix")
 
 
+    def getSysLogAddress(self):
+        """
+        Return the address where syslog is listening for incoming messages.
+        If no address is given, a platform-dependent default is used
+
+        Returns:  Syslog address (string).
+        """
+        return self.getVal("Log[1].SysLogAddress")
+
+
     def getLocalLogFile(self):
         """
         Return the Local Log File.

@@ -210,13 +210,14 @@ class sizeaware_socketfile(object):
 
 class logging_config(object):
     def __init__(self, stdout_level, file_level, logfile, logfile_rot_interval,
-                 syslog, syslog_prefix):
+                 syslog, syslog_prefix, syslog_address):
         self.stdout_level = stdout_level
         self.file_level = file_level
         self.logfile = logfile
         self.logfile_rot_interval = logfile_rot_interval
         self.syslog = syslog
         self.syslog_prefix = syslog_prefix
+        self.syslog_address = syslog_address
 
 
 from logging.handlers import BaseRotatingHandler
@@ -318,7 +319,7 @@ class ngamsServer:
         # Empty logging configuration.
         # It is later initialised both from the cmdline
         # and from the configuration file
-        self.logcfg = logging_config(None, None, None, None, None, None)
+        self.logcfg = logging_config(None, None, None, None, None, None, None)
 
         # Server list handling.
         self.__srvListDic             = {}
@@ -470,9 +471,13 @@ class ngamsServer:
             prefix = '%s: ' % logcfg.syslog_prefix if logcfg.syslog_prefix else ''
             fmt = '{0}[%(levelname)6.6s] %(message)s'.format(prefix)
             fmt = logging.Formatter(fmt)
-            syslog_addr = '/dev/log'
-            if sys.platform == 'darwin':
-                syslog_addr = '/var/run/syslog'
+
+            # User-given or default depending on the platform
+            syslog_addr = logcfg.syslog_address
+            if not syslog_addr:
+                syslog_addr = '/dev/log'
+                if sys.platform == 'darwin':
+                    syslog_addr = '/var/run/syslog'
 
             try:
                 hnd = SysLogHandler(address=syslog_addr)
@@ -2312,6 +2317,8 @@ class ngamsServer:
             logcfg.syslog = self.getCfg().getSysLog()
         if logcfg.syslog_prefix is None:
             logcfg.syslog_prefix = self.getCfg().getSysLogPrefix()
+        if logcfg.syslog_address is None:
+            logcfg.syslog_address = self.getCfg().getSysLogAddress()
         if logcfg.stdout_level is None:
             logcfg.stdout_level = 0
         if logcfg.logfile_rot_interval is None:
