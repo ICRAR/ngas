@@ -487,7 +487,7 @@ def wakeUpHost(srvObj,
         plugInMethod(srvObj, suspHost)
 
         ipAddress = srvObj.getDb().getIpFromHostId(suspHost)
-        ngamsHighLevelLib.pingServer(suspHost, ipAddress, portNo,
+        ngamsHighLevelLib.pingServer(ipAddress, portNo,
                                      srvObj.getCfg().getWakeUpCallTimeOut())
     except Exception:
         logger.exception("Error waking up host %s", suspHost)

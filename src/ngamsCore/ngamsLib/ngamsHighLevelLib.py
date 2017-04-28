@@ -32,6 +32,7 @@ Contains higher level common functions.
 """
 
 import contextlib
+import errno
 import logging
 import os
 import re
@@ -754,31 +755,30 @@ def performBackLogBuffering(ngamsCfgObj,
     return 0
 
 
-def pingServer(hostId,
-               ipAddress,
-               portNo,
-               timeout):
+def pingServer(host, port, timeout):
     """
     The function tries to ping (sends STATUS command) to the NG/AMS Server
     running on the given host using the given port number.
     """
-    logger.debug("Pinging NG/AMS Server: %s/%d. Timeout: %.3f [s]", hostId, portNo, timeout)
+    logger.debug("Pinging NG/AMS Server: %s:%d. Timeout: %.3f [s]", host, port, timeout)
 
     startTime = time.time()
     while True:
         try:
-            resp = ngamsHttpUtils.httpGet(ipAddress, portNo, NGAMS_STATUS_CMD)
+            resp = ngamsHttpUtils.httpGet(host, port, NGAMS_STATUS_CMD)
             with contextlib.closing(resp):
                 if resp.status in (NGAMS_HTTP_SUCCESS, NGAMS_HTTP_UNAUTH):
                     logger.debug("Successfully pinged NG/AMS Server")
                     return
-        except socket.error:
+        except socket.error as e:
+            if e.errno != errno.ECONNREFUSED:
+                raise
             if (time.time() - startTime) >= timeout:
                 break
             time.sleep(0.2)
 
     errMsg = "NGAS Server running on %s:%d did not respond within %.3f [s]"
-    raise Exception(errMsg % (ipAddress, portNo, timeout))
+    raise Exception(errMsg % (host, port, timeout))
 
 
 def stdReqTimeStatUpdate(srvObj,

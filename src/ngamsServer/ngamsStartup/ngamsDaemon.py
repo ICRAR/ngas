@@ -24,14 +24,13 @@
 import errno
 import os
 import signal
-import subprocess
 import sys
 import time
 
 import daemon
 import lockfile.pidlockfile
 
-from ngamsLib import ngamsConfig
+from ngamsLib import ngamsConfig, ngamsHighLevelLib
 from ngamsLib.ngamsCore import get_contact_ip
 from ngamsServer import ngamsServer
 
@@ -124,18 +123,17 @@ def kill_and_wait(pid, pidfile):
 
 def status(cfg):
     """
-    Send a STATUS command to server
+    Check if the server is up and running
     """
 
     ipAddress = get_contact_ip(cfg)
     port = cfg.getPortNo()
 
-    # TODO: This creates a dependency on ngamsPClient
-    cmd = ["ngamsPClient", "STATUS", "-v",
-           "--host", ipAddress,
-           "--port", str(port),
-           "--timeout", "10"]
-    return subprocess.call(cmd)
+    try:
+        ngamsHighLevelLib.pingServer(ipAddress, port, 10)
+        return 0
+    except:
+        return 1
 
 def print_usage(name):
     err("usage: %s [start|stop|restart|status] <ngamsServer options>" % (name,))
