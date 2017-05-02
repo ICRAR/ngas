@@ -287,6 +287,39 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         # Server should come up properly
         self.prepExtSrv(delDirs=0, clearDb=0, skip_database_creation=True)
 
+    def test_url_values(self):
+
+        self.prepExtSrv()
+        client = sendPclCmd()
+
+        # empty url
+        status = client.subscribe('        ')
+        self.assertEqual('FAILURE', status.getStatus())
+        self.assertIn('empty', status.getMessage())
+
+        # Missing scheme
+        status = client.subscribe('some/path')
+        self.assertEqual('FAILURE', status.getStatus())
+        self.assertIn('no scheme found', status.getMessage().lower())
+
+        # Missing network location
+        # These are all interpreted as <scheme>:<path>,
+        # even if it looks like a network location to the eye
+        for url in ('scheme:some/path', 'host:80/path', 'file:///tmp/file'):
+            status = client.subscribe(url)
+            self.assertEqual('FAILURE', status.getStatus())
+            self.assertIn('no netloc found', status.getMessage().lower())
+
+        # Scheme is actually not http
+        for url in (
+            "ftp://host:port/path", # ftp scheme not allowed
+            "https://host/path", # https not allowed
+            "file://hostname:port/somewhere/over/the/rainbow" # file not allowed
+            ):
+            status = client.subscribe(url)
+            self.assertEqual('FAILURE', status.getStatus())
+            self.assertIn('only http:// scheme allowed', status.getMessage().lower())
+
 def run():
     """
     Run the complete test.
