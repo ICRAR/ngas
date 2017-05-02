@@ -25,9 +25,9 @@ To run this script, please ensure all NGAS servers in the cluster are up running
 from psycopg2.pool import ThreadedConnectionPool
 import sys, urllib2
 
-g_db_pool = ThreadedConnectionPool(1, 4, database = 'ngas', user = 'ngas_ro',
-                            password = 'bmdhcyRybw==\n'.decode('base64'),
-                            host = 'ngas.mit.edu')
+g_db_pool = ThreadedConnectionPool(1, 4, database = None, user = None,
+                            password = ''.decode('base64'),
+                            host = None)
 MOVE_SUCCESS = 'MOVEALLOK'
 UNKNOWN_ERROR = 9999
 DEBUG = 0 # If set to 1, no changes (data movement or database updates) only print out information

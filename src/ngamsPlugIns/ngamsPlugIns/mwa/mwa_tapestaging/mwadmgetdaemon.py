@@ -130,10 +130,10 @@ class mwadmgetServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 
       self.dbp = psycopg2.pool.ThreadedConnectionPool(minconn=2,
                                                     maxconn=20,
-                                                    host="mwa-pawsey-db01.pawsey.ivec.org",
-                                                    user="ngas_ro",
-                                                    database="ngas",
-                                                    password="ngas$ro",
+                                                    host="",
+                                                    user="",
+                                                    database="",
+                                                    password="",
                                                     port=5432)
 
       self.allow_reuse_address = True

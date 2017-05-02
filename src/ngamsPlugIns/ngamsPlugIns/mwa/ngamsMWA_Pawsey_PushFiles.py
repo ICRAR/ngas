@@ -58,9 +58,9 @@ def getMWADBConn():
     if (g_db_conn and (not g_db_conn.closed)):
         return g_db_conn
     try:
-        g_db_conn = psycopg2.connect(database = 'mwa', user = 'mwa',
-                            password = 'Qm93VGll\n'.decode('base64'),
-                            host = 'ngas01.ivec.org')
+        g_db_conn = psycopg2.connect(database = None, user = None,
+                            password = ''.decode('base64'),
+                            host = None)
         return g_db_conn
     except Exception, e:
         errStr = 'Cannot create MWA DB Connection: %s' % str(e)
@@ -71,9 +71,9 @@ def getLTADBConn():
     if (l_db_conn and (not l_db_conn.close)):
         return l_db_conn
     try:
-        l_db_conn = psycopg2.connect(database = 'ngas', user= 'ngas',
-                            password = 'bmdhcyRkYmE=\n'.decode('base64'),
-                            host = '192.102.251.250')
+        l_db_conn = psycopg2.connect(database = None, user= None,
+                            password = ''.decode('base64'),
+                            host = None)
         return l_db_conn
     except Exception, e:
         errStr = 'Cannot create LTA DB Connection: %s' % str(e)

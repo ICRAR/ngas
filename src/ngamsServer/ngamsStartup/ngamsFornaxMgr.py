@@ -296,8 +296,8 @@ def monitorServers(status = 'online', printRes = True):
         return
     sqlQuery = "select host_id, srv_state, installation_date from ngas_hosts where srv_state = '%s'" % host_status[status]
     sqlUpdate = "update ngas_hosts set srv_state = 'NOT-RUNNING' where host_id = '%s'"
-    conn = psycopg2.connect(database = 'ngas', user='ngas',
-                            password = 'bmdhcyRkYmE=\n'.decode('base64'),
+    conn = psycopg2.connect(database = None, user=None,
+                            password = ''.decode('base64'),
                             host = db_host)
     try:
         cur = conn.cursor()
@@ -390,8 +390,8 @@ def getAvailableArchiveServers():
     This function is called by MPI-Rank 0
     """
     sqlQuery = "select host_id from ngas_hosts where srv_state = 'ONLINE'"
-    conn = psycopg2.connect(database = 'ngas', user='ngas',
-                            password = 'bmdhcyRkYmE=\n'.decode('base64'),
+    conn = psycopg2.connect(database = None, user=None,
+                            password = ''.decode('base64'),
                             host = db_host)
     ret = []
     try:

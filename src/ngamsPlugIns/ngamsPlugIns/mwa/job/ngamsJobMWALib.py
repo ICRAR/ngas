@@ -118,9 +118,9 @@ def getMWADBConn():
                             password = db_passwd.decode('base64'),
                             host = db_host)
         """
-        g_db_conn = psycopg2.connect(database = 'mwa', user = 'mwa',
-                            password = 'Qm93VGll\n'.decode('base64'),
-                            host = 'ngas01.ivec.org')
+        g_db_conn = psycopg2.connect(database = None, user = None,
+                            password = ''.decode('base64'),
+                            host = None)
         return g_db_conn
     except Exception, e:
         errStr = 'Cannot create MWA DB Connection: %s' % str(e)

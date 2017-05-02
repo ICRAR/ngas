@@ -64,9 +64,9 @@ from ngamsLib.ngamsCore import genLog, loadPlugInEntryPoint
 
 logger = logging.getLogger(__name__)
 
-g_db_pool = ThreadedConnectionPool(1, 5, database = 'mwa', user = 'mwa',
-                            password = 'Qm93VGll\n'.decode('base64'),
-                            host = 'ngas01.ivec.org')
+g_db_pool = ThreadedConnectionPool(1, 5, database = None, user = None,
+                            password = ''.decode('base64'),
+                            host = None)
 
 g_db_conn = None # MWA metadata database connection
 
@@ -97,19 +97,7 @@ def getMWADBConn():
         return g_db_pool.getconn()
     else:
         raise Exception('connection pool is None when get conn')
-    """
-    global g_db_conn
-    if (g_db_conn and (not g_db_conn.closed)):
-        return g_db_conn
-    try:
-        g_db_conn = psycopg2.connect(database = 'mwa', user = 'mwa',
-                            password = 'Qm93VGll\n'.decode('base64'),
-                            host = 'ngas01.ivec.org')
-        return g_db_conn
-    except Exception, e:
-        errStr = 'Cannot create MWA DB Connection: %s' % str(e)
-        raise Exception, errStr
-    """
+
 def putMWADBConn(conn):
     if (g_db_pool):
         g_db_pool.putconn(conn)

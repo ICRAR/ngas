@@ -38,9 +38,9 @@ g_gleam_obj_dict = None
 
 def initConnectionPool():
     global g_db_pool
-    g_db_pool = ThreadedConnectionPool(1, 5, database = 'gavo', user = 'zhl',
-                            password = 'zhlgly',
-                            host = 'mwa-web.icrar.org')
+    g_db_pool = ThreadedConnectionPool(1, 5, database = None, user = None,
+                            password = None,
+                            host = None)
 
 def load_gleam_obj_dict(csv_fn):
     global g_gleam_obj_dict

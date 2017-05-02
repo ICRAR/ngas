@@ -57,9 +57,9 @@ def getMITDBConn():
     """
     logger.info('Connecting to database')
     try:
-        l_db_conn = psycopg2.connect(database = 'ngas', user= 'ngas',
-                            password = 'bmdhcyRkYmE=\n'.decode('base64'),
-                            host = 'ngas.mit.edu')
+        l_db_conn = psycopg2.connect(database = None, user= None,
+                            password = ''.decode('base64'),
+                            host = None)
         return l_db_conn
     except Exception, e:
         errStr = 'Cannot create LTA DB Connection: %s' % str(e)

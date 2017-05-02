@@ -51,13 +51,13 @@ mime = "images/fits"
 myhost = commands.getstatusoutput('hostname')[1]
 
 # maximum connection = 3
-g_db_pool = ThreadedConnectionPool(1, 3, database = 'gavo', user = 'zhl',
-                            password = 'emhsZ2x5\n'.decode('base64'),
-                            host = 'mwa-web.icrar.org')
+g_db_pool = ThreadedConnectionPool(1, 3, database = None, user = None,
+                            password = ''.decode('base64'),
+                            host = None)
 
-mc_db_pool = ThreadedConnectionPool(1, 3, database = 'mwa', user = 'mwa',
-                            password = 'Qm93VGll\n'.decode('base64'),
-                            host = 'ngas01.ivec.org')
+mc_db_pool = ThreadedConnectionPool(1, 3, database = None, user = None,
+                            password = ''.decode('base64'),
+                            host = None)
 
 
 # decoded job uri:
