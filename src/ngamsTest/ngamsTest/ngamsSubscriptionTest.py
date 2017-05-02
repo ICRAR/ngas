@@ -37,7 +37,7 @@ import sys
 import time
 import urllib
 
-from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd
+from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd, getNoCleanUp, setNoCleanUp
 
 
 class ngamsSubscriptionTest(ngamsTestSuite):
@@ -270,6 +270,22 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         client = sendPclCmd(port = 8889)
         status = client.retrieve('SmallBadFile.fits', fileVersion=2, targetFile='tmp')
         self.assertEquals(status.getStatus(), 'FAILURE', None)
+
+    def test_server_starts_after_subscription_added(self):
+
+        self.prepExtSrv()
+        client = sendPclCmd()
+        status = client.subscribe('http://somewhere/SOMETHING')
+        self.assertEqual('SUCCESS', status.getStatus())
+
+        # Cleanly shut down the server, and wait until it's completely down
+        old_cleanup = getNoCleanUp()
+        setNoCleanUp(True)
+        self.termExtSrv(self.extSrvInfo.pop())
+        setNoCleanUp(old_cleanup)
+
+        # Server should come up properly
+        self.prepExtSrv(delDirs=0, clearDb=0, skip_database_creation=True)
 
 def run():
     """
