@@ -57,20 +57,17 @@ def hidePassword(fileUri):
 
     Returns:   URI with password blanked out (string).
     """
-    if (not fileUri): return fileUri
+    if not fileUri:
+        return fileUri
+
     tmpUri = urllib.unquote(fileUri)
-    if (string.find(tmpUri, "ftp://") != -1):
-        # ARCHIVE?filename="ftp://jknudstr:*****@arcus2.hq.eso.org//home/...
-        lst1 = string.split(tmpUri,"@")
-        if (len(lst1) == 1):
-            errMsg = genLog("NGAMS_ER_ILL_URI", [fileUri,
-                                                 "Archive Pull Request"])
-            raise Exception, errMsg
-        lst2 = string.split(lst1[0], ":")
-        retVal = lst2[0] + ":" + lst2[1] + ":*****@" + lst1[1]
-    else:
-        retVal = tmpUri
-    return retVal
+    if "ftp://" not in tmpUri or '@' not in tmpUri:
+        return fileUri
+
+    # ARCHIVE?filename="ftp://jknudstr:*****@host//home/...
+    lst1 = string.split(tmpUri,"@")
+    lst2 = string.split(lst1[0], ":")
+    return lst2[0] + ":" + lst2[1] + ":*****@" + lst1[1]
 
 
 def parseHttpHdr(httpHdr):

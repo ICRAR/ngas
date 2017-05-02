@@ -34,6 +34,7 @@ This module contains the Test Suite for the handling of Idle Suspension.
 import socket
 import sys
 import time
+import urllib
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_STATUS_CMD, \
     NGAMS_CHECKFILE_CMD, rmFile, NGAMS_SUCCESS
@@ -542,7 +543,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         tmpTag = "File list to check: (1: Location:LOCAL, Host:%s, " +\
                  "Version:1) (2: Location:LOCAL, Host:%s, Version:1)"
         testTags = ["CHECKFILE?time_out=60.0&file_version=1&" +\
-                    "file_id=TEST.2001-05-08T15:25:0",
+                    "file_id=" + urllib.quote("TEST.2001-05-08T15:25:0"),
                     tmpTag % (subNode1, subNode1)]
         subNodeLogBuf = loadFile(subNode1Log)
         self.checkTags(subNodeLogBuf, testTags, showBuf=0)
