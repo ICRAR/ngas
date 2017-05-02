@@ -1666,7 +1666,7 @@ class ngamsTestSuite(unittest.TestCase):
                 time.sleep(0.1)
 
         self.markNodesAsUnsusp(dbConObj, nodes)
-        self.fail("Sub-node did not suspend itself within %ds"%timeOut)
+        self.fail("Sub-node %s did not suspend itself within %d [s]" % (node, timeOut))
 
     def waitTillWokenUp(self, dbConObj, node, timeOut, nodes):
         """
