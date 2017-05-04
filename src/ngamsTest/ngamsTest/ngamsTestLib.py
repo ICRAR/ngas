@@ -473,14 +473,18 @@ def delNgasTbls(dbObj):
 
     Returns:   Void.
     """
+    dbObj.query2("DELETE FROM ngas_cache")
+    dbObj.query2("DELETE FROM ngas_hosts")
     dbObj.query2("DELETE FROM ngas_disks")
     dbObj.query2("DELETE FROM ngas_disks_hist")
     dbObj.query2("DELETE FROM ngas_files")
+    dbObj.query2("UPDATE ngas_containers set parent_container_id = null")
+    dbObj.query2("DELETE FROM ngas_containers")
+    dbObj.query2("DELETE FROM ngas_subscr_queue")
     dbObj.query2("DELETE FROM ngas_subscr_back_log")
     dbObj.query2("DELETE FROM ngas_subscribers")
     dbObj.query2("DELETE FROM ngas_cfg_pars")
     dbObj.query2("DELETE FROM ngas_cfg")
-    dbObj.query2("DELETE FROM ngas_containers")
 
 
 def delNgamsDirs(cfgObj):
