@@ -397,23 +397,36 @@ def _convertFileInfo(fileInfo):
 
     fileInfo:       File info in DB Summary 2 format or
     """
-    # If element #4 is an integr (=file version), convert to internal format.
-    if (type(fileInfo[ngamsDbCore.SUM2_VERSION]) == types.IntType):
-        locFileInfo = 7 * [None]
-        locFileInfo[FILE_ID] = fileInfo[ngamsDbCore.SUM2_FILE_ID]
-        locFileInfo[FILE_NM] = os.path.normpath(fileInfo[ngamsDbCore.SUM2_MT_PT] +\
-                                                  os.sep +\
-                                                  fileInfo[ngamsDbCore.SUM2_FILENAME])
 
-        locFileInfo[FILE_VER] = fileInfo[ngamsDbCore.SUM2_VERSION]
-        locFileInfo[FILE_DATE] = fileInfo[ngamsDbCore.SUM2_ING_DATE]
-        locFileInfo[FILE_MIME] = fileInfo[ngamsDbCore.SUM2_MIME_TYPE]
-        locFileInfo[FILE_DISK_ID] = fileInfo[ngamsDbCore.SUM2_DISK_ID]
-    else:
-        locFileInfo = fileInfo
-    if len(locFileInfo) == FILE_BL:
-        locFileInfo.append(None)
+    # HACK HACK HACK HACK HACK
+    #
+    # If fileInfo has the same number of elements than what the DB summary 2
+    # then we convert it into our own list... which simply has one more None
+    # element. We thus use the length of the list to determine the kind of list
+    # we are dealing with
+    #
+    # TODO: In the long run we probably want to replace this nonesense with
+    # something more understandable, like a namedtuple, or even bypass this
+    # whole sequence translation process entirely.
+    #
+    # HACK HACK HACK HACK HACK
+    if len(fileInfo) != len(ngamsDbCore.getNgasSummary2Def()):
+        return fileInfo
+
+    logger.debug("Converting %d-element sequence to fileInfo list: %r", len(fileInfo), fileInfo)
+    locFileInfo = (len(ngamsDbCore.getNgasSummary2Def()) + 1) * [None]
+    locFileInfo[FILE_ID] = fileInfo[ngamsDbCore.SUM2_FILE_ID]
+    locFileInfo[FILE_NM] = os.path.normpath(fileInfo[ngamsDbCore.SUM2_MT_PT] +\
+                                              os.sep +\
+                                              fileInfo[ngamsDbCore.SUM2_FILENAME])
+
+    locFileInfo[FILE_VER] = fileInfo[ngamsDbCore.SUM2_VERSION]
+    locFileInfo[FILE_DATE] = fileInfo[ngamsDbCore.SUM2_ING_DATE]
+    locFileInfo[FILE_MIME] = fileInfo[ngamsDbCore.SUM2_MIME_TYPE]
+    locFileInfo[FILE_DISK_ID] = fileInfo[ngamsDbCore.SUM2_DISK_ID]
     return locFileInfo
+
+
 
 
 def _genSubscrBackLogFile(srvObj,
@@ -1173,7 +1186,9 @@ def subscriptionThread(srvObj,
                     logger.debug('Fetching all ingested files')
                 while (1):
                     fileList = cursorObj.fetch(100)
-                    if (fileList == []): break
+                    if not fileList:
+                        break
+
                     for fileInfo in fileList:
                         fileInfo = _convertFileInfo(fileInfo)
                         fileDicDbm.add(_fileKey(fileInfo[FILE_ID],
@@ -1298,12 +1313,31 @@ def subscriptionThread(srvObj,
                                                  srvObj.getCfg().getPortNo(), selectDiskId)
                 for backLogInfo in subscrBackLog:
                     subscrId = backLogInfo[0]
+
+                    # HACK HACK HACK HACK
+                    #
+                    # Original comment follows:
                     # Note, it is signalled by adding an extra element (at the end)
                     # with the value of the constant NGAMS_SUBSCR_BACK_LOG, that
                     # this file is a back-logged file. This is done to make the
                     # handling more efficient.
-                    #if (selectDiskId):
-                    fileInfo = list(backLogInfo[2:]) + [NGAMS_SUBSCR_BACK_LOG]
+                    #
+                    # New comment follows
+                    # This little creation here is related to the _checkFileInfo
+                    # function defined above. The function was (and still is) a
+                    # big hack that differentiates between two types of,
+                    # returning always the second type of sequence. Its behavior
+                    # was based on a database-defined data type, and therefore
+                    # was not reliable across databases. We have (hopefully
+                    # temporarily) changed it to rely on something more concrete
+                    # (the length of the sequence), and thus we needed to create
+                    # the monster below.
+                    #
+                    # TODO: read the TODO in _checkFileInfo about what to do
+                    # with this
+                    #
+                    # HACK HACK HACK HACK
+                    fileInfo = list(backLogInfo[2:]) + [NGAMS_SUBSCR_BACK_LOG, None]
                     #else:
                     #    fileInfo = list(backLogInfo[2:]) + [None] + [NGAMS_SUBSCR_BACK_LOG]
 
