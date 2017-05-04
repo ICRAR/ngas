@@ -2360,6 +2360,7 @@ class ngamsServer:
                              setHostId(self.getHostId()).\
                              setDomain(domain).\
                              setIpAddress(self.ipAddress).\
+                             setSrvPort(self.portNo).\
                              setMacAddress(NGAMS_NOT_SET).\
                              setNSlots(-1).\
                              setClusterName(self.getHostId()).\
