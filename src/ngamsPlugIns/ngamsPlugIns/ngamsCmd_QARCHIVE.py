@@ -78,7 +78,9 @@ def getTargetVolume(srvObj):
     res = srvObj.getDb().getAvailableVolumes(srvObj.getHostId())
     if not res:
         return None
+
     # Shuffle the results.
+    res = list(res)
     random.shuffle(res)
     return ngamsDiskInfo.ngamsDiskInfo().unpackSqlResult(res[0])
 
