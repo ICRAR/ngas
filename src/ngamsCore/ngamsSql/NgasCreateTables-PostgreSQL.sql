@@ -129,7 +129,7 @@ create table ngas_hosts
 	ngas_type               varchar(32)     null,
 	idate			varchar(23)	null,
 	srv_version		varchar(40)	null,
-	srv_port		int		null,
+	srv_port		int		not null,
 	srv_archive             smallint		null,
 	srv_retrieve		smallint		null,
 	srv_process    		smallint		null,
