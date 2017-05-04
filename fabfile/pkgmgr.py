@@ -26,6 +26,7 @@ Module containing methods and fabric tasks that manage system packages
 from fabric.colors import red
 from fabric.context_managers import settings, hide
 from fabric.decorators import task
+from fabric.state import env
 from fabric.utils import puts, abort
 
 from system import check_command, get_linux_flavor
@@ -36,11 +37,17 @@ from utils import sudo, run
 __all__ = ['install_homebrew', 'install_system_packages', 'system_check']
 
 
+def extra_packages():
+    key = 'NGAS_EXTRA_PACKAGES'
+    if key in env:
+        return env[key].split(',')
+    return []
+
 def install_yum(packages):
     """
     Install packages using YUM
     """
-    errmsg = sudo('yum --assumeyes --quiet install {0}'.format(' '.join(packages)),\
+    errmsg = sudo('yum --assumeyes --quiet install {0}'.format(' '.join(packages + extra_packages())),\
                    combine_stderr=True, warn_only=True)
     processCentOSErrMsg(errmsg)
 
@@ -58,7 +65,7 @@ def install_zypper(packages):
     """
     Install packages using zypper (SLES)
     """
-    sudo('zypper --non-interactive install {0}'.format(' '.join(packages)),\
+    sudo('zypper --non-interactive install {0}'.format(' '.join(packages + extra_packages())),\
                    combine_stderr=True, warn_only=True)
 
 
@@ -72,7 +79,7 @@ def install_apt(packages):
     # or ubuntu-specific, etc) the whole install process would fail
     # On the other hand there appears to be no flag to ignore these errors
     # on apt-get (tested on Ubuntu 12.04)
-    for pkg in packages:
+    for pkg in packages + extra_packages():
         sudo('apt-get -qq -y install {0}'.format(pkg))
 
 
