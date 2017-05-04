@@ -129,6 +129,12 @@ def ngas_revision():
     default_if_empty(env, 'NGAS_REV', default_ngas_revision)
     return env.NGAS_REV
 
+def extra_python_packages():
+    key = 'NGAS_EXTRA_PYTHON_PACKAGES'
+    if key in env:
+        return env[key].split(',')
+    return None
+
 def virtualenv(command, **kwargs):
     """
     Just a helper function to execute commands in the NGAS virtualenv
@@ -293,6 +299,9 @@ def build_ngas():
     Builds and installs NGAS into the target virtualenv.
     """
     with cd(ngas_source_dir()):
+        extra_pkgs = extra_python_packages()
+        if extra_pkgs:
+            virtualenv('pip install %s' % ' '.join(extra_pkgs))
         no_client = ngas_no_client()
         develop = ngas_develop()
         build_cmd = ngas_build_cmd(no_client, develop)

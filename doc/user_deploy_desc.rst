@@ -42,6 +42,9 @@ are available to further customize the process:
 |                             | | directory should be overwritten    |                   |
 |                             | | or not                             |                   |
 +-----------------------------+--------------------------------------+-------------------+
+| NGAS_EXTRA_PYTHON_PACKAGES  | | Comma-separated list of extra      | | Not specified   |
+|                             | | python packages to install         |                   |
++-----------------------------+--------------------------------------+-------------------+
 | NGAS_NO_CLIENT              | | Skip the compilation and           | | ``False``       |
 |                             | | installation of the NGAS C client  |                   |
 +-----------------------------+--------------------------------------+-------------------+
