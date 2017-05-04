@@ -32,7 +32,7 @@
 #
 
 error() {
-	echo "ERROR: $1" > /dev/stderr
+	echo "ERROR: $1" 1>&2
 	exit 1
 }
 
