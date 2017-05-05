@@ -622,10 +622,10 @@ class ngamsPClient:
 
     def subscribe(self,
                   url,
-                  priority = 10,
-                  startDate = "",
-                  filterPlugIn = "",
-                  filterPlugInPars = ""):
+                  priority = None,
+                  startDate = None,
+                  filterPlugIn = None,
+                  filterPlugInPars = None):
         """
         Subscribe to data from a Data Provider.
 
@@ -648,7 +648,9 @@ class ngamsPClient:
 
         Returns:            NG/AMS Status object (ngamsStatus).
         """
-        pars = [("url", url), ("priority", priority)]
+        pars = [("url", url)]
+        if priority is not None:
+            pars.append(("priority", priority))
         if startDate:
             pars.append(("start_date", startDate))
         if filterPlugIn:
@@ -858,7 +860,7 @@ def main():
 
     sparser = parser.add_argument_group('Subscription options')
     sparser.add_argument('-u', '--url',           help='URL to subscribe/unsubscribe')
-    sparser.add_argument(      '--priority',      help='Priority used for subscription')
+    sparser.add_argument(      '--priority',      help='Priority used for subscription', type=int, default=None)
     sparser.add_argument(      '--f-plugin',      help='Filtering plug-in to use for this subscription')
     sparser.add_argument(      '--f-plugin-pars', help='Parameters for the filtering plug-in, can be specified more than once', action='append')
     sparser.add_argument('-S', '--start-date',    help='Start date for subscription')
