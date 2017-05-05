@@ -45,22 +45,31 @@ case "$1" in
 			OPTS="$OPTS -path '${NGAS_PATH}'"
 		fi
 
+		# Launch the server and check right away if it started correctly
 		su - $USER -c "$DAEMON start $OPTS"
 		RETVAL=$?
-		echo "NG/AMS startup"
+		if [ $RETVAL -eq 0 ]; then
+			echo "Successfully started NGAS server, checking it started correctly"
+			$0 status
+			RETVAL=$?
+			if [ $RETVAL -ne 0 ]; then
+				echo "NGAS server didn't come up in time, shuttinig it down"
+				$0 stop
+			fi
+		fi
 		;;
 	stop)
+		echo "Shutting down NGAS server"
 		su - $USER -c "$DAEMON stop $OPTS"
 		RETVAL=$?
-		echo "NG/AMS shutdown"
 		;;
 	status)
-		echo "Status of $DAEMON: "
+		echo "Checking NGAS server status"
 		su - $USER -c "$DAEMON status $OPTS" &> /dev/null
 		RETVAL=$?
 		;;
 	restart)
-		echo -n "Restarting $DAEMON: "
+		echo -n "Restarting NGAS server"
 		$0 stop
 		$0 start
 		RETVAL=$?
