@@ -12,8 +12,6 @@
 # chkconfig: 2345 99 70
 # description: Starts and stops the NGAMS server as a daemon
 
-DAEMON=ngamsDaemon
-
 # RH, Centos, Fedora configuration style
 if [ -r /etc/sysconfig/ngas ]; then
 	. /etc/sysconfig/ngas

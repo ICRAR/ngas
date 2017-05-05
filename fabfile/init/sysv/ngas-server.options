@@ -10,6 +10,11 @@
 USER=ngas
 
 #
+# Process to be executed to start the NGAS daemon
+#
+DAEMON=ngamsDaemon
+
+#
 # The location of the configuration file
 #
 CFGFILE=/home/ngas/NGAS/cfg/ngamsServer.conf
