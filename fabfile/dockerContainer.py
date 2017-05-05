@@ -25,7 +25,6 @@ Module containing Docker related methods and tasks
 
 import json
 import os
-import shutil
 from types import GeneratorType
 
 from fabric.colors import red, green
@@ -36,7 +35,8 @@ from fabric.tasks import execute
 from fabric.utils import puts
 
 from ngas import ngas_root_dir, ngas_user
-from utils import default_if_empty, check_ssh, get_public_key, sudo
+from system import get_fab_public_key
+from utils import default_if_empty, check_ssh, sudo, generate_key_pair, run
 
 
 # Don't re-export the tasks imported from other modules
@@ -174,28 +174,16 @@ def check_if_successful(the_json, json_field, json_value):
 
 
 def docker_public_add_ssh_key():
-    # Copy the public key of our SSH key if we're using one
-    public_key_installed = False
-    for key_filename in [env.key_filename, os.path.expanduser("~/.ssh/id_rsa")]:
-        if key_filename is not None:
-            public_key = get_public_key(key_filename)
-            if public_key:
-                shutil.copyfile('{0}.pub'.format(key_filename), "fabfile/authorized_keys")
-                public_key_installed = True
-                puts(green("\n******** INSTALLED PUBLIC KEY INTO CONTAINER ********\n"))
-                break
 
-    if not public_key_installed:
-        puts(red("\n******** FAILED TO INSTALL PUBLIC KEY INTO CONTAINER ********\n"))
+    # Generate a private/public key pair if there's not one already in use
+    public_key = get_fab_public_key()
+    if not public_key:
+        private, public_key = generate_key_pair()
+        env.key = private
 
-    # Generate our own key pair???
-        #key = RSA.generate(2048)
-        #with open(private_key_file, 'w') as content_file:
-        #    chmod(private_key_file, 0600)
-        #    content_file.write(key.exportKey('PEM'))
-        #    pubkey = key.publickey()
-        #with open(public_key_file, 'w') as content_file:
-        #    content_file.write(pubkey.exportKey('OpenSSH'))
+    with open('fabfile/authorized_keys', 'wb') as f:
+        f.write(public_key)
+    puts(green("\n******** INSTALLED PUBLIC KEY INTO CONTAINER ********\n"))
 
 
 @task
