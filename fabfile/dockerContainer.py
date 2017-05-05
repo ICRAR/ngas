@@ -29,11 +29,13 @@ import shutil
 from types import GeneratorType
 
 from fabric.colors import red, green
+from fabric.context_managers import settings
 from fabric.decorators import task
 from fabric.state import env
 from fabric.tasks import execute
 from fabric.utils import puts
 
+from ngas import ngas_root_dir, ngas_user
 from utils import default_if_empty, check_ssh, get_public_key, sudo
 
 
@@ -59,6 +61,10 @@ JSON_WARNINGS = 'Warnings'
 JSON_ID = 'Id'
 BUILD_SUCCESSFUL_STR = 'Successfully built'
 CREATE_CONTAINER_SUCCESSFUL_STR = 'None'
+
+def keep_ngas_root():
+    key = 'DOCKER_KEEP_NGAS_ROOT'
+    return key in env
 
 class DockerContainerState(object):
 
@@ -319,7 +325,14 @@ def cleanup_stage1():
     This method simply runs any command on the container to cleanup anything that can be cleaned up
     before creating an image from the container. It is a task so that the environment is picked up.
     """
+
+    # Remove all packages we installed
     sudo('yum clean all')
+
+    # Do not ship NGAS with a working NGAS directory
+    if not keep_ngas_root():
+        with settings(user=ngas_user()):
+            run("rm -rf %s" % (ngas_root_dir()))
 
 @task
 def create_stage2_docker_image(state):

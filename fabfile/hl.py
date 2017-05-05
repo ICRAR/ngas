@@ -70,10 +70,10 @@ def aws_deploy():
     execute(prepare_install_and_check)
 
 @task
+@append_desc
 def docker_image():
-    """
-    Create a Docker image running NGAS.
-    """
+    """ Create a Docker image with an NGAS installation."""
+
     # Build and start the stage1 container holding onto the container info to use later.
     dockerState = create_stage1_docker_container()
     if not dockerState:

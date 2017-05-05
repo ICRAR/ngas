@@ -205,30 +205,11 @@ Docker Image
  A local docker daemon must be running and the current user must have access to
  start/stop/build, etc, container and images, this cannot be via sudo!
 
-
 To create a Docker container containing an NGAS installation simply run::
 
  fab hl.docker_image
 
-This will generate an image called ``ngas:latest``. When started, the container
-by default will be running the NGAS server.
+This will generate an image called ``ngas:latest`` based on CentOS 7.
+When started, the container by default will run the NGAS server.
 
-How It is Implemented
-^^^^^^^^^^^^^^^^^^^^^
-
-To generate the image the following steps are taken:
-
-1. A stage1 image is built, based on the ``centos:centos7`` image, which includes the
-   required installed packages plus also setup for ssh access. The current
-   user's ``id_ras.pub`` file is used to put in place a
-   ``/root/.ssh/authorized_keys`` file so that ssh access can be performed
-   without a password. The IP address of the running docker container is
-   obtained and fabric environment updated to use that IP address.
-2. The stage1 image is started (becoming the stage1 container) and normal ssh
-   based, operations_deploy, is performed via ssh.
-3. Once complete the stage1 container is stopped and a commit is done to
-   generate a stage2 image. The stage1 container  and stage1 image are both
-   removed.
-4. A build is done against the stage2 image to generate the final image. The
-   build does some basic tidy up plus sets the startup command to run
-   ``ngamsServer``, as the ``ngas`` user, on container startup.
+.. include:: docker_image_desc.rst
