@@ -36,7 +36,6 @@ DB is tested.
 import sys
 
 from ngamsLib import ngamsConfig, ngamsDb
-from ngamsLib.ngamsCore import getHostName
 from ngamsTestLib import delNgasTbls, ngamsTestSuite, \
     saveInFile, sendPclCmd, filterDbStatus1, runTest
 
