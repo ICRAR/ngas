@@ -41,20 +41,25 @@ warning() {
 }
 
 function print_usage {
-	echo "$0 [-fh?] <virtualenv_dir>"
+	echo "$0 [-h | -?] [-f] [-p <python_exec>] <virtualenv_dir>"
 	echo
 	echo "-h, -?: Show this help"
+	echo "-p <python_exec>: Use <python_exec> as the python interpreted for this virtualenv"
 	echo "-f: Install Fabric into the virtual environment"
 }
 
 # Command-line option parsing
 FABRIC_READY=
+PYTHON_EXEC=
 
-while getopts "fh?" opt
+while getopts "fp:h?" opt
 do
 	case "$opt" in
 		f)
 			FABRIC_READY=yes
+			;;
+		p)
+			PYTHON_EXEC="$OPTARG"
 			;;
 		[h?])
 			print_usage
@@ -78,7 +83,9 @@ then
 fi
 
 # First things first, check that we have python installed
-if [[ -z "$(which python 2> /dev/null)" ]]
+# We default to whatever is in the path if not specified
+PYTHON_EXEC=${PYTHON_EXEC:-python}
+if [[ -z "$(which ${PYTHON_EXEC} 2> /dev/null)" ]]
 then
 	error "No Python found in this system, install Python 2.7"
 fi
@@ -92,7 +99,7 @@ fi
 
 # Check if we already have virtualenv
 # If not download one and untar it
-veCommand="virtualenv"
+veCommand="virtualenv -p $PYTHON_EXEC"
 sourceCommand="source -- $veDir/bin/activate"
 if [[ -z "$(which virtualenv 2> /dev/null)" ]]
 then
@@ -108,7 +115,7 @@ then
 	fi
 
 	tar xf virtualenv-15.0.3.tar.gz || error "Failed to untar virtualenv"
-	veCommand="python virtualenv-15.0.3/virtualenv.py"
+	veCommand="$PYTHON_EXEC virtualenv-15.0.3/virtualenv.py -p $PYTHON_EXEC"
 	removeVE="rm -rf virtualenv-15.0.3"
 fi
 
