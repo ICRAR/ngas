@@ -76,8 +76,6 @@ NGAS_INSTALL_DIR_NAME = 'ngas_rt'
 # Values are 'archive' and 'cache'
 NGAS_SERVER_TYPE = 'archive'
 
-VIRTUALENV_URL = 'https://pypi.python.org/packages/source/v/virtualenv/virtualenv-12.0.7.tar.gz'
-
 def ngas_user():
     default_if_empty(env, 'NGAS_USER', NGAS_USER)
     return env.NGAS_USER
@@ -199,21 +197,13 @@ def virtualenv_setup():
     # Check which python will be bound to the virtualenv
     ppath = check_python()
     if not ppath:
-        ppath = python_setup(os.path.join(home(),'python'))
+        ppath = python_setup(os.path.join(home(), 'python'))
 
-    # Get virtualenv if necessary and create the new NGAS virtualenv,
-    # making sure the new virtualenv ends up using the python executable
-    # we gave as argument (or the default one)
-    if check_command('virtualenv'):
-        run('virtualenv {0} -p {1}'.format(ngasInstallDir, ppath))
-    else:
-        with cd('/tmp'):
-            f = download(VIRTUALENV_URL)
-            vbase = f.split('.tar.gz')[0]
-            run('tar -xzf {0}.tar.gz'.format(vbase))
-            with cd(vbase):
-                run('{1} virtualenv.py -p {1} {0}'.format(ngasInstallDir, ppath))
-            run('rm -rf virtualenv*')
+    # Use our create_venv.sh script to create the virtualenv
+    # It already handles the download automatically if no virtualenv command is
+    # found in the system, and also allows to specify a python executable path
+    with cd(ngas_source_dir()):
+        run("./create_venv.sh -p {0} {1}".format(ppath, ngasInstallDir))
 
     # Download this particular certifcate; otherwise pip complains
     # in some platforms
@@ -436,8 +426,8 @@ def install_and_check():
     Creates a virtualenv, installs NGAS on it,
     starts NGAS and checks that it is running
     """
-    virtualenv_setup()
     copy_sources()
+    virtualenv_setup()
     build_ngas()
     tgt_cfg = prepare_ngas_data_dir()
     install_user_profile()
