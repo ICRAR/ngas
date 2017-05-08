@@ -69,15 +69,15 @@ then
 	VIRTUALENV_URL='https://pypi.python.org/packages/8b/2c/c0d3e47709d0458816167002e1aa3d64d03bdeb2a9d57c5bd18448fd24cd/virtualenv-15.0.3.tar.gz#md5=a5a061ad8a37d973d27eb197d05d99bf'
 	if [[ ! -z "$(which wget 2> /dev/null)" ]]
 	then
-		wget "$VIRTUALENV_URL" | error "Failed to download virtualenv"
+		wget "$VIRTUALENV_URL" || error "Failed to download virtualenv"
 	elif [[ ! -z "$(which curl 2> /dev/null)" ]]
 	then
-		curl "$VIRTUALENV_URL" | error "Failed to download virtualenv"
+		curl "$VIRTUALENV_URL" || error "Failed to download virtualenv"
 	else
 		error "Can't find a download tool (tried wget and curl), cannot download virtualenv"
 	fi
 
-	tar xf virtualenv-15.0.3.tar.gz  | error "Failed to untar virtualenv"
+	tar xf virtualenv-15.0.3.tar.gz || error "Failed to untar virtualenv"
 	veCommand="python virtualenv-15.0.3/virtualenv.py"
 	removeVE="rm -rf virtualenv-15.0.3"
 fi
