@@ -116,15 +116,15 @@ then
 
 	tar xf virtualenv-15.0.3.tar.gz || error "Failed to untar virtualenv"
 	veCommand="$PYTHON_EXEC virtualenv-15.0.3/virtualenv.py -p $PYTHON_EXEC"
-	removeVE="rm -rf virtualenv-15.0.3"
+	REMOVE_VE="yes"
 fi
 
 # Create a virtual environment for the NGAMS installation procedure to begin
 # and source it
 $veCommand -- "$veDir" || error "Failed to create virtualenv"
-if [[ ! -z "$removeVE" ]]
+if [[ "$REMOVE_VE" == "yes" ]]
 then
-	$removeVE || warning "Failed to remove temporary copy of the virtualenv script"
+	rm -rf virtualenv-15.0.3 virtualenv-15.0.3.tar.gz || warning "Failed to remove temporary copy of virtualenv"
 fi
 
 # Install initial packages into the new venv
