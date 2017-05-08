@@ -36,12 +36,42 @@ error() {
 	exit 1
 }
 
-if [[ -z "$1" ]]
-then
-	error "Usage: $0 <virtualenv-directory>"
-fi
-veDir="$1"
+warning() {
+	echo "WARNING: $1" 1>&2
+}
 
+function print_usage {
+	echo "$0 [-fh?] <virtualenv_dir>"
+	echo
+	echo "-h, -?: Show this help"
+	echo "-f: Install Fabric into the virtual environment"
+}
+
+# Command-line option parsing
+FABRIC_READY=
+
+while getopts "fh?" opt
+do
+	case "$opt" in
+		f)
+			FABRIC_READY=yes
+			;;
+		[h?])
+			print_usage
+			exit 0
+			;;
+		:)
+			print_usage 1>&2
+			exit 1
+	esac
+done
+
+if [ $(($# - $OPTIND)) -lt 0 ]
+then
+	print_usage 1>&2
+	exit 1
+fi
+veDir=${@:$OPTIND:1}
 if [[ -d "$veDir" ]]
 then
 	error "$veDir already exists"
@@ -63,7 +93,7 @@ fi
 # Check if we already have virtualenv
 # If not download one and untar it
 veCommand="virtualenv"
-sourceCommand="source $veDir/bin/activate"
+sourceCommand="source -- $veDir/bin/activate"
 if [[ -z "$(which virtualenv 2> /dev/null)" ]]
 then
 	VIRTUALENV_URL='https://pypi.python.org/packages/8b/2c/c0d3e47709d0458816167002e1aa3d64d03bdeb2a9d57c5bd18448fd24cd/virtualenv-15.0.3.tar.gz#md5=a5a061ad8a37d973d27eb197d05d99bf'
@@ -84,18 +114,21 @@ fi
 
 # Create a virtual environment for the NGAMS installation procedure to begin
 # and source it
-$veCommand $veDir
+$veCommand -- "$veDir" || error "Failed to create virtualenv"
 if [[ ! -z "$removeVE" ]]
 then
-	$removeVE
+	$removeVE || warning "Failed to remove temporary copy of the virtualenv script"
 fi
 
 # Install initial packages into the new venv
 # Fabric is needed to allow using the fab scripts in the first place.
 # pycrypto is needed by the SSH pubkey-related bits in the fab scripts.
 # boto is needed to support the aws-related fab tasks.
-$sourceCommand
-pip install boto Fabric pycrypto
+if [[ "$FABRIC_READY" == "yes" ]]
+then
+	$sourceCommand || error "Failed to source virtualenv"
+	pip install boto Fabric pycrypto || error "Failed to install fabric packages in virtualenv"
+fi
 
 echo
 echo
