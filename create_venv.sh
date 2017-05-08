@@ -85,7 +85,7 @@ fi
 # First things first, check that we have python installed
 # We default to whatever is in the path if not specified
 PYTHON_EXEC=${PYTHON_EXEC:-python}
-if [[ -z "$(which ${PYTHON_EXEC} 2> /dev/null)" ]]
+if [[ -z "$(command -v ${PYTHON_EXEC} 2> /dev/null)" ]]
 then
 	error "No Python found in this system, install Python 2.7"
 fi
@@ -101,13 +101,13 @@ fi
 # If not download one and untar it
 veCommand="virtualenv -p $PYTHON_EXEC"
 sourceCommand="source -- $veDir/bin/activate"
-if [[ -z "$(which virtualenv 2> /dev/null)" ]]
+if [[ -z "$(command -v virtualenv 2> /dev/null)" ]]
 then
 	VIRTUALENV_URL='https://pypi.python.org/packages/8b/2c/c0d3e47709d0458816167002e1aa3d64d03bdeb2a9d57c5bd18448fd24cd/virtualenv-15.0.3.tar.gz#md5=a5a061ad8a37d973d27eb197d05d99bf'
-	if [[ ! -z "$(which wget 2> /dev/null)" ]]
+	if [[ ! -z "$(command -v wget 2> /dev/null)" ]]
 	then
 		wget "$VIRTUALENV_URL" || error "Failed to download virtualenv"
-	elif [[ ! -z "$(which curl 2> /dev/null)" ]]
+	elif [[ ! -z "$(command -v curl 2> /dev/null)" ]]
 	then
 		curl "$VIRTUALENV_URL" || error "Failed to download virtualenv"
 	else
