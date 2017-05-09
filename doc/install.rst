@@ -209,7 +209,10 @@ To create a Docker container containing an NGAS installation simply run::
 
  fab hl.docker_image
 
-This will generate an image called ``ngas:latest`` based on CentOS 7.
+This will generate an image called ``icrar/ngas:latest`` based on CentOS 7.
 When started, the container by default will run the NGAS server.
+The NGAS server will look for a configuration file
+under ``/home/ngas/NGAS/cfg/ngamsServer.conf``,
+which by default needs to be provided via volume mapping.
 
 .. include:: docker_image_desc.rst
