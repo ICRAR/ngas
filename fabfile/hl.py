@@ -31,7 +31,7 @@ from fabric.state import env
 from fabric.tasks import execute
 
 from aws import create_aws_instances
-from dockerContainer import create_stage1_docker_container, create_stage2_docker_image, create_final_docker_image
+from dockerContainer import create_stage1_container, create_final_image
 from ngas import install_and_check, prepare_install_and_check, create_sources_tarball, upload_to, ngas_revision
 from utils import repo_root, check_ssh, append_desc
 from system import check_sudo
@@ -74,23 +74,18 @@ def aws_deploy():
 def docker_image():
     """ Create a Docker image with an NGAS installation."""
 
-    # Build and start the stage1 container holding onto the container info to use later.
-    dockerState = create_stage1_docker_container()
-    if not dockerState:
-        return
+    # Build and start the stage1 container holding onto the container info
+    # This first stage contains only a running SSH server and sudo, and we will
+    # always be able to connect to it via ssh keys
+    dockerState = create_stage1_container()
 
     # Now install into the docker container.
     # We assume above has set the environment host IP address to install into
     execute(prepare_install_and_check)
 
-    # Now that NGAS is istalled in container do cleanup on it and build final image.
-    if not create_stage2_docker_image(dockerState):
-        return
-
-    # Now build the final NGAS docker image
-    if not create_final_docker_image(dockerState):
-        # This is not really needed by included in case code is added below this point
-        return
+    # Now that NGAS is istalled in a running container
+    # clean it up and create the final image from it
+    create_final_image(dockerState)
 
 @task
 def prepare_release():

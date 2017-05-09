@@ -143,7 +143,8 @@ def virtualenv(command, **kwargs):
 @task
 def start_ngas_and_check_status(tgt_cfg):
     """
-    Starts the ngamsDaemon process and checks that the server is up and running
+    Starts the ngamsDaemon process and checks that the server is up and running.
+    Then it shuts down the server
     """
     # We sleep 2 here as it was found on Mac deployment to docker container that the
     # shell would exit before the ngasDaemon could detach, thus resulting in no startup.
@@ -158,6 +159,8 @@ def start_ngas_and_check_status(tgt_cfg):
         success("Server running correctly")
     except:
         failure("Server not running, or running incorrectly")
+    finally:
+        virtualenv("ngamsDaemon stop -cfg {0}".format(tgt_cfg))
 
 @task
 @parallel
