@@ -110,6 +110,10 @@ def ngas_develop():
     key = 'NGAS_DEVELOP'
     return key in env
 
+def ngas_doc_dependencies():
+    key = 'NGAS_NO_DOC_DEPENDENCIES'
+    return key in env
+
 def ngas_server_type():
     default_if_empty(env, 'NGAS_SERVER_TYPE', NGAS_SERVER_TYPE)
     return env.NGAS_SERVER_TYPE
@@ -258,7 +262,8 @@ def install_user_profile():
 
     success("~/.bash_profile edited for automatic virtualenv sourcing")
 
-def ngas_build_cmd(no_client, develop):
+def ngas_build_cmd(no_client, develop, no_doc_dependencies):
+
     # The installation of the bsddb package (needed by ngamsCore) is in
     # particular difficult because it requires some flags to be passed on
     # (particularly if using MacOSX's port
@@ -279,12 +284,15 @@ def ngas_build_cmd(no_client, develop):
                 build_cmd.append('CFLAGS=-I' + incdir)
                 build_cmd.append('LDFLAGS=-L' + libdir)
         build_cmd.append('YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1')
+
     build_cmd.append('./build.sh')
-    build_cmd.append('-D')
     if not no_client:
         build_cmd.append("-c")
     if develop:
         build_cmd.append("-d")
+    if not no_doc_dependencies:
+        build_cmd.append('-D')
+
     return ' '.join(build_cmd)
 
 def build_ngas():
@@ -297,7 +305,8 @@ def build_ngas():
             virtualenv('pip install %s' % ' '.join(extra_pkgs))
         no_client = ngas_no_client()
         develop = ngas_develop()
-        build_cmd = ngas_build_cmd(no_client, develop)
+        no_doc_dependencies = ngas_doc_dependencies()
+        build_cmd = ngas_build_cmd(no_client, develop, no_doc_dependencies)
         virtualenv(build_cmd)
     success("NGAS built and installed")
 
