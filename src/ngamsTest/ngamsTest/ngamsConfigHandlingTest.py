@@ -33,6 +33,7 @@ Configuration, in particular, the handling of the configuration in the
 DB is tested.
 """
 
+import re
 import sys
 
 from ngamsLib import ngamsConfig, ngamsDb
@@ -52,19 +53,35 @@ stdCfgGrIdList = ["ngamsCfg-Test", "ArchiveHandling-Test",
 
 # Remove zero string length values + values = None, due to a incorrect
 # handling of zero length strings in Oracle where ("" = NULL).
-def _cleanXmlDoc(xmlDicDump):
+def _cleanXmlDoc(xmlDicDump, filter_pattern):
+
+    filter_pattern = re.compile(filter_pattern)
     xmlDocLines = xmlDicDump.split("\n")
-    cleanXmlDoc = ""
+    doc = []
     for xmlDocLine in xmlDocLines:
+
         xmlDocLine = xmlDocLine.strip()
-        if (xmlDocLine == ""): continue
+        if not xmlDocLine or filter_pattern.match(xmlDocLine):
+            continue
+
         els = xmlDocLine.split(":")
         key = els[0].strip()
         val = els[1].strip()
-        if (key[-1] == "]"): continue
-        if (val == ""): continue
-        cleanXmlDoc += xmlDocLine + "\n"
-    return cleanXmlDoc
+        if key[-1] == "]":
+            continue
+        if not val:
+            continue
+
+        doc.append(xmlDocLine)
+    return '\n'.join(doc)
+
+def without_db_element(s):
+    lines = []
+    for l in s.split('\n'):
+        if l.strip().startswith('<Db '):
+            continue
+        lines.append(l)
+    return '\n'.join(lines)
 
 class ngamsConfigHandlingTest(ngamsTestSuite):
     """
@@ -150,13 +167,13 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         # Dump as XML Dictionary.
         cfgObj2.loadFromDb("test_Load_1", dbObj)
         refFile     = "ref/ngamsConfigHandlingTest_test_Load_1_1_ref"
-        cleanXmlDoc = _cleanXmlDoc(cfgObj2.dumpXmlDic())
+        cleanXmlDoc = _cleanXmlDoc(cfgObj2.dumpXmlDic(), r'^NgamsCfg.Db\[1\]')
         tmpStatFile = saveInFile(None, cleanXmlDoc)
         self.checkFilesEq(refFile, tmpStatFile, "Incorrect contents of " +\
                           "XML Dictionary of cfg. loaded from DB")
         # Dump as XML Document.
         refFile     = "ref/ngamsConfigHandlingTest_test_Load_1_2_ref"
-        tmpStatFile = saveInFile(None, str(cfgObj2.genXmlDoc()))
+        tmpStatFile = saveInFile(None, without_db_element(cfgObj2.genXmlDoc()))
         self.checkFilesEq(refFile, tmpStatFile, "Incorrect contents of " +\
                           "XML Document of cfg. loaded from DB")
 
