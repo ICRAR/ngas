@@ -739,14 +739,14 @@ class ngamsDbCore(object):
         three-dimensional one returned by self.query.
         """
 
+        logger.debug("Performing SQL query with parameters: %s / %r", sqlQuery, args)
+
         # If we are passing down parameters we need to sanitize both the query
         # string (which should come with {0}-style formatting) and the parameter
         # list to cope with the different parameter styles supported by PEP-249
         if args:
             sqlQuery = sqlQuery.format(*self._params_to_bind(len(args)))
             args = self._data_to_bind(args)
-
-        logger.debug("Performing SQL query with parameters: %s / %r", sqlQuery, args)
 
         with closing(self.__pool.connection()) as conn:
             with closing(conn.cursor()) as cursor:
@@ -767,8 +767,6 @@ class ngamsDbCore(object):
                             res = []
                         conn.commit()
 
-                        logger.debug("Result of SQL query %s / %r: %r", sqlQuery, args, res)
-
                         return res
                     except:
                         conn.rollback()
@@ -784,7 +782,8 @@ class ngamsDbCore(object):
 
         Return:          Cursor object instance (<Cursor Object>).
         """
-        T = TRACE()
+
+        logger.debug("Performing SQL query (using a cursor): %s / %r", sqlQuery, args)
 
         # If we are passing down parameters we need to sanitize both the query
         # string (which should come with {0}-style formatting) and the parameter
@@ -792,8 +791,6 @@ class ngamsDbCore(object):
         if args:
             sqlQuery = sqlQuery.format(*self._params_to_bind(len(args)))
             args = self._data_to_bind(args)
-
-        logger.debug("Performing SQL query (using a cursor): %s / %r", sqlQuery, args)
 
         return ngamsDbCursor(self.__pool, sqlQuery, args)
 

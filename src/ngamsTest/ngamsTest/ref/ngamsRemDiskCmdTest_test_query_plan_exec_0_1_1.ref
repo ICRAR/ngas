@@ -1,25 +1,9 @@
-SELECT disk_id FROM ngas_disks WHERE disk_id=? / ('tmp-ngamsTest-NGAS-FitsStorage2-Main-3',): [(u'tmp-ngamsTest-NGAS-FitsStorage2-Main-3',)]
-
-
-SELECT nd.disk_id, nd.archive, nd.logical_name, nd.host_id, nd.slot_id, nd.mounted, nd.mount_point, nd.number_of_files, nd.available_mb, nd.bytes_stored, nd.type, nd.capacity_mb, nd.manufacturer, nd.installation_date, nd.checksum, nd.total_disk_write_time, nd.completed, nd.completion_date, nd.last_check, nd.last_host_id FROM ngas_disks nd WHERE disk_id=? / ('tmp-ngamsTest-NGAS-FitsStorage2-Main-3',): [(u'tmp-ngamsTest-NGAS-FitsStorage2-Main-3', u'ESO-ARCHIVE', u'M-000002', u'$HOSTNAME', u'3', 1, u'/tmp/ngamsTest/NGAS/FitsStorage2-Main-3', 5, _SKIP_, _SKIP_, u'TEST-TYPE', 0, u'TEST-MANUFACTURER', _DATETIME_, u' ', _FLOAT_, 0, None, None, u'$HOSTNAME')]
-
-
-SELECT count(*) FROM ngas_disks nd, ngas_files nf WHERE nd.disk_id=nf.disk_id AND nf.file_ignore=? AND nd.disk_id IN (?) / [0,'tmp-ngamsTest-NGAS-FitsStorage2-Main-3']: [(5,)]
-
-
-SELECT nd.slot_id, nd.mount_point, nf.file_name, nf.checksum, nf.checksum_plugin, nf.file_id, nf.file_version, nf.file_size, nf.file_status, nd.disk_id, nf.file_ignore, nd.host_id FROM ngas_disks nd, ngas_files nf WHERE nd.disk_id=nf.disk_id AND nf.file_ignore=? AND nd.disk_id IN (?) ORDER BY nd.slot_id, nf.ingestion_date / [0,'tmp-ngamsTest-NGAS-FitsStorage2-Main-3']: 
-
-
-SELECT nd.disk_id, nd.archive, nd.logical_name, nd.host_id, nd.slot_id, nd.mounted, nd.mount_point, nd.number_of_files, nd.available_mb, nd.bytes_stored, nd.type, nd.capacity_mb, nd.manufacturer, nd.installation_date, nd.checksum, nd.total_disk_write_time, nd.completed, nd.completion_date, nd.last_check, nd.last_host_id FROM ngas_disks nd WHERE disk_id=? / ('tmp-ngamsTest-NGAS-FitsStorage2-Main-3',): [(u'tmp-ngamsTest-NGAS-FitsStorage2-Main-3', u'ESO-ARCHIVE', u'M-000002', u'$HOSTNAME', u'3', 1, u'/tmp/ngamsTest/NGAS/FitsStorage2-Main-3', 5, _SKIP_, _SKIP_, u'TEST-TYPE', 0, u'TEST-MANUFACTURER', _DATETIME_, u' ', _FLOAT_, 0, None, None, u'$HOSTNAME')]
-
-
-SELECT count(*) FROM ngas_disks nd, ngas_files nf WHERE nd.disk_id=nf.disk_id AND nf.file_id IN (?) / ['TEST.2001-05-08T15:25:00.123']: [(15,)]
-
-
-SELECT nd.slot_id, nd.mount_point, nf.file_name, nf.checksum, nf.checksum_plugin, nf.file_id, nf.file_version, nf.file_size, nf.file_status, nd.disk_id, nf.file_ignore, nd.host_id FROM ngas_disks nd, ngas_files nf WHERE nd.disk_id=nf.disk_id AND nf.file_id IN (?) ORDER BY nd.slot_id, nf.ingestion_date / ['TEST.2001-05-08T15:25:00.123']: 
-
-
-SELECT nd.slot_id, nd.mount_point, nf.file_name, nf.checksum, nf.checksum_plugin, nf.file_id, nf.file_version, nf.file_size, nf.file_status, nd.disk_id, nf.file_ignore, nd.host_id FROM ngas_disks nd, ngas_files nf WHERE nd.disk_id=nf.disk_id AND (nf.file_ignore=1 OR nf.file_status NOT IN ('00000000', '01000000')) AND nd.host_id=? AND nd.disk_id=? / ['$HOSTNAME','tmp-ngamsTest-NGAS-FitsStorage2-Main-3']: 
-
-
-SELECT srv_data_checking FROM ngas_hosts WHERE host_id=? / ('$HOSTNAME',): [(0,)]
+SELECT disk_id FROM ngas_disks WHERE disk_id={} / ('tmp-ngamsTest-NGAS-FitsStorage2-Main-3',)
+SELECT nd.disk_id, nd.archive, nd.logical_name, nd.host_id, nd.slot_id, nd.mounted, nd.mount_point, nd.number_of_files, nd.available_mb, nd.bytes_stored, nd.type, nd.capacity_mb, nd.manufacturer, nd.installation_date, nd.checksum, nd.total_disk_write_time, nd.completed, nd.completion_date, nd.last_check, nd.last_host_id FROM ngas_disks nd WHERE disk_id={} / ('tmp-ngamsTest-NGAS-FitsStorage2-Main-3',)
+SELECT count(*) FROM ngas_disks nd, ngas_files nf WHERE nd.disk_id=nf.disk_id AND nf.file_ignore={} AND nd.disk_id IN ({}) / [0,'tmp-ngamsTest-NGAS-FitsStorage2-Main-3']
+SELECT nd.slot_id, nd.mount_point, nf.file_name, nf.checksum, nf.checksum_plugin, nf.file_id, nf.file_version, nf.file_size, nf.file_status, nd.disk_id, nf.file_ignore, nd.host_id FROM ngas_disks nd, ngas_files nf WHERE nd.disk_id=nf.disk_id AND nf.file_ignore={} AND nd.disk_id IN ({}) ORDER BY nd.slot_id, nf.ingestion_date / [0,'tmp-ngamsTest-NGAS-FitsStorage2-Main-3'] 
+SELECT nd.disk_id, nd.archive, nd.logical_name, nd.host_id, nd.slot_id, nd.mounted, nd.mount_point, nd.number_of_files, nd.available_mb, nd.bytes_stored, nd.type, nd.capacity_mb, nd.manufacturer, nd.installation_date, nd.checksum, nd.total_disk_write_time, nd.completed, nd.completion_date, nd.last_check, nd.last_host_id FROM ngas_disks nd WHERE disk_id={} / ('tmp-ngamsTest-NGAS-FitsStorage2-Main-3',)
+SELECT count(*) FROM ngas_disks nd, ngas_files nf WHERE nd.disk_id=nf.disk_id AND nf.file_id IN ({}) / ['TEST.2001-05-08T15:25:00.123']
+SELECT nd.slot_id, nd.mount_point, nf.file_name, nf.checksum, nf.checksum_plugin, nf.file_id, nf.file_version, nf.file_size, nf.file_status, nd.disk_id, nf.file_ignore, nd.host_id FROM ngas_disks nd, ngas_files nf WHERE nd.disk_id=nf.disk_id AND nf.file_id IN ({}) ORDER BY nd.slot_id, nf.ingestion_date / ['TEST.2001-05-08T15:25:00.123'] 
+SELECT nd.slot_id, nd.mount_point, nf.file_name, nf.checksum, nf.checksum_plugin, nf.file_id, nf.file_version, nf.file_size, nf.file_status, nd.disk_id, nf.file_ignore, nd.host_id FROM ngas_disks nd, ngas_files nf WHERE nd.disk_id=nf.disk_id AND (nf.file_ignore=1 OR nf.file_status NOT IN ('00000000', '01000000')) AND nd.host_id={} AND nd.disk_id={} / ['$HOSTNAME','tmp-ngamsTest-NGAS-FitsStorage2-Main-3'] 
+SELECT srv_data_checking FROM ngas_hosts WHERE host_id={0} / ('$HOSTNAME',)

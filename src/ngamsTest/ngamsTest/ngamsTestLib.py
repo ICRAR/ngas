@@ -1528,10 +1528,8 @@ class ngamsTestSuite(unittest.TestCase):
     def _checkQuery(self,
                     query,
                     refQuery,
-                    queryPlan,
-                    queryPlanIdx,
                     refQueryPlan,
-                    refQueryPlanIdx):
+                    query_idx):
         """
         Compare two components of an SQL query or query result.
 
@@ -1555,17 +1553,15 @@ class ngamsTestSuite(unittest.TestCase):
                 errMsg = "Mismatch found in query plan.\n\n" +\
                          "Expected component:\n\n%s\n\n" +\
                          "Component found:\n\n%s\n\n" +\
-                         "Ref. query:\n\n%s\n\n" +\
-                         "Query plan:\n\n%s/%d\n\n" +\
-                         "Ref. query plan:\n\n%s/%d"
-                self.fail(errMsg % (refQueryEl, queryEl, refQuery,
-                                    queryPlan, (queryPlanIdx + 1), refQueryPlan,
-                                    refQueryPlanIdx+1))
+                         "Query number: %d\n" + \
+                         "Query plan:\n\n%s\n\n" +\
+                         "Ref. query plan:\n\n%s"
+                self.fail(errMsg % (refQueryEl, queryEl, query_idx, refQuery, refQueryPlan))
             idx += 1
 
 
     def checkQueryPlan(self,
-                       queryPlan,
+                       queryPlanLines,
                        refQueryPlan):
         """
         Verify that contents of the given query plan against the reference
@@ -1581,26 +1577,10 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:        Void.
         """
-        queryPlanLines = loadFile(queryPlan).split("\n")
-        refQueryPlanLines = loadFile(refQueryPlan).split("\n")
-        idx1 = 0
-        idx2 = 0
-        while (idx1 < len(refQueryPlanLines)):
-            # Skip empty lines, comment lines in the Reference Query Plan.
-            if ((refQueryPlanLines[idx1].strip() == "") or
-                (refQueryPlanLines[idx1].strip()[0] == "#")):
-                idx1 += 1
-                continue
-            refQuery, refRes = refQueryPlanLines[idx1].split(": ")
-            query, queryRes  = queryPlanLines[idx2].split(": ")
-            # Check contents of the query against the ref. query:
-            self._checkQuery(query, refQuery, queryPlan, idx2, refQueryPlan,
-                             idx1)
-            # Check contents of the result against the ref. query result:
-            self._checkQuery(queryRes, refRes, queryPlan, idx2, refQueryPlan,
-                             idx1)
-            idx1 += 1
-            idx2 += 1
+        refQueryPlanLines = filter(None, loadFile(refQueryPlan).split("\n"))
+        self.assertEqual(len(refQueryPlanLines), len(queryPlanLines))
+        for i, (query, refQuery) in enumerate(zip(queryPlanLines, refQueryPlanLines), 1):
+            self._checkQuery(query, refQuery, refQueryPlan, i)
 
 
     def checkQueryPlanLogFile(self,
@@ -1621,28 +1601,21 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:       Void.
         """
-        resTag1 = "Result of SQL query"
+        resTag1 = "Performing SQL query with parameters: "
         resTag2 = "Performing SQL query (using a cursor):"
         with open(logFile, 'r') as f:
             queryLines = [l for l in f if threadId in l and (resTag1 in l or resTag2 in l)]
 
-        tmpQueryPlan = genTmpFilename("QUERY_PLAN_")
-        saveInFile(tmpQueryPlan, '\n'.join(queryLines))
-        queryPlan = ""
-
+        queryPlan = []
         for line in queryLines:
             line = line.strip()
             if resTag1 in line:
-                sqlQuery, sqlRes = line.split(resTag1)[1].split(": ")
-                sqlQuery = sqlQuery.strip()
-                sqlRes = sqlRes.strip()
+                sqlQuery = line.split(resTag1)[1].strip()
             else:
                 sqlQuery = line.split(": ")[1].split(" [ngamsDb")[0]
-                sqlRes = ""
-            queryPlan += "%s: %s\n" % (sqlQuery, sqlRes)
-        tmpQueryPlan2 = genTmpFilename("QUERY_PLAN_2_")
-        saveInFile(tmpQueryPlan2, queryPlan)
-        self.checkQueryPlan(tmpQueryPlan2, refQueryPlan)
+            queryPlan.append(sqlQuery)
+
+        self.checkQueryPlan(queryPlan, refQueryPlan)
 
     def markNodesAsUnsusp(self, dbConObj, nodes):
         """
