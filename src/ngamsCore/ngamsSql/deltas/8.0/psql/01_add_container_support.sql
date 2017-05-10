@@ -11,7 +11,5 @@ CREATE TABLE ngas_containers
   CONSTRAINT container_parent FOREIGN KEY (parent_container_id) REFERENCES ngas_containers(container_id)
 );
 
-ALTER TABLE ngas_files ADD COLUMN io_time        numeric(20, 0) DEFAULT -1;
-ALTER TABLE ngas_files ADD COLUMN ingestion_rate numeric(20, 0) NULL DEFAULT -1;
 ALTER TABLE ngas_files ADD COLUMN container_id   varchar(36)    NULL;
 ALTER TABLE ngas_files ADD CONSTRAINT file_container FOREIGN KEY (container_id) REFERENCES ngas_containers(container_id);

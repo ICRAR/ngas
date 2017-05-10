@@ -1,3 +1,32 @@
+--
+-- This scripts (re)creates the MySQL database schema
+-- needed by the NGAS server version 9.0.
+--
+-- If you are looking to upgrade an existing installation
+-- have a look at the deltas directory for schema alterations
+--
+--
+-- ICRAR - International Centre for Radio Astronomy Research
+-- (c) UWA - The University of Western Australia, 2012
+-- Copyright by UWA (in the framework of the ICRAR)
+-- All rights reserved
+--
+-- This library is free software; you can redistribute it and/or
+-- modify it under the terms of the GNU Lesser General Public
+-- License as published by the Free Software Foundation; either
+-- version 2.1 of the License, or (at your option) any later version.
+--
+-- This library is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-- Lesser General Public License for more details.
+--
+-- You should have received a copy of the GNU Lesser General Public
+-- License along with this library; if not, write to the Free Software
+-- Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+-- MA 02111-1307  USA
+--
+
 drop table IF EXISTS ngas_cache;
 drop table IF EXISTS ngas_files;
 drop table IF EXISTS ngas_containers;
@@ -186,7 +215,7 @@ create table ngas_subscribers
   subscr_filter_plugin      varchar(64)   null,
   subscr_filter_plugin_pars varchar(128)  null,
   last_file_ingestion_date  varchar(23)   null,
-  concurrent_threads	    int           default 1 null
+  concurrent_threads        int           default 1 null
 );
 create unique index subscr_id_idx on ngas_subscribers(subscr_id);
 create unique index host_id_srv_port_idx on ngas_subscribers(host_id, srv_port);
