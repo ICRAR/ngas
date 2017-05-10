@@ -60,7 +60,7 @@
           Simulation="1"
           SwVersion=""/>
 
-  <Db Id="Db-Sqlite-Test"
+  <Db Id="Db-Test"
       Interface="sqlite3"
       database="tmp/ngas.sqlite"
       Snapshot="1"/>

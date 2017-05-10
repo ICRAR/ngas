@@ -38,12 +38,13 @@ import sys
 
 from ngamsLib import ngamsConfig, ngamsDb
 from ngamsTestLib import delNgasTbls, ngamsTestSuite, \
-    saveInFile, sendPclCmd, filterDbStatus1, runTest
+    saveInFile, sendPclCmd, filterDbStatus1, runTest, db_aware_cfg
 
 
+dbIdAttr = 'Db-Test'
 stdCfgGrIdList = ["ngamsCfg-Test", "ArchiveHandling-Test",
                   "Authorization-Test",
-                  "DataCheckThread-Test", "Db-Sqlite-Test",
+                  "DataCheckThread-Test", dbIdAttr,
                   "HostSuspension-Test", "JanitorThread-Std",
                   "Log-Test", "MimeTypes-Std", "Notification-Test",
                   "Permissions-Test", "Processing-Std", "Register-Std",
@@ -121,7 +122,8 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
 
         Returns:        Tuple with ngamsConfig and ngamsDb Objects (tuple).
         """
-        cfgObj = ngamsConfig.ngamsConfig().load(cfgFile, checkCfg)
+        # This ensure the Db.Id attribute is what we want it to be
+        cfgObj = db_aware_cfg(cfgFile, check=checkCfg, db_id_attr=dbIdAttr)
         revAttr = "NgamsCfg.Header[1].Revision"
         cfgObj.storeVal(revAttr, "TEST-REVISION", "ngamsCfg-Test")
 
@@ -244,7 +246,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         ...
         """
         cfgName = "test_ServerLoad_2"
-        tmpCfg = ngamsConfig.ngamsConfig().load("src/ngamsCfg.xml").\
+        tmpCfg = db_aware_cfg("src/ngamsCfg.xml").\
                  storeVal("NgamsCfg.Permissions[1].AllowArchiveReq", "0",
                           "Permissions-Test")
         cfgFile=saveInFile(None,tmpCfg.genXmlDoc(0))
@@ -292,7 +294,7 @@ class ngamsConfigHandlingTest(ngamsTestSuite):
         # For the second cfg. set all the DB Cfg. Group ID to a common value
         # + set all values to a non-sense value.
         cfgName2 = "test_ServerLoad_2"
-        tmpCfg = ngamsConfig.ngamsConfig().load("src/ngamsCfg.xml")
+        tmpCfg = db_aware_cfg("src/ngamsCfg.xml")
         for cfgKey in tmpCfg._getXmlDic().keys():
             if ((cfgKey[-1] != "]") and (cfgKey.find("Db[1]") == -1)):
                 tmpCfg.storeVal(cfgKey, "0")

@@ -51,6 +51,7 @@ import threading
 import time
 import unittest
 import uuid
+import xml.dom.minidom
 
 import pkg_resources
 import pyfits
@@ -824,6 +825,31 @@ def remFitsKey(filename,
     """
     pyfits.delval(filename, key)
 
+
+def db_aware_cfg(cfg_filename, check=0, db_id_attr="Db-Test"):
+    """
+    Load the configuration stored in `cfg_filename` and replace the Db element
+    with whatever is in the NGAS_DB_CONF environment variable, if present
+    """
+
+    if 'NGAS_TESTDB' not in os.environ:
+        return ngamsConfig.ngamsConfig().load(cfg_filename, check)
+
+    new_db = xml.dom.minidom.parseString(os.environ['NGAS_TESTDB'])
+    new_db.documentElement.attributes['Id'].value = db_id_attr
+    root = xml.dom.minidom.parseString(loadFile(cfg_filename)).documentElement
+    for n in root.childNodes:
+        if n.localName != 'Db':
+            continue
+
+        root.removeChild(n)
+        root.appendChild(new_db.documentElement)
+        cfg_filename = saveInFile(genTmpFilename('CFG'), root.toprettyxml())
+        return ngamsConfig.ngamsConfig().load(cfg_filename, check)
+
+    raise Exception('Db element not found in original configuration')
+
+
 def prepCfg(cfgFile,
             parList):
     """
@@ -1020,7 +1046,7 @@ class ngamsTestSuite(unittest.TestCase):
             # If a DB Configuration Name is specified, we first have to
             # extract the configuration information from the DB to
             # create a complete temporary cfg. file.
-            cfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
+            cfgObj = db_aware_cfg(cfgFile)
             dbObj = ngamsDb.from_config(cfgObj)
             cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, dbObj)
             del dbObj
@@ -1028,7 +1054,7 @@ class ngamsTestSuite(unittest.TestCase):
             logger.debug("Successfully read configuration from database, root dir is %s", cfgObj2.getRootDirectory())
             cfgFile = saveInFile(None, cfgObj2.genXmlDoc(0))
 
-        cfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
+        cfgObj = db_aware_cfg(cfgFile)
 
         # Change what needs to be changed, like the position of the Sqlite
         # database file when necessary, the custom configuration items, and the
@@ -1354,7 +1380,7 @@ class ngamsTestSuite(unittest.TestCase):
         """
 
         # Create the shared database first of all
-        tmpCfg = ngamsConfig.ngamsConfig().load(comCfgFile)
+        tmpCfg = db_aware_cfg(comCfgFile)
         self.point_to_sqlite_database(tmpCfg, createDatabase)
         if createDatabase:
             db = ngamsDb.from_config(tmpCfg)
