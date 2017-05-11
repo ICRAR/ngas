@@ -26,14 +26,6 @@
 language: python
 
 #
-# Packages we need installed in the system
-#
-addons:
- apt:
-  packages:
-   - libdb-dev
-
-#
 # We build and test NGAS against three different DB engines
 #
 #  * SQLite3
@@ -51,17 +43,25 @@ matrix:
  include:
   - env: DB=sqlite3
     python: "2.7"
+    addons:
+     apt:
+      packages:
+      - libdb-dev
   - env: DB=mysql
     python: "2.7"
     addons:
      apt:
-      packages: libmysqlclient-dev
+      packages:
+      - libdb-dev
+      - libmysqlclient-dev
     services: mysql
   - env: DB=postgresql
     python: "2.7"
     addons:
      apt:
-      packages: libpq-dev
+      packages:
+      - libdb-dev
+      - libpq-dev
     services: postgresql
 
 #
