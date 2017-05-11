@@ -36,6 +36,7 @@ fail() {
 }
 
 EUSER="Failed to create database user ngas"
+EPASS="Failed to change password"
 EDB="Failed to create database ngas"
 EPERM="Failed to grant priviledges to user ngas on database ngas"
 ECREAT="Failed to create the ngas database schema on database ngas"
@@ -52,10 +53,11 @@ if [[ "$DB" == "mysql" ]]; then
 	# (who might have already all priviledges over its newly created database)
 	mysql_cmd="mysql -e"
 	$mysql_cmd "CREATE DATABASE ngas;" || fail "$EDB"
+	$mysql_cmd "UPDATE mysql.user SET password = PASSWORD('ngas') WHERE user='travis';" || fail "$EPASS"
 	#$mysql_cmd "GRANT ALL ON ngas.* TO 'travis'@'localhost';" || fail "$EPERM"
 
 	# Create ngas database schema
-	mysql -u travis -D ngas -h 127.0.0.1 -p'' \
+	mysql -u travis -D ngas -h 127.0.0.1 -pngas \
 	    < src/ngamsCore/ngamsSql/ngamsCreateTables-mySQL.sql \
 		 || fail "$ECREAT"
 
