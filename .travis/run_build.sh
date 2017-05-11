@@ -48,14 +48,14 @@ PIP_PACKAGES="bsddb3"
 # the corresponding python module so NGAS can talk to the database
 if [[ "$DB" == "mysql" ]]; then
 
-	# Create database and user
-	mysql_cmd="mysql -u root -p'' -e"
-	$mysql_cmd "CREATE USER 'ngas'@'%' IDENTIFIED BY 'ngas';" || fail "$EUSER"
+	# Create ngas database, we keep using the "travis" user
+	# (who might have already all priviledges over its newly created database)
+	mysql_cmd="mysql -e"
 	$mysql_cmd "CREATE DATABASE ngas;" || fail "$EDB"
-	$mysql_cmd "GRANT ALL ON ngas.* TO 'ngas'@'%';" || fail "$EPERM"
+	#$mysql_cmd "GRANT ALL ON ngas.* TO 'travis'@'localhost';" || fail "$EPERM"
 
 	# Create ngas database schema
-	mysql -u ngas -D ngas -h localhost -p ngas \
+	mysql -u travis -D ngas -h 127.0.0.1 -p'' \
 	    < src/ngamsCore/ngamsSql/ngamsCreateTables-mySQL.sql \
 		 || fail "$ECREAT"
 
