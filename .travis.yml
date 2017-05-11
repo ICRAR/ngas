@@ -36,19 +36,45 @@ addons:
    - libdb-dev
 
 #
+# We build and test NGAS against three different DB engines
+#
+#  * SQLite3
+#  * MySQL
+#  * PostgreSQL
+#
+# In the latter two cases we need to install some extra system-level packages
+# in order to install (later, in the run_build.sh script) the corresponding
+# python PEP-249-compliant modules.
+#
+# Setting the DB environment variable allows us to keep track later on which
+# database engine this particular run is based on
+#
+matrix:
+ include:
+  - env: DB=sqlite3
+  - env: DB=mysql
+	 addons:
+     apt:
+      packages: libmysqlclient-dev
+	 services: mysql
+  - env: DB=postgresql
+	 addons:
+     apt:
+      packages: libmysqlclient-dev
+	 services: postgresql
+
+#
 # To install we should simply run the build script
 # and include the C client in the compilation
 #
 install:
- - pip install bsddb3
- - ./build.sh -c
+ - ${TRAVIS_BUILD_DIR}/.travis/run_build.sh
 
 #
 # Now go for the tests
 #
 script:
- - cd ${TRAVIS_BUILD_DIR}/src/ngamsTest/ngamsTest
- - python ngamsTest.py
+ - ${TRAVIS_BUILD_DIR}/.travis/run_tests.sh
 
 #
 # Run only on the master branch
