@@ -26,6 +26,13 @@
 language: python
 
 #
+# The Docker-ized build environment creates a very long hostname
+# (~100 chars long), but the NGAS database schema's host_id column
+# has a maximum width of 32.
+addons:
+ hostname: my_ngas_host
+
+#
 # We build and test NGAS against three different DB engines
 #
 #  * SQLite3
