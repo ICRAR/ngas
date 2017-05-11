@@ -534,8 +534,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
 
         # Check that expected log entries found in the Master Node Log File.
         refStatFile="ref/ngamsIdleSuspensionTest_test_WakeUpCheckfile_1_2_ref"
-        ipAddr = socket.gethostbyname_ex(getHostName())[2][0]
-        testTags = loadFile(refStatFile) % (subNode1, ipAddr)
+        testTags = loadFile(refStatFile) % (subNode1,)
         sendPclCmd(port=8000, auth=AUTH).status()
         masterLogBuf = loadFile(masterNodeLog)
         self.checkTags(masterLogBuf, testTags, showBuf=0)
