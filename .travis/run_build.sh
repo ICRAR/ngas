@@ -51,7 +51,7 @@ if [[ "$DB" == "mysql" ]]; then
 
 	# Create ngas database, we keep using the "travis" user
 	# (who might have already all priviledges over its newly created database)
-	mysql_cmd="mysql -e"
+	mysql_cmd="mysql -uroot -e"
 	$mysql_cmd "CREATE DATABASE ngas;" || fail "$EDB"
 	$mysql_cmd "UPDATE mysql.user SET password = PASSWORD('ngas') WHERE user='travis';" || fail "$EPASS"
 	#$mysql_cmd "GRANT ALL ON ngas.* TO 'travis'@'localhost';" || fail "$EPERM"
