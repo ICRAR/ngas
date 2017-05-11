@@ -61,7 +61,7 @@ matrix:
     python: "2.7"
     addons:
      apt:
-      packages: libmysqlclient-dev
+      packages: libpq-dev
     services: postgresql
 
 #
