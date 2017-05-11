@@ -49,7 +49,7 @@ PIP_PACKAGES="bsddb3"
 if [[ "$DB" == "mysql" ]]; then
 
 	# Create database and user
-	mysql_cmd="mysql -u root -h 127.0.0.1 -e"
+	mysql_cmd="mysql -h 127.0.0.1 -e"
 	$mysql_cmd "CREATE USER ngas@'%' IDENTIFIED BY 'ngas';" || fail "$EUSER"
 	$mysql_cmd "CREATE DATABASE ngas;" || fail "$EDB"
 	$mysql_cmd "GRANT ALL ON ngas.* TO 'ngas'@'%';" || fail "$EPERM"

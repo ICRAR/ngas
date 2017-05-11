@@ -28,15 +28,17 @@
 # TRAVIS_BUILD_DIR  the directory where the sources are located
 #
 
+cd ${TRAVIS_BUILD_DIR}/src/ngamsTest/ngamsTest
+
 NGAS_TESTDB=
 
 # These are the user/dbname/passwd that we created on run_build
 if [[ "$DB" == "mysql" ]]; then
-	NGAS_TESTDB='<Db Id="blah" Snapshot="1" Interface="MySQLdb" host="127.0.0.1" db="ngas" user="ngas" passwd="ngas"/>'
+	NGAS_TESTDB='<Db Id="blah" Snapshot="1" Interface="MySQLdb" host="127.0.0.1" db="ngas" user="ngas" passwd="ngas"/>' python ngamsServerTest.py
 elif [[ "$DB" == "postgresql" ]]; then
-	NGAS_TESTDB='<Db Id="blah" Snapshot="1" Interface="psycopg2" host="127.0.0.1" dbname="ngas" user="ngas" password="ngas"/>'
+	NGAS_TESTDB='<Db Id="blah" Snapshot="1" Interface="psycopg2" host="127.0.0.1" dbname="ngas" user="ngas" password="ngas"/>' python ngamsServerTest.py
+else
+	NGAS_TESTDB=${NGAS_TESTDB} python ngamsTest.py
 fi
 # sqlite3 is the default so it needs no special attention
 
-cd ${TRAVIS_BUILD_DIR}/src/ngamsTest/ngamsTest
-NGAS_TESTDB=${NGAS_TESTDB} python ngamsTest.py
