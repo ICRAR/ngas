@@ -24,8 +24,6 @@
 # NGAS supports python 2.7 only
 #
 language: python
-python:
- - "2.7"
 
 #
 # Packages we need installed in the system
@@ -52,12 +50,15 @@ addons:
 matrix:
  include:
   - env: DB=sqlite3
+    python: "2.7"
   - env: DB=mysql
+    python: "2.7"
     addons:
      apt:
       packages: libmysqlclient-dev
     services: mysql
   - env: DB=postgresql
+    python: "2.7"
     addons:
      apt:
       packages: libmysqlclient-dev
@@ -67,19 +68,16 @@ matrix:
 # To install we should simply run the build script
 # and include the C client in the compilation
 #
-install:
- - ${TRAVIS_BUILD_DIR}/.travis/run_build.sh
+install: ${TRAVIS_BUILD_DIR}/.travis/run_build.sh
 
 #
 # Now go for the tests
 #
-script:
- - ${TRAVIS_BUILD_DIR}/.travis/run_tests.sh
+script: ${TRAVIS_BUILD_DIR}/.travis/run_tests.sh
 
 #
 # Run only on the master branch
 # We probably don't want to run on any other experimental branch (yet)
 #
 branches:
- only:
-  - master
+ only: master
