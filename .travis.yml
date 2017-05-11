@@ -53,15 +53,15 @@ matrix:
  include:
   - env: DB=sqlite3
   - env: DB=mysql
-     addons:
+    addons:
      apt:
       packages: libmysqlclient-dev
-     services: mysql
+    services: mysql
   - env: DB=postgresql
-     addons:
+    addons:
      apt:
       packages: libmysqlclient-dev
-     services: postgresql
+    services: postgresql
 
 #
 # To install we should simply run the build script
