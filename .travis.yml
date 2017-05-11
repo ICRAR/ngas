@@ -25,12 +25,6 @@
 #
 language: python
 
-#
-# The Docker-ized build environment creates a very long hostname
-# (~100 chars long), but the NGAS database schema's host_id column
-# has a maximum width of 32.
-addons:
- hostname: my_ngas_host
 
 #
 # We build and test NGAS against three different DB engines
@@ -46,17 +40,23 @@ addons:
 # Setting the DB environment variable allows us to keep track later on which
 # database engine this particular run is based on
 #
+# The Docker-ized build environment creates a very long hostname
+# (~100 chars long), but the NGAS database schema's host_id column
+# has a maximum width of 32, which is why we set a specific hostname.
+#
 matrix:
  include:
   - env: DB=sqlite3
     python: "2.7"
     addons:
+     hostname: my_ngas_host
      apt:
       packages:
       - libdb-dev
   - env: DB=mysql
     python: "2.7"
     addons:
+     hostname: my_ngas_host
      apt:
       packages:
       - libdb-dev
@@ -65,6 +65,7 @@ matrix:
   - env: DB=postgresql
     python: "2.7"
     addons:
+     hostname: my_ngas_host
      apt:
       packages:
       - libdb-dev
