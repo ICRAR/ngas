@@ -299,8 +299,7 @@ def correctUsage():
     Returns:   Void.
     """
     print "Input parameters for NG/AMS test programs:\n"
-    print "<test program> [-v <level>] [-logLevel <level> " +\
-          "-logFile <file>] [-tests <test name>] [-noCleanUp]\n"
+    print "<test program> [-v <level>] [-tests <test name>] [-noCleanUp]\n"
     print ngamsCopyrightString()
 
 
@@ -727,20 +726,12 @@ def runTest(argv):
     tests = []
     silentExit = 0
     verboseLevel = 0
-    logFile = None
-    logLevel = 0
     skip = None
     idx = 1
     while idx < len(argv):
         par = argv[idx].upper()
         try:
-            if (par == "-LOGLEVEL"):
-                idx += 1
-                logLevel = int(argv[idx])
-            elif (par == "-LOGFILE"):
-                idx += 1
-                logFile = argv[idx]
-            elif (par == "-V"):
+            if (par == "-V"):
                 idx += 1
                 verboseLevel = int(argv[idx])
             elif (par == "-TESTS"):
