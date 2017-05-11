@@ -438,9 +438,9 @@ def _cloneExec(srvObj,
                                    getStorageSetFromSlotId(slotId).\
                                    getStorageSetId()
                     trgDiskInfo.setStorageSetId(storageSetId)
-                except Exception, e:
+                except Exception:
                     abortCloneLoop = 1
-                    raise e
+                    raise
 
             # We don't accept to clone onto the same disk (this would mean
             # overwriting).
@@ -896,7 +896,7 @@ def _cloneExplicit(srvObj,
     except Exception, e:
         # Delete Staging File if already created.
         if (os.path.exists(stagingFilename)): rmFile(stagingFilename)
-        raise Exception, e
+        raise
 
 
 
@@ -942,9 +942,9 @@ def _cloneThread(srvObj,
         rmFile(tmpFilePat + "*")
         logger.info("Processing of Clone Request completed")
         thread.exit()
-    except Exception, e:
+    except Exception:
         rmFile(tmpFilePat + "*")
-        raise e
+        raise
 
 
 def _clone(srvObj,
@@ -1023,12 +1023,12 @@ def _clone(srvObj,
 
         del fileInfoDbm
         rmFile(fileInfoDbmNm + "*")
-    except Exception, e:
+    except Exception:
         if (cloneListDbm): del cloneListDbm
         if (fileInfoDbm): del fileInfoDbm
         rmFile(fileInfoDbmNm + "*")
         rmFile(cloneListDbmName + "*")
-        raise Exception, e
+        raise
     logger.debug("Found: %d file(s) for cloning ...", noOfCloneFiles)
     del cloneListDbm
 
@@ -1148,9 +1148,9 @@ def clone(srvObj,
     try:
         _clone(srvObj, diskId, fileId, fileVersion, targetDiskId,
                reqPropsObj, httpRef, tmpFilePat)
-    except Exception, e:
+    except Exception:
         rmFile(tmpFilePat + "*")
-        raise e
+        raise
 
 
 # EOF
