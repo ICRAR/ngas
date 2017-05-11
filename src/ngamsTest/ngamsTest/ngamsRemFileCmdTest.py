@@ -243,9 +243,12 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        _, dbObj = self.prepExtSrv()
+        _, dbObj = self.prepExtSrv(cfgProps=(('NgamsCfg.Db[1].Snapshot', "0"),))
         client = sendPclCmd()
-        for n in range(3): stat = client.archive("src/SmallFile.fits")
+        for n in range(3):
+            stat = client.archive("src/SmallFile.fits")
+            self.assertEquals('SUCCESS', stat.getStatus())
+
         diskId1 = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         fileId  = "TEST.2001-05-08T15:25:00.123"
         fileVer = 2
