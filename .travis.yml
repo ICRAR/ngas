@@ -53,14 +53,14 @@ matrix:
   - env: DB=sqlite3
     python: "2.7"
     addons:
-     hostname: my_ngas_host
+     hostname: my-ngas-host
      apt:
       packages:
       - libdb-dev
   - env: DB=mysql
     python: "2.7"
     addons:
-     hostname: my_ngas_host
+     hostname: my-ngas-host
      apt:
       packages:
       - libdb-dev
@@ -69,7 +69,7 @@ matrix:
   - env: DB=postgresql
     python: "2.7"
     addons:
-     hostname: my_ngas_host
+     hostname: my-ngas-host
      apt:
       packages:
       - libdb-dev
