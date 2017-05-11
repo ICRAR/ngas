@@ -790,7 +790,8 @@ def runTest(argv):
         testSuite = unittest.TestSuite()
         for testCase in tests:
             testSuite.addTest(testClass(testCase))
-    ngamsTextTestRunner(sys.stdout, 1, 0).run(testSuite)
+    res = ngamsTextTestRunner(sys.stdout, 1, 0).run(testSuite)
+    sys.exit(0 if res.wasSuccessful() else 1)
 
 
 def writeFitsKey(filename,
