@@ -25,6 +25,10 @@
 #
 language: python
 
+#
+# We required sudo to use the hostname addon (see below)
+#
+sudo: required
 
 #
 # We build and test NGAS against three different DB engines
