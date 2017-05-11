@@ -824,7 +824,7 @@ def db_aware_cfg(cfg_filename, check=0, db_id_attr="Db-Test"):
     with whatever is in the NGAS_DB_CONF environment variable, if present
     """
 
-    if 'NGAS_TESTDB' not in os.environ:
+    if 'NGAS_TESTDB' not in os.environ or not os.environ['NGAS_TESTDB']:
         return ngamsConfig.ngamsConfig().load(cfg_filename, check)
 
     new_db = xml.dom.minidom.parseString(os.environ['NGAS_TESTDB'])
