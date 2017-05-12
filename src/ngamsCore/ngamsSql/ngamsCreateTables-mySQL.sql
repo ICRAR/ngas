@@ -150,7 +150,7 @@ create table ngas_hosts
   ip_address           varchar(20)    not null,
   mac_address          varchar(20)    null,
   n_slots              smallint       null,
-  cluster_name         varchar(16)    null,
+  cluster_name         varchar(32)    null,
   installation_date    varchar(23)    null,
   srv_version          varchar(40)    null,
   srv_port             int            not null,
