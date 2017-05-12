@@ -133,7 +133,7 @@ def _addHostInDic(dbConObj,
     Returns:     Void.
     """
     tmpHostInfo = dbConObj.getHostInfoFromHostIds([hostId])
-    if (tmpHostInfo == []):
+    if not tmpHostInfo:
         raise Exception, genLog("NGAMS_AL_MIS_HOST", [hostId])
     sqlHostInfo = tmpHostInfo[0]
     hostDic[hostId] = ngamsHostInfo.ngamsHostInfo().\
