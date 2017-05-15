@@ -525,19 +525,6 @@ class ngamsServer:
             logger.warning("Syslog handler setup failed, no syslog messages will arrive")
 
 
-    def setDb(self,
-              dbObj):
-        """
-        Set reference to the DB connection object.
-
-        dbObj:      Valid NG/AMS DB Connection object (ngamsDb).
-
-        Returns:    Reference to object itself.
-        """
-        self.__ngasDb = dbObj
-        return self
-
-
     def getDb(self):
         """
         Get reference to the DB connection object.
@@ -869,6 +856,9 @@ class ngamsServer:
                                 name="Janitor",
                                 args=(self, self._janitorProcStopEvt, self._serv_to_jan_queue, self._jan_to_serv_queue))
         self._janitorThread.start()
+
+        # Re-create the DB connections
+        self.reconnect_to_db()
 
         # Subscribe to db-change events (which we pass down to the janitor proc)
         self.getDb().addDbChangeEvt(self._janitordbChangeSync)
@@ -2327,23 +2317,26 @@ class ngamsServer:
         logger.info("Loading NG/AMS Configuration: " + self.getCfgFilename()+" ...")
         cfg.load(self.getCfgFilename())
 
-        # Connect to the DB.
-        db = self.getDb()
-        if not db:
-            db = ngamsDb.from_config(cfg)
-            self.setDb(db)
+        self.reconnect_to_db()
 
         # Check if we should load a configuration from the DB.
         if (self.__dbCfgId):
-            cfg.loadFromDb(self.__dbCfgId, db)
+            cfg.loadFromDb(self.__dbCfgId, self.__ngasDb)
 
         cfg._check()
 
-        ngasTmpDir = ngamsHighLevelLib.getNgasTmpDir(cfg)
-        self.__ngasDb.setDbTmpDir(ngasTmpDir)
-
         logger.info("Successfully loaded NG/AMS Configuration")
 
+
+    def reconnect_to_db(self):
+
+        if self.__ngasDb:
+            self.__ngasDb.close()
+
+        cfg = self.__ngamsCfgObj
+        self.__ngasDb = ngamsDb.from_config(cfg)
+        ngasTmpDir = ngamsHighLevelLib.getNgasTmpDir(cfg)
+        self.__ngasDb.setDbTmpDir(ngasTmpDir)
 
     def handleStartUp(self):
         """

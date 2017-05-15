@@ -129,6 +129,9 @@ def janitorThread(srvObj, stopEvt, srv_to_jan_queue, jan_to_srv_queue):
         logging.root.removeHandler(h)
     logging.root.addHandler(ForwarderHandler(jan_to_srv_queue))
 
+    # Reset the db pointer in our server object to get fresh connections
+    srvObj.reconnect_to_db()
+
     # => Update NGAS DB + DB Snapshot Document for the DB connected.
     try:
         checkUpdateDbSnapShots(srvObj, stopEvt)
