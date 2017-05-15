@@ -1092,22 +1092,31 @@ class ngamsTestSuite(unittest.TestCase):
         server_info = ServerInfo(srvProcess, port, cfgObj.getRootDirectory())
         pCl = sendPclCmd(port=port)
         startTime = time.time()
-        stat = None
-        while ((time.time() - startTime) < 20):
-            if (stat):
-                state = "ONLINE" if autoOnline else "OFFLINE"
-                logger.debug("Test server running - State: %s", state)
-                if stat.getState() == state: break
+        while True:
+
+            # Check if the server actually didn't start up correctly
+            ecode = srvProcess.poll()
+            if ecode is not None:
+                raise Exception("Server exited with code %d during startup" % (ecode,))
+
+            # "ping" the server
             try:
                 stat = pCl.status()
             except socket.error:
                 logger.debug("Polled server - not yet running ...")
                 time.sleep(0.2)
+                continue
 
-        if ((time.time() - startTime) >= 20):
-            self.termExtSrv(server_info)
-            raise Exception,"NGAMS TEST LIB> NG/AMS Server did not start " +\
-                  "correctly"
+            # Check the status is what we expect
+            state = "ONLINE" if autoOnline else "OFFLINE"
+            logger.debug("Test server running - State: %s", state)
+            if stat.getState() == state:
+                break
+
+            # Took too long?
+            if ((time.time() - startTime) >= 20):
+                self.termExtSrv(server_info)
+                raise Exception("Server did not start correctly within 20 [s]")
 
         self.extSrvInfo.append(server_info)
 
