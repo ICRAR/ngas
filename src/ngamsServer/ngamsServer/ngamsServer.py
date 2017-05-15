@@ -2219,16 +2219,13 @@ class ngamsServer:
         try:
             self.handleStartUp()
         except Exception, e:
-
-            # Let us know what went wrong exactly
-            traceback.print_exc(file = sys.stdout)
-
             errMsg = genLog("NGAMS_ER_INIT_SERVER", [str(e)])
-            logger.error(errMsg)
+            print(errMsg)
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEMS INITIALIZING NG/AMS SERVER",
                                      errMsg, [], 1)
             self.terminate()
+            raise
 
     def pidFile(self):
         """
@@ -2330,8 +2327,6 @@ class ngamsServer:
             self.setup_logging()
         except Exception, e:
             errMsg = genLog("NGAMS_ER_INIT_LOG", [logcfg.logfile, str(e)])
-            # can't use logger here, we failed to set it up in the first place
-            print(errMsg)
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM SETTING UP LOGGING", errMsg)
             raise
@@ -2392,11 +2387,9 @@ class ngamsServer:
         logger.debug("Check if NG/AMS PID file is existing ...")
         if (not self.getForce() and os.path.exists(self.pidFile())):
             errMsg = genLog("NGAMS_ER_MULT_INST")
-            logger.error(errMsg)
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "CONFLICT STARTING NG/AMS SERVER", errMsg)
-            self.terminate()
-            return
+            raise Exception(errMsg)
 
         # Store the PID of this process in a PID file.
         logger.debug("Creating PID file for this session: %s", self.pidFile())
@@ -2488,13 +2481,12 @@ class ngamsServer:
         try:
             self.serve()
         except Exception, e:
-            traceback.print_exc()
             errMsg = genLog("NGAMS_ER_OP_HTTP_SERV", [str(e)])
-            logger.error(errMsg)
+            logger.exception(errMsg)
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM ENCOUNTERED STARTING " +\
                                      "SERVER", errMsg)
-            self.terminate()
+            raise
 
 
     def reqWakeUpCall(self,
