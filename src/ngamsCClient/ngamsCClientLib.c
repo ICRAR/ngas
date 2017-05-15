@@ -1488,24 +1488,24 @@ ngamsSTAT _ngamsRetrieve2File(const char* host, const int port,
 		sprintf(tmpUrl, "%s?cfg", ngamsCMD_RETRIEVE_STR);
 	else if (internal) {
 		ngamsEncodeUrlVal(fileRef, 1, tmpEnc);
-		sprintf(tmpUrl, "%s?internal=\"%s\"", ngamsCMD_RETRIEVE_STR, tmpEnc);
+		sprintf(tmpUrl, "%s?internal=%s", ngamsCMD_RETRIEVE_STR, tmpEnc);
 	} else {
 		ngamsEncodeUrlVal(fileRef, 1, tmpEnc);
-		sprintf(tmpUrl, "%s?file_id=\"%s\"", ngamsCMD_RETRIEVE_STR, tmpEnc);
+		sprintf(tmpUrl, "%s?file_id=%s", ngamsCMD_RETRIEVE_STR, tmpEnc);
 	}
 	if ((processing != NULL) && (*processing != '\0')) {
 		ngamsEncodeUrlVal(processing, 1, tmpEnc);
-		sprintf(tmpBuf, "&processing=\"%s\"", tmpEnc);
+		sprintf(tmpBuf, "&processing=%s", tmpEnc);
 		strcat(tmpUrl, tmpBuf);
 		if ((processingPars != NULL) && (*processingPars != '\0')) {
 			ngamsEncodeUrlVal(processingPars, 1, tmpEnc);
-			sprintf(tmpBuf, "&processing_pars=\"%s\"", tmpEnc);
+			sprintf(tmpBuf, "&processing_pars=%s", tmpEnc);
 			strcat(tmpUrl, tmpBuf);
 		}
 	}
 
 	if (fileVersion != -1) {
-		sprintf(tmpBuf, "&file_version=\"%d\"", fileVersion);
+		sprintf(tmpBuf, "&file_version=%d", fileVersion);
 		strcat(tmpUrl, tmpBuf);
 	}
 
@@ -2441,7 +2441,7 @@ int ngamsPrepSock(const char* host, const int port, float timeout) {
 			}
 			struct timeval timeout_tv;
 			timeout_tv.tv_sec = (time_t)floorf(timeout);
-			timeout_tv.tv_usec = (long)((timeout_tv.tv_sec - timeout) * 1000);
+			timeout_tv.tv_usec = (long)((timeout - timeout_tv.tv_sec) * 1000000);
 			if( setsockopt(sockFd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout_tv, sizeof(timeout_tv)) ) {
 				perror("Error while setting receiving timeout: ");
 				stat = ngamsERR_SOCK;
@@ -2608,7 +2608,6 @@ int ngamsRecvHttpHdr(int* sockFd, ngamsHTTP_HDR httpHdr,
 	errExit: if (tmpData)
 		free(tmpData);
 	ngamsLogDebug("Leaving ngamsRecvHttpHdr()/FAILURE. Status: %d", retCode);
-	sleep(5); //server might be too busy. slow down a bit
 	return retCode;
 }
 
@@ -2872,7 +2871,7 @@ ngamsSTAT ngamsGenSendCmd(const char* host, const int port,
 	for (i = 0; i < parArray->idx; i++) {
 		ngamsEncodeUrlVal(parArray->parArray[i], 1, tmpPar);
 		ngamsEncodeUrlVal(parArray->valArray[i], 1, tmpVal);
-		sprintf(tmpUrl, "%s=\"%s\"", tmpPar, tmpVal);
+		sprintf(tmpUrl, "%s=%s", tmpPar, tmpVal);
 
 		if (i)
 			strcat(url, "&");

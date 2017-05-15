@@ -9,13 +9,12 @@
     <User Name="ngas-int" Password="bmdhcy1pbnQ="/>
   </Authorization>
   <DataCheckThread Active="0" ChecksumPlugIn="ngamsGenCrc32" ChecksumPlugInPars="" DiskSeq="SEQUENTIAL" FileSeq="SEQUENTIAL" ForceNotif="1" Id="DataCheckThread-Test" LogSummary="1" MaxProcs="4" MinCycle="00T00:03:00" Prio="25" Scan="0"/>
-  <Db Id="Db-Sqlite-Test" Interface="sqlite3" Snapshot="1" database="tmp/ngas.sqlite"/>
   <Header Context="NG/AMS" Name="ngamsCfg.xml" Release="1.0" Revision="TEST-REVISION" Source="jknudstr@eso.org" Type="NGAMS-TEST-BASE-CONFIGURATION">
     <Description/>
   </Header>
   <HostSuspension Id="HostSuspension-Test" IdleSuspension="0" IdleSuspensionTime="10" SuspensionPlugIn="ngamsTest.ngamsTestSuspensionPlugIn" SuspensionPlugInPars="SUSPENSION,PI,PARS" WakeUpCallTimeOut="10" WakeUpPlugIn="ngamsTest.ngamsTestWakeUpPlugIn" WakeUpPlugInPars="WAKE-UP,PI,PARS" WakeUpServerHost="DEFINE"/>
   <JanitorThread Id="JanitorThread-Std" MinSpaceSysDirMb="1000" SuspensionTime="0T00:03:00"/>
-  <Log Id="Log-Test" LocalLogFile="/tmp/ngamsTest/NGAS/log/LogFile.nglog" LocalLogLevel="1" LogBufferSize="10" LogRotateCache="30" LogRotateInt="01T00:00:00" SysLog="1" SysLogPrefix="NGASLog"/>
+  <Log Id="Log-Test" LocalLogFile="/tmp/ngamsTest/NGAS/log/LogFile.nglog" LocalLogLevel="1" LogBufferSize="10" LogRotateCache="30" LogRotateInt="01T00:00:00" SysLog="0" SysLogPrefix="NGASLog"/>
   <MimeTypes Id="MimeTypes-Std">
     <MimeTypeMap Extension="fits" MimeType="image/x-fits"/>
     <MimeTypeMap Extension="hdr" MimeType="ngas/fits-hdr"/>
@@ -71,7 +70,7 @@
       <MimeType Name="application/x-cfits"/>
     </PlugIn>
   </Register>
-  <Server ArchiveName="ESO-ARCHIVE" BlockSize="65536" Id="Server-Sim" IpAddress="0.0.0.0" MaxSimReqs="30" PortNo="8888" ProxyMode="1" RootDirectory="/tmp/ngamsTest/NGAS" Simulation="1" SwVersion=""/>
+  <Server ArchiveName="ESO-ARCHIVE" BlockSize="65536" Id="Server-Sim" IpAddress="127.0.0.1" MaxSimReqs="30" PortNo="8888" ProxyMode="1" RootDirectory="/tmp/ngamsTest/NGAS" Simulation="1" SwVersion=""/>
   <StorageSets Id="StorageSets-PATA-8-Dbl">
     <StorageSet DiskLabel="FITS" MainDiskSlotId="1" Mutex="1" RepDiskSlotId="2" StorageSetId="FitsStorage1" Synchronize="1"/>
     <StorageSet MainDiskSlotId="3" Mutex="1" RepDiskSlotId="4" StorageSetId="FitsStorage2" Synchronize="1"/>

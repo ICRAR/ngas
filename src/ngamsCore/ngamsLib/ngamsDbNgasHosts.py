@@ -172,6 +172,8 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         args = collections.OrderedDict()
         if hostInfoObj.getHostId():
             args[ngamsDbCore.NGAS_HOSTS_HOST_ID] = hostInfoObj.getHostId()
+        if hostInfoObj.getSrvPort() != -1:
+            args[ngamsDbCore.NGAS_HOSTS_SRV_PORT] = hostInfoObj.getSrvPort()
         if hostInfoObj.getDomain():
             args[ngamsDbCore.NGAS_HOSTS_DOMAIN] = hostInfoObj.getDomain()
         if hostInfoObj.getIpAddress():

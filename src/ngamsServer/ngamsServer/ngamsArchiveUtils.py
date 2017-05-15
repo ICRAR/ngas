@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsArchiveUtils.py,v 1.10 2008/08/19 20:51:50 jknudstr Exp $"
@@ -33,6 +32,7 @@
 Contains utility functions used in connection with the handling of
 the file archiving.
 """
+import contextlib
 import cPickle
 import glob
 import logging
@@ -47,7 +47,8 @@ from ngamsLib.ngamsCore import NGAMS_FAILURE, getFileCreationTime,\
     NGAMS_NOTIF_NO_DISKS, mvFile, NGAMS_PICKLE_FILE_EXT,\
     rmFile, NGAMS_SUCCESS, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BACK_LOG_DIR,\
     getHostName, loadPlugInEntryPoint
-from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsPlugInApi, ngamsLib
+from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsPlugInApi, ngamsLib,\
+    ngamsHttpUtils
 from ngamsLib import ngamsReqProps, ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsDiskUtils
 import ngamsFileUtils
 import ngamsCacheControlThread
@@ -636,8 +637,7 @@ def checkBackLogBuffer(srvObj):
     logger.debug("Checking if data available in Back-Log Buffer Directory ...")
 
     # Generate Back Log Buffering Directory
-    backLogDir = ngamsLib.genDir([srvObj.getCfg().getBackLogBufferDirectory(),
-                                  NGAMS_BACK_LOG_DIR])
+    backLogDir = os.path.join(srvObj.getCfg().getBackLogBufferDirectory(), NGAMS_BACK_LOG_DIR)
 
     # Get file list. Take only files which do not have the
     # NGAMS_BACK_LOG_TMP_PREFIX as prefix.
@@ -870,156 +870,91 @@ def dataHandler(srvObj,
     return diskInfo
 
 
-def findTargetNode(hostId,
-                   dbConObj,
-                   ngamsCfgObj,
-                   mimeType):
+def findTargetNode(srvObj, mimeType):
     """
-    If several Archiving Units are available in an NGAS system, it is possible
-    to archive onto several nodes. The node to archive onto, is determined
-    randomly, and according to if it seems that the request can be handled
-    on that node.
+    Finds the NGAS server that should handle the archiving of a file of type
+    `mimeType`. The node to archive onto is determined randomly, and only if
+    it can handle the request for the given file type.
 
     If no nodes are available, an exception is raised (NGAMS_AL_NO_STO_SETS).
 
-    hostId:            The ID of this NGAS host
-
-    dbConObj:          DB connection object (ngamsDb).
-
-    ngamsCfgObj:       Instance of NG/AMS Configuration Class (ngamsConfig).
-
-    mimeType:          Mime-type of file (string).
-
-    Returns:           Tuple with
-
-                         - NGAS/DB Name of selected target
-                         - Name of selected target node
-                         - Port number
-                         - ngamsDiskInfo object if this was found during the
-                           processing
-
-                                  (tuple/string,integer,None|ngamsDiskInfo).
-
-
-    Remarks:
-    The implemented algorithm is quite trivial, could be improved:
-
-    - If only local NAU available: As now ...
-    - If several NAUs available:
-      - Get list of nodes.
-      - Node selection loop:
-        - Select node (Policy: RANDOM(*)).
-        - If no more nodes: Raise exception (NO STORAGE SETS).
-        - Local node or remote node:
-          - Local:
-            - Any available/suitable target disks:
-              - Yes: Take this, break loop.
-              - No: Continue loop.
-	  - Remote (**)):
-            - Can node handle request (ARCHIVE?probe=1&mime_type=<MT>)?
-              - Yes: Take this node, break loop.
-              - No: Continue loop.
-
-
-    *:  Should be possible to have other schemes:
-          - FIFO: Finish disks ASAP.
-          - MULTIPLEX: Go systematically through the list of nodes.
-
-    **: Should support also HTTP Redirection, now only Proxy Mode is supported.
+    In case of success, this method returns a tuple with:
+     * The hostId of the NGAS server that will be contacted
+     * The IP that should be used to contact the server
+     * The port that should be used to contact the server
     """
-    T = TRACE()
 
-    tmpNodeList = ngamsCfgObj.getStreamFromMimeType(mimeType).getHostIdList()
-    nodeList = []
-    for node in tmpNodeList: nodeList.append(node)
-    if (nodeList == []): return (getHostName(), None)
+    ngamsCfgObj = srvObj.getCfg()
+    dbConObj = srvObj.getDb()
 
-    # Find most suitable node from the list.
-    locStoSetList = ngamsCfgObj.getStreamFromMimeType(mimeType).\
-                    getStorageSetIdList()
+    hostIds = list(ngamsCfgObj.getStreamFromMimeType(mimeType).getHostIdList())
+
     # If there are Storage Sets defined for the mime-type, also the local
     # host is a candidate.
-    if (locStoSetList != []): nodeList.append(getHostName())
-    random.shuffle(nodeList)
-    targNode    = None
-    targPort    = None
-    targDiskObj = None
-    for nodeInfo in nodeList:
-        if (nodeInfo.find(":") != -1):
-            node, port = nodeInfo.split(":")
-        else:
-            node = nodeInfo
-            port = None
-        if (nodeInfo == getHostName()):
-            # If local host, check if there are available Storage Sets.
+    locStoSetList = ngamsCfgObj.getStreamFromMimeType(mimeType).\
+                    getStorageSetIdList()
+    if locStoSetList:
+        hostIds.append(srvObj.getHostId())
+
+    # Shuffle and find
+    random.shuffle(hostIds)
+    for hostId in hostIds:
+
+        host, port = srvObj.get_remote_server_endpoint(hostId)
+
+        # This is us!
+        if hostId == srvObj.getHostId():
+
+            # This is basically what ARCHIVE?probe=1 (the request we send to
+            # other servers) do.
             try:
-                tmpDiskObj = ngamsDiskUtils.\
-                             findTargetDisk(hostId, dbConObj, ngamsCfgObj, mimeType,
+                ngamsDiskUtils.findTargetDisk(hostId, dbConObj, ngamsCfgObj, mimeType,
                                             sendNotification=0)
-                targNode    = node
-                targPort    = ngamsCfgObj.getPortNo()
-                targDiskObj = tmpDiskObj
-                break
+                return hostId, host, port
             except Exception, e:
                 if (str(e).find("NGAMS_AL_NO_STO_SETS") != -1):
                     logMsg = "Local node: %s cannot handle Archive " +\
                              "Request for data file with mime-type: %s"
                     logger.debug(logMsg, getHostName(), mimeType)
                     continue
-                else:
-                    raise Exception, e
-        else:
-            # Query the remote node to see if there are available Storage Sets.
-            if (port == None):
-                try:
-                    port = dbConObj.getPortNoFromHostId(node)
-                except:
-                    # Node is not known to this NGAS system, give up this node.
-                    continue
+                raise Exception, e
 
-            # Now, issue the request to the node to probe.
-            logMsg = "Probing remote Archiving Unit: %s:%s for handling of " +\
-                     "data file with mime-type: %s ..."
-            logger.debug(logMsg, node, str(port), mimeType)
-            try:
-                code, msg, hdrs, data = ngamsLib.\
-                                        httpGet(node, port,
-                                                NGAMS_ARCHIVE_CMD,
-                                                pars=[["probe", "1"],
-                                                      ["mime_type", mimeType]],
-                                                timeOut=10)
-            except Exception, e:
-                code = "__ERROR__"
-            if (str(code) == "200"):
-                # OK, request was successfully handled. We assume that
-                # the data is an NG/AMS XML Status Document.
-                statObj = ngamsStatus.ngamsStatus().unpackXmlDoc(data)
-                if (statObj.getMessage().find("NGAMS_INFO_ARCH_REQ_OK") != -1):
-                    logMsg = "Found remote Archiving Unit: %s:%s to handle " +\
-                             "Archive Request for data file with mime-type: %s"
-                    logger.debug(logMsg, node, str(port), mimeType)
-                    targNode = node
-                    targPort = port
-                    break
-                else:
-                    logMsg = "Remote Archiving Unit: %s:%s rejected to/" +\
-                             "could not handle Archive Request for data " +\
-                             "file with mime-type: %s"
-                    logger.debug(logMsg, node, str(port), mimeType)
-                    continue
-            else:
-                # The request handling failed for some reason, give up this
-                # host for now.
-                logMsg = "Problem contacting remote Archiving Unit: %s:%s. " +\
-                         "Skipping node."
-                logger.debug(logMsg, node, str(port))
-                continue
+        # Now, issue the request to the node to probe.
+        logMsg = "Probing remote Archiving Unit: %s:%s for handling of " +\
+                 "data file with mime-type: %s ..."
+        logger.debug(logMsg, host, str(port), mimeType)
+        try:
+            pars = [("probe", "1"), ("mime_type", mimeType)]
+            resp =  ngamsHttpUtils.httpGet(host, port, NGAMS_ARCHIVE_CMD,
+                                     pars=pars, timeout=10)
+            with contextlib.closing(resp):
+                data = resp.read()
 
-    if (targNode == None):
-        errMsg = genLog("NGAMS_AL_NO_STO_SETS", [mimeType])
-        raise Exception(errMsg)
+            # OK, request was successfully handled. We assume that
+            # the data is an NG/AMS XML Status Document.
+            statObj = ngamsStatus.ngamsStatus().unpackXmlDoc(data)
+            if "NGAMS_INFO_ARCH_REQ_OK" in statObj.getMessage():
+                logMsg = "Found remote Archiving Unit: %s:%d to handle " +\
+                         "Archive Request for data file with mime-type: %s"
+                logger.debug(logMsg, host, port, mimeType)
+                return hostId, host, port
 
-    return (nodeInfo, targNode, targPort, targDiskObj)
+            logMsg = "Remote Archiving Unit: %s:%d rejected to/" +\
+                     "could not handle Archive Request for data " +\
+                     "file with mime-type: %s"
+            logger.debug(logMsg, host, port, mimeType)
+            continue
+
+        except Exception, e:
+            # The request handling failed for some reason, give up this
+            # host for now.
+            logMsg = "Problem contacting remote Archiving Unit: %s:%d: %s. " +\
+                     "Skipping node."
+            logger.warning(logMsg, host, port, str(e))
+            continue
+
+    errMsg = genLog("NGAMS_AL_NO_STO_SETS", [mimeType])
+    raise Exception(errMsg)
 
 
 # EOF

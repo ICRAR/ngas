@@ -114,21 +114,16 @@ def receiveData(srvObj,
     # Save the data into the Staging File.
     # If it is an Rearchive Pull Request, open the URL.
     if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
-        io_start = time.time()
-        code, msg, hdrs, data = ngamsLib.\
-                                httpGetUrl(reqPropsObj.getFileUri(),
-                                           dataTargFile = stagingFilename)
-        reqPropsObj.incIoTime(time.time() - io_start)
-
-        # Check if the retrival was successfull.
-        if (int(code) != NGAMS_HTTP_SUCCESS):
-            try:
-                statObj = ngamsStatus.ngamsStatus().unpackXmlDoc(data)
-                msg = statObj.getMessage()
-            except:
-                msg = "Error retrieving file via URL: %s" %\
-                      reqPropsObj.getFileUri()
-            raise Exception, msg
+        # urllib.urlopen will attempt to get the content-length based on the URI
+        # i.e. file, ftp, http
+        handle = ngamsHighLevelLib.openCheckUri(reqPropsObj.getFileUri())
+        reqPropsObj.setSize(handle.info()['Content-Length'])
+        reqPropsObj.setReadFd(handle)
+        ioTime = ngamsHighLevelLib.saveInStagingFile(srvObj.getCfg(),
+                                                     reqPropsObj,
+                                                     stagingFilename,
+                                                     trgDiskInfoObj)
+        reqPropsObj.incIoTime(ioTime)
     else:
         try:
             reqPropsObj.setSize(fileInfoObj.getFileSize())

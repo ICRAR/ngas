@@ -74,7 +74,6 @@ def from_config(cfg):
 
     driver   = cfg.getDbInterface()
     creSnap  = cfg.getDbSnapshot()
-    multCon  = cfg.getDbMultipleCons()
     drvPars  = cfg.getDbParameters()
     maxpool  = cfg.getDbMaxPoolCons()
     use_file_ignore = cfg.getDbUseFileIgnore()
@@ -94,8 +93,7 @@ def from_config(cfg):
         drvPars['check_same_thread'] = False
 
     logger.info("Connecting to DB with module %s", driver)
-    msg = "Additional DB parameters: snapshot: %d, multiconn: %d, params: %r"
-    logger.debug(msg, creSnap, multCon, __params_for_log(drvPars))
+    msg = "Additional DB parameters: snapshot: %d, params: %r"
+    logger.debug(msg, creSnap, __params_for_log(drvPars))
     return ngamsDb(driver, parameters = drvPars, createSnapshot = creSnap,
-                   multipleConnections = multCon, maxpoolcons = maxpool,
-                   use_file_ignore=use_file_ignore)
+                   maxpoolcons = maxpool, use_file_ignore=use_file_ignore)

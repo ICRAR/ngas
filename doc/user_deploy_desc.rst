@@ -38,15 +38,24 @@ are available to further customize the process:
 |                             | | (only for sources from a git       |                   |
 |                             | | repository)                        |                   |
 +-----------------------------+--------------------------------------+-------------------+
-| NGAS_OVERWRITE_INSTALLATION | | Whether an existing installation   | | ``False``       |
-|                             | | directory should be overwritten    |                   |
-|                             | | or not                             |                   |
+| NGAS_OVERWRITE_INSTALLATION | | If specified, an existing          | | Not specified   |
+|                             | | installation directory will be     |                   |
+|                             | | overwritten                        |                   |
 +-----------------------------+--------------------------------------+-------------------+
-| NGAS_NO_CLIENT              | | Skip the compilation and           | | ``False``       |
-|                             | | installation of the NGAS C client  |                   |
+| NGAS_EXTRA_PYTHON_PACKAGES  | | Comma-separated list of extra      | | Not specified   |
+|                             | | python packages to install         |                   |
++-----------------------------+--------------------------------------+-------------------+
+| NGAS_NO_CLIENT              | | If specified, skip the compilation | | Not specified   |
+|                             | | and installation of the NGAS C     |                   |
+|                             | | client                             |                   |
 +-----------------------------+--------------------------------------+-------------------+
 | NGAS_DEVELOP                | | If specified, install the NGAS     | | Not specified   |
 |                             | | Python modules in development mode |                   |
++-----------------------------+--------------------------------------+-------------------+
+| NGAS_NO_DOC_DEPENDENCIES    | | If specified, skip the             | | Not specified   |
+|                             | | installation of python packages    |                   |
+|                             | | needed to build the NGAS           |                   |
+|                             | | documentation                      |                   |
 +-----------------------------+--------------------------------------+-------------------+
 | NGAS_NO_BASH_PROFILE        | | If specified, skip the edition of  | | Not specified   |
 |                             | | the user's ``~/.bash_profile`` for |                   |

@@ -59,6 +59,7 @@ For more detailed information about the project, consult the URL:
 
 import calendar
 import collections
+import errno
 import glob
 import importlib
 import logging
@@ -530,7 +531,6 @@ def checkAvailDiskSpace(filename,
         raise Exception(errMsg)
 
 
-_pathHandleSem = threading.Semaphore(1)
 def checkCreatePath(path):
     """
     Check if the path referred exists - if not it is created.
@@ -540,19 +540,13 @@ def checkCreatePath(path):
     Returns:   Void.
     """
     # Check if path exists, if not, create it.
-    global _pathHandleSem
     try:
-        _pathHandleSem.acquire()
-        if (os.path.exists(path) == 0):
-            logger.debug("Creating non-existing path: %s", path)
-            try:
-                os.makedirs(path)
-                os.chmod(path, 0775)
-            except Exception:
-                logger.exception("Error creating path")
-                raise
-    finally:
-        _pathHandleSem.release()
+        os.makedirs(path, 0775)
+    except OSError as e:
+        # no worries!
+        if e.errno == errno.EEXIST:
+            return
+        raise
 
 def rmFile(filename):
     """

@@ -28,7 +28,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  08/05/2001  Created
 #
-
 """
 This module contains the class ngamsPClient that provides a command
 interface to the NG/AMS Server.
@@ -37,151 +36,95 @@ The NG/AMS Python Client is implemented as a class, ngamsPClient, which
 can be used to build up Python applications communicating with NG/AMS.
 """
 
+import argparse
 import base64
+import contextlib
+import functools
 import logging
 import os
 import random
+import socket
 import sys
 import time
-import traceback
-
-from ngamsLib import ngamsLib, ngamsFileInfo, ngamsStatus
-from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CONTENT_TYPE,\
-    NGAMS_LABEL_CMD, NGAMS_ONLINE_CMD, NGAMS_OFFLINE_CMD, NGAMS_REMDISK_CMD,\
-    NGAMS_REMFILE_CMD, NGAMS_REGISTER_CMD, NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD,\
-    NGAMS_FAILURE, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD, NGAMS_ARCH_REQ_MT,\
-    NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD,\
-    NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE,\
-    NGAMS_IDLE_SUBSTATE, getNgamsLicense, toiso8601, FMT_TIME_ONLY
-from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD
 from xml.dom import minidom
-import pkg_resources
+
+from ngamsLib import ngamsLib, ngamsFileInfo, ngamsStatus, ngamsMIMEMultipart,\
+    ngamsHttpUtils
+from ngamsLib.ngamsCore import NGAMS_EXIT_CMD, NGAMS_INIT_CMD,\
+    NGAMS_HTTP_SUCCESS
+from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_HTTP_PAR_FILENAME, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_HDR_CONTENT_TYPE, \
+    NGAMS_LABEL_CMD, NGAMS_ONLINE_CMD, NGAMS_OFFLINE_CMD, NGAMS_REMDISK_CMD, \
+    NGAMS_REMFILE_CMD, NGAMS_REGISTER_CMD, NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD, \
+    NGAMS_FAILURE, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD, NGAMS_ARCH_REQ_MT, \
+    NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD, \
+    NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE, \
+    NGAMS_IDLE_SUBSTATE, getNgamsLicense, toiso8601, NGAMS_CONT_MT
 
 
 logger = logging.getLogger(__name__)
 
-manPage = pkg_resources.resource_string(__name__, 'doc/ngamsPClient.txt')  # @UndefinedVariable
-__doc__ += "\n\n\nMan-Page for the NG/AMS Python Client Tool:\n\n"
-__doc__ += "ngamsPClient " + manPage
+def is_known_pull_url(s):
+    return s.startswith('file:') or \
+           s.startswith('http:') or \
+           s.startswith('https:') or \
+           s.startswith('ftp:')
 
+def _dummy_stat(host_id, status, msg, data=None):
+    stat = ngamsStatus.ngamsStatus().\
+           setDate(toiso8601()).\
+           setVersion(getNgamsVersion()).setHostId(host_id).\
+           setStatus(status).\
+           setMessage(msg).\
+           setState(NGAMS_ONLINE_STATE).\
+           setSubState(NGAMS_IDLE_SUBSTATE)
+    if data:
+        stat.setData(data)
+    return stat
+
+def _dummy_success_stat(host_id, data=None):
+    return _dummy_stat(host_id, NGAMS_SUCCESS, "Successfully handled request", data)
+
+def _dummy_failure_stat(host_id, cmd):
+    logger.debug("HTTP status != 200, creating dummy NGAS_FAILURE status")
+    return _dummy_stat(host_id, NGAMS_FAILURE, "Failed to handle command %s" % (cmd,))
 
 class ngamsPClient:
     """
     Class providing services for sending and receiving commands to/from
     the NG/AMS Server.
-
-    Invoke the utility without input parameters to get a man page.
     """
 
     def __init__(self,
-                 host = "",
-                 port = -1,
-                 timeOut = None):
+                 host=None, port=None, servers=None, timeout=None, auth=None,
+                 reload_mod=False):
         """
-        Constructor method.
+        Constructor.
+
+        Either a list of server addresses or a single server address can be specified.
+        If none is given then localhost:7777 is assumed
         """
-        if not host:
-            host = 'localhost'
-        self.setHost(host).setPort(port).setStatus(0).setTimeOut(timeOut)
-        self.setAuthorization(None)
-        self.__servers = []
 
+        if servers and (host or port):
+            raise ValueError("Either host/port or servers must be specified")
 
-    def setHost(self,
-                host):
-        """
-        Set host name of object.
-
-        host:    Name of host (string).
-
-        Return:  Reference to object itself.
-        """
-        self.__host = host
-        return self
-
-
-    def getHost(self):
-        """
-        Return host name.
-
-        Returns: Host name (string).
-        """
-        return self.__host
-
-
-    def setPort(self,
-                port):
-        """
-        Set the port number used by the object.
-
-        port:     Port number (integer).
-
-        Returns:  Reference to object itself.
-        """
-        self.__port = port
-        return self
-
-
-    def getPort(self):
-        """
-        Return port number.
-
-        Returns:   Port number (integer).
-        """
-        return self.__port
-
-
-    def setStatus(self,
-                  status):
-        """
-        Set the Display Status Flag.
-
-        status:     If 1, status will be displayed (on stdout) (integer).
-
-        Returns:    Reference to object itself.
-        """
-        self.__status = status
-        return self
-
-
-    def getStatus(self):
-        """
-        Return Display Status Flag.
-
-        Returns:   Display Status Flag (integer).
-        """
-        return self.__status
-
-
-    def setTimeOut(self,
-                   timeOut):
-        """
-        Set the timeout to apply when waiting for reply from the server.
-
-        timeOut:    Timeout in seconds (double).
-
-        Returns:    Reference to object itself.
-        """
-        if (timeOut):
-            self.__timeOut = float(timeOut)
+        if servers is not None:
+            if not servers:
+                raise ValueError("Empty server list")
+            self.servers = servers
         else:
-            self.__timeOut = None
-        return self
+            host = host or '127.0.0.1'
+            port = port or 7777
+            self.servers = [(host, port)]
 
-
-    def getTimeOut(self):
-        """
-        Return the timeout.
-
-        Returns:   Timeout in seconds (double).
-        """
-        return self.__timeOut
+        self.timeout = timeout
+        self.auth = auth
+        self.reload_mod = reload_mod
 
 
     def archive(self,
                 fileUri,
                 mimeType = "",
-                wait = 1,
+                async = False,
                 noVersioning = 0,
                 pars = [],
                 cmd = NGAMS_ARCHIVE_CMD):
@@ -196,8 +139,8 @@ class ngamsPClient:
                        possible to determine the mime-type of the data
                        file to be archived from its filename (string).
 
-        wait:          If set to 0 there will not be waited for termination of
-                       the command handling (integer).
+        async:     Whether the registration should be carried out asynchronously
+                   or not.
 
         noVersioning:  If set to 1 no new version number is
                        generated (integer).
@@ -209,24 +152,41 @@ class ngamsPClient:
 
         Returns:       NG/AMS Status object (ngamsStatus).
         """
-        T = TRACE()
+
         logger.info("Archiving file with URI: %s", fileUri)
-        locPars = []
-        for par in pars: locPars.append(par)
-        if (ngamsLib.isArchivePull(fileUri)):
-            locPars += [["filename", fileUri],
-                        ["no_versioning", str(noVersioning)]]
-            if (mimeType != ""): locPars.append(["mime_type", mimeType])
-            res = self.sendCmd(cmd, wait, "", locPars)
-        else:
-            res = self.pushFile(fileUri, mimeType, wait, noVersioning, locPars, cmd=cmd)
-        return res
 
+        pars = list(pars)
+        pars.append(('async', '1' if async else '0'))
+        pars.append(("no_versioning", '1' if noVersioning else '0'))
 
-    def reArchive(self,
+        # Archive pulls (fileUri is a URL) are GETs
+        if is_known_pull_url(fileUri):
+            pars.append(('filename', fileUri))
+            if mimeType:
+                pars.append(("mime_type", mimeType))
+            return self.get_status(cmd, pars=pars)
+
+        # pushes are POSTs
+        # fileUri is simply a file path
+        mt = mimeType or NGAMS_ARCH_REQ_MT
+        pars.append(("filename", os.path.basename(fileUri)))
+        with open(fileUri, "rb") as f:
+            return self._post(cmd, mt, f, pars=pars)
+
+    def archive_data(self, data, filename, mimeType,
+                     async=False, noVersioning=0,
+                     pars=[], cmd=NGAMS_ARCHIVE_CMD):
+        """
+        Like `archive`, but the data to sent is in memory instead of in a file.
+        Thus, a filename to be used for storing on the server side must be given.
+        """
+        pars = list(pars)
+        pars.append(("filename", os.path.basename(filename)))
+        return self._post(cmd, mimeType, data, pars=pars)
+
+    def rearchive(self,
                   fileUri,
                   fileInfoXml,
-                  wait = 1,
                   pars = []):
         """
         Send a  Re-archive Request to the associated NG/AMS Server asking to
@@ -238,9 +198,6 @@ class ngamsPClient:
         fileInfoXml:   NG/AMS XML File Information for the source file used
                        as reference (string/XML).
 
-        wait:          If set to 0 there will not be waited for termination of
-                       the command handling (integer).
-
         pars:          Extra parameters to submit with the request. Must be
                        in the format:
 
@@ -250,17 +207,16 @@ class ngamsPClient:
         """
         baseName = os.path.basename(fileUri)
         logger.info("Re-archiving file with URI: %s", baseName)
-        locPars = []
-        for par in pars: locPars.append(par)
-        if (ngamsLib.isArchivePull(fileUri)):
+
+        pars = list(pars)
+        if is_known_pull_url(fileUri):
             tmpFileInfo = ngamsFileInfo.ngamsFileInfo().\
                           unpackXmlDoc(fileInfoXml)
             encFileInfo = base64.b64encode(fileInfoXml)
-            locPars.append([NGAMS_HTTP_PAR_FILENAME, fileUri])
-            httpHdrs = [[NGAMS_HTTP_HDR_FILE_INFO, encFileInfo],
-                        [NGAMS_HTTP_HDR_CONTENT_TYPE, tmpFileInfo.getFormat()]]
-            res = self.sendCmdGen(NGAMS_REARCHIVE_CMD, wait, pars = locPars,
-                                  additionalHdrs = httpHdrs)
+            pars.append([NGAMS_HTTP_PAR_FILENAME, fileUri])
+            httpHdrs = {NGAMS_HTTP_HDR_FILE_INFO: encFileInfo,
+                        NGAMS_HTTP_HDR_CONTENT_TYPE: tmpFileInfo.getFormat()}
+            res = self.get_status(NGAMS_REARCHIVE_CMD, pars=pars, hdrs=httpHdrs)
         else:
             msg = "Rearchive Push is not yet supported!"
             raise Exception(msg)
@@ -272,7 +228,7 @@ class ngamsPClient:
               diskId,
               fileVersion,
               targetDiskId = "",
-              wait = 1):
+              async = False):
         """
         Send an CLONE command to the NG/AMS Server associated to the object.
 
@@ -286,31 +242,39 @@ class ngamsPClient:
         targetDiskId:  ID of disk where the files cloned should be stored
                        (string).
 
-        wait:          If set to 0 there will not be waited for termination of
-                       the command handling (integer/0|1).
+        async:     Whether the registration should be carried out asynchronously
+                   or not.
 
         Returns:       NG/AMS Status object (ngamsStatus).
         """
-        pars = []
+        pars = [('async', '1' if async else '0')]
         if (fileId): pars.append(["file_id", fileId])
         if (diskId): pars.append(["disk_id", diskId])
         if (fileVersion > 0): pars.append(["file_version", fileVersion])
         if (targetDiskId): pars.append(["target_disk_id", targetDiskId])
-        pars.append(["wait", str(wait)])
-        return self.sendCmd(NGAMS_CLONE_CMD, 0, "", pars)
+        return self.get_status(NGAMS_CLONE_CMD, pars=pars)
 
-    def carchive(self, fileUri, reloadMod=False):
+    def carchive(self, dirname, files_mtype):
         """
         Sends a CARCHIVE command to the NG/AMS Server to archive
         a full hierarchy of files, effectively creating a hierarchy of
         containers with all the files within
         """
-        pars = []
-        if reloadMod:
-            pars.append(['reload', 1])
-        return self.archive(fileUri, pars=pars, cmd="CARCHIVE")
 
-    def cappend(self, fileId, fileIdList='', containerId=None, containerName=None, force=False, closeContainer=False, reloadMod=False):
+        # If the dataRef is a directory, scan the directory
+        # and build up a list of files contained directly within
+        # Start preparing a mutipart MIME message that will contain
+        # all of them
+        dirname = os.path.abspath(dirname)
+        logger.debug('Archiving directory %s as a container', dirname)
+
+        # Recursively collect all files
+        cinfo = ngamsMIMEMultipart.cinfo_from_filesystem(dirname, files_mtype)
+        stream = ngamsMIMEMultipart.ContainerReader(cinfo)
+
+        return self._post('CARCHIVE', NGAMS_CONT_MT, stream)
+
+    def cappend(self, fileId, fileIdList='', containerId=None, containerName=None, force=False, closeContainer=False):
         """
         Sends a CAPPEND command to the NG/AMS Server to append the
         given file/s to the container indicated either by containerId
@@ -327,8 +291,6 @@ class ngamsPClient:
             pars.append(['container_id', containerId])
         if containerName:
             pars.append(['container_name', containerName])
-        if reloadMod:
-            pars.append(['reload', 1])
         if force:
             pars.append(['force', 1])
         if closeContainer:
@@ -336,7 +298,7 @@ class ngamsPClient:
 
         if fileId:
             pars.append(['file_id', fileId])
-            response = self._httpGet(self.getHost(), self.getPort(), 'CAPPEND', pars=pars)
+            return self.get_status('CAPPEND', pars=pars)
         else:
             # Convert the list of file IDs to an XML document
             doc = minidom.Document()
@@ -349,12 +311,9 @@ class ngamsPClient:
             fileListXml = doc.toxml(encoding='utf-8')
 
             # And send it out!
-            response = self._httpPost(self.getHost(), self.getPort(), 'CAPPEND', 'text/xml', fileListXml, 'BUFFER', pars, dataSize=len(fileListXml))
+            return self._post('CAPPEND', 'text/xml', fileListXml, pars=pars)
 
-        # response = [reply, msg, hdrs, data]
-        return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
-
-    def ccreate(self, containerName, parentContainerId=None, containerHierarchy=None, reloadMod=False):
+    def ccreate(self, containerName, parentContainerId=None, containerHierarchy=None):
         """
         Sends a CCREATE command to the NG/AMS Server to create a container
         or a container hierarchy
@@ -363,22 +322,16 @@ class ngamsPClient:
             raise Exception('Either a container name or container hierarchy must be indicated to create container/s')
 
         pars = []
-        if reloadMod:
-            pars.append(['reload', reloadMod])
-
         if containerName:
             pars.append(['container_name', containerName])
             if parentContainerId:
                 pars.append(['parent_container_id', parentContainerId])
-            response = self._httpGet(self.getHost(), self.getPort(), 'CCREATE', pars=pars)
+            return self.get_status('CCREATE', pars=pars)
         else:
             contHierarchyXml = containerHierarchy
-            response = self._httpPost(self.getHost(), self.getPort(), 'CCREATE', 'text/xml', contHierarchyXml, 'BUFFER', pars, dataSize=len(contHierarchyXml))
+            return self._post('CCREATE', 'text/xml', contHierarchyXml, pars=pars)
 
-        # response = [reply, msg, hdrs, data]
-        return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
-
-    def cdestroy(self, containerName, containerId=None, recursive=False, reloadMod=None):
+    def cdestroy(self, containerName, containerId=None, recursive=False):
         """
         Sends a CDESTROY command to the NG/AMS Server to destroy a container
         or a container hierarchy
@@ -391,16 +344,12 @@ class ngamsPClient:
             pars.append(['container_id', containerId])
         if containerName:
             pars.append(['container_name', containerName])
-        if reloadMod:
-            pars.append(['reload', 1])
         if recursive:
             pars.append(['recursive', 1])
 
-        # response = [reply, msg, hdrs, data]
-        response = self._httpGet(self.getHost(), self.getPort(), 'CDESTROY', pars=pars)
-        return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
+        return self.get_status('CDESTROY', pars=pars)
 
-    def clist(self, containerName, containerId=None, reloadMod=False):
+    def clist(self, containerName, containerId=None):
         """
         Sends a CLIST command to the NG/AMS Server to get information about
         a particular container and its recursive hierarchy
@@ -417,14 +366,10 @@ class ngamsPClient:
             pars.append(['container_id', containerId])
         if containerName:
             pars.append(['container_name', containerName])
-        if reloadMod:
-            pars.append(['reload', 1])
 
-        # response = [reply, msg, hdrs, data]
-        response = self._httpGet(self.getHost(), self.getPort(), 'CLIST', pars=pars)
-        return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
+        return self.get_status('CLIST', pars=pars)
 
-    def cremove(self, fileId, fileIdList='', containerId=None, containerName=None, reloadMod=False):
+    def cremove(self, fileId, fileIdList='', containerId=None, containerName=None):
         """
         Sends a CAPPEND command to the NG/AMS Server to append the
         given file/s to the container indicated either by containerId
@@ -441,12 +386,10 @@ class ngamsPClient:
             pars.append(['container_id', containerId])
         if containerName:
             pars.append(['container_name', containerName])
-        if reloadMod:
-            pars.append(['reload', 1])
 
         if fileId:
             pars.append(['file_id', fileId])
-            response = self._httpGet(self.getHost(), self.getPort(), 'CREMOVE', pars=pars)
+            return self.get_status('CREMOVE', pars=pars)
         else:
             # Convert the list of file IDs to an XML document
             doc = minidom.Document()
@@ -459,12 +402,10 @@ class ngamsPClient:
             fileListXml = doc.toxml(encoding='utf-8')
 
             # And send it out!
-            response = self._httpPost(self.getHost(), self.getPort(), 'CREMOVE', 'text/xml', fileListXml, 'BUFFER', pars, dataSize=len(fileListXml))
+            return self._post('CREMOVE', 'text/xml', fileListXml, pars=pars)
 
-        # response = [reply, msg, hdrs, data]
-        return ngamsStatus.ngamsStatus().unpackXmlDoc(response[3], 1)
 
-    def cretrieve(self, containerName, containerId=None, targetDir='.', reloadMod=False):
+    def cretrieve(self, containerName, containerId=None, targetDir='.'):
         """
         Sends a CRETRIEVE command to NG/AMS to retrieve the full contents of a
         container and dumps them into the file system.
@@ -475,7 +416,24 @@ class ngamsPClient:
             raise Exception, msg
         if not targetDir:
             targetDir = '.'
-        return self.retrieve2File(None, targetFile=targetDir, containerName=containerName, containerId=containerId, cmd="CRETRIEVE", reloadMod=reloadMod)
+
+        pars = []
+        if containerId:
+            pars.append(("container_id", containerId))
+        if containerName:
+            pars.append(("container_name", containerName))
+
+        resp, host, port = self._get('CRETRIEVE', pars=pars)
+        host_id = "%s:%d" % (host, port)
+        with contextlib.closing(resp):
+            if resp.status != NGAMS_HTTP_SUCCESS:
+                return ngamsStatus.ngamsStatus().unpackXmlDoc(resp.read(), 1)
+
+            size = int(resp.getheader('Content-Length'))
+            handler = ngamsMIMEMultipart.FilesystemWriterHandler(1024, basePath=targetDir)
+            parser = ngamsMIMEMultipart.MIMEMultipartParser(handler, resp, size, 65536)
+            parser.parse()
+            return _dummy_success_stat(host_id)
 
     def exit(self):
         """
@@ -483,7 +441,7 @@ class ngamsPClient:
 
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_EXIT_CMD)
+        return self.get_status(NGAMS_EXIT_CMD)
 
 
     def init(self):
@@ -492,7 +450,7 @@ class ngamsPClient:
 
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_INIT_CMD)
+        return self.get_status(NGAMS_INIT_CMD)
 
 
     def label(self,
@@ -507,38 +465,30 @@ class ngamsPClient:
 
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_LABEL_CMD, 0, "", [["slot_id", slotId],
-                                                     ["host_id", hostId]])
+        pars = [("slot_id", slotId), ("host_id", hostId)]
+        return self.get_status(NGAMS_LABEL_CMD, pars=pars)
 
 
-    def online(self,
-               wait = 1):
+    def online(self):
         """
         Send an ONLINE command to the NG/AMS Server associated to the object.
 
-        wait:      If set to 0 there will not be waited for termination of
-                   the command handling (integer).
-
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_ONLINE_CMD, wait)
+        return self.get_status(NGAMS_ONLINE_CMD)
 
 
-    def offline(self,
-                force = 0,
-                wait = 1):
+    def offline(self, force=False):
         """
         Send an OFFLINE command to the NG/AMS Server associated to the object.
 
         force:     If set to 1 the NG/AMS Server will be forced to
                    go Offline (integer).
 
-        wait:      If set to 0 there will not be waited for termination of
-                   the command handling (integer).
-
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_OFFLINE_CMD, wait, "", [["force", ""]])
+        pars = [('force', "1" if force else "0")]
+        return self.get_status(NGAMS_OFFLINE_CMD, pars=pars)
 
 
     def remDisk(self,
@@ -555,15 +505,15 @@ class ngamsPClient:
 
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_REMDISK_CMD, 1, "",
-                            [["disk_id", diskId], ["execute", execute]])
+        pars = [("disk_id", diskId), ("execute", execute)]
+        return self.get_status(NGAMS_REMDISK_CMD, pars=pars)
 
 
     def remFile(self,
                 diskId,
                 fileId,
                 fileVersion = -1,
-                execute = 0):
+                execute = False):
         """
         Send an REMFILE command to the NG/AMS Server associated to the object.
 
@@ -581,109 +531,81 @@ class ngamsPClient:
 
         Returns:      NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_REMFILE_CMD, 1, "",
-                            [["disk_id", diskId], ["file_id", fileId],
-                             ["file_version", fileVersion],
-                             ["execute", execute]])
+        pars = [("disk_id", diskId),
+                ("file_id", fileId),
+                ("execute", "1" if execute else "0")]
+        if fileVersion != -1:
+            pars.append(("file_version", fileVersion))
+        return self.get_status(NGAMS_REMFILE_CMD, pars=pars)
 
 
-    def register(self,
-                 path,
-                 wait = 1):
+    def register(self, path, async=False):
         """
         Send an REGISTER command to the NG/AMS Server associated to the object.
 
         path:      Path used as starting point for selecting files for
                    registration (string).
 
-        wait:      If set to 0 there will not be waited for termination of
-                   the command handling (integer).
+        async:     Whether the registration should be carried out asynchronously
+                   or not.
 
         Returns:   NG/AMS Status object (ngamsStatus).
         """
-        return self.sendCmd(NGAMS_REGISTER_CMD, wait, "",
-                            [["path", path], ["wait", str(wait)]])
+        pars = [("path", path), ('async', '1' if async else '0')]
+        return self.get_status(NGAMS_REGISTER_CMD, pars=pars)
 
 
-    def retrieve2File(self,
-                      fileId,
-                      fileVersion = -1,
-                      targetFile = "",
-                      processing = "",
-                      processingPars = "",
-                      internal = 0,
-                      hostId = "",
-                      containerName = None,
-                      containerId = None,
-                      cmd = NGAMS_RETRIEVE_CMD,
-                      reloadMod = False):
+    def retrieve(self, fileId, fileVersion=-1, pars=[],
+                 targetFile=None, processing=None, processingPars=None):
         """
-        Request a file from the NG/AMS Server associated to the object.
-        The file will be stored under the name given by the 'targetFile'
-        parameter, or in the current working directory with the name
-        as received from NG/AMS.
+        Request file `fileId` from the NG/AMS Server, store it locally
+        in `targetFile`, and return the result of the operation as an
+        ngamsStatus object. If `targetFile` is a directory, the name of the
+        retrieved file is appended to the directory name.
 
-        fileId:          NG/AMS File ID of file to retrieve (string).
-
-        fileVersion:     Specific version of the file to retrieve (integer)
-
-        targetFile:      Name of file or directory where to store the file
-                         retrieved. If "" is specified, the file will be
-                         stored in the current working directory under the
-                         same name as on NG/AMS (string).
-
-        processing:      Name of DPPI to be invoked by NG/AMS to process the
-                         data being retrieved (strings).
-
-        processingPars:  Optional parameters to hand over to the DDPI. The
-                         format of these is usually:
-
-                           par1=val1,par2=val2,...
-
-                         - but it is up to the DPPI to interpret
-                         these (string).
-
-        internal:        Used to indicate name of an internal file to
-                         retrieve (string).
-
-        hostId:          Host ID of host where to pick up internal file
-                         (string).
-
-        containerName:   Name of a container to retrieve
-                         (string).
-
-        cmd:             The actual command to send.
-                         (string).
-
-        Returns:         NG/AMS Status object (ngamsStatus).
+        If `file_version` is given then that specific of the version will be
+        retrieved.
+        If `processing` and `processingPars` are given, they are passed down
+        as the processing plug-in name and parameters to be applied to the
+        retrieved data *on the server side*, respectively.
         """
-        # If the target file is not specified, we give the
-        # current working directory as target.
-        if (targetFile == ""): targetFile = os.path.abspath(os.curdir)
-        if (internal):
-            pars = [["internal", internal]]
-        elif (fileId == "--CFG--"):
-            pars = [["cfg", ""]]
-        elif (fileId == "--NG--LOG--"):
-            pars = [["ng_log", ""]]
-        else:
-            logger.debug('Requesting data with cmd=%s, fileId=%s, containerId=%s, containerName=%s', cmd, fileId, containerId, containerName)
-            pars = []
-            if cmd == NGAMS_RETRIEVE_CMD:
-                if fileId: pars.append(["file_id", fileId])
-            elif cmd == 'CRETRIEVE':
-                if containerId: pars.append(["container_id", containerId])
-                if containerName: pars.append(["container_name", containerName])
 
-        if (hostId): pars.append(["host_id", hostId])
-        if (fileVersion != -1): pars.append(["file_version", str(fileVersion)])
-        if (processing != ""):
-            pars.append(["processing", processing])
-            if (processingPars != ""):
-                pars.append(["processingPars", processingPars])
-        if reloadMod: pars.append(['reload', 1])
+        pars = list(pars)
+        pars.append(("file_id", fileId))
+        if fileVersion != -1:
+            pars.append(("file_version", str(fileVersion)))
+        if processing:
+            pars.append(("processing", processing))
+            if processingPars:
+                pars.append(("processingPars", processingPars))
 
-        return self.sendCmd(cmd, 0, targetFile, pars)
+        targetFile = targetFile or '.'
+
+        resp, host, port = self._get('RETRIEVE', pars)
+        host_id = "%s:%d" % (host, port)
+        with contextlib.closing(resp):
+
+            if resp.status != NGAMS_HTTP_SUCCESS:
+                return ngamsStatus.ngamsStatus().unpackXmlDoc(resp.read(), 1)
+
+            # If the target path is a directory, take the filename
+            # of the incoming data as the filename
+            fname = targetFile
+            if os.path.isdir(fname):
+                cdisp = resp.getheader('Content-Disposition')
+                parts = ngamsLib.parseHttpHdr(cdisp)
+                if 'filename' not in parts:
+                    msg = "Missing or invalid Content-Disposition header in HTTP response"
+                    raise Exception(msg)
+                fname = os.path.join(fname, os.path.basename(parts['filename']))
+
+            # Dump the data into the target file
+            readf = functools.partial(resp.read, 65536)
+            with open(fname, 'wb') as f:
+                for buf in iter(readf, ''):
+                    f.write(buf)
+
+            return _dummy_success_stat(host_id)
 
 
     def status(self):
@@ -695,16 +617,15 @@ class ngamsPClient:
         """
         T = TRACE()
 
-        stat = self.sendCmd(NGAMS_STATUS_CMD)
-        return stat
+        return self.get_status(NGAMS_STATUS_CMD)
 
 
     def subscribe(self,
                   url,
-                  priority = 10,
-                  startDate = "",
-                  filterPlugIn = "",
-                  filterPlugInPars = ""):
+                  priority = None,
+                  startDate = None,
+                  filterPlugIn = None,
+                  filterPlugInPars = None):
         """
         Subscribe to data from a Data Provider.
 
@@ -727,15 +648,16 @@ class ngamsPClient:
 
         Returns:            NG/AMS Status object (ngamsStatus).
         """
-        pars = [["url", url], ["priority", priority]]
-        if (startDate != ""): pars += ["start_date", startDate]
-        if (filterPlugIn != ""): pars += ["filter_plug_in", filterPlugIn]
-        if (filterPlugInPars != ""): pars += ["plug_in_pars", filterPlugInPars]
-        stat = self.sendCmd(NGAMS_SUBSCRIBE_CMD, 1, "", pars)
-        if (stat.getStatus() == NGAMS_FAILURE): return stat
-
-        # Act as HTTP daemon ready to receive data.
-        # TODO: Implement!
+        pars = [("url", url)]
+        if priority is not None:
+            pars.append(("priority", priority))
+        if startDate:
+            pars.append(("start_date", startDate))
+        if filterPlugIn:
+            pars.append(("filter_plug_in", filterPlugIn))
+        if filterPlugInPars:
+            pars.append(("plug_in_pars", filterPlugInPars))
+        return self.get_status(NGAMS_SUBSCRIBE_CMD, pars=pars)
 
 
     def unsubscribe(self,
@@ -748,669 +670,302 @@ class ngamsPClient:
 
         Returns:            NG/AMS Status object (ngamsStatus).
         """
-        pars = [["url", url]]
-        return self.sendCmd(NGAMS_UNSUBSCRIBE_CMD, 1, "", pars)
+        pars = [("url", url)]
+        return self.get_status(NGAMS_UNSUBSCRIBE_CMD, pars=pars)
 
 
-    def _httpPost(self,
-                  host,
-                  port,
-                  cmd,
-                  mimeType,
-                  dataRef = "",
-                  dataSource = "BUFFER",
-                  pars = [],
-                  dataTargFile = "",
-                  timeOut = None,
-                  authHdrVal = "",
-                  fileName = "",
-                  dataSize = -1):
+    def get_status(self, cmd, pars=[], hdrs=[]):
         """
-        Issue an HTTP POST Request.
-
-        For a description of the parameters, see ngams.ngamsLib.httpPost().
+        Sends a GET command to the NGAS server, receives the reply
+        and returns it as a ngamsStatus object.
         """
-        T = TRACE()
 
-        # If a list of servers has been specified, use this list.
-        if (len(self.__servers) > 0):
-            serverList = self.__servers
-        else:
-            serverList = [(host, port)]
+        resp, host, port = self._get(cmd, list(pars), hdrs)
+        host_id = "%s:%d" % (host, port)
+
+        # If the reply is a ngamsStatus document read it and return it
+        data = resp.read()
+        if data and "<?xml" in data:
+            logger.debug("Parsing incoming HTTP data as ngamsStatus")
+            return ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
+
+        # Otherwise, and depending on the HTTP code, we create either
+        # a dummy successful or failed status object
+        if resp.status != NGAMS_HTTP_SUCCESS:
+            return _dummy_failure_stat(host_id, cmd)
+        return _dummy_success_stat(host_id, data)
+
+    def _get(self, cmd, pars=[], hdrs=[]):
+        """
+        Send a command to the NG/AMS Server and receives the reply.
+        """
+
+        if self.timeout:
+            pars.append(["time_out", str(self.timeout)])
+        if self.reload_mod:
+            pars.append(["reload", "1"])
+
         # For now we try the serves in random order.
-        random.shuffle(serverList)
-
-        # Very simple algorithm, should maybe be refined.
-        success = 0
-        errors = ""
-        for tmpHost, tmpPort in serverList:
-            try:
-                startTime = time.time()
-                reply, msg, hdrs, data =\
-                       ngamsLib.httpPost(tmpHost, tmpPort, cmd, mimeType,
-                                         dataRef, dataSource, pars,
-                                         dataTargFile, timeOut, authHdrVal,
-                                         fileName, dataSize)
-                success = 1
-                break
-            except Exception, e:
-                # Problem contacting server.
-                deltaTime = (time.time() - startTime)
-                errors += " - Error/%s/%d: %s. Timeout/time: %ss/%.3fs" %\
-                          (tmpHost, tmpPort, str(e), str(timeOut), deltaTime)
-                continue
-
-        if (success):
-            return (reply, msg, hdrs, data)
-        else:
-            msg = "Error communicating to specified server(s) " +\
-                  "(HTTP Post request). Errors:%s" % errors
-            raise Exception, msg
-
-
-    def pushFile(self,
-                 fileUri,
-                 mimeType = "",
-                 wait = 1,
-                 noVersioning = 0,
-                 pars = [],
-                 cmd = NGAMS_ARCHIVE_CMD):
-        """
-        Handle an Archive Push Request.
-
-        fileUri:       URI of file to archive (string).
-
-        mimeType:      Mime-type of the data. Must be given if it is not
-                       possible to determine the mime-type of the data
-                       file to be archived from its filename (string).
-
-        wait:          If 0 don't wait for request handling to finish
-                       (integer).
-
-        noVersioning:  If 1 no new version number will be generated for
-                       the file being archived (integer).
-
-        pars:          Extra parameters to submit with the request. Must be
-                       in the format:
-
-                         [[<Par>, <Val>], [<Par>, <Val>], ...]    (list).
-
-        cmd:           Command to issue with the request if different from
-                       a normal ARCHIVE Command (string).
-
-        Returns:       NG/AMS Status Object (ngamsStatus).
-        """
-
-        if (mimeType):
-            mt = mimeType
-        else:
-            mt = NGAMS_ARCH_REQ_MT
-        if (self.getAuthorization()):
-            authVal = "Basic %s" % self.getAuthorization()
-        else:
-            authVal = ""
-
-        httpPars = []
-        for par in pars:
-            httpPars.append(par)
-        httpPars += [["attachment; filename", os.path.basename(fileUri)],
-                     ["wait", str(wait)], ["no_versioning", str(noVersioning)]]
-        if (self.getTimeOut()):
-            httpPars.append(["time_out", self.getTimeOut()])
-
-        reply, msg, hdrs, data =\
-                   self._httpPost(self.getHost(), self.getPort(), cmd, mt,
-                                  fileUri, dataSource = "FILE",
-                                  pars = httpPars,
-                                  timeOut = self.getTimeOut(),
-                                  authHdrVal = authVal)
-
-        return ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
-
-
-    def setAuthorization(self,
-                         accessCode):
-        """
-        Set the authorization user/password (encrypted) to use for
-        accessing the remote NG/AMS Server.
-
-        accessCode:     Encrypted access code (string).
-
-        Returns:        Reference to object itself.
-        """
-        self.__authorization = accessCode
-        return self
-
-
-    def getAuthorization(self):
-        """
-        Get the authorization user/password (encrypted) to use for
-        accessing the remote NG/AMS Server.
-
-        Returns:        Encrypted access code (string).
-        """
-        return self.__authorization
-
-
-    def parseSrvList(self,
-                     servers):
-        """
-        Parse a comma separated list of server nodes and port numbers of
-        the form:
-
-            <Host 1>:<Port 1>,<Host 2>:<Port 2>,...
-
-            The server/port pairs are kept in an internal registry to be
-            used when communicating with the remote server(s).
-
-        servers:     List of servers/ports (string).
-
-        Returns:     Reference to object itself.
-        """
-        T = TRACE()
-
-        self._servers = []
-        try:
-            for serverInfo in servers.split(","):
-                host, port = serverInfo.split(":")
-                host = host.strip()
-                port = int(port.strip())
-                self.__servers.append((host, port))
-        except Exception, e:
-            msg = "Illegal server list specified: %s. Error: %s"
-            raise Exception, msg % (servers, str(e))
-        return self
-
-
-    def handleCmd(self,
-                  argv):
-        """
-        Handle the command based on the command line parameters given.
-
-        argv:     Tuple containing the command line parameters (tuple).
-
-        Returns:  Void.
-        """
-        T = TRACE()
-        # Command line parameters.
-        cmd              = ""
-        contHierarchy    = ''
-        closeContainer   = False
-        diskId           = ""
-        execute          = 0
-        fileId           = ""
-        fileIdList       = ""
-        fileInfoXml      = ""
-        fileUri          = ""
-        fileVersion      = -1
-        filterPlugIn     = ""
-        force            = 0
-        host             = '127.0.0.1'
-        hostId           = ""
-        internal         = ""
-        mimeType         = ""
-        noVersioning     = 0
-        plugInPars       = ""
-        wait             = 1
-        outputFile       = ""
-        parentContId     = ''
-        path             = ""
-        port             = 7777
-        priority         = 10
-        processing       = ""
-        processingPars   = ""
-        recursive        = False
-        reloadMod        = False
-        servers          = ""
-        slotId           = ""
-        startDate        = ""
-        verboseLevel     = 0
-        url              = ""
-        parArray         = []
-        parArrayIdx      = -1
-        containerId      = ""
-        containerName    = ""
-
-        # Control variables.
-        parLen           = len(argv)
-        idx              = 1
-        while idx < parLen:
-            par = argv[idx].lower()
-            try:
-                if (par == "-auth"):
-                    idx = idx + 1
-                    self.setAuthorization(argv[idx])
-                elif (par == "-v"):
-                    idx = idx + 1
-                    verboseLevel = int(argv[idx])
-                elif (par == "-cfg"):
-                    fileId = "--CFG--"
-                elif (par == "-host"):
-                    idx = idx + 1
-                    host = argv[idx]
-                elif (par == "-port"):
-                    idx = idx + 1
-                    port = int(argv[idx])
-                elif (par == "-cmd"):
-                    idx = idx + 1
-                    cmd = argv[idx]
-                elif (par == "-diskid"):
-                    idx = idx + 1
-                    diskId = argv[idx]
-                elif (par == "-execute"):
-                    execute = 1
-                elif (par == "-fileid"):
-                    idx = idx + 1
-                    fileId = argv[idx]
-                elif (par == "-fileidlist"):
-                    idx = idx + 1
-                    fileIdList = argv[idx]
-                elif (par == '-closecontainer'):
-                    closeContainer = True
-                elif (par == '-containerhierarchy'):
-                    idx = idx + 1
-                    contHierarchy = argv[idx]
-                elif (par == "-containerid"):
-                    idx = idx + 1
-                    containerId = argv[idx]
-                elif (par == "-containername"):
-                    idx = idx + 1
-                    containerName = argv[idx]
-                elif (par == "-fileinfoxml"):
-                    idx = idx + 1
-                    fileInfoXml = argv[idx]
-                elif (par == "-fileuri"):
-                    idx = idx + 1
-                    fileUri = argv[idx]
-                elif (par == "-fileversion"):
-                    idx = idx + 1
-                    fileVersion = int(argv[idx])
-                elif (par == "-filterplugin"):
-                    idx = idx + 1
-                    filterPlugIn = argv[idx]
-                elif (par == "-internal"):
-                    idx = idx + 1
-                    internal = argv[idx]
-                elif (par == "-hostid"):
-                    idx = idx + 1
-                    hostId = argv[idx]
-                elif (par == "-pluginpars"):
-                    idx = idx + 1
-                    plugInPars = argv[idx]
-                elif (par == "-force"):
-                    force = 1
-                elif (par == "-license"):
-                    print getNgamsLicense()
-                    sys.exit(0)
-                elif (par == "-mimetype"):
-                    idx = idx + 1
-                    mimeType = argv[idx]
-                elif (par == "-nglog"):
-                    fileId = "--NG--LOG--"
-                elif (par == "-noversioning"):
-                    noVersioning = 1
-                elif (par == "-nowait"):
-                    wait = 0
-                elif (par == "-outputfile"):
-                    idx = idx + 1
-                    outputFile = argv[idx]
-                elif (par == "-par"):
-                    idx = idx + 1
-                    parArrayIdx += 1
-                    parArray.append([argv[idx], ""])
-                elif (par == '-parentContainerId'):
-                    idx = idx + 1
-                    parentContId = argv[idx]
-                elif (par == "-path"):
-                    idx = idx + 1
-                    path = argv[idx]
-                elif (par == "-priority"):
-                    idx = idx + 1
-                    priority = int(argv[idx])
-                elif (par == "-processing"):
-                    idx = idx + 1
-                    processing = argv[idx]
-                elif (par == "-processingpars"):
-                    idx = idx + 1
-                    processingPars = argv[idx]
-                elif (par == "-recursive"):
-                    recursive = True
-                elif (par == "-reloadmod"):
-                    reloadMod = True
-                elif (par == "-servers"):
-                    idx = idx + 1
-                    servers = argv[idx]
-                elif (par == "-slotid"):
-                    idx = idx + 1
-                    slotId = argv[idx]
-                elif (par == "-status"):
-                    self.setStatus(1)
-                elif (par == "-startdate"):
-                    idx = idx + 1
-                    startDate = argv[idx]
-                elif (par == "-timeout"):
-                    idx = idx + 1
-                    self.setTimeOut(argv[idx])
-                elif (par == "-val"):
-                    idx = idx + 1
-                    parArray[parArrayIdx][1] = argv[idx]
-                elif (par == "-version"):
-                    print getNgamsVersion()
-                    sys.exit(0)
-                elif (par == "-url"):
-                    idx = idx + 1
-                    url = argv[idx]
-                else:
-                    print self.correctUsageBuf()
-                    sys.exit(1)
-            except Exception:
-                print self.correctUsageBuf()
-                raise
-            idx = idx + 1
-
-        self.verbosity = verboseLevel
-        # TODO: configure logging
-
-        # Check generic input parameters.
-        self.setHost(host)
-        self.setPort(port)
-
-        if servers != "":
-            self.parseSrvList(servers)
-        reloadMod = 1 if reloadMod else 0
-
-        if not parArray and not cmd:
-            print "Error: Neither a command (-cmd) nor parameters (-par/-val) have been given"
-            print self.correctUsageBuf()
-            sys.exit(1)
-
-        # Invoke the proper operation.
-        if (parArray):
-            return self.sendCmdGen(cmd, wait, outputFile, parArray)
-        elif (cmd in [NGAMS_ARCHIVE_CMD, 'QARCHIVE']):
-            return self.archive(fileUri, mimeType, wait, noVersioning, cmd=cmd, pars=[['reload', reloadMod]])
-        elif cmd == "CARCHIVE":
-            return self.carchive(fileUri, reloadMod)
-        elif cmd == "CAPPEND":
-            return self.cappend(fileId, fileIdList, containerId, containerName, force, closeContainer, reloadMod)
-        elif cmd == "CCREATE":
-            return self.ccreate(containerName, parentContId, contHierarchy, reloadMod)
-        elif cmd == "CDESTROY":
-            return self.cdestroy(containerName, containerId, recursive, reloadMod)
-        elif cmd == "CLIST":
-            return self.clist(containerName, containerId, reloadMod)
-        elif cmd == "CREMOVE":
-            return self.cremove(fileId, fileIdList, containerId, containerName, reloadMod)
-        elif cmd == 'CRETRIEVE':
-            return self.cretrieve(containerName, containerId, outputFile, reloadMod)
-        elif (cmd == NGAMS_CACHEDEL_CMD):
-            parArray.append(["disk_id", diskId])
-            parArray.append(["file_id", fileId])
-            parArray.append(["file_version", str(fileVersion)])
-            return self.sendCmdGen(cmd, wait, "", parArray)
-        elif (cmd == NGAMS_CLONE_CMD):
-            return self.clone(fileId, diskId, fileVersion)
-        elif (cmd == NGAMS_EXIT_CMD):
-            return self.exit()
-        elif (cmd == NGAMS_INIT_CMD):
-            return self.init()
-        elif (cmd == NGAMS_LABEL_CMD):
-            return self.label(slotId)
-        elif (cmd == NGAMS_OFFLINE_CMD):
-            return self.offline(force, wait)
-        elif (cmd == NGAMS_ONLINE_CMD):
-            return self.online(wait)
-        elif (cmd == NGAMS_REARCHIVE_CMD):
-            if (not fileInfoXml):
-                msg = "Must specify parameter -fileInfoXml for " +\
-                      "a REARCHIVE Command"
-                raise Exception, msg
-            return self.reArchive(fileUri, fileInfoXml, wait, parArray) # no parArray in noDebug()
-        elif (cmd == NGAMS_REGISTER_CMD):
-            return self.register(path, wait)
-        elif (cmd == NGAMS_REMDISK_CMD):
-            return self.remDisk(diskId, execute)
-        elif (cmd == NGAMS_REMFILE_CMD):
-            return self.remFile(diskId, fileId, fileVersion, execute)
-        elif (cmd == NGAMS_RETRIEVE_CMD):
-            # return self.retrieve2File(fileId, outputFile, cmd=cmd) # noDebug() version
-            return self.retrieve2File(fileId, fileVersion, outputFile,
-                                      processing, processingPars,
-                                      internal, hostId, containerName=containerName,
-                                      containerId=containerId, cmd=cmd)
-        elif (cmd == NGAMS_STATUS_CMD):
-            return self.status()
-        elif (cmd == NGAMS_SUBSCRIBE_CMD):
-            return self.subscribe(url, priority, startDate, filterPlugIn, plugInPars)
-        elif (cmd == NGAMS_UNSUBSCRIBE_CMD):
-            return self.unsubscribe(url)
-        else:
-            raise Exception, 'Unknown command: ' + cmd
-
-
-    def _httpGet(self,
-                 host,
-                 port,
-                 cmd,
-                 wait = 1,
-                 pars = [],
-                 dataTargFile = "",
-                 blockSize = 65536,
-                 timeOut = None,
-                 authHdrVal = "",
-                 additionalHdrs = []):
-        """
-        Issue an HTTP GET Request.
-
-        For a description of the parameters, see ngams.ngamsLib.httpGet().
-        """
-        T = TRACE()
-
-        # If a list of servers has been specified, use this list.
-        if (len(self.__servers) > 0):
-            serverList = self.__servers
-        else:
-            serverList = [(host, port)]
-        # For now we try the serves in random order.
+        serverList = list(self.servers)
         random.shuffle(serverList)
         logger.debug("Server list: %s", str(serverList))
 
-        # Very simple algorithm, should maybe be refined.
-        success = 0
-        errors = ""
-        for tmpHost, tmpPort in serverList:
+        # Try, if necessary, contacting all servers from the server list
+        for i,host_port in enumerate(serverList):
+            host, port = host_port
             try:
-                logger.debug("Trying server: %s:%s ...", tmpHost, str(tmpPort))
-                startTime = time.time()
-                reply, msg, hdrs, data =\
-                       ngamsLib.httpGet(tmpHost, tmpPort, cmd, wait, pars,
-                                        dataTargFile, blockSize, timeOut,
-                                        authHdrVal, additionalHdrs)
-                logger.debug("Server: %s:%s OK", tmpHost, str(tmpPort))
-                success = 1
+                resp = self._do_get(host, port, cmd, pars, hdrs)
                 break
-            except Exception, e:
-                # Problem contacting server.
-                deltaTime = (time.time() - startTime)
-                errors += " - Error/%s/%d: %s. Timeout/time: %s/%.3f [s]" %\
-                          (tmpHost, tmpPort, str(e), str(timeOut), deltaTime)
-                continue
+            except socket.error:
+                if i == len(serverList) - 1:
+                    raise
+                logger.info("Failed to contact server %s:%d, trying next one", host, port)
+                pass
 
-        if (success):
-            return (reply, msg, hdrs, data)
-        else:
-            raise Exception, "Error communicating to specified server(s). " +\
-                  "(HTTP Get Request) Errors: %s" % errors
+        # Handle redirects, with a maximum of 5
+        redirects = 0
+        while redirects < 5:
 
+            # Last result was not a redirect, return
+            if resp.status != NGAMS_HTTP_REDIRECT:
+                return resp, host, port
 
-    def sendCmdGen(self,
-                   cmd,
-                   wait = 1,
-                   outputFile = "",
-                   pars = [],
-                   additionalHdrs = [],
-                   host=None,
-                   port=None):
-        """
-        Send a command to the NG/AMS Server and receive the reply.
-
-        cmd:              NG/AMS command (string).
-
-        wait:             If set to 0, the NG/AMS Server will generate an
-                          immediate reply, i.e.m before possibly terminating
-                          handling the request (integer).
-
-        outputFile:       File in which to write data returned by HTTP
-                          request (string).
-
-        pars:             Tuple of parameter/values pairs:
-
-                            [[<par>, <val>], [<par>, <val>], ...]
-
-        additionalHdrs:   Additional HTTP headers to send with the request.
-                          Must be formatted as:
-
-                            [[<hdr>, <val>], ...]                      (list).
-
-        Returns:          NG/AMS Status Object (ngamsStatus).
-        """
-        T = TRACE()
-
-        if (self.getAuthorization()):
-            authHdrVal = "Basic %s" % self.getAuthorization()
-        else:
-            authHdrVal = ""
-
-        locPars = []
-        for par in pars:
-            locPars.append(par)
-        if self.getTimeOut():
-            locPars.append(["time_out", self.getTimeOut()])
-
-        host = host or self.getHost()
-        port = port or self.getPort()
-        try:
-            startTime = time.time()
-            reply, msg, hdrs, data =\
-                   self._httpGet(host, port, cmd, wait, locPars, outputFile,
-                                 None, self.getTimeOut(), authHdrVal,
-                                 additionalHdrs)
-            deltaTime = (time.time() - startTime)
-            logger.debug("Command: %s/%s to %s:%s handled in %.3fs",
-                         cmd, str(locPars), host, str(port), deltaTime)
-        except Exception:
-            deltaTime = (time.time() - startTime)
-            logger.exception("Exception raised handling command %s/%s to %s:%s " +\
-                             "after %.3fs. Timeout: %s",
-                             cmd, str(locPars), host, str(port),
-                             deltaTime, str(self.getTimeOut()))
-            raise
-
-        # If we have received a redirection HTTP response, we
-        # send the query again to the alternative location.
-        if (reply == NGAMS_HTTP_REDIRECT):
             # Get the host + port of the alternative URL, and send
             # the same query again.
-            hdrDic = ngamsLib.httpMsgObj2Dic(hdrs)
-            host, port = hdrDic["location"].split("/")[2].split(":")
-            logger.debug("Redirect to NG/AMS running on host: %s using "+\
-                         "port: %s is carried out",
-                         host, str(port))
-            return self.sendCmdGen(cmd, wait, outputFile, locPars, host=host, port=port)
-        else:
-            if ((data != "") and (data.find("<?xml") != -1)):
-                ngamsStat = ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
-            else:
-                # Create a dummy reply. This can be removed when the server
-                # sends back a multipart message which always contains the
-                # NG/AMS Status apart from the data at a RETRIEVE Request.
-                ngamsStat = ngamsStatus.ngamsStatus().\
-                            setDate(toiso8601()).\
-                            setVersion(getNgamsVersion()).setHostId(host).\
-                            setStatus(NGAMS_SUCCESS).\
-                            setMessage("Successfully handled request").\
-                            setState(NGAMS_ONLINE_STATE).\
-                            setSubState(NGAMS_IDLE_SUBSTATE)
-                if (data != ""): ngamsStat.setData(data)
+            location = resp.getheader('Location')
+            host, port = location.split("/")[2].split(":")
+            port = int(port)
+            logger.info("Redirecting to NG/AMS running on %s:%d", host, port)
 
-            logger.debug("Returning successfully from ngamsPClient.sendCmdGen()")
-            return ngamsStat
+            redirects += 1
+            resp = self._do_get(host, port, cmd, pars, hdrs)
+
+        raise Exception("Too many redirections, aborting")
 
 
-    def sendCmd(self,
-                cmd,
-                wait = 1,
-                outputFile = "",
-                pars = []):
-        """
-        Send a command to the NG/AMS Server and receive the reply.
+    def _do_get(self, host, port, cmd, pars, hdrs):
 
-        cmd:         NG/AMS command (string).
+        auth = None
+        if self.auth is not None:
+            auth = "Basic %s" % self.auth
 
-        wait:        If set to 0, the NG/AMS Server will generate an
-                     immediate reply, i.e.m before possibly terminating
-                     handling the request (integer).
-
-        outputFile:  File in which to write data returned by HTTP
-                     request (string).
-
-        pars:        Tuple of parameter/values pairs:
-
-                       [[<par>, <val>], [<par>, <val>], ...]
-
-                     These are send as 'Content-Disposition' in the HTTP
-                     command (list).
-
-        Returns:     NG/AMS Status Object (ngamsStatus).
-        """
-        T = TRACE()
-
-        stat = self.sendCmdGen(cmd, wait, outputFile, pars)
-        return stat
+        start = time.time()
+        res = ngamsHttpUtils.httpGet(host, port, cmd, pars=pars, hdrs=hdrs,
+                               timeout=self.timeout, auth=auth)
+        delta = time.time() - start
+        logger.debug("Command: %s to %s:%d handled in %.3f [s]", cmd, host, port, delta)
+        return res
 
 
-    def correctUsageBuf(self):
-        """
-        Generate man-page in string buffer and return this.
+    def _do_post(self, host, port, cmd, mimeType, data, pars):
 
-        Returns:  Man-page for tool (string).
-        """
-        global manPage
-        buf = "\n"
-        buf += "> ngamsPClient "
-        buf += manPage
-        return buf
+        auth = None
+        if self.auth is not None:
+            auth = "Basic %s" % self.auth
+
+        start = time.time()
+        res = ngamsHttpUtils.httpPost(host, port, cmd, data, mimeType,
+                                pars=pars, timeout=self.timeout, auth=auth)
+        delta = time.time() - start
+        logger.info("Successfully completed command %s in %.3f [s]", cmd, delta)
+        return res
 
 
-def handleCmdLinePars(argv,
-                      fo = sys.stdout):
+    def _post(self, cmd, mime_type, data, pars=[]):
+
+        if self.timeout:
+            pars.append(["time_out", str(self.timeout)] )
+        if self.reload_mod:
+            pars.append(["reload", "1"])
+
+        # For now we try the serves in random order.
+        servers = self.servers
+        random.shuffle(servers)
+
+        for i,host_port in enumerate(servers):
+            host, port = host_port
+            try:
+                _,_,_,data = self._do_post(host, port, cmd, mime_type, data, pars)
+                return ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
+            except socket.error:
+                if i == len(servers) - 1:
+                    raise
+
+
+def setup_logging(opts):
+
+    logging.root.addHandler(logging.NullHandler())
+
+    if opts.verbose:
+        logging_levels = {
+            0:logging.CRITICAL,
+            1:logging.ERROR,
+            2:logging.WARNING,
+            3:logging.INFO,
+            4:logging.DEBUG,
+            5:logging.NOTSET
+        }
+
+        fmt = '%(asctime)-15s.%(msecs)03d [%(threadName)10.10s] [%(levelname)6.6s] %(name)s#%(funcName)s:%(lineno)s %(message)s'
+        datefmt = '%Y-%m-%dT%H:%M:%S'
+        formatter = logging.Formatter(fmt, datefmt=datefmt)
+        formatter.converter = time.gmtime
+        hnd = logging.StreamHandler(stream=sys.stdout)
+        hnd.setFormatter(formatter)
+        logging.root.addHandler(hnd)
+        logging.root.setLevel(logging_levels[opts.verbose - 1])
+
+def main():
     """
-    Function to send off a command based on command line parameters
-    contained in a list (as is the case with sys.argv).
-
-    argv:     List with command line parameters (list).
-
-    Returns:  Void.
+    Entry point for the ngamsPClient script
     """
-    ngamsClient = ngamsPClient()
-    try:
-        ngamsStat = ngamsClient.handleCmd(argv)
-        if ngamsClient.verbosity > 0 :
-            pprintStatus(ngamsClient, ngamsStat)
-    except Exception:
-        print(traceback.print_exc())
-        sys.exit(1)
-    if (ngamsClient.getStatus()):
-        fo.write(ngamsStat.genXml(0, 1, 1, 1).toprettyxml('  ', '\n')[0:-1])
-        print ngamsStat.getStatus()
-    if (ngamsStat == None):
-        sys.exit(1)
-    elif (ngamsStat.getStatus() == NGAMS_FAILURE):
-        sys.exit(1)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('cmd', help='Command to issue')
+
+    gparser = parser.add_argument_group('General options')
+    gparser.add_argument('-L', '--license', help='Show the license information', action='store_true')
+    gparser.add_argument('-V', '--version', help='Show the version and exit', action='store_true')
+    gparser.add_argument('-v', '--verbose', help='Increase verbosity. More -v is more verbose', action='count', default=3)
+
+    cparser = parser.add_argument_group('Connection options')
+    cparser.add_argument('-H', '--host',    help='Host to connect to', default="127.0.0.1")
+    cparser.add_argument('-p', '--port',    help='Port to connect to', default=7777, type=int)
+    cparser.add_argument('-t', '--timeout', help='Connection timeout, in sec.', default=None, type=float)
+    cparser.add_argument(      '--servers', help='A comma-separated list of host:server addresses')
+
+    parser.add_argument('-P', '--param',        help='Additional HTTP parameters in the form of param=value, can be specified more than once', action='append', default=[])
+    parser.add_argument('-r', '--reload',       help='Reload the module implementing the command', action='store_true')
+
+    parser.add_argument('-m', '--mime-type',    help='The mime-type', default='application/octet-stream')
+    parser.add_argument('-s', '--show-status',  help='Display the status of the command', action='store_true')
+    parser.add_argument('-o', '--output',       help='File/directory where to store the retrieved data')
+
+    parser.add_argument('-a', '--async',         help='Run command asynchronously', action='store_true')
+    parser.add_argument('-A', '--auth',          help='BASIC authorization string')
+    parser.add_argument('-F', '--force',         help='Force the action', action='store_true')
+    parser.add_argument('-f', '--file-id',       help='Indicates a File ID')
+    parser.add_argument(      '--file-version',  help='A file version', type=int, default=-1)
+    parser.add_argument(      '--file-id-list',  help='A list of File IDs')
+    parser.add_argument(      '--file-uri',      help='A File URI')
+    parser.add_argument(      '--file-info-xml', help='An XML File Info string')
+    parser.add_argument('-n', '--no-versioning', help='Do not increase the file version', action='store_true')
+    parser.add_argument('-d', '--disk-id',       help='Indicates a Disk ID')
+    parser.add_argument('-e', '--execute',       help='Executes the action', action='store_true')
+    parser.add_argument(      '--path',          help='File path')
+    parser.add_argument(      '--slot-id',       help='The Slot ID for the label')
+    parser.add_argument(      '--host-id',       help='The Host ID')
+    parser.add_argument(      '--p-plugin',      help='Processing plug-in to apply before retrieving data')
+    parser.add_argument(      '--p-plugin-pars', help='Parameters for the processing plug-in, can be specified more than once', action='append')
+
+    sparser = parser.add_argument_group('Subscription options')
+    sparser.add_argument('-u', '--url',           help='URL to subscribe/unsubscribe')
+    sparser.add_argument(      '--priority',      help='Priority used for subscription', type=int, default=None)
+    sparser.add_argument(      '--f-plugin',      help='Filtering plug-in to use for this subscription')
+    sparser.add_argument(      '--f-plugin-pars', help='Parameters for the filtering plug-in, can be specified more than once', action='append')
+    sparser.add_argument('-S', '--start-date',    help='Start date for subscription')
+
+    cparser = parser.add_argument_group('Container options')
+    cparser.add_argument('-c', '--container-id',        help='Specifies a Container ID')
+    cparser.add_argument(      '--container-name',      help='Specifies a Container name')
+    cparser.add_argument(      '--container-hierarchy', help='Specifies a Container Hierarchy as an XML document')
+    cparser.add_argument(      '--parent-container-id', help='Specifies a Parent Container ID')
+    cparser.add_argument('-C', '--close',               help='Closes the container after appending a file', action='store_true')
+    cparser.add_argument(      '--recursive',           help='Recursively remove containers', action='store_true')
+
+    opts = parser.parse_args()
+    setup_logging(opts)
+
+    if opts.version:
+        print getNgamsVersion()
+        return
+
+    if opts.license:
+        print getNgamsLicense()
+        return
+
+    if opts.servers:
+        servers = [(host, int(port)) for s in opts.servers.split(',') for host,port in s.split(':')]
+        client = ngamsPClient(servers=servers, timeout=opts.timeout,
+                              auth=opts.auth, reload_mod=opts.reload)
     else:
-        sys.exit(0)
+        client = ngamsPClient(opts.host, opts.port, timeout=opts.timeout,
+                              auth=opts.auth, reload_mod=opts.reload)
 
-def pprintStatus(client, stat):
+    # Invoke the proper operation.
+    cmd = opts.cmd
+    mtype = opts.mime_type
+    pars = [p.split('=') for p in opts.param]
+    if cmd in [NGAMS_ARCHIVE_CMD, 'QARCHIVE']:
+        pars += [('file_version', opts.file_version)] if opts.file_version is not None else []
+        stat = client.archive(opts.file_uri, mtype, opts.async, opts.no_versioning, cmd=cmd, pars=pars)
+    elif cmd == "CARCHIVE":
+        stat = client.carchive(opts.file_uri, mtype)
+    elif cmd == "CAPPEND":
+        stat = client.cappend(opts.file_id, opts.file_id_list, opts.container_id, opts.container_name, opts.force, opts.close)
+    elif cmd == "CCREATE":
+        stat = client.ccreate(opts.container_name, opts.parent_container_id, opts.container_hierarchy)
+    elif cmd == "CDESTROY":
+        stat = client.cdestroy(opts.container_name, opts.container_id, opts.recursive)
+    elif cmd == "CLIST":
+        stat = client.clist(opts.container_name, opts.container_id)
+    elif cmd == "CREMOVE":
+        stat = client.cremove(opts.file_id, opts.file_id_list, opts.container_id, opts.container_name)
+    elif cmd == 'CRETRIEVE':
+        stat = client.cretrieve(opts.container_name, opts.container_id, opts.output)
+    elif (cmd == NGAMS_CACHEDEL_CMD):
+        pars.append(("disk_id", opts.disk_id))
+        pars.append(("file_id", opts.file_id))
+        pars.append(("file_version", str(opts.file_version)))
+        stat = client.get_status(cmd, pars=pars)
+    elif (cmd == NGAMS_CLONE_CMD):
+        stat = client.clone(opts.file_id, opts.disk_id, opts.file_version, opts.async)
+    elif (cmd == NGAMS_EXIT_CMD):
+        stat = client.exit()
+    elif (cmd == NGAMS_INIT_CMD):
+        stat = client.init()
+    elif (cmd == NGAMS_LABEL_CMD):
+        stat = client.label(opts.slot_id, opts.host_id)
+    elif (cmd == NGAMS_OFFLINE_CMD):
+        stat = client.offline(opts.force)
+    elif (cmd == NGAMS_ONLINE_CMD):
+        stat = client.online()
+    elif (cmd == NGAMS_REARCHIVE_CMD):
+        if not opts.file_info_xml:
+            msg = "Must specify parameter -fileInfoXml for a REARCHIVE Command"
+            raise Exception(msg)
+        stat = client.rearchive(opts.file_uri, opts.file_info_xml, pars)
+    elif (cmd == NGAMS_REGISTER_CMD):
+        stat = client.register(opts.path, opts.async)
+    elif (cmd == NGAMS_REMDISK_CMD):
+        stat = client.remDisk(opts.disk_id, opts.execute)
+    elif (cmd == NGAMS_REMFILE_CMD):
+        stat = client.remFile(opts.disk_id, opts.file_id, opts.file_version, opts.execute)
+    elif (cmd == NGAMS_RETRIEVE_CMD):
+        stat = client.retrieve(opts.file_id, opts.file_version, opts.output,
+                               opts.p_plugin, opts.p_plugin_pars)
+    elif (cmd == NGAMS_STATUS_CMD):
+        stat = client.status()
+    elif (cmd == NGAMS_SUBSCRIBE_CMD):
+        stat = client.subscribe(opts.url, opts.priority, opts.start_date, opts.f_plugin, opts.f_plugin_pars)
+    elif (cmd == NGAMS_UNSUBSCRIBE_CMD):
+        stat = client.unsubscribe(opts.url)
+    else:
+        stat = client.get_status(cmd, pars=pars)
+
+    if opts.verbose > 3:
+        printStatus(stat)
+        if opts.verbose > 4 and stat.getData():
+            print(stat.getData())
+
+    if opts.show_status:
+        print stat.genXml(0, 1, 1, 1).toprettyxml('  ', '\n')[0:-1]
+        print stat.getStatus()
+
+    if stat.getStatus() == NGAMS_FAILURE:
+        sys.exit(1)
+
+def printStatus(stat):
     """
     Pretty print the return status document
 
@@ -1419,25 +974,18 @@ def pprintStatus(client, stat):
     """
     message = """
 Status of request:
-Host:           {0}
-Port:           {1}
-Status:         {2}
-
-Request Time:   {3}
-Host ID:        {4}
-Message:        {5}
-Status:         {6}
-State:          {7}
-Sub-State:      {8}
-NG/AMS Version: {9}
+Request Time:   {0}
+Host ID:        {1}
+Message:        {2}
+Status:         {3}
+State:          {4}
+Sub-State:      {5}
+NG/AMS Version: {6}
     """
     req_time = ""
     if stat.getRequestTime() is not None:
         req_time = toiso8601(stat.getRequestTime())
     print message.format(
-                         client.getHost(),
-                         client.getPort(),
-                         client.getStatus(),
                          req_time,
                          stat.getHostId(),
                          stat.getMessage(),
@@ -1446,9 +994,6 @@ NG/AMS Version: {9}
                          stat.getSubState(),
                          stat.getVersion(),
                          )
-
-def main():
-    handleCmdLinePars(sys.argv)
 
 if __name__ == '__main__':
     """

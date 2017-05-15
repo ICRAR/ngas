@@ -25,7 +25,7 @@ import socket
 import sys
 import ngamsTestLib
 
-from ngamsPlugIns.ngamsMWAPawseyTapeApi import isFileOffline, readDMFStatus,\
+from ngamsPlugIns.mwa.ngamsMWAPawseyTapeApi import isFileOffline, readDMFStatus,\
     pawseyMWAdmget, releaseFiles
 
 os.environ['PATH'] += ':' + os.path.join(os.path.dirname(__file__)) + '/bin'

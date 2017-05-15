@@ -30,11 +30,16 @@ with open('../../VERSION') as vfile:
 install_requires = [
     'DBUtils'
 ]
+
+# If there's neither bsddb nor bsddb3 we need to install the latter
 try:
     import bsddb
 except ImportError:
-    # bsddb-6.2 doesn't support DB v6.0
-    install_requires.append('bsddb3<6.2.0')
+    try:
+        import bsddb3
+    except ImportError:
+        # bsddb-6.2 doesn't support DB v6.0
+        install_requires.append('bsddb3<6.2.0')
 
 setup(
     name='ngamsCore',

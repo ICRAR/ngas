@@ -77,12 +77,13 @@ in Set#2, the file is signalled for removal from the cache.
 # Compiled list with the nodes to contact for check for availability of
 # the given file.
 
+import contextlib
 import logging
 import random
 import time
 
 from ngamsLib.ngamsCore import TRACE, NGAMS_CHECKFILE_CMD, NGAMS_FAILURE
-from ngamsLib import ngamsLib, ngamsStatus
+from ngamsLib import ngamsLib, ngamsStatus, ngamsHttpUtils
 
 
 logger = logging.getLogger(__name__)
@@ -158,9 +159,11 @@ def _sendCheckFileCmd(node,
         host, port = node.split(":")
         logger.debug("Sending CHECKFILE Command for file: %s/%s to node: %s:%s",
                      fileId, str(fileVersion), host, str(port))
-        code, msg, hdrs, data = ngamsLib.httpGet(host, port,
-                                                 NGAMS_CHECKFILE_CMD,
-                                                 pars = cmdPars)
+        resp = ngamsHttpUtils.httpGet(host, port, NGAMS_CHECKFILE_CMD, pars=cmdPars)
+
+        with contextlib.closing(resp):
+            data = resp.read()
+
     except Exception:
         logger.exception("Error contacting node %s", node)
 

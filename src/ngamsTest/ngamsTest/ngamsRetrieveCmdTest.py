@@ -40,7 +40,7 @@ import sys
 
 from ngamsLib import ngamsConfig
 from ngamsLib.ngamsCore import getHostName, NGAMS_RETRIEVE_CMD, \
-    checkCreatePath, rmFile
+    checkCreatePath, rmFile, NGAMS_SUCCESS
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
     getClusterName, sendPclCmd, runTest, genTmpFilename, unzip
 
@@ -99,7 +99,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         # Retrieve the file.
         trgFile = "tmp/test_RetrieveCmd_1_1_tmp"
         outFilePath = "tmp/SmallFile.fits"
-        status = client.retrieve2File("TEST.2001-05-08T15:25:00.123",1,trgFile)
+        status = client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
         unzip(trgFile, outFilePath)
 
         # Check reply.
@@ -143,7 +143,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         # Retrieve the file.
         trgFile = "tmp/test_RetrieveCmd_1_1_tmp"
-        status = client.retrieve2File("TEST.2001-05-08T15:25:00.123",2,trgFile)
+        status = client.retrieve("TEST.2001-05-08T15:25:00.123",
+                                 fileVersion=2, targetFile=trgFile)
 
         # Check reply.
         refStatFile = "ref/ngamsRetrieveCmdTest_test_RetrieveCmd_2_1_ref"
@@ -184,12 +185,12 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                          [[8000, None, None, getClusterName()],
                           [8011, None, None, getClusterName()]])
         # Archive file into sub-node (port=8011).
-        sendPclCmd(port=8011).pushFile("src/TinyTestFile.fits")
+        sendPclCmd(port=8011).archive("src/TinyTestFile.fits")
 
         # Retrieve a file.
         trgFile = "tmp/test_RetrieveCmd_3_1_tmp"
         client = sendPclCmd(port=8000)
-        status = client.retrieve2File("NCU.2003-11-11T11:11:11.111",1,trgFile)
+        status = client.retrieve("NCU.2003-11-11T11:11:11.111", targetFile=trgFile)
 
         # Check reply.
         refStatFile = "ref/ngamsRetrieveCmdTest_test_RetrieveCmd_3_1_ref"
@@ -209,195 +210,6 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         self.checkFilesEq(outFilePath, refFile, "Retrieved file incorrect")
 
 
-    '''def test_RetrieveCmd_4(self):
-        """
-        Synopsis:
-        Retrieve Log File from NMU/Sub-Node.
-
-        Description:
-        Retrieve the log file from the master node. Retrieve the log file via
-        a master node acting as proxy for a sub-node.
-
-        Expected Result:
-        The log file from the Master Node should be returned when no host_id
-        is given. When specifying a host_id, the contacted server should
-        identify that the requested log file is located on another node and
-        should forward the request to the node in question. The contacted node
-        should send back the file to the requestor.
-
-        Test Steps:
-        - Prepare simulated cluster.
-        - Retrieve NG/AMS Log File from master node.
-        - Check that the correct log file has been returned.
-        - Retrieve NG/AMS Log File from sub-node via master node.
-        - Check that the correct log file has been returned.
-
-        Remarks:
-        ...
-        """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
-
-        # Retrieve Log File from the Main-Node.
-        trgFile = "tmp/test_RetrieveCmd_4_1_tmp"
-        client = sendPclCmd(port=8000)
-        client.sendCmdGen("RETRIEVE",
-                          1, trgFile, [["ng_log", ""]])
-        logBuf = []
-        with open(trgFile) as fo:
-            for data in iter(partial(fo.read, 1024), ''):
-                logBuf.append(data)
-        logBuf = ''.join(logBuf)
-
-        refStr = "Setting up NG/AMS HTTP Server (Host: %s - IP: 0.0.0.0 - Port: 8000)" %\
-                 getHostName()
-        if (logBuf.find(refStr) == -1):
-            self.fail("Illegal Log File retrieved from " + getHostName())
-
-        # Retrieve Log File from a Sub-Node via the Main Node.
-        trgFile = "tmp/test_RetrieveCmd_4_2_tmp"
-        statObj = client.sendCmdGen("RETRIEVE",
-                                    1, trgFile, [["ng_log", ""],
-                                                 ["host_id", getNcu11()]])
-        logBuf = []
-        with open(trgFile) as fo:
-            for data in iter(partial(fo.read, 1024), ''):
-                logBuf.append(data)
-        logBuf = ''.join(logBuf)
-
-        refStr = "Setting up NG/AMS HTTP Server (Host: %s - IP: 0.0.0.0 - Port: 8011)" %\
-                 getHostName()
-        if (logBuf.find(refStr) == -1):
-            self.fail("Illegal Log File retrieved from %s/%s" %\
-                      (getNcu11(), getNmu()))
-
-
-    def test_RetrieveCmd_5(self):
-        """
-        Synopsis:
-        Retrieve Cfg. File from NMU/Sub-Node.
-
-        Description:
-        Test that the NG/ASM Configuration can be returned from a master
-        node and a sub-node via a master acting as proxy.
-
-        Expected Result:
-        When no host_id is specified, the cfg. from the contacted node should
-        be returned. When a host_id is specified, the cfg. from the specified
-        node should be returned via the contacted node acting as master.
-
-        Test Steps:
-        - Prepare simulated cluster.
-        - Request cfg. from master.
-        - Check that correct cfg. has been returned.
-        - Request cfg. from sub-node via the master.
-        - Check that correct cfg. has been returned.
-
-        Remarks:
-        ...
-
-        """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
-
-        # Retrieve Log File from the Main-Node.
-        trgFile = "tmp/test_RetrieveCmd_5_1_tmp"
-        client = sendPclCmd(port=8000)
-        client.sendCmdGen("RETRIEVE",
-                          1, trgFile, [["cfg", ""]])
-        logBuf = []
-        with open(trgFile) as fo:
-            for data in iter(partial(fo.read, 1024), ''):
-                logBuf.append(data)
-        logBuf = ''.join(logBuf)
-
-        refStr = "TEST CONFIG: %s:8000" % getHostName()
-        if (logBuf.find(refStr) == -1):
-            self.fail("Illegal Cfg. File retrieved from " + getHostName())
-
-        # Retrieve Log File from a Sub-Node via the Main Node.
-        trgFile = "tmp/test_RetrieveCmd_5_2_tmp"
-        statObj = client.sendCmdGen("RETRIEVE",
-                                    1, trgFile, [["cfg", ""],
-                                                 ["host_id", getNcu11()]])
-        logBuf = []
-        with open(trgFile) as fo:
-            for data in iter(partial(fo.read, 1024), ''):
-                logBuf.append(data)
-        logBuf = ''.join(logBuf)
-
-        refStr = "TEST CONFIG: %s:8011" % getHostName()
-        if (logBuf.find(refStr) == -1):
-            self.fail("Illegal Cfg. File retrieved from %s via %s" %\
-                      (getNcu11(), getNmu()))
-
-    def test_RetrieveCmd_6(self):
-        """
-        Synopsis:
-        Retrieve Internal File from NMU/Sub-Node.
-
-        Description:
-        With the RETRIEVE?internal Retrieve Request, it is possible to retrieve
-        files not being archived files and readable for the user running NGAS.
-        This test exercises this feature.
-
-        Expected Result:
-        The specified internal file should be located by the server and send
-        back to the requestor. The internal file is first retrieved from the
-        master node, then from a sub-node via the master acting as proxy.
-
-        Test Steps:
-        - Prepare simulated cluster with master and sub-node.
-        - Send RETRIEVE Command to retrieve /etc/hosts from the master.
-        - Check that the proper file has been retrieved.
-        - Send RETRIEVE Command to retrieve /etc/hosts from the sub-node
-          via the master, acting as proxy.
-        - Check that the proper file has been retrieved.
-
-        Remarks:
-        ...
-        """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
-
-        # Retrieve Log File from the Main-Node.
-        trgFile = "tmp/test_RetrieveCmd_5_1_tmp"
-        client = sendPclCmd(port=8000)
-        client.sendCmdGen("RETRIEVE",
-                          1, trgFile, [["internal", "/etc/hosts"]])
-        logBuf = []
-        with open(trgFile) as fo:
-            for data in iter(partial(fo.read, 1024), ''):
-                logBuf.append(data)
-        logBuf = ''.join(logBuf)
-
-        if (logBuf.find("localhost") == -1):
-            self.fail("Illegal internal file retrieved from %s: %s" %\
-                      (getHostName(), "/etc/hosts"))
-
-        # Retrieve Log File from a Sub-Node via the Main Node.
-        trgFile = "tmp/test_RetrieveCmd_5_2_tmp"
-        statObj = client.sendCmdGen("RETRIEVE",
-                                    1, trgFile, [["internal", "/etc/passwd"],
-                                                 ["host_id", getNcu11()]])
-        logBuf = []
-        with open(trgFile) as fo:
-            for data in iter(partial(fo.read, 1024), ''):
-                logBuf.append(data)
-        logBuf = ''.join(logBuf)
-
-        testroot = "root:x:0:0:"
-        if platform.system() == 'Darwin':
-            testroot = "root:*:0:0:"
-
-        if (logBuf.find(testroot) == -1):
-            self.fail("Illegal internal file retrieved from %s via %s: %s" %\
-                      (getNcu11(), getNmu(), "/etc/passwd"))
-
-    '''
     def test_RetrieveCmd_7(self):
         """
         Synopsis:
@@ -451,14 +263,14 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         # Retrieve file (File ID).
         fileId = "TEST.2001-05-08T15:25:00.123"
-        statObj = client.retrieve2File(fileId)
+        statObj = client.retrieve(fileId)
         refStatFile = "ref/ngamsRetrieveCmdTest_test_RetrieveCmd_7_1_ref"
         tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
         self.checkFilesEq(refStatFile, tmpStatFile,
                           "Unexpected response returned to RETRIEVE Command")
 
         # Retrieve file (File ID + File Version).
-        statObj = client.retrieve2File(fileId, fileVersion=2)
+        statObj = client.retrieve(fileId, fileVersion=2)
         tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
         self.checkFilesEq(refStatFile, tmpStatFile,
                           "Unexpected response returned to RETRIEVE Command")
@@ -467,93 +279,6 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         # TODO: Implement this case
 
 
-    '''def test_IntFolder_01(self):
-        """
-        Synopsis:
-        Retrieve TOC an internal folder from contacted node.
-
-        Description:
-        The purpose of this test is to verify the proper functioning of
-        retrieving folder status XML document using the
-        RETRIEVE?internal=<Folder>
-
-        Expected Result:
-        The contacted server should detect that the folder in question is a
-        local folder. It should detect that an XML list of the contents of the
-        folder is requested and it should return this.
-
-        Test Steps:
-        - Start server.
-        - Submit RETRIEVE?internal=/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/
-        - Check that the contents of the return XML document is as expected.
-
-        Remarks:
-        ...
-
-        Test Data:
-        ...
-        """
-        self.prepExtSrv(8888, 1, 1, 1)
-        sendPclCmd().archive("src/SmallFile.fits")
-        dirName = "/tmp/ngamsTest/NGAS/FitsStorage1-Main-1"
-        stat = sendPclCmd().sendCmd(NGAMS_RETRIEVE_CMD,
-                                  pars=[["internal", dirName]])
-        refStatFile = "ref/ngamsRemFileCmdTest_test_IntFolder_01_01_ref"
-        filtStat = filterDbStatus1(stat.dumpBuf(), filterTags=["FileSize:",
-                                                               "Owner:",
-                                                               "Group:",
-                                                               "Permissions:"])
-        tmpStatFile = saveInFile(None, filtStat)
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status for " +\
-                          "RETRIEVE Command/internal folder, local", sort=1)
-
-
-    def test_IntFolder_02(self):
-        """
-        Synopsis:
-        Retrieve an internal folder from contacted node/Proxy Mode.
-
-        Description:
-        The purpose of this test is to verify the proper functioning of
-        retrieving folder status XML document using the
-        RETRIEVE?internal=<Folder>&host_id=<Host>
-
-        Expected Result:
-        The contacted server should detect that the folder in question is a
-        on another node. It should forward the request to this node and return
-        the response from this node.
-
-        Test Steps:
-        - Start simulated cluster.
-        - Submit RETRIEVE?internal=/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/&\
-                          host_id=<Host>
-        - Check that the contents of the return XML document is as expected.
-
-        Remarks:
-        ...
-
-        Test Data:
-        ...
-        """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
-        sendPclCmd(port=8011).archive("src/SmallFile.fits")
-        dirName = "/tmp/ngamsTest/NGAS:8011/FitsStorage1-Main-1"
-        stat = sendPclCmd(port=8000).sendCmd(NGAMS_RETRIEVE_CMD,
-                                             pars=[["internal", dirName],
-                                                   ["host_id", "%s:8011" %\
-                                                    getHostName()]])
-        refStatFile = "ref/ngamsRemFileCmdTest_test_IntFolder_02_01_ref"
-        filtStat = filterDbStatus1(stat.dumpBuf(), filterTags=["FileSize:",
-                                                               "Owner:",
-                                                               "Group:",
-                                                               "Permissions:"])
-        tmpStatFile = saveInFile(None, filtStat)
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status for " +\
-                          "RETRIEVE Command/internal folder, proxy", sort=1)
-
-    '''
     def test_HttpRedirection_01(self):
         """
         Synopsis:
@@ -590,7 +315,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         sendPclCmd(port=8000).archive("src/SmallFile.fits")
         stat = sendPclCmd(port=8011).archive("src/SmallFile.fits")
         fileId = "TEST.2001-05-08T15:25:00.123"
-        stat = sendPclCmd(port=8000).sendCmd(NGAMS_RETRIEVE_CMD,
+        stat = sendPclCmd(port=8000).get_status(NGAMS_RETRIEVE_CMD,
                                              pars=[["file_id", fileId]])
         refStatFile = "ref/ngamsRemFileCmdTest_test_HttpRedirection_01_ref"
         tmpStatFile = saveInFile(None, filterDbStatus1(stat.dumpBuf()))
@@ -643,13 +368,12 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         self.assertEquals(stat.getStatus(), 'SUCCESS', None)
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_01")
-        cmdPars = [["file_id", "TEST.2001-05-08T15:25:00.123"],
-                   ["processing", "ngamsTest.ngamsTestDppi1"],
-                   ["test_suite", "ngamsRetrieveCmdTest"],
-                   ["test_case", "test_DppiProc_01"]]
-        stat = client.sendCmdGen(NGAMS_RETRIEVE_CMD,
-                                 outputFile=outFile,
-                                 pars=cmdPars)
+        pars = [["test_suite", "ngamsRetrieveCmdTest"],
+                ["test_case", "test_DppiProc_01"]]
+        stat = client.retrieve("TEST.2001-05-08T15:25:00.123",
+                               targetFile=outFile,
+                               processing="ngamsTest.ngamsTestDppi1",
+                               pars=pars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_01_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, result in file")
@@ -694,13 +418,12 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         client.archive("src/SmallFile.fits")
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_02")
-        cmdPars = [["file_id", "TEST.2001-05-08T15:25:00.123"],
-                   ["processing", "ngamsTest.ngamsTestDppi1"],
-                   ["test_suite", "ngamsRetrieveCmdTest"],
-                   ["test_case", "test_DppiProc_02"]]
-        stat = client.sendCmdGen(NGAMS_RETRIEVE_CMD,
-                                 outputFile=outFile,
-                                 pars=cmdPars)
+        pars = [["test_suite", "ngamsRetrieveCmdTest"],
+                ["test_case", "test_DppiProc_02"]]
+        stat = client.retrieve("TEST.2001-05-08T15:25:00.123",
+                               targetFile=outFile,
+                               processing="ngamsTest.ngamsTestDppi1",
+                               pars=pars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_02_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, result in buffer")
@@ -745,14 +468,12 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         self.assertEquals('SUCCESS', stat.getStatus())
         # Retrieve the file specifying to apply the DPPI.
         outFile = genTmpFilename("test_DppiProc_03")
-        cmdPars = [["file_id", "TEST.2001-05-08T15:25:00.123"],
-                   ["processing", "ngamsTest.ngamsTestDppi1"],
-                   ["test_suite", "ngamsRetrieveCmdTest"],
-                   ["test_case", "test_DppiProc_03"]]
-        stat = sendPclCmd(port=8000).sendCmdGen(
-                                                NGAMS_RETRIEVE_CMD,
-                                                outputFile=outFile,
-                                                pars=cmdPars)
+        pars = [["test_suite", "ngamsRetrieveCmdTest"],
+                ["test_case", "test_DppiProc_03"]]
+        stat = sendPclCmd(port=8000).retrieve("TEST.2001-05-08T15:25:00.123",
+                                              targetFile=outFile,
+                                              processing="ngamsTest.ngamsTestDppi1",
+                                              pars=pars)
         refStatFile = "ref/ngamsRemFileCmdTest_test_DppiProc_03_01_ref"
         self.checkFilesEq(refStatFile, outFile, "Incorrect status for " +\
                           "RETRIEVE Command/DPPI Processing, Proxy Mode, " +\
@@ -819,7 +540,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         trgFile = "tmp/test_VolumeDir_01_tmp"
         refFile = "src/SmallFile.fits"
         outFilePath = "tmp/SmallFile.fits"
-        client.retrieve2File("TEST.2001-05-08T15:25:00.123", 1, trgFile)
+        stat = client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile=trgFile)
+        self.assertEqual(NGAMS_SUCCESS, stat.getStatus(), stat.getMessage())
 
         # unzip the the file and diff against original
         unzip(trgFile, outFilePath)

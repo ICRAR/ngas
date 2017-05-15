@@ -243,13 +243,16 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        _, dbObj = self.prepExtSrv()
+        _, dbObj = self.prepExtSrv(cfgProps=(('NgamsCfg.Db[1].Snapshot', "0"),))
         client = sendPclCmd()
-        for n in range(3): stat = client.archive("src/SmallFile.fits")
+        for n in range(3):
+            stat = client.archive("src/SmallFile.fits")
+            self.assertEquals('SUCCESS', stat.getStatus())
+
         diskId1 = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         fileId  = "TEST.2001-05-08T15:25:00.123"
         fileVer = 2
-        status = client.sendCmd(NGAMS_CLONE_CMD, pars=[["disk_id", diskId1]])
+        status = client.get_status(NGAMS_CLONE_CMD, pars=[["disk_id", diskId1]])
         self.assertEquals('SUCCESS', status.getStatus())
 
         diskId2 = "tmp-ngamsTest-NGAS-FitsStorage2-Main-3"
@@ -258,7 +261,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         for execute in [0, 1]:
             httpPars=[["disk_id", diskId2], ["file_id", fileId],
                       ["file_version", fileVer], ["execute", execute]]
-            stat = client.sendCmd(NGAMS_REMFILE_CMD, pars=httpPars)
+            stat = client.get_status(NGAMS_REMFILE_CMD, pars=httpPars)
             self.assertStatus(stat)
 
             fileInfo = ngamsFileInfo.ngamsFileInfo()

@@ -117,8 +117,14 @@ def handlePars(reqPropsObj,
             logger.info("No file_id given, using basename of fileUri: %s", 
                  parDic[FILE_ID])
 
-    if (reqPropsObj.hasHttpPar(VERSIONING)):
-        parDic[VERSIONING] = int(reqPropsObj.getHttpPar(VERSIONING))
+    # TODO: It would seem like 'versioning' is not used anywhere,
+    #       but still gets more priority than 'no_versioning'.
+    #       which is used everywhere
+    if VERSIONING in reqPropsObj:
+        parDic[VERSIONING] = int(reqPropsObj[VERSIONING])
+    elif 'no_versioning' in reqPropsObj:
+        parDic[VERSIONING] = 0 if int(reqPropsObj['no_versioning']) else 1
+
     # Set also the no_versioning parameter for backwards compatibility reasons
     if (parDic[VERSIONING]):
         reqPropsObj.addHttpPar("no_versioning", "0")

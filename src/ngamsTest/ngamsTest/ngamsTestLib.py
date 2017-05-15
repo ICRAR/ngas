@@ -34,20 +34,24 @@ This module contains test utilities used to build the NG/AMS Functional Tests.
 
 import collections
 import commands
-from contextlib import nested
-from functools import partial
+import contextlib
+import functools
 import getpass
 import glob
 import gzip
 import importlib
 import logging
+import multiprocessing.pool
 import os
 import shutil
 import socket
 import subprocess
 import sys
+import threading
 import time
 import unittest
+import uuid
+import xml.dom.minidom
 
 import pkg_resources
 import pyfits
@@ -79,6 +83,9 @@ logging_levels = {
 
 # Global parameters to control the test run.
 _noCleanUp   = 0
+
+# Pool used to start/shutdown servers in parallel
+srv_mgr_pool = multiprocessing.pool.ThreadPool(5)
 
 # Constants.
 STD_DISK_STAT_FILT = ["AccessDate", "AvailableMb", "CreationDate", "Date",
@@ -251,8 +258,7 @@ def waitReqCompl(clientObj,
     """
     startTime = time.time()
     while ((time.time() - startTime) < timeOut):
-        res = clientObj.sendCmdGen("STATUS",
-                         1, "", [["request_id", str(requestId)]])
+        res = clientObj.get_status("STATUS", pars=[["request_id", str(requestId)]])
         if (res.getCompletionPercent() != None):
             if (float(res.getCompletionPercent()) >= 99.9):
                 break
@@ -293,8 +299,7 @@ def correctUsage():
     Returns:   Void.
     """
     print "Input parameters for NG/AMS test programs:\n"
-    print "<test program> [-v <level>] [-logLevel <level> " +\
-          "-logFile <file>] [-tests <test name>] [-noCleanUp]\n"
+    print "<test program> [-v <level>] [-tests <test name>] [-noCleanUp]\n"
     print ngamsCopyrightString()
 
 
@@ -438,7 +443,7 @@ def genTmpFilename(prefix = ""):
 
     Returns:   Returns unique, temporary filename (string).
     """
-    return "tmp/%s%.5f_tmp" % (prefix, time.time())
+    return "tmp/%s%s_tmp" % (prefix, str(uuid.uuid4()))
 
 
 def saveInFile(filename,
@@ -468,14 +473,18 @@ def delNgasTbls(dbObj):
 
     Returns:   Void.
     """
+    dbObj.query2("DELETE FROM ngas_cache")
+    dbObj.query2("DELETE FROM ngas_hosts")
     dbObj.query2("DELETE FROM ngas_disks")
     dbObj.query2("DELETE FROM ngas_disks_hist")
     dbObj.query2("DELETE FROM ngas_files")
+    dbObj.query2("UPDATE ngas_containers set parent_container_id = null")
+    dbObj.query2("DELETE FROM ngas_containers")
+    dbObj.query2("DELETE FROM ngas_subscr_queue")
     dbObj.query2("DELETE FROM ngas_subscr_back_log")
     dbObj.query2("DELETE FROM ngas_subscribers")
     dbObj.query2("DELETE FROM ngas_cfg_pars")
     dbObj.query2("DELETE FROM ngas_cfg")
-    dbObj.query2("DELETE FROM ngas_containers")
 
 
 def delNgamsDirs(cfgObj):
@@ -492,49 +501,6 @@ def delNgamsDirs(cfgObj):
             shutil.rmtree(d, True)
     except Exception:
         logger.exception("Error encountered removing NG/AMS directories")
-
-
-def checkHostEntry(dbObj,
-                   dbHostId,
-                   domain = None,
-                   ipAddress = None,
-                   clusterName = None):
-    """
-    Check that the given host has an entry in the DB. If this is not the case,
-    create it.
-
-    dbObj:               DB connection object (ngamsDb).
-
-    dbHostId:            DB Host ID in to check for (string).
-
-    domain:              Domain name of NGAS Node (string).
-
-    ipAddress:           IP address of the node (string|None).
-
-    clusterName:         Cluster name of NGAS Node (string).
-
-    Returns:             Void.
-    """
-    try:
-        dbObj.getIpFromHostId(dbHostId)
-        hostDefined = 1
-    except Exception:
-        hostDefined = 0
-    hostInfo = socket.gethostbyname_ex(dbHostId.split(":")[0])
-    fullHostName = hostInfo[0]
-    ip = hostInfo[2][0]
-    if (not domain): domain = fullHostName[(fullHostName.find(".") + 1):]
-    if (not ipAddress): ipAddress = ip
-    if (not clusterName): clusterName = dbHostId
-    if (not hostDefined):
-        sql = "INSERT INTO ngas_hosts (host_id, domain, ip_address, " +\
-              "cluster_name, srv_suspended) VALUES ({0}, {1}, {2}, {3}, 0)"
-        args = (dbHostId, domain, ipAddress, clusterName)
-    else:
-        sql = "UPDATE ngas_hosts SET domain={0}, ip_address={1}, " +\
-              "cluster_name={2}, srv_suspended=0 WHERE host_id={3}"
-        args = (domain, ipAddress, clusterName, dbHostId)
-    dbObj.query2(sql, args)
 
 
 def sendPclCmd(port = 8888,
@@ -554,9 +520,7 @@ def sendPclCmd(port = 8888,
 
     Returns:       Created instance of Python Client (ngamsPClient).
     """
-    return ngamsPClient.ngamsPClient('localhost', port).setAuthorization(auth).\
-           setTimeOut(timeOut)
-
+    return ngamsPClient.ngamsPClient('127.0.0.1', port, timeout=timeOut, auth=auth)
 
 def sendExtCmd(port,
                cmd,
@@ -587,20 +551,15 @@ def sendExtCmd(port,
     Returns:       Filename of file containing filtered ASCII dump of status
                    or ngamsStatus object (string|ngamsStatus).
     """
-    try:
-        statObj = sendPclCmd(port=port).sendCmdGen(cmd, 1, "", pars)
-        if (genStatFile):
-            tmpStatFile = "tmp/%s_CmdStatus_%s_tmp" %\
-                          (cmd, str(int(time.time())))
-            buf = statObj.dumpBuf().replace(getHostName(), "___LOCAL_HOST___")
-            saveInFile(tmpStatFile, filterDbStatus1(buf, filterTags))
-            return tmpStatFile
-        else:
-            return statObj
-    except Exception, e:
-        errMsg = "Problem handling command to external server (localhost:%d). " +\
-                 "Error: %s"
-        raise Exception, errMsg % (port, str(e))
+    statObj = sendPclCmd(port=port).get_status(cmd, pars=pars)
+    if (genStatFile):
+        tmpStatFile = "tmp/%s_CmdStatus_%s_tmp" %\
+                      (cmd, str(int(time.time())))
+        buf = statObj.dumpBuf().replace(getHostName(), "___LOCAL_HOST___")
+        saveInFile(tmpStatFile, filterDbStatus1(buf, filterTags))
+        return tmpStatFile
+    else:
+        return statObj
 
 
 def filterDbStatus1(statBuf,
@@ -763,24 +722,16 @@ def runTest(argv):
 
     Returns:  Void.
     """
-    testModuleName = argv[0].split(".")[0]
+    testModuleName = argv[0].split('/')[-1].split(".")[0]
     tests = []
     silentExit = 0
     verboseLevel = 0
-    logFile = None
-    logLevel = 0
     skip = None
     idx = 1
     while idx < len(argv):
         par = argv[idx].upper()
         try:
-            if (par == "-LOGLEVEL"):
-                idx += 1
-                logLevel = int(argv[idx])
-            elif (par == "-LOGFILE"):
-                idx += 1
-                logFile = argv[idx]
-            elif (par == "-V"):
+            if (par == "-V"):
                 idx += 1
                 verboseLevel = int(argv[idx])
             elif (par == "-TESTS"):
@@ -830,9 +781,8 @@ def runTest(argv):
         testSuite = unittest.TestSuite()
         for testCase in tests:
             testSuite.addTest(testClass(testCase))
-    result = ngamsTextTestRunner(sys.stdout, 1, 0).run(testSuite)
-    if not result.wasSuccessful():
-        sys.exit(1)
+    res = ngamsTextTestRunner(sys.stdout, 1, 0).run(testSuite)
+    sys.exit(0 if res.wasSuccessful() else 1)
 
 
 def writeFitsKey(filename,
@@ -866,6 +816,31 @@ def remFitsKey(filename,
     Returns:    Void.
     """
     pyfits.delval(filename, key)
+
+
+def db_aware_cfg(cfg_filename, check=0, db_id_attr="Db-Test"):
+    """
+    Load the configuration stored in `cfg_filename` and replace the Db element
+    with whatever is in the NGAS_DB_CONF environment variable, if present
+    """
+
+    if 'NGAS_TESTDB' not in os.environ or not os.environ['NGAS_TESTDB']:
+        return ngamsConfig.ngamsConfig().load(cfg_filename, check)
+
+    new_db = xml.dom.minidom.parseString(os.environ['NGAS_TESTDB'])
+    new_db.documentElement.attributes['Id'].value = db_id_attr
+    root = xml.dom.minidom.parseString(loadFile(cfg_filename)).documentElement
+    for n in root.childNodes:
+        if n.localName != 'Db':
+            continue
+
+        root.removeChild(n)
+        root.appendChild(new_db.documentElement)
+        cfg_filename = saveInFile(genTmpFilename('CFG'), root.toprettyxml())
+        return ngamsConfig.ngamsConfig().load(cfg_filename, check)
+
+    raise Exception('Db element not found in original configuration')
+
 
 def prepCfg(cfgFile,
             parList):
@@ -963,8 +938,8 @@ def getThreadId(logFile,
     return tid
 
 def unzip(infile, outfile):
-    with nested(gzip.open(infile, 'rb'), open(outfile, 'w')) as (gz, out):
-        for data in iter(partial(gz.read, 1024), ''):
+    with contextlib.nested(gzip.open(infile, 'rb'), open(outfile, 'w')) as (gz, out):
+        for data in iter(functools.partial(gz.read, 1024), ''):
             out.write(data)
 
 
@@ -972,12 +947,17 @@ def unzip(infile, outfile):
 # END: Utility functions
 ###########################################################################
 
-ServerInfo = collections.namedtuple('ServerInfo', ['pid', 'port', 'rootDir'])
+ServerInfo = collections.namedtuple('ServerInfo', ['proc', 'port', 'rootDir'])
 
 class ngamsTestSuite(unittest.TestCase):
     """
     Test Case class for the NG/AMS Functional Tests.
     """
+
+    # Used to serialize the startup of server processes
+    # due to the subprocess module not handling threaded code well
+    # in python 2.7
+    _proc_startup_lock = threading.Lock()
 
     def __init__(self,
                  methodName = "runTest"):
@@ -987,14 +967,8 @@ class ngamsTestSuite(unittest.TestCase):
         methodName:    Name of method to run to run test case (string_.
         """
         unittest.TestCase.__init__(self, methodName)
-        self.__extSrvInfo    = []
-
-        # TODO: Get rid of these.
-        self.__srvObj        = None
-        self.__cfgObj        = None
-        self.__fromSrv       = ""
-        self.__toSrv         = ""
-        self.__foList        = []
+        logger.info("Starting test %s" % (methodName,))
+        self.extSrvInfo    = []
         self.__mountedDirs   = []
 
     def assertStatus(self, status, expectedStatus='SUCCESS'):
@@ -1008,15 +982,11 @@ class ngamsTestSuite(unittest.TestCase):
                    autoOnline = 1,
                    cfgFile = "src/ngamsCfg.xml",
                    multipleSrvs = 0,
-                   domain = None,
-                   ipAddress = None,
-                   clusterName = None,
                    cfgProps = [],
                    dbCfgName = None,
                    srvModule = None,
                    skip_database_creation = False,
-                   force=False,
-                   server_type = 'ngamsServer'):
+                   force=False):
         """
         Prepare a standard server object, which runs as a separate process and
         serves via the standard HTTP interface.
@@ -1034,13 +1004,6 @@ class ngamsTestSuite(unittest.TestCase):
 
         multipleSrvs:  If set to 1, this means that multiple servers might
                        be running on the node (integer/0|1).
-
-        domain:        Domain for server (string).
-
-        ipAddress:     IP address for the host where the server is
-                       running (string).
-
-        clusterName:   Name of cluster to which this node belongs (string).
 
         cfgProps:      With this parameter it is possible to set specific
                        cfg. parameters before starting the server. This
@@ -1075,7 +1038,7 @@ class ngamsTestSuite(unittest.TestCase):
             # If a DB Configuration Name is specified, we first have to
             # extract the configuration information from the DB to
             # create a complete temporary cfg. file.
-            cfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
+            cfgObj = db_aware_cfg(cfgFile)
             dbObj = ngamsDb.from_config(cfgObj)
             cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, dbObj)
             del dbObj
@@ -1083,19 +1046,12 @@ class ngamsTestSuite(unittest.TestCase):
             logger.debug("Successfully read configuration from database, root dir is %s", cfgObj2.getRootDirectory())
             cfgFile = saveInFile(None, cfgObj2.genXmlDoc(0))
 
-        # Derive NG/AMS Server name for this instance.
-        hostName = getHostName()
-        if (not multipleSrvs):
-            hostId = hostName
-        else:
-            hostId = "%s:%d" % (hostName, port)
-
-        cfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
+        cfgObj = db_aware_cfg(cfgFile)
 
         # Change what needs to be changed, like the position of the Sqlite
         # database file when necessary, the custom configuration items, and the
         # port number
-        self.point_to_sqlite_database(cfgObj, hostName, not multipleSrvs and not dbCfgName and not skip_database_creation)
+        self.point_to_sqlite_database(cfgObj, not multipleSrvs and not dbCfgName and not skip_database_creation)
         if (cfgProps):
             for cfgProp in cfgProps:
                 # TODO: Handle Cfg. Group ID.
@@ -1112,75 +1068,67 @@ class ngamsTestSuite(unittest.TestCase):
             logger.debug("Clearing NGAS DB ...")
             delNgasTbls(dbObj)
 
-        # Insert an entry for this server on the host table
-        checkHostEntry(dbObj, hostId, domain, ipAddress, clusterName)
-
         # Dump configuration into the filesystem so the server can pick it up
         tmpCfg = genTmpFilename("CFG_") + ".xml"
         cfgObj.save(tmpCfg, 0)
 
         # Execute the server as an external process.
-        #srvModule = srvModule or 'ngamsServer.ngamsServer'
-        if srvModule:
-            execCmd = [sys.executable, '-m', srvModule]
-        else:
-            execCmd = [server_type]
-        execCmd += ["-cfg", tmpCfg, "-v", str(verbose)]
+        srvModule = srvModule or 'ngamsServer.ngamsServer'
+        this_dir = os.path.normpath(pkg_resources.resource_filename(__name__, '.'))  # @UndefinedVariable
+        parent_dir = os.path.dirname(this_dir)
+        execCmd  = [sys.executable, '-m', srvModule]
+        execCmd += ["-cfg", os.path.abspath(tmpCfg), "-v", str(verbose)]
+        execCmd += ['-path', parent_dir]
         if force:        execCmd.append('-force')
         if autoOnline:   execCmd.append("-autoOnline")
         if multipleSrvs: execCmd.append("-multipleSrvs")
         if dbCfgName:    execCmd.extend(["-dbCfgId", dbCfgName])
-        logger.info("Starting external NG/AMS Server with shell command: %s", " ".join(execCmd))
 
-        # TODO: kind of a hack really...
-        # Include this directory in the python path
-        # This way the server can load plug-ins that reside on this directory
-        # (which is required by some tests)
-        this_dir = pkg_resources.resource_filename(__name__, '.')  # @UndefinedVariable
-        parent_dir = os.path.normpath(os.path.join(this_dir, '..'))
-        env = dict(os.environ)
-        ppaths = env['PYTHONPATH'].split(os.pathsep) if 'PYTHONPATH' in env else []
-        ppaths.append(parent_dir)
-        env['PYTHONPATH'] = os.pathsep.join(ppaths)
-        srvProcess = subprocess.Popen(execCmd, env=env)
+        logger.info("Starting external NG/AMS Server in port %d with command: %s", port, " ".join(execCmd))
+        with self._proc_startup_lock:
+            srvProcess = subprocess.Popen(execCmd, shell=False)
 
         # We have to wait until the server is serving.
+        server_info = ServerInfo(srvProcess, port, cfgObj.getRootDirectory())
         pCl = sendPclCmd(port=port)
         startTime = time.time()
-        stat = None
-        while ((time.time() - startTime) < 20):
-            if (stat):
-                state = "ONLINE" if autoOnline else "OFFLINE"
-                logger.debug("Test server running - State: %s", state)
-                if stat.getState() == state: break
+        while True:
+
+            # Check if the server actually didn't start up correctly
+            ecode = srvProcess.poll()
+            if ecode is not None:
+                raise Exception("Server exited with code %d during startup" % (ecode,))
+
+            # "ping" the server
             try:
                 stat = pCl.status()
-            except Exception:
+            except socket.error:
                 logger.debug("Polled server - not yet running ...")
                 time.sleep(0.2)
+                continue
 
-        if ((time.time() - startTime) >= 20):
-            self.termExtSrv(srvProcess, port)
-            raise Exception,"NGAMS TEST LIB> NG/AMS Server did not start " +\
-                  "correctly"
+            # Check the status is what we expect
+            state = "ONLINE" if autoOnline else "OFFLINE"
+            logger.debug("Test server running - State: %s", state)
+            if stat.getState() == state:
+                break
 
-        self.__extSrvInfo.append(ServerInfo(srvProcess, port, cfgObj.getRootDirectory()))
+            # Took too long?
+            if ((time.time() - startTime) >= 20):
+                self.termExtSrv(server_info)
+                raise Exception("Server did not start correctly within 20 [s]")
+
+        self.extSrvInfo.append(server_info)
 
         return (cfgObj, dbObj)
 
 
-    def termExtSrv(self,
-                   srvProcess,
-                   port):
+    def termExtSrv(self, srvInfo):
         """
         Terminate an externally running server.
-
-        pid:       PID of server (integer).
-
-        port:      Port number used by externally running server (integer).
-
-        Returns:   Void.
         """
+
+        srvProcess, port, rootDir = srvInfo
 
         if srvProcess.poll() is not None:
             logger.debug("Server process %d (port %d) already dead x(, no need to terminate it again", srvProcess.pid, port)
@@ -1254,14 +1202,13 @@ class ngamsTestSuite(unittest.TestCase):
         except Exception:
             logger.exception("Error while finishing server process %d, port %d", srvProcess.pid, port)
             raise
+        finally:
+            if ((not getNoCleanUp()) and rootDir):
+                shutil.rmtree(rootDir, True)
 
     def terminateAllServer(self):
-        for srvInfo in self.__extSrvInfo:
-            self.termExtSrv(srvInfo.pid, srvInfo.port)
-            # Remove NGAS Root Directories if clean-up requested.
-            if ((not getNoCleanUp()) and srvInfo.rootDir):
-                shutil.rmtree(srvInfo.rootDir, True)
-        self.__extSrvInfo = []
+        srv_mgr_pool.map(self.termExtSrv, self.extSrvInfo)
+        self.extSrvInfo = []
 
     def setUp(self):
         # Make sure there is a 'tmp' directory here, since most of the tests
@@ -1368,6 +1315,57 @@ class ngamsTestSuite(unittest.TestCase):
             logger.info("Error encountered: %s", errMsg.replace("\n", " | "))
             self.fail(errMsg)
 
+    def start_srv_in_cluster(self, multSrvs, comCfgFile, srvInfo):
+        """
+        Starts a given server which is part of a cluster of servers
+        """
+
+        portNo      = int(srvInfo[0])
+        if (len(srvInfo) > 4):
+            cfgParList = srvInfo[4]
+        else:
+            cfgParList = []
+
+        # Set port number in configuration and allocate a mount root
+        hostName = getHostName()
+        srvId = "%s:%d" % (hostName, portNo)
+        if (multSrvs):
+            mtRtDir = "/tmp/ngamsTest/NGAS:%d" % portNo
+            rmFile("/tmp/ngamsTest/NGAS:%d" %(portNo,))
+        else:
+            mtRtDir = "/tmp/ngamsTest/NGAS"
+        rmFile(mtRtDir)
+
+        # Set up our server-specific configuration
+        cfg = ngamsConfig.ngamsConfig().load(comCfgFile)
+        cfg.storeVal("NgamsCfg.Header[1].Type", "TEST CONFIG: %s" % srvId)
+        cfg.storeVal("NgamsCfg.Server[1].PortNo", portNo)
+        cfg.storeVal("NgamsCfg.Server[1].RootDirectory", mtRtDir)
+        cfg.storeVal("NgamsCfg.ArchiveHandling[1].BackLogBufferDirectory", mtRtDir)
+        cfg.storeVal("NgamsCfg.Processing[1].ProcessingDirectory", mtRtDir)
+        cfg.storeVal("NgamsCfg.Log[1].LocalLogFile", os.path.normpath(mtRtDir + "/log/LogFile.nglog"))
+
+        # Set special values if so specified.
+        for cfgPar in cfgParList:
+            cfg.storeVal(cfgPar[0], cfgPar[1])
+
+        # And dump it into our server-specific configuration file
+        tmpCfgFile = "tmp/%s_tmp.xml" % srvId
+        cfg.save(tmpCfgFile, 0)
+
+        # Check if server has entry in referenced DB. If not, create it.
+        db = ngamsDb.from_config(cfg)
+        db.close()
+
+        # Start server + add reference to server configuration object and
+        # server DB object.
+        srvCfgObj, srvDbObj = self.prepExtSrv(portNo,
+                                              delDirs = 0,
+                                              clearDb = 0,
+                                              autoOnline = 1,
+                                              cfgFile = tmpCfgFile,
+                                              multipleSrvs = multSrvs)
+        return [srvId, srvCfgObj, srvDbObj]
 
     def prepCluster(self,
                     comCfgFile,
@@ -1405,84 +1403,24 @@ class ngamsTestSuite(unittest.TestCase):
 
                                                                  (dictionary).
         """
-        # Delete all NGAS Mount Root Directories.
 
-        srvDic = {}
-        multSrvs = (len(serverList) - 1)
-        for idx, srvInfo in enumerate(serverList):
-            portNo      = int(srvInfo[0])
-            domain      = srvInfo[1]
-            ipAddress   = srvInfo[2]
-            clusterName = srvInfo[3]
-            if (len(srvInfo) > 4):
-                cfgParList = srvInfo[4]
-            else:
-                cfgParList = []
+        # Create the shared database first of all
+        tmpCfg = db_aware_cfg(comCfgFile)
+        self.point_to_sqlite_database(tmpCfg, createDatabase)
+        if createDatabase:
+            db = ngamsDb.from_config(tmpCfg)
+            delNgasTbls(db)
+            db.close()
 
-            tmpCfg = ngamsConfig.ngamsConfig().load(comCfgFile)
+        multSrvs = len(serverList) > 1
 
-            # Set port number in configuration and allocate a mount root
-            # directory + other directories + generate new, temporary
-            # configuration file based on this information.
-            hostName = getHostName()
-            srvId = "%s:%d" % (hostName, portNo)
-            if (multSrvs):
-                rmFile("/tmp/ngamsTest/NGAS:%d" %(portNo,))
-                srvDbHostId = srvId
-            else:
-                rmFile("/tmp/ngamsTest/NGAS")
-                srvDbHostId = hostName
+        # Start them in parallel now that we have all set up for it
+        res = srv_mgr_pool.map(functools.partial(self.start_srv_in_cluster, multSrvs, comCfgFile), serverList)
 
-            # Create directories.
-            if (multSrvs):
-                mtRtDir    = "/tmp/ngamsTest/NGAS:%d" % portNo
-            else:
-                mtRtDir    = "/tmp/ngamsTest/NGAS"
-            tmpCfg.storeVal("NgamsCfg.Header[1].Type", "TEST CONFIG: %s" %\
-                            srvId)
-            tmpCfg.storeVal("NgamsCfg.Server[1].PortNo", portNo)
-            tmpCfg.storeVal("NgamsCfg.Server[1].RootDirectory", mtRtDir)
-            tmpCfg.storeVal("NgamsCfg.ArchiveHandling[1]." +\
-                            "BackLogBufferDirectory", mtRtDir)
-            tmpCfg.storeVal("NgamsCfg.Processing[1].ProcessingDirectory",
-                            mtRtDir)
-            tmpCfg.storeVal("NgamsCfg.Log[1].LocalLogFile",
-                            os.path.normpath(mtRtDir + "/log/LogFile.nglog"))
-            # Set special values if so specified.
-            for cfgPar in cfgParList: tmpCfg.storeVal(cfgPar[0], cfgPar[1])
-            tmpCfgFile = "tmp/%s_tmp.xml" % srvId
+        # srvId: (cfgObj, dbObj)
+        return {r[0]: (r[1], r[2]) for r in res}
 
-            # Create a common database only once
-            self.point_to_sqlite_database(tmpCfg, hostName, createDatabase and idx == 0)
-
-            tmpCfg.save(tmpCfgFile, 0)
-
-            # Check if server has entry in referenced DB. If not, create it.
-            tmpDbObj = ngamsDb.from_config(tmpCfg)
-            checkHostEntry(tmpDbObj, srvDbHostId, domain, ipAddress,
-                           clusterName)
-
-            # Make sure the database is empty
-            if createDatabase and idx == 0:
-                delNgasTbls(tmpDbObj)
-            del tmpDbObj
-
-            # Start server + add reference to server configuration object and
-            # server DB object.
-            srvCfgObj, srvDbObj = self.prepExtSrv(portNo,
-                                                  delDirs = 0,
-                                                  clearDb = 0,
-                                                  autoOnline = 1,
-                                                  cfgFile = tmpCfgFile,
-                                                  multipleSrvs = multSrvs,
-                                                  domain = domain,
-                                                  ipAddress = ipAddress,
-                                                  clusterName = clusterName)
-            srvDic[srvId] = [srvCfgObj, srvDbObj]
-
-        return srvDic
-
-    def point_to_sqlite_database(self, cfgObj, hostName, create):
+    def point_to_sqlite_database(self, cfgObj, create):
         # Exceptional handling for SQLite.
         # TODO: It would probably be better if we simply run
         # the SQL script that creates the tables
@@ -1623,7 +1561,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:      Substituted query value (string).
         """
-        queryVal = str(queryVal.strip().replace("$HOSTNAME", getHostName()))
+        queryVal = str(queryVal.strip().replace("$HOSTNAME", getHostName() + ":8888"))
         if ((queryVal.find("<DateTime object") != -1) or
             checkIfIso8601(queryVal.lstrip('u').strip("'"))):
             queryVal = "_DATETIME_"
@@ -1641,10 +1579,8 @@ class ngamsTestSuite(unittest.TestCase):
     def _checkQuery(self,
                     query,
                     refQuery,
-                    queryPlan,
-                    queryPlanIdx,
                     refQueryPlan,
-                    refQueryPlanIdx):
+                    query_idx):
         """
         Compare two components of an SQL query or query result.
 
@@ -1668,17 +1604,15 @@ class ngamsTestSuite(unittest.TestCase):
                 errMsg = "Mismatch found in query plan.\n\n" +\
                          "Expected component:\n\n%s\n\n" +\
                          "Component found:\n\n%s\n\n" +\
-                         "Ref. query:\n\n%s\n\n" +\
-                         "Query plan:\n\n%s/%d\n\n" +\
-                         "Ref. query plan:\n\n%s/%d"
-                self.fail(errMsg % (refQueryEl, queryEl, refQuery,
-                                    queryPlan, (queryPlanIdx + 1), refQueryPlan,
-                                    refQueryPlanIdx+1))
+                         "Query number: %d\n" + \
+                         "Query plan:\n\n%s\n\n" +\
+                         "Ref. query plan:\n\n%s"
+                self.fail(errMsg % (refQueryEl, queryEl, query_idx, refQuery, refQueryPlan))
             idx += 1
 
 
     def checkQueryPlan(self,
-                       queryPlan,
+                       queryPlanLines,
                        refQueryPlan):
         """
         Verify that contents of the given query plan against the reference
@@ -1694,26 +1628,10 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:        Void.
         """
-        queryPlanLines = loadFile(queryPlan).split("\n")
-        refQueryPlanLines = loadFile(refQueryPlan).split("\n")
-        idx1 = 0
-        idx2 = 0
-        while (idx1 < len(refQueryPlanLines)):
-            # Skip empty lines, comment lines in the Reference Query Plan.
-            if ((refQueryPlanLines[idx1].strip() == "") or
-                (refQueryPlanLines[idx1].strip()[0] == "#")):
-                idx1 += 1
-                continue
-            refQuery, refRes = refQueryPlanLines[idx1].split(": ")
-            query, queryRes  = queryPlanLines[idx2].split(": ")
-            # Check contents of the query against the ref. query:
-            self._checkQuery(query, refQuery, queryPlan, idx2, refQueryPlan,
-                             idx1)
-            # Check contents of the result against the ref. query result:
-            self._checkQuery(queryRes, refRes, queryPlan, idx2, refQueryPlan,
-                             idx1)
-            idx1 += 1
-            idx2 += 1
+        refQueryPlanLines = filter(None, loadFile(refQueryPlan).split("\n"))
+        self.assertEqual(len(refQueryPlanLines), len(queryPlanLines))
+        for i, (query, refQuery) in enumerate(zip(queryPlanLines, refQueryPlanLines), 1):
+            self._checkQuery(query, refQuery, refQueryPlan, i)
 
 
     def checkQueryPlanLogFile(self,
@@ -1734,28 +1652,21 @@ class ngamsTestSuite(unittest.TestCase):
 
         Returns:       Void.
         """
-        resTag1 = "Result of SQL query"
+        resTag1 = "Performing SQL query with parameters: "
         resTag2 = "Performing SQL query (using a cursor):"
         with open(logFile, 'r') as f:
             queryLines = [l for l in f if threadId in l and (resTag1 in l or resTag2 in l)]
 
-        tmpQueryPlan = genTmpFilename("QUERY_PLAN_")
-        saveInFile(tmpQueryPlan, '\n'.join(queryLines))
-        queryPlan = ""
-
+        queryPlan = []
         for line in queryLines:
             line = line.strip()
             if resTag1 in line:
-                sqlQuery, sqlRes = line.split(resTag1)[1].split(": ")
-                sqlQuery = sqlQuery.strip()
-                sqlRes = sqlRes.strip()
+                sqlQuery = line.split(resTag1)[1].strip()
             else:
                 sqlQuery = line.split(": ")[1].split(" [ngamsDb")[0]
-                sqlRes = ""
-            queryPlan += "%s: %s\n" % (sqlQuery, sqlRes)
-        tmpQueryPlan2 = genTmpFilename("QUERY_PLAN_2_")
-        saveInFile(tmpQueryPlan2, queryPlan)
-        self.checkQueryPlan(tmpQueryPlan2, refQueryPlan)
+            queryPlan.append(sqlQuery)
+
+        self.checkQueryPlan(queryPlan, refQueryPlan)
 
     def markNodesAsUnsusp(self, dbConObj, nodes):
         """
@@ -1783,7 +1694,7 @@ class ngamsTestSuite(unittest.TestCase):
                 time.sleep(0.1)
 
         self.markNodesAsUnsusp(dbConObj, nodes)
-        self.fail("Sub-node did not suspend itself within %ds"%timeOut)
+        self.fail("Sub-node %s did not suspend itself within %d [s]" % (node, timeOut))
 
     def waitTillWokenUp(self, dbConObj, node, timeOut, nodes):
         """

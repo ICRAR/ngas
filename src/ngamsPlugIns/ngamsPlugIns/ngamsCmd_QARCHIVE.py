@@ -48,6 +48,7 @@ simplified in a few ways:
 import logging
 import os
 import random
+import sys
 import time
 import urlparse
 
@@ -77,7 +78,9 @@ def getTargetVolume(srvObj):
     res = srvObj.getDb().getAvailableVolumes(srvObj.getHostId())
     if not res:
         return None
+
     # Shuffle the results.
+    res = list(res)
     random.shuffle(res)
     return ngamsDiskInfo.ngamsDiskInfo().unpackSqlResult(res[0])
 
@@ -257,45 +260,49 @@ def handleCmd(srvObj,
     uri = reqPropsObj.getFileUri()
     logger.debug("Checking File URI scheme for %s", uri)
     file_version_uri = None
-    uri_res = urlparse.urlparse(uri)
 
-    # work around https://bugs.python.org/issue9374 in python < 2.7.4
-    # where the query part is not parsed for all schemes (so we have to
-    # parse it out from the path ourselves)
-    
-    scheme, netloc, path, params, query, fragment = uri_res
-    if not query:
-        idx = uri_res.path.find('?')
-        if idx != -1:
-            query = uri_res.path[idx+1:]
-            path = uri_res.path[:idx]
-    uri_res = urlparse.ParseResult(scheme, netloc, path, params, query, fragment)
+    if reqPropsObj.is_GET():
 
-    base_name = uri_res.path
-    if uri_res.scheme:
-        if uri_res.query:
-            params = urlparse.parse_qs(uri_res.query)
-            try:
-                file_id = params['file_id'][0]
-                base_name = os.path.basename(file_id)
-            except KeyError:
-                pass
-            try:
-                file_version_uri = params['file_version'][0]
+        # work around https://bugs.python.org/issue9374 in python < 2.7.4
+        # where the query part is not parsed for all schemes (so we have to
+        # parse it out from the path ourselves)
+        uri_res = urlparse.urlparse(uri)
+        if sys.version < (2,7,4):
+            scheme, netloc, path, params, query, fragment = uri_res
+            if not query:
+                idx = uri_res.path.find('?')
+                if idx != -1:
+                    query = uri_res.path[idx+1:]
+                    path = uri_res.path[:idx]
+            uri_res = urlparse.ParseResult(scheme, netloc, path, params, query, fragment)
+
+        base_name = uri_res.path
+        if uri_res.scheme:
+            if uri_res.query:
+                params = urlparse.parse_qs(uri_res.query)
                 try:
-                    file_version_uri = int(file_version_uri)
-                except ValueError:
-                    raise Exception('file_version is not an integer')
-            except KeyError:
-                pass
+                    file_id = params['file_id'][0]
+                    base_name = os.path.basename(file_id)
+                except KeyError:
+                    pass
+                try:
+                    file_version_uri = params['file_version'][0]
+                    try:
+                        file_version_uri = int(file_version_uri)
+                    except ValueError:
+                        raise Exception('file_version is not an integer')
+                except KeyError:
+                    pass
 
-        uri_open = uri
-        if 'file' in uri_res.scheme:
-            uri_open = uri_res.path
+            uri_open = uri
+            if 'file' in uri_res.scheme:
+                uri_open = uri_res.path
 
-        handle = ngamsHighLevelLib.openCheckUri(uri_open)
-        reqPropsObj.setSize(handle.info()['Content-Length'])
-        reqPropsObj.setReadFd(handle)
+            handle = ngamsHighLevelLib.openCheckUri(uri_open)
+            reqPropsObj.setSize(handle.info()['Content-Length'])
+            reqPropsObj.setReadFd(handle)
+    else:
+        base_name = os.path.basename(uri)
 
     if reqPropsObj.getSize() <= 0:
         errMsg = genLog("NGAMS_ER_ARCHIVE_PULL_REQ",
@@ -358,12 +365,7 @@ def handleCmd(srvObj,
     logger.debug("Checksum variant used: %s to handle file: %s. Result: %s",
             crc_name, resDapi.getCompleteFilename(), str(crc))
 
-    # Get source file version
-    # e.g.: http://ngas03.hq.eso.org:7778/RETRIEVE?file_version=1&file_id=X90/X962a4/X1
-    logger.debug("Get file version")
     file_version = resDapi.getFileVersion()
-    if file_version_uri:
-        file_version = file_version_uri
 
     # If there was a previous version of this file, and it had a container associated with it
     # associte the new version with the container too

@@ -96,25 +96,17 @@ def archiveInitHandling(srvObj,
         raise Exception(errMsg)
 
     # Act possibly as proxy for the Achive Request?
+    # TODO: Support maybe HTTP redirection also for Archive Requests.
     try:
         archUnits = srvObj.getCfg().getStreamFromMimeType(mimeType).\
                     getHostIdList()
-    except Exception, e:
+    except Exception:
         archUnits = []
-    if (len(archUnits) > 0):
-        targNodeName, targNode, targPort, targDiskObj =\
-                      ngamsArchiveUtils.\
-                      findTargetNode(srvObj.getHostId(), srvObj.getDb(), srvObj.getCfg(),
-                                     reqPropsObj.getMimeType())
-        if ((targNodeName != getHostName()) or
-            (int(targPort) != int(srvObj.getCfg().getPortNo()))):
-            # Act as proxy, forward the request to the specified node.
-            # TODO: Support maybe HTTP redirection also for Archive Requests.
-            httpStatCode, httpStatMsg, httpHdrs, data =\
-                          srvObj.forwardRequest(reqPropsObj, httpRef,
-                                                targNodeName, targPort, 1,
-                                                mimeType)
-            # Request handled at remote host and reply sent to client.
+
+    if archUnits:
+        host_id, host, port = ngamsArchiveUtils.findTargetNode(srvObj, mimeType)
+        if host_id != srvObj.getHostId():
+            srvObj.forwardRequest(reqPropsObj, httpRef, host_id, host, port, mimeType=mimeType)
             return None
 
     return mimeType
@@ -146,9 +138,12 @@ def handleCmdArchive(srvObj,
         srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
         return
 
+    # Is this an async request?
+    async = 'async' in reqPropsObj and int(reqPropsObj['async'])
+
     # Handle Archive Request Locally.
     if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
-        logger.info("Handling Archive Pull Request ...")
+        logger.info("Handling Archive Pull Request. Async = %d ...", async)
         try:
             if (reqPropsObj.getFileUri() == ""):
                 raise Exception, "No File URI/Filename specified!"
@@ -164,9 +159,9 @@ def handleCmdArchive(srvObj,
             msg = "Successfully handled Archive Pull Request for data file " +\
                   "with URI: " + reqPropsObj.getSafeFileUri()
             logger.info(msg)
-            # If it is specified not to reply immediately (= to wait), we
+            # If it is specified not to reply immediately (= to async), we
             # send back a reply now.
-            if (reqPropsObj.getWait()):
+            if not async:
                 srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                                    NGAMS_SUCCESS, msg, diskInfoObj)
         except Exception, e:
@@ -177,18 +172,18 @@ def handleCmdArchive(srvObj,
                                      errMsg)
             raise Exception(errMsg)
     else:
-        logger.info("Handling Archive Push Request ...")
+        logger.info("Handling Archive Push Request. Async = %d ...", async)
         try:
             diskinfoObj = ngamsArchiveUtils.dataHandler(srvObj, reqPropsObj,
                                                         httpRef)
             msg = "Successfully handled Archive Push Request for " +\
                   "data file with URI: " + reqPropsObj.getSafeFileUri()
-            logger.debug(msg)
+            logger.info(msg)
             srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
 
             # If it was specified not to reply immediately (= to wait),
             # we send back a reply now.
-            if (reqPropsObj.getWait()):
+            if not async:
                 srvObj.ingestReply(reqPropsObj, httpRef,NGAMS_HTTP_SUCCESS,
                                    NGAMS_SUCCESS, msg, diskinfoObj)
         except Exception, e:

@@ -27,15 +27,39 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  04/11/2002  Created
 #
-
 """
 Contains classes to handle the information about each Subscriber and
 the complete set of Subscribers.
 """
+
 import random
+import urlparse
 import xml.dom.minidom
 
 from ngamsCore import fromiso8601, toiso8601, TRACE, prFormat1
+
+
+def validate_url(url):
+    """
+    Checks if the given URL is a valid subscription URL
+    """
+
+    url = url.strip()
+    if not url:
+        raise ValueError("url is empty")
+
+    parse_result = urlparse.urlparse(url)
+
+    if not parse_result.scheme:
+        raise ValueError("No scheme found in URL %s. Value interpreted as %r" % (url, parse_result,))
+
+    if not parse_result.netloc:
+        raise ValueError("No netloc found in URL %s. Value interpreted as %r" % (url, parse_result,))
+
+    if parse_result.scheme != 'http':
+        msg = "%s scheme not currently supported, only http:// scheme allowed"
+        raise ValueError(msg, parse_result.scheme)
+
 
 
 class ngamsSubscriber:
@@ -333,7 +357,7 @@ class ngamsSubscriber:
                setUrl(sqlResult[4]).\
                setFilterPi(sqlResult[6]).\
                setFilterPiPars(sqlResult[7]).\
-               setLastFileIngDate(sqlResult[8]).\
+               setLastFileIngDate(fromiso8601(sqlResult[8], local=True)).\
                setConcurrentThreads(sqlResult[9])
         if sqlResult[5]:
             self.setStartDate(fromiso8601(sqlResult[5], local=True))

@@ -31,15 +31,15 @@ from fabric.state import env
 from fabric.tasks import execute
 
 from aws import create_aws_instances
-from dockerContainer import create_stage1_docker_container, create_stage2_docker_image, create_final_docker_image
-from ngas import install_and_check, prepare_install_and_check, create_sources_tarball, upload_to
+from dockerContainer import create_stage1_container, create_final_image
+from ngas import install_and_check, prepare_install_and_check, create_sources_tarball, upload_to, ngas_revision
 from utils import repo_root, check_ssh, append_desc
 from system import check_sudo
 
 
 # Don't re-export the tasks imported from other modules, only ours
 __all__ = ['user_deploy', 'operations_deploy', 'aws_deploy', 'docker_image',
-           'prepare_release']
+           'prepare_release', 'upload_release']
 
 @task
 @parallel
@@ -70,27 +70,22 @@ def aws_deploy():
     execute(prepare_install_and_check)
 
 @task
+@append_desc
 def docker_image():
-    """
-    Create a Docker image running NGAS.
-    """
-    # Build and start the stage1 container holding onto the container info to use later.
-    dockerState = create_stage1_docker_container()
-    if not dockerState:
-        return
+    """ Create a Docker image with an NGAS installation."""
+
+    # Build and start the stage1 container holding onto the container info
+    # This first stage contains only a running SSH server and sudo, and we will
+    # always be able to connect to it via ssh keys
+    dockerState = create_stage1_container()
 
     # Now install into the docker container.
     # We assume above has set the environment host IP address to install into
     execute(prepare_install_and_check)
 
-    # Now that NGAS is istalled in container do cleanup on it and build final image.
-    if not create_stage2_docker_image(dockerState):
-        return
-
-    # Now build the final NGAS docker image
-    if not create_final_docker_image(dockerState):
-        # This is not really needed by included in case code is added below this point
-        return
+    # Now that NGAS is istalled in a running container
+    # clean it up and create the final image from it
+    create_final_image(dockerState)
 
 @task
 def prepare_release():
@@ -100,9 +95,15 @@ def prepare_release():
 
     # Create the AWS instance
     aws_deploy()
+    upload_release()
 
+@task
+def upload_release():
+    """
+    Uploads sources and documentation to AWS instance.
+    """
     # Create and upload the sources
-    sources = "ngas_src.tar.gz"
+    sources = "ngas_src-{0}.tar.gz".format(ngas_revision())
     if os.path.exists(sources):
         os.unlink(sources)
     create_sources_tarball(sources)
@@ -114,3 +115,4 @@ def prepare_release():
     # Generate a PDF documentation and upload it too
     local("make -C %s/doc latexpdf" % (repo_root()))
     upload_to(env.hosts[0], '%s/doc/_build/latex/ngas.pdf' % (repo_root()))
+    
