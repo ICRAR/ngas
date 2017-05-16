@@ -34,6 +34,7 @@ Core class for the NG/AMS DB interface.
 import importlib
 import logging
 import random
+import tempfile
 import threading
 import time
 
@@ -646,6 +647,10 @@ class ngamsDbCore(object):
         Returns:   DB temporary directory (string).
         """
         return self.__dbTmpDir
+
+
+    def genTmpFile(self, fname):
+        return tempfile.mktemp(fname, dir=self.__dbTmpDir)
 
 
     def getCreateDbSnapshot(self):

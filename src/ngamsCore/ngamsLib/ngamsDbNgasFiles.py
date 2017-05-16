@@ -39,17 +39,40 @@ import collections
 import logging
 import os
 import re
-import shutil
+import tempfile
 import time
 
-from ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE, NGAMS_PICKLE_FILE_EXT, NGAMS_TMP_FILE_EXT
-from ngamsCore import rmFile, getUniqueNo, getNgamsVersion, toiso8601, fromiso8601
+from ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE
+from ngamsCore import rmFile, getNgamsVersion, toiso8601, fromiso8601, mvFile
 import ngamsDbm, ngamsDbCore
 import ngamsFileInfo, ngamsStatus, ngamsFileList
-import ngamsLib
 
 
 logger = logging.getLogger(__name__)
+
+
+def two_stage_pickle(mtdir, obj):
+    """
+    Performs a two-stage writing of a new .pickle file under the cache directory
+    of the indicated mount directory. The file is first written with a .tmp
+    and later renamed to have a .pickle extension so the Janitor Thread doesn't
+    pick it up
+ until it's completed.
+    """
+
+    dirname = os.path.join(mtdir, NGAMS_DB_CH_CACHE)
+    tmpfd, tmpfname = tempfile.mkstemp(".tmp", dir=dirname, text=False)
+    fd, fname = tempfile.mkstemp(".pickle", dir=dirname, text=False)
+    os.close(fd)
+
+    try:
+        with os.fdopen(tmpfd, "wb") as pickleFo:
+            cPickle.dump(obj, pickleFo, 1)
+        mvFile(tmpfname, fname)
+    except:
+        rmFile(tmpfname)
+        raise
+
 
 class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
     """
@@ -202,8 +225,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
         # Generate final name of DBM + create DBM.
         if (not fileListDbmName):
-            fileListDbmName = self.getDbTmpDir() + "/" +\
-                              ngamsLib.genUniqueFilename("_FILE_INFO")
+            fileListDbmName = self.genTmpFile("_FILE_INFO")
 
         # Retrieve/dump the files (up to 5 times).
         fileListDbm = None
@@ -475,12 +497,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         # Create on each disk the relevant DB Change Status Document.
         tmpFileList = None
         for diskId in fileInfoObjDic.keys():
-            statFilePath = os.path.normpath(mtPtDic[diskId] + "/" +\
-                                            NGAMS_DB_CH_CACHE)
-            statFilename = os.path.normpath(statFilePath + "/" +\
-                                            timeStamp + "_" +\
-                                            str(getUniqueNo()) + ".pickle")
-            tmpStatFilename = statFilename + ".tmp"
 
             if ((len(fileInfoObjList) == 1) and (diskInfoObjList == [])):
                 tmpStatObj = fileInfoObjList[0].setTag(operation)
@@ -500,17 +516,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                              setMessage(dbId).\
                              addFileList(tmpFileList)
 
-            logger.debug("Creating Temporary DB Snapshot: %s", statFilename)
-
-            with open(tmpStatFilename, "w") as pickleFo:
-                cPickle.dump(tmpStatObj, pickleFo, 1)
-
-            shutil.move(tmpStatFilename, statFilename)
-
-            del tmpStatObj
-            tmpStatObj = None
-            del tmpFileList
-            tmpFileList = None
+            two_stage_pickle(mtPtDic[diskId], tmpStatObj)
 
 
     def createDbRemFileChangeStatusDoc(self,
@@ -530,43 +536,9 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
 
         Returns:          Void.
         """
-        T = TRACE()
-
-        # TODO: Implementation concern: This class is suppose to be
-        # at a lower level in the hierarchie than the ngamsFileInfo,
-        # ngamsFileList, ngamsDiskInfo and ngamsStatus classes and as
-        # such these should not be used from within this class. All usage
-        # of these classes in the ngamsDbBase class should be analyzed.
-        # Probably these classes should be made base classes for this class.
-
-        timeStamp = toiso8601()
-        mtPt = diskInfoObj.getMountPoint()
-        statFilePath = os.path.normpath("%s/%s" % (mtPt, NGAMS_DB_CH_CACHE))
-        statFilename = os.path.normpath("%s/%s_%s.%s" %\
-                                        (statFilePath, timeStamp,
-                                         str(getUniqueNo()),
-                                         NGAMS_PICKLE_FILE_EXT))
-        tmpStatFilename = os.path.normpath("%s/%s_%s.%s.%s" %\
-                                           (statFilePath, timeStamp,
-                                            str(getUniqueNo()),
-                                            NGAMS_PICKLE_FILE_EXT,
-                                            NGAMS_TMP_FILE_EXT))
-
-        logger.debug("Creating Temporary DB Snapshot: %s", statFilename)
-
-        try:
-            fileInfoList = [fileInfoObj.getDiskId()] +\
-                           [fileInfoObj.getFileId()] +\
-                           [fileInfoObj.getFileVersion()]
-
-            with open(tmpStatFilename, "w") as pickleFo:
-                cPickle.dump(fileInfoList, pickleFo, 1)
-
-            shutil.move(tmpStatFilename, statFilename)
-
-        except Exception, e:
-            rmFile(tmpStatFilename)
-            raise e
+        fo = fileInfoObj
+        fileinfo_list = [fo.getDiskId(), fo.getFileId(), fo.getFileVersion()]
+        two_stage_pickle(diskInfoObj.getMountPoint(), fileinfo_list)
 
 
     def getFileChecksum(self, diskId, fileId, fileVersion):

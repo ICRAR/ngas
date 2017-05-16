@@ -41,15 +41,16 @@ import socket
 import string
 import threading
 import random
+import tempfile
 import time
 import urllib
 
 from ngamsCore import TRACE, genLog, NGAMS_HOST_LOCAL,\
-    NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN, NGAMS_HOST_REMOTE, getUniqueNo,\
+    NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN, NGAMS_HOST_REMOTE,\
     NGAMS_PROC_DIR, NGAMS_UNKNOWN_MT, NGAMS_STAGING_DIR, NGAMS_TMP_FILE_PREFIX,\
-    NGAMS_PICKLE_FILE_EXT, checkCreatePath, checkAvailDiskSpace,\
+    checkCreatePath, checkAvailDiskSpace,\
     getFileSize, NGAMS_BAD_FILES_DIR, NGAMS_BAD_FILE_PREFIX, NGAMS_STATUS_CMD,\
-    mvFile, rmFile, toiso8601, NGAMS_HTTP_UNAUTH, NGAMS_HTTP_SUCCESS
+    mvFile, rmFile, NGAMS_HTTP_UNAUTH, NGAMS_HTTP_SUCCESS
 import ngamsSmtpLib
 import ngamsLib
 import ngamsHostInfo, ngamsStatus
@@ -326,11 +327,8 @@ def genProcDirName(ngamsCfgObj):
 
     Returns:
     """
-    procDir = os.path.normpath(ngamsCfgObj.getProcessingDirectory() + "/" +\
-                               NGAMS_PROC_DIR + "/" +\
-                               toiso8601() + "-" +\
-                               str(getUniqueNo()))
-    return procDir
+    procdir = os.path.join(ngamsCfgObj.getProcessingDirectory(), NGAMS_PROC_DIR)
+    return tempfile.mkdtemp(dir=procdir)
 
 
 def checkAddExt(ngamsCfgObj,
@@ -413,23 +411,20 @@ def genStagingFilename(ngamsCfgObj,
         # Check proper extension and ensure to obtain a unique name.
         tmpFilename = checkAddExt(ngamsCfgObj, reqPropsObj.getMimeType(),
                                   tmpFilename)
-        tmpFilename = ngamsLib.genUniqueFilename(tmpFilename)
 
-        # Generate complete paths.
         slotId = ngamsCfgObj.getStorageSetFromId(storageSetId).\
                  getMainDiskSlotId()
         mountPt = diskDic[slotId].getMountPoint()
-        tmpPath = os.path.normpath(mountPt + "/" + NGAMS_STAGING_DIR)
-        stagingFilename = os.path.normpath("%s/%s" % (tmpPath, tmpFilename))
+        staging_dir = os.path.join(mountPt, NGAMS_STAGING_DIR)
+        stagingFilename = tempfile.mktemp(suffix="-" + tmpFilename, prefix='', dir=staging_dir)
         reqPropsObj.setStagingFilename(stagingFilename)
+
         if (genTmpFiles):
-            tmpStagingFilename = os.path.normpath("%s/%s%s" %\
-                                                  (tmpPath,
-                                                   NGAMS_TMP_FILE_PREFIX,
-                                                   tmpFilename))
-            tmpReqPropFilename = "%s.%s" % (tmpStagingFilename,
-                                            NGAMS_PICKLE_FILE_EXT)
-            reqPropFilename = "%s.%s" % (stagingFilename,NGAMS_PICKLE_FILE_EXT)
+            tmpStagingFilename = tempfile.mktemp(suffix=tmpFilename,
+                                                 prefix=NGAMS_TMP_FILE_PREFIX,
+                                                 dir=staging_dir)
+            tmpReqPropFilename = tmpStagingFilename + ".pickle"
+            reqPropFilename = stagingFilename + ".pickle"
 
         logger.debug("Generated staging filename: %s", stagingFilename)
         checkCreatePath(os.path.dirname(stagingFilename))
@@ -680,37 +675,21 @@ def getNewFileVersion(dbConObj,
         return (latestFileVersion + 1)
 
 
-def moveFile2BadDir(ngamsCfgObj,
-                    srcFilename,
-                    orgFilename):
+def moveFile2BadDir(ngamsCfgObj, srcFilename):
     """
     Move a file to the Bad File Directory on the destination disk.
 
-    ngamsCfgObj:     Instance of NG/AMS Configuration Object (ngamsConfig).
-
-    srcFilename:     Name of source file (string).
-
-    orgFilename:     Original filename - received in HTTP request (string).
-
     Returns:         Name of filename in Bad Files Area (string).
     """
-    logger.debug("Moving file to Bad Files Area: %s->%s ...",
-                 srcFilename, orgFilename)
-    count = getUniqueNo()
-    badFilesDir = os.path.normpath(ngamsCfgObj.getRootDirectory() + "/" +\
-                                   NGAMS_BAD_FILES_DIR)
+
+    badFilesDir = os.path.join(ngamsCfgObj.getRootDirectory(), NGAMS_BAD_FILES_DIR)
     checkCreatePath(badFilesDir)
-    trgFilename = os.path.\
-                  normpath(os.path.join(badFilesDir,
-                                        NGAMS_BAD_FILE_PREFIX + str(count) +\
-                                        "-" +\
-                                        toiso8601() +\
-                                        "-" + os.path.basename(orgFilename)))
-    fileEls = string.split(srcFilename, ".")
-    if ((fileEls[-1] == "Z") or (fileEls[-1] == "gz")):
-        trgFilename = trgFilename + "." + fileEls[-1]
+
+    trgFilename = tempfile.mktemp(suffix="-" + os.path.basename(srcFilename),
+                                  prefix=NGAMS_BAD_FILE_PREFIX,
+                                  dir=badFilesDir)
     mvFile(srcFilename, trgFilename)
-    logger.debug("Moved file to Bad Files Area")
+    logger.info("Moved %s to Bad Files Area %s", srcFilename, trgFilename)
     return trgFilename
 
 
@@ -868,8 +847,7 @@ def genTmpFilename(ngamsCfgObj,
 
     Returns:        Temporary filename (string).
     """
-    return os.path.normpath(getNgasTmpDir(ngamsCfgObj) + "/" +\
-                            ngamsLib.genUniqueFilename(filename))
+    return tempfile.mktemp(suffix=filename, dir=getNgasTmpDir(ngamsCfgObj))
 
 
 def sendEmail(ngamsCfgObj,

@@ -436,23 +436,6 @@ def getFileCreationTime(filename):
     return int(os.stat(filename)[9])
 
 
-# Semaphore + counter to ensure unique, temporary filenames.
-_uniqueNumberSem   = threading.Semaphore(1)
-_uniqueNumberCount = 0
-def getUniqueNo():
-    """
-    Generate a unique number (unique for this session of NG/AMS).
-
-    Returns:  Unique number (integer).
-    """
-    global _uniqueNumberSem, _uniqueNumberCount
-    _uniqueNumberSem.acquire()
-    _uniqueNumberCount += 1
-    count = _uniqueNumberCount
-    _uniqueNumberSem.release()
-    return count
-
-
 def genUniqueId():
     """
     Generate a unique ID based on an MD5 checksum.

@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsDbNgasDisks.py,v 1.8 2008/08/19 20:51:50 jknudstr Exp $"
@@ -37,9 +36,8 @@ It should be used as part of the ngamsDbBase parent classes.
 """
 
 import logging
-import os
 
-from ngamsCore import TRACE, getDiskSpaceAvail, rmFile, getUniqueNo, NGAMS_DB_CH_FILE_DELETE, toiso8601, fromiso8601
+from ngamsCore import TRACE, getDiskSpaceAvail, rmFile, NGAMS_DB_CH_FILE_DELETE, fromiso8601
 import ngamsDbm, ngamsDbCore
 
 
@@ -594,21 +592,13 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         fileInfoDbm = None
         try:
             diskInfo = None
+
+            # Get the information about the files on the disk (before this
+            # information is deleted).
             if delFileInfo and self.getCreateDbSnapshot():
                 diskInfo = ngamsDiskInfo.ngamsDiskInfo().read(self, diskId)
-
-            if delFileInfo:
-                # Get the information about the files on the disk (before this
-                # information is deleted).
-                if self.getCreateDbSnapshot():
-                    ts = toiso8601()
-                    fileName = ts + "_" + str(getUniqueNo()) + "_DISK_INFO"
-                    fileInfoDbmName = os.path.\
-                                      normpath(self.getDbTmpDir() + "/" +\
-                                               fileName)
-                    fileInfoDbmName = self.dumpFileInfoList(diskId,
-                                                            fileListDbmName=\
-                                                            fileInfoDbmName)
+                fname = self.genTmpFile('DISK_INFO')
+                fileInfoDbmName = self.dumpFileInfoList(diskId, fileListDbmName=fname)
 
             # Delete the disk info.
             sql = "DELETE FROM ngas_disks WHERE disk_id={}"

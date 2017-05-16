@@ -523,7 +523,7 @@ def checkStagingAreas(srvObj):
     # Go through all files in the staging file dictionary and move them to
     # the Bad Files Area.
     for filename in stagingFileDic.keys():
-        ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename, filename)
+        ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename)
 
 
 def genIntAuthHdr(srvObj):

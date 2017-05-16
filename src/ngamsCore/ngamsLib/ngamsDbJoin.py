@@ -630,8 +630,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         T = TRACE()
 
         if (not fileInfoDbmName):
-            fileInfoDbmName = "/tmp/" +\
-                              ngamsLib.genUniqueFilename("FILE_INFO_DB")
+            fileInfoDbmName = self.genTmpFile("FILE_INFO_DB")
         rmFile(fileInfoDbmName + "*")
         fileInfoDbm = None
         dbCount = 0
@@ -806,8 +805,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         # Create a temporay File Info DBM.
         if not fileInfoDbmName:
-            fileInfoDbmName = "/tmp/" +\
-                              ngamsLib.genUniqueFilename("FILE-SUMMARY1")
+            fileInfoDbmName = self.genTmpFile("FILE-SUMMARY1")
 
         sql, vals = self.buildFileSummary1Query(ngamsDbCore.getNgasFilesCols(self._file_ignore_columnname),
                                                 hostId, ignore = 0,
@@ -874,8 +872,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         # Create a temporay File Info DBM.
         if (not fileInfoDbmName):
-            fileInfoDbmName = "/tmp/" +\
-                              ngamsLib.genUniqueFilename("FILE-SUMMARY1")
+            fileInfoDbmName = self.genTmpFile("FILE-SUMMARY1")
 
         # Try up to 5 times to dump the files. A retry is done if the number
         # of records dumped differs from the expected number.
@@ -1024,8 +1021,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         # Create a temporay File Info DBM.
         if (not fileInfoDbmName):
-            fileInfoDbmName = "/tmp/" +\
-                              ngamsLib.genUniqueFilename("CLUSTER-FILE-INFO")
+            fileInfoDbmName = self.genTmpFile("CLUSTER-FILE-INFO")
         rmFile("%s*" % fileInfoDbmName)
 
         # Get list of hosts in the cluster.
