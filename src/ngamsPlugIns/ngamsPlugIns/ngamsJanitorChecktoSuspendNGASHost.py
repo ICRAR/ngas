@@ -28,7 +28,7 @@ from ngamsLib.ngamsCore import NGAMS_NOTIF_ERROR, loadPlugInEntryPoint
 
 logger = logging.getLogger(__name__)
 
-def ngamsJanitorChecktoSuspendNGASHost(srvObj, stopEvt, jan_to_srv_queue):
+def run(srvObj, stopEvt, jan_to_srv_queue):
     """
 	Check if the conditions for suspending this NGAS Host are met.
 

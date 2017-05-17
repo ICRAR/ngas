@@ -30,7 +30,7 @@ from ngamsServer import ngamsArchiveUtils
 
 logger = logging.getLogger(__name__)
 
-def ngamsJanitorCheckUnsavedLogFile(srvObj, stopEvt, jan_to_srv_queue):
+def run(srvObj, stopEvt, jan_to_srv_queue):
     """
 	Checks to see if we have an unsaved log file after a shutdown and
     archives them.

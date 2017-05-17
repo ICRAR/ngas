@@ -83,7 +83,7 @@ def get_plugins(srvObj):
     ]
 
     user_plugins = srvObj.getCfg().getJanitorPlugins()
-    return [loadPlugInEntryPoint(n) for n in hardcoded + user_plugins]
+    return [loadPlugInEntryPoint(n, entryPointMethodName='run') for n in hardcoded + user_plugins]
 
 
 class ForwarderHandler(logging.Handler):
