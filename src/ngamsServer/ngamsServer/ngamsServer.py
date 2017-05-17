@@ -1570,7 +1570,7 @@ class ngamsServer:
 
     def get_remote_server_endpoint(self, hostId):
         """
-        Return the IP address to which this server `srvObj` should connect to to
+        Return the IP address to which this server should connect to to
         contact ngams server `hostId`.
         """
 
@@ -1597,6 +1597,14 @@ class ngamsServer:
                 host = '127.0.0.1'
 
         return host, remote_port
+
+    def get_endpoint(self):
+        """
+        Return an IP address which clients can use to connect to this server.
+        """
+        ipAddress = self.ipAddress
+        ipAddress = ipAddress if ipAddress != '0.0.0.0' else '127.0.0.1'
+        return ipAddress, self.portNo
 
     def getSubscriberDic(self):
         """
