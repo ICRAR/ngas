@@ -56,7 +56,7 @@ import logging
 import os
 
 from psycopg2.pool import ThreadedConnectionPool
-import pyfits
+import astropy.io.fits as pyfits
 
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import genLog, loadPlugInEntryPoint

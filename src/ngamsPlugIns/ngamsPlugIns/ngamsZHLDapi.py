@@ -66,7 +66,7 @@ import time
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE, genLog, toiso8601, FMT_DATE_ONLY
 import psycopg2
-import pyfits
+import astropy.io.fits as pyfits
 
 
 logger = logging.getLogger(__name__)

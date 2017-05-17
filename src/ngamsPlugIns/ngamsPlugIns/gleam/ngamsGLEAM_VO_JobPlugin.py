@@ -40,7 +40,7 @@ import os
 
 import ephem_utils
 from psycopg2.pool import ThreadedConnectionPool
-import pyfits
+import astropy.io.fits as pyfits
 
 from ngamsLib import ngamsPlugInApi
 

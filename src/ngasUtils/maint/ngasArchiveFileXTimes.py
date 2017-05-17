@@ -27,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  16/07/2003  Created
 #
-import pyfits
 """
 The script is used to archive a file a specified number of times.
 """
