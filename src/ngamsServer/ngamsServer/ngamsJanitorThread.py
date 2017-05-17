@@ -305,6 +305,9 @@ def _encFileInfo(dbConObj,
     T = TRACE(5)
 
     tmpDic = {}
+
+    fi = ngamsFileInfo.ngamsFileInfo().unpackSqlResult(fileInfo)
+    fi = fi.genSqlResult()
     #for n in range(ngamsDbCore.NGAS_FILES_CREATION_DATE + 1):
     for n in range(ngamsDbCore.NGAS_FILES_IO_TIME + 1): #newly added column!
         colName = dbConObj.getNgasFilesMap()[n]

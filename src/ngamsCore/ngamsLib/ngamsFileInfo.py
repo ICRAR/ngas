@@ -595,7 +595,7 @@ class ngamsFileInfo:
         Returns:    Reference to object itself.
         """
         if (not ioTime): return self
-        self.__ioTime = ioTime
+        self.__ioTime = float(ioTime)
         return self
 
 
