@@ -21,8 +21,8 @@
 #
 import logging
 
-from ngamsLib import ngamsLib
-from ngamsLib.ngamsCore import NGAMS_OFFLINE_CMD, NGAMS_HTTP_INT_AUTH_USER, getHostName
+from ngamsLib import ngamsHttpUtils
+from ngamsLib.ngamsCore import NGAMS_OFFLINE_CMD, NGAMS_HTTP_INT_AUTH_USER
 
 
 logger = logging.getLogger(__name__)
@@ -31,10 +31,6 @@ def run(srvObj, stopEvt, jan_to_srv_queue):
     """
     Check if there is enough disk space for the various
     directories defined.
-
-    srvObj:            Reference to NG/AMS server class object (ngamsServer).
-
-    Returns:           Void.
     """
 
     try:
@@ -46,12 +42,11 @@ def run(srvObj, stopEvt, jan_to_srv_queue):
         # the process itself.
         #
         # If authorization is on, fetch a key of a defined user.
+        auth = ""
         if (srvObj.getCfg().getAuthorize()):
-            authHdrVal = srvObj.getCfg().\
-                         getAuthHttpHdrVal(NGAMS_HTTP_INT_AUTH_USER)
-        else:
-            authHdrVal = ""
-        ngamsLib.httpGet(getHostName(), srvObj.getCfg().getPortNo(),
-                         NGAMS_OFFLINE_CMD, 0,
-                         [["force", "1"], ["wait", "0"]],
-                         "", 65536, 30, authHdrVal)
+            auth = srvObj.getCfg().getAuthHttpHdrVal(NGAMS_HTTP_INT_AUTH_USER)
+
+        host, port = srvObj.get_endpoint()
+        ngamsHttpUtils.httpGet(host, port, NGAMS_OFFLINE_CMD,
+                               pars=(("force", "1"), ("wait", "0")),
+                               timeout=30, auth=auth)
