@@ -127,6 +127,7 @@ $('#CreateSubscription').on('click', function() {
 $('#Submit').on('click', function(){
      var mycmd = 'SUBSCRIBE?';
      var ok = 1;
+     var refcmd = 'SubscriberUI?reload=1';
      if (document.getElementById('subscr_id').value === '')
      {
         alert('Subscriber Id cannot be Empty!');
@@ -158,6 +159,7 @@ $('#Submit').on('click', function(){
        }).fail(function(xhr)  {
          alert("Subscribe unsuccesful")
      });
+     document.location.href=refcmd;
 
 
 });
