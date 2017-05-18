@@ -37,7 +37,7 @@ import logging
 import os
 import threading
 
-import pyfits
+import astropy.io.fits as pyfits
 
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import genLog, NGAMS_SOCK_TIMEOUT_DEF, NGAMS_STATUS_CMD, NGAMS_FAILURE

@@ -7,12 +7,8 @@ https://code.google.com/p/agpy/source/browse/trunk/agpy/cutout.py
 
 Generate a cutout image from a .fits file
 """
-try:
-    import astropy.io.fits as pyfits
-    import astropy.wcs as pywcs
-except ImportError:
-    import pyfits
-    import pywcs
+import astropy.io.fits as pyfits
+import astropy.wcs as pywcs
 import numpy
 import astrolib.coords as coords
 """

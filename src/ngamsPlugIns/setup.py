@@ -46,7 +46,7 @@ setup(
                           'mwa_gleam/*.sh', 'mwa_gleam/*.sql', 'mwa_gleam/*.py', 'mwa_mit/*', 'mwa_tapestaging/*'],
     },
     install_requires=[
-        'pyfits',
+        'astropy',
         'ngamsCore',
         'ngamsPClient',
         'ngamsServer'

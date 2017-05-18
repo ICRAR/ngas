@@ -68,7 +68,7 @@ def getFitsKeys(fitsFile,
     """
     T = TRACE()
 
-    import pyfits
+    import astropy.io.fits as pyfits
     keyDic = defaultdict(list)
     try:
         for key in keyList:

@@ -33,7 +33,7 @@ Pick images based on its GLEAM phase (phase 1 or 2?)
 
 import os
 
-import pyfits
+import astropy.io.fits as pyfits
 
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import warning

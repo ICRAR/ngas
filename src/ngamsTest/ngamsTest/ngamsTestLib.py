@@ -54,7 +54,7 @@ import uuid
 import xml.dom.minidom
 
 import pkg_resources
-import pyfits
+import astropy.io.fits as pyfits
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
 from ngamsLib.ngamsCore import getHostName, TRACE, \
