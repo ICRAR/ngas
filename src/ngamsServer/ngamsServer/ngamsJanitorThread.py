@@ -839,8 +839,16 @@ def checkDbChangeCache(srvObj,
         dbCacheFilePat = os.path.normpath("%s/%s/*.%s" %\
                                           (diskMtPt, NGAMS_DB_CH_CACHE,
                                            NGAMS_PICKLE_FILE_EXT))
+
+        # Sort files by their creation date, to ensure we apply
+        # the DB changes in the order they were generated
+        def creation_date_cmp(x, y):
+            d1 = os.stat(x).st_ctime
+            d2 = os.stat(y).st_ctime
+            return 0 if d1 == d2 else 1 if d1 > d2 else -1
         tmpCacheFiles = glob.glob(dbCacheFilePat)
         tmpCacheFiles.sort()
+
         cacheStatObj = None
         count = 0
         fileCount = 0
