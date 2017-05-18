@@ -540,7 +540,7 @@ def saveFromHttpToFile(ngamsCfgObj,
                          deltaTime,
                          float(reqPropsObj.getBytesReceived())/deltaTime)
 
-            return [deltaTime]
+            return deltaTime
 
         finally:
             # Release disk resouce.
@@ -571,7 +571,7 @@ def saveInStagingFile(ngamsCfgObj,
 
     blockSize = ngamsCfgObj.getBlockSize()
     return saveFromHttpToFile(ngamsCfgObj, reqPropsObj, stagingFilename,
-                              blockSize, 1, diskInfoObj)[0]
+                              blockSize, 1, diskInfoObj)
 
 
 def checkIfFileExists(dbConObj,
