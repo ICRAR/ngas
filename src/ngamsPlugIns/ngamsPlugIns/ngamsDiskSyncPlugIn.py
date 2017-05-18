@@ -31,12 +31,18 @@
 Module that contains a generic Disk Dync Plug-In for Linux.
 """
 
-import commands
 import logging
+import subprocess
+import threading
 
 from ngamsLib.ngamsCore import TRACE
 
 logger = logging.getLogger(__name__)
+
+# Used to serialize the startup of server processes
+# due to the subprocess module not handling threaded code well
+# in python 2.7
+_proc_startup_lock = threading.Lock()
 
 def ngamsDiskSyncPlugIn(srvObj):
     """
@@ -49,9 +55,9 @@ def ngamsDiskSyncPlugIn(srvObj):
     T = TRACE()
 
     # Sync filesystem to ensure file received on disk.
-    # TODO: Set log levels to 4 when 'sync problem' has been solved.
     logger.debug("Performing OS sync command ...")
-    commands.getstatusoutput("sync")
+    with _proc_startup_lock:
+        subprocess.call("sync")
 
 
 if __name__ == '__main__':
