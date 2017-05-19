@@ -47,7 +47,6 @@ import astropy.io.fits as pyfits
 import astropy.units as u
 import astropy.wcs as pywcs
 import ephem
-import pyfits as pyfits_real
 
 from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_TEXT_MT
 
@@ -217,14 +216,6 @@ def regrid_fits(infile, outfile, xc, yc, xw, yw, work_dir, projection="ZEA"):
 
     return the header template file (string) to be deleted
     """
-    """
-    try:
-        import astropy.io.fits as pyfits
-        import astropy.wcs as pywcs
-    except ImportError:
-        import pyfits
-        import pywcs
-    """
     #import astro_field
     file = pyfits.open(infile)
     head = file[0].header.copy()
@@ -283,7 +274,7 @@ def cutout_mosaics(ra, dec, radius, work_dir, filePath, do_regrid, cut_fitsnm, t
     else:
         ra0 = str(ephem.hours(ra * math.pi / 180)).split('.')[0]
         dec0 = str(ephem.degrees(dec * math.pi / 180)).split('.')[0]
-        hdulist = pyfits_real.open(filePath)
+        hdulist = pyfits.open(filePath)
         cdelt_x = float(hdulist[0].header['CD1_1'])
         cdelt_y = float(hdulist[0].header['CD2_2'])
         width = abs(int(factor * radius / cdelt_x))
@@ -538,7 +529,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     to_be_removed = []
     try:
         if (not is_mosaic(fileId)):
-            hdulist = pyfits_real.open(filePath)
+            hdulist = pyfits.open(filePath)
             width = abs(int(2 * radius / float(hdulist[0].header['CDELT1'])))
             height = abs(int(2 * radius / float(hdulist[0].header['CDELT2'])))
             hdulist.close()

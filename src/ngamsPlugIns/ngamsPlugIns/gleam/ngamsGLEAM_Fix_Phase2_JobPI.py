@@ -43,7 +43,7 @@ by the SubscriptionThread._deliveryThread
 import os, commands, binascii
 
 from ngamsLib.ngamsCore import getFileSize
-import pyfits
+import astropy.io.fits as pyfits
 
 
 work_dir = '/home/ngas/NGAS/volume1/processing/phase2fix'

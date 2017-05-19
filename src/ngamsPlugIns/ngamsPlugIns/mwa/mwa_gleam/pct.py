@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import pyfits
+import astropy.io.fits as pyfits
 from numpy import percentile
 from sys import argv
 
