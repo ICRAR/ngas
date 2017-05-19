@@ -32,7 +32,6 @@ Module that contains the ngamsStatus class used to handle
 the NG/AMS Status Report.
 """
 
-import sys
 import xml.dom.minidom
 
 from ngamsCore import ngamsGetChildNodes, NGAMS_XML_STATUS_ROOT_EL, \
@@ -872,16 +871,6 @@ class ngamsStatus:
             buf += fileList.dumpBuf(ignoreUndefFields)
 
         return buf
-
-
-if __name__ == '__main__':
-    """
-    Main function.
-    """
-    # /home/jknudstr/saf/ngams/ngamsData/NgamsStatusEx.xml
-    cfg = ngamsStatus()
-    cfg.load(sys.argv[1])
-    cfg.saveAsXml("/tmp/jkn_tst.xml", 0, 1, 1, 0)
 
 
 # EOF

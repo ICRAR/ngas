@@ -257,6 +257,23 @@ def _executeSysCmd(cmd):
         return ''
     return output
 
+def _buildGrepCmd(cmd, fnm):
+    """
+    Helper function to build the correct grep command line
+    
+    Input:
+       cmd: string, the template for the grep command
+       fnm: string, the filename of the log-file
+       
+    Output:
+       cmd: string, the command line to be executed
+    """
+    if os.path.splitext(fnm)[-1] == '.gz':
+        cmd = 'gunzip -c %s| %s' % (fnm,cmd)
+    else:
+        cmd = cmd + '%s' % fnm
+    return cmd
+
 def getArchiveStartFromFile(fnm, command='ARCHIVE'):
     """
     Function uses grep command on a LogFile (fnm) to find
@@ -267,7 +284,8 @@ def getArchiveStartFromFile(fnm, command='ARCHIVE'):
     Output:
         logs:    list of strings
     """
-    cmd = "grep 'path=|%s|' %s" % (command, fnm)
+    cmd = "grep 'path=|%s|'" % (command)
+    cmd = _buildGrepCmd(cmd, fnm)
     output = _executeSysCmd(cmd)
     if output == '':
         return []
@@ -323,7 +341,8 @@ def getLogList(fnm, logType="INFO"):
     Output:
         logs:    list of strings
     """
-    cmd = "grep %s %s" % (logType, fnm)
+    cmd = "grep %s" % (logType)
+    cmd = _buildGrepCmd(cmd, fnm)
     output = _executeSysCmd(cmd)
     if output == '':
         return []
@@ -341,7 +360,8 @@ def getErrorsFromFile(fnm):
     Output:
         logs:    list of strings
     """
-    cmd = "grep ERROR %s" % fnm
+    cmd = "grep ERROR"
+    cmd = _buildGrepCmd(cmd, fnm)
     output = _executeSysCmd(cmd)
     if output == '':
         return []
@@ -359,7 +379,8 @@ def getWarningsFromFile(fnm):
     Output:
         logs:    list of strings
     """
-    cmd = "grep WARNING %s" % fnm
+    cmd = "grep WARNING"
+    cmd = _buildGrepCmd(cmd, fnm)
     output = _executeSysCmd(cmd)
     if output == '':
         return []
@@ -378,7 +399,8 @@ def getThreadFromFile(fnm,thread):
     Output:
         logs:    list of strings
     """
-    cmd = "grep '%s]' %s" % (thread,fnm)
+    cmd = "grep '%s]'" % (thread)
+    cmd = _buildGrepCmd(cmd, fnm)
     output = _executeSysCmd(cmd)
     if output == '':
         return []
@@ -416,7 +438,7 @@ def getSummaryFromFile(fnm, form='text'):
     for l in LOG_TYPES:
         dlogs[l] = getLogList(fnm, logType=LOG_QUERY[l])
         if form == 'text':
-            logs += "{0}: {1}".format(l, len(dlogs[l]))
+            logs += "{0}: {1}\n".format(l, len(dlogs[l]))
     if form == 'dict':
         return dlogs
     else:
@@ -448,7 +470,15 @@ if __name__ == "__main__":
         fnm = sys.argv[1]
 
     if len(sys.argv) == 3:
-        req = getLogList(fnm,logType=sys.argv[2])
+        ltype = sys.argv[2]
+        if ltype[:6] == 'Thread':
+            req = getThreadFromFile(fnm, ltype)
+        elif ltype == 'Summary':
+            req = getSummaryFromFile(fnm)
+            print req
+            sys.exit()
+        else:
+            req = getLogList(fnm,logType=ltype)
         for r in req:
             print r
         sys.exit()

@@ -28,7 +28,7 @@ from ngamsServer import ngamsSrvUtils
 
 logger = logging.getLogger(__name__)
 
-def ngamsJanitorChecktoWakeupOtherNGASHost(srvObj, stopEvt, jan_to_srv_queue):
+def run(srvObj, stopEvt, jan_to_srv_queue):
     """
     Check if this NG/AMS Server is requested to wake up another/other NGAS Host(s).
 

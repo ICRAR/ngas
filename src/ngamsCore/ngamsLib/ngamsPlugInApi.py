@@ -350,7 +350,7 @@ def genFileInfo(dbConObj,
     if (not noVersioning): # no_versioning = 0 means do not overwrite
         if (paraFV > 0):
             # check if this version already exists
-            if (dbConObj.checkFileVersion(fileId, paraFV)):
+            if (dbConObj.getLatestFileVersion(fileId) >= paraFV):
                 raise Exception("Version %d exists for file %s. Please use 'no_versioning=1' AND 'versioning=0' for overwrite." % (paraFV, fileId))
             fileVersion = paraFV
         else:

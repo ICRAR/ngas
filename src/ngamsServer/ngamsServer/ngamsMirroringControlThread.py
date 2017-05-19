@@ -40,7 +40,9 @@ consume soo many resources for the general command handling.
 # Definitions for internal DBM based queues used.
 
 import base64
+import contextlib
 import copy
+import functools
 import httplib
 import logging
 import os
@@ -57,7 +59,8 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_MIR_CONTROL_THR, rmFile, \
     NGAMS_HTTP_PAR_FILE_LIST, NGAMS_HTTP_PAR_UNIQUE, NGAMS_HTTP_PAR_MAX_ELS, \
     NGAMS_HTTP_PAR_FROM_ING_DATE, get_contact_ip,\
     toiso8601, FMT_TIME_ONLY_NOMSEC
-from ngamsLib import ngamsFileInfo, ngamsStatus, ngamsHighLevelLib, ngamsDbm, ngamsMirroringRequest, ngamsLib
+from ngamsLib import ngamsFileInfo, ngamsStatus, ngamsHighLevelLib, ngamsDbm, \
+    ngamsMirroringRequest, ngamsLib, ngamsHttpUtils
 
 
 logger = logging.getLogger(__name__)
@@ -553,30 +556,29 @@ def handleMirRequest(srvObj,
             fileUri = "http://%s:%d/RETRIEVE?file_id=%s&file_version=%d&quick_location=1"
             fileUri = fileUri % (srcHostName, srcPortNo, mirReqObj.getFileId(),
                                  mirReqObj.getFileVersion())
-            cmdPars = [[NGAMS_HTTP_PAR_FILENAME, fileUri]]
-            httpHdrs = [[NGAMS_HTTP_HDR_FILE_INFO, encFileInfo],
-                        [NGAMS_HTTP_HDR_CONTENT_TYPE, fileInfoObj.getFormat()]]
-            code, msg, hdrs, data = ngamsLib.httpGet(nextLocalSrv,
-                                                     nextLocalPort,
-                                                     NGAMS_REARCHIVE_CMD,
-                                                     pars = cmdPars,
-                                                     timeOut = 600,
-                                                     additionalHdrs = httpHdrs)
-            if (code == NGAMS_HTTP_SUCCESS):
-                succeeded = True
-                break
-            else:
-                # An error occurred, log error notice and go to next (if there
-                # are more nodes).
-                tmpStatObj = ngamsStatus.ngamsStatus().unpackXmlDoc(data)
-                msg = "Error issuing REARCHIVE Command. " +\
-                      "Local node: %s:%d, source contact node: %s:%d. " +\
-                      "Error message: %s"
-                msg = msg % (nextLocalSrv, nextLocalPort, srcHostName,
-                             srcPortNo, tmpStatObj.getMessage())
-                logger.warning(msg)
-                errMsg = "Last error encountered: %s" % msg
-                continue
+            pars = [[NGAMS_HTTP_PAR_FILENAME, fileUri]]
+            hdrs = [[NGAMS_HTTP_HDR_FILE_INFO, encFileInfo],
+                    [NGAMS_HTTP_HDR_CONTENT_TYPE, fileInfoObj.getFormat()]]
+            resp = ngamsHttpUtils.httpGet(nextLocalSrv, nextLocalPort,
+                                    NGAMS_REARCHIVE_CMD, pars=pars, hdrs=hdrs,
+                                    timeout=600)
+
+            with contextlib.closing(resp):
+                if resp.status == NGAMS_HTTP_SUCCESS:
+                    succeeded = True
+                    break
+                else:
+                    # An error occurred, log error notice and go to next (if there
+                    # are more nodes).
+                    tmpStatObj = ngamsStatus.ngamsStatus().unpackXmlDoc(resp.read())
+                    msg = "Error issuing REARCHIVE Command. " +\
+                          "Local node: %s:%d, source contact node: %s:%d. " +\
+                          "Error message: %s"
+                    msg = msg % (nextLocalSrv, nextLocalPort, srcHostName,
+                                 srcPortNo, tmpStatObj.getMessage())
+                    logger.warning(msg)
+                    errMsg = "Last error encountered: %s" % msg
+                    continue
 
         if (succeeded): break
 
@@ -819,16 +821,21 @@ def retrieveFileList(srvObj,
         remainingEls = None
         while (True):
             rmFile("%s*" % rawFileListCompr[:-3])
-            httpCode, httpStatus, httpHeaders, data =\
-                      ngamsLib.httpGet(node, port, NGAMS_STATUS_CMD,
-                                       pars = statusCmdPars,
-                                       dataTargFile = rawFileListCompr,
-                                       timeOut = 1800)
-            if (httpCode != NGAMS_HTTP_SUCCESS):
-                rmFile("%s*" % rawFileListCompr[:-3])
-                statObj = ngamsStatus.ngamsStatus().unpackXmlDoc(data)
-                msg = "Error accessing NGAS Node: %s/%d. Error: %s"
-                raise Exception, msg % (node, port, statObj.getMessage())
+            resp = ngamsHttpUtils.httpGet(node, port, NGAMS_STATUS_CMD,
+                                    pars=statusCmdPars,
+                                    timeout=1800)
+
+            with contextlib.closing(resp):
+                if resp.status != NGAMS_HTTP_SUCCESS:
+                    rmFile("%s*" % rawFileListCompr[:-3])
+                    statObj = ngamsStatus.ngamsStatus().unpackXmlDoc(resp.read())
+                    msg = "Error accessing NGAS Node: %s/%d. Error: %s"
+                    raise Exception, msg % (node, port, statObj.getMessage())
+
+                with open(rawFileListCompr, 'wb') as f:
+                    readf = functools.partial(resp.read, 65536)
+                    for buf in iter(readf, ''):
+                        f.write(buf)
 
             # Decompress the file (it is always transferred compressed).
             fileListRaw = decompressFile(rawFileListCompr)

@@ -134,8 +134,7 @@ def archiveFromFile(srvObj,
             logger.exception("Tried to archive local file %s, " + \
                              "moving it to Bad Files Directory " + \
                              "-- cannot be handled", filename)
-            ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename,
-                                              filename)
+            ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename)
             # Remove pickle file if available.
             pickleObjFile = filename + "." + NGAMS_PICKLE_FILE_EXT
             if (os.path.exists(pickleObjFile)):

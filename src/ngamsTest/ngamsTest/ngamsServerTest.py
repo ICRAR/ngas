@@ -36,7 +36,6 @@ import socket
 import sys
 import time
 
-from ngamsLib import ngamsStatus
 from ngamsLib.ngamsCore import NGAMS_SUCCESS
 from ngamsTestLib import ngamsTestSuite, runTest
 from ngamsTestLib import sendPclCmd
@@ -54,20 +53,13 @@ class ngamsServerTest(ngamsTestSuite):
         amount_of_data = 10*1024*1024 # 10 MBs
         spaces = " " * amount_of_data
         self.prepExtSrv(cfgProps=[["NgamsCfg.Server[1].TimeOut",str(timeout)]])
-        client = sendPclCmd()
-        _, _, _, data = client._httpPost(host='localhost',
-                         port=8888,
-                         cmd="ARCHIVE",
-                         mimeType='application/octet-stream',
-                         dataRef = spaces,
-                         dataSource = "BUFFER",
-                         pars = [["attachment; filename", "some-file.data"]])
 
-        status = ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
+        client = sendPclCmd()
+        status = client.archive_data(spaces, 'some-file.data', 'application/octet-stream')
         self.assertEquals(NGAMS_SUCCESS, status.getStatus())
 
         # Normal retrieval works fine
-        self.assertEquals(NGAMS_SUCCESS, client.retrieve2File(fileId='some-file.data').getStatus())
+        self.assertEquals(NGAMS_SUCCESS, client.retrieve(fileId='some-file.data').getStatus())
         os.unlink('some-file.data')
 
         # Now retrieve the data, but sloooooooooooowly and check that the server

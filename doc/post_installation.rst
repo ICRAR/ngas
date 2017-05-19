@@ -12,7 +12,7 @@ Trying out the server
 The following command can be used to just make sure that the whole installation
 is working fine::
 
-	ngamsPClient -cmd ARCHIVE -fileUri $(which ngamsPClient) -mimeType application/octet-stream -v 1
+	ngamsPClient ARCHIVE --file-uri $(which ngamsPClient) --mime-type application/octet-stream -v
 
 What comes out should look as follows::
 

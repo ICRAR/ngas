@@ -66,7 +66,7 @@ def fileArrived(rowdata):
 
 if __name__ == "__main__":
     # connect to ngas database
-    conn = psycopg2.connect(database='ngas', user='ngas_ro', host='ngas.mit.edu', password='ngas$ro')
+    conn = psycopg2.connect(database=None, user=None, host=None, password=None)
     conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
     curs = conn.cursor()
     # listen for table changes using trigger

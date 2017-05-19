@@ -152,7 +152,7 @@ def saveFromHttpToFile(ngamsCfgObj,
         # Distinguish between Archive Pull and Push Request. By Archive
         # Pull we may simply read the file descriptor until it returns "".
         sizeKnown = 0
-        if (ngamsLib.isArchivePull(reqPropsObj.getFileUri()) and
+        if (reqPropsObj.is_GET() and
             not reqPropsObj.getFileUri().startswith('http://')):
             # (reqPropsObj.getSize() == -1)):
             # Just specify something huge.

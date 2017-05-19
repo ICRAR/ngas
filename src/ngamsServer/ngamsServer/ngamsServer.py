@@ -35,8 +35,10 @@ services for the NG/AMS Server.
 import BaseHTTPServer
 import Queue
 import SocketServer
+import contextlib
 import logging
 import multiprocessing
+import math
 import os
 import re
 import shutil
@@ -46,6 +48,7 @@ import sys
 import threading
 import time
 import traceback
+import urllib
 
 import pkg_resources
 
@@ -60,7 +63,7 @@ from ngamsLib.ngamsCore import \
     NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_XML_STATUS_ROOT_EL,\
     NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs,\
     toiso8601
-from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent
+from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent, ngamsHttpUtils
 from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
 import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
@@ -116,6 +119,7 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
         # Create a new thread to handle the request.
         t = threading.Thread(target = self.finish_request,
                              args = (request, client_address))
+        t.daemon = True
         t.start()
 
 
@@ -182,15 +186,40 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     do_POST = reqHandle
     do_PUT  = reqHandle
 
+
+class sizeaware_socketfile(object):
+    """
+    Small utility class that wraps a file object created via socket.makefile()
+    and reads only a maximum amount of bytes out of it. If more are requested,
+    an empty byte string is returned, thus signaling and EOF.
+    """
+
+    def __init__(self, f, size):
+        self.f = f
+        self.size = size
+        self.readin = 0
+
+    def read(self, n):
+        if self.readin >= self.size:
+            return b''
+        left = self.size - self.readin
+        buf = self.f.read(n if left >= n else left)
+        self.readin += len(buf)
+        return buf
+
+    def __len__(self):
+        return self.size
+
 class logging_config(object):
     def __init__(self, stdout_level, file_level, logfile, logfile_rot_interval,
-                 syslog, syslog_prefix):
+                 syslog, syslog_prefix, syslog_address):
         self.stdout_level = stdout_level
         self.file_level = file_level
         self.logfile = logfile
         self.logfile_rot_interval = logfile_rot_interval
         self.syslog = syslog
         self.syslog_prefix = syslog_prefix
+        self.syslog_address = syslog_address
 
 
 from logging.handlers import BaseRotatingHandler
@@ -243,6 +272,24 @@ class NgasRotatingFileHandler(BaseRotatingHandler):
         finally:
             self.release()
 
+
+def show_threads():
+    """
+    Log the name, ident and daemon flag of all alive threads in DEBUG level
+    """
+    if logger.isEnabledFor(logging.DEBUG):
+
+        all_threads = threading.enumerate()
+        max_name  = reduce(max, map(len, [t.name for t in all_threads]))
+        max_ident = reduce(max, map(int, map(math.ceil, map(math.log10, [t.ident for t in all_threads]))))
+
+        msg = ['Name' + ' '*(max_name-2) + 'Ident' + ' '*(max_ident-3) + 'Daemon',
+               '='*max_name + '  ' + '=' * max_ident + '  ======']
+        fmt = '%{0}.{0}s  %{1}d  %d'.format(max_name, max_ident)
+        for t in threading.enumerate():
+            msg.append(fmt % (t.name, t.ident, t.daemon))
+        logger.debug("Threads currently alive on process %d:\n%s", os.getpid(), '\n'.join(msg))
+
 class ngamsServer:
     """
     Class providing the functionality of the NG/AMS Server.
@@ -274,7 +321,7 @@ class ngamsServer:
         # Empty logging configuration.
         # It is later initialised both from the cmdline
         # and from the configuration file
-        self.logcfg = logging_config(None, None, None, None, None, None)
+        self.logcfg = logging_config(None, None, None, None, None, None, None)
 
         # Server list handling.
         self.__srvListDic             = {}
@@ -392,18 +439,15 @@ class ngamsServer:
         self.ipAddress = None
         self.portNo    = None
 
+        # Defined as <hostname>:<port>
+        self.host_id   = None
+
     def getHostId(self):
         """
-        Returns the proper NG/AMS Host ID according whether multiple servers
-        can be executed on the same host, and this server is one of those.
-
-        If multiple servers can be executed on one node, the Host ID will be
-        <Host Name>:<Port No>. Otherwise, the Host ID will be the hostname.
+        Returns the NG/AMS Host ID for this server.
+        It has the form <hostname>:<port>
         """
-        hostname = getHostName()
-        if self.__multipleSrvs:
-            return hostname + ":" + str(self.portNo)
-        return hostname
+        return self.host_id
 
     def setup_logging(self):
         """
@@ -428,23 +472,33 @@ class ngamsServer:
         for h in list(logging.root.handlers):
             logging.root.removeHandler(h)
 
+        # If we cannot setup a syslog handler we log this
+        # (after setting up all the logging)
+        syslog_setup_failed = False
         if logcfg.syslog:
             from logging.handlers import SysLogHandler
             prefix = '%s: ' % logcfg.syslog_prefix if logcfg.syslog_prefix else ''
             fmt = '{0}[%(levelname)6.6s] %(message)s'.format(prefix)
             fmt = logging.Formatter(fmt)
-            from sys import platform
-            syslog_addr = '/dev/log'
-            if platform == 'darwin':
-                syslog_addr = '/var/run/syslog'
-            hnd = SysLogHandler(address=syslog_addr)
-            hnd.setFormatter(fmt)
 
-            class to_syslog_filter(logging.Filter):
-                def filter(self, record):
-                    return hasattr(record, 'to_syslog') and record.to_syslog
-            hnd.addFilter(to_syslog_filter())
-            logging.root.addHandler(hnd)
+            # User-given or default depending on the platform
+            syslog_addr = logcfg.syslog_address
+            if not syslog_addr:
+                syslog_addr = '/dev/log'
+                if sys.platform == 'darwin':
+                    syslog_addr = '/var/run/syslog'
+
+            try:
+                hnd = SysLogHandler(address=syslog_addr)
+                hnd.setFormatter(fmt)
+
+                class to_syslog_filter(logging.Filter):
+                    def filter(self, record):
+                        return hasattr(record, 'to_syslog') and record.to_syslog
+                hnd.addFilter(to_syslog_filter())
+                logging.root.addHandler(hnd)
+            except socket.error:
+                syslog_setup_failed = True
 
         # We use the same format for both file and stdout
         fmt = '%(asctime)-15s.%(msecs)03d [%(threadName)10.10s] [%(levelname)6.6s] %(name)s#%(funcName)s:%(lineno)s %(message)s'
@@ -466,19 +520,9 @@ class ngamsServer:
 
         logging.root.setLevel(root_level)
 
-
-
-    def setDb(self,
-              dbObj):
-        """
-        Set reference to the DB connection object.
-
-        dbObj:      Valid NG/AMS DB Connection object (ngamsDb).
-
-        Returns:    Reference to object itself.
-        """
-        self.__ngasDb = dbObj
-        return self
+        # Our first potential logging statement
+        if syslog_setup_failed:
+            logger.warning("Syslog handler setup failed, no syslog messages will arrive")
 
 
     def getDb(self):
@@ -761,8 +805,8 @@ class ngamsServer:
         T = TRACE()
 
         self.takeStateSem()
-        if ((ngamsLib.searchList(allowedStates, self.getState()) == -1) or
-            (ngamsLib.searchList(allowedSubStates, self.getSubState()) == -1)):
+        if ( self.getState() not in allowedStates or
+             self.getSubState() not in allowedSubStates):
             errMsg = [action, self.getState(), self.getSubState(),
                       str(allowedStates), str(allowedSubStates)]
             errMsg = genLog("NGAMS_ER_IMPROPER_STATE", errMsg)
@@ -809,8 +853,12 @@ class ngamsServer:
         self._jan_to_serv_queue = multiprocessing.Queue()
         self._janitorThread = multiprocessing.Process(
                                 target=ngamsJanitorThread.janitorThread,
+                                name="Janitor",
                                 args=(self, self._janitorProcStopEvt, self._serv_to_jan_queue, self._jan_to_serv_queue))
         self._janitorThread.start()
+
+        # Re-create the DB connections
+        self.reconnect_to_db()
 
         # Subscribe to db-change events (which we pass down to the janitor proc)
         self.getDb().addDbChangeEvt(self._janitordbChangeSync)
@@ -1578,6 +1626,43 @@ class ngamsServer:
             ngamsHighLevelLib.updateSrvHostInfo(self.getDb(), self.getHostInfoObj())
         return self
 
+    def get_remote_server_endpoint(self, hostId):
+        """
+        Return the IP address to which this server should connect to to
+        contact ngams server `hostId`.
+        """
+
+        local_name = getHostName()
+        listening_ip = self.getDb().getIpFromHostId(hostId)
+
+        if ':' in hostId:
+            remote_name, remote_port = hostId.split(':')
+            remote_port = int(remote_port)
+        else:
+            remote_name = hostId
+            remote_port = self.getDb().getPortNoFromHostId(hostId)
+
+        # remote server is not our same machine
+        if remote_name != local_name:
+            host = listening_ip if listening_ip != '0.0.0.0' else remote_name
+
+        # remote server is in the same machine
+        # We always prefer the loopback interface unless it's not opened
+        else:
+            if listening_ip not in ('127.0.0.1', '0.0.0.0'):
+                host = listening_ip
+            else:
+                host = '127.0.0.1'
+
+        return host, remote_port
+
+    def get_endpoint(self):
+        """
+        Return an IP address which clients can use to connect to this server.
+        """
+        ipAddress = self.ipAddress
+        ipAddress = ipAddress if ipAddress != '0.0.0.0' else '127.0.0.1'
+        return ipAddress, self.portNo
 
     def getSubscriberDic(self):
         """
@@ -1787,7 +1872,7 @@ class ngamsServer:
             srvInfo = "NGAMS/%s" % getNgamsVersion()
             logger.debug("Sending header: Server: %s", srvInfo)
             httpRef.send_header("Server", srvInfo)
-            httpTimeStamp = ngamsLib.httpTimeStamp()
+            httpTimeStamp = ngamsHttpUtils.httpTimeStamp()
             logger.debug("Sending header: Date: %s", httpTimeStamp)
             httpRef.send_header("Date", httpTimeStamp)
             # Expires HTTP reponse header field, e.g.:
@@ -1922,8 +2007,7 @@ class ngamsServer:
 
         pars = ""
         for par in reqPropsObj.getHttpParNames():
-            if (par != "initiator"):
-                pars += par + "=" + reqPropsObj.getHttpPar(par) + "&"
+            pars += par + "=" + reqPropsObj.getHttpPar(par) + "&"
         pars = pars[0:-1]
         redirectUrl = "http://" + redirHost + ":" + str(redirPort) + "/" +\
                       reqPropsObj.getCmd() + "?" + pars
@@ -1934,13 +2018,9 @@ class ngamsServer:
                    msg, addHttpHdrs)
 
 
-    def forwardRequest(self,
-                       reqPropsObj,
-                       httpRefOrg,
-                       forwardHost,
-                       forwardPort,
-                       autoReply = 1,
-                       mimeType = ""):
+    def forwardRequest(self, reqPropsObj, httpRefOrg,
+                       host_id, host, port,
+                       autoReply = 1, mimeType = ""):
         """
         Forward an HTTP request to the given host + port and handle the reply
         from the remotely, contacted NGAS node. If the host to contact for
@@ -1970,33 +2050,20 @@ class ngamsServer:
                           (<HTTP Status>, <HTTP Status Msg>, <HTTP Hdrs>,
                            <Data>)  (tuple).
         """
-        T = TRACE()
 
-        # Resolve the proper contact host/port if needed/possible.
-        hostDic = ngamsHighLevelLib.\
-                  resolveHostAddress(self.getHostId(), self.getDb(),self.getCfg(),[forwardHost])
-        if (hostDic[forwardHost] != None):
-            contactHost = hostDic[forwardHost].getHostId()
-            contactAddr = hostDic[forwardHost].getIpAddress()
-            contactPort = hostDic[forwardHost].getSrvPort()
-        else:
-            contactHost = forwardHost
-            contactAddr = forwardHost
-            contactPort = forwardPort
         pars = []
         for par in reqPropsObj.getHttpParNames():
-            if (par != "initiator"):
-                val = reqPropsObj.getHttpPar(par)
-                pars.append([par, val])
-        cmdInfo = reqPropsObj.getCmd() + "/Parameters: " +\
-                  str(pars)[1:-1] + " to server defined " +\
-                  "by host/port: %s/%s." % (forwardHost, str(forwardPort))
-        cmdInfo += " Contact address: %s/%s." % (contactAddr, str(contactPort))
-        logger.info("Forwarding command: %s", cmdInfo)
+            pars.append((par, reqPropsObj.getHttpPar(par)))
+
+        if logger.isEnabledFor(logging.INFO):
+            msg = "Forwarding %s?%s to %s:%d (corresponding to hostId %s)"
+            urlpars = urllib.urlencode(pars, doseq=1)
+            logger.info(msg, reqPropsObj.getCmd(), urlpars, host, port, host_id)
+
         try:
             # If target host is suspended, wake it up.
-            if (self.getDb().getSrvSuspended(contactHost)):
-                ngamsSrvUtils.wakeUpHost(self, contactHost)
+            if (self.getDb().getSrvSuspended(host_id)):
+                ngamsSrvUtils.wakeUpHost(self, host_id)
 
             # If the NGAS Internal Authorization User is defined generate
             # an internal Authorization Code.
@@ -2006,40 +2073,40 @@ class ngamsServer:
             else:
                 authHttpHdrVal = ""
 
-            # Forward GET or POST request.
             # Make sure the time_out parameters is positive if given; otherwise
             # a sane default
             def_timeout = 300 # 3 [min]
             reqTimeOut = def_timeout
-            if reqPropsObj.hasHttpPar('time_out'):
-                reqTimeOut = reqPropsObj.getHttpPar("time_out")
-                reqTimeOut = float(reqTimeOut) if reqTimeOut else def_timeout
+            if 'time_out' in reqPropsObj and reqPropsObj['time_out']:
+                reqTimeOut = float(reqPropsObj.getHttpPar("time_out"))
                 reqTimeOut = reqTimeOut if reqTimeOut >= 0 else def_timeout
+
+            # Forward GET or POST request.
             if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
-                httpStatCode, httpStatMsg, httpHdrs, data =\
-                              ngamsLib.httpGet(contactAddr, contactPort,
-                                               reqPropsObj.getCmd(), 1, pars,
-                                               "",self.getCfg().getBlockSize(),
-                                               timeOut=reqTimeOut,
-                                               authHdrVal=authHttpHdrVal)
+                resp = ngamsHttpUtils.httpGet(host, port, reqPropsObj.getCmd(),
+                                       pars=pars, timeout=reqTimeOut,
+                                       auth=authHttpHdrVal)
+                with contextlib.closing(resp):
+                    httpStatCode, httpStatMsg, data = resp.status, resp.reason, resp.read()
+                httpHdrs = {h[0]: h[1] for h in resp.getheaders()}
             else:
                 # It's a POST request, forward request + possible data.
-                fn = reqPropsObj.getFileUri()
                 contLen = reqPropsObj.getSize()
                 if ((reqPropsObj.getCmd() == NGAMS_ARCHIVE_CMD) and
                     (contLen <= 0)):
                     raise Exception, "Must specify a content-length when " +\
                           "forwarding Archive Requests (Archive Proxy Mode)"
+
+                # During HTTP post we need to pass down a EOF-aware,
+                # read()-able object
+                data = sizeaware_socketfile(reqPropsObj.getReadFd(), contLen)
                 httpStatCode, httpStatMsg, httpHdrs, data =\
-                                  ngamsLib.httpPost(contactAddr, contactPort,
+                            ngamsHttpUtils.httpPost(host, port,
                                                     reqPropsObj.getCmd(),
-                                                    mimeType,
-                                                    reqPropsObj.getReadFd(),
-                                                    "FD", pars,
-                                                    authHdrVal=authHttpHdrVal,
-                                                    fileName=fn,
-                                                    dataSize=contLen,
-                                                    timeOut=reqTimeOut)
+                                                    data, mimeType,
+                                                    pars=pars,
+                                                    auth=authHttpHdrVal,
+                                                    timeout=reqTimeOut)
 
             # If auto-reply is selected, the reply from the remote server
             # is send back to the originator of the request.
@@ -2059,10 +2126,9 @@ class ngamsServer:
                                mimeType, httpHdrs)
 
             return httpStatCode, httpStatMsg, httpHdrs, data
-        except Exception, e:
-            errMsg = "Problem occurred forwarding command: " + cmdInfo +\
-                     ". Error: " + str(e)
-            raise Exception, errMsg
+        except Exception:
+            logger.exception("Problem occurred forwarding command %s", reqPropsObj.getCmd())
+            raise
 
 
     def genStatus(self,
@@ -2219,16 +2285,13 @@ class ngamsServer:
         try:
             self.handleStartUp()
         except Exception, e:
-
-            # Let us know what went wrong exactly
-            traceback.print_exc(file = sys.stdout)
-
             errMsg = genLog("NGAMS_ER_INIT_SERVER", [str(e)])
-            logger.error(errMsg)
+            print(errMsg)
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEMS INITIALIZING NG/AMS SERVER",
                                      errMsg, [], 1)
             self.terminate()
+            raise
 
     def pidFile(self):
         """
@@ -2262,23 +2325,26 @@ class ngamsServer:
         logger.info("Loading NG/AMS Configuration: " + self.getCfgFilename()+" ...")
         cfg.load(self.getCfgFilename())
 
-        # Connect to the DB.
-        db = self.getDb()
-        if not db:
-            db = ngamsDb.from_config(cfg)
-            self.setDb(db)
+        self.reconnect_to_db()
 
         # Check if we should load a configuration from the DB.
         if (self.__dbCfgId):
-            cfg.loadFromDb(self.__dbCfgId, db)
+            cfg.loadFromDb(self.__dbCfgId, self.__ngasDb)
 
         cfg._check()
 
-        ngasTmpDir = ngamsHighLevelLib.getNgasTmpDir(cfg)
-        self.__ngasDb.setDbTmpDir(ngasTmpDir)
-
         logger.info("Successfully loaded NG/AMS Configuration")
 
+
+    def reconnect_to_db(self):
+
+        if self.__ngasDb:
+            self.__ngasDb.close()
+
+        cfg = self.__ngamsCfgObj
+        self.__ngasDb = ngamsDb.from_config(cfg)
+        ngasTmpDir = ngamsHighLevelLib.getNgasTmpDir(cfg)
+        self.__ngasDb.setDbTmpDir(ngasTmpDir)
 
     def handleStartUp(self):
         """
@@ -2305,6 +2371,7 @@ class ngamsServer:
         # Port number defaults to 7777
         portNo = self.getCfg().getPortNo()
         self.portNo = portNo if portNo != -1 else 7777
+        self.host_id = "%s:%d" % (getHostName(), self.portNo)
 
         # Set up missing logging conditions from configuration file
         logcfg = self.logcfg
@@ -2316,6 +2383,8 @@ class ngamsServer:
             logcfg.syslog = self.getCfg().getSysLog()
         if logcfg.syslog_prefix is None:
             logcfg.syslog_prefix = self.getCfg().getSysLogPrefix()
+        if logcfg.syslog_address is None:
+            logcfg.syslog_address = self.getCfg().getSysLogAddress()
         if logcfg.stdout_level is None:
             logcfg.stdout_level = 0
         if logcfg.logfile_rot_interval is None:
@@ -2327,11 +2396,17 @@ class ngamsServer:
             self.setup_logging()
         except Exception, e:
             errMsg = genLog("NGAMS_ER_INIT_LOG", [logcfg.logfile, str(e)])
-            # can't use logger here, we failed to set it up in the first place
-            print(errMsg)
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM SETTING UP LOGGING", errMsg)
             raise
+
+        # Extend the system path to include anything specified in the config
+        plugins_path = self.getCfg().getPluginsPath()
+        if plugins_path:
+            if not os.path.exists(plugins_path):
+                raise ValueError("Plugins path %s doesn't exist, check your configuration" % (plugins_path,))
+            sys.path.insert(0, plugins_path)
+            logger.info("Added %s to the system path", plugins_path)
 
         # Check if there is an entry for this node in the ngas_hosts
         # table, if not create it.
@@ -2348,7 +2423,8 @@ class ngamsServer:
             tmpHostInfoObj.\
                              setHostId(self.getHostId()).\
                              setDomain(domain).\
-                             setIpAddress(ipAddress).\
+                             setIpAddress(self.ipAddress).\
+                             setSrvPort(self.portNo).\
                              setMacAddress(NGAMS_NOT_SET).\
                              setNSlots(-1).\
                              setClusterName(self.getHostId()).\
@@ -2380,11 +2456,9 @@ class ngamsServer:
         logger.debug("Check if NG/AMS PID file is existing ...")
         if (not self.getForce() and os.path.exists(self.pidFile())):
             errMsg = genLog("NGAMS_ER_MULT_INST")
-            logger.error(errMsg)
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "CONFLICT STARTING NG/AMS SERVER", errMsg)
-            self.terminate()
-            return
+            raise Exception(errMsg)
 
         # Store the PID of this process in a PID file.
         logger.debug("Creating PID file for this session: %s", self.pidFile())
@@ -2476,13 +2550,12 @@ class ngamsServer:
         try:
             self.serve()
         except Exception, e:
-            traceback.print_exc()
             errMsg = genLog("NGAMS_ER_OP_HTTP_SERV", [str(e)])
-            logger.error(errMsg)
+            logger.exception(errMsg)
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM ENCOUNTERED STARTING " +\
                                      "SERVER", errMsg)
-            self.terminate()
+            raise
 
 
     def reqWakeUpCall(self,
@@ -2566,6 +2639,7 @@ class ngamsServer:
         Returns:     Void.
         """
         t = threading.Thread(target=self._terminate, name="Shutdown")
+        t.daemon = False
         t.start()
 
     def _terminate(self):
@@ -2573,8 +2647,12 @@ class ngamsServer:
                                              self.getCfg().getPortNo()])
         logger.info(msg, extra={'to_syslog': True})
 
+        # show+threads is useful to know if there are any hanging threads
+        # after we stop the server
+        show_threads()
         self.stopServer()
         ngamsSrvUtils.ngamsBaseExitHandler(self)
+        show_threads()
 
         # Shut down logging. This will flush all pending logs in the system
         # and will ensure that the last logfile gets rotated
@@ -2628,7 +2706,6 @@ class ngamsServer:
         Returns:    Void.
         """
         manPage = pkg_resources.resource_string(__name__, 'ngamsServer.txt')  # @UndefinedVariable
-        manPage = manPage.replace("ngamsServer", self._serverName)
         print manPage
         print ngamsCopyrightString()
 
@@ -2652,6 +2729,10 @@ class ngamsServer:
                 if (par == "-CFG"):
                     idx = self._incCheckIdx(idx, argv)
                     self.setCfgFilename(argv[idx])
+                elif (par == "-CACHE"):
+                    self._cacheArchive = True
+                elif par == '-DATAMOVER':
+                    self._dataMoverOnly = True
                 elif (par == "-DBCFGID"):
                     idx = self._incCheckIdx(idx, argv)
                     self.__dbCfgId = argv[idx]
@@ -2705,11 +2786,12 @@ class ngamsServer:
             self.correctUsage()
             sys.exit(1)
 
+        # Add extra paths at the beginning of the sys.path
         for p in extra_paths:
             p = os.path.expanduser(p)
             if not os.path.exists(p):
                 raise ValueError("Path %s doesn't exist" % (p,))
-            sys.path.append(p)
+            sys.path.insert(0,p)
 
     ########################################################################
     # The following methods are used for the NG/AMS Unit Tests.

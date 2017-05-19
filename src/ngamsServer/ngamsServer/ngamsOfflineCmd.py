@@ -32,7 +32,6 @@ Function + code to handle the OFFLINE command.
 """
 
 import logging
-import time
 
 from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_OFFLINE_STATE, \
@@ -59,13 +58,6 @@ def handleCmdOffline(srvObj,
 
     Returns:      Void.
     """
-    # If wait=1 is specified, send an immediate reply.
-    if (not reqPropsObj.getWait()):
-        srvObj.reply(reqPropsObj.setCompletionTime(), httpRef,
-                     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,
-                     "Accepted command OFFLINE")
-        time.sleep(0.250)
-
     if (not reqPropsObj.hasHttpPar("force")):
         srvObj.checkSetState("Command OFFLINE", [NGAMS_ONLINE_STATE],
                              [NGAMS_IDLE_SUBSTATE], NGAMS_OFFLINE_STATE)

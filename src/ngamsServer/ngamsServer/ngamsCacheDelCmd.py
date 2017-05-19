@@ -73,7 +73,6 @@ def cacheDel(srvObj,
                                                    diskId)
     fileLocation  = fileLocInfo[0]
     fileHostId    = fileLocInfo[1]
-    filePortNo    = fileLocInfo[3]
     if (fileLocation == NGAMS_HOST_LOCAL):
         msg = "Scheduling file for deletion from the cache according to " +\
               "CACHEDEL Command: %s/%s/%s"
@@ -87,19 +86,18 @@ def cacheDel(srvObj,
           (fileLocInfo[0] == NGAMS_HOST_CLUSTER)):
         logger.debug("File is remote or located within the private network of " +\
              "the contacted NGAS system -- this server acting as proxy " +\
-             "and forwarding request to remote NGAS system: %s/%d",
-             fileHostId, filePortNo)
-        httpStatCode, httpStatMsg, httpHdrs, data =\
-                      srvObj.forwardRequest(reqPropsObj, httpRef,
-                                            fileHostId, filePortNo)
+             "and forwarding request to remote NGAS system: %s", fileHostId)
+        host, port = srvObj.get_remote_server_endpoint(fileHostId)
+        srvObj.forwardRequest(reqPropsObj, httpRef, fileHostId, host, port)
     else:
         # Send back an HTTP re-direction response to the requestor.
         logger.debug("File to be deleted from the NGAS Cache is stored on a " +\
              "remote host not within private network, Proxy Mode is off " +\
              "- sending back HTTP re-direction response")
+        host, port = srvObj.get_remote_server_endpoint(fileHostId)
         reqPropsObj.setCompletionTime(1)
         srvObj.updateRequestDb(reqPropsObj)
-        srvObj.httpRedirReply(reqPropsObj, httpRef, fileHostId, filePortNo)
+        srvObj.httpRedirReply(reqPropsObj, httpRef, host, port)
 
     srvObj.updateRequestDb(reqPropsObj)
 

@@ -45,8 +45,8 @@ from ngamsLib.ngamsCore import NGAMS_NOT_RUN_STATE,\
     NGAMS_ONLINE_STATE, NGAMS_DEFINE, NGAMS_SUBSCRIBE_CMD,\
     NGAMS_SUCCESS, TRACE, genLog, NGAMS_DISK_INFO, checkCreatePath,\
     NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
-    loadPlugInEntryPoint, toiso8601
-from ngamsLib import ngamsStatus, ngamsLib
+    loadPlugInEntryPoint, toiso8601, fromiso8601
+from ngamsLib import ngamsStatus, ngamsLib, ngamsHttpUtils
 from ngamsLib import ngamsPhysDiskInfo
 from ngamsLib import ngamsSubscriber
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
@@ -149,9 +149,9 @@ def _subscriberThread(srvObj,
             statObj.clear()
             try:
                 resp, stat, msgObj, data = \
-                      ngamsLib.httpGet(subscrObj.getHostId(),
+                      ngamsHttpUtils.httpGet(subscrObj.getHostId(),
                                        subscrObj.getPortNo(),
-                                       NGAMS_SUBSCRIBE_CMD, 1, pars)
+                                       NGAMS_SUBSCRIBE_CMD, pars)
                 statObj.unpackXmlDoc(data, 1)
             except Exception, e:
                 ex = "Exception: " + str(e)
@@ -321,15 +321,20 @@ def handleOnline(srvObj,
         logger.debug('Preset the backlog count to %d', num_bl)
         srvObj.presetSubcrBackLogCount(num_bl)
 
+    # TODO: unify this "db-to-object" reading (there is something similar elsewhere,
+    #       I'm pretty sure, and hide these low-level details from here
+    logger.info("Creating %d subscrption objects from subscription DB info", len(subscrList))
     for subscrInfo in subscrList:
+        start_date = fromiso8601(subscrInfo[5], local=True) if subscrInfo[5] else None
+        last_ingested_date = fromiso8601(subscrInfo[8], local=True) if subscrInfo[8] else None
         tmpSubscrObj = ngamsSubscriber.ngamsSubscriber(subscrInfo[0],
                                                        subscrInfo[1],
                                                        subscrInfo[2],
                                                        subscrInfo[4],
-                                                       subscrInfo[5],
+                                                       start_date,
                                                        subscrInfo[6],
                                                        subscrInfo[7],
-                                                       subscrInfo[8],
+                                                       last_ingested_date,
                                                        subscrInfo[3])
         tmpSubscrObj.setConcurrentThreads(subscrInfo[9])
         # Take only subscribers for this NG/AMS Server.
@@ -424,9 +429,9 @@ def handleOffline(srvObj,
         for subscrObj in srvObj.getSubscrStatusList():
             try:
                 resp, stat, msgObj, data = \
-                      ngamsLib.httpGet(subscrObj.getHostId(),
+                      ngamsHttpUtils.httpGet(subscrObj.getHostId(),
                                        subscrObj.getPortNo(),
-                                       NGAMS_UNSUBSCRIBE_CMD, 1,
+                                       NGAMS_UNSUBSCRIBE_CMD,
                                        [["url", subscrObj.getId()]])
             except Exception:
                 msg = "Problem occurred while cancelling subscription " +\
@@ -485,7 +490,7 @@ def wakeUpHost(srvObj,
         plugInMethod(srvObj, suspHost)
 
         ipAddress = srvObj.getDb().getIpFromHostId(suspHost)
-        ngamsHighLevelLib.pingServer(suspHost, ipAddress, portNo,
+        ngamsHighLevelLib.pingServer(ipAddress, portNo,
                                      srvObj.getCfg().getWakeUpCallTimeOut())
     except Exception:
         logger.exception("Error waking up host %s", suspHost)
@@ -518,7 +523,7 @@ def checkStagingAreas(srvObj):
     # Go through all files in the staging file dictionary and move them to
     # the Bad Files Area.
     for filename in stagingFileDic.keys():
-        ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename, filename)
+        ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename)
 
 
 def genIntAuthHdr(srvObj):

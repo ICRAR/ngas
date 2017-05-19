@@ -387,7 +387,7 @@ int main (int argc, char*  argv[])
 	goto correctUsage;
     /* Send timeout with the request */
     if (timeOut != ngamsNO_TIME_OUT)
-    	sprintf(tmpBuf, "%d", (int)(timeOut + 0.5));
+    	sprintf(tmpBuf, "%f", timeOut);
     else
     	sprintf(tmpBuf, "-1");
     ngamsAddParAndVal(&parArray, "time_out", tmpBuf);

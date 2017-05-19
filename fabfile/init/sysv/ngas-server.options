@@ -1,0 +1,41 @@
+# Options configuration for the ngas-server script
+#
+# This file defines the configuration options for the NGAS server daemon
+# started by the init system
+#
+
+#
+# The user used to run NGAS
+#
+USER=ngas
+
+#
+# Process to be executed to start the NGAS daemon
+#
+DAEMON=ngamsDaemon
+
+#
+# The location of the configuration file
+#
+CFGFILE=/home/ngas/NGAS/cfg/ngamsServer.conf
+
+#
+# Bring the server automatically to ONLINE state during start? YES/NO
+#
+AUTOONLINE=YES
+
+#
+# Colon-separated list of directories or egg files containing code
+# (e.g., plug-ins) that can be loaded by NGAS
+#
+NGAS_PATH=
+
+#
+# Is this a cache server? YES/NO
+#
+CACHE=NO
+
+#
+# Is this a data mover server? YES/NO
+#
+DATA_MOVER=NO

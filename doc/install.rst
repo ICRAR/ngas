@@ -3,46 +3,55 @@ Installation
 ############
 
 Installing NGAS is pretty straight-forward.
-There are two ways of running the installation:
+There are two ways to perform an installation:
 
-* :ref:`Manually installing it <inst.manual>`.
-* :ref:`Via Fabric <inst.fabric>`.
+* :ref:`Manually <inst.manual>`.
+* :ref:`Using Fabric <inst.fabric>`.
   This is the recommended way, if possible, as it automates most of the
-  installation steps.
+  installation steps while still being highly customisable.
 
-Each of the steps is described in detail below.
+In both cases you may want to
+:ref:`create a virtual environment <inst.venv>`.
+
+.. _inst.venv:
+
+Virtual environment creation
+============================
+
+Either if you are installing NGAS :ref:`manually <inst.manual>`
+or :ref:`using Fabric <inst.fabric>`
+you may wish to create
+a `virtual environment <https://virtualenv.readthedocs.org/en/latest/>`_.
+In the case of a manual installation,
+the newly created virtual environment
+can host your NGAS installation.
+In the case of a fabric-based remote installation,
+the new virtual environment will provide you
+with the necessary python packages to run Fabric.
+
+To create the virtual environment,
+go to the NGAS root source directory and run::
+
+ ./create_venv.sh /path/to/the/new/venv
+
+This will check you have an appropriate python version,
+will get the ``virtualenv`` tool, create a virtual environment,
+install a set of basic packages needed later,
+and tell you to source the virtual environment.
 
 .. _inst.manual:
 
 Manual installation
 ===================
 
-Preparing the installation area
--------------------------------
-
 .. note::
- This step is optional,
- as you might have already a virtual environment
- to install NGAS onto,
- or you may want to have a system-wide installation instead.
+ Like any other python package,
+ NGAS can be installed in a virtual environment
+ or as a system-wide package.
+ If you wish to install NGAS on a virtual environment
+ you can :ref:`easily create one <inst.venv>`.
 
-First of all, you may wish to create
-a `virtual environment <https://virtualenv.readthedocs.org/en/latest/>`_
-to install NGAS on it.
-You can either do it manually yourself
-or go to the NGAS root directory and run::
-
- ./boot.sh
-
-This command will check you have an appropriate python version,
-will get the ``virtualenv`` tool, create a virtual environment,
-install a set of basic packages needed later,
-and tell you to source the virtual environment.
-
-Installing
-----------
-
-To install NGAS go to the root directory and run::
+To manually install NGAS go to the root directory and simply run::
 
  ./build.sh
 
@@ -81,7 +90,12 @@ Via Fabric
 ==========
 
 .. note::
- The installation via Fabric always install NGAS in a virtualenv
+ The installation via Fabric always installs NGAS in a virtualenv
+
+.. note::
+ If you don't have Fabric installed in your system
+ you can get one by creating
+ :ref:`a local virtual environment <inst.venv>` containing it.
 
 `Fabric <http://www.fabfile.org/>`_ is a tool that allows
 to perform commands in one or more hosts, local or remote (via SSH).
@@ -191,30 +205,14 @@ Docker Image
  A local docker daemon must be running and the current user must have access to
  start/stop/build, etc, container and images, this cannot be via sudo!
 
-
 To create a Docker container containing an NGAS installation simply run::
 
  fab hl.docker_image
 
-This will generate an image called ``ngas:latest``. When started, the container
-by default will be running the NGAS server.
+This will generate an image called ``icrar/ngas:latest`` based on CentOS 7.
+When started, the container by default will run the NGAS server.
+The NGAS server will look for a configuration file
+under ``/home/ngas/NGAS/cfg/ngamsServer.conf``,
+which by default needs to be provided via volume mapping.
 
-How It is Implemented
-^^^^^^^^^^^^^^^^^^^^^
-
-To generate the image the following steps are taken:
-
-1. A stage1 image is built, based on the ``centos:centos7`` image, which includes the
-   required installed packages plus also setup for ssh access. The current
-   user's ``id_ras.pub`` file is used to put in place a
-   ``/root/.ssh/authorized_keys`` file so that ssh access can be performed
-   without a password. The IP address of the running docker container is
-   obtained and fabric environment updated to use that IP address.
-2. The stage1 image is started (becoming the stage1 container) and normal ssh
-   based, operations_deploy, is performed via ssh.
-3. Once complete the stage1 container is stopped and a commit is done to
-   generate a stage2 image. The stage1 container  and stage1 image are both
-   removed.
-4. A build is done against the stage2 image to generate the final image. The
-   build does some basic tidy up plus sets the startup command to run
-   ``ngamsServer``, as the ``ngas`` user, on container startup.
+.. include:: docker_image_desc.rst

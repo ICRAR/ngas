@@ -53,7 +53,7 @@ if __name__ == '__main__':
         fileId = fileId.strip()
         if (not fileId): continue
         info(1,"Requesting file with ID: " + fileId)
-        res = client.retrieve2File(fileId)
+        res = client.retrieve(fileId)
         try:
             if (res.getStatus() != NGAMS_SUCCESS):
                 error("Error retrieving file with ID: " + fileId +\

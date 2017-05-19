@@ -48,7 +48,7 @@ class ngamsCacheDelTest(ngamsTestSuite):
         ngamsTestSuite.tearDown(self)
     
     def test_cache_delete(self):
-        self.prepExtSrv(server_type = 'ngamsCacheServer')
+        self.prepExtSrv(srvModule = 'ngamsServer.ngamsCacheServer')
 
         r = sendPclCmd().archive('src/SmallFile.fits')
         self.assertEquals(r.getStatus(), 'SUCCESS', None)

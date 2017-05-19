@@ -115,7 +115,7 @@ def formatAsList(resultSet, header = None):
     # Go through the results, find the longest result per column and use
     # that as basis for the column.
     formatStrDic = {}
-    reList = resultSet
+    reList = list(resultSet)
     if (header):
         reList = [header] + reList
     for res in reList:

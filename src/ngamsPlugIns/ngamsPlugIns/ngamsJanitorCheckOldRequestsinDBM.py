@@ -32,7 +32,7 @@ def timed_out(t, timeout):
     now = time.time()
     return t is not None and (now - t) >= timeout
 
-def ngamsJanitorCheckOldRequestsinDBM(srvObj, stopEvt, jan_to_srv_queue):
+def run(srvObj, stopEvt, jan_to_srv_queue):
     """
     Check and if needs be clean up old requests.
 

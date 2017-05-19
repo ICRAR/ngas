@@ -34,6 +34,7 @@ Core class for the NG/AMS DB interface.
 import importlib
 import logging
 import random
+import tempfile
 import threading
 import time
 
@@ -501,46 +502,24 @@ class ngamsDbCore(object):
                  interface,
                  parameters = {},
                  createSnapshot = 1,
-                 maxRetries = 10,
-                 retryWait = 1.0,
-                 multipleConnections = False,
                  maxpoolcons = 6,
                  use_file_ignore=True):
         """
-        Constructor method.
+        Creates a new ngamsDbCore object using ``interface`` as the underlying
+        PEP-249-compliant database connection driver. Connections creation
+        parameters are given via ``parameters``.
 
-        server:              DB server name (string).
+        This object maintains a pool of connections to avoid connection
+        creation overheads. The maximum amount of connections held in the pool
+        is set via ``maxpoolcons``.
 
-        db:                  DB name (string).
-
-        user:                DB user (string).
-
-        password:            DB password (string).
-
-        createSnapshot:      Indicates if a DB Snapshot (temporary snapshot
-                             files) should be created (integer/0|1).
-
-        interface:           NG/AMS DB Interface Plug-In (string).
-
-        tmpDir:              Name of NGAS Temporary Directory (string).
-
-        maxRetries:          Max. number of retries in case of failure
-                             (integer).
-
-        retryWait:           Time in seconds to wait for next retry (float).
-
-        use_file_ignore:     Use "file_ignore" as the column name of the
-                             "ngas_files" table, as opposed to "ignore".
-
-        parameters:          Plug-in parameters for the connection (usually for
-                             the NG/AMS DB Driver Plug-In).
-
-        multipleConnections: Allow multiple connections or only one (boolean).
+        Finally, some combinations of old versions of NGAS and database engines
+        used a different column name for the same field in the "ngas_files"
+        table. ``use_file_ignore`` controls this behavior to provide
+        backwards-compatibility. If true, the code will use "file_ignore" for
+        the column name as opposed to "ignore".
         """
         T = TRACE()
-
-        # The PEP-249 module and the single connection we hold to it
-        self.__dbModule = None
 
         self.__dbSem = threading.Lock()
 
@@ -554,12 +533,8 @@ class ngamsDbCore(object):
         # Timer for analyzing time spent for DB access
         self.__dbAccessTime = 0.0
 
-        # Import the DB Interface Plug-In
-        self.__dbParameters = parameters
-        self.__dbSnapshot = createSnapshot
-        self.__dbInterface = interface
-
-        logger.info("Importing DB Module: %s", self.__dbInterface)
+        # Import the DB Interface Plug-In (PEP-249 compliant)
+        logger.info("Importing DB Module: %s", interface)
         self.__dbModule = importlib.import_module(interface)
         self.__paramstyle = self.__dbModule.paramstyle
         self.__pool = PooledDB(self.__dbModule,
@@ -634,29 +609,6 @@ class ngamsDbCore(object):
         return self
 
 
-    def getDbTimeStr(self,
-                     prec = 3):
-        """
-        Return the time spent for the last DB access as a string.
-
-        Returns:    Last DB access time in seconds as a string (string).
-        """
-        return str('%.' + str(prec) + 'fs') % self.__dbAccessTime
-
-
-    def setDbVerify(self,
-                    verify):
-        """
-        Enable/disable DB Verification.
-
-        verify:   0=off, 1=on (integer/0|1).
-
-        Returns:  Reference to object itself.
-        """
-        self.__dbVerify = int(verify)
-        return self
-
-
     def getDbVerify(self):
         """
         Get value of DB verification flag.
@@ -664,19 +616,6 @@ class ngamsDbCore(object):
         Returns:  value of DB verification flag (boolean).
         """
         return self.__dbVerify
-
-
-    def setDbAutoRecover(self,
-                         autoRecover):
-        """
-        Enable/disable DB Auto Recovering.
-
-        autoRecover:   0=off, 1=on (integer/0|1).
-
-        Returns:       Reference to object itself.
-        """
-        self.__dbAutoRecover = int(autoRecover)
-        return self
 
 
     def getDbAutoRecover(self):
@@ -708,6 +647,10 @@ class ngamsDbCore(object):
         Returns:   DB temporary directory (string).
         """
         return self.__dbTmpDir
+
+
+    def genTmpFile(self, fname):
+        return tempfile.mktemp(fname, dir=self.__dbTmpDir)
 
 
     def getCreateDbSnapshot(self):
@@ -801,14 +744,14 @@ class ngamsDbCore(object):
         three-dimensional one returned by self.query.
         """
 
+        logger.debug("Performing SQL query with parameters: %s / %r", sqlQuery, args)
+
         # If we are passing down parameters we need to sanitize both the query
         # string (which should come with {0}-style formatting) and the parameter
         # list to cope with the different parameter styles supported by PEP-249
         if args:
             sqlQuery = sqlQuery.format(*self._params_to_bind(len(args)))
             args = self._data_to_bind(args)
-
-        logger.debug("Performing SQL query with parameters: %s / %r", sqlQuery, args)
 
         with closing(self.__pool.connection()) as conn:
             with closing(conn.cursor()) as cursor:
@@ -829,8 +772,6 @@ class ngamsDbCore(object):
                             res = []
                         conn.commit()
 
-                        logger.debug("Result of SQL query %s / %r: %r", sqlQuery, args, res)
-
                         return res
                     except:
                         conn.rollback()
@@ -846,7 +787,8 @@ class ngamsDbCore(object):
 
         Return:          Cursor object instance (<Cursor Object>).
         """
-        T = TRACE()
+
+        logger.debug("Performing SQL query (using a cursor): %s / %r", sqlQuery, args)
 
         # If we are passing down parameters we need to sanitize both the query
         # string (which should come with {0}-style formatting) and the parameter
@@ -854,8 +796,6 @@ class ngamsDbCore(object):
         if args:
             sqlQuery = sqlQuery.format(*self._params_to_bind(len(args)))
             args = self._data_to_bind(args)
-
-        logger.debug("Performing SQL query (using a cursor): %s / %r", sqlQuery, args)
 
         return ngamsDbCursor(self.__pool, sqlQuery, args)
 

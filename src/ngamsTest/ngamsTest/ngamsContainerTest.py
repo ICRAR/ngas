@@ -20,7 +20,10 @@
 #    MA 02111-1307  USA
 #
 
-import os, random, string, sys
+import os
+import random
+import string
+import sys
 
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_FAILURE, toiso8601
 from ngamsLib.ngamsCore import rmFile, checkCreatePath, getFileSize
@@ -312,14 +315,12 @@ class ngamsContainerTest(ngamsTestSuite):
 		containerName = "toplevel"
 
 		# Archive the top-level directory
-		self.assertEquals(client.carchive(containerName).getStatus(), NGAMS_SUCCESS)
+		self.assertEquals(client.carchive(containerName, 'application/octet-stream').getStatus(), NGAMS_SUCCESS)
 		self._checkFilesAndContainerSize(client, containerName, len(self.myfiles), self._filesSize(), 1)
 
 		# Retrieve it
-		outputDir = containerName + "_copy"
-		self.assertEquals(client.cretrieve(containerName, targetDir=outputDir).getStatus(), NGAMS_SUCCESS)
-		self._assertEqualsDir(containerName, outputDir + os.sep + containerName)
-		rmFile(outputDir)
+		self.assertEquals(client.cretrieve(containerName, targetDir='tmp').getStatus(), NGAMS_SUCCESS)
+		self._assertEqualsDir(containerName, os.path.join('tmp', containerName))
 
 	def _assertEqualsDir(self, dir1, dir2):
 

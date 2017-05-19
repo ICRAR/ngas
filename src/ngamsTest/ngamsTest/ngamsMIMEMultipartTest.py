@@ -21,9 +21,14 @@
 #
 
 import StringIO
-import os, sys, string, random
+import functools
+import os
+import random
+import string
+import sys
+import tempfile
 
-from ngamsLib import ngamsMIMEMultipart, ngamsLib
+from ngamsLib import ngamsMIMEMultipart
 from ngamsLib.ngamsCore import rmFile, checkCreatePath
 import ngamsTestLib
 
@@ -93,17 +98,16 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
         if not onlyDirs:
             self._createFiles()
 
-        absDirname = os.path.abspath("toplevel")
-        filesInformation, absPaths = ngamsLib.collectFiles(absDirname)
-        writer = ngamsLib.ngamsMIMEMultipart.MIMEMultipartWriter(filesInformation)
-        messageSize = writer.getTotalSize()
-
+        cinfo = ngamsMIMEMultipart.cinfo_from_filesystem('toplevel', 'application/octet-stream')
+        bs = 65536
         output = StringIO.StringIO()
-        writer.setOutput(output)
-        ngamsLib.writeDirContents(writer, absPaths[1], 1024, 0)
+        reader = ngamsMIMEMultipart.ContainerReader(cinfo)
+        rfunc = functools.partial(reader.read, bs)
+        for buf in iter(rfunc, ''):
+            output.write(buf)
         message = output.getvalue()
 
-        self.assertEqual(messageSize, len(message), "Message size calculated by the writer is wrong")
+        self.assertEqual(len(reader), len(message), "Message size calculated by the reader is wrong: %d != %d" % (len(reader), len(message)))
         return message
 
     def _test_MultipartWriter(self, onlyDirs):
@@ -157,7 +161,7 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
     def test_MultipartParserDirsAndFiles(self):
         self._test_MultipartParser(False)
 
-    def test_MultipartPrserSeveralReadingSizes(self):
+    def test_MultipartParserSeveralReadingSizes(self):
         # The pure fact that the parser ends is good,
         # there's really nothing else to check.
         for size in [2**i for i in xrange(20)]:
@@ -166,6 +170,26 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
             handler = ngamsMIMEMultipart.ContainerBuilderHandler()
             parser = ngamsMIMEMultipart.MIMEMultipartParser(handler, inputContent, len(message), size)
             parser.parse()
+
+    def test_FileInfoReader(self):
+
+        size = random.randint(10, 100)
+        fd, name = tempfile.mkstemp('.bin', dir='tmp')
+        with os.fdopen(fd, 'wb') as f:
+            f.write(b' ' * size)
+
+        finfo = ngamsMIMEMultipart.file_info('application/octet-stream', name, size, lambda: open(name, 'rb'))
+        reader = ngamsMIMEMultipart.FileReader(finfo)
+        rlen = len(reader)
+
+        message = StringIO.StringIO()
+        rfunc = functools.partial(reader.read, 65536)
+        for buf in iter(rfunc, ''):
+            message.write(buf)
+        message = message.getvalue()
+        mlen = len(message)
+
+        self.assertEqual(mlen, rlen)
 
 def run():
     """

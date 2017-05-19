@@ -117,7 +117,7 @@ def waitUntilFileDelivered(file_id, pclient, timeout = 0, wait_interval = 1):
     while (1):
         if (timeout > 0 and howlong > timeout):
             raise WaitTimeout
-        stat = pclient.sendCmd('STATUS', pars=[['file_id', file_id]])
+        stat = pclient.get_status('STATUS', pars=[['file_id', file_id]])
         msg = stat.getMessage()
         if (msg == 'Successfully handled command STATUS'):
             return howlong
@@ -130,7 +130,7 @@ def _archiveThread(pclient, fileUriList, interval, clientIdx, my_bar):
         print 'Archiving file %s' % fileUri
         stat = None
         try:
-            stat = pclient.pushFile(fileUri, mime_type, cmd = 'QARCHIVE')
+            stat = pclient.archive(fileUri, mime_type, cmd = 'QARCHIVE')
         except Exception as e:
             print "Exception '%s' occurred while archiving file %s" % (str(e), fileUri)
             continue
@@ -155,7 +155,7 @@ def _waitUntilThreadsExit(threads):
         time.sleep(1)
 
 def _unSubscribe(pclient, subscrId):
-    stat = pclient.sendCmd('UNSUBSCRIBE', pars = [["subscr_id", subscrId]])
+    stat = pclient.get_status('UNSUBSCRIBE', pars = [["subscr_id", subscrId]])
     msg = stat.getMessage()
     if (msg != 'Successfully handled UNSUBSCRIBE command'):
         print 'Error when removing the existing subscriber: \"%s\". Exception: %s' % (subscrId, msg)
@@ -170,7 +170,7 @@ def TestCase07(num_file_per_client, num_clients, interval = 1, base_name = None)
     TestCase06(num_file_per_client, num_clients, interval, base_name, True)
 
 def TestCase11(num_file_per_client, num_clients, interval = 2, base_name = None):
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
+    stat = clientA.get_status('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
@@ -200,14 +200,14 @@ def TestCase11(num_file_per_client, num_clients, interval = 2, base_name = None)
     tt = 'N'
     while (tt != 'Y' and tt != 'y'):
         tt = raw_input("\nShall we change the priority from 1 to 10 now?(Y/N)\n")
-    stat = clientA.sendCmd('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['priority', 10]])
+    stat = clientA.get_status('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['priority', 10]])
     msg = stat.getMessage()
     print msg
 
     tt = 'N'
     while (tt != 'Y' and tt != 'y'):
         tt = raw_input("\nShall we change the priority from 10 back to 1 now?(Y/N)\n")
-    stat = clientA.sendCmd('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['priority', 1]])
+    stat = clientA.get_status('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['priority', 1]])
     msg = stat.getMessage()
     print msg
 
@@ -221,7 +221,7 @@ def TestCase11(num_file_per_client, num_clients, interval = 2, base_name = None)
     _unSubscribe(clientA, 'A-to-B')
 
 def TestCase10(num_file_per_client, num_clients, interval = 2, base_name = None):
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '1'], ['subscr_id', 'A-to-B'], ['priority', 1]])
+    stat = clientA.get_status('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '1'], ['subscr_id', 'A-to-B'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
@@ -251,14 +251,14 @@ def TestCase10(num_file_per_client, num_clients, interval = 2, base_name = None)
     tt = 'N'
     while (tt != 'Y' and tt != 'y'):
         tt = raw_input("\nShall we change concurrent_threads to 3 now?(Y/N)\n")
-    stat = clientA.sendCmd('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['concurrent_threads', '3']])
+    stat = clientA.get_status('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['concurrent_threads', '3']])
     msg = stat.getMessage()
     print msg
 
     tt = 'N'
     while (tt != 'Y' and tt != 'y'):
         tt = raw_input("\nShall we change concurrent_threads back to 1 now?(Y/N)\n")
-    stat = clientA.sendCmd('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['concurrent_threads', '1']])
+    stat = clientA.get_status('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['concurrent_threads', '1']])
     msg = stat.getMessage()
     print msg
 
@@ -272,7 +272,7 @@ def TestCase10(num_file_per_client, num_clients, interval = 2, base_name = None)
     _unSubscribe(clientA, 'A-to-B')
 
 def TestCase09(num_file_per_client, num_clients, interval = 2, base_name = None):
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
+    stat = clientA.get_status('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
@@ -309,7 +309,7 @@ def TestCase09(num_file_per_client, num_clients, interval = 2, base_name = None)
     tt = 'N'
     while (tt != 'Y' and tt != 'y'):
         tt = raw_input("Shall we change subscriber url to ngas-C's url now?(Y/N)")
-    stat = clientA.sendCmd('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['url', ngasC_url]])
+    stat = clientA.get_status('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['url', ngasC_url]])
     msg = stat.getMessage()
     print msg
 
@@ -324,7 +324,7 @@ def TestCase09(num_file_per_client, num_clients, interval = 2, base_name = None)
     _unSubscribe(clientA, 'A-to-B')
 
 def TestCase08(num_file_per_client, num_clients, interval = 2, base_name = None, suspendFirst = True):
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
+    stat = clientA.get_status('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
@@ -359,7 +359,7 @@ def TestCase08(num_file_per_client, num_clients, interval = 2, base_name = None,
         while (tt != 'Y' and tt != 'y'):
             tt = raw_input("Shall we suspend file delivery now? (Y/N)")
 
-        stat = clientA.sendCmd('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['suspend', 1]])
+        stat = clientA.get_status('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['suspend', 1]])
         msg = stat.getMessage()
         if (msg != 'Successfully SUSPENDED for the subscriber A-to-B'):
             _unSubscribe(clientA, 'A-to-B')
@@ -368,7 +368,7 @@ def TestCase08(num_file_per_client, num_clients, interval = 2, base_name = None,
     tt = 'N'
     while (tt != 'Y' and tt != 'y'):
         tt = raw_input("Shall we change subscriber url now?(Y/N)")
-    stat = clientA.sendCmd('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['url', ngasC_url]])
+    stat = clientA.get_status('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['url', ngasC_url]])
     msg = stat.getMessage()
     print msg
 
@@ -376,7 +376,7 @@ def TestCase08(num_file_per_client, num_clients, interval = 2, base_name = None,
         tt = 'N'
         while (tt != 'Y' and tt != 'y'):
             tt = raw_input("Shall we resume file delivery for subscriber A-to-B now?(Y/N)")
-        stat = clientA.sendCmd('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['suspend', 0]])
+        stat = clientA.get_status('USUBSCRIBE', pars=[['subscr_id', 'A-to-B'], ['suspend', 0]])
         msg = stat.getMessage()
         print msg
 
@@ -392,7 +392,7 @@ def TestCase08(num_file_per_client, num_clients, interval = 2, base_name = None,
 
 def TestCase06(num_file_per_client, num_clients, interval = 1, base_name = None, shutdownB = False):
     fc_old = raw_input("How many files currently in NGAS server A? - i.e. select count(*) from ngas_files;\n")
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
+    stat = clientA.get_status('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
@@ -489,7 +489,7 @@ def TestCase13(num_file_per_client, num_clients, interval = 4, base_name = None)
     if (num_file_per_client < 1):
         raise Exception("each client at least archives one file!")
 
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_proxy_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-C-via-B'], ['priority', 1]])
+    stat = clientA.get_status('SUBSCRIBE', pars=[['url', ngasB_proxy_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-C-via-B'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_proxy_url, msg))
@@ -534,7 +534,7 @@ def TestCase12(num_file_per_client, num_clients, interval = 4, base_name = None)
     if (num_file_per_client < 1):
         raise Exception("each client at least archives one file!")
 
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url + '----' + ngasC_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B_OR_C'], ['priority', 1]])
+    stat = clientA.get_status('SUBSCRIBE', pars=[['url', ngasB_url + '----' + ngasC_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B_OR_C'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
@@ -588,12 +588,12 @@ def TestCase01(num_file_per_client, num_clients, interval = 4, base_name = None,
     if (num_file_per_client < 1):
         raise Exception("each client at least archives one file!")
 
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
+    stat = clientA.get_status('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
 
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasC_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-C'], ['priority', 1]])
+    stat = clientA.get_status('SUBSCRIBE', pars=[['url', ngasC_url], ['concurrent_threads', '2'], ['subscr_id', 'A-to-C'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasC_url, msg))
@@ -671,7 +671,7 @@ def TestCase01(num_file_per_client, num_clients, interval = 4, base_name = None,
             tt = raw_input("Have you started NGAS server C? (Y/N)")
 
         if (wait_for_C_files_after_restart):
-            stat = clientA.sendCmd('TRIGGERSUBSCRIPTION')
+            stat = clientA.get_status('TRIGGERSUBSCRIPTION')
             msg = stat.getMessage()
             #if (msg != 'Command TRIGGERSUBSCRIPTION executed successfully'):
                 #raise Exception('Fail to trigger subscription')
@@ -690,7 +690,7 @@ def TestCase01(num_file_per_client, num_clients, interval = 4, base_name = None,
         _unSubscribe(clientA, 'A-to-C')
 
 def _subscribeAwithB(concurrent_threads = 4):
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '%d' % concurrent_threads], ['subscr_id', 'A-to-B'], ['priority', 1]])
+    stat = clientA.get_status('SUBSCRIBE', pars=[['url', ngasB_url], ['concurrent_threads', '%d' % concurrent_threads], ['subscr_id', 'A-to-B'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
@@ -710,7 +710,7 @@ def TestCase03(num_files, base_name = None):
     for num in range(num_files):
         fileUri = '%s/%s-%s%s' % (tmpDir, base_name, str(num), file_ext)
         print 'Archiving file %s' % fileUri
-        stat = clientA.pushFile(fileUri, mime_type, cmd = 'QARCHIVE')
+        stat = clientA.archive(fileUri, mime_type, cmd = 'QARCHIVE')
         msg = stat.getMessage().split()[0]
         if (msg != 'Successfully'):
             raise Exception('Fail to archive \"%s\"' % fileUri)
@@ -736,14 +736,14 @@ def TestCase02(num_files, base_name = None):
         for num in range(num_files):
             fileUri = '%s/%s-%s%s' % (tmpDir, base_name, str(num), file_ext)
             print 'Archiving file %s' % fileUri
-            stat = clientA.pushFile(fileUri, mime_type, cmd = 'QARCHIVE')
+            stat = clientA.archive(fileUri, mime_type, cmd = 'QARCHIVE')
             msg = stat.getMessage().split()[0]
             if (msg != 'Successfully'):
                 raise Exception('Fail to archive \"%s\"' % fileUri)
 
     #get the first file's ingestion_date
     fname = '%s-0%s' % (base_name, file_ext)
-    stat = clientA.sendCmd('STATUS', pars=[['file_id', fname]])
+    stat = clientA.get_status('STATUS', pars=[['file_id', fname]])
     msg = stat.getMessage()
 
     # make sure the file exists first!
@@ -753,7 +753,7 @@ def TestCase02(num_files, base_name = None):
     doc = stat.dumpBuf()
     # this is highly fragile, but show work for now
     ingestion_date = doc.split('\n')[36].split('                      ')[1]
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasB_url], ['start_date', ingestion_date], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
+    stat = clientA.get_status('SUBSCRIBE', pars=[['url', ngasB_url], ['start_date', ingestion_date], ['concurrent_threads', '2'], ['subscr_id', 'A-to-B'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\", error msg = %s' % (ngasB_url, msg))
@@ -766,7 +766,7 @@ def TestCase02(num_files, base_name = None):
     else:
         print 'After %d seconds, the first file \"%s\" is delivered to \"%s\"' % (howlong, fname, ngasB_url)
 
-    stat = clientA.sendCmd('SUBSCRIBE', pars=[['url', ngasC_url], ['start_date', ingestion_date], ['concurrent_threads', '2'], ['subscr_id', 'A-to-C'], ['priority', 1]])
+    stat = clientA.get_status('SUBSCRIBE', pars=[['url', ngasC_url], ['start_date', ingestion_date], ['concurrent_threads', '2'], ['subscr_id', 'A-to-C'], ['priority', 1]])
     msg = stat.getMessage()
     if (msg != 'Handled SUBSCRIBE command'):
         raise Exception('Fail to subscribe using \"%s\"' % ngasC_url)
@@ -806,7 +806,7 @@ def verifyCase(base_name, num_files, pclient, clean_on_complete = True):
     bad_list = []
     for num in range(num_files):
         file_id = '%s-%d%s' % (base_name, num, file_ext)
-        stat = pclient.sendCmd('STATUS', pars=[['file_id', file_id]])
+        stat = pclient.get_status('STATUS', pars=[['file_id', file_id]])
         msg = stat.getMessage().split()[0]
         if (msg != 'Successfully'):
             bad_list.append(file_id)

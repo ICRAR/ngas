@@ -27,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  05/11/2002  Created
 #
-
 """
 This module contains functions used in connection with the SUBSCRIBE Command.
 """
@@ -94,6 +93,7 @@ def handleCmdSubscribe(srvObj,
         priority = reqPropsObj.getHttpPar("priority")
     if (reqPropsObj.hasHttpPar("url")):
         url = reqPropsObj.getHttpPar("url")
+        ngamsSubscriber.validate_url(url)
     else:
         errMsg = genLog("NGAMS_ER_CMD_SYNTAX",
                         [NGAMS_SUBSCRIBE_CMD, "Missing parameter: url"])

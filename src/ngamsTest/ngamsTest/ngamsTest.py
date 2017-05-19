@@ -122,11 +122,11 @@ def runAllTests(notifyemail = None,
         try:
             stat, stdout, stderr = ngamsCore.execCmd(tstCmdLine, timeOut=NGAMS_TEST_MAX_TS_TIME, shell=False)
             testTime = (time.time() - suiteStartTime)
-            if ((stdout.find("FAILED") != -1) or (stat != 0)):
+            if stat != 0:
                 failModDic[mod] = stdout + " --- " + stderr
                 stat = " - %-5.1fs - FAILURE!!\n" % testTime
             else:
-                    stat = " - %-5.1fs - SUCCESS\n" % testTime
+                stat = " - %-5.1fs - SUCCESS\n" % testTime
         except Exception, e:
             print e
             testTime = (time.time() - suiteStartTime)

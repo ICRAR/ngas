@@ -27,30 +27,34 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  25/03/2002  Created
 #
-
 """
 Contains higher level common functions.
 """
 
+import contextlib
+import errno
 import logging
 import os
 import re
 import shutil
+import socket
 import string
 import threading
 import random
+import tempfile
 import time
 import urllib
 
 from ngamsCore import TRACE, genLog, NGAMS_HOST_LOCAL,\
-    NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN, NGAMS_HOST_REMOTE, getUniqueNo,\
+    NGAMS_HOST_CLUSTER, NGAMS_HOST_DOMAIN, NGAMS_HOST_REMOTE,\
     NGAMS_PROC_DIR, NGAMS_UNKNOWN_MT, NGAMS_STAGING_DIR, NGAMS_TMP_FILE_PREFIX,\
-    NGAMS_PICKLE_FILE_EXT, checkCreatePath, checkAvailDiskSpace,\
+    checkCreatePath, checkAvailDiskSpace,\
     getFileSize, NGAMS_BAD_FILES_DIR, NGAMS_BAD_FILE_PREFIX, NGAMS_STATUS_CMD,\
-    mvFile, rmFile, toiso8601
+    mvFile, rmFile, NGAMS_HTTP_UNAUTH, NGAMS_HTTP_SUCCESS
 import ngamsSmtpLib
 import ngamsLib
 import ngamsHostInfo, ngamsStatus
+import ngamsHttpUtils
 
 
 logger = logging.getLogger(__name__)
@@ -130,7 +134,7 @@ def _addHostInDic(dbConObj,
     Returns:     Void.
     """
     tmpHostInfo = dbConObj.getHostInfoFromHostIds([hostId])
-    if (tmpHostInfo == []):
+    if not tmpHostInfo:
         raise Exception, genLog("NGAMS_AL_MIS_HOST", [hostId])
     sqlHostInfo = tmpHostInfo[0]
     hostDic[hostId] = ngamsHostInfo.ngamsHostInfo().\
@@ -323,11 +327,8 @@ def genProcDirName(ngamsCfgObj):
 
     Returns:
     """
-    procDir = os.path.normpath(ngamsCfgObj.getProcessingDirectory() + "/" +\
-                               NGAMS_PROC_DIR + "/" +\
-                               toiso8601() + "-" +\
-                               str(getUniqueNo()))
-    return procDir
+    procdir = os.path.join(ngamsCfgObj.getProcessingDirectory(), NGAMS_PROC_DIR)
+    return tempfile.mkdtemp(dir=procdir)
 
 
 def checkAddExt(ngamsCfgObj,
@@ -410,23 +411,20 @@ def genStagingFilename(ngamsCfgObj,
         # Check proper extension and ensure to obtain a unique name.
         tmpFilename = checkAddExt(ngamsCfgObj, reqPropsObj.getMimeType(),
                                   tmpFilename)
-        tmpFilename = ngamsLib.genUniqueFilename(tmpFilename)
 
-        # Generate complete paths.
         slotId = ngamsCfgObj.getStorageSetFromId(storageSetId).\
                  getMainDiskSlotId()
         mountPt = diskDic[slotId].getMountPoint()
-        tmpPath = os.path.normpath(mountPt + "/" + NGAMS_STAGING_DIR)
-        stagingFilename = os.path.normpath("%s/%s" % (tmpPath, tmpFilename))
+        staging_dir = os.path.join(mountPt, NGAMS_STAGING_DIR)
+        stagingFilename = tempfile.mktemp(suffix="-" + tmpFilename, prefix='', dir=staging_dir)
         reqPropsObj.setStagingFilename(stagingFilename)
+
         if (genTmpFiles):
-            tmpStagingFilename = os.path.normpath("%s/%s%s" %\
-                                                  (tmpPath,
-                                                   NGAMS_TMP_FILE_PREFIX,
-                                                   tmpFilename))
-            tmpReqPropFilename = "%s.%s" % (tmpStagingFilename,
-                                            NGAMS_PICKLE_FILE_EXT)
-            reqPropFilename = "%s.%s" % (stagingFilename,NGAMS_PICKLE_FILE_EXT)
+            tmpStagingFilename = tempfile.mktemp(suffix=tmpFilename,
+                                                 prefix=NGAMS_TMP_FILE_PREFIX,
+                                                 dir=staging_dir)
+            tmpReqPropFilename = tmpStagingFilename + ".pickle"
+            reqPropFilename = stagingFilename + ".pickle"
 
         logger.debug("Generated staging filename: %s", stagingFilename)
         checkCreatePath(os.path.dirname(stagingFilename))
@@ -515,46 +513,19 @@ def saveFromHttpToFile(ngamsCfgObj,
             if (mutexDiskAccess):
                 acquireDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
 
-            # Distinguish between Archive Pull and Push Request. By Archive
-            # Pull we may simply read the file descriptor until it returns "".
-            sizeKnown = 0
-            if (ngamsLib.isArchivePull(reqPropsObj.getFileUri()) and
-                not reqPropsObj.getFileUri().startswith('http://')):
-                # (reqPropsObj.getSize() == -1)):
-                # Just specify something huge.
-                logger.debug("It is an Archive Pull Request/data with unknown size")
-                remSize = int(1e11)
-            elif reqPropsObj.getFileUri().startswith('http://'):
-                logger.debug("It is an HTTP Archive Pull Request: trying to get Content-Length")
-                httpInfo = reqPropsObj.getReadFd().info()
-                headers = httpInfo.headers
-                hdrsDict = ngamsLib.httpMsgObj2Dic(''.join(headers))
-                if hdrsDict.has_key('content-length'):
-                    remSize = int(hdrsDict['content-length'])
-                else:
-                    logger.debug("No HTTP header parameter Content-Length!")
-                    remSize = int(1e11)
-                    logger.debug("Header keys: %s", hdrsDict.keys())
-            else:
-                remSize = reqPropsObj.getSize()
-                logger.debug("Archive Push/Pull Request - Data size: %d", remSize)
-                sizeKnown = 1
-
             # Receive the data.
-            rdSize = blockSize
-            lastRecepTime = time.time()
-            while ((remSize > 0) and ((time.time() - lastRecepTime) < 30.0)):
-                if (remSize < rdSize):
-                    rdSize = remSize
-                buf = reqPropsObj.getReadFd().read(rdSize)
-                if not buf:
-                    break
-                sizeRead = len(buf)
-                remSize -= sizeRead
-                reqPropsObj.setBytesReceived(reqPropsObj.getBytesReceived() + \
-                                             sizeRead)
-                fdOut.write(buf)
-                lastRecepTime = time.time()
+            fin = reqPropsObj.getReadFd()
+            size = reqPropsObj.getSize()
+            readin = 0
+            while readin < size:
+                left = size - readin
+                buff = fin.read(blockSize if left >= blockSize else left)
+                if not buff:
+                    raise Exception('No bytes found in stream, at least %d expected' % left)
+                readin += len(buff)
+                logger.info("Received %d bytes of data", readin)
+                reqPropsObj.setBytesReceived(readin)
+                fdOut.write(buff)
 
             deltaTime = time.time() - start
 
@@ -563,13 +534,6 @@ def saveFromHttpToFile(ngamsCfgObj,
             logger.debug(msg, trgFilename, int(reqPropsObj.getBytesReceived()),
                          deltaTime,
                          float(reqPropsObj.getBytesReceived())/deltaTime)
-
-            # Raise exception if less byes were received as expected.
-            if (sizeKnown and (remSize > 0)):
-                msg = genLog("NGAMS_ER_ARCH_RECV",
-                             [reqPropsObj.getFileUri(), reqPropsObj.getSize(),
-                              (reqPropsObj.getSize() - remSize)])
-                raise Exception, msg
 
             return [deltaTime]
 
@@ -600,13 +564,9 @@ def saveInStagingFile(ngamsCfgObj,
     """
     T = TRACE()
 
-    try:
-        blockSize = ngamsCfgObj.getBlockSize()
-        return saveFromHttpToFile(ngamsCfgObj, reqPropsObj, stagingFilename,
-                                  blockSize, 1, diskInfoObj)[0]
-    except Exception, e:
-        errMsg = genLog("NGAMS_ER_PROB_STAGING_AREA", [stagingFilename,str(e)])
-        raise Exception(errMsg)
+    blockSize = ngamsCfgObj.getBlockSize()
+    return saveFromHttpToFile(ngamsCfgObj, reqPropsObj, stagingFilename,
+                              blockSize, 1, diskInfoObj)[0]
 
 
 def checkIfFileExists(dbConObj,
@@ -715,37 +675,21 @@ def getNewFileVersion(dbConObj,
         return (latestFileVersion + 1)
 
 
-def moveFile2BadDir(ngamsCfgObj,
-                    srcFilename,
-                    orgFilename):
+def moveFile2BadDir(ngamsCfgObj, srcFilename):
     """
     Move a file to the Bad File Directory on the destination disk.
 
-    ngamsCfgObj:     Instance of NG/AMS Configuration Object (ngamsConfig).
-
-    srcFilename:     Name of source file (string).
-
-    orgFilename:     Original filename - received in HTTP request (string).
-
     Returns:         Name of filename in Bad Files Area (string).
     """
-    logger.debug("Moving file to Bad Files Area: %s->%s ...",
-                 srcFilename, orgFilename)
-    count = getUniqueNo()
-    badFilesDir = os.path.normpath(ngamsCfgObj.getRootDirectory() + "/" +\
-                                   NGAMS_BAD_FILES_DIR)
+
+    badFilesDir = os.path.join(ngamsCfgObj.getRootDirectory(), NGAMS_BAD_FILES_DIR)
     checkCreatePath(badFilesDir)
-    trgFilename = os.path.\
-                  normpath(os.path.join(badFilesDir,
-                                        NGAMS_BAD_FILE_PREFIX + str(count) +\
-                                        "-" +\
-                                        toiso8601() +\
-                                        "-" + os.path.basename(orgFilename)))
-    fileEls = string.split(srcFilename, ".")
-    if ((fileEls[-1] == "Z") or (fileEls[-1] == "gz")):
-        trgFilename = trgFilename + "." + fileEls[-1]
+
+    trgFilename = tempfile.mktemp(suffix="-" + os.path.basename(srcFilename),
+                                  prefix=NGAMS_BAD_FILE_PREFIX,
+                                  dir=badFilesDir)
     mvFile(srcFilename, trgFilename)
-    logger.debug("Moved file to Bad Files Area")
+    logger.info("Moved %s to Bad Files Area %s", srcFilename, trgFilename)
     return trgFilename
 
 
@@ -790,54 +734,30 @@ def performBackLogBuffering(ngamsCfgObj,
     return 0
 
 
-def pingServer(hostId,
-               ipAddress,
-               portNo,
-               timeOut):
+def pingServer(host, port, timeout):
     """
     The function tries to ping (sends STATUS command) to the NG/AMS Server
     running on the given host using the given port number.
-
-    hostId:       Name of host where the NG/AMS Server to ping is
-                  running (string).
-
-    ipAddress:    IP Address of the host to wake up (string).
-
-    portNo:       Port number used by NG/AMS Server to ping (integer).
-
-    timeOut:      Time-out in seconds to apply waiting for the server to
-                  respond. If this is exhausted an exception is
-                  thrown (integer).
-
-    Returns:      Void.
     """
-    logger.debug("Pinging NG/AMS Server: %s/%s. Timeout: %s",
-                 hostId, str(portNo), str(timeOut))
+    logger.debug("Pinging NG/AMS Server: %s:%d. Timeout: %.3f [s]", host, port, timeout)
+
     startTime = time.time()
-    gotResponse = 0
-    resp = stat = ""
-    while (1):
+    while True:
         try:
-            resp, stat, msgObj, data =\
-                  ngamsLib.httpGet(ipAddress, portNo, NGAMS_STATUS_CMD)
-        except Exception, e:
-            stat = "ERROR"
-        # If we get a "HTTP Error 401: Unauthorized" from the remote server,
-        # we also consider it as 'woken up'.
-        if (((str(stat) == "OK") and (str(resp) == "200")) or
-            (str(resp) == "401")):
-            gotResponse = 1
-            break
-        elif ((time.time() - startTime) >= timeOut):
-            break
-        else:
+            resp = ngamsHttpUtils.httpGet(host, port, NGAMS_STATUS_CMD)
+            with contextlib.closing(resp):
+                if resp.status in (NGAMS_HTTP_SUCCESS, NGAMS_HTTP_UNAUTH):
+                    logger.debug("Successfully pinged NG/AMS Server")
+                    return
+        except socket.error as e:
+            if e.errno != errno.ECONNREFUSED:
+                raise
+            if (time.time() - startTime) >= timeout:
+                break
             time.sleep(0.2)
-    if (not gotResponse):
-        errMsg = "Error: NG/AMS Server running on host: " + hostId + " " +\
-                 "using port number: " + str(portNo) + " did not respond " +\
-                 "within: " + str(timeOut) + "s"
-        raise Exception, errMsg
-    logger.debug("Successfully pinged NG/AMS Server")
+
+    errMsg = "NGAS Server running on %s:%d did not respond within %.3f [s]"
+    raise Exception(errMsg % (host, port, timeout))
 
 
 def stdReqTimeStatUpdate(srvObj,
@@ -927,8 +847,7 @@ def genTmpFilename(ngamsCfgObj,
 
     Returns:        Temporary filename (string).
     """
-    return os.path.normpath(getNgasTmpDir(ngamsCfgObj) + "/" +\
-                            ngamsLib.genUniqueFilename(filename))
+    return tempfile.mktemp(suffix=filename, dir=getNgasTmpDir(ngamsCfgObj))
 
 
 def sendEmail(ngamsCfgObj,

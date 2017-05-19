@@ -49,8 +49,9 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_SUBSCRIPTION_THR, isoTime2Secs,\
     NGAMS_SUBSCR_BACK_LOG, NGAMS_DELIVERY_THR,\
     NGAMS_HTTP_INT_AUTH_USER, NGAMS_REARCHIVE_CMD, NGAMS_FAILURE,\
     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, getFileSize, rmFile, loadPlugInEntryPoint,\
-    toiso8601
-from ngamsLib import ngamsDbm, ngamsStatus, ngamsHighLevelLib, ngamsFileInfo, ngamsLib, ngamsDbCore
+    toiso8601, NGAMS_HTTP_HDR_CHECKSUM, NGAMS_HTTP_HDR_FILE_INFO
+from ngamsLib import ngamsDbm, ngamsStatus, ngamsHighLevelLib, ngamsFileInfo, ngamsDbCore,\
+    ngamsHttpUtils
 
 
 logger = logging.getLogger(__name__)
@@ -396,23 +397,36 @@ def _convertFileInfo(fileInfo):
 
     fileInfo:       File info in DB Summary 2 format or
     """
-    # If element #4 is an integr (=file version), convert to internal format.
-    if (type(fileInfo[ngamsDbCore.SUM2_VERSION]) == types.IntType):
-        locFileInfo = 7 * [None]
-        locFileInfo[FILE_ID] = fileInfo[ngamsDbCore.SUM2_FILE_ID]
-        locFileInfo[FILE_NM] = os.path.normpath(fileInfo[ngamsDbCore.SUM2_MT_PT] +\
-                                                  os.sep +\
-                                                  fileInfo[ngamsDbCore.SUM2_FILENAME])
 
-        locFileInfo[FILE_VER] = fileInfo[ngamsDbCore.SUM2_VERSION]
-        locFileInfo[FILE_DATE] = fileInfo[ngamsDbCore.SUM2_ING_DATE]
-        locFileInfo[FILE_MIME] = fileInfo[ngamsDbCore.SUM2_MIME_TYPE]
-        locFileInfo[FILE_DISK_ID] = fileInfo[ngamsDbCore.SUM2_DISK_ID]
-    else:
-        locFileInfo = fileInfo
-    if len(locFileInfo) == FILE_BL:
-        locFileInfo.append(None)
+    # HACK HACK HACK HACK HACK
+    #
+    # If fileInfo has the same number of elements than what the DB summary 2
+    # then we convert it into our own list... which simply has one more None
+    # element. We thus use the length of the list to determine the kind of list
+    # we are dealing with
+    #
+    # TODO: In the long run we probably want to replace this nonesense with
+    # something more understandable, like a namedtuple, or even bypass this
+    # whole sequence translation process entirely.
+    #
+    # HACK HACK HACK HACK HACK
+    if len(fileInfo) != len(ngamsDbCore.getNgasSummary2Def()):
+        return fileInfo
+
+    logger.debug("Converting %d-element sequence to fileInfo list: %r", len(fileInfo), fileInfo)
+    locFileInfo = (len(ngamsDbCore.getNgasSummary2Def()) + 1) * [None]
+    locFileInfo[FILE_ID] = fileInfo[ngamsDbCore.SUM2_FILE_ID]
+    locFileInfo[FILE_NM] = os.path.normpath(fileInfo[ngamsDbCore.SUM2_MT_PT] +\
+                                              os.sep +\
+                                              fileInfo[ngamsDbCore.SUM2_FILENAME])
+
+    locFileInfo[FILE_VER] = fileInfo[ngamsDbCore.SUM2_VERSION]
+    locFileInfo[FILE_DATE] = fileInfo[ngamsDbCore.SUM2_ING_DATE]
+    locFileInfo[FILE_MIME] = fileInfo[ngamsDbCore.SUM2_MIME_TYPE]
+    locFileInfo[FILE_DISK_ID] = fileInfo[ngamsDbCore.SUM2_DISK_ID]
     return locFileInfo
+
+
 
 
 def _genSubscrBackLogFile(srvObj,
@@ -646,7 +660,7 @@ def _deliveryThread(srvObj,
 
             # block for up to 1 minute if the queue is empty.
             try:
-                fileInfo = quChunks.get(timeout = 60)
+                fileInfo = quChunks.get(timeout = 1)
                 srvObj._subscrDeliveryFileDic[tname] = fileInfo # once it is dequeued, it is no longer safe, so need to record it in case server shut down.
             except Empty, e:
                 logger.debug("Data delivery thread [%s] block timeout", str(thread.get_ident()))
@@ -697,20 +711,13 @@ def _deliveryThread(srvObj,
                 continue
 
             baseName = os.path.basename(filename)
-            contDisp = []
-            contDisp.append("attachment; filename=\"{0}\"".format(baseName))
-            # TODO: Note should not have no_versioning hardcoded in the
-            # request send to the client/subscriber.
-            contDisp.append("; no_versioning=1; file_id={0}".format(fileId))
+            contDisp = 'attachment; filename="{0}"; file_id={1}'.format(baseName, fileId)
 
             msg = "Thread [%s] Delivering file: %s/%s - to Subscriber with ID: %s"
-            logger.debug(msg, str(thread.get_ident()), baseName, str(fileVersion), subscrObj.getId())
+            logger.info(msg, str(thread.get_ident()), baseName, str(fileVersion), subscrObj.getId())
 
             ex = ""
             stat = ngamsStatus.ngamsStatus()
-            # Calculate the suspension time for this thread based on the priority of this subscriber.
-            # Dynamically calculated for each file so that the priority can be changed on the fly (no re-subscribe or server restart is needed)
-            suspenTime = (0.005 * (subscrObj.getPriority() - 1)) # so that the top priority (level 1) does not suspend at all
 
             # If the target does not turn on the authentication (or even not an NGAS), this still works
             # as long as there is a user named "ngas-int" in the configuration file for the current server
@@ -774,16 +781,17 @@ def _deliveryThread(srvObj,
                         fileChecksum = srvObj.getDb().getFileChecksum(diskId, fileId, fileVersion)
                         if fileChecksum is None:
                             logger.warning('Fail to get file checksum for file %s', fileId)
-                        reply, msg, hdrs, data = \
-                               ngamsLib.httpPostUrl(sendUrl, fileMimeType,
-                                                    ''.join(contDisp), filename, "FILE",
-                                                    blockSize=\
-                                                    srvObj.getCfg().getBlockSize(),
-                                                    suspTime = suspenTime,
-                                                    authHdrVal = authHdr,
-                                                    fileInfoHdr = fileInfoObjHdr,
-                                                    sendBuffer = srvObj.getCfg().getArchiveSndBufSize(),
-                                                    checkSum = fileChecksum)
+
+                        # TODO: validate the URL before blindly using it
+                        hdrs = {NGAMS_HTTP_HDR_CHECKSUM: fileChecksum,
+                                NGAMS_HTTP_HDR_FILE_INFO: fileInfoObjHdr}
+                        with open(filename, "rb") as f:
+                            reply, msg, hdrs, data = \
+                                   ngamsHttpUtils.httpPostUrl(sendUrl, f, fileMimeType,
+                                                        contDisp=contDisp,
+                                                        auth=authHdr,
+                                                        hdrs=hdrs,
+                                                        timeout=120)
                         stat.clear()
                         if data:
                             stat.unpackXmlDoc(data)
@@ -840,14 +848,14 @@ def _deliveryThread(srvObj,
                 else:
                     if (runJob):
                         updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 0, jpiResult)
-                        logger.debug("File: %s/%s executed by %s for Subscriber: %s by Job Thread [%s]",
+                        logger.info("File: %s/%s executed by %s for Subscriber: %s by Job Thread [%s]",
                                      baseName, str(fileVersion), plugIn, subscrObj.getId(), str(thread.get_ident()))
                     else:
                         howlong = time.time() - st
                         fileSize = getFileSize(filename)
                         transfer_rate = '%.0f Bytes/s' % (fileSize / howlong)
                         updateSubscrQueueStatus(srvObj, subscrbId, fileId, fileVersion, diskId, 0, transfer_rate)
-                        logger.debug("File: %s/%s delivered to Subscriber: %s by Delivery Thread [%s]",
+                        logger.info("File: %s/%s delivered to Subscriber: %s by Delivery Thread [%s]",
                                      baseName, str(fileVersion), subscrObj.getId(), str(thread.get_ident()))
 
                     if (srvObj.getCachingActive()):
@@ -1178,7 +1186,9 @@ def subscriptionThread(srvObj,
                     logger.debug('Fetching all ingested files')
                 while (1):
                     fileList = cursorObj.fetch(100)
-                    if (fileList == []): break
+                    if not fileList:
+                        break
+
                     for fileInfo in fileList:
                         fileInfo = _convertFileInfo(fileInfo)
                         fileDicDbm.add(_fileKey(fileInfo[FILE_ID],
@@ -1303,12 +1313,31 @@ def subscriptionThread(srvObj,
                                                  srvObj.getCfg().getPortNo(), selectDiskId)
                 for backLogInfo in subscrBackLog:
                     subscrId = backLogInfo[0]
+
+                    # HACK HACK HACK HACK
+                    #
+                    # Original comment follows:
                     # Note, it is signalled by adding an extra element (at the end)
                     # with the value of the constant NGAMS_SUBSCR_BACK_LOG, that
                     # this file is a back-logged file. This is done to make the
                     # handling more efficient.
-                    #if (selectDiskId):
-                    fileInfo = list(backLogInfo[2:]) + [NGAMS_SUBSCR_BACK_LOG]
+                    #
+                    # New comment follows
+                    # This little creation here is related to the _checkFileInfo
+                    # function defined above. The function was (and still is) a
+                    # big hack that differentiates between two types of,
+                    # returning always the second type of sequence. Its behavior
+                    # was based on a database-defined data type, and therefore
+                    # was not reliable across databases. We have (hopefully
+                    # temporarily) changed it to rely on something more concrete
+                    # (the length of the sequence), and thus we needed to create
+                    # the monster below.
+                    #
+                    # TODO: read the TODO in _checkFileInfo about what to do
+                    # with this
+                    #
+                    # HACK HACK HACK HACK
+                    fileInfo = list(backLogInfo[2:]) + [NGAMS_SUBSCR_BACK_LOG, None]
                     #else:
                     #    fileInfo = list(backLogInfo[2:]) + [None] + [NGAMS_SUBSCR_BACK_LOG]
 

@@ -77,7 +77,7 @@ def _execCClient(unpackXmlStat = 1,
         if (cmdLineParsDic[cmdLineOpt] != None):
             cmdLine += " " + cmdLineOpt + " " + str(cmdLineParsDic[cmdLineOpt])
     if (cmdLine.find("-servers") == -1):
-        cmdLine += " -host %s" % getHostName()
+        cmdLine += " -host 127.0.0.1"
     _, out = commands.getstatusoutput(cmdLine)
     if (unpackXmlStat):
         statObjList = []
@@ -140,7 +140,7 @@ class ngamsCClientTest(ngamsTestSuite):
         statObj = _execCClient(pars=[["-port", "8000"],
                                      ["-cmd", "STATUS"]])[0]
         refStatFile = "ref/ngamsCClientTest_test_StatusCmd_1_1_ref"
-        refStatFile = saveInFile(None, loadFile(refStatFile) % getHostName())
+        refStatFile = saveInFile(None, loadFile(refStatFile) % (getHostName() + ":8000"))
         tmpStatFile = saveInFile(None, filterOutLines(statObj.dumpBuf(),
                                                       ["Date", "Version"]))
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect info in " +\
@@ -755,26 +755,24 @@ class ngamsCClientTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        nodeDic = {}
-        for n in range(5): nodeDic["%s:%d" % (getHostName(), (8000 + n))] = 0
-        nodeList = []
-        for node in nodeDic.keys():
-            nodeList.append([8000 + len(nodeList), None, None, getHostName()])
+        ports = range(8000, 8005)
+        nodeList = [[p, None, None, getHostName()] for p in ports]
         self.prepCluster("src/ngamsCfg.xml", nodeList)
-        noOfNodes = len(nodeDic.keys())
+        noOfNodes = len(ports)
         nodeCount = 0
-        srvList = ""
-        for node in nodeDic.keys(): srvList += "%s," % node
-        noOfAttempts = 500
-        for n in range(noOfAttempts):
+        srvList = ",".join(["127.0.0.1:%d" % (p,) for p in ports])
+        noOfAttempts = 100
+        counts = {p: 0 for p in range(8000, 8005)}
+        for _ in range(noOfAttempts):
             statObjList = _execCClient(unpackXmlStat=1,
-                                       pars=[["-servers", srvList[:-1]],
+                                       pars=[["-servers", srvList],
                                              ["-cmd", "STATUS"],
                                              ["-timeOut", "5"],
                                              ["-repeat", "10"]])
             for statObj in statObjList:
-                if (nodeDic[statObj.getHostId()] == 0):
-                    nodeDic[statObj.getHostId()] = 1
+                port = int(statObj.getHostId().split(':')[1])
+                if (counts[port] == 0):
+                    counts[port] = 1
                     nodeCount += 1
                     if (nodeCount == noOfNodes): break
                 else:

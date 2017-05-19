@@ -82,12 +82,8 @@ def get_plugins(srvObj):
         'ngamsJanitorChecktoSuspendNGASHost',
     ]
 
-    plugins = []
-    for h in hardcoded:
-        plugins.append(loadPlugInEntryPoint(h))
-
-    # TODO: add configuration item on server for user-provided plugins
-    return plugins
+    user_plugins = srvObj.getCfg().getJanitorPlugins()
+    return [loadPlugInEntryPoint(n, entryPointMethodName='run') for n in hardcoded + user_plugins]
 
 
 class ForwarderHandler(logging.Handler):
@@ -132,6 +128,9 @@ def janitorThread(srvObj, stopEvt, srv_to_jan_queue, jan_to_srv_queue):
     for h in list(logging.root.handlers):
         logging.root.removeHandler(h)
     logging.root.addHandler(ForwarderHandler(jan_to_srv_queue))
+
+    # Reset the db pointer in our server object to get fresh connections
+    srvObj.reconnect_to_db()
 
     # => Update NGAS DB + DB Snapshot Document for the DB connected.
     try:

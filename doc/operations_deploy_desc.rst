@@ -22,6 +22,10 @@ additional variables control this script:
 | NGAS_USER                   | | The user under which the NGAS      | | ``ngas``        |
 |                             | | installation will take place       |                   |
 +-----------------------------+--------------------------------------+-------------------+
+| NGAS_EXTRA_PACKAGES         | | Comma-separated list of extra      | | Not specified   |
+|                             | | system-level packages to install   |                   |
+|                             | | on the target system(s)            |                   |
++-----------------------------+--------------------------------------+-------------------+
 
 Currently supported OSs are Ubuntu, Debian, Fedora, CentOS, and MacOSX Darwin,
 but more might work or could be added in the future.

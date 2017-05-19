@@ -54,7 +54,7 @@
           BlockSize="65536"
           MaxSimReqs="30" 
           RootDirectory="/tmp/ngamsTest/NGAS" 
-          IpAddress="0.0.0.0"
+          IpAddress="127.0.0.1"
           PortNo="8888" 
           ProxyMode="1"
           Simulation="1"
@@ -73,7 +73,7 @@
                    PathPrefix="saf"
                    Replication="1"/>
 
-  <Db Id="Db-Sqlite-Test"
+  <Db Id="Db-Test"
       Interface="sqlite3"
       database="tmp/ngas.sqlite"
       Snapshot="1"/>
@@ -250,7 +250,7 @@
        LogBufferSize="10"
        LogRotateCache="30" 
        LogRotateInt="01T00:00:00" 
-       SysLog="1" 
+       SysLog="0"
        SysLogPrefix="NGASLog"/>
 
   <Notification Id="Notification-Test"

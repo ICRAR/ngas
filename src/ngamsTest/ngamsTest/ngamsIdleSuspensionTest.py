@@ -34,6 +34,7 @@ This module contains the Test Suite for the handling of Idle Suspension.
 import socket
 import sys
 import time
+import urllib
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_STATUS_CMD, \
     NGAMS_CHECKFILE_CMD, rmFile, NGAMS_SUCCESS
@@ -199,8 +200,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
 
         # 1. Send STATUS Command to sub-node using master as proxy.
         statObj = sendPclCmd(port=8000, auth=AUTH).\
-                      sendCmdGen(NGAMS_STATUS_CMD,
-                                 pars = [["host_id", subNode1]])
+                      get_status(NGAMS_STATUS_CMD, pars = [["host_id", subNode1]])
         statBuf = filterOutLines(statObj.dumpBuf(), ["Date:", "Version:"])
         tmpStatFile = saveInFile(None, statBuf)
         refStatFile = "ref/ngamsIdleSuspensionTest_test_WakeUpStatus_1_1_ref"
@@ -260,8 +260,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         # Retrieve information about the file on the suspended sub-node.
         fileId = "TEST.2001-05-08T15:25:00.123"
         statObj = sendPclCmd(port=8000, auth=AUTH).\
-                  sendCmdGen(NGAMS_STATUS_CMD,
-                             pars=[["file_access", fileId]])
+                  get_status(NGAMS_STATUS_CMD, pars=[["file_access", fileId]])
         statBuf = filterOutLines(statObj.dumpBuf(), ["Date:", "Version:"])
         tmpStatFile = saveInFile(None, statBuf)
         refStatFile = "ref/ngamsIdleSuspensionTest_test_WakeUpStatus_2_1_ref"
@@ -316,7 +315,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
             unzippedRetFile = genTmpFilename("unzip_")
 
             statObj = sendPclCmd(port=8000, auth=AUTH).\
-                      retrieve2File(fileId, fileVersion=version,
+                      retrieve(fileId, fileVersion=version,
                                     targetFile=tmpRetFile)
             self.checkEqual(NGAMS_SUCCESS, statObj.getStatus(), "Unexpected return value for RETRIEVE Command")
             unzip(tmpRetFile, unzippedRetFile)
@@ -358,13 +357,13 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         pars = [["ng_log", ""], ["host_id", subNode1]]
         targetFile = genTmpFilename()
         sendPclCmd(port=8000, auth=AUTH).\
-                              sendCmd(NGAMS_RETRIEVE_CMD, 0, targetFile, pars)
+                              get_status(NGAMS_RETRIEVE_CMD, 0, targetFile, pars)
         time.sleep(2)
 
         # We have to retrieve it twice, since otherwise, maybe not all info
         # has been written to the log file.
         sendPclCmd(port=8000, auth=AUTH).\
-                              sendCmd(NGAMS_RETRIEVE_CMD, 0, targetFile, pars)
+                              get_status(NGAMS_RETRIEVE_CMD, 0, targetFile, pars)
         # Check that the proper log file has been retrieved.
         testStr = ["NGAS Node: %s:8001 woken up after" % getHostName()]
         logBuf = loadFile(targetFile)
@@ -403,7 +402,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         pars = [["cfg", ""], ["host_id", subNode1]]
         targetFile = genTmpFilename()
         sendPclCmd(port=8000, auth=AUTH).\
-                              sendCmd(NGAMS_RETRIEVE_CMD, 0, targetFile, pars)
+                              get_status(NGAMS_RETRIEVE_CMD, 0, targetFile, pars)
         # Check that the proper cfg. file has been retrieved.
         testStr = ["ArchiveName=\"%s\"" % subNode1]
         logBuf = loadFile(targetFile)
@@ -445,7 +444,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         pars = [["internal", "/etc/hosts"], ["host_id", subNode1]]
         targetFile = genTmpFilename()
         sendPclCmd(port=8000, auth=AUTH).\
-                              sendCmd(NGAMS_RETRIEVE_CMD, 0, targetFile, pars)
+                              get_status(NGAMS_RETRIEVE_CMD, 0, targetFile, pars)
         time.sleep(2)
 
         # Check that the file has been retrieved from the proper host.
@@ -516,7 +515,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
                    ["file_version", "1"]]
         targetFile = genTmpFilename()
         statObj = sendPclCmd(port=8000, auth=AUTH).\
-                  sendCmd(NGAMS_CHECKFILE_CMD, pars=cmdPars)
+                  get_status(NGAMS_CHECKFILE_CMD, pars=cmdPars)
         # Check that request response is as expected.
         statBuf = filterOutLines(statObj.dumpBuf(),
                                  ["Date:",
@@ -535,8 +534,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
 
         # Check that expected log entries found in the Master Node Log File.
         refStatFile="ref/ngamsIdleSuspensionTest_test_WakeUpCheckfile_1_2_ref"
-        ipAddr = socket.gethostbyname_ex(getHostName())[2][0]
-        testTags = loadFile(refStatFile) % (subNode1, ipAddr)
+        testTags = loadFile(refStatFile) % (subNode1,)
         sendPclCmd(port=8000, auth=AUTH).status()
         masterLogBuf = loadFile(masterNodeLog)
         self.checkTags(masterLogBuf, testTags, showBuf=0)
@@ -544,7 +542,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         tmpTag = "File list to check: (1: Location:LOCAL, Host:%s, " +\
                  "Version:1) (2: Location:LOCAL, Host:%s, Version:1)"
         testTags = ["CHECKFILE?time_out=60.0&file_version=1&" +\
-                    "file_id=TEST.2001-05-08T15:25:0",
+                    "file_id=" + urllib.quote("TEST.2001-05-08T15:25:0"),
                     tmpTag % (subNode1, subNode1)]
         subNodeLogBuf = loadFile(subNode1Log)
         self.checkTags(subNodeLogBuf, testTags, showBuf=0)

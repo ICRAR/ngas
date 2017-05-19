@@ -40,6 +40,7 @@ import os
 import time
 import types
 import urllib
+import urlparse
 
 from ngamsCore import TRACE, NGAMS_HTTP_GET, NGAMS_HTTP_PUT,\
     NGAMS_HTTP_POST, NGAMS_ARCHIVE_CMD, NGAMS_ARCH_REQ_MT, genLog,\
@@ -65,7 +66,6 @@ class ngamsReqProps:
         # Used to store the HTTP header in 'raw' condition.
         self.__httpHdrDic      = {}
         self.__cmd             = ""
-        self.__wait            = 1
         self.__mimeType        = ""
         self.__size            = -1
         self.__fileUri         = ""
@@ -108,7 +108,6 @@ class ngamsReqProps:
                 ["Cmd", self.getCmd()],
                 ["MimeType", self.getMimeType()],
                 ["Size", self.getSize()],
-                ["Wait", self.getWait()],
                 ["FileUri", self.getFileUri()],
                 ["SafeFileUri", self.getSafeFileUri()],
                 ["HttpParsDic", self.getHttpParsDic()],
@@ -170,8 +169,6 @@ class ngamsReqProps:
                     uncVal = urllib.unquote(tmpVal)
                     if (par == "filename"):
                         self.setFileUri(os.path.basename(uncVal))
-                    elif (par == "wait"):
-                        self.setWait(uncVal)
                     elif (par == "mime_type"):
                         if (self.getMimeType() == ""):
                             self.setMimeType(uncVal)
@@ -186,26 +183,21 @@ class ngamsReqProps:
                 self.setAuthorization(urllib.unquote(val.strip()))
 
         # Handle the information in the path.
-        if (path):
-            parList = ngamsLib.parseUrlRequest(path)
-            for el in parList:
-                # For some reason '+' is not converted back to ' ' ...
-                tmpVal = el[1].replace("+", " ")
-                val = urllib.unquote(str(tmpVal))
-                logger.debug("Found parameter: %s with value: %s", el[0], val)
-                if (el[0] == "initiator"): self.setCmd(val)
+        path,query = urllib.splitquery(path)
+        self.setCmd(path.lstrip('/'))
+        if (query):
+            parList = urlparse.parse_qsl(query)
+            for name,val in parList:
+                logger.debug("Found parameter: %s with value: %s", name, val)
                 if (httpMethod in [NGAMS_HTTP_GET, NGAMS_HTTP_PUT, NGAMS_HTTP_POST]):
+                    self.addHttpPar(name, val)
                     # Subscription file delivery is always POST, but sometimes we want it behave like GET (e.g. proxy qrchive) to pass on parametres in url string.
-                    if (el[0] == "filename"):
+                    if name == "filename":
                         self.setFileUri(val)
-                    elif (el[0] == "wait"):
-                        self.setWait(val)
-                    elif (el[0] == "mime_type"):
+                    elif name == "mime_type":
                         self.setMimeType(val)
-                    elif (el[0] == "authorization"):
+                    elif name == "authorization":
                         self.setAuthorization(val)
-                    else:
-                        self.addHttpPar(el[0], val)
 
         # Small trick to set the mime-type in case not defined by the
         # Content-Type HTTP header.
@@ -237,6 +229,12 @@ class ngamsReqProps:
 
         return self
 
+    # Container interface
+    def __contains__(self, k):
+        return k in self.__httpPars
+
+    def __getitem__(self, k):
+        return self.__httpPars[k]
 
     def hasHttpHdr(self,
                    httpHdr):
@@ -297,6 +295,11 @@ class ngamsReqProps:
         """
         return self.__httpMethod
 
+    def is_GET(self):
+        return self.__httpMethod == "GET"
+
+    def is_POST(self):
+        return self.__httpMethod == "POST"
 
     def setCmd(self,
                cmd):
@@ -364,28 +367,6 @@ class ngamsReqProps:
         return self.__size
 
 
-    def setWait(self,
-                wait):
-        """
-        Set the Wait Flag.
-
-        wait:      1 = wait, 0 = immediate reply (integer).
-
-        Returns:   Reference to object itself.
-        """
-        self.__wait = int(wait)
-        return self
-
-
-    def getWait(self):
-        """
-        Get Wait Flag.
-
-        Returns:  Wait Flag (integer).
-        """
-        return self.__wait
-
-
     def setFileUri(self,
                    fileUri):
         """
@@ -433,7 +414,7 @@ class ngamsReqProps:
 
         Returns:   Reference to object itself.
         """
-        self.__httpPars[httpPar] = urllib.unquote(str(val))
+        self.__httpPars[httpPar] = val
         return self
 
 
@@ -711,7 +692,6 @@ class ngamsReqProps:
                 setCmd(self.getCmd()).\
                 setMimeType(self.getMimeType()).\
                 setSize(self.getSize()).\
-                setWait(self.getWait()).\
                 setFileUri(self.getFileUri()).\
                 setSentReply(self.getSentReply()).\
                 setBytesReceived(self.getBytesReceived()).\

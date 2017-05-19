@@ -45,13 +45,13 @@ from unittest.case import skip, skipIf
 from contextlib import closing
 
 from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
-    NGAMS_SUCCESS
+    NGAMS_SUCCESS, getDiskSpaceAvail
 from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo,\
     ngamsCore
 from ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
     saveInFile, filterDbStatus1, sendPclCmd, pollForFile, getClusterName, \
     sendExtCmd, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, runTest, \
-    copyFile, genTmpFilename, execCmd
+    copyFile, genTmpFilename, execCmd, getNoCleanUp, setNoCleanUp
 from ngamsServer import ngamsFileUtils
 
 
@@ -67,6 +67,11 @@ try:
     import crc32c
 except ImportError:
     _test_checksums = False
+
+try:
+    _space_available_for_big_file_test = getDiskSpaceAvail('/tmp', format="GB") >= 4.1
+except:
+    _space_available_for_big_file_test = False
 
 class ngamsArchiveCmdTest(ngamsTestSuite):
     """
@@ -392,8 +397,13 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                           tmpReqPropObj.getStagingFilename(),
                           "Illegal Back-Log Buffered File: %s" %\
                           tmpReqPropObj.getStagingFilename())
-        sendPclCmd().offline()
-        sendPclCmd().exit()
+
+        # Cleanly shut down the server, and wait until it's completely down
+        old_cleanup = getNoCleanUp()
+        setNoCleanUp(True)
+        self.termExtSrv(self.extSrvInfo.pop())
+        setNoCleanUp(old_cleanup)
+
         cfgPars = [["NgamsCfg.Permissions[1].AllowArchiveReq", "1"],
                    ["NgamsCfg.ArchiveHandling[1].BackLogBuffering", "1"],
                    ["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:00:05"]]
@@ -530,12 +540,12 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                          [[8000, None, None, getClusterName()],
                           [8011, None, None, getClusterName()]])
         sendPclCmd(port=8011).archive("src/SmallFile.fits")
-        fileUri = "http://%s:8011/RETRIEVE?file_id=" +\
+        fileUri = "http://127.0.0.1:8011/RETRIEVE?file_id=" +\
                   "TEST.2001-05-08T15:25:00.123&file_version=1"
         tmpStatFile = sendExtCmd(8000, NGAMS_ARCHIVE_CMD,
-                                 [["filename", fileUri % getHostName()],
+                                 [["filename", fileUri],
                                   ["mime_type", "application/x-gfits"]],
-                                 filterTags = ["http://"])
+                                 filterTags = ["http://", "LogicalName:"])
         refStatFile = "ref/ngamsArchiveCmdTest_test_ArchivePullReq_2_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
                           "returned for Archive Push Request/HTTP")
@@ -708,12 +718,13 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = self.prepExtSrv()
+        cfgObj, dbObj = self.prepExtSrv(port=8888)
+        host_id = getHostName() + ":8888"
         sqlQuery = "UPDATE ngas_disks SET completed=1 WHERE host_id={0}"
-        dbObj.query2(sqlQuery, args=(getHostName(),))
+        dbObj.query2(sqlQuery, args=(host_id,))
         statObj = sendPclCmd().archive("src/SmallFile.fits")
         sqlQuery = "UPDATE ngas_disks SET completed=0 WHERE host_id={0}"
-        dbObj.query2(sqlQuery, args=(getHostName(),))
+        dbObj.query2(sqlQuery, args=(host_id,))
         refStatFile = "ref/ngamsArchiveCmdTest_test_ErrHandling_3_1_ref"
         tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
@@ -997,8 +1008,13 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             fo = open("%s.%s" % (stgFile, NGAMS_PICKLE_FILE_EXT), "w")
             fo.write("TEST/DUMMY REQUEST PROPERTIES FILE: %s" % diskName)
             fo.close()
-        sendPclCmd().offline()
-        sendPclCmd().exit()
+
+        # Cleanly shut down the server, and wait until it's completely down
+        old_cleanup = getNoCleanUp()
+        setNoCleanUp(True)
+        self.termExtSrv(self.extSrvInfo.pop())
+        setNoCleanUp(old_cleanup)
+
         self.prepExtSrv(delDirs=0, clearDb=0)
         badDirPat = "/tmp/ngamsTest/NGAS/bad-files/BAD-FILE-*-%s.fits"
         for diskName in diskList:
@@ -1047,7 +1063,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
     def test_NoDapi_01(self):
         """
         Synopsis:
-        No DAPI installed to handled request/Archive Push/wait=1.
+        No DAPI installed to handled request/Archive Push/async=1.
 
         Description:
         If the specified DAPI cannot be loaded during the Archive Request
@@ -1056,13 +1072,13 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
         Expected Result:
         The Archive Request handling should be interrupted and an error
-        reply sent back to the client since wait=1. The files in connection
+        reply sent back to the client since async=1. The files in connection
         with the request should be removed from the Staging Area.
 
         Test Steps:
         - Start server with configuration specifying a non-existing DAPI
           to handle FITS files.
-        - Archive FITS file (wait=1).
+        - Archive FITS file (async=1).
         - Check error reply from server.
         - Check that Staging Area is cleaned up.
         - Check that no files were archived.
@@ -1099,7 +1115,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
 
     def _genArchProxyCfg(self,
                          streamElList,
-                         nauList):
+                         ports):
         """
         Generate a cfg. file.
         """
@@ -1111,9 +1127,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             for strAttrEl, attrVal in streamEl:
                 nextAttr = strAttrEl % strEl
                 cfg.storeVal(nextAttr, attrVal)
-            for hostIdx, nau in enumerate(nauList,1):
+            for hostIdx, port in enumerate(ports, 1):
                 nauAttr = self.__ARCH_UNIT_ATR % (strEl, hostIdx)
-                cfg.storeVal(nauAttr, nau)
+                cfg.storeVal(nauAttr, "%s:%d" % (getHostName(), port))
                 hostIdx += 1
             idx += 1
         cfg.save(tmpCfgFile, 0)
@@ -1153,9 +1169,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        naus = {"%s:8001" % getHostName(): 0, "%s:8002" % getHostName(): 0,
-                "%s:8003" % getHostName(): 0, "%s:8004" % getHostName(): 0}
-        nmuCfg = self._genArchProxyCfg(self.__STREAM_LIST, naus.keys())
+        ports = range(8001, 8005)
+        nmuCfg = self._genArchProxyCfg(self.__STREAM_LIST, ports)
         #extProps = [["NgamsCfg.Log[1].LocalLogLevel", "5"]]
         extProps = []
         self.prepExtSrv(port=8000, cfgFile=nmuCfg, cfgProps=extProps)
@@ -1165,14 +1180,16 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                           [8003, None, None, getHostName()],
                           [8004, None, None, getHostName()]],
                          createDatabase = False)
-        noOfNodes = len(naus.keys())
+        noOfNodes = len(ports)
         nodeCount = 0
+        counts = {p: 0 for p in ports}
         for _ in xrange(100):
             stat = sendPclCmd(port=8000).\
                    archive("src/TinyTestFile.fits")
             self.assertEquals(stat.getStatus(), 'SUCCESS', "Didn't successfully archive file: %s / %s" % (stat.getStatus(), stat.getMessage()))
-            if (naus[stat.getHostId()] == 0):
-                naus[stat.getHostId()] = 1
+            port = int(stat.getHostId().split(':')[1])
+            if (counts[port] == 0):
+                counts[port] = 1
                 nodeCount += 1
                 if (nodeCount == noOfNodes): break
         if (nodeCount != noOfNodes):
@@ -1212,16 +1229,15 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        naus = {"%s:8000" % getHostName(): 0, "%s:8001" % getHostName(): 0,
-                "%s:8002" % getHostName(): 0, "%s:8003" % getHostName(): 0}
+        ports = range(8000, 8004)
         baseCfgFile = "src/ngamsCfg.xml"
         tmpCfgFile = genTmpFilename("test_cfg_") + ".xml"
         cfg = ngamsConfig.ngamsConfig().load(baseCfgFile)
         idx = 1
-        for nau in naus.keys():
+        for port in ports:
             attr = "NgamsCfg.Streams[1].Stream[2].ArchivingUnit[%d].HostId" %\
                    (idx)
-            cfg.storeVal(attr, nau)
+            cfg.storeVal(attr, "%s:%d" % (getHostName(), port))
             idx += 1
         cfg.save(tmpCfgFile, 0)
         self.prepCluster(tmpCfgFile,
@@ -1230,13 +1246,15 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                           [8002, None, None, getClusterName()],
                           [8003, None, None, getClusterName()]])
 
-        noOfNodes = len(naus.keys())
+        noOfNodes = len(ports)
         nodeCount = 0
-        for n in range(100):
+        counts = {p: 0 for p in ports}
+        for _ in range(100):
             stat = sendPclCmd(port=8000).\
                    archive("src/TinyTestFile.fits")
-            if (naus[stat.getHostId()] == 0):
-                naus[stat.getHostId()] = 1
+            port = int(stat.getHostId().split(':')[1])
+            if (counts[port] == 0):
+                counts[port] = 1
                 nodeCount += 1
                 if (nodeCount == noOfNodes): break
         if (nodeCount != noOfNodes):
@@ -1273,10 +1291,9 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        naus = {"%s:8001" % getHostName(): 0, "%s:8002" % getHostName(): 0,
-                "%s:8003" % getHostName(): 0, "%s:8004" % getHostName(): 0}
-        ncuCfg = self._genArchProxyCfg(self.__STREAM_LIST, naus.keys())
-        cfgObj, dbObj = self.prepExtSrv(port=8000, cfgFile=ncuCfg)
+        ports = range(8001, 8005)
+        ncuCfg = self._genArchProxyCfg(self.__STREAM_LIST, ports)
+        _, dbObj = self.prepExtSrv(port=8000, cfgFile=ncuCfg)
         self.prepCluster("src/ngamsCfg.xml",
                          [[8001, None, None, getHostName()],
                           [8002, None, None, getHostName()],
@@ -1288,15 +1305,15 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # Set <Host>:8004 to Offline.
         stat = sendPclCmd(port=8004).offline()
 
-        del naus["%s:8002" % getHostName()]
-        del naus["%s:8004" % getHostName()]
-        noOfNodes = len(naus.keys())
+        counts = {8001: 0, 8003: 0}
+        noOfNodes = len(counts)
         nodeCount = 0
-        for n in range(100):
+        for _ in range(100):
             stat = sendPclCmd(port=8000).\
                    archive("src/TinyTestFile.fits")
-            if (naus[stat.getHostId()] == 0):
-                naus[stat.getHostId()] = 1
+            port = int(stat.getHostId().split(':')[1])
+            if (counts[port] == 0):
+                counts[port] = 1
                 nodeCount += 1
                 if (nodeCount == noOfNodes): break
         if (nodeCount != noOfNodes):
@@ -1451,6 +1468,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             resp = conn.getresponse()
             self.checkEqual(resp.status, 200, None)
 
+        # Invalid file_version parameter, is not a number
         test_file = 'file:/bin/cp'
         params = {'filename': '{0}/?file_version={1}'.format(test_file, 'test'),
                   'mime_type': 'application/octet-stream'}
@@ -1462,6 +1480,21 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             self.checkEqual(resp.status, 400, None)
             self.checkEqual('file_version is not an integer' in resp.read(), True, None)
 
+        # The same as above, but file_version is a normal HTTP parameters
+        # instead of being embedded as part of the filename parameter
+        test_file = 'file:/bin/cp'
+        params = {'filename': test_file,
+                  'file_version': 'test',
+                  'mime_type': 'application/octet-stream'}
+        params = urllib.urlencode(params)
+        selector = '{0}?{1}'.format(cmd, params)
+        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
+            conn.request(method, selector, '', {})
+            resp = conn.getresponse()
+            self.assertEqual(400, resp.status)
+            self.assertIn('invalid literal for int() with base 10', resp.read())
+
+        # Archive file with a different name
         test_file = 'file:/bin/cp'
         params = {'filename': '{0}?file_id={1}'.format(test_file, 'test'),
                   'mime_type': 'application/octet-stream'}
@@ -1471,6 +1504,16 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             conn.request(method, selector, '', {})
             resp = conn.getresponse()
             self.checkEqual(resp.status, 200, None)
+
+    @skipIf(not _space_available_for_big_file_test,
+            "Not enough disk space available to run this test " + \
+            "(4 GB are required under /tmp)")
+    def test_QArchive_big_file(self):
+
+        self.prepExtSrv()
+        cmd = 'QARCHIVE'
+        host = '127.0.0.1:8888'
+        method = 'POST'
 
         # Archive large file
         class generated_file(object):
@@ -1495,6 +1538,24 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             conn.request(method, selector, generated_file((2**32)+12), {})
             resp = conn.getresponse()
             self.checkEqual(resp.status, 200, None)
+
+    def test_filename_with_colons(self):
+
+        self.prepExtSrv()
+        client = sendPclCmd()
+
+        test_file = 'name:with:colons'
+        with open(test_file, 'wb') as f:
+            f.write(b'   ')
+
+        try:
+            for cmd in 'ARCHIVE', 'QARCHIVE':
+                for fname in (test_file, 'file:' + os.path.abspath(test_file)):
+                    status = client.archive(fname, mimeType="application/octet-stream", cmd=cmd)
+                    self.assertEqual(NGAMS_SUCCESS, status.getStatus(), '%s command failed with fname %s: %s' % (cmd, fname, status.getMessage()))
+        finally:
+            os.unlink(test_file)
+
 
     @skipIf(not _test_checksums, "crc32c not available in your platform")
     def test_checksums(self):
@@ -1547,7 +1608,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         # In the case we asked for no checksum (file_version==5)
         # we check that the checksum is now calculated
         for version in range(1, 6):
-            stat = client.sendCmd('CHECKFILE', pars = [["file_id", file_id], ["file_version", version]])
+            stat = client.get_status('CHECKFILE', pars=[("file_id", file_id), ("file_version", version)])
             self.assertEquals(NGAMS_SUCCESS, stat.getStatus())
             if version == 5:
                 self.assertIn('NGAMS_ER_FILE_NOK', stat.getMessage())

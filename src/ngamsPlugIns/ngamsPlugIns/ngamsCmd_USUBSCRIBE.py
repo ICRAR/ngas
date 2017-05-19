@@ -32,6 +32,7 @@ import threading
 
 from ngamsLib.ngamsCore import NGAMS_DELIVERY_THR, TRACE, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_SUCCESS,\
     fromiso8601
+from ngamsLib import ngamsSubscriber
 from ngamsServer import ngamsSubscriptionThread
 
 
@@ -125,6 +126,7 @@ def handleCmd(srvObj,
 
     if (reqPropsObj.hasHttpPar("url")):
         url = reqPropsObj.getHttpPar("url")
+        ngamsSubscriber.validate_url(url)
         subscriber.setUrl(url)
 
     if (reqPropsObj.hasHttpPar("start_date")):

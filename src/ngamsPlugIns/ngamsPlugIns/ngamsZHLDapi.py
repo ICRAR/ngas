@@ -324,7 +324,7 @@ def insertFitsRecords(srvObj,reqPropsObj, complFileUri):
         filename=reqPropsObj.getFileUri()
 
         try:
-            conn = psycopg2.connect("dbname='gavo' user='zhl' host='mwa-web.icrar.org' password='zhlgly'")
+            conn = psycopg2.connect("dbname='' user='' host='' password=''")
         except:
             errMsg = "Unable to connect to the GLEAM VO database at mwa-web.icrar.org"
             logger.exception(errMsg)

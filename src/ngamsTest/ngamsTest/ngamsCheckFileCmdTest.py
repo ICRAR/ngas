@@ -77,12 +77,12 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         sendPclCmd().archive("src/SmallFile.fits")
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         fileId = "TEST.2001-05-08T15:25:00.123"
-        statObj = sendPclCmd(port=8888).sendCmdGen(NGAMS_CHECKFILE_CMD,
+        statObj = sendPclCmd(port=8888).get_status(NGAMS_CHECKFILE_CMD,
                                           pars = [["disk_id", diskId],
                                                   ["file_id", fileId],
                                                   ["file_version", "1"]])
         refStatFile = "ref/ngamsCheckFileCmdTest_test_NormalExec_1_1_ref"
-        refStatFile = saveInFile(None, loadFile(refStatFile) % getHostName())
+        refStatFile = saveInFile(None, loadFile(refStatFile) % ("%s:%d" % (getHostName(), 8888)))
         tmpStatFile = saveInFile(None, statObj.getMessage())
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect info in " +\
                           "STATUS Command XML Status Document")
@@ -140,7 +140,7 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
                          "ref/ngamsCheckFileCmdTest_test_ErrHandling_1_3_ref"]]
         for testData in testDataList:
             statObj = sendPclCmd(port=8888).\
-                      sendCmdGen(NGAMS_CHECKFILE_CMD,
+                      get_status(NGAMS_CHECKFILE_CMD,
                                  pars = [["disk_id", testData[1]],
                                          ["file_id", testData[2]],
                                          ["file_version", testData[3]]])

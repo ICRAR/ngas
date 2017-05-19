@@ -158,6 +158,11 @@ def get_public_key(key_filename):
         okey = RSA.importKey(f.read())
         return okey.exportKey('OpenSSH')
 
+def generate_key_pair():
+    key = RSA.generate(2048)
+    pubkey = key.publickey()
+    return key, pubkey
+
 def repo_root():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 

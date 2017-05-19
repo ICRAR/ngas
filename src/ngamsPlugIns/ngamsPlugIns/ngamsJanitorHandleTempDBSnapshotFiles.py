@@ -30,7 +30,7 @@ from ngamsServer.ngamsJanitorCommon import StopJanitorThreadException
 
 logger = logging.getLogger(__name__)
 
-def ngamsJanitorHandleTempDBSnapshotFiles(srvObj, stopEvt, jan_to_srv_queue):
+def run(srvObj, stopEvt, jan_to_srv_queue):
     """
     Check if there are any Temporary DB Snapshot Files to handle.
 
