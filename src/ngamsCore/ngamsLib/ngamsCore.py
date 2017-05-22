@@ -70,7 +70,7 @@ import socket
 import threading
 import time
 import types
-import subprocess, psutil
+import subprocess
 
 import pkg_resources
 
@@ -547,6 +547,13 @@ def rmFile(filename):
             os.remove(f)
 
 
+def _find_mount_point(path):
+    path = os.path.realpath(path)
+    while not os.path.ismount(path):
+        path = os.path.dirname(path)
+    return path
+
+
 def mvFile(srcFilename,
            trgFilename):
     """
@@ -566,21 +573,10 @@ def mvFile(srcFilename,
         checkCreatePath(os.path.dirname(trgFilename))
         fileSize = getFileSize(srcFilename)
 
-        # TODO: only check for available disk space if we are crossing
-        #       filesystem boundaries; otherwise we unnecessarily fail
-        #       for file moves that would gracefully run
-        def find_mount_point(path):
-            path = os.path.realpath(path)             #realpath works for symlinks as well as mormal paths
-            while not os.path.ismount(path):          #ismount finds mount point by traversing
-                path = os.path.dirname(path)
-            return path
-
-        srcfil_mntpt = find_mount_point(srcFilename)
-        trgfil_mntpt = find_mount_point(trgFilename)
-
-        if (srcfil_mntpt != trgfil_mntpt):
-            checkAvailDiskSpace(trgFilename, fileSize)    #print "Perform checkdisk"
-                                                          #else  "Do nought"
+        srcfil_mntpt = _find_mount_point(srcFilename)
+        trgfil_mntpt = _find_mount_point(trgFilename)
+        if srcfil_mntpt != trgfil_mntpt:
+            checkAvailDiskSpace(trgFilename, fileSize)
 
         # Don't rely on os.rename as it can cause issues when crossing 
         # disk parition boundaries
