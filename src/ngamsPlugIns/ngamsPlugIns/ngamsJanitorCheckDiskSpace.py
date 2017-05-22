@@ -48,5 +48,5 @@ def run(srvObj, stopEvt, jan_to_srv_queue):
 
         host, port = srvObj.get_endpoint()
         ngamsHttpUtils.httpGet(host, port, NGAMS_OFFLINE_CMD,
-                               pars=(("force", "1"), ("wait", "0")),
+                               pars=(("force", "1"),),
                                timeout=30, auth=auth)
