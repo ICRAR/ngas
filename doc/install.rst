@@ -2,6 +2,9 @@
 Installation
 ############
 
+.. contents:: Contents
+   :local:
+
 Installing NGAS is pretty straight-forward.
 There are two ways to perform an installation:
 
@@ -32,12 +35,14 @@ with the necessary python packages to run Fabric.
 To create the virtual environment,
 go to the NGAS root source directory and run::
 
- ./create_venv.sh /path/to/the/new/venv
+ ./create_venv.sh [-f] /path/to/the/new/venv
 
 This will check you have an appropriate python version,
-will get the ``virtualenv`` tool, create a virtual environment,
-install a set of basic packages needed later,
-and tell you to source the virtual environment.
+will get the ``virtualenv`` tool
+and create a virtual environment.
+The ``-f`` flag is optional,
+and tells the script to also install
+a set of basic packages needed to use Fabric.
 
 .. _inst.manual:
 
@@ -168,6 +173,19 @@ To perform a system-wide setup and NGAS install run::
 
 .. include:: operations_deploy_desc.rst
 
+
+.. _inst.other_fabric:
+
+Other Fabric tasks
+==================
+
+On top of the :ref:`two main Fabric tasks<inst.fabric>` to install NGAS,
+our fabric modules define a number of other
+optional, high-level tasks that can be useful
+in other scenarios.
+
+.. _inst.other_fabric.aws:
+
 AWS deployment
 --------------
 
@@ -175,7 +193,7 @@ AWS deployment
 
  The ``boto`` module is required for using this install option.
 
-The fabric modules contain also routines to create an NGAS installation on AWS
+The fabric modules contain routines to create an NGAS installation on AWS
 machines. This is performed by running::
 
  fab hl.aws_deploy
@@ -192,6 +210,8 @@ available::
 
  fab aws.list_instances
  fab aws.terminate_instance:instance_id=<the-instance-id>
+
+.. _inst.other_fabric.docker:
 
 Docker Image
 ------------
