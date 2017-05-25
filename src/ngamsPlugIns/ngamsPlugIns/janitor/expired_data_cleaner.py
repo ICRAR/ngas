@@ -19,12 +19,13 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+"""This plug-in removes expired data from a number of NGAS directories"""
 
 import logging
 import os
 
 from ngamsLib import ngamsHighLevelLib
-from ngamsLib.ngamsCore import NGAMS_SUBSCR_BACK_LOG_DIR
+from ngamsLib.ngamsCore import NGAMS_SUBSCR_BACK_LOG_DIR, NGAMS_PROC_DIR
 from ngamsLib.ngamsCore import isoTime2Secs
 from ngamsServer.ngamsJanitorCommon import checkCleanDirs
 
@@ -32,25 +33,23 @@ from ngamsServer.ngamsJanitorCommon import checkCleanDirs
 logger = logging.getLogger(__name__)
 
 def run(srvObj, stopEvt, jan_to_srv_queue):
-    """
-	Checks/cleans up Subscription Back-Log Buffer and
-    Checks/cleans up NG/AMS Temp Directory of any leftover files.
 
-   srvObj:            Reference to NG/AMS server class object (ngamsServer).
+    cfg = srvObj.getCfg()
+    cleaning_info = (
+        ("processing directory",
+         os.path.join(cfg.getProcessingDirectory(), NGAMS_PROC_DIR),
+         1800,
+         0),
+        ("subscription backlog buffer",
+         os.path.join(cfg.getBackLogBufferDirectory(), NGAMS_SUBSCR_BACK_LOG_DIR),
+         isoTime2Secs(cfg.getBackLogExpTime()),
+         0),
+        ("NGAS tmp directory",
+         ngamsHighLevelLib.getTmpDir(cfg),
+         12 * 3600,
+         1)
+    )
 
-   Returns:           Void.
-   """
-    logger.debug("Checking/cleaning up Subscription Back-Log Buffer ...")
-    backLogDir = os.path.\
-                 normpath(srvObj.getCfg().getBackLogBufferDirectory()+\
-                          "/" + NGAMS_SUBSCR_BACK_LOG_DIR)
-    expTime = isoTime2Secs(srvObj.getCfg().getBackLogExpTime())
-    checkCleanDirs(backLogDir, expTime, expTime, 0)
-    logger.debug("Subscription Back-Log Buffer checked/cleaned up")
-
-    # => Check if there are left-over files in the NG/AMS Temp. Dir.
-    logger.debug("Checking/cleaning up NG/AMS Temp Directory ...")
-    tmpDir = ngamsHighLevelLib.getTmpDir(srvObj.getCfg())
-    expTime = (12 * 3600)
-    checkCleanDirs(tmpDir, expTime, expTime, 1)
-    logger.debug("NG/AMS Temp Directory checked/cleaned up")
+    for desc, d, t, use_last_access in cleaning_info:
+        logger.info("Checking/cleaning up %s: %s", desc, d)
+        checkCleanDirs(d, t, t, use_last_access)
