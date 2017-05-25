@@ -19,6 +19,8 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+"""Checks if there's enough disk space, sets the system offline if necessary"""
+
 import logging
 
 from ngamsLib import ngamsHttpUtils
@@ -36,14 +38,10 @@ def run(srvObj, stopEvt, jan_to_srv_queue):
     try:
         srvObj.checkDiskSpaceSat()
     except Exception:
-        logger.exception("Not enough disk space, " + \
-                         "bringing the system to Offline State ...")
-        # We use a small trick here: We send an Offline Command to
-        # the process itself.
-        #
-        # If authorization is on, fetch a key of a defined user.
+        logger.exception("Not enough disk space, bringing the system Offline")
+
         auth = ""
-        if (srvObj.getCfg().getAuthorize()):
+        if srvObj.getCfg().getAuthorize():
             auth = srvObj.getCfg().getAuthHttpHdrVal(NGAMS_HTTP_INT_AUTH_USER)
 
         host, port = srvObj.get_endpoint()
