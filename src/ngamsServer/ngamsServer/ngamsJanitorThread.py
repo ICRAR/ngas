@@ -78,7 +78,7 @@ def get_plugins(srvObj):
         'janitor.rotated_logfiles_remover',
         'ngamsJanitorCheckDiskSpace',
         'janitor.wake_up_request_processor',
-        'ngamsJanitorChecktoSuspendNGASHost',
+        'janitor.host_suspender'
     ]
 
     user_plugins = srvObj.getCfg().getJanitorPlugins()
