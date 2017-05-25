@@ -19,10 +19,10 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+"""Checks the backlog buffer for pending archive commands and runs them"""
 
 import logging
 
-from ngamsLib.ngamsCore import genLog
 from ngamsServer import ngamsArchiveUtils
 from ngamsServer.ngamsDbSnapshotUtils import updateDbSnapShots
 from ngamsServer.ngamsJanitorCommon import StopJanitorThreadException
@@ -31,13 +31,7 @@ from ngamsServer.ngamsJanitorCommon import StopJanitorThreadException
 logger = logging.getLogger(__name__)
 
 def run(srvObj, stopEvt, jan_to_srv_queue):
-    """
-    Check if there are any Temporary DB Snapshot Files to handle.
 
-    srvObj:            Reference to NG/AMS server class object (ngamsServer).
-
-    Returns:           Void.
-    """
     try:
         updateDbSnapShots(srvObj, stopEvt)
     except StopJanitorThreadException:
@@ -46,11 +40,10 @@ def run(srvObj, stopEvt, jan_to_srv_queue):
         logger.exception("Error encountered updating DB Snapshots")
 
     # => Check Back-Log Buffer (if appropriate).
-    if (srvObj.getCfg().getAllowArchiveReq() and \
+    if (srvObj.getCfg().getAllowArchiveReq() and
         srvObj.getCfg().getBackLogBuffering()):
         logger.debug("Checking Back-Log Buffer ...")
         try:
             ngamsArchiveUtils.checkBackLogBuffer(srvObj)
-        except Exception, e:
-            errMsg = genLog("NGAMS_ER_ARCH_BACK_LOG_BUF", [str(e)])
-            logger.error(errMsg)
+        except Exception:
+            logger.exception("Error while archiving from back-log buffer")
