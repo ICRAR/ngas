@@ -77,7 +77,7 @@ def get_plugins(srvObj):
         'ngamsJanitorCheckUnsavedLogFile',
         'janitor.rotated_logfiles_remover',
         'ngamsJanitorCheckDiskSpace',
-        'ngamsJanitorChecktoWakeupOtherNGASHost',
+        'janitor.wake_up_request_processor',
         'ngamsJanitorChecktoSuspendNGASHost',
     ]
 

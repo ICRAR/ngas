@@ -19,6 +19,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+"""This plug-in wakes up other servers that requested to be woken up by us"""
 
 import logging
 import time
@@ -29,20 +30,12 @@ from ngamsServer import ngamsSrvUtils
 logger = logging.getLogger(__name__)
 
 def run(srvObj, stopEvt, jan_to_srv_queue):
-    """
-    Check if this NG/AMS Server is requested to wake up another/other NGAS Host(s).
 
-    srvObj:            Reference to NG/AMS server class object (ngamsServer).
-
-    Returns:           Void.
-    """
     hostId = srvObj.getHostId()
-    timeNow = time.time()
-    for wakeUpReq in srvObj.getDb().getWakeUpRequests(srvObj.getHostId()):
-        # Check if the individual host is 'ripe' for being woken up.
-        suspHost = wakeUpReq[0]
-        if (timeNow > wakeUpReq[1]):
-            logger.info("Found suspended NG/AMS Server: %s " +\
-                 "that should be woken up by this NG/AMS Server: %s",
-                 suspHost, hostId)
-            ngamsSrvUtils.wakeUpHost(srvObj, suspHost)
+    now = time.time()
+
+    for host, wakeup_time in srvObj.getDb().getWakeUpRequests(hostId):
+        if now <= wakeup_time:
+            continue
+        logger.info("Waking up server %s", host)
+        ngamsSrvUtils.wakeUpHost(srvObj, host)
