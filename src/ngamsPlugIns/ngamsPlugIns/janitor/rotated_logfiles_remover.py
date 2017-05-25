@@ -19,6 +19,8 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+"""This plug-in removes old logging rotation files"""
+
 import glob
 import logging
 import os
@@ -29,25 +31,14 @@ from ngamsLib.ngamsCore import rmFile
 logger = logging.getLogger(__name__)
 
 def run(srvObj, stopEvt, jan_to_srv_queue):
-    """
-	Check if there are expired or rotated Local Log Files to remove.
-
-   srvObj:            Reference to NG/AMS server class object (ngamsServer).
-
-   Returns:           Void.
-   """
     logger.debug("Check if there are rotated Local Log Files to remove ...")
-    logFile = srvObj.getCfg().getLocalLogFile()
-    logPath = os.path.dirname(logFile)
 
-    rotLogFilePat = os.path.normpath(logPath + "/LOG-ROTATE-*.nglog")
-    rotLogFileList = glob.glob(rotLogFilePat)
-    delLogFiles = (len(rotLogFileList) -\
-                   srvObj.getCfg().getLogRotateCache())
-    if (delLogFiles > 0):
-        rotLogFileList.sort()
-        for n in range(delLogFiles):
-            logger.debug("Removing Rotated Local Log File: " +\
-                 rotLogFileList[n])
-            rmFile(rotLogFileList[n])
-    logger.debug("Checked for expired, rotated Local Log Files")
+    logFile = srvObj.getCfg().getLocalLogFile()
+    pattern = os.path.join(os.path.dirname(logFile), 'LOG-ROTATE-*.nglog')
+    files = glob.glob(pattern)
+    files.sort()
+    max_rotations = max(min(srvObj.getCfg().getLogRotateCache(), 100), 0)
+    to_delete = files[max_rotations:]
+    for f in to_delete:
+        logger.info("Removing Rotated Local Log File: %s", f)
+        rmFile(f)
