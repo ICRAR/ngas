@@ -120,6 +120,8 @@ contains the details to configure the server logging output.
   should output to ``LocalLogFile``.
 * *LogRotateInt*: The interval after which the ``LocalLogFile`` is rotated.
   Specified as ``THH:mm:SS``. Defaults to 10 minutes.
+* *LogRotateCache*: The amount of rotated files to retain. If more rotated files
+  are found, they are removed by the system.
 * *SysLog*: An integer indicating whether syslog logging is enabled
   (``1``) or disabled (``0``).
 * *SysLogPrefix*: The string used as prefix for all syslog messages.
