@@ -74,7 +74,6 @@ def get_plugins(srvObj):
         'janitor.old_requests_cleaner',
         'janitor.expired_data_cleaner',
         'janitor.notifications_sender',
-        'ngamsJanitorCheckUnsavedLogFile',
         'janitor.rotated_logfiles_remover',
         'janitor.disk_space_checker',
         'janitor.wake_up_request_processor',

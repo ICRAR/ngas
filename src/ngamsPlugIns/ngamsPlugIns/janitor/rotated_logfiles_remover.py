@@ -19,26 +19,53 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-"""This plug-in removes old logging rotation files"""
+"""Deals with logging rotation files, archiving them, and removing old ones"""
 
 import glob
 import logging
 import os
 
-from ngamsLib.ngamsCore import rmFile
+from ngamsLib import ngamsNotification
+from ngamsLib.ngamsCore import rmFile, mvFile
+from ngamsPClient import ngamsPClient
 
 
 logger = logging.getLogger(__name__)
+_ArchDestination = "user@example.com:/some/dir/" #Needs to be changed to a realistic Host for analysis work
+
+def SndArchFileForAnalysis(srvObj, filename):
+    try:
+        simpleFilenm = filename.split("/")
+        os.system("scp " + filename + " " + _ArchDestination + simpleFilenm[-1])
+    except Exception, e:
+        errMsg = str(e) + ". Attempting to send to another host archive file: " + \
+                 filename
+        ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), "REMOTE HOST NOT AVAILABLE", errMsg)
+        raise Exception, errMsg
 
 def run(srvObj, stopEvt, jan_to_srv_queue):
-    logger.debug("Check if there are rotated Local Log Files to remove ...")
 
-    logFile = srvObj.getCfg().getLocalLogFile()
-    pattern = os.path.join(os.path.dirname(logFile), 'LOG-ROTATE-*.nglog')
-    files = glob.glob(pattern)
-    files.sort()
+    logdir = os.path.dirname(srvObj.getCfg().getLocalLogFile())
+
+    # The LOG-ROTATE-<timestamp>.nglog.unsaved pattern is produced by the
+    # ngamsServer.NgasRotatingFileHandler class, which is the file handler
+    # attached to the root logger in the server process
+    logger.debug("Checking if there are unsaved rotated logfiles")
+    for unsaved in glob.glob(os.path.join(logdir, 'LOG-ROTATE-*.nglog.unsaved')):
+
+        # Remove the .unsaved bit, leave the rest
+        fname = '.'.join(unsaved.split('.')[:-1])
+        mvFile(unsaved, fname)
+
+        file_uri = "file://" + fname
+        host, port = srvObj.get_endpoint()
+        ngamsPClient.ngamsPClient(host, port).archive(file_uri, 'ngas/nglog')
+        SndArchFileForAnalysis(srvObj, fname)
+
+    logger.debug("Check if there are old rotated logfiles to remove ...")
     max_rotations = max(min(srvObj.getCfg().getLogRotateCache(), 100), 0)
-    to_delete = files[max_rotations:]
-    for f in to_delete:
-        logger.info("Removing Rotated Local Log File: %s", f)
+    logfiles = glob.glob(os.path.join(logdir, 'LOG-ROTATE-*.nglog'))
+    logfiles.sort()
+    for f in logfiles[max_rotations:]:
+        logger.info("Removing rotated logfile %s", f)
         rmFile(f)
