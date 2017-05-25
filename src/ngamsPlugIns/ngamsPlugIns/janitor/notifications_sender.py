@@ -19,11 +19,10 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+"""Check that there are no notifications retained for sending"""
+
 from ngamsLib import ngamsNotification
 
 
 def run(srvObj, stopEvt, jan_to_srv_queue):
-    """
-    Check that there are no notifications retained for sending
-    """
     ngamsNotification.checkNotifRetBuf(srvObj.getHostId(), srvObj.getCfg())

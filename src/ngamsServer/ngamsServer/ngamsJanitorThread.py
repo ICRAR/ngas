@@ -73,7 +73,7 @@ def get_plugins(srvObj):
         'ngamsJanitorHandleTempDBSnapshotFiles',
         'ngamsJanitorCheckOldRequestsinDBM',
         'janitor.expired_data_cleaner',
-        'ngamsJanitorCheckRetainedNotificationMsgs',
+        'janitor.notifications_sender',
         'ngamsJanitorCheckUnsavedLogFile',
         'janitor.rotated_logfiles_remover',
         'janitor.disk_space_checker',
