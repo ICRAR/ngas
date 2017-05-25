@@ -71,7 +71,7 @@ def get_plugins(srvObj):
 
     hardcoded = [
         'ngamsJanitorHandleTempDBSnapshotFiles',
-        'ngamsJanitorCheckOldRequestsinDBM',
+        'janitor.old_requests_cleaner',
         'janitor.expired_data_cleaner',
         'janitor.notifications_sender',
         'ngamsJanitorCheckUnsavedLogFile',

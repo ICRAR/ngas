@@ -19,6 +19,8 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+"""Finds old requests and instructs the server to remove them"""
+
 import logging
 import time
 
@@ -33,19 +35,8 @@ def timed_out(t, timeout):
     return t is not None and (now - t) >= timeout
 
 def run(srvObj, stopEvt, jan_to_srv_queue):
-    """
-    Check and if needs be clean up old requests.
 
-    Remove a Request Properties Object from the queue if
-     1. The request handling is completed for more than 24 hours (86400s).
-     2. The request status has not been updated for more than 24 hours (86400s).
-
-   srvObj:            Reference to NG/AMS server class object (ngamsServer).
-
-   Returns:           Void.
-   """
     logger.debug("Checking/cleaning up Request DB ...")
-    #reqTimeOut = 10
     reqTimeOut = 86400
 
     requestDbm = ngamsDbm.ngamsDbm(srvObj.getReqDbName())
@@ -56,7 +47,7 @@ def run(srvObj, stopEvt, jan_to_srv_queue):
         reqPropsObj = requestDbm.get(reqId)
         checkStopJanitorThread(stopEvt)
 
-        # Remove a Request Properties Object from the queue if
+        # Remove a Request Properties Object from the DB if
         #
         # 1. The request handling is completed for more than
         #    24 hours (86400s).
