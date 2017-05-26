@@ -23,8 +23,8 @@
 
 import logging
 
-from ngamsLib import ngamsHttpUtils
-from ngamsLib.ngamsCore import NGAMS_OFFLINE_CMD, NGAMS_HTTP_INT_AUTH_USER
+from ngamsLib.ngamsCore import NGAMS_HTTP_INT_AUTH_USER
+from ngamsPClient import ngamsPClient
 
 
 logger = logging.getLogger(__name__)
@@ -40,11 +40,11 @@ def run(srvObj, stopEvt, jan_to_srv_queue):
     except Exception:
         logger.exception("Not enough disk space, bringing the system Offline")
 
-        auth = ""
+        # Connect to the server and send an OFFLINE command
+        host, port = srvObj.get_endpoint()
+        auth = None
         if srvObj.getCfg().getAuthorize():
             auth = srvObj.getCfg().getAuthHttpHdrVal(NGAMS_HTTP_INT_AUTH_USER)
 
-        host, port = srvObj.get_endpoint()
-        ngamsHttpUtils.httpGet(host, port, NGAMS_OFFLINE_CMD,
-                               pars=(("force", "1"),),
-                               timeout=30, auth=auth)
+        client = ngamsPClient.ngamsPClient(host, port, timeout=30, auth=auth)
+        client.offline(force=True)

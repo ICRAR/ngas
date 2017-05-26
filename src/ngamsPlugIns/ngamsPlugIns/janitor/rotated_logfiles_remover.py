@@ -57,6 +57,7 @@ def run(srvObj, stopEvt, jan_to_srv_queue):
         fname = '.'.join(unsaved.split('.')[:-1])
         mvFile(unsaved, fname)
 
+        # Connect to the server and send a pull ARCHIVE request
         file_uri = "file://" + fname
         host, port = srvObj.get_endpoint()
         ngamsPClient.ngamsPClient(host, port).archive(file_uri, 'ngas/nglog')
