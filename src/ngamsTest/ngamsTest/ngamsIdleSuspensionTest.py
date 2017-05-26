@@ -597,7 +597,7 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         sendPclCmd(port=8001, auth=AUTH).archive("src/SmallFile.fits")
         self.waitTillSuspended(dbConObj, subNode1, 30, susp_nodes)
         # Get timestamp for the log indicating that the node suspends itself.
-        suspLog = "NG/AMS Server: %s suspending itself" % subNode1
+        suspLog = "NG/AMS Server %s suspending itself" % subNode1
         subNodeLog = loadFile(subNode1Log).split("\n")
         suspLogEntry = ""
         for line in subNodeLog:
@@ -611,9 +611,8 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         # Now we have to wait until the sub-node is woken up for DCC.
         self.waitTillWokenUp(dbConObj, subNode1, 60, susp_nodes)
         # Check log output in Master Log File.
-        tagFormat = "Found suspended NG/AMS Server: %s that should be " +\
-                    "woken up by this NG/AMS Server: %s"
-        testTags = [tagFormat % (subNode1, masterNode)]
+        tagFormat = "Waking up server %s"
+        testTags = [tagFormat % (subNode1,)]
         self.checkTags(loadFile(masterNodeLog), testTags, showBuf=0)
         # Check log output in Sub-Node Log File.
         sendPclCmd(port=8001, auth=AUTH).status()  # Flush log cache.

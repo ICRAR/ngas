@@ -45,7 +45,7 @@ def run(srvObj, stopEvt, jan_to_srv_queue):
         return
 
     # Conditions are met for suspending this NGAS host.
-    logger.info("NG/AMS Server suspending itself ...")
+    logger.info("NG/AMS Server %s suspending itself", hostId)
 
     # If Data Checking is on, we request a wake-up call.
     if cfg.getDataCheckActive():
