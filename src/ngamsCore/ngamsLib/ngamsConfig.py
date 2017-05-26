@@ -497,7 +497,7 @@ class ngamsConfig:
                     tmpPlugInObj.addMimeType(mimeType)
                 self.addRegPiDef(tmpPlugInObj)
 
-        # Get info about Jantiro Plug-Ins.
+        # Get info about Janitor Plug-Ins.
         janitorObj = self.__cfgMgr.getXmlObj("JanitorThread[1]")
         if janitorObj:
             logger.debug("Unpacking JanitorThread Element ...")
