@@ -49,6 +49,7 @@ NGAMS_PYTHON_PICKLE_MT = "application/python-pickle"
 NGAMS_JSON_MT = "application/json"
 NGAMS_FILES_COLS = map(lambda x:x[1],ngamsDbCore._ngasFilesDef)
 NGAMS_DISKS_COLS = map(lambda x:x[1],ngamsDbCore._ngasDisksDef)
+NGAMS_SUBSCR_COLS = map(lambda x:x[1],ngamsDbCore._ngasSubscribersDef)
 
 #creation_date could be different from ingestion_date if it is a mirrored archive
 # ingestion_date is when the original copy was ingested in the system,
@@ -61,6 +62,8 @@ LASTVER_LOCATION = "SELECT a.host_id, a.mount_point || '/' || b.file_name as fil
                     "order by b.file_id"
 
 valid_queries = {"files_list":"select * from ngas_files",
+                 "subscribers_list":"select * from ngas_subscribers",
+                  "subscribers_like":"select * from ngas_subscribers where host_id like {0}",
                   "disks_list":"select * from ngas_disks",
                   "hosts_list":"select * from ngas_hosts",
                   "files_like":"select * from ngas_files where file_id like {0}",
@@ -238,7 +241,7 @@ def handleCmd(srvObj,
             valid_queries.keys()
             raise Exception, msg
 
-        if reqPropsObj.getHttpPar("query") == 'files_like' or reqPropsObj.getHttpPar("query") == 'files_location' or reqPropsObj.getHttpPar("query") == 'lastver_location':
+        if reqPropsObj.getHttpPar("query") == 'subscribers_like' or reqPropsObj.getHttpPar("query") == 'files_like' or reqPropsObj.getHttpPar("query") == 'files_location' or reqPropsObj.getHttpPar("query") == 'lastver_location':
             param = '%'
             if (reqPropsObj.hasHttpPar("like")):
                 param = reqPropsObj.getHttpPar("like")
@@ -285,6 +288,8 @@ def handleCmd(srvObj,
                     header = NGAMS_FILES_COLS
                 elif query.find('ngas_disks') >= 0:
                     header = NGAMS_DISKS_COLS
+                elif query.find('ngas_subscribers') >= 0:
+                    header = NGAMS_SUBSCR_COLS
             elif reqPropsObj.getHttpPar("query") == 'files_stats':
                 header = ['Number of files', 'Total volume [MB]']
             elif reqPropsObj.getHttpPar("query") == 'files_list_recent':

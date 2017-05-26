@@ -1,0 +1,45 @@
+<html>
+<head>
+<style>
+table {
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+
+}
+
+td, th {
+    border: 1px solid #DDD;
+    text-align: center;
+    padding: 8px;
+    cursor: pointer;
+}
+.selected {
+    background-color: brown;
+    color: #FFF;
+}
+label {
+     display: inline-block;
+    vertical-align: baseline;
+    width: 255px;
+}
+input {
+    display: inline-block;
+    vertical-align: baseline;
+    width: 215px;
+}
+button {
+    display: inline-block;
+    vertical-align: baseline;
+    width: 195px;
+    font: bold 11px courier ;
+}
+
+</style>
+</head>
+<body>
+<table id="table">
+<tr>
+
+
+

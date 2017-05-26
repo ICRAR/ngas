@@ -46,7 +46,7 @@ from ngamsLib.ngamsCore import NGAMS_NOT_RUN_STATE,\
     NGAMS_SUCCESS, TRACE, genLog, NGAMS_DISK_INFO, checkCreatePath,\
     NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
     loadPlugInEntryPoint, toiso8601, fromiso8601
-from ngamsLib import ngamsStatus, ngamsLib, ngamsHttpUtils
+from ngamsLib import ngamsStatus, ngamsLib
 from ngamsLib import ngamsPhysDiskInfo
 from ngamsLib import ngamsSubscriber
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
@@ -149,7 +149,7 @@ def _subscriberThread(srvObj,
             statObj.clear()
             try:
                 resp, stat, msgObj, data = \
-                      ngamsHttpUtils.httpGet(subscrObj.getHostId(),
+                      ngamsLib.httpGet(subscrObj.getHostId(),
                                        subscrObj.getPortNo(),
                                        NGAMS_SUBSCRIBE_CMD, pars)
                 statObj.unpackXmlDoc(data, 1)
@@ -431,7 +431,7 @@ def handleOffline(srvObj,
         for subscrObj in srvObj.getSubscrStatusList():
             try:
                 resp, stat, msgObj, data = \
-                      ngamsHttpUtils.httpGet(subscrObj.getHostId(),
+                      ngamsLib.httpGet(subscrObj.getHostId(),
                                        subscrObj.getPortNo(),
                                        NGAMS_UNSUBSCRIBE_CMD,
                                        [["url", subscrObj.getId()]])
@@ -492,7 +492,7 @@ def wakeUpHost(srvObj,
         plugInMethod(srvObj, suspHost)
 
         ipAddress = srvObj.getDb().getIpFromHostId(suspHost)
-        ngamsHighLevelLib.pingServer(ipAddress, portNo,
+        ngamsHighLevelLib.pingServer(suspHost, ipAddress, portNo,
                                      srvObj.getCfg().getWakeUpCallTimeOut())
     except Exception:
         logger.exception("Error waking up host %s", suspHost)
