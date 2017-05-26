@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsConfig.py,v 1.26 2009/11/26 14:55:22 awicenec Exp $"
@@ -34,6 +33,7 @@ The ngamsConfig class is used to handle the NG/AMS Configuration.
 """
 
 import base64
+import collections
 import logging
 import os
 import types
@@ -210,6 +210,9 @@ def checkDuplicateValue(checkDic,
         checkDic[value] = 1
 
 
+# A simple plug-in definition contains a name and some parameters
+plugin_def = collections.namedtuple('plugin_def', 'name pars')
+
 
 class ngamsConfig:
     """
@@ -253,6 +256,9 @@ class ngamsConfig:
 
         # Janitor process Plug-Ins
         self.__janitorPlugIns          = []
+
+        # Logfile handler Plug-Ins
+        self.logfile_handler_plugins   = []
 
         # Register Plug-Ins.
         self.__registerPlugIns         = []
@@ -499,6 +505,16 @@ class ngamsConfig:
             for idx1 in range(1, (len(janitorObj.getSubElList()) + 1)):
                 name = self.getVal(name_path % (idx1,))
                 self.__janitorPlugIns.append(name)
+
+        # Get info about logfile handler plug-ins
+        logObj = self.__cfgMgr.getXmlObj('Log[1]')
+        if logObj:
+            logger.debug("Unpacking LogfileHandlerPlugIn elements")
+            attr = "Log[1].LogfileHandlerPlugIn[%d].%s"
+            for i in range(1, len(logObj.getSubElList()) + 1):
+                lh_plugin = plugin_def(self.getVal(attr % (i, "Name")),
+                                       self.getVal(attr % (i, "PlugInPars")))
+                self.logfile_handler_plugins.append(lh_plugin)
 
         # Process the information about subscribers to Notification Emails.
         attrList = [["AlertNotification",       self.__alertNotif],

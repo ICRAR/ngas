@@ -21,31 +21,41 @@
 #
 """Deals with logging rotation files, archiving them, and removing old ones"""
 
+import functools
 import glob
 import logging
 import os
 
-from ngamsLib import ngamsNotification
-from ngamsLib.ngamsCore import rmFile, mvFile
+from ngamsLib.ngamsCore import rmFile, mvFile, loadPlugInEntryPoint
+from ngamsLib import ngamsLib
 from ngamsPClient import ngamsPClient
 
 
 logger = logging.getLogger(__name__)
-_ArchDestination = "user@example.com:/some/dir/" #Needs to be changed to a realistic Host for analysis work
 
-def SndArchFileForAnalysis(srvObj, filename):
-    try:
-        simpleFilenm = filename.split("/")
-        os.system("scp " + filename + " " + _ArchDestination + simpleFilenm[-1])
-    except Exception, e:
-        errMsg = str(e) + ". Attempting to send to another host archive file: " + \
-                 filename
-        ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), "REMOTE HOST NOT AVAILABLE", errMsg)
-        raise Exception, errMsg
+# Load plug-ins only once and store them globally
+_lh_plugins = None
+def get_logfile_handler_plugins(cfg):
+    global _lh_plugins
+
+    if _lh_plugins is None:
+        _lh_plugins = []
+        try:
+            for name, pars in cfg.logfile_handler_plugins:
+                func = loadPlugInEntryPoint(name, 'run')
+                pars = ngamsLib.parseRawPlugInPars(pars)
+                _lh_plugins.append(functools.partial(func, pars))
+        except:
+            # Only report the error, but nothing else
+            logger.exception("Error while loading logfile handler plug-ins,"
+                             "no extra functionality available")
+
+    return _lh_plugins
 
 def run(srvObj, stopEvt, jan_to_srv_queue):
 
-    logdir = os.path.dirname(srvObj.getCfg().getLocalLogFile())
+    cfg = srvObj.getCfg()
+    logdir = os.path.dirname(cfg.getLocalLogFile())
 
     # The LOG-ROTATE-<timestamp>.nglog.unsaved pattern is produced by the
     # ngamsServer.NgasRotatingFileHandler class, which is the file handler
@@ -61,10 +71,16 @@ def run(srvObj, stopEvt, jan_to_srv_queue):
         file_uri = "file://" + fname
         host, port = srvObj.get_endpoint()
         ngamsPClient.ngamsPClient(host, port).archive(file_uri, 'ngas/nglog')
-        SndArchFileForAnalysis(srvObj, fname)
+
+        # Do additional things with our logfiles
+        for plugin in get_logfile_handler_plugins(cfg):
+            try:
+                plugin(srvObj, fname)
+            except:
+                logger.exception("Error while handling logfile %s", fname)
 
     logger.debug("Check if there are old rotated logfiles to remove ...")
-    max_rotations = max(min(srvObj.getCfg().getLogRotateCache(), 100), 0)
+    max_rotations = max(min(cfg.getLogRotateCache(), 100), 0)
     logfiles = glob.glob(os.path.join(logdir, 'LOG-ROTATE-*.nglog'))
     logfiles.sort()
     for f in logfiles[max_rotations:]:

@@ -127,3 +127,8 @@ contains the details to configure the server logging output.
 * *SysLogPrefix*: The string used as prefix for all syslog messages.
 * *SysLogAddress*: The address where the syslog messages should be sent to.
   If not specified a platform-dependent default value is used.
+* *LogfileHandlerPlugIn*: Zero or more sub-elements defining additional modules
+  that will handle rotated logfiles. Each element should have a ``Name``
+  attribute with the fully-qualified module name implementing the plug-in inside
+  a ``run`` method, and a ``PlugInPars`` element with a comma-separated,
+  ``key=value`` pairs.
