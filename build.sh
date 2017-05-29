@@ -28,9 +28,8 @@ function print_usage {
 	echo
 	echo "-h, -?: Show this help"
 	echo "-c: Include the C client compilation"
-	echo "-d: Install Python NGAS packages in development mode"
+	echo "-d: Install Python eggs as development eggs"
 	echo "-D: Install Python packages needed to build the docs"
-	echo "-P: Forces the script not to use pip (use setuptools/easy_install instead)"
 }
 
 error() {
@@ -45,23 +44,19 @@ warning() {
 # Command-line option parsing
 BUILD_CCLIENT=
 INSTALL_DOC_DEPS=
-USE_PIP=yes
-INSTALL_MODE=install
+SETUP_ACTION=install
 
-while getopts "cdDhP?" opt
+while getopts "cdDh?" opt
 do
 	case "$opt" in
 		c)
 			BUILD_CCLIENT=yes
 			;;
 		d)
-			INSTALL_MODE=develop
+			SETUP_ACTION=develop
 			;;
 		D)
 			INSTALL_DOC_DEPS=yes
-			;;
-		P)
-			USE_PIP=no
 			;;
 		[h?])
 			print_usage
@@ -104,45 +99,20 @@ then
 	cd ..
 fi
 
-# Check if pip is actually there; otherwise default to setuptools/easy_install
-if [[ "$USE_PIP" == "yes" && -z "`command -v pip`" ]]
-then
-	USE_PIP="no"
-fi
-
-# Now that we now which tool will be used to install things
-# we set up the command that will actuall install them.
-if [[ "$USE_PIP" == "yes" ]]
-then
-	if [[ "$INSTALL_MODE" == "install" ]]; then
-		NGAS_PY_INSTALL="pip install ."
-	else
-		NGAS_PY_INSTALL="pip install -e ."
-	fi
-	PYDEPS_INSTALL="pip install"
-else
-	if [[ "$INSTALL_MODE" == "install" ]]; then
-		NGAS_PY_INSTALL="python setup.py install"
-	else
-		NGAS_PY_INSTALL="python setup.py develop"
-	fi
-	PYDEPS_INSTALL="easy_install"
-fi
-
 # Build python setup.py-based modules
 # The ngamsPlugIns module eventually requires numpy which we need to install
 # manually outside the setuptools world
-$PYDEPS_INSTALL numpy || warning "Failed to install numpy"
+pip --no-cache-dir install numpy || warning "Failed to install numpy via pip"
 for pyModule in crc32c ngamsCore ngamsPClient ngamsServer ngamsPlugIns
 do
 	prevDir=$(pwd -P)
 	cd "$pyModule"
-	$NGAS_PY_INSTALL || error "Failed to install $pyModule"
+	python setup.py $SETUP_ACTION || error "Failed to setup.py $pyModule"
 	cd "$prevDir"
 done
 
 # Install additional dependencies needed to build the docs
 if [ -n "${INSTALL_DOC_DEPS}" ]
 then
-	$PYDEPS_INSTALL sphinx sphinx-rtd-theme || warning "Failed to install sphinx packages (needed to build docs)"
+	pip install sphinx sphinx-rtd-theme || warning "Failed to install sphinx packages (needed to build docs)"
 fi
