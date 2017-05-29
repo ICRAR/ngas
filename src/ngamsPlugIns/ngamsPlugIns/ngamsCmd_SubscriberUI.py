@@ -1,3 +1,25 @@
+#
+#    ICRAR - International Centre for Radio Astronomy Research
+#    (c) UWA - The University of Western Australia, 2017
+#    Copyright by UWA (in the framework of the ICRAR)
+#    All rights reserved
+#
+#    This library is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU Lesser General Public
+#    License as published by the Free Software Foundation; either
+#    version 2.1 of the License, or (at your option) any later version.
+#
+#    This library is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#    Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public
+#    License along with this library; if not, write to the Free Software
+#    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+#    MA 02111-1307  USA
+#
+
 import cStringIO
 
 import pkg_resources
@@ -5,14 +27,9 @@ import pkg_resources
 from ngamsLib import ngamsDbCore
 
 
-###########################
-#JQuery 1.9.1 libs are installed in template file
-###########################
-
 def handleCmd(srvObj, reqPropsObj, httpRef):
-
     """
-    Handle SUBSCRIBERUI command.
+    Handle SubscriberUI command.
 
     srvObj:         Reference to NG/AMS server class object (ngamsServer).
 
@@ -25,54 +42,41 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     Returns:        Void.
     """
 
-    f_PageHdr = pkg_resources.resource_stream(__name__, 'subscription_ui/header.html')  # @UndefinedVariable
-    f_JScript = pkg_resources.resource_stream(__name__, 'subscription_ui/footer.html')  # @UndefinedVariable
-
-    db = srvObj.getDb()
-    ResultRows = db.query2("SELECT * from ngas_subscribers")
-
-
-    col_name_list = ngamsDbCore.getNgasSubscribersCols().split(',')
-
+    # We write all contents into a buffer
+    # which we write back to the client and at the end
     f = cStringIO.StringIO()
 
-    ###########################
-    #now to load up HTML pageheader
-    ###########################
+    # Write header contents
+    f_PageHdr = pkg_resources.resource_stream(__name__, 'subscription_ui/header.html')  # @UndefinedVariable
+    with f_PageHdr:
+        for line in f_PageHdr:
+            f.write(line)
 
-    for line in f_PageHdr:
-        f.write(line)
-    ###########################
-    #now to load up Table column headers
-    ###########################
-
-    for i in range(10):
-     f.write('<th>' + col_name_list[i] + '</th>\n')
-
+    # Write the column names as the table header
+    col_name_list = ngamsDbCore.getNgasSubscribersCols().split(',')
+    for name in col_name_list:
+        f.write('<th>' + name + '</th>\n')
     f.write('</tr>\n')
-    # that is headers done
-    f.write('<tr>\n')   #now for the rows
-    for row in ResultRows:
-        for i in range (10):
-          if i != 3:                   # Most fields can be updated except subscr_id which is a PK for table- eg no of concurrent threads can be updated
-           f.write('<td contentEditable>' + str(row[i]) + '</td>')
-          else:
-           f.write('<td>' + str(row[i]) + '</td>')
+
+    # Write all subscribers' contents
+    for row in srvObj.getDb().query2("SELECT * from ngas_subscribers"):
+        f.write('<tr>\n')
+        for i, row in enumerate(row):
+            # All fields can be updated except subscr_id, which is the PK
+            if i != 3:
+                f.write('<td contentEditable>%s</td>' % str(row))
+            else:
+                f.write('<td>%s</td>' % str(row))
         f.write('</tr>\n')
-    #  {% endfor %}
     f.write ('</table>\n')
     f.write ('</body>\n')
 
+    # Writer footer
+    f_JScript = pkg_resources.resource_stream(__name__, 'subscription_ui/footer.html')  # @UndefinedVariable
+    with f_JScript:
+        for line in f_JScript:
+            f.write(line)
 
-    ###########################
-    #now to load up Java Script
-    ###########################
-
-    for line in f_JScript:
-        f.write(line)
-    #
-    f_JScript.close()
-    f_PageHdr.close()
-    # f.close()
+    # Get final buffer contents and write it back to the client
     s = f.getvalue()
     srvObj.httpReplyGen(reqPropsObj, httpRef, 200, contentType='text/html', dataRef=s)
