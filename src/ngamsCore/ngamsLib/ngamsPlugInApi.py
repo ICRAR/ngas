@@ -172,26 +172,6 @@ def parseDapiPlugInPars(ngamsCfgObj,
     return parseRawPlugInPars(rawPars)
 
 
-def parseRegPlugInPars(ngamsCfgObj,
-                       mimeType):
-    """
-    Get the plug-in parameters for a Register Plug-In.
-
-    ngamsCfgObj:  Instance of NG/AMS Configuration Class (ngamsConfig).
-
-    mimeType:     Mime-type of request being handled (string).
-
-    Returns:      Dictionary containing the parameters for the plug-in. Key
-                  in the dictionary is the name of the parameter (dictionary).
-    """
-    regPiDef = ngamsCfgObj.getRegPiFromMimeType(mimeType)
-    if (regPiDef != None):
-        rawPars = regPiDef.getPlugInPars()
-    else:
-        rawPars = ""
-    return parseRawPlugInPars(rawPars)
-
-
 def determineMimeType(ngamsCfgObj,
                       filename):
     """
@@ -435,21 +415,6 @@ def genFileInfoReg(dbConObj,
                                    fileVersion, complFilename)
 
     return [fileVersion, relPath, relFilename, complFilename, fileExists]
-
-
-def getDppiPars(ngamsCfgObj,
-                dppiName):
-    """
-    Return the input parameters defined for a given DPPI. If no parameters
-    are defined for the DPPI '' is returned.
-
-    ngamsCfgObj:  Instance of NG/AMS Configuration Class (ngamsConfig).
-
-    dppiName:     Name of DPPI (string).
-
-    Returns:      DPPI parameters (string).
-    """
-    return ngamsCfgObj.getPlugInPars(dppiName)
 
 
 def rmFile(filename):

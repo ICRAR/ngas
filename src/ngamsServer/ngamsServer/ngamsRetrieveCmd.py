@@ -323,7 +323,7 @@ def performProcessing(srvObj,
         dppi = reqPropsObj.getHttpPar("processing")
         # Before starting to process, check if the specified DPPI
         # is supported by this NG/AMS.
-        if (not srvObj.getCfg().hasDppiDef(dppi)):
+        if dppi not in srvObj.getCfg().dppi_plugins:
             errMsg = genLog("NGAMS_ER_ILL_DPPI", [dppi])
             raise Exception, errMsg
         # Invoke the DPPI.

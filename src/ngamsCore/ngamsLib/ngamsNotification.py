@@ -317,10 +317,10 @@ def notify(hostId,
 
         # Release Notification Semaphore.
         notifSem_.release()
-    except Exception, e:
+    except Exception:
         # Release Notification Semaphore.
         notifSem_.release()
-        raise Exception, e
+        raise
 
 
 def checkNotifRetBuf(hostId,

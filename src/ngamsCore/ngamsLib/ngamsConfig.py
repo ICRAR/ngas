@@ -19,7 +19,6 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-
 #******************************************************************************
 #
 # "@(#) $Id: ngamsConfig.py,v 1.26 2009/11/26 14:55:22 awicenec Exp $"
@@ -34,13 +33,14 @@ The ngamsConfig class is used to handle the NG/AMS Configuration.
 """
 
 import base64
+import collections
 import logging
 import os
 import types
 
 from   ngamsCore import genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, getNgamsVersionRaw, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
 import ngamsConfigBase, ngamsSubscriber
-import ngamsStorageSet, ngamsStream, ngamsDppiDef, ngamsMirroringSource
+import ngamsStorageSet, ngamsStream, ngamsMirroringSource
 
 
 logger = logging.getLogger(__name__)
@@ -209,7 +209,11 @@ def checkDuplicateValue(checkDic,
     else:
         checkDic[value] = 1
 
+class ngamsConfigException(Exception): pass
 
+# A simple plug-in definition contains a name and some parameters
+plugin_def = collections.namedtuple('plugin_def', 'name pars')
+dppi_plugin_def = collections.namedtuple('dppi_plugin_def', 'name pars mime_types')
 
 class ngamsConfig:
     """
@@ -248,11 +252,17 @@ class ngamsConfig:
         # List of Stream Objects.
         self.__streamList              = []
 
-        # Data Processing Plug-Ins
-        self.__dppiList                = []
+        # Data Processing Plug-Ins, indexed by name
+        self.dppi_plugins              = {}
 
-        # Register Plug-Ins.
-        self.__registerPlugIns         = []
+        # Janitor process Plug-Ins
+        self.__janitorPlugIns          = []
+
+        # Logfile handler Plug-Ins
+        self.logfile_handler_plugins   = []
+
+        # Register Plug-Ins, indexed by mime type
+        self.register_plugins          = {}
 
         # List with recepients of Email Notification Messages.
         self.__alertNotif              = []
@@ -459,34 +469,45 @@ class ngamsConfig:
         procObj = self.__cfgMgr.getXmlObj("Processing[1]")
         if (procObj):
             logger.debug("Unpacking Processing Element ...")
-            attrFormat1 = "Processing[1].PlugIn[%d]"
-            attrFormat2 = attrFormat1 + ".MimeType[%d]"
-            for idx1 in range(1, (len(procObj.getSubElList()) + 1)):
-                nm = attrFormat1 % idx1 + ".%s"
-                tmpPlugInObj = ngamsDppiDef.\
-                               ngamsDppiDef(self.getVal(nm % "Name"),
-                                            self.getVal(nm % "PlugInPars"))
-                plugInElObj = self.__cfgMgr.getXmlObj(attrFormat1 % idx1)
-                for idx2 in range(1,(len(plugInElObj.getSubElList()) + 1)):
-                    tmpPlugInObj.addMimeType(attrFormat2 % (idx1, idx2))
-                self.addDppiDef(tmpPlugInObj)
+            prefix = "Processing[1].PlugIn[%d]"
+            mime_type = prefix + ".MimeType[%d].Name"
+            for i in range(1, (len(procObj.getSubElList()) + 1)):
+                mime_types = []
+                plugInElObj = self.__cfgMgr.getXmlObj(prefix % i)
+                for j in range(1,(len(plugInElObj.getSubElList()) + 1)):
+                    mime_types.append(self.getVal(mime_type % (i, j)))
+                attr = prefix + ".%s"
+                plugin = dppi_plugin_def(self.getVal(attr % (i, "Name")),
+                                         self.getVal(attr % (i, "PlugInPars")),
+                                         mime_types)
+                self.dppi_plugins[plugin.name] = plugin
 
         # Get info about Register Plug-Ins.
         regObj = self.__cfgMgr.getXmlObj("Register[1]")
         if (regObj):
             logger.debug("Unpacking Register Element ...")
-            attrFormat1 = "Register[1].PlugIn[%d]"
-            attrFormat2 = attrFormat1 + ".MimeType[%d].Name"
-            for idx1 in range(1, (len(regObj.getSubElList()) + 1)):
-                nm = attrFormat1 % idx1 + ".%s"
-                tmpPlugInObj = ngamsDppiDef.\
-                               ngamsDppiDef(self.getVal(nm % "Name"),
-                                            self.getVal(nm % "PlugInPars"))
-                plugInElObj = self.__cfgMgr.getXmlObj(attrFormat1 % idx1)
-                for idx2 in range(1,(len(plugInElObj.getSubElList()) + 1)):
-                    mimeType = self.getVal(attrFormat2 % (idx1, idx2))
-                    tmpPlugInObj.addMimeType(mimeType)
-                self.addRegPiDef(tmpPlugInObj)
+            prefix = "Register[1].PlugIn[%d]"
+            mime_type = prefix + ".MimeType[%d].Name"
+            for i in range(1, (len(regObj.getSubElList()) + 1)):
+
+                plugInElObj = self.__cfgMgr.getXmlObj(prefix % i)
+                attr = prefix + ".%s"
+                plugin = plugin_def(self.getVal(attr % (i, "Name")),
+                                    self.getVal(attr % (i, "PlugInPars")))
+                for j in range(1,(len(plugInElObj.getSubElList()) + 1)):
+                    mtype = self.getVal(mime_type % (i, j))
+                    self.register_plugins[mtype] = plugin
+
+                    # TODO: Here I'd like to check that the same mimetype is not
+                    # associated to two different plug-ins, but there is a test
+                    # (i.e., ngamsConfigHandlingTest#test_ServerLoad_3 that
+                    # relies on this not failing
+                    #if mtype in self.register_plugins:
+                    #    msg = ("MIME type %s has more than one associated register"
+                    #           " plug-in: %s and %s")
+                    #    msg = msg % (mtype, self.register_plugins[mtype].name, plugin.name)
+                    #    raise ngamsConfigException(msg)
+
 
         # Process the information about subscribers to Notification Emails.
         attrList = [["AlertNotification",       self.__alertNotif],
@@ -1356,153 +1377,6 @@ class ngamsConfig:
         return self.__streamList
 
 
-    def addDppiDef(self,
-                   dppiObj):
-        """
-        Add a DPPI definition to the object.
-
-        dppiObj:    DPPI object (ngamsDppiDef).
-
-        Returns:    Reference to object itself.
-        """
-        self.__dppiList.append(dppiObj)
-        return self
-
-
-    def getDppiDefs(self):
-        """
-        Return reference to the DPPI list.
-
-        Returns:   Reference to the DPPI list (list/ngamsDppiDef).
-        """
-        return self.__dppiList
-
-
-    def getDppiDef(self,
-                   dppiName):
-        """
-        Finds and returns a DPPI Definition Element (ngamsDppiDef).
-        If not found None is returned.
-
-        dppiName:   Name of DPPI (string).
-
-        Returns:    Reference to DPPI Definition Object or
-                    None (ngamsDppiDef|None).
-        """
-        for dppiEl in self.__dppiList:
-            if (dppiEl.getPlugInName() == dppiName):
-                return dppiEl
-        return None
-
-
-    def hasDppiDef(self,
-                   dppiName):
-        """
-        Returns 1 if a DPPI with the given name is supported by the
-        configuration, otherwise 0.
-
-        dppiName:   Name of DPPI (string)>
-
-        Returns:    If the given DPPI is supported 1 is returned
-                    otherwise 0 (integer).
-        """
-        if (self.getDppiDef(dppiName) != None):
-            return 1
-        else:
-            return 0
-
-
-    def getDppiPars(self,
-                    dppiName):
-        """
-        Return the input parameters for a specific DPPI. If the
-        given DPPI is not available '' is returned.
-
-        dppiName:   Name of DPPI (string).
-
-        Returns:    DPPI parameters (string).
-        """
-        dppiEl = self.getDppiDef(dppiName)
-        if (dppiEl != None):
-            return dppiEl.getPlugInPars()
-        else:
-            return ""
-
-
-    def addRegPiDef(self,
-                    plugInObj):
-        """
-        Add a Register Plug-In definition to the object.
-
-        plugInObj:  Register Plug-In object (ngamsDppiDef).
-
-        Returns:    Reference to object itself.
-        """
-        self.__registerPlugIns.append(plugInObj)
-        return self
-
-
-    def getRegPiDefs(self):
-        """
-        Return reference to the Register Plug-In list.
-
-        Returns:   Reference to the Register Plug-In list (list/ngamsDppiDef).
-        """
-        return self.__registerPlugIns
-
-
-    def getRegPiDef(self,
-                    regPiName):
-        """
-        Finds and returns a Register Plug-In Definition Element (ngamsDppiDef).
-        If not found None is returned.
-
-        regPiName:  Name of Register Plug-In (string).
-
-        Returns:    Reference to Register Plug-In Definition Object or
-                    None (ngamsDppiDef|None).
-        """
-        for regPiEl in self.__registerPlugIns:
-            if (regPiEl.getPlugInName() == regPiName):
-                return regPiEl
-        return None
-
-
-    def getRegPiFromMimeType(self,
-                             mimeType):
-        """
-        Finds and returns a Register Plug-In Definition Element (ngamsDppiDef)
-        corresponding to a given mime-type. If not found None is returned.
-
-        mimeType:   Name of Register Plug-In (string).
-
-        Returns:    Reference to Register Plug-In Definition Object or
-                    None (ngamsDppiDef|None).
-        """
-        for regPiEl in self.__registerPlugIns:
-            for mt in regPiEl.getMimeTypeList():
-                if (mimeType == mt):
-                    return regPiEl
-        return None
-
-
-    def getRegPiPars(self,
-                     regPiName):
-        """
-        Return the input parameters for a specific Register Plug-In. If the
-        given Register Plug-In is not available '' is returned.
-
-        regPiName:   Name of Register Plug-In (string).
-
-        Returns:     Register Plug-In parameters (string).
-        """
-        regPiEl = self.getRegPiDef(regPiName)
-        if (regPiEl != None):
-            return regPiEl.getPlugInPars()
-        else:
-            return ""
-
-
     def getStreamFromMimeType(self,
                               mimeType):
         """
@@ -2361,21 +2235,17 @@ class ngamsConfig:
                                          self.getProcessingDirectory()])
                         logger.error(errMsg)
                         self.getCheckRep().append(errMsg)
-        for dppiEl in self.getDppiDefs():
-            checkIfSetStr("Processing.PlugIn.Name", dppiEl.getPlugInName(),
+        for dppi_plugin in self.dppi_plugins.values():
+            checkIfSetStr("Processing.PlugIn.Name", dppi_plugin.name,
                           self.getCheckRep())
-            for mimeType in dppiEl.getMimeTypeList():
+            for mimeType in dppi_plugin.mime_types:
                 checkIfSetStr("Processing.PlugIn.MimeType.Name", mimeType,
                               self.getCheckRep())
         logger.debug("Checked Processing Element")
 
         logger.debug("Check Register Element ...")
-        for regPiEl in self.__registerPlugIns:
-            checkIfSetStr("Register.PlugIn.Name", regPiEl.getPlugInName(),
-                          self.getCheckRep())
-            for mimeType in regPiEl.getMimeTypeList():
-                checkIfSetStr("Register.PlugIn.MimeType.Name", mimeType,
-                              self.getCheckRep())
+        for reg_plugin in self.register_plugins.values():
+            checkIfSetStr("Register.PlugIn.Name", reg_plugin.name, self.getCheckRep())
         logger.debug("Checked Register Element")
 
         logger.debug("Check DataCheckThread Element ...")

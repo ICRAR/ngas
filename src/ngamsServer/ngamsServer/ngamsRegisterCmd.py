@@ -48,7 +48,7 @@ from ngamsLib.ngamsCore import TRACE, rmFile, NGAMS_HTTP_GET, \
     NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint, toiso8601
 from ngamsLib import ngamsDbm, ngamsReqProps, ngamsFileInfo, ngamsDbCore, \
     ngamsHighLevelLib, ngamsDiskUtils, ngamsLib, ngamsFileList, \
-    ngamsNotification, ngamsDiskInfo
+    ngamsNotification, ngamsDiskInfo, ngamsPlugInApi
 import ngamsArchiveUtils, ngamsCacheControlThread
 
 logger = logging.getLogger(__name__)
@@ -189,8 +189,9 @@ def _registerExec(srvObj,
 
         # Register the file. Check first, that exactly this file is
         # not already registered. In case it is, the file will be rejected.
-        regPi = srvObj.getCfg().getRegPiFromMimeType(mimeType)
+        regPi = srvObj.getCfg().register_plugins[mimeType]
         logger.debug("Plugin found for %s: %s", mimeType, regPi)
+        params = ngamsPlugInApi.parseRawPlugInPars(regPi.pars)
         tmpReqPropsObj = ngamsReqProps.ngamsReqProps().\
                          setMimeType(mimeType).\
                          setStagingFilename(filename).\
@@ -204,9 +205,9 @@ def _registerExec(srvObj,
         tmpFileObj = ngamsFileInfo.ngamsFileInfo()
         try:
             # Invoke Registration Plug-In.
-            piName = regPi.getPlugInName()
+            piName = regPi.name
             plugInMethod = loadPlugInEntryPoint(piName)
-            piRes = plugInMethod(srvObj, tmpReqPropsObj)
+            piRes = plugInMethod(srvObj, tmpReqPropsObj, params)
             del tmpReqPropsObj
 
             # Check if this file is already registered on this disk. In case

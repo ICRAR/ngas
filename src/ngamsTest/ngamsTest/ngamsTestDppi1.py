@@ -85,7 +85,7 @@ def ngamsTestDppi1(srvObj,
                 break
 
     mimeType = "TEST-MIME-TYPE"
-    rawPiPars = srvObj.getCfg().getDppiPars("ngamsTest.ngamsTestDppi1")
+    rawPiPars = srvObj.getCfg().dppi_plugins["ngamsTest.ngamsTestDppi1"].pars
     cfgParDic = ngamsPlugInApi.parseRawPlugInPars(rawPiPars)
 
     head.append("\n\nConfiguration Parameters:\n")

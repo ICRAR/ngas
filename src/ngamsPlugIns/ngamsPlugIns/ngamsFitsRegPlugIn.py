@@ -46,8 +46,7 @@ from ngamsLib.ngamsCore import rmFile
 
 logger = logging.getLogger(__name__)
 
-def ngamsFitsRegPlugIn(srvObj,
-                       reqPropsObj):
+def ngamsFitsRegPlugIn(srvObj, reqPropsObj, parDic):
     """
     Data Registration Plug-In to handle registration of FITS files.
 
@@ -60,8 +59,6 @@ def ngamsFitsRegPlugIn(srvObj,
     """
     logger.info("Plug-In registering file with URI: %s", reqPropsObj.getFileUri())
     diskInfo = reqPropsObj.getTargDiskInfo()
-    parDic = ngamsPlugInApi.parseRegPlugInPars(srvObj.getCfg(),
-                                               reqPropsObj.getMimeType())
     stageFile = reqPropsObj.getStagingFilename()
 
     # If the file is already compressed, we have to decompress it.
