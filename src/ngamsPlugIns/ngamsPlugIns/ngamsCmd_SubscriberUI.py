@@ -25,8 +25,8 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     Returns:        Void.
     """
 
-    f_PageHdr = pkg_resources.resource_stream(__name__, 'ngamsSubscriberUIPageHeader.txt')  # @UndefinedVariable
-    f_JScript = pkg_resources.resource_stream(__name__, 'ngamsSubscriberUIJScript.txt')  # @UndefinedVariable
+    f_PageHdr = pkg_resources.resource_stream(__name__, 'subscription_ui/header.html')  # @UndefinedVariable
+    f_JScript = pkg_resources.resource_stream(__name__, 'subscription_ui/footer.html')  # @UndefinedVariable
 
     db = srvObj.getDb()
     ResultRows = db.query2("SELECT * from ngas_subscribers")
