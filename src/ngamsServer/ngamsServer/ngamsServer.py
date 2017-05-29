@@ -315,6 +315,7 @@ class ngamsServer:
         self.__subStateSem            = threading.Semaphore(1)
         self.__busyCount              = 0
         self.__sysMtPtDic             = {}
+        self._pid_file_created         = False
 
         # Empty logging configuration.
         # It is later initialised both from the cmdline
@@ -2404,6 +2405,7 @@ class ngamsServer:
         checkCreatePath(os.path.dirname(self.pidFile()))
         with open(self.pidFile(), "w") as fo:
             fo.write(str(os.getpid()))
+        self._pid_file_created = True
         logger.debug("PID file for this session created")
 
         # Check/create the NG/AMS Temporary and Cache Directories.
@@ -2599,7 +2601,8 @@ class ngamsServer:
 
         # Remove PID file to allow future instances to be run
         try:
-            os.unlink(self.pidFile())
+            if self._pid_file_created:
+                os.unlink(self.pidFile())
         except OSError:
             print("Error while deleting PID file %s", self.pidFile())
             traceback.print_exc()
