@@ -1543,6 +1543,12 @@ class ngamsConfig:
         return getInt(par, self.getVal(par))
 
 
+    def getArchiveRotatedLogfiles(self):
+        """Whether rotated logfiles are automatically archived locally or not"""
+        par = "Log[1].ArchiveRotatedLogfiles"
+        return getInt(par, self.getVal(par), 0)
+
+
     def getNotifSmtpHost(self):
         """
         Return the SMTP Host for sending Notification e-mails.
