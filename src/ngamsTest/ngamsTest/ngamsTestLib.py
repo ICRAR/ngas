@@ -44,6 +44,7 @@ import logging
 import multiprocessing.pool
 import os
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -53,8 +54,9 @@ import unittest
 import uuid
 import xml.dom.minidom
 
-import pkg_resources
 import astropy.io.fits as pyfits
+import pkg_resources
+import psutil
 
 from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
 from ngamsLib.ngamsCore import getHostName, TRACE, \
@@ -1135,7 +1137,8 @@ class ngamsTestSuite(unittest.TestCase):
             srvProcess.wait()
             return
 
-        import psutil, signal
+        # Check the full hierarchy of processes for this server early on
+        # After shutdown hopefully all of them successfully finished
         parent = psutil.Process(srvProcess.pid)
         childrenb4 = parent.children(recursive=True)
 
@@ -1175,27 +1178,20 @@ class ngamsTestSuite(unittest.TestCase):
             if kill9:
                 try:
                     parent = psutil.Process(srvProcess.pid)
+                except psutil.NoSuchProcess:
+                    pass
+                else:
                     children = parent.children(recursive=True)
                     for process in children:
                         os.kill(process.pid, signal.SIGKILL)
-                        print("Parent is ", parent.pid, "Children of the TestLib srvSetup are : ", process.pid)
-                        print("****************************************************")
-                except psutil.NoSuchProcess:
-                    print("******************No parent process***********************")
-                srvProcess.kill()
-                srvProcess.wait()
-                logger.info("Server process had %d to be merciless killed, sorry :(", srvProcess.pid)
-                #Check that parent and children are gone for sure
-                for process in children:
-                    print("Children of the TestLib srvSetup after parent killed are : ", process.pid)
-                    print("****************************************************")
+                    srvProcess.kill()
+                    srvProcess.wait()
+                    logger.info("Server process had %d to be merciless killed, sorry :(", srvProcess.pid)
+
             else:
                 srvProcess.wait()
                 logger.info("Finished server process %d gracefully :)", srvProcess.pid)
-                #Check that children are gone - parent has probably gone
-                #parent = psutil.Process(srvProcess.pid)
                 for orphan in childrenb4:
-                #for process in children:
                     if orphan.is_running():
                         logger.warning("Killing orphan child process %d", orphan.pid)
                         orphan.kill()
