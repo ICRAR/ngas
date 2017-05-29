@@ -32,6 +32,15 @@ function print_usage {
 	echo "-D: Install Python packages needed to build the docs"
 }
 
+error() {
+	echo "$1" 1>&2
+	exit 1
+}
+
+warning() {
+	echo "WARNING: $1" 1>&2
+}
+
 # Command-line option parsing
 BUILD_CCLIENT=
 INSTALL_DOC_DEPS=
@@ -59,11 +68,6 @@ do
 	esac
 done
 
-function fail {
-	echo "$1" > /dev/stderr
-	exit 1
-}
-
 # Make sure we're standing where alongside this script
 # in order to properly execute the rest of the stuff
 this=$0
@@ -89,26 +93,26 @@ then
 	fi
 
 	cd ngamsCClient
-	./bootstrap || fail "Failed to bootstrap ngamsCClient module"
-	./configure "$prefix" || fail "Failed to ./configure ngamsCCLient"
-	make clean all install || fail "Failed to compile ngamsCClient"
+	./bootstrap || error "Failed to bootstrap ngamsCClient module"
+	./configure "$prefix" || error "Failed to ./configure ngamsCCLient"
+	make clean all install || error "Failed to compile ngamsCClient"
 	cd ..
 fi
 
 # Build python setup.py-based modules
 # The ngamsPlugIns module eventually requires numpy which we need to install
 # manually outside the setuptools world
-pip --no-cache-dir install numpy
+pip --no-cache-dir install numpy || warning "Failed to install numpy via pip"
 for pyModule in crc32c ngamsCore ngamsPClient ngamsServer ngamsPlugIns
 do
 	prevDir=$(pwd -P)
 	cd "$pyModule"
-	python setup.py $SETUP_ACTION || fail "Failed to setup.py $pyModule"
+	python setup.py $SETUP_ACTION || error "Failed to setup.py $pyModule"
 	cd "$prevDir"
 done
 
 # Install additional dependencies needed to build the docs
 if [ -n "${INSTALL_DOC_DEPS}" ]
 then
-	pip install sphinx sphinx-rtd-theme
+	pip install sphinx sphinx-rtd-theme || warning "Failed to install sphinx packages (needed to build docs)"
 fi
