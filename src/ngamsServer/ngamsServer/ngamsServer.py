@@ -2228,11 +2228,14 @@ class ngamsServer:
         try:
             self.handleStartUp()
         except Exception, e:
-            errMsg = genLog("NGAMS_ER_INIT_SERVER", [str(e)])
-            print(errMsg)
-            ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
-                                     "PROBLEMS INITIALIZING NG/AMS SERVER",
-                                     errMsg, [], 1)
+            try:
+                errMsg = genLog("NGAMS_ER_INIT_SERVER", [str(e)])
+                ngamsNotification.notify(self.getHostId() or '', self.getCfg(), NGAMS_NOTIF_ERROR,
+                                         "PROBLEMS INITIALIZING NG/AMS SERVER",
+                                         errMsg, [], 1)
+            except:
+                print("Error while notifying about problems in server initialization")
+
             self.terminate()
             raise
 
