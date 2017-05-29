@@ -215,6 +215,7 @@ class ngamsConfigException(Exception): pass
 plugin_def = collections.namedtuple('plugin_def', 'name pars')
 dppi_plugin_def = collections.namedtuple('dppi_plugin_def', 'name pars mime_types')
 
+
 class ngamsConfig:
     """
     Class to handle the information in the NG/AMS Configuration.
@@ -254,6 +255,12 @@ class ngamsConfig:
 
         # Data Processing Plug-Ins, indexed by name
         self.dppi_plugins              = {}
+
+        # Janitor process Plug-Ins
+        self.__janitorPlugIns          = []
+
+        # Logfile handler Plug-Ins
+        self.logfile_handler_plugins   = []
 
         # Janitor process Plug-Ins
         self.__janitorPlugIns          = []
@@ -508,6 +515,25 @@ class ngamsConfig:
                     #    msg = msg % (mtype, self.register_plugins[mtype].name, plugin.name)
                     #    raise ngamsConfigException(msg)
 
+
+        # Get info about Janitor Plug-Ins.
+        janitorObj = self.__cfgMgr.getXmlObj("JanitorThread[1]")
+        if janitorObj:
+            logger.debug("Unpacking JanitorThread Element ...")
+            name_path = "JanitorThread[1].PlugIn[%d].Name"
+            for idx1 in range(1, (len(janitorObj.getSubElList()) + 1)):
+                name = self.getVal(name_path % (idx1,))
+                self.__janitorPlugIns.append(name)
+
+        # Get info about logfile handler plug-ins
+        logObj = self.__cfgMgr.getXmlObj('Log[1]')
+        if logObj:
+            logger.debug("Unpacking LogfileHandlerPlugIn elements")
+            attr = "Log[1].LogfileHandlerPlugIn[%d].%s"
+            for i in range(1, len(logObj.getSubElList()) + 1):
+                lh_plugin = plugin_def(self.getVal(attr % (i, "Name")),
+                                       self.getVal(attr % (i, "PlugInPars")))
+                self.logfile_handler_plugins.append(lh_plugin)
 
         # Process the information about subscribers to Notification Emails.
         attrList = [["AlertNotification",       self.__alertNotif],
@@ -963,6 +989,13 @@ class ngamsConfig:
         """
         return self.getVal("JanitorThread[1].SuspensionTime")
 
+    def getJanitorPlugins(self):
+        """
+        Get the list of Janitor Plug-in names.
+
+        Returns:   Janitor Service Suspension Time (string).
+        """
+        return self.__janitorPlugIns
 
     def getBackLogBuffering(self):
         """

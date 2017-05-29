@@ -37,14 +37,12 @@ The functions in this module can be used in all the NG/AMS code.
 import cPickle
 import logging
 import os
-import re
 import shutil
 import socket
 import string
 import urllib
 
-from ngamsCore import genLog, \
-    NGAMS_MAX_FILENAME_LEN, NGAMS_UNKNOWN_MT, rmFile, toiso8601, getUniqueNo
+from ngamsCore import genLog, NGAMS_UNKNOWN_MT, rmFile
 
 
 logger = logging.getLogger(__name__)
@@ -155,35 +153,6 @@ def fileWritable(filename):
     Returns:    1 if file is writable, otherwise 0 (integer).
     """
     return os.access(filename, os.W_OK)
-
-
-def genUniqueFilename(filename):
-    """
-    Generate a unique filename of the form:
-
-        <timestamp>-<unique index>-<filename>.<ext>
-
-    filename:   Original filename (string).
-
-    Returns:    Unique filename (string).
-    """
-    # Generate a unique ID: <time stamp>-<unique index>
-    ts = toiso8601()
-    tmpFilename = ts + "-" + str(getUniqueNo()) + "-" +\
-                  os.path.basename(filename)
-    tmpFilename = re.sub("\?|=|&", "_", tmpFilename)
-
-    # We ensure that the length of the filename does not exceed
-    # NGAMS_MAX_FILENAME_LEN characters
-    nameLen = len(tmpFilename)
-    if (nameLen > NGAMS_MAX_FILENAME_LEN):
-        lenDif = (nameLen - NGAMS_MAX_FILENAME_LEN)
-        tmpFilename = tmpFilename[0:(nameLen - lenDif -\
-                                     (NGAMS_MAX_FILENAME_LEN / 2))] +\
-                      "__" +\
-                      tmpFilename[(nameLen - (NGAMS_MAX_FILENAME_LEN / 2)):]
-
-    return tmpFilename
 
 
 def parseRawPlugInPars(rawPars):

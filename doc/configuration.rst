@@ -88,6 +88,22 @@ Contains archiving-related configuration.
    If not specified the server will use the ``crc32`` variant. If specified,
    ``0`` means ``crc32`` and ``1`` means ``crc32c``.
 
+
+JanitorThread
+-------------
+
+The ``JanitorThread`` element defines the behavior
+of the :ref:`Janitor Thread <janthread>`
+(now actually implemented as a separate process).
+The following attributes are available:
+
+ * *SuspensionTime*: The sleep time after a janitor cycle.
+ * *MinSpaceSysDirMb*: The minimum space to be found on each volume during each
+   cycle. If not enough space is found the system is sent to OFFLINE state.
+ * *PlugIn*: An XML sub-element with a *Name* attribute, naming a python module
+   where a Janitor plug-in resides. Multiple *Plugin* elements can be defined.
+
+
 .. _config.log:
 
 Log
@@ -104,8 +120,15 @@ contains the details to configure the server logging output.
   should output to ``LocalLogFile``.
 * *LogRotateInt*: The interval after which the ``LocalLogFile`` is rotated.
   Specified as ``THH:mm:SS``. Defaults to 10 minutes.
+* *LogRotateCache*: The amount of rotated files to retain. If more rotated files
+  are found, they are removed by the system.
 * *SysLog*: An integer indicating whether syslog logging is enabled
   (``1``) or disabled (``0``).
 * *SysLogPrefix*: The string used as prefix for all syslog messages.
 * *SysLogAddress*: The address where the syslog messages should be sent to.
   If not specified a platform-dependent default value is used.
+* *LogfileHandlerPlugIn*: Zero or more sub-elements defining additional modules
+  that will handle rotated logfiles. Each element should have a ``Name``
+  attribute with the fully-qualified module name implementing the plug-in inside
+  a ``run`` method, and a ``PlugInPars`` element with a comma-separated,
+  ``key=value`` pairs.

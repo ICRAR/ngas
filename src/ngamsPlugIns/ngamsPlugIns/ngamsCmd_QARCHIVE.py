@@ -190,6 +190,8 @@ def saveFromHttpToFile(ngamsCfgObj,
                     crc = crc_m(buff, crc)
                     crctime += time.time() - crcstart
         deltaT = time.time() - start
+        if deltaT == 0.0:
+            deltaT = 0.000001
 
         reqPropsObj.setBytesReceived(readin)
         ingestRate = size / deltaT

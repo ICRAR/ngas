@@ -436,23 +436,6 @@ def getFileCreationTime(filename):
     return int(os.stat(filename)[9])
 
 
-# Semaphore + counter to ensure unique, temporary filenames.
-_uniqueNumberSem   = threading.Semaphore(1)
-_uniqueNumberCount = 0
-def getUniqueNo():
-    """
-    Generate a unique number (unique for this session of NG/AMS).
-
-    Returns:  Unique number (integer).
-    """
-    global _uniqueNumberSem, _uniqueNumberCount
-    _uniqueNumberSem.acquire()
-    _uniqueNumberCount += 1
-    count = _uniqueNumberCount
-    _uniqueNumberSem.release()
-    return count
-
-
 def genUniqueId():
     """
     Generate a unique ID based on an MD5 checksum.
@@ -564,6 +547,13 @@ def rmFile(filename):
             os.remove(f)
 
 
+def _find_mount_point(path):
+    path = os.path.realpath(path)
+    while not os.path.ismount(path):
+        path = os.path.dirname(path)
+    return path
+
+
 def mvFile(srcFilename,
            trgFilename):
     """
@@ -583,10 +573,10 @@ def mvFile(srcFilename,
         checkCreatePath(os.path.dirname(trgFilename))
         fileSize = getFileSize(srcFilename)
 
-        # TODO: only check for available disk space if we are crossing
-        #       filesystem boundaries; otherwise we unnecessarily fail
-        #       for file moves that would gracefully run
-        checkAvailDiskSpace(trgFilename, fileSize)
+        srcfil_mntpt = _find_mount_point(srcFilename)
+        trgfil_mntpt = _find_mount_point(trgFilename)
+        if srcfil_mntpt != trgfil_mntpt:
+            checkAvailDiskSpace(trgFilename, fileSize)
 
         # Don't rely on os.rename as it can cause issues when crossing 
         # disk parition boundaries

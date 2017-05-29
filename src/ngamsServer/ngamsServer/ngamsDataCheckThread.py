@@ -57,7 +57,6 @@ class StopDataCheckThreadException(Exception):
 
 def _finishThread(srvObj):
     logger.info("Stopping Data Check Thread")
-    srvObj.updateHostInfo(None, None, None, None, None, None, 0, None)
     raise StopDataCheckThreadException()
 
 def _stopDataCheckThr(srvObj, stopEvt):

@@ -75,7 +75,7 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
 
         Test Steps:
         - Start standard NG/AMS Server configured to carry out DCC
-          continuesly.
+          continuosly.
         - Archive a small file 3 times.
         - Wait until the DCC has finished one cycle (NGAMS_INFO_DATA_CHK_STAT
           log written in the log file).
@@ -98,6 +98,7 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
             client.archive("src/SmallFile.fits")
 
         # Wait a while to be sure that one check cycle has been completed.
+        line = None
         startTime = time.time()
         found = False
         looking_for = "NGAMS_INFO_DATA_CHK_STAT"

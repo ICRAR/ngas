@@ -397,8 +397,7 @@ def handleOnline(srvObj,
 
 
 def handleOffline(srvObj,
-                  reqPropsObj = None,
-                  stopJanitorThr = 1):
+                  reqPropsObj = None):
     """
     Carry out the actions to put the system in Offline state (Standby).
 
@@ -415,8 +414,7 @@ def handleOffline(srvObj,
     """
     # Stop/delete Janitor Thread + Data Check Thread + inform other
     # possible threads to stop execution (if running).
-    if (stopJanitorThr):
-        srvObj.stopJanitorThread()
+    srvObj.stopJanitorThread()
     srvObj.stopDataCheckThread()
     ngamsSubscriptionThread.stopSubscriptionThread(srvObj)
     srvObj.stopUserServiceThread()
@@ -525,7 +523,7 @@ def checkStagingAreas(srvObj):
     # Go through all files in the staging file dictionary and move them to
     # the Bad Files Area.
     for filename in stagingFileDic.keys():
-        ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename, filename)
+        ngamsHighLevelLib.moveFile2BadDir(srvObj.getCfg(), filename)
 
 
 def genIntAuthHdr(srvObj):
