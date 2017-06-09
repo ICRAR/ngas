@@ -24,6 +24,7 @@
 #    MA 02111-1307  USA
 #
 import os
+import base64
 import logging
 import threading
 import psycopg2
@@ -69,7 +70,7 @@ def ngamsMWAFitsPlugIn(srvObj, reqPropsObj):
                 dbhost = parDic['dbhost']
                 dbname = parDic['dbname']
                 dbuser = parDic['dbuser']
-                dbpass = parDic['dbpassword']
+                dbpass = base64.b64decode(parDic['dbpassword'])
             except Exception as e:
                 raise Exception(
                     'Must specify parameters dbhost, dbname, dbuser and dbpassword')
