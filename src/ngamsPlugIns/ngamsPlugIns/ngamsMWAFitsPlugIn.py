@@ -30,6 +30,7 @@ import threading
 import psycopg2
 import psycopg2.pool
 from ngamsLib import ngamsPlugInApi
+from ngamsLib.ngamsCore import TRACE, genLog, toiso8601, FMT_DATE_ONLY
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,8 @@ def ngamsMWAFitsPlugIn(srvObj, reqPropsObj):
 
     obsid, obstime, box = split_file(fileName)
 
+    dateDir = toiso8601(fmt=FMT_DATE_ONLY)
+
     fileVersion, relPath, relFilename, complFilename, fileExists = \
         ngamsPlugInApi.genFileInfo(srvObj.getDb(),
                                    srvObj.getCfg(),
@@ -107,7 +110,7 @@ def ngamsMWAFitsPlugIn(srvObj, reqPropsObj):
                                    reqPropsObj.getStagingFilename(),
                                    dpId,
                                    dpId,
-                                   [],
+                                   [dateDir],
                                    [])
 
     logger.info("ngamsMWAFitsPlugIn version: %s path: %s relfilename: %s" % (
