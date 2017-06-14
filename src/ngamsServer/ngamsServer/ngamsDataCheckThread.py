@@ -55,23 +55,23 @@ logger = logging.getLogger(__name__)
 class StopDataCheckThreadException(Exception):
     pass
 
-def _finishThread(srvObj):
+def _finishThread():
     logger.info("Stopping Data Check Thread")
     raise StopDataCheckThreadException()
 
-def _stopDataCheckThr(srvObj, stopEvt):
+def _stopDataCheckThr(stopEvt):
     """
     Checks whether the thread should finish or not
     """
     if stopEvt.isSet():
-        _finishThread(srvObj)
+        _finishThread()
 
-def suspend(srvObj, stopEvt, t):
+def suspend(stopEvt, t):
     """
     Sleeps for ``t`` seconds, unless the thread is signaled to stop
     """
     if stopEvt.wait(t):
-        _finishThread(srvObj)
+        _finishThread()
 
 # TODO: Variables used for the handling of the execution of the DCC within
 # this module. Could be made members of the ngamsServer class, but since they
@@ -456,7 +456,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     _resetDiskDic()
     lastDiskCheckDic = {}
     for diskInfo in diskListRaw:
-        _stopDataCheckThr(srvObj, stopEvt)
+        _stopDataCheckThr(stopEvt)
         tmpDiskInfoObj = ngamsDiskInfo.ngamsDiskInfo().\
                          unpackSqlResult(diskInfo)
         lastCheck = tmpDiskInfoObj.getLastCheck() or 0
@@ -481,7 +481,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     dbmFileList = glob.glob(cacheDir + "/" + NGAMS_DATA_CHECK_THR +\
                             "_QUEUE_*.bsddb")
     for dbmFile in dbmFileList:
-        _stopDataCheckThr(srvObj, stopEvt)
+        _stopDataCheckThr(stopEvt)
         diskId = dbmFile.split("_")[-1].split(".")[0]
         if (not _getDiskDic().has_key(diskId)):
             filePat = "%s/%s*%s.bsddb" % (cacheDir,NGAMS_DATA_CHECK_THR,diskId)
@@ -506,7 +506,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     logger.debug("Create DBM files for disks to be checked ...")
     startDbFileRd = time.time()
     for diskId in _getDiskDic().keys():
-        _stopDataCheckThr(srvObj, stopEvt)
+        _stopDataCheckThr(stopEvt)
         if (_getDbmObjDic().has_key(diskId)): continue
 
         # The disk is ripe for checking but still has no Queue/Error DBM
@@ -541,7 +541,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
                                                    order=0)
         fetchSize = 1000
         while (1):
-            _stopDataCheckThr(srvObj, stopEvt)
+            _stopDataCheckThr(stopEvt)
             try:
                 fileList = cursorObj.fetch(fetchSize)
             except Exception, e:
@@ -587,7 +587,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
         errorDbm = ngamsDbm.ngamsDbm(errorDbmFile, 0, 1)
         _getDbmObjDic()[diskId] = (queueDbm, errorDbm)
 
-        _stopDataCheckThr(srvObj, stopEvt)
+        _stopDataCheckThr(stopEvt)
     logger.debug("Queried info for files to be checked from DB. Time: %.3fs",
          time.time() - startDbFileRd)
     logger.debug("Checked that disks scheduled for checking have DBM files")
@@ -609,14 +609,14 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     rmFile(fileRefDbm)
     _setFileRefDbm(ngamsDbm.ngamsDbm(fileRefDbm, 1, 1))
     for diskId in _getDiskDic().keys():
-        _stopDataCheckThr(srvObj, stopEvt)
+        _stopDataCheckThr(stopEvt)
         diskInfoObj = _getDiskDic()[diskId]
 
         # Walk over the mount point and collect all files
         mount_pt = diskInfoObj.getMountPoint()
         for dirpath, dirs, files in os.walk(mount_pt):
 
-            _stopDataCheckThr(srvObj, stopEvt)
+            _stopDataCheckThr(stopEvt)
 
             # Ignore staging and hidden directories
             dirs[:] = [d for d in dirs if d != NGAMS_STAGING_DIR and not d.startswith('.')]
@@ -629,7 +629,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
                 _getFileRefDbm().add(str(filename), [diskInfoObj.getDiskId()])
 
         _getFileRefDbm().sync()
-        _stopDataCheckThr(srvObj, stopEvt)
+        _stopDataCheckThr(stopEvt)
     logger.debug("Created DBMs with references to all files on the storage disks")
     ###########################################################################
 
@@ -641,7 +641,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     logger.debug("Retrieve information about files to be ignored ...")
     spuFilesCur = srvObj.getDb().getFileSummarySpuriousFiles1(srvObj.getHostId())
     while (1):
-        _stopDataCheckThr(srvObj, stopEvt)
+        _stopDataCheckThr(stopEvt)
         fileList = spuFilesCur.fetch(1000)
         if (not fileList): break
 
@@ -1055,7 +1055,7 @@ def dataCheckThread(srvObj, stopEvt):
             # at least once, to ensure that the check is carried out in a
             # clean environment.
             while (not srvObj.getJanitorThreadRunCount()):
-                suspend(srvObj, stopEvt, 0.5)
+                suspend(stopEvt, 0.5)
 
             if (srvObj.getCfg().getDataCheckLogSummary()):
                 logger.info("Data Check Thread starting iteration ...")
@@ -1125,7 +1125,7 @@ def dataCheckThread(srvObj, stopEvt):
                     # Kill the possible remaining sub-threads.
                     for thrId in thrHandleDic.keys():
                         del thrHandleDic[thrId]
-                    _stopDataCheckThr(srvObj, stopEvt)
+                    _stopDataCheckThr(stopEvt)
                 else:
                     # Check if all the sub-threads are still running
                     # or if the check cycle is completed.
@@ -1160,34 +1160,27 @@ def dataCheckThread(srvObj, stopEvt):
             # Time to elapse.
             ###################################################################
             lastOldestCheck = srvObj.getDb().getMinLastDiskCheck(srvObj.getHostId())
-            waitTime = 0
-            timeNow = time.time()
-            if (lastOldestCheck):
-                if ((timeNow - lastOldestCheck) < minCycleTime):
-                    waitTime = (minCycleTime - (timeNow - lastOldestCheck))
-            else:
-                execTime = (timeNow - _statCheckStart)
-                if (execTime < minCycleTime):
-                    waitTime = (minCycleTime - execTime)
-            if (waitTime):
-                waitTime += 1
+
+            time_to_compare = lastOldestCheck or _statCheckStart
+            execTime = time.time() - time_to_compare
+            if execTime < minCycleTime:
+                waitTime = minCycleTime - execTime
                 logger.info("Suspending Data Checking Thread for %.3f [s]", waitTime)
-                nextAbsCheckTime = int(time.time() + waitTime + 0.5)
+                nextAbsCheckTime = int(time.time() + waitTime)
                 logger.info("Next Data Checking scheduled for %s", toiso8601(nextAbsCheckTime))
                 srvObj.setNextDataCheckTime(nextAbsCheckTime)
 
-                suspend(srvObj, stopEvt, waitTime)
+                suspend(stopEvt, waitTime)
             ###################################################################
 
         except StopDataCheckThreadException:
             return
         except Exception:
-            waitTime = 1
             errMsg = "Error occurred during execution of the Data Check Thread"
             logger.exception(errMsg)
 
             try:
-                suspend(srvObj, stopEvt, 1)
+                suspend(stopEvt, 1)
             except StopDataCheckThreadException:
                 return
 
