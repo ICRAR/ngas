@@ -85,7 +85,6 @@ _diskIdList      = []    # List of Disk IDs ordered for the checking.
 _diskSchedDic    = {}    # Dictionary used when scheduling disks to be checked.
 _fileRefDbm      = {}    # Points to DBM with references to all files on disks.
 _reqFileInfoSem  = threading.Semaphore(1)  # Semaphore for critical access.
-_runSubThread    = 1     # Flag to signal to sub-threads to run or not.
 
 # Parameters for statistics.
 _statCheckSem     = threading.Semaphore(1)  # Semaphore to protect checking.
@@ -347,40 +346,6 @@ def _updateFileCheckStatus(srvObj,
     except Exception:
         logger.exception("Data Consistency Checking: Encountered error")
         _statCheckSem.release()
-
-
-def _setRunPermSubThread(perm):
-    """
-    Set the run permission for the DCC Sub-Thread.
-
-    perm:     Permission: 1 = run, 0 = stop (integer/0|1).
-
-    Returns:  Void.
-    """
-    global _runSubThread
-    _runSubThread = perm
-
-
-def _getRunPermSubThread():
-    """
-    Get the run permission for the DCC Sub-Thread.
-
-    Returns:     Permission to tun: 1 = run, 0 = stop (integer/0|1).
-    """
-    global _runSubThread
-    return _runSubThread
-
-
-def _stopCheckingSubThread():
-    """
-    Used by the Data Consistency Checking Sub-Threads to check if they are
-    allowed to execute.
-
-    Returns:   Void.
-    """
-    if (not _getRunPermSubThread()):
-        logger.debug("DCC Sub-Thread exiting ...")
-        thread.exit()
 
 
 def _suspend(srvObj,
@@ -775,7 +740,7 @@ def _schedNextFile(srvObj,
 
 def _dataCheckSubThread(srvObj,
                         threadId,
-                        dummy):
+                        stopEvt):
     """
     Sub-thread scheduled to carry out the actual checking. This makes
     it possible to do the checking in several threads simultaneously if
@@ -789,17 +754,17 @@ def _dataCheckSubThread(srvObj,
     """
     T = TRACE()
 
-    dataCheckPrio = srvObj.getCfg().getDataCheckPrio()
     while (1):
-        _stopCheckingSubThread()
 
         try:
+            _stopDataCheckThr(stopEvt)
+
             # Get the info for the next file to check + check it.
             fileInfo = _schedNextFile(srvObj, threadId)
             if (not fileInfo):
                 logger.debug("No more files in queue to check - exiting")
                 _updateFileCheckStatus(srvObj, None, None, None, None, [], 1)
-                raise Exception, "_STOP_DATA_CHECK_SUB_THREAD_"
+                return
 
             # Remove the entry for this file in the File Reference DBM to
             # indicate that the file is registered in the DB.
@@ -826,12 +791,11 @@ def _dataCheckSubThread(srvObj,
             if (srvObj.getHandlingCmd()):
                 while (srvObj.getHandlingCmd()):
                     _suspend(srvObj, 0.200)
-        except Exception, e:
-            if (str(e).find("_STOP_DATA_CHECK_SUB_THREAD_") != -1):
-                thread.exit()
-            else:
-                logger.exception("Exception encountered in Data Check Sub-Thread")
-                time.sleep(2)
+        except StopDataCheckThreadException:
+            raise
+        except Exception:
+            logger.exception("Exception encountered in Data Check Sub-Thread")
+            suspend(stopEvt, 2)
 
 
 def _genReport(srvObj):
@@ -1097,7 +1061,7 @@ def dataCheckThread(srvObj, stopEvt):
             _resetDiskSchedDic()
             for n in range(1, (noOfSubThreads + 1)):
                 threadId = NGAMS_DATA_CHECK_THR + "-" + str(n)
-                args = (srvObj, threadId, None)
+                args = (srvObj, threadId, stopEvt)
                 logger.debug("Starting Data Check Sub-Thread: %s", threadId)
                 thrHandleDic[n] = threading.Thread(None, _dataCheckSubThread,
                                                    threadId, args)
@@ -1105,34 +1069,27 @@ def dataCheckThread(srvObj, stopEvt):
                 thrHandleDic[n].start()
 
             while True:
-                time.sleep(0.500)
 
-                # Check if the DCC Thread is allowed to run, else stop all
-                # activities.
-                if stopEvt.isSet():
-                    # Stop the sub-threads.
-                    _setRunPermSubThread(0)
-                    startTime = time.time()
-                    noOfSubThr = len(thrHandleDic.keys())
-                    while ((time.time() - startTime) < 10):
-                        thrCount = 0
-                        for thrId in thrHandleDic.keys():
-                            if (not thrHandleDic[thrId].isAlive()):
-                                del thrHandleDic[thrId]
-                                thrCount += 1
-                        if (thrCount == noOfSubThr): break
-                        time.sleep(0.050)
-                    # Kill the possible remaining sub-threads.
-                    for thrId in thrHandleDic.keys():
-                        del thrHandleDic[thrId]
-                    _stopDataCheckThr(stopEvt)
+                try:
+                    suspend(stopEvt, 0.500)
+                except StopDataCheckThreadException:
+
+                    # Be nice and join sub-threads
+                    for t in thrHandleDic.values():
+                        t.join(10)
+                        if t.isAlive():
+                            logger.warning("Thread %r didn't cleanly shut down within 10 seconds", t)
+
+                    # Let's stop ourselves now
+                    raise
+
                 else:
                     # Check if all the sub-threads are still running
                     # or if the check cycle is completed.
                     for thrId in thrHandleDic.keys():
-                        if (not thrHandleDic[thrId].isAlive()):
+                        if not thrHandleDic[thrId].isAlive():
                             del thrHandleDic[thrId]
-                    if (not len(thrHandleDic)):
+                    if not len(thrHandleDic):
                         lastCheckTime = time.time()
                         break
 
