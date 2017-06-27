@@ -38,7 +38,6 @@ import logging
 import os
 import random
 import time
-import thread
 import threading
 
 import ngamsFileUtils
