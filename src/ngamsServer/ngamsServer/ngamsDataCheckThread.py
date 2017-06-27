@@ -83,7 +83,6 @@ _diskDic         = {}    # Dictionary with info about disks concerned.
 _dbmObjDic       = {}    # Dictionary with Queue/Error DBM objects.
 _diskIdList      = []    # List of Disk IDs ordered for the checking.
 _diskSchedDic    = {}    # Dictionary used when scheduling disks to be checked.
-_fileRefDbm      = {}    # Points to DBM with references to all files on disks.
 _reqFileInfoSem  = threading.Semaphore(1)  # Semaphore for critical access.
 
 # Parameters for statistics.
@@ -177,40 +176,6 @@ def _resetDiskSchedDic():
     """
     global _diskSchedDic
     _diskSchedDic = {}
-
-
-def _setFileRefDbm(dbmObj):
-    """
-    Set the File Reference Object.
-
-    dbmObj:    DBM object (ngamsDbm).
-
-    Returns:   Void.
-    """
-    global _fileRefDbm
-    _fileRefDbm = dbmObj
-
-
-def _getFileRefDbm():
-    """
-    Return reference to DBM containing references to all files on the
-    storage disks.
-
-    Returns:   Reference to DBM object (ngamsDbm).
-    """
-    global _fileRefDbm
-    return _fileRefDbm
-
-
-def _resetFileRefDbm():
-    """
-    Reset the File Reference DBM.
-
-    Returns:   Void.
-    """
-    global _fileRefDbm
-    if (_fileRefDbm): del _fileRefDbm
-    _fileRefDbm = {}
 
 
 def _takeReqFileInfoSem():
@@ -572,7 +537,8 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     fileRefDbm = "%s/%s_FILES_%s.bsddb" %\
                  (cacheDir, NGAMS_DATA_CHECK_THR, srvObj.getHostId())
     rmFile(fileRefDbm)
-    _setFileRefDbm(ngamsDbm.ngamsDbm(fileRefDbm, 1, 1))
+
+    fileRefDbm = ngamsDbm.ngamsDbm(fileRefDbm, 1, 1)
     for diskId in _getDiskDic().keys():
         _stopDataCheckThr(stopEvt)
         diskInfoObj = _getDiskDic()[diskId]
@@ -591,9 +557,9 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
 
             for filename in files:
                 filename = os.path.join(dirpath, filename)
-                _getFileRefDbm().add(str(filename), [diskInfoObj.getDiskId()])
+                fileRefDbm.add(str(filename), [diskInfoObj.getDiskId()])
 
-        _getFileRefDbm().sync()
+        fileRefDbm.sync()
         _stopDataCheckThr(stopEvt)
     logger.debug("Created DBMs with references to all files on the storage disks")
     ###########################################################################
@@ -616,10 +582,10 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
                 filename = os.path.\
                            normpath(fileInfo[ngamsDbCore.SUM1_MT_PT] + "/" +\
                                     fileInfo[ngamsDbCore.SUM1_FILENAME])
-                if (_getFileRefDbm().hasKey(filename)):
-                    _getFileRefDbm().rem(filename)
+                if (fileRefDbm.hasKey(filename)):
+                    fileRefDbm.rem(filename)
         _suspend(srvObj)
-    _getFileRefDbm().sync()
+    fileRefDbm.sync()
     del spuFilesCur
     logger.debug("Retrieved information about files to be ignored")
     ###########################################################################
@@ -659,6 +625,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     logger.debug("Initialized the statistics for the checking cycle")
     ###########################################################################
 
+    return fileRefDbm
 
 def _schedNextFile(srvObj,
                    threadId):
@@ -740,7 +707,8 @@ def _schedNextFile(srvObj,
 
 def _dataCheckSubThread(srvObj,
                         threadId,
-                        stopEvt):
+                        stopEvt,
+                        fileRefDbm):
     """
     Sub-thread scheduled to carry out the actual checking. This makes
     it possible to do the checking in several threads simultaneously if
@@ -771,8 +739,8 @@ def _dataCheckSubThread(srvObj,
             filename = os.path.normpath(fileInfo[ngamsDbCore.SUM1_MT_PT]+"/" +\
                                         fileInfo[ngamsDbCore.SUM1_FILENAME])
             filename = str(filename)
-            if (_getFileRefDbm().hasKey(filename)):
-                _getFileRefDbm().rem(filename).sync()
+            if (fileRefDbm.hasKey(filename)):
+                fileRefDbm.rem(filename).sync()
 
             # Update the overall status of the checking.
             tmpReport = []
@@ -798,7 +766,7 @@ def _dataCheckSubThread(srvObj,
             suspend(stopEvt, 2)
 
 
-def _genReport(srvObj):
+def _genReport(srvObj, fileRefDbm):
     """
     Generate the DCC Check Report according to the problems found.
 
@@ -812,7 +780,7 @@ def _genReport(srvObj):
     for diskId in _getDiskDic().keys():
         noOfProbs += _getDbmObjDic()[diskId][1].getCount()
     # Spurious files on disk.
-    unRegFiles = _getFileRefDbm().getCount()
+    unRegFiles = fileRefDbm.getCount()
 
     # Generate the report.
     global _statCheckStart, _statCheckRate, _statCheckFiles, _statCheckedMb,\
@@ -872,9 +840,9 @@ def _genReport(srvObj):
             report += "NOT REGISTERED FILES FOUND ON STORAGE DISKS:\n\n"
             report += repFormat % ("Disk ID:", "Filename:")
             report += separator
-            unregFileList = _getFileRefDbm().keys()
+            unregFileList = fileRefDbm.keys()
             for unregFile in unregFileList:
-                fileInfo = _getFileRefDbm().get(unregFile)
+                fileInfo = fileRefDbm.get(unregFile)
                 if (not unregFile): break
                 if (fileInfo): report += repFormat % (fileInfo[0], unregFile)
             del unregFileList
@@ -897,11 +865,9 @@ def _genReport(srvObj):
         _getDbmObjDic()[diskId][1].cleanUp()
         del _getDbmObjDic()[diskId]
     _resetDbmObjDic()
-    _getFileRefDbm().cleanUp()
-    _resetFileRefDbm()
 
 
-def _crossCheckNonRegFiles(srvObj):
+def _crossCheckNonRegFiles(srvObj, fileRefDbm):
     """
     This function checks if non-registered files were found during the checking
     if these still are not available. This is necessary if requests are
@@ -940,7 +906,7 @@ def _crossCheckNonRegFiles(srvObj):
         #while (1):
         #    filename, fileInfo = _getFileRefDbm().getNext(0)
         #    if (not filename): break
-        for filename,dbVal in _getFileRefDbm().iteritems():
+        for filename,dbVal in fileRefDbm.iteritems():
             # jagonzal: We need to reformat the values and skip administrative elements #################
             if (str(filename).find("__") != -1): continue
             fileInfo = cPickle.loads(dbVal)
@@ -982,10 +948,10 @@ def _crossCheckNonRegFiles(srvObj):
             if (str(key).find("__") != -1): continue
             val = cPickle.loads(dbVal)
             #############################################################################################
-            _getFileRefDbm().rem(key)
+            fileRefDbm.rem(key)
         #################################################################################################
 
-        _getFileRefDbm().sync()
+        fileRefDbm.sync()
         del crossCheckDbm
         rmFile(crossCheckDbmName)
     except Exception, e:
@@ -1044,7 +1010,7 @@ def dataCheckThread(srvObj, stopEvt):
                          genTmpFilename(srvObj.getCfg(),
                                         NGAMS_DATA_CHECK_THR)
             try:
-                _dumpFileInfo(srvObj, tmpFilePat, stopEvt)
+                fileRefDbm = _dumpFileInfo(srvObj, tmpFilePat, stopEvt)
             finally:
                 rmFile(tmpFilePat + "*")
 
@@ -1094,12 +1060,12 @@ def dataCheckThread(srvObj, stopEvt):
                         break
 
             # Check again for non-registered files.
-            global _statCheckCount, _statCheckFiles
-            if (_statCheckCount): _crossCheckNonRegFiles(srvObj)
+            global _statCheckCount
+            if (_statCheckCount): _crossCheckNonRegFiles(srvObj, fileRefDbm)
 
             # Send out check report if any discrepancies found + send
             # out notification message according to configuration.
-            _genReport(srvObj)
+            _genReport(srvObj, fileRefDbm)
 
             # Set the last check for all disks to the same value
             for diskId in _getDiskDic().keys():
