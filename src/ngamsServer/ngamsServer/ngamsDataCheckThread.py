@@ -81,7 +81,6 @@ def suspend(stopEvt, t):
 # "_diskDic" -> "DiskDic", "_dbmObjDic" -> "DbmObjDic", ...
 _diskDic         = {}    # Dictionary with info about disks concerned.
 _dbmObjDic       = {}    # Dictionary with Queue/Error DBM objects.
-_diskIdList      = []    # List of Disk IDs ordered for the checking.
 _diskSchedDic    = {}    # Dictionary used when scheduling disks to be checked.
 _reqFileInfoSem  = threading.Semaphore(1)  # Semaphore for critical access.
 
@@ -136,26 +135,6 @@ def _resetDbmObjDic():
     """
     global _dbmObjDic
     _dbmObjDic = {}
-
-
-def _getDiskIdList():
-    """
-    Return reference to Queue/Error DBM Disk ID List.
-
-    Returns:    Reference to DBM Slot List (list).
-    """
-    global _diskIdList
-    return _diskIdList
-
-
-def _resetDiskIdList():
-    """
-    Reset the Disk ID List.
-
-    Returns:    Void.
-    """
-    global _diskIdList
-    _diskIdList = []
 
 
 def _getDiskSchedDic():
@@ -592,10 +571,10 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
 
     # Pack the Disk IDs into the list of disks to check.
     logger.debug("Create list with disks to be checked ...")
-    _resetDiskIdList()
+    disk_ids = []
     for lastCheck in lastDiskCheckDic.keys():
         diskInfoObj = lastDiskCheckDic[lastCheck]
-        _getDiskIdList().append(diskInfoObj.getDiskId())
+        disk_ids.append(diskInfoObj.getDiskId())
     logger.debug("Created list with disks to be checked")
 
     ###########################################################################
@@ -604,7 +583,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     logger.debug("Initialize the statistics for the checking cycle ...")
     amountMb = 0.0
     noOfFiles = 0
-    for diskId in _getDiskIdList():
+    for diskId in disk_ids:
         queueDbm = _getDbmObjDic()[diskId][0]
         #################################################################################################
         #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
@@ -625,10 +604,10 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     logger.debug("Initialized the statistics for the checking cycle")
     ###########################################################################
 
-    return fileRefDbm
+    return fileRefDbm, disk_ids
 
 def _schedNextFile(srvObj,
-                   threadId):
+                   threadId, disk_ids):
     """
     Function that returns the information about the next file to be checked
     according to the checking scheme.
@@ -653,9 +632,9 @@ def _schedNextFile(srvObj,
         while (1):
             fileInfo = None
             if (not _getDiskSchedDic().has_key(threadId)):
-                if (_getDiskIdList()):
-                    idx = random.randint(0, (len(_getDiskIdList()) - 1))
-                    diskId = _getDiskIdList()[idx]
+                if (disk_ids):
+                    idx = random.randint(0, (len(disk_ids) - 1))
+                    diskId = disk_ids[idx]
                     # Check if that disk is already being checked by other
                     # threads. If yes, we don't initialize the key pointer.
                     beingChecked = 0
@@ -684,15 +663,15 @@ def _schedNextFile(srvObj,
                 _getDbmObjDic()[diskId][0].cleanUp()
                 rmFile(_getDbmObjDic()[diskId][0].getDbmName())
                 srvObj.getDb().setLastCheckDisk(diskId, time.time())
-                if diskId in _getDiskIdList():
-                    idx = _getDiskIdList().index(diskId)
-                    del _getDiskIdList()[idx]
+                if diskId in disk_ids:
+                    idx = disk_ids.index(diskId)
+                    del disk_ids[idx]
                 for thrId in _getDiskSchedDic().keys():
                     if (_getDiskSchedDic()[thrId] == diskId):
                         del _getDiskSchedDic()[thrId]
-                if (_getDiskIdList()):
-                    idx = random.randint(0, (len(_getDiskIdList()) - 1))
-                    nextDiskId = _getDiskIdList()[idx]
+                if (disk_ids):
+                    idx = random.randint(0, (len(disk_ids) - 1))
+                    nextDiskId = disk_ids[idx]
                     _getDiskSchedDic()[threadId] = nextDiskId
                 else:
                     break
@@ -708,7 +687,8 @@ def _schedNextFile(srvObj,
 def _dataCheckSubThread(srvObj,
                         threadId,
                         stopEvt,
-                        fileRefDbm):
+                        fileRefDbm,
+                        disk_ids):
     """
     Sub-thread scheduled to carry out the actual checking. This makes
     it possible to do the checking in several threads simultaneously if
@@ -728,7 +708,7 @@ def _dataCheckSubThread(srvObj,
             _stopDataCheckThr(stopEvt)
 
             # Get the info for the next file to check + check it.
-            fileInfo = _schedNextFile(srvObj, threadId)
+            fileInfo = _schedNextFile(srvObj, threadId, disk_ids)
             if (not fileInfo):
                 logger.debug("No more files in queue to check - exiting")
                 _updateFileCheckStatus(srvObj, None, None, None, None, [], 1)
@@ -992,25 +972,12 @@ def dataCheckThread(srvObj, stopEvt):
 
             srvObj.updateHostInfo(None, None, None, None, None, None, 1, None)
 
-            # It was intended to implement a scheme for preserving the info
-            # about files already checked between two sessions if the DCC
-            # should be interrupted if the server is shut down. This attempt
-            # has been given up since if the disk configuration changed
-            # between the two sessions, false DCC problems might be reported.
-            #
-            # These temporary DCC DBM's are kept in the NG/AMS Cache Dir
-            # since if put in the NG/AMS Temp. Dir. they might be deleted
-            # if not accessed for the specified expiration time in the temp.
-            # dir - a DCC run may run for a longer period of time.
-            rmFile("%s/%s/%s*" % (srvObj.getCfg().getRootDirectory(),
-                                  NGAMS_CACHE_DIR, NGAMS_DATA_CHECK_THR))
-
             # Get the information about the files to check.
             tmpFilePat = ngamsHighLevelLib.\
                          genTmpFilename(srvObj.getCfg(),
                                         NGAMS_DATA_CHECK_THR)
             try:
-                fileRefDbm = _dumpFileInfo(srvObj, tmpFilePat, stopEvt)
+                fileRefDbm, disk_ids = _dumpFileInfo(srvObj, tmpFilePat, stopEvt)
             finally:
                 rmFile(tmpFilePat + "*")
 
@@ -1021,13 +988,13 @@ def dataCheckThread(srvObj, stopEvt):
             # Afterwards the main DCC Thread monitors the execution of
             # these + update the status information.
             thrHandleDic = {}
-            noOfSubThreads = len(_getDiskIdList())
+            noOfSubThreads = len(disk_ids)
             if (noOfSubThreads > srvObj.getCfg().getDataCheckMaxProcs()):
                 noOfSubThreads = srvObj.getCfg().getDataCheckMaxProcs()
             _resetDiskSchedDic()
             for n in range(1, (noOfSubThreads + 1)):
                 threadId = NGAMS_DATA_CHECK_THR + "-" + str(n)
-                args = (srvObj, threadId, stopEvt)
+                args = (srvObj, threadId, stopEvt, disk_ids)
                 logger.debug("Starting Data Check Sub-Thread: %s", threadId)
                 thrHandleDic[n] = threading.Thread(None, _dataCheckSubThread,
                                                    threadId, args)
