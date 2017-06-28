@@ -717,7 +717,7 @@ def _genReport(srvObj, unregistered, diskDic, dbmObjDic, stats):
         del dbmObjDic[diskId]
 
 
-def _crossCheckNonRegFiles(srvObj, all_files, diskDic):
+def _crossCheckNonRegFiles(srvObj, unchecked_files, diskDic):
     """
     This function checks if non-registered files were found during the checking
     if these still are not available. This is necessary if requests are
@@ -737,48 +737,33 @@ def _crossCheckNonRegFiles(srvObj, all_files, diskDic):
 
     Returns:   None.
     """
-    T = TRACE()
 
-    tmpFilePat = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),
-                                                  NGAMS_DATA_CHECK_THR)
-    crossCheckDbmName = None
-    crossCheckDbm = None
-    try:
-        crossCheckDbmName = tmpFilePat + "_DCC_CROSS_CHECK_DB"
-        rmFile(crossCheckDbmName)
-        crossCheckDbm = ngamsDbm.ngamsDbm(crossCheckDbmName, cleanUpOnDestr=1,
-                                          writePerm=1)
+    unregistered = {}
+    for filename, diskId in unchecked_files.items():
 
-        for filename, diskId in all_files.items():
-            # jagonzal: We need to reformat the values and skip administrative elements #################
-            if (str(filename).find("__") != -1): continue
-            if (not diskDic.has_key(diskId)):
-                logger.warning("Unknown Disk ID: %s encountered", diskId)
-                break
-            mtPt = diskDic[diskId].getMountPoint()
-            ngasFilename = filename[(len(mtPt) + 1):]
-            fileInfo = srvObj.getDb().\
-                       getFileInfoFromDiskIdFilename(diskId, ngasFilename)
-            if (fileInfo != None):
-                msg = "File: %s detected as not registered was found in the "+\
-                      "NGAS DB while cross-checking discrepancy. Disk ID: " +\
-                      "%s/File Id: %s/File Version: %s"
-                crossCheckDbm.add(filename, "")
-                logger.debug(msg, filename, diskId, fileInfo.getFileId(),
-                              fileInfo.getFileVersion())
-            else:
-                msg = "File: %s detected as not registered was not found " +\
-                      "in the NGAS DB while cross-checking discrepancy. " +\
-                      "Disk ID: %s"
-                logger.debug(msg, filename, diskId)
-        #################################################################################################
+        if diskId not in diskDic:
+            logger.warning("Unknown Disk ID: %s encountered", diskId)
+            break
 
-        # Unregistered files returned
-        return {k: v for k, v in all_files.items() if k not in crossCheckDbm.keys()}
+        mtPt = diskDic[diskId].getMountPoint()
+        ngasFilename = filename[(len(mtPt) + 1):]
+        fileInfo = srvObj.getDb().\
+                   getFileInfoFromDiskIdFilename(diskId, ngasFilename)
+        if fileInfo is not None:
+            msg = "File: %s detected as not registered was found in the "+\
+                  "NGAS DB while cross-checking discrepancy. Disk ID: " +\
+                  "%s/File Id: %s/File Version: %s"
+            logger.debug(msg, filename, diskId, fileInfo.getFileId(),
+                          fileInfo.getFileVersion())
+        else:
+            msg = "File: %s detected as not registered was not found " +\
+                  "in the NGAS DB while cross-checking discrepancy. " +\
+                  "Disk ID: %s"
+            logger.debug(msg, filename, diskId)
+            unregistered[filename] = diskId
 
-    finally:
-        if crossCheckDbmName:
-            rmFile(crossCheckDbmName)
+    # Unregistered files returned
+    return unregistered
 
 
 def dataCheckThread(srvObj, stopEvt):
