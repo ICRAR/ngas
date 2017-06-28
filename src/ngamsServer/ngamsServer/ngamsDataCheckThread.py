@@ -78,7 +78,6 @@ def suspend(stopEvt, t):
 # in order not to complicate the ngamsServer class.
 # Alternatively, one global dictionary could be used with keys:
 # "_diskDic" -> "DiskDic", "_dbmObjDic" -> "DbmObjDic", ...
-_diskDic         = {}    # Dictionary with info about disks concerned.
 _dbmObjDic       = {}    # Dictionary with Queue/Error DBM objects.
 
 # Parameters for statistics.
@@ -93,26 +92,6 @@ class Stats(object):
         self.mbs_checked = 0
         self.files = files
         self.files_checked = 0
-
-def _getDiskDic():
-    """
-    Return refrence to the Disk Dictionary with information about the disks
-    concerned.
-
-    Returns:    Disk Dictionary (dictionary).
-    """
-    global _diskDic
-    return _diskDic
-
-
-def _resetDiskDic():
-    """
-    Reset the Disk Dictionary.
-
-    Returns:   Void.
-    """
-    global _diskDic
-    _diskDic = {}
 
 
 def _getDbmObjDic():
@@ -297,7 +276,8 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     diskListRaw = srvObj.getDb().\
                   getDiskInfoForSlotsAndHost(srvObj.getHostId(), slotIdList)
     minCycleTime = isoTime2Secs(srvObj.getCfg().getDataCheckMinCycle())
-    _resetDiskDic()
+
+    diskDic = {}
     lastDiskCheckDic = {}
     for diskInfo in diskListRaw:
         _stopDataCheckThr(stopEvt)
@@ -313,7 +293,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
                                                tmpDiskInfoObj
             else:
                 lastDiskCheckDic[time.time()] = tmpDiskInfoObj
-            _getDiskDic()[tmpDiskInfoObj.getDiskId()] = tmpDiskInfoObj
+            diskDic[tmpDiskInfoObj.getDiskId()] = tmpDiskInfoObj
     logger.debug("Got information about all disks mounted in this system")
     ###########################################################################
 
@@ -327,7 +307,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     for dbmFile in dbmFileList:
         _stopDataCheckThr(stopEvt)
         diskId = dbmFile.split("_")[-1].split(".")[0]
-        if (not _getDiskDic().has_key(diskId)):
+        if (not diskDic.has_key(diskId)):
             filePat = "%s/%s*%s.bsddb" % (cacheDir,NGAMS_DATA_CHECK_THR,diskId)
             rmFile(filePat)
         else:
@@ -349,7 +329,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     ###########################################################################
     logger.debug("Create DBM files for disks to be checked ...")
     startDbFileRd = time.time()
-    for diskId in _getDiskDic().keys():
+    for diskId in diskDic.keys():
         _stopDataCheckThr(stopEvt)
         if (_getDbmObjDic().has_key(diskId)): continue
 
@@ -453,9 +433,9 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     rmFile(fileRefDbm)
 
     fileRefDbm = ngamsDbm.ngamsDbm(fileRefDbm, 1, 1)
-    for diskId in _getDiskDic().keys():
+    for diskId in diskDic.keys():
         _stopDataCheckThr(stopEvt)
-        diskInfoObj = _getDiskDic()[diskId]
+        diskInfoObj = diskDic[diskId]
 
         # Walk over the mount point and collect all files
         mount_pt = diskInfoObj.getMountPoint()
@@ -539,7 +519,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     stats = _initFileCheckStatus(srvObj, amountMb, noOfFiles)
     ###########################################################################
 
-    return fileRefDbm, disk_ids, stats
+    return fileRefDbm, disk_ids, diskDic, stats
 
 def _schedNextFile(srvObj,
                    threadId, disk_ids, diskSchedDic, reqFileInfoSem):
@@ -678,7 +658,7 @@ def _dataCheckSubThread(srvObj,
             suspend(stopEvt, 2)
 
 
-def _genReport(srvObj, fileRefDbm, stats):
+def _genReport(srvObj, fileRefDbm, diskDic, stats):
     """
     Generate the DCC Check Report according to the problems found.
 
@@ -689,7 +669,7 @@ def _genReport(srvObj, fileRefDbm, stats):
     # Find out how many inconsistencies were found.
     noOfProbs = 0
     # Errors found.
-    for diskId in _getDiskDic().keys():
+    for diskId in diskDic.keys():
         noOfProbs += _getDbmObjDic()[diskId][1].getCount()
     # Spurious files on disk.
     unRegFiles = fileRefDbm.getCount()
@@ -726,7 +706,7 @@ def _genReport(srvObj, fileRefDbm, stats):
             report += format % ("Problem Description", "File ID",
                                 "Version", "Slot ID:Disk ID")
             report += separator
-            for diskId in _getDiskDic().keys():
+            for diskId in diskDic.keys():
                 errDbm = _getDbmObjDic()[diskId][1].initKeyPtr()
                 #################################################################################################
                 #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
@@ -759,7 +739,7 @@ def _genReport(srvObj, fileRefDbm, stats):
             report += separator
 
         # Send Notification Message if needed (only if disks where checked).
-        if (len(_getDiskDic().keys())):
+        if (len(diskDic.keys())):
             ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_DATA_CHECK,
                                      "DATA CHECK REPORT", report, [], 1)
 
@@ -771,13 +751,13 @@ def _genReport(srvObj, fileRefDbm, stats):
         logger.info(msg)
 
     # Remove the various DBMs allocated.
-    for diskId in _getDiskDic().keys():
+    for diskId in diskDic.keys():
         _getDbmObjDic()[diskId][1].cleanUp()
         del _getDbmObjDic()[diskId]
     _resetDbmObjDic()
 
 
-def _crossCheckNonRegFiles(srvObj, fileRefDbm):
+def _crossCheckNonRegFiles(srvObj, fileRefDbm, diskDic):
     """
     This function checks if non-registered files were found during the checking
     if these still are not available. This is necessary if requests are
@@ -822,10 +802,10 @@ def _crossCheckNonRegFiles(srvObj, fileRefDbm):
             fileInfo = cPickle.loads(dbVal)
             #############################################################################################
             diskId = fileInfo[0]
-            if (not _getDiskDic().has_key(diskId)):
+            if (not diskDic.has_key(diskId)):
                 logger.warning("Unknown Disk ID: %s encountered", diskId)
                 break
-            mtPt = _getDiskDic()[diskId].getMountPoint()
+            mtPt = diskDic[diskId].getMountPoint()
             ngasFilename = filename[(len(mtPt) + 1):]
             fileInfo = srvObj.getDb().\
                        getFileInfoFromDiskIdFilename(diskId, ngasFilename)
@@ -907,7 +887,7 @@ def dataCheckThread(srvObj, stopEvt):
                          genTmpFilename(srvObj.getCfg(),
                                         NGAMS_DATA_CHECK_THR)
             try:
-                fileRefDbm, disk_ids, stats = _dumpFileInfo(srvObj, tmpFilePat, stopEvt)
+                fileRefDbm, disk_ids, diskDic, stats = _dumpFileInfo(srvObj, tmpFilePat, stopEvt)
             finally:
                 rmFile(tmpFilePat + "*")
 
@@ -961,14 +941,14 @@ def dataCheckThread(srvObj, stopEvt):
 
             # Check again for non-registered files.
             if stats.files_checked:
-                _crossCheckNonRegFiles(srvObj, fileRefDbm)
+                _crossCheckNonRegFiles(srvObj, fileRefDbm, diskDic)
 
             # Send out check report if any discrepancies found + send
             # out notification message according to configuration.
-            _genReport(srvObj, fileRefDbm, stats)
+            _genReport(srvObj, fileRefDbm, diskDic, stats)
 
             # Set the last check for all disks to the same value
-            for diskId in _getDiskDic().keys():
+            for diskId in diskDic.keys():
                 srvObj.getDb().setLastCheckDisk(diskId, lastCheckTime)
 
             # FLush the log; otherwise we might not notice that this has
