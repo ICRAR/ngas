@@ -80,7 +80,6 @@ def suspend(stopEvt, t):
 # "_diskDic" -> "DiskDic", "_dbmObjDic" -> "DbmObjDic", ...
 _diskDic         = {}    # Dictionary with info about disks concerned.
 _dbmObjDic       = {}    # Dictionary with Queue/Error DBM objects.
-_diskSchedDic    = {}    # Dictionary used when scheduling disks to be checked.
 
 # Parameters for statistics.
 class Stats(object):
@@ -134,26 +133,6 @@ def _resetDbmObjDic():
     """
     global _dbmObjDic
     _dbmObjDic = {}
-
-
-def _getDiskSchedDic():
-    """
-    Return reference to the Disk Scheduling Dictionary.
-
-    Returns:    Reference to DBM Slot List (list).
-    """
-    global _diskSchedDic
-    return _diskSchedDic
-
-
-def _resetDiskSchedDic():
-    """
-    Reset the Disk Scheduling Dictionary.
-
-    Returns:    Void.
-    """
-    global _diskSchedDic
-    _diskSchedDic = {}
 
 
 def _initFileCheckStatus(srvObj, amountMb, noOfFiles):
@@ -563,7 +542,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     return fileRefDbm, disk_ids, stats
 
 def _schedNextFile(srvObj,
-                   threadId, disk_ids, reqFileInfoSem):
+                   threadId, disk_ids, diskSchedDic, reqFileInfoSem):
     """
     Function that returns the information about the next file to be checked
     according to the checking scheme.
@@ -585,25 +564,25 @@ def _schedNextFile(srvObj,
     with reqFileInfoSem:
         while True:
             fileInfo = None
-            if (not _getDiskSchedDic().has_key(threadId)):
+            if (not diskSchedDic.has_key(threadId)):
                 if (disk_ids):
                     idx = random.randint(0, (len(disk_ids) - 1))
                     diskId = disk_ids[idx]
                     # Check if that disk is already being checked by other
                     # threads. If yes, we don't initialize the key pointer.
                     beingChecked = 0
-                    for thrId in _getDiskSchedDic().keys():
-                        if (_getDiskSchedDic()[thrId] == diskId):
+                    for thrId in diskSchedDic.keys():
+                        if (diskSchedDic[thrId] == diskId):
                             beingChecked = 1
                             break
                     if (not beingChecked):
                         _getDbmObjDic()[diskId][0].initKeyPtr()
                     fileKey, fileInfo = _getDbmObjDic()[diskId][0].getNext(0)
-                    _getDiskSchedDic()[threadId] = diskId
+                    diskSchedDic[threadId] = diskId
                 else:
                     break
             else:
-                diskId = _getDiskSchedDic()[threadId]
+                diskId = diskSchedDic[threadId]
                 fileKey, fileInfo = _getDbmObjDic()[diskId][0].getNext(0)
 
             if (fileInfo):
@@ -620,13 +599,13 @@ def _schedNextFile(srvObj,
                 if diskId in disk_ids:
                     idx = disk_ids.index(diskId)
                     del disk_ids[idx]
-                for thrId in _getDiskSchedDic().keys():
-                    if (_getDiskSchedDic()[thrId] == diskId):
-                        del _getDiskSchedDic()[thrId]
+                for thrId in diskSchedDic.keys():
+                    if (diskSchedDic[thrId] == diskId):
+                        del diskSchedDic[thrId]
                 if (disk_ids):
                     idx = random.randint(0, (len(disk_ids) - 1))
                     nextDiskId = disk_ids[idx]
-                    _getDiskSchedDic()[threadId] = nextDiskId
+                    diskSchedDic[threadId] = nextDiskId
                 else:
                     break
 
@@ -638,6 +617,7 @@ def _dataCheckSubThread(srvObj,
                         stopEvt,
                         fileRefDbm,
                         disk_ids,
+                        diskSchedDic,
                         reqFileInfoSem,
                         stats):
     """
@@ -659,7 +639,7 @@ def _dataCheckSubThread(srvObj,
             _stopDataCheckThr(stopEvt)
 
             # Get the info for the next file to check + check it.
-            fileInfo = _schedNextFile(srvObj, threadId, disk_ids, reqFileInfoSem)
+            fileInfo = _schedNextFile(srvObj, threadId, disk_ids, diskSchedDic, reqFileInfoSem)
             if (not fileInfo):
                 logger.debug("No more files in queue to check - exiting")
                 _updateFileCheckStatus(srvObj, None, None, None, None, [], stats, 1)
@@ -941,12 +921,13 @@ def dataCheckThread(srvObj, stopEvt):
             noOfSubThreads = len(disk_ids)
             if (noOfSubThreads > srvObj.getCfg().getDataCheckMaxProcs()):
                 noOfSubThreads = srvObj.getCfg().getDataCheckMaxProcs()
-            _resetDiskSchedDic()
+
+            diskSchedDic = {}
 
             reqFileInfoSem = threading.Lock()
             for n in range(noOfSubThreads):
                 threadId = NGAMS_DATA_CHECK_THR + "-" + str(n)
-                args = (srvObj, threadId, stopEvt, fileRefDbm, disk_ids, reqFileInfoSem, stats)
+                args = (srvObj, threadId, stopEvt, fileRefDbm, disk_ids, diskSchedDic, reqFileInfoSem, stats)
                 logger.debug("Starting Data Check Sub-Thread: %s", threadId)
                 thrHandleDic[n] = threading.Thread(None, _dataCheckSubThread,
                                                    threadId, args)
