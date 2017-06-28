@@ -83,16 +83,17 @@ _dbmObjDic       = {}    # Dictionary with Queue/Error DBM objects.
 _diskSchedDic    = {}    # Dictionary used when scheduling disks to be checked.
 
 # Parameters for statistics.
-_statCheckSem     = threading.Semaphore(1)  # Semaphore to protect checking.
-_statLastDbUpdate = 0        # Time (secs since epoch) for last DB update.
-_statCheckStart   = None     # Start time for checking (secs since epoch).
-_statCheckRemain  = None     # Remaining time in seconds.
-_statCheckRate    = None     # Speed of the data checking (MB/s).
-_statCheckMb      = None     # Amount of data to check (MB).
-_statCheckedMb    = None     # Amount of data checked (MB).
-_statCheckFiles   = None     # Number of files to check.
-_statCheckCount   = None     # Number of files checked.
-
+class Stats(object):
+    def __init__(self, mbs, files):
+        self.lock = threading.Lock()
+        self.last_db_update = 0
+        self.time_start = time.time()
+        self.time_remaining = 0
+        self.check_rate = 0.0
+        self.mbs = mbs
+        self.mbs_checked = 0
+        self.files = files
+        self.files_checked = 0
 
 def _getDiskDic():
     """
@@ -155,9 +156,7 @@ def _resetDiskSchedDic():
     _diskSchedDic = {}
 
 
-def _initFileCheckStatus(srvObj,
-                         amountMb,
-                         noOfFiles):
+def _initFileCheckStatus(srvObj, amountMb, noOfFiles):
     """
     Initialize the checking parameters.
 
@@ -169,29 +168,17 @@ def _initFileCheckStatus(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
 
-    global _statCheckSem, _statLastDbUpdate, _statCheckStart,\
-           _statCheckRemain, _statCheckRate, _statCheckMb, _statCheckedMb,\
-           _statCheckFiles, _statCheckCount
+    stats = Stats(mbs=amountMb, files=noOfFiles)
 
-    with _statCheckSem:
-        _statCheckStart   = time.time()
-        _statCheckRemain  = 0
-        statEstimTime     = 0
-        _statCheckRate    = 0.0
-        _statCheckMb      = amountMb
-        _statCheckedMb    = 0.0
-        _statCheckFiles   = noOfFiles
-        _statCheckCount   = 0
-        _statLastDbUpdate = 0
+    srvObj.getDb().updateDataCheckStat(srvObj.getHostId(), stats.time_start,
+                                       stats.time_remaining, 0,
+                                       stats.check_rate, stats.mbs,
+                                       stats.mbs_checked, stats.files,
+                                       stats.files_checked)
 
-    srvObj.getDb().updateDataCheckStat(srvObj.getHostId(), _statCheckStart,
-                                       _statCheckRemain, statEstimTime,
-                                       _statCheckRate, _statCheckMb,
-                                       _statCheckedMb, _statCheckFiles,
-                                       _statCheckCount)
-
+    logger.debug("Initialized the statistics for the checking cycle")
+    return stats
 
 def _updateFileCheckStatus(srvObj,
                            fileSize,
@@ -199,6 +186,7 @@ def _updateFileCheckStatus(srvObj,
                            fileId,
                            fileVersion,
                            report,
+                           stats,
                            force = 0):
     """
     Update the status of the DCC.
@@ -221,38 +209,32 @@ def _updateFileCheckStatus(srvObj,
 
     Returns:      Void.
     """
-    T = TRACE(5)
 
-    global _statCheckSem, _statLastDbUpdate, _statCheckStart,\
-           _statCheckRemain, _statCheckRate, _statCheckMb, _statCheckedMb,\
-           _statCheckFiles, _statCheckCount
-    try:
-        _statCheckSem.acquire()
-        timeNow = time.time()
+    now = time.time()
+    with stats.lock:
 
         # Calculate the new values.
         if (fileId):
-            _statCheckedMb  += (float(fileSize) / 1048576.0)
-            _statCheckCount += 1
+            stats.mbs_checked += float(fileSize) / 1048576.0
+            stats.files_checked += 1
 
-        checkTime        = (timeNow - _statCheckStart)
-        _statCheckRate   = (float(_statCheckedMb) / float(checkTime))
-        if ( _statCheckRate > 0):
-            _statCheckRemain = int((float(_statCheckMb - _statCheckedMb) /
-                                    _statCheckRate) + 0.5)
-            statEstimTime    = int(float(_statCheckMb / _statCheckRate) + 0.5)
+        checkTime = now - stats.time_start
+        stats.check_rate = stats.mbs_checked / checkTime
+        if stats.check_rate > 0:
+            stats.remainding_time = (stats.mbs - stats.mbs_checked) / stats.check_rate
+            statEstimTime = stats.mbs / stats.check_rate
         else:
-            _statCheckRemain = 0
+            stats.remainding_time = 0
             statEstimTime    = 0
 
         # Update DB only every 10s.
-        if (force or ((timeNow - _statLastDbUpdate) >= 10)):
-            srvObj.getDb().updateDataCheckStat(srvObj.getHostId(), _statCheckStart,
-                                               _statCheckRemain, statEstimTime,
-                                               _statCheckRate, _statCheckMb,
-                                               _statCheckedMb, _statCheckFiles,
-                                               _statCheckCount)
-            _statLastDbUpdate = timeNow
+        if force or now - stats.last_db_update >= 10:
+            srvObj.getDb().updateDataCheckStat(srvObj.getHostId(), stats.time_start,
+                                               stats.time_remaining, statEstimTime,
+                                               stats.check_rate, stats.mbs,
+                                               stats.mbs_checked, stats.files,
+                                               stats.files_checked)
+            stats.last_db_update = now
 
         # Update report if an error was found.
         if (diskId and report):
@@ -262,12 +244,8 @@ def _updateFileCheckStatus(srvObj,
         statFormat = "DCC Status: Time Remaining (s): %d, " +\
                      "Rate (MB/s): %.3f, " +\
                      "Volume/Checked (MB): %.3f/%.3f, Files/Checked: %d/%d"
-        logger.debug(statFormat, _statCheckRemain, _statCheckRate, _statCheckMb,
-             _statCheckedMb, _statCheckFiles, _statCheckCount)
-        _statCheckSem.release()
-    except Exception:
-        logger.exception("Data Consistency Checking: Encountered error")
-        _statCheckSem.release()
+        logger.debug(statFormat, stats.time_remaining, stats.check_rate, stats.mbs_checked,
+             stats.mbs, stats.files, stats.files_checked)
 
 
 def _suspend(srvObj,
@@ -578,11 +556,11 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
             noOfFiles += 1
             amountMb += float(float(fileInfo[ngamsDbCore.SUM1_FILE_SIZE]) / 1048576.0)
         #################################################################################################
-    _initFileCheckStatus(srvObj, amountMb, noOfFiles)
-    logger.debug("Initialized the statistics for the checking cycle")
+
+    stats = _initFileCheckStatus(srvObj, amountMb, noOfFiles)
     ###########################################################################
 
-    return fileRefDbm, disk_ids
+    return fileRefDbm, disk_ids, stats
 
 def _schedNextFile(srvObj,
                    threadId, disk_ids, reqFileInfoSem):
@@ -660,7 +638,8 @@ def _dataCheckSubThread(srvObj,
                         stopEvt,
                         fileRefDbm,
                         disk_ids,
-                        reqFileInfoSem):
+                        reqFileInfoSem,
+                        stats):
     """
     Sub-thread scheduled to carry out the actual checking. This makes
     it possible to do the checking in several threads simultaneously if
@@ -683,7 +662,7 @@ def _dataCheckSubThread(srvObj,
             fileInfo = _schedNextFile(srvObj, threadId, disk_ids, reqFileInfoSem)
             if (not fileInfo):
                 logger.debug("No more files in queue to check - exiting")
-                _updateFileCheckStatus(srvObj, None, None, None, None, [], 1)
+                _updateFileCheckStatus(srvObj, None, None, None, None, [], stats, 1)
                 return
 
             # Remove the entry for this file in the File Reference DBM to
@@ -704,7 +683,8 @@ def _dataCheckSubThread(srvObj,
                                    fileInfo[ngamsDbCore.SUM1_DISK_ID],
                                    fileInfo[ngamsDbCore.SUM1_FILE_ID],
                                    fileInfo[ngamsDbCore.SUM1_VERSION],
-                                   tmpReport[0])
+                                   tmpReport[0],
+                                   stats)
 
             # If the server is handling a command, the sub-thread will suspend
             # itself until the server is idle again.
@@ -718,7 +698,7 @@ def _dataCheckSubThread(srvObj,
             suspend(stopEvt, 2)
 
 
-def _genReport(srvObj, fileRefDbm):
+def _genReport(srvObj, fileRefDbm, stats):
     """
     Generate the DCC Check Report according to the problems found.
 
@@ -735,9 +715,7 @@ def _genReport(srvObj, fileRefDbm):
     unRegFiles = fileRefDbm.getCount()
 
     # Generate the report.
-    global _statCheckStart, _statCheckRate, _statCheckFiles, _statCheckedMb,\
-           _statCheckCount
-    checkTime = (time.time() - _statCheckStart)
+    checkTime = time.time() - stats.time_start
     if ((noOfProbs + unRegFiles) or srvObj.getCfg().getDataCheckForceNotif()):
 
         report    = ""
@@ -749,12 +727,12 @@ def _genReport(srvObj, fileRefDbm):
         report =  "DATA CHECKING REPORT:\n\n"
         report += hdrForm % ("Date", toiso8601())
         report += hdrForm % ("NGAS Host ID", srvObj.getHostId())
-        report += hdrForm % ("Start Time", toiso8601(_statCheckStart))
+        report += hdrForm % ("Start Time", toiso8601(stats.time_start))
         report += hdrForm % ("Total Time (s)", "%.3f" % checkTime)
         report += hdrForm % ("Total Time (hours)", "%.3f" % (checkTime / 3600))
-        report += hdrForm % ("Rate (MB/s)", "%.3f" % _statCheckRate)
-        report += hdrForm % ("Files Checked", _statCheckCount)
-        report += hdrForm % ("Data Checked (MB)", "%.5f" % _statCheckedMb)
+        report += hdrForm % ("Rate (MB/s)", "%.3f" % stats.check_rate)
+        report += hdrForm % ("Files Checked", stats.files_checked)
+        report += hdrForm % ("Data Checked (MB)", "%.5f" % stats.mbs_checked)
         report += hdrForm % ("Inconsistencies",  str(noOfProbs + unRegFiles))
         report += separator
 
@@ -808,8 +786,8 @@ def _genReport(srvObj, fileRefDbm):
     # Give out the statistics for the checking.
     if (srvObj.getCfg().getDataCheckLogSummary()):
         msg = genLog("NGAMS_INFO_DATA_CHK_STAT",
-                     [_statCheckCount,unRegFiles,noOfProbs,
-                      _statCheckedMb,_statCheckRate,checkTime])
+                     [stats.files_checked, unRegFiles, noOfProbs,
+                      stats.mbs_checked, stats.check_rate, checkTime])
         logger.info(msg)
 
     # Remove the various DBMs allocated.
@@ -949,7 +927,7 @@ def dataCheckThread(srvObj, stopEvt):
                          genTmpFilename(srvObj.getCfg(),
                                         NGAMS_DATA_CHECK_THR)
             try:
-                fileRefDbm, disk_ids = _dumpFileInfo(srvObj, tmpFilePat, stopEvt)
+                fileRefDbm, disk_ids, stats = _dumpFileInfo(srvObj, tmpFilePat, stopEvt)
             finally:
                 rmFile(tmpFilePat + "*")
 
@@ -968,7 +946,7 @@ def dataCheckThread(srvObj, stopEvt):
             reqFileInfoSem = threading.Lock()
             for n in range(noOfSubThreads):
                 threadId = NGAMS_DATA_CHECK_THR + "-" + str(n)
-                args = (srvObj, threadId, stopEvt, disk_ids, reqFileInfoSem)
+                args = (srvObj, threadId, stopEvt, fileRefDbm, disk_ids, reqFileInfoSem, stats)
                 logger.debug("Starting Data Check Sub-Thread: %s", threadId)
                 thrHandleDic[n] = threading.Thread(None, _dataCheckSubThread,
                                                    threadId, args)
@@ -1001,12 +979,12 @@ def dataCheckThread(srvObj, stopEvt):
                         break
 
             # Check again for non-registered files.
-            global _statCheckCount
-            if (_statCheckCount): _crossCheckNonRegFiles(srvObj, fileRefDbm)
+            if stats.files_checked:
+                _crossCheckNonRegFiles(srvObj, fileRefDbm)
 
             # Send out check report if any discrepancies found + send
             # out notification message according to configuration.
-            _genReport(srvObj, fileRefDbm)
+            _genReport(srvObj, fileRefDbm, stats)
 
             # Set the last check for all disks to the same value
             for diskId in _getDiskDic().keys():
@@ -1025,7 +1003,7 @@ def dataCheckThread(srvObj, stopEvt):
             ###################################################################
             lastOldestCheck = srvObj.getDb().getMinLastDiskCheck(srvObj.getHostId())
 
-            time_to_compare = lastOldestCheck or _statCheckStart
+            time_to_compare = lastOldestCheck or stats.time_start
             execTime = time.time() - time_to_compare
             if execTime < minCycleTime:
                 waitTime = minCycleTime - execTime
