@@ -97,7 +97,7 @@ script: ${TRAVIS_BUILD_DIR}/.travis/run_tests.sh
 # Publish to coveralls
 #
 after_success:
- - cd ${TRAVIS_BUILD_DIR}/src/ngamsTests/ngamsTests
+ - cd ${TRAVIS_BUILD_DIR}/src/ngamsTest/ngamsTest
  - coveralls
 
 #
