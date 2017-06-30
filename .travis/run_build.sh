@@ -84,4 +84,4 @@ fi
 # sqlite3 we doesn't require preparation or any extra modules
 
 pip install $PIP_PACKAGES
-./build.sh -c
+./build.sh -d -c
