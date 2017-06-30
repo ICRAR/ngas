@@ -855,9 +855,7 @@ def dataCheckThread(srvObj, stopEvt):
             # Check again for non-registered files.
             # The sub-threads remove individual items from all_files after they
             # check each file, so any files left there were not checked
-            unregistered = {}
-            if stats.files_checked:
-                unregistered = _crossCheckNonRegFiles(srvObj, all_files, diskDic)
+            unregistered = _crossCheckNonRegFiles(srvObj, all_files, diskDic)
 
             # Send out check report if any discrepancies found + send
             # out notification message according to configuration.
