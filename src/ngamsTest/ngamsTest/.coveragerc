@@ -1,5 +1,5 @@
 [run]
-cover_pylib = True
+cover_pylib = False
 parallel = True
 timid = True
 data_file = .coverage
