@@ -39,5 +39,9 @@ elif [[ "$DB" == "postgresql" ]]; then
 	NGAS_TESTDB='<Db Id="blah" Snapshot="1" Interface="psycopg2" host="127.0.0.1" dbname="ngas" user="ngas" password="ngas"/>'
 fi
 
+pip install coverage
 pip install psutil
-NGAS_TESTDB="${NGAS_TESTDB}" python ngamsTest.py
+
+# Prepare for sub-process coverage
+echo -e "import coverage\ncoverage.process_startup()" > coverage.tmp/sitecustomize.py
+NGAS_TESTDB="${NGAS_TESTDB}" PYTHONPATH=$PWD/coverage.tmp coverage run ngamsTest.py

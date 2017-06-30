@@ -88,6 +88,13 @@ install: ${TRAVIS_BUILD_DIR}/.travis/run_build.sh
 script: ${TRAVIS_BUILD_DIR}/.travis/run_tests.sh
 
 #
+# Publish to coveralls
+#
+after_success:
+ - cd ${TRAVIS_BUILD_DIR}/src/ngamsTests/ngamsTests
+ - coveralls
+
+#
 # Run only on the master branch
 # We probably don't want to run on any other experimental branch (yet)
 #
