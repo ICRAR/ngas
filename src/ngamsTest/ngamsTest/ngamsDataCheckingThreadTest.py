@@ -31,10 +31,11 @@
 This module contains the Test Suite for the Data Consistency Checking Thread.
 """
 
+import shutil
 import sys
 import time
 
-from ngamsLib import ngamsConfig
+from ngamsLib.ngamsCore import checkCreatePath
 from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd
 
 
@@ -55,6 +56,43 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
     In particular Test Cases for detecting the various points checked should
     be added.
     """
+
+
+    def start_srv(self, *args, **kwargs):
+        cfg = (("NgamsCfg.DataCheckThread[1].Active", "1"),
+               ("NgamsCfg.DataCheckThread[1].Prio", "1"),
+               ("NgamsCfg.DataCheckThread[1].MinCycle", "0T00:00:00"),
+               ("NgamsCfg.Log[1].LocalLogLevel", "4"))
+        return self.prepExtSrv(cfgProps=cfg, *args, **kwargs)
+
+    def wait_and_count_checked_files(self, cfg, checked, unregistered, bad):
+        startTime = time.time()
+        found = False
+        looking_for = "NGAMS_INFO_DATA_CHK_STAT"
+        while not found and ((time.time() - startTime) < 60):
+            for line in open(cfg.getLocalLogFile(), "r"):
+                # The DCC finished
+                if looking_for in line:
+
+                    # Nasty...
+                    parts = line.split("NGAMS_INFO_DATA_CHK_STAT")
+                    parts = parts[1].split(" ")
+
+                    # "6" is what comes after "Number of files checked"
+                    # in the log statement
+                    nfiles_checked = int(parts[5][:-1])
+                    nfiles_unregistered = int(parts[11][:-1])
+                    nfiles_bad = int(parts[17][:-1])
+
+                    self.assertEquals(checked, nfiles_checked)
+                    self.assertEquals(unregistered, nfiles_unregistered)
+                    self.assertEquals(bad, nfiles_bad)
+                    found = True
+            time.sleep(1)
+        if not found:
+            self.fail("Data Check Thread didn't complete "+\
+                      "check cycle within the expected period of time")
+
 
 
     def test_DataCheckThread_1(self):
@@ -84,47 +122,21 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        baseCfgFile = "src/ngamsCfg.xml"
-        tmpCfgFile = "tmp/test_DataCheckThread_1_tmp.xml"
-        cfg = ngamsConfig.ngamsConfig().load(baseCfgFile)
-        cfg.storeVal("NgamsCfg.DataCheckThread[1].Active", "1")
-        cfg.storeVal("NgamsCfg.DataCheckThread[1].Prio", "1")
-        cfg.storeVal("NgamsCfg.DataCheckThread[1].MinCycle", "0T00:00:00")
-        cfg.storeVal("NgamsCfg.Log[1].LocalLogLevel", "4")
-        cfg.save(tmpCfgFile, 0)
-        self.prepExtSrv(cfgFile=tmpCfgFile)
+        cfg, _ = self.start_srv()
         client = sendPclCmd()
         for _ in range(3):
             client.archive("src/SmallFile.fits")
+        self.wait_and_count_checked_files(cfg, 6, 0, 0)
 
-        # Wait a while to be sure that one check cycle has been completed.
-        line = None
-        startTime = time.time()
-        found = False
-        looking_for = "NGAMS_INFO_DATA_CHK_STAT"
-        while not found and ((time.time() - startTime) < 60):
-            for line in open(cfg.getLocalLogFile(), "r"):
-                # The DCC finished
-                if looking_for in line:
 
-                    # Nasty...
-                    parts = line.split("NGAMS_INFO_DATA_CHK_STAT")
-                    parts = parts[1].split(" ")
+    def test_inconsistencies(self):
+        # Manually copy a file into the disk, it should appear as unregistered
+        checkCreatePath('/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/')
+        trgFile = "/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/SmallFile.fits"
+        shutil.copy("src/SmallFile.fits", trgFile)
 
-                    # "6" is what comes after "Number of files checked"
-                    # in the log statement
-                    nfiles_checked = int(parts[5][:-1])
-                    nfiles_unregistered = int(parts[11][:-1])
-                    nfiles_bad = int(parts[17][:-1])
-
-                    self.assertEquals(6, nfiles_checked)
-                    self.assertEquals(0, nfiles_unregistered)
-                    self.assertEquals(0, nfiles_bad)
-                    found = True
-            time.sleep(1)
-        if not found:
-            self.fail("Data Check Thread didn't complete "+\
-                      "check cycle within the expected period of time")
+        cfg, _ = self.start_srv(delDirs=False)
+        self.wait_and_count_checked_files(cfg, 0, 1, 0)
 
 
 def run():
