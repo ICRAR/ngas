@@ -103,7 +103,7 @@ fi
 # The ngamsPlugIns module eventually requires numpy which we need to install
 # manually outside the setuptools world
 pip --no-cache-dir install numpy || warning "Failed to install numpy via pip"
-for pyModule in crc32c ngamsCore ngamsPClient ngamsServer ngamsPlugIns
+for pyModule in ngamsCore ngamsPClient ngamsServer ngamsPlugIns
 do
 	prevDir=$(pwd -P)
 	cd "$pyModule"

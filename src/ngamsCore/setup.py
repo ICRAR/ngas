@@ -28,6 +28,7 @@ with open('../../VERSION') as vfile:
             break
 
 install_requires = [
+    'crc32c',
     'DBUtils'
 ]
 
