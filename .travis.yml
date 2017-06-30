@@ -77,6 +77,12 @@ matrix:
     services: postgresql
 
 #
+# Install coveralls for future coverage result publishing
+#
+before_install:
+ - pip install coveralls
+
+#
 # To install we should simply run the build script
 # and include the C client in the compilation
 #
