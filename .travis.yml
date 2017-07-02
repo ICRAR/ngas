@@ -80,7 +80,7 @@ matrix:
 # Install coveralls for future coverage result publishing
 #
 before_install:
- - pip install coveralls
+ - pip install coveralls pytest-cov
 
 #
 # To install we should simply run the build script

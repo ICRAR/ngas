@@ -1,6 +1,4 @@
 [run]
-parallel = True
-data_file = .coverage
 source = ../../ngamsCore
          ../../ngamsPClient
          ../../ngamsPlugIns
