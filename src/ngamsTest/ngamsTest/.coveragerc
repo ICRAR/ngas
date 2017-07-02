@@ -1,7 +1,5 @@
 [run]
-cover_pylib = False
 parallel = True
-timid = True
 data_file = .coverage
 source = ../../ngamsCore
          ../../ngamsPClient
