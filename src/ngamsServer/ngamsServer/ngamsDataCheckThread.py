@@ -179,8 +179,7 @@ def _updateFileCheckStatus(srvObj,
              stats.mbs, stats.files, stats.files_checked)
 
 
-def _suspend(srvObj,
-             baseTime = 0.010):
+def suspend_with_priority(srvObj, stopEvt, baseTime = 0.010):
     """
     Determine the time the thread should suspend itself according to
     the load, priority etc. + suspend for the given time.
@@ -192,7 +191,7 @@ def _suspend(srvObj,
     Returns:     Void.
     """
     suspTime = (srvObj.getCfg().getDataCheckPrio() * baseTime)
-    time.sleep(suspTime)
+    suspend(stopEvt, suspTime)
 
 
 def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
@@ -331,7 +330,6 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
                                                    order=0)
         fetchSize = 1000
         while (1):
-            _stopDataCheckThr(stopEvt)
             try:
                 fileList = cursorObj.fetch(fetchSize)
             except Exception, e:
@@ -351,7 +349,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
                 fileKey = ngamsLib.genFileKey(None, fileId, fileVer)
                 queueDbm.add(fileKey, fileInfo)
             queueDbm.sync()
-            _suspend(srvObj)
+            suspend_with_priority(srvObj, stopEvt)
         queueDbm.sync()
         del cursorObj
 
@@ -429,7 +427,6 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     logger.debug("Retrieve information about files to be ignored ...")
     spuFilesCur = srvObj.getDb().getFileSummarySpuriousFiles1(srvObj.getHostId())
     while (1):
-        _stopDataCheckThr(stopEvt)
         fileList = spuFilesCur.fetch(1000)
         if (not fileList): break
 
@@ -441,7 +438,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
                                     fileInfo[ngamsDbCore.SUM1_FILENAME])
                 if filename in all_files:
                     del all_files[filename]
-        _suspend(srvObj)
+        suspend_with_priority(srvObj, stopEvt)
     del spuFilesCur
     logger.debug("Retrieved information about files to be ignored")
     ###########################################################################
@@ -615,7 +612,7 @@ def _dataCheckSubThread(srvObj,
             # itself until the server is idle again.
             if (srvObj.getHandlingCmd()):
                 while (srvObj.getHandlingCmd()):
-                    _suspend(srvObj, 0.200)
+                    suspend_with_priority(srvObj, stopEvt, 0.200)
         except StopDataCheckThreadException:
             raise
         except Exception:
