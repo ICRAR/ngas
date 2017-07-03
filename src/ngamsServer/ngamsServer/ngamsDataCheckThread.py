@@ -194,7 +194,31 @@ def suspend_with_priority(srvObj, stopEvt, baseTime = 0.010):
     suspend(stopEvt, suspTime)
 
 
-def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
+def collect_files_on_disk(stopEvt, disks):
+
+    all_files = {}
+
+    # Loop over disks
+    for diskId, diskInfoObj in disks.items():
+
+        # Walk over the mount point and collect all files
+        mount_pt = diskInfoObj.getMountPoint()
+        for dirpath, dirs, files in os.walk(mount_pt):
+            _stopDataCheckThr(stopEvt)
+
+            # Ignore staging and hidden directories
+            dirs[:] = [d for d in dirs if d != NGAMS_STAGING_DIR and not d.startswith('.')]
+
+            # Ignore NGAS Disk Info files
+            files[:] = [f for f in files if f not in (NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, NGAMS_VOLUME_INFO_FILE)]
+
+            for filename in files:
+                filename = os.path.join(dirpath, filename)
+                all_files[filename] = diskId
+
+    return all_files
+
+def _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt):
     """
     Function that dumps the information about the files. One DBM is created
     per disk. This is named:
@@ -207,17 +231,15 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
 
     The function handles the DBM files in the following way:
 
-       1. Get the information about the disks in this system.
-
-       2. Check for each DBM file found, if this disk is still in the system.
+       1. Check for each DBM file found, if this disk is still in the system.
           If not, the Queue and Error DBM files are removed.
 
-       3. Go through the list of disks in the system. If they don't have
+       2. Go through the list of disks in the system. If they don't have
           the two DBM files listed above, these are initialized. The file
           information for all the files stored on the disk is dumped into
           the Queue DBM file. Only files marked to be ignored are not dumped.
 
-       4. Finally, build up a DBM with references to all files found
+       3. Finally, build up a DBM with references to all files found
           on this system
 
     srvObj:       Reference to server object (ngamsServer).
@@ -232,47 +254,17 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     checkCreatePath(os.path.normpath(cacheDir))
 
     ###########################################################################
-    # Get information about all disks in the system. The disks are only
-    # added if 'ripe' for checking.
-    ###########################################################################
-    logger.debug("Get information about all disks mounted in this system ...")
-    slotIdList = srvObj.getDb().getSlotIdsMountedDisks(srvObj.getHostId())
-    diskListRaw = srvObj.getDb().\
-                  getDiskInfoForSlotsAndHost(srvObj.getHostId(), slotIdList)
-    minCycleTime = isoTime2Secs(srvObj.getCfg().getDataCheckMinCycle())
-
-    diskDic = {}
-    dbmObjDic = {}
-    lastDiskCheckDic = {}
-    for diskInfo in diskListRaw:
-        _stopDataCheckThr(stopEvt)
-        tmpDiskInfoObj = ngamsDiskInfo.ngamsDiskInfo().\
-                         unpackSqlResult(diskInfo)
-        lastCheck = tmpDiskInfoObj.getLastCheck() or 0
-        if ((time.time() - lastCheck) >= minCycleTime):
-            if (lastCheck):
-                if (not lastDiskCheckDic.has_key(lastCheck)):
-                    lastDiskCheckDic[lastCheck] = tmpDiskInfoObj
-                else:
-                    lastDiskCheckDic[lastCheck + len(lastDiskCheckDic)] =\
-                                               tmpDiskInfoObj
-            else:
-                lastDiskCheckDic[time.time()] = tmpDiskInfoObj
-            diskDic[tmpDiskInfoObj.getDiskId()] = tmpDiskInfoObj
-    logger.debug("Got information about all disks mounted in this system")
-    ###########################################################################
-
-    ###########################################################################
     # Loop over the Queue/Error DBM files found, check if the disk is
     # still in the system/scheduled for checking.
     ###########################################################################
     logger.debug("Loop over/check existing Queue/Error DBM Files ...")
     dbmFileList = glob.glob(cacheDir + "/" + NGAMS_DATA_CHECK_THR +\
                             "_QUEUE_*.bsddb")
+    dbmObjDic = {}
     for dbmFile in dbmFileList:
         _stopDataCheckThr(stopEvt)
         diskId = dbmFile.split("_")[-1].split(".")[0]
-        if (not diskDic.has_key(diskId)):
+        if diskId not in disks_to_check:
             filePat = "%s/%s*%s.bsddb" % (cacheDir,NGAMS_DATA_CHECK_THR,diskId)
             rmFile(filePat)
         else:
@@ -294,7 +286,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     ###########################################################################
     logger.debug("Create DBM files for disks to be checked ...")
     startDbFileRd = time.time()
-    for diskId in diskDic.keys():
+    for diskId in disks_to_check.keys():
         _stopDataCheckThr(stopEvt)
         if (dbmObjDic.has_key(diskId)): continue
 
@@ -350,7 +342,6 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
                 queueDbm.add(fileKey, fileInfo)
             queueDbm.sync()
             suspend_with_priority(srvObj, stopEvt)
-        queueDbm.sync()
         del cursorObj
 
         # Check if the expected number of files is equal to the actual
@@ -365,7 +356,6 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
             raise Exception(genLog("NGAMS_ER_DB_COM", [errMsg]))
 
         # Rename DCC Queue DBM from the temporary to the final name.
-        del queueDbm
         mvFile(tmpQueueDbmFile, queueDbmFile)
         queueDbm = ngamsDbm.ngamsDbm(queueDbmFile, 0, 1)
 
@@ -381,50 +371,16 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     logger.debug("Checked that disks scheduled for checking have DBM files")
     ###########################################################################
 
-    ###########################################################################
-    # Create a DBM with references to all files found on this system. The
-    # complete path name are the keys in the dictionary. While going through
-    # the files registered in the DB, we remove the entries in this dictionary.
-    # The remaining entries in the dictionary, are thus files, which are not
-    # registered in the DB.
-    #
-    # We walk recursively from the mount point downwards, ignoring disk info
-    # files and hidden directories, as well as the top-level staging directory
-    ###########################################################################
-    logger.debug("Create DBM with references to all files on the storage disks ...")
+    # These are all files recursively found on the disks
+    # Later on we check whether they are registered or not, and check them (or not)
+    start = time.time()
+    files_on_disk = collect_files_on_disk(stopEvt, disks_to_check)
+    end = time.time()
+    logger.debug("Collected references to %d files on disks in %.3f [s]",
+                 len(files_on_disk), end - start)
 
-    # filenames
-    all_files = {}
-    for diskId in diskDic.keys():
-        _stopDataCheckThr(stopEvt)
-        diskInfoObj = diskDic[diskId]
-
-        # Walk over the mount point and collect all files
-        mount_pt = diskInfoObj.getMountPoint()
-        for dirpath, dirs, files in os.walk(mount_pt):
-
-            _stopDataCheckThr(stopEvt)
-
-            # Ignore staging and hidden directories
-            dirs[:] = [d for d in dirs if d != NGAMS_STAGING_DIR and not d.startswith('.')]
-
-            # Ignore NGAS Disk Info files
-            files[:] = [f for f in files if f not in (NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, NGAMS_VOLUME_INFO_FILE)]
-
-            for filename in files:
-                filename = os.path.join(dirpath, filename)
-                all_files[filename] = diskId
-
-        _stopDataCheckThr(stopEvt)
-    logger.debug("Created DBMs with references to all files on the storage disks")
-    ###########################################################################
-
-    ###########################################################################
-    # Now go through files to be ignored. These are removed if found in
-    # the File Reference DBM. This is done, since these files are not
-    # taking into account in the checking loop
-    ###########################################################################
-    logger.debug("Retrieve information about files to be ignored ...")
+    # Don't take these into account
+    logger.debug("Retrieving information about files to be ignored ...")
     spuFilesCur = srvObj.getDb().getFileSummarySpuriousFiles1(srvObj.getHostId())
     while (1):
         fileList = spuFilesCur.fetch(1000)
@@ -436,16 +392,12 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
                 filename = os.path.\
                            normpath(fileInfo[ngamsDbCore.SUM1_MT_PT] + "/" +\
                                     fileInfo[ngamsDbCore.SUM1_FILENAME])
-                if filename in all_files:
-                    del all_files[filename]
+                if filename in files_on_disk:
+                    del files_on_disk[filename]
         suspend_with_priority(srvObj, stopEvt)
     del spuFilesCur
     logger.debug("Retrieved information about files to be ignored")
     ###########################################################################
-
-    # Pack the Disk IDs into the list of disks to check.
-    logger.debug("Create list with disks to be checked ...")
-    disk_ids = [x.getDiskId() for x in lastDiskCheckDic.values()]
 
     ###########################################################################
     # Initialize the statistics parameters for the checking.
@@ -453,7 +405,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
     logger.debug("Initialize the statistics for the checking cycle ...")
     amountMb = 0.0
     noOfFiles = 0
-    for diskId in disk_ids:
+    for diskId in disks_to_check.keys():
         queueDbm = dbmObjDic[diskId][0]
         #################################################################################################
         #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
@@ -468,13 +420,13 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
             fileInfo = cPickle.loads(dbVal)
             #############################################################################################
             noOfFiles += 1
-            amountMb += float(float(fileInfo[ngamsDbCore.SUM1_FILE_SIZE]) / 1048576.0)
+            amountMb += float(fileInfo[ngamsDbCore.SUM1_FILE_SIZE] / 1048576.0)
         #################################################################################################
 
     stats = _initFileCheckStatus(srvObj, amountMb, noOfFiles)
     ###########################################################################
 
-    return all_files, disk_ids, diskDic, dbmObjDic, stats
+    return files_on_disk, dbmObjDic, stats
 
 def _schedNextFile(srvObj,
                    threadId, disk_ids, diskSchedDic, dbmObjDic, reqFileInfoSem):
@@ -759,6 +711,29 @@ def _crossCheckNonRegFiles(srvObj, unchecked_files, diskDic):
     return unregistered
 
 
+def get_disks_to_check(srvObj):
+
+    # Get mounted disks
+    slotIdList = srvObj.getDb().getSlotIdsMountedDisks(srvObj.getHostId())
+    disks_to_check = srvObj.getDb().\
+                  getDiskInfoForSlotsAndHost(srvObj.getHostId(), slotIdList)
+
+    # Turn from simply SQL results into objects indexed by disk_id
+    disks_to_check = [ngamsDiskInfo.ngamsDiskInfo().unpackSqlResult(x) for x in disks_to_check]
+    disks_to_check = {x.getDiskId(): x for x in disks_to_check}
+
+    # Filter out those that don't need a check
+    now = time.time()
+    check_period = isoTime2Secs(srvObj.getCfg().getDataCheckMinCycle())
+    def needs_check(x):
+        last_check = x.getLastCheck() or 0
+        return check_period + last_check < now
+    disks_to_check = {k: v for k, v in disks_to_check.items() if needs_check(v)}
+
+    logger.info("Will check %d disks that are mounted in this system", len(disks_to_check))
+    return disks_to_check
+
+
 def dataCheckThread(srvObj, stopEvt):
     """
     The Data Check Thread is executed to run a periodic check of the
@@ -788,12 +763,15 @@ def dataCheckThread(srvObj, stopEvt):
 
             srvObj.updateHostInfo(None, None, None, None, None, None, 1, None)
 
-            # Get the information about the files to check.
+            # Get list of disks that need checking
+            disks_to_check = get_disks_to_check(srvObj)
+
+            # Get the information about the files in those disks that we should check.
             tmpFilePat = ngamsHighLevelLib.\
                          genTmpFilename(srvObj.getCfg(),
                                         NGAMS_DATA_CHECK_THR)
             try:
-                all_files, disk_ids, diskDic, dbmObjDic, stats = _dumpFileInfo(srvObj, tmpFilePat, stopEvt)
+                all_files, dbmObjDic, stats = _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt)
             finally:
                 rmFile(tmpFilePat + "*")
 
@@ -803,14 +781,15 @@ def dataCheckThread(srvObj, stopEvt):
             #
             # Afterwards the main DCC Thread monitors the execution of
             # these + update the status information.
-            thrHandleDic = {}
-            noOfSubThreads = len(disk_ids)
+            noOfSubThreads = len(disks_to_check)
             if (noOfSubThreads > srvObj.getCfg().getDataCheckMaxProcs()):
                 noOfSubThreads = srvObj.getCfg().getDataCheckMaxProcs()
 
             diskSchedDic = {}
 
             reqFileInfoSem = threading.Lock()
+            disk_ids = list(disks_to_check.keys())
+            thrHandleDic = {}
             for n in range(noOfSubThreads):
                 threadId = NGAMS_DATA_CHECK_THR + "-" + str(n)
                 args = (srvObj, threadId, stopEvt, all_files, disk_ids, diskSchedDic, dbmObjDic, reqFileInfoSem, stats)
@@ -848,14 +827,14 @@ def dataCheckThread(srvObj, stopEvt):
             # Check again for non-registered files.
             # The sub-threads remove individual items from all_files after they
             # check each file, so any files left there were not checked
-            unregistered = _crossCheckNonRegFiles(srvObj, all_files, diskDic)
+            unregistered = _crossCheckNonRegFiles(srvObj, all_files, disks_to_check)
 
             # Send out check report if any discrepancies found + send
             # out notification message according to configuration.
-            _genReport(srvObj, unregistered, diskDic, dbmObjDic, stats)
+            _genReport(srvObj, unregistered, disks_to_check, dbmObjDic, stats)
 
             # Set the last check for all disks to the same value
-            for diskId in diskDic.keys():
+            for diskId in disks_to_check.keys():
                 srvObj.getDb().setLastCheckDisk(diskId, lastCheckTime)
 
             # FLush the log; otherwise we might not notice that this has
