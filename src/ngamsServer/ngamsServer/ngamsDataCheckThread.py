@@ -324,7 +324,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
         # in the Queue DBM file.
         actNoOfFiles = 0
         # TODO: Use ngamsDb.dumpFileSummary1().
-        cursorObj = srvObj.getDb().getFileSummary1(None, [diskId], [],
+        cursorObj = srvObj.getDb().getFileSummary1(diskIds=[diskId],
                                                    ignore=0, fileStatus=[],
                                                    lowLimIngestDate=None,
                                                    order=0)
@@ -445,11 +445,7 @@ def _dumpFileInfo(srvObj, tmpFilePat, stopEvt):
 
     # Pack the Disk IDs into the list of disks to check.
     logger.debug("Create list with disks to be checked ...")
-    disk_ids = []
-    for lastCheck in lastDiskCheckDic.keys():
-        diskInfoObj = lastDiskCheckDic[lastCheck]
-        disk_ids.append(diskInfoObj.getDiskId())
-    logger.debug("Created list with disks to be checked")
+    disk_ids = [x.getDiskId() for x in lastDiskCheckDic.values()]
 
     ###########################################################################
     # Initialize the statistics parameters for the checking.
