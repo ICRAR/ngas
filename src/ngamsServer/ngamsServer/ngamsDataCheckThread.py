@@ -297,44 +297,19 @@ def _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt):
         tmpQueueDbmFile = tmpFilePat + "_" + os.path.basename(queueDbmFile)
         queueDbm = ngamsDbm.ngamsDbm(tmpQueueDbmFile, 0, 1)
 
-        # Get the theoretical number of files.
-        noOfFilesList = []
-        accuNoOfFiles = 0
-        for n in range(3):
-            noOfFilesList.append(srvObj.getDb().getNumberOfFiles(diskId,
-                                                                 ignore=0))
-            accuNoOfFiles += int(noOfFilesList[0])
-            time.sleep(0.1)
-        if ((3 * int(noOfFilesList[0])) != accuNoOfFiles):
-            errMsg = "Problem querying number of files: %d/%d/%d" %\
-                     (noOfFilesList[0], noOfFilesList[1], noOfFilesList[2])
-            errMsg = genLog("NGAMS_ER_DB_COM", [errMsg])
-            raise Exception, errMsg
-        expNoOfFiles = noOfFilesList[0]
-
         # Now, retrieve the files on the given disk, and store the info
         # in the Queue DBM file.
-        actNoOfFiles = 0
         # TODO: Use ngamsDb.dumpFileSummary1().
         cursorObj = srvObj.getDb().getFileSummary1(diskIds=[diskId],
                                                    ignore=0, fileStatus=[],
                                                    lowLimIngestDate=None,
                                                    order=0)
-        fetchSize = 1000
         while (1):
-            try:
-                fileList = cursorObj.fetch(fetchSize)
-            except Exception, e:
-                # Assume a problem like e.g. a broken DB connection.
-                errMsg = "Problem encountered while dumping file info. " +\
-                         "Error: " + str(e)
-                logger.error(errMsg)
-                del queueDbm
-                rmFile(tmpQueueDbmFile)
-                raise Exception(genLog("NGAMS_ER_DB_COM", [errMsg]))
 
-            if (not fileList): break
-            actNoOfFiles += len(fileList)
+            fileList = cursorObj.fetch(1000)
+            if not fileList:
+                break
+
             for fileInfo in fileList:
                 fileId  = fileInfo[ngamsDbCore.SUM1_FILE_ID]
                 fileVer = fileInfo[ngamsDbCore.SUM1_VERSION]
@@ -343,17 +318,6 @@ def _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt):
             queueDbm.sync()
             suspend_with_priority(srvObj, stopEvt)
         del cursorObj
-
-        # Check if the expected number of files is equal to the actual
-        # number of files dumped into the DBM.
-        if (actNoOfFiles != expNoOfFiles):
-            errMsg = "Number of files dumped for disk: %s: %d, differs " +\
-                     "from expected number: %d"
-            errMsg = errMsg % (diskId, actNoOfFiles, expNoOfFiles)
-            logger.error(errMsg)
-            rmFile(tmpQueueDbmFile)
-            del queueDbm
-            raise Exception(genLog("NGAMS_ER_DB_COM", [errMsg]))
 
         # Rename DCC Queue DBM from the temporary to the final name.
         mvFile(tmpQueueDbmFile, queueDbmFile)
