@@ -697,6 +697,82 @@ def get_disks_to_check(srvObj):
     logger.info("Will check %d disks that are mounted in this system", len(disks_to_check))
     return disks_to_check
 
+def _data_check_cycle(srvObj, stopEvt):
+
+    # Get list of disks that need checking
+    disks_to_check = get_disks_to_check(srvObj)
+
+    # Get the information about the files in those disks that we should check.
+    tmpFilePat = ngamsHighLevelLib.\
+                 genTmpFilename(srvObj.getCfg(),
+                                NGAMS_DATA_CHECK_THR)
+    try:
+        all_files, dbmObjDic, stats = _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt)
+    finally:
+        rmFile(tmpFilePat + "*")
+
+    # is allocated for each up to the limit defined in the
+    # configuration.
+    n_threads = max(len(disks_to_check), srvObj.getCfg().getDataCheckMaxProcs())
+
+    diskSchedDic = {}
+    reqFileInfoSem = threading.Lock()
+    disk_ids = list(disks_to_check.keys())
+    threads = {}
+    for n in range(n_threads):
+        threadName = "%s-%d" % (NGAMS_DATA_CHECK_THR, n)
+        args = (srvObj, threadName, stopEvt, all_files, disk_ids, diskSchedDic, dbmObjDic, reqFileInfoSem, stats)
+        logger.debug("Starting Data Check Sub-Thread: %s", threadName)
+        t = threading.Thread(target=_dataCheckSubThread, name=threadName, args=args)
+        t.setDaemon(0)
+        t.start()
+        threads[threadName] = t
+
+    while True:
+
+        try:
+            suspend(stopEvt, 0.500)
+        except StopDataCheckThreadException:
+
+            # Be nice and join sub-threads
+            for t in threads.values():
+                t.join(10)
+                if t.isAlive():
+                    logger.warning("Thread %r didn't cleanly shut down within 10 seconds", t)
+
+            # Let's stop ourselves now
+            raise
+
+        else:
+            # Check if all the sub-threads are still running
+            # or if the check cycle is completed.
+            threads = {n: t for n, t in threads.items() if t.isAlive()}
+            if not threads:
+                lastCheckTime = time.time()
+                break
+
+    # Check again for non-registered files.
+    # The sub-threads remove individual items from all_files after they
+    # check each file, so any files left there were not checked
+    unregistered = _crossCheckNonRegFiles(srvObj, all_files, disks_to_check)
+
+    # Send out check report if any discrepancies found + send
+    # out notification message according to configuration.
+    _genReport(srvObj, unregistered, disks_to_check, dbmObjDic, stats)
+
+    # Set the last check for all disks to the same value
+    for diskId in disks_to_check.keys():
+        srvObj.getDb().setLastCheckDisk(diskId, lastCheckTime)
+
+    return stats
+
+def data_check_cycle(srvObj, stopEvt):
+    # Simply set the server as data-checking or not
+    srvObj.updateHostInfo(None, None, None, None, None, None, 1, None)
+    try:
+        return _data_check_cycle(srvObj, stopEvt)
+    finally:
+        srvObj.updateHostInfo(None, None, None, None, None, None, 0, None)
 
 def dataCheckThread(srvObj, stopEvt):
     """
@@ -725,106 +801,20 @@ def dataCheckThread(srvObj, stopEvt):
             if (srvObj.getCfg().getDataCheckLogSummary()):
                 logger.info("Data Check Thread starting iteration ...")
 
-            srvObj.updateHostInfo(None, None, None, None, None, None, 1, None)
+            # Everything happens here
+            stats = data_check_cycle(srvObj, stopEvt)
 
-            # Get list of disks that need checking
-            disks_to_check = get_disks_to_check(srvObj)
-
-            # Get the information about the files in those disks that we should check.
-            tmpFilePat = ngamsHighLevelLib.\
-                         genTmpFilename(srvObj.getCfg(),
-                                        NGAMS_DATA_CHECK_THR)
-            try:
-                all_files, dbmObjDic, stats = _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt)
-            finally:
-                rmFile(tmpFilePat + "*")
-
-            # According to the number of disks to be checked, a sub-thread
-            # is allocated for each up to the limit defined in the
-            # configuration.
-            #
-            # Afterwards the main DCC Thread monitors the execution of
-            # these + update the status information.
-            noOfSubThreads = len(disks_to_check)
-            if (noOfSubThreads > srvObj.getCfg().getDataCheckMaxProcs()):
-                noOfSubThreads = srvObj.getCfg().getDataCheckMaxProcs()
-
-            diskSchedDic = {}
-
-            reqFileInfoSem = threading.Lock()
-            disk_ids = list(disks_to_check.keys())
-            thrHandleDic = {}
-            for n in range(noOfSubThreads):
-                threadId = NGAMS_DATA_CHECK_THR + "-" + str(n)
-                args = (srvObj, threadId, stopEvt, all_files, disk_ids, diskSchedDic, dbmObjDic, reqFileInfoSem, stats)
-                logger.debug("Starting Data Check Sub-Thread: %s", threadId)
-                thrHandleDic[n] = threading.Thread(None, _dataCheckSubThread,
-                                                   threadId, args)
-                thrHandleDic[n].setDaemon(0)
-                thrHandleDic[n].start()
-
-            while True:
-
-                try:
-                    suspend(stopEvt, 0.500)
-                except StopDataCheckThreadException:
-
-                    # Be nice and join sub-threads
-                    for t in thrHandleDic.values():
-                        t.join(10)
-                        if t.isAlive():
-                            logger.warning("Thread %r didn't cleanly shut down within 10 seconds", t)
-
-                    # Let's stop ourselves now
-                    raise
-
-                else:
-                    # Check if all the sub-threads are still running
-                    # or if the check cycle is completed.
-                    for thrId in thrHandleDic.keys():
-                        if not thrHandleDic[thrId].isAlive():
-                            del thrHandleDic[thrId]
-                    if not len(thrHandleDic):
-                        lastCheckTime = time.time()
-                        break
-
-            # Check again for non-registered files.
-            # The sub-threads remove individual items from all_files after they
-            # check each file, so any files left there were not checked
-            unregistered = _crossCheckNonRegFiles(srvObj, all_files, disks_to_check)
-
-            # Send out check report if any discrepancies found + send
-            # out notification message according to configuration.
-            _genReport(srvObj, unregistered, disks_to_check, dbmObjDic, stats)
-
-            # Set the last check for all disks to the same value
-            for diskId in disks_to_check.keys():
-                srvObj.getDb().setLastCheckDisk(diskId, lastCheckTime)
-
-            # FLush the log; otherwise we might not notice that this has
-            # finished until it's too late
-            #logFlush()
-
-            srvObj.updateHostInfo(None, None, None, None, None, None, 0, None)
-            ###################################################################
-
-            ###################################################################
-            # Check if we should wait for a while for the Minimum Cycle
-            # Time to elapse.
-            ###################################################################
             lastOldestCheck = srvObj.getDb().getMinLastDiskCheck(srvObj.getHostId())
-
             time_to_compare = lastOldestCheck or stats.time_start
             execTime = time.time() - time_to_compare
             if execTime < minCycleTime:
                 waitTime = minCycleTime - execTime
-                logger.info("Suspending Data Checking Thread for %.3f [s]", waitTime)
                 nextAbsCheckTime = int(time.time() + waitTime)
-                logger.info("Next Data Checking scheduled for %s", toiso8601(nextAbsCheckTime))
                 srvObj.setNextDataCheckTime(nextAbsCheckTime)
-
+                logger.info("Suspending Data Checking Thread for %.3f [s]. "
+                            "Next run scheduled for %s",
+                            waitTime, toiso8601(nextAbsCheckTime))
                 suspend(stopEvt, waitTime)
-            ###################################################################
 
         except StopDataCheckThreadException:
             return
