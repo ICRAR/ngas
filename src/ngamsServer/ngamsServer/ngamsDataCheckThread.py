@@ -216,6 +216,7 @@ def collect_files_on_disk(stopEvt, disks):
                 filename = os.path.join(dirpath, filename)
                 all_files[filename] = diskId
 
+    logger.info("Found %d files to check in %d disks", len(all_files), len(disks))
     return all_files
 
 def _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt):
@@ -250,7 +251,7 @@ def _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt):
     """
     T = TRACE()
 
-    cacheDir = srvObj.getCfg().getRootDirectory() + "/" + NGAMS_CACHE_DIR
+    cacheDir = os.path.join(srvObj.getCfg().getRootDirectory(), NGAMS_CACHE_DIR)
     checkCreatePath(os.path.normpath(cacheDir))
 
     ###########################################################################
@@ -288,7 +289,9 @@ def _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt):
     startDbFileRd = time.time()
     for diskId in disks_to_check.keys():
         _stopDataCheckThr(stopEvt)
-        if (dbmObjDic.has_key(diskId)): continue
+
+        if diskId in dbmObjDic:
+            continue
 
         # The disk is ripe for checking but still has no Queue/Error DBM
         # DBs allocated.
@@ -526,7 +529,7 @@ def _dataCheckSubThread(srvObj,
                 while (srvObj.getHandlingCmd()):
                     suspend_with_priority(srvObj, stopEvt, 0.200)
         except StopDataCheckThreadException:
-            raise
+            return
         except Exception:
             logger.exception("Exception encountered in Data Check Sub-Thread")
             suspend(stopEvt, 2)
