@@ -36,7 +36,7 @@ import sys
 import time
 
 from ngamsLib.ngamsCore import checkCreatePath
-from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd
+from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd, getNoCleanUp, setNoCleanUp
 
 
 class ngamsDataCheckingThreadTest(ngamsTestSuite):
@@ -64,6 +64,15 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
                ("NgamsCfg.DataCheckThread[1].MinCycle", "0T00:00:00"),
                ("NgamsCfg.Log[1].LocalLogLevel", "4"))
         return self.prepExtSrv(cfgProps=cfg, *args, **kwargs)
+
+    def restart_with_datacheck(self, *args, **kwargs):
+        # Cleanly shut down the server, and wait until it's completely down
+        old_cleanup = getNoCleanUp()
+        setNoCleanUp(True)
+        self.termExtSrv(self.extSrvInfo.pop())
+        setNoCleanUp(old_cleanup)
+
+        return self.start_srv(*args, delDirs=0, clearDb=0, **kwargs)
 
     def wait_and_count_checked_files(self, cfg, checked, unregistered, bad):
         startTime = time.time()
@@ -122,10 +131,16 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfg, _ = self.start_srv()
+
+        # Start the server normally without the datacheck thread
+        # and perform some archives
+        self.prepExtSrv()
         client = sendPclCmd()
         for _ in range(3):
             client.archive("src/SmallFile.fits")
+
+        # Now restart it and see if the datacheck thread picks the files up
+        cfg, _ = self.restart_with_datacheck()
         self.wait_and_count_checked_files(cfg, 6, 0, 0)
 
 
