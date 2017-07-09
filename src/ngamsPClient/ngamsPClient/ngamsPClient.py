@@ -942,7 +942,7 @@ def main():
     elif (cmd == NGAMS_REMFILE_CMD):
         stat = client.remFile(opts.disk_id, opts.file_id, opts.file_version, opts.execute)
     elif (cmd == NGAMS_RETRIEVE_CMD):
-        stat = client.retrieve(opts.file_id, opts.file_version, opts.output,
+        stat = client.retrieve(opts.file_id, opts.file_version, pars, opts.output,
                                opts.p_plugin, opts.p_plugin_pars)
     elif (cmd == NGAMS_STATUS_CMD):
         stat = client.status()
@@ -953,7 +953,7 @@ def main():
     else:
         stat = client.get_status(cmd, pars=pars)
 
-    if opts.verbose > 3:
+    if opts.verbose > 3 or stat.getStatus() == NGAMS_FAILURE:
         printStatus(stat)
         if opts.verbose > 4 and stat.getData():
             print(stat.getData())
