@@ -230,7 +230,7 @@ class ngamsDiskInfo:
 
         Returns:   Reference to object itself.
         """
-        self.__slotId = id.strip("\" ")
+        self.__slotId = id.strip("\" ") if id else ""
         return self
 
 
