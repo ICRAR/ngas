@@ -65,7 +65,7 @@ create table ngas_cfg_pars
     cfg_val        varchar(255)  null,
     cfg_comment    varchar(255)  null
 );
-create unique index cfg_group_idx on ngas_cfg_pars(cfg_group_id,cfg_par,cfg_val);
+create unique index cfg_group_idx on ngas_cfg_pars(cfg_group_id,cfg_par);
 
 create table ngas_disks
 (
