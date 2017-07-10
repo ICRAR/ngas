@@ -35,12 +35,22 @@ import commands
 import glob
 import os
 import shutil
+import subprocess
 import sys
 import time
+import unittest
 
 from ngamsLib import ngamsStatus
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, runTest
 
+
+no_archive_client = False
+try:
+    subprocess.check_output('ngamsArchiveClient')
+except OSError:
+    no_archive_client = True
+except subprocess.CalledProcessError:
+    pass
 
 def arcCliDir():
     """
@@ -100,6 +110,7 @@ def startArchiveClient():
     os.system(cmdLine)
 
 
+@unittest.skipIf(no_archive_client, "No Archive C client")
 class ngamsArchiveClientTest(ngamsTestSuite):
     """
     Synopsis:
