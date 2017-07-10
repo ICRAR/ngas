@@ -35,11 +35,13 @@ import commands
 import os
 import sys
 import time
+import unittest
 
 from ngamsLib import ngamsStatus
 from ngamsLib.ngamsCore import getHostName, rmFile, cpFile
 from ngamsTestLib import ngamsTestSuite, saveInFile, loadFile, \
-    filterOutLines, getClusterName, sendPclCmd, STD_DISK_STAT_FILT, runTest
+    filterOutLines, getClusterName, sendPclCmd, STD_DISK_STAT_FILT, runTest, \
+    has_program
 
 
 def _genPars(parValList):
@@ -96,6 +98,7 @@ def _execCClient(unpackXmlStat = 1,
     return out
 
 
+@unittest.skipUnless(has_program('ngamsCClient'), "C client unavailable")
 class ngamsCClientTest(ngamsTestSuite):
     """
     Synopsis:

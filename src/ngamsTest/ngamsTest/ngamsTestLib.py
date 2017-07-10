@@ -169,22 +169,14 @@ if (os.path.exists("/etc/aliases")):
                 raise Exception, errMsg
 ###########################################################################
 
-###########################################################################
-# Check that the binaries of the C-Client API are there.
-###########################################################################
-try:
-    global NGAMS_TEST_IGNORE_CCLIENT
-    ignoreCClient = NGAMS_TEST_IGNORE_CCLIENT
-except:
-    ignoreCClient = 0
-if (not ignoreCClient):
-    bins = ["ngamsCClient", "ngamsArchiveClient"]
-    for bin in bins:
-        stat, out = commands.getstatusoutput(bin)
-        if (out.find("No such file or directory") != -1):
-            raise Exception, "NG/AMS C Client Module appears not " +\
-                  "to be compiled!"
-###########################################################################
+def has_program(program):
+    try:
+        subprocess.check_output(program, shell=False)
+    except subprocess.CalledProcessError:
+        pass
+    except OSError:
+        return False
+    return True
 
 ###########################################################################
 # START: Utility functions:
