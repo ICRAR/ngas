@@ -460,8 +460,8 @@ class ngamsXmlMgr:
         xmlDoc += '\n'
         xmlDoc += self.genXml(critInfoNameList).toprettyxml("  ", "\n")[0:-1]
         # Due to a misconception in Oracle (""=NULL), we replace None in the document
-        # with " ".
-        xmlDoc = xmlDoc.replace('"None"', '" "')
+        # with "".
+        xmlDoc = xmlDoc.replace('"None"', '""')
         return xmlDoc
 
 
