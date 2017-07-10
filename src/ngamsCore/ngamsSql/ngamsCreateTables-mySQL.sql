@@ -46,7 +46,7 @@ create table ngas_cache
     disk_id       varchar(128)    not null,
     file_id       varchar(64)     not null,
     file_version  int             not null,
-    cache_time    numeric(10, 6)  not null,
+    cache_time    numeric(16, 6)  not null,
     cache_delete  smallint        not null,
     constraint ngas_cache_idx primary key(disk_id, file_id, file_version)
 );
