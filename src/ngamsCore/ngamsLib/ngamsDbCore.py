@@ -535,6 +535,7 @@ class ngamsDbCore(object):
 
         # Import the DB Interface Plug-In (PEP-249 compliant)
         logger.info("Importing DB Module: %s", interface)
+        self.module_name = interface
         self.__dbModule = importlib.import_module(interface)
         self.__paramstyle = self.__dbModule.paramstyle
         self.__pool = PooledDB(self.__dbModule,

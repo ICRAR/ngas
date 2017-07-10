@@ -44,6 +44,11 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
     Contains queries for accessing the NGAS Subscribers Table.
     """
 
+    def comment_colname(self):
+        if 'oracle' in self.module_name.lower():
+            return '"comment"'
+        return 'comment'
+
     def subscriberInDb(self,
                        subscrId):
         """
@@ -342,7 +347,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         sql.append("UPDATE ngas_subscr_queue SET status={}, status_date={} ")
         vals = [status, self.convertTimeStamp(status_date)]
         if comment:
-            sql.append(", comment={} ")
+            sql.append(", %s={} " % (self.comment_colname(),))
             vals.append(comment)
         sql.append("WHERE subscr_id={} AND file_id={} AND file_version={} AND disk_id={}")
         vals += [subscrId, fileId, fileVersion, diskId]
@@ -372,8 +377,8 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         sql = ("INSERT INTO ngas_subscr_queue "
                 "(subscr_id, file_id, file_version, "
                 "disk_id, file_name, ingestion_date, "
-                "format, status, status_date, comment) "
-                "VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {})")
+                "format, status, status_date, %s) "
+                "VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {})") % (self.comment_colname(),)
         vals = (subscrId, fileId, fileVersion, diskId, fileName, \
                 ingestionDate, format, status, self.convertTimeStamp(status_date), comment)
         self.query2(sql, args = vals)
@@ -562,9 +567,9 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
 
 
     def getSubscrQueueStatus(self, subscrId, fileId, fileVersion, diskId):
-        sql = ("SELECT status, comment FROM ngas_subscr_queue "
+        sql = ("SELECT status, %s FROM ngas_subscr_queue "
                 "WHERE subscr_id = {} AND file_id = {} AND "
-                "file_version = {} AND disk_id = {}")
+                "file_version = {} AND disk_id = {}") % (self.comment_colname(),)
         vals = (subscrId, fileId, fileVersion, diskId)
         res = self.query2(sql, args = vals)
         if not res:
