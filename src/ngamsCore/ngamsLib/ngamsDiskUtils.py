@@ -839,7 +839,7 @@ def updateDiskStatusDb(dbConObj,
 
 
 def getDiskInfoForMountedDisks(dbConObj,
-                               host,
+                               hostId,
                                mtRootDir):
     """
     Retrieve a list of disk entries from the ngas_disks table
@@ -856,8 +856,7 @@ def getDiskInfoForMountedDisks(dbConObj,
     """
     T = TRACE()
 
-    host = string.split(host, ".")[0]
-    diskIds = dbConObj.getDiskIdsMountedDisks(host, mtRootDir)
+    diskIds = dbConObj.getDiskIdsMountedDisks(hostId, mtRootDir)
     diskList = []
     for diskId in diskIds:
         diskInfo = ngamsDiskInfo.ngamsDiskInfo()
