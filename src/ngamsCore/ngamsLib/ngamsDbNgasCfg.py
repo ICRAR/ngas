@@ -87,11 +87,11 @@ class ngamsDbNgasCfg(ngamsDbCore.ngamsDbCore):
         """
         if self.hasCfgPar(groupId, parName):
             if comment:
-                sql = ("UPDATE ngas_cfg_pars SET cfg_val={0}, cfg_comment={1}"
+                sql = ("UPDATE ngas_cfg_pars SET cfg_val={0}, cfg_comment={1} "
                                 "WHERE cfg_group_id={2} AND cfg_par={3}")
                 vals = (str(value), comment, groupId, parName)
             else:
-                sql = ("UPDATE ngas_cfg_pars SET cfg_val={0}"
+                sql = ("UPDATE ngas_cfg_pars SET cfg_val={0} "
                                 "WHERE cfg_group_id={1} AND cfg_par={2}")
                 vals = (str(value), groupId, parName)
         else:
