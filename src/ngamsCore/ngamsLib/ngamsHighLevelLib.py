@@ -523,7 +523,6 @@ def saveFromHttpToFile(ngamsCfgObj,
                 if not buff:
                     raise Exception('No bytes found in stream, at least %d expected' % left)
                 readin += len(buff)
-                logger.info("Received %d bytes of data", readin)
                 reqPropsObj.setBytesReceived(readin)
                 fdOut.write(buff)
 
