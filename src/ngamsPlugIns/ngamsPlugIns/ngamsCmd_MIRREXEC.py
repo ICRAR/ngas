@@ -533,8 +533,8 @@ def process_mirroring_tasks(mirroring_tasks_queue,target_node,ith_thread,n_tasks
             # Initialize ngamsReqProps object by just specifing the fileURI and the mime type
             reqPropObj = ngamsReqProps.ngamsReqProps()
             reqPropObj.setMimeType(mimeType)
-            reqPropObj.setChecksum(checksum)
-            reqPropObj.setFileInfo(fileInfo)
+            reqPropObj.checksum = checksum
+            reqPropObj.fileinfo = fileInfo
             reqPropObj.setSize(fileSize)
 
             # Start clock

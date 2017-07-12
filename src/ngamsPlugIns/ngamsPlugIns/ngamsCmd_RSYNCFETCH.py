@@ -107,9 +107,9 @@ def saveToFile(srvObj,
                      file (s) (tuple).
     """
 
-    source_host = reqPropsObj.getFileInfo()['sourceHost']
-    file_version = reqPropsObj.getFileInfo()['fileVersion']
-    file_id = reqPropsObj.getFileInfo()['fileId']
+    source_host = reqPropsObj.fileinfo['sourceHost']
+    file_version = reqPropsObj.fileinfo['fileVersion']
+    file_id = reqPropsObj.fileinfo['fileId']
 
     logger.info("Creating path: %s", trgFilename)
     checkCreatePath(os.path.dirname(trgFilename))
@@ -140,7 +140,7 @@ def saveToFile(srvObj,
                   deltaTime, (float(reqPropsObj.getBytesReceived()) / deltaTime))
 
     # now check the CRC value against what we expected
-    sourceChecksum = reqPropsObj.getChecksum()
+    sourceChecksum = reqPropsObj.checksum
     start = time.time()
     crc = ngamsFileUtils.get_checksum(65536, trgFilename, 'crc32')
     deltaTime = time.time() - start

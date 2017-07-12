@@ -187,8 +187,8 @@ def __handleCmd(srvObj, reqPropsObj):
     # Set reference in request handle object to the read socket.
     try:
         # Retrieve file_id and file_version from request proposal
-        file_id = reqPropsObj.getFileInfo()['fileId']
-        file_version = reqPropsObj.getFileInfo()['fileVersion']
+        file_id = reqPropsObj.fileinfo['fileId']
+        file_version = reqPropsObj.fileinfo['fileVersion']
         logger.debug("Got file_id=%s and file_version=%s", file_id, file_version)
 
         # Retrieve file contents (from URL, archive pull, or by storing the body

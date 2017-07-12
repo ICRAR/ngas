@@ -87,11 +87,11 @@ def saveToFile(srvObj,
                      file (s) (tuple).
     """
 
-    disk_id = reqPropsObj.getFileInfo()['diskId']
-    source_host = reqPropsObj.getFileInfo()['sourceHost']
-    host_id = reqPropsObj.getFileInfo()['hostId']
-    file_version = reqPropsObj.getFileInfo()['fileVersion']
-    file_id = reqPropsObj.getFileInfo()['fileId']
+    disk_id = reqPropsObj.fileinfo['diskId']
+    source_host = reqPropsObj.fileinfo['sourceHost']
+    host_id = reqPropsObj.fileinfo['hostId']
+    file_version = reqPropsObj.fileinfo['fileVersion']
+    file_id = reqPropsObj.fileinfo['fileId']
 
     host, port = source_host.split(":")
     pars = {
@@ -171,7 +171,7 @@ def saveToFile(srvObj,
         raise ngamsFailedDownloadException.FailedDownloadException(msg)
 
     # now check the CRC value against what we expected
-    sourceChecksum = reqPropsObj.getChecksum()
+    sourceChecksum = reqPropsObj.checksum
     logger.info('source checksum: %s - current checksum: %d', str(sourceChecksum), crc)
     if (crc != int(sourceChecksum)):
         msg = "checksum mismatch: source=" + str(sourceChecksum) + ", received: " + str(crc)
