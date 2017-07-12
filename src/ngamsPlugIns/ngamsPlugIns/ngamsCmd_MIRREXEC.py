@@ -61,7 +61,8 @@ import threading
 
 from ngamsLib import ngamsLib, ngamsHttpUtils, ngamsReqProps, ngamsDiskInfo,\
     ngamsDbCore
-from ngamsLib.ngamsCore import TRACE, toiso8601, NGAMS_STAGING_DIR, genUniqueId
+from ngamsLib.ngamsCore import TRACE, toiso8601, NGAMS_STAGING_DIR, genUniqueId,\
+    NGAMS_FAILURE, NGAMS_HTTP_SUCCESS
 from . import ngamsFailedDownloadException
 from . import ngamsCmd_MIRRARCHIVE
 
@@ -853,7 +854,7 @@ class mirrexec_command_sender(threading.Thread):
             start = time.time()
             response = ngamsHttpUtils.httpGet(host, int(port), 'MIRREXEC', pars=pars, timeout=self.rx_timeout)
             with contextlib.closing(response):
-                failed = 'FAILURE' in response.read()
+                failed = response.status != NGAMS_HTTP_SUCCESS or NGAMS_FAILURE in response.read()
             elapsed_time = (time.time() - start)
 
             # Print log info
@@ -861,7 +862,7 @@ class mirrexec_command_sender(threading.Thread):
                 logger.error("MIRREXEC command sent to %s with (n_threads=%d) was handled  with status FAILURE in %f [s]",
                              self.target_node, self.n_threads, elapsed_time)
             else:
-                logger.info("MIRREXEC command sent to %s with (n_threads=%d) was handled  with status SUCCESS in %f [s]" % \
+                logger.info("MIRREXEC command sent to %s with (n_threads=%d) was handled  with status SUCCESS in %f [s]",
                             self.target_node, self.n_threads, elapsed_time)
         except:
             logger.exception("Problems sending MIRREXEC command to %s", self.target_node)
