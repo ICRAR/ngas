@@ -48,6 +48,7 @@ simplified in a few ways:
 import binascii
 import logging
 import os
+import time
 
 from ngamsLib import ngamsDiskInfo, ngamsDbCore
 from ngamsLib.ngamsCore import TRACE, genLog, NGAMS_ONLINE_STATE, \
@@ -230,11 +231,12 @@ def __handleCmd(srvObj, reqPropsObj):
 
     # Check/generate remaining file info + update in DB.
     logger.info("Creating db entry")
-    ts = toiso8601()
-    creDate = toiso8601(getFileCreationTime(resDapi.getCompleteFilename()))
+    creDate = srvObj.getDb().convertTimeStamp(getFileCreationTime(resDapi.getCompleteFilename()))
     sqlUpdate = "update ngas_disks set available_mb = available_mb - {0} / (1024 * 1024), bytes_stored = bytes_stored + {1} " +\
                 "where disk_id = {2}"
     srvObj.getDb().query2(sqlUpdate, args=(resDapi.getFileSize(), resDapi.getFileSize(), resDapi.getDiskId()))
+
+    ts = srvObj.getDb().convertTimeStamp(time.time())
     sqlQuery = "INSERT INTO ngas_files " +\
                "(disk_id, file_name, file_id, file_version, " +\
                "format, file_size, " +\
@@ -250,9 +252,9 @@ def __handleCmd(srvObj, reqPropsObj):
     args = (str(resDapi.getDiskId()), str(resDapi.getRelFilename()), file_id, file_version,
             str(resDapi.getFormat()), str(resDapi.getFileSize()),
             str(resDapi.getUncomprSize()), str(resDapi.getCompression()),
-            str(ts), str(checksum),
-            str(checksumPlugIn), NGAMS_FILE_STATUS_OK, str(creDate))
-
+            ts, str(checksum),
+            checksumPlugIn, NGAMS_FILE_STATUS_OK, creDate)
+    logger.info("Will try to insert the file information: %s / %r", sqlQuery, args)
     srvObj.getDb().query2(sqlQuery, args=args)
 
     # Final log message
