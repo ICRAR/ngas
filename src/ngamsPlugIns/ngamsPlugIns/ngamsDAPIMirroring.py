@@ -116,7 +116,8 @@ def genFileInfo(dbConObj,
     relPath = ngamsCfgObj.getPathPrefix()
     for subDir in subDirs:
         if (relPath != ""): relPath += "/" + subDir
-    relPath = (relPath + "/" + str(fileVersion), "/").strip()
+    relPath = relPath + "/" + str(fileVersion)
+    relPath = relPath.strip("/")
     complPath = os.path.normpath(trgDiskInfoObj.getMountPoint()+"/"+relPath)
     ext = os.path.basename(stagingFilename).split(".")[-1]
     newFilename = baseFilename
