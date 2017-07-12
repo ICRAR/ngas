@@ -141,7 +141,7 @@ def handleCmd(srvObj,
         logger.debug("SQL sub-query to get source cluster files-hosts information: %s", source_query)
 
         # Construct sub-query for target cluster
-        target_query = generate_target_files_query(startDate, target_cluster, all_versions)
+        target_query = generate_target_files_query(srvObj, startDate, target_cluster, all_versions)
         logger.debug("SQL sub-query to get target cluster files-hosts information: %s", target_query)
 
         # Construct sub-query for  table
@@ -394,7 +394,7 @@ def generate_source_files_query(srvObj,startDate, db_link,
     # Return query
     return query
 
-def generate_target_files_query(startDate,
+def generate_target_files_query(srvObj, startDate,
                                 cluster_name,
                                 all_versions):
     """
@@ -425,7 +425,8 @@ def generate_target_files_query(startDate,
     query += "where "
     # ICT-1988 - cannot take file_status into consideration
     # query += "nf.ignore=0 and nf.file_status=0 and "
-    query += "nf.ignore=0 and "
+    colname = 'file_ignore' if srvObj.getCfg().getDbUseFileIgnore() else 'ignore'
+    query += "nf.%s=0 and " % (colname,)
     # Query join conditions to reach host_id (common) and check cluster name
     query += "nh.cluster_name='" + cluster_name + "' "
     if startDate is not None and startDate != "None":
