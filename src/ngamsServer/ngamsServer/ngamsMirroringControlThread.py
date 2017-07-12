@@ -1293,9 +1293,6 @@ def mirControlThread(srvObj, stopEvt):
         logger.info("ALMA Mirroring Control Thread entering main server loop")
         while (True):
 
-            if stopEvt.wait(sleepTime):
-                return
-
             # Incapsulate this whole block to avoid that the thread dies in
             try:
                 checkStopMirControlThread(srvObj)
