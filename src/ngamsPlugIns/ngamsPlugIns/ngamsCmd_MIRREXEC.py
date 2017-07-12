@@ -355,7 +355,7 @@ def reorder_list_of_mirroring_tasks_for_target(currentIteration, source_nodes_li
     target_avg_file_size = 0
     # if we divide by zero in the oracle query then we get an empty result back for average file size
     if (total_tasks > 0):
-        target_avg_file_size = float(result[0][0][1])
+        target_avg_file_size = float(result[0][1])
     logger.debug("Average file size and number of mirroring tasks to (%s): nTasks=%s Avg[MB]=%s", target_node,str(total_tasks),str(target_avg_file_size))
 
     n_sources = len(source_nodes_list)
