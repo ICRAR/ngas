@@ -851,7 +851,7 @@ class mirrexec_command_sender(threading.Thread):
             }
 
             start = time.time()
-            response = ngamsHttpUtils.httpGet(host, port, 'MIRREXEC', pars=pars, timeout=self.rx_timeout)
+            response = ngamsHttpUtils.httpGet(host, int(port), 'MIRREXEC', pars=pars, timeout=self.rx_timeout)
             with contextlib.closing(response):
                 failed = 'FAILURE' in response.read()
             elapsed_time = (time.time() - start)
