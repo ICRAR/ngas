@@ -692,7 +692,7 @@ def get_target_node_disks(srv_obj, cluster_name):
     we know there is clearly not enough space to store them"""
 
     # Construct query, for every update the nodes left are n_nodes-i
-    query = "select replace(h.host_id, ':', '.' || h.domain || ':'), d.mount_point, d.available_mb * (1024 * 1024)"
+    query = "select replace(h.host_id, ':', '.' || h.domain || ':'), h.domain, d.mount_point, d.available_mb * (1024 * 1024)"
     query += " from ngas_hosts h"
     query += "   inner join ngas_disks d"
     query += "     on d.LAST_HOST_ID = h.host_id"
@@ -705,8 +705,22 @@ def get_target_node_disks(srv_obj, cluster_name):
     disks = {}
     for row in rs:
         host_id = row[0]
-        mount_point = row[1]
-        available_bytes = row[2]
+
+        # TODO: this is an ugly fix for an ugly situation in which the
+        #       host_id already contains the domain name (but the SQL code
+        #       assumes that it doesn't).
+        #       The hostId of a server is simply hostname:port. Depending on
+        #       how the machine is configured, the hostname will be a fully-
+        #       qualified hostname or not, and therefore the host_id
+        #       returned by the query will contain the domain twice.
+        #       Let's solve that
+        domain = row[1]
+        double_domain_start = host_id.find(domain + "." + domain)
+        if double_domain_start != -1:
+            host_id = host_id[:double_domain_start] + host_id[double_domain_start + len(domain) + 1:]
+
+        mount_point = row[2]
+        available_bytes = row[3]
         disks.setdefault(host_id, {})[mount_point] = available_bytes
 
     return disks
