@@ -259,7 +259,7 @@ def ngams_server_status(ngams_server):
 
     try:
         host, port = ngams_server.split(":")
-        response = ngamsHttpUtils.httpGet(host, port, 'STATUS')
+        response = ngamsHttpUtils.httpGet(host, int(port), 'STATUS')
         with contextlib.closing(response):
             return b'ONLINE' in response.read()
     except:

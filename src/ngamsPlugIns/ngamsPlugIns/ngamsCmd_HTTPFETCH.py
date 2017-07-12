@@ -106,7 +106,7 @@ def saveToFile(srvObj,
     rx_timeout = 30 * 60
     if srvObj.getCfg().getVal("Mirroring[1].rx_timeout"):
         rx_timeout = int(srvObj.getCfg().getVal("Mirroring[1].rx_timeout"))
-    response = ngamsHttpUtils.httpGet(host, port, 'RETRIEVE', pars=pars, hdrs=hdrs, timeout=rx_timeout)
+    response = ngamsHttpUtils.httpGet(host, int(port), 'RETRIEVE', pars=pars, hdrs=hdrs, timeout=rx_timeout)
 
     # can we resume a previous download?
     downloadResumeSupported = 'bytes' in response.getheader("Accept-Ranges", '')

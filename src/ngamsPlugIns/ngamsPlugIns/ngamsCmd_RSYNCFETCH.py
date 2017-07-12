@@ -127,7 +127,7 @@ def saveToFile(srvObj,
     }
 
     start = time.time()
-    response = ngamsHttpUtils.httpGet(host, port, 'RSYNC', pars=pars, timeout=rx_timeout)
+    response = ngamsHttpUtils.httpGet(host, int(port), 'RSYNC', pars=pars, timeout=rx_timeout)
     with contextlib.closing(response):
         data = response.read()
         if 'FAILURE' in data:
