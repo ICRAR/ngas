@@ -250,8 +250,8 @@ def __handleCmd(srvObj, reqPropsObj):
                " 0, {}, {}," +\
                " {}, {}, {})"
     args = (str(resDapi.getDiskId()), str(resDapi.getRelFilename()), file_id, file_version,
-            str(resDapi.getFormat()), str(resDapi.getFileSize()),
-            str(resDapi.getUncomprSize()), str(resDapi.getCompression()),
+            str(resDapi.getFormat()), resDapi.getFileSize(),
+            resDapi.getUncomprSize(), str(resDapi.getCompression()),
             ts, str(checksum),
             checksumPlugIn, NGAMS_FILE_STATUS_OK, creDate)
     logger.info("Will try to insert the file information: %s / %r", sqlQuery, args)
