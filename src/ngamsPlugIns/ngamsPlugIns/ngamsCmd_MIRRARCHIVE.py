@@ -247,7 +247,7 @@ def __handleCmd(srvObj, reqPropsObj):
                "({}, {}, {}, {}," +\
                " {}, {}," +\
                " {}, {}," +\
-               " 0, {}, {}," +\
+               " {}, 0, {}," +\
                " {}, {}, {})"
     args = (str(resDapi.getDiskId()), str(resDapi.getRelFilename()), file_id, file_version,
             str(resDapi.getFormat()), resDapi.getFileSize(),
