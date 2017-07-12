@@ -1240,10 +1240,10 @@ def generateReport(srvObj):
 def cleanUpMirroring(srvObj):
     host = get_full_qualified_name(srvObj)
     logger.debug("cleaning up mirroring tasks for ngas node: %s", host)
-    sql = "update ngas_mirroring_bookkeeping set status = 'ABORTED', staging_file = null where status = 'READY' and target_host = '" + host + "'"
-    srvObj.getDb().query(sql)
-    sql = "update ngas_mirroring_bookkeeping set status = 'TORESUME' where status = 'FETCHING' and target_host = '" + host + "'"
-    srvObj.getDb().query(sql)
+    sql = "update ngas_mirroring_bookkeeping set status = 'ABORTED', staging_file = null where status = 'READY' and target_host = {0}"
+    srvObj.getDb().query2(sql, args=(host,))
+    sql = "update ngas_mirroring_bookkeeping set status = 'TORESUME' where status = 'FETCHING' and target_host = {0}"
+    srvObj.getDb().query2(sql, args=(host,))
 
 def get_full_qualified_name(srvObj):
     """
