@@ -239,22 +239,21 @@ def __handleCmd(srvObj, reqPropsObj):
                "(disk_id, file_name, file_id, file_version, " +\
                "format, file_size, " +\
                "uncompressed_file_size, compression, " +\
-               "ingestion_date, ignore, checksum, " +\
+               "ingestion_date, %s, checksum, " +\
                "checksum_plugin, file_status, creation_date) "+\
                "VALUES " +\
-               "(:1, :2, :3, :4," +\
-               " :5, :6," +\
-               " :7, :8," +\
-               " :9, :10, :11," +\
-               " :12, :13, :14)"
-    parameters = [
-        str(resDapi.getDiskId()), str(resDapi.getRelFilename()) , file_id, file_version,
-        str(resDapi.getFormat()), str(resDapi.getFileSize()),
-        str(resDapi.getUncomprSize()), str(resDapi.getCompression()),
-        str(ts), str(0), str(checksum),
-        str(checksumPlugIn), NGAMS_FILE_STATUS_OK, str(creDate)
-    ]
-    srvObj.getDb().query(sqlQuery, maxRetries = 0, parameters = parameters)
+               "({}, {}, {}, {}," +\
+               " {}, {}," +\
+               " {}, {}," +\
+               " 0, {}, {}," +\
+               " {}, {}, {})" % ('file_ignore' if srvObj.getCfg().getDbUseFileIgnore() else 'ignore')
+    args = (str(resDapi.getDiskId()), str(resDapi.getRelFilename()), file_id, file_version,
+            str(resDapi.getFormat()), str(resDapi.getFileSize()),
+            str(resDapi.getUncomprSize()), str(resDapi.getCompression()),
+            str(ts), str(checksum),
+            str(checksumPlugIn), NGAMS_FILE_STATUS_OK, str(creDate))
+
+    srvObj.getDb().query2(sqlQuery, args=args)
 
     # Final log message
     logger.info("Successfully handled Archive Pull Request for data file with URI: %s",
