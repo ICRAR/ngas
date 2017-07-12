@@ -795,6 +795,7 @@ FMT_DATE_ONLY        = _formatspec('%Y-%m-%d',          False)
 FMT_TIME_ONLY        = _formatspec('%H:%M:%S',          True)
 FMT_TIME_ONLY_NOMSEC = _formatspec('%H:%M:%S',          False)
 FMT_DATETIME         = _formatspec('%Y-%m-%dT%H:%M:%S', True)
+FMT_DATETIME_NOMSEC  = _formatspec('%Y-%m-%dT%H:%M:%S', False)
 
 def fromiso8601(s, local=False, fmt=FMT_DATETIME):
     """

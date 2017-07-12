@@ -58,7 +58,7 @@ import thread
 import time
 
 from ngamsLib import ngamsHttpUtils
-from ngamsLib.ngamsCore import toiso8601
+from ngamsLib.ngamsCore import toiso8601, FMT_DATETIME_NOMSEC
 from .alma.almaMirroringTargetNodeAssigner import TargetVolumeAssigner
 
 logger = logging.getLogger(__name__)
@@ -568,7 +568,7 @@ def populate_mirroring_bookkeeping_table(diff_ngas_files_query,
     #    query += " where rownum <= " + str(rows_limit)
 
     # args are startDate, ingestionTime and iteration
-    args = (startDate, toiso8601() + ":000", iteration)
+    args = (startDate, toiso8601(fmt=FMT_DATETIME_NOMSEC) + ":000", iteration)
     srvObj.getDb().query2(query, args=args)
 
     # Return void
