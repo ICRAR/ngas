@@ -662,7 +662,7 @@ def deschedule_exclusions(iteration, arc, db_link, srv_obj):
 def limit_mirrored_files(srv_obj, iteration, file_limit):
     # this is just used in development. I recommend not to use it in production, otherwise
     # we risk losing partially downloaded file.
-    logger.info('limiting the number of files to fetch to %d', file_limit)
+    logger.info('limiting the number of files to fetch to %s', file_limit)
     sql = "delete from ngas_mirroring_bookkeeping where rowid in ("
     sql += "select myrowid from ("
     sql += "select rowid as myrowid, rownum as myrownum from ngas_mirroring_bookkeeping where iteration = {0}"
@@ -806,11 +806,11 @@ def assign_mirroring_bookkeeping_entries(iteration,
         # TODO this is going to take a while. If we update 10K rows with a DB roundtrip of 0.01s
         # then the whole update will take about 2 minutes. Therefore we have to limit the sizes
         # of each iteration so that we can be receving files while we are fetching the next one.
-        sql = "update ngas_mirroring_bookkeeping set status = 'READY', target_host = :1, staging_file = :2 "
-        sql += " where iteration = :3 and file_id = :4 and file_version = :5"
+        sql = "update ngas_mirroring_bookkeeping set status = 'READY', target_host = {0}, staging_file = {1} "
+        sql += " where iteration = {2} and file_id = {3} and file_version = {4}"
         for next_file in file_list:
-            parameters = [host, volume, iteration, next_file[0], next_file[1]]
-            srv_obj.getDb().query(sql, maxRetries=1, retryWait=0, parameters=parameters)
+            args = [host, volume, iteration, next_file[0], next_file[1]]
+            srv_obj.getDb().query2(sql, args=args)
 
     # extra part - moved from ngamsCmd_MIRRARCHIVE as a performance optimisation - we already have the information we
     # need here to check if we should mark a disk as complete
@@ -824,9 +824,9 @@ def assign_mirroring_bookkeeping_entries(iteration,
         # Check if the disk is completed.
         if available_mb < srv_obj.getCfg().getFreeSpaceDiskChangeMb():
             logger.info('disk on host %s at mount point %s has less than %s mb - marking as complete', host, volume, srv_obj.getCfg().getFreeSpaceDiskChangeMb())
-            sql = "update ngas_disks set completed = 1 where last_host_id = :1 and mount_point = :2"
+            sql = "update ngas_disks set completed = 1 where last_host_id = {0} and mount_point = {1}"
             unqualified_host_name = re.sub(r"\..*:", ":", host)
-            srv_obj.getDb().query(sql, maxRetries=1, retryWait=0, parameters=[unqualified_host_name, volume])
+            srv_obj.getDb().query2(sql, args=(unqualified_host_name, volume))
 
     return total_files_to_mirror
 
