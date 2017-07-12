@@ -163,11 +163,12 @@ def get_full_qualified_name(srvObj):
 
     # Get hots_id, domain and port using ngamsLib functions
     host_id = srvObj.getHostId()
+    simple_hostname = host_id.split('.')[0]
     domain = ngamsLib.getDomain()
     port = str(srvObj.getCfg().getPortNo())
     # Concatenate all elements to construct full qualified name
     # Notice that host_id may contain port number
-    fqdn = (host_id.rsplit(":"))[0] + "." + domain + ":" + port
+    fqdn = (simple_hostname.rsplit(":"))[0] + "." + domain + ":" + port
 
     # Return full qualified server name
     return fqdn
