@@ -239,14 +239,14 @@ def __handleCmd(srvObj, reqPropsObj):
                "(disk_id, file_name, file_id, file_version, " +\
                "format, file_size, " +\
                "uncompressed_file_size, compression, " +\
-               "ingestion_date, %s, checksum, " +\
+               "ingestion_date, %s, checksum, " % ('file_ignore' if srvObj.getCfg().getDbUseFileIgnore() else 'ignore') +\
                "checksum_plugin, file_status, creation_date) "+\
                "VALUES " +\
                "({}, {}, {}, {}," +\
                " {}, {}," +\
                " {}, {}," +\
                " 0, {}, {}," +\
-               " {}, {}, {})" % ('file_ignore' if srvObj.getCfg().getDbUseFileIgnore() else 'ignore')
+               " {}, {}, {})"
     args = (str(resDapi.getDiskId()), str(resDapi.getRelFilename()), file_id, file_version,
             str(resDapi.getFormat()), str(resDapi.getFileSize()),
             str(resDapi.getUncomprSize()), str(resDapi.getCompression()),
