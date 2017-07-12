@@ -119,11 +119,11 @@ def handleCmd(srvObj,
                      str(active_source_nodes),str(active_target_nodes),str(n_threads))
         try:
             # Set mirroring running flag to avoid data check thread and janitor thread
-            srvObj.setMirroringRunning(1)
+            srvObj.mirroring_running = True
             multithreading_mirroring(active_source_nodes, n_threads, rx_timeout, current_iteration, srvObj)
         finally:
             # Set mirroring running flag to trigger data check thread and janitor thread
-            srvObj.setMirroringRunning(0)
+            srvObj.mirroring_running = False
 
     # Return Void
     return

@@ -1057,6 +1057,10 @@ def dataCheckThread(srvObj, stopEvt):
             while (not srvObj.getJanitorThreadRunCount()):
                 suspend(stopEvt, 0.5)
 
+            # If mirroring is happening wait for it to finish
+            while srvObj.mirroring_running:
+                suspend(stopEvt, 60)
+
             if (srvObj.getCfg().getDataCheckLogSummary()):
                 logger.info("Data Check Thread starting iteration ...")
 

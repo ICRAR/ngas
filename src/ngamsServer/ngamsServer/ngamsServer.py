@@ -385,6 +385,8 @@ class ngamsServer:
         self.__mirControlTrigger      = threading.Event()
         self._pauseMirThreads         = False
         self._mirThreadsPauseCount    = 0
+        self.mirroring_running        = False
+
         # - Mirroring Queue DBM.
         self._mirQueueDbm = None
         self._mirQueueDbmSem = threading.Semaphore(1)
