@@ -165,18 +165,8 @@ def ngamsGeneric(srvObj,reqPropsObj):
     # File Uri format: http://ngasbe03.aiv.alma.cl:7777/RETRIEVE?disk_id=59622720f79296473f6106c15e5c2240&host_id=ngasbe03:7777&quick_location=1&file_version=1&file_id=backup.2011-02-02T22:01:59.tar
 
     # Get file id
-    if reqPropsObj.getFileUri().count("file_id"):
-        fileId = reqPropsObj.getFileUri().split("file_id=")[1]
-    else:
-        errMsg = "file_id not specified in MIRRARCHIVE request"
-        raise Exception, errMsg
-
-    # Get file version
-    if reqPropsObj.getFileUri().count("file_version"):
-        fileVersion = int((reqPropsObj.getFileUri().split("file_version=")[1]).split("&")[0])
-    else:
-        errMsg = "file_version not specified in MIRRARCHIVE request"
-        raise Exception, errMsg
+    fileVersion = reqPropsObj.fileinfo['fileVersion']
+    fileId = reqPropsObj.fileinfo['fileId']
 
     # Specific treatment depending on the mime type
     if ((format.find("multipart") >= 0) or (format.find("multialma") >= 0)):
