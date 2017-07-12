@@ -246,7 +246,7 @@ def reassign_broken_downloads(currentIteration, srvObj):
     sql = "update ngas_mirroring_bookkeeping"
     sql += " set status = 'FAILURE',staging_file = null"
     sql += " where status = 'TORESUME' and iteration < {0}"
-    srvObj.getDb().query2(sql, args=(currentIteration))
+    srvObj.getDb().query2(sql, args=(currentIteration,))
 
 def clean_mirroring_bookkeeping_entries(srvObj):
     # TBD parameterise the time period
