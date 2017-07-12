@@ -225,7 +225,7 @@ def __handleCmd(srvObj, reqPropsObj):
 
     # Move file to final destination.
     logger.info("Moving file to final destination: %s", resDapi.getCompleteFilename())
-    ioTime = mvFile(reqPropsObj.getStagingFilename(), resDapi.getCompleteFilename(), True)
+    ioTime = mvFile(reqPropsObj.getStagingFilename(), resDapi.getCompleteFilename())
     reqPropsObj.incIoTime(ioTime)
 
     # Check/generate remaining file info + update in DB.
