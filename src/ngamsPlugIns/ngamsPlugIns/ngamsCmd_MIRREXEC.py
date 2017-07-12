@@ -62,7 +62,7 @@ import threading
 from ngamsLib import ngamsLib, ngamsHttpUtils, ngamsReqProps, ngamsDiskInfo,\
     ngamsDbCore
 from ngamsLib.ngamsCore import TRACE, toiso8601, NGAMS_STAGING_DIR, genUniqueId,\
-    NGAMS_FAILURE, NGAMS_HTTP_SUCCESS
+    NGAMS_FAILURE, NGAMS_HTTP_SUCCESS, FMT_DATETIME_NOMSEC
 from . import ngamsFailedDownloadException
 from . import ngamsCmd_MIRRARCHIVE
 
@@ -577,7 +577,7 @@ def process_mirroring_tasks(mirroring_tasks_queue,target_node,ith_thread,n_tasks
             query += "ingestion_date = {1},"
             query += "ingestion_time = nvl(ingestion_time, 0.0) + {2} "
             query += "where rowid = {3}"
-            args = (status, toiso8601() + ":000", elapsed_time, rowid)
+            args = (status, toiso8601(fmt=FMT_DATETIME_NOMSEC) + ":000", elapsed_time, rowid)
             srvObj.getDb().query2(query, args=args)
 
             # Log message for mirroring task processed
