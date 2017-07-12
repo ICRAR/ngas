@@ -1285,6 +1285,7 @@ def mirControlThread(srvObj, stopEvt):
     # Alma Mirroring Service
     if (srvObj.getCfg().getVal("Mirroring[1].AlmaMirroring")):
 
+        timeout = 6 * 3600
         sleepTime = getMirroringSleepTime(srvObj)
 
         logger.info("ALMA Mirroring Control Thread cleaning up from previous state")
@@ -1303,7 +1304,7 @@ def mirControlThread(srvObj, stopEvt):
                 # if things went fine or not
                 logger.debug("ALMA Mirroring Control Thread updating book keeping table ...")
                 local_server_contact_ip = get_contact_ip(srvObj.getCfg())
-                ngamsHttpUtils.httpGet(local_server_contact_ip, srvObj.portNo, 'MIRRTABLE', timeout=100)
+                ngamsHttpUtils.httpGet(local_server_contact_ip, srvObj.portNo, 'MIRRTABLE', timeout=timeout)
 
                 # Sleep to let Janitor Thread and DCC do their tasks
                 # always reload from DB to allow for updates without restarting the server
