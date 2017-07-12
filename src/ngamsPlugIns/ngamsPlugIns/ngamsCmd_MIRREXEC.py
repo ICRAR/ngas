@@ -556,13 +556,13 @@ def process_mirroring_tasks(mirroring_tasks_queue,target_node,ith_thread,n_tasks
                 status = "SUCCESS"
             except ngamsFailedDownloadException.FailedDownloadException:
                 # Something bad happened...
-                logger.exception("Failed to fetch %s" % (file_id,))
+                logger.exception("Failed to fetch %s", file_id)
                 status = "FAILURE"
             except ngamsFailedDownloadException.AbortedException:
-                logger.warning("File fetch aborted: %s" % (file_id))
+                logger.warning("File fetch aborted: %s", file_id)
                 status = "ABORTED"
             except ngamsFailedDownloadException.PostponeException:
-                logger.exception("Failed to fetch %s - will try to resume on next iteration. Cause: %s" % (file_id,))
+                logger.exception("Failed to fetch %s - will try to resume on next iteration", file_id)
                 status = "TORESUME"
             except Exception:
                 # this clause should never be reached
