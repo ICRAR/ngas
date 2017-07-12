@@ -232,9 +232,9 @@ def __handleCmd(srvObj, reqPropsObj):
     logger.info("Creating db entry")
     ts = toiso8601()
     creDate = toiso8601(getFileCreationTime(resDapi.getCompleteFilename()))
-    sqlUpdate = "update ngas_disks set available_mb = available_mb - :1 / (1024 * 1024), bytes_stored = bytes_stored + :2 " +\
-                "where disk_id = :3"
-    srvObj.getDb().query(sqlUpdate, maxRetries = 0, parameters = [resDapi.getFileSize(), resDapi.getFileSize(), resDapi.getDiskId()])
+    sqlUpdate = "update ngas_disks set available_mb = available_mb - {0} / (1024 * 1024), bytes_stored = bytes_stored + {1} " +\
+                "where disk_id = {2}"
+    srvObj.getDb().query2(sqlUpdate, args=(resDapi.getFileSize(), resDapi.getFileSize(), resDapi.getDiskId()))
     sqlQuery = "INSERT INTO ngas_files " +\
                "(disk_id, file_name, file_id, file_version, " +\
                "format, file_size, " +\
