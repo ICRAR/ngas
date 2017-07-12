@@ -27,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jagonzal  2010/17/01  Created
 #
-import contextlib
 """
 NGAS Command Plug-In, implementing an Archive Command specific for Mirroring
 
@@ -46,6 +45,7 @@ simplified in a few ways:
   - ngas_files data is 'cloned' from the source file
 """
 
+import contextlib
 import logging
 import os
 import time
