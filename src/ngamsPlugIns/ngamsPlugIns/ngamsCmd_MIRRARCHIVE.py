@@ -199,7 +199,6 @@ def __handleCmd(srvObj, reqPropsObj):
         reqPropsObj.incIoTime(stagingInfo[0])
         checksumPlugIn = "ngamsGenCrc32"
         checksum = stagingInfo[1]
-        reqPropsObj.setChecksum(checksum)
     except ngamsFailedDownloadException.FailedDownloadException, e:
         raise
     except ngamsFailedDownloadException.PostponeException, e:
