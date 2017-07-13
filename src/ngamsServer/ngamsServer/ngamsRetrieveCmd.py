@@ -398,13 +398,23 @@ def genReplyRetrieve(srvObj,
         mimeType = resObj.getMimeType()
         dataSize = resObj.getDataSize()
         refFilename = resObj.getRefFilename()
-        logger.debug("Sending data back to requestor. Reference filename: %s. Size: %s",
-                     refFilename, str(dataSize))
+
+        # See if client requested partial content
+        # This applies (currently) to files only
+        start_byte = 0
+        if reqPropsObj.retrieve_offset > 0 and resObj.getObjDataType() == NGAMS_PROC_FILE:
+            start_byte = reqPropsObj.retrieve_offset
+
+        logger.info("Sending data back to requestor. Reference filename: %s. Size: %d. Starting byte: %d",
+                     refFilename, dataSize, start_byte)
         srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, None, 0,
-                            mimeType, dataSize)
+                            mimeType, (dataSize - start_byte))
         contDisp = "attachment; filename=\"%s\"" % refFilename
         logger.debug("Sending header: Content-Disposition: %s", contDisp)
         httpRef.send_header('Content-Disposition', contDisp)
+        if start_byte:
+            httpRef.send_header('Accept-Ranges', 'bytes')
+            httpRef.send_header("Content-Range", "bytes %d-%d/%d" % (start_byte, dataSize - 1, dataSize))
         httpRef.wfile.write("\n")
 
         if reqPropsObj.hasHttpPar("send_buffer"):
@@ -425,7 +435,7 @@ def genReplyRetrieve(srvObj,
             dataref = resObj.getDataRef()
             with open(dataref, 'rb') as fd:
                 st = time.time()
-                sendfile(httpRef.wfile._sock, fd)
+                sendfile(httpRef.wfile._sock, fd, start_byte)
                 howlong = time.time() - st
                 logger.debug("Retrieval transfer rate = %.0f Bytes/s for file %s",
                              dataSize / howlong, refFilename)
@@ -605,6 +615,18 @@ def handleCmdRetrieve(srvObj,
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Retrieve+Processing"])
         srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
         raise Exception(errMsg)
+
+    # See if client requested partial content and remember the starting offset
+    retrieve_offset = 0
+    range_hdr = reqPropsObj.getHttpHdr('range')
+    if range_hdr:
+        try:
+            retrieve_offset = int(range_hdr[6:-1])
+            if retrieve_offset < 0:
+                raise
+        except:
+            raise ValueError("Invalid Range header, must have the form 'bytes=start-' (start offset only)")
+    reqPropsObj.retrieve_offset = retrieve_offset
 
     _handleCmdRetrieve(srvObj, reqPropsObj, httpRef)
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
