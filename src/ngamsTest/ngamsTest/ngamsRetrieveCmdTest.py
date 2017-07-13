@@ -31,14 +31,15 @@
 This module contains the Test Suite for the RETRIEVE Command.
 """
 
+import contextlib
 import commands
-from contextlib import nested
 from functools import partial
+import io
 import gzip
 import os
 import sys
 
-from ngamsLib import ngamsConfig
+from ngamsLib import ngamsConfig, ngamsHttpUtils
 from ngamsLib.ngamsCore import getHostName, NGAMS_RETRIEVE_CMD, \
     checkCreatePath, rmFile, NGAMS_SUCCESS
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
@@ -201,7 +202,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                           "Retrieval")
 
         outFilePath = 'tmp/test_RetrieveCmd_3_1_tmp_unzip'
-        with nested(gzip.open(trgFile, 'rb'), open(outFilePath, 'wb')) as (gz, out):
+        with gzip.open(trgFile, 'rb') as gz, open(outFilePath, 'wb') as out:
             for data in iter(partial(gz.read, 1024), ''):
                 out.write(data)
 
@@ -547,6 +548,79 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         unzip(trgFile, outFilePath)
         self.checkFilesEq(outFilePath, refFile, "Retrieved file incorrect")
 
+    def _test_invalid_range(self, client, range_spec):
+        hdrs = {'Range': 'bytes=' + range_spec}
+        status = client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile='tmp', hdrs=hdrs)
+        self.assertEqual('FAILURE', status.getStatus())
+        self.assertIn('Invalid Range header', status.getMessage())
+
+    def test_invalid_partial_retrievals(self):
+
+        self.prepExtSrv()
+        client = sendPclCmd()
+        client.archive("src/SmallFile.fits")
+
+        # Partial retrieval only supports a start offset, so using only
+        # a suffix length or a begin/end range should fail
+        self._test_invalid_range(client, '0-1')
+        self._test_invalid_range(client, '-1')
+
+        # Not a number, missing -, negative number
+        self._test_invalid_range(client, 'a-')
+        self._test_invalid_range(client, 'a')
+        self._test_invalid_range(client, '0')
+        self._test_invalid_range(client, '-100-')
+
+    def test_partial_retrieval(self):
+
+        self.prepExtSrv()
+        client = sendPclCmd()
+
+        with open("tmp/source", 'wb') as f:
+            f.write(os.urandom(1024))
+        client.archive("tmp/source", mimeType='application/octet-stream')
+
+        # Retrieve the file fully first into memory
+        full = io.BytesIO()
+        response = ngamsHttpUtils.httpGet('127.0.0.1', 8888, 'RETRIEVE',
+                                          pars=(('file_id', 'source'),))
+        with contextlib.closing(response):
+            file_size = full.write(response.read())
+
+        self._test_partial_retrieval(1, file_size, full)
+        self._test_partial_retrieval(2, file_size, full)
+        self._test_partial_retrieval(3, file_size, full)
+        self._test_partial_retrieval(7, file_size, full)
+        self._test_partial_retrieval(11, file_size, full)
+        self._test_partial_retrieval(13, file_size, full)
+        self._test_partial_retrieval(15, file_size, full)
+        self._test_partial_retrieval(20, file_size, full)
+        self._test_partial_retrieval(100, file_size, full)
+
+    def _test_partial_retrieval(self, n_parts, file_size, full):
+
+        part_size, mod = divmod(file_size, n_parts)
+        if mod:
+            part_size += 1
+
+        piece_by_piece = io.BytesIO()
+        for n in range(n_parts):
+            offset = n * part_size
+            response = ngamsHttpUtils.httpGet('127.0.0.1', 8888, 'RETRIEVE',
+                                              pars=(('file_id', 'source'),),
+                                              hdrs={'Range': 'bytes=%d-' % (offset,)})
+            with contextlib.closing(response):
+                total_read = 0
+                while total_read < part_size:
+                    to_read = part_size - total_read
+                    data = response.read(to_read)
+                    if not data:
+                        break
+                    total_read += len(data)
+                    piece_by_piece.write(data)
+
+        self.assertEqual(file_size, piece_by_piece.tell())
+        self.assertEqual(full.getvalue(), piece_by_piece.getvalue())
 
 def run():
     """
