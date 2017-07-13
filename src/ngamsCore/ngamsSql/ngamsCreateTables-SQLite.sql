@@ -53,9 +53,9 @@ create table ngas_cfg_pars
 (
   cfg_group_id       varchar(32)  not null,
   cfg_par            varchar(128) not null,
-  cfg_val            varchar(255) not null,
+  cfg_val            varchar(255) null,
   cfg_comment        varchar(255) null,
-  constraint         cfg_group_idx primary key(cfg_group_id, cfg_par, cfg_val)
+  constraint         cfg_group_idx primary key(cfg_group_id, cfg_par)
 );
 
 

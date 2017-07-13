@@ -1237,6 +1237,36 @@ def generateReport(srvObj):
                                         srvObj.getCfg().getSender(), summary,
                                         "text/plain")
 
+def cleanUpMirroring(srvObj):
+    host = get_full_qualified_name(srvObj)
+    logger.debug("cleaning up mirroring tasks for ngas node: %s", host)
+    sql = "update ngas_mirroring_bookkeeping set status = 'ABORTED', staging_file = null where status = 'READY' and target_host = {0}"
+    srvObj.getDb().query2(sql, args=(host,))
+    sql = "update ngas_mirroring_bookkeeping set status = 'TORESUME' where status = 'FETCHING' and target_host = {0}"
+    srvObj.getDb().query2(sql, args=(host,))
+
+def get_full_qualified_name(srvObj):
+    """
+    Get full qualified server name for the input NGAS server object
+
+    INPUT:
+        srvObj  ngamsServer, Reference to NG/AMS server class object
+
+    RETURNS:
+        fqdn    string, full qualified host name (host name + domain + port)
+    """
+
+    # Get hots_id, domain and port using ngamsLib functions
+    host_id = srvObj.getHostId()
+    domain = ngamsLib.getDomain()
+    port = str(srvObj.getCfg().getPortNo())
+    # Concatenate all elements to construct full qualified name
+    # Notice that host_id may contain port number
+    fqdn = (host_id.rsplit(":"))[0] + "." + domain + ":" + port
+
+    # Return full qualified server name
+    return fqdn
+
 
 def mirControlThread(srvObj, stopEvt):
     """
@@ -1254,41 +1284,35 @@ def mirControlThread(srvObj, stopEvt):
 
     # Alma Mirroring Service
     if (srvObj.getCfg().getVal("Mirroring[1].AlmaMirroring")):
-        logger.debug("ALMA Mirroring is enabled")
-        logger.debug("ALMA Mirroring configuration: all_versions=%s,source_cluster=%s,source_dbl=%s,target_cluster=%s,target_db=%s,n_threads=%s",
-                 srvObj.getCfg().getVal("Mirroring[1].all_versions"),
-                 srvObj.getCfg().getVal("Mirroring[1].source_cluster"),
-                 srvObj.getCfg().getVal("Mirroring[1].source_dbl"),
-                 srvObj.getCfg().getVal("Mirroring[1].target_cluster"),
-                 srvObj.getCfg().getVal("Mirroring[1].target_dbl"),
-                 srvObj.getCfg().getVal("Mirroring[1].n_threads"))
 
-        logger.debug("ALMA Mirroring Control Thread entering main server loop")
+        timeout = 6 * 3600
+        sleepTime = getMirroringSleepTime(srvObj)
+
+        logger.info("ALMA Mirroring Control Thread cleaning up from previous state")
+        cleanUpMirroring(srvObj)
+
+        logger.info("ALMA Mirroring Control Thread entering main server loop")
         while (True):
+
             # Incapsulate this whole block to avoid that the thread dies in
             try:
                 checkStopMirControlThread(srvObj)
                 logger.debug("ALMA Mirroring Control Thread starting next iteration ...")
 
                 # Update mirroring book keeping table
+                # TODO: handle the response, there's no information whatsoever
+                # if things went fine or not
                 logger.debug("ALMA Mirroring Control Thread updating book keeping table ...")
                 local_server_contact_ip = get_contact_ip(srvObj.getCfg())
-                target_node_conn = httplib.HTTPConnection(local_server_contact_ip)
-                target_node_conn.request("GET","MIRRTABLE?"+\
-                                               "all_versions="+srvObj.getCfg().getVal("Mirroring[1].all_versions")+\
-                                               "&target_cluster="+srvObj.getCfg().getVal("Mirroring[1].target_cluster")+\
-                                               "&target_dbl="+srvObj.getCfg().getVal("Mirroring[1].target_dbl")+\
-                                               "&source_cluster="+srvObj.getCfg().getVal("Mirroring[1].source_cluster")+\
-                                               "&source_dbl="+srvObj.getCfg().getVal("Mirroring[1].source_dbl")+\
-                                               "&archive_cmd=MIRRARCHIVE")
-                response = target_node_conn.getresponse()
+                ngamsHttpUtils.httpGet(local_server_contact_ip, srvObj.portNo, 'MIRRTABLE', timeout=timeout)
 
-                # Perform mirroring tasks
-                logger.debug("ALMA Mirroring Control Thread performing mirroring tasks ...")
-                target_node_conn.request("GET","MIRREXEC?"+\
-                                               "mirror_cluster=2"+\
-                                               "&n_threads="+srvObj.getCfg().getVal("Mirroring[1].n_threads"))
-                response = target_node_conn.getresponse()
+                # Sleep to let Janitor Thread and DCC do their tasks
+                # always reload from DB to allow for updates without restarting the server
+                sleepTime = getMirroringSleepTime(srvObj)
+                logger.info("ALMA Mirroring Control Thread sleeping for %.3f [s]", sleepTime)
+                if stopEvt.wait(sleepTime):
+                    return
+
 
             except Exception, e:
                 if (str(e).find(NGAMS_MIR_CONTROL_THR_STOP) != -1): thread.exit()
@@ -1368,5 +1392,18 @@ def mirControlThread(srvObj, stopEvt):
                 # too often to carry out the tasks that failed.
                 time.sleep(5.0)
 
+
+def getMirroringSleepTime(srvObj):
+    query = "select cfg_val"
+    query += " from ngas_cfg_pars"
+    query += " where cfg_par = 'sleepTime'"
+
+    # Execute query
+    logger.debug("Executing SQL query to get mirroring sleep time: %s" % query)
+    sleepTime = float(srvObj.getDb().query2(query)[0][0])
+
+    # Log info
+    logger.debug("result is %.3f", sleepTime)
+    return sleepTime
 
 # EOF
