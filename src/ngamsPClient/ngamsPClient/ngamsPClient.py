@@ -555,7 +555,7 @@ class ngamsPClient:
         return self.get_status(NGAMS_REGISTER_CMD, pars=pars)
 
 
-    def retrieve(self, fileId, fileVersion=-1, pars=[],
+    def retrieve(self, fileId, fileVersion=-1, pars=[], hdrs={},
                  targetFile=None, processing=None, processingPars=None):
         """
         Request file `fileId` from the NG/AMS Server, store it locally
@@ -581,7 +581,7 @@ class ngamsPClient:
 
         targetFile = targetFile or '.'
 
-        resp, host, port = self._get('RETRIEVE', pars)
+        resp, host, port = self._get('RETRIEVE', pars, hdrs)
         host_id = "%s:%d" % (host, port)
         with contextlib.closing(resp):
 
