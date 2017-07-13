@@ -548,12 +548,6 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         unzip(trgFile, outFilePath)
         self.checkFilesEq(outFilePath, refFile, "Retrieved file incorrect")
 
-    def _test_invalid_range(self, client, range_spec):
-        hdrs = {'Range': 'bytes=' + range_spec}
-        status = client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile='tmp', hdrs=hdrs)
-        self.assertEqual('FAILURE', status.getStatus())
-        self.assertIn('Invalid Range header', status.getMessage())
-
     def test_invalid_partial_retrievals(self):
 
         self.prepExtSrv()
@@ -562,14 +556,16 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         # Partial retrieval only supports a start offset, so using only
         # a suffix length or a begin/end range should fail
-        self._test_invalid_range(client, '0-1')
-        self._test_invalid_range(client, '-1')
+        ranges = ['0-1', '-1']
 
         # Not a number, missing -, negative number
-        self._test_invalid_range(client, 'a-')
-        self._test_invalid_range(client, 'a')
-        self._test_invalid_range(client, '0')
-        self._test_invalid_range(client, '-100-')
+        ranges += ['a-', 'a', '0', '-100-']
+
+        for r in ranges:
+            hdrs = {'Range': 'bytes=' + r}
+            status = client.retrieve("TEST.2001-05-08T15:25:00.123", targetFile='tmp', hdrs=hdrs)
+            self.assertEqual('FAILURE', status.getStatus())
+            self.assertIn('Invalid Range header', status.getMessage())
 
     def test_partial_retrieval(self):
 
@@ -587,15 +583,9 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         with contextlib.closing(response):
             file_size = full.write(response.read())
 
-        self._test_partial_retrieval(1, file_size, full)
-        self._test_partial_retrieval(2, file_size, full)
-        self._test_partial_retrieval(3, file_size, full)
-        self._test_partial_retrieval(7, file_size, full)
-        self._test_partial_retrieval(11, file_size, full)
-        self._test_partial_retrieval(13, file_size, full)
-        self._test_partial_retrieval(15, file_size, full)
-        self._test_partial_retrieval(20, file_size, full)
-        self._test_partial_retrieval(100, file_size, full)
+        # Now check that we can bring the same file in different number of parts
+        for n_parts in (1, 2, 3, 7, 11, 13, 14, 20, 100):
+            self._test_partial_retrieval(n_parts, file_size, full)
 
     def _test_partial_retrieval(self, n_parts, file_size, full):
 
