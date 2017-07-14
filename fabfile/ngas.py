@@ -274,7 +274,11 @@ def ngas_build_cmd(no_client, develop, no_doc_dependencies):
         if pkgmgr == 'brew':
             cellardir = check_brew_cellar()
             db_version = run('ls -tr1 {0}/berkeley-db'.format(cellardir)).split()[-1]
-            build_cmd.append('BERKELEYDB_DIR={0}/berkeley-db/{1}'.format(cellardir, db_version))
+            db_dir = '{0}/berkeley-db/{1}'.format(cellardir, db_version)
+            build_cmd.append('BERKELEYDB_DIR={0}'.format(db_dir))
+            if not no_client:
+                build_cmd.append('CFLAGS=-I{0}/include'.format(db_dir))
+                build_cmd.append('LDFLAGS=-L{0}/lib'.format(db_dir))
         else:
             incdir = MACPORT_DIR + '/include/db60'
             libdir = MACPORT_DIR + '/lib/db60'
