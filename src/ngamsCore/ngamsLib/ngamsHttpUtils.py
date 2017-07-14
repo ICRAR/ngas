@@ -78,7 +78,11 @@ def _http_response(host, port, method, cmd,
             pass
         raise
 
-    return conn.getresponse()
+    start = time.time()
+    response = conn.getresponse()
+    logger.debug("Response to %s request received within %.4f [s]", method, time.time() - start)
+
+    return response
 
 
 def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
