@@ -1059,7 +1059,7 @@ class ngamsConfig:
         for attr in dbEl.getAttrList():
             name = attr.getName()
             val = attr.getValue()
-            if name in ('Id', 'Interface', 'Snapshot', 'UseFileIgnore'):
+            if name in ('Id', 'Interface', 'Snapshot', 'UseFileIgnore', 'MaxPoolConnections'):
                 continue
 
             # Simple casting before saving
