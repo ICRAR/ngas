@@ -608,7 +608,7 @@ class ngamsPClient:
             return _dummy_success_stat(host_id)
 
 
-    def status(self):
+    def status(self, pars=[]):
         """
         Request a general status from the NG/AMS Server
         associated to the object.
@@ -617,7 +617,7 @@ class ngamsPClient:
         """
         T = TRACE()
 
-        return self.get_status(NGAMS_STATUS_CMD)
+        return self.get_status(NGAMS_STATUS_CMD, pars=pars)
 
 
     def subscribe(self,
