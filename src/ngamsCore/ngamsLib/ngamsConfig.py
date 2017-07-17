@@ -2467,3 +2467,14 @@ class ngamsConfig:
         """
         return os.path.normpath(self.getBackLogBufferDirectory() + "/" +\
                                 NGAMS_BACK_LOG_DIR)
+
+    def getUseRequestDb(self):
+        """
+        Returns whether the server should keep a request database or not.
+        """
+        val = self.getVal("Server[1].UseRequestDb")
+        if val is not None:
+            val = boolean_value(val)
+        if val is None:
+            return False
+        return val

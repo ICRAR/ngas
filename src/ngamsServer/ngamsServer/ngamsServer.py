@@ -579,7 +579,8 @@ class ngamsServer:
 
         Returns:         Request ID (integer).
         """
-        T = TRACE()
+        if not self.__ngamsCfgObj.getUseRequestDb():
+            return
 
         try:
             self.__requestDbmSem.acquire()
@@ -614,7 +615,9 @@ class ngamsServer:
 
         Returns:     Reference to object itself.
         """
-        T = TRACE()
+
+        if not self.__ngamsCfgObj.getUseRequestDb():
+            return
 
         try:
             self.__requestDbmSem.acquire()
@@ -641,6 +644,10 @@ class ngamsServer:
         Returns:       NG/AMS Request Properties Object or None
                        (ngamsReqProps|None).
         """
+
+        if not self.__ngamsCfgObj.getUseRequestDb():
+            raise Exception("Server is not configured keep a requests DB")
+
         try:
             self.__requestDbmSem.acquire()
             if (self.__requestDbm.hasKey(str(requestId))):
@@ -664,6 +671,10 @@ class ngamsServer:
 
         Returns:       Reference to object itself.
         """
+
+        if not self.__ngamsCfgObj.getUseRequestDb():
+            raise Exception("Server is not configured keep a requests DB")
+
         with self.__requestDbmSem:
             try:
                 for req_id in requestIds:
@@ -2479,7 +2490,8 @@ class ngamsServer:
         checkCreatePath(ngamsHighLevelLib.genCacheDirName(self.getCfg()))
 
         # Remove Request DB (DBM file).
-        rmFile(self.getReqDbName() + "*")
+        if self.__ngamsCfgObj.getUseRequestDb():
+            rmFile(self.getReqDbName() + "*")
 
         # Find the directories (mount directoties) to monitor for a minimum
         # amount of disk space. This is resolved from the various
@@ -2507,11 +2519,14 @@ class ngamsServer:
 
         logger.debug("Found NG/AMS System Directories to monitor for disk space")
 
-        logger.debug("Check/create NG/AMS Request Info DB ...")
-        reqDbmName = self.getReqDbName()
-        self.__requestDbm = ngamsDbm.ngamsDbm(reqDbmName, cleanUpOnDestr = 0,
-                                              writePerm = 1)
-        logger.debug("Checked/created NG/AMS Request Info DB")
+        if self.__ngamsCfgObj.getUseRequestDb():
+            logger.debug("Check/create NG/AMS Request Info DB ...")
+            reqDbmName = self.getReqDbName()
+            self.__requestDbm = ngamsDbm.ngamsDbm(reqDbmName, cleanUpOnDestr = 0,
+                                                  writePerm = 1)
+            logger.info("Checked/created NG/AMS Request Info DB")
+        else:
+            logger.info("NG/AMS Request Info DB disabled")
 
         #if (self.getCfg().getLogBufferSize() != -1):
         #    setLogCache(self.getCfg().getLogBufferSize())
