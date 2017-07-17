@@ -54,21 +54,25 @@ AC_SUBST([LT_CURRENT])
 AC_SUBST([LT_REVISION])
 AC_SUBST([LT_AGE]) 
 
-# Defining AM_CXXFLAGS for all SUBDIRS
-#AM_CXXFLAGS=-DNOCCS
-#AC_SUBST([AM_CXXFLAGS])
-# It would also have worked with:
-#CPPFLAGS=-DNOCCS
-# or, if you want to append: 
-#CPPFLAGS="$CPPFLAGS -DNOCCS"
 
-# 
-# Checks for libraries.
-# FIXME: Replace `main' with a function in `-lm':
-AC_CHECK_LIB([m], [main])
-# REMOVED: Do not check for other libs
-# FIXME: Replace `main' with a function in `-lqfits':
-#AC_CHECK_LIB([qfits], [main])
+# Users can specify other paths to look for bsddb
+AC_ARG_WITH(bsddb, action-if-given, )
+
+# POSIX thread support
+AC_CHECK_HEADER(pthread.h)
+AC_CHECK_LIB([pthread], [pthread_mutex_lock], , AC_MSG_ERROR([pthread library not found]))
+
+# Math library/header
+AC_CHECK_HEADER(math.h)
+AC_CHECK_LIB([m], [floorf], , AC_MSG_ERROR([Math library not found]))
+
+# BSDDB library/headers
+AC_CHECK_HEADER(db.h)
+AC_CHECK_LIB([db], [db_strerror], , AC_MSG_ERROR([BSDDB library not found]))
+
+# zlib library/headers
+AC_CHECK_HEADER(zlib.h)
+AC_CHECK_LIB([z], [crc32], , AC_MSG_ERROR([zlib library not found]))
 
 
 # CHECK_CANONICAL_BUILD
@@ -92,63 +96,6 @@ case $build in
 esac
 AC_SUBST(BUILD_DEF)
 AC_SUBST(SYSTEM_LIBS)
-
-# Enter here your project-defined macros located in m4macros/<macros>.m4
-# Example: QFITS_CHECK_XMEMORY located in m4macros/xmemory.m4
-# Example: CHEC_INTROOT located in m4macros/introot.m4
-#CHECK_INTROOT
-#CHECK_CFITSIO
-#CHECK_OSLX
-#CHECK_SYBASE
-
-# CHECK_CANONICAL_BUILD
-AC_MSG_RESULT([BUILD=$build])
-case $build in
-   *-*-linux*)
-     SYSTEM_LIBS=""
-     AC_MSG_RESULT([SYSTEM_LIBS=$SYSTEM_LIBS])
-     ;;
-   *-*-solaris*)
-     SYSTEM_LIBS="-lsocket -lnsl"
-     AC_MSG_RESULT([SYSTEM_LIBS=$SYSTEM_LIBS])
-     ;;
-   *-*-hpux*)
-     SYSTEM_LIBS=""
-     AC_MSG_RESULT([SYSTEM_LIBS=$SYSTEM_LIBS])
-     ;;
-esac
-AC_SUBST(SYSTEM_LIBS)
-
-# List of checks are obtained from your source files by executing
-# autorescan. It generates a configure.scan file with the suggested checks:
-# Checks for header files.
-#AC_HEADER_STDC
-#AC_CHECK_HEADERS([fcntl.h stdlib.h string.h sys/time.h unistd.h])
-#
-# Checks for typedefs, structures, and compiler characteristics.
-#AC_C_CONST
-#AC_TYPE_SIZE_T
-#AC_HEADER_TIME
-#AC_STRUCT_TM
-#
-# Checks for library functions.
-#AC_FUNC_MALLOC
-#AC_FUNC_MMAP
-#AC_FUNC_REALLOC
-#AC_FUNC_STAT
-#AC_FUNC_VPRINTF
-#AC_CHECK_FUNCS([atexit getpagesize gettimeofday memchr memmove memset mkdir munmap regcomp rmdir strchr strdup strrchr strstr uname])
-
-# ADDED: Other checks.Example BIG_ENDIAN
-# AC_C_BIGENDIAN
-
-# ADDED: Other checks. Example if this is a CPU_X86 machine
-# case $host_cpu in
-# i*86)
-#     CPU_X86="`echo $host_cpu | cut -c 2-`"
-#     AC_DEFINE_UNQUOTED([CPU_X86], $CPU_X86, [x86 CPU type])
-#     ;;
-# esac
 
 # MODIFIED: List of directories where to build Makefiles
 AC_CONFIG_FILES([Makefile])
