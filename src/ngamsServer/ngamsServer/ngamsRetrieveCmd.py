@@ -506,7 +506,7 @@ def _handleCmdRetrieve(srvObj,
     domain = ""
     if (reqPropsObj.hasHttpPar("domain")):
         domain = reqPropsObj.getHttpPar("domain")
-    quickLocation = False
+    quickLocation = True
     if (reqPropsObj.hasHttpPar("quick_location")):
         quickLocation = int(reqPropsObj.getHttpPar("quick_location"))
 
