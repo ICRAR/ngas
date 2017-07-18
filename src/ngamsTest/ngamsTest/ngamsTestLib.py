@@ -58,7 +58,7 @@ import astropy.io.fits as pyfits
 import pkg_resources
 import psutil
 
-from ngamsLib import ngamsConfig, ngamsDb, ngamsLib
+from ngamsLib import ngamsConfig, ngamsDb, ngamsLib, ngamsStatus
 from ngamsLib.ngamsCore import getHostName, TRACE, \
     ngamsCopyrightString, rmFile, \
     cpFile, NGAMS_FAILURE, NGAMS_SUCCESS, getNgamsVersion, \
@@ -252,15 +252,18 @@ def waitReqCompl(clientObj,
     """
     startTime = time.time()
     while ((time.time() - startTime) < timeOut):
-        res = clientObj.get_status("STATUS", pars=[["request_id", str(requestId)]])
+        res, host, port = clientObj._get("STATUS", pars=[["request_id", str(requestId)]])
+        res = res.read()
+        res = ngamsStatus.ngamsStatus().unpackXmlDoc(res, 1)
+        if res.getStatus() != NGAMS_SUCCESS:
+            raise Exception("unsuccessfull STATUS command in %s:%d with request_id: %s" % (host, port, res.getMessage()))
         if (res.getCompletionPercent() != None):
             if (float(res.getCompletionPercent()) >= 99.9):
                 break
         time.sleep(0.100)
     if ((time.time() - startTime) > timeOut):
         errMsg = "Timeout waiting for request: %s (%s/%s) to finish"
-        raise Exception, errMsg % (requestId, clientObj.getHost(),
-                                   clientObj.getPort())
+        raise Exception(errMsg % (requestId, host, port))
     return res
 
 
