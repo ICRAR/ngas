@@ -88,7 +88,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         TODO!: It is not checked that the contents on the disk and the info
                in the DB in ngas_files and ngas_disks is properly updated.
         """
-        self.prepExtSrv()
+        self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].UseRequestDb','true'),))
         client = sendPclCmd()
 
         # Archive a file + clone it to be able to execute the REMDISK Command.

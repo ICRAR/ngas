@@ -84,7 +84,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         TODO!: It is not checked that the info for the file is actually
                removed from the DB and from the disk.
         """
-        self.prepExtSrv()
+        self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].UseRequestDb','true'),))
         client = sendPclCmd()
 
         # Archive a file + clone it to be able to execute the REMFILE Command.
