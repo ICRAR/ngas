@@ -676,11 +676,11 @@ class ngamsPClient:
 
     def get_status(self, cmd, pars=[], hdrs=[]):
         """
-        Sends a GET command to the NGAS server, receives the reply
-        and returns it as a ngamsStatus object.
+        Sends a GET command to the first available NGAS server, receives the
+        reply and returns it as a ngamsStatus object.
         """
 
-        resp, host, port = self._get(cmd, list(pars), hdrs)
+        resp, host, port = self._get(cmd, pars, hdrs)
         host_id = "%s:%d" % (host, port)
 
         # If the reply is a ngamsStatus document read it and return it
@@ -700,6 +700,7 @@ class ngamsPClient:
         Send a command to the NG/AMS Server and receives the reply.
         """
 
+        pars = list(pars)
         if self.timeout:
             pars.append(["time_out", str(self.timeout)])
         if self.reload_mod:
