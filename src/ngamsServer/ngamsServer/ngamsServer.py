@@ -646,7 +646,7 @@ class ngamsServer:
         """
 
         if not self.__ngamsCfgObj.getUseRequestDb():
-            raise Exception("Server is not configured keep a requests DB")
+            raise Exception("Server is not configured to keep a requests DB")
 
         try:
             self.__requestDbmSem.acquire()
