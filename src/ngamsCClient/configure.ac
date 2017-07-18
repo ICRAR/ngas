@@ -12,7 +12,7 @@ AC_PREREQ(2.59)
 # TO_BE_EDITED: Enter here arguments to AC_INIT
 # Example: AC_INIT(qfits, 5.4.0, jyung@eso.org)
 # AC_INIT(FULL-PACKAGE-NAME, VERSION, BUG-REPORT-ADDRESS)
-# Example: 
+# Example:
 AC_INIT(ngams-C-client, 3.1, jknudstr@eso.org)
 
 # MODIFIED: AC_CONFIG_SRCDIR
@@ -45,14 +45,14 @@ AC_ENABLE_SHARED([yes])
 AC_SUBST(LIBTOOL_DEPS)
 
 
-# ADDED.  Libtool versioning. 
+# ADDED.  Libtool versioning.
 # First release for <PROJECT> 0.0.0
 LT_CURRENT=0
 LT_REVISION=0
 LT_AGE=0
 AC_SUBST([LT_CURRENT])
 AC_SUBST([LT_REVISION])
-AC_SUBST([LT_AGE]) 
+AC_SUBST([LT_AGE])
 
 
 # Users can specify other paths to look for bsddb
