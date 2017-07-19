@@ -161,19 +161,17 @@ class ngamsReqProps:
             logger.debug("Parsing HTTP header key: %s with value: %s", key, val)
             self.__httpHdrDic[key] = val
             if (keyTmp == "content-disposition"):
-                # NOTE: Parse on URL encoded value!
                 pars = ngamsLib.parseHttpHdr(headers[key])
-                for par in pars.keys():
-                    # For some reason '+' is not converted back to ' ' ...
-                    tmpVal = pars[par].replace("+", " ")
-                    uncVal = urllib.unquote(tmpVal)
-                    if (par == "filename"):
-                        self.setFileUri(os.path.basename(uncVal))
-                    elif (par == "mime_type"):
+                for name, val in pars.items():
+                    val = urllib.unquote(val)
+                    if name == "filename":
+                        self.setFileUri(os.path.basename(val))
+                    elif name == "mime_type":
                         if (self.getMimeType() == ""):
-                            self.setMimeType(uncVal)
-                    else:
-                        if (par.strip() != ""): self.addHttpPar(par, uncVal)
+                            self.setMimeType(val)
+                    elif name.strip():
+                        self.addHttpPar(name, val)
+
             elif (keyTmp == "content-type"):
                 if (self.getMimeType() == ""):
                     self.setMimeType(val.split(";")[0].strip(" \""))
