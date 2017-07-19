@@ -38,6 +38,7 @@ import functools
 import logging
 import os
 import re
+import time
 
 import ngamsSrvUtils
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsDiskInfo, ngamsStatus, \
@@ -514,10 +515,16 @@ def checkFile(srvObj,
                     if blockSize == -1:
                         blockSize = 4096
                     checksum_typ = get_checksum_name(crc_variant)
+                    start = time.time()
                     if executor:
                         checksumFile = executor(get_checksum, blockSize, filename, crc_variant)
                     else:
                         checksumFile = get_checksum(blockSize, filename, crc_variant)
+                    duration = time.time() - start
+                    fsize_mb = getFileSize(filename) / 1024. / 1024.
+                    logger.info("Checked %s in %.4f [s]. Check ran at %.3f [MB/s]. Checksum file/db:  %d / %s",
+                                filename, duration, fsize_mb / duration,
+                                checksumFile, checksumDb)
                 except Exception, e:
                     # We assume an IO error:
                     # "[Errno 2] No such file or directory"
