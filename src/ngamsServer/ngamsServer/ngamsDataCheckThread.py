@@ -814,7 +814,7 @@ def _dataCheckSubThread(srvObj,
             tmpReport = []
             ngamsFileUtils.checkFile(srvObj, fileInfo, tmpReport,
                                      srvObj.getCfg().getDataCheckScan(),
-                                     exeutor=external_process_executor)
+                                     executor=external_process_executor)
             if (not tmpReport): tmpReport = [[]]
             _updateFileCheckStatus(srvObj,
                                    fileInfo[ngamsDbCore.SUM1_FILE_SIZE],
