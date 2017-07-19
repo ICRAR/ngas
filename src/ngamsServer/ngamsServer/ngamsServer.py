@@ -281,7 +281,7 @@ def show_threads():
 
         all_threads = threading.enumerate()
         max_name  = reduce(max, map(len, [t.name for t in all_threads]))
-        max_ident = reduce(max, map(int, map(math.ceil, map(math.log10, [t.ident for t in all_threads]))))
+        max_ident = reduce(max, map(int, map(math.ceil, map(math.log10, [t.ident for t in all_threads if t.ident is not None]))))
 
         msg = ['Name' + ' '*(max_name-2) + 'Ident' + ' '*(max_ident-3) + 'Daemon',
                '='*max_name + '  ' + '=' * max_ident + '  ======']
