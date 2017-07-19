@@ -787,9 +787,10 @@ def _dataCheckSubThread(srvObj,
 
     Returns:      Void.
     """
-    T = TRACE()
 
-    dataCheckPrio = srvObj.getCfg().getDataCheckPrio()
+    def external_process_executor(f, *args, **kwargs):
+        return srvObj.workers_pool.apply(f, args, kwargs)
+
     while (1):
         _stopCheckingSubThread()
 
@@ -812,7 +813,8 @@ def _dataCheckSubThread(srvObj,
             # Update the overall status of the checking.
             tmpReport = []
             ngamsFileUtils.checkFile(srvObj, fileInfo, tmpReport,
-                                     srvObj.getCfg().getDataCheckScan())
+                                     srvObj.getCfg().getDataCheckScan(),
+                                     exeutor=external_process_executor)
             if (not tmpReport): tmpReport = [[]]
             _updateFileCheckStatus(srvObj,
                                    fileInfo[ngamsDbCore.SUM1_FILE_SIZE],

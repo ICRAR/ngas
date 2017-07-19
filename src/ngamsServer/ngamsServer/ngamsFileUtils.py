@@ -413,7 +413,8 @@ def quickFileLocate(srvObj,
 def checkFile(srvObj,
               sum1FileInfo,
               checkReport,
-              skipCheckSum = 0):
+              skipCheckSum = 0,
+              executor=None):
     """
     Function to carry out a consistency check on a file located on
     the local host.
@@ -513,7 +514,10 @@ def checkFile(srvObj,
                     if blockSize == -1:
                         blockSize = 4096
                     checksum_typ = get_checksum_name(crc_variant)
-                    checksumFile = get_checksum(blockSize, filename, crc_variant)
+                    if executor:
+                        checksumFile = executor(get_checksum, blockSize, filename, crc_variant)
+                    else:
+                        checksumFile = get_checksum(blockSize, filename, crc_variant)
                 except Exception, e:
                     # We assume an IO error:
                     # "[Errno 2] No such file or directory"

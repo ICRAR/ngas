@@ -2287,6 +2287,13 @@ class ngamsServer:
         # load NGAMS configuration, start NG/AMS HTTP server.
         self.parseInputPars(argv)
 
+        def init_subproc():
+            def noop(*args):
+                pass
+            signal.signal(signal.SIGTERM, noop)
+            signal.signal(signal.SIGINT, noop)
+        self.workers_pool = multiprocessing.Pool(10, initializer=init_subproc)
+
         logger.info("NG/AMS Server version: %s", getNgamsVersion())
         logger.info("Python version: %s", re.sub("\n", "", sys.version))
 
@@ -2674,6 +2681,8 @@ class ngamsServer:
         show_threads()
         self.stopServer()
         ngamsSrvUtils.ngamsBaseExitHandler(self)
+        self.workers_pool.terminate()
+        self.workers_pool.close()
         show_threads()
 
         # Shut down logging. This will flush all pending logs in the system
