@@ -415,33 +415,15 @@ def checkFile(srvObj,
               sum1FileInfo,
               checkReport,
               skipCheckSum = 0,
-              executor=None):
+              executor=None, stop_evt=None, allowed_evt=None):
     """
-    Function to carry out a consistency check on a file located on
-    the local host.
-
-    srvObj:        Reference to NG/AMS server class object (ngamsServer).
-
-    sum1FileInfo:  List with file information to be extracted using the
-                   constants ngamsDbCore.SUM1_* (list).
-
-    checkReport:   Check report with problems encountered in connection with
-                   a file. It is a list containing sub-lists with the
-                   information:
-
-                     [<Msg>, <File ID>, <File Version>, <Slot ID>, <Disk ID>,
-                      <Compl. Filename>]
-
-                   Such new entries will be added in case discrepancies
-                   are found (list/list).
-
-    skipCheckSum:  If set to 1, no checksum test is done (integer/0|1).
-
-    Returns:       Void.
+    Function to carry out a consistency check on a file.
+    If `stop_evt` and `allowed_evt` are given, then `get_checksum_interruptible`
+    is used internally by this method; otherwise `get_checksum` is used.
+    If `executor` is given, then it is used to carry out the execution of the
+    checksum calculation.
     """
-    T = TRACE(5)
 
-    dataCheckPrio = srvObj.getCfg().getDataCheckPrio()
     foundProblem  = 0
     fileInfo      = sum1FileInfo
     diskId        = fileInfo[ngamsDbCore.SUM1_DISK_ID]
@@ -515,12 +497,22 @@ def checkFile(srvObj,
                     if blockSize == -1:
                         blockSize = 4096
                     checksum_typ = get_checksum_name(crc_variant)
+
+                    # Interruptible or not?
+                    m = get_checksum
+                    args = blockSize, filename, crc_variant
+                    if stop_evt and allowed_evt:
+                        m = get_checksum_interruptible
+                        args = blockSize, filename, crc_variant, stop_evt, allowed_evt
+
+                    # Calculate the checksum, possibly under the executor
                     start = time.time()
-                    if executor:
-                        checksumFile = executor(get_checksum, blockSize, filename, crc_variant)
-                    else:
-                        checksumFile = get_checksum(blockSize, filename, crc_variant)
+                    checksumFile = executor(m, *args) if executor else m(*args)
                     duration = time.time() - start
+
+                    if stop_evt and stop_evt.is_set():
+                        return
+
                     fsize_mb = getFileSize(filename) / 1024. / 1024.
                     logger.info("Checked %s in %.4f [s]. Check ran at %.3f [MB/s]. Checksum file/db:  %d / %s",
                                 filename, duration, fsize_mb / duration,
@@ -671,6 +663,28 @@ def get_checksum(blocksize, filename, checksum_variant):
     crc = 0
     with open(filename, 'rb') as f:
         for block in iter(functools.partial(f.read, blocksize), ''):
+            crc = crc_m(block, crc)
+    return crc
+
+def get_checksum_interruptible(blocksize, filename, checksum_variant,
+                               stop_evt, allowed_evt):
+    """
+    Like get_checksum, but the inner loop's execution is conditioned by two
+    events to signal a full stop, and whether the execution of the inner loop
+    should continue or not.
+
+    When the caller sets the `stop_evt`, the `allowed_evt` should also be set;
+    otherwise the execution will hang indefinitely.
+    """
+    crc_m = get_checksum_method(checksum_variant)
+    if crc_m is None:
+        return None
+    crc = 0
+    with open(filename, 'rb') as f:
+        for block in iter(functools.partial(f.read, blocksize), ''):
+            allowed_evt.wait()
+            if stop_evt.is_set():
+                return
             crc = crc_m(block, crc)
     return crc
 

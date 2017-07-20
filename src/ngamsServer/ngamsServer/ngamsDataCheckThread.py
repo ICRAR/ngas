@@ -35,6 +35,7 @@ to check the data holding in connection with one NGAS host.
 import cPickle
 import glob
 import logging
+import multiprocessing
 import os
 import random
 import time
@@ -44,7 +45,8 @@ import ngamsFileUtils
 from ngamsLib.ngamsCore import TRACE, NGAMS_DATA_CHECK_THR, \
     NGAMS_CACHE_DIR, checkCreatePath, isoTime2Secs, \
     rmFile, genLog, mvFile, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
-    NGAMS_VOLUME_INFO_FILE, NGAMS_STAGING_DIR, NGAMS_NOTIF_DATA_CHECK, toiso8601
+    NGAMS_VOLUME_INFO_FILE, NGAMS_STAGING_DIR, NGAMS_NOTIF_DATA_CHECK, toiso8601,\
+    NGAMS_IDLE_SUBSTATE
 from ngamsLib import ngamsNotification, ngamsDiskInfo
 from ngamsLib import ngamsDbCore, ngamsDbm, ngamsHighLevelLib, ngamsLib
 
@@ -474,7 +476,8 @@ def _dataCheckSubThread(srvObj,
                         diskSchedDic,
                         dbmObjDic,
                         reqFileInfoSem,
-                        stats):
+                        stats,
+                        checksum_stop_evt, checksum_allow_evt):
     """
     Sub-thread scheduled to carry out the actual checking. This makes
     it possible to do the checking in several threads simultaneously if
@@ -515,7 +518,11 @@ def _dataCheckSubThread(srvObj,
             tmpReport = []
             ngamsFileUtils.checkFile(srvObj, fileInfo, tmpReport,
                                      srvObj.getCfg().getDataCheckScan(),
-                                     executor=external_process_executor)
+                                     executor=external_process_executor,
+                                     stop_evt=checksum_stop_evt,
+                                     allowed_evt=checksum_allow_evt)
+            _stopDataCheckThr(stopEvt)
+
             if (not tmpReport): tmpReport = [[]]
             _updateFileCheckStatus(srvObj,
                                    fileInfo[ngamsDbCore.SUM1_FILE_SIZE],
@@ -703,7 +710,7 @@ def get_disks_to_check(srvObj):
     logger.info("Will check %d disks that are mounted in this system", len(disks_to_check))
     return disks_to_check
 
-def _data_check_cycle(srvObj, stopEvt):
+def _data_check_cycle(srvObj, stopEvt, checksum_stop_evt, checksum_allow_evt):
 
     # Get list of disks that need checking
     disks_to_check = get_disks_to_check(srvObj)
@@ -727,7 +734,9 @@ def _data_check_cycle(srvObj, stopEvt):
     threads = {}
     for n in range(n_threads):
         threadName = "%s-%d" % (NGAMS_DATA_CHECK_THR, n)
-        args = (srvObj, threadName, stopEvt, all_files, disk_ids, diskSchedDic, dbmObjDic, reqFileInfoSem, stats)
+        args = (srvObj, threadName, stopEvt, all_files, disk_ids, diskSchedDic,
+                dbmObjDic, reqFileInfoSem, stats,
+                checksum_stop_evt, checksum_allow_evt)
         logger.debug("Starting Data Check Sub-Thread: %s", threadName)
         t = threading.Thread(target=_dataCheckSubThread, name=threadName, args=args)
         t.setDaemon(0)
@@ -739,6 +748,9 @@ def _data_check_cycle(srvObj, stopEvt):
         try:
             suspend(stopEvt, 0.500)
         except StopDataCheckThreadException:
+
+            checksum_stop_evt.set()
+            checksum_allow_evt.set()
 
             # Be nice and join sub-threads
             for t in threads.values():
@@ -772,11 +784,11 @@ def _data_check_cycle(srvObj, stopEvt):
 
     return stats
 
-def data_check_cycle(srvObj, stopEvt):
+def data_check_cycle(srvObj, stopEvt, checksum_stop_evt, checksum_allow_evt):
     # Simply set the server as data-checking or not
     srvObj.updateHostInfo(None, None, None, None, None, None, 1, None)
     try:
-        return _data_check_cycle(srvObj, stopEvt)
+        return _data_check_cycle(srvObj, stopEvt, checksum_stop_evt, checksum_allow_evt)
     finally:
         srvObj.updateHostInfo(None, None, None, None, None, None, 0, None)
 
@@ -792,6 +804,22 @@ def dataCheckThread(srvObj, stopEvt):
     """
     minCycleTime = isoTime2Secs(srvObj.getCfg().getDataCheckMinCycle())
     logger.info("Data checker thread period is %f", minCycleTime)
+
+    # The events that control the execution of the checksum
+    checksum_stop_evt = multiprocessing.Event()
+    checksum_stop_evt.clear()
+    checksum_allow_evt = multiprocessing.Event()
+    checksum_allow_evt.clear()
+
+    # When the server is idle we allow checksums to progress
+    def substate_change_listener(substate):
+        if substate == NGAMS_IDLE_SUBSTATE:
+            logger.info("Enabling checksum calculations due to idle server")
+            checksum_allow_evt.set()
+        else:
+            logger.info("Disabling checksum calculation due to busy server")
+            checksum_allow_evt.clear()
+    srvObj.substate_chg_listeners.append(substate_change_listener)
 
     while True:
 
@@ -812,7 +840,7 @@ def dataCheckThread(srvObj, stopEvt):
                 logger.info("Data Check Thread starting iteration ...")
 
             # Everything happens here
-            stats = data_check_cycle(srvObj, stopEvt)
+            stats = data_check_cycle(srvObj, stopEvt, checksum_stop_evt, checksum_allow_evt)
 
             lastOldestCheck = srvObj.getDb().getMinLastDiskCheck(srvObj.getHostId())
             time_to_compare = lastOldestCheck or stats.time_start

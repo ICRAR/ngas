@@ -315,6 +315,7 @@ class ngamsServer:
         self.__subState               = NGAMS_IDLE_SUBSTATE
         self.__stateSem               = threading.Semaphore(1)
         self.__subStateSem            = threading.Semaphore(1)
+        self.substate_chg_listeners   = []
         self.__busyCount              = 0
         self.__sysMtPtDic             = {}
         self._pid_file_created         = False
@@ -769,11 +770,18 @@ class ngamsServer:
             self.__busyCount = self.__busyCount + 1
         if ((subState == NGAMS_IDLE_SUBSTATE) and (self.__busyCount > 0)):
             self.__busyCount = self.__busyCount - 1
+
         if ((subState == NGAMS_IDLE_SUBSTATE) and (self.__busyCount == 0)):
+            changed = self.__subState == NGAMS_IDLE_SUBSTATE
             self.__subState = NGAMS_IDLE_SUBSTATE
         else:
+            changed = self.__subState == NGAMS_BUSY_SUBSTATE
             self.__subState = NGAMS_BUSY_SUBSTATE
         self.relSubStateSem()
+
+        if changed:
+            for l in self.substate_chg_listeners:
+                l(subState)
         return self
 
 
