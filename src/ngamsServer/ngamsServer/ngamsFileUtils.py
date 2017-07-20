@@ -663,6 +663,8 @@ def get_checksum(blocksize, filename, checksum_variant):
             crc = crc_m(block, crc)
     return crc
 
+checksum_allow_evt = None
+checksum_stop_evt = None
 def get_checksum_interruptible(blocksize, filename, checksum_variant):
     """
     Like get_checksum, but the inner loop's execution is conditioned by two

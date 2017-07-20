@@ -2414,9 +2414,9 @@ class ngamsServer:
             # on newly created worker processes
             def init_subproc(srvObj):
 
-                global checksum_allow_evt, checksum_stop_evt
-                checksum_allow_evt = srvObj.checksum_allow_evt
-                checksum_stop_evt =  srvObj.checksum_stop_evt
+                import ngamsFileUtils
+                ngamsFileUtils.checksum_allow_evt = srvObj.checksum_allow_evt
+                ngamsFileUtils.checksum_stop_evt =  srvObj.checksum_stop_evt
 
                 def noop(*args):
                     pass
