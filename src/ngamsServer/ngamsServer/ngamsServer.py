@@ -2395,9 +2395,31 @@ class ngamsServer:
         # Do we need data check workers?
         if self.getCfg().getDataCheckActive():
 
-            # Reset signal handlers and shutdown DB connection
+            # The events that control the execution of the checksum on the
+            # individual worker processes
+            checksum_stop_evt = multiprocessing.Event()
+            checksum_stop_evt.clear()
+            checksum_allow_evt = multiprocessing.Event()
+            checksum_allow_evt.clear()
+
+            # When the server is idle we allow checksums to progress
+            def substate_change_listener(substate):
+                if substate == NGAMS_IDLE_SUBSTATE:
+                    logger.info("Enabling checksum calculations due to idle server")
+                    checksum_allow_evt.set()
+                else:
+                    logger.info("Disabling checksum calculation due to busy server")
+                    checksum_allow_evt.clear()
+            self.substate_chg_listeners.append(substate_change_listener)
+
+            # Store the events globally for later usage.
+            # Then reset signal handlers and shutdown DB connection
             # on newly created worker processes
-            def init_subproc(srvObj):
+            def init_subproc(srvObj, checksum_allow_evt_p, checksum_stop_evt_p):
+
+                global checksum_allow_evt, checksum_stop_evt
+                checksum_allow_evt = checksum_allow_evt_p
+                checksum_stop_evt =  checksum_stop_evt_p
 
                 def noop(*args):
                     pass
@@ -2406,10 +2428,11 @@ class ngamsServer:
                 signal.signal(signal.SIGINT, noop)
                 srvObj.getDb().close()
 
+            initargs = self, checksum_stop_evt, checksum_allow_evt
             n_workers = self.getCfg().getDataCheckMaxProcs()
             self.workers_pool = multiprocessing.Pool(n_workers,
                                                      initializer=init_subproc,
-                                                     initargs=(self,))
+                                                     initargs=initargs)
 
         # IP address defaults to localhost
         ipAddress = self.getCfg().getIpAddress()

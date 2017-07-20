@@ -491,6 +491,8 @@ def _dataCheckSubThread(srvObj,
     """
 
     def external_process_executor(f, *args, **kwargs):
+        global checksum_allow_evt, checksum_stop_evt
+        args += [checksum_allow_evt, checksum_stop_evt]
         return srvObj.workers_pool.apply(f, args, kwargs)
 
     while (1):
@@ -739,7 +741,7 @@ def _data_check_cycle(srvObj, stopEvt, checksum_stop_evt, checksum_allow_evt):
                 checksum_stop_evt, checksum_allow_evt)
         logger.debug("Starting Data Check Sub-Thread: %s", threadName)
         t = threading.Thread(target=_dataCheckSubThread, name=threadName, args=args)
-        t.setDaemon(0)
+        t.setDaemon= True
         t.start()
         threads[threadName] = t
 
@@ -804,22 +806,6 @@ def dataCheckThread(srvObj, stopEvt):
     """
     minCycleTime = isoTime2Secs(srvObj.getCfg().getDataCheckMinCycle())
     logger.info("Data checker thread period is %f", minCycleTime)
-
-    # The events that control the execution of the checksum
-    checksum_stop_evt = multiprocessing.Event()
-    checksum_stop_evt.clear()
-    checksum_allow_evt = multiprocessing.Event()
-    checksum_allow_evt.clear()
-
-    # When the server is idle we allow checksums to progress
-    def substate_change_listener(substate):
-        if substate == NGAMS_IDLE_SUBSTATE:
-            logger.info("Enabling checksum calculations due to idle server")
-            checksum_allow_evt.set()
-        else:
-            logger.info("Disabling checksum calculation due to busy server")
-            checksum_allow_evt.clear()
-    srvObj.substate_chg_listeners.append(substate_change_listener)
 
     while True:
 
