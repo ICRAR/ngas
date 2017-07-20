@@ -445,6 +445,9 @@ class ngamsServer:
         # Defined as <hostname>:<port>
         self.host_id   = None
 
+        # Worker processes
+        self.workers_pool = None
+
     def getHostId(self):
         """
         Returns the NG/AMS Host ID for this server.
@@ -2287,13 +2290,6 @@ class ngamsServer:
         # load NGAMS configuration, start NG/AMS HTTP server.
         self.parseInputPars(argv)
 
-        def init_subproc():
-            def noop(*args):
-                pass
-            signal.signal(signal.SIGTERM, noop)
-            signal.signal(signal.SIGINT, noop)
-        self.workers_pool = multiprocessing.Pool(10, initializer=init_subproc)
-
         logger.info("NG/AMS Server version: %s", getNgamsVersion())
         logger.info("Python version: %s", re.sub("\n", "", sys.version))
 
@@ -2387,6 +2383,25 @@ class ngamsServer:
 
         # Load NG/AMS Configuration (from XML Document/DB).
         self.loadCfg()
+
+        # Do we need data check workers?
+        if self.getCfg().getDataCheckActive():
+
+            # Reset signal handlers and shutdown DB connection
+            # on newly created worker processes
+            def init_subproc(srvObj):
+
+                def noop(*args):
+                    pass
+
+                signal.signal(signal.SIGTERM, noop)
+                signal.signal(signal.SIGINT, noop)
+                srvObj.getDb().close()
+
+            n_workers = self.getCfg().getDataCheckMaxProcs()
+            self.workers_pool = multiprocessing.Pool(n_workers,
+                                                     initializer=init_subproc,
+                                                     initargs=(self,))
 
         # IP address defaults to localhost
         ipAddress = self.getCfg().getIpAddress()
@@ -2681,8 +2696,9 @@ class ngamsServer:
         show_threads()
         self.stopServer()
         ngamsSrvUtils.ngamsBaseExitHandler(self)
-        self.workers_pool.terminate()
-        self.workers_pool.close()
+        if self.workers_pool:
+            self.workers_pool.close()
+            self.workers_pool.join()
         show_threads()
 
         # Shut down logging. This will flush all pending logs in the system
