@@ -476,8 +476,7 @@ def _dataCheckSubThread(srvObj,
                         diskSchedDic,
                         dbmObjDic,
                         reqFileInfoSem,
-                        stats,
-                        checksum_stop_evt, checksum_allow_evt):
+                        stats):
     """
     Sub-thread scheduled to carry out the actual checking. This makes
     it possible to do the checking in several threads simultaneously if
@@ -712,7 +711,7 @@ def get_disks_to_check(srvObj):
     logger.info("Will check %d disks that are mounted in this system", len(disks_to_check))
     return disks_to_check
 
-def _data_check_cycle(srvObj, stopEvt, checksum_stop_evt, checksum_allow_evt):
+def _data_check_cycle(srvObj, stopEvt):
 
     # Get list of disks that need checking
     disks_to_check = get_disks_to_check(srvObj)
@@ -737,8 +736,7 @@ def _data_check_cycle(srvObj, stopEvt, checksum_stop_evt, checksum_allow_evt):
     for n in range(n_threads):
         threadName = "%s-%d" % (NGAMS_DATA_CHECK_THR, n)
         args = (srvObj, threadName, stopEvt, all_files, disk_ids, diskSchedDic,
-                dbmObjDic, reqFileInfoSem, stats,
-                checksum_stop_evt, checksum_allow_evt)
+                dbmObjDic, reqFileInfoSem, stats)
         logger.debug("Starting Data Check Sub-Thread: %s", threadName)
         t = threading.Thread(target=_dataCheckSubThread, name=threadName, args=args)
         t.setDaemon= True
@@ -786,11 +784,11 @@ def _data_check_cycle(srvObj, stopEvt, checksum_stop_evt, checksum_allow_evt):
 
     return stats
 
-def data_check_cycle(srvObj, stopEvt, checksum_stop_evt, checksum_allow_evt):
+def data_check_cycle(srvObj, stopEvt):
     # Simply set the server as data-checking or not
     srvObj.updateHostInfo(None, None, None, None, None, None, 1, None)
     try:
-        return _data_check_cycle(srvObj, stopEvt, checksum_stop_evt, checksum_allow_evt)
+        return _data_check_cycle(srvObj, stopEvt)
     finally:
         srvObj.updateHostInfo(None, None, None, None, None, None, 0, None)
 
@@ -826,7 +824,7 @@ def dataCheckThread(srvObj, stopEvt):
                 logger.info("Data Check Thread starting iteration ...")
 
             # Everything happens here
-            stats = data_check_cycle(srvObj, stopEvt, checksum_stop_evt, checksum_allow_evt)
+            stats = data_check_cycle(srvObj, stopEvt)
 
             lastOldestCheck = srvObj.getDb().getMinLastDiskCheck(srvObj.getHostId())
             time_to_compare = lastOldestCheck or stats.time_start
