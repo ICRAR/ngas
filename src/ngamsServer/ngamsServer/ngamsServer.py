@@ -350,6 +350,8 @@ class ngamsServer:
         # Handling of the Data Check Thread.
         self._dataCheckThread        = None
         self._dataCheckThreadStopEvt = threading.Event()
+        self.checksum_allow_evt      = multiprocessing.Event()
+        self.checksum_stop_evt       = multiprocessing.Event()
 
         # Handling of the Data Subscription.
         self._subscriberDic           = {}
@@ -1011,7 +1013,9 @@ class ngamsServer:
         logger.debug("Starting Data Check Thread ...")
         self._dataCheckThread = threading.Thread(target=ngamsDataCheckThread.dataCheckThread,
                                                  name=ngamsDataCheckThread.NGAMS_DATA_CHECK_THR,
-                                                 args=(self, self._dataCheckThreadStopEvt))
+                                                 args=(self, self._dataCheckThreadStopEvt,
+                                                       self.checksum_allow_evt,
+                                                       self.checksum_stop_evt))
         self._dataCheckThread.start()
         logger.info("Data Check Thread started")
 
@@ -2395,31 +2399,24 @@ class ngamsServer:
         # Do we need data check workers?
         if self.getCfg().getDataCheckActive():
 
-            # The events that control the execution of the checksum on the
-            # individual worker processes
-            checksum_stop_evt = multiprocessing.Event()
-            checksum_stop_evt.clear()
-            checksum_allow_evt = multiprocessing.Event()
-            checksum_allow_evt.clear()
-
             # When the server is idle we allow checksums to progress
             def substate_change_listener(substate):
                 if substate == NGAMS_IDLE_SUBSTATE:
                     logger.info("Enabling checksum calculations due to idle server")
-                    checksum_allow_evt.set()
+                    self.checksum_allow_evt.set()
                 else:
                     logger.info("Disabling checksum calculation due to busy server")
-                    checksum_allow_evt.clear()
+                    self.checksum_allow_evt.clear()
             self.substate_chg_listeners.append(substate_change_listener)
 
             # Store the events globally for later usage.
             # Then reset signal handlers and shutdown DB connection
             # on newly created worker processes
-            def init_subproc(srvObj, checksum_allow_evt_p, checksum_stop_evt_p):
+            def init_subproc(srvObj):
 
                 global checksum_allow_evt, checksum_stop_evt
-                checksum_allow_evt = checksum_allow_evt_p
-                checksum_stop_evt =  checksum_stop_evt_p
+                checksum_allow_evt = srvObj.checksum_allow_evt
+                checksum_stop_evt =  srvObj.checksum_stop_evt
 
                 def noop(*args):
                     pass
@@ -2428,11 +2425,10 @@ class ngamsServer:
                 signal.signal(signal.SIGINT, noop)
                 srvObj.getDb().close()
 
-            initargs = self, checksum_stop_evt, checksum_allow_evt
             n_workers = self.getCfg().getDataCheckMaxProcs()
             self.workers_pool = multiprocessing.Pool(n_workers,
                                                      initializer=init_subproc,
-                                                     initargs=initargs)
+                                                     initargs=(self,))
 
         # IP address defaults to localhost
         ipAddress = self.getCfg().getIpAddress()

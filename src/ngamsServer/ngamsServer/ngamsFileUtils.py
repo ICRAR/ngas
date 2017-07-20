@@ -663,8 +663,7 @@ def get_checksum(blocksize, filename, checksum_variant):
             crc = crc_m(block, crc)
     return crc
 
-def get_checksum_interruptible(blocksize, filename, checksum_variant,
-                               stop_evt, allowed_evt):
+def get_checksum_interruptible(blocksize, filename, checksum_variant):
     """
     Like get_checksum, but the inner loop's execution is conditioned by two
     events to signal a full stop, and whether the execution of the inner loop
@@ -673,14 +672,16 @@ def get_checksum_interruptible(blocksize, filename, checksum_variant,
     When the caller sets the `stop_evt`, the `allowed_evt` should also be set;
     otherwise the execution will hang indefinitely.
     """
+    global checksum_allow_evt, checksum_stop_evt
+
     crc_m = get_checksum_method(checksum_variant)
     if crc_m is None:
         return None
     crc = 0
     with open(filename, 'rb') as f:
         for block in iter(functools.partial(f.read, blocksize), ''):
-            allowed_evt.wait()
-            if stop_evt.is_set():
+            checksum_allow_evt.wait()
+            if checksum_stop_evt.is_set():
                 return
             crc = crc_m(block, crc)
     return crc

@@ -492,8 +492,6 @@ def _dataCheckSubThread(srvObj,
     # The globals are set at process creation time,
     # in ngamsServer#handleStartUp
     def external_process_executor(f, *args, **kwargs):
-        global checksum_allow_evt, checksum_stop_evt
-        args = list(args) + [checksum_stop_evt, checksum_allow_evt]
         return srvObj.workers_pool.apply(f, args, kwargs)
 
     while (1):
@@ -711,7 +709,7 @@ def get_disks_to_check(srvObj):
     logger.info("Will check %d disks that are mounted in this system", len(disks_to_check))
     return disks_to_check
 
-def _data_check_cycle(srvObj, stopEvt):
+def _data_check_cycle(srvObj, stopEvt, checksum_allow_evt, checksum_stop_evt):
 
     # Get list of disks that need checking
     disks_to_check = get_disks_to_check(srvObj)
@@ -784,15 +782,15 @@ def _data_check_cycle(srvObj, stopEvt):
 
     return stats
 
-def data_check_cycle(srvObj, stopEvt):
+def data_check_cycle(srvObj, stopEvt, checksum_allow_evt, checksum_stop_evt):
     # Simply set the server as data-checking or not
     srvObj.updateHostInfo(None, None, None, None, None, None, 1, None)
     try:
-        return _data_check_cycle(srvObj, stopEvt)
+        return _data_check_cycle(srvObj, stopEvt, checksum_allow_evt, checksum_stop_evt)
     finally:
         srvObj.updateHostInfo(None, None, None, None, None, None, 0, None)
 
-def dataCheckThread(srvObj, stopEvt):
+def dataCheckThread(srvObj, stopEvt, checksum_allow_evt, checksum_stop_evt):
     """
     The Data Check Thread is executed to run a periodic check of the
     consistency of the data files contained in an NG/AMS system. The periodic
@@ -824,7 +822,7 @@ def dataCheckThread(srvObj, stopEvt):
                 logger.info("Data Check Thread starting iteration ...")
 
             # Everything happens here
-            stats = data_check_cycle(srvObj, stopEvt)
+            stats = data_check_cycle(srvObj, stopEvt, checksum_allow_evt, checksum_stop_evt)
 
             lastOldestCheck = srvObj.getDb().getMinLastDiskCheck(srvObj.getHostId())
             time_to_compare = lastOldestCheck or stats.time_start
