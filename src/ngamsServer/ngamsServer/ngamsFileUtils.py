@@ -509,9 +509,6 @@ def checkFile(srvObj,
                     checksumFile = executor(m, *args) if executor else m(*args)
                     duration = time.time() - start
 
-                    if stop_evt and stop_evt.is_set():
-                        return
-
                     fsize_mb = getFileSize(filename) / 1024. / 1024.
                     logger.info("Checked %s in %.4f [s]. Check ran at %.3f [MB/s]. Checksum file/db:  %d / %s",
                                 filename, duration, fsize_mb / duration,
@@ -522,6 +519,7 @@ def checkFile(srvObj,
                     # This problem has already been registered further
                     # up so we ignore it here.
                     rmFile(fileChecked)
+                    logger.exception("Error while checking file %s", filename)
                     return
             else:
                 checksumFile = ""

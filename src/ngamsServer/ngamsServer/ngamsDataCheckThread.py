@@ -489,9 +489,11 @@ def _dataCheckSubThread(srvObj,
     Returns:      Void.
     """
 
+    # The globals are set at process creation time,
+    # in ngamsServer#handleStartUp
     def external_process_executor(f, *args, **kwargs):
         global checksum_allow_evt, checksum_stop_evt
-        args += [checksum_allow_evt, checksum_stop_evt]
+        args = list(args) + [checksum_stop_evt, checksum_allow_evt]
         return srvObj.workers_pool.apply(f, args, kwargs)
 
     while (1):
