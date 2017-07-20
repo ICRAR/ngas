@@ -49,8 +49,7 @@ setup(
         'ngamsCore',
         'python-daemon',
         'pysendfile',
-        'docutils',
-            ],
+    ],
     # No spaces allowed between the '='s
     entry_points= {
         'console_scripts':[
