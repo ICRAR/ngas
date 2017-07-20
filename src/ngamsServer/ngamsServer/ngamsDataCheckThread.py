@@ -519,9 +519,7 @@ def _dataCheckSubThread(srvObj,
             tmpReport = []
             ngamsFileUtils.checkFile(srvObj, fileInfo, tmpReport,
                                      srvObj.getCfg().getDataCheckScan(),
-                                     executor=external_process_executor,
-                                     stop_evt=checksum_stop_evt,
-                                     allowed_evt=checksum_allow_evt)
+                                     executor=external_process_executor)
             _stopDataCheckThr(stopEvt)
 
             if (not tmpReport): tmpReport = [[]]

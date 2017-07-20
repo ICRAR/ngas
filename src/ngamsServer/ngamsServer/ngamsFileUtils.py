@@ -415,7 +415,7 @@ def checkFile(srvObj,
               sum1FileInfo,
               checkReport,
               skipCheckSum = 0,
-              executor=None, stop_evt=None, allowed_evt=None):
+              executor=None):
     """
     Function to carry out a consistency check on a file.
     If `stop_evt` and `allowed_evt` are given, then `get_checksum_interruptible`
@@ -501,9 +501,8 @@ def checkFile(srvObj,
                     # Interruptible or not?
                     m = get_checksum
                     args = blockSize, filename, crc_variant
-                    if stop_evt and allowed_evt:
+                    if executor:
                         m = get_checksum_interruptible
-                        args = blockSize, filename, crc_variant, stop_evt, allowed_evt
 
                     # Calculate the checksum, possibly under the executor
                     start = time.time()
