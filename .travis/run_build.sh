@@ -43,7 +43,7 @@ ECREAT="Failed to create the ngas database schema on database ngas"
 
 # The python packages we need to install either because NGAS itself eeds them,
 # or because it's what we need to communicate with our database engine
-PIP_PACKAGES="bsddb3"
+PIP_PACKAGES="bsddb3 python-daemon"
 
 # We need to prepare the database for what's to come later on, and to install
 # the corresponding python module so NGAS can talk to the database
