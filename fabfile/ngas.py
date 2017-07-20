@@ -106,6 +106,10 @@ def ngas_no_client():
     key = 'NGAS_NO_CLIENT'
     return key in env
 
+def ngas_no_crc32c():
+    key = 'NGAS_NO_CRC32C'
+    return key in env
+
 def ngas_develop():
     key = 'NGAS_DEVELOP'
     return key in env
@@ -289,6 +293,8 @@ def ngas_build_cmd(no_client, develop, no_doc_dependencies):
                 build_cmd.append('LDFLAGS=-L' + libdir)
         build_cmd.append('YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1')
 
+    if ngas_no_crc32c():
+        build_cmd.append('NGAS_NO_CRC32C=1')
     build_cmd.append('./build.sh')
     if not no_client:
         build_cmd.append("-c")

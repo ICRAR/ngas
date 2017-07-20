@@ -49,6 +49,12 @@ are available to further customize the process:
 |                             | | and installation of the NGAS C     |                   |
 |                             | | client                             |                   |
 +-----------------------------+--------------------------------------+-------------------+
+| NGAS_NO_CRC32C              | | If specified, NGAS will not depend | | Not specified   |
+|                             | | (and will avoid installing) the    |                   |
+|                             | | ``crc32c`` python package. This is |                   |
+|                             | | useful if you know this feature is |                   |
+|                             | | not planned to be used at runtime  |                   |
++-----------------------------+--------------------------------------+-------------------+
 | NGAS_DEVELOP                | | If specified, install the NGAS     | | Not specified   |
 |                             | | Python modules in development mode |                   |
 +-----------------------------+--------------------------------------+-------------------+

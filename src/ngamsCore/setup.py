@@ -19,6 +19,8 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
+import os
+
 from setuptools import setup, find_packages
 
 with open('../../VERSION') as vfile:
@@ -27,10 +29,13 @@ with open('../../VERSION') as vfile:
             version = line.split("NGAMS_SW_VER ")[1].strip()[1:-1]
             break
 
-install_requires = [
-    'crc32c',
-    'DBUtils'
-]
+# We definitely require this one
+install_requires = ['DBUtils']
+
+# Users might opt out from depending on crc32c
+# Our code is able to cope with that situation already
+if 'NGAS_NO_CRC32C' not in os.environ:
+    install_requires.append('crc32c')
 
 # If there's neither bsddb nor bsddb3 we need to install the latter
 try:
@@ -60,5 +65,5 @@ setup(
         'ngamsData': ['*.fnt', '*.xml', '*.dtd', 'COPYRIGHT', 'LICENSE', 'VERSION'],
         'ngamsLib' : ['README']
     },
-    install_requires=[install_requires]
+    install_requires = install_requires
 )

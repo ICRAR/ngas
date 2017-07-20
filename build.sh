@@ -30,6 +30,10 @@ function print_usage {
 	echo "-c: Include the C client compilation"
 	echo "-d: Install Python eggs as development eggs"
 	echo "-D: Install Python packages needed to build the docs"
+	echo
+	echo "Also, set the NGAS_NO_CRC32C environment variable to any value to skip crc32c"
+	echo "installation (if you are not planning to use it, and therefore don't want to"
+	echo "depend on it)"
 }
 
 error() {
