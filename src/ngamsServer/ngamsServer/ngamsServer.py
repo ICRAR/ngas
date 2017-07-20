@@ -774,10 +774,10 @@ class ngamsServer:
             self.__busyCount = self.__busyCount - 1
 
         if ((subState == NGAMS_IDLE_SUBSTATE) and (self.__busyCount == 0)):
-            changed = self.__subState == NGAMS_IDLE_SUBSTATE
+            changed = self.__subState != NGAMS_IDLE_SUBSTATE
             self.__subState = NGAMS_IDLE_SUBSTATE
         else:
-            changed = self.__subState == NGAMS_BUSY_SUBSTATE
+            changed = self.__subState != NGAMS_BUSY_SUBSTATE
             self.__subState = NGAMS_BUSY_SUBSTATE
         self.relSubStateSem()
 
