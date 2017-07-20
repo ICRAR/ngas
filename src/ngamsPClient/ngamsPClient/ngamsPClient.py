@@ -174,7 +174,6 @@ class ngamsPClient:
             return self._post(cmd, mt, f, pars=pars)
 
     def archive_data(self, data, filename, mimeType,
-                     async=False, noVersioning=0,
                      pars=[], cmd=NGAMS_ARCHIVE_CMD):
         """
         Like `archive`, but the data to sent is in memory instead of in a file.
