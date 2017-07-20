@@ -34,14 +34,24 @@ What comes out should look as follows::
 Running the tests
 =================
 
-If you want to run the suite of unit tests try the following::
+If you want to run the suite of unit tests
+then you need to install an additional package::
 
-  $> cd ngas_src_directory/src/ngamsTest
-  $> python setup.py develop # only the first time
-  $> cd ngamsTest
+  $> pip install psutil
+
+Then run the following::
+
+  $> cd ngas_src_directory/src/ngamsTest/ngamsTest
   $> python ngamsTest.py
 
 This will execute the full suite of unit tests. Individual files can also be run
 to avoid having to run the entire suite. When running individual files a
 comma-separated list of methods to be run can be given via the ``-tests``
 command-line flag.
+
+You can alternatively use a different unittest runner tool,
+like py.test::
+
+  $> pip install pytest
+  $> cd ngas_src_directory/src/ngamsTest/ngamsTest
+  $> py.test -o 'python_files=*Test.py'
