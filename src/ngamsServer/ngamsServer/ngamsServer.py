@@ -315,10 +315,22 @@ class ngamsServer:
         self.__subState               = NGAMS_IDLE_SUBSTATE
         self.__stateSem               = threading.Semaphore(1)
         self.__subStateSem            = threading.Semaphore(1)
-        self.substate_chg_listeners   = []
         self.__busyCount              = 0
         self.__sysMtPtDic             = {}
         self._pid_file_created         = False
+
+        # Keep track of how many requests are being served,
+        # This is slightly different from keeping track of the server's
+        # sub-state because many commands don't bother changing it
+        self.serving_count = 0
+        self.serving_count_lock = threading.Lock()
+
+        # Coalesces whether requests are being served at all or not.
+        # When the value changes, listeners are notified
+        # The value is get and set via a property that encapsulates
+        # the listener notification
+        self._serving = False
+        self.serving_listeners = []
 
         # Empty logging configuration.
         # It is later initialised both from the cmdline
@@ -350,7 +362,12 @@ class ngamsServer:
         # Handling of the Data Check Thread.
         self._dataCheckThread        = None
         self._dataCheckThreadStopEvt = threading.Event()
+
+        # The events that control the execution of the checksum calculation
+        # The allowed event is initially set because initially the server
+        # is serving no requests.
         self.checksum_allow_evt      = multiprocessing.Event()
+        self.checksum_allow_evt.set()
         self.checksum_stop_evt       = multiprocessing.Event()
 
         # Handling of the Data Subscription.
@@ -450,6 +467,18 @@ class ngamsServer:
 
         # Worker processes
         self.workers_pool = None
+
+
+    @property
+    def serving(self):
+        # no locking needed to read
+        return self._serving
+
+    @serving.setter
+    def serving(self, serving):
+        self._serving = serving
+        for l in self.serving_listeners:
+            l(serving)
 
     def getHostId(self):
         """
@@ -774,17 +803,10 @@ class ngamsServer:
             self.__busyCount = self.__busyCount - 1
 
         if ((subState == NGAMS_IDLE_SUBSTATE) and (self.__busyCount == 0)):
-            changed = self.__subState != NGAMS_IDLE_SUBSTATE
             self.__subState = NGAMS_IDLE_SUBSTATE
         else:
-            changed = self.__subState != NGAMS_BUSY_SUBSTATE
             self.__subState = NGAMS_BUSY_SUBSTATE
         self.relSubStateSem()
-
-        if changed:
-            for l in self.substate_chg_listeners:
-                l(subState)
-        return self
 
 
     def getSubState(self):
@@ -1385,17 +1407,8 @@ class ngamsServer:
         """
         Identify if the NG/AMS Server is handling a request. In case yes
         1 is returned, otherwise 0 is returned.
-
-        Returns:   1 = handling request, 0 = not handling a request
-                   (integer/0|1).
         """
-        # If the time for initiating the last request handling is later than
-        # the time for finishing the previous request a request is being
-        # handled.
-        if (self.getLastReqStartTime() > self.getLastReqEndTime()):
-            return 1
-        else:
-            return 0
+        return self.serving_request
 
 
     def setNextDataCheckTime(self,
@@ -1736,7 +1749,11 @@ class ngamsServer:
 
         Returns:         Void.
         """
-        T = TRACE()
+
+        # Keep track of how many requests we are serving
+        with self.requests_served_lock:
+            self.requests_served += 1
+            self.serving_request = True
 
         # Create new request handle + add this entry in the Request DB.
         reqPropsObj = ngamsReqProps.ngamsReqProps()
@@ -1787,6 +1804,12 @@ class ngamsServer:
             reqPropsObj.setCompletionTime(1)
             self.updateRequestDb(reqPropsObj)
             self.setLastReqEndTime()
+
+            with self.requests_served_lock:
+                self.requests_served -= 1
+                if not self.requests_served:
+                    self.serving_request = False
+
 
     def handleHttpRequest(self,
                           reqPropsObj,
@@ -2400,14 +2423,14 @@ class ngamsServer:
         if self.getCfg().getDataCheckActive():
 
             # When the server is idle we allow checksums to progress
-            def substate_change_listener(substate):
-                if substate == NGAMS_IDLE_SUBSTATE:
+            def serving_listener(serving):
+                if serving:
+                    logger.info("Disabling checksum calculation due to server serving requests")
+                    self.checksum_allow_evt.clear()
+                else:
                     logger.info("Enabling checksum calculations due to idle server")
                     self.checksum_allow_evt.set()
-                else:
-                    logger.info("Disabling checksum calculation due to busy server")
-                    self.checksum_allow_evt.clear()
-            self.substate_chg_listeners.append(substate_change_listener)
+            self.serving_listener.append(serving_listener)
 
             # Store the events globally for later usage.
             # Then reset signal handlers and shutdown DB connection
