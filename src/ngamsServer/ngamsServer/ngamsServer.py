@@ -290,7 +290,7 @@ def show_threads():
             msg.append(fmt % (t.name, t.ident, t.daemon))
         logger.debug("Threads currently alive on process %d:\n%s", os.getpid(), '\n'.join(msg))
 
-class ngamsServer:
+class ngamsServer(object):
     """
     Class providing the functionality of the NG/AMS Server.
     """
@@ -471,14 +471,16 @@ class ngamsServer:
 
     @property
     def serving(self):
-        # no locking needed to read
         return self._serving
 
     @serving.setter
-    def serving(self, serving):
-        self._serving = serving
+    def serving(self, value):
+        if self._serving == value:
+            return
+
+        self._serving = value
         for l in self.serving_listeners:
-            l(serving)
+            l(value)
 
     def getHostId(self):
         """
@@ -1408,7 +1410,7 @@ class ngamsServer:
         Identify if the NG/AMS Server is handling a request. In case yes
         1 is returned, otherwise 0 is returned.
         """
-        return self.serving_request
+        return self.serving
 
 
     def setNextDataCheckTime(self,
@@ -1751,9 +1753,9 @@ class ngamsServer:
         """
 
         # Keep track of how many requests we are serving
-        with self.requests_served_lock:
-            self.requests_served += 1
-            self.serving_request = True
+        with self.serving_count_lock:
+            self.serving_count += 1
+            self.serving = True
 
         # Create new request handle + add this entry in the Request DB.
         reqPropsObj = ngamsReqProps.ngamsReqProps()
@@ -1805,10 +1807,10 @@ class ngamsServer:
             self.updateRequestDb(reqPropsObj)
             self.setLastReqEndTime()
 
-            with self.requests_served_lock:
-                self.requests_served -= 1
-                if not self.requests_served:
-                    self.serving_request = False
+            with self.serving_count_lock:
+                self.serving_count -= 1
+                if not self.serving_count:
+                    self.serving = False
 
 
     def handleHttpRequest(self,
