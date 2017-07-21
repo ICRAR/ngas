@@ -181,21 +181,6 @@ def _updateFileCheckStatus(srvObj,
              stats.mbs, stats.files, stats.files_checked)
 
 
-def suspend_with_priority(srvObj, stopEvt, baseTime = 0.010):
-    """
-    Determine the time the thread should suspend itself according to
-    the load, priority etc. + suspend for the given time.
-
-    srvObj:      Reference to instance of ngamsServer object (ngamsServer).
-
-    baseTime:    Time used to calculate the suspension time (float).
-
-    Returns:     Void.
-    """
-    suspTime = (srvObj.getCfg().getDataCheckPrio() * baseTime)
-    suspend(stopEvt, suspTime)
-
-
 def collect_files_on_disk(stopEvt, disks):
 
     all_files = {}
@@ -321,7 +306,6 @@ def _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt):
                 fileKey = ngamsLib.genFileKey(None, fileId, fileVer)
                 queueDbm.add(fileKey, fileInfo)
             queueDbm.sync()
-            suspend_with_priority(srvObj, stopEvt)
         del cursorObj
 
         # Rename DCC Queue DBM from the temporary to the final name.
@@ -363,7 +347,6 @@ def _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt):
                                     fileInfo[ngamsDbCore.SUM1_FILENAME])
                 if filename in files_on_disk:
                     del files_on_disk[filename]
-        suspend_with_priority(srvObj, stopEvt)
     del spuFilesCur
     logger.debug("Retrieved information about files to be ignored")
     ###########################################################################
@@ -518,7 +501,7 @@ def _dataCheckSubThread(srvObj,
             # Update the overall status of the checking.
             tmpReport = []
             ngamsFileUtils.checkFile(srvObj, fileInfo, tmpReport,
-                                     srvObj.getCfg().getDataCheckScan(),
+                                     not srvObj.getCfg().getDataCheckScan(),
                                      executor=external_process_executor)
             _stopDataCheckThr(stopEvt)
 
@@ -532,11 +515,6 @@ def _dataCheckSubThread(srvObj,
                                    stats,
                                    dbmObjDic)
 
-            # If the server is handling a command, the sub-thread will suspend
-            # itself until the server is idle again.
-            if (srvObj.getHandlingCmd()):
-                while (srvObj.getHandlingCmd()):
-                    suspend_with_priority(srvObj, stopEvt, 0.200)
         except StopDataCheckThreadException:
             return
         except Exception:
@@ -626,11 +604,10 @@ def _genReport(srvObj, unregistered, diskDic, dbmObjDic, stats):
                                      "DATA CHECK REPORT", report, [], 1)
 
     # Give out the statistics for the checking.
-    if (srvObj.getCfg().getDataCheckLogSummary()):
-        msg = genLog("NGAMS_INFO_DATA_CHK_STAT",
-                     [stats.files_checked, unRegFiles, noOfProbs,
-                      stats.mbs_checked, stats.check_rate, checkTime])
-        logger.info(msg)
+    msg = genLog("NGAMS_INFO_DATA_CHK_STAT",
+                 [stats.files_checked, unRegFiles, noOfProbs,
+                  stats.mbs_checked, stats.check_rate, checkTime])
+    logger.info(msg)
 
     # Remove the various DBMs allocated.
     for diskId in diskDic.keys():
@@ -818,8 +795,7 @@ def dataCheckThread(srvObj, stopEvt, checksum_allow_evt, checksum_stop_evt):
             while srvObj.mirroring_running:
                 suspend(stopEvt, 60)
 
-            if (srvObj.getCfg().getDataCheckLogSummary()):
-                logger.info("Data Check Thread starting iteration ...")
+            logger.info("Data Check Thread starting iteration ...")
 
             # Everything happens here
             stats = data_check_cycle(srvObj, stopEvt, checksum_allow_evt, checksum_stop_evt)
