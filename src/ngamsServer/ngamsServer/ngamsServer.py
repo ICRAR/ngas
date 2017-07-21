@@ -2430,7 +2430,7 @@ class ngamsServer:
                 else:
                     logger.info("Enabling checksum calculations due to idle server")
                     self.checksum_allow_evt.set()
-            self.serving_listener.append(serving_listener)
+            self.serving_listeners.append(serving_listener)
 
             # Store the events globally for later usage.
             # Then reset signal handlers and shutdown DB connection
