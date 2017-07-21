@@ -88,6 +88,7 @@ Contains archiving-related configuration.
    If not specified the server will use the ``crc32`` variant. If specified,
    ``0`` means ``crc32`` and ``1`` means ``crc32c``.
 
+.. _config.janthread:
 
 JanitorThread
 -------------
@@ -103,6 +104,36 @@ The following attributes are available:
  * *PlugIn*: An XML sub-element with a *Name* attribute, naming a python module
    where a Janitor plug-in resides. Multiple *Plugin* elements can be defined.
 
+.. _config.datacheck_thread:
+
+DataCheckThread
+---------------
+
+The ``DataCheckThread`` element defines the behavior
+of the :ref:`data-check thread <datacheck_thread>`.
+The following attributes are available:
+
+ * *Active*: Whether the data-check thread should be allowed to run or not.
+ * *MaxProcs*: Maximum number of worker processes used to carry out the data
+   checking work load.
+ * *MinCycle*: The time to leave between data-check cycles.
+ * *ForceNotif*: Forces the sending of a notification report after each
+   data-check cycle, even if not problems were found.
+ * *Scan*: Whether the checksum of the files should be skipped (0) or actually
+   performed (1).
+
+The following attributes are present in old configuration files
+but are not used anymore: *FileSeq*, *DiskSeq*, *LogSummary*, *Prio*.
+
+Finally, the *ChecksumPlugIn* attribute
+names the plug-in that should calculate the checksum of the new file
+being archived by the ``ARCHIVE`` command.
+This attribute will disappear in future versions
+when ``ARCHIVE`` starts performing checksum calculation
+on the incoming data as it arrives
+(similar to how ``QARCHIVE`` works)
+in favor of the ``ArchiveHandling.CRCVariant`` attribute
+(see `ArchiveHandling`).
 
 .. _config.log:
 
