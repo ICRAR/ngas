@@ -82,6 +82,7 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
     Class that provides the multithreaded HTTP server functionality.
     """
     allow_reuse_address = 1
+    daemon_threads = False
 
     def __init__(self, ngamsServer, server_address):
         self._ngamsServer = ngamsServer
@@ -93,34 +94,14 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
         """
         Start a new thread to process the request.
         """
-        # Check the number of requests being handled. It is checked already
-        # here to avoid starting another thread.
-        noOfAliveThr = 0
-        for thrObj in threading.enumerate():
-            try:
-                if (thrObj.isAlive()): noOfAliveThr += 1
-            except Exception:
-                pass
 
-        if ((noOfAliveThr - 4) >= self._ngamsServer.getCfg().getMaxSimReqs()):
-            try:
-                errMsg = genLog("NGAMS_ER_MAX_REQ_EXCEEDED",
-                            [self._ngamsServer.getCfg().getMaxSimReqs()])
-                logger.error(errMsg)
-                httpRef = self.RequestHandlerClass(request, client_address, self)
-                tmpReqPropsObj = ngamsReqProps.ngamsReqProps()
-                self._ngamsServer.reply(tmpReqPropsObj, httpRef, NGAMS_HTTP_SERVICE_NA,
-                               NGAMS_FAILURE, errMsg)
-            except IOError:
-                errMsg = "Maximum number of requests exceeded and I/O ERROR encountered! Trying to continue...."
-                logger.error(errMsg)
+        if self._ngamsServer.serving_count >= self._ngamsServer.getCfg().getMaxSimReqs():
+            logger.error("Maximum number of serving threads reached, rejecting request")
+            httpRef = self.RequestHandlerClass(request, client_address, self)
+            httpRef.send_error(NGAMS_HTTP_SERVICE_NA)
             return
 
-        # Create a new thread to handle the request.
-        t = threading.Thread(target = self.finish_request,
-                             args = (request, client_address))
-        t.daemon = True
-        t.start()
+        super(ngamsHttpServer, self).process_request(request, client_address)
 
 
 class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
