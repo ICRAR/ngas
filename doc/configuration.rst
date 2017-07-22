@@ -22,6 +22,9 @@ Contains the overall server configuration.
   will bind itself to ``127.0.0.1``. To bind the server to all interfaces
   ``0.0.0.0`` can be set.
 * *Port*: The port to bind the server to. It defaults to 7777 if unspecified.
+* *MaxSimReqs*: The maximum number of requests the server can be serving
+  at a given time. If a new request comes in and the server has reached
+  the limit already, it will respond with an ``503`` HTTP code.
 * *PluginsPath*: A directory where NGAS plug-ins can be loaded from.
 
 .. _config.db:
