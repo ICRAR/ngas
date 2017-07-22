@@ -44,6 +44,9 @@ To configure which method should be used across an entire NGAS installation
 change the ``ArchiveHandling.CRCVariant`` setting
 on the :ref:`NGAS configuration <config.archivehandling>`.
 
+Also, users can install NGAS without ``crc32c`` support
+(see `<inst>`_ for details).
+
 .. _server.states:
 
 States
