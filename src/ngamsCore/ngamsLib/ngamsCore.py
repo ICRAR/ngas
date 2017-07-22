@@ -63,6 +63,7 @@ import errno
 import glob
 import importlib
 import logging
+import math
 import md5
 import os
 import shutil
@@ -568,8 +569,6 @@ def mvFile(srcFilename,
     logger.debug("Moving file: %s to filename: %s", srcFilename, trgFilename)
     try:
         # Make target file writable if existing.
-        if os.path.exists(trgFilename):
-            os.chmod(trgFilename, 420)
         checkCreatePath(os.path.dirname(trgFilename))
         fileSize = getFileSize(srcFilename)
 
@@ -757,7 +756,7 @@ def get_contact_ip(cfgObj):
         return 'localhost'
     return ipAddress
 
-def execCmd(cmd, timeOut = -1, shell=True):
+def execCmd(cmd, timeOut = -1, shell=True, env=None):
     """
     Executes the command given on the UNIX command line and returns a
     list with the cmd exit code and the output written on stdout and stderr.
@@ -770,7 +769,8 @@ def execCmd(cmd, timeOut = -1, shell=True):
                      [<exit code>, <stdout>, <stderr>]  (list).
     """
 
-    p = subprocess.Popen(cmd, bufsize=1, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.Popen(cmd, shell=shell, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE, env=env)
 
     if timeOut != -1:
         killed = threading.Event()
@@ -861,3 +861,32 @@ def frommjd(mjd):
     """
     # 40587 is the MJD for the Unix Epoch
     return (mjd - _UNIX_EPOCH_AS_MJD)*86400.
+
+def terminate_or_kill(proc, timeout):
+    """
+    Terminates a process and waits until it has completed its execution within
+    the given timeout. If the process is still alive after the timeout it is
+    killed.
+    """
+    if proc.poll() is not None:
+        return
+    logger.info('Terminating %d', proc.pid)
+    proc.terminate()
+    wait_or_kill(proc, timeout)
+
+def wait_or_kill(proc, timeout):
+    """
+    waits until it has completed its execution within the given timeout.
+    If the process is still alive after the timeout it is killed.
+    """
+    waitLoops = 0
+    max_loops = math.ceil(timeout/0.1)
+    while proc.poll() is None and waitLoops < max_loops:
+        time.sleep(0.1)
+        waitLoops += 1
+
+    kill9 = waitLoops == max_loops
+    if kill9:
+        logger.warning('Killing %s by brute force after waiting %.2f [s], BANG! :-(', proc.pid, timeout)
+        proc.kill()
+    proc.wait()

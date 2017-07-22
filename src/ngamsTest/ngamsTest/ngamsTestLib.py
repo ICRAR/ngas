@@ -33,7 +33,6 @@ This module contains test utilities used to build the NG/AMS Functional Tests.
 # TODO: Check for each function if it can be moved to the ngamsTestSuite Class.
 
 import collections
-import commands
 import contextlib
 import functools
 import getpass
@@ -138,7 +137,7 @@ if (os.path.exists("/etc/mail/sendmail.cf")):
     if (not foundDaemonYes):
         raise Exception, "Mail configuration incorrect. Set parameter: " + \
               "DAEMON=yes in /etc/mail/sendmail.cf"
-    stat, out = commands.getstatusoutput("ps -efww|grep sendmail")
+    out = subprocess.check_output("ps -efww|grep sendmail", shell=True)
     psLines = out.split("\n")
     sendMailRunning = 0
     for psLine in psLines:
@@ -323,7 +322,7 @@ def cmpFiles(refFile,
         fo = open(testFile, "w")
         for line in testFileLines: fo.write(line)
         fo.close()
-    stat, out = commands.getstatusoutput("diff %s %s" % (refFile, testFile))
+    _, out, _ = ngamsCoreExecCmd(['diff', refFile, testFile], shell="False")
     return out
 
 
@@ -380,7 +379,7 @@ def genErrMsg(msg,
     Returns:   Buffer with message (string).
     """
     diffFile = genTmpFilename()
-    commands.getstatusoutput("diff %s %s > %s" % (refFile, tmpFile, diffFile))
+    ngamsCoreExecCmd("diff %s %s > %s" % (refFile, tmpFile, diffFile), shell=True)
     return msg + "\nRef File: " + refFile +\
            "\nTmp File: " + tmpFile +\
            "\nDiff Cmd: diff " + refFile + " " + tmpFile +\
@@ -618,9 +617,9 @@ def recvEmail(no):
     Returns:  Contents of email (string).
     """
     cmd = "echo \"" + str(no) + "\" | mail"
-    stat, out = commands.getstatusoutput(cmd)
+    _, out, _ = ngamsCoreExecCmd(cmd, shell=True)
     delCmd = "echo \"d " + str(no) + "\" | mail"
-    dummyStat, dummyOut = commands.getstatusoutput(delCmd)
+    ngamsCoreExecCmd(delCmd, shell=True)
     return out
 
 
@@ -691,9 +690,9 @@ def flushEmailQueue():
 
     Returns:   Void.
     """
-    stat, stdOut = commands.getstatusoutput("echo \"x\" | mail")
+    _, stdout, _ = ngamsCoreExecCmd('echo "x" | mail')
     mailDic = {}
-    for line in stdOut.split("\n"):
+    for line in stdout.split("\n"):
         line = line.strip()
         if (line != ""):
             lineEls = filter(None, line.split(" "))
@@ -892,8 +891,7 @@ def incArcfile(filename,
     ts = arcFile[idx+1:]
     ts = toiso8601(fromiso8601(ts) + step)
     pyfits.setval(filename, 'ARCFILE', value="%s.%s" % (insId, ts))
-    # TODO: Use PCFITSIO to reprocess the checksum.
-    commands.getstatusoutput("add_chksum " + filename)
+    # TODO: Use astropy to reprocess the checksum?
 
 
 def isFloat(val):
@@ -930,7 +928,7 @@ def getThreadId(logFile,
     grepCmd = "grep %s %s" % (tagList[0], logFile)
     for tag in tagList[1:]:
         grepCmd += " | grep %s" % tag
-    stat, out = commands.getstatusoutput(grepCmd)
+    out = subprocess.check_output(grepCmd, shell=True)
     tid =  out.split("[")[1].split("]")[0].strip()
     return tid
 

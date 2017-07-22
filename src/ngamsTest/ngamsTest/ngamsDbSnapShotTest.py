@@ -31,14 +31,14 @@
 This module contains the Test Suite for the DB Snapshot Feature.
 """
 
-import commands
 import glob
 import os
+import subprocess
 import sys
 import time
 
 from ngamsLib.ngamsCore import NGAMS_CLONE_CMD, NGAMS_REMFILE_CMD, \
-    NGAMS_REMDISK_CMD, checkCreatePath, NGAMS_REGISTER_CMD
+    NGAMS_REMDISK_CMD, checkCreatePath, NGAMS_REGISTER_CMD, cpFile
 from ngamsTestLib import saveInFile, ngamsTestSuite, runTest, sendPclCmd
 
 
@@ -130,8 +130,7 @@ def _checkContDbSnapshot(testSuiteObj,
             time.sleep(0.200)
         testSuiteObj.checkEqual(1, os.path.exists(complName),
                                 "DB Snapshot missing: " + complName)
-        cmd = "ngamsDumpDbSnapshot " + complName
-        out = commands.getstatusoutput(cmd)[1]
+        out = subprocess.check_output(['ngamsDumpDbSnapshot', complName])
         if (filterContents):
             snapshotDump = _parseDbSnapshot(out)
         else:
@@ -384,8 +383,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         regTestDir = "/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/reg_test"
         checkCreatePath(regTestDir)
         for n in range(3):
-            os.system("cp src/SmallFile.fits " + regTestDir +\
-                      "/" + str(n) + ".fits")
+            cpFile('src/SmallFile.fits', os.path.join(regTestDir, "%d.fits" % n))
         client.get_status(NGAMS_REGISTER_CMD, pars = [["path", regTestDir]])
         _checkContDbSnapshot(self, 6, ["FitsStorage1-Main-1"], 1, 1)
 

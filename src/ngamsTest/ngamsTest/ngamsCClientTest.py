@@ -31,33 +31,17 @@
 This module contains the Test Suite for the NG/AMS C-Client and C-API.
 """
 
-import commands
 import os
+import subprocess
 import sys
 import time
 import unittest
 
 from ngamsLib import ngamsStatus
-from ngamsLib.ngamsCore import getHostName, rmFile, cpFile
+from ngamsLib.ngamsCore import getHostName, rmFile, cpFile, execCmd
 from ngamsTestLib import ngamsTestSuite, saveInFile, loadFile, \
     filterOutLines, getClusterName, sendPclCmd, STD_DISK_STAT_FILT, runTest, \
     has_program
-
-
-def _genPars(parValList):
-    """
-    Add/set a command line parameter for the C-Client.
-
-    parValList:  List with sets of parameters and values:
-
-                   [[<Par>, <Val>], [<Par>, <Val>], ...]     (list)
-
-    Returns:    Reference to command line dictionary (dictionary).
-    """
-    tmpParDic = {}
-    for par, val in parValList: tmpParDic[par] = val
-    tmpParDic["-status"] = ""
-    return tmpParDic
 
 
 def _execCClient(unpackXmlStat = 1,
@@ -73,14 +57,19 @@ def _execCClient(unpackXmlStat = 1,
 
                         [<stat obj>, ...]  or <stdout c-client>  (list|string).
     """
-    cmdLineParsDic = _genPars(pars)
-    cmdLine = "NGAMS_VERBOSE_LEVEL=0 ngamsCClient"
-    for cmdLineOpt in cmdLineParsDic.keys():
-        if (cmdLineParsDic[cmdLineOpt] != None):
-            cmdLine += " " + cmdLineOpt + " " + str(cmdLineParsDic[cmdLineOpt])
-    if (cmdLine.find("-servers") == -1):
-        cmdLine += " -host 127.0.0.1"
-    _, out = commands.getstatusoutput(cmdLine)
+    cmd = ['ngamsCClient']
+    for opt, val in pars:
+        cmd.append(opt)
+        cmd.append(str(val))
+
+    if '-servers' not in (x for x, _ in pars):
+        cmd.append('-host')
+        cmd.append('127.0.0.1')
+    cmd.append('-status')
+
+    env = os.environ.copy()
+    env['NGAMS_VERBOSE_LEVEL'] = '0'
+    _, out, _ = execCmd(cmd, shell=False)
     if (unpackXmlStat):
         statObjList = []
         xmlStatList = out.split("Command repetition counter:")
@@ -599,8 +588,8 @@ class ngamsCClientTest(ngamsTestSuite):
         saveInFile("tmp/reqCallBack_tmp", "reqCallBack_SrvCrash1")
         self.prepExtSrv(srvModule="ngamsSrvTestDynReqCallBack")
         cpFile("src/WFI-TEST.fits.Z", "tmp/WFI-TEST_tmp.fits.Z")
-        os.system("rm -f tmp/WFI-TEST_tmp.fits")
-        commands.getstatusoutput("uncompress tmp/WFI-TEST_tmp.fits.Z")
+        rmFile("tmp/WFI-TEST_tmp.fits")
+        subprocess.check_call(['uncompress', 'tmp/WFI-TEST_tmp.fits.Z'])
         out = _execCClient(unpackXmlStat = 0,
                            pars = [["-port", "8888"],
                                    ["-cmd", "ARCHIVE"],

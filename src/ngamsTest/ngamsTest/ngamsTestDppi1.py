@@ -32,7 +32,7 @@ Test DPPI to test the functioning of the RETRIEVE Command used in conjuction
 with DPPI processing.
 """
 
-import commands
+import subprocess
 
 from ngamsLib import ngamsDppiStatus, ngamsPlugInApi
 from ngamsLib.ngamsCore import NGAMS_PROC_FILE, NGAMS_PROC_DATA
@@ -63,9 +63,7 @@ def ngamsTestDppi1(srvObj,
 
     # Uncompress the file.
     procFile, procDir = ngamsPlugInApi.prepProcFile(srvObj.getCfg(), filename)
-    stat, out = commands.getstatusoutput("gunzip %s" % procFile)
-    if stat:
-        raise Exception('Problem while uncompressing %s: %s' % (procFile, out))
+    subprocess.check_call(['gunzip', procFile])
     procFile = procFile[0:procFile.rfind(".")]
 
     # dpallot: fold fails miserably on Mac when dealing with binary files

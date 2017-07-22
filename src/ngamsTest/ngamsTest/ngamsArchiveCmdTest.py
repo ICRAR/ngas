@@ -33,10 +33,10 @@ Contains the Test Suite for the ARCHIVE Command.
 """
 
 import cPickle
-import commands
 import getpass
 import glob
 import os
+import subprocess
 import sys
 import urllib
 import httplib
@@ -45,7 +45,7 @@ from unittest.case import skip, skipIf
 from contextlib import closing
 
 from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
-    NGAMS_SUCCESS, getDiskSpaceAvail
+    NGAMS_SUCCESS, getDiskSpaceAvail, mvFile
 from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo,\
     ngamsCore
 from ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
@@ -687,9 +687,15 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         cfgObj, dbObj = self.prepExtSrv()
         repDiskPath = "/tmp/ngamsTest/NGAS/FitsStorage1-Rep-2"
-        commands.getstatusoutput("chmod -R a-rwx %s" % repDiskPath)
-        statObj = sendPclCmd().archive("src/SmallFile.fits")
-        commands.getstatusoutput("chmod -R a+rwx %s" % repDiskPath)
+
+        # TODO: Change these by python-based chmod
+        #       Also check that we actually cannot write after chmoding --
+        #       some linux distros allow root to write anyway
+        try:
+            subprocess.call(['chmod', '-R', 'a-rwx', repDiskPath], shell=False)
+            statObj = sendPclCmd().archive("src/SmallFile.fits")
+        finally:
+            subprocess.call(['chmod', '-R', 'a+rwx', repDiskPath], shell=False)
         self.assertEquals(ngamsCore.NGAMS_FAILURE, statObj.getStatus())
         msg = "Incorrect status returned for Archive Push Request/Replication Disk read-only"
         self.assertEquals(4011, int(statObj.getMessage().split(":")[1]), msg) # NGAMS_ER_ARCHIVE_PUSH_REQ:4011
@@ -1358,16 +1364,10 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         # Create basic structure.
         ngasRootDir = "/tmp/ngamsTest/NGAS"
+        rmFile(ngasRootDir)
         checkCreatePath(ngasRootDir)
-        tarCmd = "tar zxvf src/volumes_dir.tar.gz"
-        stat, out = commands.getstatusoutput(tarCmd)
-        if stat:
-            self.fail("Failed to untar volumes file: " + out)
-        rmFile(os.path.normpath("%s/volumes") % ngasRootDir)
-        mvCmd = "mv volumes %s" % ngasRootDir
-        stat, out = commands.getstatusoutput(mvCmd)
-        if stat:
-            self.fail("Failed to move volumes to ngasRoot: " + out)
+        subprocess.check_call(['tar', 'zxf', 'src/volumes_dir.tar.gz'])
+        mvFile('volumes', ngasRootDir)
 
         # Create configuration, start server.
         self.prepExtSrv(delDirs=0, cfgFile="src/ngamsCfg_VolumeDirectory.xml")

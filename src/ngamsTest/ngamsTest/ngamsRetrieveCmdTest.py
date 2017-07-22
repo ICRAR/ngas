@@ -32,16 +32,16 @@ This module contains the Test Suite for the RETRIEVE Command.
 """
 
 import contextlib
-import commands
 from functools import partial
 import io
 import gzip
 import os
+import subprocess
 import sys
 
 from ngamsLib import ngamsConfig, ngamsHttpUtils
 from ngamsLib.ngamsCore import getHostName, NGAMS_RETRIEVE_CMD, \
-    checkCreatePath, rmFile, NGAMS_SUCCESS
+    checkCreatePath, rmFile, NGAMS_SUCCESS, mvFile
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
     getClusterName, sendPclCmd, runTest, genTmpFilename, unzip
 
@@ -323,10 +323,10 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status for " +\
                           "RETRIEVE Command/HTTP redirection")
         # Check that a log entry in the log file of the NMU is found.
-        grepCmd = "grep 'NGAMS_INFO_REDIRECT' " +\
-                  "/tmp/ngamsTest/NGAS:8000/log/LogFile.nglog"
-        stat, out = commands.getstatusoutput(grepCmd)
-        if (out.find("Redirection URL:") == -1):
+        grepCmd = ['grep', 'NGAMS_INFO_REDIRECT',
+                   '/tmp/ngamsTest/NGAS:8000/log/LogFile.nglog']
+        out = subprocess.check_output(grepCmd)
+        if "Redirection URL:" not in out:
             self.fail("Unexpected/missing HTTP redirection log entry: %s"%out)
 
 
@@ -509,12 +509,10 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         """
         # Create basic structure.
         ngasRootDir = "/tmp/ngamsTest/NGAS/"
+        rmFile(ngasRootDir)
         checkCreatePath(ngasRootDir)
-        tarCmd = "tar zxvf src/volumes_dir.tar.gz"
-        stat, out = commands.getstatusoutput(tarCmd)
-        rmFile(os.path.normpath("%s/volumes") % ngasRootDir)
-        mvCmd = "mv volumes %s" % ngasRootDir
-        stat, out = commands.getstatusoutput(mvCmd)
+        subprocess.check_call(['tar', 'zxf', 'src/volumes_dir.tar.gz'])
+        mvFile('volumes', ngasRootDir)
 
         # Create configuration, start server.
         cwd = os.getcwd()

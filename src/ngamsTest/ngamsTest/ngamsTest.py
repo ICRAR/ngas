@@ -255,7 +255,7 @@ def genStatus():
     testModList = getTestList()
     for mod in testModList:
         repFileDic[mod] = "/tmp/" + mod + "_" + getpass.getuser() + ".status"
-        os.system("rm -rf " + repFileDic[mod])
+        rmFile(repFileDic[mod])
 
         # Execute the test
         profile.run("import " + mod + "\n" + mod + ".run()", repFileDic[mod])

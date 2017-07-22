@@ -31,75 +31,21 @@
 This module contains the Test Suite for the NG/AMS Archive Client.
 """
 
-import commands
 import glob
 import os
 import shutil
+import subprocess
 import sys
 import time
 import unittest
 
 from ngamsLib import ngamsStatus
+from ngamsLib.ngamsCore import terminate_or_kill
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, runTest, \
     has_program
 
 
-def arcCliDir():
-    """
-    Return the Archive Client Directory.
-
-    Returns:   Archive Client Directory (string).
-    """
-    return "/tmp/ngamsTest/NGAMS_ARCHIVE_CLIENT"
-
-
-def stopArchiveClient(sleep = 1,
-                      delArchCliDir = 1):
-    """
-    Stop the NG/AMS Archive Client running as a background process.
-
-    sleep:           Sleep time in seconds before doing a kill -9 (integer).
-
-    delArchCliDir:   Delete the Archive Client Directory (integer/0|1).
-
-    Returns:         Void.
-    """
-    try:
-        with open(arcCliDir()  + "/.ngamsArchiveClient-PID") as f:
-            pid = f.read()
-    except IOError:
-        return
-
-    commands.getstatusoutput("kill " + pid)
-    time.sleep(sleep)
-    commands.getstatusoutput("kill -9 " + pid)
-    if (delArchCliDir):
-        shutil.rmtree(arcCliDir())
-
-
-def startArchiveClient():
-    """
-    Start the NG/AMS Archive Client as a background process.
-
-    cmdLineParsDic:   Dictionary with command line parameters (dictionary).
-
-    Returns:          Void.
-    """
-    stopArchiveClient(0, 1)
-
-    cmdLineParsDic = {"-host": '127.0.0.1', "-port": "8888",
-                      "-rootDir": "/tmp/ngamsTest", "-pollTime": "5",
-                      "-checksum": "ngamsCrc32", "-cleanUpTimeOut": "10",
-                      "-logLevel": "3", "-logRotate": "0", "-logHistory": "2",
-                      "-archiveLog": None, "-v": "0",
-                      "-license": None, "-version": None}
-
-    cmdLine = "ngamsArchiveClient"
-    for cmdLineOpt in cmdLineParsDic.keys():
-        if (cmdLineParsDic[cmdLineOpt]):
-            cmdLine += " " + cmdLineOpt + " " + cmdLineParsDic[cmdLineOpt]
-    cmdLine += " &"
-    os.system(cmdLine)
+arcCliDir = "/tmp/ngamsTest/NGAMS_ARCHIVE_CLIENT"
 
 
 @unittest.skipUnless(has_program('ngamsArchiveClient'), "No Archive C client")
@@ -123,8 +69,17 @@ class ngamsArchiveClientTest(ngamsTestSuite):
     """
 
     def tearDown(self):
-        stopArchiveClient(1, 0)
+        terminate_or_kill(self.client_proc, 20)
         ngamsTestSuite.tearDown(self)
+
+    def startArchiveClient(self):
+        cmd = ["ngamsArchiveClient",
+               "-host", '127.0.0.1', "-port", "8888",
+               "-rootDir", "/tmp/ngamsTest", "-pollTime", "5",
+               "-checksum", "ngamsCrc32", "-cleanUpTimeOut", "10",
+               "-logLevel", "3", "-logRotate", "0", "-logHistory", "2",
+               "-v", "0"]
+        self.client_proc = subprocess.Popen(cmd)
 
     def test_NormalOp_1(self):
         """
@@ -162,23 +117,23 @@ class ngamsArchiveClientTest(ngamsTestSuite):
         # Make sure the the queue subdir exist before the launch the client;
         # otherwise the client and this test might find themselves in a race
         # condition and the test might fail
-        d = os.path.abspath(os.path.join(arcCliDir(), 'queue'))
+        d = os.path.abspath(os.path.join(arcCliDir, 'queue'))
         if not os.path.exists(d):
             os.makedirs(d)
 
-        startArchiveClient()
+        self.startArchiveClient()
 
         # Archive a file as copy and link.
         # Make sure at least the quee dir is already created
         srcFile = os.path.abspath("src/SmallFile.fits")
-        shutil.copy(srcFile, os.path.join(arcCliDir(), 'queue'))
-        os.symlink(srcFile, os.path.join(arcCliDir(), 'queue', 'Test.fits'))
+        shutil.copy(srcFile, os.path.join(arcCliDir, 'queue'))
+        os.symlink(srcFile, os.path.join(arcCliDir, 'queue', 'Test.fits'))
 
         # Check that files are being archived (within 20s) + NG/AMS Status
         # Documents created.
-        file1Pat     = arcCliDir() + "/archived/*___SmallFile.fits"
+        file1Pat     = arcCliDir + "/archived/*___SmallFile.fits"
         file1StatPat = file1Pat + "___STATUS.xml"
-        file2Pat     = arcCliDir() + "/archived/*___Test.fits"
+        file2Pat     = arcCliDir + "/archived/*___Test.fits"
         file2StatPat = file2Pat + "___STATUS.xml"
         startTime    = time.time()
         filesFound   = 0
