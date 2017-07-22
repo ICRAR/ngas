@@ -93,7 +93,7 @@ JanitorThread
 -------------
 
 The ``JanitorThread`` element defines the behavior
-of the :ref:`Janitor Thread <janthread>`
+of the :ref:`Janitor Thread <bg.janitor_thread>`
 (now actually implemented as a separate process).
 The following attributes are available:
 
