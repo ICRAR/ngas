@@ -689,13 +689,25 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         repDiskPath = "/tmp/ngamsTest/NGAS/FitsStorage1-Rep-2"
 
         # TODO: Change these by python-based chmod
-        #       Also check that we actually cannot write after chmoding --
-        #       some linux distros allow root to write anyway
+        subprocess.call(['chmod', '-R', 'a-rwx', repDiskPath], shell=False)
+
+        # In certain systems when running as root we still have the
+        # ability to write in permissions-constrained directories
+        # Check if that's the case before proceeding
         try:
-            subprocess.call(['chmod', '-R', 'a-rwx', repDiskPath], shell=False)
-            statObj = sendPclCmd().archive("src/SmallFile.fits")
-        finally:
-            subprocess.call(['chmod', '-R', 'a+rwx', repDiskPath], shell=False)
+            with open(os.path.join(repDiskPath, 'dummy'), 'wb') as f:
+                f.write('b')
+            can_write = True
+        except IOError:
+            can_write = False
+
+        # There's no point anymore...
+        if can_write:
+            return
+
+        # We should fail now
+        statObj = sendPclCmd().archive("src/SmallFile.fits")
+        subprocess.call(['chmod', '-R', 'a+rwx', repDiskPath], shell=False)
         self.assertEquals(ngamsCore.NGAMS_FAILURE, statObj.getStatus())
         msg = "Incorrect status returned for Archive Push Request/Replication Disk read-only"
         self.assertEquals(4011, int(statObj.getMessage().split(":")[1]), msg) # NGAMS_ER_ARCHIVE_PUSH_REQ:4011
