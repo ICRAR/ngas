@@ -110,7 +110,6 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """
 
     def setup(self):
-        BaseHTTPServer.BaseHTTPRequestHandler.setup(self)
 
         self.ngasServer = self.server._ngamsServer
 
@@ -118,10 +117,9 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # or default to 1 minute (apache defaults to 1 minute so I assume it's
         # a sensible value)
         cfg = self.ngasServer.getCfg()
-        timeout = cfg.getTimeOut()
-        if timeout is None:
-            timeout = 60
-        self.connection.settimeout(timeout)
+        self.timeout = cfg.getTimeOut() or 60
+
+        BaseHTTPServer.BaseHTTPRequestHandler.setup(self)
 
     def log_message(self, fmt, *args):
         """
