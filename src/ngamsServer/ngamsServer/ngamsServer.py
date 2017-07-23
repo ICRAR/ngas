@@ -58,7 +58,7 @@ from ngamsLib.ngamsCore import \
     getFileSize, getDiskSpaceAvail, checkCreatePath,\
     getHostName, ngamsCopyrightString, getNgamsLicense,\
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, NGAMS_HTTP_GET,\
-    NGAMS_HTTP_BAD_REQ, NGAMS_HTTP_SERVICE_NA, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
+    NGAMS_HTTP_BAD_REQ, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR, NGAMS_TEXT_MT,\
     NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_XML_STATUS_ROOT_EL,\
     NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs,\
@@ -97,11 +97,11 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
 
         if self._ngamsServer.serving_count >= self._ngamsServer.getCfg().getMaxSimReqs():
             logger.error("Maximum number of serving threads reached, rejecting request")
-            httpRef = self.RequestHandlerClass(request, client_address, self)
-            httpRef.send_error(NGAMS_HTTP_SERVICE_NA)
+            wfile = request.makefile('wb')
+            wfile.write(b'HTTP/1.0 503 Service Unavailable\r\n\r\n')
             return
 
-        super(ngamsHttpServer, self).process_request(request, client_address)
+        SocketServer.ThreadingMixIn.process_request(self, request, client_address)
 
 
 class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):

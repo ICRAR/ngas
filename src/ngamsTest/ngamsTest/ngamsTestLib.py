@@ -1103,6 +1103,10 @@ class ngamsTestSuite(unittest.TestCase):
                 logger.debug("Polled server - not yet running ...")
                 time.sleep(0.2)
                 continue
+            except:
+                logger.error("Error while STATUS-ing server, shutting down")
+                self.termExtSrv(server_info)
+                raise
 
             # Check the status is what we expect
             state = "ONLINE" if autoOnline else "OFFLINE"

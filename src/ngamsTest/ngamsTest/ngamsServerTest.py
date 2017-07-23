@@ -31,14 +31,16 @@
 This module contains the Test Suite for the NG/AMS Server.
 """
 
+import contextlib
 import os
 import socket
 import sys
+import threading
 import time
 
-from ngamsLib.ngamsCore import NGAMS_SUCCESS
-from ngamsTestLib import ngamsTestSuite, runTest
-from ngamsTestLib import sendPclCmd
+from ngamsLib import ngamsHttpUtils
+from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SERVICE_NA
+from ngamsTestLib import ngamsTestSuite, runTest, saveInFile, sendPclCmd
 
 
 class ngamsServerTest(ngamsTestSuite):
@@ -83,6 +85,26 @@ class ngamsServerTest(ngamsTestSuite):
         self.assertLess(len(data), amount_of_data, "Should have read less data")
         self.assertEquals('', s.recv(amount_of_data - len(data)))
         s.close()
+
+    def test_too_many_requests(self):
+
+        saveInFile("tmp/handleHttpRequest_tmp", "handleHttpRequest_Block5secs")
+        self.prepExtSrv(srvModule="ngamsSrvTestDynReqCallBack",
+                        cfgProps=(('NgamsCfg.Server[1].MaxSimReqs', '2'),))
+
+        # Fire off two clients, each takes 5 seconds to finish
+        cl1, cl2 =  sendPclCmd(), sendPclCmd()
+        threading.Thread(target=cl1.online).start()
+        threading.Thread(target=cl2.online).start()
+
+        # The third one should not pass through
+        # (assuming that 2 seconds were enough for the two clients
+        # to connect and be busy waiting for their reply)
+        time.sleep(2)
+        resp = ngamsHttpUtils.httpGet('127.0.0.1', 8888, 'ONLINE')
+        with contextlib.closing(resp):
+            self.assertEqual(NGAMS_HTTP_SERVICE_NA, resp.status)
+
 
 def run():
     """
