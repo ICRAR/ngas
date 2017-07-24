@@ -679,21 +679,9 @@ class ngamsConfig:
 
         Returns:  NGAS Root Directory (string).
         """
-        # rtobar, feb 2016: All this method is not quite nice, since it actually
-        # modifies the configuration and environment at runtime, and at a very
-        # low level, making it very to spot if needed.
-        originalRootDir = rootDir = self.getVal("NgamsCfg.Server[1].RootDirectory")
-        if os.environ.has_key('NGAMS_PREFIX'):
-            rootDir = os.environ['NGAMS_PREFIX']
-        if (not rootDir):
+        rootDir = self.getVal("NgamsCfg.Server[1].RootDirectory")
+        if not rootDir:
             raise Exception, "Server[1].RootDirectory not properly defined"
-        if rootDir[0] != '/':
-            rootDir = os.environ['HOME'] + '/' + rootDir
-        if rootDir[-1] == '/':
-            rootDir = rootDir[:-1]
-        os.environ['NGAMS_ROOT'] = rootDir
-        if rootDir != originalRootDir:
-            self.storeVal('NgamsCfg.Server[1].RootDirectory', rootDir, None)
         return rootDir
 
 
