@@ -41,9 +41,13 @@ EDB="Failed to create database ngas"
 EPERM="Failed to grant priviledges to user ngas on database ngas"
 ECREAT="Failed to create the ngas database schema on database ngas"
 
-# The python packages we need to install either because NGAS itself eeds them,
+# The python packages we need to install either because NGAS itself needs them,
 # or because it's what we need to communicate with our database engine
-PIP_PACKAGES="bsddb3 python-daemon"
+# In the case of NGAS dependencies, if these weren't here then they would be
+# pulled out automatically during package installation, but in source-code form,
+# which in some cases, like astropy, can take some time to build and doesn't get
+# cached.
+PIP_PACKAGES="bsddb3 python-daemon astropy"
 
 # We need to prepare the database for what's to come later on, and to install
 # the corresponding python module so NGAS can talk to the database
