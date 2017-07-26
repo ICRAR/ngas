@@ -742,7 +742,7 @@ class ngamsFileInfo:
             del cursorObj
         if (fileInfo == []):
             errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [fileId])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         else:
             self.unpackSqlResult(fileInfo)
         return self

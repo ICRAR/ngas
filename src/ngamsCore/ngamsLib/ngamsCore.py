@@ -456,7 +456,7 @@ def createSortDicDump(dic):
     Returns: Sorted dictionary ASCII representation (string).
     """
     if (type(dic) != types.DictType):
-        raise Exception, "Object given is not a dictionary"
+        raise Exception("Object given is not a dictionary")
     keys = dic.keys()
     keys.sort()
     asciiDic = ""
@@ -525,7 +525,7 @@ def checkCreatePath(path):
     """
     # Check if path exists, if not, create it.
     try:
-        os.makedirs(path, 0775)
+        os.makedirs(path, 0o775)
     except OSError as e:
         # no worries!
         if e.errno == errno.EEXIST:
@@ -583,7 +583,7 @@ def mvFile(srcFilename,
         shutil.move(srcFilename, trgFilename)
         deltaTime = time.time() - start
 
-    except Exception, e:
+    except Exception as e:
         errMsg = genLog("NGAMS_AL_MV_FILE", [srcFilename, trgFilename, str(e)])
         raise Exception(errMsg)
     logger.debug("File: %s moved to filename: %s", srcFilename, trgFilename)
@@ -613,7 +613,7 @@ def cpFile(srcFilename,
         start = time.time()
         shutil.copyfile(srcFilename, trgFilename)
         deltaTime = time.time() - start
-    except Exception, e:
+    except Exception as e:
         errMsg = genLog("NGAMS_AL_CP_FILE", [srcFilename, trgFilename, str(e)])
         raise Exception(errMsg)
     logger.debug("File: %s copied to filename: %s", srcFilename, trgFilename)
@@ -664,7 +664,7 @@ def decompressFile(srcFilename,
     trgFilename = srcFilename[:-3]
     if os.path.exists(trgFilename):
         return trgFilename
-    raise Exception, "Error decompressing file: %s" % srcFilename
+    raise Exception("Error decompressing file: %s" % srcFilename)
 
 
 def isoTime2Secs(isoTime):
@@ -712,7 +712,7 @@ def getBoolean(val):
         return True
     else:
         msg = "Value given: %s, does not seem to be a boolean"
-        raise Exception, msg % str(val)
+        raise Exception(msg % str(val))
 
 def loadPlugInEntryPoint(plugInName, entryPointMethodName=None):
     """

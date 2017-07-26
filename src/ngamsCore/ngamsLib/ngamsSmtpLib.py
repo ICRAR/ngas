@@ -76,7 +76,8 @@ class ngamsSMTP(smtplib.SMTP):
         """
         self.putcmd("data")
         (code, repl) = self.getreply()
-        if self.debuglevel >0 : print "data:", (code, repl)
+        if self.debuglevel >0 :
+            print("data:", (code, repl))
         if code != 354:
             raise smtplib.SMTPDataError(code, repl)
         else:
@@ -98,7 +99,8 @@ class ngamsSMTP(smtplib.SMTP):
                 self.send(smtplib.CRLF + "." + smtplib.CRLF)
 
             (code, msg) = self.getreply()
-            if (self.debuglevel > 0): print "data:", (code, msg)
+            if (self.debuglevel > 0):
+                print("data:", (code, msg))
             return (code, msg)
 
 

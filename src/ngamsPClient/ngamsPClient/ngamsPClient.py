@@ -412,7 +412,7 @@ class ngamsPClient:
         if (not containerId and not containerName):
             msg = "Must specify parameter -containerId or -containerName for " +\
                   "a CRETRIEVE Command"
-            raise Exception, msg
+            raise Exception(msg)
         if not targetDir:
             targetDir = '.'
 
@@ -877,11 +877,11 @@ def main():
     setup_logging(opts)
 
     if opts.version:
-        print getNgamsVersion()
+        print(getNgamsVersion())
         return
 
     if opts.license:
-        print getNgamsLicense()
+        print(getNgamsLicense())
         return
 
     if opts.servers:
@@ -959,8 +959,8 @@ def main():
             print(stat.getData())
 
     if opts.show_status:
-        print stat.genXml(0, 1, 1, 1).toprettyxml('  ', '\n')[0:-1]
-        print stat.getStatus()
+        print(stat.genXml(0, 1, 1, 1).toprettyxml('  ', '\n')[0:-1])
+        print(stat.getStatus())
 
     if stat.getStatus() == NGAMS_FAILURE:
         sys.exit(1)
@@ -985,7 +985,7 @@ NG/AMS Version: {6}
     req_time = ""
     if stat.getRequestTime() is not None:
         req_time = toiso8601(stat.getRequestTime())
-    print message.format(
+    print(message.format(
                          req_time,
                          stat.getHostId(),
                          stat.getMessage(),
@@ -993,7 +993,7 @@ NG/AMS Version: {6}
                          stat.getState(),
                          stat.getSubState(),
                          stat.getVersion(),
-                         )
+                         ))
 
 if __name__ == '__main__':
     """

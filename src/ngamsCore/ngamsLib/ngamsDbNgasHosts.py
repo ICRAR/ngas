@@ -83,7 +83,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
             return res[0][0]
         else:
             errMsg = "Error retrieving IP Address for host: " + hostId
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
 
     def getClusterNameFromHostId(self,
@@ -101,7 +101,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
             return res[0][0]
         else:
             errMsg = "Error retrieving Cluster Name for host: " + hostId
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
     def getSrvSuspended(self,
                         contactAddr,
@@ -130,7 +130,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         else:
             errMsg = "Error retrieving Server Suspended Flag for host: " +\
                      str(ngasHostId)
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
 
     def getSrvDataChecking(self,
@@ -152,7 +152,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
         else:
             # If we get to this point, the entry was not found.
             errMsg = "Error retrieving Data Checking Flag - host: " + hostId
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
 
     def writeHostInfo(self,
@@ -345,7 +345,7 @@ class ngamsDbNgasHosts(ngamsDbCore.ngamsDbCore):
             return int(res[0][0])
         else:
             errMsg = "Error retrieving port number for host: " + hostId
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
 
     def updateDataCheckStat(self,

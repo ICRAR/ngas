@@ -416,7 +416,7 @@ class MIMEMultipartParser(object):
                 buf = self._handler.handleData(buf, state == self._ReadingState.data)
                 if buf and len(buf):
                     if prevBuf:
-                        raise Exception, 'No data should be returned when delimiter has been found'
+                        raise Exception('No data should be returned when delimiter has been found')
                     prevBuf = buf
 
             # If nothing was read, and nothing

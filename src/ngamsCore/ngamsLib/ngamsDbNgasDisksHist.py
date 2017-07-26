@@ -103,7 +103,7 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
                 if (descrMimeType == None):
                     errMsg = "Mime-type must be specified for entry in the "+\
                              "NGAS Disks History when a Description is given!"
-                    raise Exception, errMsg
+                    raise Exception(errMsg)
                 if (descrMimeType == NGAMS_XML_MT):
                     descr = re.sub("\n", "", descr)
                     descr = re.sub("> *<", "><", descr)
@@ -127,5 +127,5 @@ class ngamsDbNgasDisksHist(ngamsDbCore.ngamsDbCore):
                         "Origin: %s - Synopsis: %s - Description Mime-type: %s - Description: %s",
                         diskId, toiso8601(now, local=True), origin, synopsis, str(mt), str(descr))
             self.triggerEvents()
-        except Exception, e:
-            raise e
+        except:
+            raise

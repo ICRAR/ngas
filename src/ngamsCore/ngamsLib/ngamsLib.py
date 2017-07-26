@@ -140,7 +140,7 @@ def makeFileReadOnly(completeFilename):
 
     Returns:             Void.
     """
-    os.chmod(completeFilename, 0444)
+    os.chmod(completeFilename, 0o444)
     logger.debug("File: %s made read-only", completeFilename)
 
 
@@ -181,7 +181,7 @@ def parseRawPlugInPars(rawPars):
                              par, parDic[par])
             except:
                 errMsg = genLog("NGAMS_ER_PLUGIN_PAR", [rawPars])
-                raise Exception, errMsg
+                raise Exception(errMsg)
     logger.debug("Generated parameter dictionary: %s", str(parDic))
     return parDic
 
@@ -219,7 +219,7 @@ def detMimeType(mimeTypeMaps,
         return NGAMS_UNKNOWN_MT
     elif (not found):
         errMsg = genLog("NGAMS_ER_UNKNOWN_MIME_TYPE1", [filename])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     else:
         logger.debug("Mime-type of file with URI: %s determined: %s",
                      filename, mimeType)

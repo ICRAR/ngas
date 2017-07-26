@@ -303,10 +303,10 @@ def checkDisks(hostId,
                     # installed in a Main or Replication Slot.
                     try:
                         tmpType = tmpDiskInfo.getLogicalName().split("-")[-2]
-                    except Exception, e:
-                        raise Exception, "Illegal Logical Name specified: " +\
+                    except:
+                        raise Exception("Illegal Logical Name specified: " +\
                               str(tmpDiskInfo.getLogicalName()) + " for " +\
-                              "disk with ID: " + tmpDiskInfo.getDiskId()
+                              "disk with ID: " + tmpDiskInfo.getDiskId())
                     if (tmpType == "M"):
                         prevMainDisk = 1
                     else:
@@ -496,7 +496,7 @@ def checkStorageSetAvailability(hostId,
     try:
         findTargetDisk(hostId, dbConObj, ngamsCfgObj, mimeType, 0)
         return NGAMS_SUCCESS
-    except Exception, e:
+    except Exception as e:
         logger.warning("Error encountered checking for storage set availability: " +
                 str(e))
         return NGAMS_FAILURE
@@ -890,7 +890,7 @@ def getDiskInfoObjsFromMimeType(hostId,
     stream = ngamsCfgObj.getStreamFromMimeType(mimeType)
     if (stream == None):
         errMsg = genLog("NGAMS_AL_NO_STO_SETS", [mimeType])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     slotIds = []
     for id in stream.getStorageSetIdList():
         set = ngamsCfgObj.getStorageSetFromId(id)
@@ -904,7 +904,7 @@ def getDiskInfoObjsFromMimeType(hostId,
         if (sendNotification):
             ngamsNotification.notify(hostId, ngamsCfgObj, NGAMS_NOTIF_NO_DISKS,
                                      "NO STORAGE SET (DISKS) AVAILABLE",errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Unpack the disk information into ngamsDiskInfo objects.
     diskInfoObjs = []
@@ -1096,7 +1096,7 @@ def findTargetDisk(hostId,
         if (sendNotification):
             ngamsNotification.notify(hostId, ngamsCfgObj, NGAMS_NOTIF_NO_DISKS,
                                      "NO DISKS AVAILABLE", errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Find the best target disk.
     global _bestTargetDiskDic
@@ -1114,7 +1114,7 @@ def findTargetDisk(hostId,
         if (sendNotification):
             ngamsNotification.notify(hostId, ngamsCfgObj, NGAMS_NOTIF_NO_DISKS,
                                      "NO DISKS AVAILABLE", errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
     else:
         global _diskInfoDic
         key = diskId + "_" + mimeType

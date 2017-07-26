@@ -72,7 +72,7 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
             res = self.query2(sql, args = (diskId,))
             if not res:
                 errMsg = "Cannot find entry for disk with ID: %s." % diskId
-                raise Exception, errMsg
+                raise Exception(errMsg)
 
             numberOfFiles = res[0][0]
             bytesStored = res[0][2]

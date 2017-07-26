@@ -344,9 +344,9 @@ class ngamsXmlMgr:
             fd = open(self.setXmlDoc(xmlDoc).getXmlDoc())
             doc = fd.read()
             fd.close()
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_LOAD_CFG", [xmlDoc, str(e)])
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         # The Expat parser does not like XSL declarations. Can be removed if
         # a parser is used which conforms with the XML standards.
@@ -477,15 +477,14 @@ class ngamsXmlMgr:
         domObj = None
         try:
             domObj = xml.dom.minidom.parseString(xmlDoc)
-        except Exception, e:
+        except Exception as e:
             if (domObj != None): domObj.unlink()
-            ex = str(e)
             lineNo = str(e).split(":")[1]
             errMsg = "Error parsing NG/AMS XML Configuration. " +\
                      "Probably around line number: " + str(lineNo) + ". " +\
                      "Exception: " + str(e)
             errMsg = genLog("NGAMS_ER_CONF_FILE", [errMsg])
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         # Check that the root element is present.
         rootElName = self.__rootElObj.getName()
@@ -494,15 +493,15 @@ class ngamsXmlMgr:
             msg = "XML document, does not have the " +\
                   "proper root element: %s! Aborting."
             errMsg = genLog("NGAMS_ER_CONF_FILE", [msg % rootElName])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         try:
             self.clear()
             curId = None
             self._unpack(nodeList[0], "", None, curId)
             domObj.unlink()
-        except Exception, e:
+        except:
             if (domObj): domObj.unlink()
-            raise e
+            raise
         return self
 
 
@@ -764,7 +763,7 @@ if __name__ == '__main__':
     keyList = xmlDic.keys()
     keyList.sort()
     for key in keyList:
-        print "%s: %s" % (key, xmlDic[key])
+        print("%s: %s" % (key, xmlDic[key]))
 
 
 # EOF

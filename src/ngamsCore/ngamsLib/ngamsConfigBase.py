@@ -147,9 +147,9 @@ class ngamsConfigBase:
         try:
             self.__xmlMgr.load(xmlDoc)
             self.setXmlDoc(xmlDoc)
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_LOAD_CFG", [xmlDoc, str(e)])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         return self
 
 
@@ -269,8 +269,8 @@ class ngamsConfigBase:
         T = TRACE()
 
         if (not self.__dbObj):
-            raise Exception, "No DB connection object associated to " +\
-                  "ngamsConfigBase object. Cannot access DB!"
+            raise Exception("No DB connection object associated to " +\
+                  "ngamsConfigBase object. Cannot access DB!")
         cfgPars = self.__dbObj.getCfgPars(name)
         xmlDic = {}
         for cfgParInfo in cfgPars:
@@ -304,8 +304,8 @@ class ngamsConfigBase:
         T = TRACE()
 
         if (not self.__dbObj):
-            raise Exception, "No DB connection object associated to " +\
-                  "ngamsConfigBase object. Cannot access DB!"
+            raise Exception("No DB connection object associated to " +\
+                  "ngamsConfigBase object. Cannot access DB!")
         xmlDic = self.__xmlMgr.getXmlDic()
         xmlDicKeys = xmlDic.keys()
         xmlDicKeys.sort()

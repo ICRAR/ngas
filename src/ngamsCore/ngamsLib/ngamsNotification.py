@@ -129,7 +129,7 @@ def _sendNotifMsg(hostId,
                                             [recipient], fromField, msg,
                                             contentType, attachmentName,
                                             dataInFile)
-            except Exception, e:
+            except:
                 pass
 
 
@@ -367,10 +367,10 @@ def checkNotifRetBuf(hostId,
 
         # Release Notification Semaphore.
         notifSem_.release()
-    except Exception, e:
+    except:
         # Release Notification Semaphore.
         notifSem_.release()
-        raise Exception, e
+        raise
 
 
 # EOF

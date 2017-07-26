@@ -206,7 +206,7 @@ class ngamsFileSummary1:
             self.__fileVersion = int(fileVersion)
         except:
             msg = "Wrong format of File Version given: %s" % str(fileVersion)
-            raise Exception, msg
+            raise Exception(msg)
         return self
 
 

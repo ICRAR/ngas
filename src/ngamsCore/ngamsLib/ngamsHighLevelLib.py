@@ -135,7 +135,7 @@ def _addHostInDic(dbConObj,
     """
     tmpHostInfo = dbConObj.getHostInfoFromHostIds([hostId])
     if not tmpHostInfo:
-        raise Exception, genLog("NGAMS_AL_MIS_HOST", [hostId])
+        raise Exception(genLog("NGAMS_AL_MIS_HOST", [hostId]))
     sqlHostInfo = tmpHostInfo[0]
     hostDic[hostId] = ngamsHostInfo.ngamsHostInfo().\
                       unpackFromSqlQuery(sqlHostInfo)
@@ -167,7 +167,7 @@ def resolveHostAddress(localHostId,
 
     try:
         hostInfoDic = getHostInfoFromHostIds(dbConObj, hostList)
-    except Exception, e:
+    except:
         hostInfoDic = {}
         for host in hostList:
             hostInfoDic[host] = None
@@ -177,7 +177,7 @@ def resolveHostAddress(localHostId,
     for hostName in hostList:
         if (not hostInfoDic.has_key(hostName)):
             errMsg = genLog("NGAMS_AL_MIS_HOST", [hostName])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         hi = hostInfoDic[hostName]
 
         # Find out if this host is local, within a cluster, within the same
@@ -193,8 +193,8 @@ def resolveHostAddress(localHostId,
             # host to be contacted for handling the request.
             clusterName = hi.getClusterName()
             if ((clusterName == None) or (clusterName.strip() == "")):
-                raise Exception, "No Cluster Name specified in NGAS DB for " +\
-                      "host: " + hi.getHostId()
+                raise Exception("No Cluster Name specified in NGAS DB for " +\
+                      "host: " + hi.getHostId())
             if (not hostInfoDic.has_key(clusterName)):
                 _addHostInDic(dbConObj, clusterName, hostInfoDic)
             hi.\
@@ -433,11 +433,11 @@ def genStagingFilename(ngamsCfgObj,
                     reqPropFilename)
         else:
             return stagingFilename
-    except Exception, e:
+    except Exception as e:
         errMsg = "Problem generating Staging Filename " +\
                  "(in ngamsHighLevelLib.genStagingFilename()). Exception: " +\
                  str(e)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
 def openCheckUri(uri):
@@ -456,7 +456,7 @@ def openCheckUri(uri):
     retStat = None
     try:
         retStat = urllib.urlopen(uri)
-    except Exception, e:
+    except Exception as e:
         err = str(e)
     # In case an error occurred, a tuple is returned, otherwise an "addinfourl"
     # object is returned. An error occurred if an empty tuple was returned.
@@ -469,7 +469,7 @@ def openCheckUri(uri):
     if (err):
         errMsg = "Error opening URI: " + uri + ". Error message: " + str(err)
         errMsg = genLog("NGAMS_ER_REQ_HANDLING", [errMsg])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     return retStat
 
 
@@ -636,22 +636,22 @@ def copyFile(ngamsCfgObj,
 
             logger.debug("File: %s copied to filename: %s",
                          srcFilename, trgFilename)
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_AL_CP_FILE",
                             [srcFilename, trgFilename, str(e)])
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         # Release disk resouces
         releaseDiskResource(ngamsCfgObj, srcFileSlotId)
         if (srcFileSlotId != trgFileSlotId):
             releaseDiskResource(ngamsCfgObj, trgFileSlotId)
         return [deltaTime]
-    except Exception, e:
+    except:
         # Release disk resouces
         releaseDiskResource(ngamsCfgObj, srcFileSlotId)
         if (srcFileSlotId != trgFileSlotId):
             releaseDiskResource(ngamsCfgObj, trgFileSlotId)
-        raise Exception, e
+        raise
 
 
 def getNewFileVersion(dbConObj,
@@ -912,7 +912,7 @@ def sendEmail(ngamsCfgObj,
             server = ngamsSmtpLib.ngamsSMTP(smtpHost)
             server.sendMail("From: " + fromField, "Bcc: " + emailAdr, data,
                             [], [], dataInFile)
-        except Exception, e:
+        except Exception as e:
             if (dataInFile): rmFile(data)
             errMsg = genLog("NGAMS_ER_EMAIL_NOTIF",
                             [emailAdr, fromField, smtpHost,str(e)])

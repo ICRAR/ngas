@@ -390,7 +390,7 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                 msg = "Cannot remove file. File ID: %s, " +\
                       "File Version: %d, Disk ID: %s"
                 errMsg = msg % (fileId, fileVersion, diskId)
-                raise Exception, errMsg
+                raise Exception(errMsg)
             sql = "DELETE FROM ngas_files WHERE disk_id={0} AND file_id={1} AND file_version={2}"
             self.query2(sql, args=(diskId, fileId, fileVersion))
 

@@ -579,8 +579,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         try:
             int(fileVersion)
         except:
-            raise Exception, "Illegal value for File Version specified: " +\
-                  str(fileVersion)
+            raise Exception("Illegal value for File Version specified: " +\
+                  str(fileVersion))
         sql = []
         vals = []
         # Query for files being online.
@@ -1028,7 +1028,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         clusterHostList = self.getHostIdsFromClusterName(clusterName)
         if (clusterHostList == []):
             msg = "No hosts registered for cluster with name: %s" % clusterName
-            raise Exception, msg
+            raise Exception(msg)
         clusterHostList = str(clusterHostList).strip()[1:-1]
         if (clusterHostList[-1] == ","): clusterHostList = clusterHostList[:-1]
 
@@ -1064,12 +1064,12 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             del curObj
             fileInfoDbm.sync()
             del fileInfoDbm
-        except Exception, e:
+        except Exception as e:
             rmFile(fileInfoDbmName)
             if (curObj): del curObj
             msg = "dumpFileInfoCluster(): Failed in dumping file info. " +\
                   "Error: %s" % str(e)
-            raise Exception, msg
+            raise Exception(msg)
 
         return fileInfoDbmName
 

@@ -269,7 +269,7 @@ def prepProcFile(ngamsCfgObj,
         shutil.copyfile(filename, procFilename)
     else:
         open(procFilename, 'a').close()
-    os.chmod(procFilename, 0775)
+    os.chmod(procFilename, 0o775)
     return [procFilename, procDir]
 
 

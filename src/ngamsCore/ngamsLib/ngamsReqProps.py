@@ -203,15 +203,15 @@ class ngamsReqProps:
             ((self.getMimeType() == "") or
              ((self.getMimeType() == NGAMS_ARCH_REQ_MT)))):
             if (self.getFileUri().strip() == ""):
-                raise Exception, genLog("NGAMS_ER_CMD_EXEC",
+                raise Exception(genLog("NGAMS_ER_CMD_EXEC",
                                         [NGAMS_ARCHIVE_CMD,
-                                         "Missing parameter: filename"])
+                                         "Missing parameter: filename"]))
             mimeType = ngamsLib.detMimeType(ngamsCfgObj.getMimeTypeMappings(),
                                             self.getFileUri(), 1)
             if (mimeType == NGAMS_UNKNOWN_MT):
                 errMsg = genLog("NGAMS_ER_UNKNOWN_MIME_TYPE1",
                                 [self.getFileUri()])
-                raise Exception, errMsg
+                raise Exception(errMsg)
             else:
                 self.setMimeType(mimeType)
 
@@ -223,7 +223,7 @@ class ngamsReqProps:
             if (not ngamsCfgObj.getStreamFromMimeType(self.getMimeType())):
                 errMsg = genLog("NGAMS_ER_UNKNOWN_MIME_TYPE2",
                                 [self.getMimeType(), self.getFileUri()])
-                raise Exception, errMsg
+                raise Exception(errMsg)
 
         return self
 

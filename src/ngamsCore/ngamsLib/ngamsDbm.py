@@ -198,9 +198,9 @@ class ngamsDbm:
                 self.__changeCount = 0
             self.__sem.release()
             return self
-        except Exception, e:
+        except:
             self.__sem.release()
-            raise e
+            raise
 
 
     @translated
@@ -243,9 +243,9 @@ class ngamsDbm:
             self._incrDbCount(-1)
             self.__sem.release()
             return self
-        except Exception, e:
+        except:
             self.__sem.release()
-            raise e
+            raise
 
 
     @translated
@@ -281,9 +281,9 @@ class ngamsDbm:
             hasKey = self.__dbmObj.has_key(key)
             self.__sem.release()
             return hasKey
-        except Exception, e:
+        except:
             self.__sem.release()
-            raise e
+            raise
 
 
     @translated
@@ -300,9 +300,9 @@ class ngamsDbm:
             self.__dbmObj.sync()
             self.__sem.release()
             return self
-        except Exception, e:
+        except:
             self.__sem.release()
-            raise e
+            raise
 
 
     @translated
@@ -368,7 +368,7 @@ class ngamsDbm:
                     self.__keyPtr, dbVal = self.__dbmObj.first()
                     while (str(self.__keyPtr).find("__") == 0):
                         self.__keyPtr, dbVal = self.__dbmObj.next()
-                except Exception, e:
+                except:
                     self.__keyPtr, dbVal = (None, None)
             if (self.__keyPtr and pop):
                 del self.__dbmObj[self.__keyPtr]
@@ -382,9 +382,9 @@ class ngamsDbm:
                 return (None, None)
             else:
                 return (self.__keyPtr, cPickle.loads(dbVal))
-        except Exception, e:
+        except:
             self.__sem.release()
-            raise e
+            raise
 
 
     @translated
@@ -417,9 +417,9 @@ class ngamsDbm:
                     self.__changeCount = 0
             self.__sem.release()
             return (key, val)
-        except Exception, e:
+        except:
             self.__sem.release()
-            raise e
+            raise
 
 
     @translated

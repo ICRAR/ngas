@@ -607,10 +607,10 @@ class ngamsStatus:
             fd.close()
             self.unpackXmlDoc(doc, getStatus, ignoreVarDiskPars)
             return self
-        except Exception, e:
+        except Exception as e:
             errMsg = "Error loading status XML document: " + filename +\
                      ". Error: " + str(e)
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
 
     def unpackXmlDoc(self,

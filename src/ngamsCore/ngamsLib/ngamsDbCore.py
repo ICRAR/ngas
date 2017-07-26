@@ -436,9 +436,9 @@ def cleanSrvList(srvList):
         srvList = srvList.replace(" ", "").split(",")
         srvList.sort()
         srvList = str(srvList)[1:-1].replace("'", "").replace(" ", "")
-    except Exception, e:
+    except Exception as e:
         msg = "Error cleaning up server list. Error: %s" % str(e)
-        raise Exception, msg
+        raise Exception(msg)
 
     return srvList
 

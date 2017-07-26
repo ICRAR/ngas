@@ -123,7 +123,7 @@ class ngamsMirroringRequest:
         except:
             msg = "Error converting Mirroring Request Status from text " +\
                   "to number representation. Status given: %s/type: %s"
-            raise Exception, msg % (str(statusStr), str(type(statusStr)))
+            raise Exception(msg % (str(statusStr), str(type(statusStr))))
 
 
     def statusNo2Str(self,
@@ -144,7 +144,7 @@ class ngamsMirroringRequest:
         except:
             msg = "Error converting Mirroring Request Status from number " +\
                   "to string representation. Status given: %s/type: %s."
-            raise Exception, msg % (str(statusNo), str(type(statusNo)))
+            raise Exception(msg % (str(statusNo), str(type(statusNo))))
 
 
     def setInstanceId(self,
@@ -305,7 +305,7 @@ class ngamsMirroringRequest:
                 status = int(status)
             except:
                 msg = "Illegal Mirroring Request Status specified: %s"
-                raise Exception, msg % str(status)
+                raise Exception(msg % str(status))
         self.__status = status
         return self
 

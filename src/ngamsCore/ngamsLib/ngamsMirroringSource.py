@@ -133,7 +133,7 @@ class ngamsMirroringSource:
         except:
             msg = "Illegal value for configuration parameter: " +\
                   "Mirroring.Source.Period. Value given: %s"
-            raise Exception, msg % str(period)
+            raise Exception(msg % str(period))
         return self
 
 
@@ -172,10 +172,10 @@ class ngamsMirroringSource:
             for syncTime in tmpSyncList:
                 self.__lastComplSyncDic[syncTime] = None
 
-        except Exception, e:
+        except Exception as e:
             msg = "Illegal value for configuration parameter: " +\
                   "Mirroring.Source.CompleteSync. Value given: %s. Details: %s"
-            raise Exception, msg % (str(syncTimes), str(e))
+            raise Exception(msg % (str(syncTimes), str(e)))
         return self
 
 
@@ -207,8 +207,8 @@ class ngamsMirroringSource:
                              NGAMS_MIR_TYPE_FILTER_PI)):
             msg = "Mirroring synchronization type given illegal: %s. " +\
                   "Valid options: %s, %s"
-            raise Exception, msg % (str(syncType), NGAMS_MIR_TYPE_ING_DATE,
-                                    NGAMS_MIR_TYPE_FILTER_PI)
+            raise Exception(msg % (str(syncType), NGAMS_MIR_TYPE_ING_DATE,
+                                    NGAMS_MIR_TYPE_FILTER_PI))
         self.__syncType = syncType
         return self
 

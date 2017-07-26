@@ -82,9 +82,8 @@ def getInt(property,
     Returns:          Integer value (integer).
     """
     try:
-        valInt = int(str(val))
-        return valInt
-    except Exception, e:
+        return int(str(val))
+    except ValueError:
         return retValOnFailure
 
 
@@ -112,7 +111,7 @@ def checkIfSetStr(property,
             checkRep.append(errMsg)
             return 0
         else:
-            raise Exception, errMsg
+            raise Exception(errMsg)
     elif value == "":
         logger.warning("Value of property %s is an empty string", property)
     else:
@@ -144,7 +143,7 @@ def checkIfSetInt(property,
             checkRep.append(errMsg)
             return 0
         else:
-            raise Exception, errMsg
+            raise Exception(errMsg)
     else:
         return 1
 
@@ -174,7 +173,7 @@ def checkIfZeroOrOne(property,
             checkRep.append(errMsg)
             return 0
         else:
-            raise Exception, errMsg
+            raise Exception(errMsg)
     else:
         return 1
 
@@ -205,7 +204,7 @@ def checkDuplicateValue(checkDic,
         if (checkRep != None):
             checkRep.append(errMsg)
         else:
-            raise Exception, errMsg
+            raise Exception(errMsg)
     else:
         checkDic[value] = 1
 
@@ -392,9 +391,9 @@ class ngamsConfig:
         self.clear()
         try:
             self.__cfgMgr.load(filename)
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_LOAD_CFG", [filename, str(e)])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         self._unpackCfg()
         if (check): self._check()
 
@@ -609,7 +608,7 @@ class ngamsConfig:
                 if (srcArchIdDic.has_key(mirSrcObj.getId())):
                     msg = "Error parsing configuration file. Mirroring " +\
                           "Source Archive ID: %s specified multiple times"
-                    raise Exception, msg % mirSrcObj.getId()
+                    raise Exception(msg % mirSrcObj.getId())
                 self.addMirroringSrcObj(mirSrcObj)
 
         return self
@@ -681,7 +680,7 @@ class ngamsConfig:
         """
         rootDir = self.getVal("NgamsCfg.Server[1].RootDirectory")
         if not rootDir:
-            raise Exception, "Server[1].RootDirectory not properly defined"
+            raise Exception("Server[1].RootDirectory not properly defined")
         return rootDir
 
 
@@ -1207,7 +1206,7 @@ class ngamsConfig:
                 return set
         # Raise exception.
         errMsg = genLog("NGAMS_ER_NO_STORAGE_SET", [slotId, self.getCfg()])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
     def getAssocSlotId(self,
@@ -1964,7 +1963,7 @@ class ngamsConfig:
         """
         if (not user): user = self.getAuthUsers()[0]
         if (not self.__authUserDic.has_key(user)):
-            raise Exception, "Undefined user referenced: %s" % user
+            raise Exception("Undefined user referenced: %s" % user)
         pwd = base64.b64decode(self.getAuthUserInfo(user))
         authHdrVal = "Basic " + base64.b64encode(user + ":" + pwd)
         return authHdrVal
@@ -2047,7 +2046,7 @@ class ngamsConfig:
 
         if (not self.__mirSrcObjDic.has_key(id)):
             msg = "No Mirroring Source found in configuration with ID: %s"
-            raise Exception, msg % id
+            raise Exception(msg % id)
         else:
             return self.__mirSrcObjDic[id]
 
@@ -2069,7 +2068,7 @@ class ngamsConfig:
 
         if (not self.__mirSrcObjDic.has_key(srvList)):
             msg = "No Mirroring Source Object found for Server List: %s"
-            raise Exception, msg % srvList
+            raise Exception(msg % srvList)
         else:
             return self.__mirSrcObjDic[srvList]
 
@@ -2127,7 +2126,7 @@ class ngamsConfig:
                          "NG/AMS installation used: " + getNgamsVersionRaw() +\
                          ". Configuration parameter: Server.SwVersion."
                 errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
-                raise Exception, errMsg
+                raise Exception(errMsg)
         checkIfZeroOrOne("Server.Simulation", self.getSimulation(),
                          self.getCheckRep())
         if (checkIfSetStr("Server.RootDirectory",
@@ -2256,7 +2255,7 @@ class ngamsConfig:
                 if (not os.path.exists(procDir)):
                     try:
                         os.makedirs(procDir)
-                    except Exception, e:
+                    except:
                         errMsg = genLog("NGAMS_ER_ILL_PROC_DIR",
                                         [self.getCfg(),
                                          self.getProcessingDirectory()])
@@ -2360,14 +2359,14 @@ class ngamsConfig:
         if ((not self.getAllowRemoveReq()) and (self.getCachingActive())):
             msg = "Permission to execute Remove Requests must be switched " +\
                   "on in order to enable the Caching Service"
-            raise Exception, msg
+            raise Exception(msg)
         # TODO: More checks.
         logger.debug("Checked Caching Element")
 
         # Any errors found?
         if (len(self.getCheckRep()) > 0):
             testRep = self.genCheckRep()
-            raise Exception, testRep
+            raise Exception(testRep)
 
         return self
 

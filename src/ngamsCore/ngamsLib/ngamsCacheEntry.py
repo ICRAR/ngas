@@ -88,7 +88,7 @@ class ngamsCacheEntry(ngamsFileSummary1.ngamsFileSummary1):
             self.__lastCheck = float(lastCheck)
         except:
             msg = "Wrong format of Last Check given: %s" % str(lastCheck)
-            raise Exception, msg
+            raise Exception(msg)
         return self
 
 
@@ -115,7 +115,7 @@ class ngamsCacheEntry(ngamsFileSummary1.ngamsFileSummary1):
             self.__cacheTime = float(cacheTime)
         except:
             msg = "Wrong format of Cache Time given: %s" % str(cacheTime)
-            raise Exception, msg
+            raise Exception(msg)
         return self
 
 

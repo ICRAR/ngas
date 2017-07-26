@@ -587,7 +587,7 @@ class ngamsDiskInfo:
         res = dbConObj.getDiskInfoFromDiskId(diskId)
         if (res == []):
             errMsg = genLog("NGAMS_ER_UNKNOWN_DISK", [diskId])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         else:
             self.unpackSqlResult(res)
         return self
