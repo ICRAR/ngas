@@ -42,7 +42,6 @@ setup(
     include_package_data=True,
     package_data = {
         'ngamsServer'  : ['README', '*.txt'],
-        'ngamsStartup' : ['*.sh']
     },
     install_requires=[
         'crc32c',
@@ -55,8 +54,8 @@ setup(
         'console_scripts':[
             'ngamsServer=ngamsServer.ngamsServer:main',
             'ngamsCacheServer=ngamsServer.ngamsCacheServer:main',
-            'ngamsDaemon=ngamsStartup.ngamsDaemon:main',
-            'ngamsCacheDaemon=ngamsStartup.ngamsDaemon:main',
+            'ngamsDaemon=ngamsServer.ngamsDaemon:main',
+            'ngamsCacheDaemon=ngamsServer.ngamsDaemon:main',
             'ngamsDumpDbSnapshot=ngamsServer.ngamsDumpDbSnapshot:main'
         ],
     }
