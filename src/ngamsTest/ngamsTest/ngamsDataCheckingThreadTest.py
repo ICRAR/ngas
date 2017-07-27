@@ -31,6 +31,7 @@
 This module contains the Test Suite for the Data Consistency Checking Thread.
 """
 
+import os
 import shutil
 import sys
 import time
@@ -57,22 +58,13 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
     be added.
     """
 
-
     def start_srv(self, *args, **kwargs):
         cfg = (("NgamsCfg.DataCheckThread[1].Active", "1"),
                ("NgamsCfg.DataCheckThread[1].Prio", "1"),
                ("NgamsCfg.DataCheckThread[1].MinCycle", "0T00:00:00"),
-               ("NgamsCfg.Log[1].LocalLogLevel", "4"))
+               ("NgamsCfg.Log[1].LocalLogLevel", "4"),
+               ("NgamsCfg.Db[1].Snapshot", "0"))
         return self.prepExtSrv(cfgProps=cfg, *args, **kwargs)
-
-    def restart_with_datacheck(self, *args, **kwargs):
-        # Cleanly shut down the server, and wait until it's completely down
-        old_cleanup = getNoCleanUp()
-        setNoCleanUp(True)
-        self.termExtSrv(self.extSrvInfo.pop())
-        setNoCleanUp(old_cleanup)
-
-        return self.start_srv(*args, delDirs=0, clearDb=0, **kwargs)
 
     def wait_and_count_checked_files(self, cfg, checked, unregistered, bad):
         startTime = time.time()
@@ -97,62 +89,83 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
                     self.assertEquals(unregistered, nfiles_unregistered)
                     self.assertEquals(bad, nfiles_bad)
                     found = True
-            time.sleep(1)
+            time.sleep(0.5)
         if not found:
             self.fail("Data Check Thread didn't complete "+\
                       "check cycle within the expected period of time")
 
-
-
-    def test_DataCheckThread_1(self):
-        """
-        Synopsis:
-        Basic functioning of Data Checking Feature.
-
-        Description:
-        Test Test the basic functioning of the Data Check Thread. The
-        Data Check Thread is started and it is checked that it performs
-        a cycle whereby all files are checked, and a Data Check Entry is
-        logged into the NG/AMS Local Log File.
-
-        Expected Result:
-        After a given period of time, the DCC Thread should have completed
-        one check cycle and have detected possible problems. In this case
-        there are no inconsistencies found.
-
-        Test Steps:
-        - Start standard NG/AMS Server configured to carry out DCC
-          continuosly.
-        - Archive a small file 3 times.
-        - Wait until the DCC has finished one cycle (NGAMS_INFO_DATA_CHK_STAT
-          log written in the log file).
-        - Check that the report is OK/that all files were checked.
-
-        Remarks:
-        ...
-        """
+    def _test_data_check_thread(self, registered, unregistered, bad, corrupt=None):
 
         # Start the server normally without the datacheck thread
-        # and perform some archives
-        self.prepExtSrv()
+        # and perform some archives. Turn off snapshoting also,
+        # it messes up with the database updates in one of the tests
+        _, db = self.prepExtSrv(cfgProps=(("NgamsCfg.Db[1].Snapshot", "0"),))
         client = sendPclCmd()
         for _ in range(3):
             client.archive("src/SmallFile.fits")
 
-        # Now restart it and see if the datacheck thread picks the files up
-        cfg, _ = self.restart_with_datacheck()
-        self.wait_and_count_checked_files(cfg, 6, 0, 0)
+        # Cleanly shut down the server, and wait until it's completely down
+        old_cleanup = getNoCleanUp()
+        setNoCleanUp(True)
+        self.termExtSrv(self.extSrvInfo.pop())
+        setNoCleanUp(old_cleanup)
 
+        # Potentially corrupt the NGAS data somehow
+        if corrupt:
+            corrupt(db)
 
-    def test_inconsistencies(self):
-        # Manually copy a file into the disk, it should appear as unregistered
+        # Restart and see what does the data checker thread find
+        cfg, _ = self.start_srv(delDirs=0, clearDb=0)
+        self.wait_and_count_checked_files(cfg, registered, unregistered, bad)
+
+    def test_normal_case(self):
+        self._test_data_check_thread(6, 0, 0)
+
+    def test_unregistered(self):
+
+        # Manually copy a file into the disk
         checkCreatePath('/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/')
         trgFile = "/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/SmallFile.fits"
         shutil.copy("src/SmallFile.fits", trgFile)
 
+        # It should appear as unregistered when the server checks it
         cfg, _ = self.start_srv(delDirs=False)
         self.wait_and_count_checked_files(cfg, 0, 1, 0)
 
+    def test_fsize_changed(self):
+
+        # Modify the archived file so it contains extra data
+        def add_data(_):
+            trgFile = ('/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/saf/2001-05-08/1/'
+                       'TEST.2001-05-08T15:25:00.123.fits.gz')
+            os.chmod(trgFile, 0o666)
+            with open(trgFile, 'ab') as f:
+                f.write(os.urandom(16))
+
+        self._test_data_check_thread(6, 0, 1, corrupt=add_data)
+
+    def test_data_changed(self):
+
+        # Modify the archived file so it contains extra data
+        def change_data(_):
+            trgFile = ('/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/saf/2001-05-08/1/'
+                       'TEST.2001-05-08T15:25:00.123.fits.gz')
+            os.chmod(trgFile, 0o666)
+            with open(trgFile, 'r+b') as f:
+                f.seek(-16, 2)
+                f.write(os.urandom(16))
+
+        self._test_data_check_thread(6, 0, 1, corrupt=change_data)
+
+    def test_checksum_changed(self):
+
+        # Modify the checksum in the database
+        def change_checksum(db):
+            sql = ('UPDATE ngas_files SET checksum = {0} WHERE file_id = {1} '
+                   'AND file_version = 1')
+            db.query2(sql, args=('123', 'TEST.2001-05-08T15:25:00.123'))
+
+        self._test_data_check_thread(6, 0, 2, corrupt=change_checksum)
 
 def run():
     """
