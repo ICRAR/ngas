@@ -285,7 +285,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         setNoCleanUp(old_cleanup)
 
         # Server should come up properly
-        self.prepExtSrv(delDirs=0, clearDb=0, skip_database_creation=True)
+        self.prepExtSrv(delDirs=0, clearDb=0)
 
     def test_url_values(self):
 

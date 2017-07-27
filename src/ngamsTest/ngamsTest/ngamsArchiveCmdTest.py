@@ -408,7 +408,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         cfgPars = [["NgamsCfg.Permissions[1].AllowArchiveReq", "1"],
                    ["NgamsCfg.ArchiveHandling[1].BackLogBuffering", "1"],
                    ["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:00:05"]]
-        cfgObj, dbObj = self.prepExtSrv(delDirs=0, clearDb=0, cfgProps=cfgPars, skip_database_creation=True)
+        cfgObj, dbObj = self.prepExtSrv(delDirs=0, clearDb=0, cfgProps=cfgPars)
         pollForFile("/tmp/ngamsTest/NGAS/back-log/*", 0, timeOut=30)
         filePat = "/tmp/ngamsTest/NGAS/%s/saf/2001-05-08/1/" +\
                   "TEST.2001-05-08T15:25:00.123.fits.gz"

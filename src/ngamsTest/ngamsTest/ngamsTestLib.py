@@ -982,7 +982,6 @@ class ngamsTestSuite(unittest.TestCase):
                    cfgProps = [],
                    dbCfgName = None,
                    srvModule = None,
-                   skip_database_creation = False,
                    force=False):
         """
         Prepare a standard server object, which runs as a separate process and
@@ -1048,6 +1047,7 @@ class ngamsTestSuite(unittest.TestCase):
         # Change what needs to be changed, like the position of the Sqlite
         # database file when necessary, the custom configuration items, and the
         # port number
+        skip_database_creation = multipleSrvs or not clearDb
         self.point_to_sqlite_database(cfgObj, not multipleSrvs and not dbCfgName and not skip_database_creation)
         if (cfgProps):
             for cfgProp in cfgProps:
