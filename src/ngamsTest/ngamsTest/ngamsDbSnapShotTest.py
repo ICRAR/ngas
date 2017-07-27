@@ -151,7 +151,9 @@ def _prepSrv(testSuiteObj):
     Returns:         Instance of NG/AMS Cfg. and DB Objects
                      (tuple/ngamsConfig,ngamsDb).
     """
-    return testSuiteObj.prepExtSrv(cfgProps=[["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:00:01"]])
+    cfg = (("NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:00:01"),
+           ("NgamsCfg.Db[1].Snapshot", "1"))
+    return testSuiteObj.prepExtSrv(cfgProps=cfg)
 
 
 class ngamsDbSnapShotTest(ngamsTestSuite):
