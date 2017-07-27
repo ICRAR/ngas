@@ -469,6 +469,8 @@ def checkFile(srvObj,
         fileExists = os.path.exists(filename)
         if (not fileExists):
             foundProblem = 1
+            logger.error('File %s does not exist on disk', filename)
+
             checkReport.append(["ERROR: File in DB missing on disk", fileId,
                                 fileVersion, slotId, diskId, filename])
             fileStatus = "1" + fileStatus[1:]
@@ -480,6 +482,8 @@ def checkFile(srvObj,
             fileSize = getFileSize(filename)
             if (fileSize != dbFileSize):
                 foundProblem = 1
+                logger.error('File %s has wrong size. Expected: %d/Actual: %d',
+                             filename, dbFileSize, fileSize)
                 format = "ERROR: File has wrong size. Expected: %d/Actual: %d."
                 checkReport.append([format % (dbFileSize , fileSize), fileId,
                                     fileVersion, slotId, diskId, filename])
@@ -510,9 +514,9 @@ def checkFile(srvObj,
                     duration = time.time() - start
 
                     fsize_mb = getFileSize(filename) / 1024. / 1024.
-                    logger.info("Checked %s in %.4f [s]. Check ran at %.3f [MB/s]. Checksum file/db:  %d / %s",
+                    logger.info("Checked %s in %.4f [s]. Check ran at %.3f [MB/s]. Checksum file/db:  %s / %s",
                                 filename, duration, fsize_mb / duration,
-                                checksumFile or 0, checksumDb)
+                                str(checksumFile), checksumDb)
                 except Exception, e:
                     # We assume an IO error:
                     # "[Errno 2] No such file or directory"
@@ -536,6 +540,8 @@ def checkFile(srvObj,
                                     fileId, fileVersion, slotId, diskId,
                                     filename])
             elif str(checksumDb) != str(checksumFile):
+                logger.error("File %s has inconsistent checksum! file/db: %s / %s",
+                             filename, str(checksumFile), checksumDb)
                 checkReport.append(["ERROR: Inconsistent checksum found",
                                     fileId, fileVersion, slotId, diskId,
                                     filename])
