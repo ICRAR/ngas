@@ -76,7 +76,7 @@
   <Db Id="Db-Test"
       Interface="sqlite3"
       database="tmp/ngas.sqlite"
-      Snapshot="1"/>
+      Snapshot="0"/>
 
   <SystemPlugIns Id="SystemPlugIns-Std"
                  LabelPrinterPlugIn="ngamsNullLabelPrinterPlugIn" 
