@@ -51,8 +51,8 @@ def correctUsage():
 
     Returns:   Void.
     """
-    print "\nCorrect usage is: "
-    print "\n  % ngamsDumpDbSnapshot <Snapshot Filename>\n\n"
+    print("\nCorrect usage is: ")
+    print("\n  % ngamsDumpDbSnapshot <Snapshot Filename>\n\n")
 
 
 def dumpDbSnapshot(dbSnapshotName,
@@ -67,34 +67,34 @@ def dumpDbSnapshot(dbSnapshotName,
     Returns:            Void.
     """
     db = bsddb.hashopen(dbSnapshotName, "r")
-    print "\nDumping contents of NG/AMS DB Snapshot: " + dbSnapshotName
+    print("\nDumping contents of NG/AMS DB Snapshot: " + dbSnapshotName)
 
     try:
         key, pickleVal = db.first()
     except:
         key = None
-    print ""
+    print("")
     while (key):
         try:
             val = cPickle.loads(pickleVal)
-        except Exception, e:
+        except Exception as e:
             tstStr = "No module named"
             if (str(e).find(tstStr) != -1):
                 modName = str(e).split(tstStr)[-1].strip()
-                exec "import %s" % modName
+                exec("import %s" % modName)
                 val = cPickle.loads(pickleVal)
             else:
-                raise Exception, e
+                raise
         # Try if the object has a dumpBuf() method.
         try:
             dumpBuf = val.dumpBuf()
         except:
             dumpBuf = None
-        print "%s = %s" % (key, str(val))
-        if (details and dumpBuf): print dumpBuf
+        print("%s = %s" % (key, str(val)))
+        if (details and dumpBuf): print(dumpBuf)
         try:
             key, pickleVal = db.next()
-        except Exception, e:
+        except:
             break
     db.close()
 

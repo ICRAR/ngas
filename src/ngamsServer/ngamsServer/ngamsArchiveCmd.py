@@ -60,7 +60,7 @@ def archiveInitHandling(srvObj,
     # Is this NG/AMS permitted to handle Archive Requests?
     if (not srvObj.getCfg().getAllowArchiveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Archive"])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     srvObj.checkSetState("Archive Request", [NGAMS_ONLINE_STATE],
                          [NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE],
                          NGAMS_ONLINE_STATE, NGAMS_BUSY_SUBSTATE,
@@ -83,7 +83,7 @@ def archiveInitHandling(srvObj,
                                               mimeType, sendNotification=0)
                 msg = genLog("NGAMS_INFO_ARCH_REQ_OK",
                              [mimeType, getHostName()])
-            except Exception, e:
+            except:
                 msg = genLog("NGAMS_ER_ARCH_REQ_NOK",
                              [mimeType, getHostName()])
             srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
@@ -146,7 +146,7 @@ def handleCmdArchive(srvObj,
         logger.info("Handling Archive Pull Request. Async = %d ...", async)
         try:
             if (reqPropsObj.getFileUri() == ""):
-                raise Exception, "No File URI/Filename specified!"
+                raise Exception("No File URI/Filename specified!")
 
             handle = ngamsHighLevelLib.openCheckUri(reqPropsObj.getFileUri())
             # urllib.urlopen will attempt to get the content-length based on the URI
@@ -164,7 +164,7 @@ def handleCmdArchive(srvObj,
             if not async:
                 srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
                                    NGAMS_SUCCESS, msg, diskInfoObj)
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_ARCHIVE_PULL_REQ",
                             [reqPropsObj.getSafeFileUri(), str(e)])
             ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_ERROR,
@@ -186,7 +186,7 @@ def handleCmdArchive(srvObj,
             if not async:
                 srvObj.ingestReply(reqPropsObj, httpRef,NGAMS_HTTP_SUCCESS,
                                    NGAMS_SUCCESS, msg, diskinfoObj)
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_ARCHIVE_PUSH_REQ",
                             [reqPropsObj.getSafeFileUri(), str(e)])
             ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_ERROR,

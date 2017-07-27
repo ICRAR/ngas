@@ -125,18 +125,18 @@ def _encName(dbSnapshot,
         # bsddb level.
         try:
             _addInDbm(dbSnapshot, NGAMS_SN_SH_MAP_COUNT, count)
-        except Exception, e:
+        except:
             _addInDbm(dbSnapshot, NGAMS_SN_SH_MAP_COUNT, count)
             _addInDbm(dbSnapshot, nm2IdTag, nameId)
             _addInDbm(dbSnapshot, id2NmTag, name, 1)
-            raise e
+            raise
         try:
             _addInDbm(dbSnapshot, nm2IdTag, nameId)
-        except Exception, e:
+        except:
             _addInDbm(dbSnapshot, NGAMS_SN_SH_MAP_COUNT, count)
             _addInDbm(dbSnapshot, nm2IdTag, nameId)
             _addInDbm(dbSnapshot, id2NmTag, name, 1)
-            raise e
+            raise
         _addInDbm(dbSnapshot, id2NmTag, name, 1)
 
     return nameId
@@ -607,7 +607,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
             count = 0
             try:
                 key, pickleValue = snapshotDbm.first()
-            except Exception, e:
+            except Exception as e:
                 msg = "Exception raised accessing DB Snapshot for disk: %s. " +\
                       "Error: %s"
                 logger.debug(msg, diskId, str(e))
@@ -730,7 +730,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
             count = 0
             try:
                 key, pickleValue = tmpSnapshotDbm.first()
-            except Exception, e:
+            except:
                 key = None
                 tmpSnapshotDbm.dbc = None
 

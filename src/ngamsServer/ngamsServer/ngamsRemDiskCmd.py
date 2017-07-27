@@ -116,13 +116,13 @@ def _remDisk(srvObj,
         try:
             tmpDir = os.path.dirname(tmpFilePat)
             srvObj.getDb().deleteDiskInfo(diskId, 1)
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_DEL_DISK_DB", [diskId, str(e)])
             raise Exception(errMsg)
         logger.info("Deleting contents on disk with ID: %s", diskId)
         try:
             rmFile(os.path.normpath(diskInfo.getMountPoint() + "/*"))
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_DEL_DISK", [diskId, str(e)])
             raise Exception(errMsg)
         try:
@@ -212,17 +212,17 @@ def handleCmdRemDisk(srvObj,
     if (diskId == ""):
         errMsg = genLog("NGAMS_ER_CMD_SYNTAX",
                         [NGAMS_REMDISK_CMD, "Missing parameter: disk_id"])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     if (not srvObj.getDb().diskInDb(diskId)):
         errMsg = genLog("NGAMS_ER_UNKNOWN_DISK", [diskId])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     if (reqPropsObj.hasHttpPar("execute")):
         try:
             execute = int(reqPropsObj.getHttpPar("execute"))
         except:
             errMsg = genLog("NGAMS_ER_REQ_HANDLING", ["Must provide proper " +\
                             "value for parameter: execute (0|1)"])
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
     # Carry out the command.
     status = remDisk(srvObj, reqPropsObj, diskId, execute)

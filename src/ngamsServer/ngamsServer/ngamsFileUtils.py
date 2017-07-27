@@ -89,7 +89,7 @@ def _locateArchiveFile(srvObj,
         if (diskId): tmpFileRef += "/Disk ID: " + diskId
         if (hostId): tmpFileRef += "/Host ID: " + hostId
         errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [tmpFileRef])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # We now sort the file information sub-lists in the file list.
     # The priori is as follows:
@@ -188,7 +188,7 @@ def _locateArchiveFile(srvObj,
         else:
             fileRef = fileId
         errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [fileRef])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # We generate a list with the Disk IDs (which we need later).
     # Generate a dictionary with Disk Info Objects.
@@ -295,7 +295,7 @@ def _locateArchiveFile(srvObj,
     # If no file was found we raise an exception.
     if (not foundFile):
         errMsg = genLog("NGAMS_ER_UNAVAIL_FILE", [fileId])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # The file was found, get the info necessary for the acquiring the file.
     ipAddress = hostDic[host].getIpAddress()
@@ -514,7 +514,7 @@ def checkFile(srvObj,
                         blockSize = 4096
                     checksum_typ = get_checksum_name(crc_variant)
                     checksumFile = get_checksum(blockSize, filename, crc_variant)
-                except Exception, e:
+                except:
                     # We assume an IO error:
                     # "[Errno 2] No such file or directory"
                     # This problem has already been registered further
@@ -585,10 +585,10 @@ def syncCachesCheckFiles(srvObj,
             logger.warning("No Disk Sync Plug-In defined - consider to provide one!")
         #commands.getstatusoutput("sync")
         for file in filenames: os.stat(file)
-    except Exception, e:
+    except Exception as e:
         errMsg = "Severe error occurred! Could not sync file caches or " +\
                  "file not accessible! Error: " + str(e)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
 

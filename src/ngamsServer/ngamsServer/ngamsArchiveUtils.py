@@ -84,14 +84,14 @@ def updateFileInfoDb(srvObj,
     try:
         ngamsFileUtils.syncCachesCheckFiles(srvObj,
                                             [piStat.getCompleteFilename()])
-    except Exception, e:
+    except Exception as e:
         errMsg = "Severe error occurred! Cannot update information in " +\
                  "NGAS DB (ngas_files table) about file with File ID: " +\
                  piStat.getFileId() + " and File Version: " +\
                  str(piStat.getFileVersion()) + ", since file is not found " +\
                  "in the indicated, final storage location! Check system! " +\
                  "Error: " + str(e)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     if (piStat.getStatus() == NGAMS_FAILURE): return
     now = time.time()
@@ -144,9 +144,9 @@ def replicateFile(dbConObj,
     # Get the ID for the Replication Disk.
     setObj = ngamsCfgObj.getStorageSetFromSlotId(piStat.getSlotId())
     if (not diskDic.has_key(setObj.getRepDiskSlotId())):
-        raise Exception, "Error handling Archive Request - no Replication " +\
+        raise Exception("Error handling Archive Request - no Replication " +\
               "Disk found according to configuration. Replication Disk " +\
-              "Slot ID: " + str(setObj.getRepDiskSlotId())
+              "Slot ID: " + str(setObj.getRepDiskSlotId()))
     repDiskId    = diskDic[setObj.getRepDiskSlotId()].getDiskId()
     mainDiskMtPt = diskDic[setObj.getMainDiskSlotId()].getMountPoint()
     repDiskMtPt  = diskDic[setObj.getRepDiskSlotId()].getMountPoint()
@@ -512,13 +512,13 @@ def archiveFromFile(srvObj,
                 stagingFile = trgDiskInfo.getMountPoint()+ '/staging/' + os.path.basename(filename)
                 cpFile(filename, stagingFile)
                 reqPropsObjLoc.setStagingFilename(stagingFile)
-            except Exception, e:
+            except Exception as e:
                 errMsg = str(e) + ". Attempting to archive local file: " +\
                          filename
                 ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(),
                                          NGAMS_NOTIF_NO_DISKS,
                                          "NO DISKS AVAILABLE", errMsg)
-                raise Exception, errMsg
+                raise Exception(errMsg)
 
         # Set the log cache to 1 during the handling of the file.
         plugIn = srvObj.getMimeTypeDic()[mimeType]
@@ -530,7 +530,7 @@ def archiveFromFile(srvObj,
                resMain.getCompleteFilename())
 
         postFileRecepHandling(srvObj, reqPropsObjLoc, resMain)
-    except Exception, e:
+    except Exception as e:
         # If another error occurrs, than one qualifying for Back-Log
         # Buffering the file, we have to log an error.
         if (ngamsHighLevelLib.performBackLogBuffering(srvObj.getCfg(),
@@ -617,7 +617,7 @@ def backLogBufferFiles(srvObj,
                                                      backLogBufReqFile])
         rmFile(stagingFile)
         rmFile(reqPropsFile)
-    except Exception, e:
+    except Exception as e:
         errMsg = genLog("NGAMS_ER_PROB_BACK_LOG_BUF",
                         [ngamsLib.hidePassword(stagingFile),backLogDir,str(e)])
         logger.exception(errMsg)
@@ -650,7 +650,7 @@ def checkBackLogBuffer(srvObj):
             try:
                 pickleObjFile = file + "." + NGAMS_PICKLE_FILE_EXT
                 reqPropsObj = ngamsLib.loadObjPickleFile(pickleObjFile)
-            except Exception, e:
+            except Exception as e:
                 errMsg = "Error encountered trying to load pickled " +\
                          "Request Properties Object from file: " +\
                          pickleObjFile + ".  Error: " + str(e)
@@ -658,7 +658,7 @@ def checkBackLogBuffer(srvObj):
                     logger.warning(errMsg)
                     reqPropsObj = None
                 else:
-                    raise Exception, errMsg
+                    raise Exception(errMsg)
             if (archiveFromFile(srvObj, file, 0, None,
                                 reqPropsObj) == NGAMS_SUCCESS):
                 rmFile(pickleObjFile)
@@ -750,12 +750,12 @@ def dataHandler(srvObj,
                                          mimeType, 0, caching=0,
                                          reqSpace=reqPropsObj.getSize())
             reqPropsObj.setTargDiskInfo(trgDiskInfo)
-        except Exception, e:
+        except Exception as e:
             errMsg = str(e) + ". Attempting to archive file: " +\
                       reqPropsObj.getSafeFileUri()
             ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_NO_DISKS,
                                       "NO DISKS AVAILABLE", errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         # Generate Staging Filename + Temp Staging File + save data in this
         # file. Also Org. Staging Filename is created, Processing Staging
@@ -818,7 +818,7 @@ def dataHandler(srvObj,
         # Remember to set the final IO time in the plug-in status object.
         resMain.setIoTime(reqPropsObj.getIoTime())
 
-    except Exception, e:
+    except Exception as e:
         if (str(e).find("NGAMS_ER_DAPI_BAD_FILE") != -1):
             errMsg = "Problems during archiving! URI: " +\
                      reqPropsObj.getFileUri() + ". Exception: " + str(e)
@@ -854,7 +854,7 @@ def dataHandler(srvObj,
             cleanUpStagingArea(srvObj, reqPropsObj, tmpStagingFilename,
                                stagingFilename, tmpReqPropsFilename,
                                reqPropsFilename)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     diskInfo = postFileRecepHandling(srvObj, reqPropsObj, resMain)
     msg = genLog("NGAMS_INFO_FILE_ARCHIVED", [reqPropsObj.getSafeFileUri()])
@@ -910,13 +910,13 @@ def findTargetNode(srvObj, mimeType):
                 ngamsDiskUtils.findTargetDisk(hostId, dbConObj, ngamsCfgObj, mimeType,
                                             sendNotification=0)
                 return hostId, host, port
-            except Exception, e:
+            except Exception as e:
                 if (str(e).find("NGAMS_AL_NO_STO_SETS") != -1):
                     logMsg = "Local node: %s cannot handle Archive " +\
                              "Request for data file with mime-type: %s"
                     logger.debug(logMsg, getHostName(), mimeType)
                     continue
-                raise Exception, e
+                raise
 
         # Now, issue the request to the node to probe.
         logMsg = "Probing remote Archiving Unit: %s:%s for handling of " +\
@@ -944,7 +944,7 @@ def findTargetNode(srvObj, mimeType):
             logger.debug(logMsg, host, port, mimeType)
             continue
 
-        except Exception, e:
+        except Exception as e:
             # The request handling failed for some reason, give up this
             # host for now.
             logMsg = "Problem contacting remote Archiving Unit: %s:%d: %s. " +\

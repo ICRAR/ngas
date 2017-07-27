@@ -325,7 +325,7 @@ def performProcessing(srvObj,
         # is supported by this NG/AMS.
         if dppi not in srvObj.getCfg().dppi_plugins:
             errMsg = genLog("NGAMS_ER_ILL_DPPI", [dppi])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         # Invoke the DPPI.
         logger.info("Invoking DPPI: %s to process file: %s", dppi, filename)
         plugInMethod = loadPlugInEntryPoint(dppi)
@@ -421,7 +421,7 @@ def genReplyRetrieve(srvObj,
             try:
                 sendBufSize = int(reqPropsObj.getHttpPar("send_buffer"))
                 httpRef.wfile._sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF,sendBufSize)
-            except Exception, ee:
+            except Exception as ee:
                 logger.warning('Fail to reset the send_buffer size: %s', str(ee))
 
         # Send back data from the memory buffer, from the result file, or

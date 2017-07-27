@@ -132,7 +132,7 @@ def _checkStopSubscriptionThread(srvObj):
     if (srvObj._subscriptionStopSync.isSet()):
         logger.debug("Stopping Subscription Thread ...")
         srvObj._subscriptionStopSyncConf.set()
-        raise Exception, "_STOP_SUBSCRIPTION_THREAD_"
+        raise Exception("_STOP_SUBSCRIPTION_THREAD_")
 
 
 def _checkStopDataDeliveryThread(srvObj, subscrbId):
@@ -150,7 +150,7 @@ def _checkStopDataDeliveryThread(srvObj, subscrbId):
         (not deliveryThreadRefDic.has_key(tname)) or # this thread's reference has been removed by the USUBSCRIBE command, see ngamsPlugIns/ngamsCmd_USUBSCRIBE.changeNumThreads()
         (not srvObj.getSubscriberDic().has_key(subscrbId))): # the UNSUBSCRIBE command is issued
         logger.debug("Stopping Data Delivery Thread ... %s", tname)
-        raise Exception, "_STOP_DELIVERY_THREAD_%s" % tname
+        raise Exception("_STOP_DELIVERY_THREAD_%s" % tname)
 
 
 def _waitForScheduling(srvObj):
@@ -195,7 +195,7 @@ def _waitForScheduling(srvObj):
         subscrObjs = srvObj._subscriptionSubscrList
         srvObj._subscriptionSubscrList = []
         return (filenames, subscrObjs)
-    except Exception, e:
+    except Exception as e:
         errMsg = "Error occurred in ngamsSubscriptionThread." +\
                   "_waitForScheduling(). Exception: " + str(e)
         logger.warning(errMsg)
@@ -532,9 +532,9 @@ def _delFromSubscrBackLog(srvObj,
         # subscrIds = srvObj.getDb().getSubscrsOfBackLogFile(fileId, fileVersion)
         # if (subscrIds == []): commands.getstatusoutput("rm -f " + fileName)
         srvObj._backLogAreaSem.release()
-    except Exception, e:
+    except:
         srvObj._backLogAreaSem.release()
-        raise e
+        raise
 
 def _markDeletion(srvObj,
                   diskId,
@@ -574,7 +574,7 @@ def _backupQueueToBacklog(srvObj):
             fileInfo = None
             try:
                 fileInfo = qu.get_nowait()
-            except Empty, e:
+            except Empty:
                 break
             if (fileInfo is None):
                 break
@@ -662,7 +662,7 @@ def _deliveryThread(srvObj,
             try:
                 fileInfo = quChunks.get(timeout = 1)
                 srvObj._subscrDeliveryFileDic[tname] = fileInfo # once it is dequeued, it is no longer safe, so need to record it in case server shut down.
-            except Empty, e:
+            except Empty:
                 logger.debug("Data delivery thread [%s] block timeout", str(thread.get_ident()))
                 _checkStopDataDeliveryThread(srvObj, subscrbId) # Timeout allows it to check if the delivery thread should stop
                 # if delivery thread is to continue, trigger the subscriptionThread to get more files in
@@ -885,7 +885,7 @@ def _deliveryThread(srvObj,
                     try:
                         subscrObj.setLastFileIngDate(fileIngDate)
                         srvObj.getDb().updateSubscrStatus(subscrObj.getId(), fileIngDate)
-                    except Exception, e:
+                    except Exception as e:
                         # continue with warning message. this means the database (i.e. last_ingestion_date) is not synchronised for this file,
                         # but at least remaining files can be delivered continuously, the database may be back in sync upon delivering remaining files
                         errMsg = "Error occurred during update the ngas_subscriber table " +\
@@ -907,7 +907,7 @@ def _deliveryThread(srvObj,
                     break # do not try the next url after success
 
             srvObj._subscrDeliveryFileDic[tname] = None
-        except Exception, be:
+        except Exception as be:
             if (str(be).find("_STOP_DELIVERY_THREAD_") != -1):
                 # Stop delivery thread.
                 logger.debug('Delivery thread [%s] is exiting.', str(thread.get_ident()))
@@ -948,7 +948,7 @@ def buildSubscrQueue(srvObj, subscrId, dataMoverOnly = False):
         srvObj.getDb().updateSubscrQueueEntryStatus(subscrId, -1, -2)
         #grab those files that have been scheduled from the persistent queue
         files = srvObj.getDb().getSubscrQueue(subscrId, status = -2)
-    except Exception, ee:
+    except Exception as ee:
         logger.error('Failed db operation when building subscriber cache queue: %s', str(ee))
         return quChunks
 
@@ -976,7 +976,7 @@ def updateSubscrQueueStatus(srvObj, subscrId, fileId, fileVersion, diskId, statu
                     srvObj.getDb().updateSubscrQueueEntry(subscrId, fileId, fileVersion, diskId, status, ts, comment)
         else:
             srvObj.getDb().updateSubscrQueueEntry(subscrId, fileId, fileVersion, diskId, status, ts, comment)
-    except Exception, eee:
+    except Exception as eee:
         logger.error("Fail to update persistent queue: %s", str(eee))
 
 def getSubscrQueueStatus(srvObj, subscrId, fileId, fileVersion, diskId):
@@ -985,7 +985,7 @@ def getSubscrQueueStatus(srvObj, subscrId, fileId, fileVersion, diskId):
     """
     try:
         return srvObj.getDb().getSubscrQueueStatus(subscrId, fileId, fileVersion, diskId)
-    except Exception, ex:
+    except Exception as ex:
         logger.error("Fail to query persistent queue: %s", str(ex))
         return None
 
@@ -1007,7 +1007,7 @@ def addToSubscrQueue(srvObj, subscrId, fileInfo, quChunks):
         ts = time.time()
         srvObj.getDb().addSubscrQueueEntry(subscrId, fileId, fileVersion, diskId, filename, fileIngDate, fileMimeType, -2, ts)
         quChunks.put(fileInfo)
-    except Exception, ee:
+    except Exception as ee:
         # most likely error - key duplication, that will prevent cache queue from adding this entry, which is correct
         logger.error('Subscriber %s failed to add to the persistent subscription queue file %s due to %s', subscrId, filename, str(ee))
         if (fileInfo[FILE_BL] == NGAMS_SUBSCR_BACK_LOG):
@@ -1046,11 +1046,11 @@ def subscriptionThread(srvObj,
     if (dataMoverOnly):
         dm_hosts = srvObj.getCfg().getDataMoverHostIds()
         if (dm_hosts == None):
-            raise Exception, "No data mover hosts are available!"
+            raise Exception("No data mover hosts are available!")
         else:
             dm_hosts = map(lambda x: x.strip(), dm_hosts.split(','))
             if (len(dm_hosts) < 1):
-                raise Exception, "Invalid data mover hosts configuration!"
+                raise Exception("Invalid data mover hosts configuration!")
 
     fileDicDbm = None
     fileDicDbmName = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),
@@ -1412,7 +1412,7 @@ def subscriptionThread(srvObj,
                         deliveryThreads.append(deliveryThrRef)
 
                     deliveryThreadDic[subscrId] = deliveryThreads
-        except Exception, e:
+        except Exception as e:
             try:
                 del fileDicDbm
             except:

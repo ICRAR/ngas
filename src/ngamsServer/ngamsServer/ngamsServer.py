@@ -592,9 +592,9 @@ class ngamsServer:
             self.__requestDbm.sync()
             self.__requestDbmSem.release()
             return self.__requestId
-        except Exception, e:
+        except:
             self.__requestDbmSem.release()
-            raise e
+            raise
 
     def recoveryRequestDb(self):
         """
@@ -826,7 +826,7 @@ class ngamsServer:
             errMsg = genLog("NGAMS_ER_IMPROPER_STATE", errMsg)
             self.relStateSem()
             logger.error(errMsg)
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         if (newState != ""): self.setState(newState, updateDb)
         if (newSubState != ""): self.setSubState(newSubState)
@@ -1742,7 +1742,7 @@ class ngamsServer:
 
             reqPropsObj.getWriteFd().flush()
 
-        except Exception, e:
+        except Exception as e:
 
             # Quickly respond with a 400 status code for unexpected exceptions
             # (although it should be a 5xx code)
@@ -2108,8 +2108,8 @@ class ngamsServer:
                 contLen = reqPropsObj.getSize()
                 if ((reqPropsObj.getCmd() == NGAMS_ARCHIVE_CMD) and
                     (contLen <= 0)):
-                    raise Exception, "Must specify a content-length when " +\
-                          "forwarding Archive Requests (Archive Proxy Mode)"
+                    raise Exception("Must specify a content-length when " +\
+                          "forwarding Archive Requests (Archive Proxy Mode)")
 
                 # During HTTP post we need to pass down a EOF-aware,
                 # read()-able object
@@ -2271,7 +2271,7 @@ class ngamsServer:
                 dirErrMsg = dirErrMsg[0:-2] + ")"
                 errMsg = genLog("NGAMS_AL_DISK_SPACE_SAT",
                                 [minDiskSpaceMb, dirErrMsg])
-                raise Exception, errMsg
+                raise Exception(errMsg)
 
 
     def init(self, argv):
@@ -2298,7 +2298,7 @@ class ngamsServer:
 
         try:
             self.handleStartUp()
-        except Exception, e:
+        except Exception as e:
             try:
                 errMsg = genLog("NGAMS_ER_INIT_SERVER", [str(e)])
                 ngamsNotification.notify(self.getHostId() or '', self.getCfg(), NGAMS_NOTIF_ERROR,
@@ -2323,11 +2323,11 @@ class ngamsServer:
             pidFile = os.path.join(self.getCfg().getRootDirectory(), "." +
                                    self.getHostId()
                                    + ".pid")
-        except Exception, e:
+        except Exception as e:
             errMsg = "Error occurred generating PID file name. Check " +\
                      "Mount Root Directory + Port Number in configuration. "+\
                      "Error: " + str(e)
-            raise Exception, errMsg
+            raise Exception(errMsg)
         return pidFile
 
 
@@ -2411,7 +2411,7 @@ class ngamsServer:
 
         try:
             self.setup_logging()
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_INIT_LOG", [logcfg.logfile, str(e)])
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM SETTING UP LOGGING", errMsg)
@@ -2571,7 +2571,7 @@ class ngamsServer:
         logger.info("Initializing HTTP server ...")
         try:
             self.serve()
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_OP_HTTP_SERV", [str(e)])
             logger.exception(errMsg)
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
@@ -2729,8 +2729,8 @@ class ngamsServer:
         Returns:    Void.
         """
         manPage = pkg_resources.resource_string(__name__, 'ngamsServer.txt')  # @UndefinedVariable
-        print manPage
-        print ngamsCopyrightString()
+        print(manPage)
+        print(ngamsCopyrightString())
 
 
     def parseInputPars(self, argv):
@@ -2775,12 +2775,12 @@ class ngamsServer:
                     idx = self._incCheckIdx(idx, argv)
                     self.logcfg.syslog_prefix = argv[idx]
                 elif (par == "-VERSION"):
-                    print getNgamsVersion()
+                    print(getNgamsVersion())
                     exitValue = 0
                     silentExit = 1
                     sys.exit(0)
                 elif (par == "-LICENSE"):
-                    print getNgamsLicense()
+                    print(getNgamsLicense())
                     exitValue = 0
                     silentExit = 1
                     sys.exit(0)

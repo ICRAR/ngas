@@ -74,7 +74,7 @@ def handleCmdCheckFile(srvObj,
     # At least File ID must be specified (File Version is defaulted to 1).
     if (not fileId):
         errMsg = "Must specify a File ID for the CHECKFILE command."
-        raise  Exception, errMsg
+        raise  Exception(errMsg)
 
     # Get the info for the file matching the query.
     fileLocInfo = ngamsFileUtils.locateArchiveFile(srvObj, fileId, fileVersion,

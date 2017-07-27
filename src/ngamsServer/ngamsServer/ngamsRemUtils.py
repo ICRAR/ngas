@@ -511,7 +511,7 @@ def checkFileCopiesAndReg(srvObj,
         errMsg = "ngamsSrvUtils.checkFileCopiesAndReg(): Must specify " +\
                  "either a DBM with files to be checked or a Disk ID"
         logger.warning(errMsg)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Create DBMs:
 
@@ -588,7 +588,7 @@ def checkFileCopiesAndReg(srvObj,
         if ((not ignoreMounted) and ( not diskInfoObj.getMounted())):
             errMsg = "Rejecting request for removing disk with ID: " +\
                      diskId + " - disk not mounted!"
-            raise Exception, errMsg
+            raise Exception(errMsg)
         if (not ignoreMounted):
             basePath = os.path.normpath(diskInfoObj.getMountPoint())
             pattern = "/*"

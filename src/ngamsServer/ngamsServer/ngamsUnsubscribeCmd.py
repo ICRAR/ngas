@@ -118,7 +118,7 @@ def delSubscriber(srvObj,
                 fileinfo = None
                 try:
                     fileinfo = qu.get_nowait()
-                except Queue.Empty, e:
+                except Queue.Empty:
                     break
                 if (fileinfo is None):
                     break
@@ -148,7 +148,7 @@ def delSubscriber(srvObj,
                 k = ngamsSubscriptionThread._fileKey(fileId, fileVersion)
                 if (myDic.has_key(k)):
                     del myDic[k]
-        except Exception, e:
+        except:
             estr = " Error marking back-logged files that have been in the queue for subscriber %s"
             logger.exception(estr, subscrId)
             err += 1
@@ -232,7 +232,7 @@ def handleCmdUnsubscribe(srvObj,
         else:
             errMsg = genLog("NGAMS_ER_CMD_SYNTAX",
                             [NGAMS_SUBSCRIBE_CMD, "Missing parameter: url"])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         err, errStr = delSubscriber(srvObj, ngamsLib.getSubscriberId(url))
 
     if (not err):

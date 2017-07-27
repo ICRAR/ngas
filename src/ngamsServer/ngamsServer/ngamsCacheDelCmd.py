@@ -135,7 +135,7 @@ def handleCmdCacheDel(srvObj,
     if ((not diskId) or (not fileId) or (not fileVersion)):
         msg = "Must specify disk_id/file_id/file_version for " +\
               "CACHEDEL Command"
-        raise Exception, msg
+        raise Exception(msg)
 
     cacheDel(srvObj, reqPropsObj, httpRef, diskId, fileId, fileVersion)
 

@@ -153,7 +153,7 @@ def _subscriberThread(srvObj,
                                        subscrObj.getPortNo(),
                                        NGAMS_SUBSCRIBE_CMD, pars)
                 statObj.unpackXmlDoc(data, 1)
-            except Exception, e:
+            except Exception as e:
                 ex = "Exception: " + str(e)
             if (statObj.getStatus() == NGAMS_SUCCESS):
                 subscrCount += 1

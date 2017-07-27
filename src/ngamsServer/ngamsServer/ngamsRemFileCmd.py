@@ -151,7 +151,7 @@ def _remFile(srvObj,
                                      [diskId, fileId, fileVer])
                     logger.debug(infoMsg)
                     successDelCount += 1
-                except Exception, e:
+                except Exception as e:
                     failedDelCount += 1
                     errMsg = genLog("NGAMS_ER_DEL_FILE_DB",
                                     [diskId, fileId, fileVer, str(e)])
@@ -160,7 +160,7 @@ def _remFile(srvObj,
                 msg = "Deleting copy of file: %s/%s/%d: %s"
                 logger.debug(msg, diskId, fileId, fileVer, complFilename)
                 rmFile(complFilename)
-            except Exception, e:
+            except Exception as e:
                 failedDelCount += 1
                 errMsg = genLog("NGAMS_ER_DEL_FILE_DISK",
                                 [diskId, fileId, fileVer, str(e)])

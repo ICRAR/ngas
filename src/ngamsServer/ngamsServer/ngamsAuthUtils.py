@@ -139,9 +139,9 @@ def authorize(srvObj,
                                     strip().split(" ")
             reqUserPwd = base64.decodestring(reqUserPwdEnc)
             reqUser, reqPwd = reqUserPwd.split(":")
-        except Exception, e:
+        except Exception as e:
             errMsg = genLog("NGAMS_ER_UNAUTH_REQ") + " Error: %s" % str(e)
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         # Get the user from the configuration.
         password = srvObj.getCfg().getAuthUserInfo(reqUser)

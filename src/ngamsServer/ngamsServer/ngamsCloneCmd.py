@@ -207,7 +207,7 @@ def cloneCheckDiskSpace(srvObj,
                                              srvObj.getDb(), srvObj.getCfg(),
                                              fio.getFormat(), 0,
                                              diskExemptList, 1)
-            except Exception, e:
+            except Exception as e:
                 if (str(e).find("NGAMS_AL_NO_STO_SETS") != -1):
                     # No more candidate Target Disks for this type
                     # of data - this file cannot be cloned.
@@ -265,7 +265,7 @@ def cloneCheckDiskSpace(srvObj,
             errMsg += " %s: %.3f MB" %\
                       (mt, (spaceLackMimeTypeDic[mt] / 1048576.0))
         errMsg = genLog("NGAMS_ER_CLONE_REJECTED", [errMsg])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
 def _checkFile(srvObj,
@@ -304,16 +304,16 @@ def _checkFile(srvObj,
                 if (tmpStat.getStatus() != NGAMS_FAILURE):
                     del tmpStat
                     tmpStat = None
-            except Exception, e:
+            except:
                 # Was apparently not an NG/AMS Status Document.
                 pass
         if (tmpStat):
             # An error response was received from the source node.
-            raise Exception, tmpStat.getMessage()
+            raise Exception(tmpStat.getMessage())
         else:
             # The file seems not to have been transferred completely.
             errMsg = "Size of cloned file wrong (expected: %d/actual: %d)"
-            raise Exception, errMsg % (fileInfoObj.getFileSize(), fileSize)
+            raise Exception(errMsg % (fileInfoObj.getFileSize(), fileSize))
     logger.debug("Size of cloned Staging File OK: %s", stagFile)
 
     # The file size was correct.
@@ -404,7 +404,7 @@ def _cloneExec(srvObj,
             # Check if file is marked as bad.
             if (fio.getFileStatus()[0] == "1"):
                 errMsg = "File marked as bad - skipping!"
-                raise Exception, errMsg
+                raise Exception(errMsg)
 
             if (targetDiskId == ""):
                 # Try to find a disk not hosting already a file with that
@@ -498,7 +498,7 @@ def _cloneExec(srvObj,
                                checkChecksum)
                     # If we get to this point the transfer was (probably) OK.
                     break
-                except Exception, e:
+                except Exception as e:
                     rmFile(stagingFilename)
                     errMsg = "Problem occurred while cloning file "+\
                              "via URL: " + fileUrl + " - Error: " + str(e)
@@ -507,7 +507,7 @@ def _cloneExec(srvObj,
                         logger.error(errMsg)
                         time.sleep(5)
                     else:
-                        raise Exception, errMsg
+                        raise Exception(errMsg)
 
             # We simply copy the file into the same destination as the
             # source file (but on another disk).
@@ -566,7 +566,7 @@ def _cloneExec(srvObj,
             msg = msg + ". Time: %.3fs. Total time: %.3fs." %\
                   (cloneTime, timeAccu)
             logger.info(msg, extra={'to_syslog': True})
-        except Exception, e:
+        except Exception as e:
             cloneTime = time.time() - clone_start
             timeAccu += cloneTime
             errMsg = genLog("NGAMS_ER_FILE_CLONE_FAILED",
@@ -788,7 +788,7 @@ def _cloneExplicit(srvObj,
               "/Version: " + str(fileVersion) +\
               " on disk with ID: " + diskId +\
               " on host: " + hostId + ". Reason: " + err
-        raise Exception, msg
+        raise Exception(msg)
 
     # Receive the file into the staging filename.
     storageSetId = trgDiskInfo.getStorageSetId()
@@ -843,7 +843,7 @@ def _cloneExplicit(srvObj,
                 _checkFile(srvObj, srcFileInfo, stagingFilename, headers, True)
                 # If we get to this point the transfer was (probably) OK.
                 break
-            except Exception, e:
+            except Exception as e:
                 rmFile(stagingFilename)
                 errMsg = "Problem occurred while cloning file "+\
                          "via URL: " + fileUrl + " - Error: " + str(e)
@@ -852,7 +852,7 @@ def _cloneExplicit(srvObj,
                     logger.error(errMsg)
                     time.sleep(0.5)
                 else:
-                    raise Exception, errMsg
+                    raise Exception(errMsg)
 
         # We simply copy the file into the same destination as the
         # source file (but on another disk).
@@ -893,7 +893,7 @@ def _cloneExplicit(srvObj,
         msg = genLog("NGAMS_INFO_FILE_CLONED",
                      [fileId, fileVersion, diskId, hostId])
         logger.info(msg, extra={'to_syslog': True})
-    except Exception, e:
+    except:
         # Delete Staging File if already created.
         if (os.path.exists(stagingFilename)): rmFile(stagingFilename)
         raise
@@ -969,7 +969,7 @@ def _clone(srvObj,
                         [NGAMS_CLONE_CMD, "File Id: " + fileId +\
                          ", Disk ID: " + diskId +\
                          ", File Version: " + str(fileVersion)])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # If Disk ID, File ID and File Version are given, execute a quick cloning.
     try:
@@ -1019,7 +1019,7 @@ def _clone(srvObj,
         if (noOfCloneFiles == 0):
             errMsg = genLog("NGAMS_ER_CMD_EXEC",
                             [NGAMS_CLONE_CMD, "No files for cloning found"])
-            raise Exception, errMsg
+            raise Exception(errMsg)
 
         del fileInfoDbm
         rmFile(fileInfoDbmNm + "*")

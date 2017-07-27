@@ -161,8 +161,8 @@ def _registerExec(srvObj,
     shellCmd = "sort %s > %s" % (tmpFileList, sortFileList)
     stat, out = commands.getstatusoutput(shellCmd)
     if (stat != 0):
-        raise Exception, "Error executing command: %s. Error: %s" %\
-              (shellCmd, str(out))
+        raise Exception("Error executing command: %s. Error: %s" %\
+              (shellCmd, str(out)))
     rmFile(tmpFileList)
 
     # Go through each file in the list, check if the mime-type is among the
@@ -306,7 +306,7 @@ def _registerExec(srvObj,
             regTime = time.time() - reg_start
             msg = msg + ". Time: %.3fs." % (regTime)
             logger.info(msg, extra={'to_syslog': 1})
-        except Exception, e:
+        except Exception as e:
             try:
                 if (cursorObj): del cursorObj
             except:
@@ -519,7 +519,7 @@ def register(srvObj,
     if (not os.path.exists(path)):
         errMsg = genLog("NGAMS_ER_FILE_REG_FAILED",
                         [path, "Non-existing file or path."])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Check if the given path/file is on one of the NGAS Disks.
     foundPath = 0
@@ -532,7 +532,7 @@ def register(srvObj,
         errMsg = genLog("NGAMS_ER_FILE_REG_FAILED",
                         [path, "File or path specified is not located on an "
                          "NGAS Disk."])
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
     # Create file pattern for temporary files.
     tmpFilePat=ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),"REGISTER_CMD")
@@ -548,7 +548,7 @@ def register(srvObj,
                                 ["Mime-type specified: " + mt + " " +\
                                  "in connection with REGISTER command " +\
                                  "does not have a DAPI defined"])
-                raise Exception, errMsg
+                raise Exception(errMsg)
     else:
         mimeTypeDic = srvObj.getMimeTypeDic()
 

@@ -278,7 +278,7 @@ def _handleFileList(srvObj,
             uniqueFileListDbmName = uniqueFileListDbm.getDbmName()
             del uniqueFileListDbm
             mvFile(uniqueFileListDbmName, fileInfoDbmName)
-    except Exception, e:
+    except Exception as e:
         rmFile("%s*" % fileInfoDbmBaseName)
         msg = "Problem generating file list for STATUS Command. " +\
               "Parameters: from_ingestion_date=%s. Error: %s" %\
@@ -324,11 +324,11 @@ def _handleFileListReply(srvObj,
     if (len(dbmMatches) < 1):
         msg = "Referenced File List ID: %s in connection with " +\
               "STATUS/file_list request, is not (or no longer) known"
-        raise Exception, msg % fileListId
+        raise Exception(msg % fileListId)
     elif (len(dbmMatches) > 1):
         msg = "Inconsistencies encountered in locating result set for " +\
               "STATUS/file_list for referenced File List ID: %s"
-        raise Exception, msg % fileListId
+        raise Exception(msg % fileListId)
     fileInfoDbmName = dbmMatches[0]
 
     # Generate the NG/AMS Status Document, with a File List in it.
@@ -372,7 +372,7 @@ def _handleFileListReply(srvObj,
                 fileInfoXml = tmpFileInfoObj.genXml(storeDiskId = 1).\
                               toprettyxml("  ", "\n")[:-1]
                 fo.write("\n" + fileInfoXml)
-            except Exception, e:
+            except Exception as e:
                 msg = "Error creating STATUS/File List XML Document. " +\
                       "Error: %s" % str(e)
                 logger.error(msg)
@@ -384,10 +384,10 @@ def _handleFileListReply(srvObj,
         fo.close()
         # Assume this type of file can always be compressed.
         fileListXmlDoc = compressFile(fileListXmlDoc)
-    except Exception, e:
+    except:
         rmFile("%s*" % fileInfoDbmName)
         rmFile("%s*" % fileListXmlDoc)
-        raise e
+        raise
 
     # Send the XML document back to the requestor.
     try:
@@ -415,7 +415,7 @@ def _handleFileListReply(srvObj,
         if (dbmCount == 0):
             rmFile("%s*" % fileInfoDbmName)
 
-    except Exception, e:
+    except Exception as e:
         rmFile("%s*" % fileListXmlDoc)
         msg = "Error returning response to STATUS?file_list request. Error: %s"
         msg = msg % str(e)
@@ -533,11 +533,11 @@ def handleCmdStatus(srvObj,
             try:
                 srvObj.forwardRequest(reqPropsObj, httpRef, hostId, host, port,
                                       autoReply = 1)
-            except Exception, e:
+            except Exception as e:
                 ex = re.sub("<|>", "", str(e))
                 errMsg = genLog("NGAMS_ER_COM",
                                 [host, port,ex])
-                raise Exception, errMsg
+                raise Exception(errMsg)
             return
     elif (fileList):
         if (not fileListId):
@@ -561,7 +561,7 @@ def handleCmdStatus(srvObj,
         except:
             errMsg = "Illegal Disk ID found: %s for file with ID: %s" %\
                      (fileObj.getDiskId(), fileId)
-            raise Exception, errMsg
+            raise Exception(errMsg)
         diskObj.addFileObj(fileObj)
         status.addDiskStatus(diskObj)
         genDiskStatus = 1
@@ -571,7 +571,7 @@ def handleCmdStatus(srvObj,
         reqPropsObjRef = srvObj.getRequest(requestId)
         if (not reqPropsObjRef):
             errMsg = genLog("NGAMS_ER_ILL_REQ_ID", [requestId])
-            raise Exception, errMsg
+            raise Exception(errMsg)
         genRequestStatus = 1
     elif (configurationFile):
         msg = "configuration_file=" + srvObj.getCfg().getCfg()
