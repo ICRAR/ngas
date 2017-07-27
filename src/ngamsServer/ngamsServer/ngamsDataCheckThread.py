@@ -35,7 +35,6 @@ to check the data holding in connection with one NGAS host.
 import cPickle
 import glob
 import logging
-import multiprocessing
 import os
 import random
 import time
@@ -45,8 +44,7 @@ import ngamsFileUtils
 from ngamsLib.ngamsCore import TRACE, NGAMS_DATA_CHECK_THR, \
     NGAMS_CACHE_DIR, checkCreatePath, isoTime2Secs, \
     rmFile, genLog, mvFile, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
-    NGAMS_VOLUME_INFO_FILE, NGAMS_STAGING_DIR, NGAMS_NOTIF_DATA_CHECK, toiso8601,\
-    NGAMS_IDLE_SUBSTATE
+    NGAMS_VOLUME_INFO_FILE, NGAMS_STAGING_DIR, NGAMS_NOTIF_DATA_CHECK, toiso8601
 from ngamsLib import ngamsNotification, ngamsDiskInfo
 from ngamsLib import ngamsDbCore, ngamsDbm, ngamsHighLevelLib, ngamsLib
 
@@ -501,7 +499,7 @@ def _dataCheckSubThread(srvObj,
             # Update the overall status of the checking.
             tmpReport = []
             ngamsFileUtils.checkFile(srvObj, fileInfo, tmpReport,
-                                     not srvObj.getCfg().getDataCheckScan(),
+                                     srvObj.getCfg().getDataCheckScan(),
                                      executor=external_process_executor)
             _stopDataCheckThr(stopEvt)
 

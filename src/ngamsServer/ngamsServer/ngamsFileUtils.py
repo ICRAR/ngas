@@ -512,7 +512,7 @@ def checkFile(srvObj,
                     fsize_mb = getFileSize(filename) / 1024. / 1024.
                     logger.info("Checked %s in %.4f [s]. Check ran at %.3f [MB/s]. Checksum file/db:  %d / %s",
                                 filename, duration, fsize_mb / duration,
-                                checksumFile, checksumDb)
+                                checksumFile or 0, checksumDb)
                 except Exception, e:
                     # We assume an IO error:
                     # "[Errno 2] No such file or directory"
