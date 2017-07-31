@@ -65,7 +65,7 @@ Among the options users can choose
 whether to skip the build of the C-written clients,
 to install the python packages in development mode,
 and to build NGAS without CRC32c support
-(see `sercer.crc`_ for details).
+(see :ref:`server.crc` for details).
 
 The script will (optionally) build and install the C NGAS client first, and then will build
 and install each of the python modules (i.e., ``ngamsCore``,
