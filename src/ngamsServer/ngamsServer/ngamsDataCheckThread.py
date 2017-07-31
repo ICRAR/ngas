@@ -706,7 +706,7 @@ def _data_check_cycle(srvObj, stopEvt, checksum_allow_evt, checksum_stop_evt):
 
     # is allocated for each up to the limit defined in the
     # configuration.
-    n_threads = max(len(disks_to_check), srvObj.getCfg().getDataCheckMaxProcs())
+    n_threads = min(len(disks_to_check), srvObj.getCfg().getDataCheckMaxProcs())
 
     diskSchedDic = {}
     reqFileInfoSem = threading.Lock()
