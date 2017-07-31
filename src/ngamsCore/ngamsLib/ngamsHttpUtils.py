@@ -165,7 +165,7 @@ def httpGet(host, port, cmd, pars=[], hdrs={},
     It is the callers' responsibility to close the response object,
     which in turn will close the HTTP connection.
     """
-    hdrs = dict(hdrs)
+    hdrs = dict(hdrs) if hdrs else {}
     if auth:
         hdrs['Authorization'] = auth.strip()
     return _http_response(host, port, NGAMS_HTTP_GET, cmd,

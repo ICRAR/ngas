@@ -591,7 +591,6 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
         fileInfoDbmName = None
         fileInfoDbm = None
         try:
-            diskInfo = None
 
             # Get the information about the files on the disk (before this
             # information is deleted).
@@ -623,8 +622,9 @@ class ngamsDbNgasDisks(ngamsDbCore.ngamsDbCore):
 
                         key, fileSqlInfo = fileInfoDbm.getNext()
 
-            self.triggerEvents([diskInfo.getDiskId(),
-                                diskInfo.getMountPoint()])
+                    self.triggerEvents([diskInfo.getDiskId(),
+                                        diskInfo.getMountPoint()])
+
             return self
         except Exception:
             logger.exception("Error deleting disk info from DB")

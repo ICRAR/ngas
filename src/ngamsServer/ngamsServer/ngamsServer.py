@@ -58,7 +58,7 @@ from ngamsLib.ngamsCore import \
     getFileSize, getDiskSpaceAvail, checkCreatePath,\
     getHostName, ngamsCopyrightString, getNgamsLicense,\
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, NGAMS_HTTP_GET,\
-    NGAMS_HTTP_BAD_REQ, NGAMS_HTTP_SERVICE_NA, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
+    NGAMS_HTTP_BAD_REQ, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR, NGAMS_TEXT_MT,\
     NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_XML_STATUS_ROOT_EL,\
     NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs,\
@@ -82,6 +82,7 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
     Class that provides the multithreaded HTTP server functionality.
     """
     allow_reuse_address = 1
+    daemon_threads = False
 
     def __init__(self, ngamsServer, server_address):
         self._ngamsServer = ngamsServer
@@ -93,34 +94,14 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
         """
         Start a new thread to process the request.
         """
-        # Check the number of requests being handled. It is checked already
-        # here to avoid starting another thread.
-        noOfAliveThr = 0
-        for thrObj in threading.enumerate():
-            try:
-                if (thrObj.isAlive()): noOfAliveThr += 1
-            except Exception:
-                pass
 
-        if ((noOfAliveThr - 4) >= self._ngamsServer.getCfg().getMaxSimReqs()):
-            try:
-                errMsg = genLog("NGAMS_ER_MAX_REQ_EXCEEDED",
-                            [self._ngamsServer.getCfg().getMaxSimReqs()])
-                logger.error(errMsg)
-                httpRef = self.RequestHandlerClass(request, client_address, self)
-                tmpReqPropsObj = ngamsReqProps.ngamsReqProps()
-                self._ngamsServer.reply(tmpReqPropsObj, httpRef, NGAMS_HTTP_SERVICE_NA,
-                               NGAMS_FAILURE, errMsg)
-            except IOError:
-                errMsg = "Maximum number of requests exceeded and I/O ERROR encountered! Trying to continue...."
-                logger.error(errMsg)
+        if self._ngamsServer.serving_count >= self._ngamsServer.getCfg().getMaxSimReqs():
+            logger.error("Maximum number of serving threads reached, rejecting request")
+            wfile = request.makefile('wb')
+            wfile.write(b'HTTP/1.0 503 Service Unavailable\r\n\r\n')
             return
 
-        # Create a new thread to handle the request.
-        t = threading.Thread(target = self.finish_request,
-                             args = (request, client_address))
-        t.daemon = True
-        t.start()
+        SocketServer.ThreadingMixIn.process_request(self, request, client_address)
 
 
 class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -129,7 +110,6 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """
 
     def setup(self):
-        BaseHTTPServer.BaseHTTPRequestHandler.setup(self)
 
         self.ngasServer = self.server._ngamsServer
 
@@ -137,10 +117,9 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # or default to 1 minute (apache defaults to 1 minute so I assume it's
         # a sensible value)
         cfg = self.ngasServer.getCfg()
-        timeout = cfg.getTimeOut()
-        if timeout is None:
-            timeout = 60
-        self.connection.settimeout(timeout)
+        self.timeout = cfg.getTimeOut() or 60
+
+        BaseHTTPServer.BaseHTTPRequestHandler.setup(self)
 
     def log_message(self, fmt, *args):
         """
@@ -281,7 +260,7 @@ def show_threads():
 
         all_threads = threading.enumerate()
         max_name  = reduce(max, map(len, [t.name for t in all_threads]))
-        max_ident = reduce(max, map(int, map(math.ceil, map(math.log10, [t.ident for t in all_threads]))))
+        max_ident = reduce(max, map(int, map(math.ceil, map(math.log10, [t.ident for t in all_threads if t.ident is not None]))))
 
         msg = ['Name' + ' '*(max_name-2) + 'Ident' + ' '*(max_ident-3) + 'Daemon',
                '='*max_name + '  ' + '=' * max_ident + '  ======']
@@ -290,7 +269,7 @@ def show_threads():
             msg.append(fmt % (t.name, t.ident, t.daemon))
         logger.debug("Threads currently alive on process %d:\n%s", os.getpid(), '\n'.join(msg))
 
-class ngamsServer:
+class ngamsServer(object):
     """
     Class providing the functionality of the NG/AMS Server.
     """
@@ -318,6 +297,19 @@ class ngamsServer:
         self.__busyCount              = 0
         self.__sysMtPtDic             = {}
         self._pid_file_created         = False
+
+        # Keep track of how many requests are being served,
+        # This is slightly different from keeping track of the server's
+        # sub-state because many commands don't bother changing it
+        self.serving_count = 0
+        self.serving_count_lock = threading.Lock()
+
+        # Coalesces whether requests are being served at all or not.
+        # When the value changes, listeners are notified
+        # The value is get and set via a property that encapsulates
+        # the listener notification
+        self._serving = False
+        self.serving_listeners = []
 
         # Empty logging configuration.
         # It is later initialised both from the cmdline
@@ -349,6 +341,13 @@ class ngamsServer:
         # Handling of the Data Check Thread.
         self._dataCheckThread        = None
         self._dataCheckThreadStopEvt = threading.Event()
+
+        # The events that control the execution of the checksum calculation
+        # The allowed event is initially set because initially the server
+        # is serving no requests.
+        self.checksum_allow_evt      = multiprocessing.Event()
+        self.checksum_allow_evt.set()
+        self.checksum_stop_evt       = multiprocessing.Event()
 
         # Handling of the Data Subscription.
         self._subscriberDic           = {}
@@ -444,6 +443,23 @@ class ngamsServer:
 
         # Defined as <hostname>:<port>
         self.host_id   = None
+
+        # Worker processes
+        self.workers_pool = None
+
+
+    @property
+    def serving(self):
+        return self._serving
+
+    @serving.setter
+    def serving(self, value):
+        if self._serving == value:
+            return
+
+        self._serving = value
+        for l in self.serving_listeners:
+            l(value)
 
     def getHostId(self):
         """
@@ -766,12 +782,12 @@ class ngamsServer:
             self.__busyCount = self.__busyCount + 1
         if ((subState == NGAMS_IDLE_SUBSTATE) and (self.__busyCount > 0)):
             self.__busyCount = self.__busyCount - 1
+
         if ((subState == NGAMS_IDLE_SUBSTATE) and (self.__busyCount == 0)):
             self.__subState = NGAMS_IDLE_SUBSTATE
         else:
             self.__subState = NGAMS_BUSY_SUBSTATE
         self.relSubStateSem()
-        return self
 
 
     def getSubState(self):
@@ -1000,7 +1016,9 @@ class ngamsServer:
         logger.debug("Starting Data Check Thread ...")
         self._dataCheckThread = threading.Thread(target=ngamsDataCheckThread.dataCheckThread,
                                                  name=ngamsDataCheckThread.NGAMS_DATA_CHECK_THR,
-                                                 args=(self, self._dataCheckThreadStopEvt))
+                                                 args=(self, self._dataCheckThreadStopEvt,
+                                                       self.checksum_allow_evt,
+                                                       self.checksum_stop_evt))
         self._dataCheckThread.start()
         logger.info("Data Check Thread started")
 
@@ -1370,17 +1388,8 @@ class ngamsServer:
         """
         Identify if the NG/AMS Server is handling a request. In case yes
         1 is returned, otherwise 0 is returned.
-
-        Returns:   1 = handling request, 0 = not handling a request
-                   (integer/0|1).
         """
-        # If the time for initiating the last request handling is later than
-        # the time for finishing the previous request a request is being
-        # handled.
-        if (self.getLastReqStartTime() > self.getLastReqEndTime()):
-            return 1
-        else:
-            return 0
+        return self.serving
 
 
     def setNextDataCheckTime(self,
@@ -1721,7 +1730,11 @@ class ngamsServer:
 
         Returns:         Void.
         """
-        T = TRACE()
+
+        # Keep track of how many requests we are serving
+        with self.serving_count_lock:
+            self.serving_count += 1
+            self.serving = True
 
         # Create new request handle + add this entry in the Request DB.
         reqPropsObj = ngamsReqProps.ngamsReqProps()
@@ -1772,6 +1785,12 @@ class ngamsServer:
             reqPropsObj.setCompletionTime(1)
             self.updateRequestDb(reqPropsObj)
             self.setLastReqEndTime()
+
+            with self.serving_count_lock:
+                self.serving_count -= 1
+                if not self.serving_count:
+                    self.serving = False
+
 
     def handleHttpRequest(self,
                           reqPropsObj,
@@ -2381,6 +2400,40 @@ class ngamsServer:
         # Load NG/AMS Configuration (from XML Document/DB).
         self.loadCfg()
 
+        # Do we need data check workers?
+        if self.getCfg().getDataCheckActive():
+
+            # When the server is idle we allow checksums to progress
+            def serving_listener(serving):
+                if serving:
+                    logger.info("Disabling checksum calculation due to server serving requests")
+                    self.checksum_allow_evt.clear()
+                else:
+                    logger.info("Enabling checksum calculations due to idle server")
+                    self.checksum_allow_evt.set()
+            self.serving_listeners.append(serving_listener)
+
+            # Store the events globally for later usage in the process pool
+            # (they cannot be passed via pool.apply or pool.map).
+            # Then reset signal handlers and shutdown DB connection
+            # on newly created worker processes
+            def init_subproc(srvObj):
+
+                ngamsDataCheckThread.checksum_allow_evt = srvObj.checksum_allow_evt
+                ngamsDataCheckThread.checksum_stop_evt = srvObj.checksum_stop_evt
+
+                def noop(*args):
+                    pass
+
+                signal.signal(signal.SIGTERM, noop)
+                signal.signal(signal.SIGINT, noop)
+                srvObj.getDb().close()
+
+            n_workers = self.getCfg().getDataCheckMaxProcs()
+            self.workers_pool = multiprocessing.Pool(n_workers,
+                                                     initializer=init_subproc,
+                                                     initargs=(self,))
+
         # IP address defaults to localhost
         ipAddress = self.getCfg().getIpAddress()
         self.ipAddress = ipAddress or '127.0.0.1'
@@ -2674,6 +2727,9 @@ class ngamsServer:
         show_threads()
         self.stopServer()
         ngamsSrvUtils.ngamsBaseExitHandler(self)
+        if self.workers_pool:
+            self.workers_pool.close()
+            self.workers_pool.join()
         show_threads()
 
         # Shut down logging. This will flush all pending logs in the system

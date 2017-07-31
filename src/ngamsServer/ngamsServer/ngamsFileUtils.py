@@ -38,6 +38,7 @@ import functools
 import logging
 import os
 import re
+import time
 
 import ngamsSrvUtils
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsDiskInfo, ngamsStatus, \
@@ -413,33 +414,18 @@ def quickFileLocate(srvObj,
 def checkFile(srvObj,
               sum1FileInfo,
               checkReport,
-              skipCheckSum = 0):
+              skipCheckSum = 0,
+              executor=None):
     """
-    Function to carry out a consistency check on a file located on
-    the local host.
-
-    srvObj:        Reference to NG/AMS server class object (ngamsServer).
-
-    sum1FileInfo:  List with file information to be extracted using the
-                   constants ngamsDbCore.SUM1_* (list).
-
-    checkReport:   Check report with problems encountered in connection with
-                   a file. It is a list containing sub-lists with the
-                   information:
-
-                     [<Msg>, <File ID>, <File Version>, <Slot ID>, <Disk ID>,
-                      <Compl. Filename>]
-
-                   Such new entries will be added in case discrepancies
-                   are found (list/list).
-
-    skipCheckSum:  If set to 1, no checksum test is done (integer/0|1).
-
-    Returns:       Void.
+    Function to carry out a consistency check on a file.
+    If `stop_evt` and `allowed_evt` are given, then `get_checksum_interruptible`
+    is used internally by this method; otherwise `get_checksum` is used.
+    If `executor` is given, then it is used to carry out the execution of the
+    checksum calculation; otherwise `get_checksum` is used.
     """
-    T = TRACE(5)
 
-    dataCheckPrio = srvObj.getCfg().getDataCheckPrio()
+    executor = executor or get_checksum
+
     foundProblem  = 0
     fileInfo      = sum1FileInfo
     diskId        = fileInfo[ngamsDbCore.SUM1_DISK_ID]
@@ -485,6 +471,8 @@ def checkFile(srvObj,
         fileExists = os.path.exists(filename)
         if (not fileExists):
             foundProblem = 1
+            logger.error('File %s does not exist on disk', filename)
+
             checkReport.append(["ERROR: File in DB missing on disk", fileId,
                                 fileVersion, slotId, diskId, filename])
             fileStatus = "1" + fileStatus[1:]
@@ -496,6 +484,8 @@ def checkFile(srvObj,
             fileSize = getFileSize(filename)
             if (fileSize != dbFileSize):
                 foundProblem = 1
+                logger.error('File %s has wrong size. Expected: %d/Actual: %d',
+                             filename, dbFileSize, fileSize)
                 format = "ERROR: File has wrong size. Expected: %d/Actual: %d."
                 checkReport.append([format % (dbFileSize , fileSize), fileId,
                                     fileVersion, slotId, diskId, filename])
@@ -513,13 +503,23 @@ def checkFile(srvObj,
                     if blockSize == -1:
                         blockSize = 4096
                     checksum_typ = get_checksum_name(crc_variant)
-                    checksumFile = get_checksum(blockSize, filename, crc_variant)
+
+                    # Calculate the checksum, possibly under the executor
+                    start = time.time()
+                    checksumFile = executor(blockSize, filename, crc_variant)
+                    duration = time.time() - start
+
+                    fsize_mb = getFileSize(filename) / 1024. / 1024.
+                    logger.info("Checked %s in %.4f [s] using %s. Check ran at %.3f [MB/s]. Checksum file/db:  %s / %s",
+                                filename, duration, str(crc_variant), fsize_mb / duration,
+                                str(checksumFile), checksumDb)
                 except Exception, e:
                     # We assume an IO error:
                     # "[Errno 2] No such file or directory"
                     # This problem has already been registered further
                     # up so we ignore it here.
                     rmFile(fileChecked)
+                    logger.exception("Error while checking file %s", filename)
                     return
             else:
                 checksumFile = ""
@@ -536,6 +536,8 @@ def checkFile(srvObj,
                                     fileId, fileVersion, slotId, diskId,
                                     filename])
             elif str(checksumDb) != str(checksumFile):
+                logger.error("File %s has inconsistent checksum! file/db: %s / %s",
+                             filename, str(checksumFile), checksumDb)
                 checkReport.append(["ERROR: Inconsistent checksum found",
                                     fileId, fileVersion, slotId, diskId,
                                     filename])
@@ -660,6 +662,28 @@ def get_checksum(blocksize, filename, checksum_variant):
     crc = 0
     with open(filename, 'rb') as f:
         for block in iter(functools.partial(f.read, blocksize), ''):
+            crc = crc_m(block, crc)
+    return crc
+
+def get_checksum_interruptible(blocksize, filename, checksum_variant,
+                               checksum_allow_evt, checksum_stop_evt):
+    """
+    Like get_checksum, but the inner loop's execution is conditioned by two
+    events to signal a full stop, and whether the execution of the inner loop
+    should continue or not.
+
+    When the caller sets the `stop_evt`, the `allowed_evt` should also be set;
+    otherwise the execution will hang indefinitely.
+    """
+    crc_m = get_checksum_method(checksum_variant)
+    if crc_m is None:
+        return None
+    crc = 0
+    with open(filename, 'rb') as f:
+        for block in iter(functools.partial(f.read, blocksize), ''):
+            checksum_allow_evt.wait()
+            if checksum_stop_evt.is_set():
+                return
             crc = crc_m(block, crc)
     return crc
 

@@ -1339,17 +1339,7 @@ class ngamsConfig:
         Returns:     Data Check Scan Flag (integer/0|1).
         """
         par = "DataCheckThread[1].Scan"
-        return getInt(par, self.getVal(par))
-
-
-    def getDataCheckPrio(self):
-        """
-        Return the Data Check Service priority.
-
-        Returns:     Data Check priority (integer).
-        """
-        par = "DataCheckThread[1].Prio"
-        return getInt(par, self.getVal(par))
+        return getInt(par, self.getVal(par), 1)
 
 
     def getDataCheckMinCycle(self):
@@ -1359,34 +1349,6 @@ class ngamsConfig:
         Returns:     Data Check  Minimum Cycle Time (string).
         """
         return self.getVal("DataCheckThread[1].MinCycle")
-
-
-    def getDataCheckDiskSeq(self):
-        """
-        Return the Data Check Service Disk Check Sequence.
-
-        Returns:     Data Check Disk Sequence (string).
-        """
-        return self.getVal("DataCheckThread[1].DiskSeq")
-
-
-    def getDataCheckFileSeq(self):
-        """
-        Return the Data Check Service File Check Sequence.
-
-        Returns:     Data Check File Sequence (string).
-        """
-        return self.getVal("DataCheckThread[1].FileSeq")
-
-
-    def getDataCheckLogSummary(self):
-        """
-        Return the Data Check Service log summary flag.
-
-        Returns:     Data Check log summarry (integer).
-        """
-        par = "DataCheckThread[1].LogSummary"
-        return getInt(par, self.getVal(par))
 
 
     def getStreamList(self):
@@ -2287,12 +2249,8 @@ class ngamsConfig:
                           self.getDataCheckMaxProcs(), self.getCheckRep())
             checkIfZeroOrOne("DataCheckThread.DataCheckScan",
                              self.getDataCheckScan(), self.getCheckRep())
-            checkIfSetInt("DataCheckThread.DataCheckPrio",
-                          self.getDataCheckPrio(), self.getCheckRep())
             checkIfSetStr("DataCheckThread.DataCheckMinCycle",
                           self.getDataCheckMinCycle(), self.getCheckRep())
-            checkIfZeroOrOne("DataCheckThread.DataCheckLogSummary",
-                             self.getDataCheckLogSummary(), self.getCheckRep())
         logger.debug("Checked DataCheckThread Element")
 
         logger.debug("Check Log Element ...")

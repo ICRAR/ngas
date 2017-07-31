@@ -32,6 +32,7 @@ Child class of ngamsServer where the test case code can define how requests
 are handled.
 """
 
+import os
 import sys
 import time
 
@@ -54,23 +55,35 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
         ngamsServer.ngamsServer.__init__(self)
 
 
-    def reqCallBack(self,
-                    httpRef,
-                    clientAddress,
-                    method,
-                    path,
-                    requestVersion,
-                    headers,
-                    writeFd,
-                    readFd):
+    def reqCallBack(self, *args, **kwargs):
         """
         Override ngamsServer.reqCallBack(). Simply load the name of the
         request handler to execute in the file written by the test case.
         """
-        reqHandleCode = loadFile("tmp/reqCallBack_tmp")
-        callback = getattr(self, reqHandleCode)
-        callback(httpRef, clientAddress, method, path, requestVersion,
-                 headers, writeFd, readFd)
+        if os.path.exists("tmp/reqCallBack_tmp"):
+            reqHandleCode = loadFile("tmp/reqCallBack_tmp")
+            reqHandleCode = getattr(self, reqHandleCode)
+            reqHandleCode(*args, **kwargs)
+        else:
+            super(ngamsServerTestDynReqCallBack, self).reqCallBack(*args, **kwargs)
+
+    def handleHttpRequest(self, *args, **kwargs):
+        if os.path.exists("tmp/handleHttpRequest_tmp"):
+            reqHandleCode = loadFile("tmp/handleHttpRequest_tmp")
+            reqHandleCode = getattr(self, reqHandleCode)
+            reqHandleCode(*args, **kwargs)
+        else:
+            super(ngamsServerTestDynReqCallBack, self).reqCallBack(*args, **kwargs)
+
+    def handleHttpRequest_Block5secs(self, *args, **kwargs):
+        """
+        Allow to execute EXIT, OFFLINE, STATUS. Block other commands for 5 secs
+        """
+        path = kwargs['path'] if 'path' in kwargs else args[4]
+        cmd = path.strip().split('?')[0]
+        if cmd not in (NGAMS_EXIT_CMD, NGAMS_OFFLINE_CMD, NGAMS_STATUS_CMD):
+            time.sleep(5)
+        super(ngamsServerTestDynReqCallBack, self).handleHttpRequest(*args, **kwargs)
 
 
     def reqCallBack_BlockCmds1(self,
