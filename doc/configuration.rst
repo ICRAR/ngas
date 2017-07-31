@@ -119,8 +119,7 @@ The following attributes are available:
  * *MinCycle*: The time to leave between data-check cycles.
  * *ForceNotif*: Forces the sending of a notification report after each
    data-check cycle, even if not problems were found.
- * *Scan*: Whether the checksum of the files should be skipped (0) or actually
-   performed (1).
+ * *Scan*: Whether files should be scanned only (1) or actually checksumed (0).
 
 The following attributes are present in old configuration files
 but are not used anymore: *FileSeq*, *DiskSeq*, *LogSummary*, *Prio*.
