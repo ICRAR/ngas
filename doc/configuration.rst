@@ -113,7 +113,7 @@ DataCheckThread
 ---------------
 
 The ``DataCheckThread`` element defines the behavior
-of the :ref:`data-check thread <datacheck_thread>`.
+of the :ref:`bg.datacheck_thread`.
 The following attributes are available:
 
  * *Active*: Whether the data-check thread should be allowed to run or not.
