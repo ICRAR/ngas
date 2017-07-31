@@ -789,15 +789,12 @@ def dataCheckThread(srvObj, stopEvt, checksum_allow_evt, checksum_stop_evt):
         # Encapsulate this whole block to avoid that the thread dies in
         # case a problem occurs, like e.g. a problem with the DB connection.
         try:
+
             # Wait until we're sure that the Janitor Thread has executed
             # at least once, to ensure that the check is carried out in a
             # clean environment.
             while (not srvObj.getJanitorThreadRunCount()):
                 suspend(stopEvt, 0.5)
-
-            # If mirroring is happening wait for it to finish
-            while srvObj.mirroring_running:
-                suspend(stopEvt, 60)
 
             logger.info("Data Check Thread starting iteration ...")
 
