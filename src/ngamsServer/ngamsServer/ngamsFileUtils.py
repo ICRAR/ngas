@@ -514,8 +514,8 @@ def checkFile(srvObj,
                     duration = time.time() - start
 
                     fsize_mb = getFileSize(filename) / 1024. / 1024.
-                    logger.info("Checked %s in %.4f [s]. Check ran at %.3f [MB/s]. Checksum file/db:  %s / %s",
-                                filename, duration, fsize_mb / duration,
+                    logger.info("Checked %s in %.4f [s] using %s. Check ran at %.3f [MB/s]. Checksum file/db:  %s / %s",
+                                filename, duration, str(crc_variant), fsize_mb / duration,
                                 str(checksumFile), checksumDb)
                 except Exception, e:
                     # We assume an IO error:
