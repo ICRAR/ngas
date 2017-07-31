@@ -421,8 +421,10 @@ def checkFile(srvObj,
     If `stop_evt` and `allowed_evt` are given, then `get_checksum_interruptible`
     is used internally by this method; otherwise `get_checksum` is used.
     If `executor` is given, then it is used to carry out the execution of the
-    checksum calculation.
+    checksum calculation; otherwise `get_checksum` is used.
     """
+
+    executor = executor or get_checksum
 
     foundProblem  = 0
     fileInfo      = sum1FileInfo
@@ -502,15 +504,9 @@ def checkFile(srvObj,
                         blockSize = 4096
                     checksum_typ = get_checksum_name(crc_variant)
 
-                    # Interruptible or not?
-                    m = get_checksum
-                    args = blockSize, filename, crc_variant
-                    if executor:
-                        m = get_checksum_interruptible
-
                     # Calculate the checksum, possibly under the executor
                     start = time.time()
-                    checksumFile = executor(m, *args) if executor else m(*args)
+                    checksumFile = executor(blockSize, filename, crc_variant)
                     duration = time.time() - start
 
                     fsize_mb = getFileSize(filename) / 1024. / 1024.
@@ -669,9 +665,8 @@ def get_checksum(blocksize, filename, checksum_variant):
             crc = crc_m(block, crc)
     return crc
 
-checksum_allow_evt = None
-checksum_stop_evt = None
-def get_checksum_interruptible(blocksize, filename, checksum_variant):
+def get_checksum_interruptible(blocksize, filename, checksum_variant,
+                               checksum_allow_evt, checksum_stop_evt):
     """
     Like get_checksum, but the inner loop's execution is conditioned by two
     events to signal a full stop, and whether the execution of the inner loop
@@ -680,8 +675,6 @@ def get_checksum_interruptible(blocksize, filename, checksum_variant):
     When the caller sets the `stop_evt`, the `allowed_evt` should also be set;
     otherwise the execution will hang indefinitely.
     """
-    global checksum_allow_evt, checksum_stop_evt
-
     crc_m = get_checksum_method(checksum_variant)
     if crc_m is None:
         return None

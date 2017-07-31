@@ -449,6 +449,12 @@ def _schedNextFile(srvObj,
         return fileInfo
 
 
+checksum_allow_evt = None
+checksum_stop_evt = None
+def do_checksum(blocksize, filename, checksum_variant):
+    return ngamsFileUtils.get_checksum_interruptible(blocksize, filename, checksum_variant,
+                                                     checksum_allow_evt, checksum_stop_evt)
+
 def _dataCheckSubThread(srvObj,
                         threadId,
                         stopEvt,
@@ -472,8 +478,8 @@ def _dataCheckSubThread(srvObj,
 
     # The globals are set at process creation time,
     # in ngamsServer#handleStartUp
-    def external_process_executor(f, *args, **kwargs):
-        return srvObj.workers_pool.apply(f, args, kwargs)
+    def external_process_executor(*args, **kwargs):
+        return srvObj.workers_pool.apply(do_checksum, args, kwargs)
 
     while (1):
 

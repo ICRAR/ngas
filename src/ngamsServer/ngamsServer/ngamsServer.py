@@ -2413,14 +2413,14 @@ class ngamsServer(object):
                     self.checksum_allow_evt.set()
             self.serving_listeners.append(serving_listener)
 
-            # Store the events globally for later usage.
+            # Store the events globally for later usage in the process pool
+            # (they cannot be passed via pool.apply or pool.map).
             # Then reset signal handlers and shutdown DB connection
             # on newly created worker processes
             def init_subproc(srvObj):
 
-                import ngamsFileUtils
-                ngamsFileUtils.checksum_allow_evt = srvObj.checksum_allow_evt
-                ngamsFileUtils.checksum_stop_evt =  srvObj.checksum_stop_evt
+                ngamsDataCheckThread.checksum_allow_evt = srvObj.checksum_allow_evt
+                ngamsDataCheckThread.checksum_stop_evt = srvObj.checksum_stop_evt
 
                 def noop(*args):
                     pass
