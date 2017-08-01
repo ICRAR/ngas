@@ -34,9 +34,9 @@ cd ${TRAVIS_BUILD_DIR}/src/ngamsTest/ngamsTest
 # sqlite3 is the default so it needs no special attention
 NGAS_TESTDB=
 if [[ "$DB" == "mysql" ]]; then
-	NGAS_TESTDB='<Db Id="blah" Snapshot="1" Interface="MySQLdb" host="127.0.0.1" db="ngas" user="ngas" passwd="ngas"/>'
+	NGAS_TESTDB='<Db Id="blah" Interface="MySQLdb" host="127.0.0.1" db="ngas" user="ngas" passwd="ngas"/>'
 elif [[ "$DB" == "postgresql" ]]; then
-	NGAS_TESTDB='<Db Id="blah" Snapshot="1" Interface="psycopg2" host="127.0.0.1" dbname="ngas" user="ngas" password="ngas"/>'
+	NGAS_TESTDB='<Db Id="blah" Interface="psycopg2" host="127.0.0.1" dbname="ngas" user="ngas" password="ngas"/>'
 fi
 
 pip install psutil
