@@ -1,6 +1,18 @@
 Storage
 =======
 
+.. _commands.archive:
+
+ARCHIVE
+-------
+
+Like :ref:`commands.qarchive`, but
+the target volume is selected depending on the incoming data type
+and based on the :ref:`server configuration <config.streams>`.
+In the future both commands will be unified back into ``ARCHIVE``.
+
+.. _commands.qarchive:
+
 QARCHIVE
 --------
 
@@ -33,6 +45,7 @@ In this example it is expected that the client uploads the file content as a byt
   curl -X POST -i -H "Content-Type: application/octet-stream" --data-binary "@/tmp/file.fits" http://<host>:<port>/QARCHIVE?filename=file.fits
 
 
+.. _commands.retrieve:
 
 RETRIEVE
 --------
@@ -59,6 +72,8 @@ Get specific version of a file if it exists::
 
  curl http://<host>:<port>/RETRIEVE?file_id=file.fits&file_version=2
 
+
+.. _commands.clone:
 
 CLONE
 -----

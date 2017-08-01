@@ -1,6 +1,13 @@
 Setting up an NGAS instance
 ===========================
 
+These steps describe how to set up an NGAS server instance.
+
+When using on of the :ref:`fabric-based installation <inst.fabric>` procedures
+an NGAS root directory is automatically created and prepared
+under ``~/NGAS`` of the user hosting the NGAS installation
+(or somewhere different if indicated via the ``NGAS_ROOT`` fabric variable)
+
 Create an NGAS root directory
 -----------------------------
 
@@ -8,17 +15,18 @@ NGAS's *root* is the top-level directory
 that will be used to store all its internal files,
 including the data being stored.
 
-If you used the `fabric-based installation <_inst.fabric>` procedure
-then the NGAS *root* directory will have been created already
-under ``~/NGAS`` of the user hosting the NGAS installation
-(or somewhere different if indicated via the ``NGAS_ROOT`` fabric variable)
+The NGAS root directory can be placed anywhere in the filesystem,
+and can be totally empty initially.
+The only requirement is that it is writable by the user
+running the NGAS server.
 
 Setup volumes
 -------------
 
 Inside the NGAS *root* directory
 *volumnes* should exist
-where the data will be stored.
+where the data will be stored
+(see :ref:`server.storage` for a full explanation).
 You can either create directories for each volume,
 or symbolic link actual partitions as separate volumes
 -- it's your choice.
@@ -42,4 +50,4 @@ it can be tagged as such::
 Answer Yes and you're done.
 
 To let NGAS know about your volumes check
-the `config.volumes` configuration option.
+the :ref:`config.storage_sets` configuration option.

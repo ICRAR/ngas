@@ -18,6 +18,81 @@ via the ``-cfg`` command-line flag
 To see more details about the XML documentation
 go to the :doc:`configuration` section.
 
+.. _server.storage:
+
+Storage organization
+====================
+
+Volumes
+-------
+
+When NGAS was first designed,
+data was mostly transported manually
+by swapping physical disks in and out of server.
+Thus, data was organized by *disks*,
+which were mounted onto the filesystem hierarchy
+into a particular directory.
+
+Nowadays transport happens mostly through the network,
+even for long-distance transmissions,
+with disks staying fixed, or rarely replaced.
+Data still gets archived into a directory though,
+usually corresponding to the root
+of a filesystem mount point.
+Thus, we usually prefer to refer
+to these top-level data directories
+as **volumes**, a more generic term.
+
+Volumes are directories in the filesystem,
+usually under the NGAS root directories
+(makes it easier to see them all together).
+Because they are used to organize how data gets archived,
+users will still want to map them
+to disk partitions or mounted filesystems
+via symbolic links.
+Otherwise (specially in testing scenarios)
+a simple directory can also be used.
+
+Storage sets
+------------
+
+Volumes are grouped in **storage sets**.
+A storage set will usually consist
+of only one volume, the *main volume*,
+but it can optionally contain also
+a *replication volume*.
+Replication volumes are usually not required nowadays
+(because data is replicated via the network,
+and/or because mount points are backed up
+by different RAID setups),
+and therefore you will very unlikely need one.
+
+Streams
+-------
+
+Storage sets form the base for organizing data storage.
+An NGAS server is configured to store
+certain types of data into certain storage sets.
+Such mappings from a data type (i.e., a MIME type)
+and one or more storage sets
+is called a **stream**.
+
+Streams made it easy to collect all data of a certain type
+in one or more disks,
+which then could be swapped out for data movement.
+Because of this, in practice only
+the :ref:`commands.archive` command follows this configuration
+to determine the target disk to host the incoming data.
+On the other hand, the :ref:`commands.qarchive` command
+doesn't obey these rules,
+as it was designed with network transport
+as means of replication.
+With network-based replication
+the physical volume hosting the data locally
+does not have a great impact anymore,
+and therefore the system tries to fill them evenly.
+
+
 .. _server.crc:
 
 CRC

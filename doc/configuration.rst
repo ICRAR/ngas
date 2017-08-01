@@ -79,6 +79,47 @@ work as described above,
 while ``host``, ``dbname``, ``user`` and ``password``
 are keyword arguments accepted by the ``psycopg2.connect`` method.
 
+.. _config.storage_sets:
+
+StorageSets
+-----------
+
+Lists the storage sets (i.e., groups of disks) available to NGAS.
+Inside the ``StorageSets`` element one or many ``StorageSet`` elements
+can be found, each one listing the following attributes:
+
+ * *StorageSetId*: The name this storage set can be referenced by.
+ * *MainDiskSlotId*: The name of the directory where the data will be stored.
+   If a relative path is given, it is considered to be relative to the NGAS
+   root directory.
+ * *RepDiskSlotId*: The name of the directory where the data will be replicated.
+   If a relative path is given, it is considered to be relative to the NGAS
+   root directory.
+
+For an explanation on volumes, main/replication disks,
+directories and storage sets
+please read :ref:`server.storage`.
+
+.. _config.streams:
+
+Streams
+-------
+
+Lists the mappings from data types to storage sets.
+This element contains one or more ``Stream`` elements,
+each of which lists the following attributes:
+
+ * *MimeType*: The data type of this stream.
+ * *PlugIn*: The plug-in used to process incoming data of this type.
+ * *PlugInPars*: An optional, comma-separated, key=value string
+   with parameters that can be communicated to the plug-in.
+
+References to storage sets are included by adding ``StorageSetRef``
+sub-elements, each of which should have a ``StorageSetId`` attribute
+pointing to the corresponding storage set.
+
+For an explanation on streams please read :ref:`server.storage`.
+
 .. _config.archivehandling:
 
 ArchiveHandling
