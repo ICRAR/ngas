@@ -1,24 +1,9 @@
 AUTOMAKE_OPTIONS = 1.8 foreign
 DISTCLEANFILES = *~
 
-AM_CPPFLAGS = -I$(top_srcdir)/incl $(INTROOT_INCLUDES) $(CFITSIO_INCLUDES) $(SYBASE_INCLUDES) -I/usr/local/include
-
-LDADD = libngams.la -lz -lpthread -ldb $(SYSTEM_LIBS) -L/usr/local/lib
-
-bin_PROGRAMS =  ngamsCClient ngamsCClientX ngamsArchiveClient ngamsCrc32
-
-ngamsCClient_SOURCES = ngamsCClient.c
-ngamsCClientX_SOURCES = ngamsCClientX.c
-ngamsArchiveClient_SOURCES = ngamsArchiveClient.c
-ngamsCrc32_SOURCES = ngamsCrc32.c
-
-#AM_CFLAGS =
-
-#lib_LIBRARIES = libngams.a
-
+# The initial library
 lib_LTLIBRARIES = libngams.la
-
-#libngams_a_SOURCES =
+libngams_la_LDFLAGS = -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE)
 libngams_la_SOURCES = \
 		ngamsCClientLib.c \
 		ngamsARCH_CLI_MAN_PAGE.c \
@@ -26,7 +11,20 @@ libngams_la_SOURCES = \
 		ngamsMAN_PAGE.c \
 		ngamsMAN_PAGE_X.c
 
-ngamsCClientLib.c: ngamsVERSION.h
+# Individual programs and their dependencies
+bin_PROGRAMS =  ngamsCClient ngamsCClientX ngamsArchiveClient ngamsCrc32
+
+ngamsCClient_SOURCES = ngamsCClient.c
+ngamsCClient_LDADD = libngams.la
+
+ngamsCClientX_SOURCES = ngamsCClientX.c
+ngamsCClientX_LDADD = libngams.la
+
+ngamsArchiveClient_SOURCES = ngamsArchiveClient.c
+ngamsArchiveClient_LDADD = libngams.la
+
+ngamsCrc32_SOURCES = ngamsCrc32.c
+ngamsCrc32_LDFLAGS = -lz
 
 # Files to be installed under <prefix>/include
 include_HEADERS = ngams.h
@@ -37,8 +35,7 @@ noinst_HEADERS = ngamsArchiveClient.h
 
 EXTRA_DIST = ngamsArchiveClient.doc ngamsCClientX.doc
 
-libngams_la_LDFLAGS = -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE)
-#libngams_la_LIBADD =  -lm
+ngamsCClientLib.c: ngamsVERSION.h
 
 ngamsLICENSE.c:
 	@-(rm -f ngamsLICENSE.c)
