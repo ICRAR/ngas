@@ -24,7 +24,7 @@ Setup volumes
 -------------
 
 Inside the NGAS *root* directory
-*volumnes* should exist
+*volumes* should exist
 where the data will be stored
 (see :ref:`server.storage` for a full explanation).
 You can either create directories for each volume,
