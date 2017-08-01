@@ -370,7 +370,7 @@ def _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt):
             fileInfo = cPickle.loads(dbVal)
             #############################################################################################
             noOfFiles += 1
-            amountMb += float(fileInfo[ngamsDbCore.SUM1_FILE_SIZE] / 1048576.0)
+            amountMb += float(fileInfo[ngamsDbCore.SUM1_FILE_SIZE]) / 1048576.0
         #################################################################################################
 
     stats = _initFileCheckStatus(srvObj, amountMb, noOfFiles)
