@@ -285,6 +285,9 @@ class ngamsDbm:
             self.__sem.release()
             raise e
 
+    # suppor for "k in dbm" syntax
+    def __contains__(self, k):
+        return self.hasKey(k)
 
     @translated
     def sync(self):
