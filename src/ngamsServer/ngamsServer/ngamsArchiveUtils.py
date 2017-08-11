@@ -46,7 +46,7 @@ from ngamsLib.ngamsCore import NGAMS_FAILURE, getFileCreationTime,\
     NGAMS_HTTP_GET, NGAMS_ARCHIVE_CMD, NGAMS_HTTP_FILE_URL, cpFile,\
     NGAMS_NOTIF_NO_DISKS, mvFile, NGAMS_PICKLE_FILE_EXT,\
     rmFile, NGAMS_SUCCESS, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BACK_LOG_DIR,\
-    getHostName, loadPlugInEntryPoint
+    getHostName, loadPlugInEntryPoint, checkCreatePath, NGAMS_HTTP_HDR_CHECKSUM
 from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsPlugInApi, ngamsLib,\
     ngamsHttpUtils
 from ngamsLib import ngamsReqProps, ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsDiskUtils
@@ -93,6 +93,8 @@ def archive_contents(out_fname, fin, fsize, block_size, crc_variant):
     wtime = 0
     readin = 0
 
+    logger.debug("Saving data in file: %s", out_fname)
+
     start = time.time()
     with open(out_fname, 'wb') as fout:
         while readin < fsize:
@@ -132,6 +134,45 @@ def archive_contents(out_fname, fin, fsize, block_size, crc_variant):
 
     return archiving_results(rtime, wtime, crctime, total_time, crc_name, crc)
 
+
+def archive_contents_from_request(out_fname, cfg, req):
+    """
+    Inspects the given configuration and request objects, and calls
+    archive_contents with the required arguments.
+    """
+
+    block_size = cfg.getBlockSize()
+    size = req.getSize()
+    fin = req.getReadFd()
+    checkCreatePath(os.path.dirname(out_fname))
+
+    # The CRC variant is configured in the server, but can be overridden
+    # in a per-request basis
+    if 'crc_variant' in req:
+        variant = req['crc_variant']
+    else:
+        variant = cfg.getCRCVariant()
+
+    result = archive_contents(out_fname, fin, size, block_size, variant)
+
+    req.setBytesReceived(size)
+    ingestRate = size / result.totaltime
+
+    # Compare checksum if required
+    checksum = req.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM)
+    if checksum and result.crc is not None:
+        if checksum != str(result.crc):
+            msg = 'Checksum error for file %s, local crc = %s, but remote crc = %s' % (req.getFileUri(), str(result.crc), checksum)
+            raise Exception(msg)
+        else:
+            logger.debug("%s CRC checked, OK!", req.getFileUri())
+
+    logger.debug('Block size: %d; File size: %d; Transfer time: %.4f s; CRC time: %.4f s; write time %.4f s',
+                 block_size, size, result.totaltime, result.crctime, result.wtime)
+    logger.info('Saved data in file: %s. Bytes received: %d. Time: %.4f s. Rate: %.2f Bytes/s',
+                out_fname, size, result.totaltime, ingestRate)
+
+    return result
 
 def updateFileInfoDb(srvObj,
                      piStat,
@@ -806,7 +847,6 @@ def dataHandler(srvObj,
     if reqPropsObj.getSize() <= 0:
         raise Exception('Content-Length is 0')
 
-    baseName = os.path.basename(reqPropsObj.getFileUri())
     mimeType = reqPropsObj.getMimeType()
     archiving_start = time.time()
 
@@ -843,11 +883,13 @@ def dataHandler(srvObj,
                                                storageSetId,
                                                reqPropsObj.getFileUri(),
                                                genTmpFiles=1)
+
         # Save the data into the Temp. Staging File.
         ioTime = ngamsHighLevelLib.saveInStagingFile(srvObj.getCfg(),
                                                      reqPropsObj,
                                                      tmpStagingFilename,
                                                      trgDiskInfo)
+
         srvObj.test_AfterSaveInStagingFile()
         logger.debug("Iotime returned from saveInStagingFile: %6.2f", ioTime)
         reqPropsObj.incIoTime(ioTime)

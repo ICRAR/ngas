@@ -109,47 +109,12 @@ def saveFromHttpToFile(ngamsCfgObj,
     Returns:         Tuple. Element 0: Time in took to write
                      file (s) (tuple).
     """
-    T = TRACE()
-
-    logger.debug("Saving data in file: %s", trgFilename)
-
     try:
         # Make mutual exclusion on disk access (if requested).
         if mutexDiskAccess:
             ngamsHighLevelLib.acquireDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
-
-        block_size = ngamsCfgObj.getBlockSize()
-        size = reqPropsObj.getSize()
-        fin = reqPropsObj.getReadFd()
-        checkCreatePath(os.path.dirname(trgFilename))
-
-        # The CRC variant is configured in the server, but can be overridden
-        # in a per-request basis
-        if reqPropsObj.hasHttpPar('crc_variant'):
-            variant = reqPropsObj.getHttpPar('crc_variant')
-        else:
-            variant = ngamsCfgObj.getCRCVariant()
-
-        result = ngamsArchiveUtils.archive_contents(trgFilename, fin, size, block_size, variant)
-
-        reqPropsObj.setBytesReceived(size)
-        ingestRate = size / result.totaltime
-
-        # Compare checksum if required
-        checksum = reqPropsObj.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM)
-        if checksum and result.crc is not None:
-            if checksum != str(result.crc):
-                msg = 'Checksum error for file %s, local crc = %s, but remote crc = %s' % (reqPropsObj.getFileUri(), str(result.crc), checksum)
-                raise Exception(msg)
-            else:
-                logger.debug("%s CRC checked, OK!", reqPropsObj.getFileUri())
-
-        logger.debug('Block size: %d; File size: %d; Transfer time: %.4f s; CRC time: %.4f s; write time %.4f s',
-                     block_size, size, result.totaltime, result.crctime, result.wtime)
-        logger.info('Saved data in file: %s. Bytes received: %d. Time: %.4f s. Rate: %.2f Bytes/s',
-                    trgFilename, size, result.totaltime, ingestRate)
-
-        return [result.totaltime, result.crc, result.crcname, ingestRate]
+        result = ngamsArchiveUtils.archive_contents_from_request(trgFilename, ngamsCfgObj, reqPropsObj)
+        return [result.totaltime, result.crc, result.crcname, reqPropsObj.getSize() / result.totaltime]
     finally:
         if mutexDiskAccess:
             ngamsHighLevelLib.releaseDiskResource(ngamsCfgObj, diskInfoObj.getSlotId())
