@@ -840,7 +840,6 @@ def dataHandler(srvObj,
     Returns:       Disk info object with status for Main Disk
                    where data file was stored (ngamsDiskInfo).
     """
-    T = TRACE()
 
     logger.info(genLog("NGAMS_INFO_ARCHIVING_FILE", [reqPropsObj.getFileUri()]), extra={'to_syslog': True})
 
@@ -884,11 +883,13 @@ def dataHandler(srvObj,
                                                reqPropsObj.getFileUri(),
                                                genTmpFiles=1)
 
-        # Save the data into the Temp. Staging File.
-        ioTime = ngamsHighLevelLib.saveInStagingFile(srvObj.getCfg(),
-                                                     reqPropsObj,
-                                                     tmpStagingFilename,
-                                                     trgDiskInfo)
+        try:
+            ngamsHighLevelLib.acquireDiskResource(srvObj.getCfg(), trgDiskInfo.getSlotId())
+            result = archive_contents_from_request(tmpStagingFilename, srvObj.getCfg(), reqPropsObj)
+        finally:
+            ngamsHighLevelLib.releaseDiskResource(srvObj.getCfg(), trgDiskInfo.getSlotId())
+
+        ioTime = result.totaltime
 
         srvObj.test_AfterSaveInStagingFile()
         logger.debug("Iotime returned from saveInStagingFile: %6.2f", ioTime)
@@ -972,7 +973,7 @@ def dataHandler(srvObj,
                                reqPropsFilename)
         raise Exception, errMsg
 
-    diskInfo = postFileRecepHandling(srvObj, reqPropsObj, resMain)
+    diskInfo = postFileRecepHandling(srvObj, reqPropsObj, resMain, cksum=(result.crc, result.crcname))
     msg = genLog("NGAMS_INFO_FILE_ARCHIVED", [reqPropsObj.getSafeFileUri()])
     msg = msg + ". Time: %.3fs" % (time.time() - archiving_start)
     logger.info(msg, extra={'to_syslog': True})
