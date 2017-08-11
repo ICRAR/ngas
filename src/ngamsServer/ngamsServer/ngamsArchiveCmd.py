@@ -170,7 +170,7 @@ def handleCmdArchive(srvObj,
             ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM HANDLING ARCHIVE PULL REQUEST",
                                      errMsg)
-            raise Exception(errMsg)
+            raise
     else:
         logger.info("Handling Archive Push Request. Async = %d ...", async)
         try:

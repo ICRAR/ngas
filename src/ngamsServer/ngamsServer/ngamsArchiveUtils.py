@@ -497,11 +497,11 @@ def postFileRecepHandling(srvObj,
         # Calculate checksum (if plug-in specified).
         checksumPlugIn = srvObj.getCfg().getChecksumPlugIn()
         if (checksumPlugIn != ""):
-            logger.debug("Invoking Checksum Plug-In: %s to handle file: %s",
+            logger.info("Invoking Checksum Plug-In: %s to handle file: %s",
                          checksumPlugIn, resultPlugIn.getCompleteFilename())
             plugInMethod = loadPlugInEntryPoint(checksumPlugIn)
             checksum = plugInMethod(srvObj, resultPlugIn.getCompleteFilename(), 0)
-            logger.debug("Result: %s", checksum)
+            logger.info("Result: %s", checksum)
         else:
             checksum = ''
             checksumPlugIn = ''
