@@ -27,11 +27,11 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  14/11/2001  Created
 #
-
 """
 Contains utility functions used in connection with the handling of
 the file archiving.
 """
+import collections
 import contextlib
 import cPickle
 import glob
@@ -58,6 +58,80 @@ import ngamsCacheControlThread
 _diskSpaceWarningDic = {}
 
 logger = logging.getLogger(__name__)
+
+class eof_found(Exception):
+    """Throw by archive_contents if the EOF is found while reading the incoming data"""
+    pass
+
+class too_much_data(Exception):
+    """Throw by archive_contents if the EOF is found while reading the incoming data"""
+    pass
+
+archiving_results = collections.namedtuple('archiving_results',
+                                           'rtime wtime crctime totaltime crcname crc')
+
+def archive_contents(out_fname, fin, fsize, block_size, crc_variant):
+    """
+    Archives the contents read from `fin` (a file-like object with .read()
+    support) and writes it to file `out_fname`, which is opened in write mode
+    and truncated. While reading the data its checksum is calculated using the
+    checksum method indicated by `crc_variant`.
+
+    This method returns an archiving_results tuple populated with all the
+    corresponding fields.
+    """
+
+    # Get the CRC method to be used and initialize CRC value
+    crc_m = ngamsFileUtils.get_checksum_method(crc_variant)
+    crc_name = ngamsFileUtils.get_checksum_name(crc_variant)
+    crc = 0
+    if crc_m is None:
+        crc = None
+
+    crctime = 0
+    rtime = 0
+    wtime = 0
+    readin = 0
+
+    start = time.time()
+    with open(out_fname, 'wb') as fout:
+        while readin < fsize:
+
+            left = fsize - readin
+
+            # Read
+            rstart = time.time()
+            buff = fin.read(block_size if left >= block_size else left)
+            rtime += time.time() - rstart
+            readin += len(buff)
+
+            if not buff:
+                raise eof_found("Only read %d out of %d bytes (%d bytes missing)"
+                                % (readin, fsize, fsize - readin))
+
+            # Write
+            wstart = time.time()
+            fout.write(buff)
+            wtime += time.time() - wstart
+
+            # CRC
+            if crc_m:
+                crcstart = time.time()
+                crc = crc_m(buff, crc)
+                crctime += time.time() - crcstart
+
+    total_time = time.time() - start
+
+    if readin > fsize:
+        raise too_much_data("Read %d bytes of data, but advertised size was %d (%d bytes too many)"
+                            % (readin, fsize, readin - fsize))
+
+    # Avoid divide by zeros later on, let's say it took us 1 [us] to do this
+    if total_time == 0.0:
+        total_time = 0.000001
+
+    return archiving_results(rtime, wtime, crctime, total_time, crc_name, crc)
+
 
 def updateFileInfoDb(srvObj,
                      piStat,
