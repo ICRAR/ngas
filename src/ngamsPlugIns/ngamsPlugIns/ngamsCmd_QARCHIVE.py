@@ -123,7 +123,7 @@ def saveFromHttpToFile(ngamsCfgObj,
         fin = reqPropsObj.getReadFd()
         checkCreatePath(os.path.dirname(trgFilename))
 
-        # The CRC variant is configured in the server, but can be overriden
+        # The CRC variant is configured in the server, but can be overridden
         # in a per-request basis
         if reqPropsObj.hasHttpPar('crc_variant'):
             variant = reqPropsObj.getHttpPar('crc_variant')
