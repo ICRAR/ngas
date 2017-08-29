@@ -70,7 +70,7 @@ class too_much_data(Exception):
 archiving_results = collections.namedtuple('archiving_results',
                                            'rtime wtime crctime totaltime crcname crc')
 
-def archive_contents(out_fname, fin, fsize, block_size, crc_variant):
+def archive_contents(out_fname, fin, fsize, block_size, crc_variant, skip_crc=False):
     """
     Archives the contents read from `fin` (a file-like object with .read()
     support) and writes it to file `out_fname`, which is opened in write mode
@@ -82,11 +82,14 @@ def archive_contents(out_fname, fin, fsize, block_size, crc_variant):
     """
 
     # Get the CRC method to be used and initialize CRC value
-    crc_m = ngamsFileUtils.get_checksum_method(crc_variant)
-    crc_name = ngamsFileUtils.get_checksum_name(crc_variant)
-    crc = 0
-    if crc_m is None:
-        crc = None
+    crc_m = None
+    crc_name = None
+    crc = None
+    if not skip_crc:
+        crc_m = ngamsFileUtils.get_checksum_method(crc_variant)
+        crc_name = ngamsFileUtils.get_checksum_name(crc_variant)
+        if crc_m:
+            crc = 0
 
     crctime = 0
     rtime = 0
@@ -135,7 +138,7 @@ def archive_contents(out_fname, fin, fsize, block_size, crc_variant):
     return archiving_results(rtime, wtime, crctime, total_time, crc_name, crc)
 
 
-def archive_contents_from_request(out_fname, cfg, req):
+def archive_contents_from_request(out_fname, cfg, req, skip_crc=False):
     """
     Inspects the given configuration and request objects, and calls
     archive_contents with the required arguments.
@@ -153,10 +156,11 @@ def archive_contents_from_request(out_fname, cfg, req):
     else:
         variant = cfg.getCRCVariant()
 
-    result = archive_contents(out_fname, fin, size, block_size, variant)
+    result = archive_contents(out_fname, fin, size, block_size, variant,
+                              skip_crc=skip_crc)
 
     req.setBytesReceived(size)
-    ingestRate = size / result.totaltime
+    ingestRate = size / result.totaltime / 1024. / 1024.
 
     # Compare checksum if required
     checksum = req.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM)
@@ -165,12 +169,12 @@ def archive_contents_from_request(out_fname, cfg, req):
             msg = 'Checksum error for file %s, local crc = %s, but remote crc = %s' % (req.getFileUri(), str(result.crc), checksum)
             raise Exception(msg)
         else:
-            logger.debug("%s CRC checked, OK!", req.getFileUri())
+            logger.info("%s CRC checked, OK!", req.getFileUri())
 
     logger.debug('Block size: %d; File size: %d; Transfer time: %.4f s; CRC time: %.4f s; write time %.4f s',
                  block_size, size, result.totaltime, result.crctime, result.wtime)
-    logger.info('Saved data in file: %s. Bytes received: %d. Time: %.4f s. Rate: %.2f Bytes/s',
-                out_fname, size, result.totaltime, ingestRate)
+    logger.info('Saved data in file: %s. Bytes received: %d. Time: %.4f s. Rate: %.2f MB/s. Checksum: %s',
+                out_fname, size, result.totaltime, ingestRate, str(result.crc))
 
     return result
 
@@ -883,9 +887,23 @@ def dataHandler(srvObj,
                                                reqPropsObj.getFileUri(),
                                                genTmpFiles=1)
 
+        # Check if we can directly perform checksum calculation at reception time;
+        # otherwise we must postpone it until the data archiving plug-in is executed,
+        # since it can potentially change the data.
+        # This method is optional, in which case it is assumed the data is not
+        # changed
+        skip_crc = False
+        plugIn = srvObj.getMimeTypeDic()[mimeType]
+        modifies = loadPlugInEntryPoint(plugIn,
+                                        entryPointMethodName='modifies_content',
+                                        returnNone=True)
+        if modifies and modifies(srvObj, reqPropsObj):
+            skip_crc = True
+
         try:
             ngamsHighLevelLib.acquireDiskResource(srvObj.getCfg(), trgDiskInfo.getSlotId())
-            result = archive_contents_from_request(tmpStagingFilename, srvObj.getCfg(), reqPropsObj)
+            result = archive_contents_from_request(tmpStagingFilename, srvObj.getCfg(), reqPropsObj,
+                                                   skip_crc=skip_crc)
         finally:
             ngamsHighLevelLib.releaseDiskResource(srvObj.getCfg(), trgDiskInfo.getSlotId())
 
@@ -915,7 +933,6 @@ def dataHandler(srvObj,
                                                          reqPropsFilename])
 
         # Invoke the Data Archiving Plug-In.
-        plugIn = srvObj.getMimeTypeDic()[mimeType]
         plugInMethod = loadPlugInEntryPoint(plugIn)
 
         logger.info("Invoking DAPI: %s to handle data for file with URI: %s",
@@ -973,7 +990,15 @@ def dataHandler(srvObj,
                                reqPropsFilename)
         raise Exception, errMsg
 
-    diskInfo = postFileRecepHandling(srvObj, reqPropsObj, resMain, cksum=(result.crc, result.crcname))
+    # Backwards compatibility for the old ARCHIVE command
+    crc_name = result.crcname
+    if reqPropsObj.getCmd() == 'ARCHIVE' and crc_name == 'crc32':
+        crc_name = 'ngamsGenCrc32'
+
+    # Checksum has been postponed because the DAPI changed the contents
+    cksum = (result.crc, crc_name) if not skip_crc else None
+
+    diskInfo = postFileRecepHandling(srvObj, reqPropsObj, resMain, cksum=cksum)
     msg = genLog("NGAMS_INFO_FILE_ARCHIVED", [reqPropsObj.getSafeFileUri()])
     msg = msg + ". Time: %.3fs" % (time.time() - archiving_start)
     logger.info(msg, extra={'to_syslog': True})
