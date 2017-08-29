@@ -80,6 +80,21 @@ COMPRESSION_EXT = "compression_ext"
 NO_COMPRESSION  = "NONE"
 
 
+def extract_compression_params(reqPropsObj, plugin_pars):
+
+    plugin_pars[COMPRESSION]     = None
+    plugin_pars[COMPRESSION_EXT] = None
+
+    if COMPRESSION in reqPropsObj:
+        plugin_pars[COMPRESSION] = reqPropsObj[COMPRESSION]
+    if COMPRESSION_EXT in reqPropsObj:
+        plugin_pars[COMPRESSION_EXT] = reqPropsObj[COMPRESSION_EXT]
+    if ((plugin_pars[COMPRESSION] and plugin_pars[COMPRESSION_EXT] is None) or
+        (not plugin_pars[COMPRESSION] and plugin_pars[COMPRESSION_EXT] is not None)):
+        raise Exception, genLog("NGAMS_ER_DAPI",
+                                ["Parameters compression and compression_ext"
+                                 "must be given together."])
+
 def handlePars(reqPropsObj,
                parDic):
     """
@@ -98,8 +113,6 @@ def handlePars(reqPropsObj,
     parDic[TARG_MIME_TYPE]  = None
     parDic[FILE_ID]         = None
     parDic[VERSIONING]      = 1
-    parDic[COMPRESSION]     = None
-    parDic[COMPRESSION_EXT] = None
 
     if (reqPropsObj.hasHttpPar(TARG_MIME_TYPE)):
         parDic[TARG_MIME_TYPE] = reqPropsObj.getHttpPar(TARG_MIME_TYPE)
@@ -131,16 +144,10 @@ def handlePars(reqPropsObj,
     else:
         reqPropsObj.addHttpPar("no_versioning", "1")
 
-    if (reqPropsObj.hasHttpPar(COMPRESSION)):
-        parDic[COMPRESSION] = reqPropsObj.getHttpPar(COMPRESSION)
-    if (reqPropsObj.hasHttpPar(COMPRESSION_EXT)):
-        parDic[COMPRESSION_EXT] = reqPropsObj.getHttpPar(COMPRESSION_EXT)
-    if ((parDic[COMPRESSION] and (parDic[COMPRESSION_EXT] == None)) or
-        (not parDic[COMPRESSION] and (parDic[COMPRESSION_EXT] != None))):
-        raise Exception, genLog("NGAMS_ER_DAPI",
-                                ["Parameters compression and compression_ext"
-                                 "must be given together."])
+    extract_compression_params(reqPropsObj, parDic)
 
+def _compress_data(plugin_pars):
+    return plugin_pars[COMPRESSION]
 
 def compressFile(srvObj,
                  reqPropsObj,
@@ -168,7 +175,7 @@ def compressFile(srvObj,
     # If a compression application is specified, apply this.
     uncomprSize = ngamsPlugInApi.getFileSize(stFn)
     comprExt = ""
-    if (parDic[COMPRESSION]):
+    if _compress_data(parDic):
         logger.debug("Compressing file using: %s ...", parDic[COMPRESSION])
         compCmd = "%s %s" % (parDic[COMPRESSION], stFn)
         compress_start = time.time()
@@ -236,6 +243,12 @@ def checkForDblExt(complFilename,
         relFilename = relFilename[0:-len(ext1)]
 
     return (complFilename, relFilename)
+
+# Signals the server whether this plug-in modifies its incoming contents (or not)
+def modifies_content(srvObj, reqPropsObj):
+    plugin_pars = {}
+    extract_compression_params(reqPropsObj, plugin_pars)
+    return _compress_data(plugin_pars)
 
 
 def ngamsGenDapi(srvObj,

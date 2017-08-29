@@ -211,6 +211,10 @@ def prepFile(reqPropsObj,
     return dpIdInfo[1], dpIdInfo[2], comprExt
 
 
+def _compress_data(plugin_pars):
+    compression = plugin_pars["compression"]
+    return compression and 'gzip' in compression
+
 def compress(reqPropsObj,
              parDic):
     """
@@ -230,7 +234,7 @@ def compress(reqPropsObj,
     mime = reqPropsObj.getMimeType()
     compression = parDic["compression"]
 
-    if compression and 'gzip' in compression:
+    if _compress_data(parDic):
         logger.debug("Compressing file: %s using: %s", stFn, compression)
         compress_start = time.time()
         gzip_name = '%s.gz' % stFn
@@ -246,6 +250,11 @@ def compress(reqPropsObj,
 
     return uncomprSize, archFileSize, mime, compression
 
+# Signals the server whether this plug-in modifies its incoming contents (or not)
+def modifies_content(srvObj, reqPropsObj):
+    parDic = ngamsPlugInApi.parseDapiPlugInPars(srvObj.getCfg(),
+                                                reqPropsObj.getMimeType())
+    return _compress_data(parDic)
 
 # DAPI function.
 def ngamsFitsPlugIn(srvObj,
