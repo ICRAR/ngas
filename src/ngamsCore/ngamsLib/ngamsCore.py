@@ -714,12 +714,15 @@ def getBoolean(val):
         msg = "Value given: %s, does not seem to be a boolean"
         raise Exception, msg % str(val)
 
-def loadPlugInEntryPoint(plugInName, entryPointMethodName=None):
+def loadPlugInEntryPoint(plugInName, entryPointMethodName=None, returnNone=False):
     """
     Loads the entry point method of an NGAMS Plug-In. First the
     module is loaded and then the method that acts as entry point is
     also loaded and returned to the caller, who can then use
-    the method reference directly
+    the method reference directly.
+
+    If `returnNone` is True and the module loads correctly but the method does
+    not exist, None is returned instead.
     """
 
     # By default the entry point has the same name as the module
@@ -735,7 +738,13 @@ def loadPlugInEntryPoint(plugInName, entryPointMethodName=None):
         plugInModule = importlib.import_module(plugInName)
 
     logger.debug("Loading entry-point method %s from module %s ", entryPointMethodName,plugInModule.__name__)
-    return getattr(plugInModule, entryPointMethodName)
+
+    try:
+        return getattr(plugInModule, entryPointMethodName)
+    except AttributeError:
+        if returnNone:
+            return None
+        raise
 
 def is_localhost(host_or_ip):
     return host_or_ip == 'localhost' or \
