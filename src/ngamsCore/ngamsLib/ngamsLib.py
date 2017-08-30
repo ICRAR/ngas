@@ -35,6 +35,7 @@ The functions in this module can be used in all the NG/AMS code.
 """
 
 import cPickle
+import gzip
 import logging
 import os
 import shutil
@@ -359,5 +360,63 @@ def logicalStrListSort(strList):
     estretched_strings = [(maxLen - len(s)) * " " + s for s in strList]
     estretched_strings.sort()
     return estretched_strings
+
+
+class GzipFile(gzip.GzipFile):
+    """
+    Our version of GzipFile which calculates (if indicated) a given checksum on
+    the *compressed* data as it gets written into the output file.
+    """
+
+    def __init__(self, filename, mode, crc_init=None, crc_m=None):
+
+        if (crc_init is None) ^ (crc_m is None):
+            raise ValueError("crc_init implies crc_m and vice-versa")
+
+        fileobj = open(filename, mode)
+
+        # Checksum requested, create the wrapper for checksum calculation at
+        # write time and pass the wrapped object down instead
+        if crc_m:
+
+            class wrapper(object):
+
+                def __init__(self, f):
+                    self.f = f
+                    self.crc = crc_init
+                    self.mode = mode
+
+                def write(self, data):
+                    self.crc = crc_m(data, self.crc)
+                    return self.f.write(data)
+
+                def flush(self):
+                    return self.f.flush()
+
+                def close(self):
+                    return self.f.close()
+
+            # set self.myfileobj so gzip.GzipFile.close() closes fileobj
+            fileobj = self.myfileobj = wrapper(fileobj)
+
+        # The "gzip" command defaults to compression level 6
+        gzip.GzipFile.__init__(self, fileobj=fileobj, compresslevel=6)
+
+def gzip_compress(fin, fout_name, block_size, crc_init=None, crc_m=None):
+    """
+    Compresses the contents read from `fin` into file `fout_name`. Reading from
+    `fin` is done by reading `block_size` bytes at a time.
+
+    If `crc_init` and `crc_m` are provided then a checksum on the compressed
+    data is calculated as data gets compressed using `crc_m` as the checksum
+    method, and `crc_init` as the initial checksum value.
+    """
+    with GzipFile(fout_name, 'wb', crc_init, crc_m) as fout:
+        if crc_m:
+            fileobj = fout.fileobj
+        shutil.copyfileobj(fin, fout, block_size)
+
+    if crc_m:
+        return fileobj.crc
 
 # EOF
