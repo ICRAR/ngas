@@ -591,7 +591,9 @@ def filterDbStatus1(statBuf,
             (line.find("IngestionRate") == 0) or
             (line.find("ContainerId") == 0) or
             (line.find("ModificationDate:") == 0) or
-            (line.find("ModificationDate:") == 0) or
+            (line.find("BytesStored:") == 0) or
+            (line.find("FileSize:") == 0) or
+            (line.find("Checksum:") == 0) or
             (line.find("AccessDate:") == 0)):
             continue
         skipLine = 0

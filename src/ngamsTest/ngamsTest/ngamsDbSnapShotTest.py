@@ -81,7 +81,9 @@ def _parseDbSnapshot(dbSnapshotDump):
             col = mapDic[IDX2NM + str(key)]
             if ((col.find("ingestion_date") == -1) and
                 (col.find("creation_date") == -1) and
-                (col.find("io_time") == -1)):
+                (col.find("io_time") == -1) and
+                (col != "file_size") and
+                (col != "checksum")):
                 convDbSnapshot += "%-16s = %s\n" % (col, val)
     return convDbSnapshot
 
