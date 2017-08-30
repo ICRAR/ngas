@@ -56,6 +56,7 @@ class ngamsDapiStatus:
         self.__ioTime            = 0
         self.__fileExists        = -1
         self.__completeFilename  = ""
+        self.crc = None
 
 
     def setStatus(self,
