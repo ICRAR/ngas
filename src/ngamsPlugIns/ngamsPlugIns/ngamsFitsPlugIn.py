@@ -44,8 +44,10 @@ import time
 
 from ngamsLib import ngamsPlugInApi
 from ngamsLib.ngamsCore import TRACE, genLog, fromiso8601, tomjd, frommjd,\
-    toiso8601, FMT_DATE_ONLY
+    toiso8601, FMT_DATE_ONLY, rmFile
+from ngamsLib import ngamsLib
 
+from ngamsServer import ngamsFileUtils
 
 logger = logging.getLogger(__name__)
 
@@ -236,19 +238,34 @@ def compress(reqPropsObj,
 
     if _compress_data(parDic):
         logger.debug("Compressing file: %s using: %s", stFn, compression)
-        compress_start = time.time()
+
+        # Compress *and* calculate checksum on compressed stream
+        # The value crc_name depends on the server configuration and whether the
+        # user requested a different variant (see ngamsArchiveUtils)
         gzip_name = '%s.gz' % stFn
-        subprocess.check_call(['gzip', '--no-name', stFn], shell = False)
+        crc_m = crc_init = None
+        if 'crc_name' in reqPropsObj:
+            crc_m = ngamsFileUtils.get_checksum_method(reqPropsObj['crc_name'])
+            if crc_m:
+                crc_init = 0
+
+        compress_start = time.time()
+        with open(stFn, 'rb') as f:
+            crc = ngamsLib.gzip_compress(f, gzip_name, 65536, crc_init=crc_init, crc_m=crc_m)
+        compress_time = time.time() - compress_start
+
         reqPropsObj.setStagingFilename(gzip_name)
+        rmFile(stFn)
         mime = 'application/x-gfits'
         compression = 'gzip --no-name'
-        logger.debug("File compressed: %s Time: %.3fs", gzip_name, time.time() - compress_start)
+
+        logger.debug("File compressed: %s Time: %.3fs", gzip_name, compress_time)
     else:
         compression = ''
 
     archFileSize = ngamsPlugInApi.getFileSize(reqPropsObj.getStagingFilename())
 
-    return uncomprSize, archFileSize, mime, compression
+    return uncomprSize, archFileSize, mime, compression, crc
 
 # Signals the server whether this plug-in modifies its incoming contents (or not)
 def modifies_content(srvObj, reqPropsObj):
@@ -291,7 +308,7 @@ def ngamsFitsPlugIn(srvObj,
                                             [comprExt])
 
     # If a compression application is specified, apply this.
-    uncomprSize, archFileSize, mime, compression = compress(reqPropsObj, parDic)
+    uncomprSize, archFileSize, mime, compression, crc = compress(reqPropsObj, parDic)
 
     # Generate status + return.
     logger.debug("DAPI finished processing of file - returning to main application")
@@ -300,4 +317,4 @@ def ngamsFitsPlugIn(srvObj,
                                              archFileSize, uncomprSize,
                                              compression, relPath,
                                              diskInfo.getSlotId(), fileExists,
-                                             complFilename)
+                                             complFilename, crc)
