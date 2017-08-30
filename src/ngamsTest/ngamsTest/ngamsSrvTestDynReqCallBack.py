@@ -73,7 +73,7 @@ class ngamsServerTestDynReqCallBack(ngamsServer.ngamsServer):
             reqHandleCode = getattr(self, reqHandleCode)
             reqHandleCode(*args, **kwargs)
         else:
-            super(ngamsServerTestDynReqCallBack, self).reqCallBack(*args, **kwargs)
+            super(ngamsServerTestDynReqCallBack, self).handleHttpRequest(*args, **kwargs)
 
     def handleHttpRequest_Block5secs(self, *args, **kwargs):
         """
