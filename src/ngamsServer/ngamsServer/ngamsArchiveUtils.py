@@ -81,13 +81,15 @@ def archive_contents(out_fname, fin, fsize, block_size, crc_variant, skip_crc=Fa
     corresponding fields.
     """
 
+    # We always want to know what the name of the CRC method is
+    # (it can be used by plug-ins later on, for logging, etc.)
+    crc_name = ngamsFileUtils.get_checksum_name(crc_variant)
+
     # Get the CRC method to be used and initialize CRC value
     crc_m = None
-    crc_name = None
     crc = None
     if not skip_crc:
         crc_m = ngamsFileUtils.get_checksum_method(crc_variant)
-        crc_name = ngamsFileUtils.get_checksum_name(crc_variant)
         if crc_m:
             crc = 0
 
@@ -902,12 +904,12 @@ def dataHandler(srvObj,
 
         try:
             ngamsHighLevelLib.acquireDiskResource(srvObj.getCfg(), trgDiskInfo.getSlotId())
-            result = archive_contents_from_request(tmpStagingFilename, srvObj.getCfg(), reqPropsObj,
+            archive_result = archive_contents_from_request(tmpStagingFilename, srvObj.getCfg(), reqPropsObj,
                                                    skip_crc=skip_crc)
         finally:
             ngamsHighLevelLib.releaseDiskResource(srvObj.getCfg(), trgDiskInfo.getSlotId())
 
-        ioTime = result.totaltime
+        ioTime = archive_result.totaltime
 
         srvObj.test_AfterSaveInStagingFile()
         logger.debug("Iotime returned from saveInStagingFile: %6.2f", ioTime)
@@ -933,13 +935,22 @@ def dataHandler(srvObj,
                                                          reqPropsFilename])
 
         # Invoke the Data Archiving Plug-In.
+        # In case the plug-in modifies data, it can return the checksum of this
+        # modified data (only if it makes sense from a performance point of
+        # view, the default final option of re-reading the final file may be
+        # the only way). In that case they need to know the checksum method to
+        # use, which we pass down via the 'crc_name' parameter (which we later
+        # remove).
         plugInMethod = loadPlugInEntryPoint(plugIn)
 
         logger.info("Invoking DAPI: %s to handle data for file with URI: %s",
                     plugIn, os.path.basename(reqPropsObj.getFileUri()))
         srvObj.test_BeforeDapiInvocation()
+
         timeBeforeDapi = time.time()
+        reqPropsObj.addHttpPar('crc_name', archive_result.crcname)
         resMain = plugInMethod(srvObj, reqPropsObj)
+        del reqPropsObj.getHttpParsDic()['crc_name']
         srvObj.test_AfterDapiInvocation()
         logger.debug("Invoked DAPI: %s. Time: %.3fs.",plugIn, (time.time() - timeBeforeDapi))
 
@@ -990,13 +1001,19 @@ def dataHandler(srvObj,
                                reqPropsFilename)
         raise Exception, errMsg
 
-    # Backwards compatibility for the old ARCHIVE command
-    crc_name = result.crcname
+    # Backwards compatibility for the ARCHIVE command based on plug-in'ed CRCs
+    crc_name = archive_result.crcname
     if reqPropsObj.getCmd() == 'ARCHIVE' and crc_name == 'crc32':
         crc_name = 'ngamsGenCrc32'
 
-    # Checksum has been postponed because the DAPI changed the contents
-    cksum = (result.crc, crc_name) if not skip_crc else None
+    # Checksum could have been calculated during archiving or by the DAPI
+    # Worst case scenario: we calculate it now at the very end by re-reading
+    # the stating file
+    cksum = None
+    if archive_result.crc is not None:
+        cksum = (archive_result.crc, crc_name)
+    elif resMain.crc is not None:
+        cksum = (resMain.crc, crc_name)
 
     diskInfo = postFileRecepHandling(srvObj, reqPropsObj, resMain, cksum=cksum)
     msg = genLog("NGAMS_INFO_FILE_ARCHIVED", [reqPropsObj.getSafeFileUri()])
