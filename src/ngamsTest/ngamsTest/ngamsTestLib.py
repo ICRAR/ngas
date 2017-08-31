@@ -322,8 +322,8 @@ def cmpFiles(refFile,
         fo = open(testFile, "w")
         for line in testFileLines: fo.write(line)
         fo.close()
-    _, out, _ = ngamsCoreExecCmd(['diff', refFile, testFile], shell="False")
-    return out
+    _, out, err = ngamsCoreExecCmd(['diff', refFile, testFile], shell=False)
+    return out + err
 
 
 def pollForFile(pattern,

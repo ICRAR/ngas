@@ -32,17 +32,11 @@ Test program that runs all the NG/AMS Unit Tests. It is also possible to
 generate a profile of the test, from which it can be seen which functions
 where not tested.
 """
-# TODO: Implement a test DB in which times for executing the tests are stored.
-#       There should be a window of 100 test runs per node per test suite.
-#       This information will be printed out when executing the tests in the
-#       test report.
 
-import os, sys, getpass, time, pkg_resources, importlib
-import pstats
+import os, sys, time, pkg_resources, importlib
 
-import cProfile as profile
 from ngamsLib.ngamsCore import getHostName, getNgamsVersion, \
-    ngamsCopyrightString, rmFile, toiso8601
+    ngamsCopyrightString, toiso8601
 from ngamsLib import ngamsConfig, ngamsHighLevelLib, ngamsLib, ngamsCore
 
 
@@ -174,43 +168,6 @@ def runAllTests(notifyemail = None,
 
     return failModDic
 
-def getAllSrcFiles():
-    """
-    Generate a dictionary containing a reference to all function and method
-    calls of the NG/AMS SW (relevant for the Unit Testing).
-
-    The dictionary returned has keys with the format:
-
-        '<src file>:<line no>(fct name)'
-
-    The entry for each function/method is a tuple with the following
-    information:
-
-        (<module name>, <src file>, <line no>, <fct name>)
-
-    Returns:   Dictionary with information about methods and functions
-               of the NG/AMS SW (dictionary/tuple).
-    """
-    modules = ["ngamsLib", "ngamsPClient", "ngamsServer"]
-    fctDic = {}
-    for mod in modules:
-        modDir = os.path.normpath("FIXME_PLEASE/" + mod + "/*.py")
-        _, stdOut, _ = ngamsCore.execCmd("grep -n def " + modDir)
-        fcts = stdOut.split("\n")
-        for fct in fcts:
-            fct = fct.strip(" :")
-            if ((fct != "") and (fct.find("def ") != -1)):
-                fctEls  = fct.split(":")
-                complSrcFile = fctEls[0].split("/")
-                modName = complSrcFile[-2]
-                srcFile = complSrcFile[-1]
-                lineNo  = fctEls[1]
-                fctName = fctEls[-1].split(" ")[-1].split("(")[0]
-                if (fctName != ""):
-                    key = srcFile + ":" + str(lineNo) + "(" + fctName + ")"
-                    fctDic[key] = (modName, srcFile, lineNo, fctName)
-    return fctDic
-
 
 # The methods and functions listed in the exempt list can either not be tested
 # or it cannot be registered that they have been executed for instance (seems
@@ -241,82 +198,6 @@ def methodInExemptList(srcFile,
     return 0
 
 
-def genStatus():
-    """
-    Execute all the tests and generate a test status, indicating which
-    methods/function are still not tested.
-
-    Returns:    Test report (string).
-    """
-    # List of method/functions, which for some reason should not
-    # appear in the status, normally because they have been executed
-    # but could not be registered (for instance if executed within a thread).
-    repFileDic = {}
-    testModList = getTestList()
-    for mod in testModList:
-        repFileDic[mod] = "/tmp/" + mod + "_" + getpass.getuser() + ".status"
-        rmFile(repFileDic[mod])
-
-        # Execute the test
-        profile.run("import " + mod + "\n" + mod + ".run()", repFileDic[mod])
-
-    # Generate one report from the reports in /tmp
-    repList = ""
-    statObj = None
-    for mod in repFileDic.keys():
-        if (statObj == None):
-            statObj = pstats.Stats(repFileDic[mod])
-        else:
-            statObj.add(repFileDic[mod])
-    for mod in repFileDic.keys():
-        rmFile(repFileDic[mod])
-    statObj.strip_dirs()
-    #statObj.print_stats()
-    proWidth, proList = statObj.get_print_list(())
-    testedFctDic = {}
-    for fctEntry in proList:
-        if (fctEntry[0].find("ngams") != -1):
-            key = fctEntry[0] + ":" + str(fctEntry[1]) + "(" + fctEntry[2] +")"
-            testedFctDic[key] = (fctEntry[0], fctEntry[1], fctEntry[2])
-
-    # Figure out which functions/methods were exercised by the test and
-    # which were not.
-    ngamsFctDic = getAllSrcFiles()
-    tmpDic = {}
-    for fctRef in ngamsFctDic.keys():
-        if (not testedFctDic.has_key(fctRef)):
-            tmpDic[ngamsFctDic[fctRef][1] + ngamsFctDic[fctRef][3]] =\
-                                          ngamsFctDic[fctRef]
-    fileList = tmpDic.keys()
-    fileList.sort()
-
-    # Give out status of functions/methods that apparently were not
-    # executed during the tests.
-    report = "METHODS AND FUNCTIONS NOT EXECUTED DURING TEST:\n\n"
-    testedFcts = len(testedFctDic.keys())
-    totalFcts  = len(ngamsFctDic.keys())
-    #report += "Test Coverage for Method/Function Invocation: " +\
-    #          str(100 * testedFcts / totalFcts) + "% " +\
-    #          "(" + str(testedFcts) + "/" + str(totalFcts) + ")\n\n"
-    report += "\n"
-    format = "%-25s %-12s %-25s\n"
-    sep1 = 70 * "-"
-    report += format % ("Source File:", "Line No:", "Method/Function:")
-    sepCtrlDic = {}
-    for key in fileList:
-        subRep = ""
-        srcFile = tmpDic[key][1]
-        lineNo = str(tmpDic[key][2])
-        method = tmpDic[key][3] + "()"
-        if (not methodInExemptList(srcFile, method[:-2])):
-            subRep += format % (srcFile, lineNo, method)
-        if ((subRep != "") and (not sepCtrlDic.has_key(tmpDic[key][1]))):
-            report += sep1 + "\n"
-            sepCtrlDic[tmpDic[key][1]] = 1
-        report += subRep
-    print "\n\n" + report + "\n"
-
-
 def correctUsage():
     """
     Print out correct usage of test program.
@@ -334,7 +215,6 @@ def parseCommandLine(argv):
     """
     """
     skip = None
-    status = 0
     tests = []
     notifyemail = None
     idx = 1
@@ -343,8 +223,6 @@ def parseCommandLine(argv):
         if (par == "-SKIP"):
             idx += 1
             skip = sys.argv[idx]
-        elif (par == "-STATUS"):
-            status = 1
         elif (par == "-TESTS"):
             idx += 1
             tests = sys.argv[idx].split(",")
@@ -358,13 +236,11 @@ def parseCommandLine(argv):
 
     if (notifyemail == ""): notifyemail = None
 
-    return skip, status, tests, notifyemail
+    return skip, tests, notifyemail
 
 def main():
-    skip, status, tests, notifyemail = parseCommandLine(sys.argv)
-    if (status):
-        genStatus()
-    elif (tests != []):
+    skip, tests, notifyemail = parseCommandLine(sys.argv)
+    if tests:
         for testModName in tests:
             testMod   = importlib.import_module(testModName)
             runMethod = getattr(testMod, 'run')
