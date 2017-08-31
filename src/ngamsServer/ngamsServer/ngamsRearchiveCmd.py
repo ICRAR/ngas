@@ -40,13 +40,14 @@ import logging
 import os
 import time, base64
 
+import ngamsArchiveUtils
 import ngamsArchiveCmd, ngamsFileUtils, ngamsCacheControlThread
-from ngamsLib import ngamsStatus, ngamsLib
+from ngamsLib import ngamsLib
 from ngamsLib import ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
-from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_GET, \
+from ngamsLib.ngamsCore import NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_GET, \
     NGAMS_HTTP_SUCCESS, mvFile, getDiskSpaceAvail, genLog, \
-    NGAMS_IDLE_SUBSTATE, NGAMS_SUCCESS
+    NGAMS_IDLE_SUBSTATE, NGAMS_SUCCESS, NGAMS_HTTP_HDR_CHECKSUM
 
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,6 @@ def receiveData(srvObj,
                Disk Info Object for the selected target disk
                (tuple/(fileInfo, ngamsDiskInfo)).
     """
-    T = TRACE()
 
     # Note, this algorithm does not implement support for back-log buffering
     # for speed optimization reasons.
@@ -111,30 +111,37 @@ def receiveData(srvObj,
                                          genTmpFiles = 0)
     reqPropsObj.setStagingFilename(stagingFilename)
 
-    # Save the data into the Staging File.
     # If it is an Rearchive Pull Request, open the URL.
     if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
         # urllib.urlopen will attempt to get the content-length based on the URI
         # i.e. file, ftp, http
         handle = ngamsHighLevelLib.openCheckUri(reqPropsObj.getFileUri())
-        reqPropsObj.setSize(handle.info()['Content-Length'])
         reqPropsObj.setReadFd(handle)
-        ioTime = ngamsHighLevelLib.saveInStagingFile(srvObj.getCfg(),
-                                                     reqPropsObj,
-                                                     stagingFilename,
-                                                     trgDiskInfoObj)
-        reqPropsObj.incIoTime(ioTime)
+        reqPropsObj.setSize(handle.info()['Content-Length'])
     else:
-        try:
-            reqPropsObj.setSize(fileInfoObj.getFileSize())
-            ioTime = ngamsHighLevelLib.saveInStagingFile(srvObj.getCfg(),
-                                                         reqPropsObj,
-                                                         stagingFilename,
-                                                         trgDiskInfoObj)
-            reqPropsObj.incIoTime(ioTime)
-        except Exception, e:
-            reqPropsObj.setSize(0)
-            raise e
+        reqPropsObj.setSize(fileInfoObj.getFileSize())
+
+
+    # Save the data into the Staging File.
+    try:
+        # Make mutual exclusion on disk access (if requested).
+        ngamsHighLevelLib.acquireDiskResource(srvObj.getCfg(), trgDiskInfoObj.getSlotId())
+
+        # If provided with a checksum, calculate the checksum on the incoming
+        # data stream and check that it is the same as the expected one
+        # (as indicated in the file info structure given by the user)
+        stored_checksum = fileInfoObj.getChecksum()
+        crc_variant = fileInfoObj.getChecksumPlugIn()
+        skip_crc = True
+        if stored_checksum and crc_variant:
+            reqPropsObj.addHttpPar('crc_variant', crc_variant)
+            reqPropsObj.__httpHdrDic[NGAMS_HTTP_HDR_CHECKSUM] = stored_checksum
+            skip_crc = False
+
+        ngamsArchiveUtils.archive_contents_from_request(stagingFilename, srvObj.getCfg(),
+                                                        reqPropsObj, skip_crc=skip_crc)
+    finally:
+        ngamsHighLevelLib.releaseDiskResource(srvObj.getCfg(), trgDiskInfoObj.getSlotId())
 
     # Synchronize the file caches to ensure the files have been stored
     # on the disk and check that the files are accessible.
@@ -161,11 +168,6 @@ def processRequest(srvObj,
 
     Returns:         Void.
     """
-    T = TRACE()
-
-    # Check the consistency of the staging file via the provided DCPI and
-    # checksum value.
-    ngamsFileUtils.check_checksum(srvObj, fileInfoObj, reqPropsObj.getStagingFilename())
 
     # Generate the DB File Information.
     newFileInfoObj = fileInfoObj.clone().\
@@ -218,7 +220,6 @@ def handleCmdRearchive(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
 
     archive_start = time.time()
 
