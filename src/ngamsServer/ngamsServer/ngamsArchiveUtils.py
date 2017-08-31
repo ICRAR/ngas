@@ -127,6 +127,32 @@ def archive_contents(out_fname, fin, fsize, block_size, crc_variant, skip_crc=Fa
                 crc = crc_m(buff, crc)
                 crctime += time.time() - crcstart
 
+        # rtobar, 31 Aug 2017
+        #
+        # I've added these two lines here to ensure that the contents of the
+        # file are actually safe on disk at this stage, but it's commented out
+        # for the moment because I'm not fully sure this is the best place to do
+        # this. It probably is because any problem that occurs later without
+        # doing an explicit fsync() here would mean that not *all* the data
+        # might have been saved to disk.
+        #
+        # On the other hand, the NGAS code already invokes a disk-sync plug-in
+        # after each file archival (which syncs *the whole disk*!) if the
+        # backlog buffering feature is on (which seems to be the case, at least
+        # in our MWA setups). This later full-disk sync seems unnecessary
+        # (backlog buffering or not), and it looks to me that an unconditional
+        # fsync() is really what we want. Still, I prefer not to rush and try
+        # to understand the reasoning behind the current approach (performance
+        # is the only thing I can think of) before doing any changes.
+        #
+        # All the above means also that if I enable these two lines I'll simply
+        # remove the full disk sync logic.
+
+#        # Make sure all the content has been flushed from user-space caches...
+#        fout.flush()
+#        # ... and hits the disk
+#        os.fsync(fout.fileno())
+
     total_time = time.time() - start
 
     if readin > fsize:
