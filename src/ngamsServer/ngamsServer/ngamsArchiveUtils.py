@@ -187,6 +187,7 @@ def archive_contents_from_request(out_fname, cfg, req, skip_crc=False):
     result = archive_contents(out_fname, fin, size, block_size, variant,
                               skip_crc=skip_crc)
 
+    req.incIoTime(result.rtime + result.wtime)
     req.setBytesReceived(size)
     ingestRate = size / result.totaltime / 1024. / 1024.
 
@@ -935,11 +936,7 @@ def dataHandler(srvObj,
         finally:
             ngamsHighLevelLib.releaseDiskResource(srvObj.getCfg(), trgDiskInfo.getSlotId())
 
-        ioTime = archive_result.totaltime
-
         srvObj.test_AfterSaveInStagingFile()
-        logger.debug("Iotime returned from saveInStagingFile: %6.2f", ioTime)
-        reqPropsObj.incIoTime(ioTime)
         logger.debug("Create Temporary Request Properties File: %s", tmpReqPropsFilename)
         tmpReqPropsObj = reqPropsObj.clone().setReadFd(None).setWriteFd(None).\
                          setTargDiskInfo(None)

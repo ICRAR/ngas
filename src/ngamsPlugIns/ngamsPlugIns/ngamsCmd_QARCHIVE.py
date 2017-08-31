@@ -234,9 +234,6 @@ def handleCmd(srvObj,
     # of the HTTP request, archive push).
     stagingInfo = saveFromHttpToFile(srvObj.getCfg(), reqPropsObj,
                                      stgFilename, 1, targDiskInfo)
-    ioTime = stagingInfo[0]
-    logger.debug("IO_TIME: %10.3f s", ioTime)
-    reqPropsObj.incIoTime(ioTime)
 
     # Invoke DAPI.
     plugIn = srvObj.getMimeTypeDic()[mimeType]
