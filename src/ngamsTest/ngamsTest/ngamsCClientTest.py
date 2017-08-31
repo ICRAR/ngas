@@ -208,16 +208,12 @@ class ngamsCClientTest(ngamsTestSuite):
                                      ["-fileVersion", "2"]])[0]
         self.checkTags(statObj.dumpBuf(),
                        ["NumberOfFiles:                      2",
-                        "BytesStored:                        91646",
                         "saf/2001-05-08/2/TEST.2001-05-08T15:25:00.123.fits.gz",
                         "TEST.2001-05-08T15:25:00.123",
                         "application/x-gfits",
-                        "FileSize:                           45823",
                         "UncompressedFileSize:               69120",
                         "Compression:                        gzip",
-                        "Ignore:                             0",
-                        "Checksum:                           1379947874",
-                        "ChecksumPlugIn:                     ngamsGenCrc32"])
+                        "Ignore:                             0"])
 
 
     def test_StatusCmd_4(self):
