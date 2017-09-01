@@ -32,14 +32,13 @@ import logging
 import os
 import time
 
-import ngamsCmd_QARCHIVE
 from ngamsLib.ngamsCore import TRACE, genLog, checkCreatePath, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, \
     NGAMS_STAGING_DIR, genUniqueId, mvFile, getFileCreationTime, \
     NGAMS_FILE_STATUS_OK, getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,\
     toiso8601, FMT_DATE_ONLY
 from ngamsLib import ngamsMIMEMultipart, ngamsHighLevelLib, ngamsFileInfo, ngamsLib
-from ngamsServer import ngamsCacheControlThread
+from ngamsServer import ngamsCacheControlThread, ngamsArchiveUtils
 
 
 logger = logging.getLogger(__name__)
@@ -230,7 +229,7 @@ def handleCmd(srvObj,
 
     # Determine the target volume, ignoring the stream concept.
     logger.debug("Determine the target volume, ignoring the stream concept.")
-    targDiskInfo = ngamsCmd_QARCHIVE.getTargetVolume(srvObj)
+    targDiskInfo = ngamsArchiveUtils._random_target_volume(srvObj)
     if (targDiskInfo == None):
         errMsg = "No disk volumes are available for ingesting any files."
         raise Exception(errMsg)
