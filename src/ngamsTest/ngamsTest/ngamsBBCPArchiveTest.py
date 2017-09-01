@@ -21,18 +21,16 @@
 #
 #******************************************************************************
 #
-
 #
 """
 Contains the Test Suite for the BBCP Command.
 """
 
 import sys
-import urllib
-import urllib2
-import httplib
 import subprocess
-from contextlib import closing
+import contextlib
+
+from ngamsLib import ngamsHttpUtils
 from ngamsTestLib import ngamsTestSuite, runTest
 from unittest.case import skipIf
 
@@ -53,23 +51,51 @@ class ngamsBBCPArchiveTest(ngamsTestSuite):
             Test BBCP archive plugin
         """
 
-        host = 'localhost:8888'
-        self.prepExtSrv(cfgFile = 'src/ngamsCfg.xml')
-        
-        test_file = '/bin/cp'
-        query_args = { 'fileUri': test_file,
-                       'bnum_streams': 2,
-                       'mimeType': 'application/octet-stream'}
+        self.prepExtSrv()
 
-        bbcpurl = 'http://%s/BBCPARC?%s' % (host, urllib.urlencode(query_args))
+        query_args = {'filename': '/bin/cp',
+                      'bnum_streams': 2,
+                      'mime_type': 'application/octet-stream'}
 
-        request = urllib2.Request(bbcpurl)
-        try:
-            with closing(urllib2.urlopen(request, timeout = 50)) as resp:
-                self.checkEqual(resp.getcode(), 200, None)
-        except urllib2.HTTPError as e:
-            print e.read()
-            raise e
+        response = ngamsHttpUtils.httpGet('localhost', 8888, 'BBCPARC',
+                                          pars=query_args, timeout=50)
+        with contextlib.closing(response):
+            self.assertEqual(200, response.status)
+
+
+    def test_correct_checksum(self):
+
+        _, db = self.prepExtSrv()
+
+        query_args = {'filename': '/bin/cp',
+                      'bnum_streams': 2,
+                      'mime_type': 'application/octet-stream',
+                      'crc_variant': '0'}
+
+        # Archive with BBCP first, then with QARCHIVE
+        for cmd in ('BBCPARC', 'QARCHIVE'):
+            response = ngamsHttpUtils.httpGet('localhost', 8888, cmd,
+                                              pars=query_args, timeout=50)
+            with contextlib.closing(response):
+                self.assertEqual(200, response.status)
+
+        # Both checksums are equal
+        checksums = db.query2('SELECT checksum FROM ngas_files ORDER BY file_version ASC');
+        checksums = set(c[0] for c in checksums)
+        self.assertEqual(1, len(checksums))
+
+    def test_bbcp_no_crc32c(self):
+
+        # Ask for crc32c (variant = 1), bbcp doesn't support it so it should fail
+        self.prepExtSrv()
+        query_args = {'filename': '/bin/cp',
+                      'bnum_streams': 2,
+                      'mime_type': 'application/octet-stream',
+                      'crc_variant': '1'}
+        response = ngamsHttpUtils.httpGet('localhost', 8888, 'BBCPARC',
+                                          pars=query_args, timeout=50)
+        with contextlib.closing(response):
+            self.assertNotEqual(200, response.status)
 
 def run():
     """
