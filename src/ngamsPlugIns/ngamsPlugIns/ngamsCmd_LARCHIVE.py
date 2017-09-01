@@ -122,7 +122,8 @@ def archiveFromFile(srvObj,
                resMain.getCompleteFilename())
         iorate = reqPropsObjLoc.getSize()/(time.time() - st)
 
-        ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain)
+        ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain,
+                                                trgDiskInfo)
     except Exception, e:
         # If another error occurs, than one qualifying for Back-Log
         # Buffering the file, we have to log an error.

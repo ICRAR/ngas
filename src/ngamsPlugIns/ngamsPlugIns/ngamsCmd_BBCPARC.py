@@ -164,7 +164,8 @@ def archiveFromFile(srvObj,
 
     mvFile(reqPropsObjLoc.getStagingFilename(), resMain.getCompleteFilename())
 
-    diskInfo = ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain, bbcp_checksum)
+    diskInfo = ngamsArchiveUtils.postFileRecepHandling(srvObj, reqPropsObjLoc, resMain,
+                                                       trgDiskInfo, cksum=bbcp_checksum)
 
     return (resMain, trgDiskInfo, iorate)
 
