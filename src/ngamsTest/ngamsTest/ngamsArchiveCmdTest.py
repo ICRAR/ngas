@@ -712,7 +712,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         subprocess.call(['chmod', '-R', 'a+rwx', repDiskPath], shell=False)
         self.assertEquals(ngamsCore.NGAMS_FAILURE, statObj.getStatus())
         msg = "Incorrect status returned for Archive Push Request/Replication Disk read-only"
-        self.assertEquals(4011, int(statObj.getMessage().split(":")[1]), msg) # NGAMS_ER_ARCHIVE_PUSH_REQ:4011
+        self.assertEquals(3025, int(statObj.getMessage().split(":")[1]), msg) # NGAMS_AL_CP_FILE:3025
 
 
     def test_ErrHandling_3(self):
