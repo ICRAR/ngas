@@ -25,7 +25,6 @@ import logging
 import time
 
 from ngamsServer.ngamsJanitorCommon import checkStopJanitorThread
-from ngamsLib import ngamsDbm
 
 
 logger = logging.getLogger(__name__)
@@ -39,12 +38,11 @@ def run(srvObj, stopEvt):
     logger.debug("Checking/cleaning up Request DB ...")
     reqTimeOut = 86400
 
-    requestDbm = ngamsDbm.ngamsDbm(srvObj.getReqDbName())
-    reqIds = requestDbm.keys()
+    req_ids = srvObj.janitor_communicate('get-request-ids', timeout=0.5)
 
     to_delete = []
-    for reqId in reqIds:
-        reqPropsObj = requestDbm.get(reqId)
+    for reqId in req_ids:
+        reqPropsObj = srvObj.janitor_communicate('get-request', reqId, timeout=0.5)
         checkStopJanitorThread(stopEvt)
 
         # Remove a Request Properties Object from the DB if

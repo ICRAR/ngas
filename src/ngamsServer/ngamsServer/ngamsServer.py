@@ -49,6 +49,7 @@ import threading
 import time
 import traceback
 import urllib
+import uuid
 
 import pkg_resources
 
@@ -64,7 +65,7 @@ from ngamsLib.ngamsCore import \
     NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs,\
     toiso8601
 from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent, ngamsHttpUtils
-from ngamsLib import ngamsDbm, ngamsDb, ngamsConfig, ngamsReqProps
+from ngamsLib import ngamsDb, ngamsConfig, ngamsReqProps
 from ngamsLib import ngamsStatus, ngamsHostInfo, ngamsNotification
 import ngamsAuthUtils, ngamsCmdHandling, ngamsSrvUtils
 import ngamsJanitorThread
@@ -72,6 +73,7 @@ import ngamsDataCheckThread
 import ngamsUserServiceThread
 import ngamsMirroringControlThread
 import ngamsCacheControlThread
+import request_db
 
 
 logger = logging.getLogger(__name__)
@@ -415,10 +417,9 @@ class ngamsServer(object):
         self.__lastReqEndTime           = 0.0
         self.__nextDataCheckTime        = 0
 
-        # Dictionary to keep track of the various requests being handled.
-        self.__requestDbm               = None
-        self.__requestDbmSem            = threading.Semaphore(1)
-        self.__requestId                = 0
+        # The requests database. Which back-end is used depends on the
+        # configuration
+        self.request_db = None
 
         # Handling of a Cache Archive.
         self._cacheArchive              = False
@@ -573,55 +574,6 @@ class ngamsServer(object):
         return self._dataMoverOnly
 
 
-    def getReqDbName(self):
-        """
-        Get the name of the Request Info DB (BSD DB).
-
-        Returns:    Filename of Request Info DB (string).
-        """
-        ngasId = self.getHostId()
-        cacheDir = ngamsHighLevelLib.genCacheDirName(self.getCfg())
-        return os.path.normpath(cacheDir + "/" + ngasId + "_REQUEST_INFO_DB")
-
-
-    def addRequest(self,
-                   reqPropsObj):
-        """
-        Add a request handling object in the Request List (NG/AMS Request
-        Properties Object).
-
-        reqPropsObj:     Instance of the request properties object
-                         (ngamsReqProps).
-
-        Returns:         Request ID (integer).
-        """
-        if not self.__ngamsCfgObj.getUseRequestDb():
-            return
-
-        try:
-            self.__requestDbmSem.acquire()
-            self.__requestId += 1
-            if (self.__requestId >= 1000000): self.__requestId = 1
-            reqPropsObj.setRequestId(self.__requestId)
-            reqObj = reqPropsObj.clone().setReadFd(None).setWriteFd(None)
-            self.__requestDbm.add(str(self.__requestId), reqObj)
-            self.__requestDbm.sync()
-            self.__requestDbmSem.release()
-            return self.__requestId
-        except Exception, e:
-            self.__requestDbmSem.release()
-            raise e
-
-    def recoveryRequestDb(self):
-        """
-        Remove and recreate the request bsddb
-        """
-        reqDbmName = self.getReqDbName()
-        rmFile(reqDbmName + "*")
-        self.__requestDbm = ngamsDbm.ngamsDbm(reqDbmName, cleanUpOnDestr = 0,
-                                              writePerm = 1)
-        logger.debug("Recovered (Checked/created) NG/AMS Request Info DB")
-
     def updateRequestDb(self,
                         reqPropsObj):
         """
@@ -632,21 +584,7 @@ class ngamsServer(object):
         Returns:     Reference to object itself.
         """
 
-        if not self.__ngamsCfgObj.getUseRequestDb():
-            return
-
-        try:
-            self.__requestDbmSem.acquire()
-            reqId = reqPropsObj.getRequestId()
-            reqObj = reqPropsObj.clone().setReadFd(None).setWriteFd(None)
-            self.__requestDbm.add(str(reqId), reqObj)
-            self.__requestDbm.sync()
-            self.__requestDbmSem.release()
-            return self
-        except ngamsDbm.DbRunRecoveryError:
-            self.recoveryRequestDb() # this will ensure next time the same error will not appear again, but this time, it will still throw
-            self.__requestDbmSem.release()
-            raise
+        self.request_db.update(reqPropsObj)
 
 
     def getRequest(self,
@@ -660,47 +598,7 @@ class ngamsServer(object):
         Returns:       NG/AMS Request Properties Object or None
                        (ngamsReqProps|None).
         """
-
-        if not self.__ngamsCfgObj.getUseRequestDb():
-            raise Exception("Server is not configured to keep a requests DB")
-
-        try:
-            self.__requestDbmSem.acquire()
-            if (self.__requestDbm.hasKey(str(requestId))):
-                retVal = self.__requestDbm.get(str(requestId))
-            else:
-                retVal = None
-            self.__requestDbmSem.release()
-            return retVal
-        except ngamsDbm.DbRunRecoveryError:
-            self.recoveryRequestDb()
-            self.__requestDbmSem.release()
-            raise
-
-
-    def delRequests(self, requestIds):
-        """
-        Delete the Request Properties Object associated to the given
-        Request ID.
-
-        requestId:     ID allocated to the request (string).
-
-        Returns:       Reference to object itself.
-        """
-
-        if not self.__ngamsCfgObj.getUseRequestDb():
-            raise Exception("Server is not configured keep a requests DB")
-
-        with self.__requestDbmSem:
-            try:
-                for req_id in requestIds:
-                    if self.__requestDbm.hasKey(str(req_id)):
-                        self.__requestDbm.rem(str(req_id))
-                self.__requestDbm.sync()
-            except ngamsDbm.DbRunRecoveryError:
-                self.recoveryRequestDb()
-                raise
-
+        return self.request_db.get(requestId)
 
     def takeStateSem(self):
         """
@@ -976,8 +874,14 @@ class ngamsServer(object):
                     self._janitordbChangeSync.clear()
                 reply = info
 
+            elif name == 'get-request-ids':
+                reply = self.request_db.keys()
+
+            elif name == 'get-request':
+                reply = self.request_db.get(item)
+
             elif name == 'delete-requests':
-                self.delRequests(item)
+                self.request_db.delete(item)
                 reply = None
 
             else:
@@ -1751,7 +1655,8 @@ class ngamsServer(object):
 
         # Create new request handle + add this entry in the Request DB.
         reqPropsObj = ngamsReqProps.ngamsReqProps()
-        self.addRequest(reqPropsObj)
+        reqPropsObj.setRequestId(str(uuid.uuid4()))
+        self.request_db.add(reqPropsObj)
 
         # Handle read/write FD.
         reqPropsObj.setReadFd(readFd).setWriteFd(writeFd)
@@ -1796,7 +1701,7 @@ class ngamsServer(object):
                            NGAMS_FAILURE, errMsg)
         finally:
             reqPropsObj.setCompletionTime(1)
-            self.updateRequestDb(reqPropsObj)
+            self.request_db.update(reqPropsObj)
             self.setLastReqEndTime()
 
             with self.serving_count_lock:
@@ -2555,10 +2460,6 @@ class ngamsServer(object):
         checkCreatePath(ngamsHighLevelLib.getTmpDir(self.getCfg()))
         checkCreatePath(ngamsHighLevelLib.genCacheDirName(self.getCfg()))
 
-        # Remove Request DB (DBM file).
-        if self.__ngamsCfgObj.getUseRequestDb():
-            rmFile(self.getReqDbName() + "*")
-
         # Find the directories (mount directoties) to monitor for a minimum
         # amount of disk space. This is resolved from the various
         # directories defined in the configuration.
@@ -2585,14 +2486,7 @@ class ngamsServer(object):
 
         logger.debug("Found NG/AMS System Directories to monitor for disk space")
 
-        if self.__ngamsCfgObj.getUseRequestDb():
-            logger.debug("Check/create NG/AMS Request Info DB ...")
-            reqDbmName = self.getReqDbName()
-            self.__requestDbm = ngamsDbm.ngamsDbm(reqDbmName, cleanUpOnDestr = 0,
-                                                  writePerm = 1)
-            logger.info("Checked/created NG/AMS Request Info DB")
-        else:
-            logger.info("NG/AMS Request Info DB disabled")
+        self.request_db = request_db.InMemoryRequestDB()
 
         #if (self.getCfg().getLogBufferSize() != -1):
         #    setLogCache(self.getCfg().getLogBufferSize())
