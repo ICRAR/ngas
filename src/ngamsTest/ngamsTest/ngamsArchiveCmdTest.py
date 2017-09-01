@@ -62,9 +62,11 @@ _checkMail = False
 # used by the ngamsFitsPlugIn is nowhere to be found (even on the internet...)
 _check_fits_checksums = False
 
+_crc32c_available = False
 _test_checksums = True
 try:
     import crc32c
+    _crc32c_available = True
 except ImportError:
     _test_checksums = False
 
@@ -1545,6 +1547,11 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         test_file = 'dummy_name.fits'
         params = {'filename': test_file,
                   'mime_type': 'application/octet-stream'}
+
+        # For a quicker test
+        if _crc32c_available:
+            params['crc_variant'] = 'crc32c'
+
         params = urllib.urlencode(params)
         selector = '{0}?{1}'.format(cmd, params)
         with closing(httplib.HTTPConnection(host, timeout = 120)) as conn:
