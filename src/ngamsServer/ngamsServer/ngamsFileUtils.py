@@ -595,19 +595,26 @@ def syncCachesCheckFiles(srvObj,
 
 
 def _normalize_variant(variant_or_name):
+
     variant = variant_or_name
-    if isinstance(variant, basestring):
-    # In NGAS versions <= 8 the CRC was calculated as a separate step after
-    # archiving a file, and therefore was loaded as a plugin that received a
-    # filename when invoked.
-    # These two are the names stored at the database of those plugins, although
-    # the second one is simply a dummy name
-        if variant in ['ngamsGenCrc32', 'StreamCrc32', 'crc32']:
+
+    if variant is None:
+        variant = -1
+
+    # A plug-in name or variant name
+    elif isinstance(variant, basestring):
+        # In NGAS versions <= 8 the CRC was calculated as a separate step after
+        # archiving a file, and therefore was loaded as a plugin that received a
+        # filename when invoked.
+        # These two are the names stored at the database of those plugins, although
+        # the second one is simply a dummy name
+        if variant in ('ngamsGenCrc32', 'StreamCrc32', 'crc32'):
             variant = 0
         elif variant == 'crc32c':
             variant = 1
         else:
             variant = int(variant)
+
     return variant
 
 def get_checksum_method(variant_or_name):
