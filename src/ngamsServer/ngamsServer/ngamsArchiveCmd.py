@@ -32,27 +32,9 @@
 Function to handle the ARCHIVE command.
 """
 
-import logging
-
 import ngamsArchiveUtils
-from ngamsLib.ngamsCore import genLog, NGAMS_IDLE_SUBSTATE, \
-    NGAMS_NOTIF_ERROR, NGAMS_NOTIF_NO_DISKS
-from ngamsLib import ngamsNotification, ngamsDiskUtils
+from ngamsLib.ngamsCore import NGAMS_IDLE_SUBSTATE
 
-
-logger = logging.getLogger(__name__)
-
-def get_target_disk(srvObj, mimeType, file_uri, size):
-    try:
-        return ngamsDiskUtils.findTargetDisk(srvObj.getHostId(),
-                                             srvObj.getDb(), srvObj.getCfg(),
-                                             mimeType, 0, caching=0,
-                                             reqSpace=size)
-    except Exception as e:
-        errMsg = str(e) + ". Attempting to archive file: %s" % file_uri
-        ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_NO_DISKS,
-                                  "NO DISKS AVAILABLE", errMsg)
-        raise
 
 def handleCmdArchive(srvObj,
                      reqPropsObj,
@@ -81,12 +63,8 @@ def handleCmdArchive(srvObj,
         srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
         return
 
-    def find_target_disk():
-        return get_target_disk(srvObj, mimeType, reqPropsObj.getSafeFileUri(),
-                               reqPropsObj.getSize())
-
     ngamsArchiveUtils.dataHandler(srvObj, reqPropsObj, httpRef,
-                                  find_target_disk=find_target_disk,
+                                  volume_strategy=ngamsArchiveUtils.VOLUME_STRATEGY_STREAMS,
                                   pickle_request=True, sync_disk=True,
                                   do_replication=True)
 

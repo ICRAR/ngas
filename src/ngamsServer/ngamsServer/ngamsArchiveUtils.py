@@ -57,10 +57,39 @@ import ngamsFileUtils
 import ngamsCacheControlThread
 
 
+logger = logging.getLogger(__name__)
+
 # Dictionary to keep track of disk space warnings issued.
 _diskSpaceWarningDic = {}
 
-logger = logging.getLogger(__name__)
+VOLUME_STRATEGY_RANDOM = 0
+VOLUME_STRATEGY_STREAMS = 1
+
+def _random_target_volume(srv):
+
+    # Get a random volume from the list of available volumes
+    # This should balance load the disk utilization
+    res = srv.getDb().getAvailableVolumes(srv.getHostId())
+    if not res:
+        return None
+
+    # Shuffle the results.
+    res = list(res)
+    random.shuffle(res)
+    return ngamsDiskInfo.ngamsDiskInfo().unpackSqlResult(res[0])
+
+def _stream_target_volume(srvObj, mimeType, file_uri, size):
+    try:
+        return ngamsDiskUtils.findTargetDisk(srvObj.getHostId(),
+                                             srvObj.getDb(), srvObj.getCfg(),
+                                             mimeType, 0, caching=0,
+                                             reqSpace=size)
+    except Exception as e:
+        errMsg = str(e) + ". Attempting to archive file: %s" % file_uri
+        ngamsNotification.notify(srvObj.getHostId(), srvObj.getCfg(), NGAMS_NOTIF_NO_DISKS,
+                                  "NO DISKS AVAILABLE", errMsg)
+        raise
+
 
 class eof_found(Exception):
     """Throw by archive_contents if the EOF is found while reading the incoming data"""
@@ -71,9 +100,9 @@ class too_much_data(Exception):
     pass
 
 archiving_results = collections.namedtuple('archiving_results',
-                                           'rtime wtime crctime totaltime crcname crc')
+                                           'size rtime wtime crctime totaltime crcname crc')
 
-def archive_contents(out_fname, fin, fsize, block_size, crc_variant, skip_crc=False):
+def archive_contents(out_fname, fin, fsize, block_size, crc_name, skip_crc=False):
     """
     Archives the contents read from `fin` (a file-like object with .read()
     support) and writes it to file `out_fname`, which is opened in write mode
@@ -84,15 +113,11 @@ def archive_contents(out_fname, fin, fsize, block_size, crc_variant, skip_crc=Fa
     corresponding fields.
     """
 
-    # We always want to know what the name of the CRC method is
-    # (it can be used by plug-ins later on, for logging, etc.)
-    crc_name = ngamsFileUtils.get_checksum_name(crc_variant)
-
     # Get the CRC method to be used and initialize CRC value
     crc_m = None
     crc = None
     if not skip_crc:
-        crc_m = ngamsFileUtils.get_checksum_method(crc_variant)
+        crc_m = ngamsFileUtils.get_checksum_method(crc_name)
         if crc_m:
             crc = 0
 
@@ -166,18 +191,15 @@ def archive_contents(out_fname, fin, fsize, block_size, crc_variant, skip_crc=Fa
     if total_time == 0.0:
         total_time = 0.000001
 
-    return archiving_results(rtime, wtime, crctime, total_time, crc_name, crc)
+    return archiving_results(readin, rtime, wtime, crctime, total_time, crc_name, crc)
 
 
-def archive_contents_from_request(out_fname, cfg, req, skip_crc=False):
+def archive_contents_from_request(out_fname, cfg, req, skip_crc=False, transfer=None):
     """
     Inspects the given configuration and request objects, and calls
     archive_contents with the required arguments.
     """
 
-    block_size = cfg.getBlockSize()
-    size = req.getSize()
-    fin = req.getReadFd()
     checkCreatePath(os.path.dirname(out_fname))
 
     # The CRC variant is configured in the server, but can be overridden
@@ -186,13 +208,20 @@ def archive_contents_from_request(out_fname, cfg, req, skip_crc=False):
         variant = req['crc_variant']
     else:
         variant = cfg.getCRCVariant()
+    crc_name = ngamsFileUtils.get_checksum_name(variant)
 
-    result = archive_contents(out_fname, fin, size, block_size, variant,
-                              skip_crc=skip_crc)
+    def http_transfer(req, out_fname, crc_name, skip_crc):
+        block_size = cfg.getBlockSize()
+        size = req.getSize()
+        fin = req.getReadFd()
+        return archive_contents(out_fname, fin, size, block_size, crc_name, skip_crc)
+
+    transfer = transfer or http_transfer
+    result = transfer(req, out_fname, crc_name, skip_crc=skip_crc)
 
     req.incIoTime(result.rtime + result.wtime)
-    req.setBytesReceived(size)
-    ingestRate = size / result.totaltime / 1024. / 1024.
+    req.setBytesReceived(result.size)
+    ingestRate = result.size / result.totaltime / 1024. / 1024.
 
     # Compare checksum if required
     checksum = req.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM)
@@ -203,10 +232,10 @@ def archive_contents_from_request(out_fname, cfg, req, skip_crc=False):
         else:
             logger.info("%s CRC checked, OK!", req.getFileUri())
 
-    logger.debug('Block size: %d; File size: %d; Transfer time: %.4f s; CRC time: %.4f s; write time %.4f s',
-                 block_size, size, result.totaltime, result.crctime, result.wtime)
+    logger.debug('File size: %d; Transfer time: %.4f s; CRC time: %.4f s; write time %.4f s',
+                 result.size, result.totaltime, result.crctime, result.wtime)
     logger.info('Saved data in file: %s. Bytes received: %d. Time: %.4f s. Rate: %.2f MB/s. Checksum (%s): %s',
-                out_fname, size, result.totaltime, ingestRate, str(result.crcname), str(result.crc))
+                out_fname, result.size, result.totaltime, ingestRate, str(result.crcname), str(result.crc))
 
     return result
 
@@ -954,11 +983,27 @@ def archiveInitHandling(srvObj, reqPropsObj, httpRef, do_probe=False, try_to_pro
 
     return mimeType
 
-def dataHandler(srv, request, *args, **kwargs):
+def dataHandler(srv, request, httpRef, volume_strategy=VOLUME_STRATEGY_STREAMS,
+                pickle_request=True, sync_disk=True, do_replication=True,
+                transfer=None):
+
+    # Choose the method to select which volume will host the incoming data
+    if volume_strategy == VOLUME_STRATEGY_RANDOM:
+        find_target_disk = _random_target_volume
+    elif volume_strategy == VOLUME_STRATEGY_STREAMS:
+        def find_target_disk(srv):
+            mimeType = request.getMimeType()
+            file_uri = request.getFileUri()
+            size = request.getSize()
+            return _stream_target_volume(srv, mimeType, file_uri, size)
+    else:
+        raise Exception("Unknown volume selection strategy: %d", volume_strategy)
 
     # Thin wrapper around _dataHandler to send notifications, just in case
     try:
-        _dataHandler(srv, request, *args, **kwargs)
+        _dataHandler(srv, request, httpRef, find_target_disk,
+                     pickle_request=pickle_request, sync_disk=sync_disk,
+                     do_replication=do_replication, transfer=transfer)
     except Exception as e:
         errMsg = genLog("NGAMS_ER_ARCHIVE_PUSH_REQ",
                         [request.getSafeFileUri(), str(e)])
@@ -967,22 +1012,7 @@ def dataHandler(srv, request, *args, **kwargs):
         raise
 
 def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
-                pickle_request=True, sync_disk=True, do_replication=True):
-    """
-    Data handler that takes care of the handling in connection
-    with archiving a data file.
-
-    srvObj:        Reference to NG/AMS server class object (ngamsServer).
-
-    reqPropsObj:   Request Property object to keep track of actions done
-                   during the request handling (ngamsReqProps).
-
-    httpRef:       Reference to the HTTP request handler
-                   object (ngamsHttpRequestHandler).
-
-    Returns:       Disk info object with status for Main Disk
-                   where data file was stored (ngamsDiskInfo).
-    """
+                pickle_request, sync_disk, do_replication, transfer):
 
     # GET means pull, POST is push
     if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
@@ -1010,7 +1040,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
     try:
 
         # Generate target filename. Remember to set this in the Request Object.
-        trgDiskInfo = find_target_disk()
+        trgDiskInfo = find_target_disk(srvObj)
         reqPropsObj.setTargDiskInfo(trgDiskInfo)
         if trgDiskInfo is None:
             errMsg = "No disk volumes are available for ingesting any files."
@@ -1042,7 +1072,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         try:
             ngamsHighLevelLib.acquireDiskResource(srvObj.getCfg(), trgDiskInfo.getSlotId())
             archive_result = archive_contents_from_request(tmpStagingFilename, srvObj.getCfg(), reqPropsObj,
-                                                   skip_crc=skip_crc)
+                                                   skip_crc=skip_crc, transfer=transfer)
         finally:
             ngamsHighLevelLib.releaseDiskResource(srvObj.getCfg(), trgDiskInfo.getSlotId())
 

@@ -42,32 +42,12 @@ simplified in a few ways:
 """
 
 import logging
-import random
 
 from ngamsLib.ngamsCore import NGAMS_IDLE_SUBSTATE
-from ngamsLib import ngamsDiskInfo
 from ngamsServer import ngamsArchiveUtils
 
 
 logger = logging.getLogger(__name__)
-
-def getTargetVolume(srvObj):
-    """
-    Get a random target volume with availability.
-
-    srvObj:         Reference to NG/AMS server class object (ngamsServer).
-
-    Returns:        Target volume object or None (ngamsDiskInfo | None).
-    """
-    res = srvObj.getDb().getAvailableVolumes(srvObj.getHostId())
-    if not res:
-        return None
-
-    # Shuffle the results.
-    res = list(res)
-    random.shuffle(res)
-    return ngamsDiskInfo.ngamsDiskInfo().unpackSqlResult(res[0])
-
 
 def handleCmd(srvObj,
               reqPropsObj,
@@ -94,10 +74,7 @@ def handleCmd(srvObj,
         srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
         return
 
-    def find_target_disk():
-        return getTargetVolume(srvObj)
-
     ngamsArchiveUtils.dataHandler(srvObj, reqPropsObj, httpRef,
-                                  find_target_disk=find_target_disk,
+                                  volume_strategy=ngamsArchiveUtils.VOLUME_STRATEGY_RANDOM,
                                   pickle_request=False, sync_disk=False,
                                   do_replication=False)
