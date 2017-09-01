@@ -30,7 +30,7 @@ from ngamsServer.ngamsJanitorCommon import StopJanitorThreadException
 
 logger = logging.getLogger(__name__)
 
-def run(srvObj, stopEvt, jan_to_srv_queue):
+def run(srvObj, stopEvt):
 
     try:
         updateDbSnapShots(srvObj, stopEvt)

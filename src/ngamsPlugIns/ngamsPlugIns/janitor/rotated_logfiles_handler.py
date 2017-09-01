@@ -52,7 +52,7 @@ def get_logfile_handler_plugins(cfg):
 
     return _lh_plugins
 
-def run(srvObj, stopEvt, jan_to_srv_queue):
+def run(srvObj, stopEvt):
 
     cfg = srvObj.getCfg()
     logdir = os.path.dirname(cfg.getLocalLogFile())

@@ -948,43 +948,56 @@ class ngamsServer(object):
          * Continue like this until the janitor process is signaled to stop.
         """
 
+        UNSET = object()
         while not self._janitorProcStopEvt.is_set():
 
             # Reading on our end
             try:
-                x = self._jan_to_serv_queue.get(timeout=0.01)
+                name, item = self._jan_to_serv_queue.get(timeout=0.01)
             except Queue.Empty:
                 continue
 
+
             # See what we got
-            inspect_db_changes = False
-            name, item = x
+            # TODO: This is obviously not scalable
+            # janitor plug-ins should be able to provide this logic as a method
+            # that can be invoked on them from the main server
+            reply = UNSET
             if name == 'log-record':
                 logger.handle(item)
-            elif name == 'janitor-run-count':
-                # Get the thread count and send back
-                # the information from the dbChangeEvent
-                self._janitorThreadRunCount = item
-                inspect_db_changes = True
-            elif name == 'delete-requests':
-                self.delRequests(item)
-            else:
-                raise ValueError("Unknown item in queue: name=%s, item=%r" % (name,item))
 
-            # Writing on our end if needed
-            x = None
-            if inspect_db_changes:
+            elif name == 'janitor-run-count':
+                self._janitorThreadRunCount = item
+
+            elif name == 'event-info-list':
                 info = None
                 if self._janitordbChangeSync.isSet():
                     info = self._janitordbChangeSync.getEventInfoList()
                     self._janitordbChangeSync.clear()
-                x = ('db-change-info', info)
+                reply = info
 
-            if x is not None:
+            elif name == 'delete-requests':
+                self.delRequests(item)
+                reply = None
+
+            else:
+                raise ValueError("Unknown item in queue: name=%s, item=%r" % (name,item))
+
+            # Writing on our end if needed
+            if reply is not UNSET:
                 try:
-                    self._serv_to_jan_queue.put(x, timeout=0.01)
+                    self._serv_to_jan_queue.put(reply, timeout=0.01)
                 except:
                     logger.exception("Problem when writing to the queue")
+
+    def janitor_send(self, name, item=None):
+        """Used by the Janitor Thread to send data to the main process"""
+        self._jan_to_serv_queue.put_nowait((name, item))
+
+    def janitor_communicate(self, name, item=None, timeout=None):
+        """Used by the Janitor Thread to send data to and wait for a reply from the main process"""
+        self.janitor_send(name, item)
+        return self._serv_to_jan_queue.get(timeout=timeout)
 
 
     def incJanitorThreadRunCount(self):

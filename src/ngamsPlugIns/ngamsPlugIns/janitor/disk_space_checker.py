@@ -29,7 +29,7 @@ from ngamsPClient import ngamsPClient
 
 logger = logging.getLogger(__name__)
 
-def run(srvObj, stopEvt, jan_to_srv_queue):
+def run(srvObj, stopEvt):
     """
     Check if there is enough disk space for the various
     directories defined.

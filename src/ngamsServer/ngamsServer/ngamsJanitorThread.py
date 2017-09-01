@@ -46,7 +46,7 @@ from ngamsLib.ngamsCore import isoTime2Secs, loadPlugInEntryPoint
 logger = logging.getLogger(__name__)
 
 
-def JanitorCycle(plugins, srvObj, stopEvt, jan_to_srv_queue):
+def JanitorCycle(plugins, srvObj, stopEvt):
     """
     A single run of all the janitor plug-ins
     """
@@ -57,7 +57,7 @@ def JanitorCycle(plugins, srvObj, stopEvt, jan_to_srv_queue):
         checkStopJanitorThread(stopEvt)
         try:
             logger.debug("Executing plugin %s", p.__name__)
-            p(srvObj, stopEvt, jan_to_srv_queue)
+            p(srvObj, stopEvt)
         except StopJanitorThreadException:
             raise
         except:
@@ -86,9 +86,9 @@ def get_plugins(srvObj):
 
 class ForwarderHandler(logging.Handler):
 
-    def __init__(self, queue):
+    def __init__(self, srv):
         super(ForwarderHandler, self).__init__()
-        self.queue = queue
+        self.srv = srv
 
     def _format_record(self, record):
         # ensure that exc_info and args
@@ -106,7 +106,7 @@ class ForwarderHandler(logging.Handler):
 
     def emit(self, record):
         try:
-            self.queue.put_nowait(('log-record', self._format_record(record)))
+            self.srv.janitor_send('log-record', self._format_record(record))
         except:
             self.handleError(record)
 
@@ -122,10 +122,15 @@ def janitorThread(srvObj, stopEvt, srv_to_jan_queue, jan_to_srv_queue):
     signal.signal(signal.SIGTERM, noop)
     signal.signal(signal.SIGINT, noop)
 
+    # Reset the internal multiprocess queues so the janitor_communicate() method
+    # of the server object is usable from within this process
+    srvObj._serv_to_jan_queue = srv_to_jan_queue
+    srvObj._jan_to_serv_queue = jan_to_srv_queue
+
     # Set up the logging so it outputs the records into the jan->srv queue
     for h in list(logging.root.handlers):
         logging.root.removeHandler(h)
-    logging.root.addHandler(ForwarderHandler(jan_to_srv_queue))
+    logging.root.addHandler(ForwarderHandler(srvObj))
 
     # Reset the db pointer in our server object to get fresh connections
     srvObj.reconnect_to_db()
@@ -145,12 +150,12 @@ def janitorThread(srvObj, stopEvt, srv_to_jan_queue, jan_to_srv_queue):
     try:
         while True:
 
-            JanitorCycle(plugins, srvObj, stopEvt, jan_to_srv_queue)
+            JanitorCycle(plugins, srvObj, stopEvt)
 
             # Suspend the thread for the time indicated.
             # Update the Janitor Thread run count.
             run_count += 1
-            jan_to_srv_queue.put(('janitor-run-count', run_count), timeout=0.1)
+            srvObj.janitor_send('janitor-run-count', run_count)
 
             # Suspend the thread for the time indicated.
             logger.info("Janitor Thread executed - suspending for %d [s] ...", suspendTime)
@@ -159,7 +164,7 @@ def janitorThread(srvObj, stopEvt, srv_to_jan_queue, jan_to_srv_queue):
 
                 # Check if we should update the DB Snapshot.
                 try:
-                    event_info_list = srv_to_jan_queue.get(timeout=0.1)[1]
+                    event_info_list = srvObj.janitor_communicate('event-info-list', timeout=0.5)
                 except Queue.Empty:
                     event_info_list = None
 

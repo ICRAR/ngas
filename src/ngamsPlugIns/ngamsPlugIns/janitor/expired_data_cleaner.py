@@ -32,7 +32,7 @@ from ngamsServer.ngamsJanitorCommon import checkCleanDirs
 
 logger = logging.getLogger(__name__)
 
-def run(srvObj, stopEvt, jan_to_srv_queue):
+def run(srvObj, stopEvt):
 
     cfg = srvObj.getCfg()
     cleaning_info = (
