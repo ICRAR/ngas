@@ -372,8 +372,7 @@ def checkAddExt(ngamsCfgObj,
 
 def genStagingFilename(ngamsCfgObj,
                        reqPropsObj,
-                       diskDic,
-                       storageSetId,
+                       trgDiskInfo,
                        filename,
                        genTmpFiles = 0):
     """
@@ -403,8 +402,8 @@ def genStagingFilename(ngamsCfgObj,
                     administrative staging files as described above
                     (string|tuple).
     """
-    logger.debug("Generating staging filename - Storage Set ID: %s - URI: %s",
-                 storageSetId, filename)
+    logger.debug("Generating staging filename - Disk ID: %s - URI: %s",
+                 trgDiskInfo.getDiskId(), filename)
     try:
         tmpFilename = re.sub("\?|=|&", "_", os.path.basename(filename))
 
@@ -412,11 +411,11 @@ def genStagingFilename(ngamsCfgObj,
         tmpFilename = checkAddExt(ngamsCfgObj, reqPropsObj.getMimeType(),
                                   tmpFilename)
 
-        slotId = ngamsCfgObj.getStorageSetFromId(storageSetId).\
-                 getMainDiskSlotId()
-        mountPt = diskDic[slotId].getMountPoint()
+        mountPt = trgDiskInfo.getMountPoint()
         staging_dir = os.path.join(mountPt, NGAMS_STAGING_DIR)
         stagingFilename = tempfile.mktemp(suffix="-" + tmpFilename, prefix='', dir=staging_dir)
+
+        logger.debug("Staging filename is: %s", stagingFilename)
         reqPropsObj.setStagingFilename(stagingFilename)
 
         if (genTmpFiles):

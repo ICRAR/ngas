@@ -906,14 +906,11 @@ def dataHandler(srvObj,
         # Generate Staging Filename + Temp Staging File + save data in this
         # file. Also Org. Staging Filename is created, Processing Staging
         # Filename and the Temp. Req. Props. File and Req. Props. File.
-        storageSetId = trgDiskInfo.getStorageSetId()
         tmpStagingFilename, stagingFilename,\
                             tmpReqPropsFilename,\
                             reqPropsFilename = ngamsHighLevelLib.\
                             genStagingFilename(srvObj.getCfg(), reqPropsObj,
-                                               srvObj.getDiskDic(),
-                                               storageSetId,
-                                               reqPropsObj.getFileUri(),
+                                               trgDiskInfo, reqPropsObj.getFileUri(),
                                                genTmpFiles=1)
 
         # Check if we can directly perform checksum calculation at reception time;

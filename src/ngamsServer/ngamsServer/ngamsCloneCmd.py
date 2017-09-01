@@ -458,14 +458,12 @@ def _cloneExec(srvObj,
                 failedCloneCount += 1
                 continue
 
-            storageSetId = trgDiskInfo.getStorageSetId()
             tmpReqPropsObj = ngamsReqProps.ngamsReqProps()
             tmpReqPropsObj.setMimeType(fio.getFormat())
             stagingFilename = ngamsHighLevelLib.\
                               genStagingFilename(srvObj.getCfg(),
                                                  tmpReqPropsObj,
-                                                 srvObj.getDiskDic(),
-                                                 storageSetId, fio.getFileId())
+                                                 trgDiskInfo, fio.getFileId())
             # Receive the data into the Staging File using the urllib.
             if (srvObj.getHostId() != hostId):
                 # Example: http://host:7777/RETRIEVE?file_id=id&file_version=1
@@ -791,13 +789,11 @@ def _cloneExplicit(srvObj,
         raise Exception, msg
 
     # Receive the file into the staging filename.
-    storageSetId = trgDiskInfo.getStorageSetId()
     tmpReqPropsObj = ngamsReqProps.ngamsReqProps()
     tmpReqPropsObj.setMimeType(mimeType)
     stagingFilename = ngamsHighLevelLib.genStagingFilename(srvObj.getCfg(),
                                                            tmpReqPropsObj,
-                                                           srvObj.getDiskDic(),
-                                                           storageSetId,
+                                                           trgDiskInfo,
                                                            fileId)
     try:
         quickLocation = False
