@@ -392,7 +392,8 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         fo = open(reqPropsFile)
         tmpReqPropObj = cPickle.load(fo)
         fo.close()
-        tmpFile = saveInFile(None, filterDbStatus1(tmpReqPropObj.dumpBuf()))
+        tmpFile = saveInFile(None, filterDbStatus1(tmpReqPropObj.dumpBuf(),
+                                                   filterTags=['RequestId']))
         refFile = "ref/test_BackLogBuf_01_02_ref"
         self.checkFilesEq(refFile, tmpFile, "Unexpected contents of " +\
                           "Back-Log Buffered Req. Prop. File")

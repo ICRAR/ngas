@@ -14,7 +14,6 @@ TargDiskInfo:                       None
 ReadFd:                             None
 WriteFd:                            None
 NoReplication:                      0
-RequestId:                          2
 CompletionPercent:                  None
 ExpectedCount:                      None
 ActualCount:                        None
