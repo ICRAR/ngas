@@ -30,7 +30,6 @@ import time
 import types
 import urllib2
 
-from Crypto.PublicKey import RSA
 from fabric.colors import green, red, yellow
 from fabric.context_managers import settings, hide
 from fabric.decorators import task, parallel
@@ -154,11 +153,17 @@ def key_filename(key_name):
     return os.path.join(os.path.expanduser('~/.ssh/'), '{0}.pem'.format(key_name))
 
 def get_public_key(key_filename):
+
+    from Crypto.PublicKey import RSA
+
     with open(key_filename) as f:
         okey = RSA.importKey(f.read())
         return okey.exportKey('OpenSSH')
 
 def generate_key_pair():
+
+    from Crypto.PublicKey import RSA
+
     key = RSA.generate(2048)
     pubkey = key.publickey()
     return key, pubkey
