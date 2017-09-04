@@ -526,7 +526,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         TODO: Re-implement using _execCloneTest().
         """
         srcFile = "src/SmallFile.fits"
-        cfgObj, dbObj = self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].UseRequestDb','true'),))
+        cfgObj, dbObj = self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
         client = sendPclCmd()
         for n in range(2): client.archive(srcFile)
         flushEmailQueue()
@@ -603,7 +603,7 @@ class ngamsCloneCmdTest(ngamsTestSuite):
         TODO: Re-implement using _execCloneTest().
         """
         srcFile = "src/SmallFile.fits"
-        self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].UseRequestDb','true'),))
+        self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
         client = sendPclCmd()
         for n in range(10): client.archive(srcFile)
         flushEmailQueue()

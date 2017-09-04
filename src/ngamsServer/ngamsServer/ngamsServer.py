@@ -2486,10 +2486,16 @@ class ngamsServer(object):
 
         logger.debug("Found NG/AMS System Directories to monitor for disk space")
 
-        self.request_db = request_db.InMemoryRequestDB()
-
-        #if (self.getCfg().getLogBufferSize() != -1):
-        #    setLogCache(self.getCfg().getLogBufferSize())
+        # Initialize the request DB
+        request_db_backend = self.getCfg().getRequestDbBackend()
+        if request_db_backend == 'null':
+            self.request_db = request_db.NullRequestDB()
+        elif request_db_backend == 'memory':
+            self.request_db = request_db.InMemoryRequestDB()
+        elif request_db_backend == 'bsddb':
+            self.request_db = request_db.DBMRequestDB(self.getHostId(), self.getCfg())
+        else:
+            raise Exception("Unsupported backend: %s" % request_db_backend)
 
         msg = genLog("NGAMS_INFO_STARTING_SRV",
                      [getNgamsVersion(), self.getHostId(),

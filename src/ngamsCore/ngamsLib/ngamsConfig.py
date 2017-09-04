@@ -2414,13 +2414,17 @@ class ngamsConfig:
         return os.path.normpath(self.getBackLogBufferDirectory() + "/" +\
                                 NGAMS_BACK_LOG_DIR)
 
-    def getUseRequestDb(self):
+    def getRequestDbBackend(self):
         """
         Returns whether the server should keep a request database or not.
         """
-        val = self.getVal("Server[1].UseRequestDb")
-        if val is not None:
-            val = boolean_value(val)
-        if val is None:
-            return False
+        val = self.getVal("Server[1].RequestDbBackend")
+
+        # Check and normalize
+        allowed_values = (None, '', 'null', 'bsddb', 'memory')
+        if val not in allowed_values:
+            raise Exception('RequestDbBackend %s not one of %s' % (val, allowed_values))
+        if not val:
+            val = 'null'
+
         return val

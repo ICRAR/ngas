@@ -432,7 +432,7 @@ class ngamsPClientTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].UseRequestDb','true'),))
+        self.prepExtSrv(cfgProps=(('NgamsCfg.Server[1].RequestDbBackend', 'memory'),))
         client = ngamsPClient.ngamsPClient(port=8888)
         client.archive("src/SmallFile.fits")
         status = client.clone("", "tmp-ngamsTest-NGAS-FitsStorage1-Main-1", -1)

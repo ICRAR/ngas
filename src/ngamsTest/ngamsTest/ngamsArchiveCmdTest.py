@@ -380,7 +380,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         cfgPars = [["NgamsCfg.Streams[1].Stream[2].PlugIn",
                     "ngamsTest.ngamsRaiseEx_NGAMS_ER_DAPI_1"],
                    ["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:05:00"],
-                   ['NgamsCfg.Server[1].UseRequestDb', 'true']]
+                   ['NgamsCfg.Server[1].RequestDbBackend', 'memory']]
         self.prepExtSrv(cfgProps=cfgPars)
         statObj = sendPclCmd().archive("src/SmallFile.fits")
         tmpFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
