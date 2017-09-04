@@ -24,5 +24,5 @@
 from ngamsLib import ngamsNotification
 
 
-def run(srvObj, stopEvt, jan_to_srv_queue):
+def run(srvObj, stopEvt):
     ngamsNotification.checkNotifRetBuf(srvObj.getHostId(), srvObj.getCfg())

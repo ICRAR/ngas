@@ -144,6 +144,46 @@ state after initializing. At runtime the state can be toggled via
 different :ref:`commands`.
 
 
+.. _server.request_db:
+
+Requests database
+=================
+
+The NGAS server keeps a rotating set
+of all incoming client requests
+for future status querying.
+When a client request comes in,
+it is first registered into a *requests database*.
+After the request is served as usual,
+the corresponding item in the request database
+is updated to reflect the final state of the request.
+If a request is asynchronous in nature
+(e.g., it spawns a background task
+that will finish later in time),
+the entry in the requests database may also be updated
+as it logic is executed,
+even if the initial response has already been sent
+to the user.
+This, together with the :ref:`commands.status` command,
+are the basis for asynchronous command execution
+and monitoring (used only the :ref:`commands.clone` command).
+
+The requests database has three different implementations.
+The implementation used by the server is configured
+by the ``RequestDbBackend`` attribute
+in the :ref:`config.server` configuration element.
+The first, a BSDDB-based one, is the most expensive to use,
+as it needs to lock during I/O access,
+but it provides persistence across executions.
+A second, memory-based implementation is also available.
+This is faster as it doesn't involve disk I/O,
+but doesn't provide persistence.
+Finally, a null implementation is provided.
+This implementation is provided for cases
+when a request database is known not to be needed
+(e.g., no asynchronous commands are ever issued).
+
+
 .. _server.logical_containers:
 
 Logical Containers
