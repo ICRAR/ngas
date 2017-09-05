@@ -33,6 +33,7 @@ functions, to deal with archive files.
 """
 
 import binascii
+import collections
 import contextlib
 import functools
 import logging
@@ -46,7 +47,7 @@ from ngamsLib import ngamsDbm, ngamsDbCore, ngamsDiskInfo, ngamsStatus, \
 from ngamsLib import ngamsHighLevelLib
 from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
     NGAMS_HOST_DOMAIN, rmFile, NGAMS_HOST_REMOTE, NGAMS_RETRIEVE_CMD, genLog, \
-    NGAMS_STATUS_CMD, getHostName, NGAMS_CACHE_DIR, \
+    NGAMS_STATUS_CMD, NGAMS_CACHE_DIR, \
     NGAMS_DATA_CHECK_THR, getFileSize, loadPlugInEntryPoint
 
 _crc32c_available = True
@@ -56,6 +57,8 @@ except ImportError:
     _crc32c_available = False
 
 logger = logging.getLogger(__name__)
+
+checksum_info = collections.namedtuple('crc_info', 'init method final')
 
 def _locateArchiveFile(srvObj,
                        fileId,
@@ -617,7 +620,7 @@ def _normalize_variant(variant_or_name):
 
     return variant
 
-def get_checksum_method(variant_or_name):
+def get_checksum_info(variant_or_name):
     """
     Given a CRC variant, this method returns the method that should be
     continuously called to calculate the CRC of a given byte stream.
@@ -632,11 +635,11 @@ def get_checksum_method(variant_or_name):
     if variant == -1:
         return None
     if variant == 0:
-        return binascii.crc32
+        return checksum_info(0, binascii.crc32, lambda x: x)
     elif variant == 1:
         if not _crc32c_available:
             raise Exception('Intel SSE 4.2 CRC32c instruction is not available')
-        return crc32c.crc32
+        return checksum_info(0xFFFFFFFF, crc32c.crc32, lambda x: ~x)
     raise Exception('Unknown CRC variant: %r' % (variant_or_name,))
 
 def get_checksum_name(variant_or_name):
@@ -663,13 +666,16 @@ def get_checksum(blocksize, filename, checksum_variant):
     """
     Returns the checksum of a file using the given checksum type.
     """
-    crc_m = get_checksum_method(checksum_variant)
-    if crc_m is None:
+    crc_info = get_checksum_info(checksum_variant)
+    if crc_info is None:
         return None
-    crc = 0
+
+    crc_m = crc_info.method
+    crc = crc_info.init
     with open(filename, 'rb') as f:
         for block in iter(functools.partial(f.read, blocksize), ''):
             crc = crc_m(block, crc)
+    crc = crc_info.final(crc)
     return crc
 
 def get_checksum_interruptible(blocksize, filename, checksum_variant,
@@ -682,16 +688,18 @@ def get_checksum_interruptible(blocksize, filename, checksum_variant,
     When the caller sets the `stop_evt`, the `allowed_evt` should also be set;
     otherwise the execution will hang indefinitely.
     """
-    crc_m = get_checksum_method(checksum_variant)
-    if crc_m is None:
+    crc_info = get_checksum_info(checksum_variant)
+    if crc_info is None:
         return None
-    crc = 0
+    crc_m = crc_info.method
+    crc = crc_info.init
     with open(filename, 'rb') as f:
         for block in iter(functools.partial(f.read, blocksize), ''):
             checksum_allow_evt.wait()
             if checksum_stop_evt.is_set():
                 return
             crc = crc_m(block, crc)
+    crc = crc_info.final(crc)
     return crc
 
 def check_checksum(srvObj, fio, filename):

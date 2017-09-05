@@ -243,15 +243,13 @@ def compress(reqPropsObj,
         # The value crc_name depends on the server configuration and whether the
         # user requested a different variant (see ngamsArchiveUtils)
         gzip_name = '%s.gz' % stFn
-        crc_m = crc_init = None
+        crc_info = None
         if 'crc_name' in reqPropsObj:
-            crc_m = ngamsFileUtils.get_checksum_method(reqPropsObj['crc_name'])
-            if crc_m:
-                crc_init = 0
+            crc_info = ngamsFileUtils.get_checksum_info(reqPropsObj['crc_name'])
 
         compress_start = time.time()
         with open(stFn, 'rb') as f:
-            crc = ngamsLib.gzip_compress(f, gzip_name, 65536, crc_init=crc_init, crc_m=crc_m)
+            crc = ngamsLib.gzip_compress(f, gzip_name, 65536, crc_info=crc_info)
         compress_time = time.time() - compress_start
 
         reqPropsObj.setStagingFilename(gzip_name)

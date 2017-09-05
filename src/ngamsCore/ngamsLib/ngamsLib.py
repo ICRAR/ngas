@@ -368,32 +368,30 @@ class GzipFile(gzip.GzipFile):
     the *compressed* data as it gets written into the output file.
     """
 
-    def __init__(self, filename, mode, crc_init=None, crc_m=None):
-
-        if (crc_init is None) ^ (crc_m is None):
-            raise ValueError("crc_init implies crc_m and vice-versa")
+    def __init__(self, filename, mode, crc_info=None):
 
         fileobj = open(filename, mode)
 
         # Checksum requested, create the wrapper for checksum calculation at
         # write time and pass the wrapped object down instead
-        if crc_m:
+        if crc_info:
 
             class wrapper(object):
 
                 def __init__(self, f):
                     self.f = f
-                    self.crc = crc_init
+                    self.crc = crc_info.init
                     self.mode = mode
 
                 def write(self, data):
-                    self.crc = crc_m(data, self.crc)
+                    self.crc = crc_info.method(data, self.crc)
                     return self.f.write(data)
 
                 def flush(self):
                     return self.f.flush()
 
                 def close(self):
+                    self.crc = crc_info.final(self.crc)
                     return self.f.close()
 
             # set self.myfileobj so gzip.GzipFile.close() closes fileobj
@@ -402,7 +400,7 @@ class GzipFile(gzip.GzipFile):
         # The "gzip" command defaults to compression level 6
         gzip.GzipFile.__init__(self, fileobj=fileobj, compresslevel=6)
 
-def gzip_compress(fin, fout_name, block_size, crc_init=None, crc_m=None):
+def gzip_compress(fin, fout_name, block_size, crc_info=None):
     """
     Compresses the contents read from `fin` into file `fout_name`. Reading from
     `fin` is done by reading `block_size` bytes at a time.
@@ -411,12 +409,12 @@ def gzip_compress(fin, fout_name, block_size, crc_init=None, crc_m=None):
     data is calculated as data gets compressed using `crc_m` as the checksum
     method, and `crc_init` as the initial checksum value.
     """
-    with GzipFile(fout_name, 'wb', crc_init, crc_m) as fout:
-        if crc_m:
+    with GzipFile(fout_name, 'wb', crc_info=crc_info) as fout:
+        if crc_info:
             fileobj = fout.fileobj
         shutil.copyfileobj(fin, fout, block_size)
 
-    if crc_m:
+    if crc_info:
         return fileobj.crc
 
 # EOF

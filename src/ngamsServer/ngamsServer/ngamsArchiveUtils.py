@@ -114,12 +114,14 @@ def archive_contents(out_fname, fin, fsize, block_size, crc_name, skip_crc=False
     """
 
     # Get the CRC method to be used and initialize CRC value
+    crc_info = None
     crc_m = None
     crc = None
     if not skip_crc:
-        crc_m = ngamsFileUtils.get_checksum_method(crc_name)
-        if crc_m:
-            crc = 0
+        crc_info = ngamsFileUtils.get_checksum_info(crc_name)
+        if crc_info:
+            crc_m = crc_info.method
+            crc = crc_info.init
 
     crctime = 0
     rtime = 0
@@ -154,6 +156,9 @@ def archive_contents(out_fname, fin, fsize, block_size, crc_name, skip_crc=False
                 crcstart = time.time()
                 crc = crc_m(buff, crc)
                 crctime += time.time() - crcstart
+
+    if crc_info:
+        crc = crc_info.final(crc)
 
         # rtobar, 31 Aug 2017
         #
