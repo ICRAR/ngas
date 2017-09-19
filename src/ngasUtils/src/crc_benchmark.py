@@ -23,14 +23,20 @@
 import io
 import itertools
 import time
+import sys
 
 from ngamsServer import ngamsFileUtils
 
+if len(sys.argv) > 1:
+    fname = sys.argv[1]
+    with open(fname, 'rb') as f:
+        data = f.read()
+        size_mb = len(data) / 1024. / 1024.
+else:
+    size_mb = 128
+    data = ' ' * 1024 * 1024 * size_mb
 
-size_mb = 128
-data = ' ' * 1024 * 1024 * size_mb
-
-for variant, bufsize_log2 in itertools.product(('crc32', 'crc32c'), range(9, 17)):
+for variant, bufsize_log2 in itertools.product(('crc32', 'crc32c'), range(9, 21)):
 
     f = io.BytesIO(data)
 
