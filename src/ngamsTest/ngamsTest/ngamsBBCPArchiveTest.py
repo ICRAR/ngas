@@ -26,13 +26,14 @@
 Contains the Test Suite for the BBCP Command.
 """
 
-import sys
-import subprocess
 import contextlib
+import subprocess
+import sys
+import unittest
 
 from ngamsLib import ngamsHttpUtils
 from ngamsTestLib import ngamsTestSuite, runTest
-from unittest.case import skipIf
+from ngamsServer import ngamsFileUtils
 
 bbcp_cmd = True
 cmd = ["which", "bbcp"]
@@ -40,9 +41,10 @@ p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 out, err = p.communicate()
 if p.returncode == 0:
     bbcp_cmd = False
+bbcp_version = map(int, subprocess.check_output(['bbcp', '--version']).strip().split('.'))
 
 
-@skipIf(bbcp_cmd, 'BBCP not found')
+@unittest.skipIf(bbcp_cmd, 'BBCP not found')
 class ngamsBBCPArchiveTest(ngamsTestSuite):
 
     def test_BBCPArchive(self):
@@ -63,14 +65,17 @@ class ngamsBBCPArchiveTest(ngamsTestSuite):
             self.assertEqual(200, response.status)
 
 
-    def test_correct_checksum(self):
+    def _test_correct_checksum(self, crc_variant):
 
         _, db = self.prepExtSrv()
 
-        query_args = {'filename': '/bin/cp',
+        fname = '/bin/cp'
+        expected_crc = ngamsFileUtils.get_checksum(64*1024*240, fname, crc_variant)
+
+        query_args = {'filename': fname,
                       'bnum_streams': 2,
                       'mime_type': 'application/octet-stream',
-                      'crc_variant': '0'}
+                      'crc_variant': crc_variant}
 
         # Archive with BBCP first, then with QARCHIVE
         for cmd in ('BBCPARC', 'QARCHIVE'):
@@ -79,23 +84,35 @@ class ngamsBBCPArchiveTest(ngamsTestSuite):
             with contextlib.closing(response):
                 self.assertEqual(200, response.status)
 
-        # Both checksums are equal
+        # Both checksums are equal (i.e., when put in a set the set has one element)
         checksums = db.query2('SELECT checksum FROM ngas_files ORDER BY file_version ASC');
         checksums = set(c[0] for c in checksums)
         self.assertEqual(1, len(checksums))
 
-    def test_bbcp_no_crc32c(self):
+        # And they are equal to the expected value
+        self.assertEqual(str(expected_crc), str(next(iter(checksums))))
 
-        # Ask for crc32c (variant = 1), bbcp doesn't support it so it should fail
+    def _test_unsupported_checksum(self, crc_variant):
+                # Ask for crc32c (variant = 1), bbcp doesn't support it so it should fail
         self.prepExtSrv()
         query_args = {'filename': '/bin/cp',
                       'bnum_streams': 2,
                       'mime_type': 'application/octet-stream',
-                      'crc_variant': '1'}
+                      'crc_variant': crc_variant}
         response = ngamsHttpUtils.httpGet('localhost', 8888, 'BBCPARC',
                                           pars=query_args, timeout=50)
         with contextlib.closing(response):
             self.assertNotEqual(200, response.status)
+
+    def test_bbcp_with_crc32(self):
+        self._test_correct_checksum('crc32')
+
+    def test_bbcp_with_crc32c(self):
+
+        if tuple(bbcp_version[:2]) >= (17, 1):
+            self._test_correct_checksum('crc32c')
+        else:
+            self._test_unsupported_checksum('crc32c')
 
 def run():
     """

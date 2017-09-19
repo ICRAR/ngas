@@ -78,6 +78,8 @@ def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
             # c32z is the zip-flavor of CRC32
             # c32 is the POSIX flavour, which yields a different result
             cmd_checksum.append('c32z=/dev/stdout')
+        elif crc_name == 'crc32c':
+            cmd_checksum.append('c32c=/dev/stdout')
         else:
             raise Exception("Unsupported checksum method in BBCP: %s" % (crc_name,))
 
