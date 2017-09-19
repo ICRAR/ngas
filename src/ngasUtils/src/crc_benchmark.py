@@ -32,22 +32,14 @@ data = ' ' * 1024 * 1024 * size_mb
 
 for variant, bufsize_log2 in itertools.product(('crc32', 'crc32c'), range(9, 17)):
 
-    info = ngamsFileUtils.get_checksum_info(variant)
-    if not info:
-        print("Variant not supported: %s" % variant)
-        continue
-
-    crc = info.init
-    crc_m = info.method
     f = io.BytesIO(data)
 
     bufsize = 2 ** bufsize_log2
     start = time.time()
-    while True:
-        buff = f.read(bufsize)
-        if not buff:
-            break
-        crc = crc_m(buff, crc)
+    crc = ngamsFileUtils.get_checksum(bufsize, f, variant)
     end = time.time()
 
-    print("%6s %-5d %.3f" % (variant, bufsize, size_mb / (end - start)))
+    if crc is None:
+        print("Variant not supported: %s" % variant)
+    else:
+        print("%-6s %08x %-7d %-.3f [MB/s]" % (variant, crc & 0xffffffff, bufsize, size_mb / (end - start)))

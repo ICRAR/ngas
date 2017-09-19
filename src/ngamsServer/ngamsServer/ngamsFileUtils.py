@@ -662,19 +662,39 @@ def get_checksum_name(variant_or_name):
         return 'crc32c'
     raise Exception('Unknown CRC variant: %d' % (variant_or_name,))
 
-def get_checksum(blocksize, filename, checksum_variant):
+def get_checksum(blocksize, fin, checksum_variant):
     """
-    Returns the checksum of a file using the given checksum type.
+    Returns the checksum of a file (or file object) using the given checksum type.
     """
     crc_info = get_checksum_info(checksum_variant)
     if crc_info is None:
         return None
 
     crc_m = crc_info.method
+
+    # fin can be a filename, in which case we open (and then close) it
+    my_fileobj = None
+    fileobj = fin
+    if isinstance(fin, basestring):
+        my_fileobj = fileobj = open(fin, 'rb')
+
+    # Read and checksum, thank you very much
+    read = fileobj.read
     crc = crc_info.init
-    with open(filename, 'rb') as f:
-        for block in iter(functools.partial(f.read, blocksize), ''):
+    try:
+        while True:
+            block = read(blocksize)
+            if not block:
+                break
             crc = crc_m(block, crc)
+    finally:
+        # We opened it, we close it
+        if my_fileobj:
+            try:
+                my_fileobj.close()
+            except:
+                pass
+
     crc = crc_info.final(crc)
     return crc
 
