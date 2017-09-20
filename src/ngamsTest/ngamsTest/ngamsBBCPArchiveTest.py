@@ -35,17 +35,16 @@ from ngamsLib import ngamsHttpUtils
 from ngamsTestLib import ngamsTestSuite, runTest
 from ngamsServer import ngamsFileUtils
 
-bbcp_cmd = True
-cmd = ["which", "bbcp"]
-p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-out, err = p.communicate()
-if p.returncode == 0:
-    bbcp_cmd = False
-if bbcp_cmd:
-    bbcp_version = map(int, subprocess.check_output(['bbcp', '--version']).strip().split('.'))
+# If there's any problem getting bbcp's version
+# e assume that the program is not there, and therefore skip all the tests
+try:
+    out = subprocess.check_output(['bbcp', '--version'], shell=False)
+    bbcp_version = map(int, out.strip().split('.'))
+except:
+    bbcp_version = None
 
 
-@unittest.skipIf(bbcp_cmd, 'BBCP not found')
+@unittest.skipIf(bbcp_version is None, 'BBCP not found')
 class ngamsBBCPArchiveTest(ngamsTestSuite):
 
     def test_BBCPArchive(self):
