@@ -41,7 +41,8 @@ p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 out, err = p.communicate()
 if p.returncode == 0:
     bbcp_cmd = False
-bbcp_version = map(int, subprocess.check_output(['bbcp', '--version']).strip().split('.'))
+if bbcp_cmd:
+    bbcp_version = map(int, subprocess.check_output(['bbcp', '--version']).strip().split('.'))
 
 
 @unittest.skipIf(bbcp_cmd, 'BBCP not found')
