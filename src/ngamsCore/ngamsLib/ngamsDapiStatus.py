@@ -367,12 +367,7 @@ class ngamsDapiStatus:
         return self.__completeFilename
 
 
-    def toString(self):
-        """
-        Generate an ASCII buffer with the contents of the object.
-
-        Returns:   String buffer with status of object contents (string).
-        """
+    def __repr__(self):
         return "Status: " + self.getStatus() + ", " +\
                "Disk ID: " + self.getDiskId() + ", " +\
                "Relative Filename: " + self.getRelFilename() + ", " +\

@@ -589,7 +589,9 @@ def postFileRecepHandling(srvObj,
     Returns:        Disk info object containing the information about
                     the Main File (ngasDiskInfo).
     """
-    logger.debug("Data returned from Data Archiving Plug-In: %s", resultPlugIn.toString())
+
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("Data returned from Data Archiving Plug-In: %r", resultPlugIn)
 
     # if checksum is already supplied then do not calculate it from the plugin
     if (cksum == None):
@@ -1116,9 +1118,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         resMain = plugInMethod(srvObj, reqPropsObj)
         del reqPropsObj.getHttpParsDic()['crc_name']
         srvObj.test_AfterDapiInvocation()
-        if logger.level <= logging.DEBUG:
-            logger.debug("Invoked DAPI: %s. Time: %.3fs.", plugIn, (time.time() - timeBeforeDapi))
-            logger.debug("Result DAPI: %s", str(resMain.toString()))
+        logger.debug("Invoked DAPI: %s. Time: %.3fs.", plugIn, (time.time() - timeBeforeDapi))
 
         # Move the file to final destination.
         ioTime = mvFile(reqPropsObj.getStagingFilename(),
