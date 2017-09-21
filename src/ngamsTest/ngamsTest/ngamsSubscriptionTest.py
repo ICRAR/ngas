@@ -53,7 +53,7 @@ def handle_archive_event(evt):
 
     # send this to the notification_srv
     try:
-        s = socket.create_connection(('127.0.0.1', 10000), timeout=1)
+        s = socket.create_connection(('127.0.0.1', 8887), timeout=1)
         s.send(struct.pack('!I', len(evt)))
         s.send(evt)
         s.close()
@@ -64,7 +64,7 @@ def handle_archive_event(evt):
 class notification_srv(SocketServer.TCPServer):
 
     def __init__(self, recvevt):
-        SocketServer.TCPServer.__init__(self, ('127.0.0.1', 10000), None)
+        SocketServer.TCPServer.__init__(self, ('127.0.0.1', 8887), None)
         self.recvevt = recvevt
         self.archive_evt = None
 
