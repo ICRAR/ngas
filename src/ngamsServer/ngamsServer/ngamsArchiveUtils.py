@@ -1115,19 +1115,19 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
 
         timeBeforeDapi = time.time()
         reqPropsObj.addHttpPar('crc_name', archive_result.crcname)
-        resMain = plugInMethod(srvObj, reqPropsObj)
+        plugin_result = plugInMethod(srvObj, reqPropsObj)
         del reqPropsObj.getHttpParsDic()['crc_name']
         srvObj.test_AfterDapiInvocation()
         logger.debug("Invoked DAPI: %s. Time: %.3fs.", plugIn, (time.time() - timeBeforeDapi))
 
         # Move the file to final destination.
         ioTime = mvFile(reqPropsObj.getStagingFilename(),
-                        resMain.getCompleteFilename())
+                        plugin_result.getCompleteFilename())
         reqPropsObj.incIoTime(ioTime)
         srvObj.test_AfterMovingStagingFile()
 
         # Remember to set the final IO time in the plug-in status object.
-        resMain.setIoTime(reqPropsObj.getIoTime())
+        plugin_result.setIoTime(reqPropsObj.getIoTime())
 
     except Exception, e:
         if (str(e).find("NGAMS_ER_DAPI_BAD_FILE") != -1):
@@ -1177,13 +1177,13 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
     cksum = None
     if archive_result.crc is not None:
         cksum = (archive_result.crc, crc_name)
-    elif resMain.crc is not None:
-        cksum = (resMain.crc, crc_name)
+    elif plugin_result.crc is not None:
+        cksum = (plugin_result.crc, crc_name)
     elif crc_name is None:
         cksum = (None, None)
 
     intestion_rate = archive_result.totaltime / reqPropsObj.getSize()
-    diskInfo = postFileRecepHandling(srvObj, reqPropsObj, resMain,
+    diskInfo = postFileRecepHandling(srvObj, reqPropsObj, plugin_result,
                                      reqPropsObj.getTargDiskInfo(), cksum=cksum,
                                      sync_disk=sync_disk, ingestion_rate=intestion_rate,
                                      do_replication=do_replication)
@@ -1205,10 +1205,10 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
     srvObj.ingestReply(reqPropsObj, httpRef,NGAMS_HTTP_SUCCESS,
                        NGAMS_SUCCESS, msg, diskInfo)
 
-    # Trigger Subscription Thread.
-    logger.info("Triggering subscription thread for file %s", resMain.getFileId())
-    srvObj.addSubscriptionInfo([(resMain.getFileId(),
-                                 resMain.getFileVersion())], [])
+    # Trigger Subscription Thread and nofity
+    logger.info("Triggering subscription thread for file %s", plugin_result.getFileId())
+    srvObj.addSubscriptionInfo([(plugin_result.getFileId(),
+                                 plugin_result.getFileVersion())], [])
     srvObj.triggerSubscriptionThread()
 
 
