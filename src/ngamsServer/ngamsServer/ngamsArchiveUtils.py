@@ -1010,6 +1010,8 @@ def dataHandler(srv, request, httpRef, volume_strategy=VOLUME_STRATEGY_STREAMS,
 def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
                 pickle_request, sync_disk, do_replication, transfer):
 
+    cfg = srvObj.getCfg()
+
     # GET means pull, POST is push
     if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
         logger.info("Handling archive pull request")
@@ -1048,7 +1050,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         tmpStagingFilename, stagingFilename,\
                             tmpReqPropsFilename,\
                             reqPropsFilename = ngamsHighLevelLib.\
-                            genStagingFilename(srvObj.getCfg(), reqPropsObj,
+                            genStagingFilename(cfg, reqPropsObj,
                                                trgDiskInfo, reqPropsObj.getFileUri(),
                                                genTmpFiles=1)
 
@@ -1066,11 +1068,11 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
             skip_crc = True
 
         try:
-            ngamsHighLevelLib.acquireDiskResource(srvObj.getCfg(), trgDiskInfo.getSlotId())
-            archive_result = archive_contents_from_request(tmpStagingFilename, srvObj.getCfg(), reqPropsObj,
+            ngamsHighLevelLib.acquireDiskResource(cfg, trgDiskInfo.getSlotId())
+            archive_result = archive_contents_from_request(tmpStagingFilename, cfg, reqPropsObj,
                                                    skip_crc=skip_crc, transfer=transfer)
         finally:
-            ngamsHighLevelLib.releaseDiskResource(srvObj.getCfg(), trgDiskInfo.getSlotId())
+            ngamsHighLevelLib.releaseDiskResource(cfg, trgDiskInfo.getSlotId())
 
         logger.debug("Move Temporary Staging File to Processing Staging File: %s -> %s",
                      tmpStagingFilename, stagingFilename)
@@ -1092,7 +1094,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         # Synchronize the file caches to ensure the files have been stored
         # on the disk and check that the files are accessible.
         # This sync is only relevant if back-log buffering is on.
-        if sync_disk and srvObj.getCfg().getBackLogBuffering():
+        if sync_disk and cfg.getBackLogBuffering():
             ngamsFileUtils.syncCachesCheckFiles(srvObj, [stagingFilename,
                                                          reqPropsFilename])
 
@@ -1145,8 +1147,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
                 logger.warning("Removing Staging File: %s", stgFile)
                 rmFile(stgFile)
             errMsg += " Error from DAPI: " + str(e)
-        elif (ngamsHighLevelLib.performBackLogBuffering(srvObj.getCfg(),
-                                                        reqPropsObj, e)):
+        elif (ngamsHighLevelLib.performBackLogBuffering(cfg, reqPropsObj, e)):
             backLogBufferFiles(srvObj, stagingFilename, reqPropsFilename)
             errMsg = genLog("NGAMS_WA_BUF_DATA",
                             [reqPropsObj.getFileUri(), str(e)])
