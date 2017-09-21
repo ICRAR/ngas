@@ -53,9 +53,7 @@ import uuid
 
 import pkg_resources
 
-from ngamsLib.ngamsCore import \
-    genLog, TRACE,\
-    rmFile, getNgamsVersion, \
+from ngamsLib.ngamsCore import genLog, TRACE, getNgamsVersion, \
     getFileSize, getDiskSpaceAvail, checkCreatePath,\
     getHostName, ngamsCopyrightString, getNgamsLicense,\
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, NGAMS_HTTP_GET,\
@@ -902,16 +900,6 @@ class ngamsServer(object):
         """Used by the Janitor Thread to send data to and wait for a reply from the main process"""
         self.janitor_send(name, item)
         return self._serv_to_jan_queue.get(timeout=timeout)
-
-
-    def incJanitorThreadRunCount(self):
-        """
-        Increase the Janitor Thread run count.
-
-        Returns:     Reference to object itself.
-        """
-        self._janitorThreadRunCount += 1
-        return self
 
 
     def getJanitorThreadRunCount(self):
