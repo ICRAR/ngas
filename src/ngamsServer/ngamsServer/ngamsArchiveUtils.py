@@ -884,9 +884,7 @@ def checkBackLogBuffer(srvObj):
                 rmFile(pickleObjFile)
 
 
-def cleanUpStagingArea(srvObj,
-                       reqPropsObj,
-                       tmpStagingFilename,
+def cleanUpStagingArea(tmpStagingFilename,
                        stagingFilename,
                        tmpReqPropsFilename,
                        reqPropsFilename):
@@ -900,12 +898,6 @@ def cleanUpStagingArea(srvObj,
 
     If the client requested wait=1, all files are deleted.
 
-    srvObj:                Reference to NG/AMS server class object
-                           (ngamsServer).
-
-    reqPropsObj:           Request Property object to keep track of actions
-                           done during the request handling (ngamsReqProps).
-
     tmpStagingFilename:    Temporary Staging File (string).
 
     stagingFilename:       Staging File (string).
@@ -916,7 +908,6 @@ def cleanUpStagingArea(srvObj,
 
     Returns:               Void.
     """
-    T = TRACE()
 
     # All Staging Files can be deleted.
     stgFiles = [tmpStagingFilename, stagingFilename, tmpReqPropsFilename,
@@ -1140,7 +1131,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         if (str(e).find("NGAMS_ER_DAPI_BAD_FILE") != -1):
             errMsg = "Problems during archiving! URI: " +\
                      reqPropsObj.getFileUri() + ". Exception: " + str(e)
-            cleanUpStagingArea(srvObj, reqPropsObj, tmpStagingFilename,
+            cleanUpStagingArea(tmpStagingFilename,
                                stagingFilename, tmpReqPropsFilename,
                                reqPropsFilename)
         elif (str(e).find("NGAMS_ER_DAPI_RM") != -1):
@@ -1169,7 +1160,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
             # Another error ocurred.
             errMsg = "Error encountered handling file: " + str(e)
             logger.error(errMsg)
-            cleanUpStagingArea(srvObj, reqPropsObj, tmpStagingFilename,
+            cleanUpStagingArea(tmpStagingFilename,
                                stagingFilename, tmpReqPropsFilename,
                                reqPropsFilename)
         raise
