@@ -1003,10 +1003,13 @@ def dataHandler(srv, request, httpRef, volume_strategy=VOLUME_STRATEGY_STREAMS,
                      pickle_request=pickle_request, sync_disk=sync_disk,
                      do_replication=do_replication, transfer=transfer)
     except Exception as e:
-        errMsg = genLog("NGAMS_ER_ARCHIVE_PUSH_REQ",
-                        [request.getSafeFileUri(), str(e)])
-        ngamsNotification.notify(srv.getHostId(), srv.getCfg(), NGAMS_NOTIF_ERROR,
-                                 "PROBLEM ARCHIVE HANDLING", errMsg)
+        try:
+            errMsg = genLog("NGAMS_ER_ARCHIVE_PUSH_REQ",
+                            [request.getSafeFileUri(), str(e)])
+            ngamsNotification.notify(srv.getHostId(), srv.getCfg(), NGAMS_NOTIF_ERROR,
+                                     "PROBLEM ARCHIVE HANDLING", errMsg)
+        except:
+            logger.exception('Unexpected error while trying to notify archiving error')
         raise
 
 def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
