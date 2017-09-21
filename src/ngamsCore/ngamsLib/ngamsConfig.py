@@ -256,8 +256,8 @@ class ngamsConfig:
         # Data Processing Plug-Ins, indexed by name
         self.dppi_plugins              = {}
 
-        # Janitor process Plug-Ins
-        self.__janitorPlugIns          = []
+        # Archiving event Plug-Ins
+        self.archive_evt_plugins       = []
 
         # Logfile handler Plug-Ins
         self.logfile_handler_plugins   = []
@@ -524,6 +524,14 @@ class ngamsConfig:
             for idx1 in range(1, (len(janitorObj.getSubElList()) + 1)):
                 name = self.getVal(name_path % (idx1,))
                 self.__janitorPlugIns.append(name)
+
+        # Get info about Archive event Plug-Ins
+        archive_handling = self.__cfgMgr.getXmlObj('ArchiveHandling[1]')
+        if archive_handling:
+            pat = 'ArchiveHandling[1].EventHandlerPlugIn[%d].Name'
+            for idx1 in range(1, (len(archive_handling.getSubElList()) + 1)):
+                name = self.getVal(pat % idx1)
+                self.archive_evt_plugins.append(name)
 
         # Get info about logfile handler plug-ins
         logObj = self.__cfgMgr.getXmlObj('Log[1]')

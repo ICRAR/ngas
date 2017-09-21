@@ -35,6 +35,7 @@ services for the NG/AMS Server.
 import BaseHTTPServer
 import Queue
 import SocketServer
+import collections
 import contextlib
 import logging
 import multiprocessing
@@ -269,6 +270,8 @@ def show_threads():
             msg.append(fmt % (t.name, t.ident, t.daemon))
         logger.debug("Threads currently alive on process %d:\n%s", os.getpid(), '\n'.join(msg))
 
+archive_event = collections.namedtuple('archive_event', 'file_id file_version')
+
 class ngamsServer(object):
     """
     Class providing the functionality of the NG/AMS Server.
@@ -446,6 +449,32 @@ class ngamsServer(object):
         # Worker processes
         self.workers_pool = None
 
+        # Archive subscribers. Each of these gets notified when a new archive
+        # takes place
+        self.archive_event_subscribers = []
+
+    def load_archive_event_subscribers(self):
+
+        # Built-in event subscriber that triggers the subscription thread
+        def trigger_subscription(evt):
+            logger.info("Triggering subscription thread for file %s", evt.file_id)
+            self.addSubscriptionInfo([(evt.file_id, evt.file_version)], [])
+            self.triggerSubscriptionThread()
+
+        self.archive_event_subscribers = [trigger_subscription]
+        for p in self.__ngamsCfgObj.archive_evt_plugins:
+            self.archive_event_subscribers.append(loadPlugInEntryPoint(p, 'handle_archive_event'))
+
+    def fire_archive_event(self, file_id, file_version):
+        """Passes down the archive event to each of the archive event subscriber"""
+        evt = archive_event(file_id, file_version)
+        for s in self.archive_event_subscribers:
+            try:
+                s(evt)
+            except:
+                msg = ("Error while trigerring archiving event subscriber, "
+                       "will continue with the rest anyway")
+                logger.exception(msg)
 
     @property
     def serving(self):
@@ -2383,6 +2412,9 @@ class ngamsServer(object):
                 raise ValueError("Plugins path %s doesn't exist, check your configuration" % (plugins_path,))
             sys.path.insert(0, plugins_path)
             logger.info("Added %s to the system path", plugins_path)
+
+        # Pretty clear what this does...
+        self.load_archive_event_subscribers()
 
         # Check if there is an entry for this node in the ngas_hosts
         # table, if not create it.

@@ -1208,12 +1208,8 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
     srvObj.ingestReply(reqPropsObj, httpRef,NGAMS_HTTP_SUCCESS,
                        NGAMS_SUCCESS, msg, diskInfo)
 
-    # Trigger Subscription Thread and nofity
-    logger.info("Triggering subscription thread for file %s", plugin_result.getFileId())
-    srvObj.addSubscriptionInfo([(plugin_result.getFileId(),
-                                 plugin_result.getFileVersion())], [])
-    srvObj.triggerSubscriptionThread()
-
+    # After a successful archiving we notify the archive event subscribers
+    srvObj.fire_archive_event(plugin_result.getFileId(), plugin_result.getFileVersion())
 
 def findTargetNode(srvObj, mimeType):
     """
