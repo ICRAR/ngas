@@ -31,13 +31,73 @@
 This module contains the Test Suite for the SUBSCRIBE Command.
 """
 
+import SocketServer
 from contextlib import closing
 import httplib
+import pickle
+import socket
+import struct
 import sys
+import threading
 import time
 import urllib
 
 from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd, getNoCleanUp, setNoCleanUp
+from ngamsServer import ngamsServer
+
+
+def handle_archive_event(evt):
+
+    # pickle evt as a normal tuple and send it over to the test runner
+    evt = pickle.dumps(tuple(evt))
+
+    # send this to the notification_srv
+    try:
+        s = socket.create_connection(('127.0.0.1', 10000), timeout=1)
+        s.send(struct.pack('!I', len(evt)))
+        s.send(evt)
+        s.close()
+    except socket.error as e:
+        print(e)
+
+# A small server that receives the archiving event and sets a threading event
+class notification_srv(SocketServer.TCPServer):
+
+    def __init__(self, recvevt):
+        SocketServer.TCPServer.__init__(self, ('127.0.0.1', 10000), None)
+        self.recvevt = recvevt
+        self.archive_evt = None
+
+    def finish_request(self, request, client_address):
+        l = struct.unpack('!I', request.recv(4))[0]
+        self.archive_evt = ngamsServer.archive_event(*pickle.loads(request.recv(l)))
+        self.recvevt.set()
+
+# A class that starts the notification server and can wait until it receives
+# an archiving event
+class notification_listener(object):
+
+    def __init__(self):
+        self.recevt = threading.Event()
+        self.server = notification_srv(self.recevt)
+        self.t = threading.Thread(target=self.start_server)
+        self.t.daemon = False
+        self.t.start()
+
+    def start_server(self):
+        self.server.serve_forever(0.1)
+
+    def wait_for_file(self, timeout):
+        if self.recevt.wait(timeout):
+            self.recevt.clear()
+            return self.server.archive_evt
+
+    def close(self, timeout):
+        self.server.shutdown()
+        self.server.server_close()
+        self.t.join(timeout)
+        if self.t.isAlive():
+            print("Failed to join within timeout")
 
 
 class ngamsSubscriptionTest(ngamsTestSuite):
@@ -54,7 +114,11 @@ class ngamsSubscriptionTest(ngamsTestSuite):
     """
 
     def test_basic_subscription(self):
-        self.prepCluster("src/ngamsCfg.xml", [[8888, None, None, None], [8889, None, None, None]])
+
+        # We configure the second server to send notifications via socket
+        # to the listener we start later
+        cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest'),)
+        self.prepCluster("src/ngamsCfg.xml", [[8888, None, None, None], [8889, None, None, None, cfg]])
 
         host = 'localhost:8888'
         method = 'GET'
@@ -76,6 +140,11 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
         self.assertEquals(status.getStatus(), 'FAILURE', None)
 
+        # Create listener that should get information when files get archives
+        # in the second server (i.e., the one on the receiving end of the subscription)
+        subscription_listener = notification_listener()
+
+        # Create subscription
         method = 'GET'
         cmd = 'SUBSCRIBE'
         params = {'url': 'http://localhost:8889/QARCHIVE',
@@ -91,7 +160,14 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             self.checkEqual(resp.status, 200, None)
 
         # Do not like sleeps but xfer should happen immediately.
-        time.sleep(5)
+        try:
+            archive_evt = subscription_listener.wait_for_file(5)
+        finally:
+            subscription_listener.close(5)
+        self.assertIsNotNone(archive_evt)
+
+        self.assertEquals(2, archive_evt.file_version)
+        self.assertEquals('SmallFile.fits', archive_evt.file_id)
 
         client = sendPclCmd(port = 8889)
         status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
@@ -99,8 +175,10 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
 
     def test_basic_subscription_fail(self):
+
+        cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest'),)
         self.prepCluster("src/ngamsCfg.xml", [[8888, None, None, None, [["NgamsCfg.HostSuspension[1].SuspensionTime", '0T00:00:05'], ["NgamsCfg.Log[1].LocalLogLevel", '4']]],
-                                              [8889, None, None, None]])
+                                              [8889, None, None, None, cfg]])
 
         host = 'localhost:8888'
         method = 'GET'
@@ -211,8 +289,8 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
         self.assertEquals(status.getStatus(), 'FAILURE', None)
 
-        # USUBSCRIBE for update
-        # SUBSCRIBE for insert
+        # USUBSCRIBE updates the subscription to valid values
+        subscription_listener = notification_listener()
         cmd = 'USUBSCRIBE'
         params = {'url': 'http://localhost:8889/QARCHIVE',
                   'subscr_id': 'TEST',
@@ -226,7 +304,15 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             resp = conn.getresponse()
             self.checkEqual(resp.status, 200, None)
 
-        time.sleep(5)
+        archive_evts = []
+        try:
+            archive_evts.append(subscription_listener.wait_for_file(5))
+            archive_evts.append(subscription_listener.wait_for_file(5))
+        finally:
+            subscription_listener.close(5)
+
+        self.assertEqual([2, 2], [x.file_version for x in archive_evts])
+        self.assertSetEqual({'SmallFile.fits', 'TinyTestFile.fits'}, set([x.file_id for x in archive_evts]))
 
         client = sendPclCmd(port = 8889)
         status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
@@ -237,6 +323,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         self.assertEquals(status.getStatus(), 'SUCCESS', None)
 
         # UNSUBSCRIBE and check the newly archived file is not transfered
+        subscription_listener = notification_listener()
         cmd = 'UNSUBSCRIBE'
         params = {'subscr_id': 'TEST'}
         params = urllib.urlencode(params)
@@ -260,7 +347,10 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             resp = conn.getresponse()
             self.checkEqual(resp.status, 200, None)
 
-        time.sleep(5)
+        try:
+            self.assertIsNone(subscription_listener.wait_for_file(5))
+        finally:
+            subscription_listener.close(5)
 
         # Check after all the failed subscriptions we don't have the file
         client = sendPclCmd(port = 8889)
