@@ -122,6 +122,25 @@ on the :ref:`NGAS configuration <config.archivehandling>`.
 Also, users can install NGAS without ``crc32c`` support
 (see `<inst>`_ for details).
 
+
+.. _server.archiving_events:
+
+Archiving events
+================
+
+The NGAS server features an *archiving event* mechanism.
+Each time a new file is archived, a new archiving event is generated,
+and a list of *event handlers* is invoked with the given event.
+The NGAS server has its won internal event handlers,
+but users can also provide their own via plug-ins.
+This mechanism is a flexible way of enabling archiving notifications
+and reacting on these events.
+
+Users wanting to implement their own event handlers
+should write a python class to handle it,
+and configure the server to use that class.
+For details, see the :ref:`config.archivehandling` configuration element.
+
 .. _server.states:
 
 States

@@ -18,6 +18,11 @@ QARCHIVE
 
 Archive data files within an NGAS node.
 
+After a successful archiving of a file,
+all archiving event handlers are invoked.
+Read :ref:`server.archiving_events` for more information
+about these events and how to handle them.
+
 The QARCHIVE command supports two modes of operation, Archive Pull and Push.
 Pull tells an NGAS node to fetch and archive a file based on a valid URI.
 A Push command requires the client to send the file contents as a byte stream to the NGAS server.
