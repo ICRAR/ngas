@@ -63,6 +63,8 @@ def handle_archive_event(evt):
 # A small server that receives the archiving event and sets a threading event
 class notification_srv(SocketServer.TCPServer):
 
+    allow_reuse_address = True
+
     def __init__(self, recvevt):
         SocketServer.TCPServer.__init__(self, ('127.0.0.1', 8887), None)
         self.recvevt = recvevt
