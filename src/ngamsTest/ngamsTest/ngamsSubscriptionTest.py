@@ -78,9 +78,9 @@ class notification_srv(SocketServer.TCPServer):
 class notification_listener(object):
 
     def __init__(self):
+        self.closed = False
         self.recevt = threading.Event()
         self.server = notification_srv(self.recevt)
-        self.closed = False
 
     def wait_for_file(self, timeout):
         self.server.timeout = timeout
@@ -90,9 +90,10 @@ class notification_listener(object):
     def close(self):
         if self.closed:
             return
-        self.server.server_close()
-        self.server = None
-        self.closed = True
+        if self.server:
+            self.server.server_close()
+            self.server = None
+            self.closed = True
 
     __del__ = close
 
