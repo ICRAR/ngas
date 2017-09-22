@@ -462,8 +462,10 @@ class ngamsServer(object):
             self.triggerSubscriptionThread()
 
         self.archive_event_subscribers = [trigger_subscription]
-        for p in self.__ngamsCfgObj.archive_evt_plugins:
-            self.archive_event_subscribers.append(loadPlugInEntryPoint(p, 'handle_archive_event'))
+        for (module, clazz), pars in self.__ngamsCfgObj.archive_evt_plugins.items():
+            pars = ngamsLib.parseRawPlugInPars(pars) if pars else {}
+            plugin = loadPlugInEntryPoint(module, clazz)(**pars)
+            self.archive_event_subscribers.append(plugin.handle_event)
 
     def fire_archive_event(self, file_id, file_version):
         """Passes down the archive event to each of the archive event subscriber"""

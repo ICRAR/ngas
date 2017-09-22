@@ -46,19 +46,23 @@ from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd, getNoCleanUp, setN
 from ngamsServer import ngamsServer
 
 
-def handle_archive_event(evt):
+# The plug-in that we configure the subscriber server with, so we know when
+# an archiving has taken place on the subscription receiving end
+class SenderHandler(object):
 
-    # pickle evt as a normal tuple and send it over to the test runner
-    evt = pickle.dumps(tuple(evt))
+    def handle_event(self, evt):
 
-    # send this to the notification_srv
-    try:
-        s = socket.create_connection(('127.0.0.1', 8887), timeout=5)
-        s.send(struct.pack('!I', len(evt)))
-        s.send(evt)
-        s.close()
-    except socket.error as e:
-        print(e)
+        # pickle evt as a normal tuple and send it over to the test runner
+        evt = pickle.dumps(tuple(evt))
+
+        # send this to the notification_srv
+        try:
+            s = socket.create_connection(('127.0.0.1', 8887), timeout=5)
+            s.send(struct.pack('!I', len(evt)))
+            s.send(evt)
+            s.close()
+        except socket.error as e:
+            print(e)
 
 # A small server that receives the archiving event and sets a threading event
 class notification_srv(SocketServer.TCPServer):
@@ -116,7 +120,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         # We configure the second server to send notifications via socket
         # to the listener we start later
-        cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest'),)
+        cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'),)
         self.prepCluster("src/ngamsCfg.xml", [[8888, None, None, None], [8889, None, None, None, cfg]])
 
         host = 'localhost:8888'
@@ -175,7 +179,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
     def test_basic_subscription_fail(self):
 
-        cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest'),)
+        cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'),)
         self.prepCluster("src/ngamsCfg.xml", [[8888, None, None, None, [["NgamsCfg.HostSuspension[1].SuspensionTime", '0T00:00:05'], ["NgamsCfg.Log[1].LocalLogLevel", '4']]],
                                               [8889, None, None, None, cfg]])
 

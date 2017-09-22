@@ -257,7 +257,7 @@ class ngamsConfig:
         self.dppi_plugins              = {}
 
         # Archiving event Plug-Ins
-        self.archive_evt_plugins       = []
+        self.archive_evt_plugins       = {}
 
         # Logfile handler Plug-Ins
         self.logfile_handler_plugins   = []
@@ -528,10 +528,18 @@ class ngamsConfig:
         # Get info about Archive event Plug-Ins
         archive_handling = self.__cfgMgr.getXmlObj('ArchiveHandling[1]')
         if archive_handling:
-            pat = 'ArchiveHandling[1].EventHandlerPlugIn[%d].Name'
+            name_pattern = 'ArchiveHandling[1].EventHandlerPlugIn[%d].Name'
+            pars_pattern = 'ArchiveHandling[1].EventHandlerPlugIn[%d].PlugInPars'
             for idx1 in range(1, (len(archive_handling.getSubElList()) + 1)):
-                name = self.getVal(pat % idx1)
-                self.archive_evt_plugins.append(name)
+                name = self.getVal(name_pattern % idx1)
+                pars = self.getVal(pars_pattern % idx1)
+
+                # Make sure the plug-in name is valid
+                parts = name.split('.')
+                module, clazz = '.'.join(parts[:-1]), parts[-1]
+                if not module or not clazz:
+                    raise ValueError("module or classname missing in EventHandlerPlugIn.Name definition")
+                self.archive_evt_plugins[(module, clazz)] = pars
 
         # Get info about logfile handler plug-ins
         logObj = self.__cfgMgr.getXmlObj('Log[1]')
