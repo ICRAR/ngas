@@ -53,7 +53,7 @@ def handle_archive_event(evt):
 
     # send this to the notification_srv
     try:
-        s = socket.create_connection(('127.0.0.1', 8887), timeout=1)
+        s = socket.create_connection(('127.0.0.1', 8887), timeout=5)
         s.send(struct.pack('!I', len(evt)))
         s.send(evt)
         s.close()
@@ -68,7 +68,7 @@ class notification_srv(SocketServer.TCPServer):
         self.recvevt = recvevt
         self.archive_evt = None
 
-    def finish_request(self, request, client_address):
+    def finish_request(self, request, _):
         l = struct.unpack('!I', request.recv(4))[0]
         self.archive_evt = ngamsServer.archive_event(*pickle.loads(request.recv(l)))
         self.recvevt.set()
@@ -80,25 +80,21 @@ class notification_listener(object):
     def __init__(self):
         self.recevt = threading.Event()
         self.server = notification_srv(self.recevt)
-        self.t = threading.Thread(target=self.start_server)
-        self.t.daemon = False
-        self.t.start()
-
-    def start_server(self):
-        self.server.serve_forever(0.1)
+        self.closed = False
 
     def wait_for_file(self, timeout):
-        if self.recevt.wait(timeout):
-            self.recevt.clear()
-            return self.server.archive_evt
+        self.server.timeout = timeout
+        self.server.handle_request()
+        return self.server.archive_evt
 
-    def close(self, timeout):
-        self.server.shutdown()
+    def close(self):
+        if self.closed:
+            return
         self.server.server_close()
-        self.t.join(timeout)
-        if self.t.isAlive():
-            print("Failed to join within timeout")
+        self.server = None
+        self.closed = True
 
+    __del__ = close
 
 class ngamsSubscriptionTest(ngamsTestSuite):
     """
@@ -163,7 +159,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         try:
             archive_evt = subscription_listener.wait_for_file(5)
         finally:
-            subscription_listener.close(5)
+            subscription_listener.close()
         self.assertIsNotNone(archive_evt)
 
         self.assertEquals(2, archive_evt.file_version)
@@ -309,8 +305,9 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             archive_evts.append(subscription_listener.wait_for_file(5))
             archive_evts.append(subscription_listener.wait_for_file(5))
         finally:
-            subscription_listener.close(5)
+            subscription_listener.close()
 
+        self.assertNotIn(None, archive_evts)
         self.assertEqual([2, 2], [x.file_version for x in archive_evts])
         self.assertSetEqual({'SmallFile.fits', 'TinyTestFile.fits'}, set([x.file_id for x in archive_evts]))
 
@@ -350,7 +347,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         try:
             self.assertIsNone(subscription_listener.wait_for_file(5))
         finally:
-            subscription_listener.close(5)
+            subscription_listener.close()
 
         # Check after all the failed subscriptions we don't have the file
         client = sendPclCmd(port = 8889)
