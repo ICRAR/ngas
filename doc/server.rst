@@ -18,6 +18,29 @@ via the ``-cfg`` command-line flag
 To see more details about the XML documentation
 go to the :doc:`configuration` section.
 
+
+.. _server.proxy:
+
+Proxy mode
+==========
+
+When NGAS servers are deployed in a cluster configuration
+(i.e., many servers connected to a single central database),
+clients can issue commands to any server in the cluster.
+
+In this scenario it can happen
+that clients contact a server with a command
+that can only be fulfilled by a different server
+(e.g., fetching data).
+In those cases the server contacted by the client
+can either respond with an HTTP redirect answer to the client,
+or it can act as a proxy,
+issuing the command to the second server on behalf of the client,
+and forwarding the response as it comes.
+This behaviour can be set in a per-server basis
+via their corresponding configuration file.
+See :ref:`config.server` for details.
+
 .. _server.storage:
 
 Storage organization

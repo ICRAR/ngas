@@ -26,6 +26,10 @@ Contains the overall server configuration.
   at a given time. If a new request comes in and the server has reached
   the limit already, it will respond with an ``503`` HTTP code.
 * *PluginsPath*: A directory where NGAS plug-ins can be loaded from.
+* *Proxy*: Whether this server should act as a proxy when serving requests that
+  are addressed to a different server within the same cluster (``1``)
+  or not (``0``).
+  See :ref:`server.proxy` for details.
 * *RequestDbBackend*: The implementation of the request database
   that should be used.
   Allowed values are ``memory``, ``bsddb`` and ``null``.
