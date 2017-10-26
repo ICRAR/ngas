@@ -95,6 +95,9 @@ STD_DISK_STAT_FILT = ["AccessDate", "AvailableMb", "CreationDate", "Date",
 AUTH               = "bmdhczpuZ2Fz"
 
 
+# this_dir, which we use in a few places to refer to files, etc
+this_dir = os.path.normpath(pkg_resources.resource_filename(__name__, '.'))  # @UndefinedVariable
+
 ###########################################################################
 
 ###########################################################################
@@ -944,7 +947,7 @@ def unzip(infile, outfile):
 # END: Utility functions
 ###########################################################################
 
-ServerInfo = collections.namedtuple('ServerInfo', ['proc', 'port', 'rootDir'])
+ServerInfo = collections.namedtuple('ServerInfo', ['proc', 'port', 'rootDir', 'cfg_file', 'daemon'])
 
 class ngamsTestSuite(unittest.TestCase):
     """
@@ -982,7 +985,8 @@ class ngamsTestSuite(unittest.TestCase):
                    cfgProps = [],
                    dbCfgName = None,
                    srvModule = None,
-                   force=False):
+                   force=False,
+                   daemon = False):
         """
         Prepare a standard server object, which runs as a separate process and
         serves via the standard HTTP interface.
@@ -1028,6 +1032,9 @@ class ngamsTestSuite(unittest.TestCase):
         """
         T = TRACE(3)
 
+        if srvModule and daemon:
+            raise ValueError("srvModule cannot be used in daemon mode")
+
         verbose = logging_levels[logger.getEffectiveLevel()] + 1
 
         if (dbCfgName):
@@ -1066,15 +1073,20 @@ class ngamsTestSuite(unittest.TestCase):
             delNgasTbls(dbObj)
 
         # Dump configuration into the filesystem so the server can pick it up
-        tmpCfg = genTmpFilename("CFG_") + ".xml"
+        tmpCfg = os.path.abspath(genTmpFilename("CFG_") + ".xml")
         cfgObj.save(tmpCfg, 0)
 
         # Execute the server as an external process.
-        srvModule = srvModule or 'ngamsServer.ngamsServer'
-        this_dir = os.path.normpath(pkg_resources.resource_filename(__name__, '.'))  # @UndefinedVariable
+        if daemon:
+            srvModule = 'ngamsServer.ngamsDaemon'
+        else:
+            srvModule = srvModule or 'ngamsServer.ngamsServer'
+
         parent_dir = os.path.dirname(this_dir)
         execCmd  = [sys.executable, '-m', srvModule]
-        execCmd += ["-cfg", os.path.abspath(tmpCfg), "-v", str(verbose)]
+        if daemon:
+            execCmd += ['start']
+        execCmd += ["-cfg", tmpCfg, "-v", str(verbose)]
         execCmd += ['-path', parent_dir]
         if force:        execCmd.append('-force')
         if autoOnline:   execCmd.append("-autoOnline")
@@ -1086,33 +1098,39 @@ class ngamsTestSuite(unittest.TestCase):
             srvProcess = subprocess.Popen(execCmd, shell=False)
 
         # We have to wait until the server is serving.
-        server_info = ServerInfo(srvProcess, port, cfgObj.getRootDirectory())
+        server_info = ServerInfo(srvProcess, port, cfgObj.getRootDirectory(), tmpCfg, daemon)
         pCl = sendPclCmd(port=port)
+
+        # A daemon server should start rather quickly, as it forks out the actual
+        # server process and then exists (with a 0 status when successful)
+        if server_info.daemon:
+            srvProcess.wait()
+            if srvProcess.poll() != 0:
+                raise Exception("Daemon server failed to start")
+
         startTime = time.time()
         while True:
 
             # Check if the server actually didn't start up correctly
-            ecode = srvProcess.poll()
-            if ecode is not None:
-                raise Exception("Server exited with code %d during startup" % (ecode,))
+            if not server_info.daemon:
+                ecode = srvProcess.poll()
+                if ecode is not None:
+                    raise Exception("Server exited with code %d during startup" % (ecode,))
 
-            # "ping" the server
+            # "ping" the server and check that the status is what we expect
             try:
                 stat = pCl.status()
+                state = "ONLINE" if autoOnline else "OFFLINE"
+                logger.debug("Test server running - State: %s", state)
+                if stat.getState() == state:
+                    break
             except socket.error:
                 logger.debug("Polled server - not yet running ...")
                 time.sleep(0.2)
-                continue
             except:
                 logger.error("Error while STATUS-ing server, shutting down")
                 self.termExtSrv(server_info)
                 raise
-
-            # Check the status is what we expect
-            state = "ONLINE" if autoOnline else "OFFLINE"
-            logger.debug("Test server running - State: %s", state)
-            if stat.getState() == state:
-                break
 
             # Took too long?
             if ((time.time() - startTime) >= 20):
@@ -1129,8 +1147,23 @@ class ngamsTestSuite(unittest.TestCase):
         Terminate an externally running server.
         """
 
-        srvProcess, port, rootDir = srvInfo
+        srvProcess, port, rootDir, cfg_file, daemon = srvInfo
 
+        # Started as a daemon, stopped as a daemon
+        # Here we trust that the daemon will shut down all the processes nicely,
+        # but we could be more thorough in the future I guess and double-check
+        # that everything is shut down correctly
+        if daemon:
+            execCmd  = [sys.executable, '-m', 'ngamsServer.ngamsDaemon', 'stop']
+            execCmd += ["-cfg", cfg_file]
+            with self._proc_startup_lock:
+                daemon_stop_proc = subprocess.Popen(execCmd, shell=False)
+            daemon_stop_proc.wait()
+            if daemon_stop_proc.poll() != 0:
+                raise Exception("Daemon process didn't stop correctly")
+            return
+
+        # The rest if for stopping a server that was NOT started inside a daemon
         if srvProcess.poll() is not None:
             logger.debug("Server process %d (port %d) already dead x(, no need to terminate it again", srvProcess.pid, port)
             srvProcess.wait()
@@ -1417,10 +1450,24 @@ class ngamsTestSuite(unittest.TestCase):
 
     def point_to_sqlite_database(self, cfgObj, create):
         # Exceptional handling for SQLite.
-        # TODO: It would probably be better if we simply run
-        # the SQL script that creates the tables
-        if create and 'sqlite' in cfgObj.getDbInterface().lower():
-            cpFile("src/ngas_Sqlite_db_template", "tmp/ngas.sqlite")
+        if 'sqlite' in cfgObj.getDbInterface().lower():
+
+            # TODO: It would probably be better if we simply run
+            # the SQL script that creates the tables
+            if create:
+                cpFile("src/ngas_Sqlite_db_template", "tmp/ngas.sqlite")
+
+            # Make sure the 'database' attribute is an aboslute path
+            # This is because there are tests that start the server
+            # in daemon mode, in which case the process's cwd is /
+            #
+            # The "dbCfgGroupId" is needed when dumping configuration objects
+            # into the ngas configuration database tables (which is exercised
+            # by the unit tests, but in reality not really used much).
+            params = cfgObj.getDbParameters()
+            if 'database' in params and not params['database'].startswith('/'):
+                abspath = this_dir + '/' + params['database']
+                cfgObj.storeVal("NgamsCfg.Db[1].database", abspath, cfgObj.getVal('NgamsCfg.Id'))
 
     def prepDiskCfg(self,
                     diskCfg,
