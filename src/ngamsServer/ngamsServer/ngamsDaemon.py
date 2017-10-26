@@ -187,3 +187,6 @@ def main(args=sys.argv):
         exitCode = 1
 
     sys.exit(exitCode)
+
+if __name__ == '__main__':
+    main(sys.argv)
