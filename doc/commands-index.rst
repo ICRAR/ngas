@@ -28,7 +28,7 @@ the operation result.
 
 One can configure an NGAS server to accept HTTP requests only from authenticated
 users, and moreover to allow certain commands to certain users only. Please
-refer to :ref:`server.config` for more details.
+refer to :ref:`server.authorization` for more details.
 
 The following is a list of the most relevant commands supported by NGAS. More
 commands can be added in the form of *plug-ins*.

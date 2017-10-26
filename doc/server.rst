@@ -228,3 +228,23 @@ and files are NGAS files.
 
 Containers are handled via the different :doc:`container commands
 <commands/containers>`.
+
+
+.. _server.authorization:
+
+Authorization
+=============
+
+NGAS supports authentication
+via the standard HTTP ``Authorization`` header.
+Currently only ``Basic`` authentication is supported,
+but more authentication methods could be added in the future.
+On top of authentication, a binary authorization scheme
+is implemented which allows users or not
+to run a command.
+
+In other words,
+NGAS can be set up to allow different users
+to run different commands.
+Details on how to set up this configuration
+can be found in :ref:`config.authorization`.

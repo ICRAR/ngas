@@ -223,3 +223,24 @@ contains the details to configure the server logging output.
   attribute with the fully-qualified module name implementing the plug-in inside
   a ``run`` method, and a ``PlugInPars`` element with a comma-separated,
   ``key=value`` pairs.
+
+.. _config.authorization:
+
+Authorization
+-------------
+
+The ``Authorization`` element defines the authentication and authorization rules
+that the NGAS server will follow when receiving commands from clients.
+For details see :ref:`server.authorization`.
+
+The ``Authorization`` element has an ``Enable`` attribute
+which determines whether authentication and authorization
+is enabled (``1``) or not (``0``).
+Zero or more ``User`` XML sub-elements
+also describe a different user recognized by NGAS.
+Each ``User`` element should have the following attributes:
+
+* *Name*: The username.
+* *Password*: The base64-encoded password.
+* *Commands*: A comma-separated list of commands this user is allowed to
+  execute. The special value ``*`` is interpreted as all commands.
