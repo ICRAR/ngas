@@ -34,13 +34,14 @@ This module contains the Test Suite for the NG/AMS Server.
 import contextlib
 import os
 import socket
+import subprocess
 import sys
 import threading
 import time
 
 from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SERVICE_NA
-from ngamsTestLib import ngamsTestSuite, runTest, saveInFile, sendPclCmd
+from ngamsTestLib import ngamsTestSuite, runTest, saveInFile, sendPclCmd, this_dir
 
 
 class ngamsServerTest(ngamsTestSuite):
@@ -105,6 +106,29 @@ class ngamsServerTest(ngamsTestSuite):
         with contextlib.closing(resp):
             self.assertEqual(NGAMS_HTTP_SERVICE_NA, resp.status)
 
+class ngamsDaemonTest(ngamsTestSuite):
+
+    def _run_daemon_status(self, cfg_file):
+        execCmd  = [sys.executable, '-m', 'ngamsServer.ngamsDaemon', 'status']
+        execCmd += ['-cfg', cfg_file]
+        with self._proc_startup_lock:
+            daemon_status_proc = subprocess.Popen(execCmd, shell=False)
+        return daemon_status_proc.wait()
+
+    def test_start_via_daemon(self):
+        self.prepExtSrv(daemon=True)
+
+    def test_daemon_status(self):
+        self.prepExtSrv(daemon=True)
+        self.assertEquals(0, self._run_daemon_status(self.extSrvInfo[-1].cfg_file))
+
+    def test_daemon_status_no_server_running(self):
+        self.assertEquals(1, self._run_daemon_status(os.path.join(this_dir, 'src/ngamsCfg.xml')))
+
+    def test_daemon_double_start(self):
+        # Try to start the daemon in the same port, should fail
+        self.prepExtSrv(daemon=True)
+        self.assertRaises(Exception, self.prepExtSrv, delDirs=False, clearDb=False, daemon=True)
 
 def run():
     """
