@@ -88,6 +88,26 @@ work as described above,
 while ``host``, ``dbname``, ``user`` and ``password``
 are keyword arguments accepted by the ``psycopg2.connect`` method.
 
+
+.. _config.commands:
+
+Commands
+--------
+
+This element lists user-defined command plug-ins.
+For details on commands in general
+see the :doc:`commands overview <commands-index>` section.
+For details on command plug-ins
+see the :doc:`commands plug-in <plugins/commands>` section.
+
+The ``Comands`` element contains zero or more
+XML sub-elements named ``Command``,
+each of which must define the following attributes:
+
+* *Name*: The command name, case-sensitive.
+* *Module*: The python module implementing this command.
+
+
 .. _config.storage_sets:
 
 StorageSets

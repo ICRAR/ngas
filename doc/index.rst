@@ -18,5 +18,6 @@ Contents:
    running
    server
    background
+   plugins-index
    commands-index
    configuration
