@@ -32,3 +32,4 @@ source = ../../ngamsCore
 omit = ../../ngamsPlugIns/ngamsPlugIns/alma/*
        ../../ngamsPlugIns/ngamsPlugIns/gleam/*
        ../../ngamsPlugIns/ngamsPlugIns/mwa/*
+       */setup.py
