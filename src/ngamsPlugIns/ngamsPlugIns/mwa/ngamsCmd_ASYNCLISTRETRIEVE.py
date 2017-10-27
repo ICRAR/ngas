@@ -70,9 +70,9 @@ import urllib2
 import cPickle as pickle
 from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT, TRACE, \
     NGAMS_HTTP_POST, getFileSize, getHostName, NGAMS_SUCCESS, NGAMS_FAILURE
-from ngamsLib import ngamsDbCore, ngamsStatus, ngamsPlugInApi, ngamsLib
+from ngamsLib import ngamsDbCore, ngamsStatus, ngamsPlugInApi
 import ngamsMWACortexTapeApi
-from ngamsPlugIns.ngamsMWAAsyncProtocol import AsyncListRetrieveResponse, \
+from ngamsPlugIns.mwa.ngamsMWAAsyncProtocol import AsyncListRetrieveResponse, \
     AsyncListRetrieveProtocolError, AsyncListRetrieveCancelResponse, \
     AsyncListRetrieveSuspendResponse, AsyncListRetrieveResumeResponse, \
     AsyncListRetrieveStatusResponse, FileInfo
