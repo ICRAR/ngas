@@ -253,6 +253,9 @@ class ngamsConfig:
         # List of Stream Objects.
         self.__streamList              = []
 
+        # List of command plug-ins
+        self.cmd_plugins               = {}
+
         # Data Processing Plug-Ins, indexed by name
         self.dppi_plugins              = {}
 
@@ -414,6 +417,16 @@ class ngamsConfig:
         # Create log file directory if defined.
         if (self.getLocalLogFile()):
             checkCreatePath(os.path.dirname(self.getLocalLogFile()))
+
+        # Get command plug-ins
+        commands_obj = self.__cfgMgr.getXmlObj('Commands[1]')
+        if commands_obj:
+            logger.debug('Unpacking Commands element')
+            cmdattr_fmt = 'Commands[1].Command[%d].%s'
+            for idx in range(1, len(commands_obj.getSubElList()) + 1):
+                name = self.getVal(cmdattr_fmt % (idx, 'Name'))
+                module = self.getVal(cmdattr_fmt % (idx, 'Module'))
+                self.cmd_plugins[name] = module
 
         # Get Mime-types.
         mimeTypesObj = self.__cfgMgr.getXmlObj("MimeTypes[1]")

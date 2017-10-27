@@ -38,10 +38,18 @@ import subprocess
 import sys
 import threading
 import time
+import uuid
 
 from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SERVICE_NA
 from ngamsTestLib import ngamsTestSuite, runTest, saveInFile, sendPclCmd, this_dir
+
+
+# This module is used as a command by one of its own tests,
+# which expects that after running the command there will be a 0-bytes file
+# created with a given name
+def handleCmd(_, req, __):
+    open(os.path.join(this_dir, req['fname']), 'wb').close()
 
 
 class ngamsServerTest(ngamsTestSuite):
@@ -105,6 +113,22 @@ class ngamsServerTest(ngamsTestSuite):
         resp = ngamsHttpUtils.httpGet('127.0.0.1', 8888, 'ONLINE')
         with contextlib.closing(resp):
             self.assertEqual(NGAMS_HTTP_SERVICE_NA, resp.status)
+
+    def test_user_command_plugin(self):
+
+        # Let this module implement the TEST command
+        cfg = (('NgamsCfg.Commands[1].Command[1].Name', 'TEST'),
+               ('NgamsCfg.Commands[1].Command[1].Module', 'ngamsTest.ngamsServerTest'))
+        self.prepExtSrv(cfgProps=cfg)
+        client = sendPclCmd()
+
+        # Let the TEST command create a file under ./tmp
+        # There is no need to manually remove here, as ./tmp gets removed anyway
+        # later during tearDown()
+        fname = os.path.join(this_dir, 'tmp', str(uuid.uuid4()))
+        status = client.get_status('TEST', pars=[('fname', fname)])
+        self.assertEquals(NGAMS_SUCCESS, status.getStatus())
+        self.assertTrue(os.path.isfile(os.path.join(this_dir, fname)))
 
 class ngamsDaemonTest(ngamsTestSuite):
 

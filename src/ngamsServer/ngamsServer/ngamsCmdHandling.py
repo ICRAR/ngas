@@ -113,7 +113,12 @@ def _get_module(server, request):
     if cmd in _builtin_cmds:
         return _builtin_cmds[cmd]
 
-    modname = 'ngamsPlugIns.ngamsCmd_%s' % cmd
+    # Is it a plug-in command?
+    cfg = server.getCfg()
+    if cmd in cfg.cmd_plugins:
+        modname = cfg.cmd_plugins[cmd]
+    else:
+        modname = 'ngamsPlugIns.ngamsCmd_%s' % cmd
 
     # Reload the module if requested.
     reload_mod = 'reload' in request and int(request['reload']) == 1
