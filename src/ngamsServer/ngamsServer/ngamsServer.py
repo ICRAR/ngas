@@ -1682,6 +1682,9 @@ class ngamsServer(object):
 
             reqPropsObj.getWriteFd().flush()
 
+        except ngamsCmdHandling.NoSuchCommand, e:
+            self.reply(reqPropsObj, httpRef, 404, NGAMS_FAILURE, "Command not found")
+
         except Exception, e:
 
             # Quickly respond with a 400 status code for unexpected exceptions

@@ -74,6 +74,10 @@ _builtin_cmds = {
     NGAMS_UNSUBSCRIBE_CMD: ngamsUnsubscribeCmd,
 }
 
+class NoSuchCommand(Exception):
+    """Error thrown when a command's implementation cannot be found"""
+    pass
+
 def cmdHandler(srvObj,
                reqPropsObj,
                httpRef):
@@ -125,7 +129,15 @@ def _get_module(server, request):
     mod = sys.modules.get(modname, None)
     if mod is None:
         logger.debug("Importing dynamic command module: %s", modname)
-        mod = __import__(modname, fromlist=[__name__])
+        try:
+            mod = __import__(modname, fromlist=[__name__])
+        except ImportError:
+            logger.error("No module %s found", modname)
+            raise NoSuchCommand()
+        except:
+            logger.exception("Error while importing %s", modname)
+            raise
+
     elif reload_mod:
         logger.debug("Re-loading dynamic command module: %s", modname)
         mod = reload(mod)

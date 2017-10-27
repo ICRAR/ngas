@@ -130,6 +130,11 @@ class ngamsServerTest(ngamsTestSuite):
         self.assertEquals(NGAMS_SUCCESS, status.getStatus())
         self.assertTrue(os.path.isfile(os.path.join(this_dir, fname)))
 
+    def test_no_such_command(self):
+        self.prepExtSrv()
+        resp, _, _ = sendPclCmd()._get('UNKNOWN_CMD')
+        self.assertEquals(404, resp.status)
+
 class ngamsDaemonTest(ngamsTestSuite):
 
     def _run_daemon_status(self, cfg_file):
