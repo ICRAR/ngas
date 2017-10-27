@@ -160,15 +160,13 @@ Contains archiving-related configuration.
    See :ref:`server.crc` for details.
    If not specified the server will use the ``crc32`` variant. If specified,
    ``0`` means ``crc32`` and ``1`` means ``crc32c``.
- * *EventHandlerPlugIn*: Zero or more sub-elements definining additional modules
-   that will handle :ref:`server.archiving_events`.
+ * *EventHandlerPlugIn*: Zero or more sub-elements defining additional modules
+   that will handle :ref:`archiving events <server.archiving_events>`.
    Each element should have a ``Name`` attribute with the fully-qualified
-   class name implementing the plug-in, and an optional ``PlugInPars`` attribute
-   with a comma-separated ``key=value`` definitions.
-   The class constructor should accept keyword arguments
-   corresponding to these parameters, and should have a ``handle_event`` method
-   that gets invoked for each archiving event, and that receives the event as
-   its unique argument.
+   class name implementing :doc:`the plug-in <plugins/archiving_events>`,
+   and an optional ``PlugInPars`` attribute
+   with a comma-separated ``key=value`` definitions,
+   which are passed down to the class constructor as keyword arguments.
 
 
 .. _config.janthread:

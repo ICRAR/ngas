@@ -11,3 +11,4 @@ or adjust some details for specific platforms.
 .. toctree::
 
 	plugins/commands
+	plugins/archiving_events

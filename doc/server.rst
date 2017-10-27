@@ -160,9 +160,8 @@ This mechanism is a flexible way of enabling archiving notifications
 and reacting on these events.
 
 Users wanting to implement their own event handlers
-should write a python class to handle it,
-and configure the server to use that class.
-For details, see the :ref:`config.archivehandling` configuration element.
+should :doc:`write a python class <plugins/archiving_events>` to handle it,
+and :ref:`configure the server <config.archivehandling>` to use that class.
 
 .. _server.states:
 
