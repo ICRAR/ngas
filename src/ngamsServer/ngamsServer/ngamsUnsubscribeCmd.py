@@ -203,7 +203,7 @@ def _reduceRefCount(fileDeliveryCountDic, fileDeliveryCountDic_Sem, fileId, file
     return 0
 
 
-def handleCmdUnsubscribe(srvObj,
+def handleCmd(srvObj,
                          reqPropsObj,
                          httpRef):
     """

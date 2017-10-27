@@ -93,7 +93,7 @@ def printLabel(srvObj,
                 diskId, label)
 
 
-def handleCmdLabel(srvObj,
+def handleCmd(srvObj,
                    reqPropsObj,
                    httpRef):
     """

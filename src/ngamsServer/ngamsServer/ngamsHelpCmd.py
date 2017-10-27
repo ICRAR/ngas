@@ -38,7 +38,7 @@ from ngamsLib.ngamsCore import TRACE, getNgamsVersion, NGAMS_FAILURE, NGAMS_HTTP
     toiso8601
 
 
-def handleCmdHelp(srvObj,
+def handleCmd(srvObj,
                   reqPropsObj,
                   httpRef):
     """

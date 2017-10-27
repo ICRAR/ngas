@@ -40,7 +40,7 @@ from ngamsLib.ngamsCore import NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
 
 logger = logging.getLogger(__name__)
 
-def handleCmdInit(srvObj,
+def handleCmd(srvObj,
                   reqPropsObj,
                   httpRef):
     """

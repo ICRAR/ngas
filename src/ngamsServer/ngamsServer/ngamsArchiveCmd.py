@@ -36,7 +36,7 @@ import ngamsArchiveUtils
 from ngamsLib.ngamsCore import NGAMS_IDLE_SUBSTATE
 
 
-def handleCmdArchive(srvObj,
+def handleCmd(srvObj,
                      reqPropsObj,
                      httpRef):
     """

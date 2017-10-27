@@ -422,7 +422,7 @@ def _handleFileListReply(srvObj,
         raise Exception(msg)
 
 
-def handleCmdStatus(srvObj,
+def handleCmd(srvObj,
                     reqPropsObj,
                     httpRef):
     """

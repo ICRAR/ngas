@@ -60,7 +60,7 @@ def addSubscriber(srvObj, subscrObj):
     srvObj.registerSubscriber(subscrObj)
 
 
-def handleCmdSubscribe(srvObj,
+def handleCmd(srvObj,
                        reqPropsObj,
                        httpRef):
     """

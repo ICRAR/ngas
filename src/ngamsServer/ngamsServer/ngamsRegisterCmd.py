@@ -700,7 +700,7 @@ def register(srvObj,
                             0, NGAMS_XML_MT, len(xmlStat), [], 1)
 
 
-def handleCmdRegister(srvObj,
+def handleCmd(srvObj,
                       reqPropsObj,
                       httpRef):
     """

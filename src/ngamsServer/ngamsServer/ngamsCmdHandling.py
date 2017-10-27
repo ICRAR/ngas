@@ -34,22 +34,45 @@ Contains various functions for handling commands.
 import logging
 import sys
 
-import ngamsArchiveCmd, ngamsCacheDelCmd, ngamsCheckFileCmd, ngamsDiscardCmd
-import ngamsConfigCmd, ngamsCloneCmd
-import ngamsExitCmd, ngamsHelpCmd, ngamsInitCmd, ngamsLabelCmd, ngamsOfflineCmd
-from ngamsLib.ngamsCore import genLog, TRACE, \
+from ngamsLib.ngamsCore import \
     NGAMS_RETRIEVE_CMD, NGAMS_ARCHIVE_CMD, NGAMS_CACHEDEL_CMD, \
     NGAMS_CHECKFILE_CMD, NGAMS_CLONE_CMD, NGAMS_CONFIG_CMD, NGAMS_DISCARD_CMD, \
     NGAMS_EXIT_CMD, NGAMS_HELP_CMD, NGAMS_INIT_CMD, NGAMS_LABEL_CMD, \
     NGAMS_OFFLINE_CMD, NGAMS_ONLINE_CMD, NGAMS_REARCHIVE_CMD, NGAMS_REGISTER_CMD, \
     NGAMS_REMDISK_CMD, NGAMS_REMFILE_CMD, NGAMS_STATUS_CMD, NGAMS_SUBSCRIBE_CMD, \
     NGAMS_UNSUBSCRIBE_CMD
+import ngamsArchiveCmd, ngamsCacheDelCmd, ngamsCheckFileCmd, ngamsDiscardCmd
+import ngamsConfigCmd, ngamsCloneCmd
+import ngamsExitCmd, ngamsHelpCmd, ngamsInitCmd, ngamsLabelCmd, ngamsOfflineCmd
 import ngamsOnlineCmd, ngamsRearchiveCmd, ngamsRegisterCmd, ngamsRemDiskCmd
 import ngamsRemFileCmd, ngamsRetrieveCmd, ngamsStatusCmd, ngamsSubscribeCmd
 import ngamsUnsubscribeCmd
 
 
 logger = logging.getLogger(__name__)
+
+_builtin_cmds = {
+    NGAMS_ARCHIVE_CMD: ngamsArchiveCmd,
+    NGAMS_CACHEDEL_CMD: ngamsCacheDelCmd,
+    NGAMS_CHECKFILE_CMD: ngamsCheckFileCmd,
+    NGAMS_CLONE_CMD: ngamsCloneCmd,
+    NGAMS_CONFIG_CMD: ngamsConfigCmd,
+    NGAMS_DISCARD_CMD: ngamsDiscardCmd,
+    NGAMS_EXIT_CMD: ngamsExitCmd,
+    NGAMS_HELP_CMD: ngamsHelpCmd,
+    NGAMS_INIT_CMD: ngamsInitCmd,
+    NGAMS_LABEL_CMD: ngamsLabelCmd,
+    NGAMS_OFFLINE_CMD: ngamsOfflineCmd,
+    NGAMS_ONLINE_CMD: ngamsOnlineCmd,
+    NGAMS_REARCHIVE_CMD: ngamsRearchiveCmd,
+    NGAMS_REGISTER_CMD: ngamsRegisterCmd,
+    NGAMS_REMDISK_CMD: ngamsRemDiskCmd,
+    NGAMS_REMFILE_CMD: ngamsRemFileCmd,
+    NGAMS_RETRIEVE_CMD: ngamsRetrieveCmd,
+    NGAMS_STATUS_CMD: ngamsStatusCmd,
+    NGAMS_SUBSCRIBE_CMD: ngamsSubscribeCmd,
+    NGAMS_UNSUBSCRIBE_CMD: ngamsUnsubscribeCmd,
+}
 
 def cmdHandler(srvObj,
                reqPropsObj,
@@ -68,81 +91,39 @@ def cmdHandler(srvObj,
 
     Returns:       Void.
     """
-    T = TRACE()
+    _get_module(srvObj, reqPropsObj).handleCmd(srvObj, reqPropsObj, httpRef)
+
+def _get_module(server, request):
 
     # Interpret the command + parameters.
-    cmd = reqPropsObj.getCmd()
+    cmd = request.getCmd()
     logger.info("Received command: %s", cmd)
-    if (cmd == "ngamsInternal.dtd"):
-        # Special handling.
-        reqPropsObj.setCmd(NGAMS_RETRIEVE_CMD).addHttpPar("internal", cmd)
-        ngamsRetrieveCmd.handleCmdRetrieve(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_ARCHIVE_CMD):
-        ngamsArchiveCmd.handleCmdArchive(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_CACHEDEL_CMD):
-        ngamsCacheDelCmd.handleCmdCacheDel(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_CHECKFILE_CMD):
-        ngamsCheckFileCmd.handleCmdCheckFile(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_CLONE_CMD):
-        ngamsCloneCmd.handleCmdClone(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_CONFIG_CMD):
-        ngamsConfigCmd.handleCmdConfig(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_DISCARD_CMD):
-        ngamsDiscardCmd.handleCmdDiscard(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_EXIT_CMD):
-        ngamsExitCmd.handleCmdExit(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_HELP_CMD):
-        ngamsHelpCmd.handleCmdHelp(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_INIT_CMD):
-        ngamsInitCmd.handleCmdInit(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_LABEL_CMD):
-        ngamsLabelCmd.handleCmdLabel(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_OFFLINE_CMD):
-        ngamsOfflineCmd.handleCmdOffline(srvObj,reqPropsObj, httpRef)
-    elif (cmd == NGAMS_ONLINE_CMD):
-        ngamsOnlineCmd.handleCmdOnline(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_REARCHIVE_CMD):
-        ngamsRearchiveCmd.handleCmdRearchive(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_REGISTER_CMD):
-        ngamsRegisterCmd.handleCmdRegister(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_REMDISK_CMD):
-        ngamsRemDiskCmd.handleCmdRemDisk(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_REMFILE_CMD):
-        ngamsRemFileCmd.handleCmdRemFile(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_RETRIEVE_CMD):
-        ngamsRetrieveCmd.handleCmdRetrieve(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_STATUS_CMD):
-        ngamsStatusCmd.handleCmdStatus(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_SUBSCRIBE_CMD):
-        ngamsSubscribeCmd.handleCmdSubscribe(srvObj, reqPropsObj, httpRef)
-    elif (cmd == NGAMS_UNSUBSCRIBE_CMD):
-        ngamsUnsubscribeCmd.handleCmdUnsubscribe(srvObj, reqPropsObj, httpRef)
-    else:
-        try:
-            if cmd == 'robots.txt':
-                cmd = 'robots'
-            if cmd == 'favicon.ico':
-                cmd = 'favicon'
-            cmdMod = "ngamsPlugIns.ngamsCmd_%s" % cmd
-            # Reload the module if requested.
-            reloadMod = 0
-            if (reqPropsObj.hasHttpPar("reload")):
-                if (int(reqPropsObj.getHttpPar("reload")) == 1):
-                    reloadMod = 1
-            if not sys.modules.has_key(cmdMod):
-                logger.debug("Importing dynamic command module: %s", cmdMod)
-                mod = __import__(cmdMod, fromlist=[__name__])
-            elif reloadMod == 1:
-                logger.debug("Re-loading dynamic command module: %s", cmdMod)
-                mod = reload(sys.modules[cmdMod])
-            else:
-                mod = __import__(cmdMod, fromlist=[__name__]) # just make sure that mod is initialized
-                logger.debug("Using loaded dynamic command module: %s", cmdMod)
 
-            srvObj.getDynCmdDic()[cmdMod] = 1
-        except Exception:
-            errMsg = genLog("NGAMS_ER_ILL_CMD", [cmd])
-            raise Exception(errMsg)
-        mod.handleCmd(srvObj, reqPropsObj, httpRef)
+    # Special handling for certain commands
+    # TODO: these should certainly disappear at some point
+    if cmd == 'robots.txt':
+        cmd = 'robots'
+    if cmd == 'favicon.ico':
+        cmd = 'favicon'
+    if cmd == "ngamsInternal.dtd":
+        request.setCmd(NGAMS_RETRIEVE_CMD).addHttpPar("internal", cmd)
+        cmd = 'RETRIEVE'
+
+    # Is it a built-in commands?
+    if cmd in _builtin_cmds:
+        return _builtin_cmds[cmd]
+
+    modname = 'ngamsPlugIns.ngamsCmd_%s' % cmd
+
+    # Reload the module if requested.
+    reload_mod = 'reload' in request and int(request['reload']) == 1
+    mod = sys.modules.get(modname, None)
+    if mod is None:
+        logger.debug("Importing dynamic command module: %s", modname)
+        mod = __import__(modname, fromlist=[__name__])
+    elif reload_mod:
+        logger.debug("Re-loading dynamic command module: %s", modname)
+        mod = reload(mod)
+    return mod
 
 # EOF

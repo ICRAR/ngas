@@ -586,7 +586,7 @@ def _handleCmdRetrieve(srvObj,
     genReplyRetrieve(srvObj, reqPropsObj, httpRef, procResult)
 
 
-def handleCmdRetrieve(srvObj,
+def handleCmd(srvObj,
                       reqPropsObj,
                       httpRef):
     """

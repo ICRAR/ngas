@@ -185,7 +185,7 @@ def remDisk(srvObj,
         rmFile(tmpFilePat + "*")
 
 
-def handleCmdRemDisk(srvObj,
+def handleCmd(srvObj,
                      reqPropsObj,
                      httpRef):
     """

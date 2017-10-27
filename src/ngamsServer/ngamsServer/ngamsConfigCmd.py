@@ -33,7 +33,7 @@ Contains code for handling the CONFIG command.
 
 from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS
 
-def handleCmdConfig(srvObj,
+def handleCmd(srvObj,
                     reqPropsObj,
                     httpRef):
     """

@@ -41,7 +41,7 @@ import ngamsSrvUtils
 
 logger = logging.getLogger(__name__)
 
-def handleCmdOffline(srvObj,
+def handleCmd(srvObj,
                      reqPropsObj,
                      httpRef):
     """

@@ -42,7 +42,7 @@ from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, genLog,\
 
 logger = logging.getLogger(__name__)
 
-def handleCmdCheckFile(srvObj,
+def handleCmd(srvObj,
                        reqPropsObj,
                        httpRef):
     """

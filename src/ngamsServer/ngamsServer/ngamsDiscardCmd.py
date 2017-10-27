@@ -189,7 +189,7 @@ def _discardFile(srvObj,
     return msg
 
 
-def handleCmdDiscard(srvObj,
+def handleCmd(srvObj,
                      reqPropsObj,
                      httpRef):
     """

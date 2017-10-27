@@ -256,7 +256,7 @@ def remFile(srvObj,
         rmFile(tmpFilePat + "*")
 
 
-def handleCmdRemFile(srvObj,
+def handleCmd(srvObj,
                      reqPropsObj,
                      httpRef):
     """

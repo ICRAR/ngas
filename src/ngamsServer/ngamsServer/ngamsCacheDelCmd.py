@@ -102,7 +102,7 @@ def cacheDel(srvObj,
     srvObj.updateRequestDb(reqPropsObj)
 
 
-def handleCmdCacheDel(srvObj,
+def handleCmd(srvObj,
                       reqPropsObj,
                       httpRef):
     """

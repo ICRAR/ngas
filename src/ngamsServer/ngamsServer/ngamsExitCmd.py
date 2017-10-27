@@ -35,7 +35,7 @@ from ngamsLib.ngamsCore import NGAMS_OFFLINE_STATE, NGAMS_IDLE_SUBSTATE, \
     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS
 
 
-def handleCmdExit(srvObj,
+def handleCmd(srvObj,
                   reqPropsObj,
                   httpRef):
     """

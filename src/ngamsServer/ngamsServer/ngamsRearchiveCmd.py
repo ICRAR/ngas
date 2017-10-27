@@ -58,7 +58,7 @@ def receiveData(srvObj,
     """
     Receive the data in connection with the Rearchive Request.
 
-    For a description of the parameters: Check handleCmdRearchive().
+    For a description of the parameters: Check handleCmd().
 
     Returns:   Tuple with File Info Object for the file to be rearchived and
                Disk Info Object for the selected target disk
@@ -160,7 +160,7 @@ def processRequest(srvObj,
     """
     Process the Rearchive Request.
 
-    For a description of the parameters: Check handleCmdRearchive().
+    For a description of the parameters: Check handleCmd().
 
     fileInfoObj:     File information for file to be restored (ngamsFileInfo).
 
@@ -204,7 +204,7 @@ def processRequest(srvObj,
     trgDiskInfoObj.addFileObj(newFileInfoObj)
 
 
-def handleCmdRearchive(srvObj,
+def handleCmd(srvObj,
                        reqPropsObj,
                        httpRef):
     """

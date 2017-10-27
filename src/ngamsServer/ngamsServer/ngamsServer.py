@@ -291,7 +291,6 @@ class ngamsServer(object):
         self.__multipleSrvs           = 0
         self.__ngasDb                 = None
         self.__diskDic                = None
-        self.__dynCmdDic              = {}
         self.__mimeType2PlugIn        = {}
         self.__state                  = NGAMS_OFFLINE_STATE
         self.__subState               = NGAMS_IDLE_SUBSTATE
@@ -1479,15 +1478,6 @@ class ngamsServer(object):
         Returns:   Disk Dictionary (dictionary)
         """
         return self.__diskDic
-
-
-    def getDynCmdDic(self):
-        """
-        Get reference to Dynamic Command Module Dictionary.
-
-        Returns:   Dynamic Command Dictionary (dictionary)
-        """
-        return self.__dynCmdDic
 
 
     def setCfgFilename(self,

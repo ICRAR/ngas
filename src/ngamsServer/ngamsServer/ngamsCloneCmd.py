@@ -52,7 +52,7 @@ from ngamsLib import ngamsDbm, ngamsFileList, ngamsStatus, ngamsDiskUtils, ngams
 
 logger = logging.getLogger(__name__)
 
-def handleCmdClone(srvObj,
+def handleCmd(srvObj,
                    reqPropsObj,
                    httpRef):
     """
