@@ -12,3 +12,4 @@ or adjust some details for specific platforms.
 
 	plugins/commands
 	plugins/archiving_events
+	plugins/logging

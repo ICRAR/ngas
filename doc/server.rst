@@ -270,3 +270,33 @@ NGAS can be set up to allow different users
 to run different commands.
 Details on how to set up this configuration
 can be found in :ref:`config.authorization`.
+
+
+.. _server.logging:
+
+Logging
+=======
+
+The NGAS server outputs its logs to two different places:
+the standard output, and a logfile.
+Users will mostly be interested in the logfile,
+as it provides a persistent location
+to inspect logs.
+To avoid cluttering,
+the NGAS server rotates these logfiles
+after a fixed amount of time,
+and after each time the server starts.
+
+Each time the logfile is rotated,
+its name is first changed to make space for the next logfile.
+If the ``Log.ArchiveRotatedLogFiles`` option is set
+in the configuration file,
+then the logfile is archived into the NGAS server itself
+for easier retrieval.
+Finally, users can also write more code
+to handle a rotated logfile.
+
+Details on how to configure logging in NGAS
+can be found in :ref:`config.log`.
+To learn how to write logfile handler plug-ins
+see :doc:`plugins/logging`.
