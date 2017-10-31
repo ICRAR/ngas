@@ -260,7 +260,7 @@
 
   <Log Id="Log"
        LocalLogFile="log/LogFile.nglog"
-       LocalLogLevel="3"
+       LocalLogLevel="4"
        LogBufferSize="0"
        LogRotateCache="30"
        LogRotateInt="01T00:00:00"
