@@ -27,6 +27,8 @@ Contains the Test Suite for the BBCP Command.
 """
 
 import contextlib
+import io
+import random
 import subprocess
 import sys
 import unittest
@@ -65,12 +67,26 @@ class ngamsBBCPArchiveTest(ngamsTestSuite):
             self.assertEqual(200, response.status)
 
 
-    def _test_correct_checksum(self, crc_variant):
+    def _test_correct_checksum_with_msb(self, crc_variant, msb):
 
         _, db = self.prepExtSrv()
 
-        fname = '/bin/cp'
-        expected_crc = ngamsFileUtils.get_checksum(64*1024*240, fname, crc_variant)
+        # Generate content until the most significant bit of the checksum is
+        # 1 or 0, as required
+        content = [b'\0'] * 1024
+        while True:
+            content[random.randint(0, 1023)] = chr(random.randint(0, 255))
+            f = io.BytesIO(b''.join(content))
+            expected_crc = ngamsFileUtils.get_checksum(64*1024*240, f, crc_variant)
+            crc_msb = (expected_crc & 0xffffffff) >> 31
+            if crc_msb == 0 and msb == 0:
+                break
+            elif crc_msb == 1 and msb == 1:
+                break
+
+        fname = 'tmp/dummy'
+        with open(fname, 'wb') as f:
+            f.write(b''.join(content))
 
         query_args = {'filename': fname,
                       'bnum_streams': 2,
@@ -92,8 +108,20 @@ class ngamsBBCPArchiveTest(ngamsTestSuite):
         # And they are equal to the expected value
         self.assertEqual(str(expected_crc), str(next(iter(checksums))))
 
+        self.terminateAllServer()
+
+    def _test_correct_checksum(self, crc_variant):
+        # We check that BBCPARC works well in both cases when the checksum
+        # value has its MSB set to 0 and to 1. This is important, because
+        # depending on the checksum variant we are using BBCPARC needs to
+        # interpret the checksum value as a signed or unsigned integer
+        # (to match the checksum result produced by the NGAS crc variant
+        # as supported by NGAS).
+        self._test_correct_checksum_with_msb(crc_variant, 0)
+        self._test_correct_checksum_with_msb(crc_variant, 1)
+
     def _test_unsupported_checksum(self, crc_variant):
-                # Ask for crc32c (variant = 1), bbcp doesn't support it so it should fail
+        # Ask for a variant that bbcp doesn't support, it should fail
         self.prepExtSrv()
         query_args = {'filename': '/bin/cp',
                       'bnum_streams': 2,

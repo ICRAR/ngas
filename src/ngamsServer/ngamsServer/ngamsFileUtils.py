@@ -39,6 +39,7 @@ import functools
 import logging
 import os
 import re
+import struct
 import time
 
 import ngamsSrvUtils
@@ -58,7 +59,16 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-checksum_info = collections.namedtuple('crc_info', 'init method final')
+# The checksum_info fields are:
+#  * init: the initial value of the checksum before running over the data
+#  * method: the accumulative checksum method invoked for each piece of data
+#  * final: Converts the final checksum to get the final value
+#  * from_bytes: converts a sequence of bytes into a checksum value
+#
+# In NGAS checksum values are treated as integers (and then stored as their
+# string representation in the database), which is why the `final` and
+# `from_bytes` functions need to be aligned.
+checksum_info = collections.namedtuple('crc_info', 'init method final from_bytes')
 
 def _locateArchiveFile(srvObj,
                        fileId,
@@ -641,11 +651,11 @@ def get_checksum_info(variant_or_name):
         # 2.6+ returns always signed, 3+ returns always unsigned).
         # Since we support Python 2.7 only we assume values are signed,
         # but this will bite us in the future
-        return checksum_info(0, binascii.crc32, lambda x: x)
+        return checksum_info(0, binascii.crc32, lambda x: x, lambda x: struct.unpack('!i', x))
     elif variant == 1:
         if not _crc32c_available:
             raise Exception('Intel SSE 4.2 CRC32c instruction is not available')
-        return checksum_info(0, crc32c.crc32, lambda x: x & 0xffffffff)
+        return checksum_info(0, crc32c.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x))
     raise Exception('Unknown CRC variant: %r' % (variant_or_name,))
 
 def get_checksum_name(variant_or_name):
