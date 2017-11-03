@@ -35,7 +35,7 @@ install_requires = ['ngamsCore', 'python-daemon', 'pysendfile']
 # Users might opt out from depending on crc32c
 # Our code is able to cope with that situation already
 if 'NGAS_NO_CRC32C' not in os.environ:
-    install_requires.append('crc32c')
+    install_requires.append('crc32c>=1.2')
 
 setup(
     name='ngamsServer',
