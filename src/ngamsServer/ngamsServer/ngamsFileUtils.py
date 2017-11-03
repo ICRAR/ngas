@@ -635,11 +635,17 @@ def get_checksum_info(variant_or_name):
     if variant == -1:
         return None
     if variant == 0:
+        # This version of the crc is inconsistent because depending on the
+        # python version binascii.crc32 returns signed or unsigned values.
+        # python version <2.6 returned signed/unsigned depending on the platform,
+        # 2.6+ returns always signed, 3+ returns always unsigned).
+        # Since we support Python 2.7 only we assume values are signed,
+        # but this will bite us in the future
         return checksum_info(0, binascii.crc32, lambda x: x)
     elif variant == 1:
         if not _crc32c_available:
             raise Exception('Intel SSE 4.2 CRC32c instruction is not available')
-        return checksum_info(0, crc32c.crc32, lambda x: x)
+        return checksum_info(0, crc32c.crc32, lambda x: x & 0xffffffff)
     raise Exception('Unknown CRC variant: %r' % (variant_or_name,))
 
 def get_checksum_name(variant_or_name):
