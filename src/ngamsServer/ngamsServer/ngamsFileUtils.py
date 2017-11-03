@@ -609,6 +609,7 @@ def syncCachesCheckFiles(srvObj,
 CHECKSUM_NULL = -1
 CHECKSUM_CRC32_INCONSISTENT = 0
 CHECKSUM_CRC32C = 1
+CHECKSUM_CRC32Z = 2
 
 def _normalize_variant(variant_or_name):
 
@@ -628,6 +629,8 @@ def _normalize_variant(variant_or_name):
             variant = CHECKSUM_CRC32_INCONSISTENT
         elif variant == 'crc32c':
             variant = CHECKSUM_CRC32C
+        elif variant == 'crc32z':
+            variant = CHECKSUM_CRC32Z
         else:
             variant = int(variant)
 
@@ -659,6 +662,9 @@ def get_checksum_info(variant_or_name):
         if not _crc32c_available:
             raise Exception('Intel SSE 4.2 CRC32c instruction is not available')
         return checksum_info(0, crc32c.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x))
+    elif variant == CHECKSUM_CRC32Z:
+        # A consistent way of using binascii.crc32.
+        return checksum_info(0, binascii.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x))
     raise Exception('Unknown CRC variant: %r' % (variant_or_name,))
 
 def get_checksum_name(variant_or_name):
@@ -679,6 +685,8 @@ def get_checksum_name(variant_or_name):
         return 'crc32'
     elif variant == CHECKSUM_CRC32C:
         return 'crc32c'
+    elif variant == CHECKSUM_CRC32Z:
+        return 'crc32z'
     raise Exception('Unknown CRC variant: %d' % (variant_or_name,))
 
 def get_checksum(blocksize, fin, checksum_variant):
