@@ -36,6 +36,8 @@ else:
     size_mb = 128
     data = ' ' * 1024 * 1024 * size_mb
 
+print("Algo   Chksum   Chksum(int) BufSize            Speed")
+print("====== ======== =========== ======= ================")
 for variant, bufsize_log2 in itertools.product(('crc32', 'crc32c'), range(9, 21)):
 
     f = io.BytesIO(data)
@@ -48,4 +50,4 @@ for variant, bufsize_log2 in itertools.product(('crc32', 'crc32c'), range(9, 21)
     if crc is None:
         print("Variant not supported: %s" % variant)
     else:
-        print("%-6s %08x %-7d %-.3f [MB/s]" % (variant, crc & 0xffffffff, bufsize, size_mb / (end - start)))
+        print("%-6s %08x %11d %-7d %9.3f [MB/s]" % (variant, crc & 0xffffffff, crc, bufsize, size_mb / (end - start)))
