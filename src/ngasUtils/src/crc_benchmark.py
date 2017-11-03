@@ -32,13 +32,14 @@ if len(sys.argv) > 1:
     with open(fname, 'rb') as f:
         data = f.read()
         size_mb = len(data) / 1024. / 1024.
+        print("Checking file %s (%d bytes)\n" % (fname, len(data)))
 else:
     size_mb = 128
     data = ' ' * 1024 * 1024 * size_mb
 
 print("Algo   Chksum   Chksum(int) BufSize            Speed")
 print("====== ======== =========== ======= ================")
-for variant, bufsize_log2 in itertools.product(('crc32', 'crc32c'), range(9, 21)):
+for variant, bufsize_log2 in itertools.product(('crc32', 'crc32c', 'crc32z'), range(9, 21)):
 
     f = io.BytesIO(data)
 

@@ -74,7 +74,7 @@ def bbcpFile(srcFilename, targFilename, bparam, crc_name, skip_crc):
     # perform checksum on host and compare to target. If it's different bbcp will fail.
     if not skip_crc and crc_name is not None:
         cmd_checksum = ['-e', '-E']
-        if crc_name == 'crc32':
+        if crc_name in ('crc32', 'crc32z'):
             # c32z is the zip-flavor of CRC32
             # c32 is the POSIX flavour, which yields a different result
             cmd_checksum.append('c32z=/dev/stdout')

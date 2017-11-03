@@ -135,6 +135,9 @@ class ngamsBBCPArchiveTest(ngamsTestSuite):
     def test_bbcp_with_crc32(self):
         self._test_correct_checksum('crc32')
 
+    def test_bbcp_with_crc32z(self):
+        self._test_correct_checksum('crc32z')
+
     def test_bbcp_with_crc32c(self):
 
         if tuple(bbcp_version[:2]) >= (17, 1):
