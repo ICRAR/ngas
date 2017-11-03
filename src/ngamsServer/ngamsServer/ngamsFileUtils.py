@@ -606,13 +606,16 @@ def syncCachesCheckFiles(srvObj,
         raise Exception, errMsg
 
 
+CHECKSUM_NULL = -1
+CHECKSUM_CRC32_INCONSISTENT = 0
+CHECKSUM_CRC32C = 1
 
 def _normalize_variant(variant_or_name):
 
     variant = variant_or_name
 
     if variant is None:
-        variant = -1
+        variant = CHECKSUM_NULL
 
     # A plug-in name or variant name
     elif isinstance(variant, basestring):
@@ -622,9 +625,9 @@ def _normalize_variant(variant_or_name):
         # These two are the names stored at the database of those plugins, although
         # the second one is simply a dummy name
         if variant in ('ngamsGenCrc32', 'StreamCrc32', 'crc32'):
-            variant = 0
+            variant = CHECKSUM_CRC32_INCONSISTENT
         elif variant == 'crc32c':
-            variant = 1
+            variant = CHECKSUM_CRC32C
         else:
             variant = int(variant)
 
@@ -642,9 +645,9 @@ def get_checksum_info(variant_or_name):
     method returns None
     """
     variant = _normalize_variant(variant_or_name)
-    if variant == -1:
+    if variant == CHECKSUM_NULL:
         return None
-    if variant == 0:
+    if variant == CHECKSUM_CRC32_INCONSISTENT:
         # This version of the crc is inconsistent because depending on the
         # python version binascii.crc32 returns signed or unsigned values.
         # python version <2.6 returned signed/unsigned depending on the platform,
@@ -652,7 +655,7 @@ def get_checksum_info(variant_or_name):
         # Since we support Python 2.7 only we assume values are signed,
         # but this will bite us in the future
         return checksum_info(0, binascii.crc32, lambda x: x, lambda x: struct.unpack('!i', x))
-    elif variant == 1:
+    elif variant == CHECKSUM_CRC32C:
         if not _crc32c_available:
             raise Exception('Intel SSE 4.2 CRC32c instruction is not available')
         return checksum_info(0, crc32c.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x))
@@ -670,11 +673,11 @@ def get_checksum_name(variant_or_name):
     method returns 'nocrc'
     """
     variant = _normalize_variant(variant_or_name)
-    if variant == -1:
+    if variant == CHECKSUM_NULL:
         return None
-    if variant == 0:
+    if variant == CHECKSUM_CRC32_INCONSISTENT:
         return 'crc32'
-    elif variant == 1:
+    elif variant == CHECKSUM_CRC32C:
         return 'crc32c'
     raise Exception('Unknown CRC variant: %d' % (variant_or_name,))
 
