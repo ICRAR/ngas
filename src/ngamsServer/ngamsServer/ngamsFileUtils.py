@@ -639,7 +639,7 @@ def get_checksum_info(variant_or_name):
     elif variant == 1:
         if not _crc32c_available:
             raise Exception('Intel SSE 4.2 CRC32c instruction is not available')
-        return checksum_info(0xFFFFFFFF, crc32c.crc32, lambda x: ~x)
+        return checksum_info(0, crc32c.crc32, lambda x: x)
     raise Exception('Unknown CRC variant: %r' % (variant_or_name,))
 
 def get_checksum_name(variant_or_name):
