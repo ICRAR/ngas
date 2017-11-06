@@ -283,13 +283,12 @@ class ngamsServer(object):
         """
         self._serverName              = "ngamsServer"
         self.__ngamsCfg               = ""
-        self.__ngamsCfgObj            = ngamsConfig.ngamsConfig()
+        self.cfg                      = ngamsConfig.ngamsConfig()
         self.__dbCfgId                = ""
-        self.__force                  = 0
-        self.__autoOnline             = 0
-        self.__noAutoExit             = 0
-        self.__multipleSrvs           = 0
-        self.__ngasDb                 = None
+        self.force_start              = False
+        self.autoonline               = False
+        self.no_autoexit              = False
+        self.db                       = None
         self.__diskDic                = None
         self.__mimeType2PlugIn        = {}
         self.__state                  = NGAMS_OFFLINE_STATE
@@ -461,7 +460,7 @@ class ngamsServer(object):
             self.triggerSubscriptionThread()
 
         self.archive_event_subscribers = [trigger_subscription]
-        for (module, clazz), pars in self.__ngamsCfgObj.archive_evt_plugins.items():
+        for (module, clazz), pars in self.cfg.archive_evt_plugins.items():
             pars = ngamsLib.parseRawPlugInPars(pars) if pars else {}
             plugin = loadPlugInEntryPoint(module, clazz)(**pars)
             self.archive_event_subscribers.append(plugin.handle_event)
@@ -579,7 +578,7 @@ class ngamsServer(object):
 
         Returns:    Reference to DB connection object (ngamsDb).
         """
-        return self.__ngasDb
+        return self.db
 
 
     def getCachingActive(self):
@@ -1255,30 +1254,6 @@ class ngamsServer(object):
         return self
 
 
-    def setForce(self,
-                 force):
-        """
-        Set the Force Execution Flag, indicating whether to force
-        the server to start even if the PID file is found.
-
-        force:    Force Flag (force = 1) (int)
-
-        Returns:  Reference to object itself.
-        """
-        self.__force = int(force)
-        return self
-
-
-    def getForce(self):
-        """
-        Return the Force Execution Flag, indicating whether to force
-        the server to start even if the PID file is found.
-
-        Returns:   Force Flag (force = 1) (int)
-        """
-        return self.__force
-
-
     def setLastReqStartTime(self):
         """
         Register start time for handling of last request.
@@ -1353,100 +1328,13 @@ class ngamsServer(object):
         return self.__nextDataCheckTime
 
 
-    def setAutoOnline(self,
-                      autoOnline):
-        """
-        Set the Auto Online Flag, indicating whether to bring the
-        server Online automatically, immediately after initializing.
-
-        autoOnline:    Auto Online Flag (Auto Online = 1) (int)
-
-        Returns:       Reference to object itself.
-        """
-        self.__autoOnline = int(autoOnline)
-        return self
-
-
-    def getAutoOnline(self):
-        """
-        Return the Auto Online Flag, indicating whether to bring the
-        server Online automatically, immediately after initializing.
-
-        Returns:    Auto Online Flag (Auto Online = 1) (int)
-        """
-        return self.__autoOnline
-
-
-    def setNoAutoExit(self,
-                      noAutoExit):
-        """
-        Set the No Auto Exit Flag, indicating whether the server is
-        allowed to exit automatically for instance in case of problems
-        in connection with going Online automatically (-autoOnline).
-
-        autoOnline:    Auto Online Flag (Auto Online = 1) (int)
-
-        Returns:       Reference to object itself.
-        """
-        self.__noAutoExit = int(noAutoExit)
-        return self
-
-
-    def getNoAutoExit(self):
-        """
-        Return the No Auto Exit Flag.
-
-        Returns:    No Auto Exit Flag (No Auto Exit = 1) (int)
-        """
-        return self.__noAutoExit
-
-
-    def setMultipleSrvs(self,
-                        multipleSrvs):
-        """
-        Set the Multiple Servers Flag to indicating that several servers
-        can be executed on the same node and that the Host ID should be
-        composed of hostname and port number.
-
-        multipleSrvs:    Multiple Servers Flag (integer/0|1).
-
-        Returns:         Reference to object itself.
-        """
-        self.__multipleSrvs = int(multipleSrvs)
-        return self
-
-
-    def getMultipleSrvs(self):
-        """
-        Get the Multiple Servers Flag to indicating that several servers
-        can be executed on the same node and that the Host ID should be
-        composed of hostname and port number.
-
-        Returns:    Multiple Servers Flag (integer/0|1).
-        """
-        return self.__multipleSrvs
-
-
-    def setCfg(self,
-               ngamsCfgObj):
-        """
-        Set the reference to the configuration object.
-
-        ngamsCfgObj:  Instance of the configuration object (ngamsConfig)
-
-        Returns:      Reference to object itself.
-        """
-        self.__ngamsCfgObj = ngamsCfgObj
-        return self
-
-
     def getCfg(self):
         """
         Return reference to object containing the NG/AMS Configuration.
 
         Returns:    Reference to NG/AMS Configuration (ngamsConfig).
         """
-        return self.__ngamsCfgObj
+        return self.cfg
 
 
     def getSrvListDic(self):
@@ -2295,7 +2183,7 @@ class ngamsServer(object):
 
         # Check if we should load a configuration from the DB.
         if (self.__dbCfgId):
-            cfg.loadFromDb(self.__dbCfgId, self.__ngasDb)
+            cfg.loadFromDb(self.__dbCfgId, self.db)
 
         cfg._check()
 
@@ -2304,13 +2192,12 @@ class ngamsServer(object):
 
     def reconnect_to_db(self):
 
-        if self.__ngasDb:
-            self.__ngasDb.close()
+        if self.db:
+            self.db.close()
 
-        cfg = self.__ngamsCfgObj
-        self.__ngasDb = ngamsDb.from_config(cfg)
-        ngasTmpDir = ngamsHighLevelLib.getNgasTmpDir(cfg)
-        self.__ngasDb.setDbTmpDir(ngasTmpDir)
+        self.db = ngamsDb.from_config(self.cfg)
+        ngasTmpDir = ngamsHighLevelLib.getNgasTmpDir(self.cfg)
+        self.db.setDbTmpDir(ngasTmpDir)
 
     def handleStartUp(self):
         """
@@ -2457,7 +2344,7 @@ class ngamsServer(object):
 
         # Check if there is already a PID file.
         logger.debug("Check if NG/AMS PID file is existing ...")
-        if (not self.getForce() and os.path.exists(self.pidFile())):
+        if not self.force_start and os.path.exists(self.pidFile()):
             errMsg = genLog("NGAMS_ER_MULT_INST")
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "CONFLICT STARTING NG/AMS SERVER", errMsg)
@@ -2528,12 +2415,12 @@ class ngamsServer(object):
         logger.info("PID file for this session created: %s", self.pidFile())
 
         # If Auto Online is selected, bring the Server Online
-        if (self.getAutoOnline()):
+        if self.autoonline:
             logger.info("Auto Online requested - server going to Online State ...")
             try:
                 ngamsSrvUtils.handleOnline(self)
             except:
-                if (not self.getNoAutoExit()):
+                if not self.no_autoexit:
                     raise
         else:
             logger.info("Auto Online not requested - server remaining in Offline State")
@@ -2769,13 +2656,11 @@ class ngamsServer(object):
                     silentExit = 1
                     sys.exit(0)
                 elif (par == "-FORCE"):
-                    self.setForce(1)
+                    self.force_start = True
                 elif (par == "-AUTOONLINE"):
-                    self.setAutoOnline(1)
+                    self.autoonline = True
                 elif (par == "-NOAUTOEXIT"):
-                    self.setNoAutoExit(1)
-                elif (par == "-MULTIPLESRVS"):
-                    self.setMultipleSrvs(1)
+                    self.no_autoexit = True
                 elif par == "-PATH":
                     idx = self._incCheckIdx(idx, argv)
                     extra_paths = set(filter(None, argv[idx].split(os.pathsep)))

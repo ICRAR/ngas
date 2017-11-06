@@ -981,7 +981,6 @@ class ngamsTestSuite(unittest.TestCase):
                    clearDb = 1,
                    autoOnline = 1,
                    cfgFile = "src/ngamsCfg.xml",
-                   multipleSrvs = 0,
                    cfgProps = [],
                    dbCfgName = None,
                    srvModule = None,
@@ -1001,9 +1000,6 @@ class ngamsTestSuite(unittest.TestCase):
 
         cfgFile:       Configuration file to use when executing the
                        server (string).
-
-        multipleSrvs:  If set to 1, this means that multiple servers might
-                       be running on the node (integer/0|1).
 
         cfgProps:      With this parameter it is possible to set specific
                        cfg. parameters before starting the server. This
@@ -1054,8 +1050,7 @@ class ngamsTestSuite(unittest.TestCase):
         # Change what needs to be changed, like the position of the Sqlite
         # database file when necessary, the custom configuration items, and the
         # port number
-        skip_database_creation = multipleSrvs or not clearDb
-        self.point_to_sqlite_database(cfgObj, not multipleSrvs and not dbCfgName and not skip_database_creation)
+        self.point_to_sqlite_database(cfgObj, not dbCfgName and clearDb)
         if (cfgProps):
             for cfgProp in cfgProps:
                 # TODO: Handle Cfg. Group ID.
@@ -1090,7 +1085,6 @@ class ngamsTestSuite(unittest.TestCase):
         execCmd += ['-path', parent_dir]
         if force:        execCmd.append('-force')
         if autoOnline:   execCmd.append("-autoOnline")
-        if multipleSrvs: execCmd.append("-multipleSrvs")
         if dbCfgName:    execCmd.extend(["-dbCfgId", dbCfgName])
 
         logger.info("Starting external NG/AMS Server in port %d with command: %s", port, " ".join(execCmd))
@@ -1391,8 +1385,7 @@ class ngamsTestSuite(unittest.TestCase):
                                               delDirs = 0,
                                               clearDb = 0,
                                               autoOnline = 1,
-                                              cfgFile = tmpCfgFile,
-                                              multipleSrvs = multSrvs)
+                                              cfgFile = tmpCfgFile)
         return [srvId, srvCfgObj, srvDbObj]
 
     def prepCluster(self,
