@@ -123,18 +123,34 @@ CRC
 
 When a file is being archived into NGAS
 the server will calculate its CRC as part of the archiving process.
-The CRC is saved into the database,
+The CRC is saved into the database as an integer value,
 and is used later to check the integrity of the file.
 
-Two CRC variants are currently supported by the NGAS server,
+Three CRC variants are currently supported by the NGAS server,
 which in the future might expand:
 
-* ``crc32``: This is the default implementation.
+* ``crc32``: This is the original implementation.
   It uses python's ``binascii.crc32`` method to calculate the CRC,
   and therefore it is fully implemented in software.
+  This variant **does not mask the value with 0xffffffff**,
+  and therefore in python 2.7 the integer value
+  that gets stored in the database
+  can be negative
+  (while in python 3 the value is strictly an unsigned integer).
 * ``crc32c``: A hardware-based implementation available as part of Intel's
   SSE 4.2 instruction set. A C module exposes this functionality to NGAS
   via a ``crc32c.crc32c`` method.
+* ``crc32z``: Like ``crc32``, but generates the same integer values
+  even across different python versions.
+  Users should prefer this variant over ``crc32``,
+  which is still maintained for backwards-compatibility reasons.
+
+.. note::
+ Care has been put in ensuring
+ that even the values produced by ``crc32``
+ are correctly compared,
+ so even if users choose that method
+ checksum comparisons should still yield the correct answer.
 
 Depending on your environment choosing to use one method over the other
 might bring significant improvements on archiving times for large files.
@@ -143,6 +159,7 @@ change the ``ArchiveHandling.CRCVariant`` setting
 on the :ref:`NGAS configuration <config.archivehandling>`.
 
 Also, users can install NGAS without ``crc32c`` support
+if their CPUs do not support the SSE 4.2 instruction set.
 (see `<inst>`_ for details).
 
 
