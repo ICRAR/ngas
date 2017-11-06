@@ -63,12 +63,6 @@ logger = logging.getLogger(__name__)
 # Giampaolo Rodola:
 #
 # http://grodola.blogspot.com/2014/06/python-and-sendfile.html
-
-try:
-    memoryview  # py 2.7 only
-except NameError:
-    memoryview = lambda x: x
-
 if os.name == 'posix':
     import sendfile as pysendfile  # requires "pip install pysendfile"
 else:
