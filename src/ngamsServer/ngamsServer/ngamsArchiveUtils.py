@@ -230,8 +230,9 @@ def archive_contents_from_request(out_fname, cfg, req, skip_crc=False, transfer=
 
     # Compare checksum if required
     checksum = req.getHttpHdr(NGAMS_HTTP_HDR_CHECKSUM)
+    checksum_info = ngamsFileUtils.get_checksum_info(variant)
     if checksum and result.crc is not None:
-        if checksum != str(result.crc):
+        if not checksum_info.equals(checksum, result.crc):
             msg = 'Checksum error for file %s, local crc = %s, but remote crc = %s' % (req.getFileUri(), str(result.crc), checksum)
             raise Exception(msg)
         else:
