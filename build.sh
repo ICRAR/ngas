@@ -99,7 +99,7 @@ then
 	cd ngamsCClient
 	./bootstrap || error "Failed to bootstrap ngamsCClient module"
 	./configure "$prefix" || error "Failed to ./configure ngamsCCLient"
-	make clean all install || error "Failed to compile ngamsCClient"
+	make all install || error "Failed to compile ngamsCClient"
 	cd ..
 fi
 
