@@ -68,7 +68,7 @@ logger = logging.getLogger(__name__)
 # In NGAS checksum values are treated as integers (and then stored as their
 # string representation in the database), which is why the `final` and
 # `from_bytes` functions need to be aligned.
-checksum_info = collections.namedtuple('crc_info', 'init method final from_bytes')
+checksum_info = collections.namedtuple('crc_info', 'init method final from_bytes equals')
 
 def _locateArchiveFile(srvObj,
                        fileId,
@@ -510,6 +510,7 @@ def checkFile(srvObj,
         if ((not foundProblem) and (not skipCheckSum)):
             if crc_variant is None:
                 crc_variant = srvObj.getCfg().getCRCVariant()
+            checksum_info = get_checksum_info(crc_variant)
             if crc_variant is not None:
                 try:
                     blockSize = srvObj.getCfg().getBlockSize()
@@ -548,7 +549,7 @@ def checkFile(srvObj,
                                     "cannot generate - update DB",
                                     fileId, fileVersion, slotId, diskId,
                                     filename])
-            elif str(checksumDb) != str(checksumFile):
+            elif not checksum_info.equals(checksumDb, checksumFile):
                 logger.error("File %s has inconsistent checksum! file/db: %s / %s",
                              filename, str(checksumFile), checksumDb)
                 checkReport.append(["ERROR: Inconsistent checksum found",
@@ -657,14 +658,14 @@ def get_checksum_info(variant_or_name):
         # 2.6+ returns always signed, 3+ returns always unsigned).
         # Since we support Python 2.7 only we assume values are signed,
         # but this will bite us in the future
-        return checksum_info(0, binascii.crc32, lambda x: x, lambda x: struct.unpack('!i', x))
+        return checksum_info(0, binascii.crc32, lambda x: x, lambda x: struct.unpack('!i', x), lambda x, y: (int(x) & 0xffffffff) == (int(y) & 0xffffffff))
     elif variant == CHECKSUM_CRC32C:
         if not _crc32c_available:
             raise Exception('Intel SSE 4.2 CRC32c instruction is not available')
-        return checksum_info(0, crc32c.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x))
+        return checksum_info(0, crc32c.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x), lambda x, y: int(x) == int(y))
     elif variant == CHECKSUM_CRC32Z:
         # A consistent way of using binascii.crc32.
-        return checksum_info(0, binascii.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x))
+        return checksum_info(0, binascii.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x), lambda x, y: int(x) == int(y))
     raise Exception('Unknown CRC variant: %r' % (variant_or_name,))
 
 def get_checksum_name(variant_or_name):
@@ -768,6 +769,7 @@ def check_checksum(srvObj, fio, filename):
     # If a checksum value is available in NGAS Files, check the checksum
     # of the file.
     crc_variant = fio.getChecksumPlugIn()
+    checksum_info = get_checksum_info(crc_variant)
     stored_checksum = fio.getChecksum()
     if crc_variant is not None and stored_checksum is not None:
         stored_checksum = str(stored_checksum)
@@ -775,7 +777,7 @@ def check_checksum(srvObj, fio, filename):
         if blockSize == -1:
             blockSize = 4096
         current_checksum = str(get_checksum(blockSize, filename, crc_variant))
-        if current_checksum != stored_checksum:
+        if not checksum_info.equals(current_checksum, stored_checksum):
             msg = "Illegal checksum (found: %s, expected %s) on file %s/%s/%s" % \
                   (current_checksum, stored_checksum, fio.getDiskId(), fio.getFileId(), fio.getFileVersion())
             raise Exception(msg)
