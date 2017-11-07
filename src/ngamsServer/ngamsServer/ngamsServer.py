@@ -372,7 +372,6 @@ class ngamsServer(object):
         self._subscrFileCountDic_Sem  = threading.Semaphore(1)
         self._subscrBlScheduledDic    = {}
         self._subscrBlScheduledDic_Sem = threading.Semaphore(1)
-        self._subscrBackLogCount_Sem  = threading.Semaphore(1)
 
         # List to keep track off to which Data Providers an NG/AMS
         # Server is subscribed.
@@ -1151,11 +1150,7 @@ class ngamsServer(object):
 
         This is NOT thread safe
         """
-        #self._subscrBackLogCount_Sem.acquire()
-        #try:
         self._subscrBackLogCount -= 1
-        #finally:
-        #    self._subscrBackLogCount_Sem.release()
         return self._subscrBackLogCount
 
     def incSubcrBackLogCount(self):
@@ -1166,11 +1161,7 @@ class ngamsServer(object):
 
         This is NOT thread safe
         """
-        #self._subscrBackLogCount_Sem.acquire()
-        #try:
         self._subscrBackLogCount += 1
-        #finally:
-        #self._subscrBackLogCount_Sem.release()
         return self._subscrBackLogCount
 
     def presetSubcrBackLogCount(self, num):
