@@ -523,7 +523,10 @@ def _dataCheckSubThread(srvObj,
             return
         except Exception:
             logger.exception("Exception encountered in Data Check Sub-Thread")
-            suspend(stopEvt, 2)
+            try:
+                suspend(stopEvt, 2)
+            except StopDataCheckThreadException:
+                return
 
 
 def _genReport(srvObj, unregistered, diskDic, dbmObjDic, stats):
