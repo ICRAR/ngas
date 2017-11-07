@@ -38,7 +38,6 @@ import logging
 import thread
 import threading
 import time
-import types
 import os
 import base64
 import urlparse
@@ -428,7 +427,7 @@ def _convertFileInfo(fileInfo):
 
 
 
-
+_backlog_area_lock = threading.Lock()
 def _genSubscrBackLogFile(srvObj,
                           subscrObj,
                           fileInfo):
@@ -456,8 +455,7 @@ def _genSubscrBackLogFile(srvObj,
 
     # NOTE: The actions carried out by this function are critical and need
     #       to be semaphore protected (Back-Log Operations Semaphore).
-    srvObj._backLogAreaSem.acquire()
-    try:
+    with _backlog_area_lock:
         # chen.wu@icrar.org:
         # we no longer copy files, the limitation now is that the storage media is not movable
         ## Create copy of file in Subscription Back-Log Area + make entry in
@@ -489,11 +487,6 @@ def _genSubscrBackLogFile(srvObj,
         # Increase the Subscription Back-Log Counter to indicate to the Data
         # Subscription Thread that it should only suspend itself temporarily.
         srvObj.incSubcrBackLogCount()
-        srvObj._backLogAreaSem.release()
-    except Exception:
-        srvObj._backLogAreaSem.release()
-        logger.exception("Error generating Subscription Back-Log File")
-        raise
 
 
 def _delFromSubscrBackLog(srvObj,
@@ -520,8 +513,7 @@ def _delFromSubscrBackLog(srvObj,
     # NOTE: The actions carried out by this function are critical and need
     #       to be semaphore protected (Back-Log Operations Semaphore).
 
-    srvObj._backLogAreaSem.acquire()
-    try:
+    with _backlog_area_lock:
         srvObj.decSubcrBackLogCount()
         # Delete the entry from the DB for that file/Subscriber.
         srvObj.getDb().delSubscrBackLogEntry(srvObj.getHostId(),
@@ -531,10 +523,6 @@ def _delFromSubscrBackLog(srvObj,
         # delete the file.
         # subscrIds = srvObj.getDb().getSubscrsOfBackLogFile(fileId, fileVersion)
         # if (subscrIds == []): commands.getstatusoutput("rm -f " + fileName)
-        srvObj._backLogAreaSem.release()
-    except Exception, e:
-        srvObj._backLogAreaSem.release()
-        raise e
 
 def _markDeletion(srvObj,
                   diskId,

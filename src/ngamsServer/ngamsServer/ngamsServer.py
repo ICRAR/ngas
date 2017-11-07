@@ -354,7 +354,6 @@ class ngamsServer(object):
         self._subscriberDic           = {}
         self._subscriptionThread      = None
         self._subscriptionSem         = threading.Semaphore(1)
-        self._backLogAreaSem          = threading.Semaphore(1)
         self._subscriptionRunSync     = threading.Event()
         self._subscriptionFileList    = []
         self._subscriptionSubscrList  = []
