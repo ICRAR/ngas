@@ -57,8 +57,8 @@ from ngamsLib.ngamsCore import TRACE, NGAMS_ARCHIVE_CMD, NGAMS_REARCHIVE_CMD, NG
     NGAMS_REMFILE_CMD, NGAMS_REGISTER_CMD, NGAMS_RETRIEVE_CMD, NGAMS_STATUS_CMD, \
     NGAMS_FAILURE, NGAMS_SUBSCRIBE_CMD, NGAMS_UNSUBSCRIBE_CMD, NGAMS_ARCH_REQ_MT, \
     NGAMS_CACHEDEL_CMD, NGAMS_CLONE_CMD, \
-    NGAMS_HTTP_REDIRECT, getNgamsVersion, NGAMS_SUCCESS, NGAMS_ONLINE_STATE, \
-    NGAMS_IDLE_SUBSTATE, getNgamsLicense, toiso8601, NGAMS_CONT_MT
+    NGAMS_HTTP_REDIRECT, getNgamsVersion, \
+    getNgamsLicense, toiso8601, NGAMS_CONT_MT
 
 
 logger = logging.getLogger(__name__)
@@ -68,25 +68,6 @@ def is_known_pull_url(s):
            s.startswith('http:') or \
            s.startswith('https:') or \
            s.startswith('ftp:')
-
-def _dummy_stat(host_id, status, msg, data=None):
-    stat = ngamsStatus.ngamsStatus().\
-           setDate(toiso8601()).\
-           setVersion(getNgamsVersion()).setHostId(host_id).\
-           setStatus(status).\
-           setMessage(msg).\
-           setState(NGAMS_ONLINE_STATE).\
-           setSubState(NGAMS_IDLE_SUBSTATE)
-    if data:
-        stat.setData(data)
-    return stat
-
-def _dummy_success_stat(host_id, data=None):
-    return _dummy_stat(host_id, NGAMS_SUCCESS, "Successfully handled request", data)
-
-def _dummy_failure_stat(host_id, cmd):
-    logger.debug("HTTP status != 200, creating dummy NGAS_FAILURE status")
-    return _dummy_stat(host_id, NGAMS_FAILURE, "Failed to handle command %s" % (cmd,))
 
 class ngamsPClient:
     """
@@ -432,7 +413,7 @@ class ngamsPClient:
             handler = ngamsMIMEMultipart.FilesystemWriterHandler(1024, basePath=targetDir)
             parser = ngamsMIMEMultipart.MIMEMultipartParser(handler, resp, size, 65536)
             parser.parse()
-            return _dummy_success_stat(host_id)
+            return ngamsStatus.dummy_success_stat(host_id)
 
     def exit(self):
         """
@@ -604,7 +585,7 @@ class ngamsPClient:
                 for buf in iter(readf, ''):
                     f.write(buf)
 
-            return _dummy_success_stat(host_id)
+            return ngamsStatus.dummy_success_stat(host_id)
 
 
     def status(self, pars=[]):
@@ -683,16 +664,7 @@ class ngamsPClient:
         host_id = "%s:%d" % (host, port)
 
         # If the reply is a ngamsStatus document read it and return it
-        data = resp.read()
-        if data and "<?xml" in data:
-            logger.debug("Parsing incoming HTTP data as ngamsStatus")
-            return ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
-
-        # Otherwise, and depending on the HTTP code, we create either
-        # a dummy successful or failed status object
-        if resp.status != NGAMS_HTTP_SUCCESS:
-            return _dummy_failure_stat(host_id, cmd)
-        return _dummy_success_stat(host_id, data)
+        return ngamsStatus.to_status(resp, host_id, cmd)
 
     def _get(self, cmd, pars=[], hdrs=[]):
         """
