@@ -637,6 +637,15 @@ def _normalize_variant(variant_or_name):
 
     return variant
 
+def _filter_none(cond):
+    def wrapped(x, y):
+        if x is None:
+            return y is None
+        elif y is None:
+            return x is None
+        return cond(x, y)
+    return wrapped
+
 def get_checksum_info(variant_or_name):
     """
     Given a CRC variant, this method returns the method that should be
@@ -658,14 +667,14 @@ def get_checksum_info(variant_or_name):
         # 2.6+ returns always signed, 3+ returns always unsigned).
         # Since we support Python 2.7 only we assume values are signed,
         # but this will bite us in the future
-        return checksum_info(0, binascii.crc32, lambda x: x, lambda x: struct.unpack('!i', x), lambda x, y: (int(x) & 0xffffffff) == (int(y) & 0xffffffff))
+        return checksum_info(0, binascii.crc32, lambda x: x, lambda x: struct.unpack('!i', x), _filter_none(lambda x, y: (int(x) & 0xffffffff) == (int(y) & 0xffffffff)))
     elif variant == CHECKSUM_CRC32C:
         if not _crc32c_available:
             raise Exception('Intel SSE 4.2 CRC32c instruction is not available')
-        return checksum_info(0, crc32c.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x), lambda x, y: int(x) == int(y))
+        return checksum_info(0, crc32c.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x), _filter_none(lambda x, y: int(x) == int(y)))
     elif variant == CHECKSUM_CRC32Z:
         # A consistent way of using binascii.crc32.
-        return checksum_info(0, binascii.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x), lambda x, y: int(x) == int(y))
+        return checksum_info(0, binascii.crc32, lambda x: x & 0xffffffff, lambda x: struct.unpack('!I', x), _filter_none(lambda x, y: int(x) == int(y)))
     raise Exception('Unknown CRC variant: %r' % (variant_or_name,))
 
 def get_checksum_name(variant_or_name):
