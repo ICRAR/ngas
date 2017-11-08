@@ -52,6 +52,7 @@ import traceback
 import urllib
 import uuid
 
+import netifaces
 import pkg_resources
 
 from ngamsLib.ngamsCore import genLog, TRACE, getNgamsVersion, \
@@ -76,6 +77,15 @@ import request_db
 
 
 logger = logging.getLogger(__name__)
+
+def get_all_ipaddrs():
+    """
+    Returns a list of all the IPv4 addresses found in this computer
+    """
+    proto = netifaces.AF_INET
+    iface_addrs = [netifaces.ifaddresses(iface) for iface in netifaces.interfaces()]
+    inet_addrs = [addrs[proto] for addrs in iface_addrs if proto in addrs]
+    return [addr['addr'] for addrs in inet_addrs for addr in addrs if 'addr' in addr]
 
 class ngamsHttpServer(SocketServer.ThreadingMixIn,
                       BaseHTTPServer.HTTPServer):
@@ -438,6 +448,10 @@ class ngamsServer(object):
         # The listening end
         self.ipAddress = None
         self.portNo    = None
+
+        # A list of all the IPv4 addresses in this computer
+        # Used only for comparison purposes
+        self.all_ip_addresses = []
 
         # Defined as <hostname>:<port>
         self.host_id   = None
@@ -1491,6 +1505,25 @@ class ngamsServer(object):
         ipAddress = ipAddress if ipAddress != '0.0.0.0' else '127.0.0.1'
         return ipAddress, self.portNo
 
+    def is_it_us(self, host, port):
+        """
+        True if the host/port combination corresponds to an address exposed by
+        this server
+        """
+        if port != self.portNo:
+            return False
+
+        our_ip = self.ipAddress
+        if our_ip != '0.0.0.0' and our_ip == host:
+            return True
+
+        # We are exposed to all interfaces and `host` might be one of them
+        # gethostbyname_ex[2] is a list of addresses
+        for h in socket.gethostbyname_ex(host)[2]:
+            if h in self.all_ip_addresses:
+                return True
+        return False
+
     def getSubscriberDic(self):
         """
         Returns reference to dictionary with Subscriber Objects.
@@ -2244,6 +2277,7 @@ class ngamsServer(object):
         # IP address defaults to localhost
         ipAddress = self.getCfg().getIpAddress()
         self.ipAddress = ipAddress or '127.0.0.1'
+        self.all_ip_addresses = get_all_ipaddrs()
 
         # Port number defaults to 7777
         portNo = self.getCfg().getPortNo()
