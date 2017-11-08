@@ -814,6 +814,35 @@ def _deliveryThread(srvObj,
                     # (if the file is not an already back log buffered file, which
                     # was attempted re-posted).
 
+                    #
+                    # SLOW DOWN THE WORLD
+                    #
+                    # When our subscribers cannot be reached, we might end up
+                    # trying to contact them continuously, either to send
+                    # different files within the same subscription loop
+                    # iteration, or the same files after the outer loop has
+                    # started a new iteration. This can result in errors being
+                    # produced continuously at a high rate, for example if there
+                    # are many files that still need to be sent. This rate will
+                    # only grow if, on top of that, files keep being archived
+                    # into us. Apart from potentially imposing a high load on
+                    # the server itself, large error rates produce high load on
+                    # the central database (because two rows are updated in two
+                    # different tables). This is not only sub-optimal in itself,
+                    # but it also can affect other applications that are
+                    # connected to the same central database. Therefore, for our
+                    # own honour and to be be better citizens we need to address
+                    # this.
+                    #
+                    # A proper solution would obviously be to properly collect
+                    # all the errors individually and react intelligently to
+                    # that (probably with a "retry-period" setting or similar),
+                    # but for the time being we are simply resorting to slow
+                    # down the error rate. This will bring down the load on the
+                    # server and on the central database, which is the immediate
+                    # problem we need to solve.
+                    time.sleep(3)
+
                     if (runJob):
                         if (redo_on_fail):
                             _genSubscrBackLogFile(srvObj, subscrObj, fileInfo)
