@@ -70,7 +70,7 @@ def run(srvObj, stopEvt):
         # Connect to the server and send a pull ARCHIVE request
         if cfg.getArchiveRotatedLogfiles():
             file_uri = "file://" + fname
-            host, port = srvObj.get_endpoint()
+            host, port = srvObj.get_self_endpoint()
             ngamsPClient.ngamsPClient(host, port).archive(file_uri, 'ngas/nglog')
 
         # Do additional things with our logfiles

@@ -1483,9 +1483,9 @@ class ngamsServer(object):
 
         return host, remote_port
 
-    def get_endpoint(self):
+    def get_self_endpoint(self):
         """
-        Return an IP address which clients can use to connect to this server.
+        Return an IP address that the server can use to connect to itself.
         """
         ipAddress = self.ipAddress
         ipAddress = ipAddress if ipAddress != '0.0.0.0' else '127.0.0.1'
