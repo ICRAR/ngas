@@ -585,18 +585,26 @@ class ngamsConfig:
 
         # Get info about the subscribers.
         subscrDefObj = self.__cfgMgr.getXmlObj("SubscriptionDef[1]")
-        if (subscrDefObj):
+        if (subscrDefObj and self.getSubscrEnable()):
             logger.debug("Unpacking SubscriptionDef Element ...")
             fm = "SubscriptionDef[1].Subscription[%d].%s"
             for idx in range(1, (len(subscrDefObj.getSubElList()) + 1)):
                 subscr_id = self.getVal(fm % (idx, "SubscriberId"))
                 if subscr_id == None:
                     subscr_id = ""
+
+                # Still support the old SubscriberUrl, but prefer Command
+                url_tag = fm % (idx, "SubscriberUrl")
+                cmd_tag = fm % (idx, "Command")
+                if self.getVal(url_tag) and not self.getVal(cmd_tag):
+                    logger.warning("%s is deprecated. Use %s instead", url_tag, cmd_tag)
+                    cmd_tag = url_tag
+
                 tmpSubscrObj = ngamsSubscriber.ngamsSubscriber(\
                     self.getVal(fm % (idx, "HostId")),
                     self.getVal(fm % (idx, "PortNo")),
                     self.getVal(fm % (idx, "Priority")),
-                    self.getVal(fm % (idx, "SubscriberUrl")),
+                    self.getVal(cmd_tag),
                     "",
                     self.getVal(fm % (idx, "FilterPlugIn")),
                     self.getVal(fm % (idx, "FilterPlugInPars")),

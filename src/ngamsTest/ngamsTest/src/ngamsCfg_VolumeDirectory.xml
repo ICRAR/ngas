@@ -257,7 +257,7 @@
                    AutoUnsubscribe="0"
 		   SuspensionTime="0T00:03:00"
                    BackLogExpTime="28T00:00:00"
-                   Enable="1">
+                   Enable="0">
     <Subscription HostId="DEFINE"
                   PortNo="8888"
                   Priority="0"
