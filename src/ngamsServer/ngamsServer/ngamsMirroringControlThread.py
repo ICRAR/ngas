@@ -43,7 +43,6 @@ import base64
 import contextlib
 import copy
 import functools
-import httplib
 import logging
 import os
 import random

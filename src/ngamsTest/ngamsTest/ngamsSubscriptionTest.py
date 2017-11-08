@@ -34,15 +34,15 @@ This module contains the Test Suite for the SUBSCRIBE Command.
 import SocketServer
 import contextlib
 from contextlib import closing
-import httplib
+import functools
 import pickle
 import socket
 import struct
 import sys
 import threading
 import time
-import urllib
 
+from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_SUCCESS
 from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd, getNoCleanUp, setNoCleanUp, getClusterName
 from ngamsServer import ngamsServer
@@ -125,18 +125,13 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'),)
         self.prepCluster("src/ngamsCfg.xml", [[8888, None, None, None], [8889, None, None, None, cfg]])
 
-        host = 'localhost:8888'
-        method = 'GET'
-        cmd = 'QARCHIVE'
+        qarchive = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'QARCHIVE', timeout=5)
+        subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
 
-        test_file = 'src/SmallFile.fits'
-        params = {'filename': test_file,
+        # Initial archiving
+        params = {'filename': 'src/SmallFile.fits',
                   'mime_type': 'application/octet-stream'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, open(test_file, 'rb'), {})
-            resp = conn.getresponse()
+        with closing(qarchive(pars=params)) as resp:
             self.checkEqual(resp.status, 200, None)
 
         # Version 2 of the file should only exist after
@@ -150,18 +145,12 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         subscription_listener = notification_listener()
 
         # Create subscription
-        method = 'GET'
-        cmd = 'SUBSCRIBE'
         params = {'url': 'http://localhost:8889/QARCHIVE',
                   'subscr_id': 'HERE-TO-THERE',
                   'priority': 1,
                   'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
                   'concurrent_threads': 1}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
+        with closing(subscribe(pars=params)) as resp:
             self.checkEqual(resp.status, 200, None)
 
         # Do not like sleeps but xfer should happen immediately.
@@ -174,7 +163,6 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         self.assertEquals(2, archive_evt.file_version)
         self.assertEquals('SmallFile.fits', archive_evt.file_id)
 
-        client = sendPclCmd(port = 8889)
         status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
         self.assertEquals(status.getStatus(), 'SUCCESS', None)
 
@@ -185,107 +173,72 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         self.prepCluster("src/ngamsCfg.xml", [[8888, None, None, None, [["NgamsCfg.HostSuspension[1].SuspensionTime", '0T00:00:05'], ["NgamsCfg.Log[1].LocalLogLevel", '4']]],
                                               [8889, None, None, None, cfg]])
 
-        host = 'localhost:8888'
-        method = 'GET'
-        cmd = 'QARCHIVE'
+        qarchive = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'QARCHIVE', timeout=5)
+        subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
+        usubscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'USUBSCRIBE', timeout=5)
+        def assert_subscription_status(pars, status):
+            with closing(subscribe(pars=pars)) as resp:
+                self.assertEqual(resp.status, status, None)
 
-        test_file = 'src/SmallFile.fits'
-        params = {'filename': test_file,
-                  'mime_type': 'application/octet-stream'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, open(test_file, 'rb'), {})
-            resp = conn.getresponse()
-            self.checkEqual(resp.status, 200, None)
+        # Archive these two
+        for test_file in ('src/SmallFile.fits', 'src/TinyTestFile.fits'):
+            params = {'filename': test_file,
+                      'mime_type': 'application/octet-stream'}
+            with closing(qarchive(pars=params)) as resp:
+                self.checkEqual(resp.status, 200, None)
 
-        test_file = 'src/TinyTestFile.fits'
-        params = {'filename': test_file,
-                  'mime_type': 'application/octet-stream'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, open(test_file, 'rb'), {})
-            resp = conn.getresponse()
-            self.checkEqual(resp.status, 200, None)
-
+        # Things haven't gone through tyet
         client = sendPclCmd(port = 8889)
         status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
         self.assertEquals(status.getStatus(), 'FAILURE', None)
 
-        method = 'GET'
-        cmd = 'SUBSCRIBE'
+        # Invalid number of concurrent threads
         params = {'url': 'http://localhost:8889/QARCHIVE',
                   'subscr_id': 'TEST',
                   'priority': 1,
                   'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
                   'concurrent_threads': -1}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
-            self.checkEqual(resp.status, 400, None)
+        assert_subscription_status(params, 400)
 
+        # Invalid start_date -- not a date
         params = {'url': 'http://localhost:8889/QARCHIVE',
                   'subscr_id': 'TEST',
                   'priority': 1,
                   'start_date': 'ERRORT00:00:00.000',
                   'concurrent_threads': 2}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
-            self.checkEqual(resp.status, 400, None)
+        assert_subscription_status(params, 400)
 
+        # Invalid start_date -- month is invalid
         params = {'url': 'http://localhost:8889/QARCHIVE',
                   'subscr_id': 'TEST',
                   'priority': 1,
                   'start_date': '2010-20-02T00:00:00.000',
                   'concurrent_threads': 2}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
-            self.checkEqual(resp.status, 400, None)
+        assert_subscription_status(params, 400)
 
+        # Invalid start_date -- time is invalid
         params = {'url': 'http://localhost:8889/QARCHIVE',
                   'subscr_id': 'TEST',
                   'priority': 1,
                   'start_date': '2010-10-02TERROR',
                   'concurrent_threads': 2}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
-            self.checkEqual(resp.status, 400, None)
+        assert_subscription_status(params, 400)
 
+        # Invalid url -- empty
         params = {'url': '',
                   'subscr_id': 'TEST',
                   'priority': 1,
                   'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
                   'concurrent_threads': 2}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
-            self.checkEqual(resp.status, 400, None)
+        assert_subscription_status(params, 400)
 
+        # All correct
         params = {'url': 'http://localhost:8889/QARCHIV',
                   'subscr_id': 'TEST',
                   'priority': 1,
                   'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
                   'concurrent_threads': 1}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
-            self.checkEqual(resp.status, 200, None)
+        assert_subscription_status(params, 200)
 
         # Let a full subscription iteration go before checking anything
         # We put a time.sleep(3) in there to slow down the resource usage
@@ -301,17 +254,12 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         # USUBSCRIBE updates the subscription to valid values
         subscription_listener = notification_listener()
-        cmd = 'USUBSCRIBE'
         params = {'url': 'http://localhost:8889/QARCHIVE',
                   'subscr_id': 'TEST',
                   'priority': 1,
                   'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
                   'concurrent_threads': 2}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
+        with closing(usubscribe(pars=params)) as resp:
             self.checkEqual(resp.status, 200, None)
 
         archive_evts = []
@@ -335,27 +283,14 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         # UNSUBSCRIBE and check the newly archived file is not transfered
         subscription_listener = notification_listener()
-        cmd = 'UNSUBSCRIBE'
         params = {'subscr_id': 'TEST'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
+        with closing(usubscribe(pars=params)) as resp:
             self.checkEqual(resp.status, 200, None)
-
-        host = 'localhost:8888'
-        method = 'GET'
-        cmd = 'QARCHIVE'
 
         test_file = 'src/SmallBadFile.fits'
         params = {'filename': test_file,
                   'mime_type': 'application/octet-stream'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, open(test_file, 'rb'), {})
-            resp = conn.getresponse()
+        with closing(qarchive(pars=params)) as resp:
             self.checkEqual(resp.status, 200, None)
 
         try:

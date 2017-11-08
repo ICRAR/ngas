@@ -32,22 +32,21 @@
 Contains the Test Suite for the ARCHIVE Command.
 """
 
+import contextlib
 import cPickle
+import functools
 import getpass
 import glob
 import os
 import subprocess
 import sys
-import urllib
-import httplib
 from multiprocessing.pool import ThreadPool
 from unittest.case import skip, skipIf
-from contextlib import closing
 
 from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
     NGAMS_SUCCESS, getDiskSpaceAvail, mvFile
 from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo,\
-    ngamsCore
+    ngamsCore, ngamsHttpUtils
 from ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
     saveInFile, filterDbStatus1, sendPclCmd, pollForFile, getClusterName, \
     sendExtCmd, remFitsKey, writeFitsKey, prepCfg, getTestUserEmail, runTest, \
@@ -1438,63 +1437,44 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         """
         self.prepExtSrv(cfgFile = 'src/ngamsCfg.xml')
 
-        host = 'localhost:8888'
-        method = 'GET'
-        cmd = 'QARCHIVE'
+        http_get = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'QARCHIVE')
 
+        # No filename given
         params = {'filename': '',
                   'mime_type': 'application/octet-stream'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
+        with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.checkEqual(resp.status, 400, None)
             self.checkEqual('NGAMS_ER_MISSING_URI' in resp.read(), True, None)
 
+        # No mime-type given
         params = {'filename': 'test',
                   'mime_type': ''}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
+        with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.checkEqual(resp.status, 400, None)
             self.checkEqual('NGAMS_ER_UNKNOWN_MIME_TYPE' in resp.read(), True, None)
 
+        # File is zero-length
         test_file = 'tmp/zerofile.fits'
         open(test_file, 'a').close()
         params = {'filename': test_file,
                   'mime_type': 'application/octet-stream'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, open(test_file, 'rb'), {})
-            resp = conn.getresponse()
+        with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.checkEqual(resp.status, 400, None)
             self.checkEqual('Content-Length is 0' in resp.read(), True, None)
 
-        test_file = 'src/SmallFile.fits'
-        params = {'filename': test_file,
-                  'mime_type': 'application/octet-stream'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, open(test_file, 'rb'), {})
-            resp = conn.getresponse()
-            self.checkEqual(resp.status, 200, None)
-
         # Invalid file_version parameter, is not a number
-        params = {'filename': test_file,
+        params = {'filename': 'src/SmallFile.fits',
                   'file_version': 'test',
                   'mime_type': 'application/octet-stream'}
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 5)) as conn:
-            conn.request(method, selector, '', {})
-            resp = conn.getresponse()
+        with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
             self.assertEqual(400, resp.status)
             self.assertIn('invalid literal for int() with base 10', resp.read())
+
+        # All is fine
+        params = {'filename': 'src/SmallFile.fits',
+                  'mime_type': 'application/octet-stream'}
+        with contextlib.closing(http_get(pars=params, timeout=5)) as resp:
+            self.checkEqual(resp.status, 200, None)
 
 
     @skipIf(not _space_available_for_big_file_test,
@@ -1503,9 +1483,6 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
     def test_QArchive_big_file(self):
 
         self.prepExtSrv()
-        cmd = 'QARCHIVE'
-        host = '127.0.0.1:8888'
-        method = 'POST'
 
         # Archive large file
         class generated_file(object):
@@ -1529,12 +1506,11 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         if _crc32c_available:
             params['crc_variant'] = 'crc32c'
 
-        params = urllib.urlencode(params)
-        selector = '{0}?{1}'.format(cmd, params)
-        with closing(httplib.HTTPConnection(host, timeout = 120)) as conn:
-            conn.request(method, selector, generated_file((2**32)+12), {})
-            resp = conn.getresponse()
-            self.checkEqual(resp.status, 200, None)
+        status,_,_,_ = ngamsHttpUtils.httpPost('localhost', 8888, 'QARCHIVE',
+                                               generated_file((2**32)+12),
+                                               mimeType='application/octet-stream',
+                                               pars=params, timeout=120)
+        self.checkEqual(status, 200, None)
 
     def test_filename_with_colons(self):
 
@@ -1615,6 +1591,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
     @skip("Run manually when necessary")
     def test_performance_of_crc32(self):
 
+        client = sendPclCmd(timeout=120)
         kb = 2 ** 10
         for log_blockSize_kb in xrange(8):
 
@@ -1631,18 +1608,15 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                         f.seek(size)
                         f.write('a')
 
-                    params = {'filename': test_file,
-                      'mime_type': 'application/octet-stream'}
+                    params = {}
                     if crc32_variant is not None:
                         params['crc_variant'] = crc32_variant
-                    params = urllib.urlencode(params)
-                    selector = '{0}?{1}'.format('QARCHIVE', params)
-                    with closing(httplib.HTTPConnection('localhost:8888', timeout = 120)) as conn:
-                        conn.request('GET', selector, open(test_file, 'rb'), {})
-                        resp = conn.getresponse()
-                        self.checkEqual(resp.status, 200, None)
 
-                        os.unlink(test_file)
+                    file_uri = 'file://' + os.path.normpath(os.path.abspath(test_file))
+                    stat = client.archive(file_uri, mimeType='application/octet-stream',
+                                          pars=params, cmd='QARCHIVE')
+                    self.assertEqual(NGAMS_SUCCESS, stat.getStatus())
+                    os.unlink(test_file)
 
             self.terminateAllServer()
 
@@ -1652,6 +1626,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         kb = 2 ** 10
         size = 100 * kb * kb
         test_file = 'tmp/largefile'
+        file_uri = 'file://' + os.path.normpath(os.path.abspath(test_file))
         with open(test_file, 'wb') as f:
             f.seek(size)
             f.write('a')
@@ -1667,20 +1642,16 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
                 self.prepExtSrv(cfgProps=[['NgamsCfg.Server[1].BlockSize', blockSize]])
                 for crc32_variant in (0, 1):
 
-                    params = {'filename': test_file,
-                      'mime_type': 'application/octet-stream'}
+                    params = {}
                     if crc32_variant is not None:
                         params['crc_variant'] = crc32_variant
-                    params = urllib.urlencode(params)
-                    selector = '{0}?{1}'.format('QARCHIVE', params)
 
-                    def submit_file(test_file):
-                        with closing(httplib.HTTPConnection('localhost:8888', timeout = 120)) as conn:
-                            conn.request('GET', selector, open(test_file, 'rb'), {})
-                            resp = conn.getresponse()
-                            self.checkEqual(resp.status, 200, None)
+                    def submit_file(file_uri):
+                        return sendPclCmd().archive(file_uri, mimeType='application/octet-stream',
+                                                    pars=params, cmd='QARCHIVE')
 
-                    tp.map(submit_file, [test_file]*nfiles)
+                    for stat in tp.map(submit_file, [file_uri]*nfiles):
+                        self.assertEqual(NGAMS_SUCCESS, stat.getStatus())
 
                 tp.close()
                 self.terminateAllServer()
