@@ -80,20 +80,11 @@ class ngamsSubscriber:
         """
         Constructor method.
         """
-        if subscrId:  # if an explicit ID is specified in the element then use it
-                      # else use the URL.
-            self.\
-               setHostId(hostId).setPortNo(portNo).setPriority(priority).\
-               setUrl(url).setStartDate(startDate).\
-               setFilterPi(filterPi).setFilterPiPars(filterPiPars).\
-               setLastFileIngDate(lastFileIngDate).setId(subscrId)
-        else:
-            self.\
-               setHostId(hostId).setPortNo(portNo).setPriority(priority).\
-               setUrl(url).setId(url).setStartDate(startDate).\
-               setFilterPi(filterPi).setFilterPiPars(filterPiPars).\
-               setLastFileIngDate(lastFileIngDate)
-
+        subscrId = subscrId or url
+        self.setHostId(hostId).setPortNo(portNo).setPriority(priority).\
+             setUrl(url).setStartDate(startDate).\
+             setFilterPi(filterPi).setFilterPiPars(filterPiPars).\
+             setLastFileIngDate(lastFileIngDate).setId(subscrId)
         self.setConcurrentThreads(1) # by default only uses 1 thread for each subscriber
         self._AND_DELIMIT = '____' # urllib.quote('&&')
         self._OR_DELIMIT = '----' # urllib.quote('||')
