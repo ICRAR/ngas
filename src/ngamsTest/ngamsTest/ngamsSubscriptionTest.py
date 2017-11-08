@@ -285,7 +285,12 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             resp = conn.getresponse()
             self.checkEqual(resp.status, 200, None)
 
-        time.sleep(2)
+        # Let a full subscription iteration go before checking anything
+        # We put a time.sleep(3) in there to slow down the resource usage
+        # and therefore we need to account for that in this test.
+        # In the future we'll have a nicer mechanism that will make this
+        # unnecessary (and less error prone to race conditions)
+        time.sleep(7)
 
         # Check after all the failed subscriptions we don't have the file
         client = sendPclCmd(port = 8889)
