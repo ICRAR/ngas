@@ -33,7 +33,6 @@ This module contains the Test Suite for the SUBSCRIBE Command.
 
 import SocketServer
 import contextlib
-from contextlib import closing
 import functools
 import pickle
 import socket
@@ -131,7 +130,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         # Initial archiving
         params = {'filename': 'src/SmallFile.fits',
                   'mime_type': 'application/octet-stream'}
-        with closing(qarchive(pars=params)) as resp:
+        with contextlib.closing(qarchive(pars=params)) as resp:
             self.checkEqual(resp.status, 200, None)
 
         # Version 2 of the file should only exist after
@@ -150,7 +149,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
                   'priority': 1,
                   'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
                   'concurrent_threads': 1}
-        with closing(subscribe(pars=params)) as resp:
+        with contextlib.closing(subscribe(pars=params)) as resp:
             self.checkEqual(resp.status, 200, None)
 
         # Do not like sleeps but xfer should happen immediately.
@@ -178,19 +177,19 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         usubscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'USUBSCRIBE', timeout=5)
         unsubscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'UNSUBSCRIBE', timeout=5)
         def assert_subscription_status(pars, status):
-            with closing(subscribe(pars=pars)) as resp:
+            with contextlib.closing(subscribe(pars=pars)) as resp:
                 self.assertEqual(resp.status, status, None)
 
         # Archive these two
         for test_file in ('src/SmallFile.fits', 'src/TinyTestFile.fits'):
             params = {'filename': test_file,
                       'mime_type': 'application/octet-stream'}
-            with closing(qarchive(pars=params)) as resp:
+            with contextlib.closing(qarchive(pars=params)) as resp:
                 self.checkEqual(resp.status, 200, None)
 
         # Things haven't gone through tyet
-        client = sendPclCmd(port = 8889)
-        status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
+        retrieve = functools.partial(sendPclCmd(port = 8889).retrieve, targetFile='tmp')
+        status = retrieve('SmallFile.fits', fileVersion=2)
         self.assertEquals(status.getStatus(), 'FAILURE', None)
 
         # Invalid number of concurrent threads
@@ -233,7 +232,8 @@ class ngamsSubscriptionTest(ngamsTestSuite):
                   'concurrent_threads': 2}
         assert_subscription_status(params, 400)
 
-        # All correct
+        # Subscription created, but files shouldn't be transfered
+        # because the url contains an invalid path
         params = {'url': 'http://localhost:8889/QARCHIV',
                   'subscr_id': 'TEST',
                   'priority': 1,
@@ -249,64 +249,54 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         time.sleep(7)
 
         # Check after all the failed subscriptions we don't have the file
-        client = sendPclCmd(port = 8889)
-        status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
-        self.assertEquals(status.getStatus(), 'FAILURE', None)
+        status = retrieve('SmallFile.fits', fileVersion=2)
+        self.assertEquals(status.getStatus(), 'FAILURE')
 
         # USUBSCRIBE updates the subscription to valid values
+        # After this update the two files should go through
         subscription_listener = notification_listener()
         params = {'url': 'http://localhost:8889/QARCHIVE',
                   'subscr_id': 'TEST',
                   'priority': 1,
                   'start_date': '%sT00:00:00.000' % time.strftime("%Y-%m-%d"),
                   'concurrent_threads': 2}
-        with closing(usubscribe(pars=params)) as resp:
-            self.checkEqual(resp.status, 200, None)
+        with contextlib.closing(usubscribe(pars=params)) as resp:
+            self.assertEqual(resp.status, 200)
 
         archive_evts = []
-        try:
+        with contextlib.closing(subscription_listener):
             archive_evts.append(subscription_listener.wait_for_file(5))
             archive_evts.append(subscription_listener.wait_for_file(5))
-        finally:
-            subscription_listener.close()
 
         self.assertNotIn(None, archive_evts)
         self.assertEqual([2, 2], [x.file_version for x in archive_evts])
         self.assertSetEqual({'SmallFile.fits', 'TinyTestFile.fits'}, set([x.file_id for x in archive_evts]))
 
-        client = sendPclCmd(port = 8889)
-        status = client.retrieve('SmallFile.fits', fileVersion=2, targetFile='tmp')
-        self.assertEquals(status.getStatus(), 'SUCCESS', None)
-
-        client = sendPclCmd(port = 8889)
-        status = client.retrieve('TinyTestFile.fits', fileVersion=2, targetFile='tmp')
-        self.assertEquals(status.getStatus(), 'SUCCESS', None)
+        for f in ('SmallFile.fits', 'TinyTestFile.fits'):
+            status = retrieve(f, fileVersion=2)
+            self.assertEqual(status.getStatus(), 'SUCCESS')
 
         # UNSUBSCRIBE and check the newly archived file is not transfered
         subscription_listener = notification_listener()
         params = {'subscr_id': 'TEST'}
-        with closing(unsubscribe(pars=params)) as resp:
-            self.checkEqual(resp.status, 200, None)
+        with contextlib.closing(unsubscribe(pars=params)) as resp:
+            self.assertEqual(resp.status, 200)
 
         test_file = 'src/SmallBadFile.fits'
         params = {'filename': test_file,
                   'mime_type': 'application/octet-stream'}
-        with closing(qarchive(pars=params)) as resp:
-            self.checkEqual(resp.status, 200, None)
+        with contextlib.closing(qarchive(pars=params)) as resp:
+            self.assertEqual(resp.status, 200)
 
-        try:
+        with contextlib.closing(subscription_listener):
             self.assertIsNone(subscription_listener.wait_for_file(5))
-        finally:
-            subscription_listener.close()
 
         # Check after all the failed subscriptions we don't have the file
-        client = sendPclCmd(port = 8889)
-        status = client.retrieve('SmallBadFile.fits', fileVersion=1, targetFile='tmp')
-        self.assertEquals(status.getStatus(), 'SUCCESS', None)
+        status = retrieve('SmallBadFile.fits', fileVersion=1)
+        self.assertEqual(status.getStatus(), 'SUCCESS')
 
-        client = sendPclCmd(port = 8889)
-        status = client.retrieve('SmallBadFile.fits', fileVersion=2, targetFile='tmp')
-        self.assertEquals(status.getStatus(), 'FAILURE', None)
+        status = retrieve('SmallBadFile.fits', fileVersion=2)
+        self.assertEqual(status.getStatus(), 'FAILURE')
 
     def test_server_starts_after_subscription_added(self):
 
