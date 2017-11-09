@@ -1,6 +1,6 @@
 --
 -- This scripts (re)creates the SQLite3 database schema
--- needed by the NGAS server version 9.0.
+-- needed by the NGAS server version 10.1.
 --
 -- If you are looking to upgrade an existing installation
 -- have a look at the deltas directory for schema alterations
@@ -216,7 +216,8 @@ Create table ngas_subscribers
   subscr_filter_plugin      varchar(64)   null,
   subscr_filter_plugin_pars varchar(128)  null,
   last_file_ingestion_date  varchar(23)   null,
-  concurrent_threads        int           default 1 null
+  concurrent_threads        int           default 1,
+  active                    SMALLINT      NOT NULL DEFAULT 1 CHECK (active IN (0, 1))
 );
 
 create unique index subscr_id_idx on ngas_subscribers(subscr_id);
@@ -251,3 +252,13 @@ create table ngas_subscr_queue
     constraint subscr_queue_idx primary key(subscr_id,file_id,file_version,disk_id)
 );
 create index subscr_queue_subscr_id_idx on ngas_subscr_queue(subscr_id);
+
+drop table if exists ngas_subscr_delivery_queue;
+create table ngas_subscr_delivery_queue
+(
+    subscr_id       varchar(255)  not null,
+    file_id         varchar(64)   not null,
+    file_version    int           not null default 1,
+    disk_id         varchar(128)  not null,
+    constraint delivery_queue_idx primary key(subscr_id, file_id, file_version, disk_id)
+);

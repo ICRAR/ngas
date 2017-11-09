@@ -465,6 +465,7 @@ def delNgasTbls(dbObj):
     dbObj.query2("DELETE FROM ngas_files")
     dbObj.query2("UPDATE ngas_containers set parent_container_id = null")
     dbObj.query2("DELETE FROM ngas_containers")
+    dbObj.query2("DELETE FROM ngas_subscr_delivery_queue")
     dbObj.query2("DELETE FROM ngas_subscr_queue")
     dbObj.query2("DELETE FROM ngas_subscr_back_log")
     dbObj.query2("DELETE FROM ngas_subscribers")
