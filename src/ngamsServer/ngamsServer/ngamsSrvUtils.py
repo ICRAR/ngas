@@ -27,22 +27,20 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  27/09/2002  Created
 #
-
 """
 This module contains various utilities used by the NG/AMS Server.
 """
 
+import contextlib
 import glob
 import logging
 import os
 import re
 import string
-import thread
 import threading
-import time
 
 from ngamsLib.ngamsCore import NGAMS_NOT_RUN_STATE,\
-    NGAMS_ONLINE_STATE, NGAMS_DEFINE, NGAMS_SUBSCRIBE_CMD,\
+    NGAMS_ONLINE_STATE, NGAMS_SUBSCRIBE_CMD,\
     NGAMS_SUCCESS, TRACE, genLog, NGAMS_DISK_INFO, checkCreatePath,\
     NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
     loadPlugInEntryPoint, toiso8601, fromiso8601
@@ -85,105 +83,82 @@ def ngamsBaseExitHandler(srvObj):
     srvObj.updateHostInfo("", None, 0, 0, 0, 0, 0, NGAMS_NOT_RUN_STATE)
 
 
-def _subscriberThread(srvObj,
-                      dummy):
+def _create_remote_subscriptions(srvObj, stop_evt):
     """
-    To be executed as thread, which tries periodically to subscribe this
-    NG/AMS Server to one or more Data Providers.
-
-    srvObj:      Reference to NG/AMS Server class instance (ngamsServer).
-
-    dummy:       Needed by the thread handling ...
-
-    Returns:     Void.
+    Creates subscriptions in remote servers so they push their data into
+    ours.
     """
-    if (not srvObj.getCfg().getSubscriptionsDic().keys()): thread.exit()
 
-    # Generate a list with Subscriptions from the configuration file.
-    subscrList = []
-    for subscrId in srvObj.getCfg().getSubscriptionsDic().keys():
-        subscrList.append(srvObj.getCfg().getSubscriptionsDic()[subscrId])
+    subscriptions_in_cfg = srvObj.cfg.getSubscriptionsDic()
+    subscriptions = [v for _,v in subscriptions_in_cfg.items()]
+    subscriptions_created = 0
 
-    myPort = srvObj.getCfg().getPortNo()
-    myHost = srvObj.getHostId()
+    while True:
 
-    # Run this loop until all requested Subscriptions have been
-    # successfully executed, or until the server goes Offline.
-    subscrCount = 0
-    statObj = ngamsStatus.ngamsStatus()
-    while (1):
-        if (not srvObj.getThreadRunPermission()):
-            logger.info("Terminating Subscriber thread ...")
-            thread.exit()
-        for idx in range(len(subscrList)):
+        # Done with all of them
+        if not subscriptions:
+            break
+
+        # Iterate over copy, since we modify the original inside the loop
+        for subscrObj in list(subscriptions):
+
             if (not srvObj.getThreadRunPermission()):
                 logger.info("Terminating Subscriber thread ...")
-                thread.exit()
+                return
 
-            subscrObj = subscrList[idx]
-            if (subscrObj.getHostId() == NGAMS_DEFINE):
-                idx += 1
-                continue
-            hostPort = subscrObj.getHostId() + "/" + str(subscrObj.getPortNo())
+            our_host, our_port = srvObj.get_self_endpoint()
+            subs_host, subs_port = subscrObj.getHostId(), subscrObj.getPortNo()
 
-            # Check that the server is not subscribing to itself.
-            if ((myPort == subscrObj.getPortNo()) and \
-                (myHost == subscrObj.getHostId())):
-                logger.warning("NG/AMS cannot subscribe to itself - ignoring " +\
-                        "subscription (host/port): %s", hostPort)
-                del subscrList[idx]
-                break
+            # Not subscribing to ourselves
+            if srvObj.is_it_us(subs_host, subs_port):
+                logger.warning("Skipping subscription to %s:%d because that's us", subs_host, subs_port)
+                return
 
-            logger.debug("Attempting to subscribe to Data Provider (host/port): %s", hostPort)
-            pars = [["priority", subscrObj.getPriority()],
-                    ["url",      subscrObj.getUrl()]]
-            if (subscrObj.getId()):
-                pars.append(["subscr_id", subscrObj.getId()])
-            if (subscrObj.getStartDate() is not None):
-                pars.append(["start_date", toiso8601(subscrObj.getStartDate())])
-            if (subscrObj.getFilterPi()):
+            # Create the URL that needs to be set on the remote end so we
+            # get subscribed to it.
+            # TODO: include reverse proxy information when we add support
+            # TODO: hardcoded http will need to be changed when we add support
+            #       for https
+            url = 'http://%s:%d/%s' % (our_host, our_port, subscrObj.getUrl() or 'QARCHIVE')
+            logger.info("Creating subscription to %s:%d with url=%s", subs_host, subs_port, url)
+
+            pars = [["subscr_id", url],
+                    ["priority", subscrObj.getPriority()],
+                    ["url",      url],
+                    ["start_date", toiso8601(local=True)]]
+            if subscrObj.getFilterPi():
                 pars.append(["filter_plug_in", subscrObj.getFilterPi()])
-            if (subscrObj.getFilterPiPars()):
+            if subscrObj.getFilterPiPars():
                 pars.append(["plug_in_pars", subscrObj.getFilterPiPars()])
-            ex = ""
-            statObj.clear()
-            try:
-                resp, stat, msgObj, data = \
-                      ngamsHttpUtils.httpGet(subscrObj.getHostId(),
-                                       subscrObj.getPortNo(),
-                                       NGAMS_SUBSCRIBE_CMD, pars)
-                statObj.unpackXmlDoc(data, 1)
-            except Exception, e:
-                ex = "Exception: " + str(e)
-            if (statObj.getStatus() == NGAMS_SUCCESS):
-                subscrCount += 1
-                logger.info("Successfully subscribed to Data Provider (host/port): %s/%s",
-                            subscrObj.getHostId(), str(subscrObj.getPortNo()))
-                # Add this reference in the Subscription Status List to make it
-                # possible to unsubscribe the subscriptions when going Offline.
-                # Should be semaphore protected to avoid conflicts.
-                srvObj.getSubscrStatusList().append(subscrObj)
-                del subscrList[idx]
-                break
-            else:
-                errMsg = "Failed in subscribing to Data Provider " +\
-                         "(host/port): " + subscrObj.getHostId() + "/" +\
-                         str(subscrObj.getPortNo())
-                if (ex != ""): errMsg += ". " + ex
-                errMsg += ". Retrying later."
-                logger.debug(errMsg)
-        if (not len(subscrList)): break
-        for n in range(20):
-            time.sleep(0.5)
-            if (not srvObj.getThreadRunPermission()):
-                logger.info("Terminating Subscriber Thread ...")
-                thread.exit()
 
-    if (subscrCount):
-        logger.info("Successfully established %d Subscription(s)", subscrCount)
+            try:
+                # Issue SUBSCRIBE command
+                resp = ngamsHttpUtils.httpGet(subs_host, subs_port, cmd=NGAMS_SUBSCRIBE_CMD, pars=pars)
+                with contextlib.closing(resp):
+                    stat = ngamsStatus.to_status(resp, subscrObj.getHostId(), NGAMS_SUBSCRIBE_CMD)
+
+                if stat.getStatus() != NGAMS_SUCCESS:
+                    msg = "Unsuccessful NGAS XML response. Status: %s, message: %s. Will try again later"
+                    logger.warning(msg, stat.getStatus(), stat.getMessage())
+                    continue
+
+                subscriptions_created += 1
+                logger.info("Successfully subscribed to %s:%d with url=%s", subs_host, subs_port, subscrObj.getUrl())
+
+                # Remember to unsubscribe when going Offline.
+                srvObj.getSubscrStatusList().append(subscrObj)
+                subscriptions.remove(subscrObj)
+
+            except:
+                logger.exception("Error while adding subscription, will try later")
+
+        if stop_evt.wait(10):
+            return
+
+    if subscriptions_created:
+        logger.info("Successfully established %d Subscription(s)", subscriptions_created)
     else:
         logger.info("No Subscriptions established")
-    thread.exit()
 
 
 def getDiskInfo(srvObj,
@@ -384,14 +359,15 @@ def handleOnline(srvObj,
 
     # If specified in the configuration file that this server should act as a
     # Subscriber, then subscribe to the Data Providers specified. We do this
-    # in a thread so that the server will continuesly try to  subscribe in
-    # case not possible for one or more Subscribers when first tried.
+    # in a thread so that the server can continuously try to subscribe,
+    # even after errors occur.
     if (srvObj.getCfg().getSubscrEnable()):
-        if (srvObj.getCfg().getSubscriptionsDic().keys()):
-            thrObj = threading.Thread(None, _subscriberThread,
-                                      NGAMS_SUBSCRIBER_THR, (srvObj, None))
-            thrObj.setDaemon(0)
-            thrObj.start()
+        srvObj.remote_subscription_creation_evt = threading.Event()
+        thrObj = threading.Thread(target=_create_remote_subscriptions,
+                                  name=NGAMS_SUBSCRIBER_THR,
+                                  args=(srvObj, srvObj.remote_subscription_creation_evt))
+        thrObj.setDaemon(0)
+        thrObj.start()
 
     logger.info("NG/AMS prepared for Online State")
 
@@ -421,18 +397,21 @@ def handleOffline(srvObj,
     srvObj.stopMirControlThread()
     srvObj.stopCacheControlThread()
     srvObj.setThreadRunPermission(0)
+    if srvObj.getCfg().getSubscrEnable():
+        srvObj.remote_subscription_creation_evt.set()
 
     logger.debug("Prepare NG/AMS for Offline State ...")
 
-    # Unsubscribe possible subscriptions. This is only tried once.
+    # Unsubscribe possible subscriptions. This is tried only once.
     if (srvObj.getCfg().getAutoUnsubscribe()):
         for subscrObj in srvObj.getSubscrStatusList():
+            subs_host, subs_port = subscrObj.getHostId(), subscrObj.getPortNo()
             try:
-                resp, stat, msgObj, data = \
-                      ngamsHttpUtils.httpGet(subscrObj.getHostId(),
-                                       subscrObj.getPortNo(),
-                                       NGAMS_UNSUBSCRIBE_CMD,
-                                       [["url", subscrObj.getId()]])
+                resp = ngamsHttpUtils.httpGet(subs_host, subs_port, NGAMS_UNSUBSCRIBE_CMD, [["url", subscrObj.getId()]])
+                with contextlib.closing(resp):
+                    stat = ngamsStatus.to_status(resp, "%s:%d" % (subs_host, subs_port), NGAMS_UNSUBSCRIBE_CMD)
+                if stat.getStatus() != NGAMS_SUCCESS:
+                    logger.error("Error when unsubscribing from %s:%d: %s", subs_host, subs_port, stat.getMessage())
             except Exception:
                 msg = "Problem occurred while cancelling subscription " +\
                       "(host/port): %s/%d. Subscriber ID: %s"

@@ -32,6 +32,7 @@ This module contains the Test Suite for the SUBSCRIBE Command.
 """
 
 import SocketServer
+import contextlib
 from contextlib import closing
 import httplib
 import pickle
@@ -42,7 +43,8 @@ import threading
 import time
 import urllib
 
-from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd, getNoCleanUp, setNoCleanUp
+from ngamsLib.ngamsCore import NGAMS_SUCCESS
+from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd, getNoCleanUp, setNoCleanUp, getClusterName
 from ngamsServer import ngamsServer
 
 
@@ -418,6 +420,36 @@ class ngamsSubscriptionTest(ngamsTestSuite):
             status = client.subscribe(url)
             self.assertEqual('FAILURE', status.getStatus())
             self.assertIn('only http:// scheme allowed', status.getMessage().lower())
+
+    def test_create_remote_subscriptions(self):
+        """
+        Starts two servers A and B, and configures B to automatically create a
+        subscription to A when it starts. Then, archiving a file into A should
+        make it into B.
+        """
+
+        subscription_pars = (('NgamsCfg.SubscriptionDef[1].Enable', '1'),
+                             ('NgamsCfg.SubscriptionDef[1].Subscription[1].HostId', 'localhost'),
+                             ('NgamsCfg.SubscriptionDef[1].Subscription[1].PortNo', '8888'),
+                             ('NgamsCfg.SubscriptionDef[1].Subscription[1].Command', 'QARCHIVE'),
+                             ('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'))
+        self.prepCluster("src/ngamsCfg.xml",
+                        [[8888, None, None, getClusterName()],
+                         [8889, None, None, getClusterName(), subscription_pars]])
+
+        # Listen for archives on server B (B is configured to send us notifications)
+        listener = notification_listener()
+
+        # File archived onto server A
+        stat = sendPclCmd(port=8888).archive('src/SmallFile.fits', mimeType='application/octet-stream')
+        self.assertEqual(NGAMS_SUCCESS, stat.getStatus())
+        with contextlib.closing(listener):
+            self.assertIsNotNone(listener.wait_for_file(10))
+
+        # Double-check that the file is in B
+        status = sendPclCmd(port = 8889).retrieve('SmallFile.fits', targetFile='tmp')
+        self.assertEquals(status.getStatus(), 'SUCCESS', None)
+
 
 def run():
     """
