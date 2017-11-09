@@ -176,6 +176,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         qarchive = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'QARCHIVE', timeout=5)
         subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
         usubscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'USUBSCRIBE', timeout=5)
+        unsubscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'UNSUBSCRIBE', timeout=5)
         def assert_subscription_status(pars, status):
             with closing(subscribe(pars=pars)) as resp:
                 self.assertEqual(resp.status, status, None)
@@ -284,7 +285,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         # UNSUBSCRIBE and check the newly archived file is not transfered
         subscription_listener = notification_listener()
         params = {'subscr_id': 'TEST'}
-        with closing(usubscribe(pars=params)) as resp:
+        with closing(unsubscribe(pars=params)) as resp:
             self.checkEqual(resp.status, 200, None)
 
         test_file = 'src/SmallBadFile.fits'
