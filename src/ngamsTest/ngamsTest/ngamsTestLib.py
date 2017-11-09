@@ -1398,10 +1398,13 @@ class ngamsTestSuite(unittest.TestCase):
         # Exceptional handling for SQLite.
         if 'sqlite' in cfgObj.getDbInterface().lower():
 
-            # TODO: It would probably be better if we simply run
-            # the SQL script that creates the tables
             if create:
-                cpFile("src/ngas_Sqlite_db_template", "tmp/ngas.sqlite")
+                rmFile('tmp/ngas.sqlite')
+                import sqlite3
+                fname = 'ngamsCreateTables-SQLite.sql'
+                script = pkg_resources.resource_string('ngamsSql', fname)  # @UndefinedVariable
+                with contextlib.closing(sqlite3.connect('tmp/ngas.sqlite')) as conn:  # @UndefinedVariable
+                    conn.executescript(script)
 
             # Make sure the 'database' attribute is an aboslute path
             # This is because there are tests that start the server
