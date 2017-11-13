@@ -902,14 +902,18 @@ def to_status(http_response, host_id, cmd):
     instead.
     """
 
-    data = http_response.read()
+    if isinstance(http_response, tuple):
+        status, data = http_response
+    else:
+        status, data = http_response.status, http_response.read()
+
     if data and "<?xml" in data:
         logger.debug("Parsing incoming HTTP data as ngamsStatus")
         return ngamsStatus().unpackXmlDoc(data, 1)
 
     # Otherwise, and depending on the HTTP code, we create either
     # a dummy successful or failed status object
-    if http_response.status != NGAMS_HTTP_SUCCESS:
+    if status != NGAMS_HTTP_SUCCESS:
         logger.debug("HTTP status != 200, creating dummy NGAS_FAILURE status")
         return dummy_failure_stat(host_id, cmd)
     return dummy_success_stat(host_id, data)
