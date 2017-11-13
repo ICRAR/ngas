@@ -492,6 +492,78 @@ class ngamsDbCursor(object):
                 self.conn.close()
             except: pass
 
+class cursor2(ngamsDbCursor):
+    """A cursor smarter than ngamsDbCursor that yields values"""
+
+    def fetch(self, howmany):
+        """
+        Fetches at most ``howmany`` results from the database at a given time,
+        yielding them instead of returning them as a sequence. This makes
+        client code simpler to write.
+        """
+        while True:
+            rows = self.cursor.fetchmany(howmany)
+            if not rows:
+                return
+            for row in rows:
+                yield row
+
+class transaction(object):
+    """
+    A context manager that allows multiple SQL queries to be performed
+    in a single transaction
+    """
+
+    def __init__(self, db_core, pool):
+        self.db_core = db_core
+        self.pool = pool
+
+    def __enter__(self):
+        self.conn = self.pool.connection()
+        return self
+
+    def __exit__(self, typ, *_):
+
+        # React accordingly
+        if not typ:
+            self.conn.commit()
+        else:
+            self.conn.rollback()
+
+        # Always close the connection at the end
+        try:
+            self.conn.close()
+        except:
+            pass
+
+        # Re-raise original exception
+        if typ:
+            raise
+
+    def execute(self, sql, args=()):
+
+        # If we are passing down parameters we need to sanitize both the query
+        # string (which should come with {0}-style formatting) and the parameter
+        # list to cope with the different parameter styles supported by PEP-249
+        if args:
+            sql = sql.format(*self.db_core._params_to_bind(len(args)))
+            args = self.db_core._data_to_bind(args)
+
+        with closing(self.conn.cursor()) as cursor:
+            with ngamsDbTimer(self.db_core, sql):
+                cursor.execute(sql, args)
+
+                # From PEP-249, regarding .description:
+                # This attribute will be None for operations that do not return
+                # rows [...]
+                # We thus use it to distinguish between those cases when there
+                # are results to fetch or not. This is important because fetch*
+                # calls can raise Errors if there are no results generated from
+                # the last call to .execute*
+                res = []
+                if cursor.description is not None:
+                    res = cursor.fetchall()
+                return res
 
 class ngamsDbCore(object):
     """
@@ -733,6 +805,10 @@ class ngamsDbCore(object):
             return {'n%d'%(i): d for i,d in enumerate(data)}
         return data
 
+    def transaction(self):
+        """Creates a new transaction object and return it"""
+        return transaction(self, self.__pool)
+
     def query2(self, sqlQuery, args = ()):
         """
         Simple query method that takes an SQL query and a tuple of arguments to
@@ -745,47 +821,15 @@ class ngamsDbCore(object):
         """
 
         logger.debug("Performing SQL query with parameters: %s / %r", sqlQuery, args)
-
-        # If we are passing down parameters we need to sanitize both the query
-        # string (which should come with {0}-style formatting) and the parameter
-        # list to cope with the different parameter styles supported by PEP-249
-        if args:
-            sqlQuery = sqlQuery.format(*self._params_to_bind(len(args)))
-            args = self._data_to_bind(args)
-
-        with closing(self.__pool.connection()) as conn:
-            with closing(conn.cursor()) as cursor:
-                with ngamsDbTimer(self, sqlQuery):
-                    try:
-                        cursor.execute(sqlQuery, args)
-
-                        # From PEP-249, regarding .description:
-                        # This attribute will be None for operations that do not return
-                        # rows [...]
-                        # We thus use it to distinguish between those cases when there
-                        # are results to fetch or not. This is important because fetch*
-                        # calls can raise Errors if there are no results generated from
-                        # the last call to .execute*
-                        if cursor.description is not None:
-                            res = cursor.fetchall()
-                        else:
-                            res = []
-                        conn.commit()
-
-                        return res
-                    except:
-                        conn.rollback()
-                        raise
+        with self.transaction() as t:
+            return t.execute(sqlQuery, args)
 
 
-    def dbCursor(self, sqlQuery, args=()):
+    def dbCursor(self, sqlQuery, args=(), use_cursor2=False):
         """
-        Create a DB Cursor Object (defined in the NG/AMS DB Interface Plug-In)
-        on the given query and return the cursor object.
-
-        sqlQuery:        SQL query for the cursor (string).
-
-        Return:          Cursor object instance (<Cursor Object>).
+        Create a cursor on the given query and return the cursor object.
+        If `use_cursor2` is set, an instance of `cursor2` will be returned;
+        otherwise an old `ngamsDbCursor` will be returned.
         """
 
         logger.debug("Performing SQL query (using a cursor): %s / %r", sqlQuery, args)
@@ -797,7 +841,8 @@ class ngamsDbCore(object):
             sqlQuery = sqlQuery.format(*self._params_to_bind(len(args)))
             args = self._data_to_bind(args)
 
-        return ngamsDbCursor(self.__pool, sqlQuery, args)
+        clazz = cursor2 if use_cursor2 else ngamsDbCursor
+        return clazz(self.__pool, sqlQuery, args)
 
     def getNgasFilesMap(self):
         """

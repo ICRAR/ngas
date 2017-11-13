@@ -133,7 +133,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                         ignore = None,
                         ing_date = None,
                         max_num_records = None,
-                        upto_ing_date = None):
+                        upto_ing_date = None,
+                        use_cursor2 = False):
         """
         Return summary information about files. An NG/AMS DB Cursor Object
         is created, which can be used to query the information sequentially.
@@ -211,7 +212,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             sql.append(" LIMIT {}")
             vals.append(max_num_records)
 
-        return self.dbCursor(''.join(sql), args = vals)
+        return self.dbCursor(''.join(sql), args = vals, use_cursor2=use_cursor2)
 
 
     def getFileSummary3(self,
