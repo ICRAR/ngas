@@ -980,6 +980,7 @@ class ngamsTestSuite(unittest.TestCase):
                    delDirs = 1,
                    clearDb = 1,
                    autoOnline = 1,
+                   cache = False,
                    cfgFile = "src/ngamsCfg.xml",
                    cfgProps = [],
                    dbCfgName = None,
@@ -1084,6 +1085,7 @@ class ngamsTestSuite(unittest.TestCase):
         execCmd += ["-cfg", tmpCfg, "-v", str(verbose)]
         execCmd += ['-path', parent_dir]
         if force:        execCmd.append('-force')
+        if cache:        execCmd.append('-cache')
         if autoOnline:   execCmd.append("-autoOnline")
         if dbCfgName:    execCmd.extend(["-dbCfgId", dbCfgName])
 
