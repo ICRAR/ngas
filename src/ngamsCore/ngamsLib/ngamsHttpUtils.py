@@ -183,14 +183,15 @@ def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
         return [reply, msg, hdrs, data]
 
 
-def httpPostUrl(url, data, mimeType, hdrs={},
+def httpPostUrl(url, data, mimeType, pars=[], hdrs={},
                 timeout=None, contDisp=None, auth=None):
     """
     Like `httpPost` but specifies a HTTP url instead of a combination of
-    host, port and command.
+    host, port and command. If additional `pars` are given, they are appended
+    to the query part of the URL
     """
     url = urlparse.urlparse(url)
-    pars = [] if not url.query else urlparse.parse_qsl(url.query)
+    pars = all_pars(url, pars)
     return httpPost(url.hostname, url.port, url.path, data, mimeType,
                     pars=pars, hdrs=hdrs, timeout=timeout,
                     contDisp=contDisp, auth=auth)
@@ -217,7 +218,7 @@ def httpGetUrl(url, pars=[], hdrs={}, timeout=None, auth=None):
     host, port and command.
     """
     url = urlparse.urlparse(url)
-    pars = [] if not url.query else urlparse.parse_qsl(url.query)
+    pars = all_pars(url, pars)
     return httpGet(url.hostname, url.port, url.path,
                    pars=pars, hdrs=hdrs, timeout=timeout)
 
@@ -243,3 +244,14 @@ class sizeaware(object):
 
     def __len__(self):
         return self.size
+
+def all_pars(url, pars):
+    """Returns parameters from url and pars"""
+    url_pars = [] if not url.query else urlparse.parse_qsl(url.query)
+    return url_pars + pars
+
+def host_port(url):
+    """url -> (host, port)"""
+    if isinstance(url, basestring):
+        url = urlparse.urlparse(url)
+    return url.hostname, url.port
