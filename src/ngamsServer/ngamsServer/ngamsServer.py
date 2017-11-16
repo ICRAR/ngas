@@ -71,6 +71,7 @@ import ngamsDataCheckThread
 import ngamsUserServiceThread
 import ngamsMirroringControlThread
 import ngamsCacheControlThread
+import ngamsSubscriptionThread
 import request_db
 from . import pysendfile
 
@@ -544,6 +545,11 @@ class ngamsServer(object):
         self._subscrFileCountDic_Sem  = threading.Semaphore(1)
         self._subscrBlScheduledDic    = {}
         self._subscrBlScheduledDic_Sem = threading.Semaphore(1)
+
+        # Handling of the Subscription Thread
+        self._subscriptionThread = None
+        self._subscriptionStopEvt = threading.Event()
+        self._subscriptionRunEvt = threading.Event()
 
         # List to keep track off to which Data Providers an NG/AMS
         # Server is subscribed.
@@ -1157,6 +1163,36 @@ class ngamsServer(object):
         logger.info("Data Check Thread stopped")
 
 
+    def startSubscriptionThread(self):
+        """
+        Starts the Subscription Thread.
+        """
+        logger.debug("Starting Subscription Thread ...")
+        self._subscriptionThread = threading.Thread(target=ngamsSubscriptionThread.subscriptionThread,
+                                                 name='SUBSCRIPTION_THREAD',
+                                                 args=(self, self._subscriptionRunEvt,
+                                                       self._subscriptionStopEvt))
+        self._subscriptionThread.start()
+        logger.info("Data Check Thread started")
+
+
+    def stopSubscriptionThread(self):
+        """
+        Stop the Subscription Thread.
+        """
+        if self._subscriptionThread is None:
+            return
+
+        # Signal the thread that is should stop, and then signal it to run,
+        # so it actually sees the stop signal
+        logger.debug("Stopping Subscription Thread ...")
+        self._subscriptionStopEvt.set()
+        self._subscriptionRunEvt.set()
+        self._subscriptionThread.join(10)
+        self._subscriptionThread = None
+        logger.info("Subscription Thread stopped")
+
+
     def startMirControlThread(self):
         """
         Starts the Mirroring Control Thread.
@@ -1275,8 +1311,8 @@ class ngamsServer(object):
 
         Returns:   Reference to object itself.
         """
-        logger.info("SubscriptionThread received trigger")
-        self._subscriptionRunSync.set()
+        logger.info("Triggering Subscription Thread")
+        self._subscriptionRunEvt.set()
         return self
 
     def registerSubscriber(self, subscriberObj):

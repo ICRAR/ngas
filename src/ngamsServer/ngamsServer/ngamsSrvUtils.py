@@ -49,7 +49,6 @@ from ngamsLib import ngamsPhysDiskInfo
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
 from ngamsLib import ngamsNotification
 import ngamsArchiveUtils
-import ngamsSubscriptionThread
 
 
 logger = logging.getLogger(__name__)
@@ -348,7 +347,7 @@ def handleOnline(srvObj,
     srvObj.setThreadRunPermission(1)
     srvObj.startJanitorThread()
     srvObj.startDataCheckThread()
-    ngamsSubscriptionThread.startSubscriptionThread(srvObj)
+    srvObj.startSubscriptionThread()
     srvObj.startUserServiceThread()
     srvObj.startMirControlThread()
     srvObj.startCacheControlThread()
@@ -391,7 +390,7 @@ def handleOffline(srvObj,
     # possible threads to stop execution (if running).
     srvObj.stopJanitorThread()
     srvObj.stopDataCheckThread()
-    ngamsSubscriptionThread.stopSubscriptionThread(srvObj)
+    srvObj.stopSubscriptionThread()
     srvObj.stopUserServiceThread()
     srvObj.stopMirControlThread()
     srvObj.stopCacheControlThread()
