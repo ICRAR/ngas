@@ -41,32 +41,8 @@ re-subscribe, re-archive, or re-start the server
 
 """
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, NGAMS_TEXT_MT
-
-def handleCmd(srvObj, reqPropsObj, httpRef):
+def handleCmd(srv, reqPropsObj, httpRef):
     """
-    Handle the trigger subscription Command.
-
-    srvObj:         Reference to NG/AMS server class object (ngamsServer).
-
-    reqPropsObj:    Request Property object to keep track of actions done
-                    during the request handling (ngamsReqProps).
-
-    httpRef:        Reference to the HTTP request handler
-                    object (ngamsHttpRequestHandler).
-
-    Returns:        Void.
+    Handle the TRIGGERSUBSCRIPTION Command.
     """
-    if (reqPropsObj.hasHttpPar("subscr_id")):
-        subscrId = reqPropsObj.getHttpPar("subscr_id")  # re-trigger an existing subscriber, this is useful after unexpected server restart (and no backlog either)
-        if (not srvObj.getSubscriberDic().has_key(subscrId)):
-            msg = "TRIGGERSUBSCRIPTION command failed: Cannot find subscriber '%s'" % subscrId
-            httpRef.send_status(msg, status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
-            return
-        else:
-            subscriber = srvObj.getSubscriberDic()[subscrId]
-            srvObj.addSubscriptionInfo([], [subscriber]).triggerSubscriptionThread()
-    else:
-        srvObj.triggerSubscriptionThread() # this will only trigger the backlog files
-
-    httpRef.send_data('Command TRIGGERSUBSCRIPTION executed successfully.\n', NGAMS_TEXT_MT)
+    srv.triggerSubscriptionThread()
