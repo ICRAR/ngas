@@ -28,49 +28,13 @@ including priority, url, start_date, and num_concurrent_threads
 """
 
 import logging
-import threading
 
-from ngamsLib.ngamsCore import NGAMS_DELIVERY_THR, TRACE, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,\
-    fromiso8601
 from ngamsLib import ngamsSubscriber
-from ngamsServer import ngamsSubscriptionThread
 
 
 logger = logging.getLogger(__name__)
 
-def changeNumThreads(srvObj, subscrId, oldNum, newNum):
-    # key: threadName (unique), value - dummy 0
-    deliveryThreadRefDic = srvObj._subscrDeliveryThreadDicRef
-    # key: subscriberId, value - a List of deliveryThreads for that subscriber
-    if (not srvObj._subscrDeliveryThreadDic.has_key(subscrId)): # threads have not started yet
-        return
-    deliveryThreadList = srvObj._subscrDeliveryThreadDic[subscrId]
-
-    if (oldNum > newNum):
-        for tid in range(oldNum - 1, -1, -1):
-            if (tid >= newNum):
-                thrdName = NGAMS_DELIVERY_THR + subscrId + str(tid)
-                del deliveryThreadRefDic[thrdName] # set the condition _deliveryThread will exit, see ngamsSubscriptionThread._checkStopDataDeliveryThread()
-                del deliveryThreadList[tid]
-    elif (oldNum < newNum):
-        num_threads = newNum - oldNum
-        if (not srvObj._subscrQueueDic.has_key(subscrId)):
-            raise Exception('Cannot find the file queue associated with subscriber %s' % subscrId)
-        quChunks = srvObj._subscrQueueDic[subscrId]
-
-        for tid in range(int(num_threads)):
-            args = (srvObj, srvObj.getSubscriberDic()[subscrId], quChunks, srvObj._subscrFileCountDic, srvObj._subscrFileCountDic_Sem, None)
-            thrdName = NGAMS_DELIVERY_THR + subscrId + str(oldNum + tid)
-            deliveryThrRef = threading.Thread(None, ngamsSubscriptionThread._deliveryThread, thrdName, args)
-            deliveryThrRef.setDaemon(0)
-            deliveryThreadRefDic[thrdName] = 1
-            deliveryThrRef.start()
-            deliveryThreadList.append(deliveryThrRef)
-
-
-def handleCmd(srvObj,
-              reqPropsObj,
-              httpRef):
+def handleCmd(srv, reqPropsObj, httpRef):
     """
     Handle the update subscriber (USUBSCRIBE) Command.
 
@@ -84,95 +48,45 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
-    errMsg = ''
-    err = 0
-    if (not reqPropsObj.hasHttpPar("subscr_id")):
-        httpRef.send_status("USUBSCRIBE command failed: 'subscr_id' is not specified",
-                            status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
+
+    if 'subscr_id' not in reqPropsObj:
+        raise Exception('USUBSCRIBE command failed: subscr_id is not specified')
+
+    subscrId = reqPropsObj["subscr_id"]
+
+    # Original Subscriber information
+    subscriber = srv.db.get_subscriber(hostId=srv.getHostId(), subscrId=subscrId)
+    if not subscriber:
+        raise Exception("USUBSCRIBE command failed: Cannot find subscriber '%s'" % subscrId)
+
+    # Get new values for subscriber and check if we need to change them
+    to_update = {}
+    if 'suspend' in reqPropsObj:
+        suspend = int(reqPropsObj["suspend"])
+        p_active = True if suspend == 1 else False
+        if subscriber.active != p_active:
+            to_update['active'] = p_active
+
+    if 'priority' in reqPropsObj:
+        p_priority = int(reqPropsObj["priority"])
+        if p_priority != subscriber.priority:
+            to_update['priority'] = p_priority
+
+    if 'url' in reqPropsObj:
+        p_url = reqPropsObj["url"]
+        ngamsSubscriber.validate_url(p_url)
+        if p_url != subscriber.url:
+            to_update['url'] = p_url
+
+    if 'concurrent_threads' in reqPropsObj:
+        p_concurrent_threads = int(reqPropsObj["concurrent_threads"])
+        if p_concurrent_threads != subscriber.concurrent_threads:
+            to_update['concurrent_threads'] = p_concurrent_threads
+
+    if not to_update:
+        logger.info("Nothing new to update on subscriber %s", subscrId)
         return
 
-    subscrId = reqPropsObj.getHttpPar("subscr_id")
-    if (not srvObj.getSubscriberDic().has_key(subscrId)):
-        httpRef.send_status("USUBSCRIBE command failed: Cannot find subscriber '%s'" % subscrId,
-                            status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
-        return
-
-    if (reqPropsObj.hasHttpPar("suspend")):
-        suspend = int(reqPropsObj.getHttpPar("suspend"))
-        suspend_processed = 0
-        # could use locks, but the race condition should not really matter here if only one request of suspend is issued at a time (by a system admin?)
-        if (suspend == 1 and srvObj._subscrSuspendDic[subscrId].is_set()): # suspend condition met
-            srvObj._subscrSuspendDic[subscrId].clear()
-            suspend_processed = 1
-            action = 'SUSPENDED'
-        elif (suspend == 0 and (not srvObj._subscrSuspendDic[subscrId].is_set())): # resume condition met
-            srvObj._subscrSuspendDic[subscrId].set()
-            suspend_processed = 1
-            action = 'RESUMED'
-        if (suspend_processed):
-            httpRef.send_status("Successfully %s for the subscriber %s" % (action, subscrId))
-        else:
-            reMsg = "No suspend/resume action is taken for the subscriber %s" % subscrId
-            httpRef.send_status(reMsg, status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
-        return
-
-    subscriber = srvObj.getSubscriberDic()[subscrId]
-
-    if (reqPropsObj.hasHttpPar("priority")):
-        priority = int(reqPropsObj.getHttpPar("priority"))
-        subscriber.setPriority(priority)
-
-    if (reqPropsObj.hasHttpPar("url")):
-        url = reqPropsObj.getHttpPar("url")
-        ngamsSubscriber.validate_url(url)
-        subscriber.setUrl(url)
-
-    if (reqPropsObj.hasHttpPar("start_date")):
-        startDate = reqPropsObj.getHttpPar("start_date").strip()
-        if (startDate):
-            subscriber.setStartDate(fromiso8601(startDate))
-            lastIngDate = subscriber.getLastFileIngDate()
-            if lastIngDate is not None: # either re-check past files or skip unchecked files
-                subscriber.setLastFileIngDate(None)
-            if (srvObj._subscrScheduledStatus.has_key(subscrId)):
-                #if (startDate < srvObj._subscrScheduledStatus[subscrId] and srvObj._subscrScheduledStatus[subscrId]): # enables trigger re-delivering files that have been previously delivered
-                del srvObj._subscrScheduledStatus[subscrId]
-            if (srvObj._subscrCheckedStatus.has_key(subscrId)):
-                del srvObj._subscrCheckedStatus[subscrId]
-                #if (srvObj._subscrScheduledStatus[subscrId]):# either re-check past files or skip unchecked files
-                    #del srvObj._subscrScheduledStatus[subscrId]
-                    #srvObj._subscrScheduledStatus[subscrId] = None
-
-    if (reqPropsObj.hasHttpPar("filter_plug_in")):
-        filterPi = reqPropsObj.getHttpPar("filter_plug_in")
-        subscriber.setFilterPi(filterPi)
-
-    if (reqPropsObj.hasHttpPar("plug_in_pars")):
-        pipars = reqPropsObj.getHttpPar("plug_in_pars")
-        subscriber.setFilterPiPars(pipars)
-
-    if (reqPropsObj.hasHttpPar("concurrent_threads")):
-        ccthrds = int(reqPropsObj.getHttpPar("concurrent_threads"))
-        origthrds = int(subscriber.getConcurrentThreads())
-        if (ccthrds != origthrds):
-            subscriber.setConcurrentThreads(ccthrds)
-            try:
-                changeNumThreads(srvObj, subscrId, origthrds, ccthrds)
-            except Exception, e:
-                msg = " Exception updating subscriber's concurrent threads: %s." % str(e)
-                logger.warning(msg)
-                err += 1
-                errMsg += msg
-    try:
-        srvObj.getDb().updateSubscriberEntry(subscriber)
-        srvObj.addSubscriptionInfo([], [subscriber]).triggerSubscriptionThread()
-    except Exception, e:
-        msg = " Update subscriber in DB exception: %s." % str(e)
-        logger.warning(msg)
-        err += 1
-        errMsg += msg
-    if (err):
-        httpRef.send_status("USUBSCRIBE command failed. Exception: %s" % errMsg, status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
-    else:
-        httpRef.send_status("USUBSCRIBE command succeeded")
+    logger.info("Updating fields on subscriber %s: %r", subscrId, to_update)
+    srv.getDb().updateSubscriber(subscrId, **to_update)
+    srv.triggerSubscriptionThread()
