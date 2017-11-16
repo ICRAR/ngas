@@ -24,7 +24,7 @@ import cStringIO
 
 import pkg_resources
 
-from ngamsLib import ngamsDbCore
+from ngamsLib import ngamsDb
 
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
@@ -53,7 +53,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             f.write(line)
 
     # Write the column names as the table header
-    col_name_list = ngamsDbCore.getNgasSubscribersCols().split(',')
+    col_name_list = ngamsDb.ngamsDb.subscribers_columns
     for name in col_name_list:
         f.write('<th>' + name + '</th>\n')
     f.write('</tr>\n')

@@ -37,7 +37,7 @@ import decimal
 import logging
 import os
 
-from ngamsLib import ngamsDbm, ngamsDbCore
+from ngamsLib import ngamsDbm, ngamsDbCore, ngamsDb
 from ngamsLib.ngamsCore import NGAMS_TMP_FILE_EXT, TRACE, NGAMS_TEXT_MT, rmFile
 
 
@@ -49,7 +49,7 @@ NGAMS_PYTHON_PICKLE_MT = "application/python-pickle"
 NGAMS_JSON_MT = "application/json"
 NGAMS_FILES_COLS = map(lambda x:x[1],ngamsDbCore._ngasFilesDef)
 NGAMS_DISKS_COLS = map(lambda x:x[1],ngamsDbCore._ngasDisksDef)
-NGAMS_SUBSCR_COLS = map(lambda x:x[1],ngamsDbCore._ngasSubscribersDef)
+NGAMS_SUBSCR_COLS = ngamsDb.ngamsDb.subscribers_columns
 
 #creation_date could be different from ingestion_date if it is a mirrored archive
 # ingestion_date is when the original copy was ingested in the system,

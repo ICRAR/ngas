@@ -211,51 +211,6 @@ def getNgasHostsMap():
     return _ngasHostsNameMap
 
 
-# Define lay-out of ngas_subscribers table.
-_NGS = "NGAS_SUBSCR_"
-_ngasSubscribersDef = [["ns.host_id",                   _NGS + "HOST_ID"],
-                       ["ns.srv_port",                  _NGS + "SRV_PORT"],
-                       ["ns.subscr_prio",               _NGS + "PRIO"],
-                       ["ns.subscr_id",                 _NGS + "ID"],
-                       ["ns.subscr_url",                _NGS + "URL"],
-                       ["ns.subscr_start_date",         _NGS + "START"],
-                       ["ns.subscr_filter_plugin",      _NGS + "FILT_PI"],
-                       ["ns.subscr_filter_plugin_pars", _NGS + "FILT_PI_PARS"],
-                       ["ns.last_file_ingestion_date",  _NGS + "ING_DATE"],
-                       ["ns.concurrent_threads",        _NGS + "CONCURR_THRDS"],
-                       ["ns.active",                    _NGS + "ACTIVE"]]
-_ngasSubscribersCols = ""
-_ngasSubscriberNameMap = {}
-idx = 0
-for colDef in _ngasSubscribersDef:
-    if (_ngasSubscribersCols): _ngasSubscribersCols += ", "
-    _ngasSubscribersCols += colDef[0]
-    exec(colDef[1] + "=%d" % idx)
-    colName = colDef[0].split(".")[1]
-    _ngasSubscriberNameMap[idx] = colName
-    _ngasSubscriberNameMap[colName] = idx
-    idx += 1
-
-
-def getNgasSubscribersCols():
-    """
-    Return reference to a string defining the lay-out of the table.
-
-    Returns:   Reference to string listing all columns (string).
-    """
-    return _ngasSubscribersCols
-
-def getNgasSubscribersDef():
-    """
-    Returns reference to list defining mapping between columns and variables
-    defined to refer to each column.
-
-    Returns:   List with mapping between column name and associated variable
-               (list).
-    """
-    return _ngasSubscribersDef
-
-
 # Define lay-out of a Summary 1 Query.
 _sum1Def = [["nd.slot_id",         "SUM1_SLOT_ID"],
             ["nd.mount_point",     "SUM1_MT_PT"],

@@ -47,6 +47,11 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
     Contains queries for accessing the NGAS subscription-related tables.
     """
 
+    subscribers_columns = [
+        "host_id", "srv_port", "subscr_prio", "subscr_id", "subscr_url",
+        "subscr_start_date", "subscr_filter_plugin", "subscr_filter_plugin_pars",
+        "last_file_ingestion_date", "concurrent_threads", "active"
+    ]
 
     @classmethod
     def _to_subscriber(cls, row):
@@ -58,6 +63,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
                                                url, start_date, concurrent_threads,
                                                active, filter_plugin, filter_plugin_pars)
 
+    select_from_subscribers = "SELECT %s FROM ngas_subscribers" % ', '.join(subscribers_columns)
     def get_subscriber(self, subscrId=None, hostId=None, portNo=-1, active=None):
         """
         Return one or more ngamsSubscriber objects for the given criteria.
@@ -66,7 +72,7 @@ class ngamsDbNgasSubscribers(ngamsDbCore.ngamsDbCore):
         vals = []
         sql = []
         conditions = []
-        sql.append("SELECT %s FROM ngas_subscribers ns" % ngamsDbCore.getNgasSubscribersCols())
+        sql.append(ngamsDbNgasSubscribers.select_from_subscribers)
 
         if subscrId is not None:
             conditions.append("subscr_id = {}")
