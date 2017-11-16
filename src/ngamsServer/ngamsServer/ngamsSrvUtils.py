@@ -285,39 +285,6 @@ def handleOnline(srvObj,
                "forced at Online"
     ngamsNotification.checkNotifRetBuf(srvObj.getHostId(), srvObj.getCfg(), 1, flushMsg)
 
-    # Get possible Subscribers from the DB.
-    subscrList = srvObj.getDb().getSubscriberInfo("", hostId,
-                                                  srvObj.getCfg().getPortNo())
-    num_bl =  srvObj.getDb().getSubscrBackLogCount(hostId, srvObj.getCfg().getPortNo())
-    #debug_chen
-    if (num_bl > 0):
-        logger.debug('Preset the backlog count to %d', num_bl)
-        srvObj.presetSubcrBackLogCount(num_bl)
-
-    # TODO: unify this "db-to-object" reading (there is something similar elsewhere,
-    #       I'm pretty sure, and hide these low-level details from here
-    logger.info("Creating %d subscrption objects from subscription DB info", len(subscrList))
-    for subscrInfo in subscrList:
-        start_date = fromiso8601(subscrInfo[5], local=True) if subscrInfo[5] else None
-        last_ingested_date = fromiso8601(subscrInfo[8], local=True) if subscrInfo[8] else None
-        tmpSubscrObj = ngamsSubscriber.ngamsSubscriber(subscrInfo[0],
-                                                       subscrInfo[1],
-                                                       subscrInfo[2],
-                                                       subscrInfo[4],
-                                                       start_date,
-                                                       subscrInfo[6],
-                                                       subscrInfo[7],
-                                                       last_ingested_date,
-                                                       subscrInfo[3])
-        tmpSubscrObj.setConcurrentThreads(subscrInfo[9])
-        # Take only subscribers for this NG/AMS Server.
-        if ((tmpSubscrObj.getHostId() == hostId) and
-            (tmpSubscrObj.getPortNo() == srvObj.getCfg().getPortNo())):
-            #srvObj.getSubscriberDic()[tmpSubscrObj.getId()] = tmpSubscrObj
-            #if (srvObj.getDataMoverOnlyActive() and len(srvObj.getSubscriberDic()) > 0):
-            #   break #only load one subscriber under the data mover mode
-            srvObj.registerSubscriber(tmpSubscrObj)
-
     try:
         # Get information about the disks of this system.
         srvObj.setDiskDic(getDiskInfo(srvObj, reqPropsObj))
