@@ -43,10 +43,9 @@ from ngamsLib.ngamsCore import NGAMS_NOT_RUN_STATE,\
     NGAMS_ONLINE_STATE, NGAMS_SUBSCRIBE_CMD,\
     NGAMS_SUCCESS, TRACE, genLog, NGAMS_DISK_INFO, checkCreatePath,\
     NGAMS_SUBSCRIBER_THR, NGAMS_UNSUBSCRIBE_CMD, NGAMS_HTTP_INT_AUTH_USER,\
-    loadPlugInEntryPoint, toiso8601, fromiso8601
+    loadPlugInEntryPoint, toiso8601
 from ngamsLib import ngamsStatus, ngamsLib, ngamsHttpUtils
 from ngamsLib import ngamsPhysDiskInfo
-from ngamsLib import ngamsSubscriber
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
 from ngamsLib import ngamsNotification
 import ngamsArchiveUtils
@@ -107,7 +106,7 @@ def _create_remote_subscriptions(srvObj, stop_evt):
                 return
 
             our_host, our_port = srvObj.get_self_endpoint()
-            subs_host, subs_port = subscrObj.getHostId(), subscrObj.getPortNo()
+            subs_host, subs_port = subscrObj.host_id, subscrObj.port
 
             # Not subscribing to ourselves
             if srvObj.is_it_us(subs_host, subs_port):
@@ -119,23 +118,23 @@ def _create_remote_subscriptions(srvObj, stop_evt):
             # TODO: include reverse proxy information when we add support
             # TODO: hardcoded http will need to be changed when we add support
             #       for https
-            url = 'http://%s:%d/%s' % (our_host, our_port, subscrObj.getUrl() or 'QARCHIVE')
+            url = 'http://%s:%d/%s' % (our_host, our_port, subscrObj.url or 'QARCHIVE')
             logger.info("Creating subscription to %s:%d with url=%s", subs_host, subs_port, url)
 
             pars = [["subscr_id", url],
-                    ["priority", subscrObj.getPriority()],
+                    ["priority", subscrObj.priority],
                     ["url",      url],
                     ["start_date", toiso8601(local=True)]]
-            if subscrObj.getFilterPi():
-                pars.append(["filter_plug_in", subscrObj.getFilterPi()])
-            if subscrObj.getFilterPiPars():
-                pars.append(["plug_in_pars", subscrObj.getFilterPiPars()])
+            if subscrObj.filter_plugin:
+                pars.append(["filter_plug_in", subscrObj.filter_plugin])
+            if subscrObj.filter_plugin_pars:
+                pars.append(["plug_in_pars", subscrObj.filter_plugin_pars])
 
             try:
                 # Issue SUBSCRIBE command
                 resp = ngamsHttpUtils.httpGet(subs_host, subs_port, cmd=NGAMS_SUBSCRIBE_CMD, pars=pars)
                 with contextlib.closing(resp):
-                    stat = ngamsStatus.to_status(resp, subscrObj.getHostId(), NGAMS_SUBSCRIBE_CMD)
+                    stat = ngamsStatus.to_status(resp, subscrObj.host_id, NGAMS_SUBSCRIBE_CMD)
 
                 if stat.getStatus() != NGAMS_SUCCESS:
                     msg = "Unsuccessful NGAS XML response. Status: %s, message: %s. Will try again later"
@@ -143,7 +142,7 @@ def _create_remote_subscriptions(srvObj, stop_evt):
                     continue
 
                 subscriptions_created += 1
-                logger.info("Successfully subscribed to %s:%d with url=%s", subs_host, subs_port, subscrObj.getUrl())
+                logger.info("Successfully subscribed to %s:%d with url=%s", subs_host, subs_port, url)
 
                 # Remember to unsubscribe when going Offline.
                 srvObj.getSubscrStatusList().append(subscrObj)
@@ -405,9 +404,9 @@ def handleOffline(srvObj,
     # Unsubscribe possible subscriptions. This is tried only once.
     if (srvObj.getCfg().getAutoUnsubscribe()):
         for subscrObj in srvObj.getSubscrStatusList():
-            subs_host, subs_port = subscrObj.getHostId(), subscrObj.getPortNo()
+            subs_host, subs_port = subscrObj.host_id, subscrObj.port
             try:
-                resp = ngamsHttpUtils.httpGet(subs_host, subs_port, NGAMS_UNSUBSCRIBE_CMD, [["url", subscrObj.getId()]])
+                resp = ngamsHttpUtils.httpGet(subs_host, subs_port, NGAMS_UNSUBSCRIBE_CMD, pars=[("url", subscrObj.subscriber_id)])
                 with contextlib.closing(resp):
                     stat = ngamsStatus.to_status(resp, "%s:%d" % (subs_host, subs_port), NGAMS_UNSUBSCRIBE_CMD)
                 if stat.getStatus() != NGAMS_SUCCESS:
@@ -415,8 +414,8 @@ def handleOffline(srvObj,
             except Exception:
                 msg = "Problem occurred while cancelling subscription " +\
                       "(host/port): %s/%d. Subscriber ID: %s"
-                logger.exception(msg, subscrObj.getHostId(),
-                                 subscrObj.getPortNo(), subscrObj.getId())
+                logger.exception(msg, subscrObj.host_id,
+                                 subscrObj.port, subscrObj.subscriber_id)
         srvObj.resetSubscrStatusList()
 
     # Check if there are files located in the Staging Areas of the

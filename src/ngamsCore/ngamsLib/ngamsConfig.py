@@ -27,7 +27,6 @@
 # --------  ----------  -------------------------------------------------------
 # jknudstr  07/05/2001  Created
 #
-
 """
 The ngamsConfig class is used to handle the NG/AMS Configuration.
 """
@@ -612,16 +611,17 @@ class ngamsConfig:
                     logger.warning("%s is deprecated. Use %s instead", url_tag, cmd_tag)
                     cmd_tag = url_tag
 
-                tmpSubscrObj = ngamsSubscriber.ngamsSubscriber(\
-                    self.getVal(fm % (idx, "HostId")),
-                    self.getVal(fm % (idx, "PortNo")),
-                    self.getVal(fm % (idx, "Priority")),
-                    self.getVal(cmd_tag),
-                    "",
-                    self.getVal(fm % (idx, "FilterPlugIn")),
-                    self.getVal(fm % (idx, "FilterPlugInPars")),
-                    subscrId=subscr_id)
-                self.getSubscriptionsDic()[tmpSubscrObj.getId()] = tmpSubscrObj
+                host_id = self.getVal(fm % (idx, "HostId"))
+                port = getInt("dummy", self.getVal(fm % (idx, "PortNo")), 7777)
+                priority = getInt("dummy", self.getVal(fm % (idx, "Priority")), 10)
+                url = self.getVal(cmd_tag)
+                filter_plugin = self.getVal(fm % (idx, "FilterPlugIn"))
+                filter_plugin_pars = self.getVal(fm % (idx, "FilterPlugInPars"))
+                args = (subscr_id, host_id, port, priority, url, None, 1, True,
+                        filter_plugin, filter_plugin_pars)
+
+                subscription = ngamsSubscriber.ngamsSubscriber(*args)
+                self.getSubscriptionsDic()[subscription.id] = subscription
 
         # Process the Authentication Users.
         authObj = self.__cfgMgr.getXmlObj("Authorization[1]")
