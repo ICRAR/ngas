@@ -626,10 +626,12 @@ class ngamsServer(object):
 
     def load_archive_event_subscribers(self):
 
-        # Built-in event subscriber that triggers the subscription thread
+        # Built-in event subscriber that calculates and adds the file deliveries
+        # for the newly archived file to the database and then triggers
+        # the subscription thread
         def trigger_subscription(evt):
             logger.info("Triggering subscription thread for file %s", evt.file_id)
-            self.addSubscriptionInfo([(evt.file_id, evt.file_version)], [])
+            ngamsSubscriptionThread.add_deliveries_for_new_file(self, evt)
             self.triggerSubscriptionThread()
 
         self.archive_event_subscribers = [trigger_subscription]
