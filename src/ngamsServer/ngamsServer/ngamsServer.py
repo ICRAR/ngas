@@ -523,29 +523,6 @@ class ngamsServer(object):
         self.checksum_allow_evt.set()
         self.checksum_stop_evt       = multiprocessing.Event()
 
-        # Handling of the Data Subscription.
-        self._subscriberDic           = {}
-        self._subscriptionThread      = None
-        self._subscriptionSem         = threading.Semaphore(1)
-        self._subscriptionRunSync     = threading.Event()
-        self._subscriptionFileList    = []
-        self._subscriptionSubscrList  = []
-        self._subscriptionStopSync    = threading.Event()
-        self._subscriptionStopSyncConf= threading.Event()
-        self._deliveryStopSync        = threading.Event()
-        self._subscrBackLogCount      = 0
-        self._subscrScheduledStatus   = {}
-        self._subscrCheckedStatus     = {}
-        self._subscrQueueDic          = {}
-        self._subscrDeliveryThreadDic = {}
-        self._subscrDeliveryThreadDicRef = {}
-        self._subscrDeliveryFileDic   = {}
-        self._subscrSuspendDic        = {}
-        self._subscrFileCountDic      = {}
-        self._subscrFileCountDic_Sem  = threading.Semaphore(1)
-        self._subscrBlScheduledDic    = {}
-        self._subscrBlScheduledDic_Sem = threading.Semaphore(1)
-
         # Handling of the Subscription Thread
         self._subscriptionThread = None
         self._subscriptionStopEvt = threading.Event()
@@ -1315,109 +1292,6 @@ class ngamsServer(object):
         self._subscriptionRunEvt.set()
         return self
 
-    def registerSubscriber(self, subscriberObj):
-        """
-        register a subscriber object to the server
-        set event to true initially, indicating it is NOT suspended
-        """
-        self._subscriberDic[subscriberObj.getId()] = subscriberObj
-        suspendSync = threading.Event()
-        suspendSync.set()
-        self._subscrSuspendDic[subscriberObj.getId()] = suspendSync
-
-    def addSubscriptionInfo(self,
-                            fileRefs = [],
-                            subscrObjs = []):
-        """
-        It is possible to indicate that specific files should be checked
-        to see if it should be delivered to Subscribers. This is used when
-        a new file has been archived.
-
-        It is also possible to specify that it should be checked for a
-        specific Subscriber if there is data to be delivered to this
-        specific Subscriber.
-
-        If no file references are given nor Subscriber references, the
-        Subscription Thread will make a general check if there are files
-        to be delivered.
-
-        fileRefs:     List of tuples of File IDs + File Versions to be checked
-                      if they should be delivered to the Subscribers
-                      (list/tuple/string).
-
-        subscrObjs:   List of Subscriber Objects indicating that data
-                      delivery should be investigated for each Subscriber
-                      (list/ngamsSubscriber).
-
-        Returns:      Reference to object itself.
-        """
-        T = TRACE()
-
-        try:
-            self._subscriptionSem.acquire()
-            if (fileRefs != []):
-                self._subscriptionFileList += fileRefs
-            if (subscrObjs != []):
-                self._subscriptionSubscrList += subscrObjs
-        except Exception:
-            logger.exception("Error occurred while adding subscription")
-            raise
-        finally:
-            self._subscriptionSem.release()
-        return self
-
-
-    def decSubcrBackLogCount(self):
-        """
-        Decrease the Subscription Back-Log Counter.
-
-        Returns:  Current value of the Subscription Back-Log Counter (integer).
-
-        This is NOT thread safe
-        """
-        self._subscrBackLogCount -= 1
-        return self._subscrBackLogCount
-
-    def incSubcrBackLogCount(self):
-        """
-        Increase the Subscription Back-Log Counter.
-
-        Returns:  Current value of the Subscription Back-Log Counter (integer).
-
-        This is NOT thread safe
-        """
-        self._subscrBackLogCount += 1
-        return self._subscrBackLogCount
-
-    def presetSubcrBackLogCount(self, num):
-        """
-        Preset the Subscription Back-Log Counter
-        during system start-up
-
-        num    :    The number of back-log entries
-        Returns:    Reference to object itself.
-        """
-        self._subscrBackLogCount = num
-        return self
-
-    def resetSubcrBackLogCount(self):
-        """
-        Reset the Subscription Back-Log Counter.
-
-        Returns:    Reference to object itself.
-        """
-        self._subscrBackLogCount = 0
-        return self
-
-
-    def getSubcrBackLogCount(self):
-        """
-        Get the value of the Subscription Back-Log Counter.
-
-        Returns:  Current value of the Subscription Back-Log Counter (integer).
-        """
-        return self._subscrBackLogCount
-
 
     def getSubscrStatusList(self):
         """
@@ -1734,15 +1608,6 @@ class ngamsServer(object):
             if h in self.all_ip_addresses:
                 return True
         return False
-
-    def getSubscriberDic(self):
-        """
-        Returns reference to dictionary with Subscriber Objects.
-
-        Returns:   Reference to dictionary with Subscriber info
-                   (dictionary/ngamsSubscriber).
-        """
-        return self._subscriberDic
 
 
     def reqCallBack(self,
