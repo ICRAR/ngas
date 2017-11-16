@@ -264,12 +264,7 @@ def handleCmd(srvObj,
     logger.info(msg)
     httpRef.send_ingest_status(msg, targDiskInfo)
 
-    # Trigger Subscription Thread. This is a special version for MWA, in which we simply swapped MIRRARCHIVE and QARCHIVE
-    # chen.wu@icrar.org
-    logger.debug("triggering SubscriptionThread for file %s", resDapi.getFileId())
-    srvObj.addSubscriptionInfo([(resDapi.getFileId(),
-                                 resDapi.getFileVersion())], [])
-    srvObj.triggerSubscriptionThread()
+    srvObj.fire_archive_event(resDapi, time.time())
 
 
     return (resDapi.getFileId(), '%s/%s' % (targDiskInfo.getMountPoint(), resDapi.getRelFilename()),
