@@ -1204,7 +1204,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
     httpRef.send_ingest_status(msg, diskInfo)
 
     # After a successful archiving we notify the archive event subscribers
-    srvObj.fire_archive_event(plugin_result.getFileId(), plugin_result.getFileVersion())
+    srvObj.fire_archive_event(plugin_result, diskInfo.getFileObjList()[0].getIngestionDate())
 
 def findTargetNode(srvObj, mimeType):
     """

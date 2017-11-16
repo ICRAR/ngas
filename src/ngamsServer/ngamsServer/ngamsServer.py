@@ -435,7 +435,7 @@ def show_threads():
             msg.append(fmt % (t.name, t.ident, t.daemon))
         logger.debug("Threads currently alive on process %d:\n%s", os.getpid(), '\n'.join(msg))
 
-archive_event = collections.namedtuple('archive_event', 'file_id file_version')
+archive_event = collections.namedtuple('archive_event', 'file_id file_version disk_id file_name ingestion_date')
 
 class ngamsServer(object):
     """
@@ -638,14 +638,19 @@ class ngamsServer(object):
             plugin = loadPlugInEntryPoint(module, clazz)(**pars)
             self.archive_event_subscribers.append(plugin.handle_event)
 
-    def fire_archive_event(self, file_id, file_version):
+    def fire_archive_event(self, plugin_result, ingestion_date):
         """Passes down the archive event to each of the archive event subscriber"""
-        evt = archive_event(file_id, file_version)
+
+        # Convert to nicer format
+        args = (plugin_result.getFileId(), plugin_result.getFileVersion(),
+                plugin_result.getDiskId(), plugin_result.getRelFilename(),
+                ingestion_date)
+        evt = archive_event(*args)
         for s in self.archive_event_subscribers:
             try:
                 s(evt)
             except:
-                msg = ("Error while trigerring archiving event subscriber, "
+                msg = ("Error while triggering archiving event subscriber, "
                        "will continue with the rest anyway")
                 logger.exception(msg)
 
