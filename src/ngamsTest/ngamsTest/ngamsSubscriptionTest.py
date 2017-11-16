@@ -258,13 +258,6 @@ class ngamsSubscriptionTest(ngamsTestSuite):
                   'concurrent_threads': 1}
         assert_subscription_status(params, 200)
 
-        # Let a full subscription iteration go before checking anything
-        # We put a time.sleep(3) in there to slow down the resource usage
-        # and therefore we need to account for that in this test.
-        # In the future we'll have a nicer mechanism that will make this
-        # unnecessary (and less error prone to race conditions)
-        time.sleep(7)
-
         # Check after all the failed subscriptions we don't have the file
         status = retrieve('SmallFile.fits', fileVersion=2)
         self.assertEquals(status.getStatus(), 'FAILURE')
