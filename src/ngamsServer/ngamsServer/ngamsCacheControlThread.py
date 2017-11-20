@@ -151,6 +151,9 @@ def createCacheDbms(srvObj):
                        "cache_time REAL, " +\
                        "cache_entry_obj TEXT)"
             srvObj._cacheContDbmsCur.execute(sqlQuery)
+
+            # Add an index for quicker INSERT/SELECT
+            srvObj._cacheContDbmsCur.execute('CREATE INDEX cache_index ON ngas_cache(disk_id, file_id, file_version)')
         else:
             raise Exception, e
 
