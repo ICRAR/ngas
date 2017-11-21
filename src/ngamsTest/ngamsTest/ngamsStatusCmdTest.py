@@ -33,7 +33,7 @@ This module contains the Test Suite for the STATUS Command.
 
 import sys
 
-from ngamsTestLib import ngamsTestSuite, getClusterName, getNcu11, runTest, \
+from ngamsTestLib import ngamsTestSuite, getNcu11, runTest, \
     sendPclCmd
 
 
@@ -111,9 +111,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
         statObj = sendPclCmd(port=8000).\
                   get_status("STATUS", pars=[["host_id", getNcu11()]])
         refMsg = "Successfully handled command STATUS"
@@ -149,9 +147,7 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
         srcFile = "src/TinyTestFile.fits"
         client = sendPclCmd(port=8011)
         client.archive(srcFile)

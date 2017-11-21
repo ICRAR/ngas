@@ -35,7 +35,7 @@ import sys
 
 from ngamsLib.ngamsCore import NGAMS_REMDISK_CMD
 from ngamsTestLib import ngamsTestSuite, waitReqCompl, saveInFile, \
-    filterDbStatus1, getThreadId, getClusterName, sendExtCmd, runTest, \
+    filterDbStatus1, getThreadId, sendExtCmd, runTest, \
     sendPclCmd
 
 
@@ -280,9 +280,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
         diskId  = "tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1"
         for execute in [0, 1]:
             httpPars=[["disk_id", diskId], ["execute", execute]]

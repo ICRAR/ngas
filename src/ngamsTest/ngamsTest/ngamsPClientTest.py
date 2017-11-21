@@ -515,14 +515,14 @@ class ngamsPClientTest(ngamsTestSuite):
         ...
         """
 
+        ports = range(8000, 8005)
         hostname = getHostName()
-        nodeList = [(8000+n, None, None, hostname) for n in range(5)]
-        self.prepCluster("src/ngamsCfg.xml", nodeList)
+        self.prepCluster("src/ngamsCfg.xml", ports)
 
-        srvList = [('127.0.0.1', 8000+n) for n in range(5)]
+        srvList = [('127.0.0.1', p) for p in ports]
         client = ngamsPClient.ngamsPClient(servers=srvList)
 
-        nodeDic = {"%s:%d" % (hostname, 8000+n): 0 for n in range(5)}
+        nodeDic = {"%s:%d" % (hostname, p): 0 for p in ports}
         noOfNodes = len(nodeDic.keys())
         nodeCount = 0
         for n in range(100):

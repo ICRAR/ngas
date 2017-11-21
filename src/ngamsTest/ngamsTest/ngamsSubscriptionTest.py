@@ -43,7 +43,7 @@ import time
 
 from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_SUCCESS
-from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd, getNoCleanUp, setNoCleanUp, getClusterName
+from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd, getNoCleanUp, setNoCleanUp
 from ngamsServer import ngamsServer
 
 
@@ -122,7 +122,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         # We configure the second server to send notifications via socket
         # to the listener we start later
         cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'),)
-        self.prepCluster("src/ngamsCfg.xml", [[8888, None, None, None], [8889, None, None, None, cfg]])
+        self.prepCluster("src/ngamsCfg.xml", (8888, (8889, cfg)))
 
         qarchive = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'QARCHIVE', timeout=5)
         subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
@@ -168,9 +168,9 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
     def test_basic_subscription_fail(self):
 
-        cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'),)
-        self.prepCluster("src/ngamsCfg.xml", [[8888, None, None, None, [["NgamsCfg.HostSuspension[1].SuspensionTime", '0T00:00:02'], ["NgamsCfg.Log[1].LocalLogLevel", '4']]],
-                                              [8889, None, None, None, cfg]])
+        src_cfg = (("NgamsCfg.HostSuspension[1].SuspensionTime", '0T00:00:02'), ("NgamsCfg.Log[1].LocalLogLevel", '4'))
+        tgt_cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'),)
+        self.prepCluster("src/ngamsCfg.xml", ((8888, src_cfg), (8889, tgt_cfg)))
 
         qarchive = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'QARCHIVE', timeout=5)
         subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
@@ -359,9 +359,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
                              ('NgamsCfg.SubscriptionDef[1].Subscription[1].PortNo', '8888'),
                              ('NgamsCfg.SubscriptionDef[1].Subscription[1].Command', 'QARCHIVE'),
                              ('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'))
-        self.prepCluster("src/ngamsCfg.xml",
-                        [[8888, None, None, getClusterName()],
-                         [8889, None, None, getClusterName(), subscription_pars]])
+        self.prepCluster("src/ngamsCfg.xml", (8888, (8889, subscription_pars)))
 
         # Listen for archives on server B (B is configured to send us notifications)
         listener = notification_listener()

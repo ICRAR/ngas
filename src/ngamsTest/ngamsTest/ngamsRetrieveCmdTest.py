@@ -43,7 +43,7 @@ from ngamsLib import ngamsConfig, ngamsHttpUtils
 from ngamsLib.ngamsCore import getHostName, NGAMS_RETRIEVE_CMD, \
     checkCreatePath, rmFile, NGAMS_SUCCESS, mvFile
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
-    getClusterName, sendPclCmd, runTest, genTmpFilename, unzip
+    sendPclCmd, runTest, genTmpFilename, unzip
 
 
 class ngamsRetrieveCmdTest(ngamsTestSuite):
@@ -182,9 +182,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
         # Archive file into sub-node (port=8011).
         sendPclCmd(port=8011).archive("src/TinyTestFile.fits")
 
@@ -249,10 +247,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                  getHostName() + ":8002"]
         suspPars = [["NgamsCfg.HostSuspension[1].IdleSuspension", "1"],
                     ["NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:00:05"]]
-        envDic = self.prepCluster("src/ngamsCfg.xml",
-                                  [[8000, None, None, getClusterName()],
-                                   [8001, None, None, getClusterName()],
-                                   [8002, None, None, getClusterName(), suspPars]])
+        envDic = self.prepCluster("src/ngamsCfg.xml", (8000, 8001, (8002, suspPars)))
         for portNo in [8000, 8001, 8002]:
             for n in range(3):
                 sendPclCmd(port=portNo).archive("src/SmallFile.fits")
@@ -310,9 +305,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         """
         nmuCfgPars = [["NgamsCfg.Server[1].ProxyMode", "0"],
                       ["NgamsCfg.Log[1].LocalLogLevel", "4"]]
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName(), nmuCfgPars],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster("src/ngamsCfg.xml", ((8000, nmuCfgPars), 8011))
         sendPclCmd(port=8000).archive("src/SmallFile.fits")
         stat = sendPclCmd(port=8011).archive("src/SmallFile.fits")
         fileId = "TEST.2001-05-08T15:25:00.123"
@@ -462,9 +455,7 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
                        "ngamsTest.ngamsTestDppi1"],
                       ["NgamsCfg.Processing[1].PlugIn[1].PlugInPars",
                        "TAG=test_DppiProc_02,TARGET=FILE"]]
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName(), ncuCfgPars]])
+        self.prepCluster("src/ngamsCfg.xml", (8000, (8011, ncuCfgPars)))
         stat = sendPclCmd(port=8011).archive("src/SmallFile.fits")
         self.assertEquals('SUCCESS', stat.getStatus())
         # Retrieve the file specifying to apply the DPPI.

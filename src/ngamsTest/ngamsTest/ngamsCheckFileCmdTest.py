@@ -35,7 +35,7 @@ import sys
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_CHECKFILE_CMD
 from ngamsTestLib import ngamsTestSuite, sendPclCmd, saveInFile, \
-    loadFile, getClusterName, sendExtCmd, runTest
+    loadFile, sendExtCmd, runTest
 
 
 class ngamsCheckFileCmdTest(ngamsTestSuite):
@@ -184,9 +184,7 @@ class ngamsCheckFileCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
         sendPclCmd(port=8000).archive("src/SmallFile.fits")
         stat = sendPclCmd(port=8011).archive("src/SmallFile.fits")
         diskId  = "tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1"

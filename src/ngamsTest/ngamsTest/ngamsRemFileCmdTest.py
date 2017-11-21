@@ -37,7 +37,7 @@ import sys
 from ngamsLib import ngamsFileInfo
 from ngamsLib.ngamsCore import getHostName, NGAMS_REMFILE_CMD, NGAMS_CLONE_CMD
 from ngamsTestLib import ngamsTestSuite, waitReqCompl, saveInFile, \
-    filterDbStatus1, getClusterName, sendPclCmd, sendExtCmd, runTest
+    filterDbStatus1, sendPclCmd, sendExtCmd, runTest
 
 
 class ngamsRemFileCmdTest(ngamsTestSuite):
@@ -199,9 +199,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
         sendPclCmd(port=8000).archive("src/SmallFile.fits")
         client8011 = sendPclCmd(port=8011)
         stat = client8011.archive("src/SmallFile.fits")

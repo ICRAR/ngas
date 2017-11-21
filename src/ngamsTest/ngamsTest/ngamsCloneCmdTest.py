@@ -37,7 +37,7 @@ import traceback
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_CLONE_CMD
 from ngamsLib import ngamsFileInfo, ngamsLib
-from ngamsTestLib import getClusterName, flushEmailQueue, saveInFile, \
+from ngamsTestLib import flushEmailQueue, saveInFile, \
     filterDbStatus1, getEmailMsg, ngamsTestSuite, waitReqCompl, genErrMsgVals, \
     runTest, sendPclCmd, unzip, genTmpFilename
 
@@ -131,9 +131,7 @@ def _execCloneTest(testObj,
     trgDisk = testData[3]
     subNode = testData[4]
     if (subNode):
-        testObj.prepCluster("src/ngamsCfg.xml",
-                            [[8000, None, None, getClusterName()],
-                             [8011, None, None, getClusterName()]])
+        testObj.prepCluster("src/ngamsCfg.xml", (8000, 8011))
         clNcu = sendPclCmd(port=8011)
     else:
         testObj.prepExtSrv(port=8000)

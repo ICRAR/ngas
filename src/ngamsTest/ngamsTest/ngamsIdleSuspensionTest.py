@@ -31,14 +31,13 @@
 This module contains the Test Suite for the handling of Idle Suspension.
 """
 
-import socket
 import sys
 import time
 import urllib
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_STATUS_CMD, \
     NGAMS_CHECKFILE_CMD, rmFile, NGAMS_SUCCESS
-from ngamsTestLib import getClusterName, ngamsTestSuite, sendPclCmd, \
+from ngamsTestLib import ngamsTestSuite, sendPclCmd, \
     filterOutLines, saveInFile, loadFile, runTest, genTmpFilename, unzip
 
 
@@ -82,7 +81,7 @@ def prepSimCluster(testObj,
     for portNo in hostList: locCfgParDic[portNo] = []
     # Ensure that the sub-nodes suspend themselves after 10s idling and
     # that they request to be woken up by the master node.
-    srvs = [[8000, None, None, getClusterName(), locCfgParDic["8000"]]]
+    srvs = [(8000, locCfgParDic["8000"])]
     for portNo in subNodeList:
         par = "NgamsCfg.HostSuspension[1].IdleSuspension"
         locCfgParDic[portNo].append([par, "1"])
@@ -100,8 +99,7 @@ def prepSimCluster(testObj,
     # are stored last in the locCfgParDic to ensure that these are taken.
     for node in cfgParDic.keys(): locCfgParDic[node] += cfgParDic[node]
     for portNo in subNodeList:
-        srvs.append([int(portNo), None, None, getClusterName(),
-                     locCfgParDic[portNo]])
+        srvs.append((int(portNo), locCfgParDic[portNo]))
     return testObj.prepCluster("src/ngamsCfg.xml", srvs)
 
 

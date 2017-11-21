@@ -40,7 +40,7 @@ import unittest
 from ngamsLib import ngamsStatus
 from ngamsLib.ngamsCore import getHostName, rmFile, cpFile, execCmd
 from ngamsTestLib import ngamsTestSuite, saveInFile, loadFile, \
-    filterOutLines, getClusterName, sendPclCmd, STD_DISK_STAT_FILT, runTest, \
+    filterOutLines, sendPclCmd, STD_DISK_STAT_FILT, runTest, \
     has_program
 
 
@@ -163,9 +163,7 @@ class ngamsCClientTest(ngamsTestSuite):
         The check to see if the command is actually executed on the specified
         target node is not yet fully implemented.
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
         hostId = "%s:%d" % (getHostName(), 8011)
         statObj = _execCClient(pars=[["-port", "8000"],
                                      ["-cmd", "STATUS"],
@@ -197,9 +195,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
 
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
+        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
         for n in range(2): sendPclCmd(port=8011).archive("src/SmallFile.fits")
         fileId = "TEST.2001-05-08T15:25:00.123"
         statObj = _execCClient(pars=[["-port", "8000"],
@@ -234,10 +230,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
 
         """
-        self.prepCluster("src/ngamsCfg.xml",
-                         [[8000, None, None, getClusterName()],
-                          [8011, None, None, getClusterName()]])
-        hostId = "%s:%d" % (getHostName(), 8011)
+        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
         for n in range(2): sendPclCmd(port=8011).archive("src/SmallFile.fits")
         fileId = "TEST.2001-05-08T15:25:00.123"
         statObj = _execCClient(pars=[["-port", "8000"],
@@ -744,8 +737,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
         """
         ports = range(8000, 8005)
-        nodeList = [[p, None, None, getHostName()] for p in ports]
-        self.prepCluster("src/ngamsCfg.xml", nodeList)
+        self.prepCluster("src/ngamsCfg.xml", ports)
         noOfNodes = len(ports)
         nodeCount = 0
         srvList = ",".join(["127.0.0.1:%d" % (p,) for p in ports])

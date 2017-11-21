@@ -214,13 +214,6 @@ def execCmd(cmd,
     return (exitCode, out)
 
 
-def getClusterName():
-    """
-    Return the name of the simulated cluster.
-    """
-    return "%s:8000" % getHostName()
-
-
 def getNmu():
     """
     Return the name of the Main Node for the simulated cluster.
@@ -1345,18 +1338,16 @@ class ngamsTestSuite(unittest.TestCase):
         Starts a given server which is part of a cluster of servers
         """
 
-        portNo      = int(srvInfo[0])
-        if (len(srvInfo) > 4):
-            cfgParList = srvInfo[4]
-        else:
-            cfgParList = []
+        port, cfg_pars = srvInfo, []
+        if isinstance(srvInfo, (tuple, list)):
+            port, cfg_pars = srvInfo
 
         # Set port number in configuration and allocate a mount root
         hostName = getHostName()
-        srvId = "%s:%d" % (hostName, portNo)
+        srvId = "%s:%d" % (hostName, port)
         if (multSrvs):
-            mtRtDir = "/tmp/ngamsTest/NGAS:%d" % portNo
-            rmFile("/tmp/ngamsTest/NGAS:%d" %(portNo,))
+            mtRtDir = "/tmp/ngamsTest/NGAS:%d" % port
+            rmFile("/tmp/ngamsTest/NGAS:%d" %(port,))
         else:
             mtRtDir = "/tmp/ngamsTest/NGAS"
         rmFile(mtRtDir)
@@ -1364,14 +1355,14 @@ class ngamsTestSuite(unittest.TestCase):
         # Set up our server-specific configuration
         cfg = ngamsConfig.ngamsConfig().load(comCfgFile)
         cfg.storeVal("NgamsCfg.Header[1].Type", "TEST CONFIG: %s" % srvId)
-        cfg.storeVal("NgamsCfg.Server[1].PortNo", portNo)
+        cfg.storeVal("NgamsCfg.Server[1].PortNo", port)
         cfg.storeVal("NgamsCfg.Server[1].RootDirectory", mtRtDir)
         cfg.storeVal("NgamsCfg.ArchiveHandling[1].BackLogBufferDirectory", mtRtDir)
         cfg.storeVal("NgamsCfg.Processing[1].ProcessingDirectory", mtRtDir)
         cfg.storeVal("NgamsCfg.Log[1].LocalLogFile", os.path.normpath(mtRtDir + "/log/LogFile.nglog"))
 
         # Set special values if so specified.
-        for cfgPar in cfgParList:
+        for cfgPar in cfg_pars:
             cfg.storeVal(cfgPar[0], cfgPar[1])
 
         # And dump it into our server-specific configuration file
@@ -1384,7 +1375,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         # Start server + add reference to server configuration object and
         # server DB object.
-        srvCfgObj, srvDbObj = self.prepExtSrv(portNo,
+        srvCfgObj, srvDbObj = self.prepExtSrv(port=port,
                                               delDirs = 0,
                                               clearDb = 0,
                                               autoOnline = 1,
@@ -1409,12 +1400,11 @@ class ngamsTestSuite(unittest.TestCase):
         serverList:    List containing sub-lists with information about
                        each server. This must be formatted as follows:
 
-                       [[<Port#1>, <Domain>, <IP Addr>, <Cl Name>, <Cfg Pars>],
-                        [<Port#2>, <Domain>, <IP Addr>, <Cl Name>, <Cfg Pars>],
+                       [[<Port#1>, <Cfg Pars>],
+                        [<Port#2>, <Cfg Pars>],
                         ...]
 
-                       If the Domain, IP Address or Cluster Name are defined
-                       as None, the default (=localhost) is taken. <Cfg Pars>
+                       <Cfg Pars>
                        is a list of sub-list specifying (in XML Dictionary
                        format) special configuration parameters for the
                        given server (string).
