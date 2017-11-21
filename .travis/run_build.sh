@@ -40,6 +40,7 @@ EPASS="Failed to change password"
 EDB="Failed to create database ngas"
 EPERM="Failed to grant priviledges to user ngas on database ngas"
 ECREAT="Failed to create the ngas database schema on database ngas"
+EPIP="Failed to install pip packages"
 
 # The python packages we need to install either because NGAS itself needs them,
 # or because it's what we need to communicate with our database engine
@@ -87,5 +88,5 @@ elif [[ "$DB" == "postgresql" ]]; then
 fi
 # sqlite3 we doesn't require preparation or any extra modules
 
-pip install $PIP_PACKAGES
+pip install $PIP_PACKAGES || fail "$EPIP"
 ./build.sh -d -c
