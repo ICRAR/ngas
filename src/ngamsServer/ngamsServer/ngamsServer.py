@@ -2337,6 +2337,12 @@ class ngamsServer(object):
         # Load NG/AMS Configuration (from XML Document/DB).
         self.loadCfg()
 
+        # Backporting of fix for NGAS-112.
+        # Enabling the cache on the configuration file overrides
+        # *not* starting it via program name or command-line flag
+        if not self._cacheArchive and self.getCfg().getCachingEnabled():
+            self._cacheArchive = True
+
         # Do we need data check workers?
         if self.getCfg().getDataCheckActive():
 
