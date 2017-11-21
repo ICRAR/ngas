@@ -661,7 +661,7 @@ def _cloneExec(srvObj,
                         "Total processing time (s):  %.3f\n" +\
                         "Handling time per file (s): %.3f\n\n" +\
                         "==File List:\n\n"
-            fo.write(tmpFormat % (toiso8601, srvObj.getHostId(), diskId, fileId,
+            fo.write(tmpFormat % (toiso8601(), srvObj.getHostId(), diskId, fileId,
                                   str(fileVersion), totFiles,
                                   successCloneCount, failedCloneCount,
                                   timeAccu, (timeAccu / totFiles)))
