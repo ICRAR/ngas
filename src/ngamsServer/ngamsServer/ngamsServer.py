@@ -429,7 +429,6 @@ class ngamsServer(object):
         self.request_db = None
 
         # Handling of a Cache Archive.
-        self._cacheArchive              = False
         self._cacheControlThread        = None
         self._cacheControlThreadStopEvt = threading.Event()
 
@@ -601,7 +600,7 @@ class ngamsServer(object):
         """
         T = TRACE()
 
-        return self._cacheArchive
+        return self.getCfg().getCachingEnabled()
 
     def getDataMoverOnlyActive(self):
         """
@@ -2647,8 +2646,6 @@ class ngamsServer(object):
                 if (par == "-CFG"):
                     idx = self._incCheckIdx(idx, argv)
                     self.setCfgFilename(argv[idx])
-                elif (par == "-CACHE"):
-                    self._cacheArchive = True
                 elif par == '-DATAMOVER':
                     self._dataMoverOnly = True
                 elif (par == "-DBCFGID"):

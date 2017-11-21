@@ -1057,6 +1057,8 @@ class ngamsTestSuite(unittest.TestCase):
                 # TODO: Handle Cfg. Group ID.
                 cfgObj.storeVal(cfgProp[0], cfgProp[1])
         cfgObj.storeVal("NgamsCfg.Server[1].PortNo", str(port))
+        if cache:
+            cfgObj.storeVal("NgamsCfg.Caching[1].Enable", '1')
 
         # Now connect to the database and perform any cleanups before we start
         # the server, like removing existing NGAS dirs and clearing tables
@@ -1085,7 +1087,6 @@ class ngamsTestSuite(unittest.TestCase):
         execCmd += ["-cfg", tmpCfg, "-v", str(verbose)]
         execCmd += ['-path', parent_dir]
         if force:        execCmd.append('-force')
-        if cache:        execCmd.append('-cache')
         if autoOnline:   execCmd.append("-autoOnline")
         if dbCfgName:    execCmd.extend(["-dbCfgId", dbCfgName])
 
