@@ -2237,6 +2237,14 @@ class ngamsConfig:
         return self.__mirSrcObjList
 
 
+    def getCachingEnabled(self):
+        """Whether the server is configured to operate in caching mode (default: False)"""
+        try:
+            return int(self.getVal("Caching[1].Enable")) == 1
+        except:
+            return False
+
+
     def getCachingPeriod(self):
         """
         Return the period for checking the cache holding.
