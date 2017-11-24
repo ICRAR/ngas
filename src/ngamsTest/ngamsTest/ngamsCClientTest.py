@@ -163,7 +163,7 @@ class ngamsCClientTest(ngamsTestSuite):
         The check to see if the command is actually executed on the specified
         target node is not yet fully implemented.
         """
-        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
+        self.prepCluster((8000, 8011))
         hostId = "%s:%d" % (getHostName(), 8011)
         statObj = _execCClient(pars=[["-port", "8000"],
                                      ["-cmd", "STATUS"],
@@ -195,7 +195,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
 
         """
-        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
+        self.prepCluster((8000, 8011))
         for n in range(2): sendPclCmd(port=8011).archive("src/SmallFile.fits")
         fileId = "TEST.2001-05-08T15:25:00.123"
         statObj = _execCClient(pars=[["-port", "8000"],
@@ -230,7 +230,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
 
         """
-        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
+        self.prepCluster((8000, 8011))
         for n in range(2): sendPclCmd(port=8011).archive("src/SmallFile.fits")
         fileId = "TEST.2001-05-08T15:25:00.123"
         statObj = _execCClient(pars=[["-port", "8000"],
@@ -737,7 +737,7 @@ class ngamsCClientTest(ngamsTestSuite):
         ...
         """
         ports = range(8000, 8005)
-        self.prepCluster("src/ngamsCfg.xml", ports)
+        self.prepCluster(ports)
         noOfNodes = len(ports)
         nodeCount = 0
         srvList = ",".join(["127.0.0.1:%d" % (p,) for p in ports])

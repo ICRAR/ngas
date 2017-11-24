@@ -280,7 +280,7 @@ class ngamsRemDiskCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
+        self.prepCluster((8000, 8011))
         diskId  = "tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1"
         for execute in [0, 1]:
             httpPars=[["disk_id", diskId], ["execute", execute]]

@@ -100,7 +100,7 @@ def prepSimCluster(testObj,
     for node in cfgParDic.keys(): locCfgParDic[node] += cfgParDic[node]
     for portNo in subNodeList:
         srvs.append((int(portNo), locCfgParDic[portNo]))
-    return testObj.prepCluster("src/ngamsCfg.xml", srvs)
+    return testObj.prepCluster(srvs)
 
 
 class ngamsIdleSuspensionTest(ngamsTestSuite):

@@ -517,7 +517,7 @@ class ngamsPClientTest(ngamsTestSuite):
 
         ports = range(8000, 8005)
         hostname = getHostName()
-        self.prepCluster("src/ngamsCfg.xml", ports)
+        self.prepCluster(ports)
 
         srvList = [('127.0.0.1', p) for p in ports]
         client = ngamsPClient.ngamsPClient(servers=srvList)

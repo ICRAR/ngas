@@ -1382,10 +1382,7 @@ class ngamsTestSuite(unittest.TestCase):
                                               cfgFile = tmpCfgFile)
         return [srvId, srvCfgObj, srvDbObj]
 
-    def prepCluster(self,
-                    comCfgFile,
-                    serverList,
-                    createDatabase = True):
+    def prepCluster(self, server_list, cfg_file='src/ngamsCfg.xml', createDatabase=True):
         """
         Prepare a common, simulated cluster. This consists of 1 to N
         servers running on the same node. It is ensured that each of
@@ -1419,17 +1416,17 @@ class ngamsTestSuite(unittest.TestCase):
         """
 
         # Create the shared database first of all
-        tmpCfg = db_aware_cfg(comCfgFile)
+        tmpCfg = db_aware_cfg(cfg_file)
         self.point_to_sqlite_database(tmpCfg, createDatabase)
         if createDatabase:
             db = ngamsDb.from_config(tmpCfg)
             delNgasTbls(db)
             db.close()
 
-        multSrvs = len(serverList) > 1
+        multSrvs = len(server_list) > 1
 
         # Start them in parallel now that we have all set up for it
-        res = srv_mgr_pool.map(functools.partial(self.start_srv_in_cluster, multSrvs, comCfgFile), serverList)
+        res = srv_mgr_pool.map(functools.partial(self.start_srv_in_cluster, multSrvs, cfg_file), server_list)
 
         # srvId: (cfgObj, dbObj)
         return {r[0]: (r[1], r[2]) for r in res}

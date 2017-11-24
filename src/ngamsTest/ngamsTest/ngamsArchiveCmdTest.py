@@ -539,7 +539,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
+        self.prepCluster((8000, 8011))
         sendPclCmd(port=8011).archive("src/SmallFile.fits")
         fileUri = "http://127.0.0.1:8011/RETRIEVE?file_id=" +\
                   "TEST.2001-05-08T15:25:00.123&file_version=1"
@@ -1193,7 +1193,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         #extProps = [["NgamsCfg.Log[1].LocalLogLevel", "5"]]
         extProps = []
         self.prepExtSrv(port=8000, cfgFile=nmuCfg, cfgProps=extProps)
-        self.prepCluster("src/ngamsCfg.xml", ports, createDatabase = False)
+        self.prepCluster(ports, createDatabase = False)
         noOfNodes = len(ports)
         nodeCount = 0
         counts = {p: 0 for p in ports}
@@ -1254,7 +1254,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             cfg.storeVal(attr, "%s:%d" % (getHostName(), port))
             idx += 1
         cfg.save(tmpCfgFile, 0)
-        self.prepCluster(tmpCfgFile, ports)
+        self.prepCluster(ports, cfg_file=tmpCfgFile)
 
         noOfNodes = len(ports)
         nodeCount = 0
@@ -1304,7 +1304,7 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
         ports = range(8001, 8005)
         ncuCfg = self._genArchProxyCfg(self.__STREAM_LIST, ports)
         _, dbObj = self.prepExtSrv(port=8000, cfgFile=ncuCfg)
-        self.prepCluster("src/ngamsCfg.xml", ports, createDatabase = False)
+        self.prepCluster(ports, createDatabase = False)
         # Set all Disks in unit <Host>:8002 to completed.
         dbObj.query2("UPDATE ngas_disks SET completed=1 WHERE host_id={0}", args=("%s:8002" % getHostName(),))
         # Set <Host>:8004 to Offline.

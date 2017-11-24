@@ -199,7 +199,7 @@ class ngamsRemFileCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
+        self.prepCluster((8000, 8011))
         sendPclCmd(port=8000).archive("src/SmallFile.fits")
         client8011 = sendPclCmd(port=8011)
         stat = client8011.archive("src/SmallFile.fits")

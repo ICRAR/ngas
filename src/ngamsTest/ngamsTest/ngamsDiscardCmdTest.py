@@ -371,7 +371,7 @@ class ngamsDiscardCmdTest(ngamsTestSuite):
         Test Data:
         ...
         """
-        self.prepCluster("src/ngamsCfg.xml", (8000, 8011))
+        self.prepCluster((8000, 8011))
         sendPclCmd(port=8000).archive("src/SmallFile.fits")
         stat = sendPclCmd(port=8011).archive("src/SmallFile.fits")
         diskId  = "tmp-ngamsTest-NGAS:8011-FitsStorage1-Main-1"

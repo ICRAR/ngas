@@ -131,7 +131,7 @@ def _execCloneTest(testObj,
     trgDisk = testData[3]
     subNode = testData[4]
     if (subNode):
-        testObj.prepCluster("src/ngamsCfg.xml", (8000, 8011))
+        testObj.prepCluster((8000, 8011))
         clNcu = sendPclCmd(port=8011)
     else:
         testObj.prepExtSrv(port=8000)

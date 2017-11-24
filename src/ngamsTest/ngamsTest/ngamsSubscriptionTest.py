@@ -122,7 +122,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         # We configure the second server to send notifications via socket
         # to the listener we start later
         cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'),)
-        self.prepCluster("src/ngamsCfg.xml", (8888, (8889, cfg)))
+        self.prepCluster((8888, (8889, cfg)))
 
         qarchive = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'QARCHIVE', timeout=5)
         subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
@@ -170,7 +170,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         src_cfg = (("NgamsCfg.HostSuspension[1].SuspensionTime", '0T00:00:02'), ("NgamsCfg.Log[1].LocalLogLevel", '4'))
         tgt_cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'),)
-        self.prepCluster("src/ngamsCfg.xml", ((8888, src_cfg), (8889, tgt_cfg)))
+        self.prepCluster(((8888, src_cfg), (8889, tgt_cfg)))
 
         qarchive = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'QARCHIVE', timeout=5)
         subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
@@ -359,7 +359,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
                              ('NgamsCfg.SubscriptionDef[1].Subscription[1].PortNo', '8888'),
                              ('NgamsCfg.SubscriptionDef[1].Subscription[1].Command', 'QARCHIVE'),
                              ('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'))
-        self.prepCluster("src/ngamsCfg.xml", (8888, (8889, subscription_pars)))
+        self.prepCluster((8888, (8889, subscription_pars)))
 
         # Listen for archives on server B (B is configured to send us notifications)
         listener = notification_listener()
