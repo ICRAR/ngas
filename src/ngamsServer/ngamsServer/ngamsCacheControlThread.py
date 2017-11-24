@@ -1474,6 +1474,7 @@ def cacheControlThread(srvObj, stopEvt, check_can_be_deleted):
             errMsg = "Error occurred during execution of the Cache " +\
                      "Control Thread"
             logger.exception(errMsg)
-            # We make a small wait here to avoid that the process tries
-            # too often to carry out the tasks that failed.
-            time.sleep(5.0)
+            try:
+                suspend(stopEvt, 5)
+            except StopCacheControlThreadEx:
+                break
