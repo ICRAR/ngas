@@ -1502,16 +1502,6 @@ class ngamsConfig:
         return getInt(par, self.getVal(par))
 
 
-    def getLogBufferSize(self):
-        """
-        Return the size of the internal log buffer.
-
-        Returns:  Size of internal log buffer (integer).
-        """
-        par = "Log[1].LogBufferSize"
-        return getInt(par, self.getVal(par))
-
-
     def getLogRotateInt(self):
         """
         Return the Log Rotation Interval given as an ISO 8601 timestamp.

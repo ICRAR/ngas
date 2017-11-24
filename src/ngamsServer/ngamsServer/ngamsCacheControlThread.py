@@ -973,11 +973,7 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
     #    limit. If there are more files, files are deleted FIFO-wise, until
     #    going below the maximum limit -10%.
     #
-    # 4. Check if the minimum specified available space in the cache is
-    #    exceeded. If this is the case, remove files FIFO-wise until
-    #    reaching the maximum limit -10%.
-    #
-    # 5. Execute the Cache Control Plug-In (if specified in the
+    # 4. Execute the Cache Control Plug-In (if specified in the
     #    configuration).
 
     # 0. Go through the explicitDel queue to remove files
@@ -1163,71 +1159,7 @@ def checkCacheContents(srvObj, stopEvt, check_can_be_deleted):
             del delFilesDbm
             delFilesDbm = None
 
-    # 4. Check if the minimum space that should be available in the cache
-    #    is exhausted.
-    if (srvObj.getCfg().getVal("Caching[1].MinCacheSpace")):
-        # This feature is not yet supported.
-        # TODO: Make function that derives the space by looking at the
-        #       volumes directly. Should look at each file system, note,
-        #       in simulation mode, several volumes may be hosted on the same
-        #       file system.
-        msg = "MINIMUM AVAILABLE CACHE SPACE AS CRITERIA IS NOT YET " +\
-              "SUPPORTED"
-        logger.warning(msg)
-    if (0 and srvObj.getCfg().getVal("Caching[1].MinCacheSpace")):
-        logger.debug("Applying criteria: Minimum available cache space ...")
-        minCacheSpace = int(srvObj.getCfg().getVal("Caching[1].MinCacheSpace"))
-        spaceAvailMb = srvObj.getDb().getSpaceAvailForHost(srvObj.getHostId())
-        msg = "Space Available=%.6f MB, Min. Cache Space=%.6f MB, " +\
-              "Availability till Threshold: %.6f MB"
-        logger.debug(msg, spaceAvailMb, minCacheSpace,
-                       (spaceAvailMb - (1.1 * minCacheSpace)))
-        if (spaceAvailMb < minCacheSpace):
-            # Reduce the size of the cache to 10% below the threshold
-            # to avoid having to clean-up constantly due to this rule.
-            minCacheSpace *= 1.10
-            # Dump the results into a temporary DBM.
-            delFilesDbm = createTmpDbm(srvObj, "MIN_SPACE_FILES_INFO")
-            # Schedule files FIFO-wise for removal from the cache.
-            sqlQuery = "SELECT * FROM ngas_cache ORDER BY cache_time"
-            # Encapsulate this in a try clause to be able to semaphore protect
-            # the interaction with SQLite in case other threads would try to
-            # access the DBMS.
-            try:
-                srvObj._cacheContDbmsSem.acquire()
-                srvObj._cacheContDbmsCur.execute(sqlQuery)
-                while (spaceAvailMb < minCacheSpace):
-                    fileInfoList = srvObj._cacheContDbmsCur.fetchmany(10000)
-                    if (not fileInfoList): break
-                    for sqlFileInfo in fileInfoList:
-                        msg = "CACHE-CRITERIA: Minimum Cache Space " +\
-                              "Exhausted: %s/%s/%s"
-                        logger.info(msg,
-                              sqlFileInfo[NGAMS_CACHE_DISK_ID],
-                              sqlFileInfo[NGAMS_CACHE_FILE_ID],
-                              str(sqlFileInfo[NGAMS_CACHE_FILE_VER]))
-                        delFilesDbm.addIncKey(sqlFileInfo)
-                        fileSize = sqlFileInfo[NGAMS_CACHE_FILE_SIZE]
-                        spaceAvailMb += fileSize
-                    if (spaceAvailMb < minCacheSpace): break
-                srvObj._cacheContDbms.commit()
-                srvObj._cacheContDbmsSem.release()
-            except Exception, e:
-                srvObj._cacheContDbmsSem.release()
-                raise Exception, e
-
-            # Now, loop over the selected files and mark them for deletion.
-            delFilesDbm.initKeyPtr()
-            while (True):
-                key, sqlFileInfo = delFilesDbm.getNext()
-                if (not key): break
-                scheduleFileForDeletion(srvObj, sqlFileInfo)
-                markFileChecked(srvObj, sqlFileInfo)
-
-            del delFilesDbm
-            delFilesDbm = None
-
-    # 5. Invoke the Cache Control Plug-In (if specified) on the files.
+    # 4. Invoke the Cache Control Plug-In (if specified) on the files.
     if (srvObj.getCfg().getVal("Caching[1].CacheControlPlugIn")):
         logger.debug("Applying criteria: Cache Control Plug-In ...")
 

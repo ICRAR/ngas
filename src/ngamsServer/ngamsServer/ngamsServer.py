@@ -2105,8 +2105,7 @@ class ngamsServer(object):
         self.httpReply(reqPropsObj, httpRef, code, xmlStat, NGAMS_XML_MT)
 
 
-    def checkDiskSpaceSat(self,
-                          minDiskSpaceMb = None):
+    def checkDiskSpaceSat(self):
         """
         This method checks the important mount points used by NG/AMS for
         the operation. If the amount of free disk space goes below 10 GB
@@ -2116,10 +2115,8 @@ class ngamsServer(object):
 
         Returns:          Void.
         """
-        T = TRACE()
 
-        if (not minDiskSpaceMb):
-            minDiskSpaceMb = self.getCfg().getMinSpaceSysDirMb()
+        minDiskSpaceMb = self.getCfg().getMinSpaceSysDirMb()
         for mtPt in self.__sysMtPtDic.keys():
             diskSpace = getDiskSpaceAvail(mtPt)
             if (diskSpace < minDiskSpaceMb):
