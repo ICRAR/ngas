@@ -968,6 +968,10 @@ class ngamsTestSuite(unittest.TestCase):
         self.assertIsNotNone(status)
         self.assertEquals(expectedStatus, status.getStatus())
 
+    def assertArchive(self, fname, mimeType=None, port=8888, timeout=5, pars=[], cmd='ARCHIVE'):
+        stat = sendPclCmd(port, timeOut=timeout).archive(fname, mimeType=mimeType, pars=pars, cmd=cmd)
+        self.assertStatus(stat)
+
     def prepExtSrv(self,
                    port = 8888,
                    delDirs = 1,
@@ -1428,8 +1432,11 @@ class ngamsTestSuite(unittest.TestCase):
         # Start them in parallel now that we have all set up for it
         res = srv_mgr_pool.map(functools.partial(self.start_srv_in_cluster, multSrvs, cfg_file), server_list)
 
-        # srvId: (cfgObj, dbObj)
-        return {r[0]: (r[1], r[2]) for r in res}
+        # srvId: (cfgObj, dbObj), in same input order
+        d = collections.OrderedDict()
+        for r in res:
+            d[r[0]] = (r[1], r[2])
+        return d
 
     def point_to_sqlite_database(self, cfgObj, create):
         # Exceptional handling for SQLite.
