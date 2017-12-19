@@ -74,12 +74,6 @@ logging_levels = {
     logging.INFO: 3,
     logging.DEBUG: 4,
     logging.NOTSET: 5,
-    0: logging.CRITICAL,
-    1: logging.ERROR,
-    2: logging.WARNING,
-    3: logging.INFO,
-    4: logging.DEBUG,
-    5: logging.NOTSET
 }
 
 # Global parameters to control the test run.
@@ -750,7 +744,11 @@ def runTest(argv):
     logging.root.addHandler(logging.NullHandler())
     if verboseLevel:
         logging.root.addHandler(logging.StreamHandler(stream=sys.stdout))
-        logging.root.setLevel(logging_levels[verboseLevel-1])
+        val = verboseLevel - 1
+        for level, level_val in logging_levels.items():
+            if level_val == val:
+                logging.root.setLevel(level)
+                break
 
     skipDic = {}
     if (skip):

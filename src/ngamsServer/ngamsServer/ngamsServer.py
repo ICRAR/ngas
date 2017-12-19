@@ -517,8 +517,8 @@ class ngamsServer(object):
         log_to_file = logcfg.file_level > 0 and logcfg.logfile
 
         # 0 means off, but from now on we use the values for indexing
-        stdout_level = logcfg.stdout_level - 1
-        file_level = logcfg.file_level - 1
+        stdout_level = min(logcfg.stdout_level - 1, 4)
+        file_level = min(logcfg.file_level - 1, 4)
 
         levels = [logging.CRITICAL, logging.ERROR, logging.WARN, logging.INFO, logging.DEBUG]
         root_level = levels[max(stdout_level, file_level, 0)]
