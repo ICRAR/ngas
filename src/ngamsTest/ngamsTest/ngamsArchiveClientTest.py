@@ -68,8 +68,13 @@ class ngamsArchiveClientTest(ngamsTestSuite):
       NGAS System, it remains in the Archived Files Area.
     """
 
+    def setUp(self):
+        ngamsTestSuite.setUp(self)
+        self.client_proc = None
+
     def tearDown(self):
-        terminate_or_kill(self.client_proc, 20)
+        if self.client_proc is not None:
+            terminate_or_kill(self.client_proc, 20)
         ngamsTestSuite.tearDown(self)
 
     def startArchiveClient(self):
