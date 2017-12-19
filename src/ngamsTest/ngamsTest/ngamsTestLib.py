@@ -927,7 +927,7 @@ def getThreadId(logFile,
     for tag in tagList[1:]:
         grepCmd += " | grep %s" % tag
     out = subprocess.check_output(grepCmd, shell=True)
-    tid =  out.split("[")[1].split("]")[0].strip()
+    tid =  out.split("[")[2].split("]")[0].strip()
     return tid
 
 def unzip(infile, outfile):

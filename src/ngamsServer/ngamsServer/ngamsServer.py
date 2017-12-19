@@ -559,7 +559,7 @@ class ngamsServer(object):
                 syslog_setup_failed = True
 
         # We use the same format for both file and stdout
-        fmt = '%(asctime)-15s.%(msecs)03d [%(threadName)10.10s] [%(levelname)6.6s] %(name)s#%(funcName)s:%(lineno)s %(message)s'
+        fmt = '%(asctime)-15s.%(msecs)03d [%(process)5d] [%(threadName)10.10s] [%(levelname)5.5s] %(name)s#%(funcName)s:%(lineno)s %(message)s'
         datefmt = '%Y-%m-%dT%H:%M:%S'
         formatter = logging.Formatter(fmt, datefmt=datefmt)
         formatter.converter = time.gmtime
