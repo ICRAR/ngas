@@ -66,7 +66,7 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
                ("NgamsCfg.Db[1].Snapshot", "0"))
         return self.prepExtSrv(cfgProps=cfg, *args, **kwargs)
 
-    def wait_and_count_checked_files(self, cfg, checked, unregistered, bad):
+    def wait_and_count_checked_files(self, cfg, db, checked, unregistered, bad):
         startTime = time.time()
         found = False
         looking_for = "NGAMS_INFO_DATA_CHK_STAT"
@@ -94,6 +94,9 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
             self.fail("Data Check Thread didn't complete "+\
                       "check cycle within the expected period of time")
 
+        db_bad = db.query2('SELECT count(*) FROM ngas_files WHERE file_status LIKE "1%"')[0][0]
+        self.assertEqual(bad, db_bad)
+
     def _test_data_check_thread(self, registered, unregistered, bad, corrupt=None):
 
         # Start the server normally without the datacheck thread
@@ -115,8 +118,8 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
             corrupt(db)
 
         # Restart and see what does the data checker thread find
-        cfg, _ = self.start_srv(delDirs=0, clearDb=0)
-        self.wait_and_count_checked_files(cfg, registered, unregistered, bad)
+        cfg, db = self.start_srv(delDirs=0, clearDb=0)
+        self.wait_and_count_checked_files(cfg, db, registered, unregistered, bad)
 
     def test_normal_case(self):
         self._test_data_check_thread(6, 0, 0)
@@ -129,8 +132,8 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
         shutil.copy("src/SmallFile.fits", trgFile)
 
         # It should appear as unregistered when the server checks it
-        cfg, _ = self.start_srv(delDirs=False)
-        self.wait_and_count_checked_files(cfg, 0, 1, 0)
+        cfg, db = self.start_srv(delDirs=False)
+        self.wait_and_count_checked_files(cfg, db, 0, 1, 0)
 
     def test_fsize_changed(self):
 
