@@ -320,33 +320,6 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             return res[0][0]
         raise Exception('File not found in ngas db - %s,%s,%d' % (fileId, diskId, fileVersion))
 
-    def setFileStatus(self,
-                      fileId,
-                      fileVersion,
-                      diskId,
-                      status):
-        """
-        Set the checksum value in the ngas_files table.
-
-        fileId:        ID of file (string).
-
-        fileVersion:   Version of file (integer).
-
-        diskId:        Disk ID for disk where file is stored (string).
-
-        status:        File Status (8 bytes) (string).
-
-        Returns:       Reference to object itself.
-        """
-        T = TRACE(5)
-
-        sql = "UPDATE ngas_files SET file_status={0} " +\
-              "WHERE file_id={1} AND file_version={2} AND disk_id={3}"
-        self.query2(sql, args=(status, fileId, fileVersion, diskId))
-        self.triggerEvents()
-        return self
-
-
     def deleteFileInfo(self,
                        hostId,
                        diskId,
