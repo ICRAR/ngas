@@ -22,7 +22,7 @@ The arguments are the following:
   a pointer to the database object
   and to the configuration object
   can be obtained
-  (via ``server.getDb()`` and ``server.getCfg()`` respectively).
+  (via ``server.db`` and ``server.cfg`` respectively).
 * ``request`` is an instance of ``ngamsReqProps``,
   and contains all HTTP-related information (method, headers and parameters)
   that make up the request.
