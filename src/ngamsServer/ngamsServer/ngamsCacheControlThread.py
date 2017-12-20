@@ -742,23 +742,14 @@ def requestFileForDeletion(srvObj, sqlFileInfo):
     """
 
     try:
-       check_can_be_deleted = int(srvObj.getCfg().getVal("Caching[1].CheckCanBeDeleted"))
-       if not check_can_be_deleted:
-          return
+        check_can_be_deleted = int(srvObj.getCfg().getVal("Caching[1].CheckCanBeDeleted"))
+        if not check_can_be_deleted:
+            return
     except:
-       return
+        return
 
-    diskId = sqlFileInfo[NGAMS_CACHE_DISK_ID]
-    fileId = sqlFileInfo[NGAMS_CACHE_FILE_ID]
-    fileVersion = int(sqlFileInfo[NGAMS_CACHE_FILE_VER])
-    #TODO - should get the original file_status from the remote db, and then do a bitmask OR operation,
-    # maybe too db resource intensive, since this file is about to be deleted, the original value is not that important
-    # moreover, it is most likely just ingested (when cache delete is triggered), so we can assume that it is "00000000"
-    try:
-        logger.debug('Set file_status for file %s', fileId)
-        srvObj.getDb().setFileStatus(fileId, fileVersion, diskId, CACHE_DEL_BIT_MASK) # should be (CACHE_DEL_BIT_MASK | file_status)
-    except Exception, err:
-       logger.error('Fail to set file status for file %s, Exception: %s', fileId, str(err))
+    diskId, fileId, fileVersion = sqlFileInfo
+    srvObj.db.set_available_for_deletion(fileId, fileVersion, diskId)
 
 
 def scheduleFileForDeletion(srvObj,
