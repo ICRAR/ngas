@@ -455,7 +455,6 @@ def checkFile(srvObj,
     crc_variant  = fileInfo[ngamsDbCore.SUM1_CHECKSUM_PI]
     fileId       = fileInfo[ngamsDbCore.SUM1_FILE_ID]
     fileVersion  = fileInfo[ngamsDbCore.SUM1_VERSION]
-    fileStatus   = fileInfo[ngamsDbCore.SUM1_FILE_STATUS]
     dbFileSize   = fileInfo[ngamsDbCore.SUM1_FILE_SIZE]
     logger.debug("Checking file with ID: %s and filename: %s on NGAS host: %s",
                  fileId, filename, srvObj.getHostId())
@@ -488,9 +487,7 @@ def checkFile(srvObj,
             foundProblem = 1
             checkReport.append(["ERROR: File in DB missing on disk", fileId,
                                 fileVersion, slotId, diskId, filename])
-            fileStatus = "1" + fileStatus[1:]
-            srvObj.getDb().setFileStatus(fileId, fileVersion, diskId,
-                                         fileStatus)
+            srvObj.getDb().set_valid_checksum(fileId, fileVersion, diskId, False)
 
         # Check if file has the correct size.
         if ((not foundProblem) and fileExists):
@@ -500,9 +497,7 @@ def checkFile(srvObj,
                 format = "ERROR: File has wrong size. Expected: %d/Actual: %d."
                 checkReport.append([format % (dbFileSize , fileSize), fileId,
                                     fileVersion, slotId, diskId, filename])
-                fileStatus = "1" + fileStatus[1:]
-                srvObj.getDb().setFileStatus(fileId, fileVersion, diskId,
-                                             fileStatus)
+                srvObj.getDb().set_valid_checksum(fileId, fileVersion, diskId, False)
 
         # Check checksum if this test should not be skipped.
         if ((not foundProblem) and (not skipCheckSum)):
@@ -540,15 +535,11 @@ def checkFile(srvObj,
                 checkReport.append(["ERROR: Inconsistent checksum found",
                                     fileId, fileVersion, slotId, diskId,
                                     filename])
-                fileStatus = "1" + fileStatus[1:]
-                srvObj.getDb().setFileStatus(fileId, fileVersion, diskId,
-                                             fileStatus)
+                srvObj.getDb().set_valid_checksum(fileId, fileVersion, diskId, False)
 
         # If file is OK but is marked as 'bad', reset the flag.
-        if ((not foundProblem) and (fileStatus[0] == "1")):
-            fileStatus = "0" + fileStatus[1:]
-            srvObj.getDb().setFileStatus(fileId, fileVersion, diskId,
-                                         fileStatus)
+        if not foundProblem:
+            srvObj.getDb().set_valid_checksum(fileId, fileVersion, diskId, True)
 
         ## Set the checking flag back to 0 in the DB.
         #srvObj.getDb().setFileStatus(fileId, fileVersion, diskId, fileStatus)
