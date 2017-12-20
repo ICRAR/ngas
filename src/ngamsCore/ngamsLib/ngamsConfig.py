@@ -38,7 +38,7 @@ import logging
 import os
 import types
 
-from   ngamsCore import genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, getNgamsVersionRaw, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
+from   ngamsCore import genLog, TRACE, checkCreatePath, NGAMS_UNKNOWN_MT, isoTime2Secs, NGAMS_PROC_DIR, NGAMS_BACK_LOG_DIR
 import ngamsConfigBase, ngamsSubscriber
 import ngamsStorageSet, ngamsStream, ngamsMirroringSource
 
@@ -776,18 +776,6 @@ class ngamsConfig:
         """
         par = "Server[1].TimeOut"
         return getInt(par, self.getVal(par), None)
-
-    def getSwVersion(self):
-        """
-        Get the SW Version.
-
-        Returns:   Reference to object itself.
-        """
-        swVersion = self.getVal("Server[1].SwVersion")
-        if ((not swVersion) or (swVersion == "None")):
-            return ""
-        else:
-            return swVersion
 
     def getPluginsPath(self):
         """
@@ -2116,16 +2104,6 @@ class ngamsConfig:
                              self.getCheckRep())
         checkIfSetInt("Server.BlockSize", self.getBlockSize(),
                       self.getCheckRep())
-        if (self.getSwVersion()):
-            if ((self.getSwVersion().strip() != "") and
-                (self.getSwVersion().strip() != getNgamsVersionRaw().strip())):
-                errMsg = "The SW Version defined in the NG/AMS " +\
-                         "Configuration: " + self.getSwVersion() + " " +\
-                         "is not compatible with the SW Version of the " +\
-                         "NG/AMS installation used: " + getNgamsVersionRaw() +\
-                         ". Configuration parameter: Server.SwVersion."
-                errMsg = genLog("NGAMS_ER_CONF_PROP", [errMsg])
-                raise Exception, errMsg
         checkIfZeroOrOne("Server.Simulation", self.getSimulation(),
                          self.getCheckRep())
         if (checkIfSetStr("Server.RootDirectory",
