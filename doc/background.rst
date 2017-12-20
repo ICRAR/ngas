@@ -75,3 +75,48 @@ whenever the server is serving a user request.
 This prevents user requests to be slowed down
 due to resource exhaustion produced by the data checking processes
 (in particular, CPU and disk reading).
+
+.. _bg.cache_thread:
+
+Cache control
+-------------
+
+The Cache control task, if enabled,
+periodically removes local files from the server.
+This is useful in setups
+where an NGAS server acts as a buffer
+to received data locally
+before replicating it
+to different, remote locations.
+Being able to remove local files automatically
+keeps the overall disk in check,
+allowing users to decide
+what their space needs are
+depending on the buffering capabilities
+needed by the system.
+
+A number of criteria control
+how and when local files are removed from NGAS.
+
+* A per-file time limit has been reached.
+  If configured, files are removed from the server
+  after a given amount of time has passed
+  since the file was originally archived.
+* A maximum amount of storage capacity has been hit.
+  When configured, files are removed
+  when their total volume exceeds the specified maximum value.
+  Older files are deleted first.
+* A maximum number of files has been hit.
+  When this option is set, files are removed
+  when their total number exceeds the configured limit.
+  Older files are deleted first.
+* A user-provided plug-in makes the decision.
+  Users can write *ad-hoc* code to decide
+  whether particular files should be deleted (or not).
+
+More than one rule can be active at a given time,
+in which case they are processed in the order given above.
+On top of that, if the Subscription service is enabled
+files will only be eligible for deletion
+after they are successfully transmitted to all their subscribers
+(this cannot be overridden).
