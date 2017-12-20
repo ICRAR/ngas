@@ -706,4 +706,40 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             return True
         return version == int(res[0][0])
 
+    def _modify_status_bits(self, file_id, file_version, disk_id, bits, on):
+
+        select_status = 'SELECT file_status FROM ngas_files WHERE file_id={0} AND file_version={1} AND disk_id={2}'
+        update = 'UPDATE ngas_files SET file_status={0} WHERE file_id={1} AND file_version={2} AND disk_id={3}'
+
+        with self.transaction() as t:
+
+            # select
+            res = t.execute(select_status, args=(file_id, file_version, disk_id))[0][0]
+            if not res:
+                logger.error("No file found for id/version/disk = %s/%d/%s, not updating status",
+                             file_id, file_version, disk_id)
+                return
+
+            # str to int, apply bits on/off, and back to str
+            # If the bits have the desired value already we don't need to update
+            status = int(res[0][0], 2)
+            if on:
+                if (status & bits) == bits:
+                    return
+                status |= bits
+            else:
+                if (status & bits) == 0:
+                    return
+                status &= ~bits
+            new_status = bin(status)[2:]
+
+            # apply
+            t.execute(update, args=(new_status, file_id, file_version, disk_id))
+
+    def set_available_for_deletion(self, file_id, file_version, disk_id):
+        self._modify_status_bits(file_id, file_version, disk_id, 0x04, True)
+
+    def set_valid_checksum(self, file_id, file_version, disk_id, valid):
+        self._modify_status_bits(file_id, file_version, disk_id, 0x80, not valid)
+
 # EOF
