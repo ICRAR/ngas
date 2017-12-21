@@ -94,7 +94,7 @@ class ngamsDataCheckingThreadTest(ngamsTestSuite):
             self.fail("Data Check Thread didn't complete "+\
                       "check cycle within the expected period of time")
 
-        db_bad = db.query2('SELECT count(*) FROM ngas_files WHERE file_status LIKE "1%"')[0][0]
+        db_bad = db.query2("SELECT count(*) FROM ngas_files WHERE file_status LIKE '1%'")[0][0]
         self.assertEqual(bad, db_bad)
 
     def _test_data_check_thread(self, registered, unregistered, bad, corrupt=None):
