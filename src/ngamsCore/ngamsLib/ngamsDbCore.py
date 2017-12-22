@@ -613,6 +613,7 @@ class ngamsDbCore(object):
                                 maxconnections = maxpoolcons,
                                 blocking = True,
                                 **parameters)
+        logger.info("DB Module param style: %s", self.__paramstyle)
         logger.info("DB Module API Level: %s", self.__dbModule.apilevel)
 
         # Verification/Auto Recover.
@@ -799,11 +800,6 @@ class ngamsDbCore(object):
         raise Exception('Unknown paramstyle: %s' % (s))
 
     def _format_query(self, sql, args):
-        # Depending on the database vendor and its declared paramstyle
-        # we will need to escape '%' literals so they are not considered
-        # a parameter in the query
-        if self.__paramstyle in ('format', 'pyformat'):
-            sql = sql.replace('%', '%%')
         return sql.format(*self._params_to_bind(len(args)))
 
     def _data_to_bind(self, data):
@@ -812,9 +808,17 @@ class ngamsDbCore(object):
         return data
 
     def _prepare_query(self, sql, args):
+
+        # Depending on the database vendor and its declared paramstyle
+        # we will need to escape '%' literals so they are not considered
+        # a parameter in the query
+        if self.__paramstyle in ('format', 'pyformat') and '%' in sql:
+            sql = sql.replace('%', '%%')
+
         if args:
             sql = self._format_query(sql, args)
             args = self._data_to_bind(args)
+
         return sql, args
 
     def transaction(self):
