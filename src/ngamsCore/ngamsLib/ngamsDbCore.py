@@ -545,9 +545,7 @@ class transaction(object):
         # If we are passing down parameters we need to sanitize both the query
         # string (which should come with {0}-style formatting) and the parameter
         # list to cope with the different parameter styles supported by PEP-249
-        if args:
-            sql = sql.format(*self.db_core._params_to_bind(len(args)))
-            args = self.db_core._data_to_bind(args)
+        sql, args = self.db_core._prepare_query(sql, args)
 
         with closing(self.conn.cursor()) as cursor:
             with ngamsDbTimer(self.db_core, sql):
@@ -800,11 +798,24 @@ class ngamsDbCore(object):
         if s == 'pyformat': return ['%%(n%d)s'%(i) for i in xrange(howMany)]
         raise Exception('Unknown paramstyle: %s' % (s))
 
+    def _format_query(self, sql, args):
+        # Depending on the database vendor and its declared paramstyle
+        # we will need to escape '%' literals so they are not considered
+        # a parameter in the query
+        if self.__paramstyle in ('format', 'pyformat'):
+            sql = sql.replace('%', '%%')
+        return sql.format(*self._params_to_bind(len(args)))
 
     def _data_to_bind(self, data):
         if self.__paramstyle in ['named', 'pyformat']:
             return {'n%d'%(i): d for i,d in enumerate(data)}
         return data
+
+    def _prepare_query(self, sql, args):
+        if args:
+            sql = self._format_query(sql, args)
+            args = self._data_to_bind(args)
+        return sql, args
 
     def transaction(self):
         """Creates a new transaction object and return it"""
@@ -834,14 +845,7 @@ class ngamsDbCore(object):
         """
 
         logger.debug("Performing SQL query (using a cursor): %s / %r", sqlQuery, args)
-
-        # If we are passing down parameters we need to sanitize both the query
-        # string (which should come with {0}-style formatting) and the parameter
-        # list to cope with the different parameter styles supported by PEP-249
-        if args:
-            sqlQuery = sqlQuery.format(*self._params_to_bind(len(args)))
-            args = self._data_to_bind(args)
-
+        sqlQuery, args = self._prepare_query(sqlQuery, args)
         clazz = cursor2 if use_cursor2 else ngamsDbCursor
         return clazz(self.__pool, sqlQuery, args)
 
