@@ -127,6 +127,7 @@ def _checkContDbSnapshot(testSuiteObj,
         complName = dirPat % dataDir
         refFile = refFilePat % (testCaseNo, count)
         tmpFile = complName + ".dump"
+        startTime = time.time()
         while ((not os.path.exists(complName)) and
                ((time.time() - startTime) < 10)):
             time.sleep(0.200)
