@@ -46,9 +46,9 @@ from ngamsCore import TRACE, NGAMS_DBM_EXT, NGAMS_FILE_DB_COUNTER, rmFile
 logger = logging.getLogger(__name__)
 
 try:
-    import bsddb3 as bsddb
-except:
     import bsddb
+except:
+    import bsddb3 as bsddb
 
 
 class DbRunRecoveryError(Exception):

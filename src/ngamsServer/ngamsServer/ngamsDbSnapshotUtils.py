@@ -41,9 +41,9 @@ from ngamsJanitorCommon import checkStopJanitorThread, StopJanitorThreadExceptio
 
 
 try:
-    import bsddb3 as bsddb
-except ImportError:
     import bsddb
+except ImportError:
+    import bsddb3 as bsddb
 
 logger = logging.getLogger(__name__)
 
