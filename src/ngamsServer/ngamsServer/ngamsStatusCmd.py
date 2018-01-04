@@ -397,6 +397,7 @@ def _handleFileListReply(srvObj,
                         setRefFilename(os.path.basename(fileListXmlDoc))
         tmpDppiStatus = ngamsDppiStatus.ngamsDppiStatus().\
                         addResult(tmpDppiResult)
+        reqPropsObj.retrieve_offset = 0
         ngamsRetrieveCmd.genReplyRetrieve(srvObj, reqPropsObj, httpRef,
                                           [tmpDppiStatus])
         reqPropsObj.setSentReply(1)
