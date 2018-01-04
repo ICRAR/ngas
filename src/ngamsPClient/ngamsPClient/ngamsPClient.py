@@ -43,6 +43,7 @@ import functools
 import logging
 import os
 import random
+import shutil
 import socket
 import sys
 import time
@@ -588,7 +589,7 @@ class ngamsPClient:
             return ngamsStatus.dummy_success_stat(host_id)
 
 
-    def status(self, pars=[]):
+    def status(self, pars=[], output=None):
         """
         Request a general status from the NG/AMS Server
         associated to the object.
@@ -596,6 +597,16 @@ class ngamsPClient:
         Returns:     NG/AMS Status object (ngamsStatus).
         """
         T = TRACE()
+
+        if 'file_list' in [p[0] for p in pars]:
+            resp, host, port = self._get(NGAMS_STATUS_CMD, pars=pars)
+            if resp.status != NGAMS_HTTP_SUCCESS:
+                return ngamsStatus.to_status(resp, '%s:%d' % (host, port), 'STATUS')
+
+            output = output or 'file_list.xml.gz'
+            with open(output, 'wb') as fout, contextlib.closing(resp):
+                shutil.copyfileobj(resp, fout)
+            return ngamsStatus.dummy_success_stat("%s:%d" % (host, port))
 
         return self.get_status(NGAMS_STATUS_CMD, pars=pars)
 
@@ -917,7 +928,7 @@ def main():
         stat = client.retrieve(opts.file_id, opts.file_version, pars, opts.output,
                                opts.p_plugin, opts.p_plugin_pars)
     elif (cmd == NGAMS_STATUS_CMD):
-        stat = client.status()
+        stat = client.status(pars, opts.output)
     elif (cmd == NGAMS_SUBSCRIBE_CMD):
         stat = client.subscribe(opts.url, opts.priority, opts.start_date, opts.f_plugin, opts.f_plugin_pars)
     elif (cmd == NGAMS_UNSUBSCRIBE_CMD):
