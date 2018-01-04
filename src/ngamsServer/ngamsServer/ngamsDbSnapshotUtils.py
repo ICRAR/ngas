@@ -593,8 +593,10 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
                     _addInDbm(tmpSnapshotDbm, fileKey, encFileInfoDic)
                     checkStopJanitorThread(stopEvt)
                 tmpSnapshotDbm.sync()
-            finally:
+            except:
                 rmFile(tmpSnapshotDbmName)
+                raise
+            finally:
                 if tmpFileListDbmName:
                     rmFile(tmpFileListDbmName)
                 if tmpFileListDbm:
