@@ -102,7 +102,10 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                                                 hostId, diskIds, fileIds,
                                                 ignore, fileStatus,
                                                 lowLimIngestDate, order)
-        return self.dbCursor(sql, args = vals)
+
+        with self.dbCursor(sql, args=vals) as cursor:
+            for x in cursor.fetch(1000):
+                yield x
 
 
     def getFileSummary1SingleFile(self,
@@ -374,31 +377,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
 
         self.triggerEvents()
         return self
-
-
-    def getSummary1NoOfFiles(self,
-                             hostId = None,
-                             diskIds = [],
-                             fileIds = [],
-                             ignore = None,
-                             fileStatus = [NGAMS_FILE_STATUS_OK],
-                             lowLimIngestDate = None):
-        """
-        Get the theoretical number of files that a Summary 1 Query would
-        return with the given parameters.
-
-        For a description of the input parameters, check the man-page of
-        ngamsDbBase.getFileSummary1().
-
-        Returns:   Number of files query would return (integer).
-        """
-        T = TRACE()
-
-        sql, vals = self.buildFileSummary1Query("count(*)", hostId, diskIds,
-                                                fileIds, ignore, fileStatus,
-                                                lowLimIngestDate, order = 0)
-        res = self.query2(sql, args = vals)
-        return res[0][0]
 
 
     def buildFileSummary1Query(self,
@@ -830,89 +808,6 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             if (curObj): del curObj
             logger.error("dumpFileInfo2(): Failed in dumping file info")
             raise
-
-        return fileInfoDbmName
-
-
-    def dumpFileSummary1(self,
-                         fileInfoDbmName = None,
-                         hostId = None,
-                         diskIds = [],
-                         fileIds = [],
-                         ignore = None,
-                         fileStatus = [NGAMS_FILE_STATUS_OK],
-                         lowLimIngestDate = None,
-                         order = 1):
-        """
-        Dump the summary of the files defined by the parameters. This is done
-        in a safe manner (or at least attempted) such that in case of problems
-        with the DB interaction it is retried to dump the info.
-
-        The file info is dumped into a ngamsDbm DB.
-
-        fileInfoDbmName: Name of DBM, which will contain the info about the
-                         files (string).
-
-        For the other parameters check man-page for:
-        ngamsDbBase.getFileSummary1().
-
-        Returns:         Name of the DBM DB containing the info about the files
-                        (string).
-        """
-        T = TRACE()
-
-        # Try first to get the expected number of files, which will be returned
-        expNoOfFiles = -1
-        if (self.getDbVerify()):
-            for n in range(1):
-                noOfFiles = self.getSummary1NoOfFiles(hostId, diskIds, fileIds,
-                                                      ignore, fileStatus,
-                                                      lowLimIngestDate)
-                if (noOfFiles > expNoOfFiles): expNoOfFiles = noOfFiles
-                time.sleep(0.050)
-
-        # Create a temporay File Info DBM.
-        if (not fileInfoDbmName):
-            fileInfoDbmName = self.genTmpFile("FILE-SUMMARY1")
-
-        # Try up to 5 times to dump the files. A retry is done if the number
-        # of records dumped differs from the expected number.
-        for n in range(5):
-            fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName, 0, 1)
-            curObj = self.getFileSummary1(hostId, diskIds, fileIds, ignore,
-                                          fileStatus, lowLimIngestDate, order)
-            fileCount = 0
-            while (1):
-                fileList = curObj.fetch(1000)
-                if (not fileList): break
-                for fileInfo in fileList:
-                    fileInfoDbm.add(str(fileCount), fileInfo)
-                    fileCount += 1
-            del curObj
-
-            # Print out DB Verification Warning if actual number of files
-            # differs from expected number of files.
-            if (self.getDbVerify() and (fileCount != expNoOfFiles)):
-                errMsg = "Problem dumping file info! Expected number of "+\
-                         "files: %d, actual number of files: %d"
-                logger.warning(errMsg, expNoOfFiles, fileCount)
-
-            # Try to Auto Recover if requested.
-            if ((self.getDbVerify() and self.getDbAutoRecover()) and
-                (fileCount != expNoOfFiles)):
-                del fileInfoDbm
-                rmFile(fileInfoDbmName + "*")
-                # Not all files were dumped.
-                if (n < 4):
-                    # - retry after a small pause.
-                    time.sleep(5)
-                    logger.warning("Retrying to dump file info ...")
-                else:
-                    errMsg = "Giving up to auto recover dumping of file info!"
-                    raise Exception(errMsg)
-            else:
-                del fileInfoDbm
-                break
 
         return fileInfoDbmName
 

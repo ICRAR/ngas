@@ -574,8 +574,7 @@ def genInstantResponse(srvObj, asyncListReqObj):
     if (clientUrl is None or sessionId is None):
         res.errorcode = -1
         return res
-    cursorObj = srvObj.getDb().getFileSummary1(None, [], asyncListReqObj.file_id, None, [], None, 0)
-    fileInfoList = cursorObj.fetch(1000)
+    fileInfoList = srvObj.getDb().getFileSummary1(None, [], asyncListReqObj.file_id, None, [], None, 0)
     baseNameDic = {}
     for f in fileInfoList:
         file_id = f[ngamsDbCore.SUM1_FILE_ID]
@@ -592,7 +591,6 @@ def genInstantResponse(srvObj, asyncListReqObj):
         res.file_info.append(finfo)
         statuRes.number_bytes_to_be_delivered += file_size
         statuRes.number_files_to_be_delivered += 1
-    del cursorObj
     statusResDic[sessionId] = statuRes
     for ff in asyncListReqObj.file_id:
         if (not baseNameDic.has_key(ff)):
@@ -621,8 +619,7 @@ def _deliveryThread(srvObj, asyncListReqObj):
     filesOnDisk = []
     filesOnTape = []
     #info(3, "file_id length = %d" % len(asyncListReqObj.file_id))
-    cursorObj = srvObj.getDb().getFileSummary1(None, [], asyncListReqObj.file_id, None, [], None, 0)
-    fileInfoList = cursorObj.fetch(1000)
+    fileInfoList = srvObj.getDb().getFileSummary1(None, [], asyncListReqObj.file_id, None, [], None, 0)
     #info(3, "fileIninfList length = %d" % len(fileInfoList))
     baseNameDic = {} # key - basename, value - file size
 
@@ -654,7 +651,6 @@ def _deliveryThread(srvObj, asyncListReqObj):
                 statusRes.number_bytes_to_be_staged += file_size
         else:
             filesOnDisk.append(filename)
-    del cursorObj
     #info(3, " * * * middle of the _deliveryThread")
     stageRet = 0
     if (len(filesOnTape) > 0):

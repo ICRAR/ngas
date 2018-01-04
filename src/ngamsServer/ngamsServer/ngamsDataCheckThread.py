@@ -287,24 +287,16 @@ def _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt):
 
         # Now, retrieve the files on the given disk, and store the info
         # in the Queue DBM file.
-        # TODO: Use ngamsDb.dumpFileSummary1().
-        cursorObj = srvObj.getDb().getFileSummary1(diskIds=[diskId],
-                                                   ignore=0, fileStatus=[],
-                                                   lowLimIngestDate=None,
-                                                   order=0)
-        while (1):
-
-            fileList = cursorObj.fetch(1000)
-            if not fileList:
-                break
-
-            for fileInfo in fileList:
-                fileId  = fileInfo[ngamsDbCore.SUM1_FILE_ID]
-                fileVer = fileInfo[ngamsDbCore.SUM1_VERSION]
-                fileKey = ngamsLib.genFileKey(None, fileId, fileVer)
-                queueDbm.add(fileKey, fileInfo)
-            queueDbm.sync()
-        del cursorObj
+        files = srvObj.getDb().getFileSummary1(diskIds=[diskId],
+                                               ignore=0, fileStatus=[],
+                                               lowLimIngestDate=None,
+                                               order=0)
+        for fileInfo in files:
+            fileId  = fileInfo[ngamsDbCore.SUM1_FILE_ID]
+            fileVer = fileInfo[ngamsDbCore.SUM1_VERSION]
+            fileKey = ngamsLib.genFileKey(None, fileId, fileVer)
+            queueDbm.add(fileKey, fileInfo)
+        queueDbm.sync()
 
         # Rename DCC Queue DBM from the temporary to the final name.
         mvFile(tmpQueueDbmFile, queueDbmFile)

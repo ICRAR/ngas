@@ -212,24 +212,18 @@ def _registerExec(srvObj,
 
             # Check if this file is already registered on this disk. In case
             # yes, it is not registered again.
-            cursorObj = None
-            cursorObj = srvObj.getDb().\
-                        getFileSummary1(srvObj.getHostId(), [piRes.getDiskId()],
-                                        [piRes.getFileId()])
+            files = srvObj.db.getFileSummary1(srvObj.getHostId(), [piRes.getDiskId()],
+                                              [piRes.getFileId()])
             fileRegistered = 0
-            while (1):
-                tmpFileList = cursorObj.fetch(100)
-                if (not tmpFileList): break
-                for tmpFileInfo in tmpFileList:
-                    tmpMtPt = tmpFileInfo[ngamsDbCore.SUM1_MT_PT]
-                    tmpFilename = tmpFileInfo[ngamsDbCore.SUM1_FILENAME]
-                    tmpComplFilename = os.path.normpath(tmpMtPt + "/" +\
-                                                        tmpFilename)
-                    if (tmpComplFilename == filename):
-                        fileRegistered = 1
-                        break
-                time.sleep(0.010)
-            del cursorObj
+            for tmpFileInfo in files:
+                tmpMtPt = tmpFileInfo[ngamsDbCore.SUM1_MT_PT]
+                tmpFilename = tmpFileInfo[ngamsDbCore.SUM1_FILENAME]
+                tmpComplFilename = os.path.normpath(tmpMtPt + "/" +\
+                                                    tmpFilename)
+                if (tmpComplFilename == filename):
+                    fileRegistered = 1
+                    break
+
             if (fileRegistered):
                 fileRejectCount += 1
                 tmpMsgForm = "REJECTED: File with File ID/Version: %s/%d " +\
@@ -307,10 +301,6 @@ def _registerExec(srvObj,
             msg = msg + ". Time: %.3fs." % (regTime)
             logger.info(msg, extra={'to_syslog': 1})
         except Exception, e:
-            try:
-                if (cursorObj): del cursorObj
-            except:
-                pass
             errMsg = genLog("NGAMS_ER_FILE_REG_FAILED", [filename, str(e)])
             logger.error(errMsg)
             if (emailNotif):

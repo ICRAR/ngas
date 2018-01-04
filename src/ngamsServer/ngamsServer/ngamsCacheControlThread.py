@@ -584,53 +584,50 @@ def initCacheArchive(srvObj, stopEvt):
 
     # Update the local Cache Content DBMS with the information about files
     # online on this node.
-    curObj = srvObj.getDb().getFileSummary1(hostId = srvObj.getHostId(),
-                                            fileStatus = [], order = False)
-    while (True):
-        fileInfoList = curObj.fetch(10000)
-        if (not fileInfoList): break
-        for sqlFileInfo in fileInfoList:
-            diskId      = sqlFileInfo[ngamsDbCore.SUM1_DISK_ID]
-            fileId      = sqlFileInfo[ngamsDbCore.SUM1_FILE_ID]
-            fileVersion = int(sqlFileInfo[ngamsDbCore.SUM1_VERSION])
-            filename    = sqlFileInfo[ngamsDbCore.SUM1_FILENAME]
-            if (entryInCacheDbms(srvObj, diskId, fileId, fileVersion)):
-                # Ensure that filename (and ngamsCacheEntry 0bject) is defined.
-                if (getFilenameFromCacheDbms(srvObj, diskId, fileId,
-                                             fileVersion)):
-                    continue
-                else:
-                    # If the filename is not defined, this is an entry that
-                    # has been recovered from the RDBMS NGAS Cache Table.
-                    # We add the filename and the Cache Entry Object to the
-                    # entry for that file.
-                    setFilenameCacheDbms(srvObj, diskId, fileId,
-                                         fileVersion, filename)
-                    fileSize = sqlFileInfo[ngamsDbCore.SUM1_FILE_SIZE]
-                    setFileSizeCacheDbms(srvObj, diskId, fileId,
-                                         fileVersion, fileSize)
-                    ingDateSecs = srvObj.getDb().\
-                                  getIngDate(diskId, fileId, fileVersion)
-                    cacheEntryObj = ngamsCacheEntry.ngamsCacheEntry().\
-                                    unpackSqlInfo(sqlFileInfo).\
-                                    setLastCheck(time.time()).\
-                                    setCacheTime(ingDateSecs)
-                    setCacheEntryObjectCacheDbms(srvObj, cacheEntryObj)
-                    continue
+    files = srvObj.getDb().getFileSummary1(hostId = srvObj.getHostId(),
+                                           fileStatus = [], order = False)
+    for sqlFileInfo in files:
+        diskId      = sqlFileInfo[ngamsDbCore.SUM1_DISK_ID]
+        fileId      = sqlFileInfo[ngamsDbCore.SUM1_FILE_ID]
+        fileVersion = int(sqlFileInfo[ngamsDbCore.SUM1_VERSION])
+        filename    = sqlFileInfo[ngamsDbCore.SUM1_FILENAME]
+        if (entryInCacheDbms(srvObj, diskId, fileId, fileVersion)):
+            # Ensure that filename (and ngamsCacheEntry 0bject) is defined.
+            if (getFilenameFromCacheDbms(srvObj, diskId, fileId,
+                                         fileVersion)):
+                continue
+            else:
+                # If the filename is not defined, this is an entry that
+                # has been recovered from the RDBMS NGAS Cache Table.
+                # We add the filename and the Cache Entry Object to the
+                # entry for that file.
+                setFilenameCacheDbms(srvObj, diskId, fileId,
+                                     fileVersion, filename)
+                fileSize = sqlFileInfo[ngamsDbCore.SUM1_FILE_SIZE]
+                setFileSizeCacheDbms(srvObj, diskId, fileId,
+                                     fileVersion, fileSize)
+                ingDateSecs = srvObj.getDb().\
+                              getIngDate(diskId, fileId, fileVersion)
+                cacheEntryObj = ngamsCacheEntry.ngamsCacheEntry().\
+                                unpackSqlInfo(sqlFileInfo).\
+                                setLastCheck(time.time()).\
+                                setCacheTime(ingDateSecs)
+                setCacheEntryObjectCacheDbms(srvObj, cacheEntryObj)
+                continue
 
-            # Add new entry in the DBMS'.
-            ingDateSecs = srvObj.getDb().\
-                          getIngDate(diskId, fileId, fileVersion)
-            lastCheckTime = time.time()
-            cacheEntryObject = ngamsCacheEntry.ngamsCacheEntry().\
-                               unpackSqlInfo(sqlFileInfo).\
-                               setLastCheck(lastCheckTime).\
-                               setCacheTime(ingDateSecs)
-            fileSize = sqlFileInfo[ngamsDbCore.SUM1_FILE_SIZE]
-            addEntryInCacheDbms(srvObj, diskId, fileId, fileVersion,
-                                filename, fileSize, lastCheck = lastCheckTime,
-                                cacheTime = ingDateSecs,
-                                cacheEntryObj = cacheEntryObject)
+        # Add new entry in the DBMS'.
+        ingDateSecs = srvObj.getDb().\
+                      getIngDate(diskId, fileId, fileVersion)
+        lastCheckTime = time.time()
+        cacheEntryObject = ngamsCacheEntry.ngamsCacheEntry().\
+                           unpackSqlInfo(sqlFileInfo).\
+                           setLastCheck(lastCheckTime).\
+                           setCacheTime(ingDateSecs)
+        fileSize = sqlFileInfo[ngamsDbCore.SUM1_FILE_SIZE]
+        addEntryInCacheDbms(srvObj, diskId, fileId, fileVersion,
+                            filename, fileSize, lastCheck = lastCheckTime,
+                            cacheTime = ingDateSecs,
+                            cacheEntryObj = cacheEntryObject)
 
     # Start the Cache Control Plug-In helper threads if a Cache Control Plug-In
     # is specified.
