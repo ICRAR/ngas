@@ -979,53 +979,47 @@ def _clone(srvObj,
         return
 
     # Handling cloning of more files.
-    cloneListDbm = fileInfoDbm = None
+    cloneListDbm = None
     cloneListDbmName = tmpFilePat + "_CLONE_INFO_DB"
     try:
         # Get information about candidate files for cloning.
-        fileInfoDbmNm = tmpFilePat + "_FILE_INFO_DB"
-        fileInfoDbmNm = srvObj.getDb().\
-                        dumpFileInfo(fileId, fileVersion, diskId, ignore=0,
-                                     fileInfoDbmName=fileInfoDbmNm, order=0)
-        fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmNm)
+        files = srvObj.db.getFileInfoFromFileId(fileId, fileVersion, diskId,
+                                                ignore=0, order=0, dbCursor=False)
+        if not files:
+            msg = genLog("NGAMS_ER_CMD_EXEC",
+                         [NGAMS_CLONE_CMD, "No files for cloning found"])
+            raise Exception(msg)
+
+        # Convert to tuple of file info object plus extra info
+        # This is how the code expects this information to come, so we need to
+        # keep the format unless we change the bulk of the code
+        # f[-2] is the host id, f[-1] is the mount point
+        all_info = []
+        for f in files:
+            all_info.append((ngamsFileInfo.ngamsFileInfo().unpackSqlResult(f), f[-2], f[-1]))
 
         # Create a BSD DB with information about files to be cloned.
         rmFile(cloneListDbmName + "*")
         cloneListDbm = ngamsDbm.ngamsDbm(cloneListDbmName, cleanUpOnDestr = 0,
                                          writePerm = 1)
-        noOfFiles = fileInfoDbm.getCount()
-        if ((noOfFiles > 0) and
-            (((fileId != "") and (diskId == "") and (fileVersion == -1)) or
-             ((fileId != "") and (diskId != "") and (fileVersion == -1)) or
-             ((fileId != "") and (diskId != "") and (fileVersion != -1)))):
-            # Take only one element (the first).
-            cloneListDbm.add("0", fileInfoDbm.get("0"))
-        elif (noOfFiles > 0):
+        cloneDbCount = 0
+
+        if fileId != "" and (diskId != "" or fileVersion == -1):
+            # Take only the first element
+            cloneListDbm.add("0", all_info[0])
+            cloneDbCount = 1
+        else:
             # Take all the files.
-            fileInfoDbm.initKeyPtr()
-            cloneDbCount = 0
-            while (1):
-                key, tmpFileInfo = fileInfoDbm.getNext()
-                if (not key): break
+            for tmpFileInfo in all_info:
                 cloneListDbm.add(str(cloneDbCount), tmpFileInfo)
                 cloneDbCount += 1
 
-        # Raise exception if no files were found.
-        noOfCloneFiles = cloneListDbm.getCount()
-        if (noOfCloneFiles == 0):
-            errMsg = genLog("NGAMS_ER_CMD_EXEC",
-                            [NGAMS_CLONE_CMD, "No files for cloning found"])
-            raise Exception, errMsg
-
-        del fileInfoDbm
-        rmFile(fileInfoDbmNm + "*")
     except Exception:
         if (cloneListDbm): del cloneListDbm
-        if (fileInfoDbm): del fileInfoDbm
-        rmFile(fileInfoDbmNm + "*")
         rmFile(cloneListDbmName + "*")
         raise
-    logger.debug("Found: %d file(s) for cloning ...", noOfCloneFiles)
+
+    logger.debug("Found: %d file(s) for cloning ...", cloneDbCount)
     del cloneListDbm
 
     # Check available amount of disk space.
@@ -1035,7 +1029,7 @@ def _clone(srvObj,
     if (reqPropsObj):
         reqPropsObj.\
                       setCompletionPercent(0, 1).\
-                      setExpectedCount(noOfCloneFiles, 1).\
+                      setExpectedCount(cloneDbCount, 1).\
                       setActualCount(0, 1)
         srvObj.updateRequestDb(reqPropsObj)
 

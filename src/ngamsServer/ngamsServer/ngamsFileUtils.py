@@ -43,8 +43,8 @@ import struct
 import time
 
 import ngamsSrvUtils
-from ngamsLib import ngamsDbm, ngamsDbCore, ngamsDiskInfo, ngamsStatus, \
-    ngamsHttpUtils
+from ngamsLib import ngamsDbCore, ngamsDiskInfo, ngamsStatus, \
+    ngamsHttpUtils, ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib
 from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, \
     NGAMS_HOST_DOMAIN, rmFile, NGAMS_HOST_REMOTE, NGAMS_RETRIEVE_CMD, genLog, \
@@ -76,7 +76,7 @@ def _locateArchiveFile(srvObj,
                        diskId,
                        hostId,
                        reqPropsObj,
-                       dbFilename):
+                       files):
     """
     See description of ngamsFileUtils.locateArchiveFile(). This function is
     used simply to encapsulate the complete processing to be able to clean up.
@@ -89,14 +89,10 @@ def _locateArchiveFile(srvObj,
 
     # Filter out files not on specified host if host ID is given.
     if (hostId):
-        fileDbm.initKeyPtr()
-        while (1):
-            key, fileInfo = fileDbm.getNext()
-            if (not key): break
-            if (fileInfo[1] != hostId): fileDbm.rem(key)
+        files = filter(lambda x: x[1] == hostId, files)
 
     # If no file was found we raise an exception.
-    if (not fileDbm.getCount()):
+    if not files:
         tmpFileRef = fileId
         if (fileVersion > 0): tmpFileRef += "/Version: " + str(fileVersion)
         if (diskId): tmpFileRef += "/Disk ID: " + diskId
@@ -115,33 +111,15 @@ def _locateArchiveFile(srvObj,
     clusterFileList   = []
     domainFileList    = []
     remoteFileList    = []
-    hostList          = {}
-    hostDic           = {}
-    fileCount         = 0
-    idx               = 0
-    noOfFiles         = fileDbm.getCount()
-    while (fileCount < noOfFiles):
-        key = str(idx)
-        if (not fileDbm.hasKey(key)):
-            idx += 1
-            continue
-        hostId = fileDbm.get(key)[1]
-        hostList[hostId] = ""
-        idx += 1
-        fileCount += 1
+    all_hosts         = set([x[1] for x in files])
     hostDic = ngamsHighLevelLib.resolveHostAddress(srvObj.getHostId(),
                                                    srvObj.getDb(),
                                                    srvObj.getCfg(),
-                                                   hostList.keys())
+                                                   all_hosts)
 
     # Loop over the candidate files and sort them.
     fileCount = idx = 0
-    while (fileCount < noOfFiles):
-        key = str(idx)
-        if (not fileDbm.hasKey(key)):
-            idx += 1
-            continue
-        fileInfo = fileDbm.get(key)
+    for fileInfo in files:
         fileHost = fileInfo[1]
         if (hostDic[fileHost].getHostType() == NGAMS_HOST_LOCAL):
             localHostFileList.append(fileInfo)
@@ -155,10 +133,6 @@ def _locateArchiveFile(srvObj,
 
         idx += 1
         fileCount += 1
-
-    # Remove the BSD DB.
-    del fileDbm
-    rmFile(dbFilename + "*")
 
     # The highest priority of the file is determined by the File Version,
     # the latest version is preferred even though this may be stored
@@ -372,14 +346,17 @@ def locateArchiveFile(srvObj,
     T = TRACE()
 
     # Get a list with the candidate files matching the query conditions.
-    fileDbmName = srvObj.getDb().dumpFileInfo(fileId, fileVersion, diskId,
-                                              ignore=0)
-    try:
-        res = _locateArchiveFile(srvObj, fileId, fileVersion, diskId, hostId,
-                                 reqPropsObj, fileDbmName)
-        return res
-    finally:
-        rmFile(fileDbmName + "*")
+    res = srvObj.getDb().getFileInfoFromFileId(fileId, fileVersion, diskId,
+                                                 ignore=0, dbCursor=False)
+
+    # r[-2] is the host_id, r[-1] is the mount point
+    all_info = []
+    for r in res:
+        file_info = ngamsFileInfo.ngamsFileInfo().unpackSqlResult(r)
+        all_info.append((file_info, r[-2], r[-1]))
+
+    return _locateArchiveFile(srvObj, fileId, fileVersion, diskId, hostId,
+                              reqPropsObj, all_info)
 
 
 def quickFileLocate(srvObj,

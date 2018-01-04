@@ -218,8 +218,8 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         Description:
         The purpose of the test is to verify that the problem that there are
         Online and Offline files in the archive and thus the cross-checking
-        of the number of files for which info was queried from the NGAS DB (in
-        ngamsDb.dumpFileInfo()), detected erroneously a discrepancy.
+        of the number of files for which info was queried from the NGAS DB
+        detected erroneously a discrepancy.
 
         Expected Result:
         The RETRIEVE Command should execute successfully. The check of the

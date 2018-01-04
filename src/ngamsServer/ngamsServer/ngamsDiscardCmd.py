@@ -54,7 +54,7 @@ import os
 
 from ngamsLib.ngamsCore import getHostName, genLog, rmFile, TRACE, \
     NGAMS_DISCARD_CMD, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, NGAMS_FAILURE
-from ngamsLib import ngamsHighLevelLib, ngamsDbm, ngamsLib
+from ngamsLib import ngamsHighLevelLib, ngamsLib
 
 
 _help = """
@@ -114,8 +114,7 @@ def _discardFile(srvObj,
                  fileVersion = None,
                  hostId = None,
                  path = None,
-                 execute = 0,
-                 tmpFilePat = ""):
+                 execute = 0):
     """
     Discard a file from the system. If a Disk ID + File ID + File Version is
     given, the file must be stored on the contacted host in order to be
@@ -145,28 +144,22 @@ def _discardFile(srvObj,
     # Check the given paramereters.
     if (diskId and fileId and fileVersion):
         ngasHostId = "%s:%d" % (getHostName(), srvObj.getCfg().getPortNo())
-        fileListDbmName = tmpFilePat + "_FILE_LIST"
-        fileListDbmName = srvObj.getDb().\
-                          dumpFileInfo(fileId, fileVersion, diskId,
-                                       ignore=None,
-                                       fileInfoDbmName=fileListDbmName)
-        fileListDbm = ngamsDbm.ngamsDbm(fileListDbmName)
-        if (fileListDbm.getCount() == 0):
+        files = srvObj.getDb().getFileInfoFromFileId(fileId, fileVersion, diskId, ignore=None, dbCursor=False)
+        if not files:
             err = genLog("NGAMS_ER_DISCARD_NOT_FOUND",
                          ["Disk ID: %s/File ID: %s/File Version: %s" %\
                           (str(diskId), str(fileId), str(fileVersion)),
                           ngasHostId])
             return err
 
-        # Can only ewxecute the DISCARD Command locally.
-        fileInfo = fileListDbm.get("0")
-        del fileListDbm
+        # Can only execute the DISCARD Command locally.
+        fileInfo = files[0]
         hostId = fileInfo[-2]
         if (hostId != srvObj.getHostId()):
             raise Exception, "DISCARD Command can only be executed locally!"
 
         mtPt = fileInfo[-1]
-        filename = os.path.normpath(mtPt + "/" + fileInfo[0].getFilename())
+        filename = os.path.normpath(mtPt + "/" + fileInfo[1])
         _delFile(srvObj, filename, hostId, execute)
         if (execute):
             srvObj.getDb().deleteFileInfo(srvObj.getHostId(), diskId, fileId, fileVersion)
@@ -244,15 +237,8 @@ def handleCmd(srvObj,
             errMsg = genLog("NGAMS_ER_REQ_HANDLING", ["Must provide proper " +\
                             "value for parameter: execute (0|1)"])
             raise Exception, errMsg
-    tmpFilePat = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),
-                                                  "_DISCARD_CMD")
-    try:
-        status = _discardFile(srvObj, diskId, fileId, fileVersion, hostId,
-                              path, execute, tmpFilePat)
-        rmFile(tmpFilePat + "*")
-    except Exception, e:
-        rmFile(tmpFilePat + "*")
-        raise Exception, e
+
+    status = _discardFile(srvObj, diskId, fileId, fileVersion, hostId, path, execute)
     if (status.find("NGAMS_INFO_") == 0):
         ngamsStat = NGAMS_SUCCESS
     else:

@@ -194,8 +194,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         return
 
     try:
-        ngamsDiscardCmd._discardFile(srvObj, diskId, fileId, fileVersion, execute = 1,
-                                     tmpFilePat = srvObj.getCfg().getRootDirectory() + '/tmp/')
+        ngamsDiscardCmd._discardFile(srvObj, diskId, fileId, fileVersion, execute = 1)
     except Exception, e1:
         logger.warning('Fail to remove file %s: %s', filename, str(e1))
         srvObj.httpReply(reqPropsObj, httpRef, 200, 'Remove error: %s' % str(e1).replace('\n', '--'), NGAMS_TEXT_MT)

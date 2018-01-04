@@ -37,7 +37,6 @@ It should be used as part of the ngamsDbBase parent classes.
 """
 
 import logging
-import time
 
 from ngamsCore import TRACE, rmFile
 from ngamsCore import NGAMS_FILE_STATUS_OK, NGAMS_FILE_CHK_ACTIVE,NGAMS_DB_CH_FILE_UPDATE, NGAMS_DB_CH_FILE_INSERT
@@ -588,178 +587,11 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             sql.append(" ORDER BY nf.file_version desc, nd.disk_id desc")
 
         if dbCursor:
-            return self.dbCursor(''.join(sql), args = vals)
+            return self.dbCursor(''.join(sql), args=vals, use_cursor2=True)
         res = self.query2(''.join(sql), args = vals)
         if not res:
             return []
         return res
-
-
-    def _dumpFileInfo(self,
-                      fileId,
-                      fileVersion,
-                      diskId,
-                      ignore,
-                      fileInfoDbmName,
-                      expMatches,
-                      order):
-        """
-        See ngamsDbJoin.dumpFileInfo().
-        """
-        T = TRACE()
-
-        if (not fileInfoDbmName):
-            fileInfoDbmName = self.genTmpFile("FILE_INFO_DB")
-        rmFile(fileInfoDbmName + "*")
-        fileInfoDbm = None
-        dbCount = 0
-        dbCur = None
-        try:
-            fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName, cleanUpOnDestr=0,
-                                            writePerm = 1)
-
-            # If there are more than a 100 expected matches, a cursor is used
-            # otherwise the result is queried directly.
-            if (expMatches > 100):
-                dbCur = self.getFileInfoFromFileId(fileId, fileVersion, diskId,
-                                                   ignore, 1, order)
-                while (1):
-                    tmpFileInfoList = dbCur.fetch(1000)
-                    if (tmpFileInfoList == []): break
-                    for tmpFileInfo in tmpFileInfoList:
-                        tmpFileInfoObj =\
-                                       ngamsFileInfo.ngamsFileInfo().\
-                                       unpackSqlResult(tmpFileInfo)
-                        newEl = [tmpFileInfoObj, tmpFileInfo[-2],
-                                 tmpFileInfo[-1]]
-                        fileInfoDbm.add(str(dbCount), newEl)
-                        dbCount += 1
-                    fileInfoDbm.sync()
-                    time.sleep(0.050)
-                del dbCur
-            else:
-                res = self.getFileInfoFromFileId(fileId, fileVersion, diskId,
-                                                 ignore, 0, order)
-                for tmpFileInfo in res:
-                    tmpFileInfoObj = ngamsFileInfo.ngamsFileInfo().\
-                                     unpackSqlResult(tmpFileInfo)
-                    newEl = [tmpFileInfoObj, tmpFileInfo[-2],
-                             tmpFileInfo[-1]]
-                    fileInfoDbm.add(str(dbCount), newEl)
-                    dbCount += 1
-                fileInfoDbm.sync()
-            del fileInfoDbm
-            return fileInfoDbmName
-        except Exception:
-            rmFile(fileInfoDbmName + "*")
-            del fileInfoDbm
-            del dbCur
-            raise
-
-
-    def dumpFileInfo(self,
-                     fileId,
-                     fileVersion = -1,
-                     diskId = "",
-                     ignore = None,
-                     fileInfoDbmName = "",
-                     order = 1):
-        """
-        The method queries the file information for the files with the given
-        File ID and returns the information found in a list containing
-        sub-lists each with a ngamsFileInfo object, host ID and mount point.
-        The following rules are applied when determining which files to return:
-
-            o Files marked to be ignored are ignored.
-            o Only files that are marked as being hosted on hosts,
-              which are Online or on suspended disks/hosts, are considered.
-            o Latest version - first priority.
-
-        It is possible to indicate if files marked as being 'bad' in the
-        DB should be taken into account with the 'ignoreBadFiles' flag.
-
-        The file information is referred to by a string key in the interval
-        [0; oo[ (integer in string format).
-
-        If a specific File Version is specified only that will be taken into
-        account.
-
-        fileId:          File ID for file to be retrieved (string).
-
-        fileVersion:     If a File Version is specified only information
-                         for files with that version number and File ID
-                         are taken into account. The version must be a
-                         number in the range [1; oo[ (integer).
-
-        diskId:          ID of disk where file is residing. If specified
-                         to '' (empty string) the Disk ID is not taken
-                         into account (string).
-
-        ignore:          If set to 0 or 1, this value of ignore will be
-                         queried for. If set to None, ignore is not
-                         considered (None|0|1).
-
-        fileInfoDbmName: If given, this will be used as name for the file info
-                         DB (string).
-
-        order:           If set to 0, the list of matching file information
-                         will not be order according to the file version
-                         (integer/0|1).
-
-        Returns:         Name of a BSD DB file in which the File Info Objects
-                         are stored. This DB contains pickled objects pointed
-                         to by an index number ([0; oo[). The contents of each
-                         of these pickled objects is:
-
-                           [<File Info Obj>, <Host ID>, <Mount Point>]
-
-                         An element NGAMS_FILE_DB_COUNTER indicates the
-                         number of files stored in the DB (string/filename).
-        """
-        T = TRACE()
-
-        # Try first to get the expected number of files, which will be returned
-        expNoOfFiles = -1
-        if (self.getDbVerify()):
-            for n in range(1):
-                noOfFiles = self.getNumberOfFiles(diskId, fileId, fileVersion,
-                                                  ignore, onlyOnlineFiles=1)
-                if (noOfFiles > expNoOfFiles): expNoOfFiles = noOfFiles
-                time.sleep(0.050)
-
-        # Try up to 5 times to dump the files.
-        for n in range(5):
-            fileInfoDbmName = self._dumpFileInfo(fileId, fileVersion, diskId,
-                                                 ignore, fileInfoDbmName,
-                                                 expNoOfFiles, order)
-            # Check the number of files for which info was dumped.
-            tmpFileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName)
-            dumpedNoOfFiles = tmpFileInfoDbm.getCount()
-            del tmpFileInfoDbm
-
-            # Print out DB Verification Warning if actual number of files
-            # differs from expected number of files.
-            if (self.getDbVerify() and (dumpedNoOfFiles != expNoOfFiles)):
-                errMsg = "Problem dumping file info! Expected number of "+\
-                         "files: %d, actual number of files: %d"
-                logger.warning(errMsg, expNoOfFiles, dumpedNoOfFiles)
-
-            # Try to Auto Recover if requested.
-            if ((self.getDbVerify() and self.getDbAutoRecover()) and
-                (dumpedNoOfFiles != expNoOfFiles)):
-                rmFile(fileInfoDbmName + "*")
-                if (n < 4):
-                    # We try again, after a small pause.
-                    time.sleep(5)
-                    logger.warning("Retrying to dump file info ...")
-                else:
-                    errMsg = "Giving up to auto recover dumping of file info!"
-                    raise Exception(errMsg)
-            else:
-                # All files were dumped, we stop.
-                break
-
-        return fileInfoDbmName
 
 
     def dumpFileInfo2(self,
