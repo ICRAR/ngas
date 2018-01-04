@@ -324,20 +324,14 @@ def _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt):
 
     # Don't take these into account
     logger.debug("Retrieving information about files to be ignored ...")
-    spuFilesCur = srvObj.getDb().getFileSummarySpuriousFiles1(srvObj.getHostId())
-    while (1):
-        fileList = spuFilesCur.fetch(1000)
-        if (not fileList): break
-
-        # Loop over the files.
-        for fileInfo in fileList:
-            if (fileInfo[ngamsDbCore.SUM1_FILE_IGNORE]):
-                filename = os.path.\
-                           normpath(fileInfo[ngamsDbCore.SUM1_MT_PT] + "/" +\
-                                    fileInfo[ngamsDbCore.SUM1_FILENAME])
-                if filename in files_on_disk:
-                    del files_on_disk[filename]
-    del spuFilesCur
+    files = srvObj.getDb().getFileSummarySpuriousFiles1(srvObj.getHostId(), fetch_size=1000)
+    for fileInfo in files:
+        if (fileInfo[ngamsDbCore.SUM1_FILE_IGNORE]):
+            filename = os.path.\
+                       normpath(fileInfo[ngamsDbCore.SUM1_MT_PT] + "/" +\
+                                fileInfo[ngamsDbCore.SUM1_FILENAME])
+            if filename in files_on_disk:
+                del files_on_disk[filename]
     logger.debug("Retrieved information about files to be ignored")
     ###########################################################################
 

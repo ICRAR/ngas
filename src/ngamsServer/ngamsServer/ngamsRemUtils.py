@@ -34,7 +34,6 @@ Contains common functions used for the REMFILE and REMDISK commands.
 import glob
 import logging
 import os
-import time
 
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsLib
 from ngamsLib import ngamsDiskInfo, ngamsFileInfo
@@ -92,19 +91,11 @@ def checkSpuriousFiles(srvObj,
 
     # Check that there are no spurious files in connection with this disk in
     # the DB (where ngas_files.file_ignore != 0 or ngas_files.status != "1*******"
-    cursorObj = srvObj.getDb().\
-                getFileSummarySpuriousFiles1(hostId, diskId, fileId,
-                                             fileVersion)
-    while (1):
-        fileList = cursorObj.fetch(200)
-        if (not fileList): break
-
-        # Loop over the files.
-        for fileInfo in fileList:
-            spuriousFilesDbm.addIncKey(fileInfo)
-        spuriousFilesDbm.sync()
-        time.sleep(0.2)
-    del cursorObj
+    files = srvObj.db.getFileSummarySpuriousFiles1(hostId, diskId, fileId,
+                                                   fileVersion, fetch_size=200)
+    for fileInfo in files:
+        spuriousFilesDbm.addIncKey(fileInfo)
+    spuriousFilesDbm.sync()
     del spuriousFilesDbm
 
     return spuriousFilesDbmName

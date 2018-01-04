@@ -567,20 +567,15 @@ def initCacheArchive(srvObj, stopEvt):
 
     # Check if all files registered in the RDBMS NGAS Cache Table are
     # registered in the Local Cache DBMS.
-    curObj = srvObj.getDb().getCacheContents(srvObj.getHostId())
-    while (True):
-        fileInfoList = curObj.fetch(10000)
-        if (not fileInfoList): break
-        for sqlFileInfo in fileInfoList:
-            diskId      = sqlFileInfo[0]
-            fileId      = sqlFileInfo[1]
-            fileVersion = int(sqlFileInfo[2])
-            delete      = int(sqlFileInfo[3])
-            if (entryInCacheDbms(srvObj, diskId, fileId, fileVersion)):
-                continue
-            # Set filename, file size and Cache Entry Object later.
-            addEntryInCacheDbms(srvObj, diskId, fileId, fileVersion, "", -1,
-                                cacheEntryObj = "", addInRdbms = True)
+    for sqlFileInfo in srvObj.db.getCacheContents(srvObj.getHostId()):
+        diskId      = sqlFileInfo[0]
+        fileId      = sqlFileInfo[1]
+        fileVersion = int(sqlFileInfo[2])
+        if (entryInCacheDbms(srvObj, diskId, fileId, fileVersion)):
+            continue
+        # Set filename, file size and Cache Entry Object later.
+        addEntryInCacheDbms(srvObj, diskId, fileId, fileVersion, "", -1,
+                            cacheEntryObj = "", addInRdbms = True)
 
     # Update the local Cache Content DBMS with the information about files
     # online on this node.

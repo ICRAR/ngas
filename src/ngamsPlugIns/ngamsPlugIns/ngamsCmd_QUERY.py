@@ -366,14 +366,11 @@ def handleCmd(srvObj,
 
         # Make the query in a cursor and dump the results into the DBM.
         curObj = srvObj.getDb().dbCursor(query, args=args)
-        while (True):
-            resSet = curObj.fetch(1000)
-            if (not resSet): break
-            for res in resSet:
+        with curObj:
+            for res in curObj.fetch(1000):
                 cursorDbm.addIncKey(res)
         cursorDbm.add(CURSOR_IDX, 0)
         cursorDbm.sync()
-        del curObj
         del cursorDbm
         # TODO: In this case no reply is generated??
     else:

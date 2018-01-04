@@ -136,7 +136,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                         ing_date = None,
                         max_num_records = None,
                         upto_ing_date = None,
-                        use_cursor2 = False):
+                        fetch_size=1000):
         """
         Return summary information about files. An NG/AMS DB Cursor Object
         is created, which can be used to query the information sequentially.
@@ -214,7 +214,9 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             sql.append(" LIMIT {}")
             vals.append(max_num_records)
 
-        return self.dbCursor(''.join(sql), args = vals, use_cursor2=use_cursor2)
+        with self.dbCursor(''.join(sql), args=vals) as cursor:
+            for res in cursor.fetch(fetch_size):
+                yield res
 
 
     def getFileSummary3(self,
@@ -282,7 +284,8 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                                      hostId = None,
                                      diskId = None,
                                      fileId = None,
-                                     fileVersion = None):
+                                     fileVersion = None,
+                                     fetch_size = 1000):
         """
         Return summary information about spurious files, i.e. files registered
         in the DB as to be ignored and/or having a status indicating that
@@ -327,7 +330,9 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             sql.append(" AND nf.file_version={}")
             vals.append(fileVersion)
 
-        return self.dbCursor(''.join(sql), args = vals)
+        with self.dbCursor(''.join(sql), args = vals) as cursor:
+            for res in cursor.fetch(fetch_size):
+                yield res
 
 
     def setFileChecksum(self,
@@ -587,7 +592,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
             sql.append(" ORDER BY nf.file_version desc, nd.disk_id desc")
 
         if dbCursor:
-            return self.dbCursor(''.join(sql), args=vals, use_cursor2=True)
+            return self.dbCursor(''.join(sql), args=vals)
         res = self.query2(''.join(sql), args = vals)
         if not res:
             return []
@@ -734,15 +739,13 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                "(SELECT disk_id FROM ngas_disks WHERE "
                "host_id IN ({}) OR last_host_id IN ({}))") \
                % ngamsDbCore.getNgasFilesCols(self._file_ignore_columnname)
-        curObj = None
+
         try:
             fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName, 0, 1)
-            curObj = self.dbCursor(sql, args = (clusterHostList, clusterHostList))
+            cursor = self.dbCursor(sql, args=(clusterHostList, clusterHostList))
             fileCount = 1
-            while (1):
-                fileList = curObj.fetch(10000)
-                if (not fileList): break
-                for fileInfo in fileList:
+            with cursor:
+                for fileInfo in cursor.fetch(1000):
                     if (not useFileKey):
                         fileInfoDbm.add(str(fileCount), fileInfo)
                     else:
@@ -759,12 +762,10 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                         fileInfoDbm.add(fileKey, fileInfo)
 
                     fileCount += 1
-            del curObj
             fileInfoDbm.sync()
             del fileInfoDbm
         except Exception, e:
             rmFile(fileInfoDbmName)
-            if (curObj): del curObj
             msg = "dumpFileInfoCluster(): Failed in dumping file info. " +\
                   "Error: %s" % str(e)
             raise Exception, msg
@@ -943,4 +944,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
                "cache_time, cache_delete FROM ngas_cache "
                "WHERE disk_id IN (SELECT disk_id FROM ngas_disks WHERE "
                "host_id = {}) ORDER BY cache_time")
-        return self.dbCursor(sql, args = (hostId,))
+
+        with self.dbCursor(sql, args=(hostId,)) as cursor:
+            for res in cursor.fetch(1000):
+                yield res

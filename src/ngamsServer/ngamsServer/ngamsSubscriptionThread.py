@@ -1160,24 +1160,19 @@ def subscriptionThread(srvObj,
                     logger.debug('Data mover %s start_date = %s', subscrId, start_date)
                     count = 0
                     logger.debug('Checking hosts %s for data mover %s', dm_hosts, subscrId)
-                    cursorObj = srvObj.getDb().getFileSummary2(hostId = dm_hosts, ing_date = start_date, max_num_records = 1000)
+                    files = srvObj.getDb().getFileSummary2(hostId = dm_hosts, ing_date = start_date, max_num_records = 1000, fetch_size=100)
                     lastIngDate = None
-                    while (1):
-                        fileList = cursorObj.fetch(100)
-                        if (fileList == []): break
-                        for fileInfo in fileList:
-                            fileInfo = _convertFileInfo(fileInfo)
-                            fileDicDbm.add(_fileKey(fileInfo[FILE_ID], fileInfo[FILE_VER]), fileInfo)
-                            if (fileInfo[FILE_DATE] > lastIngDate): #just in case the cursor result is not sorted!
-                                lastIngDate = fileInfo[FILE_DATE]
-                            count += 1
+                    for fileInfo in files:
+                        fileInfo = _convertFileInfo(fileInfo)
+                        fileDicDbm.add(_fileKey(fileInfo[FILE_ID], fileInfo[FILE_VER]), fileInfo)
+                        if (fileInfo[FILE_DATE] > lastIngDate): #just in case the cursor result is not sorted!
+                            lastIngDate = fileInfo[FILE_DATE]
+                        count += 1
                         _checkStopSubscriptionThread(srvObj)
-                        time.sleep(0.1)
                     if (lastIngDate):
                         # mark the "last" file that will be checked regardless if it will be delivered or not
                         checkedStatus[subscrId] = lastIngDate
                         pass
-                    del cursorObj
                     if (count == 0):
                         logger.debug('No new files for data mover %s', subscrId)
                     else:
@@ -1196,24 +1191,17 @@ def subscriptionThread(srvObj,
                     if min_date is None or min_date > myMinDate:
                         min_date = myMinDate
 
-                cursorObj = srvObj.getDb().getFileSummary2(srvObj.getHostId(), ing_date = min_date)
+                files = srvObj.getDb().getFileSummary2(srvObj.getHostId(), ing_date = min_date, fetch_size=100)
                 if min_date is not None:
                     logger.debug('Fetching files ingested after %s', toiso8601(min_date))
                 else:
                     logger.debug('Fetching all ingested files')
-                while (1):
-                    fileList = cursorObj.fetch(100)
-                    if not fileList:
-                        break
-
-                    for fileInfo in fileList:
-                        fileInfo = _convertFileInfo(fileInfo)
-                        fileDicDbm.add(_fileKey(fileInfo[FILE_ID],
-                                                fileInfo[FILE_VER]),
-                                       fileInfo)
+                for fileInfo in files:
+                    fileInfo = _convertFileInfo(fileInfo)
+                    fileDicDbm.add(_fileKey(fileInfo[FILE_ID],
+                                            fileInfo[FILE_VER]),
+                                   fileInfo)
                     _checkStopSubscriptionThread(srvObj)
-                    time.sleep(0.1)
-                del cursorObj
             elif (fileRefs != []): # this is still possible even for data mover (due to recovered subscriptionList during server start)
                 # fileRefDic: Dictionary indicating which versions for each
                 # file that are of interest.
@@ -1230,23 +1218,18 @@ def subscriptionThread(srvObj,
                     else:
                         fileRefDic[fileId] = [fileVersion]
 
-                cursorObj = srvObj.getDb().getFileSummary2(srvObj.getHostId(),
-                                                           fileIds.keys(),
-                                                           ignore=0)
-                while (1):
-                    fileList = cursorObj.fetch(100)
-                    if (fileList == []): break
+                files = srvObj.getDb().getFileSummary2(srvObj.getHostId(),
+                                                       fileIds.keys(),
+                                                       ignore=0, fetch_size=100)
+                for fileInfo in files:
+                    # Take only the file if the File ID + File Version are
+                    # explicitly specified.
+                    fileInfo = _convertFileInfo(fileInfo)
+                    if fileInfo[FILE_VER] in fileRefDic[fileInfo[FILE_ID]]:
+                        fileDicDbm.add(_fileKey(fileInfo[FILE_ID],
+                                                fileInfo[FILE_VER]),
+                                       fileInfo)
                     _checkStopSubscriptionThread(srvObj)
-                    for fileInfo in fileList:
-                        # Take only the file if the File ID + File Version are
-                        # explicitly specified.
-                        fileInfo = _convertFileInfo(fileInfo)
-                        if fileInfo[FILE_VER] in fileRefDic[fileInfo[FILE_ID]]:
-                            fileDicDbm.add(_fileKey(fileInfo[FILE_ID],
-                                                    fileInfo[FILE_VER]),
-                                           fileInfo)
-                    time.sleep(0.1)
-                del cursorObj
 
             # The Deliver Status Dictionary indicates for each Subscriber
             # when the last file was delivered. We first initialize the

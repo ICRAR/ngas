@@ -28,9 +28,8 @@ when a normal NGAS server becomes a cache server
 
 import logging
 import os
-import time
 
-from ngamsLib import ngamsDb
+from ngamsLib import ngamsDbCore
 from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
 from ngamsServer import ngamsCacheControlThread
 
@@ -60,23 +59,16 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'Adding files to the Cache db now\n', NGAMS_TEXT_MT)
 
     up_until = '2013-08-22T21:56:04.284'
-    cursorObj = srvObj.getDb().getFileSummary2(hostId = myhostId, upto_ing_date = up_until)
     c = 0
+    for fileInfo in srvObj.getDb().getFileSummary2(hostId=myhostId, upto_ing_date=up_until, fetch_size=100):
+        fileId = fileInfo[ngamsDbCore.SUM2_FILE_ID]
+        filename = os.path.normpath(fileInfo[ngamsDbCore.SUM2_MT_PT] +\
+                                          os.sep +\
+                                          fileInfo[ngamsDbCore.SUM2_FILENAME])
+        fileVersion = fileInfo[ngamsDbCore.SUM2_VERSION]
+        diskId = fileInfo[ngamsDbCore.SUM2_DISK_ID]
+        ngamsCacheControlThread.addEntryNewFilesDbm(srvObj, diskId, fileId,
+                                               fileVersion, filename)
+        c += 1
 
-    while (1):
-        fileList = cursorObj.fetch(100)
-        if (fileList == []): break
-        for fileInfo in fileList:
-            fileId = fileInfo[ngamsDb.ngamsDbCore.SUM2_FILE_ID]
-            filename = os.path.normpath(fileInfo[ngamsDb.ngamsDbCore.SUM2_MT_PT] +\
-                                              os.sep +\
-                                              fileInfo[ngamsDb.ngamsDbCore.SUM2_FILENAME])
-            fileVersion = fileInfo[ngamsDb.ngamsDbCore.SUM2_VERSION]
-            diskId = fileInfo[ngamsDb.ngamsDbCore.SUM2_DISK_ID]
-            ngamsCacheControlThread.addEntryNewFilesDbm(srvObj, diskId, fileId,
-                                                   fileVersion, filename)
-            c += 1
-        logger.debug('Added %d files into the DB. sleep another 100 ms now...', c)
-        time.sleep(0.1)
     logger.debug('In total, added %d files into the DB. Done', c)
-    del cursorObj

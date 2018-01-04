@@ -209,9 +209,9 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
 
         sql = "SELECT %s FROM %s mq WHERE instance_id={0}" % \
                 (ngamsDbCore.getNgasMirQueueCols(), ngamsDbCore.NGAS_MIR_QUEUE)
-        curObj = self.dbCursor(sql, args=(instanceId,))
-
-        return curObj
+        with self.dbCursor(sql, args=(instanceId,)) as cursor:
+            for res in cursor.fetch(1000):
+                yield self.unpackMirReqSqlResult(res)
 
 
 # EOF

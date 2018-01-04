@@ -847,17 +847,14 @@ class ngamsDbCore(object):
             return t.execute(sqlQuery, args)
 
 
-    def dbCursor(self, sqlQuery, args=(), use_cursor2=False):
+    def dbCursor(self, sqlQuery, args=()):
         """
         Create a cursor on the given query and return the cursor object.
-        If `use_cursor2` is set, an instance of `cursor2` will be returned;
-        otherwise an old `ngamsDbCursor` will be returned.
         """
 
         logger.debug("Performing SQL query (using a cursor): %s / %r", sqlQuery, args)
         sqlQuery, args = self._prepare_query(sqlQuery, args)
-        clazz = cursor2 if use_cursor2 else ngamsDbCursor
-        return clazz(self.__pool, sqlQuery, args)
+        return cursor2(self.__pool, sqlQuery, args)
 
     def getNgasFilesMap(self):
         """

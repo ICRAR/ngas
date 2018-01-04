@@ -45,25 +45,20 @@ def _checkFileThread(srvObj, reqPropsObj, httpRef):
     is_chkFileThrd_running = True
     wrong_files = []
 
-    cursorObj = srvObj.getDb().getFileSummary2(hostId = srvObj.getHostId())
-    while (1):
-        fileList = cursorObj.fetch(100)
-        if (fileList == []): break
-        for fileInfo in fileList:
-            complFileUri = os.path.realpath(fileInfo[ngamsDb.ngamsDbCore.SUM2_MT_PT] +\
-                                                  os.sep +\
-                                                  fileInfo[ngamsDb.ngamsDbCore.SUM2_FILENAME])
-            if (not os.path.exists(complFileUri)):
-                ing_date = fileInfo[ngamsDb.ngamsDbCore.SUM2_ING_DATE]
-                fileId = fileInfo[ngamsDb.ngamsDbCore.SUM2_FILE_ID]
-                diskId = fileInfo[ngamsDb.ngamsDbCore.SUM2_DISK_ID]
-                file_ver = fileInfo[ngamsDb.ngamsDbCore.SUM2_VERSION]
-                wrong_files.append((ing_date, complFileUri, fileId, diskId, file_ver))
-                num_wrong += 1
+    for fileInfo in srvObj.getDb().getFileSummary2(hostId = srvObj.getHostId(), fetch_size=100):
+        complFileUri = os.path.realpath(fileInfo[ngamsDb.ngamsDbCore.SUM2_MT_PT] +\
+                                              os.sep +\
+                                              fileInfo[ngamsDb.ngamsDbCore.SUM2_FILENAME])
+        if (not os.path.exists(complFileUri)):
+            ing_date = fileInfo[ngamsDb.ngamsDbCore.SUM2_ING_DATE]
+            fileId = fileInfo[ngamsDb.ngamsDbCore.SUM2_FILE_ID]
+            diskId = fileInfo[ngamsDb.ngamsDbCore.SUM2_DISK_ID]
+            file_ver = fileInfo[ngamsDb.ngamsDbCore.SUM2_VERSION]
+            wrong_files.append((ing_date, complFileUri, fileId, diskId, file_ver))
+            num_wrong += 1
 
-            num_checked += 1
+        num_checked += 1
 
-    del cursorObj
     if (num_wrong):
         work_dir = srvObj.getCfg().getRootDirectory() + '/tmp'
         fname = '%s/CheckFileResult_%s' % (work_dir, chkFileThrd.getName())
