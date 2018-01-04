@@ -362,7 +362,7 @@ def _dumpFileInfo(srvObj, disks_to_check, tmpFilePat, stopEvt):
         #          when iterating at the end of the table that are prone to corrupt the hash table object
         #queueDbm.initKeyPtr()
         #while (1):
-        #    fileKey, fileInfo = queueDbm.getNext(0)
+        #    fileKey, fileInfo = queueDbm.getNext()
         #    if (not fileKey): break
         for fileKey,dbVal in queueDbm.iteritems():
             # jagonzal: We need to reformat the values and skip administrative elements #################
@@ -414,13 +414,13 @@ def _schedNextFile(srvObj,
                             break
                     if (not beingChecked):
                         dbmObjDic[diskId][0].initKeyPtr()
-                    fileKey, fileInfo = dbmObjDic[diskId][0].getNext(0)
+                    fileKey, fileInfo = dbmObjDic[diskId][0].getNext()
                     diskSchedDic[threadId] = diskId
                 else:
                     break
             else:
                 diskId = diskSchedDic[threadId]
-                fileKey, fileInfo = dbmObjDic[diskId][0].getNext(0)
+                fileKey, fileInfo = dbmObjDic[diskId][0].getNext()
 
             if (fileInfo):
                 # We got a file key + file info list, return the info.
@@ -583,7 +583,7 @@ def _genReport(srvObj, unregistered, diskDic, dbmObjDic, stats):
                 #jagonzal: Replace looping aproach to avoid exceptions coming from the next() method underneath
                 #          when iterating at the end of the table that are prone to corrupt the hash table object
                 #while (1):
-                #    fileKey, errInfo = errDbm.getNext(0)
+                #    fileKey, errInfo = errDbm.getNext()
                 #    if (not fileKey): break
                 for fileKey,dbVal in errDbm.iteritems():
                     # jagonzal: We need to reformat the values and skip administrative elements #################

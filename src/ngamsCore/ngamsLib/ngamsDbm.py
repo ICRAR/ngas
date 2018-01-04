@@ -37,10 +37,9 @@ import cPickle
 import functools
 import logging
 import os
-import random
 import threading
 
-from ngamsCore import TRACE, NGAMS_DBM_EXT, NGAMS_FILE_DB_COUNTER, rmFile
+from ngamsCore import NGAMS_DBM_EXT, NGAMS_FILE_DB_COUNTER, rmFile
 
 
 logger = logging.getLogger(__name__)
@@ -86,18 +85,15 @@ class ngamsDbm:
         autoSync:          Synchonize the DB after the specified number
                            of changes have been introduced (integer).
         """
-        T = TRACE()
-
         # Add proper extension if not already added.
-        tmpName, tmpExt = os.path.splitext(dbmName)
+        _, tmpExt = os.path.splitext(dbmName)
         if (tmpExt != "." + NGAMS_DBM_EXT): dbmName += "." + NGAMS_DBM_EXT
 
         self.__dbmObj         = None
         self.__dbmName        = dbmName
         self.__cleanUpOnDestr = cleanUpOnDestr
-        self.__writePerm      = writePerm
         self.__keyPtr         = None
-        self.__sem            = threading.Semaphore(1)
+        self.__sem            = threading.Lock()
         self.__autoSync       = autoSync
         self.__changeCount    = 0
         if (not os.path.exists(dbmName)):
@@ -142,8 +138,6 @@ class ngamsDbm:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE()
-
         if (self.__dbmObj): self.__dbmObj.sync()
         rmFile(self.__dbmName)
         return self
@@ -159,8 +153,6 @@ class ngamsDbm:
 
         Returns:  Reference to object itself.
         """
-        T = TRACE(5)
-
         newVal = (cPickle.loads(self.__dbmObj[NGAMS_FILE_DB_COUNTER]) + val)
         self.__dbmObj[NGAMS_FILE_DB_COUNTER] = cPickle.dumps(newVal, 1)
         return self
@@ -183,10 +175,7 @@ class ngamsDbm:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE(5)
-
-        try:
-            self.__sem.acquire()
+        with self.__sem:
             dbVal = cPickle.dumps(object, 1)
             if (not self.__dbmObj.has_key(key)): self._incrDbCount(1)
             self.__dbmObj[key] = dbVal
@@ -196,11 +185,7 @@ class ngamsDbm:
             elif (self.__changeCount >= self.__autoSync):
                 self.__dbmObj.sync()
                 self.__changeCount = 0
-            self.__sem.release()
             return self
-        except Exception, e:
-            self.__sem.release()
-            raise e
 
 
     @translated
@@ -218,8 +203,6 @@ class ngamsDbm:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE(5)
-
         newKey = str(self.getCount() + 1)
         return self.add(newKey, object, sync)
 
@@ -235,17 +218,10 @@ class ngamsDbm:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE(5)
-
-        try:
-            self.__sem.acquire()
+        with self.__sem:
             del self.__dbmObj[key]
             self._incrDbCount(-1)
-            self.__sem.release()
             return self
-        except Exception, e:
-            self.__sem.release()
-            raise e
 
 
     @translated
@@ -256,8 +232,6 @@ class ngamsDbm:
 
         Returns:   List with the keys in the DBM (list).
         """
-        T = TRACE(5)
-
         keyList = self.__dbmObj.keys()
         for idx in range((len(keyList) - 1), -1, -1):
             if (keyList[idx].find("__") == 0): del keyList[idx]
@@ -274,16 +248,8 @@ class ngamsDbm:
 
         Returns:  1 = key in DB otherwise 0 is returned (integer/0|1).
         """
-        T = TRACE(5)
-
-        try:
-            self.__sem.acquire()
-            hasKey = self.__dbmObj.has_key(key)
-            self.__sem.release()
-            return hasKey
-        except Exception, e:
-            self.__sem.release()
-            raise e
+        with self.__sem:
+            return self.__dbmObj.has_key(key)
 
     # suppor for "k in dbm" syntax
     def __contains__(self, k):
@@ -296,16 +262,9 @@ class ngamsDbm:
 
         Returns:    Reference to object itself.
         """
-        T = TRACE(5)
-
-        try:
-            self.__sem.acquire()
+        with self.__sem:
             self.__dbmObj.sync()
-            self.__sem.release()
             return self
-        except Exception, e:
-            self.__sem.release()
-            raise e
 
 
     @translated
@@ -319,7 +278,6 @@ class ngamsDbm:
 
         Returns:   Element or None if not available (<Object>).
         """
-        T = TRACE(5)
 
         if (self.__dbmObj.has_key(key)):
             return cPickle.loads(self.__dbmObj[key])
@@ -335,15 +293,12 @@ class ngamsDbm:
 
         Returns:   Reference to object itself.
         """
-        T = TRACE(5)
-
         self.__keyPtr = None
         return self
 
 
     @translated
-    def getNext(self,
-                pop = 0):
+    def getNext(self):
         """
         Get the keys + objects sequentially from the DB. If pop=1,
         the entry will be removed from the DB before returning.
@@ -355,10 +310,7 @@ class ngamsDbm:
 
         Returns:    Tuple with key + value (unpickled) (tuple).
         """
-        T = TRACE(5)
-
-        try:
-            self.__sem.acquire()
+        with self.__sem:
             if (self.__keyPtr):
                 while (self.__keyPtr):
                     try:
@@ -371,58 +323,13 @@ class ngamsDbm:
                     self.__keyPtr, dbVal = self.__dbmObj.first()
                     while (str(self.__keyPtr).find("__") == 0):
                         self.__keyPtr, dbVal = self.__dbmObj.next()
-                except Exception, e:
+                except Exception:
                     self.__keyPtr, dbVal = (None, None)
-            if (self.__keyPtr and pop):
-                del self.__dbmObj[self.__keyPtr]
-                self._incrDbCount(-1)
-                self.__changeCount += 1
-                if (self.__changeCount >= self.__autoSync):
-                    self.__dbmObj.sync()
-                    self.__changeCount = 0
-            self.__sem.release()
-            if (not self.__keyPtr):
-                return (None, None)
-            else:
-                return (self.__keyPtr, cPickle.loads(dbVal))
-        except Exception, e:
-            self.__sem.release()
-            raise e
 
-
-    @translated
-    def getRandom(self,
-                  pop = 0):
-        """
-        Return a random element from the DB.
-
-        pop:      Remove element from DBM (integer/0|1).
-
-        Returns:  Tuple with key + value (unpickled) (tuple).
-        """
-        T = TRACE(5)
-
-        try:
-            self.__sem.acquire()
-            keys = self.__dbmObj.keys()
-            idx = int((random.random() * (len(keys) - 1)) + 0.5)
-            key = keys[idx]
-            del keys
-
-            key, val = self.__dbmObj[key]
-            val = cPickle.loads(val)
-            if (pop):
-                del self.__dbmObj[key]
-                self._incrDbCount(-1)
-                self.__changeCount += 1
-                if (self.__changeCount >= self.__autoSync):
-                    self.__dbmObj.sync()
-                    self.__changeCount = 0
-            self.__sem.release()
-            return (key, val)
-        except Exception, e:
-            self.__sem.release()
-            raise e
+        if (not self.__keyPtr):
+            return (None, None)
+        else:
+            return (self.__keyPtr, cPickle.loads(dbVal))
 
 
     @translated
