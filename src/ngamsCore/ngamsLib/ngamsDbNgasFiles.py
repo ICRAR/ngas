@@ -40,11 +40,10 @@ import logging
 import os
 import re
 import tempfile
-import time
 
 from ngamsCore import TRACE, NGAMS_DB_CH_FILE_DELETE, NGAMS_DB_CH_CACHE
 from ngamsCore import rmFile, getNgamsVersion, toiso8601, fromiso8601, mvFile
-import ngamsDbm, ngamsDbCore
+import ngamsDbCore
 import ngamsFileInfo, ngamsStatus, ngamsFileList
 
 
@@ -144,7 +143,8 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
                         diskId,
                         fileId = "",
                         fileVersion = -1,
-                        ignore = None):
+                        ignore = None,
+                        fetch_size = 1000):
         """
         The function queries a set of files matching the conditions
         specified in the input parameters.
@@ -186,93 +186,10 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
             sql.append(" WHERE ")
             sql.append(" AND ".join(cond_sql.keys()))
 
-        return self.dbCursor(''.join(sql), args=cond_sql.values())
-
-
-    def dumpFileInfoList(self,
-                         diskId,
-                         fileId = "",
-                         fileVersion = -1,
-                         ignore = None,
-                         fileListDbmName = ""):
-        """
-        The function queries the same info as getFileInfoList(). However,
-        rathen than returning a cursor object, it retrieves the info itself
-        and stores this in a DBM. This is done in a 'safe manner', whereby
-        it is tried to recover from the situation where less files are returned
-        than expected.
-
-        ignore:             If set to 0 or 1, this value of ignore will be
-                            queried for. If set to None, ignore is not
-                            considered (None|0|1).
-
-        fileListDbmName:    Name of DBM where to store the queried info
-                            (string).
-
-        Returns:            Complete name of DBM containing the requested
-                            info (string).
-        """
-        T = TRACE()
-
-        # Retrieve the theoretical number of files the query should produce.
-        # Try first to get the expected number of files, which will be returned
-        expNoOfFiles = -1
-        if (self.getDbVerify()):
-            for n in range(1):
-                noOfFiles = self.getNumberOfFiles(diskId, fileId, fileVersion,
-                                                  ignore)
-                if (noOfFiles > expNoOfFiles): expNoOfFiles = noOfFiles
-
-        # Generate final name of DBM + create DBM.
-        if (not fileListDbmName):
-            fileListDbmName = self.genTmpFile("_FILE_INFO")
-
-        # Retrieve/dump the files (up to 5 times).
-        fileListDbm = None
-        for n in range(5):
-            try:
-                fileListDbm = ngamsDbm.ngamsDbm(fileListDbmName,
-                                                cleanUpOnDestr = 0,
-                                                writePerm = 1)
-                fileListDbmName = fileListDbm.getDbmName()
-                dbCur = self.getFileInfoList(diskId, fileId, fileVersion,
-                                             ignore)
-                fileCount = 0
-                while (1):
-                    res = dbCur.fetch(100)
-                    if (not res): break
-                    for fileInfo in res:
-                        fileListDbm.add(str(fileCount), fileInfo)
-                        fileCount += 1
-                fileListDbm.sync()
-                logger.debug("Dumped information about %d files", fileCount)
-            except:
-                rmFile(fileListDbmName + "*")
-                if (fileListDbm): del fileListDbm
-                raise
-
-            # Print out DB Verification Warning if actual number of files
-            # differs from expected number of files.
-            if (self.getDbVerify() and (fileCount != expNoOfFiles)):
-                errMsg = "Problem dumping file info! Expected number of "+\
-                         "files: %d, actual number of files: %d"
-                errMsg = errMsg % (expNoOfFiles, fileCount)
-                logger.warning(errMsg)
-
-            # Try to Auto Recover if requested.
-            if ((self.getDbVerify() and self.getDbAutoRecover()) and
-                (fileCount != expNoOfFiles)):
-                if (fileListDbm): del fileListDbm
-                rmFile(fileListDbmName + "*")
-                if (n < 4):
-                    time.sleep(5)
-                    logger.warning("Retrying to dump file info ...")
-                else:
-                    errMsg = "Giving up to auto recover dumping of file info!"
-                    raise Exception(errMsg)
-            else:
-                break
-        return fileListDbmName
+        cursor = self.dbCursor(''.join(sql), args=cond_sql.values())
+        with cursor:
+            for x in cursor.fetch(fetch_size):
+                yield x
 
 
     def getLatestFileVersion(self,
@@ -347,53 +264,48 @@ class ngamsDbNgasFiles(ngamsDbCore.ngamsDbCore):
         """
         T = TRACE()
 
-        fileInfoDbmName = fileInfoDbm = None
+        # We have to update some fields of the disk hosting the file
+        # when we delete a file (number_of_files, available_mb,
+        # bytes_stored, also maybe later: checksum.
+        dbDiskInfo = self.getDiskInfoFromDiskId(diskId)
+
+        # getFileInfoList returns a generator, so we iterate once to get the first element
         try:
-            # We have to update some fields of the disk hosting the file
-            # when we delete a file (number_of_files, available_mb,
-            # bytes_stored, also maybe later: checksum.
-            dbDiskInfo = self.getDiskInfoFromDiskId(diskId)
-            fileInfoDbmName = self.dumpFileInfoList(diskId, fileId,
-                                                    fileVersion, None,
-                                                    fileInfoDbmName)
-            fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName)
-            if (fileInfoDbm.getCount() > 0):
-                dbFileInfo = fileInfoDbm.get("0")
-            else:
-                msg = "Cannot remove file. File ID: %s, " +\
-                      "File Version: %d, Disk ID: %s"
-                errMsg = msg % (fileId, fileVersion, diskId)
-                raise Exception, errMsg
-            sql = "DELETE FROM ngas_files WHERE disk_id={0} AND file_id={1} AND file_version={2}"
-            self.query2(sql, args=(diskId, fileId, fileVersion))
+            dbFileInfo = next(self.getFileInfoList(diskId, fileId, fileVersion))
+        except StopIteration:
+            msg = "Cannot remove file. File ID: %s, " +\
+                  "File Version: %d, Disk ID: %s"
+            errMsg = msg % (fileId, fileVersion, diskId)
+            raise Exception, errMsg
 
-            # Create a File Removal Status Document.
-            if (self.getCreateDbSnapshot() and genSnapshot):
-                tmpFileObj = ngamsFileInfo.ngamsFileInfo().\
-                             unpackSqlResult(dbFileInfo)
-                self.createDbFileChangeStatusDoc(hostId, NGAMS_DB_CH_FILE_DELETE,
-                                                 [tmpFileObj])
+        sql = "DELETE FROM ngas_files WHERE disk_id={0} AND file_id={1} AND file_version={2}"
+        self.query2(sql, args=(diskId, fileId, fileVersion))
 
-            # Now update the ngas_disks entry for the disk hosting the file.
-            if (dbDiskInfo):
-                newNumberOfFiles = (dbDiskInfo[ngamsDbCore.\
-                                               NGAS_DISKS_NO_OF_FILES] - 1)
-                if (newNumberOfFiles < 0): newNumberOfFiles = 0
-                newAvailMb = (dbDiskInfo[ngamsDbCore.NGAS_DISKS_AVAIL_MB] +
-                              int(float(dbFileInfo[ngamsDbCore.\
-                                                   NGAS_FILES_FILE_SIZE])/1e6))
-                newBytesStored = (dbDiskInfo[ngamsDbCore.\
-                                             NGAS_DISKS_BYTES_STORED] -
-                                  dbFileInfo[ngamsDbCore.NGAS_FILES_FILE_SIZE])
-                if (newBytesStored < 0): newBytesStored = 0
-                sql = "UPDATE ngas_disks SET number_of_files={0}, " +\
-                      "available_mb={1}, bytes_stored={2} WHERE disk_id={3}"
-                self.query2(sql, args=(newNumberOfFiles, newAvailMb, newBytesStored, diskId))
+        # Create a File Removal Status Document.
+        if (self.getCreateDbSnapshot() and genSnapshot):
+            tmpFileObj = ngamsFileInfo.ngamsFileInfo().\
+                         unpackSqlResult(dbFileInfo)
+            self.createDbFileChangeStatusDoc(hostId, NGAMS_DB_CH_FILE_DELETE,
+                                             [tmpFileObj])
 
-            self.triggerEvents()
-            return self
-        finally:
-            if (fileInfoDbmName): rmFile(fileInfoDbmName)
+        # Now update the ngas_disks entry for the disk hosting the file.
+        if (dbDiskInfo):
+            newNumberOfFiles = (dbDiskInfo[ngamsDbCore.\
+                                           NGAS_DISKS_NO_OF_FILES] - 1)
+            if (newNumberOfFiles < 0): newNumberOfFiles = 0
+            newAvailMb = (dbDiskInfo[ngamsDbCore.NGAS_DISKS_AVAIL_MB] +
+                          int(float(dbFileInfo[ngamsDbCore.\
+                                               NGAS_FILES_FILE_SIZE])/1e6))
+            newBytesStored = (dbDiskInfo[ngamsDbCore.\
+                                         NGAS_DISKS_BYTES_STORED] -
+                              dbFileInfo[ngamsDbCore.NGAS_FILES_FILE_SIZE])
+            if (newBytesStored < 0): newBytesStored = 0
+            sql = "UPDATE ngas_disks SET number_of_files={0}, " +\
+                  "available_mb={1}, bytes_stored={2} WHERE disk_id={3}"
+            self.query2(sql, args=(newNumberOfFiles, newAvailMb, newBytesStored, diskId))
+
+        self.triggerEvents()
+        return self
 
 
     def getSumBytesStored(self,

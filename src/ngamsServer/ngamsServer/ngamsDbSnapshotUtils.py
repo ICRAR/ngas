@@ -572,21 +572,11 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
             #    - If file not on disk -> Remove entry from DB.
 
             # Create a temporary DB Snapshot with the files from the DB.
-            #
-            # TODO: This algorithm could be improved such that the intermediate
-            #       DBM (tmpSnapshotDbm) is not created. I.e., tmpFileListDbm
-            #       is used diretly futher down.
-            tmpFileListDbm = None
-            tmpFileListDbmName = None
             try:
                 rmFile(tmpSnapshotDbmName + "*")
                 tmpSnapshotDbm = bsddb.hashopen(tmpSnapshotDbmName, "c")
-                tmpFileListDbmName = srvObj.getDb().dumpFileInfoList(diskId,
-                                                                     ignore=None)
-                tmpFileListDbm = ngamsDbm.ngamsDbm(tmpFileListDbmName)
-                while True:
-                    key, fileInfo = tmpFileListDbm.getNext()
-                    if (not key): break
+
+                for fileInfo in srvObj.db.getFileInfoList(diskId, ignore=None):
                     fileKey = _genFileKey(fileInfo)
                     encFileInfoDic = _encFileInfo(srvObj.getDb(), tmpSnapshotDbm,
                                                   fileInfo)
@@ -596,11 +586,7 @@ def checkUpdateDbSnapShots(srvObj, stopEvt):
             except:
                 rmFile(tmpSnapshotDbmName)
                 raise
-            finally:
-                if tmpFileListDbmName:
-                    rmFile(tmpFileListDbmName)
-                if tmpFileListDbm:
-                    del tmpFileListDbm
+
             #####################################################################
             # Loop over the possible entries in the DB Snapshot and compare
             # these against the DB.
