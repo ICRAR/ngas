@@ -83,10 +83,9 @@ def _locateArchiveFile(srvObj,
     """
     T = TRACE()
 
-    format = "_locateArchiveFile() - Disk ID: %s - File ID: " +\
-             "%s - File Version: %d ..."
-    logger.debug(format, str(diskId), fileId, int(fileVersion))
-    fileDbm = ngamsDbm.ngamsDbm(dbFilename)
+    msg = "_locateArchiveFile() - Disk ID: %s - File ID: " +\
+          "%s - File Version: %d ..."
+    logger.debug(msg, str(diskId), fileId, int(fileVersion))
 
     # Filter out files not on specified host if host ID is given.
     if (hostId):
@@ -223,7 +222,6 @@ def _locateArchiveFile(srvObj,
     # 'responsible' for the file, allows for Retrieve Requests (only done
     # in connection with a Retrieve Request).
     logger.debug("Checking which of the candidate files should be selected ...")
-    srcFileInfo = None
     foundFile   = 0
     for fileVer in fileVerList:
         if (foundFile): break
@@ -317,13 +315,13 @@ def _locateArchiveFile(srvObj,
                    diskInfoObj.getMountPoint(),
                    fileInfoObj.getFilename(), fileInfoObj.getFileId(),
                    fileInfoObj.getFileVersion(), fileInfoObj.getFormat()]
-    format = "Located suitable file for request - File ID: %s. " +\
-             "Info for file found - Location: %s - Host ID/IP: %s/%s - " +\
-             "Port Number: %s - File Version: %d - Filename: %s - " +\
-             "Mime-type: %s"
-    logger.debug(format, fileId, location, host, ipAddress, port,
-                     fileInfoObj.getFileVersion(), fileInfoObj.getFilename(),
-                     fileInfoObj.getFormat())
+    msg = "Located suitable file for request - File ID: %s. " +\
+          "Info for file found - Location: %s - Host ID/IP: %s/%s - " +\
+          "Port Number: %s - File Version: %d - Filename: %s - " +\
+          "Mime-type: %s"
+    logger.debug(msg, fileId, location, host, ipAddress, port,
+                 fileInfoObj.getFileVersion(), fileInfoObj.getFilename(),
+                 fileInfoObj.getFormat())
     return srcFileInfo
 
 
