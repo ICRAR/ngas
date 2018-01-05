@@ -622,9 +622,6 @@ class ngamsDbCore(object):
         logger.info("DB Module param style: %s", self.__paramstyle)
         logger.info("DB Module API Level: %s", self.__dbModule.apilevel)
 
-        # Verification/Auto Recover.
-        self.__dbVerify      = 1
-        self.__dbAutoRecover = 0
         self.__dbTmpDir      = "/tmp"
 
         self._use_file_ignore = use_file_ignore
@@ -685,24 +682,6 @@ class ngamsDbCore(object):
         """
         self.__dbAccessTime = 0.0
         return self
-
-
-    def getDbVerify(self):
-        """
-        Get value of DB verification flag.
-
-        Returns:  value of DB verification flag (boolean).
-        """
-        return self.__dbVerify
-
-
-    def getDbAutoRecover(self):
-        """
-        Get value of DB Auto Recover Flag.
-
-        Returns:    value of DB Auto Recover Flag (boolean).
-        """
-        return self.__dbAutoRecover
 
 
     def setDbTmpDir(self,
