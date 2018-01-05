@@ -131,11 +131,6 @@ def _registerExec(srvObj,
         if (reqPropsObj.hasHttpPar("notif_email")):
             emailNotif = 1
 
-    # Create a temporary BSD DB to hold information about each file
-    # referred to by its complete filename.
-    fileInfoDbmName = tmpFilePat + "_DB_FILE_INFO"
-    fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName, writePerm = 1)
-
     # Create the temporary BSD DB to contain the information for the
     # Email Notification Message.
     if (emailNotif):
@@ -328,8 +323,6 @@ def _registerExec(srvObj,
     if (emailNotif): regDbm.sync()
     del fileListDbm
     rmFile(fileListDbmName + "*")
-    del fileInfoDbm
-    rmFile(fileInfoDbmName + "*")
 
     # Final update of the Request Status.
     if (reqPropsObj):
