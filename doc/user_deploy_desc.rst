@@ -42,6 +42,12 @@ are available to further customize the process:
 |                             | | installation directory will be     |                   |
 |                             | | overwritten                        |                   |
 +-----------------------------+--------------------------------------+-------------------+
+| NGAS_USE_CUSTOM_PIP_CERT    | | If specified, configure pip to use | | Not specified   |
+|                             | | curl.haxx.se/ca/cacert.pem as the  |                   |
+|                             | | root TLS certificate. In some old  |                   |
+|                             | | platforms this is needed so pip    |                   |
+|                             | | trusts PyPI downloads              |                   |
++-----------------------------+--------------------------------------+-------------------+
 | NGAS_EXTRA_PYTHON_PACKAGES  | | Comma-separated list of extra      | | Not specified   |
 |                             | | python packages to install         |                   |
 +-----------------------------+--------------------------------------+-------------------+

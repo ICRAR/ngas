@@ -90,6 +90,10 @@ def ngas_overwrite_installation():
     key = 'NGAS_OVERWRITE_INSTALLATION'
     return key in env
 
+def ngas_use_custom_pip_cert():
+    key = 'NGAS_USE_CUSTOM_PIP_CERT'
+    return key in env
+
 def ngas_root_dir():
     key = 'NGAS_ROOT_DIR'
     if key not in env:
@@ -218,11 +222,12 @@ def virtualenv_setup():
 
     # Download this particular certifcate; otherwise pip complains
     # in some platforms
-    if not(check_dir('~/.pip')):
-        run('mkdir ~/.pip');
-        with cd('~/.pip'):
-            download('http://curl.haxx.se/ca/cacert.pem')
-    run('echo "[global]" > ~/.pip/pip.conf; echo "cert = {0}/.pip/cacert.pem" >> ~/.pip/pip.conf;'.format(home()))
+    if ngas_use_custom_pip_cert():
+        if not(check_dir('~/.pip')):
+            run('mkdir ~/.pip');
+            with cd('~/.pip'):
+                download('http://curl.haxx.se/ca/cacert.pem')
+        run('echo "[global]" > ~/.pip/pip.conf; echo "cert = {0}/.pip/cacert.pem" >> ~/.pip/pip.conf;'.format(home()))
 
     # Update pip and install wheel; this way we can install binary wheels from
     # PyPI if available (like numpy)
