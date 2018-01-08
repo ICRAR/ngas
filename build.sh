@@ -104,9 +104,9 @@ then
 fi
 
 # Build python setup.py-based modules
-# The ngamsPlugIns module eventually requires numpy which we need to install
-# manually outside the setuptools world
-pip --no-cache-dir install numpy || warning "Failed to install numpy via pip"
+# The ngamsPlugIns module eventually requires numpy and astropy,
+# which is much faster to install using pip
+pip install numpy astropy || warning "Failed to install numpy and astropy via pip"
 for pyModule in ngamsCore ngamsPClient ngamsServer ngamsPlugIns
 do
 	prevDir=$(pwd -P)
