@@ -704,7 +704,7 @@ class ngamsConfig:
         Returns:  NGAS Simulation Flag (integer).
         """
         par = "Server[1].Simulation"
-        return getInt(par, self.getVal(par))
+        return getInt(par, self.getVal(par), 0)
 
 
     def getRootDirectory(self):
@@ -2104,8 +2104,6 @@ class ngamsConfig:
                              self.getCheckRep())
         checkIfSetInt("Server.BlockSize", self.getBlockSize(),
                       self.getCheckRep())
-        checkIfZeroOrOne("Server.Simulation", self.getSimulation(),
-                         self.getCheckRep())
         if (checkIfSetStr("Server.RootDirectory",
                           self.getRootDirectory(), self.getCheckRep())):
             # Check if a legal root directory specified.
