@@ -35,7 +35,6 @@ This class is not supposed to be used standalone in the present implementation.
 It should be used as part of the ngamsDbBase parent classes.
 """
 
-from   ngamsCore import TRACE
 import ngamsDbCore
 import ngamsMirroringRequest
 
@@ -62,8 +61,6 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
 
         Returns:      Indication if the request is in the queue (boolean).
         """
-        T = TRACE()
-
         sqlQuery = "SELECT file_id FROM ngas_mirroring_queue WHERE file_id={0} " +\
                    "AND file_version={1} AND instance_id={2}"
         res = self.query2(sqlQuery, args=(fileId, fileVersion,instanceId))
@@ -82,8 +79,6 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
 
         Returns:     Reference to object itself.
         """
-        T = TRACE()
-
         sqlQuery = "UPDATE ngas_mirroring_queue SET " +\
                     "srv_list_id={0}, xml_file_info={1}, " +\
                    "status={2}, message={3}, last_activity_time={4}, " +\
@@ -114,8 +109,6 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
 
         Returns:      Reference to object itself.
         """
-        T = TRACE()
-
         sqlQuery = "UPDATE ngas_mirroring_queue SET status={0} WHERE file_id={1} " +\
                    "AND file_version={2}"
         self.query2(sqlQuery, args=(newStatus, fileId, fileVersion))
@@ -138,8 +131,6 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
 
         Returns:     Reference to object itself.
         """
-        T = TRACE()
-
         insertRow = True
         if (check):
             if (self.mirReqInQueue(mirReqObj.getFileId(),
@@ -177,8 +168,6 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
 
         Returns:     Mirroring Request Object (ngamsMirroringRequest).
         """
-        T = TRACE()
-
         res = sqlResult
         mirReqObj = \
                   ngamsMirroringRequest.ngamsMirroringRequest().\
@@ -205,8 +194,6 @@ class ngamsDbMirroring(ngamsDbCore.ngamsDbCore):
         Returns:   Name of DBM hosting the contents of the DB Mirroring
                    Queue (string).
         """
-        T = TRACE()
-
         sql = "SELECT %s FROM %s mq WHERE instance_id={0}" % \
                 (ngamsDbCore.getNgasMirQueueCols(), ngamsDbCore.NGAS_MIR_QUEUE)
         with self.dbCursor(sql, args=(instanceId,)) as cursor:
