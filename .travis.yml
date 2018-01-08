@@ -99,10 +99,3 @@ script: ${TRAVIS_BUILD_DIR}/.travis/run_tests.sh
 after_success:
  - cd ${TRAVIS_BUILD_DIR}/src/ngamsTest/ngamsTest
  - coveralls
-
-#
-# Run only on the master branch
-# We probably don't want to run on any other experimental branch (yet)
-#
-branches:
- only: master
