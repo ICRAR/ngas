@@ -326,13 +326,19 @@ def prepare_ngas_data_dir():
     """
     nrd = ngas_root_dir()
     with cd(ngas_source_dir()):
+
         # Installing and initializing an NGAS_ROOT directory
-        src_cfg = 'NgamsCfg.SQLite.mini.xml'
+        src_cfg = 'sample_server_config.xml'
         tgt_cfg = os.path.join(nrd, 'cfg', 'ngamsServer.conf')
         run('mkdir -p {0}'.format(nrd))
         run('cp -R NGAS/* {0}'.format(nrd))
+
+        # Copy sample configuration file and adjust it to use an sqlite3 database
+        # located in the NGAS_ROOT
         run('cp cfg/{0} {1}'.format(src_cfg, tgt_cfg))
-        sed(tgt_cfg, '\*replaceRoot\*', nrd, backup='')
+        sed(tgt_cfg, 'RootDirectory="[^"]+"', 'RootDirectory="%s"' % (nrd,), backup='.bak')
+        sed(tgt_cfg, 'database="[^"]+"', 'database="%s/ngas.sqlite"' % (nrd,), backup='.bak')
+        run('rm {0}.bak'.format(tgt_cfg))
 
         # Initialize the SQlite database
         sql = "src/ngamsCore/ngamsSql/ngamsCreateTables-SQLite.sql"
