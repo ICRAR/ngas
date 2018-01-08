@@ -30,9 +30,10 @@
 """
 Dynamic loadable command to query the DB associated with the NG/AMS instance.
 """
-# import markup TODO: This is for HTML formatting
 
-import cPickle, json, decimal
+import cPickle
+import json
+import decimal
 import logging
 import os
 
