@@ -493,7 +493,7 @@ class ngamsDbCursor(object):
             except: pass
 
 class cursor2(ngamsDbCursor):
-    """A cursor smarter than ngamsDbCursor that yields values"""
+    """A cursor smarter than ngamsDbCursor that yields values and acts as a context manager"""
 
     def fetch(self, howmany):
         """
@@ -507,6 +507,12 @@ class cursor2(ngamsDbCursor):
                 return
             for row in rows:
                 yield row
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
 
 class transaction(object):
     """
