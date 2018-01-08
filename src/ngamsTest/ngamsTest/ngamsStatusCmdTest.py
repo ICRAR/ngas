@@ -33,6 +33,7 @@ This module contains the Test Suite for the STATUS Command.
 
 import sys
 
+from ngamsLib.ngamsCore import toiso8601
 from ngamsTestLib import ngamsTestSuite, getNcu11, runTest, \
     sendPclCmd
 
@@ -160,6 +161,23 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         if (statObj.getMessage().find(refMsg) == -1):
             self.checkEqual(refMsg, statObj.getMessage(), "Illegal status " +\
                             "returned for STATUS/File Access Command")
+
+    def test_filelist(self):
+        """Checks that the STATUS command handles the file_list option correctly"""
+
+        self.prepExtSrv()
+        client = sendPclCmd()
+        start = toiso8601()
+
+        def run_checks():
+            self.assertStatus(client.status(output='tmp/list.xml.gz', pars=(('file_list', 1),)))
+            self.assertStatus(client.status(output='tmp/list.xml.gz', pars=(('file_list', 1), ('from_ingestion_date', start))))
+            self.assertStatus(client.status(output='tmp/list.xml.gz', pars=(('file_list', 1), ('from_ingestion_date', start), ('unique', 1))))
+
+        # Checks should be scucessfull with and wihtout files archived
+        run_checks()
+        self.assertArchive('src/SmallFile.fits', 'application/octet-stream')
+        run_checks()
 
 def run():
     """
