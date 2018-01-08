@@ -174,8 +174,22 @@ def check_brew_cellar():
     Find the brewing cellar (Mac OSX)
     """
     with hide('output'):
-        cellar = run('brew config | grep HOMEBREW_CELLAR')
-    return cellar.split(':')[1].strip()
+        version = run('brew --version')
+        if 'Homebrew ' in version:
+            version = version.split()[1]
+
+        version = tuple(map(int, version.split('.')))
+
+        # I'm not sure exactly when --cellar was introduced, but it was already
+        # there in 0.9.9. On the other hand HOMEBREW_CELLAR was also still
+        # outputted via brew config in 0.9.9, so I think it's safe to make the
+        # cut at 1.0.
+        if version >= (1, 0):
+            cellar = run('brew --cellar')
+        else:
+            cellar = run('brew config | grep HOMEBREW_CELLAR').split(":")[1].strip()
+
+    return cellar
 
 # Alpha-sorted packages per package manager
 YUM_PACKAGES = [
