@@ -694,16 +694,6 @@ class ngamsDbCore(object):
         Returns:       Reference to object itself.
         """
         self.__dbTmpDir = tmpDir
-        return self
-
-
-    def getDbTmpDir(self):
-        """
-        Get the DB temporary directory.
-
-        Returns:   DB temporary directory (string).
-        """
-        return self.__dbTmpDir
 
 
     def genTmpFile(self, fname):
