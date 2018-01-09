@@ -594,15 +594,7 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         return res
 
 
-    def dumpFileInfo2(self,
-                      fileInfoDbmName = None,
-                      hostId = None,
-                      diskIds = [],
-                      fileIds = [],
-                      ignore = None,
-                      fileStatus = [NGAMS_FILE_STATUS_OK],
-                      lowLimIngestDate = None,
-                      order = 1):
+    def files_in_host(self, hostId, from_date=None):
         """
         Dump the info of the files defined by the parameters. The file info is
         dumped into a ngamsDbm DB.
@@ -612,36 +604,14 @@ class ngamsDbJoin(ngamsDbCore.ngamsDbCore):
         Returns:        Name of the DBM DB containing the info about the files
                         (string).
         """
-        T = TRACE()
-
-        # Create a temporay File Info DBM.
-        if not fileInfoDbmName:
-            fileInfoDbmName = self.genTmpFile("FILE-SUMMARY1")
 
         sql, vals = self.buildFileSummary1Query(ngamsDbCore.getNgasFilesCols(self._file_ignore_columnname),
                                                 hostId, ignore = 0,
-                                                lowLimIngestDate = lowLimIngestDate,
+                                                lowLimIngestDate = from_date,
                                                 order = 0)
-        try:
-            fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName, 0, 1)
-            curObj = self.dbCursor(sql, args = vals)
-            fileCount = 1
-            while (1):
-                fileList = curObj.fetch(1000)
-                if not fileList:
-                    break
-                for fileInfo in fileList:
-                    fileInfoDbm.add(str(fileCount), fileInfo)
-                    fileCount += 1
-            del curObj
-            del fileInfoDbm
-        except Exception:
-            rmFile(fileInfoDbmName)
-            if (curObj): del curObj
-            logger.error("dumpFileInfo2(): Failed in dumping file info")
-            raise
-
-        return fileInfoDbmName
+        with self.dbCursor(sql, args=vals) as cursor:
+            for res in cursor.fetch(1000):
+                yield res
 
 
     def getNumberOfFiles(self,

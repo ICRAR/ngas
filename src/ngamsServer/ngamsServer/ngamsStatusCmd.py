@@ -39,11 +39,11 @@ import sys
 import types
 
 from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL,\
-    getHostName, genLog, genUniqueId, mvFile, rmFile,\
+    getHostName, genLog, genUniqueId, rmFile,\
     compressFile, NGAMS_PROC_FILE, NGAMS_GZIP_XML_MT, getNgamsVersion,\
     NGAMS_SUCCESS, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD,\
     NGAMS_HTTP_SUCCESS, NGAMS_XML_MT, fromiso8601, toiso8601
-from ngamsLib import ngamsDbCore, ngamsDbm, ngamsStatus, ngamsDiskInfo
+from ngamsLib import ngamsDbm, ngamsStatus, ngamsDiskInfo
 from ngamsLib import ngamsDppiStatus
 from ngamsLib import ngamsFileInfo, ngamsHighLevelLib
 import ngamsFileUtils
@@ -241,45 +241,27 @@ def _handleFileList(srvObj,
     # Dump the file information needed.
     fileListId = genUniqueId()
     dbmBaseName = STATUS_FILE_LIST_DBM_TAG % fileListId
-    fileInfoDbmBaseName = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),
+    fileInfoDbmName = ngamsHighLevelLib.genTmpFilename(srvObj.getCfg(),
                                                            dbmBaseName)
 
-    # Dump the file info from the DB.
+    # Dump the file info from the DB. Deal with uniqueness quickly
+    # (instead of using a new file like before)
     try:
-        fileInfoDbmName = srvObj.getDb().\
-                          dumpFileInfo2(fileInfoDbmBaseName,
-                                        hostId = srvObj.getHostId(),
-                                        ignore = 0,
-                                        lowLimIngestDate = fromIngDate)
-
-        # If requested, make the result set unique by inserting the elements
-        # with File ID/Version as key.
-        if (unique):
-            fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName)
-            uniqueFileInfoDbmName = fileInfoDbmBaseName + "_UNIQUE"
-            uniqueFileListDbm = ngamsDbm.ngamsDbm(uniqueFileInfoDbmName,
-                                                  cleanUpOnDestr = 0,
-                                                  writePerm = 1)
-            while (True):
-                key, fileInfo = fileInfoDbm.getNext()
-                if (not key):
-                    break
-                fileKey = "%s_%s" %\
-                          (fileInfo[ngamsDbCore.NGAS_FILES_FILE_ID],
-                           fileInfo[ngamsDbCore.NGAS_FILES_FILE_VER])
-                if (uniqueFileListDbm.hasKey(fileKey)):
-                    # File with that ID/Version already registered.
+        fileInfoDbm = ngamsDbm.ngamsDbm(fileInfoDbmName, 0, 1)
+        fileCount = 1
+        unique_files = set()
+        for f in srvObj.db.files_in_host(srvObj.getHostId(), from_date=fromIngDate):
+            if unique:
+                key = str('%s_%d' % (f[2], f[3]))
+                if key in unique_files:
                     continue
-                uniqueFileListDbm.add(fileKey, fileInfo)
-            fileInfoDbm.sync()
-            fileInfoDbmName = fileInfoDbm.getDbmName()
-            del fileInfoDbm
-            uniqueFileListDbm.sync()
-            uniqueFileListDbmName = uniqueFileListDbm.getDbmName()
-            del uniqueFileListDbm
-            mvFile(uniqueFileListDbmName, fileInfoDbmName)
+            else:
+                key = str(fileCount)
+            fileInfoDbm.add(key, f)
+            fileCount += 1
+
     except Exception, e:
-        rmFile("%s*" % fileInfoDbmBaseName)
+        rmFile(fileInfoDbmName)
         msg = "Problem generating file list for STATUS Command. " +\
               "Parameters: from_ingestion_date=%s. Error: %s" %\
               (str(fromIngDate), str(e))
