@@ -31,6 +31,7 @@
 Contains various functions for handling commands.
 """
 
+import importlib
 import logging
 import sys
 
@@ -130,7 +131,7 @@ def _get_module(server, request):
     if mod is None:
         logger.debug("Importing dynamic command module: %s", modname)
         try:
-            mod = __import__(modname, fromlist=[__name__])
+            mod = importlib.import_module(modname)
         except ImportError:
             logger.error("No module %s found", modname)
             raise NoSuchCommand()
