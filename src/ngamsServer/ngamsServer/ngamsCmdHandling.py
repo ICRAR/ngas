@@ -31,6 +31,7 @@
 Contains various functions for handling commands.
 """
 
+import imp
 import importlib
 import logging
 import sys
@@ -127,21 +128,31 @@ def _get_module(server, request):
 
     # Reload the module if requested.
     reload_mod = 'reload' in request and int(request['reload']) == 1
-    mod = sys.modules.get(modname, None)
-    if mod is None:
-        logger.debug("Importing dynamic command module: %s", modname)
-        try:
-            mod = importlib.import_module(modname)
-        except ImportError:
-            logger.error("No module %s found", modname)
-            raise NoSuchCommand()
-        except:
-            logger.exception("Error while importing %s", modname)
-            raise
 
-    elif reload_mod:
-        logger.debug("Re-loading dynamic command module: %s", modname)
-        mod = reload(mod)
-    return mod
+    # Need to acquire the importing lock if we want to check the sys.modules
+    # dictionary to short-cut the call to importlib.import_module. This is
+    # because the modules are put into sys.modules by the import machinery
+    # *before* they are fully loaded (probably to detect circular dependencies)
+    # For details on a similar issue found in the pickle module see
+    # https://bugs.python.org/issue12680
+    imp.acquire_lock()
+    try:
+        mod = sys.modules.get(modname, None)
+        if mod is None:
+            logger.debug("Importing dynamic command module: %s", modname)
+            try:
+                mod = importlib.import_module(modname)
+            except ImportError:
+                logger.error("No module %s found", modname)
+                raise NoSuchCommand()
+            except:
+                logger.exception("Error while importing %s", modname)
+                raise
+        elif reload_mod:
+            logger.debug("Re-loading dynamic command module: %s", modname)
+            mod = reload(mod)
+        return mod
+    finally:
+        imp.release_lock()
 
 # EOF
