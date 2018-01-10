@@ -37,11 +37,14 @@ fail() {
 }
 
 # In OSX we need to brew install some things
-# Most notably, we need to install python2 itself and get ourselves
-# a virtualenv, since Travis doesn't support python builds in OSX
+#
+# Most notably, Travis doesn't support python builds in OSX,
+# but the brew packages that come preinstalled in the virtual machines
+# include python 2.7. We sill need to get ourselves a
+# virtualenv though and manually source it whenever we use it.
 if [ "${TRAVIS_OS_NAME}" = "osx" ]
 then
-	brew install python2 berkeley-db autoconf automake libtool || fail "Failed to brew install packages"
+	brew install berkeley-db || fail "Failed to brew install packages"
 
 	# Now create ourselves a virtualenv please and go in there
 	./create_venv.sh ./osx_venv
