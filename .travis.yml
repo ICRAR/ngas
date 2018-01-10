@@ -80,8 +80,6 @@ matrix:
     services: postgresql
   - os: osx
     language: generic
-    addons:
-     hostname: my-ngas-host
 
 #
 # To install we should simply run the build script
