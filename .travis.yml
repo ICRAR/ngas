@@ -79,6 +79,7 @@ matrix:
       - libpq-dev
     services: postgresql
   - os: osx
+    language: generic
     addons:
      hostname: my-ngas-host
 

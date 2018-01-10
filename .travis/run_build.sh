@@ -36,10 +36,16 @@ fail() {
 	exit 1
 }
 
-# In MacOS we need to brew install some things
+# In OSX we need to brew install some things
+# Most notably, we need to install python2 itself and get ourselves
+# a virtualenv, since Travis doesn't support python builds in OSX
 if [ "${TRAVIS_OS_NAME}" = "osx" ]
 then
-	brew install berkeley-db autoconf automake libtool || fail "Failed to brew install packages"
+	brew install python2 berkeley-db autoconf automake libtool || fail "Failed to brew install packages"
+
+	# Now create ourselves a virtualenv please and go in there
+	./create_venv.sh ./osx_venv
+	source ./osx_venv/bin/activate
 fi
 
 EUSER="Failed to create database user ngas"
