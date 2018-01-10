@@ -174,9 +174,15 @@ def check_brew_cellar():
     Find the brewing cellar (Mac OSX)
     """
     with hide('output'):
+
+        # This yields something like "Homebrew 1.4.2-14-g3e99504"
+        # but might be different in earlier versions (or newer)
+        # so we do what we can to clean it up
         version = run('brew --version')
         if 'Homebrew ' in version:
-            version = version.split()[1]
+            version = version.split()[1].strip()
+        if '-' in version:
+            version = version.split('-')[0].strip()
 
         version = tuple(map(int, version.split('.')))
 
