@@ -25,6 +25,7 @@ Module containing HTTP utility code (mostly client-side)
 
 import cStringIO
 import contextlib
+import errno
 import httplib
 import logging
 import socket
@@ -71,12 +72,16 @@ def _http_response(host, port, method, cmd,
     try:
         conn.request(method, url, body=data, headers=hdrs)
         logger.debug("%s request sent to, waiting for a response", method)
-    except socket.error:
-        try:
-            conn.close()
-        except:
-            pass
-        raise
+    except socket.error as e:
+
+        # If the server closes the connection while we write data
+        # we still try to read the response, if any
+        if e.errno != errno.EPIPE:
+            try:
+                conn.close()
+            except:
+                pass
+            raise
 
     start = time.time()
     response = conn.getresponse()

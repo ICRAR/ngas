@@ -44,7 +44,7 @@ from multiprocessing.pool import ThreadPool
 from unittest.case import skip, skipIf
 
 from ngamsLib.ngamsCore import getHostName, cpFile, NGAMS_ARCHIVE_CMD, checkCreatePath, NGAMS_PICKLE_FILE_EXT, rmFile,\
-    NGAMS_SUCCESS, getDiskSpaceAvail, mvFile
+    NGAMS_SUCCESS, getDiskSpaceAvail, mvFile, NGAMS_FAILURE
 from ngamsLib import ngamsLib, ngamsConfig, ngamsStatus, ngamsFileInfo,\
     ngamsCore, ngamsHttpUtils
 from ngamsTestLib import ngamsTestSuite, flushEmailQueue, getEmailMsg, \
@@ -73,6 +73,23 @@ try:
     _space_available_for_big_file_test = getDiskSpaceAvail('/tmp', format="GB") >= 4.1
 except:
     _space_available_for_big_file_test = False
+
+
+class generated_file(object):
+    """A file-like object generated on the fly"""
+
+    def __init__(self, size):
+        self._size = size
+        self._read_bytes = 0
+    def __len__(self):
+        return self._size
+    def read(self, n):
+        if self._read_bytes == self._size:
+            return b''
+        n = min(n, self._size - self._read_bytes)
+        self._read_bytes += n
+        return b'\0' * n
+
 
 class ngamsArchiveCmdTest(ngamsTestSuite):
     """
@@ -1461,26 +1478,32 @@ class ngamsArchiveCmdTest(ngamsTestSuite):
             self.checkEqual(resp.status, 200, None)
 
 
+    def test_long_archive_quick_fail(self):
+        """Tries to archive a huge file, but the server fails quickly and closes the connection"""
+
+        self.prepExtSrv()
+
+        # The server fails quickly due to an unknown exception, so no content
+        # is actually read by the server other than the headers
+        test_file = 'dummy_name.unknown_ext'
+        params = {'filename': test_file}
+
+        status, _, _, data = ngamsHttpUtils.httpPost('localhost', 8888, 'ARCHIVE',
+                                               generated_file((2**32)+12),
+                                               mimeType='ngas/archive-request',
+                                               pars=params, timeout=120)
+
+        self.assertNotEqual(status, 200)
+        status = ngamsStatus.ngamsStatus().unpackXmlDoc(data, 1)
+        self.assertStatus(status, expectedStatus=NGAMS_FAILURE)
+
+
     @skipIf(not _space_available_for_big_file_test,
             "Not enough disk space available to run this test " + \
             "(4 GB are required under /tmp)")
     def test_QArchive_big_file(self):
 
         self.prepExtSrv()
-
-        # Archive large file
-        class generated_file(object):
-            def __init__(self, size):
-                self._size = size
-                self._read_bytes = 0
-            def __len__(self):
-                return self._size
-            def read(self, n):
-                if self._read_bytes == self._size:
-                    return b''
-                n = min(n, self._size - self._read_bytes)
-                self._read_bytes += n
-                return b'\0' * n
 
         test_file = 'dummy_name.fits'
         params = {'filename': test_file,
