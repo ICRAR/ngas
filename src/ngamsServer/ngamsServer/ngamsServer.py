@@ -1781,7 +1781,7 @@ class ngamsServer(object):
                         contDisp = "attachment; filename=%s" % os.path.basename(dataRef)
                         logger.debug("Sending header: Content-Disposition: %s", contDisp)
                         httpRef.send_header("Content-Disposition", contDisp)
-                    httpRef.wfile.write("\n")
+                    httpRef.end_headers()
 
                     with open(dataRef, "r") as fo:
                         dataSent = 0
@@ -1792,7 +1792,8 @@ class ngamsServer(object):
                             httpRef.wfile.write(tmpData)
                             dataSent += len(tmpData)
                 else:
-                    httpRef.wfile.write("\n%s" % dataRef)
+                    httpRef.end_headers()
+                    httpRef.wfile.write(dataRef)
                     if logger.level <= logging.DEBUG:
                         logger.debug("Message sent with HTTP reply=|%s|", str(dataRef).replace("\n", ""))
             elif contentLength != 0:
@@ -1850,7 +1851,6 @@ class ngamsServer(object):
             return
         self.httpReplyGen(reqPropsObj, httpRef, code, msg, 0, contentType,
                           len(msg), addHttpHdrs)
-        httpRef.wfile.write("\r\n")
         logger.info("HTTP reply sent to: %s", str(httpRef.client_address))
 
 

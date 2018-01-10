@@ -4,8 +4,7 @@ Status of request:
 Port:           8888
 Command:        ARCHIVE
 
-Error Code:     -4
-Message:        Problem communicating with server
-Status:         FAILURE
+Error Code:     -103
+Message:        Invalid reply from data server
 
 
