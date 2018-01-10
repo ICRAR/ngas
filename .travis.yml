@@ -84,12 +84,6 @@ matrix:
      hostname: my-ngas-host
 
 #
-# Install coveralls for future coverage result publishing
-#
-before_install:
- - pip install coveralls pytest-cov
-
-#
 # To install we should simply run the build script
 # and include the C client in the compilation
 #
@@ -103,6 +97,4 @@ script: ${TRAVIS_BUILD_DIR}/.travis/run_tests.sh
 #
 # Publish to coveralls
 #
-after_success:
- - cd ${TRAVIS_BUILD_DIR}/src/ngamsTest/ngamsTest
- - coveralls
+after_success: ${TRAVIS_BUILD_DIR}/.travis/after_success.sh

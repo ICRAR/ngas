@@ -1,9 +1,9 @@
 #!/bin/bash
 #
-# NGAS test runner script to Travis CI
+# After-success script for NGAS runs on Travis CI
 #
 # ICRAR - International Centre for Radio Astronomy Research
-# (c) UWA - The University of Western Australia, 2016
+# (c) UWA - The University of Western Australia, 2017
 # Copyright by UWA (in the framework of the ICRAR)
 # All rights reserved
 #
@@ -37,18 +37,4 @@ then
 	source ${TRAVIS_BUILD_DIR}/osx_venv/bin/activate
 fi
 
-# These are the user/dbname/passwd that we created on run_build
-# sqlite3 is the default so it needs no special attention
-NGAS_TESTDB=
-if [[ "$DB" == "mysql" ]]; then
-	NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="MySQLdb" host="127.0.0.1" db="ngas" user="ngas" passwd="ngas"/>'
-elif [[ "$DB" == "postgresql" ]]; then
-	NGAS_TESTDB='<Db Id="blah" Snapshot="0" Interface="psycopg2" host="127.0.0.1" dbname="ngas" user="ngas" password="ngas"/>'
-fi
-
-pip install psutil pytest-cov coveralls
-
-# Prepare for sub-process coverage
-mkdir coverage.tmp
-echo -e "import coverage\ncoverage.process_startup()" > coverage.tmp/sitecustomize.py
-NGAS_TESTDB="${NGAS_TESTDB}" PYTHONPATH=$PWD/coverage.tmp py.test -o 'python_files=*Test.py' --cov
+coveralls
