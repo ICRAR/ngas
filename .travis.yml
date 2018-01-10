@@ -33,7 +33,7 @@ sudo: required
 #
 # We build and test NGAS against three different DB engines
 #
-#  * SQLite3
+#  * SQLite3 (linux and OSX)
 #  * MySQL
 #  * PostgreSQL
 #
@@ -51,6 +51,7 @@ sudo: required
 matrix:
  include:
   - env: DB=sqlite3
+    os: linux
     python: "2.7"
     addons:
      hostname: my-ngas-host
@@ -58,6 +59,7 @@ matrix:
       packages:
       - libdb-dev
   - env: DB=mysql
+    os: linux
     python: "2.7"
     addons:
      hostname: my-ngas-host
@@ -67,6 +69,7 @@ matrix:
       - libmysqlclient-dev
     services: mysql
   - env: DB=postgresql
+    os: linux
     python: "2.7"
     addons:
      hostname: my-ngas-host
@@ -75,6 +78,9 @@ matrix:
       - libdb-dev
       - libpq-dev
     services: postgresql
+  - os: osx
+    addons:
+     hostname: my-ngas-host
 
 #
 # Install coveralls for future coverage result publishing

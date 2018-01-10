@@ -26,6 +26,7 @@
 #
 # DB                the database used in this run (sqlite3, mysql, postgresql)
 # TRAVIS_BUILD_DIR  the directory where the sources are located
+# TRAVIS_OS_NAME    the OS under which we are running (linux, osx)
 #
 
 cd ${TRAVIS_BUILD_DIR}
@@ -34,6 +35,12 @@ fail() {
 	echo $1 1>&2
 	exit 1
 }
+
+# In MacOS we need to brew install some things
+if [ "${TRAVIS_OS_NAME}" = "osx" ]
+then
+	brew install berkeley-db autoconf automake libtool || fail "Failed to brew install packages"
+fi
 
 EUSER="Failed to create database user ngas"
 EPASS="Failed to change password"
@@ -87,6 +94,18 @@ elif [[ "$DB" == "postgresql" ]]; then
 
 fi
 # sqlite3 we doesn't require preparation or any extra modules
+
+# MacOS needs again a bit more of preparation
+if [ "${TRAVIS_OS_NAME}" = "osx" ]
+then
+	cellar_dir="`brew --cellar`"
+	db_dir="${cellar_dir}/berkeley-db/`ls -tr1 ${cellar_dir}/berkeley-db | tail --lines 1`"
+
+	export YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION=1
+	export BERKELEYDB_DIR="${db_dir}"
+	export CFLAGS="$CFLAGS -I${db_dir}/include"
+	export LDFLAGS="$LDFLAGS -L${db_dir}/lib"
+fi
 
 pip install $PIP_PACKAGES || fail "$EPIP"
 ./build.sh -d -c
