@@ -61,8 +61,7 @@ from ngamsLib.ngamsCore import genLog, TRACE, getNgamsVersion, \
     NGAMS_HTTP_SUCCESS, NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, NGAMS_HTTP_GET,\
     NGAMS_HTTP_BAD_REQ, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
     NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR, NGAMS_TEXT_MT,\
-    NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_XML_STATUS_ROOT_EL,\
-    NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs,\
+    NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs,\
     toiso8601
 from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent, ngamsHttpUtils
 from ngamsLib import ngamsDb, ngamsConfig, ngamsReqProps
@@ -2062,9 +2061,7 @@ class ngamsServer(object):
                  setReqStatFromReqPropsObj(reqPropsObj).\
                  setCompletionTime(reqPropsObj.getCompletionTime())
         xmlStat = status.genXmlDoc()
-        xmlStat = ngamsHighLevelLib.\
-                  addDocTypeXmlDoc(self, xmlStat, NGAMS_XML_STATUS_ROOT_EL,
-                                   NGAMS_XML_STATUS_DTD)
+        xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(self, xmlStat)
         self.httpReply(reqPropsObj, httpRef, code, xmlStat, NGAMS_XML_MT,
                        addHttpHdrs)
 
@@ -2100,8 +2097,7 @@ class ngamsServer(object):
                     setReqStatFromReqPropsObj(reqPropsObj)
         xmlStat = statusObj.genXmlDoc(0, 1, 1)
         xmlStat = ngamsHighLevelLib.\
-                  addDocTypeXmlDoc(self, xmlStat, NGAMS_XML_STATUS_ROOT_EL,
-                                   NGAMS_XML_STATUS_DTD)
+                  addStatusDocTypeXmlDoc(self, xmlStat)
         self.httpReply(reqPropsObj, httpRef, code, xmlStat, NGAMS_XML_MT)
 
 

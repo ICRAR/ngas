@@ -37,8 +37,7 @@ import os
 from ngamsLib import ngamsDiskInfo, ngamsDbm, ngamsDiskUtils, ngamsHighLevelLib
 from ngamsLib.ngamsCore import getHostName, \
     getDiskSpaceAvail, genLog, NGAMS_XML_MT, NGAMS_SUCCESS, TRACE, rmFile, \
-    NGAMS_REMDISK_CMD, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, \
-    NGAMS_HTTP_SUCCESS, NGAMS_HTTP_BAD_REQ
+    NGAMS_REMDISK_CMD, NGAMS_HTTP_SUCCESS, NGAMS_HTTP_BAD_REQ
 import ngamsRemUtils
 
 
@@ -230,9 +229,7 @@ def handleCmd(srvObj,
     # Send reply back to requestor (if not already done).
     if (not status): return
     xmlStat = status.genXmlDoc(0, 1, 1, 1, 0)
-    xmlStat = ngamsHighLevelLib.addDocTypeXmlDoc(srvObj, xmlStat,
-                                                 NGAMS_XML_STATUS_ROOT_EL,
-                                                 NGAMS_XML_STATUS_DTD)
+    xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
     if (status.getStatus() == NGAMS_SUCCESS):
         httpStat = NGAMS_HTTP_SUCCESS
     else:

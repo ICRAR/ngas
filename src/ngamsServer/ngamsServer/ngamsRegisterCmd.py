@@ -40,8 +40,7 @@ import time
 
 from ngamsLib.ngamsCore import TRACE, rmFile, NGAMS_HTTP_GET, \
     NGAMS_REGISTER_CMD, mvFile, getFileCreationTime, \
-    NGAMS_FILE_STATUS_OK, genLog, NGAMS_SUCCESS, \
-    NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD, NGAMS_XML_MT, NGAMS_TEXT_MT, \
+    NGAMS_FILE_STATUS_OK, genLog, NGAMS_SUCCESS, NGAMS_XML_MT, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
     NGAMS_VOLUME_INFO_FILE, NGAMS_REGISTER_THR, \
     NGAMS_HTTP_SUCCESS, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
@@ -365,10 +364,7 @@ def _registerExec(srvObj,
                                       "REGISTER command status report").\
                                       addFileList(regStat)
             statRep = status.genXmlDoc()
-            statRep = ngamsHighLevelLib.\
-                      addDocTypeXmlDoc(srvObj, statRep,
-                                       NGAMS_XML_STATUS_ROOT_EL,
-                                       NGAMS_XML_STATUS_DTD)
+            statRep = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, statRep)
             mimeType = NGAMS_XML_MT
         else:
             # Generate a 'simple' ASCII report.
@@ -676,9 +672,7 @@ def register(srvObj,
     # Send reply if possible.
     if (httpRef):
         xmlStat = status.genXmlDoc(0, 0, 0, 1, 0)
-        xmlStat = ngamsHighLevelLib.\
-                  addDocTypeXmlDoc(srvObj, xmlStat, NGAMS_XML_STATUS_ROOT_EL,
-                                   NGAMS_XML_STATUS_DTD)
+        xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
         srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, xmlStat,
                             0, NGAMS_XML_MT, len(xmlStat), [], 1)
 

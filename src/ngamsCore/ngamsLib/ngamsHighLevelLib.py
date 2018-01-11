@@ -215,10 +215,7 @@ def resolveHostAddress(localHostId,
     return hostInfoDic
 
 
-def addDocTypeXmlDoc(srvObj,
-                     xmlDoc,
-                     rootElName,
-                     dtd):
+def addStatusDocTypeXmlDoc(srvObj, xml):
     """
     Generates an XML document (as an ASCII document) with the proper
     document type definition in it, e.g.:
@@ -237,15 +234,13 @@ def addDocTypeXmlDoc(srvObj,
 
     Returns:      XML document generated.
     """
-    docType = "<!DOCTYPE %s SYSTEM \"http://%s:%d/RETRIEVE?internal=%s\">"
-    docType = docType % (rootElName, ngamsLib.getCompleteHostName(),
-                         srvObj.getCfg().getPortNo(), dtd)
-    xmlDocList = xmlDoc.split("\n")
+
+    docType = "<!DOCTYPE NgamsStatus SYSTEM \"http://%s:%d/RETRIEVE?internal=ngamsStatus.dtd\">"
+    docType = docType % (ngamsLib.getCompleteHostName(),
+                         srvObj.getCfg().getPortNo())
+    xmlDocList = xml.split("\n")
     xmlDocList = [xmlDocList[0]] + [docType] + xmlDocList[1:]
-    tmpXmlDoc = ""
-    for line in xmlDocList:
-        tmpXmlDoc += line + "\n"
-    return tmpXmlDoc[0:-1]
+    return '\n'.join(xmlDocList)
 
 
 def determineMimeType(ngamsCfgObj,

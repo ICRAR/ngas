@@ -41,7 +41,7 @@ import types
 from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL,\
     getHostName, genLog, genUniqueId, rmFile,\
     compressFile, NGAMS_PROC_FILE, NGAMS_GZIP_XML_MT, getNgamsVersion,\
-    NGAMS_SUCCESS, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD,\
+    NGAMS_SUCCESS, \
     NGAMS_HTTP_SUCCESS, NGAMS_XML_MT, fromiso8601, toiso8601
 from ngamsLib import ngamsDbm, ngamsStatus, ngamsDiskInfo
 from ngamsLib import ngamsDppiStatus
@@ -584,9 +584,7 @@ def handleCmd(srvObj,
         # Generate XML reply.
         xmlStat = status.genXmlDoc(genCfgStatus, genDiskStatus, genFileStatus,
                                    genStatesStatus)
-        xmlStat = ngamsHighLevelLib.\
-                  addDocTypeXmlDoc(srvObj, xmlStat, NGAMS_XML_STATUS_ROOT_EL,
-                                   NGAMS_XML_STATUS_DTD)
+        xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
         srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, xmlStat,
                          NGAMS_XML_MT)
     elif (not reqPropsObjRef.getSentReply()):
