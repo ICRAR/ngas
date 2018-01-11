@@ -34,3 +34,12 @@ omit = ../../ngamsPlugIns/ngamsPlugIns/alma/*
        ../../ngamsPlugIns/ngamsPlugIns/mwa/*
        ../../ngamsPlugIns/ngamsPlugIns/eso/*
        */setup.py
+
+# When coveralls combines the information from different runs
+# it ends up reporting multiple copies of the same source files
+# (because the filesystems are different in Linux v/s OSX builds).
+# We thus need to tell coverage how to combine files
+[paths]
+source = ../../
+         /Users/travis/build/ICRAR/ngas/src/
+         /home/travis/build/ICRAR/ngas/src/
