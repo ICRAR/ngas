@@ -69,6 +69,8 @@ def _http_response(host, port, method, cmd,
     # Go, go, go!
     logger.info("About to %s to %s:%d/%s", method, host, port, url)
     conn = httplib.HTTPConnection(host, port, timeout = timeout)
+    conn.connect()
+
     try:
         conn.request(method, url, body=data, headers=hdrs)
         logger.debug("%s request sent to, waiting for a response", method)
@@ -76,7 +78,16 @@ def _http_response(host, port, method, cmd,
 
         # If the server closes the connection while we write data
         # we still try to read the response, if any
-        if e.errno != errno.EPIPE:
+        #
+        # In OSX >= 10.10 this error can come up as EPROTOTYPE instead of EPIPE
+        # (although the error code is not mentioned in send(2)). The actual
+        # error recognised by the kernel in this situation is slightly different,
+        # but still due to remote end closing the connection. For a full, nice
+        # explanation of this see:
+        #
+        # https://erickt.github.io/blog/2014/11/19/adventures-in-debugging-a-potential-osx-kernel-bug/
+        tolerate = e.errno in (errno.EPROTOTYPE, errno.EPIPE)
+        if not tolerate:
             try:
                 conn.close()
             except:
