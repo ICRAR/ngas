@@ -176,28 +176,6 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     do_PUT  = reqHandle
 
 
-class sizeaware_socketfile(object):
-    """
-    Small utility class that wraps a file object created via socket.makefile()
-    and reads only a maximum amount of bytes out of it. If more are requested,
-    an empty byte string is returned, thus signaling and EOF.
-    """
-
-    def __init__(self, f, size):
-        self.f = f
-        self.size = size
-        self.readin = 0
-
-    def read(self, n):
-        if self.readin >= self.size:
-            return b''
-        left = self.size - self.readin
-        buf = self.f.read(n if left >= n else left)
-        self.readin += len(buf)
-        return buf
-
-    def __len__(self):
-        return self.size
 
 class logging_config(object):
     def __init__(self, stdout_level, file_level, logfile, logfile_rot_interval,
@@ -1971,7 +1949,7 @@ class ngamsServer(object):
 
                 # During HTTP post we need to pass down a EOF-aware,
                 # read()-able object
-                data = sizeaware_socketfile(reqPropsObj.getReadFd(), contLen)
+                data = ngamsHttpUtils.sizeaware(reqPropsObj.getReadFd(), contLen)
                 httpStatCode, httpStatMsg, httpHdrs, data =\
                             ngamsHttpUtils.httpPost(host, port,
                                                     reqPropsObj.getCmd(),

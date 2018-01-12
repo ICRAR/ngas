@@ -194,3 +194,26 @@ def httpGetUrl(url, pars=[], hdrs={}, timeout=None, auth=None):
     pars = [] if not url.query else urlparse.parse_qsl(url.query)
     return httpGet(url.hostname, url.port, url.path,
                    pars=pars, hdrs=hdrs, timeout=timeout)
+
+class sizeaware(object):
+    """
+    Small utility class that wraps a file object that doesn't have a __len__
+    method and makes it aware of its size. Useful to present the body of an HTTP
+    request or response as a file object with a length.
+    """
+
+    def __init__(self, f, size):
+        self.f = f
+        self.size = size
+        self.readin = 0
+
+    def read(self, n):
+        if self.readin >= self.size:
+            return b''
+        left = self.size - self.readin
+        buf = self.f.read(n if left >= n else left)
+        self.readin += len(buf)
+        return buf
+
+    def __len__(self):
+        return self.size
