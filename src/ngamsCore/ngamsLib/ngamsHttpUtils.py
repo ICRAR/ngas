@@ -33,8 +33,6 @@ import time
 import urllib
 import urlparse
 
-from .ngamsCore import getHostName, NGAMS_HTTP_POST, NGAMS_HTTP_GET
-
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +54,6 @@ def _http_response(host, port, method, cmd,
 
     # Prepare all headers that need to be sent
     hdrs = dict(hdrs)
-    hdrs["Host"] = getHostName()
 
     url = cmd
     if pars:
@@ -126,7 +123,7 @@ def httpPost(host, port, cmd, data, mimeType, pars=[], hdrs={},
     if auth:
         hdrs["Authorization"] = auth.strip()
 
-    resp = _http_response(host, port, NGAMS_HTTP_POST, cmd, data, timeout, pars, hdrs)
+    resp = _http_response(host, port, 'POST', cmd, data, timeout, pars, hdrs)
     with contextlib.closing(resp):
 
         # Receive + unpack reply.
@@ -184,7 +181,7 @@ def httpGet(host, port, cmd, pars=[], hdrs={},
     hdrs = dict(hdrs) if hdrs else {}
     if auth:
         hdrs['Authorization'] = auth.strip()
-    return _http_response(host, port, NGAMS_HTTP_GET, cmd,
+    return _http_response(host, port, 'GET', cmd,
                           pars=pars, hdrs=hdrs, timeout=timeout)
 
 
