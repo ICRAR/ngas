@@ -49,7 +49,7 @@ from ngamsLib.ngamsCore import NGAMS_FAILURE, getFileCreationTime,\
     rmFile, NGAMS_SUCCESS, NGAMS_BACK_LOG_TMP_PREFIX, NGAMS_BACK_LOG_DIR,\
     getHostName, loadPlugInEntryPoint, checkCreatePath, NGAMS_HTTP_HDR_CHECKSUM,\
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE,\
-    NGAMS_HTTP_SUCCESS, NGAMS_NOTIF_ERROR
+    NGAMS_NOTIF_ERROR
 from ngamsLib import ngamsHighLevelLib, ngamsNotification, ngamsPlugInApi, ngamsLib,\
     ngamsHttpUtils
 from ngamsLib import ngamsReqProps, ngamsFileInfo, ngamsDiskInfo, ngamsStatus, ngamsDiskUtils
@@ -958,9 +958,9 @@ def archiveInitHandling(srvObj, reqPropsObj, httpRef, do_probe=False, try_to_pro
         except Exception:
             msg = genLog("NGAMS_ER_ARCH_REQ_NOK",
                          [mimeType, getHostName()])
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                     NGAMS_SUCCESS, msg)
-        return None
+
+        httpRef.send_status(msg)
+        return
 
     # Check if the URI is correctly set.
     if not reqPropsObj.getFileUri():
@@ -974,8 +974,7 @@ def archiveInitHandling(srvObj, reqPropsObj, httpRef, do_probe=False, try_to_pro
             srvObj.getCfg().getStreamFromMimeType(mimeType).getHostIdList()):
             host_id, host, port = findTargetNode(srvObj, mimeType)
             if host_id != srvObj.getHostId():
-                srvObj.forwardRequest(reqPropsObj, httpRef, host_id, host, port,
-                                      mimeType=mimeType)
+                httpRef.proxy_request(host_id, host, port)
                 return None
     except Exception:
         pass
@@ -1206,8 +1205,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
     msg = msg % ('Pull' if reqPropsObj.is_GET() else 'Push', reqPropsObj.getSafeFileUri())
     logger.info(msg)
 
-    srvObj.ingestReply(reqPropsObj, httpRef,NGAMS_HTTP_SUCCESS,
-                       NGAMS_SUCCESS, msg, diskInfo)
+    httpRef.send_ingest_status(msg, diskInfo)
 
     # After a successful archiving we notify the archive event subscribers
     srvObj.fire_archive_event(plugin_result.getFileId(), plugin_result.getFileVersion())

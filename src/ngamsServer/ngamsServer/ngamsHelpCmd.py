@@ -33,9 +33,7 @@ Contains code for handling the HELP command.
 TODO: The HELP command is not yet implemented!
 """
 
-from ngamsLib import ngamsStatus
-from ngamsLib.ngamsCore import TRACE, getNgamsVersion, NGAMS_FAILURE, NGAMS_HTTP_SUCCESS,\
-    toiso8601
+from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_FAILURE
 
 
 def handleCmd(srvObj,
@@ -54,51 +52,8 @@ def handleCmd(srvObj,
 
     Returns:        Void.
     """
-    T = TRACE()
 
     ##########################################################################
     # COMMAND NOT YET IMPLEMENTED - REMOVE THIS BLOCK WHEN IMPLEMENTED
     ##########################################################################
-    status = ngamsStatus.ngamsStatus()
-    status.\
-             setDate(toiso8601()).\
-             setVersion(getNgamsVersion()).\
-             setHostId(srvObj.getHostId()).setStatus(NGAMS_FAILURE).\
-             setMessage("Command HELP not implemented").\
-             setState(srvObj.getState()).setSubState(srvObj.getSubState())
-    msg = status.genXmlDoc()
-    srvObj.httpReplyGen(reqPropsObj.setCompletionTime(), httpRef,
-                        NGAMS_HTTP_SUCCESS, msg)
-    srvObj.updateRequestDb(reqPropsObj)
-    return
-    ##########################################################################
-
-    ## Get the information requested.
-    #msg = ""
-    #doc = ""
-    #if (reqPropsObj.hasHttpPar("doc")):
-    #    doc = reqPropsObj.getHttpPar("doc")
-    #    if (doc == ""):
-    #        msg = pydoc.HTMLDoc().index(ngamsGetSrcDir() + "/..")
-    #    elif (os.path.isdir("doc")):
-    #        msg = pydoc.HTMLDoc().index(doc)
-    #    elif (doc.find(".py") != -1):
-    #        msg = pydoc.HTMLDoc().docmodule(ngamsGetSrcDir() + "/" + doc)
-    #    else:
-    #        pass
-    #else:
-    #    status = ngamsStatus.ngamsStatus()
-    #    status.\
-    #             setDate(toiso8601()).\
-    #             setVersion(getNgamsVersion()).\
-    #             setHostId(srvObj.getHostId()).setStatus(NGAMS_SUCCESS).\
-    #             setMessage("Successfully handled command HELP").\
-    #             setState(srvObj.getState()).setSubState(srvObj.getSubState())
-    #    msg = status.genXmlDoc()
-    #
-    #srvObj.httpReplyGen(reqPropsObj.setCompletionTime(), httpRef,
-    #                    NGAMS_HTTP_SUCCESS, msg)
-    #srvObj.updateRequestDb(reqPropsObj)
-
-
-# EOF
+    httpRef.send_status("Command HELP not implemented", status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)

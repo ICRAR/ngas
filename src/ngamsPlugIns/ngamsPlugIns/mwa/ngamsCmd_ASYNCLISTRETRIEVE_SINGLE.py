@@ -209,7 +209,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
         # 3. launch a thread to process the list
         _startThread(srvObj, sessionId)
-        srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(res), NGAMS_TEXT_MT)
+        httpRef.send_data(pickle.dumps(res), NGAMS_TEXT_MT)
     else:
         # extract parameters
         sessionId = None
@@ -249,7 +249,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             #msg = "No UUID in the GET request."
             #raise Exception, msg
 
-        srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(resp), NGAMS_TEXT_MT)
+        httpRef.send_data(pickle.dumps(resp), NGAMS_TEXT_MT)
 
 def cancelHandler(srvObj, reqPropsObj, sessionId):
     resp = AsyncListRetrieveCancelResponse()

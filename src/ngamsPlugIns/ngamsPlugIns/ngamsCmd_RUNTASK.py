@@ -40,7 +40,7 @@ import os
 import threading
 import urllib2
 
-from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import TRACE, NGAMS_TEXT_MT
 from ngamsPClient import ngamsPClient
 from ngamsPlugIns.ngamsJobProtocol import MRLocalTaskResult, ERROR_LT_UNEXPECTED
 
@@ -191,26 +191,20 @@ def handleCmd(srvObj,
         else:
             errMsg = 'RUNTASK command needs action for GET request\n'
 
-        srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, errMsg, NGAMS_TEXT_MT)
+        httpRef.send_data(errMsg, NGAMS_TEXT_MT)
     else:
         postContent = _getPostContent(srvObj, reqPropsObj)
         mrLocalTask = pickle.loads(postContent)
         if (not mrLocalTask):
             errMsg = 'Cannot instantiate local task from POST'
             mrr = MRLocalTaskResult(None, -2, errMsg)
-            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(mrr), NGAMS_TEXT_MT)
+            httpRef.send_data(pickle.dumps(mrr), NGAMS_TEXT_MT)
         else:
             logger.debug('Local task %s is submitted', mrLocalTask._taskId)
             mrr = MRLocalTaskResult(mrLocalTask._taskId, 0, '')
-            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(mrr), NGAMS_TEXT_MT)
+            httpRef.send_data(pickle.dumps(mrr), NGAMS_TEXT_MT)
 
             args = (srvObj, mrLocalTask)
             scheduleThread = threading.Thread(None, _scheduleQScanThread, 'SCHEDULE_THRD', args)
             scheduleThread.setDaemon(0)
             scheduleThread.start()
-
-
-
-
-
-

@@ -36,7 +36,7 @@ import os
 
 from ngamsLib import ngamsDbm, ngamsDbCore, ngamsHighLevelLib
 from ngamsLib.ngamsCore import genLog, NGAMS_REMFILE_CMD, \
-    rmFile, NGAMS_SUCCESS, TRACE, NGAMS_HTTP_SUCCESS
+    rmFile, NGAMS_SUCCESS, TRACE, NGAMS_XML_MT
 import ngamsRemUtils
 
 
@@ -297,7 +297,7 @@ def handleCmd(srvObj,
     # Send reply back to requestor.
     xmlStat = status.genXmlDoc(0, 1, 1, 1, 0)
     xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
-    srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, xmlStat)
+    httpRef.send_data(xmlStat, NGAMS_XML_MT)
 
 
 # EOF

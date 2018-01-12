@@ -44,7 +44,7 @@ import urllib2
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, \
     NGAMS_FAILURE, NGAMS_HTTP_POST, getHostName, \
     NGAMS_HTTP_HDR_CHECKSUM, TRACE, genLog, NGAMS_IDLE_SUBSTATE
-from ngamsLib import ngamsStatus, ngamsHighLevelLib, ngamsDiskInfo, ngamsLib
+from ngamsLib import ngamsStatus, ngamsHighLevelLib,  ngamsLib
 
 
 logger = logging.getLogger(__name__)
@@ -369,9 +369,4 @@ def handleCmd(srvObj,
     msg = "Successfully handled Proxy (Quick) Archive Pull Request for data file " +\
           "with URI: " + reqPropsObj.getSafeFileUri()
     logger.info(msg)
-    targDiskInfo = ngamsDiskInfo.ngamsDiskInfo()
-    srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                       NGAMS_SUCCESS, msg, targDiskInfo)
-
-    return
-
+    return msg

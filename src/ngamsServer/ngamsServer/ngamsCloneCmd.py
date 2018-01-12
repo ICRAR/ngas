@@ -1063,8 +1063,7 @@ def _clone(srvObj,
     if (httpRef):
         xmlStat = status.genXmlDoc(0, 0, 0, 1, 0)
         xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
-        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                            xmlStat, 0, NGAMS_XML_MT, len(xmlStat), [], 1)
+        httpRef.send_data(xmlStat, NGAMS_XML_MT)
 
 
 def clone(srvObj,

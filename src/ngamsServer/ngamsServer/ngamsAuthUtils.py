@@ -43,9 +43,7 @@ from ngamsLib import ngamsHostInfo
 
 logger = logging.getLogger(__name__)
 
-def genUnAuthResponse(srvObj,
-                      reqPropsObj,
-                      httpRef):
+def genUnAuthResponse(srvObj, httpRef):
     """
     Generate a HTTP unauthorized response (401 Unauthorized) according
     to the authorization scheme used.
@@ -67,10 +65,10 @@ def genUnAuthResponse(srvObj,
     hostInfoObj = ngamsHostInfo.ngamsHostInfo().unpackFromSqlQuery(hostInfo)
     authRealm = "Basic realm=\"ngas-clients@%s.%s\"" %\
                 (getHostName(), hostInfoObj.getDomain())
-    httpRef.wfile._sock.settimeout(20)
-    srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_UNAUTH,
-                 NGAMS_FAILURE, genLog("NGAMS_ER_UNAUTH_REQ"),
-                 [["WWW-Authenticate", authRealm]])
+    httpRef.connection.settimeout(20)
+
+    hdrs = {"WWW-Authenticate": authRealm}
+    httpRef.send_status(genLog("NGAMS_ER_UNAUTH_REQ"), status=NGAMS_FAILURE, code=NGAMS_HTTP_UNAUTH, hdrs=hdrs)
 
 def cmdPermitted(srvObj, reqPropsObj, reqUser):
     """
@@ -163,14 +161,14 @@ def authorize(srvObj,
                      reqPropsObj.getCmd()
 
             # Generate HTTP unauthorized response.
-            genUnAuthResponse(srvObj, reqPropsObj, httpRef)
+            genUnAuthResponse(srvObj, httpRef)
             raise Exception(errMsg)
 
         logger.debug("Successfully authenticated user %s", reqUser)
     else:
         # Challenge the client.
         msg = genLog("NGAMS_ER_UNAUTH_REQ") + " Challenging client"
-        genUnAuthResponse(srvObj, reqPropsObj, httpRef)
+        genUnAuthResponse(srvObj, httpRef)
         raise Exception(msg)
 
 

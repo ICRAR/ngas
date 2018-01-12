@@ -38,8 +38,7 @@ import logging
 import os
 
 from ngamsLib import ngamsDbm, ngamsDbCore
-from ngamsLib.ngamsCore import NGAMS_TMP_FILE_EXT, TRACE, NGAMS_TEXT_MT, \
-    NGAMS_HTTP_SUCCESS, rmFile
+from ngamsLib.ngamsCore import NGAMS_TMP_FILE_EXT, TRACE, NGAMS_TEXT_MT, rmFile
 
 
 logger = logging.getLogger(__name__)
@@ -322,8 +321,8 @@ def handleCmd(srvObj,
             mimeType = NGAMS_PYTHON_LIST_MT
 
         # Return the data.
-        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                            finalRes, 0, mimeType)
+        httpRef.send_data(finalRes, mimeType)
+
     elif (fetch):
         cursorDbmFilename = genCursorDbmName(srvObj.getCfg().\
                                              getRootDirectory(), cursorId)
@@ -353,8 +352,8 @@ def handleCmd(srvObj,
 
             # Return the data.
             # TODO: Make it possible to return ASCII List + XML.
-            srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                                str(resSet), 0, NGAMS_PYTHON_LIST_MT)
+            httpRef.send_data(str(resSet), NGAMS_PYTHON_LIST_MT)
+
         except Exception, e:
             msg = "Error fetching from cursor with ID: %s. Error: %s"
             raise Exception, msg % (cursorId, str(e))

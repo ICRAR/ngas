@@ -97,7 +97,12 @@ def cmdHandler(srvObj,
 
     Returns:       Void.
     """
-    _get_module(srvObj, reqPropsObj).handleCmd(srvObj, reqPropsObj, httpRef)
+    msg = _get_module(srvObj, reqPropsObj).handleCmd(srvObj, reqPropsObj, httpRef)
+    if msg is not None:
+        if httpRef.reply_sent:
+            logger.warning("Module returned message to send back to client, but reply has been sent, ignoring")
+            return
+        httpRef.send_status(msg)
 
 def _get_module(server, request):
 

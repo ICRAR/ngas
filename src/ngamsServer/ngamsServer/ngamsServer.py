@@ -49,7 +49,6 @@ import sys
 import threading
 import time
 import traceback
-import urllib
 import uuid
 
 import netifaces
@@ -58,10 +57,10 @@ import pkg_resources
 from ngamsLib.ngamsCore import genLog, TRACE, getNgamsVersion, \
     getFileSize, getDiskSpaceAvail, checkCreatePath,\
     getHostName, ngamsCopyrightString, getNgamsLicense,\
-    NGAMS_HTTP_SUCCESS, NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, NGAMS_HTTP_GET,\
-    NGAMS_HTTP_BAD_REQ, NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
-    NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR, NGAMS_TEXT_MT,\
-    NGAMS_ARCHIVE_CMD, NGAMS_NOT_SET, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs,\
+    NGAMS_HTTP_REDIRECT, NGAMS_HTTP_INT_AUTH_USER, \
+    NGAMS_SUCCESS, NGAMS_FAILURE, NGAMS_OFFLINE_STATE,\
+    NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, NGAMS_NOTIF_ERROR,\
+    NGAMS_NOT_SET, NGAMS_XML_MT, loadPlugInEntryPoint, isoTime2Secs,\
     toiso8601
 from ngamsLib import ngamsHighLevelLib, ngamsLib, ngamsEvent, ngamsHttpUtils
 from ngamsLib import ngamsDb, ngamsConfig, ngamsReqProps
@@ -1738,15 +1737,11 @@ class ngamsServer(object):
             self.handleHttpRequest(reqPropsObj, httpRef, clientAddress,
                                    method, path, requestVersion, headers)
 
-            if not reqPropsObj.getSentReply():
-                msg = "Successfully handled request"
-                self.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                           NGAMS_SUCCESS, msg)
-
-            reqPropsObj.getWriteFd().flush()
+            if not httpRef.reply_sent:
+                httpRef.send_status("Successfully handled request")
 
         except ngamsCmdHandling.NoSuchCommand, e:
-            self.reply(reqPropsObj, httpRef, 404, NGAMS_FAILURE, "Command not found")
+            httpRef.send_status("Command not found", status=NGAMS_FAILURE, code=404)
 
         except Exception, e:
 
@@ -1769,11 +1764,11 @@ class ngamsServer(object):
 
             # Send a response if one hasn't been send yet. Use a shorter timeout
             # if possible to avoid hanging out in here
-            if not reqPropsObj.getSentReply():
-                timeout = min((httpRef.wfile._sock.gettimeout(), 20))
-                httpRef.wfile._sock.settimeout(timeout)
-                self.reply(reqPropsObj, httpRef, NGAMS_HTTP_BAD_REQ,
-                           NGAMS_FAILURE, errMsg)
+            if not httpRef.reply_sent:
+                timeout = min((httpRef.connection.gettimeout(), 20))
+                httpRef.connection.settimeout(timeout)
+                httpRef.send_status(errMsg, status=NGAMS_FAILURE, code=400)
+
         finally:
             reqPropsObj.setCompletionTime(1)
             self.request_db.update(reqPropsObj)
@@ -1840,323 +1835,6 @@ class ngamsServer(object):
         logger.info(msg, *args)
 
 
-    def httpReplyGen(self,
-                     reqPropsObj,
-                     httpRef,
-                     code,
-                     dataRef = None,
-                     dataInFile = 0,
-                     contentType = None,
-                     contentLength = 0,
-                     addHttpHdrs = [],
-                     closeWrFo = 0):
-        """
-        Generate a standard HTTP reply.
-
-        reqPropsObj:   Request Property object to keep track of actions done
-                       during the request handling (ngamsReqProps).
-
-        httpRef:       Reference to the HTTP request handler
-                       object (ngamsHttpRequestHandler).
-
-        code:          HTTP status code (integer)
-
-        dataRef:       Data to send with the HTTP reply (string).
-
-        dataInFile:    Data stored in a file (integer).
-
-        contentType:   Content type (mime-type) of the data (string).
-
-        contentLength: Length of the message. The actually message should
-                       be send from the calling method (integer).
-
-        addHttpHdrs:   List containing sub-lists with additional
-                       HTTP headers to send. Format is:
-
-                         [[<HTTP hdr>, <val>, ...]         (list)
-
-        closeWrFo:     If set to 1, the HTTP write file object will be closed
-                       by the function (integer/0|1).
-
-        Returns:       Void.
-        """
-        T = TRACE()
-
-        logger.debug("httpReplyGen(). Generating HTTP reply to: %s" \
-                % str(httpRef.client_address))
-
-        if reqPropsObj.getSentReply():
-            logger.debug("Reply already sent for this request")
-            return
-        try:
-            message = ''
-            if BaseHTTPServer.BaseHTTPRequestHandler.responses.has_key(code):
-                message = BaseHTTPServer.BaseHTTPRequestHandler.responses[code][0]
-
-            protocol = BaseHTTPServer.BaseHTTPRequestHandler.protocol_version
-            httpRef.wfile.write("%s %s %s\r\n" % (protocol, str(code), message))
-            srvInfo = "NGAMS/%s" % getNgamsVersion()
-            logger.debug("Sending header: Server: %s", srvInfo)
-            httpRef.send_header("Server", srvInfo)
-            httpTimeStamp = ngamsHttpUtils.httpTimeStamp()
-            logger.debug("Sending header: Date: %s", httpTimeStamp)
-            httpRef.send_header("Date", httpTimeStamp)
-            # Expires HTTP reponse header field, e.g.:
-            # Expires: Mon, 17 Sep 2001 09:21:38 GMT
-            logger.debug("Sending header: Expires: %s", httpTimeStamp)
-            httpRef.send_header("Expires", httpTimeStamp)
-
-            if dataRef == None:
-                dataSize = 0
-            elif dataRef != None and dataInFile:
-                dataSize = getFileSize(dataRef)
-            elif dataRef != None:
-                if len(dataRef) and not contentLength:
-                    dataSize = len(dataRef)
-                else:
-                    dataSize = contentLength
-
-            # Send additional headers if any.
-            sentContDisp = 0
-            for hdrInfo in addHttpHdrs:
-                if hdrInfo[0] == "Content-Disposition":
-                    sentContDisp = 1
-                logger.debug("Sending header: %s:%s", hdrInfo[0], hdrInfo[1])
-                httpRef.send_header(hdrInfo[0], hdrInfo[1])
-            if contentType != None:
-                logger.debug("Sending header: Content-Type: %s", contentType)
-                httpRef.send_header("Content-Type", contentType)
-            if dataRef != None:
-                logger.debug("Sending header: Content-Length/1: %s", str(dataSize))
-                httpRef.send_header("Content-Length", dataSize)
-                if dataInFile:
-                    if not sentContDisp:
-                        contDisp = "attachment; filename=%s" % os.path.basename(dataRef)
-                        logger.debug("Sending header: Content-Disposition: %s", contDisp)
-                        httpRef.send_header("Content-Disposition", contDisp)
-                    httpRef.end_headers()
-
-                    with open(dataRef, "r") as fo:
-                        dataSent = 0
-                        while (dataSent < dataSize):
-                            tmpData = fo.read(65536)
-                            if not tmpData:
-                                raise Exception('read EOF')
-                            httpRef.wfile.write(tmpData)
-                            dataSent += len(tmpData)
-                else:
-                    httpRef.end_headers()
-                    httpRef.wfile.write(dataRef)
-                    if logger.level <= logging.DEBUG:
-                        logger.debug("Message sent with HTTP reply=|%s|", str(dataRef).replace("\n", ""))
-            elif contentLength != 0:
-                logger.debug("Sending header: Content-Length/2: %s", str(contentLength))
-                httpRef.send_header("Content-Length", contentLength)
-
-        except Exception:
-            errMsg = "Error occurred while sending reply to: %s" % (str(httpRef.client_address),)
-            logger.exception(errMsg)
-        finally:
-            reqPropsObj.setSentReply(1)
-            httpRef.wfile.flush()
-            if closeWrFo == 1:
-                httpRef.wfile.close()
-
-        logger.debug("Generated HTTP reply to: %s" % str(httpRef.client_address))
-
-
-    def httpReply(self,
-                  reqPropsObj,
-                  httpRef,
-                  code,
-                  msg = None,
-                  contentType = NGAMS_TEXT_MT,
-                  addHttpHdrs = []):
-        """
-        Generate standard HTTP reply.
-
-        reqPropsObj:   Request Property object to keep track of
-                       actions done during the request handling
-                       (ngamsReqProps).
-
-        httpRef:       Reference to the HTTP request handler
-                       object (ngamsHttpRequestHandler).
-
-        code:          HTTP status code (integer)
-
-        msg:           Message to send as data with the HTTP reply (string).
-
-        contentType:   Content type (mime-type) of the msg (string).
-
-        addHttpHdrs:   List containing sub-lists with additional
-                       HTTP headers to send. Format is:
-
-                         [[<HTTP hdr>, <val>, ...]         (list)
-
-        Returns:       Void.
-        """
-        T = TRACE()
-
-        if msg is None: msg = ''
-
-        if (reqPropsObj.getSentReply()):
-            logger.info("Reply already sent for this request")
-            return
-        self.httpReplyGen(reqPropsObj, httpRef, code, msg, 0, contentType,
-                          len(msg), addHttpHdrs)
-        logger.info("HTTP reply sent to: %s", str(httpRef.client_address))
-
-
-    def httpRedirReply(self,
-                       reqPropsObj,
-                       httpRef,
-                       redirHost,
-                       redirPort):
-        """
-        Generate an HTTP Redirection Reply and send this back to the
-        requestor.
-
-        reqPropsObj:   Request Property object to keep track of actions done
-                       during the request handling (ngamsReqProps).
-
-        httpRef:       Reference to the HTTP request handler
-                       object (ngamsHttpRequestHandler).
-
-        redirHost:     NGAS host to which to redirect the request (string).
-
-        redirPort:     Port number of the NG/AMS Server to which to redirect
-                       the request (integer).
-
-        Returns:       Void.
-        """
-        T = TRACE()
-
-        pars = ""
-        for par in reqPropsObj.getHttpParNames():
-            pars += par + "=" + reqPropsObj.getHttpPar(par) + "&"
-        pars = pars[0:-1]
-        redirectUrl = "http://" + redirHost + ":" + str(redirPort) + "/" +\
-                      reqPropsObj.getCmd() + "?" + pars
-        msg = genLog("NGAMS_INFO_REDIRECT", [redirectUrl])
-        logger.info(msg)
-        addHttpHdrs = [["Location", redirectUrl]]
-        self.reply(reqPropsObj, httpRef, NGAMS_HTTP_REDIRECT, NGAMS_SUCCESS,
-                   msg, addHttpHdrs)
-
-
-    def forwardRequest(self, reqPropsObj, httpRefOrg,
-                       host_id, host, port,
-                       autoReply = 1, mimeType = ""):
-        """
-        Forward an HTTP request to the given host + port and handle the reply
-        from the remotely, contacted NGAS node. If the host to contact for
-        handling the request is different that the actual target host, the
-        proper contact host (e.g. cluster main node) is resolved internally.
-
-        reqPropsObj:    Request Property object to keep track of actions done
-                        during the request handling (ngamsReqProps).
-
-        httpRefOrg:     Reference to the HTTP request handler object for
-                        the request received from the originator
-                        (ngamsHttpRequestHandler).
-
-        forwardHost:    Host ID to where the request should be forwarded
-                        (string).
-
-        forwardPort:    Port number of the NG/AMS Server on the remote
-                        host (integer).
-
-        autoReply:      Send back reply to originator of the request
-                        automatically (integer/0|1).
-
-        mimeType:       Mime-type of possible data to forward (string).
-
-        Returns:        Tuple with the following information:
-
-                          (<HTTP Status>, <HTTP Status Msg>, <HTTP Hdrs>,
-                           <Data>)  (tuple).
-        """
-
-        pars = []
-        for par in reqPropsObj.getHttpParNames():
-            pars.append((par, reqPropsObj.getHttpPar(par)))
-
-        if logger.isEnabledFor(logging.INFO):
-            msg = "Forwarding %s?%s to %s:%d (corresponding to hostId %s)"
-            urlpars = urllib.urlencode(pars, doseq=1)
-            logger.info(msg, reqPropsObj.getCmd(), urlpars, host, port, host_id)
-
-        try:
-            # If target host is suspended, wake it up.
-            if (self.getDb().getSrvSuspended(host_id)):
-                ngamsSrvUtils.wakeUpHost(self, host_id)
-
-            # If the NGAS Internal Authorization User is defined generate
-            # an internal Authorization Code.
-            if (self.getCfg().hasAuthUser(NGAMS_HTTP_INT_AUTH_USER)):
-                authHttpHdrVal = self.getCfg().\
-                                 getAuthHttpHdrVal(NGAMS_HTTP_INT_AUTH_USER)
-            else:
-                authHttpHdrVal = ""
-
-            # Make sure the time_out parameters is positive if given; otherwise
-            # a sane default
-            def_timeout = 300 # 3 [min]
-            reqTimeOut = def_timeout
-            if 'time_out' in reqPropsObj and reqPropsObj['time_out']:
-                reqTimeOut = float(reqPropsObj.getHttpPar("time_out"))
-                reqTimeOut = reqTimeOut if reqTimeOut >= 0 else def_timeout
-
-            # Forward GET or POST request.
-            if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
-                resp = ngamsHttpUtils.httpGet(host, port, reqPropsObj.getCmd(),
-                                       pars=pars, timeout=reqTimeOut,
-                                       auth=authHttpHdrVal)
-                with contextlib.closing(resp):
-                    httpStatCode, httpStatMsg, data = resp.status, resp.reason, resp.read()
-                httpHdrs = {h[0]: h[1] for h in resp.getheaders()}
-            else:
-                # It's a POST request, forward request + possible data.
-                contLen = reqPropsObj.getSize()
-                if ((reqPropsObj.getCmd() == NGAMS_ARCHIVE_CMD) and
-                    (contLen <= 0)):
-                    raise Exception, "Must specify a content-length when " +\
-                          "forwarding Archive Requests (Archive Proxy Mode)"
-
-                # During HTTP post we need to pass down a EOF-aware,
-                # read()-able object
-                data = ngamsHttpUtils.sizeaware(reqPropsObj.getReadFd(), contLen)
-                httpStatCode, httpStatMsg, httpHdrs, data =\
-                            ngamsHttpUtils.httpPost(host, port,
-                                                    reqPropsObj.getCmd(),
-                                                    data, mimeType,
-                                                    pars=pars,
-                                                    auth=authHttpHdrVal,
-                                                    timeout=reqTimeOut)
-
-            # If auto-reply is selected, the reply from the remote server
-            # is send back to the originator of the request.
-            if (autoReply):
-                tmpReqObj = ngamsReqProps.ngamsReqProps().\
-                            unpackHttpInfo(self.getCfg(),
-                                           reqPropsObj.getHttpMethod(), "",
-                                           httpHdrs)
-                mimeType = tmpReqObj.getMimeType()
-                if (tmpReqObj.getFileUri()):
-                    attachmentName = os.path.basename(tmpReqObj.getFileUri())
-                    httpHdrs = [["Content-Disposition",
-                                 "attachment; filename=" + attachmentName]]
-                else:
-                    httpHdrs = []
-                self.httpReply(reqPropsObj, httpRefOrg, httpStatCode, data,
-                               mimeType, httpHdrs)
-
-            return httpStatCode, httpStatMsg, httpHdrs, data
-        except Exception:
-            logger.exception("Problem occurred forwarding command %s", reqPropsObj.getCmd())
-            raise
-
-
     def genStatus(self,
                   status,
                   msg):
@@ -2174,85 +1852,6 @@ class ngamsServer(object):
                setVersion(getNgamsVersion()).setHostId(self.getHostId()).\
                setStatus(status).setMessage(msg).setState(self.getState()).\
                setSubState(self.getSubState())
-
-
-    def reply(self,
-              reqPropsObj,
-              httpRef,
-              code,
-              status,
-              msg,
-              addHttpHdrs = []):
-        """
-        Standard reply to HTTP request.
-
-        reqPropsObj:   Request Property object to keep track of
-                       actions done during the request handling
-                       (ngamsReqProps).
-
-        httpRef:       Reference to the HTTP request handler
-                       object (ngamsHttpRequestHandler).
-
-        code:          HTTP status code (integer)
-
-        status:        Status: OK/FAILURE (string).
-
-        msg:           Message for status (string).
-
-        addHttpHdrs:   List containing sub-lists with additional
-                       HTTP headers to send. Format is:
-
-                         [[<HTTP hdr>, <val>, ...]         (list)
-
-        Returns:       Void.
-        """
-        T = TRACE()
-
-        if (reqPropsObj.getSentReply()):
-            logger.info("Reply already sent for this request")
-            return
-        status = self.genStatus(status, msg).\
-                 setReqStatFromReqPropsObj(reqPropsObj).\
-                 setCompletionTime(reqPropsObj.getCompletionTime())
-        xmlStat = status.genXmlDoc()
-        xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(self, xmlStat)
-        self.httpReply(reqPropsObj, httpRef, code, xmlStat, NGAMS_XML_MT,
-                       addHttpHdrs)
-
-
-    def ingestReply(self,
-                    reqPropsObj,
-                    httpRef,
-                    code,
-                    status,
-                    msg,
-                    diskInfoObj):
-        """
-        Standard HTTP reply to archive ingestion action.
-
-        reqPropsObj:   Request Property object to keep track of actions done
-                       during the request handling (ngamsReqProps).
-
-        httpRef:       Reference to the HTTP request handler
-                       object (ngamsHttpRequestHandler).
-
-        code:          HTTP status code (integer)
-
-        status:        Status: OK/FAILURE (string).
-
-        msg:           Message to send as data with the HTTP reply (string).
-
-        diskInfoObj:   Disk info object containing status for disk
-                       where file were stored (Main Disk) (ngamsDiskInfo).
-        """
-        T = TRACE()
-
-        statusObj = self.genStatus(status, msg).addDiskStatus(diskInfoObj).\
-                    setReqStatFromReqPropsObj(reqPropsObj)
-        xmlStat = statusObj.genXmlDoc(0, 1, 1)
-        xmlStat = ngamsHighLevelLib.\
-                  addStatusDocTypeXmlDoc(self, xmlStat)
-        self.httpReply(reqPropsObj, httpRef, code, xmlStat, NGAMS_XML_MT)
 
 
     def checkDiskSpaceSat(self):

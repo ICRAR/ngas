@@ -35,8 +35,7 @@ import time
 from ngamsLib.ngamsCore import TRACE, genLog, checkCreatePath, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, \
     NGAMS_STAGING_DIR, genUniqueId, mvFile, getFileCreationTime, \
-    NGAMS_FILE_STATUS_OK, getDiskSpaceAvail, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,\
-    toiso8601, FMT_DATE_ONLY
+    NGAMS_FILE_STATUS_OK, getDiskSpaceAvail, toiso8601, FMT_DATE_ONLY
 from ngamsLib import ngamsMIMEMultipart, ngamsHighLevelLib, ngamsFileInfo, ngamsLib
 from ngamsServer import ngamsCacheControlThread, ngamsArchiveUtils
 
@@ -384,8 +383,7 @@ def handleCmd(srvObj,
     msg = "Successfully handled Archive Pull Request for data file " +\
           "with URI: " + reqPropsObj.getSafeFileUri()
     logger.info(msg)
-    srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                       NGAMS_SUCCESS, msg, targDiskInfo)
+    httpRef.send_ingest_status(msg, targDiskInfo)
 
 
     for resDapi in resDapiList:

@@ -252,8 +252,7 @@ def handleCmd(srvObj,
     logger.info(msg, extra={'to_syslog': True})
 
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
-    srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                       NGAMS_SUCCESS, msg, trgDiskInfoObj)
+    httpRef.send_ingest_status(msg, trgDiskInfoObj)
 
 
 # EOF

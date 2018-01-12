@@ -26,8 +26,6 @@
 """
 Respond to a favicon.ico request"""
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS
-
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
     """
@@ -43,4 +41,4 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
     Returns:        Void.
     """
-    srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, '<link rel="shortcut icon" href="#" />', "text/html")
+    httpRef.send_data('<link rel="shortcut icon" href="#" />', "text/html")

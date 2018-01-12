@@ -30,7 +30,7 @@ are still available on the file system
 
 import os, datetime, threading
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_TEXT_MT
 from ngamsLib.ngamsDb import ngamsDb
 
 
@@ -91,7 +91,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     global is_chkFileThrd_running
     if (is_chkFileThrd_running):
         if (chkFileThrd):
-            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'Thread %s has checked %d files, and %d files are missing\n' % (chkFileThrd.getName(), num_checked, num_wrong), NGAMS_TEXT_MT)
+            httpRef.send_data('Thread %s has checked %d files, and %d files are missing\n' % (chkFileThrd.getName(), num_checked, num_wrong), NGAMS_TEXT_MT)
         else:
             is_chkFileThrd_running = False
             raise Exception('CheckFile thread\'s instance is gone!')
@@ -102,4 +102,4 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         chkFileThrd = threading.Thread(None, _checkFileThread, thrdName, args)
         chkFileThrd.setDaemon(0)
         chkFileThrd.start()
-        srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'Thread %s is successfully launched to check files.\n' % thrdName, NGAMS_TEXT_MT)
+        httpRef.send_data('Thread %s is successfully launched to check files.\n' % thrdName, NGAMS_TEXT_MT)

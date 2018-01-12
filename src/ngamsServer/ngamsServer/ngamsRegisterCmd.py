@@ -43,7 +43,7 @@ from ngamsLib.ngamsCore import TRACE, rmFile, NGAMS_HTTP_GET, \
     NGAMS_FILE_STATUS_OK, genLog, NGAMS_SUCCESS, NGAMS_XML_MT, NGAMS_TEXT_MT, \
     NGAMS_NOTIF_INFO, NGAMS_DISK_INFO, NGAMS_VOLUME_ID_FILE, \
     NGAMS_VOLUME_INFO_FILE, NGAMS_REGISTER_THR, \
-    NGAMS_HTTP_SUCCESS, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
+    NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, \
     NGAMS_BUSY_SUBSTATE, loadPlugInEntryPoint, toiso8601
 from ngamsLib import ngamsDbm, ngamsReqProps, ngamsFileInfo, ngamsDbCore, \
     ngamsHighLevelLib, ngamsDiskUtils, ngamsLib, ngamsFileList, \
@@ -673,8 +673,7 @@ def register(srvObj,
     if (httpRef):
         xmlStat = status.genXmlDoc(0, 0, 0, 1, 0)
         xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
-        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, xmlStat,
-                            0, NGAMS_XML_MT, len(xmlStat), [], 1)
+        httpRef.send_data(xmlStat, NGAMS_XML_MT)
 
 
 def handleCmd(srvObj,

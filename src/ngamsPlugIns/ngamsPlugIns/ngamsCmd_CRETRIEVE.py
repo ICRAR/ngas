@@ -28,7 +28,7 @@ import logging
 import os
 
 from ngamsLib.ngamsCore import genLog, getFileSize
-from ngamsLib.ngamsCore import NGAMS_CONT_MT, NGAMS_HTTP_SUCCESS
+from ngamsLib.ngamsCore import NGAMS_CONT_MT
 from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, NGAMS_HOST_REMOTE, NGAMS_HOST_CLUSTER
 from ngamsLib.ngamsCore import NGAMS_RETRIEVE_CMD, NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE
 from ngamsLib import ngamsMIMEMultipart, ngamsHttpUtils
@@ -128,17 +128,8 @@ def _handleCmdCRetrieve(srvObj,
     cinfo = cinfo_from_database(container, srvObj, reqPropsObj)
     reader = ngamsMIMEMultipart.ContainerReader(cinfo)
 
-    # Send the headers and then the data
-    srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                        dataRef=None, dataInFile=0, contentType=NGAMS_CONT_MT,
-                        contentLength=len(reader))
-    httpRef.end_headers()
-
-    readf = functools.partial(reader.read, 65536)
-    wfd = reqPropsObj.getWriteFd()
-    for buf in iter(readf, ''):
-        wfd.write(buf)
-    reqPropsObj.setSentReply(1)
+    # Send all the data back
+    httpRef.send_data(reader, NGAMS_CONT_MT)
 
 
 def handleCmd(srvObj, reqPropsObj, httpRef):

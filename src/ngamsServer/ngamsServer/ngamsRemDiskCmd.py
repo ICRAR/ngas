@@ -234,8 +234,8 @@ def handleCmd(srvObj,
         httpStat = NGAMS_HTTP_SUCCESS
     else:
         httpStat = NGAMS_HTTP_BAD_REQ
-    srvObj.httpReplyGen(reqPropsObj, httpRef, httpStat, xmlStat,
-                        dataInFile=0, contentType = NGAMS_XML_MT)
+
+    httpRef.send_data(xmlStat, NGAMS_XML_MT, code=httpStat)
 
 
 # EOF
