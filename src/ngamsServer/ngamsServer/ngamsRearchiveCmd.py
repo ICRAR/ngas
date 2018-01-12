@@ -224,8 +224,8 @@ def handleCmd(srvObj,
     archive_start = time.time()
 
     # Execute the init procedure for the ARCHIVE Command.
-    mimeType = ngamsArchiveCmd.archiveInitHandling(srvObj, reqPropsObj,
-                                                   httpRef)
+    mimeType = ngamsArchiveUtils.archiveInitHandling(srvObj, reqPropsObj, httpRef)
+
     # If mime-type is None, the request has been handled, i.e., it might have
     # been a probe request or the server acting as proxy.
     if (not mimeType): return
