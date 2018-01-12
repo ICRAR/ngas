@@ -1730,7 +1730,7 @@ class ngamsServer(object):
         httpRef.ngas_request = reqPropsObj
 
         # Handle read/write FD.
-        reqPropsObj.setReadFd(readFd).setWriteFd(writeFd)
+        reqPropsObj.setReadFd(readFd)
 
         # Handle the request.
         try:

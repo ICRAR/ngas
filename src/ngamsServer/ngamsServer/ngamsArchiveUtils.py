@@ -1087,8 +1087,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         if pickle_request:
             srvObj.test_AfterSaveInStagingFile()
             logger.debug("Create Temporary Request Properties File: %s", tmpReqPropsFilename)
-            tmpReqPropsObj = reqPropsObj.clone().setReadFd(None).setWriteFd(None).\
-                             setTargDiskInfo(None)
+            tmpReqPropsObj = reqPropsObj.clone().setReadFd(None).setTargDiskInfo(None)
             ngamsLib.createObjPickleFile(tmpReqPropsFilename, tmpReqPropsObj)
             srvObj.test_AfterCreateTmpPropFile()
             logger.debug("Move Temporary Request Properties File to Request " + \

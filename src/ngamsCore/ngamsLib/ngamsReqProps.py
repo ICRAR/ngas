@@ -74,13 +74,11 @@ class ngamsReqProps:
         self.__authorization   = None
 
         # Other parameters to keep track of the request handling.
-        self.__sentReply       = 0
         self.__bytesReceived   = 0
         self.__stagingFilename = ""
         self.__ioTime          = 0
         self.__targDiskInfoObj = None
         self.__readFd          = None
-        self.__writeFd         = None
         self.__noReplication   = 0
 
         # To handle the request status.
@@ -112,13 +110,11 @@ class ngamsReqProps:
                 ["SafeFileUri", self.getSafeFileUri()],
                 ["HttpParsDic", self.getHttpParsDic()],
                 ["HttpParNames", self.getHttpParNames()],
-                ["SentReply", self.getSentReply()],
                 ["BytesReceived", self.getBytesReceived()],
                 ["StagingFilename", self.getStagingFilename()],
                 ["IoTime", self.getIoTime()],
                 ["TargDiskInfo", self.getTargDiskInfo()],
                 ["ReadFd", self.getReadFd()],
-                ["WriteFd", self.getWriteFd()],
                 ["NoReplication", self.getNoReplication()],
                 ["RequestId", self.getRequestId()],
                 ["RequestTime", self.getRequestTime()],
@@ -478,28 +474,6 @@ class ngamsReqProps:
         return self.__httpPars.keys()
 
 
-    def setSentReply(self,
-                     state = 1):
-        """
-        Set the Sent Reply Flag.
-
-        state:     1 = reply sent (integer).
-
-        Returns:   Reference to object itself.
-        """
-        self.__sentReply = state
-        return self
-
-
-    def getSentReply(self):
-        """
-        Get the Sent Reply Flag.
-
-        Returns:    Sent Reply Flag (integer).
-        """
-        return self.__sentReply
-
-
     def setBytesReceived(self,
                          bytes):
         """
@@ -635,28 +609,6 @@ class ngamsReqProps:
         return self.__readFd
 
 
-    def setWriteFd(self,
-                   writeFd):
-        """
-        Set the HTTP write file descriptor.
-
-        readFd:    Write file descriptor (file object).
-
-        Returns:   Reference to object itself.
-        """
-        self.__writeFd = writeFd
-        return self
-
-
-    def getWriteFd(self):
-        """
-        Return the HTTP write file descriptor.
-
-        Returns:   HTTP write file descriptor (file object).
-        """
-        return self.__writeFd
-
-
     def setNoReplication(self,
                          noRep):
         """
@@ -691,12 +643,10 @@ class ngamsReqProps:
                 setMimeType(self.getMimeType()).\
                 setSize(self.getSize()).\
                 setFileUri(self.getFileUri()).\
-                setSentReply(self.getSentReply()).\
                 setBytesReceived(self.getBytesReceived()).\
                 setStagingFilename(self.getStagingFilename()).\
                 setTargDiskInfo(self.getTargDiskInfo()).\
                 setReadFd(self.getReadFd()).\
-                setWriteFd(self.getWriteFd()).\
                 setNoReplication(self.getNoReplication()).\
                 setRequestId(self.getRequestId()).\
                 setCompletionPercent(self.getCompletionPercent()).\

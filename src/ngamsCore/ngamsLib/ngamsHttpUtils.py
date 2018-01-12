@@ -36,17 +36,6 @@ import urlparse
 
 logger = logging.getLogger(__name__)
 
-_http_fmt = "%a, %d %b %Y %H:%M:%S GMT"
-def httpTimeStamp():
-    """
-    Generate a time stamp in the 'HTTP format', e.g.:
-
-        'Mon, 17 Sep 2001 09:21:38 GMT'
-
-    Returns:  Timestamp (string).
-    """
-    return time.strftime(_http_fmt, time.gmtime(time.time()))
-
 
 def _http_response(host, port, method, cmd,
                  data=None, timeout=None,
