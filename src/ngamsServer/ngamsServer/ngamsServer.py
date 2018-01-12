@@ -73,6 +73,7 @@ import ngamsUserServiceThread
 import ngamsMirroringControlThread
 import ngamsCacheControlThread
 import request_db
+from . import pysendfile
 
 
 logger = logging.getLogger(__name__)
@@ -119,6 +120,8 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     Class used to handle an HTTP request.
     """
 
+    server_version = "NGAMS/" + getNgamsVersion()
+
     def setup(self):
 
         self.ngasServer = self.server._ngamsServer
@@ -130,6 +133,9 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.timeout = cfg.getTimeOut() or 60
 
         BaseHTTPServer.BaseHTTPRequestHandler.setup(self)
+
+    def version_string(self):
+        return self.server_version
 
     def log_message(self, fmt, *args):
         """
@@ -150,6 +156,11 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         Returns:    Void.
         """
+
+        # This is set by send_response below to prevent multiple replies being
+        # send during the same HTTP request
+        self.reply_sent = False
+
         path = self.path.strip("?/ ")
         try:
             self.ngasServer.reqCallBack(self, self.client_address, self.command, path,
@@ -174,6 +185,170 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     do_GET  = reqHandle
     do_POST = reqHandle
     do_PUT  = reqHandle
+
+    # Richer send_response method to pass down headers
+    def send_response(self, code, message=None, hdrs={}):
+        """Sends the initial status line plus headers to the client"""
+
+        # Prevent multiple replies being sent
+        if self.reply_sent:
+            raise Exception("Tried to send two responses :(")
+        self.reply_sent = True
+
+        BaseHTTPServer.BaseHTTPRequestHandler.send_response(self, code, message=message)
+        for k, v in hdrs.items():
+            self.send_header(k, v)
+
+    def redirect(self, host, port):
+        """Redirects the client to the requested path, but on host:port"""
+
+        path = self.path
+        if not path.startswith('/'):
+            path = '/' + path
+        location = 'http://%s:%d%s' % (host, port, path)
+
+        logger.info("Redirecting client to %s", location)
+        self.send_response(NGAMS_HTTP_REDIRECT, hdrs={'Location': location})
+
+    def send_file(self, f, mime_type, start_byte=0, fname=None):
+        """
+        Sends file `f` of type `mime_type` to the client. Optionally a different
+        starting byte to start the transmission from, and a different name for
+        the file to present the data to the user can be given.
+        """
+
+        fname = fname or os.path.basename(f)
+        size = getFileSize(f)
+
+        # Headers we want to send
+        hdrs = {'Content-Type': mime_type,
+                'Content-Disposition': 'attachment; filename="%s"' % fname,
+                'Content-Length': str(size - start_byte)}
+        if start_byte:
+            hdrs['Accept-Ranges'] = 'bytes'
+            hdrs["Content-Range"] = "bytes %d-%d/%d" % (start_byte, size - 1, size)
+
+        self.send_response(200, hdrs=hdrs)
+        self.end_headers()
+        self.wfile.flush()
+
+        # Now send the file itself, hopefully using sendfile(2)
+        logger.info("Sending %s (%d bytes) to client, starting at byte %d", f, size, start_byte)
+        with open(f, 'rb') as fin:
+            st = time.time()
+            pysendfile.sendfile(self.connection, fin, start_byte)
+            howlong = time.time() - st
+            size_mb = size / 1024. / 1024.
+        logger.info("Sent %s at %.3f [MB/s]", f, size_mb / howlong)
+
+    def send_data(self, data, mime_type, code=200, message=None, fname=None, hdrs={}):
+        """
+        Sends back `data`, which is of type `mime_type`. If `fname` is given
+        then the data is sent as an attachment.
+        """
+
+        size = len(data)
+        hdrs = dict(hdrs)
+        logger.info("Sending %d bytes of data of type %s and headers %r", size, mime_type, hdrs)
+
+        hdrs['Content-Type'] = mime_type
+        hdrs['Content-Length'] = size
+        if fname:
+            hdrs['Content-Disposition'] = 'attachment; filename="%s"' % fname
+
+        self.send_response(code, message=message, hdrs=hdrs)
+        self.end_headers()
+
+        # Support for file-like objects (but files should be sent via send_file)
+        if hasattr(data, 'read'):
+            shutil.copyfileobj(data, self.wfile)
+            return
+
+        self.wfile.write(data)
+
+    def send_status(self, message, status=NGAMS_SUCCESS, code=None, http_message=None, hdrs={}):
+        """Creates and sends an NGAS status XML document back to the client"""
+
+        logger.info("Returning status %s with message %s", status, message)
+
+        if code is None:
+            code = 200 if status == NGAMS_SUCCESS else 400
+
+        status = self.ngasServer.genStatus(status, message)
+        xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(self.ngasServer, status.genXmlDoc())
+        self.send_data(xml, NGAMS_XML_MT, code=code, message=http_message, hdrs=hdrs)
+
+    def send_ingest_status(self, msg, disk_info):
+        """Reply to the client with a standard ingest status XML document"""
+        status = self.ngasServer.genStatus(NGAMS_SUCCESS, msg).addDiskStatus(disk_info).\
+                 setReqStatFromReqPropsObj(self.ngas_request)
+        xml = status.genXmlDoc(0, 1, 1)
+        xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(self.ngasServer, xml)
+        self.send_data(xml, NGAMS_XML_MT)
+
+    def proxy_request(self, host_id, host, port, timeout=300):
+        """Proxy the current request to `host`:`port`"""
+
+        # Calculate target URL
+        path = self.path
+        if not path.startswith('/'):
+            path = '/' + path
+        url = 'http://%s:%d%s' % (host, port, path)
+        logger.info("Proxying request for %s to %s:%d (corresponding to server %s)",
+                    path, host, port, host_id)
+
+        # If target host is suspended, wake it up.
+        srv = self.ngasServer
+        if (srv.db.getSrvSuspended(host_id)):
+            ngamsSrvUtils.wakeUpHost(srv, host_id)
+
+        # If the NGAS Internal Authorization User is defined generate
+        # an internal Authorization Code.
+        authHttpHdrVal = ""
+        if srv.cfg.hasAuthUser(NGAMS_HTTP_INT_AUTH_USER):
+            authHttpHdrVal = srv.cfg.getAuthHttpHdrVal(NGAMS_HTTP_INT_AUTH_USER)
+
+        # Make sure the time_out parameters is within proper boundaries
+        timeout = min(max(timeout, 0), 1200)
+
+        # Cleanup any headers that we know we'll set again
+        # (including "Host", we are not a *realy* proxy)
+        _STD_HDRS = ('host', 'content-type', 'content-length', 'content-disposition',
+                     'accept-encoding', 'transfer-encoding', 'authorization')
+        hdrs = {k: v for k, v in self.headers.items() if k.lower() not in _STD_HDRS}
+
+        # Forward GET or POST request, get back code/msg/hdrs/data
+        if self.command == 'GET':
+            resp = ngamsHttpUtils.httpGetUrl(url, hdrs=hdrs, timeout=timeout,
+                                             auth=authHttpHdrVal)
+            with contextlib.closing(resp):
+                code, data = resp.status, resp.read()
+            hdrs = {h[0]: h[1] for h in resp.getheaders()}
+
+        else:
+            # During HTTP post we need to pass down a EOF-aware,
+            # read()-able object
+            data = ngamsHttpUtils.sizeaware(self.rfile, int(self.headers['content-length']))
+
+            mime_type = ''
+            if 'content-type' in self.headers:
+                mime_type = self.headers['content-type']
+
+            code, _, hdrs, data = ngamsHttpUtils.httpPostUrl(url, data, mime_type,
+                                                             hdrs=hdrs,
+                                                             timeout=timeout,
+                                                             auth=authHttpHdrVal)
+
+        # Our code calculates the content length already, let's not send it twice
+        # Similarly, let's avoid Content-Type rewriting
+        logger.info("Received response from %s:%d, sending to client", host, port)
+        logger.info("Headers from response: %r", hdrs)
+        if 'content-length' in hdrs:
+            del hdrs['content-length']
+        mime_type = hdrs['content-type']
+        del hdrs['content-type']
+
+        self.send_data(data, mime_type, code=code, hdrs=hdrs)
 
 
 
@@ -1553,6 +1728,7 @@ class ngamsServer(object):
         reqPropsObj = ngamsReqProps.ngamsReqProps()
         reqPropsObj.setRequestId(str(uuid.uuid4()))
         self.request_db.add(reqPropsObj)
+        httpRef.ngas_request = reqPropsObj
 
         # Handle read/write FD.
         reqPropsObj.setReadFd(readFd).setWriteFd(writeFd)
