@@ -95,10 +95,7 @@ def cacheDel(srvObj,
              "- sending back HTTP re-direction response")
         host, port = srvObj.get_remote_server_endpoint(fileHostId)
         reqPropsObj.setCompletionTime(1)
-        srvObj.updateRequestDb(reqPropsObj)
         httpRef.redirect(host, port)
-
-    srvObj.updateRequestDb(reqPropsObj)
 
 
 def handleCmd(srvObj,

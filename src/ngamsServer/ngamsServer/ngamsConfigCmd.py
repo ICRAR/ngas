@@ -76,7 +76,6 @@ def handleCmd(srvObj,
         #           logLocalLogFile, logVerboseLevel)
         pass
 
-    srvObj.updateRequestDb(reqPropsObj)
     return "Handled CONFIG command"
 
 # EOF

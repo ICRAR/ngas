@@ -61,7 +61,6 @@ def handleCmd(srvObj,
     ngamsSrvUtils.handleOffline(srvObj, reqPropsObj)
     ngamsSrvUtils.handleOnline(srvObj, reqPropsObj)
     logger.info("NG/AMS initialized!")
-    srvObj.updateRequestDb(reqPropsObj)
 
     return "Successfully handled command INIT"
 

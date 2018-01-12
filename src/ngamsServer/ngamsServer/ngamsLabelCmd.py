@@ -178,7 +178,6 @@ def handleCmd(srvObj,
                          "relabel=<Disk ID>&new_label=<Label>", "LABEL"])
         raise Exception, errMsg
 
-    srvObj.updateRequestDb(reqPropsObj)
     return "Successfully handled command LABEL"
 
 

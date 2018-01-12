@@ -126,7 +126,6 @@ def handleCmd(srvObj,
                                                discrepancies])
 
         reqPropsObj.setCompletionTime(1)
-        srvObj.updateRequestDb(reqPropsObj)
         return msg
 
     elif (srvObj.getCfg().getProxyMode() or
@@ -144,7 +143,6 @@ def handleCmd(srvObj,
                      "re-direction response")
         host, port = srvObj.get_remote_server_endpoint(fileHostId)
         reqPropsObj.setCompletionTime(1)
-        srvObj.updateRequestDb(reqPropsObj)
         httpRef.redirect(host, port)
         return
 

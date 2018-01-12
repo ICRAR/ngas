@@ -59,7 +59,6 @@ def handleCmd(srvObj,
     srvObj.checkSetState("Command ONLINE", [NGAMS_OFFLINE_STATE],
                          [NGAMS_IDLE_SUBSTATE])
     ngamsSrvUtils.handleOnline(srvObj, reqPropsObj)
-    srvObj.updateRequestDb(reqPropsObj)
 
     return "Successfully handled command ONLINE"
 
