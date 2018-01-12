@@ -3,6 +3,7 @@
 .svn
 *.pyc
 *.pyo
+.cache
 CVS
 bin
 downloads
