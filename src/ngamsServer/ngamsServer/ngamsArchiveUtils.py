@@ -969,15 +969,12 @@ def archiveInitHandling(srvObj, reqPropsObj, httpRef, do_probe=False, try_to_pro
 
     # Act possibly as proxy for the Achive Request?
     # TODO: Support maybe HTTP redirection also for Archive Requests.
-    try:
-        if (try_to_proxy and
-            srvObj.getCfg().getStreamFromMimeType(mimeType).getHostIdList()):
-            host_id, host, port = findTargetNode(srvObj, mimeType)
-            if host_id != srvObj.getHostId():
-                httpRef.proxy_request(host_id, host, port)
-                return None
-    except Exception:
-        pass
+    if (try_to_proxy and
+        srvObj.getCfg().getStreamFromMimeType(mimeType).getHostIdList()):
+        host_id, host, port = findTargetNode(srvObj, mimeType)
+        if host_id != srvObj.getHostId():
+            httpRef.proxy_request(host_id, host, port)
+            return None
 
     return mimeType
 
@@ -1275,7 +1272,7 @@ def findTargetNode(srvObj, mimeType):
             if "NGAMS_INFO_ARCH_REQ_OK" in statObj.getMessage():
                 logMsg = "Found remote Archiving Unit: %s:%d to handle " +\
                          "Archive Request for data file with mime-type: %s"
-                logger.debug(logMsg, host, port, mimeType)
+                logger.info(logMsg, host, port, mimeType)
                 return hostId, host, port
 
             logMsg = "Remote Archiving Unit: %s:%d rejected to/" +\
