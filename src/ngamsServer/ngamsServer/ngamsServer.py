@@ -268,10 +268,11 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def send_status(self, message, status=NGAMS_SUCCESS, code=None, http_message=None, hdrs={}):
         """Creates and sends an NGAS status XML document back to the client"""
 
-        logger.info("Returning status %s with message %s", status, message)
 
         if code is None:
             code = 200 if status == NGAMS_SUCCESS else 400
+
+        logger.info("Returning status %s with message %s and HTTP code %d", status, message, code)
 
         status = self.ngasServer.genStatus(status, message)
         xml = ngamsHighLevelLib.addStatusDocTypeXmlDoc(self.ngasServer, status.genXmlDoc())
@@ -1819,7 +1820,16 @@ class ngamsServer(object):
 
         reqPropsObj.unpackHttpInfo(self.getCfg(), method, path, headers)
 
-        ngamsAuthUtils.authorize(self, reqPropsObj, httpRef)
+        try:
+            ngamsAuthUtils.authorize(self.cfg, reqPropsObj)
+        except ngamsAuthUtils.UnauthenticatedError as e:
+            logger.warning("Unauthenticated access denied: %s", e.msg)
+            httpRef.send_status(e.msg, status=NGAMS_FAILURE, code=401)
+            return
+        except ngamsAuthUtils.UnauthorizedError:
+            msg = 'Unauthorized access denied'
+            httpRef.send_status(msg, status=NGAMS_FAILURE, code=403)
+            return
 
         ngamsCmdHandling.cmdHandler(self, reqPropsObj, httpRef)
 

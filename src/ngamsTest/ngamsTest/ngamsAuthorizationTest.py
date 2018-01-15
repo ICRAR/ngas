@@ -31,9 +31,13 @@
 This module contains the Test Suite for the Authorization Feature of NG/AMS.
 """
 
+import base64
+import contextlib
+import os
 import sys
 
-from ngamsTestLib import ngamsTestSuite, sendPclCmd, saveInFile, filterDbStatus1, runTest
+from ngamsLib import ngamsHttpUtils
+from ngamsTestLib import ngamsTestSuite, runTest
 
 
 class ngamsAuthorizationTest(ngamsTestSuite):
@@ -55,125 +59,65 @@ class ngamsAuthorizationTest(ngamsTestSuite):
         - Other commands where a node may act as proxy.
     """
 
+    def _assert_code(self, code, bauth=None, raw_auth=None, cmd='STATUS'):
+        auth = raw_auth or 'Basic ' + base64.b64encode(bauth) if bauth else None
+        resp = ngamsHttpUtils.httpGet('127.0.0.1', 8888, cmd, auth=auth)
+        with contextlib.closing(resp):
+            self.assertEqual(code, resp.status)
+
     def test_NoAuth_1(self):
-        """
-        Synopsis:
-        Issue a request with Authorization disabled.
-
-        Description:
-        When HTTP Authorization is disabled requests can be submitted
-        without issuing the authorization code.
-
-        This Test Case exercises this case.
-
-        Expected Result:
-        The STATUS Command issued without authorization, should be accepted and
-        executed by the NG/AMS Server.
-
-        Test Steps:
-        - Start standard server with HTTP auth. disabled.
-        - Issue STATUS Command.
-        - Check that the command was successfully executed.
-
-        Remarks:
-        ...
-        """
+        """Authentication/authorization is fully disabled"""
         self.prepExtSrv()
-        statObj = sendPclCmd().status()
-        refStatFile = "ref/ngamsAuthorizationTest_test_NoAuth_1_1_ref"
-        tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-                          "returned for Status Request")
+        self._assert_code(200)
 
 
     def test_UnAuthReq_1(self):
-        """
-        Synopsis:
-        Request rejected when HTTP Auth. enabled and no Auth. Code issued
+        """Authorization/authentication is enabled"""
 
-        Description:
-        This Test Cases exercises the case where HTTP Authorization is
-        enabled in the NG/AMS Server, but where no HTTP Authorization code
-        is issued with a request.
-
-        Expected Result:
-        The NG/AMS Server will return a 'failed authorization response'
-        (challenging the client), which in this case means that the request
-        is rejected.
-
-        Test Steps:
-        - Start server with HTTP auth. enabled + a number of users defined.
-        - Issue a STATUS Command without the HTTP auth. code.
-        - Check that an NGAMS_ER_UNAUTH_REQ error code is returned.
-
-        Remarks:
-        Should also check if the HTTP response code is correct.
-        """
         self.prepExtSrv(cfgProps=[["NgamsCfg.Authorization[1].Enable","1"]])
-        statObj = sendPclCmd().status()
-        refStatFile = "ref/ngamsAuthorizationTest_test_UnAuthReq_1_1_ref"
-        tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-                          "returned for Status Request")
+        self._assert_code(401)
+        self._assert_code(401, raw_auth="Not basic at all")
+        self._assert_code(401, raw_auth="Basic")
+        self._assert_code(401, raw_auth="Basic ")
+        self._assert_code(401, raw_auth="Basic user")
 
 
     def test_UnAuthReq_2(self):
-        """
-        Synopsis:
-        HTTP auth. enabled, illegal HTTP auth. code issued.
+        """Authorization/authentication is enabled, commands are restricted"""
 
-        Description:
-        The purpose of this test is to check that the NG/AMS Server
-        rejects a request if HTTP auth. is enabled and in invalid HTTP
-        auth. code is submitted with the request.
+        # Start the server with a set of configured users
+        pass1 = os.urandom(16)
+        pass2 = os.urandom(16)
+        pass3 = os.urandom(16)
+        u1 = (('Name', 'test1'), ('Password', base64.b64encode(pass1)), ('Commands', '*'))
+        u2 = (('Name', 'test2'), ('Password', base64.b64encode(pass2)), ('Commands', 'STATUS'))
+        u3 = (('Name', 'test3'), ('Password', base64.b64encode(pass3)), ('Commands', 'DOESNT_EXIST'))
 
-        Expected Result:
-        The server should detect the invalid HTTP auth. code and reject the
-        request.
+        cfg = [('Enable', '1')]
+        for i, u in enumerate((u1, u2, u3)):
+            cfg += [('User[%d].%s' % (i, name), str(val)) for name, val in u]
+        cfg = [("NgamsCfg.Authorization[1].%s" % name, val) for name, val in cfg]
+        self.prepExtSrv(cfgProps=cfg)
 
-        Test Steps:
-        - Start server with HTTP auth. enabled + a number of users defined.
-        - Issue STATUS Command with an invalid auth. code.
-        - Check that an NGAMS_ER_UNAUTH_REQ error code is returned.
+        auth1 = 'test1:' + pass1
+        auth2 = 'test2:' + pass2
+        auth3 = 'test3:' + pass3
 
-        Remarks:
-        Should also check if the HTTP response code is correct.
-        """
-        self.prepExtSrv(cfgProps=[["NgamsCfg.Authorization[1].Enable","1"]])
-        statObj = sendPclCmd(auth="SUxMRUdBTDpDT0RF").status()
-        refStatFile = "ref/ngamsAuthorizationTest_test_UnAuthReq_2_1_ref"
-        tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-                          "returned for Status Request")
+        # No authentication
+        self._assert_code(401)
 
+        # Users 1 and 2 are allowed to STATUS, user 3 isn't
+        self._assert_code(200, bauth=auth1)
+        self._assert_code(200, bauth=auth2)
+        self._assert_code(403, bauth=auth3)
 
-    def test_AuthReq_1(self):
-        """
-        Synopsis:
-        Successful HTTP auth.
-
-        Description:
-        Test that a request is accepted when Authorization is
-        enabled and the proper Authorization Code is given with the query.
-
-        Expected Result:
-        The request is submitted with a valid HTTP auth. code. The NG/AMS
-        Server thus accepts and executes the request.
-
-        Test Steps:
-        - Start server with HTTP auth. enabled + a number of users defined.
-        - Issue STATUS Command with a valid auth. code.
-        - Check that the command is successfully executed.
-
-        Remarks:
-        ...
-        """
-        self.prepExtSrv(cfgProps=[["NgamsCfg.Authorization[1].Enable","1"]])
-        statObj = sendPclCmd(auth="bmdhczpuZ2Fz").status()
-        refStatFile = "ref/ngamsAuthorizationTest_test_AuthReq_1_1_ref"
-        tmpStatFile = saveInFile(None, filterDbStatus1(statObj.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status " +\
-                          "returned for Status Request")
+        # Users 1 and 3 are allowed to send the DOESNT_EXIST command, user 3 isn't
+        # We get 404s here because the command actually doesn't exist, which yields
+        # that HTTP code, and also because HTTP authentication happens before
+        # command processing
+        self._assert_code(404, bauth=auth1, cmd='DOESNT_EXIST')
+        self._assert_code(403, bauth=auth2, cmd='DOESNT_EXIST')
+        self._assert_code(404, bauth=auth3, cmd='DOESNT_EXIST')
 
 
 def run():
