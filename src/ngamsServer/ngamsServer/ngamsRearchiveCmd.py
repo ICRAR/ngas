@@ -40,6 +40,7 @@ import base64
 import logging
 import os
 import time
+import urllib
 
 import ngamsArchiveUtils
 import ngamsFileUtils, ngamsCacheControlThread
@@ -116,7 +117,7 @@ def receiveData(srvObj,
     if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
         # urllib.urlopen will attempt to get the content-length based on the URI
         # i.e. file, ftp, http
-        handle = ngamsHighLevelLib.openCheckUri(reqPropsObj.getFileUri())
+        handle = urllib.urlopen(reqPropsObj.getFileUri())
         reqPropsObj.setSize(handle.info()['Content-Length'])
         rfile = handle
     else:

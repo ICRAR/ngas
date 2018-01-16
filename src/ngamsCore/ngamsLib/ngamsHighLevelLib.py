@@ -434,39 +434,6 @@ def genStagingFilename(ngamsCfgObj,
         raise Exception, errMsg
 
 
-def openCheckUri(uri):
-    """
-    The function opens a URI and checks the result of the query. In case and
-    error is returned, an exception is thrown indicating the type of error.
-
-    uri:            URI to open/read (string).
-
-    Returns:        Open file object from where to read the data (file object).
-    """
-    T = TRACE()
-
-    logger.debug("Opening URL: %s", uri)
-    err = ""
-    retStat = None
-    try:
-        retStat = urllib.urlopen(uri)
-    except Exception, e:
-        err = str(e)
-    # In case an error occurred, a tuple is returned, otherwise an "addinfourl"
-    # object is returned. An error occurred if an empty tuple was returned.
-    if ((err == "") and (type(retStat) == type(()))):
-        # Contents of retStat in case of error:
-        # url, fp, errCode, errMsg, headers, data
-        status = ngamsStatus.ngamsStatus().unpackXmlDoc(retStat[1].read())
-        retStat[1].close()
-        err = status.getMessage()
-    if (err):
-        errMsg = "Error opening URI: " + uri + ". Error message: " + str(err)
-        errMsg = genLog("NGAMS_ER_REQ_HANDLING", [errMsg])
-        raise Exception, errMsg
-    return retStat
-
-
 def checkIfFileExists(dbConObj,
                       fileId,
                       diskId,
