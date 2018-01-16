@@ -105,7 +105,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     """
     httpMethod = reqPropsObj.getHttpMethod()
     if (httpMethod == 'POST'):
-        postContent = _getPostContent(srvObj, reqPropsObj)
+        postContent = _getPostContent(srvObj, reqPropsObj, httpRef)
         # postContent = urllib.unquote(postContent)
         #info(3,"decoded getPostContent: %s" % postContent)
         # unpack AsyncListRetrieveRequest
@@ -264,13 +264,13 @@ def statusHandler(srvObj, reqPropsObj, sessionId):
         res.session_uuid = sessionId
     return res
 
-def _getPostContent(srvObj, reqPropsObj):
+def _getPostContent(srvObj, reqPropsObj, httpRef):
     """
     Get the actual asynchlist request content from the HTTP Post
     """
     remSize = reqPropsObj.getSize()
     #info(3,"Post Data size: %d" % remSize)
-    buf = reqPropsObj.getReadFd().read(remSize) #TODO - use proper loop on read here! given remSize is small, should be okay for now
+    buf = httpRef.rfile.read(remSize) #TODO - use proper loop on read here! given remSize is small, should be okay for now
     sizeRead = len(buf)
     #info(3,"Read buf size: %d" % sizeRead)
     #info(3,"Read buf: %s" % buf)

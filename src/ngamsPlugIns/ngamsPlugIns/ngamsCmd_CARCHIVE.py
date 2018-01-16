@@ -36,7 +36,7 @@ from ngamsLib.ngamsCore import TRACE, genLog, checkCreatePath, \
     NGAMS_ONLINE_STATE, NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE, \
     NGAMS_STAGING_DIR, genUniqueId, mvFile, getFileCreationTime, \
     NGAMS_FILE_STATUS_OK, getDiskSpaceAvail, toiso8601, FMT_DATE_ONLY
-from ngamsLib import ngamsMIMEMultipart, ngamsHighLevelLib, ngamsFileInfo, ngamsLib
+from ngamsLib import ngamsMIMEMultipart, ngamsHighLevelLib, ngamsFileInfo
 from ngamsServer import ngamsCacheControlThread, ngamsArchiveUtils
 
 
@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 
 def saveInStagingFile(ngamsCfgObj,
                       reqPropsObj,
+                      httpRef,
                       stagingFilename,
                       diskInfoObj):
     """
@@ -66,7 +67,7 @@ def saveInStagingFile(ngamsCfgObj,
 
     try:
         blockSize = ngamsCfgObj.getBlockSize()
-        return saveFromHttpToFile(ngamsCfgObj, reqPropsObj, stagingFilename,
+        return saveFromHttpToFile(ngamsCfgObj, reqPropsObj, httpRef, stagingFilename,
                                   blockSize, 1, diskInfoObj)
     except Exception, e:
         errMsg = genLog("NGAMS_ER_PROB_STAGING_AREA", [stagingFilename,str(e)])
@@ -76,6 +77,7 @@ def saveInStagingFile(ngamsCfgObj,
 
 def saveFromHttpToFile(ngamsCfgObj,
                        reqPropsObj,
+                       httpRef,
                        trgFilename,
                        blockSize,
                        mutexDiskAccess = 1,
@@ -113,30 +115,11 @@ def saveFromHttpToFile(ngamsCfgObj,
 
         # Distinguish between Archive Pull and Push Request. By Archive
         # Pull we may simply read the file descriptor until it returns "".
-        if (reqPropsObj.is_GET() and
-            not reqPropsObj.getFileUri().startswith('http://')):
-            # (reqPropsObj.getSize() == -1)):
-            # Just specify something huge.
-            logger.debug("It is an Archive Pull Request/data with unknown size")
-            remSize = int(1e11)
-        elif reqPropsObj.getFileUri().startswith('http://'):
-            logger.debug("It is an HTTP Archive Pull Request: trying to get Content-Length")
-            httpInfo = reqPropsObj.getReadFd().info()
-            headers = httpInfo.headers
-            hdrsDict = ngamsLib.httpMsgObj2Dic(''.join(headers))
-            if hdrsDict.has_key('content-length'):
-                remSize = int(hdrsDict['content-length'])
-            else:
-                logger.debug("No HTTP header parameter Content-Length!")
-                logger.debug("Header keys: %s", hdrsDict.keys())
-                remSize = int(1e11)
-        else:
-            remSize = reqPropsObj.getSize()
-            logger.debug("Archive Push/Pull Request - Data size: %d", remSize)
+        remSize = reqPropsObj.getSize()
+        logger.debug("Archive Push/Pull Request - Data size: %d", remSize)
 
-        fd = reqPropsObj.getReadFd()
         handler = ngamsMIMEMultipart.FilesystemWriterHandler(blockSize, True, trgFilename)
-        parser = ngamsMIMEMultipart.MIMEMultipartParser(handler, fd, remSize, blockSize)
+        parser = ngamsMIMEMultipart.MIMEMultipartParser(handler, httpRef.rfile, remSize, blockSize)
         parser.parse()
         deltaTime = time.time() - start
 
@@ -210,6 +193,9 @@ def handleCmd(srvObj,
                          NGAMS_ONLINE_STATE, NGAMS_BUSY_SUBSTATE,
                          updateDb=False)
 
+    if httpRef.command != 'POST':
+        raise Exception("Only POST allowed for CARCHIVE")
+
     # Get mime-type (try to guess if not provided as an HTTP parameter).
     logger.debug("Get mime-type (try to guess if not provided as an HTTP parameter).")
     if (reqPropsObj.getMimeType() == ""):
@@ -218,13 +204,6 @@ def handleCmd(srvObj,
         reqPropsObj.setMimeType(mimeType)
     else:
         mimeType = reqPropsObj.getMimeType()
-
-    ## Set reference in request handle object to the read socket.
-    logger.debug("Set reference in request handle object to the read socket.")
-    if reqPropsObj.getFileUri().startswith('http://'):
-        fileUri = reqPropsObj.getFileUri()
-        readFd = ngamsHighLevelLib.openCheckUri(fileUri)
-        reqPropsObj.setReadFd(readFd)
 
     # Determine the target volume, ignoring the stream concept.
     logger.debug("Determine the target volume, ignoring the stream concept.")
@@ -249,7 +228,7 @@ def handleCmd(srvObj,
 
     # Retrieve file contents (from URL, archive pull, or by storing the body
     # of the HTTP request, archive push).
-    stagingInfo = saveInStagingFile(srvObj.getCfg(), reqPropsObj,
+    stagingInfo = saveInStagingFile(srvObj.getCfg(), reqPropsObj, httpRef,
                                     stgFilename, targDiskInfo)
     ioTime = stagingInfo[0]
     rootContainer = stagingInfo[1]

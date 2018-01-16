@@ -61,7 +61,7 @@ def _handleSingleContainer(srvObj, reqPropsObj):
         container.setParentContainer(parentContainer)
     return container
 
-def _handleComplexContainer(srvObj, reqPropsObj):
+def _handleComplexContainer(srvObj, reqPropsObj, httpRef):
     """
     Handles the request for creation of a hierarchy of containers.
     The new hierarchy is specified as an XML document included in the
@@ -75,7 +75,7 @@ def _handleComplexContainer(srvObj, reqPropsObj):
 
     # Parse the message body into a hierarchy of containers
     size = reqPropsObj.getSize()
-    contHierarchyStr = reqPropsObj.getReadFd().read(size)
+    contHierarchyStr = httpRef.rfile.read(size)
     contHierarchyDoc = minidom.parseString(contHierarchyStr)
     rootContNode = contHierarchyDoc.childNodes[0]
     parentContainerId = rootContNode.getAttribute('parentContainerId')
@@ -116,7 +116,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET:
         rootCont = _handleSingleContainer(srvObj, reqPropsObj)
     else:
-        rootCont = _handleComplexContainer(srvObj, reqPropsObj)
+        rootCont = _handleComplexContainer(srvObj, reqPropsObj, httpRef)
 
     statusObj = srvObj.genStatus(NGAMS_SUCCESS, "Successfully created container(s)")
     statusObj.addContainer(rootCont)

@@ -199,7 +199,7 @@ def archive_contents(out_fname, fin, fsize, block_size, crc_name, skip_crc=False
     return archiving_results(readin, rtime, wtime, crctime, total_time, crc_name, crc)
 
 
-def archive_contents_from_request(out_fname, cfg, req, skip_crc=False, transfer=None):
+def archive_contents_from_request(out_fname, cfg, req, rfile, skip_crc=False, transfer=None):
     """
     Inspects the given configuration and request objects, and calls
     archive_contents with the required arguments.
@@ -218,8 +218,7 @@ def archive_contents_from_request(out_fname, cfg, req, skip_crc=False, transfer=
     def http_transfer(req, out_fname, crc_name, skip_crc):
         block_size = cfg.getBlockSize()
         size = req.getSize()
-        fin = req.getReadFd()
-        return archive_contents(out_fname, fin, size, block_size, crc_name, skip_crc)
+        return archive_contents(out_fname, rfile, size, block_size, crc_name, skip_crc)
 
     transfer = transfer or http_transfer
     result = transfer(req, out_fname, crc_name, skip_crc=skip_crc)
@@ -1021,9 +1020,10 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         # urllib.urlopen will attempt to get the content-length based on the URI
         # i.e. file, ftp, http
         reqPropsObj.setSize(handle.info()['Content-Length'])
-        reqPropsObj.setReadFd(handle)
+        rfile = handle
     else:
         logger.info("Handling archive push request")
+        rfile = httpRef.rfile
 
     logger.info(genLog("NGAMS_INFO_ARCHIVING_FILE", [reqPropsObj.getFileUri()]), extra={'to_syslog': True})
 
@@ -1072,7 +1072,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         try:
             ngamsHighLevelLib.acquireDiskResource(cfg, trgDiskInfo.getSlotId())
             archive_result = archive_contents_from_request(tmpStagingFilename, cfg, reqPropsObj,
-                                                   skip_crc=skip_crc, transfer=transfer)
+                                                           rfile, skip_crc=skip_crc, transfer=transfer)
         finally:
             ngamsHighLevelLib.releaseDiskResource(cfg, trgDiskInfo.getSlotId())
 
@@ -1084,7 +1084,7 @@ def _dataHandler(srvObj, reqPropsObj, httpRef, find_target_disk,
         if pickle_request:
             srvObj.test_AfterSaveInStagingFile()
             logger.debug("Create Temporary Request Properties File: %s", tmpReqPropsFilename)
-            tmpReqPropsObj = reqPropsObj.clone().setReadFd(None).setTargDiskInfo(None)
+            tmpReqPropsObj = reqPropsObj.clone().setTargDiskInfo(None)
             ngamsLib.createObjPickleFile(tmpReqPropsFilename, tmpReqPropsObj)
             srvObj.test_AfterCreateTmpPropFile()
             logger.debug("Move Temporary Request Properties File to Request " + \

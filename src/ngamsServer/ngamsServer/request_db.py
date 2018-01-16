@@ -94,7 +94,7 @@ class DBMRequestDB(object):
 
     def update(self, req):
         req_id = req.getRequestId()
-        req = req.clone().setReadFd(None)
+        req = req.clone()
         with self.lock:
             try:
                 self.dbm.add(req_id, req)

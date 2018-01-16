@@ -53,13 +53,13 @@ mime_type = 'application/octet-stream'
 cancelDict = {} #key - taskId that has been cancelled, value - 1 (place holder)
 g_mrLocalTask = None # the current running task
 
-def _getPostContent(srvObj, reqPropsObj):
+def _getPostContent(srvObj, reqPropsObj, httpRef):
     """
     Get the MapLocalTask sub-class from the HTTP Post
     """
     remSize = reqPropsObj.getSize()
     #info(3,"Post Data size: %d" % remSize)
-    buf = reqPropsObj.getReadFd().read(remSize) #TODO - use proper loop on read here! given remSize is small, should be okay for now
+    buf = httpRef.rfile.read(remSize) #TODO - use proper loop on read here! given remSize is small, should be okay for now
     sizeRead = len(buf)
     #info(3,"Read buf size: %d" % sizeRead)
     #info(3,"Read buf: %s" % buf)
@@ -193,7 +193,7 @@ def handleCmd(srvObj,
 
         httpRef.send_data(errMsg, NGAMS_TEXT_MT)
     else:
-        postContent = _getPostContent(srvObj, reqPropsObj)
+        postContent = _getPostContent(srvObj, reqPropsObj, httpRef)
         mrLocalTask = pickle.loads(postContent)
         if (not mrLocalTask):
             errMsg = 'Cannot instantiate local task from POST'

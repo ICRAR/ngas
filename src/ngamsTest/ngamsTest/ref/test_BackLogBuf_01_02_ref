@@ -10,7 +10,6 @@ HttpParNames:                       ['async', 'filename', 'no_versioning', 'time
 BytesReceived:                      69120
 IoTime:                             0
 TargDiskInfo:                       None
-ReadFd:                             None
 NoReplication:                      0
 CompletionPercent:                  None
 ExpectedCount:                      None

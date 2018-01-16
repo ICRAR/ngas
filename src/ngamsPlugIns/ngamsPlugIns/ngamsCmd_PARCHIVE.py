@@ -39,6 +39,7 @@ import httplib
 import logging
 import os
 import time
+import urllib
 import urllib2
 
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, \
@@ -135,6 +136,7 @@ def buildHttpClient(url,
 def saveFromHttpToHttp(reqPropsObj,
                        basename,
                        blockSize,
+                       rfile,
                        reportHost = None,
                        checkCRC = 0):
     """
@@ -183,7 +185,7 @@ def saveFromHttpToHttp(reqPropsObj,
             remSize = int(1e11)
         elif reqPropsObj.getFileUri().startswith('http://'):
             logger.debug("It is an HTTP Archive Pull Request: trying to get Content-Length")
-            httpInfo = reqPropsObj.getReadFd().info()
+            httpInfo = rfile.info()
             headers = httpInfo.headers
             hdrsDict = ngamsLib.httpMsgObj2Dic(''.join(headers))
             if hdrsDict.has_key('content-length'):
@@ -216,7 +218,7 @@ def saveFromHttpToHttp(reqPropsObj,
         while ((remSize > 0) and ((time.time() - lastRecepTime) < 30.0)):
             if (remSize < rdSize): rdSize = remSize
             rdt = time.time()
-            buf = reqPropsObj.getReadFd().read(rdSize)
+            buf = rfile.read(rdSize)
             rdt = time.time() - rdt
             if (rdt > slow):
                 srb += 1
@@ -344,10 +346,10 @@ def handleCmd(srvObj,
 
     ## Set reference in request handle object to the read socket.
     logger.debug("Set reference in request handle object to the read socket.")
+    rfile = httpRef.rfile
     if reqPropsObj.getFileUri().startswith('http://'):
-        fileUri = reqPropsObj.getFileUri()
-        readFd = ngamsHighLevelLib.openCheckUri(fileUri)
-        reqPropsObj.setReadFd(readFd)
+        readFd = urllib.urlopen(reqPropsObj.getFileUri())
+        rfile = readFd
 
     logger.debug("Generate basename filename from URI: %s", reqPropsObj.getFileUri())
     if (reqPropsObj.getFileUri().find("file_id=") >= 0):
@@ -360,9 +362,9 @@ def handleCmd(srvObj,
     jobManHost = srvObj.getCfg().getNGASJobMANHost()
     doCRC = srvObj.getCfg().getProxyCRC()
     if (jobManHost):
-        saveFromHttpToHttp(reqPropsObj, baseName, blockSize, reportHost = jobManHost, checkCRC = doCRC)
+        saveFromHttpToHttp(reqPropsObj, baseName, blockSize, rfile, reportHost = jobManHost, checkCRC = doCRC)
     else:
-        saveFromHttpToHttp(reqPropsObj, baseName, blockSize, checkCRC = doCRC)
+        saveFromHttpToHttp(reqPropsObj, baseName, blockSize, rfile, checkCRC = doCRC)
 
     # Request after-math ...
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)

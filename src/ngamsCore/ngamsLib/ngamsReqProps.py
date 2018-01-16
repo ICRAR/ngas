@@ -78,7 +78,6 @@ class ngamsReqProps:
         self.__stagingFilename = ""
         self.__ioTime          = 0
         self.__targDiskInfoObj = None
-        self.__readFd          = None
         self.__noReplication   = 0
 
         # To handle the request status.
@@ -114,7 +113,6 @@ class ngamsReqProps:
                 ["StagingFilename", self.getStagingFilename()],
                 ["IoTime", self.getIoTime()],
                 ["TargDiskInfo", self.getTargDiskInfo()],
-                ["ReadFd", self.getReadFd()],
                 ["NoReplication", self.getNoReplication()],
                 ["RequestId", self.getRequestId()],
                 ["RequestTime", self.getRequestTime()],
@@ -587,28 +585,6 @@ class ngamsReqProps:
         return self.__authorization
 
 
-    def setReadFd(self,
-                  readFd):
-        """
-        Set the HTTP read file descriptor.
-
-        readFd:    Read file descriptor (file object).
-
-        Returns:   Reference to object itself.
-        """
-        self.__readFd = readFd
-        return self
-
-
-    def getReadFd(self):
-        """
-        Return the HTTP read file descriptor.
-
-        Returns:   HTTP read file descriptor (file object).
-        """
-        return self.__readFd
-
-
     def setNoReplication(self,
                          noRep):
         """
@@ -646,7 +622,6 @@ class ngamsReqProps:
                 setBytesReceived(self.getBytesReceived()).\
                 setStagingFilename(self.getStagingFilename()).\
                 setTargDiskInfo(self.getTargDiskInfo()).\
-                setReadFd(self.getReadFd()).\
                 setNoReplication(self.getNoReplication()).\
                 setRequestId(self.getRequestId()).\
                 setCompletionPercent(self.getCompletionPercent()).\

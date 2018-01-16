@@ -162,9 +162,8 @@ class ngamsHttpRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         path = self.path.strip("?/ ")
         try:
-            self.ngasServer.reqCallBack(self, self.client_address, self.command, path,
-                         self.request_version, self.headers,
-                         self.wfile, self.rfile)
+            self.ngasServer.reqCallBack(self, self.client_address, self.command,
+                                        path, self.headers)
         except socket.error:
             # BaseHTTPRequestHandler.handle does wfile.flush() after this method
             # returns. If there is a problem with the connection to the client
@@ -1690,10 +1689,7 @@ class ngamsServer(object):
                     clientAddress,
                     method,
                     path,
-                    requestVersion,
-                    headers,
-                    writeFd,
-                    readFd):
+                    headers):
         """
         Call-back to handle the HTTP request.
 
@@ -1730,13 +1726,10 @@ class ngamsServer(object):
         self.request_db.add(reqPropsObj)
         httpRef.ngas_request = reqPropsObj
 
-        # Handle read/write FD.
-        reqPropsObj.setReadFd(readFd)
-
         # Handle the request.
         try:
             self.handleHttpRequest(reqPropsObj, httpRef, clientAddress,
-                                   method, path, requestVersion, headers)
+                                   method, path, headers)
 
             if not httpRef.reply_sent:
                 httpRef.send_status("Successfully handled request")
@@ -1787,7 +1780,6 @@ class ngamsServer(object):
                           clientAddress,
                           method,
                           path,
-                          requestVersion,
                           headers):
         """
         Handle the HTTP request.

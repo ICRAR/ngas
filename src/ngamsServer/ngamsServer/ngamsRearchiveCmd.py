@@ -36,18 +36,19 @@ former, the data of the file is provided in the request, using the second,
 the file is pulled via a provided URL from the remote, host node.
 """
 
+import base64
 import logging
 import os
-import time, base64
+import time
 
 import ngamsArchiveUtils
-import ngamsArchiveCmd, ngamsFileUtils, ngamsCacheControlThread
+import ngamsFileUtils, ngamsCacheControlThread
 from ngamsLib import ngamsLib
 from ngamsLib import ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
 from ngamsLib.ngamsCore import NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_GET, \
-    NGAMS_HTTP_SUCCESS, mvFile, getDiskSpaceAvail, genLog, \
-    NGAMS_IDLE_SUBSTATE, NGAMS_SUCCESS, NGAMS_HTTP_HDR_CHECKSUM
+    mvFile, getDiskSpaceAvail, genLog, \
+    NGAMS_IDLE_SUBSTATE, NGAMS_HTTP_HDR_CHECKSUM
 
 
 logger = logging.getLogger(__name__)
@@ -116,10 +117,11 @@ def receiveData(srvObj,
         # urllib.urlopen will attempt to get the content-length based on the URI
         # i.e. file, ftp, http
         handle = ngamsHighLevelLib.openCheckUri(reqPropsObj.getFileUri())
-        reqPropsObj.setReadFd(handle)
         reqPropsObj.setSize(handle.info()['Content-Length'])
+        rfile = handle
     else:
         reqPropsObj.setSize(fileInfoObj.getFileSize())
+        rfile = httpRef.rfile
 
 
     # Save the data into the Staging File.
@@ -139,7 +141,7 @@ def receiveData(srvObj,
             skip_crc = False
 
         ngamsArchiveUtils.archive_contents_from_request(stagingFilename, srvObj.getCfg(),
-                                                        reqPropsObj, skip_crc=skip_crc)
+                                                        reqPropsObj, rfile, skip_crc=skip_crc)
     finally:
         ngamsHighLevelLib.releaseDiskResource(srvObj.getCfg(), trgDiskInfoObj.getSlotId())
 
