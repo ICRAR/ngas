@@ -34,6 +34,7 @@ This module contains test utilities used to build the NG/AMS Functional Tests.
 
 import collections
 import contextlib
+import errno
 import functools
 import getpass
 import glob
@@ -1103,6 +1104,11 @@ class ngamsTestSuite(unittest.TestCase):
         startTime = time.time()
         while True:
 
+            # Took too long?
+            if ((time.time() - startTime) >= 20):
+                self.termExtSrv(server_info)
+                raise Exception("Server did not start correctly within 20 [s]")
+
             # Check if the server actually didn't start up correctly
             if not server_info.daemon:
                 ecode = srvProcess.poll()
@@ -1116,18 +1122,20 @@ class ngamsTestSuite(unittest.TestCase):
                 logger.debug("Test server running - State: %s", state)
                 if stat.getState() == state:
                     break
-            except socket.error:
-                logger.debug("Polled server - not yet running ...")
-                time.sleep(0.2)
-            except:
-                logger.error("Error while STATUS-ing server, shutting down")
-                self.termExtSrv(server_info)
-                raise
+            except Exception as e:
 
-            # Took too long?
-            if ((time.time() - startTime) >= 20):
-                self.termExtSrv(server_info)
-                raise Exception("Server did not start correctly within 20 [s]")
+                if isinstance(e, socket.error) and e.errno == errno.ECONNREFUSED:
+                    logger.debug("Polled server - not yet running ...")
+                    time.sleep(0.2)
+                    continue
+
+                logger.exception("Error while STATUS-ing server, shutting down")
+                try:
+                    self.termExtSrv(server_info)
+                except:
+                    pass
+
+                raise
 
         self.extSrvInfo.append(server_info)
 
