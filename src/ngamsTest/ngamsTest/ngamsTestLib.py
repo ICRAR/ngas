@@ -1092,7 +1092,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         # We have to wait until the server is serving.
         server_info = ServerInfo(srvProcess, port, cfgObj.getRootDirectory(), tmpCfg, daemon)
-        pCl = sendPclCmd(port=port)
+        pCl = sendPclCmd(port=port, timeOut=5)
 
         # A daemon server should start rather quickly, as it forks out the actual
         # server process and then exists (with a 0 status when successful)
@@ -1124,9 +1124,40 @@ class ngamsTestSuite(unittest.TestCase):
                     break
             except Exception as e:
 
+                # Not up yet, try again later
                 if isinstance(e, socket.error) and e.errno == errno.ECONNREFUSED:
                     logger.debug("Polled server - not yet running ...")
                     time.sleep(0.2)
+                    continue
+
+                # We are having this funny situation in MacOS builds, when
+                # intermitently the client times out while trying to connect
+                # to the server. This happens very rarely, but when it does it
+                # always seems to coincide with the moment the server starts
+                # listening for connections.
+                #
+                # The network traffic during these connect timeout situations
+                # seems completely normal, and just like the rest of the
+                # connection attempts before the timeout occurs. In particular,
+                # all these connection attempts result in a SYN packet sent by
+                # the client, and a RST/ACK packet quickly coming back quickly
+                # from the server side, meaning that the port is closed. In the
+                # case of the connect timeout however, the client hangs for all
+                # the time it is allowed to wait before timing out.
+                #
+                # This could well be a problem with python 2.7's implementation of
+                # socket.connect, which issues on initial connect(), followed by a
+                # select()/poll() depending on the situation. Without certainty,
+                # I imagine this might lead to some sort of very thing race condition
+                # between the connect and the select/poll call. Since I'm far
+                # from being and Apple guru, I will take the simplest solution
+                # for the time being and assume that a socket.timeout is simply
+                # a transient error that will solve itself in the next round.
+                # This change is also accompanied by a decrease on the timeout
+                # used by the client that issuea these requests (it was 60 seconds,
+                # we decreased it to 5 which makes more sense).
+                elif isinstance(e, socket.timeout):
+                    logger.warning("Timeo out when connecting to server, will try again")
                     continue
 
                 logger.exception("Error while STATUS-ing server, shutting down")
