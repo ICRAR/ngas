@@ -28,7 +28,6 @@ import functools
 import httplib
 import os
 import tempfile
-import time
 import urllib2
 
 from fabric.context_managers import settings, cd
@@ -43,12 +42,11 @@ from system import check_dir, download, check_command, \
     create_user, get_linux_flavor, python_setup, check_python, \
     MACPORT_DIR
 from utils import is_localhost, home, default_if_empty, sudo, run, success,\
-    failure
+    failure, info
 
 # Don't re-export the tasks imported from other modules, only ours
 __all__ = [
     'start_ngas_and_check_status',
-    'test_ngas_status',
     'virtualenv_setup',
     'install_user_profile',
     'copy_sources',
@@ -150,50 +148,29 @@ def virtualenv(command, **kwargs):
     Just a helper function to execute commands in the NGAS virtualenv
     """
     nid = ngas_install_dir()
-    run('source {0}/bin/activate && {1}'.format(nid, command), **kwargs)
+    return run('source {0}/bin/activate && {1}'.format(nid, command), **kwargs)
 
-@task
 def start_ngas_and_check_status(tgt_cfg):
     """
     Starts the ngamsDaemon process and checks that the server is up and running.
     Then it shuts down the server
     """
+
     # We sleep 2 here as it was found on Mac deployment to docker container that the
     # shell would exit before the ngasDaemon could detach, thus resulting in no startup.
     virtualenv('ngamsDaemon start -cfg {0} && sleep 2'.format(tgt_cfg))
-
-    # Give it a few seconds to make sure it started
-    success("NGAS server started")
-    time.sleep(3)
-
     try:
-        test_ngas_status()
-        success("Server running correctly")
-    except:
-        failure("Server not running, or running incorrectly")
+        res = virtualenv('ngamsDaemon status -cfg {0}'.format(tgt_cfg), warn_only=True)
+        if res.failed:
+            failure("Couldn't contact NGAS server after starting it. "
+                    "Check log files under %s/log/ to find out what went wrong" % ngas_source_dir(),
+                    with_stars=False)
+        else:
+            success('NGAS server started correctly :)')
     finally:
+        info("Shutting NGAS server down now")
         virtualenv("ngamsDaemon stop -cfg {0}".format(tgt_cfg))
 
-@task
-@parallel
-def test_ngas_status():
-    """
-    Execute the STATUS command against the NGAS server on the host fabric is
-    currently pointing at
-    """
-    try:
-        serv = urllib2.urlopen('http://{0}:7777/STATUS'.format(env.host), timeout=5)
-    except IOError:
-        failure('Problem connecting to server {0}'.format(env.host))
-        raise
-
-    response = serv.read()
-    serv.close()
-    if response.find('Status="SUCCESS"') == -1:
-        failure('Problem with response from {0}, not SUCESS as expected'.format(env.host))
-        raise ValueError(response)
-    else:
-        success('Response from {0} OK'.format(env.host))
 
 @task
 def virtualenv_setup():
