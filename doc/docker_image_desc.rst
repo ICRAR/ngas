@@ -17,6 +17,10 @@ Docker-related aspects of the task:
 |                             | | directory will still be present in |                   |
 |                             | | the final image                    |                   |
 +-----------------------------+--------------------------------------+-------------------+
+| DOCKER_KEEP_NGAS_SRC        | | If specified, the NGAS source      | | Not specified   |
+|                             | | directory will still be present in |                   |
+|                             | | the final image                    |                   |
++-----------------------------+--------------------------------------+-------------------+
 | DOCKER_IMAGE_REPOSITORY     | | The repository for the final image | | ``icrar/ngas``  |
 |                             | | produced by this task              |                   |
 +-----------------------------+--------------------------------------+-------------------+

@@ -25,13 +25,14 @@ Module with a few high-level fabric tasks users are likely to use
 
 import os
 
+from fabric.context_managers import settings
 from fabric.decorators import task, parallel
 from fabric.operations import local
 from fabric.state import env
 from fabric.tasks import execute
 
 from aws import create_aws_instances
-from dockerContainer import create_stage1_container, create_final_image
+from dockerContainer import setup_container, create_final_image
 from ngas import install_and_check, prepare_install_and_check, create_sources_tarball, upload_to, ngas_revision
 from utils import repo_root, check_ssh, append_desc
 from system import check_sudo
@@ -74,18 +75,22 @@ def aws_deploy():
 def docker_image():
     """ Create a Docker image with an NGAS installation."""
 
-    # Build and start the stage1 container holding onto the container info
-    # This first stage contains only a running SSH server and sudo, and we will
-    # always be able to connect to it via ssh keys
-    dockerState = create_stage1_container()
+    # Create the target container holding onto the container info
+    # This container will be running an SSH server, and we will be able
+    # to connect to its root user with our SSH key
+    dockerState = setup_container()
 
     # Now install into the docker container.
-    # We assume above has set the environment host IP address to install into
-    execute(prepare_install_and_check)
-
-    # Now that NGAS is istalled in a running container
-    # clean it up and create the final image from it
-    create_final_image(dockerState)
+    # The stage above sets the container's IP into env.host, so the rest of the
+    # commands are effectively executed on the container
+    # We disable the known hosts check since docker containers created at
+    # different times might end up having the same IP assigned to them, and the
+    # ssh known hosts check will fail
+    # Finally, we also hardcode that the doc dependencies will *not* be installed
+    # into the docker container, so we generate a thiner image
+    with settings(disable_known_hosts=True, NGAS_NO_DOC_DEPENDENCIES=True):
+        execute(prepare_install_and_check)
+        create_final_image(dockerState)
 
 @task
 def prepare_release():
