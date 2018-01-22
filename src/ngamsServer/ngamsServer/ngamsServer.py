@@ -1227,9 +1227,16 @@ class ngamsServer(object):
 
         logger.debug("Cache Control - CHECK_CAN_BE_DELETED = %d" % check_can_be_deleted)
 
+        ready_evt = threading.Event()
         self._cacheControlThread = threading.Thread(target=ngamsCacheControlThread.cacheControlThread,
                                                       name=ngamsCacheControlThread.NGAMS_CACHE_CONTROL_THR,
-                                                      args=(self, self._cacheControlThreadStopEvt, check_can_be_deleted))
+                                                      args=(self, self._cacheControlThreadStopEvt, ready_evt,
+                                                            check_can_be_deleted))
+        if not ready_evt.wait(10):
+            msg = ('Cache Control Thread took longer than expected to start. ',
+                   'This *might* cause issues during archiving, but not necessarily. Beware!')
+            logger.warning(msg)
+
         self._cacheControlThread.start()
         logger.info("Cache Control Thread started")
 
