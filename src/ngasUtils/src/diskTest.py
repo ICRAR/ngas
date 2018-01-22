@@ -55,6 +55,7 @@ NGAMS_HTTP_POST = 'POST'
 one_mb = 1024. ** 2
 DEFAULT_FNM = 'bspeed.pkl'
 parallel_stream = False
+writeStat = False
 
 #    "d:s:t:i:b:z:c:e:r:f:l:womph",\
 #           ["device","skip","testcount","iosize","blocksize", "sndbufsize",\
@@ -344,26 +345,32 @@ def parallelWriteTestDD(dev, skip, testcount, iosize, blocksize):
     pool = Pool(processes=testcount)
     tres = []
     tstart = []
+    print "Executing parallel write test with %d processes.\n" % testcount
     for ii in range(testcount):
-        args = ('/dev/zero', myblock, dev,
+        args = ('/dev/zero', myblock, dev+str(ii),
                 long(skip)*blocksize, blocksize,
-                iocount, 0, None, Test,)
+                iocount, 0, None, Test, False)
         # thrdName = 'myDDThrd_%d' % ii
-        dev = '/mnt/nvme/testio'+str(ii)
         tstart.append(time.time())
         res = pool.apply_async(myDD, args)
         tres.append(res)
     telapsed = time.time() - tst
-    tthrough = 0
+    tbytes = 0
+    tmin = time.time() + 10000
+    tmax = 0
     for ii in range(testcount):
-        res = tres[ii].get(timeout=20)
+        res = tres[ii].get(timeout=100)
         bspeed += res[0]
         cspeed += res[1]
         tspeed += res[2]
-        tthrough += res[3]/(time.time() - tstart[ii])
+        tbytes += res[3]
+        tmin = min([tmin, res[4]])
+        tmax = max([tmax, res[5]])
+
+    tthrough = tbytes/(tmax-tmin)
 
     print
-    print "Overall throughput: %6.2f MB/s" % tthrough
+    print "Overall throughput: %6.2f MB/s in %5.2f s" % (tthrough, (tmax-tmin))
     status = (bspeed, cspeed, tspeed)
     return status
 
@@ -489,7 +496,8 @@ def writeTest(dev, skip, testcount, iosize, blocksize):
 
 
 def myDD(ifil='/dev/zero', block=None, ofil='/dev/null', skip=0,
-         blocksize=1024, count=1, seek=0, httpobj=None, Test='read'):
+         blocksize=1024, count=1, seek=0, httpobj=None, Test='read',
+         writeStat=False):
     """
     """
     bspeed = []
@@ -571,6 +579,9 @@ def myDD(ifil='/dev/zero', block=None, ofil='/dev/null', skip=0,
         sti = time.time()
         if dioflag:
             m = mmap.mmap(-1, blocksize)
+        bavg = 0
+        bavgStart = sti
+        avgCount = 10
         for ii in range(count):
             stt = time.time()
             if ifil_not_zero:
@@ -598,7 +609,8 @@ def myDD(ifil='/dev/zero', block=None, ofil='/dev/null', skip=0,
                 crct = time.time() - stc
                 if crct == 0:
                     crct = 10**-6
-                cspeed.append((bsize/(crct), stc, crct))
+                if writeStat:
+                    cspeed.append((bsize/(crct), stc, crct))
                 crctime += crct
             else:
                 cspeed.append((-1, time.time(), -1))  # dummy values
@@ -617,24 +629,32 @@ def myDD(ifil='/dev/zero', block=None, ofil='/dev/null', skip=0,
                             os.write(fd, block)
                     else:
                         out.write(block)
+                if ii > 0 and (ii % avgCount) == 0:
+                    bavg = (time.time() - bavgStart)/avgCount
+                    if bavg == 0:
+                        avgCount *= 2
+                    bavgStart = time.time()
                 one_block_time = time.time() - stb
-                write_time += one_block_time
+                if one_block_time == 0:
+                    one_block_time = max(bavg, 10**-10)
+                    zcount += 1
             tend = time.time()
-            if one_block_time == 0:
-                one_block_time = 10**-10
-                zcount += 1
+            write_time += one_block_time
             if (sleepTime and sleepTime > one_block_time):
                 time.sleep(sleepTime - one_block_time)
             if (bsize > 0):
-                bspeed.append((bsize / one_block_time, stb, one_block_time))
+                if writeStat:
+                    bspeed.append((bsize / one_block_time, stb, one_block_time))
                 total_block_time = tend - stt
-                tspeed.append((bsize/total_block_time, stt, total_block_time))
+                if writeStat:
+                    tspeed.append((bsize/total_block_time, stt, total_block_time))
                 # tspeed.append((bsize/one_block_time, stt, one_block_time))
         if (Test == 'write'):
             print "Pure write throughput:  %6.2f MB/s" % (tsize/write_time)
         elif (Test == 'read' or ifil != '/dev/zero'):
             print "Pure read throughput:  %6.2f MB/s" % (tsize/read_time)
-        print "Zero time blocks:  %6d" % (zcount)
+        print "Zero time blocks:  %6d. Using running avarage of %d blocks."\
+              % (zcount, avgCount)
         if (Test == 'read' and short_read != 0):
             print "Short reads:  %6d" % (short_read)
             print "CAUTION: short reads usually means that the test did not"
@@ -667,14 +687,14 @@ def myDD(ifil='/dev/zero', block=None, ofil='/dev/null', skip=0,
             else:
                 # out.flush()
                 out.close()
-        ste = time.time() - sti  # elapsed time of this test
+        ste = time.time()  # end time of this test
         print "File closing time: %5.2f s" % (time.time()-fst)
         if (crcfl):
             print "CRC throughput: %6.2f MB/s (%5.2f s)" % \
                     (tsize/crctime, crctime)
         print "Total throughput (%s[+ crc] + file-close): %6.2f MB/s" % \
-              (writelabel, tsize/ste)
-        return (bspeed, cspeed, tspeed, tsize)
+              (writelabel, tsize/(ste-sti))
+        return (bspeed, cspeed, tspeed, tsize, sti, ste)
     else:  # do just plain nothing if no output file is specified
         for ii in range(count):
             block = inputf.read(blocksize)
@@ -697,7 +717,7 @@ if __name__ == '__main__':
 
     import getopt
 
-    opts, args = getopt.getopt(sys.argv[1:], "d:s:t:i:b:z:c:e:r:f:l:womphu",
+    opts, args = getopt.getopt(sys.argv[1:], "d:s:t:i:b:z:c:e:r:f:l:womphuS",
                                ["device", "skip", "testcount", "iosize",
                                 "blocksize", "sndbufsize",
                                 "crc", "lowio", "session", "datarate", "file",
@@ -751,6 +771,8 @@ if __name__ == '__main__':
             method = 'myDD'
         if o in ("-p", "--parallel"):
             parallel_stream = True
+        if o in ("-S", "--Stats"):
+            writeStat = True
         if o in ("-h", "--help"):
             usage()
 
@@ -816,7 +838,7 @@ if __name__ == '__main__':
             cleanup(dev)
     else:
         sys.exit()
-    if bspeed:
+    if writeStat and bspeed:
         fo = open(DEFAULT_FNM, 'w')
         p = pickle.Pickler(fo)
         p.dump(bspeed)
