@@ -28,6 +28,7 @@ import contextlib
 import errno
 import httplib
 import logging
+import os
 import socket
 import time
 import urllib
@@ -35,6 +36,42 @@ import urlparse
 
 
 logger = logging.getLogger(__name__)
+
+
+
+_connect_retries = 5
+_connect_retries_period_ms = 10
+if 'NGAS_HTTP_CONNECT_RETRIES' in os.environ:
+    _connect_retries = int(os.environ['NGAS_HTTP_CONNECT_RETRIES'])
+if 'NGAS_HTTP_CONNECT_RETRIES_PERIOD_MS' in os.environ:
+    _connect_retries_period_ms = int(os.environ['NGAS_HTTP_CONNECT_RETRIES_PERIOD_MS'])
+
+def _connect(conn):
+    # If the server on the other side has its backlog of connections full
+    # it will react differently depending on the OS it is running on.
+    # Linux will simply not respond the SYN packet sent by this client,
+    # triggering a few internal retries before giving up. On the other
+    # hand BSDs (including MacOS) will respond with RST, issuing a
+    # ECONNRESET error here. We thus deal with that particular error at
+    # this level, re-trying a few times before fully giving up
+    ntry = 0
+    while True:
+        try:
+            conn.connect()
+            return
+        except socket.error as e:
+
+            if e.errno != errno.ECONNRESET:
+                raise
+
+            ntry += 1
+            if ntry == _connect_retries:
+                raise
+
+            # We do increasing sleeps, kind of "a la TCP"
+            ms = _connect_retries_period_ms * ntry
+            logger.warning('Server did not accept() connection, retying in %d [ms] (try %d/%d)', ms, ntry,  _connect_retries)
+            time.sleep(0.001 * ms)
 
 
 def _http_response(host, port, method, cmd,
@@ -55,7 +92,7 @@ def _http_response(host, port, method, cmd,
     # Go, go, go!
     logger.info("About to %s to %s:%d/%s", method, host, port, url)
     conn = httplib.HTTPConnection(host, port, timeout = timeout)
-    conn.connect()
+    _connect(conn)
 
     try:
         conn.request(method, url, body=data, headers=hdrs)
