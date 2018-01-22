@@ -96,6 +96,10 @@ class ngamsHttpServer(SocketServer.ThreadingMixIn,
 
     def __init__(self, ngamsServer, server_address):
         self._ngamsServer = ngamsServer
+
+        # The length of the backlog of connections that are being accepted
+        # but haven't been picked up yet.
+        self.request_queue_size = ngamsServer.cfg.getMaxSimReqs()
         BaseHTTPServer.HTTPServer.__init__(self, server_address, ngamsHttpRequestHandler)
 
     def process_request(self,
