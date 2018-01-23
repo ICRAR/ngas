@@ -2042,6 +2042,9 @@ class ngamsServer(object):
         self.portNo = portNo if portNo != -1 else 7777
         self.host_id = "%s:%d" % (getHostName(), self.portNo)
 
+        # Should be possible to execute several servers on one node.
+        self.getHostInfoObj().setHostId(self.host_id)
+
         # Set up missing logging conditions from configuration file
         logcfg = self.logcfg
         if logcfg.file_level is None:
@@ -2104,9 +2107,6 @@ class ngamsServer(object):
             logger.info("Creating entry in NGAS Hosts Table for this node: %s" %\
                  self.getHostId())
             self.getDb().writeHostInfo(tmpHostInfoObj)
-
-        # Should be possible to execute several servers on one node.
-        self.getHostInfoObj().setHostId(self.getHostId())
 
         # Log some essential information.
         allowArchiveReq    = self.getCfg().getAllowArchiveReq()
