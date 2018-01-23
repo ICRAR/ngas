@@ -550,6 +550,7 @@ class ngamsCClientTest(ngamsTestSuite):
                           "of corrupt server HTTP response in C-Client/API")
 
 
+    @unittest.skipUnless(has_program('uncompress'), 'external uncompress program unavailable')
     def test_ArchiveCmd_Err_5_1(self):
         """
         Synopsis:
