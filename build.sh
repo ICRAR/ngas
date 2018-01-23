@@ -104,9 +104,11 @@ then
 fi
 
 # Build python setup.py-based modules
-# The ngamsPlugIns module eventually requires numpy and astropy,
+# The ngamsPlugIns module eventually requires astropy,
 # which is much faster to install using pip
-pip install numpy astropy || warning "Failed to install numpy and astropy via pip"
+# The gleam plug-ins require numpy, but we leave that
+# out of the core dependencies of NGAS
+pip install astropy || warning "Failed to install astropy via pip"
 for pyModule in ngamsCore ngamsPClient ngamsServer ngamsPlugIns
 do
 	prevDir=$(pwd -P)

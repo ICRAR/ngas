@@ -207,7 +207,7 @@ def virtualenv_setup():
         run('echo "[global]" > ~/.pip/pip.conf; echo "cert = {0}/.pip/cacert.pem" >> ~/.pip/pip.conf;'.format(home()))
 
     # Update pip and install wheel; this way we can install binary wheels from
-    # PyPI if available (like numpy)
+    # PyPI if available (like astropy)
     # TODO: setuptools and python-daemon are here only because
     #       python-daemon 2.1.2 is having a problem to install via setuptools
     #       but not via pip (see https://pagure.io/python-daemon/issue/2 and
