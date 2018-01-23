@@ -443,7 +443,7 @@ def handleCmd(srvObj,
     if (reqPropsObj.hasHttpPar("file_id")):
         fileId = reqPropsObj.getHttpPar("file_id")
     if (reqPropsObj.hasHttpPar("file_version")):
-        fileVersion = reqPropsObj.getHttpPar("file_version")
+        fileVersion = int(reqPropsObj.getHttpPar("file_version"))
 
     if (reqPropsObj.hasHttpPar("configuration_file")): configurationFile = "-"
 

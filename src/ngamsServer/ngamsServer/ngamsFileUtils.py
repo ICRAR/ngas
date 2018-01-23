@@ -513,7 +513,7 @@ def checkFile(srvObj,
                                     filename])
                 srvObj.getDb().setFileChecksum(srvObj.getHostId(),
                                                fileId, fileVersion, diskId,
-                                               checksumFile, checksum_typ)
+                                               str(checksumFile), checksum_typ)
             elif not checksumDb and not checksumFile:
                 checkReport.append(["NOTICE: Missing checksum - " +\
                                     "cannot generate - update DB",
