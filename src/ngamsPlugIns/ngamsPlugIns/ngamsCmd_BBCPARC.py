@@ -27,7 +27,6 @@ from collections import namedtuple
 import logging
 import os
 import subprocess
-import struct
 import time
 from urlparse import urlparse
 

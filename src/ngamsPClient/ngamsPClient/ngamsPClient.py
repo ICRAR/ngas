@@ -567,7 +567,7 @@ class ngamsPClient:
         with contextlib.closing(resp):
 
             if resp.status != NGAMS_HTTP_SUCCESS:
-                return ngamsStatus.ngamsStatus().unpackXmlDoc(resp.read(), 1)
+                return ngamsStatus.to_status(resp, host_id, 'RETRIEVE')
 
             # If the target path is a directory, take the filename
             # of the incoming data as the filename

@@ -8,13 +8,6 @@ NgamsCfg.ArchiveHandling[1].PathPrefix                 : saf
 NgamsCfg.ArchiveHandling[1].Replication                : 1
 NgamsCfg.Authorization[1].Enable                       : 0
 NgamsCfg.Authorization[1].Id                           : Authorization-Test
-NgamsCfg.Authorization[1].User[1].Commands             : *
-NgamsCfg.Authorization[1].User[1].Name                 : ngas
-NgamsCfg.Authorization[1].User[1].Password             : bmdhcw==
-NgamsCfg.Authorization[1].User[2].Name                 : ngasmgr
-NgamsCfg.Authorization[1].User[2].Password             : bmdhc21ncg==
-NgamsCfg.Authorization[1].User[3].Name                 : ngas-int
-NgamsCfg.Authorization[1].User[3].Password             : bmdhcy1pbnQ=
 NgamsCfg.DataCheckThread[1].Active                     : 0
 NgamsCfg.DataCheckThread[1].ChecksumPlugIn             : ngamsGenCrc32
 NgamsCfg.DataCheckThread[1].DiskSeq                    : SEQUENTIAL

@@ -36,18 +36,20 @@ former, the data of the file is provided in the request, using the second,
 the file is pulled via a provided URL from the remote, host node.
 """
 
+import base64
 import logging
 import os
-import time, base64
+import time
+import urllib
 
 import ngamsArchiveUtils
-import ngamsArchiveCmd, ngamsFileUtils, ngamsCacheControlThread
+import ngamsFileUtils, ngamsCacheControlThread
 from ngamsLib import ngamsLib
 from ngamsLib import ngamsFileInfo
 from ngamsLib import ngamsHighLevelLib, ngamsDiskUtils
 from ngamsLib.ngamsCore import NGAMS_HTTP_HDR_FILE_INFO, NGAMS_HTTP_GET, \
-    NGAMS_HTTP_SUCCESS, mvFile, getDiskSpaceAvail, genLog, \
-    NGAMS_IDLE_SUBSTATE, NGAMS_SUCCESS, NGAMS_HTTP_HDR_CHECKSUM
+    mvFile, getDiskSpaceAvail, genLog, \
+    NGAMS_IDLE_SUBSTATE, NGAMS_HTTP_HDR_CHECKSUM
 
 
 logger = logging.getLogger(__name__)
@@ -115,11 +117,12 @@ def receiveData(srvObj,
     if (reqPropsObj.getHttpMethod() == NGAMS_HTTP_GET):
         # urllib.urlopen will attempt to get the content-length based on the URI
         # i.e. file, ftp, http
-        handle = ngamsHighLevelLib.openCheckUri(reqPropsObj.getFileUri())
-        reqPropsObj.setReadFd(handle)
+        handle = urllib.urlopen(reqPropsObj.getFileUri())
         reqPropsObj.setSize(handle.info()['Content-Length'])
+        rfile = handle
     else:
         reqPropsObj.setSize(fileInfoObj.getFileSize())
+        rfile = httpRef.rfile
 
 
     # Save the data into the Staging File.
@@ -139,7 +142,7 @@ def receiveData(srvObj,
             skip_crc = False
 
         ngamsArchiveUtils.archive_contents_from_request(stagingFilename, srvObj.getCfg(),
-                                                        reqPropsObj, skip_crc=skip_crc)
+                                                        reqPropsObj, rfile, skip_crc=skip_crc)
     finally:
         ngamsHighLevelLib.releaseDiskResource(srvObj.getCfg(), trgDiskInfoObj.getSlotId())
 
@@ -224,8 +227,8 @@ def handleCmd(srvObj,
     archive_start = time.time()
 
     # Execute the init procedure for the ARCHIVE Command.
-    mimeType = ngamsArchiveCmd.archiveInitHandling(srvObj, reqPropsObj,
-                                                   httpRef)
+    mimeType = ngamsArchiveUtils.archiveInitHandling(srvObj, reqPropsObj, httpRef)
+
     # If mime-type is None, the request has been handled, i.e., it might have
     # been a probe request or the server acting as proxy.
     if (not mimeType): return
@@ -252,8 +255,7 @@ def handleCmd(srvObj,
     logger.info(msg, extra={'to_syslog': True})
 
     srvObj.setSubState(NGAMS_IDLE_SUBSTATE)
-    srvObj.ingestReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS,
-                       NGAMS_SUCCESS, msg, trgDiskInfoObj)
+    httpRef.send_ingest_status(msg, trgDiskInfoObj)
 
 
 # EOF

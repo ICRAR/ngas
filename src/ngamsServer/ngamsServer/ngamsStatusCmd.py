@@ -30,6 +30,7 @@
 """
 Function + code to handle the STATUS command.
 """
+import contextlib
 import glob
 import logging
 import os
@@ -40,14 +41,11 @@ import types
 
 from ngamsLib.ngamsCore import TRACE, NGAMS_HOST_LOCAL,\
     getHostName, genLog, genUniqueId, rmFile,\
-    compressFile, NGAMS_PROC_FILE, NGAMS_GZIP_XML_MT, getNgamsVersion,\
-    NGAMS_SUCCESS, NGAMS_XML_STATUS_ROOT_EL, NGAMS_XML_STATUS_DTD,\
-    NGAMS_HTTP_SUCCESS, NGAMS_XML_MT, fromiso8601, toiso8601
-from ngamsLib import ngamsDbm, ngamsStatus, ngamsDiskInfo
-from ngamsLib import ngamsDppiStatus
+    compressFile, NGAMS_GZIP_XML_MT, getNgamsVersion,\
+    NGAMS_SUCCESS, NGAMS_XML_MT, fromiso8601, toiso8601
+from ngamsLib import ngamsDbm, ngamsStatus, ngamsDiskInfo, ngamsHttpUtils
 from ngamsLib import ngamsFileInfo, ngamsHighLevelLib
 import ngamsFileUtils
-import ngamsRetrieveCmd
 
 
 logger = logging.getLogger(__name__)
@@ -93,13 +91,15 @@ def _checkFileAccess(srvObj,
               fileVersion, mimeType =\
               ngamsFileUtils.locateArchiveFile(srvObj, fileId, fileVersion,
                                                diskId)
+
     if (location != NGAMS_HOST_LOCAL):
+        # Go and get it!
         host, port = srvObj.get_remote_server_endpoint(fileHost)
-        httpStatCode, httpStatMsg, httpHdrs, data =\
-                      srvObj.forwardRequest(reqPropsObj, httpRef, fileHost, host, port,
-                                            autoReply = 0)
-        tmpStat = ngamsStatus.ngamsStatus().unpackXmlDoc(data)
-        return tmpStat.getMessage()
+        pars = (('file_access', fileId), ('file_version', fileVersion), ('disk_id', diskId))
+        resp = ngamsHttpUtils.httpGet(host, port, 'STATUS', pars, timeout=60)
+        with contextlib.closing(resp):
+            return ngamsStatus.to_status(resp, fileHost, 'STATUS').getMessage()
+
     else:
         # First check if this system allows for Retrieve Requests.
         if (not srvObj.getCfg().getAllowRetrieveReq()):
@@ -373,17 +373,7 @@ def _handleFileListReply(srvObj,
 
     # Send the XML document back to the requestor.
     try:
-        tmpDppiResult = ngamsDppiStatus.ngamsDppiResult(NGAMS_PROC_FILE).\
-                        setMimeType(NGAMS_GZIP_XML_MT).\
-                        setDataRef(fileListXmlDoc).\
-                        setRefFilename(os.path.basename(fileListXmlDoc))
-        tmpDppiStatus = ngamsDppiStatus.ngamsDppiStatus().\
-                        addResult(tmpDppiResult)
-        reqPropsObj.retrieve_offset = 0
-        ngamsRetrieveCmd.genReplyRetrieve(srvObj, reqPropsObj, httpRef,
-                                          [tmpDppiStatus])
-        reqPropsObj.setSentReply(1)
-        rmFile("%s*" % fileListXmlDoc)
+        httpRef.send_file(fileListXmlDoc, NGAMS_GZIP_XML_MT)
 
         # Remove the reported entries.
         for key in keyRefList:
@@ -399,10 +389,11 @@ def _handleFileListReply(srvObj,
             rmFile("%s*" % fileInfoDbmName)
 
     except Exception, e:
-        rmFile("%s*" % fileListXmlDoc)
         msg = "Error returning response to STATUS?file_list request. Error: %s"
         msg = msg % str(e)
         raise Exception(msg)
+    finally:
+        rmFile(fileListXmlDoc)
 
 
 def handleCmd(srvObj,
@@ -510,12 +501,11 @@ def handleCmd(srvObj,
         host, port = srvObj.get_remote_server_endpoint(hostId)
         cfgObj = srvObj.getCfg()
         if not cfgObj.getProxyMode():
-            srvObj.httpRedirReply(reqPropsObj, httpRef, host, port)
+            httpRef.redirect(host, port)
             return
         else:
             try:
-                srvObj.forwardRequest(reqPropsObj, httpRef, hostId, host, port,
-                                      autoReply = 1)
+                httpRef.proxy_request(hostId, host, port)
             except Exception, e:
                 ex = re.sub("<|>", "", str(e))
                 errMsg = genLog("NGAMS_ER_COM",
@@ -584,14 +574,10 @@ def handleCmd(srvObj,
         # Generate XML reply.
         xmlStat = status.genXmlDoc(genCfgStatus, genDiskStatus, genFileStatus,
                                    genStatesStatus)
-        xmlStat = ngamsHighLevelLib.\
-                  addDocTypeXmlDoc(srvObj, xmlStat, NGAMS_XML_STATUS_ROOT_EL,
-                                   NGAMS_XML_STATUS_DTD)
-        srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, xmlStat,
-                         NGAMS_XML_MT)
-    elif (not reqPropsObjRef.getSentReply()):
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,
-                     msg)
+        xmlStat = ngamsHighLevelLib.addStatusDocTypeXmlDoc(srvObj, xmlStat)
+        httpRef.send_data(xmlStat, NGAMS_XML_MT)
+    elif not httpRef.reply_sent:
+        httpRef.send_status(msg)
 
     if (msg and (not help)):
         logger.info(msg)

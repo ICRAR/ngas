@@ -60,12 +60,13 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     if (reqPropsObj.hasHttpPar("subscr_id")):
         subscrId = reqPropsObj.getHttpPar("subscr_id")  # re-trigger an existing subscriber, this is useful after unexpected server restart (and no backlog either)
         if (not srvObj.getSubscriberDic().has_key(subscrId)):
-            srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, #let HTTP returns OK so that curl can continue printing XML code
-                 "TRIGGERSUBSCRIPTION command failed: Cannot find subscriber '%s'" % subscrId)
+            msg = "TRIGGERSUBSCRIPTION command failed: Cannot find subscriber '%s'" % subscrId
+            httpRef.send_status(msg, status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
             return
         else:
             subscriber = srvObj.getSubscriberDic()[subscrId]
             srvObj.addSubscriptionInfo([], [subscriber]).triggerSubscriptionThread()
     else:
         srvObj.triggerSubscriptionThread() # this will only trigger the backlog files
-    srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'Command TRIGGERSUBSCRIPTION executed successfully.\n', NGAMS_TEXT_MT)
+
+    httpRef.send_data('Command TRIGGERSUBSCRIPTION executed successfully.\n', NGAMS_TEXT_MT)

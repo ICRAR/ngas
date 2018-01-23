@@ -509,9 +509,9 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         self.waitTillSuspended(dbConObj, subNode1, 10, susp_nodes)
 
         # Execute CHECKFILE Command on a file on the suspended sub-node.
-        cmdPars = [["file_id", "TEST.2001-05-08T15:25:00.123"],
+        file_id = "TEST.2001-05-08T15:25:00.123"
+        cmdPars = [["file_id", file_id],
                    ["file_version", "1"]]
-        targetFile = genTmpFilename()
         statObj = sendPclCmd(port=8000, auth=AUTH).\
                   get_status(NGAMS_CHECKFILE_CMD, pars=cmdPars)
         # Check that request response is as expected.
@@ -539,8 +539,8 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         # Check that expected log entries found in the Sub-Node Log File.
         tmpTag = "File list to check: (1: Location:LOCAL, Host:%s, " +\
                  "Version:1) (2: Location:LOCAL, Host:%s, Version:1)"
-        testTags = ["CHECKFILE?time_out=60.0&file_version=1&" +\
-                    "file_id=" + urllib.quote("TEST.2001-05-08T15:25:0"),
+        testTags = [('CHECKFILE?file_id=' + urllib.quote(file_id) +
+                    '&file_version=1&time_out=60.0'),
                     tmpTag % (subNode1, subNode1)]
         subNodeLogBuf = loadFile(subNode1Log)
         self.checkTags(subNodeLogBuf, testTags, showBuf=0)

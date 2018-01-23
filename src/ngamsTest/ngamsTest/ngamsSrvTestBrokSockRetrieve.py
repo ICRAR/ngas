@@ -34,7 +34,7 @@ Special version of the NG/AMS Server class used to send back a non-sense
 
 import sys
 
-from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_SUCCESS
+from ngamsLib.ngamsCore import TRACE
 from ngamsServer import ngamsServer
 
 
@@ -63,18 +63,19 @@ def genReplyRetrieveFail(srvObj,
         mimeType = resObj.getMimeType()
         dataSize = resObj.getDataSize()
         refFilename = resObj.getRefFilename()
-        srvObj.httpReplyGen(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, None, 0,
-                            mimeType, dataSize)
-        contDisp = "attachment; filename=\"" + refFilename + "\""
-        httpRef.send_header('Content-Disposition', contDisp)
-        httpRef.wfile.write("\n")
+
+        contDisp = 'attachment; filename="%s"' % refFilename
+        hdrs = {'Content-Disposition': contDisp,
+                'Content-Length': str(dataSize),
+                'Content-Type': mimeType}
+        httpRef.send_response(200, hdrs=hdrs)
+        httpRef.end_headers()
 
         #############################################################
         # TEST: SIMULATE BROKEN SOCKET BY TERMINATING WHEN HALF OF
         #       THE DATA HAS BEEN SENT.
         #############################################################
         srvObj.killServer()
-        sys.exit(0)
         #############################################################
 
     except Exception, e:

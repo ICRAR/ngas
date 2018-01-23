@@ -36,7 +36,7 @@ Contains code for handling the CACHEDEL Command.
 import logging
 
 import ngamsFileUtils, ngamsCacheControlThread
-from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS, NGAMS_HOST_CLUSTER, TRACE
+from ngamsLib.ngamsCore import NGAMS_HOST_LOCAL, NGAMS_HOST_CLUSTER, TRACE
 
 
 logger = logging.getLogger(__name__)
@@ -79,16 +79,15 @@ def cacheDel(srvObj,
         logger.info(msg, diskId, fileId, str(fileVersion))
         sqlFileInfo = (diskId, fileId, fileVersion)
         ngamsCacheControlThread.scheduleFileForDeletion(srvObj, sqlFileInfo)
-        srvObj.reply(reqPropsObj.setCompletionTime(), httpRef,
-                     NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,
-                     "Handled CACHEDEL Command")
+        return "Handled CACHEDEL Command"
+
     elif (srvObj.getCfg().getProxyMode() or
           (fileLocInfo[0] == NGAMS_HOST_CLUSTER)):
         logger.debug("File is remote or located within the private network of " +\
              "the contacted NGAS system -- this server acting as proxy " +\
              "and forwarding request to remote NGAS system: %s", fileHostId)
         host, port = srvObj.get_remote_server_endpoint(fileHostId)
-        srvObj.forwardRequest(reqPropsObj, httpRef, fileHostId, host, port)
+        httpRef.proxy_request(fileHostId, host, port)
     else:
         # Send back an HTTP re-direction response to the requestor.
         logger.debug("File to be deleted from the NGAS Cache is stored on a " +\
@@ -96,10 +95,7 @@ def cacheDel(srvObj,
              "- sending back HTTP re-direction response")
         host, port = srvObj.get_remote_server_endpoint(fileHostId)
         reqPropsObj.setCompletionTime(1)
-        srvObj.updateRequestDb(reqPropsObj)
-        srvObj.httpRedirReply(reqPropsObj, httpRef, host, port)
-
-    srvObj.updateRequestDb(reqPropsObj)
+        httpRef.redirect(host, port)
 
 
 def handleCmd(srvObj,

@@ -140,5 +140,4 @@ def handleCmd(srvObj,
     # files to deliver to the new Subscriber.
     srvObj.addSubscriptionInfo([], [subscrObj]).triggerSubscriptionThread()
 
-    srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS,
-                 "Handled SUBSCRIBE command")
+    return "Handled SUBSCRIBE command"

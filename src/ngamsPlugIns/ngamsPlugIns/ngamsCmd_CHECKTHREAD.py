@@ -32,7 +32,7 @@ Check how many current threads are running, and print their names
 
 import threading
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_TEXT_MT
 
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
@@ -74,4 +74,4 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         except Exception, e:
             re += str(e)
 
-    srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, 'In total ' + str(n) + ' threads\n: ' + re + '\n', NGAMS_TEXT_MT)
+    httpRef.send_data('In total ' + str(n) + ' threads\n: ' + re + '\n', NGAMS_TEXT_MT)

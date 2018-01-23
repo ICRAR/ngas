@@ -307,15 +307,6 @@
                   FilterPlugInPars="mime_types=image/x-fits|application/x-cfits|application/octet-stream"/>
   </SubscriptionDef>
 
-  <Authorization Id="Authorization-Test"
-                 Enable="0">
-    <User Name="ngas" 
-          Password="bmdhcw=="
-          Commands="*"/>
-    <User Name="ngasmgr" 
-          Password="bmdhc21ncg=="/>
-    <User Name="ngas-int"
-          Password="bmdhcy1pbnQ="/>
-  </Authorization>
+  <Authorization Id="Authorization-Test" Enable="0"/>
 
 </NgamsCfg>

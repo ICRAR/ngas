@@ -34,19 +34,19 @@ logger = logging.getLogger(__name__)
 
 def retrieve(client, file_id, quick, iterations, _):
 
-    times = []
+    results = []
     for _ in range(iterations):
-        start = time.time()
         try:
             pars = []
             if quick:
                 pars.append(('quick_location', '1'),)
-            client.retrieve(file_id, targetFile='/dev/null', pars=pars)
-            times.append(time.time() - start)
+            start = time.time()
+            status = client.retrieve(file_id, targetFile='/dev/null', pars=pars)
+            results.append((time.time() - start, status))
         except:
             logger.exception('Problem while RETRIEVEing file')
 
-    return times
+    return results
 
 def meter_performance():
 
@@ -84,12 +84,12 @@ def meter_performance():
     # Go, go, go!
     pool = multiprocessing.Pool(opts.nret)
     start = time.time()
-    times = pool.map(functools.partial(retrieve, client, file_id, opts.quick, opts.iterations), range(opts.nret))
+    results = list(pool.map(functools.partial(retrieve, client, file_id, opts.quick, opts.iterations), range(opts.nret)))
     duration = time.time() - start
 
     # Overall stats
-    n_files = reduce(lambda x, y: x + y, map(len, times))
-    logger.warning('Successfully retrieved %d files of %.3f [MB] each in %.3f [s] at %.1f [MB/s]',
+    n_files = sum(map(len, results))
+    logger.warning('Retrieved %d files of %.3f [MB] each in %.3f [s] at %.1f [MB/s]',
                 n_files, fsize_mb, duration, n_files * fsize_mb / duration)
 
 if __name__ == '__main__':

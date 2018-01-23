@@ -40,7 +40,7 @@ import os
 import threading
 import urllib2
 
-from ngamsLib.ngamsCore import TRACE, NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import TRACE, NGAMS_TEXT_MT
 from ngamsPClient import ngamsPClient
 from ngamsPlugIns.ngamsJobProtocol import MRLocalTaskResult, ERROR_LT_UNEXPECTED
 
@@ -53,13 +53,13 @@ mime_type = 'application/octet-stream'
 cancelDict = {} #key - taskId that has been cancelled, value - 1 (place holder)
 g_mrLocalTask = None # the current running task
 
-def _getPostContent(srvObj, reqPropsObj):
+def _getPostContent(srvObj, reqPropsObj, httpRef):
     """
     Get the MapLocalTask sub-class from the HTTP Post
     """
     remSize = reqPropsObj.getSize()
     #info(3,"Post Data size: %d" % remSize)
-    buf = reqPropsObj.getReadFd().read(remSize) #TODO - use proper loop on read here! given remSize is small, should be okay for now
+    buf = httpRef.rfile.read(remSize) #TODO - use proper loop on read here! given remSize is small, should be okay for now
     sizeRead = len(buf)
     #info(3,"Read buf size: %d" % sizeRead)
     #info(3,"Read buf: %s" % buf)
@@ -191,26 +191,20 @@ def handleCmd(srvObj,
         else:
             errMsg = 'RUNTASK command needs action for GET request\n'
 
-        srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, errMsg, NGAMS_TEXT_MT)
+        httpRef.send_data(errMsg, NGAMS_TEXT_MT)
     else:
-        postContent = _getPostContent(srvObj, reqPropsObj)
+        postContent = _getPostContent(srvObj, reqPropsObj, httpRef)
         mrLocalTask = pickle.loads(postContent)
         if (not mrLocalTask):
             errMsg = 'Cannot instantiate local task from POST'
             mrr = MRLocalTaskResult(None, -2, errMsg)
-            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(mrr), NGAMS_TEXT_MT)
+            httpRef.send_data(pickle.dumps(mrr), NGAMS_TEXT_MT)
         else:
             logger.debug('Local task %s is submitted', mrLocalTask._taskId)
             mrr = MRLocalTaskResult(mrLocalTask._taskId, 0, '')
-            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, pickle.dumps(mrr), NGAMS_TEXT_MT)
+            httpRef.send_data(pickle.dumps(mrr), NGAMS_TEXT_MT)
 
             args = (srvObj, mrLocalTask)
             scheduleThread = threading.Thread(None, _scheduleQScanThread, 'SCHEDULE_THRD', args)
             scheduleThread.setDaemon(0)
             scheduleThread.start()
-
-
-
-
-
-

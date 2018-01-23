@@ -32,6 +32,7 @@ This module contains the Test Suite for the SUBSCRIBE Command.
 """
 
 import SocketServer
+import base64
 import contextlib
 import functools
 import pickle
@@ -117,12 +118,29 @@ class ngamsSubscriptionTest(ngamsTestSuite):
     - Test UNSUBSCRIBE Command.
     """
 
+    def _prep_subscription_cluster(self, orig_server_list):
+
+        # The current subscription code requires a local user named 'ngas-int',
+        # regardless of whether remote authentication is enabled or not
+        # To make things simple we add the user to all servers of the cluster
+        ngas_int = ('Name', 'ngas-int'), ('Password', base64.b64encode('ngas-int'))
+        server_list = []
+        for srvInfo in orig_server_list:
+            port, cfg_pars = srvInfo, []
+            if isinstance(srvInfo, (tuple, list)):
+                port, cfg_pars = srvInfo
+                cfg_pars = list(cfg_pars)
+            cfg_pars += [('NgamsCfg.Authorization[1].User[1].' + name, value) for name, value in ngas_int]
+            server_list.append((port, cfg_pars))
+
+        return self.prepCluster(server_list)
+
     def test_basic_subscription(self):
 
         # We configure the second server to send notifications via socket
         # to the listener we start later
         cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'),)
-        self.prepCluster((8888, (8889, cfg)))
+        self._prep_subscription_cluster((8888, (8889, cfg)))
 
         qarchive = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'QARCHIVE', timeout=5)
         subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
@@ -170,7 +188,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
 
         src_cfg = (("NgamsCfg.HostSuspension[1].SuspensionTime", '0T00:00:02'), ("NgamsCfg.Log[1].LocalLogLevel", '4'))
         tgt_cfg = (('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'),)
-        self.prepCluster(((8888, src_cfg), (8889, tgt_cfg)))
+        self._prep_subscription_cluster(((8888, src_cfg), (8889, tgt_cfg)))
 
         qarchive = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'QARCHIVE', timeout=5)
         subscribe = functools.partial(ngamsHttpUtils.httpGet, 'localhost', 8888, 'SUBSCRIBE', timeout=5)
@@ -359,7 +377,7 @@ class ngamsSubscriptionTest(ngamsTestSuite):
                              ('NgamsCfg.SubscriptionDef[1].Subscription[1].PortNo', '8888'),
                              ('NgamsCfg.SubscriptionDef[1].Subscription[1].Command', 'QARCHIVE'),
                              ('NgamsCfg.ArchiveHandling[1].EventHandlerPlugIn[1].Name', 'ngamsSubscriptionTest.SenderHandler'))
-        self.prepCluster((8888, (8889, subscription_pars)))
+        self._prep_subscription_cluster((8888, (8889, subscription_pars)))
 
         # Listen for archives on server B (B is configured to send us notifications)
         listener = notification_listener()

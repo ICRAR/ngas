@@ -29,7 +29,7 @@ Get the queue information for all subscribers
 
 """
 
-from ngamsLib.ngamsCore import NGAMS_HTTP_SUCCESS, NGAMS_TEXT_MT
+from ngamsLib.ngamsCore import NGAMS_TEXT_MT
 
 
 def handleCmd(srvObj, reqPropsObj, httpRef):
@@ -54,4 +54,5 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             retMsg += 'Queue %s has %d elements\n' % (k, quChunks.qsize())
     else:
         retMsg = 'Fail to find the queue dictionary!\n'
-    srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, retMsg, NGAMS_TEXT_MT)
+
+    httpRef.send_data(retMsg, NGAMS_TEXT_MT)

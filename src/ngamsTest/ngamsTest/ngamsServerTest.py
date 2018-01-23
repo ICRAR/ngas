@@ -38,6 +38,7 @@ import subprocess
 import sys
 import threading
 import time
+import unittest
 import uuid
 
 from ngamsLib import ngamsHttpUtils
@@ -134,6 +135,12 @@ class ngamsServerTest(ngamsTestSuite):
         self.prepExtSrv()
         resp, _, _ = sendPclCmd()._get('UNKNOWN_CMD')
         self.assertEquals(404, resp.status)
+
+    @unittest.skipUnless('NGAS_MANY_STARTS_TEST' in os.environ, 'skipped by default')
+    def test_many_starts(self):
+        for _ in range(int(os.environ['NGAS_MANY_STARTS_TEST'])):
+            self.prepExtSrv()
+            self.terminateAllServer()
 
 class ngamsDaemonTest(ngamsTestSuite):
 

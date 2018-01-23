@@ -460,9 +460,10 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
 
     for attnm in attnm_list:
         if (not reqPropsObj.hasHttpPar(attnm)):
-            srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE, #let HTTP returns OK so that curl can continue printing XML code
-                     "GLEAMCUTOUT command failed: '%s' is not specified" % attnm)
+            msg = "GLEAMCUTOUT command failed: '%s' is not specified" % attnm
+            httpRef.send_status(msg, status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
             return
+
     coord = reqPropsObj.getHttpPar("radec").split(',')
     check_overlap = True
     if (reqPropsObj.hasHttpPar('gleamer') and '1' == reqPropsObj.getHttpPar("gleamer")):
@@ -472,9 +473,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         try:
             overlap_check(float(coord[0]), float(coord[1]), float(reqPropsObj.getHttpPar("radius")))
         except Exception, ex:
-            # srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
-            #              "GLEAMCUTOUT parameter validation failed: '%s'" % str(ex))
-            srvObj.httpReply(reqPropsObj, httpRef, 500, str(ex), NGAMS_TEXT_MT)
+            httpRef.send_data(str(ex), NGAMS_TEXT_MT, code=500)
             return
 
     fits_format = False
@@ -488,21 +487,22 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
     #reList = res[0]
     reList = srvObj.getDb().query2(qs, args=(fileId,))
     if (len(reList) < 1):
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
-                     "Cannot find image file: '%s'" % fileId)
+        httpRef.send_status("Cannot find image file: '%s'" % fileId,
+                            status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
         return
+
     file_host = reList[0][1]
     my_host = srvObj.getHostId()
     if (file_host != my_host):
         if (not host_id_ip_dict.has_key(file_host)):
-            srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
-                     "Invalid file_host: '%s'" % file_host)
+            httpRef.send_status("Invalid file_host: '%s'" % file_host,
+                                status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
             return
 
         """
         redirect to file_host
         """
-        srvObj.httpRedirReply(reqPropsObj, httpRef, host_id_ip_dict[file_host], 7777)
+        httpRef.redirect(host_id_ip_dict[file_host], 7777)
         return
 
 
@@ -512,8 +512,8 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             dec = str(ephem.degrees(float(coord[1]) * math.pi / 180)).split('.')[0] # convert degree to degree:minute:second, and ignore decimal seconds
         radius = float(reqPropsObj.getHttpPar("radius"))
     except Exception, ex:
-        srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
-                     "GLEAMCUTOUT parameter validation failed: '%s'" % str(ex))
+        httpRef.send_status("GLEAMCUTOUT parameter validation failed: '%s'" % str(ex),
+                            status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
         return
 
     filePath = reList[0][0] #GET the latest version only
@@ -609,13 +609,14 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             html_dict["html_content"] = html_content
             ts = Template(html_info)
             err_msg = ts.safe_substitute(html_dict)
-            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, err_msg, "text/html")
+            httpRef.send_data(err_msg, "text/html")
         else:
             if (reqPropsObj.hasHttpPar('debug') and '1' == reqPropsObj.getHttpPar("debug")):
                 err_msg = traceback.format_exc()
             else:
                 err_msg = "Cutout failed: '%s'" % str(excmd1)
-            srvObj.httpReply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, err_msg, NGAMS_TEXT_MT)
+            httpRef.send_data(err_msg, NGAMS_TEXT_MT)
+
         logger.debug(traceback.format_exc())
         for fn in to_be_removed:
             if (os.path.exists(fn)):
@@ -642,8 +643,8 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
             logger.debug("Executing command: %s", cmd2)
             execCmd(cmd2)
         except Exception, excmd2:
-            srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_SUCCESS, NGAMS_FAILURE,
-                         "Conversion from FITS to JPEG failed: '%s', display = '%s'" % (str(excmd2), os.getenv('DISPLAY', 'NOTSET!')))
+            msg = "Conversion from FITS to JPEG failed: '%s', display = '%s'" % (str(excmd2), os.getenv('DISPLAY', 'NOTSET!'))
+            httpRef.send_status(msg, status=NGAMS_FAILURE, code=NGAMS_HTTP_SUCCESS)
             return
         finally:
             ds9_sem.release()
@@ -653,17 +654,7 @@ def handleCmd(srvObj, reqPropsObj, httpRef):
         hdr_dataref = work_dir + '/' + jpfnm
         to_be_removed.append(hdr_dataref)
 
-    hdrInfo = ["Content-Disposition", "inline;filename={0}".format(hdr_fnm)]
-
-    srvObj.httpReplyGen(reqPropsObj,
-                     httpRef,
-                     NGAMS_HTTP_SUCCESS,
-                     dataRef = hdr_dataref,
-                     dataInFile = 1,
-                     contentType = hdr_cttp,
-                     contentLength = 0,
-                     addHttpHdrs = [hdrInfo],
-                     closeWrFo = 1)
+    httpRef.send_file(hdr_dataref, hdr_cttp, fname=hdr_fnm)
 
     for fn in to_be_removed:
         if (os.path.exists(fn)):

@@ -306,21 +306,23 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
         nmuCfgPars = [["NgamsCfg.Server[1].ProxyMode", "0"],
                       ["NgamsCfg.Log[1].LocalLogLevel", "4"]]
         self.prepCluster(((8000, nmuCfgPars), 8011))
-        sendPclCmd(port=8000).archive("src/SmallFile.fits")
-        stat = sendPclCmd(port=8011).archive("src/SmallFile.fits")
+        self.assertStatus(sendPclCmd(port=8000).archive("src/SmallFile.fits"))
+        self.assertStatus(sendPclCmd(port=8011).archive("src/SmallFile.fits"))
+
+        # The ngamsPClient handles redirects automatically,
+        # but we want to manually check here that things are right
         fileId = "TEST.2001-05-08T15:25:00.123"
-        stat = sendPclCmd(port=8000).get_status(NGAMS_RETRIEVE_CMD,
-                                             pars=[["file_id", fileId]])
-        refStatFile = "ref/ngamsRemFileCmdTest_test_HttpRedirection_01_ref"
-        tmpStatFile = saveInFile(None, filterDbStatus1(stat.dumpBuf()))
-        self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect status for " +\
-                          "RETRIEVE Command/HTTP redirection")
-        # Check that a log entry in the log file of the NMU is found.
-        grepCmd = ['grep', 'NGAMS_INFO_REDIRECT',
-                   '/tmp/ngamsTest/NGAS:8000/log/LogFile.nglog']
-        out = subprocess.check_output(grepCmd)
-        if "Redirection URL:" not in out:
-            self.fail("Unexpected/missing HTTP redirection log entry: %s"%out)
+        pars = (("file_id", fileId),)
+        resp = ngamsHttpUtils.httpGet('127.0.0.1', 8000, 'RETRIEVE', pars=pars)
+        self.assertEqual(303, resp.status)
+        resp.close()
+
+        # Follow the Location, we should get it now
+        host, port = resp.getheader('Location').split('/')[2].split(':')
+        port = int(port)
+        resp = ngamsHttpUtils.httpGet(host, port, 'RETRIEVE', pars=pars)
+        self.assertEqual(200, resp.status)
+        resp.close()
 
 
     def test_DppiProc_01(self):

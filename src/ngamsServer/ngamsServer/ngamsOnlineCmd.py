@@ -34,8 +34,7 @@ Function + code to handle the ONLINE command.
 import logging
 
 import ngamsSrvUtils
-from ngamsLib.ngamsCore import NGAMS_OFFLINE_STATE, NGAMS_IDLE_SUBSTATE, \
-    NGAMS_HTTP_SUCCESS, NGAMS_SUCCESS
+from ngamsLib.ngamsCore import NGAMS_OFFLINE_STATE, NGAMS_IDLE_SUBSTATE
 
 
 logger = logging.getLogger(__name__)
@@ -60,10 +59,8 @@ def handleCmd(srvObj,
     srvObj.checkSetState("Command ONLINE", [NGAMS_OFFLINE_STATE],
                          [NGAMS_IDLE_SUBSTATE])
     ngamsSrvUtils.handleOnline(srvObj, reqPropsObj)
-    srvObj.reply(reqPropsObj.setCompletionTime(), httpRef, NGAMS_HTTP_SUCCESS,
-                 NGAMS_SUCCESS, "Successfully handled command ONLINE")
-    srvObj.updateRequestDb(reqPropsObj)
-    logger.info("Successfully handled command ONLINE!")
+
+    return "Successfully handled command ONLINE"
 
 
 # EOF

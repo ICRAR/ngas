@@ -105,7 +105,7 @@ def suspend(stopEvt, t):
     if stopEvt.wait(t):
         raise StopCacheControlThreadEx()
 
-def createCacheDbms(srvObj):
+def createCacheDbms(srvObj, ready_evt):
     """
     Creates the internal/local DBMS (SQLite based) used for managing the cache
     contents without constantly accessing the remote NGAS Cache Table in the
@@ -166,6 +166,7 @@ def createCacheDbms(srvObj):
     srvObj._cacheNewFilesDbm = ngamsDbm.ngamsDbm(newFilesDbmName,
                                                   cleanUpOnDestr = 0,
                                                   writePerm = 1)
+    ready_evt.set()
 
     # Create DBMs used by the Cache Control Plug-Ins.
     # - DBM used to schedule files for checking.
@@ -549,7 +550,7 @@ def delEntryFromCacheDbms(srvObj,
     srvObj.getDb().deleteCacheEntry(diskId, fileId, fileVersion)
 
 
-def initCacheArchive(srvObj, stopEvt):
+def initCacheArchive(srvObj, stopEvt, ready_evt):
     """
     Initialize the NGAS Cache Archive Service. If there are requests in the
     Cache Table in the DB, these are read out and inserted in the local
@@ -563,7 +564,7 @@ def initCacheArchive(srvObj, stopEvt):
 
     # Create/open the Cache Contents DBM.
     # Note: This DBMS is kept between sessions for efficiency reasons.
-    createCacheDbms(srvObj)
+    createCacheDbms(srvObj, ready_evt)
 
     # Check if all files registered in the RDBMS NGAS Cache Table are
     # registered in the Local Cache DBMS.
@@ -1338,7 +1339,7 @@ def cleanUpCache(srvObj):
         # be marked as uncompleted.
 
 
-def cacheControlThread(srvObj, stopEvt, check_can_be_deleted):
+def cacheControlThread(srvObj, stopEvt, ready_evt, check_can_be_deleted):
     """
     The Cache Control Thread runs periodically when the NG/AMS Server is
     Online (if enabled) to synchronize the data holding of the local NGAS
@@ -1346,7 +1347,12 @@ def cacheControlThread(srvObj, stopEvt, check_can_be_deleted):
     """
 
     # Initialize the Cache Service.
-    initCacheArchive(srvObj, stopEvt)
+    try:
+        initCacheArchive(srvObj, stopEvt, ready_evt)
+    except:
+        if not ready_evt.is_set():
+            ready_evt.set()
+        raise
 
     # Main loop.
     period = srvObj.getCfg().getCachingPeriod()

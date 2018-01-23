@@ -36,142 +36,64 @@ This module utilities used to authorization.
 import logging
 import base64
 
-from ngamsLib.ngamsCore import TRACE, getHostName, NGAMS_HTTP_UNAUTH,\
-    NGAMS_FAILURE, genLog
-from ngamsLib import ngamsHostInfo
-
 
 logger = logging.getLogger(__name__)
 
-def genUnAuthResponse(srvObj,
-                      reqPropsObj,
-                      httpRef):
-    """
-    Generate a HTTP unauthorized response (401 Unauthorized) according
-    to the authorization scheme used.
+class UnauthenticatedError(Exception):
+    """Authentication is required but none has been given"""
+    def __init__(self, msg):
+        self.msg = msg
 
-    srvObj:        Reference to NG/AMS Server class instance (ngamsServer).
+class UnauthorizedError(Exception):
+    """An authorized user is not allow to run a command"""
+    def __init__(self, user):
+        self.user = user
 
-    reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
+def cmdPermitted(cfg, reqPropsObj, reqUser):
+    """Whether the command is allows to be run by the user"""
 
-    httpRef:       Reference to the HTTP request handler
-                   object (ngamsHttpRequestHandler).
-
-    Returns:       Void.
-    """
-    T = TRACE()
-
-    #ngamsLib.flushHttpCh(reqPropsObj.getReadFd(), 32768, reqPropsObj.getSize())
-    #reqPropsObj.setBytesReceived(reqPropsObj.getSize())
-    hostInfo = srvObj.getDb().getHostInfoFromHostIds([srvObj.getHostId()])[0]
-    hostInfoObj = ngamsHostInfo.ngamsHostInfo().unpackFromSqlQuery(hostInfo)
-    authRealm = "Basic realm=\"ngas-clients@%s.%s\"" %\
-                (getHostName(), hostInfoObj.getDomain())
-    httpRef.wfile._sock.settimeout(20)
-    srvObj.reply(reqPropsObj, httpRef, NGAMS_HTTP_UNAUTH,
-                 NGAMS_FAILURE, genLog("NGAMS_ER_UNAUTH_REQ"),
-                 [["WWW-Authenticate", authRealm]])
-
-def cmdPermitted(srvObj, reqPropsObj, reqUser):
-    """
-    to check if the requested command is allowed
-    for the reqUser
-
-    srvObj:        Reference to NG/AMS Server class instance (ngamsServer).
-    reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
-    reqUser:       authenticated user (string)
-
-    Returns:       Boolean (True or False)
-
-    """
-    commands = srvObj.getCfg().getAuthUserCommands(reqUser)
-    if (not commands):
+    commands = cfg.getAuthUserCommands(reqUser)
+    if not commands:
         return False
-    elif ('*' == commands):
+    elif '*' == commands:
         return True
 
-    cmd = reqPropsObj.getCmd().strip()
-    if (cmd in commands.split(',')):
-        return True
-    else:
-        return False
+    return reqPropsObj.getCmd().strip() in commands.split(',')
 
 
-def authorize(srvObj,
-              reqPropsObj,
-              httpRef):
-    """
-    Handle client authorization if configured. If authorization is enabled
-    and the request could not be authorized, the proper response is generated.
+def authorize(cfg, reqPropsObj):
+    """Check if the request is authorized for the authenticated user, if any"""
 
-    The exact behavior is:
-
-      o The request didn't contain the 'Authorization' HTTP header:
-      A challenge is sent back to the client (HTTP error code 401) +
-      an exception is raised.
-
-      o The request contained an illegal 'Authorization' HTTP header:
-      An HTTP response with HTTP error code 401 is sent back +
-      an exception is raised.
-
-      o The request contained a legal 'Authorization' HTTP header:
-      The function returns silently.
-
-    srvObj:        Reference to NG/AMS Server class instance (ngamsServer).
-
-    reqPropsObj:   NG/AMS request properties object (ngamsReqProps).
-
-    httpRef:       Reference to the HTTP request handler
-                   object (ngamsHttpRequestHandler).
-
-    Returns:       Void.
-    """
-    T = TRACE()
-
-    if not srvObj.getCfg().getAuthorize():
+    if not cfg.getAuthorize():
         logger.debug("Authorization is disabled, continuing anonymously")
         return
 
     # For now only Basic HTTP Authentication is implemented.
-    if (reqPropsObj.getAuthorization()):
-        try:
-            scheme, reqUserPwdEnc = reqPropsObj.getAuthorization().\
-                                    strip().split(" ")
-            reqUserPwd = base64.decodestring(reqUserPwdEnc)
-            reqUser, reqPwd = reqUserPwd.split(":")
-        except Exception, e:
-            errMsg = genLog("NGAMS_ER_UNAUTH_REQ") + " Error: %s" % str(e)
-            raise Exception, errMsg
+    if not reqPropsObj.getAuthorization():
+        raise UnauthenticatedError('Unauthorized request received')
 
-        # Get the user from the configuration.
-        password = srvObj.getCfg().getAuthUserInfo(reqUser)
-        if (password):
-            decPassword = base64.decodestring(password)
-        else:
-            decPassword = None
+    auth_parts = reqPropsObj.getAuthorization().split(' ')
+    if auth_parts[0] != 'Basic':
+        raise UnauthenticatedError('Invalid authentication scheme: ' + auth_parts[0])
+    if len(auth_parts) != 2:
+        raise UnauthenticatedError('Invalid Basic authentication, missing value')
 
-        # Check if this user is defined and if the password matches.
-        errMsg = ""
-        if (not decPassword):
-            errMsg = "Unknown user specified - rejecting request. "
-        elif (reqPwd != decPassword):
-            errMsg = "Wrong password for user: '%s'. " % reqUser
-        elif (not cmdPermitted(srvObj, reqPropsObj, reqUser)):
-            errMsg = "Command '%s' is not allowed for user '%s'. " % (reqPropsObj.getCmd(), reqUser)
-        if (errMsg):
-            errMsg += genLog("NGAMS_ER_UNAUTH_REQ") + " Command: %s" %\
-                     reqPropsObj.getCmd()
+    user_pass = base64.b64decode(auth_parts[1]).split(':')
+    if len(user_pass) < 2:
+        raise UnauthenticatedError('Invalid Basic authentication, no password provided')
 
-            # Generate HTTP unauthorized response.
-            genUnAuthResponse(srvObj, reqPropsObj, httpRef)
-            raise Exception(errMsg)
+    user, password = user_pass[0], ':'.join(user_pass[1:])
 
-        logger.debug("Successfully authenticated user %s", reqUser)
-    else:
-        # Challenge the client.
-        msg = genLog("NGAMS_ER_UNAUTH_REQ") + " Challenging client"
-        genUnAuthResponse(srvObj, reqPropsObj, httpRef)
-        raise Exception(msg)
+    # Get the user from the configuration.
+    stored_pass = cfg.getAuthUserInfo(user)
+    if not stored_pass:
+        raise UnauthenticatedError("unknown user specified")
 
+    # Password matches and command is allowed
+    stored_pass = base64.decodestring(stored_pass)
+    if password != stored_pass:
+        raise UnauthenticatedError("wrong password for user " + user)
+    if not cmdPermitted(cfg, reqPropsObj, user):
+        raise UnauthorizedError(user)
 
-# EOF
+    logger.info("Successfully authenticated user %s", user)
