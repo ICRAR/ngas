@@ -759,7 +759,21 @@ class ngamsDbCore(object):
             self.__dbSem.release()
 
 
-    def _params_to_bind(self, howMany):
+    def _named_marker(self, i):
+        # We know that the Sybase module uses @ named markers
+        # Everyone else (so far) is pretty sensible
+        if self.module_name == 'Sybase':
+            return '@n%d' % i
+        return ':n%d' % i
+
+    def _named_key(self, i):
+        # See above
+        if self.module_name == 'Sybase':
+            return '@n%d' % i
+        return 'n%d' % i
+
+
+    def _markers(self, howMany):
         # Depending on the different vendor, we need to write the parameters in
         # the SQL calls using different notations. This method will produce an
         # array containing all the parameter _references_ in the SQL statement
@@ -771,18 +785,20 @@ class ngamsDbCore(object):
         # pyformat  Python extended format codes, e.g. ...WHERE name=%(name)s
         #
         s = self.__paramstyle
-        if s == 'qmark':    return ['?'            for i in xrange(howMany)]
-        if s == 'numeric':  return [':%d'%(i)      for i in xrange(howMany)]
-        if s == 'named':    return [':n%d'%(i)     for i in xrange(howMany)]
-        if s == 'format':   return ['%s'           for i in xrange(howMany)]
-        if s == 'pyformat': return ['%%(n%d)s'%(i) for i in xrange(howMany)]
+        if s == 'qmark':    return ['?'                   for i in xrange(howMany)]
+        if s == 'numeric':  return [':%d'%(i)             for i in xrange(howMany)]
+        if s == 'named':    return [self._named_marker(i) for i in xrange(howMany)]
+        if s == 'format':   return ['%s'                  for i in xrange(howMany)]
+        if s == 'pyformat': return ['%%(n%d)s'%(i)        for i in xrange(howMany)]
         raise Exception('Unknown paramstyle: %s' % (s))
 
     def _format_query(self, sql, args):
-        return sql.format(*self._params_to_bind(len(args)))
+        return sql.format(*self._markers(len(args)))
 
     def _data_to_bind(self, data):
-        if self.__paramstyle in ['named', 'pyformat']:
+        if self.__paramstyle == 'named':
+            return {self._named_key(i): d for i,d in enumerate(data)}
+        elif self.__paramstyle == 'pyformat':
             return {'n%d'%(i): d for i,d in enumerate(data)}
         return data
 
