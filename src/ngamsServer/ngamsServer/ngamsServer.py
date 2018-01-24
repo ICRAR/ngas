@@ -1917,13 +1917,16 @@ class ngamsServer(object):
         try:
             self.handleStartUp()
         except Exception, e:
+
+            logger.exception("Error during startup, shutting system down")
+
             try:
                 errMsg = genLog("NGAMS_ER_INIT_SERVER", [str(e)])
                 ngamsNotification.notify(self.getHostId() or '', self.getCfg(), NGAMS_NOTIF_ERROR,
                                          "PROBLEMS INITIALIZING NG/AMS SERVER",
                                          errMsg, [], 1)
             except:
-                print("Error while notifying about problems in server initialization")
+                logger.exception("Error while notifying about problems in server initialization")
 
             self.terminate()
             raise
