@@ -39,7 +39,6 @@ import threading
 import time
 
 from ngamsCore import TRACE, toiso8601, fromiso8601
-from contextlib import closing
 from DBUtils.PooledDB import PooledDB
 
 # Global DB Semaphore to protect critical, global DB interaction.
@@ -526,6 +525,7 @@ class transaction(object):
 
     def __enter__(self):
         self.conn = self.pool.connection()
+        self.cursor = self.conn.cursor()
         return self
 
     def __exit__(self, typ, *_):
@@ -536,11 +536,12 @@ class transaction(object):
         else:
             self.conn.rollback()
 
-        # Always close the connection at the end
-        try:
-            self.conn.close()
-        except:
-            pass
+        # Always close the cursor and the connection at the end
+        for x in (self.cursor, self.conn):
+            try:
+                x.close()
+            except:
+                pass
 
         # Re-raise original exception
         if typ:
@@ -551,23 +552,30 @@ class transaction(object):
         # If we are passing down parameters we need to sanitize both the query
         # string (which should come with {0}-style formatting) and the parameter
         # list to cope with the different parameter styles supported by PEP-249
+        logger.debug("Performing SQL query with parameters: %s / %r", sql, args)
         sql, args = self.db_core._prepare_query(sql, args)
+        cursor = self.cursor
 
-        with closing(self.conn.cursor()) as cursor:
-            with ngamsDbTimer(self.db_core, sql):
+        with ngamsDbTimer(self.db_core, sql):
+
+            # Some drivers complain when an empty argument list/tuple is passed
+            # so let's avoid it
+            if not args:
+                cursor.execute(sql)
+            else:
                 cursor.execute(sql, args)
 
-                # From PEP-249, regarding .description:
-                # This attribute will be None for operations that do not return
-                # rows [...]
-                # We thus use it to distinguish between those cases when there
-                # are results to fetch or not. This is important because fetch*
-                # calls can raise Errors if there are no results generated from
-                # the last call to .execute*
-                res = []
-                if cursor.description is not None:
-                    res = cursor.fetchall()
-                return res
+            # From PEP-249, regarding .description:
+            # This attribute will be None for operations that do not return
+            # rows [...]
+            # We thus use it to distinguish between those cases when there
+            # are results to fetch or not. This is important because fetch*
+            # calls can raise Errors if there are no results generated from
+            # the last call to .execute*
+            res = []
+            if cursor.description is not None:
+                res = cursor.fetchall()
+            return res
 
 class ngamsDbCore(object):
     """
@@ -821,17 +829,7 @@ class ngamsDbCore(object):
         return transaction(self, self.__pool)
 
     def query2(self, sqlQuery, args = ()):
-        """
-        Simple query method that takes an SQL query and a tuple of arguments to
-        bind to the query.
-
-        Unlike self.query, this method doesn't perform automatic retries or
-        reconnections to the underlying database. It also returns a simpler
-        result list, consisting on a two-dimensional structure instead of the
-        three-dimensional one returned by self.query.
-        """
-
-        logger.debug("Performing SQL query with parameters: %s / %r", sqlQuery, args)
+        """Takes an SQL query and a tuple of arguments to bind to the query"""
         with self.transaction() as t:
             return t.execute(sqlQuery, args)
 
