@@ -1093,7 +1093,7 @@ class ngamsConfig:
         dbEl = self.__cfgMgr.getXmlObj("Db[1]")
         params = {}
         for attr in dbEl.getAttrList():
-            name = attr.getName()
+            name = str(attr.getName())
             val = attr.getValue()
             if name in ('Id', 'Interface', 'Snapshot', 'UseFileIgnore', 'MaxPoolConnections'):
                 continue
