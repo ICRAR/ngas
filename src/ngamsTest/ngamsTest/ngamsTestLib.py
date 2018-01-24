@@ -91,7 +91,7 @@ AUTH               = "bmdhczpuZ2Fz"
 
 
 # this_dir, which we use in a few places to refer to files, etc
-this_dir = os.path.normpath(pkg_resources.resource_filename(__name__, '.'))  # @UndefinedVariable
+this_dir = os.path.normpath(os.path.abspath(pkg_resources.resource_filename(__name__, '.')))  # @UndefinedVariable
 
 ###########################################################################
 
