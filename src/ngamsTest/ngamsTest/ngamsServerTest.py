@@ -144,12 +144,18 @@ class ngamsServerTest(ngamsTestSuite):
 
 class ngamsDaemonTest(ngamsTestSuite):
 
-    def _run_daemon_status(self, cfg_file):
-        execCmd  = [sys.executable, '-m', 'ngamsServer.ngamsDaemon', 'status']
+    def _run_daemon_cmd(self, cfg_file, cmd):
+        execCmd  = [sys.executable, '-m', 'ngamsServer.ngamsDaemon', cmd]
         execCmd += ['-cfg', cfg_file]
         with self._proc_startup_lock:
             daemon_status_proc = subprocess.Popen(execCmd, shell=False)
         return daemon_status_proc.wait()
+
+    def _run_daemon_status(self, cfg_file):
+        return self._run_daemon_cmd(cfg_file, 'status')
+
+    def _run_daemon_start(self, cfg_file):
+        return self._run_daemon_cmd(cfg_file, 'start')
 
     def test_start_via_daemon(self):
         self.prepExtSrv(daemon=True)
@@ -162,9 +168,9 @@ class ngamsDaemonTest(ngamsTestSuite):
         self.assertEquals(1, self._run_daemon_status(os.path.join(this_dir, 'src/ngamsCfg.xml')))
 
     def test_daemon_double_start(self):
-        # Try to start the daemon in the same port, should fail
+        # Try to start the daemon twice, it should fail
         self.prepExtSrv(daemon=True)
-        self.assertRaises(Exception, self.prepExtSrv, delDirs=False, clearDb=False, daemon=True)
+        self.assertNotEqual(0, self._run_daemon_start(os.path.join(this_dir, 'src/ngamsCfg.xml')))
 
 def run():
     """
