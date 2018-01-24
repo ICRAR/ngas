@@ -579,7 +579,8 @@ class ngamsDbCore(object):
                  parameters = {},
                  createSnapshot = 1,
                  maxpoolcons = 6,
-                 use_file_ignore=True):
+                 use_file_ignore=True,
+                 session_sql=None):
         """
         Creates a new ngamsDbCore object using ``interface`` as the underlying
         PEP-249-compliant database connection driver. Connections creation
@@ -613,14 +614,17 @@ class ngamsDbCore(object):
         logger.info("Importing DB Module: %s", interface)
         self.module_name = interface
         self.__dbModule = importlib.import_module(interface)
+        logger.info("DB Module param style: %s", self.__dbModule.paramstyle)
+        logger.info("DB Module API Level: %s", self.__dbModule.apilevel)
         self.__paramstyle = self.__dbModule.paramstyle
+
+        logger.info('Preparing database pool with %d connections. Initial SQL: %s', maxpoolcons, session_sql)
         self.__pool = PooledDB(self.__dbModule,
                                 maxshared = maxpoolcons,
                                 maxconnections = maxpoolcons,
                                 blocking = True,
+                                setsession=session_sql,
                                 **parameters)
-        logger.info("DB Module param style: %s", self.__paramstyle)
-        logger.info("DB Module API Level: %s", self.__dbModule.apilevel)
 
         self.__dbTmpDir      = "/tmp"
 

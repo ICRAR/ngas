@@ -76,6 +76,7 @@ def from_config(cfg):
     creSnap  = cfg.getDbSnapshot()
     drvPars  = cfg.getDbParameters()
     maxpool  = cfg.getDbMaxPoolCons()
+    sess_sql = cfg.getDbSessionSql()
     use_file_ignore = cfg.getDbUseFileIgnore()
 
     # HACK, HACK, HACK
@@ -96,4 +97,5 @@ def from_config(cfg):
     msg = "Additional DB parameters: snapshot: %d, params: %r"
     logger.debug(msg, creSnap, __params_for_log(drvPars))
     return ngamsDb(driver, parameters = drvPars, createSnapshot = creSnap,
-                   maxpoolcons = maxpool, use_file_ignore=use_file_ignore)
+                   maxpoolcons = maxpool, use_file_ignore=use_file_ignore,
+                   session_sql=sess_sql)

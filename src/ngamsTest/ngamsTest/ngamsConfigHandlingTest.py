@@ -79,7 +79,8 @@ def _cleanXmlDoc(xmlDicDump, filter_pattern):
 def without_db_element(s):
     lines = []
     for l in s.split('\n'):
-        if l.strip().startswith('<Db '):
+        stripped = l.strip()
+        if stripped.startswith('<Db ') or stripped.startswith('<SessionSql ') or stripped.startswith('</Db>'):
             continue
         lines.append(l)
     return '\n'.join(lines)

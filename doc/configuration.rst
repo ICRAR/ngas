@@ -58,6 +58,16 @@ This element contains the database connection parameters.
   The latter was used by some particular combinations
   of old versions of the NGAS code and database engines,
   while the former is the default nowadays.
+* *SessionSql*:
+  Zero or more XML sub-elements,
+  each with an ``sql`` attribute denoting
+  an SQL statement that will be executed whenever
+  a physical connection is established
+  by the connection pool to the database server.
+  Usually these will not be required,
+  but can be useful, for instance,
+  if one needs to execute a command
+  to switch to a different database.
 
 The rest of the attributes on the *Db* element
 are used as keyword arguments to create connection

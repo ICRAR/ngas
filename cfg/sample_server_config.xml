@@ -178,7 +178,11 @@ passwords will be expressed literally.
 	    NGAS uses the PEP-249-compliant module indicated by Interface to
 	    connect to the central database. This driver is wrapped by a
 	    connection pool, which will hold a maximum of MaxPoolConnections
-	    connections.
+	    connections. When a new connection is established by the pool to
+	    the database server, the SQL statements specified in the sql attribute
+	    of the SessionSql XML sub-elements are executed. This could be useful,
+	    for instance, to switch to a different database before running any
+	    queries, if required, but could be used for other purposes.
 
 	    Because of historical reasons, some database schemas had a "ignore"
 	    column in the ngas_files table rather than a "file_ignore" column.

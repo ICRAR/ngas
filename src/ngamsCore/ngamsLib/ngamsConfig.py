@@ -243,6 +243,10 @@ class ngamsConfig:
 
         Returns:   Reference to object itself.
         """
+
+        # SQL statements to execute at connection-establishment time
+        self.session_sqls = []
+
         # Mime-type mappings (attributes in the MimeTypes Element).
         self.__mimeType2ExtDic         = {}
         self.__ext2MimeTypeDic         = {}
@@ -417,6 +421,14 @@ class ngamsConfig:
         # Create log file directory if defined.
         if (self.getLocalLogFile()):
             checkCreatePath(os.path.dirname(self.getLocalLogFile()))
+
+        # Get session SQL statements
+        db_obj = self.__cfgMgr.getXmlObj('Db[1]')
+        logger.debug('Unpacking SessionSql elements')
+        attr_fmt = 'Db[1].SessionSql[%d].sql'
+        for idx in range(1, len(db_obj.getSubElList()) + 1):
+            sql = self.getVal(attr_fmt % idx)
+            self.session_sqls.append(sql)
 
         # Get command plug-ins
         commands_obj = self.__cfgMgr.getXmlObj('Commands[1]')
@@ -1068,6 +1080,9 @@ class ngamsConfig:
         par = "Db[1].MaxPoolConnections"
         return getInt(par, self.getVal(par), 7)
 
+    def getDbSessionSql(self):
+        """SQL commands to run whenever a connection is established"""
+        return self.session_sqls
 
     def getDbParameters(self):
         """
