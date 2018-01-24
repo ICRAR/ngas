@@ -34,7 +34,7 @@ This module contains functions used in connection with the SUBSCRIBE Command.
 import logging
 import time
 
-from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SUCCESS, \
+from ngamsLib.ngamsCore import \
     genLog, NGAMS_SUBSCRIBE_CMD, TRACE, fromiso8601, toiso8601
 from ngamsLib import ngamsSubscriber, ngamsLib
 
