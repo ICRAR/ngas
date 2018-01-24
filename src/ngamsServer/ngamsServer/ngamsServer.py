@@ -1973,12 +1973,12 @@ class ngamsServer(object):
 
         logger.info("Successfully loaded NG/AMS Configuration")
 
-
-    def reconnect_to_db(self):
-
+    def close_db(self):
         if self.db:
             self.db.close()
 
+    def reconnect_to_db(self):
+        self.close_db()
         self.db = ngamsDb.from_config(self.cfg)
         ngasTmpDir = ngamsHighLevelLib.getNgasTmpDir(self.cfg)
         self.db.setDbTmpDir(ngasTmpDir)
@@ -2028,7 +2028,7 @@ class ngamsServer(object):
 
                 signal.signal(signal.SIGTERM, noop)
                 signal.signal(signal.SIGINT, noop)
-                srvObj.getDb().close()
+                srvObj.close_db()
 
             n_workers = self.getCfg().getDataCheckMaxProcs()
             self.workers_pool = multiprocessing.Pool(n_workers,
@@ -2331,6 +2331,9 @@ class ngamsServer(object):
             self.workers_pool.close()
             self.workers_pool.join()
         show_threads()
+
+        # Close all connections to the database, please
+        self.close_db()
 
         # Shut down logging. This will flush all pending logs in the system
         # and will ensure that the last logfile gets rotated
