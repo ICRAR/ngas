@@ -1094,11 +1094,18 @@ class ngamsTestSuite(unittest.TestCase):
         server_info = ServerInfo(srvProcess, port, cfgObj.getRootDirectory(), tmpCfg, daemon)
         pCl = sendPclCmd(port=port, timeOut=5)
 
+        def give_up():
+            try:
+                self.termExtSrv(server_info)
+            except:
+                pass
+
         # A daemon server should start rather quickly, as it forks out the actual
         # server process and then exists (with a 0 status when successful)
         if server_info.daemon:
             srvProcess.wait()
             if srvProcess.poll() != 0:
+                give_up()
                 raise Exception("Daemon server failed to start")
 
         startTime = time.time()
@@ -1106,7 +1113,7 @@ class ngamsTestSuite(unittest.TestCase):
 
             # Took too long?
             if ((time.time() - startTime) >= 20):
-                self.termExtSrv(server_info)
+                give_up()
                 raise Exception("Server did not start correctly within 20 [s]")
 
             # Check if the server actually didn't start up correctly
@@ -1161,10 +1168,7 @@ class ngamsTestSuite(unittest.TestCase):
                     continue
 
                 logger.exception("Error while STATUS-ing server, shutting down")
-                try:
-                    self.termExtSrv(server_info)
-                except:
-                    pass
+                give_up()
 
                 raise
 
