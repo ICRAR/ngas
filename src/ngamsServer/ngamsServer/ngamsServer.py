@@ -2010,6 +2010,15 @@ class ngamsServer(object):
         # Load NG/AMS Configuration (from XML Document/DB).
         self.loadCfg()
 
+        # Extend the system path to include anything specified in the config
+        plugins_path = self.getCfg().getPluginsPath()
+        if plugins_path:
+            for p in plugins_path.split(':'):
+                if not os.path.exists(p):
+                    raise ValueError("Plugins path %s doesn't exist, check your configuration" % (p,))
+                sys.path.insert(0, p)
+                logger.info("Added %s to the system path", p)
+
         # Exactly what the name implies
         self.connect_to_db()
 
@@ -2086,14 +2095,6 @@ class ngamsServer(object):
             ngamsNotification.notify(self.getHostId(), self.getCfg(), NGAMS_NOTIF_ERROR,
                                      "PROBLEM SETTING UP LOGGING", errMsg)
             raise
-
-        # Extend the system path to include anything specified in the config
-        plugins_path = self.getCfg().getPluginsPath()
-        if plugins_path:
-            if not os.path.exists(plugins_path):
-                raise ValueError("Plugins path %s doesn't exist, check your configuration" % (plugins_path,))
-            sys.path.insert(0, plugins_path)
-            logger.info("Added %s to the system path", plugins_path)
 
         # Pretty clear what this does...
         self.load_archive_event_subscribers()

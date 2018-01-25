@@ -94,6 +94,12 @@ passwords will be expressed literally.
 	    abstract archive ArchiveName. Access to the disk, plus other block-based
 	    operations performed by the server (e.g., network read/write and
 	    checksum calculation) will be performed using BlockSize block size.
+
+	    Finally, a list of colon-separated directories containing python
+	    packages and modules can be specified using the PluginsPath attribute.
+	    This directories will be added to the sys.path of the NGAS server,
+	    allowing users to install their own code separately from the NGAS
+	    installation, which might not even be writable.
 	-->
 	<Server Id="Server-MWA"
 	        RootDirectory="/your/NGAS/root/directory" ArchiveName="MyArchive" BlockSize="65536"

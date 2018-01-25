@@ -25,7 +25,9 @@ Contains the overall server configuration.
 * *MaxSimReqs*: The maximum number of requests the server can be serving
   at a given time. If a new request comes in and the server has reached
   the limit already, it will respond with an ``503`` HTTP code.
-* *PluginsPath*: A directory where NGAS plug-ins can be loaded from.
+* *PluginsPath*: A colon-separated list of directories
+  where external python code, like NGAS plug-ins or database drivers,
+  can be loaded from.
 * *Proxy*: Whether this server should act as a proxy when serving requests that
   are addressed to a different server within the same cluster (``1``)
   or not (``0``).
