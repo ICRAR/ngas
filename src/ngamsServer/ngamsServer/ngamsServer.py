@@ -1963,25 +1963,34 @@ class ngamsServer(object):
         logger.info("Loading NG/AMS Configuration: " + self.getCfgFilename()+" ...")
         cfg.load(self.getCfgFilename())
 
-        self.reconnect_to_db()
-
         # Check if we should load a configuration from the DB.
+        # To bootstrap this, the configuration we just loaded needs of course to
+        # have at least a Db XML element so we can create the connection to the
+        # database. We don't need more than one connection to the database though,
+        # so we hardcode that
         if (self.__dbCfgId):
-            cfg.loadFromDb(self.__dbCfgId, self.db)
+            with contextlib.closing(ngamsDb.from_config(self.cfg, maxpool=1)) as db:
+                self.cfg.loadFromDb(self.__dbCfgId, db)
 
         cfg._check()
 
         logger.info("Successfully loaded NG/AMS Configuration")
 
+    def connect_to_db(self):
+        """Connect to the database"""
+        self.db = ngamsDb.from_config(self.cfg)
+        ngasTmpDir = ngamsHighLevelLib.getNgasTmpDir(self.cfg)
+        self.db.setDbTmpDir(ngasTmpDir)
+
     def close_db(self):
+        """Close the connections to the database"""
         if self.db:
             self.db.close()
 
     def reconnect_to_db(self):
+        """Re-connect to the database"""
         self.close_db()
-        self.db = ngamsDb.from_config(self.cfg)
-        ngasTmpDir = ngamsHighLevelLib.getNgasTmpDir(self.cfg)
-        self.db.setDbTmpDir(ngasTmpDir)
+        self.connect_to_db()
 
     def handleStartUp(self):
         """
@@ -2000,6 +2009,9 @@ class ngamsServer(object):
 
         # Load NG/AMS Configuration (from XML Document/DB).
         self.loadCfg()
+
+        # Exactly what the name implies
+        self.connect_to_db()
 
         # Do we need data check workers?
         if self.getCfg().getDataCheckActive():
