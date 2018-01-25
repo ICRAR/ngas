@@ -1035,10 +1035,8 @@ class ngamsTestSuite(unittest.TestCase):
             # extract the configuration information from the DB to
             # create a complete temporary cfg. file.
             cfgObj = db_aware_cfg(cfgFile)
-            dbObj = ngamsDb.from_config(cfgObj)
-            cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, dbObj)
-            del dbObj
-            dbObj = None
+            with contextlib.closing(ngamsDb.from_config(cfgObj, maxpool=1)) as db:
+                cfgObj2 = ngamsConfig.ngamsConfig().loadFromDb(dbCfgName, db)
             logger.debug("Successfully read configuration from database, root dir is %s", cfgObj2.getRootDirectory())
             cfgFile = saveInFile(None, cfgObj2.genXmlDoc(0))
 
@@ -1058,7 +1056,7 @@ class ngamsTestSuite(unittest.TestCase):
 
         # Now connect to the database and perform any cleanups before we start
         # the server, like removing existing NGAS dirs and clearing tables
-        dbObj = ngamsDb.from_config(cfgObj)
+        dbObj = ngamsDb.from_config(cfgObj, maxpool=1)
         if (delDirs):
             logger.debug("Deleting NG/AMS directories ...")
             delNgamsDirs(cfgObj)
@@ -1414,10 +1412,6 @@ class ngamsTestSuite(unittest.TestCase):
         tmpCfgFile = "tmp/%s_tmp.xml" % srvId
         cfg.save(tmpCfgFile, 0)
 
-        # Check if server has entry in referenced DB. If not, create it.
-        db = ngamsDb.from_config(cfg)
-        db.close()
-
         # Start server + add reference to server configuration object and
         # server DB object.
         srvCfgObj, srvDbObj = self.prepExtSrv(port=port,
@@ -1464,9 +1458,8 @@ class ngamsTestSuite(unittest.TestCase):
         tmpCfg = db_aware_cfg(cfg_file)
         self.point_to_sqlite_database(tmpCfg, createDatabase)
         if createDatabase:
-            db = ngamsDb.from_config(tmpCfg)
-            delNgasTbls(db)
-            db.close()
+            with contextlib.closing(ngamsDb.from_config(tmpCfg, maxpool=1)) as db:
+                delNgasTbls(db)
 
         multSrvs = len(server_list) > 1
 
@@ -1537,7 +1530,7 @@ class ngamsTestSuite(unittest.TestCase):
                         (string).
         """
         cfgObj = ngamsConfig.ngamsConfig().load(cfgFile)
-        dbObj  = ngamsDb.from_config(cfgObj)
+        dbObj  = ngamsDb.from_config(cfgObj, maxpool=1)
 
         stoSetIdx = 0
         xmlKeyPat = "NgamsCfg.StorageSets[1].StorageSet[%d]."
