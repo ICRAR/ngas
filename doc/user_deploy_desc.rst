@@ -3,8 +3,7 @@ This task will:
 * Check that SSH is working on the target host
 * Copy the NGAS sources to the target host
 * Compile and install NGAS into a virtualenv on the target host
-* Create a minimal NGAS data directory with a valid configuration file,
-  and a valid SQLite database, with which an NGAS server can be started
+* Create a minimal, working NGAS root directory
 * Finally, modify the corresponding ``~/.bash_profile`` file to automatically
   load the NGAS virtualenv when the user enters a ``bash`` shell.
 
@@ -40,6 +39,10 @@ are available to further customize the process:
 +-----------------------------+--------------------------------------+-------------------+
 | NGAS_OVERWRITE_INSTALLATION | | If specified, an existing          | | Not specified   |
 |                             | | installation directory will be     |                   |
+|                             | | overwritten                        |                   |
++-----------------------------+--------------------------------------+-------------------+
+| NGAS_OVERWRITE_ROOT         | | If specified, an existing          | | Not specified   |
+|                             | | NGAS root directory will be        |                   |
 |                             | | overwritten                        |                   |
 +-----------------------------+--------------------------------------+-------------------+
 | NGAS_USE_CUSTOM_PIP_CERT    | | If specified, configure pip to use | | Not specified   |

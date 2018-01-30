@@ -20,6 +20,21 @@ and can be totally empty initially.
 The only requirement is that it is writable by the user
 running the NGAS server.
 
+To help users create their an NGAS root directory,
+NGAS comes with a ``prepare_ngas_root.sh`` script.
+The script needs at least
+the name of the target directory
+that will be used as NGAS root.
+More options are available,
+you can use ``prepare_ngas_root.sh -h`` to learn more.
+
+The ``prepare_ngas_root.sh`` script
+will also create simple, but usable, *volumes*
+under the NGAS *root* directory.
+These are sufficient for testing purposes,
+but you may want to setup proper volumes
+(see next section).
+
 Setup volumes
 -------------
 
@@ -27,8 +42,11 @@ Inside the NGAS *root* directory
 *volumes* should exist
 where the data will be stored
 (see :ref:`server.storage` for a full explanation).
-You can either create directories for each volume,
+Volumes need only be directories,
+so you can either create directories for each volume
+in simple or testing scenarios,
 or symbolic link actual partitions as separate volumes
+for more demanding, real-world setups
 -- it's your choice.
 
 In any case, volumes need to be tagged as such

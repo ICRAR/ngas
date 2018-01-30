@@ -98,6 +98,10 @@ def ngas_root_dir():
         env[key] = os.path.abspath(os.path.join(home(), NGAS_ROOT_DIR_NAME))
     return env[key]
 
+def ngas_overwrite_root():
+    key = 'NGAS_OVERWRITE_ROOT'
+    return key in env
+
 def ngas_source_dir():
     key = 'NGAS_SRC_DIR'
     if key not in env:
@@ -303,31 +307,30 @@ def build_ngas():
     success("NGAS built and installed")
 
 def prepare_ngas_data_dir():
-    """
-    Prepares the NGAS data directory (NGAS_ROOT_DIR)
-    """
+    """Creates a new NGAS root directory"""
+
+    info('Preparing NGAS root directory')
     nrd = ngas_root_dir()
+    tgt_cfg = os.path.join(nrd, 'cfg', 'ngamsServer.conf')
     with cd(ngas_source_dir()):
 
-        # Installing and initializing an NGAS_ROOT directory
-        src_cfg = 'sample_server_config.xml'
-        tgt_cfg = os.path.join(nrd, 'cfg', 'ngamsServer.conf')
-        run('mkdir -p {0}'.format(nrd))
-        run('cp -R NGAS/* {0}'.format(nrd))
+        cmd = ['./prepare_ngas_root.sh']
+        if ngas_overwrite_root():
+            cmd.append('-f')
+        cmd.append(nrd)
+        res = run(' '.join(cmd), quiet=True)
+        if res.succeeded:
+            success("NGAS data directory ready")
+            return tgt_cfg
 
-        # Copy sample configuration file and adjust it to use an sqlite3 database
-        # located in the NGAS_ROOT
-        run('cp cfg/{0} {1}'.format(src_cfg, tgt_cfg))
-        sed(tgt_cfg, 'RootDirectory="[^"]+"', 'RootDirectory="%s"' % (nrd,), backup='.bak')
-        sed(tgt_cfg, 'database="[^"]+"', 'database="%s/ngas.sqlite"' % (nrd,), backup='.bak')
-        run('rm {0}.bak'.format(tgt_cfg))
-
-        # Initialize the SQlite database
-        sql = "src/ngamsCore/ngamsSql/ngamsCreateTables-SQLite.sql"
-        run('sqlite3 {0}/ngas.sqlite < {1}'.format(nrd, sql))
-
-    success("NGAS data directory ready")
-    return tgt_cfg
+    # Deal with the errors here
+    error = 'NGAS root directory preparation under {0} failed.\n'.format(nrd)
+    if res.return_code == 2:
+        error = (nrd + " already exists. Specify NGAS_OVERWRITE_ROOT to overwrite, "
+                 "or a different NGAS_ROOT_DIR location")
+    else:
+        error = res
+    abort(error)
 
 
 def install_sysv_init_script(nsd, nuser, cfgfile):
