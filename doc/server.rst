@@ -13,7 +13,7 @@ Configuration
 The NGAS server is configured via an XML configuration file,
 which is indicated to the server at startup time
 via the ``-cfg`` command-line flag
-(see under :doc:`running`).
+(see :ref:`post_inst.run_server`).
 
 To see more details about the XML documentation
 go to the :doc:`configuration` section.
@@ -197,7 +197,7 @@ receive an error stating that the server is in the wrong state/sub-state.
 
 The NGAS server starts by default on the **OFFLINE** state. If the server is
 started with the ``-autoOnline`` command-line flag (see how to :ref:`run the
-server <running.server>`) it will move itself automatically to the **ONLINE**
+server <post_inst.run_server>`) it will move itself automatically to the **ONLINE**
 state after initializing. At runtime the state can be toggled via
 different :ref:`commands`.
 

@@ -28,7 +28,7 @@ are available to further customize the process:
 |                             | | will be created and NGAS           |                   |
 |                             | | installed                          |                   |
 +-----------------------------+--------------------------------------+-------------------+
-| NGAS_ROOT_DIR               | | The NGAS data directory created by | | ``~/NGAS``      |
+| NGAS_ROOT_DIR               | | The NGAS root directory created by | | ``~/NGAS``      |
 |                             | | default by the installation        |                   |
 |                             | | procedure                          |                   |
 +-----------------------------+--------------------------------------+-------------------+

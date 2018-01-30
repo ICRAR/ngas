@@ -14,8 +14,6 @@ Contents:
    introduction
    install
    post_installation
-   preparing
-   running
    server
    background
    plugins-index
