@@ -75,8 +75,6 @@ then
 fi
 
 root_dir="${@:$OPTIND:1}"
-cfg_file="${root_dir}/cfg/ngamsServer.conf"
-db_file="${root_dir}/ngas.sqlite"
 
 if [ -d "${root_dir}" -a "$FORCE" != 'yes' ]
 then
@@ -97,6 +95,10 @@ cd "$(dirname $this)"
 head=$(dirname "$root_dir")
 head=$(cd "$head" && pwd)
 root_dir=$head/$(basename "${root_dir}")
+
+# Calculate now the rest of the files that depend on root_dir
+cfg_file="${root_dir}/cfg/ngamsServer.conf"
+db_file="${root_dir}/ngas.sqlite"
 
 # Create and populate the root directory
 echo "Creating NGAS root directory"
