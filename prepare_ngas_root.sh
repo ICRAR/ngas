@@ -26,10 +26,12 @@
 function print_usage {
 	echo "Creates and prepares a new NGAS root directory"
 	echo
-	echo "$0 [-h?f] <NGAS root directory>"
+	echo "$0 [-h | -?] [-f] [-D] [-C] <NGAS root directory>"
 	echo
 	echo "-h, -?: Show this help"
 	echo "-f: Force creation of NGAS root, even if directory exists"
+	echo "-D: Do *not* create a configuration file"
+	echo "-C: Do *not* create an SQLite3 database"
 	echo
 }
 
@@ -50,12 +52,20 @@ warning() {
 
 # Command-line option parsing
 FORCE=
+CREATE_DB=yes
+CREATE_CFG=yes
 
-while getopts "fh?" opt
+while getopts "fDCh?" opt
 do
 	case "$opt" in
 		f)
 			FORCE=yes
+			;;
+		D)
+			CREATE_DB=no
+			;;
+		C)
+			CREATE_CFG=no
 			;;
 		[h?])
 			print_usage
@@ -106,24 +116,45 @@ mkdir -p "${root_dir}" || error "Failed to create NGAS root directory"
 cp -R NGAS/* "${root_dir}" || error "Failed to populate NGAS root with initial contents"
 
 # Copy sample configuration file and adjust it to use an sqlite3 database
-# located in the NGAS root directory
-echo "Creating and preparing initial configuration file"
-cp cfg/sample_server_config.xml "${cfg_file}" || error "Failed to create initial configuration file"
-sed -E -i "s@RootDirectory=\"[^\"]+\"@RootDirectory=\"${root_dir}\"@g" "${cfg_file}" || error "Failed to set RootDirectory setting"
-sed -E -i "s@database=\"[^\"]+\"@database=\"${db_file}\"@g" "${cfg_file}" || error "Failed to set Db.database setting"
+# located in the NGAS root directory (if required)
+if [ "${CREATE_CFG}" = "yes" ]
+then
+
+	echo "Creating and preparing initial configuration file"
+	cp cfg/sample_server_config.xml "${cfg_file}" || error "Failed to create initial configuration file"
+	sed -E -i "s@RootDirectory=\"[^\"]+\"@RootDirectory=\"${root_dir}\"@g" "${cfg_file}" || error "Failed to set RootDirectory setting"
+
+	if [ "${CREATE_DB}" = "yes" ]
+	then
+		sed -E -i "s@database=\"[^\"]+\"@database=\"${db_file}\"@g" "${cfg_file}" || error "Failed to set Db.database setting"
+	fi
+fi
 
 # Initialize the SQlite database
-echo "Creating initial database"
-sqlite3 "${db_file}" < src/ngamsCore/ngamsSql/ngamsCreateTables-SQLite.sql || error "Failed to create SQLite database file"
+if [ "${CREATE_DB}" = "yes" ]
+then
+	echo "Creating initial database"
+	sqlite3 "${db_file}" < src/ngamsCore/ngamsSql/ngamsCreateTables-SQLite.sql || error "Failed to create SQLite database file"
+fi
 
 echo
 echo
 echo "----------------------------------------------------------------------------"
 echo "Successfully setup ${root_dir} as an NGAS root directory"
 echo
-echo "A working configuration file has been created at ${cfg_file}."
-echo "The configuration points to a working SQLite3 database created at ${db_file}."
-echo
+if [ "${CREATE_CFG}" = "yes" ]
+then
+	echo "A working configuration file has been created at ${cfg_file}."
+	if [ "${CREATE_DB}" = "yes" ]
+	then
+		echo "The configuration points to a working SQLite3 database created at ${db_file}."
+	fi
+	echo
+elif [ "${CREATE_DB}" = "yes" ]
+then
+	echo "A working SQLite3 database has been created at ${db_file}."
+	echo
+fi
 echo "To try out your new NGAS root, you can start an NGAS server with the following command:"
 echo
 echo "$> ngamsServer -cfg ${cfg_file} -v 4 -autoonline"
