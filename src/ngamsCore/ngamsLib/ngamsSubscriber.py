@@ -58,7 +58,7 @@ def validate_url(url):
 
     if parse_result.scheme != 'http':
         msg = "%s scheme not currently supported, only http:// scheme allowed"
-        raise ValueError(msg, parse_result.scheme)
+        raise ValueError(msg % parse_result.scheme)
 
 
 
