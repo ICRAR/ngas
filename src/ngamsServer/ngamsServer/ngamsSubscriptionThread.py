@@ -896,6 +896,10 @@ def _deliveryThread(srvObj,
                                     # e.g. when the server is restarted, refcount dic is empty. Later on, back-logged files are queued for delivery.
                                     # but they did not create entries in refcount dic when they are queued
                                     _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
+                                elif 'NGAS_FORCE_MARK_FOR_DELETION_AFTER_DELIVERY' in os.environ:
+                                    # Last chance to get marked for deletion
+                                    logger.warning('File %s/%d not found in the fileDeliveryCountDic, but marking for deletion anyway', fileId, fileVersion)
+                                    _markDeletion(srvObj, fileInfo[FILE_DISK_ID], fileId, fileVersion)
                                 else:
                                     logger.warning("Fail to find %s/%d in the fileDeliveryCountDic", fileId, fileVersion)
                         finally:
