@@ -616,7 +616,8 @@ class ngamsPClient:
                   priority = None,
                   startDate = None,
                   filterPlugIn = None,
-                  filterPlugInPars = None):
+                  filterPlugInPars = None,
+                  pars=[]):
         """
         Subscribe to data from a Data Provider.
 
@@ -639,7 +640,8 @@ class ngamsPClient:
 
         Returns:            NG/AMS Status object (ngamsStatus).
         """
-        pars = [("url", url)]
+        pars = list(pars)
+        pars.append(("url", url))
         if priority is not None:
             pars.append(("priority", priority))
         if startDate:
@@ -937,7 +939,11 @@ def main():
     elif (cmd == NGAMS_SUBSCRIBE_CMD):
         if not opts.url:
             raise Exception("Must specify parameter --url for a SUBSCRIBE commands")
-        stat = client.subscribe(opts.url, opts.priority, opts.start_date, opts.f_plugin, opts.f_plugin_pars)
+        stat = client.subscribe(url=opts.url, priority=opts.priority,
+                                startDate=opts.start_date,
+                                filterPlugIn=opts.f_plugin,
+                                filterPlugInPars=opts.f_plugin_pars,
+                                pars=pars)
     elif (cmd == NGAMS_UNSUBSCRIBE_CMD):
         stat = client.unsubscribe(opts.url)
     else:
