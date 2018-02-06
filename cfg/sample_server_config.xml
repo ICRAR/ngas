@@ -166,7 +166,7 @@ passwords will be expressed literally.
 	-->
 	<ArchiveHandling Id="ArchiveHandling"
 	                 BackLogBufferDirectory="." BackLogBuffering="0"
-	                 FreeSpaceDiskChangeMb="30720" MinFreeSpaceWarningMb="102400"
+	                 FreeSpaceDiskChangeMb="200" MinFreeSpaceWarningMb="200"
 	                 PathPrefix="MWAArchive" Replication="0"/>
 
 	<!--
