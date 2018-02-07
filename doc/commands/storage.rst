@@ -78,6 +78,67 @@ Get specific version of a file if it exists::
  curl http://<host>:<port>/RETRIEVE?file_id=file.fits&file_version=2
 
 
+.. _commands.query:
+
+QUERY
+-----
+
+The QUERY command is used to list different types of elements
+currently known by the server.
+Users can use the QUERY command
+to find out which files have been archived into the server,
+which subscriptions have been created,
+which disks are present in the system,
+and more.
+
+**Parameters**
+
+* ``query``: The query to run, the only required argument. Valid values are:
+
+  * ``files_list``: a list of all files in the system.
+  * ``subscribers_list``: a list of all subscriptions in the system.
+  * ``subscribers_like``: a list of subscriptions in the database
+    belonging to hosts matching the given ``like`` value (see below).
+  * ``disks_list``: a list of all disks in the system.
+  * ``hosts_list``: a list of all hosts that are part of the same cluster.
+  * ``files_like``: a list of files whose ID matches
+    the given ``like`` value (see below).
+  * ``files_location``: a list of all files in the system,
+    but with information about their physical location on disk.
+  * ``lastver_location``: like ``files_location``,
+    but only listing the last version of each file.
+  * ``files_between``: a list of files archived into the system
+    between ``start`` and ``end`` date (see below).
+  * ``files_stats``: the total size of all archived files, in [MB].
+  * ``files_list_recent``: a list of the last 300 archived files.
+
+* ``format``: the format in which the result of the query
+  will be returned to the client.
+  Valid values are ``list`` (a textual, table-like representation),
+  ``pickle`` (a python pickled version of the data),
+  ``json`` (a json representation of the data),
+  and ``python-list`` (a ``str`` representation of the direct result of the
+  query).
+* ``like``: indicate the value to use in the ``*_like`` queries.
+  If no string is given, ``%`` will be used,
+  therefore matching all values for the corresponding attribute.
+* ``start`` and ``end``: indicate the beginning and the end
+  of the time interval used for the ``files_between`` query.
+  Both parameters must be specified
+  in order for the interval to be properly defined.
+  If any of the two is (or both are) missing,
+  no interval is used.
+
+**Example**
+
+Get list of all subscriptions the system in json format::
+
+ curl http://<host>:<port>/QUERY?query=subscribers_list&format=json
+
+Get list of all files in the system::
+
+ curl http://<host>:<port>/QUERY?query=files_list&format=list
+
 .. _commands.clone:
 
 CLONE
