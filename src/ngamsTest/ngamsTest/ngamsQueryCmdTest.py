@@ -26,6 +26,19 @@ from ngamsTestLib import sendPclCmd, ngamsTestSuite, runTest
 
 class ngamsQueryCmdTest(ngamsTestSuite):
 
+    def test_invalid_requests(self):
+
+        self.prepExtSrv()
+        client = sendPclCmd()
+
+        # No query
+        self.assertStatus(client.get_status('QUERY'), 'FAILURE')
+
+        # Invalid queries
+        self.assertStatus(client.get_status('QUERY', pars=(('query', 'file_list'),)), 'FAILURE')
+        self.assertStatus(client.get_status('QUERY', pars=(('query', 'file_listss'),)), 'FAILURE')
+        self.assertStatus(client.get_status('QUERY', pars=(('query', ''),)), 'FAILURE')
+
     def test_files_list(self):
 
         self.prepExtSrv()
