@@ -22,7 +22,6 @@
 import sys
 
 from ngamsTestLib import sendPclCmd, ngamsTestSuite, runTest
-from ngamsLib import ngamsCore
 
 
 class ngamsQueryCmdTest(ngamsTestSuite):
@@ -34,13 +33,21 @@ class ngamsQueryCmdTest(ngamsTestSuite):
 
         # No files archived, there was an error on the previous implementation
         stat = client.get_status("QUERY", pars = [['query', 'files_list'], ['format', 'list']])
-        self.assertEquals(ngamsCore.NGAMS_SUCCESS, stat.getStatus())
+        self.assertStatus(stat)
 
         # One file archived, let's see what happens now
         stat = client.archive("src/SmallFile.fits")
-        self.assertEquals(ngamsCore.NGAMS_SUCCESS, stat.getStatus())
+        self.assertStatus(stat)
         stat = client.get_status("QUERY", pars = [['query', 'files_list'], ['format', 'list']])
-        self.assertEquals(ngamsCore.NGAMS_SUCCESS, stat.getStatus())
+        self.assertStatus(stat)
+
+        # Make sure that the other formats work as well
+        stat = client.get_status("QUERY", pars = [['query', 'files_list'], ['format', 'text']])
+        self.assertStatus(stat)
+        stat = client.get_status("QUERY", pars = [['query', 'files_list'], ['format', 'json']])
+        self.assertStatus(stat)
+        stat = client.get_status("QUERY", pars = [['query', 'files_list']])
+        self.assertStatus(stat)
 
         # Check that the archived file is listed
         data = stat.getData()

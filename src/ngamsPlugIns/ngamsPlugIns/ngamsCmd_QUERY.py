@@ -32,8 +32,9 @@ Dynamic loadable command to query the DB associated with the NG/AMS instance.
 """
 
 import cPickle
-import json
 import decimal
+import io
+import json
 import logging
 import os
 
@@ -47,32 +48,64 @@ CURSOR_IDX           = "__CURSOR_IDX__"
 NGAMS_PYTHON_LIST_MT = "application/python-list"
 NGAMS_PYTHON_PICKLE_MT = "application/python-pickle"
 NGAMS_JSON_MT = "application/json"
-NGAMS_FILES_COLS = map(lambda x:x[1],ngamsDbCore._ngasFilesDef)
-NGAMS_DISKS_COLS = map(lambda x:x[1],ngamsDbCore._ngasDisksDef)
-NGAMS_SUBSCR_COLS = map(lambda x:x[1],ngamsDbCore._ngasSubscribersDef)
+
+# Dirty trick to get the simple columnnames from these tables
+NGAMS_FILES_COLS = map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasFilesDef)
+NGAMS_DISKS_COLS = map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasDisksDef)
+NGAMS_SUBSCR_COLS = map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasSubscribersDef)
+NGAMS_HOST_COLS = map(lambda x: x[0].split('.')[1], ngamsDbCore._ngasHostsDef)
 
 #creation_date could be different from ingestion_date if it is a mirrored archive
 # ingestion_date is when the original copy was ingested in the system,
 # creation_date is when the replicated copy appears on the mirrored archive
-LASTVER_LOCATION = "SELECT a.host_id, a.mount_point || '/' || b.file_name as file_full_path, b.file_version, b.creation_date, b.ingestion_date FROM ngas_disks a, ngas_files b, " +\
-                    "(SELECT file_id, MAX(file_version) AS max_ver FROM ngas_files WHERE file_id like {0} GROUP BY file_id) c " +\
-                    "WHERE a.disk_id = b.disk_id and " +\
-                    "b.file_id like {0} and " +\
-                    "b.file_id = c.file_id and b.file_version = c.max_ver " +\
-                    "order by b.file_id"
+_LOCATION_COLS = ('file_full_path', 'file_version', 'creation_date', 'ingestion_date')
+_FILES_LOCATION_SQL = ("SELECT a.host_id, a.mount_point || '/' || b.file_name AS file_full_path, b.file_version, b.ingestion_date FROM ngas_disks a, ngas_files b "
+                       "WHERE a.disk_id = b.disk_id AND "
+                       "b.file_id LIKE {0} "
+                       "ORDER BY b.file_id")
+_LASTVER_LOCATION_SQL = ("SELECT a.host_id, a.mount_point || '/' || b.file_name AS file_full_path, b.file_version, b.creation_date, b.ingestion_date FROM ngas_disks a, ngas_files b, "
+                         "(SELECT file_id, MAX(file_version) AS max_ver FROM ngas_files WHERE file_id like {0} GROUP BY file_id) c "
+                         "WHERE a.disk_id = b.disk_id and "
+                         "b.file_id LIKE {0} AND "
+                         "b.file_id = c.file_id and b.file_version = c.max_ver "
+                         "ORDER BY b.file_id")
 
-valid_queries = {"files_list":"select * from ngas_files",
-                 "subscribers_list":"select * from ngas_subscribers",
-                  "subscribers_like":"select * from ngas_subscribers where host_id like {0}",
-                  "disks_list":"select * from ngas_disks",
-                  "hosts_list":"select * from ngas_hosts",
-                  "files_like":"select * from ngas_files where file_id like {0}",
-                  "files_location":"select a.host_id, a.mount_point || '/' || b.file_name as file_full_path, b.file_version, b.ingestion_date from ngas_disks a, ngas_files b where a.disk_id = b.disk_id and b.file_id like {0} order by b.file_id",
-                  "lastver_location":LASTVER_LOCATION,
-                  "files_between":"select * from ngas_files where ingestion_date between {0} and {1}",
-                  "files_stats":"select count(*),sum(uncompressed_file_size)/1048576. as MB from ngas_files",
-                  "files_list_recent":"select file_id, file_name, file_size, ingestion_date from ngas_files order by ingestion_date desc limit 300",
-                }
+# query_name: (column_list, SQL statement)
+queries = {
+    "files_list":
+        (NGAMS_FILES_COLS,
+        "select * from ngas_files"),
+    "subscribers_list":
+        (NGAMS_SUBSCR_COLS,
+        "select * from ngas_subscribers"),
+    "subscribers_like":
+        (NGAMS_SUBSCR_COLS,
+        "select * from ngas_subscribers where host_id like {0}"),
+    "disks_list":
+        (NGAMS_DISKS_COLS,
+        "select * from ngas_disks"),
+    "hosts_list":
+        (NGAMS_HOST_COLS,
+        "select * from ngas_hosts"),
+    "files_like":
+        (NGAMS_FILES_COLS,
+        "select * from ngas_files where file_id like {0}"),
+    "files_location":
+        (_LOCATION_COLS,
+         _FILES_LOCATION_SQL),
+    "lastver_location":  (
+        _LOCATION_COLS,
+        _LASTVER_LOCATION_SQL),
+    "files_between":
+        (NGAMS_FILES_COLS,
+         "select * from ngas_files where ingestion_date between {0} and {1}"),
+    "files_stats":
+        (('Number of files', 'Total volume [MB]'),
+         "select count(*),sum(uncompressed_file_size)/1048576. as MB from ngas_files"),
+    "files_list_recent":
+        (('file_id', 'file_name', 'file_size', 'ingestion_date'),
+         "select file_id, file_name, file_size, ingestion_date from ngas_files order by ingestion_date desc limit 300"),
+}
 
 
 
@@ -84,29 +117,8 @@ def encode_decimal(obj):
         return float(obj)
     raise TypeError(repr(obj) + " is not JSON serializable")
 
-def createJsonObj(resultSet, queryKey):
-    """
-    Format the query result as an object that is json friendly,
 
-    resultSet:      Result returned from the SQL interface (list).
-
-    Returns:  i.e. a list of dic, each of which is a record (List[{fieldname, fieldvalue}]
-    """
-    jsobj = {}
-    listResult = []
-    for res in resultSet:
-        col = 1
-        record = {}
-        for subRes in res:
-            colName = 'col' + str(col)
-            colVal = str(subRes)
-            record[colName] = colVal
-            col += 1
-        listResult.append(record)
-    jsobj[queryKey] = listResult
-    return jsobj
-
-def formatAsList(resultSet, header = None):
+def formatAsList(resultSet, colnames):
     """
     Format the query result as a list.
 
@@ -115,83 +127,29 @@ def formatAsList(resultSet, header = None):
 
     Returns:  Result formatted as a list (string).
     """
+
     # Go through the results, find the longest result per column and use
     # that as basis for the column.
-    formatStrDic = {}
-    reList = list(resultSet)
-    if (header):
-        reList = [header] + reList
-    for res in reList:
-        col = 0
-        for subRes in res:
-            if (not formatStrDic.has_key(col)): formatStrDic[col] = 0
-            if (len(str(subRes)) > formatStrDic[col]):
-                formatStrDic[col] = len(str(subRes))
-            col += 1
+    rows = list(resultSet)
 
-    # Build up format string.
-    formatStr = ""
-    col = 0
-    if (header):
-        headers = ()
-    while (True):
-        if (not formatStrDic.has_key(col)): break
-        formatStr += "%%-%ds" % (formatStrDic[col] + 3)
-        if (header):
-            headers += ('-' * formatStrDic[col],)
-        col += 1
-    formatStr += "\n"
+    max_col_lens = [reduce(max, map(len, map(str, r))) for r in zip(colnames, *rows)]
+    lines = ['-' * l for l in max_col_lens]
+    col_fmts = ['{:%d}' % l for l in max_col_lens]
 
-    # Now, generate the list.
-    listBuf = ""
+    # Write upper set of lines, column names, and bottom lines
+    buf = io.BytesIO()
+    buf.write(b' '.join(lines))
+    buf.write(b'\n')
+    buf.write(b' '.join((fmt.format(c) for fmt, c in zip(col_fmts, colnames))))
+    buf.write(b'\n')
+    buf.write(b' '.join(lines))
 
-    if (header):
-        reList = [headers] + [header] + [headers] + reList[1:]
-    for res in reList:
-        valList = []
-        for subRes in res:
-            valList.append(str(subRes))
-        listBuf += formatStr % tuple(valList)
+    # Write row values using the corresponding format string
+    for r in rows:
+        buf.write(b'\n')
+        buf.write(b' '.join(fmt.format(val) for fmt, val in zip(col_fmts, r)))
 
-    return listBuf
-
-
-# TODO: Add proper markup module
-#def formatAsHTML(resultSet):
-#    """
-#    Format the result as an HTML table
-#
-#    resultSet:    (list) result returned from the SQL interface
-#
-#    Returns:      (string) Result formatted as HTML
-#    """
-#    resultHTML = resultSet
-#    title = "NGAS"
-#    header = "Some information at the top, perhaps a menu."
-#    footer = "Dynamic page created by NGAS server: {0}".format(time.strftime('%Y-%M-%dT%H:%m:%S'))
-#    styles = ( 'layout.css', 'alt.css', 'images.css' )
-#
-#    page = markup.page( )
-#    page.init( css=styles, title=title, header=header, footer=footer )
-#    page.br( )
-#
-#    page.table(border="1")
-#    page.thead()
-#    page.th()
-#    page.td()
-#    page.td.close()
-#    page.th.close()
-#    page.thead.close()
-#    page.tbody()
-#    page.tr()
-#    for row in resultSet:
-#        for cell in row:
-#            page.td(cell)
-#        page.tr.close()
-#    page.tbody.close()
-#    page.table.close()
-#
-#    return page.__str__()
+    return buf.getvalue()
 
 
 def genCursorDbmName(rootDir,
@@ -229,100 +187,95 @@ def handleCmd(srvObj,
     T = TRACE()
 
     # Get command parameters.
-    query = None
-    args = ()
-    if (reqPropsObj.hasHttpPar("query")):
-        query = reqPropsObj.getHttpPar("query")
-        qkey = query
-        if query.lower() in valid_queries.keys():
-            query = valid_queries[query.lower()]
-        else:
-            msg = "Invalid query specified. Valid queries are: %s" %\
-            valid_queries.keys()
-            raise Exception, msg
-
-        if reqPropsObj.getHttpPar("query") == 'subscribers_like' or reqPropsObj.getHttpPar("query") == 'files_like' or reqPropsObj.getHttpPar("query") == 'files_location' or reqPropsObj.getHttpPar("query") == 'lastver_location':
-            param = '%'
-            if (reqPropsObj.hasHttpPar("like")):
-                param = reqPropsObj.getHttpPar("like")
-            args = (param,)
-        if reqPropsObj.getHttpPar("query") == 'files_between':
-            param1 = param2 = ''
-            if (reqPropsObj.hasHttpPar("start")):
-                param1 = reqPropsObj.getHttpPar("start")
-            if (reqPropsObj.hasHttpPar("end")):
-                param2 = reqPropsObj.getHttpPar("end")
-            if param1 and param2:
-                args = (param1, param2)
-            elif param1:
-                query = 'select * from ngas_files where ingestion_date >= {0}'
-                args = (param1,)
-            else:
-                query = valid_queries['files_list']
-    else:
-        msg = "No query specified. Valid queries are: %s" %\
-        valid_queries.keys()
-        raise Exception, msg
+    if not 'query' in reqPropsObj:
+        raise Exception("No query specified. Valid queries are: %s" % (queries.keys(),))
+    query = reqPropsObj.getHttpPar("query").lower()
+    if query not in queries.keys():
+        raise Exception("Invalid query specified. Valid queries are: %s" % (queries.keys(),))
 
     out_format = None
-    if (reqPropsObj.hasHttpPar("format")):
-        out_format = reqPropsObj.getHttpPar("format")
+    if 'format' in reqPropsObj:
+        out_format = reqPropsObj["format"]
+
     cursorId = None
     if (reqPropsObj.hasHttpPar("cursor_id")):
         cursorId = reqPropsObj.getHttpPar("cursor_id")
+
     fetch = None
     if (reqPropsObj.hasHttpPar("fetch")):
         fetch = int(reqPropsObj.getHttpPar("fetch"))
 
+    # Select the SQL statement + pars to execute
+    colnames, sql = queries[query]
+    args = ()
+    if query in ('subscribers_like', 'files_like', 'files_location', 'lastver_location'):
+        param = '%'
+        if (reqPropsObj.hasHttpPar("like")):
+            param = reqPropsObj.getHttpPar("like")
+        args = (param,)
+    elif query == 'files_between':
+        param1 = param2 = ''
+        if 'start' in reqPropsObj:
+            param1 = reqPropsObj["start"]
+        if 'end' in reqPropsObj:
+            param2 = reqPropsObj["end"]
+        if param1 and param2:
+            args = (param1, param2)
+        elif param1:
+            sql = 'select * from ngas_files where ingestion_date >= {0}'
+            args = (param1,)
+        else:
+            sql = queries['files_list']
+
     # Execute the query.
-    if (not cursorId):
-        res = srvObj.getDb().query2(query, args=args)
+    if not cursorId:
 
         # TODO: Make possible to return an XML document
         # TODO: Potential problem with very large result sets.
-        #       Implement streaming result directly.
-        if (out_format == "list"):
-            header = None
-            if reqPropsObj.getHttpPar("query") not in ['files_stats', 'files_list_recent', 'files_location', 'lastver_location']:
-                if query.find('ngas_files') >=0:
-                    header = NGAMS_FILES_COLS
-                elif query.find('ngas_disks') >= 0:
-                    header = NGAMS_DISKS_COLS
-                elif query.find('ngas_subscribers') >= 0:
-                    header = NGAMS_SUBSCR_COLS
-            elif reqPropsObj.getHttpPar("query") == 'files_stats':
-                header = ['Number of files', 'Total volume [MB]']
-            elif reqPropsObj.getHttpPar("query") == 'files_list_recent':
-                header = ['file_id', 'file_name', 'file_size', 'ingestion_date']
-            elif reqPropsObj.getHttpPar("query") == 'files_location':
-                header = ['host_id', 'file_full_path', 'file_version', 'ingestion_date']
-            elif reqPropsObj.getHttpPar("query") == 'lastver_location':
-                header = ['host_id', 'file_full_path', 'file_version', 'creation_date', 'ingestion_date']
-            finalRes = formatAsList(res, header=header)
-            """
-            if query.find('ngas_files') >=0:
-                header = NGAMS_FILES_COLS
-            elif query.find('ngas_disks') >= 0:
-                header = NGAMS_DISKS_COLS
-            else:
-                header = None
-            finalRes = formatAsList(res, header=header)
-            """
+        #       Implement streaming result directly3
+        # rtobar, 2018 Feb: for the streaming result functionality to work
+        #                   correctly we need to support sending content with
+        #                   chunked transfer encoding first. This is not
+        #                   difficult to add on the server side, but needs
+        #                   to be also added on the client side (which I suppose
+        #                   means all languages, not only python, if we really
+        #                   need to maintain those).
+        #                   We already support proper cursors at the database
+        #                   access level, so it's not difficult to change
+        #                   the query below to use a cursor and work as a
+        #                   generator instead of returning the full list of
+        #                   results in one go.
+        res = srvObj.getDb().query2(sql, args=args)
+
+        if out_format in ("list", 'text'):
+            finalRes = formatAsList(res, colnames)
             mimeType = NGAMS_TEXT_MT
-        elif (out_format == "pickle"):
+        elif out_format == "pickle":
             finalRes = cPickle.dumps([res])
             mimeType = NGAMS_PYTHON_PICKLE_MT
-        elif (out_format == "json"):
-            jsobj = createJsonObj(res, qkey)
-            finalRes = json.dumps(jsobj, default=encode_decimal)
+        elif out_format == "json":
+            results = [{colname: val for colname, val in zip(colnames, row)} for row in res]
+            finalRes = json.dumps(results, default=encode_decimal)
             mimeType = NGAMS_JSON_MT
         else:
-            finalRes = str([res])
+            finalRes = str(list(res))
             mimeType = NGAMS_PYTHON_LIST_MT
 
-        # Return the data.
+        # Return the data and good bye.
         httpRef.send_data(finalRes, mimeType)
+        return
 
+
+    # TODO:
+    #
+    #
+    #
+    # The rest seems to be very old functionality, which we probably
+    # want to drop at some point. I'm still keeping it here for the time being
+    # to be a good citizen and not break any (very potential) user.
+    #
+    #
+    #
     elif (fetch):
         cursorDbmFilename = genCursorDbmName(srvObj.getCfg().\
                                              getRootDirectory(), cursorId)
@@ -379,8 +332,6 @@ def handleCmd(srvObj,
               "QUERY?query=<Query>&cursor_id=<ID> followed by N calls to " +\
               "QUERY?cursor_id=<ID>&fetch=<Number of Elements>"
         raise Exception, msg
-
-    return
 
 
 # EOF
