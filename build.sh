@@ -108,7 +108,7 @@ fi
 # which is much faster to install using pip
 # The gleam plug-ins require numpy, but we leave that
 # out of the core dependencies of NGAS
-pip install astropy || warning "Failed to install astropy via pip"
+pip install 'astropy<3' || warning "Failed to install astropy via pip"
 for pyModule in ngamsCore ngamsPClient ngamsServer ngamsPlugIns
 do
 	prevDir=$(pwd -P)
