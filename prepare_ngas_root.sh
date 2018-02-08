@@ -122,11 +122,11 @@ then
 
 	echo "Creating and preparing initial configuration file"
 	cp cfg/sample_server_config.xml "${cfg_file}" || error "Failed to create initial configuration file"
-	sed -E -i "s@RootDirectory=\"[^\"]+\"@RootDirectory=\"${root_dir}\"@g" "${cfg_file}" || error "Failed to set RootDirectory setting"
+	sed -r -i "s@RootDirectory=\"[^\"]+\"@RootDirectory=\"${root_dir}\"@g" "${cfg_file}" || error "Failed to set RootDirectory setting"
 
 	if [ "${CREATE_DB}" = "yes" ]
 	then
-		sed -E -i "s@database=\"[^\"]+\"@database=\"${db_file}\"@g" "${cfg_file}" || error "Failed to set Db.database setting"
+		sed -r -i "s@database=\"[^\"]+\"@database=\"${db_file}\"@g" "${cfg_file}" || error "Failed to set Db.database setting"
 	fi
 fi
 
