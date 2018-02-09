@@ -32,7 +32,7 @@ import lockfile.pidlockfile
 
 from ngamsLib import ngamsConfig, ngamsHighLevelLib
 from ngamsLib.ngamsCore import get_contact_ip
-from . import ngamsServer
+from ngamsServer import ngamsServer
 
 
 def err(s):
