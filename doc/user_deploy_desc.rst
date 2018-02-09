@@ -35,7 +35,14 @@ are available to further customize the process:
 | NGAS_REV                    | | The git revision of the sources    | | ``HEAD``        |
 |                             | | used to compile and install NGAS   |                   |
 |                             | | (only for sources from a git       |                   |
-|                             | | repository)                        |                   |
+|                             | | repository). Keep in mind that     |                   |
+|                             | | after cloning, you might have a    |                   |
+|                             | | reference to remote branches       |                   |
+|                             | | without having **local** branches  |                   |
+|                             | | with the corresponding names, so   |                   |
+|                             | | using ``NGAS_REV=v10`` might not   |                   |
+|                             | | work, but ``NGAS_REV=origin/v10``  |                   |
+|                             | | will.                              |                   |
 +-----------------------------+--------------------------------------+-------------------+
 | NGAS_OVERWRITE_INSTALLATION | | If specified, an existing          | | Not specified   |
 |                             | | installation directory will be     |                   |
