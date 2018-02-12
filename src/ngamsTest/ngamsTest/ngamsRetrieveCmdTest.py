@@ -37,13 +37,12 @@ import io
 import gzip
 import os
 import subprocess
-import sys
 
 from ngamsLib import ngamsConfig, ngamsHttpUtils
 from ngamsLib.ngamsCore import getHostName, NGAMS_RETRIEVE_CMD, \
     checkCreatePath, rmFile, NGAMS_SUCCESS, mvFile
 from ngamsTestLib import ngamsTestSuite, saveInFile, filterDbStatus1, \
-    sendPclCmd, runTest, genTmpFilename, unzip
+    sendPclCmd, genTmpFilename, unzip
 
 
 class ngamsRetrieveCmdTest(ngamsTestSuite):
@@ -602,21 +601,3 @@ class ngamsRetrieveCmdTest(ngamsTestSuite):
 
         self.assertEqual(file_size, piece_by_piece.tell())
         self.assertEqual(full.getvalue(), piece_by_piece.getvalue())
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsRetrieveCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

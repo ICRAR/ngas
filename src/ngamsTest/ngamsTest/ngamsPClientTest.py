@@ -38,7 +38,7 @@ import sys
 
 from ngamsLib.ngamsCore import getHostName
 from ngamsPClient import ngamsPClient
-from ngamsTestLib import ngamsTestSuite, waitReqCompl, runTest, unzip
+from ngamsTestLib import ngamsTestSuite, waitReqCompl, unzip
 
 
 class ngamsPClientTest(ngamsTestSuite):
@@ -631,21 +631,3 @@ class CommandLineTest(ngamsTestSuite):
         # Wrong subscriptions: missing URL, URL scheme not supported
         self.assert_client_fails('SUBSCRIBE')
         self.assert_client_fails('SUBSCRIBE', '--url', 'https://somewhere:8907/QARCHIVE')
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsPClientTest.test_Archive_1"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

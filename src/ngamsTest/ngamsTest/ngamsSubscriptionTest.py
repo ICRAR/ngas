@@ -38,13 +38,12 @@ import functools
 import pickle
 import socket
 import struct
-import sys
 import threading
 import time
 
 from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_SUCCESS
-from ngamsTestLib import ngamsTestSuite, runTest, sendPclCmd, getNoCleanUp, setNoCleanUp
+from ngamsTestLib import ngamsTestSuite, sendPclCmd, getNoCleanUp, setNoCleanUp
 from ngamsServer import ngamsServer
 
 
@@ -391,19 +390,3 @@ class ngamsSubscriptionTest(ngamsTestSuite):
         # Double-check that the file is in B
         status = sendPclCmd(port = 8889).retrieve('SmallFile.fits', targetFile='tmp')
         self.assertEquals(status.getStatus(), 'SUCCESS', None)
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsSubscriptionTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)

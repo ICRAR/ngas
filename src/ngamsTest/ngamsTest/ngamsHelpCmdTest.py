@@ -31,10 +31,8 @@
 This module contains the Test Suite for the HELP Command.
 """
 
-import sys
-
 from ngamsLib.ngamsCore import NGAMS_HELP_CMD
-from ngamsTestLib import ngamsTestSuite, sendExtCmd, runTest
+from ngamsTestLib import ngamsTestSuite, sendExtCmd
 
 
 class ngamsHelpCmdTest(ngamsTestSuite):
@@ -106,22 +104,3 @@ class ngamsHelpCmdTest(ngamsTestSuite):
         refStatFile = "ref/ngamsHelpCmdTest_test_NoPars_2_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status returned for HELP command")
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsHelpCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

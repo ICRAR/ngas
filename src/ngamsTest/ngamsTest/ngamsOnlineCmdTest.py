@@ -31,10 +31,8 @@
 This module contains the Test Suite for the ONLINE Command.
 """
 
-import sys
-
 from ngamsLib.ngamsCore import NGAMS_ONLINE_CMD
-from ngamsTestLib import ngamsTestSuite, sendExtCmd, runTest
+from ngamsTestLib import ngamsTestSuite, sendExtCmd
 
 
 class ngamsOnlineCmdTest(ngamsTestSuite):
@@ -95,22 +93,3 @@ class ngamsOnlineCmdTest(ngamsTestSuite):
         refStatFile = "ref/ngamsOnlineCmdTest_test_OnlineCmd_1_1_ref"
         self.checkFilesEq(refStatFile, tmpStatFile,
                           "Incorrect status returned for ONLINE command")
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsOnlineCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

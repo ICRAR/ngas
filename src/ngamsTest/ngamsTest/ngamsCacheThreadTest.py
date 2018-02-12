@@ -20,10 +20,9 @@
 #    MA 02111-1307  USA
 #
 
-import sys
 import time
 
-from ngamsTestLib import ngamsTestSuite, runTest
+from ngamsTestLib import ngamsTestSuite
 
 
 class ngamsCacheThreadTest(ngamsTestSuite):
@@ -79,6 +78,3 @@ class ngamsCacheThreadTest(ngamsTestSuite):
 
     def test_dont_delete_from_cache(self):
         self._test_delete_from_cache(True)
-
-if __name__ == '__main__':
-    runTest(sys.argv)

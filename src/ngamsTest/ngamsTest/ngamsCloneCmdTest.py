@@ -32,14 +32,13 @@ This module contains the Test Suite for the CLONE Command.
 """
 
 import getpass
-import sys
 import traceback
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_CLONE_CMD
 from ngamsLib import ngamsFileInfo, ngamsLib
 from ngamsTestLib import flushEmailQueue, saveInFile, \
     filterDbStatus1, getEmailMsg, ngamsTestSuite, waitReqCompl, genErrMsgVals, \
-    runTest, sendPclCmd, unzip, genTmpFilename
+    sendPclCmd, unzip, genTmpFilename
 
 # TODO: See how we can actually set this dynamically in the future
 _checkMail = False
@@ -619,22 +618,3 @@ class ngamsCloneCmdTest(ngamsTestSuite):
             tmpStatFile = saveInFile(None, _sortRepFileList(mailCont))
             self.checkFilesEq(refStatFile, tmpStatFile, "Incorrect/missing " +\
                               "CLONE Status Notification Email Msg")
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsCloneCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

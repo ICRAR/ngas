@@ -31,11 +31,8 @@
 This module contains the Test Suite for the STATUS Command.
 """
 
-import sys
-
 from ngamsLib.ngamsCore import toiso8601
-from ngamsTestLib import ngamsTestSuite, getNcu11, runTest, \
-    sendPclCmd
+from ngamsTestLib import ngamsTestSuite, getNcu11, sendPclCmd
 
 
 class ngamsStatusCmdTest(ngamsTestSuite):
@@ -178,21 +175,3 @@ class ngamsStatusCmdTest(ngamsTestSuite):
         run_checks()
         self.assertArchive('src/SmallFile.fits', 'application/octet-stream')
         run_checks()
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsStatusCmdTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

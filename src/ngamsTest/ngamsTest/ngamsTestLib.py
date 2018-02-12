@@ -39,7 +39,6 @@ import functools
 import getpass
 import glob
 import gzip
-import importlib
 import logging
 import multiprocessing.pool
 import os
@@ -77,8 +76,6 @@ logging_levels = {
     logging.NOTSET: 5,
 }
 
-# Global parameters to control the test run.
-_noCleanUp   = 0
 
 # Pool used to start/shutdown servers in parallel
 srv_mgr_pool = multiprocessing.pool.ThreadPool(5)
@@ -257,6 +254,7 @@ def waitReqCompl(clientObj,
     return res
 
 
+_noCleanUp   = int(os.environ.get('NGAS_TESTS_NO_CLEANUP', 0))
 def setNoCleanUp(noCleanUp):
     """
     Set the No Clean Up Flag.
@@ -700,82 +698,6 @@ def flushEmailQueue():
     mailList.reverse()
     for mailNo in mailList:
         recvEmail(mailNo)
-
-
-def runTest(argv):
-    """
-    Parses and executes the test according to the command line
-    parameters given.
-
-    argv:     Arguments given on command line (tuple).
-
-    Returns:  Void.
-    """
-    testModuleName = argv[0].split('/')[-1].split(".")[0]
-    tests = []
-    silentExit = 0
-    verboseLevel = 0
-    skip = None
-    idx = 1
-    while idx < len(argv):
-        par = argv[idx].upper()
-        try:
-            if (par == "-V"):
-                idx += 1
-                verboseLevel = int(argv[idx])
-            elif (par == "-TESTS"):
-                idx += 1
-                tests = argv[idx].split(",")
-            elif (par == "-NOCLEANUP"):
-                setNoCleanUp(1)
-            elif (par == "-SKIP"):
-                idx += 1
-                skip = argv[idx]
-            else:
-                correctUsage()
-                silentExit = 1
-                sys.exit(1)
-            idx += 1
-        except Exception, e:
-            if (not silentExit):
-                print "Illegal input parameters: " + str(e) + "\n"
-                correctUsage()
-            sys.exit(1)
-
-    logging.root.addHandler(logging.NullHandler())
-    if verboseLevel:
-        logging.root.addHandler(logging.StreamHandler(stream=sys.stdout))
-        val = verboseLevel - 1
-        for level, level_val in logging_levels.items():
-            if level_val == val:
-                logging.root.setLevel(level)
-                break
-
-    skipDic = {}
-    if (skip):
-        for testCase in skip.split(","): skipDic[testCase.strip()] = 1
-
-    # Always ensure that the local "tmp" directory exists
-    if not os.path.isdir("tmp"):
-        if os.path.exists("tmp"):
-            raise Exception("./tmp exists and is not a directory, cannot continue")
-        os.mkdir("tmp")
-
-    # Execute the test.
-    testModule = importlib.import_module(testModuleName)
-    testClass = getattr(testModule, testModuleName)
-    if (tests == []):
-        # No specific test specified - run all tests.
-        testSuite = unittest.makeSuite(testClass)
-    elif (skipDic != {}):
-        print "TODO: IMPLEMENT SKIP PARAMETER FOR TEST SUITES!"
-        sys.exit(1)
-    else:
-        testSuite = unittest.TestSuite()
-        for testCase in tests:
-            testSuite.addTest(testClass(testCase))
-    res = ngamsTextTestRunner(sys.stdout, 1, 0).run(testSuite)
-    sys.exit(0 if res.wasSuccessful() else 1)
 
 
 def writeFitsKey(filename,
@@ -1777,83 +1699,6 @@ class ngamsTestSuite(unittest.TestCase):
 
         self.markNodesAsUnsusp(dbConObj, nodes)
         self.fail("Sub-node not woken up within %ds" % timeOut)
-
-class ngamsTextTestResult(unittest._TextTestResult):
-    """
-    Class to produce text test output.
-    """
-
-    def __init__(self,
-                 stream = sys.stderr,
-                 descriptions = 1,
-                 verbosity = 1):
-        """
-        Constructor method.
-
-        stream:       Stream on which to write the report, e.g. sys.stderr
-                      (stream object).
-
-        descriptions: ?
-
-        verbosity:    ?
-        """
-        unittest._TextTestResult.__init__(self,stream, descriptions, verbosity)
-
-
-class ngamsTextTestRunner(unittest.TextTestRunner):
-    """
-    Test report generator class for the NG/AMS Unit Test.
-    """
-
-    def __init__(self,
-                 stream = sys.stderr,
-                 descriptions = 1,
-                 verbosity = 1):
-        unittest.TextTestRunner.__init__(self, stream, descriptions, verbosity)
-
-
-    def _makeResult(self):
-        return ngamsTextTestResult(self.stream, self.descriptions,
-                                   self.verbosity)
-
-
-    def run(self,
-            test):
-        """
-        Run the given test case or test suite.
-        """
-        testName = str(test._tests[0]).split(" ")[1].split(".")[0][1:]
-        self.stream.writeln("\nTest: " + testName)
-        result = self._makeResult()
-        startTime = time.time()
-        test(result)
-        stopTime = time.time()
-        timeTaken = float(stopTime - startTime)
-        result.printErrors()
-        self.stream.writeln(result.separator2)
-        run = result.testsRun
-        self.stream.writeln("Ran %d test%s in %.3fs" %
-                            (run, run == 1 and "" or "s", timeTaken))
-        self.stream.writeln()
-        if not result.wasSuccessful():
-            self.stream.write("FAILED (")
-            failed, errored = map(len, (result.failures, result.errors))
-            if failed:
-                self.stream.write("failures=%d" % failed)
-            if errored:
-                if failed: self.stream.write(", ")
-                self.stream.write("errors=%d" % errored)
-            self.stream.writeln(")")
-        else:
-            self.stream.writeln("OK\n")
-        return result
-
-
-if __name__ == '__main__':
-    """
-    Main program to test execution of functions in the module.
-    """
-    pass
 
 
 # EOF

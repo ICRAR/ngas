@@ -34,10 +34,9 @@ This module contains the Test Suite for the Authorization Feature of NG/AMS.
 import base64
 import contextlib
 import os
-import sys
 
 from ngamsLib import ngamsHttpUtils
-from ngamsTestLib import ngamsTestSuite, runTest
+from ngamsTestLib import ngamsTestSuite
 
 
 class ngamsAuthorizationTest(ngamsTestSuite):
@@ -118,22 +117,3 @@ class ngamsAuthorizationTest(ngamsTestSuite):
         self._assert_code(404, bauth=auth1, cmd='DOESNT_EXIST')
         self._assert_code(403, bauth=auth2, cmd='DOESNT_EXIST')
         self._assert_code(404, bauth=auth3, cmd='DOESNT_EXIST')
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsAuthorizationTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

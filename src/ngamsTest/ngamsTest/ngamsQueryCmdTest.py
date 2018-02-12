@@ -19,9 +19,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 #    MA 02111-1307  USA
 #
-import sys
-
-from ngamsTestLib import sendPclCmd, ngamsTestSuite, runTest
+from ngamsTestLib import sendPclCmd, ngamsTestSuite
 from ngamsLib import ngamsCore
 
 
@@ -45,9 +43,3 @@ class ngamsQueryCmdTest(ngamsTestSuite):
         # Check that the archived file is listed
         data = stat.getData()
         self.assertTrue("TEST.2001-05-08T15:25:00.123" in data)
-
-def run():
-    runTest(["ngamsQueryCmdTest"])
-
-if __name__ == "__main__":
-    runTest(sys.argv)

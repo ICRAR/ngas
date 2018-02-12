@@ -34,12 +34,11 @@ This module contains the Test Suite for the DB Snapshot Feature.
 import glob
 import os
 import subprocess
-import sys
 import time
 
 from ngamsLib.ngamsCore import NGAMS_CLONE_CMD, NGAMS_REMFILE_CMD, \
     NGAMS_REMDISK_CMD, checkCreatePath, NGAMS_REGISTER_CMD, cpFile
-from ngamsTestLib import saveInFile, ngamsTestSuite, runTest, sendPclCmd
+from ngamsTestLib import saveInFile, ngamsTestSuite, sendPclCmd
 
 
 NM2IDX = "___NM2ID___"
@@ -430,22 +429,3 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         client.online()
 
         # TODO: Check that the file entries are now in the DB.
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsDbSnapShotTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

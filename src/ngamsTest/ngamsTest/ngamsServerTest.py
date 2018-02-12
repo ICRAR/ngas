@@ -43,7 +43,7 @@ import uuid
 
 from ngamsLib import ngamsHttpUtils
 from ngamsLib.ngamsCore import NGAMS_SUCCESS, NGAMS_HTTP_SERVICE_NA
-from ngamsTestLib import ngamsTestSuite, runTest, saveInFile, sendPclCmd, this_dir
+from ngamsTestLib import ngamsTestSuite, saveInFile, sendPclCmd, this_dir
 
 
 # This module is used as a command by one of its own tests,
@@ -171,21 +171,3 @@ class ngamsDaemonTest(ngamsTestSuite):
         # Try to start the daemon twice, it should fail
         self.prepExtSrv(daemon=True)
         self.assertNotEqual(0, self._run_daemon_start(os.path.join(this_dir, 'src/ngamsCfg.xml')))
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsServerTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF

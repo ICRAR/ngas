@@ -25,7 +25,6 @@ import functools
 import os
 import random
 import string
-import sys
 import tempfile
 
 from ngamsLib import ngamsMIMEMultipart
@@ -190,19 +189,3 @@ class ngamsMIMEMultipartTest(ngamsTestLib.ngamsTestSuite):
         mlen = len(message)
 
         self.assertEqual(mlen, rlen)
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    ngamsTestLib.runTest(["ngamsMIMEMultipartTest"])
-
-if __name__ == "__main__":
-    """
-    Main program executing the test cases of the module test.
-    """
-    ngamsTestLib.runTest(sys.argv)
-
-# EOF

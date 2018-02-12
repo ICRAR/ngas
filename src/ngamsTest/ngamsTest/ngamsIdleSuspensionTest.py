@@ -31,14 +31,13 @@
 This module contains the Test Suite for the handling of Idle Suspension.
 """
 
-import sys
 import time
 import urllib
 
 from ngamsLib.ngamsCore import getHostName, NGAMS_STATUS_CMD, \
     NGAMS_CHECKFILE_CMD, rmFile, NGAMS_SUCCESS
 from ngamsTestLib import ngamsTestSuite, sendPclCmd, \
-    filterOutLines, saveInFile, loadFile, runTest, genTmpFilename, unzip
+    filterOutLines, saveInFile, loadFile, genTmpFilename, unzip
 
 
 SUSP_EL = "NgamsCfg.HostSuspension[1]"
@@ -636,22 +635,3 @@ class ngamsIdleSuspensionTest(ngamsTestSuite):
         testTags = ["NGAMS_INFO_DATA_CHK_STAT:3020:INFO: Number of files " +\
                     "checked: 4"]
         self.checkTags(subNodeLogBuf, testTags, showBuf=0)
-
-
-def run():
-    """
-    Run the complete test.
-
-    Returns:   Void.
-    """
-    runTest(["ngamsIdleSuspensionTest"])
-
-
-if __name__ == '__main__':
-    """
-    Main program executing the test cases of the module test.
-    """
-    runTest(sys.argv)
-
-
-# EOF
