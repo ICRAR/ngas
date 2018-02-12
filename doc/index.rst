@@ -19,3 +19,4 @@ Contents:
    plugins-index
    commands-index
    configuration
+   api

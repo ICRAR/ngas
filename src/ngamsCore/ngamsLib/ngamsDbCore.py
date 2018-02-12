@@ -482,6 +482,7 @@ class ngamsDbCursor(object):
         return rows
 
     def close(self):
+        """Closes the underlying cursor and connection"""
         if self.cursor:
             try:
                 self.cursor.close()
@@ -492,7 +493,7 @@ class ngamsDbCursor(object):
             except: pass
 
 class cursor2(ngamsDbCursor):
-    """A cursor smarter than ngamsDbCursor that yields values and acts as a context manager"""
+    """A cursor that yields values and acts as a context manager"""
 
     def fetch(self, howmany):
         """
@@ -515,8 +516,8 @@ class cursor2(ngamsDbCursor):
 
 class transaction(object):
     """
-    A context manager that allows multiple SQL queries to be performed
-    in a single transaction
+    A context manager that allows multiple SQL queries to be executed
+    within a single transaction
     """
 
     def __init__(self, db_core, pool):
@@ -548,6 +549,7 @@ class transaction(object):
             raise
 
     def execute(self, sql, args=()):
+        """Executes `sql` using `args`"""
 
         # If we are passing down parameters we need to sanitize both the query
         # string (which should come with {0}-style formatting) and the parameter

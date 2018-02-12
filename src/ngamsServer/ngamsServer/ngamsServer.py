@@ -442,6 +442,13 @@ class ngamsServer(object):
     Class providing the functionality of the NG/AMS Server.
     """
 
+    # These are here purely for documentation reasons
+    db = None
+    """A reference to the underlying database"""
+
+    cfg = None
+    """The underlying configuration object"""
+
     def __init__(self):
         """
         Constructor method.
