@@ -144,20 +144,6 @@ def _checkContDbSnapshot(testSuiteObj,
         count += 1
 
 
-def _prepSrv(testSuiteObj):
-    """
-    Prepare a server instance for these tests.
-
-    testSuiteObj:    Instance of the NG/AMS Test Suite object (ngamsTestSuite)
-
-    Returns:         Instance of NG/AMS Cfg. and DB Objects
-                     (tuple/ngamsConfig,ngamsDb).
-    """
-    cfg = (("NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:00:01"),
-           ("NgamsCfg.Db[1].Snapshot", "1"))
-    return testSuiteObj.prepExtSrv(cfgProps=cfg)
-
-
 class ngamsDbSnapShotTest(ngamsTestSuite):
     """
     Synopsis:
@@ -191,6 +177,15 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
     - Creation of DB Snapshot at server start-up, files on the disk.
     """
 
+    def _prepSrv(self):
+        """
+        Prepare a server instance for these tests. Its janitor thread has a very
+        short period and writes a file every time it finishes.
+        """
+        cfg = (("NgamsCfg.JanitorThread[1].SuspensionTime", "0T00:00:01"),
+               ("NgamsCfg.Db[1].Snapshot", "1"))
+        return self.prepExtSrv(cfgProps=cfg)
+
     def test_DbSnapshot_1(self):
         """
         Synopsis:
@@ -216,7 +211,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = _prepSrv(self)
+        self._prepSrv()
         _checkContDbSnapshot(self, 1,
                              ["FitsStorage1-Main-1", "PafStorage-Rep-8"],
                              waitEmptyCache=False, filterContents=False)
@@ -246,9 +241,9 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         ...
 
         """
-        cfgObj, dbObj = _prepSrv(self)
+        self._prepSrv()
         client = sendPclCmd()
-        for n in range(3): client.archive("src/SmallFile.fits")
+        for _ in range(3): client.archive("src/SmallFile.fits")
         _checkContDbSnapshot(self, 2, ["FitsStorage1-Main-1",
                                        "FitsStorage1-Rep-2"])
 
@@ -277,9 +272,9 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = _prepSrv(self)
+        self._prepSrv()
         client = sendPclCmd()
-        for n in range(3): client.archive("src/SmallFile.fits")
+        for _ in range(3): client.archive("src/SmallFile.fits")
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         client.get_status(NGAMS_CLONE_CMD, pars = [["disk_id", diskId]])
         fileId = "TEST.2001-05-08T15:25:00.123"
@@ -316,9 +311,9 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = _prepSrv(self)
+        self._prepSrv()
         client = sendPclCmd()
-        for n in range(3): client.archive("src/SmallFile.fits")
+        for _ in range(3): client.archive("src/SmallFile.fits")
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         client.get_status(NGAMS_CLONE_CMD, pars = [["disk_id", diskId]])
         client.get_status(NGAMS_REMDISK_CMD, pars = [["disk_id", diskId], ["execute", "1"]])
@@ -350,9 +345,9 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = _prepSrv(self)
+        self._prepSrv()
         client = sendPclCmd()
-        for n in range(3): client.archive("src/SmallFile.fits")
+        for _ in range(3): client.archive("src/SmallFile.fits")
         diskId = "tmp-ngamsTest-NGAS-FitsStorage1-Main-1"
         client.get_status(NGAMS_CLONE_CMD, pars = [["disk_id", diskId]])
         time.sleep(5)
@@ -383,7 +378,7 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         Remarks:
         ...
         """
-        cfgObj, dbObj = _prepSrv(self)
+        self._prepSrv()
         client = sendPclCmd()
         regTestDir = "/tmp/ngamsTest/NGAS/FitsStorage1-Main-1/reg_test"
         checkCreatePath(regTestDir)
@@ -421,9 +416,9 @@ class ngamsDbSnapShotTest(ngamsTestSuite):
         TODO!: Last step of verifying that the file info is actually updated
                in the DB, is not yet implemented.
         """
-        cfgObj, dbObj = _prepSrv(self)
+        _, dbObj = self._prepSrv()
         client = sendPclCmd()
-        for n in range(3): client.archive("src/SmallFile.fits")
+        for _ in range(3): client.archive("src/SmallFile.fits")
 
         # Bring server Offline.
         client.offline()
