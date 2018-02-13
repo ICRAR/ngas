@@ -50,6 +50,16 @@ warning() {
 	echo "WARNING: $1" 1>&2
 }
 
+# Identify our system
+platform=`uname`
+
+# How we tell sed we want extended regular expressions
+extended_regexp="-r"
+if [ "${platform}" = "Darwin" ]
+then
+	extended_regexp="-E"
+fi
+
 # Command-line option parsing
 FORCE=
 CREATE_DB=yes
@@ -122,11 +132,11 @@ then
 
 	echo "Creating and preparing initial configuration file"
 	cp cfg/sample_server_config.xml "${cfg_file}" || error "Failed to create initial configuration file"
-	sed -r -i "s@RootDirectory=\"[^\"]+\"@RootDirectory=\"${root_dir}\"@g" "${cfg_file}" || error "Failed to set RootDirectory setting"
+	sed ${extended_regexp} -i -e "s@RootDirectory=\"[^\"]+\"@RootDirectory=\"${root_dir}\"@g" "${cfg_file}" || error "Failed to set RootDirectory setting"
 
 	if [ "${CREATE_DB}" = "yes" ]
 	then
-		sed -r -i "s@database=\"[^\"]+\"@database=\"${db_file}\"@g" "${cfg_file}" || error "Failed to set Db.database setting"
+		sed ${extended_regexp} -i -e "s@database=\"[^\"]+\"@database=\"${db_file}\"@g" "${cfg_file}" || error "Failed to set Db.database setting"
 	fi
 fi
 
