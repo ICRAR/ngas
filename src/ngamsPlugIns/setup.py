@@ -47,7 +47,7 @@ setup(
                           'subscription_ui/*'],
     },
     install_requires=[
-        'astropy<3',
+        'astropy',
         'ngamsCore',
         'ngamsPClient',
         'ngamsServer'
