@@ -28,7 +28,7 @@ with open('../../VERSION') as vfile:
             break
 
 # We definitely require this one
-install_requires = ['DBUtils']
+install_requires = ['DBUtils', 'six>=1.10']
 
 # If there's neither bsddb nor bsddb3 we need to install the latter
 try:
