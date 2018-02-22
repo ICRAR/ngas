@@ -271,7 +271,7 @@ def updateFileInfoDb(srvObj,
         try:
             ngamsFileUtils.syncCachesCheckFiles(srvObj,
                                                 [piStat.getCompleteFilename()])
-        except Exception, e:
+        except Exception as e:
             errMsg = "Severe error occurred! Cannot update information in " +\
                      "NGAS DB (ngas_files table) about file with File ID: " +\
                      piStat.getFileId() + " and File Version: " +\
@@ -934,7 +934,7 @@ def archiveInitHandling(srvObj, reqPropsObj, httpRef, do_probe=False, try_to_pro
     # Is this NG/AMS permitted to handle Archive Requests?
     if (not srvObj.getCfg().getAllowArchiveReq()):
         errMsg = genLog("NGAMS_ER_ILL_REQ", ["Archive"])
-        raise Exception, errMsg
+        raise Exception(errMsg)
     srvObj.checkSetState("Archive Request", [NGAMS_ONLINE_STATE],
                          [NGAMS_IDLE_SUBSTATE, NGAMS_BUSY_SUBSTATE],
                          NGAMS_ONLINE_STATE, NGAMS_BUSY_SUBSTATE,

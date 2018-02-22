@@ -1754,7 +1754,7 @@ class ngamsServer(object):
             if not httpRef.reply_sent:
                 httpRef.send_status("Successfully handled request")
 
-        except ngamsCmdHandling.NoSuchCommand, e:
+        except ngamsCmdHandling.NoSuchCommand as e:
             httpRef.send_status("Command not found", status=NGAMS_FAILURE, code=404)
 
         except Exception as e:

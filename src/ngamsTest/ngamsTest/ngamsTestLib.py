@@ -107,7 +107,7 @@ if (os.path.exists("/opt/sybase/interfaces")):
                      "that might be able to connect to ESOECF, ASTOPP or " +\
                      "OLASLS. Remove entries for these DB servers from " +\
                      "/opt/sybase/interfaces and run the test again"
-            raise Exception, errMsg
+            raise Exception(errMsg)
 ###########################################################################
 
 ###########################################################################
@@ -130,8 +130,8 @@ if (os.path.exists("/etc/mail/sendmail.cf")):
     #        if (line.find("yes") != -1):
                 foundDaemonYes = 1
     if (not foundDaemonYes):
-        raise Exception, "Mail configuration incorrect. Set parameter: " + \
-              "DAEMON=yes in /etc/mail/sendmail.cf"
+        raise Exception("Mail configuration incorrect. Set parameter: " + \
+              "DAEMON=yes in /etc/mail/sendmail.cf")
     out = subprocess.check_output("ps -efww|grep sendmail", shell=True)
     psLines = out.split("\n")
     sendMailRunning = 0
@@ -143,8 +143,7 @@ if (os.path.exists("/etc/mail/sendmail.cf")):
     if (not sendMailRunning):
         errMsg = "Start local SMTP server as root " + \
                  "(# /etc/init.d/sendmail start)"
-        print errMsg
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 if (os.path.exists("/etc/aliases")):
     # Check that no entry is defined for ngasmgr in /etc/aliases.
@@ -159,8 +158,7 @@ if (os.path.exists("/etc/aliases")):
                          "run newaliases as root before running the tests. " + \
                          "Afterwards remember to restore the original settings!"
                 errMsg = errMsg % line
-                print line
-                raise Exception, errMsg
+                raise Exception(errMsg)
 ###########################################################################
 
 def has_program(program):
@@ -202,7 +200,7 @@ def execCmd(cmd,
     out = stdOut + stdErr
     if (exitCode and raiseEx):
         errMsg = "Error executing shell command. Exit status: %d, ouput: %s"
-        raise Exception, errMsg % (exitCode, out)
+        raise Exception(errMsg % (exitCode, out))
     return (exitCode, out)
 
 
@@ -277,17 +275,6 @@ def getNoCleanUp():
     return _noCleanUp
 
 
-def correctUsage():
-    """
-    Print out correct usage.
-
-    Returns:   Void.
-    """
-    print "Input parameters for NG/AMS test programs:\n"
-    print "<test program> [-v <level>] [-tests <test name>] [-noCleanUp]\n"
-    print ngamsCopyrightString()
-
-
 def cmpFiles(refFile,
              testFile,
              sort = 0):
@@ -349,7 +336,7 @@ def pollForFile(pattern,
             errMsg = "The expected number of matches: %d to pattern: %s was "+\
                      "not obtained within the given timeout: %f"
             errMsg = errMsg % (expNoOfCopies, pattern, timeOut)
-        raise Exception, errMsg
+        raise Exception(errMsg)
 
 
 def genErrMsg(msg,
@@ -1137,7 +1124,7 @@ class ngamsTestSuite(unittest.TestCase):
                 logger.info("Sending OFFLINE command to external server ...")
                 stat = pCl.offline(1)
             status = stat.getStatus()
-        except Exception, e:
+        except Exception as e:
             logger.info("Error encountered sending OFFLINE command: %s", str(e))
             status = NGAMS_FAILURE
 
@@ -1149,7 +1136,7 @@ class ngamsTestSuite(unittest.TestCase):
             logger.info("External server in Offline State - sending EXIT command ...")
             try:
                 stat = pCl.exit()
-            except Exception, e:
+            except Exception as e:
                 logger.info("Error encountered sending EXIT command: %s", str(e))
             else:
                 # Wait for the server to be definitively terminated.
